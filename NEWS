@@ -1,9 +1,31 @@
 NEWS for Mercury 13.05.1
 ------------------------
 
+This is a bug-fix release.
+
+* Various build problems on Solaris and NetBSD have been fixed.
+* The C# compiler for use by the csharp grade can now be specified using
+  a new option to the configure script, `--with-csharp-compiler'.  This
+  fixes a problem where it was not possible to build the Mercury libraries
+  in the csharp grade against version 4.0 of the .NET framework using
+  Mono.  (See README.CSharp for further details.)
+* In C grades, closing a file stream multiple times no longer causes a
+  segmentation fault.  (Bug #161)
+* `--warn-dead-procs' no longer emits warnings for procedures if they are
+  foreign exported to any language.  Previously, warnings were incorrectly
+  emitted if there were only foreign_export pragmas for foreign languages
+  unsupported by the current backend.  (Bug #183)
+* The compiler now emits a warning if the variable that is the subject of
+  of a require_complete_switch scope does not appear in the scoped goal.
+  (Bug #257)
+* A bug that caused a compiler abort in the low-level C backend has been
+  fixed.
+
 Changes to the Mercury standard library:
 
 * We have added the function bimap.count/1.
+
+* An equality predicate is now defined for version_hash_tables.
 
 
 NEWS for Mercury 13.05

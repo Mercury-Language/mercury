@@ -6883,7 +6883,7 @@ dependencies to @file{@var{module}.dep}, @file{@var{module}.dv} and the
 relevant @samp{.d} files.
 
 @sp 1
-@itemx --generate-dependency-file
+@item --generate-dependency-file
 @findex --generate-dependency-file
 Output `Make'-style dependencies for the module to @file{@var{module}.d}'.
 
@@ -7061,7 +7061,7 @@ Print the flags with which the C compiler will be invoked
 to the standard output.
 
 @sp 1
-@itemx --output-csharp-compiler-type
+@item --output-csharp-compiler-type
 @findex --output-csharp-compiler-type
 Print the C# compiler type to the standard output.
 

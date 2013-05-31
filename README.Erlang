@@ -70,6 +70,9 @@ directory.
         cd samples
         mmc --make --erlang hello
 
+Note that when building programs using the erlang grade you *must* use
+mmc --make.
+
 Now you can run hello
 
         ./hello

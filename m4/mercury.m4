@@ -234,9 +234,9 @@ AC_PATH_PROG([GACUTIL], [gacutil])
 AC_MSG_CHECKING([for Microsoft.NET Framework SDK])
 AC_CACHE_VAL([mercury_cv_microsoft_dotnet], [
 if test "$ILASM" != ""; then
-	changequote(<<,>>) 
+	changequote(<<,>>)
 	MS_DOTNET_SDK_DIR=`expr "$ILASM" : '\(.*\)[/\\]*[bB]in[/\\]*ilasm'`
-	changequote([,]) 
+	changequote([,])
 	mercury_cv_microsoft_dotnet="yes"
 else
 	MS_DOTNET_SDK_DIR=""
@@ -260,32 +260,121 @@ AC_PATH_PROGS([CLI_INTERPRETER], [mono])
 # dmcs is the Mono C# compiler targeting the 4.0 runtime
 # gmcs is the Mono C# compiler targeting the 2.0 runtime (with generics).
 # cscc is the DotGNU C# compiler.
-AC_PATH_PROGS([CANDIDATE_CSC], [csc mcs dmcs gmcs cscc])
-CANDIDATE_CSC=`basename "$CANDIDATE_CSC"`
 
-# The Microsoft C# compiler and the Chicken Scheme compiler share the same
-# executable name so if we find an executable named csc above check that it is
-# actually the Microsoft C# compiler and if it is not then try to use one of
-# the other instead.
-#
-case "$CANDIDATE_CSC" in
-    
-     csc*)
-        $CANDIDATE_CSC 2>&1 | grep -q "^Microsoft"
-        if test $? -ne 0
-        then
-            AC_MSG_WARN([$CANDIDATE_CSC is not the Microsoft C sharp compiler])
-            AC_PATH_PROGS([CSC], [mcs dmcs gmcs cscc])
-            CSC=`basename "$CSC"`
-        else
-            CSC="$CANDIDATE_CSC"
-        fi
-    ;;
-
+AC_CACHE_SAVE
+case "$mercury_cv_with_csharp_compiler" in
+    no)
+        AC_MSG_ERROR(invalid option --without-csharp-compiler)
+        exit 1
+        ;;
+    yes)
+        AC_MSG_ERROR(missing argument to --with-csharp-compiler=... option)
+        exit 1
+        ;;
+    "")
+        CSC_COMPILERS="csc mcs dmcs gmcs cscc"
+        ;;
     *)
-       CSC="$CANDIDATE_CSC"
-    ;;
+        CSC_COMPILERS="$mercury_cv_with_csharp_compiler"
+        ;;
 esac
+
+AC_MSG_CHECKING([for a C sharp compiler])
+AC_MSG_RESULT()
+for CANDIDATE_CSC0 in $CSC_COMPILERS; do
+    unset CANDIDATE_CSC
+    unset ac_cv_path_CANDIDATE_CSC
+    AC_CACHE_LOAD
+    AC_PATH_PROG([CANDIDATE_CSC], [$CANDIDATE_CSC0])
+    
+    if test -z "$CANDIDATE_CSC"; then
+        continue;
+    fi
+    CANDIDATE_CSC=`basename "$CANDIDATE_CSC"`
+
+# Check that the compiler is suitable.
+    case "$CANDIDATE_CSC" in
+         csc*)
+             #
+             # The Microsoft C# compiler and the Chicken Scheme compiler share
+             # the same executable name so if we find an executable named csc
+             # above check that it is actually the Microsoft C# compiler and if
+             # it is not then try to use one of the other instead.
+             #
+             $CANDIDATE_CSC 2>&1 | grep "^Microsoft" >/dev/null
+             if test $? -ne 0
+             then
+                 AC_MSG_WARN([$CANDIDATE_CSC is not the Microsoft C sharp compiler])
+                 continue;
+             else
+                 CSC="$CANDIDATE_CSC"
+                 break;
+             fi
+        ;;
+
+        *mcs)
+            # We want to check that the 'mcs' compiler supports generics.
+            # We test all the mono C sharp compilers in order to be more
+            # defensive.
+            AC_MSG_CHECKING([whether $CANDIDATE_CSC supports C sharp generics])
+
+            cat > conftest.cs << EOF
+    using System;
+    using System.Collections.Generic;
+
+    class Hello
+    {
+        private class ExampleClass { }
+
+        static void Main()
+        {
+            Console.WriteLine("Hello world!");
+
+            // Declare a list of type int.
+            List<int> list1 = new List<int>();
+
+            // Declare a list of type string.
+            List<string> list2 = new List<string>();
+
+            // Declare a list of type ExampleClass.
+            List<ExampleClass> list3 = new List<ExampleClass>();
+        }
+    }
+EOF
+            echo $CANDIDATE_CSC conftest.cs >&AC_FD_CC 2>&1
+            OUTPUT=$($CANDIDATE_CSC conftest.cs 2>&1)
+            RESULT=$?
+            rm -f conftest.cs conftest.exe
+            echo $OUTPUT >&AC_FD_CC
+            echo returned $RESULT >&AC_FD_CC
+            if echo $OUTPUT | grep CS1644 > /dev/null; then
+                # This compiler does not support generics.
+                AC_MSG_RESULT(no)
+                continue;
+            elif test $RESULT -ne 0; then
+                AC_MSG_RESULT(no)
+                AC_MSG_WARN([$CANDIDATE_CSC returned exit code $RESULT])
+                continue;
+            else
+                AC_MSG_RESULT(yes)
+                CSC="$CANDIDATE_CSC"
+                break;
+            fi
+        ;;
+
+        *)
+            CSC="$CANDIDATE_CSC"
+            break;
+        ;;
+    esac
+done
+
+# If the user specified one or more compilers and we couldn't find any
+# then abort configuration.
+if test "$mercury_cv_with_csharp_compiler" != "" -a "$CSC" = ""; then
+    AC_MSG_ERROR([No suitable C sharp compiler could be found.])
+    exit 1
+fi
 
 case "$CSC" in
     csc*)
@@ -561,7 +650,7 @@ AC_MSG_CHECKING([what the C compiler type really is])
 # MSVC uses different command line options to most other C compilers.
 # Try to determine whether CC is MSVC based on the usage message.
 #
-$CC 2>&1 | grep -q "^Microsoft"
+$CC 2>&1 | grep "^Microsoft" >/dev/null
 if test $? -eq 0
 then
     cc_out_opt="-Fe"
@@ -586,7 +675,7 @@ int main(int argc, char **argv)
     #else
        printf("unknown");
     #endif
-   
+
     return 0;
 }
 EOF

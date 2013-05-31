@@ -1290,7 +1290,7 @@ Semantics:
 transform(V_in, V_out, @{ Goal @}) = (Goal, V_out = V_in)
 @end example
 
-@itemx [@var{Term}, @dots{}]
+@item [@var{Term}, @dots{}]
 A DCG input match.
 Unifies the implicit DCG input variable V_in,
 which must have type @samp{list(_)},

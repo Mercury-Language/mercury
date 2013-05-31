@@ -1156,6 +1156,12 @@ AC_SUBST(MATH_LIB)
 # Microsoft.NET configuration
 #
 
+AC_ARG_WITH(csharp-compiler,
+    AC_HELP_STRING([--with-csharp-compiler=<compiler>],
+                   [Specify which C Sharp compiler to use (default:
+                   autodetect)]),
+    mercury_cv_with_csharp_compiler="$withval",
+    mercury_cv_with_csharp_compiler="")
 MERCURY_CHECK_DOTNET
 
 #-----------------------------------------------------------------------------#
@@ -2890,8 +2896,8 @@ fi
 
 AC_ARG_WITH([gc-pthreads-win32],
    AC_HELP_STRING([--with-gc-pthreads-win32]
-          [Force the use of the pthreads-win32 library with the Boehm GC.
-           This is the default for MinGW]),
+                          [Force the use of the pthreads-win32 library with
+                          the Boehm GC.  This is the default for MinGW]),
    [with_gc_pthreads_win32="$withval"],[with_gc_pthreads_win32="no"])
 
 case "$with_gc_pthreads_win32" in
@@ -4789,6 +4795,7 @@ MERCURY_CHECK_FOR_IEEE_FUNC(isnan)
 MERCURY_CHECK_FOR_IEEE_FUNC(isnanf)
 MERCURY_CHECK_FOR_IEEE_FUNC(isinf)
 MERCURY_CHECK_FOR_IEEE_FUNC(isinff)
+MERCURY_CHECK_FOR_IEEE_FUNC(finite)
 
 #-----------------------------------------------------------------------------#
 #
