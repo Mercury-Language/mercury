@@ -139,7 +139,7 @@ MR_is_inf(MR_Float Flt)
 #elif defined(MR_MSVC)
     int sw;
     sw = _fpclass(Flt);
-    return (sw == _FPCLASS_NINF) || (sw == _FPCLASS_INF);
+    return (sw == _FPCLASS_NINF) || (sw == _FPCLASS_PINF);
 #else
     return (Flt == Flt / 2.0 && Flt != 0.0);
 #endif
