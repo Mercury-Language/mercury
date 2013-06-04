@@ -28,6 +28,10 @@
 # Each line of the main text must start with a tab.
 # We change the tab to "\&".
 
+# NOTE: some of the sed expressions below occur on very long lines.
+# This is deliberate, BSD sed has problems handling line continuations in some
+# cases.
+
 program="$1"
 name="`basename $program `"
 
@@ -56,9 +60,7 @@ $program --help 2>&1 \
 		-e 's/^		/	\\\&	/g' 	\
 		-e 's/^	//' \
 	| sed	\
-		-e '/^.SH "[\/A-Za-z ]*:[ 	]*"/y/\
-abcdefghijklmnopqrstuvwxyz:/\
-ABCDEFGHIJKLMNOPQRSTUVWXYZ /' \
+		-e '/^.SH "[\/A-Za-z ]*:[ 	]*"/y/abcdefghijklmnopqrstuvwxyz:/ABCDEFGHIJKLMNOPQRSTUVWXYZ /' \
 		-e 's/^.SH "USAGE[ 	]*"/.SH "SYNOPSIS"/' \
 	> /tmp/make_manpage$$ 
 manpage="`cat /tmp/make_manpage$$`"
