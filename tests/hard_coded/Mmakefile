@@ -301,6 +301,7 @@ ORDINARY_PROGS=	\
 	term_to_univ_test \
 	test234_sorted_insert \
 	test_cord \
+	test_cord2 \
 	test_imported_no_tag \
 	test_keys_and_values \
 	test_pretty_printer \

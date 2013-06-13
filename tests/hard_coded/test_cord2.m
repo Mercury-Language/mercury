@@ -1,0 +1,111 @@
+:- module test_cord2.
+:- interface.
+
+:- import_module io.
+
+:- pred main(io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module cord.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module solutions.
+
+%-----------------------------------------------------------------------------%
+
+main(!IO) :-
+    io.write_string("Test list and rev_list\n", !IO),
+    solutions(gen_cord3, Cords),
+    list.foldl(test_list_and_rev_list, Cords, !IO),
+
+    io.write_string("\nTest cord_list_to_cord and cord_list_to_list\n", !IO),
+    solutions(gen_cord_list, CordLists),
+    list.foldl(test_cord_list_funcs, CordLists, !IO),
+    io.write_string("done.\n", !IO).
+
+:- pred test_list_and_rev_list(cord(int)::in, io::di, io::uo) is det.
+
+test_list_and_rev_list(Cord, !IO) :-
+    io.write(Cord, !IO),
+    io.nl(!IO),
+
+    List = list(Cord),
+    io.write(List, !IO),
+    io.nl(!IO),
+
+    RevList = rev_list(Cord),
+    io.write(RevList, !IO),
+    io.nl(!IO),
+
+    expect(unify(length(List), length(Cord)),
+        $module, $pred, "length(List) != length(Cord)"),
+
+    expect(unify(List, reverse(RevList)),
+        $module, $pred, "List != reverse(RevList)").
+
+:- pred test_cord_list_funcs(list(cord(int))::in, io::di, io::uo) is det.
+
+test_cord_list_funcs(Cords, !IO) :-
+    List1 = cord_list_to_list(Cords),
+    List2 = list(cord_list_to_cord(Cords)),
+    List3 = condense(map(list, Cords)),
+    expect(unify(List1, List2), $module, $pred, "List1 != List2"),
+    expect(unify(List1, List3), $module, $pred, "List1 != List3").
+
+%-----------------------------------------------------------------------------%
+
+:- pred gen_cord1(cord(int)::out) is multi.
+
+gen_cord1(empty).
+gen_cord1(singleton(1)).
+gen_cord1(from_list([2, 3, 4])).
+
+:- pred gen_cord2(cord(int)::out) is multi.
+
+gen_cord2(C) :-
+    (
+        gen_cord1(C)
+    ;
+        gen_cord1(A),
+        gen_cord1(B),
+        C = A ++ B
+    ).
+
+:- pred gen_cord3(cord(int)::out) is multi.
+
+gen_cord3(C) :-
+    (
+        gen_cord2(C)
+    ;
+        gen_cord2(A),
+        gen_cord2(B),
+        C = A ++ B
+    ).
+
+:- pred gen_cord_list(list(cord(int))::out) is multi.
+
+gen_cord_list(L) :-
+    (
+        L = []
+    ;
+        gen_cord2(A),
+        (
+            L = [A]
+        ;
+            gen_cord2(B),
+            (
+                L = [A, B]
+            ;
+                gen_cord2(C),
+                L = [A, B, C]
+            )
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sts=4 sw=4 et
