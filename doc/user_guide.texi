@@ -5636,6 +5636,9 @@ or by including one of the corresponding options
 in the value of the @samp{MERCURY_OPTIONS} environment variable.
 These runs generate a set of trace counts files
 that can be given to the Mercury test coverage tool, the @samp{mcov} program.
+As usual, trace count files are named with the prefix
+@samp{.mercury_trace_counts} if the @samp{mtc --output-file} option is not
+given.
 @sp 1
 The @samp{mcov} tool is invoked with a command of the form:
 @sp 1
