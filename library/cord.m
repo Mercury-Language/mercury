@@ -264,30 +264,48 @@ from_list(Xs) = C :-
 %-----------------------------------------------------------------------------%
 
 list(empty_cord) = [].
-list(nonempty_cord(N)) = list_2(N, []).
+list(nonempty_cord(N)) = list_2([N], []).
 
-    % list_2(N, L0) = L:
+    % list_2(Ns, L0) = L:
     %
-    % L is the list of items in N appended in front of L0.
+    % L is the reverse list of items in Ns appended in front of L0.
     %
-:- func list_2(cord_node(T), list(T)) = list(T).
+:- func list_2(list(cord_node(T)), list(T)) = list(T).
 
-list_2(unit_node(X),      L0) = [X | L0].
-list_2(list_node(H, T),   L0) = [H | T ++ L0].
-list_2(branch_node(A, B), L0) = list_2(A, list_2(B, L0)).
+list_2([], L) = L.
+list_2([N | Ns], L0) = L :-
+    (
+        N = unit_node(X),
+        L = list_2(Ns, [X | L0])
+    ;
+        N = list_node(H, T),
+        L = list_2(Ns, [H | T ++ L0])
+    ;
+        N = branch_node(A, B),
+        L = list_2([B, A | Ns], L0)
+    ).
 
 rev_list(empty_cord) = [].
-rev_list(nonempty_cord(N)) = rev_list_2(N, []).
+rev_list(nonempty_cord(N)) = rev_list_2([N], []).
 
-    % rev_list_2(N, L0) = L:
+    % rev_list_2(Ns, L0) = L:
     %
-    % L is the reverse list of items in N appended in front of L0.
+    % L is the reverse list of items in Ns appended in front of L0.
     %
-:- func rev_list_2(cord_node(T), list(T)) = list(T).
+:- func rev_list_2(list(cord_node(T)), list(T)) = list(T).
 
-rev_list_2(unit_node(X),      L0) = [X | L0].
-rev_list_2(list_node(H, T),   L0) = list_reverse_2(T, [H | L0]).
-rev_list_2(branch_node(A, B), L0) = rev_list_2(B, list_2(A, L0)).
+rev_list_2([], L) = L.
+rev_list_2([N | Ns], L0) = L :-
+    (
+        N = unit_node(X),
+        L = rev_list_2(Ns, [X | L0])
+    ;
+        N = list_node(H, T),
+        L = rev_list_2(Ns, list_reverse_2(T, [H | L0]))
+    ;
+        N = branch_node(A, B),
+        L = rev_list_2([A, B | Ns], L0)
+    ).
 
     % list_reverse_2(A, L0) = L:
     %
@@ -339,20 +357,20 @@ A ++ B = C :-
 
 %-----------------------------------------------------------------------------%
 
-cord_list_to_cord([]) = empty_cord.
-cord_list_to_cord([HeadCord | TailCords]) =
-    HeadCord ++ cord_list_to_cord(TailCords).
+cord_list_to_cord(Cords) = Cord :-
+    % For tail recursion.
+    list.reverse(Cords, RevCords),
+    Cord = list.foldl((++), RevCords, empty_cord).
 
-cord_list_to_list([]) = [].
-cord_list_to_list([HeadCord | TailCords]) = List :-
-    TailList = cord_list_to_list(TailCords),
-    (
-        HeadCord = empty_cord,
-        List = TailList
-    ;
-        HeadCord = nonempty_cord(HeadNode),
-        List = list_2(HeadNode, TailList)
-    ).
+cord_list_to_list(Cords) = List :-
+    % For tail recursion.
+    list.reverse(Cords, RevCords),
+    List = list.foldl(cord_list_to_list_2, RevCords, []).
+
+:- func cord_list_to_list_2(cord(T), list(T)) = list(T).
+
+cord_list_to_list_2(empty_cord, L) = L.
+cord_list_to_list_2(nonempty_cord(N), L) = list_2([N], L).
 
 %-----------------------------------------------------------------------------%
 
