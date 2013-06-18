@@ -10,6 +10,10 @@
 #include    "mercury_imp.h"
 #include    <math.h>
 
+#if defined(MR_MSVC)
+    #include <float.h>  /* For _FPCLASS_* etc. */
+#endif
+
 /*
 ** The function `MR_hash_float()' is used by the library predicate
 ** `float__hash' and also for hashing floats for `pragma fact_table' indexing.
@@ -111,6 +115,8 @@ MR_is_nan(MR_Float Flt)
     return isnanf(Flt);
 #elif defined(MR_HAVE_ISNAN)
     return isnan(Flt);
+#elif defined(MR_MSVC)
+    return _isnan(Flt);
 #else
     return (Flt != Flt);
 #endif
@@ -130,6 +136,10 @@ MR_is_inf(MR_Float Flt)
     return isinf(Flt);
 #elif defined(MR_HAVE_FINITE)
     return !finite(Flt) && (Flt == Flt);
+#elif defined(MR_MSVC)
+    int sw;
+    sw = _fpclass(Flt);
+    return (sw == _FPCLASS_NINF) || (sw == _FPCLASS_PINF);
 #else
     return (Flt == Flt / 2.0 && Flt != 0.0);
 #endif

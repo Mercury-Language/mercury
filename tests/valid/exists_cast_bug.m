@@ -17,4 +17,4 @@
 
 new = Result :-
 	Result = version_store(VA) `with_type` version_store(unit),
-    	VA = version_array.new(256, unit).
+	VA = version_array.init(256, unit).

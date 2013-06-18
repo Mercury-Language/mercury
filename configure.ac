@@ -5339,9 +5339,9 @@ AC_SUBST(CSHPATH)
 
 test_mdbrc=tests/mdbrc
 
-m4 -DDEFAULT_MERCURY_DEBUGGER_INIT_DIR=TESTS_MDB_INIT_DIR  \
-    -DDEFAULT_MERCURY_DEBUGGER_DOC=TESTS_MDB_DOC \
-    "`pwd`"/scripts/mdbrc.in > $test_mdbrc.in
+cat "`pwd`"/scripts/mdbrc.in | sed \
+    -e 's/DEFAULT_MERCURY_DEBUGGER_INIT_DIR/TESTS_MDB_INIT_DIR/g' \
+    -e 's/DEFAULT_MERCURY_DEBUGGER_DOC/TESTS_MDB_DOC/g' > $test_mdbrc.in
 
 TESTS_MDB_INIT_DIR="`pwd`"/scripts
 TESTS_MDB_DOC="`pwd`"/doc/mdb_doc
