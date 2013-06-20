@@ -359,17 +359,18 @@ lib$(GC_GRADE).so: $(OBJS) $(UTILS) # dyn_load_sunos53.o
 	./if_mach SPARC SOLARIS $(MAKE) dyn_load_sunos53.o
 	./if_mach SPARC SOLARIS \
 	$(LINK_SHARED_OBJ) -o lib$(GC_GRADE).so $(OBJS) dyn_load_sunos53.o \
-		-ldl $(MAYBE_THREAD_LIBS)
+		-ldl $(MAYBE_THREAD_LIBS) $(LD_LIBFLAGS) $(EXTRA_LD_LIBFLAGS)
 	./if_not_there on_sparc_sunos5_so $(MAKE) dyn_load.o
 	./if_not_there on_sparc_sunos5_so \
 	$(LINK_SHARED_OBJ) -o lib$(GC_GRADE).so $(OBJS) dyn_load.o \
-		-lc $(MAYBE_THREAD_LIBS)
+		-lc $(MAYBE_THREAD_LIBS) $(LD_LIBFLAGS) $(EXTRA_LD_LIBFLAGS)
 
+# Mercury-specific target:
 # Darwin shared library version of the gc.
 lib$(GC_GRADE).dylib: $(OBJS) $(UTILS)
 	$(LINK_SHARED_OBJ) -install_name \
 		$(FINAL_INSTALL_MERC_GC_LIB_DIR)/lib$(GC_GRADE).dylib \
-		-o lib$(GC_GRADE).dylib $(OBJS) dyn_load.o -lc
+		-o lib$(GC_GRADE).dylib $(OBJS) dyn_load.o -lc $(LD_LIBFLAGS) $(EXTRA_LD_LIBFLAGS)
 
 # SunOS5 shared library version of the collector
 sunos5gc.so: $(OBJS) dyn_load_sunos53.o

@@ -248,7 +248,7 @@ MGNUCFLAGS	+= --c-debug --no-ansi
 OBJS		= $(CFILES:.c=.$O)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
 
-LDFLAGS		= -L$(BOEHM_GC_DIR) -L/usr/local/lib
+LD_LIBFLAGS	= -L$(BOEHM_GC_DIR) -L/usr/local/lib
 LDLIBS		= $(SHARED_GC_LIBS) $(MATH_LIB)
 
 THREADLIBS	= \
@@ -392,7 +392,7 @@ lib$(RT_LIB_NAME).so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED)				\
 		-o lib$(RT_LIB_NAME).so $(PIC_OBJS)			\
 		$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_GC_LIB_DIR)	\
-		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
+		$(ALL_LD_LIBFLAGS) $(LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
 
 # For Darwin we should pass the -install_name option.
@@ -401,7 +401,7 @@ lib$(RT_LIB_NAME).dylib: $(PIC_OBJS)
 		-o lib$(RT_LIB_NAME).dylib $(PIC_OBJS)			\
 		-install_name 						\
 			$(FINAL_INSTALL_MERC_LIB_DIR)/lib$(RT_LIB_NAME).dylib \
-		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
+		$(ALL_LD_LIBFLAGS) $(LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
 
 endif

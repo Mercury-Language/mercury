@@ -6,6 +6,10 @@ This is a bug-fix release.
 * The following functions in the standard library's cord module now use
   constant stack space: list/1, rev_list/1, cord_list_to_cord/1 and
   cord_list_to_list/1.
+* Linker options set via the LDFLAGS and EXTRA_LDFLAGS mmake variables
+  are now applied to all executables in the Mercury system.  Likewise, 
+  for shared libraries and the LD_LIBFLAGS and EXTRA_LD_LIBFLAGS mmake
+  variables.  (Bug #288)
 
 
 NEWS for Mercury 13.05.1

@@ -51,30 +51,30 @@ all:	$(PROGFILENAMES) $(TAGS_FILE_EXISTS)
 ifeq ($(USING_MICROSOFT_CL_COMPILER),yes)
 .c$(EXT_FOR_EXE):
 	$(MGNUC) --no-mercury-stdlib-dir \
-		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -Fe$@ $< $(GETOPT_SRC)
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) $(ALL_LDFLAGS) -Fe$@ $< $(GETOPT_SRC)
 
 mkinit$(EXT_FOR_EXE): mkinit.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
-		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -Fe$@ \
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) $(ALL_LDFLAGS) -Fe$@ \
 			mkinit.c mkinit_common.c $(GETOPT_SRC)
 
 mkinit_erl$(EXT_FOR_EXE): mkinit_erl.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
-		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -Fe$@ \
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) $(ALL_LDFLAGS) -Fe$@ \
 			mkinit_erl.c mkinit_common.c $(GETOPT_SRC)
 else
 .c$(EXT_FOR_EXE):
 	$(MGNUC) --no-mercury-stdlib-dir \
-		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ $< $(GETOPT_SRC)
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) $(ALL_LDFLAGS) -o $@ $< $(GETOPT_SRC)
 
 mkinit$(EXT_FOR_EXE): mkinit.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
-		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ \
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) $(ALL_LDFLAGS) -o $@ \
 			mkinit.c mkinit_common.c $(GETOPT_SRC)
 
 mkinit_erl$(EXT_FOR_EXE): mkinit_erl.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
-		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ \
+		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) $(ALL_LDFLAGS) -o $@ \
 			mkinit_erl.c mkinit_common.c $(GETOPT_SRC)
 
 endif
