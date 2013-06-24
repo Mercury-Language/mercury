@@ -480,7 +480,7 @@ create_vartypes_map(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
     bimap.ordinates(VarMap, ProgVars),
     list.map2(find_variable_type(Context, ProgVarSet, TVarSet, VarMap,
         DomainMap, ReplacementMap), ProgVars, Types, MaybeErrors),
-    list.filter_map(remove_maybe, MaybeErrors, Errors),
+    list.filter_map(maybe_is_yes, MaybeErrors, Errors),
     vartypes_from_corresponding_lists(ProgVars, Types, Vartypes).
 
     % If a variable has a domain consisting of one type, gives it that type.
@@ -2476,10 +2476,6 @@ type_to_string(TVarSet, Type, Name) :-
 %
 % General purpose utilities.
 %
-
-:- pred remove_maybe(maybe(T)::in, T::out) is semidet.
-
-remove_maybe(yes(X), X).
 
     % zip_single(Elem, List, NewList):
     %
