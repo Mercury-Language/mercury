@@ -246,17 +246,9 @@ library-menu.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
 		case $$filename in					\
 			$(LIBRARY_DIR)/backjump.m)			\
 				;;					\
-			$(LIBRARY_DIR)/bintree.m)			\
-				;;					\
-			$(LIBRARY_DIR)/bintree_set.m)			\
-				;;					\
 			$(LIBRARY_DIR)/erlang_conf.m)                   \
 				;;					\
 			$(LIBRARY_DIR)/erlang_rtti_implementation.m)	\
-				;;					\
-			$(LIBRARY_DIR)/graph.m)				\
-				;;					\
-			$(LIBRARY_DIR)/group.m)				\
 				;;					\
 			$(LIBRARY_DIR)/mer_std.m)			\
 				;;					\
@@ -270,15 +262,11 @@ library-menu.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
 				;;					\
 			$(LIBRARY_DIR)/region_builtin.m)		\
 				;;					\
-			$(LIBRARY_DIR)/relation.m)			\
-				;;					\
 			$(LIBRARY_DIR)/robdd.m)				\
 				;;					\
 			$(LIBRARY_DIR)/rtti_implementation.m)		\
 				;;					\
 			$(LIBRARY_DIR)/stm_builtin.m)			\
-				;;					\
-			$(LIBRARY_DIR)/svrelation.m)			\
 				;;					\
 			$(LIBRARY_DIR)/table_builtin.m)			\
 				;;					\
@@ -298,17 +286,9 @@ library-chapters.texi_pp: ../VERSION $(LIBRARY_DIR)/[a-z]*.m
 		case $$filename in					\
 			$(LIBRARY_DIR)/backjump.m)			\
 				;;					\
-			$(LIBRARY_DIR)/bintree.m)			\
-				;;					\
-			$(LIBRARY_DIR)/bintree_set.m)			\
-				;;					\
 			$(LIBRARY_DIR)/erlang_conf.m)                   \
 				;;					\
 			$(LIBRARY_DIR)/erlang_rtti_implementation.m)	\
-				;;					\
-			$(LIBRARY_DIR)/graph.m)				\
-				;;					\
-			$(LIBRARY_DIR)/group.m)				\
 				;;					\
 			$(LIBRARY_DIR)/mer_std.m)			\
 				;;					\
@@ -322,15 +302,11 @@ library-chapters.texi_pp: ../VERSION $(LIBRARY_DIR)/[a-z]*.m
 				;;					\
 			$(LIBRARY_DIR)/region_builtin.m)		\
 				;;					\
-			$(LIBRARY_DIR)/relation.m)			\
-				;;					\
 			$(LIBRARY_DIR)/robdd.m)				\
 				;;					\
 			$(LIBRARY_DIR)/rtti_implementation.m)		\
 				;;					\
 			$(LIBRARY_DIR)/stm_builtin.m)			\
-				;;					\
-			$(LIBRARY_DIR)/svrelation.m)			\
 				;;					\
 			$(LIBRARY_DIR)/table_builtin.m)			\
 				;;					\
