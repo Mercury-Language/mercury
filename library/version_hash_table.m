@@ -234,6 +234,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module pair.
+:- import_module private_builtin.
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
@@ -858,7 +859,7 @@ fold_p(P, List, !A) :-
 %-----------------------------------------------------------------------------%
 
 equals(A, B) :-
-    ( pointer_equals(A, B) ->
+    ( pointer_equal(A, B) ->
         true
     ;
         % We cannot deconstruct a non-cononical type in this all-solutions
@@ -878,35 +879,6 @@ equals(A, B) :-
 
 compare_item(Table, K, V, unit, unit) :-
     search(Table, K, V).
-
-:- pred pointer_equals(T::in, T::in) is semidet.
-:- pragma inline(pointer_equals/2).
-
-:- pragma foreign_proc("C", pointer_equals(A::in, B::in),
-    [promise_pure, thread_safe, will_not_call_mercury,
-        will_not_throw_exception, terminates],
-"
-    SUCCESS_INDICATOR = (A == B);
-").
-
-:- pragma foreign_proc("Java", pointer_equals(A::in, B::in),
-    [promise_pure, thread_safe, will_not_call_mercury,
-        will_not_throw_exception, terminates],
-"
-    SUCCESS_INDICATOR = (A == B);
-").
-
-:- pragma foreign_proc("C#", pointer_equals(A::in, B::in),
-    [promise_pure, thread_safe, will_not_call_mercury,
-        will_not_throw_exception, terminates],
-"
-    SUCCESS_INDICATOR = System.Object.ReferenceEquals(A, B);
-").
-
-% Conservative default if a backend does not have pointer equality, such as
-% Erlang.  (Erlang does have erts_debug:same/1 but I don't know if we can
-% rely on that.)
-pointer_equals(_A, _B) :- semidet_false.
 
 %-----------------------------------------------------------------------------%
 :- end_module version_hash_table.

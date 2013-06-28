@@ -23,8 +23,9 @@
 % does not get included in the Mercury library reference manual.
 % 
 % Many of the predicates defined in this module are builtin - they do not have
-% definitions because the compiler generates code for them inline. Some others
-% are implemented in the runtime.
+% definitions because the compiler generates code for them inline. A second
+% group are implemented in the runtime.  Whilst a third group are
+% implemented normally in this module.
 % 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -117,6 +118,12 @@
     % types are equal it compares the values.
     %
 :- pred typed_compare(comparison_result::uo, T1::in, T2::in) is det.
+
+    % True iff the two terms occupy the same address in memory.  This is
+    % useful as a cheap but incomplete test of equality when implmenting
+    % user-defined equality.
+    %
+:- pred pointer_equal(T::in, T::in) is semidet.
 
     % N.B. interface continued below.
 
@@ -335,6 +342,36 @@ typed_compare(R, X, Y) :-
     ;
         R = R0
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma inline(pointer_equal/2).
+
+:- pragma foreign_proc("C", pointer_equal(A::in, B::in),
+    [promise_pure, thread_safe, will_not_call_mercury,
+        will_not_throw_exception, terminates],
+"
+    SUCCESS_INDICATOR = (A == B);
+").
+
+:- pragma foreign_proc("Java", pointer_equal(A::in, B::in),
+    [promise_pure, thread_safe, will_not_call_mercury,
+        will_not_throw_exception, terminates],
+"
+    SUCCESS_INDICATOR = (A == B);
+").
+
+:- pragma foreign_proc("C#", pointer_equal(A::in, B::in),
+    [promise_pure, thread_safe, will_not_call_mercury,
+        will_not_throw_exception, terminates],
+"
+    SUCCESS_INDICATOR = System.Object.ReferenceEquals(A, B);
+").
+
+% Conservative default if a backend does not have pointer equality, such as
+% Erlang.  (Erlang does have erts_debug:same/1 but I don't know if we can
+% rely on that.)
+pointer_equal(_A, _B) :- semidet_false.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
