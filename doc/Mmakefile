@@ -262,8 +262,6 @@ library-menu.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
 				;;					\
 			$(LIBRARY_DIR)/region_builtin.m)		\
 				;;					\
-			$(LIBRARY_DIR)/relation.m)			\
-				;;					\
 			$(LIBRARY_DIR)/robdd.m)				\
 				;;					\
 			$(LIBRARY_DIR)/rtti_implementation.m)		\
@@ -303,8 +301,6 @@ library-chapters.texi_pp: ../VERSION $(LIBRARY_DIR)/[a-z]*.m
 			$(LIBRARY_DIR)/profiling_builtin.m)		\
 				;;					\
 			$(LIBRARY_DIR)/region_builtin.m)		\
-				;;					\
-			$(LIBRARY_DIR)/relation.m)			\
 				;;					\
 			$(LIBRARY_DIR)/robdd.m)				\
 				;;					\

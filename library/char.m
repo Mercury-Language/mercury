@@ -82,21 +82,20 @@
 :- pred char.min_char_value(int::out) is det.
 
     % Convert a character to uppercase.
-    % Note that this only converts unaccented Latin letters.
+    % Note that this only converts letters (a-z) in the ASCII range.
     %
 :- func char.to_upper(char) = char.
 :- pred char.to_upper(char::in, char::out) is det.
 
     % Convert a character to lowercase.
-    % Note that this only converts unaccented Latin letters.
+    % Note that this only converts letters (A-Z) in the ASCII range.
     %
 :- func char.to_lower(char) = char.
 :- pred char.to_lower(char::in, char::out) is det.
 
     % char.lower_upper(Lower, Upper) is true iff
-    % Lower is a lower-case letter and Upper is the corresponding
-    % upper-case letter, and both Lower and Upper are unaccented
-    % Latin letters.
+    % Lower is a lowercase letter (a-z) and Upper is the corresponding
+    % uppercase letter (A-Z) in the ASCII range.
     %
 :- pred char.lower_upper(char, char).
 :- mode char.lower_upper(in, out) is semidet.
@@ -107,50 +106,55 @@
     %
 :- pred char.is_whitespace(char::in) is semidet.
 
-    % True iff the character is an uppercase letter.
+    % True iff the character is an uppercase letter (A-Z) in the ASCII range.
     %
 :- pred char.is_upper(char::in) is semidet.
 
-    % True iff the character is a lowercase letter.
+    % True iff the character is a lowercase letter (a-z) in the ASCII range.
     %
 :- pred char.is_lower(char::in) is semidet.
 
-    % True iff the character is a letter.
+    % True iff the character is a letter (A-Z, a-z) in the ASCII range.
     %
 :- pred char.is_alpha(char::in) is semidet.
 
-    % True iff the character is a letter or digit.
+    % True iff the character is a letter (A-Z, a-z) or digit (0-9)
+    % in the ASCII range.
     %
 :- pred char.is_alnum(char::in) is semidet.
 
-    % True iff the character is a letter or an underscore.
+    % True iff the character is a letter (A-Z, a-z) or an underscore (_)
+    % in the ASCII range.
     %
 :- pred char.is_alpha_or_underscore(char::in) is semidet.
 
-    % True iff the character is a letter, a digit or an underscore.
+    % True iff the character is a letter (A-Z, a-z), a digit (0-9) or an
+    % underscore (_) in the ASCII range.
     %
 :- pred char.is_alnum_or_underscore(char::in) is semidet.
 
-    % True iff the character is a decimal digit (0-9).
+    % True iff the character is a decimal digit (0-9) in the ASCII range.
     %
 :- pred char.is_digit(char::in) is semidet.
 
-    % True iff the character is a binary digit (0 or 1).
+    % True iff the character is a binary digit (0 or 1) in the ASCII range.
     %
 :- pred char.is_binary_digit(char::in) is semidet.
 
-    % True iff the character is a octal digit (0-7).
+    % True iff the character is a octal digit (0-7) in the ASCII range.
     %
 :- pred char.is_octal_digit(char::in) is semidet.
 
-    % True iff the character is a hexadecimal digit (0-9, a-f, A-F).
+    % True iff the character is a hexadecimal digit (0-9, a-f, A-F)
+    % in the ASCII range.
     %
 :- pred char.is_hex_digit(char::in) is semidet.
 
 :- pred char.is_hex_digit(char, int).
 :- mode char.is_hex_digit(in, out) is semidet.
 
-    % Convert an integer 0-15 to a hexadecimal digit 0-9, A-F.
+    % Convert an integer 0-15 to a hexadecimal digit (0-9, A-F)
+    % in the ASCII range.
     %
 :- pred char.int_to_hex_char(int, char).
 :- mode char.int_to_hex_char(in, out) is semidet.

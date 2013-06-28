@@ -15,6 +15,10 @@
 #
 # Step 0.  Extract the files from the gzipped tar archive.
 #
+#      NOTE: do not extract the archive into a directory whose absolute
+#      pathname contains spaces as this will cause the installation to
+#      fail.
+#
 # Step 1.  Run `configure'.  (Just type `sh configure'.)
 #
 #          By default, the files will be installed in the directory

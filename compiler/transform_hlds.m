@@ -52,8 +52,6 @@
 
 :- include_module transform_hlds.smm_common.
 
-:- include_module transform_hlds.smm_fixpoint_table.
-
 :- include_module term_constr_main.
     :- include_module term_constr_initial.
         % Pass 1.

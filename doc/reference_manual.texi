@@ -1,5 +1,5 @@
-@c vim: expandtab
 \input texinfo
+@c vim: expandtab
 @setfilename mercury_ref.info
 @settitle The Mercury Language Reference Manual
 

@@ -315,23 +315,27 @@ my_map(M, [X | Xs], [Y | Ys]) :-
 :- pred write_ppm(image::in, io::di, io::uo) is det.
 
 write_ppm(image(Width, Height, Rows), !IO) :-
-    io.open_output(filename, Result, !IO),
+    io.open_binary_output(filename, Result, !IO),
     (
         Result = ok(Stream),
-        io.format(Stream, "P6 %d %d 255\n", [i(Width), i(Height)], !IO),
+        format("P6 %d %d 255\n", [i(Width), i(Height)], Header),
+        foldl((pred(C::in, IO0::di, IO::uo) is det :-
+                write_byte(Stream, char.to_int(C), IO0, IO)
+            ), Header, !IO),
         foldl_pred(write_colour(Stream), Rows, !IO),
-        io.close_output(Stream, !IO)
+        io.close_binary_output(Stream, !IO)
     ;
         Result = error(Error),
         error(format("%s: %s", [s(filename), s(error_message(Error))]))
     ).
 
-:- pred write_colour(output_stream::in, colour::in, io::di, io::uo) is det.
+:- pred write_colour(binary_output_stream::in, colour::in, io::di, io::uo)
+    is det.
 
 write_colour(Stream, colour(R, G, B), !IO) :-
-    write_char(Stream, char.det_from_int(R), !IO),
-    write_char(Stream, char.det_from_int(G), !IO),
-    write_char(Stream, char.det_from_int(B), !IO).
+    write_byte(Stream, R, !IO),
+    write_byte(Stream, G, !IO),
+    write_byte(Stream, B, !IO).
 
 %----------------------------------------------------------------------------%
 

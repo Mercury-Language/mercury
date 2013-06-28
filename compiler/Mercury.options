@@ -50,9 +50,6 @@ MCFLAGS-transform_hlds = --no-warn-unused-imports
 MCFLAGS-transform_hlds.ctgc.structure_reuse = --no-warn-unused-imports
 MCFLAGS-transform_hlds.ctgc.structure_sharing = --no-warn-unused-imports
 
-# This module is currently empty but may become used again in the future.
-MCFLAGS-transform_hlds.smm_fixpoint_table = --no-warn-nothing-exported
-
 # Bug workarounds
 
 # This works around bug 48 in Mantis.
