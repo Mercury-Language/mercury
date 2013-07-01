@@ -1,3 +1,11 @@
+NEWS since Mercury 13.05.x
+--------------------------
+
+Changes to the Mercury standard library:
+
+* We have added the function cord.condense/1.
+
+
 NEWS for Mercury 13.05.2
 ------------------------
 

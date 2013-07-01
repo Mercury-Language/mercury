@@ -76,6 +76,12 @@
     %
 :- func from_list(list(T)) = cord(T).
 
+    % Cord = condense(CordOfCords):
+    %
+    % `Cord' is the result of concatenating all the elements of `CordOfCords'.
+    %
+:- func condense(cord(cord(T))) = cord(T).
+
     % list(cons(X, C)) = [X | list(C)]
     % An O(1) operation.
     %
@@ -260,6 +266,19 @@ from_list(Xs) = C :-
         Xs = [H | T],
         C = nonempty_cord(list_node(H, T))
     ).
+
+%-----------------------------------------------------------------------------%
+
+condense(empty_cord) = empty_cord.
+condense(nonempty_cord(C0)) = condense_2(C0).
+
+:- func condense_2(cord_node(cord(T))) = cord(T).
+
+condense_2(unit_node(C)) = C.
+condense_2(list_node(C, L)) = C ++ cord_list_to_cord(L).
+condense_2(branch_node(Left0, Right0)) = Left ++ Right :-
+    Left = condense_2(Left0),
+    Right = condense_2(Right0).
 
 %-----------------------------------------------------------------------------%
 
