@@ -172,6 +172,32 @@ main -->
 
     io.format("\nfoldr: %s\n", [s(FoldrResult)]),
 
+  { CAB   = condense(from_list([A, B])),
+    CBA   = condense(from_list([B, A])),
+    CABA1 = condense(from_list([A, CBA])),
+    CABA2 = condense(from_list([CAB, A])),
+    CBAB1 = condense(from_list([B, CAB])),
+    CBAB2 = condense(from_list([CBA, B])),
+    CABBA = condense(from_list([CAB, CBA])),
+    CBAAB = condense(from_list([CBA, CAB])),
+
+    CondenseResult =
+        (      if list(CAB)   \= [a, b]       then "list(CAB)   \\= [a, b]"
+          else if list(CBA)   \= [b, a]       then "list(CBA)   \\= [b, a]"
+          else if list(CABA1) \= [a, b, a]    then "list(CABA1) \\= [a, b, a]"
+          else if list(CABA2) \= [a, b, a]    then "list(CABA2) \\= [a, b, a]"
+          else if list(CBAB1) \= [b, a, b]    then "list(CBAB1) \\= [b, a, b]"
+          else if list(CBAB2) \= [b, a, b]    then "list(CBAB2) \\= [b, a, b]"
+          else if list(CABBA) \= [a, b, b, a]
+                then "list(CABBA) \\= [a, b, b, a]"
+          else if list(CBAAB) \= [b, a, a, b]
+                then "list(CBAAB) \\= [b, a, a, b]"
+          else                                    "ok"
+        )
+  },
+
+    io.format("\ncondense: %s\n", [s(CondenseResult)]),
+
     [].
 
 %-----------------------------------------------------------------------------%
