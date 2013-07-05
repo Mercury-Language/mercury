@@ -14,7 +14,7 @@
 %
 % (1) In check_instance_declaration_types/4, we check that each type
 % in the instance declaration is either a type with no arguments,
-% or a polymorphic type whose arguments are all distinct type variables.
+% or a polymorphic type whose arguments are all type variables.
 % We also check that all of the types in exported instance declarations are
 % in scope here. XXX The latter part should really be done earlier, but with
 % the current implementation this is the most convenient spot.
@@ -318,15 +318,12 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         !:Specs = [Spec | !.Specs]
     ;
         Type = tuple_type(Args, _),
-        each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
+        each_arg_is_a_type_variable(!.SeenTypes, Args, 1, Result),
         (
             Result = no_error,
             set.insert_list(Args, !SeenTypes)
         ;
-            ( Result = local_non_distinct
-            ; Result = global_non_distinct
-            ; Result = arg_not_type_variable(_)
-            ),
+            Result = arg_not_type_variable(_),
             Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
                 N, Result),
             !:Specs = [Spec | !.Specs]
@@ -336,7 +333,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         unexpected("check_typeclass", "kinded_type")
     ;
         Type = defined_type(TypeName, Args, _),
-        each_arg_is_a_distinct_type_variable(!.SeenTypes, Args, 1, Result),
+        each_arg_is_a_type_variable(!.SeenTypes, Args, 1, Result),
         (
             Result = no_error,
             set.insert_list(Args, !SeenTypes),
@@ -361,10 +358,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
                 true
             )
         ;
-            ( Result = local_non_distinct
-            ; Result = global_non_distinct
-            ; Result = arg_not_type_variable(_)
-            ),
+            Result = arg_not_type_variable(_),
             Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
                 N, Result),
             !:Specs = [Spec | !.Specs]
@@ -421,29 +415,19 @@ is_visible_instance_type(TypeName, TypeArity, TypeDefn, ClassId,
 
 :- type instance_arg_result
     --->    no_error
-    ;       local_non_distinct
-    ;       global_non_distinct
     ;       arg_not_type_variable(int).
 
 :- inst instance_arg_result_error
-    --->    local_non_distinct
-    ;       global_non_distinct
-    ;       arg_not_type_variable(ground).
+    --->    arg_not_type_variable(ground).
 
-:- pred each_arg_is_a_distinct_type_variable(set(mer_type)::in,
+:- pred each_arg_is_a_type_variable(set(mer_type)::in,
     list(mer_type)::in, int::in, instance_arg_result::out) is det.
 
-each_arg_is_a_distinct_type_variable(_, [], _, no_error).
-each_arg_is_a_distinct_type_variable(SeenTypes, [Type | Types], N, Result) :-
+each_arg_is_a_type_variable(_, [], _, no_error).
+each_arg_is_a_type_variable(SeenTypes, [Type | Types], N, Result) :-
     (
         Type = type_variable(_, _),
-        ( list.member(Type, Types) ->
-            Result = local_non_distinct
-        ; set.member(Type, SeenTypes) ->
-            Result = global_non_distinct
-        ;
-            each_arg_is_a_distinct_type_variable(SeenTypes, Types, N+1, Result)
-        )
+        each_arg_is_a_type_variable(SeenTypes, Types, N + 1, Result)
     ;
         ( Type = defined_type(_, _, _)
         ; Type = builtin_type(_)
@@ -460,19 +444,9 @@ each_arg_is_a_distinct_type_variable(SeenTypes, [Type | Types], N, Result) :-
     = (error_spec::out) is det.
 
 badly_formed_instance_type_msg(ClassId, InstanceDefn, N, Error) = Spec :-
-    (
-        Error = local_non_distinct,
-        EndPieces = [words("is not a type"),
-            words("whose arguments are distinct type variables.")]
-    ;
-        Error = global_non_distinct,
-        EndPieces = [words("contains a type variable"),
-            words("which is used in another argument.")]
-    ;
-        Error = arg_not_type_variable(ArgNum),
-        EndPieces = [words("is a type whose"), nth_fixed(ArgNum),
-            words("argument is not a variable.")]
-    ),
+    Error = arg_not_type_variable(ArgNum),
+    EndPieces = [words("is a type whose"), nth_fixed(ArgNum),
+        words("argument is not a variable.")],
     Spec = bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces,
         badly_formed).
 
@@ -524,7 +498,7 @@ bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces, Kind) = Spec :-
         Kind = badly_formed,
         VerbosePieces =
             [words("(Types in instance declarations must be functors " ++
-                "with distinct variables as arguments.)"), nl],
+                "with variables as arguments.)"), nl],
         HeadingMsg = simple_msg(InstanceContext,
             [always(HeaderPieces), always(ArgNumPieces),
             verbose_only(VerbosePieces)])

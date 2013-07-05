@@ -4998,28 +4998,28 @@ An instance declaration has the form
 
 An @samp{instance} declaration gives a type for each parameter of the
 type class.  Each of these types must be either a type with no arguments, or 
-a polymorphic type whose arguments are all distinct type variables.
+a polymorphic type whose arguments are all type variables.
 @c If this restriction is ever lifted, the algorithms for encoding the names of
 @c the data structures describing the instance, in base_typeclass_info.m
 @c and/or rtti.m, would need to be updated as well.
-For example @code{int}, @code{list(T)} and @code{bintree(K,V)} are allowed,
-but @code{T}, @code{list(int)} and @code{bintree(T,T)} are not.
+For example @code{int}, @code{list(T)}, @code{bintree(K, V)} and
+@code{bintree(T, T)} are allowed, but @code{T} and @code{list(int)} are not.
 The types in an instance declaration must not be abstract types which
 are elsewhere defined as equivalence types.
-A program may not contain more than one instance
-declaration for a particular type (or sequence of types, in
-the case of a multi-parameter type class) and typeclass.
-These restrictions ensure that there are no overlapping
-instance declarations, i.e.@: for each typeclass there is at
-most one instance declaration that may be applied to any
-type (or sequence of types). 
+A program may not contain more than one instance declaration for a particular
+type (or sequence of types, in the case of a multi-parameter type class) and
+typeclass.
+These restrictions ensure that there are no overlapping instance declarations,
+i.e.@: for each typeclass there is at most one instance declaration that may be
+applied to any type (or sequence of types). 
 
-Each @var{methoddefinition} entry in the @samp{where [@dots{}]} part
-of an @code{instance} declaration defines the implementation of one of
-the class methods for this instance.  There are two ways of defining
-methods.  The first way is to define a method by giving the name of
-the predicate or function which implements that method.  In this
-case, the @var{methoddefinition} must have one of the following forms:
+Each @var{methoddefinition} entry in the @samp{where [@dots{}]} part of an
+@code{instance} declaration defines the implementation of one of the class
+methods for this instance.
+There are two ways of defining methods.
+The first way is to define a method by giving the name of the predicate or
+function which implements that method.
+In this case, the @var{methoddefinition} must have one of the following forms:
 
 @example
 pred(@var{methodname}/@var{arity}) is @var{predname}

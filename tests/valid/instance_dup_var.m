@@ -8,9 +8,7 @@
 
 :- implementation.
 
-	% Error: T is duplicated.
 :- instance baz(foo(T, T), bar) where [].
 
-	% Error: A is duplicated.
 :- instance baz(foo(A, B), foo(C, A)) where [].
 

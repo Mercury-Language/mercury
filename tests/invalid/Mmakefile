@@ -122,7 +122,6 @@ SINGLEMODULE= \
 	inline_conflict \
 	inst_list_dup \
 	instance_bug \
-	instance_dup_var \
 	instance_no_type \
 	instance_var_bug \
 	invalid_event \
@@ -185,6 +184,7 @@ SINGLEMODULE= \
 	quant_constraint_2 \
 	range_restrict \
 	record_syntax_errors \
+	repeated_instance_vars_unsat \
 	require_det_in_lambda \
 	require_scopes \
 	some \

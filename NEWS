@@ -1,6 +1,13 @@
 NEWS since Mercury 13.05.x
 --------------------------
 
+Changes to the Mercury language:
+
+* Repeated type variables may now occur in the heads of type class instances.
+  For example, instance declarations like the following are now allowed:
+
+      :- instance foo(list(T), map(T, T)).
+
 Changes to the Mercury standard library:
 
 * We have added the function cord.condense/1.
