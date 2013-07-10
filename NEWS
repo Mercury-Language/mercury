@@ -10,6 +10,8 @@ This is a bug-fix release.
   are now applied to all executables in the Mercury system.  Likewise, 
   for shared libraries and the LD_LIBFLAGS and EXTRA_LD_LIBFLAGS mmake
   variables.  (Bug #288)
+* We have added a workaround for a problem that was preventing the
+  asm_fast grades working with GCC 4.8.  (Bug #293)
 
 
 NEWS for Mercury 13.05.1

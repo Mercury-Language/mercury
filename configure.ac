@@ -2470,6 +2470,14 @@ case "$ac_cv_prog_gcc" in yes)
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
             ;;
         i*86-*|x86_64*)
+            # On x86-64 with GCC 4.8, gcc labels do not work correctly with
+            # -ftree-dominator-opts -- we disable it for x86 in this case too.
+            #
+            case "$C_COMPILER_TYPE" in
+                gcc_4_8_*)
+                  CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fno-tree-dominator-opts"
+                ;;
+            esac
             CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
             ;;
         # We need a special-case hack here, because the auto-config
