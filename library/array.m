@@ -189,6 +189,13 @@
 %:- mode array.in_bounds(array_ui, in) is semidet.
 :- mode array.in_bounds(in, in) is semidet.
 
+    % array.is_empty(Array):
+    % True iff Array is an array of size zero.
+    %
+:- pred array.is_empty(array(_T)).
+%:- mode array.is_empty(array_ui) is semidet.
+:- mode array.is_empty(in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
     % array.lookup returns the Nth element of an array.
@@ -650,6 +657,20 @@
 :- mode array.map_corresponding_foldl(
     in(pred(in, in, out, in, out) is semidet),
     in, in, array_uo, in, out) is semidet.
+
+    % array.all_true(Pred, Array):
+    % True iff Pred is true for every element of Array.
+    %
+:- pred array.all_true(pred(T), array(T)).
+%:- mode array.all_true(in(pred(in) is semidet), array_ui) is semidet.
+:- mode array.all_true(in(pred(in) is semidet), in) is semidet.
+
+    % array.all_false(Pred, Array):
+    % True iff Pred is false for every element of Array.
+    %
+:- pred array.all_false(pred(T), array(T)).
+%:- mode array.all_false(in(pred(in) is semidet), array_ui) is semidet.
+:- mode array.all_false(in(pred(in) is semidet), in) is semidet.
 
     % array.append(A, B) = C:
     %
@@ -1466,6 +1487,9 @@ array.size(A) = N :-
 array.in_bounds(Array, Index) :-
     array.bounds(Array, Min, Max),
     Min =< Index, Index =< Max.
+
+array.is_empty(Array) :-
+    array.size(Array, 0).
 
 array.semidet_set(Index, Item, !Array) :-
     ( array.in_bounds(!.Array, Index) ->
@@ -2608,6 +2632,40 @@ array.map_corresponding_foldl_2(P, I, N, A, B, !C, !D) :-
         !C ^ unsafe_elem(I) := Z,
         array.map_corresponding_foldl_2(P, I + 1, N, A, B, !C, !D)
       else
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+array.all_true(Pred, Array) :-
+    do_all_true(Pred, array.min(Array), array.max(Array), Array).
+
+:- pred do_all_true(pred(T), int, int, array(T)).
+%:- mode do_all_true(in(pred(in) is semidet), in, in, array_ui) is semidet.
+:- mode do_all_true(in(pred(in) is semidet), in, in, in) is semidet.
+
+do_all_true(Pred, I, UB, Array) :-
+    ( if I =< UB then
+        Elem = Array ^ unsafe_elem(I),
+        Pred(Elem),
+        do_all_true(Pred, I + 1, UB, Array)
+    else
+        true
+    ).
+
+array.all_false(Pred, Array) :-
+    do_all_false(Pred, array.min(Array), array.max(Array), Array).
+
+:- pred do_all_false(pred(T), int, int, array(T)).
+%:- mode do_all_false(in(pred(in) is semidet), in, in, array_ui) is semidet.
+:- mode do_all_false(in(pred(in) is semidet), in, in, in) is semidet.
+
+do_all_false(Pred, I, UB, Array) :-
+    ( if I =< UB then
+        Elem = Array ^ unsafe_elem(I),
+        not Pred(Elem),
+        do_all_false(Pred, I + 1, UB, Array)
+    else
         true
     ).
 

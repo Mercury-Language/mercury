@@ -88,6 +88,44 @@ main(!IO) :-
         ((pred) is semidet :-
             _ = A7 ^ elem(4)
         ), !IO),
+
+    A8 = version_array([2, 4, 6, 8]),
+    io.write_string("all_true(int.even A8): ", !IO),
+    ( if version_array.all_true(int.even, A8)
+    then io.write_string("passed\n", !IO)
+    else io.write_string("failed\n", !IO)
+    ),
+
+    io.write_string("all_false(int.odd, A8): ", !IO),
+    ( if version_array.all_false(int.odd, A8)
+    then io.write_string("passed\n", !IO)
+    else io.write_string("failed\n", !IO)
+    ),
+
+    io.write_string("all_true(int.even, A0): ", !IO),
+    ( if version_array.all_true(int.even, A0)
+    then io.write_string("passed\n", !IO)
+    else io.write_string("failed\n", !IO)
+    ),
+
+    io.write_string("all_false(int.even, A0): ", !IO),
+    ( if version_array.all_false(int.even, A0)
+    then io.write_string("passed\n", !IO)
+    else io.write_string("failed\n", !IO)
+    ),
+
+    io.write_string("not all_true(int.odd, A8): ", !IO),
+    ( if not version_array.all_true(int.odd, A8)
+    then io.write_string("passed\n", !IO)
+    else io.write_string("failed\n", !IO)
+    ),
+
+    io.write_string("not all_false(int.even, A8): ", !IO),
+    ( if not version_array.all_false(int.even, A8)
+    then io.write_string("passed\n", !IO)
+    else io.write_string("failed\n", !IO)
+    ),
+
     true. 
 
 :- pred test_exception((pred)::in((pred) is semidet),

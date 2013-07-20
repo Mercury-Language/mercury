@@ -11,6 +11,7 @@ ORDINARY_PROGS=	\
 	array_gen \
 	array_test \
 	array_test2 \
+        array_all_tf \
 	backquoted_qualified_ops \
 	bag_various \
 	bidirectional \

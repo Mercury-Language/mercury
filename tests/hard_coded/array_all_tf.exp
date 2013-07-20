@@ -1,0 +1,6 @@
+TEST: all_true(even, array([2, 4, 6, 8, 10])): PASSED
+TEST: all_false(odd, array([2, 4, 6, 8, 10])): PASSED
+TEST: all_true(even, array([])): PASSED
+TEST: all_false(even, array([])): PASSED
+TEST: not all_true(odd, array([2, 4, 6, 8, 10])): PASSED
+TEST: not all_false(even, array([2, 4, 6, 8, 10])): PASSED

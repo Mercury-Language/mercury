@@ -140,6 +140,10 @@
     %
 :- func max(version_array(T)) = int.
 
+    % is_empty(Array) is true iff Array is the empty array.
+    %
+:- pred is_empty(version_array(T)::in) is semidet.
+
     % resize(A, N, X) returns a new array whose items from
     % 0..min(size(A), N - 1) are taken from A and whose items
     % from min(size(A), N - 1)..(N - 1) (if any) are initialised to X.
@@ -214,6 +218,18 @@
     in, out, mdi, muo) is semidet.
 :- mode foldr2(pred(in, in, out, di, uo) is semidet, in,
     in, out, di, uo) is semidet.
+
+    % version_array.all_true(Pred, Array):
+    % True iff Pred is true for every element of Array.
+    %
+:- pred all_true(pred(T)::in(pred(in) is semidet), version_array(T)::in)
+    is semidet.
+
+    % version_array.all_false(Pred, Array):
+    % True iff Pred is false for every element of Array.
+    %
+:- pred all_false(pred(T)::in(pred(in) is semidet), version_array(T)::in)
+    is semidet.
 
     % copy(A) is a copy of array A. Access to the copy is O(1).
     %
@@ -437,6 +453,38 @@ do_foldr2(P, VA, I, !Acc1, !Acc2) :-
     ( if I >= 0 then
         P(lookup(VA, I), !Acc1, !Acc2),
         do_foldr2(P, VA, I - 1, !Acc1, !Acc2)
+    else
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+all_true(Pred, VA) :-
+    do_all_true(Pred, 0, size(VA), VA).
+
+:- pred do_all_true(pred(T)::in(pred(in) is semidet), int::in, int::in,
+    version_array(T)::in) is semidet.
+
+do_all_true(Pred, I, N, VA) :-
+    ( if I < N then
+        Elem = VA ^ elem(I),
+        Pred(Elem),
+        do_all_true(Pred, I + 1, N, VA)
+    else
+        true
+    ).
+
+all_false(Pred, VA) :-
+    do_all_false(Pred, 0, size(VA), VA).
+
+:- pred do_all_false(pred(T)::in(pred(in) is semidet), int::in, int::in,
+    version_array(T)::in) is semidet.
+
+do_all_false(Pred, I, N, VA) :-
+    ( if I < N then
+        Elem = VA ^ elem(I),
+        not Pred(Elem),
+        do_all_false(Pred, I + 1, N, VA)
     else
         true
     ).
@@ -750,6 +798,9 @@ resize(N, X, VA, resize(VA, N, X)).
 "
     N = VA.size();
 ").
+
+is_empty(VA) :-
+    size(VA) = 0.
 
 :- pred get_if_in_range(version_array(T)::in, int::in, T::out) is semidet.
 

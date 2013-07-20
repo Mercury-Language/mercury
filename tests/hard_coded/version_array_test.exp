@@ -17,3 +17,9 @@ Found exception as expected: index_out_of_bounds("version_array.set: index -1 no
 Found exception as expected: index_out_of_bounds("version_array.set: index -1 not in range [0, 3]")
 Found exception as expected: index_out_of_bounds("version_array.lookup: index -1 not in range [0, 3]")
 Found exception as expected: index_out_of_bounds("version_array.lookup: index 4 not in range [0, 3]")
+all_true(int.even A8): passed
+all_false(int.odd, A8): passed
+all_true(int.even, A0): passed
+all_false(int.even, A0): passed
+not all_true(int.odd, A8): passed
+not all_false(int.even, A8): passed
