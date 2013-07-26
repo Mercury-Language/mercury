@@ -118,7 +118,7 @@ delnth([X | Xs], N, Zs, Z) :-
 oneof(Things, Thing, !R) :-
     list.length(Things, Num),
     irange(0, Num-1, X, !R),
-    list.index0_det(Things, X, Thing).
+    list.det_index0(Things, X, Thing).
 
 wghtd_oneof(WghtdThings, Thing, !R) :-
     cumu(WghtdThings, 0, Sum),
