@@ -619,8 +619,24 @@ else
 	mercury_cv_erlang="no"
 fi
 
-AC_SUBST(ERLC)
-AC_SUBST(ERL)
+# On Windows, Erlang/OTP has a high chance of being installed in a path
+# containing spaces.  The simplest solution is to keep only the basename.
+# Everything will still work so long as the executables can be found on the
+# PATH later.
+case "$ERLC" in
+    *" "*)
+        ERLC=`basename "$ERLC"`
+        ;;
+esac
+
+case "$ERL" in 
+    *" "*)
+        ERL=`basename "$ERL"`
+        ;;
+esac
+
+AC_SUBST([ERLC])
+AC_SUBST([ERL])
 ])
 
 #-----------------------------------------------------------------------------#
