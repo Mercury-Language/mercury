@@ -621,11 +621,22 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
         HostEnvType, TargetEnvType, !Errors, !:Globals, !IO) :-
+
+    lookup_string_option(OptionTable0, install_command, InstallCmd),
+    ( if InstallCmd = "" then
+        FileInstallCmd = install_cmd_cp
+    else
+        lookup_string_option(OptionTable0, install_command_dir_option,
+            InstallCmdDirOption),
+        FileInstallCmd = install_cmd_user(InstallCmd,
+            InstallCmdDirOption)
+    ),
+
     globals_init(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
-        HostEnvType, TargetEnvType, !:Globals),
+        HostEnvType, TargetEnvType, FileInstallCmd, !:Globals),
 
     globals.lookup_string_option(!.Globals, event_set_file_name,
         EventSetFileName0),

@@ -105,6 +105,20 @@
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
+    % make_install_command(Globals, FileName, InstallDir) = Command:
+    % Command is the command required to install file FileName in directory
+    % InstallDir.
+    %
+:- func make_install_file_command(globals, string, string) = string.
+
+    % make_install_dir_command(Globals, SourceDirName, InstallDir) = Command:
+    % Command is the command required to install directory SourceDirName
+    % in directory InstallDir.
+    %
+:- func make_install_dir_command(globals, string, string) = string.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -291,6 +305,33 @@ report_error_to_stream(Stream, ErrorMessage, !IO) :-
     report_error(ErrorMessage, !IO),
     io.set_output_stream(OldStream, _, !IO).
 
+%-----------------------------------------------------------------------------%
+
+make_install_file_command(Globals, FileName, InstallDir) = Command :-
+    globals.get_file_install_cmd(Globals, FileInstallCmd),
+    (
+        FileInstallCmd = install_cmd_user(InstallCmd, _InstallCmdDirOpt)
+    ;
+        FileInstallCmd = install_cmd_cp,
+        InstallCmd = "cp"
+    ),
+    Command = string.join_list("   ", list.map(quote_arg,
+        [InstallCmd, FileName, InstallDir])).
+
+make_install_dir_command(Globals, SourceDirName, InstallDir) = Command :-
+    globals.get_file_install_cmd(Globals, FileInstallCmd),
+    (
+        FileInstallCmd = install_cmd_user(InstallCmd, InstallCmdDirOpt)
+    ;
+        FileInstallCmd = install_cmd_cp,
+        InstallCmd = "cp",
+        % XXX the POSIX option is -R but for some reason the default in
+        % options.m is -r.
+        InstallCmdDirOpt = "-R"
+    ),
+    Command = string.join_list("   ", list.map(quote_arg,
+        [InstallCmd, InstallCmdDirOpt, SourceDirName, InstallDir])).
+        
 %-----------------------------------------------------------------------------%
 :- end_module libs.file_util.
 %-----------------------------------------------------------------------------%

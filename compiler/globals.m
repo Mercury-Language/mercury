@@ -200,6 +200,20 @@
             % Deep trace all procedures in this module
     .
 
+    % This type specifies the command compiler uses to install files.
+    %
+:- type file_install_cmd
+    --->    install_cmd_user(
+                string,         % Cmd.
+                string          % Flag for copying directories.
+            )
+            % Command specified by the user using --install-command and the
+            % option for copying directories specified by
+            % --install-command-dir-option.
+
+    ;       install_cmd_cp.
+            % POSIX conformant cp command.
+
     % Map from module name to file name.
     %
 :- type source_file_map == map(module_name, string).
@@ -240,7 +254,7 @@
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in,
     maybe(il_version_number)::in, maybe(feedback_info)::in, env_type::in,
-    env_type::in, globals::out) is det.
+    env_type::in, file_install_cmd::in, globals::out) is det.
 
 :- pred get_options(globals::in, option_table::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
@@ -263,6 +277,7 @@
 :- pred get_maybe_feedback_info(globals::in, maybe(feedback_info)::out) is det.
 :- pred get_host_env_type(globals::in, env_type::out) is det.
 :- pred get_target_env_type(globals::in, env_type::out) is det.
+:- pred get_file_install_cmd(globals::in, file_install_cmd::out) is det.
 
 :- pred set_option(option::in, option_data::in, globals::in, globals::out)
     is det.
@@ -274,6 +289,8 @@
 :- pred set_ssdb_trace_level(ssdb_trace_level::in,
     globals::in, globals::out) is det.
 :- pred set_maybe_feedback_info(maybe(feedback_info)::in, 
+    globals::in, globals::out) is det.
+:- pred set_file_install_cmd(file_install_cmd::in,
     globals::in, globals::out) is det.
 
 :- pred lookup_option(globals::in, option::in, option_data::out) is det.
@@ -591,7 +608,7 @@ gc_is_conservative(gc_automatic) = no.
                 g_termination2_norm         :: termination_norm,
                 g_trace_level               :: trace_level,
                 g_trace_suppress_items      :: trace_suppress_items,
-                g_ssdb_trace_level            :: ssdb_trace_level,
+                g_ssdb_trace_level          :: ssdb_trace_level,
                 g_may_be_thread_safe        :: bool,
                 g_c_compiler_type           :: c_compiler_type,
                 g_csharp_compiler_type      :: csharp_compiler_type,
@@ -599,19 +616,20 @@ gc_is_conservative(gc_automatic) = no.
                 g_maybe_il_version_number   :: maybe(il_version_number),
                 g_maybe_feedback            :: maybe(feedback_info),
                 g_host_env_type             :: env_type,
-                g_target_env_type           :: env_type
+                g_target_env_type           :: env_type,
+                g_file_install_cmd          :: file_install_cmd
             ).
 
 globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion,
-        MaybeFeedback, HostEnvType, TargetEnvType, Globals) :-
+        MaybeFeedback, HostEnvType, TargetEnvType, FileInstallCmd, Globals) :-
     Globals = globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion,
-        MaybeFeedback, HostEnvType, TargetEnvType).
+        MaybeFeedback, HostEnvType, TargetEnvType, FileInstallCmd).
 
 get_options(Globals, Globals ^ g_options).
 get_target(Globals, Globals ^ g_target).
@@ -630,6 +648,8 @@ get_maybe_il_version_number(Globals, Globals ^ g_maybe_il_version_number).
 get_maybe_feedback_info(Globals, Globals ^ g_maybe_feedback).
 get_host_env_type(Globals, Globals ^ g_host_env_type).
 get_target_env_type(Globals, Globals ^ g_target_env_type).
+get_file_install_cmd(Globals, Globals ^ g_file_install_cmd).
+
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
     lookup_accumulating_option(Globals, backend_foreign_languages, LangStrs),
@@ -664,6 +684,9 @@ set_ssdb_trace_level(SSTraceLevel, !Globals) :-
 
 set_maybe_feedback_info(MaybeFeedback, !Globals) :-
     !Globals ^ g_maybe_feedback := MaybeFeedback.
+
+set_file_install_cmd(FileInstallCmd, !Globals) :-
+    !Globals ^ g_file_install_cmd := FileInstallCmd.
 
 lookup_option(Globals, Option, OptionData) :-
     get_options(Globals, OptionTable),

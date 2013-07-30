@@ -1752,9 +1752,7 @@ install_file(Globals, FileName, InstallDir, Succeeded, !IO) :-
             io.write_string(InstallDir, !IO),
             io.nl(!IO)
         ), !IO),
-    globals.lookup_string_option(Globals, install_command, InstallCommand),
-    Command = string.join_list("   ", list.map(quote_arg,
-        [InstallCommand, FileName, InstallDir])),
+    Command = make_install_file_command(Globals, FileName, InstallDir),
     io.output_stream(OutputStream, !IO),
     invoke_system_command(Globals, OutputStream, cmd_verbose, Command,
         Succeeded, !IO).
@@ -1771,11 +1769,7 @@ install_directory(Globals, SourceDirName, InstallDir, Succeeded, !IO) :-
             io.write_string(InstallDir, !IO),
             io.nl(!IO)
         ), !IO),
-    globals.lookup_string_option(Globals, install_command, InstallCommand),
-    globals.lookup_string_option(Globals, install_command_dir_option,
-        InstallCommandDirOption),
-    Command = string.join_list("   ", list.map(quote_arg,
-        [InstallCommand, InstallCommandDirOption, SourceDirName, InstallDir])),
+    Command = make_install_dir_command(Globals, SourceDirName, InstallDir),
     io.output_stream(OutputStream, !IO),
     invoke_system_command(Globals, OutputStream, cmd_verbose, Command,
         Succeeded, !IO).

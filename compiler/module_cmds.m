@@ -372,9 +372,7 @@ binary_input_stream_cmp_2(TmpOutputFileStream, Byte, Continue, _, Differ,
 
 copy_file(Globals, Source, Destination, Res, !IO) :-
     % Try to use the system's cp command in order to preserve metadata.
-    globals.lookup_string_option(Globals, install_command, InstallCommand),
-    Command = string.join_list("   ", list.map(quote_arg,
-        [InstallCommand, Source, Destination])),
+    Command = make_install_file_command(Globals, Source, Destination),
     io.output_stream(OutputStream, !IO),
     invoke_system_command(Globals, OutputStream, cmd_verbose, Command,
         Succeeded, !IO),
@@ -408,11 +406,7 @@ copy_file(Globals, Source, Destination, Res, !IO) :-
     io::di, io::uo) is det.
 
 copy_dir(Globals, Source, Destination, Succeeded, !IO) :-
-    globals.lookup_string_option(Globals, install_command, InstallCommand),
-    globals.lookup_string_option(Globals, install_command_dir_option,
-        InstallCommandDirOption),
-    Command = string.join_list("   ", list.map(quote_arg,
-        [InstallCommand, InstallCommandDirOption, Source, Destination])),
+    Command = make_install_dir_command(Globals, Source, Destination),
     io.output_stream(OutputStream, !IO),
     invoke_system_command(Globals, OutputStream, cmd_verbose, Command,
         Succeeded, !IO).
