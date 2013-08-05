@@ -76,7 +76,7 @@ evalexpr(div(X, Y)) = evalexpr(X) // evalexpr(Y).
 
 fullexpr(X) -->
     expr(X),
-    ['\n'].
+    newline.
 
 :- pred expr(expr::out, list(char)::in, list(char)::out) is semidet.
 
@@ -133,6 +133,11 @@ const([Digit|Rest]) -->
 digit(Char) -->
     [Char],
     { char.is_digit(Char) }.
+
+:- pred newline(list(char)::in, list(char)::out) is semidet.
+
+newline --> ['\n'].
+newline --> ['\r'], ['\n'].
 
 %-----------------------------------------------------------------------------%
 :- end_module calculator.

@@ -116,7 +116,7 @@
     % if you have a declaration `:- type foo == bar.', then
     % type_ctor_and_args/3 will always return a representation of type
     % constructor `bar/0', not `foo/0'. (If you don't want them expanded,
-    %% you can use the reverse mode of make_type/2 instead.)
+    % you can use the reverse mode of make_type/2 instead.)
     %
 :- pred type_ctor_and_args(type_desc::in,
     type_ctor_desc::out, list(type_desc)::out) is det.
