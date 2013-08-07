@@ -93,11 +93,19 @@
 
     % Return the largest key in the map, if there is one.
     %
-:- func map.max_key(map(K,V)) = K is semidet.
+:- func map.max_key(map(K, V)) = K is semidet.
+
+    % As above, but abort if there is no largest key.
+    %
+:- func map.det_max_key(map(K, V)) = K.
 
     % Return the smallest key in the map, if there is one.
     %
 :- func map.min_key(map(K,V)) = K is semidet.
+
+    % As above, but abort if there is no smallest key.
+    %
+:- func map.det_min_key(map(K, V)) = K.
 
     % Search map for data.
     %
@@ -844,7 +852,21 @@ map.upper_bound_lookup(Map, SearchK, K, V) :-
 
 map.max_key(M) = tree234.max_key(M).
 
+map.det_max_key(M) = 
+    ( K = map.max_key(M) ->
+        K 
+    ;
+        func_error("map.det_max_key: map.max_key failed")
+    ).
+
 map.min_key(M) = tree234.min_key(M).
+
+map.det_min_key(M) = 
+    ( K = map.min_key(M) ->
+        K
+    ;
+        func_error("map.det_min_key: map.min_key failed")
+    ).
 
 map.insert(M1, K, V) = M2 :-
     map.insert(K, V, M1, M2).

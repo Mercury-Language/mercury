@@ -15,6 +15,9 @@ Changes to the Mercury standard library:
 * We have added the following predicates to the array and version_array
   modules: is_empty/1, all_true/2 and all_false/2.
 
+* We have added the following functions the map module: det_min_key/1
+  and det_max_key/1.
+
 
 NEWS for Mercury 13.05.2
 ------------------------
