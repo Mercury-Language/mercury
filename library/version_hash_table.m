@@ -370,7 +370,7 @@ find_slot_2(HashPred, K, NumBuckets, H) :-
 copy(HT0) = HT :-
     promise_equivalent_solutions [HT] (
         HT0 = ht(NumOccupants, MaxOccupants, HashPred, Buckets0),
-        copy(Buckets0, Buckets),
+        Buckets = version_array.copy(Buckets0),
         HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
     ).
 
