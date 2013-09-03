@@ -3346,7 +3346,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
                 StructArgInsts = [TypeCtorInst | ArgTypeInfoInsts]
             ),
             StructType = type_info_type,
-            list.length(ArgTypeInfoConstArgs, NumArgs),
+            list.length(StructConstArgs, NumArgs),
             InstConsId = cell_inst_cons_id(Cell, NumArgs),
             StructInst = bound(shared, inst_test_results_fgtc,
                 [bound_functor(InstConsId, StructArgInsts)]),
