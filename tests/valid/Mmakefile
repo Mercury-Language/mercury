@@ -67,6 +67,7 @@ OTHER_PROGS= \
 	any_inst_merge \
 	any_matches_bound \
 	big_foreign_type \
+	bug51 \
 	bug85 \
 	bug100 \
 	bug128 \
