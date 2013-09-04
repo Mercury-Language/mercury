@@ -73,6 +73,11 @@
 :- pred lookup_main_target(globals::in, options_variables::in,
     maybe(list(string))::out, io::di, io::uo) is det.
 
+    % Look up $(MERCURY_STDLIB_DIR).
+    %
+:- pred lookup_mercury_stdlib_dir(globals::in, options_variables::in,
+    maybe(list(string))::out, io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -834,6 +839,24 @@ lookup_main_target(Globals, Vars, MaybeMainTarget, !IO) :-
         MainTargetResult = var_result_error(_),
         MaybeMainTarget = no
     ).
+
+%-----------------------------------------------------------------------------%
+
+lookup_mercury_stdlib_dir(Globals, Vars, MaybeMerStdlibDir, !IO) :-
+    lookup_variable_words_report_error(Globals, Vars, "MERCURY_STDLIB_DIR",
+        MerStdlibDirResult, !IO),
+    (
+        MerStdlibDirResult = var_result_set(MerStdlibDir),
+        MaybeMerStdlibDir = yes(MerStdlibDir)
+    ;
+        MerStdlibDirResult = var_result_unset,
+        MaybeMerStdlibDir = yes([])
+    ;
+        MerStdlibDirResult = var_result_error(_),
+        MaybeMerStdlibDir = no
+    ).
+
+%-----------------------------------------------------------------------------%
 
 lookup_default_options(Globals, Vars, Result, !IO) :-
     lookup_mmc_maybe_module_options(Globals, Vars, default, Result, !IO).

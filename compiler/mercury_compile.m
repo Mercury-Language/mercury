@@ -89,6 +89,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
+:- import_module dir.
 :- import_module gc.
 :- import_module getopt_io.
 :- import_module list.
@@ -235,6 +236,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
             OptionArgs = [],
             NonOptionArgs = []
         ),
+        DetectedGradeFlags = [],
         Variables = options_variables_init,
         MaybeMCFlags = yes([])
     ;
@@ -258,6 +260,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                 (
                     FlagsErrors = [_ | _],
                     usage_errors(FlagsErrors, !IO),
+                    DetectedGradeFlags = [],
                     Variables = options_variables_init,
                     MaybeMCFlags = no
                 ;
@@ -271,14 +274,20 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                         (
                             MaybeVariables = yes(Variables),
                             lookup_mmc_options(FlagsArgsGlobals, Variables,
-                                MaybeMCFlags, !IO)
+                                MaybeMCFlags, !IO),
+                            lookup_mercury_stdlib_dir(FlagsArgsGlobals, Variables,
+                                MaybeMerStdLibDir, !IO),
+                            detect_libgrades(FlagsArgsGlobals, MaybeMerStdLibDir,
+                                DetectedGradeFlags, !IO)
                         ;
                             MaybeVariables = no,
                             MaybeMCFlags = no,
+                            DetectedGradeFlags = [],
                             Variables = options_variables_init
                         )
                     ;
                         MaybeConfigFile = no,
+                        DetectedGradeFlags = [],
                         Variables = options_variables_init,
                         lookup_mmc_options(FlagsArgsGlobals, Variables,
                             MaybeMCFlags, !IO)
@@ -287,18 +296,20 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
             ;
                 MaybeMCFlags0 = no,
                 Variables = options_variables_init,
+                DetectedGradeFlags = [],
                 MaybeMCFlags = no
             )
         ;
             MaybeVariables0 = no,
             Variables = options_variables_init,
+            DetectedGradeFlags = [],
             MaybeMCFlags = no
         )
     ),
     (
         MaybeMCFlags = yes(MCFlags),
-        handle_given_options(MCFlags ++ OptionArgs, _, _, _,
-            Errors, ActualGlobals, !IO),
+        AllFlags = MCFlags ++ DetectedGradeFlags ++ OptionArgs,
+        handle_given_options(AllFlags, _, _, _, Errors, ActualGlobals, !IO),
 
         % When computing the option arguments to pass to `--make', only include
         % the command-line arguments, not the contents of DEFAULT_MCFLAGS.
@@ -2022,6 +2033,110 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
         maybe_report_stats(Stats, !IO)
     ;
         true
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Library grade detection.
+%
+
+:- pred detect_libgrades(globals::in, maybe(list(string))::in,
+    list(string)::out, io::di, io::uo) is det.
+
+detect_libgrades(Globals, MaybeConfigMerStdLibDir, GradeOpts, !IO) :-
+    globals.lookup_bool_option(Globals, detect_libgrades, Detect),
+    (
+        Detect = yes,
+        % NOTE: a standard library directory specified on the command line
+        % overrides one set using the MERCURY_STDLIB_DIR variable.
+        ( if
+            % Was the standard library directory set on the command line?
+            % 
+            globals.lookup_maybe_string_option(Globals,
+                mercury_standard_library_directory, MaybeStdLibDir),
+            MaybeStdLibDir = yes(MerStdLibDir)
+        then
+            do_detect_libgrades(MerStdLibDir, GradeOpts, !IO)
+        else if
+            % Was the standard library directory set using the
+            % MERCURY_STDLIB_DIR variable?
+            MaybeConfigMerStdLibDir = yes([MerStdLibDir])
+        then
+            do_detect_libgrades(MerStdLibDir, GradeOpts, !IO)
+        else
+            GradeOpts = [] 
+        )
+    ;
+        Detect = no,
+        GradeOpts = []
+    ).
+
+:- pred do_detect_libgrades(string::in, list(string)::out,
+    io::di, io::uo) is det.
+
+do_detect_libgrades(StdLibDir, GradeOpts, !IO) :-
+    ModulesDir = StdLibDir / "modules",
+    dir.foldl2(do_detect_libgrade, ModulesDir, [], MaybeGradeOpts, !IO),
+    (
+        MaybeGradeOpts = ok(GradeOpts0),
+        (
+            GradeOpts0 = [],
+            GradeOpts = GradeOpts0
+        ;
+            GradeOpts0 = [_ | _],
+            % Override any --libgrades settings from Mercury.config.
+            GradeOpts = ["--no-libgrade" | GradeOpts0]
+        )
+    ;
+        MaybeGradeOpts = error(_, _),
+        GradeOpts = []
+    ).
+
+:- pred do_detect_libgrade(string::in, string::in, io.file_type::in,
+    bool::out, list(string)::in, list(string)::out, io::di, io::uo) is det.
+
+do_detect_libgrade(DirName, FileName, FileType, Continue, !GradeOpts,
+        !IO) :-
+    (
+        FileType = directory,
+        (
+            % We do not generate .init files for the non-C grades so just
+            % check for directories in StdLibDir / "modules" containing
+            % the name of their base grade.
+            %
+            ( string.prefix(FileName, "csharp")
+            ; string.prefix(FileName, "erlang")
+            ; string.prefix(FileName, "java")
+            )
+        ->
+            !:GradeOpts = ["--libgrade", FileName | !.GradeOpts]
+        ;
+            % For C grades, we check for the presence of the .init file for
+            % mer_std to test whether the grade is present or not.
+            %
+            InitFile = DirName / FileName / "mer_std.init",
+            io.check_file_accessibility(InitFile, [read], Result, !IO),
+            (
+                Result = ok,
+                !:GradeOpts = ["--libgrade", FileName | !.GradeOpts]
+            ;
+                Result = error(_)
+            )
+        ),
+        Continue = yes
+    ;
+        ( FileType = regular_file
+        ; FileType = symbolic_link
+        ; FileType = named_pipe
+        ; FileType = socket
+        ; FileType = character_device
+        ; FileType = block_device
+        ; FileType = message_queue
+        ; FileType = semaphore
+        ; FileType = shared_memory
+        ; FileType = unknown
+        ),
+        Continue = yes
     ).
 
 %-----------------------------------------------------------------------------%
