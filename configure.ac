@@ -918,6 +918,17 @@ else
     CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS=
 fi
 
+AC_MSG_CHECKING(whether we can use -fno-reorder-functions)
+if $CC -fno-reorder-functions -c conftest.c \
+    </dev/null >&AC_FD_CC 2>&1
+then
+    AC_MSG_RESULT(yes)
+    CFLAGS_FOR_NO_REORDER_FUNCTIONS="-fno-reorder-functions"
+else
+    AC_MSG_RESULT(no)
+    CFLAGS_FOR_NO_REORDER_FUNCTIONS=""
+fi
+
 rm -f conftest*
 
 #-----------------------------------------------------------------------------#
@@ -2421,6 +2432,11 @@ AC_SUBST(MR_DARWIN_SETJMP_WORKAROUND)
 # For x86, x86-64 and possibly other architectures, when using non-local
 # gotos with gcc 4.x we need `-fno-move-loop-invariants'.
 #
+# For x86-64 and possibly other architectures, when using gcc specific
+# features and parallelism with gcc 4.6 and 4.7 (and possibly future
+# versions), we need -fno-reorder-functions to avoid segmentation faults.
+# We don't yet know exactly which grades are affected.
+#
 # For alpha, mips, and ARM, and probably on other architectures, when using
 # non-local gotos we need -fomit-frame-pointer, otherwise when compiling
 # with --no-c-optimize we run into a problem similar to the one above:
@@ -2541,6 +2557,23 @@ case "$ac_cv_prog_gcc" in yes)
     esac
     ;;
 esac
+
+# Determine if $CFLAGS_FOR_NO_REORDER_FUNCTIONS is needed.
+case "$C_COMPILER_TYPE" in
+    # Check if the option is not required, and otherwise include the option.
+    # No need to check gcc < 3.3 as the option didn't exist.
+    gcc_3* | gcc_4_1* | gcc_4_2* | gcc_4_3* | gcc_4_4* | gcc_4_5*)
+        ;;
+    *)
+        # XXX Pass -fno-reorder-functions when using GCC 4.6 onwards with
+        # the global register or non-local goto extensions.  This works
+        # around problems in *.par* grades.  (See bug #294 for further
+        # details.)
+        CFLAGS_FOR_REGS="$CFLAGS_FOR_REGS $CFLAGS_FOR_NO_REORDER_FUNCTIONS"
+        CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_REORDER_FUNCTIONS"
+        ;;
+esac
+
 AC_SUBST(CFLAGS_FOR_REGS)
 AC_SUBST(CFLAGS_FOR_GOTOS)
 

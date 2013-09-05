@@ -549,7 +549,7 @@ polymorphism_process_pred(PredId, !ModuleInfo) :-
     trace [compiletime(flag("debug_poly_caches"))] (
         promise_pure (
             % Replace 99999 with the id of the predicate you want to debug.
-            ( pred_id_to_int(PredId) = 15 ->
+            ( pred_id_to_int(PredId) = 99999 ->
                 impure set_selected_pred(yes)
             ;
                 true
@@ -3346,7 +3346,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
                 StructArgInsts = [TypeCtorInst | ArgTypeInfoInsts]
             ),
             StructType = type_info_type,
-            list.length(ArgTypeInfoConstArgs, NumArgs),
+            list.length(StructConstArgs, NumArgs),
             InstConsId = cell_inst_cons_id(Cell, NumArgs),
             StructInst = bound(shared, inst_test_results_fgtc,
                 [bound_functor(InstConsId, StructArgInsts)]),
