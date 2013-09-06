@@ -1893,8 +1893,8 @@ option_defaults_2(build_system_option, [
     mercury_configuration_directory_special - string_special,
     mercury_configuration_directory     -   maybe_string(no),
     install_command                     -   string("cp"),
-    install_command_dir_option          -   string("-r"),
-    detect_libgrades                    -   bool(no),
+    install_command_dir_option          -   string("-R"),
+    detect_libgrades                    -   bool(yes),
     libgrades                           -   accumulating([]),
     libgrades_include_components        -   accumulating([]),
     libgrades_exclude_components        -   accumulating([]),
@@ -5788,12 +5788,10 @@ options_help_build_system -->
         "\tSpecify the flag to pass to the install command to install",
         "\ta directory. The given command will be invoked as",
         "\t`<command> <option> <source> <target>'",
-        "\tto install each directory. The default option is `-r'.",
-
-        % `--detect-libgrades' is a developer-only that controls
-        % whether the compiler should scan the installation directory
-        % to determine which standard library grades are available.
-        
+        "\tto install each directory. The default option is `-R'.",
+        "--no-detect-libgrades",
+        "\tDo not scan the installation directory to determine which",
+        "\tstandard library grades are available.",
         "--libgrade <grade>",
         "\tAdd <grade> to the list of compilation grades in",
         "\twhich a library to be installed should be built.",

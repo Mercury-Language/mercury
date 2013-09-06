@@ -2092,15 +2092,7 @@ do_detect_libgrades(VeryVerbose, StdLibDir, GradeOpts, !IO) :-
     dir.foldl2(do_detect_libgrade(VeryVerbose), ModulesDir,
         [], MaybeGradeOpts, !IO),
     (
-        MaybeGradeOpts = ok(GradeOpts0),
-        (
-            GradeOpts0 = [],
-            GradeOpts = GradeOpts0
-        ;
-            GradeOpts0 = [_ | _],
-            % Override any --libgrades settings from Mercury.config.
-            GradeOpts = ["--no-libgrade" | GradeOpts0]
-        )
+        MaybeGradeOpts = ok(GradeOpts)
     ;
         MaybeGradeOpts = error(_, _),
         GradeOpts = []

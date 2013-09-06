@@ -968,8 +968,8 @@ It may be as simple as this @file{mypackage.m} file:
 
 @noindent
 This defines a module @samp{mypackage} containing
-sub-modules @samp{mypackage:foo}, @samp{mypackage:bar},
-and @samp{mypackage:baz}.
+sub-modules @samp{mypackage.foo}, @samp{mypackage.bar},
+and @samp{mypackage.baz}.
 
 It is also possible to build libraries of unrelated
 modules, so long as the top-level module imports all
@@ -7081,7 +7081,7 @@ library as well as any other libraries specified via the
 @findex --output-grade-defines
 Print the flags that are passed to the C compiler to define the macros used to
 specify the compilation grade.
-The flags are printed to the standard outut.
+The flags are printed to the standard output.
 
 @sp 1
 @item --output-c-include-dir-flags
@@ -9371,7 +9371,13 @@ The default command is @samp{cp}.
 Specify the flag to pass to the install command to install
 a directory. The given command will be invoked as
 @code{@var{command} @var{option} @var{source} @var{target}}
-to install each directory. The default option is @samp{-r}.
+to install each directory. The default option is @samp{-R}.
+
+@sp 1
+@item --no-detect-libgrades
+@findex --no-detect-libgrades
+Do not scan the installation direcotry to determine which
+standard library grades are available.
 
 @sp 1
 @item --libgrade @var{grade}
@@ -10849,7 +10855,7 @@ against, e.g. the @samp{--ml} and @samp{--mld} options.
 (@pxref{Libraries}).
 The Mercury standard library is always included in this set.
 
-In C grades the @samp{--generate-standalone-interface} option causes
+In C grades, the @samp{--generate-standalone-interface} option causes
 the compiler to generate an object file that should be linked into
 the executable.
 This object file contains two functions:
