@@ -308,7 +308,16 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
     ),
     (
         MaybeMCFlags = yes(MCFlags),
-        AllFlags = MCFlags ++ DetectedGradeFlags ++ OptionArgs,
+        % 
+        % NOTE: we must pass both the flags required for detected library
+        % grades plus the original command line arguments into
+        % main_after_setup/7.  The former is required  because `mmc --make'
+        % will use those flags to determine the set of installed library
+        % grades, if that information is not provided the environment or a
+        % configuration file.
+        %
+        AllOptionArgs = DetectedGradeFlags ++ OptionArgs,
+        AllFlags = MCFlags ++ AllOptionArgs,
         handle_given_options(AllFlags, _, _, _, Errors, ActualGlobals, !IO),
 
         % When computing the option arguments to pass to `--make', only include
@@ -318,7 +327,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
             usage_errors(Errors, !IO)
         ;
             Errors = [],
-            main_after_setup(Variables, OptionArgs, NonOptionArgs, Link,
+            main_after_setup(Variables, AllOptionArgs, NonOptionArgs, Link,
                 ActualGlobals, !IO)
         )
     ;
@@ -2047,6 +2056,9 @@ detect_libgrades(Globals, MaybeConfigMerStdLibDir, GradeOpts, !IO) :-
     globals.lookup_bool_option(Globals, detect_libgrades, Detect),
     (
         Detect = yes,
+        globals.lookup_bool_option(Globals, verbose, Verbose),
+        maybe_write_string(Verbose, "% Detecting library grades ...\n", !IO),
+        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         % NOTE: a standard library directory specified on the command line
         % overrides one set using the MERCURY_STDLIB_DIR variable.
         ( if
@@ -2056,27 +2068,29 @@ detect_libgrades(Globals, MaybeConfigMerStdLibDir, GradeOpts, !IO) :-
                 mercury_standard_library_directory, MaybeStdLibDir),
             MaybeStdLibDir = yes(MerStdLibDir)
         then
-            do_detect_libgrades(MerStdLibDir, GradeOpts, !IO)
+            do_detect_libgrades(VeryVerbose, MerStdLibDir, GradeOpts, !IO)
         else if
             % Was the standard library directory set using the
             % MERCURY_STDLIB_DIR variable?
             MaybeConfigMerStdLibDir = yes([MerStdLibDir])
         then
-            do_detect_libgrades(MerStdLibDir, GradeOpts, !IO)
+            do_detect_libgrades(VeryVerbose, MerStdLibDir, GradeOpts, !IO)
         else
             GradeOpts = [] 
-        )
+        ),
+        maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         Detect = no,
         GradeOpts = []
     ).
 
-:- pred do_detect_libgrades(string::in, list(string)::out,
+:- pred do_detect_libgrades(bool::in, string::in, list(string)::out,
     io::di, io::uo) is det.
 
-do_detect_libgrades(StdLibDir, GradeOpts, !IO) :-
+do_detect_libgrades(VeryVerbose, StdLibDir, GradeOpts, !IO) :-
     ModulesDir = StdLibDir / "modules",
-    dir.foldl2(do_detect_libgrade, ModulesDir, [], MaybeGradeOpts, !IO),
+    dir.foldl2(do_detect_libgrade(VeryVerbose), ModulesDir,
+        [], MaybeGradeOpts, !IO),
     (
         MaybeGradeOpts = ok(GradeOpts0),
         (
@@ -2092,11 +2106,11 @@ do_detect_libgrades(StdLibDir, GradeOpts, !IO) :-
         GradeOpts = []
     ).
 
-:- pred do_detect_libgrade(string::in, string::in, io.file_type::in,
+:- pred do_detect_libgrade(bool::in, string::in, string::in, io.file_type::in,
     bool::out, list(string)::in, list(string)::out, io::di, io::uo) is det.
 
-do_detect_libgrade(DirName, FileName, FileType, Continue, !GradeOpts,
-        !IO) :-
+do_detect_libgrade(VeryVerbose, DirName, FileName, FileType, Continue,
+        !GradeOpts, !IO) :-
     (
         FileType = directory,
         (
@@ -2109,6 +2123,7 @@ do_detect_libgrade(DirName, FileName, FileType, Continue, !GradeOpts,
             ; string.prefix(FileName, "java")
             )
         ->
+            maybe_report_detected_libgrade(VeryVerbose, FileName, !IO),
             !:GradeOpts = ["--libgrade", FileName | !.GradeOpts]
         ;
             % For C grades, we check for the presence of the .init file for
@@ -2118,6 +2133,7 @@ do_detect_libgrade(DirName, FileName, FileType, Continue, !GradeOpts,
             io.check_file_accessibility(InitFile, [read], Result, !IO),
             (
                 Result = ok,
+                maybe_report_detected_libgrade(VeryVerbose, FileName, !IO),
                 !:GradeOpts = ["--libgrade", FileName | !.GradeOpts]
             ;
                 Result = error(_)
@@ -2138,6 +2154,17 @@ do_detect_libgrade(DirName, FileName, FileType, Continue, !GradeOpts,
         ),
         Continue = yes
     ).
+            
+:- pred maybe_report_detected_libgrade(bool::in, string::in,
+    io::di, io::uo) is det.
+
+maybe_report_detected_libgrade(VeryVerbose, GradeStr, !IO) :-
+    (
+        VeryVerbose = yes,
+        io.format("%% Detected library grade: %s\n", [s(GradeStr)], !IO)
+    ;
+        VeryVerbose = no
+    ).    
 
 %-----------------------------------------------------------------------------%
 
