@@ -5,6 +5,7 @@
 --halt-at-warn
 --no-warn-inferred-erroneous
 --no-mercury-stdlib-dir
+--no-detect-libgrades
 --strict-sequential 
 --generate-mmc-deps
 --no-shlib-linker-use-install-name
