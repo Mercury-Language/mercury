@@ -443,7 +443,10 @@ detect_liveness_in_goal(Goal0, Goal, Liveness0, FinalLiveness, LiveInfo) :-
             CondDelta = goal_info_get_instmap_delta(CondInfo),
             ( instmap_delta_is_unreachable(CondDelta) ->
                 LivenessThen = LivenessCond,
-                Then1 = Then0
+                % XXX Initialize liveness-related fields, since some other
+                % code in this module assumes that they are initialized.
+                detect_liveness_in_goal(Then0, Then1,
+                    LivenessCond, _LivenessThen, LiveInfo)
             ;
                 detect_liveness_in_goal(Then0, Then1,
                     LivenessCond, LivenessThen, LiveInfo)

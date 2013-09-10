@@ -40,6 +40,7 @@ MCFLAGS-ambig_pred		= --type-check-constraints
 MCFLAGS-ambig_types		= --type-check-constraints
 MCFLAGS-ambig_stress_test	= --type-check-constraints
 MCFLAGS-builtin_false		= --intermodule-optimization
+MCFLAGS-bug51			= -O3
 MCFLAGS-bug85			= -O0 --deforestation
 MCFLAGS-bug100                  = --halt-at-warn
 MCFLAGS-bug128                  = -O5 --loop-invariants
