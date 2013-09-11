@@ -525,6 +525,7 @@ EOF
             --grade none.gc \
             --warn-insts-without-matching-type \
             --warn-known-bad-format-calls \
+            --no-detect-libgrades \
             --record-term-sizes-as-words \
             --output-grade-string \
             --shlib-linker-install-name-flag "-dummy_flag" \
