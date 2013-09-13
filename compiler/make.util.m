@@ -99,7 +99,7 @@
     % option list.
     %
 :- pred build_with_module_options_args(globals::in, module_name::in,
-    options_variables::in, list(string)::in, list(string)::in,
+    list(string)::in, options_variables::in, list(string)::in, list(string)::in,
     build(list(string), Info1, Info2)::in(build),
     bool::out, Info1::in, maybe(Info2)::out, io::di, io::uo) is det.
 
@@ -999,28 +999,31 @@ build_with_output_redirect(Globals, ModuleName, Build, Succeeded, !Info,
 build_with_module_options(Globals, ModuleName, ExtraOptions, Build, Succeeded,
         !Info, !IO) :-
     build_with_module_options_args_invoked(Globals, yes, ModuleName,
-        !.Info ^ options_variables, !.Info ^ option_args, ExtraOptions, Build,
-        Succeeded, !.Info, MaybeInfo, !IO),
+        !.Info ^ detected_grade_flags, !.Info ^ options_variables,
+        !.Info ^ option_args, ExtraOptions, Build, Succeeded,
+        !.Info, MaybeInfo, !IO),
     (
         MaybeInfo = yes(!:Info)
     ;
         MaybeInfo = no
     ).
 
-build_with_module_options_args(Globals, ModuleName, OptionVariables,
-        OptionArgs, ExtraOptions, Build, Succeeded, !Info, !IO) :-
-    build_with_module_options_args_invoked(Globals, no, ModuleName,
+build_with_module_options_args(Globals, ModuleName, DetectedGradeFlags,
         OptionVariables, OptionArgs, ExtraOptions, Build, Succeeded,
-        !Info, !IO).
+        !Info, !IO) :-
+    build_with_module_options_args_invoked(Globals, no, ModuleName,
+        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
+        Build, Succeeded, !Info, !IO).
 
 :- pred build_with_module_options_args_invoked(globals::in, bool::in,
-    module_name::in, options_variables::in, list(string)::in, list(string)::in,
+    module_name::in, list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in,
     build(list(string), Info1, Info2)::in(build),
     bool::out, Info1::in, maybe(Info2)::out, io::di, io::uo) is det.
 
 build_with_module_options_args_invoked(Globals, InvokedByMmcMake, ModuleName,
-        OptionVariables, OptionArgs, ExtraOptions, Build, Succeeded,
-        Info0, MaybeInfo, !IO) :-
+        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions, Build,
+        Succeeded, Info0, MaybeInfo, !IO) :-
     lookup_mmc_module_options(Globals, OptionVariables, ModuleName,
         OptionsResult, !IO),
     (
@@ -1045,8 +1048,8 @@ build_with_module_options_args_invoked(Globals, InvokedByMmcMake, ModuleName,
             InvokedByMake = []
         ),
 
-        AllOptionArgs = InvokedByMake ++ ModuleOptionArgs ++
-            OptionArgs ++ ExtraOptions ++ UseSubdirs,
+        AllOptionArgs = InvokedByMake ++ DetectedGradeFlags ++
+            ModuleOptionArgs ++ OptionArgs ++ ExtraOptions ++ UseSubdirs,
         handle_given_options(AllOptionArgs, _, _, _,
             OptionsErrors, BuildGlobals, !IO),
         (

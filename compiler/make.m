@@ -37,8 +37,8 @@
 
     % make.process_args(OptionArgs, NonOptionArgs).
     %
-:- pred make_process_args(globals::in, options_variables::in, list(string)::in,
-    list(file_name)::in, io::di, io::uo) is det.
+:- pred make_process_args(globals::in, list(string)::in, options_variables::in,
+    list(string)::in, list(file_name)::in, io::di, io::uo) is det.
 
 :- pred make_write_module_dep_file(globals::in, module_and_imports::in,
     io::di, io::uo) is det.
@@ -109,6 +109,9 @@
                 % Cache chosen file names for a module name and extension.
                 search_file_name_cache  :: map(pair(module_name, string),
                                             file_name),
+
+                % Any flags required to set detected library grades.
+                detected_grade_flags :: list(string),
 
                 % The original set of options passed to mmc, not including
                 % the targets to be made.
@@ -280,7 +283,8 @@ make_write_module_dep_file(Globals, Imports, !IO) :-
 
 make_module_dep_file_extension = ".module_dep".
 
-make_process_args(Globals, Variables, OptionArgs, Targets0, !IO) :-
+make_process_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
+        Targets0, !IO) :-
     (
         Targets0 = [],
         lookup_main_target(Globals, Variables, MaybeMAIN_TARGET, !IO),
@@ -355,8 +359,13 @@ make_process_args(Globals, Variables, OptionArgs, Targets0, !IO) :-
         ShouldRebuildModuleDeps = do_rebuild_module_deps,
         globals.lookup_int_option(Globals, analysis_repeat, AnalysisRepeat),
 
-        MakeInfo0 = make_info(map.init, map.init, map.init,
-            OptionArgs, Variables,
+        MakeInfo0 = make_info(
+            map.init,               % Module dependencies.
+            map.init,               % File timestamps.
+            map.init,               % Search filename cache.
+            DetectedGradeFlags,
+            OptionArgs,
+            Variables,
             ModuleIndexMap,
             DepIndexMap,
             DepStatusMap,
@@ -364,9 +373,14 @@ make_process_args(Globals, Variables, OptionArgs, Targets0, !IO) :-
             init_cached_direct_imports,
             init_cached_transitive_dependencies,
             init_cached_foreign_imports,
-            ShouldRebuildModuleDeps, KeepGoing,
-            set.init, no, set.list_to_set(ClassifiedTargets),
-            AnalysisRepeat, no),
+            ShouldRebuildModuleDeps,
+            KeepGoing,
+            set.init,
+            no,
+            set.list_to_set(ClassifiedTargets),
+            AnalysisRepeat,
+            no
+        ),
 
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.
@@ -622,8 +636,9 @@ make_track_flags_files_2(Globals, ModuleName, Success, !LastHash, !Info,
         OptionsResult, !IO),
     (
         OptionsResult = yes(ModuleOptionArgs),
+        DetectedGradeFlags = !.Info ^ detected_grade_flags,
         OptionArgs = !.Info ^ option_args,
-        AllOptionArgs = list.condense([ModuleOptionArgs, OptionArgs]),
+        AllOptionArgs = list.condense([DetectedGradeFlags, ModuleOptionArgs, OptionArgs]),
 
         % The set of options from one module to the next is usually identical,
         % so we can easily avoid running handle_options and stringifying and

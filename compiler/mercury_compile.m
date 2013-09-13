@@ -309,15 +309,20 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
     (
         MaybeMCFlags = yes(MCFlags),
         % 
-        % NOTE: we must pass both the flags required for detected library
-        % grades plus the original command line arguments into
-        % main_after_setup/7.  The former is required  because `mmc --make'
-        % will use those flags to determine the set of installed library
-        % grades, if that information is not provided the environment or a
-        % configuration file.
+        % NOTE: the order of the flags here is important.  It must be:
+        % 
+        %   (1) flags for detected library grades
+        %   (2) flags from Mercury.config and any Mercury.options files
+        %   (3) flags from any command line options
         %
-        AllOptionArgs = DetectedGradeFlags ++ OptionArgs,
-        AllFlags = MCFlags ++ AllOptionArgs,
+        % Flags given later in this list will override those given earlier.
+        %
+        % XXX the relationship between --no-libgrade or --libgrade options set
+        % via the DEFAULT_MCFLAGS variable and detected library grades is
+        % currently not defined.  It does not  matter at the moment, since
+        % Mercury.config does not contain either of those two flags.
+        %
+        AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
         handle_given_options(AllFlags, _, _, _, Errors, ActualGlobals, !IO),
 
         % When computing the option arguments to pass to `--make', only include
@@ -327,8 +332,8 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
             usage_errors(Errors, !IO)
         ;
             Errors = [],
-            main_after_setup(Variables, AllOptionArgs, NonOptionArgs, Link,
-                ActualGlobals, !IO)
+            main_after_setup(DetectedGradeFlags, Variables, OptionArgs,
+                NonOptionArgs, Link, ActualGlobals, !IO)
         )
     ;
         MaybeMCFlags = no,
@@ -338,14 +343,16 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
 %-----------------------------------------------------------------------------%
 
 main_for_make(Globals, Args, !IO) :-
-    main_after_setup(options_variables_init, [], Args, no, Globals, !IO).
+    main_after_setup([], options_variables_init, [], Args, no, Globals, !IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred main_after_setup(options_variables::in, list(string)::in,
-    list(string)::in, bool::in, globals::in, io::di, io::uo) is det.
+:- pred main_after_setup(list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in, bool::in, globals::in,
+    io::di, io::uo) is det.
 
-main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
+main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
+        Link, Globals, !IO) :-
     globals.lookup_bool_option(Globals, version, Version),
     globals.lookup_bool_option(Globals, help, Help),
     globals.lookup_bool_option(Globals, generate_source_file_mapping,
@@ -409,9 +416,14 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
         io.write_string(Stdout, "\n", !IO)
     ; OutputLibGrades = yes ->
         globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
-        io.stdout_stream(Stdout, !IO),
-        io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO),
-        io.nl(Stdout, !IO)
+        (
+            LibGrades = []
+        ;
+            LibGrades = [_ | _],
+            io.stdout_stream(Stdout, !IO),
+            io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO),
+            io.nl(Stdout, !IO)
+        )
     ; OutputCC = yes ->
         globals.lookup_string_option(Globals, cc, CC),
         io.stdout_stream(StdOut, !IO),
@@ -463,12 +475,13 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
             make_standalone_interface(Globals, StandaloneIntBasename, !IO)
         )
     ; Make = yes ->
-        make_process_args(Globals, OptionVariables, OptionArgs, Args, !IO)
+        make_process_args(Globals, DetectedGradeFlags, OptionVariables,
+            OptionArgs, Args, !IO)
     ; Args = [], FileNamesFromStdin = no ->
         usage(!IO)
     ;
-        process_all_args(Globals, OptionVariables, OptionArgs, Args,
-            ModulesToLink, ExtraObjFiles, !IO),
+        process_all_args(Globals, DetectedGradeFlags, OptionVariables,
+            OptionArgs, Args, ModulesToLink, ExtraObjFiles, !IO),
         io.get_exit_status(ExitStatus, !IO),
         ( ExitStatus = 0 ->
             (
@@ -493,7 +506,7 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
                     ; Target = target_erlang
                     ),
                     compile_with_module_options(Globals, MainModuleName,
-                        OptionVariables, OptionArgs,
+                        DetectedGradeFlags, OptionVariables, OptionArgs,
                         link_module_list(ModulesToLink, ExtraObjFiles),
                         Succeeded, !IO)
                 ),
@@ -547,14 +560,14 @@ maybe_report_cmd_line(Report, OptionArgs, Args, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_all_args(globals::in, options_variables::in, list(string)::in,
-    list(string)::in, list(string)::out, list(string)::out,
+:- pred process_all_args(globals::in, list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in, list(string)::out, list(string)::out,
     io::di, io::uo) is det.
 
-process_all_args(Globals, OptionVariables, OptionArgs, Args,
-        ModulesToLink, ExtraObjFiles, !IO) :-
-    process_args(Globals, OptionVariables, OptionArgs, Args, ModulesToLink,
-        ExtraObjFiles, !IO).
+process_all_args(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
+        Args, ModulesToLink, ExtraObjFiles, !IO) :-
+    process_args(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
+        Args, ModulesToLink, ExtraObjFiles, !IO).
 
 :- pred do_rename_file(globals::in, string::in, string::in, io.res::out,
     io::di, io::uo) is det.
@@ -623,43 +636,45 @@ do_rename_file(Globals, OldFileName, NewFileName, Result, !IO) :-
         Result = Result0
     ).
 
-:- pred process_args_callback(options_variables::in,
+:- pred process_args_callback(list(string)::in, options_variables::in,
     list(string)::in, list(string)::in, globals::in,
     {list(string), list(string)}::out, io::di, io::uo) is det.
 
-process_args_callback(OptionVariables, OptionArgs, Args, Globals,
-        {ModulesToLink, ExtraObjFiles}, !IO) :-
-    process_args(Globals, OptionVariables, OptionArgs, Args,
-        ModulesToLink, ExtraObjFiles, !IO).
+process_args_callback(DetectedGradeFlags, OptionVariables, OptionArgs,
+        Args, Globals, {ModulesToLink, ExtraObjFiles}, !IO) :-
+    process_args(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
+        Args, ModulesToLink, ExtraObjFiles, !IO).
 
-:- pred process_args(globals::in, options_variables::in,
+:- pred process_args(globals::in, list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
     list(string)::out, list(string)::out, io::di, io::uo) is det.
 
-process_args(Globals, OptionVariables, OptionArgs, Args,
+process_args(Globals, DetectedGradeFlags, OptionVariables, OptionArgs, Args,
         ModulesToLink, ExtraObjFiles, !IO) :-
     globals.lookup_bool_option(Globals, filenames_from_stdin,
         FileNamesFromStdin),
     (
         FileNamesFromStdin = yes,
-        process_stdin_arg_list(Globals, OptionVariables, OptionArgs,
-            cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord, !IO)
+        process_stdin_arg_list(Globals, DetectedGradeFlags, OptionVariables,
+            OptionArgs, cord.empty, ModulesToLinkCord,
+            cord.empty, ExtraObjFilesCord, !IO)
     ;
         FileNamesFromStdin = no,
-        process_arg_list(Globals, OptionVariables, OptionArgs, Args,
-            cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord, !IO)
+        process_arg_list(Globals, DetectedGradeFlags, OptionVariables,
+            OptionArgs, Args, cord.empty, ModulesToLinkCord,
+            cord.empty, ExtraObjFilesCord, !IO)
     ),
     ModulesToLink = cord.list(ModulesToLinkCord),
     ExtraObjFiles = cord.list(ExtraObjFilesCord).
 
-:- pred process_stdin_arg_list(globals::in,
+:- pred process_stdin_arg_list(globals::in, list(string)::in,
     options_variables::in, list(string)::in,
     cord(string)::in, cord(string)::out,
     cord(string)::in, cord(string)::out,
     io::di, io::uo) is det.
 
-process_stdin_arg_list(Globals, OptionVariables, OptionArgs,
-        !Modules, !ExtraObjFiles, !IO) :-
+process_stdin_arg_list(Globals, DetectedGradeFlags, OptionVariables,
+        OptionArgs, !Modules, !ExtraObjFiles, !IO) :-
     ( is_empty(!.Modules) ->
         true
     ;
@@ -669,12 +684,12 @@ process_stdin_arg_list(Globals, OptionVariables, OptionArgs,
     (
         FileResult = ok(Line),
         Arg = string.rstrip(Line),
-        process_arg(Globals, OptionVariables, OptionArgs, Arg,
-            ArgModules, ArgExtraObjFiles, !IO),
+        process_arg(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
+            Arg, ArgModules, ArgExtraObjFiles, !IO),
         !:Modules = !.Modules ++ from_list(ArgModules),
         !:ExtraObjFiles = !.ExtraObjFiles ++ from_list(ArgExtraObjFiles),
-        process_stdin_arg_list(Globals, OptionVariables, OptionArgs,
-            !Modules, !ExtraObjFiles, !IO)
+        process_stdin_arg_list(Globals, DetectedGradeFlags, OptionVariables,
+            OptionArgs, !Modules, !ExtraObjFiles, !IO)
     ;
         FileResult = eof
     ;
@@ -685,16 +700,16 @@ process_stdin_arg_list(Globals, OptionVariables, OptionArgs,
         io.set_exit_status(1, !IO)
     ).
 
-:- pred process_arg_list(globals::in, options_variables::in,
+:- pred process_arg_list(globals::in, list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
     cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
     io::di, io::uo) is det.
 
-process_arg_list(_, _, _, [],
-        !Modules, !ExtraObjFiles, !IO).
-process_arg_list(Globals, OptionVariables, OptionArgs, [Arg | Args],
-        !Modules, !ExtraObjFiles, !IO) :-
-    process_arg(Globals, OptionVariables, OptionArgs, Arg,
+process_arg_list(_, _, _, _,
+        [], !Modules, !ExtraObjFiles, !IO).
+process_arg_list(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
+        [Arg | Args], !Modules, !ExtraObjFiles, !IO) :-
+    process_arg(Globals, DetectedGradeFlags, OptionVariables, OptionArgs, Arg,
         ArgModules, ArgExtraObjFiles, !IO),
     (
         Args = [_ | _],
@@ -704,8 +719,8 @@ process_arg_list(Globals, OptionVariables, OptionArgs, [Arg | Args],
     ),
     !:Modules = !.Modules ++ from_list(ArgModules),
     !:ExtraObjFiles = !.ExtraObjFiles ++ from_list(ArgExtraObjFiles),
-    process_arg_list(Globals, OptionVariables, OptionArgs, Args,
-        !Modules, !ExtraObjFiles, !IO).
+    process_arg_list(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
+        Args, !Modules, !ExtraObjFiles, !IO).
 
     % Figure out whether the argument is a module name or a file name.
     % Open the specified file or module, and process it.
@@ -713,11 +728,11 @@ process_arg_list(Globals, OptionVariables, OptionArgs, [Arg | Args],
     % if they were compiled to separate object files)
     % that should be linked into the final executable.
 
-:- pred process_arg(globals::in, options_variables::in,
+:- pred process_arg(globals::in, list(string)::in, options_variables::in,
     list(string)::in, string::in, list(string)::out, list(string)::out,
     io::di, io::uo) is det.
 
-process_arg(Globals, OptionVariables, OptionArgs, Arg,
+process_arg(Globals, DetectedGradeFlags, OptionVariables, OptionArgs, Arg,
         ModulesToLink, ExtraObjFiles, !IO) :-
     FileOrModule = string_to_file_or_module(Arg),
     globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMake),
@@ -725,7 +740,7 @@ process_arg(Globals, OptionVariables, OptionArgs, Arg,
         InvokedByMake = no,
         build_with_module_options_args(Globals,
             file_or_module_to_module_name(FileOrModule),
-            OptionVariables, OptionArgs, [],
+            DetectedGradeFlags, OptionVariables, OptionArgs, [],
             process_arg_build(FileOrModule, OptionArgs),
             _, [], MaybeTuple, !IO),
         (
@@ -1249,11 +1264,11 @@ module_to_link(ModuleName - _Items, ModuleToLink) :-
 :- inst compile == (pred(in, out, di, uo) is det).
 
 :- pred compile_with_module_options(globals::in, module_name::in,
-    options_variables::in, list(string)::in, compile::in(compile), bool::out,
-    io::di, io::uo) is det.
+    list(string)::in, options_variables::in, list(string)::in,
+    compile::in(compile), bool::out, io::di, io::uo) is det.
 
-compile_with_module_options(Globals, ModuleName, OptionVariables, OptionArgs,
-        Compile, Succeeded, !IO) :-
+compile_with_module_options(Globals, ModuleName, DetectedGradeFlags,
+        OptionVariables, OptionArgs, Compile, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMake),
     (
         InvokedByMake = yes,
@@ -1266,8 +1281,8 @@ compile_with_module_options(Globals, ModuleName, OptionVariables, OptionArgs,
                     IO0::di, IO::uo) is det :-
                 Compile(BuildGlobals, Succeeded0, IO0, IO)
             ),
-        build_with_module_options_args(Globals, ModuleName, OptionVariables,
-            OptionArgs, [], Builder, Succeeded, unit, _, !IO)
+        build_with_module_options_args(Globals, ModuleName, DetectedGradeFlags,
+            OptionVariables, OptionArgs, [], Builder, Succeeded, unit, _, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

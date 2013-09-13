@@ -1461,8 +1461,9 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
     lookup_mmc_options(Globals, !.Info ^ options_variables, MaybeMCFlags, !IO),
     (
         MaybeMCFlags = yes(MCFlags),
-        handle_given_options(MCFlags ++ OptionArgs, _, _, _,
-            OptionsErrors, LibGlobals, !IO)
+        DetectedGradeFlags = !.Info ^ detected_grade_flags,
+        AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
+        handle_given_options(AllFlags, _, _, _, OptionsErrors, LibGlobals, !IO)
     ;
         MaybeMCFlags = no,
         % Errors should have been caught before.
