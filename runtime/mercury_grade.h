@@ -369,17 +369,19 @@
 
 #if defined(MR_PREGENERATED_DIST)
   #define MR_GRADE_PART_11      MR_PASTE2(MR_GRADE_PART_10, _pregen)
+  #define MR_GRADE_OPT_PART_11  MR_GRADE_OPT_PART_10 ".pregen"
 #elif defined(MR_USE_SINGLE_PREC_FLOAT)
   #if defined(MR_BOXED_FLOAT)
     #error "single-precision floats implies unboxed floats"
   #endif
   #define MR_GRADE_PART_11      MR_PASTE2(MR_GRADE_PART_10, _spf)
+  #define MR_GRADE_OPT_PART_11  MR_GRADE_OPT_PART_10 ".spf"
 #elif defined(MR_BOXED_FLOAT)
   #define MR_GRADE_PART_11      MR_GRADE_PART_10
 #else                           /* "ubf" stands for "unboxed float" */
   #define MR_GRADE_PART_11      MR_PASTE2(MR_GRADE_PART_10, _ubf)
+  #define MR_GRADE_OPT_PART_11  MR_GRADE_OPT_PART_10
 #endif
-#define MR_GRADE_OPT_PART_11    MR_GRADE_OPT_PART_10
 
 #ifdef MR_NEW_MERCURYFILE_STRUCT
   #define MR_GRADE_PART_12      MR_PASTE2(MR_GRADE_PART_11, _file)
