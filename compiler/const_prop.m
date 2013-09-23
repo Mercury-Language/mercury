@@ -158,10 +158,14 @@ evaluate_det_call(ModuleName, ProcName, ModeNum, CrossCompiling, Args,
             ModuleName = "float",
             evaluate_det_call_float_2(ProcName, ModeNum, CrossCompiling,
                 X, Y, OutputArg, OutputArgVal)
+        ;
+            ModuleName = "string",
+            evaluate_det_call_string_2(ProcName, ModeNum, CrossCompiling,
+                X, Y, OutputArg, OutputArgVal)
         )
     ;
         Args = [X, Y, Z],
-        % Unary functions.
+        % Binary functions.
         (
             ModuleName = "int",
             evaluate_det_call_int_3(ProcName, ModeNum, CrossCompiling,
@@ -263,7 +267,20 @@ evaluate_det_call_float_2(ProcName, ModeNum, _CrossCompiling, X, Y,
         OutputArg = Y,
         OutputArgVal = -XVal
     ).
+            
+:- pred evaluate_det_call_string_2(string::in, int::in, bool::in,
+    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::out,
+    cons_id::out) is semidet.
 
+evaluate_det_call_string_2(ProcName, ModeNum, _CrossCompiling, X, Y,
+        OutputArg, OutputArgVal) :-
+    ProcName = "count_codepoints",
+    ModeNum = 0,
+    X ^ arg_inst = bound(_, _, [bound_functor(string_const(XVal), [])]),
+    OutputArg = Y,
+    CodePointCountX = string.count_codepoints(XVal),
+    OutputArgVal = int_const(CodePointCountX).
+        
 :- pred evaluate_det_call_int_3(string::in, int::in, bool::in,
     arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
     arg_hlds_info::out, cons_id::out) is semidet.
