@@ -2064,6 +2064,9 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
 % Library grade detection.
 %
 
+% Enable the compile-time trace flag "debug-detect-libgrades" to enable
+% debugging messages for library grade detection in the very verbose output.
+
 :- pred detect_libgrades(globals::in, maybe(list(string))::in,
     list(string)::out, io::di, io::uo) is det.
 
@@ -2072,7 +2075,9 @@ detect_libgrades(Globals, MaybeConfigMerStdLibDir, GradeOpts, !IO) :-
     (
         Detect = yes,
         globals.lookup_bool_option(Globals, verbose, Verbose),
-        maybe_write_string(Verbose, "% Detecting library grades ...\n", !IO),
+        trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
+            maybe_write_string(Verbose, "% Detecting library grades ...\n", !TIO)
+        ),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         % NOTE: a standard library directory specified on the command line
         % overrides one set using the MERCURY_STDLIB_DIR variable.
@@ -2093,7 +2098,9 @@ detect_libgrades(Globals, MaybeConfigMerStdLibDir, GradeOpts, !IO) :-
         else
             GradeOpts = [] 
         ),
-        maybe_write_string(Verbose, "% done.\n", !IO)
+        trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
+            maybe_write_string(Verbose, "% done.\n", !TIO)
+        )
     ;
         Detect = no,
         GradeOpts = []
@@ -2166,12 +2173,14 @@ do_detect_libgrade(VeryVerbose, DirName, FileName, FileType, Continue,
     io::di, io::uo) is det.
 
 maybe_report_detected_libgrade(VeryVerbose, GradeStr, !IO) :-
-    (
-        VeryVerbose = yes,
-        io.format("%% Detected library grade: %s\n", [s(GradeStr)], !IO)
-    ;
-        VeryVerbose = no
-    ).    
+    trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
+        (
+            VeryVerbose = yes,
+            io.format("%% Detected library grade: %s\n", [s(GradeStr)], !TIO)
+        ;
+            VeryVerbose = no
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
