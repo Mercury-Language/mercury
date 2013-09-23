@@ -3617,8 +3617,7 @@ output_library_link_flags(Globals, Stream, !IO) :-
     get_link_libraries(Globals, MaybeLinkLibraries, !IO),
     (
         MaybeLinkLibraries = yes(LinkLibrariesList),
-        join_quoted_string_list(LinkLibrariesList, "", "", " ",
-            LinkLibraries)
+        join_string_list(LinkLibrariesList, "", "", " ", LinkLibraries)
     ;
         MaybeLinkLibraries = no,
         LinkLibraries = ""
@@ -3632,7 +3631,8 @@ output_library_link_flags(Globals, Stream, !IO) :-
         LinkLibraries, " ",
         MercuryStdLibs, " ",
         SystemLibs], LinkFlags),
-    io.write_string(Stream, LinkFlags, !IO).
+    io.write_string(Stream, LinkFlags, !IO),
+    io.nl(Stream, !IO).
 
 %-----------------------------------------------------------------------------%
 
