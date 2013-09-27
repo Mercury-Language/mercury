@@ -1001,6 +1001,7 @@
     ;       restricted_command_line
     ;       env_type
     ;       host_env_type
+    ;       system_env_type
     ;       target_env_type
 
     % Miscellaneous Options
@@ -1917,6 +1918,7 @@ option_defaults_2(build_system_option, [
     restricted_command_line             -   bool(no),
     env_type                            -   string_special,
     host_env_type                       -   string("posix"),
+    system_env_type                     -   string(""),
     target_env_type                     -   string("posix")
 ]).
 option_defaults_2(miscellaneous_option, [
@@ -2893,6 +2895,7 @@ long_option("extra-library-header", extra_library_header).
 long_option("restricted-command-line", restricted_command_line).
 long_option("env-type",                env_type).
 long_option("host-env-type",           host_env_type).
+long_option("system-env-type",         system_env_type).
 long_option("target-env-type",         target_env_type).
 
 % misc options
@@ -3147,11 +3150,12 @@ special_handler(mercury_linkage_special, string(Flag),
             """shared"" or ""static"".")
     ).
 
-special_handler(env_type, string(EnvTypeStr), OptionTable0, ok(OptionTable)) :-
-    OptionTable =
-        map.set(map.set(OptionTable0,
-        host_env_type, string(EnvTypeStr)),
-        target_env_type, string(EnvTypeStr)).
+special_handler(env_type, string(EnvTypeStr), !.OptionTable, ok(!:OptionTable)) :-
+    override_options([
+            host_env_type   - string(EnvTypeStr),
+            system_env_type - string(EnvTypeStr),
+            target_env_type - string(EnvTypeStr)
+        ], !OptionTable).
 
 special_handler(inform_inferred, bool(Inform), !.OptionTable,
         ok(!:OptionTable)) :-
@@ -5876,11 +5880,16 @@ options_help_build_system -->
         "\tprograms will be invoked.",
         "\tThe <type> should be one of `posix', `cygwin', `msys', or",
         "\t`windows'.",
-        "\tThis option is equivalent to setting both --host-env-type and",
-        "\t--target-env-type to <type>.",
+        "\tThis option is equivalent to setting all of --host-env-type,",
+        "\t--system-env-type and --target-env-type to <type>.",
         "--host-env-type <type>",
         "\tSpecify the environment type in which the compiler will be",
         "\tinvoked.",
+        "--system-env-type <type>",
+        "\tSpecify the environment type in which external programs invoked",
+        "\tby the compiler will run.",
+        "\tIf not specified, this defaults to the value given by",
+        "\t --host-env-type.",
         "--target-env-type <type>",
         "\tSpecify the environment type in which generated programs will be",
         "\tinvoked."

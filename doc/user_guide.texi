@@ -9549,14 +9549,21 @@ The environment type controls how the compiler and generated programs
 interact with the shell and other system tools.
 The @var{type} should be one of @samp{posix}, @samp{cygwin}, @samp{msys},
 or @samp{windows}.
-This option is equivalent to setting both @samp{--host-env-type} and
-@samp{--target-env-type} to @var{type}.
+This option is equivalent to setting all of @samp{--host-env-type},
+@samp{--system-env-type} and @samp{--target-env-type} to @var{type}.
 
 @sp 1
 @item --host-env-type @var{type}
 @findex --host-env-type
 Specify the environment type in which the compiler will be invoked.
 (See above for a list of supported environment types.)
+
+@sp 1
+@item --system-env-type @var{type}
+@findex --system-env-type
+Specify the environment type in which external programs invoked by the
+compiler will run.
+If not specified, this defaults to the value given by @samp{--host-env-type}.
 
 @sp 1
 @item --target-env-type @var{type}

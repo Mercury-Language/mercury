@@ -254,7 +254,7 @@
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in,
     maybe(il_version_number)::in, maybe(feedback_info)::in, env_type::in,
-    env_type::in, file_install_cmd::in, globals::out) is det.
+    env_type::in, env_type::in, file_install_cmd::in, globals::out) is det.
 
 :- pred get_options(globals::in, option_table::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
@@ -276,6 +276,7 @@
     is det.
 :- pred get_maybe_feedback_info(globals::in, maybe(feedback_info)::out) is det.
 :- pred get_host_env_type(globals::in, env_type::out) is det.
+:- pred get_system_env_type(globals::in, env_type::out) is det.
 :- pred get_target_env_type(globals::in, env_type::out) is det.
 :- pred get_file_install_cmd(globals::in, file_install_cmd::out) is det.
 
@@ -616,6 +617,7 @@ gc_is_conservative(gc_automatic) = no.
                 g_maybe_il_version_number   :: maybe(il_version_number),
                 g_maybe_feedback            :: maybe(feedback_info),
                 g_host_env_type             :: env_type,
+                g_system_env_type           :: env_type,
                 g_target_env_type           :: env_type,
                 g_file_install_cmd          :: file_install_cmd
             ).
@@ -624,12 +626,14 @@ globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion,
-        MaybeFeedback, HostEnvType, TargetEnvType, FileInstallCmd, Globals) :-
+        MaybeFeedback, HostEnvType, SystemEnvType, TargetEnvType,
+        FileInstallCmd, Globals) :-
     Globals = globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion,
-        MaybeFeedback, HostEnvType, TargetEnvType, FileInstallCmd).
+        MaybeFeedback, HostEnvType, SystemEnvType, TargetEnvType,
+        FileInstallCmd).
 
 get_options(Globals, Globals ^ g_options).
 get_target(Globals, Globals ^ g_target).
@@ -647,6 +651,7 @@ get_reuse_strategy(Globals, Globals ^ g_reuse_strategy).
 get_maybe_il_version_number(Globals, Globals ^ g_maybe_il_version_number).
 get_maybe_feedback_info(Globals, Globals ^ g_maybe_feedback).
 get_host_env_type(Globals, Globals ^ g_host_env_type).
+get_system_env_type(Globals, Globals ^ g_system_env_type).
 get_target_env_type(Globals, Globals ^ g_target_env_type).
 get_file_install_cmd(Globals, Globals ^ g_file_install_cmd).
 

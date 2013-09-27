@@ -2830,7 +2830,7 @@ create_archive(Globals, ErrorStream, LibFileName, Quote, ObjectList,
 
 create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         OutputFileName0, SourceList0, Succeeded, !IO) :-
-    get_host_env_type(Globals, EnvType),
+    get_system_env_type(Globals, EnvType),
     get_csharp_compiler_type(Globals, CSharpCompilerType),
 
     OutputFileName = csharp_file_name(EnvType, CSharpCompilerType,
@@ -3551,7 +3551,7 @@ invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
 :- func at_file_name(globals, string) = string.
 
 at_file_name(Globals, FileName) = AtFileName :-
-    get_host_env_type(Globals, EnvType),
+    get_system_env_type(Globals, EnvType),
     (
         EnvType = env_type_powershell,
         AtFileName = "`@" ++ FileName

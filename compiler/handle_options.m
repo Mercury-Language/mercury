@@ -218,14 +218,16 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
         TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion,
-        MaybeFeedbackInfo, HostEnvType, TargetEnvType, [], CheckErrors, !IO),
+        MaybeFeedbackInfo, HostEnvType, SystemEnvType, TargetEnvType,
+        [], CheckErrors, !IO),
     (
         CheckErrors = [],
         convert_options_to_globals(OptionTable, Target, GC_Method,
             TagsMethod, TermNorm, Term2Norm, TraceLevel,
             TraceSuppress, SSTraceLevel, MaybeThreadSafe, C_CompilerType,
             CSharp_CompilerType, ReuseStrategy,
-            MaybeILVersion, MaybeFeedbackInfo, HostEnvType, TargetEnvType,
+            MaybeILVersion, MaybeFeedbackInfo,
+            HostEnvType, SystemEnvType, TargetEnvType,
             [], Errors, Globals, !IO)
     ;
         CheckErrors = [_ | _],
@@ -239,14 +241,14 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
     trace_suppress_items::out, ssdb_trace_level::out, may_be_thread_safe::out,
     c_compiler_type::out, csharp_compiler_type::out,
     reuse_strategy::out, maybe(il_version_number)::out,
-    maybe(feedback_info)::out, env_type::out, env_type::out,
+    maybe(feedback_info)::out, env_type::out, env_type::out, env_type::out,
     list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
-        HostEnvType, TargetEnvType, !Errors, !IO) :-
+        HostEnvType, SystemEnvType, TargetEnvType, !Errors, !IO) :-
     map.lookup(!.OptionTable, target, Target0),
     (
         Target0 = string(TargetStr),
@@ -575,6 +577,23 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             "\t(must be `posix', `cygwin', `msys' or `windows').",
             !Errors)
     ),
+    map.lookup(!.OptionTable, system_env_type, SystemEnvType0),
+    (
+        SystemEnvType0 = string(SystemEnvTypeStr),
+        ( if SystemEnvTypeStr = "" then
+            SystemEnvTypePrime = HostEnvType
+        else 
+            convert_env_type(SystemEnvTypeStr, SystemEnvTypePrime) 
+        )
+    ->
+        SystemEnvType = SystemEnvTypePrime
+    ;
+        SystemEnvType = env_type_posix,    % dummy
+        add_error(
+            "Invalid argument to option `--system-env-type'\n" ++
+            "\t(must be `posix', `cygwin', `msys' or `windows').",
+            !Errors)
+    ),
     map.lookup(!.OptionTable, target_env_type, TargetEnvType0),
     (
         TargetEnvType0 = string(TargetEnvTypeStr),
@@ -613,14 +632,16 @@ add_error(Error, Errors0, Errors) :-
     trace_suppress_items::in, ssdb_trace_level::in, may_be_thread_safe::in,
     c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in, maybe(il_version_number)::in, maybe(feedback_info)::in,
-    env_type::in, env_type::in, list(string)::in, list(string)::out,
+    env_type::in, env_type::in, env_type::in,
+    list(string)::in, list(string)::out,
     globals::out, io::di, io::uo) is det.
 
 convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
-        HostEnvType, TargetEnvType, !Errors, !:Globals, !IO) :-
+        HostEnvType, SystemEnvType, TargetEnvType,
+        !Errors, !:Globals, !IO) :-
 
     lookup_string_option(OptionTable0, install_command, InstallCmd),
     ( if InstallCmd = "" then
@@ -636,7 +657,8 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
-        HostEnvType, TargetEnvType, FileInstallCmd, !:Globals),
+        HostEnvType, SystemEnvType, TargetEnvType, FileInstallCmd,
+        !:Globals),
 
     globals.lookup_string_option(!.Globals, event_set_file_name,
         EventSetFileName0),

@@ -609,8 +609,8 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
        
         % XXX we should get rid of use_win32 
         ( use_win32 ->
-            get_host_env_type(Globals, HostEnvType),
-            ( HostEnvType = env_type_powershell ->
+            get_system_env_type(Globals, SystemEnvType),
+            ( SystemEnvType = env_type_powershell ->
                 ProcessOutputRedirected = string.append_list(
                     ["Get-Content ", TmpFile, " | ", ProcessOutput,
                         " > ", ProcessedTmpFile, " 2>&1"])
