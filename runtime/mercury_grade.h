@@ -378,6 +378,7 @@
   #define MR_GRADE_OPT_PART_11  MR_GRADE_OPT_PART_10 ".spf"
 #elif defined(MR_BOXED_FLOAT)
   #define MR_GRADE_PART_11      MR_GRADE_PART_10
+  #define MR_GRADE_OPT_PART_11  MR_GRADE_OPT_PART_10
 #else                           /* "ubf" stands for "unboxed float" */
   #define MR_GRADE_PART_11      MR_PASTE2(MR_GRADE_PART_10, _ubf)
   #define MR_GRADE_OPT_PART_11  MR_GRADE_OPT_PART_10
