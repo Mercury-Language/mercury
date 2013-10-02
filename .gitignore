@@ -16,6 +16,7 @@ Mmake.stage.params
 stage1
 stage2
 stage3
+install_grade_dir.*
 Mercury.options
 autom4te.cache
 aclocal.m4

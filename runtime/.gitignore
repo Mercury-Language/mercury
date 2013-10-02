@@ -18,3 +18,4 @@ mercury_method_call_codes.i
 mercury_method_call_declares.i
 mercury_method_call_inits.i
 config.log
+tags
