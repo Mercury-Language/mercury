@@ -14,7 +14,9 @@ This is a bug-fix release.
   asm_fast grades working with GCC 4.8.  (Bug #293)
 * Fix inst for constant type_infos.  (Bug #297)
 * Fix compiler abort during liveness detection.  (Bug #51)
-
+* We have fixed a bug that could crash the compiler when enabling the last
+  call modulo constructor optimisation on the Java and (probably) C#
+  grades.  (Bug #300)
 
 NEWS for Mercury 13.05.1
 ------------------------
