@@ -4,6 +4,9 @@
 *.info-*
 *.html
 *.pdf
+*.pdf_log
+*.ps
+*.ps_log
 *.texi_pp
 *.aux
 *.cp
