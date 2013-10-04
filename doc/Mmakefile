@@ -4,7 +4,7 @@
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-# Mmake - Mmake file for the Mercury documentation.
+# Mmakefile - Mmake file for the Mercury documentation.
 
 MAIN_TARGET=all
 
@@ -333,7 +333,8 @@ library-chapters.texi_pp: ../VERSION $(LIBRARY_DIR)/[a-z]*.m
 	done > library-chapters.texi_pp
 
 library.dvi_log library_toc.html library_1.html mercury_library.info \
-		mercury_library.html mercury_library/index.html: \
+		mercury_library.html mercury_library/index.html \
+		library.dvi : \
 	library-menu.texi_pp library-chapters.texi_pp
 
 #-----------------------------------------------------------------------------#
@@ -456,6 +457,7 @@ clean_local: distclean clean_texi clean_webpage
 .PHONY: distclean
 distclean:
 	rm -f *.aux *.cp *.cps *.fn *.ky *.log *.pg *.toc *.tp *.vr
+	rm -f *.dvi *.dvi_log *.pdf *.pdf_log *.ps *.ps_log
 
 .PHONY: clean_texi
 clean_texi:
@@ -473,7 +475,7 @@ realclean_texi:
 	rm -f library*.html user_guide*.html reference_manual*.html
 	rm -f faq*.html transition_guide*.html
 	rm -f mercury.html mercury.info
-	rm -f mercury_*.info* *.dvi *.text *.ps *.pdf *.dvi_log
+	rm -f mercury_*.info* *.dvi *.text *.ps *.pdf *.dvi_log *.pdf_log
 
 .PHONY: realclean_manpages
 realclean_manpages:
