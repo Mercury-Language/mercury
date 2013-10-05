@@ -452,33 +452,36 @@ webpage.tar.gz:
 
 #-----------------------------------------------------------------------------#
 
-clean_local: distclean clean_texi clean_webpage
+clean_local: clean_texi clean_manpages clean_webpage
 
 .PHONY: distclean
-distclean:
-	rm -f *.aux *.cp *.cps *.fn *.ky *.log *.pg *.toc *.tp *.vr
-	rm -f *.dvi *.dvi_log *.pdf *.pdf_log *.ps *.ps_log
+distclean: clean_local clean_text_files
+
+realclean_local: distclean
 
 .PHONY: clean_texi
 clean_texi:
+	rm -f *.aux *.cp *.cps *.fn *.ky *.log *.pg *.toc *.tp *.vr
+	rm -f *.dvi *.dvi_log *.pdf *.pdf_log *.ps *.ps_log *.text
+	rm -f library*.html user_guide*.html reference_manual*.html
+	rm -f faq*.html transition_guide*.html
+	rm -f mercury.html mercury.info
+	rm -f mercury_*.info*
+	rm -f mercury_faq.html mercury_library.html mercury_ref.html \
+		mercury_trans_guide.html mercury_user_guide.html
+
+.PHONY: clean_text_files
+clean_text_files:
+	rm -f mdb_command_list mdb_command_test.inp mdb_doc
 	rm -f library-menu.texi library-chapters.texi *.texi_pp
+
+.PHONY: clean_manpages
+clean_manpages:
+	rm -f *.1
 
 .PHONY: clean_webpage
 clean_webpage:
 	rm -rf webpage
 	rm -f webpage.tar.gz
-
-realclean_local: realclean_texi realclean_manpages
-
-.PHONY: realclean_texi
-realclean_texi:
-	rm -f library*.html user_guide*.html reference_manual*.html
-	rm -f faq*.html transition_guide*.html
-	rm -f mercury.html mercury.info
-	rm -f mercury_*.info* *.dvi *.text *.ps *.pdf *.dvi_log *.pdf_log
-
-.PHONY: realclean_manpages
-realclean_manpages:
-	rm -f *.1
 
 #-----------------------------------------------------------------------------#
