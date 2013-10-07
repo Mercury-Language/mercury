@@ -748,8 +748,9 @@ MR_lookup_long_lval_base(MR_LongLval locn, MR_Word *saved_regs,
                 printf("long double stackvar%d\n", locn_num);
             }
 #ifdef MR_BOXED_FLOAT
-            value = MR_float_to_word(MR_float_from_dword_ptr(
-                &MR_based_stackvar(base_sp, locn_num + 1)));
+            value = MR_float_to_word(MR_float_from_dword(
+                MR_based_stackvar(base_sp, locn_num + 1),
+                MR_based_stackvar(base_sp, locn_num)));
             *succeeded = MR_TRUE;
 #endif
             break;
@@ -759,8 +760,9 @@ MR_lookup_long_lval_base(MR_LongLval locn, MR_Word *saved_regs,
                 printf("long double framevar%d\n", locn_num);
             }
 #ifdef MR_BOXED_FLOAT
-            value = MR_float_to_word(MR_float_from_dword_ptr(
-                &MR_based_framevar(base_sp, locn_num + 1)));
+            value = MR_float_to_word(MR_float_from_dword(
+                MR_based_framevar(base_curfr, locn_num + 1),
+                MR_based_framevar(base_curfr, locn_num)));
             *succeeded = MR_TRUE;
 #endif
             break;

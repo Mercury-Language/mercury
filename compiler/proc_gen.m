@@ -916,7 +916,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         % Do we need to use a general slot for storing succip?
         CodeModel \= model_non
     ->
-        SuccipSlot = MainSlots + 1,
+        SuccipSlot = maybe_round_frame_size(CI, CodeModel, MainSlots + 1),
         SaveSuccipCode = singleton(
             llds_instr(assign(stackvar(SuccipSlot), lval(succip)),
                 "Save the success ip")
@@ -925,7 +925,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         MaybeSuccipSlot = yes(SuccipSlot)
     ;
         SaveSuccipCode = empty,
-        TotalSlots = MainSlots,
+        TotalSlots = maybe_round_frame_size(CI, CodeModel, MainSlots),
         MaybeSuccipSlot = no
     ),
     get_maybe_trace_info(CI, MaybeTraceInfo),
@@ -975,6 +975,19 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     ),
     EntryCode = StartComment ++ LabelCode ++ AllocCode ++
         SaveSuccipCode ++ TraceFillCode ++ EndComment.
+
+:- func maybe_round_frame_size(code_info, code_model, int) = int.
+
+maybe_round_frame_size(CI, CodeModel, NumSlots0) = NumSlots :-
+    (
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
+        NumSlots = round_det_stack_frame_size(CI, NumSlots0)
+    ;
+        CodeModel = model_non,
+        NumSlots = NumSlots0
+    ).
 
 %---------------------------------------------------------------------------%
 

@@ -39,7 +39,7 @@
 :- type stack_slot
     --->    det_slot(int, stack_slot_width)
     ;       parent_det_slot(int, stack_slot_width)
-    ;       nondet_slot(int, stack_slot_width).
+    ;       nondet_slot(int).
 
 :- type stack_slot_width
     --->    single_width
@@ -56,7 +56,7 @@
     ;       abs_reg(reg_type, int)
     ;       abs_stackvar(int, stack_slot_width)
     ;       abs_parent_stackvar(int, stack_slot_width)
-    ;       abs_framevar(int, stack_slot_width).
+    ;       abs_framevar(int).
 
 :- type abs_follow_vars_map ==  map(prog_var, abs_locn).
 
@@ -332,7 +332,8 @@ explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
         Slot = parent_det_slot(SlotNum, Width),
         StackStr = "parent_sv"
     ;
-        Slot = nondet_slot(SlotNum, Width),
+        Slot = nondet_slot(SlotNum),
+        Width = single_width,
         StackStr = "fv"
     ),
     int_to_string(SlotNum, SlotStr),
@@ -793,7 +794,8 @@ stack_slot_num(StackSlot) = N :-
     ;
         StackSlot = parent_det_slot(N, Width)
     ;
-        StackSlot = nondet_slot(N, Width)
+        StackSlot = nondet_slot(N),
+        Width = single_width
     ),
     (
         Width = single_width
@@ -810,8 +812,8 @@ stack_slot_to_abs_locn(StackSlot) = AbsLocn :-
         StackSlot = parent_det_slot(N, Width),
         AbsLocn = abs_parent_stackvar(N, Width)
     ;
-        StackSlot = nondet_slot(N, Width),
-        AbsLocn = abs_framevar(N, Width)
+        StackSlot = nondet_slot(N),
+        AbsLocn = abs_framevar(N)
     ).
 
 key_stack_slot_to_abs_locn(_, Slot) =
@@ -839,9 +841,9 @@ abs_locn_to_string(Locn, Str, MaybeWidth) :-
         Str = "parent_stackvar" ++ int_to_string(N),
         MaybeWidth = stack_slot_width_to_string(Width)
     ;
-        Locn = abs_framevar(N, Width),
+        Locn = abs_framevar(N),
         Str = "framevar" ++ int_to_string(N),
-        MaybeWidth = stack_slot_width_to_string(Width)
+        MaybeWidth = no
     ).
 
 :- func stack_slot_width_to_string(stack_slot_width) = maybe(string).

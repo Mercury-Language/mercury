@@ -535,9 +535,6 @@ replace_stack_vars_by_parent_sv_lval(Lval0, Lval, !Acc) :-
         ;
             Type = double_parent_stackvar,
             Lval = Lval0
-        ;
-            Type = double_framevar,
-            Lval = Lval0
         )
     ;
         ( Lval0 = reg(_Type, _RegNum)

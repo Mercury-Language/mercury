@@ -523,20 +523,18 @@ output_lval_as_word(Info, Lval, !IO) :-
     double_stack_type::in, int::in, io::di, io::uo) is det.
 
 output_double_stackvar_ptr(Info, StackType, SlotNum, !IO) :-
-    % We take the address of the second slot because our stacks grow downwards,
-    % i.e. &MR_sv(n + 1) < &MR_sv(n).
+    % The higher-numbered slot has the lower address because our stacks grow
+    % downwards.
     (
         StackType = double_stackvar,
         Lval = stackvar(SlotNum + 1)
     ;
         StackType = double_parent_stackvar,
         Lval = parent_stackvar(SlotNum + 1)
-    ;
-        StackType = double_framevar,
-        Lval = framevar(SlotNum + 1)
     ),
-    io.write_string("&", !IO),
-    output_lval(Info, Lval, !IO).
+    io.write_string("MR_dword_ptr(&(", !IO),
+    output_lval(Info, Lval, !IO),
+    io.write_string("))", !IO).
 
     % llds_types_match(DesiredType, ActualType) is true iff
     % a value of type ActualType can be used as a value of
@@ -602,9 +600,6 @@ lval_to_string(double_stackvar(Type, N)) = String :-
     ;
         Type = double_parent_stackvar,
         Macro = "MR_parent_sv"
-    ;
-        Type = double_framevar,
-        Macro = "MR_fv"
     ),
     string.format("%s(%d,%d)", [s(Macro), i(N), i(N + 1)], String).
 
@@ -984,12 +979,19 @@ output_rval(Info, Rval, !IO) :-
                 output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
                 io.write_string(")", !IO)
             ;
-                Op = float_from_dword,
-                consecutive_field_offsets(SubRvalA, SubRvalB, MemRef)
+                Op = float_from_dword
             ->
-                io.write_string("MR_float_from_dword_ptr(", !IO),
-                output_rval(Info, mem_addr(MemRef), !IO),
-                io.write_string(")", !IO)
+                ( is_aligned_dword_ptr(SubRvalA, SubRvalB, MemRef) ->
+                    io.write_string("MR_float_from_dword_ptr(MR_dword_ptr(", !IO),
+                    output_rval(Info, mem_addr(MemRef), !IO),
+                    io.write_string("))", !IO)
+                ;
+                    io.write_string("MR_float_from_dword(", !IO),
+                    output_rval(Info, SubRvalA, !IO),
+                    io.write_string(", ", !IO),
+                    output_rval(Info, SubRvalB, !IO),
+                    io.write_string(")", !IO)
+                )
             ;
                 sorry($module, $pred, "unknown float_macro_binop")
             )
@@ -1100,23 +1102,6 @@ output_rval(Info, Rval, !IO) :-
             ),
             io.write_string(")", !IO)
         )
-    ).
-
-:- pred consecutive_field_offsets(rval::in, rval::in, mem_ref::out) is semidet.
-
-consecutive_field_offsets(lval(LvalA), lval(LvalB), MemRef) :-
-    (
-        LvalA = field(MaybeTag, Address, const(llconst_int(N))),
-        LvalB = field(MaybeTag, Address, const(llconst_int(N + 1))),
-        MemRef = heap_ref(Address, MaybeTag, const(llconst_int(N)))
-    ;
-        LvalA = stackvar(N),
-        LvalB = stackvar(N + 1),
-        MemRef = stackvar_ref(const(llconst_int(N)))
-    ;
-        LvalA = framevar(N),
-        LvalB = framevar(N + 1),
-        MemRef = framevar_ref(const(llconst_int(N)))
     ).
 
 :- pred output_rval_const(llds_out_info::in, rval_const::in,
@@ -1363,6 +1348,22 @@ output_float_rval(Info, Rval, IsPtr, !IO) :-
         io.write_string("MR_float_to_word(", !IO),
         output_rval(Info, Rval, !IO),
         io.write_string(")", !IO)
+    ).
+
+:- pred is_aligned_dword_ptr(rval::in, rval::in, mem_ref::out) is semidet.
+
+is_aligned_dword_ptr(lval(LvalA), lval(LvalB), MemRef) :-
+    (
+        LvalA = stackvar(N),
+        LvalB = stackvar(N + 1),
+        % Double-width variables on the det stack should have been aligned
+        % by the allocator. In a downwards-growing stack the higher slot
+        % number has the lower address.
+        MemRef = stackvar_ref(const(llconst_int(N + 1)))
+    ;
+        LvalA = field(_MaybeTag, _Address, _Offset),
+        % We cannot guarantee that the Address is dword aligned.
+        fail
     ).
 
 output_test_rval(Info, Test, !IO) :-

@@ -113,6 +113,18 @@
     }
   #endif
 
+  #if defined(MR_DEBUG_DWORD_ALIGNMENT) && \
+	(defined(MR_GNUC) || defined(MR_CLANG))
+    #define MR_dword_ptr(ptr)                                               \
+      ({                                                                    \
+          MR_Word __addr = (MR_Word) (ptr);                                 \
+          assert((__addr % 8) == 0);                                        \
+          /* return */ (void *) __addr;                                     \
+      })
+  #else
+    #define MR_dword_ptr(ptr)   ((void *) (ptr))
+  #endif
+
   #define MR_float_from_dword_ptr(ptr)                                      \
         (((union MR_Float_Dword *) (ptr))->f)
 

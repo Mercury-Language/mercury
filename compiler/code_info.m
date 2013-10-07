@@ -689,6 +689,14 @@ init_exprn_opts(Globals) = ExprnOpts :-
         OptFloatRegs = no,
         UseFloatRegs = do_not_use_float_registers
     ),
+    double_width_floats_on_det_stack(Globals, FloatDwords),
+    (
+        FloatDwords = yes,
+        DetStackFloatWidth = double_width
+    ;
+        FloatDwords = no,
+        DetStackFloatWidth = single_width
+    ),
     globals.lookup_bool_option(Globals, static_ground_floats, OptSGFloat),
     (
         OptSGFloat = yes,
@@ -706,8 +714,8 @@ init_exprn_opts(Globals) = ExprnOpts :-
         OptStaticCodeAddr = no,
         StaticCodeAddrs = do_not_have_static_code_addresses
     ),
-    ExprnOpts = exprn_opts(NLG, ASM, UBF, UseFloatRegs, SGCell, SGFloat,
-        StaticCodeAddrs).
+    ExprnOpts = exprn_opts(NLG, ASM, UBF, UseFloatRegs, DetStackFloatWidth,
+        SGCell, SGFloat, StaticCodeAddrs).
 
 :- pred init_maybe_trace_info(trace_level::in, globals::in,
     module_info::in, pred_info::in, proc_info::in, trace_slot_info::out,
@@ -4101,7 +4109,7 @@ record_highest_used_reg(_, AbsLocn, !HighestUsedRegR, !HighestUsedRegF) :-
     ;
         AbsLocn = abs_parent_stackvar(_, _)
     ;
-        AbsLocn = abs_framevar(_, _)
+        AbsLocn = abs_framevar(_)
     ).
 
 acquire_reg(Type, Lval, !CI) :-
@@ -4457,10 +4465,15 @@ generate_resume_layout(Label, ResumeMap, !CI) :-
 :- interface.
 
     % Returns the total stackslot count, but not including space for
-    % succip. This total can change in the future if this call is
-    % followed by further allocations of temp slots.
+    % succip, and without padding for alignment. This total can change in the
+    % future if this call is followed by further allocations of temp slots.
     %
 :- pred get_total_stackslot_count(code_info::in, int::out) is det.
+
+    % If necessary, round up a det stack frame allocation so that the stack
+    % pointer remains on an even word boundary.
+    %
+:- func round_det_stack_frame_size(code_info, int) = int.
 
     % If a stack slot is persistent, then the stack slot is not implicitly
     % released when the code generator resets its location-dependent state,
@@ -4725,6 +4738,17 @@ get_total_stackslot_count(CI, NumSlots) :-
     get_max_temp_slot_count(CI, SlotsForTemps),
     NumSlots = SlotsForVars + SlotsForTemps.
 
+round_det_stack_frame_size(CI, NumSlots) = NumSlotsRoundup :-
+    (
+        odd(NumSlots),
+        get_exprn_opts(CI, ExprnOpts),
+        get_det_stack_float_width(ExprnOpts) = double_width
+    ->
+        NumSlotsRoundup = NumSlots + 1
+    ;
+        NumSlotsRoundup = NumSlots
+    ).
+
 :- pred max_var_slot(stack_slots::in, int::out) is det.
 
 max_var_slot(StackSlots, SlotCount) :-
@@ -4740,7 +4764,8 @@ max_var_slot_2([L | Ls], !Max) :-
     ;
         L = parent_det_slot(N, Width)
     ;
-        L = nondet_slot(N, Width)
+        L = nondet_slot(N),
+        Width = single_width
     ),
     (
         Width = single_width,

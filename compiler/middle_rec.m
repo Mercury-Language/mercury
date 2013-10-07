@@ -298,7 +298,8 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 
     get_next_label(Loop1Label, !CI),
     get_next_label(Loop2Label, !CI),
-    get_total_stackslot_count(!.CI, FrameSize),
+    get_total_stackslot_count(!.CI, FrameSize0),
+    FrameSize = round_det_stack_frame_size(!.CI, FrameSize0),
 
     generate_downloop_test(EntryTestInstrs, Loop1Label, Loop1Test),
 

@@ -282,9 +282,6 @@ dump_lval(_, double_stackvar(Type, N)) = Str :-
     ;
         Type = double_parent_stackvar,
         Macro = "parent_sv"
-    ;
-        Type= double_framevar,
-        Macro = "fv"
     ),
     string.format("%s%d,%s%d", [s(Macro), i(N), s(Macro), i(N + 1)], Str).
 dump_lval(_, succip) = "succip".

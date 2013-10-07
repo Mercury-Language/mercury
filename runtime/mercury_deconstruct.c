@@ -357,7 +357,7 @@ MR_arg_value_uncommon(MR_Word *arg_ptr, const MR_DuArgLocn *arg_locn)
     */
     if (arg_locn->MR_arg_bits == -1) {
 #ifdef MR_BOXED_FLOAT
-        flt = MR_float_from_dword_ptr(arg_ptr);
+        flt = MR_float_from_dword(arg_ptr[0], arg_ptr[1]);
     #ifdef MR_HIGHLEVEL_CODE
         return (MR_Word) MR_box_float(flt);
     #else

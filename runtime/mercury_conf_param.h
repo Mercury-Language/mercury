@@ -433,6 +433,9 @@
 ** MR_STM_DEBUG
 **	Enables low-level debugging messages from the code that implements
 **	transactions used by software transactional memory.
+**
+** MR_DEBUG_DWORD_ALIGNMENT
+**	Enables runtime tests for misaligned double-word pointers.
 */
 
 #ifdef MR_DEEP_PROFILING_DETAIL_DEBUG

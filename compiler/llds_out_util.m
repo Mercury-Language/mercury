@@ -51,6 +51,7 @@
                 lout_profile_memory             :: bool,
                 lout_profile_deep               :: bool,
                 lout_unboxed_float              :: bool,
+                lout_det_stack_dword_alignment  :: bool,
                 lout_static_ground_floats       :: bool,
                 lout_use_macro_for_redo_fail    :: bool,
                 lout_trace_level                :: trace_level,
@@ -127,6 +128,7 @@ init_llds_out_info(ModuleName, Globals,
     globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
     globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
+    double_width_floats_on_det_stack(Globals, DetStackDwordAligment),
     globals.lookup_bool_option(Globals, static_ground_floats,
         StaticGroundFloats),
     globals.lookup_bool_option(Globals, use_macro_for_redo_fail,
@@ -138,8 +140,8 @@ init_llds_out_info(ModuleName, Globals,
         AutoComments, LineNumbers,
         EmitCLoops, GenerateBytecode, LocalThreadEngineBase,
         ProfileCalls, ProfileTime, ProfileMemory, ProfileDeep,
-        UnboxedFloat, StaticGroundFloats, UseMacroForRedoFail,
-        TraceLevel, Globals).
+        UnboxedFloat, DetStackDwordAligment, StaticGroundFloats,
+        UseMacroForRedoFail, TraceLevel, Globals).
 
 output_set_line_num(Info, Context, !IO) :-
     LineNumbers = Info ^ lout_line_numbers,
