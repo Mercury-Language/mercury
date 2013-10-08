@@ -22,6 +22,7 @@ ORDINARY_PROGS=	\
 	bug103 \
 	bug160 \
 	bug240 \
+	bug300 \
 	builtin_inst_rename \
 	c_write_string \
 	calendar_test \

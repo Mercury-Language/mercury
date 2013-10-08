@@ -1,0 +1,3 @@
+[] -> functor(["list", "[]"], [])
+[functor(["single"], [])] -> functor(["list", "[|]"], [functor(["single"], []), functor(["list", "[]"], [])])
+[functor(["1"], []), functor(["2"], []), functor(["3"], [])] -> functor(["list", "[|]"], [functor(["1"], []), functor(["list", "[|]"], [functor(["2"], []), functor(["list", "[|]"], [functor(["3"], []), functor(["list", "[]"], [])])])])

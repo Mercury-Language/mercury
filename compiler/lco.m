@@ -1431,13 +1431,25 @@ lco_transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         (
-            Reason = from_ground_term(_, FGT),
+            Reason = from_ground_term(FGTVar, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
         ->
-            GoalExpr = GoalExpr0,
-            Changed = no
+            (
+                member(FGTVarPair, VarToAddr),
+                FGTVarPair = FGTVar - _
+            ->
+                % We can treat such a scope as an atomic goal, since all we
+                % care about is with either is that it makes the variable
+                % we're interested in ground.
+                lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr,
+                    InstMap0, GoalInfo0, GoalExpr0, GoalExpr, Changed,
+                    !ProcInfo)
+            ;
+                GoalExpr = GoalExpr0,
+                Changed = no
+            )
         ;
             lco_transform_variant_goal(ModuleInfo, VariantMap, VarToAddr,
                 InstMap0, SubGoal0, SubGoal, Changed, !ProcInfo),

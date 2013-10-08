@@ -49,6 +49,7 @@ MCFLAGS-bug142                  = --optimise-higher-order --inline-single-use
 MCFLAGS-bug159                  = -w
 MCFLAGS-bug180                  = --profile-optimized --allow-stubs --no-warn-stubs
 MCFLAGS-bug271                  = --allow-stubs --no-warn-stubs
+MCFLAGS-bug300                  = --optimize-constructor-last-call
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-constraint_prop_bug	= -O0 --common-struct --local-constraint-propagation
 MCFLAGS-csharp_hello		= --no-intermodule-optimization
