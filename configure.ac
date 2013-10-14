@@ -293,9 +293,6 @@ case "$host" in
     mips-sgi-irix5.*)
         AC_MSG_WARN(*** Read README.IRIX-5 before proceeding!)
         ;;
-    *-*-bsdi*)
-        AC_MSG_WARN(*** Read README.BSDI before proceeding!)
-        ;;
 esac
 #-----------------------------------------------------------------------------#
 # MMC_INVOKE_CMD is the the command used to invoke mercury_compile in
@@ -3152,7 +3149,7 @@ fi
 #-----------------------------------------------------------------------------#
 
 # On some systems a prefix is attached to exported symbols.  We need to
-# account for this when check object files for namespace cleanliness.
+# account for this when checking object files for namespace cleanliness.
 
 SYMPREFIX=
 
