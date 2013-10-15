@@ -1,0 +1,104 @@
+#!/bin/bash
+# Copyright (C) 2013 The University of Melbourne
+#
+# This script builds the Mercury source distribution.
+#
+
+set -e
+
+DATE=`date '+%Y-%m-%d'`
+ROTD_VERSION=rotd-$DATE
+RELEASE_VERSION=$ROTD_VERSION
+CC=gcc
+RUN=no
+PARALLEL=1
+
+USAGE="\
+$0 [options]
+Options:
+    -h
+        Output this help message and exit.
+    -r
+        Use a ROTD style version number with today's date (default).
+    -v VER
+        Use VER as the version number.
+    -n
+        Don't update VERSION file.
+    -f
+        Without this option the build_srcdist will not run, it will warn
+        the user that it is destructive and then exit.
+    -j N
+        Run N jobs in parallel.
+    -c CC
+        Use CC as the C compiler.
+"
+
+while getopts "hrv:nc:fj:" OPT; do
+    case "$OPT" in
+        h)
+            echo "$USAGE"
+            exit 0
+            ;;
+        r)
+            RELEASE_VERSION=$ROTD_VERSION
+            ;;
+        v)
+            RELEASE_VERSION=$OPTARG
+            ;;
+        n)
+            RELEASE_VERSION=""
+            ;;
+        c)
+            CC=$OPTARG
+            ;;
+        f)
+            RUN=yes
+            ;;
+        j)
+            PARALLEL=$OPTARG
+            ;;
+        ?)
+            echo "$USAGE"
+            exit 1
+            ;;
+        *)
+            echo "Getopt error \"$OPT\""
+            echo "$USAGE"
+            exit 1
+            ;;
+    esac
+done
+
+if [ "$RUN" = "no" ]; then
+    echo "Warning: This script is destructive, it will 'git clean' your"
+    echo "workspace.  If you're okay with this and want to proceed, then"
+    echo "add -f to the command line"
+    exit 2
+fi
+
+if [ ! -d .git ]; then
+    echo "Error: $0 must be called from the root directory of a Mercury"
+    echo "git workspace."
+    exit 2
+fi
+
+NUM_TAG_BITS=2
+BITS_PER_WORD=32
+UNBOXED_FLOATS=no
+
+# git checkout -- VERSION
+git clean -d -f -x
+if [ -n "$RELEASE_VERSION" ]; then
+    sed "s/VERSION=.*/VERSION=$RELEASE_VERSION/" VERSION > VERSION.new
+    mv VERSION.new VERSION
+fi
+/bin/rm -f Mmake.params Mmake.stage.params
+aclocal -I m4 &&
+autoconf &&
+mercury_cv_low_tag_bits=$NUM_TAG_BITS \
+mercury_cv_bits_per_word=$BITS_PER_WORD \
+mercury_cv_unboxed_floats=$UNBOXED_FLOATS \
+sh configure --with-llds-base-grade=none --with-cc="$CC" &&
+mmake GRADE=hlc.gc.pregen MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling --no-smart-indexing' -j$PARALLEL" tar
+
+
