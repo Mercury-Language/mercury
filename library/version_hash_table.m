@@ -215,11 +215,11 @@
     % Test if two version_hash_tables are equal.  This predicate is used by
     % unifications on the version_hash_table type.
     %
-:- pred equals(version_hash_table(K, V)::in, version_hash_table(K, V)::in)
+:- pred equal(version_hash_table(K, V)::in, version_hash_table(K, V)::in)
     is semidet.
 % This pragma is required because termination analysis can't analyse the use
 % of higher order code.
-:- pragma terminates(equals/2).
+:- pragma terminates(equal/2).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -251,7 +251,7 @@
                 ht_hash_pred            :: hash_pred(K),
                 ht_buckets              :: buckets(K, V)
             )
-    where equality is version_hash_table.equals.
+    where equality is version_hash_table.equal.
 
 :- type buckets(K, V) == version_array(hash_table_alist(K, V)).
 
@@ -858,7 +858,7 @@ fold_p(P, List, !A) :-
 
 %-----------------------------------------------------------------------------%
 
-equals(A, B) :-
+equal(A, B) :-
     ( pointer_equal(A, B) ->
         true
     ;
