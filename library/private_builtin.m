@@ -23,9 +23,9 @@
 % does not get included in the Mercury library reference manual.
 % 
 % Many of the predicates defined in this module are builtin - they do not have
-% definitions because the compiler generates code for them inline. A second
-% group are implemented in the runtime.  Whilst a third group are
-% implemented normally in this module.
+% definitions because the compiler generates code for them inline. Some
+% others are implemented in the runtime. A third group are implemented
+% normally in this module.
 % 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -120,7 +120,7 @@
 :- pred typed_compare(comparison_result::uo, T1::in, T2::in) is det.
 
     % True iff the two terms occupy the same address in memory.  This is
-    % useful as a cheap but incomplete test of equality when implmenting
+    % useful as a cheap but incomplete test of equality when implementing
     % user-defined equality.
     %
 :- pred pointer_equal(T::in, T::in) is semidet.
