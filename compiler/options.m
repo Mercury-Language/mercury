@@ -2905,6 +2905,7 @@ long_option("help",                 help).
 long_option("version",              version).
 long_option("filenames-from-stdin", filenames_from_stdin).
 long_option("fullarch",             fullarch).
+long_option("target-arch",          fullarch).
 long_option("cross-compiling",      cross_compiling).
 long_option("local-module-id",      local_module_id).
 long_option("analysis-file-cache-dir",  analysis_file_cache_dir).

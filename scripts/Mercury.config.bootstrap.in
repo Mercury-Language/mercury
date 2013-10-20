@@ -36,6 +36,7 @@ MERCURY_CSHARP_COMPILER_TYPE=@CSHARP_COMPILER_TYPE@
 MERCURY_CLI_INTERPRETER=@CLI_INTERPRETER@
 MERCURY_ERLANG_COMPILER=@ERLC@
 MERCURY_ERLANG_INTERPRETER=@ERL@
+MERCURY_TARGET_ARCH=@FULLARCH@
 # $(MATH_LIB) needs to be defined because it may
 # be used by the substitution for SHARED_LIBS.
 MATH_LIB=$(MERCURY_MATH_LIB)
@@ -117,7 +118,7 @@ DEFAULT_MCFLAGS=\
 		--shlib-linker-install-name-flag "@SHLIB_INSTALL_NAME_FLAG@" \
 		--linker-allow-undefined-flag "@ALLOW_UNDEFINED@" \
 		--linker-error-undefined-flag "@ERROR_UNDEFINED@" \
-		--fullarch "@FULLARCH@" \
+		--fullarch "$(MERCURY_TARGET_ARCH)" \
 		--install-prefix "@prefix@" \
 		--num-real-r-regs "@NUM_REAL_R_REGS@" \
 		--num-real-r-temps "@NUM_REAL_R_TEMPS@" \
