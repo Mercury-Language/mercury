@@ -39,6 +39,10 @@ This is a bug-fix release.
   call modulo constructor optimisation on the Java and (probably) C#
   grades.  (Bug #300)
 
+Changes to the Mercury standard library:
+
+* Semantic equality predicates are now defined for 2-3-4 trees and maps.
+
 NEWS for Mercury 13.05.1
 ------------------------
 

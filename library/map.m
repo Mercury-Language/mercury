@@ -19,6 +19,14 @@
 % tree234.m.  Virtually all the predicates in this file just
 % forward the work to the corresponding predicate in tree234.m.
 %
+% Note: 2-3-4 trees do not have a canonical representation for any given
+% map.  Therefore, two maps with the same set of key-value pairs may have
+% different internal representations.  This means that two maps with the
+% same set of key-value pairs that may fail to unify and may compare as
+% unequal, for example if items were inserted into one of the maps in a
+% different order.  See map.equal/2 below which can be used to test if two
+% maps have the same set of key-value pairs.
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -48,6 +56,15 @@
     % Check whether a map is empty.
     %
 :- pred map.is_empty(map(_, _)::in) is semidet.
+
+    % True if both maps have the same set of key-value pairs, regardless of
+    % how the maps were constructed.
+    %
+    % Unifying maps does not work as one might expect because the internal
+    % structures of two maps that contain the same set of key-value pairs
+    % may be different.
+    %
+:- pred map.equal(map(K, V)::in, map(K, V)::in) is semidet.
 
     % Check whether map contains key
     %
@@ -803,6 +820,9 @@ map.singleton(K, V) =
 
 map.is_empty(M) :-
     tree234.is_empty(M).
+
+map.equal(MapA, MapB) :-
+    tree234.equal(MapA, MapB).
 
 map.contains(Map, K) :-
     map.search(Map, K, _).

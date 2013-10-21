@@ -1,0 +1,10 @@
+Map1 = Map1: unifiable, equal
+Map1 = Map1Copy: unifiable, equal
+Map1 = Map2: not unifiable, not equal
+Map2 = Map1: not unifiable, not equal
+Map1 = empty: not unifiable, not equal
+empty = Map1: not unifiable, not equal
+empty = empty: unifiable, equal
+empty = copy(empty): unifiable, equal
+Map3 = Map4: not unifiable, equal
+Map4 = Map3: not unifiable, equal

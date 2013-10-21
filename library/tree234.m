@@ -37,6 +37,15 @@
 
 :- pred tree234.is_empty(tree234(K, V)::in) is semidet.
 
+    % True if both trees have the same set of key-value pairs, regardless of
+    % how the trees were constructed.
+    %
+    % Unifying trees does not work as one might expect because the internal
+    % structures of two trees that contain the same set of key-value pairs
+    % may be different.
+    %
+:- pred tree234.equal(tree234(K, V)::in, tree234(K, V)::in) is semidet.
+
 %----------------------%
 
 :- pred tree234.member(tree234(K, V)::in, K::out, V::out) is nondet.
@@ -567,6 +576,7 @@
 :- import_module int.
 :- import_module io.
 :- import_module pair.
+:- import_module private_builtin.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -578,6 +588,13 @@
 :- inst uniq_two(K, V, T)   == unique(two(K, V, T, T)).
 :- inst uniq_three(K, V, T) == unique(three(K, V, K, V, T, T, T)).
 :- inst uniq_four(K, V, T)  == unique(four(K, V, K, V, K, V, T, T, T, T)).
+
+:- inst tree234_nonempty
+    --->    two(ground, ground, ground, ground)
+    ;       three(ground, ground, ground, ground,
+                ground, ground, ground)
+    ;       four(ground, ground, ground, ground, ground, ground,
+                ground, ground, ground, ground).
 
 :- mode uo_two  == out(uniq_two(unique, unique, unique)).
 :- mode suo_two == out(uniq_two(ground, ground, uniq_tree234_gg)).
@@ -606,6 +623,182 @@ tree234.singleton(K, V) = two(K, V, empty, empty).
 
 tree234.is_empty(Tree) :-
     Tree = empty.
+
+equal(TreeA, TreeB) :-
+    % We first try to see if the two trees are identical, since this can
+    % save a large amount of work. If they aren't, then we must compare
+    % their structures. To do this, we use a stack to store the
+    % as-yet-unexplored parts of TreeB in their original order while the
+    % match_tree_against_stack predicate recurses on TreeA.
+    ( pointer_equal(TreeA, TreeB) ->
+        true
+    ;
+        require_complete_switch [TreeB]
+        (
+            TreeB = empty,
+            TreeA = empty
+        ;
+            ( TreeB = two(_, _, _, _)
+            ; TreeB = three(_, _, _, _, _, _, _)
+            ; TreeB = four(_, _, _, _, _, _, _, _, _, _)
+            ),
+            StackB0 = [TreeB],
+            match_tree_against_stack(TreeA, StackB0, StackB),
+            % Note that StackB can never contain empty trees (see the
+            % comment on match_tree_against_stack) therefore testing that
+            % the whole of TreeB has been matched is trivial.
+            StackB = []
+        )
+    ).
+
+    % match_tree_against_stack(SubtreeA, StackB0, StackB),
+    %
+    % True if the key-value pairs of SubtreeA match the key-value pairs of
+    % the subtrees in StackB0, StackB contains any subtrees from StackB0
+    % that were not matched.
+    %
+    % StackB0 can never contain an empty node because:
+    %  + match_tree_against_stack/3's caller will never put an empty node in
+    %    StackB0.
+    %  + match_tree_against_stack/3 and it's callees will never put an empty
+    %    node on the stack.  Arbitrary nodes are checked before they're
+    %    placed on the stack and other nodes are constructed deliberately.
+    % The inst subtyping on these arguments enforces this.
+    %
+:- pred match_tree_against_stack(tree234(K, V)::in,
+    list(tree234(K, V))::in(list(tree234_nonempty)),
+    list(tree234(K, V))::out(list(tree234_nonempty))) is semidet.
+
+match_tree_against_stack(SubtreeA, !StackB) :-
+    (
+        !.StackB = [LeftmostSubtreeB | !:StackB],
+        pointer_equal(SubtreeA, LeftmostSubtreeB)
+    ->
+        true
+    ;
+        require_complete_switch [SubtreeA]
+        (
+            SubtreeA = empty
+        ;
+            SubtreeA = two(K, V, Left, Right),
+            match_tree_against_stack(Left, !StackB),
+            match_kv_against_stack(K, V, !StackB),
+            match_tree_against_stack(Right, !StackB)
+        ;
+            SubtreeA = three(K1, V1, K2, V2, Left, Middle, Right),
+            match_tree_against_stack(Left, !StackB),
+            match_kv_against_stack(K1, V1, !StackB),
+            match_tree_against_stack(Middle, !StackB),
+            match_kv_against_stack(K2, V2, !StackB),
+            match_tree_against_stack(Right, !StackB)
+        ;
+            SubtreeA = four(K1, V1, K2, V2, K3, V3,
+                Left, MidLeft, MidRight, Right),
+            match_tree_against_stack(Left, !StackB),
+            match_kv_against_stack(K1, V1, !StackB),
+            match_tree_against_stack(MidLeft, !StackB),
+            match_kv_against_stack(K2, V2, !StackB),
+            match_tree_against_stack(MidRight, !StackB),
+            match_kv_against_stack(K3, V3, !StackB),
+            match_tree_against_stack(Right, !StackB)
+        )
+    ).
+
+    % match_kv_against_stack(KA, VA, !StackB)
+    %
+    % Match a key-value pair against the leftmost key-value pair in the
+    % stack of subtrees.  The first item on the stack is the leftmost
+    % subtree.  The matched key-value pair is removed from the stack.
+    %
+:- pred match_kv_against_stack(K::in, V::in,
+    list(tree234(K, V))::in(list(tree234_nonempty)),
+    list(tree234(K, V))::out(list(tree234_nonempty))) is semidet.
+
+match_kv_against_stack(KA, VA, !StackB) :-
+    !.StackB = [LeftmostB | !:StackB],
+    match_kv_against_subtree_and_stack(KA, VA, LeftmostB, !StackB).
+
+    % match_kv_against_subtree_and_stack(KA, VA, LeftmostB, !StackB)
+    %
+    % Like match_kv_against_stack/4 except that LeftmostB is the subtree to
+    % the left of !.StackB.
+    %
+:- pred match_kv_against_subtree_and_stack(K::in, V::in,
+    tree234(K, V)::in(tree234_nonempty),
+    list(tree234(K, V))::in(list(tree234_nonempty)),
+    list(tree234(K, V))::out(list(tree234_nonempty))) is semidet.
+
+match_kv_against_subtree_and_stack(KA, VA, LeftmostB, !StackB) :-
+    require_complete_switch [LeftmostB]
+    (
+        LeftmostB = two(KB1, VB1, Left, Right),
+        require_complete_switch [Left]
+        (
+            Left = empty,
+            % Try to match the items.
+            KA = KB1,
+            VA = VB1,
+            % Update stack and return.
+            ( Right \= empty ->
+                !:StackB = [Right | !.StackB]
+            ;
+                true
+            )
+        ;
+            ( Left = two(_, _, _, _)
+            ; Left = three(_, _, _, _, _, _, _)
+            ; Left = four(_, _, _, _, _, _, _, _, _, _)
+            ),
+            % Break up this node and recurse
+            !:StackB = [two(KB1, VB1, empty, Right) | !.StackB],
+            match_kv_against_subtree_and_stack(KA, VA, Left, !StackB)
+        )
+    ;
+        LeftmostB = three(KB1, VB1, KB2, VB2, Left, Middle, Right),
+        % This case has the same structure as the one above.
+
+        require_complete_switch [Left]
+        (
+            Left = empty,
+            KA = KB1,
+            VA = VB1,
+
+            % We've eliminated Left and VB1-VB2, so we can build a two node
+            % from the rest of the three node.
+            !:StackB = [two(KB2, VB2, Middle, Right) | !.StackB]
+        ;
+            ( Left = two(_, _, _, _)
+            ; Left = three(_, _, _, _, _, _, _)
+            ; Left = four(_, _, _, _, _, _, _, _, _, _)
+            ),
+            !:StackB = [three(KB1, VB1, KB2, VB2, empty, Middle, Right) |
+                !.StackB],
+            % Pull the leftmost node out and try to match on it.
+            match_kv_against_subtree_and_stack(KA, VA, Left, !StackB)
+        )
+    ;
+        LeftmostB = four(KB1, VB1, KB2, VB2, KB3, VB3,
+            Left, MidLeft, MidRight, Right),
+        % This case has the same structure as the previous two cases.
+
+        require_complete_switch [Left]
+        (
+            Left = empty,
+            KA = KB1,
+            VA = VB1,
+            !:StackB = [three(KB2, VB2, KB3, VB3, MidLeft, MidRight, Right) |
+                !.StackB]
+        ;
+            ( Left = two(_, _, _, _)
+            ; Left = three(_, _, _, _, _, _, _)
+            ; Left = four(_, _, _, _, _, _, _, _, _, _)
+            ),
+            !:StackB = [four(KB1, VB1, KB2, VB2, KB3, VB3,
+                    empty, MidLeft, MidRight, Right)
+                | !.StackB],
+            match_kv_against_subtree_and_stack(KA, VA, Left, !StackB)
+        )
+    ).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -3143,7 +3336,7 @@ tree234.keys_and_values_acc(three(K0, V0, K1, V1, T0, T1, T2),
     !:Values = [V0 | !.Values],
     tree234.keys_and_values_acc(T0, !Keys, !Values).
 tree234.keys_and_values_acc(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
-        !Keys, !Values) :- 
+        !Keys, !Values) :-
     tree234.keys_and_values_acc(T3, !Keys, !Values),
     !:Keys = [K2 | !.Keys],
     !:Values = [V2 | !.Values],

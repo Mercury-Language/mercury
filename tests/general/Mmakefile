@@ -37,6 +37,7 @@ ORDINARY_PROGS=	\
 		io_regression \
 		liveness \
 		liveness2 \
+		map_equal \
 		mode_inf \
 		mode_inf_bug \
 		mode_inference_reorder \
