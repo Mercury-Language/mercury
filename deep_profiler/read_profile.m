@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: read_call_graph.m.
+% File: read_profile.m.
 % Authors: conway, zs.
 %
 % This module contains code for reading in a deep profiling data file.
