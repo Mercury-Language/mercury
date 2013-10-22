@@ -71,7 +71,8 @@ main(!IO) :-
     --->    help
     ;       dim_x
     ;       dim_y
-    ;       dependent_conjunctions.
+    ;       dependent_conjunctions
+    ;       parallel.
 
 :- pred short_options(char::in, option::out) is semidet.
 
@@ -80,11 +81,13 @@ short_options('?', help).
 short_options('x', dim_x).
 short_options('y', dim_y).
 short_options('d', dependent_conjunctions).
+short_options('p', parallel).
 
 :- pred long_options(string::in, option::out) is semidet.
 
 long_options("help", help).
 long_options("dependent_conjunctions", dependent_conjunctions).
+long_options("parallel", parallel).
 
 :- pred default_options(option::out, option_data::out) is multi.
 
@@ -92,17 +95,23 @@ default_options(help,                   bool(no)).
 default_options(dim_x,                  maybe_int(no)).
 default_options(dim_y,                  maybe_int(no)).
 default_options(dependent_conjunctions, bool(no)).
+default_options(parallel,               bool(no)).
 
 :- type options
     --->    options(
                 opts_dim_x              :: int,
                 opts_dim_y              :: int,
-                opts_use_dep_conjs      :: use_dependent_conjunctions
+                opts_use_dep_conjs      :: use_dependent_conjunctions,
+                opts_parallel           :: parallel
             ).
 
 :- type use_dependent_conjunctions
     --->    use_dependent_conjunctions
     ;       use_independent_conjunctions.
+
+:- type parallel
+    --->    parallel
+    ;       sequential.
 
 :- pred process_options(option_table(option)::in, maybe_error(options)::out)
     is det.
@@ -116,7 +125,15 @@ process_options(Table, MaybeOptions) :-
         DepConjsBool = no,
         DepConjs = use_independent_conjunctions
     ),
-    
+    getopt.lookup_bool_option(Table, parallel, ParallelBool),
+    (
+        ParallelBool = yes,
+        Parallel = parallel
+    ;
+        ParallelBool = no,
+        Parallel = sequential
+    ),
+
     getopt.lookup_maybe_int_option(Table, dim_x, MaybeX),
     getopt.lookup_maybe_int_option(Table, dim_y, MaybeY),
     (
@@ -128,7 +145,7 @@ process_options(Table, MaybeOptions) :-
             MaybeY = no,
             dimension(DimX, DimY)
         ),
-        MaybeOptions = ok(options(DimX, DimY, DepConjs))
+        MaybeOptions = ok(options(DimX, DimY, DepConjs, Parallel))
     ;
         (
             MaybeX = yes(_),
@@ -154,7 +171,7 @@ usage(!IO) :-
 :- pred real_main(options::in, io::di, io::uo) is det.
 
 real_main(Options, !IO) :-
-    Options = options(DimX, DimY, _),
+    Options = options(DimX, DimY, _, _),
     viewport(StartX, StartY, Length, Height),
     StepX = Length / float(DimX),
     StepY = Height / float(DimY),
@@ -175,25 +192,34 @@ draw_rows(Options, StartY, StepY, DimY, StartX, StepX, DimX, Rows) :-
     pos_list(StartY, StepY, DimY, Ys),
     pos_list(StartX, StepX, DimX, Xs),
     DepConjs = Options ^ opts_use_dep_conjs,
+    Parallel = Options ^ opts_parallel,
     (
         DepConjs = use_dependent_conjunctions,
-        draw_rows_dep(Xs, Ys, Rows)
+        draw_rows_dep(Parallel, Xs, Ys, Rows)
     ;
         DepConjs = use_independent_conjunctions,
-        draw_rows_indep(Xs, Ys, Rows)
+        draw_rows_indep(Parallel, Xs, Ys, Rows)
     ).
 
-:- pred draw_rows_dep(list(float)::in, list(float)::in, cord(colour)::out)
-    is det.
+:- pred draw_rows_dep(parallel::in, list(float)::in, list(float)::in,
+    cord(colour)::out) is det.
 
-draw_rows_dep(Xs, Ys, Rows) :-
+draw_rows_dep(sequential, Xs, Ys, Rows) :-
     map_foldl(draw_row(Xs), append_row, Ys, empty, Rows).
+draw_rows_dep(parallel, Xs, Ys, Rows) :-
+    map_foldl_par(draw_row(Xs), append_row, Ys, empty, Rows).
 
-:- pred draw_rows_indep(list(float)::in, list(float)::in, cord(colour)::out) 
-    is det.
+:- pred draw_rows_indep(parallel::in, list(float)::in, list(float)::in,
+    cord(colour)::out) is det.
 
-draw_rows_indep(Xs, Ys, Rows) :-
-    my_map(draw_row(Xs), Ys, RowList),
+draw_rows_indep(Parallel, Xs, Ys, Rows) :-
+    (
+        Parallel = sequential,
+        my_map(draw_row(Xs), Ys, RowList)
+    ;
+        Parallel = parallel,
+        my_map_par(draw_row(Xs), Ys, RowList)
+    ),
     foldl(append_row, RowList, empty, Rows).
 
 :- pred append_row(cord(X)::in, cord(X)::in, cord(X)::out) is det.
@@ -281,11 +307,21 @@ pos_list(Cur, Step, Num, List) :-
 
 map_foldl(_, _, [], !Acc).
 map_foldl(M, F, [X | Xs], !Acc) :-
+    M(X, Y),
+    F(Y, !Acc),
+    map_foldl(M, F, Xs, !Acc).
+
+:- pred map_foldl_par(pred(X, Y), pred(Y, A, A), list(X), A, A).
+:- mode map_foldl_par(pred(in, out) is det, pred(in, in, out) is det,
+    in, in, out) is det.
+
+map_foldl_par(_, _, [], !Acc).
+map_foldl_par(M, F, [X | Xs], !Acc) :-
     (
         M(X, Y),
         F(Y, !Acc)
-    ,
-        map_foldl(M, F, Xs, !Acc)
+    &
+        map_foldl_par(M, F, Xs, !Acc)
     ).
 
 :- pred my_map(pred(X, Y), list(X), list(Y)).
@@ -295,6 +331,14 @@ my_map(_, [], []).
 my_map(M, [X | Xs], [Y | Ys]) :-
     M(X, Y),
     my_map(M, Xs, Ys).
+
+:- pred my_map_par(pred(X, Y), list(X), list(Y)).
+:- mode my_map_par(pred(in, out) is det, in, out) is det.
+
+my_map_par(_, [], []).
+my_map_par(M, [X | Xs], [Y | Ys]) :-
+    M(X, Y) &
+    my_map_par(M, Xs, Ys).
 
 %----------------------------------------------------------------------------%
 
