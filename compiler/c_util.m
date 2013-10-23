@@ -160,7 +160,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % output_c_file_intro_and_grade(SourceFileName, Version):
+    % output_c_file_intro_and_grade(SourceFileName, Version, Fullarch, !IO):
     %
     % Outputs a comment which includes the settings used to generate
     % the C file. This is used by configure to check the any existing C files
@@ -169,7 +169,7 @@
     % version name of the mercury compiler.
     %
 :- pred output_c_file_intro_and_grade(globals::in, string::in, string::in,
-    io::di, io::uo) is det.
+    string::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -659,7 +659,8 @@ binop_category_string(float_from_dword, float_macro_binop,
 
 %-----------------------------------------------------------------------------%
 
-output_c_file_intro_and_grade(Globals, SourceFileName, Version, !IO) :-
+output_c_file_intro_and_grade(Globals, SourceFileName, Version, Fullarch,
+        !IO) :-
     globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
     string.int_to_string(NumTagBits, NumTagBitsStr),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
@@ -673,7 +674,8 @@ output_c_file_intro_and_grade(Globals, SourceFileName, Version, !IO) :-
         "/*\n",
         "** Automatically generated from `", SourceFileName, "'\n",
         "** by the Mercury compiler,\n",
-        "** version ", Version, ".\n",
+        "** version ", Version, "\n",
+        "** configured for ", Fullarch, ".\n",
         "** Do not edit.\n",
         "**\n",
         "** The autoconfigured grade settings governing\n",

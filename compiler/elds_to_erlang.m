@@ -170,12 +170,13 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
 :- pred output_do_no_edit_comment(string::in, io::di, io::uo) is det.
 
 output_do_no_edit_comment(SourceFileName, !IO) :-
-    library.version(Version),
+    library.version(Version, Fullarch),
     io.write_strings([
         "%\n",
         "% Automatically generated from `", SourceFileName, "'\n",
         "% by the Mercury compiler,\n",
-        "% version ", Version, ".\n",
+        "% version ", Version, "\n",
+        "% configured for ", Fullarch, ".\n",
         "% Do not edit.\n",
         "%\n",
         "\n"

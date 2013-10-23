@@ -640,11 +640,12 @@ mlds_output_src_end(Indent, ModuleName, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_auto_gen_comment(Opts, ModuleName, !IO) :-
-    library.version(Version),
+    library.version(Version, Fullarch),
     Globals = Opts ^ m2co_all_globals,
     module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
         SourceFileName, !IO),
-    output_c_file_intro_and_grade(Globals, SourceFileName, Version, !IO),
+    output_c_file_intro_and_grade(Globals, SourceFileName, Version,
+        Fullarch, !IO),
     io.nl(!IO).
 
     % Output a reference to the mangled grade name for the grade that the C

@@ -119,14 +119,13 @@ output_csharp_code(Globals, MLDS, !IO) :-
 %-----------------------------------------------------------------------------%
 
 output_src_start(ModuleName, !IO) :-
-    library.version(Version),
+    library.version(Version, Fullarch),
     io.write_strings(
         ["//\n// Automatically generated from `",
         sym_name_to_string(ModuleName),
         ".m' by the\n",
-        "// Mercury compiler, version ",
-        Version,
-        ".\n",
+        "// Mercury compiler, version ", Version, ",\n",
+        "// configured for ", Fullarch, ".\n",
         "// Do not edit.\n",
         "\n\n"], !IO).
 

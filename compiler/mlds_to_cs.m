@@ -849,7 +849,7 @@ output_src_end(Indent, ModuleName, !IO) :-
     io::di, io::uo) is det.
 
 output_auto_gen_comment(Globals, ModuleName, !IO)  :-
-    library.version(Version),
+    library.version(Version, Fullarch),
     module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
         SourceFileName, !IO),
     io.write_string("//\n//\n// Automatically generated from ", !IO),
@@ -857,6 +857,9 @@ output_auto_gen_comment(Globals, ModuleName, !IO)  :-
     io.write_string(" by the Mercury Compiler,\n", !IO),
     io.write_string("// version ", !IO),
     io.write_string(Version, !IO),
+    io.nl(!IO),
+    io.write_string("// configured for ", !IO),
+    io.write_string(Fullarch, !IO),
     io.nl(!IO),
     io.write_string("//\n", !IO),
     io.write_string("//\n", !IO),

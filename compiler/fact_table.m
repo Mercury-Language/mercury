@@ -567,11 +567,12 @@ report_type_error(Context, ArgNum, RemainingTerms, PredOrFunc, !Errors) :-
 :- func fact_table_file_header(string) = string.
 
 fact_table_file_header(FileName) = FileHeader :-
-    library.version(Version),
+    library.version(Version, Fullarch),
     string.append_list(
         ["/*\n",
         "** Automatically generated from `", FileName, "'\n",
-        "** by the Mercury compiler, version ", Version, "\n",
+        "** by the Mercury compiler, version ", Version, ",\n",
+        "** configured for ", Fullarch, ".\n",
         "** Do not edit.\n",
         "*/\n",
         "\n",

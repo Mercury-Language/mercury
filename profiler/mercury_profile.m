@@ -105,9 +105,9 @@ usage_error(ErrorMessage, !IO) :-
 usage(!IO) :-
     io.progname_base("mprof", ProgName, !IO),
     io.stderr_stream(StdErr, !IO),
-    library.version(Version),
+    library.version(Version, Fullarch),
     io.write_strings(StdErr, [
-        "Mercury Profiler, version ", Version, "\n",
+        "Mercury Profiler, version ", Version, ", on ", Fullarch, ".\n",
         "Copyright (C) 1995-2014 The University of Melbourne\n",
             "Usage: ", ProgName, " [<options>] [<files>]\n",
             "Use `", ProgName, " --help' for more information.\n"
@@ -117,9 +117,9 @@ usage(!IO) :-
 
 long_usage(!IO) :-
     io.progname_base("mprof", ProgName, !IO),
-    library.version(Version),
+    library.version(Version, Fullarch),
     io.write_strings([
-        "Mercury Profiler, version ", Version, "\n",
+        "Mercury Profiler, version ", Version, ", on ", Fullarch, ".\n",
         "Copyright (C) 1995-2014 The University of Melbourne\n\n",
             "Usage: ", ProgName, "[<options>] [<files>]\n",
         "\n",

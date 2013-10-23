@@ -2563,9 +2563,9 @@ usage_errors(Errors, !IO) :-
     usage(!IO).
 
 display_compiler_version(!IO) :-
-    library.version(Version),
+    library.version(Version, Fullarch),
     io.write_strings([
-        "Mercury Compiler, version ", Version, "\n",
+        "Mercury Compiler, version ", Version, ", on ", Fullarch, "\n",
         "Copyright (C) 1993-2014 The University of Melbourne\n"
     ], !IO).
 
@@ -2592,9 +2592,9 @@ long_usage(!IO) :-
     % long_usage is called from only one place, so can't print duplicate
     % copies of the long usage message. We can print both a short and along
     % usage message, but there is no simple way to avoid that.
-    library.version(Version),
+    library.version(Version, Fullarch),
     io.write_strings(["Name: mmc -- Melbourne Mercury Compiler, version ",
-        Version, "\n"], !IO),
+        Version, ", on ", Fullarch, "\n"], !IO),
     io.write_string("Copyright: Copyright (C) 1993-2014 " ++
         "The University of Melbourne\n", !IO),
     io.write_string("Usage: mmc [<options>] <arguments>\n", !IO),

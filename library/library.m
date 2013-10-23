@@ -17,7 +17,9 @@
 :- module library.
 :- interface.
 
-:- pred library.version(string::out) is det.
+    % version(VersionString, FullarchString)
+    %
+:- pred library.version(string::out, string::out) is det.
 
 :- implementation.
 
@@ -163,42 +165,44 @@
 % We can't allow library.version to inlined into other modules.  The Erlang
 % definition depends on erlang_conf.hrl, which will only be included by this
 % module and not installed.
-:- pragma no_inline(library.version/1).
+:- pragma no_inline(library.version/2).
 
 :- pragma foreign_proc("C",
-    library.version(Version::out),
+    library.version(Version::out, Fullarch::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
-    MR_ConstString version_string =
-        MR_VERSION "", configured for "" MR_FULLARCH;
+    MR_ConstString version_string = MR_VERSION;
+    MR_ConstString fullarch_string = MR_FULLARCH;
     /*
     ** Cast away const needed here, because Mercury declares Version
     ** with type MR_String rather than MR_ConstString.
     */
     Version = (MR_String) (MR_Word) version_string;
+    Fullarch = (MR_String) (MR_Word) fullarch_string;
 ").
 
 :- pragma foreign_proc("C#",
-    library.version(Version::out),
+    library.version(Version::out, Fullarch::out),
     [will_not_call_mercury, promise_pure],
 "
-    Version = runtime.Constants.MR_VERSION + "" configured for ""
-        + runtime.Constants.MR_FULLARCH;
+    Version = runtime.Constants.MR_VERSIONi;
+    Fullarch = runtime.Constants.MR_FULLARCH;
 ").
 
 :- pragma foreign_proc("Java",
-    library.version(Version::out),
+    library.version(Version::out, Fullarch::out),
     [will_not_call_mercury, promise_pure],
 "
-    Version = jmercury.runtime.Constants.MR_VERSION + "" configured for ""
-        + jmercury.runtime.Constants.MR_FULLARCH;
+    Version = jmercury.runtime.Constants.MR_VERSION;
+    Fullarch = jmercury.runtime.Constants.MR_FULLARCH;
 ").
 
 :- pragma foreign_proc("Erlang",
-    library.version(Version::out),
+    library.version(Version::out, Fullarch::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Version = << ?MR_VERSION "" configured for "" ?MR_FULLARCH >>
+    Version = MR_VERSION
+    Fullarch = MR_FULLARCH
 ").
 
 %---------------------------------------------------------------------------%

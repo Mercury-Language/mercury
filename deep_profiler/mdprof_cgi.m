@@ -225,12 +225,10 @@ mdprof_cgi_progname = "mdprof_cgi".
 :- pred write_version_message(string::in, io::di, io::uo) is det.
 
 write_version_message(ProgName, !IO) :-
-    library.version(Version),
-    io.write_string(ProgName, !IO),
-    io.write_string(": Mercury deep profiler", !IO),
-    io.nl(!IO),
-    io.write_string(Version, !IO),
-    io.nl(!IO).
+    library.version(Version, Fullarch),
+    io.format("%s: Mercury deep profiler\n", [s(ProgName)], !IO),
+    io.format("version: %s, on %s.\n",
+        [s(Version), s(Fullarch)], !IO).
 
 :- pred write_help_message(string::in, io::di, io::uo) is det.
 

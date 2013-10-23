@@ -294,9 +294,10 @@ write_help_message(ProgName, !IO) :-
 :- pred write_version_message(string::in, io::di, io::uo) is det.
 
 write_version_message(ProgName, !IO) :-
-    library.version(Version),
-    io.format("%s: Mercury deep profiler\n%s\n",
-        [s(ProgName), s(Version)], !IO).
+    library.version(Version, Fullarch),
+    io.format("%s: Mercury deep profiler\n", [s(ProgName)], !IO),
+    io.format("version %s, on %s.\n",
+        [s(Version), s(Fullarch)], !IO).
 
     % Read a deep profiling data file.
     %
