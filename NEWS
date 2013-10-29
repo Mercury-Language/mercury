@@ -17,6 +17,9 @@ This is a bug-fix release.
 * We have fixed a bug that could crash the compiler when enabling the last
   call modulo constructor optimisation on the Java and (probably) C#
   grades.  (Bug #300)
+* Respect memory alignment requirements for doubles.  (Bug #299)
+* Fix incorrect handling of deconstructions in pass for float registers
+  support.  (Bug #301)
 
 Changes to the Mercury standard library:
 
