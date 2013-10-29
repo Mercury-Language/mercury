@@ -794,7 +794,7 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
         inst_expand(ModuleInfo, CellVarInst0, CellVarInst),
         (
             get_arg_insts(CellVarInst, ConsId, Arity, ArgInsts),
-            list.map_corresponding(uni_mode_set_rhs_final_inst,
+            list.map_corresponding(uni_mode_set_rhs_final_inst(ModuleInfo),
                 ArgInsts, UniModes0, UniModes),
             UniModes \= UniModes0
         ->
@@ -993,12 +993,20 @@ rebuild_cell_bound_inst_arg(InstMap, Var, ArgInst0, ArgInst) :-
         ArgInst = VarInst
     ).
 
-:- pred uni_mode_set_rhs_final_inst(mer_inst::in, uni_mode::in, uni_mode::out)
-    is det.
+:- pred uni_mode_set_rhs_final_inst(module_info::in, mer_inst::in,
+    uni_mode::in, uni_mode::out) is det.
 
-uni_mode_set_rhs_final_inst(RF, UniMode0, UniMode) :-
-    UniMode0 = ((LI - RI0) -> (LF - _RF0)),
-    UniMode = ((LI - RI0) -> (LF - RF)).
+uni_mode_set_rhs_final_inst(ModuleInfo, ArgInst, UniMode0, UniMode) :-
+    UniMode0 = ((LI - RI) -> (LF - RF)),
+    % Only when deconstructing to produce the right variable.
+    (
+        inst_is_free(ModuleInfo, RI),
+        inst_is_bound(ModuleInfo, RF)
+    ->
+        UniMode = ((LI - RI) -> (LF - ArgInst))
+    ;
+        UniMode = UniMode0
+    ).
 
 %-----------------------------------------------------------------------------%
 
