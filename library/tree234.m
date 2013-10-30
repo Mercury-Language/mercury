@@ -576,7 +576,6 @@
 :- import_module int.
 :- import_module io.
 :- import_module pair.
-:- import_module private_builtin.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -630,7 +629,7 @@ equal(TreeA, TreeB) :-
     % their structures. To do this, we use a stack to store the
     % as-yet-unexplored parts of TreeB in their original order while the
     % match_tree_against_stack predicate recurses on TreeA.
-    ( pointer_equal(TreeA, TreeB) ->
+    ( private_builtin.pointer_equal(TreeA, TreeB) ->
         true
     ;
         require_complete_switch [TreeB]
@@ -672,7 +671,7 @@ equal(TreeA, TreeB) :-
 match_tree_against_stack(SubtreeA, !StackB) :-
     (
         !.StackB = [LeftmostSubtreeB | !:StackB],
-        pointer_equal(SubtreeA, LeftmostSubtreeB)
+        private_builtin.pointer_equal(SubtreeA, LeftmostSubtreeB)
     ->
         true
     ;
