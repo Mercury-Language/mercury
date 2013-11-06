@@ -18,6 +18,8 @@ Changes to the Mercury standard library:
 * We have added the following functions to the map module: det_min_key/1
   and det_max_key/1.
 
+* We have added the following predicates to the list module: foldr2/6 and
+  foldr3/8.
 
 NEWS for Mercury 13.05.2
 ------------------------

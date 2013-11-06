@@ -766,27 +766,7 @@
 
 :- func list.foldl(func(L, A) = A, list(L), A) = A.
 
-    % list.foldr(Pred, List, Start, End) calls Pred with each
-    % element of List (working right-to-left) and an accumulator
-    % (with the initial value of Start), and returns the final
-    % value in End.
-    %
-:- pred list.foldr(pred(L, A, A), list(L), A, A).
-:- mode list.foldr(pred(in, in, out) is det, in, in, out) is det.
-:- mode list.foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode list.foldr(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode list.foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode list.foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode list.foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode list.foldr(pred(in, in, out) is multi, in, in, out) is multi.
-:- mode list.foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode list.foldr(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode list.foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode list.foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
-
-:- func list.foldr(func(L, A) = A, list(L), A) = A.
-
-    % list.foldl2(Pred, List, !Acc1, !Acc2)
+    % list.foldl2(Pred, List, !Acc1, !Acc2):
     % Does the same job as list.foldl, but with two accumulators.
     % (Although no more expressive than list.foldl, this is often
     % a more convenient format, and a little more efficient).
@@ -819,7 +799,7 @@
 :- mode list.foldl2(pred(in, di, uo, di, uo) is cc_multi,
     in, di, uo, di, uo) is cc_multi.
 
-    % list.foldl3(Pred, List, !Acc1, !Acc2, !Acc3)
+    % list.foldl3(Pred, List, !Acc1, !Acc2, !Acc3):
     % Does the same job as list.foldl, but with three accumulators.
     % (Although no more expressive than list.foldl, this is often
     % a more convenient format, and a little more efficient).
@@ -847,7 +827,7 @@
 :- mode list.foldl3(pred(in, in, out, in, out, di, uo) is cc_multi,
     in, in, out, in, out, di, uo) is cc_multi.
 
-    % list.foldl4(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4)
+    % list.foldl4(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4):
     % Does the same job as list.foldl, but with four accumulators.
     % (Although no more expressive than list.foldl, this is often
     % a more convenient format, and a little more efficient).
@@ -875,7 +855,7 @@
 :- mode list.foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is nondet,
     in, in, out, in, out, in, out, mdi, muo) is nondet.
 
-    % list.foldl5(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5)
+    % list.foldl5(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5):
     % Does the same job as list.foldl, but with five accumulators.
     % (Although no more expressive than list.foldl, this is often
     % a more convenient format, and a little more efficient).
@@ -913,7 +893,7 @@
     is cc_multi,
     in, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
 
-    % list.foldl6(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6)
+    % list.foldl6(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6):
     % Does the same job as list.foldl, but with six accumulators.
     % (Although no more expressive than list.foldl, this is often
     % a more convenient format, and a little more efficient).
@@ -947,7 +927,73 @@
 :- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     in, out) is nondet,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
-    
+
+    % list.foldr(Pred, List, Start, End) calls Pred with each
+    % element of List (working right-to-left) and an accumulator
+    % (with the initial value of Start), and returns the final
+    % value in End.
+    %
+:- pred list.foldr(pred(L, A, A), list(L), A, A).
+:- mode list.foldr(pred(in, in, out) is det, in, in, out) is det.
+:- mode list.foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode list.foldr(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode list.foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode list.foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode list.foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode list.foldr(pred(in, in, out) is multi, in, in, out) is multi.
+:- mode list.foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode list.foldr(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
+:- mode list.foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode list.foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+
+:- func list.foldr(func(L, A) = A, list(L), A) = A.
+
+    % list.foldr2(Pred, List, !Acc1, !Acc2):
+    % Does the same job as list.foldr, but with two accumulators.
+    % (Although no more expressive than list.foldl, this is often
+    % a more convenient format, and a little more efficient).
+    %
+:- pred list.foldr2(pred(L, A, A, B, B), list(L), A, A, B, B).
+:- mode list.foldr2(pred(in, in, out, in, out) is det, in, in, out,
+    in, out) is det.
+:- mode list.foldr2(pred(in, in, out, mdi, muo) is det, in, in, out,
+    mdi, muo) is det.
+:- mode list.foldr2(pred(in, in, out, di, uo) is det, in, in, out,
+    di, uo) is det.
+:- mode list.foldr2(pred(in, in, out, in, out) is semidet, in, in, out,
+    in, out) is semidet.
+:- mode list.foldr2(pred(in, in, out, mdi, muo) is semidet, in, in, out,
+    mdi, muo) is semidet.
+:- mode list.foldr2(pred(in, in, out, di, uo) is semidet, in, in, out,
+    di, uo) is semidet.
+:- mode list.foldr2(pred(in, in, out, in, out) is nondet, in, in, out,
+    in, out) is nondet.
+:- mode list.foldr2(pred(in, in, out, mdi, muo) is nondet, in, in, out,
+    mdi, muo) is nondet.
+
+    % list.foldr3(Pred, List, !Acc1, !Acc2, !Acc3):
+    % Does the same job as list.foldr, but with two accumulators.
+    % (Although no more expressive than list.foldl, this is often
+    % a more convenient format, and a little more efficient).
+    %
+:- pred list.foldr3(pred(L, A, A, B, B, C, C), list(L), A, A, B, B, C, C).
+:- mode list.foldr3(pred(in, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out) is det.
+:- mode list.foldr3(pred(in, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, mdi, muo) is det.
+:- mode list.foldr3(pred(in, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, di, uo) is det.
+:- mode list.foldr3(pred(in, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out) is semidet.
+:- mode list.foldr3(pred(in, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, mdi, muo) is semidet.
+:- mode list.foldr3(pred(in, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, di, uo) is semidet.
+:- mode list.foldr3(pred(in, in, out, in, out, in, out) is nondet, in,
+    in, out, in, out, in, out) is nondet.
+:- mode list.foldr3(pred(in, in, out, in, out, mdi, muo) is nondet, in,
+    in, out, in, out, mdi, muo) is nondet.
+
     % list.foldl_corresponding(P, As, Bs, !Acc):
     % Does the same job as list.foldl, but works on two lists in
     % parallel.  An exception is raised if the list arguments differ
@@ -2751,6 +2797,16 @@ list.foldr(_, [], !A).
 list.foldr(P, [H | T], !A) :-
     list.foldr(P, T, !A),
     P(H, !A).
+
+list.foldr2(_, [], !A, !B).
+list.foldr2(P, [H | T], !A, !B) :-
+    list.foldr2(P, T, !A, !B),
+    P(H, !A, !B).
+
+list.foldr3(_, [], !A, !B, !C).
+list.foldr3(P, [H | T], !A, !B, !C) :-
+    list.foldr3(P, T, !A, !B, !C),
+    P(H, !A, !B, !C).
 
 list.all_true(_P, []).
 list.all_true(P, [X | Xs]) :-
