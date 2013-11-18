@@ -40,12 +40,25 @@
 :- func pqueue.init = pqueue(K, V).
 :- pred pqueue.init(pqueue(K, V)::out) is det.
 
+    % Test if a priority queue is empty.
+    %
+:- pred pqueue.is_empty(pqueue(K,V)::in) is semidet.
+
     % Insert a value V with key K into a priority queue
     % and return the new priority queue.
     %
 :- func pqueue.insert(pqueue(K, V), K, V) = pqueue(K, V).
 :- pred pqueue.insert(K::in, V::in, pqueue(K, V)::in, pqueue(K, V)::out)
     is det.
+
+    % Extract the smallest item from the priority queue without removing it.
+    % Fails if the priority queue is empty.
+    %
+:- pred pqueue.peek(pqueue(K, V)::in, V::out) is semidet.
+
+    % As above, but calls error/1 if the priority queue is empty.
+:- func pqueue.det_peek(pqueue(K, V)) = V.
+:- pred pqueue.det_peek(pqueue(K, V)::in, V::out) is det.
 
     % Remove the smallest item from the priority queue.
     % Fails if the priority queue is empty.
@@ -56,6 +69,12 @@
     % As above, but calls error/1 if the priority queue is empty.
     %
 :- pred pqueue.det_remove(K::out, V::out, pqueue(K, V)::in, pqueue(K, V)::out)
+    is det.
+
+    % Merges all the entries of one priority queue with another, returning the
+    % merged list.
+:- func pqueue.merge(pqueue(K, V), pqueue(K, V)) = pqueue(K, V).
+:- pred pqueue.merge(pqueue(K, V)::in, pqueue(K, V)::in, pqueue(K, V)::out)
     is det.
 
     % Extract all the items from a priority queue by repeated
@@ -106,6 +125,26 @@ pqueue.init(empty).
 
 %---------------------------------------------------------------------------%
 
+pqueue.is_empty(empty).
+
+%---------------------------------------------------------------------------%
+
+pqueue.peek(pqueue(_, _, V, _, _), V).
+
+%---------------------------------------------------------------------------%
+
+pqueue.det_peek(PQ) = V :-
+    pqueue.det_peek(PQ, V).
+
+pqueue.det_peek(PQ, V) :-
+    ( pqueue.peek(PQ, T) ->
+        V = T
+    ;
+        error("pqueue.det_peek/2: empty priority queue")
+    ).
+
+%---------------------------------------------------------------------------%
+
 pqueue.insert(!.PQ, K, V) = !:PQ :-
     pqueue.insert(K, V, !PQ).
 
@@ -150,7 +189,7 @@ pqueue.det_remove(K, V, !PQ) :-
         V = V0
       else
         error("pqueue.det_remove/4: empty priority queue")
-    ). 
+    ).
 
 pqueue.remove(K, V, pqueue(_, K, V, L0, R0), PQ) :-
     pqueue.remove_2(L0, R0, PQ).
@@ -174,6 +213,18 @@ pqueue.remove_2(pqueue(D0, K0, V0, L0, R0), pqueue(D1, K1, V1, L1, R1), PQ) :-
         pqueue.remove_2(L1, R1, PQ1),
         PQ = pqueue(D, K1, V1, PQ1, pqueue(D0, K0, V0, L0, R0))
     ).
+
+%---------------------------------------------------------------------------%
+
+pqueue.merge(PQ1, PQ2) = PQ3 :-
+    pqueue.merge(PQ1, PQ2, PQ3).
+
+pqueue.merge(empty,                 PQ2,               PQ2).
+pqueue.merge(PQ1@pqueue(_,_,_,_,_), empty,             PQ1).
+pqueue.merge(PQ1@pqueue(_,_,_,_,_), pqueue(_,K,V,L,R), PQ3) :-
+    pqueue.merge(PQ1, L, IPQ1),
+    pqueue.merge(IPQ1, R, IPQ2),
+    pqueue.insert(K, V, IPQ2, PQ3).
 
 %---------------------------------------------------------------------------%
 
