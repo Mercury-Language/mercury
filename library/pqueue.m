@@ -70,9 +70,7 @@
     %
 :- pred pqueue.det_peek(pqueue(K, V)::in, K::out, V::out) is det.
 :- func pqueue.det_peek_key(pqueue(K, V)) = K.
-:- pred pqueue.det_peek_key(pqueue(K, V)::in, K::out) is det.
 :- func pqueue.det_peek_value(pqueue(K, V)) = V.
-:- pred pqueue.det_peek_value(pqueue(K, V)::in, V::out) is det.
 
     % Remove the smallest item from the priority queue.
     % Fails if the priority queue is empty.
@@ -82,8 +80,8 @@
 
     % As above, but calls error/1 if the priority queue is empty.
     %
-:- pred pqueue.det_remove(K::out, V::out,
-                          pqueue(K, V)::in, pqueue(K, V)::out) is det.
+:- pred pqueue.det_remove(K::out, V::out, pqueue(K, V)::in, pqueue(K, V)::out)
+    is det.
 
     % Merges all the entries of one priority queue with another, returning
     % the merged list.
@@ -102,8 +100,8 @@
     % into a priority queue.
     %
 :- func pqueue.assoc_list_to_pqueue(assoc_list(K, V)) = pqueue(K, V).
-:- pred pqueue.assoc_list_to_pqueue(assoc_list(K, V)::in,
-                                    pqueue(K, V)::out) is det.
+:- pred pqueue.assoc_list_to_pqueue(assoc_list(K, V)::in, pqueue(K, V)::out)
+    is det.
 
     % A synonym for pqueue.assoc_list_to_pqueue/1.
     %
@@ -145,9 +143,7 @@ pqueue.is_empty(empty).
 %---------------------------------------------------------------------------%
 
 pqueue.peek(pqueue(_, K, V, _, _), K, V).
-
 pqueue.peek_key(pqueue(_, K, _, _, _), K).
-
 pqueue.peek_value(pqueue(_, _, V, _, _), V).
 
 %---------------------------------------------------------------------------%
@@ -159,11 +155,8 @@ pqueue.det_peek(PQ, K, V) :-
         unexpected($file, $pred, "empty priority queue")
     ).
 
-pqueue.det_peek_key(PQ) = K :- pqueue.det_peek_key(PQ, K).
-pqueue.det_peek_key(PQ, K)  :- pqueue.det_peek(PQ, K, _).
-
-pqueue.det_peek_value(PQ) = V :- pqueue.det_peek_value(PQ, V).
-pqueue.det_peek_value(PQ, V)  :- pqueue.det_peek(PQ, _, V).
+pqueue.det_peek_key(PQ) = K :- pqueue.det_peek(PQ, K, _).
+pqueue.det_peek_value(PQ) = V :- pqueue.det_peek(PQ, _, V).
 
 %---------------------------------------------------------------------------%
 
@@ -216,14 +209,13 @@ pqueue.det_remove(K, V, !PQ) :-
 pqueue.remove(K, V, pqueue(_, K, V, L0, R0), PQ) :-
     pqueue.remove_2(L0, R0, PQ).
 
-:- pred pqueue.remove_2(pqueue(K, V)::in, pqueue(K, V)::in,
-                        pqueue(K, V)::out) is det.
+:- pred pqueue.remove_2(pqueue(K, V)::in, pqueue(K, V)::in, pqueue(K, V)::out)
+    is det.
 
 pqueue.remove_2(empty, empty, empty).
 pqueue.remove_2(empty, pqueue(D, K, V, L, R), pqueue(D, K, V, L, R)).
 pqueue.remove_2(pqueue(D, K, V, L, R), empty, pqueue(D, K, V, L, R)).
-pqueue.remove_2(pqueue(D0, K0, V0, L0, R0), pqueue(D1, K1, V1, L1, R1),
-                PQ) :-
+pqueue.remove_2(pqueue(D0, K0, V0, L0, R0), pqueue(D1, K1, V1, L1, R1), PQ) :-
     compare(CMP, K0, K1),
     ( CMP = (<) ->
         D0M1 = D0 - 1,
@@ -248,8 +240,8 @@ pqueue.merge(A, B, C) :-
   ;
       pqueue.merge2(B, A, C) ).
 
-:- pred pqueue.merge2(pqueue(K, V)::in, pqueue(K, V)::in,
-                      pqueue(K, V)::out) is det.
+:- pred pqueue.merge2(pqueue(K, V)::in, pqueue(K, V)::in, pqueue(K, V)::out)
+    is det.
 
 pqueue.merge2(empty,                   B,     B).
 pqueue.merge2(A@pqueue(_, _, _, _, _), empty, A).
