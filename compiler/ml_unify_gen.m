@@ -1024,7 +1024,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName, Tag, MaybeTag,
 ml_gen_field_take_address_assigns([], _, _, _, _, _, []).
 ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         CellLval, CellType, MaybeTag, Context, Info, [Assign | Assigns]) :-
-    TakeAddrInfo = take_addr_info(AddrVar, Offset, ConsArgType, FieldType),
+    TakeAddrInfo = take_addr_info(AddrVar, Offset, _ConsArgType, FieldType),
 
     ml_gen_info_get_module_info(Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
@@ -1042,7 +1042,9 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
             ml_field_offset(ml_const(mlconst_int(OffsetInt))),
             FieldType, CellType)),
         ml_gen_var(Info, AddrVar, AddrLval),
-        CastSourceRval = ml_unop(cast(mlds_ptr_type(ConsArgType)), SourceRval),
+        ml_variable_type(Info, AddrVar, AddrVarType),
+        MLDS_AddrVarType = mercury_type_to_mlds_type(ModuleInfo, AddrVarType),
+        CastSourceRval = ml_unop(cast(MLDS_AddrVarType), SourceRval),
         Assign = ml_gen_assign(AddrLval, CastSourceRval, Context)
     ;
         HighLevelData = yes,
