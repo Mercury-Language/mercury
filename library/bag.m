@@ -243,6 +243,33 @@
 :- pred bag.subset_compare(comparison_result::out, bag(T)::in, bag(T)::in)
     is semidet.
 
+    % Perform a traversal of the bag, applying an accumulator predicate
+    % to each value - count pair.
+    %
+:- pred bag.foldl(pred(T, int, A, A), bag(T), A, A).
+:- mode bag.foldl(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode bag.foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode bag.foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode bag.foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode bag.foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode bag.foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
+
+    % As above, but with two accumulators.
+    %
+:- pred bag.foldl2(pred(T, int, A, A, B, B), bag(T), A, A, B, B).
+:- mode bag.foldl2(pred(in, in, in, out, in, out) is det, in, in, out,
+    in, out) is det.
+:- mode bag.foldl2(pred(in, in, in, out, mdi, muo) is det, in, in, out,
+    mdi, muo) is det.
+:- mode bag.foldl2(pred(in, in, in, out, di, uo) is det, in, in, out,
+    di, uo) is det.
+:- mode bag.foldl2(pred(in, in, in, out, in, out) is semidet, in, in, out,
+    in, out) is semidet.
+:- mode bag.foldl2(pred(in, in, in, out, mdi, muo) is semidet, in, in, out,
+    mdi, muo) is semidet.
+:- mode bag.foldl2(pred(in, in, in, out, di, uo) is semidet, in, in, out,
+    di, uo) is semidet.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -626,6 +653,14 @@ bag.subset_compare(Res, bag(A), bag(B)) :-
             Res = (<)
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+bag.foldl(Pred, bag(Bag), !Acc) :-
+    map.foldl(Pred, Bag, !Acc).
+
+bag.foldl2(Pred, bag(Bag), !Acc1, !Acc2) :-
+    map.foldl2(Pred, Bag, !Acc1, !Acc2).
 
 %-----------------------------------------------------------------------------%
 :- end_module bag.

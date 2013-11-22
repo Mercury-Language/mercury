@@ -21,6 +21,13 @@ Changes to the Mercury standard library:
 * We have added the following predicates to the list module: foldr2/6 and
   foldr3/8.
 
+* We have added the following predicates to the bag module: foldl/4 and
+  foldl2/6.
+
+* We have added the following predicate to the assoc_list module:
+  foldl2_values/6.
+
+
 NEWS for Mercury 13.05.2
 ------------------------
 
