@@ -10,13 +10,13 @@ Using the MinGW port of GCC you can build a Mercury compiler that can generate
 executables that will run natively on Windows without the need for a support
 environment like Cygwin.  Using the standard MinGW version of GCC will result
 in a Mercury compiler that generates 32-bit executables.  To build a Mercury
-compiler that generates 64-bit executables for Windows you will need to
-use the MinGW64 port of GCC.
+compiler that generates 64-bit executables for Windows you will need to use the
+MinGW64 port of GCC.
 
 NOTE: a Unix like environment is required to build and install the Mercury
-compiler.  MSYS or Cygwin can be used for this purpose.  A Unix like environment
-is only required for installing Mercury, you do *not* require one to use
-Mercury once it is installed.
+compiler.  MSYS or Cygwin can be used for this purpose.  A Unix like
+environment is only required for installing Mercury, you do *not* require one
+to use Mercury once it is installed.
 
 -----------------------------------------------------------------------------
 

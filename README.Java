@@ -95,6 +95,23 @@ Java compiler, but we haven't tried that yet.
 
 -----------------------------------------------------------------------------
 
+BUILDING THE JAVA GRADE ON WINDOWS
+
+When building the Java grade on Windows it sometimes possible for the fully
+qualified names of some generated files to exceed the maximum path length.
+If this occurs the Mercury compiler will abort with a message like:
+
+   Uncaught Mercury exception:
+   Software Error: parse_tree.module_cmds: predicate \
+   `parse_tree.module_cmds.list_class_files_for_jar'/6: \
+   Unexpected: io.file_type failed: No such file or directory
+
+In this case all that can (currently) be done is to reduce the length of the
+build path, for example by shifting the build directory closer to the root of
+the file system (e.g. C:\mercury).
+
+-----------------------------------------------------------------------------
+
 BUILDING THE MERCURY COMPILER IN THE JAVA GRADE
 
 Building the Mercury compiler and other related tools in the Java grade
