@@ -1738,6 +1738,10 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ->
         globals.set_option(optimize_constructor_last_call, bool(no),
             !Globals),
+        % Term size profiling breaks the assumption that even word offsets from
+        % the start of the cell are double-word aligned memory addresses.
+        globals.set_option(allow_double_word_fields, bool(no),
+            !Globals),
         (
             HighLevelCode = yes,
             add_error("term size profiling is incompatible "

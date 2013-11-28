@@ -1697,8 +1697,6 @@ select_trace_return(LocnInfo) :-
         Lval = framevar(_)
     ;
         Lval = double_stackvar(double_stackvar, _)
-    ;
-        Lval = double_stackvar(double_framevar, _)
     ).
 
     % Given a list of layout_var_infos, put the ones that tracing can be
@@ -2269,9 +2267,6 @@ represent_lval(double_stackvar(StackType, Num), Word) :-
     ;
         StackType = double_parent_stackvar,
         make_tagged_word(lval_double_parent_stackvar, Num, Word)
-    ;
-        StackType = double_framevar,
-        make_tagged_word(lval_double_framevar, Num, Word)
     ).
 represent_lval(succip, Word) :-
     make_tagged_word(lval_succip, 0, Word).
@@ -2361,7 +2356,7 @@ locn_type_code(lval_sp,              11).
 locn_type_code(lval_parent_sp,       11).    % XXX placeholder only
 locn_type_code(lval_double_stackvar, 13).
 locn_type_code(lval_double_parent_stackvar, 13). % XXX placeholder only
-locn_type_code(lval_double_framevar, 14).
+locn_type_code(lval_double_framevar, 14).    % unused now
 locn_type_code(lval_indirect,        15).
 
     % This number of tag bits must be able to encode all values of

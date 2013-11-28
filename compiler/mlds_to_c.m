@@ -1575,7 +1575,7 @@ mlds_output_scalar_cell_group_struct_field(Opts, Indent, FieldType,
         Num, Num + 1, !IO) :-
     mlds_indent(Indent, !IO),
     ( FieldType = mlds_native_float_type ->
-        % Ensure float structure members are word-aligned.
+        % Ensure float structure members are word-aligned (not double-aligned).
         io.write_string("MR_Float_Aligned", !IO)
     ;
         mlds_output_type_prefix(Opts, FieldType, !IO)
@@ -4507,12 +4507,11 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         ),
         (
             Op = float_from_dword,
-            consecutive_field_offsets(X, Y)
+            is_aligned_dword_field(X, Y, PtrRval)
         ->
             % gcc produces faster code in this case.
-            io.write_string("MR_float_from_dword_ptr", !IO),
-            io.write_string("(&(", !IO),
-            mlds_output_rval(Opts, X, !IO),
+            io.write_string("MR_float_from_dword_ptr(MR_dword_ptr(", !IO),
+            mlds_output_rval(Opts, PtrRval, !IO),
             io.write_string("))", !IO)
         ;
             io.write_string(OpStr, !IO),
@@ -4523,14 +4522,6 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
             io.write_string(")", !IO)
         )
     ).
-
-:- pred consecutive_field_offsets(mlds_rval::in, mlds_rval::in) is semidet.
-
-consecutive_field_offsets(X, Y) :-
-    X = ml_lval(ml_field(Tag, Addr, FieldIdX, Type, PtrType)),
-    Y = ml_lval(ml_field(Tag, Addr, FieldIdY, Type, PtrType)),
-    FieldIdX = ml_field_offset(ml_const(mlconst_int(Offset))),
-    FieldIdY = ml_field_offset(ml_const(mlconst_int(Offset + 1))).
 
 :- pred mlds_output_rval_const(mlds_to_c_opts::in, mlds_rval_const::in,
     io::di, io::uo) is det.
@@ -4625,6 +4616,16 @@ mlds_output_float_bits(Opts, Float, !IO) :-
         String = float64_bits_string(Float)
     ),
     io.format("%s /* float-bits: %g */", [s(String), f(Float)], !IO).
+
+:- pred is_aligned_dword_field(mlds_rval::in, mlds_rval::in, mlds_rval::out)
+    is semidet.
+
+is_aligned_dword_field(X, Y, ml_mem_addr(Lval)) :-
+    X = ml_lval(ml_field(Tag, Addr, FieldIdX, Type, PtrType) @ Lval),
+    Y = ml_lval(ml_field(Tag, Addr, FieldIdY, Type, PtrType)),
+    FieldIdX = ml_field_offset(ml_const(mlconst_int(Offset))),
+    FieldIdY = ml_field_offset(ml_const(mlconst_int(Offset + 1))),
+    int.even(Offset).
 
 %-----------------------------------------------------------------------------%
 

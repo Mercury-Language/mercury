@@ -333,6 +333,10 @@
 
 :- pred get_any_intermod(globals::in, bool::out) is det.
 
+    % Check if we may store double-width floats on the det stack.
+    %
+:- pred double_width_floats_on_det_stack(globals::in, bool::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred globals_init_mutables(globals::in, io::di, io::uo) is det.
@@ -823,6 +827,23 @@ get_any_intermod(Globals, AnyIntermod) :-
     lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     lookup_bool_option(Globals, intermodule_analysis, IntermodAnalysis),
     AnyIntermod = bool.or(IntermodOpt, IntermodAnalysis).
+
+double_width_floats_on_det_stack(Globals, FloatDwords) :-
+    globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
+    globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
+    ( TargetWordBits = 64 ->
+        FloatDwords = no
+    ; TargetWordBits = 32 ->
+        (
+            SinglePrecFloat = yes,
+            FloatDwords = no
+        ;
+            SinglePrecFloat = no,
+            FloatDwords = yes
+        )
+    ;
+        unexpected($module, $pred, "bits_per_word not 32 or 64")
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -218,7 +218,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module pair.
-:- import_module private_builtin.
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
@@ -837,7 +836,7 @@ fold_p(P, List, !A) :-
 %-----------------------------------------------------------------------------%
 
 equal(A, B) :-
-    ( pointer_equal(A, B) ->
+    ( private_builtin.pointer_equal(A, B) ->
         true
     ;
         % We cannot deconstruct a non-cononical type in this all-solutions

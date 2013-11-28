@@ -9,25 +9,25 @@
 #ifndef MERCURY_FLOAT_H
 #define MERCURY_FLOAT_H
 
-#include "mercury_conf.h"	/* for MR_BOXED_FLOAT, MR_CONSERVATIVE_GC */
-#include "mercury_types.h"	/* for `MR_Word' */
-#include "mercury_std.h"	/* for `MR_bool' */
+#include "mercury_conf.h"       /* for MR_BOXED_FLOAT, MR_CONSERVATIVE_GC */
+#include "mercury_types.h"      /* for `MR_Word' */
+#include "mercury_std.h"        /* for `MR_bool' */
 
 #ifdef MR_USE_SINGLE_PREC_FLOAT
   typedef float MR_Float;
-  #define MR_FLT_MIN_PRECISION	7
-  #define MR_FLT_FMT		"%f"
+  #define MR_FLT_MIN_PRECISION  7
+  #define MR_FLT_FMT            "%f"
   /* We assume that sizeof(float) <= sizeof(MR_Word). */
   #undef MR_BOXED_FLOAT
 #else
   typedef double MR_Float;
-  #define MR_FLT_MIN_PRECISION	15
-  #define MR_FLT_FMT		"%lf"
+  #define MR_FLT_MIN_PRECISION  15
+  #define MR_FLT_FMT            "%lf"
 #endif
-#define MR_FLT_MAX_PRECISION	(MR_FLT_MIN_PRECISION + 2)
+#define MR_FLT_MAX_PRECISION    (MR_FLT_MIN_PRECISION + 2)
 
-#define MR_FLOAT_WORDS		((sizeof(MR_Float) + sizeof(MR_Word) - 1) \
-					/ sizeof(MR_Word))
+#define MR_FLOAT_WORDS          ((sizeof(MR_Float) + sizeof(MR_Word) - 1) \
+                                        / sizeof(MR_Word))
 
   /*
   ** MR_Float_Aligned and #pragma pack are used convince the C compiler to lay
@@ -46,60 +46,60 @@
   typedef MR_Float MR_Float_Aligned;
 #endif
 
-#ifdef MR_BOXED_FLOAT 
+#ifdef MR_BOXED_FLOAT
 
-#define MR_word_to_float(w)	(* (MR_Float *) (w))
+  #define MR_word_to_float(w)   (* (MR_Float *) (w))
 
-#ifdef MR_CONSERVATIVE_GC
-  #define MR_float_to_word(f)                                               \
-    (                                                                       \
-	MR_hp_alloc_atomic_msg(MR_FLOAT_WORDS,                              \
-	    (MR_AllocSiteInfoPtr) MR_ALLOC_SITE_FLOAT, NULL),               \
-	* (MR_Float *) (void *) (MR_hp - MR_FLOAT_WORDS) = (f),             \
-	/* return */ (MR_Word) (MR_hp - MR_FLOAT_WORDS)                     \
-    )
-  #define MR_make_hp_float_aligned() ((void)0)
-#else
-  /*
-  ** We need to ensure that what we allocated on the heap is properly
-  ** aligned for a floating-point value, by rounding MR_hp up to the
-  ** nearest float-aligned boundary.
-  ** XXX This code assumes that sizeof(MR_Float) is a power of two,
-  ** and not greater than 2 * sizeof(MR_Word).
-  */
-  #define MR_make_hp_float_aligned()                                        \
-    ( (MR_Word) MR_hp & (sizeof(MR_Float) - 1) ?                            \
-	MR_hp_alloc_atomic_msg(1, MR_ALLOC_SITE_FLOAT, NULL)                \
-    :                                                                       \
-	(void)0                                                             \
-    )
-  #define MR_float_to_word(f)                                               \
-    (                                                                       \
-	MR_make_hp_float_aligned(),                                         \
-	MR_hp_alloc_atomic_msg(MR_FLOAT_WORDS, MR_ALLOC_SITE_FLOAT, NULL),  \
-	* (MR_Float *) (void *)(MR_hp - MR_FLOAT_WORDS) = (f),              \
-	/* return */ (MR_Word) (MR_hp - MR_FLOAT_WORDS)                     \
-    )
-#endif
+  #ifdef MR_CONSERVATIVE_GC
+    #define MR_float_to_word(f)                                             \
+      (                                                                     \
+        MR_hp_alloc_atomic_msg(MR_FLOAT_WORDS,                              \
+            (MR_AllocSiteInfoPtr) MR_ALLOC_SITE_FLOAT, NULL),               \
+        * (MR_Float *) (void *) (MR_hp - MR_FLOAT_WORDS) = (f),             \
+        /* return */ (MR_Word) (MR_hp - MR_FLOAT_WORDS)                     \
+      )
+    #define MR_make_hp_float_aligned() ((void)0)
+  #else
+    /*
+    ** We need to ensure that what we allocated on the heap is properly
+    ** aligned for a floating-point value, by rounding MR_hp up to the
+    ** nearest float-aligned boundary.
+    ** XXX This code assumes that sizeof(MR_Float) is a power of two,
+    ** and not greater than 2 * sizeof(MR_Word).
+    */
+    #define MR_make_hp_float_aligned()                                      \
+      ( (MR_Word) MR_hp & (sizeof(MR_Float) - 1) ?                          \
+            MR_hp_alloc_atomic_msg(1, MR_ALLOC_SITE_FLOAT, NULL)            \
+      :                                                                     \
+            (void)0                                                         \
+      )
+    #define MR_float_to_word(f)                                             \
+      (                                                                     \
+        MR_make_hp_float_aligned(),                                         \
+        MR_hp_alloc_atomic_msg(MR_FLOAT_WORDS, MR_ALLOC_SITE_FLOAT, NULL),  \
+        * (MR_Float *) (void *)(MR_hp - MR_FLOAT_WORDS) = (f),              \
+        /* return */ (MR_Word) (MR_hp - MR_FLOAT_WORDS)                     \
+      )
+  #endif
 
-#ifdef MR_GNUC
-  #define MR_float_const(f) ({ static const MR_Float d = f; (MR_Word) &d; })
-#else
-  #define MR_float_const(f) MR_float_to_word(f)	/* inefficient */
-#endif
+  #ifdef MR_GNUC
+    #define MR_float_const(f) ({ static const MR_Float d = f; (MR_Word) &d; })
+  #else
+    #define MR_float_const(f) MR_float_to_word(f)   /* inefficient */
+  #endif
 
   /*
   ** MR_BOXED_FLOAT is never defined if using single-precision floats,
   ** so MR_Float must be double.
   */
   union MR_Float_Dword {
-	MR_Float f;
-	MR_Word	w[2];
+        MR_Float f;
+        MR_Word w[2];
   };
-   
+
   #if defined(MR_GNUC) || defined(MR_CLANG)
     #define MR_float_word_bits(F, I)                                        \
-      (((union MR_Float_Dword) (MR_Float) (F)).w[(I)])
+        (((union MR_Float_Dword) (MR_Float) (F)).w[(I)])
   #else
     MR_EXTERN_INLINE MR_Word
     MR_float_word_bits(MR_Float f, MR_Integer n);
@@ -107,22 +107,34 @@
     MR_EXTERN_INLINE MR_Word
     MR_float_word_bits(MR_Float f, MR_Integer n)
     {
-       union MR_Float_Dword __ffdw;
-       __ffdw.f = f;
-       return __ffdw.w[n];
+        union MR_Float_Dword __ffdw;
+        __ffdw.f = f;
+        return __ffdw.w[n];
     }
   #endif
 
+  #if defined(MR_DEBUG_DWORD_ALIGNMENT) && \
+	(defined(MR_GNUC) || defined(MR_CLANG))
+    #define MR_dword_ptr(ptr)                                               \
+      ({                                                                    \
+          MR_Word __addr = (MR_Word) (ptr);                                 \
+          assert((__addr % 8) == 0);                                        \
+          /* return */ (void *) __addr;                                     \
+      })
+  #else
+    #define MR_dword_ptr(ptr)   ((void *) (ptr))
+  #endif
+
   #define MR_float_from_dword_ptr(ptr)                                      \
-    (((union MR_Float_Dword *) (ptr))->f)
+        (((union MR_Float_Dword *) (ptr))->f)
 
   #if defined(MR_GNUC) || defined(MR_CLANG)
     #define MR_float_from_dword(w0, w1)                                     \
       ({                                                                    \
-	union MR_Float_Dword __ffdw;                                        \
-	__ffdw.w[0] = (MR_Word) (w0);                                       \
-	__ffdw.w[1] = (MR_Word) (w1);                                       \
-	__ffdw.f;                                                           \
+        union MR_Float_Dword __ffdw;                                        \
+        __ffdw.w[0] = (MR_Word) (w0);                                       \
+        __ffdw.w[1] = (MR_Word) (w1);                                       \
+        __ffdw.f;                                                           \
       })
   #else
     MR_EXTERN_INLINE MR_Float
@@ -131,10 +143,10 @@
     MR_EXTERN_INLINE MR_Float
     MR_float_from_dword(MR_Word w0, MR_Word w1)
     {
-	union MR_Float_Dword __ffdw;
-	__ffdw.w[0] = (MR_Word) (w0);
-	__ffdw.w[1] = (MR_Word) (w1);
-	return __ffdw.f;
+        union MR_Float_Dword __ffdw;
+        __ffdw.w[0] = (MR_Word) (w0);
+        __ffdw.w[1] = (MR_Word) (w1);
+        return __ffdw.f;
     }
   #endif
 
@@ -145,8 +157,8 @@
   #define MR_make_hp_float_aligned() ((void)0)
 
   union MR_Float_Word {
-	MR_Float f;
-	MR_Word w;
+        MR_Float f;
+        MR_Word w;
   };
 
   #define MR_float_const(f) MR_float_to_word(f)
@@ -155,16 +167,16 @@
 
     /* GNU C allows you to cast to a union type */
     #define MR_float_to_word(f) (__extension__ \
-				((union MR_Float_Word)(MR_Float)(f)).w)
+                                ((union MR_Float_Word)(MR_Float)(f)).w)
     #define MR_word_to_float(w) (__extension__ \
-				((union MR_Float_Word)(MR_Word)(w)).f)
+                                ((union MR_Float_Word)(MR_Word)(w)).f)
 
   #else /* not MR_GNUC */
 
     static MR_Word MR_float_to_word(MR_Float f)
-	{ union MR_Float_Word tmp; tmp.f = f; return tmp.w; }
+        { union MR_Float_Word tmp; tmp.f = f; return tmp.w; }
     static MR_Float MR_word_to_float(MR_Word w)
-	{ union MR_Float_Word tmp; tmp.w = w; return tmp.f; }
+        { union MR_Float_Word tmp; tmp.w = w; return tmp.f; }
 
   #endif /* not MR_GNUC */
 
@@ -182,9 +194,9 @@
 
 #define MR_float_to_string(Float, String, alloc_id)                         \
     do {                                                                    \
-	char buf[MR_SPRINTF_FLOAT_BUF_SIZE];                                \
-	MR_sprintf_float(buf, Float);                                       \
-	MR_make_aligned_string_copy_msg(Str, buf, (alloc_id));              \
+        char buf[MR_SPRINTF_FLOAT_BUF_SIZE];                                \
+        MR_sprintf_float(buf, Float);                                       \
+        MR_make_aligned_string_copy_msg(Str, buf, (alloc_id));              \
     } while (0)
 
 void MR_sprintf_float(char *buf, MR_Float f);

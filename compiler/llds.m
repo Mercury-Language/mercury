@@ -1102,10 +1102,14 @@
             % numbers start at 1.
 
     ;       double_stackvar(double_stack_type, int)
-            % Two consecutive stack slots for storing a double-precision float:
+            % Two consecutive stack slots for storing a double-precision float.
+            % The number is the offset relative to one of the stack pointers
+            % and represents the lower-numbered of two consecutive slots.
+            % As our stacks grow downward, the higher-number slot has the
+            % lower address, and must be aligned for the target architecture.
+            %
             % - stackvar(Slot), stackvar(Slot + 1)
             % - parent_stackvar(Slot), parent_stackvar(Slot + 1)
-            % - framevar(Slot), framevar(Slot + 1)
 
     ;       succip_slot(rval)
             % The succip slot of the specified nondet stack frame; holds the
@@ -1160,8 +1164,7 @@
 
 :- type double_stack_type
     --->    double_stackvar
-    ;       double_parent_stackvar
-    ;       double_framevar.
+    ;       double_parent_stackvar.
 
     % An rval is an expression that represents a value.
     %
@@ -1498,6 +1501,7 @@
                 asm_labels              :: have_asm_labels,
                 unboxed_floats          :: have_unboxed_floats,
                 float_registers         :: use_float_registers,
+                det_stack_float_width   :: stack_slot_width,
                 static_ground_cells     :: have_static_ground_cells,
                 static_ground_floats    :: have_static_ground_floats,
                 static_code_addresses   :: have_static_code_addresses
@@ -1507,6 +1511,7 @@
 :- func get_asm_labels(exprn_opts) = have_asm_labels.
 :- func get_unboxed_floats(exprn_opts) = have_unboxed_floats.
 :- func get_float_registers(exprn_opts) = use_float_registers.
+:- func get_det_stack_float_width(exprn_opts) = stack_slot_width.
 :- func get_static_ground_cells(exprn_opts) = have_static_ground_cells.
 :- func get_static_ground_floats(exprn_opts) = have_static_ground_floats.
 :- func get_static_code_addresses(exprn_opts) = have_static_code_addresses.
@@ -1569,14 +1574,8 @@ stack_slot_to_lval(Slot) = Lval :-
             Lval = double_stackvar(double_parent_stackvar, N)
         )
     ;
-        Slot = nondet_slot(N, Width),
-        (
-            Width = single_width,
-            Lval = framevar(N)
-        ;
-            Width = double_width,
-            Lval = double_stackvar(double_framevar, N)
-        )
+        Slot = nondet_slot(N),
+        Lval = framevar(N)
     ).
 
 key_stack_slot_to_lval(_, Slot) =
@@ -1588,8 +1587,8 @@ abs_locn_to_lval_or_any_reg(abs_stackvar(N, Width)) =
     loa_lval(stack_slot_to_lval(det_slot(N, Width))).
 abs_locn_to_lval_or_any_reg(abs_parent_stackvar(N, Width)) =
     loa_lval(stack_slot_to_lval(parent_det_slot(N, Width))).
-abs_locn_to_lval_or_any_reg(abs_framevar(N, Width)) =
-    loa_lval(stack_slot_to_lval(nondet_slot(N, Width))).
+abs_locn_to_lval_or_any_reg(abs_framevar(N)) =
+    loa_lval(stack_slot_to_lval(nondet_slot(N))).
 
 abs_locn_to_lval(any_reg) = _ :-
     unexpected($module, $pred, "any_reg").
@@ -1598,8 +1597,8 @@ abs_locn_to_lval(abs_stackvar(N, Width)) =
     stack_slot_to_lval(det_slot(N, Width)).
 abs_locn_to_lval(abs_parent_stackvar(N, Width)) =
     stack_slot_to_lval(parent_det_slot(N, Width)).
-abs_locn_to_lval(abs_framevar(N, Width)) =
-    stack_slot_to_lval(nondet_slot(N, Width)).
+abs_locn_to_lval(abs_framevar(N)) =
+    stack_slot_to_lval(nondet_slot(N)).
 
 key_abs_locn_to_lval(_, AbsLocn) =
     abs_locn_to_lval(AbsLocn).
@@ -1771,6 +1770,7 @@ get_asm_labels(ExprnOpts) = ExprnOpts ^ asm_labels.
 get_static_ground_cells(ExprnOpts) = ExprnOpts ^ static_ground_cells.
 get_unboxed_floats(ExprnOpts) = ExprnOpts ^ unboxed_floats.
 get_float_registers(ExprnOpts) = ExprnOpts ^ float_registers.
+get_det_stack_float_width(ExprnOpts) = ExprnOpts ^ det_stack_float_width.
 get_static_ground_floats(ExprnOpts) = ExprnOpts ^ static_ground_floats.
 get_static_code_addresses(ExprnOpts) = ExprnOpts ^ static_code_addresses.
 

@@ -49,13 +49,17 @@ This is a bug-fix release.
   asm_fast grades working with GCC 4.8.  (Bug #293)
 * Fix inst for constant type_infos.  (Bug #297)
 * Fix compiler abort during liveness detection.  (Bug #51)
-* We have fixed a bug that could crash the compiler when enabling the last
-  call modulo constructor optimisation on the Java and (probably) C#
-  grades.  (Bug #300)
+* We have fixed a bug that caused a compiler abort in the last
+  call modulo constructor optimisation in the Java grade.  (Bug #300)
+* Respect memory alignment requirements for doubles.  (Bug #299)
+* Fix incorrect handling of deconstructions in pass for float registers
+  support.  (Bug #301)
 
 Changes to the Mercury standard library:
 
-* Semantic equality predicates are now defined for 2-3-4 trees and maps.
+* We have added the predicates map.equal/2 and tree234.equal/2 which
+  test maps and 2-3-4 trees respectively for semantic equality.
+
 
 NEWS for Mercury 13.05.1
 ------------------------

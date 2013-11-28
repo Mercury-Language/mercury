@@ -80,6 +80,7 @@ OTHER_PROGS= \
 	bug190 \
 	bug257b \
 	bug300 \
+	bug301 \
 	builtin_false \
 	call_failure \
 	common_struct_bug \
