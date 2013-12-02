@@ -29,9 +29,13 @@ Changes to the Mercury standard library:
 
 * We have added the following predicates to the pqueue module:
   is_empty/1, peek/3, peek_key/2, peek_value/2, det_peek/3 and merge/3.
-  We have also added the following fuctions to the pqueue module:
+  We have also added the following functions to the pqueue module:
   det_peek_key/1 and det_peek_value/1.
 
+Changes to the extras distribution:
+
+* We've added a library that provides support for accessing the function
+  trail from Mercury code.
 
 NEWS for Mercury 13.05.2
 ------------------------
