@@ -671,11 +671,11 @@
     %
 :- func map.common_subset(map(K, V), map(K, V)) = map(K, V).
 
-    % Given two maps M1 and M2, create a third map M3 that all the keys
-    % that occur in either M1 and M2. For keys that occur in both M1
+    % Given two maps M1 and M2, create a third map M3 that contains all
+    % the keys that occur in either M1 and M2. For keys that occur in both M1
     % and M2, compute the value in the final map by applying the supplied
-    % predicate to the values associated with the key in M1 and M2.
-    % Fail if and only if this predicate fails on the values associated
+    % closure to the values associated with the key in M1 and M2.
+    % Fail if and only if this closure fails on the values associated
     % with some common key.
     %
 :- func map.union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
