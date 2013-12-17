@@ -349,6 +349,60 @@
     in, out, in, out) is nondet.
 :- mode int.fold_down2(pred(in, in, out, mdi, muo) is nondet, in, in,
     in, out, mdi, muo) is nondet.
+    
+    % fold_up3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
+    %   list.foldl3(F, Low .. High, !Acc1, !Acc2, !Acc3)
+    %
+    % NOTE: fold_up3/9 is undefined if High = int.max_int.
+    %
+:- pred int.fold_up3(pred(int, T, T, U, U, V, V), int, int, T, T, U, U, V, V).
+:- mode int.fold_up3(pred(in, in, out, in, out, in, out) is det,
+    in, in, in, out, in, out, in, out) is det.
+:- mode int.fold_up3(pred(in, in, out, in, out, mdi, muo) is det,
+    in, in, in, out, in, out, mdi, muo) is det.
+:- mode int.fold_up3(pred(in, in, out, in, out, di, uo) is det,
+    in, in, in, out, in, out, di, uo) is det.
+:- mode int.fold_up3(pred(in, in, out, di, uo, di, uo) is det,
+    in, in, in, out, di, uo, di, uo) is det.
+:- mode int.fold_up3(pred(in, in, out, in, out, array_di, array_uo) is det,
+    in, in, in, out, in, out, array_di, array_uo) is det.
+:- mode int.fold_up3(pred(in, in, out, in, out, in, out) is semidet,
+    in, in, in, out, in, out, in, out) is semidet.
+:- mode int.fold_up3(pred(in, in, out, in, out, mdi, muo) is semidet,
+    in, in, in, out, in, out, mdi, muo) is semidet.
+:- mode int.fold_up3(pred(in, in, out, in, out, di, uo) is semidet,
+    in, in, in, out, in, out, di, uo) is semidet.
+:- mode int.fold_up3(pred(in, in, out, in, out, in, out) is nondet,
+    in, in, in, out, in, out, in, out) is nondet.
+:- mode int.fold_up3(pred(in, in, out, in, out, mdi, muo) is nondet,
+    in, in, in, out, in, out, mdi, muo) is nondet.
+    
+    % fold_up3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
+    %   list.foldr3(F, Low .. High, !Acc1, !Acc2, !Acc3)
+    %
+    % NOTE: fold_down3/9 is undefined if Low = int.min_int.
+    %
+:- pred int.fold_down3(pred(int, T, T, U, U, V, V), int, int, T, T, U, U, V, V).
+:- mode int.fold_down3(pred(in, in, out, in, out, in, out) is det,
+    in, in, in, out, in, out, in, out) is det.
+:- mode int.fold_down3(pred(in, in, out, in, out, mdi, muo) is det,
+    in, in, in, out, in, out, mdi, muo) is det.
+:- mode int.fold_down3(pred(in, in, out, in, out, di, uo) is det,
+    in, in, in, out, in, out, di, uo) is det.
+:- mode int.fold_down3(pred(in, in, out, di, uo, di, uo) is det,
+    in, in, in, out, di, uo, di, uo) is det.
+:- mode int.fold_down3(pred(in, in, out, in, out, array_di, array_uo) is det,
+    in, in, in, out, in, out, array_di, array_uo) is det.
+:- mode int.fold_down3(pred(in, in, out, in, out, in, out) is semidet,
+    in, in, in, out, in, out, in, out) is semidet.
+:- mode int.fold_down3(pred(in, in, out, in, out, mdi, muo) is semidet,
+    in, in, in, out, in, out, mdi, muo) is semidet.
+:- mode int.fold_down3(pred(in, in, out, in, out, di, uo) is semidet,
+    in, in, in, out, in, out, di, uo) is semidet.
+:- mode int.fold_down3(pred(in, in, out, in, out, in, out) is nondet,
+    in, in, in, out, in, out, in, out) is nondet.
+:- mode int.fold_down3(pred(in, in, out, in, out, mdi, muo) is nondet,
+    in, in, in, out, in, out, mdi, muo) is nondet.
 
     % nondet_int_in_range(Lo, Hi, I):
     %
@@ -831,6 +885,12 @@ int.fold_up2(P, Lo, Hi, !A, !B) :-
       else  true
     ).
 
+int.fold_up3(P, Lo, Hi, !A, !B, !C) :-
+    ( if    Lo =< Hi
+      then  P(Lo, !A, !B, !C), int.fold_up3(P, Lo + 1, Hi, !A, !B, !C)
+      else  true
+    ).
+
 %-----------------------------------------------------------------------------%
 
 int.fold_down(P, Lo, Hi, !A) :-
@@ -847,6 +907,14 @@ int.fold_down2(P, Lo, Hi, !A, !B) :-
       then  P(Hi, !A, !B), int.fold_down2(P, Lo, Hi - 1, !A, !B)
       else  true
     ).
+
+int.fold_down3(P, Lo, Hi, !A, !B, !C) :-
+    ( if    Lo =< Hi
+      then  P(Hi, !A, !B, !C), int.fold_down3(P, Lo, Hi - 1, !A, !B, !C)
+      else  true
+    ).
+
+%-----------------------------------------------------------------------------%
 
 nondet_int_in_range(Lo, Hi, I) :-
     % Leave a choice point only if there is at least one solution

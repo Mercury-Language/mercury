@@ -300,6 +300,47 @@
 :- mode tree234.foldl_values(pred(in, mdi, muo) is cc_multi, in, mdi, muo)
     is cc_multi.
 
+:- pred tree234.foldl2_values(pred(V, A, A, B, B), tree234(K, V), A, A, B, B).
+:- mode tree234.foldl2_values(pred(in, in, out, in, out) is det, in,
+    in, out, in, out) is det.
+:- mode tree234.foldl2_values(pred(in, in, out, mdi, muo) is det, in,
+    in, out, mdi, muo) is det.
+:- mode tree234.foldl2_values(pred(in, in, out, di, uo) is det, in,
+    in, out, di, uo) is det.
+:- mode tree234.foldl2_values(pred(in, in, out, in, out) is semidet, in,
+    in, out, in, out) is semidet.
+:- mode tree234.foldl2_values(pred(in, in, out, mdi, muo) is semidet, in,
+    in, out, mdi, muo) is semidet.
+:- mode tree234.foldl2_values(pred(in, in, out, di, uo) is semidet, in,
+    in, out, di, uo) is semidet.
+:- mode tree234.foldl2_values(pred(in, in, out, in, out) is cc_multi, in,
+    in, out, in, out) is cc_multi.
+:- mode tree234.foldl2_values(pred(in, in, out, mdi, muo) is cc_multi, in,
+    in, out, mdi, muo) is cc_multi.
+:- mode tree234.foldl2_values(pred(in, in, out, di, uo) is cc_multi, in,
+    in, out, di, uo) is cc_multi.
+
+:- pred tree234.foldl3_values(pred(V, A, A, B, B, C, C), tree234(K, V),
+    A, A, B, B, C, C).
+:- mode tree234.foldl3_values(pred(in, in, out, in, out, in, out) is det,
+    in, in, out, in, out, in, out) is det.
+:- mode tree234.foldl3_values(pred(in, in, out, in, out, mdi, muo) is det,
+    in, in, out, in, out, mdi, muo) is det.
+:- mode tree234.foldl3_values(pred(in, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, di, uo) is det.
+:- mode tree234.foldl3_values(pred(in, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out) is semidet.
+:- mode tree234.foldl3_values(pred(in, in, out, in, out, mdi, muo) is semidet,
+    in, in, out, in, out, mdi, muo) is semidet.
+:- mode tree234.foldl3_values(pred(in, in, out, in, out, di, uo) is semidet,
+    in, in, out, in, out, di, uo) is semidet.
+:- mode tree234.foldl3_values(pred(in, in, out, in, out, in, out) is cc_multi,
+    in, in, out, in, out, in, out) is cc_multi.
+:- mode tree234.foldl3_values(pred(in, in, out, in, out, mdi, muo) is cc_multi,
+    in, in, out, in, out, mdi, muo) is cc_multi.
+:- mode tree234.foldl3_values(pred(in, in, out, in, out, di, uo) is cc_multi,
+    in, in, out, in, out, di, uo) is cc_multi.
+
 :- func tree234.foldr(func(K, V, A) = A, tree234(K, V), A) = A.
 
 :- pred tree234.foldr(pred(K, V, A, A), tree234(K, V), A, A).
@@ -3830,6 +3871,48 @@ tree234.foldl_values(Pred, four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3),
     tree234.foldl_values(Pred, T2, !A),
     Pred(V2, !A),
     tree234.foldl_values(Pred, T3, !A).
+
+tree234.foldl2_values(_Pred, empty, !A, !B).
+tree234.foldl2_values(Pred, two(_K, V, T0, T1), !A, !B) :-
+    tree234.foldl2_values(Pred, T0, !A, !B),
+    Pred(V, !A, !B),
+    tree234.foldl2_values(Pred, T1, !A, !B).
+tree234.foldl2_values(Pred, three(_K0, V0, _K1, V1, T0, T1, T2), !A, !B) :-
+    tree234.foldl2_values(Pred, T0, !A, !B),
+    Pred(V0, !A, !B),
+    tree234.foldl2_values(Pred, T1, !A, !B),
+    Pred(V1, !A, !B),
+    tree234.foldl2_values(Pred, T2, !A, !B).
+tree234.foldl2_values(Pred, four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3),
+        !A, !B) :-
+    tree234.foldl2_values(Pred, T0, !A, !B),
+    Pred(V0, !A, !B),
+    tree234.foldl2_values(Pred, T1, !A, !B),
+    Pred(V1, !A, !B),
+    tree234.foldl2_values(Pred, T2, !A, !B),
+    Pred(V2, !A, !B),
+    tree234.foldl2_values(Pred, T3, !A, !B).
+
+tree234.foldl3_values(_Pred, empty, !A, !B, !C).
+tree234.foldl3_values(Pred, two(_K, V, T0, T1), !A, !B, !C) :-
+    tree234.foldl3_values(Pred, T0, !A, !B, !C),
+    Pred(V, !A, !B, !C),
+    tree234.foldl3_values(Pred, T1, !A, !B, !C).
+tree234.foldl3_values(Pred, three(_K0, V0, _K1, V1, T0, T1, T2), !A, !B, !C) :-
+    tree234.foldl3_values(Pred, T0, !A, !B, !C),
+    Pred(V0, !A, !B, !C),
+    tree234.foldl3_values(Pred, T1, !A, !B, !C),
+    Pred(V1, !A, !B, !C),
+    tree234.foldl3_values(Pred, T2, !A, !B, !C).
+tree234.foldl3_values(Pred, four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3),
+        !A, !B, !C) :-
+    tree234.foldl3_values(Pred, T0, !A, !B, !C),
+    Pred(V0, !A, !B, !C),
+    tree234.foldl3_values(Pred, T1, !A, !B, !C),
+    Pred(V1, !A, !B, !C),
+    tree234.foldl3_values(Pred, T2, !A, !B, !C),
+    Pred(V2, !A, !B, !C),
+    tree234.foldl3_values(Pred, T3, !A, !B, !C).
 
 %------------------------------------------------------------------------------%
 

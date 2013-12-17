@@ -46,6 +46,15 @@
     %
 :- pred bimap.is_empty(bimap(K, V)::in) is semidet.
 
+    % True if both bimaps have the same set of key-value pairs, regardless of
+    % how the bimaps were constructed.
+    %
+    % Unifying bimaps does not work as one might expect because the internal
+    % structures of two bimaps that contain the same set of key-value pairs
+    % may be different.
+    %
+:- pred bimap.equal(bimap(K, V)::in, bimap(K, V)::in) is semidet.
+
     % Search the bimap. The first mode searches for a value given a key
     % and the second mode searches for a key given a value.
     %
@@ -357,6 +366,11 @@ bimap.singleton(K, V) = B:-
 
 bimap.is_empty(bimap(Forward, _)) :-
     map.is_empty(Forward). % by inference == map.is_empty(Reverse).
+
+bimap.equal(BMA, BMB) :-
+    BMA = bimap(ForwardA, _ReverseA),
+    BMB = bimap(ForwardB, _ReverseB),
+    map.equal(ForwardA, ForwardB).
 
 bimap.search(bimap(Forward, Reverse), K, V) :-
     map.search(Forward, K, V),

@@ -199,6 +199,27 @@
     in, out, in, out) is multi.
 :- mode assoc_list.foldl2_values(pred(in, in, out, in, out) is nondet, in,
     in, out, in, out) is nondet.
+    
+    % As above, but with three accumulators.
+    %
+:- pred assoc_list.foldl3_values(pred(V, A, A, B, B, C, C), assoc_list(K, V),
+    A, A, B, B, C, C).
+:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, in, out) is det,
+    in, in, out, in, out, in, out) is det.
+:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, mdi, muo) is det,
+    in, in, out, in, out, mdi, muo) is det.
+:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, di, uo) is det.
+:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out) is semidet.
+:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, mdi, muo) is semidet,
+    in, in, out, in, out, mdi, muo) is semidet.
+:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, di, uo) is semidet,
+    in, in, out, in, out, di, uo) is semidet.
+:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, in, out) is multi,
+    in, in, out, in, out, in, out) is multi.
+:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, in, out) is nondet,
+    in, in, out, in, out, in, out) is nondet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -391,6 +412,12 @@ assoc_list.foldl2_values(P, [KV | KVs], !Acc1, !Acc2) :-
     KV = _K - V,
     P(V, !Acc1, !Acc2),
     assoc_list.foldl2_values(P, KVs, !Acc1, !Acc2).
+
+assoc_list.foldl3_values(_, [], !Acc1, !Acc2, !Acc3).
+assoc_list.foldl3_values(P, [KV | KVs], !Acc1, !Acc2, !Acc3) :-
+    KV = _K - V,
+    P(V, !Acc1, !Acc2, !Acc3),
+    assoc_list.foldl3_values(P, KVs, !Acc1, !Acc2, !Acc3).
 
 %-----------------------------------------------------------------------------%
 :- end_module assoc_list.

@@ -456,6 +456,51 @@
 :- mode map.foldl_values(pred(in, mdi, muo) is cc_multi, in, mdi, muo)
     is cc_multi.
 
+    % As above, but with two accumulators.
+    %
+:- pred map.foldl2_values(pred(V, A, A, B, B), map(K, V), A, A, B, B).
+:- mode map.foldl2_values(pred(in, in, out, in, out) is det, in,
+    in, out, in, out) is det.
+:- mode map.foldl2_values(pred(in, in, out, mdi, muo) is det, in,
+    in, out, mdi, muo) is det.
+:- mode map.foldl2_values(pred(in, in, out, di, uo) is det, in,
+    in, out, di, uo) is det.
+:- mode map.foldl2_values(pred(in, in, out, in, out) is semidet, in,
+    in, out, in, out) is semidet.
+:- mode map.foldl2_values(pred(in, in, out, mdi, muo) is semidet, in,
+    in, out, mdi, muo) is semidet.
+:- mode map.foldl2_values(pred(in, in, out, di, uo) is semidet, in,
+    in, out, di, uo) is semidet.
+:- mode map.foldl2_values(pred(in, in, out, in, out) is cc_multi, in,
+    in, out, in, out) is cc_multi.
+:- mode map.foldl2_values(pred(in, in, out, mdi, muo) is cc_multi, in,
+    in, out, mdi, muo) is cc_multi.
+:- mode map.foldl2_values(pred(in, in, out, di, uo) is cc_multi, in,
+    in, out, di, uo) is cc_multi.
+
+    % As above, but with three accumulators.
+    %
+:- pred map.foldl3_values(pred(V, A, A, B, B, C, C), map(K, V),
+    A, A, B, B, C, C).
+:- mode map.foldl3_values(pred(in, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out) is det.
+:- mode map.foldl3_values(pred(in, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, mdi, muo) is det.
+:- mode map.foldl3_values(pred(in, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, di, uo) is det.
+:- mode map.foldl3_values(pred(in, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out) is semidet.
+:- mode map.foldl3_values(pred(in, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, mdi, muo) is semidet.
+:- mode map.foldl3_values(pred(in, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, di, uo) is semidet.
+:- mode map.foldl3_values(pred(in, in, out, in, out, in, out) is cc_multi, in,
+    in, out, in, out, in, out) is cc_multi.
+:- mode map.foldl3_values(pred(in, in, out, in, out, mdi, muo) is cc_multi, in,
+    in, out, in, out, mdi, muo) is cc_multi.
+:- mode map.foldl3_values(pred(in, in, out, in, out, di, uo) is cc_multi, in,
+    in, out, in, out, di, uo) is cc_multi.
+
 :- func map.foldr(func(K, V, A) = A, map(K, V), A) = A.
 :- pred map.foldr(pred(K, V, A, A), map(K, V), A, A).
 :- mode map.foldr(pred(in, in, in, out) is det, in, in, out) is det.
@@ -1262,6 +1307,12 @@ map.foldl4(Pred, Map, !A, !B, !C, !D) :-
 
 map.foldl_values(Pred, Map, !A) :-
     tree234.foldl_values(Pred, Map, !A).
+
+map.foldl2_values(Pred, Map, !A, !B) :-
+    tree234.foldl2_values(Pred, Map, !A, !B).
+
+map.foldl3_values(Pred, Map, !A, !B, !C) :-
+    tree234.foldl3_values(Pred, Map, !A, !B, !C).
 
 map.foldr(F, M, A) = B :-
     P = (pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
