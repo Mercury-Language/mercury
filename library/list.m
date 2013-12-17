@@ -239,6 +239,12 @@
     %
 :- pred list.take(int::in, list(T)::in, list(T)::out) is semidet.
 
+    % list.det_take(Len, List, Start):
+    %
+    % As above, but throw an exception instead of failing.
+    %
+:- pred list.det_take(int::in, list(T)::in, list(T)::out) is det.
+
     % list.take_upto(Len, List, Start):
     %
     % `Start' is the first `Len' elements of `List'. If `List' has less than
@@ -2231,13 +2237,20 @@ list.split_upto(N, List, Start, End) :-
         End = List
     ).
 
-list.take(N, As, Bs) :-
+list.take(N, Xs0, Xs) :-
     ( N > 0 ->
-        As = [A | As1],
-        list.take(N - 1, As1, Bs1),
-        Bs = [A | Bs1]
+        Xs0 = [X | Xs1],
+        list.take(N - 1, Xs1, Xs2),
+        Xs = [X | Xs2]
     ;
-        Bs = []
+        Xs = []
+    ).
+
+list.det_take(N, As, Bs) :-
+    ( list.take(N, As, BsPrime) ->
+        Bs = BsPrime
+    ;
+        unexpected($file, $pred, "not enough elements")
     ).
 
 list.take_upto(N, Xs) = Ys :-
