@@ -1176,11 +1176,11 @@
     % returned in End.
     %
 :- pred list.map_foldl(pred(L, M, A, A), list(L), list(M), A, A).
-:- mode list.map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
-    is det.
 :- mode list.map_foldl(pred(in, out, in, out) is det, in, out, in, out)
     is det.
 :- mode list.map_foldl(pred(in, out, mdi, muo) is det, in, out, mdi, muo)
+    is det.
+:- mode list.map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
     is det.
 :- mode list.map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
     is semidet.
@@ -1475,6 +1475,28 @@
     in, out, out, out, out, in, out) is cc_multi.
 :- mode list.map4_foldl(pred(in, out, out, out, out, di, uo) is cc_multi,
     in, out, out, out, out, di, uo) is cc_multi.
+
+    % list.map_foldr(Pred, InList, OutList, Start, End) calls Pred
+    % with an accumulator (with the initial value of Start) on
+    % each element of InList (working right-to-left) to transform
+    % InList into OutList.  The final value of the accumulator is
+    % returned in End.
+    %
+:- pred list.map_foldr(pred(L, M, A, A), list(L), list(M), A, A).
+:- mode list.map_foldr(pred(in, out, in, out) is det, in, out, in, out)
+    is det.
+:- mode list.map_foldr(pred(in, out, mdi, muo) is det, in, out, mdi, muo)
+    is det.
+:- mode list.map_foldr(pred(in, out, di, uo) is det, in, out, di, uo)
+    is det.
+:- mode list.map_foldr(pred(in, out, in, out) is semidet, in, out, in, out)
+    is semidet.
+:- mode list.map_foldr(pred(in, out, mdi, muo) is semidet, in, out, mdi, muo)
+    is semidet.
+:- mode list.map_foldr(pred(in, out, di, uo) is semidet, in, out, di, uo)
+    is semidet.
+:- mode list.map_foldr(pred(in, in, di, uo) is semidet, in, in, di, uo)
+    is semidet.
 
     % list.filter_map_foldl(Transformer, List, TrueList, Start, End):
     % Takes a predicate with one input argument, one output argument and an
@@ -2792,6 +2814,11 @@ list.map4_foldl(_, [], [], [], [], [], !A).
 list.map4_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], !A) :-
     P(H0, H1, H2, H3, H4, !A),
     list.map4_foldl(P, T0, T1, T2, T3, T4, !A).
+
+list.map_foldr(_, [], [], !A).
+list.map_foldr(P, [H0 | T0], [H | T], !A) :-
+    list.map_foldr(P, T0, T, !A),
+    P(H0, H, !A).
 
 list.filter_map_foldl(_, [], [], !A).
 list.filter_map_foldl(P, [X | Xs], True, !A) :-

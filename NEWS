@@ -19,7 +19,7 @@ Changes to the Mercury standard library:
   det_min_key/1, det_max_key/1, foldl2_values/6 and foldl3_values/8.
 
 * We have added the following predicates to the list module: foldr2/6,
-  foldr3/8 and det_take/3.
+  foldr3/8, det_take/3 and map_foldr/5.
 
 * We have added the following predicates to the bag module: foldl/4 and
   foldl2/6.
