@@ -4399,6 +4399,174 @@ Changes to the Mercury standard library:
   the domain check.
 
 
+NEWS for Mercury 13.05.2, 2 December 2013
+-----------------------------------------
+
+This is a bug-fix release.
+
+* The following functions in the standard library's cord module now use
+  constant stack space: list/1, rev_list/1, cord_list_to_cord/1 and
+  cord_list_to_list/1.
+* Linker options set via the LDFLAGS and EXTRA_LDFLAGS mmake variables
+  are now applied to all executables in the Mercury system.  Likewise, 
+  for shared libraries and the LD_LIBFLAGS and EXTRA_LD_LIBFLAGS mmake
+  variables.  (Bug #288)
+* We have added a workaround for a problem that was preventing the
+  asm_fast grades working with GCC 4.8.  (Bug #293)
+* Fix inst for constant type_infos.  (Bug #297)
+* Fix compiler abort during liveness detection.  (Bug #51)
+* We have fixed a bug that caused a compiler abort in the last
+  call modulo constructor optimisation in the Java grade.  (Bug #300)
+* Respect memory alignment requirements for doubles.  (Bug #299)
+* Fix incorrect handling of deconstructions in pass for float registers
+  support.  (Bug #301)
+
+Changes to the Mercury standard library:
+
+* We have added the predicates map.equal/2 and tree234.equal/2 which
+  test maps and 2-3-4 trees respectively for semantic equality.
+
+
+NEWS for Mercury 13.05.1, 14 June 2013
+--------------------------------------
+
+This is a bug-fix release.
+
+* Various build problems on Solaris and NetBSD have been fixed.
+* The C# compiler for use by the csharp grade can now be specified using
+  a new option to the configure script, `--with-csharp-compiler'.  This
+  fixes a problem where it was not possible to build the Mercury libraries
+  in the csharp grade against version 4.0 of the .NET framework using
+  Mono.  (See README.CSharp for further details.)
+* In C grades, closing a file stream multiple times no longer causes a
+  segmentation fault.  (Bug #161)
+* `--warn-dead-procs' no longer emits warnings for procedures if they are
+  foreign exported to any language.  Previously, warnings were incorrectly
+  emitted if there were only foreign_export pragmas for foreign languages
+  unsupported by the current backend.  (Bug #183)
+* The compiler now emits a warning if the variable that is the subject of
+  of a require_complete_switch scope does not appear in the scoped goal.
+  (Bug #257)
+* A bug that caused a compiler abort in the low-level C backend has been
+  fixed.
+
+Changes to the Mercury standard library:
+
+* We have added the function bimap.count/1.
+
+* An equality predicate is now defined for version_hash_tables.
+
+
+NEWS for Mercury 13.05, 16 May 2013
+-----------------------------------
+
+Changes to the Mercury standard library:
+
+* We have swapped the argument order of the predicates set.singleton_set/2,
+  set_bbbtree.singleton_set/2, set_ordlist.singleton_set/2 and
+  set_unordlist.singleton_set/2 so that it conforms with the order in the
+  other set modules.
+
+* All the modules that operate on sets now have two new predicates.
+  One is insert_new: if the item is not already in the set, it inserts
+  the item, otherwise it fails. The other is all_true: it succeeds if
+  and only if all elements in the set pass a test.
+
+* The map and varset modules each have a new predicate that deletes
+  a sorted list of items from a map or varset, and can do so faster than
+  usual by exploiting the order.
+
+* The map, bimap and tree234 modules each have a new predicate that does
+  a search, and if the search is unsuccessful, does an insertion during
+  the *same* traversal.
+
+* The argument order of the following predicates has been changed so as to
+  make them more conducive to the use of state variable notation:
+  pqueue.insert/4, pqueue.remove/4, stack.push/3, stack.push_list/3,
+  stack.pop/3 and stack.det_pop/3.
+
+* We have added versions of the operations in the math module that omit the
+  domain checks.
+
+* We have added new predicates to the parsing_utils module:
+  input_string/3, get_skip_whitespace_pred/2 and next_char_no_progress/4.
+
+* The lexer module returns base 10 integer literals in the string
+  representation, if the integer is too large for an `int'.
+
+* We have add the following new predicates to the list module:
+  list.all_true_corresponding/3, list.all_false_corresponding/3 and
+  list.same_length3/3.
+
+* We have added the type maybe.maybe_error/2 which is polymorphic in the
+  error type.
+
+* We have added predicates to the calendar module for folding over the days
+  in a given range of dates: foldl_days/5, foldl2_days/7 and foldl3_days/9.
+
+* We have added two functions to both the hash_table and version_hash_table
+  modules: copy/1 and from_assoc_list/4.
+
+Changes to the Mercury compiler:
+
+* Generation of 64-bit code on Windows using the MinGW64 port of GCC
+  is now supported, i.e. the x86_64-w64-mingw32 architecture is now
+  supported.
+
+* We have improved compilation times for very large programs.  In
+  particular, compilation times for predicates containing the following
+  have been improved:
+      - large ground terms
+      - large disjunctions
+      - large numbers of higher order constructs and/or code that uses
+        large hierarchies of type classes
+
+* We have implemented a type representation optimisation, where a functor
+  with exactly one argument can be represented by a tagged pointer to the
+  argument value, which itself does not require the tag bits.
+
+* In C grades, consecutive enumeration arguments in discriminated
+  union types can now be packed into a single word.
+
+* Double-precision `float' constructor arguments are now stored in
+  unboxed form in high-level C grades.
+
+* Double-precision `float' constructor arguments are now stored in
+  unboxed form on 32-bit architectures in the low-level C grades.
+  This was previously so for 64-bit architectures.
+
+* Double-precision float arguments can now be passed via dedicated Mercury
+  abstract machine registers to avoid boxing, in low-level C grades on
+  32-bit architectures. Float variables can occupy two words on the
+  Mercury stack to avoid boxing.
+
+* The option `--warn-non-tail-recursion' no longer requires
+  `--high-level-code'.
+
+* A new option, `--sign-assembly', provides supports for signing
+  assemblies generated by the C# backend with a strong name.
+
+* A new option, `--cstack-reserve-size', allows the size of the C
+  stack for executables to be changed on Microsoft Windows systems.
+
+Changes to the Mercury debugger:
+
+* We have added new capabilities to the "level", "retry" and "finish" mdb
+  commands. If these commands are given the argument "clentry", they will
+  operate on the ancestor of the current call that represents entry to the
+  clique of mutually recursive procedures that the current call belongs to.
+  If they are given the argument "clparent", they will operate on the parent
+  of that call.
+
+* The mdb command "stack" can now find and mark cliques of mutually recursive
+  calls on the stack, and can (and by default, will) impose a limit on the
+  number of lines it prints for each clique.
+
+Changes to the extras distribution:
+
+* We have added a binding to the GLFW library.
+
+
 .NET CLR back-end history
 -------------------------
 As mentioned above, we started working on the MLDS back-end in July 1999.
