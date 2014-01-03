@@ -1,6 +1,10 @@
 # This is the central place where the version number is kept.
-# (But note that the version number for the last major release is
-# hard-coded in the RELEASE_NOTES file.)
+#
+# Note also that:
+# + the version number is hard coded in the README file, it should always
+#   match the version number below.
+# + The version number for the last major release is hard-coded in the
+#   RELEASE_NOTES file.
 #
 # The version number must be a valid file name, i.e. it should
 # not contain whitespace or special characters.  Stick to [A-Za-z0-9._-].
