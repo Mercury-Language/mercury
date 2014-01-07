@@ -6264,6 +6264,8 @@ fair search rule; and so forth.
 * Calling Mercury from foreign code::  How to call a Mercury predicate
                                        or function from a different
                                        programming language.
+* Data passing conventions::	       How Mercury types are passed to
+				       different languages.
 * Using foreign types from Mercury::   How to use a type defined in         
 				       a different programming language
 				       in Mercury code.
@@ -6273,8 +6275,6 @@ fair search rule; and so forth.
 * Using foreign enumerations in Mercury code:: How to use an enumeration type
                                                 defined in a foreign language
                                                 in Mercury code.
-* Data passing conventions::	       How Mercury types are passed to
-				       different languages.
 * Adding foreign declarations::        How to add declarations of
   				       entities in other programming
 				       languages.
