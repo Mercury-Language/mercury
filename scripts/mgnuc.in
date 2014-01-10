@@ -603,6 +603,13 @@ case $COMPILER in gcc)
                 ARCH_OPTS="$ARCH_OPTS -O0" ;;
             *" display_report.c "*)
                 ARCH_OPTS="$ARCH_OPTS -O0" ;;
+            # Workaround for a internal compiler error with GCC 4.8
+            # in grades that use global registers.
+            *" mercury_ho_call.c "*)
+                case $global_regs in true)
+                    ARCH_OPTS="$ARCH_OPTS -O0" ;;
+                esac
+                ;;
             esac ;;
         sparc*)
             case "$*" in
