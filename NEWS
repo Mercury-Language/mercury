@@ -12,6 +12,9 @@ Changes to the Mercury standard library:
 
 * We have added the function cord.condense/1.
 
+* The following functions in the standard library's cord module now use
+  constant stack space: foldl/3, foldl_pred/4.
+
 * We have added the following predicates to the array and version_array
   modules: is_empty/1, all_true/2 and all_false/2.
 

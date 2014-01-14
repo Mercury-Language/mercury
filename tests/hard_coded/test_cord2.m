@@ -23,6 +23,10 @@ main(!IO) :-
     solutions(gen_cord3, Cords),
     list.foldl(test_list_and_rev_list, Cords, !IO),
 
+    io.write_string("\nTest folds\n", !IO),
+    list.foldl(test_folds, Cords, !IO),
+    io.write_string("done.\n", !IO),
+
     io.write_string("\nTest cord_list_to_cord and cord_list_to_list\n", !IO),
     solutions(gen_cord_list, CordLists),
     list.foldl(test_cord_list_funcs, CordLists, !IO),
@@ -47,6 +51,22 @@ test_list_and_rev_list(Cord, !IO) :-
 
     expect(unify(List, reverse(RevList)),
         $module, $pred, "List != reverse(RevList)").
+
+:- pred test_folds((cord(int))::in, io::di, io::uo) is det.
+
+test_folds(Cord, !IO) :-
+    List = cord.list(Cord),
+    RevList = cord.rev_list(Cord),
+
+    cord.foldl(list.cons, Cord, []) = FoldlResultA,
+    cord.foldl_pred(list.cons, Cord, [], FoldlResultB),
+    expect(unify(FoldlResultA, RevList), $module, $pred, "foldl wrong"),
+    expect(unify(FoldlResultB, RevList), $module, $pred, "foldl_pred wrong"),
+
+    cord.foldr(list.cons, Cord, []) = FoldrResultA,
+    cord.foldr_pred(list.cons, Cord, [], FoldrResultB),
+    expect(unify(FoldrResultA, List), $module, $pred, "foldr wrong"),
+    expect(unify(FoldrResultB, List), $module, $pred, "foldr_pred wrong").
 
 :- pred test_cord_list_funcs(list(cord(int))::in, io::di, io::uo) is det.
 
