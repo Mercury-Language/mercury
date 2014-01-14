@@ -2486,10 +2486,15 @@ case "$ac_cv_prog_gcc" in yes)
         i*86-*|x86_64*)
             # On x86-64 with GCC 4.8, gcc labels do not work correctly with
             # -ftree-dominator-opts -- we disable it for x86 in this case too.
+            # We also pass -ftrack-macro-expansion=0 and
+            # -fno-diagnostics-show-caret to the same version of GCC in order
+            # to force it to emit error messages in a format that mfiltercc can
+            # handle.  (See #304 for details.)
             #
             case "$C_COMPILER_TYPE" in
                 gcc_4_8_*)
-                  CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fno-tree-dominator-opts"
+                  CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fno-tree-dominator-opts \
+                      -ftrack-macro-expansion=0 -fno-diagnostics-show-caret"
                 ;;
             esac
             CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
