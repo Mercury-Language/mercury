@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2012 The University of Melbourne.
+% Copyright (C) 2001-2012, 2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -470,7 +470,7 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
                 %
                 % NOTE: this needs to be kept consistent with
                 %
-                %   ml_unify_gen.maybe_fixup_type_info_cell_constructor_args/4
+                %   polymorphism.polymorphism_construct_type_info/10
                 %   java/runtime/TypeInfo_Struct.java
                 %
                 % as well as the code for handling pseudo type-infos below.
