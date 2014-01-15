@@ -4097,7 +4097,7 @@ int main() {
 #if __GNUC__ >= 3
     /* gcc 3.1 seems to have problems with structure assignment
        and global registers, but which this simple test case
-       doesn't trigger.  So just force the test to fail for gcc 3.x. */
+       does not trigger.  So just force the test to fail for gcc 3.x. */
     exit(1);
 #else
     exit(0);
@@ -4111,6 +4111,55 @@ AC_MSG_RESULT($mercury_cv_cannot_use_structure_assignment)
 if test $mercury_cv_cannot_use_structure_assignment = "yes"; then
     AC_DEFINE(MR_CANNOT_USE_STRUCTURE_ASSIGNMENT)
 fi
+
+#-----------------------------------------------------------------------------#
+
+# Allow the user to override the default value of MACOSX_DEPLOYMENT_TARGET.
+# We use the version of the host system for the default value.
+# XXX if we ever support Mac OS X as a cross-compiling target we should
+# force the user to set a value using --with-macosx-deployment-target.
+
+AC_ARG_WITH([macosx-deployment-target],
+    AC_HELP_STRING([--with-macosx-deployment-target=<target>],
+          [Specify the deployment target on Mac OS X.]),
+    [mercury_cv_macosx_deployment_target="$withval"],
+    [mercury_cv_macosx_deployment_target="auto"]
+)
+
+case "$mercury_cv_macosx_deployment_target" in
+    yes)
+        AC_MSG_ERROR([missing argument to --with-macosx-deployment-target=... option])
+        exit 1
+        ;;
+    no)
+        AC_MSG_ERROR([invalid option --without-macosx-deployment-target])
+        exit 1
+        ;;
+esac
+
+DEPLOYMENT_TARGET="no"
+
+case "$host" in
+    *apple*darwin*)
+        case "$mercury_cv_macosx_deployment_target" in
+            # NOTE: the sw_vers utility tells us which version of Mac OS X we are
+            # using as opposed to which version of Darwin we are using.  uname
+            # only reports the latter.
+            auto)
+                DEPLOYMENT_TARGET=`sw_vers -productVersion | cut -d \. -f 1 -f 2`
+                ;;
+
+            *)
+                DEPLOYMENT_TARGET="$mercury_cv_macosx_deployment_target"
+                ;;
+        esac
+
+        if test "$DEPLOYMENT_TARGET" = "no"
+        then
+            AC_MSG_ERROR([cannot determine deployment target for this system])
+        fi
+        ;;
+esac
 
 #-----------------------------------------------------------------------------#
 
@@ -4413,19 +4462,6 @@ case "$host" in
                 ERROR_UNDEFINED="-undefined error"
                 # The MACOSX_DEPLOYMENT_TARGET environment variable needs to be
                 # set so we can use the `-undefined dynamic_lookup' option.
-                #
-                # On 10.6, the deployment target needs to be at least 10.4.
-                # For earlier versions of Mac OS X we use 10.3.
-                case "$host" in
-                    *apple*darwin*10*)
-                        DEPLOYMENT_TARGET="10.4"
-                    ;;
-
-                    *)
-                        DEPLOYMENT_TARGET="10.3"
-                    ;;
-                esac
-
                 SET_MACOSX_DEPLOYMENT_TARGET="\
                     MACOSX_DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET; \
                     export MACOSX_DEPLOYMENT_TARGET"
