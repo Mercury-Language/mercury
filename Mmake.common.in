@@ -302,7 +302,8 @@ OBJ_CHECKS        = $(CHECK_OBJS:%=%.obj_check)
 # 		is in a separate CVS module and is not included in the
 # 		normal Mercury source distributions)
 # Exceptions to this policy must be listed in the RESERVED_MACRO_NAMES file
-# in the relevant directory.
+# in the top directory (if applicable to all C source directories) or in
+# the relevant directory (if applicable only to some C source directories).
 #
 # XXX The base_typeclass_info prefix is allowed only temporarily; it should
 # be fixed by adding a prefix giving the name of the module defining the
@@ -368,7 +369,9 @@ OBJ_PREFIX_EXPRS   = \
 	$(SSDB_OBJ_PREFIX_EXPRS)
 
 HEADER_CLEAN_FILTER = \
-	grep -v $(MACRO_PREFIX_EXPRS) | fgrep -v -x -f RESERVED_MACRO_NAMES
+	grep -v $(MACRO_PREFIX_EXPRS) | \
+		fgrep -v -x -f ../RESERVED_MACRO_NAMES | \
+		fgrep -v -x -f RESERVED_MACRO_NAMES
 
 # This rule checks that object files are properly namespace-clean, with
 # regard to the global symbols that they define.
