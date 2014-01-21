@@ -1,5 +1,7 @@
-% We define our own I/O primitives, in case the library was compiled without
-% IO tabling.
+% vim: ts=4 sw=4 et ft=mercury
+%
+% For this test case, we define our own I/O primitives, in case the library
+% was compiled *without* IO tabling.
 
 :- module tabled_read.
 
@@ -7,116 +9,113 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- import_module list, char, int.
+:- import_module list.
+:- import_module char.
+:- import_module int.
 
-main -->
-	tabled_read__open_input("tabled_read.data", Res, Stream),
-	( { Res = 0 } ->
-		tabled_read__part_1(Stream),
-		tabled_read__part_2(Stream)
-	;
-		io__write_string("could not open tabled_read.data\n")
-	).
+main(!IO) :-
+    tabled_read.open_input("tabled_read.data", Res, Stream, !IO),
+    ( Res = 0 ->
+        tabled_read.part_1(Stream, !IO),
+        tabled_read.part_2(Stream, !IO)
+    ;
+        io.write_string("could not open tabled_read.data\n", !IO)
+    ).
 
-:- pred tabled_read__part_1(c_pointer::in, io__state::di, io__state::uo)
-	is det. 
+:- pred tabled_read.part_1(c_pointer::in, io::di, io::uo) is det.
 
-tabled_read__part_1(Stream) -->
-	tabled_read__test(Stream, 0, A),
-	tabled_read__write_int(A),
-	tabled_read__poly_test(Stream, ['a', 'b', 'c'], 0, B),
-	tabled_read__write_int(B).
+tabled_read.part_1(Stream, !IO) :-
+    tabled_read.test(Stream, 0, A, !IO),
+    tabled_read.write_int(A, !IO),
+    tabled_read.poly_test(Stream, ['a', 'b', 'c'], 0, B, !IO),
+    tabled_read.write_int(B, !IO).
 
-:- pred tabled_read__part_2(c_pointer::in, io__state::di, io__state::uo)
-	is det.
+:- pred tabled_read.part_2(c_pointer::in, io::di, io::uo) is det.
 
-tabled_read__part_2(Stream) -->
-	tabled_read__test(Stream, 0, A),
-	tabled_read__write_int(A).
+tabled_read.part_2(Stream, !IO) :-
+    tabled_read.test(Stream, 0, A, !IO),
+    tabled_read.write_int(A, !IO).
 
-:- pred tabled_read__test(c_pointer::in, int::in, int::out,
-	io__state::di, io__state::uo) is det.
+:- pred tabled_read.test(c_pointer::in, int::in, int::out,
+    io::di, io::uo) is det.
 
-tabled_read__test(Stream, SoFar, N) -->
-	tabled_read__read_char_code(Stream, CharCode),
-	(
-		{ char__to_int(Char, CharCode) },
-		{ char__is_digit(Char) },
-		{ char__digit_to_int(Char, CharInt) }
-	->
-		tabled_read__test(Stream, SoFar * 10 + CharInt, N)
-	;
-		{ N = SoFar }
-	).
+tabled_read.test(Stream, SoFar, N, !IO) :-
+    tabled_read.read_char_code(Stream, CharCode, !IO),
+    (
+        char.to_int(Char, CharCode),
+        char.is_digit(Char),
+        char.digit_to_int(Char, CharInt)
+    ->
+        tabled_read.test(Stream, SoFar * 10 + CharInt, N, !IO)
+    ;
+        N = SoFar
+    ).
 
-:- pred tabled_read__poly_test(c_pointer::in, T::in, int::in, int::out,
-	io__state::di, io__state::uo) is det.
+:- pred tabled_read.poly_test(c_pointer::in, T::in, int::in, int::out,
+    io::di, io::uo) is det.
 
-tabled_read__poly_test(Stream, Unused, SoFar, N) -->
-	tabled_read__poly_read_char_code(Stream, Unused, CharCode),
-	(
-		{ char__to_int(Char, CharCode) },
-		{ char__is_digit(Char) },
-		{ char__digit_to_int(Char, CharInt) }
-	->
-		tabled_read__poly_test(Stream, Unused,
-			SoFar * 10 + CharInt, N)
-	;
-		{ N = SoFar }
-	).
+tabled_read.poly_test(Stream, Unused, SoFar, N, !IO) :-
+    tabled_read.poly_read_char_code(Stream, Unused, CharCode, !IO),
+    (
+        char.to_int(Char, CharCode),
+        char.is_digit(Char),
+        char.digit_to_int(Char, CharInt)
+    ->
+        tabled_read.poly_test(Stream, Unused, SoFar * 10 + CharInt, N, !IO)
+    ;
+        N = SoFar
+    ).
 
 :- pragma foreign_decl("C", "#include <stdio.h>").
 
-:- pred tabled_read__open_input(string::in, int::out, c_pointer::out,
-	io__state::di, io__state::uo) is det.
+:- pred tabled_read.open_input(string::in, int::out, c_pointer::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	tabled_read__open_input(FileName::in, Res::out, Stream::out,
-		IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure, tabled_for_io],
+    tabled_read.open_input(FileName::in, Res::out, Stream::out,
+        IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	Stream = (MR_Word) fopen((const char *) FileName, ""r"");
-	Res = Stream? 0 : -1;
-	IO = IO0;
+    Stream = (MR_Word) fopen((const char *) FileName, ""r"");
+    Res = Stream? 0 : -1;
+    IO = IO0;
 ").
 
-:- pred tabled_read__read_char_code(c_pointer::in, int::out,
-	io__state::di, io__state::uo) is det.
+:- pred tabled_read.read_char_code(c_pointer::in, int::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	tabled_read__read_char_code(Stream::in, CharCode::out,
-		IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure, tabled_for_io],
+    tabled_read.read_char_code(Stream::in, CharCode::out,
+        IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	CharCode = getc((FILE *) Stream);
-	IO = IO0;
+    CharCode = getc((FILE *) Stream);
+    IO = IO0;
 ").
 
-:- pred tabled_read__poly_read_char_code(c_pointer::in, T::in, int::out,
-	io__state::di, io__state::uo) is det.
+:- pred tabled_read.poly_read_char_code(c_pointer::in, T::in, int::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	tabled_read__poly_read_char_code(Stream::in, Unused::in,
-		CharCode::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure, tabled_for_io],
+    tabled_read.poly_read_char_code(Stream::in, Unused::in,
+        CharCode::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	/* ignore Unused */
-	CharCode = getc((FILE *) Stream);
-	IO = IO0;
+    /* ignore Unused */
+    CharCode = getc((FILE *) Stream);
+    IO = IO0;
 ").
 
-:- pred tabled_read__write_int(int::in, io__state::di, io__state::uo)
-	is det.
+:- pred tabled_read.write_int(int::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	tabled_read__write_int(N::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+    tabled_read.write_int(N::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure],
 "{
-	printf(""%d\\n"", (int) N);
-	IO = IO0;
+    printf(""%d\\n"", (int) N);
+    IO = IO0;
 }").
