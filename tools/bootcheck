@@ -1473,6 +1473,8 @@ fi
 
 #-----------------------------------------------------------------------------#
 
+mdb_command_test_inp_status=0
+
 if test "$runtests" = "true" -o "$extras" = "true"
 then
     # Use everything from stage 2, unless the options say that the tests
@@ -1559,7 +1561,16 @@ then
             /bin/rm ${tests_prefix}tests/Mmake.params > /dev/null 2>&1
         fi
 
-        cp $root/doc/mdb_command_test.inp ${tests_prefix}tests/debugger
+        if cmp \
+            ${root}/doc/mdb_command_test.inp \
+            ${tests_prefix}tests/debugger/mdb_command_test.inp
+        then
+            true
+        else
+            mdb_command_test_inp_status=1
+        fi
+
+        cp ${root}/doc/mdb_command_test.inp ${tests_prefix}tests/debugger
 
         sed -e "s:@WORKSPACE@:$WORKSPACE:" \
             < ${tests_prefix}tests/WS_FLAGS.ws \
@@ -1826,6 +1837,14 @@ fi
 if test "$diff_status" != 0
 then
     echo "error exit: stages 2 and 3 differ"
+    exitstatus=1
+fi
+
+if test "$mdb_command_test_inp_status" != 0
+then
+
+    echo "error exit: unexpected change in" \
+        "${tests_prefix}tests/debugger/mdb_command_test.inp"
     exitstatus=1
 fi
 
