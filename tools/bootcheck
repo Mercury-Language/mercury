@@ -663,6 +663,7 @@ then
         cp $root/compiler/*_FLAGS.in .
         cp $root/compiler/.mgnu* .
         cd $root/$stage2dir
+        $LN_S $root/RESERVED_MACRO_NAMES .
         mkdir library
         cd library
         $LN_S $root/library/[a-l]*.m .
