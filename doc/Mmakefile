@@ -1,3 +1,4 @@
+# vim: ts=8 sw=8 noet
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -228,9 +229,17 @@ mdb_doc: generate_mdb_doc mercury_user_guide.info mdb_categories
 
 mdb_command_list: generate_mdb_command_list mdb_doc
 	./generate_mdb_command_list < mdb_doc > mdb_command_list
+	-@if test `wc -l < mdb_command_list` -lt 100; then \
+		echo "There was a problem when creating mdb_command_list"; \
+		exit 1; \
+	fi
 
 mdb_command_test.inp: generate_mdb_command_test mdb_doc
 	./generate_mdb_command_test < mdb_doc > mdb_command_test.inp
+	-@if test `wc -l < mdb_command_test.inp` -lt 100; then \
+		echo "There was a problem when creating mdb_command_test.inp"; \
+		exit 1; \
+	fi
 
 #-----------------------------------------------------------------------------#
 
@@ -433,11 +442,11 @@ install_webpage: library-chapters.texi_pp split_html ps pdf
 	-[ -d $(INSTALL_WEBPAGE_DIR) ] || mkdir -p $(INSTALL_WEBPAGE_DIR)
 	( \
 		. ../VERSION; \
-        if [ "$$VERSION" = DEV ]; then \
+		if [ "$$VERSION" = DEV ]; then \
 			echo "Set the version before you build the website"; \
 			exit 1; \
 		fi; \
-    )
+	)
 	cp *.ps $(INSTALL_WEBPAGE_DIR)
 	cp *.pdf $(INSTALL_WEBPAGE_DIR)
 	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \

@@ -174,7 +174,7 @@ is_command(const char *line, MR_bool *is_concept)
     int len;
 
     len = strlen(line);
-    if ((line[0] == '`') && (line[len-2] == '\'')) {
+    if (((line[0] == '`') || (line[0] == '\'')) && (line[len-2] == '\'')) {
         *is_concept = MR_FALSE;
         return MR_TRUE;
     } else if ((line[0] == '_') && (line[len-2] == '_')) {
