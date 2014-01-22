@@ -108,8 +108,7 @@ AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 #
 
 AC_ARG_WITH(cc,
-    AC_HELP_STRING([--with-cc=<program>],
-                   [Specify which C compiler to use.]),
+    AC_HELP_STRING([--with-cc=<program>], [Specify which C compiler to use.]),
     mercury_cv_with_cc="$withval", mercury_cv_with_cc="")
 
 case "$mercury_cv_with_cc" in
@@ -496,6 +495,21 @@ then
                 U = "h or i"
             ).
 EOF
+
+    # When this script has been invoked with --prefix=..., these variables
+    # will have values by the time we get here, but the values will be the
+    # ones appropriate to the system *we will install*, not the system that is
+    # *already installed*, i.e. the bootstrap compiler. If we don't temporarily
+    # unset these variables, the bootstrap test will fail because the Mercury
+    # compiler won't find the (to-be-installed-later) .int files for the
+    # standard library modules it needs.
+    SAVE_MERCURY_CONFIG_DIR="${MERCURY_CONFIG_DIR}"
+    SAVE_MERCURY_DEFAULT_GRADE="${MERCURY_DEFAULT_GRADE}"
+    SAVE_MERCURY_STDLIB_DIR="${MERCURY_STDLIB_DIR}"
+    unset MERCURY_CONFIG_DIR
+    unset MERCURY_DEFAULT_GRADE
+    unset MERCURY_STDLIB_DIR
+
     if
         echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
         $BOOTSTRAP_MC \
@@ -556,6 +570,10 @@ EOF
         fi
     fi
     rm -f conftest*
+
+    export MERCURY_CONFIG_DIR="${SAVE_MERCURY_CONFIG_DIR}"
+    export MERCURY_DEFAULT_GRADE="${SAVE_MERCURY_DEFAULT_GRADE}"
+    export MERCURY_STDLIB_DIR="${SAVE_MERCURY_STDLIB_DIR}"
 fi
 
 #-----------------------------------------------------------------------------#
@@ -904,6 +922,17 @@ cat > conftest.c << EOF
         return x;
     }
 EOF
+
+AC_MSG_CHECKING(whether we can make error messages filterable)
+if $CC -ftrack-macro-expansion=0 -fno-diagnostics-show-caret -c conftest.c \
+    </dev/null >&AC_FD_CC 2>&1
+then
+    AC_MSG_RESULT(yes)
+    CFLAGS_FOR_ERRMSG_FILTER="-ftrack-macro-expansion=0 -fno-diagnostics-show-caret"
+else
+    AC_MSG_RESULT(no)
+    CFLAGS_FOR_ERRMSG_FILTER=""
+fi
 
 AC_MSG_CHECKING(whether we can use -fno-move-loop-invariants)
 if $CC -fno-move-loop-invariants -c conftest.c \
@@ -2486,15 +2515,10 @@ case "$ac_cv_prog_gcc" in yes)
         i*86-*|x86_64*)
             # On x86-64 with GCC 4.8, gcc labels do not work correctly with
             # -ftree-dominator-opts -- we disable it for x86 in this case too.
-            # We also pass -ftrack-macro-expansion=0 and
-            # -fno-diagnostics-show-caret to the same version of GCC in order
-            # to force it to emit error messages in a format that mfiltercc can
-            # handle.  (See #304 for details.)
             #
             case "$C_COMPILER_TYPE" in
                 gcc_4_8_*)
-                  CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fno-tree-dominator-opts \
-                      -ftrack-macro-expansion=0 -fno-diagnostics-show-caret"
+                  CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fno-tree-dominator-opts"
                 ;;
             esac
             CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
@@ -2576,6 +2600,59 @@ case "$C_COMPILER_TYPE" in
         CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_REORDER_FUNCTIONS"
         ;;
 esac
+
+# When we use nonlocal gotos, gcc generates warnings about labels of the form
+# mercury__<modulename>__<predname> being used but not defined. The labels
+# actually ARE defined, but with assembly code giving them names of the form
+# _entry_mercury__<modulename>__<predname>. The assembly code makes them global
+# symbols using the "_entry_" names. The generated code does refer to the
+# labels using the "entry-less" names as well, and the gcc code generator
+# processes those references just fine, but some other part of gcc seems
+# to forget that fact when it generates the warnings. We therefore filter
+# out those warnings with util/mfiltercc.
+# 
+# Versions of gcc from 4.8 onward generate this warning not on a single line,
+# which is what mfiltercc looks for, but as a very long multiline message,
+# tracing the several macros involved, and putting arrow (carets) under their
+# definitions, like this:
+#
+# /home/public/mercury-install-2014-01-10/lib/mercury/inc/mercury_goto.h:30:12: warning: ‘mercury__nrev__nreverse_2_0’ used but never defined [enabled by default]
+#   MR_PASTE2(mercury__, label)
+#             ^
+# /home/public/mercury-install-2014-01-10/lib/mercury/inc/mercury_goto.h:881:14: note: in definition of macro ‘MR_declare_static’
+#   static void label(void) __asm__("_entry_" MR_STRINGIFY(label))
+#               ^
+# /home/public/mercury-install-2014-01-10/lib/mercury/inc/mercury_std.h:268:26: note: in expansion of macro ‘MR_PASTE2_2’
+#  #define MR_PASTE2(a,b)   MR_PASTE2_2(a,b)
+#                           ^
+# /home/public/mercury-install-2014-01-10/lib/mercury/inc/mercury_goto.h:30:2: note: in expansion of macro ‘MR_PASTE2’
+#   MR_PASTE2(mercury__, label)
+#   ^
+# /home/public/mercury-install-2014-01-10/lib/mercury/inc/mercury_goto.h:1672:20: note: in expansion of macro ‘MR_add_prefix’
+#   MR_declare_static(MR_add_prefix(e));
+#                     ^
+# nrev.c:79:1: note: in expansion of macro ‘MR_decl_static’
+#  MR_decl_static(nrev__nreverse_2_0)
+#  ^
+#
+# The problem is, mfiltercc removes the first line, but lets the rest
+# through. This will confuse users even more than the unfiltered error
+# message would, since they get the all the context but no information about
+# the supposed "error" itself. For gcc versions that by default generate such
+# long error messages, the inclusion of CFLAGS_FOR_ERRMSG_FILTER in
+# CFLAGS_FOR_GOTOS will cause them to deviate from this default and switch
+# them off.
+#
+# We *could* try to find a way to define labels that gcc does not complain
+# about, at all. However, given that we *have* to use assembly code to make
+# internal labels globally visible, any technique we could use to do that
+# would be very vulnerable: it would be quite likely to be broken by new
+# versions of gcc. Our current mechanism is vulnerable in the same way,
+# but after such breakage, having to fix the mechanism to make it work
+# is easier than having to fix it to make it work *and* to make it
+# warning-free.
+#
+CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_ERRMSG_FILTER"
 
 AC_SUBST(CFLAGS_FOR_REGS)
 AC_SUBST(CFLAGS_FOR_GOTOS)
