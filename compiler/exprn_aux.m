@@ -105,10 +105,6 @@
 
 %-----------------------------------------------------------------------------%
 
-% Determine whether a const (well, what _we_ consider to be a const)
-% is constant as far as the C compiler is concerned -- specifically,
-% determine whether it can be used as the initializer of a C static constant.
-
 const_is_constant(Const, ExprnOpts, IsConst) :-
     (
         ( Const = llconst_true
