@@ -12,6 +12,9 @@ Changes to the Mercury standard library:
 
 * We have added the function cord.condense/1.
 
+* The following functions in the standard library's cord module now use
+  constant stack space: foldl/3, foldl_pred/4.
+
 * We have added the following predicates to the array and version_array
   modules: is_empty/1, all_true/2 and all_false/2.
 
@@ -35,6 +38,14 @@ Changes to the Mercury standard library:
 
 * We have added the following predicates to the int module: fold_up3/9 and
   fold_down3/9.
+
+Changes to the Mercury compiler:
+
+* On Mac OS X systems the compiler is now configured use the version of the
+  host system as the default value for the deployment target.
+
+  A new configuration option, `--with-macosx-deployment-target', allows
+  an alternative value to be selected at configuration time.
 
 Changes to the extras distribution:
 

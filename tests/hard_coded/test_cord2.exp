@@ -117,5 +117,8 @@ nonempty_cord(branch_node(branch_node(list_node(2, [3, 4]), list_node(2, [3, 4])
 [2, 3, 4, 2, 3, 4, 2, 3, 4, 2, 3, 4]
 [4, 3, 2, 4, 3, 2, 4, 3, 2, 4, 3, 2]
 
+Test folds
+done.
+
 Test cord_list_to_cord and cord_list_to_list
 done.

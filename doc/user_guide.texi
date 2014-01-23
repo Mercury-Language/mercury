@@ -3993,7 +3993,7 @@ If you want a stylesheet to be applied to the XML
 before the browser is invoked,
 then you should do that in this command using the appropriate program
 (such as xsltproc, which comes with libxslt
-and is available from http://xmlsoft.org/XSLT/).
+and is available from @uref{http://xmlsoft.org/XSLT/}).
 By default if xsltproc and mozilla (or firefox) are available,
 xsltproc is invoked to apply the xul_tree.xsl stylesheet in
 extras/xml_stylesheets, then mozilla is invoked on the resulting XUL file.
@@ -4255,6 +4255,50 @@ command.  See also `trust' and `trusted'.
 @end table
 
 @sp 1
+@node Miscellaneous commands
+@subsection Miscellaneous commands
+
+@sp 1
+@table @code
+@item source [-i] @var{filename} [@var{args}]
+@kindex source (mdb command)
+Executes the commands in the file named @var{filename}.
+Optionally a list of at most nine arguments can be given.
+Occurrences of the strings "$1" to "$9" in the sourced file
+will be replaced by the corresponding arguments given in the source
+command before the commands in the sourced file are executed.
+@sp 1
+Lines that start with a hash (#) character are ignored.
+Hash characters can be used to place comments in your mdb scripts.
+@sp 1
+The option @samp{-i} or @samp{--ignore-errors} tells @samp{mdb}
+not to complain if the named file does not exist or is not readable.
+@sp 1
+@item save @var{filename}
+@kindex save (mdb command)
+Saves the persistent state of the debugger
+(aliases, print level, scroll controls,
+set of breakpoints, browser parameters,
+set of objects trusted by the declarative debugger, etc)
+to the specified file.
+The state is saved in the form of mdb commands,
+so that sourcing the file will recreate the saved state.
+Note that this command does not save transient state,
+such as the current event.
+There is also a small part of the persistent state
+(breakpoints established with a @samp{break here} command)
+that cannot be saved.
+@sp 1
+@item quit [-y]
+@kindex quit (mdb command)
+Quits the debugger and aborts the execution of the program.
+If the option @samp{-y} is not present, asks for confirmation first.
+Any answer starting with @samp{y}, or end-of-file, is considered confirmation.
+@sp 1
+End-of-file on the debugger's input is considered a quit command.
+@end table
+
+@sp 1
 @node Experimental commands
 @subsection Experimental commands
 
@@ -4395,49 +4439,6 @@ and its submodules, if any.
 @end table
 
 @sp 1
-@node Miscellaneous commands
-@subsection Miscellaneous commands
-
-@sp 1
-@table @code
-@item source [-i] @var{filename} [@var{args}]
-@kindex source (mdb command)
-Executes the commands in the file named @var{filename}.
-Optionally a list of at most nine arguments can be given.
-Occurrences of the strings "$1" to "$9" in the sourced file
-will be replaced by the corresponding arguments given in the source
-command before the commands in the sourced file are executed.
-@sp 1
-Lines that start with a hash (#) character are ignored.
-Hash characters can be used to place comments in your mdb scripts.
-@sp 1
-The option @samp{-i} or @samp{--ignore-errors} tells @samp{mdb}
-not to complain if the named file does not exist or is not readable.
-@sp 1
-@item save @var{filename}
-@kindex save (mdb command)
-Saves the persistent state of the debugger
-(aliases, print level, scroll controls,
-set of breakpoints, browser parameters,
-set of objects trusted by the declarative debugger, etc)
-to the specified file.
-The state is saved in the form of mdb commands,
-so that sourcing the file will recreate the saved state.
-Note that this command does not save transient state,
-such as the current event.
-There is also a small part of the persistent state
-(breakpoints established with a @samp{break here} command)
-that cannot be saved.
-@sp 1
-@item quit [-y]
-@kindex quit (mdb command)
-Quits the debugger and aborts the execution of the program.
-If the option @samp{-y} is not present, asks for confirmation first.
-Any answer starting with @samp{y}, or end-of-file, is considered confirmation.
-@sp 1
-End-of-file on the debugger's input is considered a quit command.
-@end table
-
 @node Developer commands
 @subsection Developer commands
 
@@ -6348,8 +6349,8 @@ use @samp{mmc --help} to get the most up-to-date list.
 
 @menu
 * Invocation overview::
-* Verbosity options::
 * Warning options::
+* Verbosity options::
 * Output options::
 * Auxiliary output options::
 * Language semantics options::
@@ -6374,7 +6375,7 @@ mmc [@var{options}] @var{arguments}
 Arguments can be either module names or file names.
 Arguments ending in @samp{.m} are assumed to be file names,
 while other arguments are assumed to be module names, with
-@samp{.} (rather than @samp{__} or @samp{:}) as module qualifier.
+@samp{.} (rather than @samp{__}) as module qualifier.
 If you specify a module name such as @samp{foo.bar.baz},
 the compiler will look for the source in files @file{foo.bar.baz.m},
 @file{bar.baz.m}, and @file{baz.m}, in that order.
@@ -6416,13 +6417,13 @@ This option causes the compiler to halt immediately
 after syntax checking and not do any semantic checking
 if it finds any syntax errors in the program.
 
-% @sp 1
-% @item --halt-at-auto-parallel-failure
-% @findex --halt-at-auto-parallel-failure
-% @cindex Automatic parallelism
-% @cindex Profiler feedback
-% This option causes the compiler to halt if it cannot perform
-% an auto-parallelization requested by a feedback file.
+@c @sp 1
+@c @item --halt-at-auto-parallel-failure
+@c @findex --halt-at-auto-parallel-failure
+@c @cindex Automatic parallelism
+@c @cindex Profiler feedback
+@c This option causes the compiler to halt if it cannot perform
+@c an auto-parallelization requested by a feedback file.
 
 @sp 1
 @item --inhibit-accumulator-warnings
@@ -7578,9 +7579,9 @@ them in @samp{MCFLAGS}, @samp{MGNUCFLAGS} and @samp{MLFLAGS}.
 @menu
 * Grades and grade components::                 Setting the compilation model
 * Target options::                              Choosing a target language
-* Optional features compilation model options:: Debugging, Profiling, etc.
 * LLDS back-end compilation model options::     For the original back-end
 * MLDS back-end compilation model options::     For the new high-level back-end
+* Optional features compilation model options:: Debugging, Profiling, etc.
 * Developer compilation model options::         Not for general use
 @end menu
 
@@ -8400,19 +8401,19 @@ The special value 0 indicates the table size is unlimited.
 This option can be useful to avoid exceeding fixed limits
 imposed by some C compilers.
 
-% @sp 1
-% @item "--compare-specialization @var{n}
-% @findex --compare-specialization @var{n}
-% Generate quadratic instead of linear compare predicates for types
-% with up to n function symbols. Higher values of n lead to faster
-% but also bigger compare predicates.
+@c @sp 1
+@c @item "--compare-specialization @var{n}
+@c @findex --compare-specialization @var{n}
+@c Generate quadratic instead of linear compare predicates for types
+@c with up to n function symbols. Higher values of n lead to faster
+@c but also bigger compare predicates.
 
-% @sp 1
-% @item --no-should-pretest-equality
-% @findex --no-should-pretest-equality
-% @findex --should-pretest-equality
-% If specified, do not add a test for the two values being equal as words
-% to the starts of potentially expensive unify and compare predicates.
+@c @sp 1
+@c @item --no-should-pretest-equality
+@c @findex --no-should-pretest-equality
+@c @findex --should-pretest-equality
+@c If specified, do not add a test for the two values being equal as words
+@c to the starts of potentially expensive unify and compare predicates.
 
 @sp 1
 @item --fact-table-max-array-size @var{size}
@@ -8496,8 +8497,8 @@ Assume that @var{n} float temporaries will fit into real machine registers.
 * Overall optimization options::
 * High-level (HLDS -> HLDS) optimization options::
 * MLDS backend (MLDS -> MLDS) optimization options::
-* Medium-level (HLDS -> LLDS) optimization options::
 * Erlang (HLDS -> ELDS) optimization options::
+* Medium-level (HLDS -> LLDS) optimization options::
 * Low-level (LLDS -> LLDS) optimization options::
 * Output-level (LLDS -> C) optimization options::
 @end menu
@@ -9282,400 +9283,6 @@ extension.
 
 @end table
 
-@node Build system options
-@section Build system options
-@table @code
-@item -m
-@itemx --make
-@findex -m
-@findex --make
-Treat the non-option arguments to @samp{mmc} as files to
-make, rather than source files.  Create the specified files,
-if they are not already up-to-date.
-(Note that this option also enables @samp{--use-subdirs}.)
-
-@sp 1
-@item -r
-@itemx --rebuild
-@findex -r
-@findex --rebuild
-Same as @samp{--make}, but always rebuild the target files
-even if they are up to date.
-
-@sp 1
-@item -k
-@itemx --keep-going
-@findex -k
-@findex --keep-going
-With @samp{--make} keep going as far as
-possible even if an error is detected.
-
-@sp 1
-@item -j <n>
-@item --jobs <n>
-@findex -j <n>
-@findex --jobs
-With @samp{--make}, attempt to perform up to @samp{<n>} jobs
-concurrently for some tasks.
-
-In low-level C grades with parallelism support,
-the number of threads is also limited by
-the @samp{-P} option in the @samp{MERCURY_OPTIONS} environment variable
-(see @ref{Environment}).
-
-@sp 1
-@item --track-flags
-@findex -track-flags
-With @samp{--make}, keep track of the options used when compiling
-each module.  If an option for a module is added or removed,
-@samp{mmc --make} will then know to recompile the module even if the
-timestamp on the file itself has not changed.  Warning,
-verbosity and build system options are not tracked.
-
-@sp 1
-@item --pre-link-command @var{command}
-@findex --pre-link-command
-Specify a command to run before linking with @samp{mmc --make}.
-This can be used to compile C source files which rely on
-header files generated by the Mercury compiler.
-The command will be passed the names of all of the source files in
-the program or library, with the source file containing the main
-module given first.
-
-@sp 1
-@item --extra-init-command @var{command}
-@findex --extra-init-command
-Specify a command to produce extra entries in the @file{.init}
-file for a library.
-The command will be passed the names of all of the source files in
-the program or library, with the source file containing the main
-module given first.
-
-@sp 1
-@item --install-prefix @var{dir}
-@findex --install-prefix
-Specify the directory under which to install Mercury libraries.
-
-@sp 1
-@item --install-command @var{command}
-@findex --install-command
-Specify the command to use to install the files in Mercury
-libraries. The given command will be invoked as
-@code{@var{command} @var{source} @var{target}}
-to install each file in a Mercury library.
-The default command is @samp{cp}.
-
-@sp 1
-@item --install-command-dir-option @var{option}
-@findex --install-command-dir-command
-Specify the flag to pass to the install command to install
-a directory. The given command will be invoked as
-@code{@var{command} @var{option} @var{source} @var{target}}
-to install each directory. The default option is @samp{-R}.
-
-@sp 1
-@item --no-detect-libgrades
-@findex --no-detect-libgrades
-Do not scan the installation direcotry to determine which
-standard library grades are available.
-
-@sp 1
-@item --libgrade @var{grade}
-@findex --libgrade
-Add @var{grade} to the list of compilation grades in
-which a library to be installed should be built.
-
-@sp 1
-@item --no-libgrade
-@findex --no-libgrade
-Clear the list of compilation grades in which a library
-to be installed should be built.  The main use of this is to avoid
-building and installing the default set of grades.
-
-@sp 1
-@item --libgrades-include-component @var{component}
-@itemx --libgrades-include @var{component}
-@findex --libgrade-include-component
-@findex --libgrades-include
-Remove grades that do not contain the specified component from the
-set of library grades to be installed.
-(This option does not work with Mmake, only @samp{mmc --make}.)
-
-@sp 1
-@item --libgrades-exclude-component @var{component}
-@itemx --libgrade-exclude @var{component}
-@findex --libgrades-exclude-component
-@findex --libgrade-exclude
-Remove grades that contain the specified component from the set of
-library grades to be installed.
-(This option does not work with Mmake, only @samp{mmc --make}.)
-
-@sp 1
-@item --lib-linkage @{shared,static@}
-@findex --lib-linkage
-Specify whether libraries should be installed for shared
-or static linking.  This option can be specified multiple
-times.  By default libraries will be installed for
-both shared and static linking.
-
-@sp 1
-@item --flags @var{file}
-@itemx --flags-file @var{file}
-@findex --flags
-@findex --flags-file
-Take options from the specified file, and handle them
-as if they were specified on the command line.
-
-@sp 1
-@item --options-file @var{file}
-@findex --options-file
-@cindex Options files
-@cindex Mercury.options
-Add @var{file} to the list of options files to be processed.
-If @var{file} is @samp{-}, an options file will be read from the
-standard input.  By default the file @file{Mercury.options}
-in the current directory will be read.
-See @ref{Using Mmake} for a description of the syntax of options files.
-
-@item --config-file @var{file}
-@findex --config-file
-@cindex Options files
-Read the Mercury compiler's configuration information from @var{file}.
-If the @samp{--config-file} option is not set, a default configuration
-will be used, unless @samp{--no-mercury-stdlib-dir} is passed to @samp{mmc}.
-The configuration file is just an options file (@pxref{Using Mmake}).
-
-@sp 1
-@item --options-search-directory @var{dir}
-@findex --options-search-directory
-Add @var{dir} to the list of directories to be searched for
-options files.
-
-@sp 1
-@item --mercury-configuration-directory @var{dir}
-@itemx --mercury-config-dir @var{dir}
-@findex --mercury-configuration-directory
-@findex --mercury-config-dir
-Search @var{dir} for Mercury system's configuration files.
-
-@sp 1
-@item -I @var{dir}
-@itemx --search-directory @var{dir}
-@findex -I
-@findex --search-directory
-@cindex Directories
-@cindex Search path
-Append @var{dir} to the list of directories to be searched for
-imported modules.
-
-@sp 1
-@item --intermod-directory @var{dir}
-@findex --intermod-directory
-@cindex Directories
-@cindex Search path
-Append @var{dir} to the list of directories to be searched for
-@samp{.opt} files.
-
-@sp 1
-@item --use-search-directories-for-intermod
-@findex --use-search-directories-for-intermod
-@cindex Directories
-@cindex Search path
-Append the arguments of all -I options to the list of directories
-to be searched for @samp{.opt} files.
-
-@sp 1
-@item --no-libgrade-install-check
-@findex --no-libgrade-install-check
-Do not check that libraries have been installed before attempting
-to use them.  (This option is only meaningful with `mmc --make'.)
-
-@sp 1
-@item --use-subdirs
-@findex --use-subdirs
-@cindex File names
-@cindex Directories
-@cindex Subdirectories
-@cindex @file{Mercury} subdirectory
-Create intermediate files in a @file{Mercury} subdirectory,
-rather than in the current directory.
-
-@sp 1
-@item --use-grade-subdirs
-@findex --use-grade-subdirs
-@cindex File names
-@cindex Directories
-@cindex Subdirectories
-@cindex @file{Mercury} subdirectory
-@cindex Grades
-Generate intermediate files in a @file{Mercury} subdirectory,
-laid out so that multiple grades can be built simultaneously.
-Executables and libraries will be symlinked or copied into the
-current directory.
-@samp{--use-grade-subdirs} does not work with Mmake (it does
-work with @samp{mmc --make}).
-
-@sp 1
-@item --order-make-by-timestamp
-@findex --order-make-by-timestamp
-Make @samp{mmc --make} compile more recently modified source files first.
-
-@sp 1
-@item --show-make-times
-@findex --show-make-times
-Report run times for commands executed by @samp{mmc --make}.
-
-@sp 1
-@item --extra-library-header @var{file}
-@item --extra-lib-header @var{file}
-@findex --extra-library-header
-@findex --extra-lib-header
-Install the specified C header file along with a Mercury library.
-(This option is only supported by @samp{mmc --make})
-
-@sp 1
-@item --restricted-command-line
-@findex --restricted-command-line
-Enable this option if your shell doesn't support long command lines.
-This option uses temporary files to pass arguments to sub-commands.
-(This option is only supported by @samp{mmc --make})
-
-@sp 1
-@item --env-type @var{type}
-@findex --env-type
-Specify the environment type in which the compiler and generated
-programs will be invoked.
-The environment type controls how the compiler and generated programs
-interact with the shell and other system tools.
-The @var{type} should be one of @samp{posix}, @samp{cygwin}, @samp{msys},
-or @samp{windows}.
-This option is equivalent to setting all of @samp{--host-env-type},
-@samp{--system-env-type} and @samp{--target-env-type} to @var{type}.
-
-@sp 1
-@item --host-env-type @var{type}
-@findex --host-env-type
-Specify the environment type in which the compiler will be invoked.
-(See above for a list of supported environment types.)
-
-@sp 1
-@item --system-env-type @var{type}
-@findex --system-env-type
-Specify the environment type in which external programs invoked by the
-compiler will run.
-If not specified, this defaults to the value given by @samp{--host-env-type}.
-
-@sp 1
-@item --target-env-type @var{type}
-@findex --target-env-type
-Specify the environment type in which generated programs will be invoked.
-(See above for a list of supported environment types.)
-
-@end table
-
-@node Miscellaneous options
-@section Miscellaneous options
-@table @code
-
-@sp 1
-@item -?
-@itemx -h
-@itemx --help
-@findex -?
-@findex -h
-@findex --help
-@cindex Help option
-Print a usage message.
-
-@sp 1
-@item --filenames-from-stdin
-@findex --filenames-from-stdin
-Read then compile a newline terminated module name or file name from the
-standard input. Repeat this until EOF is reached. (This allows a program
-or user to interactively compile several modules without the overhead of
-process creation for each one.)
-
-@sp 1
-@item --typecheck-ambiguity-warn-limit @var{n}
-@findex typecheck-ambiguity-warn-limit
-Set the number of type assignments required to generate a warning
-about highly ambiguous overloading to @var{n}.
-
-@sp 1
-@item --typecheck-ambiguity-error-limit @var{n}
-@findex typecheck-ambiguity-error-limit
-Set the number of type assignments required to generate an error
-excessively ambiguous overloading to @var{n}.
-If this limit is reached,
-the typechecker will not process the predicate or function any further.
-
-@c @sp 1
-@c @item --ignore-par-conjunctions
-@c @findex --ignore-par-conjunctions
-@c Replace parallel conjunctions with plain ones.
-@c This can help developers benchmark their code.
-@c This does not affect implicit parallelism.
-
-@sp 1
-@item --control-granularity
-@findex --control-granularity
-Don't try to generate more parallelism than the machine can handle,
-which may be specified at runtime or detected automatically.
-(see the @samp{-P} option in the @samp{MERCURY_OPTIONS} environment variable.)
-
-@sp 1
-@item --distance-granularity @var{distance_value}
-@findex --distance-granularity
-Control the granularity of parallel execution
-using the specified distance value.
-
-@c Maybe this options *should* exist, but at the moment, it doesn't.
-@c @sp 1
-@c @item --parallelism-target @var{num_cpus}
-@c @findex --parallelism-target
-@c Specifies the number of CPUs of the target machine,
-@c for use by --control-granularity option.
-
-@sp 1
-@item --implicit-parallelism
-@findex --implicit-parallelism
-@cindex Automatic parallelism
-@cindex Profiler feedback
-Introduce parallel conjunctions where it could be worthwhile (implicit
-parallelism) using deep profiling feedback information generated by
-mdprof_create_feedback. The profiling feedback file can be specified using the
---feedback-file option.
-
-@sp 1
-@item --feedback-file
-@findex --feedback-file
-@cindex Automatic parallelism
-@cindex Profiler feedback
-Use the specified profiling feedback file
-which may currently only be processed for automatic parallelism.
-
-@c @sp 1
-@c @item --loop-control
-@c @findex --loop-control
-@c Enable the loop control transformation for parallel conjunctions.
-@c This causes right-recursive parallel conjunctions to use fewer contexts while
-@c maintaining parallelism.
-@c This transformation is under development, when it is ready it will
-@c probably be enabled by default.
-@c
-@c @sp 1
-@c @item --no-loop-control-preserve-tail-recursion
-@c @findex --no-loop-control-preserve-tail-recursion
-@c Do not attempt to preserve tail recursion in the loop control transformation.
-@c This option causes all code spawned off using loop control to access it's
-@c parent stack frame through the parent stack pointer.
-@c Rather than copying (parts) of the stack frame into the child's stack frame and
-@c reading it from there.
-@c This allows us to compare the cost of copying the stack frame with the cost of
-@c non tail recursive code.
-@c It is intended for developers only.
-
-@end table
 
 @node Target code compilation options
 @section Target code compilation options
@@ -10134,6 +9741,401 @@ Set the total size of the C stack in virtual memory for executables.
 The stack size is given in bytes.
 This option is only supported (and indeed only necessary) on systems running
 Microsoft Windows.
+
+@end table
+
+@node Build system options
+@section Build system options
+@table @code
+@item -m
+@itemx --make
+@findex -m
+@findex --make
+Treat the non-option arguments to @samp{mmc} as files to
+make, rather than source files.  Create the specified files,
+if they are not already up-to-date.
+(Note that this option also enables @samp{--use-subdirs}.)
+
+@sp 1
+@item -r
+@itemx --rebuild
+@findex -r
+@findex --rebuild
+Same as @samp{--make}, but always rebuild the target files
+even if they are up to date.
+
+@sp 1
+@item -k
+@itemx --keep-going
+@findex -k
+@findex --keep-going
+With @samp{--make} keep going as far as
+possible even if an error is detected.
+
+@sp 1
+@item -j <n>
+@item --jobs <n>
+@findex -j <n>
+@findex --jobs
+With @samp{--make}, attempt to perform up to @samp{<n>} jobs
+concurrently for some tasks.
+
+In low-level C grades with parallelism support,
+the number of threads is also limited by
+the @samp{-P} option in the @samp{MERCURY_OPTIONS} environment variable
+(see @ref{Environment}).
+
+@sp 1
+@item --track-flags
+@findex -track-flags
+With @samp{--make}, keep track of the options used when compiling
+each module.  If an option for a module is added or removed,
+@samp{mmc --make} will then know to recompile the module even if the
+timestamp on the file itself has not changed.  Warning,
+verbosity and build system options are not tracked.
+
+@sp 1
+@item --pre-link-command @var{command}
+@findex --pre-link-command
+Specify a command to run before linking with @samp{mmc --make}.
+This can be used to compile C source files which rely on
+header files generated by the Mercury compiler.
+The command will be passed the names of all of the source files in
+the program or library, with the source file containing the main
+module given first.
+
+@sp 1
+@item --extra-init-command @var{command}
+@findex --extra-init-command
+Specify a command to produce extra entries in the @file{.init}
+file for a library.
+The command will be passed the names of all of the source files in
+the program or library, with the source file containing the main
+module given first.
+
+@sp 1
+@item --install-prefix @var{dir}
+@findex --install-prefix
+Specify the directory under which to install Mercury libraries.
+
+@sp 1
+@item --install-command @var{command}
+@findex --install-command
+Specify the command to use to install the files in Mercury
+libraries. The given command will be invoked as
+@code{@var{command} @var{source} @var{target}}
+to install each file in a Mercury library.
+The default command is @samp{cp}.
+
+@sp 1
+@item --install-command-dir-option @var{option}
+@findex --install-command-dir-command
+Specify the flag to pass to the install command to install
+a directory. The given command will be invoked as
+@code{@var{command} @var{option} @var{source} @var{target}}
+to install each directory. The default option is @samp{-R}.
+
+@sp 1
+@item --no-detect-libgrades
+@findex --no-detect-libgrades
+Do not scan the installation direcotry to determine which
+standard library grades are available.
+
+@sp 1
+@item --libgrade @var{grade}
+@findex --libgrade
+Add @var{grade} to the list of compilation grades in
+which a library to be installed should be built.
+
+@sp 1
+@item --no-libgrade
+@findex --no-libgrade
+Clear the list of compilation grades in which a library
+to be installed should be built.  The main use of this is to avoid
+building and installing the default set of grades.
+
+@sp 1
+@item --libgrades-include-component @var{component}
+@itemx --libgrades-include @var{component}
+@findex --libgrade-include-component
+@findex --libgrades-include
+Remove grades that do not contain the specified component from the
+set of library grades to be installed.
+(This option does not work with Mmake, only @samp{mmc --make}.)
+
+@sp 1
+@item --libgrades-exclude-component @var{component}
+@itemx --libgrade-exclude @var{component}
+@findex --libgrades-exclude-component
+@findex --libgrade-exclude
+Remove grades that contain the specified component from the set of
+library grades to be installed.
+(This option does not work with Mmake, only @samp{mmc --make}.)
+
+@sp 1
+@item --lib-linkage @{shared,static@}
+@findex --lib-linkage
+Specify whether libraries should be installed for shared
+or static linking.  This option can be specified multiple
+times.  By default libraries will be installed for
+both shared and static linking.
+
+@sp 1
+@item --flags @var{file}
+@itemx --flags-file @var{file}
+@findex --flags
+@findex --flags-file
+Take options from the specified file, and handle them
+as if they were specified on the command line.
+
+@sp 1
+@item --options-file @var{file}
+@findex --options-file
+@cindex Options files
+@cindex Mercury.options
+Add @var{file} to the list of options files to be processed.
+If @var{file} is @samp{-}, an options file will be read from the
+standard input.  By default the file @file{Mercury.options}
+in the current directory will be read.
+See @ref{Using Mmake} for a description of the syntax of options files.
+
+@item --config-file @var{file}
+@findex --config-file
+@cindex Options files
+Read the Mercury compiler's configuration information from @var{file}.
+If the @samp{--config-file} option is not set, a default configuration
+will be used, unless @samp{--no-mercury-stdlib-dir} is passed to @samp{mmc}.
+The configuration file is just an options file (@pxref{Using Mmake}).
+
+@sp 1
+@item --options-search-directory @var{dir}
+@findex --options-search-directory
+Add @var{dir} to the list of directories to be searched for
+options files.
+
+@sp 1
+@item --mercury-configuration-directory @var{dir}
+@itemx --mercury-config-dir @var{dir}
+@findex --mercury-configuration-directory
+@findex --mercury-config-dir
+Search @var{dir} for Mercury system's configuration files.
+
+@sp 1
+@item -I @var{dir}
+@itemx --search-directory @var{dir}
+@findex -I
+@findex --search-directory
+@cindex Directories
+@cindex Search path
+Append @var{dir} to the list of directories to be searched for
+imported modules.
+
+@sp 1
+@item --intermod-directory @var{dir}
+@findex --intermod-directory
+@cindex Directories
+@cindex Search path
+Append @var{dir} to the list of directories to be searched for
+@samp{.opt} files.
+
+@sp 1
+@item --use-search-directories-for-intermod
+@findex --use-search-directories-for-intermod
+@cindex Directories
+@cindex Search path
+Append the arguments of all -I options to the list of directories
+to be searched for @samp{.opt} files.
+
+@sp 1
+@item --no-libgrade-install-check
+@findex --no-libgrade-install-check
+Do not check that libraries have been installed before attempting
+to use them.  (This option is only meaningful with `mmc --make'.)
+
+@sp 1
+@item --use-subdirs
+@findex --use-subdirs
+@cindex File names
+@cindex Directories
+@cindex Subdirectories
+@cindex @file{Mercury} subdirectory
+Create intermediate files in a @file{Mercury} subdirectory,
+rather than in the current directory.
+
+@sp 1
+@item --use-grade-subdirs
+@findex --use-grade-subdirs
+@cindex File names
+@cindex Directories
+@cindex Subdirectories
+@cindex @file{Mercury} subdirectory
+@cindex Grades
+Generate intermediate files in a @file{Mercury} subdirectory,
+laid out so that multiple grades can be built simultaneously.
+Executables and libraries will be symlinked or copied into the
+current directory.
+@samp{--use-grade-subdirs} does not work with Mmake (it does
+work with @samp{mmc --make}).
+
+@sp 1
+@item --order-make-by-timestamp
+@findex --order-make-by-timestamp
+Make @samp{mmc --make} compile more recently modified source files first.
+
+@sp 1
+@item --show-make-times
+@findex --show-make-times
+Report run times for commands executed by @samp{mmc --make}.
+
+@sp 1
+@item --extra-library-header @var{file}
+@item --extra-lib-header @var{file}
+@findex --extra-library-header
+@findex --extra-lib-header
+Install the specified C header file along with a Mercury library.
+(This option is only supported by @samp{mmc --make})
+
+@sp 1
+@item --restricted-command-line
+@findex --restricted-command-line
+Enable this option if your shell doesn't support long command lines.
+This option uses temporary files to pass arguments to sub-commands.
+(This option is only supported by @samp{mmc --make})
+
+@sp 1
+@item --env-type @var{type}
+@findex --env-type
+Specify the environment type in which the compiler and generated
+programs will be invoked.
+The environment type controls how the compiler and generated programs
+interact with the shell and other system tools.
+The @var{type} should be one of @samp{posix}, @samp{cygwin}, @samp{msys},
+or @samp{windows}.
+This option is equivalent to setting all of @samp{--host-env-type},
+@samp{--system-env-type} and @samp{--target-env-type} to @var{type}.
+
+@sp 1
+@item --host-env-type @var{type}
+@findex --host-env-type
+Specify the environment type in which the compiler will be invoked.
+(See above for a list of supported environment types.)
+
+@sp 1
+@item --system-env-type @var{type}
+@findex --system-env-type
+Specify the environment type in which external programs invoked by the
+compiler will run.
+If not specified, this defaults to the value given by @samp{--host-env-type}.
+
+@sp 1
+@item --target-env-type @var{type}
+@findex --target-env-type
+Specify the environment type in which generated programs will be invoked.
+(See above for a list of supported environment types.)
+
+@end table
+
+@node Miscellaneous options
+@section Miscellaneous options
+@table @code
+
+@sp 1
+@item -?
+@itemx -h
+@itemx --help
+@findex -?
+@findex -h
+@findex --help
+@cindex Help option
+Print a usage message.
+
+@sp 1
+@item --filenames-from-stdin
+@findex --filenames-from-stdin
+Read then compile a newline terminated module name or file name from the
+standard input. Repeat this until EOF is reached. (This allows a program
+or user to interactively compile several modules without the overhead of
+process creation for each one.)
+
+@sp 1
+@item --typecheck-ambiguity-warn-limit @var{n}
+@findex typecheck-ambiguity-warn-limit
+Set the number of type assignments required to generate a warning
+about highly ambiguous overloading to @var{n}.
+
+@sp 1
+@item --typecheck-ambiguity-error-limit @var{n}
+@findex typecheck-ambiguity-error-limit
+Set the number of type assignments required to generate an error
+excessively ambiguous overloading to @var{n}.
+If this limit is reached,
+the typechecker will not process the predicate or function any further.
+
+@c @sp 1
+@c @item --ignore-par-conjunctions
+@c @findex --ignore-par-conjunctions
+@c Replace parallel conjunctions with plain ones.
+@c This can help developers benchmark their code.
+@c This does not affect implicit parallelism.
+
+@sp 1
+@item --control-granularity
+@findex --control-granularity
+Don't try to generate more parallelism than the machine can handle,
+which may be specified at runtime or detected automatically.
+(see the @samp{-P} option in the @samp{MERCURY_OPTIONS} environment variable.)
+
+@sp 1
+@item --distance-granularity @var{distance_value}
+@findex --distance-granularity
+Control the granularity of parallel execution
+using the specified distance value.
+
+@c Maybe this options *should* exist, but at the moment, it doesn't.
+@c @sp 1
+@c @item --parallelism-target @var{num_cpus}
+@c @findex --parallelism-target
+@c Specifies the number of CPUs of the target machine,
+@c for use by --control-granularity option.
+
+@sp 1
+@item --implicit-parallelism
+@findex --implicit-parallelism
+@cindex Automatic parallelism
+@cindex Profiler feedback
+Introduce parallel conjunctions where it could be worthwhile (implicit
+parallelism) using deep profiling feedback information generated by
+mdprof_create_feedback. The profiling feedback file can be specified using the
+@samp{--feedback-file} option.
+
+@sp 1
+@item --feedback-file @var{file}
+@findex --feedback-file
+@cindex Automatic parallelism
+@cindex Profiler feedback
+Use the specified profiling feedback file
+which may currently only be processed for automatic parallelism.
+
+@c @sp 1
+@c @item --loop-control
+@c @findex --loop-control
+@c Enable the loop control transformation for parallel conjunctions.
+@c This causes right-recursive parallel conjunctions to use fewer contexts while
+@c maintaining parallelism.
+@c This transformation is under development, when it is ready it will
+@c probably be enabled by default.
+@c
+@c @sp 1
+@c @item --no-loop-control-preserve-tail-recursion
+@c @findex --no-loop-control-preserve-tail-recursion
+@c Do not attempt to preserve tail recursion in the loop control transformation.
+@c This option causes all code spawned off using loop control to access it's
+@c parent stack frame through the parent stack pointer.
+@c Rather than copying (parts) of the stack frame into the child's stack frame and
+@c reading it from there.
+@c This allows us to compare the cost of copying the stack frame with the cost of
+@c non tail recursive code.
+@c It is intended for developers only.
 
 @end table
 
