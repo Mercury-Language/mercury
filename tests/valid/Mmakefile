@@ -22,6 +22,7 @@ TYPECLASS_PROGS= \
 	bug271 \
 	complex_constraint \
 	exists_bug \
+	exists_dummy \
 	exists_fundeps \
 	exists_fundeps_2 \
 	exists_fundeps_3 \
