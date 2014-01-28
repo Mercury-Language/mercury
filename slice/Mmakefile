@@ -41,6 +41,7 @@ DEPENDS	= $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
 INTS	= $(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
 INT3S	= $(patsubst %,%.int3s,$(MERCURY_MAIN_MODULES))
 CHECKS	= $(patsubst %,%.check,$(MERCURY_MAIN_MODULES))
+PDBS    = $(patsubst %,%.pdb,$(MERCURY_MAIN_MODULES))
 
 VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
 
@@ -204,6 +205,7 @@ ils:	$(mslice.ils) $(mdice.ils) $(mtc_union.ils) $(mcov.ils) $(mtc_diff.ils)
 realclean_local:
 	rm -f tags SLICE_FLAGS SLICE_FLAGS.date \
 		.mdbcomp_modules $(MDBCOMP_MODULES) mdbcomp.*.err
+	rm -f $(PDBS) vc*.pdb
 
 #-----------------------------------------------------------------------------#
 

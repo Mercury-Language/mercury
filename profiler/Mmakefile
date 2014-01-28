@@ -17,6 +17,8 @@ include Mercury.options
 MAIN_TARGET=all
 MERCURY_MAIN_MODULES=mercury_profile
 
+PDBS = $(patsubst %,%.pdb,$(MERCURY_MAIN_MODULES))
+
 VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
 
 #-----------------------------------------------------------------------------#
@@ -98,6 +100,7 @@ ils: $(mercury_profile.ils)
 
 realclean_local:
 	rm -f tags PROF_FLAGS PROF_FLAGS.date
+	rm -f $(PDBS) vc*.pdb
 
 #-----------------------------------------------------------------------------#
 

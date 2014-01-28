@@ -90,7 +90,9 @@ case "$CC" in
         ANSI_OPTS=""
         CHECK_OPTS="-nologo"    # Suppress the MSVC banner message.
         OPT_OPTS=""
-        DEBUG_OPT="-Zi"
+        # See README.MS-VisualC for why we don't enable C level debugging.
+        #DEBUG_OPTS="-Zi"
+        DEBUG_OPTS=""
         DISABLE_OPTS_OPT="-Od"
         COMPILER=cl
         ;;

@@ -4661,7 +4661,9 @@ case "$mercury_cv_cc_type" in
         # Suppress the MSVC banner message.
         CFLAGS_FOR_WARNINGS="-nologo"
         CFLAGS_FOR_OPT=
-        CFLAGS_FOR_DEBUG="-Zi"
+        # XXX See README.MS-Visual C for details of why we disable this.
+        #CFLAGS_FOR_DEBUG="-Zi"
+        CFLAGS_FOR_DEBUG
         CFLAGS_FOR_NO_STRICT_ALIASING=
 
         # Using the MSVC compiler implies that we must use
