@@ -74,6 +74,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.options.
 :- import_module libs.trace_params.
+:- import_module ll_backend.exprn_aux.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
@@ -1115,15 +1116,32 @@ output_c_procedure(Info, Proc, !IO) :-
     io.write_string(" */\n", !IO),
 
     find_caller_label(Instrs, CallerLabel),
-    find_cont_labels(Instrs, set_tree234.init, ContLabelSet),
+    find_cont_labels(Instrs, set_tree234.init, ContLabels),
     EmitCLoops = Info ^ lout_emit_c_loops,
     (
         EmitCLoops = yes,
-        find_while_labels(Instrs, set_tree234.init, WhileSet)
+        find_while_labels(Instrs, set_tree234.init, WhileLabels)
     ;
         EmitCLoops = no,
-        WhileSet = set_tree234.init
+        WhileLabels = set_tree234.init
     ),
+    % We compute UndefWhileLabels by starting with an overapproximation,
+    % which we then whittle down in two steps. Each whittling step
+    % removes from our initial UndefWhileLabels set the labels that
+    % actually do need to be defined.
+    %
+    % Step 1: if a label is in ContLabels, we cannot avoid defining it.
+    set_tree234.difference(WhileLabels, ContLabels, UndefWhileLabels0),
+    ( set_tree234.is_empty(UndefWhileLabels0) ->
+        UndefWhileLabels = UndefWhileLabels0
+    ;
+        % Step 2: if a label is branched to from outside the while loop,
+        % we cannot avoid defining it.
+        find_while_labels_to_define(Instrs, no, WhileLabels,
+            UndefWhileLabels0, UndefWhileLabels)
+    ),
+    LabelOutputInfo = label_output_info(CallerLabel, ContLabels,
+        WhileLabels, UndefWhileLabels),
     LocalThreadEngineBase = Info ^ lout_local_thread_engine_base,
     (
         LocalThreadEngineBase = yes,
@@ -1135,8 +1153,8 @@ output_c_procedure(Info, Proc, !IO) :-
     ;
         LocalThreadEngineBase = no
     ),
-    output_instruction_list(Info, Instrs, CallerLabel - ContLabelSet,
-        WhileSet, not_after_layout_label, !IO),
+    output_instruction_list(Info, Instrs, LabelOutputInfo,
+        not_after_layout_label, !IO),
     (
         LocalThreadEngineBase = yes,
         io.write_string("#ifdef MR_maybe_local_thread_engine_base\n", !IO),
@@ -1169,13 +1187,13 @@ find_caller_label([llds_instr(Uinstr, _) | Instrs], CallerLabel) :-
     ).
 
     % Locate all the labels which are the continuation labels for calls,
-    % nondet disjunctions, forks or joins, and store them in ContLabelSet.
+    % nondet disjunctions, forks or joins, and store them in ContLabels.
     %
 :- pred find_cont_labels(list(instruction)::in,
     set_tree234(label)::in, set_tree234(label)::out) is det.
 
-find_cont_labels([], !ContLabelSet).
-find_cont_labels([Instr | Instrs], !ContLabelSet) :-
+find_cont_labels([], !ContLabels).
+find_cont_labels([Instr | Instrs], !ContLabels) :-
     Instr = llds_instr(Uinstr, _),
     (
         (
@@ -1189,19 +1207,19 @@ find_cont_labels([Instr | Instrs], !ContLabelSet) :-
             Const = llconst_code_addr(code_label(ContLabel))
         )
     ->
-        set_tree234.insert(ContLabel, !ContLabelSet)
+        set_tree234.insert(ContLabel, !ContLabels)
     ;
         Uinstr = fork_new_child(_, Label1)
     ->
-        set_tree234.insert(Label1, !ContLabelSet)
+        set_tree234.insert(Label1, !ContLabels)
     ;
         Uinstr = block(_, _, Block)
     ->
-        find_cont_labels(Block, !ContLabelSet)
+        find_cont_labels(Block, !ContLabels)
     ;
         true
     ),
-    find_cont_labels(Instrs, !ContLabelSet).
+    find_cont_labels(Instrs, !ContLabels).
 
     % Locate all the labels which can be profitably turned into
     % labels starting while loops. The idea is to do this transform:
@@ -1210,9 +1228,9 @@ find_cont_labels([Instr | Instrs], !ContLabelSet) :-
     %                           while (1) {
     %   ...                     ...
     %   if (...) goto L1        if (...) continue
-    %   ...        =>       ...
+    %   ...                 =>  ...
     %   if (...) goto L?        if (...) goto L?
-    %   ...             ...
+    %   ...                     ...
     %   if (...) goto L1        if (...) continue
     %   ...                     ...
     %                           break;
@@ -1278,6 +1296,233 @@ count_while_label_in_block(Label, [Instr0 | Instrs0], !Count) :-
         ),
         count_while_label_in_block(Label, Instrs0, !Count)
     ).
+
+    % Given WhileLabels, a set of labels that we know should start while loops,
+    % and !.UndefWhileLabels, our current guess as to which of these labels
+    % we can avoid defining, remove from UndefWhileLabels the labels
+    % that we cannot avoid defining because they are used in ways that are
+    % incompatible with the labels elimination. This can happen because
+    % the label is branched to from outside its while loop, or because
+    % its address is treated as data. To help us with the former,
+    % MaybeCurWhileLabel tells us which while loop (if any) we are now in.
+    %
+    % Basically, *every* reference to a label will cause us to delete that
+    % label from UndefWhileLabels, with the *exception* of a goto to the label
+    % from *within* the while loop that it starts.
+    %
+:- pred find_while_labels_to_define(list(instruction)::in,
+    maybe(label)::in, set_tree234(label)::in,
+    set_tree234(label)::in, set_tree234(label)::out) is det.
+
+find_while_labels_to_define([], _, _, !UndefWhileLabels).
+find_while_labels_to_define([Instr0 | Instrs0], MaybeCurWhileLabel0,
+        WhileLabels, !UndefWhileLabels) :-
+    Instr0 = llds_instr(Uinstr0, _) ,
+    (
+        Uinstr0 = label(Label),
+        ( set_tree234.contains(WhileLabels, Label) ->
+            MaybeCurWhileLabel = yes(Label)
+        ;
+            MaybeCurWhileLabel = no
+        )
+    ;
+        Uinstr0 = if_val(Rval, Target),
+        rval_addrs(Rval, RvalCodeAddrs, _),
+        delete_any_labels(RvalCodeAddrs, !UndefWhileLabels),
+        ( Target = code_label(TargetLabel) ->
+            ( MaybeCurWhileLabel0 = yes(TargetLabel) ->
+                % This reference will be turned into a continue statement.
+                true
+            ;
+                set_tree234.delete(TargetLabel, !UndefWhileLabels)
+            )
+        ;
+            true
+        ),
+        MaybeCurWhileLabel = no
+    ;
+        Uinstr0 = goto(Target),
+        ( Target = code_label(TargetLabel) ->
+            set_tree234.delete(TargetLabel, !UndefWhileLabels)
+        ;
+            true
+        ),
+        MaybeCurWhileLabel = no
+    ;
+        Uinstr0 = computed_goto(Rval, MaybeTargets),
+        rval_addrs(Rval, RvalCodeAddrs, _),
+        delete_any_labels(RvalCodeAddrs, !UndefWhileLabels),
+        delete_any_maybe_labels(MaybeTargets, !UndefWhileLabels),
+        MaybeCurWhileLabel = no
+    ;
+        Uinstr0 = llcall(Target, Continuation, _, _, _, _),
+        delete_any_label(Target, !UndefWhileLabels),
+        delete_any_label(Continuation, !UndefWhileLabels),
+        MaybeCurWhileLabel = no
+    ;
+        Uinstr0 = block(_, _, BlockInstrs),
+        find_while_labels_to_define(BlockInstrs, MaybeCurWhileLabel0,
+            WhileLabels, !UndefWhileLabels),
+        % The block is guaranteed not to contain any labels.
+        MaybeCurWhileLabel = MaybeCurWhileLabel0
+    ;
+        Uinstr0 = mkframe(_, MaybeNextCodeAddr),
+        (
+            MaybeNextCodeAddr = yes(NextCodeAddr),
+            delete_any_label(NextCodeAddr, !UndefWhileLabels)
+        ;
+            MaybeNextCodeAddr = no
+        ),
+        MaybeCurWhileLabel = no
+    ;
+        ( Uinstr0 = assign(Lval, Rval)
+        ; Uinstr0 = keep_assign(Lval, Rval)
+        ),
+        lval_addrs(Lval, LvalCodeAddrs, _),
+        rval_addrs(Rval, RvalCodeAddrs, _),
+        delete_any_labels(LvalCodeAddrs, !UndefWhileLabels),
+        delete_any_labels(RvalCodeAddrs, !UndefWhileLabels),
+        MaybeCurWhileLabel = MaybeCurWhileLabel0
+    ;
+        ( Uinstr0 = save_maxfr(Lval)
+        ; Uinstr0 = restore_maxfr(Lval)
+        ; Uinstr0 = mark_hp(Lval)
+        ; Uinstr0 = store_ticket(Lval)
+        ; Uinstr0 = mark_ticket_stack(Lval)
+        ; Uinstr0 = init_sync_term(Lval, _, _)
+        ; Uinstr0 = fork_new_child(Lval, _)
+        ; Uinstr0 = join_and_continue(Lval, _)
+        ; Uinstr0 = lc_create_loop_control(_, Lval)
+        ),
+        lval_addrs(Lval, LvalCodeAddrs, _),
+        delete_any_labels(LvalCodeAddrs, !UndefWhileLabels),
+        MaybeCurWhileLabel = MaybeCurWhileLabel0
+    ;
+        ( Uinstr0 = restore_hp(Rval)
+        ; Uinstr0 = free_heap(Rval)
+        ; Uinstr0 = region_set_fixed_slot(_, _, Rval)
+        ; Uinstr0 = reset_ticket(Rval, _)
+        ; Uinstr0 = prune_tickets_to(Rval)
+        ),
+        rval_addrs(Rval, RvalCodeAddrs, _),
+        delete_any_labels(RvalCodeAddrs, !UndefWhileLabels),
+        MaybeCurWhileLabel = MaybeCurWhileLabel0
+    ;
+        Uinstr0 = incr_hp(TargetLval, _, _, SizeRval, _, _,
+            MaybeRegionIdRval, _),
+        lval_addrs(TargetLval, TargetLvalCodeAddrs, _),
+        rval_addrs(SizeRval, SizeRvalCodeAddrs, _),
+        delete_any_labels(TargetLvalCodeAddrs, !UndefWhileLabels),
+        delete_any_labels(SizeRvalCodeAddrs, !UndefWhileLabels),
+        (
+            MaybeRegionIdRval = no
+        ;
+            MaybeRegionIdRval = yes(RegionIdRval),
+            rval_addrs(RegionIdRval, RegionIdRvalCodeAddrs, _),
+            delete_any_labels(RegionIdRvalCodeAddrs, !UndefWhileLabels)
+        ),
+        MaybeCurWhileLabel = MaybeCurWhileLabel0
+    ;
+        Uinstr0 = foreign_proc_code(_, _, _, MaybeFixNoLayoutLabel,
+            MaybeFixLayoutLabel, MaybeFixOnlyLayoutLabel, MaybeNoFixLabel,
+            MaybeHashDefLabel, _, _),
+        delete_any_maybe_label(MaybeFixNoLayoutLabel, !UndefWhileLabels),
+        delete_any_maybe_label(MaybeFixLayoutLabel, !UndefWhileLabels),
+        delete_any_maybe_label(MaybeFixOnlyLayoutLabel, !UndefWhileLabels),
+        delete_any_maybe_label(MaybeNoFixLabel, !UndefWhileLabels),
+        delete_any_maybe_label(MaybeHashDefLabel, !UndefWhileLabels),
+        MaybeCurWhileLabel = MaybeCurWhileLabel0
+    ;
+        Uinstr0 = region_fill_frame(_, _, RegionIdRval, NumLval, AddrLval),
+        rval_addrs(RegionIdRval, RegionIdRvalCodeAddrs, _),
+        lval_addrs(NumLval, NumLvalCodeAddrs, _),
+        lval_addrs(AddrLval, AddrLvalCodeAddrs, _),
+        delete_any_labels(RegionIdRvalCodeAddrs, !UndefWhileLabels),
+        delete_any_labels(NumLvalCodeAddrs, !UndefWhileLabels),
+        delete_any_labels(AddrLvalCodeAddrs, !UndefWhileLabels),
+        MaybeCurWhileLabel = MaybeCurWhileLabel0
+    ;
+        Uinstr0 = lc_wait_free_slot(LoopControlRval, SlotLval, Label),
+        rval_addrs(LoopControlRval, LoopControlRvalCodeAddrs, _),
+        lval_addrs(SlotLval, SlotLvalCodeAddrs, _),
+        delete_any_labels(LoopControlRvalCodeAddrs, !UndefWhileLabels),
+        delete_any_labels(SlotLvalCodeAddrs, !UndefWhileLabels),
+        set_tree234.delete(Label, !UndefWhileLabels),
+        MaybeCurWhileLabel = MaybeCurWhileLabel0
+    ;
+        Uinstr0 = lc_spawn_off(LoopControlRval, SlotRval, Label),
+        rval_addrs(LoopControlRval, LoopControlRvalCodeAddrs, _),
+        rval_addrs(SlotRval, SlotRvalCodeAddrs, _),
+        delete_any_labels(LoopControlRvalCodeAddrs, !UndefWhileLabels),
+        delete_any_labels(SlotRvalCodeAddrs, !UndefWhileLabels),
+        set_tree234.delete(Label, !UndefWhileLabels),
+        MaybeCurWhileLabel = MaybeCurWhileLabel0
+    ;
+        Uinstr0 = lc_join_and_terminate(LoopControlRval, SlotRval),
+        rval_addrs(LoopControlRval, LoopControlRvalCodeAddrs, _),
+        rval_addrs(SlotRval, SlotRvalCodeAddrs, _),
+        delete_any_labels(LoopControlRvalCodeAddrs, !UndefWhileLabels),
+        delete_any_labels(SlotRvalCodeAddrs, !UndefWhileLabels),
+        MaybeCurWhileLabel = MaybeCurWhileLabel0
+    ;
+        ( Uinstr0 = comment(_)
+        ; Uinstr0 = livevals(_)
+        ; Uinstr0 = arbitrary_c_code(_, _, _)
+        ; Uinstr0 = push_region_frame(_, _)
+        ; Uinstr0 = use_and_maybe_pop_region_frame(_, _)
+        ; Uinstr0 = prune_ticket
+        ; Uinstr0 = discard_ticket
+        ; Uinstr0 = incr_sp(_, _, _)
+        ; Uinstr0 = decr_sp(_)
+        ; Uinstr0 = decr_sp_and_return(_)
+        ),
+        MaybeCurWhileLabel = MaybeCurWhileLabel0
+    ),
+    find_while_labels_to_define(Instrs0, MaybeCurWhileLabel,
+        WhileLabels, !UndefWhileLabels).
+
+%----------------------------------------------------------------------------%
+%
+% The job of all these predicates is to remove any labels in their first
+% argument from !.UndefWhileLabels.
+%
+
+:- pred delete_any_label(code_addr::in,
+    set_tree234(label)::in, set_tree234(label)::out) is det.
+
+delete_any_label(CodeAddr, !UndefWhileLabels) :-
+    ( CodeAddr = code_label(Label) ->
+        set_tree234.delete(Label, !UndefWhileLabels)
+    ;
+        true
+    ).
+
+:- pred delete_any_labels(list(code_addr)::in,
+    set_tree234(label)::in, set_tree234(label)::out) is det.
+
+delete_any_labels([], !UndefWhileLabels).
+delete_any_labels([CodeAddr | CodeAddrs], !UndefWhileLabels) :-
+    delete_any_label(CodeAddr, !UndefWhileLabels),
+    delete_any_labels(CodeAddrs, !UndefWhileLabels).
+
+:- pred delete_any_maybe_label(maybe(label)::in,
+    set_tree234(label)::in, set_tree234(label)::out) is det.
+
+delete_any_maybe_label(MaybeLabel, !UndefWhileLabels) :-
+    (
+        MaybeLabel = no
+    ;
+        MaybeLabel = yes(Label),
+        set_tree234.delete(Label, !UndefWhileLabels)
+    ).
+
+:- pred delete_any_maybe_labels(list(maybe(label))::in,
+    set_tree234(label)::in, set_tree234(label)::out) is det.
+
+delete_any_maybe_labels([], !UndefWhileLabels).
+delete_any_maybe_labels([MaybeLabel | MaybeLabels], !UndefWhileLabels) :-
+    delete_any_maybe_label(MaybeLabel, !UndefWhileLabels),
+    delete_any_maybe_labels(MaybeLabels, !UndefWhileLabels).
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
