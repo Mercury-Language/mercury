@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2012 The University of Melbourne.
+% Copyright (C) 2012, 2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -137,30 +137,8 @@ const_struct_db_init(Globals, Db) :-
             globals.get_tags_method(Globals, Tags),
             (
                 Tags = tags_low,
-                globals.lookup_bool_option(Globals, enable_const_struct,
-                    OptionEnabled),
-                PolyEnabled = OptionEnabled,
-
-                globals.get_trace_level(Globals, TraceLevel),
-                globals.get_trace_suppress(Globals, TraceSuppress),
-                Bodies = trace_needs_proc_body_reps(TraceLevel, TraceSuppress),
-                (
-                    Bodies = no,
-                    GroundTermEnabled = OptionEnabled
-                ;
-                    Bodies = yes,
-                    % We generate representations of procedure bodies for the
-                    % declarative debugger and for the profiler. When
-                    % traverse_primitives in browser/declarative_tree.m
-                    % looks for the Nth argument of variable X and X is built
-                    % with a unification such as X = ground_term_const(...),
-                    % it crashes. It should be taught not to do that,
-                    % but in the meantime, we prevent the situation from
-                    % arising in the first place. (We never look for the
-                    % original sources of type infos and typeclass infos,
-                    % so we can use constant structures for them.)
-                    GroundTermEnabled = no
-                )
+                can_enable_const_struct(Globals, PolyEnabled,
+                    GroundTermEnabled)
             ;
                 ( Tags = tags_high
                 ; Tags = tags_none
@@ -174,9 +152,12 @@ const_struct_db_init(Globals, Db) :-
             GroundTermEnabled = no
         )
     ;
+        Target = target_java,
+        can_enable_const_struct(Globals, PolyEnabled, _GroundTermEnabled),
+        GroundTermEnabled = no
+    ;
         ( Target = target_il
         ; Target = target_csharp
-        ; Target = target_java
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
@@ -185,6 +166,39 @@ const_struct_db_init(Globals, Db) :-
     ),
     Db = const_struct_db(PolyEnabled, GroundTermEnabled, 0,
         map.init, map.init, map.init, map.init).
+
+    % Test if constant structures are enabled for polymorphism structures
+    % and from ground_term_contexts.  The latter is only enabled if tracing
+    % does not require procedure bodies to be preserved.  The caller
+    % (const_struct_db_init/2) must also check if the compilation grade
+    % supports constant structures.
+    %
+:- pred can_enable_const_struct(globals::in, bool::out, bool::out) is det.
+
+can_enable_const_struct(Globals, PolyEnabled, GroundTermEnabled) :-
+    globals.lookup_bool_option(Globals, enable_const_struct,
+        OptionEnabled),
+    PolyEnabled = OptionEnabled,
+
+    globals.get_trace_level(Globals, TraceLevel),
+    globals.get_trace_suppress(Globals, TraceSuppress),
+    Bodies = trace_needs_proc_body_reps(TraceLevel, TraceSuppress),
+    (
+        Bodies = no,
+        GroundTermEnabled = OptionEnabled
+    ;
+        Bodies = yes,
+        % We generate representations of procedure bodies for the
+        % declarative debugger and for the profiler. When
+        % traverse_primitives in browser/declarative_tree.m looks for the
+        % Nth argument of variable X and X is built with a unification such
+        % as X = ground_term_const(...), it crashes. It should be taught not
+        % to do that, but in the meantime, we prevent the situation from
+        % arising in the first place. (We never look for the original
+        % sources of type infos and typeclass infos, so we can use constant
+        % structures for them.)
+        GroundTermEnabled = no
+    ).
 
 lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
     const_struct_db_get_poly_enabled(!.Db, Enabled),

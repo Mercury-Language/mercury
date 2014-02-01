@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2001-2004, 2011 The University of Melbourne.
+// Copyright (C) 2001-2004, 2011, 2014 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -83,23 +83,34 @@ public class TypeInfo_Struct extends PseudoTypeInfo
 		for (int i = 0; i < as.length; i++) {
 			ptis[i] = (PseudoTypeInfo) as[i];
 		}
-                init(tc, ptis);
+		init(tc, ptis);
 	}
 
-	// XXX untested guess
 	// We don't have a version of this constructor that also takes the arity
 	// as an argument (as we do with the init method above), e.g.
 	//
 	//  public TypeInfo_Struct(TypeInfo_Struct ti, int artiy, Object... as)
 	//
 	// because such overloadings are not allowed under Java 1.7.  (Previous
-	// versions of Java incorrectly allowed them.)
-	// If you change this you will also need to update the code in
-	// compiler/rtti_to_mlds.m.
+	// versions of Java incorrectly allowed them.)  This is okay because
+	// init above simply checks the number of items in the array to
+	// determine the arity.
 	//
-	public TypeInfo_Struct(TypeInfo_Struct ti, Object... as)
+	// If you change this you will also need to update the code in
+	// compiler/rtti_to_mlds.m and compiler/polymorphism.m
+	//
+	public TypeInfo_Struct(Object a1, Object... as)
 	{
-		init(ti.type_ctor, as);
+		if (a1 instanceof TypeInfo_Struct) {
+			TypeInfo_Struct ti = (TypeInfo_Struct)a1;
+			init(ti.type_ctor, as);
+		} else if (a1 instanceof TypeCtorInfo_Struct) {
+			init((TypeCtorInfo_Struct)a1, as);
+		} else {
+			throw new ClassCastException(
+				"cannot cast argument to a TypeInfo or " +
+				"TypeCtorInfo");
+		}
 	}
 
 	// XXX a temp hack just to get things to run
