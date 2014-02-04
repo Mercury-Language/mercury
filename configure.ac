@@ -5289,7 +5289,7 @@ AC_ARG_WITH([hwloc],
     [with_hwloc=check])
 
 if test "$with_hwloc" != "no"; then
-    PKG_CHECK_MODULES(libhwloc, hwloc >= 1.0,
+    PKG_CHECK_MODULES(libhwloc, hwloc >= 1.1,
         [
             AC_DEFINE(MR_HAVE_HWLOC)
             hwloc_static_libs="`pkg-config --libs --static hwloc`"
