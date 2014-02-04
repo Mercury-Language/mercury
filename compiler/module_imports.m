@@ -356,21 +356,26 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
 
     % Work out whether the items contain main/2.
     (
-        list.member(Item, Items),
-        Item = item_pred_decl(ItemPredDecl),
-        ItemPredDecl = item_pred_decl_info(_, _, _, _, pf_predicate, Name,
-            [_, _], WithType, _, _, _, _, _, _, _),
-        unqualify_name(Name) = "main",
+        % We use find_first_match, even though we are not interested in the
+        % match, because doing a nondet generate-and-test runs us out of nondet
+        % stack in the asm_fast.gc.debug.stseg grade.
+        ItemDeclaresMain = (pred(Item::in) is semidet :-
+            Item = item_pred_decl(ItemPredDecl),
+            ItemPredDecl = item_pred_decl_info(_, _, _, _, pf_predicate, Name,
+                [_, _], WithType, _, _, _, _, _, _, _),
+            unqualify_name(Name) = "main",
 
-        % XXX We should allow `main/2' to be declared using `with_type`,
-        % but equivalences haven't been expanded at this point. The `has_main'
-        % field is only used for some special case handling of the module
-        % containing main for the IL backend (we generate a `.exe' file
-        % rather than a `.dll' file). This would arguably be better done
-        % by generating a `.dll' file as normal, and a separate `.exe' file
-        % containing initialization code and a call to `main/2', as we do
-        % with the `_init.c' file in the C backend.
-        WithType = no
+            % XXX We should allow `main/2' to be declared using `with_type`,
+            % but equivalences haven't been expanded at this point.
+            % The `has_main' field is only used for some special case handling
+            % of the module containing main for the IL backend (we generate
+            % a `.exe' file rather than a `.dll' file). This would arguably
+            % be better done by generating a `.dll' file as normal, and a
+            % separate `.exe' file containing initialization code and a call
+            % to `main/2', as we do with the `_init.c' file in the C backend.
+            WithType = no
+        ),
+        list.find_first_match(ItemDeclaresMain, Items, _FirstItemDeclaringMain)
     ->
         HasMain = has_main
     ;

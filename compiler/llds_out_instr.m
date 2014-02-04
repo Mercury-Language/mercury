@@ -21,7 +21,6 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module pair.
 :- import_module set_tree234.
 
 %----------------------------------------------------------------------------%
@@ -29,21 +28,43 @@
 :- pred output_record_instruction_decls(llds_out_info::in, instruction::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
+:- type label_output_info
+    --->    label_output_info(
+                % The entry label of the procedure we are in, which is the
+                % caller of every call made in the procedure.
+                loi_caller_label            :: label,
+
+                % The set of labels that are continuation labels for
+                % calls, nondet disjunctions, forks or joins.
+                loi_cont_labels             :: set_tree234(label),
+
+                % The set of labels at which we should start a while loop.
+                % Some of these should be defined as labels, and some should
+                % not, as decided by the following field.
+                loi_while_labels            :: set_tree234(label),
+
+                % The set of labels at which we should start a while loop,
+                % but which should not be defined, because they are referred
+                % to only by control transfers that get turned into continue
+                % statements. This set should be a subset of loi_while_labels.
+                loi_undef_while_labels      :: set_tree234(label)
+            ).
+
 :- type after_layout_label
     --->    not_after_layout_label
     ;       after_layout_label.
 
 :- pred output_instruction_list(llds_out_info::in, list(instruction)::in,
-    pair(label, set_tree234(label))::in, set_tree234(label)::in,
-    after_layout_label::in, io::di, io::uo) is det.
+    label_output_info::in, after_layout_label::in, io::di, io::uo) is det.
 
-    % Output an instruction and (if the third arg is yes) the comment.
+    % Output an instruction and the comment.
     % This predicate is provided for debugging use only.
     %
-:- pred output_debug_instruction_and_comment(llds_out_info::in,
-    instr::in, string::in, io::di, io::uo) is det.
+:- pred output_debug_instruction_and_comment(llds_out_info::in, instr::in,
+    string::in, io::di, io::uo) is det.
 
     % Output an instruction.
+    % Same as the above predicate, only without the comment.
     % This predicate is provided for debugging use only.
     %
 :- pred output_debug_instruction(llds_out_info::in, instr::in,
@@ -77,6 +98,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -256,8 +278,8 @@ output_record_foreign_proc_component_decls(Info, Component, !DeclSet, !IO) :-
 % Output a list of instructions.
 %
 
-output_instruction_list(_, [], _, _, _, !IO).
-output_instruction_list(Info, [Instr | Instrs], ProfInfo, WhileSet,
+output_instruction_list(_, [], _, _, !IO).
+output_instruction_list(Info, [Instr | Instrs], LabelOutputInfo,
         AfterLayoutLabel0, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
     ( Uinstr = label(Label) ->
@@ -276,16 +298,25 @@ output_instruction_list(Info, [Instr | Instrs], ProfInfo, WhileSet,
         ;
             true
         ),
-        output_instruction_and_comment(Info, Uinstr, Comment, ProfInfo, !IO),
-        ( set_tree234.contains(WhileSet, Label) ->
+        WhileLabels = LabelOutputInfo ^ loi_while_labels,
+        ( set_tree234.contains(WhileLabels, Label) ->
+            UndefWhileLabels = LabelOutputInfo ^ loi_undef_while_labels,
+            ( set_tree234.contains(UndefWhileLabels, Label) ->
+                true
+            ;
+                output_instruction_and_comment(Info, Uinstr, Comment,
+                    LabelOutputInfo, !IO)
+            ),
             io.write_string("\twhile (1) {\n", !IO),
             output_instruction_list_while(Info, Label, Instrs,
-                AfterWhileInstrs, ProfInfo, WhileSet, !IO),
+                AfterWhileInstrs, LabelOutputInfo, !IO),
             io.write_string("\t} /* end while */\n", !IO),
-            output_instruction_list(Info, AfterWhileInstrs, ProfInfo, WhileSet,
+            output_instruction_list(Info, AfterWhileInstrs, LabelOutputInfo,
                 not_after_layout_label, !IO)
         ;
-            output_instruction_list(Info, Instrs, ProfInfo, WhileSet,
+            output_instruction_and_comment(Info, Uinstr, Comment,
+                LabelOutputInfo, !IO),
+            output_instruction_list(Info, Instrs, LabelOutputInfo,
                 AfterLayoutLabel, !IO)
         )
     ;
@@ -295,29 +326,28 @@ output_instruction_list(Info, [Instr | Instrs], ProfInfo, WhileSet,
     ->
         output_float_dword_assignment(Info, Lval, Rval, !IO),
         AfterLayoutLabel = not_after_layout_label,
-        output_instruction_list(Info, Instrs1, ProfInfo, WhileSet,
+        output_instruction_list(Info, Instrs1, LabelOutputInfo,
             AfterLayoutLabel, !IO)
     ;
         output_instruction_and_comment(Info, Uinstr, Comment,
-            ProfInfo, !IO),
+            LabelOutputInfo, !IO),
         ( Uinstr = comment(_) ->
             AfterLayoutLabel = AfterLayoutLabel0
         ;
             AfterLayoutLabel = not_after_layout_label
         ),
-        output_instruction_list(Info, Instrs, ProfInfo, WhileSet,
+        output_instruction_list(Info, Instrs, LabelOutputInfo,
             AfterLayoutLabel, !IO)
     ).
 
 :- pred output_instruction_list_while(llds_out_info::in, label::in,
     list(instruction)::in, list(instruction)::out,
-    pair(label, set_tree234(label))::in, set_tree234(label)::in,
-    io::di, io::uo) is det.
+    label_output_info::in, io::di, io::uo) is det.
 
-output_instruction_list_while(_, _, [], [], _, _, !IO) :-
+output_instruction_list_while(_, _, [], [], _, !IO) :-
     io.write_string("\tbreak;\n", !IO).
 output_instruction_list_while(Info, Label, [Instr | Instrs], AfterWhileInstrs,
-        ProfInfo, WhileSet, !IO) :-
+        LabelOutputInfo, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
     ( Uinstr = label(_) ->
         io.write_string("\tbreak;\n", !IO),
@@ -341,27 +371,28 @@ output_instruction_list_while(Info, Label, [Instr | Instrs], AfterWhileInstrs,
             true
         ),
         output_instruction_list_while(Info, Label, Instrs, AfterWhileInstrs,
-            ProfInfo, WhileSet, !IO)
+            LabelOutputInfo, !IO)
     ; Uinstr = block(TempR, TempF, BlockInstrs) ->
         output_block_start(TempR, TempF, !IO),
         output_instruction_list_while_block(Info, BlockInstrs, Label,
-            ProfInfo, !IO),
+            LabelOutputInfo, !IO),
         output_block_end(!IO),
         output_instruction_list_while(Info, Label, Instrs, AfterWhileInstrs,
-            ProfInfo, WhileSet, !IO)
+            LabelOutputInfo, !IO)
     ;
-        output_instruction_and_comment(Info, Uinstr, Comment, ProfInfo, !IO),
+        output_instruction_and_comment(Info, Uinstr, Comment,
+            LabelOutputInfo, !IO),
         output_instruction_list_while(Info, Label, Instrs, AfterWhileInstrs,
-            ProfInfo, WhileSet, !IO)
+            LabelOutputInfo, !IO)
     ).
 
 :- pred output_instruction_list_while_block(llds_out_info::in,
-    list(instruction)::in, label::in, pair(label, set_tree234(label))::in,
+    list(instruction)::in, label::in, label_output_info::in,
     io::di, io::uo) is det.
 
 output_instruction_list_while_block(_, [], _, _, !IO).
-output_instruction_list_while_block(Info, [Instr | Instrs], Label, ProfInfo,
-        !IO) :-
+output_instruction_list_while_block(Info, [Instr | Instrs], Label,
+        LabelOutputInfo, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
     ( Uinstr = label(_) ->
         unexpected($module, $pred, "label in block")
@@ -384,13 +415,14 @@ output_instruction_list_while_block(Info, [Instr | Instrs], Label, ProfInfo,
             true
         ),
         output_instruction_list_while_block(Info, Instrs, Label,
-            ProfInfo, !IO)
+            LabelOutputInfo, !IO)
     ; Uinstr = block(_, _, _) ->
         unexpected($module, $pred, "block in block")
     ;
-        output_instruction_and_comment(Info, Uinstr, Comment, ProfInfo, !IO),
+        output_instruction_and_comment(Info, Uinstr, Comment,
+            LabelOutputInfo, !IO),
         output_instruction_list_while_block(Info, Instrs, Label,
-            ProfInfo, !IO)
+            LabelOutputInfo, !IO)
     ).
 
 :- pred is_aligned_float_dword_assignment(instr::in, instr::in, lval::out,
@@ -437,27 +469,35 @@ output_float_dword_assignment(Info, Lval, Rval, !IO) :-
     % Normally we use output_instruction_and_comment/6.
     %
 output_debug_instruction_and_comment(Info, Instr, Comment, !IO) :-
-    ContLabelSet = set_tree234.init,
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
     ProcLabel = ordinary_proc_label(DummyModule, pf_predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
-    ProfInfo = entry_label(entry_label_local, ProcLabel) - ContLabelSet,
-    output_instruction_and_comment(Info, Instr, Comment, ProfInfo, !IO).
+    CallerLabel = entry_label(entry_label_local, ProcLabel),
+    ContLabels = set_tree234.init,
+    WhileLabels = set_tree234.init,
+    UndefWhileLabels = set_tree234.init,
+    LabelOutputInfo = label_output_info(CallerLabel, ContLabels,
+        WhileLabels, UndefWhileLabels),
+    output_instruction_and_comment(Info, Instr, Comment, LabelOutputInfo, !IO).
 
     % output_debug_instruction/3 is only for debugging.
     % Normally we use output_instruction/4.
     %
 output_debug_instruction(Info, Instr, !IO) :-
-    ContLabelSet = set_tree234.init,
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
     ProcLabel = ordinary_proc_label(DummyModule, pf_predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
-    ProfInfo = entry_label(entry_label_local, ProcLabel) - ContLabelSet,
-    output_instruction(Info, Instr, ProfInfo, !IO).
+    CallerLabel = entry_label(entry_label_local, ProcLabel),
+    ContLabels = set_tree234.init,
+    WhileLabels = set_tree234.init,
+    UndefWhileLabels = set_tree234.init,
+    LabelOutputInfo = label_output_info(CallerLabel, ContLabels,
+        WhileLabels, UndefWhileLabels),
+    output_instruction(Info, Instr, LabelOutputInfo, !IO).
 
 %----------------------------------------------------------------------------%
 %
@@ -465,9 +505,9 @@ output_debug_instruction(Info, Instr, !IO) :-
 %
 
 :- pred output_instruction_and_comment(llds_out_info::in, instr::in,
-    string::in, pair(label, set_tree234(label))::in, io::di, io::uo) is det.
+    string::in, label_output_info::in, io::di, io::uo) is det.
 
-output_instruction_and_comment(Info, Instr, Comment, ProfInfo, !IO) :-
+output_instruction_and_comment(Info, Instr, Comment, LabelOutputInfo, !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     (
         AutoComments = no,
@@ -478,11 +518,11 @@ output_instruction_and_comment(Info, Instr, Comment, ProfInfo, !IO) :-
         ->
             true
         ;
-            output_instruction(Info, Instr, ProfInfo, !IO)
+            output_instruction(Info, Instr, LabelOutputInfo, !IO)
         )
     ;
         AutoComments = yes,
-        output_instruction(Info, Instr, ProfInfo, !IO),
+        output_instruction(Info, Instr, LabelOutputInfo, !IO),
         ( Comment = "" ->
             true
         ;
@@ -498,9 +538,9 @@ output_instruction_and_comment(Info, Instr, Comment, ProfInfo, !IO) :-
 %
 
 :- pred output_instruction(llds_out_info::in, instr::in,
-    pair(label, set_tree234(label))::in, io::di, io::uo) is det.
+    label_output_info::in, io::di, io::uo) is det.
 
-output_instruction(Info, Instr, ProfInfo, !IO) :-
+output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
     (
         Instr = comment(Comment),
         % Ensure that any comments embedded inside Comment are made safe, i.e.
@@ -521,7 +561,10 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
     ;
         Instr = block(TempR, TempF, Instrs),
         output_block_start(TempR, TempF, !IO),
-        output_instruction_list(Info, Instrs, ProfInfo, set_tree234.init,
+        LabelOutputInfo = label_output_info(CallerLabel, ContLabels, _, _),
+        BlockLabelOutputInfo = label_output_info(CallerLabel, ContLabels,
+            set_tree234.init, set_tree234.init),
+        output_instruction_list(Info, Instrs, BlockLabelOutputInfo,
             not_after_layout_label, !IO),
         output_block_end(!IO)
     ;
@@ -537,7 +580,7 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
         io.write_string(";\n", !IO)
     ;
         Instr = llcall(Target, ContLabel, LiveVals, _, _, _),
-        ProfInfo = CallerLabel - _,
+        CallerLabel = LabelOutputInfo ^ loi_caller_label,
         output_call(Info, Target, ContLabel, CallerLabel, !IO),
         output_gc_livevals(Info, LiveVals, !IO)
     ;
@@ -601,10 +644,10 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
         ;
             LocalThreadEngineBase = no
         ),
-        maybe_output_update_prof_counter(Info, Label, ProfInfo, !IO)
+        maybe_output_update_prof_counter(Info, Label, LabelOutputInfo, !IO)
     ;
         Instr = goto(CodeAddr),
-        ProfInfo = CallerLabel - _,
+        CallerLabel = LabelOutputInfo ^ loi_caller_label,
         io.write_string("\t", !IO),
         output_goto(Info, CodeAddr, CallerLabel, !IO)
     ;
@@ -616,7 +659,7 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
         io.write_string(");\n", !IO)
     ;
         Instr = if_val(Rval, Target),
-        ProfInfo = CallerLabel - _,
+        CallerLabel = LabelOutputInfo ^ loi_caller_label,
         io.write_string("\tif (", !IO),
         output_test_rval(Info, Rval, !IO),
         io.write_string(") {\n\t\t", !IO),
@@ -640,7 +683,7 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
             MaybeReuse = no_llds_reuse,
             output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset,
                 SizeRval, MaybeAllocId, MayUseAtomicAlloc, MaybeRegionRval,
-                ProfInfo, !IO)
+                LabelOutputInfo, !IO)
         ;
             MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
             (
@@ -679,7 +722,7 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
             io.write_string(", ", !IO),
             output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset,
                 SizeRval, MaybeAllocId, MayUseAtomicAlloc, MaybeRegionRval,
-                ProfInfo, !IO),
+                LabelOutputInfo, !IO),
             io.write_string(")", !IO)
         ),
         io.write_string(";\n", !IO)
@@ -1350,17 +1393,19 @@ output_label_defn(internal_label(Num, ProcLabel), !IO) :-
     io.write_string(")\n", !IO).
 
 :- pred maybe_output_update_prof_counter(llds_out_info::in, label::in,
-    pair(label, set_tree234(label))::in, io::di, io::uo) is det.
+    label_output_info::in, io::di, io::uo) is det.
 
-maybe_output_update_prof_counter(Info, Label, CallerLabel - ContLabelSet,
+maybe_output_update_prof_counter(Info, Label, LabelOutputInfo,
         !IO) :-
     % If ProfileTime is no, the definition of MR_update_prof_current_proc
     % is empty anyway.
     ProfileTime = Info ^ lout_profile_time,
     (
-        set_tree234.contains(ContLabelSet, Label),
-        ProfileTime = yes
+        ProfileTime = yes,
+        ContLabelSet = LabelOutputInfo ^ loi_cont_labels,
+        set_tree234.contains(ContLabelSet, Label)
     ->
+        CallerLabel = LabelOutputInfo ^ loi_caller_label,
         io.write_string("\tMR_update_prof_current_proc(MR_LABEL_AP(", !IO),
         output_label_no_prefix(CallerLabel, !IO),
         io.write_string("));\n", !IO)
@@ -1559,10 +1604,10 @@ output_label_or_not_reached(MaybeLabel, !IO) :-
 :- pred output_incr_hp_no_reuse(llds_out_info::in, lval::in, maybe(tag)::in,
     maybe(int)::in, rval::in, maybe(alloc_site_id)::in,
     may_use_atomic_alloc::in, maybe(rval)::in,
-    pair(label, set_tree234(label))::in, io::di, io::uo) is det.
+    label_output_info::in, io::di, io::uo) is det.
 
 output_incr_hp_no_reuse(Info, Lval, MaybeTag, MaybeOffset, Rval, MaybeAllocId,
-        MayUseAtomicAlloc, MaybeRegionRval, _ProfInfo, !IO) :-
+        MayUseAtomicAlloc, MaybeRegionRval, _LabelOutputInfo, !IO) :-
     (
         MaybeRegionRval = yes(RegionRval),
         (
