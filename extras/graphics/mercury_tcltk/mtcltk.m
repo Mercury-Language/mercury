@@ -154,7 +154,7 @@
     MR_incr_hp(argv_word, argc + 1);
     argv = (char **) argv_word;
 
-    for (i = 0, l = Args; l != list_empty(); l = list_tail(l), i++) {
+    for (i = 0, l = Args; l != MR_list_empty(); l = MR_list_tail(l), i++) {
         argv[i] = (char *) MR_list_head(l);
     }
     
