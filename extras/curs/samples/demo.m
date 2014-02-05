@@ -131,7 +131,7 @@ move_panel(P, PanelData0, DR, DC, !IO) :-
     PD  = ((PD0
                     ^ row := PD0 ^ row + DR)
                     ^ col := PD0 ^ col + DC),
-    PanelData = list.replace_nth_det(PanelData0, P, PD),
+    PanelData = list.det_replace_nth(PanelData0, P, PD),
     relocate(PD ^ panel, PD ^ row, PD ^ col, !IO),
     main_loop(P, PanelData, !IO).
 
