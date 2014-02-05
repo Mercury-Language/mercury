@@ -156,7 +156,7 @@ selection(Genotypes, Fitness, _, Parent, !RNG) :-
     list.takewhile(>(Float), CumulativeNormalFitness, _, AfterList),
     Head = list.det_head(AfterList),
     Index = list.det_index0_of_first_occurrence(CumulativeNormalFitness, Head),
-    list.index0_det(Genotypes, Index, Parent).
+    list.det_index0(Genotypes, Index, Parent).
 
 fitness_to_string(Fitness) = string.float_to_string(Fitness).
 
