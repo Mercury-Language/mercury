@@ -47,6 +47,13 @@ Changes to the Mercury compiler:
   A new configuration option, `--with-macosx-deployment-target', allows
   an alternative value to be selected at configuration time.
 
+Portability improvements:
+
+* We have made the implementation compatible with GCC 4.8 and Visual Studio
+  2013.
+
+* We have made the implementation compatible with OS X 10.9.
+
 Changes to the extras distribution:
 
 * We've added a library that provides support for accessing the function
