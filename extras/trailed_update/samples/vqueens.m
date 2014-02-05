@@ -66,14 +66,14 @@ qdelete(X, [A | Z], [A | R]) :-
 
 safe([]).
 safe([NVar | L]) :-
-	freeze(NVar, (pred(N::in) is semidet :- nodiag(N, 1, L))),
+	freeze(NVar, (any_pred(N::in) is semidet :- nodiag(N, 1, L))),
 	safe(L).
 
 :- pred nodiag(int::in, int::in, list(var(int))::in(list(any))) is semidet.
 
 nodiag(_, _, []).
 nodiag(B, D, [NVar | L]) :-
-	freeze(NVar, (pred(N::in) is semidet :- D \= N - B, D \= B - N)),
+	freeze(NVar, (any_pred(N::in) is semidet :- D \= N - B, D \= B - N)),
 	nodiag(B, D + 1, L).
 
 %----------------------------------------------------------------------------%
