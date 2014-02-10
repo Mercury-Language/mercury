@@ -183,7 +183,21 @@ generate_generic_call(OuterCodeModel, GenericCall, Args, Modes,
     ;
         GenericCall = cast(_),
         ( Args = [InputArg, OutputArg] ->
-            generate_assign_builtin(OutputArg, leaf(InputArg), Code, !CI)
+            get_module_info(!.CI, ModuleInfo),
+            get_proc_info(!.CI, ProcInfo),
+            proc_info_get_vartypes(ProcInfo, VarTypes),
+            ( var_is_of_dummy_type(ModuleInfo, VarTypes, InputArg) ->
+                % Dummy types don't actually have values, which is
+                % normally harmless. However using the constant zero means
+                % that we don't need to allocate space for an existentially
+                % typed version of a dummy type.  Using the constant zero
+                % also avoids keeping pointers to memory that could be
+                % freed.
+                Rval = int_const(0)
+            ;
+                Rval = leaf(InputArg)
+            ),
+            generate_assign_builtin(OutputArg, Rval, Code, !CI)
         ;
             unexpected($module, $pred, "invalid type/inst cast call")
         )

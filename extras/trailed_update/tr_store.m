@@ -298,7 +298,7 @@ ref_functor(Ref, Functor, Arity, !S) :-
 
     if (arg_locn != NULL && arg_locn->MR_arg_bits != 0) {
         MR_incr_hp(ArgRef, 1);
-        * (MR_Word *) ArgRef = MR_unpack_arg(*arg_ref, arg_locn);
+        * (MR_Word *) ArgRef = MR_arg_value(arg_ref, arg_locn);
     } else if (arg_ref == &Val) {
         /*
         ** For no_tag types, the argument may have the same address as the

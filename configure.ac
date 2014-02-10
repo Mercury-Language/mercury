@@ -4661,7 +4661,9 @@ case "$mercury_cv_cc_type" in
         # Suppress the MSVC banner message.
         CFLAGS_FOR_WARNINGS="-nologo"
         CFLAGS_FOR_OPT=
-        CFLAGS_FOR_DEBUG="-Zi"
+        # XXX See README.MS-Visual C for details of why we disable this.
+        #CFLAGS_FOR_DEBUG="-Zi"
+        CFLAGS_FOR_DEBUG
         CFLAGS_FOR_NO_STRICT_ALIASING=
 
         # Using the MSVC compiler implies that we must use
@@ -5287,7 +5289,7 @@ AC_ARG_WITH([hwloc],
     [with_hwloc=check])
 
 if test "$with_hwloc" != "no"; then
-    PKG_CHECK_MODULES(libhwloc, hwloc >= 1.0,
+    PKG_CHECK_MODULES(libhwloc, hwloc >= 1.1,
         [
             AC_DEFINE(MR_HAVE_HWLOC)
             hwloc_static_libs="`pkg-config --libs --static hwloc`"

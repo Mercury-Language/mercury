@@ -48,7 +48,7 @@ main(!IO) :-
 
 string_to_bitmap(String) = Bitmap :-
     NumBytes = string.length(String),
-    Bitmap0 = bitmap.new(NumBytes * bits_per_byte),
+    Bitmap0 = bitmap.init(NumBytes * bits_per_byte),
     string.to_char_list(String, Chars),
     char_list_to_bitmap(Chars, 0, Bitmap0, Bitmap). 
 

@@ -80,6 +80,8 @@
 :- pred freeze(var(T), pred(T)).
 :- mode freeze(ia, pred(in) is semidet) is semidet.
 :- mode freeze(oa, pred(in) is semidet) is semidet.
+:- mode freeze(ia, any_pred(in) is semidet) is semidet.
+:- mode freeze(oa, any_pred(in) is semidet) is semidet.
 
     % `freeze(Var1, Pred, Var2)' can be used to delay
     % execution of a goal until a variable is ground.
@@ -94,11 +96,11 @@
 :- pred freeze(var(T1),  pred(T1, T2), var(T2)).
 :- mode freeze(in, pred(in, out) is det, out) is semidet. % really det
 :- mode freeze(in, pred(in, out) is semidet, out) is semidet.
-:- mode freeze(oa, pred(in, out) is det, oa) is semidet.
-:- mode freeze(oa, pred(in, out) is semidet, oa) is semidet.
+:- mode freeze(oa, any_pred(in, out) is det, oa) is semidet.
+:- mode freeze(oa, any_pred(in, out) is semidet, oa) is semidet.
 
 :- pred freeze_var(var(T1),  pred(T1, var(T2)), var(T2)).
-:- mode freeze_var(oa, pred(in, ia) is semidet, oa) is semidet.
+:- mode freeze_var(oa, any_pred(in, ia) is semidet, oa) is semidet.
 
     % `debug_freeze(Message, Var, Pred)'
     % is the same as `freeze(Var, Pred)' except
@@ -254,10 +256,10 @@
                 var(t2)).
 
 :- inst delayed_goal
-    --->    unary_pred(pred(in) is semidet)
-    ;       binary_det_pred(pred(in, out) is det, ground, any)
-    ;       binary_semidet_pred(pred(in, out) is semidet, ground, any)
-    ;       binary_semidet_pred_any(pred(in, ia) is semidet, ground, any).
+    --->    unary_pred(any_pred(in) is semidet)
+    ;       binary_det_pred(any_pred(in, out) is det, ground, any)
+    ;       binary_semidet_pred(any_pred(in, out) is semidet, ground, any)
+    ;       binary_semidet_pred_any(any_pred(in, ia) is semidet, ground, any).
 
 %-----------------------------------------------------------------------------%
 
@@ -687,7 +689,7 @@ var.rep_freeze_in(VarPtr, Pred) :-
 ").
 
 :- pragma foreign_proc("C",
-    freeze(X::oa, Pred::(pred(in, out) is det), Y::oa), % semidet
+    freeze(X::oa, Pred::(any_pred(in, out) is det), Y::oa), % semidet
     [promise_pure, may_call_mercury],
 "
     MR_Word p;
@@ -699,7 +701,7 @@ var.rep_freeze_in(VarPtr, Pred) :-
 ").
 
 :- pragma foreign_proc("C",
-    freeze(X::oa, Pred::(pred(in, out) is semidet), Y::oa), % semidet
+    freeze(X::oa, Pred::(any_pred(in, out) is semidet), Y::oa), % semidet
     [promise_pure, may_call_mercury],
 "
     MR_Word p;
@@ -711,7 +713,7 @@ var.rep_freeze_in(VarPtr, Pred) :-
 ").
 
 :- pragma foreign_proc("C",
-    freeze_var(X::oa, Pred::(pred(in, ia) is semidet), Y::oa), % semidet
+    freeze_var(X::oa, Pred::(any_pred(in, ia) is semidet), Y::oa), % semidet
     [promise_pure, may_call_mercury],
 "
     MR_Word p;

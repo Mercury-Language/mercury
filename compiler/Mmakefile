@@ -31,6 +31,8 @@ MAIN_TARGET=all
 
 MERCURY_MAIN_MODULES = top_level
 
+PDBS = $(patsubst %,%.pdb,$(MERCURY_MAIN_MODULES))
+
 VPATH = \
 	$(LIBRARY_DIR) \
 	$(MDBCOMP_DIR) \
@@ -238,6 +240,7 @@ clean_local:
 realclean_local:
 	rm -f tags $(MC_PROG).stats Mercury.modules \
 		COMP_FLAGS COMP_FLAGS.date mercury_compile$(EXT_FOR_EXE)
+	rm -f $(PDBS) vc*.pdb
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#

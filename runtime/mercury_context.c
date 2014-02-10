@@ -458,7 +458,7 @@ static void MR_setup_thread_pinning(void)
     */
     MR_reset_available_cpus();
 #ifdef MR_HAVE_HWLOC
-    num_processors = hwloc_cpuset_weight(MR_hw_available_pus);
+    num_processors = hwloc_bitmap_weight(MR_hw_available_pus);
 #elif defined(MR_HAVE_SCHED_GETAFFINITY)
     /*
     ** This looks redundant but its not.  MR_num_processors is a guess that was
@@ -540,7 +540,7 @@ MR_do_pin_thread(int cpu)
 #if defined(MR_HAVE_HWLOC)
     hwloc_obj_t pu;
 
-    if (hwloc_cpuset_iszero(MR_hw_available_pus)) {
+    if (hwloc_bitmap_iszero(MR_hw_available_pus)) {
         /*
         ** Each available CPU already has a thread pinned to it.  Reset the
         ** available_pus set so that we can oversubscribe CPUs but still
@@ -550,7 +550,7 @@ MR_do_pin_thread(int cpu)
     }
 
     pu = hwloc_get_obj_by_type(MR_hw_topology, HWLOC_OBJ_PU, cpu);
-    if (!hwloc_cpuset_intersects(MR_hw_available_pus, pu->cpuset)) {
+    if (!hwloc_bitmap_intersects(MR_hw_available_pus, pu->cpuset)) {
         return MR_FALSE;
     }
 #elif defined(MR_HAVE_SCHED_SETAFFINITY)
@@ -605,7 +605,7 @@ static void MR_reset_available_cpus(void)
     ** (For information about how to deliberately restrict a process and it's
     ** sub-processors to a set of CPUs on Linux see cpuset(7).
     */
-    inherited_binding = hwloc_cpuset_alloc();
+    inherited_binding = hwloc_bitmap_alloc();
     hwloc_get_cpubind(MR_hw_topology, inherited_binding, HWLOC_CPUBIND_PROCESS);
 
     /*
@@ -615,12 +615,12 @@ static void MR_reset_available_cpus(void)
     ** avaliable, it didn't exclude cpus not in the processor's cpuset(7).
     */
     if (MR_hw_available_pus == NULL) {
-        MR_hw_available_pus = hwloc_cpuset_alloc();
+        MR_hw_available_pus = hwloc_bitmap_alloc();
     }
-    hwloc_cpuset_and(MR_hw_available_pus, inherited_binding,
+    hwloc_bitmap_and(MR_hw_available_pus, inherited_binding,
         hwloc_topology_get_allowed_cpuset(MR_hw_topology));
 
-    hwloc_cpuset_free(inherited_binding);
+    hwloc_bitmap_free(inherited_binding);
 #elif defined(MR_HAVE_SCHED_GETAFFINITY)
     unsigned cpuset_size;
     unsigned num_processors;
@@ -679,28 +679,29 @@ static MR_bool MR_make_pu_unavailable(const struct hwloc_obj *pu) {
 #ifdef MR_DEBUG_THREAD_PINNING
     char *      cpusetstr;
 
-    hwloc_cpuset_asprintf(&cpusetstr, MR_hw_available_pus);
+    hwloc_bitmap_asprintf(&cpusetstr, MR_hw_available_pus);
     fprintf(stderr, "Old available CPU set: %s\n", cpusetstr);
     free(cpusetstr);
-    hwloc_cpuset_asprintf(&cpusetstr, pu->cpuset);
+    hwloc_bitmap_asprintf(&cpusetstr, pu->cpuset);
     fprintf(stderr, "Making this CPU set unavailable: %s\n", cpusetstr);
     free(cpusetstr);
 #endif
 
-    hwloc_cpuset_andnot(MR_hw_available_pus, MR_hw_available_pus, pu->cpuset);
+    hwloc_bitmap_andnot(MR_hw_available_pus, MR_hw_available_pus, pu->cpuset);
 
 #ifdef MR_DEBUG_THREAD_PINNING
-    hwloc_cpuset_asprintf(&cpusetstr, MR_hw_available_pus);
+    hwloc_bitmap_asprintf(&cpusetstr, MR_hw_available_pus);
     fprintf(stderr, "New available CPU set: %s\n", cpusetstr);
     free(cpusetstr);
 #endif
 
-    siblings_to_make_unavailable = hwloc_cpuset_weight(MR_hw_available_pus) -
+    siblings_to_make_unavailable = hwloc_bitmap_weight(MR_hw_available_pus) -
         MR_num_threads_left_to_pin;
 
     if (siblings_to_make_unavailable > 0) {
         /*
-        ** Remove sibling processing units that share a core with the one we've just removed.
+        ** Remove sibling processing units that share a core with the one
+        ** we've just removed.
         */
         core = pu->parent;
         if (core->type != HWLOC_OBJ_CORE) {
@@ -713,7 +714,7 @@ static MR_bool MR_make_pu_unavailable(const struct hwloc_obj *pu) {
             if (core->children[i] == pu) {
                 continue;
             }
-            if (hwloc_cpuset_intersects(core->children[i]->cpuset,
+            if (hwloc_bitmap_intersects(core->children[i]->cpuset,
                     MR_hw_available_pus)) {
                 if (!MR_make_pu_unavailable(core->children[i])) {
                     return MR_FALSE;

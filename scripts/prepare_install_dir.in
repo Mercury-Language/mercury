@@ -43,7 +43,7 @@ mkdir ${installdir}/boehm_gc/cord
 mkdir ${installdir}/boehm_gc/include
 mkdir ${installdir}/boehm_gc/include/private
 cp boehm_gc/NT_MAKEFILE ${installdir}/boehm_gc
-cp boehm_gc/gc.mak ${installdir}/boehm_gc
+cp boehm_gc/*.[Mm]ak ${installdir}/boehm_gc
 cp boehm_gc/Makefile* ${installdir}/boehm_gc
 cp boehm_gc/Mmake* ${installdir}/boehm_gc
 cp boehm_gc/ac* ${installdir}/boehm_gc

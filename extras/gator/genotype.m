@@ -82,7 +82,6 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
-:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -205,12 +204,12 @@ mutation(Flags, !Genotype, !RNG) :-
     list.length(Flags, NumFlags),
     next(Next, !RNG),
     Index = Next mod NumFlags,
-    list.index0_det(Flags, Index, Flag),
+    list.det_index0(Flags, Index, Flag),
 
     ( set.member(Flag, !.Genotype) ->
-        svset.delete(Flag, !Genotype)
+        set.delete(Flag, !Genotype)
     ;
-        svset.insert(Flag, !Genotype)
+        set.insert(Flag, !Genotype)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -346,20 +346,20 @@ check_frog_went_splat(World0, World) :-
 
 chars_at_frog(World, C1, C2) :-
 	frog(X, Y) = World ^ frog,
-	Row = list.index0_det(World ^ level, Y),
-	C1 = string.index_det(Row ^ str, X),
-	C2 = string.index_det(Row ^ str, X + 1).
+	Row = list.det_index0(World ^ level, Y),
+	C1 = string.det_index(Row ^ str, X),
+	C2 = string.det_index(Row ^ str, X + 1).
 
 :- pred stamp_frog_in_goal(world::in, world::out) is det.
 
 stamp_frog_in_goal(World0, World) :-
 	frog(X, Y) = World0 ^ frog,
 	Level = World0 ^ level,
-	Row = list.index0_det(Level, Y),
-	NewStr = string.set_char_det('<', X,
-		string.set_char_det('>', X + 1, Row ^ str)),
+	Row = list.det_index0(Level, Y),
+	NewStr = string.det_set_char('<', X,
+		string.det_set_char('>', X + 1, Row ^ str)),
 	NewRow = Row ^ str := NewStr,
-	NewLevel = list.replace_nth_det(Level, Y + 1, NewRow),
+	NewLevel = list.det_replace_nth(Level, Y + 1, NewRow),
 	World = World0 ^ level := NewLevel.
 
 %-----------------------------------------------------------------------------%
