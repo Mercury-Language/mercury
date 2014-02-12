@@ -37,64 +37,88 @@ need to be reviewed.
 <ol>
 <li>  Make sure you are working with an up-to-date copy of the
 	    module you are using.
-<li>  If change is a code change, test change. See "Testing" section
+<li>  If the change is a code change, test change. See "Testing" section
 	    of coding standards. Testing may take time - don't forget
 	    that steps 3, 4 and 5 can be done in parallel.
-<li>  Create diff - use `cvs diff -u'.  New files should be
+<li>  Write a log message for this change - use a template (see below).  How
+        you include this will depend on the next step.
+<li>  Create a diff:
+    <!--
+        There are two ways to do this, you can either use git and github to
+        create a pull request (see
+        <a href="https://help.github.com/articles/using-pull-requests">Github's
+        documentation</a>,
+        or create one or more commeits and mail them to us using either
+    -->
+        create one or more commeits and mail them to us using either
+        <code>git diff</code> or by creating series of commits and using
+        <code>git format-patch</code> (see the git documentation for
+        details).
+        You will need to edit the files that format-patch generates to
+        modify the subject line (see below), and to duplicate this line
+        within the e-mail's body.
+        If you create a diff then new files should be
 	    appended verbatim to the end of the diff, with descriptions
 	    indicating the name of the file.
-<li>  Write log message for this change - use template (see below).
 <li>  Review diff and log message yourself. (see below)
-<li>  Send to mercury-reviews@cs.mu.oz.au, with the subject
-	    "for review: &lt;short description of change&gt;".
-	    Nominate a reviewer at top of diff (see below).
+<li>  E-mail the changes to us at
+      <a href="mailto:Mercury Reviews <reviews@lists.mercurylang.org>">
+       Mercury Reviews &lt;reviews@lists.mercurylang.org&gt;</a>
+       The subject should be
+	    "for review: &lt;short description of change&gt;", the short
+        description is typically the first line of your git log message.
+	    Optionally nominate a reviewer at top of diff (see below).
+        Optionally describe which branches your change should be applied to.
 	    (If this change has been reviewed once before, it might
 	    fall into the "commit before review" category -- see the
 	    section on exceptions).
+      If you generated your diffs using <code>git format-patch</code> then
+      you can use <code>git send-email</code> to mail them, or attach them
+      to an e-mail normally.
+      It is also possible to use github pull-requests, however we prefer
+      e-mail.
 <li>  Wait for review (see below).
-<li>  Fix any changes suggested. 
+<li>  Fix any changes suggested.
 <li>  Repeat above steps until approval.
-<li> Commit change (see below).
+<li>  Push the change(s) (see below) if you have repository permissions, if
+      you do not the developer who reviewed your change will help you with
+      this.
 </ol>
 
 
 <h2> Log Messages </h2>
 
-Use the template that cvs provides.
+Use this template for each change's log message.
 
+<code>
 <pre>
-	Estimated hours taken: _____
+&lt;one-line description (subject)&gt;
 
-	&lt;overview or general description of changes&gt;
+&lt;overview or general description of changes&gt;
 
-	&lt;directory&gt;/&lt;file&gt;:
-		&lt;detailed description of changes&gt;
+&lt;directory&gt;/&lt;file&gt;:
+    &lt;detailed description of changes&gt;
 </pre>
-
-In estimated hours, include all your time to fix this problem -
-including debugging time.
+</code>
 
 <p>
 
 The description should state why the changes were made, not just what
 the changes were.  All file modifications related to the same change
-should be committed together, and use the same log message, even over
-multiple directories.  The reason for this is that the log messages can
-be viewed on a file-by-file basis, and it is useful to know that a small
-change of a file in a subdirectory is related to a larger change in
-other subdirectories.
+should be committed together.
 
 <p>
 
 For very small changes, the &lt;overview or general description&gt; can be
-omitted, but the &lt;detailed description&gt; should stay.
+omitted, but the other descriptions should stay.
 
 <p>
 
 If adding a new feature, this is a good place to describe the feature,
 how it works, how to turn it on and off, and any present limitations of
 the feature (note that all this should also be documented within the
-change, as well).  If fixing a bug, describe both the bug and the fix.
+change, as well).  If fixing a bug, describe both the bug and the fix.  If
+the bug is in the bugtracker, also include the bug's number for reference.
 
 <p>
 
@@ -114,11 +138,11 @@ improving the state of documentation of the compiler.
 
 <p>
 
-We're now posting all diffs to mercury-reviews@cs.mu.oz.au.
+We post all diffs to reviews@lists.mercurylang.org.
 
 <p>
 
-The reasons for posting to mercury-reviews are:
+The reasons for posting to reviews are:
 
 <ul>
 <li>	 To increase everyone's awareness of what changes are taking
@@ -128,10 +152,10 @@ The reasons for posting to mercury-reviews are:
 	  the uncommitted work of others, so they may want to give
 	  input.
 <li>	 Allow other people to read the reviewer's comments - so the same
-	  problems don't have to be explained again and again. 
+	  problems don't have to be explained again and again.
 <li>	 People can try to see how your changes worked without having
-	  to figure out how to get cvs to generate the right set of
-	  diffs. 
+	  to figure out how to get git to generate the right set of
+	  diffs.
 <li>	 Important decisions are often made or justified in reviews, so
 	  these should be recorded.
 </ul>
@@ -163,30 +187,24 @@ or you may be able to just fix a few small problems, then commit.
 
 <p>
 
-<h2> Committing </h2>
-
-If you have added any new files or directories, then before committing
-you must check the group-id and permissions of the newly created files
-or directories in the CVS repository.  Files should be readable by
-group mercury and directories should be both readable and writable by
-group mercury.  (Setting of permissions will be enforced by the
-pre-commit check script `CVSROOT/check.pl'.)
+<h2> Pushing changes </h2>
 
 <p>
 
-Use the log message you prepared for the review when committing.
+Use the log message you prepared for the review when committing and pushing
+changes.
 
 <p>
 
-<h2> Exceptions: Commit before review </h2>
+<h2> Exceptions: Push before review </h2>
 
 <p>
 
-The only time changes should be committed before being reviewed is when they
+The only time changes should be pushed before being reviewed is when they
 satisfy all of the following conditions:
 
 <ul>
-<li>	(a) the change is simple 
+<li>	(a) the change is simple
 	
 <li>	(b) you are absolutely sure the change will not introduce bugs
 
@@ -233,7 +251,7 @@ This is particularly true if others are waiting for your work.
 <p>
 
 Usually, a change that has already been reviewed falls into this
-category, provided you have addressed the reviewers comments, and 
+category, provided you have addressed the reviewers comments, and
 there are no disputes over design decisions. If the reviewer has
 specifically asked for another review, or there were a large number of
 comments at the review, you should not commit before a second review.
@@ -251,22 +269,27 @@ The only time changes should be committed without review by a second
 person is when they satisfy all of the following conditions:
 
 <ul>
-<li>	(a) it is a very small diff that is obviously correct <br>
-	  eg: fix typographic errors <br>
- 	      fix syntax errors you accidently introduced <br>
- 	      fix spelling of people's names <br> <p>
- 
+<li>	(a) it is a very small diff that is obviously correct eg:
+
+    <ul>
+      <li>fix typographic errors</li>
+      <li>fix syntax errors you accidentally introduced</li>
+      <li>fix spelling of people's names</li>
+    </ul>
+
+    <p>
 		These usually don't need to be reviewed by a second
 		person.  Make sure that you review your own changes,
 		though.  Also make sure your log message is more
 		informative than "fixed a typo", try "s/foo/bar" or
 		something so that if you did make a change that people
 		don't approve of, at least it's seen quickly.
+    </p>
 
-<li>	(b) it is not going to be publically visible <br>
+<li>	(b) it is not going to be publicly visible <br>
 	  eg: Web pages, documentation, library, man pages. <p>
-	 
-		Changes to publically visible stuff should always be
+
+		Changes to publicly visible things should always be
 		reviewed. It's just too easy to make spelling errors,
 		write incorrect information, commit libel, etc. This
 		stuff reflects on the whole group, so it shouldn't be
@@ -274,7 +297,7 @@ person is when they satisfy all of the following conditions:
 </ul>
 
 If your change falls into this category, you should still send the
-diff and log message to mercury-reviews, but use the subject line:<br>
+diff and log message to the reviews mailing list, but use the subject line:<br>
 "trivial diff: &lt;short description of change&gt;".
 
 
