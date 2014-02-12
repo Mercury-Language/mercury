@@ -990,7 +990,7 @@ write_lines([Line | Lines], MaybeContext, FixedIndent, !IO) :-
     Indent = FixedIndent + LineIndent * indent_increment,
     string.pad_left("", ' ', Indent, IndentStr),
     io.write_string(IndentStr, !IO),
-    write_line(LineWords, !IO),
+    error_util.write_line(LineWords, !IO),
     write_lines(Lines, MaybeContext, FixedIndent, !IO).
 
 :- pred write_line(list(string)::in, io::di, io::uo) is det.

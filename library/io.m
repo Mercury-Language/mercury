@@ -376,7 +376,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Text output predicates
+% Text output predicates.
 %
 
 % These will all throw an io.error exception if an I/O error occurs.
@@ -420,6 +420,20 @@
 
 :- pred io.print_cc(T::in, io::di, io::uo) is cc_multi.
 
+    % io.print_line calls io.print and then writes a newline character.
+    %
+:- pred io.print_line(T::in, io::di, io::uo) is det.
+
+:- pred io.print_line(io.output_stream::in, T::in, io::di, io::uo) is det.
+
+:- pred io.print_line(io.output_stream, deconstruct.noncanon_handling, T, io, io).
+:- mode io.print_line(in, in(do_not_allow), in, di, uo) is det.
+:- mode io.print_line(in, in(canonicalize), in, di, uo) is det.
+:- mode io.print_line(in, in(include_details_cc), in, di, uo) is cc_multi.
+:- mode io.print_line(in, in, in, di, uo) is cc_multi.
+
+:- pred io.print_line_cc(T::in, io::di, io::uo) is cc_multi.
+
     % io.write/3 writes its argument to the current output stream.
     % io.write/4 writes its second argument to the output stream specified
     % in its first argument. In all cases, the argument to output may be
@@ -453,6 +467,20 @@
 :- mode io.write(in, in, in, di, uo) is cc_multi.
 
 :- pred io.write_cc(T::in, io::di, io::uo) is cc_multi.
+
+    % io.write_line calls io.write and then writes a newline character.
+    %
+:- pred io.write_line(T::in, io::di, io::uo) is det.
+
+:- pred io.write_line(io.output_stream::in, T::in, io::di, io::uo) is det.
+
+:- pred io.write_line(io.output_stream, deconstruct.noncanon_handling, T, io, io).
+:- mode io.write_line(in, in(do_not_allow), in, di, uo) is det.
+:- mode io.write_line(in, in(canonicalize), in, di, uo) is det.
+:- mode io.write_line(in, in(include_details_cc), in, di, uo) is cc_multi.
+:- mode io.write_line(in, in, in, di, uo) is cc_multi.
+
+:- pred io.write_line_cc(T::in, io::di, io::uo) is cc_multi.
 
     % Writes a newline character to the current output stream.
     %
@@ -4683,6 +4711,22 @@ io.print_cc(Term, !IO) :-
 io.print_to_stream(Stream, Term, !IO) :-
     io.print(output_stream(Stream), canonicalize, Term, !IO).
 
+io.print_line(Term, !IO) :-
+    io.print(Term, !IO),
+    io.nl(!IO).
+
+io.print_line(Stream, Term, !IO) :-
+    io.print(Stream, Term, !IO),
+    io.nl(!IO).
+
+io.print_line(Stream, NonCanon, Term, !IO) :-
+    io.print(Stream, NonCanon, Term, !IO),
+    io.nl(!IO).
+
+io.print_line_cc(Term, !IO) :-
+    io.print_cc(Term, !IO),
+    io.nl(!IO).
+
 %-----------------------------------------------------------------------------%
 %
 % Various different versions of io.write
@@ -4701,6 +4745,22 @@ io.write(Stream, NonCanon, X, !IO) :-
 io.write_cc(X, !IO) :-
     io.output_stream(Stream, !IO),
     stream.string_writer.write(Stream, include_details_cc, X, !IO).
+
+io.write_line(X, !IO) :-
+    io.write(X, !IO),
+    io.nl(!IO).
+
+io.write_line(Stream, X, !IO) :-
+    io.write(Stream, X, !IO),
+    io.nl(!IO).
+
+io.write_line(Stream, NonCanon, X, !IO) :-
+    io.write(Stream, NonCanon, X, !IO),
+    io.nl(!IO).
+
+io.write_line_cc(X, !IO) :-
+    io.write_cc(X, !IO),
+    io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
 

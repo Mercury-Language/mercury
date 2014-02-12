@@ -1,3 +1,13 @@
+NEWS since Mercury 14.01
+------------------------
+
+Changes to the Mercury standard library:
+
+* We have added the print_line and write_line family of predicates to the
+  io module.  These behave like the print and write predicates, but also
+  write a terminating newline character.
+
+
 NEWS for Mercury 14.01
 ----------------------
 
