@@ -382,22 +382,21 @@
 % These will all throw an io.error exception if an I/O error occurs.
 
     % io.print/3 writes its argument to the standard output stream.
-    % io.print/4 writes its second argument to the output stream specified
-    % in its first argument. In all cases, the argument to output can be
-    % of any type. It is output in a format that is intended to be human
-    % readable.
+    % io.print/4 writes its second argument to the output stream specified in
+    % its first argument.  In all cases, the argument to output can be of any
+    % type.  It is output in a format that is intended to be human readable.
     %
     % If the argument is just a single string or character, it will be printed
-    % out exactly as is (unquoted). If the argument is of type univ, then
-    % it will print out the value stored in the univ, but not the type.
+    % out exactly as is (unquoted).  If the argument is of type univ, then it
+    % will print out the value stored in the univ, but not the type.
     %
-    % io.print/5 is the same as io.print/4 except that it allows the caller
-    % to specify how non-canonical types should be handled. io.print/3 and
+    % io.print/5 is the same as io.print/4 except that it allows the caller to
+    % specify how non-canonical types should be handled. io.print/3 and
     % io.print/4 implicitly specify `canonicalize' as the method for handling
-    % non-canonical types. This means that for higher-order types, or types
+    % non-canonical types.  This means that for higher-order types, or types
     % with user-defined equality axioms, or types defined using the foreign
-    % language interface (i.e. pragma foreign_type), the text output will
-    % only describe the type that is being printed, not the value.
+    % language interface (i.e. pragma foreign_type), the text output will only
+    % describe the type that is being printed, not the value.
     %
     % io.print_cc/3 is the same as io.print/3 except that it specifies
     % `include_details_cc' rather than `canonicalize'. This means that it will
@@ -427,18 +426,18 @@
     % be valid Mercury syntax whenever possible.
     %
     % Strings and characters are always printed out in quotes, using backslash
-    % escapes if necessary. For higher-order types, or for types defined
-    % using the foreign language interface (pragma foreign_code), the text
-    % output will only describe the type that is being printed, not the value,
-    % and the result may not be parsable by `io.read'. For the types
-    % containing existential quantifiers, the type `type_desc' and closure
-    % types, the result may not be parsable by `io.read', either. But in all
-    % other cases the format used is standard Mercury syntax, and if you append
-    % a period and newline (".\n"), then the results can be read in again
-    % using `io.read'.
+    % escapes if necessary.  For higher-order types, or for types defined using
+    % the foreign language interface (pragma foreign_type), the text output
+    % will only describe the type that is being printed, not the value, and the
+    % result may not be parsable by `io.read'.  For the types containing
+    % existential quantifiers, the type `type_desc' and closure types, the
+    % result may not be parsable by `io.read', either.  But in all other cases
+    % the format used is standard Mercury syntax, and if you append a period
+    % and newline (".\n"), then the results can be read in again using
+    % `io.read'.
     %
     % io.write/5 is the same as io.write/4 except that it allows the caller
-    % to specify how non-canonical types should be handled. io.write_cc/3
+    % to specify how non-canonical types should be handled.  io.write_cc/3
     % is the same as io.write/3 except that it specifies `include_details_cc'
     % rather than `canonicalize'.
     %

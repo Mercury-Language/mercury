@@ -43,27 +43,26 @@
 :- pred nl(Stream::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 
-    % print/3 writes its argument to the standard output stream.
-    % print/4 writes its second argument to the output stream specified
-    % in its first argument. In all cases, the argument to output can be
-    % of any type. It is output in a format that is intended to be human
+    % print/4 writes its second argument to the string writer stream specified
+    % in its first argument.  In all cases, the argument to output can be of
+    % any type.  It is output in a format that is intended to be human
     % readable.
     %
     % If the argument is just a single string or character, it will be printed
-    % out exactly as is (unquoted). If the argument is of type univ, then
-    % it will print out the value stored in the univ, but not the type.
+    % out exactly as is (unquoted).  If the argument is of type univ, then it
+    % will print out the value stored in the univ, but not the type.
     %
-    % print/5 is the same as print/4 except that it allows the caller
-    % to specify how non-canonical types should be handled. print/3 and
-    % print/4 implicitly specify `canonicalize' as the method for handling
-    % non-canonical types. This means that for higher-order types, or types
-    % with user-defined equality axioms, or types defined using the foreign
-    % language interface (i.e. pragma foreign_type), the text output will
-    % only describe the type that is being printed, not the value.
+    % print/5 is the same as print/4 except that it allows the caller to
+    % specify how non-canonical types should be handled.  print/4 implicitly
+    % specifies `canonicalize' as the method for handling non-canonical types.
+    % This means that for higher-order types, or types with user-defined
+    % equality axioms, or types defined using the foreign language interface
+    % (i.e. pragma foreign_type), the text output will only describe the type
+    % that is being printed, not the value.
     %
-    % print_cc/3 is the same as print/3 except that it specifies
-    % `include_details_cc' rather than `canonicalize'. This means that it will
-    % print the details of non-canonical types. However, it has determinism
+    % print_cc/4 is the same as print/4 except that it specifies
+    % `include_details_cc' rather than `canonicalize'.  This means that it will
+    % print the details of non-canonical types.  However, it has determinism
     % `cc_multi'.
     %
     % Note that even if `include_details_cc' is specified, some implementations
@@ -86,26 +85,25 @@
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
-    % write/4 writes its second argument to the output stream specified
-    % in its first argument. In all cases, the argument to output may be
-    % of any type. The argument is written in a format that is intended to
-    % be valid Mercury syntax whenever possible.
+    % write/4 writes its second argument to the string writer stream specified
+    % in its first argument.  In all cases, the argument to output may be of
+    % any type.  The argument is written in a format that is intended to be
+    % valid Mercury syntax whenever possible.
     %
     % Strings and characters are always printed out in quotes, using backslash
-    % escapes if necessary. For higher-order types, or for types defined
-    % using the foreign language interface (pragma foreign_code), the text
-    % output will only describe the type that is being printed, not the value,
-    % and the result may not be parsable by `read'. For the types
-    % containing existential quantifiers, the type `type_desc' and closure
-    % types, the result may not be parsable by `read', either. But in all
-    % other cases the format used is standard Mercury syntax, and if you append
-    % a period and newline (".\n"), then the results can be read in again
-    % using `read'.
+    % escapes if necessary.  For higher-order types, or for types defined using
+    % the foreign language interface (pragma foreign_type), the text output
+    % will only describe the type that is being printed, not the value, and the
+    % result may not be parsable by `read'.  For the types containing
+    % existential quantifiers, the type `type_desc' and closure types, the
+    % result may not be parsable by `read', either.  But in all other cases the
+    % format used is standard Mercury syntax, and if you append a period and
+    % newline (".\n"), then the results can be read in again using `read'.
     %
-    % write/5 is the same as write/4 except that it allows the caller
-    % to specify how non-canonical types should be handled. write_cc/4
-    % is the same as write/4 except that it specifies `include_details_cc'
-    % rather than `canonicalize'.
+    % write/5 is the same as write/4 except that it allows the caller to
+    % specify how non-canonical types should be handled.  write_cc/4 is the
+    % same as write/4 except that it specifies `include_details_cc' rather than
+    % `canonicalize'.
     %
 :- pred write(Stream::in, T::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
