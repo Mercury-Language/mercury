@@ -137,6 +137,6 @@ realclean_local:
 install: mfilterjavac
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mfilterjavac$(EXT_FOR_EXE)` \
-		$(INSTALL_MERC_BIN_DIR)/mfilterjavac
+		$(INSTALL_MERC_BIN_DIR)/mfilterjavac$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#
