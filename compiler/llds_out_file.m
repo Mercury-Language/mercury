@@ -26,9 +26,7 @@
 
 %----------------------------------------------------------------------------%
 
-    % Given a 'c_file' structure, output the LLDS code inside it
-    % into a .c file. The second argument gives the set of labels that have
-    % layout structures.
+    % Given a c_file structure, output the LLDS code inside it into a .c file.
     %
 :- pred output_llds(globals::in, c_file::in, io::di, io::uo) is det.
 
@@ -89,6 +87,7 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module int.
+:- import_module cord.
 :- import_module library.   % for the version number.
 :- import_module list.
 :- import_module map.
@@ -173,7 +172,13 @@ output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
     module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
         SourceFileName, !IO),
     output_c_file_intro_and_grade(Globals, SourceFileName, Version, !IO),
-    module_gather_env_var_names(Modules, set.init, EnvVarNameSet),
+
+    annotate_c_modules(Info, Modules, AnnotatedModules,
+        cord.init, EntryLabelsCord, cord.init, InternalLabelsCord,
+        set.init, EnvVarNameSet),
+    EntryLabels = cord.list(EntryLabelsCord),
+    InternalLabels = cord.list(InternalLabelsCord),
+
     EnvVarNames = set.to_sorted_list(EnvVarNameSet),
     output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames,
         EnvVarNames, !IO),
@@ -181,8 +186,6 @@ output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
 
     output_foreign_header_include_lines(Info, C_HeaderLines, !IO),
     io.write_string("\n", !IO),
-
-    gather_c_file_labels(Modules, EntryLabels, InternalLabels),
 
     output_static_linkage_define(!IO),
     list.foldl2(output_scalar_common_data_decl, ScalarCommonDatas,
@@ -225,56 +228,199 @@ output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
         ProcEventLayouts, ExecTraces, TSStringTable, AllocSites,
         !DeclSet, !IO),
 
-    list.foldl2(output_comp_gen_c_module(Info), Modules, !DeclSet, !IO),
+    list.foldl2(output_annotated_c_module(Info), AnnotatedModules,
+        !DeclSet, !IO),
     list.foldl(output_user_foreign_code(Info), UserForeignCode, !IO),
     list.foldl(io.write_string, Exports, !IO),
     io.write_string("\n", !IO),
-    output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
+    output_c_module_init_list(Info, ModuleName, AnnotatedModules, RttiDatas,
         ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable,
-        AllocSites, UserInitPredCNames, UserFinalPredCNames,
-        !DeclSet, !IO),
+        AllocSites, UserInitPredCNames, UserFinalPredCNames, !DeclSet, !IO),
     io.set_output_stream(OutputStream, _, !IO).
 
-:- pred module_gather_env_var_names(list(comp_gen_c_module)::in,
+%----------------------------------------------------------------------------%
+
+% We need the set of entry and internal labels in a C module in several places
+% for several purposes, so we compute them just once, and record the results.
+%
+% The set of internal labels that the generated C code actually defines
+% will NOT include labels that actually occur in the LLDS code, but which
+% start C loops that, and which are not referred to from anywhere except
+% inside the loop; all those references get translated to C "continue"
+% statements, and the label is optimized away. This is why the computation
+% of the set of internal labels defined by C module must also compute
+% the set of while labels, and undefined while labels. We record the results
+% of this computation in the label_output_info next to the c_procedure.
+
+:- type annotated_c_module
+    --->    annotated_c_module(
+                acm_name                :: string,
+                acm_procs               :: list(annotated_c_procedure),
+                acm_entry_labels        :: list(label),
+                acm_internal_labels     :: list(label)
+            ).
+
+:- type annotated_c_procedure
+    --->    annotated_c_procedure(
+                acp_proc                :: c_procedure,
+                acp_label_output_info   :: label_output_info
+            ).
+
+:- pred annotate_c_modules(llds_out_info::in,
+    list(comp_gen_c_module)::in, list(annotated_c_module)::out,
+    cord(label)::in, cord(label)::out, cord(label)::in, cord(label)::out,
     set(string)::in, set(string)::out) is det.
 
-module_gather_env_var_names([], !EnvVarNames).
-module_gather_env_var_names([Module | Modules], !EnvVarNames) :-
-    proc_gather_env_var_names(Module ^ cgcm_procs, !EnvVarNames),
-    module_gather_env_var_names(Modules, !EnvVarNames).
+annotate_c_modules(_, [], [], !EntryLabels, !InternalLabels, !EnvVarNames).
+annotate_c_modules(Info,
+        [Module | Modules], [AnnotatedModule | AnnotatedModules],
+        !EntryLabels, !InternalLabels, !EnvVarNames) :-
+    annotate_c_module(Info, Module, AnnotatedModule,
+        !EntryLabels, !InternalLabels, !EnvVarNames),
+    annotate_c_modules(Info, Modules, AnnotatedModules,
+        !EntryLabels, !InternalLabels, !EnvVarNames).
 
-:- pred proc_gather_env_var_names(list(c_procedure)::in,
+:- pred annotate_c_module(llds_out_info::in,
+    comp_gen_c_module::in, annotated_c_module::out,
+    cord(label)::in, cord(label)::out, cord(label)::in, cord(label)::out,
     set(string)::in, set(string)::out) is det.
 
-proc_gather_env_var_names([], !EnvVarNames).
-proc_gather_env_var_names([Proc | Procs], !EnvVarNames) :-
-    set.union(Proc ^ cproc_c_global_vars, !EnvVarNames),
-    proc_gather_env_var_names(Procs, !EnvVarNames).
+annotate_c_module(Info, Module, AnnotatedModule,
+        !AllEntryLabels, !AllInternalLabels, !EnvVarNames) :-
+    Module = comp_gen_c_module(ModuleName, Procs),
+    annotate_c_procedures(Info, Procs, AnnotatedProcs,
+        cord.init, ModuleEntryLabels, cord.init, ModuleInternalLabels,
+        !EnvVarNames),
+    ModuleEntryLabelList = cord.list(ModuleEntryLabels),
+    ModuleInternalLabelList = cord.list(ModuleInternalLabels),
+    AnnotatedModule = annotated_c_module(ModuleName, AnnotatedProcs,
+        ModuleEntryLabelList, ModuleInternalLabelList),
+    !:AllEntryLabels = !.AllEntryLabels ++ ModuleEntryLabels,
+    !:AllInternalLabels = !.AllInternalLabels ++ ModuleInternalLabels.
+
+:- pred annotate_c_procedures(llds_out_info::in,
+    list(c_procedure)::in, list(annotated_c_procedure)::out,
+    cord(label)::in, cord(label)::out, cord(label)::in, cord(label)::out,
+    set(string)::in, set(string)::out) is det.
+
+annotate_c_procedures(_, [], [],
+        !AllEntryLabels, !AllInternalLabels, !EnvVarNames).
+annotate_c_procedures(Info, [Proc | Procs], [AnnotatedProc | AnnotatedProcs],
+        !AllEntryLabels, !AllInternalLabels, !EnvVarNames) :-
+    annotate_c_procedure(Info, Proc, AnnotatedProc,
+        !AllEntryLabels, !AllInternalLabels, !EnvVarNames),
+    annotate_c_procedures(Info, Procs, AnnotatedProcs,
+        !AllEntryLabels, !AllInternalLabels, !EnvVarNames).
+
+:- pred annotate_c_procedure(llds_out_info::in,
+    c_procedure::in, annotated_c_procedure::out,
+    cord(label)::in, cord(label)::out, cord(label)::in, cord(label)::out,
+    set(string)::in, set(string)::out) is det.
+
+annotate_c_procedure(Info, Proc, AnnotatedProc,
+        !AllEntryLabels, !AllInternalLabels, !EnvVarNames) :-
+    ProcEnvVarNames = Proc ^ cproc_c_global_vars,
+    set.union(ProcEnvVarNames, !EnvVarNames),
+
+    Instrs = Proc ^ cproc_code,
+    gather_labels_from_instrs_acc(Instrs,
+        [], RevEntryLabels, [], RevInternalLabels0),
+    list.reverse(RevEntryLabels, EntryLabels),
+    list.reverse(RevInternalLabels0, InternalLabels0),
+
+    find_caller_label(Instrs, CallerLabel),
+    find_cont_labels(Instrs, set_tree234.init, ContLabels),
+    EmitCLoops = Info ^ lout_emit_c_loops,
+    (
+        EmitCLoops = no,
+        WhileLabels = set_tree234.init,
+        UndefWhileLabels = set_tree234.init
+    ;
+        EmitCLoops = yes,
+        find_while_labels(Instrs, set_tree234.init, WhileLabels),
+
+        % We compute UndefWhileLabels by starting with an overapproximation,
+        % which we then whittle down in two steps. Each whittling step
+        % removes from our initial UndefWhileLabels set some labels that
+        % actually do need to be defined.
+        %
+        % Step 1: if a label is in ContLabels, we cannot avoid defining it.
+        set_tree234.difference(WhileLabels, ContLabels, UndefWhileLabels0),
+        ( if set_tree234.is_empty(UndefWhileLabels0) then
+            UndefWhileLabels = UndefWhileLabels0
+        else
+            % Step 2: if a label that starts a while loop is branched to
+            % from outside the while loop it starts, we cannot avoid
+            % defining it.
+            find_while_labels_to_define(Instrs, no, WhileLabels,
+                UndefWhileLabels0, UndefWhileLabels)
+        )
+    ),
+    LabelOutputInfo = label_output_info(CallerLabel, ContLabels,
+        WhileLabels, UndefWhileLabels),
+    ( if set_tree234.is_empty(UndefWhileLabels) then
+        InternalLabels = InternalLabels0
+    else
+        list.negated_filter(set_tree234.contains(UndefWhileLabels),
+            InternalLabels0, InternalLabels)
+    ),
+    AnnotatedProc = annotated_c_procedure(Proc, LabelOutputInfo),
+
+    !:AllEntryLabels = !.AllEntryLabels ++ cord.from_list(EntryLabels),
+    !:AllInternalLabels = !.AllInternalLabels ++
+        cord.from_list(InternalLabels).
+
+:- pred gather_labels_from_instrs_acc(list(instruction)::in,
+    list(label)::in, list(label)::out,
+    list(label)::in, list(label)::out) is det.
+
+gather_labels_from_instrs_acc([], !RevEntryLabels, !RevInternalLabels).
+gather_labels_from_instrs_acc([Instr | Instrs],
+        !RevEntryLabels, !RevInternalLabels) :-
+    ( Instr = llds_instr(label(Label), _) ->
+        (
+            Label = entry_label(_, _),
+            !:RevEntryLabels = [Label | !.RevEntryLabels]
+        ;
+            Label = internal_label(_, _),
+            !:RevInternalLabels = [Label | !.RevInternalLabels]
+        )
+    ;
+        true
+    ),
+    gather_labels_from_instrs_acc(Instrs,
+        !RevEntryLabels, !RevInternalLabels).
+
+%----------------------------------------------------------------------------%
 
 :- pred output_c_module_init_list(llds_out_info::in, module_name::in,
-    list(comp_gen_c_module)::in, list(rtti_data)::in,
+    list(annotated_c_module)::in, list(rtti_data)::in,
     list(proc_layout_data)::in, list(module_layout_data)::in,
     list(complexity_proc_info)::in, list(string)::in,
     list(alloc_site_info)::in, list(string)::in, list(string)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
+output_c_module_init_list(Info, ModuleName, AnnotatedModules, RttiDatas,
         ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable,
         AllocSites, InitPredNames, FinalPredNames, !DeclSet, !IO) :-
     MustInit = (pred(Module::in) is semidet :-
         module_defines_label_with_layout(Info, Module)
     ),
-    list.filter(MustInit, Modules, AlwaysInitModules, MaybeInitModules),
-    list.chunk(AlwaysInitModules, 40, AlwaysInitModuleBunches),
-    list.chunk(MaybeInitModules, 40, MaybeInitModuleBunches),
+    list.filter(MustInit, AnnotatedModules,
+        AlwaysInitAnnotatedModules, MaybeInitAnnotatedModules),
+    list.chunk(AlwaysInitAnnotatedModules, 40,
+        AlwaysInitAnnotatedModuleBunches),
+    list.chunk(MaybeInitAnnotatedModules, 40,
+        MaybeInitAnnotatedModuleBunches),
 
-    output_init_bunch_defs(Info, "always", 0, AlwaysInitModuleBunches, !IO),
-
+    output_init_bunch_defs(Info, "always", 0,
+        AlwaysInitAnnotatedModuleBunches, !IO),
     (
-        MaybeInitModuleBunches = []
+        MaybeInitAnnotatedModuleBunches = []
     ;
-        MaybeInitModuleBunches = [_ | _],
-        output_init_bunch_defs(Info, "maybe", 0,MaybeInitModuleBunches, !IO)
+        MaybeInitAnnotatedModuleBunches = [_ | _],
+        output_init_bunch_defs(Info, "maybe", 0,
+            MaybeInitAnnotatedModuleBunches, !IO)
     ),
 
     io.write_string("/* suppress gcc -Wmissing-decls warnings */\n", !IO),
@@ -338,13 +484,14 @@ output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
     io.write_string("\t}\n", !IO),
     io.write_string("\tdone = MR_TRUE;\n", !IO),
 
-    output_init_bunch_calls(Info, "always", 0, AlwaysInitModuleBunches, !IO),
-
+    output_init_bunch_calls(Info, "always", 0,
+        AlwaysInitAnnotatedModuleBunches, !IO),
     (
-        MaybeInitModuleBunches = []
+        MaybeInitAnnotatedModuleBunches = []
     ;
-        MaybeInitModuleBunches = [_ | _],
-        output_init_bunch_calls(Info, "maybe", 0, MaybeInitModuleBunches, !IO)
+        MaybeInitAnnotatedModuleBunches = [_ | _],
+        output_init_bunch_calls(Info, "maybe", 0,
+            MaybeInitAnnotatedModuleBunches, !IO)
     ),
 
     output_c_data_init_list(RttiDatas, !IO),
@@ -462,24 +609,21 @@ output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
         "static const void *const MR_grade = &MR_GRADE_VAR;\n", !IO).
 
 :- pred module_defines_label_with_layout(llds_out_info::in,
-    comp_gen_c_module::in) is semidet.
+    annotated_c_module::in) is semidet.
 
-module_defines_label_with_layout(Info, Module) :-
-    % Checking whether the set is empty or not
-    % allows us to avoid calling gather_c_module_labels.
-    InternalLabelToLayoutMap = Info ^ lout_internal_label_to_layout,
-    EntryLabelToLayoutMap = Info ^ lout_entry_label_to_layout,
+module_defines_label_with_layout(Info, AnnotatedModule) :-
+    AnnotatedModule = annotated_c_module(_, _, EntryLabels, InternalLabels),
+    % If a map is empty, there is no point in using it as a filter,
+    % and we can save ourselves the cost of a list traversal; we know
+    % the traversal wouldn't be able to find anything.
     (
-        \+ map.is_empty(InternalLabelToLayoutMap)
-    ;
-        \+ map.is_empty(EntryLabelToLayoutMap)
-    ),
-    Module = comp_gen_c_module(_, Procedures),
-    gather_c_module_labels(Procedures, EntryLabels, InternalLabels),
-    (
+        InternalLabelToLayoutMap = Info ^ lout_internal_label_to_layout,
+        \+ map.is_empty(InternalLabelToLayoutMap),
         find_first_match(internal_label_has_layout(InternalLabelToLayoutMap),
             InternalLabels, _)
     ;
+        EntryLabelToLayoutMap = Info ^ lout_entry_label_to_layout,
+        \+ map.is_empty(EntryLabelToLayoutMap),
         find_first_match(entry_label_has_layout(EntryLabelToLayoutMap),
             EntryLabels, _)
     ).
@@ -499,7 +643,7 @@ entry_label_has_layout(EntryLabelToLayoutMap, Label) :-
 %----------------------------------------------------------------------------%
 
 :- pred output_init_bunch_defs(llds_out_info::in, string::in, int::in,
-    list(list(comp_gen_c_module))::in, io::di, io::uo) is det.
+    list(list(annotated_c_module))::in, io::di, io::uo) is det.
 
 output_init_bunch_defs(_, _, _, [], !IO).
 output_init_bunch_defs(Info, InitStatus, Seq, [Bunch | Bunches], !IO) :-
@@ -512,19 +656,19 @@ output_init_bunch_defs(Info, InitStatus, Seq, [Bunch | Bunches], !IO) :-
     NextSeq = Seq + 1,
     output_init_bunch_defs(Info, InitStatus, NextSeq, Bunches, !IO).
 
-:- pred output_init_bunch_def(list(comp_gen_c_module)::in,
+:- pred output_init_bunch_def(list(annotated_c_module)::in,
     io::di, io::uo) is det.
 
 output_init_bunch_def([], !IO).
-output_init_bunch_def([Module | Modules], !IO) :-
-    Module = comp_gen_c_module(C_ModuleName, _),
+output_init_bunch_def([AnnotatedModule | AnnotatedModules], !IO) :-
+    C_ModuleName = AnnotatedModule ^ acm_name,
     io.write_string("\t", !IO),
     io.write_string(C_ModuleName, !IO),
     io.write_string("();\n", !IO),
-    output_init_bunch_def(Modules, !IO).
+    output_init_bunch_def(AnnotatedModules, !IO).
 
 :- pred output_init_bunch_calls(llds_out_info::in, string::in, int::in,
-    list(list(comp_gen_c_module))::in, io::di, io::uo) is det.
+    list(list(annotated_c_module))::in, io::di, io::uo) is det.
 
 output_init_bunch_calls(_, _, _, [], !IO).
 output_init_bunch_calls(Info, InitStatus, Seq, [_ | Bunches], !IO) :-
@@ -686,22 +830,22 @@ output_required_init_or_final_calls([ Name | Names ], !IO) :-
 
 %----------------------------------------------------------------------------%
 
-:- pred output_comp_gen_c_module(llds_out_info::in, comp_gen_c_module::in,
+:- pred output_annotated_c_module(llds_out_info::in, annotated_c_module::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_comp_gen_c_module(Info, CompGenCModule, !DeclSet, !IO) :-
-    CompGenCModule = comp_gen_c_module(ModuleName, Procedures),
+output_annotated_c_module(Info, AnnotatedModule, !DeclSet, !IO) :-
+    AnnotatedModule = annotated_c_module(ModuleName, AnnotatedProcedures,
+        EntryLabels, InternalLabels),
     io.write_string("\n", !IO),
-    list.foldl2(output_record_c_procedure_decls(Info), Procedures,
+    list.foldl2(output_record_c_procedure_decls(Info), AnnotatedProcedures,
         !DeclSet, !IO),
     io.write_string("\n", !IO),
     io.write_string("MR_BEGIN_MODULE(", !IO),
     io.write_string(ModuleName, !IO),
     io.write_string(")\n", !IO),
-    gather_c_module_labels(Procedures, EntryLabels, InternalLabels),
     output_c_label_inits(Info, EntryLabels, InternalLabels, !IO),
     io.write_string("MR_BEGIN_CODE\n", !IO),
-    list.foldl(output_c_procedure(Info), Procedures, !IO),
+    list.foldl(output_annotated_c_procedure(Info), AnnotatedProcedures, !IO),
     io.write_string("MR_END_MODULE\n", !IO).
 
 %----------------------------------------------------------------------------%
@@ -1068,10 +1212,12 @@ output_c_entry_label_init(EntryLabelToLayoutMap, Label, !IO) :-
 
 %----------------------------------------------------------------------------%
 
-:- pred output_record_c_procedure_decls(llds_out_info::in, c_procedure::in,
+:- pred output_record_c_procedure_decls(llds_out_info::in,
+    annotated_c_procedure::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_record_c_procedure_decls(Info, Proc, !DeclSet, !IO) :-
+output_record_c_procedure_decls(Info, AnnotatedProc, !DeclSet, !IO) :-
+    Proc = AnnotatedProc ^ acp_proc,
     Instrs = Proc ^ cproc_code,
     CGlobalVarSet = Proc ^ cproc_c_global_vars,
     set.to_sorted_list(CGlobalVarSet, CGlobalVars),
@@ -1092,10 +1238,13 @@ output_c_global_var_decl(VarName, !DeclSet, !IO) :-
         io.write_string(";\n", !IO)
     ).
 
-:- pred output_c_procedure(llds_out_info::in, c_procedure::in,
-    io::di, io::uo) is det.
+:- pred output_annotated_c_procedure(llds_out_info::in,
+    annotated_c_procedure::in, io::di, io::uo) is det.
 
-output_c_procedure(Info, Proc, !IO) :-
+output_annotated_c_procedure(Info, AnnotatedProc, !IO) :-
+    Proc = AnnotatedProc ^ acp_proc,
+    LabelOutputInfo = AnnotatedProc ^ acp_label_output_info,
+
     Name = Proc ^ cproc_name,
     Arity = Proc ^ cproc_orig_arity,
     Instrs = Proc ^ cproc_code,
@@ -1115,33 +1264,6 @@ output_c_procedure(Info, Proc, !IO) :-
     io.write_int(ModeNum, !IO),
     io.write_string(" */\n", !IO),
 
-    find_caller_label(Instrs, CallerLabel),
-    find_cont_labels(Instrs, set_tree234.init, ContLabels),
-    EmitCLoops = Info ^ lout_emit_c_loops,
-    (
-        EmitCLoops = yes,
-        find_while_labels(Instrs, set_tree234.init, WhileLabels)
-    ;
-        EmitCLoops = no,
-        WhileLabels = set_tree234.init
-    ),
-    % We compute UndefWhileLabels by starting with an overapproximation,
-    % which we then whittle down in two steps. Each whittling step
-    % removes from our initial UndefWhileLabels set the labels that
-    % actually do need to be defined.
-    %
-    % Step 1: if a label is in ContLabels, we cannot avoid defining it.
-    set_tree234.difference(WhileLabels, ContLabels, UndefWhileLabels0),
-    ( set_tree234.is_empty(UndefWhileLabels0) ->
-        UndefWhileLabels = UndefWhileLabels0
-    ;
-        % Step 2: if a label is branched to from outside the while loop,
-        % we cannot avoid defining it.
-        find_while_labels_to_define(Instrs, no, WhileLabels,
-            UndefWhileLabels0, UndefWhileLabels)
-    ),
-    LabelOutputInfo = label_output_info(CallerLabel, ContLabels,
-        WhileLabels, UndefWhileLabels),
     LocalThreadEngineBase = Info ^ lout_local_thread_engine_base,
     (
         LocalThreadEngineBase = yes,
@@ -1581,81 +1703,6 @@ output_label_defn(internal_label(Num, ProcLabel), !IO) :-
     io.write_string(")\n", !IO).
 
 %----------------------------------------------------------------------------%
-
-:- pred gather_c_file_labels(list(comp_gen_c_module)::in,
-    list(label)::out, list(label)::out) is det.
-
-gather_c_file_labels(Modules, EntryLabels, InternalLabels) :-
-    gather_labels_from_c_modules_acc(Modules,
-        [], RevEntryLabels, [], RevInternalLabels),
-    list.reverse(RevEntryLabels, EntryLabels),
-    list.reverse(RevInternalLabels, InternalLabels).
-
-:- pred gather_c_module_labels(list(c_procedure)::in,
-    list(label)::out, list(label)::out) is det.
-
-gather_c_module_labels(Procs, EntryLabels, InternalLabels) :-
-    gather_labels_from_c_procs_acc(Procs,
-        [], RevEntryLabels, [], RevInternalLabels),
-    list.reverse(RevEntryLabels, EntryLabels),
-    list.reverse(RevInternalLabels, InternalLabels).
-
-%----------------------------------------------------------------------------%
-
-:- pred gather_labels_from_c_modules_acc(list(comp_gen_c_module)::in,
-    list(label)::in, list(label)::out,
-    list(label)::in, list(label)::out) is det.
-
-gather_labels_from_c_modules_acc([], !RevEntryLabels, !RevInternalLabels).
-gather_labels_from_c_modules_acc([Module | Modules],
-        !RevEntryLabels, !RevInternalLabels) :-
-    gather_labels_from_c_module_acc(Module,
-        !RevEntryLabels, !RevInternalLabels),
-    gather_labels_from_c_modules_acc(Modules,
-        !RevEntryLabels, !RevInternalLabels).
-
-:- pred gather_labels_from_c_module_acc(comp_gen_c_module::in,
-    list(label)::in, list(label)::out,
-    list(label)::in, list(label)::out) is det.
-
-gather_labels_from_c_module_acc(comp_gen_c_module(_, Procs),
-        !RevEntryLabels, !RevInternalLabels) :-
-    gather_labels_from_c_procs_acc(Procs,
-        !RevEntryLabels, !RevInternalLabels).
-
-:- pred gather_labels_from_c_procs_acc(list(c_procedure)::in,
-    list(label)::in, list(label)::out,
-    list(label)::in, list(label)::out) is det.
-
-gather_labels_from_c_procs_acc([], !RevEntryLabels, !RevInternalLabels).
-gather_labels_from_c_procs_acc([Proc | Procs],
-        !RevEntryLabels, !RevInternalLabels) :-
-    Instrs = Proc ^ cproc_code,
-    gather_labels_from_instrs_acc(Instrs,
-        !RevEntryLabels, !RevInternalLabels),
-    gather_labels_from_c_procs_acc(Procs,
-        !RevEntryLabels, !RevInternalLabels).
-
-:- pred gather_labels_from_instrs_acc(list(instruction)::in,
-    list(label)::in, list(label)::out,
-    list(label)::in, list(label)::out) is det.
-
-gather_labels_from_instrs_acc([], !RevEntryLabels, !RevInternalLabels).
-gather_labels_from_instrs_acc([Instr | Instrs],
-        !RevEntryLabels, !RevInternalLabels) :-
-    ( Instr = llds_instr(label(Label), _) ->
-        (
-            Label = entry_label(_, _),
-            !:RevEntryLabels = [Label | !.RevEntryLabels]
-        ;
-            Label = internal_label(_, _),
-            !:RevInternalLabels = [Label | !.RevInternalLabels]
-        )
-    ;
-        true
-    ),
-    gather_labels_from_instrs_acc(Instrs,
-        !RevEntryLabels, !RevInternalLabels).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.llds_out.llds_out_file.

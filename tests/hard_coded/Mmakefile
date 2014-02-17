@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = hard_coded
 
@@ -113,7 +115,7 @@ ORDINARY_PROGS=	\
 	float_map \
 	float_reg \
 	float_rounding_bug \
- 	fold_days \
+	fold_days \
 	follow_code_bug \
 	follow_code_bug_2 \
 	foreign_and_mercury \
@@ -662,6 +664,7 @@ ifeq "$(filter hl% il% csharp% java% erlang%,$(GRADE))" ""
 
 	BACKEND_PROGS = \
 		$(BACKEND_PROGS_2) \
+		no_refs_to_deleted_labels \
 		closure_arg_comparison \
 		compare_representation \
 		compare_rep_usereq \
