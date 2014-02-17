@@ -41,7 +41,6 @@
 :- import_module solutions.
 :- import_module store.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module term_io.
 :- import_module varset.
@@ -85,7 +84,7 @@ main_loop_2(term(VarSet, Goal), Database, !IO) :-
 	%%% It would be a good idea to add some special commands
 	%%% with side-effects (such as `consult' and `listing');
 	%%% these could be identified and processed here.
-	store.new(Store0),
+	store.init(Store0),
 	map.init(VarMap0),
 	term_to_my_term(Goal, MyGoal, VarMap0, VarMap, Store0, Store1),
 	print_solutions(VarSet, VarMap, MyGoal, Store1, Database, !IO),
@@ -214,7 +213,7 @@ term_to_my_term(variable(Var, _), var(Ref), !VarMap, !S) :-
 		Ref = Ref0
 	;
 		tr_store.new_mutvar(free, Ref, !S),
-		svmap.det_insert(Var, Ref, !VarMap)
+		map.det_insert(Var, Ref, !VarMap)
 	).
 term_to_my_term(functor(Functor, Args0, _Context), functor(Functor, Args),
 		!VarMap, !S) :-

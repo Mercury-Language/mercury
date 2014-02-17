@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2012 The University of Melbourne.
+% Copyright (C) 1995-2012, 2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3280,7 +3280,8 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
     %
     %   TypeInfoVar = type_info(TypeCtorVar, ArgTypeInfoVars...)
     %
-    % However, if TypeCtorIsVarArity is true, then it will be of the form
+    % However, if TypeCtorIsVarArity is true and we are not compiling for
+    % the Java backend, then it will be of the form
     %
     %   TypeInfoVar = type_info(TypeCtorVar, Arity, ArgTypeInfoVars...)
     %
@@ -3294,11 +3295,39 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
     % The returned Var will be bound to the type_info cell of Type if such
     % a cell had to be allocated, and to the type_ctor_info of Type's only
     % type constructor if it didn't.
+    %
+    % NOTE: the special handling for the java backend must be kept
+    % consistent with:
+    %   rtti_to_mlds.gen_type_info_defn/6
+    %   java/runtime/TypeInfo_Struct.java
+
+    % Determine if we need to explicitly pass the arity.
+    (
+        TypeCtorIsVarArity = no,
+        PassArity = no
+    ;
+        TypeCtorIsVarArity = yes,
+        poly_info_get_module_info(!.Info, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        get_target(Globals, Target),
+        (
+            Target = target_java,
+            PassArity = no
+        ;
+            ( Target = target_c
+            ; Target = target_il
+            ; Target = target_csharp
+            ; Target = target_x86_64
+            ; Target = target_erlang
+            ),
+            PassArity = yes
+        )
+    ),
 
     (
         % Unfortunately, if the type's type constructor has variable arity,
         % we cannot use a one-cell representation for that type.
-        TypeCtorIsVarArity = no,
+        PassArity = no,
         ArgTypeInfoVarsMCAs = []
     ->
         % We do not need a second cell for a separate typeinfo; we will use
@@ -3332,7 +3361,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
             list.map(get_inst_of_const_struct_arg(ConstStructDb0),
                 ArgTypeInfoConstArgs, ArgTypeInfoInsts),
             (
-                TypeCtorIsVarArity = yes,
+                PassArity = yes,
                 list.length(ArgTypeInfoVarsMCAs, ActualArity),
                 ArityConstArg = csa_constant(int_const(ActualArity), int_type),
                 ArityInst = bound(shared, inst_test_results_fgtc,
@@ -3341,7 +3370,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
                     [TypeCtorConstArg, ArityConstArg | ArgTypeInfoConstArgs],
                 StructArgInsts = [TypeCtorInst, ArityInst | ArgTypeInfoInsts]
             ;
-                TypeCtorIsVarArity = no,
+                PassArity = no,
                 StructConstArgs = [TypeCtorConstArg | ArgTypeInfoConstArgs],
                 StructArgInsts = [TypeCtorInst | ArgTypeInfoInsts]
             ),
@@ -3391,7 +3420,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         ;
             assoc_list.keys(ArgTypeInfoVarsMCAs, ArgTypeInfoVars),
             (
-                TypeCtorIsVarArity = yes,
+                PassArity = yes,
                 list.length(ArgTypeInfoVars, ActualArity),
                 get_poly_const(ActualArity, ArityVar, ArityGoals, !Info),
                 % The call get_poly_const may (and probably will) allocate
@@ -3408,7 +3437,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
                 ExtraGoals = TypeCtorGoals ++ ArityGoals ++ ArgTypeInfoGoals
                     ++ [TypeInfoGoal]
             ;
-                TypeCtorIsVarArity = no,
+                PassArity = no,
                 init_type_info_var(Type, [TypeCtorVar | ArgTypeInfoVars],
                     no, Var, TypeInfoGoal,
                     VarSet1, VarSet, VarTypes1, VarTypes,

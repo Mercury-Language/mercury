@@ -30,6 +30,7 @@ ALL_MODULES = mfilterjavac
 MAIN_TARGET=all
 MERCURY_MAIN_MODULES=$(ALL_MODULES)
 DEPEND=$(patsubst %,%.depend,$(ALL_MODULES))
+PDBS=$(patsubst %,%.pdb,$(ALL_MODULES))
 
 VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
 
@@ -125,7 +126,8 @@ cs: $(mfilterjavac.cs) $(cs_subdir)mfilterjavac_init.c
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f .mfilterjavac_tags tags MFILTERJAVAC_FLAGS MFILTERJAVAC_FLAGS.date \
+	rm -f .mfilterjavac_tags tags MFILTERJAVAC_FLAGS MFILTERJAVAC_FLAGS.date
+	rm -f $(PDBS) vc*.pdb
 
 #-----------------------------------------------------------------------------#
 
@@ -135,6 +137,6 @@ realclean_local:
 install: mfilterjavac
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mfilterjavac$(EXT_FOR_EXE)` \
-		$(INSTALL_MERC_BIN_DIR)/mfilterjavac
+		$(INSTALL_MERC_BIN_DIR)/mfilterjavac$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#

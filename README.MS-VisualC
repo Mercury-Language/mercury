@@ -3,9 +3,9 @@
 BUILDING WITH MICROSOFT VISUAL C++
 
 Mercury has been ported to use the Microsoft Visual C++ compiler.
-It has been tested with both version 9.0 (2008) and version 10.0 (2010).
-Version 8.0 (2005) should also work but we have not tested that with 
-Mercury recently.
+It has been tested with versions 9.0 (2008) through 12.0 (2013).
+Version 8.0 (2005) should also work but we have not tested that with Mercury
+recently.
 
 -----------------------------------------------------------------------------
 
@@ -21,19 +21,15 @@ has been installed.
 To make MSVC and its supporting tools available under the Cygwin or MSYS shells
 do the following:
 
-(1) Open the Windows Command Prompt.
-    (Start -> All Programs -> Accessories -> Command Prompt on Windows XP)
-    (Start -> Accessories -> Command Prompt on Windows 7)
+(1) Open the Visual Studio Command Prompt.
+    This can typically be found in
+       
+         Start -> Visual Studio YYYY -> Visual Studio Tools
 
-(2) Enter the following command:
+    although the name and location vary between different versions and editions
+    of Visual Studio.  (YYYY is the year.)
 
-       C:\> "%VS90COMNTOOLS%"\vsvars32.bat
-    
-    This command sets up the environment for MSVC version 9.0 (2008).
-    For MSVC version 10.0 (2010) the corresponding environment variable
-    is VS100COMNTOOLS.
-
-(3) Enter the following command to start the MSYS shell:
+(2) Enter the following command to start the MSYS shell:
 
         C:\> C:\MinGW\MSYS\1.0\msys.bat 
 
@@ -46,6 +42,22 @@ do the following:
 In order to install the C#, Erlang or Java grades you will require a C#,
 Erlang or Java compiler to be included in the Windows PATH.
 (See the relevant README files for further details, e.g. README.Java etc)
+
+
+*** IMPORTANT NOTE FOR USERS OF VISUAL STUDIO 2013 ***
+
+The Makefile for the Boehm garbage collector requires the files NtWin32.Mak and
+Win32.Mak to be present in the build environment.  These files are *not*
+included with Visual Studio 2013 and must be copied or included from the
+Windows 7 (or 7.1) SDK.
+
+To include the above files, append the SDK directory to the end of the INCLUDE
+environment variable, for example (with the Windows 7.1 SDK):
+
+   C:\> set INCLUDE=%INCLUDE%;C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1a\Include
+
+Alternatively, you can just copy the NtWin32.Mak and Win32.Mak files into the
+"boehm_gc" directory of the Mercury source tree.
 
 -----------------------------------------------------------------------------
 
@@ -134,6 +146,16 @@ The MSVC port currently has a number of limitation:
   Windows.
 
 * Creation of shared libraries (DLLs) is not currently supported.
+
+* The '--c-debug' option currently has no effect with MSVC since enabling
+  it breaks parallel builds and and disables some C compiler optimizations.
+
+  If you *really* want to enable support for C level debugging, then enable the
+  commented out definition of DEBUG_OPTS in scripts/mgnuc.in (in the "cl" case)
+  and also enable the commented out definition of CFLAGS_FOR_DEBUG in
+  configure.ac (in the "msvc*" case).  You will then need to regenerate
+  the configure script and rebuild the Mercury system.  (See INSTALL.git for
+  details of how to do this.)
 
 -----------------------------------------------------------------------------
 

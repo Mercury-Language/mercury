@@ -47,6 +47,7 @@ ALL_DEEP_MODULES = \
 MAIN_TARGET=all
 MERCURY_MAIN_MODULES=$(ALL_DEEP_MODULES)
 DEPEND=$(patsubst %,%.depend,$(ALL_DEEP_MODULES))
+PDBS=$(patsubst %,%.pdb,$(ALL_DEEP_MODULES))
 
 ifeq ("$(ENABLE_DEEP_PROFILER)","yes")
 	INSTALL=install_cgi_progs
@@ -242,6 +243,7 @@ cs: $(mdprof_procrep.cs) $(cs_subdir)mdprof_procrep_init.c
 realclean_local:
 	rm -f .deep_tags tags DEEP_FLAGS DEEP_FLAGS.date \
 		.mdbcomp_modules $(MDBCOMP_MODULES) mdbcomp.*.err
+	rm -f $(PDBS) vc*.pdb
 
 #-----------------------------------------------------------------------------#
 

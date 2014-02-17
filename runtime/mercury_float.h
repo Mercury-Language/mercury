@@ -137,11 +137,15 @@
         __ffdw.f;                                                           \
       })
   #else
-    MR_EXTERN_INLINE MR_Float
-    MR_float_from_dword(MR_Word w0, MR_Word w1);
+
+    #define MR_float_from_dword(w0, w1)				 	    \
+	MR_float_from_dword_func((MR_Word)(w0), (MR_Word)(w1))
 
     MR_EXTERN_INLINE MR_Float
-    MR_float_from_dword(MR_Word w0, MR_Word w1)
+    MR_float_from_dword_func(MR_Word w0, MR_Word w1);
+
+    MR_EXTERN_INLINE MR_Float
+    MR_float_from_dword_func(MR_Word w0, MR_Word w1)
     {
         union MR_Float_Dword __ffdw;
         __ffdw.w[0] = (MR_Word) (w0);

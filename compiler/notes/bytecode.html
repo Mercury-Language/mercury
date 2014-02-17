@@ -1,0 +1,529 @@
+
+
+<html>
+<head>
+<title>
+	Information On The Mercury Bytecode Format
+</title>
+</head>
+
+<body
+	bgcolor="#ffffff"
+	text="#000000"
+>
+
+<hr>
+
+<h1>
+Information On The Mercury Bytecode Format</h1>
+<hr>
+
+<h2> Summary of types </h2>
+
+<dl>
+<dt> byte
+	<dd> 
+	unsigned char 0-255
+<dt> cstring
+		<dd>
+		Sequence of non-zero bytes terminated by zero-byte. <br>
+		XXX: May change this later to allow embedded
+		zero-bytes in strings.
+<dt> short
+		<dd>
+		2 bytes interpreted as signed short.
+		It is 2's complement and big-endian. (The
+		most significant byte is read first.)
+<dt> int
+		<dd>
+		4 bytes interpreted as a signed int.
+		It is 2's complement and big-endian.
+<dt> float
+		<dd>
+		8 bytes interpreted as floating point value.
+		It is IEEE-754 64-bit format and big-endian.
+<dt> list of T
+		<dd>
+		contiguous sequence of T
+<dt> determinism
+		<dd>
+		one byte interpreted as follows
+			<ul>
+			<li> 0 = det
+			<li> 1 = semidet
+			<li> 2 = multidet
+			<li> 3 = nondet
+			<li> 4 = cc_multidet
+			<li> 5 = cc_nondet
+			<li> 6 = erroneous
+			<li> 7 = failure
+			</ul>
+<dt> tag is one of
+		<dd>
+		<ul>
+		<li> 0 (byte) (simple tag) followed by
+			<ul>
+			<li> primary (byte)
+			</ul>
+		<li> 1 (byte) (complicated tag) followed by
+			<ul>
+			<li> primary (byte)
+			<li> secondary (int)
+			</ul>
+		<li> 2 (byte) (complicated constant tag) followed by
+			<ul>
+			<li> primary (byte)
+			<li> secondary (int)
+			</ul>
+		<li> 3 (byte) (enum tag)
+			(For enumeration of pure constants.)
+		<li> 4 (byte) (no_tag)
+		</ul>
+		XXX: Need explanation of all these.
+<dt> cons_id (constructor id) is one of:
+		<dd>
+		<ul>
+		<li> 0 (byte) (cons) followed by
+			<ul>
+			<li> functor name (cstring)
+			<li> arity (short)
+			<li> tag (tag)
+			</ul>
+		<li> 1 (byte) (int const) followed by
+			<ul>
+			<li> integer constant (int)
+			</ul>
+		<li> 2 (byte) (string const) followed by
+			<ul>
+			<li> string constant (cstring) <br>
+				XXX: no '\0' in strings!
+			</ul>
+		<li> 3 (byte) (float const) followed by
+			<ul>
+			<li> float constant (float)
+			</ul>
+		<li> 4 (byte) (pred const) followed by
+			<ul>
+			<li> module id (cstring)
+			<li> predicate id (cstring)
+			<li> arity (short)
+			<li> procedure id (byte)
+			</ul>
+		<li> 5 (byte) (code addr const) followed by
+			<ul>
+			<li> module id (cstring)
+			<li> predicate id (cstring)
+			<li> arity (short)
+			<li> procedure id (byte)
+			</ul>
+		<li> 6 (byte) (base type info const) followed by
+			<ul>
+			<li> module id (cstring)
+			<li> type name (cstring)
+			<li> type arity (byte)
+			</ul>
+		</ul>
+		Note that not all of these alternatives are
+		meaningful in all bytecodes that have arguments of
+		type cons_id. <br>
+		XXX: Specify exactly which cases are meaningful.
+<dt> op_arg (argument to an operator) is one of:
+		<dd>
+		<ul>
+		<li> 0 (byte) followed by 
+			<ul>
+			<li> variable slot (short)
+			</ul>
+		<li> 1 (byte) followed by
+			<ul>
+			<li> integer constant (int)
+			</ul>
+		<li> 2 (byte) followed by
+			<ul>
+			<li> float constant (float) XXX: not yet supported
+			</ul>
+		</ul>
+<dt> dir (direction of information movement in general unification)
+	  is one of:
+		<dd>
+		<ul>
+		<li> 0 (byte) to_arg
+		<li> 1 (byte) to_var
+		<li> 2 (byte) to_none
+		</ul>
+</dl>
+
+
+<h2> Summary of Bytecodes </h2>
+
+<p>
+
+Note: Currently we specify only the static layout of bytecodes.
+We also need to specify the operational semantics of the bytecodes,
+which can be done by specifying state transitions on the abstract
+machine. That is, to specify the meaning of a bytecode, we simply
+say how the state of the abstract machine has changed from before
+interpreting the bytecode to after interpreting the bytecode.
+
+<p>
+
+<ul>
+<li> enter_pred (0)
+	<ul>
+	<li> predicate name (cstring)
+	<li> number of procedures in predicate (short)
+	</ul>
+
+<li> endof_pred (1)
+
+<li> enter_proc (2)
+	<ul>
+	<li> procedure id (byte) <br>
+		procedure id is used to distinguish the procedures
+		in a predicate. <br>
+		XXX: should use short instead?
+	<li> determinism of the procedure (determinism)
+	<li> label count (short) <br>
+		Number of labels in the procedure. Used for allocating a
+		table of labels in the interpreter.
+	<li> temp count (short) <br>
+		Number of temporary variables needed for this procedure. (?)
+	<li> length of list (short) <br>
+		Number of items in next arg
+	<li> list of
+		<ul>
+		<li> Variable info (cstring)
+		</ul>
+		XXX: we should also have typeinfo for each variable.
+	</ul>
+
+<li> endof_proc (3)
+
+<li> label (4)
+	<ul>
+	<li> Code label. (short)
+	</ul>
+	Used for jumps, switches, if-then-else, etc.
+
+<li> enter_disjunction (5)
+	<ul>
+	- label id (short) <br>
+		Label refers to the label immediately after the disjunction.
+	</ul>
+
+<li> endof_disjunction (6)
+
+<li> enter_disjunct (7)
+	<ul>
+	<li> label id (short) <br>
+		Label refers to label for next disjunct.
+	</ul>
+
+<li> endof_disjunct (8)
+	<ul>
+	<li> label id (short) <br>
+		Label refers to label for next disjunct.(?)
+		Is -1 if there is no next disjunct in this disjunction.
+	</ul>
+
+<li> enter_switch (9)
+	<ul>
+	<li> variable in slots on which we are switching (short)
+	<li> label immediately after the switch (short)
+	</ul>
+	We jump to the label after we've performed the switch.
+		label refers to label immediately after corresponding
+		endof_switch.
+
+<li> endof_switch (10)
+
+<li> enter_switch_arm (11)
+	<ul>
+	<li> constructor id (cons_id)
+	<li> label id (short)  <br>
+		label refers to label for next switch arm.
+	</ul>
+			
+<li> endof_switch_arm (12) 
+	<ul>
+	<li> label id (short)
+		Label id refers to label immediately before next switch arm. 
+		(?)
+	</ul>
+
+<li> enter_if (13)
+	<ul>
+	<li> else label id (short)
+	<li> follow label id (short) <br>
+		label refers to label at endof_if
+		Note that we must've pushed a failure context
+		before entering the enter_if. If the condition
+		fails, we follow the failure context.
+	<li> frame pointer tmp (short) <br>
+		XXX: hmm... dunno..
+	</ul>
+
+
+<li> enter_then (14)
+	<ul>
+	<li> frame pointer temp (short) <br>
+		XXX: what's this for?
+	</ul>
+	XXX: should have flag here? [I wrote this note in a meeting.
+	What in hell did I mean?]
+
+<li> endof_then (15) XXX: enter_else is a better name.
+	<ul>
+	<li> follow label (short) <br>
+		XXX: label just before endof_if ???
+	</ul>
+
+<li> endof_if (16)
+
+<li> enter_negation (17)
+	<ul>
+	<li> label id (short)
+	</ul>
+		label refers to label at endof_negation.
+		Note: As with if-then-else, we must push a failure
+		context just before entering enter_negation. If the
+		negation fails, we follow the failure context.
+
+<li> endof_negation (18)
+
+<li> enter_commit (19)
+	<ul>
+	- temp (short) <br>
+		XXX: what's this for?
+	</ul>
+	XXX: how does this work?
+
+<li> endof_commit (20)
+	<ul>
+	<li> temp (short) <br>
+		XXX: what's this for?
+	</ul>
+
+<li> assign (21)
+	<ul>
+	<li> Variable A in slots (short)
+	<li> Variable B in slots (short)
+	</ul>
+	A := B. Copy contents of slot B to slot A.
+
+<li> test (22)
+	<ul>
+	<li> Variable A in slots (short)
+	<li> Variable B in slots (short)
+	</ul>
+	Used to test atomic values (int, float, etc). Before entering
+	test, a failure context must be pushed. If the test fails,
+	the failure context is followed.
+	
+
+<li> construct (23)
+	<ul>
+	<li> variable slot (short)
+	<li> constructor id (cons_id)
+	<li> list length of next arg (short)
+	<li> list of:
+		<ul>
+		<li> variable slot (short)
+		</ul>
+	</ul>
+	Apply constructor to list of arguments (in list of variable slots)
+	and store result in a variable slot.
+
+<li> deconstruct (24)
+	<ul>
+	<li> variable slot Var (short)
+	<li> constructor id (cons_id)
+	<li> list length of next arg (short)
+	<li> list of:
+		<ul>
+		<li> variable slot (short)
+		</ul>
+	</ul>
+
+	<p>
+
+	If cons_id is:
+		<dl>
+		<dt> a functor applied to some args, 
+			<dd>
+			then remove functor and put args into variable slots.
+		<dt> an integer constant, 
+			<dd>
+			then check for equality of the constant and the 
+			value in the variable slot
+		<dt> a float constant, 
+			<dd>
+			then check for equality of the constant and the 
+			value in the variable slot.
+		<dt> anything else, 
+			<dd>
+			then makes no sense and interpreter should 
+			raise error. <br>
+			XXX: correct? 
+		</dl>
+
+	<p>
+
+	Note: We must push a failure context before entering deconstruct.			If the deconstruct fails (i.e. functor of Var isn't
+		the same as cons_id, or ints are not equal, or floats are
+		not equal), then we must follow the failure context.
+
+<li> complex_construct (25)
+	<ul>
+	<li> var (short)
+	<li> cons id (cons_id)
+	<li> list length (short)
+	<li> list of:
+		<ul>
+		<li> var (short)
+		<li> direction (dir)
+		</ul>
+	</ul>
+	
+	This used for general unification using partially instantiated
+	terms. This is made possible by bromage's aliasing work.
+
+<li> complex_deconstruct (26)
+	<ul>
+	<li> variable slot (short)
+	<li> constructor id (cons_id)
+	<li> list length of next arg (short)
+	<li> list of
+		<ul>
+		<li> variable slot (short)
+		<li> direction (dir)
+		</ul>
+	</ul>
+	Note: This is a generalised deconstruct. The directions specify
+	which way bindings move. XXX: This is still not 100% crystal clear.
+
+<li> place_arg (27)
+	<ul>
+	<li> register number (byte)  <br>
+		XXX: Do we have at most 256 registers?
+	<li> variable number (short)
+	</ul>
+	Move number from variable slot to register.
+	(Note: See notes for pickup_arg.) <p>
+
+	XXX: We will need to #include imp.h from ther Mercury runtime,
+	since this specifies the usage of registers. For example, we
+	need to know whether we're using the compact or non-compact
+	register allocation method for parameter passing. (The compact
+	method reuses input registers as output registers. In the 
+	non-compact mode, input and output registers are distinct.)
+
+<li> pickup_arg (28)
+	<ul>
+	<li> register number (byte)
+	<li> variable number in variable slots (short)
+	</ul>
+	Move argument from register to variable slot. <p>
+
+	(Note: We currently don't make use of floating-point registers.
+	The datatype for pickup_arg in the bytecode generator allows
+	for distinguishing register `types', that is floating-point
+	register or normal registers. We may later want to spit out
+	another byte `r' or `f' to identify the type of register.)
+
+
+
+<li> call (29)
+	<ul>
+	<li> module id (cstring)
+	<li> predicate id (cstring)
+	<li> arity (short)
+	<li> procedure id (byte)
+	</ul>
+	XXX: If we call a Mercury builtin, the module name is `mercury_builtin'.
+	What if the user has a module called mercury_builtin?
+
+<li> higher_order_call (30)
+	<ul>
+	<li> var (short)
+	<li> input variable count (short)
+	<li> output variable count (short)
+	<li> determinism (determinism)
+	</ul>
+
+<li> builtin_binop (31)
+	<ul>
+	<li> binary operator (byte) <br>
+		This single byte is an index into a table of binary
+		operators.
+	<li> argument to binary operator (op_arg)
+	<li> another argument to binary operator (op_arg)
+	<li> variable slot which receives result of binary operation (short)
+	</ul>
+	XXX: Floating point operations must be distinguished from
+	int operations. In the interpreter, we should use a lookup table 
+	that maps bytes to the operations.
+
+<li> builtin_unop (32)
+	<ul>
+	<li> unary operator (byte)
+		An index into a table of unary operators.
+	<li> argument to unary operator (op_arg)
+	<li> variable slot which receives result of unary operation (short)
+	</ul>
+
+<li> builtin_bintest (33)
+	<ul>
+	<li> binary operator (byte)
+		An index into a table of binary operators.
+	<li> argument to binary test (op_arg)
+	<li> another argument to binary test op_arg)
+	</ul>
+	Note we must first push a choice point which we may follow should
+	the test fail.
+
+<li> builtin_untest (34)
+	<ul>
+	<li> unary operator (byte)
+		An index into a tabler of unary operators.
+	<li> argument to unary operator (op_arg)
+	</ul>
+	Note we must first push a choice point which we may follow should
+	the test fail.
+
+<li> semidet_succeed (35)
+
+<li> semidet_success_check (36)
+
+<li> fail (37)
+
+<li> context (38)
+	<ul>
+	<li> line number in Mercury source that the current bytecode
+		line corresponds to. (short)
+	</ul>
+	XXX: Still not clear how we should implement `step' in a debugger
+	since a single context may have other contexts interleaved in it.
+
+<li> not_supported (39)
+	<p>
+
+	Some unsupported feature is used. Inline C in Mercury code,
+	for instance. Any procedure thatr contains inline C
+	(or is compiled Mercury?) must have the format:
+		<ul>
+		<li> enter_pred ...
+		<li> not_supported
+		<li> endof_pred
+		</ul>
+
+</ul>
+
+
+<hr>
+
+Comments? See our
+<a href="http://www.mercurylang.org/contact.html">contact</a> page.<br>
+
+</body>
+</html>

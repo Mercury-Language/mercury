@@ -403,14 +403,14 @@ maze.adj(pos(FarX, FarY), pos(X, Y), Adjs, !Rnd) :-
 knock_out_wall(NewPos, OldPos, !Maze) :-
 	( if	!.Maze ^ elem(NewPos) = NewSet0
 	  then	NewSet = set.insert(NewSet0, OldPos)
-	  else	set.singleton_set(NewSet, OldPos)
+	  else	NewSet = set.make_singleton_set(OldPos)
 	),
-	!:Maze = !.Maze ^ elem(NewPos) := NewSet,
+	!Maze ^ elem(NewPos) := NewSet,
 	( if	!.Maze ^ elem(OldPos) = OldSet0
 	  then	OldSet = set.insert(OldSet0, NewPos)
-	  else	set.singleton_set(OldSet, NewPos)
+	  else  OldSet = set.make_singleton_set(NewPos)
 	),
-	!:Maze = !.Maze ^ elem(OldPos) := OldSet.
+	!Maze ^ elem(OldPos) := OldSet.
 
 :- pred shuffle(int::in, list(T)::in, list(T)::out, random.supply::mdi,
 	random.supply::muo) is det.

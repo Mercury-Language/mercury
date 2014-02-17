@@ -21,6 +21,7 @@ NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
 
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER="@CC@"}
+C_COMPILER_TYPE=${MERCURY_C_COMPILER_TYPE="@C_COMPILER_TYPE@"}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
 CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
 CFLAGS_FOR_THREADS="@CFLAGS_FOR_THREADS@"
@@ -30,8 +31,8 @@ BYTES_PER_WORD="@BYTES_PER_WORD@"
 MKTEMP=@MKTEMP@
 TMPDIR=${TMPDIR=/tmp}
 
-case "$CC" in
-    *gcc*)
+case "$C_COMPILER_TYPE" in
+    gcc*)
         ANSI_OPTS="-ansi"
         CHECK_OPTS="
             -Wall -Wwrite-strings
@@ -70,7 +71,7 @@ case "$CC" in
         DISABLE_OPTS_OPT="-O0"
         COMPILER=gcc
         ;;
-    *clang*)
+    clang*)
         ANSI_OPTS="-ansi"
         CHECK_OPTS="-w"
         OPT_OPTS="@OPT_FLAGS_FOR_CLANG@ $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
@@ -78,7 +79,7 @@ case "$CC" in
         DISABLE_OPTS_OPT="-O0"
         COMPILER=clang
         ;;
-    *lcc*)
+    lcc*)
         ANSI_OPTS=
         CHECK_OPTS="-w"     # turn off all warnings due to spurious warnings.
         OPT_OPTS=""
@@ -86,11 +87,13 @@ case "$CC" in
         DISABLE_OPTS_OPT="-O0"
         COMPILER=lcc
         ;;
-    *cl* | *CL*)
+    msvc*)
         ANSI_OPTS=""
         CHECK_OPTS="-nologo"    # Suppress the MSVC banner message.
         OPT_OPTS=""
-        DEBUG_OPT="-Zi"
+        # See README.MS-VisualC for why we don't enable C level debugging.
+        #DEBUG_OPTS="-Zi"
+        DEBUG_OPTS=""
         DISABLE_OPTS_OPT="-Od"
         COMPILER=cl
         ;;
