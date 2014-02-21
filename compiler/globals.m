@@ -300,6 +300,8 @@
 :- mode lookup_bool_option(in, in, out) is det.
 :- mode lookup_bool_option(in, in, in) is semidet. % implied
 :- pred lookup_int_option(globals::in, option::in, int::out) is det.
+:- pred lookup_maybe_int_option(globals::in, option::in, maybe(int)::out)
+    is det.
 :- pred lookup_string_option(globals::in, option::in, string::out) is det.
 :- pred lookup_maybe_string_option(globals::in, option::in, maybe(string)::out)
     is det.
@@ -725,6 +727,14 @@ lookup_int_option(Globals, Option, Value) :-
         Value = Int
     ;
         unexpected($module, $pred, "invalid int option")
+    ).
+
+lookup_maybe_int_option(Globals, Option, Value) :-
+    lookup_option(Globals, Option, OptionData),
+    ( OptionData = maybe_int(MaybeInt) ->
+        Value = MaybeInt
+    ;
+        unexpected($module, $pred, "invalid maybe_int option")
     ).
 
 lookup_maybe_string_option(Globals, Option, Value) :-

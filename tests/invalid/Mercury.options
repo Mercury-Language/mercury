@@ -12,6 +12,7 @@ MCFLAGS-assert_in_interface =	--no-intermodule-optimization \
 				--verbose-error-messages
 
 MCFLAGS-actual_expected =       --no-intermodule-optimization
+MCFLAGS-any_to_ground_in_ite_cond_nomax =		--no-max-error-line-width
 # Mantis bug 238 shows up in bug238.m only with --constraint-propagation.
 MCFLAGS-bug238 =		--constraint-propagation
 MCFLAGS-children =		--no-intermodule-optimization

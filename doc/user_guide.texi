@@ -7206,6 +7206,7 @@ or in Mercury (with @samp{--convert-to-mercury}).
 @findex --max-error-line-width
 Set the maximum width of an error message line to @var{N} characters
 (unless a long single word forces the line over this limit).
+Specifying --no-max-error-line-width removes the limit.
 
 @sp 1
 @item --show-dependency-graph

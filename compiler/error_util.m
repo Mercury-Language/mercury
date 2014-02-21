@@ -804,8 +804,9 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         !First, !PrintedSome, !IO) :-
     (
         Component = always(ComponentPieces),
-        globals.lookup_int_option(Globals, max_error_line_width, MaxWidth),
-        do_write_error_pieces(!.First, MaybeContext, Indent, MaxWidth,
+        globals.lookup_maybe_int_option(Globals, max_error_line_width,
+            MaybeMaxWidth),
+        do_write_error_pieces(!.First, MaybeContext, Indent, MaybeMaxWidth,
             ComponentPieces, !IO),
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
@@ -823,9 +824,9 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
         (
             VerboseErrors = yes,
-            globals.lookup_int_option(Globals, max_error_line_width,
-                MaxWidth),
-            do_write_error_pieces(!.First, MaybeContext, Indent, MaxWidth,
+            globals.lookup_maybe_int_option(Globals, max_error_line_width,
+                MaybeMaxWidth),
+            do_write_error_pieces(!.First, MaybeContext, Indent, MaybeMaxWidth,
                 ComponentPieces, !IO),
             !:First = do_not_treat_as_first,
             !:PrintedSome = printed_something
@@ -836,14 +837,15 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
     ;
         Component = verbose_and_nonverbose(VerbosePieces, NonVerbosePieces),
         globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
-        globals.lookup_int_option(Globals, max_error_line_width, MaxWidth),
+        globals.lookup_maybe_int_option(Globals, max_error_line_width,
+            MaybeMaxWidth),
         (
             VerboseErrors = yes,
-            do_write_error_pieces(!.First, MaybeContext, Indent, MaxWidth,
+            do_write_error_pieces(!.First, MaybeContext, Indent, MaybeMaxWidth,
                 VerbosePieces, !IO)
         ;
             VerboseErrors = no,
-            do_write_error_pieces(!.First, MaybeContext, Indent, MaxWidth,
+            do_write_error_pieces(!.First, MaybeContext, Indent, MaybeMaxWidth,
                 NonVerbosePieces, !IO),
             globals.io_set_extra_error_info(yes, !IO)
         ),
@@ -916,30 +918,35 @@ is_or_are([_]) = "is".
 is_or_are([_, _ | _]) = "are".
 
 write_error_pieces_plain(Globals, Components, !IO) :-
-    globals.lookup_int_option(Globals, max_error_line_width, MaxWidth),
-    do_write_error_pieces(treat_as_first, no, 0, MaxWidth, Components, !IO).
+    globals.lookup_maybe_int_option(Globals, max_error_line_width,
+        MaybeMaxWidth),
+    do_write_error_pieces(treat_as_first, no, 0, MaybeMaxWidth,
+        Components, !IO).
 
 write_error_plain_with_progname(ProgName, Msg, !IO) :-
     MaxWidth = 79,
     Components = [fixed(ProgName ++ ":"), words(Msg)],
-    do_write_error_pieces(treat_as_first, no, 0, MaxWidth, Components, !IO).
+    do_write_error_pieces(treat_as_first, no, 0, yes(MaxWidth),
+        Components, !IO).
 
 write_error_pieces(Globals, Context, Indent, Components, !IO) :-
-    globals.lookup_int_option(Globals, max_error_line_width, MaxWidth),
-    do_write_error_pieces(treat_as_first, yes(Context), Indent, MaxWidth,
+    globals.lookup_maybe_int_option(Globals, max_error_line_width,
+        MaybeMaxWidth),
+    do_write_error_pieces(treat_as_first, yes(Context), Indent, MaybeMaxWidth,
         Components, !IO).
 
 write_error_pieces_maybe_with_context(Globals, MaybeContext, Indent,
         Components, !IO) :-
-    globals.lookup_int_option(Globals, max_error_line_width, MaxWidth),
-    do_write_error_pieces(treat_as_first, MaybeContext, Indent, MaxWidth,
+    globals.lookup_maybe_int_option(Globals, max_error_line_width,
+        MaybeMaxWidth),
+    do_write_error_pieces(treat_as_first, MaybeContext, Indent, MaybeMaxWidth,
         Components, !IO).
 
 :- pred do_write_error_pieces(maybe_treat_as_first::in,
-    maybe(prog_context)::in, int::in, int::in, list(format_component)::in,
-    io::di, io::uo) is det.
+    maybe(prog_context)::in, int::in, maybe(int)::in,
+    list(format_component)::in, io::di, io::uo) is det.
 
-do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent, MaxWidth,
+do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent, MaybeMaxWidth,
         Components, !IO) :-
     % The fixed characters at the start of the line are:
     % filename
@@ -967,8 +974,16 @@ do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent, MaxWidth,
     ),
     convert_components_to_paragraphs(Components, Paragraphs),
     FirstIndent = (TreatAsFirst = treat_as_first -> 0 ; 1),
-    Remain = MaxWidth - (ContextLength + FixedIndent),
-    group_words(TreatAsFirst, FirstIndent, Paragraphs, Remain, Lines),
+    (
+        MaybeMaxWidth = yes(MaxWidth),
+        Remain = MaxWidth - (ContextLength + FixedIndent),
+        MaybeRemain = yes(Remain)
+    ;
+        MaybeMaxWidth = no,
+        MaybeRemain = no
+    ),
+    divide_paragraphs_into_lines(TreatAsFirst, FirstIndent, Paragraphs,
+        MaybeRemain, Lines),
     write_lines(Lines, MaybeContext, FixedIndent, !IO).
 
 :- func indent_increment = int.
@@ -1383,15 +1398,21 @@ find_word_end(String, Cur, WordEnd) :-
                 list(string)    % The words on the line.
             ).
 
-    % Groups the given words into lines. The first line can have up to Max
-    % characters on it; the later lines (if any) up to Max-2 characters.
-    % The given list of paragraphs must be nonempty, since we always return
+    % Groups the words in the given paragraphs into lines. The first line
+    % can have up to Max characters on it; the later lines (if any) up
+    % to Max-2 characters.
+    %
+    % If MaybeMax is `no', handle it as if Max were infinity (i.e. put
+    % everything in each paragraph on one line).
+    %
+    % The given list of paragraphs should be nonempty, since we always return
     % at least one line.
     %
-:- pred group_words(maybe_treat_as_first::in, int::in, list(paragraph)::in,
-    int::in, list(error_line)::out) is det.
+:- pred divide_paragraphs_into_lines(maybe_treat_as_first::in, int::in,
+    list(paragraph)::in, maybe(int)::in, list(error_line)::out) is det.
 
-group_words(TreatAsFirst, CurIndent, Paras, Max, Lines) :-
+divide_paragraphs_into_lines(TreatAsFirst, CurIndent, Paras, MaybeMax,
+        Lines) :-
     (
         Paras = [],
         Lines = []
@@ -1408,25 +1429,31 @@ group_words(TreatAsFirst, CurIndent, Paras, Max, Lines) :-
         NextIndent = RestIndent + FirstIndentDelta,
 
         BlankLine = error_line(CurIndent, []),
-        list.duplicate(NumBlankLines, BlankLine, BlankLines),
+        list.duplicate(NumBlankLines, BlankLine, FirstParaBlankLines),
         (
             FirstParaWords = [],
-            group_words(TreatAsFirst, NextIndent, LaterParas, Max, RestLines),
-            Lines = BlankLines ++ RestLines
+            NextTreatAsFirst = TreatAsFirst,
+            FirstParaLines = []
         ;
             FirstParaWords = [FirstWord | LaterWords],
-            get_line_of_words(FirstWord, LaterWords, CurIndent, Max,
-                LineWords, RestWords),
-            CurLine = error_line(CurIndent, LineWords),
+            NextTreatAsFirst = do_not_treat_as_first,
+            (
+                MaybeMax = yes(Max),
+                get_line_of_words(FirstWord, LaterWords, CurIndent, Max,
+                    LineWords, RestWords),
+                CurLine = error_line(CurIndent, LineWords),
 
-            group_nonfirst_line_words(RestWords, RestIndent, Max,
-                ParaRestLines),
-            ParaLines = [CurLine | ParaRestLines],
-
-            group_words(do_not_treat_as_first, NextIndent, LaterParas,
-                Max, RestLines),
-            Lines = ParaLines ++ BlankLines ++ RestLines
-        )
+                group_nonfirst_line_words(RestWords, RestIndent, Max,
+                    FirstParaRestLines),
+                FirstParaLines = [CurLine | FirstParaRestLines]
+            ;
+                MaybeMax = no,
+                FirstParaLines = [error_line(CurIndent, FirstParaWords)]
+            )
+        ),
+        divide_paragraphs_into_lines(NextTreatAsFirst, NextIndent, LaterParas,
+            MaybeMax, LaterParaLines),
+        Lines = FirstParaLines ++ FirstParaBlankLines ++ LaterParaLines
     ).
 
 :- pred group_nonfirst_line_words(list(string)::in, int::in, int::in,
