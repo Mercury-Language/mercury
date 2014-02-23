@@ -86,6 +86,7 @@ tokenise_stdin(!LS) :-
     ;       prep(string)
     ;       punc
     ;       space
+    ;       word(string)
     ;       unrecognised(string).
 
 :- func lexemes = list(lexeme(token)).
@@ -125,6 +126,9 @@ lexemes = [
     ( any("~!@#$%^&*()_+`-={}|[]\\:"";'<>?,./")
                         -> return(punc) ),
     ( whitespace        -> return(space) ),
+    ( +(range('a', 'z') or
+        range('A', 'Z')
+       )                -> func(Match) = word(Match) ),
     ( dot               -> func(Match) = unrecognised(Match) )
 ].
 

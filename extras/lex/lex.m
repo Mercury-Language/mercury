@@ -30,6 +30,8 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
+:- import_module sparse_bitset.
+:- import_module enum.
 
 %-----------------------------------------------------------------------------%
 
@@ -72,6 +74,11 @@
 :- inst ignore_pred
     ==      ( pred(in) is semidet ).
 
+    % Represents a set of Unicode characters
+    %
+:- type charset
+    ==      sparse_bitset(char).
+
     % The type of regular expressions.
     %
 :- type regexp.
@@ -100,6 +107,7 @@
 :- instance regexp(regexp).
 :- instance regexp(char).
 :- instance regexp(string).
+:- instance regexp(sparse_bitset(T)) <= (regexp(T),enum(T)).
 
     % Some basic non-primitive regexps.
     %
@@ -107,6 +115,7 @@
 :- func anybut(string) = regexp.     % anybut("abc") is complement of any("abc")
 :- func ?(T) = regexp <= regexp(T).  % ?(R)       = R or null
 :- func +(T) = regexp <= regexp(T).  % +(R)       = R ++ *(R)
+:- func range(char, char) = regexp.  % range('a', 'z') = any("ab...xyz")
 
     % Some useful single-char regexps.
     %
@@ -117,20 +126,42 @@
 :- func alphanum = regexp.      % alphanum   = alpha or digit
 :- func identstart = regexp.    % identstart = alpha or "_"
 :- func ident = regexp.         % ident      = alphanum or "_"
-:- func nl = regexp.            % nl         = re("\n")
 :- func tab = regexp.           % tab        = re("\t")
 :- func spc = regexp.           % spc        = re(" ")
 :- func wspc = regexp.          % wspc       = any(" \t\n\r\f\v")
-:- func dot = regexp.           % dot        = anybut("\n")
+:- func dot = regexp.           % dot        = anybut("\r\n")
 
     % Some useful compound regexps.
     %
+:- func nl = regexp.            % nl         = ?("\r") ++ re("\n")
 :- func nat = regexp.           % nat        = +(digit)
 :- func signed_int = regexp.    % signed_int = ?("+" or "-") ++ nat
 :- func real = regexp.          % real       = \d+((.\d+([eE]int)?)|[eE]int)
 :- func identifier = regexp.    % identifier = identstart ++ *(ident)
 :- func whitespace = regexp.    % whitespace = *(wspc)
 :- func junk = regexp.          % junk       = *(dot)
+
+    % charset(Start, End) = charset(Start `..` End)
+    %
+:- func charset(int, int) = charset.
+
+    % Function to create a sparse bitset from a list of Unicode 
+    % codepoints. These codepoints are checked for validity.
+    %
+:- func charset(list(int)) = charset.
+
+    % Creates a union of all char ranges in the list.
+    % Will return the empty set if the list is empty.
+    %
+:- func charset_from_lists(list(list(int))) = charset.
+
+    % Latin is comprised of the following Unicode blocks:
+    %  * Basic Latin
+    %  * Latin1 Supplement
+    %  * Latin Extended-A
+    %  * Latin Extended-B
+    %
+:- func latin_chars = charset is det.
 
    % Utility predicate to create ignore_pred's.
    % Use it in the form `ignore(my_token)' to ignore just `my_token'.
@@ -247,6 +278,7 @@
 :- import_module bool.
 :- import_module char.
 :- import_module exception.
+:- import_module require.
 :- import_module int.
 :- import_module map.
 
@@ -716,6 +748,17 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
         )
 ].
 
+:- instance regexp(sparse_bitset(T)) <= (regexp(T),enum(T)) where [
+    re(Charset) = sparse_bitset.foldl(
+        func(Char, R0) =
+            ( if R0 = eps then
+                re(Char)
+            else
+                R0 or re(Char)
+            ),
+        Charset, eps)
+].
+
 %-----------------------------------------------------------------------------%
 % Basic primitive regexps.
 
@@ -728,37 +771,73 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
 %-----------------------------------------------------------------------------%
 % Some basic non-primitive regexps.
 
+    % int_is_valid_char(Int) = Char.
+    %
+    % True iff Int is Char and is in [0x0..0x10ffff] and not a surrogate
+    % character.
+    %
+:- func int_is_valid_char(int) = char is semidet.
+
+int_is_valid_char(Value) = Char :-
+    char.from_int(Value, Char),
+    not char.is_surrogate(Char).
+
+charset(Start, End) = charset(Start `..` End).
+
+charset(Range) = Charset :-
+    ValidChars = list.filter_map(int_is_valid_char, Range),
+    Charset = sparse_bitset.sorted_list_to_set(ValidChars).
+
+charset_from_lists(ListOfRanges) = Charset :-
+    if ListOfRanges = [FirstRange | Ranges] then
+      Charset = foldl(
+        func(Range, Set) = union(Set, charset(Range)), 
+        Ranges,
+        charset(FirstRange))
+    else if [Range] = ListOfRanges then
+      Charset = charset(Range)
+    else
+      sparse_bitset.empty(Charset).
+
+latin_chars = charset_from_lists([
+                0x40 `..` 0x7d, 
+                0xc0 `..` 0xff,
+                0x100 `..` 0x2ff
+              ]). 
+
+:- func valid_unicode_chars = charset.
+
+valid_unicode_chars = charset_from_lists([
+                0x01 `..` 0x2ff
+              ]).
+
 any(S) = R :-
     ( if S = "" then
         R = null
       else
-        L = string.length(S),
-        C = string.det_index(S, L - 1),
-        R = str_foldr(func(Cx, Rx) = (Cx or Rx), S, re(C), L - 2)
+        R = re(sparse_bitset.list_to_set(string.to_char_list(S)))
     ).
 
-anybut(S0) = R :-
-    S = string.from_char_list(
-            list.filter_map(
-                ( func(X) = C is semidet :-
-                    char.to_int(C, X),
-                    not string.contains_char(S0, C)
-                ),
-                0x01 `..` 0xff
-            )
-        ),
-    R = any(S).
+anybut(S) = R :-
+    ( if S = "" then
+        R = re(latin_chars)
+      else
+        ExcludedChars = sparse_bitset.list_to_set(string.to_char_list(S)),
+        R = re(sparse_bitset.difference(valid_unicode_chars, ExcludedChars))
+    ).
 
 :- func str_foldr(func(char, T) = T, string, T, int) = T.
 
 str_foldr(Fn, S, X, I) =
     ( if I < 0 then X
                else str_foldr(Fn, S, Fn(string.det_index(S, I), X), I - 1)
-    ).
+    ). 
 
 ?(R) = (R or null).
 
 +(R) = (R ++ *(R)).
+
+range(Start, End) = re(charset(char.to_int(Start), char.to_int(End))).
 
 %-----------------------------------------------------------------------------%
 % Some useful single-char regexps.
@@ -777,18 +856,18 @@ digit      = any("0123456789").
 lower      = any("abcdefghijklmnopqrstuvwxyz").
 upper      = any("ABCDEFGHIJKLMNOPQRSTUVWXYZ").
 wspc       = any(" \t\n\r\f\v").
-dot        = anybut("\n").
+dot        = anybut("\r\n").
 alpha      = (lower or upper).
 alphanum   = (alpha or digit).
 identstart = (alpha or ('_')).
 ident      = (alphanum or ('_')).
-nl         = re('\n').
 tab        = re('\t').
 spc        = re(' ').
 
 %-----------------------------------------------------------------------------%
 % Some useful compound regexps.
 
+nl         = (?('\r') ++ '\n').  % matches both Posix and Windows newline.
 nat        = +(digit).
 signed_int = ?("+" or "-") ++ nat.
 real       = signed_int ++ (
