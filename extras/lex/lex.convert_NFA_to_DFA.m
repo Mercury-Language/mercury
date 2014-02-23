@@ -261,19 +261,6 @@ number_state_sets(Ss) = StateNos :-
             out(atom_transitions).
 
 map_state_set_transitions_to_numbers(Map, STs) =
-/* ###  In clause for function */
-/* ###    `map_state_set_transitions_to_numbers'/2: */
-/* ###    in argument 1 of clause head: */
-/* ###    in unification of argument */
-/* ###    and term `trans(X, C, Y)': */
-/* ###    type error in argument(s) of functor `trans/3'. */
-/* ###    Argument 1 (X) has type `(pred int)', */
-/* ###    expected type was `int'; */
-/* ###    argument 2 (C) has type `character', */
-/* ###    expected type was */
-/* ###    `sparse_bitset.sparse_bitset(character)'; */
-/* ###    argument 3 (Y) has type `(pred int)', */
-/* ###    expected type was `int'. */
     list.map(
         ( func(trans(SX, C, SY)) = trans(X, C, Y) :-
             X = map.lookup(Map, SX),
