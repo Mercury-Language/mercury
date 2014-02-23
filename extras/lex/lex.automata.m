@@ -21,7 +21,6 @@
 :- module lex.automata.
 :- interface.
 
-:- import_module char.
 :- import_module list.
 :- import_module set.
 
@@ -48,7 +47,7 @@
 
 :- type transition
     --->    null(state_no, state_no)
-    ;       trans(state_no, char, state_no).
+    ;       trans(state_no, charset, state_no).
 
 :- inst atom_transition == bound(trans(ground, ground, ground)).
 :- inst null_transition == bound(null(ground, ground)).

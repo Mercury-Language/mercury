@@ -44,6 +44,8 @@ main(!IO) :-
 I recognise the following words:
 ""cat"", ""dog"", ""rat"", ""mat"", ""sat"", ""caught"", ""chased"",
 ""and"", ""then"", ""the"", ""it"", ""them"", ""to"", ""on"".
+I also recognise Unicode characters:
+""我"", ""会"", ""说"", ""中文""
 I also recognise Mercury-style comments, integers and floating point
 numbers, and a variety of punctuation symbols.
 
@@ -84,9 +86,11 @@ tokenise_stdin(!LS) :-
     ;       verb(string)
     ;       conj(string)
     ;       prep(string)
+    ;       adverb(string)
     ;       punc
     ;       space
-    ;       unrecognised(string).
+    ;       word(string)
+    ;       unexpected(string).
 
 :- func lexemes = list(lexeme(token)).
 
@@ -120,12 +124,19 @@ lexemes = [
       "to" \/
       "on"              -> (func(Match) = prep(Match)) ),
 
+    ( "我" or "中文"    -> func(Match) = noun(Match) ),
+    ( "会"              -> func(Match) = adverb(Match) ),
+    ( "说"              -> func(Match) = verb(Match) ),
+
         % return/1 can be used when you don't care what string was matched.
         %
     ( any("~!@#$%^&*()_+`-={}|[]\\:"";'<>?,./")
                         -> return(punc) ),
     ( whitespace        -> return(space) ),
-    ( dot               -> func(Match) = unrecognised(Match) )
+    ( +(range('a', 'z') or
+        range('A', 'Z')
+       )                -> func(Match) = word(Match) ),
+    ( dot               -> func(Match) = unexpected(Match) )
 ].
 
 %-----------------------------------------------------------------------------%
