@@ -155,6 +155,13 @@
     %
 :- func charset_from_lists(list(list(int))) = charset.
 
+    % Latin comprises following Unicode blocks:
+    %  * Basic Latin
+    %  * Latin1 Suplement
+    %  * Latin Extended-A
+    %  * Latin Extended-B
+:- func latin_chars = charset is det.
+
    % Utility predicate to create ignore_pred's.
    % Use it in the form `ignore(my_token)' to ignore just `my_token'.
    % 
@@ -771,18 +778,18 @@ charset_from_lists(ListOfRanges) = Charset :-
     else
       sparse_bitset.empty(Charset).
 
-    % Latin comprises following Unicode blocks:
-    %  * Basic Latin
-    %  * Latin1 Suplement
-    %  * Latin Extended-A
-    %  * Latin Extended-B
-:- func latin_chars = charset is det.
 
 latin_chars = charset_from_lists([
                 0x40 `..` 0x7d, 
                 0xc0 `..` 0xff,
-                0x100 `..` 0x1ff
+                0x100 `..` 0x2ff
               ]). 
+
+:- func valid_unicode_chars = charset.
+
+valid_unicode_chars = charset_from_lists([
+                0x01 `..` 0x2ff
+              ]).
 
 any(S) = R :-
     ( if S = "" then
@@ -793,10 +800,10 @@ any(S) = R :-
 
 anybut(S) = R :-
     ( if S = "" then
-        R = re(latin_chars)
+        R = re(valid_unicode_chars)
       else
         ExcludedChars = sparse_bitset.list_to_set(string.to_char_list(S)),
-        R = re(sparse_bitset.difference(latin_chars, ExcludedChars))
+        R = re(sparse_bitset.difference(valid_unicode_chars, ExcludedChars))
     ).
 
 :- func str_foldr(func(char, T) = T, string, T, int) = T.
