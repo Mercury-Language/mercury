@@ -129,6 +129,7 @@
 :- func tab = regexp.           % tab        = re("\t")
 :- func spc = regexp.           % spc        = re(" ")
 :- func wspc = regexp.          % wspc       = any(" \t\n\r\f\v")
+:- func dot = regexp.           % dot        = anybut("\r\n")
 
     % Some useful compound regexps.
     %
@@ -139,7 +140,6 @@
 :- func identifier = regexp.    % identifier = identstart ++ *(ident)
 :- func whitespace = regexp.    % whitespace = *(wspc)
 :- func junk = regexp.          % junk       = *(dot)
-:- func dot = regexp.           % dot        = anybut("\r\n")
 
     % charset(Start, End) = charset(Start `..` End)
     %
