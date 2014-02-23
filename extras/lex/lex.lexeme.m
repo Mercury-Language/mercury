@@ -118,8 +118,6 @@ find_top_state([trans(X, _, Y) | Ts]) = max(X, max(Y, find_top_state(Ts))).
 set_accepting_states(States, Bitmap0) =
     set_accepting_states_0(set.to_sorted_list(States), Bitmap0).
 
-
-
 :- func set_accepting_states_0(list(state_no), bitmap) = bitmap.
 :- mode set_accepting_states_0(in, bitmap_di) = bitmap_uo is det.
 
@@ -152,8 +150,11 @@ compile_transitions_for_state(_, IBTs, []) = array(IBTs).
 compile_transitions_for_state(I, IBTs, [T | Ts]) =
     compile_transitions_for_state(
         I,
-        ( if T = trans(I, C, Y)
-          then [packed_transition(Y, C) | IBTs]
+        ( if T = trans(I, Charset, Y)
+          then sparse_bitset.foldl(
+             func(Char, Tx) = [packed_transition(Y, Char) | Tx],
+             Charset,
+             IBTs)
           else IBTs
         ),
         Ts

@@ -35,6 +35,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
+:- import_module sparse_bitset.
 
 %-----------------------------------------------------------------------------%
 
@@ -48,7 +49,7 @@
     ==      list(state_set_transition).
 
 :- type state_set_transition
-    --->    trans(state_set, char, state_set).
+    --->    trans(state_set, charset, state_set).
 
 :- type state_set_no_map
     ==      map(state_set, int).
@@ -149,7 +150,7 @@ compute_DFA_state_sets_and_transitions(Ts, NewSs0, Ss0, Ss, STs0, STs) :-
 :- func state_set_transitions(transitions, state_set) = state_set_transitions.
 
 state_set_transitions(Ts, S) = STs :-
-    TCs = transition_chars(Ts, S),
+    TCs = to_sorted_list(transition_chars(Ts, S)),
     STs = list.map(state_set_transition(Ts, S), TCs).
 
 %-----------------------------------------------------------------------------%
@@ -158,26 +159,23 @@ state_set_transitions(Ts, S) = STs :-
     %
     % transition_chars(S) = {c | x in S, some [y] x -c-> y}
     %
-:- func transition_chars(transitions, state_set) = list(char).
+:- func transition_chars(transitions, state_set) = charset.
 
-transition_chars(Ts, S) =
-    list.sort_and_remove_dups(
-        list.condense(
-            list.map(transition_chars_for_state(Ts), set.to_sorted_list(S))
-        )
-    ).
+transition_chars(Ts, S) = Charset :-
+    Sets = list.map(transition_chars_for_state(Ts), set.to_sorted_list(S)),
+    Charset = union_list(Sets).
 
 %-----------------------------------------------------------------------------%
 
-:- func transition_chars_for_state(transitions, state_no) = list(char).
+:- func transition_chars_for_state(transitions, state_no) = charset.
 :- mode transition_chars_for_state(in, in) = out is det.
 
 transition_chars_for_state(Ts, X) =
-    list.filter_map(transition_char_for_state(X), Ts).
+    union_list(list.filter_map(transition_char_for_state(X), Ts)).
 
 %-----------------------------------------------------------------------------%
 
-:- func transition_char_for_state(state_no, transition) = char.
+:- func transition_char_for_state(state_no, transition) = charset.
 :- mode transition_char_for_state(in, in) = out is semidet.
 
 transition_char_for_state(X, trans(X, C, _Y)) = C.
@@ -191,7 +189,10 @@ transition_char_for_state(X, trans(X, C, _Y)) = C.
 :- func state_set_transition(transitions, state_set, char) =
             state_set_transition.
 
-state_set_transition(Ts, S, C) = trans(S, C, target_state_set(Ts, S, C)).
+state_set_transition(Ts, FromStateSet, C) =
+        trans(FromStateSet, Charset, TargetStateSet) :-
+    Charset = sparse_bitset.make_singleton_set(C),
+    TargetStateSet = target_state_set(Ts, FromStateSet, C).
 
 %-----------------------------------------------------------------------------%
 
@@ -216,7 +217,8 @@ target_state_set_0(Ts, C, X) =
 :- func target_state(state_no, char, transition) = state_no.
 :- mode target_state(in, in, in) = out is semidet.
 
-target_state(X, C, trans(X, C, Y)) = Y.
+target_state(X, C, trans(X, Charset, Y)) = Y :-
+    contains(Charset, C).
 
 %-----------------------------------------------------------------------------%
 

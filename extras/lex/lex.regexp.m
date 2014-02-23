@@ -47,6 +47,7 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
+:- import_module sparse_bitset.
 
 %-----------------------------------------------------------------------------%
 
@@ -66,7 +67,9 @@ regexp_to_NFA(R) = NFA :-
 
 compile(X, eps,        Y, [null(X, Y)]) --> [].
 
-compile(X, atom(C),    Y, [trans(X, C, Y)]) --> [].
+compile(X, atom(C),    Y, [trans(X, make_singleton_set(C), Y)]) --> [].
+
+compile(X, charset(Charset), Y, [trans(X, Charset, Y)]) --> [].
 
 compile(X, conc(RA,RB), Y, TsA ++ TsB) -->
     counter.allocate(Z),
