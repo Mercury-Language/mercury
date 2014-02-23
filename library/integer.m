@@ -135,7 +135,7 @@
 % 3) Use an O(n^(3/2)) algorithm for multiplying large
 %    integers, rather than the current O(n^2) method.
 %    There's an obvious divide-and-conquer technique,
-%    Karatsuba multiplication.
+%    Karatsuba multiplication. (this is done)
 %
 % 4) We could overload operators so that we can have mixed operations
 %    on ints and integers. For example, "integer(1)+3". This
@@ -748,10 +748,58 @@ diff_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
 
 pos_mul(i(L1, Ds1), i(L2, Ds2)) =
     ( L1 < L2 ->
-        pos_mul_list(Ds1, integer.zero, i(L2, Ds2))
+        pos_mul_karatsuba(i(L1, Ds1), i(L2, Ds2))
     ;
-        pos_mul_list(Ds2, integer.zero, i(L1, Ds1))
+        pos_mul_karatsuba(i(L2, Ds2), i(L1, Ds1))
     ).
+
+% Use quadratic multiplication for less than threshold digits.
+:- func karatsuba_threshold = int.
+
+karatsuba_threshold = 35.
+
+% Use parallel execution if number of digits of split numbers is larger
+% then this threshold.
+:- func karatsuba_parallel_threshold = int.
+
+karatsuba_parallel_threshold = karatsuba_threshold * 10.
+
+% Karatsuba / Toom-2 multiplication in O(n^1.585)
+:- func pos_mul_karatsuba(integer, integer) = integer.
+
+pos_mul_karatsuba(i(L1, Ds1), i(L2, Ds2)) = Res :-
+    ( L1 < karatsuba_threshold ->
+        Res = pos_mul_list(Ds1, integer.zero, i(L2, Ds2))
+    ;
+        ( L2 < L1 ->
+            error("integer.pos_mul_karatsuba: second factor smaller")
+        ;
+            Middle = L2 div 2,
+            HiDigits = L2 - Middle,
+            HiDigitsSmall = max(0, L1 - Middle),
+            % Split Ds1 in [L1 - Middle];[Middle] digits if L1 > Middle
+            % or leave as [L1] digits.
+            list.split_upto(HiDigitsSmall, Ds1, Ds1Upper, Ds1Lower),
+            % Split Ds2 in [L2 - Middle; Middle] digits.
+            list.split_upto(HiDigits, Ds2, Ds2Upper, Ds2Lower),
+            LoDs1 = i(min(L1, Middle), Ds1Lower),
+            LoDs2 = i(Middle, Ds2Lower),
+            HiDs1 = i(HiDigitsSmall, Ds1Upper),
+            HiDs2 = i(HiDigits, Ds2Upper),
+            ( Middle > karatsuba_parallel_threshold ->
+                Res0 = pos_mul(LoDs1, LoDs2) &
+                Res1 = pos_mul(LoDs1 + HiDs1, LoDs2 + HiDs2) &
+                Res2 = pos_mul(HiDs1, HiDs2)
+            ;
+                Res0 = pos_mul(LoDs1, LoDs2),
+                Res1 = pos_mul(LoDs1 + HiDs1, LoDs2 + HiDs2),
+                Res2 = pos_mul(HiDs1, HiDs2)
+            )
+        ),
+        Res = big_left_shift(Res2, 2*Middle*log2base) +
+              big_left_shift(Res1 - (Res2 + Res0), Middle*log2base) + Res0
+    ).
+
 
 :- func pos_mul_list(list(digit), integer, integer) = integer.
 
