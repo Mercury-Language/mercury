@@ -48,19 +48,19 @@
                 rows                :: array(row)
             ).
 
-    % A transition row is an array of byte_transitions.
+    % A transition row is an array of packed_transitions.
     %
-:- type row == array(byte_transition).
+:- type row == array(packed_transition).
 
-    % A byte_transition encodes a target state_no no. in its upper bits
-    % and the char byte value in its lower eight bits for which the
+    % A packed_transition combines a target state_no 
+    % and the transition char codepoint for which the
     % transition is valid.
     %
-:- type byte_transition == int.
+:- type packed_transition
+     ---> packed_transition(btr_state :: state_no, char :: char).
 
-:- func byte_transition(int, state_no) = byte_transition.
-:- func btr_byte(byte_transition) = int.
-:- func btr_state(byte_transition) = state_no.
+:- type packed_transitions 
+    == list(packed_transition).
 
 :- func compile_lexeme(lexeme(T)) = compiled_lexeme(T).
 
@@ -144,7 +144,7 @@ set_up_rows(I, N, Transitions) = Rows :-
 
 %-----------------------------------------------------------------------------%
 
-:- func compile_transitions_for_state(int, list(byte_transition), transitions) =
+:- func compile_transitions_for_state(int, packed_transitions, transitions) =
             row.
 :- mode compile_transitions_for_state(in, in, in(atom_transitions)) =
             array_uo is det.
@@ -155,7 +155,7 @@ compile_transitions_for_state(I, IBTs, [T | Ts]) =
     compile_transitions_for_state(
         I,
         ( if T = trans(I, C, Y)
-          then [byte_transition(char.to_int(C), Y) | IBTs]
+          then [packed_transition(Y, C) | IBTs]
           else IBTs
         ),
         Ts
@@ -163,39 +163,31 @@ compile_transitions_for_state(I, IBTs, [T | Ts]) =
 
 %-----------------------------------------------------------------------------%
 
-byte_transition(Byte, State) = (State << 8) \/ Byte.
-
-btr_byte(BT) = BT /\ 0xff.
-
-btr_state(BT) = BT `unchecked_right_shift` 8.
-
-%-----------------------------------------------------------------------------%
-
 next_state(CLXM, CurrentState, Char, NextState, IsAccepting) :-
     Rows            = CLXM ^ transition_map ^ rows,
     AcceptingStates = CLXM ^ transition_map ^ accepting_states,
-    find_next_state(char.to_int(Char), Rows ^ elem(CurrentState), NextState),
+    find_next_state(Char, Rows ^ elem(CurrentState), NextState),
     IsAccepting = AcceptingStates ^ bit(NextState).
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_next_state(int, array(byte_transition), state_no).
+:- pred find_next_state(char, array(packed_transition), state_no).
 :- mode find_next_state(in, in, out) is semidet.
 
-find_next_state(Byte, ByteTransitions, State) :-
-    Lo = array.min(ByteTransitions),
-    Hi = array.max(ByteTransitions),
-    find_next_state_0(Lo, Hi, Byte, ByteTransitions, State).
+find_next_state(Char, PackedTransitions, State) :-
+    Lo = array.min(PackedTransitions),
+    Hi = array.max(PackedTransitions),
+    find_next_state_0(Lo, Hi, Char, PackedTransitions, State).
 
-:- pred find_next_state_0(int, int, int, array(byte_transition), state_no).
+:- pred find_next_state_0(int, int, char, array(packed_transition), state_no).
 :- mode find_next_state_0(in, in, in, in, out) is semidet.
 
-find_next_state_0(Lo, Hi, Byte, ByteTransitions, State) :-
+find_next_state_0(Lo, Hi, Char, PackedTransitions, State) :-
     Lo =< Hi,
-    ByteTransition = ByteTransitions ^ elem(Lo),
-    ( if ByteTransition ^ btr_byte = Byte
-      then State = ByteTransition ^ btr_state
-      else find_next_state_0(Lo + 1, Hi, Byte, ByteTransitions, State)
+    PackedTransition = PackedTransitions ^ elem(Lo),
+    ( if PackedTransition ^ char = Char
+      then State = PackedTransition ^ btr_state
+      else find_next_state_0(Lo + 1, Hi, Char, PackedTransitions, State)
     ).
 
 %-----------------------------------------------------------------------------%
