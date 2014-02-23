@@ -710,7 +710,8 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
     ;       atom(char)             % Match a single char
     ;       conc(regexp, regexp)   % Concatenation
     ;       alt(regexp, regexp)    % Alternation
-    ;       star(regexp).          % Kleene closure
+    ;       star(regexp)           % Kleene closure
+    ;       charset(charset).      % Matches any char in the set
 
 %-----------------------------------------------------------------------------%
 
@@ -727,18 +728,19 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
         ( if S = "" then
             R = null
           else
-            L = string.length(S),
-            C = string.det_index(S, L - 1),
-            R = str_foldr(func(Cx, Rx) = (Cx ++ Rx), S, re(C), L - 2)
+            R = string.foldl(func(Char, R0) = R1 :-
+                ( if R0 = eps then R1 = re(Char) else R1 = R0 ++ re(Char) ),
+                S,
+                eps)            
         )
 ].
 
 :- instance regexp(sparse_bitset(T)) <= (regexp(T),enum(T)) where [
-    re(Charset) = R :-
-       R = sparse_bitset.foldl(
-               func(Char::in, R0::in) = (R1::out) is det :- 
-                   if R0 = eps then R1 = re(Char) else R1 = (R0 or re(Char)), 
-               Charset, eps)
+    re(SparseBitset) = charset(Charset) :-
+        Charset = sparse_bitset.foldl(
+            func(Enum, Set0) = insert(Set0, char.det_from_int(to_int(Enum))),
+            SparseBitset, 
+            sparse_bitset.init)
 ].
 
 %-----------------------------------------------------------------------------%
@@ -788,7 +790,7 @@ latin_chars = charset_from_lists([
 :- func valid_unicode_chars = charset.
 
 valid_unicode_chars = charset_from_lists([
-                0x01 `..` 0x2ff
+                0x01 `..` 0xffff
               ]).
 
 any(S) = R :-
