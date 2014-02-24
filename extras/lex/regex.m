@@ -467,20 +467,19 @@ left_match(Regex, String, Substring, 0, length(Substring)) :-
     % we find a complete match.
     %
 right_match(Regex, String, Substring, Start, length(Substring)) :-
-    right_match_2(Regex, String, 0, length(String), Substring, Start).
+    right_match_2(Regex, String, length(String), 0, Start, Substring).
 
+:- pred right_match_2(regex,     string, int, int, int, string).
+:- mode right_match_2(in(regex), in,     in,  in,  out, out) is semidet.
 
-:- pred right_match_2(regex,     string, int, int, string, int).
-:- mode right_match_2(in(regex), in,     in,  in,  out,    out) is semidet.
-
-right_match_2(Regex, String, I, Length, Substring, Start) :-
-    I =< Length,
-    Substring0 = substring(String, I, max_int),
+right_match_2(Regex, String, Length, !Start, Substring) :-
+    !.Start =< Length,
+    Substring0 = right_by_codepoint(String, Length - !.Start),
     ( if exact_match(Regex, Substring0) then
-        Substring = Substring0,
-        Start     = I
+        Substring = Substring0
       else
-        right_match_2(Regex, String, I + 1, Length, Substring, Start)
+        !:Start = !.Start + 1,
+        right_match_2(Regex, String, Length, !Start, Substring)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -590,9 +589,9 @@ replace_all(Regex, Replacement, String) =
 change_first(Regex, ChangeFn, String) =
     ( if first_match(Regex, String, Substring, Start, Count) then
         append_list([
-            substring(String, 0, Start),
+            left_by_codepoint(String, Start),
             ChangeFn(Substring),
-            substring(String, Start + Count, max_int)
+            between(String, Start + Count, max_int)
         ])
       else
         String
@@ -608,10 +607,10 @@ change_all(Regex, ChangeFn, String) =
             list({string, int, int})) = list(string).
 
 change_all_2(String, _ChangeFn, I, []) =
-    [ substring(String, I, max_int) ].
+    [ between(String, I, max_int) ].
 
 change_all_2(String, ChangeFn, I, [{Substring, Start, Count} | Matches]) =
-    [ substring(String, I, Start - I),
+    [ between(String, I, Start),
       ChangeFn(Substring)
     | change_all_2(String, ChangeFn, Start + Count, Matches) ].
 
