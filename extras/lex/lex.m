@@ -6,7 +6,7 @@
 % Copyright (C) 2001-2002 Ralph Becket <rbeck@microsoft.com>
 % Sun Aug 20 09:08:46 BST 2000
 % Copyright (C) 2001-2002 The Rationalizer Intelligent Software AG
-%   The changes made by Rationalizer are contributed under the terms 
+%   The changes made by Rationalizer are contributed under the terms
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
 % Copyright (C) 2002, 2006, 2010-2011 The University of Melbourne
@@ -134,7 +134,7 @@
 
    % Utility predicate to create ignore_pred's.
    % Use it in the form `ignore(my_token)' to ignore just `my_token'.
-   % 
+   %
 :- pred ignore(Token::in, Token::in) is semidet.
 
    % Utility function to return noval tokens.
@@ -280,10 +280,10 @@
 
 :- inst lexer_instance
     --->    lexer_instance(
-                live_lexeme_list, 
-                init_winner_func, 
-                live_lexeme_list, 
-                winner, 
+                live_lexeme_list,
+                init_winner_func,
+                live_lexeme_list,
+                winner,
                 buf.buf_state,
                 ignore_pred
             ).
@@ -460,7 +460,7 @@ process_char(Result, Char, !Instance, BufState, !Buf, !Src) :-
 %-----------------------------------------------------------------------------%
 
 :- pred process_any_winner(io.read_result(Tok), winner(Tok),
-            lexer_instance(Tok, Src), lexer_instance(Tok, Src), 
+            lexer_instance(Tok, Src), lexer_instance(Tok, Src),
             buf_state(Src), buf, buf, Src, Src).
 :- mode process_any_winner(out, in(winner),
             in(lexer_instance), out(lexer_instance),
@@ -554,8 +554,8 @@ process_eof(Result, !Instance, !.BufState, !.Buf) :-
 :- pred advance_live_lexemes(char, offset,
             list(live_lexeme(Token)), list(live_lexeme(Token)),
             winner(Token), winner(Token)).
-:- mode advance_live_lexemes(in, in, in(live_lexeme_list), 
-            out(live_lexeme_list), 
+:- mode advance_live_lexemes(in, in, in(live_lexeme_list),
+            out(live_lexeme_list),
             in(winner), out(winner)) is det.
 
 advance_live_lexemes(_Char, _Offset, [], [], !Winner).
@@ -587,7 +587,7 @@ advance_live_lexemes(Char, Offset, [L | Ls0], Ls, !Winner) :-
 
 :- pred live_lexeme_in_accepting_state(list(live_lexeme(Tok)),
                 token_creator(Tok)).
-:- mode live_lexeme_in_accepting_state(in(live_lexeme_list), 
+:- mode live_lexeme_in_accepting_state(in(live_lexeme_list),
                 out(token_creator)) is semidet.
 
 live_lexeme_in_accepting_state([L | Ls], Token) :-

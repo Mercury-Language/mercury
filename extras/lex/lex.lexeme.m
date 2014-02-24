@@ -17,7 +17,7 @@
 % Thu Jul 26 07:45:47 UTC 2001
 %
 % A lexeme combines a token with a regexp.  The lexer compiles
-% lexemes and returns the longest successul parse in the input
+% lexemes and returns the longest successful parse in the input
 % stream or an error if no match occurs.
 %
 %-----------------------------------------------------------------------------%
