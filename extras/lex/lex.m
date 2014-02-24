@@ -347,6 +347,20 @@ start(Lexer0, Src) = State :-
     Lexer = Lexer0;
 ").
 
+:- pragma foreign_proc("Java",
+    lexer_inst_cast(Lexer0::in) = (Lexer::out(lexer)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Lexer = Lexer0;
+").
+
+:- pragma foreign_proc("C#",
+    lexer_inst_cast(Lexer0::in) = (Lexer::out(lexer)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Lexer = Lexer0;
+").
+
 %-----------------------------------------------------------------------------%
 
 :- pred init_lexer_instance(lexer(Tok, Src), lexer_instance(Tok, Src), buf).
