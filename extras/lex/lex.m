@@ -146,12 +146,15 @@
 :- func charset(int, int) = charset.
 
     % Function to create a sparse bitset from a list of Unicode 
-    % codepoints. These codepoints are checked for validity.
+    % codepoints. These codepoints are checked for validity, any invalid
+    % codepoints are ignored.  Code points are assumed to be in sorted
+    % order.
     %
 :- func charset(list(int)) = charset.
 
-    % Creates a union of all char ranges in the list.
-    % Will return the empty set if the list is empty.
+    % Creates a union of all char lists in the list.  Will return the empty
+    % set if the list is empty.  Each list is processed by charset/1 and
+    % therefore must be sorted.  Any invalid codepoints are ignored.
     %
 :- func charset_from_lists(list(list(int))) = charset.
 
@@ -782,10 +785,12 @@ int_is_valid_char(Value) = Char :-
     char.from_int(Value, Char),
     not char.is_surrogate(Char).
 
-charset(Start, End) = charset(Start `..` End).
+charset(Start, End) = charset(Start `..` End) :-
+    expect(Start =< End, $file, $pred,
+        "Start must be less than or equal to End").
 
-charset(Range) = Charset :-
-    ValidChars = list.filter_map(int_is_valid_char, Range),
+charset(Chars) = Charset :-
+    ValidChars = list.filter_map(int_is_valid_char, Chars),
     Charset = sparse_bitset.sorted_list_to_set(ValidChars).
 
 charset_from_lists(ListOfRanges) = Charset :-
@@ -819,12 +824,8 @@ any(S) = R :-
     ).
 
 anybut(S) = R :-
-    ( if S = "" then
-        R = re(latin_chars)
-      else
-        ExcludedChars = sparse_bitset.list_to_set(string.to_char_list(S)),
-        R = re(sparse_bitset.difference(valid_unicode_chars, ExcludedChars))
-    ).
+    ExcludedChars = sparse_bitset.list_to_set(string.to_char_list(S)),
+    R = re(sparse_bitset.difference(valid_unicode_chars, ExcludedChars)).
 
 :- func str_foldr(func(char, T) = T, string, T, int) = T.
 
