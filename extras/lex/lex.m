@@ -14,8 +14,6 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %
-% Thu Jul 26 07:45:47 UTC 2001
-%
 % This module puts everything together, compiling a list of lexemes
 % into state machines and turning the input stream into a token stream.
 %
@@ -144,22 +142,31 @@
 :- func whitespace = regexp.    % whitespace = *(wspc)
 :- func junk = regexp.          % junk       = *(dot)
 
+    % A range of charicters, inclusive of both the first and last values.
+    %
+:- type char_range
+    --->    char_range(
+                cr_first        :: int,
+                cr_last         :: int
+            ).
+
     % charset(Start, End) = charset(Start `..` End)
+    %
+    % Throws an exception if Start > End.
     %
 :- func charset(int, int) = charset.
 
-    % Function to create a sparse bitset from a list of Unicode 
+    % Function to create a sparse bitset from a range of Unicode
     % codepoints. These codepoints are checked for validity, any invalid
-    % codepoints are ignored.  Code points are assumed to be in sorted
-    % order.
+    % codepoints are ignored.  Throws an exception if cr_first value is less
+    % than cr_last.
     %
-:- func charset(list(int)) = charset.
+:- func charset(char_range) = charset.
 
-    % Creates a union of all char lists in the list.  Will return the empty
-    % set if the list is empty.  Each list is processed by charset/1 and
-    % therefore must be sorted.  Any invalid codepoints are ignored.
+    % Creates a union of all char ranges in the list.  Returns the empty
+    % set if the list is empty.  Any invalid codepoints are ignored.
     %
-:- func charset_from_lists(list(list(int))) = charset.
+:- func charset_from_ranges(list(char_range)) = charset.
 
     % Latin is comprised of the following Unicode blocks:
     %  * Basic Latin
@@ -752,7 +759,7 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
             R = string.foldl(func(Char, R0) = R1 :-
                 ( if R0 = eps then R1 = re(Char) else R1 = R0 ++ re(Char) ),
                 S,
-                eps)            
+                eps)
         )
 ].
 
@@ -787,36 +794,37 @@ int_is_valid_char(Value) = Char :-
     char.from_int(Value, Char),
     not char.is_surrogate(Char).
 
-charset(Start, End) = charset(Start `..` End) :-
+charset(Start, End) = build_charset(Start, End, sparse_bitset.init) :-
     expect(Start =< End, $file, $pred,
         "Start must be less than or equal to End").
 
-charset(Chars) = Charset :-
-    ValidChars = list.filter_map(int_is_valid_char, Chars),
-    Charset = sparse_bitset.sorted_list_to_set(ValidChars).
+charset(char_range(First, Last)) = charset(First, Last).
 
-charset_from_lists(ListOfRanges) = Charset :-
-    if ListOfRanges = [FirstRange | Ranges] then
-      Charset = foldl(
-        func(Range, Set) = union(Set, charset(Range)), 
-        Ranges,
-        charset(FirstRange))
-    else if [Range] = ListOfRanges then
-      Charset = charset(Range)
+:- func build_charset(int, int, charset) = charset.
+
+build_charset(First, Last, Charset0) = Charset :-
+    if First =< Last then
+        ( if int_is_valid_char(First) = Char then
+            Charset1 = sparse_bitset.insert(Charset0, Char)
+        else
+            Charset1 = Charset0
+        ),
+        Charset = build_charset(First + 1, Last, Charset1)
     else
-      sparse_bitset.empty(Charset).
+        Charset = Charset0.
 
-latin_chars = charset_from_lists([
-                0x40 `..` 0x7d, 
-                0xc0 `..` 0xff,
-                0x100 `..` 0x2ff
-              ]). 
+charset_from_ranges(ListOfRanges) =
+    union_list(map(charset, ListOfRanges)).
+
+latin_chars = charset_from_ranges([
+                char_range(0x40, 0x7d),
+                char_range(0xc0, 0xff),
+                char_range(0x100, 0x2ff)
+              ]).
 
 :- func valid_unicode_chars = charset.
 
-valid_unicode_chars = charset_from_lists([
-                0x01 `..` 0xffff
-              ]).
+valid_unicode_chars = charset(char_range(0x01, 0xffff)).
 
 any(S) = R :-
     ( if S = "" then
@@ -834,7 +842,7 @@ anybut(S) = R :-
 str_foldr(Fn, S, X, I) =
     ( if I < 0 then X
                else str_foldr(Fn, S, Fn(string.det_index(S, I), X), I - 1)
-    ). 
+    ).
 
 ?(R) = (R or null).
 
