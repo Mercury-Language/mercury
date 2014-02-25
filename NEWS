@@ -7,6 +7,11 @@ Changes to the Mercury standard library:
   io module.  These behave like the print and write predicates, but also
   write a terminating newline character.
 
+Changes to the extras distribution:
+
+* We have added support for Unicode and other enhancements to the lex and
+  regex libraries.  Thanks to Sebastian Godelet.
+
 
 NEWS for Mercury 14.01
 ----------------------
