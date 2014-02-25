@@ -185,7 +185,7 @@ advance_view(view(ViewNum0, ViewInfos), view(ViewNum, ViewInfos), Cycled) :-
     ).
 
 update_view(view(ViewNum, {A0, B0, C0, D0}), view(ViewNum, {A, B, C, D})) :-
-    list.index0_det(view_configurations, ViewNum, {PosA, PosB, PosC, PosD}),
+    list.det_index0(view_configurations, ViewNum, {PosA, PosB, PosC, PosD}),
     update_viewinfo(PosA, A0, A),
     update_viewinfo(PosB, B0, B),
     update_viewinfo(PosC, C0, C),
