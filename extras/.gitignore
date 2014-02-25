@@ -1,0 +1,11 @@
+Mercury
+Mercury/**
+*.mh
+*.init
+*.err
+*.jar
+*.exe
+lib*.dylib
+lib*.dll
+lib*.so
+lib*.a
