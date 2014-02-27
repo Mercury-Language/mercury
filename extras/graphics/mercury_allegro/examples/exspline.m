@@ -198,8 +198,8 @@ input_nodes_2(Nodes0, Nodes, !IO) :-
 
 calc_tangents(Nodes0, Tangents) :-
     Len = length(Nodes0),
-    Head = dummy_node(index0_det(Nodes0, 0), index0_det(Nodes0, 1)),
-    Tail = dummy_node(index0_det(Nodes0, Len-1), index0_det(Nodes0, Len-2)),
+    Head = dummy_node(det_index0(Nodes0, 0), det_index0(Nodes0, 1)),
+    Tail = dummy_node(det_index0(Nodes0, Len-1), det_index0(Nodes0, Len-2)),
     ( list.take(Len-1, Nodes0, ButLast) ->
         Tangents = list.map_corresponding(calc_tangent,
             [Head | ButLast], det_tail(Nodes0) ++ [Tail])

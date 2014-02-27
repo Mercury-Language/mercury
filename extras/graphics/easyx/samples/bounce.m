@@ -221,7 +221,7 @@ add_new_ball(Colours, Objects, [Ball | Objects], !Rnd) :-
     VX   = 0.001 + float(VX0 mod 100) / 10000.0,
     VY   = 0.0,
     R    = 0.025 + float(R0 mod 25) / 1000.0,
-    C    = index0_det(Colours, 2 + (N0 / 1000) mod (length(Colours) - 2)),
+    C    = det_index0(Colours, 2 + (N0 / 1000) mod (length(Colours) - 2)),
     Ball = ball(X, Y, VX, VY, R, C).
 
 %-----------------------------------------------------------------------------%
@@ -252,8 +252,8 @@ main(!IO) :-
 
 play(Window, Colours, !Paddle, !Objects, !Rnd, !IO) :-
 
-    Black = index0_det(Colours, 0),
-    White = index0_det(Colours, 1),
+    Black = det_index0(Colours, 0),
+    White = det_index0(Colours, 1),
 
     easyx.set_colour(Window, Black, !IO),
     easyx.clear_window(Window, !IO),

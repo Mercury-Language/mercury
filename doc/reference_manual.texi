@@ -446,7 +446,7 @@ Operator                        Specifier         Priority
 `@var{op}`                      yfx               120       @footnote{Operator term (@pxref{Terms}).}
 **                              xfy               200
 -                               fx                200
-\\                              fx                200
+\                               fx                200
 *                               yfx               400
 /                               yfx               400
 //                              yfx               400
@@ -460,8 +460,8 @@ rem                             xfx               400
 ++                              xfy               500
 -                               yfx               500
 --                              yfx               500
-/\\                             yfx               500
-\\/                             yfx               500
+/\                              yfx               500
+\/                              yfx               500
 ..                              xfx               550
 :=                              xfx               650
 =^                              xfx               650
@@ -471,15 +471,15 @@ rem                             xfx               400
 =:=                             xfx               700
 =<                              xfx               700
 ==                              xfx               700
-=\\=                            xfx               700
+=\=                             xfx               700
 >                               xfx               700
 >=                              xfx               700
 @@<                              xfx               700
 @@=<                             xfx               700
 @@>                              xfx               700
 @@>=                             xfx               700
-\\=                             xfx               700
-\\==                            xfx               700
+\=                              xfx               700
+\==                             xfx               700
 ~=                              xfx               700
 is                              xfx               701
 and                             xfy               720
@@ -488,7 +488,7 @@ func                            fx                800
 impure                          fy                800
 pred                            fx                800
 semipure                        fy                800
-\\+                             fy                900
+\+                              fy                900
 not                             fy                900
 when                            xfx               900
 ~                               fy                900

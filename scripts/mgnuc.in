@@ -87,7 +87,7 @@ case "$C_COMPILER_TYPE" in
         DISABLE_OPTS_OPT="-O0"
         COMPILER=lcc
         ;;
-    msvc*)
+    msvc*|cl*)
         ANSI_OPTS=""
         CHECK_OPTS="-nologo"    # Suppress the MSVC banner message.
         OPT_OPTS=""

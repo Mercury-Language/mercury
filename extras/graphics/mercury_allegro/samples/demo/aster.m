@@ -272,10 +272,10 @@ get_asteroid_sprite(Data, normal, look(Type, C), RetraceCount, Sprite) :-
     ),
     J = (RetraceCount / (6 - (C /\ 3)) + C) mod 15,
     Frame = (if even(C) then 14 - J else J),
-    Sprite = list.index0_det(Anim, Frame).
+    Sprite = list.det_index0(Anim, Frame).
 
 get_asteroid_sprite(Data, exploding(Frame), _, _, Sprite) :-
-    Sprite = list.index0_det(Data ^ explosions, Frame).
+    Sprite = list.det_index0(Data ^ explosions, Frame).
 
 %-----------------------------------------------------------------------------%
 
