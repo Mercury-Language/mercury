@@ -2,3 +2,4 @@ dl.m
 dl_test
 dl_test2
 name_mangle.m
+*.out
