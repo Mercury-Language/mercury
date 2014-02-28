@@ -63,6 +63,7 @@
 :- import_module cord.
 :- import_module counter.
 :- import_module deconstruct.
+:- import_module diet.
 :- import_module digraph.
 :- import_module dir.
 :- import_module enum.
@@ -222,6 +223,7 @@ mercury_std_library_module("construct").
 mercury_std_library_module("cord").
 mercury_std_library_module("counter").
 mercury_std_library_module("deconstruct").
+mercury_std_library_module("diet").
 mercury_std_library_module("digraph").
 mercury_std_library_module("dir").
 mercury_std_library_module("enum").
