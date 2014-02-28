@@ -797,15 +797,7 @@ AC_SUBST(MKTEMP)
 AC_PATH_PROG(INSTALL_INFO,install-info)
 AC_SUBST(INSTALL_INFO)
 #-----------------------------------------------------------------------------#
-# texi2dvi is currently broken on cygwin
-case "$host" in
-    *-cygwin*)
-        TEXI2DVI=""
-        ;;
-    *)
-        AC_PATH_PROG(TEXI2DVI,texi2dvi)
-        ;;
-esac
+AC_PATH_PROG(TEXI2DVI,texi2dvi)
 AC_SUBST(TEXI2DVI)
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(PDFTEX, pdftex)
