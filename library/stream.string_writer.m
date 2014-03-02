@@ -49,8 +49,10 @@
     % readable.
     %
     % If the argument is just a single string or character, it will be printed
-    % out exactly as is (unquoted).  If the argument is of type univ, then it
-    % will print out the value stored in the univ, but not the type.
+    % out exactly as is (unquoted).  If the argument is of type integer (i.e.
+    % an arbitrary precision integer), then its decimal representation will be
+    % printed.  If the argument is of type univ, then it will print out the
+    % value stored in the univ, but not the type.
     %
     % print/5 is the same as print/4 except that it allows the caller to
     % specify how non-canonical types should be handled.  print/4 implicitly
@@ -177,6 +179,7 @@
 :- import_module array.
 :- import_module bitmap.
 :- import_module int.
+:- import_module integer.
 :- import_module require.
 :- import_module rtti_implementation.
 :- import_module term_io.
@@ -259,6 +262,8 @@ print(Stream, NonCanon, Term, !State) :-
         put(Stream, Char, !State)
     ; dynamic_cast(Term, OrigUniv) ->
         write_univ(Stream, OrigUniv, !State)
+    ; dynamic_cast(Term, BigInt) ->
+        put(Stream, integer.to_string(BigInt), !State)
     ;
         print_quoted(Stream, NonCanon, Term, !State)
     ).

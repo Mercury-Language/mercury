@@ -7,6 +7,9 @@ Changes to the Mercury standard library:
   io module.  These behave like the print and write predicates, but also
   write a terminating newline character.
 
+* io.print and string_writer.print now print arbitrary precision integers
+  in their decimal form instead of printing their underlying representation.
+
 Changes to the extras distribution:
 
 * We have added support for Unicode and other enhancements to the lex and

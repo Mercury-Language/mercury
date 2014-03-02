@@ -229,6 +229,7 @@ ORDINARY_PROGS=	\
 	pragma_inline \
 	pretty_printing \
 	prince_frameopt \
+	print_bigint \
 	print_stream \
 	profdeep_seg_fault \
 	promise_equiv_with_svars \

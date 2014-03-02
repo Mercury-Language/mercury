@@ -387,8 +387,10 @@
     % type.  It is output in a format that is intended to be human readable.
     %
     % If the argument is just a single string or character, it will be printed
-    % out exactly as is (unquoted).  If the argument is of type univ, then it
-    % will print out the value stored in the univ, but not the type.
+    % out exactly as is (unquoted).  If the argument is of type integer (i.e.
+    % an arbitrary precision integer), then its decimal representation will be
+    % printed.  If the argument is of type univ, then it will print out the
+    % value stored in the univ, but not the type.
     %
     % io.print/5 is the same as io.print/4 except that it allows the caller to
     % specify how non-canonical types should be handled. io.print/3 and
@@ -5660,7 +5662,7 @@ io.call_system_return_signal(Command, Result, !IO) :-
     --->    io_error(string).       % This is subject to change.
     % Note that we use `io_error' rather than `io.error' because io.print,
     % which may be called to print out the uncaught exception if there is no
-    % exception hander, does not print out the module name.
+    % exception handler, does not print out the module name.
 
 io.make_io_error(Error) = io_error(Error).
 
