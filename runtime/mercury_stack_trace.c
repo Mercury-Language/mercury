@@ -160,8 +160,11 @@ static  MR_bool     MR_call_is_before_event_or_seq(
                         MR_Word *base_curfr);
 
 /* see comments in mercury_stack_trace.h */
-MR_Code *MR_stack_trace_bottom;
-MR_Word *MR_nondet_stack_trace_bottom;
+MR_Code             *MR_stack_trace_bottom_ip;
+MR_Word             *MR_nondet_stack_trace_bottom_fr;
+#ifdef MR_STACK_SEGMENTS
+MR_MemoryZone       *MR_nondet_stack_trace_bottom_zone;
+#endif
 
 void
 MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
@@ -1025,7 +1028,7 @@ MR_stack_walk_succip_layout(MR_Code *success,
 {
     MR_Internal             *label;
 
-    if (success == MR_stack_trace_bottom) {
+    if (success == MR_stack_trace_bottom_ip) {
         return MR_STEP_OK;
     }
 
@@ -1034,6 +1037,10 @@ MR_stack_walk_succip_layout(MR_Code *success,
         success = (MR_Code *) MR_based_stackvar(*stack_trace_sp_ptr, 2);
         *stack_trace_sp_ptr = (MR_Word *)
             MR_based_stackvar(*stack_trace_sp_ptr, 1);
+    }
+    if (success == MR_ENTRY(MR_pop_nondetstack_segment)) {
+        *problem_ptr = "reached MR_pop_nondetstack_segment";
+        return MR_STEP_ERROR_AFTER;
     }
 #endif /* !MR_HIGHLEVEL_CODE && MR_STACK_SEGMENTS */
 
@@ -1055,12 +1062,12 @@ MR_stack_walk_succip_layout(MR_Code *success,
 /**************************************************************************/
 
 void
-MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr, MR_FrameLimit frame_limit,
+MR_dump_nondet_stack(FILE *fp, MR_FrameLimit frame_limit,
     MR_SpecLineLimit line_limit, MR_Word *base_maxfr)
 {
 #ifndef MR_HIGHLEVEL_CODE
 
-    MR_dump_nondet_stack_from_layout(fp, limit_addr, frame_limit, line_limit,
+    MR_dump_nondet_stack_from_layout(fp, frame_limit, line_limit,
         base_maxfr, NULL, NULL, NULL);
 
 #else   /* !MR_HIGHLEVEL_CODE */
@@ -1073,7 +1080,7 @@ MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr, MR_FrameLimit frame_limit,
 #ifdef MR_HIGHLEVEL_CODE
 
 void
-MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
+MR_dump_nondet_stack_from_layout(FILE *fp,
     MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit,
     MR_Word *base_maxfr, const MR_LabelLayout *top_layout,
     MR_Word *base_sp, MR_Word *base_curfr)
@@ -1149,12 +1156,13 @@ static int                  MR_nondet_branch_info_max = 0;
 #define MR_INIT_NONDET_BRANCH_ARRAY_SIZE        10
 
 void
-MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
+MR_dump_nondet_stack_from_layout(FILE *fp,
     MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit,
     MR_Word *base_maxfr, const MR_LabelLayout *top_layout,
     MR_Word *base_sp, MR_Word *base_curfr)
 {
-    int                     frame_size;
+    MR_Integer              apparent_frame_size;
+    MR_Integer              frame_size;
     int                     level_number;
     MR_bool                 print_vars;
     const char              *problem;
@@ -1178,17 +1186,17 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
     }
 
     /*
-    ** The comparison operator in the condition of the while loop
-    ** should be >= if you want the trace to include the bottom frame
-    ** created by mercury_wrapper.c (whose redoip/redofr field can be
-    ** hijacked by other code), and > if you don't want the bottom
+    ** The comparison macro in the condition of the while loop should be
+    ** the "at_or_above" variant if you want the trace to include the bottom
+    ** frame created by mercury_wrapper.c (whose redoip/redofr field can be
+    ** hijacked by other code), and just "above" if you don't want the bottom
     ** frame to be included.
     */
 
     frames_traversed_so_far = 0;
     lines_dumped_so_far = 0;
     level_number = 0;
-    while (base_maxfr >= MR_nondet_stack_trace_bottom) {
+    while (MR_at_or_above_bottom_nondet_frame(base_maxfr)) {
         if (frame_limit > 0 && frames_traversed_so_far >= frame_limit) {
             fprintf(fp, "<more stack frames snipped>\n");
             return;
@@ -1199,13 +1207,19 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
             return;
         }
 
-        if (limit_addr != NULL && base_maxfr < limit_addr) {
-            fprintf(fp, "<reached limit of dumped region>\n");
-            return;
-        }
-
-        frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
-        if (frame_size == MR_NONDET_TEMP_SIZE) {
+        /*
+        ** Note that the actual frame size is NOT the apparent frame size
+        ** for the sentinel frames at the beginnings of the second and
+        ** later nondet stack segments. However, in such cases, the apparent
+        ** size will be either negative (if the logically previous segment is
+        ** at a higher address than the segment that holds the sentinel frame)
+        ** or a positive number that is least as big as the size of the
+        ** sentinel frame (if the logically previous segment is at a lower
+        ** address). Therefore if the apparent size is MR_NONDET_TEMP_SIZE or
+        ** MR_DET_TEMP_SIZE, that must be the actual size as well.
+        */
+        apparent_frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
+        if (apparent_frame_size == MR_NONDET_TEMP_SIZE) {
             MR_print_nondetstackptr(fp, base_maxfr);
             fprintf(fp, ": temp\n");
             fprintf(fp, " redoip: ");
@@ -1219,7 +1233,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
             }
 
             lines_dumped_so_far += 3;
-        } else if (frame_size == MR_DET_TEMP_SIZE) {
+        } else if (apparent_frame_size == MR_DET_TEMP_SIZE) {
             MR_print_nondetstackptr(fp, base_maxfr);
             fprintf(fp, ": temp\n");
             fprintf(fp, " redoip: ");
@@ -1232,7 +1246,24 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
             fprintf(fp, "\n");
 
             lines_dumped_so_far += 4;
+        } else if (MR_redoip_slot(base_maxfr) ==
+            MR_ENTRY(MR_pop_nondetstack_segment))
+        {
+            /*
+            ** For an explanation of sentinel frames, see the comment before
+            ** MR_new_nondetstack_segment in mercury_stacks.c.
+            */
+
+            MR_print_nondetstackptr(fp, base_maxfr);
+            fprintf(fp, ": segment sentinel\n");
+            fprintf(fp, " orig maxfr: ");
+            MR_print_nondetstackptr(fp, MR_prevfr_slot(base_maxfr));
+            fprintf(fp, "\n");
+            fprintf(fp, " orig curfr: ");
+            MR_print_nondetstackptr(fp, MR_succfr_slot(base_maxfr));
+            fprintf(fp, "\n");
         } else {
+            frame_size = apparent_frame_size;
             MR_print_nondetstackptr(fp, base_maxfr);
             fprintf(fp, ": ordinary, %d words", frame_size);
             if (print_vars && MR_find_matching_branch(base_maxfr, &branch)) {
@@ -1287,7 +1318,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
             }
 
             level_number++;
-            if (print_vars && base_maxfr > MR_nondet_stack_trace_bottom) {
+            if (print_vars && MR_above_bottom_nondet_frame(base_maxfr)) {
                 problem = MR_step_over_nondet_frame(MR_dump_nondet_stack_frame,
                     fp, level_number, base_maxfr);
                 if (problem != NULL) {
@@ -1355,10 +1386,11 @@ MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
     const MR_LabelLayout *top_layout, MR_Word *base_sp, MR_Word *base_curfr,
     MR_TraverseNondetFrameFunc *func, void *func_data)
 {
-    int             frame_size;
-    int             level_number;
-    const char      *problem;
-    int             frames_traversed_so_far;
+    int                             frame_size;
+    int                             level_number;
+    const char                      *problem;
+    int                             frames_traversed_so_far;
+    MR_TraverseNondetFrameFuncInfo  func_info;
 
     assert(top_layout != NULL && base_sp != NULL && base_curfr != NULL);
 
@@ -1366,17 +1398,20 @@ MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
 
     MR_init_nondet_branch_infos(base_maxfr, top_layout, base_sp, base_curfr);
 
-    /*
-    ** The comparison operator in the condition of the while loop
-    ** should be >= if you want the trace to include the bottom frame
-    ** created by mercury_wrapper.c (whose redoip/redofr field can be
-    ** hijacked by other code), and > if you don't want the bottom
-    ** frame to be included.
-    */
-
     frames_traversed_so_far = 0;
     level_number = 0;
-    while (base_maxfr >= MR_nondet_stack_trace_bottom) {
+    func_info.func = func;
+    func_info.func_data = func_data;
+
+    /*
+    ** The comparison macro in the condition of the while loop should be
+    ** the "at_or_above" variant if you want the trace to include the bottom
+    ** frame created by mercury_wrapper.c (whose redoip/redofr field can be
+    ** hijacked by other code), and the "above" variant if you don't want
+    ** the bottom frame to be included.
+    */
+
+    while (MR_at_or_above_bottom_nondet_frame(base_maxfr)) {
         frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
         if (frame_size == MR_NONDET_TEMP_SIZE) {
             MR_record_temp_redoip(base_maxfr);
@@ -1384,10 +1419,7 @@ MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
             /* do nothing */
         } else {
             level_number++;
-            if (base_maxfr > MR_nondet_stack_trace_bottom) {
-                MR_TraverseNondetFrameFuncInfo func_info;
-                func_info.func = func;
-                func_info.func_data = func_data;
+            if (MR_above_bottom_nondet_frame(base_maxfr)) {
                 problem = MR_step_over_nondet_frame(
                     MR_traverse_nondet_stack_frame, &func_info,
                     level_number, base_maxfr);

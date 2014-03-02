@@ -307,8 +307,8 @@ static void
 MR_configure_redzone_size(MR_MemoryZone *zone, size_t new_redsize);
 #endif
 
-static MR_MemoryZone *
-MR_create_new_zone(size_t desired_size, size_t redzone_size);
+static MR_MemoryZone    *MR_create_new_zone(size_t desired_size,
+                            size_t redzone_size, size_t offset);
 
     /*
     ** We manage the handing out of offsets through the cache by
@@ -316,13 +316,17 @@ MR_create_new_zone(size_t desired_size, size_t redzone_size);
     ** (in shared memory if necessary). We then maintain a global
     ** counter used to index the array which we increment (modulo
     ** the size of the array) after handing out each offset.
+    **
+    ** We use this counter ONLY for the first segment of each memory area.
+    ** By the time we need a second, third etc segment in a memory area,
+    ** we are pretty much equally likely to be using all the parts of
+    ** the existing segments of the other memory areas.
     */
 
 #define CACHE_SLICES    8
 
 static  size_t          *offset_vector;
-static MR_THREADSAFE_VOLATILE MR_Integer
-    offset_counter;
+static MR_THREADSAFE_VOLATILE MR_Integer offset_counter;
 extern  size_t          next_offset(void);
 
 static MR_THREADSAFE_VOLATILE MR_Unsigned zone_id_counter = 0;
@@ -436,7 +440,7 @@ MR_free_zone(MR_MemoryZone *zone)
     MR_num_zones--;
     MR_total_zone_size_net -= zone->MR_zone_desired_size;
     MR_total_zone_size_gross -=
-        (MR_Integer)zone->MR_zone_top - (MR_Integer)zone->MR_zone_bottom;
+        (MR_Integer) zone->MR_zone_top - (MR_Integer) zone->MR_zone_bottom;
     MR_UNLOCK(&memory_zones_stats_lock, "MR_free_zone");
 #endif
 
@@ -483,9 +487,11 @@ get_zone_alloc_size(MR_MemoryZone *zone)
     ** MR_zone_top and MR_zone_bottom fields.
     */
 #ifdef  MR_PROTECTPAGE
-    return (size_t)((char *)zone->MR_zone_hardmax - (char *)zone->MR_zone_min);
+    return (size_t)
+        ((char *) zone->MR_zone_hardmax - (char *) zone->MR_zone_min);
 #else
-    return (size_t)((char *)zone->MR_zone_top - (char *)zone->MR_zone_min);
+    return (size_t)
+        ((char *) zone->MR_zone_top - (char *) zone->MR_zone_min);
 #endif
 }
 
@@ -535,7 +541,7 @@ MR_create_or_reuse_zone(const char *name, size_t size, size_t offset,
     zone = MR_get_free_zone(size + redzone_size);
     if (zone != NULL) {
 #ifdef MR_DEBUG_STACK_SEGMENTS
-        MR_debug_log_message("re-using existing zone");
+        MR_debug_log_message("reusing existing zone");
 #endif
         is_new_zone = MR_FALSE;
         zone->MR_zone_desired_size = size;
@@ -544,12 +550,9 @@ MR_create_or_reuse_zone(const char *name, size_t size, size_t offset,
         MR_debug_log_message("allocating new zone");
 #endif
         is_new_zone = MR_TRUE;
-        zone = MR_create_new_zone(size, redzone_size);
+        zone = MR_create_new_zone(size, redzone_size, offset);
     }
 
-#ifdef  MR_DEBUG_STACK_SEGMENTS
-    MR_debug_log_message("Configuring zone");
-#endif
     zone->MR_zone_name = name;
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
     zone->MR_zone_handler = handler;
@@ -578,14 +581,12 @@ MR_create_or_reuse_zone(const char *name, size_t size, size_t offset,
 }
 
 static MR_MemoryZone *
-MR_create_new_zone(size_t desired_size, size_t redzone_size)
+MR_create_new_zone(size_t desired_size, size_t redzone_size, size_t offset)
 {
-    size_t          offset;
     MR_MemoryZone   *zone;
     MR_Word         *base;
     size_t          total_size;
 
-    offset = MR_next_offset();
     /*
     ** Ignore the offset if it is at least half the desired size of the zone.
     ** This should only happen for very small zones.
@@ -678,9 +679,9 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     }
 
     /*
-    ** XXX: This value is strange for new_total_size, it's a page bigger than
-    ** it needs to be.  However, this allows for a hardzone in some cases.  We
-    ** should fix this in the future.
+    ** XXX: This value is strange for new_total_size, it is a page bigger than
+    ** it needs to be. However, this allows for a hardzone in some cases.
+    ** We should fix this in the future.
     */
 #ifdef  MR_PROTECTPAGE
     new_total_size = new_size + 2 * MR_unit;
@@ -696,7 +697,7 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     MR_LOCK(&memory_zones_stats_lock, "MR_extend_zone");
     MR_total_zone_size_net += new_size - zone->MR_zone_desired_size;
     MR_total_zone_size_gross += new_total_size -
-        ((MR_Integer)zone->MR_zone_top - (MR_Integer)zone->MR_zone_bottom);
+        ((MR_Integer) zone->MR_zone_top - (MR_Integer) zone->MR_zone_bottom);
     MR_UNLOCK(&memory_zones_stats_lock, "MR_extend_zone");
 #endif
 
@@ -729,7 +730,7 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     ** relying on the gcc extension that allows arithmetic on void
     ** pointers - this breaks when compiling with Visual C - juliensf.
     */
-    base_incr = (MR_Integer)new_base - (MR_Integer)old_base;
+    base_incr = (MR_Integer) new_base - (MR_Integer) old_base;
 
     zone->MR_zone_desired_size = new_size;
     zone->MR_zone_bottom = new_base;
@@ -745,9 +746,12 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
 }
 
 void
-MR_release_zone(MR_MemoryZone *zone) {
+MR_release_zone(MR_MemoryZone *zone)
+{
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
-    if (zone->MR_zone_redzone_size || (zone->MR_zone_handler != MR_null_handler)) {
+    if (zone->MR_zone_redzone_size ||
+        (zone->MR_zone_handler != MR_null_handler))
+    {
         MR_remove_zone_from_used_list(zone);
     }
 #endif
@@ -769,15 +773,15 @@ MR_configure_redzone_size(MR_MemoryZone *zone, size_t redsize)
 
     /*
     ** When using small memory zones, the offset given by MR_next_offset()
-    ** might have us starting in the middle of the redzone.  Don't do that.
+    ** might have us starting in the middle of the redzone. Don't do that.
     */
     if (zone->MR_zone_min >= zone->MR_zone_redzone) {
         zone->MR_zone_min = zone->MR_zone_bottom;
     }
 
     MR_assert(zone->MR_zone_redzone < zone->MR_zone_top);
-    MR_assert(((MR_Unsigned)zone->MR_zone_redzone + redsize) <
-        (MR_Unsigned)zone->MR_zone_top);
+    MR_assert(((MR_Unsigned) zone->MR_zone_redzone + redsize) <
+        (MR_Unsigned) zone->MR_zone_top);
 }
 #endif
 
@@ -803,8 +807,8 @@ MR_setup_redzones(MR_MemoryZone *zone)
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
     MR_configure_redzone_size(zone, redsize);
 
-    res = MR_protect_pages((char *) zone->MR_zone_redzone, redsize + MR_page_size,
-        REDZONE_PROT);
+    res = MR_protect_pages((char *) zone->MR_zone_redzone,
+        redsize + MR_page_size, REDZONE_PROT);
     if (res < 0) {
         char buf[2560];
         if (zone->MR_zone_name == NULL) {
@@ -823,7 +827,7 @@ MR_setup_redzones(MR_MemoryZone *zone)
     */
 #if defined(MR_PROTECTPAGE)
     /* The % MR_page_size is to ensure page alignment */
-    zone->MR_zone_hardmax = (MR_Word *)((MR_Unsigned)zone->MR_zone_top -
+    zone->MR_zone_hardmax = (MR_Word *)((MR_Unsigned) zone->MR_zone_top -
             MR_page_size - ((MR_Unsigned) zone->MR_zone_top % MR_page_size));
     res = MR_protect_pages((char *) zone->MR_zone_hardmax, MR_page_size,
         REDZONE_PROT);
@@ -846,8 +850,29 @@ MR_setup_redzones(MR_MemoryZone *zone)
 #endif
 
 #if defined(MR_STACK_SEGMENTS) && !defined(MR_HIGHLEVEL_CODE)
-    zone->MR_zone_extend_threshold = (char *) zone->MR_zone_end
-        - MR_stack_margin_size;
+    zone->MR_zone_extend_threshold =
+        zone->MR_zone_end - MR_stack_margin_size_words;
+  #ifdef MR_DEBUG_STACK_SEGMENTS_SET_SIZE
+    /*
+    ** Stack segment code is much easier to debug if the segments are small.
+    ** Since the segments have to be at least a page in size, we can cheat by
+    ** limiting the size of the part of the segment that we choose to use.
+    **
+    ** Note that since we don't have access to the zone name here, we apply
+    ** MR_DEBUG_STACK_SEGMENTS_SET_SIZE to all new zones. Ideally, we
+    ** should apply it only to the zones we are interested in. As it is,
+    ** setting MR_DEBUG_STACK_SEGMENTS_SET_SIZE to too small a value
+    ** will also slow down the parts of the program that use zones that
+    ** you are *not* interested in right now.
+    */
+
+    if (zone->MR_zone_extend_threshold >
+        (zone->MR_zone_min + MR_DEBUG_STACK_SEGMENTS_SET_SIZE))
+    {
+        zone->MR_zone_extend_threshold =
+            zone->MR_zone_min + MR_DEBUG_STACK_SEGMENTS_SET_SIZE;
+    }
+  #endif
 
     assert((MR_Word *) zone->MR_zone_extend_threshold > zone->MR_zone_min);
 
@@ -901,7 +926,7 @@ MR_get_used_memory_zones_readonly(void)
 MR_bool
 MR_in_zone(const MR_Word *ptr, const MR_MemoryZone *zone)
 {
-    return (zone->MR_zone_bottom <= ptr && ptr < zone->MR_zone_top);
+    return ((zone->MR_zone_bottom <= ptr) && (ptr < zone->MR_zone_top));
 }
 
 /****************************************************************************

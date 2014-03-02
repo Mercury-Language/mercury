@@ -204,8 +204,10 @@ MR_debug_zone_extend(FILE *fp, const char *when, const char *stackname,
 #ifdef  MR_STACK_SEGMENTS
 
 MR_declare_entry(MR_pop_detstack_segment);
+MR_declare_entry(MR_pop_nondetstack_segment);
 
-MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
+MR_Word *
+MR_new_detstack_segment(MR_Word *sp, int n)
 {
     MR_Word         *old_sp;
     MR_MemoryZones  *list;
@@ -214,13 +216,18 @@ MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
     old_sp = sp;
 
     /* We perform explicit overflow checks so redzones just waste space. */
-    new_zone = MR_create_or_reuse_zone("detstack_segment", MR_detstack_size, 0,
-        0, MR_default_handler);
+    new_zone = MR_create_or_reuse_zone("detstack_segment",
+        MR_detstack_size, 0, 0, MR_default_handler);
 
     list = MR_GC_malloc_uncollectable_attrib(sizeof(MR_MemoryZones),
         MR_ALLOC_SITE_RUNTIME);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
+    /*
+    ** If you ever need to debug this again, you will probably want to
+    ** change this debugging code to include the information printed out
+    ** by MR_new_nondetstack_segment() below.
+    */
     MR_debug_log_message(
         "create new det segment: old zone: %p, old sp %p, old succip %p",
         MR_CONTEXT(MR_ctxt_detstack_zone), old_sp, MR_succip);
@@ -238,6 +245,16 @@ MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
     MR_stackvar(1) = (MR_Word) old_sp;
     MR_stackvar(2) = (MR_Word) MR_succip;
 
+    /*
+    ** This may not be for a leaf procedure; we abuse the macro to avoid
+    ** a check for whether we have run out of the new detstack segment.
+    **
+    ** XXX It is *theoretically* possible for a single stack frame to need
+    ** more memory than is available in the whole of the new segment.
+    ** However, if this is true, then the program is screwed anyway.
+    ** We cannot save it, though we *could* give a meaningful error message
+    ** instead of just leaving the program to crash.
+    */
     MR_incr_sp_leaf(n);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
@@ -250,89 +267,229 @@ MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
     return MR_sp;
 }
 
+/*
+** There are two ways that normal execution can remove a nondet stack frame.
+**
+** - backward execution can remove the currently top nondet stack frame
+**   by invoking MR_fail(), and
+** - forward execution can remove a sequence of nondet stack frames
+**   at the top of the nondet stack when it commits to a solution.
+**
+** We implement commits by taking a snapshot of maxfr and later restoring it.
+** Since the nondet stack frames cut away by such a restoration of maxfr
+** do not get any control at commits, freeing nondet stack segments only
+** when control reaches the placeholder frame at the bottom of such frames
+** is clearly not sufficient on its own to eventually recover all nondet stack
+** segments.
+**
+** We could make commits free all nondet stack segments beyond the one
+** containing the restored maxfr. However, that solution has three problems.
+**
+** - It requires stack-segment-specific code at commits.
+** - It requires more code at commits, slowing them down.
+** - It is likely that the freed segment will be needed quite soon. Freeing a
+**   zone and then allocating it again for the same purpose is probably
+**   slower than simply keeping and reusing it.
+**
+** We therefore adopt the following technique:
+**
+** 1 When we fail back to the last frame of a nondet stack segment, we
+**   KEEP that segment, but free any other segments beyond this.
+**
+** 2 When we run out of the current nondet stack segment, we check whether
+**   we already have allocated the next segment. If we haven't, we allocate
+**   a new one. If we have, we keep that segment, but free any segments
+**   beyond it.
+**
+** 3 We do not recover nondet stack stack segments at commits.
+**
+** Parts 1 and 2 above each limit the amount of allocated but not currently
+** used memory to about one segment. It is possible for the amount of
+** allocated but not currently used nondet stack space to exceed twice the
+** size of a segment, possibly by a lot, but in only one circumstance:
+** *after* a commit cuts away several segments of nondet stack, and *before*
+** the next time the program reaches either end (min or max) of the current
+** segment of the nondet stack. If the program uses the nondet stack at all
+** intensively, and if nondet stack segments are small, then this period of
+** time *should* be acceptably small. The gain we get from accepting this
+** downside is that we don't have to deal with segments except when we are
+** at a segment boundary.
+*/
+
 static  MR_MemoryZone   *MR_rewind_nondetstack_segments(MR_Word *maxfr);
 
-void
-MR_nondetstack_segment_extend_slow_path(MR_Word *old_maxfr, int incr)
+MR_Word *
+MR_new_nondetstack_segment(MR_Word *maxfr, int incr)
 {
-    MR_Word         *new_maxfr;
-    MR_MemoryZones  *list;
-    MR_MemoryZone   *new_zone;
+    MR_Word         *sentinelmaxfr;
+    MR_Word         *old_maxfr;
+    MR_Word         *old_curfr;
+    MR_MemoryZone   *new_cur_zone;
+    MR_MemoryZones  *new_prev_zones;
 
-    /*
-    ** Pop off the nondet stack segments until maxfr is within the bounds of
-    ** the top segment.
-    */
-    new_zone = MR_rewind_nondetstack_segments(old_maxfr);
+    old_maxfr = maxfr;
+    old_curfr = MR_curfr;
 
-    /* Try to make a frame on the top segment. */
-    new_maxfr = old_maxfr + incr;
-    if (new_maxfr < (MR_Word *) MR_CONTEXT(MR_ctxt_nondetstack_zone)->
-        MR_zone_extend_threshold)
-    {
-        MR_maxfr_word = (MR_Word) new_maxfr;
-        if (new_zone != NULL) {
-            MR_release_zone(new_zone);
-        }
-        return;
-    }
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    printf("\nadding new nondet stack segment");
+    printf("\ncontext: %p", &MR_ENGINE(MR_eng_context));
+    printf("\nold maxfr: ");
+    MR_printnondetstack(stdout, old_maxfr);
+    printf("\nold curfr: ");
+    MR_printnondetstack(stdout, old_curfr);
+    printf("\n");
+#endif
 
-    if (new_zone == NULL) {
-        /* We perform explicit overflow checks so redzones just waste space. */
-        new_zone = MR_create_or_reuse_zone("nondetstack_segment",
+    new_cur_zone = MR_rewind_nondetstack_segments(maxfr);
+    if (new_cur_zone == NULL) {
+        /*
+        ** There is no old segment to reuse in the nondet stack itself,
+        ** so allocate a new one (possibly one that was freed earlier).
+        **
+        ** Note that we perform explicit overflow checks, so redzones
+        ** would just waste space.
+        */
+        new_cur_zone = MR_create_or_reuse_zone("nondetstack_segment",
             MR_nondetstack_size, 0, 0, MR_default_handler);
     }
 
-    list = MR_GC_malloc_uncollectable_attrib(sizeof(MR_MemoryZones),
-        MR_ALLOC_SITE_RUNTIME);
-
 #ifdef  MR_DEBUG_STACK_SEGMENTS
-    printf("create new nondet segment: old zone: %p, old maxfr %p\n",
-        MR_CONTEXT(MR_ctxt_nondetstack_zone), old_maxfr);
-    printf("old maxfr: ");
-    MR_printnondetstack(stdout, old_maxfr);
+    printf("\nbefore creating new nondet segment:\n");
+    MR_print_zone(stdout, MR_CONTEXT(MR_ctxt_nondetstack_zone));
+    printf("\n");
 #endif
 
-    list->MR_zones_head = MR_CONTEXT(MR_ctxt_nondetstack_zone);
-    list->MR_zones_tail = MR_CONTEXT(MR_ctxt_prev_nondetstack_zones);
-    MR_CONTEXT(MR_ctxt_prev_nondetstack_zones) = list;
-    MR_CONTEXT(MR_ctxt_nondetstack_zone) = new_zone;
-    MR_CONTEXT(MR_ctxt_maxfr) =
-        MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min;
+    new_prev_zones = MR_GC_malloc_uncollectable_attrib(sizeof(MR_MemoryZones),
+        MR_ALLOC_SITE_RUNTIME);
+    new_prev_zones->MR_zones_head = MR_CONTEXT(MR_ctxt_nondetstack_zone);
+    new_prev_zones->MR_zones_tail = MR_CONTEXT(MR_ctxt_prev_nondetstack_zones);
+    MR_CONTEXT(MR_ctxt_prev_nondetstack_zones) = new_prev_zones;
+    MR_CONTEXT(MR_ctxt_nondetstack_zone) = new_cur_zone;
+    MR_CONTEXT(MR_ctxt_maxfr) = new_cur_zone->MR_zone_min;
 
-    MR_maxfr_word = (MR_Word) (MR_CONTEXT(MR_ctxt_maxfr) + incr);
+    MR_maxfr_word = (MR_Word) MR_CONTEXT(MR_ctxt_maxfr);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
-    printf("create new nondet segment: new zone: %p, new maxfr %p\n",
-        MR_CONTEXT(MR_ctxt_nondetstack_zone), MR_maxfr);
+    printf("\nafter creating new nondet segment\n");
     printf("new maxfr: ");
     MR_printnondetstack(stdout, MR_maxfr);
+    printf("\nnew cur zone:\n");
+    MR_print_zone(stdout, MR_CONTEXT(MR_ctxt_nondetstack_zone));
+    printf("new prev zones:\n");
+    MR_print_zones(stdout, MR_CONTEXT(MR_ctxt_prev_nondetstack_zones));
+    printf("\n");
+    fflush(stdout);
 #endif
+
+    /*
+    ** The stack trace tracing code needs to know the size of each nondet
+    ** stack frame, since it uses the size to classify frames as temp or
+    ** ordinary. The size is given by the difference in address between
+    ** the address of the frame and the address of the previous frame.
+    ** This difference would yield an incorrect size and hence an incorrect
+    ** frame classification if a temp frame were allowed to have a frame
+    ** on a different segment as its immediate predecessor.
+    **
+    ** We prevent this by putting an ordinary (i.e. non-temp) frame at the
+    ** bottom of every new nondet stack segment as a sentinel. We hand-build
+    ** this frame, since it is not an "ordinary" ordinary frame. It is not
+    ** created by a call, so it has no meaningful success continuation,
+    ** and since it does not make any calls, no other frame's success
+    ** continuation can point to it either.
+    **
+    ** We store three pieces of information in the sentinel frame.
+    **
+    ** - The maxfr at the time the sentinel frame was created, which we store
+    **   in the prevfr slot. This is actually the address of the logically
+    **   previous frame, so we are using the slot for its intended purpose,
+    **   but the difference between the addresses of the two frames is NOT
+    **   the size of the sentinel frame.
+    **
+    ** - The curfr at the time the sentinel frame was created, which we store
+    **   in the succfr slot. This is NOT actually the frame of the success
+    **   continuation; we can store it there because this frame HAS no
+    **   meaningful success continuation, so the slot is not needed for its
+    **   intended purpose.
+    **
+    ** - The address of the MR_MemoryZone structure of the zone containing
+    **   the sentinel frame, which we store in framevar 1. This is used by
+    **   the code of MR_pop_nondetstack_segment.
+    */
+
+    sentinel_maxfr = MR_maxfr + (MR_NONDET_FIXED_SIZE + 1);
+    MR_prevfr_slot_word(sentinel_maxfr) = (MR_Word) old_maxfr;
+    MR_succfr_slot_word(sentinel_maxfr) = (MR_Word) old_curfr;
+    MR_succip_slot_word(sentinel_maxfr) =
+        (MR_Word) MR_ENTRY(MR_do_not_reached);
+    MR_redofr_slot_word(sentinel_maxfr) = (MR_Word) sentinel_maxfr;
+    MR_redoip_slot_word(sentinel_maxfr) =
+        (MR_Word) MR_ENTRY(MR_pop_nondetstack_segment);
+    MR_based_framevar(sentinel_maxfr, 1) = (MR_Word) new_cur_zone;
+
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    printf("creating sentinel frame:\n");
+    printf("sentinel_maxfr: ");
+    MR_printnondetstack(stdout, sentinel_maxfr);
+    printf("\nsentinel frame's prevfr slot: ");
+    MR_printnondetstack(stdout, MR_prevfr_slot(sentinel_maxfr));
+    printf("\nsentinel frame's succfr slot: ");
+    MR_printnondetstack(stdout, MR_succfr_slot(sentinel_maxfr));
+    printf("\nsentinel frame's redofr slot: ");
+    MR_printnondetstack(stdout, MR_redofr_slot(sentinel_maxfr));
+    printf("\n");
+#endif
+
+    /*
+    ** Reserve space for the new nondet stack frame on top of the
+    ** sentinel frame.
+    */
+    MR_maxfr_word = (MR_Word) (sentinel_maxfr + incr);
+
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    printf("after creating sentinel frame and reserving %d words:\n", incr);
+    printf("new maxfr: ");
+    MR_printnondetstack(stdout, MR_maxfr);
+    printf("\n");
+    fflush(stdout);
+#endif
+
+    return MR_maxfr;
 }
 
 static MR_MemoryZone *
 MR_rewind_nondetstack_segments(MR_Word *maxfr)
 {
-    MR_MemoryZone   *reusable_zone;
+    MR_MemoryZone   *zone_to_reuse;
     MR_MemoryZone   *zone;
     MR_Word         *limit;
     MR_MemoryZones  *list;
 
-    reusable_zone = NULL;
+    zone_to_reuse = NULL;
 
     for (;;) {
         zone = MR_CONTEXT(MR_ctxt_nondetstack_zone);
-        /*
-        ** XXX why is maxfr sometimes slightly past MR_zone_extend_threshold?
-        ** That's why we test against MR_zone_end instead.
-        */
         limit = (MR_Word *) zone->MR_zone_end;
         if (maxfr >= zone->MR_zone_min && maxfr < limit) {
             break;
         }
 
-        if (reusable_zone == NULL) {
-            reusable_zone = zone;
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+        printf("\nfreeing zone\n");
+        MR_print_zone(stdout, zone);
+#endif
+
+        /*
+        ** If there are several currently unneeded segments, this algorithm
+        ** reuses the zone of the topmost segment (the first segment in the
+        ** list from the top), since its contents are more likely to have been
+        ** recently referred to, and thus more likely to be in the cache.
+        **
+        ** However, reusing the zone of the bottom-most unneeded segment
+        ** would look conceptually a bit neater in that it would preserve
+        ** the follows/precedes relationship between the zones.
+        */
+        if (zone_to_reuse == NULL) {
+            zone_to_reuse = zone;
         } else {
             MR_release_zone(zone);
         }
@@ -344,15 +501,35 @@ MR_rewind_nondetstack_segments(MR_Word *maxfr)
         MR_GC_free_attrib(list);
     }
 
-    return reusable_zone;
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    if (zone_to_reuse == NULL) {
+        printf("\nno old nondet segment zone available for reuse\n");
+    } else {
+        printf("\nreturning zone of old nondet segment for reuse: %p\n",
+            zone_to_reuse);
+    }
+#endif
+
+    return zone_to_reuse;
+}
+
+/*
+** Needed for bootstrapping.
+*/
+
+extern void
+MR_nondetstack_segment_extend_slow_path(MR_Word *old_maxfr, int incr);
+
+void
+MR_nondetstack_segment_extend_slow_path(MR_Word *old_maxfr, int incr)
+{
 }
 
 #endif  /* MR_STACK_SEGMENTS */
 
-MR_define_extern_entry(MR_pop_detstack_segment);
-
 MR_BEGIN_MODULE(stack_segment_module)
     MR_init_entry_an(MR_pop_detstack_segment);
+    MR_init_entry_an(MR_pop_nondetstack_segment);
 MR_BEGIN_CODE
 
 MR_define_entry(MR_pop_detstack_segment);
@@ -365,11 +542,11 @@ MR_define_entry(MR_pop_detstack_segment);
     orig_sp = (MR_Word *) MR_stackvar(1);
     orig_succip = (MR_Code *) MR_stackvar(2);
 
-#ifdef  MR_DEBUG_STACK_SEGMENTS
+  #ifdef MR_DEBUG_STACK_SEGMENTS
     MR_debug_log_message(
         "restore old det segment: old zone %p, old sp %p old succip: %p",
         MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp, MR_succip);
-#endif
+  #endif
 
     MR_release_zone(MR_CONTEXT(MR_ctxt_detstack_zone));
 
@@ -379,17 +556,108 @@ MR_define_entry(MR_pop_detstack_segment);
     MR_CONTEXT(MR_ctxt_sp) = orig_sp;
     MR_GC_free_attrib(list);
 
-#ifdef  MR_DEBUG_STACK_SEGMENTS
+  #ifdef MR_DEBUG_STACK_SEGMENTS
     MR_debug_log_message(
         "restore old det segment: new zone %p, new sp %p new succip: %p",
         MR_CONTEXT(MR_ctxt_detstack_zone), orig_sp, orig_succip);
-#endif
+  #endif
 
     MR_sp_word = (MR_Word) orig_sp;
     MR_GOTO(orig_succip);
 }
 #else   /* ! MR_STACK_SEGMENTS */
     MR_fatal_error("MR_pop_detstack_segment reached\n");
+#endif  /* MR_STACK_SEGMENTS */
+
+MR_define_entry(MR_pop_nondetstack_segment);
+#ifdef MR_STACK_SEGMENTS
+{
+    /* See the big comment before MR_new_nondetstack_segment. */
+    MR_Word         *sentinel_frame;
+    MR_Word         *orig_maxfr;
+    MR_Word         *orig_curfr;
+    MR_MemoryZone   *orig_zone;
+    MR_MemoryZone   *cur_zone;
+    MR_MemoryZones  *prev_zones;
+    unsigned        num_segments_removed;
+    MR_bool         released_orig_zone;
+
+    sentinel_frame = MR_maxfr;
+    orig_maxfr = (MR_Word *) MR_prevfr_slot(sentinel_frame);
+    orig_curfr = (MR_Word *) MR_succfr_slot(sentinel_frame);
+    orig_zone = (MR_MemoryZone *) MR_based_framevar(sentinel_frame, 1);
+
+    cur_zone = MR_CONTEXT(MR_ctxt_nondetstack_zone);
+    prev_zones = MR_CONTEXT(MR_ctxt_prev_nondetstack_zones);
+
+#ifdef MR_DEBUG_STACK_SEGMENTS
+    printf("\nbefore removing old nondet segment:\n");
+
+    printf("orig maxfr: ");
+    MR_print_nondetstackptr(stdout, orig_maxfr);
+    printf("\norig curfr: ");
+    MR_print_nondetstackptr(stdout, orig_curfr);
+    printf("\norig zone:\n");
+    MR_print_zone(stdout, orig_zone);
+
+    printf("\ncur zone:\n");
+    MR_print_zone(stdout, cur_zone);
+    printf("prev zones:\n");
+    MR_print_zones(stdout, prev_zones);
+
+    fflush(stdout);
+#endif
+
+    /*
+    ** As explained in the big comment above, we do not free the zone
+    ** of the segment we are leaving. It is very likely that we will need
+    ** it again, very soon, and reusing it from the list of nondet stack
+    ** segments in the context is significantly cheaper than reusing it
+    ** from the general pool.
+    */
+
+    num_segments_removed = 0;
+    while (cur_zone != orig_zone) {
+        MR_MemoryZones  *list_node_to_free;
+
+        num_segments_removed++;
+        MR_release_zone(cur_zone);
+
+        list_node_to_free = prev_zones;
+        cur_zone = prev_zones->MR_zones_head;
+        prev_zones = prev_zones->MR_zones_tail;
+        MR_GC_free_attrib(list_node_to_free);
+    }
+
+    MR_CONTEXT(MR_ctxt_nondetstack_zone) = cur_zone;
+    MR_CONTEXT(MR_ctxt_prev_nondetstack_zones) = prev_zones;
+
+    MR_CONTEXT(MR_ctxt_curfr) = orig_curfr;
+    MR_CONTEXT(MR_ctxt_maxfr) = orig_maxfr;
+    MR_curfr_word = (MR_Word) orig_curfr;
+    MR_maxfr_word = (MR_Word) orig_maxfr;
+
+#ifdef MR_DEBUG_STACK_SEGMENTS
+    printf("\nafter removing %d old nondet segment(s):\n",
+        num_segments_removed);
+    printf("cur zone:\n");
+    MR_print_zone(stdout, MR_CONTEXT(MR_ctxt_nondetstack_zone));
+    printf("prev zones:\n");
+    MR_print_zones(stdout, MR_CONTEXT(MR_ctxt_prev_nondetstack_zones));
+
+    printf("maxfr: ");
+    MR_print_nondetstackptr(stdout, MR_maxfr);
+    printf("\ncurfr: ");
+    MR_print_nondetstackptr(stdout, MR_curfr);
+    printf("\n");
+
+    fflush(stdout);
+#endif
+
+    MR_redo();
+}
+#else   /* ! MR_STACK_SEGMENTS */
+    MR_fatal_error("MR_pop_nondetstack_segment reached\n");
 #endif  /* MR_STACK_SEGMENTS */
 
 MR_END_MODULE

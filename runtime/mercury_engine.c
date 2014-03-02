@@ -195,8 +195,7 @@ MR_create_engine(void)
     ** since the engine pointer will normally be stored in thread-local
     ** storage, which is not traced by the conservative garbage collector.
     */
-    eng = MR_GC_NEW_UNCOLLECTABLE_ATTRIB(MercuryEngine,
-        MR_ALLOC_SITE_RUNTIME);
+    eng = MR_GC_NEW_UNCOLLECTABLE_ATTRIB(MercuryEngine, MR_ALLOC_SITE_RUNTIME);
     MR_init_engine(eng);
     return eng;
 }
@@ -359,7 +358,6 @@ MR_call_engine(MR_Code *entry_point, MR_bool catch_exceptions)
         }
         return NULL;
     }
-
 
     MR_ENGINE(MR_eng_jmp_buf) = &curr_jmp_buf;
 
@@ -784,7 +782,6 @@ MR_define_entry(MR_exception_handler_do_fail);
     ** of `MR_exception_handler_do_fail' and handle it specially.
     */
     MR_fail();
-
 
 MR_END_MODULE
 

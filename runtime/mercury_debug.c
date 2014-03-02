@@ -17,16 +17,19 @@
 #include    <stdio.h>
 #include    <stdarg.h>
 
-static  MR_bool MR_find_zone_for_det_ptr_in_context(const MR_Word *ptr,
+static MR_bool  MR_find_zone_for_det_ptr_in_context(const MR_Word *ptr,
                     MR_Context *ctxt,
                     MR_MemoryZone **zone_ptr, int *zone_num_ptr);
-static  MR_bool MR_find_zone_for_nondet_ptr_in_context(const MR_Word *ptr,
+static MR_bool  MR_find_zone_for_nondet_ptr_in_context(const MR_Word *ptr,
                     MR_Context *ctxt,
                     MR_MemoryZone **zone_ptr, int *zone_num_ptr);
-static  MR_bool MR_find_zone_for_det_ptr(const MR_Word *ptr,
+static MR_bool  MR_find_zone_for_ptr(const MR_Word *ptr,
+                    MR_MemoryZone *first_zone, MR_MemoryZones *later_zones,
+                    MR_MemoryZone **zone_ptr, int *zone_num_ptr);
+static MR_bool  MR_find_zone_for_det_ptr(const MR_Word *ptr,
                     MR_Context **ctxt_ptr,
                     MR_MemoryZone **zone_ptr, int *zone_num_ptr);
-static  MR_bool MR_find_zone_for_nondet_ptr(const MR_Word *ptr,
+static MR_bool  MR_find_zone_for_nondet_ptr(const MR_Word *ptr,
                     MR_Context **ctxt_ptr,
                     MR_MemoryZone **zone_ptr, int *zone_num_ptr);
 
@@ -109,24 +112,27 @@ MR_mkframe_msg(FILE *fp, const char *predname)
     fprintf(fp, "\nnew choice point for procedure %s\n", predname);
     fprintf(fp, "new  fr: ");
     MR_printnondetstack(fp, MR_curfr);
-    fprintf(fp, "prev fr: ");
+    fprintf(fp, "\nprev fr: ");
     MR_printnondetstack(fp, MR_prevfr_slot(MR_curfr));
-    fprintf(fp, "succ fr: ");
+    fprintf(fp, "\nsucc fr: ");
     MR_printnondetstack(fp, MR_succfr_slot(MR_curfr));
-    fprintf(fp, "succ ip: ");
+    fprintf(fp, "\nsucc ip: ");
     MR_printlabel(fp, MR_succip_slot(MR_curfr));
     fprintf(fp, "redo fr: ");
     MR_printnondetstack(fp, MR_redofr_slot(MR_curfr));
-    fprintf(fp, "redo ip: ");
+    fprintf(fp, "\nredo ip: ");
     MR_printlabel(fp, MR_redoip_slot(MR_curfr));
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
-    fprintf(fp, "det fr:  ");
+    fprintf(fp, "\ndet fr:  ");
     MR_printdetstack(fp, MR_table_detfr_slot(MR_curfr));
 #endif
+    fprintf(fp, "\n");
 
     if (MR_detaildebug) {
         MR_dumpnondetstack(fp);
     }
+
+    fflush(fp);
 }
 
 void
@@ -138,19 +144,21 @@ MR_mktempframe_msg(FILE *fp)
         return;
     }
 
-    fprintf(fp, "\nnew temp nondet frame\n");
-    fprintf(fp, "new  fr: ");
+    fprintf(fp, "\nnew temp nondet frame");
+    fprintf(fp, "\nnew  fr: ");
     MR_printnondetstack(fp, MR_maxfr);
-    fprintf(fp, "prev fr: ");
+    fprintf(fp, "\nprev fr: ");
     MR_printnondetstack(fp, MR_prevfr_slot(MR_maxfr));
-    fprintf(fp, "redo fr: ");
+    fprintf(fp, "\nredo fr: ");
     MR_printnondetstack(fp, MR_redofr_slot(MR_maxfr));
-    fprintf(fp, "redo ip: ");
+    fprintf(fp, "\nredo ip: ");
     MR_printlabel(fp, MR_redoip_slot(MR_maxfr));
 
     if (MR_detaildebug) {
         MR_dumpnondetstack(fp);
     }
+
+    fflush(fp);
 }
 
 void
@@ -162,17 +170,18 @@ MR_mkdettempframe_msg(FILE *fp)
         return;
     }
 
-    fprintf(fp, "\nnew det temp nondet frame\n");
-    fprintf(fp, "new  fr: ");
+    fprintf(fp, "\nnew det temp nondet frame");
+    fprintf(fp, "\nnew  fr: ");
     MR_printnondetstack(fp, MR_maxfr);
-    fprintf(fp, "prev fr: ");
+    fprintf(fp, "\nprev fr: ");
     MR_printnondetstack(fp, MR_prevfr_slot(MR_maxfr));
-    fprintf(fp, "redo fr: ");
+    fprintf(fp, "\nredo fr: ");
     MR_printnondetstack(fp, MR_redofr_slot(MR_maxfr));
-    fprintf(fp, "redo ip: ");
+    fprintf(fp, "\nredo ip: ");
     MR_printlabel(fp, MR_redoip_slot(MR_maxfr));
     fprintf(fp, "det fr:  ");
     MR_printdetstack(fp, MR_tmp_detfr_slot(MR_maxfr));
+    fprintf(fp, "\n");
 
     if (MR_detaildebug) {
         MR_dumpnondetstack(fp);
@@ -241,10 +250,11 @@ MR_fail_msg(FILE *fp)
     fprintf(fp, "\nfailing from procedure\n");
     fprintf(fp, "curr fr: ");
     MR_printnondetstack(fp, MR_curfr);
-    fprintf(fp, "fail fr: ");
+    fprintf(fp, "\nfail fr: ");
     MR_printnondetstack(fp, MR_prevfr_slot(MR_curfr));
-    fprintf(fp, "fail ip: ");
+    fprintf(fp, "\nfail ip: ");
     MR_printlabel(fp, MR_redoip_slot(MR_prevfr_slot(MR_curfr)));
+    fprintf(fp, "\n");
 }
 
 void
@@ -258,12 +268,12 @@ MR_redo_msg(FILE *fp)
         return;
     }
 
-    fprintf(fp, "\nredo from procedure\n");
-    fprintf(fp, "curr fr: ");
+    fprintf(fp, "\nredo from procedure");
+    fprintf(fp, "\ncurr fr: ");
     MR_printnondetstack(fp, MR_curfr);
-    fprintf(fp, "redo fr: ");
+    fprintf(fp, "\nredo fr: ");
     MR_printnondetstack(fp, MR_maxfr);
-    fprintf(fp, "redo ip: ");
+    fprintf(fp, "\nredo ip: ");
     MR_printlabel(fp, MR_redoip_slot(MR_maxfr));
 }
 
@@ -545,7 +555,7 @@ MR_count_call(FILE *fp, const MR_Code *proc)
     /* the bitwise ORs implement logical OR */
     MR_lld_print_enabled = MR_lld_print_region_enabled
         | MR_lld_print_name_enabled | MR_lld_print_csd_enabled
-        | MR_lld_debug_enabled;
+        | MR_lld_debug_enabled | MR_lld_print_always_enabled;
 }
 
 void
@@ -572,7 +582,7 @@ MR_printheap(FILE *fp, const MR_Word *h)
         fprintf(fp, "ptr %p, ", (const void *) h);
     }
 
-    fprintf(fp, "offset %3ld words\n",
+    fprintf(fp, "offset %6ld words\n",
         (long) (MR_Integer) (h - MR_ENGINE(MR_eng_heap_zone)->min));
 #else
     fprintf(fp, "ptr %p\n", (const void *) h);
@@ -609,7 +619,7 @@ MR_dumpnondetstack(FILE *fp)
     MR_Word *fr;
 
     fprintf(fp, "\nnondetstack dump\n");
-    for (fr = MR_maxfr; fr > MR_nondet_stack_trace_bottom;
+    for (fr = MR_maxfr; MR_above_bottom_nondet_frame(fr);
         fr = MR_prevfr_slot(fr))
     {
         MR_dumpframe(fp, fr);
@@ -671,6 +681,8 @@ MR_print_ordinary_regs(FILE *fp)
         fprintf(fp, "%ld %lx\n", (long) value, (long) value);
     }
 }
+
+/*--------------------------------------------------------------------*/
 
 #ifdef  MR_DEEP_PROFILING
 
@@ -807,6 +819,8 @@ MR_assign_csd(MR_CallSiteDynamic *csd1, const MR_CallSiteDynamic *csd2)
 
 #endif  /* MR_DEEP_PROFILING */
 
+/*--------------------------------------------------------------------*/
+
 static void
 MR_do_watches(FILE *fp)
 {
@@ -877,6 +891,30 @@ MR_print_detstackptr(FILE *fp, const MR_Word *s)
 }
 
 void
+MR_print_zone(FILE *fp, const MR_MemoryZone *zone)
+{
+    fprintf(fp, "zone %p:\n", zone);
+    fprintf(fp, "  bottom %p, top %p\n",
+        zone->MR_zone_bottom, zone->MR_zone_top);
+    fprintf(fp, "  min    %p, max %p, hardmax %p",
+        zone->MR_zone_min, zone->MR_zone_max, zone->MR_zone_hardmax);
+#if defined(MR_STACK_SEGMENTS) && !defined(MR_HIGHLEVEL_CODE)
+    fprintf(fp, ", extend %p",
+        zone->MR_zone_extend_threshold);
+#endif
+    fprintf(fp, "\n");
+}
+
+void
+MR_print_zones(FILE *fp, const MR_MemoryZones *zones)
+{
+    while (zones != NULL) {
+        MR_print_zone(fp, zones->MR_zones_head);
+        zones = zones->MR_zones_tail;
+    }
+}
+
+void
 MR_printdetstack(FILE *fp, const MR_Word *s)
 {
     MR_MemoryZone   *zone;
@@ -888,10 +926,10 @@ MR_printdetstack(FILE *fp, const MR_Word *s)
         }
 
         if (zone_num == 0) {
-            fprintf(fp, "offset %3ld words",
+            fprintf(fp, "offset %6ld words",
                 (long) (MR_Integer) (s - zone->MR_zone_min));
         } else {
-            fprintf(fp, "offset %3ld words in segment %d",
+            fprintf(fp, "offset %6ld words in segment %d",
                 (long) (MR_Integer) (s - zone->MR_zone_min), zone_num);
         }
     } else {
@@ -934,10 +972,10 @@ MR_printnondetstack(FILE *fp, const MR_Word *s)
         }
 
         if (zone_num == 0) {
-            fprintf(fp, "offset %3ld words",
+            fprintf(fp, "offset %6ld words",
                 (long) (MR_Integer) (s - zone->MR_zone_min));
         } else {
-            fprintf(fp, "offset %3ld words in segment %d",
+            fprintf(fp, "offset %6ld words in segment %d",
                 (long) (MR_Integer) (s - zone->MR_zone_min), zone_num);
         }
     } else {
@@ -1074,6 +1112,8 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
 #endif
 }
 
+/*--------------------------------------------------------------------*/
+
 /* auxiliary routines for the code that prints debugging messages */
 
 static MR_bool
@@ -1083,44 +1123,10 @@ MR_find_zone_for_det_ptr_in_context(const MR_Word *ptr, MR_Context *ctxt,
 #ifdef  MR_HIGHLEVEL_CODE
     return MR_FALSE;
 #else   /* !MR_HIGHLEVEL_CODE */
-    int             segment_number;
-    MR_MemoryZones  *remaining_zones;
-    MR_MemoryZone   *cur_zone;
-
-    remaining_zones = ctxt->MR_ctxt_prev_detstack_zones;
-    if (MR_in_zone(ptr, ctxt->MR_ctxt_detstack_zone)) {
-        if (zone_ptr != NULL) {
-            *zone_ptr = ctxt->MR_ctxt_detstack_zone;
-        }
-    } else {
-        while (remaining_zones != NULL) {
-            cur_zone = remaining_zones->MR_zones_head;
-            if (MR_in_zone(ptr, cur_zone)) {
-                if (zone_ptr != NULL) {
-                    *zone_ptr = cur_zone;
-                }
-
-                remaining_zones = remaining_zones->MR_zones_tail;
-                break;
-            }
-
-            remaining_zones = remaining_zones->MR_zones_tail;
-        }
-
-        return MR_FALSE;
-    }
-
-    if (zone_num_ptr != NULL) {
-        segment_number = 0;
-        while (remaining_zones != NULL) {
-            segment_number++;
-            remaining_zones = remaining_zones->MR_zones_tail;
-        }
-
-        *zone_num_ptr = segment_number;
-    }
-
-    return MR_TRUE;
+    return MR_find_zone_for_ptr(ptr,
+        ctxt->MR_ctxt_detstack_zone,
+        ctxt->MR_ctxt_prev_detstack_zones,
+        zone_ptr, zone_num_ptr);
 #endif  /* !MR_HIGHLEVEL_CODE */
 }
 
@@ -1131,16 +1137,34 @@ MR_find_zone_for_nondet_ptr_in_context(const MR_Word *ptr, MR_Context *ctxt,
 #ifdef  MR_HIGHLEVEL_CODE
     return MR_FALSE;
 #else   /* !MR_HIGHLEVEL_CODE */
+    return MR_find_zone_for_ptr(ptr,
+        ctxt->MR_ctxt_nondetstack_zone,
+        ctxt->MR_ctxt_prev_nondetstack_zones,
+        zone_ptr, zone_num_ptr);
+#endif  /* !MR_HIGHLEVEL_CODE */
+}
+
+static MR_bool
+MR_find_zone_for_ptr(const MR_Word *ptr,
+    MR_MemoryZone *first_zone, MR_MemoryZones *later_zones,
+    MR_MemoryZone **zone_ptr, int *zone_num_ptr)
+{
+#ifdef  MR_HIGHLEVEL_CODE
+    return MR_FALSE;
+#else   /* !MR_HIGHLEVEL_CODE */
     int             segment_number;
     MR_MemoryZones  *remaining_zones;
     MR_MemoryZone   *cur_zone;
 
-    remaining_zones = ctxt->MR_ctxt_prev_nondetstack_zones;
-    if (MR_in_zone(ptr, ctxt->MR_ctxt_nondetstack_zone)) {
+    remaining_zones = later_zones;
+    if (MR_in_zone(ptr, first_zone)) {
         if (zone_ptr != NULL) {
-            *zone_ptr = ctxt->MR_ctxt_nondetstack_zone;
+            *zone_ptr = first_zone;
         }
     } else {
+        MR_bool found;
+
+        found = MR_FALSE;
         while (remaining_zones != NULL) {
             cur_zone = remaining_zones->MR_zones_head;
             if (MR_in_zone(ptr, cur_zone)) {
@@ -1148,6 +1172,7 @@ MR_find_zone_for_nondet_ptr_in_context(const MR_Word *ptr, MR_Context *ctxt,
                     *zone_ptr = cur_zone;
                 }
 
+                found = MR_TRUE;
                 remaining_zones = remaining_zones->MR_zones_tail;
                 break;
             }
@@ -1155,7 +1180,9 @@ MR_find_zone_for_nondet_ptr_in_context(const MR_Word *ptr, MR_Context *ctxt,
             remaining_zones = remaining_zones->MR_zones_tail;
         }
 
-        return MR_FALSE;
+        if (!found) {
+            return MR_FALSE;
+        }
     }
 
     if (zone_num_ptr != NULL) {
@@ -1270,19 +1297,23 @@ MR_find_zone_for_nondet_ptr(const MR_Word *ptr, MR_Context **ctxt_ptr,
     return MR_FALSE;
 }
 
-void 
-MR_debug_log_message(const char *format, ...) {
+/*--------------------------------------------------------------------*/
+
+void
+MR_debug_log_message(const char *format, ...)
+{
     char    *buffer;
-    int     len, result;
+    int     len;
+    int     result;
     va_list args;
 
     /*
     ** This should be a reasonable estimate of the size of the buffer that we
-    ** need.  At least twice the size of the format string or 128 bytes.
+    ** need. At least twice the size of the format string or 128 bytes.
     */
     len = strlen(format);
-    len = len*2;
-    len = len<128 ? 128 : len;
+    len = len * 2;
+    len = len < 128 ? 128 : len;
 
     buffer = MR_GC_malloc(len);
     while (1) {
@@ -1301,7 +1332,7 @@ MR_debug_log_message(const char *format, ...) {
         }
 
         /* Make the buffer bigger. */
-        len = len*2;
+        len = len * 2;
         buffer = MR_GC_realloc(buffer, len);
     }
 
@@ -1313,4 +1344,5 @@ MR_debug_log_message(const char *format, ...) {
     printf("%s\n", buffer);
 #endif
 }
+
 

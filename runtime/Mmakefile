@@ -1,3 +1,4 @@
+# vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1998-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -48,7 +49,7 @@ HDRS		=	\
 			mercury_dummy.h		\
 			mercury_dword.h		\
 			mercury_engine.h	\
-            		mercury_expanding_array.h \
+			mercury_expanding_array.h \
 			mercury_file.h		\
 			mercury_float.h		\
 			mercury_getopt.h	\
@@ -186,6 +187,7 @@ CFILES		= 	\
 			mercury_minimal_model.c	\
 			mercury_misc.c		\
 			mercury_mm_own_stacks.c	\
+			mercury_overflow.c	\
 			mercury_par_builtin.c		\
 			mercury_prof.c		\
 			mercury_profiling_builtin.c	\

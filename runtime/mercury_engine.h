@@ -314,7 +314,7 @@ typedef struct {
 **              MR_BOXED_FLOAT is defined, i.e. when sizeof(MR_Float) >
 **              sizeof(MR_Word).
 **
-** trail_ptr 
+** trail_ptr
 ** ticket_counter
 ** ticket_high_water
 **              These fields correspond to the similarly named global
@@ -511,10 +511,10 @@ typedef struct MR_mercury_engine_struct {
 
   #ifndef MR_HIGHLEVEL_CODE
   /*
-  ** This points to an array containing MR_num_threads pointers to Mercury engines.
-  ** The first item in the array is the primordial thread.  During
-  ** initialisation the array may be a null pointer as may be any pointer
-  ** inside.
+  ** This points to an array containing MR_num_threads pointers to
+  ** Mercury engines. The first item in the array is the primordial thread.
+  ** During initialisation, the array may be a null pointer, as may be
+  ** any pointer inside.
   */
   extern MercuryEngine      **MR_all_engine_bases;
   #endif

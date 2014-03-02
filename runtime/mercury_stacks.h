@@ -21,6 +21,7 @@
 #include "mercury_types.h"
 #include "mercury_overflow.h"
 #include "mercury_debug.h"
+#include "mercury_overflow.h"
 #include "mercury_goto.h"
 #include "mercury_tabling.h"
 #include "mercury_engine.h"
@@ -74,69 +75,90 @@
 
 #ifdef MR_STACK_SEGMENTS
 
-  #define MR_detstack_extend_and_check(n)                                     \
+  #define MR_detstack_extend_and_check(incr)                                  \
         do {                                                                  \
             MR_Word *new_sp;                                                  \
             MR_Word *threshold;                                               \
                                                                               \
             threshold = (MR_Word *) MR_CONTEXT(MR_ctxt_detstack_zone)->       \
                 MR_zone_extend_threshold;                                     \
-            new_sp = MR_sp + (n);                                             \
+            new_sp = MR_sp + (incr);                                          \
             if (new_sp > threshold) {                                         \
                 MR_save_registers();                                          \
-                new_sp = MR_new_detstack_segment(MR_sp, n);                   \
+                new_sp = MR_new_detstack_segment(MR_sp, (incr));              \
                 MR_restore_registers();                                       \
                 MR_succip_word = (MR_Word) MR_ENTRY(MR_pop_detstack_segment); \
             }                                                                 \
             MR_sp_word = (MR_Word) new_sp;                                    \
         } while (0)
 
-  #define MR_detstack_extend_and_no_check(n)                                  \
+  #define MR_detstack_extend_and_no_check(incr)                               \
         do {                                                                  \
-            MR_sp_word = (MR_Word) (MR_sp + (n));                             \
+            MR_sp_word = (MR_Word) (MR_sp + (incr));                          \
         } while (0)
 
-  #define MR_nondetstack_extend_and_check(n)                                  \
+  /*
+  ** Check whether there is room for a new frame whose size is incr words
+  ** in the current segment of on the nondet stack, and if not, allocate
+  ** a new segment to hold it, and a sentinel frame at the bottom of that
+  ** new segment.
+  **
+  ** The prevfr argument should be a variable that holds the value that
+  ** the caller proposes to assign to the prevfr field of the new stack frame.
+  ** If this macro finds it necessary to create a new segment, it will update
+  ** this variable to point to the sentinel frame, since *that* will be
+  ** the stack frame immediately before the new frame.
+  **
+  ** The reason why we check for MR_maxfr < zone_min is that MR_maxfr may be
+  ** in a different stack segment than MR_CONTEXT(MR_ctxt_nondetstack_zone).
+  ** See the comment for MR_new_nondetstack_segment in mercury_stacks.c.
+  */
+
+  #define MR_nondetstack_extend_and_check(prevfr, incr)                       \
         do {                                                                  \
             MR_Word *new_maxfr;                                               \
             MR_Word *threshold;                                               \
-            int     incr;                                                     \
                                                                               \
             threshold = (MR_Word *) MR_CONTEXT(MR_ctxt_nondetstack_zone)->    \
                 MR_zone_extend_threshold;                                     \
-            incr = MR_NONDET_FIXED_SIZE + (n);                                \
             new_maxfr = MR_maxfr + incr;                                      \
             if (MR_maxfr < MR_CONTEXT(MR_ctxt_nondetstack_zone->MR_zone_min)  \
                 || new_maxfr > threshold)                                     \
             {                                                                 \
                 MR_save_registers();                                          \
-                MR_nondetstack_segment_extend_slow_path(MR_maxfr, incr);      \
+                new_maxfr = MR_new_nondetstack_segment(MR_maxfr, (incr));     \
                 MR_restore_registers();                                       \
-            } else {                                                          \
-                MR_maxfr_word = (MR_Word) new_maxfr;                          \
+                prevfr = new_maxfr - (incr);                                  \
             }                                                                 \
+            MR_maxfr_word = (MR_Word) new_maxfr;                              \
         } while (0)
 
   extern    MR_Word     *MR_new_detstack_segment(MR_Word *sp, int n);
-  extern    void        MR_nondetstack_segment_extend_slow_path(
-                            MR_Word *old_maxfr, int n);
+
+  /*
+  ** This function reserves a stack frame of n words on the nondet stack,
+  ** after conceptually (a) freeing any nondet stack segments that are wholly
+  ** above old_maxfr, and (b) creating a new nondet stack segment.
+  ** In practice, it will reuse an existing memory zone, if one is available.
+  ** It returns the address that should be the new value of maxfr.
+  */
+  extern    MR_Word     *MR_new_nondetstack_segment(MR_Word *old_maxfr, int n);
 
 #else   /* !MR_STACK_SEGMENTS */
 
-  #define MR_detstack_extend_and_check(n)                                     \
+  #define MR_detstack_extend_and_check(incr)                                  \
         do {                                                                  \
-            MR_sp_word = (MR_Word) (MR_sp + (n));                             \
+            MR_sp_word = (MR_Word) (MR_sp + (incr));                          \
         } while (0)
 
-  #define MR_detstack_extend_and_no_check(n)                                  \
+  #define MR_detstack_extend_and_no_check(incr)                               \
         do {                                                                  \
-            MR_sp_word = (MR_Word) (MR_sp + (n));                             \
+            MR_sp_word = (MR_Word) (MR_sp + (incr));                          \
         } while (0)
 
-  #define MR_nondetstack_extend_and_check(n)                                  \
+  #define MR_nondetstack_extend_and_check(prevfr, incr)                       \
         do {                                                                  \
-            MR_maxfr_word = (MR_Word)                                         \
-                (MR_maxfr + (MR_NONDET_FIXED_SIZE + (n)));                    \
+            MR_maxfr_word = (MR_Word) (MR_maxfr + (incr));                    \
         } while (0)
 
 #endif  /* MR_STACK_SEGMENTS */
@@ -190,16 +212,22 @@ MR_declare_entry(MR_pop_nondetstack_segment);
         MR_debugincrsp(n, MR_sp);                                             \
         MR_detstack_extend_and_check(n);                                      \
         MR_detstack_post_extend_check();                                      \
-        MR_detstack_overflow_check();                                         \
+        MR_detstack_overflow_check_msg("MR_incr_sp");                         \
         MR_collect_det_frame_stats(n);                                        \
     } while (0)
 
+/*
+** We reserve MR_stack_margin_size_words words at the end of every det stack
+** segment for leaf procedures whose stack frames fit into that many words.
+** The check is done in compiler/llds_out_instr; you can find it if you
+** search for uses of max_leaf_stack_frame_size.
+*/
 #define MR_incr_sp_leaf(n)                                                    \
     do {                                                                      \
         MR_debugincrsp(n, MR_sp);                                             \
         MR_detstack_extend_and_no_check(n);                                   \
         MR_detstack_post_extend_check();                                      \
-        MR_detstack_overflow_check();                                         \
+        MR_detstack_overflow_check_msg("MR_incr_sp_leaf");                    \
         MR_collect_det_frame_stats(n);                                        \
     } while (0)
 
@@ -207,7 +235,7 @@ MR_declare_entry(MR_pop_nondetstack_segment);
     do {                                                                      \
         MR_debugdecrsp(n, MR_sp);                                             \
         MR_sp_word = (MR_Word) (MR_sp - (n));                                 \
-        MR_detstack_underflow_check();                                        \
+        MR_detstack_underflow_check_msg("MR_decr_sp");                        \
     } while (0)
 
 #define MR_decr_sp_and_return(n)                                              \
@@ -217,7 +245,7 @@ MR_declare_entry(MR_pop_nondetstack_segment);
         return_addr = (MR_Word *) MR_stackvar(n);                             \
         MR_debugdecrsp(n, MR_sp);                                             \
         MR_sp_word = (MR_Word) (MR_sp - (n));                                 \
-        MR_detstack_underflow_check();                                        \
+        MR_detstack_underflow_check_msg("MR_decr_sp_and_return");             \
         MR_debugproceed();                                                    \
         MR_GOTO(return_addr);                                                 \
     } while (0)
@@ -260,14 +288,27 @@ MR_declare_entry(MR_pop_nondetstack_segment);
 ** All three sizes are measured in words.
 */
 
-#define MR_NONDET_TEMP_SIZE 3       /* prevfr, redoip, redofr */
-#define MR_DET_TEMP_SIZE    4       /* prevfr, redoip, redofr, detfr */
+/* prevfr, redoip, redofr */
+#define MR_NONDET_TEMP_SIZE         3
+
+/* prevfr, redoip, redofr, detfr */
+#define MR_DET_TEMP_SIZE            4
+
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY_EXTRA_SLOT
-#define MR_NONDET_FIXED_SIZE    6   /* prevfr, redoip, redofr, succip, succfr,
-                                    sp */
+/* prevfr, redoip, redofr, succip, succfr, sp */
+#define MR_NONDET_FIXED_SIZE        6
 #else
-#define MR_NONDET_FIXED_SIZE    5   /* prevfr, redoip, redofr, succip, succfr */
+/* prevfr, redoip, redofr, succip, succfr */
+#define MR_NONDET_FIXED_SIZE        5
 #endif
+
+/*
+** In grades that have stack segments, each segment has a sentinel frame
+** at the bottom. These look like ordinary frames whose succfr and succip
+** fields are not used for their usual purpose. For further documentation
+** on these fields, see the comment on MR_new_nondetstack_segment in
+** mercury_stacks.c.
+*/
 
 #define MR_SAVEVAL              (-MR_NONDET_FIXED_SIZE)
                                 /* saved values start at this offset    */
@@ -313,6 +354,12 @@ MR_declare_entry(MR_pop_nondetstack_segment);
 
 #ifdef  MR_EXTEND_STACKS_WHEN_NEEDED
 
+  /*
+  ** Note: these macros don't work in the presence of stack segments,
+  ** which is why automatic stack extension and stack segments cannot
+  ** both enabled at the same time.
+  */
+
   #define   MR_save_maxfr(lval)                                               \
             do {                                                              \
                 lval = (MR_Word) (MR_maxfr - MR_nondet_zone_min);             \
@@ -354,7 +401,8 @@ MR_declare_entry(MR_pop_nondetstack_segment);
                                                                               \
         prevfr = MR_maxfr;                                                    \
         succfr = MR_curfr;                                                    \
-        MR_nondetstack_extend_and_check(numslots);                            \
+        MR_nondetstack_extend_and_check(prevfr,                               \
+            MR_NONDET_FIXED_SIZE + (numslots));                               \
         MR_nondetstack_post_extend_check();                                   \
         MR_curfr_word = MR_maxfr_word;                                        \
         MR_prevfr_slot_word(MR_curfr) = (MR_Word) prevfr;                     \
@@ -363,7 +411,7 @@ MR_declare_entry(MR_pop_nondetstack_segment);
         MR_redofr_slot_word(MR_curfr) = MR_curfr_word;                        \
         MR_maybe_fill_table_detfr_slot();                                     \
         MR_debugmkframe(predname);                                            \
-        MR_nondetstack_overflow_check();                                      \
+        MR_nondetstack_overflow_check_msg("MR_mkframe_basic");                \
         MR_collect_non_frame_stats(numslots);                                 \
     } while (0)
 
@@ -398,13 +446,12 @@ MR_declare_entry(MR_pop_nondetstack_segment);
         MR_Word *prevfr;                                                      \
                                                                               \
         prevfr = MR_maxfr;                                                    \
-        MR_maxfr_word = (MR_Word)                                             \
-            (MR_maxfr + MR_NONDET_TEMP_SIZE);                                 \
+        MR_nondetstack_extend_and_check(prevfr, MR_NONDET_TEMP_SIZE);         \
         MR_prevfr_slot_word(MR_maxfr) = (MR_Word) prevfr;                     \
         MR_redoip_slot_word(MR_maxfr) = (MR_Word) redoip;                     \
         MR_redofr_slot_word(MR_maxfr) = MR_curfr_word;                        \
         MR_debugmktempframe();                                                \
-        MR_nondetstack_overflow_check();                                      \
+        MR_nondetstack_overflow_check_msg("MR_mktempframe");                  \
     } while (0)
 
 #define MR_mkdettempframe(redoip)                                             \
@@ -412,14 +459,13 @@ MR_declare_entry(MR_pop_nondetstack_segment);
         MR_Word *prevfr;                                                      \
                                                                               \
         prevfr = MR_maxfr;                                                    \
-        MR_maxfr_word = (MR_Word)                                             \
-            (MR_maxfr + MR_DET_TEMP_SIZE);                                    \
+        MR_nondetstack_extend_and_check(prevfr, MR_DET_TEMP_SIZE);            \
         MR_prevfr_slot_word(MR_maxfr) = (MR_Word) prevfr;                     \
         MR_redoip_slot_word(MR_maxfr) = (MR_Word) redoip;                     \
         MR_redofr_slot_word(MR_maxfr) = MR_curfr_word;                        \
         MR_tmp_detfr_slot_word(MR_maxfr) = MR_sp_word;                        \
         MR_debugmkdettempframe();                                             \
-        MR_nondetstack_overflow_check();                                      \
+        MR_nondetstack_overflow_check_msg("MR_mkdettempframe");               \
     } while (0)
 
 #define MR_succeed()                                                          \
@@ -447,8 +493,8 @@ MR_declare_entry(MR_pop_nondetstack_segment);
     do {                                                                      \
         MR_debugfail();                                                       \
         MR_maxfr_word = MR_prevfr_slot_word(MR_maxfr);                        \
-        MR_nondetstack_underflow_check();                                     \
         MR_curfr_word = MR_redofr_slot_word(MR_maxfr);                        \
+        MR_nondetstack_underflow_check_msg("MR_fail");                        \
         MR_GOTO(MR_redoip_slot(MR_maxfr));                                    \
     } while (0)
 

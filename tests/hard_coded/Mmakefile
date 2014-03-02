@@ -432,6 +432,15 @@ else
 		mutable_decl
 endif
 
+# Some tests are intended to test the handling of stack segments,
+# and would generate stack overflows in grades that don't use stack segments.
+ifeq "$(filter stseg%,$(GRADE))" ""
+	STACK_SEGMENT_PROGS =
+else
+	STACK_SEGMENT_PROGS = \
+		bug314
+endif
+
 # Mutables don't work in IL grades.
 ifeq "$(filter il%,$(GRADE))" ""
 	MUTABLE_PROGS = \
@@ -708,7 +717,8 @@ PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
 	$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
 	$(C_ONLY_PROGS) \
 	$(DOTNET_PROGS) $(JAVA_PROGS) $(SOLVER_PROGS) \
-	$(TRAILED_PROGS) $(MUTABLE_PROGS) $(TRACE_GOAL_ENV_PROGS) \
+	$(TRAILED_PROGS) $(STACK_SEGMENT_PROGS) \
+	$(MUTABLE_PROGS) $(TRACE_GOAL_ENV_PROGS) \
 	$(CTGC_PROGS) $(BIG_DATA_PROGS)
 
 #-----------------------------------------------------------------------------#

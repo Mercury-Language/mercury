@@ -12,6 +12,7 @@ MCFLAGS-bug103 =		--optimize-constructor-last-call
 MCFLAGS-bug160 =		-w --optimize-peep-mkword
 MCFLAGS-bug240 =		-O1
 MCFLAGS-bug300 =		--no-const-struct --optimize-constructor-last-call
+MCFLAGS-bug314 =		--trace deep
 MCFLAGS-checked_nondet_tailcall	= --checked-nondet-tailcalls
 MCFLAGS-checked_nondet_tailcall_noinline = --checked-nondet-tailcalls --no-inlining
 MCFLAGS-cc_and_non_cc_test = 	--no-inlining

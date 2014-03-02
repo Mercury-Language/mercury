@@ -127,12 +127,12 @@ extern  const char  *MR_dump_stack_from_layout_clique(FILE *fp,
 ** MR_dump_nondet_stack
 **
 ** This function dumps the control slots of the nondet stack.
-** If limit_addr is nonnull, dumps only frames above limit_addr.
-** If limit is nonzero, dumps at most limit frames.
+** If frame_limit is nonzero, dumps at most limit frames.
+** If line_limit is nonzero, dumps at most limit lines.
 ** The output format is not meant to be intelligible to non-implementors.
 */
 
-extern  void        MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr,
+extern  void        MR_dump_nondet_stack(FILE *fp,
                         MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit,
                         MR_Word *maxfr);
 
@@ -140,15 +140,14 @@ extern  void        MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr,
 ** MR_dump_nondet_stack_from_layout
 **
 ** This function dumps the nondet stack.
-** If limit_addr is nonnull, dumps only frames above limit_addr.
-** If limit is nonzero, dumps at most limit frames.
+** If frame_limit is nonzero, dumps at most limit frames.
+** If line_limit is nonzero, dumps at most limit lines.
 ** The output format is not meant to be intelligible to non-implementors.
 */
 
 extern  void        MR_dump_nondet_stack_from_layout(FILE *fp,
-                        MR_Word *limit_addr, MR_FrameLimit frame_limit,
-                        MR_SpecLineLimit line_limit, MR_Word *maxfr,
-                        const MR_LabelLayout *label_layout,
+                        MR_FrameLimit frame_limit, MR_SpecLineLimit line_limit,
+                        MR_Word *maxfr, const MR_LabelLayout *label_layout,
                         MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
@@ -268,21 +267,50 @@ extern  MR_StackWalkStepResult
                         const char **problem_ptr);
 
 /*
-** MR_stack_trace_bottom should be set to the address of global_success,
+** MR_stack_trace_bottom_ip should be set to the address of global_success,
 ** the label main/2 goes to on success. Stack dumps terminate when they
 ** reach a stack frame whose saved succip slot contains this address.
 */
 
-extern  MR_Code         *MR_stack_trace_bottom;
+extern  MR_Code         *MR_stack_trace_bottom_ip;
 
 /*
-** MR_nondet_stack_trace_bottom should be set to the address of the buffer
-** nondet stack frame created before calling main. Nondet stack dumps terminate
-** when they reach a stack frame whose redoip contains this address. Note that
-** the redoip and redofr slots of this frame may be hijacked.
+** The bottom nondet stack frame is created by the runtime system before
+** it calls "main/2". MR_nondet_stack_trace_bottom_fr holds the address
+** of this frame. Nondet stack dumps continue only as long as the address
+** of the frame being dumped is above this address.
+**
+** Since address comparisons with MR_nondet_stack_trace_bottom_fr make sense
+** only if the other pointer is also in the same stack segment (if the grade
+** allows stack segments), we record the identity of the nondet stack segment
+** that contains MR_nondet_stack_trace_bottom_fr in
+** MR_nondet_stack_trace_bottom_zone.
+**
+** MR_above_bottom_nondet_frame(fr) returns true for all nondet stack frames
+** that are conceptually above the bottom frame created by the runtime.
+** MR_at_or_above_bottom_nondet_frame(fr) returns true for this bottom
+** frame as well. We use these macros to prevent stack traces descending
+** into nonexistent stack frames *below* the bottom frame.
 */
 
-extern  MR_Word         *MR_nondet_stack_trace_bottom;
+extern  MR_Word         *MR_nondet_stack_trace_bottom_fr;
+#ifdef MR_STACK_SEGMENTS
+extern  MR_MemoryZone   *MR_nondet_stack_trace_bottom_zone;
+#endif
+
+#ifndef MR_STACK_SEGMENTS
+  #define   MR_above_bottom_nondet_frame(fr)                            \
+                ((fr) > MR_nondet_stack_trace_bottom_fr)
+  #define   MR_at_or_above_bottom_nondet_frame(fr)                      \
+                ((fr) >= MR_nondet_stack_trace_bottom_fr)
+#else
+  #define   MR_above_bottom_nondet_frame(fr)                            \
+                (!MR_in_zone((fr), MR_nondet_stack_trace_bottom_zone)   \
+                    || ((fr) > MR_nondet_stack_trace_bottom_fr))
+  #define   MR_at_or_above_bottom_nondet_frame(fr)                      \
+                (!MR_in_zone((fr), MR_nondet_stack_trace_bottom_zone)   \
+                    || ((fr) >= MR_nondet_stack_trace_bottom_fr))
+#endif
 
 /*
 ** The different Mercury determinisms are internally represented by integers.

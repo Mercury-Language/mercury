@@ -77,11 +77,16 @@ ENDINIT
 
 /*
 ** Sizes of data areas (including redzones), in kilobytes
-** (but we later multiply by 1024 to convert to bytes, then make sure they're
+** (but we later multiply by 1024 to convert to bytes, then make sure they are
 ** at least as big as the primary cache size then round up to the page size).
 **
+** XXX We should associate a *single* unit with each of these sizes, and
+** use that unit *consistently*; anything else is just asking for trouble.
+** To reduce the chances of trouble further, include the name of the unit
+** in the name of the variable.
+**
 ** Note that it is OK to allocate a large heap, since we will only touch
-** the part of it that we use; we're really only allocating address space,
+** the part of it that we use; we are really only allocating address space,
 ** not physical memory. But the other areas should be kept small, at least
 ** in the case when conservative GC is enabled, since the conservative GC
 ** will scan them.
@@ -91,7 +96,7 @@ ENDINIT
 ** collector.
 **
 ** Changes to MR_heap_size, MR_detstack_size or MR_nondetstack_size should be
-** reflected in the user guide.  Changes to MR_heap_size may also require
+** reflected in the user guide. Changes to MR_heap_size may also require
 ** changing MR_heap_zone_size and/or the MR_heap_margin_size, which are
 ** defined below.
 */
@@ -125,8 +130,8 @@ size_t      MR_gen_nondetstack_size =     16 * sizeof(MR_Word);
 **
 ** For accurate GC, although we start out with a big heap (32 Mb on 32-bit
 ** architectures -- see above), we don't want to touch all of it unless we
-** really need to.  So with accurate GC in LLDS grades, we start out with
-** a 28 Mb redzone, leaving an active heap size of 4Mb.  The collector
+** really need to. So with accurate GC in LLDS grades, we start out with
+** a 28 Mb redzone, leaving an active heap size of 4Mb. The collector
 ** should (XXX it currently doesn't) resize this redzone automatically at
 ** the end of each collection.
 **
@@ -163,6 +168,8 @@ size_t      MR_pnegstack_zone_size =       4 * sizeof(MR_Word);
 size_t      MR_gen_detstack_zone_size =    4 * sizeof(MR_Word);
 size_t      MR_gen_nondetstack_zone_size = 4 * sizeof(MR_Word);
 
+double      MR_heap_expansion_factor = 2.0;
+
 /*
 ** MR_heap_margin_size is used for accurate GC with the MLDS->C back-end.
 ** It is used to decide when to actually do a garbage collection.
@@ -186,19 +193,20 @@ size_t      MR_gen_nondetstack_zone_size = 4 * sizeof(MR_Word);
   size_t    MR_heap_margin_size =          7 * 1024 * sizeof(MR_Word);
 #endif
 
-double      MR_heap_expansion_factor = 2.0;
-
 /*
-** When we use stack segments, we reserve the last MR_stack_margin_size bytes
-** of each stack segment for leaf procedures. This way, leaf procedures that
-** do not need this much stack space can allocate their stack space *without*
-** incurring the cost of a test.
+** When we use stack segments, we reserve the last MR_stack_margin_size_words
+** words of each stack segment for leaf procedures. This way, leaf procedures
+** that do not need this much stack space can allocate their stack space
+** *without* incurring the cost of a test.
 **
 ** MR_stack_margin_size is never consulted directly; instead, its value is used
 ** to set the MR_zone_extend_threshold field in a stack's memory zone.
+**
+** The value of MR_stack_margin_size_words should always match the value of
+** max_leaf_stack_frame_size in compiler/llds_out_instr.m.
 */
 
-size_t      MR_stack_margin_size = 128;
+size_t      MR_stack_margin_size_words = 32;
 
 /* primary cache size to optimize for, in bytes */
 size_t      MR_pcache_size = 8192;
@@ -261,15 +269,17 @@ MR_bool     MR_force_readline = MR_FALSE;
 ** (We rely on these flags being 0 or 1 (i.e. MR_FALSE or MR_TRUE) so we can
 ** implement logical OR as bitwise OR, which is faster.)
 **
-** One condition is MR_lld_start_block calls starting with a call to a
-** predicate whose entry label matches MR_lld_start_name. Another is
-** MR_lld_start_block calls starting with a call at which the value of the
-** MR_next_call_site_dynamic global variable matches the value in
-** MR_watch_csd_addr. The third is calls whose sequence number is in a range
-** specified by MR_lld_print_more_min_max, which should point to a string
-** containing a comma-separated list of integer intervals (the last interval
-** may be open ended). The fourth is calls between debugger commands that
-** enable and disable low level messages.
+** - The first condition is MR_lld_start_block calls starting with a call to a
+**   predicate whose entry label matches MR_lld_start_name.
+** - The second condition is MR_lld_start_block calls starting with a call
+**   at which the value of the MR_next_call_site_dynamic global variable
+**   matches the value in MR_watch_csd_addr.
+** - The third condition is calls whose sequence number is in a range
+**   specified by MR_lld_print_more_min_max, which should point to a string
+**   containing a comma-separated list of integer intervals (the last interval
+**   may be open ended).
+** - The fourth is calls between debugger commands that enable and disable
+**   low level messages.
 **
 ** MR_lld_start_until and MR_lld_csd_until give the end call numbers of the
 ** blocks printed for the first two conditions. MR_lld_print_{min,max} give the
@@ -286,6 +296,7 @@ MR_bool             MR_lld_print_enabled = MR_FALSE;
 MR_bool             MR_lld_print_name_enabled = MR_FALSE;
 MR_bool             MR_lld_print_csd_enabled = MR_FALSE;
 MR_bool             MR_lld_print_region_enabled = MR_FALSE;
+MR_bool             MR_lld_print_always_enabled = MR_FALSE;
 
 const char          *MR_lld_start_name = "";    /* must not be NULL */
 unsigned            MR_lld_start_block = 100;   /* by default, print stuff */
@@ -566,20 +577,19 @@ mercury_runtime_init(int argc, char **argv)
 #if defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
     /*
     ** Setup support for reading the CPU's TSC and detect the clock speed of the
-    ** processor.  This is currently used by profiling of the parallelism
+    ** processor. This is currently used by profiling of the parallelism
     ** runtime and the threadscope support but may be used by other profiling
-    ** or timing code.  On architectures other than i386 and amd64 this is a
+    ** or timing code. On architectures other than i386 and amd64 this is a
     ** no-op.
     */
     MR_do_cpu_feature_detection();
 #endif
 
     /*
-    ** This must be done before MR_init_conservative_GC(),
-    ** to ensure that the GC's signal handler gets installed
-    ** after our signal handler.  This is needed because
-    ** our signal handler assumes that signals which it can't
-    ** handle are fatal.
+    ** This must be done before MR_init_conservative_GC(), to ensure that
+    ** the GC's signal handler gets installed after our signal handler.
+    ** This is needed because our signal handler assumes that signals
+    ** which it can't handle are fatal.
     */
 #if 1 /* XXX still some problems with this for MPS? -fjh */
 /* #ifndef MR_MPS_GC */
@@ -646,9 +656,9 @@ mercury_runtime_init(int argc, char **argv)
     ** XXX The condition here used to be
     ** #if defined(MR_HIGHLEVEL_CODE) && defined(MR_CONSERVATIVE_GC)
     ** and was part of a change by Fergus to remove an unnecessary
-    ** dependency on the complicated Mercury engine code.  Unfortunately
+    ** dependency on the complicated Mercury engine code. Unfortunately
     ** this is no longer the case because other such dependencies have
-    ** since crept in.  Using the original condition would cause hlc.par
+    ** since crept in. Using the original condition would cause hlc.par
     ** programs to immediately SEGFAULT via reference to an uninitialised
     ** Mercury engine.
     */
@@ -686,7 +696,7 @@ mercury_runtime_init(int argc, char **argv)
 #endif
 
     /*
-    ** Start up the Mercury engine.  We don't yet know how many slots will be
+    ** Start up the Mercury engine. We don't yet know how many slots will be
     ** needed for thread-local mutable values so allocate the maximum number.
     */
     MR_init_thread(MR_use_now);
@@ -857,9 +867,9 @@ MR_init_conservative_GC(void)
     ** Sometimes Mercury apps fail the GC_is_visible() test.
     ** dyn_load.c traverses the entire address space and registers
     ** all segments that could possibly have been written to, which
-    ** makes us suspect that &MR_runqueue_head is not in the registered
-    ** roots.  So we force a write to that address, which seems to make
-    ** the problem go away.
+    ** makes us suspect that &MR_runqueue_head is not in the registered roots.
+    ** So we force a write to that address, which seems to make the problem
+    ** go away.
     */
     MR_runqueue_head = NULL;
 
@@ -971,7 +981,7 @@ MR_do_init_modules_complexity(void)
 ** Given a string, parse it into arguments and create an argv vector for it.
 ** The return value is NULL if the string parses OK, or an error message
 ** if it didn't (e.g. if it contained an unterminated quoted string).
-** Also returns args, argv, and argc.  It is the caller's responsibility to
+** Also returns args, argv, and argc. It is the caller's responsibility to
 ** MR_GC_free() args and argv when they are no longer needed.
 */
 
@@ -1091,7 +1101,7 @@ MR_make_argv(const char *string,
 
 /*
 ** MR_process_args() is a function that sets some global variables from the
-** command line.  `mercury_arg[cv]' are `arg[cv]' without the program name.
+** command line. `mercury_arg[cv]' are `arg[cv]' without the program name.
 ** `progname' is program name.
 */
 
@@ -2070,8 +2080,8 @@ MR_process_options(int argc, char **argv)
 
                     /*
                     ** Particular rounding modes are only supported if the
-                    ** corresponding FE_* macro is defined.  The four below are
-                    ** the ones from C99.  C99 says that these macros
+                    ** corresponding FE_* macro is defined. The four below are
+                    ** the ones from C99  C99 says that these macros
                     ** should expand to a nonnegative value, so we use a
                     ** negative value to indicate that the selected rounding
                     ** mode is not supported by the system.
@@ -2160,12 +2170,17 @@ MR_process_options(int argc, char **argv)
 #ifdef MR_NATIVE_GC
                     MR_agc_debug        = MR_TRUE;
 #endif
+                } else if (MR_streq(MR_optarg, "A")) {
+                    MR_lld_print_always_enabled = MR_TRUE;
                 } else if (MR_streq(MR_optarg, "b")) {
                     MR_nondetstackdebug = MR_TRUE;
                 } else if (MR_streq(MR_optarg, "B")) {
                     if (sscanf(MR_optarg+1, "%u", &MR_lld_start_block) != 1) {
                         MR_usage();
                     }
+                    /* the call count will never rise above zero unless */
+                    /* we invoke the low level debugging functions at calls */
+                    MR_calldebug    = MR_TRUE;
                 } else if (MR_streq(MR_optarg, "c")) {
                     MR_calldebug    = MR_TRUE;
                 } else if (MR_streq(MR_optarg, "d")) {
@@ -2192,6 +2207,9 @@ MR_process_options(int argc, char **argv)
                     MR_lld_print_more_min_max = strdup(MR_optarg + 1);
                     MR_setup_call_intervals(&MR_lld_print_more_min_max,
                         &MR_lld_print_min, &MR_lld_print_max);
+                    /* the call count will never rise above zero unless */
+                    /* we invoke the low level debugging functions at calls */
+                    MR_calldebug    = MR_TRUE;
                 } else if (MR_optarg[0] == 'I') {
                     MR_watch_csd_start_name = strdup(MR_optarg+1);
                 } else if (MR_optarg[0] == 'j') {
@@ -2346,7 +2364,11 @@ MR_process_options(int argc, char **argv)
     }
 
     if (MR_lld_print_min > 0 || MR_lld_start_name != NULL) {
-        MR_lld_print_enabled = 0;
+        MR_lld_print_enabled = MR_FALSE;
+    }
+
+    if (MR_lld_print_always_enabled) {
+        MR_lld_print_enabled = MR_TRUE;
     }
 
     if (MR_optind != argc) {
@@ -2419,9 +2441,9 @@ void
 MR_setup_call_intervals(char **more_str_ptr,
     unsigned long *min_ptr, unsigned long *max_ptr)
 {
-    char        *more_str;
+    char            *more_str;
     unsigned long   min, max;
-    int     n;
+    int             n;
 
     more_str = *more_str_ptr;
 
@@ -2482,9 +2504,9 @@ mercury_runtime_main(void)
     **
     ** This type of construction allows us to retrieve all the information
     ** we need (exception type, address, etc) to display a "meaningful"
-    ** message to the user.  Using signal() in Win32 is less powerful,
+    ** message to the user. Using signal() in Win32 is less powerful,
     ** since we can only trap a subset of all possible exceptions, and
-    ** we can't retrieve the exception address.  The VC runtime implements
+    ** we can't retrieve the exception address. The VC runtime implements
     ** signal() by surrounding main() with a __try __except block and
     ** calling the signal handler in the __except filter, exactly the way
     ** we do it here.
@@ -2848,8 +2870,33 @@ MR_define_entry(MR_do_interpreter);
     MR_succip_word = (MR_Word) MR_LABEL(wrapper_not_reached);
     MR_mkframe("interpreter", 1, MR_LABEL(global_fail));
 
-    MR_nondet_stack_trace_bottom = MR_maxfr;
-    MR_stack_trace_bottom = MR_LABEL(global_success);
+    MR_stack_trace_bottom_ip = MR_LABEL(global_success);
+    MR_nondet_stack_trace_bottom_fr = MR_maxfr;
+#ifdef MR_STACK_SEGMENTS
+    /*
+    ** Set MR_nondet_stack_trace_bottom_zone to the zone containing MR_maxfr.
+    */
+    {
+        MR_MemoryZone   *cur_zone;
+        MR_MemoryZones  *prev_zones;
+
+        cur_zone = MR_CONTEXT(MR_ctxt_nondetstack_zone);
+        prev_zones = MR_CONTEXT(MR_ctxt_prev_nondetstack_zones);
+        while (MR_TRUE) {
+            if (MR_in_zone(MR_maxfr, cur_zone)) {
+                MR_nondet_stack_trace_bottom_zone = cur_zone;
+                break;
+            }
+
+            if (prev_zones == NULL) {
+                MR_fatal_error("MR_maxfr is not in a nondetstack zone");
+            }
+
+            cur_zone = prev_zones->MR_zones_head;
+            prev_zones = prev_zones->MR_zones_tail;
+        }
+    }
+#endif
 
 #ifdef  MR_LOWLEVEL_DEBUG
     if (MR_finaldebug) {

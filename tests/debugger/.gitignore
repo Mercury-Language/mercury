@@ -22,6 +22,8 @@
 *.res1
 *.res2
 *.res3
+*.res4
+*.res5
 *_init.c
 CLEAN
 FAILED_TESTS

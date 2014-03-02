@@ -1442,8 +1442,7 @@ MR_sched_yield(void)
 /*
 ** Check to see if any contexts that blocked on IO have become runnable.
 ** Return the number of contexts that are still blocked.
-** The parameter specifies whether or not the call to select should block
-** or not.
+** The parameter specifies whether or not the call to select should block.
 */
 static int
 MR_check_pending_contexts(MR_bool block)

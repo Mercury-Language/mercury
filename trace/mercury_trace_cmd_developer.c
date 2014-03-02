@@ -1396,12 +1396,12 @@ MR_trace_cmd_nondet_stack_2(MR_EventInfo *event_info, MR_bool detailed,
         int saved_level;
 
         saved_level = MR_trace_current_level();
-        MR_dump_nondet_stack_from_layout(MR_mdb_out, NULL, frame_limit,
-            line_limit, MR_saved_maxfr(saved_regs), layout,
+        MR_dump_nondet_stack_from_layout(MR_mdb_out, frame_limit, line_limit,
+            MR_saved_maxfr(saved_regs), layout,
             MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs));
         MR_trace_set_level(saved_level, MR_print_optionals);
     } else {
-        MR_dump_nondet_stack(MR_mdb_out, NULL, frame_limit, line_limit,
+        MR_dump_nondet_stack(MR_mdb_out, frame_limit, line_limit,
             MR_saved_maxfr(saved_regs));
     }
 }

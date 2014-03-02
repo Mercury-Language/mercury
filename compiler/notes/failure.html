@@ -92,11 +92,33 @@ does not need to find out what kind of frame it is.
 
 <p>
 
-The detfr slot is for the acurate garbage collector;
+The detfr slot is for the accurate garbage collector;
 it is never used by the backtracking mechanism.
 Therefore in the following we can and will treat all temporary frames the same.
 
 <p>
+
+In grades that support stack segments,
+the runtime system puts a sentinel frame
+at the bottom of every segment after the first.
+The sentinel frame appears as an ordinary frame,
+with all five of the usual fixed slots,
+but the two fields that ordinarily contain the success continuation
+are not used for that purpose,
+since sentinel frames do not correspond to calls, and thus cannot return.
+Instead, the succfr slot contains
+the value of the curfr abstract machine register
+at the time the sentinel frame was created,
+and the succip slot contains the address of the notreached label.
+The address of the memory zone structure
+that contains the segment the sentinel is at the bottom of
+is stored in the sentinel frame's one framevar.
+Sentinel frames can be distinguished from other ordinary frames
+by the fact that their redoip slot contains
+the address of the label in the runtime
+that pops the segment off the nondet stack.
+
+<h2> RUNTIME ACTIONS </h2>
 
 The redo() macro is implemented as
 
@@ -378,6 +400,8 @@ and sets maxfr to the value
 in the prevfr slot of the top frame (which is the temporary frame),
 which pops the temporary frame off the stack.
 
+<p>
+
 <li> Best case.
 When the code generator enters a nonlast disjunct,
 it pushes a new entry on the resume point stack
@@ -478,6 +502,8 @@ it assigns do_fail to the redoip slot of the temporary frame
 (pointed to by the stack slot), effectively removing the temporary frame.
 (We cannot generate code to pop the frame off the stack,
 since it may not be on top.)
+
+<p>
 
 <li> Best case.
 Before the code generator enters the condition,

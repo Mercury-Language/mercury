@@ -1782,9 +1782,9 @@ output_embedded_frame_addr(Info, EmbeddedFrame, !IO) :-
 
 :- func max_leaf_stack_frame_size = int.
 
-% This should be kept in sync with the value of MR_stack_margin_size
+% This should be kept in sync with the value of MR_stack_margin_size_words
 % in runtime/mercury_wrapper.c. See the documentation there.
-max_leaf_stack_frame_size = 128.
+max_leaf_stack_frame_size = 32.
 
 %----------------------------------------------------------------------------%
 %

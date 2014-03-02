@@ -162,7 +162,7 @@ MR_init_memory(void)
     MR_kilobytes_to_bytes_and_round_up(MR_global_heap_zone_size);
     MR_kilobytes_to_bytes_and_round_up(MR_debug_heap_size);
     MR_kilobytes_to_bytes_and_round_up(MR_debug_heap_zone_size);
-    /* Note that there's no need for the heap margin to be rounded up */
+    /* Note that there is no need for the heap margin to be rounded up */
     MR_heap_margin_size  = MR_heap_margin_size * 1024;
 #endif
     MR_kilobytes_to_bytes_and_round_up(MR_detstack_size);
@@ -245,7 +245,7 @@ MR_init_memory(void)
     }
 #endif
 
-    if (MR_stack_margin_size >= MR_detstack_size) {
+    if (MR_stack_margin_size_words >= (sizeof(MR_Word) * MR_detstack_size)) {
         MR_fatal_error("MR_init_memory: stack margin size far too big");
     }
 

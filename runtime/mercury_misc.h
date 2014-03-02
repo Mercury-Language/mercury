@@ -54,7 +54,7 @@ MR_external_fatal_error(const char *locn, const char *msg, ...));
 
 /*
 ** Register a function to be called (as func(data)) when the program is
-** about to be terminated due to an uncaught exception. 
+** about to be terminated due to an uncaught exception.
 */
 extern void
 MR_register_exception_cleanup(void (*func)(void *), void *data);
@@ -62,7 +62,7 @@ MR_register_exception_cleanup(void (*func)(void *), void *data);
 /*
 ** Call all the functions registered with MR_register_exception_cleanup.
 ** Should be invoked only when the program is about to be terminated
-** due to an uncaught exception. 
+** due to an uncaught exception.
 */
 extern void
 MR_perform_registered_exception_cleanups(void);
