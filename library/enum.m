@@ -27,4 +27,23 @@
 	func from_int(int) = T is semidet
 ].
 
+    % `det_from_int(I)' returns the result of `from_int(I)', but throws an
+    % exception if `from_int' fails.
+    %
+:- func det_from_int(int) = T <= enum(T).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module require.
+
+det_from_int(I) = X :-
+    ( X0 = from_int(I) ->
+        X = X0
+    ;
+        unexpected($module, $pred, "from_int failed")
+    ).
+
 %-----------------------------------------------------------------------------%

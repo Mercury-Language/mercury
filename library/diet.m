@@ -608,15 +608,6 @@ take_min_iter2(T0, MaybeX, T) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func det_from_int(int) = T <= enum(T).
-
-det_from_int(I) = X :-
-    ( X0 = from_int(I) ->
-        X = X0
-    ;
-        unexpected($module, $pred, "from_int failed")
-    ).
-
 :- pred unexpected_interval(string::in, T::in, T::in) is erroneous.
 
 unexpected_interval(PredName, X, Y) :-

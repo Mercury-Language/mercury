@@ -700,8 +700,3 @@ sbitmap_to_byte_strings(BM, NumBits, !.Strs) = !:Strs :-
         !:Strs = [ThisByteStr | !.Strs],
         !:Strs = sbitmap_to_byte_strings(BM, NumBits - NumBitsThisByte, !.Strs)
     ).
-
-:- func det_from_int(int) = bool.
-
-det_from_int(Int) =
-    ( B = from_int(Int) -> B ; throw("bitmap_simple: det_from_int failed") ).
