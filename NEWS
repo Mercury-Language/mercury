@@ -1,3 +1,12 @@
+NEWS for Mercury 14.01.1
+------------------------
+
+This is a bug-fix release.
+
+* The function string.string/1 and related functions now handle verison
+  arrays properly.
+
+
 NEWS for Mercury 14.01
 ----------------------
 
