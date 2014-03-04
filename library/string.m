@@ -27,7 +27,7 @@
 % `System.String's.  In both cases, strings are UTF-16 encoded.  A single code
 % point requires one or two 16-bit integers (code units) to encode.
 %
-% Whe Mercury is compiled to Erlang, strings are represented as Erlang
+% When Mercury is compiled to Erlang, strings are represented as Erlang
 % binaries using UTF-8 encoding.
 %
 % The builtin comparison operation on strings is also implementation dependent.
