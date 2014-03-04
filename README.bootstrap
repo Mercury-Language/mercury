@@ -41,10 +41,13 @@ further need for tarballs when building Mercury from Git.
 
 BOOTSTRAPPING
 -------------
-Once the minimal prerequisite compiler has been built, a reasonably complete
-distribution can be bootstrapped by issuing the following command sequence:
+Once the minimal prerequisite compiler has been built and installed, a
+reasonably complete distribution can be bootstrapped.  However the build
+tree must be clean or the build may fail.  Clean and then build the complete
+distribution by issuing the following command sequence:
 
 ----
+make realclean
 aclocal -I m4
 autoconf
 ./configure
@@ -65,6 +68,17 @@ components:
 
 People wanting to simply experiment with Mercury would be best-served with
 using only the `asm_fast.gc` grade or `hlc.gc` on OS X.
+
+Since building Mercury can take a long time, you may prefer to use multiple
+processors during the build process.  Adding "PARALLEL=-jN" without the
+quotes to make's command line will tell make to run N tasks at once.
+Substitute N with the number of processors in your system, or fewer if you
+want to use other processors for other tasks.  For example:
+
+----
+make PARALLEL=-j4
+sudo make PARALLEL=-j4 install
+----
 
 ALTERNATIVES TO BOOTSTRAPPING
 -----------------------------
