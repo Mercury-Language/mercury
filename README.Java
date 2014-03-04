@@ -97,7 +97,7 @@ Java compiler, but we haven't tried that yet.
 
 BUILDING THE JAVA GRADE ON WINDOWS
 
-When building the Java grade on Windows it sometimes possible for the fully
+When building the Java grade on Windows it is sometimes possible for the fully
 qualified names of some generated files to exceed the maximum path length.
 If this occurs the Mercury compiler will abort with a message like:
 
