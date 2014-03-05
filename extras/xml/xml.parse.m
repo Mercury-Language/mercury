@@ -1746,7 +1746,7 @@ children -->
 :- mode multiplicity(in, out) is det.
 
 multiplicity -->
-    opt(lit1(('?'), ('?')) or lit1(('*'), ('*')) or lit1(('+'), ('+')), '1').
+    opt(lit1(('?'), ('?')) or lit1(('*'), ('*')) or lit1(('+'), ('+')), one).
 
 %   [48]  cp ::= (Name | choice | seq) ('?' | '*' | '+')?
 

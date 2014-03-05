@@ -57,7 +57,7 @@
 	--->	mixed(list(name)).
 
 :- type multiplicity
-	--->	('1')
+ --->		one
 	;	('*')
 	;	('+')
 	;	('?')
