@@ -1068,7 +1068,7 @@ substitute_corresponding_2([S | Ss], [R | Rs], !Subst) :-
 
 apply_rec_substitution(V @ variable(Var, _), Substitution, Term) :-
     ( map.search(Substitution, Var, Replacement) ->
-        % Recursively apply the substition to the replacement.
+        % Recursively apply the substitution to the replacement.
         apply_rec_substitution(Replacement, Substitution, Term)
     ;
         Term = V

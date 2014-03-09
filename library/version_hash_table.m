@@ -839,13 +839,13 @@ equal(A, B) :-
     ( private_builtin.pointer_equal(A, B) ->
         true
     ;
-        % We cannot deconstruct a non-cononical type in this all-solutions
+        % We cannot deconstruct a non-canonical type in this all-solutions
         % context (because the unification and call to fold may fail).
         % Therefore we call num_occupants.
         NumA = num_occupants(A),
         NumB = num_occupants(B),
         NumA = NumB,
-        % Ensure that each item in A has an item in B, and beause they have
+        % Ensure that each item in A has an item in B, and because they have
         % the same number, if this is true then there is not an item in B
         % that does not match one in A.
         fold(compare_item(B), A, unit, _)

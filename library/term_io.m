@@ -268,7 +268,7 @@ term_io.read_term_with_op_table(Ops, Result, !IO) :-
     % (ie `_'):
     %   Convert the variable to an integer representation and write
     %   `_N' where N is that integer representation. This has the
-    %   advantage that such variables get printed in a cannonical
+    %   advantage that such variables get printed in a canonical
     %   way, so rearranging terms containing such variables will
     %   not effect the way they are numbered (this includes breaking
     %   up a term and printing the pieces separately).

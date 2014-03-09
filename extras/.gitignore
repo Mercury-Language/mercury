@@ -1,3 +1,4 @@
+tags
 Mercury
 Mercury/**
 *.mh
@@ -5,7 +6,9 @@ Mercury/**
 *.err
 *.jar
 *.exe
+*.bat
+*.dll
+*.lib
 lib*.dylib
-lib*.dll
 lib*.so
 lib*.a

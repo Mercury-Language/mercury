@@ -1,5 +1,5 @@
-NEWS since Mercury 14.01
-------------------------
+NEWS since Mercury 14.01.x
+--------------------------
 
 Changes to the Mercury standard library:
 
@@ -17,6 +17,15 @@ Changes to the extras distribution:
 
 * We have added support for Unicode and other enhancements to the lex and
   regex libraries.  Thanks to Sebastian Godelet.
+
+
+NEWS for Mercury 14.01.1
+------------------------
+
+This is a bug-fix release.
+
+* The function string.string/1 and related functions now handle version
+  arrays properly.
 
 
 NEWS for Mercury 14.01

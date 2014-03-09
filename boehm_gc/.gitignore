@@ -10,6 +10,7 @@ mercury_boehm_gc_conf.h
 gc.lib
 libgc.lib
 *.a
+*.obj
 *.exe
 *.ilk
 *.o

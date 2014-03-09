@@ -27,7 +27,7 @@
 % `System.String's.  In both cases, strings are UTF-16 encoded.  A single code
 % point requires one or two 16-bit integers (code units) to encode.
 %
-% Whe Mercury is compiled to Erlang, strings are represented as Erlang
+% When Mercury is compiled to Erlang, strings are represented as Erlang
 % binaries using UTF-8 encoding.
 %
 % The builtin comparison operation on strings is also implementation dependent.
@@ -1119,6 +1119,7 @@
 :- implementation.
 
 :- import_module array.
+:- import_module bitmap.
 :- import_module bool.
 :- import_module float.
 :- import_module int.
@@ -1129,6 +1130,7 @@
 :- import_module std_util.
 :- import_module type_desc.
 :- import_module univ.
+:- import_module version_array.
 
 :- use_module rtti_implementation.
 :- use_module term_io.
@@ -6390,6 +6392,8 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         add_revstring(string.int_to_string(Int), !Rs)
     ; dynamic_cast(X, Float) ->
         add_revstring(string.float_to_string(Float), !Rs)
+    ; dynamic_cast(X, Bitmap) ->
+        add_revstring(term_io.quoted_string(bitmap.to_string(Bitmap)), !Rs)
     ; dynamic_cast(X, TypeDesc) ->
         type_desc_to_revstrings(TypeDesc, !Rs)
     ; dynamic_cast(X, TypeCtorDesc) ->
@@ -6423,6 +6427,16 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         det_dynamic_cast(X, Array),
         array_to_revstrings(NonCanon, OpsTable, Array, !Rs)
     ;
+        type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
+        ArgTypes = [ElemType],
+        type_ctor_name(TypeCtor) = "version_array",
+        type_ctor_module_name(TypeCtor) = "version_array"
+    ->
+        has_type(Elem, ElemType),
+        same_version_array_elem_type(VersionArray, Elem),
+        det_dynamic_cast(X, VersionArray),
+        version_array_to_revstrings(NonCanon, OpsTable, VersionArray, !Rs)
+    ;
         % Check if the type is private_builtin.type_info/1.
         % See the comments above for array.array/1.
         %
@@ -6442,6 +6456,11 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
 :- pred same_array_elem_type(array(T)::unused, T::unused) is det.
 
 same_array_elem_type(_, _).
+
+:- pred same_version_array_elem_type(version_array(T)::unused, T::unused)
+    is det.
+
+same_version_array_elem_type(_, _).
 
 :- pred same_private_builtin_type(private_builtin.type_info::unused,
     T::unused) is det.
@@ -6699,6 +6718,20 @@ array_to_revstrings(NonCanon, OpsTable, Array, !Rs) :-
     add_revstring("array(", !Rs),
     value_to_revstrings(NonCanon, OpsTable,
         array.to_list(Array) `with_type` list(T), !Rs),
+    add_revstring(")", !Rs).
+
+:- pred version_array_to_revstrings(noncanon_handling, ops.table, version_array(T),
+    revstrings, revstrings).
+:- mode version_array_to_revstrings(in(do_not_allow), in, in, in, out) is det.
+:- mode version_array_to_revstrings(in(canonicalize), in, in, in, out) is det.
+:- mode version_array_to_revstrings(in(include_details_cc), in, in, in, out)
+    is cc_multi.
+:- mode version_array_to_revstrings(in, in, in, in, out) is cc_multi.
+
+version_array_to_revstrings(NonCanon, OpsTable, Array, !Rs) :-
+    add_revstring("version_array(", !Rs),
+    value_to_revstrings(NonCanon, OpsTable,
+        version_array.to_list(Array) `with_type` list(T), !Rs),
     add_revstring(")", !Rs).
 
 :- pred type_desc_to_revstrings(type_desc::in,

@@ -580,7 +580,7 @@ fi
 
 if test "$BOOTSTRAP_MC" = ""
 then
-    # If we do not have a working boostrap Mercury compiler, then work out
+    # If we do not have a working bootstrap Mercury compiler, then work out
     # whether any .c files we do have were compiled with --highlevel code or
     # not.  At this point we only check a single file -- this is enough to
     # allow us to determine a value for BOOTSTRAP_GRADE below -- we check
@@ -797,15 +797,7 @@ AC_SUBST(MKTEMP)
 AC_PATH_PROG(INSTALL_INFO,install-info)
 AC_SUBST(INSTALL_INFO)
 #-----------------------------------------------------------------------------#
-# texi2dvi is currently broken on cygwin
-case "$host" in
-    *-cygwin*)
-        TEXI2DVI=""
-        ;;
-    *)
-        AC_PATH_PROG(TEXI2DVI,texi2dvi)
-        ;;
-esac
+AC_PATH_PROG(TEXI2DVI,texi2dvi)
 AC_SUBST(TEXI2DVI)
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(PDFTEX, pdftex)
@@ -893,6 +885,22 @@ esac
 
 #-----------------------------------------------------------------------------#
 
+# Test whether specific command line options are supported by the C compiler.
+# We do this by attempting to compile a program with the option whose presence
+# we are testing for.  This will not work for MSVC since it prints a warning
+# about any unknown options and then proceeds as normal.  There is no way to
+# tell it to treat that warning as an error (in particular, this warning is not
+# affected by the -WX option).
+
+if test "$MERCURY_HAVE_MSVC" = "yes"
+then
+    
+    CFLAGS_FOR_ERRMSG_FILTER=""
+    CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS=
+    CFLAGS_FOR_NO_REORDER_FUNCTIONS=""
+
+else
+
 cat > conftest.c << EOF
     struct MR_TypeInfo_Almost_Struct {
         int MR_almost;
@@ -923,40 +931,41 @@ cat > conftest.c << EOF
     }
 EOF
 
-AC_MSG_CHECKING(whether we can make error messages filterable)
-if $CC -ftrack-macro-expansion=0 -fno-diagnostics-show-caret -c conftest.c \
-    </dev/null >&AC_FD_CC 2>&1
-then
-    AC_MSG_RESULT(yes)
-    CFLAGS_FOR_ERRMSG_FILTER="-ftrack-macro-expansion=0 -fno-diagnostics-show-caret"
-else
-    AC_MSG_RESULT(no)
-    CFLAGS_FOR_ERRMSG_FILTER=""
-fi
+    AC_MSG_CHECKING(whether we can make error messages filterable)
+    if $CC -ftrack-macro-expansion=0 -fno-diagnostics-show-caret -c conftest.c \
+        </dev/null >&AC_FD_CC 2>&1
+    then
+        AC_MSG_RESULT(yes)
+        CFLAGS_FOR_ERRMSG_FILTER="-ftrack-macro-expansion=0 -fno-diagnostics-show-caret"
+    else
+        AC_MSG_RESULT(no)
+        CFLAGS_FOR_ERRMSG_FILTER=""
+    fi
 
-AC_MSG_CHECKING(whether we can use -fno-move-loop-invariants)
-if $CC -fno-move-loop-invariants -c conftest.c \
-    </dev/null >&AC_FD_CC 2>&1
-then
-    AC_MSG_RESULT(yes)
-    CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS="-fno-move-loop-invariants"
-else
-    AC_MSG_RESULT(no)
-    CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS=
-fi
+    AC_MSG_CHECKING(whether we can use -fno-move-loop-invariants)
+    if $CC -fno-move-loop-invariants -c conftest.c \
+        </dev/null >&AC_FD_CC 2>&1
+    then
+        AC_MSG_RESULT(yes)
+        CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS="-fno-move-loop-invariants"
+    else
+        AC_MSG_RESULT(no)
+        CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS=
+    fi
 
-AC_MSG_CHECKING(whether we can use -fno-reorder-functions)
-if $CC -fno-reorder-functions -c conftest.c \
-    </dev/null >&AC_FD_CC 2>&1
-then
-    AC_MSG_RESULT(yes)
-    CFLAGS_FOR_NO_REORDER_FUNCTIONS="-fno-reorder-functions"
-else
-    AC_MSG_RESULT(no)
-    CFLAGS_FOR_NO_REORDER_FUNCTIONS=""
-fi
+    AC_MSG_CHECKING(whether we can use -fno-reorder-functions)
+    if $CC -fno-reorder-functions -c conftest.c \
+        </dev/null >&AC_FD_CC 2>&1
+    then
+        AC_MSG_RESULT(yes)
+        CFLAGS_FOR_NO_REORDER_FUNCTIONS="-fno-reorder-functions"
+    else
+        AC_MSG_RESULT(no)
+        CFLAGS_FOR_NO_REORDER_FUNCTIONS=""
+    fi
 
-rm -f conftest*
+    rm -f conftest*
+fi
 
 #-----------------------------------------------------------------------------#
 # Make sure we search /usr/local/include and /usr/local/lib for

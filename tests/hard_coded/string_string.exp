@@ -2,3 +2,5 @@ leaf
 branch(leaf, leaf)
 [1, 2, 3]
 1.234 - 5
+array([1, 2, 3])
+version_array([1, 2, 3])
