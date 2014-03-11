@@ -40,7 +40,7 @@ main(!IO) :-
                 ReadResult = ok(StartString),
                 Start = string.words(StartString),
                 ( if solve_sudoku(Start, Solution) then
-                    write_solution(9, Solution, !IO)
+                    write_solution(9, 1, Solution, !IO)
                   else
                     io.write_string("No solution.\n", !IO)
                 )
@@ -169,19 +169,27 @@ label_board([EqNeq | EqNeqs], [X | Xs]) :-
 
     % Pretty-print a solution.
     %
-:- pred write_solution(int::in, list(int)::in, io::di, io::uo) is det.
+:- pred write_solution(int::in, int::in, list(int)::in, io::di, io::uo) is det.
 
-write_solution(_, [], !IO) :-
+write_solution(_, _, [], !IO) :-
     io.nl(!IO).
 
-write_solution(N, [X | Xs], !IO) :-
+write_solution(N, R, [X | Xs], !IO) :-
     ( if N = 0 then
         io.nl(!IO),
-        write_solution(9, [X | Xs], !IO)
+        ( if   (R mod 3) = 0
+          then io.nl(!IO)
+          else true
+        ),
+        write_solution(9, R + 1, [X | Xs], !IO)
       else
         io.write_int(X, !IO),
         io.write_char(' ', !IO),
-        write_solution(N - 1, Xs, !IO)
+        ( if   (N mod 3) = 1
+          then io.write_char(' ', !IO)
+          else true
+        ),
+        write_solution(N - 1, R + 1, Xs, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
