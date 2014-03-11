@@ -185,7 +185,7 @@
     library.version(Version::out, Fullarch::out),
     [will_not_call_mercury, promise_pure],
 "
-    Version = runtime.Constants.MR_VERSIONi;
+    Version = runtime.Constants.MR_VERSION;
     Fullarch = runtime.Constants.MR_FULLARCH;
 ").
 
@@ -201,8 +201,8 @@
     library.version(Version::out, Fullarch::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Version = MR_VERSION
-    Fullarch = MR_FULLARCH
+    Version = << ?MR_VERSION >>,
+    Fullarch = << ?MR_FULLARCH >>
 ").
 
 %---------------------------------------------------------------------------%
