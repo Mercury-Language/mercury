@@ -3,16 +3,34 @@ The current implementation does not yet completely implement the
 Mercury language.  The main limitations of the current implementation
 are the following:
 
-* We do not allow definite aliasing in the mode system.
-  Without this, partially instantiated modes are unusable, 
-  and so are nested unique modes :-(
+* We do not allow definite aliasing in the mode system.  Without this,
+  partially instantiated modes are unusable, and so are nested unique modes
+  :-(  When partial instantiation appears to work it is only by chance.  The
+  detailed explanation is:
+
+    If you unify a variable and an argument of a term, then when either the
+    variable or the argument is bound, the other should be bound to the same
+    thing. In the absence of alias tracking, this won't happen. The only
+    situation in which this is ok is if "the other" does not exist anymore,
+    which the current compiler can be sure about only if its scope is
+    restricted to the unification.
+
+    Even for code in which a free variable's scope is confined to its
+    unification with a free variable in a term, the code generators are
+    not guaranteed to handle the resulting partially instantiated terms
+    correctly, simply because they weren't *designed* to. Mantis bug 311
+    shows this very clearly. Though I can imagine the different backends
+    misbehaving differently on such code. Some may even generate correct
+    code by accident :-)
+
+  This does not affect support for instantiation state subtyping.
 
 * The compiler does not yet use structure reuse or compile-time
   garbage collection to exploit unique modes :-(
 
 * Type inference and mode inference are a bit imperfect.
 
-We are working on eliminating all of these problems. 
+We hope to eliminate all of these problems.
 
 In addition, design decisions in this implementation have imposed the
 following fixed limits:
