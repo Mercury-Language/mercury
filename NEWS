@@ -8,6 +8,11 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* We have added variants of the process_options predicates to the getopt
+  and getopt_io modules that represent errors using a type instead of strings.
+  A new function, option_error_to_string/1, can be used to convert values
+  of the new error type into strings.
+
 * We have added the print_line and write_line family of predicates to the
   io module.  These behave like the print and write predicates, but also
   write a terminating newline character.
