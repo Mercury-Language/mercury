@@ -1536,7 +1536,7 @@ make_write_dependency_file_and_timestamp_list([Head | Tail], !IO) :-
 
 dependency_status(Globals, Dep, Status, !Info, !IO) :-
     (
-        Dep = dep_file(FileName, _),
+        Dep = dep_file(_FileName, _),
         DepStatusMap = !.Info ^ dependency_status,
         ( version_hash_table.search(DepStatusMap, Dep, StatusPrime) ->
             Status = StatusPrime
@@ -1548,9 +1548,7 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
             ;
                 MaybeTimestamp = error(Error),
                 Status = deps_status_error,
-                io.write_string("** Error: file `", !IO),
-                io.write_string(FileName, !IO),
-                io.write_string("' not found: ", !IO),
+                io.write_string("** Error: ", !IO),
                 io.write_string(Error, !IO),
                 io.nl(!IO)
             ),
