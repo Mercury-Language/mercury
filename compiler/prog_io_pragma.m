@@ -45,6 +45,7 @@
 
 :- import_module libs.rat.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_io.
@@ -1374,6 +1375,21 @@ parse_foreign_decl_is_local(term.functor(Functor, [], _), IsLocal) :-
         IsLocal = foreign_decl_is_exported
     ).
 
+:- pred parse_foreign_literal_or_include(term::in,
+    foreign_literal_or_include::out) is semidet.
+
+parse_foreign_literal_or_include(Term, LiteralOrInclude) :-
+    Term = term.functor(Functor, Args, _),
+    (
+        Functor = term.string(Code),
+        Args = [],
+        LiteralOrInclude = literal(Code)
+    ;
+        Functor = term.atom("include_file"),
+        Args = [term.functor(term.string(FileName), [], _)],
+        LiteralOrInclude = include_file(FileName)
+    ).
+
 parse_foreign_language(term.functor(term.string(String), _, _), Lang) :-
     globals.convert_foreign_language(String, Lang).
 parse_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
@@ -1581,17 +1597,17 @@ parse_pragma_foreign_decl_pragma(_ModuleName, PragmaName, PragmaTerms,
         )
     ->
         ( parse_foreign_language(LangTerm, ForeignLanguage) ->
-            ( HeaderTerm = term.functor(term.string(HeaderCode), [], _) ->
+            ( parse_foreign_literal_or_include(HeaderTerm, LiteralOrInclude) ->
                 FDInfo = pragma_info_foreign_decl(ForeignLanguage, IsLocal,
-                    HeaderCode),
+                    LiteralOrInclude),
                 Pragma = pragma_foreign_decl(FDInfo),
                 ItemPragma = item_pragma_info(user, Pragma, Context, SeqNum),
                 Item = item_pragma(ItemPragma),
                 MaybeItem = ok1(Item)
             ;
                 Pieces = InvalidDeclPieces ++
-                    [words("expected string for foreign declaration code."),
-                    nl],
+                    [words("expected string or include_file for"),
+                    words("foreign declaration code."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(HeaderTerm),
                         [always(Pieces)])]),
@@ -1639,11 +1655,11 @@ parse_pragma_foreign_code_pragma(_ModuleName, PragmaName, PragmaTerms,
                     [always(LangPieces)])]),
             LangSpecs = [LangSpec]
         ),
-        ( CodeTerm = term.functor(term.string(CodePrime), [], _) ->
+        ( parse_foreign_literal_or_include(CodeTerm, CodePrime) ->
             Code = CodePrime,
             CodeSpecs = []
         ;
-            Code = "",                  % Dummy, ignored when CodeSpecs \= []
+            Code = literal(""), % Dummy, ignored when CodeSpecs \= []
             CodePieces = InvalidDeclPrefix ++
                 [words("expected string for foreign code."), nl],
             CodeSpec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -1673,9 +1689,9 @@ parse_pragma_foreign_code_pragma(_ModuleName, PragmaName, PragmaTerms,
 
     % This predicate parses foreign_proc pragmas.
     %
-:- pred parse_pragma_foreign_proc_pragma(module_name::in, string::in,
-    list(term)::in, term::in, varset::in, prog_context::in, int::in,
-    maybe1(item)::out) is det.
+:- pred parse_pragma_foreign_proc_pragma(module_name::in,
+    string::in, list(term)::in, term::in, varset::in, prog_context::in,
+    int::in, maybe1(item)::out) is det.
 
 parse_pragma_foreign_proc_pragma(ModuleName, PragmaName, PragmaTerms,
         ErrorTerm, VarSet, Context, SeqNum, MaybeItem) :-
@@ -1745,7 +1761,7 @@ parse_pragma_ordinary_foreign_proc_pragma(ModuleName, VarSet, SecondTerm,
         Code = CodePrime,
         CodeSpecs = []
     ;
-        Code = "",                                      % Dummy
+        Code = "", % Dummy
         CodePieces = InvalidDeclPrefix ++
             [words("invalid fourth argument,"),
             words("expecting string containing foreign code."), nl],
@@ -1788,8 +1804,8 @@ parse_pragma_ordinary_foreign_proc_pragma(ModuleName, VarSet, SecondTerm,
     Specs = CodeSpecs ++ FlagsSpecs,
     (
         Specs = [],
-        Impl = fc_impl_ordinary(Code, yes(CodeContext)),
-        parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm,
+        Impl = fp_impl_ordinary(Code, yes(CodeContext)),
+        parse_pragma_foreign_proc(ModuleName, Flags, PredAndVarsTerm,
             Impl, VarSet, Context, SeqNum, MaybeItem)
     ;
         Specs = [_ | _],
@@ -2269,11 +2285,11 @@ parse_ordinary_despite_detism(
 
     % Parse a pragma foreign_proc declaration.
     %
-:- pred parse_pragma_foreign_code(module_name::in,
-    pragma_foreign_proc_attributes::in, term::in, pragma_foreign_code_impl::in,
+:- pred parse_pragma_foreign_proc(module_name::in,
+    pragma_foreign_proc_attributes::in, term::in, pragma_foreign_proc_impl::in,
     varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
+parse_pragma_foreign_proc(ModuleName, Flags, PredAndVarsTerm0,
         PragmaImpl, VarSet, Context, SeqNum, MaybeItem) :-
     ContextPieces = [words("In"), quote(":- pragma foreign_proc"),
         words("declaration:")],

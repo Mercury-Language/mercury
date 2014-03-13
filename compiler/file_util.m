@@ -73,9 +73,10 @@
 
     % Write to a given filename, giving appropriate status messages
     % and error messages if the file cannot be opened.
+    % This will catch and report include_file_error exceptions.
     %
 :- pred output_to_file(globals::in, string::in,
-    pred(io, io)::in(pred(di, uo) is det), io::di, io::uo) is det.
+    pred(io, io)::in(pred(di, uo) is det), bool::out, io::di, io::uo) is det.
 
     % Same as output_to_file above, but allow the writing predicate
     % to generate something, and if it succeeds, return its result.
@@ -83,6 +84,12 @@
 :- pred output_to_file_return_result(globals::in, string::in,
     pred(T, io, io)::in(pred(out, di, uo) is det),
     maybe(T)::out, io::di, io::uo) is det.
+
+    % Write the contents of the given file into the current output stream.
+    % Throws include_file_error exceptions for errors relating to the
+    % include file.
+    %
+:- pred write_include_file_contents(string::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -127,7 +134,12 @@
 :- import_module libs.options.
 
 :- import_module dir.
+:- import_module exception.
 :- import_module string.
+:- import_module univ.
+
+:- type include_file_error
+    --->    include_file_error(string, string).
 
 %-----------------------------------------------------------------------------%
 
@@ -230,9 +242,16 @@ make_path_name_noncanon(Dir, FileName, PathName) :-
 
 %-----------------------------------------------------------------------------%
 
-output_to_file(Globals, FileName, Action, !IO) :-
+output_to_file(Globals, FileName, Action, Succeeded, !IO) :-
     NewAction = (pred(0::out, di, uo) is det --> Action),
-    output_to_file_return_result(Globals, FileName, NewAction, _Result, !IO).
+    output_to_file_return_result(Globals, FileName, NewAction, Result, !IO),
+    (
+        Result = yes(_),
+        Succeeded = yes
+    ;
+        Result = no,
+        Succeeded = no
+    ).
 
 output_to_file_return_result(Globals, FileName, Action, Result, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -244,13 +263,30 @@ output_to_file_return_result(Globals, FileName, Action, Result, !IO) :-
     io.open_output(FileName, Res, !IO),
     (
         Res = ok(FileStream),
-        io.set_output_stream(FileStream, OutputStream, !IO),
-        Action(ActionResult, !IO),
-        io.set_output_stream(OutputStream, _, !IO),
+        io.set_output_stream(FileStream, OrigOutputStream, !IO),
+        promise_equivalent_solutions [TryResult, !:IO] (
+            try_io(Action, TryResult, !IO)
+        ),
+        io.set_output_stream(OrigOutputStream, _, !IO),
         io.close_output(FileStream, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
-        Result = yes(ActionResult)
+        (
+            TryResult = succeeded(ActionResult),
+            Result = yes(ActionResult)
+        ;
+            TryResult = exception(Univ),
+            ( univ_to_type(Univ, IncludeError) ->
+                IncludeError = include_file_error(IncludeFileName, Detail),
+                string.format("can't open `%s' for input: %s",
+                    [s(IncludeFileName), s(Detail)], ErrorMessage),
+                maybe_write_string(Verbose, "\n", !IO),
+                report_error(ErrorMessage, !IO),
+                Result = no
+            ;
+                rethrow(TryResult)
+            )
+        )
     ;
         Res = error(_),
         maybe_write_string(Verbose, "\n", !IO),
@@ -259,6 +295,70 @@ output_to_file_return_result(Globals, FileName, Action, Result, !IO) :-
         report_error(ErrorMessage, !IO),
         Result = no
     ).
+
+%-----------------------------------------------------------------------------%
+
+write_include_file_contents(FileName, !IO) :-
+    FollowSymLinks = yes,
+    io.file_type(FollowSymLinks, FileName, MaybeType, !IO),
+    (
+        MaybeType = ok(Type),
+        ( possibly_regular_file(Type) ->
+            io.output_stream(OutputStream, !IO),
+            write_include_file_contents_2(OutputStream, FileName, !IO)
+        ;
+            throw(include_file_error(FileName, "Not a regular file"))
+        )
+    ;
+        MaybeType = error(Error),
+        Msg = string.remove_prefix_if_present("io.file_type failed: ",
+            io.error_message(Error)),
+        throw(include_file_error(FileName, Msg))
+    ).
+
+:- pred write_include_file_contents_2(io.output_stream::in, string::in,
+    io::di, io::uo) is det.
+
+write_include_file_contents_2(OutputStream, FileName, !IO) :-
+    io.open_input(FileName, OpenRes, !IO),
+    (
+        OpenRes = ok(InputStream),
+        promise_equivalent_solutions [TryResult, !:IO] (
+            try_io(copy_stream(OutputStream, InputStream), TryResult, !IO)
+        ),
+        io.close_input(InputStream, !IO),
+        (
+            TryResult = succeeded(ok)
+        ;
+            TryResult = succeeded(error(Error)),
+            throw(Error)
+        ;
+            TryResult = exception(_),
+            rethrow(TryResult)
+        )
+    ;
+        OpenRes = error(Error),
+        throw(include_file_error(FileName, io.error_message(Error)))
+    ).
+
+:- pred copy_stream(io.output_stream::in,
+    io.input_stream::in, io.res::out, io::di, io::uo) is det.
+
+copy_stream(OutputStream, InputStream, Res, !IO) :-
+    io.read_file_as_string(InputStream, ReadRes, !IO),
+    (
+        ReadRes = ok(InputContents),
+        io.write_string(OutputStream, InputContents, !IO),
+        Res = ok
+    ;
+        ReadRes = error(_Partial, Error),
+        Res = error(Error)
+    ).
+
+:- pred possibly_regular_file(io.file_type::in) is semidet.
+
+possibly_regular_file(regular_file).
+possibly_regular_file(unknown).
 
 %-----------------------------------------------------------------------------%
 

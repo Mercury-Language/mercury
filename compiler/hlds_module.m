@@ -385,11 +385,12 @@
     module_info::in, module_info::out) is det.
 
 :- pred module_add_foreign_decl(foreign_language::in,
-    foreign_decl_is_local::in, string::in, prog_context::in,
-    module_info::in, module_info::out) is det.
-
-:- pred module_add_foreign_body_code(foreign_language::in, string::in,
+    foreign_decl_is_local::in, foreign_literal_or_include::in,
     prog_context::in, module_info::in, module_info::out) is det.
+
+:- pred module_add_foreign_body_code(foreign_language::in,
+    foreign_literal_or_include::in, prog_context::in,
+    module_info::in, module_info::out) is det.
 
 :- pred module_add_foreign_import_module(foreign_language::in, module_name::in,
     prog_context::in, module_info::in, module_info::out) is det.

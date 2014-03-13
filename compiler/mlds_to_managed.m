@@ -41,12 +41,14 @@
 :- implementation.
 
 :- import_module backend_libs.c_util.
+:- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ilds.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_util.
 :- import_module ml_backend.mlds_to_il.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
@@ -83,8 +85,9 @@ output_csharp_code(Globals, MLDS, !IO) :-
     output_csharp_header_code(Globals, !IO),
 
     % Get the foreign code for the required language.
+    module_source_filename(Globals, ModuleName, SourceFileName, !IO),
     ForeignCode = map.lookup(AllForeignCode, lang_csharp),
-    generate_foreign_header_code(Globals, ForeignCode, !IO),
+    generate_foreign_header_code(Globals, SourceFileName, ForeignCode, !IO),
 
     % Output the namespace.
     generate_namespace_details(ClassName, NameSpaceFmtStr, Namespace),
@@ -96,7 +99,7 @@ output_csharp_code(Globals, MLDS, !IO) :-
     io.write_strings(["\npublic class " ++ wrapper_class_name, "{\n"], !IO),
 
     % Output the contents of pragma foreign_code declarations.
-    generate_foreign_code(Globals, ForeignCode, !IO),
+    generate_foreign_code(Globals, SourceFileName, ForeignCode, !IO),
 
     io.nl(!IO),
 
@@ -160,22 +163,22 @@ output_csharp_header_code(Globals, !IO) :-
         SignAssembly = no
     ).
 
-:- pred generate_foreign_header_code(globals::in, mlds_foreign_code::in,
-    io::di, io::uo) is det.
+:- pred generate_foreign_header_code(globals::in, string::in,
+    mlds_foreign_code::in, io::di, io::uo) is det.
 
-generate_foreign_header_code(Globals, ForeignCode, !IO) :-
+generate_foreign_header_code(Globals, SourceFileName, ForeignCode, !IO) :-
     ForeignCode = mlds_foreign_code(RevHeaderCode, _RevImports,
         _RevBodyCode, _ExportDefns),
 
     HeaderCode = list.reverse(RevHeaderCode),
     io.write_list(HeaderCode, "\n",
         % XXX Ignoring _IsLocal may not be the right thing to do.
-        (pred(foreign_decl_code(CodeLang, _IsLocal, Code, Context)::in,
-                !.IO::di, !:IO::uo) is det :-
-            output_context(Globals, Context, !IO),
+        (pred(ForeignDeclCode::in, !.IO::di, !:IO::uo) is det :-
+            ForeignDeclCode = foreign_decl_code(CodeLang, _IsLocal,
+                LiteralOrInclude, Context),
             ( CodeLang = lang_csharp ->
-                io.write_string(Code, !IO),
-                io.nl(!IO)
+                output_foreign_literal_or_include(Globals, SourceFileName,
+                    LiteralOrInclude, Context, !IO)
             ;
                 sorry($module, $pred, "wrong foreign code")
             ),
@@ -200,25 +203,41 @@ generate_namespace_details(ClassName, NameSpaceFmtStr, Namespace) :-
         Namespace = Namespace0
     ).
 
-:- pred generate_foreign_code(globals::in, mlds_foreign_code::in,
+:- pred generate_foreign_code(globals::in, string::in, mlds_foreign_code::in,
     io::di, io::uo) is det.
 
-generate_foreign_code(Globals, ForeignCode, !IO) :-
+generate_foreign_code(Globals, SourceFileName, ForeignCode, !IO) :-
     ForeignCode = mlds_foreign_code(_RevHeaderCode, _RevImports,
         RevBodyCode, _ExportDefns),
     BodyCode = list.reverse(RevBodyCode),
     io.write_list(BodyCode, "\n",
-        (pred(user_foreign_code(CodeLang, Code, Context)::in,
+        (pred(user_foreign_code(CodeLang, LiteralOrInclude, Context)::in,
                 !.IO::di, !:IO::uo) is det :-
-            output_context(Globals, Context, !IO),
             ( CodeLang = lang_csharp ->
-                io.write_string(Code, !IO),
-                io.nl(!IO)
+                output_foreign_literal_or_include(Globals, SourceFileName,
+                    LiteralOrInclude, Context, !IO)
             ;
                 sorry($module, $pred, "wrong foreign code")
             ),
             output_reset_context(Globals, !IO)
     ), !IO).
+
+:- pred output_foreign_literal_or_include(globals::in, string::in,
+    foreign_literal_or_include::in, prog_context::in, io::di, io::uo) is det.
+
+output_foreign_literal_or_include(Globals, SourceFileName,
+        LiteralOrInclude, Context, !IO) :-
+    (
+        LiteralOrInclude = literal(Code),
+        output_context(Globals, Context, !IO),
+        io.write_string(Code, !IO)
+    ;
+        LiteralOrInclude = include_file(IncludeFileName),
+        make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
+        output_context(Globals, context(IncludePath, 1), !IO),
+        write_include_file_contents(IncludePath, !IO)
+    ),
+    io.nl(!IO).
 
 :- pred generate_method_code(globals::in, il_data_rep::in, mlds_defn::in,
     io::di, io::uo) is det.

@@ -19,6 +19,7 @@
 :- import_module erl_backend.elds.
 :- import_module hlds.hlds_module.
 
+:- import_module bool.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
@@ -29,7 +30,8 @@
     % and exported foreign_decls to the corresponding .hrl file.
     % The file names are determined by the module name.
     %
-:- pred output_elds(module_info::in, elds::in, io::di, io::uo) is det.
+:- pred output_elds(module_info::in, elds::in, bool::out, io::di, io::uo)
+    is det.
 
     % Output a Erlang function definition to the current output stream.
     % This is exported for debugging purposes.
@@ -56,7 +58,6 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 
-:- import_module bool.
 :- import_module char.
 :- import_module int.
 :- import_module library.
@@ -71,20 +72,34 @@
 
 %-----------------------------------------------------------------------------%
 
-output_elds(ModuleInfo, ELDS, !IO) :-
+output_elds(ModuleInfo, ELDS, Succeeded, !IO) :-
     Name = ELDS ^ elds_name,
     module_info_get_globals(ModuleInfo, Globals),
+    module_source_filename(Globals, Name, SourceFileName, !IO),
     module_name_to_file_name(Globals, Name, ".erl", do_create_dirs,
-        SourceFileName, !IO),
+        TargetFileName, !IO),
     module_name_to_file_name(Globals, Name, ".hrl", do_create_dirs,
         HeaderFileName, !IO),
-    output_to_file(Globals, SourceFileName, output_erl_file(ModuleInfo, ELDS,
-        SourceFileName), !IO),
-    % Avoid updating the timestamp on the `.hrl' file if it hasn't changed.
-    TmpHeaderFileName = HeaderFileName ++ ".tmp",
-    output_to_file(Globals, TmpHeaderFileName, output_hrl_file(Name, ELDS,
-        SourceFileName), !IO),
-    update_interface(Globals, HeaderFileName, !IO).
+    output_to_file(Globals, TargetFileName,
+        output_erl_file(ModuleInfo, ELDS, SourceFileName),
+        TargetCodeSucceeded, !IO),
+    (
+        TargetCodeSucceeded = yes,
+        % Avoid updating the timestamp on the `.hrl' file if it hasn't changed.
+        TmpHeaderFileName = HeaderFileName ++ ".tmp",
+        output_to_file(Globals, TmpHeaderFileName,
+            output_hrl_file(Name, ELDS, SourceFileName),
+            Succeeded, !IO),
+        (
+            Succeeded = yes,
+            update_interface(Globals, HeaderFileName, !IO)
+        ;
+            Succeeded = no
+        )
+    ;
+        TargetCodeSucceeded = no,
+        Succeeded = no
+    ).
 
 :- pred output_erl_file(module_info::in, elds::in, string::in,
     io::di, io::uo) is det.
@@ -119,7 +134,7 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     set.fold(output_include_header_ann(Globals), Imports, !IO),
 
     % Output foreign declarations.
-    list.foldl(output_foreign_decl_code, ForeignDecls, !IO),
+    list.foldl(output_foreign_decl_code(SourceFileName), ForeignDecls, !IO),
 
     % Write directives for mkinit_erl.
     ErlangModuleNameStr = erlang_module_name_to_str(ModuleName),
@@ -146,7 +161,7 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     io.write_string("% ENDINIT\n", !IO),
 
     % Output foreign code written in Erlang.
-    list.foldl(output_foreign_body_code, ForeignBodies, !IO),
+    list.foldl(output_foreign_body_code(SourceFileName), ForeignBodies, !IO),
 
     % Output the main wrapper, if any.
     (
@@ -391,20 +406,38 @@ output_include_header_ann(Globals, Import, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_foreign_decl_code(foreign_decl_code::in, io::di, io::uo) is det.
+:- pred output_foreign_decl_code(string::in, foreign_decl_code::in,
+    io::di, io::uo) is det.
 
-output_foreign_decl_code(foreign_decl_code(_Lang, _IsLocal, Code, Context),
+output_foreign_decl_code(SourceFileName, ForeignDecl, !IO) :-
+    ForeignDecl = foreign_decl_code(_Lang, _IsLocal, LiteralOrInclude,
+        Context),
+    output_foreign_literal_or_include(SourceFileName, LiteralOrInclude,
+        Context, !IO).
+
+:- pred output_foreign_body_code(string::in, foreign_body_code::in,
+    io::di, io::uo) is det.
+
+output_foreign_body_code(SourceFileName, ForeignBody, !IO) :-
+    ForeignBody = foreign_body_code(_Lang, LiteralOrInclude, Context),
+    output_foreign_literal_or_include(SourceFileName, LiteralOrInclude,
+        Context, !IO).
+
+:- pred output_foreign_literal_or_include(string::in,
+    foreign_literal_or_include::in, context::in, io::di, io::uo) is det.
+
+output_foreign_literal_or_include(SourceFileName, LiteralOrInclude, Context,
         !IO) :-
-    output_file_directive(Context, !IO),
-    io.write_string(Code, !IO),
-    io.nl(!IO),
-    reset_file_directive(!IO).
-
-:- pred output_foreign_body_code(foreign_body_code::in, io::di, io::uo) is det.
-
-output_foreign_body_code(foreign_body_code(_Lang, Code, Context), !IO) :-
-    output_file_directive(Context, !IO),
-    io.write_string(Code, !IO),
+    (
+        LiteralOrInclude = literal(Code),
+        output_file_directive(Context, !IO),
+        io.write_string(Code, !IO)
+    ;
+        LiteralOrInclude = include_file(IncludeFileName),
+        make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
+        output_file_directive(context(IncludePath, 1), !IO),
+        write_include_file_contents(IncludePath, !IO)
+    ),
     io.nl(!IO),
     reset_file_directive(!IO).
 
@@ -1292,20 +1325,21 @@ output_hrl_file(ModuleName, ELDS, SourceFileName, !IO) :-
     ], !IO),
 
     ForeignDecls = ELDS ^ elds_foreign_decls,
-    list.foldl(output_exported_foreign_decl_code, ForeignDecls, !IO),
+    list.foldl(output_exported_foreign_decl_code(SourceFileName), ForeignDecls,
+        !IO),
 
     io.write_string("-endif.\n", !IO).
 
-:- pred output_exported_foreign_decl_code(foreign_decl_code::in,
+:- pred output_exported_foreign_decl_code(string::in, foreign_decl_code::in,
     io::di, io::uo) is det.
 
-output_exported_foreign_decl_code(ForeignDecl, !IO) :-
+output_exported_foreign_decl_code(SourceFileName, ForeignDecl, !IO) :-
     IsLocal = ForeignDecl ^ fdecl_is_local,
     (
         IsLocal = foreign_decl_is_local
     ;
         IsLocal = foreign_decl_is_exported,
-        output_foreign_decl_code(ForeignDecl, !IO)
+        output_foreign_decl_code(SourceFileName, ForeignDecl, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

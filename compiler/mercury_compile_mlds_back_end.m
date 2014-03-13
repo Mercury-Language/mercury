@@ -38,13 +38,17 @@
 :- pred maybe_mark_static_terms(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred mlds_to_high_level_c(globals::in, mlds::in, io::di, io::uo) is det.
+:- pred mlds_to_high_level_c(globals::in, mlds::in, bool::out,
+    io::di, io::uo) is det.
 
-:- pred mlds_to_java(module_info::in, mlds::in, io::di, io::uo) is det.
+:- pred mlds_to_java(module_info::in, mlds::in, bool::out,
+    io::di, io::uo) is det.
 
-:- pred mlds_to_csharp(module_info::in, mlds::in, io::di, io::uo) is det.
+:- pred mlds_to_csharp(module_info::in, mlds::in, bool::out,
+    io::di, io::uo) is det.
 
-:- pred mlds_to_il_assembler(globals::in, mlds::in, io::di, io::uo) is det.
+:- pred mlds_to_il_assembler(globals::in, mlds::in, bool::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -376,41 +380,41 @@ mlds_gen_rtti_data(HLDS, !MLDS) :-
 % The `--high-level-code' MLDS output pass.
 %
 
-mlds_to_high_level_c(Globals, MLDS, !IO) :-
+mlds_to_high_level_c(Globals, MLDS, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting MLDS to C...\n", !IO),
-    output_c_mlds(MLDS, Globals, "", !IO),
+    output_c_mlds(MLDS, Globals, "", Succeeded, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to C.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-mlds_to_java(HLDS, MLDS, !IO) :-
+mlds_to_java(HLDS, MLDS, Succeeded, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting MLDS to Java...\n", !IO),
-    output_java_mlds(HLDS, MLDS, !IO),
+    output_java_mlds(HLDS, MLDS, Succeeded, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to Java.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-mlds_to_csharp(HLDS, MLDS, !IO) :-
+mlds_to_csharp(HLDS, MLDS, Succeeded, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting MLDS to C#...\n", !IO),
-    output_csharp_mlds(HLDS, MLDS, !IO),
+    output_csharp_mlds(HLDS, MLDS, Succeeded, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to C#.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-mlds_to_il_assembler(Globals, MLDS, !IO) :-
+mlds_to_il_assembler(Globals, MLDS, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting MLDS to IL...\n", !IO),
-    output_mlds_via_ilasm(Globals, MLDS, !IO),
+    output_mlds_via_ilasm(Globals, MLDS, Succeeded, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to IL.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -430,7 +434,7 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
         maybe_write_string(Verbose, "% Dumping out MLDS as C...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         DumpSuffix = "_dump." ++ StageNumStr ++ "-" ++ StageName,
-        output_c_mlds(MLDS, Globals, DumpSuffix, !IO),
+        output_c_mlds(MLDS, Globals, DumpSuffix, _Succeeded, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         true

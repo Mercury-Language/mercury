@@ -627,7 +627,7 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
     ;
         GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
             Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl),
-        PragmaImpl = fc_impl_ordinary(ForeignCode, MaybeContext),
+        PragmaImpl = fp_impl_ordinary(ForeignCode, MaybeContext),
         (
             MaybeContext = yes(ContextToUse)
         ;

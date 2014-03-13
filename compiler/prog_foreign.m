@@ -47,14 +47,14 @@
     --->    foreign_decl_code(
                 fdecl_lang          :: foreign_language,
                 fdecl_is_local      :: foreign_decl_is_local,
-                fdecl_code          :: string,
+                fdecl_code          :: foreign_literal_or_include,
                 fdecl_context       :: prog_context
             ).
 
 :- type foreign_body_code
     --->    foreign_body_code(
                 fbody_lang          :: foreign_language,
-                fbody_code          :: string,
+                fbody_code          :: foreign_literal_or_include,
                 fbody_context       :: prog_context
             ).
 
@@ -82,11 +82,12 @@
 
     % Some code from a `pragma foreign_code' declaration that is not
     % associated with a given procedure.
+    % XXX any difference from foreign_body_code?
     %
 :- type user_foreign_code
     --->    user_foreign_code(
                 foreign_language,   % language of this code
-                string,             % code
+                foreign_literal_or_include,
                 term.context        % source code location
             ).
 

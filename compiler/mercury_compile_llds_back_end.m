@@ -600,7 +600,7 @@ maybe_generate_stack_layouts(HLDS, LLDS, Verbose, Stats, !GlobalData, !IO) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
+llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
         FactTableObjFiles, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -694,26 +694,33 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
         AllocSites, AllocIdMap, ChunkedModules,
         UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
 
-    output_llds_file(Globals, ModuleName, CFile, Verbose, Stats, !IO),
-
-    C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
-    export.produce_header_file(HLDS, C_ExportDecls, ModuleName, !IO),
-
-    % Finally we invoke the C compiler to compile it.
-    globals.lookup_bool_option(Globals, target_code_only, TargetCodeOnly),
+    output_llds_file(Globals, CFile, TargetCodeSucceeded, !IO),
     (
-        TargetCodeOnly = no,
-        io.output_stream(OutputStream, !IO),
-        llds_c_to_obj(Globals, OutputStream, ModuleName, CompileOK, !IO),
-        module_get_fact_table_files(HLDS, FactTableBaseFiles),
-        list.map2_foldl(compile_fact_table_file(Globals, OutputStream),
-            FactTableBaseFiles, FactTableObjFiles, FactTableCompileOKs, !IO),
-        bool.and_list([CompileOK | FactTableCompileOKs], AllOk),
-        maybe_set_exit_status(AllOk, !IO),
-        bool.not(AllOk, CompileErrors)
+        TargetCodeSucceeded = yes,
+
+        C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
+        export.produce_header_file(HLDS, C_ExportDecls, ModuleName, !IO),
+
+        % Finally we invoke the C compiler to compile it.
+        globals.lookup_bool_option(Globals, target_code_only, TargetCodeOnly),
+        (
+            TargetCodeOnly = no,
+            io.output_stream(OutputStream, !IO),
+            llds_c_to_obj(Globals, OutputStream, ModuleName, CompileOK, !IO),
+            module_get_fact_table_files(HLDS, FactTableBaseFiles),
+            list.map2_foldl(compile_fact_table_file(Globals, OutputStream),
+                FactTableBaseFiles, FactTableObjFiles, FactTableCompileOKs,
+                !IO),
+            bool.and_list([CompileOK | FactTableCompileOKs], Succeeded),
+            maybe_set_exit_status(Succeeded, !IO)
+        ;
+            TargetCodeOnly = yes,
+            Succeeded = yes,
+            FactTableObjFiles = []
+        )
     ;
-        TargetCodeOnly = yes,
-        CompileErrors = no,
+        TargetCodeSucceeded = no,
+        Succeeded = no,
         FactTableObjFiles = []
     ).
 
@@ -771,10 +778,10 @@ make_decl_guards(ModuleName, StartGuard, EndGuard) :-
     Define = decl_guard(ModuleName),
     Start = "#ifndef " ++ Define ++ "\n#define " ++ Define ++ "\n",
     End = "\n#endif",
-    StartGuard = foreign_decl_code(lang_c, foreign_decl_is_exported, Start,
-        term.context_init),
-    EndGuard = foreign_decl_code(lang_c, foreign_decl_is_exported, End,
-        term.context_init).
+    StartGuard = foreign_decl_code(lang_c, foreign_decl_is_exported,
+        literal(Start), term.context_init),
+    EndGuard = foreign_decl_code(lang_c, foreign_decl_is_exported,
+        literal(End), term.context_init).
 
 :- pred make_foreign_import_header_code(globals::in,
     foreign_import_module_info::in, foreign_decl_code::out,
@@ -789,7 +796,7 @@ make_foreign_import_header_code(Globals, ForeignImportModule, Include, !IO) :-
             HeaderFileName, !IO),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
-            IncludeString, Context)
+            literal(IncludeString), Context)
     ;
         Lang = lang_csharp,
         sorry($module, $pred, ":- import_module not yet implemented: " ++
@@ -833,21 +840,12 @@ combine_chunks_2([Chunk | Chunks], ModuleName, Num, [Module | Modules]) :-
     Num1 = Num + 1,
     combine_chunks_2(Chunks, ModuleName, Num1, Modules).
 
-:- pred output_llds_file(globals::in, module_name::in, c_file::in,
-    bool::in, bool::in, io::di, io::uo) is det.
+:- pred output_llds_file(globals::in, c_file::in, bool::out, io::di, io::uo)
+    is det.
 
-output_llds_file(Globals, ModuleName, LLDS0, Verbose, Stats, !IO) :-
-    maybe_write_string(Verbose, "% Writing output to `", !IO),
-    module_name_to_file_name(Globals, ModuleName, ".c", do_create_dirs,
-        FileName, !IO),
-    maybe_write_string(Verbose, FileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
+output_llds_file(Globals, LLDS0, Succeeded, !IO) :-
     transform_llds(Globals, LLDS0, LLDS),
-    output_llds(Globals, LLDS, !IO),
-    maybe_write_string(Verbose, " done.\n", !IO),
-    maybe_flush_output(Verbose, !IO),
-    maybe_report_stats(Stats, !IO).
+    output_llds(Globals, LLDS, Succeeded, !IO).
 
 :- pred llds_c_to_obj(globals::in, io.output_stream::in, module_name::in,
     bool::out, io::di, io::uo) is det.

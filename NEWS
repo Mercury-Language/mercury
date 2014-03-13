@@ -1,6 +1,11 @@
 NEWS since Mercury 14.01.x
 --------------------------
 
+Changes to the Mercury language:
+
+* We have added an extension to include external files
+  in pragma foreign_decl and pragma foreign_code declarations.
+
 Changes to the Mercury standard library:
 
 * We have added the print_line and write_line family of predicates to the

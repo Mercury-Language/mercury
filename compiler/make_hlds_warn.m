@@ -48,7 +48,7 @@
     % Mercury variable names into identifiers for that foreign language).
     %
 :- pred warn_singletons_in_pragma_foreign_proc(module_info::in,
-    pragma_foreign_code_impl::in, foreign_language::in,
+    pragma_foreign_proc_impl::in, foreign_language::in,
     list(maybe(pair(string, mer_mode)))::in, prog_context::in,
     simple_call_id::in, pred_id::in, proc_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -485,8 +485,8 @@ add_warn_spec(Spec, !Info) :-
 warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
         Args, Context, SimpleCallId, PredId, ProcId, !Specs) :-
     LangStr = foreign_language_string(Lang),
-    PragmaImpl = fc_impl_ordinary(C_Code, _),
-    c_code_to_name_list(C_Code, C_CodeList),
+    PragmaImpl = fp_impl_ordinary(Code, _),
+    c_code_to_name_list(Code, C_CodeList),
     list.filter_map(var_is_unmentioned(C_CodeList), Args, UnmentionedVars),
     (
         UnmentionedVars = []

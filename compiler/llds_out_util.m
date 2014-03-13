@@ -34,6 +34,7 @@
     --->    llds_out_info(
                 lout_module_name                :: module_name,
                 lout_mangled_module_name        :: string,
+                lout_source_file_name           :: string,
                 lout_internal_label_to_layout   :: map(label,
                                                     layout_slot_name),
                 lout_entry_label_to_layout      :: map(label, data_id),
@@ -58,7 +59,7 @@
                 lout_globals                    :: globals
             ).
 
-:- func init_llds_out_info(module_name, globals,
+:- func init_llds_out_info(module_name, string, globals,
     map(label, layout_slot_name), map(label, data_id),
     map(pred_proc_id, layout_slot_name),
     map(alloc_site_id, layout_slot_name)) = llds_out_info.
@@ -113,7 +114,7 @@
 
 %----------------------------------------------------------------------------%
 
-init_llds_out_info(ModuleName, Globals,
+init_llds_out_info(ModuleName, SourceFileName, Globals,
         InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap,
         AllocSiteMap) = Info :-
     MangledModuleName = sym_name_mangle(ModuleName),
@@ -134,7 +135,7 @@ init_llds_out_info(ModuleName, Globals,
     globals.lookup_bool_option(Globals, use_macro_for_redo_fail,
         UseMacroForRedoFail),
     globals.get_trace_level(Globals, TraceLevel),
-    Info = llds_out_info(ModuleName, MangledModuleName,
+    Info = llds_out_info(ModuleName, MangledModuleName, SourceFileName,
         InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap,
         AllocSiteMap,
         AutoComments, LineNumbers,

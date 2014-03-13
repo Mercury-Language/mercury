@@ -1852,7 +1852,7 @@ polymorphism_process_foreign_proc(PredInfo, GoalExpr0, GoalInfo0,
     conj_list_to_goal(GoalList, GoalInfo0, Goal).
 
 :- pred polymorphism_process_foreign_proc_args(pred_info::in, bool::in,
-    pragma_foreign_code_impl::in, list(prog_var)::in, list(foreign_arg)::out)
+    pragma_foreign_proc_impl::in, list(prog_var)::in, list(foreign_arg)::out)
     is det.
 
 polymorphism_process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars,
@@ -1906,7 +1906,7 @@ polymorphism_process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars,
     make_foreign_args(Vars, ArgInfos, OrigArgTypes, Args).
 
 :- pred foreign_proc_add_typeclass_info(bool::in, mer_mode::in,
-    pragma_foreign_code_impl::in, tvarset::in, prog_constraint::in,
+    pragma_foreign_proc_impl::in, tvarset::in, prog_constraint::in,
     pair(maybe(pair(string, mer_mode)), box_policy)::out) is det.
 
 foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
@@ -1921,7 +1921,7 @@ foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
     % in the C code fragment, don't pass the variable to the C code at all.
     (
         CanOptAwayUnnamed = yes,
-        foreign_code_does_not_use_variable(Impl, ConstraintVarName)
+        foreign_proc_does_not_use_variable(Impl, ConstraintVarName)
     ->
         MaybeArgName = no
     ;
@@ -1929,7 +1929,7 @@ foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
     ).
 
 :- pred foreign_proc_add_typeinfo(bool::in, mer_mode::in,
-    pragma_foreign_code_impl::in, tvarset::in, tvar::in,
+    pragma_foreign_proc_impl::in, tvarset::in, tvar::in,
     pair(maybe(pair(string, mer_mode)), box_policy)::out) is det.
 
 foreign_proc_add_typeinfo(CanOptAwayUnnamed, Mode, Impl, TypeVarSet, TVar,
@@ -1940,7 +1940,7 @@ foreign_proc_add_typeinfo(CanOptAwayUnnamed, Mode, Impl, TypeVarSet, TVar,
         % in the C code fragment, don't pass the variable to the C code at all.
         (
             CanOptAwayUnnamed = yes,
-            foreign_code_does_not_use_variable(Impl, C_VarName)
+            foreign_proc_does_not_use_variable(Impl, C_VarName)
         ->
             MaybeArgName = no
         ;
@@ -1950,15 +1950,15 @@ foreign_proc_add_typeinfo(CanOptAwayUnnamed, Mode, Impl, TypeVarSet, TVar,
         MaybeArgName = no
     ).
 
-:- pred foreign_code_does_not_use_variable(pragma_foreign_code_impl::in,
+:- pred foreign_proc_does_not_use_variable(pragma_foreign_proc_impl::in,
     string::in) is semidet.
 
-foreign_code_does_not_use_variable(Impl, VarName) :-
+foreign_proc_does_not_use_variable(Impl, VarName) :-
     % XXX This test used to be turned off with the semidet_fail, as it caused
     % the compiler to abort when compiling declarative_execution.m in stage2,
     % but this is no longer the case.
     % semidet_fail,
-    \+ foreign_code_uses_variable(Impl, VarName).
+    \+ foreign_proc_uses_variable(Impl, VarName).
 
 :- func underscore_and_tvar_name(tvarset, tvar) = string.
 

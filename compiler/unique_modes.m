@@ -675,7 +675,7 @@ unique_modes_check_goal_switch(Var, CanFail, Cases0, GoalInfo0, GoalExpr,
 :- pred unique_modes_check_goal_call_foreign_proc(
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in,
-    maybe(trace_expr(trace_runtime))::in, pragma_foreign_code_impl::in,
+    maybe(trace_expr(trace_runtime))::in, pragma_foreign_proc_impl::in,
     hlds_goal_info::in, hlds_goal_expr::out,
     mode_info::in, mode_info::out) is det.
 

@@ -136,7 +136,7 @@
     list(pragma_var)::in, sym_name::in, pred_or_func::in, prog_context::in,
     module_info::in, module_info::out,
     pragma_foreign_proc_attributes::in, pragma_foreign_proc_attributes::out,
-    pragma_foreign_code_impl::in, pragma_foreign_code_impl::out) is det.
+    pragma_foreign_proc_impl::in, pragma_foreign_proc_impl::out) is det.
 
     % The name of the #define which can be used to guard declarations with
     % to prevent entities being declared twice.
@@ -215,7 +215,7 @@ extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
 :- pred extrude_pragma_implementation_2(
     foreign_language::in, foreign_language::in,
     module_info::in, module_info::out,
-    pragma_foreign_code_impl::in, pragma_foreign_code_impl::out) is det.
+    pragma_foreign_proc_impl::in, pragma_foreign_proc_impl::out) is det.
 
     % This isn't finished yet, and we probably won't implement it for C
     % calling MC++.  For C calling normal C++ we would generate a proxy

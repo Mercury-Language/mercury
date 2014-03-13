@@ -1580,38 +1580,41 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         (
             Target = target_il,
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
+            mlds_to_il_assembler(Globals, MLDS, TargetCodeSucceeded, !IO),
             (
-                TargetCodeOnly = yes,
-                mlds_to_il_assembler(Globals, MLDS, !IO)
-            ;
-                TargetCodeOnly = no,
+                TargetCodeSucceeded = yes,
+                TargetCodeOnly = no
+            ->
                 HasMain = mlds_has_main(MLDS),
-                mlds_to_il_assembler(Globals, MLDS, !IO),
                 io.output_stream(OutputStream, !IO),
                 il_assemble(OutputStream, ModuleName, HasMain,
                     Globals, Succeeded, !IO),
                 maybe_set_exit_status(Succeeded, !IO)
+            ;
+                Succeeded = TargetCodeSucceeded
             ),
             ExtraObjFiles = []
         ;
             Target = target_csharp,
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
-            mlds_to_csharp(!.HLDS, MLDS, !IO),
+            mlds_to_csharp(!.HLDS, MLDS, Succeeded, !IO),
             ExtraObjFiles = []
         ;
             Target = target_java,
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
-            mlds_to_java(!.HLDS, MLDS, !IO),
+            mlds_to_java(!.HLDS, MLDS, TargetCodeSucceeded, !IO),
             (
-                TargetCodeOnly = yes
-            ;
-                TargetCodeOnly = no,
+                TargetCodeSucceeded = yes,
+                TargetCodeOnly = no
+            ->
                 io.output_stream(OutputStream, !IO),
                 module_name_to_file_name(Globals, ModuleName, ".java",
                     do_not_create_dirs, JavaFile, !IO),
                 compile_java_files(OutputStream, [JavaFile],
                     Globals, Succeeded, !IO),
                 maybe_set_exit_status(Succeeded, !IO)
+            ;
+                Succeeded = TargetCodeSucceeded
             ),
             ExtraObjFiles = []
         ;
@@ -1619,11 +1622,11 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             (
                 HighLevelCode = yes,
                 mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
-                mlds_to_high_level_c(Globals, MLDS, !IO),
+                mlds_to_high_level_c(Globals, MLDS, TargetCodeSucceeded, !IO),
                 (
-                    TargetCodeOnly = yes
-                ;
-                    TargetCodeOnly = no,
+                    TargetCodeSucceeded = yes,
+                    TargetCodeOnly = no
+                ->
                     module_name_to_file_name(Globals, ModuleName, ".c",
                         do_not_create_dirs, C_File, !IO),
                     get_linked_target_type(Globals, TargetType),
@@ -1633,15 +1636,17 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                         do_create_dirs, O_File, !IO),
                     io.output_stream(OutputStream, !IO),
                     do_compile_c_file(OutputStream, PIC,
-                        C_File, O_File, Globals, CompileOK, !IO),
-                    maybe_set_exit_status(CompileOK, !IO)
+                        C_File, O_File, Globals, Succeeded, !IO),
+                    maybe_set_exit_status(Succeeded, !IO)
+                ;
+                    Succeeded = TargetCodeSucceeded
                 ),
                 ExtraObjFiles = []
             ;
                 HighLevelCode = no,
                 llds_backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO),
                 llds_output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
-                    _CompileErrors, ExtraObjFiles, !IO)
+                    Succeeded, ExtraObjFiles, !IO)
             )
         ;
             Target = target_x86_64,
@@ -1654,17 +1659,24 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             % than stdout.
             io.stdout_stream(Stdout, !IO),
             output_x86_64_asm(Stdout, X86_64_Asm, !IO),
+            Succeeded = yes,
             ExtraObjFiles = []
         ;
             Target = target_erlang,
             erlang_backend(!.HLDS, ELDS, !DumpInfo, !IO),
-            elds_to_erlang(!.HLDS, ELDS, !IO),
+            elds_to_erlang(!.HLDS, ELDS, Succeeded, !IO),
             ExtraObjFiles = []
         ),
-        recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
-            MaybeTimestamps, !IO),
-        FindTimestampFiles(ModuleName, TimestampFiles, !IO),
-        list.foldl(touch_datestamp(Globals), TimestampFiles, !IO)
+        (
+            Succeeded = yes,
+            recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
+                MaybeTimestamps, !IO),
+            FindTimestampFiles(ModuleName, TimestampFiles, !IO),
+            list.foldl(touch_datestamp(Globals), TimestampFiles, !IO)
+        ;
+            Succeeded = no
+            % An error should have been reported earlier.
+        )
     ;
         % If the number of errors is > 0, make sure that the compiler
         % exits with a non-zero exit status.

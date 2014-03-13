@@ -39,7 +39,7 @@
 :- pred generate_foreign_proc_code(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in,
-    maybe(trace_expr(trace_runtime))::in, pragma_foreign_code_impl::in,
+    maybe(trace_expr(trace_runtime))::in, pragma_foreign_proc_impl::in,
     hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
@@ -362,7 +362,7 @@
 generate_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl, GoalInfo, Code,
         !CI) :-
-    PragmaImpl = fc_impl_ordinary(C_Code, Context),
+    PragmaImpl = fp_impl_ordinary(C_Code, Context),
     (
         MaybeTraceRuntimeCond = no,
         CanOptAwayUnnamedArgs = yes,

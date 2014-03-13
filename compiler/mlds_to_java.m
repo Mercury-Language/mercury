@@ -70,11 +70,13 @@
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
 
+:- import_module bool.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_java_mlds(module_info::in, mlds::in, io::di, io::uo) is det.
+:- pred output_java_mlds(module_info::in, mlds::in, bool::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -108,7 +110,6 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module char.
 :- import_module cord.
 :- import_module digraph.
@@ -127,7 +128,7 @@
 
 %-----------------------------------------------------------------------------%
 
-output_java_mlds(ModuleInfo, MLDS, !IO) :-
+output_java_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     % Note that the Java file name that we use for modules in the
     % Mercury standard library do not include a "mercury." prefix;
     % that's why we don't call mercury_module_name_to_mlds here.
@@ -137,7 +138,7 @@ output_java_mlds(ModuleInfo, MLDS, !IO) :-
         JavaSourceFile, !IO),
     Indent = 0,
     output_to_file(Globals, JavaSourceFile,
-        output_java_src_file(ModuleInfo, Indent, MLDS), !IO).
+        output_java_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -388,9 +389,10 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % library/private_builtin.m they contain static constants
     % that will get used in the RTTI definitions.
     module_info_get_globals(ModuleInfo, Globals),
-    Info = init_java_out_info(ModuleInfo, AddrOfMap),
-    output_src_start(Globals, Info, Indent, ModuleName, Imports, ForeignDecls,
-        Defns, !IO),
+    module_source_filename(Globals, ModuleName, SourceFileName, !IO),
+    Info = init_java_out_info(ModuleInfo, SourceFileName, AddrOfMap),
+    output_src_start(Info, Indent, ModuleName, Imports, ForeignDecls, Defns,
+        !IO),
     io.write_list(ForeignBodyCode, "\n", output_java_body_code(Info, Indent),
         !IO),
 
@@ -443,10 +445,11 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     io::di, io::uo) is det.
 
 output_java_decl(Info, Indent, DeclCode, !IO) :-
-    DeclCode = foreign_decl_code(Lang, _IsLocal, Code, Context),
+    DeclCode = foreign_decl_code(Lang, _IsLocal, LiteralOrInclude, Context),
     (
         Lang = lang_java,
-        write_string_with_context_block(Info, Indent, Code, Context, !IO)
+        output_java_foreign_literal_or_include(Info, Indent,
+            LiteralOrInclude, Context, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
@@ -460,11 +463,12 @@ output_java_decl(Info, Indent, DeclCode, !IO) :-
     user_foreign_code::in, io::di, io.state::uo) is det.
 
 output_java_body_code(Info, Indent, UserForeignCode, !IO) :-
-    UserForeignCode = user_foreign_code(Lang, Code, Context),
+    UserForeignCode = user_foreign_code(Lang, LiteralOrInclude, Context),
     % Only output Java code.
     (
         Lang = lang_java,
-        write_string_with_context_block(Info,  Indent, Code, Context, !IO)
+        output_java_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
+            Context, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
@@ -472,6 +476,26 @@ output_java_body_code(Info, Indent, UserForeignCode, !IO) :-
         ; Lang = lang_erlang
         ),
         sorry($module, $pred, "foreign code other than Java")
+    ).
+
+:- pred output_java_foreign_literal_or_include(java_out_info::in,
+    indent::in, foreign_literal_or_include::in, prog_context::in,
+    io::di, io::uo) is det.
+
+output_java_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
+        Context, !IO) :-
+    (
+        LiteralOrInclude = literal(Code),
+        write_string_with_context_block(Info, Indent, Code, Context, !IO)
+    ;
+        LiteralOrInclude = include_file(IncludeFile),
+        SourceFileName = Info ^ joi_source_filename,
+        make_include_file_path(SourceFileName, IncludeFile, IncludePath),
+        output_context(Info, marker_begin_block, context(IncludePath, 1), !IO),
+        write_include_file_contents(IncludePath, !IO),
+        io.nl(!IO),
+        % We don't have the true end context readily available.
+        output_context(Info, marker_end_block, Context, !IO)
     ).
 
     % Get the foreign code for Java.
@@ -1991,13 +2015,13 @@ output_env_var_definition(Indent, EnvVarName, !IO) :-
 % Code to output the start and end of a source file.
 %
 
-:- pred output_src_start(globals::in, java_out_info::in, indent::in,
+:- pred output_src_start(java_out_info::in, indent::in,
     mercury_module_name::in, mlds_imports::in, list(foreign_decl_code)::in,
     list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_src_start(Globals, Info, Indent, MercuryModuleName, Imports,
-        ForeignDecls, Defns, !IO) :-
-    output_auto_gen_comment(Globals, MercuryModuleName, !IO),
+output_src_start(Info, Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
+        !IO) :-
+    output_auto_gen_comment(Info, !IO),
     indent_line(Indent, !IO),
     io.write_string("/* :- module ", !IO),
     prog_out.write_sym_name(MercuryModuleName, !IO),
@@ -2094,13 +2118,11 @@ output_debug_class_init(ModuleName, State, !IO) :-
     % Output a Java comment saying that the file was automatically
     % generated and give details such as the compiler version.
     %
-:- pred output_auto_gen_comment(globals::in, mercury_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_auto_gen_comment(java_out_info::in, io::di, io::uo) is det.
 
-output_auto_gen_comment(Globals, ModuleName, !IO)  :-
+output_auto_gen_comment(Info, !IO)  :-
     library.version(Version, Fullarch),
-    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
-        SourceFileName, !IO),
+    SourceFileName = Info ^ joi_source_filename,
     io.write_string("//\n//\n// Automatically generated from ", !IO),
     io.write_string(SourceFileName, !IO),
     io.write_string(" by the Mercury Compiler,\n", !IO),
@@ -3906,7 +3928,8 @@ output_statements(Info, Indent, FuncInfo, [Statement | Statements],
 
 output_statement(Info, Indent, FuncInfo,
         statement(Statement, Context), ExitMethods, !IO) :-
-    output_context(Info, marker_comment, Context, !IO),
+    ProgContext = mlds_get_prog_context(Context),
+    output_context(Info, marker_comment, ProgContext, !IO),
     output_stmt(Info, Indent, FuncInfo, Statement, Context,
         ExitMethods, !IO).
 
@@ -5169,13 +5192,12 @@ mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
                 % Mercury developers.
 
 :- pred output_context(java_out_info::in, context_marker::in,
-    mlds_context::in, io::di, io::uo) is det.
+    prog_context::in, io::di, io::uo) is det.
 
-output_context(Info, Marker, Context, !IO) :-
+output_context(Info, Marker, ProgContext, !IO) :-
     LineNumbers = Info ^ joi_line_numbers,
     (
         LineNumbers = yes,
-        ProgContext = mlds_get_prog_context(Context),
         get_last_context(LastContext, !IO),
         term.context_file(ProgContext, File),
         term.context_line(ProgContext, Line),
@@ -5215,12 +5237,19 @@ marker_string(marker_begin_block) = "MER_FOREIGN_BEGIN".
 marker_string(marker_end_block) = "MER_FOREIGN_END".
 marker_string(marker_comment) = "".
 
+:- pred indent_line_prog_context(java_out_info::in, context_marker::in,
+    prog_context::in, indent::in, io::di, io::uo) is det.
+
+indent_line_prog_context(Info, Marker, Context, N, !IO) :-
+    output_context(Info, Marker, Context, !IO),
+    indent_line(N, !IO).
+
 :- pred indent_line(java_out_info::in, context_marker::in, mlds_context::in,
     indent::in, io::di, io::uo) is det.
 
 indent_line(Info, Marker, Context, N, !IO) :-
-    output_context(Info, Marker, Context, !IO),
-    indent_line(N, !IO).
+    ProgContext = mlds_get_prog_context(Context),
+    indent_line_prog_context(Info, Marker, ProgContext, N, !IO).
 
     % A value of type `indent' records the number of levels of indentation
     % to indent the next piece of code. Currently we output two spaces
@@ -5242,14 +5271,16 @@ indent_line(N, !IO) :-
     string::in, prog_context::in, io::di, io::uo) is det.
 
 write_string_with_context_block(Info, Indent, Code, Context, !IO) :-
-    indent_line(Info, marker_begin_block, mlds_make_context(Context),
-        Indent, !IO),
+    indent_line_prog_context(Info, marker_begin_block, Context, Indent, !IO),
     io.write_string(Code, !IO),
     io.nl(!IO),
+    % The num_lines(Code) call is supposed to count the number of lines
+    % occupied by Code in the source file. The result will be incorrect if
+    % there were any escape sequences representing CR or LF characters --
+    % they are expanded out in Code.
     Context = context(File, Lines0),
     ContextEnd = context(File, Lines0 + num_lines(Code)),
-    indent_line(Info, marker_end_block, mlds_make_context(ContextEnd),
-        Indent, !IO).
+    indent_line_prog_context(Info, marker_end_block, ContextEnd, Indent, !IO).
 
 :- func num_lines(string) = int.
 
@@ -5282,6 +5313,7 @@ num_lines(String) = Num :-
                 joi_auto_comments   :: bool,
                 joi_line_numbers    :: bool,
                 joi_module_name     :: mlds_module_name,
+                joi_source_filename :: string,
                 joi_addrof_map      :: map(mlds_code_addr, code_addr_wrapper),
 
                 % These are dynamic.
@@ -5293,17 +5325,18 @@ num_lines(String) = Num :-
     --->    do_output_generics
     ;       do_not_output_generics.
 
-:- func init_java_out_info(module_info, map(mlds_code_addr, code_addr_wrapper))
-    = java_out_info.
+:- func init_java_out_info(module_info, string,
+    map(mlds_code_addr, code_addr_wrapper)) = java_out_info.
 
-init_java_out_info(ModuleInfo, AddrOfMap) = Info :-
+init_java_out_info(ModuleInfo, SourceFileName, AddrOfMap) = Info :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     Info = java_out_info(ModuleInfo, AutoComments, LineNumbers,
-        MLDS_ModuleName, AddrOfMap, do_not_output_generics, []).
+        MLDS_ModuleName, SourceFileName, AddrOfMap, do_not_output_generics,
+        []).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_java.

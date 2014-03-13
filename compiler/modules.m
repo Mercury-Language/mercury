@@ -3614,7 +3614,7 @@ init_module_and_imports(SourceFileName, SourceFileModuleName, ModuleName,
     ItemsCord = cord.from_list(Items),
     Module = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, [], [], [], [], [], PublicChildren,
-        NestedChildren, FactDeps, contains_foreign_code_unknown, [],
+        NestedChildren, FactDeps, contains_foreign_code_unknown, [], [],
         contains_no_foreign_export, ItemsCord, Specs, no_module_errors,
         MaybeTimestamps, no_main, dir.this_directory).
 

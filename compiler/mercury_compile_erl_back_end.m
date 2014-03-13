@@ -21,12 +21,14 @@
 :- import_module hlds.passes_aux.
 :- import_module erl_backend.elds.
 
+:- import_module bool.
 :- import_module io.
 
 :- pred erlang_backend(module_info::in, elds::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
-:- pred elds_to_erlang(module_info::in, elds::in, io::di, io::uo) is det.
+:- pred elds_to_erlang(module_info::in, elds::in, bool::out, io::di, io::uo)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -84,13 +86,13 @@ elds_gen_rtti_data(HLDS, !ELDS, !IO) :-
     rtti_data_list_to_elds(HLDS, ErlangRttiDatas, RttiDefns),
     !ELDS ^ elds_rtti_funcs := RttiDefns0 ++ RttiDefns.
 
-elds_to_erlang(HLDS, ELDS, !IO) :-
+elds_to_erlang(HLDS, ELDS, Succeeded, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(Verbose, "% Converting ELDS to Erlang...\n", !IO),
-    elds_to_erlang.output_elds(HLDS, ELDS, !IO),
+    elds_to_erlang.output_elds(HLDS, ELDS, Succeeded, !IO),
     maybe_write_string(Verbose, "% Finished converting ELDS to Erlang.\n",
         !IO),
     maybe_report_stats(Stats, !IO).

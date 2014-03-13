@@ -1964,8 +1964,8 @@ get_c_mutable_global_foreign_decl(ModuleInfo, Type, TargetMutableName,
         "    extern ", LowLevelTypeName, " ", TargetMutableName, ";\n",
         "#endif\n" | LockDecl]),
 
-    FDInfo =
-        pragma_info_foreign_decl(lang_c, foreign_decl_is_exported, DeclBody),
+    FDInfo = pragma_info_foreign_decl(lang_c, foreign_decl_is_exported,
+        literal(DeclBody)),
     DeclPragma = pragma_foreign_decl(FDInfo),
     DeclItemPragma = item_pragma_info(compiler(mutable_decl), DeclPragma,
         Context, -1),
@@ -2013,7 +2013,7 @@ get_c_mutable_global_foreign_defn(ModuleInfo, Type, TargetMutableName,
 
     DefnBody = string.append_list([
         TypeName, " ", TargetMutableName, ";\n" | LockDefn]),
-    FCInfo = pragma_info_foreign_code(lang_c, DefnBody),
+    FCInfo = pragma_info_foreign_code(lang_c, literal(DefnBody)),
     DefnPragma = pragma_foreign_code(FCInfo),
     DefnItemPragma = item_pragma_info(compiler(mutable_decl), DefnPragma,
         Context, -1),
@@ -2103,7 +2103,7 @@ add_ccsj_constant_mutable_access_preds(TargetMutableName,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         ProgVarSet,
         InstVarSet,
-        fc_impl_ordinary("X = " ++ TargetMutableName ++ ";\n", yes(Context))
+        fp_impl_ordinary("X = " ++ TargetMutableName ++ ";\n", yes(Context))
     ),
     ConstantGetForeignProc = pragma_foreign_proc(ConstantGetFCInfo),
     ConstantGetItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2120,7 +2120,7 @@ add_ccsj_constant_mutable_access_preds(TargetMutableName,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         ProgVarSet,
         InstVarSet,
-        fc_impl_ordinary(TargetMutableName ++ " = X;\n", yes(Context))
+        fp_impl_ordinary(TargetMutableName ++ " = X;\n", yes(Context))
     ),
     ConstantSetForeignProc = pragma_foreign_proc(ConstantSetFCInfo),
     ConstantSetItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2167,7 +2167,7 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         [],
         varset.init,    % Prog varset.
         varset.init,    % Inst varset.
-        fc_impl_ordinary(LockForeignProcBody, yes(Context))
+        fp_impl_ordinary(LockForeignProcBody, yes(Context))
     ),
     LockForeignProc = pragma_foreign_proc(LockFCInfo),
     LockItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2196,7 +2196,7 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         [],
         varset.init,    % Prog varset.
         varset.init,    % Inst varset.
-        fc_impl_ordinary(UnlockForeignProcBody, yes(Context))
+        fp_impl_ordinary(UnlockForeignProcBody, yes(Context))
     ),
     UnlockForeignProc = pragma_foreign_proc(UnlockFCInfo),
     UnlockItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2223,7 +2223,7 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         ProgVarSet,
         varset.init, % Inst varset.
-        fc_impl_ordinary(UnsafeGetCode, yes(Context))
+        fp_impl_ordinary(UnsafeGetCode, yes(Context))
     ),
     UnsafeGetForeignProc = pragma_foreign_proc(UnsafeGetFCInfo),
     UnsafeGetItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2275,7 +2275,7 @@ add_c_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         ProgVarSet,
         varset.init, % Inst varset.
-        fc_impl_ordinary(TrailCode ++ SetCode, yes(Context))
+        fp_impl_ordinary(TrailCode ++ SetCode, yes(Context))
     ),
     UnsafeSetForeignProc = pragma_foreign_proc(UnsafeSetFCInfo),
     UnsafeSetItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2443,7 +2443,7 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
             [],
             varset.init,    % ProgVarSet
             varset.init,    % InstVarSet
-            fc_impl_ordinary(PreInitCode, yes(Context))
+            fp_impl_ordinary(PreInitCode, yes(Context))
         ),
         PreInitForeignProc = pragma_foreign_proc(PreInitFCInfo),
         PreInitItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2489,7 +2489,7 @@ add_csharp_java_mutable_defn(Lang, TargetMutableName, Type, IsThreadLocal,
         Context, !ModuleInfo, !QualInfo, !Specs) :-
     get_csharp_java_mutable_global_foreign_defn(Lang, TargetMutableName,
         Type, IsThreadLocal, Context, DefnBody),
-    DefnFCInfo = pragma_info_foreign_code(Lang, DefnBody),
+    DefnFCInfo = pragma_info_foreign_code(Lang, literal(DefnBody)),
     DefnPragma = pragma_foreign_code(DefnFCInfo),
     DefnItemPragma = item_pragma_info(compiler(mutable_decl), DefnPragma,
         Context, -1),
@@ -2626,7 +2626,7 @@ add_csharp_thread_local_mutable_pre_init_pred(TargetMutableName,
         [],
         varset.init,    % ProgVarSet
         varset.init,    % InstVarSet
-        fc_impl_ordinary(PreInitCode, yes(Context))
+        fp_impl_ordinary(PreInitCode, yes(Context))
     ),
     PreInitForeignProc = pragma_foreign_proc(PreInitFCInfo),
     PreInitItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2685,7 +2685,7 @@ add_csharp_java_mutable_primitive_preds(Lang, TargetMutableName, ModuleName,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         ProgVarSet,
         varset.init, % Inst varset.
-        fc_impl_ordinary(GetCode, yes(Context))
+        fp_impl_ordinary(GetCode, yes(Context))
     ),
     GetForeignProc = pragma_foreign_proc(GetFCInfo),
     GetItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2728,7 +2728,7 @@ add_csharp_java_mutable_primitive_preds(Lang, TargetMutableName, ModuleName,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         ProgVarSet,
         varset.init, % Inst varset.
-        fc_impl_ordinary(TrailCode ++ SetCode, yes(Context))
+        fp_impl_ordinary(TrailCode ++ SetCode, yes(Context))
     ),
     SetForeignProc = pragma_foreign_proc(SetFCInfo),
     SetItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2836,7 +2836,7 @@ add_erlang_constant_mutable_access_preds(TargetMutableName,
         [pragma_var(X, "X", out_mode(Inst), native_if_possible)],
         ProgVarSet,
         InstVarSet,
-        fc_impl_ordinary(GetCode, yes(Context))
+        fp_impl_ordinary(GetCode, yes(Context))
     ),
     ConstantGetForeignProc = pragma_foreign_proc(ConstantGetFCInfo),
     ConstantGetItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2852,7 +2852,7 @@ add_erlang_constant_mutable_access_preds(TargetMutableName,
         [pragma_var(X, "X", in_mode(Inst), native_if_possible)],
         ProgVarSet,
         InstVarSet,
-        fc_impl_ordinary(SetCode, yes(Context))
+        fp_impl_ordinary(SetCode, yes(Context))
     ),
     ConstantSetForeignProc = pragma_foreign_proc(ConstantSetFCInfo),
     ConstantSetItemPragma = item_pragma_info(compiler(mutable_decl),
@@ -2899,7 +2899,7 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         [pragma_var(X, "X", out_mode(Inst), native_if_possible)],
         ProgVarSet0,
         varset.init, % Inst varset.
-        fc_impl_ordinary(GetCode, yes(Context))
+        fp_impl_ordinary(GetCode, yes(Context))
     ),
     GetForeignProc = pragma_foreign_proc(GetFCInfo),
     GetItemPragma = item_pragma_info(compiler(mutable_decl), GetForeignProc,
@@ -2926,7 +2926,7 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         [pragma_var(X, "X", in_mode(Inst), native_if_possible)],
         ProgVarSet0,
         varset.init, % Inst varset.
-        fc_impl_ordinary(SetCode, yes(Context))
+        fp_impl_ordinary(SetCode, yes(Context))
     ),
     SetForeignProc = pragma_foreign_proc(SetFCInfo),
     SetItemPragma = item_pragma_info(compiler(mutable_decl), SetForeignProc,

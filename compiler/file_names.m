@@ -41,6 +41,11 @@
     --->    do_create_dirs
     ;       do_not_create_dirs.
 
+    % Return the file name of the Mercury source for the given module.
+    %
+:- pred module_source_filename(globals::in, module_name::in, file_name::out,
+    io::di, io::uo) is det.
+
     % module_name_to_file_name(Globals, Module, Extension, Mkdir, FileName,
     %   !IO):
     %
@@ -124,9 +129,17 @@
     %
 :- pred module_name_to_make_var_name(module_name::in, string::out) is det.
 
+%-----------------------------------------------------------------------------%
+
     % Return the name of the directory containing Java `.class' files.
     %
 :- pred get_class_dir_name(globals::in, string::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % Convert an include_file reference to a filesystem path.
+    %
+:- pred make_include_file_path(string::in, string::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -167,6 +180,10 @@ qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+module_source_filename(Globals, ModuleName, SourceFileName, !IO) :-
+    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
+        SourceFileName, !IO).
 
 module_name_to_file_name(Globals, ModuleName, Ext, MkDir, FileName, !IO) :-
     module_name_to_file_name_general(Globals, ModuleName, Ext,
@@ -489,23 +506,6 @@ make_file_name(Globals, SubDirNames, Search, MkDir, BaseName, Ext, FileName,
         FileName = dir.relative_path_name_from_components(Components)
     ).
 
-get_class_dir_name(Globals, ClassDirName) :-
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    (
-        UseGradeSubdirs = yes
-    ->
-        grade_directory_component(Globals, Grade),
-        globals.lookup_string_option(Globals, fullarch, FullArch),
-        ClassDirName = "Mercury" / Grade / FullArch / "Mercury" / "classs"
-    ;
-        UseSubdirs = yes
-    ->
-        ClassDirName = "Mercury" / "classs"
-    ;
-        ClassDirName = "."
-    ).
-
 :- pred file_is_arch_or_grade_dependent(globals::in, string::in) is semidet.
 
 file_is_arch_or_grade_dependent(_, Ext) :-
@@ -588,6 +588,37 @@ file_is_arch_or_grade_dependent_3(Globals, Ext) :-
         Ext = ObjExt
     ;
         Ext = "_init" ++ ObjExt
+    ).
+
+%-----------------------------------------------------------------------------%
+
+get_class_dir_name(Globals, ClassDirName) :-
+    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
+    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    (
+        UseGradeSubdirs = yes
+    ->
+        grade_directory_component(Globals, Grade),
+        globals.lookup_string_option(Globals, fullarch, FullArch),
+        ClassDirName = "Mercury" / Grade / FullArch / "Mercury" / "classs"
+    ;
+        UseSubdirs = yes
+    ->
+        ClassDirName = "Mercury" / "classs"
+    ;
+        ClassDirName = "."
+    ).
+
+%-----------------------------------------------------------------------------%
+
+make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
+    ( path_name_is_absolute(OrigFileName) ->
+        Path = OrigFileName
+    ;
+        % XXX This will throw an exception on Windows if OrigFileName is a path
+        % "X:foo", i.e. relative to the current directory on the X: drive.
+        % That seems a silly thing to write in a source file.
+        Path = dirname(ModuleSourceFileName) / OrigFileName
     ).
 
 %-----------------------------------------------------------------------------%

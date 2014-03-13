@@ -3350,7 +3350,7 @@ mercury_pragma_foreign_decl_to_string(FDInfo) = String :-
     U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_foreign_decl(FDInfo, !U) :-
-    FDInfo = pragma_info_foreign_decl(Lang, IsLocal, ForeignDeclString),
+    FDInfo = pragma_info_foreign_decl(Lang, IsLocal, LiteralOrInclude),
     add_string(":- pragma foreign_decl(", !U),
     mercury_format_foreign_language_string(Lang, !U),
     add_string(", ", !U),
@@ -3362,7 +3362,7 @@ mercury_format_pragma_foreign_decl(FDInfo, !U) :-
         add_string("exported", !U)
     ),
     add_string(", ", !U),
-    mercury_format_foreign_code_string(ForeignDeclString, !U),
+    mercury_format_foreign_literal_or_include(LiteralOrInclude, !U),
     add_string(").\n", !U).
 
 mercury_output_foreign_language_string(Lang, !IO) :-
@@ -3467,12 +3467,26 @@ mercury_output_pragma_source_file(SourceFileInfo, !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_pragma_foreign_body_code(FCInfo, !IO) :-
-    FCInfo = pragma_info_foreign_code(Lang, ForeignCodeString),
+    FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude),
     io.write_string(":- pragma foreign_code(", !IO),
     mercury_format_foreign_language_string(Lang, !IO),
     io.write_string(", ", !IO),
-    mercury_format_foreign_code_string(ForeignCodeString, !IO),
+    mercury_format_foreign_literal_or_include(LiteralOrInclude, !IO),
     io.write_string(").\n", !IO).
+
+:- pred mercury_format_foreign_literal_or_include(
+    foreign_literal_or_include::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_foreign_literal_or_include(LiteralOrInclude, !U) :-
+    (
+        LiteralOrInclude = literal(Code),
+        mercury_format_foreign_code_string(Code, !U)
+    ;
+        LiteralOrInclude = include_file(FileName),
+        add_string("include_file(", !U),
+        add_quoted_string(FileName, !U),
+        add_string(")", !U)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -3525,7 +3539,7 @@ mercury_format_pragma_foreign_proc(FPInfo, !U) :-
     add_string(", ", !U),
     mercury_format_pragma_foreign_attributes(Attributes, ProgVarset, !U),
     add_string(", ", !U),
-    PragmaCode = fc_impl_ordinary(C_Code, _),
+    PragmaCode = fp_impl_ordinary(C_Code, _),
     mercury_format_foreign_code_string(C_Code, !U),
     add_string(").\n", !U).
 

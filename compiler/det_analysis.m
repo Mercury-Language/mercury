@@ -1134,7 +1134,7 @@ det_infer_generic_call(GenericCall, CallDetism, GoalInfo,
     ).
 
 :- pred det_infer_foreign_proc(pragma_foreign_proc_attributes::in,
-    pred_id::in, proc_id::in, pragma_foreign_code_impl::in,
+    pred_id::in, proc_id::in, pragma_foreign_proc_impl::in,
     hlds_goal_info::in, soln_context::in,
     list(failing_context)::in, determinism::out, list(failing_context)::out,
     det_info::in, det_info::out) is det.

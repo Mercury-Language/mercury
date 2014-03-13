@@ -63,6 +63,22 @@
 :- import_module term.
 :- import_module term_io.
 
+    % The version 1 module_dep file format is the same as version 2 except that
+    % it does not include a list of files included by `pragma foreign_decl' and
+    % `pragma foreign_code'. We continue to write version 1 files when
+    % possible.
+    %
+:- type module_dep_file_version
+    --->    module_dep_file_v1
+    ;       module_dep_file_v2.
+
+:- pred version_number(module_dep_file_version, int).
+:- mode version_number(in, out) is det.
+:- mode version_number(out, in) is semidet.
+
+version_number(module_dep_file_v1, 1).
+version_number(module_dep_file_v2, 2).
+
 %-----------------------------------------------------------------------------%
 
 get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO) :-
@@ -247,10 +263,6 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
 
 %-----------------------------------------------------------------------------%
 
-:- func module_dependencies_version_number = int.
-
-module_dependencies_version_number = 1.
-
 write_module_dep_file(Globals, Imports0, !IO) :-
     % Make sure all the required fields are filled in.
     module_and_imports_get_results(Imports0, Items0, _Specs, _Errors),
@@ -273,59 +285,8 @@ do_write_module_dep_file(Globals, Imports, !IO) :-
     (
         ProgDepResult = ok(ProgDepStream),
         io.set_output_stream(ProgDepStream, OldOutputStream, !IO),
-        io.write_string("module(", !IO),
-        io.write_int(module_dependencies_version_number, !IO),
-        io.write_string(", """, !IO),
-        io.write_string(Imports ^ mai_source_file_name, !IO),
-        io.write_string(""",\n\t", !IO),
-        mercury_output_bracketed_sym_name(
-            Imports ^ mai_source_file_module_name, !IO),
-        io.write_string(",\n\t{", !IO),
-        io.write_list(Imports ^ mai_parent_deps,
-            ", ", mercury_output_bracketed_sym_name, !IO),
-        io.write_string("},\n\t{", !IO),
-        io.write_list(Imports ^ mai_int_deps,
-            ", ", mercury_output_bracketed_sym_name, !IO),
-        io.write_string("},\n\t{", !IO),
-        io.write_list(Imports ^ mai_impl_deps,
-            ", ", mercury_output_bracketed_sym_name, !IO),
-        io.write_string("},\n\t{", !IO),
-        io.write_list(Imports ^ mai_children,
-            ", ", mercury_output_bracketed_sym_name, !IO),
-        io.write_string("},\n\t{", !IO),
-        io.write_list(Imports ^ mai_nested_children,
-            ", ", mercury_output_bracketed_sym_name, !IO),
-        io.write_string("},\n\t{", !IO),
-        io.write_list(Imports ^ mai_fact_table_deps,
-            ", ", io.write, !IO),
-        io.write_string("},\n\t{", !IO),
-        (
-            Imports ^ mai_has_foreign_code =
-                contains_foreign_code(ForeignLanguages0)
-        ->
-            ForeignLanguages = set.to_sorted_list(ForeignLanguages0)
-        ;
-            ForeignLanguages = []
-        ),
-        io.write_list(ForeignLanguages, ", ",
-            mercury_output_foreign_language_string, !IO),
-        io.write_string("},\n\t{", !IO),
-        io.write_list(Imports ^ mai_foreign_import_modules, ", ",
-            (pred(ForeignImportModule::in, !.IO::di, !:IO::uo) is det :-
-                ForeignImportModule = foreign_import_module_info(Lang,
-                    ForeignImport, _),
-                mercury_output_foreign_language_string(Lang, !IO),
-                io.write_string(" - ", !IO),
-                mercury_output_bracketed_sym_name(ForeignImport, !IO)
-            ), !IO),
-        io.write_string("},\n\t", !IO),
-        contains_foreign_export_to_string(
-            Imports ^ mai_contains_foreign_export, ContainsForeignExportStr),
-        io.write_string(ContainsForeignExportStr, !IO),
-        io.write_string(",\n\t", !IO),
-        has_main_to_string(Imports ^ mai_has_main, HasMainStr),
-        io.write_string(HasMainStr, !IO),
-        io.write_string("\n).\n", !IO),
+        choose_module_dep_file_version(Imports, Version),
+        do_write_module_dep_file_2(Imports, Version, !IO),
         io.set_output_stream(OldOutputStream, _, !IO),
         io.close_output(ProgDepStream, !IO)
     ;
@@ -335,6 +296,96 @@ do_write_module_dep_file(Globals, Imports, !IO) :-
             " for output: ", Msg, "\n"], !IO),
         io.set_exit_status(1, !IO)
     ).
+
+:- pred choose_module_dep_file_version(module_and_imports::in,
+    module_dep_file_version::out) is det.
+
+choose_module_dep_file_version(Imports, Version) :-
+    ForeignIncludeFiles = Imports ^ mai_foreign_include_files,
+    (
+        ForeignIncludeFiles = [],
+        Version = module_dep_file_v1
+    ;
+        ForeignIncludeFiles = [_ | _],
+        Version = module_dep_file_v2
+    ).
+
+:- pred do_write_module_dep_file_2(module_and_imports::in,
+    module_dep_file_version::in, io::di, io::uo) is det.
+
+do_write_module_dep_file_2(Imports, Version, !IO) :-
+    io.write_string("module(", !IO),
+    version_number(Version, VersionNumber),
+    io.write_int(VersionNumber, !IO),
+    io.write_string(", """, !IO),
+    io.write_string(Imports ^ mai_source_file_name, !IO),
+    io.write_string(""",\n\t", !IO),
+    mercury_output_bracketed_sym_name(
+        Imports ^ mai_source_file_module_name, !IO),
+    io.write_string(",\n\t{", !IO),
+    io.write_list(Imports ^ mai_parent_deps,
+        ", ", mercury_output_bracketed_sym_name, !IO),
+    io.write_string("},\n\t{", !IO),
+    io.write_list(Imports ^ mai_int_deps,
+        ", ", mercury_output_bracketed_sym_name, !IO),
+    io.write_string("},\n\t{", !IO),
+    io.write_list(Imports ^ mai_impl_deps,
+        ", ", mercury_output_bracketed_sym_name, !IO),
+    io.write_string("},\n\t{", !IO),
+    io.write_list(Imports ^ mai_children,
+        ", ", mercury_output_bracketed_sym_name, !IO),
+    io.write_string("},\n\t{", !IO),
+    io.write_list(Imports ^ mai_nested_children,
+        ", ", mercury_output_bracketed_sym_name, !IO),
+    io.write_string("},\n\t{", !IO),
+    io.write_list(Imports ^ mai_fact_table_deps,
+        ", ", io.write, !IO),
+    io.write_string("},\n\t{", !IO),
+    ( Imports ^ mai_has_foreign_code = contains_foreign_code(LangList) ->
+        ForeignLanguages = set.to_sorted_list(LangList)
+    ;
+        ForeignLanguages = []
+    ),
+    io.write_list(ForeignLanguages,
+        ", ", mercury_output_foreign_language_string, !IO),
+    io.write_string("},\n\t{", !IO),
+    io.write_list(Imports ^ mai_foreign_import_modules,
+        ", ", write_foreign_import_module_info, !IO),
+    io.write_string("},\n\t", !IO),
+    contains_foreign_export_to_string(Imports ^ mai_contains_foreign_export,
+        ContainsForeignExportStr),
+    io.write_string(ContainsForeignExportStr, !IO),
+    io.write_string(",\n\t", !IO),
+    has_main_to_string(Imports ^ mai_has_main, HasMainStr),
+    io.write_string(HasMainStr, !IO),
+    (
+        Version = module_dep_file_v1
+    ;
+        Version = module_dep_file_v2,
+        io.write_string(",\n\t{", !IO),
+        io.write_list(list.reverse(Imports ^ mai_foreign_include_files),
+            ", ", write_foreign_include_file_info, !IO),
+        io.write_string("}", !IO)
+    ),
+    io.write_string("\n).\n", !IO).
+
+:- pred write_foreign_import_module_info(foreign_import_module_info::in,
+    io::di, io::uo) is det.
+
+write_foreign_import_module_info(ForeignImportModule, !IO) :-
+    ForeignImportModule = foreign_import_module_info(Lang, ForeignImport, _),
+    mercury_output_foreign_language_string(Lang, !IO),
+    io.write_string(" - ", !IO),
+    mercury_output_bracketed_sym_name(ForeignImport, !IO).
+
+:- pred write_foreign_include_file_info(foreign_include_file_info::in,
+    io::di, io::uo) is det.
+
+write_foreign_include_file_info(ForeignInclude, !IO) :-
+    ForeignInclude = foreign_include_file_info(Lang, FileName),
+    mercury_output_foreign_language_string(Lang, !IO),
+    io.write_string(" - ", !IO),
+    term_io.quote_string(FileName, !IO).
 
 :- pred contains_foreign_export_to_string(contains_foreign_export, string).
 :- mode contains_foreign_export_to_string(in, out) is det.
@@ -364,6 +415,8 @@ has_main_to_string(HasMain, HasMainStr) :-
         HasMain = no_main,
         HasMainStr = "no_main"
     ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred read_module_dependencies_search(globals::in, rebuild_module_deps::in,
     module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
@@ -397,132 +450,26 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
         SearchResult, !IO),
     (
         SearchResult = ok(ModuleDir),
-        parser.read_term(ImportsTermResult, !IO),
+        parser.read_term(TermResult, !IO),
         io.set_input_stream(OldInputStream, ModuleDepStream, !IO),
         io.close_input(ModuleDepStream, !IO),
         (
-            ImportsTermResult = term(_, ImportsTerm),
-            ImportsTerm = term.functor(term.atom("module"), ModuleArgs, _),
-            ModuleArgs = [
-                VersionNumberTerm,
-                SourceFileTerm,
-                SourceFileModuleNameTerm,
-                ParentsTerm,
-                IntDepsTerm,
-                ImplDepsTerm,
-                ChildrenTerm,
-                NestedChildrenTerm,
-                FactDepsTerm,
-                ForeignLanguagesTerm,
-                ForeignImportsTerm,
-                ContainsForeignExportTerm,
-                HasMainTerm
-            ],
-            VersionNumberTerm = term.functor(
-                term.integer(module_dependencies_version_number), [], _),
-            SourceFileTerm = term.functor(
-                term.string(SourceFileName), [], _),
-            try_parse_sym_name_and_no_args(SourceFileModuleNameTerm,
-                SourceFileModuleName),
-            parse_sym_name_list(ParentsTerm, Parents),
-            parse_sym_name_list(IntDepsTerm, IntDeps),
-            parse_sym_name_list(ImplDepsTerm, ImplDeps),
-            parse_sym_name_list(ChildrenTerm, Children),
-            parse_sym_name_list(NestedChildrenTerm, NestedChildren),
-            FactDepsTerm = term.functor(term.atom("{}"), FactDepsStrings, _),
-            list.map(
-                (pred(StringTerm::in, String::out) is semidet :-
-                    StringTerm = term.functor(term.string(String), [], _)
-                ), FactDepsStrings, FactDeps),
-            ForeignLanguagesTerm = term.functor(
-                term.atom("{}"), ForeignLanguagesTerms, _),
-            list.map(
-                (pred(LanguageTerm::in, Language::out) is semidet :-
-                    LanguageTerm = term.functor(
-                        term.string(LanguageString), [], _),
-                    globals.convert_foreign_language(LanguageString, Language)
-                ), ForeignLanguagesTerms, ForeignLanguages),
-            ForeignImportsTerm = term.functor(term.atom("{}"),
-                ForeignImportTerms, _),
-            list.map(
-                (pred(ForeignImportTerm::in, ForeignImportModule::out)
-                        is semidet :-
-                    ForeignImportTerm = term.functor(term.atom("-"),
-                        [LanguageTerm, ImportedModuleTerm], _),
-                    LanguageTerm = term.functor(
-                        term.string(LanguageString), [], _),
-                    globals.convert_foreign_language(LanguageString,
-                        Language),
-                    try_parse_sym_name_and_no_args(ImportedModuleTerm,
-                        ImportedModuleName),
-                    ForeignImportModule = foreign_import_module_info(Language,
-                        ImportedModuleName, term.context_init)
-                ), ForeignImportTerms, ForeignImports),
-
-            ContainsForeignExportTerm =
-                term.functor(term.atom(ContainsForeignExportStr), [], _),
-            contains_foreign_export_to_string(ContainsForeignExport,
-                ContainsForeignExportStr),
-
-            HasMainTerm = term.functor(term.atom(HasMainStr), [], _),
-            has_main_to_string(HasMain, HasMainStr)
-        ->
-            (
-                ForeignLanguages = [],
-                ContainsForeignCode = contains_no_foreign_code
-            ;
-                ForeignLanguages = [_ | _],
-                ContainsForeignCode = contains_foreign_code(
-                    set.list_to_set(ForeignLanguages))
-            ),
-
-            IndirectDeps = [],
-            PublicChildren = [],
-            Items = cord.empty,
-            Specs = [],
-            Errors = no_module_errors,
-            MaybeTimestamps = no,
-            Imports = module_and_imports(SourceFileName, SourceFileModuleName,
-                ModuleName, Parents, IntDeps, ImplDeps, IndirectDeps,
-                Children, PublicChildren, NestedChildren, FactDeps,
-                ContainsForeignCode, ForeignImports, ContainsForeignExport,
-                Items, Specs, Errors, MaybeTimestamps, HasMain, ModuleDir),
-
-            ModuleDepMap0 = !.Info ^ module_dependencies,
-            % XXX Could this be map.det_insert?
-            map.set(ModuleName, yes(Imports), ModuleDepMap0, ModuleDepMap),
-            !Info ^ module_dependencies := ModuleDepMap,
-
-            % Read the dependencies for the nested children. If something
-            % goes wrong (for example one of the files was removed), the
-            % dependencies for all modules in the source file will be remade
-            % (make_module_dependencies expects to be given the top-level
-            % module in the source file).
-
-            SubRebuildModuleDeps = do_not_rebuild_module_deps,
-            list.foldl2(
-                read_module_dependencies_2(Globals, SubRebuildModuleDeps,
-                    SearchDirs),
-                NestedChildren, !Info, !IO),
-            (
-                list.member(NestedChild, NestedChildren),
-                (
-                    map.search(!.Info ^ module_dependencies,
-                        NestedChild, ChildImports)
-                ->
-                    ChildImports = no
-                ;
-                    true
-                )
-            ->
-                read_module_dependencies_remake(Globals, RebuildModuleDeps,
-                    ModuleName, "error in nested sub-modules", !Info, !IO)
-            ;
-                true
-            )
+            TermResult = term(_, Term),
+            read_module_dependencies_3(Globals, SearchDirs, ModuleName,
+                ModuleDir, Term, Result, !Info, !IO)
         ;
+            TermResult = eof,
+            Result = error("unexpected eof")
+        ;
+            TermResult = error(ParseError, _),
+            Result = error("parse error: " ++ ParseError)
+        ),
+        (
+            Result = ok
+        ;
+            Result = error(Msg),
             read_module_dependencies_remake(Globals, RebuildModuleDeps,
-                ModuleName, "parse error", !Info, !IO)
+                ModuleName, Msg, !Info, !IO)
         )
     ;
         SearchResult = error(_),
@@ -530,6 +477,187 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
         read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName,
             "couldn't find `.module_dep' file", !Info, !IO)
     ).
+
+:- pred read_module_dependencies_3(globals::in, list(dir_name)::in,
+    module_name::in, dir_name::in, term::in, maybe_error::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
+        Term, Result, !Info, !IO) :-
+    (
+        atom_term(Term, "module", ModuleArgs),
+        ModuleArgs = [
+            VersionNumberTerm,
+            SourceFileTerm,
+            SourceFileModuleNameTerm,
+            ParentsTerm,
+            IntDepsTerm,
+            ImplDepsTerm,
+            ChildrenTerm,
+            NestedChildrenTerm,
+            FactDepsTerm,
+            ForeignLanguagesTerm,
+            ForeignImportsTerm,
+            ContainsForeignExportTerm,
+            HasMainTerm
+            | ModuleArgsTail
+        ],
+
+        version_number_term(VersionNumberTerm, Version),
+        string_term(SourceFileTerm, SourceFileName),
+        try_parse_sym_name_and_no_args(SourceFileModuleNameTerm,
+            SourceFileModuleName),
+
+        sym_names_term(ParentsTerm, Parents),
+        sym_names_term(IntDepsTerm, IntDeps),
+        sym_names_term(ImplDepsTerm, ImplDeps),
+        sym_names_term(ChildrenTerm, Children),
+        sym_names_term(NestedChildrenTerm, NestedChildren),
+
+        braces_term(fact_dep_term, FactDepsTerm, FactDeps),
+        braces_term(foreign_language_term, ForeignLanguagesTerm,
+            ForeignLanguages),
+        braces_term(foreign_import_term, ForeignImportsTerm, ForeignImports),
+
+        contains_foreign_export_term(ContainsForeignExportTerm,
+            ContainsForeignExport),
+
+        has_main_term(HasMainTerm, HasMain),
+
+        (
+            Version = module_dep_file_v1,
+            ModuleArgsTail = [],
+            ForeignIncludes = []
+        ;
+            Version = module_dep_file_v2,
+            ModuleArgsTail = [ForeignIncludesTerm],
+            braces_term(foreign_include_term, ForeignIncludesTerm,
+                ForeignIncludes)
+        )
+    ->
+        ContainsForeignCode = contains_foreign_code(ForeignLanguages),
+        IndirectDeps = [],
+        PublicChildren = [],
+        Items = cord.empty,
+        Specs = [],
+        Errors = no_module_errors,
+        MaybeTimestamps = no,
+        Imports = module_and_imports(SourceFileName, SourceFileModuleName,
+            ModuleName, Parents, IntDeps, ImplDeps, IndirectDeps,
+            Children, PublicChildren, NestedChildren, FactDeps,
+            ContainsForeignCode, ForeignImports, ForeignIncludes,
+            ContainsForeignExport,
+            Items, Specs, Errors, MaybeTimestamps, HasMain, ModuleDir),
+
+        ModuleDepMap0 = !.Info ^ module_dependencies,
+        % XXX Could this be map.det_insert?
+        map.set(ModuleName, yes(Imports), ModuleDepMap0, ModuleDepMap),
+        !Info ^ module_dependencies := ModuleDepMap,
+
+        % Read the dependencies for the nested children. If something
+        % goes wrong (for example one of the files was removed), the
+        % dependencies for all modules in the source file will be remade
+        % (make_module_dependencies expects to be given the top-level
+        % module in the source file).
+        list.foldl2(
+            read_module_dependencies_2(Globals, do_not_rebuild_module_deps,
+                SearchDirs),
+            NestedChildren, !Info, !IO),
+        ( some_bad_module_dependency(!.Info, NestedChildren) ->
+            Result = error("error in nested sub-modules")
+        ;
+            Result = ok
+        )
+    ;
+        Result = error("failed to parse term")
+    ).
+
+:- pred version_number_term(term::in, module_dep_file_version::out) is semidet.
+
+version_number_term(Term, Version) :-
+    Term = term.functor(term.integer(Int), [], _),
+    version_number(Version, Int).
+
+:- pred string_term(term::in, string::out) is semidet.
+
+string_term(Term, String) :-
+    Term = term.functor(term.string(String), [], _).
+
+:- pred atom_term(term::in, string::out, list(term)::out) is semidet.
+
+atom_term(Term, Atom, Args) :-
+    Term = term.functor(term.atom(Atom), Args, _).
+
+:- pred braces_term(pred(term, U), term, list(U)).
+:- mode braces_term(in(pred(in, out) is semidet), in, out) is semidet.
+
+braces_term(P, Term, Args) :-
+    atom_term(Term, "{}", ArgTerms),
+    list.map(P, ArgTerms, Args).
+
+:- pred sym_names_term(term::in, list(sym_name)::out) is semidet.
+
+sym_names_term(Term, SymNames) :-
+    braces_term(try_parse_sym_name_and_no_args, Term, SymNames).
+
+:- pred fact_dep_term(term::in, string::out) is semidet.
+
+fact_dep_term(Term, FactDep) :-
+    string_term(Term, FactDep).
+
+:- pred foreign_language_term(term::in, foreign_language::out) is semidet.
+
+foreign_language_term(Term, Lang) :-
+    string_term(Term, String),
+    globals.convert_foreign_language(String, Lang).
+
+:- pred foreign_import_term(term::in, foreign_import_module_info::out)
+    is semidet.
+
+foreign_import_term(Term, ForeignImport) :-
+    atom_term(Term, "-", [LanguageTerm, ImportedModuleTerm]),
+    foreign_language_term(LanguageTerm, Language),
+    try_parse_sym_name_and_no_args(ImportedModuleTerm, ImportedModuleName),
+    ForeignImport = foreign_import_module_info(Language, ImportedModuleName,
+        term.context_init).
+
+:- pred foreign_include_term(term::in, foreign_include_file_info::out)
+    is semidet.
+
+foreign_include_term(Term, ForeignInclude) :-
+    atom_term(Term, "-", [LanguageTerm, FileNameTerm]),
+    foreign_language_term(LanguageTerm, Language),
+    string_term(FileNameTerm, FileName),
+    ForeignInclude = foreign_include_file_info(Language, FileName).
+
+:- pred contains_foreign_export_term(term::in, contains_foreign_export::out)
+    is semidet.
+
+contains_foreign_export_term(Term, ContainsForeignExport) :-
+    atom_term(Term, Atom, []),
+    contains_foreign_export_to_string(ContainsForeignExport, Atom).
+
+:- func contains_foreign_code(list(foreign_language)) = contains_foreign_code.
+
+contains_foreign_code([]) = contains_no_foreign_code.
+contains_foreign_code(Langs) = contains_foreign_code(LangSet) :-
+    Langs = [_ | _],
+    LangSet = set.from_list(Langs).
+
+:- pred has_main_term(term::in, has_main::out) is semidet.
+
+has_main_term(Term, HasMain) :-
+    atom_term(Term, String, []),
+    has_main_to_string(HasMain, String).
+
+:- pred some_bad_module_dependency(make_info::in, list(module_name)::in)
+    is semidet.
+
+some_bad_module_dependency(Info, ModuleNames) :-
+    list.member(ModuleName, ModuleNames),
+    map.search(Info ^ module_dependencies, ModuleName, no).
+
+%-----------------------------------------------------------------------------%
 
     % Something went wrong reading the dependencies, so just rebuild them.
     %
@@ -561,11 +689,6 @@ read_module_dependencies_remake_msg(Globals, ModuleName, Msg, !IO) :-
     io.write_string("', rebuilding: ", !IO),
     io.write_string(Msg, !IO),
     io.nl(!IO).
-
-:- pred parse_sym_name_list(term::in, list(sym_name)::out) is semidet.
-
-parse_sym_name_list(term.functor(term.atom("{}"), Args, _), SymNames) :-
-    list.map(try_parse_sym_name_and_no_args, Args, SymNames).
 
     % The module_name given must be the top level module in the source file.
     % get_module_dependencies ensures this by making the dependencies

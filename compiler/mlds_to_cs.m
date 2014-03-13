@@ -32,11 +32,13 @@
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
 
+:- import_module bool.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_csharp_mlds(module_info::in, mlds::in, io::di, io::uo) is det.
+:- pred output_csharp_mlds(module_info::in, mlds::in, bool::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -68,7 +70,6 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
-:- import_module bool.
 :- import_module cord.
 :- import_module digraph.
 :- import_module int.
@@ -84,14 +85,14 @@
 
 %-----------------------------------------------------------------------------%
 
-output_csharp_mlds(ModuleInfo, MLDS, !IO) :-
+output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     ModuleName = mlds_get_module_name(MLDS),
     module_name_to_file_name(Globals, ModuleName, ".cs", do_create_dirs,
         SourceFile, !IO),
     Indent = 0,
     output_to_file(Globals, SourceFile,
-        output_csharp_src_file(ModuleInfo, Indent, MLDS), !IO).
+        output_csharp_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -162,9 +163,10 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
     % Output transformed MLDS as C# source.
     module_info_get_globals(ModuleInfo, Globals),
-    Info = init_csharp_out_info(ModuleInfo, CodeAddrs),
-    output_src_start(Globals, Info, Indent, ModuleName, Imports, ForeignDecls,
-        Defns, !IO),
+    module_source_filename(Globals, ModuleName, SourceFileName, !IO),
+    Info = init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs),
+    output_src_start(Info, Indent, ModuleName, Imports, ForeignDecls, Defns,
+        !IO),
     io.write_list(ForeignBodyCode, "\n", output_csharp_body_code(Info, Indent),
         !IO),
 
@@ -225,13 +227,11 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     foreign_decl_code::in, io::di, io::uo) is det.
 
 output_csharp_decl(Info, Indent, DeclCode, !IO) :-
-    DeclCode = foreign_decl_code(Lang, _IsLocal, Code, Context),
+    DeclCode = foreign_decl_code(Lang, _IsLocal, LiteralOrInclude, Context),
     (
         Lang = lang_csharp,
-        indent_line(Info, mlds_make_context(Context), Indent, !IO),
-        io.write_string(Code, !IO),
-        io.nl(!IO),
-        output_default_context(Info, !IO)
+        output_csharp_foreign_literal_or_include(Info, Indent,
+            LiteralOrInclude, Context, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_java
@@ -245,14 +245,12 @@ output_csharp_decl(Info, Indent, DeclCode, !IO) :-
     user_foreign_code::in, io::di, io.state::uo) is det.
 
 output_csharp_body_code(Info, Indent, UserForeignCode, !IO) :-
-    UserForeignCode = user_foreign_code(Lang, Code, Context),
+    UserForeignCode = user_foreign_code(Lang, LiteralOrInclude, Context),
     % Only output C# code.
     (
         Lang = lang_csharp,
-        indent_line(Info, mlds_make_context(Context), Indent, !IO),
-        io.write_string(Code, !IO),
-        io.nl(!IO),
-        output_default_context(Info, !IO)
+        output_csharp_foreign_literal_or_include(Info, Indent,
+            LiteralOrInclude, Context, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_java
@@ -261,6 +259,26 @@ output_csharp_body_code(Info, Indent, UserForeignCode, !IO) :-
         ),
         sorry($module, $pred, "foreign code other than C#")
     ).
+
+:- pred output_csharp_foreign_literal_or_include(csharp_out_info::in,
+    indent::in, foreign_literal_or_include::in, prog_context::in,
+    io::di, io::uo) is det.
+
+output_csharp_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
+        Context, !IO) :-
+    (
+        LiteralOrInclude = literal(Code),
+        indent_line_prog_context(Info, Context, Indent, !IO),
+        io.write_string(Code, !IO)
+    ;
+        LiteralOrInclude = include_file(IncludeFileName),
+        SourceFileName = Info ^ oi_source_filename,
+        make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
+        output_context(Info, context(IncludePath, 1), !IO),
+        write_include_file_contents(IncludePath, !IO)
+    ),
+    io.nl(!IO),
+    output_default_context(Info, !IO).
 
 :- func mlds_get_csharp_foreign_code(map(foreign_language, mlds_foreign_code))
     = mlds_foreign_code.
@@ -735,13 +753,13 @@ output_env_var_definition(Indent, EnvVarName, !IO) :-
 % Code to output the start and end of a source file.
 %
 
-:- pred output_src_start(globals::in, csharp_out_info::in, indent::in,
+:- pred output_src_start(csharp_out_info::in, indent::in,
     mercury_module_name::in, mlds_imports::in, list(foreign_decl_code)::in,
     list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_src_start(Globals, Info, Indent, MercuryModuleName, _Imports,
-        ForeignDecls, Defns, !IO) :-
-    output_auto_gen_comment(Globals, MercuryModuleName, !IO),
+output_src_start(Info, Indent, MercuryModuleName, _Imports, ForeignDecls,
+        Defns, !IO) :-
+    output_auto_gen_comment(Info, !IO),
     indent_line(Indent, !IO),
     io.write_string("/* :- module ", !IO),
     prog_out.write_sym_name(MercuryModuleName, !IO),
@@ -845,13 +863,11 @@ output_src_end(Indent, ModuleName, !IO) :-
     % Output a comment saying that the file was automatically
     % generated and give details such as the compiler version.
     %
-:- pred output_auto_gen_comment(globals::in, mercury_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_auto_gen_comment(csharp_out_info::in, io::di, io::uo) is det.
 
-output_auto_gen_comment(Globals, ModuleName, !IO)  :-
+output_auto_gen_comment(Info, !IO)  :-
     library.version(Version, Fullarch),
-    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
-        SourceFileName, !IO),
+    SourceFileName = Info ^ oi_source_filename,
     io.write_string("//\n//\n// Automatically generated from ", !IO),
     io.write_string(SourceFileName, !IO),
     io.write_string(" by the Mercury Compiler,\n", !IO),
@@ -3176,7 +3192,7 @@ output_target_code_component(Info, TargetCode, !IO) :-
         io.write_string("{\n", !IO),
         (
             MaybeUserContext = yes(ProgContext),
-            output_context(Info, mlds_make_context(ProgContext), !IO)
+            output_context(Info, ProgContext, !IO)
         ;
             MaybeUserContext = no
         ),
@@ -3765,15 +3781,14 @@ mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
 % source context annotations.
 %
 
-:- pred output_context(csharp_out_info::in, mlds_context::in,
+:- pred output_context(csharp_out_info::in, prog_context::in,
     io::di, io::uo) is det.
 
 output_context(Info, Context, !IO) :-
     LineNumbers = Info ^ oi_line_numbers,
     (
         LineNumbers = yes,
-        ProgContext = mlds_get_prog_context(Context),
-        ProgContext = term.context(File, Line),
+        Context = term.context(File, Line),
         (
             Line > 0,
             File \= ""
@@ -3797,12 +3812,19 @@ output_default_context(Info, !IO) :-
         LineNumbers = no
     ).
 
+:- pred indent_line_prog_context(csharp_out_info::in, prog_context::in,
+    indent::in, io::di, io::uo) is det.
+
+indent_line_prog_context(Info, Context, N, !IO) :-
+    output_context(Info, Context, !IO),
+    indent_line(N, !IO).
+
 :- pred indent_line(csharp_out_info::in, mlds_context::in, indent::in,
     io::di, io::uo) is det.
 
 indent_line(Info, Context, N, !IO) :-
-    output_context(Info, Context, !IO),
-    indent_line(N, !IO).
+    ProgContext = mlds_get_prog_context(Context),
+    indent_line_prog_context(Info, ProgContext, N, !IO).
 
     % A value of type `indent' records the number of levels of indentation
     % to indent the next piece of code. Currently we output two spaces
@@ -3844,6 +3866,7 @@ output_pragma_warning_restore(!IO) :-
                 oi_auto_comments    :: bool,
                 oi_line_numbers     :: bool,
                 oi_module_name      :: mlds_module_name,
+                oi_source_filename  :: string,
                 oi_code_addrs       :: map(mlds_code_addr, string),
 
                 % These are dynamic.
@@ -3855,17 +3878,18 @@ output_pragma_warning_restore(!IO) :-
     --->    do_output_generics
     ;       do_not_output_generics.
 
-:- func init_csharp_out_info(module_info, map(mlds_code_addr, string))
+:- func init_csharp_out_info(module_info, string, map(mlds_code_addr, string))
     = csharp_out_info.
 
-init_csharp_out_info(ModuleInfo, CodeAddrs) = Info :-
+init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs) = Info :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     Info = csharp_out_info(ModuleInfo, AutoComments, LineNumbers,
-        MLDS_ModuleName, CodeAddrs, do_not_output_generics, []).
+        MLDS_ModuleName, SourceFileName, CodeAddrs, do_not_output_generics,
+        []).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs.

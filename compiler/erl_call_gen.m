@@ -70,10 +70,10 @@
 :- pred erl_gen_cast(prog_context::in, prog_vars::in, maybe(elds_expr)::in,
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
-    % Generate ELDS code for a call to foreign code.
+    % Generate ELDS code for a call to foreign proc.
     %
-:- pred erl_gen_foreign_code_call(list(foreign_arg)::in,
-    maybe(trace_expr(trace_runtime))::in, pragma_foreign_code_impl::in,
+:- pred erl_gen_foreign_proc_call(list(foreign_arg)::in,
+    maybe(trace_expr(trace_runtime))::in, pragma_foreign_proc_impl::in,
     code_model::in, prog_context::in, maybe(elds_expr)::in,
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
@@ -525,7 +525,7 @@ std_binop_to_elds(compound_lt, elds.(<)).
 
 %-----------------------------------------------------------------------------%
 %
-% Code for foreign code calls
+% Code for foreign proc calls
 %
 
 % Currently dummy arguments do not exist at all. The writer of the foreign
@@ -537,10 +537,10 @@ std_binop_to_elds(compound_lt, elds.(<)).
 % Materialising dummy input variables would not be a good idea unless
 % unused variable warnings were switched off in the Erlang compiler.
 
-erl_gen_foreign_code_call(ForeignArgs, MaybeTraceRuntimeCond,
+erl_gen_foreign_proc_call(ForeignArgs, MaybeTraceRuntimeCond,
         PragmaImpl, CodeModel, OuterContext, MaybeSuccessExpr, Statement,
         !Info) :-
-    PragmaImpl = fc_impl_ordinary(ForeignCode, MaybeContext),
+    PragmaImpl = fp_impl_ordinary(ForeignCode, MaybeContext),
     (
         MaybeTraceRuntimeCond = no,
         (
@@ -549,7 +549,7 @@ erl_gen_foreign_code_call(ForeignArgs, MaybeTraceRuntimeCond,
             MaybeContext = no,
             Context = OuterContext
         ),
-        erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
+        erl_gen_ordinary_pragma_foreign_proc(ForeignArgs, ForeignCode,
             CodeModel, Context, MaybeSuccessExpr, Statement, !Info)
     ;
         MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
@@ -558,11 +558,11 @@ erl_gen_foreign_code_call(ForeignArgs, MaybeTraceRuntimeCond,
 
 %-----------------------------------------------------------------------------%
 
-:- pred erl_gen_ordinary_pragma_foreign_code(list(foreign_arg)::in,
+:- pred erl_gen_ordinary_pragma_foreign_proc(list(foreign_arg)::in,
     string::in, code_model::in, prog_context::in, maybe(elds_expr)::in,
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
-erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
+erl_gen_ordinary_pragma_foreign_proc(ForeignArgs, ForeignCode,
         CodeModel, OuterContext, MaybeSuccessExpr, Statement, !Info) :-
     %
     % In the following, F<n> are input variables to the foreign code (with

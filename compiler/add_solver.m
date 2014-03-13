@@ -237,10 +237,10 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         ; Lang = lang_csharp
         ; Lang = lang_java
         ),
-        Impl = fc_impl_ordinary("Y = X;", yes(Context))
+        Impl = fp_impl_ordinary("Y = X;", yes(Context))
     ;
         Lang = lang_erlang,
-        Impl = fc_impl_ordinary("Y = X", yes(Context))
+        Impl = fp_impl_ordinary("Y = X", yes(Context))
     ),
     
     % The `func(in) = out(<i_ground>) is det' mode.

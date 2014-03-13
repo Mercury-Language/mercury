@@ -151,12 +151,12 @@
                 % If set to yes(Cond), then this goal represents the evaluation
                 % of the runtime condition of a trace goal. In that case,
                 % the goal must be semidet, and the argument lists empty;
-                % the actual code in pragma_foreign_code_impl is ignored
+                % the actual code in pragma_foreign_proc_impl is ignored
                 % and replaced by the evaluation of Cond.
                 foreign_trace_cond  :: maybe(trace_expr(trace_runtime)),
 
                 % The actual code of the foreign_proc.
-                foreign_impl        :: pragma_foreign_code_impl
+                foreign_impl        :: pragma_foreign_proc_impl
             )
 
     ;       conj(conj_type, list(hlds_goal))

@@ -97,6 +97,7 @@ SINGLEMODULE= \
 	field_syntax_error \
 	foreign_enum_import \
 	foreign_enum_invalid \
+	foreign_include_file_missing \
 	foreign_purity_mismatch \
 	foreign_singleton \
 	foreign_type_2 \
@@ -448,6 +449,15 @@ make_opt_error.err: make_opt_error.m
 illtyped_compare.err: illtyped_compare.m
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 			--make-optimization-interface $* > $*.err 2>&1; \
+	then false; \
+	else true; \
+	fi
+
+# For foreign_include_file_missing, the error is only caught when generating
+# target code.
+foreign_include_file_missing.err: foreign_include_file_missing.m
+	if $(MC) --target-code-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+			$* > $*.err 2>&1; \
 	then false; \
 	else true; \
 	fi

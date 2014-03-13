@@ -490,13 +490,13 @@
                 % A foreign language declaration, such as C header code.
                 decl_lang               :: foreign_language,
                 decl_is_local           :: foreign_decl_is_local,
-                decl_decl               :: string
+                decl_decl               :: foreign_literal_or_include
             ).
 
 :- type pragma_info_foreign_code
     --->    pragma_info_foreign_code(
                 code_lang               :: foreign_language,
-                code_code               :: string
+                code_code               :: foreign_literal_or_include
             ).
 
 :- type pragma_info_foreign_proc
@@ -513,7 +513,7 @@
                 proc_vars               :: list(pragma_var),
                 proc_varset             :: prog_varset,
                 proc_instvarset         :: inst_varset,
-                proc_impl               :: pragma_foreign_code_impl
+                proc_impl               :: pragma_foreign_proc_impl
             ).
 
 :- type pragma_info_foreign_import_module
@@ -940,7 +940,7 @@
 
 :- pred get_item_list_foreign_code(globals::in, list(item)::in,
     set(foreign_language)::out, foreign_import_module_info_list::out,
-    contains_foreign_export::out) is det.
+    foreign_include_file_info_list::out, contains_foreign_export::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1061,16 +1061,17 @@ set_mutable_var_thread_local(ThreadLocal, !Attributes) :-
                 used_foreign_languages      :: set(foreign_language),
                 foreign_proc_languages      :: map(sym_name, foreign_language),
                 all_foreign_import_modules  :: foreign_import_module_info_list,
+                all_foreign_include_files   :: foreign_include_file_info_list,
                 module_has_foreign_export   :: contains_foreign_export
             ).
 
 get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
-        ContainsPragmaExport) :-
-    Info0 = module_foreign_info(set.init, map.init, [],
+        ForeignIncludeFiles, ContainsForeignExport) :-
+    Info0 = module_foreign_info(set.init, map.init, [], [],
         contains_no_foreign_export),
     list.foldl(get_item_foreign_code(Globals), Items, Info0, Info),
     Info = module_foreign_info(LangSet0, LangMap, ForeignImports,
-        ContainsPragmaExport),
+        ForeignIncludeFiles, ContainsForeignExport),
     ForeignProcLangs = map.values(LangMap),
     LangSet = set.insert_list(LangSet0, ForeignProcLangs).
 
@@ -1113,13 +1114,15 @@ do_get_item_foreign_code(Globals, Pragma, Context, !Info) :-
     % or not to call mlds_to_c.m.
     (
         Pragma = pragma_foreign_code(FCInfo),
-        FCInfo = pragma_info_foreign_code(Lang, _),
+        FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude),
         ( list.member(Lang, BackendLangs) ->
-            !Info ^ used_foreign_languages :=
-                set.insert(!.Info ^ used_foreign_languages, Lang)
+            Langs0 = !.Info ^ used_foreign_languages,
+            set.insert(Lang, Langs0, Langs),
+            !Info ^ used_foreign_languages := Langs
         ;
             true
-        )
+        ),
+        do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info)
     ;
         Pragma = pragma_foreign_proc(FPInfo),
         FPInfo = pragma_info_foreign_proc(Attrs, Name, _, _, _, _, _),
@@ -1189,7 +1192,9 @@ do_get_item_foreign_code(Globals, Pragma, Context, !Info) :-
         % will only do if there is some foreign_code, not just foreign_decls.
         % Counting foreign_decls here causes problems with intermodule
         % optimization.
-        Pragma = pragma_foreign_decl(_)
+        Pragma = pragma_foreign_decl(FDInfo),
+        FDInfo = pragma_info_foreign_decl(Lang, _IsLocal, LiteralOrInclude),
+        do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info)
     ;
         ( Pragma = pragma_foreign_enum(_)
         ; Pragma = pragma_foreign_export_enum(_)
@@ -1223,6 +1228,21 @@ do_get_item_foreign_code(Globals, Pragma, Context, !Info) :-
         ; Pragma = pragma_unused_args(_)
         )
         % Do nothing.
+    ).
+
+:- pred do_get_item_foreign_include_file(foreign_language::in,
+    foreign_literal_or_include::in, module_foreign_info::in,
+    module_foreign_info::out) is det.
+
+do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info) :-
+    (
+        LiteralOrInclude = literal(_)
+    ;
+        LiteralOrInclude = include_file(FileName),
+        IncludeFile = foreign_include_file_info(Lang, FileName),
+        IncludeFiles0 = !.Info ^ all_foreign_include_files,
+        IncludeFiles = [IncludeFile | IncludeFiles0],
+        !Info ^ all_foreign_include_files := IncludeFiles
     ).
 
 %-----------------------------------------------------------------------------%

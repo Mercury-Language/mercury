@@ -482,8 +482,6 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
             % Only add the foreign export if the specified language matches
             % one of the foreign languages available for this backend.
             %
-            
-            
             module_info_get_globals(!.ModuleInfo, Globals),
             globals.get_backend_foreign_languages(Globals, ForeignLanguages),
             ( list.member(Lang, ForeignLanguages) ->
@@ -2738,7 +2736,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         Global = table_info_c_global_var_name(!.ModuleInfo, SimpleCallId,
             ProcId),
         StatsCode = "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
-        StatsImpl = fc_impl_ordinary(StatsCode, yes(Context)),
+        StatsImpl = fp_impl_ordinary(StatsCode, yes(Context)),
         StatsPragmaFCInfo = pragma_info_foreign_proc(!.Attrs, StatsPredSymName,
             pf_predicate, [Arg1, Arg2, Arg3], !.VarSet, InstVarSet, StatsImpl),
         StatsPragma = pragma_foreign_proc(StatsPragmaFCInfo),
@@ -2822,7 +2820,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
             IsTablingSupported = no,
             ResetCode = ""
         ),
-        ResetImpl = fc_impl_ordinary(ResetCode, yes(Context)),
+        ResetImpl = fp_impl_ordinary(ResetCode, yes(Context)),
         ResetPragmaFCInfo = pragma_info_foreign_proc(!.Attrs, ResetPredSymName,
             pf_predicate, [Arg1, Arg2], !.VarSet, InstVarSet, ResetImpl),
         ResetPragma = pragma_foreign_proc(ResetPragmaFCInfo),
@@ -3240,7 +3238,7 @@ add_pragma_fact_table(FTInfo, Status, Context, !ModuleInfo, !Specs) :-
 
             % Create foreign_decls to declare extern variables.
             module_add_foreign_decl(lang_c, foreign_decl_is_local,
-                C_HeaderCode, Context, !ModuleInfo),
+                literal(C_HeaderCode), Context, !ModuleInfo),
 
             module_add_fact_table_file(FileName, !ModuleInfo),
 
@@ -3315,13 +3313,14 @@ add_fact_table_proc(ProcId, PrimaryProcId, ProcTable, SymName,
     add_extra_attribute(refers_to_llds_stack, Attrs3, Attrs),
     MaybeItemNumber = no,
     FCInfo = pragma_info_foreign_proc(Attrs, SymName, PredOrFunc, PragmaVars,
-        ProgVarSet, InstVarSet, fc_impl_ordinary(C_ProcCode, no)),
+        ProgVarSet, InstVarSet, fp_impl_ordinary(C_ProcCode, no)),
     add_pragma_foreign_proc(FCInfo, Status, Context, MaybeItemNumber,
         !ModuleInfo, !Specs),
     ( C_ExtraCode = "" ->
         true
     ;
-        module_add_foreign_body_code(lang_c, C_ExtraCode, Context, !ModuleInfo)
+        module_add_foreign_body_code(lang_c, literal(C_ExtraCode), Context,
+            !ModuleInfo)
     ),
 
     % The C code for fact tables includes C labels; we cannot inline this code,
@@ -3359,7 +3358,7 @@ fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
 :- pred clauses_info_add_pragma_foreign_proc(purity::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
-    pragma_foreign_code_impl::in, prog_context::in,
+    pragma_foreign_proc_impl::in, prog_context::in,
     pred_or_func::in, sym_name::in, arity::in, pred_markers::in,
     clauses_info::in, clauses_info::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -3396,7 +3395,7 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0,
 :- pred clauses_info_do_add_pragma_foreign_proc(purity::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(proc_id)::in, prog_varset::in, list(pragma_var)::in,
-    list(mer_type)::in, pragma_foreign_code_impl::in, prog_context::in,
+    list(mer_type)::in, pragma_foreign_proc_impl::in, prog_context::in,
     pred_or_func::in, sym_name::in, arity::in, pred_markers::in,
     clauses_info::in, clauses_info::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.

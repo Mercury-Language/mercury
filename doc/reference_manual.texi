@@ -6278,6 +6278,10 @@ fair search rule; and so forth.
 * Adding foreign declarations::        How to add declarations of
   				       entities in other programming
 				       languages.
+* Declaring Mercury exports to other modules::
+                                       How to call Mercury procedures from a
+                                       different programming language in
+                                       another module.
 * Adding foreign definitions::         How to add definitions of
   				       entities in other programming
 				       languages.
@@ -7362,6 +7366,30 @@ you can use the following variant of the declaration:
 Note: currently only the C and Erlang backends support this variant
 of the @samp{pragma foreign_decl} declaration.
 
+The Melbourne Mercury implementation additionally supports the forms
+
+@example
+:- pragma foreign_decl("@var{Lang}", include_file("@var{Path}")).
+:- pragma foreign_decl("@var{Lang}", local, include_file("@var{Path}")).
+@end example
+
+These have the same effects as the standard forms except that the
+contents of the file referenced by @var{Path} are included in place of
+the string literal in the last argument, without further interpretation.
+@var{Path} may be an absolute path to a file, or a path to a file relative
+to the directory that contains the source file of the module containing the
+declaration. The interpretation of the path is platform-dependent.
+If the filesystem uses a different character set or encoding from the
+Mercury source file (which must be UTF-8), the file may not be found.
+
+@samp{mmc --make} treats included files as dependencies
+of the module.
+
+@c -----------------------------------------------------------------------
+
+@node Declaring Mercury exports to other modules
+@section Declaring Mercury exports to other modules
+
 The declarations for Mercury predicates or functions exported to a 
 foreign language using a @samp{pragma foreign_export} declaration
 are visible to foreign code in a @samp{pragma foreign_code} or
@@ -7405,6 +7433,8 @@ Note that the Melbourne Mercury implementation often implicitly inserts
 @samp{pragma foreign_import_module} declarations should always be explicitly
 included if needed.
 
+@c -----------------------------------------------------------------------
+
 @node Adding foreign definitions
 @section Adding foreign definitions
 
@@ -7425,6 +7455,24 @@ language, if appropriate).
 Entities declared in @samp{pragma foreign_code} declarations are
 visible in @samp{pragma foreign_proc} declarations that specify the same
 foreign language and occur in the same Mercury module.
+
+The Melbourne Mercury implementation additionally supports the form
+
+@example
+:- pragma foreign_code("@var{Lang}", include_file("@var{Path}")).
+@end example
+
+This has the same effect as the standard form except that the
+contents of the file referenced by @var{Path} are included in place of
+the string literal in the last argument, without further interpretation.
+@var{Path} may be an absolute path to a file, or a path to a file relative
+to the directory that contains the source file of the module containing the
+declaration. The interpretation of the path is platform-dependent.
+If the filesystem uses a different character set or encoding from the
+Mercury source file (which must be UTF-8), the file may not be found.
+
+@samp{mmc --make} treats included files as dependencies
+of the module.
 
 @c -----------------------------------------------------------------------
 

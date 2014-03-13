@@ -365,6 +365,12 @@ det_negation_det(detism_failure,   yes(detism_det)).
     --->    foreign_decl_is_local
     ;       foreign_decl_is_exported.
 
+:- type foreign_literal_or_include
+    --->    literal(string)
+    ;       include_file(
+                string      % The file name written in the source code.
+            ).
+
     % A foreign_language_type represents a type that is defined in a
     % foreign language and accessed in Mercury (most likely through
     % pragma foreign_type).
@@ -807,13 +813,13 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for `foreign_code' pragma.
+% Stuff for `foreign_proc' pragma.
 %
 
 :- interface.
 
     % This type holds information about the implementation details
-    % of procedures defined via `pragma foreign_code'.
+    % of procedures defined via `pragma foreign_proc'.
     %
     % All the strings in this type may be accompanied by the context of their
     % appearance in the source code. These contexts are used to tell the
@@ -822,8 +828,8 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     % code in the Mercury program. The context is missing if the foreign code
     % was constructed by the compiler.
     %
-:- type pragma_foreign_code_impl
-    --->    fc_impl_ordinary(
+:- type pragma_foreign_proc_impl
+    --->    fp_impl_ordinary(
                 % This is a foreign language definition of a model_det or
                 % model_semi procedure. (We used to allow model_non, but
                 % do not any more.)
@@ -840,6 +846,13 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     ;       shared_code_share
     ;       shared_code_automatic.
 
+%-----------------------------------------------------------------------------%
+%
+% Stuff for `foreign_import_module' pragma.
+%
+
+:- interface.
+
     % In reverse order.
 :- type foreign_import_module_info_list  == list(foreign_import_module_info).
 
@@ -848,6 +861,22 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
                 foreign_language,
                 module_name,
                 prog_context
+            ).
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff for the `foreign_decl' and `foreign_code' pragmas.
+%
+
+:- interface.
+
+    % In reverse order.
+:- type foreign_include_file_info_list == list(foreign_include_file_info).
+
+:- type foreign_include_file_info
+    --->    foreign_include_file_info(
+                fifi_lang       :: foreign_language,
+                fifi_filename   :: string
             ).
 
 %-----------------------------------------------------------------------------%

@@ -92,6 +92,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.pred_table.
 :- import_module libs.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
@@ -736,8 +737,8 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
             "#ifndef ", decl_guard(ModuleName), "\n",
             "#define ", decl_guard(ModuleName), "\n"], !IO),
         list.foldl(output_exported_enum(ModuleInfo), ExportedEnums, !IO),
-        list.foldl(output_foreign_decl(Globals, yes(foreign_decl_is_exported)),
-            ForeignDecls, !IO),
+        list.foldl(output_foreign_decl(Globals, SourceFileName,
+            yes(foreign_decl_is_exported)), ForeignDecls, !IO),
         io.write_string("\n#endif\n", !IO),
 
         produce_header_file_2(C_ExportDecls, !IO),
@@ -788,11 +789,13 @@ produce_header_file_2([E | ExportedProcs], !IO) :-
     ),
     produce_header_file_2(ExportedProcs, !IO).
 
-:- pred output_foreign_decl(globals::in, maybe(foreign_decl_is_local)::in,
-    foreign_decl_code::in, io::di, io::uo) is det.
+:- pred output_foreign_decl(globals::in, string::in,
+    maybe(foreign_decl_is_local)::in, foreign_decl_code::in, io::di, io::uo)
+    is det.
 
-output_foreign_decl(Globals, MaybeDesiredIsLocal, DeclCode, !IO) :-
-    DeclCode = foreign_decl_code(Lang, IsLocal, Code, Context),
+output_foreign_decl(Globals, SourceFileName, MaybeDesiredIsLocal, DeclCode,
+        !IO) :-
+    DeclCode = foreign_decl_code(Lang, IsLocal, LiteralOrInclude, Context),
     (
         Lang = lang_c,
         (
@@ -802,16 +805,32 @@ output_foreign_decl(Globals, MaybeDesiredIsLocal, DeclCode, !IO) :-
             DesiredIsLocal = IsLocal
         )
     ->
-        term.context_file(Context, File),
-        term.context_line(Context, Line),
-        c_util.set_line_num(Globals, File, Line, !IO),
-        io.write_string(Code, !IO),
+        output_foreign_literal_or_include(Globals, SourceFileName,
+            LiteralOrInclude, Context, !IO),
         io.nl(!IO),
         c_util.reset_line_num(Globals, !IO)
     ;
         true
     ).
-        
+
+:- pred output_foreign_literal_or_include(globals::in, string::in,
+    foreign_literal_or_include::in, prog_context::in, io::di, io::uo) is det.
+
+output_foreign_literal_or_include(Globals, SourceFileName, LiteralOrInclude,
+        Context, !IO) :-
+    (
+        LiteralOrInclude = literal(Code),
+        term.context_file(Context, File),
+        term.context_line(Context, Line),
+        c_util.set_line_num(Globals, File, Line, !IO),
+        io.write_string(Code, !IO)
+    ;
+        LiteralOrInclude = include_file(IncludeFileName),
+        make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
+        c_util.set_line_num(Globals, IncludePath, 1, !IO),
+        write_include_file_contents(IncludePath, !IO)
+    ).
+
 %-----------------------------------------------------------------------------%
 %
 % Code for writing out foreign exported enumerations.

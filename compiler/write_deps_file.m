@@ -36,6 +36,9 @@
     % `.trans_opt' file may depend on.  This is set to `no' if the
     % dependency list is not available.
     %
+    % XXX we do not yet write dependencies on files referenced by pragma
+    % foreign_decl or pragma foreign_code
+    %
 :- pred write_dependency_file(globals::in, module_and_imports::in,
     set(module_name)::in, maybe(list(module_name))::in, io::di, io::uo) is det.
 
@@ -106,7 +109,8 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
     Module = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, ParentDeps, IntDeps, ImplDeps, IndirectDeps,
         _Children, InclDeps, NestedDeps, FactDeps0,
-        ContainsForeignCode, ForeignImports0, _ContainsForeignExport,
+        ContainsForeignCode, ForeignImports0, _ForeignIncludeFiles,
+        _ContainsForeignExport,
         Items, _Specs, _Error, _Timestamps, _HasMain, _Dir),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -518,7 +522,7 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ;
             ContainsForeignCode = contains_foreign_code_unknown,
             get_item_list_foreign_code(Globals, cord.list(Items), LangSet,
-                ForeignImports1, _),
+                ForeignImports1, _, _),
             % If we're generating the `.dep' file, ForeignImports0 will contain
             % a conservative approximation to the set of foreign imports
             % needed which will include imports required by imported modules.

@@ -1844,7 +1844,7 @@ intermod_write_clause(OutInfo, ModuleInfo, PredId, VarSet, HeadVars,
     ).
 
 :- pred intermod_write_foreign_clause(proc_table::in, pred_or_func::in,
-    pragma_foreign_code_impl::in, pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_impl::in, pragma_foreign_proc_attributes::in,
     list(foreign_arg)::in, prog_varset::in, sym_name::in, proc_id::in,
     io::di, io::uo) is det.
 

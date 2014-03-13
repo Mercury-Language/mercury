@@ -749,13 +749,13 @@ check_existq_clause(TypeVarSet, ExistQVars, Clause, !Info) :-
         true
     ).
 
-:- pred check_mention_existq_var(tvarset::in, pragma_foreign_code_impl::in,
+:- pred check_mention_existq_var(tvarset::in, pragma_foreign_proc_impl::in,
     tvar::in, typecheck_info::in, typecheck_info::out) is det.
 
 check_mention_existq_var(TypeVarSet, Impl, TVar, !Info) :-
     varset.lookup_name(TypeVarSet, TVar, Name),
     VarName = "TypeInfo_for_" ++ Name,
-    ( foreign_code_uses_variable(Impl, VarName) ->
+    ( foreign_proc_uses_variable(Impl, VarName) ->
         true
     ;
         Spec = report_missing_tvar_in_foreign_code(!.Info, VarName),

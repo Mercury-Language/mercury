@@ -21,13 +21,15 @@
 :- import_module libs.globals.
 :- import_module ml_backend.mlds.
 
+:- import_module bool.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
 
     % Convert the MLDS to IL and write it to a file.
     %
-:- pred output_mlds_via_ilasm(globals::in, mlds::in, io::di, io::uo) is det.
+:- pred output_mlds_via_ilasm(globals::in, mlds::in, bool::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -43,7 +45,6 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_foreign.
 
-:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
@@ -51,7 +52,7 @@
 
 %-----------------------------------------------------------------------------%
 
-output_mlds_via_ilasm(Globals, MLDS, !IO) :-
+output_mlds_via_ilasm(Globals, MLDS, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     module_name_to_file_name(Globals, ModuleName, ".il",
         do_create_dirs, ILAsmFile, !IO),
@@ -62,18 +63,19 @@ output_mlds_via_ilasm(Globals, MLDS, !IO) :-
         Result = yes(ForeignLangs),
         % Output any outline foreign_code to the appropriate foreign
         % language file.
-        list.foldl(output_foreign_file(Globals, MLDS),
-            set.to_sorted_list(ForeignLangs), !IO)
+        list.foldl2(output_foreign_file(Globals, MLDS),
+            set.to_sorted_list(ForeignLangs), yes, Succeeded, !IO)
     ;
         % An I/O error occurred; output_to_file has already reported
         % an error message, so we don't need to do anything here.
-        Result = no
+        Result = no,
+        Succeeded = no
     ).
 
 :- pred output_foreign_file(globals::in, mlds::in, foreign_language::in,
-    io::di, io::uo) is det.
+    bool::in, bool::out, io::di, io::uo) is det.
 
-output_foreign_file(Globals, MLDS, ForeignLang, !IO) :-
+output_foreign_file(Globals, MLDS, ForeignLang, !Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     (
         ForeignModuleName = foreign_language_module_name(ModuleName,
@@ -85,7 +87,8 @@ output_foreign_file(Globals, MLDS, ForeignLang, !IO) :-
             module_name_to_file_name(Globals, ForeignModuleName, Extension,
                 do_create_dirs, File, !IO),
             output_to_file(Globals, File, output_csharp_code(Globals, MLDS),
-                !IO)
+                TargetCodeSucceeded, !IO),
+            bool.and(TargetCodeSucceeded, !Succeeded)
         ;
             ForeignLang = lang_c,
             sorry($module, $pred, "language C foreign code not supported")

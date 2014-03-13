@@ -716,7 +716,7 @@ erl_gen_goal_expr(GoalExpr, CodeModel, Detism, InstMap, Context,
     ;
         GoalExpr = call_foreign_proc(_Attributes, _PredId, _ProcId,
             Args, _ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl),
-        erl_gen_foreign_code_call(Args, MaybeTraceRuntimeCond, PragmaImpl,
+        erl_gen_foreign_proc_call(Args, MaybeTraceRuntimeCond, PragmaImpl,
             CodeModel, Context, MaybeSuccessExpr, Statement, !Info)
     ;
         GoalExpr = shorthand(_),

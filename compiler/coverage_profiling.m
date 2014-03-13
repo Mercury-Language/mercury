@@ -1185,9 +1185,9 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
         UseCalls = no,
         get_deep_profile_builtin_ppid(ModuleInfo, PredName, PredArity,
             PredId, ProcId),
-        coverage_point_ll_code(DataType, ForeignCallAttrs, ForeignCode),
+        coverage_point_ll_code(DataType, ForeignCallAttrs, ForeignProc),
         CallGoalExpr = call_foreign_proc(ForeignCallAttrs, PredId, ProcId,
-            ForeignArgVars, [], no, ForeignCode),
+            ForeignArgVars, [], no, ForeignProc),
         NonLocals = set_of_var.list_to_set(ArgVars),
         InstMapDelta = instmap_delta_from_assoc_list([]),
         CallGoalInfo = impure_init_goal_info(NonLocals, InstMapDelta,
@@ -1242,9 +1242,9 @@ proc_static_cons_id(CoverageInfo, ProcStaticConsId) :-
     % Returns a string containing the Low Level C code for a coverage point.
     %
 :- pred coverage_point_ll_code(coverage_data_type::in,
-    pragma_foreign_proc_attributes::out, pragma_foreign_code_impl::out) is det.
+    pragma_foreign_proc_attributes::out, pragma_foreign_proc_impl::out) is det.
 
-coverage_point_ll_code(CoverageDataType, ForeignProcAttrs, ForeignCodeImpl) :-
+coverage_point_ll_code(CoverageDataType, ForeignProcAttrs, ForeignProcImpl) :-
     some [!ForeignProcAttrs] (
         % XXX When running this code in a parallel grade, the contention for
         % the foreign code mutex may be very expensive. To improve this, we
@@ -1261,7 +1261,7 @@ coverage_point_ll_code(CoverageDataType, ForeignProcAttrs, ForeignCodeImpl) :-
             !ForeignProcAttrs),
         ForeignProcAttrs = !.ForeignProcAttrs
     ),
-    ForeignCodeImpl = fc_impl_ordinary(Code, no),
+    ForeignProcImpl = fp_impl_ordinary(Code, no),
     Code = coverage_point_ll_code(CoverageDataType).
 
 :- func coverage_point_ll_code(coverage_data_type) = string.

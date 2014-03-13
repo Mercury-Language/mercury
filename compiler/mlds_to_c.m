@@ -31,11 +31,12 @@
 :- import_module libs.globals.
 :- import_module ml_backend.mlds.
 
+:- import_module bool.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
 
-    % output_c_mlds(MLDS, Globals, Suffix):
+    % output_c_mlds(MLDS, Globals, Suffix, Succeeded):
     %
     % Output C code the the appropriate C file and C declarations to the
     % appropriate header file. The file names are determined by the module
@@ -43,28 +44,28 @@
     % for debugging dumps. For normal output, the suffix should be the empty
     % string.)
     %
-:- pred output_c_mlds(mlds::in, globals::in, string::in, io::di, io::uo)
-    is det.
+:- pred output_c_mlds(mlds::in, globals::in, string::in, bool::out,
+    io::di, io::uo) is det.
 
-    % output_c_header_file(MLDS, Globals, Suffix):
+    % output_c_header_file(MLDS, Globals, Suffix, Succeeded):
     %
     % Output C declarations for the procedures (etc.) in the specified MLDS
     % module to the appropriate .mih header file. See output_mlds for the
     % meaning of Suffix.
     %
-:- pred output_c_header_file(mlds::in, globals::in, string::in,
+:- pred output_c_header_file(mlds::in, globals::in, string::in, bool::out,
     io::di, io::uo) is det.
 
 :- func mlds_tabling_data_name(mlds_proc_label, proc_tabling_struct_id)
     = string.
 
-    % output_c_file(MLDS, Globals, Suffix):
+    % output_c_file(MLDS, Globals, Suffix, Succeeded):
     %
     % Output C code for the specified MLDS module to the appropriate C file.
     % See output_mlds for the meaning of Suffix.
     %
-:- pred output_c_file(mlds::in, globals::in, string::in, io::di, io::uo)
-    is det.
+:- pred output_c_file(mlds::in, globals::in, string::in, bool::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -137,6 +138,8 @@
     %
 :- type mlds_to_c_opts
     --->    mlds_to_c_opts(
+                m2co_source_filename        :: string,
+
                 m2co_line_numbers           :: bool,
                 m2co_auto_comments          :: bool,
                 m2co_gcc_local_labels       :: bool,
@@ -156,9 +159,9 @@
                 m2co_all_globals            :: globals
             ).
 
-:- func init_mlds_to_c_opts(globals) = mlds_to_c_opts.
+:- func init_mlds_to_c_opts(globals, string) = mlds_to_c_opts.
 
-init_mlds_to_c_opts(Globals) = Opts :-
+init_mlds_to_c_opts(Globals, SourceFileName) = Opts :-
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     globals.lookup_bool_option(Globals, auto_comments, Comments),
     globals.lookup_bool_option(Globals, gcc_local_labels, GccLabels),
@@ -180,11 +183,12 @@ init_mlds_to_c_opts(Globals) = Opts :-
     globals.get_target(Globals, Target),
     globals.get_gc_method(Globals, GCMethod),
     StdFuncDecls = no,
-    Opts = mlds_to_c_opts(LineNumbers, Comments, GccLabels, GccNested,
+    Opts = mlds_to_c_opts(SourceFileName,
+        LineNumbers, Comments, GccLabels, GccNested,
         HighLevelData, ProfileCalls, ProfileMemory, ProfileTime, ProfileAny,
         Target, GCMethod, StdFuncDecls, Globals).
 
-output_c_mlds(MLDS, Globals, Suffix, !IO) :-
+output_c_mlds(MLDS, Globals, Suffix, Succeeded, !IO) :-
     % We output the source file before outputting the header, since the Mmake
     % dependencies say the header file depends on the source file, and so if
     % we wrote them out in the other order, this might lead to unnecessary
@@ -193,34 +197,46 @@ output_c_mlds(MLDS, Globals, Suffix, !IO) :-
     % XXX At some point we should also handle output of any non-C
     % foreign code (Ada, Fortran, etc.) to appropriate files.
     %
-    Opts = init_mlds_to_c_opts(Globals),
-    output_c_file_opts(MLDS, Opts, Suffix, !IO),
-    output_c_header_file_opts(MLDS, Opts, Suffix, !IO).
+    ModuleName = mlds_get_module_name(MLDS),
+    module_source_filename(Globals, ModuleName, SourceFileName, !IO),
+    Opts = init_mlds_to_c_opts(Globals, SourceFileName),
+    output_c_file_opts(MLDS, Opts, Suffix, Succeeded0, !IO),
+    (
+        Succeeded0 = yes,
+        output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO)
+    ;
+        Succeeded0 = no,
+        Succeeded = no
+    ).
 
-output_c_file(MLDS, Globals, Suffix, !IO) :-
-    Opts = init_mlds_to_c_opts(Globals),
-    output_c_file_opts(MLDS, Opts, Suffix, !IO).
+output_c_file(MLDS, Globals, Suffix, Succeeded, !IO) :-
+    ModuleName = mlds_get_module_name(MLDS),
+    module_source_filename(Globals, ModuleName, SourceFileName, !IO),
+    Opts = init_mlds_to_c_opts(Globals, SourceFileName),
+    output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO).
 
 :- pred output_c_file_opts(mlds::in, mlds_to_c_opts::in, string::in,
-    io::di, io::uo) is det.
+    bool::out, io::di, io::uo) is det.
 
-output_c_file_opts(MLDS, Opts, Suffix, !IO) :-
+output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
     module_name_to_file_name(Globals, ModuleName, ".c" ++ Suffix,
         do_create_dirs, SourceFile, !IO),
     Indent = 0,
     output_to_file(Globals, SourceFile,
-        mlds_output_src_file(Opts, Indent, MLDS), !IO).
+        mlds_output_src_file(Opts, Indent, MLDS), Succeeded, !IO).
 
-output_c_header_file(MLDS, Globals, Suffix, !IO) :-
-    Opts = init_mlds_to_c_opts(Globals),
-    output_c_header_file_opts(MLDS, Opts, Suffix, !IO).
+output_c_header_file(MLDS, Globals, Suffix, Succeeded, !IO) :-
+    ModuleName = mlds_get_module_name(MLDS),
+    module_source_filename(Globals, ModuleName, SourceFileName, !IO),
+    Opts = init_mlds_to_c_opts(Globals, SourceFileName),
+    output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO).
 
 :- pred output_c_header_file_opts(mlds::in, mlds_to_c_opts::in, string::in,
-    io::di, io::uo) is det.
+    bool::out, io::di, io::uo) is det.
 
-output_c_header_file_opts(MLDS, Opts, Suffix, !IO) :-
+output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     % We write the header file out to <module>.mih.tmp and then call
     % `update_interface' to move the <module>.mih.tmp file to <module>.mih;
     % this avoids updating the timestamp on the `.mih' file if it hasn't
@@ -234,8 +250,13 @@ output_c_header_file_opts(MLDS, Opts, Suffix, !IO) :-
         do_create_dirs, HeaderFile, !IO),
     Indent = 0,
     output_to_file(Globals, TmpHeaderFile,
-        mlds_output_hdr_file(Opts, Indent, MLDS), !IO),
-    update_interface(Globals, HeaderFile, !IO).
+        mlds_output_hdr_file(Opts, Indent, MLDS), Succeeded, !IO),
+    (
+        Succeeded = yes,
+        update_interface(Globals, HeaderFile, !IO)
+    ;
+        Succeeded = no
+    ).
 
 :- pred mlds_output_hdr_file(mlds_to_c_opts::in, indent::in, mlds::in,
     io::di, io::uo) is det.
@@ -916,7 +937,7 @@ mlds_output_c_hdr_decls(Opts, Indent, ModuleName, ForeignCode, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_c_hdr_decl(Opts, _Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
-    DeclCode = foreign_decl_code(Lang, IsLocal, Code, Context),
+    DeclCode = foreign_decl_code(Lang, IsLocal, LiteralOrInclude, Context),
     % Only output C code in the C header file.
     (
         Lang = lang_c,
@@ -928,8 +949,8 @@ mlds_output_c_hdr_decl(Opts, _Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
                 IsLocal = DesiredIsLocal
             )
         ->
-            output_context_opts(Opts, mlds_make_context(Context), !IO),
-            io.write_string(Code, !IO)
+            mlds_output_foreign_literal_or_include(Opts, LiteralOrInclude,
+                Context, !IO)
         ;
             true
         )
@@ -990,11 +1011,11 @@ mlds_output_c_foreign_import_module(Opts, Indent, ForeignImport, !IO) :-
     user_foreign_code::in, io::di, io::uo) is det.
 
 mlds_output_c_defn(Opts, _Indent, UserForeignCode, !IO) :-
-    UserForeignCode = user_foreign_code(Lang, Code, Context),
+    UserForeignCode = user_foreign_code(Lang, LiteralOrInclude, Context),
     (
         Lang = lang_c,
-        output_context_opts(Opts, mlds_make_context(Context), !IO),
-        io.write_string(Code, !IO)
+        mlds_output_foreign_literal_or_include(Opts, LiteralOrInclude, Context,
+            !IO)
     ;
         ( Lang = lang_csharp
         ; Lang = lang_il
@@ -1002,6 +1023,22 @@ mlds_output_c_defn(Opts, _Indent, UserForeignCode, !IO) :-
         ; Lang = lang_erlang
         ),
         sorry($module, $pred, "foreign code other than C")
+    ).
+
+:- pred mlds_output_foreign_literal_or_include(mlds_to_c_opts::in,
+    foreign_literal_or_include::in, prog_context::in, io::di, io::uo) is det.
+
+mlds_output_foreign_literal_or_include(Opts, LiteralOrInclude, Context, !IO) :-
+    (
+        LiteralOrInclude = literal(Code),
+        output_context_opts(Opts, mlds_make_context(Context), !IO),
+        io.write_string(Code, !IO)
+    ;
+        LiteralOrInclude = include_file(IncludeFileName),
+        SourceFileName = Opts ^ m2co_source_filename,
+        make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
+        output_context_opts(Opts, IncludePath, 1, !IO),
+        write_include_file_contents(IncludePath, !IO)
     ).
 
 :- pred mlds_output_pragma_export_defn(mlds_to_c_opts::in,
@@ -4717,6 +4754,18 @@ output_context_opts(Opts, Context, !IO) :-
         ProgContext = mlds_get_prog_context(Context),
         term.context_file(ProgContext, FileName),
         term.context_line(ProgContext, LineNumber),
+        c_util.always_set_line_num(FileName, LineNumber, !IO)
+    ;
+        LineNumbers = no
+    ).
+
+:- pred output_context_opts(mlds_to_c_opts::in, string::in, int::in,
+    io::di, io::uo) is det.
+
+output_context_opts(Opts, FileName, LineNumber, !IO) :-
+    LineNumbers = Opts ^ m2co_line_numbers,
+    (
+        LineNumbers = yes,
         c_util.always_set_line_num(FileName, LineNumber, !IO)
     ;
         LineNumbers = no

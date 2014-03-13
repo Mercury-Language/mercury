@@ -28,7 +28,8 @@
 
     % Given a c_file structure, output the LLDS code inside it into a .c file.
     %
-:- pred output_llds(globals::in, c_file::in, io::di, io::uo) is det.
+:- pred output_llds(globals::in, c_file::in, bool::out, io::di, io::uo)
+    is det.
 
 %----------------------------------------------------------------------------%
 
@@ -70,6 +71,7 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.exprn_aux.
@@ -83,6 +85,7 @@
 :- import_module ll_backend.rtti_out.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 
@@ -98,60 +101,27 @@
 :- import_module set.
 :- import_module set_tree234.
 :- import_module string.
+:- import_module term.
 
 %----------------------------------------------------------------------------%
 
-output_llds(Globals, CFile, !IO) :-
+output_llds(Globals, CFile, Succeeded, !IO) :-
     ModuleName = CFile ^ cfile_modulename,
     module_name_to_file_name(Globals, ModuleName, ".c", do_create_dirs,
         FileName, !IO),
-    io.open_output(FileName, Result, !IO),
-    (
-        Result = ok(FileStream),
-        decl_set_init(DeclSet0),
-        output_single_c_file(Globals, CFile, FileStream, DeclSet0, _, !IO),
-        io.close_output(FileStream, !IO)
-    ;
-        Result = error(Error),
-        io.progname_base("llds.m", ProgName, !IO),
-        io.format("\n%s: can't open `%s' for output:\n%s\n",
-            [s(ProgName), s(FileName), s(io.error_message(Error))], !IO),
-        io.set_exit_status(1, !IO)
-    ).
+    output_to_file(Globals, FileName, output_llds_2(Globals, CFile),
+        Succeeded, !IO).
 
-:- pred output_c_file_mercury_headers(llds_out_info::in,
-    io::di, io::uo) is det.
+:- pred output_llds_2(globals::in, c_file::in, io::di, io::uo) is det.
 
-output_c_file_mercury_headers(Info, !IO) :-
-    io.write_string("#define MR_ALLOW_RESET\n", !IO),
-    io.write_string("#include ""mercury_imp.h""\n", !IO),
-    TraceLevel = Info ^ lout_trace_level,
-    TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
-    (
-        TraceLevelIsNone = no,
-        io.write_string("#include ""mercury_trace_base.h""\n", !IO)
-    ;
-        TraceLevelIsNone = yes
-    ),
-    DeepProfile = Info ^ lout_profile_deep,
-    (
-        DeepProfile = yes,
-        io.write_string("#include ""mercury_deep_profiling.h""\n", !IO)
-    ;
-        DeepProfile = no
-    ),
-    GenerateBytecode = Info ^ lout_generate_bytecode,
-    (
-        GenerateBytecode = yes,
-        io.write_string("#include ""mb_interface_stub.h""\n", !IO)
-    ;
-        GenerateBytecode = no
-    ).
+output_llds_2(Globals, CFile, !IO) :-
+    decl_set_init(DeclSet0),
+    output_single_c_file(Globals, CFile, DeclSet0, _, !IO).
 
-:- pred output_single_c_file(globals::in, c_file::in, io.output_stream::in,
+:- pred output_single_c_file(globals::in, c_file::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
+output_single_c_file(Globals, CFile, !DeclSet, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, UserForeignCode, Exports,
         TablingInfoStructs, ScalarCommonDatas, VectorCommonDatas,
         RttiDatas, PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns,
@@ -164,16 +134,14 @@ output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
         ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
         AllocSites, AllocSiteMap,
         Modules, UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
-    Info = init_llds_out_info(ModuleName, Globals,
-        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap,
-        AllocSiteMap),
     library.version(Version, Fullarch),
-    io.set_output_stream(FileStream, OutputStream, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
-        SourceFileName, !IO),
+    module_source_filename(Globals, ModuleName, SourceFileName, !IO),
     output_c_file_intro_and_grade(Globals, SourceFileName, Version, Fullarch,
         !IO),
 
+    Info = init_llds_out_info(ModuleName, SourceFileName, Globals,
+        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap,
+        AllocSiteMap),
     annotate_c_modules(Info, Modules, AnnotatedModules,
         cord.init, EntryLabelsCord, cord.init, InternalLabelsCord,
         set.init, EnvVarNameSet),
@@ -235,8 +203,38 @@ output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
     io.write_string("\n", !IO),
     output_c_module_init_list(Info, ModuleName, AnnotatedModules, RttiDatas,
         ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable,
-        AllocSites, UserInitPredCNames, UserFinalPredCNames, !DeclSet, !IO),
-    io.set_output_stream(OutputStream, _, !IO).
+        AllocSites, UserInitPredCNames, UserFinalPredCNames, !DeclSet, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_c_file_mercury_headers(llds_out_info::in,
+    io::di, io::uo) is det.
+
+output_c_file_mercury_headers(Info, !IO) :-
+    io.write_string("#define MR_ALLOW_RESET\n", !IO),
+    io.write_string("#include ""mercury_imp.h""\n", !IO),
+    TraceLevel = Info ^ lout_trace_level,
+    TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
+    (
+        TraceLevelIsNone = no,
+        io.write_string("#include ""mercury_trace_base.h""\n", !IO)
+    ;
+        TraceLevelIsNone = yes
+    ),
+    DeepProfile = Info ^ lout_profile_deep,
+    (
+        DeepProfile = yes,
+        io.write_string("#include ""mercury_deep_profiling.h""\n", !IO)
+    ;
+        DeepProfile = no
+    ),
+    GenerateBytecode = Info ^ lout_generate_bytecode,
+    (
+        GenerateBytecode = yes,
+        io.write_string("#include ""mb_interface_stub.h""\n", !IO)
+    ;
+        GenerateBytecode = no
+    ).
 
 %----------------------------------------------------------------------------%
 
@@ -870,25 +868,11 @@ output_static_linkage_define(!IO) :-
     io::di, io::uo) is det.
 
 output_user_foreign_code(Info, UserForeignCode, !IO) :-
-    UserForeignCode = user_foreign_code(Lang, Foreign_Code, Context),
+    UserForeignCode = user_foreign_code(Lang, LiteralOrInclude, Context),
     (
         Lang = lang_c,
-        AutoComments = Info ^ lout_auto_comments,
-        LineNumbers = Info ^ lout_line_numbers,
-        (
-            AutoComments = yes,
-            LineNumbers = yes
-        ->
-            io.write_string("/* ", !IO),
-            prog_out.write_context(Context, !IO),
-            io.write_string(" pragma foreign_code */\n", !IO)
-        ;
-            true
-        ),
-        output_set_line_num(Info, Context, !IO),
-        io.write_string(Foreign_Code, !IO),
-        io.write_string("\n", !IO),
-        output_reset_line_num(Info, !IO)
+        output_foreign_decl_or_code(Info, "foreign_code", Lang,
+            LiteralOrInclude, Context, !IO)
     ;
         ( Lang = lang_java
         ; Lang = lang_csharp
@@ -907,35 +891,20 @@ output_foreign_header_include_lines(Info, Decls, !IO) :-
         set.init, _, !IO).
 
 :- pred output_foreign_header_include_line(llds_out_info::in,
-    foreign_decl_code::in, set(string)::in, set(string)::out,
+    foreign_decl_code::in,
+    set(foreign_literal_or_include)::in, set(foreign_literal_or_include)::out,
     io::di, io::uo) is det.
 
 output_foreign_header_include_line(Info, Decl, !AlreadyDone, !IO) :-
-    Decl = foreign_decl_code(Lang, _IsLocal, Code, Context),
+    Decl = foreign_decl_code(Lang, _IsLocal, LiteralOrInclude, Context),
     (
         Lang = lang_c,
-        ( set.member(Code, !.AlreadyDone) ->
-            true
+        % This will not deduplicate the content of included files.
+        ( set.insert_new(LiteralOrInclude, !AlreadyDone) ->
+            output_foreign_decl_or_code(Info, "foreign_decl", Lang,
+                LiteralOrInclude, Context, !IO)
         ;
-            set.insert(Code, !AlreadyDone),
-            AutoComments = Info ^ lout_auto_comments,
-            LineNumbers = Info ^ lout_line_numbers,
-            (
-                AutoComments = yes,
-                LineNumbers = yes
-            ->
-                io.write_string("/* ", !IO),
-                prog_out.write_context(Context, !IO),
-                io.write_string(" pragma foreign_decl_code(", !IO),
-                io.write(Lang, !IO),
-                io.write_string(") */\n", !IO)
-            ;
-                true
-            ),
-            output_set_line_num(Info, Context, !IO),
-            io.write_string(Code, !IO),
-            io.write_string("\n", !IO),
-            output_reset_line_num(Info, !IO)
+            true
         )
     ;
         ( Lang = lang_java
@@ -946,6 +915,42 @@ output_foreign_header_include_line(Info, Decl, !AlreadyDone, !IO) :-
         unexpected($module, $pred,
             "unexpected: foreign decl code other than C")
     ).
+
+:- pred output_foreign_decl_or_code(llds_out_info::in, string::in,
+    foreign_language::in, foreign_literal_or_include::in, prog_context::in,
+    io::di, io::uo) is det.
+
+output_foreign_decl_or_code(Info, PragmaType, Lang, LiteralOrInclude, Context,
+        !IO) :-
+    AutoComments = Info ^ lout_auto_comments,
+    LineNumbers = Info ^ lout_line_numbers,
+    (
+        AutoComments = yes,
+        LineNumbers = yes
+    ->
+        io.write_string("/* ", !IO),
+        prog_out.write_context(Context, !IO),
+        io.write_string(" pragma ", !IO),
+        io.write_string(PragmaType, !IO),
+        io.write_string("(", !IO),
+        io.write(Lang, !IO),
+        io.write_string(") */\n", !IO)
+    ;
+        true
+    ),
+    (
+        LiteralOrInclude = literal(Code),
+        output_set_line_num(Info, Context, !IO),
+        io.write_string(Code, !IO)
+    ;
+        LiteralOrInclude = include_file(IncludeFileName),
+        SourceFileName = Info ^ lout_source_file_name,
+        make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
+        output_set_line_num(Info, context(IncludePath, 1), !IO),
+        write_include_file_contents(IncludePath, !IO)
+    ),
+    io.nl(!IO),
+    output_reset_line_num(Info, !IO).
 
 :- pred output_record_c_label_decls(llds_out_info::in,
     list(label)::in, list(label)::in,

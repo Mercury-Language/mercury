@@ -11,6 +11,8 @@ MMAKE_USE_MMC_MAKE=yes
 PROGS =	\
 		complex_test \
 		hello \
+		include_file \
+		include_file2 \
 		linkage_test \
 		rebuild
 
@@ -29,6 +31,13 @@ include $(TESTS_DIR)/Mmake.common
 %.runtest: %.res ;
 
 complex_test.log: install_libs
+
+# Check that included files are identified as dependencies of the target code.
+# sleep 1 is required because mmc --make timestamps are not granular enough.
+include_file2.runtest: include_file
+	sleep 1 && touch inc/code.c inc/code.java inc/code.cs inc/code.erl
+	$(MCM) --verbose-make include_file > include_file2.err 2>&1
+	grep '^Making Mercury/.*/include_file[.]' include_file2.err
 
 linkage_test.log: install_libs_linkage_test2
 
@@ -63,7 +72,7 @@ TESTS_FLAGS: ../TESTS_FLAGS
 	ln -s $< $@ || cp $< $@
 
 realclean_local: TESTS_FLAGS
-	rm -rf install rebuild.err2
+	rm -rf install include_file2.err rebuild.err2
 	# ./TESTS_FLAGS is expected by the following line.
 	cd lib; $(MCM) complex_numbers.realclean linkage_test2.realclean
 	rm -f TESTS_FLAGS

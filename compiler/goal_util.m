@@ -392,7 +392,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred foreign_code_uses_variable(pragma_foreign_code_impl::in, string::in)
+:- pred foreign_proc_uses_variable(pragma_foreign_proc_impl::in, string::in)
     is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -1698,7 +1698,7 @@ generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
         PredOrFunc, Arity, ModeNo, PredId, ProcId),
 
     GoalExpr = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-        MaybeTraceRuntimeCond, fc_impl_ordinary(Code, no)),
+        MaybeTraceRuntimeCond, fp_impl_ordinary(Code, no)),
     ArgVars = list.map(foreign_arg_var, Args),
     ExtraArgVars = list.map(foreign_arg_var, ExtraArgs),
     Vars = ArgVars ++ ExtraArgVars,
@@ -1793,8 +1793,8 @@ goal_is_atomic(Goal, GoalIsAtomic) :-
 
 %-----------------------------------------------------------------------------%
 
-foreign_code_uses_variable(Impl, VarName) :-
-    Impl = fc_impl_ordinary(ForeignBody, _),
+foreign_proc_uses_variable(Impl, VarName) :-
+    Impl = fp_impl_ordinary(ForeignBody, _),
     string.sub_string_search(ForeignBody, VarName, _).
 
 %-----------------------------------------------------------------------------%

@@ -1528,9 +1528,9 @@ write_goal_foreign_proc(_Info, GoalExpr, ModuleInfo, VarSet,
             !IO),
         io.write_string("},\n", !IO)
     ),
-    PragmaCode = fc_impl_ordinary(C_Code, _),
+    PragmaCode = fp_impl_ordinary(Code, _),
     io.write_string("""", !IO),
-    io.write_string(C_Code, !IO),
+    io.write_string(Code, !IO),
     io.write_string("""", !IO),
     io.write_string(")", !IO),
     io.write_string(Follow, !IO).

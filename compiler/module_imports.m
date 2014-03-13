@@ -108,6 +108,10 @@
                 % The `:- pragma foreign_import_module' declarations.
                 mai_foreign_import_modules  :: foreign_import_module_info_list,
 
+                % The list of filenames referenced by `:- pragma foreign_decl'
+                % or `:- pragma foreign_code' declarations.
+                mai_foreign_include_files   :: foreign_include_file_info_list,
+
                 % Does the module contain any `:- pragma foreign_export'
                 % declarations?
                 mai_contains_foreign_export     :: contains_foreign_export,
@@ -337,7 +341,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
 
     % Figure out whether the items contain foreign code.
     get_item_list_foreign_code(Globals, Items, LangSet,
-        ForeignImports0, ContainsPragmaExport),
+        ForeignImports0, ForeignIncludeFiles, ContainsForeignExport),
     ( set.empty(LangSet) ->
         ContainsForeignCode = contains_no_foreign_code
     ;
@@ -386,7 +390,8 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         ModuleName, ParentDeps, InterfaceDeps,
         ImplementationDeps, IndirectDeps, IncludeDeps,
         InterfaceIncludeDeps, NestedDeps, FactTableDeps,
-        ContainsForeignCode, ForeignImports, ContainsPragmaExport,
+        ContainsForeignCode, ForeignImports, ForeignIncludeFiles,
+        ContainsForeignExport,
         cord.empty, Specs, Error, no, HasMain, dir.this_directory).
 
 %-----------------------------------------------------------------------------%
