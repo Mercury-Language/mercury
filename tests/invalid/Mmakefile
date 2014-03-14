@@ -455,6 +455,7 @@ illtyped_compare.err: illtyped_compare.m
 
 # For foreign_include_file_missing, the error is only caught when generating
 # target code.
+.PHONY: missing_file
 foreign_include_file_missing.err: foreign_include_file_missing.m
 	if $(MC) --target-code-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 			$* > $*.err 2>&1; \

@@ -250,6 +250,12 @@
     %
 :- pred get_fact_table_dependencies(list(item)::in, list(string)::out) is det.
 
+    % Get foreign include_file dependencies for a module.
+    % This replicates part of get_item_list_foreign_code.
+    %
+:- pred get_foreign_include_files(list(item)::in,
+    foreign_include_file_info_list::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -802,6 +808,38 @@ get_fact_table_dependencies_2([Item | Items], !Deps) :-
         true
     ),
     get_fact_table_dependencies_2(Items, !Deps).
+
+%-----------------------------------------------------------------------------%
+
+get_foreign_include_files(Items, IncludeFiles) :-
+    list.foldl(get_foreign_include_file, Items, [], IncludeFiles).
+
+:- pred get_foreign_include_file(item::in,
+    foreign_include_file_info_list::in, foreign_include_file_info_list::out)
+    is det.
+
+get_foreign_include_file(Item, !IncludeFiles) :-
+    (
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(_, Pragma, _, _),
+        (
+            Pragma = pragma_foreign_decl(FDInfo),
+            FDInfo = pragma_info_foreign_decl(Lang, _IsLocal, LiteralOrInclude)
+        ;
+            Pragma = pragma_foreign_code(FCInfo),
+            FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude)
+        )
+    ->
+        (
+            LiteralOrInclude = literal(_)
+        ;
+            LiteralOrInclude = include_file(FileName),
+            IncludeFile = foreign_include_file_info(Lang, FileName),
+            !:IncludeFiles = [IncludeFile | !.IncludeFiles]
+        )
+    ;
+        true
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.module_imports.

@@ -161,8 +161,8 @@
     % Similar to grab_imported_modules, but only reads in the unqualified
     % short interfaces (.int3s), and the .int0 files for parent modules,
     % instead of reading the long interfaces and qualified short interfaces
-    % (.int and int2s). Does not set the `PublicChildren' or `FactDeps'
-    % fields of the module_and_imports structure.
+    % (.int and int2s). Does not set the `PublicChildren', `FactDeps'
+    % `ForeignIncludeFiles' fields of the module_and_imports structure.
     %
 :- pred grab_unqual_imported_modules(globals::in, file_name::in,
     module_name::in, module_name::in, list(item)::in, module_and_imports::out,
@@ -1876,10 +1876,11 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
             ImpImportedModules0, ImpImportedModules,
             ImpUsedModules0, ImpUsedModules, !Specs),
 
-        get_fact_table_dependencies(Items0, FactDeps),
         get_interface_and_implementation(ModuleName, no, Items0,
             InterfaceItems, ImplItems),
         get_children(InterfaceItems, PublicChildren),
+        get_fact_table_dependencies(Items0, FactDeps),
+        get_foreign_include_files(Items0, ForeignIncludeFiles),
         (
             MaybeTimestamp = yes(Timestamp),
             MaybeTimestamps = yes(map.singleton(ModuleName,
@@ -1887,11 +1888,10 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         ;
             MaybeTimestamp = no,
             MaybeTimestamps = no
-
         ),
         init_module_and_imports(SourceFileName, SourceFileModuleName,
             ModuleName, Items0, !.Specs, PublicChildren, NestedChildren,
-            FactDeps, MaybeTimestamps, !:Module),
+            FactDeps, ForeignIncludeFiles, MaybeTimestamps, !:Module),
 
         % If this module has any separately-compiled sub-modules, then
         % we need to make everything in the implementation of this module
@@ -2021,7 +2021,7 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
 
     % Construct the initial module import structure.
     init_module_and_imports(SourceFileName, SourceFileModuleName, ModuleName,
-        Items0, [], [], [], [], no, !:Module),
+        Items0, [], [], [], [], [], no, !:Module),
 
     % Add `builtin' and `private_builtin' to the imported modules.
     add_implicit_imports(Items0, Globals,
@@ -3602,11 +3602,12 @@ get_interface_and_implementation(ModuleName, IncludeImplTypes,
 :- pred init_module_and_imports(file_name::in,
     module_name::in, module_name::in, list(item)::in, list(error_spec)::in,
     list(module_name)::in, list(module_name)::in, list(string)::in,
+    foreign_include_file_info_list::in,
     maybe(module_timestamps)::in, module_and_imports::out) is det.
 
 init_module_and_imports(SourceFileName, SourceFileModuleName, ModuleName,
         Items0, Specs, PublicChildren, NestedChildren, FactDeps,
-        MaybeTimestamps, Module) :-
+        ForeignIncludeFiles, MaybeTimestamps, Module) :-
     % XXX The reason why init_module_and_imports is here and not in
     % module_imports.m is this call. This should be fixed, preferably
     % by changing the module_and_imports structure.
@@ -3614,9 +3615,9 @@ init_module_and_imports(SourceFileName, SourceFileModuleName, ModuleName,
     ItemsCord = cord.from_list(Items),
     Module = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, [], [], [], [], [], PublicChildren,
-        NestedChildren, FactDeps, contains_foreign_code_unknown, [], [],
-        contains_no_foreign_export, ItemsCord, Specs, no_module_errors,
-        MaybeTimestamps, no_main, dir.this_directory).
+        NestedChildren, FactDeps, contains_foreign_code_unknown, [],
+        ForeignIncludeFiles, contains_no_foreign_export, ItemsCord, Specs,
+        no_module_errors, MaybeTimestamps, no_main, dir.this_directory).
 
 :- pred maybe_add_foreign_import_module(module_name::in,
     list(item)::in, list(item)::out) is det.

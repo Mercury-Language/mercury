@@ -7382,7 +7382,7 @@ declaration. The interpretation of the path is platform-dependent.
 If the filesystem uses a different character set or encoding from the
 Mercury source file (which must be UTF-8), the file may not be found.
 
-@samp{mmc --make} treats included files as dependencies
+@samp{mmc --make} and @samp{mmake} treat included files as dependencies
 of the module.
 
 @c -----------------------------------------------------------------------
@@ -7471,7 +7471,7 @@ declaration. The interpretation of the path is platform-dependent.
 If the filesystem uses a different character set or encoding from the
 Mercury source file (which must be UTF-8), the file may not be found.
 
-@samp{mmc --make} treats included files as dependencies
+@samp{mmc --make} and @samp{mmake} treat included files as dependencies
 of the module.
 
 @c -----------------------------------------------------------------------
