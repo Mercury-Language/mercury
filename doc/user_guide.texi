@@ -9704,6 +9704,12 @@ Specify the command used to invoke the linker when linking an executable.
 Specify the command used to invoke the linker when linking a shared library.
 
 @sp 1
+@item --strip-executable-command @var{command}
+@findex --strip-executable-command
+Specify the command used to strip executables if no linker
+flag to do so is available. This option has no effect on @samp{ml}.
+
+@sp 1
 @item --java-archive-command @var{command}
 @findex --java-archive-command
 Specify the command used to produce Java archive (JAR) files.

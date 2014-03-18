@@ -1045,6 +1045,7 @@ if test "$ac_microsoft" = "yes" ; then
     LDFLAGS_FOR_DEBUG="-DEBUG"
     LD_LIBFLAGS_FOR_DEBUG="-DEBUG"
     LD_STRIP_FLAG=
+    STRIP_EXE=
 
     USING_MICROSOFT_CL_COMPILER="yes"
     FIX_PATH_FOR_CC="$CYGPATH"
@@ -1070,13 +1071,15 @@ else
     AR_LIBFILE_OPT=""
 
     LD_STRIP_FLAG="-s"
+    STRIP_EXE=""
 
-    # Suppress a warning from the linker on Darwin 9+.  `-s' is deprecated on
-    # it and has no effect other than causing the linker to emit a warning.
+    # The `-s' linker option is deprecated on Darwin 9+ and has no effect other
+    # than causing the linker to emit a warning. Call the strip tool directly.
     #
     case "$host" in
         *apple*darwin*)
             LD_STRIP_FLAG=""
+            STRIP_EXE="strip"
             ;;
     esac
 
@@ -1137,6 +1140,7 @@ AC_SUBST(AR_LIBFILE_OPT)
 AC_SUBST(LDFLAGS_FOR_DEBUG)
 AC_SUBST(LD_LIBFLAGS_FOR_DEBUG)
 AC_SUBST(LD_STRIP_FLAG)
+AC_SUBST(STRIP_EXE)
 AC_SUBST(LDFLAGS_FOR_TRACE)
 AC_SUBST(LD_LIBFLAGS_FOR_TRACE)
 AC_SUBST(USING_MICROSOFT_CL_COMPILER)
