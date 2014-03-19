@@ -3122,8 +3122,7 @@ case "$host" in
         esac
         ;;
 
-    x86_64*w64*mingw32)
-        THREAD_LIBS=""
+    x86_64*w64*mingw32*)
         CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
         THREAD_LIBS="-lpthread"
         ;;
