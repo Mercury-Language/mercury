@@ -774,38 +774,22 @@ fi
 #
 
 AC_DEFUN([MERCURY_HAVE_PTHREADS_WIN32], [
-
 AC_MSG_CHECKING([if we are using pthreads-win32])
 
-cat > conftest.c << EOF
-
-#include <pthread.h>
-#include <stdio.h>
-
-int main(int argc, char **argv)
-{
-
-#if defined(PTW32_VERSION)
-    return 0;
-#else
-    return 1;
-#endif
-
-}
-
-EOF
-
-echo "$CC -o conftest contest.c" >&AC_FD_CC 2>&1
-if
-    $CC -o conftest conftest.c
-then
-    mercury_cv_have_pthreads_win32="yes"
-else
-    mercury_cv_have_pthreads_win32="no"
-fi
+AC_TRY_COMPILE([#include <pthread.h>],
+    [
+        #ifndef PTW32_VERSION
+            #error I suppose not
+        #endif
+        int self_id(void)
+        {
+            return (int) pthread_self().p;
+        }
+    ],
+    [mercury_cv_have_pthreads_win32=yes],
+    [mercury_cv_have_pthreads_win32=no])
 
 AC_MSG_RESULT($mercury_cv_have_pthreads_win32)
-
 ])
 
 #-----------------------------------------------------------------------------#
