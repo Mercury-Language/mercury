@@ -66,7 +66,6 @@ mercury_cv_int_least32_type=int \
 mercury_cv_int_least16_type=short \
 mercury_cv_low_tag_bits=2 \
 mercury_cv_bytes_per_word=4 \
-mercury_cv_sync_term_size=3 \
 mercury_cv_bits_per_word=32 \
 mercury_cv_unboxed_floats=no \
 mercury_cv_float_is_64_bit=no \

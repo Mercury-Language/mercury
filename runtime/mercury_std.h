@@ -312,6 +312,16 @@ typedef	char		MR_small_bool;
 #define MR_CHECK_EXPR_TYPE(expr, type) \
 	((void) sizeof(*(type *)NULL = (expr)))
 
+/*
+** MR_STATIC_ASSERT(module, expr):
+** Assert at compile time that the given expression is true.
+** A named bit-field may not have zero width.
+*/
+
+#define MR_STATIC_ASSERT(module, expr) \
+    struct MR_PASTE4(static_assert_, module, _line_, __LINE__) \
+	{ unsigned int bf : !!(expr); }
+
 /*---------------------------------------------------------------------------*/
 
 #define MR_SORRY(msg) MR_fatal_error("Sorry, not yet implemented: " msg);

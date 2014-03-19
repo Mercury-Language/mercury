@@ -459,6 +459,11 @@
 #undef	MR_LONG_DOUBLE_IS_64_BIT
 
 /*
+** The number of detstack slots (words) per MR_SyncTerm.
+*/
+#undef	MR_SYNC_TERM_SIZE
+
+/*
 ** The following macros specify the ordering of bytes within
 ** are used by the bytecode compiler and the
 ** bytecode interpreter when writing/reading floats from/to bytecode files.

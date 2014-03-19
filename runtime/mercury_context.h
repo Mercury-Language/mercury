@@ -789,6 +789,9 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
     volatile MR_Unsigned    MR_st_count;
   };
 
+  MR_STATIC_ASSERT(mercury_context,
+    MR_SYNC_TERM_SIZE == MR_bytes_to_words(sizeof(struct MR_SyncTerm_Struct)));
+
 #ifdef MR_THREADSCOPE
   #define MR_init_sync_term(sync_term, nbranches, static_conj_id)             \
     do {                                                                      \

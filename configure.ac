@@ -2065,40 +2065,6 @@ AC_SUBST(BYTES_PER_WORD)
 
 #-----------------------------------------------------------------------------#
 
-AC_MSG_CHECKING(the number of words in a synchronization term)
-AC_CACHE_VAL(mercury_cv_sync_term_size,
-    AC_TRY_RUN([
-    #include <stdio.h>
-    #include <stdlib.h>
-    #include <pthread.h>
-    int main() {
-        struct {
-            void        *orig_context;
-            void                    *parent_sp;
-            $mercury_cv_word_type   count;
-        } x;
-        FILE *fp;
-
-        fp = fopen("conftest.syncsize", "w");
-        if (fp == NULL)
-            exit(1);
-        fprintf(fp, "%d\n", (sizeof(void *) - 1 + sizeof(x))/
-                sizeof(void *));
-
-        exit(0);
-    }],
-    [mercury_cv_sync_term_size=`cat conftest.syncsize`],
-    [mercury_cv_sync_term_size=0],
-    [mercury_cv_sync_term_size=0])
-)
-mercury_cv_sync_term_size=`echo $mercury_cv_sync_term_size | tr -d '\r'`
-AC_MSG_RESULT($mercury_cv_sync_term_size)
-AC_DEFINE_UNQUOTED(MR_SYNC_TERM_SIZE, $mercury_cv_sync_term_size)
-SYNC_TERM_SIZE=$mercury_cv_sync_term_size
-AC_SUBST(SYNC_TERM_SIZE)
-
-#-----------------------------------------------------------------------------#
-
 AC_MSG_CHECKING(the number of bits per word)
 AC_CACHE_VAL(mercury_cv_bits_per_word,
     AC_TRY_RUN([
@@ -2214,6 +2180,13 @@ if test "$mercury_cv_long_double_is_64_bit" = yes; then
     AC_DEFINE(MR_LONG_DOUBLE_IS_64_BIT)
 fi
 AC_SUBST(MR_LONG_DOUBLE_IS_64_BIT)
+
+#-----------------------------------------------------------------------------#
+
+# The number of detstack slots (words) that a MR_SyncTerm occupies.
+SYNC_TERM_SIZE=3
+AC_SUBST(SYNC_TERM_SIZE)
+AC_DEFINE_UNQUOTED(MR_SYNC_TERM_SIZE, $SYNC_TERM_SIZE)
 
 #-----------------------------------------------------------------------------#
 
