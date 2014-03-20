@@ -836,7 +836,6 @@ static void
 parse_options(int argc, char *argv[])
 {
     int         c;
-    int         i;
     String_List *tmp_slist;
     int         seen_f_option = 0;
 
@@ -1255,7 +1254,6 @@ process_init_file(const char *filename)
             char    *func_name;
             int     func_name_len;
             int     j;
-            MR_bool special;
 
             for (j = init_strlen; MR_isalnumunder(line[j]); j++) {
                 /* VOID */

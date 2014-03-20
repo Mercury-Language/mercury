@@ -380,9 +380,6 @@ static  FILE        *debug_fp;
 void
 MR_write_out_profiling_tree(void)
 {
-    int                     i;
-    MR_ProfilingHashNode    *n;
-    MR_ProcId               *pid;
     int                     root_pd_id;
     FILE                    *deep_fp;
     FILE                    *procrep_fp;
@@ -390,6 +387,11 @@ MR_write_out_profiling_tree(void)
     int                     ticks_per_sec;
     unsigned                num_call_seqs;
     long                    table_sizes_offset;
+
+#ifdef MR_DEEP_PROFILING_STATISTICS
+    int                     i;
+#endif
+
 
     deep_fp = fopen(MR_MDPROF_DATA_FILENAME, "wb+");
     if (deep_fp == NULL) {
@@ -651,7 +653,7 @@ MR_write_out_profiling_tree(void)
             fprintf(stderr, "\t%3d: %12d\n", i, MR_method_search_lengths[i]);
         }
     }
-#endif
+#endif /* MR_DEEP_PROFILING_STATISTICS */
 
 #ifdef MR_DEEP_PROFILING_DEBUG
     check_fp = debug_fp;
@@ -1532,7 +1534,6 @@ MR_write_ptr(FILE *fp, MR_NodeKind kind, int node_id)
 static void
 MR_write_kind(FILE *fp, MR_CallSiteKind kind)
 {
-    int byte;
 
 #ifdef  MR_DEEP_PROFILING_DETAIL_DEBUG
     if (debug_fp != NULL) {
@@ -1812,7 +1813,6 @@ MR_write_out_profiling_tree_check_unwritten(FILE *check_fp)
     int                     unwritten_pd;
     int                     unwritten_ps;
     int                     any_unwritten;
-    int                     iteration;
 
     unwritten_ps = MR_hash_table_check_all_written_INTERNAL(check_fp,
         "ProcLayout", MR_proc_layout_table,

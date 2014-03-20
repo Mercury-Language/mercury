@@ -663,7 +663,6 @@ try_again:
     case MR_TYPECTOR_REP_BITMAP:
         {
             MR_Word *data_value;
-            int     i;
 
             assert(MR_tag(data) == 0);
             data_value = (MR_Word *) MR_body(data, MR_mktag(0));
@@ -765,7 +764,6 @@ try_again:
         {
             MR_Word *ref;
             MR_Word *new_ref;
-            int     i;
             MR_AllocSiteInfoPtr attrib;
 
             assert(MR_tag(data) == 0);

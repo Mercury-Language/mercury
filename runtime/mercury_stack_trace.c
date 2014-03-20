@@ -326,7 +326,7 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
     int                     proc_table_next;
     MR_Unsigned             reused_frames;
     MR_FrameLimit           level;
-    MR_SpecLineLimit        lines_dumped_so_far;
+    MR_SpecLineLimit        lines_dumped_so_far = 0;
     MR_Clique               *cliques_first;
     MR_Clique               *cliques_last;
     MR_Clique               *cl;

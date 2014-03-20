@@ -879,10 +879,13 @@ static void
 MR_init_context_maybe_generator(MR_Context *c, const char *id,
     MR_GeneratorPtr gen)
 {
+
+#ifndef MR_HIGHLEVEL_CODE
     const char  *detstack_name;
     const char  *nondetstack_name;
     size_t      detstack_size;
     size_t      nondetstack_size;
+#endif
 
     c->MR_ctxt_id = id;
     c->MR_ctxt_next = NULL;

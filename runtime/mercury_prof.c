@@ -85,7 +85,9 @@ MR_Code * volatile      MR_prof_current_proc;
 ** Private global variables.
 */
 
-static volatile int     in_profiling_code = MR_FALSE;
+#if defined(MR_MPROF_PROFILE_CALLS) || defined(MR_MPROF_PROFILE_TIME)
+  static volatile int     in_profiling_code = MR_FALSE;
+#endif
 
 #ifdef MR_MPROF_PROFILE_CALLS
   static MR_bool        profile_calls = MR_TRUE;

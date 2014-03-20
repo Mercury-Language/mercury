@@ -348,7 +348,9 @@ MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool wrap)
 MR_Word
 MR_arg_value_uncommon(MR_Word *arg_ptr, const MR_DuArgLocn *arg_locn)
 {
+#ifdef MR_BOXED_FLOAT
     MR_Float    flt;
+#endif
     MR_Word     val;
 
     /*

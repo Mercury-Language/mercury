@@ -70,7 +70,6 @@ MR_sprintf_float(char *buf, MR_Float f)
 {
     MR_Float round_trip = 0.0;
     int      i = MR_FLT_MIN_PRECISION;
-    int      n;
 
     /*
     ** Print the float at increasing precisions until the float

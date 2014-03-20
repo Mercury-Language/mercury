@@ -298,7 +298,6 @@ int
 MR_get_num_functors(MR_TypeInfo type_info)
 {
     MR_TypeCtorInfo type_ctor_info;
-    MR_Integer      functors;
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 

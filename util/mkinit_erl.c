@@ -227,7 +227,6 @@ static int
 output_init_program(void)
 {
     int filenum;
-    int num_bunches;
     int i;
 
     do_path_search(files, num_files);
@@ -288,8 +287,6 @@ static void
 parse_options(int argc, char *argv[])
 {
     int         c;
-    int         i;
-    String_List *tmp_slist;
     int         seen_f_option = 0;
 
     /*
@@ -496,8 +493,6 @@ process_init_file(const char *filename, const char *prefix_str)
         if (strncmp(line, init_str, init_strlen) == 0) {
             char    *func_name;
             int     func_name_len;
-            int     j;
-            MR_bool special;
 
             func_name = line + init_strlen;
             func_name_len = strlen(func_name);
@@ -509,7 +504,6 @@ process_init_file(const char *filename, const char *prefix_str)
             std_module_next++;
         } else if (strncmp(line, reqinit_str, reqinit_strlen) == 0) {
             char    *func_name;
-            int     j;
 
             func_name = line + reqinit_strlen;
             MR_ensure_room_for_next(req_init_module, const char *,
@@ -518,7 +512,6 @@ process_init_file(const char *filename, const char *prefix_str)
             req_init_module_next++;
         } else if (strncmp(line, reqfinal_str, reqfinal_strlen) == 0) {
             char    *func_name;
-            int     j;
 
             func_name = line + reqfinal_strlen;
             MR_ensure_room_for_next(req_final_module, const char *,

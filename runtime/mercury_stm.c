@@ -232,7 +232,6 @@ MR_STM_write_var(MR_STM_Var *var, MR_Word value, MR_STM_TransLog *tlog)
 {
 
     MR_STM_TransRecord  *current;
-    MR_STM_TransRecord  *local_log;
     MR_bool             has_existing_record = MR_FALSE;
 
     /*
