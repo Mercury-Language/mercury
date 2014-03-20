@@ -102,7 +102,7 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
             pre_prompt = (char *) MR_malloc(last_nl - prompt + 2);
             strncpy(pre_prompt, prompt, last_nl - prompt + 1);
             pre_prompt[last_nl - prompt + 1] = '\0';
-            fprintf(out, pre_prompt);
+            fputs(pre_prompt, out);
             line = readline((char *) real_prompt);
             MR_free(real_prompt);
             MR_free(pre_prompt);
