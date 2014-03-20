@@ -167,22 +167,25 @@
 
   #define MR_float_const(f) MR_float_to_word(f)
 
-  #ifdef MR_GNUC
+  #if defined(MR_GNUC) || defined(MR_CLANG)
 
-    /* GNU C allows you to cast to a union type */
+    /*
+    ** GNU C allows you to cast to a union type.
+    ** clang also provides this extension.
+    */
     #define MR_float_to_word(f) (__extension__ \
                                 ((union MR_Float_Word)(MR_Float)(f)).w)
     #define MR_word_to_float(w) (__extension__ \
                                 ((union MR_Float_Word)(MR_Word)(w)).f)
 
-  #else /* not MR_GNUC */
+  #else /* not MR_GNUC or MR_CLANG */
 
     static MR_Word MR_float_to_word(MR_Float f)
         { union MR_Float_Word tmp; tmp.f = f; return tmp.w; }
     static MR_Float MR_word_to_float(MR_Word w)
         { union MR_Float_Word tmp; tmp.w = w; return tmp.f; }
 
-  #endif /* not MR_GNUC */
+  #endif /* not MR_GNUC or MR_CLANG */
 
 #endif /* not MR_BOXED_FLOAT */
 
