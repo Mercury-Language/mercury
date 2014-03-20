@@ -1197,7 +1197,6 @@ MR_find_saved_io_counter(const MR_LabelLayout *call_label,
     MR_Word *base_sp, MR_Word *base_curfr, MR_Unsigned *saved_io_counter_ptr)
 {
     const MR_ProcLayout     *level_layout;
-    MR_Unsigned             saved_io_counter;
 
     if (call_label == NULL) {
         return MR_FALSE;

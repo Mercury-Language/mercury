@@ -531,8 +531,6 @@ MR_spy_cond_is_true(MR_SpyPoint *point, const MR_LabelLayout *label_layout)
     MR_Word         saved_regs[MR_MAX_FAKE_REG];
     int             max_f_num;
     MR_Float        saved_f_regs[MR_MAX_VIRTUAL_F_REG];
-    MR_VarSpec      var_spec;
-    char            *path;
     const char      *problem;
     char            *bad_path;
     MR_TypeInfo     type_info;
@@ -840,8 +838,6 @@ MR_add_user_event_spy_point(MR_SpyAction action,
     MR_SpyPoint     *point;
     int             name_slot;
     int             set_slot;
-    int             point_slot;
-    int             i;
 
     *problem = NULL;
 

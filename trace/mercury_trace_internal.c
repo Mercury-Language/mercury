@@ -203,7 +203,6 @@ MR_trace_event_internal(MR_TraceCmdInfo *cmd, MR_bool interactive,
     MR_Code     *jumpaddr;
     char        *line;
     MR_Next     res;
-    const char  *prompt;
 
     if (! interactive) {
         return MR_trace_event_internal_report(cmd, print_list, event_info);
@@ -299,7 +298,6 @@ MR_trace_internal_ensure_init(void)
     if (! MR_trace_internal_initialized) {
         char        *env;
         MR_Unsigned n;
-        int         i;
 
         if (MR_mdb_benchmark_silent) {
             (void) close(1);
@@ -503,7 +501,6 @@ MR_trace_internal_create_mdb_window(void)
         ** Parent - set up the mdb I/O streams to point to the pseudo-terminal.
         */
         MR_signal_action    old_alarm_action;
-        int                 wait_status;
         int                 err_fd = -1;
         int                 out_fd = -1;
 

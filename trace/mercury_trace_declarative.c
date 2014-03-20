@@ -495,8 +495,6 @@ MR_Code *
 MR_trace_decl_debug(MR_EventInfo *event_info)
 {
     const MR_ProcLayout     *entry;
-    MR_Unsigned             depth;
-    MR_Integer              trace_suppress;
     MR_Unsigned             node_depth;
     MR_Unsigned             call_seqno;
     MR_TracePort            port;
@@ -1410,7 +1408,6 @@ MR_decl_make_atom_args(const MR_LabelLayout *layout, MR_Word *saved_regs,
     MR_Word                 atom_args;
     int                     hv;   /* any head variable */
     int                     num_added_args;
-    MR_TypeInfoParams       type_params;
     const MR_ProcLayout     *entry;
 
     entry = layout->MR_sll_entry;
@@ -1642,7 +1639,6 @@ MR_trace_start_decl_debug(MR_DeclMode mode, const char *outfile,
     MR_bool new_session, MR_TraceCmdInfo *cmd, MR_EventInfo *event_info,
     MR_Code **jumpaddr)
 {
-    MR_RetryResult          result;
     const MR_ProcLayout     *entry;
     FILE                    *out;
     const char              *message;

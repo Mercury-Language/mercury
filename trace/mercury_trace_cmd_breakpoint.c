@@ -219,11 +219,9 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             user_event_set, user_event_name, print_list, &problem);
         MR_maybe_print_spy_point(slot, problem);
     } else if (word_count >= 2 && MR_streq(words[1], "user_event_set")) {
-        const MR_UserEventSpec  *user_event_spec;
         const char              *user_event_set;
         int                     slot;
         int                     set;
-        int                     spec;
         MR_bool                 found_event_set;
 
         if (word_count == 2) {
@@ -1187,7 +1185,6 @@ MR_trace_options_when_action_multi_ignore(MR_SpyWhen *when,
 {
     int             c;
     MR_SpyPrint     sp;
-    MR_SpyPrintList list;
     MR_bool         warn;
     const char      *problem;
 

@@ -800,7 +800,6 @@ MR_trace_compare_value_details(const void *arg1, const void *arg2)
 {
     MR_ValueDetails *value1;
     MR_ValueDetails *value2;
-    int             diff;
 
     value1 = (MR_ValueDetails *) arg1;
     value2 = (MR_ValueDetails *) arg2;
@@ -1216,7 +1215,6 @@ MR_convert_goal_to_synthetic_term(const char **functor_ptr,
     MR_Word                 is_func;
     MR_Word                 arg_list;
     MR_Word                 arg;
-    MR_TypeInfo             arg_list_typeinfo;
     MR_ValueDetails         *vars;
     int                     headvar_num;
     int                     arity;
@@ -1822,7 +1820,6 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
     const MR_DuArgLocn  *arg_locn;
     char                *old_path;
     int                 arg_num;
-    int                 len;
 
     if (path == NULL) {
         *sub_value = value;

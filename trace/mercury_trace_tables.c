@@ -1079,11 +1079,9 @@ MR_bool
 MR_parse_proc_spec(char *str, MR_ProcSpec *spec)
 {
     char    *dash;
-    char    *start;
     char    *end;
     int     n;
     int     len;
-    MR_bool found;
 
     spec->MR_proc_module = NULL;
     spec->MR_proc_name   = NULL;
@@ -1232,7 +1230,6 @@ MR_parse_trailing_number(char *start, char **end, int *number)
 {
     MR_bool found_digit;
     int     power_of_10;
-    char    c;
     char    *tmp_end;
 
     found_digit = MR_FALSE;
@@ -1530,7 +1527,6 @@ MR_trace_proc_spec_completer_next(const char *dont_use_this_word,
     char                    *name;
     size_t                  name_len;
     const char              *module_name;
-    int                     module_name_len;
     char                    *completion;
 
     data = (MR_ProcCompleterData *) *completer_data;
