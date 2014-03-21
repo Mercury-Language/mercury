@@ -36,7 +36,6 @@ exist_func(const params_type params, const MR_PseudoTypeInfo pseudo_type_info,
     MAYBE_DECLARE_ALLOC_ARG)
 {
     MR_TypeCtorInfo     type_ctor_info;
-    MR_TypeInfo     	expanded_type_info;
     return_type     	expanded;
     MR_Word         	*type_info_arena;
     MR_Word         	type_info_arena_word;

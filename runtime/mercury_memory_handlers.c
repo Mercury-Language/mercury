@@ -106,9 +106,11 @@
 static  void    MR_print_dump_stack(void);
 static  MR_bool MR_try_munprotect(void *address, void *context);
 static  char    *MR_explain_context(void *context);
-static  MR_Code *get_pc_from_context(void *the_context);
-static  MR_Word *get_sp_from_context(void *the_context);
-static  MR_Word *get_curfr_from_context(void *the_context);
+#if defined(MR_NATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
+   static  MR_Code *get_pc_from_context(void *the_context);
+   static  MR_Word *get_sp_from_context(void *the_context);
+   static  MR_Word *get_curfr_from_context(void *the_context);
+#endif
 static  void    leave_signal_handler(int sig);
 
 #define STDERR 2
@@ -875,6 +877,7 @@ MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs)
 }
 #endif /* MR_MSVC_STRUCTURED_EXCEPTIONS */
 
+#if defined(MR_NATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
 /*
 ** get_pc_from_context:
 **  Given the signal context, return the program counter at the time
@@ -1013,6 +1016,7 @@ get_curfr_from_context(void *the_context)
 
     return curfr_at_signal;
 }
+#endif /* MR_NATIVE_GC && not MR_HIGHLEVEL_CODE */
 
 static void
 MR_print_dump_stack(void)

@@ -40,10 +40,12 @@ static void     MR_assign_csd(MR_CallSiteDynamic *csd1,
                     const MR_CallSiteDynamic *csd2);
 #endif
 
+#ifdef MR_LOWLEVEL_DEBUG
 static void     MR_count_call(FILE *fp, const MR_Code *proc);
 static void     MR_print_ordinary_regs(FILE *fp);
 static void     MR_do_watches(FILE *fp);
 static MR_bool  MR_proc_matches_name(const MR_Code *proc, const char *name);
+#endif
 
 #ifdef  MR_LOWLEVEL_ADDR_DEBUG
   #define   MR_PRINT_RAW_ADDRS  MR_TRUE

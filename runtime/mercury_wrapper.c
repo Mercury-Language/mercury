@@ -503,7 +503,7 @@ int                 MR_num_complexity_procs;
 static  void    MR_process_args(int argc, char **argv);
 static  void    MR_process_environment_options(void);
 static  void    MR_process_options(int argc, char **argv);
-static  void    MR_usage(void);
+MR_NO_RETURN(static  void    MR_usage(void));
 static  MR_bool MR_matches_exec_name(const char *option);
 
 #ifdef MR_TYPE_CTOR_STATS
