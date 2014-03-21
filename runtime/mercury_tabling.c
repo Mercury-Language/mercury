@@ -30,7 +30,7 @@ static  void    MR_table_assert_failed(const char *file, unsigned line);
         if (! (cond)) {                                                     \
             MR_table_assert_failed(__FILE__, __LINE__);                     \
         }                                                                   \
-    }
+    } while (0)
 #else
 #define MR_table_assert(cond)  ((void) 0)
 #endif
