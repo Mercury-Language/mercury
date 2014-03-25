@@ -4621,6 +4621,11 @@ case "$mercury_cv_cc_type" in
         ;;
 
     clang*)
+
+        # We do not compile with -ansi when using clang because that (currently) puts
+        # clang into C89 mode and we want to use C99's inline keyword with clang.
+        CFLAGS_FOR_ANSI=
+
         # XXX we need go through the warning and optimization options for clang
         # more carefully.
         CFLAGS_FOR_WARNINGS="-w"
