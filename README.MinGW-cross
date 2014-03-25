@@ -7,6 +7,10 @@ After copying and adjusting some paths, the Mercury installation should be
 usable on Windows.  When combined with a native Mercury compiler, it can be
 used to cross-compile Mercury applications for Windows.
 
+NOTE: There are problems with 64-bit executables in some low-level C grades,
+namely 'asm_fast*' and 'asm_jump*' grades. The 'none*' and 'reg*' grades
+do appear to work correctly in our limited testing.
+
 -----------------------------------------------------------------------------
 
 PREREQUISITES
