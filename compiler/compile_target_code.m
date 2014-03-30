@@ -3032,10 +3032,11 @@ write_cli_shell_script(Globals, ExeFileName, Stream, !IO) :-
         ":", LinkLibraryDirectories),
     list.foldl(io.write_string(Stream), [
         "#!/bin/sh\n",
+        "DIR=${0%/*}\n",
         "MONO_PATH=$MONO_PATH:", LinkLibraryDirectories, "\n",
         "export MONO_PATH\n",
         "CLI_INTERPRETER=${CLI_INTERPRETER:-", CLI, "}\n",
-        "exec $CLI_INTERPRETER ", ExeFileName, " \"$@\"\n"
+        "exec \"$CLI_INTERPRETER\" \"$DIR/", ExeFileName, "\" \"$@\"\n"
     ], !IO).
 
 :- pred create_java_archive(globals::in, io.output_stream::in, file_name::in,
