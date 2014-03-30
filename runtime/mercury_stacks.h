@@ -99,7 +99,7 @@
 
   /*
   ** Check whether there is room for a new frame whose size is incr words
-  ** in the current segment of on the nondet stack, and if not, allocate
+  ** in the current segment of the nondet stack, and if not, allocate
   ** a new segment to hold it, and a sentinel frame at the bottom of that
   ** new segment.
   **
