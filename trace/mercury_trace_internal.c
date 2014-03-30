@@ -1187,7 +1187,8 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
     int         cmd_char_max;
     MR_bool     single_quoted;
     MR_bool     double_quoted;
-    int         len, extra_len;
+    size_t      len;
+    size_t      extra_len;
 
     line = MR_trace_getline(prompt, mdb_in, mdb_out);
 

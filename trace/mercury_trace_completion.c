@@ -221,7 +221,7 @@ static char *
 MR_prepend_string(char *string, MR_CompleterData *data)
 {
     char    *string_to_prepend;
-    int     string_to_prepend_len;
+    size_t  string_to_prepend_len;
     char    *result;
 
     string_to_prepend = (char *) *data;

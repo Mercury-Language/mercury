@@ -7756,7 +7756,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     MercuryFilePtr out = mercury_current_text_output();
     char    buf[5];
     size_t  len;
-    int     i;
+    size_t  i;
     if (Character <= 0x7f) {
         if (MR_PUTCH(*out, Character) < 0) {
             mercury_output_error(out);
@@ -8108,7 +8108,7 @@ io.write_char(output_stream(Stream), Character, !IO) :-
     } else {
         char    buf[5];
         size_t  len;
-        int     i;
+        size_t  i;
         len = MR_utf8_encode(buf, Character);
         for (i = 0; i < len; i++) {
             if (MR_PUTCH(*Stream, buf[i]) < 0) {

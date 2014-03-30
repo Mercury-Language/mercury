@@ -189,8 +189,8 @@ MR_trace_source_open_server(MR_TraceSourceServer *server,
     const char  *msg;
     char        system_call[MR_SYSCALL_BUFFER_SIZE];
     int         status;
-    int         base_len;
-    int         i;
+    size_t      base_len;
+    size_t      i;
 
     if (window_cmd != NULL) {
         real_window_cmd = window_cmd;

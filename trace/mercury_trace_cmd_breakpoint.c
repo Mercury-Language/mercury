@@ -367,7 +367,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
         MR_MatchesInfo          matches;
         MR_TracePort            port;
         const MR_LabelLayout    **matching_labels;
-        int                     matching_port_count;
+        MR_Unsigned             matching_port_count;
         int                     slot;
         MR_Unsigned             i;
 
@@ -546,7 +546,7 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_SpyTest      test;
     char            *what_str;
     char            *term_str;
-    int             len;
+    size_t          len;
     char            *rest;
     MR_SpyCond      *cond;
     MR_VarSpec      var_spec;
@@ -624,7 +624,7 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
     term = MR_create_cterm(term_str, &rest, &mismatch, &error_point);
     if (term == NULL) {
         const char  *msg;
-        int         j;
+        size_t      j;
 
         msg = "syntax error in term: ";
         fprintf(MR_mdb_out, "%s%s\n", msg, term_str);

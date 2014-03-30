@@ -790,9 +790,9 @@ read_string_table(ByteCode, StringTable, !Pos) :-
         StringTableChars::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    char    *buf;
-    char    *table;
-    int     i;
+    char        *buf;
+    char        *table;
+    MR_Unsigned i;
 
     MR_allocate_aligned_string_msg(buf, Size, MR_ALLOC_ID);
     table = ((char *) Bytes) + Offset;

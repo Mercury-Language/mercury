@@ -46,7 +46,7 @@ extern  void        process_file_list_file(char *filename);
 extern  void        set_output_file(const char *output_file_name);
 extern  void        add_init_file_dir(const char *dir_name);
 extern  void        do_path_search(char **lfiles, int lnum_files);
-extern  char        *read_line(const char *filename, FILE *fp, int max);
+extern  char        *read_line(const char *filename, FILE *fp, size_t max);
 extern  int         get_line(FILE *file, char *line, int line_max);
 extern  void        *checked_malloc(size_t size);
 extern  void        *checked_realloc(void *old_ptr, size_t size);

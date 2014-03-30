@@ -1201,7 +1201,7 @@ output_main(void)
 static void
 process_file(const char *filename)
 {
-    int len;
+    size_t len;
 
     len = strlen(filename);
     if (len >= 2 && strcmp(filename + len - 2, ".c") == 0) {
@@ -1233,11 +1233,11 @@ process_init_file(const char *filename)
     const char * const  reqfinal_str = "REQUIRED_FINAL ";
     const char * const  envvar_str = "ENVVAR ";
     const char * const  endinit_str = "ENDINIT";
-    const int           init_strlen = strlen(init_str);
-    const int           reqinit_strlen = strlen(reqinit_str);
-    const int           reqfinal_strlen = strlen(reqfinal_str);
-    const int           envvar_strlen = strlen(envvar_str);
-    const int           endinit_strlen = strlen(endinit_str);
+    const size_t        init_strlen = strlen(init_str);
+    const size_t        reqinit_strlen = strlen(reqinit_str);
+    const size_t        reqfinal_strlen = strlen(reqfinal_str);
+    const size_t        envvar_strlen = strlen(envvar_str);
+    const size_t        endinit_strlen = strlen(endinit_str);
     char                line[MAXLINE];
     FILE                *cfile;
 
@@ -1252,7 +1252,7 @@ process_init_file(const char *filename)
     while (get_line(cfile, line, MAXLINE) > 0) {
         if (strncmp(line, init_str, init_strlen) == 0) {
             char    *func_name;
-            int     func_name_len;
+            size_t  func_name_len;
             int     j;
 
             for (j = init_strlen; MR_isalnumunder(line[j]); j++) {

@@ -1602,7 +1602,7 @@ MR_decl_trust_standard_library(void)
 }
 
 MR_bool
-MR_decl_remove_trusted(int n)
+MR_decl_remove_trusted(MR_Integer n)
 {
     MR_bool success;
     MR_Word new_diagnoser;
@@ -1631,7 +1631,7 @@ MR_decl_print_all_trusted(FILE *fp, MR_bool mdb_command_format)
             mdb_command_format, &trusted_list);
     );
 
-    fprintf(fp, trusted_list);
+    fputs(trusted_list, fp);
 }
 
 MR_bool
@@ -2209,7 +2209,7 @@ MR_trace_reset_implicit_subtree_counters(void)
 static void
 MR_trace_init_implicit_subtree_counters(MR_Unsigned size)
 {
-    int i;
+    size_t  i;
 
     MR_edt_implicit_subtree_counters = (MR_Unsigned *)
         malloc(size * sizeof(MR_Unsigned));
@@ -2317,7 +2317,7 @@ MR_trace_decl_init_suspicion_table(char *pass_trace_counts_file,
     MR_Word                     dice;
     int                         num_modules;
     int                         module_num;
-    int                         num_files;
+    MR_Integer                  num_files;
     int                         file_num;
     int                         num_labels;
     int                         label_num;

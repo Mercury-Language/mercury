@@ -72,7 +72,7 @@ extern  void        MR_decl_add_trusted_module(const char *module_name);
 extern  void        MR_decl_add_trusted_pred_or_func(
                         const MR_ProcLayout *entry);
 extern  void        MR_decl_trust_standard_library(void);
-extern  MR_bool     MR_decl_remove_trusted(int n);
+extern  MR_bool     MR_decl_remove_trusted(MR_Integer n);
 
 /*
 ** MR_trace_decl_set_default_search_mode sets the default search mode for 

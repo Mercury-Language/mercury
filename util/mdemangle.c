@@ -128,7 +128,7 @@ main(int argc, char **argv)
                     break;
                 }
 
-                buf[len++] = c;
+                buf[len++] = (char) c;
                 c = getchar();
             }
 
@@ -822,7 +822,7 @@ not_plain_mercury:
             printf("<shared constant number %d for module %s>",
                 arity, module);
             break;
-
+        
         default:
             goto wrong_format;
     }
@@ -973,7 +973,7 @@ strip_module_name(char **start_ptr, char *end,
 static MR_bool
 strip_prefix(char **str, const char *prefix)
 {
-    int len;
+    size_t len;
 
     len = strlen(prefix);
 
@@ -994,7 +994,7 @@ strip_prefix(char **str, const char *prefix)
 static MR_bool
 strip_suffix(const char *start, char **end, const char *suffix)
 {
-    int len;
+    size_t len;
 
     len = strlen(suffix);
 

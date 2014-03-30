@@ -196,7 +196,7 @@ static  const char      *MR_lookup_var_spec(MR_VarSpec var_spec,
                             MR_bool *is_ambiguous_ptr);
 static  char            *MR_trace_var_completer_next(const char *word,
                             size_t word_len, MR_CompleterData *data);
-static  int             MR_trace_print_var_name(FILE *out,
+static  size_t          MR_trace_print_var_name(FILE *out,
                             const MR_ProcLayout *proc,
                             const MR_ValueDetails *var);
 static  const char      *MR_trace_printed_var_name(
@@ -1602,8 +1602,8 @@ MR_trace_bad_path(char *fullpath, char *badpath)
 {
     char    *s;
     MR_bool found;
-    int     needed_bad_buf_len;
-    int     needed_good_buf_len;
+    size_t  needed_bad_buf_len;
+    size_t  needed_good_buf_len;
     char    *good_buf_ptr;
 
     found = MR_FALSE;
@@ -1670,8 +1670,8 @@ const char *
 MR_trace_bad_path_in_var(MR_VarSpec *var_spec, char *fullpath, char *badpath)
 {
     const char  *path_msg;
-    int         suffix_len;
-    int         needed_len;
+    size_t      suffix_len;
+    size_t      needed_len;
 
     path_msg = MR_trace_bad_path(fullpath, badpath);
     suffix_len = 0;
@@ -1898,7 +1898,7 @@ MR_trace_browse_var(FILE *out, MR_bool print_var_name,
 {
     MR_TypeInfo type_info;
     MR_Word     *value;
-    int         len;
+    size_t      len;
     MR_bool     saved_io_tabling_enabled;
     char        *bad_path;
 
@@ -2116,12 +2116,12 @@ MR_trace_var_completer_next(const char *word, size_t word_len,
     return NULL;
 }
 
-static int
+static size_t
 MR_trace_print_var_name(FILE *out, const MR_ProcLayout *proc,
     const MR_ValueDetails *value)
 {
     const char  *buf;
-    int         len;
+    size_t      len;
 
     buf = MR_trace_printed_var_name(proc, value);
     len = strlen(buf);

@@ -69,7 +69,7 @@
     #include ""mercury_thread.h""
 
     typedef struct ML_SEMAPHORE_STRUCT {
-        int     count;
+        MR_Integer  count;
 #ifndef MR_HIGHLEVEL_CODE
         MR_Context  *suspended_head;
         MR_Context  *suspended_tail;
