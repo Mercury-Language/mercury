@@ -290,7 +290,7 @@ MR_realloc(void *old_ptr, size_t num_bytes)
 char *
 MR_copy_string(const char *s)
 {
-    int     len;
+    size_t  len;
     char    *copy;
 
     if (s == NULL) {

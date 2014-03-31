@@ -80,13 +80,13 @@ static MR_String
 MR_do_bitmap_to_string(MR_ConstBitmapPtr b,
     MR_bool quote, MR_bool use_saved_hp, MR_AllocSiteInfoPtr alloc_id)
 {
-    MR_String result;
-    int i;
-    int len;
-    int num_bytes;
-    int num_bits_len;
-    int start;
-    char num_bits_str[100];
+    MR_String   result;
+    size_t      i;
+    size_t      len;
+    size_t      num_bytes;
+    size_t      num_bits_len;
+    int         start;
+    char        num_bits_str[100];
 
     sprintf(num_bits_str, "%" MR_INTEGER_LENGTH_MODIFIER "d", b->num_bits);
     num_bits_len = strlen(num_bits_str);
