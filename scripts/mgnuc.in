@@ -72,7 +72,7 @@ case "$C_COMPILER_TYPE" in
         COMPILER=gcc
         ;;
     clang*)
-        ANSI_OPTS="-ansi"
+        ANSI_OPTS=
         CHECK_OPTS="-w"
         OPT_OPTS="@OPT_FLAGS_FOR_CLANG@ $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
         DEBUG_OPT="-g"

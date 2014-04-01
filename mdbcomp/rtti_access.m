@@ -664,7 +664,7 @@ lookup_string_table(StringTable, NameCode) = Str :-
     int             should_copy;
 
     str0 = MR_name_in_string_table(StringTableChars, StringTableSize,
-        NameCode, &should_copy);
+        (MR_uint_least32_t)NameCode, &should_copy);
     if (should_copy) {
         MR_make_aligned_string(Str, str0);
     } else {
@@ -790,9 +790,9 @@ read_string_table(ByteCode, StringTable, !Pos) :-
         StringTableChars::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    char    *buf;
-    char    *table;
-    int     i;
+    char        *buf;
+    char        *table;
+    MR_Unsigned i;
 
     MR_allocate_aligned_string_msg(buf, Size, MR_ALLOC_ID);
     table = ((char *) Bytes) + Offset;

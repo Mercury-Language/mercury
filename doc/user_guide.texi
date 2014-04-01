@@ -1089,9 +1089,9 @@ installing the library. The source of the library is stored in the directory
 to be added to @samp{mmc}:
 
 @example
-mmc ... --search-lib-files-dir <dir> \\
-        --init-file <dir>/mypackage.init \\
-        --link-object <dir>/libmypackage.a \\
+mmc ... --search-lib-files-dir <dir> \
+        --init-file <dir>/mypackage.init \
+        --link-object <dir>/libmypackage.a \
     ...
 @end example
 
@@ -1107,11 +1107,11 @@ libmypackage}) and use the @samp{libmypackage.a} that is compatible with your
 main program's grade:
 
 @example
-mmc ... --use-grade-subdirs \\
-        --grade <grade> \\
-        --search-lib-files-dir <dir> \\
-        --init-file <dir>/mypackage.init \\
-        --link-object <dir>/Mercury/<grade>/*/Mercury/lib/libmypackage.a \\
+mmc ... --use-grade-subdirs \
+        --grade <grade> \
+        --search-lib-files-dir <dir> \
+        --init-file <dir>/mypackage.init \
+        --link-object <dir>/Mercury/<grade>/*/Mercury/lib/libmypackage.a \
     ...
 @end example
 
@@ -3594,7 +3594,7 @@ There are two kinds of values allowed for @var{op}.
 If @var{op} is @samp{=} or @samp{==}, the condition is true
 if the term specified by @var{varname} (and @var{pathspec}, if present)
 matches @var{term}.
-If @var{op} is @samp{!=} or @samp{\\=}, the condition is true
+If @var{op} is @samp{!=} or @samp{\=}, the condition is true
 if the term specified by @var{varname} (and @var{pathspec}, if present)
 doesn't match @var{term}.
 @var{term} may contain integers and strings
@@ -9703,6 +9703,12 @@ Specify the command used to invoke the linker when linking an executable.
 @item --link-shared-lib-command @var{command}
 @findex --link-shared-lib-command
 Specify the command used to invoke the linker when linking a shared library.
+
+@sp 1
+@item --strip-executable-command @var{command}
+@findex --strip-executable-command
+Specify the command used to strip executables if no linker
+flag to do so is available. This option has no effect on @samp{ml}.
 
 @sp 1
 @item --java-archive-command @var{command}

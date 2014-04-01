@@ -120,7 +120,7 @@
 %   True if the character names a valid single-character option.
 %
 % :- pred long_option(string::in, option::out) is semidet.
-%   True if the character names a valid long option.
+%   True if the string names a valid long option.
 %
 % :- pred option_default(option::out, option_data::out) is multi.
 %   Nondeterministically returns all the options with their

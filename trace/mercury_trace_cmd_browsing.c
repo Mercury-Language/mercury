@@ -605,7 +605,6 @@ MR_trace_cmd_hold(char **words, int word_count, MR_TraceCmdInfo *cmd,
     char        *held_var_name;
     MR_TypeInfo type_info;
     MR_Word     value;
-    const char  *ignored_name;
     const char  *problem;
     MR_bool     bad_subterm;
 
@@ -710,7 +709,6 @@ MR_Next
 MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    MR_bool         verbose = MR_FALSE;
     MR_Word         browser_term;
     const char      *problem = NULL;
     MR_bool         quiet = MR_FALSE;

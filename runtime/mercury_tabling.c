@@ -22,15 +22,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef MR_TABLE_DEBUG
 static  void    MR_table_assert_failed(const char *file, unsigned line);
 
-#ifdef MR_TABLE_DEBUG
 #define MR_table_assert(cond)                                               \
     do {                                                                    \
         if (! (cond)) {                                                     \
             MR_table_assert_failed(__FILE__, __LINE__);                     \
         }                                                                   \
-    }
+    } while (0)
 #else
 #define MR_table_assert(cond)  ((void) 0)
 #endif
@@ -1563,7 +1563,9 @@ MR_END_MODULE
 INIT mercury_sys_init_table_modules
 */
 
+#ifndef MR_HIGHLEVEL_CODE
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_memo_non_module;
+#endif
 
 /* forward declarations to suppress gcc -Wmissing-decl warnings */
 void mercury_sys_init_table_modules_init(void);
@@ -1595,6 +1597,7 @@ void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp)
 
 /*---------------------------------------------------------------------------*/
 
+#ifdef MR_TABLE_DEBUG
 static void
 MR_table_assert_failed(const char *file, unsigned line)
 {
@@ -1603,5 +1606,6 @@ MR_table_assert_failed(const char *file, unsigned line)
     snprintf(buf, 256, "assertion failed: file %s, line %d", file, line);
     MR_fatal_error(buf);
 }
+#endif
 
 /*---------------------------------------------------------------------------*/

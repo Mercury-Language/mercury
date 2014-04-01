@@ -306,7 +306,7 @@ void
 MR_trace_init_external(void)
 {
     int                 fd;
-    int                 len;
+    size_t              len;
     FILE                *file_in;
     FILE                *file_out;
     int                 addr_family;

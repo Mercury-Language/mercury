@@ -108,11 +108,6 @@
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef  MR_HAVE_SIGINFO
-  static    MR_bool try_munprotect(void *address, void *context);
-  static    char    *explain_context(void *context);
-#endif /* MR_HAVE_SIGINFO */
-
 /*
 ** Define the memory zones used by the Mercury runtime.
 ** (The trail zone is declared in mercury_trail.c.)
@@ -295,7 +290,7 @@ MR_realloc(void *old_ptr, size_t num_bytes)
 char *
 MR_copy_string(const char *s)
 {
-    int     len;
+    size_t  len;
     char    *copy;
 
     if (s == NULL) {

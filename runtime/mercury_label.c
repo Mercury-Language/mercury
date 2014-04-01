@@ -57,8 +57,6 @@
 /* the number of entries in the initial array */
 #define INIT_ENTRY_SIZE (1 << 8)
 
-static  int         compare_entry_by_addr(const void *e1, const void *e2);
-
 static  MR_Entry    *entry_array;
 static  int         entry_array_size;   /* # of entries allocated */
 static  int         entry_array_next;   /* # of entries used      */
@@ -192,7 +190,6 @@ MR_prev_entry_by_addr(const MR_Code *addr)
     int lo;
     int hi;
     int mid;
-    int i;
 
     MR_do_init_label_tables();
     MR_do_init_modules();

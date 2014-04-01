@@ -510,7 +510,6 @@ get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
     MR_TypeInfo         type_info;
     MR_TypeCtorInfo     type_ctor_info;
     MR_Construct_Info   construct_info;
-    MR_bool             success;
     int                 num_functors;
 
     type_info = (MR_TypeInfo) TypeDesc;
@@ -667,7 +666,7 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
                 int                     args_size;
                 int                     alloc_size;
                 int                     size;
-                int                     i;
+                MR_Unsigned             i;
 
                 functor_desc = construct_info.functor_info.du_functor_desc;
                 arg_locns = functor_desc->MR_du_functor_arg_locns;

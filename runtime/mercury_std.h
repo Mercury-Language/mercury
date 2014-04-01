@@ -162,14 +162,23 @@ typedef	char		MR_small_bool;
   #define MR_EXTERN_INLINE		inline
   #define MR_OUTLINE_DEFN(DECL,BODY)
 #elif defined(MR_CLANG)
-  /* clang: note that since clang also defines the macro __GNUC__
-  ** we must handle it before we handle the GCC case.
-  ** XXX why don't the C99 definitions work for clang?
-  */
-  #define MR_STATIC_INLINE		static
-  #define MR_INLINE			static
-  #define MR_EXTERN_INLINE		static
-  #define MR_OUTLINE_DEFN(DECL,BODY)
+  #if __STDC_VERSION__ >= 199901
+    /* C99 style inlining. */
+    #define MR_STATIC_INLINE	        static inline
+    #define MR_INLINE			static inline
+    #define MR_EXTERN_INLINE		inline
+    #define MR_OUTLINE_DEFN(DECL,BODY)	extern DECL;
+  #else
+   /*
+   ** C89: note that by default we use clang in C99 mode so this alternative
+   ** will only be used if user explicitly sets -std to use something prior
+   ** to C99.
+   */
+   #define MR_STATIC_INLINE		static
+   #define MR_INLINE			static
+   #define MR_EXTERN_INLINE		static
+   #define MR_OUTLINE_DEFN(DECL,BODY)
+  #endif
 #elif defined(MR_GNUC) 
   /* GNU C: in (GNU) C99 or later mode GCC will use C99 style
   ** inline functions; otherwise GNU style inline functions will
@@ -311,6 +320,16 @@ typedef	char		MR_small_bool;
 */
 #define MR_CHECK_EXPR_TYPE(expr, type) \
 	((void) sizeof(*(type *)NULL = (expr)))
+
+/*
+** MR_STATIC_ASSERT(module, expr):
+** Assert at compile time that the given expression is true.
+** A named bit-field may not have zero width.
+*/
+
+#define MR_STATIC_ASSERT(module, expr) \
+    struct MR_PASTE4(static_assert_, module, _line_, __LINE__) \
+	{ unsigned int bf : !!(expr); }
 
 /*---------------------------------------------------------------------------*/
 

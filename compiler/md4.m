@@ -239,7 +239,7 @@ static void mdfour_result(const struct mdfour *m, unsigned char *out)
     unsigned char sum[16];
     char hexbuf[sizeof(sum) * 2 + 1];
     char *p;
-    int i;
+    size_t i;
 
     mdfour_begin(&md);
     mdfour_update(&md, (const unsigned char *)In, strlen(In));

@@ -123,7 +123,7 @@ MR_trace_read_help_text(void)
     char    *doc_chars = NULL;
     int     doc_char_max = 0;
     int     next_char_slot;
-    int     line_len;
+    size_t  line_len;
     int     i;
 
     next_char_slot = 0;

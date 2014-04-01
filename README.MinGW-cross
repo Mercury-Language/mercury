@@ -1,11 +1,15 @@
 -----------------------------------------------------------------------------
 
-COMPILING MERCURY WITH A MINGW CROSS-COMPILER
+COMPILING MERCURY WITH A MINGW / MINGW-W64 CROSS-COMPILER
 
-You can cross-compile Mercury on Linux with a MinGW cross-compiler.  After
-copying and adjusting some paths, the Mercury installation should be usable
-on Windows.  Alternatively, when combined with a native Mercury compiler,
-it could be used to cross-compile Mercury applications for Windows.
+You can compile Mercury on Linux with a MinGW or MinGW-w64 cross-compiler.
+After copying and adjusting some paths, the Mercury installation should be
+usable on Windows.  When combined with a native Mercury compiler, it can be
+used to cross-compile Mercury applications for Windows.
+
+NOTE: There are problems with 64-bit executables in some low-level C grades,
+namely 'asm_fast*' and 'asm_jump*' grades. The 'none*' and 'reg*' grades
+do appear to work correctly in our limited testing.
 
 -----------------------------------------------------------------------------
 
@@ -15,34 +19,30 @@ We assume you are on Linux.  You will need a native Mercury installation
 installed in the normal way.  The native Mercury version should match the
 version of Mercury you intend to cross-compile.
 
-Obviously you need a MinGW cross-compiler, as well as a pthreads
-implementation.  Many Linux distributions will have packages available,
-e.g. gcc-mingw32 and friends on Debian.
+You need a MinGW or MinGW-w64 cross-compiler, and a pthreads implementation.
+Many Linux distributions will have packages available, e.g. gcc-mingw32 and
+friends on Debian.  Otherwise, you may try <http://mxe.cc/>.
 
-Otherwise, you may try <http://mingw-cross-env.nongnu.org/>.
-If the latest release of that project does not work due to out of date URLs,
-try using the development version.
-
-    tar xf mingw-cross-env-2.21.tar.gz
-    cd mingw-cross-env-2.21
+    git clone -b stable https://github.com/mxe/mxe.git
+    cd mxe
     make gcc pthreads JOBS=6
 
 -----------------------------------------------------------------------------
 
 INSTALLATION
 
-Ensure that the MinGW cross-compiler i686-pc-mingw-gcc (the name may vary)
-is in your PATH.  In a fresh copy of the Mercury source tree, run the following
-in place of the configure script:
+Ensure that the MinGW cross-compiler i686-pc-mingw-gcc or similar is in your
+PATH.  In a fresh copy of the Mercury source tree, run the following in place
+of the configure script:
 
-    tools/configure_mingw_cross
+    tools/configure_mingw_cross [--host=HOST] OPTIONS...
 
-If your MinGW uses a host triplet other than "i686-pc-mingw32" then you must
-pass that using the --host= option.  You may pass other options through to
-configure as well, e.g.
+If your installation uses a host triplet other than "i686-pc-mingw32" then
+you must pass that using the --host= option.  You may pass other options
+through to configure as well, e.g.
 
     tools/configure_mingw_cross \
-        --host=i686-pc-mingw32 \
+        --host=x86_64-w64-mingw32 \
         --prefix=/usr/local/mercury-mingw
 
 Then install Mercury as usual:

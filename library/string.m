@@ -2327,7 +2327,6 @@ string.append_list(Lists, string.append_list(Lists)).
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
     MR_Word list = Strs;
-    MR_Word tmp;
     size_t  len;
 
     /* Determine the total length of all strings */
@@ -2405,7 +2404,6 @@ string.append_list(Strs::in) = (Str::uo) :-
         does_not_affect_liveness, may_not_duplicate, no_sharing],
 "{
     MR_Word list;
-    MR_Word tmp;
     size_t  len;
     size_t  sep_len;
     MR_bool add_sep;
@@ -4847,7 +4845,6 @@ string.set_char(Char, Index, !Str) :-
             size_t oldwidth = MR_utf8_width(oldc);
             size_t newwidth = MR_utf8_width(Ch);
             size_t newlen;
-            size_t tailofs;
 
             newlen = len - oldwidth + newwidth;
             MR_allocate_aligned_string_msg(Str, newlen, MR_ALLOC_ID);
@@ -5480,7 +5477,6 @@ strchars(I, End, Str) = Chars :-
 "{
     MR_Integer  len;
     MR_Integer  Count;
-    MR_Word     tmp;
 
     if (Start < 0) Start = 0;
     if (End <= Start) {
@@ -5650,7 +5646,6 @@ string.unsafe_substring(Str, Start, Count, SubString) :-
         does_not_affect_liveness, may_not_duplicate],
 "{
     MR_Integer  len;
-    MR_Word     tmp;
 
     if (Count <= 0) {
         MR_make_aligned_string(Left, """");

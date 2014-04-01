@@ -148,7 +148,7 @@ The MSVC port currently has a number of limitation:
 * Creation of shared libraries (DLLs) is not currently supported.
 
 * The '--c-debug' option currently has no effect with MSVC since enabling
-  it breaks parallel builds and and disables some C compiler optimizations.
+  it breaks parallel builds and disables some C compiler optimizations.
 
   If you *really* want to enable support for C level debugging, then enable the
   commented out definition of DEBUG_OPTS in scripts/mgnuc.in (in the "cl" case)

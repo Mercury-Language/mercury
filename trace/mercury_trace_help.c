@@ -76,7 +76,6 @@ MR_trace_add_item(const char *category, const char *item, int slot,
 {
     MR_Word     path;
     char        *category_on_heap;
-    const char  *result;
 
     MR_trace_help_ensure_init();
     MR_trace_add_help_word(item);

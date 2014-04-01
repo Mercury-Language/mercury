@@ -39,7 +39,7 @@ main(void)
         len = 0;
         c = getchar();
         while (c != EOF) {
-            buf[len++] = c;
+            buf[len++] = (char) c;
             if (c == '\n' || len >= sizeof(buf) - 1) {
                 break;
             }

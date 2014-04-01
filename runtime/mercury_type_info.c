@@ -360,7 +360,6 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
     int                 num_arg_types_1;
     int                 num_arg_types_2;
     int                 i;
-    int                 comp;
 
     /*
     ** Try to optimize a common case:
@@ -568,7 +567,6 @@ MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
     int             num_arg_types_1;
     int             num_arg_types_2;
     int             i;
-    int             comp;
 
     /*
     ** Try to optimize a common case:
@@ -644,7 +642,6 @@ MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 int
 MR_compare_type_ctor_info(MR_TypeCtorInfo tci1, MR_TypeCtorInfo tci2)
 {
-    int             i;
     int             comp;
     MR_ConstString  modulename1;
     MR_ConstString  modulename2;
@@ -699,8 +696,6 @@ MR_compare_type_ctor_info(MR_TypeCtorInfo tci1, MR_TypeCtorInfo tci2)
 MR_bool
 MR_unify_type_ctor_info(MR_TypeCtorInfo tci1, MR_TypeCtorInfo tci2)
 {
-    int     i;
-
     /*
     ** We are relying on the fact that type_ctor_infos are always
     ** statically allocated to ensure that two type_ctor_infos are
@@ -792,7 +787,6 @@ MR_deallocate(MR_MemoryList allocated)
 MR_Word
 MR_type_params_vector_to_list(int arity, MR_TypeInfoParams type_params)
 {
-    MR_TypeInfo arg_type;
     MR_Word     type_info_list;
 
     MR_restore_transient_registers();
@@ -811,7 +805,6 @@ MR_Word
 MR_pseudo_type_params_vector_to_list(int arity,
     MR_PseudoTypeInfoParams type_params)
 {
-    MR_TypeInfo arg_type;
     MR_Word     type_info_list;
 
     MR_restore_transient_registers();

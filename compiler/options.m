@@ -963,6 +963,7 @@
     ;       shlib_linker_use_install_name
     ;       shlib_linker_install_name_flag
     ;       shlib_linker_install_name_path
+    ;       strip_executable_command
     ;       java_archive_command
 
     % Build system options
@@ -1871,6 +1872,7 @@ option_defaults_2(link_option, [
     shlib_linker_use_install_name       -   bool(no),
     shlib_linker_install_name_flag      -   string("-install_name "),
     shlib_linker_install_name_path      -   string(""),
+    strip_executable_command            -   string(""),
     java_archive_command                -   string("jar")
 ]).
 option_defaults_2(build_system_option, [
@@ -2845,6 +2847,7 @@ long_option("linker-error-undefined-flag", linker_error_undefined_flag).
 long_option("shlib-linker-use-install-name", shlib_linker_use_install_name).
 long_option("shlib-linker-install-name-flag", shlib_linker_install_name_flag).
 long_option("shlib-linker-install-name-path", shlib_linker_install_name_path).
+long_option("strip-executable-command", strip_executable_command).
 long_option("java-archive-command", java_archive_command).
 
 % build system options
@@ -5681,6 +5684,10 @@ options_help_link -->
         "--link-shared-lib-command <command>",
         "\tSpecify the command used to invoke the linker when linking",
         "\ta shared library.",
+
+        "--strip-executable-command <command>",
+        "\tSpecify the command used to strip executables if no linker",
+        "\tflag to do so is available. This option has no effect on ml.",
 
         "--java-archive-command <command>",
         "\tSpecify the command used to produce Java archive (JAR) files.",

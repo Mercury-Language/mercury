@@ -1658,7 +1658,7 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
     bitmap_compare(Result::uo, BM1::in, BM2::in),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
-    int res;
+    MR_Integer  res;
     res = MR_bitmap_cmp(BM1, BM2);
     Result = ((res < 0) ? MR_COMPARE_LESS
                 : (res == 0) ? MR_COMPARE_EQUAL

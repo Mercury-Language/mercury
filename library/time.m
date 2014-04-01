@@ -836,15 +836,15 @@ time.mktime(TM) = time_t(Time) :-
  "{
     struct tm t;
 
-    t.tm_sec = Sec;
-    t.tm_min = Min;
-    t.tm_hour = Hrs;
-    t.tm_mon = Mnt;
-    t.tm_year = Yr;
-    t.tm_wday = WD;
-    t.tm_mday = MD;
-    t.tm_yday = YD;
-    t.tm_isdst = N;
+    t.tm_sec = (int) Sec;
+    t.tm_min = (int) Min;
+    t.tm_hour = (int) Hrs;
+    t.tm_mon = (int) Mnt;
+    t.tm_year = (int) Yr;
+    t.tm_wday = (int) WD;
+    t.tm_mday = (int) MD;
+    t.tm_yday = (int) YD;
+    t.tm_isdst = (int) N;
 
     Time = mktime(&t);
 }").

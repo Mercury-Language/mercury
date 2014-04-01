@@ -1898,7 +1898,7 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
     io::di, io::uo) is det.
 
 link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
-        OutputFileName, ObjectsList, LinkSucceeded, !IO) :-
+        OutputFileName, ObjectsList, Succeeded, !IO) :-
     (
         LinkTargetType = shared_library,
         CommandOpt = link_shared_lib_command,
@@ -1938,9 +1938,13 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
         LinkTargetType = executable,
         Strip = yes
     ->
-        globals.lookup_string_option(Globals, linker_strip_flag, StripOpt)
+        globals.lookup_string_option(Globals, linker_strip_flag,
+            LinkerStripOpt),
+        globals.lookup_string_option(Globals, strip_executable_command,
+            StripExeCommand)
     ;
-        StripOpt = ""
+        LinkerStripOpt = "",
+        StripExeCommand = ""
     ),
 
     globals.lookup_bool_option(Globals, target_debug, TargetDebug),
@@ -2089,7 +2093,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
             string.append_list([
                     Command, " ",
                     StaticOpts, " ",
-                    StripOpt, " ",
+                    LinkerStripOpt, " ",
                     UndefOpt, " ",
                     ThreadOpts, " ",
                     TraceOpts, " ",
@@ -2123,10 +2127,24 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
 
             invoke_system_command_maybe_filter_output(Globals, ErrorStream,
                 cmd_verbose_commands, LinkCmd, MaybeDemangleCmd,
-                LinkSucceeded, !IO)
+                LinkSucceeded, !IO),
+            % Invoke strip utility separately if required.
+            (
+                LinkSucceeded = yes,
+                LinkerStripOpt = "",
+                StripExeCommand \= ""
+            ->
+                string.append_list([
+                    StripExeCommand, " ", quote_arg(OutputFileName)
+                ], StripCmd),
+                invoke_system_command_maybe_filter_output(Globals, ErrorStream,
+                    cmd_verbose_commands, StripCmd, no, Succeeded, !IO)
+            ;
+                Succeeded = LinkSucceeded
+            )
         ;
             ArchiveSucceeded = no,
-            LinkSucceeded = no
+            Succeeded = no
         ),
         (
             MaybeDeleteTmpArchive = yes(FileToDelete),
@@ -2136,7 +2154,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
         )
     ;
         MaybeLinkLibraries = no,
-        LinkSucceeded = no
+        Succeeded = no
     ).
 
     % Find the standard Mercury libraries, and the system
@@ -3014,10 +3032,11 @@ write_cli_shell_script(Globals, ExeFileName, Stream, !IO) :-
         ":", LinkLibraryDirectories),
     list.foldl(io.write_string(Stream), [
         "#!/bin/sh\n",
+        "DIR=${0%/*}\n",
         "MONO_PATH=$MONO_PATH:", LinkLibraryDirectories, "\n",
         "export MONO_PATH\n",
         "CLI_INTERPRETER=${CLI_INTERPRETER:-", CLI, "}\n",
-        "exec $CLI_INTERPRETER ", ExeFileName, " \"$@\"\n"
+        "exec \"$CLI_INTERPRETER\" \"$DIR/", ExeFileName, "\" \"$@\"\n"
     ], !IO).
 
 :- pred create_java_archive(globals::in, io.output_stream::in, file_name::in,

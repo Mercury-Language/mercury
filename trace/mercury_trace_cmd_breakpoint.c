@@ -219,11 +219,9 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             user_event_set, user_event_name, print_list, &problem);
         MR_maybe_print_spy_point(slot, problem);
     } else if (word_count >= 2 && MR_streq(words[1], "user_event_set")) {
-        const MR_UserEventSpec  *user_event_spec;
         const char              *user_event_set;
         int                     slot;
         int                     set;
-        int                     spec;
         MR_bool                 found_event_set;
 
         if (word_count == 2) {
@@ -369,7 +367,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
         MR_MatchesInfo          matches;
         MR_TracePort            port;
         const MR_LabelLayout    **matching_labels;
-        int                     matching_port_count;
+        MR_Unsigned             matching_port_count;
         int                     slot;
         MR_Unsigned             i;
 
@@ -548,7 +546,7 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_SpyTest      test;
     char            *what_str;
     char            *term_str;
-    int             len;
+    size_t          len;
     char            *rest;
     MR_SpyCond      *cond;
     MR_VarSpec      var_spec;
@@ -626,7 +624,7 @@ MR_trace_cmd_condition(char **words, int word_count, MR_TraceCmdInfo *cmd,
     term = MR_create_cterm(term_str, &rest, &mismatch, &error_point);
     if (term == NULL) {
         const char  *msg;
-        int         j;
+        size_t      j;
 
         msg = "syntax error in term: ";
         fprintf(MR_mdb_out, "%s%s\n", msg, term_str);
@@ -1187,7 +1185,6 @@ MR_trace_options_when_action_multi_ignore(MR_SpyWhen *when,
 {
     int             c;
     MR_SpyPrint     sp;
-    MR_SpyPrintList list;
     MR_bool         warn;
     const char      *problem;
 

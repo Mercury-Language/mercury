@@ -31,6 +31,19 @@ This is a bug-fix release.
 
 * The function string.string/1 and related functions now handle version
   arrays properly.
+* The mfilterjavac program is now generated with the correct file extension
+  on Windows.
+* A problem that caused compilation of the Boehm GC to fail on 64-bit
+  openSUSE 13.1 systems has been fixed.  (Github issue #14)
+* The documentation now builds correctly on Cygwin systems.
+* The script configure_mingw_cross now supports 64-bit Windows targets.
+
+Changes to the Mercury compiler:
+
+* The compiler now supports stripping of executables in a separate
+  post-link step.  A new option, --strip-executable-command, is used
+  to control this.  
+  (This is now the default on Mac OS X systems.)
 
 
 NEWS for Mercury 14.01

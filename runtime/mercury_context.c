@@ -285,11 +285,13 @@ try_notify_engine(MR_EngineId engine_id, int action,
     union MR_engine_wake_action_data *action_data, MR_Unsigned engine_state);
 #endif
 
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
 /*
 ** Write out the profiling data that we collect during execution.
 */
 static void
 MR_write_out_profiling_parallel_execution(void);
+#endif
 
 #if defined(MR_LL_PARALLEL_CONJ)
 static void
@@ -879,10 +881,13 @@ static void
 MR_init_context_maybe_generator(MR_Context *c, const char *id,
     MR_GeneratorPtr gen)
 {
+
+#ifndef MR_HIGHLEVEL_CODE
     const char  *detstack_name;
     const char  *nondetstack_name;
     size_t      detstack_size;
     size_t      nondetstack_size;
+#endif
 
     c->MR_ctxt_id = id;
     c->MR_ctxt_next = NULL;
@@ -1248,7 +1253,8 @@ MR_find_ready_context(void)
 #ifdef MR_DEBUG_THREADS
         if (MR_debug_threads) {
             fprintf(stderr,
-                "%ld Eng: %d, c_depth: %d, Considering context %p\n",
+                "%ld Eng: %d, c_depth: %" MR_INTEGER_LENGTH_MODIFIER
+                "u, Considering context %p\n",
                 MR_SELF_THREAD_ID, engine_id, depth, cur);
         }
 #endif
@@ -1256,7 +1262,8 @@ MR_find_ready_context(void)
 #ifdef MR_DEBUG_THREADS
             if (MR_debug_threads) {
                 fprintf(stderr,
-                    "%ld Context requires engine %d and c_depth %d\n",
+                    "%ld Context requires engine %d and c_depth %"
+                    MR_INTEGER_LENGTH_MODIFIER "u\n",
                     MR_SELF_THREAD_ID, cur->MR_ctxt_resume_owner_engine,
                     cur->MR_ctxt_resume_c_depth);
             }
@@ -1431,13 +1438,13 @@ MR_sched_yield(void)
 #endif
 }
 
+#ifndef MR_HIGHLEVEL_CODE
 /*
 ** Check to see if any contexts that blocked on IO have become runnable.
 ** Return the number of contexts that are still blocked.
 ** The parameter specifies whether or not the call to select should block
 ** or not.
 */
-
 static int
 MR_check_pending_contexts(MR_bool block)
 {
@@ -1531,8 +1538,9 @@ MR_check_pending_contexts(MR_bool block)
 
     MR_fatal_error("select() unavailable!");
 
-#endif
+#endif /* !MR_CAN_DO_PENDING_IO */
 }
+#endif /* not MR_HIGHLEVEL_CODE */
 
 void
 MR_schedule_context(MR_Context *ctxt)
@@ -1667,7 +1675,6 @@ MR_schedule_context(MR_Context *ctxt)
         */
 
         MR_Unsigned state;
-        MR_bool notified;
 
         state = esync->d.es_state;
         while (state & (ENGINE_STATE_SLEEPING | ENGINE_STATE_IDLE |
@@ -1791,7 +1798,8 @@ try_wake_engine(MR_EngineId engine_id, int action,
         MR_atomic_dec_int(&MR_num_idle_engines);
 #ifdef MR_DEBUG_THREADS
         if (MR_debug_threads) {
-            fprintf(stderr, "%ld Decrement MR_num_idle_engines %d\n",
+            fprintf(stderr, "%ld Decrement MR_num_idle_engines %"
+                MR_INTEGER_LENGTH_MODIFIER "d\n",
                 MR_SELF_THREAD_ID, MR_num_idle_engines);
         }
 #endif
@@ -1859,7 +1867,8 @@ try_notify_engine(MR_EngineId engine_id, int action,
             MR_atomic_dec_int(&MR_num_idle_engines);
 #ifdef MR_DEBUG_THREADS
             if (MR_debug_threads) {
-                fprintf(stderr, "%ld Decrement MR_num_idle_engines %d\n",
+                fprintf(stderr, "%ld Decrement MR_num_idle_engines %"
+                    MR_INTEGER_LENGTH_MODIFIER "d\n",
                     MR_SELF_THREAD_ID, MR_num_idle_engines);
             }
 #endif
@@ -1954,6 +1963,7 @@ MR_shutdown_all_engines(void)
 **
 */
 
+#ifdef MR_THREAD_SAFE
 static void
 action_shutdown_engine(void);
 
@@ -1965,6 +1975,7 @@ action_worksteal(MR_EngineId victim_engine_id);
 */
 static MR_Code*
 action_context(MR_Context *context);
+#endif /* MR_THREAD_SAFE */
 
 /*
 ** The run queue used to include timing code. It has been removed and may be
@@ -2017,7 +2028,7 @@ advertise_engine_state_idle(void);
 */
 static void
 advertise_engine_state_working(void);
-#endif
+#endif /* MR_THREAD_SAFE */
 
 MR_BEGIN_MODULE(scheduler_module_idle)
     MR_init_entry_an(MR_do_idle);

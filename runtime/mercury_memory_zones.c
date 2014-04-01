@@ -529,8 +529,6 @@ MR_MemoryZone *
 MR_create_or_reuse_zone(const char *name, size_t size, size_t offset,
     size_t redzone_size, MR_ZoneHandler *handler)
 {
-    MR_Word         *base;
-    size_t          total_size;
     MR_MemoryZone   *zone;
     MR_bool         is_new_zone;
 
@@ -667,7 +665,6 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     void            *old_base;
     void            *new_base;
     size_t          offset;
-    size_t          redsize;
     size_t          copy_size;
     size_t          new_total_size;
     MR_Integer      base_incr;

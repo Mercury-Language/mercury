@@ -59,7 +59,6 @@ MR_trace_cmd_dd(char **words, int word_count, MR_TraceCmdInfo *cmd,
     char                *fail_trace_counts_file;
     MR_String           problem;
     MR_bool             testing = MR_FALSE;
-    MR_bool             debug = MR_FALSE;
     const char          *filename;
     MR_DeclMode         decl_mode;
 

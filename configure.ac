@@ -1045,6 +1045,7 @@ if test "$ac_microsoft" = "yes" ; then
     LDFLAGS_FOR_DEBUG="-DEBUG"
     LD_LIBFLAGS_FOR_DEBUG="-DEBUG"
     LD_STRIP_FLAG=
+    STRIP_EXE=
 
     USING_MICROSOFT_CL_COMPILER="yes"
     FIX_PATH_FOR_CC="$CYGPATH"
@@ -1070,13 +1071,15 @@ else
     AR_LIBFILE_OPT=""
 
     LD_STRIP_FLAG="-s"
+    STRIP_EXE=""
 
-    # Suppress a warning from the linker on Darwin 9+.  `-s' is deprecated on
-    # it and has no effect other than causing the linker to emit a warning.
+    # The `-s' linker option is deprecated on Darwin 9+ and has no effect other
+    # than causing the linker to emit a warning. Call the strip tool directly.
     #
     case "$host" in
         *apple*darwin*)
             LD_STRIP_FLAG=""
+            STRIP_EXE="strip"
             ;;
     esac
 
@@ -1137,6 +1140,7 @@ AC_SUBST(AR_LIBFILE_OPT)
 AC_SUBST(LDFLAGS_FOR_DEBUG)
 AC_SUBST(LD_LIBFLAGS_FOR_DEBUG)
 AC_SUBST(LD_STRIP_FLAG)
+AC_SUBST(STRIP_EXE)
 AC_SUBST(LDFLAGS_FOR_TRACE)
 AC_SUBST(LD_LIBFLAGS_FOR_TRACE)
 AC_SUBST(USING_MICROSOFT_CL_COMPILER)
@@ -2061,40 +2065,6 @@ AC_SUBST(BYTES_PER_WORD)
 
 #-----------------------------------------------------------------------------#
 
-AC_MSG_CHECKING(the number of words in a synchronization term)
-AC_CACHE_VAL(mercury_cv_sync_term_size,
-    AC_TRY_RUN([
-    #include <stdio.h>
-    #include <stdlib.h>
-    #include <pthread.h>
-    int main() {
-        struct {
-            void        *orig_context;
-            void                    *parent_sp;
-            $mercury_cv_word_type   count;
-        } x;
-        FILE *fp;
-
-        fp = fopen("conftest.syncsize", "w");
-        if (fp == NULL)
-            exit(1);
-        fprintf(fp, "%d\n", (sizeof(void *) - 1 + sizeof(x))/
-                sizeof(void *));
-
-        exit(0);
-    }],
-    [mercury_cv_sync_term_size=`cat conftest.syncsize`],
-    [mercury_cv_sync_term_size=0],
-    [mercury_cv_sync_term_size=0])
-)
-mercury_cv_sync_term_size=`echo $mercury_cv_sync_term_size | tr -d '\r'`
-AC_MSG_RESULT($mercury_cv_sync_term_size)
-AC_DEFINE_UNQUOTED(MR_SYNC_TERM_SIZE, $mercury_cv_sync_term_size)
-SYNC_TERM_SIZE=$mercury_cv_sync_term_size
-AC_SUBST(SYNC_TERM_SIZE)
-
-#-----------------------------------------------------------------------------#
-
 AC_MSG_CHECKING(the number of bits per word)
 AC_CACHE_VAL(mercury_cv_bits_per_word,
     AC_TRY_RUN([
@@ -2210,6 +2180,13 @@ if test "$mercury_cv_long_double_is_64_bit" = yes; then
     AC_DEFINE(MR_LONG_DOUBLE_IS_64_BIT)
 fi
 AC_SUBST(MR_LONG_DOUBLE_IS_64_BIT)
+
+#-----------------------------------------------------------------------------#
+
+# The number of detstack slots (words) that a MR_SyncTerm occupies.
+SYNC_TERM_SIZE=3
+AC_SUBST(SYNC_TERM_SIZE)
+AC_DEFINE_UNQUOTED(MR_SYNC_TERM_SIZE, $SYNC_TERM_SIZE)
 
 #-----------------------------------------------------------------------------#
 
@@ -3145,8 +3122,7 @@ case "$host" in
         esac
         ;;
 
-    x86_64*w64*mingw32)
-        THREAD_LIBS=""
+    x86_64*w64*mingw32*)
         CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
         THREAD_LIBS="-lpthread"
         ;;
@@ -4645,6 +4621,11 @@ case "$mercury_cv_cc_type" in
         ;;
 
     clang*)
+
+        # We do not compile with -ansi when using clang because that (currently) puts
+        # clang into C89 mode and we want to use C99's inline keyword with clang.
+        CFLAGS_FOR_ANSI=
+
         # XXX we need go through the warning and optimization options for clang
         # more carefully.
         CFLAGS_FOR_WARNINGS="-w"

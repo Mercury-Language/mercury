@@ -253,8 +253,6 @@ MR_Next
 MR_trace_cmd_var_details(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int n;
-
     if (word_count == 1) {
         const char  *problem;
 
@@ -274,8 +272,6 @@ MR_Next
 MR_trace_cmd_term_size(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
-    int n;
-
     if (word_count == 2) {
         const char  *problem;
 
@@ -1296,7 +1292,6 @@ MR_trace_cmd_ambiguity(char **words, int word_count,
     MR_bool         print_types;
     MR_bool         print_functors;
     FILE            *fp;
-    int             i;
 
     filename = NULL;
     print_procs = MR_FALSE;
@@ -1748,7 +1743,6 @@ MR_trace_cmd_table_print_tip(const MR_ProcLayout *proc,
         case MR_EVAL_METHOD_MINIMAL_STACK_COPY:
             {
                 MR_Subgoal  *subgoal;
-                int         subgoal_num;
 
                 fprintf(MR_mdb_out, "trie node %p\n", table);
                 subgoal = table->MR_subgoal;

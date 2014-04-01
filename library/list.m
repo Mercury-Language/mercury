@@ -34,31 +34,17 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Some declarations for complicated modes using lists.
-    % (Note that partial instantiation is not currently supported.)
-
+    % These instantiation states and modes can be used for instantiation
+    % state subtyping.
+    %
+    % They could also be used for partial instantiation but partial
+    % instantiation does not work completely, for information see the
+    % LIMITATIONS file distributed with Mercury.
+    %
 :- inst list_skel(I) ---> [] ; [I | list_skel(I)].
-:- inst list_skel == list_skel(free).
 :- inst list(I) == list_skel(I).
 
 :- inst non_empty_list ---> [ground | ground].
-
-:- mode in_list_skel  == list_skel >> list_skel.
-:- mode out_list_skel == free >> list_skel.
-:- mode list_skel_out == list_skel >> ground.
-
-    % These more verbose versions are deprecated.
-    % They exist only for backwards compatibility,
-    % and will be removed in a future release.
-:- mode input_list_skel  == in_list_skel.
-:- mode output_list_skel == out_list_skel.
-:- mode list_skel_output == list_skel_out.
-
-    % These modes are particularly useful for passing around lists
-    % of higher order terms, since they have complicated insts
-    % which are not correctly approximated by "ground".
-:- mode list_skel_in(I)  == list_skel(I) >> list_skel(I).
-:- mode list_skel_out(I) == free >> list_skel(I).
 
 %-----------------------------------------------------------------------------%
 
@@ -1737,6 +1723,28 @@
 % and will not be included in the Mercury library reference manual.
 
 :- interface.
+
+    % Some declarations for complicated modes using lists.
+    %
+    % See our comment above regarding incomplete  support for partial
+    % instantiation.
+
+:- inst list_skel == list_skel(free).
+
+:- mode in_list_skel  == list_skel >> list_skel.
+:- mode out_list_skel == free >> list_skel.
+:- mode list_skel_out == list_skel >> ground.
+
+    % These modes are useful for passing around lists of higher order terms,
+    % since they have complicated insts which are not correctly approximated
+    % by "ground".
+    %
+    % These could be made public (not deprecated) however I prefer to
+    % encourage the in(list_skel(I)) and out(list_skel(I)) style syntax.
+    %
+:- mode list_skel_in(I)  == list_skel(I) >> list_skel(I).
+:- mode list_skel_out(I) == free >> list_skel(I).
+
 
     % This is the same as the usual forward mode of append, but preserves
     % any extra information available in the input arguments.

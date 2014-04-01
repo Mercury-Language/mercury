@@ -461,7 +461,6 @@ MR_trace_write_label_exec_counts(FILE *fp, const char *progname,
     int                         module_num;
     int                         file_num;
     unsigned                    num_written;
-    char                        *s;
 
     MR_trace_name_count_port_ensure_init();
 
@@ -1242,7 +1241,6 @@ MR_io_tabling_stats(FILE *fp)
     MR_ConstString                  proc_name;
     int                             arity;
     MR_Word                         is_func;
-    int                             hv;
     MR_TrieNode                     answer_block_trie;
     MR_Word                         *answer_block;
     MR_Hash_Table                   hash_table;

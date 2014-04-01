@@ -86,6 +86,7 @@ DEFAULT_MCFLAGS=\
 		--ranlib-flags "@RANLIBFLAGS@" \
 		--link-executable-command "@LINK_EXE@" \
 		--link-shared-lib-command "@LINK_SHARED_OBJ@" \
+		--strip-executable-command "@STRIP_EXE@" \
 		--trace-libs "@TRACE_BASE_LIBS_SYSTEM@" \
 		--thread-libs "@THREAD_LIBS@" \
 		--hwloc-libs "@HWLOC_LIBS@" \

@@ -171,7 +171,7 @@ is_all_same_char(const char *line, const char what)
 static MR_bool
 is_command(const char *line, MR_bool *is_concept)
 {
-    int len;
+    size_t len;
 
     len = strlen(line);
     if (((line[0] == '`') || (line[0] == '\'')) && (line[len-2] == '\'')) {
@@ -199,8 +199,8 @@ get_command(const char *line, char *command)
 static void
 print_command_line(const char *line, MR_bool is_concept)
 {
-    int len;
-    int i;
+    size_t len;
+    size_t i;
 
     len = strlen(line);
     for (i = 1; i < len - 2; i++) {

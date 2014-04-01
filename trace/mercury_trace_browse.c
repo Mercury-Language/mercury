@@ -327,10 +327,10 @@ MR_trace_print_all_browser_params(FILE *fp, MR_bool mdb_command_format)
     MR_trace_browse_ensure_init();
     MR_TRACE_CALL_MERCURY(
         ML_BROWSE_browser_params_to_string(MR_trace_browser_persistent_state,
-            mdb_command_format, &param_string);
+            (MR_Word)mdb_command_format, &param_string);
     );
 
-    fprintf(fp, param_string);
+    fputs(param_string, fp);
 }
 
 void

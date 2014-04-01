@@ -356,9 +356,11 @@ case $ss_debug in
 		;;
 esac
 
+# compile_target_code.m falls back to calling `strip' separately if using a
+# linker flag is not possible. That would be non-trivial in this script.
 case $strip in
 	true)
-		STRIP_OPTS="-s"
+		STRIP_OPTS="@LD_STRIP_FLAG@"
 		;;
 	false)
 		STRIP_OPTS=""

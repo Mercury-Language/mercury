@@ -702,8 +702,8 @@ MR_trace_retry(MR_EventInfo *event_info,
     const MR_LabelLayout    *return_label_layout;
     const MR_LabelLayout    *call_label;
     const MR_ProcLayout     *level_layout;
-    int                     call_all_var_count;
-    int                     call_long_var_count;
+    MR_Integer              call_all_var_count;
+    MR_Integer              call_long_var_count;
     MR_Word                 *r_args;
     int                     r_arg_max;
     MR_Word                 *f_args;
@@ -1197,7 +1197,6 @@ MR_find_saved_io_counter(const MR_LabelLayout *call_label,
     MR_Word *base_sp, MR_Word *base_curfr, MR_Unsigned *saved_io_counter_ptr)
 {
     const MR_ProcLayout     *level_layout;
-    MR_Unsigned             saved_io_counter;
 
     if (call_label == NULL) {
         return MR_FALSE;
@@ -1416,9 +1415,9 @@ MR_trace_find_input_arg(const MR_LabelLayout *label_layout,
     MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
     MR_Float *saved_f_regs, MR_uint_least16_t var_num, MR_bool *succeeded)
 {
-    int i;
-    int all_var_count;
-    int long_var_count;
+    int         i;
+    MR_Integer  all_var_count;
+    MR_Integer  long_var_count;
 
     if (label_layout->MR_sll_var_nums == NULL) {
         *succeeded = MR_FALSE;

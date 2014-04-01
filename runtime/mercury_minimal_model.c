@@ -2510,7 +2510,9 @@ MR_END_MODULE
 INIT mercury_sys_init_mmsc_modules
 */
 
+#ifndef MR_HIGHLEVEL_CODE
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mmsc_module;
+#endif
 
 /* forward declarations to suppress gcc -Wmissing-decl warnings */
 void mercury_sys_init_mmsc_modules_init(void);

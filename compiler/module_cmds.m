@@ -775,8 +775,8 @@ write_java_shell_script(Globals, MainModuleName, Stream, !IO) :-
     globals.lookup_accumulating_option(Globals, java_classpath,
         UserClasspath),
     % We prepend the .class files' directory and the current CLASSPATH.
-    Java_Incl_Dirs = ["$DIR/" ++ ClassDirNameUnix] ++ MercuryStdLibs ++
-        ["$CLASSPATH" | UserClasspath],
+    Java_Incl_Dirs = ["\"$DIR/" ++ ClassDirNameUnix ++ "\""] ++
+        MercuryStdLibs ++ ["$CLASSPATH" | UserClasspath],
     ClassPath = string.join_list("${SEP}", Java_Incl_Dirs),
 
     globals.lookup_string_option(Globals, java_interpreter, Java),
@@ -785,6 +785,7 @@ write_java_shell_script(Globals, MainModuleName, Stream, !IO) :-
     io.write_strings(Stream, [
         "#!/bin/sh\n",
         "DIR=${0%/*}\n",
+        "DIR=$( cd \"${DIR}\" && pwd -P )\n",
         "case $WINDIR in\n",
         "   '') SEP=':' ;;\n",
         "   *)  SEP=';' ;;\n",
@@ -792,7 +793,7 @@ write_java_shell_script(Globals, MainModuleName, Stream, !IO) :-
         "CLASSPATH=", ClassPath, "\n",
         "export CLASSPATH\n",
         "JAVA=${JAVA:-", Java, "}\n",
-        "exec $JAVA jmercury.", ClassName, " \"$@\"\n"
+        "exec \"$JAVA\" jmercury.", ClassName, " \"$@\"\n"
     ], !IO).
 
 :- pred write_java_batch_file(globals::in, module_name::in,

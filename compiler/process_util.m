@@ -297,7 +297,7 @@ raise_signal(_::in, IO::di, IO::uo).
     raise_signal(Signal::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    raise(Signal);
+    raise((int)Signal);
 ").
 
 :- pragma foreign_proc("C",
@@ -305,7 +305,7 @@ raise_signal(_::in, IO::di, IO::uo).
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
 #ifdef MR_HAVE_KILL
-    kill(Pid, Signal);
+    kill((pid_t)Pid, (int)Signal);
 #endif
 ").
 
@@ -393,7 +393,7 @@ start_in_forked_process_2(_, _, !IO) :-
         MR_Integer exit_status;
 
         MC_call_child_process_io_pred(Pred, &exit_status);
-        exit(exit_status);
+        exit((int)exit_status);
     } else {                                /* parent */
     }
 
@@ -451,7 +451,7 @@ call_child_process_io_pred(P, Status, !IO) :-
 #endif
 
         while (1) {
-            wait_status = waitpid(Pid, &child_status, 0);
+            wait_status = waitpid((pid_t)Pid, &child_status, 0);
             if (wait_status != -1) {
                 WaitedPid = wait_status;
                 Status = child_status;
@@ -466,7 +466,7 @@ call_child_process_io_pred(P, Status, !IO) :-
                     ** Linux).
                     */
                     if (Pid != -1) {
-                        kill(Pid, SIGTERM);
+                        kill((pid_t)Pid, SIGTERM);
                     }
                     break;
                 }

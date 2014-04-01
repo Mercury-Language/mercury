@@ -227,7 +227,6 @@ static int
 output_init_program(void)
 {
     int filenum;
-    int num_bunches;
     int i;
 
     do_path_search(files, num_files);
@@ -288,8 +287,6 @@ static void
 parse_options(int argc, char *argv[])
 {
     int         c;
-    int         i;
-    String_List *tmp_slist;
     int         seen_f_option = 0;
 
     /*
@@ -461,15 +458,15 @@ process_init_file(const char *filename, const char *prefix_str)
     const char * const  reqfinal_str = "REQUIRED_FINAL ";
     const char * const  envvar_str = "ENVVAR ";
     const char * const  endinit_str = "ENDINIT";
-    const int           prefix_strlen = strlen(prefix_str);
-    const int           init_strlen = strlen(init_str);
-    const int           reqinit_strlen = strlen(reqinit_str);
-    const int           reqfinal_strlen = strlen(reqfinal_str);
-    const int           envvar_strlen = strlen(envvar_str);
-    const int           endinit_strlen = strlen(endinit_str);
+    const size_t        prefix_strlen = strlen(prefix_str);
+    const size_t        init_strlen = strlen(init_str);
+    const size_t        reqinit_strlen = strlen(reqinit_str);
+    const size_t        reqfinal_strlen = strlen(reqfinal_str);
+    const size_t        envvar_strlen = strlen(envvar_str);
+    const size_t        endinit_strlen = strlen(endinit_str);
     char                line0[MAXLINE];
     char *              line;
-    int                 len;
+    size_t              len;
     FILE                *erl_file;
 
     erl_file = fopen(filename, "r");
@@ -495,9 +492,7 @@ process_init_file(const char *filename, const char *prefix_str)
 
         if (strncmp(line, init_str, init_strlen) == 0) {
             char    *func_name;
-            int     func_name_len;
-            int     j;
-            MR_bool special;
+            size_t  func_name_len;
 
             func_name = line + init_strlen;
             func_name_len = strlen(func_name);
@@ -509,7 +504,6 @@ process_init_file(const char *filename, const char *prefix_str)
             std_module_next++;
         } else if (strncmp(line, reqinit_str, reqinit_strlen) == 0) {
             char    *func_name;
-            int     j;
 
             func_name = line + reqinit_strlen;
             MR_ensure_room_for_next(req_init_module, const char *,
@@ -518,7 +512,6 @@ process_init_file(const char *filename, const char *prefix_str)
             req_init_module_next++;
         } else if (strncmp(line, reqfinal_str, reqfinal_strlen) == 0) {
             char    *func_name;
-            int     j;
 
             func_name = line + reqfinal_strlen;
             MR_ensure_room_for_next(req_final_module, const char *,

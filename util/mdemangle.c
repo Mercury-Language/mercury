@@ -43,7 +43,6 @@ static MR_bool      check_for_suffix(char *start, char *position,
 static char         *fix_mangled_ascii(char *str, char **end);
 static MR_bool      fix_mangled_special_case(char *str, char **end);
 static MR_bool      find_double_underscore(char **str, char *end);
-static MR_bool      cut_at_double_underscore(char **str, char *end);
 static MR_bool      cut_trailing_integer(char *str, char **end, int *num);
 static MR_bool      cut_trailing_underscore_integer(char *str,
                         char **end, int *num);
@@ -129,7 +128,7 @@ main(int argc, char **argv)
                     break;
                 }
 
-                buf[len++] = c;
+                buf[len++] = (char) c;
                 c = getchar();
             }
 
@@ -204,7 +203,6 @@ demangle(const char *orig_name)
                         "__base_typeclass_info_";
     static const char common[] = "common";
     static const char arity_string[] = "arity";
-    static const char underscores_arity_string[] = "__arity";
 
     static const char MR_grade[] = "MR_grade_";
     static const char MR_runtime_grade[] = "MR_runtime_grade";
@@ -824,7 +822,7 @@ not_plain_mercury:
             printf("<shared constant number %d for module %s>",
                 arity, module);
             break;
-
+        
         default:
             goto wrong_format;
     }
@@ -880,11 +878,11 @@ wrong_format:
     start = name;
     end = name + strlen(name);
     start = fix_mangled_ascii(start, &end);
-    printf(name);
+    fputs(name, stdout);
     return;
 
 too_long:
-    printf(orig_name);
+    fputs(orig_name, stdout);
     return;
 } /* end demangle() */
 
@@ -975,7 +973,7 @@ strip_module_name(char **start_ptr, char *end,
 static MR_bool
 strip_prefix(char **str, const char *prefix)
 {
-    int len;
+    size_t len;
 
     len = strlen(prefix);
 
@@ -996,7 +994,7 @@ strip_prefix(char **str, const char *prefix)
 static MR_bool
 strip_suffix(const char *start, char **end, const char *suffix)
 {
-    int len;
+    size_t len;
 
     len = strlen(suffix);
 
@@ -1102,24 +1100,6 @@ cut_trailing_underscore_integer(char *str, char **real_end, int *num)
 
     *end = '\0';
     *real_end = end;
-    return MR_TRUE;
-}
-
-/*
-** Scan for `__' and cut the string at there (replace first `_' with `\0',
-** return the part of the string after the `__').
-** Returns MR_TRUE if `__' was found, MR_FALSE otherwise.
-*/
-
-static MR_bool
-cut_at_double_underscore(char **start, char *end)
-{
-    if (! find_double_underscore(start, end)) {
-        return MR_FALSE;
-    }
-
-    **start = '\0';
-    *start = *start + 2;
     return MR_TRUE;
 }
 

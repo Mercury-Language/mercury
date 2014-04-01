@@ -179,9 +179,9 @@ find_init_file(const char *base_name)
     char        *filename;
     char        *dirname;
     String_List *dir_ptr;
-    int         dirlen;
-    int         baselen;
-    int         len;
+    size_t      dirlen;
+    size_t      baselen;
+    size_t      len;
 
     if (file_exists(base_name)) {
         /* File is in current directory, so no search required */
@@ -245,11 +245,11 @@ file_exists(const char *filename)
 */
 
 char *
-read_line(const char *filename, FILE *fp, int max)
+read_line(const char *filename, FILE *fp, size_t max)
 {
     char    *buf;
     int     c;
-    int     i;
+    size_t  i;
 
     buf = checked_malloc(max + 1);
     i = 0;
@@ -261,7 +261,7 @@ read_line(const char *filename, FILE *fp, int max)
             return NULL;
         }
 
-        buf[i++] = c;
+        buf[i++] = (char) c;
     }
 
     if (c == '\n' || i > 0) {
@@ -291,7 +291,7 @@ get_line(FILE *file, char *line, int line_max)
     limit = line_max - 2;
     while ((c = getc(file)) != EOF && c != '\n') {
         if (num_chars < limit) {
-            line[num_chars++] = c;
+            line[num_chars++] = (char) c;
         }
     }
 

@@ -2218,7 +2218,7 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
             Res = -2;
             break;
         }
-        read_buffer[i++] = char_code;
+        read_buffer[i++] = (char) char_code;
         MR_assert(i <= read_buf_size);
         if (i == read_buf_size) {
             /* Grow the read buffer */
@@ -2881,6 +2881,7 @@ io.file_modification_time(File, Result, !IO) :-
         ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
             MR_ALLOC_ID, MR_TRUE, Msg);
         Status = 0;
+        Time = 0;   /* Dummy value -- will not be used. */
     }
 #else
     Status = 0;
@@ -7610,7 +7611,7 @@ io.read_char_code(input_stream(Stream), CharCode, !IO) :-
             nbytes = 0;
         }
         if (nbytes > 0) {
-            buf[0] = uc;
+            buf[0] = (char) uc;
             for (i = 1; i < nbytes; i++) {
                 uc = mercury_get_byte(Stream);
                 buf[i] = uc;
@@ -7818,7 +7819,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     MercuryFilePtr out = mercury_current_text_output();
     char    buf[5];
     size_t  len;
-    int     i;
+    size_t  i;
     if (Character <= 0x7f) {
         if (MR_PUTCH(*out, Character) < 0) {
             mercury_output_error(out);
@@ -8170,7 +8171,7 @@ io.write_char(output_stream(Stream), Character, !IO) :-
     } else {
         char    buf[5];
         size_t  len;
-        int     i;
+        size_t  i;
         len = MR_utf8_encode(buf, Character);
         for (i = 0; i < len; i++) {
             if (MR_PUTCH(*Stream, buf[i]) < 0) {
@@ -9672,7 +9673,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
-    mercury_exit_status = ExitStatus;
+    mercury_exit_status = (int) ExitStatus;
 ").
 
 :- pragma foreign_decl("C", "
