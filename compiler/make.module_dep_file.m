@@ -456,7 +456,7 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
         (
             TermResult = term(_, Term),
             read_module_dependencies_3(Globals, SearchDirs, ModuleName,
-                ModuleDir, Term, Result, !Info, !IO)
+                ModuleDir, ModuleDepFile, Term, Result, !Info, !IO)
         ;
             TermResult = eof,
             Result = error("unexpected eof")
@@ -479,11 +479,11 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
     ).
 
 :- pred read_module_dependencies_3(globals::in, list(dir_name)::in,
-    module_name::in, dir_name::in, term::in, maybe_error::out,
+    module_name::in, dir_name::in, file_name::in, term::in, maybe_error::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
-        Term, Result, !Info, !IO) :-
+        ModuleDepFile, Term, Result, !Info, !IO) :-
     (
         atom_term(Term, "module", ModuleArgs),
         ModuleArgs = [
@@ -549,24 +549,43 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             ContainsForeignExport,
             Items, Specs, Errors, MaybeTimestamps, HasMain, ModuleDir),
 
-        ModuleDepMap0 = !.Info ^ module_dependencies,
-        % XXX Could this be map.det_insert?
-        map.set(ModuleName, yes(Imports), ModuleDepMap0, ModuleDepMap),
-        !Info ^ module_dependencies := ModuleDepMap,
-
-        % Read the dependencies for the nested children. If something
-        % goes wrong (for example one of the files was removed), the
-        % dependencies for all modules in the source file will be remade
-        % (make_module_dependencies expects to be given the top-level
-        % module in the source file).
-        list.foldl2(
-            read_module_dependencies_2(Globals, do_not_rebuild_module_deps,
-                SearchDirs),
-            NestedChildren, !Info, !IO),
-        ( some_bad_module_dependency(!.Info, NestedChildren) ->
-            Result = error("error in nested sub-modules")
+        % Discard the module dependencies if the module is a local module
+        % but the source file no longer exists.
+        ( ModuleDir = dir.this_directory ->
+            check_regular_file_exists(SourceFileName, SourceFileExists, !IO),
+            (
+                SourceFileExists = ok
+            ;
+                SourceFileExists = error(_),
+                io.remove_file(ModuleDepFile, _, !IO)
+            )
         ;
-            Result = ok
+            SourceFileExists = ok
+        ),
+        (
+            SourceFileExists = ok,
+            ModuleDepMap0 = !.Info ^ module_dependencies,
+            % XXX Could this be map.det_insert?
+            map.set(ModuleName, yes(Imports), ModuleDepMap0, ModuleDepMap),
+            !Info ^ module_dependencies := ModuleDepMap,
+
+            % Read the dependencies for the nested children. If something
+            % goes wrong (for example one of the files was removed), the
+            % dependencies for all modules in the source file will be remade
+            % (make_module_dependencies expects to be given the top-level
+            % module in the source file).
+            list.foldl2(
+                read_module_dependencies_2(Globals, do_not_rebuild_module_deps,
+                    SearchDirs),
+                NestedChildren, !Info, !IO),
+            ( some_bad_module_dependency(!.Info, NestedChildren) ->
+                Result = error("error in nested sub-modules")
+            ;
+                Result = ok
+            )
+        ;
+            SourceFileExists = error(Error),
+            Result = error(Error)
         )
     ;
         Result = error("failed to parse term")
@@ -656,6 +675,37 @@ has_main_term(Term, HasMain) :-
 some_bad_module_dependency(Info, ModuleNames) :-
     list.member(ModuleName, ModuleNames),
     map.search(Info ^ module_dependencies, ModuleName, no).
+
+:- pred check_regular_file_exists(file_name::in, maybe_error::out,
+    io::di, io::uo) is det.
+
+check_regular_file_exists(FileName, FileExists, !IO) :-
+    FollowSymLinks = yes,
+    io.file_type(FollowSymLinks, FileName, ResFileType, !IO),
+    (
+        ResFileType = ok(FileType),
+        (
+            ( FileType = regular_file
+            ; FileType = unknown
+            ),
+            FileExists = ok
+        ;
+            ( FileType = directory
+            ; FileType = symbolic_link
+            ; FileType = named_pipe
+            ; FileType = socket
+            ; FileType = character_device
+            ; FileType = block_device
+            ; FileType = message_queue
+            ; FileType = semaphore
+            ; FileType = shared_memory
+            ),
+            FileExists = error(FileName ++ ": not a regular file")
+        )
+    ;
+        ResFileType = error(Error),
+        FileExists = error(FileName ++ ": " ++ io.error_message(Error))
+    ).
 
 %-----------------------------------------------------------------------------%
 
