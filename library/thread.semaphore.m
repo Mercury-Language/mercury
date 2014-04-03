@@ -207,6 +207,7 @@ ML_finalize_semaphore(void *obj, void *cd)
         MR_schedule_context(ctxt);
 
         /* yield() */
+        /* This context switch can be done more directly and faster */
         MR_save_context(MR_ENGINE(MR_eng_this_context));
       #ifdef ML_THREAD_AVOID_LABEL_ADDRS
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =

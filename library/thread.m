@@ -1,7 +1,8 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001,2003-2004, 2006-2008, 2010-2011 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003-2004, 2006-2008, 2010-2011, 2014 The
+% University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,9 +13,9 @@
 %
 % This module defines the Mercury concurrency interface.
 %
-% The term `concurrency' here refers to threads, not necessarily to parallel
-% execution.  (The latter is also possible if you are using one of the .par
-% grades and the lowlevel C backend, e.g. grade asm_fast.par.gc).
+% The term `concurrency' refers to threads, not necessarily to parallel
+% execution of those threads.  (The latter is also possible if you are using
+% one of the .par grades or the Java or C# backends.)
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -24,6 +25,7 @@
 
 :- import_module io.
 
+:- include_module barrier.
 :- include_module channel.
 :- include_module mvar.
 :- include_module semaphore.

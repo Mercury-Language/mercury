@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2007, 2009-2012 The University of Melbourne.
+% Copyright (C) 1993-2007, 2009-2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -299,6 +299,7 @@ mercury_std_library_module("term_to_xml").
 mercury_std_library_module("test_bitset").
 mercury_std_library_module("time").
 mercury_std_library_module("thread").
+mercury_std_library_module("thread.barrier").
 mercury_std_library_module("thread.channel").
 mercury_std_library_module("thread.mvar").
 mercury_std_library_module("thread.semaphore").

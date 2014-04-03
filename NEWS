@@ -15,8 +15,12 @@ Changes to the Mercury standard library:
 * io.print and string_writer.print now print arbitrary precision integers
   in their decimal form instead of printing their underlying representation.
 
-* We have added a module for discrete interval encoding trees,
-  which are a highly efficient set implementation for fat sets.
+* We have added a module for discrete interval encoding trees, which are a
+  highly efficient set implementation for fat sets.  This module is a
+  contribution from Yes Logic Pty. Ltd.
+
+* We have added a module that implements barriers for concurrent
+  programming.  This module is a contribution from Mission Critical IT.
 
 Changes to the extras distribution:
 
