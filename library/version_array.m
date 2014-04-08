@@ -2,6 +2,7 @@
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
+% Copyright (C) 2014 The Mercury Team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -912,7 +913,8 @@ is_empty(VA) :-
 ** a pointer to the next version in the chain.
 */
 
-typedef struct ML_va    *ML_va_ptr;
+typedef struct ML_va        *ML_va_ptr;
+typedef const struct ML_va  *ML_const_va_ptr;
 
 struct ML_va {
     MR_Integer          index;  /* -1 for latest, >= 0 for older */
@@ -930,13 +932,13 @@ struct ML_va {
 ** Returns a pointer to the latest version of the array.
 */
 extern ML_va_ptr
-ML_va_get_latest(ML_va_ptr VA);
+ML_va_get_latest(ML_const_va_ptr VA);
 
 /*
 ** Returns the number of items in a version array.
 */
 extern MR_Integer
-ML_va_size_dolock(ML_va_ptr);
+ML_va_size_dolock(ML_const_va_ptr);
 
 /*
 ** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
@@ -944,7 +946,7 @@ ML_va_size_dolock(ML_va_ptr);
 ** returns MR_FALSE.
 */
 extern MR_bool
-ML_va_get_dolock(ML_va_ptr, MR_Integer, MR_Word *);
+ML_va_get_dolock(ML_const_va_ptr, MR_Integer, MR_Word *);
 
 /*
 ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
@@ -976,7 +978,7 @@ ML_va_resize_dolock(ML_va_ptr, MR_Integer, MR_Word, MR_AllocSiteInfoPtr);
 ** Returns the number of items in a version array.
 */
 static MR_Integer
-ML_va_size(ML_va_ptr);
+ML_va_size(ML_const_va_ptr);
 
 /*
 ** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
@@ -984,7 +986,7 @@ ML_va_size(ML_va_ptr);
 ** returns MR_FALSE.
 */
 static MR_bool
-ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr);
+ML_va_get(ML_const_va_ptr VA, MR_Integer I, MR_Word *Xptr);
 
 /*
 ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
@@ -999,14 +1001,14 @@ ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *,
 ** Create a copy of VA0 as a new array.
 */
 static ML_va_ptr
-ML_va_flat_copy(const ML_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id);
+ML_va_flat_copy(ML_const_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id);
 
 /*
 ** Update the array VA using the override values in VA0
 ** i.e. recreate the state of the version array as captured in VA0.
 */
 static void
-ML_va_rewind_into(ML_va_ptr VA, const ML_va_ptr VA0);
+ML_va_rewind_into(ML_va_ptr VA, ML_const_va_ptr VA0);
 
 /*
 ** `Rewinds' a version array, invalidating all extant successors
@@ -1047,17 +1049,18 @@ ML_va_resize(ML_va_ptr, MR_Integer, MR_Word, MR_AllocSiteInfoPtr);
 #endif
 
 ML_va_ptr
-ML_va_get_latest(ML_va_ptr VA)
+ML_va_get_latest(ML_const_va_ptr VA)
 {
     while (!ML_va_latest_version(VA)) {
         VA = VA->rest.next;
     }
 
-    return VA;
+    /* Cast away the 'const' */
+    return (ML_va_ptr)VA;
 }
 
 MR_Integer
-ML_va_size_dolock(ML_va_ptr VA)
+ML_va_size_dolock(ML_const_va_ptr VA)
 {
 #ifdef MR_THREAD_SAFE
     MercuryLock *lock = VA->lock;
@@ -1074,7 +1077,7 @@ ML_va_size_dolock(ML_va_ptr VA)
 }
 
 static MR_Integer
-ML_va_size(ML_va_ptr VA)
+ML_va_size(ML_const_va_ptr VA)
 {
     VA = ML_va_get_latest(VA);
 
@@ -1082,7 +1085,7 @@ ML_va_size(ML_va_ptr VA)
 }
 
 int
-ML_va_get_dolock(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
+ML_va_get_dolock(ML_const_va_ptr VA, MR_Integer I, MR_Word *Xptr)
 {
 #ifdef MR_THREAD_SAFE
     MercuryLock *lock = VA->lock;
@@ -1099,7 +1102,7 @@ ML_va_get_dolock(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
 }
 
 static int
-ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
+ML_va_get(ML_const_va_ptr VA, MR_Integer I, MR_Word *Xptr)
 {
     while (!ML_va_latest_version(VA)) {
         if (I == VA->index) {
@@ -1176,7 +1179,7 @@ ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr,
 }
 
 static ML_va_ptr
-ML_va_flat_copy(const ML_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
+ML_va_flat_copy(ML_const_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
 {
     ML_va_ptr   latest;
     ML_va_ptr   VA;
@@ -1216,7 +1219,7 @@ ML_va_flat_copy(const ML_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
 }
 
 static void
-ML_va_rewind_into(ML_va_ptr VA, const ML_va_ptr VA0)
+ML_va_rewind_into(ML_va_ptr VA, ML_const_va_ptr VA0)
 {
     MR_Integer I;
     MR_Word    X;
