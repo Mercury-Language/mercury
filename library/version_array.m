@@ -1035,18 +1035,18 @@ ML_va_resize(ML_va_ptr, MR_Integer, MR_Word, MR_AllocSiteInfoPtr);
 #define ML_va_latest_version(VA)   ((VA)->index == -1)
 
 #ifdef MR_THREAD_SAFE
-    #define ML_maybe_lock(lock)                         \
-        do {                                            \
-            if (lock) {                                 \
-                MR_LOCK(lock, ""ML_maybe_lock"");       \
-            }                                           \
+    #define ML_maybe_lock(lock)                         \\
+        do {                                            \\
+            if (lock) {                                 \\
+                MR_LOCK(lock, ""ML_maybe_lock"");       \\
+            }                                           \\
         } while (0)
 
-    #define ML_maybe_unlock(lock)                       \
-        do {                                            \
-            if (lock) {                                 \
-                MR_UNLOCK(lock, ""ML_maybe_unlock"");   \
-            }                                           \
+    #define ML_maybe_unlock(lock)                       \\
+        do {                                            \\
+            if (lock) {                                 \\
+                MR_UNLOCK(lock, ""ML_maybe_unlock"");   \\
+            }                                           \\
         } while (0)
 #else
     #define ML_maybe_lock(lock)     ((void) 0)
