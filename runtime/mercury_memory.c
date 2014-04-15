@@ -348,6 +348,24 @@ MR_GC_malloc(size_t num_bytes)
 }
 
 void *
+MR_GC_malloc_atomic(size_t num_bytes)
+{
+    void    *ptr;
+
+#ifdef  MR_CONSERVATIVE_GC
+    ptr = GC_MALLOC_ATOMIC(num_bytes);
+#else
+    ptr = malloc(num_bytes);
+#endif
+
+    if (ptr == NULL && num_bytes != 0) {
+        MR_fatal_error("could not allocate memory");
+    }
+
+    return ptr;
+}
+
+void *
 MR_GC_malloc_uncollectable(size_t num_bytes)
 {
     void    *ptr;

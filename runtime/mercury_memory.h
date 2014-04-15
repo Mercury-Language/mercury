@@ -160,6 +160,11 @@ extern	void 	MR_ensure_big_enough_buffer(char **buffer_ptr,
 **	The memory will not be garbage collected, and so
 **	it should be explicitly deallocated using MR_GC_free().
 **
+** MR_GC_malloc_atomic(bytes):
+**  Allocates the given number of bytes.
+**  Pointers to GC objects may not be stored in this object.  This allows
+**  the GC to optimize it's marking phase.
+**
 ** MR_GC_realloc(ptr, bytes):
 **	Reallocates the memory block pointed to by ptr.
 **
@@ -192,6 +197,7 @@ extern	void 	MR_ensure_big_enough_buffer(char **buffer_ptr,
 
 extern	void	*MR_GC_malloc(size_t num_bytes);
 extern	void	*MR_GC_malloc_uncollectable(size_t num_bytes);
+extern	void	*MR_GC_malloc_atomic(size_t num_bytes);
 extern	void	*MR_GC_realloc(void *ptr, size_t num_bytes);
 
 typedef void 	(*MR_GC_finalizer)(void *ptr, void *data);
