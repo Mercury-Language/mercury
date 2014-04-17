@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2012 The University of Melbourne.
+% Copyright (C) 1993-2012,2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2173,10 +2173,11 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
         PredOrFunc, PredName, Arity, PredIds),
     (
         PredIds = [],
-        preds_add_implicit_report_error(ModuleName, PredOrFunc,
-            PredName, Arity, Status, no, Context, origin_user(PredName),
-            [quote(":- pragma foreign_proc"), words("declaration")], PredId,
-            !ModuleInfo, !Specs)
+        preds_add_implicit_report_error(!ModuleInfo, ModuleName,
+            PredName, Arity, PredOrFunc, Status, no, Context,
+            origin_user(PredName),
+            [quote(":- pragma foreign_proc"), words("declaration")],
+            PredId, !Specs)
     ;
         PredIds = [PredId]
     ;
@@ -2327,9 +2328,9 @@ module_add_pragma_tabled(TabledInfo, Context, !Status, !ModuleInfo,
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [quote(":- pragma " ++ EvalMethodStr),
                 words("declaration")],
-            preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName,
-                Arity, !.Status, no, Context, origin_user(PredName),
-                DescPieces, PredId, !ModuleInfo, !Specs),
+            preds_add_implicit_report_error(!ModuleInfo, ModuleName,
+                PredName, Arity, PredOrFunc, !.Status, no, Context,
+                origin_user(PredName), DescPieces, PredId, !Specs),
             PredIds = [PredId]
         )
     ;
@@ -2344,9 +2345,9 @@ module_add_pragma_tabled(TabledInfo, Context, !Status, !ModuleInfo,
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [quote(":- pragma " ++ EvalMethodStr),
                 words("declaration")],
-            preds_add_implicit_report_error(ModuleName, pf_predicate, PredName,
-                Arity, !.Status, no, Context, origin_user(PredName),
-                DescPieces, PredId, !ModuleInfo, !Specs),
+            preds_add_implicit_report_error(!ModuleInfo, ModuleName,
+                PredName, Arity, pf_predicate, !.Status, no, Context,
+                origin_user(PredName), DescPieces, PredId, !Specs),
             PredIds = [PredId]
         )
     ),

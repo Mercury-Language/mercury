@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2012 The University of Melbourne.
+% Copyright (C) 1993-2012,2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -99,12 +99,12 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
     module_info_get_name(!.ModuleInfo, ModuleName),
     list.length(Args, Arity0),
     Arity = Arity0 + ArityAdjustment,
-    some [!PredInfo, !PredicateTable] (
-        module_info_get_predicate_table(!.ModuleInfo, !:PredicateTable),
-        predicate_table_lookup_pf_sym_arity(!.PredicateTable,
+    some [!PredInfo] (
+        module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
+        predicate_table_lookup_pf_sym_arity(PredicateTable,
             is_fully_qualified, PredOrFunc, PredName, Arity, PredIds),
-        ( PredIds = [PredIdPrime] ->
-            PredId = PredIdPrime,
+        ( if PredIds = [PredIdPrime] then
+            MaybePredId = yes(PredIdPrime),
             ( GoalType = goal_type_promise(_) ->
                 NameString = sym_name_to_string(PredName),
                 string.format("%s %s %s (%s).\n",
@@ -116,21 +116,52 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             ;
                 true
             )
-        ;
+        else if unqualify_name(PredName) = ",", Arity = 2 then
+            MaybePredId = no,
+            Pieces = [words("Attempt to define a clause for `,'/2."),
+                words("This is usually caused by"),
+                words("inadvertently writing a period instead of a comma"),
+                words("at the end of the preceding line."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        else
             % A promise will not have a corresponding pred declaration.
             ( GoalType = goal_type_promise(_) ->
                 HeadVars = term.term_list_to_var_list(Args),
-                preds_add_implicit_for_assertion(HeadVars, !.ModuleInfo,
-                    ModuleName, PredName, Arity, Status, Context, PredOrFunc,
-                    PredId, !PredicateTable),
-                module_info_set_predicate_table(!.PredicateTable, !ModuleInfo)
+                preds_add_implicit_for_assertion(!ModuleInfo, ModuleName,
+                    PredName, Arity, PredOrFunc, HeadVars, Status, Context,
+                    NewPredId)
             ;
-                preds_add_implicit_report_error(ModuleName, PredOrFunc,
-                    PredName, Arity, Status, no, Context,
-                    origin_user(PredName), [words("clause")], PredId,
-                    !ModuleInfo, !Specs)
-            )
+                preds_add_implicit_report_error(!ModuleInfo, ModuleName,
+                    PredName, Arity, PredOrFunc, Status, no, Context,
+                    origin_user(PredName), [words("clause")], NewPredId,
+                    !Specs)
+            ),
+            MaybePredId = yes(NewPredId)
         ),
+        (
+            MaybePredId = yes(PredId),
+            module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
+                Args, Arity, ArityAdjustment, Body, Status, Context,
+                MaybeSeqNum, GoalType, IllegalSVarResult,
+                !ModuleInfo, !QualInfo, !Specs)
+        ;
+            MaybePredId = no
+        )
+    ).
+
+:- pred module_add_clause_2(prog_varset::in, pred_or_func::in, sym_name::in,
+    pred_id::in, list(prog_term)::in, int::in, int::in, goal::in,
+    import_status::in, prog_context::in, maybe(int)::in, goal_type::in,
+    maybe(prog_var)::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args,
+        Arity, ArityAdjustment, Body, Status, Context, MaybeSeqNum, GoalType,
+        IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs) :-
+    some [!PredInfo, !PredicateTable] (
         % Lookup the pred_info for this pred, add the clause to the
         % clauses_info in the pred_info, if there are no modes add an
         % `infer_modes' marker, and then save the pred_info.

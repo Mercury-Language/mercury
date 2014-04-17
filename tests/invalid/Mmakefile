@@ -186,6 +186,8 @@ SINGLEMODULE= \
 	quant_constraint_2 \
 	range_restrict \
 	record_syntax_errors \
+	ref_to_implicit_comma \
+	ref_to_implicit_pred \
 	repeated_instance_vars_unsat \
 	require_det_in_lambda \
 	require_scopes \

@@ -46,8 +46,13 @@ max_error_line_width.m:109: In clause for predicate `set_browser_param_from_opti
 max_error_line_width.m:109:   warning: highly ambiguous overloading.
 max_error_line_width.m:109:   This may cause type-checking to be very slow. It may also make your code difficult to
 max_error_line_width.m:109:   understand.
-max_error_line_width.m:109:   The following symbol was overloaded in the following context.
-max_error_line_width.m:103:   The function symbol `lookup_bool_option'/2.
-max_error_line_width.m:103:   The possible matches are:
-max_error_line_width.m:103:     predicate `getopt.lookup_bool_option'/3,
-max_error_line_width.m:103:     function `getopt.lookup_bool_option'/2.
+max_error_line_width.m:109:   The following symbol was overloaded in the following contexts.
+max_error_line_width.m:104:   The function symbol `lookup_bool_option'/2.
+max_error_line_width.m:104:   The possible matches are:
+max_error_line_width.m:104:     predicate `getopt.lookup_bool_option'/3,
+max_error_line_width.m:104:     function `getopt.lookup_bool_option'/2.
+max_error_line_width.m:105:   The function symbol `lookup_bool_option'/2 is also overloaded here.
+max_error_line_width.m:106:   The function symbol `lookup_bool_option'/2 is also overloaded here.
+max_error_line_width.m:107:   The function symbol `lookup_bool_option'/2 is also overloaded here.
+max_error_line_width.m:108:   The function symbol `lookup_bool_option'/2 is also overloaded here.
+max_error_line_width.m:109:   The function symbol `lookup_bool_option'/2 is also overloaded here.

@@ -1,0 +1,11 @@
+ref_to_implicit_pred.m:004: In `test':
+ref_to_implicit_pred.m:004:   error: determinism declaration not satisfied.
+ref_to_implicit_pred.m:004:   Declared `det', inferred `failure'.
+ref_to_implicit_pred.m:009: Error: clause for predicate
+ref_to_implicit_pred.m:009:   `ref_to_implicit_pred.p'/2
+ref_to_implicit_pred.m:009:   without preceding `pred' declaration.
+ref_to_implicit_pred.m:009: Error: no mode declaration for predicate `p'/2.
+ref_to_implicit_pred.m:009: Inferred :- pred p((pred), (pred)).
+ref_to_implicit_pred.m:010: Error: reference to undeclared function or
+ref_to_implicit_pred.m:010:   predicate `p'/2.
+For more information, recompile with `-E'.

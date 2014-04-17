@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2012 The University of Melbourne.
+% Copyright (C) 2005-2012,2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -432,14 +432,14 @@ do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
     % XVar and the top level of YTerm have already been through
     % state var mapping expansion.
     (
-        YTerm = term.variable(YVar, _),
+        YTerm = term.variable(YVar, YVarContext),
         ( XVar = YVar ->
             % Skip unifications of the form `XVar = XVar'.
             GoalCord = cord.init
         ;
             arg_context_to_unify_context(ArgContext, ArgNum,
                 MainContext, SubContext),
-            make_atomic_unification(XVar, rhs_var(YVar), Context,
+            make_atomic_unification(XVar, rhs_var(YVar), YVarContext,
                 MainContext, SubContext, purity_pure, Goal, !QualInfo),
             GoalCord = cord.singleton(Goal)
         ),
@@ -686,7 +686,7 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
         (
             MaybeQualifiedYArgTerms = [],
             make_atomic_unification(XVar, rhs_functor(ConsId, no, []),
-                Context, MainContext, SubContext, Purity, FunctorGoal,
+                YFunctorContext, MainContext, SubContext, Purity, FunctorGoal,
                 !QualInfo),
             goal_set_purity(Purity, FunctorGoal, Goal),
             Expansion = expansion(fgti_var_size(XVar, 1), cord.singleton(Goal))
@@ -704,8 +704,8 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
                     [], YVars, ArgExpansions, !SVarState, !SVarStore, !VarSet,
                     !ModuleInfo, !QualInfo, !Specs),
                 make_atomic_unification(XVar, rhs_functor(ConsId, no, YVars),
-                    Context, MainContext, SubContext, Purity, FunctorGoal,
-                    !QualInfo),
+                    YFunctorContext, MainContext, SubContext, Purity,
+                    FunctorGoal, !QualInfo),
                 goal_info_init(Context, GoalInfo),
                 append_expansions_after_goal_top_ftgi(GoalInfo, XVar,
                     FunctorGoal, 1, ArgExpansions, Expansion)
@@ -722,8 +722,8 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
                     [], YVars, ArgExpansions, !SVarState, !SVarStore, !VarSet,
                     !ModuleInfo, !QualInfo, !Specs),
                 make_atomic_unification(XVar, rhs_functor(ConsId, no, YVars),
-                    Context, MainContext, SubContext, Purity, FunctorGoal,
-                    !QualInfo),
+                    YFunctorContext, MainContext, SubContext, Purity,
+                    FunctorGoal, !QualInfo),
                 goal_info_init(Context, GoalInfo),
                 insert_expansions_before_goal_top_not_fgti(GoalInfo,
                     ArgExpansions, FunctorGoal, Goal0),

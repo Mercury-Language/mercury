@@ -103,7 +103,8 @@ fun_with_lines(!IO) :-
 
 fun_with_lines_2(!IO) :-
     % The user probably expects the two occurrences of $line to be replaced
-    % by two different numbers, but that doesn't happen.
+    % by two different numbers. That didn't happen in the past, but
+    % now it does.
     (
         $line =
         $line

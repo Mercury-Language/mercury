@@ -7,7 +7,7 @@ predicate `impl_def_literal.a_lambda'/1
 predicate `impl_def_literal.a_try_goal'/1
 predicate `impl_def_literal.an_atomic_goal'/3
 fun_with_lines: unequal
-fun_with_lines_2: equal
+fun_with_lines_2: unequal
 have $grade
 impl_def_literal.sub
 predicate `impl_def_literal.sub.in_submodule'/2

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
+% Copyright (C) 2005-2011,2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -507,12 +507,12 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
                     % !:S happened to precede !.S in the head, which is ok.
                     new_state_var_instance(StateVar, name_initial, Var,
                         !VarSet),
-                    Term = variable(Var, context_init),
+                    Term = variable(Var, Context),
                     Status = status_known(Var),
                     map.det_update(StateVar, Status, StatusMap0, StatusMap)
                 ;
                     OldStatus = status_known(Var),
-                    Term = variable(Var, context_init),
+                    Term = variable(Var, Context),
                     StatusMap = StatusMap0
                 ;
                     OldStatus = status_unknown_updated(_),
@@ -528,13 +528,13 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
                     % and the lambda expression itself also has !.StateVar.
                     new_state_var_instance(StateVar, name_initial, Var,
                         !VarSet),
-                    Term = variable(Var, context_init),
+                    Term = variable(Var, Context),
                     Status = status_known(Var),
                     map.det_update(StateVar, Status, StatusMap0, StatusMap)
                 )
             ;
                 new_state_var_instance(StateVar, name_initial, Var, !VarSet),
-                Term = variable(Var, context_init),
+                Term = variable(Var, Context),
                 Status = status_known(Var),
                 map.det_insert(StateVar, Status, StatusMap0, StatusMap)
             ),
@@ -544,7 +544,7 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
             SubTerms0 = [variable(StateVar, _)]
         ->
             new_state_var_instance(StateVar, name_final, Var, !VarSet),
-            Term = variable(Var, context_init),
+            Term = variable(Var, Context),
             Status = status_unknown,
 
             !.State = svar_state(StatusMap0),

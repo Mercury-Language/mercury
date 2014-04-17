@@ -1,0 +1,7 @@
+ref_to_implicit_comma.m:004: In `test':
+ref_to_implicit_comma.m:004:   error: determinism declaration not satisfied.
+ref_to_implicit_comma.m:004:   Declared `det', inferred `failure'.
+ref_to_implicit_comma.m:009: Attempt to define a clause for `,'/2. This is
+ref_to_implicit_comma.m:009:   usually caused by inadvertently writing a period
+ref_to_implicit_comma.m:009:   instead of a comma at the end of the preceding
+ref_to_implicit_comma.m:009:   line.

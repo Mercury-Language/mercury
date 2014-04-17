@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2012 The University of Melbourne.
+% Copyright (C) 1997-2012,2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -109,7 +109,8 @@
 
 :- type is_plain_unify
     --->    is_not_plain_unify
-    ;       is_plain_unify.
+    ;       is_plain_unify
+    ;       is_unknown_ref(error_spec).
 
     % Work out whether a var-functor unification is actually a function call.
     % If so, replace the unification goal with a call.
@@ -1141,22 +1142,33 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         ProcIds = pred_info_procids(PredInfo),
         (
             ProcIds = [ProcId0],
-            ProcId = ProcId0
+            MaybeProcId = yes(ProcId0)
         ;
             ProcIds = [_, _ | _],
             % We don't know which mode to pick. Defer it until mode checking.
-            ProcId = invalid_proc_id
+            MaybeProcId = yes(invalid_proc_id)
         ;
             ProcIds = [],
-            % Abort with error message.
-            get_proc_id(ModuleInfo, PredId, ProcId)
+            MaybeProcId = no
         ),
-        ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
-        ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
-        GoalExpr = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
-            Unification0, UnifyContext),
-        Goal = hlds_goal(GoalExpr, GoalInfo0),
-        IsPlainUnify = is_not_plain_unify
+        (
+            MaybeProcId = yes(ProcId),
+            ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
+            ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
+            GoalExpr = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
+                Unification0, UnifyContext),
+            Goal = hlds_goal(GoalExpr, GoalInfo0),
+            IsPlainUnify = is_not_plain_unify
+        ;
+            MaybeProcId = no,
+            Goal = true_goal,
+            Pieces = [words("Error: reference to"),
+                words("undeclared function or predicate"),
+                sym_name_and_arity(Name / Arity), suffix("."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_purity_check, [Msg]),
+            IsPlainUnify = is_unknown_ref(Spec)
+        )
     ;
         % Is it a call to an automatically generated field access function.
         % This test must come after the tests for function calls and

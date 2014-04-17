@@ -62,10 +62,20 @@ ambiguous_overloading_error.m:110: In clause for predicate
 ambiguous_overloading_error.m:110:   `set_browser_param_from_option_table'/3:
 ambiguous_overloading_error.m:110:   warning: highly ambiguous overloading.
 ambiguous_overloading_error.m:110:   The following symbol was overloaded in the
-ambiguous_overloading_error.m:110:   following context.
-ambiguous_overloading_error.m:104:   The function symbol
-ambiguous_overloading_error.m:104:   `lookup_bool_option'/2.
-ambiguous_overloading_error.m:104:   The possible matches are:
-ambiguous_overloading_error.m:104:     predicate `getopt.lookup_bool_option'/3,
-ambiguous_overloading_error.m:104:     function `getopt.lookup_bool_option'/2.
+ambiguous_overloading_error.m:110:   following contexts.
+ambiguous_overloading_error.m:105:   The function symbol
+ambiguous_overloading_error.m:105:   `lookup_bool_option'/2.
+ambiguous_overloading_error.m:105:   The possible matches are:
+ambiguous_overloading_error.m:105:     predicate `getopt.lookup_bool_option'/3,
+ambiguous_overloading_error.m:105:     function `getopt.lookup_bool_option'/2.
+ambiguous_overloading_error.m:106:   The function symbol `lookup_bool_option'/2
+ambiguous_overloading_error.m:106:   is also overloaded here.
+ambiguous_overloading_error.m:107:   The function symbol `lookup_bool_option'/2
+ambiguous_overloading_error.m:107:   is also overloaded here.
+ambiguous_overloading_error.m:108:   The function symbol `lookup_bool_option'/2
+ambiguous_overloading_error.m:108:   is also overloaded here.
+ambiguous_overloading_error.m:109:   The function symbol `lookup_bool_option'/2
+ambiguous_overloading_error.m:109:   is also overloaded here.
+ambiguous_overloading_error.m:110:   The function symbol `lookup_bool_option'/2
+ambiguous_overloading_error.m:110:   is also overloaded here.
 For more information, recompile with `-E'.

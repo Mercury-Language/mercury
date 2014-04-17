@@ -85,8 +85,8 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred maybe_check_field_access_function(sym_name::in, arity::in,
-    import_status::in, prog_context::in, module_info::in,
+:- pred maybe_check_field_access_function(module_info::in,
+    sym_name::in, arity::in, import_status::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -1398,8 +1398,8 @@ add_pass_3_pred_decl(ItemPredDecl, Status, !ModuleInfo, !QualInfo, !Specs) :-
         PredOrFunc = pf_function,
         list.length(TypesAndModes, PredArity),
         adjust_func_arity(pf_function, FuncArity, PredArity),
-        maybe_check_field_access_function(SymName, FuncArity, Status,
-            Context, !.ModuleInfo, !Specs)
+        maybe_check_field_access_function(!.ModuleInfo, SymName, FuncArity,
+            Status, Context, !Specs)
     ).
 
 :- pred add_pass_3_module_defn(item_module_defn_info::in,
@@ -3269,24 +3269,24 @@ add_marker_pred_info(Marker, !PredInfo) :-
 marker_must_be_exported(_) :-
     semidet_fail.
 
-maybe_check_field_access_function(FuncName, FuncArity, Status, Context,
-        ModuleInfo, !Specs) :-
+maybe_check_field_access_function(ModuleInfo, FuncName, FuncArity, Status,
+        Context, !Specs) :-
     (
         is_field_access_function_name(ModuleInfo, FuncName, FuncArity,
             AccessType, FieldName)
     ->
-        check_field_access_function(AccessType, FieldName, FuncName,
-            FuncArity, Status, Context, ModuleInfo, !Specs)
+        check_field_access_function(ModuleInfo, AccessType, FieldName,
+            FuncName, FuncArity, Status, Context, !Specs)
     ;
         true
     ).
 
-:- pred check_field_access_function(field_access_type::in, ctor_field_name::in,
-    sym_name::in, arity::in, import_status::in, prog_context::in,
-    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred check_field_access_function(module_info::in, field_access_type::in,
+    ctor_field_name::in, sym_name::in, arity::in, import_status::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
-        FuncStatus, Context, ModuleInfo, !Specs) :-
+check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncName,
+        FuncArity, FuncStatus, Context, !Specs) :-
     adjust_func_arity(pf_function, FuncArity, PredArity),
     FuncCallId = simple_call_id(pf_function, FuncName, PredArity),
 

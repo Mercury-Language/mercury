@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2012 The University of Melbourne.
+% Copyright (C) 1997-2012,2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -790,6 +790,9 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 ;
                     IsPlainUnify = is_not_plain_unify,
                     !Info ^ pi_converted_unify := have_converted_unify
+                ;
+                    IsPlainUnify = is_unknown_ref(Spec),
+                    purity_info_add_message(Spec, !Info)
                 )
             ;
                 RunPostTypecheck = do_not_run_post_typecheck,
@@ -1123,6 +1126,11 @@ compute_goal_purity_in_fgt_ptc([Goal0 | Goals0], !RevMarkedSubGoals,
                 !.ContainsTrace)
         ),
         MarkedSubGoal = fgt_broken_goal(Goal, XVar, YVars),
+        !:Invariants = fgt_invariants_broken
+    ;
+        IsPlainUnify = is_unknown_ref(Spec),
+        purity_info_add_message(Spec, !Info),
+        MarkedSubGoal = fgt_broken_goal(Goal1, XVar, YVars),
         !:Invariants = fgt_invariants_broken
     ),
     !:RevMarkedSubGoals = [MarkedSubGoal | !.RevMarkedSubGoals],

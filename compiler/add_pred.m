@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2012 The University of Melbourne.
+% Copyright (C) 1993-2012,2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,6 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.pred_table.
 :- import_module mdbcomp.prim_data.
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module parse_tree.error_util.
@@ -57,16 +56,15 @@
     %   :- pred p(T1, T2, ..., Tn).
     % for that predicate; the real types will be inferred by type inference.
     %
-:- pred preds_add_implicit_report_error(module_name::in, pred_or_func::in,
-    sym_name::in, arity::in, import_status::in, bool::in, prog_context::in,
-    pred_origin::in, list(format_component)::in, pred_id::out,
-    module_info::in, module_info::out,
+:- pred preds_add_implicit_report_error(module_info::in, module_info::out,
+    module_name::in, sym_name::in, arity::in, pred_or_func::in, 
+    import_status::in, bool::in, prog_context::in, pred_origin::in,
+    list(format_component)::in, pred_id::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred preds_add_implicit_for_assertion(prog_vars::in, module_info::in,
-    module_name::in, sym_name::in, arity::in, import_status::in,
-    prog_context::in, pred_or_func::in, pred_id::out,
-    predicate_table::in, predicate_table::out) is det.
+:- pred preds_add_implicit_for_assertion(module_info::in, module_info::out,
+    module_name::in, sym_name::in, arity::in, pred_or_func::in, prog_vars::in,
+    import_status::in, prog_context::in, pred_id::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -79,6 +77,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.make_hlds_error.
+:- import_module hlds.pred_table.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.builtin_lib_types.
@@ -417,9 +416,9 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
     ( PredIds = [PredIdPrime] ->
         PredId = PredIdPrime
     ;
-        preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName,
-            Arity, Status, IsClassMethod, MContext, origin_user(PredName),
-            [words("mode declaration")], PredId, !ModuleInfo, !Specs)
+        preds_add_implicit_report_error(!ModuleInfo, ModuleName,
+            PredName, Arity, PredOrFunc, Status, IsClassMethod, MContext,
+            origin_user(PredName), [words("mode declaration")], PredId, !Specs)
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
     predicate_table_get_preds(PredicateTable1, Preds0),
@@ -475,53 +474,46 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
         DetismDecl, MaybeDet, MContext, address_is_not_taken,
         !PredInfo, ProcId).
 
-preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName, Arity,
-        Status, IsClassMethod, Context, Origin, DescPieces, PredId,
-        !ModuleInfo, !Specs) :-
+preds_add_implicit_report_error(!ModuleInfo, ModuleName, PredName, Arity,
+        PredOrFunc, Status, IsClassMethod, Context, Origin, DescPieces,
+        PredId, !Specs) :-
+    module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     module_info_get_globals(!.ModuleInfo, Globals),
     maybe_undefined_pred_error(Globals, PredName, Arity, PredOrFunc,
         Status, IsClassMethod, Context, DescPieces, !Specs),
     (
         PredOrFunc = pf_function,
         adjust_func_arity(pf_function, FuncArity, Arity),
-        maybe_check_field_access_function(PredName, FuncArity, Status, Context,
-            !.ModuleInfo, !Specs)
+        maybe_check_field_access_function(!.ModuleInfo, PredName, FuncArity,
+            Status, Context, !Specs)
     ;
         PredOrFunc = pf_predicate
     ),
-    module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    preds_add_implicit(!.ModuleInfo, ModuleName, PredName, Arity, Status,
-        Context, Origin, PredOrFunc, PredId, PredicateTable0, PredicateTable),
-    module_info_set_predicate_table(PredicateTable, !ModuleInfo).
-
-:- pred preds_add_implicit(module_info::in, module_name::in, sym_name::in,
-    arity::in, import_status::in, prog_context::in, pred_origin::in,
-    pred_or_func::in, pred_id::out,
-    predicate_table::in, predicate_table::out) is det.
-
-preds_add_implicit(ModuleInfo, ModuleName, PredName, Arity, Status, Context,
-        Origin, PredOrFunc, PredId, !PredicateTable) :-
     clauses_info_init(PredOrFunc, Arity, init_clause_item_numbers_user,
         ClausesInfo),
-    preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName,
-        Arity, Status, Context, Origin, PredOrFunc, PredId, !PredicateTable).
+    preds_do_add_implicit(!.ModuleInfo, ModuleName, PredName, Arity,
+        PredOrFunc, Status, Context, Origin, ClausesInfo, PredId,
+        PredicateTable0, PredicateTable),
+    module_info_set_predicate_table(PredicateTable, !ModuleInfo).
 
-preds_add_implicit_for_assertion(HeadVars, ModuleInfo, ModuleName, PredName,
-        Arity, Status, Context, PredOrFunc, PredId, !PredicateTable) :-
+preds_add_implicit_for_assertion(!ModuleInfo, ModuleName, PredName,
+        Arity, PredOrFunc, HeadVars, Status, Context, PredId) :-
     clauses_info_init_for_assertion(HeadVars, ClausesInfo),
     term.context_file(Context, FileName),
     term.context_line(Context, LineNum),
-    preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName,
-        Arity, Status, Context, origin_assertion(FileName, LineNum),
-        PredOrFunc, PredId, !PredicateTable).
+    module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
+    preds_do_add_implicit(!.ModuleInfo, ModuleName, PredName, Arity,
+        PredOrFunc,Status, Context, origin_assertion(FileName, LineNum), 
+        ClausesInfo, PredId, PredicateTable0, PredicateTable),
+    module_info_set_predicate_table(PredicateTable, !ModuleInfo).
 
-:- pred preds_add_implicit_2(clauses_info::in, module_info::in,
-    module_name::in, sym_name::in, arity::in, import_status::in,
-    prog_context::in, pred_origin::in, pred_or_func::in, pred_id::out,
-    predicate_table::in, predicate_table::out) is det.
+:- pred preds_do_add_implicit(module_info::in, module_name::in,
+    sym_name::in, arity::in, pred_or_func::in,
+    import_status::in, prog_context::in, pred_origin::in, clauses_info::in,
+    pred_id::out, predicate_table::in, predicate_table::out) is det.
 
-preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
-        Status, Context, Origin, PredOrFunc, PredId, !PredicateTable) :-
+preds_do_add_implicit(ModuleInfo, ModuleName, PredName, Arity, PredOrFunc,
+        Status, Context, Origin, ClausesInfo, PredId, !PredicateTable) :-
     varset.init(TVarSet0),
     make_n_fresh_vars("T", Arity, TypeVars, TVarSet0, TVarSet),
     prog_type.var_list_to_type_list(map.init, TypeVars, Types),
