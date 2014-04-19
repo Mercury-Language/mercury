@@ -321,7 +321,7 @@ static  MR_MemoryZone   *MR_rewind_nondetstack_segments(MR_Word *maxfr);
 MR_Word *
 MR_new_nondetstack_segment(MR_Word *maxfr, int incr)
 {
-    MR_Word         *sentinelmaxfr;
+    MR_Word         *sentinel_maxfr;
     MR_Word         *old_maxfr;
     MR_Word         *old_curfr;
     MR_MemoryZone   *new_cur_zone;
