@@ -13,6 +13,7 @@
 #include "mercury_debug.h"          /* for MR_print_zone() etc */
 #include "mercury_misc.h"           /* for MR_fatal_error() */
 
+#if !defined(MR_HIGHLEVEL_CODE)
 void
 MR_nondetstack_inclusion_check(MR_Word *maxfr,
     const char *error, const char *where)
@@ -43,6 +44,7 @@ MR_nondetstack_inclusion_check(MR_Word *maxfr,
         prev_zones = prev_zones->MR_zones_tail;
     }
 }
+#endif /* !MR_HIGHLEVEL_CODE */
 
 void
 MR_fatal_zone_error(MR_OverflowZone ptr_kind,

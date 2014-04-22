@@ -24,9 +24,10 @@
 ** its MR_zone_max field if maxfr exceeds it, since the MR_zone_max field
 ** should always hold the highest address used in the zone so far.
 */
-
+#if !defined(MR_HIGHLEVEL_CODE)
 extern  void    MR_nondetstack_inclusion_check(MR_Word *maxfr,
                     const char *error, const char *where);
+#endif
 
 typedef enum {
     MR_OVERFLOW_ZONE_DETSTACK,
