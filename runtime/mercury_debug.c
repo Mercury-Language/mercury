@@ -896,8 +896,11 @@ MR_print_zone(FILE *fp, const MR_MemoryZone *zone)
     fprintf(fp, "zone %p:\n", zone);
     fprintf(fp, "  bottom %p, top %p\n",
         zone->MR_zone_bottom, zone->MR_zone_top);
-    fprintf(fp, "  min    %p, max %p, hardmax %p",
-        zone->MR_zone_min, zone->MR_zone_max, zone->MR_zone_hardmax);
+    fprintf(fp, "  min    %p, max %p",
+        zone->MR_zone_min, zone->MR_zone_max);
+#if defined(MR_PROTECTPAGE)
+    fprintf(fp, ", hardmax %p", zone->MR_zone_hardmax);
+#endif
 #if defined(MR_STACK_SEGMENTS) && !defined(MR_HIGHLEVEL_CODE)
     fprintf(fp, ", extend %p",
         zone->MR_zone_extend_threshold);
