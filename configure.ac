@@ -4582,7 +4582,14 @@ OPT_FLAGS_FOR_CLANG="-O0"
 case "$mercury_cv_cc_type" in
 
     gcc*)
-        CFLAGS_FOR_ANSI="-ansi"
+        # Do not use -ansi on MinGW systems because with some versions of the
+        # system headers the types off_t and off64_t will not be defined with
+        # that option, but they are required in other places in the system
+        # headers.
+        case "$host" in
+            *mingw*)    CFLAGS_FOR_ANSI= ;;
+            *)          CFLAGS_FOR_ANSI="-ansi" ;;
+        esac
 
         # For a full list of the other gcc warnings that we don't
         # enable, and why, see scripts/mgnuc.in.
