@@ -3117,11 +3117,20 @@ case "$host" in
                 LD_LIBFLAGS_FOR_THREADS="-MD"
                 ;;
             *)
-                # By default the MinGW port of GCC targets the i386
-                # architecture.  We need to tell it to target a later
-                # architecture for the GCC built-in atomic ops to be available.
-                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -march=i686"
-                THREAD_LIBS="-lpthread"
+                if test "$MR_HAVE_PTHREAD_H" = 1
+                then
+                    # By default the MinGW port of GCC targets the i386
+                    # architecture.  We need to tell it to target a later
+                    # architecture for the GCC built-in atomic ops to be available.
+                    CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -march=i686"
+                    THREAD_LIBS="-lpthread"
+                else
+                    # The compiler is unconditionally linked against the thread
+                    # libraries so if pthreads is not present then we need to
+                    # set THREAD_LIBS to empty in order to avoid linker errors.
+                    CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
+                    THREAD_LIBS=
+                fi
                 ;;
         esac
         ;;
