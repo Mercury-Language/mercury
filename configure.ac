@@ -1079,7 +1079,11 @@ else
     case "$host" in
         *apple*darwin*)
             LD_STRIP_FLAG=""
-            STRIP_EXE="strip"
+            # XXX we should strip executables as a separate step on Mac OS X,
+            # but doing so correctly requires different flags depending on the
+            # setting of --mercury-linkage and we do not (yet) provide such
+            # fine grained control over executable stripping.
+            # STRIP_EXE="strip"
             ;;
     esac
 
