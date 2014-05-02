@@ -26,6 +26,7 @@ CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
 CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
 CFLAGS_FOR_THREADS="@CFLAGS_FOR_THREADS@"
 CFLAGS_FOR_NO_STRICT_ALIASING="@CFLAGS_FOR_NO_STRICT_ALIASING@"
+CFLAGS_FOR_ANSI="@CFLAGS_FOR_ANSI@"
 AS="@AS@"
 BYTES_PER_WORD="@BYTES_PER_WORD@"
 MKTEMP=@MKTEMP@
@@ -33,7 +34,7 @@ TMPDIR=${TMPDIR=/tmp}
 
 case "$C_COMPILER_TYPE" in
     gcc*)
-        ANSI_OPTS="-ansi"
+        ANSI_OPTS="@CFLAGS_FOR_ANSI@"
         CHECK_OPTS="
             -Wall -Wwrite-strings
             -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"

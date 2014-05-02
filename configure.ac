@@ -1079,7 +1079,11 @@ else
     case "$host" in
         *apple*darwin*)
             LD_STRIP_FLAG=""
-            STRIP_EXE="strip"
+            # XXX we should strip executables as a separate step on Mac OS X,
+            # but doing so correctly requires different flags depending on the
+            # setting of --mercury-linkage and we do not (yet) provide such
+            # fine grained control over executable stripping.
+            # STRIP_EXE="strip"
             ;;
     esac
 
@@ -3113,11 +3117,20 @@ case "$host" in
                 LD_LIBFLAGS_FOR_THREADS="-MD"
                 ;;
             *)
-                # By default the MinGW port of GCC targets the i386
-                # architecture.  We need to tell it to target a later
-                # architecture for the GCC built-in atomic ops to be available.
-                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -march=i686"
-                THREAD_LIBS="-lpthread"
+                if test "$MR_HAVE_PTHREAD_H" = 1
+                then
+                    # By default the MinGW port of GCC targets the i386
+                    # architecture.  We need to tell it to target a later
+                    # architecture for the GCC built-in atomic ops to be available.
+                    CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -march=i686"
+                    THREAD_LIBS="-lpthread"
+                else
+                    # The compiler is unconditionally linked against the thread
+                    # libraries so if pthreads is not present then we need to
+                    # set THREAD_LIBS to empty in order to avoid linker errors.
+                    CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
+                    THREAD_LIBS=
+                fi
                 ;;
         esac
         ;;
@@ -4578,7 +4591,14 @@ OPT_FLAGS_FOR_CLANG="-O0"
 case "$mercury_cv_cc_type" in
 
     gcc*)
-        CFLAGS_FOR_ANSI="-ansi"
+        # Do not use -ansi on MinGW systems because with some versions of the
+        # system headers the types off_t and off64_t will not be defined with
+        # that option, but they are required in other places in the system
+        # headers.
+        case "$host" in
+            *mingw*)    CFLAGS_FOR_ANSI= ;;
+            *)          CFLAGS_FOR_ANSI="-ansi" ;;
+        esac
 
         # For a full list of the other gcc warnings that we don't
         # enable, and why, see scripts/mgnuc.in.
