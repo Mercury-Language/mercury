@@ -1941,10 +1941,19 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
         globals.lookup_string_option(Globals, linker_strip_flag,
             LinkerStripOpt),
         globals.lookup_string_option(Globals, strip_executable_command,
-            StripExeCommand)
+            StripExeCommand),
+        globals.lookup_string_option(Globals, mercury_linkage,
+            MercuryLinkage),
+        ( MercuryLinkage = "shared" ->
+            StripExeFlagsOpt = strip_executable_shared_flags
+        ;
+            StripExeFlagsOpt = strip_executable_static_flags
+        ),
+        globals.lookup_string_option(Globals, StripExeFlagsOpt, StripExeFlags)
     ;
         LinkerStripOpt = "",
-        StripExeCommand = ""
+        StripExeCommand = "",
+        StripExeFlags = ""
     ),
 
     globals.lookup_bool_option(Globals, target_debug, TargetDebug),
@@ -2135,7 +2144,8 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
                 StripExeCommand \= ""
             ->
                 string.append_list([
-                    StripExeCommand, " ", quote_arg(OutputFileName)
+                    StripExeCommand, " ", StripExeFlags, " ",
+                    quote_arg(OutputFileName)
                 ], StripCmd),
                 invoke_system_command_maybe_filter_output(Globals, ErrorStream,
                     cmd_verbose_commands, StripCmd, no, Succeeded, !IO)

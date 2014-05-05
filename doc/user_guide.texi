@@ -9653,11 +9653,6 @@ linking an executable with Mercury libraries.
 Shared libraries are always linked with @samp{--mercury-linkage shared}.
 
 @sp 1
-@item --no-strip
-@findex --no-strip
-Don't strip executables.
-
-@sp 1
 @item --no-demangle
 @findex --no-demangle
 Don't pipe link errors through the Mercury demangler.
@@ -9705,10 +9700,27 @@ Specify the command used to invoke the linker when linking an executable.
 Specify the command used to invoke the linker when linking a shared library.
 
 @sp 1
+@item --no-strip
+@findex --no-strip
+Do not strip executables.
+
+@sp 1
 @item --strip-executable-command @var{command}
 @findex --strip-executable-command
 Specify the command used to strip executables if no linker
 flag to do so is available. This option has no effect on @samp{ml}.
+
+@sp 1
+@item --strip-executable-shared-flags @var{options}
+@findex --strip-executable-shared-flags
+Specify options to pass to the strip executable command when
+linking against Mercury shared libraries.
+
+@sp 1
+@item --stripe-executable-static-flags @var{options}
+@findex --strip-executable-static-flags
+Specify options to pass to the strip executable command when
+linking against Mercury static libraries.
 
 @sp 1
 @item --java-archive-command @var{command}

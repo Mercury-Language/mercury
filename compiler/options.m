@@ -964,6 +964,8 @@
     ;       shlib_linker_install_name_flag
     ;       shlib_linker_install_name_path
     ;       strip_executable_command
+    ;       strip_executable_shared_flags
+    ;       strip_executable_static_flags
     ;       java_archive_command
 
     % Build system options
@@ -1873,6 +1875,8 @@ option_defaults_2(link_option, [
     shlib_linker_install_name_flag      -   string("-install_name "),
     shlib_linker_install_name_path      -   string(""),
     strip_executable_command            -   string(""),
+    strip_executable_shared_flags       -   string(""),
+    strip_executable_static_flags       -   string(""),
     java_archive_command                -   string("jar")
 ]).
 option_defaults_2(build_system_option, [
@@ -2848,6 +2852,8 @@ long_option("shlib-linker-use-install-name", shlib_linker_use_install_name).
 long_option("shlib-linker-install-name-flag", shlib_linker_install_name_flag).
 long_option("shlib-linker-install-name-path", shlib_linker_install_name_path).
 long_option("strip-executable-command", strip_executable_command).
+long_option("strip-executable-shared-flags", strip_executable_shared_flags).
+long_option("strip-executable-static-flags", strip_executable_static_flags).
 long_option("java-archive-command", java_archive_command).
 
 % build system options
@@ -2935,6 +2941,8 @@ long_option("store-at-ref-impure-2008-09-11",
                                     compiler_sufficiently_recent).
 long_option("java-export-ref-out",  compiler_sufficiently_recent).
 long_option("java-generics-2010-04-13",
+                                    compiler_sufficiently_recent).
+long_option("strip-executable-2014-05-05",
                                     compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("ignore-par-conjunctions",
@@ -5658,8 +5666,6 @@ options_help_link -->
         "\tAppend <init-file> to the list of `.init' files to",
         "\tbe passed to c2init when tracing is enabled.",
 
-        "--no-strip",
-        "\tDon't strip executables.",
         "--no-demangle",
         "\tDon't pipe link errors through the Mercury demangler.",
         "--no-main",
@@ -5685,9 +5691,17 @@ options_help_link -->
         "\tSpecify the command used to invoke the linker when linking",
         "\ta shared library.",
 
+        "--no-strip",
+        "\tDo not strip executables.",
         "--strip-executable-command <command>",
         "\tSpecify the command used to strip executables if no linker",
         "\tflag to do so is available. This option has no effect on ml.",
+        "--strip-executable-shared-flags <options>",
+        "\tSpecify options to pass to the strip executable command when",
+        "\tlinking against Mercury shared libraries.",
+        "--strip-executable-static-flags <options>",
+        "\tSpecify options to pass to the strip executable command when",
+        "\tlinking against Mercury static libraries.",
 
         "--java-archive-command <command>",
         "\tSpecify the command used to produce Java archive (JAR) files.",

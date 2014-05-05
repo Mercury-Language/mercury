@@ -41,8 +41,9 @@ This is a bug-fix release.
 Changes to the Mercury compiler:
 
 * The compiler now supports stripping of executables in a separate
-  post-link step.  A new option, --strip-executable-command, is used
-  to control this.  
+  post-link step.  The new options, --strip-executable-command,
+  --strip-executable-shared-flags and --strip-executable-static-flags
+  are used to control this.  
   (This is now the default on Mac OS X systems.)
 
 
