@@ -117,6 +117,7 @@
 :- func ?(T) = regexp <= regexp(T).  % ?(R)       = R or null
 :- func +(T) = regexp <= regexp(T).  % +(R)       = R ++ *(R)
 :- func range(char, char) = regexp.  % range('a', 'z') = any("ab...xyz")
+:- func (T * int) = regexp <= regexp(T). % R * N = R ++ ... ++ R
 
     % Some useful single-char regexps.
     %
@@ -837,18 +838,22 @@ anybut(S) = R :-
     ExcludedChars = sparse_bitset.list_to_set(string.to_char_list(S)),
     R = re(sparse_bitset.difference(valid_unicode_chars, ExcludedChars)).
 
-:- func str_foldr(func(char, T) = T, string, T, int) = T.
-
-str_foldr(Fn, S, X, I) =
-    ( if I < 0 then X
-               else str_foldr(Fn, S, Fn(string.det_index(S, I), X), I - 1)
-    ).
-
 ?(R) = (R or null).
 
 +(R) = (R ++ *(R)).
 
 range(Start, End) = re(charset(char.to_int(Start), char.to_int(End))).
+
+R * N = Result :-
+    ( N < 0 ->
+        unexpected($file, $pred, "N must be a non-negative number")
+    ; N = 0 ->
+        Result = null
+    ; N = 1 ->
+        Result = re(R)
+    ;
+        Result = conc(re(R), (R * (N - 1)))
+    ).
 
 %-----------------------------------------------------------------------------%
 % Some useful single-char regexps.

@@ -6,7 +6,7 @@
 %
 % Copyright (C) 2001-2002 The University of Melbourne
 % Copyright (C) 2001 The Rationalizer Intelligent Software AG
-%   The changes made by Rationalizer are contributed under the terms 
+%   The changes made by Rationalizer are contributed under the terms
 %   of the GNU General Public License - see the file COPYING in the
 %   Mercury Distribution.
 %
@@ -46,8 +46,8 @@ I recognise the following words:
 ""and"", ""then"", ""the"", ""it"", ""them"", ""to"", ""on"".
 I also recognise Unicode characters:
 ""我"", ""会"", ""说"", ""中文""
-I also recognise Mercury-style comments, integers and floating point
-numbers, and a variety of punctuation symbols.
+I also recognise Mercury-style and C++ style comments comments, integers
+and floating point numbers, and a variety of punctuation symbols.
 
 Try me...
 
@@ -55,7 +55,8 @@ Try me...
 
     Lexer  = lex.init(lexemes, lex.read_from_stdin, ignore(space)),
     State0 = lex.start(Lexer, !.IO),
-    tokenise_stdin(State0, State),
+    lex.manipulate_source(io.print("> "), State0, State1),
+    tokenise_stdin(State1, State),
     !:IO = lex.stop(State).
 
 %-----------------------------------------------------------------------------%
@@ -65,8 +66,7 @@ Try me...
 
 tokenise_stdin(!LS) :-
     lex.read(Result, !LS),
-    lex.manipulate_source(io.print(Result), !LS),
-    lex.manipulate_source(io.nl, !LS),
+    lex.manipulate_source(io.print_line(Result), !LS),
     (
         Result = ok(_),
         tokenise_stdin(!LS)
@@ -97,6 +97,7 @@ tokenise_stdin(!LS) :-
 lexemes = [
 
     ( "%" ++ junk       -> (func(Match) = comment(Match)) ),
+    ( '/'*2 ++ junk     -> (func(Match) = comment(Match)) ),
     ( signed_int        -> (func(Match) = integer(string.det_to_int(Match))) ),
     ( real              -> (func(Match) = real(string.det_to_float(Match))) ),
 
@@ -117,7 +118,7 @@ lexemes = [
       "then"            -> (func(Match) = conj(Match)) ),
 
         % `\/' is a synonym for `or'.  Tell us which you prefer...
-        % 
+        %
     ( "the" \/
       "it" \/
       "them" \/
