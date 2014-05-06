@@ -515,14 +515,10 @@ EOF
         $BOOTSTRAP_MC \
             --verbose \
             --halt-at-warn \
-            --trace-io-builtins-2006-08-14 \
             $link_static_opt conftest \
-            --compound-compare-builtins-2007-07-09 \
             --erlang-native-code \
-            --no-no-det-warning-compound-compare-2007-07-17 \
-            --foreign-enum-switch-fix \
+            --strip-executable-2014-05-05 \
             --no-ssdb \
-            --store-at-ref-impure-2008-09-11 \
             </dev/null >&AC_FD_CC 2>&1 &&
         test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
         # Test for the --record-term-sizes-as-words option.
@@ -1046,6 +1042,8 @@ if test "$ac_microsoft" = "yes" ; then
     LD_LIBFLAGS_FOR_DEBUG="-DEBUG"
     LD_STRIP_FLAG=
     STRIP_EXE=
+    STRIP_EXE_SHARED_FLAGS=
+    STRIP_EXE_STATIC_FLAGS=
 
     USING_MICROSOFT_CL_COMPILER="yes"
     FIX_PATH_FOR_CC="$CYGPATH"
@@ -1072,6 +1070,8 @@ else
 
     LD_STRIP_FLAG="-s"
     STRIP_EXE=""
+    STRIP_EXE_SHARED_FLAGS=""
+    STRIP_EXE_STATIC_FLAGS=""
 
     # The `-s' linker option is deprecated on Darwin 9+ and has no effect other
     # than causing the linker to emit a warning. Call the strip tool directly.
@@ -1079,11 +1079,9 @@ else
     case "$host" in
         *apple*darwin*)
             LD_STRIP_FLAG=""
-            # XXX we should strip executables as a separate step on Mac OS X,
-            # but doing so correctly requires different flags depending on the
-            # setting of --mercury-linkage and we do not (yet) provide such
-            # fine grained control over executable stripping.
-            # STRIP_EXE="strip"
+            STRIP_EXE="strip"
+            STRIP_EXE_SHARED_FLAGS="-x"
+            STRIP_EXE_STATIC_FLAGS=""
             ;;
     esac
 
@@ -1145,6 +1143,8 @@ AC_SUBST(LDFLAGS_FOR_DEBUG)
 AC_SUBST(LD_LIBFLAGS_FOR_DEBUG)
 AC_SUBST(LD_STRIP_FLAG)
 AC_SUBST(STRIP_EXE)
+AC_SUBST(STRIP_EXE_SHARED_FLAGS)
+AC_SUBST(STRIP_EXE_STATIC_FLAGS)
 AC_SUBST(LDFLAGS_FOR_TRACE)
 AC_SUBST(LD_LIBFLAGS_FOR_TRACE)
 AC_SUBST(USING_MICROSOFT_CL_COMPILER)
