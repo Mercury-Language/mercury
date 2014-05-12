@@ -1368,9 +1368,9 @@ dir.foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
                 ),
                 (
                     ExcpResult = succeeded({DirRes, Continue, Dir}),
+                    dir.close(Dir, CleanupRes, !IO),
                     (
                         DirRes = ok(T),
-                        dir.close(Dir, CleanupRes, !IO),
                         (
                             CleanupRes = ok,
                             Result = ok(T)
@@ -1782,7 +1782,16 @@ dir.check_dir_readable(DirName, IsReadable, Result, !IO) :-
     "ML_dir_read_first_entry").
 
 dir.read_first_entry(Dir, Result, !IO) :-
-    dir.read_entry(Dir, Result, !IO).
+    dir.read_entry(Dir, Result, !IO),
+    (
+        Result = ok(_)
+    ;
+        ( Result = eof
+        ; Result = error(_)
+        ),
+        % Close the directory stream immediately to avoid resource leaks.
+        dir.close(Dir, _, !IO)
+    ).
 
 :- pred make_win32_dir_open_result_ok(dir.stream::in, string::in,
     io.result({dir.stream, string})::out, io::di, io::uo) is det.
