@@ -42,6 +42,9 @@ This is a bug-fix release.
   openSUSE 13.1 systems has been fixed.  (Github issue #14)
 * The documentation now builds correctly on Cygwin systems.
 * The script configure_mingw_cross now supports 64-bit Windows targets.
+* We have added workarounds for problems with (arguably broken)
+  system headers on MinGW and MinGW64 systems.
+* The MinGW port now builds in the absence of POSIX threads library.
 
 Changes to the Mercury compiler:
 
