@@ -48,8 +48,10 @@
 
     % release_barrier(Barrier, !IO)
     %
-    % Release all the threads waiting at the barrier regardless
-    % of whether or not N threads have arrived at the barrier.
+    % Release all the threads waiting at the barrier regardless of whether
+    % or not N threads have arrived at the barrier.  This can be called by
+    % any thread, it does not have to be a thread that would normally call
+    % wait/3.
     %
 :- pred release(barrier::in, io::di, io::uo) is det.
 
@@ -79,8 +81,16 @@
                 b_waiting_for   :: mvar(int),
 
                 % Can we go yet?
-                b_go            :: mvar(unit)
+                b_go            :: mvar(why_can_we_go)
             ).
+
+    % We use this type to say why execution may proceed after reaching tha
+    % barrier.  If it is because the counter reached zero or because
+    % release/3 was called.
+    %
+:- type why_can_we_go
+    --->    can_go_normal
+    ;       can_go_release_called.
 
 %------------------------------------------------------------------------------%
 
@@ -97,27 +107,52 @@ wait(barrier(WaitingOn, Go), !IO) :-
 
     ( StillWaitingFor > 0 ->
         % There are still outstanding threads.
-        
+
         % Unlock the counter
         put(WaitingOn, StillWaitingFor, !IO),
 
         % Wait on the barrier then unlock another thread.
-        take(Go, _, !IO),
-        put(Go, unit, !IO)
+        take(Go, WhyGo, !IO),
+        put(Go, WhyGo, !IO)
     ; StillWaitingFor = 0 ->
         % The last thread at the barrier, so signal that we can go.
-        put(Go, unit, !IO),
+        put(Go, can_go_normal, !IO),
         put(WaitingOn, StillWaitingFor, !IO)
     ;
-        unexpected($file, $pred,
-            "Too many threads called barrier/3 on this barrier.")
+        put(WaitingOn, 0, !IO),
+
+        % Go is always updated before WaitingOn, so if this branch is being
+        % executed (either because release was called or because the barrier
+        % was called excessively) then we know that this call to take will
+        % not block, in either of those cases there will always be a value
+        % in Go.
+        take(Go, WhyGo, !IO),
+        put(Go, WhyGo, !IO),
+        (
+            WhyGo = can_go_normal,
+            unexpected($file, $pred,
+                "Too many threads called barrier/3 on this barrier.")
+        ;
+            WhyGo = can_go_release_called
+        )
     ).
 
 release(barrier(WaitingOn, Go), !IO) :-
     % Allow all the threads at the barrier to go.
-    put(Go, unit, !IO),
-    take(WaitingOn, N, !IO),
-    put(WaitingOn, N - 1, !IO).
+    put(Go, can_go_release_called, !IO),
+
+    % We must set WaitingOn to zero so that the StillWaitingFor = 0 branch
+    % above is not executed more than once, if it is it will block when it
+    % tries to write a value to Go as Go already has a value.  Instead we
+    % set it to zero, which means that StillWaitingOn will be -1, we use a
+    % special value of can_go_release_called for Go so that this branch does
+    % not raise an error.
+    %
+    % This algorithm has the nice benefit that if release/3 is not
+    % considered an alternative to calling barrier, so that a barrier can be
+    % canceled by a thread that would not normally call wait/3 itself.
+    take(WaitingOn, _N, !IO),
+    put(WaitingOn, 0, !IO).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

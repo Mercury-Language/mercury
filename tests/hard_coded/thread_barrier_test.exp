@@ -1,0 +1,65 @@
+Test spawn and wait
+Messages from thread 0:
+	-- testing spawning with 5 threads
+	spawning thread #1
+	spawning thread #2
+	spawning thread #3
+	spawning thread #4
+	spawning thread #5
+	-- test finished
+Messages from thread 1:
+	thread 1 starting
+	fib(10) = 89
+	thread 1 exiting
+Messages from thread 2:
+	thread 2 starting
+	fib(15) = 987
+	thread 2 exiting
+Messages from thread 3:
+	thread 3 starting
+	fib(20) = 10946
+	thread 3 exiting
+Messages from thread 4:
+	thread 4 starting
+	fib(25) = 121393
+	thread 4 exiting
+Messages from thread 5:
+	thread 5 starting
+	fib(30) = 1346269
+	thread 5 exiting
+
+Test release
+Messages from thread 0:
+	-- testing barrier release at 3 of 5
+	spawning thread #1
+	spawning thread #2
+	spawning thread #3
+	spawning thread #4
+	spawning thread #5
+	waiting:	before release
+	done waiting, test finished:	after release
+Messages from thread 1:
+	thread starting
+	fib(10) = 89
+	waiting:	before release
+	done waiting:	after release
+Messages from thread 2:
+	thread starting
+	fib(15) = 987
+	waiting:	before release
+	done waiting:	after release
+Messages from thread 3:
+	thread starting
+	fib(20) = 10946
+	releasing barrier
+	released.
+Messages from thread 4:
+	thread starting
+	fib(25) = 121393
+	waiting:	after release
+	done waiting:	after release
+Messages from thread 5:
+	thread starting
+	fib(30) = 1346269
+	waiting:	after release
+	done waiting:	after release
