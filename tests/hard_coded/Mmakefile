@@ -315,7 +315,6 @@ ORDINARY_PROGS=	\
 	test_semaphore \
 	test_tree_bitset \
 	test_yield \
-	thread_barrier_test \
 	tim_qual1 \
 	time_test \
 	trace_goal_1 \
@@ -712,6 +711,18 @@ ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
   endif
 endif
 
+# Concurrency tests are only supported in C grades with a "par" grade
+# componenet or java or csharp grades.
+ifeq "$(findstring par,$(GRADE))" "par"
+	CONC_PROGS = thread_barrier_test
+else
+  ifeq "$(filter csharp% java%,$(GRADE))" ""
+	CONC_PROGS =
+  else
+	CONC_PROGS = thread_barrier_test
+  endif
+endif
+
 # We currently test only a limited selection in grade java on this directory.
 PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
 	$(CLOSURE_LAYOUT_PROGS) $(NON_PROFDEEP_PROGS) \
@@ -721,7 +732,7 @@ PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
 	$(DOTNET_PROGS) $(JAVA_PROGS) $(SOLVER_PROGS) \
 	$(TRAILED_PROGS) $(STACK_SEGMENT_PROGS) \
 	$(MUTABLE_PROGS) $(TRACE_GOAL_ENV_PROGS) \
-	$(CTGC_PROGS) $(BIG_DATA_PROGS)
+	$(CTGC_PROGS) $(BIG_DATA_PROGS) $(CONC_PROGS)
 
 #-----------------------------------------------------------------------------#
 
