@@ -1935,7 +1935,7 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
                 RHSTerm = term.functor(term.float(Float), [], Context)
             ;
                 ConsId = char_const(Char),
-                RHSTerm = term.functor(term.atom(term_io.escaped_char(Char)),
+                RHSTerm = term.functor(term.atom(string.from_char(Char)),
                     [], Context)
             ;
                 ConsId = string_const(String),

@@ -2561,10 +2561,6 @@ builtin_atomic_type(cons(unqualified(String), 0, _), "character") :-
     % We are before post-typecheck, so character constants have not yet been
     % converted to char_consts.
     %
-    % XXX We cannot use "term_io.string_is_escaped_char(_, String)"
-    % because the characters in String have already had any backslash
-    % characters in them processed by now.
-    %
     % XXX The parser should have a separate term.functor representation
     % for character constants, which should be converted to char_consts
     % during the term to item translation.

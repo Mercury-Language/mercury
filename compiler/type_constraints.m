@@ -2115,7 +2115,7 @@ builtin_atomic_type(int_const(_), builtin_type_int).
 builtin_atomic_type(float_const(_), builtin_type_float).
 builtin_atomic_type(string_const(_), builtin_type_string).
 builtin_atomic_type(cons(unqualified(String), 0, _), builtin_type_char) :-
-    term_io.string_is_escaped_char(_, String).
+    string.char_to_string(_, String).
 builtin_atomic_type(impl_defined_const(Name), Type) :-
     (
         ( Name = "file"

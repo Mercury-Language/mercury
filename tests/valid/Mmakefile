@@ -147,6 +147,7 @@ OTHER_PROGS= \
 	inst_perf_bug_1 \
 	int64 \
 	intermod_bug_nested \
+	intermod_char \
 	intermod_dcg_bug \
 	intermod_impure \
 	intermod_lambda \

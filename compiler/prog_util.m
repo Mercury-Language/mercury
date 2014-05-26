@@ -595,7 +595,7 @@ cons_id_and_args_to_term(float_const(Float), [], Term) :-
     term.context_init(Context),
     Term = term.functor(term.float(Float), [], Context).
 cons_id_and_args_to_term(char_const(Char), [], Term) :-
-    SymName = unqualified(term_io.escaped_char(Char)),
+    SymName = unqualified(string.from_char(Char)),
     construct_qualified_term(SymName, [], Term).
 cons_id_and_args_to_term(string_const(String), [], Term) :-
     term.context_init(Context),
