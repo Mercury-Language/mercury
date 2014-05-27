@@ -544,7 +544,7 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         Term = term.functor(term.string(String), [], Context)
     ;
         ConsId = char_const(Char),
-        SymName = unqualified(term_io.escaped_char(Char)),
+        SymName = unqualified(string.from_char(Char)),
         construct_qualified_term(SymName, [], Term)
     ;
         ConsId = impl_defined_const(String),
