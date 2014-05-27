@@ -830,7 +830,7 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
         Str = "block(" ++ int_to_string(RTemps) ++ ", "
             ++ int_to_string(FTemps) ++ ",\n"
             ++ dump_instrs(MaybeProcLabel, AutoComments, Instrs)
-            ++ ")"
+            ++ "\t)"
     ;
         Instr = assign(Lval, Rval),
         Str = dump_lval(MaybeProcLabel, Lval) ++ " := " ++

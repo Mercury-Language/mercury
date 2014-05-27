@@ -172,6 +172,8 @@ MGNUCFLAGS-parse	=	--no-pic-reg
 MGNUCFLAGS-parse_init	=	--no-pic-reg
 MLFLAGS-parse		=	--trace --static
 
+CFLAGS-no_refs_to_deleted_labels = -DMR_LOWLEVEL_DEBUG
+
 MLFLAGS-split-c-files	=	--trace
 
 MLFLAGS-needs_init	= 	--include-initialization-code --extra-inits
