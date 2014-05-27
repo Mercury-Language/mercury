@@ -5,62 +5,62 @@ Mercury
 language which combines the clarity and the expressiveness of declarative
 programming with advanced static analysis and error detection features.
 
-This README file contains very little information itself.  It is intended to
-direct the reader to the specific information they're looking for.
-More detailed information is available on the [website's about
-pages](http://www.mercurylang.org/about.html), in other README files in the
-root directory of the source code repository, and in the
+More information is available on the
+[website's about pages](http://www.mercurylang.org/about.html),
+in other README files in the source code repository, and in the
 [documentation](http://www.mercurylang.org/documentation/documentation.html).
 
 ## README files
 
-Mercury has a number of different
-[Backends](http://www.mercurylang.org/about/backends.html) These include two
-different C backends, plus backends for Java, C# and Erlang.
-Mercury also works on different operating systems and with different C
-compilers.  Specific information is contained in individual README files as
-follows:
+The Mercury compiler has a number of different
+[backends](http://www.mercurylang.org/about/backends.html)
+and works on different operating systems.
+Specific information is contained in individual README files:
 
- * [Bootstrapping](README.bootstrap) discusses how to get Mercury installed.
+  * [Bootstrapping](README.bootstrap) discusses how to get Mercury installed.
 
-   This is important as Mercury is written in Mercury, so installing Mercury
-   without an existing installation of Mercury requires bootstrapping.
+    This is important as the Mercury compiler is written in Mercury.
 
- * C Low-level backend
+  * C Low-level backend
 
-   This backend works well with GCC but also works with:
+    This backend works well with GCC but also works with:
 
-  * [Clang](README.clang)
-  * [lcc](README.lcc)
+      * [Clang](README.clang)
+      * [lcc](README.lcc)
 
- * High-level backend targets
-  * C
-  * [C#](README.CSharp)
-  * [Erlang](README.Erlang)
-  * [Java](README.Java)
- * Experimental / Obsolete backends
-  * [.Net IL](README.DotNet)
- * Unix
-  * [Linux](README.Linux)
-   * [Alpha](README.Linux-Alpha)
-   * [PPC](README.Linux-PPC)
-   * [m68k](README.Linux-m68k)
-  * [MacOS](README.MacOS)
-  * [FreeBSD](README.FreeBSD)
-  * [AIX](README.AIX)
-  * [HP-UX](README.HPUX)
-  * [IRIX-5](README.IRIX-5)
-  * [Solaris](README.Solaris)
- * [Windows](README.MS-Windows)
-  * Using the [Visual C compiler](README.MS-VisualC)
-  * Using the [MinGW gcc compiler](README.MinGW)
-  * Using the [Cygwin](README.Cygwin) environment
- * Cross compilation
-  * [MinGW](README.MinGW-cross)
+  * High-level backend targets
+
+      * C
+      * [C#](README.CSharp)
+      * [Erlang](README.Erlang)
+      * [Java](README.Java)
+
+  * Experimental / Obsolete backends
+
+      * [.Net IL](README.DotNet)
+
+  * Platforms
+
+      * [Linux](README.Linux)
+        ([Alpha](README.Linux-Alpha),
+        [PPC](README.Linux-PPC),
+        [m68k](README.Linux-m68k))
+      * [MacOS X](README.MacOS)
+      * [FreeBSD](README.FreeBSD)
+      * [AIX](README.AIX)
+      * [HP-UX](README.HPUX)
+      * [IRIX-5](README.IRIX-5)
+      * [Solaris](README.Solaris)
+      * [Windows](README.MS-Windows)
+        ([Visual C](README.MS-VisualC),
+        [MinGW](README.MinGW),
+        [Cygwin](README.Cygwin))
+
+  * Cross compilation
+
+      * [MinGW](README.MinGW-cross)
 
 ## Other information
-
-Other information is available in text files in the source code repository.
 
 See the current [release notes](RELEASE_NOTES) for the latest stable release.
 The [history](HISTORY) file is relevant if you want to find out more about the
@@ -80,6 +80,4 @@ about contributing such as coding styles.
 
 ## Contact
 
-Finally contact information is provided on [our contact
-page](http://www.mercurylang.org/contact.html).
-
+See [our contact page](http://www.mercurylang.org/contact.html).
