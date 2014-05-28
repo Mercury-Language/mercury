@@ -26,7 +26,6 @@ Specific information is contained in individual README files:
     This backend works well with GCC but also works with:
 
       * [Clang](README.clang)
-      * [lcc](README.lcc)
 
   * High-level backend targets
 
@@ -34,10 +33,6 @@ Specific information is contained in individual README files:
       * [C#](README.CSharp)
       * [Erlang](README.Erlang)
       * [Java](README.Java)
-
-  * Experimental / Obsolete backends
-
-      * [.Net IL](README.DotNet)
 
   * Platforms
 
@@ -49,7 +44,6 @@ Specific information is contained in individual README files:
       * [FreeBSD](README.FreeBSD)
       * [AIX](README.AIX)
       * [HP-UX](README.HPUX)
-      * [IRIX-5](README.IRIX-5)
       * [Solaris](README.Solaris)
       * [Windows](README.MS-Windows)
         ([Visual C](README.MS-VisualC),
