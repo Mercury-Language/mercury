@@ -164,9 +164,14 @@ usage(!IO) :-
     format("Usage: %s <opts>\n", [s(ProgName)], !IO),
     write_string("<opts> may be one or more of:\n", !IO),
     write_string("\t-x X -y Y\n", !IO),
-    write_string("\t\tThe dimensions of the image, specify neither or both", !IO),
+    write_string(
+        "\t\tThe dimensions of the image, specify neither or both\n", !IO),
+    write_string("\t-p --parallel\n", !IO),
+    write_string(
+        "\t\tUse explicit parallel conjunctions (grade dependent)\n", !IO),
     write_string("\t-d --dependent-conjunctions\n", !IO),
-    write_string("\t\tUse an accumulator to represent the rows rendered so far", !IO).
+    write_string(
+        "\t\tUse an accumulator to represent the rows rendered so far\n", !IO).
 
 :- pred real_main(options::in, io::di, io::uo) is det.
 
