@@ -17,15 +17,9 @@
   #include <pthread.h>
   #include <semaphore.h> /* POSIX semaphores */
 
-  #if defined(MR_DIGITAL_UNIX_PTHREADS)
-    #define MR_MUTEX_ATTR       pthread_mutexattr_default
-    #define MR_COND_ATTR        pthread_condattr_default
-    #define MR_THREAD_ATTR      pthread_attr_default
-  #else
-    #define MR_MUTEX_ATTR       NULL
-    #define MR_COND_ATTR        NULL
-    #define MR_THREAD_ATTR      NULL
-  #endif
+  #define MR_MUTEX_ATTR       NULL
+  #define MR_COND_ATTR        NULL
+  #define MR_THREAD_ATTR      NULL
 
   typedef pthread_t         MercuryThread;
   typedef pthread_key_t     MercuryThreadKey;
@@ -150,18 +144,8 @@ MR_null_thread(void);
   #define MR_OBTAIN_GLOBAL_LOCK(where)  MR_LOCK(&MR_global_lock, (where))
   #define MR_RELEASE_GLOBAL_LOCK(where) MR_UNLOCK(&MR_global_lock, (where))
 
-  #if defined(MR_DIGITAL_UNIX_PTHREADS)
-    #define MR_GETSPECIFIC(key)                         \
-        ({                                              \
-            pthread_addr_t gstmp;                       \
-            pthread_getspecific((key), &gstmp);         \
-            (void *) gstmp;                             \
-        })
-    #define MR_KEY_CREATE   pthread_keycreate
-  #else
-    #define MR_GETSPECIFIC(key) pthread_getspecific((key))
-    #define MR_KEY_CREATE       pthread_key_create
-  #endif
+  #define MR_GETSPECIFIC(key) pthread_getspecific((key))
+  #define MR_KEY_CREATE       pthread_key_create
 
   typedef struct {
       void  (*func)(void *);

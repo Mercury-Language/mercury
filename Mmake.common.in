@@ -62,8 +62,6 @@ USE_DLLS		= @USE_DLLS@
 
 # Specify any special flags to pass to the C compiler when creating objects
 # for a shared library (e.g. -fpic or -fPIC for gcc).
-# For Irix 5 and Alpha/OSF, position-independent code is the default,
-# so leave this blank.
 CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
 
 # Specify EXT_FOR_PIC_OBJECTS as `pic_o' if any special $(PIC) flags are
@@ -76,9 +74,6 @@ EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
 # This is only used if EXT_FOR_SHARED_LIB was defined as `so' above.
 # This command may reference $(SO_LOCATIONS_DIR).
 #
-# LINK_SHARED_OBJ  	= ld -shared	# for Irix 5
-# LINK_SHARED_OBJ  	= gcc -assert nodefinitions
-#					# for SunOS 4 (completely untested)
 # LINK_SHARED_OBJ  	= gcc -shared	# for Solaris etc.
 LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
 

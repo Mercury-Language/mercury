@@ -407,10 +407,8 @@ MR_TypeStat         MR_type_stat_c_compare;
 ** - The Mercury runtime finalization, namely mercury_runtime_terminate(),
 **   calls io__finalize_state/2 in the Mercury library.
 **
-** But, to enable Quickstart of shared libraries on Irix 5,
-** and in general to avoid various other complications
-** with shared libraries and/or Windows DLLs,
-** we need to make sure that we don't have any undefined
+** In general, to avoid various complications with shared libraries and/or
+** Windows DLLs, we need to make sure that we don't have any undefined 
 ** external references when building the shared libraries.
 ** Hence the statically linked init file saves the addresses of those
 ** procedures in the following global variables.

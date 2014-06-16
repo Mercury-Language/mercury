@@ -2457,11 +2457,6 @@ AC_SUBST(MR_DARWIN_SETJMP_WORKAROUND)
 # doesn't work with non-local gotos, since we jump directly into the
 # middle of a function.
 #
-# For Irix 5, gcc labels don't work with shared libraries,
-# so if we're using gcc labels, we need to use non-shared libraries,
-# which means passing -non_shared and -mno-abicalls and also setting
-# LIBRARY_PATH.
-#
 # For x86, gcc global registers only work with -fno-builtin
 # and -fno-omit-frame-pointer.
 #
@@ -3010,33 +3005,17 @@ esac
 
 #-----------------------------------------------------------------------------#
 
-# Figure out which flavour of pthreads to use, since none of the
-# implementations seem to be exactly the same
-case "$host" in
-    alpha*-dec-osf*)
-        mercury_cv_use_digital_unix_threads=yes
-        ;;
-
-    *)
-        mercury_cv_use_digital_unix_threads=no
-        ;;
-esac
-
-if test $mercury_cv_use_digital_unix_threads = yes; then
-    AC_DEFINE(MR_DIGITAL_UNIX_PTHREADS)
-fi
-
 # Figure out what options we need to pass to the C compiler for multithreading.
 # We may need to pass different options to tell (a) the Mercury runtime and
 # library (b) the Boehm collector and (c) the C library that they need to be
 # thread-safe.
 #
-# For Linux, Irix, Solaris, and HPUX,
+# For Linux, Solaris, and HPUX,
 # the thread-enabled version of the Boehm
 # collector contains a reference to dlopen(), so
 # if threads are enabled, we need to link with the
 # appropriate extra library for that (-ldl on Linux
-# and Solaris, -lrt on HPUX, and nothing on Irix).
+# and Solaris and -lrt on HPUX).
 # XXX That should only be done if conservative GC
 #     is enabled.
 #
@@ -3126,16 +3105,6 @@ case "$host" in
         CFLAGS_FOR_THREADS="-DGC_DARWIN_THREADS"
         THREAD_LIBS=""
         ;;
-
-### # The threads stuff on Digital Unix (OSF) is not yet enabled because
-### # the Boehm garbage collector doesn't support threads on that platform
-### # XXX probably we should enable it but report an error if you try to
-### #     use an *.par.gc* grade
-### # XXX is this fixed in the Boehm collector now?
-### *-osf*)
-###     CFLAGS_FOR_THREADS=""
-###     THREAD_LIBS="-lpthreads -lmach -lc_r"
-###     ;;
 
 ### # The threads stuff on HPUX is not yet enabled because
 ### # we don't have an HPUX box to test it on.
@@ -4415,35 +4384,6 @@ case "$host" in
 
         EXT_FOR_SHARED_LIB=so
         ;;
-    alpha*-dec-osf*)
-        AC_MSG_RESULT(yes)
-        if test "$GCC_PROG" != ""; then
-            # use gcc to link shared objects
-            LINK_SHARED_OBJ="$GCC_PROG -shared \
-                -Wl,-O3,-update_registry,\$(SO_LOCATIONS_DIR)so_locations"
-            LINK_SHARED_OBJ_SH="gcc -shared \
-                -Wl,-O3,-update_registry,\${SO_LOCATIONS_DIR}so_locations"
-            ERROR_UNDEFINED="-Wl,-error_unresolved"
-            EXE_RPATH_OPT="-Wl,-rpath,"
-            SHLIB_RPATH_OPT="-Wl,-rpath,"
-        else
-            # use cc to link shared objects
-            LINK_SHARED_OBJ="cc -shared \
-                -update_registry \$(SO_LOCATIONS_DIR)so_locations"
-            LINK_SHARED_OBJ_SH="cc -shared \
-                -update_registry \${SO_LOCATIONS_DIR}so_locations"
-            ERROR_UNDEFINED="-error_unresolved"
-            EXE_RPATH_OPT="-rpath "
-            SHLIB_RPATH_OPT="-rpath "
-        fi
-        EXE_RPATH_SEP=":"
-        SHLIB_RPATH_SEP=":"
-        EXT_FOR_SHARED_LIB=so
-        # -fpic not needed on Alpha/OSF, since it is the default
-        CFLAGS_FOR_PIC=
-        EXT_FOR_PIC_OBJECTS=o
-        EXT_FOR_LINK_WITH_PIC_OBJECTS=o
-        ;;
     *-cygwin*)
         # disabled for now, since it hasn't been tested
         # xxx_MSG_RESULT(yes)
@@ -4692,13 +4632,6 @@ case "$FULLARCH" in
                     LD_STATIC_FLAGS="-static -Wl,-defsym -Wl,_DYNAMIC=0"
                 fi
                 rm -f conftest*
-                ;;
-        esac
-        ;;
-    alpha*-dec-osf*)
-        case "$COMPILER" in
-            cc)
-                LD_STATIC_FLAGS=-non_shared
                 ;;
         esac
         ;;
