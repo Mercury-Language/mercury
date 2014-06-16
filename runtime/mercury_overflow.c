@@ -57,19 +57,19 @@ MR_fatal_zone_error(MR_OverflowZone ptr_kind,
     fprintf(stderr, "fatal zone error\n%s: ", ptr_name);
     switch (ptr_kind) {
 
-        case MR_OZONE_DETSTACK:
+        case MR_OVERFLOW_ZONE_DETSTACK:
             MR_print_detstackptr(stderr, ptr);
             break;
 
-        case MR_OZONE_NONDETSTACK:
+        case MR_OVERFLOW_ZONE_NONDETSTACK:
             MR_print_nondetstackptr(stderr, ptr);
             break;
 
-        case MR_OZONE_HEAP:
+        case MR_OVERFLOW_ZONE_HEAP:
             MR_print_heapptr(stderr, ptr);
             break;
 
-        case MR_OZONE_OTHER:
+        case MR_OVERFLOW_ZONE_OTHER:
         default:
             fprintf(stderr, "%p", ptr);
             break;
