@@ -287,12 +287,7 @@ DEFAULT_MERCURY_DEBUGGER_INIT_DIR=$LIBDIR/mdb
 AC_SUBST(DEFAULT_MERCURY_DEBUGGER_INIT_DIR)
 DEFAULT_MERCURY_DEBUGGER_DOC=$DEFAULT_MERCURY_DEBUGGER_INIT_DIR/mdb_doc
 AC_SUBST(DEFAULT_MERCURY_DEBUGGER_DOC)
-#-----------------------------------------------------------------------------#
-case "$host" in
-    mips-sgi-irix5.*)
-        AC_MSG_WARN(*** Read README.IRIX-5 before proceeding!)
-        ;;
-esac
+
 #-----------------------------------------------------------------------------#
 # MMC_INVOKE_CMD is the the command used to invoke mercury_compile in
 # scripts/mmc.
@@ -2486,19 +2481,6 @@ case "$ac_cv_prog_gcc" in yes)
     esac
     CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS"
     case "$host" in
-        mips-sgi-irix5.*)
-            # Non-local gotos don't work with shared libraries on Irix 5,
-            # which causes lots of complications.
-            # Now that we have the hlc back-end, it's not worth
-            # supporting them.
-            MERCURY_MSG("Mercury no longer supports gcc non-local on Irix 5")
-            mercury_cv_asm_labels=no
-            mercury_cv_gcc_labels=no
-            CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -non_shared -mno-abicalls"
-            LIBRARY_PATH_FOR_GOTOS="$NONSHARED_LIB_DIR:/usr/lib/nonshared"
-            ;;
-    esac
-    case "$host" in
         mips-*)
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
             ;;
@@ -3160,14 +3142,6 @@ case "$host" in
 ### *hpux*)
 ###     CFLAGS_FOR_THREADS="" # XXX incomplete
 ###     THREAD_LIBS="-lpthread -lrt" ;;
-
-### # The threads stuff on IRIX is not yet enabled because
-### # we don't have an IRIX box to test it on.
-### # (XXX perhaps we should enable it anyway, so it is easier to test?)
-### *irix*)
-###     CFLAGS_FOR_THREADS="-DIRIX_THREADS"
-###     THREAD_LIBS="-lpthread"
-###     ;;
 
     *)
         # Multithreading not (yet) supported on other architectures.
@@ -4469,35 +4443,6 @@ case "$host" in
         CFLAGS_FOR_PIC=
         EXT_FOR_PIC_OBJECTS=o
         EXT_FOR_LINK_WITH_PIC_OBJECTS=o
-        ;;
-    mips-sgi-irix5.*)
-        LINK_SHARED_OBJ="ld -shared \
-            -update_registry \$(SO_LOCATIONS_DIR)so_locations \
-            -quickstart_info -rdata_shared"
-        LINK_SHARED_OBJ_SH="ld -shared \
-            -update_registry \${SO_LOCATIONS_DIR}so_locations \
-            -quickstart_info -rdata_shared"
-        ERROR_UNDEFINED="-no_unresolved"
-        EXE_RPATH_OPT="-Wl,-rpath,"
-        EXE_RPATH_SEP=":"
-        SHLIB_RPATH_OPT="-rpath "
-        SHLIB_RPATH_SEP=":"
-        # -fpic not needed on IRIX, since it is the default
-        CFLAGS_FOR_PIC=
-        EXT_FOR_PIC_OBJECTS=o
-        EXT_FOR_LINK_WITH_PIC_OBJECTS=o
-        # shared libraries are incompatible with gcc non-local gotos,
-        case "$GRADE" in
-            reg.gc | none.gc | hlc.gc)
-                AC_MSG_RESULT(yes)
-                EXT_FOR_SHARED_LIB=so
-                ;;
-            *)
-                EXT_FOR_SHARED_LIB=a
-                AC_MSG_RESULT(no)
-                AC_MSG_RESULT(Read README.IRIX-5)
-                ;;
-        esac
         ;;
     *-cygwin*)
         # disabled for now, since it hasn't been tested

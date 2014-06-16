@@ -10186,14 +10186,6 @@ The directory containing the installed Mercury standard library.
 the MERCURY_STDLIB_DIR environment variable.
 
 @sp 1
-@item MERCURY_NONSHARED_LIB_DIR
-@vindex MERCURY_NONSHARED_LIB_DIR
-For IRIX 5, this environment variable can be used to specify a
-directory containing a version of libgcc.a which has been compiled with
-@samp{-mno-abicalls}.  See the file @samp{README.IRIX-5} in the Mercury
-source distribution.
-
-@sp 1
 @item MERCURY_OPTIONS
 @vindex MERCURY_OPTIONS
 A list of options for the Mercury runtime system,

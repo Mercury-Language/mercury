@@ -523,18 +523,6 @@ esac
 
 ARCH_OPTS=""
 case "$FULLARCH" in
-    mips-sgi-irix5.*)
-        # Nonlocal gotos don't work with PIC, which is the default for Irix 5,
-        # so if nonlocal gotos are enabled we need to disable the use of
-        # shared libraries.
-        case $non_local_gotos in
-            true)
-                LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
-                export LIBRARY_PATH
-                AS_OPTS="-non_shared"
-            ;;
-        esac
-        ;;
     i*86-*|x86_64*)
         # The use of stack_pointer in the ASM_JUMP macro defined in
         # runtime/mercury_goto.h causes lots of warnings about using possibly

@@ -27,6 +27,10 @@ Changes to the Mercury standard library:
 * We have added a module that implements barriers for concurrent
   programming.  This module is a contribution from Mission Critical IT.
 
+Changes to the Mercury compiler:
+
+* We have removed support for IRIX.
+
 Changes to the extras distribution:
 
 * We have added support for Unicode and other enhancements to the lex and
