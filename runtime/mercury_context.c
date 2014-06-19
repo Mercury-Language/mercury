@@ -1244,6 +1244,8 @@ MR_release_context(MR_Context *c)
         c->MR_ctxt_nondetstack_zone->MR_zone_min);
 #endif /* defined(MR_CONSERVATIVE_GC) && !defined(MR_HIGHLEVEL_CODE) */
 
+    c->MR_ctxt_thread_local_mutables = NULL;
+
 #ifdef MR_LL_PARALLEL_CONJ
     MR_atomic_dec_int(&MR_num_outstanding_contexts);
 #endif
