@@ -7,6 +7,7 @@ ENDINIT
 */
 /*
 ** Copyright (C) 1993-2001, 2003-2007, 2009-2011 The University of Melbourne.
+** Copyright (C) 2014 The Mercury team.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -144,13 +145,15 @@ MR_init_engine(MercuryEngine *eng)
 #endif /* !MR_CONSERVATIVE_GC */
 
 #ifdef  MR_THREAD_SAFE
-    eng->MR_eng_owner_thread = pthread_self();
+    /* The caller must initialise id and type. */
+    eng->MR_eng_id = MR_ENGINE_ID_NONE;
+    eng->MR_eng_type = MR_ENGINE_TYPE_SHARED;
     eng->MR_eng_c_depth = 0;
 #endif
 
 #ifdef MR_LL_PARALLEL_CONJ
-    MR_init_wsdeque(&(eng->MR_eng_spark_deque),
-        MR_INITIAL_SPARK_DEQUE_SIZE);
+    eng->MR_eng_spark_deque = MR_GC_NEW(MR_SparkDeque);
+    MR_init_wsdeque(eng->MR_eng_spark_deque, MR_INITIAL_SPARK_DEQUE_SIZE);
 #endif
 
     /*
@@ -161,6 +164,10 @@ MR_init_engine(MercuryEngine *eng)
 
 /*---------------------------------------------------------------------------*/
 
+/*
+** The engine must be removed from MR_all_engine_bases BEFORE calling this
+** function.
+*/
 void MR_finalize_engine(MercuryEngine *eng)
 {
     /*
@@ -489,14 +496,14 @@ dummy_label:
     MR_ENGINE(MR_eng_c_depth)++;
 
     if (MR_ENGINE(MR_eng_this_context) != NULL) {
-        MR_SavedOwner *owner;
+        MR_ResumeStack *elem;
 
-        owner = MR_GC_NEW_ATTRIB(MR_SavedOwner, MR_ALLOC_SITE_RUNTIME);
-        owner->MR_saved_owner_engine = MR_ENGINE(MR_eng_id);
-        owner->MR_saved_owner_c_depth = MR_ENGINE(MR_eng_c_depth);
-        owner->MR_saved_owner_next =
-            MR_ENGINE(MR_eng_this_context)->MR_ctxt_saved_owners;
-        MR_ENGINE(MR_eng_this_context)->MR_ctxt_saved_owners = owner;
+        elem = MR_GC_NEW_ATTRIB(MR_ResumeStack, MR_ALLOC_SITE_RUNTIME);
+        elem->MR_resume_engine = MR_ENGINE(MR_eng_id);
+        elem->MR_resume_c_depth = MR_ENGINE(MR_eng_c_depth);
+        elem->MR_resume_stack_next =
+            MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume_stack;
+        MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume_stack = elem;
     }
 #endif
 
@@ -518,16 +525,16 @@ MR_define_label(engine_done);
 #ifdef  MR_THREAD_SAFE
     {
         MR_Context      *this_ctxt;
-        MR_SavedOwner   *owner;
+        MR_ResumeStack  *elem;
 
         this_ctxt = MR_ENGINE(MR_eng_this_context);
-        owner = this_ctxt->MR_ctxt_saved_owners;
-        this_ctxt->MR_ctxt_saved_owners = owner->MR_saved_owner_next;
+        elem = this_ctxt->MR_ctxt_resume_stack;
+        this_ctxt->MR_ctxt_resume_stack = elem->MR_resume_stack_next;
 
-        if ((owner->MR_saved_owner_engine == MR_ENGINE(MR_eng_id)) &&
-            owner->MR_saved_owner_c_depth == MR_ENGINE(MR_eng_c_depth))
+        if ((elem->MR_resume_engine == MR_ENGINE(MR_eng_id)) &&
+            elem->MR_resume_c_depth == MR_ENGINE(MR_eng_c_depth))
         {
-            MR_GC_free_attrib(owner);
+            MR_GC_free_attrib(elem);
             MR_GOTO_LABEL(engine_done_2);
         }
 
@@ -536,10 +543,10 @@ MR_define_label(engine_done);
 #endif
         MR_save_context(this_ctxt);
         this_ctxt->MR_ctxt_resume = MR_LABEL(engine_done_2);
-        this_ctxt->MR_ctxt_resume_owner_engine = owner->MR_saved_owner_engine;
-        this_ctxt->MR_ctxt_resume_c_depth = owner->MR_saved_owner_c_depth;
         this_ctxt->MR_ctxt_resume_engine_required = MR_TRUE;
-        MR_GC_free_attrib(owner);
+        this_ctxt->MR_ctxt_resume_engine = elem->MR_resume_engine;
+        this_ctxt->MR_ctxt_resume_c_depth = elem->MR_resume_c_depth;
+        MR_GC_free_attrib(elem);
         MR_schedule_context(this_ctxt);
 
         MR_ENGINE(MR_eng_this_context) = NULL;
@@ -630,9 +637,8 @@ MR_dump_prev_locations(void)
 ** call from call_engine_inner().
 **
 ** XXX The portable version does not yet prevent Mercury code returning back
-** into C code on the wrong Mercury engine (see the code involving
-** MR_eng_owner_thread and MR_eng_c_depth in the gcc version).  Therefore
-** low-level .par grades without gcc non-local gotos are unsafe.
+** into C code on the wrong Mercury engine.  Therefore low-level .par grades
+** without gcc non-local gotos are unsafe.
 */
 
 static MR_Code *

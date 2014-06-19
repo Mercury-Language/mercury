@@ -3,6 +3,7 @@
 */
 /*
 ** Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
+** Copyright (C) 2014 The Mercury team.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -337,17 +338,21 @@ typedef struct {
 **              generators to be created without redoing the work required
 **              to allocate a new context.
 **
-** owner_thread
+** id           The ID of this engine. It is used to index into some runtime
+**              structures. It is also used for threadscope.
+**
+** type         The type of engine this is.
+**
 ** c_depth
-**              These fields are used to ensure that when a thread
+**              The id and c_depth fields are used to ensure that when a thread
 **              executing C code calls the Mercury engine associated with that
 **              thread, the Mercury code will finish in the same engine and
 **              return appropriately. Each time C calls Mercury in a thread,
-**              the c_depth is incremented, and the owner_thread and c_depth
-**              values of the current engine are pushed onto the "saved_owners"
-**              stack of the current context. When a context is about to return
+**              the c_depth is incremented, and the engine id and c_depth
+**              values of the current engine are pushed onto the "resume_stack"
+**              of the current context. When a context is about to return
 **              from Mercury code back into C code, we pop the top entry off the
-**              context's saved_owners stack and check that the context is
+**              context's resume_stack and check that the context is
 **              running on the right engine. If not, we reschedule the context
 **              such that it can only be picked up by the correct engine when
 **              that engine is available. When the call into the Mercury code
@@ -359,8 +364,6 @@ typedef struct {
 **
 ** ts_buffer
 **              The buffer object used by threadscope for this engine.
-**
-** id           The ID of this engine which is used by threadscope.
 **
 ** next_spark_id
 **              In threadscope grades sparks are given IDs to help us track
@@ -424,7 +427,7 @@ typedef struct MR_mercury_engine_struct {
 #endif
 #ifdef  MR_THREAD_SAFE
     MR_EngineId         MR_eng_id;
-    MercuryThread       MR_eng_owner_thread;
+    MR_EngineType       MR_eng_type;
     MR_Unsigned         MR_eng_c_depth;
   #ifdef MR_THREADSCOPE
     /*
@@ -437,7 +440,7 @@ typedef struct MR_mercury_engine_struct {
     MR_uint_least32_t                   MR_eng_next_spark_id;
   #endif
   #ifdef MR_LL_PARALLEL_CONJ
-    MR_SparkDeque       MR_eng_spark_deque;
+    MR_SparkDeque       *MR_eng_spark_deque;
     MR_EngineId         MR_eng_victim_counter;
   #endif
 #endif
@@ -509,16 +512,6 @@ typedef struct MR_mercury_engine_struct {
   #define MR_cur_engine()   ((MercuryEngine *) MR_engine_base)
   #define MR_get_engine()   ((MercuryEngine *) MR_thread_engine_base)
 
-  #ifndef MR_HIGHLEVEL_CODE
-  /*
-  ** This points to an array containing MR_num_threads pointers to
-  ** Mercury engines. The first item in the array is the primordial thread.
-  ** During initialisation, the array may be a null pointer, as may be
-  ** any pointer inside.
-  */
-  extern MercuryEngine      **MR_all_engine_bases;
-  #endif
-
 #else   /* !MR_THREAD_SAFE */
 
   extern MercuryEngine      MR_engine_base;
@@ -531,6 +524,8 @@ typedef struct MR_mercury_engine_struct {
 #ifndef MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE
   #define MR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE
 #endif
+
+#define MR_ENGINE_ID_NONE   ((MR_EngineId) -1)
 
 #define MR_CONTEXT(x)       (MR_ENGINE(MR_eng_context).x)
 

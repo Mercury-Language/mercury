@@ -1037,7 +1037,7 @@ leave_signal_handler(int sig)
 #if defined(MR_THREAD_SAFE) && defined(MR_THREADSCOPE)
     if (MR_all_engine_bases) {
         int i;
-        for (i = 0; i < MR_num_threads; i++) {
+        for (i = 0; i < MR_max_engines; i++) {
             if (MR_all_engine_bases[i] &&
                 MR_all_engine_bases[i]->MR_eng_ts_buffer)
             {

@@ -7,6 +7,7 @@ ENDINIT
 */
 /*
 ** Copyright (C) 1994-2011 The University of Melbourne.
+** Copyright (C) 2014 The Mercury team.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -212,7 +213,7 @@ size_t      MR_stack_margin_size_words = 32;
 size_t      MR_pcache_size = 8192;
 
 /*
-** Limits on the number of contexts we can create.
+** Limits on the number of contexts we can create for parallel execution.
 ** These allow 64MB of det stacks regardless of which grade is being used.
 ** Where sizeof(MR_Word) 8 and the detstack is 64 and 4098 Kwords big for stseg
 ** and non stseg grades.
@@ -323,15 +324,10 @@ static  char        *MR_mem_usage_report_prefix = NULL;
 
 static  int         MR_num_output_args = 0;
 
-/*
-** This is initialized to zero. If it is still zero after configuration of the
-** runtime but before threads are started, then we set it to the number of
-** processors on the system (if support is available to detect this).
-** Otherwise, we fall back to 1.
-*/
-MR_Unsigned         MR_num_threads = 0;
+#ifdef MR_LL_PARALLEL_CONJ
+MR_Unsigned         MR_num_ws_engines = 0;
+MR_Unsigned         MR_max_engines = 1024;
 
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
 MR_Unsigned         MR_granularity_wsdeque_length_factor = 8;
 MR_Unsigned         MR_granularity_wsdeque_length = 0;
 #endif
@@ -641,11 +637,13 @@ mercury_runtime_init(int argc, char **argv)
     */
     MR_init_context_stuff();
     MR_init_thread_stuff();
-    MR_max_outstanding_contexts = MR_max_contexts_per_thread * MR_num_threads;
-    MR_num_contexts_per_loop_control =
-        MR_num_contexts_per_loop_control_per_thread * MR_num_threads;
 #ifdef MR_LL_PARALLEL_CONJ
-    MR_granularity_wsdeque_length = MR_granularity_wsdeque_length_factor * MR_num_threads;
+    MR_max_outstanding_contexts =
+        MR_max_contexts_per_thread * MR_num_ws_engines;
+    MR_num_contexts_per_loop_control =
+        MR_num_contexts_per_loop_control_per_thread * MR_num_ws_engines;
+    MR_granularity_wsdeque_length =
+        MR_granularity_wsdeque_length_factor * MR_num_ws_engines;
 #endif
     MR_primordial_thread = pthread_self();
 #endif
@@ -697,28 +695,32 @@ mercury_runtime_init(int argc, char **argv)
     ** Start up the Mercury engine. We don't yet know how many slots will be
     ** needed for thread-local mutable values so allocate the maximum number.
     */
-    MR_init_thread(MR_use_now);
+    MR_init_thread_inner(MR_use_now, MR_PRIMORIDAL_ENGINE_TYPE);
     MR_SET_THREAD_LOCAL_MUTABLES(
         MR_create_thread_local_mutables(MR_MAX_THREAD_LOCAL_MUTABLES));
 
+    /*
+    ** Start up additional work-stealing Mercury engines.
+    */
   #ifdef MR_LL_PARALLEL_CONJ
     {
         int i;
 
-        for (i = 1; i < MR_num_threads; i++) {
-            MR_create_thread(NULL);
+        for (i = 1; i < MR_num_ws_engines; i++) {
+            MR_create_worksteal_thread();
         }
     #ifdef MR_THREADSCOPE
-    /*
-    ** TSC Synchronization is not used, support is commented out.
-    ** See runtime/mercury_threadscope.h for an explanation.
-    **
+        /*
+        ** TSC Synchronization is not used, support is commented out.
+        ** See runtime/mercury_threadscope.h for an explanation.
+        **/
+        /*
         for (i = 1; i < MR_num_threads; i++) {
             MR_threadscope_sync_tsc_master();
         }
-    */
+        */
     #endif
-        while (MR_num_idle_engines < MR_num_threads-1) {
+        while (MR_num_idle_ws_engines < MR_num_ws_engines-1) {
             /* busy wait until the worker threads are ready */
             MR_ATOMIC_PAUSE;
         }
@@ -1314,6 +1316,7 @@ enum MR_long_option {
     MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS,
     MR_GEN_NONDETSTACK_REDZONE_SIZE,
     MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS,
+    MR_MAX_ENGINES,
     MR_MAX_CONTEXTS_PER_THREAD,
     MR_NUM_CONTEXTS_PER_LC_PER_THREAD,
     MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR,
@@ -1417,6 +1420,7 @@ struct MR_option MR_long_opts[] = {
         1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE },
     { "gen-nondetstack-zone-size-kwords",
         1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS },
+    { "max-engines",                    1, 0, MR_MAX_ENGINES },
     { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
     { "num-contexts-per-lc-per-thread", 1, 0, MR_NUM_CONTEXTS_PER_LC_PER_THREAD },
     { "runtime-granularity-wsdeque-length-factor", 1, 0,
@@ -1833,6 +1837,19 @@ MR_process_options(int argc, char **argv)
                 }
 
                 MR_gen_nondetstack_zone_size = size * sizeof(MR_Word);
+                break;
+
+            case MR_MAX_ENGINES:
+#ifdef MR_LL_PARALLEL_CONJ
+                if (sscanf(MR_optarg, "%lu", &size) != 1) {
+                    MR_usage();
+                }
+
+                if (size < 1) {
+                    MR_usage();
+                }
+                MR_max_engines = MR_min(size, MR_ENGINE_ID_NONE);
+#endif
                 break;
 
             case MR_MAX_CONTEXTS_PER_THREAD:
@@ -2291,14 +2308,17 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case 'P':
-#ifdef  MR_THREAD_SAFE
+#ifdef  MR_LL_PARALLEL_CONJ
                 if (sscanf(MR_optarg, "%"MR_INTEGER_LENGTH_MODIFIER"u",
-                        &MR_num_threads) != 1) {
+                        &MR_num_ws_engines) != 1) {
                     MR_usage();
                 }
 
-                if (MR_num_threads < 1) {
+                if (MR_num_ws_engines < 1) {
                     MR_usage();
+                }
+                if (MR_num_ws_engines > MR_ENGINE_ID_NONE) {
+                    MR_num_ws_engines = MR_ENGINE_ID_NONE;
                 }
 #endif
                 break;
@@ -3105,7 +3125,7 @@ mercury_runtime_terminate(void)
     }
 
 #if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
-    MR_shutdown_all_engines();
+    MR_shutdown_ws_engines();
 
 #ifdef MR_THREADSCOPE
     if (MR_ENGINE(MR_eng_ts_buffer)) {

@@ -3,6 +3,7 @@
 */
 /*
 ** Copyright (C) 1997-1998, 2000, 2003, 2005-2007, 2009-2011 The University of Melbourne.
+** Copyright (C) 2014 The Mercury team.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -147,22 +148,11 @@ MR_null_thread(void);
   #define MR_GETSPECIFIC(key) pthread_getspecific((key))
   #define MR_KEY_CREATE       pthread_key_create
 
-  typedef struct {
-      void  (*func)(void *);
-      void  *arg;
-  } MR_ThreadGoal;
-
   /*
-  ** create_thread(Goal) creates a new POSIX thread, and creates and
-  ** initializes a new Mercury engine to run in that thread. If Goal
-  ** is a NULL pointer, that thread will suspend on the global Mercury
-  ** runqueue. If Goal is non-NULL, it is a pointer to a MR_ThreadGoal
-  ** structure containing a function and an argument. The function will
-  ** be called with the given argument in the new thread.
+  ** create_worksteal_thread() creates a new POSIX thread, and creates and
+  ** initializes a work-stealing Mercury engine to run in that thread.
   */
-
-  extern MercuryThread      *MR_create_thread(MR_ThreadGoal *);
-  extern void               MR_destroy_thread(void *eng);
+  extern MercuryThread      *MR_create_worksteal_thread(void);
 
   /*
   ** The primordial thread. Currently used for debugging.
@@ -184,9 +174,14 @@ MR_null_thread(void);
 
   #ifndef MR_HIGHLEVEL_CODE
   /*
-  ** This lock protects writes to the MR_all_engine_bases structure.
+  ** This points to an array containing MR_max_engines pointers to Mercury
+  ** engines. It is indexed by engine id. The first item in the array is the
+  ** primordial thread. A null entry represents an unallocated engine id.
+  ** During initialisation, the pointer may be null.
+  ** This is exported only for leave_signal_handler.
+  ** All other accesses require the MR_all_engine_bases_lock.
   */
-  extern MercuryLock        MR_init_engine_array_lock;
+  extern struct MR_mercury_engine_struct **MR_all_engine_bases;
   #endif
 
   /*
@@ -225,8 +220,8 @@ extern MR_Integer MR_thread_barrier_count;
 #endif
 
 /*
-** The following enum is used as the argument to init_thread.
-** MR_use_now should be passed to init_thread to indicate that
+** The following enum is used as the argument to init_thread/init_thread_inner.
+** MR_use_now should be passed to indicate that
 ** it has been called in a context in which it should initialize
 ** the current thread's environment and return.
 ** MR_use_later should be passed to indicate that the thread should
@@ -236,6 +231,37 @@ extern MR_Integer MR_thread_barrier_count;
 */
 
 typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
+
+/*
+** In low-level C parallel grades, there are two types of Mercury
+** engines. "Shared" engines may execute code from any Mercury thread.
+** "Exclusive" engines execute code only for a single Mercury thread.
+** Shared engines may steal work from other shared engines, so are also
+** called work-stealing engines; we do not have shared engines that
+** refrain from work-stealing.
+**
+** In low-level C non-parallel grades, all Mercury threads execute on
+** the same unique Mercury engine. That engine is equivalent to a shared
+** engine.
+**
+** In high-level C parallel grades, all Mercury threads execute in their
+** own POSIX thread. All engines are exclusive engines.
+**
+** In high-level C non-parallel grades, only a single Mercury thread
+** exists, executing in a single Mercury engine. That engine is
+** equivalent to an exclusive engine, or a shared engine with no other
+** engines present.
+*/
+typedef enum {
+    MR_ENGINE_TYPE_SHARED = 1,
+    MR_ENGINE_TYPE_EXCLUSIVE = 2
+} MR_EngineType;
+
+#ifdef MR_HIGHLEVEL_CODE
+    #define MR_PRIMORIDAL_ENGINE_TYPE   MR_ENGINE_TYPE_EXCLUSIVE
+#else
+    #define MR_PRIMORIDAL_ENGINE_TYPE   MR_ENGINE_TYPE_SHARED
+#endif
 
 /*
 ** Create and initialize a new Mercury engine running in the current
@@ -252,6 +278,8 @@ typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
 */
 extern MR_bool
 MR_init_thread(MR_when_to_use);
+extern MR_bool
+MR_init_thread_inner(MR_when_to_use, MR_EngineType);
 
 /*
 ** Finalize the thread engine running in the current POSIX thread.

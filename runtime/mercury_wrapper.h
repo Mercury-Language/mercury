@@ -3,6 +3,7 @@
 */
 /*
 ** Copyright (C) 1994-2011 The University of Melbourne.
+** Copyright (C) 2014 The Mercury team.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -253,13 +254,11 @@ extern double               MR_heap_expansion_factor;
 /* margin for the stack segment test (documented in mercury_wrapper.c) */
 extern size_t               MR_stack_margin_size_words;
 
-/* number of outstanding contexts we can create per thread (soft limit) */
-extern MR_Unsigned          MR_contexts_per_thread;
-
 /*
-** The number of outstanding contexts we can create
-** (MR_contexts_per_thread * MR_num_threads).
+** Soft limit on the number of outstanding contexts we can create for parallel
+** execution.
 */
+extern MR_Unsigned          MR_max_contexts_per_thread;
 extern MR_Unsigned          MR_max_outstanding_contexts;
 
 /*
@@ -267,12 +266,26 @@ extern MR_Unsigned          MR_max_outstanding_contexts;
 */
 extern MR_Unsigned          MR_num_contexts_per_loop_control;
 
-extern MR_Unsigned          MR_num_threads;
+#ifdef MR_LL_PARALLEL_CONJ
+/*
+** MR_num_ws_engines is the number of work-stealing Mercury engines.
+** This is initialized to zero. If it is still zero after configuration of the
+** runtime but before threads are started, then we set it to the number of
+** processors on the system (if support is available to detect this).
+** Otherwise, we fall back to 1.
+** After startup, the number of work-stealing Mercury engines is fixed.
+*/
+extern MR_Unsigned          MR_num_ws_engines;
 
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+/*
+** MR_max_engines is the maximum number of total engines we can create.
+** MR_num_ws_engines <= MR_max_engines < MR_ENGINE_ID_NONE
+*/
+extern MR_Unsigned          MR_max_engines;
+
 /*
 ** This is used to set MR_granularity_wsdeque_length based on the value of
-** MR_num_threads. A value of 2 says, allow twice as many threads in a
+** MR_num_ws_engines. A value of 2 says, allow twice as many threads in a
 ** context's wsdeque than mercury engines before granularity control has an
 ** effect.
 */

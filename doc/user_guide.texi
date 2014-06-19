@@ -10250,17 +10250,24 @@ This only has an effect if the executable was built in a profiling grade.
 @sp 1
 @item -P @var{num}
 @findex -P (runtime option)
-Tells the runtime system to use @var{num} threads
+Tells the runtime system to create @var{num} threads for executing Mercury code
 if the program was built in a parallel low-level C grade.
 The Mercury runtime attempts to automatically determine this value if support
 is available from the operating system.
 If it cannot or support is unavailable it defaults to @samp{1}.
 
 @sp 1
+@item --max-engines @var{num}
+@findex --max-engines (runtime option)
+Tells the runtime system to allow a maximum of @var{num}
+POSIX threads, each with its own Mercury engine.
+This only affects programs in low-level C parallel grades.
+
+@sp 1
 @item --max-contexts-per-thread @var{num}
 @findex --max-contexts-per-thread (runtime option)
 Tells the runtime system to create at most @var{num} contexts per
-POSIX thread.
+POSIX thread for parallel execution.
 Each context created requires a set of stacks, setting this value too high
 can consume excess memory.
 This only has an effect if the executable was built in a low-level C parallel

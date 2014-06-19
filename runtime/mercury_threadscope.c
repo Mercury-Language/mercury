@@ -1036,7 +1036,7 @@ MR_setup_threadscope(void)
     ** Put the startup event in the buffer.
     */
     put_event_header(&global_buffer, MR_TS_EVENT_STARTUP, 0);
-    put_engine_id(&global_buffer, (MR_EngineId)MR_num_threads);
+    put_engine_id(&global_buffer, (MR_EngineId)MR_num_ws_engines);
 
     flush_event_buffer(&global_buffer);
 }

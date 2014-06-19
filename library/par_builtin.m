@@ -124,15 +124,6 @@
     %
 :- impure pred evaluate_parallelism_condition is semidet.
 
-    % num_os_threads(Num)
-    %
-    % Num is the number of OS threads the runtime is configured to use, which
-    % the runtime records in the variable MR_num_threads. This is the value
-    % given by the user as the argument of the -P option in the MERCURY_OPTIONS
-    % environment variable.
-    %
-:- pred num_os_threads(int::out) is det.
-
     % Close the file that was used to log the parallel condition decisions.
     %
     % The parallel condition stats file is opened the first time it is
@@ -505,19 +496,6 @@ mercury_sys_init_lc_write_out_proc_statics(FILE *deep_fp,
 ").
 
 %-----------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
-    num_os_threads(NThreads::out),
-    [will_not_call_mercury, will_not_throw_exception, thread_safe,
-        promise_pure],
-"
-    /*
-    ** MR_num_threads is available in all grades. Although it won't make sense
-    ** for non-parallel grades, it will still reflect the value configured by
-    ** the user.
-    */
-    NThreads = MR_num_threads
-").
 
 :- pragma foreign_proc("C",
     par_cond_close_stats_file(_IO0::di, _IO::uo),

@@ -3,6 +3,7 @@
 */
 /*
 ** Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
+** Copyright (C) 2014 The Mercury team.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -113,28 +114,36 @@
 **                  context in the runqueue.
 **                  (Accessed only when directly specifying the context.)
 **
+** exclusive_engine
+**                  Either MR_ENGINE_ID_NONE, or else the exclusive engine
+**                  that this context belongs to. A context with an exclusive
+**                  engine may only be run on that engine. This restriction
+**                  may be relaxed in the future so that it only applies when
+**                  entering some foreign procs.
+**                  (Accessed only when directly specifying the context.)
+**
 ** resume           A pointer to the code at which execution should resume
 **                  when this context is next scheduled.
 **                  (Accessed via MR_eng_this_context.)
 **
-** resume_owner_engine
-**                  When resuming a context this is the engine that it
-**                  prefers to be resumed on, Doing so can avoid cache misses
-**                  as the engine's cache may already be warm.
+** resume_engine
+**                  When resuming a context this is the engine that it prefers
+**                  or is required to be resumed on. Doing so can avoid cache
+**                  misses as the engine's cache may already be warm.
 **                  (Accessed only when directly specifying the context.)
 **
 ** resume_engine_required
 ** resume_c_depth
-**                  These fields are used to ensure that when we enter a
-**                  Mercury engine from C, we return to the same engine. If
-**                  resume_engine_required is MR_FALSE then this context can be
-**                  executed by any engine and resume_owner_engine is simply a
-**                  preference. Otherwise the resume_owner_engine and
-**                  resume_c_depth must match the engine's id and c_depth. See
-**                  the comments in mercury_engine.h.  (Both accessed only when
-**                  directly specifying the context.)
+**                  If resume_engine_required is MR_FALSE then resume_engine is
+**                  simply a preference, and the resume_c_depth field has no
+**                  meaning. If resume_engine_required is MR_TRUE then
+**                  resume_engine and resume_c_depth must match the engine's id
+**                  and c_depth, to ensure that when we enter a Mercury engine
+**                  from C we return to the same engine. See the comments in
+**                  mercury_engine.h.
+**                  (Both accessed only when directly specifying the context.)
 **
-** saved_owners
+** resume_stack
 **                  A stack used to record the Mercury engines on which this
 **                  context executed some C calls that called back into
 **                  Mercury. We must execute this context in the correct
@@ -226,15 +235,14 @@ typedef enum {
 #endif
 
 #ifdef MR_THREAD_SAFE
-typedef struct MR_SavedOwner_Struct     MR_SavedOwner;
+typedef struct MR_ResumeStack_Struct    MR_ResumeStack;
 
-struct MR_SavedOwner_Struct {
-    MR_EngineId         MR_saved_owner_engine;
-    MR_Unsigned         MR_saved_owner_c_depth;
-    MR_SavedOwner       *MR_saved_owner_next;
+struct MR_ResumeStack_Struct {
+    MR_EngineId             MR_resume_engine;
+    MR_Unsigned             MR_resume_c_depth;
+    MR_ResumeStack          *MR_resume_stack_next;
 };
 #endif
-
 
 #ifdef MR_LL_PARALLEL_CONJ
 typedef struct MR_SyncTerm_Struct       MR_SyncTerm;
@@ -254,6 +262,7 @@ struct MR_Spark_Struct {
     MR_Code                 *MR_spark_resume;
     MR_ThreadLocalMuts      *MR_spark_thread_local_mutables;
 #ifdef MR_THREADSCOPE
+    /* XXX this is not wide enough for higher engine ids */
     MR_uint_least32_t       MR_spark_id;
 #endif
 };
@@ -264,7 +273,7 @@ struct MR_Spark_Struct {
 
 struct MR_SparkDeque_Struct {
     /*
-    ** The top index is modified by theifs, the other fields are modified by
+    ** The top index is modified by thiefs; the other fields are modified by
     ** the owner.  Therefore we pad out the structure to reduce false
     ** sharing.
     */
@@ -292,10 +301,11 @@ struct MR_Context_Struct {
     MR_Code             *MR_ctxt_resume;
 #endif
 #ifdef  MR_THREAD_SAFE
-    MR_EngineId         MR_ctxt_resume_owner_engine;
+    MR_EngineId         MR_ctxt_exclusive_engine;
+    MR_EngineId         MR_ctxt_resume_engine;
     MR_bool             MR_ctxt_resume_engine_required;
     MR_Unsigned         MR_ctxt_resume_c_depth;
-    MR_SavedOwner       *MR_ctxt_saved_owners;
+    MR_ResumeStack      *MR_ctxt_resume_stack;
 #endif
 
 #ifndef MR_HIGHLEVEL_CODE
@@ -417,20 +427,13 @@ extern  MR_PendingContext   *MR_pending_contexts;
 
 #ifdef  MR_LL_PARALLEL_CONJ
   /*
-  ** The number of engines waiting for work.
+  ** The number of work-stealing engines waiting for work.
   ** We don't protect it with a separate lock, but updates to it are made while
   ** holding the MR_runqueue_lock.  Reads are made without the lock.
   ** XXX We may need to use atomic instructions or memory fences on some
   ** architectures.
   */
-  extern volatile MR_Integer MR_num_idle_engines;
-
-  /*
-  ** The number of engines that have exited so far.  We can spin on this to
-  ** make sure that our engines have exited before finalizing some global
-  ** resources.
-  */
-  extern volatile MR_Unsigned   MR_num_exited_engines;
+  extern volatile MR_Integer    MR_num_idle_ws_engines;
 
   /*
   ** Spark deques for work stealing,  These are made visible so that they can
@@ -500,10 +503,11 @@ extern MR_Unsigned        MR_primordial_thread_cpu;
 #endif
 
 /*
-** Shutdown all the engines.
+** Shutdown all the work-stealing engines.
+** (Exclusive engines shut down by themselves.)
 */
 extern void
-MR_shutdown_all_engines(void);
+MR_shutdown_ws_engines(void);
 #endif
 
 /*
@@ -829,9 +833,6 @@ do {                                                                         \
     MR_IF_THREADSCOPE(                                                       \
         MR_uint_least32_t   id;                                              \
     )                                                                        \
-    MR_IF_NOT_WORKSTEAL_POLLING(                                             \
-        union MR_engine_wake_action_data action_data;                        \
-    )                                                                        \
                                                                              \
     fnc_spark.MR_spark_sync_term = (MR_SyncTerm*) &(sync_term);              \
     fnc_spark.MR_spark_resume = (child);                                     \
@@ -840,15 +841,18 @@ do {                                                                         \
         id = MR_ENGINE(MR_eng_next_spark_id)++;                              \
         fnc_spark.MR_spark_id = (engine_id << 24)|(id & 0xFFFFFF);           \
     )                                                                        \
-    fnc_deque = &MR_ENGINE(MR_eng_spark_deque);                              \
+    fnc_deque = MR_ENGINE(MR_eng_spark_deque);                               \
     MR_wsdeque_push_bottom(fnc_deque, &fnc_spark);                           \
     MR_IF_THREADSCOPE(                                                       \
         MR_threadscope_post_sparking(&(sync_term), fnc_spark.MR_spark_id);   \
     )                                                                        \
     MR_IF_NOT_WORKSTEAL_POLLING(                                             \
-        action_data.MR_ewa_worksteal_engine = MR_ENGINE(MR_eng_id);          \
-        if (MR_num_idle_engines > 0) {                                       \
-            MR_try_wake_an_engine(MR_ENGINE(MR_eng_id),                      \
+        if (MR_ENGINE(MR_eng_this_context)->MR_ctxt_exclusive_engine         \
+            == MR_ENGINE_ID_NONE && MR_num_idle_ws_engines > 0)              \
+        {                                                                    \
+            union MR_engine_wake_action_data action_data;                    \
+            action_data.MR_ewa_worksteal_engine = MR_ENGINE(MR_eng_id);      \
+            MR_try_wake_ws_engine(MR_ENGINE(MR_eng_id),                      \
                 MR_ENGINE_ACTION_WORKSTEAL_ADVICE,                           \
                 &action_data, NULL);                                         \
         }                                                                    \
@@ -873,7 +877,7 @@ do {                                                                         \
   ** the first-level cache.
   */
   #define MR_par_cond_local_wsdeque_length                                    \
-      (MR_wsdeque_length(&MR_ENGINE(MR_eng_spark_deque)) < \
+      (MR_wsdeque_length(MR_ENGINE(MR_eng_spark_deque)) <                     \
         MR_granularity_wsdeque_length)
 
 extern MR_Code*
@@ -922,7 +926,7 @@ union MR_engine_wake_action_data {
 };
 
 /*
-** Try to wake a sleeping engine.
+** Try to wake a sleeping work-stealing engine.
 **
 ** preferred_engine - The engine we'd like to wake up, a nearby engine will
 **                    often be chosen so it's okay to name the current engine
@@ -939,8 +943,15 @@ union MR_engine_wake_action_data {
 ** This returns MR_TRUE if successful MR_FALSE otherwise.
 */
 MR_bool
-MR_try_wake_an_engine(MR_EngineId perferred_engine, int action,
+MR_try_wake_ws_engine(MR_EngineId perferred_engine, int action,
     union MR_engine_wake_action_data *action_data, MR_EngineId *target_engine);
+
+void
+MR_verify_initial_engine_sleep_sync(MR_EngineId id);
+
+void
+MR_verify_final_engine_sleep_sync(MR_EngineId id, MR_EngineType engine_type);
+
 #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
 
   /*

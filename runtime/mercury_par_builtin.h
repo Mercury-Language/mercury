@@ -155,7 +155,7 @@ vim: ft=c ts=4 sw=4 et
                                                                             \
                     ctxt->MR_ctxt_resume =                                  \
                         MR_ENTRY(mercury__par_builtin__wait_resume);        \
-                    ctxt->MR_ctxt_resume_owner_engine =                     \
+                    ctxt->MR_ctxt_resume_engine =                           \
                         MR_ENGINE(MR_eng_id);                               \
                     ctxt->MR_ctxt_next = Future->MR_fut_suspended;          \
                     Future->MR_fut_suspended = ctxt;                        \
@@ -392,7 +392,7 @@ extern MR_LoopControl   *MR_lc_create(unsigned num_workers);
             */                                                              \
             if ((lc)->MR_lc_outstanding_workers != 0) {                     \
                 MR_save_context(MR_ENGINE(MR_eng_this_context));            \
-                MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume_owner_engine = \
+                MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume_engine =     \
                     MR_ENGINE(MR_eng_id);                                   \
                 MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =            \
                     (part2_label);                                          \
@@ -475,7 +475,7 @@ extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
                 ctxt = MR_ENGINE(MR_eng_this_context);                      \
                 MR_save_context(ctxt);                                      \
                 ctxt->MR_ctxt_resume = retry_label;                         \
-                ctxt->MR_ctxt_resume_owner_engine = MR_ENGINE(MR_eng_id);   \
+                ctxt->MR_ctxt_resume_engine = MR_ENGINE(MR_eng_id);         \
                 (lc)->MR_lc_master_context = ctxt;                          \
                 MR_CPU_SFENCE;                                              \
                 MR_US_UNLOCK(&((lc)->MR_lc_master_context_lock));           \

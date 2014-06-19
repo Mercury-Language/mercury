@@ -985,16 +985,21 @@ static MR_bool          MR_should_gc_memory_zones(void);
 static MR_bool          MR_should_stop_gc_memory_zones(void);
 
 /*
-** TODO: These should be controlable via MERCURY_OPTIONS
+** TODO: These should be controllable via MERCURY_OPTIONS
 */
+#if defined(MR_THREAD_SAFE) && !defined(MR_HIGHLEVEL_CODE)
+    #define THREAD_COUNT    (MR_num_ws_engines + MR_thread_barrier_count)
+#else
+    #define THREAD_COUNT    (1 + MR_thread_barrier_count)
+#endif
 /* 16 zones per thread */
-#define MR_FREE_MEMORY_ZONES_NUM_HIGH   (16*MR_num_threads)
+#define MR_FREE_MEMORY_ZONES_NUM_HIGH   (16*THREAD_COUNT)
 /* 4 zones per thread */
-#define MR_FREE_MEMORY_ZONES_NUM_LOW    (4*MR_num_threads)
+#define MR_FREE_MEMORY_ZONES_NUM_LOW    (4*THREAD_COUNT)
 /* 16MB per thread */
-#define MR_FREE_MEMORY_ZONES_PAGES_HIGH (((16*1024*1024)/MR_page_size)*MR_num_threads)
+#define MR_FREE_MEMORY_ZONES_PAGES_HIGH (((16*1024*1024)/MR_page_size)*THREAD_COUNT)
 /* 4MB per thread */
-#define MR_FREE_MEMORY_ZONES_PAGES_LOW  (((4*1024*1024)/MR_page_size)*MR_num_threads)
+#define MR_FREE_MEMORY_ZONES_PAGES_LOW  (((4*1024*1024)/MR_page_size)*THREAD_COUNT)
 
 static MR_MemoryZonesFree * MR_THREADSAFE_VOLATILE
     free_memory_zones = NULL;
@@ -1219,7 +1224,8 @@ MR_should_stop_gc_memory_zones(void)
 }
 
 static void
-MR_maybe_gc_zones(void) {
+MR_maybe_gc_zones(void)
+{
     if (MR_should_gc_memory_zones()) {
         MR_gc_zones();
     }

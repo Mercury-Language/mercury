@@ -56,6 +56,17 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- interface.
+
+    % spawn_native(Closure, IO0, IO)
+    % Currently only for testing.
+    %
+:- pred spawn_native(pred(io, io)::in(pred(di, uo) is cc_multi),
+    io::di, io::uo) is cc_multi.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- pragma foreign_decl("C", "
@@ -121,9 +132,7 @@
 #if !defined(MR_HIGHLEVEL_CODE)
     MR_Context  *ctxt;
 
-    MR_LOCK(&MR_thread_barrier_lock, ""thread.spawn"");
-    MR_thread_barrier_count++;
-    MR_UNLOCK(&MR_thread_barrier_lock, ""thread.spawn"");
+    ML_incr_thread_barrier_count();
 
     ctxt = MR_create_context(""spawn"", MR_CONTEXT_SIZE_REGULAR, NULL);
     ctxt->MR_ctxt_resume = MR_ENTRY(mercury__thread__spawn_begin_thread);
@@ -141,7 +150,7 @@
 #else /* MR_HIGHLEVEL_CODE */
 
 #if defined(MR_THREAD_SAFE)
-    ML_create_thread(Goal);
+    ML_create_exclusive_thread(Goal);
 #else
     MR_fatal_error(""spawn/3 requires a .par grade in high-level C grades."");
 #endif
@@ -170,6 +179,23 @@
     Thread thread = new Thread(mt);
     thread.start();
     IO = IO0;
+").
+
+%-----------------------------------------------------------------------------%
+
+spawn_native(_Goal, !IO) :-
+    private_builtin.sorry("spawn_native").
+
+:- pragma foreign_proc("C",
+    spawn_native(Goal::(pred(di, uo) is cc_multi), _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+#ifdef MR_THREAD_SAFE
+    ML_create_exclusive_thread(Goal);
+#else
+    MR_fatal_error(""spawn_native/3 requires a .par grade."");
+#endif
 ").
 
 %-----------------------------------------------------------------------------%
@@ -258,20 +284,7 @@ INIT mercury_sys_init_thread_modules
     }
     MR_define_label(mercury__thread__spawn_end_thread);
     {
-        MR_LOCK(&MR_thread_barrier_lock, ""thread__spawn_end_thread"");
-        MR_thread_barrier_count--;
-        if (MR_thread_barrier_count == 0) {
-            /*
-            ** If this is the last spawned context to terminate and the
-            ** main context was just waiting on us in order to terminate
-            ** then reschedule the main context.
-            */
-            if (MR_thread_barrier_context) {
-                MR_schedule_context(MR_thread_barrier_context);
-                MR_thread_barrier_context = NULL;
-            }
-        }
-        MR_UNLOCK(&MR_thread_barrier_lock, ""thread__spawn_end_thread"");
+        ML_decr_thread_barrier_count();
 
         MR_save_context(MR_ENGINE(MR_eng_this_context));
         MR_release_context(MR_ENGINE(MR_eng_this_context));
@@ -318,27 +331,27 @@ INIT mercury_sys_init_thread_modules
 
 %-----------------------------------------------------------------------------%
 %
-% High-level C implementation
+% High-level C and low-level C exclusive threads
 %
 
 :- pragma foreign_decl("C", "
-#if defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
+#if defined(MR_THREAD_SAFE)
   #include  <pthread.h>
 
-  int ML_create_thread(MR_Word goal);
-  void *ML_thread_wrapper(void *arg);
+  int ML_create_exclusive_thread(MR_Word goal);
+  void *ML_exclusive_thread_wrapper(void *arg);
 
   typedef struct ML_ThreadWrapperArgs ML_ThreadWrapperArgs;
   struct ML_ThreadWrapperArgs {
         MR_Word             goal;
         MR_ThreadLocalMuts  *thread_local_mutables;
   };
-#endif /* MR_HIGHLEVEL_CODE && MR_THREAD_SAFE */
+#endif /* MR_THREAD_SAFE */
 ").
 
 :- pragma foreign_code("C", "
-#if defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
-  int ML_create_thread(MR_Word goal)
+#if defined(MR_THREAD_SAFE)
+  int ML_create_exclusive_thread(MR_Word goal)
   {
     ML_ThreadWrapperArgs    *args;
     pthread_t               thread;
@@ -354,13 +367,11 @@ INIT mercury_sys_init_thread_modules
     args->thread_local_mutables =
         MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
 
-    MR_LOCK(&MR_thread_barrier_lock, ""thread.spawn"");
-    MR_thread_barrier_count++;
-    MR_UNLOCK(&MR_thread_barrier_lock, ""thread.spawn"");
+    ML_incr_thread_barrier_count();
 
     pthread_attr_init(&attrs);
     pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
-    if (pthread_create(&thread, &attrs, ML_thread_wrapper, args)) {
+    if (pthread_create(&thread, &attrs, ML_exclusive_thread_wrapper, args)) {
         MR_fatal_error(""Unable to create thread."");
     }
     pthread_attr_destroy(&attrs);
@@ -368,7 +379,7 @@ INIT mercury_sys_init_thread_modules
     return MR_TRUE;
   }
 
-  void *ML_thread_wrapper(void *arg)
+  void *ML_exclusive_thread_wrapper(void *arg)
   {
     ML_ThreadWrapperArgs    *args = arg;
     MR_Word                 goal;
@@ -376,6 +387,13 @@ INIT mercury_sys_init_thread_modules
     if (MR_init_thread(MR_use_now) == MR_FALSE) {
         MR_fatal_error(""Unable to init thread."");
     }
+
+    /*
+    ** Set the context to have the current engine as its exclusive engine.
+    */
+    MR_assert(MR_ENGINE(MR_eng_this_context) != NULL);
+    MR_ENGINE(MR_eng_this_context)->MR_ctxt_exclusive_engine =
+        MR_ENGINE(MR_eng_id);
 
     MR_assert(MR_THREAD_LOCAL_MUTABLES == NULL);
     MR_SET_THREAD_LOCAL_MUTABLES(args->thread_local_mutables);
@@ -385,18 +403,13 @@ INIT mercury_sys_init_thread_modules
 
     ML_call_back_to_mercury_cc_multi(goal);
 
-    MR_finalize_thread_engine();;
+    MR_finalize_thread_engine();
 
-    MR_LOCK(&MR_thread_barrier_lock, ""ML_thread_wrapper"");
-    MR_thread_barrier_count--;
-    if (MR_thread_barrier_count == 0) {
-        MR_SIGNAL(&MR_thread_barrier_cond, ""ML_thread_wrapper"");
-    }
-    MR_UNLOCK(&MR_thread_barrier_lock, ""ML_thread_wrapper"");
+    ML_decr_thread_barrier_count();
 
     return NULL;
   }
-#endif /* MR_HIGHLEVEL_CODE && MR_THREAD_SAFE */
+#endif /* MR_THREAD_SAFE */
 ").
 
 :- pred call_back_to_mercury(pred(io, io), io, io).
@@ -416,6 +429,54 @@ INIT mercury_sys_init_thread_modules
 
 call_back_to_mercury(Goal, !IO) :-
     Goal(!IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C",
+"
+#if defined(MR_THREAD_SAFE) || !defined(MR_HIGHLEVEL_CODE)
+  static void ML_incr_thread_barrier_count(void);
+  static void ML_decr_thread_barrier_count(void);
+#endif
+").
+
+:- pragma foreign_code("C",
+"
+#if defined(MR_THREAD_SAFE) || !defined(MR_HIGHLEVEL_CODE)
+
+  static void ML_incr_thread_barrier_count(void)
+  {
+    MR_LOCK(&MR_thread_barrier_lock, ""ML_incr_thread_barrier_count"");
+    MR_thread_barrier_count++;
+    MR_UNLOCK(&MR_thread_barrier_lock, ""ML_incr_thread_barrier_count"");
+  }
+
+  static void ML_decr_thread_barrier_count(void)
+  {
+    MR_LOCK(&MR_thread_barrier_lock, ""ML_decr_thread_barrier_count"");
+    MR_thread_barrier_count--;
+  #ifdef MR_HIGHLEVEL_CODE
+    if (MR_thread_barrier_count == 0) {
+        MR_SIGNAL(&MR_thread_barrier_cond, ""ML_decr_thread_barrier_count"");
+    }
+  #else
+    if (MR_thread_barrier_count == 0) {
+        /*
+        ** If this is the last spawned context to terminate and the
+        ** main context was just waiting on us in order to terminate
+        ** then reschedule the main context.
+        */
+        if (MR_thread_barrier_context) {
+            MR_schedule_context(MR_thread_barrier_context);
+            MR_thread_barrier_context = NULL;
+        }
+    }
+  #endif
+    MR_UNLOCK(&MR_thread_barrier_lock, ""ML_decr_thread_barrier_count"");
+  }
+
+#endif /* MR_THREAD_SAFE || !MR_HIGHLEVEL_CODE */
+").
 
 %-----------------------------------------------------------------------------%
 
