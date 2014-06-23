@@ -193,23 +193,28 @@ static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
 #endif /* MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 
 /*
+** Detect number of processors.
+*/
+#ifdef MR_LL_PARALLEL_CONJ
+static unsigned         MR_num_processors;
+  #if defined(MR_HAVE_HWLOC)
+    static hwloc_topology_t MR_hw_topology;
+    static hwloc_cpuset_t   MR_hw_available_pus = NULL;
+  #elif defined(MR_HAVE_SCHED_SETAFFINITY)
+    static cpu_set_t        *MR_available_cpus;
+    /* The number of CPUs that MR_available_cpus can refer to */
+    static unsigned         MR_cpuset_size = 0;
+  #endif
+#endif
+
+/*
 ** Local variables for thread pinning.
 */
 #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_THREAD_PINNING)
 MR_bool                 MR_thread_pinning = MR_FALSE;
-
 static MercuryLock      MR_thread_pinning_lock;
 static unsigned         MR_num_threads_left_to_pin;
-static unsigned         MR_num_processors;
 MR_Unsigned             MR_primordial_thread_cpu;
-#ifdef MR_HAVE_HWLOC
-static hwloc_topology_t MR_hw_topology;
-static hwloc_cpuset_t   MR_hw_available_pus = NULL;
-#else /* MR_HAVE_SCHED_SETAFFINITY */
-static cpu_set_t        *MR_available_cpus;
-/* The number of CPUs that MR_available_cpus can refer to */
-static unsigned         MR_cpuset_size = 0;
-#endif
 #endif
 
 #if defined(MR_LL_PARALLEL_CONJ) && \
@@ -260,6 +265,19 @@ MR_SparkDeque           **MR_spark_deques = NULL;
 
 #ifdef MR_LL_PARALLEL_CONJ
 /*
+** Reset or initialize the cpuset that tracks which CPUs are available for
+** binding.
+*/
+static void
+MR_reset_available_cpus(void);
+
+static void
+MR_detect_num_processors(void);
+
+static void
+MR_setup_num_threads(void);
+
+/*
 ** Try to wake up a sleeping engine and tell it to do action. The engine is
 ** only woken if it is in the sleeping state.  If the engine is not sleeping
 ** use try_notify_engine below.  If the engine is woken without a race, this
@@ -293,7 +311,7 @@ static void
 MR_write_out_profiling_parallel_execution(void);
 #endif
 
-#if defined(MR_LL_PARALLEL_CONJ)
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_THREAD_PINNING)
 static void
 MR_setup_thread_pinning(void);
 
@@ -305,13 +323,6 @@ MR_do_pin_thread(int cpu);
 */
 static int
 MR_current_cpu(void);
-
-/*
-** Reset or initialize the cpuset that tracks which CPUs are available for
-** binding.
-*/
-static void
-MR_reset_available_cpus(void);
 
 /*
 ** Mark the given CPU as unavailable for thread pinning.  This may mark other
@@ -352,9 +363,16 @@ MR_init_context_stuff(void)
   #endif
 
   #ifdef MR_LL_PARALLEL_CONJ
+    MR_detect_num_processors();
+    assert(MR_num_processors > 0);
+
+    MR_setup_num_threads();
+    assert(MR_num_threads > 0);
+
     #if defined(MR_HAVE_THREAD_PINNING)
     MR_setup_thread_pinning();
     #endif
+
     MR_granularity_wsdeque_length =
         MR_granularity_wsdeque_length_factor * MR_num_threads;
 
@@ -380,10 +398,132 @@ MR_init_context_stuff(void)
 }
 
 /*
+** Detect number of processors
+*/
+
+#ifdef MR_LL_PARALLEL_CONJ
+static void
+MR_reset_available_cpus(void)
+{
+  #if defined(MR_HAVE_HWLOC)
+    hwloc_cpuset_t  inherited_binding;
+
+    /*
+    ** Gather the cpuset that our parent process bound this process to.
+    **
+    ** (For information about how to deliberately restrict a process and it's
+    ** sub-processors to a set of CPUs on Linux see cpuset(7).
+    */
+    inherited_binding = hwloc_bitmap_alloc();
+    hwloc_get_cpubind(MR_hw_topology, inherited_binding, HWLOC_CPUBIND_PROCESS);
+
+    /*
+    ** Set the available processors to the union of inherited_binding and the
+    ** cpuset we're allowed to use as reported by libhwloc.  In my tests with
+    ** libhwloc_1.0-1 (Debian) hwloc reported that all cpus on the system are
+    ** avaliable, it didn't exclude cpus not in the processor's cpuset(7).
+    */
+    if (MR_hw_available_pus == NULL) {
+        MR_hw_available_pus = hwloc_bitmap_alloc();
+    }
+    hwloc_bitmap_and(MR_hw_available_pus, inherited_binding,
+        hwloc_topology_get_allowed_cpuset(MR_hw_topology));
+
+    hwloc_bitmap_free(inherited_binding);
+  #elif defined(MR_HAVE_SCHED_GETAFFINITY)
+    unsigned cpuset_size;
+    unsigned num_processors;
+
+    if (MR_cpuset_size) {
+        cpuset_size = MR_cpuset_size;
+        num_processors = MR_num_processors;
+    } else {
+      #if defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
+        num_processors = sysconf(_SC_NPROCESSORS_ONLN);
+      #else
+        /*
+        ** Make the CPU set at least 32 processors wide.
+        */
+        num_processors = 32;
+      #endif
+        cpuset_size = CPU_ALLOC_SIZE(num_processors);
+        MR_cpuset_size = cpuset_size;
+    }
+
+    if (MR_available_cpus == NULL) {
+        MR_available_cpus = CPU_ALLOC(num_processors);
+    }
+
+    if (-1 == sched_getaffinity(0, cpuset_size, MR_available_cpus)) {
+        perror("Couldn't get CPU affinity");
+        MR_thread_pinning = MR_FALSE;
+        CPU_FREE(MR_available_cpus);
+        MR_available_cpus = NULL;
+    }
+  #endif
+}
+
+static void
+MR_detect_num_processors(void)
+{
+  #ifdef MR_HAVE_HWLOC
+    if (-1 == hwloc_topology_init(&MR_hw_topology)) {
+        MR_fatal_error("Error allocating libhwloc topology object");
+    }
+    if (-1 == hwloc_topology_load(MR_hw_topology)) {
+        MR_fatal_error("Error detecting hardware topology (hwloc)");
+    }
+  #endif
+
+    /*
+    ** Setup num processors
+    */
+    MR_reset_available_cpus();
+  #ifdef MR_HAVE_HWLOC
+    MR_num_processors = hwloc_bitmap_weight(MR_hw_available_pus);
+  #elif defined(MR_HAVE_SCHED_GETAFFINITY)
+    /*
+    ** This looks redundant but its not.  MR_num_processors is a guess that was
+    ** gathered by using sysconf.  But the number of CPUs in the CPU_SET is the
+    ** actual number of CPUs that this process is restricted to.
+    */
+    MR_num_processors = CPU_COUNT_S(MR_cpuset_size, MR_available_cpus);
+  #else
+    #warning "Cannot detect MR_num_processors"
+    MR_num_processors = 1;
+  #endif
+}
+
+static void
+MR_setup_num_threads(void)
+{
+    /*
+    ** If MR_num_threads is unset, configure it to match number of processors
+    ** on the system. If we do this, then we prepare to set processor
+    ** affinities later on.
+    */
+    if (MR_num_threads == 0) {
+        MR_num_threads = MR_num_processors;
+    }
+
+  #ifdef MR_DEBUG_THREADS
+    if (MR_debug_threads) {
+        fprintf(stderr, "Detected %d processors, will use %d threads\n",
+            MR_num_processors, MR_num_threads);
+    }
+  #endif
+}
+#endif /* MR_LL_PARALLEL_CONJ */
+
+/*
+** Thread pinning
+*/
+
+#if defined(MR_HAVE_THREAD_PINNING) && defined(MR_LL_PARALLEL_CONJ)
+/*
 ** Pin the primordial thread first to the CPU it is currently using
 ** (if support is available for thread pinning).
 */
-#if defined(MR_HAVE_THREAD_PINNING) && defined(MR_LL_PARALLEL_CONJ)
 static unsigned
 MR_pin_thread_no_locking(void)
 {
@@ -444,47 +584,7 @@ MR_pin_primordial_thread(void)
 
 static void MR_setup_thread_pinning(void)
 {
-    unsigned num_processors;
-
-#ifdef MR_HAVE_HWLOC
-    if (-1 == hwloc_topology_init(&MR_hw_topology)) {
-        MR_fatal_error("Error allocating libhwloc topology object");
-    }
-    if (-1 == hwloc_topology_load(MR_hw_topology)) {
-        MR_fatal_error("Error detecting hardware topology (hwloc)");
-    }
-#endif
-
-    /*
-    ** Setup num processors
-    */
-    MR_reset_available_cpus();
-#ifdef MR_HAVE_HWLOC
-    num_processors = hwloc_bitmap_weight(MR_hw_available_pus);
-#elif defined(MR_HAVE_SCHED_GETAFFINITY)
-    /*
-    ** This looks redundant but its not.  MR_num_processors is a guess that was
-    ** gathered by using sysconf.  But the number of CPUs in the CPU_SET is the
-    ** actual number of CPUs that this process is restricted to.
-    */
-    num_processors = CPU_COUNT_S(MR_cpuset_size, MR_available_cpus);
-#endif
-    MR_num_processors = num_processors;
-
-    /*
-    ** If MR_num_threads is unset, configure it to match number of processors
-    ** on the system. If we do this, then we prepare to set processor
-    ** affinities later on.
-    */
-    if (MR_num_threads == 0) {
-        MR_num_threads = num_processors;
-    }
     MR_num_threads_left_to_pin = MR_num_threads;
-
-#ifdef MR_DEBUG_THREAD_PINNING
-    fprintf(stderr, "Detected %d available processors, will use %d threads\n",
-        MR_num_processors, MR_num_threads);
-#endif
 
     pthread_mutex_init(&MR_thread_pinning_lock, MR_MUTEX_ATTR);
 
@@ -596,67 +696,6 @@ MR_do_pin_thread(int cpu)
     return MR_TRUE;
 }
 
-static void MR_reset_available_cpus(void)
-{
-#if defined(MR_HAVE_HWLOC)
-    hwloc_cpuset_t  inherited_binding;
-
-    /*
-    ** Gather the cpuset that our parent process bound this process to.
-    **
-    ** (For information about how to deliberately restrict a process and it's
-    ** sub-processors to a set of CPUs on Linux see cpuset(7).
-    */
-    inherited_binding = hwloc_bitmap_alloc();
-    hwloc_get_cpubind(MR_hw_topology, inherited_binding, HWLOC_CPUBIND_PROCESS);
-
-    /*
-    ** Set the available processors to the union of inherited_binding and the
-    ** cpuset we're allowed to use as reported by libhwloc.  In my tests with
-    ** libhwloc_1.0-1 (Debian) hwloc reported that all cpus on the system are
-    ** avaliable, it didn't exclude cpus not in the processor's cpuset(7).
-    */
-    if (MR_hw_available_pus == NULL) {
-        MR_hw_available_pus = hwloc_bitmap_alloc();
-    }
-    hwloc_bitmap_and(MR_hw_available_pus, inherited_binding,
-        hwloc_topology_get_allowed_cpuset(MR_hw_topology));
-
-    hwloc_bitmap_free(inherited_binding);
-#elif defined(MR_HAVE_SCHED_GETAFFINITY)
-    unsigned cpuset_size;
-    unsigned num_processors;
-
-    if (MR_cpuset_size) {
-        cpuset_size = MR_cpuset_size;
-        num_processors = MR_num_processors;
-    } else {
-  #if defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
-        num_processors = sysconf(_SC_NPROCESSORS_ONLN);
-  #else
-        /*
-        ** Make the CPU set at least 32 processors wide.
-        */
-        num_processors = 32;
-  #endif
-        cpuset_size = CPU_ALLOC_SIZE(num_processors);
-        MR_cpuset_size = cpuset_size;
-    }
-
-    if (MR_available_cpus == NULL) {
-        MR_available_cpus = CPU_ALLOC(num_processors);
-    }
-
-    if (-1 == sched_getaffinity(0, cpuset_size, MR_available_cpus))
-    {
-        perror("Couldn't get CPU affinity");
-        MR_thread_pinning = MR_FALSE;
-        CPU_FREE(MR_available_cpus);
-        MR_available_cpus = NULL;
-    }
-#endif
-}
-
 #if defined(MR_HAVE_HWLOC)
 static MR_bool MR_make_pu_unavailable(const struct hwloc_obj *pu);
 #endif
@@ -673,7 +712,8 @@ static void MR_make_cpu_unavailable(int cpu)
 }
 
 #if defined(MR_HAVE_HWLOC)
-static MR_bool MR_make_pu_unavailable(const struct hwloc_obj *pu) {
+static MR_bool MR_make_pu_unavailable(const struct hwloc_obj *pu)
+{
     hwloc_obj_t core;
     static int  siblings_to_make_unavailable;
     int         i;
