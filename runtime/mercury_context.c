@@ -46,6 +46,10 @@ ENDINIT
   #include <sys/timeb.h>    /* for _ftime() */
 #endif
 
+#ifdef MR_WIN32_GETSYSTEMINFO
+  #include "mercury_windows.h"
+#endif
+
 #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_HWLOC)
   #include <hwloc.h>
 #endif
@@ -488,6 +492,12 @@ MR_detect_num_processors(void)
     ** actual number of CPUs that this process is restricted to.
     */
     MR_num_processors = CPU_COUNT_S(MR_cpuset_size, MR_available_cpus);
+  #elif defined(MR_WIN32_GETSYSTEMINFO)
+    {
+        SYSTEM_INFO sysinfo;
+        GetSystemInfo(&sysinfo);
+        MR_num_processors = sysinfo.dwNumberOfProcessors;
+    }
   #else
     #warning "Cannot detect MR_num_processors"
     MR_num_processors = 1;
