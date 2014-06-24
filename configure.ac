@@ -1285,7 +1285,8 @@ mercury_check_for_functions \
         sysconf getpagesize gethostname \
         mprotect memalign posix_memalign memmove \
         sigaction siginterrupt setitimer \
-        snprintf _snprintf vsnprintf _vsnprintf strerror \
+        snprintf _snprintf vsnprintf _vsnprintf \
+        strerror strerror_r strerror_s \
         open close dup dup2 fdopen fileno fstat stat lstat isatty \
         getpid setpgid fork execlp wait kill \
         grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
@@ -5107,37 +5108,17 @@ AC_TRY_LINK([
         */
 
         fd = socket(addr_family, SOCK_STREAM, 0);
-        if (fd < 0) {
-            fprintf(stderr, "Mercury runtime: socket() failed: %s\n",
-                strerror(errno));
-            fatal_error("cannot open socket for debugger");
-        } else if (MR_debug_socket) {
-            fprintf(stderr,"Mercury runtime: creation of socket ok\n");
-        }
 
         /*
         ** Connect to the socket
         */
-        if (connect(fd, addr, len) < 0) {
-            fprintf(stderr, "Mercury runtime: connect() failed: %s\n",
-                strerror(errno));
-            fatal_error("can't connect to debugger socket");
-        } else if (MR_debug_socket) {
-            fprintf(stderr, "Mercury runtime: connection to socket: ok\n");
-        }
+        connect(fd, addr, len);
 
         /*
         ** Convert the socket fd to a Mercury stream
         */
         file_in = fdopen(fd, "r");
         file_out = fdopen(fd, "w");
-        if ((file_in == NULL)||(file_out == NULL)) {
-            fprintf(stderr, "Mercury runtime: fdopen() failed: %s\n",
-                strerror(errno));
-            fatal_error("cannot open debugger socket");
-        } else if (MR_debug_socket) {
-            fprintf(stderr, "Mercury runtime: fdopen(): ok\n");
-        }
     }
     changequote([,])
 ],[mercury_cv_sockets_work=yes],[mercury_cv_sockets_work=no]))

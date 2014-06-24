@@ -3,6 +3,7 @@
 */
 /*
 ** Copyright (C) 2001-2002, 2006 The University of Melbourne.
+** Copyright (C) 2014 The Mercury team.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -24,41 +25,75 @@
 
 #include    <errno.h>
 
-#ifndef MR_HAVE_STRERROR
-
-/*
-** Apparently SunOS 4.1.3 doesn't have strerror()
-**  (!%^&!^% non-ANSI systems, grumble...)
-*/
-
-extern  int     sys_nerr;
-extern  char    *sys_errlist[];
-
-char *
-strerror(int errnum)
+static void
+generic_strerror(char *buf, size_t buflen, int errnum)
 {
+#if defined(MR_HAVE_SNPRINTF)
+    snprintf(buf, buflen, "Error %d", errnum);
+#elif defined(MR_HAVE__SNPRINTF)
+    /* _snprintf does not guarantee null termination. */
+    _snprintf(buf, buflen, "Error %d", errnum);
+    if (buflen > 0) {
+        buf[buflen - 1] = '\0';
+    }
+#else
+    #error "generic_error: unable to define"
+#endif
+}
+
+const char *
+MR_strerror(int errnum, char *buf, size_t buflen)
+{
+#if defined(MR_HAVE_STRERROR_S)
+    /*
+    ** MSVC has strerror_s.  It also exists in C11 Annex K and is enabled by
+    ** defining a preprocessor macro __STDC_WANT_LIB_EXT1__
+    */
+    if (strerror_s(buf, buflen, errnum) != 0) {
+        generic_strerror(buf, buflen, errnum);
+    }
+    return buf;
+#elif defined(MR_HAVE_STRERROR_R)
+    /*
+    ** The XSI-compliant strerror_r populates buf unless it fails.
+    ** The GNU-specific strerror_r does not always populate buf.
+    */
+  #if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+    if (strerror_r(errnum, buf, buflen) != 0) {
+        generic_strerror(errnum, buf, buflen);
+    }
+    return buf;
+  #else
+    return strerror_r(errnum, buf, buflen);
+  #endif
+#else
+    /*
+    ** Fallback using deprecated variables. This is used on MinGW at least.
+    **
+    ** strerror_l is another thread-safe alternative, specified in POSIX.
+    ** It is locale-sensitive and takes a locale argument so we don't use it
+    ** for now.
+    */
     if (errnum >= 0 && errnum < sys_nerr && sys_errlist[errnum] != NULL) {
         return sys_errlist[errnum];
     } else {
-        static  char    buf[30];
-
-        sprintf(buf, "Error %d", errnum);
+        generic_strerror(buf, buflen, errnum);
         return buf;
     }
+#endif
 }
-
-#endif  /* MR_HAVE_STRERROR */
 
 FILE *
 MR_checked_fopen(const char *filename, const char *message, const char *mode)
 {
     FILE *file;
+    char errbuf[MR_STRERROR_BUF_SIZE];
 
     errno = 0;
     file = fopen(filename, mode);
     if (file == NULL) {
         fprintf(stderr, "Mercury runtime: couldn't %s file `%s': %s\n",
-            message, filename, strerror(errno));
+            message, filename, MR_strerror(errno, errbuf, sizeof(errbuf)));
         exit(EXIT_FAILURE);
     }
     return file;
@@ -67,10 +102,12 @@ MR_checked_fopen(const char *filename, const char *message, const char *mode)
 void
 MR_checked_fclose(FILE *file, const char *filename)
 {
+    char errbuf[MR_STRERROR_BUF_SIZE];
+
     errno = 0;
     if (fclose(file) != 0) {
         fprintf(stderr, "Mercury runtime: error closing file `%s': %s\n",
-            filename, strerror(errno));
+            filename, MR_strerror(errno, errbuf, sizeof(errbuf)));
         exit(EXIT_FAILURE);
     }
 }
@@ -78,10 +115,12 @@ MR_checked_fclose(FILE *file, const char *filename)
 void
 MR_checked_atexit(void (*func)(void))
 {
+    char errbuf[MR_STRERROR_BUF_SIZE];
+
     errno = 0;
     if (atexit(func) != 0) {
         fprintf(stderr, "Mercury runtime: error in call to atexit: %s\n",
-            strerror(errno));
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
         exit(EXIT_FAILURE);
     }
 }

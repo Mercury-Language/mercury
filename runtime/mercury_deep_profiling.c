@@ -24,7 +24,7 @@
 #include "mercury_stack_layout.h"
 #include "mercury_timing.h"
 #include "mercury_prof_time.h"
-#include "mercury_runtime_util.h"   /* for strerror() on some systems */
+#include "mercury_runtime_util.h"
 #include "mercury_deep_profiling.h"
 #include "mercury_deep_profiling_hand.h"
 
@@ -387,6 +387,7 @@ MR_write_out_profiling_tree(void)
     int                     ticks_per_sec;
     unsigned                num_call_seqs;
     long                    table_sizes_offset;
+    char                    errbuf[MR_STRERROR_BUF_SIZE];
 
 #ifdef MR_DEEP_PROFILING_STATISTICS
     int                     i;
@@ -396,13 +397,15 @@ MR_write_out_profiling_tree(void)
     deep_fp = fopen(MR_MDPROF_DATA_FILENAME, "wb+");
     if (deep_fp == NULL) {
         MR_fatal_error("cannot open `%s' for writing: %s",
-            MR_MDPROF_DATA_FILENAME, strerror(errno));
+            MR_MDPROF_DATA_FILENAME,
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
     procrep_fp = fopen(MR_MDPROF_PROCREP_FILENAME, "wb+");
     if (procrep_fp == NULL) {
         MR_fatal_error("cannot open `%s' for writing: %s",
-            MR_MDPROF_PROCREP_FILENAME, strerror(errno));
+            MR_MDPROF_PROCREP_FILENAME,
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
 #ifdef  MR_DEEP_PROFILING_DEBUG
@@ -667,7 +670,10 @@ MR_write_out_profiling_tree(void)
 static void
 MR_deep_data_output_error(const char *op, const char *filename)
 {
-    MR_warning("%s %s: %s", op, filename, strerror(errno));
+    char    errbuf[MR_STRERROR_BUF_SIZE];
+
+    MR_warning("%s %s: %s", op, filename,
+        MR_strerror(errno, errbuf, sizeof(errbuf)));
 
     /*
     ** An incomplete profiling data file is useless. Removing it prevents
@@ -677,12 +683,14 @@ MR_deep_data_output_error(const char *op, const char *filename)
 
     if (remove(MR_MDPROF_DATA_FILENAME) != 0) {
         MR_warning("cannot remove %s: %s",
-            MR_MDPROF_DATA_FILENAME, strerror(errno));
+            MR_MDPROF_DATA_FILENAME,
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
     if (remove(MR_MDPROF_PROCREP_FILENAME) != 0) {
         MR_warning("cannot remove %s: %s",
-            MR_MDPROF_PROCREP_FILENAME, strerror(errno));
+            MR_MDPROF_PROCREP_FILENAME,
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
     exit(1);

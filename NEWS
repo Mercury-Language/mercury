@@ -17,6 +17,7 @@ This is a bug-fix release.
 * The MinGW port now builds in the absence of POSIX threads library.
 * Low-level C parallel grades now work on Windows instead of crashing
   at startup.
+* We now use thread-safe alternatives to strerror().
 * A problem that caused string.format/[23] to sometimes return incorrect
   results when formatting floats with the 'g' conversion specifier has
   been fixed.  This bug only affected the non-C backends.  (Bug #342)

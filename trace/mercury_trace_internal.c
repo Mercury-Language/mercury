@@ -22,6 +22,7 @@
 #include "mercury_signal.h"
 #include "mercury_builtin_types.h"
 #include "mercury_deep_profiling.h"
+#include "mercury_runtime_util.h"
 
 #include "mercury_event_spec.h"
 
@@ -277,12 +278,13 @@ MR_try_fopen(const char *filename, const char *mode, FILE *default_file)
         return default_file;
     } else {
         FILE    *f;
+        char    errbuf[MR_STRERROR_BUF_SIZE];
 
         f = fopen(filename, mode);
         if (f == NULL) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: error opening `%s': %s\n",
-                filename, strerror(errno));
+                filename, MR_strerror(errno, errbuf, sizeof(errbuf)));
             return default_file;
         } else {
             return f;
@@ -683,6 +685,7 @@ MR_trace_source(const char *filename, MR_bool ignore_errors,
     char** args, int num_args)
 {
     FILE    *fp;
+    char    errbuf[MR_STRERROR_BUF_SIZE];
 
     if ((fp = fopen(filename, "r")) != NULL) {
         MR_trace_source_from_open_file(fp, args, num_args);
@@ -692,7 +695,8 @@ MR_trace_source(const char *filename, MR_bool ignore_errors,
 
     if (! ignore_errors) {
         fflush(MR_mdb_out);
-        fprintf(MR_mdb_err, "%s: %s.\n", filename, strerror(errno));
+        fprintf(MR_mdb_err, "%s: %s.\n",
+            filename, MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
     return MR_FALSE;

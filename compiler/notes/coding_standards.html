@@ -174,7 +174,7 @@ Error messages from the runtime system should begin with the text
 
 If a system call or C library function that sets errno fails,
 the error message should be printed with perror()
-or should contain strerror(errno).
+or should contain MR_strerror(errno, errbuf, sizeof(errbuf)).
 If it was a function manipulating some file,
 the error message should include the filename.
 
