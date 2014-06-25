@@ -141,6 +141,8 @@ GC_INNER GC_thread GC_start_rtn_prepare_thread(void *(**pstart)(void *),
                                         struct GC_stack_base *sb, void *arg);
 GC_INNER void GC_thread_exit_proc(void *);
 
+GC_INNER void GC_setup_mark_lock(void);
+
 #endif /* GC_PTHREADS && !GC_WIN32_THREADS */
 
 #endif /* GC_PTHREAD_SUPPORT_H */
