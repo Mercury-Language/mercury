@@ -65,23 +65,16 @@ For examples of larger programs, download the Mercury source distribution -
 the Mercury compiler and the Mercury profiler are written in Mercury.
 
 For more information about Mercury, see the Mercury WWW home page at
-<http://www.mercury.csse.unimelb.edu.au>, or send mail to
-mercury@csse.unimelb.edu.au.
+<http://www.mercurylang.org>.
 
-If you would like to join the Mercury mailing lists (there are two,
-mercury-users for general discussion, and mercury-announce for
-announcements), send mail with "subscribe" in the body to
-mercury-users-request@csse.unimelb.edu.au or
-mercury-announce-request@csse.unimelb.edu.au (respectively).
+If you would like to join the Mercury mailing lists information can be found
+here <http://www.mercurylang.org/contact.html>.  This page also provides
+information about how to send us bug reports, enhancement requests,
+suggestions for improvements, and any other feedback.  If you find something
+you don't like, please tell us.  If you find something you do like, please
+tell the world!
 
-Please send bug reports, enhancement requests, suggestions for improvements,
-and any other feedback to mercury-bugs@csse.unimelb.edu.au or
-mercury@csse.unimelb.edu.au.
-If you find something you don't like, please tell us.
-If you find something you do like, please tell the world!
+The Mercury binary and source distributions are available via http from the
+following location:
 
-The Mercury binary and source distributions are available via anonymous
-ftp or WWW from the following locations:
-
-	Home site:
-	    Australia:	ftp://ftp.mercury.csse.unimelb.edu.au/pub/mercury/
+    http://dl.mercurylang.org/index.html
