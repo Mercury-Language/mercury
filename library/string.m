@@ -4034,7 +4034,7 @@ calculate_base_unsafe(Float, Prec) = Exp :-
             DecimalPos + Prec + 1)
     ; Place > 0 ->
         ExpMantissaStr = string.between(MantissaStr, 0, 1),
-        FirstHalfOfFractionStr = string.between(MantissaStr, 1, Place),
+        FirstHalfOfFractionStr = string.between(MantissaStr, 1, Place + 1),
         ExpFractionStr = FirstHalfOfFractionStr ++ FractionStr
     ;
         ExpMantissaStr = MantissaStr,

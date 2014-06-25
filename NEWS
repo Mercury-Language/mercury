@@ -15,6 +15,9 @@ This is a bug-fix release.
 * We have added workarounds for problems with (arguably broken)
   system headers on MinGW and MinGW64 systems.
 * The MinGW port now builds in the absence of POSIX threads library.
+* A problem that caused string.format/[23] to sometimes return incorrect
+  results when formatting floats with the 'g' conversion specifier has
+  been fixed.  This bug only affected the non-C backends.  (Bug #342)
 
 Changes to the Mercury compiler:
 
