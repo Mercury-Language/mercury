@@ -55,10 +55,11 @@ MR_strerror(int errnum, char *buf, size_t buflen)
     return buf;
 #elif defined(MR_HAVE_STRERROR_R)
     /*
-    ** The XSI-compliant strerror_r populates buf unless it fails.
+    ** The XSI-compliant and Mac OS X strerror_r populates buf unless it fails.
     ** The GNU-specific strerror_r does not always populate buf.
     */
-  #if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+  #if defined(MR_MAC_OSX) || \
+       ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE)
     if (strerror_r(errnum, buf, buflen) != 0) {
         generic_strerror(errnum, buf, buflen);
     }
