@@ -120,6 +120,7 @@
 #include "mercury_string.h"
 #include "mercury_timing.h"
 #include "mercury_trace_base.h"
+#include "mercury_runtime_util.h"
 
 #include "mdb.declarative_debugger.mh"
 #include "mdb.declarative_execution.mh"
@@ -1712,9 +1713,11 @@ MR_trace_start_decl_debug(MR_DeclMode mode, const char *outfile,
     if (mode == MR_DECL_DUMP) {
         out = fopen(outfile, "w");
         if (out == NULL) {
+            char    errbuf[MR_STRERROR_BUF_SIZE];
+
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: cannot open file `%s' for output: %s.\n",
-                outfile, strerror(errno));
+                outfile, MR_strerror(errno, errbuf, sizeof(errbuf)));
             return MR_FALSE;
         } else {
             MR_trace_store_file = out;

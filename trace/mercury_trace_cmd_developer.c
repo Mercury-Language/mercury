@@ -26,6 +26,7 @@
 #include "mercury_tabling.h"
 #include "mercury_trace_base.h"
 #include "mercury_regs.h"
+#include "mercury_runtime_util.h"
 
 #include "mercury_trace_internal.h"
 #include "mercury_trace_cmds.h"
@@ -647,6 +648,7 @@ MR_trace_cmd_stats(char **words, int word_count, MR_TraceCmdInfo *cmd,
     char    *filename;
     FILE    *fp;
     MR_bool should_close;
+    char    errbuf[MR_STRERROR_BUF_SIZE];
 
     filename = NULL;
     if (! MR_trace_options_stats(&filename, &words, &word_count)) {
@@ -664,7 +666,7 @@ MR_trace_cmd_stats(char **words, int word_count, MR_TraceCmdInfo *cmd,
         if (fp == NULL) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: error opening `%s': %s.\n",
-                filename, strerror(errno));
+                filename, MR_strerror(errno, errbuf, sizeof(errbuf)));
             return KEEP_INTERACTING;
         }
 
@@ -1248,6 +1250,7 @@ MR_trace_cmd_all_procedures(char **words, int word_count,
     MR_bool         uci;
     FILE            *fp;
     char            *module;
+    char            errbuf[MR_STRERROR_BUF_SIZE];
 
     MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
 
@@ -1264,14 +1267,14 @@ MR_trace_cmd_all_procedures(char **words, int word_count,
         if (fp == NULL) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: error opening `%s': %s.\n",
-                filename, strerror(errno));
+                filename, MR_strerror(errno, errbuf, sizeof(errbuf)));
             return KEEP_INTERACTING;
         }
 
         MR_dump_module_tables(fp, separate, uci, module);
         if (fclose(fp) != 0) {
             fprintf(MR_mdb_err, "mdb: error writing to `%s': %s.\n",
-                filename, strerror(errno));
+                filename, MR_strerror(errno, errbuf, sizeof(errbuf)));
             return KEEP_INTERACTING;
         } else {
             fprintf(MR_mdb_out, "mdb: wrote table to `%s'.\n", filename);
@@ -1292,6 +1295,7 @@ MR_trace_cmd_ambiguity(char **words, int word_count,
     MR_bool         print_types;
     MR_bool         print_functors;
     FILE            *fp;
+    char            errbuf[MR_STRERROR_BUF_SIZE];
 
     filename = NULL;
     print_procs = MR_FALSE;
@@ -1317,7 +1321,7 @@ MR_trace_cmd_ambiguity(char **words, int word_count,
             if (fp == NULL) {
                 fflush(MR_mdb_out);
                 fprintf(MR_mdb_err, "mdb: error opening `%s': %s.\n",
-                    filename, strerror(errno));
+                    filename, MR_strerror(errno, errbuf, sizeof(errbuf)));
                 return KEEP_INTERACTING;
             }
         }

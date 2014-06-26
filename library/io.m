@@ -2576,7 +2576,7 @@ io.check_err(Stream, Res, !IO) :-
     }
 
     ML_maybe_make_err_msg(RetVal != 0, errno, ""read failed: "",
-        MR_ALLOC_ID, MR_TRUE, RetStr);
+        MR_ALLOC_ID, RetStr);
 ").
 
 :- pragma foreign_proc("C#",
@@ -2656,10 +2656,10 @@ io.make_err_msg(Msg0, Msg, !IO) :-
 
 :- pragma foreign_proc("C",
     make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-    ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, MR_ALLOC_ID, MR_FALSE, Msg);
+    ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, MR_ALLOC_ID, Msg);
 ").
 
 :- pragma foreign_proc("C#",
@@ -2879,7 +2879,7 @@ io.file_modification_time(File, Result, !IO) :-
         Status = 1;
     } else {
         ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
-            MR_ALLOC_ID, MR_TRUE, Msg);
+            MR_ALLOC_ID, Msg);
         Status = 0;
         Time = 0;   /* Dummy value -- will not be used. */
     }
@@ -3978,7 +3978,7 @@ io.file_id(FileName, Result, !IO) :-
         Status = 1;
     } else {
         ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
-            MR_ALLOC_ID, MR_TRUE, Msg);
+            MR_ALLOC_ID, Msg);
         Status = 0;
     }
 #else
@@ -5721,6 +5721,7 @@ io.get_io_output_stream_type(Type, !IO) :-
 #include ""mercury_file.h""
 #include ""mercury_heap.h""
 #include ""mercury_misc.h""
+#include ""mercury_runtime_util.h""
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -5765,7 +5766,7 @@ int             mercury_next_stream_id(void);
 MercuryFilePtr  mercury_open(const char *filename, const char *openmode,
                     MR_AllocSiteInfoPtr alloc_id);
 void            mercury_io_error(MercuryFilePtr mf, const char *format, ...);
-void            mercury_output_error(MercuryFilePtr mf);
+void            mercury_output_error(MercuryFilePtr mf, int errnum);
 void            mercury_print_string(MercuryFilePtr mf, const char *s);
 int             mercury_get_byte(MercuryFilePtr mf);
 void            mercury_close(MercuryFilePtr mf);
@@ -7131,10 +7132,12 @@ mercury_io_error(MercuryFilePtr mf, const char *format, ...)
 :- pragma foreign_code("C", "
 
 void
-mercury_output_error(MercuryFilePtr mf)
+mercury_output_error(MercuryFilePtr mf, int errnum)
 {
+    char errbuf[MR_STRERROR_BUF_SIZE];
+
     mercury_io_error(mf, ""error writing to output file: %s"",
-        strerror(errno));
+        MR_strerror(errnum, errbuf, sizeof(errbuf)));
 }
 
 ").
@@ -7145,7 +7148,7 @@ void
 mercury_print_string(MercuryFilePtr mf, const char *s)
 {
     if (ML_fprintf(mf, ""%s"", s) < 0) {
-        mercury_output_error(mf);
+        mercury_output_error(mf, errno);
     }
     while (*s) {
         if (*s++ == '\\n') {
@@ -7404,6 +7407,8 @@ static const MercuryFile MR_closed_stream = {
 void
 mercury_close(MercuryFilePtr mf)
 {
+    char errbuf[MR_STRERROR_BUF_SIZE];
+
     /*
     ** On some systems attempting to close a file stream that has been
     ** previously closed will lead to a segmentation fault.  We check
@@ -7415,7 +7420,8 @@ mercury_close(MercuryFilePtr mf)
     }
 
     if (MR_CLOSE(*mf) < 0) {
-        mercury_io_error(mf, ""error closing file: %s"", strerror(errno));
+        mercury_io_error(mf, ""error closing file: %s"",
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
 #ifdef MR_NEW_MERCURYFILE_STRUCT
@@ -7822,7 +7828,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     size_t  i;
     if (Character <= 0x7f) {
         if (MR_PUTCH(*out, Character) < 0) {
-            mercury_output_error(out);
+            mercury_output_error(out, errno);
         }
         if (Character == '\\n') {
             MR_line_number(*out)++;
@@ -7831,7 +7837,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
         len = MR_utf8_encode(buf, Character);
         for (i = 0; i < len; i++) {
             if (MR_PUTCH(*out, buf[i]) < 0) {
-                mercury_output_error(out);
+                mercury_output_error(out, errno);
                 break;
             }
         }
@@ -7845,7 +7851,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
 "
     MercuryFilePtr out = mercury_current_text_output();
     if (ML_fprintf(out, ""%"" MR_INTEGER_LENGTH_MODIFIER ""d"", Val) < 0) {
-        mercury_output_error(out);
+        mercury_output_error(out, errno);
     }
 ").
 
@@ -7860,7 +7866,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     MR_sprintf_float(buf, Val);
     out = mercury_current_text_output();
     if (ML_fprintf(out, ""%s"", buf) < 0) {
-        mercury_output_error(out);
+        mercury_output_error(out, errno);
     }
 ").
 
@@ -7873,7 +7879,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     if (MR_PUTCH(*mercury_current_binary_output(),
         (int) ((unsigned char) Byte)) < 0)
     {
-        mercury_output_error(mercury_current_text_output());
+        mercury_output_error(mercury_current_text_output(), errno);
     }
 ").
 
@@ -7892,7 +7898,7 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 "
     MercuryFilePtr out = mercury_current_text_output();
     if (MR_FLUSH(*out) < 0) {
-        mercury_output_error(out);
+        mercury_output_error(out, errno);
     }
 ").
 
@@ -7903,7 +7909,7 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 "
     MercuryFilePtr out = mercury_current_binary_output();
     if (MR_FLUSH(*out) < 0) {
-        mercury_output_error(out);
+        mercury_output_error(out, errno);
     }
 ").
 
@@ -8163,7 +8169,7 @@ io.write_char(output_stream(Stream), Character, !IO) :-
 "
     if (Character <= 0x7f) {
         if (MR_PUTCH(*Stream, Character) < 0) {
-            mercury_output_error(Stream);
+            mercury_output_error(Stream, errno);
         }
         if (Character == '\\n') {
             MR_line_number(*Stream)++;
@@ -8175,7 +8181,7 @@ io.write_char(output_stream(Stream), Character, !IO) :-
         len = MR_utf8_encode(buf, Character);
         for (i = 0; i < len; i++) {
             if (MR_PUTCH(*Stream, buf[i]) < 0) {
-                mercury_output_error(Stream);
+                mercury_output_error(Stream, errno);
                 break;
             }
         }
@@ -8192,7 +8198,7 @@ io.write_int(output_stream(Stream), Val, !IO) :-
         does_not_affect_liveness, no_sharing],
 "
     if (ML_fprintf(Stream, ""%"" MR_INTEGER_LENGTH_MODIFIER ""d"", Val) < 0) {
-        mercury_output_error(Stream);
+        mercury_output_error(Stream, errno);
     }
 ").
 
@@ -8208,7 +8214,7 @@ io.write_float(output_stream(Stream), Val, !IO) :-
     char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
     MR_sprintf_float(buf, Val);
     if (ML_fprintf(Stream, ""%s"", buf) < 0) {
-        mercury_output_error(Stream);
+        mercury_output_error(Stream, errno);
     }
 ").
 
@@ -8223,7 +8229,7 @@ io.write_byte(binary_output_stream(Stream), Byte, !IO) :-
 "
     /* call putc with a strictly non-negative byte-sized integer */
     if (MR_PUTCH(*Stream, (int) ((unsigned char) Byte)) < 0) {
-        mercury_output_error(Stream);
+        mercury_output_error(Stream, errno);
     }
 ").
 
@@ -8283,7 +8289,7 @@ io.flush_output(output_stream(Stream), !IO) :-
         does_not_affect_liveness, no_sharing],
 "
     if (MR_FLUSH(*Stream) < 0) {
-        mercury_output_error(Stream);
+        mercury_output_error(Stream, errno);
     }
 ").
 
@@ -8297,7 +8303,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
         does_not_affect_liveness, no_sharing],
 "
     if (MR_FLUSH(*Stream) < 0) {
-        mercury_output_error(Stream);
+        mercury_output_error(Stream, errno);
     }
 ").
 
@@ -9756,7 +9762,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
         Status = 127;
         ML_maybe_make_err_msg(MR_TRUE, errno,
             ""error invoking system command: "",
-            MR_ALLOC_ID, MR_TRUE, Msg);
+            MR_ALLOC_ID, Msg);
     } else {
         /* Wait for the spawned process to exit. */
         do {
@@ -9766,7 +9772,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
             Status = 127;
             ML_maybe_make_err_msg(MR_TRUE, errno,
                 ""error invoking system command: "",
-                MR_ALLOC_ID, MR_TRUE, Msg);
+                MR_ALLOC_ID, Msg);
         } else {
             Status = st;
             Msg = MR_make_string_const("""");
@@ -9790,7 +9796,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
         Status = 127;
         ML_maybe_make_err_msg(MR_TRUE, errno,
             ""error invoking system command: "",
-            MR_ALLOC_ID, MR_TRUE, Msg);
+            MR_ALLOC_ID, Msg);
     } else {
         Msg = MR_make_string_const("""");
     }
@@ -10329,7 +10335,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
     if (fd == -1) {
         ML_maybe_make_err_msg(MR_TRUE, errno,
             ""error opening temporary file: "", MR_ALLOC_ID,
-            MR_TRUE, ErrorMessage);
+            ErrorMessage);
         Error = -1;
     } else {
         do {
@@ -10337,7 +10343,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         } while (err == -1 && MR_is_eintr(errno));
         ML_maybe_make_err_msg(err, errno,
             ""error closing temporary file: "", MR_ALLOC_ID,
-            MR_TRUE, ErrorMessage);
+            ErrorMessage);
         Error = err;
     }
 #else
@@ -10386,7 +10392,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
     if (fd == -1) {
         ML_maybe_make_err_msg(MR_TRUE, errno,
             ""error opening temporary file: "", MR_ALLOC_ID,
-            MR_TRUE, ErrorMessage);
+            ErrorMessage);
         Error = -1;
     }  else {
         do {
@@ -10394,7 +10400,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         } while (err == -1 && MR_is_eintr(errno));
         ML_maybe_make_err_msg(err, errno,
             ""error closing temporary file: "", MR_ALLOC_ID,
-            MR_TRUE, ErrorMessage);
+            ErrorMessage);
         Error = err;
     }
 #endif
@@ -10550,11 +10556,9 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 #include <errno.h>
 
 /*
-** ML_maybe_make_err_msg(was_error, errno, msg, alloc_id, req_lock, error_msg):
-** if `was_error' is true, then append `msg' and `strerror(errno)'
+** ML_maybe_make_err_msg(was_error, errnum, msg, alloc_id, error_msg):
+** if `was_error' is true, then append `msg' and a message for errnum
 ** to give `error_msg'; otherwise, set `error_msg' to "".
-** `req_lock' must be true iff the caller is marked `thread_safe' as the
-** underlying strerror() function is not thread-safe.
 **
 ** WARNING: this must only be called when the `hp' register is valid.
 ** That means it must only be called from procedures declared
@@ -10565,18 +10569,15 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 ** invalidated by the function call.
 */
 
-#define ML_maybe_make_err_msg(was_error, error, msg, alloc_id, req_lock,   \\
-            error_msg)                                                     \\
+#define ML_maybe_make_err_msg(was_error, errnum, msg, alloc_id, error_msg) \\
     do {                                                                   \\
-        char    *errno_msg;                                                \\
+        char    errbuf[MR_STRERROR_BUF_SIZE];                              \\
+        const char *errno_msg;                                             \\
         size_t  total_len;                                                 \\
         MR_Word tmp;                                                       \\
                                                                            \\
         if (was_error) {                                                   \\
-            if (req_lock) {                                                \\
-                MR_OBTAIN_GLOBAL_LOCK(""ML_maybe_make_err_msg"");          \\
-            }                                                              \\
-            errno_msg = strerror(error);                                   \\
+            errno_msg = MR_strerror(errnum, errbuf, sizeof(errbuf));       \\
             total_len = strlen(msg) + strlen(errno_msg);                   \\
             MR_offset_incr_hp_atomic_msg(tmp, 0,                           \\
                 (total_len + sizeof(MR_Word)) / sizeof(MR_Word),           \\
@@ -10584,9 +10585,6 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
             (error_msg) = (char *) tmp;                                    \\
             strcpy((error_msg), msg);                                      \\
             strcat((error_msg), errno_msg);                                \\
-            if (req_lock) {                                                \\
-                MR_RELEASE_GLOBAL_LOCK(""ML_maybe_make_err_msg"");         \\
-            }                                                              \\
         } else {                                                           \\
             /*                                                             \\
             ** We can't just return NULL here, because otherwise mdb       \\
@@ -10687,7 +10685,7 @@ io.remove_file(FileName, Result, !IO) :-
     RetVal = remove(FileName);
 #endif
     ML_maybe_make_err_msg(RetVal != 0, errno, ""remove failed: "",
-        MR_ALLOC_ID, MR_TRUE, RetStr);
+        MR_ALLOC_ID, RetStr);
 ").
 
 :- pragma foreign_proc("C#",
@@ -10830,7 +10828,7 @@ io.rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
     RetVal = rename(OldFileName, NewFileName);
 #endif
     ML_maybe_make_err_msg(RetVal != 0, errno, ""rename failed: "",
-        MR_ALLOC_ID, MR_TRUE, RetStr);
+        MR_ALLOC_ID, RetStr);
 ").
 
 :- pragma foreign_proc("C#",

@@ -22,6 +22,7 @@
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
+#include "mercury_runtime_util.h"
 
 #include "mercury_trace_internal.h"
 #include "mercury_trace_cmds.h"
@@ -65,7 +66,7 @@ MR_trace_cmd_histogram_all(char **words, int word_count,
         if (fp == NULL) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: cannot open file `%s' for output: %s.\n",
-                words[1], strerror(errno));
+                words[1], MR_strerror(errno, errbuf, sizeof(errbuf)));
         } else {
             MR_trace_print_histogram(fp, "All-inclusive",
                 MR_trace_histogram_all,
@@ -73,7 +74,7 @@ MR_trace_cmd_histogram_all(char **words, int word_count,
             if (fclose(fp) != 0) {
                 fflush(MR_mdb_out);
                 fprintf(MR_mdb_err, "mdb: error closing file `%s': %s.\n",
-                    words[1], strerror(errno));
+                    words[1], MR_strerror(errno, errbuf, sizeof(errbuf)));
             }
         }
     } else {
@@ -103,7 +104,7 @@ MR_trace_cmd_histogram_exp(char **words, int word_count,
         if (fp == NULL) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: cannot open file `%s' for output: %s.\n",
-                words[1], strerror(errno));
+                words[1], MR_strerror(errno, errbuf, sizeof(errbuf)));
         } else {
             MR_trace_print_histogram(fp, "Experimental",
                 MR_trace_histogram_exp,
@@ -111,7 +112,7 @@ MR_trace_cmd_histogram_exp(char **words, int word_count,
             if (fclose(fp) != 0) {
                 fflush(MR_mdb_out);
                 fprintf(MR_mdb_err, "mdb: error closing file `%s': %s.\n",
-                    words[1], strerror(errno));
+                    words[1], MR_strerror(errno, errbuf, sizeof(errbuf)));
             }
         }
     } else {
@@ -233,6 +234,7 @@ MR_trace_print_dice(char *pass_trace_counts_file,
     MR_String   aligned_sort_str;
     MR_String   aligned_module;
     FILE        *fp;
+    char        errbuf[MR_STRERROR_BUF_SIZE];
 
     MR_TRACE_USE_HP(
         MR_make_aligned_string(aligned_pass_trace_counts_file,
@@ -264,12 +266,12 @@ MR_trace_print_dice(char *pass_trace_counts_file,
                 if (fclose(fp) != 0) {
                     fflush(MR_mdb_out);
                     fprintf(MR_mdb_err, "mdb: Error closing file `%s': %s\n",
-                        out_file, strerror(errno));
+                        out_file, MR_strerror(errno, errbuf, sizeof(errbuf)));
                 }
             } else {
                 fflush(MR_mdb_out);
                 fprintf(MR_mdb_err, "mdb: Error opening file `%s': %s\n",
-                    out_file, strerror(errno));
+                    out_file, MR_strerror(errno, errbuf, sizeof(errbuf)));
             }
         }
     } else {

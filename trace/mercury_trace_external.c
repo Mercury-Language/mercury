@@ -38,6 +38,7 @@
 #include "type_desc.mh"
 
 #include "mercury_deep_copy.h"
+#include "mercury_runtime_util.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -317,6 +318,7 @@ MR_trace_init_external(void)
     struct sockaddr     *addr;
     MR_Word             debugger_request;
     MR_Integer          debugger_request_type;
+    char                errbuf[MR_STRERROR_BUF_SIZE];
 
     /*
     ** MR_external_mmc_options contains the options to pass to mmc
@@ -405,7 +407,7 @@ MR_trace_init_external(void)
     fd = socket(addr_family, SOCK_STREAM, 0);
     if (fd < 0) {
         fprintf(stderr, "Mercury runtime: socket() failed: %s\n",
-            strerror(errno));
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
         MR_fatal_error("cannot open socket for debugger");
     } else if (MR_debug_socket) {
         fprintf(stderr,"Mercury runtime: creation of socket ok\n");
@@ -417,7 +419,7 @@ MR_trace_init_external(void)
 
     if (connect(fd, addr, len) < 0) {
         fprintf(stderr, "Mercury runtime: connect() failed: %s\n",
-            strerror(errno));
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
         MR_fatal_error("can't connect to debugger socket");
     } else if (MR_debug_socket) {
         fprintf(stderr, "Mercury runtime: connection to socket: ok\n");
@@ -431,7 +433,7 @@ MR_trace_init_external(void)
     file_out = fdopen(fd, "w");
     if ((file_in == NULL)||(file_out == NULL)) {
         fprintf(stderr, "Mercury runtime: fdopen() failed: %s\n",
-            strerror(errno));
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
         MR_fatal_error("cannot open debugger socket");
     } else if (MR_debug_socket) {
         fprintf(stderr, "Mercury runtime: fdopen(): ok\n");

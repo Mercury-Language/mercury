@@ -293,12 +293,14 @@
     shutdown(Fd, 2);
 ").
 
-    % XXX thread safe?
 :- pragma foreign_proc("C",
     error_message(Err::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    MR_make_aligned_string_copy(Err, strerror(socket_errno));
+    char errbuf[MR_STRERROR_BUF_SIZE];
+
+    MR_make_aligned_string_copy(Err,
+        MR_strerror(socket_errno, errbuf, sizeof(errbuf)));
 ").
 
 %-----------------------------------------------------------------------------%

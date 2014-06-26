@@ -399,6 +399,7 @@ MR_write_complexity_proc(MR_ComplexityProc *proc)
     int                     num_slots;
     MR_ComplexityPastSlots  *past_slots;
     char                    *cmd_buf;
+    char                    errbuf[MR_STRERROR_BUF_SIZE];
 
     full_proc_name_len = strlen(proc->MR_clp_full_proc_name);
     full_proc_name = MR_malloc(100 + full_proc_name_len);
@@ -422,7 +423,8 @@ MR_write_complexity_proc(MR_ComplexityProc *proc)
             if (! MR_have_printed_complexity_dirs_error) {
                 fprintf(stderr, "%s: cannot create %s and %s: %s\n",
                     MR_progname, MR_COMPLEXITY_ARGS_DIR,
-                    MR_COMPLEXITY_DATA_DIR, strerror(errno));
+                    MR_COMPLEXITY_DATA_DIR,
+                    MR_strerror(errno, errbuf, sizeof(errbuf)));
                 /* there is no point in aborting */
                 MR_have_printed_complexity_dirs_error = MR_TRUE;
                 return;
@@ -440,7 +442,8 @@ MR_write_complexity_proc(MR_ComplexityProc *proc)
         fp = fopen(args_filename, "w");
         if (fp == NULL) {
             fprintf(stderr, "%s: cannot open %s: %s\n",
-                MR_progname, args_filename, strerror(errno));
+                MR_progname, args_filename,
+                MR_strerror(errno, errbuf, sizeof(errbuf)));
             /* there is no point in aborting */
             return;
         }
@@ -458,7 +461,8 @@ MR_write_complexity_proc(MR_ComplexityProc *proc)
         fp = fopen(tmp_filename, "w");
         if (fp == NULL) {
             fprintf(stderr, "%s: cannot open %s: %s\n",
-                MR_progname, tmp_filename, strerror(errno));
+                MR_progname, tmp_filename,
+                MR_strerror(errno, errbuf, sizeof(errbuf)));
             /* there is no point in aborting */
             return;
         }
@@ -484,7 +488,8 @@ MR_write_complexity_proc(MR_ComplexityProc *proc)
     fp = fopen(data_filename, data_filemode);
     if (fp == NULL) {
         fprintf(stderr, "%s: cannot open %s: %s\n",
-            MR_progname, data_filename, strerror(errno));
+            MR_progname, data_filename,
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
         /* there is no point in aborting */
         return;
     }

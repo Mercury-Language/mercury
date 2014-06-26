@@ -27,7 +27,7 @@ ENDINIT
 #include "mercury_misc.h"
 #include "mercury_hash_table.h"
 #include "mercury_layout_util.h"    /* for MR_generate_proc_name_from_layout */
-#include "mercury_runtime_util.h"   /* for strerror() on some systems */
+#include "mercury_runtime_util.h"   /* for MR_strerror */
 #include "mercury_signal.h"         /* for MR_setup_signal() */
 #include "mercury_builtin_types.h"  /* for type_ctor_infos */
 #include "mercury_array_macros.h"   /* for type_ctor_infos */
@@ -283,6 +283,7 @@ MR_trace_record_label_exec_counts(void *dummy)
     MR_bool     keep;
     char        *slash;
     const char  *program_name;
+    char        errbuf[MR_STRERROR_BUF_SIZE];
 
     program_name = MR_copy_string(MR_progname);
     slash = strrchr(program_name, '/');
@@ -364,7 +365,8 @@ MR_trace_record_label_exec_counts(void *dummy)
             summarize = MR_FALSE;
         }
     } else {
-        fprintf(stderr, "%s: %s\n", name, strerror(errno));
+        fprintf(stderr, "%s: %s\n", name,
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
         /*
         ** You can't summarize a file list if you can't create
         ** one of its files.
@@ -934,6 +936,7 @@ MR_trace_report(FILE *fp)
 #ifdef  MR_TRACE_HISTOGRAM
         {
             FILE    *hfp;
+            char    errbuf[MR_STRERROR_BUF_SIZE];
 
             hfp = fopen(MR_TRACE_HISTOGRAM_FILENAME, "w");
             if (hfp != NULL) {
@@ -944,11 +947,13 @@ MR_trace_report(FILE *fp)
                         MR_TRACE_HISTOGRAM_FILENAME);
                 } else {
                     fprintf(fp, "Cannot put event histogram into `%s': %s."
-                        MR_TRACE_HISTOGRAM_FILENAME, strerror(errno));
+                        MR_TRACE_HISTOGRAM_FILENAME,
+                        MR_strerror(errno, errbuf, sizeof(errbuf)));
                 }
             } else {
                 fprintf(fp, "Cannot open `%s': %s.\n"
-                    MR_TRACE_HISTOGRAM_FILENAME, strerror(errno));
+                    MR_TRACE_HISTOGRAM_FILENAME,
+                    MR_strerror(errno, errbuf, sizeof(errbuf)));
             }
         }
 #endif  /* MR_TRACE_HISTOGRAM */

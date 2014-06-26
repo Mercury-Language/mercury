@@ -185,6 +185,7 @@ read_specs_file_2(MR_AllocSiteInfoPtr alloc_id, MR_String specs_file_name,
 {
     int         spec_fd;
     MR_String   problem;
+    char        errbuf[MR_STRERROR_BUF_SIZE];
 
     /*
     ** There are race conditions between opening the file, stat'ing the file
@@ -195,7 +196,7 @@ read_specs_file_2(MR_AllocSiteInfoPtr alloc_id, MR_String specs_file_name,
     spec_fd = open(specs_file_name, O_RDONLY);
     if (spec_fd < 0) {
         problem = MR_make_string(alloc_id, ""could not open %s: %s"",
-            specs_file_name, strerror(errno));
+            specs_file_name, MR_strerror(errno, errbuf, sizeof(errbuf)));
     } else {
         problem = read_specs_file_3(alloc_id, specs_file_name,
             term_file_name, spec_fd);
@@ -256,11 +257,13 @@ read_specs_file_4(MR_AllocSiteInfoPtr alloc_id, MR_String specs_file_name,
                 specs_file_name);
         } else {
             FILE *term_fp;
+            char errbuf[MR_STRERROR_BUF_SIZE];
 
             term_fp = fopen(term_file_name, ""w"");
             if (term_fp == NULL) {
                 problem = MR_make_string(alloc_id, ""could not open %s: %s"",
-                    term_file_name, strerror(errno));
+                    term_file_name,
+                    MR_strerror(errno, errbuf, sizeof(errbuf)));
             } else {
                 MR_print_event_set(term_fp, event_set);
                 fclose(term_fp);

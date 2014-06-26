@@ -22,6 +22,7 @@
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
+#include "mercury_runtime_util.h"
 
 #include "mercury_trace_internal.h"
 #include "mercury_trace_cmds.h"
@@ -80,12 +81,13 @@ MR_trace_cmd_save(char **words, int word_count, MR_TraceCmdInfo *cmd,
         FILE    *fp;
         MR_bool found_error;
         MR_Word path_list;
+        char    errbuf[MR_STRERROR_BUF_SIZE];
 
         fp = fopen(words[1], "w");
         if (fp == NULL) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: error opening `%s': %s.\n",
-                words[1], strerror(errno));
+                words[1], MR_strerror(errno, errbuf, sizeof(errbuf)));
             return KEEP_INTERACTING;
         }
 
@@ -204,7 +206,7 @@ MR_trace_cmd_save(char **words, int word_count, MR_TraceCmdInfo *cmd,
         } else if (fclose(fp) != 0) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: error closing `%s': %s.\n",
-                words[1], strerror(errno));
+                words[1], MR_strerror(errno, errbuf, sizeof(errbuf)));
         } else {
             fprintf(MR_mdb_out, "Debugger state saved to %s.\n", words[1]);
         }

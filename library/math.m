@@ -918,6 +918,12 @@ math.acos(X) = ACos :-
 "
     Sinh = sinh(X);
 ").
+:- pragma foreign_proc("Java",
+    math.sinh(X::in) = (Sinh::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Sinh = java.lang.Math.sinh(X);
+").
 :- pragma foreign_proc("C#",
     math.sinh(X::in) = (Sinh::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -930,7 +936,7 @@ math.acos(X) = ACos :-
 "
     Sinh = math:sinh(X)
 ").
-% Java doesn't have any hyperbolic functions built in.
+% Version for back-ends that do not have a foreign_proc version.
 math.sinh(X) = Sinh :-
     Sinh = (exp(X)-exp(-X)) / 2.0.
 
@@ -940,6 +946,12 @@ math.sinh(X) = Sinh :-
         does_not_affect_liveness],
 "
     Cosh = cosh(X);
+").
+:- pragma foreign_proc("Java",
+    math.cosh(X::in) = (Cosh::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Cosh = java.lang.Math.cosh(X);
 ").
 :- pragma foreign_proc("C#",
     math.cosh(X::in) = (Cosh::out),
@@ -953,7 +965,7 @@ math.sinh(X) = Sinh :-
 "
     Cosh = math:cosh(X)
 ").
-% Java doesn't have any hyperbolic functions built in.
+% Version for back-ends that do not have a foreign_proc version.
 math.cosh(X) = Cosh :-
     Cosh = (exp(X)+exp(-X)) / 2.0.
 
@@ -963,6 +975,12 @@ math.cosh(X) = Cosh :-
         does_not_affect_liveness],
 "
     Tanh = tanh(X);
+").
+:- pragma foreign_proc("Java",
+    math.tanh(X::in) = (Tanh::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Tanh = java.lang.Math.tanh(X);
 ").
 :- pragma foreign_proc("C#",
     math.tanh(X::in) = (Tanh::out),
@@ -976,7 +994,7 @@ math.cosh(X) = Cosh :-
 "
     Tanh = math:tanh(X)
 ").
-% Java doesn't have any hyperbolic functions built in.
+% Version for back-ends that do not have a foreign_proc version.
 math.tanh(X) = Tanh :-
     Tanh = (exp(X)-exp(-X)) / (exp(X)+exp(-X)).
 
