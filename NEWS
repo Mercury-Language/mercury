@@ -27,6 +27,9 @@ Changes to the Mercury standard library:
 * We have added a module that implements barriers for concurrent
   programming.  This module is a contribution from Mission Critical IT.
 
+* We have added thread.spawn_native/4 to dedicate an OS thread to a Mercury
+  thread. thread.spawn/4 was added as well.
+
 Changes to the Mercury compiler:
 
 * We have fixed a long-standing bug causing crashes in deep profiling

@@ -53,7 +53,7 @@ MR_Integer          MR_thread_barrier_count;
 #endif
 
 #ifdef MR_THREAD_SAFE
-static void
+static MR_bool
 MR_setup_engine_for_threads(MercuryEngine *eng, MR_EngineType engine_type);
 static void
 MR_shutdown_engine_for_threads(MercuryEngine *eng);
@@ -105,7 +105,9 @@ MR_create_worksteal_thread_2(void *arg)
      */
     MR_pin_thread();
   #endif
-    MR_init_thread_inner(MR_use_later, MR_ENGINE_TYPE_SHARED);
+    if (! MR_init_thread_inner(MR_use_later, MR_ENGINE_TYPE_SHARED)) {
+        MR_fatal_error("Unable to init shared engine thread.");
+    }
     return NULL;
 }
 
@@ -142,7 +144,10 @@ MR_init_thread_inner(MR_when_to_use when_to_use, MR_EngineType engine_type)
     eng = MR_create_engine();
 
 #ifdef MR_THREAD_SAFE
-    MR_setup_engine_for_threads(eng, engine_type);
+    if (MR_setup_engine_for_threads(eng, engine_type) == MR_FALSE) {
+        MR_destroy_engine(eng);
+        return MR_FALSE;
+    }
     assert(MR_thread_engine_base == NULL);
     MR_set_thread_engine_base(eng);
     MR_restore_registers();
@@ -221,9 +226,10 @@ MR_finalize_thread_engine(void)
 ** Additional setup/shutdown of the engine for threads support.
 */
 
-static void
+static MR_bool
 MR_setup_engine_for_threads(MercuryEngine *eng, MR_EngineType engine_type)
 {
+    MR_bool     ok = MR_TRUE;
   #ifndef MR_HIGHLEVEL_CODE
     MR_EngineId min;
     MR_EngineId max;
@@ -244,28 +250,37 @@ MR_setup_engine_for_threads(MercuryEngine *eng, MR_EngineType engine_type)
             break;
         }
     }
-    if (id == max) {
-        MR_fatal_error("exhausted engine ids");
+
+    if (id < max) {
+        if (MR_highest_engine_id < id) {
+            MR_highest_engine_id = id;
+        }
+
+        eng->MR_eng_id = id;
+        eng->MR_eng_type = engine_type;
+        eng->MR_eng_victim_counter = (id + 1) % MR_num_ws_engines;
+
+        MR_all_engine_bases[id] = eng;
+        MR_spark_deques[id] = eng->MR_eng_spark_deque;
+
+        MR_verify_initial_engine_sleep_sync(id);
+
+      #ifdef MR_THREADSCOPE
+        MR_threadscope_setup_engine(eng);
+      #endif
+    } else {
+      #ifdef MR_DEBUG_THREADS
+        if (MR_debug_threads) {
+            fprintf(stderr, "Exhausted engine ids.\n");
+        }
+      #endif
+        ok = MR_FALSE;
     }
-    if (MR_highest_engine_id < id) {
-        MR_highest_engine_id = id;
-    }
-
-    eng->MR_eng_id = id;
-    eng->MR_eng_type = engine_type; 
-    eng->MR_eng_victim_counter = (id + 1) % MR_num_ws_engines;
-
-    MR_all_engine_bases[id] = eng;
-    MR_spark_deques[id] = eng->MR_eng_spark_deque;
-
-    MR_verify_initial_engine_sleep_sync(id);
-
-    #ifdef MR_THREADSCOPE
-    MR_threadscope_setup_engine(eng);
-    #endif
 
     MR_UNLOCK(&MR_all_engine_bases_lock, "MR_setup_engine_for_threads");
   #endif
+
+    return ok;
 }
 
 static void

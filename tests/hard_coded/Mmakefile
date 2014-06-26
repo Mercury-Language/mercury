@@ -266,6 +266,7 @@ ORDINARY_PROGS=	\
 	singleton_dups \
 	solve_quadratic \
 	space \
+	spawn_native \
 	special_char \
 	stable_sort \
 	static_no_tag \

@@ -8,7 +8,7 @@
 %-----------------------------------------------------------------------------%
 %
 % File: thread.m.
-% Main author: conway.
+% Authors: conway, wangp.
 % Stability: medium.
 %
 % This module defines the Mercury concurrency interface.
@@ -24,6 +24,7 @@
 :- interface.
 
 :- import_module io.
+:- import_module maybe.
 
 :- include_module barrier.
 :- include_module channel.
@@ -32,17 +33,54 @@
 
 %-----------------------------------------------------------------------------%
 
-    % can_spawn succeeds if spawn/3 is supported in the current grade.
+    % Abstract type representing a thread.
+    %
+:- type thread.
+
+    % can_spawn succeeds if spawn/4 is supported in the current grade.
     %
 :- pred can_spawn is semidet.
+
+    % can_spawn_native succeeds if spawn_native/4 is supported in the current
+    % grade.
+    %
+:- pred can_spawn_native is semidet.
 
     % spawn(Closure, IO0, IO) is true iff `IO0' denotes a list of I/O
     % transactions that is an interleaving of those performed by `Closure'
     % and those contained in `IO' - the list of transactions performed by
     % the continuation of spawn/3.
     %
-:- pred spawn(pred(io, io)::in(pred(di, uo) is cc_multi),
-    io::di, io::uo) is cc_multi.
+    % Operationally, spawn/3 is like spawn/4 except that Closure does not
+    % accept a thread handle argument, and an exception is thrown if the
+    % thread cannot be created.
+    %
+:- pred spawn(pred(io, io), io, io).
+:- mode spawn(pred(di, uo) is cc_multi, di, uo) is cc_multi.
+
+    % spawn(Closure, Res, IO0, IO) creates a new thread and performs Closure in
+    % that thread. On success it returns ok(Thread) where Thread is a handle to
+    % the new thread. Otherwise it returns an error.
+    %
+:- pred spawn(pred(thread, io, io), maybe_error(thread), io, io).
+:- mode spawn(pred(in, di, uo) is cc_multi, out, di, uo) is cc_multi.
+
+    % spawn_native(Closure, Res, IO0, IO):
+    % Like spawn/4, but Closure will be performed in a separate "native thread"
+    % of the environment the program is running in (POSIX thread, Windows
+    % thread, Java thread, etc.).
+    %
+    % spawn_native exposes a low-level implementation detail, so it is more
+    % likely to change with the implementation.
+    %
+    % Rationale: on the low-level C backend Mercury threads are multiplexed
+    % onto a limited number of OS threads. A call to a blocking procedure
+    % prevents that OS thread from making progress on another Mercury thread.
+    % Some foreign code depends on OS thread-local state so needs to be
+    % consistently executed on a dedicated OS thread to be usable.
+    %
+:- pred spawn_native(pred(thread, io, io), maybe_error(thread), io, io).
+:- mode spawn_native(pred(in, di, uo) is cc_multi, out, di, uo) is cc_multi.
 
     % yield(IO0, IO) is logically equivalent to (IO = IO0) but
     % operationally, yields the Mercury engine to some other thread
@@ -56,18 +94,11 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- interface.
-
-    % spawn_native(Closure, IO0, IO)
-    % Currently only for testing.
-    %
-:- pred spawn_native(pred(io, io)::in(pred(di, uo) is cc_multi),
-    io::di, io::uo) is cc_multi.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
 :- implementation.
+
+:- import_module bool.
+:- import_module require.
+:- import_module string.
 
 :- pragma foreign_decl("C", "
 #ifndef MR_HIGHLEVEL_CODE
@@ -91,32 +122,57 @@
 #endif
 ").
 
+    % The thread id is not formally exposed yet but allows different thread
+    % handles to compare unequal.
+    %
+:- type thread
+    --->    thread(thread_id).
+
+:- type thread_id == string.
+
 %-----------------------------------------------------------------------------%
 
+can_spawn :-
+    ( can_spawn_context
+    ; can_spawn_native
+    ).
+
+:- pred can_spawn_context is semidet.
+
+can_spawn_context :-
+    semidet_fail.
+
 :- pragma foreign_proc("C",
-    can_spawn,
+    can_spawn_context,
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
 #if !defined(MR_HIGHLEVEL_CODE)
     SUCCESS_INDICATOR = MR_TRUE;
 #else
-    #if defined(MR_THREAD_SAFE)
-        SUCCESS_INDICATOR = MR_TRUE;
-    #else
-        SUCCESS_INDICATOR = MR_FALSE;
-    #endif
+    SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
+
+:- pragma foreign_proc("C",
+    can_spawn_native,
+    [will_not_call_mercury, promise_pure],
+"
+#if defined(MR_THREAD_SAFE)
+    SUCCESS_INDICATOR = MR_TRUE;
+#else
+    SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
 
 :- pragma foreign_proc("C#",
-    can_spawn,
+    can_spawn_native,
     [will_not_call_mercury, promise_pure],
 "
     SUCCESS_INDICATOR = true;
 ").
 
 :- pragma foreign_proc("Java",
-    can_spawn,
+    can_spawn_native,
     [will_not_call_mercury, promise_pure],
 "
     SUCCESS_INDICATOR = true;
@@ -124,78 +180,152 @@
 
 %-----------------------------------------------------------------------------%
 
+spawn(Goal0, !IO) :-
+    Goal = (pred(_Thread::in, IO0::di, IO::uo) is cc_multi :- Goal0(IO0, IO)),
+    spawn(Goal, Res, !IO),
+    (
+        Res = ok(_)
+    ;
+        Res = error(Error),
+        unexpected($module, $pred, Error)
+    ).
+
+spawn(Goal, Res, !IO) :-
+    ( can_spawn_context ->
+        spawn_context(Goal, Res, !IO)
+    ;
+        spawn_native(Goal, Res, !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred spawn_context(pred(thread, io, io), maybe_error(thread), io, io).
+:- mode spawn_context(pred(in, di, uo) is cc_multi, out, di, uo) is cc_multi.
+
+spawn_context(Goal, Res, !IO) :-
+    spawn_context_2(Goal, Success, ThreadId, !IO),
+    (
+        Success = yes,
+        Res = ok(thread(ThreadId))
+    ;
+        Success = no,
+        Res = error("Unable to spawn threads in this grade.")
+    ).
+
+:- pred spawn_context_2(pred(thread, io, io), bool, string, io, io).
+:- mode spawn_context_2(pred(in, di, uo) is cc_multi, out, out, di, uo)
+    is cc_multi.
+
+spawn_context_2(_, no, "", !IO) :-
+    cc_multi_equal(!IO).
+
 :- pragma foreign_proc("C",
-    spawn(Goal::(pred(di, uo) is cc_multi), _IO0::di, _IO::uo),
+    spawn_context_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
+        ThreadId::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
 #if !defined(MR_HIGHLEVEL_CODE)
-    MR_Context  *ctxt;
+{
+    MR_Context          *ctxt;
+    MR_ThreadLocalMuts  *tlm;
 
     ML_incr_thread_barrier_count();
 
     ctxt = MR_create_context(""spawn"", MR_CONTEXT_SIZE_REGULAR, NULL);
     ctxt->MR_ctxt_resume = MR_ENTRY(mercury__thread__spawn_begin_thread);
-    
+
+    tlm = MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
+    ctxt->MR_ctxt_thread_local_mutables = tlm;
+
     /*
-    ** Store the closure on the top of the new context's stack.
+    ** Derive a thread id from the address of the thread-local mutable vector
+    ** for the Mercury thread. It should actually be more unique than a
+    ** context address as contexts are kept around and reused.
     */
-    
-    *(ctxt->MR_ctxt_sp) = Goal;
-    ctxt->MR_ctxt_next = NULL;
-    ctxt->MR_ctxt_thread_local_mutables =
-        MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
+    ThreadId = MR_make_string(MR_ALLOC_ID, ""%p"", tlm);
+
+    /*
+    ** Store Goal and ThreadId on the top of the new context's stack.
+    */
+    ctxt->MR_ctxt_sp[0] = Goal;
+    ctxt->MR_ctxt_sp[-1] = (MR_Word) ThreadId;
+
     MR_schedule_context(ctxt);
 
+    Success = MR_TRUE;
+}
 #else /* MR_HIGHLEVEL_CODE */
-
-#if defined(MR_THREAD_SAFE)
-    ML_create_exclusive_thread(Goal);
-#else
-    MR_fatal_error(""spawn/3 requires a .par grade in high-level C grades."");
-#endif
-
+{
+    Success = MR_FALSE;
+    ThreadId = MR_make_string_const("""");
+}
 #endif /* MR_HIGHLEVEL_CODE */
-").
-
-:- pragma foreign_proc("C#",
-    spawn(Goal::(pred(di, uo) is cc_multi), _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
-"
-    object[] thread_locals = runtime.ThreadLocalMutables.clone();
-    MercuryThread mt = new MercuryThread(Goal, thread_locals);
-    System.Threading.Thread thread = new System.Threading.Thread(
-        new System.Threading.ThreadStart(mt.execute_goal));
-    thread.Start();
-").
-
-:- pragma foreign_proc("Java",
-    spawn(Goal::(pred(di, uo) is cc_multi), IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
-        may_not_duplicate],
-"
-    MercuryThread mt = new MercuryThread((Object[]) Goal);
-    Thread thread = new Thread(mt);
-    thread.start();
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
 
-spawn_native(_Goal, !IO) :-
-    private_builtin.sorry("spawn_native").
+spawn_native(Goal, Res, !IO) :-
+    spawn_native_2(Goal, Success, ThreadId, !IO),
+    (
+        Success = yes,
+        Res = ok(thread(ThreadId))
+    ;
+        Success = no,
+        Res = error("Unable to create native thread.")
+    ).
+
+:- pred spawn_native_2(pred(thread, io, io), bool, thread_id, io, io).
+:- mode spawn_native_2(pred(in, di, uo) is cc_multi, out, out, di, uo)
+    is cc_multi.
 
 :- pragma foreign_proc("C",
-    spawn_native(Goal::(pred(di, uo) is cc_multi), _IO0::di, _IO::uo),
+    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
+        ThreadId::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
+    ThreadId = MR_make_string_const("""");
 #ifdef MR_THREAD_SAFE
-    ML_create_exclusive_thread(Goal);
+    Success = ML_create_exclusive_thread(Goal, &ThreadId);
 #else
-    MR_fatal_error(""spawn_native/3 requires a .par grade."");
+    Success = MR_FALSE;
 #endif
+").
+
+:- pragma foreign_proc("C#",
+    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
+        ThreadId::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    try {
+        object[] thread_locals = runtime.ThreadLocalMutables.clone();
+        MercuryThread mt = new MercuryThread(Goal, thread_locals);
+        System.Threading.Thread thread = new System.Threading.Thread(
+            new System.Threading.ThreadStart(mt.run));
+        ThreadId = thread.ManagedThreadId.ToString();
+        mt.setThreadId(ThreadId);
+        thread.Start();
+        Success = mr_bool.YES;
+    } catch (System.Threading.ThreadStartException e) {
+        Success = mr_bool.NO;
+        ThreadId = """";
+    }
+").
+
+:- pragma foreign_proc("Java",
+    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
+        ThreadId::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    final MercuryThread mt = new MercuryThread((Object[]) Goal);
+    final Thread thread = new Thread(mt);
+    ThreadId = String.valueOf(thread.getId());
+    mt.setThreadId(ThreadId);
+    thread.start();
+    Success = bool.YES;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -278,7 +408,8 @@ INIT mercury_sys_init_thread_modules
     MR_define_entry(mercury__thread__spawn_begin_thread);
     {
         /* Call the closure placed the top of the stack. */
-        MR_r1 = *MR_sp;
+        MR_r1 = MR_stackvar(1); /* Goal */
+        MR_r2 = MR_stackvar(2); /* ThreadId */
         MR_noprof_call(MR_ENTRY(mercury__do_call_closure_1),
             MR_LABEL(mercury__thread__spawn_end_thread));
     }
@@ -338,54 +469,68 @@ INIT mercury_sys_init_thread_modules
 #if defined(MR_THREAD_SAFE)
   #include  <pthread.h>
 
-  int ML_create_exclusive_thread(MR_Word goal);
+  MR_bool ML_create_exclusive_thread(MR_Word goal, MR_String *thread_id);
   void *ML_exclusive_thread_wrapper(void *arg);
 
   typedef struct ML_ThreadWrapperArgs ML_ThreadWrapperArgs;
   struct ML_ThreadWrapperArgs {
+        MercurySem          sem;
         MR_Word             goal;
         MR_ThreadLocalMuts  *thread_local_mutables;
+        MR_bool             thread_started;
+        MR_String           thread_id;
   };
 #endif /* MR_THREAD_SAFE */
 ").
 
 :- pragma foreign_code("C", "
 #if defined(MR_THREAD_SAFE)
-  int ML_create_exclusive_thread(MR_Word goal)
+  MR_bool ML_create_exclusive_thread(MR_Word goal, MR_String *thread_id)
   {
-    ML_ThreadWrapperArgs    *args;
+    ML_ThreadWrapperArgs    args;
     pthread_t               thread;
     pthread_attr_t          attrs;
-
-    /*
-    ** We can't allocate `args' on the stack because this function may return
-    ** before the child thread has got all the information it needs out of the
-    ** structure.
-    */
-    args = MR_GC_NEW_UNCOLLECTABLE(ML_ThreadWrapperArgs);
-    args->goal = goal;
-    args->thread_local_mutables =
-        MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
+    int err;
 
     ML_incr_thread_barrier_count();
 
+    sem_init(&args.sem, 0, 0);
+    args.goal = goal;
+    args.thread_local_mutables =
+        MR_clone_thread_local_mutables(MR_THREAD_LOCAL_MUTABLES);
+    args.thread_started = MR_FALSE;
+    args.thread_id = NULL;
+
     pthread_attr_init(&attrs);
     pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
-    if (pthread_create(&thread, &attrs, ML_exclusive_thread_wrapper, args)) {
-        MR_fatal_error(""Unable to create thread."");
-    }
+    err = pthread_create(&thread, &attrs, ML_exclusive_thread_wrapper, &args);
     pthread_attr_destroy(&attrs);
 
-    return MR_TRUE;
+    if (err == 0) {
+        MR_SEM_WAIT(&args.sem, ""ML_create_exclusive_thread"");
+    }
+
+    sem_destroy(&args.sem);
+
+    if (args.thread_started) {
+        *thread_id = args.thread_id;
+        return MR_TRUE;
+    }
+
+    ML_decr_thread_barrier_count();
+    return MR_FALSE;
   }
 
   void *ML_exclusive_thread_wrapper(void *arg)
   {
     ML_ThreadWrapperArgs    *args = arg;
     MR_Word                 goal;
+    MR_String               thread_id;
 
     if (MR_init_thread(MR_use_now) == MR_FALSE) {
-        MR_fatal_error(""Unable to init thread."");
+        args->thread_started = MR_FALSE;
+        MR_SEM_POST(&args->sem, ""ML_exclusive_thread_wrapper"");
+        return NULL;
     }
 
     /*
@@ -398,10 +543,18 @@ INIT mercury_sys_init_thread_modules
     MR_assert(MR_THREAD_LOCAL_MUTABLES == NULL);
     MR_SET_THREAD_LOCAL_MUTABLES(args->thread_local_mutables);
 
-    goal = args->goal;
-    MR_GC_free(args);
+    thread_id = MR_make_string(MR_ALLOC_SITE_RUNTIME,
+        ""%"" MR_INTEGER_LENGTH_MODIFIER ""x"", MR_SELF_THREAD_ID);
 
-    ML_call_back_to_mercury_cc_multi(goal);
+    /*
+    ** Take a copy of the goal before telling the parent we are ready.
+    */
+    goal = args->goal;
+    args->thread_started = MR_TRUE;
+    args->thread_id = thread_id;
+    MR_SEM_POST(&args->sem, ""ML_exclusive_thread_wrapper"");
+
+    ML_call_back_to_mercury_cc_multi(goal, thread_id);
 
     MR_finalize_thread_engine();
 
@@ -412,23 +565,21 @@ INIT mercury_sys_init_thread_modules
 #endif /* MR_THREAD_SAFE */
 ").
 
-:- pred call_back_to_mercury(pred(io, io), io, io).
-:- mode call_back_to_mercury(pred(di, uo) is cc_multi, di, uo) is cc_multi.
+:- pred call_back_to_mercury(pred(thread, io, io), thread_id, io, io).
+:- mode call_back_to_mercury(pred(in, di, uo) is cc_multi, in, di, uo)
+    is cc_multi.
 :- pragma foreign_export("C",
-    call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
-    "ML_call_back_to_mercury_cc_multi").
-:- pragma foreign_export("IL",
-    call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
+    call_back_to_mercury(pred(in, di, uo) is cc_multi, in, di, uo),
     "ML_call_back_to_mercury_cc_multi").
 :- pragma foreign_export("C#",
-    call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
+    call_back_to_mercury(pred(in, di, uo) is cc_multi, in, di, uo),
     "ML_call_back_to_mercury_cc_multi").
 :- pragma foreign_export("Java",
-    call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
+    call_back_to_mercury(pred(in, di, uo) is cc_multi, in, di, uo),
     "ML_call_back_to_mercury_cc_multi").
 
-call_back_to_mercury(Goal, !IO) :-
-    Goal(!IO).
+call_back_to_mercury(Goal, ThreadId, !IO) :-
+    Goal(thread(ThreadId), !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -481,35 +632,47 @@ call_back_to_mercury(Goal, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("C#", "
-public class MercuryThread {
-    object[] Goal;
-    object[] thread_local_mutables;
+private class MercuryThread {
+    private object[] Goal;
+    private object[] thread_local_mutables;
+    private string ThreadId;
 
-    public MercuryThread(object[] g, object[] tlmuts)
+    internal MercuryThread(object[] g, object[] tlmuts)
     {
         Goal = g;
         thread_local_mutables = tlmuts;
     }
 
-    public void execute_goal()
+    internal void setThreadId(string id)
+    {
+        ThreadId = id;
+    }
+
+    internal void run()
     {
         runtime.ThreadLocalMutables.set_array(thread_local_mutables);
-        thread.ML_call_back_to_mercury_cc_multi(Goal);
+        thread.ML_call_back_to_mercury_cc_multi(Goal, ThreadId);
     }
 }").
 
 :- pragma foreign_code("Java", "
-public static class MercuryThread implements Runnable {
-    final Object[] Goal;
+private static class MercuryThread implements Runnable {
+    private final Object[] Goal;
+    private String ThreadId;
 
-    public MercuryThread(Object[] g)
+    private MercuryThread(Object[] g)
     {
         Goal = g;
     }
 
+    private void setThreadId(String id)
+    {
+        ThreadId = id;
+    }
+
     public void run()
     {
-        thread.ML_call_back_to_mercury_cc_multi(Goal);
+        thread.ML_call_back_to_mercury_cc_multi(Goal, ThreadId);
     }
 }").
 
