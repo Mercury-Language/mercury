@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: exception.m.
 % Main author: fjh.
 % Stability: medium.
-% 
+%
 % This module defines the Mercury interface for exception handling.
-% 
+%
 % Note that throwing an exception across the C interface won't work.
 % That is, if a Mercury procedure that is exported to C using
 % `pragma foreign_export' throws an exception which is not caught within that
 % procedure, then you will get undefined behaviour.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -137,7 +137,7 @@
 
 :- inst [] ---> [].
 :- inst nil_or_singleton_list ---> [] ; [ground].
-    
+
     % incremental_try_all(Goal, AccumulatorPred, Acc0, Acc):
     %
     % Declaratively it is equivalent to:
@@ -235,9 +235,9 @@
     %
 :- pred unsafe_try_stm(pred(A, stm, stm),
     exception_result(A), stm, stm).
-:- mode unsafe_try_stm(in(pred(out, di, uo) is det), 
+:- mode unsafe_try_stm(in(pred(out, di, uo) is det),
     out(cannot_fail), di, uo) is cc_multi.
-:- mode unsafe_try_stm(in(pred(out, di, uo) is cc_multi), 
+:- mode unsafe_try_stm(in(pred(out, di, uo) is cc_multi),
     out(cannot_fail), di, uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
@@ -579,7 +579,7 @@ try_all_det(exp_detism_multi, Goal, MaybeException, Solutions) :-
     TryOneSoln = (pred(Result::out) is multi :-
         catch_impl(WrappedGoal, wrap_exception, Result)
     ),
-    unsorted_solutions(TryOneSoln, ResultList), 
+    unsorted_solutions(TryOneSoln, ResultList),
     list.foldl2(process_one_exception_result, ResultList,
         no, MaybeException, [], Solutions).
 try_all_det(exp_detism_nondet, Goal, MaybeException, Solutions) :-
@@ -752,12 +752,12 @@ try_stm(Goal, Result, !STM) :-
 
 :- pragma promise_equivalent_clauses(unsafe_try_stm/4).
 
-unsafe_try_stm(TransactionGoal::in(pred(out, di, uo) is det), 
+unsafe_try_stm(TransactionGoal::in(pred(out, di, uo) is det),
         Result::out(cannot_fail), STM0::di, STM::uo) :-
     get_determinism_2(TransactionGoal, Detism),
     try_stm_det(Detism, TransactionGoal, Result, STM0, STM).
 
-unsafe_try_stm(TransactionGoal::in(pred(out, di, uo) is cc_multi), 
+unsafe_try_stm(TransactionGoal::in(pred(out, di, uo) is cc_multi),
         Result::out(cannot_fail), STM0::di, STM::uo) :-
     get_determinism_2(TransactionGoal, Detism),
     try_stm_cc_multi(Detism, TransactionGoal, Result, STM0, STM).
@@ -2249,7 +2249,7 @@ MR_proc_static_user_no_site(exception, builtin_throw, 1, 0,
 
 /*
 ** See the above comments regarding builtin_catch for the reason we
-** must use MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT instead of 
+** must use MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT instead of
 ** MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT here.
 */
 MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(
