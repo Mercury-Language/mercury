@@ -3107,7 +3107,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    SUCCESS_INDICATOR = MR_TRUE;
+    SUCCESS_INDICATOR = ML_USE_SPRINTF;
 ").
 :- pragma foreign_proc("C#", using_sprintf,
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -3136,7 +3136,7 @@ using_sprintf_for_char(_) :-
         does_not_affect_liveness, no_sharing],
 "
     /* sprintf %c specifier is inadequate for multi-byte UTF-8 characters. */
-    SUCCESS_INDICATOR = MR_is_ascii(Char);
+    SUCCESS_INDICATOR = ML_USE_SPRINTF && MR_is_ascii(Char);
 ").
 
 :- pred using_sprintf_for_string(string::in) is semidet.
@@ -3151,7 +3151,7 @@ using_sprintf_for_string(_) :-
 "
     const char *s;
 
-    SUCCESS_INDICATOR = MR_TRUE;
+    SUCCESS_INDICATOR = ML_USE_SPRINTF;
     for (s = Str; *s != '\\0'; s++) {
         /* sprintf %s specifier is inadequate for multi-byte UTF-8 characters,
          * if there is a field width or precision specified.
@@ -4134,6 +4134,15 @@ is_exponent('E').
 
 #include ""mercury_string.h""   /* for MR_allocate_aligned_string*() etc. */
 #include ""mercury_tags.h"" /* for MR_list_cons*() */
+
+/*
+** The following macro should expand to MR_TRUE if the C grades should 
+** implement string.format using C's sprintf function.
+** Setting it to MR_FALSE will cause string.format to use the Mercury
+** implementation of string formatting in C grades.
+*/
+#define ML_USE_SPRINTF MR_TRUE
+
 ").
 
 %-----------------------------------------------------------------------------%
