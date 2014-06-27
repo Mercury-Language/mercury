@@ -18,6 +18,7 @@
 #include    "mercury_runtime_util.h"
 
 #include    <stdio.h>
+#include    <string.h>
 
 #ifdef MR_HAVE_UNISTD_H
   #include  <unistd.h>
@@ -58,14 +59,16 @@ MR_strerror(int errnum, char *buf, size_t buflen)
     ** The XSI-compliant and Mac OS X strerror_r populates buf unless it fails.
     ** The GNU-specific strerror_r does not always populate buf.
     */
-  #if defined(MR_MAC_OSX) || \
+  #if !defined(__GNU_LIBRARY__) || \
        ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE)
-    if (strerror_r(errnum, buf, buflen) != 0) {
-        generic_strerror(errnum, buf, buflen);
+    int x = strerror_r(errnum, buf, buflen);
+    if (x != 0) {
+        generic_strerror(buf, buflen, errnum);
     }
     return buf;
   #else
-    return strerror_r(errnum, buf, buflen);
+    const char *s = strerror_r(errnum, buf, buflen);
+    return s;
   #endif
 #else
     /*
