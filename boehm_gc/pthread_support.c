@@ -1849,10 +1849,41 @@ GC_INNER void GC_lock(void)
   static pthread_mutex_t mark_mutex =
         {0, 0, 0, PTHREAD_MUTEX_ERRORCHECK_NP, {0, 0}};
 #else
-  static pthread_mutex_t mark_mutex = PTHREAD_MUTEX_INITIALIZER;
+  static pthread_mutex_t mark_mutex;
 #endif
 
 static pthread_cond_t builder_cv = PTHREAD_COND_INITIALIZER;
+
+GC_INNER void GC_setup_mark_lock(void)
+{
+#if !defined(GLIBC_2_1_MUTEX_HACK)
+    pthread_mutexattr_t attr;
+
+    if (0 != pthread_mutexattr_init(&attr)) {
+        goto error;
+    }
+
+    /*
+     * By explicitly setting a mutex type we disable lock elision and work
+     * around a bug in glibc 2.19
+     */
+    if (0 != pthread_mutexattr_settype(&attr,
+                PTHREAD_MUTEX_NORMAL))
+    {
+        goto error;
+    }
+
+    if (0 != pthread_mutex_init(&mark_mutex, &attr)) {
+        goto error;
+    }
+    pthread_mutexattr_destroy(&attr);
+    return;
+
+error:
+    perror("Error setting up marker mutex");
+    exit(1);
+#endif /* ! GLIBC_2_1_MUTEX_HACK */
+}
 
 GC_INNER void GC_acquire_mark_lock(void)
 {
