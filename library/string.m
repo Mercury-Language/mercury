@@ -2849,6 +2849,12 @@ prec(Prec, !PolyTypes, !Chars) :-
             % specifier representing "%%"
     ;       percent.
 
+    % Is the spec a capital letter?
+    %
+:- type spec_case
+    --->    spec_is_capital
+    ;       spec_is_not_capital.
+
     % Do we have a valid conversion specifier?
     % We check to ensure that the specifier also matches the type
     % from the input list.
@@ -2992,8 +2998,8 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
             FormatStr = make_format(Flags, Width, Prec, "", "e"),
             String = native_format_float(FormatStr, Float)
         ;
-            String = format_scientific_number(Flags, conv(Width), conv(Prec),
-                Float, "e")
+            String = format_scientific_number(Flags, spec_is_not_capital,
+                conv(Width), conv(Prec), Float, "e")
         )
     ;
         Spec = cE(Float),
@@ -3001,8 +3007,8 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
             FormatStr = make_format(Flags, Width, Prec, "", "E"),
             String = native_format_float(FormatStr, Float)
         ;
-            String = format_scientific_number(Flags, conv(Width), conv(Prec),
-                Float, "E")
+            String = format_scientific_number(Flags, spec_is_capital,
+                conv(Width), conv(Prec), Float, "E")
         )
     ;
         Spec = f(Float),
@@ -3010,7 +3016,8 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
             FormatStr = make_format(Flags, Width, Prec, "", "f"),
             String = native_format_float(FormatStr, Float)
         ;
-            String = format_float(Flags, conv(Width), conv(Prec), Float)
+            String = format_float(Flags, spec_is_not_capital, conv(Width),
+                conv(Prec), Float)
         )
     ;
         Spec = cF(Float),
@@ -3018,7 +3025,8 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
             FormatStr = make_format(Flags, Width, Prec, "", "F"),
             String = native_format_float(FormatStr, Float)
         ;
-            String = format_float(Flags, conv(Width), conv(Prec), Float)
+            String = format_float(Flags, spec_is_capital, conv(Width),
+                conv(Prec), Float)
         )
     ;
         Spec = g(Float),
@@ -3026,8 +3034,8 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
             FormatStr = make_format(Flags, Width, Prec, "", "g"),
             String = native_format_float(FormatStr, Float)
         ;
-            String = format_scientific_number_g(Flags, conv(Width), conv(Prec),
-                Float, "e")
+            String = format_scientific_number_g(Flags, spec_is_not_capital,
+                conv(Width), conv(Prec), Float, "e")
         )
     ;
         Spec = cG(Float),
@@ -3035,8 +3043,8 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
             FormatStr = make_format(Flags, Width, Prec, "", "G"),
             String = native_format_float(FormatStr, Float)
         ;
-            String = format_scientific_number_g(Flags, conv(Width), conv(Prec),
-                Float, "E")
+            String = format_scientific_number_g(Flags, spec_is_capital,
+                conv(Width), conv(Prec), Float, "E")
         )
     ;
         % Valid char conversion Specifiers.
@@ -3489,152 +3497,172 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
 
     % Format a float (f)
     %
-:- func format_float(flags, maybe_width, maybe_precision, float) = string.
+:- func format_float(flags, spec_case, maybe_width, maybe_precision, float)
+    = string.
 
-format_float(Flags, Width, Prec, Float) = NewFloat :-
-    % Determine absolute value of string.
-    Abs = abs(Float),
+format_float(Flags, SpecCase, Width, Prec, Float) = NewFloat :-
+    ( is_nan(Float) ->
+        SignedStr = format_nan(SpecCase)
+    ; is_inf(Float) ->
+        SignedStr = format_inf(Float, SpecCase)
+    ; 
+        % Determine absolute value of string.
+        Abs = abs(Float),
 
-    % Change precision (default is 6).
-    AbsStr = convert_float_to_string(Abs),
-    ( is_nan_or_inf(Abs) ->
-        PrecModStr = AbsStr
-    ;
-        (
-            Prec = yes(Precision),
-            PrecStr = change_precision(Precision, AbsStr)
+        % Change precision (default is 6).
+        AbsStr = convert_float_to_string(Abs),
+        ( is_nan_or_inf(Abs) ->
+            PrecModStr = AbsStr
         ;
-            Prec = no,
-            PrecStr = change_precision(6, AbsStr)
+            (
+                Prec = yes(Precision),
+                PrecStr = change_precision(Precision, AbsStr)
+            ;
+                Prec = no,
+                PrecStr = change_precision(6, AbsStr)
+            ),
+
+            % Do we need to remove the decimal point?
+            (
+                \+ member('#', Flags),
+                Prec = yes(0)
+            ->
+                PrecStrLen = string.count_codepoints(PrecStr),
+                PrecModStr = string.between(PrecStr, 0, PrecStrLen - 1)
+            ;
+                PrecModStr = PrecStr
+            )
         ),
 
-        % Do we need to remove the decimal point?
+        % Do we need to change field width?
         (
-            \+ member('#', Flags),
-            Prec = yes(0)
+            Width = yes(FieldWidth),
+            FieldWidth > string.count_codepoints(PrecModStr),
+            member('0', Flags),
+            \+ member('-', Flags)
         ->
-            PrecStrLen = string.count_codepoints(PrecStr),
-            PrecModStr = string.between(PrecStr, 0, PrecStrLen - 1)
+            FieldStr = string.pad_left(PrecModStr, '0', FieldWidth - 1),
+            ZeroPadded = yes
         ;
-            PrecModStr = PrecStr
-        )
+            FieldStr = PrecModStr,
+            ZeroPadded = no
+        ),
+        % Finishing up ..
+        SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr)
     ),
-
-    % Do we need to change field width?
-    (
-        Width = yes(FieldWidth),
-        FieldWidth > string.count_codepoints(PrecModStr),
-        member('0', Flags),
-        \+ member('-', Flags)
-    ->
-        FieldStr = string.pad_left(PrecModStr, '0', FieldWidth - 1),
-        ZeroPadded = yes
-    ;
-        FieldStr = PrecModStr,
-        ZeroPadded = no
-    ),
-    % Finishing up ..
-    SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr),
     NewFloat = justify_string(Flags, Width, SignedStr).
 
     % Format a scientific number to a specified number of significant
     % figures (g,G)
     %
-:- func format_scientific_number_g(flags, maybe_width, maybe_precision,
-    float, string) = string.
+:- func format_scientific_number_g(flags, spec_case, maybe_width,
+    maybe_precision, float, string) = string.
 
-format_scientific_number_g(Flags, Width, Prec, Float, E) = NewFloat :-
-    % Determine absolute value of string.
-    Abs = abs(Float),
+format_scientific_number_g(Flags, SpecCase, Width, Prec, Float, E)
+        = NewFloat :-
+    ( is_nan(Float) ->
+        SignedStr = format_nan(SpecCase)
+    ; is_inf(Float) ->
+        SignedStr = format_inf(Float, SpecCase)
+    ;       
+        % Determine absolute value of string.
+        Abs = abs(Float),
 
-    % Change precision (default is 6).
-    AbsStr = convert_float_to_string(Abs),
-    ( is_nan_or_inf(Abs) ->
-        PrecStr = AbsStr
-    ;
-        (
-            Prec = yes(Precision),
-            ( Precision = 0 ->
-                PrecStr = change_to_g_notation(AbsStr, 1, E, Flags)
-            ;
-                PrecStr = change_to_g_notation(AbsStr, Precision, E, Flags)
-            )
+        % Change precision (default is 6).
+        AbsStr = convert_float_to_string(Abs),
+        ( is_nan_or_inf(Abs) ->
+            PrecStr = AbsStr
         ;
-            Prec = no,
-            PrecStr = change_to_g_notation(AbsStr, 6, E, Flags)
-        )
-    ),
+            (
+                Prec = yes(Precision),
+                ( Precision = 0 ->
+                    PrecStr = change_to_g_notation(AbsStr, 1, E, Flags)
+                ;
+                    PrecStr = change_to_g_notation(AbsStr, Precision, E, Flags)
+                )
+            ;
+                Prec = no,
+                PrecStr = change_to_g_notation(AbsStr, 6, E, Flags)
+            )
+        ),
 
-        %
-        % Do we need to change field width?
-        %
-    (
-        Width = yes(FieldWidth),
-        FieldWidth > string.count_codepoints(PrecStr),
-        member('0', Flags),
-        \+ member('-', Flags)
-    ->
-        FieldStr = string.pad_left(PrecStr, '0', FieldWidth - 1),
-        ZeroPadded = yes
-    ;
-        FieldStr = PrecStr,
-        ZeroPadded = no
-    ),
+            %
+            % Do we need to change field width?
+            %
+        (
+            Width = yes(FieldWidth),
+            FieldWidth > string.count_codepoints(PrecStr),
+            member('0', Flags),
+            \+ member('-', Flags)
+        ->
+            FieldStr = string.pad_left(PrecStr, '0', FieldWidth - 1),
+            ZeroPadded = yes
+        ;
+            FieldStr = PrecStr,
+            ZeroPadded = no
+        ),
 
-    % Finishing up ..
-    SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr),
+        % Finishing up ..
+        SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr)
+    ),
     NewFloat = justify_string(Flags, Width, SignedStr).
 
     % Format a scientific number (e,E)
     %
-:- func format_scientific_number(flags, maybe_width, maybe_precision,
-    float, string) = string.
+:- func format_scientific_number(flags, spec_case, maybe_width,
+    maybe_precision, float, string) = string.
 
-format_scientific_number(Flags, Width, Prec, Float, E) = NewFloat :-
-    % Determine absolute value of string.
-    Abs = abs(Float),
+format_scientific_number(Flags, SpecCase, Width, Prec, Float, E) = NewFloat :-
+    ( is_nan(Float) ->
+        SignedStr = format_nan(SpecCase)
+    ; is_inf(Float) ->
+        SignedStr = format_inf(Float, SpecCase)
+    ;       
+        % Determine absolute value of string.
+        Abs = abs(Float),
 
-    % Change precision (default is 6).
-    AbsStr = convert_float_to_string(Abs),
-    ( is_nan_or_inf(Abs) ->
-        PrecModStr = AbsStr
-    ;
-        (
-            Prec = yes(Precision),
-            PrecStr = change_to_e_notation(AbsStr, Precision, E)
+        % Change precision (default is 6).
+        AbsStr = convert_float_to_string(Abs),
+        ( is_nan_or_inf(Abs) ->
+            PrecModStr = AbsStr
         ;
-            Prec = no,
-            PrecStr = change_to_e_notation(AbsStr, 6, E)
+            (
+                Prec = yes(Precision),
+                PrecStr = change_to_e_notation(AbsStr, Precision, E)
+            ;
+                Prec = no,
+                PrecStr = change_to_e_notation(AbsStr, 6, E)
+            ),
+
+            % Do we need to remove the decimal point?
+            (
+                \+ member('#', Flags),
+                Prec = yes(0)
+            ->
+                split_at_decimal_point(PrecStr, BaseStr, ExponentStr),
+                PrecModStr = BaseStr ++ ExponentStr
+            ;
+                PrecModStr = PrecStr
+            )
         ),
 
-        % Do we need to remove the decimal point?
+        % Do we need to change field width?
         (
-            \+ member('#', Flags),
-            Prec = yes(0)
+            Width = yes(FieldWidth),
+            FieldWidth > string.count_codepoints(PrecModStr),
+            member('0', Flags),
+            \+ member('-', Flags)
         ->
-            split_at_decimal_point(PrecStr, BaseStr, ExponentStr),
-            PrecModStr = BaseStr ++ ExponentStr
+            FieldStr = string.pad_left(PrecModStr, '0', FieldWidth - 1),
+            ZeroPadded = yes
         ;
-            PrecModStr = PrecStr
-        )
-    ),
+            FieldStr = PrecModStr,
+            ZeroPadded = no
+        ),
 
-    % Do we need to change field width?
-    (
-        Width = yes(FieldWidth),
-        FieldWidth > string.count_codepoints(PrecModStr),
-        member('0', Flags),
-        \+ member('-', Flags)
-    ->
-        FieldStr = string.pad_left(PrecModStr, '0', FieldWidth - 1),
-        ZeroPadded = yes
-    ;
-        FieldStr = PrecModStr,
-        ZeroPadded = no
+        % Finishing up ..
+        SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr)
     ),
-
-    % Finishing up ..
-    SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr),
     NewFloat = justify_string(Flags, Width, SignedStr).
 
 :- func add_int_prefix_if_needed(flags, bool, int, string) = string.
@@ -3780,6 +3808,9 @@ get_capital_hex_int(Int) = HexStr :-
     %
     % This predicate relies on the fact that string.float_to_string returns
     % a float which is round-trippable, ie to the full precision needed.
+    %
+    % NOTE: this function does *not* handle special float values, like NaN
+    % and Infinity.
     %
 :- func convert_float_to_string(float) = string.
 
@@ -4121,6 +4152,22 @@ is_decimal_point('.').
 
 is_exponent('e').
 is_exponent('E').
+
+:- func format_nan(spec_case) = string.
+
+format_nan(spec_is_capital) = "NAN".
+format_nan(spec_is_not_capital) = "nan".
+
+:- func format_inf(float, spec_case) = string.
+
+format_inf(F, SpecCase) = String :-
+    (
+        SpecCase = spec_is_capital,
+        String = ( if F < 0.0 then "-INF" else "INF" )
+    ;
+        SpecCase = spec_is_not_capital,
+        String = ( if F < 0.0 then "-inf" else "inf" )
+    ).
 
 %-----------------------------------------------------------------------------%
 

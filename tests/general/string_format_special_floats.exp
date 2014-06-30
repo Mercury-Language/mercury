@@ -2,11 +2,20 @@ Plus Infinity:
                   %e: success
                   %f: success
                   %g: success
+                  %E: success
+                  %F: success
+                  %G: success
 Minus Infinity:
                   %e: success
                   %f: success
                   %g: success
+                  %E: success
+                  %F: success
+                  %G: success
 Not a number:
                   %e: success
                   %f: success
                   %g: success
+                  %E: success
+                  %F: success
+                  %G: success
