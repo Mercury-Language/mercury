@@ -3511,27 +3511,23 @@ format_float(Flags, SpecCase, Width, Prec, Float) = NewFloat :-
 
         % Change precision (default is 6).
         AbsStr = convert_float_to_string(Abs),
-        ( is_nan_or_inf(Abs) ->
-            PrecModStr = AbsStr
+        (
+            Prec = yes(Precision),
+            PrecStr = change_precision(Precision, AbsStr)
         ;
-            (
-                Prec = yes(Precision),
-                PrecStr = change_precision(Precision, AbsStr)
-            ;
-                Prec = no,
-                PrecStr = change_precision(6, AbsStr)
-            ),
+            Prec = no,
+            PrecStr = change_precision(6, AbsStr)
+        ),
 
-            % Do we need to remove the decimal point?
-            (
-                \+ member('#', Flags),
-                Prec = yes(0)
-            ->
-                PrecStrLen = string.count_codepoints(PrecStr),
-                PrecModStr = string.between(PrecStr, 0, PrecStrLen - 1)
-            ;
-                PrecModStr = PrecStr
-            )
+        % Do we need to remove the decimal point?
+        (
+            \+ member('#', Flags),
+            Prec = yes(0)
+        ->
+            PrecStrLen = string.count_codepoints(PrecStr),
+            PrecModStr = string.between(PrecStr, 0, PrecStrLen - 1)
+        ;
+            PrecModStr = PrecStr
         ),
 
         % Do we need to change field width?
@@ -3570,25 +3566,19 @@ format_scientific_number_g(Flags, SpecCase, Width, Prec, Float, E)
 
         % Change precision (default is 6).
         AbsStr = convert_float_to_string(Abs),
-        ( is_nan_or_inf(Abs) ->
-            PrecStr = AbsStr
-        ;
-            (
-                Prec = yes(Precision),
-                ( Precision = 0 ->
-                    PrecStr = change_to_g_notation(AbsStr, 1, E, Flags)
-                ;
-                    PrecStr = change_to_g_notation(AbsStr, Precision, E, Flags)
-                )
+        (
+            Prec = yes(Precision),
+            ( Precision = 0 ->
+                PrecStr = change_to_g_notation(AbsStr, 1, E, Flags)
             ;
-                Prec = no,
-                PrecStr = change_to_g_notation(AbsStr, 6, E, Flags)
+                PrecStr = change_to_g_notation(AbsStr, Precision, E, Flags)
             )
+        ;
+            Prec = no,
+            PrecStr = change_to_g_notation(AbsStr, 6, E, Flags)
         ),
 
-            %
-            % Do we need to change field width?
-            %
+        % Do we need to change field width?
         (
             Width = yes(FieldWidth),
             FieldWidth > string.count_codepoints(PrecStr),
@@ -3623,27 +3613,23 @@ format_scientific_number(Flags, SpecCase, Width, Prec, Float, E) = NewFloat :-
 
         % Change precision (default is 6).
         AbsStr = convert_float_to_string(Abs),
-        ( is_nan_or_inf(Abs) ->
-            PrecModStr = AbsStr
+        (
+            Prec = yes(Precision),
+            PrecStr = change_to_e_notation(AbsStr, Precision, E)
         ;
-            (
-                Prec = yes(Precision),
-                PrecStr = change_to_e_notation(AbsStr, Precision, E)
-            ;
-                Prec = no,
-                PrecStr = change_to_e_notation(AbsStr, 6, E)
-            ),
+            Prec = no,
+            PrecStr = change_to_e_notation(AbsStr, 6, E)
+        ),
 
-            % Do we need to remove the decimal point?
-            (
-                \+ member('#', Flags),
-                Prec = yes(0)
-            ->
-                split_at_decimal_point(PrecStr, BaseStr, ExponentStr),
-                PrecModStr = BaseStr ++ ExponentStr
-            ;
-                PrecModStr = PrecStr
-            )
+        % Do we need to remove the decimal point?
+        (
+            \+ member('#', Flags),
+            Prec = yes(0)
+        ->
+            split_at_decimal_point(PrecStr, BaseStr, ExponentStr),
+            PrecModStr = BaseStr ++ ExponentStr
+        ;
+            PrecModStr = PrecStr
         ),
 
         % Do we need to change field width?
@@ -3808,9 +3794,6 @@ get_capital_hex_int(Int) = HexStr :-
     %
     % This predicate relies on the fact that string.float_to_string returns
     % a float which is round-trippable, ie to the full precision needed.
-    %
-    % NOTE: this function does *not* handle special float values, like NaN
-    % and Infinity.
     %
 :- func convert_float_to_string(float) = string.
 
