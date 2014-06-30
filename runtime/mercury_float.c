@@ -90,6 +90,13 @@ MR_sprintf_float(char *buf, MR_Float f)
     } while (round_trip != f);
 
     /*
+    ** Do not append ".0" to nan or (-)inf.
+    */
+    if (MR_is_nan(f) || MR_is_inf(f)) {
+        return;
+    }
+
+    /*
     ** Append ".0" if there is no "e" or "." in the string.
     */
     while (1) {

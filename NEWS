@@ -23,6 +23,8 @@ This is a bug-fix release.
   been fixed.  This bug only affected the non-C backends.  (Bug #342)
 * string.format now handles special float values (i.e. nan, inf,  and -inf)
   correctly with the non-C backends.
+* A bug that caused io.write_float/[34] to append ".0" to float special values
+  has been fixed.
 
 Changes to the Mercury compiler:
 
