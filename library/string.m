@@ -4198,16 +4198,19 @@ string.from_float(Flt) = string.float_to_string(Flt).
 "
     Str = Flt.ToString(""R"");
 
-    /* Append '.0' if there is no 'e' or '.' in the string. */
-    bool contains = false;
-    foreach (char c in Str) {
-        if (c == 'e' || c == 'E' || c == '.') {
-            contains = true;
-            break;
+    if (!System.Double.IsNaN(Flt) && !System.Double.IsInfinity(Flt)) {
+
+        /* Append '.0' if there is no 'e' or '.' in the string. */
+        bool contains = false;
+        foreach (char c in Str) {
+            if (c == 'e' || c == 'E' || c == '.') {
+                contains = true;
+                break;
+            }
         }
-    }
-    if (!contains) {
-        Str = Str + "".0"";
+        if (!contains) {
+            Str = Str + "".0"";
+        }
     }
 ").
 

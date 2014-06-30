@@ -24,7 +24,7 @@ This is a bug-fix release.
 * string.format now handles special float values (i.e. nan, inf,  and -inf)
   correctly with the non-C backends.
 * A bug that caused io.write_float/[34] to append ".0" to float special values
-  has been fixed.
+  has been fixed.  This bug affected the C and C# backends.
 
 Changes to the Mercury compiler:
 
