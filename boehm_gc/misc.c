@@ -744,9 +744,11 @@ GC_API void GC_CALL GC_init(void)
         /* else */ InitializeCriticalSection (&GC_allocate_ml);
      }
 #   endif /* GC_WIN32_THREADS */
-#   if (defined(GC_PTHREADS) && !defined(GC_WIN32_THREADS))
-     GC_setup_mark_lock();
-#   endif /* GC_PTHREADS */
+#   ifdef PARALLEL_MARK
+#     if (defined(GC_PTHREADS) && !defined(GC_WIN32_THREADS))
+        GC_setup_mark_lock();
+#     endif /* GC_PTHREADS */
+#   endif /* PARALLEL_MARK */
 #   if (defined(MSWIN32) || defined(MSWINCE)) && defined(THREADS)
       InitializeCriticalSection(&GC_write_cs);
 #   endif
