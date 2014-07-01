@@ -350,6 +350,7 @@ ORDINARY_PROGS=	\
 	value_enum \
 	words_separator \
 	write \
+	write_float_special \
 	write_reg1 \
 	write_reg2 \
 	write_xml \

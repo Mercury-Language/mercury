@@ -62,6 +62,10 @@ This is a bug-fix release.
 * A problem that caused string.format/[23] to sometimes return incorrect
   results when formatting floats with the 'g' conversion specifier has
   been fixed.  This bug only affected the non-C backends.  (Bug #342)
+* string.format now handles special float values (i.e. nan, inf,  and -inf)
+  correctly with the non-C backends.
+* A bug that caused io.write_float/[34] to append ".0" to float special values
+  has been fixed.  This bug affected the C and C# backends.
 
 Changes to the Mercury compiler:
 
