@@ -25,6 +25,10 @@ This is a bug-fix release.
   correctly with the non-C backends.
 * A bug that caused io.write_float/[34] to append ".0" to float special values
   has been fixed.  This bug affected the C and C# backends.
+* In the C# and Java grades, the predicate string.from_char_list now
+  implements the documented behaviour for input lists containing null
+  characters (i.e. it throws an exception).
+  Likewise, for string.from_reverse_char_list in the C# grade.
 
 Changes to the Mercury compiler:
 

@@ -1787,10 +1787,14 @@ string.from_char_list(Chars::in, Str::uo) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
+    SUCCESS_INDICATOR = true;
     System.Text.StringBuilder sb = new System.Text.StringBuilder();
     while (!list.is_empty(CharList)) {
         int cp = (int) list.det_head(CharList);
-        if (cp <= 0xffff) {
+        if (cp == 0x0000) {
+            SUCCESS_INDICATOR = false;
+            break;
+        } else if (cp <= 0xffff) {
             sb.Append((char) cp);
         } else {
             sb.Append(System.Char.ConvertFromUtf32(cp));
@@ -1798,7 +1802,6 @@ string.from_char_list(Chars::in, Str::uo) :-
         CharList = list.det_tail(CharList);
     }
     Str = sb.ToString();
-    SUCCESS_INDICATOR = true;
 ").
 
 :- pragma foreign_proc("Java",
@@ -1808,8 +1811,12 @@ string.from_char_list(Chars::in, Str::uo) :-
 "
     java.lang.StringBuilder sb = new StringBuilder();
     Iterable<Integer> iterable = new list.ListIterator<Integer>(CharList);
+    SUCCESS_INDICATOR = true;
     for (int c : iterable) {
-        if (c <= 0xffff) {
+        if (c == 0x0000) {
+            SUCCESS_INDICATOR = false;
+            break;
+        } else if (c <= 0xffff) {
             /* Fast path. */
             sb.append((char) c);
         } else {
@@ -1817,7 +1824,6 @@ string.from_char_list(Chars::in, Str::uo) :-
         }
     }
     Str = sb.toString();
-    SUCCESS_INDICATOR = true;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -1932,9 +1938,13 @@ string.from_rev_char_list(Chars, Str) :-
 
     char[] arr = new char[size];
     list_ptr = Chars;
+    SUCCESS_INDICATOR = true;
     while (!list.is_empty(list_ptr)) {
         int c = (int) list.det_head(list_ptr);
-        if (c <= 0xffff) {
+        if (c == 0x0000) {
+            SUCCESS_INDICATOR = false;
+            break;
+        } else if (c <= 0xffff) {
             arr[--size] = (char) c;
         } else {
             string s = System.Char.ConvertFromUtf32(c);
@@ -1945,7 +1955,6 @@ string.from_rev_char_list(Chars, Str) :-
     }
 
     Str = new string(arr);
-    SUCCESS_INDICATOR = true;
 ").
 
 string.semidet_from_rev_char_list(Chars::in, Str::uo) :-
