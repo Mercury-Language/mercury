@@ -16,7 +16,7 @@ main(!IO) :-
 		sym_name_to_string(Name, ".", Str),
 		Hash = hash(Str)
 	),
-	HT0 = new(HashPred, 10, 0.8),
+	HT0 = init(HashPred, 10, 0.8),
 	build_table(entries, HT0, HT),  
 	(
 		hash_table__search(HT,

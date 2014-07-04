@@ -77,6 +77,7 @@ MCFLAGS-type_info_const_inst	= --const-struct --optimise-constant-propagation
 MCFLAGS-uncond_reuse	    =	--ctgc
 MCFLAGS-uncond_reuse_bad    =	--ctgc
 MCFLAGS-uo_regression1      =	--from-ground-term-threshold=4
+MCFLAGS-write               =	--no-warn-unresolved-polymorphism
 
 # We disable intermodule-optimization here because it isn't compatible with
 # intermodule-analysis.
