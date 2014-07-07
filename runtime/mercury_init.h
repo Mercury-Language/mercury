@@ -123,8 +123,8 @@ extern	int	mercury_terminate(void);
 
 /* in library/io.mh */
 extern	void	mercury_init_io(void);
-extern	void	ML_io_init_state(void);
-extern	void	ML_io_finalize_state(void);
+extern	void	ML_std_library_init(void);
+extern	void	ML_std_library_finalize(void);
 extern	void	ML_io_stderr_stream(MercuryFilePtr *);
 extern	void	ML_io_stdout_stream(MercuryFilePtr *);
 extern	void	ML_io_stdin_stream(MercuryFilePtr *);

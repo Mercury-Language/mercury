@@ -1,0 +1,11 @@
+unify:
+node({nil, fruit("apple")}) =  node({nil, fruit("apple")})
+node({nil, fruit("apple")}) \= node({nil, fruit("peach")})
+node({nil, fruit("peach")}) \= node({nil, fruit("apple")})
+node({nil, fruit("peach")}) =  node({nil, fruit("peach")})
+
+compare:
+node({nil, fruit("apple")}) = node({nil, fruit("apple")})
+node({nil, fruit("apple")}) < node({nil, fruit("peach")})
+node({nil, fruit("peach")}) > node({nil, fruit("apple")})
+node({nil, fruit("peach")}) = node({nil, fruit("peach")})

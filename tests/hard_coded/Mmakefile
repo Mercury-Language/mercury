@@ -324,6 +324,7 @@ ORDINARY_PROGS=	\
 	transitive_inst_type \
 	trigraphs \
 	tuple_test \
+	tuple_test2 \
 	type_ctor_desc \
 	type_ctor_desc_manip \
 	type_info_const_inst \

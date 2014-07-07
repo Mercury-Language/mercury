@@ -324,10 +324,10 @@ main_wrapper_code = "
 
     mercury__startup() ->
         mercury__erlang_builtin:'ML_start_global_server'(),
-        mercury__io:'ML_io_init_state'().
+        mercury__library:'ML_std_library_init'().
 
     mercury__shutdown(ForceBadExit) ->
-        mercury__io:'ML_io_finalize_state'(),
+        mercury__library:'ML_std_library_finalize'(),
         'ML_erlang_global_server' ! {get_exit_status, self()},
         receive
             {get_exit_status_ack, ExitStatus0} ->

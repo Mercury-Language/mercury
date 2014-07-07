@@ -316,4 +316,34 @@ mercury_std_library_module("version_hash_table").
 mercury_std_library_module("version_store").
 
 %---------------------------------------------------------------------------%
+
+    % Overall library initializer called before any user code,
+    % including module local initializers.
+    %
+:- pred std_library_init(io::di, io::uo) is det.
+
+:- pragma foreign_export("C", std_library_init(di, uo),
+    "ML_std_library_init").
+:- pragma foreign_export("Erlang", std_library_init(di, uo),
+    "ML_std_library_init").
+
+std_library_init(!IO) :-
+    promise_pure (
+        impure builtin.init_runtime_hooks,
+        io.init_state(!IO)
+    ).
+
+    % Overall library finalizer.
+    %
+:- pred std_library_finalize(io::di, io::uo) is det.
+
+:- pragma foreign_export("C", std_library_finalize(di, uo),
+    "ML_std_library_finalize").
+:- pragma foreign_export("Erlang", std_library_finalize(di, uo),
+    "ML_std_library_finalize").
+
+std_library_finalize(!IO) :-
+    io.finalize_state(!IO).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

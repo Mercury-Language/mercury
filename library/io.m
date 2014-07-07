@@ -1531,6 +1531,13 @@
 :- interface.
 
 %
+% For use by library.m:
+%
+
+:- pred io.init_state(io::di, io::uo) is det.
+:- pred io.finalize_state(io::di, io::uo) is det.
+
+%
 % For use by dir.m:
 %
 
@@ -1874,6 +1881,99 @@
     % Fails if the operation does not work.
     %
 :- impure pred io.setenv(string::in, string::in) is semidet.
+
+%-----------------------------------------------------------------------------%
+%
+% Initialization
+%
+
+io.init_state(!IO) :-
+    init_std_streams(!IO),
+    %
+    % In C grades the "current" streams are thread-local values, so can only be
+    % set after the MR_Context has been initialised for the initial thread.
+    %
+    io.set_input_stream(io.stdin_stream, _, !IO),
+    io.set_output_stream(io.stdout_stream, _, !IO),
+    io.stdin_binary_stream(StdinBinary, !IO),
+    io.stdout_binary_stream(StdoutBinary, !IO),
+    io.set_binary_input_stream(StdinBinary, _, !IO),
+    io.set_binary_output_stream(StdoutBinary, _, !IO),
+
+    io.gc_init(type_of(StreamDb), type_of(Globals), !IO),
+    map.init(StreamDb),
+    type_to_univ("<globals>", Globals),
+    io.set_stream_db(StreamDb, !IO),
+    io.set_op_table(ops.init_mercury_op_table, !IO),
+    io.set_globals(Globals, !IO),
+    io.insert_std_stream_names(!IO).
+
+:- pred init_std_streams(io::di, io::uo) is det.
+
+init_std_streams(!IO).
+
+:- pragma foreign_proc("Erlang",
+    init_std_streams(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    F = (fun() -> mercury_stdio_file_server(group_leader()) end),
+    StdinPid = spawn(F),
+    StdoutPid = spawn(F),
+    StderrPid = spawn(F),
+    StdinBinaryPid = spawn(F),
+    StdoutBinaryPid = spawn(F),
+
+    Stdin = {'ML_stream', make_ref(), StdinPid},
+    Stdout = {'ML_stream', make_ref(), StdoutPid},
+    Stderr = {'ML_stream', make_ref(), StderrPid},
+    StdinBinary = {'ML_stream', make_ref(), StdinBinaryPid},
+    StdoutBinary = {'ML_stream', make_ref(), StdoutBinaryPid},
+
+    % Initialise the process dictionary.
+    put('ML_stdin_stream', Stdin),
+    put('ML_stdout_stream', Stdout),
+    put('ML_stderr_stream', Stderr),
+    put('ML_stdin_binary_stream', StdinBinary),
+    put('ML_stdout_binary_stream', StdoutBinary),
+
+    % Save the standard streams to the global server. When we spawn a new
+    % Mercury thread later we will need to look it up in order to initialise
+    % the new process's process dictionary.
+    StdStreams = {Stdin, Stdout, Stderr, StdinBinary, StdoutBinary},
+    'ML_erlang_global_server' ! {init_std_streams, StdStreams}
+").
+
+    % Currently no finalization needed...
+    % (Perhaps we should close all open Mercury files?
+    % That will happen on process exit anyway, so currently we don't bother.)
+io.finalize_state(!IO).
+
+:- pred io.gc_init(type_desc::in, type_desc::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    io.gc_init(StreamDbType::in, UserGlobalsType::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io,
+        does_not_affect_liveness, no_sharing],
+"
+    /* for Windows DLLs, we need to call GC_INIT() from each DLL */
+#ifdef MR_BOEHM_GC
+    GC_INIT();
+#endif
+    MR_add_root(&ML_io_stream_db, (MR_TypeInfo) StreamDbType);
+    MR_add_root(&ML_io_user_globals, (MR_TypeInfo) UserGlobalsType);
+").
+
+io.gc_init(_, _, !IO).
+
+:- pred io.insert_std_stream_names(io::di, io::uo) is det.
+
+io.insert_std_stream_names(!IO) :-
+    io.stdin_stream(input_stream(Stdin), !IO),
+    io.insert_stream_info(Stdin, stream(0, input, preopen, stdin), !IO),
+    io.stdout_stream(output_stream(Stdout), !IO),
+    io.insert_stream_info(Stdout, stream(1, output, preopen, stdout), !IO),
+    io.stderr_stream(output_stream(Stderr), !IO),
+    io.insert_stream_info(Stderr, stream(1, output, preopen, stderr), !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -5521,120 +5621,6 @@ io.report_stats(Selector, !IO) :-
 %
 % Miscellaneous predicates
 %
-
-:- interface.
-
-    % XXX Since on the IL backend pragma export is NYI, this
-    % predicate must be placed in the interface.
-    %
-:- pred io.init_state(io::di, io::uo) is det.
-
-:- implementation.
-
-    % For use by the Mercury runtime.
-    %
-:- pragma foreign_export("C", io.init_state(di, uo), "ML_io_init_state").
-:- pragma foreign_export("IL", io.init_state(di, uo), "ML_io_init_state").
-:- pragma foreign_export("Erlang", io.init_state(di, uo), "ML_io_init_state").
-
-io.init_state(!IO) :-
-    init_std_streams(!IO),
-    %
-    % In C grades the "current" streams are thread-local values, so can only be
-    % set after the MR_Context has been initialised for the initial thread.
-    %
-    io.set_input_stream(io.stdin_stream, _, !IO),
-    io.set_output_stream(io.stdout_stream, _, !IO),
-    io.stdin_binary_stream(StdinBinary, !IO),
-    io.stdout_binary_stream(StdoutBinary, !IO),
-    io.set_binary_input_stream(StdinBinary, _, !IO),
-    io.set_binary_output_stream(StdoutBinary, _, !IO),
-
-    io.gc_init(type_of(StreamDb), type_of(Globals), !IO),
-    map.init(StreamDb),
-    type_to_univ("<globals>", Globals),
-    io.set_stream_db(StreamDb, !IO),
-    io.set_op_table(ops.init_mercury_op_table, !IO),
-    io.set_globals(Globals, !IO),
-    io.insert_std_stream_names(!IO).
-
-:- pred init_std_streams(io::di, io::uo) is det.
-
-init_std_streams(!IO).
-
-:- pragma foreign_proc("Erlang",
-    init_std_streams(_IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
-"
-    F = (fun() -> mercury_stdio_file_server(group_leader()) end),
-    StdinPid = spawn(F),
-    StdoutPid = spawn(F),
-    StderrPid = spawn(F),
-    StdinBinaryPid = spawn(F),
-    StdoutBinaryPid = spawn(F),
-
-    Stdin = {'ML_stream', make_ref(), StdinPid},
-    Stdout = {'ML_stream', make_ref(), StdoutPid},
-    Stderr = {'ML_stream', make_ref(), StderrPid},
-    StdinBinary = {'ML_stream', make_ref(), StdinBinaryPid},
-    StdoutBinary = {'ML_stream', make_ref(), StdoutBinaryPid},
-
-    % Initialise the process dictionary.
-    put('ML_stdin_stream', Stdin),
-    put('ML_stdout_stream', Stdout),
-    put('ML_stderr_stream', Stderr),
-    put('ML_stdin_binary_stream', StdinBinary),
-    put('ML_stdout_binary_stream', StdoutBinary),
-
-    % Save the standard streams to the global server. When we spawn a new
-    % Mercury thread later we will need to look it up in order to initialise
-    % the new process's process dictionary.
-    StdStreams = {Stdin, Stdout, Stderr, StdinBinary, StdoutBinary},
-    'ML_erlang_global_server' ! {init_std_streams, StdStreams}
-").
-
-:- pred io.finalize_state(io::di, io::uo) is det.
-
-    % For use by the Mercury runtime.
-    %
-:- pragma foreign_export("C", io.finalize_state(di, uo),
-    "ML_io_finalize_state").
-:- pragma foreign_export("IL", io.finalize_state(di, uo),
-    "ML_io_finalize_state").
-:- pragma foreign_export("Erlang", io.finalize_state(di, uo),
-    "ML_io_finalize_state").
-
-    % Currently no finalization needed...
-    % (Perhaps we should close all open Mercury files?
-    % That will happen on process exit anyway, so currently we don't bother.)
-io.finalize_state(!IO).
-
-:- pred io.gc_init(type_desc::in, type_desc::in, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    io.gc_init(StreamDbType::in, UserGlobalsType::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    /* for Windows DLLs, we need to call GC_INIT() from each DLL */
-#ifdef MR_BOEHM_GC
-    GC_INIT();
-#endif
-    MR_add_root(&ML_io_stream_db, (MR_TypeInfo) StreamDbType);
-    MR_add_root(&ML_io_user_globals, (MR_TypeInfo) UserGlobalsType);
-").
-
-io.gc_init(_, _, !IO).
-
-:- pred io.insert_std_stream_names(io::di, io::uo) is det.
-
-io.insert_std_stream_names(!IO) :-
-    io.stdin_stream(input_stream(Stdin), !IO),
-    io.insert_stream_info(Stdin, stream(0, input, preopen, stdin), !IO),
-    io.stdout_stream(output_stream(Stdout), !IO),
-    io.insert_stream_info(Stdout, stream(1, output, preopen, stdout), !IO),
-    io.stderr_stream(output_stream(Stderr), !IO),
-    io.insert_stream_info(Stderr, stream(1, output, preopen, stderr), !IO).
 
 io.call_system(Command, Result, !IO) :-
     io.call_system_return_signal(Command, Result0, !IO),

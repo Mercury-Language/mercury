@@ -36,6 +36,11 @@
 ** using recursion in Mercury. The Mercury procedure and C function share code
 ** because they implement the same task.
 **
+** XXX does the rationale still hold? Only rarely used code paths still have
+** loop bodies in C and they are likely incorrect for deep profiling.
+** Also, the Mercury implementation of tuple unify/compare predicates is
+** faster than the hand-written version was in asm_fast.gc. --pw
+**
 ** We need separate C functions for unifications and comparison because
 ** with --no-special-preds, a type with user-defined equality (but not
 ** comparison) has a non-NULL unify_pred field in its type_ctor_info but a
@@ -170,6 +175,8 @@ start_label:
             ** When deep profiling is enabled, we use the call, exit and (for
             ** unifications) fail ports of dummy unify, compare and compare_rep
             ** predicates for the dummy type_ctor builtin.user_by_rtti/0.
+            **
+            ** XXX the deep profiler invariants are likely broken in the loop
             */
 
             {
@@ -582,48 +589,36 @@ start_label:
                 MR_restore_registers();
             }
 
-            tailcall_user_pred();
+            tailcall_tci_pred();
 #endif  /* !include_compare_rep_code */
 
         case MR_TYPECTOR_REP_TUPLE:
-            {
-                int     i;
-                int     type_arity;
-                int     result;
-
-                type_arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
-
-                for (i = 0; i < type_arity; i++) {
-                    MR_TypeInfo arg_type_info;
-
-                    /* type_infos are counted from one */
-                    arg_type_info =
-                        MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)[i + 1];
-
-#ifdef  select_compare_code
-                    MR_save_transient_registers();
-                    result = MR_generic_compare(arg_type_info,
-                        ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
-                    MR_restore_transient_registers();
-                    if (result != MR_COMPARE_EQUAL) {
-                        return_compare_answer(builtin, tuple, 0, result);
-                    }
-#else
-                    MR_save_transient_registers();
-                    result = MR_generic_unify(arg_type_info,
-                        ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
-                    MR_restore_transient_registers();
-                    if (! result) {
-                        return_unify_answer(builtin, tuple, 0, MR_FALSE);
-                    }
-#endif
-                }
-#ifdef  select_compare_code
-                return_compare_answer(builtin, tuple, 0, MR_COMPARE_EQUAL);
-#else
-                return_unify_answer(builtin, tuple, 0, MR_TRUE);
-#endif
+            /*
+            ** The tuple unify and compare predicates are implemented in
+            ** Mercury, mainly so that the compiler can perform the deep
+            ** profiler tranformation on them.
+            */
+#ifdef select_compare_code
+    #ifdef include_compare_rep_code
+            if (MR_special_pred_hooks.MR_compare_rep_tuple_pred != NULL) {
+                tailcall(MR_special_pred_hooks.MR_compare_rep_tuple_pred);
+            } else {
+                MR_fatal_error(attempt_msg "tuples");
             }
+    #else
+            if (MR_special_pred_hooks.MR_compare_tuple_pred != NULL) {
+                tailcall(MR_special_pred_hooks.MR_compare_tuple_pred);
+            } else {
+                tailcall_tci_pred();
+            }
+    #endif
+#else
+            if (MR_special_pred_hooks.MR_unify_tuple_pred != NULL) {
+                tailcall(MR_special_pred_hooks.MR_unify_tuple_pred);
+            } else {
+                tailcall_tci_pred();
+            }
+#endif
 
 #ifdef  include_compare_rep_code
         case MR_TYPECTOR_REP_ENUM_USEREQ:

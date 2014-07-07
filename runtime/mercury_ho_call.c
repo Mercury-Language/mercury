@@ -39,6 +39,8 @@ ENDINIT
 #include "mercury_types.h"
 #include "mercury_bitmap.h"
 
+MR_SpecialPredHooks MR_special_pred_hooks;
+
 #ifdef  MR_DEEP_PROFILING
   #ifdef MR_DEEP_PROFILING_STATISTICS
     #define maybe_incr_prof_call_builtin_new()                              \
@@ -91,54 +93,6 @@ ENDINIT
 
 #ifdef MR_HIGHLEVEL_CODE
 
-static MR_bool MR_CALL
-unify_tuples(MR_Mercury_Type_Info ti, MR_Tuple x, MR_Tuple y)
-{
-    int         i, arity;
-    MR_bool     result;
-    MR_TypeInfo type_info;
-    MR_TypeInfo arg_type_info;
-
-    type_info = (MR_TypeInfo) ti;
-    arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
-
-    for (i = 0; i < arity; i++) {
-        /* type_infos are counted starting at one. */
-        arg_type_info = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)[i + 1];
-        result = mercury__builtin__unify_2_p_0(
-            (MR_Mercury_Type_Info) arg_type_info, x[i], y[i]);
-        if (result == MR_FALSE) {
-            return MR_FALSE;
-        }
-    }
-
-    return MR_TRUE;
-}
-
-static void MR_CALL
-compare_tuples(MR_Mercury_Type_Info ti, MR_Comparison_Result *result,
-    MR_Tuple x, MR_Tuple y)
-{
-    int         i, arity;
-    MR_TypeInfo type_info;
-    MR_TypeInfo arg_type_info;
-
-    type_info = (MR_TypeInfo) ti;
-    arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
-
-    for (i = 0; i < arity; i++) {
-        /* type_infos are counted starting at one. */
-        arg_type_info = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)[i + 1];
-        mercury__builtin__compare_3_p_0(
-            (MR_Mercury_Type_Info) arg_type_info, result, x[i], y[i]);
-        if (*result != MR_COMPARE_EQUAL) {
-            return;
-        }
-    }
-
-    *result = MR_COMPARE_EQUAL;
-}
-
 /*
 ** Define the generic unify/2 and compare/3 functions.
 */
@@ -163,7 +117,10 @@ mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info ti, MR_Box x, MR_Box y)
     */
     type_ctor_rep = MR_type_ctor_rep(type_ctor_info);
     if (type_ctor_rep == MR_TYPECTOR_REP_TUPLE) {
-        return unify_tuples(ti, (MR_Tuple) x, (MR_Tuple) y);
+        if (MR_special_pred_hooks.MR_unify_tuple_pred != NULL) {
+            return MR_special_pred_hooks.MR_unify_tuple_pred(ti,
+                (MR_Word) x, (MR_Word) y);
+        }
     } else if (type_ctor_rep == MR_TYPECTOR_REP_PRED) {
         return mercury__builtin____Unify____pred_0_0((MR_Pred) x, (MR_Pred) y);
     } else if (type_ctor_rep == MR_TYPECTOR_REP_FUNC) {
@@ -229,8 +186,11 @@ mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info ti,
     */
     type_ctor_rep = MR_type_ctor_rep(type_ctor_info);
     if (type_ctor_rep == MR_TYPECTOR_REP_TUPLE) {
-        compare_tuples(ti, res, (MR_Tuple) x, (MR_Tuple) y);
-        return;
+        if (MR_special_pred_hooks.MR_compare_tuple_pred != NULL) {
+            MR_special_pred_hooks.MR_compare_tuple_pred(ti, res,
+                (MR_Word) x, (MR_Word) y);
+            return;
+        }
     } else if (type_ctor_rep == MR_TYPECTOR_REP_PRED) {
         mercury__builtin____Compare____pred_0_0(res, (MR_Pred) x, (MR_Pred) y);
         return;
@@ -519,9 +479,11 @@ MR_define_entry(mercury__builtin__unify_2_0);
         MR_proceed();                                                       \
     } while(0)
 
-#define tailcall_user_pred()                                                \
-    MR_tailcall(type_ctor_info->MR_type_ctor_unify_pred,                    \
-        MR_LABEL(mercury__builtin__unify_2_0))
+#define tailcall_tci_pred()                                                 \
+    tailcall(type_ctor_info->MR_type_ctor_unify_pred)
+
+#define tailcall(label)                                                     \
+    MR_tailcall(label, MR_LABEL(mercury__builtin__unify_2_0))
 
 #define start_label                 unify_start
 #define call_user_code_label        call_unify_in_proc
@@ -534,7 +496,8 @@ MR_define_entry(mercury__builtin__unify_2_0);
 #undef  DECLARE_LOCALS
 #undef  initialize
 #undef  raw_return_answer
-#undef  tailcall_user_pred
+#undef  tailcall_tci_pred
+#undef  tailcall
 #undef  start_label
 #undef  call_user_code_label
 #undef  type_stat_struct
@@ -595,9 +558,11 @@ MR_define_entry(mercury__builtin__compare_3_3);
         MR_proceed();                                                       \
     } while(0)
 
-#define tailcall_user_pred()                                                \
-    MR_tailcall(type_ctor_info->MR_type_ctor_compare_pred,                  \
-        MR_LABEL(mercury__builtin__compare_3_3))
+#define tailcall_tci_pred()                                                 \
+    tailcall(type_ctor_info->MR_type_ctor_compare_pred)
+
+#define tailcall(label)                                                     \
+    MR_tailcall(label, MR_LABEL(mercury__builtin__compare_3_3))
 
 #define start_label                 compare_start
 #define call_user_code_label        call_compare_in_proc
@@ -611,7 +576,8 @@ MR_define_entry(mercury__builtin__compare_3_3);
 #undef  DECLARE_LOCALS
 #undef  initialize
 #undef  raw_return_answer
-#undef  tailcall_user_pred
+#undef  tailcall_tci_pred
+#undef  tailcall
 #undef  start_label
 #undef  call_user_code_label
 #undef  type_stat_struct
@@ -651,6 +617,9 @@ MR_define_entry(mercury__builtin__compare_representation_3_0);
         MR_proceed();                                                       \
     } while(0)
 
+#define tailcall(label)                                                     \
+    MR_tailcall(label, MR_LABEL(mercury__builtin__compare_representation_3_0))
+
 #define start_label                 compare_rep_start
 #define call_user_code_label        call_compare_rep_in_proc
 #define type_stat_struct            MR_type_stat_mer_compare
@@ -664,6 +633,7 @@ MR_define_entry(mercury__builtin__compare_representation_3_0);
 #undef  DECLARE_LOCALS
 #undef  initialize
 #undef  raw_return_answer
+#undef  tailcall
 #undef  start_label
 #undef  call_user_code_label
 #undef  type_stat_struct
@@ -687,18 +657,20 @@ MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
     do {                                                                      \
         MR_restore_transient_registers();                                     \
     } while (0)
-                                                                              \
+
 #define raw_return_answer(answer)                                             \
     do {                                                                      \
         MR_save_transient_registers();                                        \
         return (answer);                                                      \
     } while (0)
-                                                                              \
-#define tailcall_user_pred()                                                  \
+
+#define tailcall_tci_pred()                                                   \
+    tailcall(type_ctor_info->MR_type_ctor_unify_pred)
+
+#define tailcall(label)                                                       \
     do {                                                                      \
         MR_save_transient_registers();                                        \
-        (void) MR_call_engine(type_ctor_info->MR_type_ctor_unify_pred,        \
-            MR_FALSE);                                                        \
+        (void) MR_call_engine(label, MR_FALSE);                               \
         MR_restore_transient_registers();                                     \
         return (MR_r1);                                                       \
     } while (0)
@@ -713,7 +685,8 @@ MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 #undef  DECLARE_LOCALS
 #undef  initialize
 #undef  raw_return_answer
-#undef  tailcall_user_pred
+#undef  tailcall_tci_pred
+#undef  tailcall
 #undef  start_label
 #undef  call_user_code_label
 #undef  type_stat_struct
@@ -737,11 +710,13 @@ MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
         return (answer);                                                    \
     } while (0)
 
-#define tailcall_user_pred()                                                \
+#define tailcall_tci_pred()                                                 \
+    tailcall(type_ctor_info->MR_type_ctor_compare_pred)
+
+#define tailcall(label)                                                     \
     do {                                                                    \
         MR_save_transient_registers();                                      \
-        (void) MR_call_engine(type_ctor_info->MR_type_ctor_compare_pred,    \
-            MR_FALSE);                                                      \
+        (void) MR_call_engine(label, MR_FALSE);                             \
         MR_restore_transient_registers();                                   \
         return (MR_r1);                                                     \
     } while (0)
@@ -757,7 +732,8 @@ MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 #undef  DECLARE_LOCALS
 #undef  initialize
 #undef  raw_return_answer
-#undef  tailcall_user_pred
+#undef  tailcall_tci_pred
+#undef  tailcall
 #undef  start_label
 #undef  call_user_code_label
 #undef  type_stat_struct
@@ -782,10 +758,18 @@ MR_generic_compare_representation(MR_TypeInfo type_info, MR_Word x, MR_Word y)
         return (answer);                                                    \
     } while (0)
 
+#define tailcall(label)                                                     \
+    do {                                                                    \
+        MR_save_transient_registers();                                      \
+        (void) MR_call_engine(label, MR_FALSE);                             \
+        MR_restore_transient_registers();                                   \
+        return (MR_r1);                                                     \
+    } while (0)
+
 #define start_label                 compare_rep_func_start
 #define call_user_code_label        call_compare_rep_in_func
 #define type_stat_struct            MR_type_stat_c_compare
-#define attempt_msg                 "attempt to compare representation"
+#define attempt_msg                 "attempt to compare representation "
 #define select_compare_code
 #define include_compare_rep_code
 
@@ -794,6 +778,7 @@ MR_generic_compare_representation(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 #undef  DECLARE_LOCALS
 #undef  initialize
 #undef  raw_return_answer
+#undef  tailcall
 #undef  start_label
 #undef  call_user_code_label
 #undef  type_stat_struct

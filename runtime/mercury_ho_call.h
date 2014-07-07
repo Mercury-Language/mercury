@@ -194,4 +194,25 @@ MR_declare_entry(mercury__builtin__compare_representation_3_0);
 
 #endif	/* MR_HIGHLEVEL_CODE */
 
+/*
+** Special predicates implemented in the standard library
+** The structure is initialized by init_runtime_hooks in builtin.m
+*/
+
+typedef struct MR_SpecialPredHooks_Struct {
+  #ifdef MR_HIGHLEVEL_CODE
+    MR_bool MR_CALL (*MR_unify_tuple_pred)(MR_Word ti, MR_Word x, MR_Word y);
+    void MR_CALL    (*MR_compare_tuple_pred)(MR_Word ti, MR_Word *res,
+                        MR_Word x, MR_Word y);
+    MR_bool MR_CALL (*MR_compare_rep_tuple_pred)(MR_Word ti, MR_Word *res,
+                        MR_Word x, MR_Word y);
+  #else
+    MR_Code         *MR_unify_tuple_pred;
+    MR_Code         *MR_compare_tuple_pred;
+    MR_Code         *MR_compare_rep_tuple_pred;
+  #endif
+} MR_SpecialPredHooks;
+
+extern MR_SpecialPredHooks  MR_special_pred_hooks;
+
 #endif	/* not MERCURY_HO_CALL_H */
