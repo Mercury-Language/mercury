@@ -232,13 +232,13 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 
 #else /* !MR_BOEHM_GC */
 
-  #ifndef MR_GNUC
+  #if !defined(MR_GNUC) && !defined(MR_CLANG)
     /*
     ** We need GNU C's `({...})' expressions.
-    ** It's not worth worrying about compilers other than GNU C for
+    ** It's not worth worrying about compilers other than GCC or clang for
     ** this obscure combination of options.
     */
-    #error "For C compilers other than GNU C, `--high-level-code' requires `--gc boehm'"
+    #error "For C compilers other than GCC or clang, `--high-level-code' requires `--gc boehm'"
   #endif
 
   /*
