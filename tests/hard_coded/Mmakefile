@@ -301,7 +301,6 @@ ORDINARY_PROGS=	\
 	switch_detect \
 	system_sort \
 	tag_switch_dup_label \
-	target_mlobjs \
 	term_io_test \
 	term_to_univ_test \
 	test234_sorted_insert \
@@ -513,7 +512,8 @@ ifeq "$(filter il% csharp% java% erlang%,$(GRADE))" ""
 		factt_sort_test \
 		foreign_type_assertion \
 		pragma_export \
-		runtime_opt
+		runtime_opt \
+		target_mlobjs
 else
 	C_ONLY_PROGS =
 endif
