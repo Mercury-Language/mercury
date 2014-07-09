@@ -67,6 +67,10 @@ MCFLAGS-lco_no_inline	    =	--optimize-constructor-last-call --no-inline-builtin
 MCFLAGS-lco_pack_args	    =	--optimize-constructor-last-call
 MCFLAGS-lco_reorder	    =	--optimize-constructor-last-call
 MCFLAGS-lookup_switch_simple_non = --no-warn-det-decls-too-lax
+MCFLAGS-mode_check_clauses  =	--no-warn-det-decls-too-lax
+MCFLAGS-mode_choice	    =	--no-warn-det-decls-too-lax
+MCFLAGS-no_fully_strict	    =	--no-warn-det-decls-too-lax
+MCFLAGS-nullary_ho_func     =	--no-warn-unresolved-polymorphism
 MCFLAGS-opt_format          =	--optimize-format-calls
 MCFLAGS-pack_args_reuse     =	--structure-reuse
 MCFLAGS-reuse_double        =	--ctgc
@@ -74,10 +78,13 @@ MCFLAGS-reuse_ho            =	--ctgc --no-optimise-higher-order
 MCFLAGS-sharing_comb	    =	--ctgc --structure-sharing-widening 2
 MCFLAGS-simplify_multi_arm_switch = -O3
 MCFLAGS-string_substring    =	--no-warn-obsolete
+MCFLAGS-term_io_test        =	--no-warn-unresolved-polymorphism
+MCFLAGS-test_imported_no_tag = --no-warn-interface-imports
 MCFLAGS-type_info_const_inst	= --const-struct --optimise-constant-propagation
 MCFLAGS-uncond_reuse	    =	--ctgc
 MCFLAGS-uncond_reuse_bad    =	--ctgc
 MCFLAGS-uo_regression1      =	--from-ground-term-threshold=4
+MCFLAGS-write               =	--no-warn-unresolved-polymorphism
 
 # We disable intermodule-optimization here because it isn't compatible with
 # intermodule-analysis.

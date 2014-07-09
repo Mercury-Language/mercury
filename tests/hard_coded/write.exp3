@@ -45,4 +45,5 @@ var_supply(1)
 empty
 qwerty(4)
 array([1, 2, 3, 4])
+version_array([1, 2, 3, 4])
 

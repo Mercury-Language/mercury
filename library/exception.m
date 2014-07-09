@@ -1464,7 +1464,7 @@ public static SsdbHooks ssdb_hooks = new SsdbHooks();
     catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
-    int CSN = ssdb_hooks.on_catch_impl();
+    int CSN = exception.ssdb_hooks.on_catch_impl();
     try {
         T = exception.ML_call_goal_det(TypeInfo_for_T, Pred);
     }
@@ -1479,7 +1479,7 @@ public static SsdbHooks ssdb_hooks = new SsdbHooks();
     catch_impl(Pred::pred(out) is cc_multi, Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
-    int CSN = ssdb_hooks.on_catch_impl();
+    int CSN = exception.ssdb_hooks.on_catch_impl();
     try {
         T = exception.ML_call_goal_det(TypeInfo_for_T, Pred);
     }
@@ -1512,14 +1512,14 @@ public static SsdbHooks ssdb_hooks = new SsdbHooks();
     catch_impl(Pred::pred(out) is multi, Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
-    int CSN = ssdb_hooks.on_catch_impl();
+    int CSN = exception.ssdb_hooks.on_catch_impl();
     try {
         runtime.MethodPtr3_r0<object, object, object> pred =
             (runtime.MethodPtr3_r0<object, object, object>) Pred[1];
         pred(Pred, cont, cont_env_ptr);
     }
     catch (runtime.Exception ex) {
-        ssdb_hooks.on_catch_impl_exception(CSN);
+        exception.ssdb_hooks.on_catch_impl_exception(CSN);
         object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
         ((runtime.MethodPtr2_r0<object, object>) cont)(T, cont_env_ptr);
@@ -1533,14 +1533,14 @@ public static SsdbHooks ssdb_hooks = new SsdbHooks();
     catch_impl(Pred::pred(out) is nondet, Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
-    int CSN = ssdb_hooks.on_catch_impl();
+    int CSN = exception.ssdb_hooks.on_catch_impl();
     try {
         runtime.MethodPtr3_r0<object, object, object> pred =
             (runtime.MethodPtr3_r0<object, object, object>) Pred[1];
         pred(Pred, cont, cont_env_ptr);
     }
     catch (runtime.Exception ex) {
-        ssdb_hooks.on_catch_impl_exception(CSN);
+        exception.ssdb_hooks.on_catch_impl_exception(CSN);
         object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
         ((runtime.MethodPtr2_r0<object, object>) cont)(T, cont_env_ptr);

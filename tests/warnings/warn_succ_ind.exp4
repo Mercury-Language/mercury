@@ -1,12 +1,12 @@
 warn_succ_ind.m:040: warning: the Erlang code for predicate
-warn_succ_ind.m:040:   `warn_succ_ind.foo'/2 may set `SUCCESS_INDICATOR' , but
+warn_succ_ind.m:040:   `warn_succ_ind.foo'/2 may set `SUCCESS_INDICATOR', but
 warn_succ_ind.m:040:   it cannot fail.
 warn_succ_ind.m:072: warning: the Erlang code for predicate
-warn_succ_ind.m:072:   `warn_succ_ind.foo2'/2 may set `SUCCESS_INDICATOR' , but
+warn_succ_ind.m:072:   `warn_succ_ind.foo2'/2 may set `SUCCESS_INDICATOR', but
 warn_succ_ind.m:072:   it cannot fail.
 warn_succ_ind.m:101: warning: the Erlang code for predicate
 warn_succ_ind.m:101:   `warn_succ_ind.bar'/2 does not appear to set
-warn_succ_ind.m:101:   `SUCCESS_INDICATOR' , but it can fail.
+warn_succ_ind.m:101:   `SUCCESS_INDICATOR', but it can fail.
 warn_succ_ind.m:129: warning: the Erlang code for predicate
 warn_succ_ind.m:129:   `warn_succ_ind.bar2'/2 does not appear to set
-warn_succ_ind.m:129:   `SUCCESS_INDICATOR' , but it can fail.
+warn_succ_ind.m:129:   `SUCCESS_INDICATOR', but it can fail.
