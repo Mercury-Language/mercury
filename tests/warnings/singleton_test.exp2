@@ -12,13 +12,14 @@ singleton_test.m:030:   warning: variables `L1, L2' occur only once in this
 singleton_test.m:030:   scope.
 singleton_test.m:031: In clause for function `singleton_test.my_append_func'/2:
 singleton_test.m:031:   warning: variable `T' occurs only once in this scope.
-singleton_test.m:036: In the C# code for predicate `singleton_test.my_c_pred'/3:
-singleton_test.m:036:   warning: variable `Y' does not occur in the C# code.
-singleton_test.m:052: In the C# code for function `singleton_test.my_c_func'/2:
-singleton_test.m:052:   warning: variable `X' does not occur in the C# code.
-singleton_test.m:072: In the C# code for predicate
-singleton_test.m:072:   `singleton_test.c_hello_world/3':
-singleton_test.m:072:   warning: variable `Msg' does not occur in the C# code.
+singleton_test.m:037: In the C# code for predicate
+singleton_test.m:037:   `singleton_test.my_c_pred'/3:
+singleton_test.m:037:   warning: variable `Y' does not occur in the C# code.
+singleton_test.m:054: In the C# code for function `singleton_test.my_c_func'/2:
+singleton_test.m:054:   warning: variable `X' does not occur in the C# code.
+singleton_test.m:074: In the C# code for predicate
+singleton_test.m:074:   `singleton_test.c_hello_world'/3:
+singleton_test.m:074:   warning: variable `Msg' does not occur in the C# code.
 singleton_test.m:090: In clause for predicate `singleton_test.test_head'/6:
 singleton_test.m:090:   warning: variable `_D' occurs more than once in this
 singleton_test.m:090:   scope.
