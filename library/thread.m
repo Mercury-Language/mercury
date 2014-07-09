@@ -122,6 +122,11 @@
 #endif
 ").
 
+:- pragma foreign_decl("Java", "
+import jmercury.runtime.JavaInternal;
+import jmercury.runtime.Task;
+").
+
     % The thread id is not formally exposed yet but allows different thread
     % handles to compare unequal.
     %
@@ -167,6 +172,13 @@ can_spawn_context :-
 :- pragma foreign_proc("C#",
     can_spawn_native,
     [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = true;
+").
+
+:- pragma foreign_proc("Java",
+    can_spawn_context,
+    [will_not_call_mercury, promise_pure],
 "
     SUCCESS_INDICATOR = true;
 ").
@@ -265,6 +277,20 @@ spawn_context_2(_, Res, "", !IO) :-
 #endif /* MR_HIGHLEVEL_CODE */
 ").
 
+:- pragma foreign_proc("Java",
+    spawn_context_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
+        ThreadId::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    RunGoal rg = new RunGoal((Object[]) Goal);
+    Task task = new Task(rg);
+    ThreadId = String.valueOf(task.getId());
+    rg.setId(ThreadId);
+    JavaInternal.getThreadPool().submitExclusiveThread(task);
+    Success = bool.YES;
+").
+
 %-----------------------------------------------------------------------------%
 
 spawn_native(Goal, Res, !IO) :-
@@ -322,11 +348,11 @@ spawn_native(Goal, Res, !IO) :-
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
-    final MercuryThread mt = new MercuryThread((Object[]) Goal);
-    final Thread thread = new Thread(mt);
-    ThreadId = String.valueOf(thread.getId());
-    mt.setThreadId(ThreadId);
-    thread.start();
+    RunGoal rg = new RunGoal((Object[]) Goal);
+    Task task = new Task(rg);
+    ThreadId = String.valueOf(task.getId());
+    rg.setId(ThreadId);
+    JavaInternal.getThreadPool().submitExclusiveThread(task);
     Success = bool.YES;
 ").
 
@@ -658,23 +684,24 @@ private class MercuryThread {
 }").
 
 :- pragma foreign_code("Java", "
-private static class MercuryThread implements Runnable {
-    private final Object[] Goal;
-    private String ThreadId;
+public static class RunGoal implements Runnable {
+    private final Object[]  goal;
+    private String          id;
 
-    private MercuryThread(Object[] g)
+    private RunGoal(Object[] g)
     {
-        Goal = g;
+        goal = g;
+        id = null;
     }
 
-    private void setThreadId(String id)
+    private void setId(String id)
     {
-        ThreadId = id;
+        this.id = id;
     }
 
     public void run()
     {
-        thread.ML_call_back_to_mercury_cc_multi(Goal, ThreadId);
+        thread.ML_call_back_to_mercury_cc_multi(goal, id);
     }
 }").
 

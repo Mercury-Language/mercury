@@ -2919,4 +2919,26 @@ now_near_stack_limits :-
     semidet_fail.
 
 %-----------------------------------------------------------------------------%
+
+    % The Java runtime system sometimes wants to report exceptions.  Create
+    % a reference that it can use to call library code to report exceptions.
+    %
+:- pragma foreign_code("Java", "
+
+public static class ReportUncaughtException
+        implements jmercury.runtime.JavaInternal.ExceptionReporter
+{
+    public void reportUncaughtException(jmercury.runtime.Exception e)
+    {
+        ML_report_uncaught_exception((univ.Univ_0) e.exception);
+    }
+}
+
+static {
+    jmercury.runtime.JavaInternal.setExceptionReporter(
+        new ReportUncaughtException());
+}
+").
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
