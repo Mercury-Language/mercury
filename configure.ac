@@ -4559,7 +4559,7 @@ case "$mercury_cv_cc_type" in
         CFLAGS_FOR_OPT=
         # XXX See README.MS-Visual C for details of why we disable this.
         #CFLAGS_FOR_DEBUG="-Zi"
-        CFLAGS_FOR_DEBUG
+        CFLAGS_FOR_DEBUG=
         CFLAGS_FOR_NO_STRICT_ALIASING=
 
         # Using the MSVC compiler implies that we must use
