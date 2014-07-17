@@ -216,18 +216,10 @@ spawn_context(Goal, Res, !IO) :-
 :- mode spawn_context_2(pred(in, di, uo) is cc_multi, out, out, di, uo)
     is cc_multi.
 
-spawn_context_2(_, no, "", !IO) :-
-    cc_multi_equal(!IO).
-
-% XXX the Mercury clause above currently gets compiled into invalid Erlang code. 
-:- pragma foreign_proc("Erlang",
-    spawn_context_2(_Goal::(pred(in, di, uo) is cc_multi), Success::out,
-        ThreadId::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    Success = {no},
-    ThreadId = <<>>
-").
+spawn_context_2(_, Res, "", !IO) :-
+    ( Res = no
+    ; Res = no
+    ).
 
 :- pragma foreign_proc("C",
     spawn_context_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
