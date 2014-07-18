@@ -12,8 +12,6 @@
 
 :- import_module io.
 
-
-
 :- pred main(io :: di, io :: uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
@@ -29,6 +27,8 @@ main(!IO) :-
     A0 = version_array.empty,
     A1 = version_array(0`..`9),
     A2 = int.fold_up(func(I, A) = ( A ^ elem(I) := 9 - I ), 0, 9, A1),
+    % A21 forces an implicit rollback:
+    A21 = int.fold_up(make_a21, 0, 9, A1),
     io.write_string("ordering(A1, A0) = ", !IO),
     io.write(ordering(A1, A0), !IO),
     io.nl(!IO),
@@ -47,6 +47,8 @@ main(!IO) :-
     io.format(" (size %d)\n", [i(size(A1))], !IO),
     io.write_list(to_list(A2), ", ", io.write_int, !IO),
     io.format(" (size %d)\n", [i(size(A2))], !IO),
+    io.write_list(to_list(A21), ", ", io.write_int, !IO),
+    io.format(" (size %d)\n", [i(size(A21))], !IO),
     A3 = unsafe_rewind(A1),
     io.write_list(to_list(A3), ", ", io.write_int, !IO),
     io.format(" (size %d)\n", [i(size(A3))], !IO),
@@ -144,6 +146,16 @@ test_exception(Pred, !IO) :-
         io.write_string("Found exception as expected: ", !IO),
         io.write(univ_value(Exception), !IO),
         io.nl(!IO)
+    ).
+
+:- func make_a21(int, version_array(int)) = version_array(int).
+
+make_a21(I, A0) = A :-
+    X = A0 ^ elem(I),
+    ( X `mod` 2 = 0 ->
+        A = A0 ^ elem(I) := X * 3
+    ;
+        A = A0
     ).
 
 %-----------------------------------------------------------------------------%

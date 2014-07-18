@@ -2,6 +2,7 @@
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
+% Copyright (C) 2014 The Mercury Team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -599,6 +600,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     VA->value            = (MR_Word) NULL;
     VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = 0;
+    VA->prev             = MR_NULL_WEAK_PTR;
 
 #ifdef MR_THREAD_SAFE
     MR_incr_hp_type_msg(VA->lock, MercuryLock, MR_ALLOC_ID, NULL);
@@ -638,6 +640,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     VA->value            = (MR_Word) NULL;
     VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = 0;
+    VA->prev             = MR_NULL_WEAK_PTR;
 
 #ifdef MR_THREAD_SAFE
     VA->lock             = NULL;
@@ -677,6 +680,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     VA->value            = (MR_Word) NULL;
     VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = N;
+    VA->prev             = MR_NULL_WEAK_PTR;
 
     for (i = 0; i < N; i++) {
         VA->rest.array->elements[i] = X;
@@ -723,6 +727,7 @@ unsafe_new(N, X) = unsafe_init(N, X).
     VA->value            = (MR_Word) NULL;
     VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = N;
+    VA->prev             = MR_NULL_WEAK_PTR;
 
     for (i = 0; i < N; i++) {
         VA->rest.array->elements[i] = X;
@@ -912,7 +917,8 @@ is_empty(VA) :-
 ** a pointer to the next version in the chain.
 */
 
-typedef struct ML_va    *ML_va_ptr;
+typedef struct ML_va        *ML_va_ptr;
+typedef const struct ML_va  *ML_const_va_ptr;
 
 struct ML_va {
     MR_Integer          index;  /* -1 for latest, >= 0 for older */
@@ -921,6 +927,7 @@ struct ML_va {
         MR_ArrayPtr     array;  /* Valid if index == -1          */
         ML_va_ptr       next;   /* Valid if index >= 0           */
     } rest;
+    MR_weak_ptr         prev;   /* NULL if this is the oldest    */
 #ifdef MR_THREAD_SAFE
     MercuryLock         *lock;  /* NULL or lock                  */
 #endif
@@ -930,13 +937,13 @@ struct ML_va {
 ** Returns a pointer to the latest version of the array.
 */
 extern ML_va_ptr
-ML_va_get_latest(ML_va_ptr VA);
+ML_va_get_latest(ML_const_va_ptr VA);
 
 /*
 ** Returns the number of items in a version array.
 */
 extern MR_Integer
-ML_va_size_dolock(ML_va_ptr);
+ML_va_size_dolock(ML_const_va_ptr);
 
 /*
 ** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
@@ -944,7 +951,7 @@ ML_va_size_dolock(ML_va_ptr);
 ** returns MR_FALSE.
 */
 extern MR_bool
-ML_va_get_dolock(ML_va_ptr, MR_Integer, MR_Word *);
+ML_va_get_dolock(ML_const_va_ptr, MR_Integer, MR_Word *);
 
 /*
 ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
@@ -976,7 +983,7 @@ ML_va_resize_dolock(ML_va_ptr, MR_Integer, MR_Word, MR_AllocSiteInfoPtr);
 ** Returns the number of items in a version array.
 */
 static MR_Integer
-ML_va_size(ML_va_ptr);
+ML_va_size(ML_const_va_ptr);
 
 /*
 ** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
@@ -984,7 +991,7 @@ ML_va_size(ML_va_ptr);
 ** returns MR_FALSE.
 */
 static MR_bool
-ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr);
+ML_va_get(ML_const_va_ptr VA, MR_Integer I, MR_Word *Xptr);
 
 /*
 ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
@@ -999,14 +1006,14 @@ ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *,
 ** Create a copy of VA0 as a new array.
 */
 static ML_va_ptr
-ML_va_flat_copy(const ML_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id);
+ML_va_flat_copy(ML_const_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id);
 
 /*
 ** Update the array VA using the override values in VA0
 ** i.e. recreate the state of the version array as captured in VA0.
 */
 static void
-ML_va_rewind_into(ML_va_ptr VA, const ML_va_ptr VA0);
+ML_va_rewind_into(ML_va_ptr VA, ML_const_va_ptr VA0);
 
 /*
 ** `Rewinds' a version array, invalidating all extant successors
@@ -1047,17 +1054,18 @@ ML_va_resize(ML_va_ptr, MR_Integer, MR_Word, MR_AllocSiteInfoPtr);
 #endif
 
 ML_va_ptr
-ML_va_get_latest(ML_va_ptr VA)
+ML_va_get_latest(ML_const_va_ptr VA)
 {
     while (!ML_va_latest_version(VA)) {
         VA = VA->rest.next;
     }
 
-    return VA;
+    /* Cast away the 'const' */
+    return (ML_va_ptr)VA;
 }
 
 MR_Integer
-ML_va_size_dolock(ML_va_ptr VA)
+ML_va_size_dolock(ML_const_va_ptr VA)
 {
 #ifdef MR_THREAD_SAFE
     MercuryLock *lock = VA->lock;
@@ -1074,7 +1082,7 @@ ML_va_size_dolock(ML_va_ptr VA)
 }
 
 static MR_Integer
-ML_va_size(ML_va_ptr VA)
+ML_va_size(ML_const_va_ptr VA)
 {
     VA = ML_va_get_latest(VA);
 
@@ -1082,7 +1090,7 @@ ML_va_size(ML_va_ptr VA)
 }
 
 int
-ML_va_get_dolock(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
+ML_va_get_dolock(ML_const_va_ptr VA, MR_Integer I, MR_Word *Xptr)
 {
 #ifdef MR_THREAD_SAFE
     MercuryLock *lock = VA->lock;
@@ -1099,7 +1107,7 @@ ML_va_get_dolock(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
 }
 
 static int
-ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
+ML_va_get(ML_const_va_ptr VA, MR_Integer I, MR_Word *Xptr)
 {
     while (!ML_va_latest_version(VA)) {
         if (I == VA->index) {
@@ -1152,6 +1160,7 @@ ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr,
         VA1->index      = -1;
         VA1->value      = (MR_Word) NULL;
         VA1->rest.array = VA0->rest.array;
+        MR_new_weak_ptr(&(VA1->prev), VA0);
 #ifdef MR_THREAD_SAFE
         VA1->lock       = VA0->lock;
 #endif
@@ -1176,7 +1185,7 @@ ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr,
 }
 
 static ML_va_ptr
-ML_va_flat_copy(const ML_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
+ML_va_flat_copy(ML_const_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
 {
     ML_va_ptr   latest;
     ML_va_ptr   VA;
@@ -1192,10 +1201,11 @@ ML_va_flat_copy(const ML_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
     MR_incr_hp_msg(array, N + 1,
         alloc_id, ""version_array.version_array/1"");
 
-    VA->index            = -1;
-    VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) array;
-    VA->rest.array->size = N;
+    VA->index               = -1;
+    VA->value               = (MR_Word) NULL;
+    VA->rest.array          = (MR_ArrayPtr) array;
+    VA->rest.array->size    = N;
+    VA->prev                = MR_NULL_WEAK_PTR;
 
     for (i = 0; i < N; i++) {
         VA->rest.array->elements[i] = latest->rest.array->elements[i];
@@ -1216,22 +1226,41 @@ ML_va_flat_copy(const ML_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
 }
 
 static void
-ML_va_rewind_into(ML_va_ptr VA, const ML_va_ptr VA0)
+ML_va_rewind_into(ML_va_ptr VA_dest, ML_const_va_ptr VA_src)
 {
-    MR_Integer I;
-    MR_Word    X;
+    MR_Integer  I;
+    MR_Word     X;
+    ML_va_ptr   cur;
 
-    if (ML_va_latest_version(VA0)) {
+    if (ML_va_latest_version(VA_src)) {
+        /* Shortcut */
         return;
     }
 
-    ML_va_rewind_into(VA, VA0->rest.next);
+    /*
+    ** Copy elements in the reverse order that they were updated into the
+    ** latest array, then return the latest array.
+    */
+    cur = ML_va_get_latest(VA_src);
+    /* start from first 'update' record */
+    cur = MR_weak_ptr_read(&(cur->prev));
+    while (cur != VA_src) {
+        I = cur->index;
+        X = cur->value;
+        if (I < VA_dest->rest.array->size) {
+            VA_dest->rest.array->elements[I] = X;
+        }
 
-    I  = VA0->index;
-    X  = VA0->value;
-    if (I < VA->rest.array->size) {
-        VA->rest.array->elements[I] = X;
+        cur = MR_weak_ptr_read(&(cur->prev));
     }
+
+    /*
+     * This loop must be inclusive of the update in VA.
+     */
+    I = cur->index;
+    X = cur->value;
+
+    VA_dest->rest.array->elements[I] = X;
 }
 
 ML_va_ptr
@@ -1252,18 +1281,60 @@ ML_va_rewind_dolock(ML_va_ptr VA)
 static ML_va_ptr
 ML_va_rewind(ML_va_ptr VA)
 {
-    MR_Integer I;
-    MR_Word    X;
+    MR_Integer  I;
+    MR_Word     X;
+    ML_va_ptr   cur;
+    ML_va_ptr   last_visited;
 
     if (ML_va_latest_version(VA)) {
+        /* Shortcut */
         return VA;
     }
 
-    I  = VA->index;
-    X  = VA->value;
-    VA = ML_va_rewind(VA->rest.next);
+    /*
+    ** last_visited is the last element we interated through, we remember it
+    ** because we update it's prev pointer after the loop.  This isn't
+    ** strictly required as we're already destroying that list.
+    */
+    last_visited = NULL;
+
+    /*
+    ** Copy elements in the reverse order that they were updated into the
+    ** latest array, then return the latest array.
+    */
+    cur = ML_va_get_latest(VA);
+    VA->rest.array = cur->rest.array;
+    /* start from first 'update' record */
+    cur = MR_weak_ptr_read(&(cur->prev));
+    while (cur != VA) {
+        I = cur->index;
+        X = cur->value;
+
+        VA->rest.array->elements[I] = X;
+
+        last_visited = cur;
+        cur = MR_weak_ptr_read(&(cur->prev));
+    }
+    /*
+     * This loop must be inclusive of the update in VA.
+     */
+    I = cur->index;
+    X = cur->value;
+
     VA->rest.array->elements[I] = X;
 
+    /*
+     * Clear the prev pointer since we've broken the chain.
+     */
+    if (NULL != last_visited) {
+        last_visited->prev = MR_NULL_WEAK_PTR;
+    }
+
+    /*
+     * This element is no-longer an update element.
+     */
+    VA->index = -1;
+    VA->value = 0;
     return VA;
 }
 
@@ -1305,10 +1376,11 @@ ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X,
     MR_incr_hp_msg(array, N + 1,
         alloc_id, ""version_array.version_array/1"");
 
-    VA->index            = -1;
-    VA->value            = (MR_Word) NULL;
-    VA->rest.array       = (MR_ArrayPtr) array;
-    VA->rest.array->size = N;
+    VA->index               = -1;
+    VA->value               = (MR_Word) NULL;
+    VA->rest.array          = (MR_ArrayPtr) array;
+    VA->rest.array->size    = N;
+    VA->prev                = MR_NULL_WEAK_PTR;
 
     for (i = 0; i < min; i++) {
         VA->rest.array->elements[i] = latest->rest.array->elements[i];
@@ -1332,6 +1404,10 @@ ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X,
     return VA;
 }
 
+").
+
+:- pragma foreign_decl("C#", local, "
+using System;
 ").
 
 :- pragma foreign_code("C#", "
@@ -1419,7 +1495,9 @@ public class ML_uva : ML_va {
     private object              value;  /* Valid if index >= 0           */
     private object              rest;   /* array if index == -1          */
                                         /* next if index >= 0            */
+    private WeakReference       prev;   /* previous array update         */
 
+    /* True if this is a fresh clone of another ML_uva */
     private bool                clone = false;
 
     public ML_uva() {}
@@ -1429,6 +1507,7 @@ public class ML_uva : ML_va {
         va.index = -1;
         va.value = null;
         va.rest  = new object[0];
+        va.prev  = null;
         return va;
     }
 
@@ -1437,6 +1516,7 @@ public class ML_uva : ML_va {
         va.index = -1;
         va.value = null;
         va.rest  = new object[N];
+        va.prev  = null;
         for (int i = 0; i < N; i++) {
             va.array()[i] = X;
         }
@@ -1462,6 +1542,7 @@ public class ML_uva : ML_va {
         VA.index = -1;
         VA.value = null;
         VA.rest  = new object[N];
+        VA.prev  = null;
 
         System.Array.Copy(latest.array(), 0, VA.array(), 0, min);
 
@@ -1532,6 +1613,7 @@ public class ML_uva : ML_va {
             VA1.index   = -1;
             VA1.value   = null;
             VA1.rest    = VA0.array();
+            VA1.prev    = new WeakReference(VA0);
 
             VA0.index   = I;
             VA0.value   = VA0.array()[I];
@@ -1560,6 +1642,7 @@ public class ML_uva : ML_va {
         VA.value = null;
         VA.rest  = latest.array().Clone();
         VA.clone = true;
+        VA.prev  = null;
 
         VA0.rewind_into(VA);
 
@@ -1578,18 +1661,37 @@ public class ML_uva : ML_va {
     {
         int     I;
         object  X;
+        ML_uva  cur;
 
         if (this.is_latest()) {
+            /* Shortcut */
             return;
         }
 
-        this.next().rewind_into(VA);
+        /*
+        ** Copy elements in the reverse order that they were updated into the
+        ** latest array, then return the latest array.
+        */
+        cur = this.latest();
+        /* start from first 'update' record */
+        cur = (cur.prev != null ? (ML_uva)cur.prev.Target : null);
+        while (cur != this) {
+            I = cur.index;
+            X = cur.value;
+            if (I < VA.size()) {
+                VA.array()[I] = X;
+            }
 
-        I = this.index;
-        X = this.value;
-        if (I < VA.size()) {
-            VA.array()[I] = X;
+            cur = cur.prev != null ? (ML_uva)cur.prev.Target : null;
         }
+
+        /*
+         * This loop must be inclusive of the update in VA.
+         */
+        I = cur.index;
+        X = cur.value;
+
+        VA.array()[I] = X;
     }
 
     public ML_va rewind()
@@ -1599,23 +1701,67 @@ public class ML_uva : ML_va {
 
     public ML_uva rewind_uva()
     {
-        ML_uva VA = this;
         int     I;
         object  X;
+        ML_uva  VA = this;
+        ML_uva  cur;
+        ML_uva  last_visited;
 
         if (VA.is_latest()) {
             return VA;
         }
 
-        I  = VA.index;
-        X  = VA.value;
-        VA = VA.next().rewind_uva();
+        /*
+        ** last_visited is the last element we interated through, we
+        ** remember it because we update it's prev pointer after the
+        ** loop.
+        */
+        last_visited = null;
+
+        /*
+        ** Copy elements in the reverse order that they were updated into
+        ** the latest array, then return the latest array.
+        */
+        cur = VA.latest();
+        VA.rest = cur.array();
+        cur = cur.prev != null ? (ML_uva)cur.prev.Target : null;
+        while (cur != VA) {
+            I = cur.index;
+            X = cur.value;
+
+            VA.array()[I] = X;
+
+            last_visited = cur;
+            cur = cur.prev != null ? (ML_uva)cur.prev.Target : null;
+        }
+        /*
+        ** This loop must be inclusive of the update in VA.
+        */
+        I = cur.index;
+        X = cur.value;
+
         VA.array()[I] = X;
 
+        /*
+        ** Clear the prev pointer since we've broken the chain.
+        */
+        if (null != last_visited) {
+            last_visited.prev = null;
+        }
+
+        /*
+        ** This element is no-longer an update element.
+        */
+        VA.index = -1;
+        VA.value = 0;
         return VA;
     }
 }
 
+").
+
+:- pragma foreign_decl("Java", local, "
+import java.lang.ref.WeakReference;
 ").
 
 :- pragma foreign_code("Java", "
@@ -1705,6 +1851,8 @@ public static class ML_uva implements ML_va, java.io.Serializable {
     private Object              value;  /* Valid if index >= 0           */
     private Object              rest;   /* array if index == -1          */
                                         /* next if index >= 0            */
+    private WeakReference<ML_uva>
+                                prev;   /* previous array update         */
 
     private boolean             clone = false;
 
@@ -1715,6 +1863,7 @@ public static class ML_uva implements ML_va, java.io.Serializable {
         va.index = -1;
         va.value = null;
         va.rest  = new Object[0];
+        va.prev  = null;
         return va;
     }
 
@@ -1723,6 +1872,7 @@ public static class ML_uva implements ML_va, java.io.Serializable {
         va.index = -1;
         va.value = null;
         va.rest  = new Object[N];
+        va.prev  = null;
         java.util.Arrays.fill(va.array(), X);
         return va;
     }
@@ -1742,6 +1892,7 @@ public static class ML_uva implements ML_va, java.io.Serializable {
         VA.index = -1;
         VA.value = null;
         VA.rest  = new Object[N];
+        VA.prev  = null;
 
         System.arraycopy(latest.array(), 0, VA.array(), 0, min);
 
@@ -1806,6 +1957,7 @@ public static class ML_uva implements ML_va, java.io.Serializable {
             VA1.index   = -1;
             VA1.value   = null;
             VA1.rest    = VA0.array();
+            VA1.prev    = new WeakReference<ML_uva>(VA0);
 
             VA0.index   = I;
             VA0.value   = VA0.array()[I];
@@ -1833,6 +1985,7 @@ public static class ML_uva implements ML_va, java.io.Serializable {
         VA.index = -1;
         VA.value = null;
         VA.rest  = latest.array().clone();
+        VA.prev  = null;
         VA.clone = true;
 
         VA0.rewind_into(VA);
@@ -1852,35 +2005,94 @@ public static class ML_uva implements ML_va, java.io.Serializable {
     {
         int     I;
         Object  X;
+        ML_uva  cur;
 
         if (this.is_latest()) {
             return;
         }
 
-        this.next().rewind_into(VA);
+        /*
+        ** Copy elements in the reverse order that they were updated into the
+        ** latest array, then return the latest array.
+        */
+        cur = latest();
+        /* start from first 'update' record */
+        cur = null != cur.prev ? cur.prev.get() : null;
+        while (cur != this) {
+            I = cur.index;
+            X = cur.value;
+            if (I < VA.size()) {
+                VA.array()[I] = X;
+            }
 
-        I = this.index;
-        X = this.value;
-        if (I < VA.size()) {
-            VA.array()[I] = X;
+            cur = null != cur.prev ? cur.prev.get() : null;
         }
+
+        /*
+         * This loop must be inclusive of the update in VA.
+         */
+        I = cur.index;
+        X = cur.value;
+
+        VA.array()[I] = X;
     }
 
     public ML_uva rewind()
     {
-        ML_uva VA = this;
+        ML_uva  VA = this;
         int     I;
         Object  X;
+        ML_uva  cur;
+        ML_uva  last_visited;
 
         if (VA.is_latest()) {
             return VA;
         }
 
-        I  = VA.index;
-        X  = VA.value;
-        VA = VA.next().rewind();
+        /*
+        ** last_visited is the last element we interated through, we remember it
+        ** because we update it's prev pointer after the loop.  This isn't
+        ** strictly required as we're already destroying that list.
+        */
+        last_visited = null;
+
+        /*
+        ** Copy elements in the reverse order that they were updated into the
+        ** latest array, then return the latest array.
+        */
+        cur = VA.latest();
+        VA.rest = cur.array();
+        /* start from first 'update' record */
+        cur = null != cur.prev ? cur.prev.get() : null;
+        while (cur != VA) {
+            I = cur.index;
+            X = cur.value;
+
+            VA.array()[I] = X;
+
+            last_visited = cur;
+            cur = null != cur.prev ? cur.prev.get() : null;
+        }
+        /*
+         * This loop must be inclusive of the update in VA.
+         */
+        I = cur.index;
+        X = cur.value;
+
         VA.array()[I] = X;
 
+        /*
+         * Clear the prev pointer since we've broken the chain.
+         */
+        if (null != last_visited) {
+            last_visited.prev = null;
+        }
+
+        /*
+         * This element is no-longer an update element.
+         */
+        VA.index = -1;
+        VA.value = 0;
         return VA;
     }
 }
