@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007-2012 The University of Melbourne.
+% Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,11 +12,11 @@
 %
 % This module runs just after mode analysis on mode-correct procedures and
 % tries to transform procedures to avoid intermediate partially instantiated
-% data structures.  The Erlang backend in particular cannot handle partially
+% data structures. The Erlang backend in particular cannot handle partially
 % instantiated data structures (we cannot use destructive update to further
 % instantiate data structures since all values are immutable).
 %
-% There are two situations.  An implied mode call, e.g.
+% There are two situations. An implied mode call, e.g.
 %
 %       p(f(_, _))
 %
@@ -64,28 +65,28 @@
 % structures (as the mode checker can't be counted on to move these), and keep
 % track of variables which are bound to top-level functors with free arguments.
 % In place of the unifications we remove, we insert the unifications for the
-% sub-components which are ground.  Only once the variable is ground, because
+% sub-components which are ground. Only once the variable is ground, because
 % all its sub-components are ground, we construct the top-level data
 % structure.
 %
-% The algorithm makes a single forward pass over each procedure.  When we see a
-% unification that binds a variable V to a functor f/n with at least one free
-% argument, we add an entry to the "construction map" and delete the
-% unification.  The construction map records that V was bound to f/n.  We also
-% create new "canonical" variables for each of the arguments.
+% The algorithm makes a single forward pass over each procedure. When we see
+% a unification that binds a variable V to a functor f/n with at least one
+% free argument, we add an entry to the "construction map" and delete the
+% unification. The construction map records that V was bound to f/n.
+% We also create new "canonical" variables for each of the arguments.
 %
 % When we later see a deconstruction unification of V we first unify each
 % argument in the deconstruction with its corresponding "canonical" variable.
 % This way we can always use the canonical variables when it comes time to
-% reconstruct V, so we don't need to keep track of aliases.  If the mode of the
-% deconstruction unification indicates that V should be ground at end of the
-% deconstruction, we insert a construction unification using the canonical
-% variables, in place of the deconstruction, and delete V's entry from the
-% construction map now.  Otherwise, if V is not ground, we just delete the
-% deconstruction unification.
+% reconstruct V, so we don't need to keep track of aliases. If the mode of the
+% deconstruction unification indicates that V should be ground at the end
+% of the deconstruction, we insert a construction unification using the
+% canonical variables, in place of the deconstruction, and delete V's entry
+% from the construction map now. Otherwise, if V is not ground, we just delete
+% the deconstruction unification.
 %
 % To handle the problem with implied mode calls, we look for complicated
-% `can_fail' unifications that have V on the left-hand side.  We transform them
+% `can_fail' unifications that have V on the left-hand side. We transform them
 % as in the example above, i.e. instead of unifying a ground variable G with a
 % partially instantiated V, we unify G with the functor that V is bound to.
 %
@@ -93,7 +94,7 @@
 % which should do the rest.
 %
 % This algorithm can't handle everything that the mode checker allows, however
-% most code written in practice should be okay.  Here's an example of code we
+% most code written in practice should be okay. Here is an example of code we
 % cannot handle:
 %
 %   foo(Xs) :-
@@ -129,13 +130,17 @@
 :- import_module hlds.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module bool.
+:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -159,10 +164,10 @@
     % to the canonical variables assigned for that functor.
     %
     % We can actually only handle the case when a variable is definitely bound
-    % to a single functor.  If different disjuncts bind a variable to different
-    % functors, then our algorithm won't work.  So why do we use a single map
-    % from the variable to (cons_id, canon_vars)?  To handle this case, which
-    % can occur from a reasonable predicate definition.
+    % to a single functor. If different disjuncts bind a variable to different
+    % functors, then our algorithm won't work. So why do we use a single map
+    % from the variable to (cons_id, canon_vars)? To handle code like this,
+    % which can result from a reasonable predicate definition.
     %
     %   ( X := f
     %   ; X := g
@@ -171,7 +176,7 @@
     %   )
     %
     % We don't want to abort as soon as we see that "X := i(_)" is incompatible
-    % with "X := h(_)".  We *will* abort later if need need to look up the sole
+    % with "X := h(_)". We *will* abort later if we need to look up the sole
     % functor that X could be bound to, and find that there are multiple
     % choices.
     %
@@ -181,66 +186,84 @@
 
 %-----------------------------------------------------------------------------%
 
-delay_partial_inst_preds([], [], !ModuleInfo).
-delay_partial_inst_preds([PredId | PredIds], ChangedPreds, !ModuleInfo) :-
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_non_imported_procids(PredInfo),
-    list.foldl2(delay_partial_inst_proc(PredId), ProcIds, !ModuleInfo,
-        no, Changed),
+delay_partial_inst_preds(PredIds, ChangedPredIds, !ModuleInfo) :-
+    delay_partial_inst_preds_acc(PredIds, [], RevChangedPredIds, !ModuleInfo),
+    list.reverse(RevChangedPredIds, ChangedPredIds).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred delay_partial_inst_preds_acc(list(pred_id)::in,
+    list(pred_id)::in, list(pred_id)::out,
+    module_info::in, module_info::out) is det.
+
+delay_partial_inst_preds_acc([], !RevChangedPredIds, !ModuleInfo).
+delay_partial_inst_preds_acc([PredId | PredIds], !RevChangedPredIds,
+        !ModuleInfo) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
+    ProcIds = pred_info_non_imported_procids(PredInfo0),
+    list.foldl(delay_partial_inst_proc(!.ModuleInfo, PredId, ProcTable0),
+        ProcIds, [], ChangedProcs),
     (
-        Changed = yes,
-        delay_partial_inst_preds(PredIds, ChangedPreds0, !ModuleInfo),
-        ChangedPreds = [PredId | ChangedPreds0]
+        ChangedProcs = [_ | _],
+        map.set_from_assoc_list(ChangedProcs, ProcTable0, ProcTable),
+        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
+        !:RevChangedPredIds = [PredId | !.RevChangedPredIds]
     ;
-        Changed = no,
-        delay_partial_inst_preds(PredIds, ChangedPreds, !ModuleInfo)
-    ).
+        ChangedProcs = []
+    ),
+    delay_partial_inst_preds_acc(PredIds, !RevChangedPredIds, !ModuleInfo).
 
-:- pred delay_partial_inst_proc(pred_id::in, proc_id::in,
-    module_info::in, module_info::out, bool::in, bool::out) is det.
+:- pred delay_partial_inst_proc(module_info::in, pred_id::in,
+    proc_table::in, proc_id::in,
+    assoc_list(proc_id, proc_info)::in, assoc_list(proc_id, proc_info)::out)
+    is det.
 
-delay_partial_inst_proc(PredId, ProcId, !ModuleInfo, !Changed) :-
+delay_partial_inst_proc(ModuleInfo, PredId, ProcTable, ProcId,
+        !ChangedProcs) :-
     trace [io(!IO)] (
         write_proc_progress_message("% Delaying partial instantiations in ",
-            PredId, ProcId, !.ModuleInfo, !IO)
+            PredId, ProcId, ModuleInfo, !IO)
     ),
-    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId, PredInfo,
-        ProcInfo0),
-    delay_partial_inst_proc_2(!.ModuleInfo, ProcInfo0, MaybeProcInfo),
-    (
-        MaybeProcInfo = yes(ProcInfo),
-        module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
-            !ModuleInfo),
-        !:Changed = yes
-    ;
-        MaybeProcInfo = no
-    ).
+    some [!ProcInfo] (
+        map.lookup(ProcTable, ProcId, !:ProcInfo),
+        proc_info_get_varset(!.ProcInfo, VarSet0),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+        proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
+        proc_info_get_goal(!.ProcInfo, Goal0),
 
-:- pred delay_partial_inst_proc_2(module_info::in, proc_info::in,
-    maybe(proc_info)::out) is det.
+        Changed0 = no,
+        DelayInfo0 = delay_partial_inst_info(ModuleInfo,
+            VarSet0, VarTypes0, Changed0),
+        delay_partial_inst_in_goal(InstMap0, Goal0, Goal,
+            map.init, _ConstructMap, DelayInfo0, DelayInfo),
+        DelayInfo = delay_partial_inst_info(_,
+            VarSet, VarTypes, Changed),
 
-delay_partial_inst_proc_2(ModuleInfo, !.ProcInfo, MaybeProcInfo) :-
-    proc_info_get_varset(!.ProcInfo, VarSet),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes),
-    DelayInfo0 = delay_partial_inst_info(ModuleInfo, VarSet, VarTypes, no),
+        (
+            Changed = yes,
+            proc_info_set_goal(Goal, !ProcInfo),
+            proc_info_set_varset(VarSet, !ProcInfo),
+            proc_info_set_vartypes(VarTypes, !ProcInfo),
+            requantify_proc_general(ordinary_nonlocals_maybe_lambda,
+                !ProcInfo),
+            !:ChangedProcs = [ProcId - !.ProcInfo | !.ChangedProcs],
 
-    proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
-    proc_info_get_goal(!.ProcInfo, Goal0),
-
-    delay_partial_inst_in_goal(InstMap0, Goal0, Goal, map.init, _ConstructMap,
-        DelayInfo0, DelayInfo),
-
-    Changed = DelayInfo ^ dpi_changed,
-    (
-        Changed = yes,
-        proc_info_set_goal(Goal, !ProcInfo),
-        proc_info_set_varset(DelayInfo ^ dpi_varset, !ProcInfo),
-        proc_info_set_vartypes(DelayInfo ^ dpi_vartypes, !ProcInfo),
-        requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo),
-        MaybeProcInfo = yes(!.ProcInfo)
-    ;
-        Changed = no,
-        MaybeProcInfo = no
+            trace [compiletime(flag("debug_delay_partial_inst")), io(!IO)] (
+                io.write_string("predicate body BEFORE delay_partial_inst:\n",
+                    !IO),
+                dump_goal(ModuleInfo, VarSet0, Goal0, !IO),
+                io.nl(!IO),
+                io.write_string("predicate body AFTER delay_partial_inst:\n",
+                    !IO),
+                dump_goal(ModuleInfo, VarSet, Goal, !IO),
+                io.nl(!IO)
+            )
+        ;
+            Changed = no
+        )
     ).
 
 :- pred delay_partial_inst_in_goal(instmap::in, hlds_goal::in, hlds_goal::out,
@@ -297,7 +320,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
         GoalExpr0 = unify(LHS, RHS0, Mode, Unify, Context),
         (
             Unify = construct(Var, ConsId, Args, UniModes, _, _, _),
-            (if
+            ( if
                 % Is this construction of the form
                 %   V = f(A1, A2, A3, ...)
                 % and at least one of the arguments is free?
@@ -313,7 +336,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
             then
                 % Add an entry for Var to the construct map if it doesn't exist
                 % already, otherwise look up the canonical variables.
-                (if
+                ( if
                     map.search(!.ConstructMap, Var, CanonVarsMap0),
                     map.search(CanonVarsMap0, ConsId, CanonVars0)
                 then
@@ -359,7 +382,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
         ;
             Unify = deconstruct(Var, ConsId, DeconArgs, UniModes,
                 _CanFail, _CanCGC),
-            (if
+            ( if
                 map.search(!.ConstructMap, Var, CanonVarsMap0),
                 map.search(CanonVarsMap0, ConsId, CanonArgs)
             then
@@ -374,7 +397,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                 % Construct Var if it should be ground now.
                 Mode = LHS_Mode - _RHS_Mode,
                 FinalInst = mode_get_final_inst(ModuleInfo, LHS_Mode),
-                (if inst_is_ground(ModuleInfo, FinalInst) then
+                ( if inst_is_ground(ModuleInfo, FinalInst) then
                     construct_functor(Var, ConsId, CanonArgs, ConstructGoal),
 
                     % Delete the variable on the LHS from the construct map
@@ -404,7 +427,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
             %
             % XXX I have not seen a case where the LHS and RHS are swapped
             % but we should handle that if it comes up.
-            (if
+            ( if
                 CanFail = can_fail,
                 RHS0 = rhs_var(RHSVar),
                 get_sole_cons_id_and_canon_vars(!.ConstructMap, LHS, ConsId,
@@ -548,15 +571,15 @@ delay_partial_inst_in_goals(InstMap0,
         [Goal0 | Goals0], [Goal | Goals], !ConstructMap, !DelayInfo) :-
     % Each time that a variable X is bound to a partially instantiated term
     % with functor f/n somewhere in the disjunction, we want the same set of
-    % "canonical" variables to name the individual arguments of f/n.  That is
-    % why we thread the construct map through the disjunctions, so we don't
-    % end up with different canonical variables per disjunct.
+    % "canonical" variables to name the individual arguments of f/n.
+    % That is why we thread the construct map through the disjunctions,
+    % so we don't end up with different canonical variables per disjunct.
     %
     % XXX we depend on the fact that (it seems) after mode checking a
     % variable won't become ground in each of the disjuncts, but rather
-    % will become ground after the disjunction as a whole.  Otherwise
+    % will become ground after the disjunction as a whole. Otherwise
     % entries could be removed from the construct map in earlier disjuncts
-    % that should be visible in later disjuncts.  To lift this assumption we
+    % that should be visible in later disjuncts. To lift this assumption we
     % would need to use separate construct maps per disjunct, merge them
     % afterwards and renaming variables so that there is only one set of
     % canonical variables.
