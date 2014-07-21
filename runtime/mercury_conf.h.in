@@ -272,11 +272,6 @@
 **	MR_HAVE_ACCESS		we have the access() function.
 **	MR_HAVE_SLEEP		we have the sleep() function.
 **	MR_HAVE_CAPITAL_S_SLEEP	we have the Sleep() function.
-**	MR_HAVE_ISNAN		we have the isnan() function.
-**	MR_HAVE_ISNANF		we have the isnanf() function.
-**	MR_HAVE_ISINF		we have the isinf() function.
-**	MR_HAVE_ISINFF		we have the isinff() function.
-**	MR_HAVE_FINITE		we have the finite() function.
 **	MR_HAVE_OPENDIR		we have the opendir() function.
 **	MR_HAVE_READDIR		we have the readdir() function.
 **	MR_HAVE_CLOSEDIR	we have the closedir() function.
@@ -288,7 +283,6 @@
 **	MR_HAVE_PUTENV		we have the putenv() function.
 **	MR_HAVE__PUTENV		we have the _putenv() function.
 **	MR_HAVE_POSIX_SPAWN	we have the posix_spawn() function.
-**	MR_HAVE_FESETROUND	we have the fesetround() function.
 **	MR_HAVE_SCHED_SETAFFINITY we have the sched_setaffinity() function.
 **	MR_HAVE_SCHED_GETAFFINITY we have the sched_gettaffinity() function.
 **	MR_HAVE_SCHED_GETCPU	we have the sched_getcpu() function (glibc specific).
@@ -297,6 +291,13 @@
 **				pthread_mutexattr_setpshared() function.
 **	MR_HAVE_MKSTEMP		we have the mkstemp() function.
 **	MR_HAVE_SETRLIMIT	we have the setrlimit() function.
+**	MR_HAVE_ISNAN		we have the isnan() function.
+**	MR_HAVE_ISNANF		we have the isnanf() function.
+**	MR_HAVE_ISINF		we have the isinf() function.
+**	MR_HAVE_ISINFF		we have the isinff() function.
+**	MR_HAVE_FINITE		we have the finite() function.
+**	MR_HAVE_FESETROUND	we have the fesetround() function.
+**	MR_HAVE_FMA		we have the fma() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -345,11 +346,6 @@
 #undef	MR_HAVE_ACCESS
 #undef	MR_HAVE_SLEEP
 #undef	MR_HAVE_CAPITAL_S_SLEEP
-#undef	MR_HAVE_ISNAN
-#undef	MR_HAVE_ISNANF
-#undef	MR_HAVE_ISINF
-#undef	MR_HAVE_ISINFF
-#undef	MR_HAVE_FINITE
 #undef	MR_HAVE_OPENDIR
 #undef	MR_HAVE_READDIR
 #undef	MR_HAVE_CLOSEDIR
@@ -361,7 +357,6 @@
 #undef	MR_HAVE_PUTENV
 #undef	MR_HAVE__PUTENV
 #undef	MR_HAVE_POSIX_SPAWN
-#undef	MR_HAVE_FESETROUND
 #undef	MR_HAVE_SCHED_SETAFFINITY
 #undef	MR_HAVE_SCHED_GETAFFINITY
 #undef	MR_HAVE_SCHED_GETCPU
@@ -369,6 +364,13 @@
 #undef	MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED
 #undef	MR_HAVE_MKSTEMP
 #undef  MR_HAVE_SETRLIMIT
+#undef	MR_HAVE_ISNAN
+#undef	MR_HAVE_ISNANF
+#undef	MR_HAVE_ISINF
+#undef	MR_HAVE_ISINFF
+#undef	MR_HAVE_FINITE
+#undef	MR_HAVE_FESETROUND
+#undef  MR_HAVE_FMA
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.

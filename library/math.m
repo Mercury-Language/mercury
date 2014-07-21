@@ -203,6 +203,25 @@
 :- func math.tanh(float) = float.
 
 %---------------------------------------------------------------------------%
+%
+% Fused multiply-add operation.
+%
+
+    % Succeeds if this grade and platform provide the fused multiply-add
+    % operation.
+    %
+:- pred math.have_fma is semidet.
+
+    % fma(X, Y, Z) = FMA is true if FMA = (X * Y) + Z, rounded as one
+    % floating-point operation.
+    %
+    % This function is (currently) only available on the C backends and only if
+    % the target math library supports it.
+    % Use have_fma/0 to check whether it is supported.
+    %
+:- func math.fma(float, float, float) = float.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -999,4 +1018,37 @@ math.tanh(X) = Tanh :-
     Tanh = (exp(X)-exp(-X)) / (exp(X)+exp(-X)).
 
 %---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    math.have_fma,
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+#if defined(MR_HAVE_FMA)
+    SUCCESS_INDICATOR = MR_TRUE;
+#else
+    SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
+
+have_fma :-
+    semidet_false.
+
+:- pragma foreign_proc("C",
+    math.fma(X::in, Y::in, Z::in) = (FMA::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+#if defined(MR_HAVE_FMA)
+    FMA = fma(X, Y, Z);
+#else
+    MR_fatal_error(""math.fma not supported"");
+#endif
+").
+
+fma(_, _, _) = _ :-
+    private_builtin.sorry("math.fma").
+
+%---------------------------------------------------------------------------%
+:- end_module math.
 %---------------------------------------------------------------------------%
