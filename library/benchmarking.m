@@ -154,6 +154,7 @@
 :- implementation.
 
 :- import_module int.
+:- import_module mutvar.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -967,18 +968,19 @@ benchmark_nondet(Pred, In, Count, Repeats, Time) :-
 :- mode benchmark_nondet_loop(pred(in, out) is nondet, in, out, in) is det.
 
 benchmark_nondet_loop(Pred, In, Count, Repeats) :-
-    impure new_int_reference(0, SolutionCounter),
+    impure new_mutvar(0, SolutionCounter),
     (
         impure repeat(Repeats),
-        impure update_ref(SolutionCounter, 0),
+        impure set_mutvar(SolutionCounter, 0),
         Pred(In, Out0),
         impure do_nothing(Out0),
-        impure incr_ref(SolutionCounter),
+        impure get_mutvar(SolutionCounter, Count),
+        impure set_mutvar(SolutionCounter, Count + 1),
         fail
     ;
         true
     ),
-    semipure ref_value(SolutionCounter, Count).
+    impure get_mutvar(SolutionCounter, Count).
 
 :- impure pred repeat(int::in) is nondet.
 
@@ -1079,82 +1081,6 @@ repeat(N) :-
     [will_not_call_mercury, thread_safe],
 "
     void
-").
-
-%-----------------------------------------------------------------------------%
-
-%  Impure integer references.
-%  This type is implemented in C.
-%  It is represented as a pointer to a single word on the heap.
-:- type int_reference ---> int_reference(private_builtin.ref(int)).
-
-%  In Java, this is implemented as a class to wrap the int.
-:- pragma foreign_code("Java",
-"
-    public static class IntRef {
-        public int value;
-
-        public IntRef(int init) {
-            value = init;
-        }
-    }
-").
-:- pragma foreign_type(java, int_reference, "benchmarking.IntRef").
-
-%  Create a new int_reference given a term for it to reference.
-:- impure pred new_int_reference(int::in, int_reference::out) is det.
-:- pragma inline(new_int_reference/2).
-
-:- pragma foreign_proc("C",
-    new_int_reference(X::in, Ref::out),
-    [will_not_call_mercury],
-"
-    MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
-        MR_ALLOC_ID, ""benchmarking.int_reference/1"");
-    MR_define_size_slot(0, Ref, 1);
-    * (MR_Integer *) Ref = X;
-").
-:- pragma foreign_proc("Java",
-    new_int_reference(X::in, Ref::out),
-    [will_not_call_mercury],
-"
-    Ref = new benchmarking.IntRef(X);
-").
-
-:- impure pred incr_ref(int_reference::in) is det.
-incr_ref(Ref) :-
-    semipure ref_value(Ref, X),
-    impure update_ref(Ref, X + 1).
-
-:- semipure pred ref_value(int_reference::in, int::out) is det.
-:- pragma inline(ref_value/2).
-:- pragma foreign_proc("C",
-    ref_value(Ref::in, X::out),
-    [promise_semipure, will_not_call_mercury],
-"
-    X = * (MR_Integer *) Ref;
-").
-:- pragma foreign_proc("Java",
-    ref_value(Ref::in, X::out),
-    [promise_semipure, will_not_call_mercury],
-"
-    X = Ref.value;
-").
-
-:- impure pred update_ref(int_reference::in, int::in) is det.
-:- pragma inline(update_ref/2).
-
-:- pragma foreign_proc("C",
-    update_ref(Ref::in, X::in),
-    [will_not_call_mercury],
-"
-    * (MR_Integer *) Ref = X;
-").
-:- pragma foreign_proc("Java",
-    update_ref(Ref::in, X::in),
-    [will_not_call_mercury],
-"
-    Ref.value = X;
 ").
 
 %-----------------------------------------------------------------------------%
