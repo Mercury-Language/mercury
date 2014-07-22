@@ -1814,8 +1814,6 @@
     public static univ.Univ_0 ML_io_user_globals = null;
 ").
 
-:- type io.stream_putback ==  map(io.stream_id, list(char)).
-
 :- type io.input_stream  ---> input_stream(io.stream).
 :- type io.output_stream ---> output_stream(io.stream).
 
