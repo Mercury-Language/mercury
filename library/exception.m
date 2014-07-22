@@ -2892,7 +2892,7 @@ throw_if_near_stack_limits :-
 
 :- pragma foreign_proc("C",
     now_near_stack_limits,
-    [will_not_call_mercury, no_sharing],
+    [will_not_call_mercury, thread_safe, no_sharing],
 "
 #ifdef  MR_HIGHLEVEL_CODE
     /*

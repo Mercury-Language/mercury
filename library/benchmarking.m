@@ -997,14 +997,14 @@ repeat(N) :-
 
 :- pragma foreign_proc("C",
     get_user_cpu_milliseconds(Time::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, thread_safe],
 "
     Time = MR_get_user_cpu_milliseconds();
 ").
 
 :- pragma foreign_proc("C#",
     get_user_cpu_milliseconds(Time::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, thread_safe],
 "
     // This won't return the elapsed time since program start,
     // as it begins timing after the first call.
@@ -1015,7 +1015,7 @@ repeat(N) :-
 
 :- pragma foreign_proc("Java",
     get_user_cpu_milliseconds(Time::out),
-    [will_not_call_mercury, may_not_duplicate],
+    [will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     try {
         java.lang.management.ThreadMXBean bean =
@@ -1033,7 +1033,7 @@ repeat(N) :-
 
 :- pragma foreign_proc("Erlang",
     get_user_cpu_milliseconds(Time::out),
-    [will_not_call_mercury],
+    [will_not_call_mercury, thread_safe],
 "
     {Time, _TimeSinceLastCall} = statistics(runtime)
 ").

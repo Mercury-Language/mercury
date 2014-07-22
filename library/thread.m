@@ -144,7 +144,7 @@ can_spawn_context :-
 
 :- pragma foreign_proc("C",
     can_spawn_context,
-    [will_not_call_mercury, promise_pure, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
 #if !defined(MR_HIGHLEVEL_CODE)
     SUCCESS_INDICATOR = MR_TRUE;
@@ -155,7 +155,7 @@ can_spawn_context :-
 
 :- pragma foreign_proc("C",
     can_spawn_native,
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
 #if defined(MR_THREAD_SAFE)
     SUCCESS_INDICATOR = MR_TRUE;
@@ -166,14 +166,14 @@ can_spawn_context :-
 
 :- pragma foreign_proc("C#",
     can_spawn_native,
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = true;
 ").
 
 :- pragma foreign_proc("Java",
     can_spawn_native,
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = true;
 ").

@@ -591,7 +591,7 @@ time.localtime(time_t(Time)) = TM :-
 :- pragma foreign_proc("C",
     time.c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, not_thread_safe],
 "
     struct tm   *p;
     time_t      t;
@@ -701,7 +701,7 @@ time.gmtime(time_t(Time)) = TM :-
 :- pragma foreign_proc("C",
     time.c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, not_thread_safe],
 "{
     struct tm   *p;
     time_t      t;
@@ -826,13 +826,16 @@ time.mktime(TM) = time_t(Time) :-
     time.c_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD,
         maybe_dst_to_int(DST), Time).
 
+    % NOTE: mktime() modifies tzname so is strictly impure.
+    % We do not expose tzname through a Mercury interface, though.
+    %
 :- pred time.c_mktime(int::in, int::in, int::in, int::in, int::in, int::in,
     int::in, int::in, int::in, time_t_rep::out) is det.
 
 :- pragma foreign_proc("C",
     time.c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         YD::in, WD::in, N::in, Time::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, not_thread_safe],
  "{
     struct tm t;
 

@@ -169,7 +169,7 @@
 
 :- pragma foreign_proc("C",
     library.version(Version::out, Fullarch::out),
-    [will_not_call_mercury, promise_pure, will_not_modify_trail],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     MR_ConstString version_string = MR_VERSION;
     MR_ConstString fullarch_string = MR_FULLARCH;
@@ -183,7 +183,7 @@
 
 :- pragma foreign_proc("C#",
     library.version(Version::out, Fullarch::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Version = runtime.Constants.MR_VERSION;
     Fullarch = runtime.Constants.MR_FULLARCH;
@@ -191,7 +191,7 @@
 
 :- pragma foreign_proc("Java",
     library.version(Version::out, Fullarch::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     Version = jmercury.runtime.Constants.MR_VERSION;
     Fullarch = jmercury.runtime.Constants.MR_FULLARCH;

@@ -51,7 +51,7 @@ garbage_collect(!IO) :-
 
 :- pragma foreign_proc("C",
 	garbage_collect,
-	[may_call_mercury, terminates],
+	[may_call_mercury, thread_safe, terminates],
 "
 #ifdef MR_CONSERVATIVE_GC
   #ifndef MR_HIGHLEVEL_CODE

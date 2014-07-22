@@ -1952,7 +1952,7 @@ io.finalize_state(!IO).
 
 :- pragma foreign_proc("C",
     io.gc_init(StreamDbType::in, UserGlobalsType::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, not_thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
     /* for Windows DLLs, we need to call GC_INIT() from each DLL */
@@ -4629,7 +4629,8 @@ should_reduce_stack_usage(yes).
 
 :- pragma foreign_proc("C",
     should_reduce_stack_usage(ShouldReduce::out),
-    [will_not_call_mercury, promise_pure, does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness],
 "
 #ifdef  MR_EXEC_TRACE
     ShouldReduce = MR_TRUE;
@@ -5528,8 +5529,8 @@ io.progname_base(DefaultName, PrognameBase, !IO) :-
 
 :- pragma foreign_proc("C",
     io.get_stream_id(Stream::in) = (Id::out),
-    [will_not_call_mercury, promise_pure, does_not_affect_liveness,
-        no_sharing],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness, no_sharing],
 "
 #ifndef MR_NATIVE_GC
     /*
@@ -8677,7 +8678,7 @@ io.input_stream(input_stream(Stream), !IO) :-
 :- pred io.input_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     io.input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
@@ -8690,7 +8691,7 @@ io.output_stream(output_stream(Stream), !IO) :-
 :- pred io.output_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     io.output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
@@ -8703,7 +8704,7 @@ io.binary_input_stream(binary_input_stream(Stream), !IO) :-
 :- pred io.binary_input_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     io.binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
@@ -8716,7 +8717,7 @@ io.binary_output_stream(binary_output_stream(Stream), !IO) :-
 :- pred io.binary_output_stream_2(io.stream::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     io.binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
@@ -8815,7 +8816,7 @@ io.set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     io.set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
@@ -8833,7 +8834,7 @@ io.set_output_stream(output_stream(NewStream), output_stream(OutStream),
 
 :- pragma foreign_proc("C",
     io.set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
@@ -8851,7 +8852,7 @@ io.set_binary_input_stream(binary_input_stream(NewStream),
 :- pragma foreign_proc("C",
     io.set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
@@ -8869,7 +8870,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 :- pragma foreign_proc("C",
     io.set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
@@ -10174,8 +10175,8 @@ io.setenv(Var, Value) :-
 
 :- pragma foreign_proc("C",
     io.putenv(VarAndValue::in),
-    [will_not_call_mercury, tabled_for_io, does_not_affect_liveness,
-        no_sharing],
+    [will_not_call_mercury, not_thread_safe, tabled_for_io,
+        does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_WIN32
     SUCCESS_INDICATOR = (_wputenv(ML_utf8_to_wide(VarAndValue)) == 0);
