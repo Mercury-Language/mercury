@@ -33,6 +33,8 @@ Changes to the Mercury standard library:
 * In C grades, the math module now provides the fused multiply-add operation
   on platforms that support it.
 
+* Procedures in the store module no longer acquire the global lock.
+
 Changes to the Mercury compiler:
 
 * We have fixed a long-standing bug causing crashes in deep profiling
