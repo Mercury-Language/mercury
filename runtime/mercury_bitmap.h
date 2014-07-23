@@ -159,10 +159,43 @@ MR_String MR_bitmap_to_quoted_string_saved_hp(MR_ConstBitmapPtr,
 #define MR_bitmap_length_in_bytes(bits)                                 \
         (((bits) / MR_BITS_PER_BYTE) + (((bits) % MR_BITS_PER_BYTE) != 0))
 
+#define MR_bitmap_byte_index_for_bit(bit)                               \
+    ((bit) / MR_BITS_PER_BYTE)
+#define MR_bitmap_bit_index_within_byte(bit)                            \
+    ((bit) % MR_BITS_PER_BYTE)
+
+#define MR_bitmap_zero(bitmap)                                          \
+    do {                                                                \
+        size_t bytes = MR_bitmap_length_in_bytes((bitmap)->num_bits);   \
+        memset((bitmap)->elements, 0, bytes);                           \
+    } while(0)
+
+#define MR_bitmap_get_bit(bitmap, bit)                                      \
+    (!!(((bitmap)->elements[MR_bitmap_byte_index_for_bit(bit)]) &       \
+        (1 << MR_bitmap_bit_index_within_byte(bit))))
+
+#define MR_bitmap_set_bit(bitmap, bit)                                      \
+    do {                                                                \
+        MR_uint_least8_t    byte;                                       \
+                                                                        \
+        byte = (bitmap)->elements[MR_bitmap_byte_index_for_bit(bit)];   \
+        byte |= 1 << MR_bitmap_bit_index_within_byte(bit);              \
+        (bitmap)->elements[MR_bitmap_byte_index_for_bit(bit)] = byte;   \
+    } while (0)
+
+#define MR_bitmap_clear_bit(bitmap, bit)                                    \
+    do {                                                                \
+        MR_uint_least8_t    byte;                                       \
+                                                                        \
+        byte = (bitmap)->elements[MR_bitmap_byte_index_for_bit(bit)];   \
+        byte &= ~(1 << MR_bitmap_bit_index_within_byte(bit));           \
+        (bitmap)->elements[MR_bitmap_byte_index_for_bit(bit)] =  byte;  \
+    } while (0)
+
 /*
-** void MR_allocate_bitmap_msg(MR_String ptr, size_t bytes,
-**          int bits_in_last_byte, MR_Code *proclabel):
-** Allocate enough word aligned memory to hold `bytes' bytes.  Also
+** void MR_allocate_bitmap_msg(MR_BitmapPtr ptr, size_t bits,
+**          MR_Code *proclabel):
+** Allocate enough word aligned memory to hold `bits' bits.  Also
 ** record for memory profiling purposes the location, proclabel, of the
 ** allocation if profiling is enabled.
 **

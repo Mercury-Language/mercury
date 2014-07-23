@@ -1073,6 +1073,73 @@ class PInvoke {
     public static extern int _putenv(string env);
 }
 
+/*
+ * A bitmap class for bitmap.m and the rewind code in version_array.m
+ */
+[System.Serializable]
+public class MercuryBitmap {
+    public int num_bits;
+    public byte[] elements;
+    public static int BITS_PER_BYTE = 8;
+
+    public MercuryBitmap(int numBits) {
+        num_bits = numBits;
+        elements = new byte[numBits / 8 + (((numBits % 8) != 0) ? 1: 0)];
+    }
+
+    public override bool Equals(object that) {
+        MercuryBitmap other = that as MercuryBitmap;
+        if (other == null) {
+            return false;
+        }
+        if (num_bits != other.num_bits) {
+            return false;
+        }
+        for (int i = 0; i < elements.Length; i++) {
+            if (elements[i] != other.elements[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public override int GetHashCode() {
+        return num_bits ^ elements.GetHashCode();
+    }
+
+    public bool GetBit(int bit)
+    {
+        return (elements[ByteIndexForBit(bit)]
+            & (1 << BitIndexWithinByte(bit))) != 0;
+    }
+
+    public void SetBit(int bit)
+    {
+        byte b;
+
+        b = elements[ByteIndexForBit(bit)];
+        b |= (byte) (1 << BitIndexWithinByte(bit));
+        elements[ByteIndexForBit(bit)] = b;
+    }
+
+    public void ClearBit(int bit)
+    {
+        byte b;
+
+        b = elements[ByteIndexForBit(bit)];
+        b &= (byte) ~(1 << BitIndexWithinByte(bit));
+        elements[ByteIndexForBit(bit)] = b;
+    }
+
+    public int ByteIndexForBit(int bit) {
+        return bit / BITS_PER_BYTE;
+    }
+
+    public int BitIndexWithinByte(int bit) {
+        return bit % BITS_PER_BYTE;
+    }
+}
+
 }
 
 /* vim: set sts=4 sw=4 et: */

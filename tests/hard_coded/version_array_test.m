@@ -25,10 +25,17 @@
 
 main(!IO) :-
     A0 = version_array.empty,
-    A1 = version_array(0`..`9),
-    A2 = int.fold_up(func(I, A) = ( A ^ elem(I) := 9 - I ), 0, 9, A1),
+    A1 = version_array(0`..`20),
+    % These two updates are overwritten but they're here to help test that
+    % the rollback rolls back to the correct version, that is that changes
+    % are applied in the correct order.
+    version_array.set(3, 333, A1, A10),
+    version_array.set(4, 444, A10, A11),
+    A2 = int.fold_up(func(I, A) = ( A ^ elem(I) := 20 - I ), 0, 20, A11),
+    version_array.set(5, 555, A2, A20),
+    version_array.set(6, 666, A20, A22),
     % A21 forces an implicit rollback:
-    A21 = int.fold_up(make_a21, 0, 9, A1),
+    A21 = int.fold_up(make_a21, 0, 20, A1),
     io.write_string("ordering(A1, A0) = ", !IO),
     io.write(ordering(A1, A0), !IO),
     io.nl(!IO),
@@ -41,33 +48,25 @@ main(!IO) :-
     io.write_string("ordering(A2, A1) = ", !IO),
     io.write(ordering(A2, A1), !IO),
     io.nl(!IO),
-    io.write_list(to_list(A0), ", ", io.write_int, !IO),
-    io.format(" (size %d)\n", [i(size(A0))], !IO),
-    io.write_list(to_list(A1), ", ", io.write_int, !IO),
-    io.format(" (size %d)\n", [i(size(A1))], !IO),
-    io.write_list(to_list(A2), ", ", io.write_int, !IO),
-    io.format(" (size %d)\n", [i(size(A2))], !IO),
-    io.write_list(to_list(A21), ", ", io.write_int, !IO),
-    io.format(" (size %d)\n", [i(size(A21))], !IO),
+    write_array("A0", A0, !IO),
+    write_array("A1", A1, !IO),
+    write_array("A2", A2, !IO),
+    write_array("A22", A22, !IO),
+    write_array("A21", A21, !IO),
     A3 = unsafe_rewind(A1),
-    io.write_list(to_list(A3), ", ", io.write_int, !IO),
-    io.format(" (size %d)\n", [i(size(A3))], !IO),
+    write_array("A3", A3, !IO),
     A4 = version_array.init(7, 7),
-    io.write_list(to_list(A4), ", ", io.write_int, !IO),
-    io.format(" (size %d)\n", [i(size(A4))], !IO),
+    write_array("A4", A4, !IO),
     S4 = foldl(func(X, A) = X + A, A4, 0),
     io.format(" (sum %d)\n", [i(S4)], !IO),
     A5 = resize(A4, 4, 4),
-    io.write_list(to_list(A5), ", ", io.write_int, !IO),
-    io.format(" (size %d)\n", [i(size(A5))], !IO),
+    write_array("A5", A5, !IO),
     A6 = resize(A5, 9, 9),
-    io.write_list(to_list(A6), ", ", io.write_int, !IO),
-    io.format(" (size %d)\n", [i(size(A6))], !IO),
+    write_array("A6", A6, !IO),
     S6 = foldl(func(X, A) = X + A, A6, 0),
     io.format(" (sum %d)\n", [i(S6)], !IO),
     A7 = copy(A5),
-    io.write_list(to_list(A7), ", ", io.write_int, !IO),
-    io.format(" (size %d)\n", [i(size(A7))], !IO),
+    write_array("A7", A7, !IO),
 
     test_exception(
         ((pred) is semidet :-
@@ -157,6 +156,13 @@ make_a21(I, A0) = A :-
     ;
         A = A0
     ).
+
+:- pred write_array(string::in, version_array(int)::in, io::di, io::uo) is det.
+
+write_array(Name, Array, !IO) :-
+    Size = size(Array),
+    ArrayStr = string(to_list(Array)),
+    io.format("%s: %s (size %d)\n", [s(Name), s(ArrayStr), i(Size)], !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

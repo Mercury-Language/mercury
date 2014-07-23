@@ -600,7 +600,6 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     VA->value            = (MR_Word) NULL;
     VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = 0;
-    VA->prev             = MR_NULL_WEAK_PTR;
 
 #ifdef MR_THREAD_SAFE
     MR_incr_hp_type_msg(VA->lock, MercuryLock, MR_ALLOC_ID, NULL);
@@ -640,7 +639,6 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     VA->value            = (MR_Word) NULL;
     VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = 0;
-    VA->prev             = MR_NULL_WEAK_PTR;
 
 #ifdef MR_THREAD_SAFE
     VA->lock             = NULL;
@@ -680,7 +678,6 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     VA->value            = (MR_Word) NULL;
     VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = N;
-    VA->prev             = MR_NULL_WEAK_PTR;
 
     for (i = 0; i < N; i++) {
         VA->rest.array->elements[i] = X;
@@ -727,7 +724,6 @@ unsafe_new(N, X) = unsafe_init(N, X).
     VA->value            = (MR_Word) NULL;
     VA->rest.array       = (MR_ArrayPtr) array;
     VA->rest.array->size = N;
-    VA->prev             = MR_NULL_WEAK_PTR;
 
     for (i = 0; i < N; i++) {
         VA->rest.array->elements[i] = X;
@@ -927,7 +923,6 @@ struct ML_va {
         MR_ArrayPtr     array;  /* Valid if index == -1          */
         ML_va_ptr       next;   /* Valid if index >= 0           */
     } rest;
-    MR_weak_ptr         prev;   /* NULL if this is the oldest    */
 #ifdef MR_THREAD_SAFE
     MercuryLock         *lock;  /* NULL or lock                  */
 #endif
@@ -978,6 +973,9 @@ ML_va_resize_dolock(ML_va_ptr, MR_Integer, MR_Word, MR_AllocSiteInfoPtr);
 ").
 
 :- pragma foreign_decl("C", local, "
+
+#include ""mercury_types.h""
+#include ""mercury_bitmap.h""
 
 /*
 ** Returns the number of items in a version array.
@@ -1160,7 +1158,6 @@ ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr,
         VA1->index      = -1;
         VA1->value      = (MR_Word) NULL;
         VA1->rest.array = VA0->rest.array;
-        MR_new_weak_ptr(&(VA1->prev), VA0);
 #ifdef MR_THREAD_SAFE
         VA1->lock       = VA0->lock;
 #endif
@@ -1205,7 +1202,6 @@ ML_va_flat_copy(ML_const_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
     VA->value               = (MR_Word) NULL;
     VA->rest.array          = (MR_ArrayPtr) array;
     VA->rest.array->size    = N;
-    VA->prev                = MR_NULL_WEAK_PTR;
 
     for (i = 0; i < N; i++) {
         VA->rest.array->elements[i] = latest->rest.array->elements[i];
@@ -1228,9 +1224,10 @@ ML_va_flat_copy(ML_const_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
 static void
 ML_va_rewind_into(ML_va_ptr VA_dest, ML_const_va_ptr VA_src)
 {
-    MR_Integer  I;
-    MR_Word     X;
-    ML_va_ptr   cur;
+    MR_Integer      I;
+    MR_Word         X;
+    ML_const_va_ptr cur;
+    MR_BitmapPtr    bitmap;
 
     if (ML_va_latest_version(VA_src)) {
         /* Shortcut */
@@ -1238,29 +1235,23 @@ ML_va_rewind_into(ML_va_ptr VA_dest, ML_const_va_ptr VA_src)
     }
 
     /*
-    ** Copy elements in the reverse order that they were updated into the
-    ** latest array, then return the latest array.
+    ** Rewind elements from the oldest to the newest, undoing their changes.
+    ** So that we undo elements in the correct order we use a bitmap to
+    ** ensure that we never update an array slot twice.
     */
-    cur = ML_va_get_latest(VA_src);
-    /* start from first 'update' record */
-    cur = MR_weak_ptr_read(&(cur->prev));
-    while (cur != VA_src) {
+    cur = VA_src;
+    MR_allocate_bitmap_msg(bitmap, VA_dest->rest.array->size, MR_ALLOC_ID);
+    MR_bitmap_zero(bitmap);
+    while (!ML_va_latest_version(cur)) {
         I = cur->index;
         X = cur->value;
-        if (I < VA_dest->rest.array->size) {
+        if (I < VA_dest->rest.array->size && !MR_bitmap_get_bit(bitmap, I)) {
             VA_dest->rest.array->elements[I] = X;
+            MR_bitmap_set_bit(bitmap, I);
         }
 
-        cur = MR_weak_ptr_read(&(cur->prev));
+        cur = cur->rest.next;
     }
-
-    /*
-     * This loop must be inclusive of the update in VA.
-     */
-    I = cur->index;
-    X = cur->value;
-
-    VA_dest->rest.array->elements[I] = X;
 }
 
 ML_va_ptr
@@ -1281,10 +1272,11 @@ ML_va_rewind_dolock(ML_va_ptr VA)
 static ML_va_ptr
 ML_va_rewind(ML_va_ptr VA)
 {
-    MR_Integer  I;
-    MR_Word     X;
-    ML_va_ptr   cur;
-    ML_va_ptr   last_visited;
+    MR_Integer      I;
+    MR_Word         X;
+    ML_va_ptr       cur;
+    MR_ArrayPtr     array;
+    MR_BitmapPtr    bitmap;
 
     if (ML_va_latest_version(VA)) {
         /* Shortcut */
@@ -1292,43 +1284,25 @@ ML_va_rewind(ML_va_ptr VA)
     }
 
     /*
-    ** last_visited is the last element we interated through, we remember it
-    ** because we update it's prev pointer after the loop.  This isn't
-    ** strictly required as we're already destroying that list.
+    ** Rewind elements from the oldest to the newest, undoing their changes.
+    ** So that we undo elements in the correct order we use a bitmap to
+    ** ensure that we never update an array slot twice.
     */
-    last_visited = NULL;
-
-    /*
-    ** Copy elements in the reverse order that they were updated into the
-    ** latest array, then return the latest array.
-    */
-    cur = ML_va_get_latest(VA);
-    VA->rest.array = cur->rest.array;
-    /* start from first 'update' record */
-    cur = MR_weak_ptr_read(&(cur->prev));
-    while (cur != VA) {
+    cur = VA;
+    array = ML_va_get_latest(VA)->rest.array;
+    MR_allocate_bitmap_msg(bitmap, array->size, MR_ALLOC_ID);
+    while (!ML_va_latest_version(cur)) {
         I = cur->index;
         X = cur->value;
 
-        VA->rest.array->elements[I] = X;
+        if (!MR_bitmap_get_bit(bitmap, I)) {
+            array->elements[I] = X;
+            MR_bitmap_set_bit(bitmap, I);
+        }
 
-        last_visited = cur;
-        cur = MR_weak_ptr_read(&(cur->prev));
+        cur = cur->rest.next;
     }
-    /*
-     * This loop must be inclusive of the update in VA.
-     */
-    I = cur->index;
-    X = cur->value;
-
-    VA->rest.array->elements[I] = X;
-
-    /*
-     * Clear the prev pointer since we've broken the chain.
-     */
-    if (NULL != last_visited) {
-        last_visited->prev = MR_NULL_WEAK_PTR;
-    }
+    VA->rest.array = array;
 
     /*
      * This element is no-longer an update element.
@@ -1380,7 +1354,6 @@ ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X,
     VA->value               = (MR_Word) NULL;
     VA->rest.array          = (MR_ArrayPtr) array;
     VA->rest.array->size    = N;
-    VA->prev                = MR_NULL_WEAK_PTR;
 
     for (i = 0; i < min; i++) {
         VA->rest.array->elements[i] = latest->rest.array->elements[i];
@@ -1495,7 +1468,6 @@ public class ML_uva : ML_va {
     private object              value;  /* Valid if index >= 0           */
     private object              rest;   /* array if index == -1          */
                                         /* next if index >= 0            */
-    private WeakReference       prev;   /* previous array update         */
 
     /* True if this is a fresh clone of another ML_uva */
     private bool                clone = false;
@@ -1507,7 +1479,6 @@ public class ML_uva : ML_va {
         va.index = -1;
         va.value = null;
         va.rest  = new object[0];
-        va.prev  = null;
         return va;
     }
 
@@ -1516,7 +1487,6 @@ public class ML_uva : ML_va {
         va.index = -1;
         va.value = null;
         va.rest  = new object[N];
-        va.prev  = null;
         for (int i = 0; i < N; i++) {
             va.array()[i] = X;
         }
@@ -1542,7 +1512,6 @@ public class ML_uva : ML_va {
         VA.index = -1;
         VA.value = null;
         VA.rest  = new object[N];
-        VA.prev  = null;
 
         System.Array.Copy(latest.array(), 0, VA.array(), 0, min);
 
@@ -1613,7 +1582,6 @@ public class ML_uva : ML_va {
             VA1.index   = -1;
             VA1.value   = null;
             VA1.rest    = VA0.array();
-            VA1.prev    = new WeakReference(VA0);
 
             VA0.index   = I;
             VA0.value   = VA0.array()[I];
@@ -1642,7 +1610,6 @@ public class ML_uva : ML_va {
         VA.value = null;
         VA.rest  = latest.array().Clone();
         VA.clone = true;
-        VA.prev  = null;
 
         VA0.rewind_into(VA);
 
@@ -1659,9 +1626,10 @@ public class ML_uva : ML_va {
 
     private void rewind_into(ML_uva VA)
     {
-        int     I;
-        object  X;
-        ML_uva  cur;
+        int                             I;
+        object                          X;
+        ML_uva                          cur;
+        mercury.runtime.MercuryBitmap   bitmap;
 
         if (this.is_latest()) {
             /* Shortcut */
@@ -1669,29 +1637,22 @@ public class ML_uva : ML_va {
         }
 
         /*
-        ** Copy elements in the reverse order that they were updated into the
-        ** latest array, then return the latest array.
+        ** Rewind elements from the oldest to the newest, undoing their changes.
+        ** So that we undo elements in the correct order we use a bitmap to
+        ** ensure that we never update an array slot twice.
         */
-        cur = this.latest();
-        /* start from first 'update' record */
-        cur = (cur.prev != null ? (ML_uva)cur.prev.Target : null);
-        while (cur != this) {
+        cur = this;
+        bitmap = new mercury.runtime.MercuryBitmap(cur.size());
+        while (!cur.is_latest()) {
             I = cur.index;
             X = cur.value;
-            if (I < VA.size()) {
+            if (I < VA.size() && !bitmap.GetBit(I)) {
                 VA.array()[I] = X;
+                bitmap.SetBit(I);
             }
 
-            cur = cur.prev != null ? (ML_uva)cur.prev.Target : null;
+            cur = cur.next();
         }
-
-        /*
-         * This loop must be inclusive of the update in VA.
-         */
-        I = cur.index;
-        X = cur.value;
-
-        VA.array()[I] = X;
     }
 
     public ML_va rewind()
@@ -1701,67 +1662,50 @@ public class ML_uva : ML_va {
 
     public ML_uva rewind_uva()
     {
-        int     I;
-        object  X;
-        ML_uva  VA = this;
-        ML_uva  cur;
-        ML_uva  last_visited;
+        int                             I;
+        object                          X;
+        ML_uva                          cur;
+        mercury.runtime.MercuryBitmap   bitmap;
+        object[]                        array;
 
-        if (VA.is_latest()) {
-            return VA;
+        if (is_latest()) {
+            return this;
         }
 
         /*
-        ** last_visited is the last element we interated through, we
-        ** remember it because we update it's prev pointer after the
-        ** loop.
+        ** Rewind elements from the oldest to the newest, undoing their changes.
+        ** So that we undo elements in the correct order we use a bitmap to
+        ** ensure that we never update an array slot twice.
         */
-        last_visited = null;
-
-        /*
-        ** Copy elements in the reverse order that they were updated into
-        ** the latest array, then return the latest array.
-        */
-        cur = VA.latest();
-        VA.rest = cur.array();
-        cur = cur.prev != null ? (ML_uva)cur.prev.Target : null;
-        while (cur != VA) {
+        cur = this;
+        array = latest().array();
+        bitmap = new mercury.runtime.MercuryBitmap(array.Length);
+        while (!cur.is_latest()) {
             I = cur.index;
             X = cur.value;
 
-            VA.array()[I] = X;
+            if (!bitmap.GetBit(I)) {
+                array[I] = X;
+                bitmap.SetBit(I);
+            }
 
-            last_visited = cur;
-            cur = cur.prev != null ? (ML_uva)cur.prev.Target : null;
+            cur = cur.next();
         }
-        /*
-        ** This loop must be inclusive of the update in VA.
-        */
-        I = cur.index;
-        X = cur.value;
-
-        VA.array()[I] = X;
+        rest = array;
 
         /*
-        ** Clear the prev pointer since we've broken the chain.
-        */
-        if (null != last_visited) {
-            last_visited.prev = null;
-        }
-
-        /*
-        ** This element is no-longer an update element.
-        */
-        VA.index = -1;
-        VA.value = 0;
-        return VA;
+         * This element is no-longer an update element.
+         */
+        index = -1;
+        value = 0;
+        return this;
     }
 }
 
 ").
 
 :- pragma foreign_decl("Java", local, "
-import java.lang.ref.WeakReference;
+import jmercury.runtime.MercuryBitmap;
 ").
 
 :- pragma foreign_code("Java", "
@@ -1851,8 +1795,6 @@ public static class ML_uva implements ML_va, java.io.Serializable {
     private Object              value;  /* Valid if index >= 0           */
     private Object              rest;   /* array if index == -1          */
                                         /* next if index >= 0            */
-    private WeakReference<ML_uva>
-                                prev;   /* previous array update         */
 
     private boolean             clone = false;
 
@@ -1863,7 +1805,6 @@ public static class ML_uva implements ML_va, java.io.Serializable {
         va.index = -1;
         va.value = null;
         va.rest  = new Object[0];
-        va.prev  = null;
         return va;
     }
 
@@ -1872,7 +1813,6 @@ public static class ML_uva implements ML_va, java.io.Serializable {
         va.index = -1;
         va.value = null;
         va.rest  = new Object[N];
-        va.prev  = null;
         java.util.Arrays.fill(va.array(), X);
         return va;
     }
@@ -1892,7 +1832,6 @@ public static class ML_uva implements ML_va, java.io.Serializable {
         VA.index = -1;
         VA.value = null;
         VA.rest  = new Object[N];
-        VA.prev  = null;
 
         System.arraycopy(latest.array(), 0, VA.array(), 0, min);
 
@@ -1957,7 +1896,6 @@ public static class ML_uva implements ML_va, java.io.Serializable {
             VA1.index   = -1;
             VA1.value   = null;
             VA1.rest    = VA0.array();
-            VA1.prev    = new WeakReference<ML_uva>(VA0);
 
             VA0.index   = I;
             VA0.value   = VA0.array()[I];
@@ -1985,7 +1923,6 @@ public static class ML_uva implements ML_va, java.io.Serializable {
         VA.index = -1;
         VA.value = null;
         VA.rest  = latest.array().clone();
-        VA.prev  = null;
         VA.clone = true;
 
         VA0.rewind_into(VA);
@@ -2003,97 +1940,73 @@ public static class ML_uva implements ML_va, java.io.Serializable {
 
     private void rewind_into(ML_uva VA)
     {
-        int     I;
-        Object  X;
-        ML_uva  cur;
+        int             I;
+        Object          X;
+        ML_uva          cur;
+        MercuryBitmap   bitmap;
 
         if (this.is_latest()) {
             return;
         }
 
         /*
-        ** Copy elements in the reverse order that they were updated into the
-        ** latest array, then return the latest array.
+        ** Rewind elements from the oldest to the newest, undoing their changes.
+        ** So that we undo elements in the correct order we use a bitmap to
+        ** ensure that we never update an array slot twice.
         */
-        cur = latest();
-        /* start from first 'update' record */
-        cur = null != cur.prev ? cur.prev.get() : null;
-        while (cur != this) {
+        cur = this;
+        bitmap = new MercuryBitmap(cur.size());
+        while (!cur.is_latest()) {
             I = cur.index;
             X = cur.value;
-            if (I < VA.size()) {
+            if (I < VA.size() && !bitmap.getBit(I)) {
                 VA.array()[I] = X;
+                bitmap.setBit(I);
             }
 
-            cur = null != cur.prev ? cur.prev.get() : null;
+            cur = cur.next();
         }
-
-        /*
-         * This loop must be inclusive of the update in VA.
-         */
-        I = cur.index;
-        X = cur.value;
-
-        VA.array()[I] = X;
     }
 
     public ML_uva rewind()
     {
-        ML_uva  VA = this;
-        int     I;
-        Object  X;
-        ML_uva  cur;
-        ML_uva  last_visited;
+        int             I;
+        Object          X;
+        ML_uva          cur;
+        MercuryBitmap   bitmap;
+        Object[]        array;
 
-        if (VA.is_latest()) {
-            return VA;
+        if (is_latest()) {
+            return this;
         }
 
         /*
-        ** last_visited is the last element we interated through, we remember it
-        ** because we update it's prev pointer after the loop.  This isn't
-        ** strictly required as we're already destroying that list.
+        ** Rewind elements from the oldest to the newest, undoing their changes.
+        ** So that we undo elements in the correct order we use a bitmap to
+        ** ensure that we never update an array slot twice.
         */
-        last_visited = null;
-
-        /*
-        ** Copy elements in the reverse order that they were updated into the
-        ** latest array, then return the latest array.
-        */
-        cur = VA.latest();
-        VA.rest = cur.array();
-        /* start from first 'update' record */
-        cur = null != cur.prev ? cur.prev.get() : null;
-        while (cur != VA) {
+        cur = this;
+        array = latest().array();
+        bitmap = new MercuryBitmap(array.length);
+        while (!cur.is_latest()) {
             I = cur.index;
             X = cur.value;
 
-            VA.array()[I] = X;
+            if (!bitmap.getBit(I)) {
+                array[I] = X;
+                bitmap.setBit(I);
+            }
 
-            last_visited = cur;
-            cur = null != cur.prev ? cur.prev.get() : null;
+            cur = cur.next();
         }
-        /*
-         * This loop must be inclusive of the update in VA.
-         */
-        I = cur.index;
-        X = cur.value;
-
-        VA.array()[I] = X;
-
-        /*
-         * Clear the prev pointer since we've broken the chain.
-         */
-        if (null != last_visited) {
-            last_visited.prev = null;
-        }
+        rest = array;
 
         /*
          * This element is no-longer an update element.
          */
-        VA.index = -1;
-        VA.value = 0;
-        return VA;
+        index = -1;
+        value = 0;
+        return this;
     }
 }
 
