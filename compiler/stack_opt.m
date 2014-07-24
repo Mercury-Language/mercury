@@ -88,6 +88,8 @@
 :- import_module backend_libs.matching.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.simplify.
+:- import_module check_hlds.simplify.simplify_proc.
+:- import_module check_hlds.simplify.simplify_tasks.
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.goal_path.

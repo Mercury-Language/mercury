@@ -951,27 +951,96 @@ so that the compiler does the right thing for options such as
 	`exception' module instead.
 	<p>
 
-<dt> simplification (simplify.m)
+<dt> simplification (simplify.m and its submodules)
 
 	<dd>
-	simplify.m finds and exploits opportunities for simplifying the
+	Simplification finds and exploits opportunities for simplifying the
 	internal form of the program, both to optimize the code and to
 	massage the code into a form the code generator will accept.
 	It also warns the programmer about any constructs that are so simple
 	that they should not have been included in the program in the first
 	place.  (That's why this pass needs to be part of semantic analysis:
 	because it can report warnings.)
-	simplify.m converts complicated unifications into procedure calls.
-	simplify.m calls common.m which looks for (a) construction unifications
+
+    <p>
+    simplify.m is a package of submodules.
+    <ol>
+    <li>
+    simplify_goal.m handles simplifications that involve
+    the interaction of a goal with its environment,
+    and then invokes one of the goal-type-specific submodules
+    for further processing.
+    <li>
+    simplify_goal_call.m handles calls (plain, generic and foreign code).
+    Using const_prop.m in the transform_hlds.m package,
+    it attempts to partially evaluate calls to builtin procedures
+    if the inputs are all constants.
+    <li>
+    simplify_goal_unify.m handles unifications.
+    Amongst other things, it converts complicated unifications
+    into procedure calls.
+    <li>
+    simplify_goal_conj.m handles conjunctions.
+    It inlines nested conjunctions, eliminates unreachable code,
+    and eliminates assign unification conjuncts
+    (replacing the assigned-to variable with the assigned-from variable
+    in the rest of the conjunction) if this is possible.
+    <li>
+    simplify_goal_disj.m handles disjunctions (and atomic goals).
+    It eliminates unnecessary disjunction wrappers,
+    and transforms semidet disjunctions into if-then-elses
+    if this possible.
+    <li>
+    simplify_goal_ite.m handles if-then-elses (and negations).
+    It warns about if-then-elses in which
+    either the then-part or the else-part is unreachable,
+    and about if-then-elses that should be replaced by switches.
+    <li>
+    simplify_goal_switch.m handles switches.
+    It eliminates switch arms that cannot fail, and switches with no arms left.
+    <li>
+    simplify_goal_scope.m handles scope goals.
+    It eliminates unnecessary nested scopes,
+    replaces from_ground_term_construct scopes
+    with a single assignment unifications referencing
+    a constant structure in a constant structure database
+    (to eliminate the need for any later passes to traverse the scope),
+    and evaluates compile-time conditions on trace goals,
+    eliminating either the compile-time condition wrapper on the trace goal
+    (if the condition is true)
+    or the trace goal scope altogether
+    (if the condition is false).
+    <li>
+	common.m looks for (a) construction unifications
 	that construct a term that is the same as one that already exists,
-	or (b) repeated calls to a predicate with the same inputs, and replaces
-	them with assignment unifications.
-	simplify.m also attempts to partially evaluate calls to builtin
-	procedures if the inputs are all constants (this is const_prop.m
-	in the transform_hlds.m package).
-	simplify.m also calls format_call.m to look for
-	(possibly) incorrect uses of string.format io.format.
-	<p>
+	or (b) repeated calls to a predicate with the same inputs.
+    It replaces both with assignment unifications.
+    It is invoked by the goal-type-specific submodules above.
+    <li>
+	format_call.m looks for calls to predicates such as
+    string.format and io.format.
+    It reports calls in which the types of the values to be printed
+    disagree with the format string,
+    and/or calls in which the agreement cannot be established.
+    It also attempts to partially evaluate the correct calls,
+    essentially interpreting the format string at compile time,
+    not runtime.
+    <li>
+    simplify_proc.m handles the top-level processing of procedures
+    and their bodies.
+    <li>
+    simplify_info.m defines the data structure
+    that is threaded through the code of the submodules above,
+    containing the information those submodules need.
+    <li>
+    simplify_tasks.m defines the type that identifies the tasks
+    that the simplification package may be asked to do.
+    Simplification can be invoked at several different points
+    in the compilation process;
+    different invocations need to perform different subsets
+    of the tasks that simplification is capable of.
+    </ol>
+    <p>
 
 <dt> unused imports (unused_imports.m)
 

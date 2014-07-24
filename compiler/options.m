@@ -652,7 +652,6 @@
     ;       enable_const_struct
     ;       common_struct
     ;       common_struct_preds
-    ;       common_goal
     ;       constraint_propagation
     ;       local_constraint_propagation
     ;       optimize_unused_args
@@ -1574,11 +1573,6 @@ option_defaults_2(optimization_option, [
     enable_const_struct                 -   bool(yes),
     common_struct                       -   bool(no),
     common_struct_preds                 -   string(""),
-    common_goal                         -   bool(yes),
-                                        % common_goal is not really an
-                                        % optimization, since it affects
-                                        % the semantics.
-
     constraint_propagation              -   bool(no),
     local_constraint_propagation        -   bool(no),
     optimize_duplicate_calls            -   bool(no),
@@ -2451,7 +2445,6 @@ long_option("inline-vars-threshold",        inline_vars_threshold).
 long_option("const-struct",         enable_const_struct).
 long_option("common-struct",        common_struct).
 long_option("common-struct-preds",  common_struct_preds).
-long_option("common-goal",          common_goal).
 long_option("excess-assign",        excess_assign).
 long_option("optimize-format-calls",         optimize_format_calls).
 long_option("optimize-duplicate-calls", optimize_duplicate_calls).

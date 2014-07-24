@@ -84,6 +84,8 @@
 :- import_module check_hlds.post_typecheck.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.simplify.
+:- import_module check_hlds.simplify.simplify_proc.
+:- import_module check_hlds.simplify.simplify_tasks.
 :- import_module check_hlds.stratify.
 :- import_module check_hlds.switch_detection.
 :- import_module check_hlds.try_expand.
@@ -92,6 +94,7 @@
 :- import_module check_hlds.unique_modes.
 :- import_module check_hlds.unused_imports.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_statistics.
 :- import_module hlds.make_tags.
 :- import_module libs.file_util.
@@ -99,9 +102,9 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
+:- import_module parse_tree.prog_data.
 :- import_module top_level.mercury_compile_middle_passes.
 :- import_module transform_hlds.dead_proc_elim.
 :- import_module transform_hlds.intermod.
@@ -741,18 +744,11 @@ detect_switches(Verbose, Stats, !HLDS, !IO) :-
     io::di, io::uo) is det.
 
 detect_cse(Verbose, Stats, !HLDS, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, common_goal, CommonGoal),
-    (
-        CommonGoal = yes,
-        maybe_write_string(Verbose,
-            "% Detecting common deconstructions...\n", !IO),
-        detect_cse_in_module(!HLDS),
-        maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
-    ;
-        CommonGoal = no
-    ).
+    maybe_write_string(Verbose,
+        "% Detecting common deconstructions...\n", !IO),
+    detect_cse_in_module(!HLDS),
+    maybe_write_string(Verbose, "% done.\n", !IO),
+    maybe_report_stats(Stats, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -908,7 +904,7 @@ process_try_goals(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
 maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     some [!SimpList] (
-        simplify.find_simplifications(Warn, Globals, Simplifications0),
+        find_simplifications(Warn, Globals, Simplifications0),
         !:SimpList = simplifications_to_list(Simplifications0),
         (
             SimplifyPass = simplify_pass_frontend,
@@ -919,8 +915,8 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
         ;
             SimplifyPass = simplify_pass_pre_prof_transforms,
 
-            % We run the simplify pass before the profiling transformations,
-            % only if those transformations are being applied - otherwise we
+            % We run the simplify pass before the profiling transformations
+            % only if those transformations are being applied; otherwise we
             % just leave things to the backend simplification passes.
 
             globals.lookup_bool_option(Globals, pre_prof_transforms_simplify,
@@ -1005,6 +1001,33 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_report_stats(Stats, !IO)
     ;
         SimpList = []
+    ).
+
+:- pred simplify_pred(simplifications::in, pred_id::in,
+    module_info::in, module_info::out, pred_info::in, pred_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo, !Specs) :-
+    trace [io(!IO)] (
+        write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo,
+            !IO)
+    ),
+    ProcIds = pred_info_non_imported_procids(!.PredInfo),
+    % Don't warn for compiler-generated procedures.
+    ( is_unify_or_compare_pred(!.PredInfo) ->
+        Simplifications = Simplifications0 ^ do_warn_simple_code := no
+    ;
+        Simplifications = Simplifications0
+    ),
+    ErrorSpecs0 = init_error_spec_accumulator,
+    simplify_pred_procs(Simplifications, PredId, ProcIds, !ModuleInfo,
+        !PredInfo, ErrorSpecs0, ErrorSpecs),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    SpecsList = error_spec_accumulator_to_list(ErrorSpecs),
+    !:Specs = SpecsList ++ !.Specs,
+    globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
+    trace [io(!IO)] (
+        maybe_report_stats(Statistics, !IO)
     ).
 
 :- pred maybe_proc_statistics(bool::in, bool::in, string::in,

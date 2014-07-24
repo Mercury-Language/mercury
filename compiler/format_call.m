@@ -111,7 +111,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds.format_call.
+:- module check_hlds.simplify.format_call.
 :- interface.
 
 :- import_module hlds.
@@ -1374,5 +1374,5 @@ represent_component(ModuleInfo, Component, MaybeResultVar, ResultVar,
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module check_hlds.format_call.
+:- end_module check_hlds.simplify.format_call.
 %-----------------------------------------------------------------------------%

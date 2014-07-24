@@ -8,30 +8,91 @@
 %
 % File: common.m.
 % Original author: squirrel (Jane Anna Langley).
-% Some bugs fixed by fjh.
-% Extensive revision by zs.
-% More revision by stayl.
+% Other authors: fjh, zs, stayl.
 %
-% This module attempts to optimise out instances where a variable is
-% decomposed and then soon after reconstructed from the parts. If possible we
-% would like to "short-circuit" this process.  It also optimizes
-% deconstructions of known cells, replacing them with assignments to the
-% arguments where this is guaranteed to not increase the number of stack slots
-% required by the goal.  Repeated calls to predicates with the same input
-% arguments are replaced by assignments and warnings are returned.
+% The main task of this module is to look for conjoined goals that involve
+% the same structure (the "common" structure the module is named after), 
+% and to optimize those goals. The reason why we created this module was
+% code like this:
+%
+%   X => f(A, B, C),
+%   ...
+%   Y <= f(A, B, C)
+%
+% This module replaces this code with
+%
+%   X => f(A, B, C),
+%   ...
+%   Y := X
+%
+% since this allocates less memory on the heap.
+%
+% We want to perform this optimization even if the deconstruction of X and
+% the construction of Y are not in the same conjunction, but are nevertheless
+% conjoined (e.g. because the construction of Y is inside an if-then-else
+% or a disjunction that is inside the conjunction containing the deconstruction
+% of X). We also want to do it if the two argument lists are not equal
+% syntactically, but instead look like this:
+%
+%   X => f(A, B, C1),
+%   ...
+%   C2 := C1
+%   ...
+%   Y <= f(A, B, C2)
+%
+% We therefore have to keep track of pretty much all unifications in the body
+% of the procedure being optimized. Since we have this information laying
+% around anyway, we also use to for two other purposes. The first is
+% to eliminate unnecessary tests of function symbols, replacing
+%
+%   X => f(A1, B1, C1),
+%   ...
+%   X => f(A2, B2, C2)
+%
+% with
+%
+%   X => f(A1, B1, C1),
+%   ...
+%   A2 := A1,
+%   B2 := B1,
+%   C2 := C1
+%
+% provided that this does not increase the number of variables that
+% have to be saved across calls and other stack flushes.
+%
+% The other is to detect and optimize duplicate calls, replacing
+%
+%   p(InA, InB, OutC1, OutD1),
+%   ...
+%   p(InA, InB, OutC2, OutD2)
+%
+% with
+%
+%   p(InA, InB, OutC1, OutD1),
+%   ...
+%   OutC2 := OutC1,
+%   OutD2 := OutD1
+%
+% Since the author probably did not mean to write duplicate calls, we also
+% generate a warning for such code.
 %
 % IMPORTANT: This module does a small subset of the job of compile-time
 % garbage collection, but it does so without paying attention to uniqueness
-% information, since the compiler does not yet have such information.  Once we
-% implement ctgc, the assumptions made by this module will have to be
-% revisited.
+% information, since the compiler does not yet have such information.
+% Once we implement ctgc, the assumptions made by this module
+% will have to be revisited.
+%
+% NOTE: There is another compiler module, cse_detection.m, that
+% looks for unifications involving common structures in *disjoined*,
+% not *conjoined* goals. Its purpose is not optimization, but the
+% generation of more precise determinism information.
 %
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.common.
+:- module check_hlds.simplify.common.
 :- interface.
 
-:- import_module check_hlds.simplify.
+:- import_module check_hlds.simplify.simplify_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -47,19 +108,21 @@
     %
     % If we find a construction that constructs a cell identical to one we
     % have seen before, replace the construction with an assignment from the
-    % variable unified with that cell.
+    % variable that already holds that cell.
     %
 :- pred common_optimise_unification(unification::in, unify_mode::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-    % Check whether this call has been seen before and is replaceable, if
-    % so produce assignment unification for the non-local output variables,
-    % and give a warning.
-    % A call is considered replaceable if it has no uniquely moded outputs
-    % and no destructive inputs.
-    % It is the caller's responsibility to check that the call is pure.
+    % Check whether this call has been seen before and is replaceable.
+    % If it is, generate assignment unifications for the nonlocal output
+    % variables (to remove the redundant call), and a warning (since the
+    % programmer probably did not mean to write a redundant call).
+    %
+    % A call is considered replaceable if it has no destructive inputs
+    % and no uniquely moded outputs. It is the caller's responsibility
+    % to check that the call is pure.
     %
 :- pred common_optimise_call(pred_id::in, proc_id::in, list(prog_var)::in,
     hlds_goal_info::in, hlds_goal_expr::in, hlds_goal_expr::out,
@@ -76,7 +139,8 @@
 :- pred common_vars_are_equivalent(prog_var::in, prog_var::in,
     common_info::in) is semidet.
 
-    % Assorted stuff used here that simplify.m doesn't need to know about.
+    % Assorted stuff used here that the rest of the simplify package
+    % does not need to know about.
     %
 :- type common_info.
 :- func common_info_init = common_info.
@@ -320,7 +384,7 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
                 UniMode = ((free - Inst) -> (Inst - Inst)),
                 generate_assign(Var, OldVar, UniMode, GoalInfo0,
                     GoalExpr, GoalInfo, !Info),
-                simplify_info_set_requantify(!Info),
+                simplify_info_set_should_requantify(!Info),
                 goal_cost(hlds_goal(GoalExpr0, GoalInfo0), Cost),
                 simplify_info_incr_cost_delta(Cost, !Info)
             )
@@ -381,10 +445,10 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
             GoalExpr = conj(plain_conj, Goals),
             goal_cost(hlds_goal(GoalExpr0, GoalInfo0), Cost),
             simplify_info_incr_cost_delta(Cost, !Info),
-            simplify_info_set_requantify(!Info),
+            simplify_info_set_should_requantify(!Info),
             (
                 CanFail = can_fail,
-                simplify_info_set_rerun_det(!Info)
+                simplify_info_set_should_rerun_det(!Info)
             ;
                 CanFail = cannot_fail
             )
@@ -592,7 +656,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             CommonInfo = CommonInfo0,
             goal_cost(hlds_goal(GoalExpr0, GoalInfo), Cost),
             simplify_info_incr_cost_delta(Cost, !Info),
-            simplify_info_set_requantify(!Info),
+            simplify_info_set_should_requantify(!Info),
             Detism0 = goal_info_get_determinism(GoalInfo),
             (
                 Detism0 = detism_det
@@ -605,7 +669,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 ; Detism0 = detism_cc_non
                 ; Detism0 = detism_cc_multi
                 ),
-                simplify_info_set_rerun_det(!Info)
+                simplify_info_set_should_rerun_det(!Info)
             )
         ;
             Context = goal_info_get_context(GoalInfo),
@@ -922,5 +986,5 @@ calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module check_hlds.common.
+:- end_module check_hlds.simplify.common.
 %---------------------------------------------------------------------------%

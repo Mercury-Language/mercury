@@ -10,10 +10,45 @@
 % Main author: zs.
 % Much of the code is based on switch_detection.m by fjh.
 %
-% Common subexpression detection - hoist common subexpression goals out of
-% branched structures. This can enable us to find more indexing opportunities
-% and hence can make the code more deterministic.
-% This code is switched on/off with the `--common-goal' option.
+% This module looks for unifications that deconstruct the same variable
+% with the SAME function symbol in different arms of a disjunction, and
+% hoists those deconstructions out of the disjuncts, thus replacing
+%
+%   (
+%       X = f(A1, B1, C1),
+%       ...
+%   ;
+%       X = f(A2, B2, C2),
+%       ...
+%   )
+%
+% with
+%
+%   X = f(A0, B0, C0),
+%   (
+%       A1 := A0, B1 := B0, C1 := C0,
+%       ...
+%   ;
+%       A2 := A0, B2 := B0, C2 := C0,
+%       ...
+%   )
+%
+% This may (and often does) allow switch detection to recognize that
+% the transformed disjunction is in fact a switch, e.g. on A0.
+% This in turn often allows determinism analysis to recognize that
+% the code is in fact deterministic.
+%
+% The structure of the code in this module is similar to the structure
+% of the code in switch_detection.m. That is because the jobs of
+% the two modules are related:
+%
+% cse_detection.m:
+%   looks for unifications that deconstruct the same variable
+%   with the SAME function symbol in different arms of a disjunction
+%
+% switch_detection.m:
+%   looks for unifications that deconstruct the same variable
+%   with DIFFERENT function symbols in different arms of a disjunction
 %
 %-----------------------------------------------------------------------------%
 

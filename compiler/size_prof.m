@@ -108,6 +108,8 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.simplify.
+:- import_module check_hlds.simplify.simplify_proc.
+:- import_module check_hlds.simplify.simplify_tasks.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
@@ -227,8 +229,7 @@ size_prof_process_proc_msg(Transform, PredProcId, !ProcInfo, !ModuleInfo) :-
 size_prof_process_proc(Transform, proc(PredId, ProcId), !ProcInfo,
         !ModuleInfo) :-
     Simplifications = list_to_simplifications([]),
-    simplify_proc_return_msgs(Simplifications, PredId, ProcId,
-        !ModuleInfo, !ProcInfo, _Msgs),
+    simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, VarSet0),

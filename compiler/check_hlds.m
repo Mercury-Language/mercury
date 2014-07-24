@@ -83,8 +83,6 @@
 :- include_module try_expand.
 
 % Warnings about simple code
-:- include_module common.
-:- include_module format_call.
 :- include_module simplify.
 
 % Warnings about insts with no matching types

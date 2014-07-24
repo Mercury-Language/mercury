@@ -109,8 +109,9 @@
 
 :- implementation.
 
-:- import_module check_hlds.format_call.
 :- import_module check_hlds.modecheck_call.
+:- import_module check_hlds.simplify.
+:- import_module check_hlds.simplify.format_call.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.

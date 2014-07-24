@@ -79,6 +79,7 @@
 :- implementation.
 
 :- import_module check_hlds.simplify.
+:- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.try_expand.
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_clauses.

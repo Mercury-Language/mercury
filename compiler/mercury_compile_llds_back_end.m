@@ -51,6 +51,8 @@
 :- import_module backend_libs.type_class_info.
 :- import_module backend_libs.type_ctor_info.
 :- import_module check_hlds.simplify.
+:- import_module check_hlds.simplify.simplify_proc.
+:- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.

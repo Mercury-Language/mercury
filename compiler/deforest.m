@@ -54,6 +54,8 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_util.
 :- import_module check_hlds.simplify.
+:- import_module check_hlds.simplify.simplify_proc.
+:- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -204,7 +206,7 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
 
         % Inlining may have created some opportunities for simplification.
         module_info_get_globals(!.ModuleInfo, Globals),
-        simplify.find_simplifications(no, Globals, Simplifications),
+        find_simplifications(no, Globals, Simplifications),
         pd_util.pd_simplify_goal(Simplifications, !Goal, !PDInfo),
         pd_util.propagate_constraints(!Goal, !PDInfo),
         trace [io(!IO)] (
@@ -1793,7 +1795,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
 
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    simplify.find_simplifications(no, Globals, Simplifications0),
+    find_simplifications(no, Globals, Simplifications0),
     SimpList0 = simplifications_to_list(Simplifications0),
     % Be a bit more aggressive with common structure elimination.
     % This helps achieve folding in some cases.
@@ -2052,7 +2054,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         trace [io(!IO)] (
             pd_debug_message(DebugPD, "Running simplify\n", [], !IO)
         ),
-        simplify.find_simplifications(no, Globals, Simplifications),
+        find_simplifications(no, Globals, Simplifications),
         pd_util.pd_simplify_goal(Simplifications, Goal3, Goal4, !PDInfo),
 
         pd_info_get_cost_delta(!.PDInfo, CostDelta1),
