@@ -35,7 +35,7 @@
     io::di, io::uo) is det.
 
     % This type indicates what stage of compilation we are running
-    % the simplification pass at. The exact simplifications we run
+    % the simplification pass at. The exact simplifications tasks we run
     % will depend upon this.
     %
 :- type simplify_pass
@@ -904,14 +904,14 @@ process_try_goals(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
 maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     some [!SimpList] (
-        find_simplifications(Warn, Globals, Simplifications0),
-        !:SimpList = simplifications_to_list(Simplifications0),
+        find_simplify_tasks(Warn, Globals, SimplifyTasks0),
+        !:SimpList = simplify_tasks_to_list(SimplifyTasks0),
         (
             SimplifyPass = simplify_pass_frontend,
-            list.cons(simp_after_front_end, !SimpList)
+            list.cons(simptask_after_front_end, !SimpList)
         ;
             SimplifyPass = simplify_pass_post_untuple,
-            list.cons(simp_do_once, !SimpList)
+            list.cons(simptask_do_once, !SimpList)
         ;
             SimplifyPass = simplify_pass_pre_prof_transforms,
 
@@ -920,12 +920,12 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
             % just leave things to the backend simplification passes.
 
             globals.lookup_bool_option(Globals, pre_prof_transforms_simplify,
-                Simplify215),
+                PreProfSimplify),
             (
-                Simplify215 = yes,
-                list.cons(simp_do_once, !SimpList)
+                PreProfSimplify = yes,
+                list.cons(simptask_do_once, !SimpList)
             ;
-                Simplify215 = no,
+                PreProfSimplify = no,
                 !:SimpList = []
             )
         ;
@@ -935,17 +935,17 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
             % implicit parallelism is enabled.
 
             globals.lookup_bool_option(Globals,
-                pre_implicit_parallelism_simplify, SimplifyPrePar),
+                pre_implicit_parallelism_simplify, PreParSimplify),
             (
-                SimplifyPrePar = yes,
-                list.cons(simp_do_once, !SimpList)
+                PreParSimplify = yes,
+                list.cons(simptask_do_once, !SimpList)
             ;
-                SimplifyPrePar = no,
+                PreParSimplify = no,
                 !:SimpList = []
             )
         ;
             SimplifyPass = simplify_pass_ml_backend,
-            list.cons(simp_do_once, !SimpList)
+            list.cons(simptask_do_once, !SimpList)
         ;
             SimplifyPass = simplify_pass_ll_backend,
             % Don't perform constant propagation if one of the
@@ -966,12 +966,12 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
                 TSWProf = no,
                 TSCProf = no
             ->
-                list.cons(simp_constant_prop, !SimpList)
+                list.cons(simptask_constant_prop, !SimpList)
             ;
-                !:SimpList = list.delete_all(!.SimpList, simp_constant_prop)
+                !:SimpList = list.delete_all(!.SimpList, simptask_constant_prop)
             ),
-            list.cons(simp_do_once, !SimpList),
-            list.cons(simp_elim_removable_scopes, !SimpList)
+            list.cons(simptask_do_once, !SimpList),
+            list.cons(simptask_elim_removable_scopes, !SimpList)
         ),
         SimpList = !.SimpList
     ),
@@ -981,9 +981,9 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        Simplifications = list_to_simplifications(SimpList),
+        SimplifyTasks = list_to_simplify_tasks(SimpList),
         process_all_nonimported_preds_errors(
-            update_pred_error(simplify_pred(Simplifications)),
+            update_pred_error(simplify_pred(SimplifyTasks)),
             !HLDS, [], SimplifySpecs, !IO),
         (
             SimplifyPass = simplify_pass_frontend,
@@ -1003,11 +1003,11 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
         SimpList = []
     ).
 
-:- pred simplify_pred(simplifications::in, pred_id::in,
+:- pred simplify_pred(simplify_tasks::in, pred_id::in,
     module_info::in, module_info::out, pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo, !Specs) :-
+simplify_pred(SimplifyTasks0, PredId, !ModuleInfo, !PredInfo, !Specs) :-
     trace [io(!IO)] (
         write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo,
             !IO)
@@ -1015,12 +1015,12 @@ simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo, !Specs) :-
     ProcIds = pred_info_non_imported_procids(!.PredInfo),
     % Don't warn for compiler-generated procedures.
     ( is_unify_or_compare_pred(!.PredInfo) ->
-        Simplifications = Simplifications0 ^ do_warn_simple_code := no
+        SimplifyTasks = SimplifyTasks0 ^ do_warn_simple_code := no
     ;
-        Simplifications = Simplifications0
+        SimplifyTasks = SimplifyTasks0
     ),
     ErrorSpecs0 = init_error_spec_accumulator,
-    simplify_pred_procs(Simplifications, PredId, ProcIds, !ModuleInfo,
+    simplify_pred_procs(SimplifyTasks, PredId, ProcIds, !ModuleInfo,
         !PredInfo, ErrorSpecs0, ErrorSpecs),
     module_info_get_globals(!.ModuleInfo, Globals),
     SpecsList = error_spec_accumulator_to_list(ErrorSpecs),

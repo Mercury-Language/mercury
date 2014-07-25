@@ -39,7 +39,7 @@
     %
     % Used by mercury_compiler_front_end.m when doing compilation pass-by-pass.
     %
-:- pred simplify_pred_procs(simplifications::in, pred_id::in,
+:- pred simplify_pred_procs(simplify_tasks::in, pred_id::in,
     list(proc_id)::in, module_info::in, module_info::out,
     pred_info::in, pred_info::out,
     error_spec_accumulator::in, error_spec_accumulator::out) is det.
@@ -49,13 +49,13 @@
     % Used by compiler passes after the front end that need (or maybe just
     % want) to eliminate unnecessary parts of the procedure.
     %
-:- pred simplify_proc(simplifications::in, pred_id::in, proc_id::in,
+:- pred simplify_proc(simplify_tasks::in, pred_id::in, proc_id::in,
     module_info::in, module_info::out, proc_info::in, proc_info::out) is det.
 
-    % simplify_goal_update_vars_in_proc(Simplifications, !ModuleInfo,
+    % simplify_goal_update_vars_in_proc(SimplifyTasks, !ModuleInfo,
     %   PredId, ProcId, !ProcInfo, InstMap0, !Goal, CostDelta):
     %
-    % Perform the specified simplifications on !Goal, which should be
+    % Perform the specified simplification tasks on !Goal, which should be
     % part of the procedure identified by PredId and ProcId. InstMap0
     % should be the instmap immediately before !.Goal.
     %
@@ -69,7 +69,7 @@
     %
     % Used by partial evaluation.
     %
-:- pred simplify_goal_update_vars_in_proc(simplifications::in,
+:- pred simplify_goal_update_vars_in_proc(simplify_tasks::in,
     module_info::in, module_info::out, pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, instmap::in, hlds_goal::in, hlds_goal::out,
     int::out) is det.
@@ -112,22 +112,22 @@
 %-----------------------------------------------------------------------------%
 
 simplify_pred_procs(_, _, [], !ModuleInfo, !PredInfo, !Specs).
-simplify_pred_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
+simplify_pred_procs(SimplifyTasks, PredId, [ProcId | ProcIds], !ModuleInfo,
         !PredInfo, !Specs) :-
-    simplify_pred_proc(Simplifications, PredId, ProcId, !ModuleInfo,
+    simplify_pred_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo,
         !PredInfo, !Specs),
-    simplify_pred_procs(Simplifications, PredId, ProcIds, !ModuleInfo,
+    simplify_pred_procs(SimplifyTasks, PredId, ProcIds, !ModuleInfo,
         !PredInfo, !Specs).
 
-:- pred simplify_pred_proc(simplifications::in, pred_id::in, proc_id::in,
+:- pred simplify_pred_proc(simplify_tasks::in, pred_id::in, proc_id::in,
     module_info::in, module_info::out, pred_info::in, pred_info::out,
     error_spec_accumulator::in, error_spec_accumulator::out) is det.
 
-simplify_pred_proc(Simplifications, PredId, ProcId, !ModuleInfo,
+simplify_pred_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo,
         !PredInfo, !Specs) :-
     pred_info_get_procedures(!.PredInfo, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
-    simplify_proc_return_msgs(Simplifications, PredId, ProcId,
+    simplify_proc_return_msgs(SimplifyTasks, PredId, ProcId,
         !ModuleInfo, ProcInfo0, ProcInfo, ProcSpecs),
     % This is ugly, but we want to avoid running the dependent parallel
     % conjunction pass on predicates and even modules that do not contain
@@ -152,18 +152,18 @@ simplify_pred_proc(Simplifications, PredId, ProcId, !ModuleInfo,
     pred_info_set_procedures(ProcTable, !PredInfo),
     accumulate_error_specs_for_proc(ProcSpecs, !Specs).
 
-simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo)  :-
+simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo)  :-
     trace [io(!IO)] (
         write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo,
             !IO)
     ),
-    simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
+    simplify_proc_return_msgs(SimplifyTasks, PredId, ProcId, !ModuleInfo,
         !ProcInfo, _).
 
-simplify_goal_update_vars_in_proc(Simplifications, !ModuleInfo,
+simplify_goal_update_vars_in_proc(SimplifyTasks, !ModuleInfo,
         PredId, ProcId, !ProcInfo, InstMap0, !Goal, CostDelta) :-
     simplify_info_init(!.ModuleInfo, PredId, ProcId, !.ProcInfo,
-        InstMap0, Simplifications, SimplifyInfo0),
+        InstMap0, SimplifyTasks, SimplifyInfo0),
     simplify_top_level_goal(!Goal, SimplifyInfo0, SimplifyInfo),
 
     simplify_info_get_module_info(SimplifyInfo, !:ModuleInfo),
@@ -181,14 +181,14 @@ simplify_goal_update_vars_in_proc(Simplifications, !ModuleInfo,
 
     % Simplify the given procedure. Return the resulting error messages.
     %
-:- pred simplify_proc_return_msgs(simplifications::in, pred_id::in,
+:- pred simplify_proc_return_msgs(simplify_tasks::in, pred_id::in,
     proc_id::in, module_info::in, module_info::out,
     proc_info::in, proc_info::out, list(error_spec)::out) is det.
 
-simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
+simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
         !ProcInfo, !:Specs) :-
     simplify_proc_maybe_vary_parameters(!.ModuleInfo, PredId, !.ProcInfo,
-        Simplifications0, Simplifications),
+        SimplifyTasks0, SimplifyTasks),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_markers(PredInfo0, Markers0),
     ( check_marker(Markers0, marker_mode_check_clauses) ->
@@ -214,7 +214,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
 
     (
         check_marker(Markers0, marker_has_format_call),
-        Simplifications ^ do_format_calls = yes
+        SimplifyTasks ^ do_format_calls = yes
     ->
         simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, ProcId,
             FormatSpecs, !ProcInfo)
@@ -226,7 +226,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
 
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
     simplify_info_init(!.ModuleInfo, PredId, ProcId, !.ProcInfo,
-        InstMap0, Simplifications, Info0),
+        InstMap0, SimplifyTasks, Info0),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     simplify_top_level_goal(Goal0, Goal, Info0, Info),
@@ -279,10 +279,10 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     ).
 
 :- pred simplify_proc_maybe_vary_parameters(module_info::in, pred_id::in,
-    proc_info::in, simplifications::in, simplifications::out) is det.
+    proc_info::in, simplify_tasks::in, simplify_tasks::out) is det.
 
 simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
-        !Simplifications) :-
+        !SimplifyTasks) :-
     proc_info_get_vartypes(ProcInfo, VarTypes0),
     vartypes_count(VarTypes0, NumVars),
     ( NumVars > turn_off_common_struct_threshold ->
@@ -290,7 +290,7 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
         % either the compiler runs out of memory or the user runs out of
         % patience. The fact that we would generate better code if the
         % compilation finished is therefore of limited interest.
-        !Simplifications ^ do_common_struct := no
+        !SimplifyTasks ^ do_common_struct := no
     ;
         true
     ),
@@ -308,7 +308,7 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
             ( list.member(pred_id_to_int(PredId), CommonStructPredIdInts) ->
                 true
             ;
-                !Simplifications ^ do_common_struct := no
+                !SimplifyTasks ^ do_common_struct := no
             )
         ;
             true
@@ -464,27 +464,27 @@ simplify_top_level_goal(!Goal, !Info) :-
     % optimizations in common.m are run so that excess assignment elimination
     % works properly.
 
-    some [!Simplifications] (
-        simplify_info_get_simplifications(!.Info, !:Simplifications),
-        OriginalSimplifications = !.Simplifications,
+    some [!SimplifyTasks] (
+        simplify_info_get_simplify_tasks(!.Info, !:SimplifyTasks),
+        OriginalSimplifyTasks = !.SimplifyTasks,
         simplify_info_get_instmap(!.Info, InstMap0),
         (
             ( simplify_do_common_struct(!.Info)
             ; simplify_do_opt_duplicate_calls(!.Info)
             )
         ->
-            !Simplifications ^ do_do_once := no,
-            !Simplifications ^ do_excess_assign := no,
-            simplify_info_set_simplifications(!.Simplifications, !Info),
+            !SimplifyTasks ^ do_do_once := no,
+            !SimplifyTasks ^ do_excess_assign := no,
+            simplify_info_set_simplify_tasks(!.SimplifyTasks, !Info),
 
             do_process_top_level_goal(!Goal, !Info),
 
-            !:Simplifications = OriginalSimplifications,
-            !Simplifications ^ do_warn_simple_code := no,
-            !Simplifications ^ do_warn_duplicate_calls := no,
-            !Simplifications ^ do_common_struct := no,
-            !Simplifications ^ do_opt_duplicate_calls := no,
-            simplify_info_reinit(!.Simplifications, InstMap0, !Info)
+            !:SimplifyTasks = OriginalSimplifyTasks,
+            !SimplifyTasks ^ do_warn_simple_code := no,
+            !SimplifyTasks ^ do_warn_duplicate_calls := no,
+            !SimplifyTasks ^ do_common_struct := no,
+            !SimplifyTasks ^ do_opt_duplicate_calls := no,
+            simplify_info_reinit(!.SimplifyTasks, InstMap0, !Info)
         ;
             true
         ),

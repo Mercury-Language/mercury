@@ -206,8 +206,8 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
 
         % Inlining may have created some opportunities for simplification.
         module_info_get_globals(!.ModuleInfo, Globals),
-        find_simplifications(no, Globals, Simplifications),
-        pd_util.pd_simplify_goal(Simplifications, !Goal, !PDInfo),
+        find_simplify_tasks(no, Globals, SimplifyTasks),
+        pd_util.pd_simplify_goal(SimplifyTasks, !Goal, !PDInfo),
         pd_util.propagate_constraints(!Goal, !PDInfo),
         trace [io(!IO)] (
             pd_debug_output_goal(!.PDInfo, "after constraints\n", !.Goal, !IO)
@@ -1795,13 +1795,13 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
 
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    find_simplifications(no, Globals, Simplifications0),
-    SimpList0 = simplifications_to_list(Simplifications0),
+    find_simplify_tasks(no, Globals, SimplifyTasks0),
+    SimpList0 = simplify_tasks_to_list(SimplifyTasks0),
     % Be a bit more aggressive with common structure elimination.
     % This helps achieve folding in some cases.
-    SimpList = [simp_extra_common_struct | SimpList0],
-    Simplifications = list_to_simplifications(SimpList),
-    pd_util.pd_simplify_goal(Simplifications, Goal2, Goal3, !PDInfo),
+    SimpList = [simptask_extra_common_struct | SimpList0],
+    SimplifyTasks = list_to_simplify_tasks(SimpList),
+    pd_util.pd_simplify_goal(SimplifyTasks, Goal2, Goal3, !PDInfo),
     pd_info_set_instmap(InstMap0, !PDInfo),
 
     % Perform any folding which may now be possible.
@@ -2054,8 +2054,8 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         trace [io(!IO)] (
             pd_debug_message(DebugPD, "Running simplify\n", [], !IO)
         ),
-        find_simplifications(no, Globals, Simplifications),
-        pd_util.pd_simplify_goal(Simplifications, Goal3, Goal4, !PDInfo),
+        find_simplify_tasks(no, Globals, SimplifyTasks),
+        pd_util.pd_simplify_goal(SimplifyTasks, Goal3, Goal4, !PDInfo),
 
         pd_info_get_cost_delta(!.PDInfo, CostDelta1),
         CostDelta = CostDelta1 - CostDelta0,

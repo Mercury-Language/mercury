@@ -40,12 +40,12 @@
     % Initialise the simplify_info.
     %
 :- pred simplify_info_init(module_info::in, pred_id::in, proc_id::in,
-    proc_info::in, instmap::in, simplifications::in, simplify_info::out)
+    proc_info::in, instmap::in, simplify_tasks::in, simplify_info::out)
     is det.
 
     % Reinitialise the simplify_info before reprocessing a goal.
     %
-:- pred simplify_info_reinit(simplifications::in, instmap::in,
+:- pred simplify_info_reinit(simplify_tasks::in, instmap::in,
     simplify_info::in, simplify_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -82,8 +82,8 @@
 % Getters and setters of fields of simplify_info.
 %
 
-:- pred simplify_info_get_simplifications(simplify_info::in,
-    simplifications::out) is det.
+:- pred simplify_info_get_simplify_tasks(simplify_info::in,
+    simplify_tasks::out) is det.
 :- pred simplify_info_get_module_info(simplify_info::in, module_info::out)
     is det.
 :- pred simplify_info_get_var_types(simplify_info::in, vartypes::out) is det.
@@ -118,7 +118,7 @@
     is det.
 :- pred simplify_info_get_has_user_event(simplify_info::in, bool::out) is det.
 
-:- pred simplify_info_set_simplifications(simplifications::in,
+:- pred simplify_info_set_simplify_tasks(simplify_tasks::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_module_info(module_info::in,
     simplify_info::in, simplify_info::out) is det.
@@ -192,7 +192,7 @@
                 % The eight most frequently used fields.
 
                 % The tasks we do in this invocation of simplification.
-/* 1 */         simp_simplifications        :: simplifications,
+/* 1 */         simp_simplify_tasks         :: simplify_tasks,
 
                 % The whole module. Those parts of it that are also contained
                 % in other fields of simplify_info and simplify_sub_info
@@ -260,7 +260,7 @@
             ).
 
 simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, InstMap,
-        Simplifications, Info) :-
+        SimplifyTasks, Info) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     proc_info_get_varset(ProcInfo, VarSet),
@@ -269,11 +269,11 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, InstMap,
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     SubInfo = simplify_sub_info(PredId, ProcId, VarSet, InstVarSet,
         RttiVarMaps, [], [], no, no, 0, 0, no, no, no),
-    Info = simplify_info(Simplifications, ModuleInfo, VarTypes, InstMap, no,
+    Info = simplify_info(SimplifyTasks, ModuleInfo, VarTypes, InstMap, no,
         FullyStrict, common_info_init, SubInfo).
 
-simplify_info_reinit(Simplifications, InstMap0, !Info) :-
-    !Info ^ simp_simplifications := Simplifications,
+simplify_info_reinit(SimplifyTasks, InstMap0, !Info) :-
+    !Info ^ simp_simplify_tasks := SimplifyTasks,
     !Info ^ simp_common_info := common_info_init,
     !Info ^ simp_instmap := InstMap0,
     !Info ^ simp_sub_info ^ ssimp_should_requantify := no,
@@ -343,8 +343,8 @@ simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar, TSubst,
 
 %-----------------------------------------------------------------------------%
 
-simplify_info_get_simplifications(Info, Tasks) :-
-    Tasks = Info ^ simp_simplifications.
+simplify_info_get_simplify_tasks(Info, Tasks) :-
+    Tasks = Info ^ simp_simplify_tasks.
 simplify_info_get_module_info(Info, MI) :-
     MI = Info ^ simp_module_info.
 simplify_info_get_var_types(Info, VT) :-
@@ -387,8 +387,8 @@ simplify_info_get_found_contains_trace(Info, FCT) :-
 simplify_info_get_has_user_event(Info, HUE) :-
     HUE = Info ^ simp_sub_info ^ ssimp_has_user_event.
 
-simplify_info_set_simplifications(Tasks, !Info) :-
-    !Info ^ simp_simplifications := Tasks.
+simplify_info_set_simplify_tasks(Tasks, !Info) :-
+    !Info ^ simp_simplify_tasks := Tasks.
 simplify_info_set_module_info(MI, !Info) :-
     !Info ^ simp_module_info := MI.
 simplify_info_set_var_types(VT, !Info) :-
@@ -426,44 +426,44 @@ simplify_info_set_has_user_event(HUE, !Info) :-
 %---------------------------------------------------------------------------%
 
 simplify_do_warn_simple_code(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_warn_simple_code = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_warn_simple_code = yes.
 simplify_do_warn_duplicate_calls(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_warn_duplicate_calls = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_warn_duplicate_calls = yes.
 simplify_do_format_calls(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_format_calls = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_format_calls = yes.
 simplify_do_warn_obsolete(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_warn_obsolete = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_warn_obsolete = yes.
 simplify_do_once(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_do_once = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_do_once = yes.
 simplify_do_after_front_end(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_after_front_end = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_after_front_end = yes.
 simplify_do_excess_assign(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_excess_assign = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_excess_assign = yes.
 simplify_do_elim_removable_scopes(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_elim_removable_scopes = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_elim_removable_scopes = yes.
 simplify_do_opt_duplicate_calls(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_opt_duplicate_calls = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_opt_duplicate_calls = yes.
 simplify_do_const_prop(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_constant_prop = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_constant_prop = yes.
 simplify_do_common_struct(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_common_struct = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_common_struct = yes.
 simplify_do_extra_common_struct(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_extra_common_struct = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_extra_common_struct = yes.
 simplify_do_ignore_par_conjunctions(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    Simplifications ^ do_ignore_par_conjunctions = yes.
+    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
+    SimplifyTasks ^ do_ignore_par_conjunctions = yes.
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.simplify.simplify_info.

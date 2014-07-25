@@ -45,7 +45,7 @@
 
     % Apply simplify.m to the goal.
     %
-:- pred pd_simplify_goal(simplifications::in, hlds_goal::in,
+:- pred pd_simplify_goal(simplify_tasks::in, hlds_goal::in,
     hlds_goal::out, pd_info::in, pd_info::out) is det.
 
     % Apply unique_modes.m to the goal.
@@ -227,8 +227,8 @@ propagate_constraints(!Goal, !PDInfo) :-
             pd_requantify_goal(NonLocals, !Goal, !PDInfo),
             pd_recompute_instmap_delta(!Goal, !PDInfo),
             rerun_det_analysis(!Goal, !PDInfo),
-            find_simplifications(no, Globals, Simplifications),
-            pd_simplify_goal(Simplifications, !Goal, !PDInfo)
+            find_simplify_tasks(no, Globals, SimplifyTasks),
+            pd_simplify_goal(SimplifyTasks, !Goal, !PDInfo)
         ;
             % Use Goal0 rather than the output of propagate_constraints_in_goal
             % because constraint propagation can make the quantification
@@ -243,13 +243,13 @@ propagate_constraints(!Goal, !PDInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-pd_simplify_goal(Simplifications, !Goal, !PDInfo) :-
+pd_simplify_goal(SimplifyTasks, !Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_pred_proc_id(!.PDInfo, proc(PredId, ProcId)),
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap0),
 
-    simplify_goal_update_vars_in_proc(Simplifications, ModuleInfo0, ModuleInfo,
+    simplify_goal_update_vars_in_proc(SimplifyTasks, ModuleInfo0, ModuleInfo,
         PredId, ProcId, ProcInfo0, ProcInfo, InstMap0, !Goal, CostDelta),
 
     pd_info_set_module_info(ModuleInfo, !PDInfo),

@@ -24,27 +24,47 @@
 
     % Each value of this type represents a task, or a group of related tasks,
     % that simplification should perform.
-:- type simplification
-    --->    simp_warn_simple_code       % --warn-simple-code
-    ;       simp_warn_duplicate_calls   % --warn-duplicate-calls
-    ;       simp_format_calls           % Invoke format_call.m.
-    ;       simp_warn_obsolete          % --warn-obsolete
-    ;       simp_do_once                % Run things that should be done once.
-    ;       simp_after_front_end        % Run things that should be done
-                                        % at the end of the front end.
-    ;       simp_excess_assigns         % Remove excess assignment
-                                        % unifications.
-    ;       simp_elim_removable_scopes  % Remove scopes that do not need
-                                        % processing during LLDS code
-                                        % generation.
-    ;       simp_opt_duplicate_calls    % Optimize duplicate calls.
-    ;       simp_constant_prop          % Partially evaluate calls.
-    ;       simp_common_struct          % Common structure elimination.
-    ;       simp_extra_common_struct    % Do common structure elimination
-                                        % even when it might increase stack
-                                        % usage (used by deforestation).
-    ;       simp_ignore_par_conjs.      % Replace parallel conjunctions with
-                                        % plain conjunctions.
+:- type simplify_task
+    --->    simptask_warn_simple_code
+            % --warn-simple-code
+
+    ;       simptask_warn_duplicate_calls
+            % --warn-duplicate-calls
+
+    ;       simptask_format_calls
+            % Invoke format_call.m.
+
+    ;       simptask_warn_obsolete
+            % --warn-obsolete
+
+    ;       simptask_do_once
+            % Run things that should be done once.
+
+    ;       simptask_after_front_end
+            % Run things that should be done at the end of the front end.
+
+    ;       simptask_excess_assigns
+            % Remove excess assignment unifications.
+
+    ;       simptask_elim_removable_scopes
+            % Remove scopes that do not need processing during LLDS code
+            % generation.
+
+    ;       simptask_opt_duplicate_calls
+            % Optimize duplicate calls.
+
+    ;       simptask_constant_prop
+            % Partially evaluate calls.
+
+    ;       simptask_common_struct
+            % Common structure elimination.
+
+    ;       simptask_extra_common_struct
+            % Do common structure elimination even when it might
+            % increase stack usage (used by deforestation).
+
+    ;       simptask_ignore_par_conjs.
+            % Replace parallel conjunctions with plain conjunctions.
 
     % Each value of this type represents the full set of tasks
     % that simplification should perform. The submodules of simplify.m
@@ -54,8 +74,8 @@
     % The definition of this type does not need to be visible to modules
     % outside simplify.m, but avoiding such visibility would cost more
     % in extra complexity than it would gain.
-:- type simplifications
-    --->    simplifications(
+:- type simplify_tasks
+    --->    simplify_tasks(
                 do_warn_simple_code         :: bool,
                 do_warn_duplicate_calls     :: bool,
                 do_format_calls             :: bool,
@@ -71,15 +91,14 @@
                 do_ignore_par_conjunctions  :: bool
             ).
 
-:- func simplifications_to_list(simplifications) = list(simplification).
-:- func list_to_simplifications(list(simplification)) = simplifications.
+:- func simplify_tasks_to_list(simplify_tasks) = list(simplify_task).
+:- func list_to_simplify_tasks(list(simplify_task)) = simplify_tasks.
 
     % Find out which simplifications should be run from the options table
     % stored in the globals. The first argument states whether warnings
     % should be issued during this pass of simplification.
     %
-:- pred find_simplifications(bool::in, globals::in, simplifications::out)
-    is det.
+:- pred find_simplify_tasks(bool::in, globals::in, simplify_tasks::out) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -87,44 +106,45 @@
 
 :- import_module libs.options.
 
-simplifications_to_list(Simplifications) = List :-
-    Simplifications = simplifications(WarnSimpleCode, WarnDupCalls,
+simplify_tasks_to_list(SimplifyTasks) = List :-
+    SimplifyTasks = simplify_tasks(WarnSimpleCode, WarnDupCalls,
         DoFormatCalls, WarnObsolete, DoOnce,
         AfterFrontEnd, ExcessAssign, ElimRemovableScopes, OptDuplicateCalls,
         ConstantProp, CommonStruct, ExtraCommonStruct, RemoveParConjunctions),
     List =
-        ( WarnSimpleCode = yes -> [simp_warn_simple_code] ; [] ) ++
-        ( WarnDupCalls = yes -> [simp_warn_duplicate_calls] ; [] ) ++
-        ( DoFormatCalls = yes -> [simp_format_calls] ; [] ) ++
-        ( WarnObsolete = yes -> [simp_warn_obsolete] ; [] ) ++
-        ( DoOnce = yes -> [simp_do_once] ; [] ) ++
-        ( AfterFrontEnd = yes -> [simp_after_front_end] ; [] ) ++
-        ( ExcessAssign = yes -> [simp_excess_assigns] ; [] ) ++
-        ( ElimRemovableScopes = yes -> [simp_elim_removable_scopes] ; [] ) ++
-        ( OptDuplicateCalls = yes -> [simp_opt_duplicate_calls] ; [] ) ++
-        ( ConstantProp = yes -> [simp_constant_prop] ; [] ) ++
-        ( CommonStruct = yes -> [simp_common_struct] ; [] ) ++
-        ( ExtraCommonStruct = yes -> [simp_extra_common_struct] ; [] ) ++
-        ( RemoveParConjunctions = yes -> [simp_ignore_par_conjs] ; [] ).
+        ( WarnSimpleCode = yes -> [simptask_warn_simple_code] ; [] ) ++
+        ( WarnDupCalls = yes -> [simptask_warn_duplicate_calls] ; [] ) ++
+        ( DoFormatCalls = yes -> [simptask_format_calls] ; [] ) ++
+        ( WarnObsolete = yes -> [simptask_warn_obsolete] ; [] ) ++
+        ( DoOnce = yes -> [simptask_do_once] ; [] ) ++
+        ( AfterFrontEnd = yes -> [simptask_after_front_end] ; [] ) ++
+        ( ExcessAssign = yes -> [simptask_excess_assigns] ; [] ) ++
+        ( ElimRemovableScopes = yes -> [simptask_elim_removable_scopes] ; [] )
+            ++
+        ( OptDuplicateCalls = yes -> [simptask_opt_duplicate_calls] ; [] ) ++
+        ( ConstantProp = yes -> [simptask_constant_prop] ; [] ) ++
+        ( CommonStruct = yes -> [simptask_common_struct] ; [] ) ++
+        ( ExtraCommonStruct = yes -> [simptask_extra_common_struct] ; [] ) ++
+        ( RemoveParConjunctions = yes -> [simptask_ignore_par_conjs] ; [] ).
 
-list_to_simplifications(List) =
-    simplifications(
-        ( list.member(simp_warn_simple_code, List) -> yes ; no ),
-        ( list.member(simp_warn_duplicate_calls, List) -> yes ; no ),
-        ( list.member(simp_format_calls, List) -> yes ; no ),
-        ( list.member(simp_warn_obsolete, List) -> yes ; no ),
-        ( list.member(simp_do_once, List) -> yes ; no ),
-        ( list.member(simp_after_front_end, List) -> yes ; no ),
-        ( list.member(simp_excess_assigns, List) -> yes ; no ),
-        ( list.member(simp_elim_removable_scopes, List) -> yes ; no ),
-        ( list.member(simp_opt_duplicate_calls, List) -> yes ; no ),
-        ( list.member(simp_constant_prop, List) -> yes ; no ),
-        ( list.member(simp_common_struct, List) -> yes ; no ),
-        ( list.member(simp_extra_common_struct, List) -> yes ; no ),
-        ( list.member(simp_ignore_par_conjs, List) -> yes ; no )
+list_to_simplify_tasks(List) =
+    simplify_tasks(
+        ( list.member(simptask_warn_simple_code, List) -> yes ; no ),
+        ( list.member(simptask_warn_duplicate_calls, List) -> yes ; no ),
+        ( list.member(simptask_format_calls, List) -> yes ; no ),
+        ( list.member(simptask_warn_obsolete, List) -> yes ; no ),
+        ( list.member(simptask_do_once, List) -> yes ; no ),
+        ( list.member(simptask_after_front_end, List) -> yes ; no ),
+        ( list.member(simptask_excess_assigns, List) -> yes ; no ),
+        ( list.member(simptask_elim_removable_scopes, List) -> yes ; no ),
+        ( list.member(simptask_opt_duplicate_calls, List) -> yes ; no ),
+        ( list.member(simptask_constant_prop, List) -> yes ; no ),
+        ( list.member(simptask_common_struct, List) -> yes ; no ),
+        ( list.member(simptask_extra_common_struct, List) -> yes ; no ),
+        ( list.member(simptask_ignore_par_conjs, List) -> yes ; no )
     ).
 
-find_simplifications(WarnThisPass, Globals, Simplifications) :-
+find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
     globals.lookup_bool_option(Globals, warn_simple_code, WarnSimple),
     globals.lookup_bool_option(Globals, warn_duplicate_calls, WarnDupCalls),
     globals.lookup_bool_option(Globals, warn_known_bad_format_calls,
@@ -158,7 +178,7 @@ find_simplifications(WarnThisPass, Globals, Simplifications) :-
     globals.lookup_bool_option(Globals, ignore_par_conjunctions,
         RemoveParConjunctions),
 
-    Simplifications = simplifications(
+    SimplifyTasks = simplify_tasks(
         ( WarnSimple = yes, WarnThisPass = yes -> yes ; no),
         ( WarnDupCalls = yes, WarnThisPass = yes -> yes ; no),
         DoFormatCalls,

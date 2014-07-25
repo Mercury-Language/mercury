@@ -228,8 +228,8 @@ size_prof_process_proc_msg(Transform, PredProcId, !ProcInfo, !ModuleInfo) :-
 
 size_prof_process_proc(Transform, proc(PredId, ProcId), !ProcInfo,
         !ModuleInfo) :-
-    Simplifications = list_to_simplifications([]),
-    simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo),
+    SimplifyTasks = list_to_simplify_tasks([]),
+    simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, VarSet0),

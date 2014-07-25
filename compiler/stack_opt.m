@@ -176,8 +176,8 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
     % This simplication is necessary to fix some bad inputs from
     % getting to the liveness computation.
     % (see tests/valid/stack_opt_simplify.m)
-    Simplications = list_to_simplifications([]),
-    simplify_proc(Simplications, PredId, ProcId, !ModuleInfo, !ProcInfo),
+    SimplifyTasks = list_to_simplify_tasks([]),
+    simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo),
     detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo),
     initial_liveness(!.ProcInfo, PredId, !.ModuleInfo, Liveness0),
     module_info_get_globals(!.ModuleInfo, Globals),

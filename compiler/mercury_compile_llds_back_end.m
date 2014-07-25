@@ -328,8 +328,8 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
     ;
         FollowCode = no
     ),
-    find_simplifications(no, Globals, Simplifications0),
-    SimpList0 = simplifications_to_list(Simplifications0),
+    find_simplify_tasks(no, Globals, SimplifyTasks0),
+    SimpList0 = simplify_tasks_to_list(SimplifyTasks0),
 
     globals.lookup_bool_option(Globals, constant_propagation, ConstProp),
     globals.lookup_bool_option(Globals, profile_deep, DeepProf),
@@ -347,16 +347,16 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
         ConstProp = yes,
         ProfTrans = no
     ->
-        list.cons(simp_constant_prop, SimpList0, SimpList1)
+        list.cons(simptask_constant_prop, SimpList0, SimpList1)
     ;
-        SimpList1 = list.delete_all(SimpList0, simp_constant_prop)
+        SimpList1 = list.delete_all(SimpList0, simptask_constant_prop)
     ),
 
-    SimpList = [simp_do_once, simp_elim_removable_scopes | SimpList1],
-    Simplifications = list_to_simplifications(SimpList),
+    SimpList = [simptask_do_once, simptask_elim_removable_scopes | SimpList1],
+    SimplifyTasks = list_to_simplify_tasks(SimpList),
     write_proc_progress_message("% Simplifying ", PredId, ProcId,
         !.HLDS, !IO),
-    simplify_proc(Simplifications, PredId, ProcId, !HLDS, !ProcInfo),
+    simplify_proc(SimplifyTasks, PredId, ProcId, !HLDS, !ProcInfo),
     write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
         !.HLDS, !IO),
     detect_liveness_proc(!.HLDS, PredProcId, !ProcInfo),
