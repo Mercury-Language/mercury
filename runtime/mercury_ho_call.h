@@ -204,7 +204,7 @@ typedef struct MR_SpecialPredHooks_Struct {
     MR_bool MR_CALL (*MR_unify_tuple_pred)(MR_Word ti, MR_Word x, MR_Word y);
     void MR_CALL    (*MR_compare_tuple_pred)(MR_Word ti, MR_Word *res,
                         MR_Word x, MR_Word y);
-    MR_bool MR_CALL (*MR_compare_rep_tuple_pred)(MR_Word ti, MR_Word *res,
+    void MR_CALL    (*MR_compare_rep_tuple_pred)(MR_Word ti, MR_Word *res,
                         MR_Word x, MR_Word y);
   #else
     MR_Code         *MR_unify_tuple_pred;
