@@ -169,8 +169,10 @@ GRADESTRING = $(shell $(SCRIPTS_DIR)/canonical_grade $(ALL_GRADEFLAGS))
 # MCFLAGS	+= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
 
 # Options to pass to the C compiler when building Boehm-GC.
-BOEHM_CFLAGS = @ENABLE_BOEHM_LARGE_CONFIG@ @ENABLE_BOEHM_USE_MUNMAP@ \
-    @ENABLE_BOEHM_XOPEN_SOURCE@
+BOEHM_CFLAGS = @ENABLE_BOEHM_LARGE_CONFIG@ \
+	@ENABLE_BOEHM_USE_MMAP@ \
+	@ENABLE_BOEHM_USE_MUNMAP@ \
+	@ENABLE_BOEHM_XOPEN_SOURCE@
 
 # Additional options to pass to the C compiler when building Boehm-GC for
 # threads.

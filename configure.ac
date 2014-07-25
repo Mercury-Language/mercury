@@ -657,8 +657,13 @@ AC_SUBST(ENABLE_BOEHM_LARGE_CONFIG)
 
 #-----------------------------------------------------------------------------#
 #
-# Determine whether to define USE_MUNMAP when compiling boehm_gc.
+# Determine whether to define USE_MMAP, USE_MUNMAP when compiling boehm_gc.
 #
+
+AC_ARG_ENABLE(gc-mmap,
+    AC_HELP_STRING([--enable-gc-mmap],
+                   [use mmap instead of sbrk when using Boehm GC]),
+    enable_gc_mmap="$enableval",enable_gc_mmap=no)
 
 AC_ARG_ENABLE(gc-munmap,
     AC_HELP_STRING([--enable-gc-munmap],
@@ -668,20 +673,39 @@ AC_ARG_ENABLE(gc-munmap,
 AC_MSG_CHECKING(whether to enable unmapping of unused pages when using Boehm GC)
 case "$enable_gc_munmap" in
     yes)
+        # --enable-gc-munmap implies --enable-gc-mmap
+        enable_gc_mmap=yes
         AC_MSG_RESULT(yes)
-        # USE_MUNMAP requires USE_MMAP.
-        ENABLE_BOEHM_USE_MUNMAP="-DUSE_MMAP -DUSE_MUNMAP"
         ;;
     no)
         AC_MSG_RESULT(no)
-        ENABLE_BOEHM_USE_MUNMAP=
         ;;
     *)
-        AC_MSG_RESULT(no)
-        AC_MSG_WARN([unexpected argument to --enable-gc-munmap])
-        ENABLE_BOEHM_USE_MUNMAP=
+        AC_MSG_ERROR([unexpected argument to --enable-gc-munmap])
         ;;
 esac
+
+AC_MSG_CHECKING(whether to use mmap for Boehm GC)
+case "$enable_gc_mmap" in
+    yes|no)
+        AC_MSG_RESULT($enable_gc_mmap)
+        ;;
+    *)
+        AC_MSG_ERROR([unexpected argument to --enable-gc-mmap])
+        ;;
+esac
+
+if test "$enable_gc_mmap" = yes; then
+    ENABLE_BOEHM_USE_MMAP="-DUSE_MMAP"
+else
+    ENABLE_BOEHM_USE_MMAP=
+fi
+if test "$enable_gc_munmap" = yes; then
+    ENABLE_BOEHM_USE_MUNMAP="-DUSE_MUNMAP"
+else
+    ENABLE_BOEHM_USE_MUNMAP=
+fi
+AC_SUBST(ENABLE_BOEHM_USE_MMAP)
 AC_SUBST(ENABLE_BOEHM_USE_MUNMAP)
 
 #-----------------------------------------------------------------------------#
@@ -1283,7 +1307,7 @@ esac
 
 mercury_check_for_functions \
         sysconf getpagesize gethostname \
-        mprotect memalign posix_memalign memmove \
+        mmap mprotect memalign posix_memalign sbrk memmove \
         sigaction siginterrupt setitimer \
         snprintf _snprintf vsnprintf _vsnprintf \
         strerror strerror_r strerror_s \
@@ -3069,6 +3093,10 @@ ENABLE_BOEHM_PARALLEL_MARK=
 #
 BOEHM_MISC_CFLAGS_FOR_THREADS=
 
+# This should be set if both the system malloc and Boehm GC (in the default
+# configuration) may both call sbrk.
+avoid_sbrk=
+
 case "$host" in
     *solaris*)
         CFLAGS_FOR_THREADS="-DGC_SOLARIS_PTHREADS -D_REENTRANT"
@@ -3093,6 +3121,7 @@ case "$host" in
         # correctly on Linux.)
         # XXX disabled as it aborts on GC_free when --enable-gc-munmap is used
         # BOEHM_MISC_CFLAGS_FOR_THREADS="-DHBLKSIZE=32768 -DCPP_LOG_HBLKSIZE=15"
+        avoid_sbrk=yes
         ;;
 
     *cygwin*)
@@ -3109,6 +3138,7 @@ case "$host" in
                 ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
                 ;;
         esac
+        # avoid_sbrk?
         ;;
 
     i*86-pc-mingw*)
@@ -3186,6 +3216,18 @@ case "$host" in
         CFLAGS_FOR_THREADS=""
         ;;
 esac
+
+if test "$avoid_sbrk" = yes; then
+    if test "$ac_cv_func_mmap" = yes; then
+        BOEHM_MISC_CFLAGS_FOR_THREADS="$BOEHM_MISC_CFLAGS_FOR_THREADS -DUSE_MMAP"
+        if test "$enable_gc_mmap" = no; then
+            AC_MSG_NOTICE([using mmap for Boehm GC in threaded grades])
+        fi
+    else
+        AC_MSG_WARN([malloc and Boehm GC both use sbrk; probably unsafe!])
+    fi
+fi
+
 AC_SUBST(CFLAGS_FOR_THREADS)
 AC_SUBST(THREAD_LIBS)
 AC_SUBST(LDFLAGS_FOR_THREADS)
