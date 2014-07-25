@@ -51,14 +51,19 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module map.
 :- import_module string.
 :- import_module varset.
 
 simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     simplify_info_get_instmap(!.Info, InstMap0),
-    excess_assigns_in_conj(GoalInfo0, Goals0, Goals1, !Info),
-    simplify_conj(Goals1, [], Goals, GoalInfo0, !Info),
+    ( simplify_do_excess_assign(!.Info) ->
+        excess_assigns_in_conj(GoalInfo0, Goals0, Goals1, !Info)
+    ;
+        Goals1 = Goals0
+    ),
+    simplify_conj(cord.empty, Goals1, Goals, GoalInfo0, !Info),
     simplify_info_set_instmap(InstMap0, !Info),
     (
         Goals = [],
@@ -103,18 +108,18 @@ contains_multisoln_goal(Goals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred simplify_conj(list(hlds_goal)::in, list(hlds_goal)::in,
+:- pred simplify_conj(cord(hlds_goal)::in, list(hlds_goal)::in,
     list(hlds_goal)::out, hlds_goal_info::in,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_conj([], RevGoals, Goals, _, !Info) :-
-    list.reverse(RevGoals, Goals).
-simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info) :-
+simplify_conj(!.PrevGoals, [], Goals, _ConjInfo, !Info) :-
+    Goals = cord.list(!.PrevGoals).
+simplify_conj(!.PrevGoals, [Goal0 | Goals0], Goals, ConjInfo, !Info) :-
     Info0 = !.Info,
     % Flatten nested conjunctions in the original code.
     ( Goal0 = hlds_goal(conj(plain_conj, SubGoals), _) ->
         Goals1 = SubGoals ++ Goals0,
-        simplify_conj(Goals1, !.RevGoals, Goals, ConjInfo, !Info)
+        simplify_conj(!.PrevGoals, Goals1, Goals, ConjInfo, !Info)
     ;
         simplify_goal(Goal0, Goal1, !Info),
         (
@@ -123,7 +128,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info) :-
         ->
             simplify_info_undo_goal_updates(Info0, !Info),
             Goals1 = SubGoals1 ++ Goals0,
-            simplify_conj(Goals1, !.RevGoals, Goals, ConjInfo, !Info)
+            simplify_conj(!.PrevGoals, Goals1, Goals, ConjInfo, !Info)
         ;
             % Delete unreachable goals.
             (
@@ -135,7 +140,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info) :-
                 determinism_components(Detism1, _, at_most_zero)
             )
         ->
-            conjoin_goal_and_rev_goal_list(Goal1, !RevGoals),
+            !:PrevGoals = cord.snoc(!.PrevGoals, Goal1),
             (
                 ( Goal1 = hlds_goal(disj([]), _)
                 ; Goals0 = []
@@ -154,26 +159,14 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info) :-
                 Goal0 = hlds_goal(_, GoalInfo0),
                 Context = goal_info_get_context(GoalInfo0),
                 FailGoal = fail_goal_with_context(Context),
-                conjoin_goal_and_rev_goal_list(FailGoal, !RevGoals)
+                !:PrevGoals = cord.snoc(!.PrevGoals, FailGoal)
             ),
-            list.reverse(!.RevGoals, Goals)
+            Goals = cord.list(!.PrevGoals)
         ;
-            conjoin_goal_and_rev_goal_list(Goal1, !RevGoals),
+            !:PrevGoals = cord.snoc(!.PrevGoals, Goal1),
             simplify_info_update_instmap(Goal1, !Info),
-            simplify_conj(Goals0, !.RevGoals, Goals, ConjInfo, !Info)
+            simplify_conj(!.PrevGoals, Goals0, Goals, ConjInfo, !Info)
         )
-    ).
-
-:- pred conjoin_goal_and_rev_goal_list(hlds_goal::in,
-    list(hlds_goal)::in, list(hlds_goal)::out) is det.
-
-conjoin_goal_and_rev_goal_list(Goal, RevGoals0, RevGoals) :-
-    % XXX simplify using cords
-    ( Goal = hlds_goal(conj(plain_conj, Goals), _) ->
-        list.reverse(Goals, Goals1),
-        RevGoals = Goals1 ++ RevGoals0
-    ;
-        RevGoals = [Goal | RevGoals0]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -205,32 +198,28 @@ renaming_transitive_closure(VarRenaming0, VarRenaming) :-
     simplify_info::in, simplify_info::out) is det.
 
 excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
-    ( simplify_do_excess_assign(!.Info) ->
-        ConjNonLocals = goal_info_get_nonlocals(ConjInfo),
-        map.init(Subn0),
-        simplify_info_get_module_info(!.Info, ModuleInfo),
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.get_trace_level(Globals, TraceLevel),
-        globals.lookup_bool_option(Globals, trace_optimized, TraceOptimized),
-        simplify_info_get_varset(!.Info, VarSet0),
-        find_excess_assigns_in_conj(TraceLevel, TraceOptimized,
-            VarSet0, ConjNonLocals, Goals0, [], RevGoals, Subn0, Subn1),
-        ( map.is_empty(Subn1) ->
-            Goals = Goals0
-        ;
-            renaming_transitive_closure(Subn1, Subn),
-            list.reverse(RevGoals, Goals1),
-            rename_vars_in_goals(need_not_rename, Subn, Goals1, Goals),
-            map.keys(Subn0, RemovedVars),
-            varset.delete_vars(RemovedVars, VarSet0, VarSet),
-            simplify_info_set_varset(VarSet, !Info),
-            simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-            apply_substitutions_to_rtti_varmaps(map.init, map.init, Subn,
-                RttiVarMaps0, RttiVarMaps),
-            simplify_info_set_rtti_varmaps(RttiVarMaps, !Info)
-        )
-    ;
+    ConjNonLocals = goal_info_get_nonlocals(ConjInfo),
+    map.init(Subn0),
+    simplify_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_trace_level(Globals, TraceLevel),
+    globals.lookup_bool_option(Globals, trace_optimized, TraceOptimized),
+    simplify_info_get_varset(!.Info, VarSet0),
+    find_excess_assigns_in_conj(TraceLevel, TraceOptimized,
+        VarSet0, ConjNonLocals, Goals0, [], RevGoals, Subn0, Subn1),
+    ( map.is_empty(Subn1) ->
         Goals = Goals0
+    ;
+        renaming_transitive_closure(Subn1, Subn),
+        list.reverse(RevGoals, Goals1),
+        rename_vars_in_goals(need_not_rename, Subn, Goals1, Goals),
+        map.keys(Subn0, RemovedVars),
+        varset.delete_vars(RemovedVars, VarSet0, VarSet),
+        simplify_info_set_varset(VarSet, !Info),
+        simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+        apply_substitutions_to_rtti_varmaps(map.init, map.init, Subn,
+            RttiVarMaps0, RttiVarMaps),
+        simplify_info_set_rtti_varmaps(RttiVarMaps, !Info)
     ).
 
 :- pred find_excess_assigns_in_conj(trace_level::in, bool::in,
