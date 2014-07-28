@@ -390,7 +390,8 @@ check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo, !Specs) :-
         )
     ->
         proc_info_get_context(ProcInfo, ProcContext),
-        Pieces = [words("Error: main/2 must be `det' or `cc_multi'.")],
+        Pieces = [words("Error: main/2 must be"), quote("det"),
+            words("or"), quote("cc_multi"), suffix(".")],
         Spec = error_spec(severity_error, phase_detism_check,
             [simple_msg(ProcContext, [always(Pieces)])]),
         !:Specs = [Spec | !.Specs]

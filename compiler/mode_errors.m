@@ -663,7 +663,7 @@ mode_error_bind_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst) = Spec :-
             [words("The condition of an if-then-else is only"),
             words("allowed to bind variables which are local to the"),
             words("condition or which occur only in the condition"),
-            words("and the `then' part."), nl]
+            words("and the"), quote("then"), words("part."), nl]
     ;
         Reason = var_lock_lambda(_),
         VerbosePieces =
@@ -705,7 +705,7 @@ mode_error_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst) = Spec :-
         words_quote(inst_to_string(ModeInfo, VarInst)),
         suffix(","), nl,
         words("expected instantiatedness for non-local variables"),
-        words("of lambda goals is `ground'."), nl],
+        words("of lambda goals is"), quote("ground"), suffix("."), nl],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
@@ -837,12 +837,13 @@ mode_error_poly_unify_to_spec(ModeInfo, Var, VarInst) = Spec :-
         quote(mercury_var_to_string(VarSet, no, Var)),
         words("has instantiatedness"),
         words_quote(inst_to_string(ModeInfo, VarInst)), suffix(","), nl,
-        words("expected instantiatedness was `ground' or `any'."), nl],
+        words("expected instantiatedness was"), quote("ground"),
+        words("or"), quote("any"), suffix("."), nl],
     VerbosePieces = [words("When unifying two variables whose type"),
         words("will not be known until runtime, the variables must both"),
-        words("be ground (or have inst `any'). Unifications of"),
-        words("polymorphically-typed variables with partially"),
-        words("instantiated modes are not allowed.")],
+        words("be ground (or have inst"), quote("any"), suffix(")."),
+        words("Unifications of polymorphically-typed variables with"),
+        words("partially instantiated modes are not allowed.")],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
             [always(Preamble ++ MainPieces), verbose_only(VerbosePieces)])]).
@@ -945,8 +946,8 @@ mode_error_unify_pred_to_spec(ModeInfo, X, RHS, Type, PredOrFunc) = Spec :-
         words("and so this is not allowed by the Mercury mode system."),
         words("In some cases, you can achieve the same effect by"),
         words("writing an explicit universal quantification, e.g."),
-        fixed("`all [X] call(P, X) <=> call(Q, X)',"),
-        words("instead of"), fixed("`P = Q'.")],
+        quote("all [X] call(P, X) <=> call(Q, X)"), suffix(","),
+        words("instead of"), quote("P = Q"), suffix(".")],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
             [always(Preamble ++ MainPieces), verbose_only(VerbosePieces)])]).
@@ -1243,18 +1244,20 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, Vars) = Spec :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     Pieces = [
-        words("purity error: lambda is `ground' but contains the"),
-        words("following non-local variables whose insts contain `any':"),
+        words("purity error: lambda is"), quote("ground"),
+        words("but contains the"),
+        words("following non-local variables whose insts contain"),
+        quote("any"), suffix(":"),
         words(mercury_vars_to_string(VarSet, no, Vars)),
         suffix("."), nl
     ],
     Always = always(Preamble ++ Pieces),
     VerboseOnly = verbose_only([
-        words("Predicate expressions with inst `any' can be written"),
-        quote("any_pred(Args) is det :- ..."),
+        words("Predicate expressions with inst"), quote("any"),
+        words("can be written"), quote("any_pred(Args) is det :- ..."),
         suffix("."),
-        words("Function expressions with inst `any' can be written"),
-        quote("any_func(Args) = Result is det :- ..."),
+        words("Function expressions with inst"), quote("any"),
+        words("can be written"), quote("any_func(Args) = Result is det :- ..."),
         suffix(".")
     ]),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
@@ -1287,7 +1290,8 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
                 describe_one_pred_name(ModuleInfo, should_not_module_qualify,
                     PredId) ++ [suffix("."), nl],
             VerbosePieces =
-                [words("(Use `--infer-modes' to enable mode inference.)"), nl],
+                [words("(Use"), quote("--infer-modes"),
+                words("to enable mode inference.)"), nl],
             Spec = error_spec(severity_error,
                 phase_mode_check(report_in_any_mode),
                 [simple_msg(Context,

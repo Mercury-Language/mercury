@@ -147,7 +147,7 @@ simplify_goal(Goal0, Goal, !Info) :-
             MainPieces = [words("Warning: this goal cannot succeed.")],
             VerbosePieces = [
                 words("The compiler will optimize away this goal,"),
-                words("replacing it with `fail'.")
+                words("replacing it with"), quote("fail"), suffix(".")
             ],
             Msg = simple_msg(Context,
                 [option_is_set(warn_simple_code, yes,

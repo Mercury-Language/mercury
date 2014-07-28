@@ -1033,7 +1033,8 @@ parse_attrs_and_decl(ModuleName, VarSet, Term, !.Attributes, SeqNum,
         )
     ;
         Context = get_term_context(Term),
-        Pieces = [words("Error: atom expected after `:-'."), nl],
+        Pieces = [words("Error: atom expected after"), quote(":-"),
+            suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
         MaybeItem = error1([Spec])

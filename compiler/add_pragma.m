@@ -148,7 +148,8 @@ add_pass_2_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
         % This can only appear in .opt files.
         Pragma = pragma_unused_args(UnusedArgsInfo),
         ( ImportStatus \= status_opt_imported ->
-            Pieces = [words("Error: illegal use of pragma `unused_args'.")],
+            Pieces = [words("Error: illegal use of pragma"),
+                quote("unused_args"), suffix(".")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -159,7 +160,8 @@ add_pass_2_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
     ;
         Pragma = pragma_exceptions(ExceptionsInfo),
         ( ImportStatus \= status_opt_imported ->
-            Pieces = [words("Error: illegal use of pragma `exceptions'.")],
+            Pieces = [words("Error: illegal use of pragma"),
+                quote("exceptions"), suffix(".")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -169,7 +171,8 @@ add_pass_2_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
     ;
         Pragma = pragma_trailing_info(TrailingInfo),
         ( ImportStatus \= status_opt_imported ->
-            Pieces = [words("Error: illegal use of pragma `trailing_info'.")],
+            Pieces = [words("Error: illegal use of pragma"),
+                quote("trailing_info"), suffix(".")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -180,8 +183,8 @@ add_pass_2_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
     ;
         Pragma = pragma_mm_tabling_info(MMTablingInfo),
         ( ImportStatus \= status_opt_imported ->
-            Pieces =
-                [words("Error: illegal use of pragma `mm_tabling_info',")],
+            Pieces = [words("Error: illegal use of pragma"),
+                    quote("mm_tabling_info"), suffix(".")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
@@ -470,7 +473,7 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
             )
         ->
             Pieces = [words("Error: "),
-                fixed("`:- pragma foreign_export' declaration"),
+                quote(":- pragma foreign_export"), words("declaration"),
                 words("for a procedure that has"),
                 words("a declared determinism of"),
                 fixed(determinism_to_string(Detism) ++ "."), nl],
@@ -1271,7 +1274,7 @@ add_foreign_enum_bijection_error(Context, ContextPieces, !Specs) :-
 add_foreign_enum_pragma_in_interface_error(Context, TypeName, TypeArity,
         !Specs) :-
     ErrorPieces = [words("Error: "),
-        words("`pragma foreign_enum' declaration for"),
+        quote("pragma foreign_enum"), words("declaration for"),
         sym_name_and_arity(TypeName / TypeArity),
         words("in module interface."), nl ],
     Msg = simple_msg(Context, [always(ErrorPieces)]),
@@ -1781,15 +1784,15 @@ report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     (
         PredOrFunc = pf_predicate,
-        Decl = "`:- pred'"
+        Decl = ":- pred"
     ;
         PredOrFunc = pf_function,
-        Decl = "`:- func'"
+        Decl = ":- func"
     ),
     Pieces = pragma_type_spec_to_pieces(PredInfo) ++
         [words("error:")] ++ report_variables(UnknownVars, TVarSet) ++
         [words(choose_number(UnknownVars, "does not", "do not")),
-        words("occur in the"), fixed(Decl), words("declaration.")],
+        words("occur in the"), quote(Decl), words("declaration.")],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
@@ -1903,7 +1906,7 @@ add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
             map.det_update(PredId, PredInfo, PredTable0, PredTable),
             module_info_set_preds(PredTable, !ModuleInfo)
         ;
-            Pieces = [words("Error: `:- pragma termination2_info'"),
+            Pieces = [words("Error:"), quote(":- pragma termination2_info"),
                 words("declaration for undeclared mode of"),
                 simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
                 suffix("."), nl],
@@ -1915,7 +1918,8 @@ add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
         PredIds = [_, _ | _],
         Pieces = [words("Error: ambiguous predicate name"),
             simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
-            words("in"), fixed("`pragma termination2_info'."), nl],
+            words("in"), quote("pragma termination2_info"),
+            suffix("."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
@@ -1964,7 +1968,7 @@ add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
                 map.det_update(PredId, PredInfo, PredTable0, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
-                Pieces = [words("Error: `:- pragma structure_sharing'"),
+                Pieces = [words("Error:"), quote(":- pragma structure_sharing"),
                     words("declaration for undeclared mode of"),
                     simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
                     suffix("."), nl],
@@ -2029,7 +2033,7 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
                 map.det_update(PredId, PredInfo, PredTable0, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
-                Pieces = [words("Error: `:- pragma structure_reuse'"),
+                Pieces = [words("Error:"), quote(":- pragma structure_reuse"),
                     words("declaration for undeclared mode of"),
                     simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
                     suffix("."), nl],
@@ -2095,7 +2099,7 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
             module_info_set_preds(PredTable, !ModuleInfo)
         ;
             module_info_incr_errors(!ModuleInfo),
-            Pieces = [words("Error: `:- pragma termination_info'"),
+            Pieces = [words("Error:"), quote(":- pragma termination_info"),
                 words("declaration for undeclared mode of"),
                 simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
                 suffix("."), nl],

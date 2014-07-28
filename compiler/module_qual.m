@@ -2019,7 +2019,7 @@ mq_error_context_to_pieces(mqec_class(Id)) =
 mq_error_context_to_pieces(mqec_instance(Id)) =
     [words("declaration of instance of typeclass"), wrap_id(Id)].
 mq_error_context_to_pieces(mqec_mutable(Name)) =
-    [words("declaration for mutable "), prefix("`"), words(Name), suffix("'")].
+    [words("declaration for mutable "), quote(Name)].
 mq_error_context_to_pieces(mqec_event_spec_attr(EventName, AttrName)) =
     [words("attribute"), quote(AttrName), words("for"), quote(EventName)].
 

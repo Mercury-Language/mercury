@@ -252,7 +252,7 @@ description(horder_call, _, _, Pieces, no) :-
 description(does_not_term_pragma(PredId), Single, Module, Pieces, no) :-
     Pieces1 = [
             words("There is a"),
-            fixed("`:- pragma does_not_terminate'"), 
+            quote(":- pragma does_not_terminate"),
             words("declaration for")
     ],
     (

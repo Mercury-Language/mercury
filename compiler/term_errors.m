@@ -348,7 +348,7 @@ description(pragma_foreign_code, _, _, Pieces, no) :-
     Pieces = [
         words("It depends on the properties of"),
         words("foreign language code included via a"),
-        fixed("`:- pragma foreign_proc'"),
+        quote(":- pragma foreign_proc"),
         words("declaration.")
     ].
 
@@ -532,8 +532,9 @@ description(is_builtin(_PredId), _Single, _, Pieces, no) :-
 
 description(does_not_term_pragma(PredId), Single, Module,
         Pieces, no) :-
-    Pieces1 = [words(
-        "There is a `:- pragma does_not_terminate' declaration for")],
+    Pieces1 = [
+        words("There is a"), quote(":- pragma does_not_terminate"),
+        words("declaration for")],
     (
         Single = yes(PPId),
         PPId = proc(SCCPredId, _),

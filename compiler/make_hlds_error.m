@@ -110,7 +110,8 @@ undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs) :-
     % Which is more correct?
     Pieces = [words("Error:") | DescPieces] ++ [words("for"),
         sym_name_and_arity(Name / Arity),
-        words("without corresponding `pred' or `func' declaration.")],
+        words("without corresponding"), quote("pred"), words("or"),
+        quote("func"), words("declaration.")],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].

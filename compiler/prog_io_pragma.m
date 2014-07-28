@@ -2368,7 +2368,8 @@ parse_pragma_foreign_proc_varlist(VarSet, [HeadTerm | TailTerm],
             % If the variable wasn't in the varset it must be an
             % underscore variable.
             Pieces = [words("Sorry, not implemented: "),
-                words("anonymous `_' variable in pragma foreign_proc."), nl],
+                words("anonymous"), quote("_"),
+                words("variable in pragma foreign_proc."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(VarContext, [always(Pieces)])]),
             MaybePragmaVars = error1([Spec])

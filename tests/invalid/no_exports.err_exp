@@ -3,5 +3,5 @@ no_exports.m:001:   anything.
 no_exports.m:001:   To be useful, a module should export something. A file
 no_exports.m:001:   should contain at least one declaration other than
 no_exports.m:001:   `:- import_module' in its interface section(s). This would
-no_exports.m:001:   normally be a `:- pred', `:- func', `:- type', `:- inst'
-no_exports.m:001:   or `:- mode' declaration.
+no_exports.m:001:   normally be a `:- pred', `:- func', `:- type', `:- inst' or
+no_exports.m:001:   `:- mode' declaration.

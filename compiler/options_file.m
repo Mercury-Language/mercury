@@ -1138,7 +1138,7 @@ lookup_options_variable(Globals, Vars, OptionsVariableClass, FlagsVar, Result,
             ;
                 BadLibs = [_ | _],
                 Pieces = [words("Error: MLLIBS must contain only"),
-                    words("`-l' options, found") |
+                    quote("-l"), words("options, found") |
                     list_to_pieces(
                         list.map(func(Lib) = add_quotes(Lib), BadLibs))]
                     ++ [suffix(".")],

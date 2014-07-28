@@ -341,8 +341,8 @@ report_max_iterations_exceeded(ModuleInfo) = Spec :-
         MaxIterations),
     Pieces = [words("Mode analysis iteration limit exceeded."), nl,
         words("You may need to declare the modes explicitly"),
-        words("or use the `--mode-inference-iteration-limit' option"),
-        words("to increase the limit."),
+        words("or use the"), quote("--mode-inference-iteration-limit"),
+        words("option to increase the limit."),
         words("(The current limit is"), int_fixed(MaxIterations),
         words("iterations.)"), nl],
     Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
@@ -1438,7 +1438,8 @@ report_eval_method_destroys_uniqueness(ProcInfo) = Spec :-
 
 report_wrong_mode_for_main(ProcInfo) = Spec :-
     proc_info_get_context(ProcInfo, Context),
-    Pieces = [words("Error: main/2 must have mode `(di, uo)'."), nl],
+    Pieces = [words("Error: main/2 must have mode"), quote("(di, uo)"),
+        suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [Msg]).

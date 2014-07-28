@@ -8,13 +8,13 @@ missing_det_decls.m:012: Error: no clauses for predicate `loc1'/0.
 missing_det_decls.m:013: Error: no determinism declaration for local predicate
 missing_det_decls.m:013:   `missing_det_decls.loc1'/0.
 missing_det_decls.m:013:   (This is an error because you specified the
-missing_det_decls.m:013:   `--no-infer-det' options. Use the `--infer-det'
+missing_det_decls.m:013:   `--no-infer-det' option. Use the `--infer-det'
 missing_det_decls.m:013:   option if you want the compiler to automatically
 missing_det_decls.m:013:   infer the determinism of local predicates.)
 missing_det_decls.m:015: Error: no clauses for predicate `loc2'/1.
 missing_det_decls.m:016: Error: no determinism declaration for local predicate
 missing_det_decls.m:016:   `missing_det_decls.loc2'/1.
 missing_det_decls.m:016:   (This is an error because you specified the
-missing_det_decls.m:016:   `--no-infer-det' options. Use the `--infer-det'
+missing_det_decls.m:016:   `--no-infer-det' option. Use the `--infer-det'
 missing_det_decls.m:016:   option if you want the compiler to automatically
 missing_det_decls.m:016:   infer the determinism of local predicates.)

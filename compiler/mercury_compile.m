@@ -950,7 +950,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
                         sym_name(ModuleName), suffix("."), nl,
                         words("Smart recompilation will not work unless"),
                         words("a module name to file name mapping is created"),
-                        words("using `mmc -f *.m'."), nl],
+                        words("using"), quote("mmc -f *.m"), suffix("."), nl],
                     write_error_pieces_plain(Globals, Pieces, !IO),
                     record_warning(Globals, !IO)
                 ;

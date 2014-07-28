@@ -1764,12 +1764,12 @@ generate_no_exports_warning(Globals, ModuleName, Spec, !IO) :-
         verbose_only(
             [words("To be useful, a module should export something."),
             words("A file should contain at least one declaration"),
-            words("other than"), fixed("`:- import_module'"),
+            words("other than"), quote(":- import_module"),
             words("in its interface section(s)."),
             words("This would normally be a"),
-            fixed("`:- pred',"), fixed("`:- func',"),
-            fixed("`:- type',"), fixed("`:- inst'"),
-            fixed("or `:- mode'"), words("declaration.")])
+            quote(":- pred"), suffix(","), quote(":- func"), suffix(","),
+            quote(":- type"), suffix(","), quote(":- inst"), words("or"),
+            quote(":- mode"), words("declaration.")])
         ]),
     Msg = simple_msg(Context, [Component]),
     Spec = error_spec(Severity, phase_term_to_parse_tree, [Msg]).
@@ -2216,8 +2216,8 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, FileName,
             words(choose_number(BothList, "module", "modules"))] ++
             component_list_to_pieces(list.map(wrap_symname, BothList)) ++
             [words(choose_number(BothList, "is", "are")),
-            words("imported using both `:- import_module'"),
-            words("`:- use_module' declarations."), nl],
+            words("imported using both"), quote(":- import_module"),
+            words("and"), quote(":- use_module"), words("declarations."), nl],
         Msg = simple_msg(Context,
             [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
         Severity = severity_conditional(warn_simple_code, yes,
@@ -3496,9 +3496,11 @@ report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
         unexpected($module, $pred, "unqualified module name")
     ),
     Pieces = [words("In interface for module"), sym_name(ParentModule),
-        suffix(":"), nl,
-        words("in definition of sub-module `" ++ ChildModule ++ "':"), nl,
-        words("error: `:- implementation.' declaration for sub-module\n"),
+        suffix(":"), nl, words("in definition of sub-module"),
+        quote(ChildModule), suffix(":"), nl,
+        % XXX should there be a full stop after implementation?
+        words("error:"), quote(":- implementation."),
+        words("declaration for sub-module\n"),
         words("occurs in interface section of parent module.")],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -3553,7 +3555,7 @@ report_error_duplicate_module_decl(ModuleName - Context, !Specs) :-
         unexpected($module, $pred, "unqualified module name")
     ),
     Pieces = [words("In module"), sym_name(ParentModule), suffix(":"), nl,
-        words("error: sub-module `" ++ ChildModule ++ "' declared"),
+        words("error: sub-module"), quote(ChildModule), words("declared"),
         words("as both a separate sub-module and a nested sub-module.")],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),

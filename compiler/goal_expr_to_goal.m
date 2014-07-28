@@ -356,8 +356,9 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal,
                     !VarSet, !ModuleInfo, !QualInfo, !Specs)
             ;
                 MaybeElse0 = yes(_),
-                Pieces = [words("Error: a `try' goal with an `io' parameter"),
-                    words("cannot have an else part."), nl],
+                Pieces = [words("Error: a"), quote("try"),
+                    words("goal with an"), quote("io"),
+                    words("parameter cannot have an else part."), nl],
                 Msg = simple_msg(Context, [always(Pieces)]),
                 Spec = error_spec(severity_error,
                     phase_parse_tree_to_hlds, [Msg]),

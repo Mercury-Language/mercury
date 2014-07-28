@@ -192,8 +192,9 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !Specs) :-
                         should_module_qualify, PPId),
                     Pieces =
                         [words("Warning:") | ProcNamePieces] ++
-                        [words("has a `pragma terminates' declaration"),
-                        words("but also has the `does_not_terminate'"),
+                        [words("has a"), quote("pragma terminates"),
+                        words("declaration but also has the"),
+                        quote("does_not_terminate"),
                         words("foreign code attribute set.")],
                     Msg = simple_msg(Context, [always(Pieces)]),
                     Spec = error_spec(severity_warning, phase_read_files,
@@ -219,10 +220,10 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !Specs) :-
                         should_module_qualify, PPId),
                     Pieces =
                         [words("Warning:") | ProcNamePieces] ++
-                        [words("has a `pragma does_not_terminate'"),
+                        [words("has a"), quote("pragma does_not_terminate"),
                         words("declaration but also has the"),
-                        words("`terminates' foreign code"),
-                        words("attribute set.")],
+                        quote("terminates"),
+                        words("foreign code attribute set.")],
                     Msg = simple_msg(Context, [always(Pieces)]),
                     Spec = error_spec(severity_warning, phase_read_files,
                         [Msg]),

@@ -521,7 +521,8 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarSet, Errs,
         VarTypePieces ++
         [nl_indent_delta(-1), words("The unbound type"),
         words(choose_number(Errs, "variable", "variables")),
-        words("will be implicitly bound to the builtin type `void'."), nl],
+        words("will be implicitly bound to the builtin type"),
+        quote("void"), suffix("."), nl],
     VerbosePieces = [words("The body of the clause contains a call"),
         words("to a polymorphic predicate,"),
         words("but I can't determine which version should be called,"),
@@ -848,7 +849,7 @@ check_type_of_main(PredInfo, !Specs) :-
         ;
             pred_info_get_context(PredInfo, Context),
             Pieces = [words("Error: arguments of main/2"),
-                words("must have type `io.state'."), nl],
+                words("must have type"), quote("io.state"), suffix("."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_type_check, [Msg]),
             !:Specs = [Spec | !.Specs]
