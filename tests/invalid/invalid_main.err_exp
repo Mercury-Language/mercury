@@ -1,6 +1,6 @@
 invalid_main.m:004: Error: arguments of main/2 must have type `io.state'.
-invalid_main.m:004: Error: main/2 must have mode `(di, uo)'.
-invalid_main.m:004: Error: main/2 must be `det' or `cc_multi'.
+invalid_main.m:004: Error: `main'/2 must have mode `(di, uo)'.
+invalid_main.m:004: Error: `main'/2 must be `det' or `cc_multi'.
 invalid_main.m:004: In `main'(di, out):
 invalid_main.m:004:   warning: determinism declaration could be tighter.
 invalid_main.m:004:   Declared `multi', inferred `det'.

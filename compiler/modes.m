@@ -156,6 +156,7 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
@@ -1438,8 +1439,8 @@ report_eval_method_destroys_uniqueness(ProcInfo) = Spec :-
 
 report_wrong_mode_for_main(ProcInfo) = Spec :-
     proc_info_get_context(ProcInfo, Context),
-    Pieces = [words("Error: main/2 must have mode"), quote("(di, uo)"),
-        suffix("."), nl],
+    Pieces = [words("Error:"), sym_name_and_arity(unqualified("main") / 2),
+        words("must have mode"), quote("(di, uo)"), suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [Msg]).

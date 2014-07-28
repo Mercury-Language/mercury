@@ -1245,11 +1245,9 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, Vars) = Spec :-
     mode_info_get_varset(ModeInfo, VarSet),
     Pieces = [
         words("purity error: lambda is"), quote("ground"),
-        words("but contains the"),
-        words("following non-local variables whose insts contain"),
-        quote("any"), suffix(":"),
-        words(mercury_vars_to_string(VarSet, no, Vars)),
-        suffix("."), nl
+        words("but contains the following non-local variables"),
+        words("whose insts contain"), quote("any"), suffix(":"),
+        words(mercury_vars_to_string(VarSet, no, Vars)), suffix("."), nl
     ],
     Always = always(Preamble ++ Pieces),
     VerboseOnly = verbose_only([
@@ -1257,8 +1255,8 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, Vars) = Spec :-
         words("can be written"), quote("any_pred(Args) is det :- ..."),
         suffix("."),
         words("Function expressions with inst"), quote("any"),
-        words("can be written"), quote("any_func(Args) = Result is det :- ..."),
-        suffix(".")
+        words("can be written"),
+        quote("any_func(Args) = Result is det :- ..."), suffix(".")
     ]),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [Always, VerboseOnly])]).
