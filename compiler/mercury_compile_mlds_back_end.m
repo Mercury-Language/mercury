@@ -304,7 +304,6 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
             ( Target = target_il
             ; Target = target_csharp
             ; Target = target_java
-            ; Target = target_x86_64
             ; Target = target_erlang
             ),
             GenerateInline = no

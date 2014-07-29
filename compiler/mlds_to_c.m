@@ -322,7 +322,6 @@ mlds_output_src_imports(Opts, Indent, Imports, !IO) :-
         ( Target = target_java
         ; Target = target_csharp
         ; Target = target_il
-        ; Target = target_x86_64
         ; Target = target_erlang
         ),
         unexpected($module, $pred, "expected target c")
@@ -519,7 +518,6 @@ mlds_output_hdr_start(Opts, Indent, ModuleName, !IO) :-
         ( Target = target_il
         ; Target = target_java
         ; Target = target_csharp
-        ; Target = target_x86_64
         ; Target = target_erlang
         )
     ),
@@ -631,7 +629,6 @@ mlds_output_hdr_end(Opts, Indent, ModuleName, !IO) :-
         ( Target = target_il
         ; Target = target_csharp
         ; Target = target_java
-        ; Target = target_x86_64
         ; Target = target_erlang
         )
     ),

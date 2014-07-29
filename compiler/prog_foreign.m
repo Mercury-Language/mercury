@@ -326,15 +326,6 @@ prefer_foreign_language(_Globals, target_java, _Lang1, _Lang2) = no.
     % Nothing useful to do here, but when we add Java as a foreign language,
     % we should add it here.
 
-prefer_foreign_language(_Globals, target_x86_64, Lang1, Lang2) =
-    % When compiling to x86_64 assembler, C is always preferred over any
-    % other language.
-    ( Lang2 = lang_c, not Lang1 = lang_c ->
-        yes
-    ;
-        no
-    ).
-
 prefer_foreign_language(_Globals, target_erlang, _Lang1, _Lang2) = no.
     % Nothing useful to do here, but when we add Erlang as a foreign language,
     % we should add it here.

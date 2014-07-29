@@ -454,7 +454,6 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
         ; Target = target_il, LangStr = "IL"
         ; Target = target_csharp, LangStr = "C#"
         ; Target = target_java, LangStr = "Java"
-        ; Target = target_x86_64, LangStr = "C"
         ; Target = target_erlang, LangStr = "Erlang"
         ),
         MainPieces = [words("Error: no"), fixed(LangStr),

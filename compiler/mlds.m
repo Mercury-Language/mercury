@@ -1916,7 +1916,6 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                 ( Target = target_c
                 ; Target = target_il
                 ; Target = target_java
-                ; Target = target_x86_64
                 ; Target = target_erlang
                 ),
                 MLDSType = mlds_ptr_type(MLDSRefType)
@@ -2004,9 +2003,6 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
             % This is checked by check_foreign_type in make_hlds.
             unexpected($module, $pred, "no Java foreign type")
         )
-    ;
-        Target = target_x86_64,
-        unexpected($module, $pred, "target x86_64 with --high-level-code")
     ;
         Target = target_erlang,
         unexpected($module, $pred, "target erlang")

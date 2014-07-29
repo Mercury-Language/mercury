@@ -51,8 +51,6 @@
 :- import_module libs.handle_options.
 :- import_module libs.options.
 :- import_module libs.timestamp.
-:- import_module ll_backend.llds_to_x86_64.
-:- import_module ll_backend.llds_to_x86_64_out.
 :- import_module make.
 :- import_module make.options_file.
 :- import_module make.util.
@@ -469,9 +467,7 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
             write_error_pieces_plain(Globals, NYIMsg, !IO),
             io.set_exit_status(1, !IO)
         ;
-            ( Target = target_c
-            ; Target = target_x86_64
-            ),
+            Target = target_c,
             make_standalone_interface(Globals, StandaloneIntBasename, !IO)
         )
     ; Make = yes ->
@@ -502,7 +498,6 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
                     ( Target = target_c
                     ; Target = target_csharp
                     ; Target = target_il
-                    ; Target = target_x86_64
                     ; Target = target_erlang
                     ),
                     compile_with_module_options(Globals, MainModuleName,
@@ -1305,7 +1300,6 @@ find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
     ; CompilationTarget = target_il, TargetSuffix = ".il"
     ; CompilationTarget = target_csharp, TargetSuffix = ".cs"
     ; CompilationTarget = target_java, TargetSuffix = ".java"
-    ; CompilationTarget = target_x86_64, TargetSuffix = ".s"
     ; CompilationTarget = target_erlang, TargetSuffix = ".erl"
     ),
     FindTargetFiles = usual_find_target_files(Globals, TargetSuffix).
@@ -1338,9 +1332,6 @@ find_timestamp_files(Globals, FindTimestampFiles) :-
     ;
         CompilationTarget = target_java,
         TimestampSuffix = ".java_date"
-    ;
-        CompilationTarget = target_x86_64,
-        TimestampSuffix = ".s_date"
     ;
         CompilationTarget = target_erlang,
         TimestampSuffix = ".erl_date"
@@ -1562,9 +1553,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         NumErrors = 0
     ->
         (
-            ( Target = target_c
-            ; Target = target_x86_64
-            ),
+            Target = target_c,
             % Produce the grade independent header file <module>.mh
             % containing function prototypes for the procedures
             % referred to by foreign_export pragmas.
@@ -1648,19 +1637,6 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 llds_output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
                     Succeeded, ExtraObjFiles, !IO)
             )
-        ;
-            Target = target_x86_64,
-            llds_backend_pass(!HLDS, _GlobalData, LLDS, !DumpInfo, !IO),
-            % XXX Eventually we will call the LLDS->x86_64 asm code generator
-            % here and then output the assembler. At the moment, we just output
-            % the LLDS as C code.
-            llds_to_x86_64_asm(!.HLDS, LLDS, X86_64_Asm),
-            % XXX This should eventually be written to a file rather
-            % than stdout.
-            io.stdout_stream(Stdout, !IO),
-            output_x86_64_asm(Stdout, X86_64_Asm, !IO),
-            Succeeded = yes,
-            ExtraObjFiles = []
         ;
             Target = target_erlang,
             erlang_backend(!.HLDS, ELDS, !DumpInfo, !IO),

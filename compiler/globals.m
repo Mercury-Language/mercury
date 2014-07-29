@@ -43,8 +43,6 @@
                             % IL is the Microsoft .NET Intermediate Language.
     ;       target_csharp   % Generate C#.
     ;       target_java     % Generate Java.
-    ;       target_x86_64   % Compile directly to x86_64 assembler.
-                            % (Work in progress.)
     ;       target_erlang.  % Generate Erlang.
 
 :- type foreign_language
@@ -393,7 +391,6 @@ convert_target_2("csharp", target_csharp).
 convert_target_2("java", target_java).
 convert_target_2("il", target_il).
 convert_target_2("c", target_c).
-convert_target_2("x86_64", target_x86_64).
 convert_target_2("erlang", target_erlang).
 
 convert_foreign_language(String, ForeignLanguage) :-
@@ -580,7 +577,6 @@ compilation_target_string(target_c)    = "C".
 compilation_target_string(target_csharp) = "C#".
 compilation_target_string(target_il)   = "IL".
 compilation_target_string(target_java) = "Java".
-compilation_target_string(target_x86_64) = "x86_64".
 compilation_target_string(target_erlang) = "Erlang".
 
 foreign_language_string(lang_c) = "C".
@@ -827,10 +823,6 @@ current_grade_supports_concurrency(Globals, ThreadsSupported) :-
         ; Target = target_csharp
         ),
         ThreadsSupported = yes
-    ;
-        % Threads are not yet supported in the x86_64 backend.
-        Target = target_x86_64,
-        ThreadsSupported = no
     ).
 
 get_any_intermod(Globals, AnyIntermod) :-

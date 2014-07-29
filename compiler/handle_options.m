@@ -257,7 +257,6 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         Target = TargetPrime
     ;
         Target = target_c,     % dummy
-        % XXX When the x86_64 backend is documented modify the line below.
         add_error("Invalid target option " ++
             "(must be `c', `il', `java', 'csharp', or `erlang')",
             !Errors)
@@ -888,7 +887,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         ( Target = target_c
         ; Target = target_csharp
         ; Target = target_java
-        ; Target = target_x86_64
         ; Target = target_erlang
         )
     ),
@@ -979,7 +977,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         ( Target = target_c
         ; Target = target_il
-        ; Target = target_x86_64
         ; Target = target_erlang
         )
     ),
@@ -1030,7 +1027,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         ( Target = target_c
         ; Target = target_il
-        ; Target = target_x86_64
         ; Target = target_java
         ; Target = target_csharp
         )
@@ -1044,19 +1040,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
             !Globals)
     ;
         true
-    ),
-
-    % Generating x86_64 assembler implies '--no-use-local-vars'
-    (
-        Target = target_x86_64,
-        globals.set_option(use_local_vars, bool(no), !Globals)
-    ;
-        ( Target = target_c
-        ; Target = target_il
-        ; Target = target_csharp
-        ; Target = target_java
-        ; Target = target_erlang
-        )
     ),
 
     % Using trail segments implies the use of the trail.
@@ -1455,7 +1438,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         ( Target = target_csharp
         ; Target = target_java
-        ; Target = target_x86_64
         ; Target = target_il
         ; Target = target_erlang
         ),
@@ -1487,8 +1469,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         ; Target = target_java
         )
     ;
-        ( Target = target_x86_64
-        ; Target = target_il
+        ( Target = target_il
         ; Target = target_erlang
         ),
         globals.set_option(allow_multi_arm_switches, bool(no), !Globals)
@@ -1628,7 +1609,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
                 ( Target = target_c
                 ; Target = target_csharp
                 ; Target = target_java
-                ; Target = target_x86_64
                 ; Target = target_erlang
                 )
             )
@@ -2310,9 +2290,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         Target = target_java,
         BackendForeignLanguages = ["java"]
-    ;
-        Target = target_x86_64,
-        BackendForeignLanguages = ["c"]
     ;
         Target = target_erlang,
         BackendForeignLanguages = ["erlang"],

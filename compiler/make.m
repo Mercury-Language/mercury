@@ -580,7 +580,6 @@ get_executable_type(Globals) = ExecutableType :-
     (
         ( CompilationTarget = target_c
         ; CompilationTarget = target_il
-        ; CompilationTarget = target_x86_64
         ),
         ExecutableType = executable
     ;

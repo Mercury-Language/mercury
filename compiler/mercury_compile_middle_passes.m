@@ -1222,7 +1222,6 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
             ( Target = target_il
             ; Target = target_csharp
             ; Target = target_java
-            ; Target = target_x86_64
             ; Target = target_erlang
             )
             % Leave the HLDS alone. We cannot implement parallelism,
@@ -1269,7 +1268,6 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
             ( Target = target_il
             ; Target = target_csharp
             ; Target = target_java
-            ; Target = target_x86_64
             ; Target = target_erlang
             )
             % Leave the HLDS alone. We cannot implement parallelism,

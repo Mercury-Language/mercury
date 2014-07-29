@@ -182,9 +182,6 @@ foreign_type_required_imports(Target, _TypeCtor - TypeDefn) = Imports :-
             Imports = []
         )
     ;
-        Target = target_x86_64,
-        unexpected($module, $pred, "target x86_64 and --high-level-code")
-    ;
         Target = target_erlang,
         unexpected($module, $pred, "target erlang")
     ).
@@ -214,7 +211,6 @@ ml_gen_init_common_data(ModuleInfo, GlobalData) :-
     ;
         ( Target = target_il
         ; Target = target_erlang
-        ; Target = target_x86_64
         ),
         UseCommonCells = do_not_use_common_cells
     ),

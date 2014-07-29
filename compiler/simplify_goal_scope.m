@@ -324,9 +324,7 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
                 Target = target_csharp,
                 !:EvalAttributes = default_attributes(lang_csharp)
             ;
-                ( Target = target_il
-                ; Target = target_x86_64
-                ),
+                Target = target_il,
                 sorry($module, $pred,
                     "runtime trace conditions for this target language")
             ),

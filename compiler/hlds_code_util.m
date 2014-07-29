@@ -151,7 +151,6 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         globals.get_target(Globals, TargetLang),
         (
             ( TargetLang = target_c
-            ; TargetLang = target_x86_64
             ; TargetLang = target_erlang
             ), 
             ( Arity = 0 ->
