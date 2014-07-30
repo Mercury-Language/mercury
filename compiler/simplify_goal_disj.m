@@ -16,9 +16,11 @@
 :- module check_hlds.simplify.simplify_goal_disj.
 :- interface.
 
+:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -30,6 +32,8 @@
 :- pred simplify_goal_disj(
     hlds_goal_expr::in(goal_expr_disj), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
     % Handle simplifications of atomic goals.
@@ -39,24 +43,33 @@
     maybe(list(prog_var))::in, hlds_goal::in, list(hlds_goal)::in,
     list(atomic_interface_vars)::in,
     hlds_goal_expr::out, hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 :- implementation.
 
+:- import_module check_hlds.inst_match.
 :- import_module check_hlds.simplify.simplify_goal.
-:- import_module hlds.instmap.
+:- import_module hlds.hlds_module.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
+:- import_module pair.
 :- import_module require.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
-simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+        NestedContext0, InstMap0, Common0, Common, !Info) :-
     GoalExpr0 = disj(Disjuncts0),
-    simplify_info_get_instmap(!.Info, InstMap0),
-    simplify_disj(Disjuncts0, [], Disjuncts, [], InstMaps, !.Info, !Info),
+    simplify_disj(Disjuncts0, [], Disjuncts, NestedContext0, InstMap0, Common0,
+        [], InstMapDeltas, !Info),
     (
         Disjuncts = [],
         Context = goal_info_get_context(GoalInfo0),
@@ -78,12 +91,33 @@ simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             simplify_info_get_module_info(!.Info, ModuleInfo1),
             NonLocals = goal_info_get_nonlocals(GoalInfo0),
             simplify_info_get_var_types(!.Info, VarTypes),
-            merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMaps,
+            merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMapDeltas,
                 NewDelta, ModuleInfo1, ModuleInfo2),
             simplify_info_set_module_info(ModuleInfo2, !Info),
-            goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
+            goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo),
+
+            (
+                simplify_do_after_front_end(!.Info),
+                % If the surrounding procedure cannot have more than one
+                % solution, then any warning about not being able to compute
+                % the set of all solutions would be meaningless and confusing.
+                NestedContext0 ^ snc_proc_is_model_non = yes(Innermost)
+            ->
+                warn_about_any_problem_partial_vars(Innermost, GoalInfo0,
+                    InstMap0, NewDelta, !Info)
+            ;
+                true
+            )
         )
     ),
+    % Any information that is in the updated Common at the end of a disjunct
+    % is valid only for that disjunct. We cannot use that information after
+    % the disjunction as a whole unless the disjunction turns out to have
+    % only one disjunct. Currently, simplify_disj does not bother returning
+    % the commons at the ends of disjuncts, since we expect one-disjunct
+    % disjunctions to be so rare that they are not worth optimizing.
+    Common = Common0,
+
     list.length(Disjuncts, DisjunctsLength),
     list.length(Disjuncts0, Disjuncts0Length),
     ( DisjunctsLength \= Disjuncts0Length ->
@@ -101,18 +135,121 @@ simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         true
     ).
 
+    % Look for the kind of bug represented by tests/invalid/bug311.m.
+    % For a detailed description of the problem, see that test case.
+    %
+:- pred warn_about_any_problem_partial_vars(innermost_proc::in,
+    hlds_goal_info::in, instmap::in, instmap_delta::in,
+    simplify_info::in, simplify_info::out) is det.
+    
+warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
+        InstMapDelta, !Info) :-
+    instmap_delta_to_assoc_list(InstMapDelta, InstMapDeltaChanges),
+    simplify_info_get_module_info(!.Info, ModuleInfo),
+    list.filter_map(is_var_a_problem_partial_var(ModuleInfo, InstMap0),
+        InstMapDeltaChanges, ProblemPartialVars),
+    (
+        ProblemPartialVars = []
+    ;
+        ProblemPartialVars = [_ | _],
+        (
+            Innermost = imp_whole_proc,
+            ProcStr = "the procedure"
+        ;
+            Innermost = imp_lambda(LambdaContext),
+            % If the lambda expression does not leave the scope of its
+            % defining procedure and does not have an all-solutions predicate
+            % invoked on it, the warning we generate could be a bit misleading.
+            % Unfortunately, without an escape analysis, I (zs) see no way
+            % to avoid this while still generating the warning in cases
+            % where the program *does* invoke an all-solutions predicate
+            % on the closure generated by the lambda expression.
+            term.context_file(LambdaContext, LambdaFileName),
+            term.context_line(LambdaContext, LambdaLineNum),
+            ( LambdaFileName = "" ->
+                string.format("the lambda expression at line %d",
+                    [i(LambdaLineNum)], ProcStr)
+            ;
+                string.format("the lambda expression in %s at line %d",
+                    [s(LambdaFileName), i(LambdaLineNum)], ProcStr)
+            )
+        ),
+        simplify_info_get_varset(!.Info, VarSet),
+        list.map(varset.lookup_name(VarSet), ProblemPartialVars,
+            ProblemPartialVarNames),
+        ProblemPartialVarPieces = list_to_pieces(ProblemPartialVarNames),
+        Context = goal_info_get_context(GoalInfo),
+        Pieces = [words("Warning: this disjunction further instantiates"),
+            words("the already partially instantiated"),
+            words(choose_number(ProblemPartialVars, "variable", "variables"))]
+            ++ ProblemPartialVarPieces ++ [suffix("."), nl] ++
+            [words(choose_number(ProblemPartialVars,
+                "Since the memory cell of this variable
+                    is allocated *before* the disjunction,",
+                "Since the memory cells of these variables
+                    are allocated *before* the disjunction,")),
+            words("the different disjuncts will return"),
+            words("their potentially different solutions"),
+            words(choose_number(ProblemPartialVars,
+                "for this variable", "for each of these variables")),
+            words("in the same memory cell,"),
+            words("which will cause any all-solutions predicate"),
+            words("to think that the different solutions"),
+            words("(since they are at the same address)"),
+            words("are in fact all the same"),
+            words("when invoked on"), words(ProcStr), suffix("."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Severity = severity_warning,
+        Spec = error_spec(Severity, phase_simplify(report_in_any_mode), [Msg]),
+        simplify_info_add_simple_code_spec(Spec, !Info)
+    ).
+
+    % Check whether a variable suffers from the problem of bug 311.
+    %
+:- pred is_var_a_problem_partial_var(module_info::in, instmap::in,
+    pair(prog_var, mer_inst)::in, prog_var::out) is semidet.
+    
+is_var_a_problem_partial_var(ModuleInfo, InstMap0, Var - FinalInst, Var) :-
+    instmap_lookup_var(InstMap0, Var, InitInst),
+    ( inst_is_free(ModuleInfo, InitInst) ->
+        % No problem: the cell containing the variable is NOT allocated
+        % before the disjunction, so its address won't be the same in
+        % different arms.
+        fail
+    ; inst_is_ground(ModuleInfo, InitInst) ->
+        % No problem: the variable's initial value cannot be changed
+        % by the disjunction.
+        fail
+    ; inst_matches_final(FinalInst, InitInst, ModuleInfo) ->
+        % No problem: the variable's value, even though it is not initially
+        % ground, is not changed by the disjunction, though the disjunction
+        % may discover e.g. that a particular part of Var is bound to a
+        % particular function symbol.
+        %
+        % We do this test last, because it is much the slowest, and covers
+        % the rarest case.
+        fail
+    ;
+        % Problem: the disjunction DOES make further bindings to this
+        % already partially instantiated variable.
+        true
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- pred simplify_disj(list(hlds_goal)::in, list(hlds_goal)::in,
     list(hlds_goal)::out,
+    simplify_nested_context::in, instmap::in, common_info::in,
     list(instmap_delta)::in, list(instmap_delta)::out,
-    simplify_info::in, simplify_info::in, simplify_info::out) is det.
+    simplify_info::in, simplify_info::out) is det.
 
-simplify_disj([], RevGoals, Goals, !PostBranchInstMaps, _, !Info) :-
+simplify_disj([], RevGoals, Goals,
+        _NestedContext0, _InstMap0, _Common0, !PostBranchInstMaps, !Info) :-
     list.reverse(RevGoals, Goals).
-simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
-        Info0, !Info) :-
-    simplify_goal(Goal0, Goal, !Info),
+simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
+        NestedContext0, InstMap0, Common0, !PostBranchInstMaps, !Info) :-
+    simplify_goal(Goal0, Goal, NestedContext0, InstMap0,
+        Common0, _Common1, !Info),
     Goal = hlds_goal(_, GoalInfo),
     Purity = goal_info_get_purity(GoalInfo),
 
@@ -133,9 +270,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
             % to be spurious: though the disjunct cannot succeed in this arm of
             % the switch, it likely can succeed in other arms that derive from
             % the exact same piece of source code.
-            simplify_info_get_inside_duplicated_for_switch(!.Info,
-                 InsideDuplForSwitch),
-            InsideDuplForSwitch = no
+            NestedContext0 ^ snc_inside_dupl_for_switch = no
         ->
             Context = goal_info_get_context(GoalInfo),
             Pieces = [words("Warning: this disjunct"),
@@ -172,9 +307,8 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         !:PostBranchInstMaps = [InstMapDelta | !.PostBranchInstMaps]
     ),
-
-    simplify_info_post_branch_update(Info0, !Info),
-    simplify_disj(Goals0, RevGoals1, Goals, !PostBranchInstMaps, Info0, !Info).
+    simplify_disj(Goals0, RevGoals1, Goals, NestedContext0, InstMap0, Common0,
+        !PostBranchInstMaps, !Info).
 
     % Disjunctions that cannot succeed more than once when viewed from the
     % outside generally need some fixing up, and/or some warnings to be issued.
@@ -204,13 +338,16 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
     %           DetInfo, Goal, MsgsA, Msgs)
     %   ;
     %
-:- pred fixup_disj(list(hlds_goal)::in, determinism::in, bool::in,
-    hlds_goal_info::in, hlds_goal_expr::out,
+:- pred fixup_disj(list(hlds_goal)::in, hlds_goal_info::in,
+    hlds_goal_expr::out,
+    simplify_nested_context::in, instmap::in, common_info::in,
     simplify_info::in, simplify_info::out) is det.
 
-fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, Goal, !Info) :-
+fixup_disj(Disjuncts, GoalInfo, Goal, NestedContext0, InstMap0,
+        Common0, !Info) :-
     det_disj_to_ite(Disjuncts, GoalInfo, IfThenElse),
-    simplify_goal(IfThenElse, Simplified, !Info),
+    simplify_goal(IfThenElse, Simplified, NestedContext0, InstMap0,
+        Common0, _Common, !Info),
     Simplified = hlds_goal(Goal, _).
 
     % det_disj_to_ite is used to transform disjunctions that occur
@@ -278,26 +415,33 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 %---------------------------------------------------------------------------%
 
 simplify_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-        MainGoal0, OrElseGoals0, OrElseInners, GoalExpr, !GoalInfo, !Info) :-
+        MainGoal0, OrElseGoals0, OrElseInners, GoalExpr, !GoalInfo,
+        _NestedContext0, _InstMap0, Common0, Common0, !Info) :-
     % XXX STM: At the moment we do not simplify the inner goals as there is
     % a chance that the outer and inner variables will change which will
     % cause problems during expansion of STM constructs. This will be
     % fixed eventually.
     MainGoal = MainGoal0,
     OrElseGoals = OrElseGoals0,
-    % simplify_goal(MainGoal0, MainGoal, !Info),
-    % simplify_or_else_goals(OrElseGoals0, OrElseGoals, !Info),
+    % simplify_goal(MainGoal0, MainGoal,
+    %   NestedContext0, InstMap0, Common0, _AfterMainCommon, !Info),
+    % simplify_or_else_goals(OrElseGoals0, OrElseGoals,
+    %   NestedContext0, InstMap0, Common0, !Info),
     ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
         MainGoal, OrElseGoals, OrElseInners),
     GoalExpr = shorthand(ShortHand).
 
 :- pred simplify_or_else_goals(list(hlds_goal)::in, list(hlds_goal)::out,
+    simplify_nested_context::in, instmap::in, common_info::in,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_or_else_goals([], [], !Info).
-simplify_or_else_goals([Goal0 | Goals0], [Goal | Goals], !Info) :-
-    simplify_goal(Goal0, Goal, !Info),
-    simplify_or_else_goals(Goals0, Goals, !Info).
+simplify_or_else_goals([], [], _NestedContext0, _InstMap0, _Common0, !Info).
+simplify_or_else_goals([Goal0 | Goals0], [Goal | Goals],
+        NestedContext0, InstMap0, Common0, !Info) :-
+    simplify_goal(Goal0, Goal, NestedContext0, InstMap0,
+        Common0, _Common1, !Info),
+    simplify_or_else_goals(Goals0, Goals,
+        NestedContext0, InstMap0, Common0, !Info).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.simplify.simplify_goal_disj.

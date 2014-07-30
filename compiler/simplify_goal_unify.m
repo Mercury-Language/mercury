@@ -15,29 +15,32 @@
 :- module check_hlds.simplify.simplify_goal_unify.
 :- interface.
 
+:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
 
 :- pred simplify_goal_unify(
     hlds_goal_expr::in(goal_expr_unify), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 %----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
+:- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.
@@ -51,6 +54,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -58,30 +62,43 @@
 :- import_module require.
 :- import_module term.
 
-simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+        NestedContext0, InstMap0, !Common, !Info) :-
     GoalExpr0 = unify(LT0, RT0, M, U0, C),
     (
         RT0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, LambdaDeclaredDet, LambdaGoal0),
-        simplify_info_enter_lambda(!Info),
-        simplify_info_get_common_info(!.Info, Common1),
+        determinism_to_code_model(LambdaDeclaredDet, LambdaCodeModel),
+        (
+            ( LambdaCodeModel = model_det
+            ; LambdaCodeModel = model_semi
+            ),
+            ProcIsModelNon = no
+        ;
+            LambdaCodeModel = model_non,
+            Context = goal_info_get_context(GoalInfo0),
+            ProcIsModelNon = yes(imp_lambda(Context))
+        ),
+        NestedContext0 = simplify_nested_context(InsideDuplForSwitch,
+            NumEnclosingLambdas0, _ProcModelNon),
+        LambdaNestedContext = simplify_nested_context(InsideDuplForSwitch,
+            NumEnclosingLambdas0 + 1, ProcIsModelNon),
+            
         simplify_info_get_module_info(!.Info, ModuleInfo),
-        simplify_info_get_instmap(!.Info, InstMap1),
-        instmap.pre_lambda_update(ModuleInfo, Vars, Modes, InstMap1, InstMap2),
-        simplify_info_set_instmap(InstMap2, !Info),
+        instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
+            InstMap0, LambdaInstMap0),
 
         % Don't attempt to pass structs into lambda_goals,
         % since that could change the curried non-locals of the
         % lambda_goal, and that would be difficult to fix up.
-        simplify_info_set_common_info(common_info_init, !Info),
+        LambdaCommon0 = common_info_init,
 
         % Don't attempt to pass structs out of lambda_goals.
-        simplify_goal(LambdaGoal0, LambdaGoal, !Info),
-        simplify_info_set_common_info(Common1, !Info),
-        simplify_info_set_instmap(InstMap1, !Info),
+        simplify_goal(LambdaGoal0, LambdaGoal, LambdaNestedContext,
+            LambdaInstMap0, LambdaCommon0, _, !Info),
+
         RT = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, LambdaDeclaredDet, LambdaGoal),
-        simplify_info_leave_lambda(!Info),
         GoalExpr = unify(LT0, RT, M, U0, C),
         GoalInfo = GoalInfo0
     ;
@@ -100,7 +117,8 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             (
                 RT0 = rhs_var(V),
                 process_compl_unify(LT0, V, UniMode, CanFail, TypeInfoVars, C,
-                    GoalInfo0, GoalExpr1, !Info),
+                    GoalInfo0, GoalExpr1,
+                    NestedContext0, InstMap0, !Common, !Info),
                 GoalExpr1 = hlds_goal(GoalExpr, GoalInfo)
             ;
                 RT0 = rhs_functor(_, _, _),
@@ -110,7 +128,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             simplify_do_common_struct(!.Info)
         ->
             common_optimise_unification(U0, M,
-                GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info)
+                GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Common, !Info)
         ;
             ( simplify_do_opt_duplicate_calls(!.Info)
             ; simplify_do_warn_duplicate_calls(!.Info)
@@ -121,7 +139,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             % But we don't want to perform the optimization, so we disregard
             % the optimized goal and instead use the original one.
             common_optimise_unification(U0, M,
-                GoalExpr0, _GoalExpr1, GoalInfo0, _GoalInfo1, !Info),
+                GoalExpr0, _GoalExpr1, GoalInfo0, _GoalInfo1, !Common, !Info),
             GoalExpr = GoalExpr0,
             GoalInfo = GoalInfo0
         ;
@@ -132,10 +150,12 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
 
 :- pred process_compl_unify(prog_var::in, prog_var::in, uni_mode::in,
     can_fail::in, list(prog_var)::in, unify_context::in, hlds_goal_info::in,
-    hlds_goal::out, simplify_info::in, simplify_info::out) is det.
+    hlds_goal::out, simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
+    simplify_info::in, simplify_info::out) is det.
 
 process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
-        GoalInfo0, Goal, !Info) :-
+        GoalInfo0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     simplify_info_get_var_types(!.Info, VarTypes),
     lookup_var_type(VarTypes, XVar, Type),
@@ -157,7 +177,8 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
             "builtin_unify_pred", pf_predicate, mode_no(0), detism_semi,
             purity_pure, [XVar, YVar], [], instmap_delta_bind_no_var,
             ModuleInfo, GContext, hlds_goal(Call0, _)),
-        simplify_goal_expr(Call0, Call1, GoalInfo0, GoalInfo, !Info),
+        simplify_goal_expr(Call0, Call1, GoalInfo0, GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info),
         Call = hlds_goal(Call1, GoalInfo),
         ExtraGoals = []
     ;
@@ -212,7 +233,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
             call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId,
                 ModuleInfo, Context, GoalInfo0, Call0, CallGoalInfo0),
             simplify_goal_expr(Call0, Call1, CallGoalInfo0, CallGoalInfo1,
-                !Info),
+                NestedContext0, InstMap0, !Common, !Info),
             Call = hlds_goal(Call1, CallGoalInfo1)
         )
     ),

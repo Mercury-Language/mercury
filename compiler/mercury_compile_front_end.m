@@ -911,7 +911,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
             list.cons(simptask_after_front_end, !SimpList)
         ;
             SimplifyPass = simplify_pass_post_untuple,
-            list.cons(simptask_do_once, !SimpList)
+            list.cons(simptask_mark_code_model_changes, !SimpList)
         ;
             SimplifyPass = simplify_pass_pre_prof_transforms,
 
@@ -923,7 +923,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
                 PreProfSimplify),
             (
                 PreProfSimplify = yes,
-                list.cons(simptask_do_once, !SimpList)
+                list.cons(simptask_mark_code_model_changes, !SimpList)
             ;
                 PreProfSimplify = no,
                 !:SimpList = []
@@ -938,14 +938,14 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
                 pre_implicit_parallelism_simplify, PreParSimplify),
             (
                 PreParSimplify = yes,
-                list.cons(simptask_do_once, !SimpList)
+                list.cons(simptask_mark_code_model_changes, !SimpList)
             ;
                 PreParSimplify = no,
                 !:SimpList = []
             )
         ;
             SimplifyPass = simplify_pass_ml_backend,
-            list.cons(simptask_do_once, !SimpList)
+            list.cons(simptask_mark_code_model_changes, !SimpList)
         ;
             SimplifyPass = simplify_pass_ll_backend,
             % Don't perform constant propagation if one of the
@@ -970,7 +970,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
             ;
                 !:SimpList = list.delete_all(!.SimpList, simptask_constant_prop)
             ),
-            list.cons(simptask_do_once, !SimpList),
+            list.cons(simptask_mark_code_model_changes, !SimpList),
             list.cons(simptask_elim_removable_scopes, !SimpList)
         ),
         SimpList = !.SimpList

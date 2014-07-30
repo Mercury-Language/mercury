@@ -15,15 +15,19 @@
 :- module check_hlds.simplify.simplify_goal_switch.
 :- interface.
 
+:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
 
     % Handle simplifications of switches.
     %
 :- pred simplify_goal_switch(
     hlds_goal_expr::in(goal_expr_switch), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 %----------------------------------------------------------------------------%
@@ -34,7 +38,6 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.type_util.
-:- import_module hlds.instmap.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
@@ -51,9 +54,9 @@
 :- import_module require.
 :- import_module varset.
 
-simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+        NestedContext0, InstMap0, Common0, Common, !Info) :-
     GoalExpr0 = switch(Var, SwitchCanFail0, Cases0),
-    simplify_info_get_instmap(!.Info, InstMap0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     instmap_lookup_var(InstMap0, Var, VarInst),
     simplify_info_get_var_types(!.Info, VarTypes),
@@ -68,9 +71,10 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         Cases1 = Cases0,
         MaybeConsIds = no
     ),
-    simplify_switch_cases(Var, Cases1, [], RevCases, [], InstMaps,
+    simplify_switch_cases(Var, Cases1, [], RevCases, [], RevInstMapDeltas,
         not_seen_non_ground_term, SeenNonGroundTerm,
-        SwitchCanFail0, SwitchCanFail, !.Info, !Info),
+        SwitchCanFail0, SwitchCanFail, NestedContext0, InstMap0, Common0,
+        !Info),
     list.reverse(RevCases, Cases),
     (
         Cases = []
@@ -101,12 +105,12 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 GoalExpr = switch(Var, SwitchCanFail, Cases),
                 NonLocals = goal_info_get_nonlocals(GoalInfo0),
                 merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
-                    InstMaps, NewDelta, ModuleInfo1, ModuleInfo2),
+                    RevInstMapDeltas, NewDelta, ModuleInfo1, ModuleInfo2),
                 simplify_info_set_module_info(ModuleInfo2, !Info),
                 goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
             ;
                 create_test_unification(Var, MainConsId, MainConsIdArity,
-                    UnifyGoal, !Info),
+                    UnifyGoal, InstMap0, !Info),
 
                 % Conjoin the test and the rest of the case.
                 goal_to_conj_list(SingleGoal, SingleGoalConj),
@@ -117,9 +121,8 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
                 set_of_var.insert(Var, NonLocals0, NonLocals),
                 InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-                simplify_info_get_instmap(!.Info, InstMap),
                 instmap_delta_bind_var_to_functor(Var, Type, MainConsId,
-                    InstMap, InstMapDelta0, InstMapDelta,
+                    InstMap0, InstMapDelta0, InstMapDelta,
                     ModuleInfo1, ModuleInfo),
                 simplify_info_set_module_info(ModuleInfo, !Info),
                 CaseDetism = goal_info_get_determinism(GoalInfo0),
@@ -151,12 +154,19 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         ;
             simplify_info_get_module_info(!.Info, ModuleInfo1),
             NonLocals = goal_info_get_nonlocals(GoalInfo0),
-            merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMaps,
-                NewDelta, ModuleInfo1, ModuleInfo2),
+            merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
+                RevInstMapDeltas, NewDelta, ModuleInfo1, ModuleInfo2),
             simplify_info_set_module_info(ModuleInfo2, !Info),
             goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
         )
     ),
+    % Any information that is in the updated Common at the end of a switch arm
+    % is valid only for that arm. We cannot use that information after the
+    % switch as a whole unless the switch turns out to have only one arm.
+    % Currently, simplify_switch_cases does not bother returning the commons
+    % at the ends of arms, since we expect one-arm switches to be so rare
+    % that they are not worth optimizing.
+    Common = Common0,
     list.length(Cases0, Cases0Length),
     list.length(Cases, CasesLength),
     ( CasesLength = Cases0Length ->
@@ -182,23 +192,24 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
 :- pred simplify_switch_cases(prog_var::in, list(case)::in, list(case)::in,
     list(case)::out, list(instmap_delta)::in, list(instmap_delta)::out,
     seen_non_ground_term::in, seen_non_ground_term::out,
-    can_fail::in, can_fail::out, simplify_info::in,
-    simplify_info::in, simplify_info::out) is det.
+    can_fail::in, can_fail::out, simplify_nested_context::in, instmap::in,
+    common_info::in, simplify_info::in, simplify_info::out) is det.
 
-simplify_switch_cases(_, [], !RevCases, !InstMaps,
-        !SeenNonGroundTerm, !CanFail, _, !Info).
-simplify_switch_cases(Var, [Case0 | Cases0], !RevCases, !InstMaps,
-        !SeenNonGroundTerm, !CanFail, Info0, !Info) :-
-    simplify_info_get_instmap(Info0, InstMap0),
+simplify_switch_cases(_, [], !RevCases, !RevInstMapDeltas,
+        !SeenNonGroundTerm, !CanFail, _NestedContext0, _InstMap0, _Common0,
+        !Info).
+simplify_switch_cases(Var, [Case0 | Cases0], !RevCases, !RevInstMapDeltas,
+        !SeenNonGroundTerm, !CanFail, NestedContext0, InstMap0, Common0,
+        !Info) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     simplify_info_get_var_types(!.Info, VarTypes),
     lookup_var_type(VarTypes, Var, Type),
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
-        InstMap0, InstMap1, ModuleInfo0, ModuleInfo1),
+        InstMap0, CaseInstMap0, ModuleInfo0, ModuleInfo1),
     simplify_info_set_module_info(ModuleInfo1, !Info),
-    simplify_info_set_instmap(InstMap1, !Info),
-    simplify_goal(Goal0, Goal, !Info),
+    simplify_goal(Goal0, Goal, NestedContext0, CaseInstMap0,
+        Common0, _Common1, !Info),
 
     % Remove failing branches.
     ( Goal = hlds_goal(disj([]), _) ->
@@ -229,22 +240,22 @@ simplify_switch_cases(Var, [Case0 | Cases0], !RevCases, !InstMaps,
             InstMap0, InstMapDelta0, InstMapDelta, ModuleInfo2, ModuleInfo),
         simplify_info_set_module_info(ModuleInfo, !Info),
 
-        !:InstMaps = [InstMapDelta | !.InstMaps],
+        !:RevInstMapDeltas = [InstMapDelta | !.RevInstMapDeltas],
         !:RevCases = [Case | !.RevCases]
     ),
 
-    simplify_info_post_branch_update(Info0, !Info),
-    simplify_switch_cases(Var, Cases0, !RevCases, !InstMaps,
-        !SeenNonGroundTerm, !CanFail, Info0, !Info).
+    simplify_switch_cases(Var, Cases0, !RevCases, !RevInstMapDeltas,
+        !SeenNonGroundTerm, !CanFail, NestedContext0, InstMap0, Common0,
+        !Info).
 
     % Create a semidet unification at the start of a singleton case
     % in a can_fail switch.
     % This will abort if the cons_id is existentially typed.
     %
 :- pred create_test_unification(prog_var::in, cons_id::in, int::in,
-    hlds_goal::out, simplify_info::in, simplify_info::out) is det.
+    hlds_goal::out, instmap::in, simplify_info::in, simplify_info::out) is det.
 
-create_test_unification(Var, ConsId, ConsArity, ExtraGoal, !Info) :-
+create_test_unification(Var, ConsId, ConsArity, ExtraGoal, InstMap0, !Info) :-
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     varset.new_vars(ConsArity, ArgVars, VarSet0, VarSet),
@@ -254,8 +265,7 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal, !Info) :-
     vartypes_add_corresponding_lists(ArgVars, ArgTypes, VarTypes0, VarTypes),
     simplify_info_set_varset(VarSet, !Info),
     simplify_info_set_var_types(VarTypes, !Info),
-    simplify_info_get_instmap(!.Info, InstMap),
-    instmap_lookup_var(InstMap, Var, Inst0),
+    instmap_lookup_var(InstMap0, Var, Inst0),
     (
         inst_expand(ModuleInfo, Inst0, Inst1),
         get_arg_insts(Inst1, ConsId, ConsArity, ArgInsts1)

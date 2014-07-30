@@ -98,12 +98,8 @@
     %
 :- pred instmap_vars_list(instmap::in, list(prog_var)::out) is det.
 
-    % Return the set of variables whose instantiations have
-    % changed (or our knowledge about them has changed) across
-    % an instmap_delta.
-    %
-    % This predicate shouldn't be used if you want your code to
-    % compile on the alias branch, use instmap_changed_vars instead.
+    % Return the set of variables whose instantiations have changed
+    % (or our knowledge about them has changed) across an instmap_delta.
     %
 :- pred instmap_delta_changed_vars(instmap_delta::in, set_of_progvar::out)
     is det.
@@ -116,14 +112,11 @@
 
     % instmap_changed_vars(IMA, IMB, MI, CV)
     %
-    % Given an earlier instmap, IMA, and a later instmap, IMB,
-    % determine what variables, CV, have had their instantiatedness
-    % information changed.
+    % Given an earlier instmap, IMA, and a later instmap, IMB, determine
+    % what variables, CV, have had their instantiatedness information changed.
     %
-    % This predicate is meant to be equivalent to
-    % instmap_delta_changed_vars, where the instmap_delta is simply
-    % the one to take IMA to IMB.  However this predicate should
-    % transform more easily to the alias branch.
+    % This predicate is meant to be equivalent to instmap_delta_changed_vars,
+    % where the instmap_delta is simply the one to take IMA to IMB.
     %
 :- pred instmap_changed_vars(instmap::in, instmap::in, vartypes::in,
     module_info::in, set_of_progvar::out) is det.

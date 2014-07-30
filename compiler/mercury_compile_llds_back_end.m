@@ -352,7 +352,8 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
         SimpList1 = list.delete_all(SimpList0, simptask_constant_prop)
     ),
 
-    SimpList = [simptask_do_once, simptask_elim_removable_scopes | SimpList1],
+    SimpList = [simptask_mark_code_model_changes,
+        simptask_elim_removable_scopes | SimpList1],
     SimplifyTasks = list_to_simplify_tasks(SimpList),
     write_proc_progress_message("% Simplifying ", PredId, ProcId,
         !.HLDS, !IO),

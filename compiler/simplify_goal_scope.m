@@ -15,15 +15,19 @@
 :- module check_hlds.simplify.simplify_goal_scope.
 :- interface.
 
+:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
 
     % Handle simplification of scope goals.
     %
 :- pred simplify_goal_scope(
     hlds_goal_expr::in(goal_expr_scope), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
     % If the goal nested inside this scope goal is another scope goal,
@@ -41,7 +45,6 @@
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
-:- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
@@ -59,7 +62,8 @@
 :- import_module pair.
 :- import_module require.
 
-simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+        NestedContext0, InstMap0, Common0, Common, !Info) :-
     GoalExpr0 = scope(Reason0, SubGoal0),
     ( Reason0 = from_ground_term(TermVar, from_ground_term_construct) ->
         simplify_info_get_module_info(!.Info, ModuleInfo0),
@@ -93,7 +97,8 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 % inside the scope is already as simple as it can be, we
                 % leave it alone.
                 GoalExpr = GoalExpr0,
-                GoalInfo = GoalInfo0
+                GoalInfo = GoalInfo0,
+                Common = Common0
             ;
                 CommonStruct = no,
                 % Looking inside the scope may allow us to reduce the number of
@@ -104,7 +109,8 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 % code inside the scope hasn't had either of the actions
                 % mentioned in the comment above applied to it, and in this
                 % case, we cannot guarantee that.
-                simplify_goal(SubGoal0, SubGoal, !Info),
+                simplify_goal(SubGoal0, SubGoal, NestedContext0, InstMap0,
+                    Common0, Common, !Info),
                 NewReason = from_ground_term(TermVar, from_ground_term_other),
                 GoalExpr = scope(NewReason, SubGoal),
                 GoalInfo = GoalInfo0
@@ -154,11 +160,12 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             UnifyContext = unify_context(umc_explicit, []),
             GoalExpr = unify(TermVar, RHS, UnifyMode, Unification,
                 UnifyContext),
-            GoalInfo = GoalInfo0
+            GoalInfo = GoalInfo0,
+            Common = Common0
         )
     ;
-        simplify_info_get_common_info(!.Info, Common),
-        simplify_goal(SubGoal0, SubGoal, !Info),
+        simplify_goal(SubGoal0, SubGoal, NestedContext0, InstMap0,
+            Common0, Common1, !Info),
         try_to_merge_nested_scopes(Reason0, SubGoal, GoalInfo0, Goal1),
         Goal1 = hlds_goal(GoalExpr1, _GoalInfo1),
         ( GoalExpr1 = scope(FinalReason, FinalSubGoal) ->
@@ -167,12 +174,16 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 ; FinalReason = from_ground_term(_, _)
                 ; FinalReason = barrier(removable)
                 ),
-                Goal = Goal1
+                Goal = Goal1,
+                Common = Common1
             ;
                 ( FinalReason = require_detism(_)
                 ; FinalReason = require_complete_switch(_)
                 ),
-                Goal = FinalSubGoal
+                % The scope has served its purpose, and it is not needed
+                % anymore.
+                Goal = FinalSubGoal,
+                Common = Common1
             ;
                 ( FinalReason = commit(_)
                 ; FinalReason = exist_quant(_)
@@ -194,7 +205,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 %
                 % We do the same for several other kinds of scopes from which
                 % we do not want to "export" common unifications.
-                simplify_info_set_common_info(Common, !Info)
+                Common = Common0
             ;
                 FinalReason = trace_goal(MaybeCompiletimeExpr,
                     MaybeRuntimeExpr, _, _, _),
@@ -204,10 +215,15 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 ;
                     Goal = Goal1
                 ),
-                simplify_info_set_common_info(Common, !Info)
+                % We throw away the updated Common1 for the same reason
+                % as in the case above: we don't want to add any outputs
+                % to the trace_goal scope, since such scopes should not
+                % have ANY outputs.
+                Common = Common0
             )
         ;
-            Goal = Goal1
+            Goal = Goal1,
+            Common = Common1
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).

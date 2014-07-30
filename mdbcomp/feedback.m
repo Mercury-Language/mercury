@@ -81,6 +81,9 @@
     --->    feedback_data_calls_above_threshold_sorted(free, free, free)
     ;       feedback_data_candidate_parallel_conjunctions(free, free).
 
+:- mode feedback_data_query ==
+    feedback_data_query >> ground.
+
 %-----------------------------------------------------------------------------%
 
     % put_feedback_data(Data, !Info)
@@ -97,14 +100,11 @@
 
     % get_feedback_data(Info, Data):
     %
-    % When given a partially instantiated Data term representing the query this
-    % will either fully instantiate the term or fail.
+    % When given a partially instantiated Data term representing the query,
+    % get_feedback_data will either fully instantiate Data, or fail.
     %
 :- pred get_feedback_data(feedback_info::in,
     feedback_data::feedback_data_query) is semidet.
-
-:- mode feedback_data_query ==
-    feedback_data_query >> ground.
 
 :- pred get_all_feedback_data(feedback_info::in, list(feedback_data)::out)
     is det.

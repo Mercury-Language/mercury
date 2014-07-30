@@ -15,9 +15,11 @@
 :- module check_hlds.simplify.simplify_goal_conj.
 :- interface.
 
+:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
 
 :- import_module list.
 
@@ -25,23 +27,26 @@
     %
 :- pred simplify_goal_plain_conj(list(hlds_goal)::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
     % Handle simplification of parallel conjunctions.
     %
 :- pred simplify_goal_parallel_conj(list(hlds_goal)::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 %----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.simplify_goal.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.instmap.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -56,15 +61,15 @@
 :- import_module string.
 :- import_module varset.
 
-simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
-    simplify_info_get_instmap(!.Info, InstMap0),
+simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
+        NestedContext0, InstMap0, !Common, !Info) :-
     ( simplify_do_excess_assign(!.Info) ->
         excess_assigns_in_conj(GoalInfo0, Goals0, Goals1, !Info)
     ;
         Goals1 = Goals0
     ),
-    simplify_conj(cord.empty, Goals1, Goals, GoalInfo0, !Info),
-    simplify_info_set_instmap(InstMap0, !Info),
+    simplify_conj(cord.empty, Goals1, Goals, GoalInfo0,
+        NestedContext0, InstMap0, !Common, !Info),
     (
         Goals = [],
         Context = goal_info_get_context(GoalInfo0),
@@ -85,7 +90,7 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
 
         Detism = goal_info_get_determinism(GoalInfo0),
         (
-            simplify_do_once(!.Info),
+            simplify_do_mark_code_model_changes(!.Info),
             determinism_components(Detism, CanFail, at_most_zero),
             contains_multisoln_goal(Goals)
         ->
@@ -110,62 +115,99 @@ contains_multisoln_goal(Goals) :-
 
 :- pred simplify_conj(cord(hlds_goal)::in, list(hlds_goal)::in,
     list(hlds_goal)::out, hlds_goal_info::in,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_conj(!.PrevGoals, [], Goals, _ConjInfo, !Info) :-
+simplify_conj(!.PrevGoals, [], Goals, _ConjInfo,
+        _NestedContext0, _InstMap0, !Common, !Info) :-
     Goals = cord.list(!.PrevGoals).
-simplify_conj(!.PrevGoals, [Goal0 | Goals0], Goals, ConjInfo, !Info) :-
-    Info0 = !.Info,
+simplify_conj(!.PrevGoals, [Goal0 | Goals0], Goals, ConjInfo,
+        NestedContext0, InstMap0, !Common, !Info) :-
     % Flatten nested conjunctions in the original code.
     ( Goal0 = hlds_goal(conj(plain_conj, SubGoals), _) ->
         Goals1 = SubGoals ++ Goals0,
-        simplify_conj(!.PrevGoals, Goals1, Goals, ConjInfo, !Info)
+        simplify_conj(!.PrevGoals, Goals1, Goals, ConjInfo,
+            NestedContext0, InstMap0, !Common, !Info)
     ;
-        simplify_goal(Goal0, Goal1, !Info),
+        Common0 = !.Common,
+        simplify_goal(Goal0, Goal1, NestedContext0, InstMap0, !Common, !Info),
         (
             % Flatten nested conjunctions in the transformed code.
             Goal1 = hlds_goal(conj(plain_conj, SubGoals1), _)
         ->
-            simplify_info_undo_goal_updates(Info0, !Info),
+            % Note that this simplifies everything inside Goal1 AGAIN.
+            % We want some of this (for example, structures recorded
+            % in Common while processing SubGoals1 can sometimes be used
+            % to optimize Goals0), but probably most of the work done
+            % by this resimplification is wasted.
+            %
+            % XXX Look for a way to test for the simplifications enabled
+            % by the change from Goal0 to Goal1, without trying to redo
+            % simplifications unaffected by that change.
+            % For example, we could record the goal_ids of goals that
+            % simplify.m left untouched in this pass, and return immediately
+            % if asked to simplify them again. Unfortunately, just figuring
+            % out which goals are touched and which are not is not easy.
+            % (Due to the rebuilding of hlds_goal structures from exprs and
+            % infos, the address may change even if the content does not.)
+            %
+            % Note that we cannot process Goals1 using the Common derived
+            % from processing Goal1. If we did that, and Goal1 contained
+            % X = f(Y1), then that common would remember that, and when
+            % processing Goals1, simplify_conj would replace that unification
+            % with X = X, thus "optimising out" the common structure.
             Goals1 = SubGoals1 ++ Goals0,
-            simplify_conj(!.PrevGoals, Goals1, Goals, ConjInfo, !Info)
+            !:Common = Common0,
+            simplify_conj(!.PrevGoals, Goals1, Goals, ConjInfo,
+                NestedContext0, InstMap0, !Common, !Info)
         ;
-            % Delete unreachable goals.
+            update_instmap(Goal1, InstMap0, InstMap1),
             (
-                simplify_info_get_instmap(!.Info, InstMap1),
-                instmap_is_unreachable(InstMap1)
-            ;
-                Goal1 = hlds_goal(_, GoalInfo1),
-                Detism1 = goal_info_get_determinism(GoalInfo1),
-                determinism_components(Detism1, _, at_most_zero)
-            )
-        ->
-            !:PrevGoals = cord.snoc(!.PrevGoals, Goal1),
-            (
-                ( Goal1 = hlds_goal(disj([]), _)
-                ; Goals0 = []
+                % Delete unreachable goals.
+                (
+                    % This test is here mostly for the sake of completeness.
+                    % It rarely finds anything to delete, because
+                    % - we InstMap1 from Goal1's instmap delta,
+                    % - the delta is created during mode analysis, and
+                    % - mode analysis itself deletes the unreachable conjuncts
+                    %   after a conjunct whose instmap delta is unreachable.
+                    instmap_is_unreachable(InstMap1)
+                ;
+                    Goal1 = hlds_goal(_, GoalInfo1),
+                    Detism1 = goal_info_get_determinism(GoalInfo1),
+                    determinism_components(Detism1, _, at_most_zero)
                 )
             ->
-                true
+                !:PrevGoals = cord.snoc(!.PrevGoals, Goal1),
+                (
+                    ( Goal1 = hlds_goal(disj([]), _)
+                    ; Goals0 = []
+                    )
+                ->
+                    % XXX If Goals0 = [], why don't we add an explicit failure?
+                    true
+                ;
+                    % We insert an explicit failure at the end of the
+                    % non-succeeding conjunction. This is necessary, since
+                    % the unreachability of the instmap could have been derived
+                    % using inferred determinism information. Without the
+                    % explicit fail goal, mode errors could result if mode
+                    % analysis is rerun, since according to the language
+                    % specification, mode analysis does not use inferred
+                    % determinism information when deciding what can never
+                    % succeed.
+                    Goal0 = hlds_goal(_, GoalInfo0),
+                    Context = goal_info_get_context(GoalInfo0),
+                    FailGoal = fail_goal_with_context(Context),
+                    !:PrevGoals = cord.snoc(!.PrevGoals, FailGoal)
+                ),
+                Goals = cord.list(!.PrevGoals)
             ;
-                % We insert an explicit failure at the end of the
-                % non-succeeding conjunction. This is necessary, since
-                % the unreachability of the instmap could have been derived
-                % using inferred determinism information. Without the
-                % explicit fail goal, mode errors could result if mode
-                % analysis is rerun, since according to the language
-                % specification, mode analysis does not use inferred
-                % determinism information when deciding what can never succeed.
-                Goal0 = hlds_goal(_, GoalInfo0),
-                Context = goal_info_get_context(GoalInfo0),
-                FailGoal = fail_goal_with_context(Context),
-                !:PrevGoals = cord.snoc(!.PrevGoals, FailGoal)
-            ),
-            Goals = cord.list(!.PrevGoals)
-        ;
-            !:PrevGoals = cord.snoc(!.PrevGoals, Goal1),
-            simplify_info_update_instmap(Goal1, !Info),
-            simplify_conj(!.PrevGoals, Goals0, Goals, ConjInfo, !Info)
+                !:PrevGoals = cord.snoc(!.PrevGoals, Goal1),
+                simplify_conj(!.PrevGoals, Goals0, Goals, ConjInfo,
+                    NestedContext0, InstMap1, !Common, !Info)
+            )
         )
     ).
 
@@ -210,8 +252,9 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
     ( map.is_empty(Subn1) ->
         Goals = Goals0
     ;
-        renaming_transitive_closure(Subn1, Subn),
         list.reverse(RevGoals, Goals1),
+        % XXX Can we delay this until we return to the top level?
+        renaming_transitive_closure(Subn1, Subn),
         rename_vars_in_goals(need_not_rename, Subn, Goals1, Goals),
         map.keys(Subn0, RemovedVars),
         varset.delete_vars(RemovedVars, VarSet0, VarSet),
@@ -307,7 +350,8 @@ var_is_named(VarSet, Var) :-
 %---------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-simplify_goal_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
+        NestedContext0, InstMap0, !Common, !Info) :-
     (
         Goals0 = [],
         Context = goal_info_get_context(GoalInfo0),
@@ -315,18 +359,18 @@ simplify_goal_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     ;
         Goals0 = [SingleGoal0],
         simplify_goal(SingleGoal0, hlds_goal(SingleGoal, SingleGoalInfo),
-            !Info),
+            NestedContext0, InstMap0, !Common, !Info),
         simplify_maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal,
             GoalExpr, GoalInfo, !Info)
     ;
         Goals0 = [_, _ | _],
         ( simplify_do_ignore_par_conjunctions(!.Info) ->
             simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
-                !Info)
+                NestedContext0, InstMap0, !Common, !Info)
         ;
             GoalInfo = GoalInfo0,
-            simplify_info_get_common_info(!.Info, InitialCommonInfo),
-            simplify_par_conjuncts(Goals0, Goals, InitialCommonInfo, !Info),
+            simplify_par_conjuncts(Goals0, Goals,
+                NestedContext0, InstMap0, !.Common, !Info),
             GoalExpr = conj(parallel_conj, Goals),
             simplify_info_set_has_parallel_conj(yes, !Info)
         )
@@ -358,15 +402,17 @@ simplify_goal_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     % generate warnings for them.
     %
 :- pred simplify_par_conjuncts(list(hlds_goal)::in, list(hlds_goal)::out,
-    common_info::in, simplify_info::in, simplify_info::out) is det.
+    simplify_nested_context::in, instmap::in, common_info::in,
+    simplify_info::in, simplify_info::out) is det.
 
-simplify_par_conjuncts([], [], _, !Info).
-simplify_par_conjuncts([Goal0 |Goals0], [Goal | Goals], InitialCommonInfo,
-        !Info) :-
-    simplify_info_set_common_info(InitialCommonInfo, !Info),
-    simplify_goal(Goal0, Goal, !Info),
-    simplify_info_update_instmap(Goal, !Info),
-    simplify_par_conjuncts(Goals0, Goals, InitialCommonInfo, !Info).
+simplify_par_conjuncts([], [], _NestedContext0, _InstMap0, _Common0, !Info).
+simplify_par_conjuncts([Goal0 |Goals0], [Goal | Goals],
+        NestedContext0, InstMap0, Common0, !Info) :-
+    simplify_goal(Goal0, Goal,
+        NestedContext0, InstMap0, Common0, _Common1, !Info),
+    update_instmap(Goal, InstMap0, InstMap1),
+    simplify_par_conjuncts(Goals0, Goals,
+        NestedContext0, InstMap1, Common0, !Info).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.simplify.simplify_goal_conj.

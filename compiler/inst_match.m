@@ -1047,11 +1047,10 @@ inst_matches_final_typed(InstA, InstB, Type, ModuleInfo) :-
     inst_match_info::in, inst_match_info::out) is semidet.
 
 inst_matches_final_mt(InstA, InstB, MaybeType, !Info) :-
-    ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
-    Expansions0 = !.Info ^ imi_expansions,
     ( InstA = InstB ->
         true
     ;
+        ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
         Expansions0 = !.Info ^ imi_expansions,
         ( expansion_insert_new(ThisExpansion, Expansions0, Expansions) ->
             !Info ^ imi_expansions := Expansions,
@@ -2412,13 +2411,13 @@ inst_contains_instname_2(Inst, ModuleInfo, InstName, Contains, !Expansions) :-
         ( InstName = ThisInstName ->
             Contains = yes
         ;
-            ( set.member(ThisInstName, !.Expansions) ->
-                Contains = no
-            ;
+            ( set.insert_new(ThisInstName, !Expansions) ->
                 inst_lookup(ModuleInfo, ThisInstName, ThisInst),
                 set.insert(ThisInstName, !Expansions),
                 inst_contains_instname_2(ThisInst, ModuleInfo, InstName,
                     Contains, !Expansions)
+            ;
+                Contains = no
             )
         )
     ;

@@ -91,9 +91,11 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.det_util.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.format_call.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.simplify.simplify_info.
+:- import_module hlds.code_model.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module libs.
@@ -163,8 +165,19 @@ simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo)  :-
 simplify_goal_update_vars_in_proc(SimplifyTasks, !ModuleInfo,
         PredId, ProcId, !ProcInfo, InstMap0, !Goal, CostDelta) :-
     simplify_info_init(!.ModuleInfo, PredId, ProcId, !.ProcInfo,
-        InstMap0, SimplifyTasks, SimplifyInfo0),
-    simplify_top_level_goal(!Goal, SimplifyInfo0, SimplifyInfo),
+        SimplifyTasks, SimplifyInfo0),
+    % The nested context we construct is probably a lie; we don't actually
+    % know whether we are inside a goal duplicated for a switch, or a lambda,
+    % or a model_non procedure. However, this should be ok. The nested context
+    % is used for deciding what warnings and errors to generate, and
+    % we are not interested in those.
+    InsideDuplForSwitch = no,
+    NumEnclosingLambdas = 0,
+    ProcIsModelNon = no,
+    NestedContext0 = simplify_nested_context(InsideDuplForSwitch,
+        NumEnclosingLambdas, ProcIsModelNon),
+    simplify_top_level_goal(!Goal, NestedContext0, InstMap0,
+        SimplifyInfo0, SimplifyInfo),
 
     simplify_info_get_module_info(SimplifyInfo, !:ModuleInfo),
 
@@ -224,12 +237,28 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
         FormatSpecs = []
     ),
 
-    proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
     simplify_info_init(!.ModuleInfo, PredId, ProcId, !.ProcInfo,
-        InstMap0, SimplifyTasks, Info0),
+        SimplifyTasks, Info0),
+
+    InsideDuplForSwitch = no,
+    NumEnclosingLambdas = 0,
+    CodeModel = proc_info_interface_code_model(!.ProcInfo),
+    (
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
+        ProcIsModelNon = no
+    ;
+        CodeModel = model_non,
+        ProcIsModelNon = yes(imp_whole_proc)
+    ),
+    NestedContext0 = simplify_nested_context(InsideDuplForSwitch,
+        NumEnclosingLambdas, ProcIsModelNon),
+    proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
-    simplify_top_level_goal(Goal0, Goal, Info0, Info),
+    simplify_top_level_goal(Goal0, Goal, NestedContext0, InstMap0,
+        Info0, Info),
     proc_info_set_goal(Goal, !ProcInfo),
 
     simplify_info_get_varset(Info, VarSet0),
@@ -451,9 +480,10 @@ simplify_proc_maybe_warn_about_duplicates(ModuleInfo, PredId, ProcInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred simplify_top_level_goal(hlds_goal::in, hlds_goal::out,
+    simplify_nested_context::in, instmap::in,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_top_level_goal(!Goal, !Info) :-
+simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
     % Simplification is done in two passes. The first pass performs common
     % structure and duplicate call elimination. The second pass performs excess
     % assignment elimination and cleans up the code after the first pass.
@@ -465,30 +495,30 @@ simplify_top_level_goal(!Goal, !Info) :-
     some [!SimplifyTasks] (
         simplify_info_get_simplify_tasks(!.Info, !:SimplifyTasks),
         OriginalSimplifyTasks = !.SimplifyTasks,
-        simplify_info_get_instmap(!.Info, InstMap0),
         (
             ( simplify_do_common_struct(!.Info)
             ; simplify_do_opt_duplicate_calls(!.Info)
             )
         ->
-            !SimplifyTasks ^ do_do_once := no,
+            !SimplifyTasks ^ do_mark_code_model_changes := no,
             !SimplifyTasks ^ do_excess_assign := no,
             simplify_info_set_simplify_tasks(!.SimplifyTasks, !Info),
 
-            do_process_top_level_goal(!Goal, !Info),
+            do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info),
 
             !:SimplifyTasks = OriginalSimplifyTasks,
             !SimplifyTasks ^ do_warn_simple_code := no,
             !SimplifyTasks ^ do_warn_duplicate_calls := no,
             !SimplifyTasks ^ do_common_struct := no,
             !SimplifyTasks ^ do_opt_duplicate_calls := no,
-            simplify_info_reinit(!.SimplifyTasks, InstMap0, !Info)
+            simplify_info_reinit(!.SimplifyTasks, !Info)
         ;
             true
         ),
         % On the second pass do excess assignment elimination and
         % some cleaning up after the common structure pass.
-        do_process_top_level_goal(!Goal, !Info),
+        do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info),
+
         simplify_info_get_found_contains_trace(!.Info, FoundContainsTrace),
         (
             FoundContainsTrace = no
@@ -499,15 +529,16 @@ simplify_top_level_goal(!Goal, !Info) :-
     ).
 
 :- pred do_process_top_level_goal(hlds_goal::in, hlds_goal::out,
+    simplify_nested_context::in, instmap::in,
     simplify_info::in, simplify_info::out) is det.
 
-do_process_top_level_goal(!Goal, !Info) :-
+do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
     !.Goal = hlds_goal(_, GoalInfo0),
     Detism = goal_info_get_determinism(GoalInfo0),
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
-    simplify_info_get_instmap(!.Info, InstMap0),
 
-    simplify_goal(!Goal, !Info),
+    simplify_goal(!Goal, NestedContext0, InstMap0,
+        common_info_init, _Common, !Info),
 
     simplify_info_get_should_requantify(!.Info, ShouldRequantify),
     (

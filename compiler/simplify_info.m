@@ -19,33 +19,60 @@
 :- module check_hlds.simplify.simplify_info.
 :- interface.
 
-:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.instmap.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.
+:- import_module maybe.
 
 %---------------------------------------------------------------------------%
+
+:- type innermost_proc
+    --->    imp_whole_proc
+            % The innermost proc is the whole original procedure.
+    ;       imp_lambda(prog_context).
+            % The innermost proc is a lambda expression
+            % at the given source location, which a later compiler pass
+            % will transform into a separate procedure.
+
+:- type simplify_nested_context
+    --->    simplify_nested_context(
+                % Are we currently inside a goal that was duplicated
+                % for a switch?
+                snc_inside_dupl_for_switch  :: bool,
+
+                % Count of the number of lambdas which enclose
+                % the current goal.
+                snc_num_enclosing_lambdas   :: int,
+
+                % Can the procedure we are inside be invoked from an
+                % all-solutions predicate?
+                % If we are inside one or more lambda expressions,
+                % the relevant procedure is the innermost lambda,
+                % which will later be transformed into a separate procedure.
+                % If yes, identify the procedure.
+                snc_proc_is_model_non       :: maybe(innermost_proc)
+            ).
+
+%----------------------------------------------------------------------------%
 
 :- type simplify_info.
 
     % Initialise the simplify_info.
     %
 :- pred simplify_info_init(module_info::in, pred_id::in, proc_id::in,
-    proc_info::in, instmap::in, simplify_tasks::in, simplify_info::out)
-    is det.
+    proc_info::in, simplify_tasks::in, simplify_info::out) is det.
 
     % Reinitialise the simplify_info before reprocessing a goal.
     %
-:- pred simplify_info_reinit(simplify_tasks::in, instmap::in,
+:- pred simplify_info_reinit(simplify_tasks::in,
     simplify_info::in, simplify_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -68,12 +95,6 @@
 :- pred simplify_info_incr_cost_delta(int::in,
     simplify_info::in, simplify_info::out) is det.
 
-:- pred simplify_info_enter_lambda(simplify_info::in, simplify_info::out)
-    is det.
-:- pred simplify_info_leave_lambda(simplify_info::in, simplify_info::out)
-    is det.
-:- pred simplify_info_inside_lambda(simplify_info::in) is semidet.
-
 :- pred simplify_info_apply_substitutions_and_duplicate(prog_var::in,
     prog_var::in, tsubst::in, simplify_info::in, simplify_info::out) is det.
 
@@ -87,20 +108,15 @@
 :- pred simplify_info_get_module_info(simplify_info::in, module_info::out)
     is det.
 :- pred simplify_info_get_var_types(simplify_info::in, vartypes::out) is det.
-:- pred simplify_info_get_instmap(simplify_info::in, instmap::out) is det.
-:- pred simplify_info_get_inside_duplicated_for_switch(simplify_info::in,
-    bool::out) is det.
-:- pred simplify_info_get_fully_strict(simplify_info::in, bool::out) is det.
-:- pred simplify_info_get_common_info(simplify_info::in, common_info::out)
+:- pred simplify_info_get_varset(simplify_info::in, prog_varset::out) is det.
+:- pred simplify_info_get_rtti_varmaps(simplify_info::in, rtti_varmaps::out)
     is det.
+:- pred simplify_info_get_fully_strict(simplify_info::in, bool::out) is det.
 
 :- pred simplify_info_get_pred_proc_id(simplify_info::in,
     pred_id::out, proc_id::out) is det.
-:- pred simplify_info_get_varset(simplify_info::in, prog_varset::out) is det.
 :- pred simplify_info_get_inst_varset(simplify_info::in,
     inst_varset::out) is det.
-:- pred simplify_info_get_rtti_varmaps(simplify_info::in, rtti_varmaps::out)
-    is det.
 :- pred simplify_info_get_elim_vars(simplify_info::in,
     list(list(prog_var))::out) is det.
 :- pred simplify_info_get_error_specs(simplify_info::in, list(error_spec)::out)
@@ -110,8 +126,6 @@
 :- pred simplify_info_get_should_rerun_det(simplify_info::in, bool::out)
     is det.
 :- pred simplify_info_get_cost_delta(simplify_info::in, int::out) is det.
-:- pred simplify_info_get_enclosing_lambdas(simplify_info::in, int::out)
-    is det.
 :- pred simplify_info_get_has_parallel_conj(simplify_info::in, bool::out)
     is det.
 :- pred simplify_info_get_found_contains_trace(simplify_info::in, bool::out)
@@ -124,17 +138,11 @@
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_var_types(vartypes::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_instmap(instmap::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_inside_duplicated_for_switch(bool::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_common_info(common_info::in,
-    simplify_info::in, simplify_info::out) is det.
-
 :- pred simplify_info_set_varset(prog_varset::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_rtti_varmaps(rtti_varmaps::in,
     simplify_info::in, simplify_info::out) is det.
+
 :- pred simplify_info_set_elim_vars(list(list(prog_var))::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_error_specs(list(error_spec)::in,
@@ -144,8 +152,6 @@
 :- pred simplify_info_set_should_rerun_det(
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_cost_delta(int::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_enclosing_lambdas(int::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_has_parallel_conj(bool::in,
     simplify_info::in, simplify_info::out) is det.
@@ -160,7 +166,7 @@
 :- pred simplify_do_warn_duplicate_calls(simplify_info::in) is semidet.
 :- pred simplify_do_format_calls(simplify_info::in) is semidet.
 :- pred simplify_do_warn_obsolete(simplify_info::in) is semidet.
-:- pred simplify_do_once(simplify_info::in) is semidet.
+:- pred simplify_do_mark_code_model_changes(simplify_info::in) is semidet.
 :- pred simplify_do_after_front_end(simplify_info::in) is semidet.
 :- pred simplify_do_excess_assign(simplify_info::in) is semidet.
 :- pred simplify_do_elim_removable_scopes(simplify_info::in) is semidet.
@@ -189,7 +195,10 @@
 
 :- type simplify_info
     --->    simplify_info(
-                % The eight most frequently used fields.
+                % The most frequently used fields.
+                % XXX Move another field here from simplify_sub_info
+                % to make eight. Boehm will use eight words even for
+                % seven fields.
 
                 % The tasks we do in this invocation of simplification.
 /* 1 */         simp_simplify_tasks         :: simplify_tasks,
@@ -199,34 +208,25 @@
                 % may be out of date in the module_info.
 /* 2 */         simp_module_info            :: module_info,
 
-                % The types of the variables in the procedure being simplified.
-/* 3 */         simp_vartypes               :: vartypes,
-
-                % The instmap at the current point in the procedure.
-/* 4 */         simp_instmap                :: instmap,
-
-                % Are we currently inside a goal that was duplicated
-                % for a switch?
-/* 5 */         simp_inside_dupl_for_switch :: bool,
+                % Some fields of the proc_info of the procedure being
+                % simplified.
+/* 3 */         simp_varset                 :: prog_varset,
+/* 4 */         simp_vartypes               :: vartypes,
+/* 5 */         simp_rtti_varmaps           :: rtti_varmaps,
 
                 % The value of the --fully-strict option.
 /* 6 */         simp_fully_strict           :: bool,
 
-                % Info about common subexpressions.
-/* 7 */         simp_common_info            :: common_info,
-
-/* 8 */         simp_sub_info               :: simplify_sub_info
+/* 7 */         simp_sub_info               :: simplify_sub_info
             ).
 
 :- type simplify_sub_info
     --->    simplify_sub_info(
                 % The id of the procedure we are simplifying, and some of the
-                % fields of its proc_infos.
+                % fields of its proc_info.
                 ssimp_pred_id               :: pred_id,
                 ssimp_proc_id               :: proc_id,
-                ssimp_varset                :: prog_varset,
                 ssimp_inst_varset           :: inst_varset,
-                ssimp_rtti_varmaps          :: rtti_varmaps,
 
                 % The variables we have eliminated. Each list of vars consists
                 % of a list of consecutive variable numbers in ascending order.
@@ -244,10 +244,6 @@
                 % Measure of the improvement in the goal from simplification.
                 ssimp_cost_delta            :: int,
 
-                % Count of the number of lambdas which enclose
-                % the current goal.
-                ssimp_enclosing_lambdas     :: int,
-
                 % Have we seen a parallel conjunction?
                 ssimp_has_parallel_conj     :: bool,
 
@@ -259,26 +255,23 @@
                 ssimp_has_user_event        :: bool
             ).
 
-simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, InstMap,
-        SimplifyTasks, Info) :-
+simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
+        Info) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    SubInfo = simplify_sub_info(PredId, ProcId, VarSet, InstVarSet,
-        RttiVarMaps, [], [], no, no, 0, 0, no, no, no),
-    Info = simplify_info(SimplifyTasks, ModuleInfo, VarTypes, InstMap, no,
-        FullyStrict, common_info_init, SubInfo).
+    SubInfo = simplify_sub_info(PredId, ProcId, InstVarSet,
+        [], [], no, no, 0, no, no, no),
+    Info = simplify_info(SimplifyTasks, ModuleInfo, VarSet, VarTypes,
+        RttiVarMaps, FullyStrict, SubInfo).
 
-simplify_info_reinit(SimplifyTasks, InstMap0, !Info) :-
+simplify_info_reinit(SimplifyTasks, !Info) :-
     !Info ^ simp_simplify_tasks := SimplifyTasks,
-    !Info ^ simp_common_info := common_info_init,
-    !Info ^ simp_instmap := InstMap0,
     !Info ^ simp_sub_info ^ ssimp_should_requantify := no,
     !Info ^ simp_sub_info ^ ssimp_should_rerun_det := no,
-    !Info ^ simp_sub_info ^ ssimp_enclosing_lambdas := 0,
     !Info ^ simp_sub_info ^ ssimp_has_parallel_conj := no,
     !Info ^ simp_sub_info ^ ssimp_has_user_event := no.
 
@@ -311,24 +304,6 @@ simplify_info_incr_cost_delta(Incr, !Info) :-
     CostDelta = CostDelta0 + Incr,
     simplify_info_set_cost_delta(CostDelta, !Info).
 
-simplify_info_enter_lambda(!Info) :-
-    simplify_info_get_enclosing_lambdas(!.Info, Lambdas0),
-    Lambdas = Lambdas0 + 1,
-    simplify_info_set_enclosing_lambdas(Lambdas, !Info).
-
-simplify_info_leave_lambda(!Info) :-
-    simplify_info_get_enclosing_lambdas(!.Info, Lambdas0),
-    Lambdas = Lambdas0 - 1,
-    ( Lambdas >= 0 ->
-        simplify_info_set_enclosing_lambdas(Lambdas, !Info)
-    ;
-        unexpected($module, $pred, "left too many lambdas")
-    ).
-
-simplify_info_inside_lambda(Info) :-
-    simplify_info_get_enclosing_lambdas(Info, Lambdas),
-    Lambdas > 0.
-
 simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar, TSubst,
         !Info) :-
     simplify_info_get_var_types(!.Info, VarTypes0),
@@ -347,27 +322,21 @@ simplify_info_get_simplify_tasks(Info, Tasks) :-
     Tasks = Info ^ simp_simplify_tasks.
 simplify_info_get_module_info(Info, MI) :-
     MI = Info ^ simp_module_info.
+simplify_info_get_varset(Info, VS) :-
+    VS = Info ^ simp_varset.
 simplify_info_get_var_types(Info, VT) :-
     VT = Info ^ simp_vartypes.
-simplify_info_get_instmap(Info, IM) :-
-    IM = Info ^ simp_instmap.
-simplify_info_get_inside_duplicated_for_switch(Info, IDFS) :-
-    IDFS = Info ^ simp_inside_dupl_for_switch.
+simplify_info_get_rtti_varmaps(Info, RVM) :-
+    RVM = Info ^ simp_rtti_varmaps.
 simplify_info_get_fully_strict(Info, FS) :-
     FS = Info ^ simp_fully_strict.
-simplify_info_get_common_info(Info, CI) :-
-    CI = Info ^ simp_common_info.
 
 simplify_info_get_pred_proc_id(Info, PredId, ProcId) :-
     SubInfo = Info ^ simp_sub_info,
     PredId = SubInfo ^ ssimp_pred_id,
     ProcId = SubInfo ^ ssimp_proc_id.
-simplify_info_get_varset(Info, VS) :-
-    VS = Info ^ simp_sub_info ^ ssimp_varset.
 simplify_info_get_inst_varset(Info, IVS) :-
     IVS = Info ^ simp_sub_info ^ ssimp_inst_varset.
-simplify_info_get_rtti_varmaps(Info, RVM) :-
-    RVM = Info ^ simp_sub_info ^ ssimp_rtti_varmaps.
 simplify_info_get_elim_vars(Info, EV) :-
     EV = Info ^ simp_sub_info ^ ssimp_elim_vars.
 simplify_info_get_error_specs(Info, Specs) :-
@@ -378,8 +347,6 @@ simplify_info_get_should_rerun_det(Info, RRD) :-
     RRD = Info ^ simp_sub_info ^ ssimp_should_rerun_det.
 simplify_info_get_cost_delta(Info, CD) :-
     CD = Info ^ simp_sub_info ^ ssimp_cost_delta.
-simplify_info_get_enclosing_lambdas(Info, L) :-
-    L = Info ^ simp_sub_info ^ ssimp_enclosing_lambdas.
 simplify_info_get_has_parallel_conj(Info, HPC) :-
     HPC = Info ^ simp_sub_info ^ ssimp_has_parallel_conj.
 simplify_info_get_found_contains_trace(Info, FCT) :-
@@ -391,19 +358,13 @@ simplify_info_set_simplify_tasks(Tasks, !Info) :-
     !Info ^ simp_simplify_tasks := Tasks.
 simplify_info_set_module_info(MI, !Info) :-
     !Info ^ simp_module_info := MI.
+simplify_info_set_varset(VS, !Info) :-
+    !Info ^ simp_varset := VS.
 simplify_info_set_var_types(VT, !Info) :-
     !Info ^ simp_vartypes := VT.
-simplify_info_set_instmap(IM, !Info) :-
-    !Info ^ simp_instmap := IM.
-simplify_info_set_inside_duplicated_for_switch(IDFS, !Info) :-
-    !Info ^ simp_inside_dupl_for_switch := IDFS.
-simplify_info_set_common_info(CI, !Info) :-
-    !Info ^ simp_common_info := CI.
-
-simplify_info_set_varset(VS, !Info) :-
-    !Info ^ simp_sub_info ^ ssimp_varset := VS.
 simplify_info_set_rtti_varmaps(RVM, !Info) :-
-    !Info ^ simp_sub_info ^ ssimp_rtti_varmaps := RVM.
+    !Info ^ simp_rtti_varmaps := RVM.
+
 simplify_info_set_elim_vars(EV, !Info) :-
     !Info ^ simp_sub_info ^ ssimp_elim_vars := EV.
 simplify_info_set_error_specs(Specs, !Info) :-
@@ -414,8 +375,6 @@ simplify_info_set_should_rerun_det(!Info) :-
     !Info ^ simp_sub_info ^ ssimp_should_rerun_det := yes.
 simplify_info_set_cost_delta(CD, !Info) :-
     !Info ^ simp_sub_info ^ ssimp_cost_delta := CD.
-simplify_info_set_enclosing_lambdas(L, !Info) :-
-    !Info ^ simp_sub_info ^ ssimp_enclosing_lambdas := L.
 simplify_info_set_has_parallel_conj(HPC, !Info) :-
     !Info ^ simp_sub_info ^ ssimp_has_parallel_conj := HPC.
 simplify_info_set_found_contains_trace(FCT, !Info) :-
@@ -437,9 +396,9 @@ simplify_do_format_calls(Info) :-
 simplify_do_warn_obsolete(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_warn_obsolete = yes.
-simplify_do_once(Info) :-
+simplify_do_mark_code_model_changes(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_do_once = yes.
+    SimplifyTasks ^ do_mark_code_model_changes = yes.
 simplify_do_after_front_end(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_after_front_end = yes.

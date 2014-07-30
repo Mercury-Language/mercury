@@ -17,15 +17,19 @@
 :- module check_hlds.simplify.simplify_goal_ite.
 :- interface.
 
+:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
 
     % Handle simplifications of if-then-else goals.
     %
 :- pred simplify_goal_ite(
     hlds_goal_expr::in(goal_expr_ite), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
     % Handle simplifications of negations.
@@ -33,15 +37,17 @@
 :- pred simplify_goal_neg(
     hlds_goal_expr::in(goal_expr_neg), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 :- implementation.
 
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
-:- import_module hlds.instmap.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.
@@ -54,7 +60,8 @@
 :- import_module require.
 :- import_module varset.
 
-simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+        NestedContext0, InstMap0, Common0, Common, !Info) :-
     % (A -> B ; C) is logically equivalent to (A, B ; ~A, C).
     % If the determinism of A means that one of these disjuncts
     % cannot succeed, then we replace the if-then-else with the
@@ -90,30 +97,10 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         goal_to_conj_list(Then0, ThenGoals),
         Goals = CondGoals ++ ThenGoals,
         simplify_goal(hlds_goal(conj(plain_conj, Goals), GoalInfo0),
-            hlds_goal(GoalExpr, GoalInfo), !Info),
-        simplify_info_get_inside_duplicated_for_switch(!.Info,
-            InsideDuplForSwitch),
-        (
-            InsideDuplForSwitch = yes
-            % Do not generate the warning, since it is quite likely to be
-            % spurious: though the condition cannot fail in this arm of the
-            % switch, it likely can fail in other arms that derive from
-            % the exact same piece of source code.
-        ;
-            InsideDuplForSwitch = no,
-            Context = goal_info_get_context(GoalInfo0),
-            Pieces = [words("Warning: the condition of this if-then-else"),
-                words("cannot fail.")],
-            Msg = simple_msg(Context,
-                [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-            Severity = severity_conditional(warn_simple_code, yes,
-                severity_warning, no),
-            Spec = error_spec(Severity,
-                phase_simplify(report_only_if_in_all_modes), [Msg]),
-            simplify_info_add_simple_code_spec(Spec, !Info)
-        ),
-        simplify_info_set_should_requantify(!Info),
-        simplify_info_set_should_rerun_det(!Info)
+            hlds_goal(GoalExpr, GoalInfo), NestedContext0, InstMap0,
+            Common0, Common, !Info),
+        maybe_warm_about_condition(GoalInfo0, NestedContext0, "cannot fail",
+            !Info)
     ;
         CondCanFail0 = can_fail,
         (
@@ -154,30 +141,10 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
             goal_to_conj_list(Else0, ElseList),
             List = [Cond | ElseList],
             simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
-                hlds_goal(GoalExpr, GoalInfo), !Info),
-            simplify_info_get_inside_duplicated_for_switch(!.Info,
-                InsideDuplForSwitch),
-            (
-                InsideDuplForSwitch = yes
-                % Do not generate the warning, since it is quite likely to be
-                % spurious: though the condition cannot succeed in this arm
-                % of the switch, it likely can succeed in other arms that
-                % derive from the exact same piece of source code.
-            ;
-                InsideDuplForSwitch = no,
-                Context = goal_info_get_context(GoalInfo0),
-                Pieces = [words("Warning: the condition of this if-then-else"),
-                    words("cannot succeed.")],
-                Msg = simple_msg(Context,
-                    [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-                Severity = severity_conditional(warn_simple_code, yes,
-                    severity_warning, no),
-                Spec = error_spec(Severity,
-                    phase_simplify(report_only_if_in_all_modes), [Msg]),
-                simplify_info_add_simple_code_spec(Spec, !Info)
-            ),
-            simplify_info_set_should_requantify(!Info),
-            simplify_info_set_should_rerun_det(!Info)
+                hlds_goal(GoalExpr, GoalInfo), NestedContext0, InstMap0,
+                Common0, Common, !Info),
+            maybe_warm_about_condition(GoalInfo0, NestedContext0,
+                "cannot succeed", !Info)
         ;
             ( CondSolns0 = at_most_one
             ; CondSolns0 = at_most_many
@@ -189,34 +156,70 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 goal_to_conj_list(Then0, ThenGoals),
                 Goals = CondGoals ++ ThenGoals,
                 simplify_goal(hlds_goal(conj(plain_conj, Goals), GoalInfo0),
-                    hlds_goal(GoalExpr, GoalInfo), !Info),
+                    hlds_goal(GoalExpr, GoalInfo), NestedContext0, InstMap0,
+                    Common0, Common, !Info),
                 simplify_info_set_should_requantify(!Info),
                 simplify_info_set_should_rerun_det(!Info)
             ;
                 simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
-                    GoalInfo0, GoalInfo, !Info)
+                    GoalInfo0, GoalInfo, NestedContext0, InstMap0,
+                    Common0, Common, !Info)
             )
         )
     ).
 
+:- pred maybe_warm_about_condition(hlds_goal_info::in,
+    simplify_nested_context::in, string::in,
+    simplify_info::in, simplify_info::out) is det.
+
+maybe_warm_about_condition(GoalInfo0, NestedContext0, Problem, !Info) :-
+    InsideDuplForSwitch = NestedContext0 ^ snc_inside_dupl_for_switch,
+    (
+        InsideDuplForSwitch = yes
+        % Do not generate the warning, since it is quite likely to be
+        % spurious: though the condition cannot fail/succeed in this arm
+        % of the switch, it likely can fail/succeed in other arms
+        % that derive from the exact same piece of source code.
+    ;
+        InsideDuplForSwitch = no,
+        Context = goal_info_get_context(GoalInfo0),
+        Pieces = [words("Warning: the condition of this if-then-else"),
+            words(Problem), suffix("."), nl],
+        Msg = simple_msg(Context,
+            [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+        Severity = severity_conditional(warn_simple_code, yes,
+            severity_warning, no),
+        Spec = error_spec(Severity,
+            phase_simplify(report_only_if_in_all_modes), [Msg]),
+        simplify_info_add_simple_code_spec(Spec, !Info)
+    ),
+    simplify_info_set_should_requantify(!Info),
+    simplify_info_set_should_rerun_det(!Info).
+
+%----------------------------------------------------------------------------%
+
 :- pred simplify_goal_ordinary_ite(list(prog_var)::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
-        GoalInfo0, GoalInfo, !Info) :-
+        GoalInfo0, GoalInfo, NestedContext0, InstMap0, Common0, Common,
+        !Info) :-
     % Recursively simplify the sub-goals, and rebuild the resulting
     % if-then-else.
 
-    Info0 = !.Info,
-    simplify_info_get_instmap(!.Info, InstMap0),
-    simplify_goal(Cond0, Cond, !Info),
-    simplify_info_update_instmap(Cond, !Info),
-    simplify_goal(Then0, Then, !Info),
-    simplify_info_post_branch_update(Info0, !Info),
-    simplify_goal(Else0, Else, !Info),
-    simplify_info_post_branch_update(Info0, !Info),
+    simplify_goal(Cond0, Cond, NestedContext0, InstMap0,
+        Common0, AfterCondCommon, !Info),
+    update_instmap(Cond, InstMap0, AfterCondInstMap0),
+    simplify_goal(Then0, Then, NestedContext0, AfterCondInstMap0,
+        AfterCondCommon, _AfterThenCommon, !Info),
+
+    simplify_goal(Else0, Else, NestedContext0, InstMap0,
+        Common0, _AfterElseCommon, !Info),
+
     Cond = hlds_goal(_, CondInfo),
     CondDelta = goal_info_get_instmap_delta(CondInfo),
     Then = hlds_goal(_, ThenInfo),
@@ -234,7 +237,7 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
         simplify_info_set_module_info(!.ModuleInfo, !Info)
     ),
     goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo1),
-    IfThenElse = if_then_else(Vars, Cond, Then, Else),
+    IfThenElseExpr = if_then_else(Vars, Cond, Then, Else),
 
     IfThenElseDetism0 = goal_info_get_determinism(GoalInfo0),
     determinism_components(IfThenElseDetism0, IfThenElseCanFail,
@@ -252,9 +255,13 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
         ; Else = hlds_goal(disj([]), _)
         )
     ->
-        simplify_info_undo_goal_updates(Info0, !Info),
-        simplify_goal_expr(IfThenElse, GoalExpr, GoalInfo1, GoalInfo, !Info)
+        simplify_goal_expr(IfThenElseExpr, GoalExpr, GoalInfo1, GoalInfo,
+            NestedContext0, InstMap0, Common0, Common, !Info)
     ;
+        % Any structures generated in one branch won't be available after the
+        % if-the-else as a whole if execution takes the other branch.
+        Common = Common0,
+
         simplify_info_get_module_info(!.Info, ModuleInfo),
         warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond,
             cond_can_switch_uncommitted, CanSwitch),
@@ -285,11 +292,12 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
         ),
         (
             % If-then-elses that are det or semidet may nevertheless contain
-            % nondet or multi conditions. If this happens, the if-then-else
-            % must be put inside a `scope' to appease the code generator.
-            % (Both the MLDS and LLDS back-ends rely on this.)
+            % nondet or multi conditions. If this happens, we put the
+            % if-then-else inside a commit scope, since the code generators
+            % need to know where they should change the code's execution
+            % mechanism.
 
-            simplify_do_once(!.Info),
+            simplify_do_mark_code_model_changes(!.Info),
             CondSolns = at_most_many,
             IfThenElseNumSolns \= at_most_many
         ->
@@ -297,9 +305,9 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
                 at_most_many),
             goal_info_set_determinism(InnerDetism, GoalInfo1, InnerInfo),
             GoalExpr = scope(commit(dont_force_pruning),
-                hlds_goal(IfThenElse, InnerInfo))
+                hlds_goal(IfThenElseExpr, InnerInfo))
         ;
-            GoalExpr = IfThenElse
+            GoalExpr = IfThenElseExpr
         ),
         GoalInfo = GoalInfo1
     ).
@@ -453,13 +461,13 @@ can_switch_on_type(TypeBody) = CanSwitchOnType :-
 
 %---------------------------------------------------------------------------%
 
-simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+        NestedContext0, InstMap0, Common0, Common, !Info) :-
     GoalExpr0 = negation(SubGoal0),
     % Can't use calls or unifications seen within a negation,
     % since non-local variables may not be bound within the negation.
-    simplify_info_get_common_info(!.Info, Common),
-    simplify_goal(SubGoal0, SubGoal1, !Info),
-    simplify_info_set_common_info(Common, !Info),
+    simplify_goal(SubGoal0, SubGoal1, NestedContext0, InstMap0,
+        Common0, _Common1, !Info),
     SubGoal1 = hlds_goal(_, SubGoalInfo1),
     Detism = goal_info_get_determinism(SubGoalInfo1),
     determinism_components(Detism, CanFail, MaxSoln),
@@ -510,7 +518,11 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     ;
         GoalExpr = negation(SubGoal1),
         GoalInfo = GoalInfo0
-    ).
+    ),
+    % Execution continues after the negation scope iff the goal inside the
+    % scope failed. We don't know when it failed, so we cannot depend on it
+    % having created any structures.
+    Common = Common0.
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.simplify.simplify_goal_ite.

@@ -37,11 +37,15 @@
     ;       simptask_warn_obsolete
             % --warn-obsolete
 
-    ;       simptask_do_once
-            % Run things that should be done once.
+    ;       simptask_mark_code_model_changes
+            % Some compiler passes generate HLDS in which changes in code model
+            % are implicit in the determinisms stored in the goal_infos of
+            % nested goals (such as a conjunction without outputs being
+            % semidet, and some conjuncts being nondet). Make these code model
+            % changes visible by adding a scope wrapper.
 
     ;       simptask_after_front_end
-            % Run things that should be done at the end of the front end.
+            % Do the tasks that should be done at the end of the front end.
 
     ;       simptask_excess_assigns
             % Remove excess assignment unifications.
@@ -80,7 +84,7 @@
                 do_warn_duplicate_calls     :: bool,
                 do_format_calls             :: bool,
                 do_warn_obsolete            :: bool,
-                do_do_once                  :: bool,
+                do_mark_code_model_changes  :: bool,
                 do_after_front_end          :: bool,
                 do_excess_assign            :: bool,
                 do_elim_removable_scopes    :: bool,
@@ -108,7 +112,7 @@
 
 simplify_tasks_to_list(SimplifyTasks) = List :-
     SimplifyTasks = simplify_tasks(WarnSimpleCode, WarnDupCalls,
-        DoFormatCalls, WarnObsolete, DoOnce,
+        DoFormatCalls, WarnObsolete, MarkCodeModelChanges,
         AfterFrontEnd, ExcessAssign, ElimRemovableScopes, OptDuplicateCalls,
         ConstantProp, CommonStruct, ExtraCommonStruct, RemoveParConjunctions),
     List =
@@ -116,11 +120,12 @@ simplify_tasks_to_list(SimplifyTasks) = List :-
         ( WarnDupCalls = yes -> [simptask_warn_duplicate_calls] ; [] ) ++
         ( DoFormatCalls = yes -> [simptask_format_calls] ; [] ) ++
         ( WarnObsolete = yes -> [simptask_warn_obsolete] ; [] ) ++
-        ( DoOnce = yes -> [simptask_do_once] ; [] ) ++
+        ( MarkCodeModelChanges = yes ->
+            [simptask_mark_code_model_changes] ; [] ) ++
         ( AfterFrontEnd = yes -> [simptask_after_front_end] ; [] ) ++
         ( ExcessAssign = yes -> [simptask_excess_assigns] ; [] ) ++
-        ( ElimRemovableScopes = yes -> [simptask_elim_removable_scopes] ; [] )
-            ++
+        ( ElimRemovableScopes = yes ->
+            [simptask_elim_removable_scopes] ; [] ) ++
         ( OptDuplicateCalls = yes -> [simptask_opt_duplicate_calls] ; [] ) ++
         ( ConstantProp = yes -> [simptask_constant_prop] ; [] ) ++
         ( CommonStruct = yes -> [simptask_common_struct] ; [] ) ++
@@ -133,7 +138,7 @@ list_to_simplify_tasks(List) =
         ( list.member(simptask_warn_duplicate_calls, List) -> yes ; no ),
         ( list.member(simptask_format_calls, List) -> yes ; no ),
         ( list.member(simptask_warn_obsolete, List) -> yes ; no ),
-        ( list.member(simptask_do_once, List) -> yes ; no ),
+        ( list.member(simptask_mark_code_model_changes, List) -> yes ; no ),
         ( list.member(simptask_after_front_end, List) -> yes ; no ),
         ( list.member(simptask_excess_assigns, List) -> yes ; no ),
         ( list.member(simptask_elim_removable_scopes, List) -> yes ; no ),
@@ -171,7 +176,7 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
     globals.lookup_bool_option(Globals, optimize_duplicate_calls,
         OptDuplicateCalls),
     globals.lookup_bool_option(Globals, constant_propagation, ConstantProp),
-    DoOnce = no,
+    MarkCodeModelChanges = no,
     AfterFrontEnd = no,
     ElimRemovableScopes = no,
     ExtraCommonStruct = no,
@@ -183,7 +188,7 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
         ( WarnDupCalls = yes, WarnThisPass = yes -> yes ; no),
         DoFormatCalls,
         ( WarnObsolete = yes, WarnThisPass = yes -> yes ; no),
-        DoOnce,
+        MarkCodeModelChanges,
         AfterFrontEnd,
         ExcessAssign,
         ElimRemovableScopes,

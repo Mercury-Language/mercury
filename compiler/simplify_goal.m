@@ -16,9 +16,11 @@
 :- module check_hlds.simplify.simplify_goal.
 :- interface.
 
+:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
 
     % Handle simplification of all goals.
     %
@@ -26,33 +28,39 @@
     % and its surrounding goals before invoking the goal-type-specific
     % simplification code on it.
     %
+    % simplify_goal and its goal-type-specific subcontractor predicates
+    % pass around information about the context surrounding the goal
+    % currently being analyzed in the simplify_nested_context argument.
+    % They pass around information about the program point just before
+    % the current goal in the instmap and common_info arguments.
+    % They pass around information that is global to the simplification
+    % process as a whole in the simplify_info arguments.
+    %
+    % These predicates return the common_info appropriate to the program
+    % point after the goal that was just analyzed in the common_info output
+    % argument. They do not return the new instmap, because it is not
+    % necessary. The two predicates that need to know the instmap
+    % after the goal that was just analyzed (simplify_goal_conj, after
+    % a conjunct, and simplify_goal_ite, after the condition)
+    % apply the goal's instmap delta themselves.
+    %
 :- pred simplify_goal(hlds_goal::in, hlds_goal::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
     % Invoke the goal-type-specific simplification code on the given goal.
     %
 :- pred simplify_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 %----------------------------------------------------------------------------%
 %
 % Utility predicates needed by the simplifications of several kinds of goals.
 %
-
-:- pred simplify_info_update_instmap(hlds_goal::in,
-    simplify_info::in, simplify_info::out) is det.
-
-    % Reset the instmap and seen calls for the next branch.
-    %
-:- pred simplify_info_post_branch_update(simplify_info::in, simplify_info::in,
-    simplify_info::out) is det.
-
-    % Undo updates to the simplify_info before redoing simplification
-    % on a goal.
-    %
-:- pred simplify_info_undo_goal_updates(simplify_info::in, simplify_info::in,
-    simplify_info::out) is det.
 
     % When removing a level of wrapping around a goal, if the determinisms
     % are not the same, we really need to rerun determinism analysis on the
@@ -69,7 +77,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.simplify_goal_call.
 :- import_module check_hlds.simplify.simplify_goal_conj.
 :- import_module check_hlds.simplify.simplify_goal_disj.
@@ -79,7 +86,6 @@
 :- import_module check_hlds.simplify.simplify_goal_unify.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
-:- import_module hlds.instmap.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -96,14 +102,12 @@
 :- import_module maybe.
 :- import_module require.
 
-simplify_goal(Goal0, Goal, !Info) :-
+simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common,!Info) :-
     Goal0 = hlds_goal(_, GoalInfo0),
-    simplify_info_get_inside_duplicated_for_switch(!.Info,
-        InsideDuplForSwitch),
     ( goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) ->
-        simplify_info_set_inside_duplicated_for_switch(yes, !Info)
+        NestedContext = NestedContext0 ^ snc_inside_dupl_for_switch := yes
     ;
-        true
+        NestedContext = NestedContext0
     ),
     ( goal_info_has_feature(GoalInfo0, feature_contains_trace) ->
         simplify_info_set_found_contains_trace(yes, !Info),
@@ -184,7 +188,6 @@ simplify_goal(Goal0, Goal, !Info) :-
         NonLocalVars = goal_info_get_nonlocals(GoalInfo0),
         simplify_info_get_module_info(!.Info, ModuleInfo),
         simplify_info_get_var_types(!.Info, VarTypes),
-        simplify_info_get_instmap(!.Info, InstMap0),
         instmap_delta_no_output_vars(ModuleInfo, VarTypes,
             InstMap0, InstMapDelta, NonLocalVars),
         ( Purity = purity_pure
@@ -268,12 +271,11 @@ simplify_goal(Goal0, Goal, !Info) :-
     ;
         Goal3 = Goal2
     ),
-    simplify_info_maybe_clear_structs(before, Goal3, !Info),
     Goal3 = hlds_goal(GoalExpr3, GoalInfo3),
-    simplify_goal_expr(GoalExpr3, GoalExpr4, GoalInfo3, GoalInfo4, !Info),
-    Goal4 = hlds_goal(GoalExpr4, GoalInfo4),
-    simplify_info_maybe_clear_structs(after, Goal4, !Info),
-    simplify_info_set_inside_duplicated_for_switch(InsideDuplForSwitch, !Info),
+    maybe_clear_common_structs(before, GoalExpr3, !.Info, !Common),
+    simplify_goal_expr(GoalExpr3, GoalExpr4, GoalInfo3, GoalInfo4,
+        NestedContext, InstMap0, !Common, !Info),
+    maybe_clear_common_structs(after, GoalExpr4, !.Info, !Common),
     enforce_unreachability_invariant(GoalInfo4, GoalInfo, !Info),
     Goal = hlds_goal(GoalExpr4, GoalInfo).
 
@@ -287,43 +289,55 @@ goal_is_call_to_builtin_false(hlds_goal(GoalExpr, _)) :-
 
 %----------------------------------------------------------------------------%
 
-simplify_goal_expr(!GoalExpr, !GoalInfo, !Info) :-
+simplify_goal_expr(!GoalExpr, !GoalInfo, NestedContext0,
+        InstMap0, !Common, !Info) :-
     (
         !.GoalExpr = conj(ConjType, Goals),
         (
             ConjType = plain_conj,
-            simplify_goal_plain_conj(Goals, !:GoalExpr, !GoalInfo, !Info)
+            simplify_goal_plain_conj(Goals, !:GoalExpr, !GoalInfo,
+                NestedContext0, InstMap0, !Common, !Info)
         ;
             ConjType = parallel_conj,
-            simplify_goal_parallel_conj(Goals, !:GoalExpr, !GoalInfo, !Info)
+            simplify_goal_parallel_conj(Goals, !:GoalExpr, !GoalInfo,
+                NestedContext0, InstMap0, !Common, !Info)
         )
     ;
         !.GoalExpr = disj(_),
-        simplify_goal_disj(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_disj(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
     ;
         !.GoalExpr = switch(_, _, _),
-        simplify_goal_switch(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_switch(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
     ;
         !.GoalExpr = if_then_else(_, _, _, _),
-        simplify_goal_ite(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_ite(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
     ;
         !.GoalExpr = negation(_),
-        simplify_goal_neg(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_neg(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
     ;
         !.GoalExpr = scope(_, _),
-        simplify_goal_scope(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_scope(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
     ;
         !.GoalExpr = unify(_, _, _, _, _),
-        simplify_goal_unify(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_unify(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
     ;
         !.GoalExpr = plain_call(_, _, _, _, _, _),
-        simplify_goal_plain_call(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_plain_call(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
     ;
         !.GoalExpr = generic_call(_, _, _, _, _),
-        simplify_goal_generic_call(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_generic_call(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
     ;
         !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        simplify_goal_foreign_proc(!GoalExpr, !GoalInfo, !Info)
+        simplify_goal_foreign_proc(!GoalExpr, !GoalInfo,
+            NestedContext0, InstMap0, !Common, !Info)
     ;
         !.GoalExpr = shorthand(ShortHand0),
         (
@@ -331,7 +345,8 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, !Info) :-
                 MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
             simplify_goal_atomic_goal(GoalType, Outer, Inner,
                 MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners,
-                !:GoalExpr, !GoalInfo, !Info)
+                !:GoalExpr, !GoalInfo,
+                NestedContext0, InstMap0, !Common, !Info)
         ;
             ShortHand0 = try_goal(_, _, _),
             % These should have been expanded out by now.
@@ -358,19 +373,16 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, !Info) :-
     % When doing deforestation, it may be better to remove
     % as many common structures as possible.
     %
-:- pred simplify_info_maybe_clear_structs(before_after::in, hlds_goal::in,
-    simplify_info::in, simplify_info::out) is det.
+:- pred maybe_clear_common_structs(before_after::in, hlds_goal_expr::in,
+    simplify_info::in, common_info::in, common_info::out) is det.
 
-simplify_info_maybe_clear_structs(BeforeAfter, Goal, !Info) :-
+maybe_clear_common_structs(BeforeAfter, GoalExpr, Info, !Common) :-
     (
-        simplify_do_common_struct(!.Info),
-        \+ simplify_do_extra_common_struct(!.Info),
-        Goal = hlds_goal(GoalExpr, _),
+        simplify_do_common_struct(Info),
+        \+ simplify_do_extra_common_struct(Info),
         will_flush(GoalExpr, BeforeAfter) = yes
     ->
-        simplify_info_get_common_info(!.Info, CommonInfo0),
-        common_info_clear_structs(CommonInfo0, CommonInfo),
-        simplify_info_set_common_info(CommonInfo, !Info)
+        common_info_clear_structs(!Common)
     ;
         true
     ).
@@ -521,23 +533,6 @@ enforce_unreachability_invariant(GoalInfo0, GoalInfo, !Info) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-simplify_info_update_instmap(Goal, !Info) :-
-    simplify_info_get_instmap(!.Info, InstMap0),
-    update_instmap(Goal, InstMap0, InstMap),
-    simplify_info_set_instmap(InstMap, !Info).
-
-simplify_info_post_branch_update(PreBranchInfo, PostBranchInfo0, Info) :-
-    simplify_info_get_instmap(PreBranchInfo, InstMap),
-    simplify_info_set_instmap(InstMap, PostBranchInfo0, PostBranchInfo1),
-    simplify_info_get_common_info(PreBranchInfo, Common),
-    simplify_info_set_common_info(Common, PostBranchInfo1, Info).
-
-simplify_info_undo_goal_updates(Info0, !Info) :-
-    simplify_info_get_common_info(Info0, CommonInfo0),
-    simplify_info_set_common_info(CommonInfo0, !Info),
-    simplify_info_get_instmap(Info0, InstMap),
-    simplify_info_set_instmap(InstMap, !Info).
 
 simplify_maybe_wrap_goal(OuterGoalInfo, InnerGoalInfo, GoalExpr1,
         GoalExpr, GoalInfo, !Info) :-

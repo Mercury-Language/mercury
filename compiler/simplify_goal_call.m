@@ -16,9 +16,11 @@
 :- module check_hlds.simplify.simplify_goal_call.
 :- interface.
 
+:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -30,6 +32,8 @@
 :- pred simplify_goal_plain_call(
     hlds_goal_expr::in(goal_expr_plain_call), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
     % simplify_library_call(ModuleName, ProcName, ModeNum, CrossCompiling,
@@ -54,6 +58,8 @@
 :- pred simplify_goal_generic_call(
     hlds_goal_expr::in(goal_expr_generic_call), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
     % Handle simplifications of calls to foreign code.
@@ -61,13 +67,14 @@
 :- pred simplify_goal_foreign_proc(
     hlds_goal_expr::in(goal_expr_foreign_proc), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 %----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module check_hlds.simplify.common.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
@@ -75,7 +82,6 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
@@ -94,7 +100,8 @@
 :- import_module pair.
 :- import_module varset.
 
-simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+        NestedContext0, InstMap0, Common0, Common, !Info) :-
     GoalExpr0 = plain_call(PredId, ProcId, Args, IsBuiltin, _, _),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -114,18 +121,20 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         )
     ->
         inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo0,
-            GoalExpr, GoalInfo, !Info)
+            GoalExpr, GoalInfo, InstMap0, !Info),
+        Common = Common0
     ;
         simplify_call_goal(PredId, ProcId, Args, IsBuiltin,
-            GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info)
+            GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+            NestedContext0, InstMap0, Common0, Common, !Info)
     ).
 
 :- pred inequality_goal(prog_var::in, prog_var::in, prog_var::in, string::in,
     bool::in, hlds_goal_info::in, hlds_goal_expr::out, hlds_goal_info::out,
-    simplify_info::in, simplify_info::out) is det.
+    instmap::in, simplify_info::in, simplify_info::out) is det.
 
 inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
-        !Info) :-
+        InstMap0, !Info) :-
     % Construct the variable to hold the comparison result.
     simplify_info_get_varset(!.Info, VarSet0),
     varset.new_var(R, VarSet0, VarSet),
@@ -140,9 +149,8 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     Context = hlds_goal.goal_info_get_context(GoalInfo),
     Args    = [TI, R, X, Y],
 
-    simplify_info_get_instmap(!.Info, InstMap),
-    instmap_lookup_var(InstMap, X, XInst),
-    instmap_lookup_var(InstMap, Y, YInst),
+    instmap_lookup_var(InstMap0, X, XInst),
+    instmap_lookup_var(InstMap0, Y, YInst),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     ModeNo =
         ( if inst_is_unique(ModuleInfo, XInst) then
@@ -193,10 +201,12 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
 :- pred simplify_call_goal(pred_id::in, proc_id::in, list(prog_var)::in,
     builtin_state::in, hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
+    common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
-        !Info) :-
+        NestedContext0, InstMap0, Common0, Common, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
         PredInfo, ProcInfo),
@@ -207,15 +217,15 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
         pred_info_get_markers(PredInfo, Markers),
         check_marker(Markers, marker_obsolete),
 
-        % Don't warn about directly recursive calls. (That would cause
-        % spurious warnings, particularly with builtin predicates,
-        % or preds defined using foreign_procs.)
+        % Don't warn about directly recursive calls to obsolete predicates.
+        % That would cause spurious warnings, particularly with builtin
+        % predicates, or preds defined using foreign_procs.
         simplify_info_get_pred_proc_id(!.Info, ThisPredId, _),
         PredId \= ThisPredId,
 
-        % Don't warn about calls from predicates that also have a
-        % `pragma obsolete' declaration.  Doing so just results in
-        % spurious warnings.
+        % Don't warn about calls to obsolete predicates from other predicates
+        % that also have a `pragma obsolete' declaration. Doing so
+        % would also just result in spurious warnings.
         module_info_pred_info(ModuleInfo0, ThisPredId, ThisPredInfo),
         pred_info_get_markers(ThisPredInfo, ThisPredMarkers),
         not check_marker(ThisPredMarkers, marker_obsolete)
@@ -254,7 +264,7 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
 
         % Don't warn if we're inside a lambda goal, because the recursive call
         % may not be executed.
-        \+ simplify_info_inside_lambda(!.Info),
+        NestedContext0 ^ snc_num_enclosing_lambdas = 0,
 
         % Are the input arguments the same (or equivalent)?
         simplify_info_get_module_info(!.Info, ModuleInfo1),
@@ -262,9 +272,7 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
             PredInfo1, ProcInfo1),
         proc_info_get_headvars(ProcInfo1, HeadVars),
         proc_info_get_argmodes(ProcInfo1, ArgModes),
-        simplify_info_get_common_info(!.Info, CommonInfo1),
-        input_args_are_equiv(Args, HeadVars, ArgModes,
-            CommonInfo1, ModuleInfo1),
+        input_args_are_equiv(Args, HeadVars, ArgModes, Common0, ModuleInfo1),
 
         % Don't warn if the input arguments' modes initial insts contain
         % `any' insts, since the arguments might have become more constrained
@@ -327,7 +335,7 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
         goal_info_get_purity(!.GoalInfo) = purity_pure
     ->
         common_optimise_call(PredId, ProcId, Args, !.GoalInfo, !GoalExpr,
-            !Info)
+            Common0, Common, !Info)
     ;
         simplify_do_warn_duplicate_calls(!.Info),
         goal_info_get_purity(!.GoalInfo) = purity_pure
@@ -335,9 +343,9 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
         % We need to do the pass, for the warnings, but we ignore
         % the optimized goal and instead use the original one.
         common_optimise_call(PredId, ProcId, Args, !.GoalInfo,
-            !.GoalExpr, _NewGoalExpr, !Info)
+            !.GoalExpr, _NewGoalExpr, Common0, Common, !Info)
     ;
-        true
+        Common = Common0
     ),
 
     % Try to evaluate the call at compile-time.
@@ -348,15 +356,13 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
         CallModuleSymName = pred_info_module(CallPredInfo),
         is_std_lib_module_name(CallModuleSymName, CallModuleName)
     ->
-        simplify_info_get_instmap(!.Info, Instmap0),
-        simplify_info_get_var_types(!.Info, VarTypes),
-
         CallPredName = pred_info_name(CallPredInfo),
         proc_id_to_int(CallProcId, CallModeNum),
+        simplify_info_get_var_types(!.Info, VarTypes),
         (
             simplify_do_const_prop(!.Info),
             const_prop.evaluate_call(CallModuleName, CallPredName, CallModeNum,
-                CallArgs, VarTypes, Instmap0, ModuleInfo2, GoalExprPrime,
+                CallArgs, VarTypes, InstMap0, ModuleInfo2, GoalExprPrime,
                 !GoalInfo)
         ->
             !:GoalExpr = GoalExprPrime,
@@ -551,7 +557,8 @@ simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo, !Info) :-
+simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo,
+        _NestedContext0, _InstMap0, Common0, Common, !Info) :-
     GoalExpr0 = generic_call(GenericCall, Args, Modes, _, Det),
     (
         GenericCall = higher_order(Closure, Purity, _, _),
@@ -563,7 +570,7 @@ simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo, !Info) :-
             Purity = purity_pure
         ->
             common_optimise_higher_order_call(Closure, Args, Modes, Det,
-                GoalInfo, GoalExpr0, GoalExpr, !Info)
+                GoalInfo, GoalExpr0, GoalExpr, Common0, Common, !Info)
         ;
             simplify_do_warn_duplicate_calls(!.Info),
             % XXX Should we handle impure/semipure higher-order calls too?
@@ -572,25 +579,29 @@ simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo, !Info) :-
             % We need to do the pass, for the warnings, but we ignore
             % the optimized goal and instead use the original one.
             common_optimise_higher_order_call(Closure, Args, Modes, Det,
-                GoalInfo, GoalExpr0, _GoalExpr1, !Info),
+                GoalInfo, GoalExpr0, _GoalExpr1, Common0, Common, !Info),
             GoalExpr = GoalExpr0
         ;
-            GoalExpr = GoalExpr0
+            GoalExpr = GoalExpr0,
+            Common = Common0
         )
     ;
         GenericCall = event_call(_),
         simplify_info_set_has_user_event(yes, !Info),
-        GoalExpr = GoalExpr0
+        GoalExpr = GoalExpr0,
+        Common = Common0
     ;
         ( GenericCall = class_method(_, _, _, _)
         ; GenericCall = cast(_)
         ),
-        GoalExpr = GoalExpr0
+        GoalExpr = GoalExpr0,
+        Common = Common0
     ).
 
 %---------------------------------------------------------------------------%
 
-simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo, !Info) :-
+simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
+        _NestedContext0, _InstMap0, Common0, Common, !Info) :-
     GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
         Args0, ExtraArgs0, MaybeTraceRuntimeCond, Impl),
     (
@@ -613,6 +624,7 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo, !Info) :-
             !GoalInfo, !Info)
     ->
         GoalExpr = GoalExprPrime,
+        Common = Common0,
         simplify_info_set_should_requantify(!Info)
     ;
         BoxPolicy = get_box_policy(Attributes),
@@ -635,9 +647,10 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo, !Info) :-
         ->
             ArgVars = list.map(foreign_arg_var, Args),
             common_optimise_call(PredId, ProcId, ArgVars, !.GoalInfo,
-                GoalExpr1, GoalExpr, !Info)
+                GoalExpr1, GoalExpr, Common0, Common, !Info)
         ;
-            GoalExpr = GoalExpr1
+            GoalExpr = GoalExpr1,
+            Common = Common0
         )
     ).
 

@@ -133,14 +133,15 @@
 % When we print an error message in a list of error messages, we normally
 % treat the first line of the first message differently than the rest:
 % we separate it from the context by one space, whereas following lines
-% are separate by three spaces. You can request that the first line of
+% are separated by three spaces. You can request that the first line of
 % a message be treated as it were the first by setting the error_treat_as_first
 % field to "treat_as_first". You can also request that the pieces in a message
 % be given extra indentation by setting the error_extra_indent field
 % to a nonzero value.
 %
 % The term simple_msg(Context, Components) is a shorthand for (and equivalent
-% in every respect to) the term error_msg(yes(Context), no, 0, Components).
+% in every respect to) the term error_msg(yes(Context), do_not_treat_as_first,
+% 0, Components).
 
 :- type maybe_treat_as_first
     --->    treat_as_first
