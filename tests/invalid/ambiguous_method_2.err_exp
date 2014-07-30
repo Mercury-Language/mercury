@@ -1,5 +1,5 @@
 ambiguous_method_2.m:028: In declaration for function `ambiguous_method_2.e'/0:
-ambiguous_method_2.m:028:   error in type class constraints: type variable E
+ambiguous_method_2.m:028:   error in type class constraints: type variable `E'
 ambiguous_method_2.m:028:   occurs in the constraints, but is not determined by
 ambiguous_method_2.m:028:   the function's argument or result types.
 For more information, recompile with `-E'.

@@ -1,6 +1,6 @@
 null_char.m:012: Syntax error: null character is illegal in strings and names.
 null_char.m:012: Error: clause for predicate `null_char.int'/0
-null_char.m:012:   without preceding `pred' declaration.
+null_char.m:012:   without preceding `:- pred' declaration.
 null_char.m:012: Inferred :- pred int.
 null_char.m:014: In clause head: error: atom expected at 1.
 null_char.m:014: Syntax error: null character is illegal in strings and names.

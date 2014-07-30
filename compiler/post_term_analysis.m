@@ -34,6 +34,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
+:- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
@@ -225,7 +226,7 @@ get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
 
 emit_non_term_user_special_warning(Globals, Context, SpecialPred, TypeCtor,
         !IO) :-
-    TypeCtorString = type_ctor_to_string(TypeCtor),
+    type_ctor_module_name_arity(TypeCtor, TypeModule, TypeName, TypeArity),
     ( 
         SpecialPred = spec_pred_unify,
         SpecialPredStr = "equality"
@@ -241,7 +242,8 @@ emit_non_term_user_special_warning(Globals, Context, SpecialPred, TypeCtor,
     ),
     Pieces = [words("Warning: the user-defined "),
         fixed(SpecialPredStr ++ " predicate"),
-        words("for the type "), fixed(TypeCtorString),
+        words("for the type "),
+        sym_name_and_arity(qualified(TypeModule, TypeName) / TypeArity),
         words("cannot be proven to terminate.")],
     report_warning(Globals, Context, 0, Pieces, !IO).    
 

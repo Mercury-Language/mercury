@@ -1,13 +1,13 @@
 anys_in_negated_contexts.m:038: In clause for `bad_if_then_else1(ia, out)':
 anys_in_negated_contexts.m:038:   purity error: if-then-else should be inside a
 anys_in_negated_contexts.m:038:   promise_purity scope because non-local
-anys_in_negated_contexts.m:038:   variable X has inst any and appears in the
-anys_in_negated_contexts.m:038:   condition.
+anys_in_negated_contexts.m:038:   variable `X' has inst `any' and appears in
+anys_in_negated_contexts.m:038:   the condition.
 anys_in_negated_contexts.m:049: In clause for `bad_negation1(ia)':
 anys_in_negated_contexts.m:049:   purity error: negation should be inside a
 anys_in_negated_contexts.m:049:   promise_purity scope because non-local
-anys_in_negated_contexts.m:049:   variable X has inst any and appears in the
-anys_in_negated_contexts.m:049:   body.
+anys_in_negated_contexts.m:049:   variable `X' has inst `any' and appears in
+anys_in_negated_contexts.m:049:   the body.
 anys_in_negated_contexts.m:071: In clause for `bad_lambda(in)':
 anys_in_negated_contexts.m:071:   mode error in conjunction. The next 2 error
 anys_in_negated_contexts.m:071:   messages indicate possible causes of this

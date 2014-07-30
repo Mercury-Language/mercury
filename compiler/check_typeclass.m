@@ -1634,7 +1634,7 @@ report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
         sym_name_and_arity(SymName / Arity), suffix(":"), nl,
         words("functional dependency not satisfied:"),
         words(choose_number(Vars, "type variable", "type variables"))]
-        ++ list_to_pieces(VarsStrs) ++
+        ++ list_to_quoted_pieces(VarsStrs) ++
         [words(choose_number(Vars, "occurs", "occur")),
         words("in the range of the functional dependency, but"),
         words(choose_number(Vars, "is", "are")),
@@ -1823,7 +1823,7 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
         suffix(":"), nl,
         words("error in type class constraints:"),
         words(choose_number(Vars, "type variable", "type variables"))]
-        ++ list_to_pieces(VarsStrs) ++
+        ++ list_to_quoted_pieces(VarsStrs) ++
         [words(choose_number(Vars, "occurs", "occur")),
         words("in the constraints, but"),
         words(choose_number(Vars, "is", "are")),
@@ -1853,7 +1853,7 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn) = Spec :-
         sym_name_and_arity(SymName / Arity), suffix(":"), nl,
         words("error in type class constraints:"),
         words(choose_number(Vars, "type variable", "type variables"))]
-        ++ list_to_pieces(VarsStrs) ++
+        ++ list_to_quoted_pieces(VarsStrs) ++
         [words(choose_number(Vars, "occurs", "occur")),
         words("in the constraints, but"),
         words(choose_number(Vars, "is", "are")),
@@ -1950,7 +1950,7 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars) = Spec :-
     TypeVariables = [words("type variable"),
         suffix(choose_number(TVars, "", "s"))],
     TVarsStrs = list.map(mercury_var_to_string(TVarSet, no), TVars),
-    TVarsPart = list_to_pieces(TVarsStrs),
+    TVarsPart = list_to_quoted_pieces(TVarsStrs),
     Are = words(choose_number(TVars, "is", "are")),
     (
         QuantErrorType = universal_constraint,

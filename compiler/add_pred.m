@@ -418,7 +418,8 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
     ;
         preds_add_implicit_report_error(!ModuleInfo, ModuleName,
             PredName, Arity, PredOrFunc, Status, IsClassMethod, MContext,
-            origin_user(PredName), [words("mode declaration")], PredId, !Specs)
+            origin_user(PredName), [decl("mode"), words("declaration")],
+            PredId, !Specs)
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
     predicate_table_get_preds(PredicateTable1, Preds0),

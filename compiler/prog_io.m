@@ -1832,8 +1832,8 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
         )
     ;
         PredModeTermStr = describe_error_term(VarSet, PredModeTerm),
-        Pieces = [words("Error: syntax error in mode declaration at"),
-            words(PredModeTermStr), suffix("."), nl],
+        Pieces = [words("Error: syntax error in"), decl("mode"),
+            words("declaration at"), words(PredModeTermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(PredModeTerm), [always(Pieces)])]),
         MaybeItem = error1([Spec])

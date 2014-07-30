@@ -356,6 +356,10 @@
     %
 :- func list_to_pieces(list(string)) = list(format_component).
 
+    % As above, but surround each string by `' quotes.
+    %
+:- func list_to_quoted_pieces(list(string)) = list(format_component).
+
     % Convert a list of lists of format_components into a list of
     % format_components separated by commas, with the last two elements
     % separated by `and'.
@@ -894,6 +898,12 @@ list_to_pieces([Elem]) = [words(Elem)].
 list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
 list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
     [fixed(Elem1 ++ ",") | list_to_pieces([Elem2, Elem3 | Elems])].
+
+list_to_quoted_pieces([]) = [].
+list_to_quoted_pieces([Elem]) = [quote(Elem)].
+list_to_quoted_pieces([Elem1, Elem2]) = [quote(Elem1), words("and"), quote(Elem2)].
+list_to_quoted_pieces([Elem1, Elem2, Elem3 | Elems]) =
+    [quote(Elem1), suffix(",") | list_to_quoted_pieces([Elem2, Elem3 | Elems])].
 
 component_lists_to_pieces([]) = [].
 component_lists_to_pieces([Comps]) = Comps.

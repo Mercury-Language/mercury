@@ -12,14 +12,14 @@ types2.m:014: In clause for predicate `q'/0:
 types2.m:014:   error: wrong number of arguments (0; should be 1)
 types2.m:014:   in call to predicate `p'.
 types2.m:017: Error: clause for predicate `types2.r'/0
-types2.m:017:   without preceding `pred' declaration.
+types2.m:017:   without preceding `:- pred' declaration.
 types2.m:017: Warning: non-contiguous clauses for predicate `r'/0.
 types2.m:017:   Gap in clauses of predicate `r'/0 starts after this clause.
 types2.m:022:   Gap in clauses of predicate `r'/0 ends with this clause.
 types2.m:018: In clause for predicate `r'/0:
 types2.m:018:   error: undefined predicate `s'/0.
 types2.m:020: Error: clause for predicate `types2.a'/1
-types2.m:020:   without preceding `pred' declaration.
+types2.m:020:   without preceding `:- pred' declaration.
 types2.m:020: In clause for predicate `a'/1:
 types2.m:020:   error: undefined predicate `b'/1.
 types2.m:039: In clause for predicate `bar'/1:

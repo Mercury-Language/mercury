@@ -13,7 +13,7 @@ bigtest.m:002:   export_pred(((append / 3) , member)).
 bigtest.m:003: Error: unrecognized declaration:
 bigtest.m:003:   export_type(((list / 1) , bag)).
 bigtest.m:005: Error: clause for predicate `bigtest.fact'/0
-bigtest.m:005:   without preceding `pred' declaration.
+bigtest.m:005:   without preceding `:- pred' declaration.
 bigtest.m:005: Error: no mode declaration for predicate `fact'/0.
 bigtest.m:005:   (Use `--infer-modes' to enable mode inference.)
 bigtest.m:005: Inferred :- pred fact.

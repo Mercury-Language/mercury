@@ -1218,8 +1218,9 @@ purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
             words("purity error: if-then-else"),
             words("should be inside a promise_purity"),
             words("scope because non-local variable"),
-            words(mercury_var_to_string(VarSet, no, Var)),
-            words("has inst any and appears in the condition.")
+            quote(mercury_var_to_string(VarSet, no, Var)),
+            words("has inst"), quote("any"),
+            words("and appears in the condition.")
         ]
     ;
         NegCtxtDesc = negation,
@@ -1227,8 +1228,9 @@ purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
             words("purity error: negation"),
             words("should be inside a promise_purity"),
             words("scope because non-local variable"),
-            words(mercury_var_to_string(VarSet, no, Var)),
-            words("has inst any and appears in the body.")
+            quote(mercury_var_to_string(VarSet, no, Var)),
+            words("has inst"), quote("any"),
+            words("and appears in the body.")
         ]
     ),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),

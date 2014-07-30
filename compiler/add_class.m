@@ -709,7 +709,8 @@ pred_method_with_no_modes_error(PredInfo, !Specs) :-
 undefined_type_class_error(ClassName, Arity, Context, Description, !Specs) :-
     Pieces = [words("Error:"), words(Description), words("for"),
         sym_name_and_arity(ClassName / Arity),
-        words("without preceding typeclass declaration."), nl],
+        words("without preceding"), decl("typeclass"), words("declaration."),
+        nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].

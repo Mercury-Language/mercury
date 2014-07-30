@@ -1,7 +1,7 @@
 typeclass_constraint_extra_var.m:011: In declaration for predicate
 typeclass_constraint_extra_var.m:011:   `typeclass_constraint_extra_var.mg'/2:
 typeclass_constraint_extra_var.m:011:   error in type class constraints: type
-typeclass_constraint_extra_var.m:011:   variable U occurs in the constraints,
+typeclass_constraint_extra_var.m:011:   variable `U' occurs in the constraints,
 typeclass_constraint_extra_var.m:011:   but is not determined by the
 typeclass_constraint_extra_var.m:011:   predicate's argument types.
 typeclass_constraint_extra_var.m:011:   All types occurring in typeclass

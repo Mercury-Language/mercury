@@ -406,13 +406,13 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         % There should be no duplicate names to remove.
         set.to_sorted_list(ExistQParamsSet, ExistQParams),
         varset.coerce(VarSet, GenericVarSet),
-        ExistQParamVarsStr =
-            mercury_vars_to_string(GenericVarSet, no, ExistQParams),
+        ExistQParamVarsStrs = list.map(mercury_var_to_string(GenericVarSet, no),
+            ExistQParams),
         Pieces = [words("Error:"),
             words(choose_number(ExistQParams,
-                "type variable", "type variables")),
-            words(ExistQParamVarsStr),
-            words(choose_number(ExistQParams, "has", "have")),
+                "type variable", "type variables"))] ++
+            list_to_quoted_pieces(ExistQParamVarsStrs) ++
+            [words(choose_number(ExistQParams, "has", "have")),
             words("overlapping scopes"),
             words("(explicit type quantifier shadows argument type)."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,

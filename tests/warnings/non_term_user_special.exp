@@ -1,9 +1,9 @@
 non_term_user_special.m:007: Warning: the user-defined equality predicate for
-non_term_user_special.m:007:   the type non_term_user_special.myset/1 cannot be
-non_term_user_special.m:007:   proven to terminate.
+non_term_user_special.m:007:   the type `non_term_user_special.myset'/1 cannot
+non_term_user_special.m:007:   be proven to terminate.
 non_term_user_special.m:007: Warning: the user-defined comparison predicate for
-non_term_user_special.m:007:   the type non_term_user_special.myset/1 cannot be
-non_term_user_special.m:007:   proven to terminate.
+non_term_user_special.m:007:   the type `non_term_user_special.myset'/1 cannot
+non_term_user_special.m:007:   be proven to terminate.
 non_term_user_special.m:039: Warning: the user-defined initialisation predicate
-non_term_user_special.m:039:   for the type non_term_user_special.foo/1 cannot
-non_term_user_special.m:039:   be proven to terminate.
+non_term_user_special.m:039:   for the type `non_term_user_special.foo'/1
+non_term_user_special.m:039:   cannot be proven to terminate.

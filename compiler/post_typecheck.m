@@ -925,7 +925,7 @@ report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
         !Specs) :-
     map.lookup(Procs0, ProcId, ProcInfo),
     proc_info_get_context(ProcInfo, Context),
-    Pieces = [words("In mode declaration for")] ++
+    Pieces = [words("In"), decl("mode"), words("declaration for")] ++
         describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId)
         ++ [suffix(":"), nl,
         words("error: unbound inst variable(s)."), nl,

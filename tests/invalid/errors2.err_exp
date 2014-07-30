@@ -7,7 +7,7 @@ errors2.m:001:   `:- pred', `:- func', `:- type', `:- inst' or `:- mode'
 errors2.m:001:   declaration.
 errors2.m:007: Error: no clauses for predicate `bind_type_param'/2.
 errors2.m:009: Error: clause for predicate `errors2.bind_type_param'/1
-errors2.m:009:   without preceding `pred' declaration.
+errors2.m:009:   without preceding `:- pred' declaration.
 errors2.m:009: Inferred :- pred bind_type_param(int).
 errors2.m:023: Error: no clauses for predicate `produce_string'/1.
 errors2.m:025: Error: no clauses for predicate `expect_int'/1.

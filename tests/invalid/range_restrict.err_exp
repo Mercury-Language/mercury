@@ -1,4 +1,4 @@
 range_restrict.m:010: In instance for typeclass `range_restrict.foo'/2:
-range_restrict.m:010:   functional dependency not satisfied: type variables Y
-range_restrict.m:010:   and Z occur in the range of the functional dependency,
-range_restrict.m:010:   but are not determined by the domain.
+range_restrict.m:010:   functional dependency not satisfied: type variables `Y'
+range_restrict.m:010:   and `Z' occur in the range of the functional
+range_restrict.m:010:   dependency, but are not determined by the domain.
