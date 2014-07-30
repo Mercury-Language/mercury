@@ -71,7 +71,7 @@ parse_inst_defn(ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
             Condition, Context, SeqNum, MaybeItem)
     ;
         Pieces = [words("Error:"), quote("=="), words("expected in"),
-            quote(":- inst"), words("definition."), nl],
+            decl("inst"), words("definition."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
         MaybeItem = error1([Spec])

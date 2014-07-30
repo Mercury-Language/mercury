@@ -1233,8 +1233,8 @@ syntax_functor_components("-->", 2, Components) :-
     Components = [always(Pieces)].
 syntax_functor_components(".", 2, Components) :-
     Pieces = [words("error: the list constructor is now"),
-        % XXX should the arity be unquoted in the following?
-        quote("[|]/2"), suffix(","), words("not"), quote("./2"),
+        sym_name_and_arity(unqualified("[|]") / 2),
+        suffix(","), words("not"), quote("./2"),
         suffix("."), nl],
     Components = [always(Pieces)].
 syntax_functor_components("!", 1, Components) :-
@@ -1261,7 +1261,7 @@ report_cons_error(Context, ConsError) = Msgs :-
         ConsError = foreign_type_constructor(TypeCtor, _),
         TypeCtor = type_ctor(TypeName, TypeArity),
         Pieces = [words("There are"),
-            quote(":- pragma foreign_type"),
+            pragma_decl("foreign_type"),
             words("declarations for type"),
             sym_name_and_arity(TypeName / TypeArity),
             suffix(","),

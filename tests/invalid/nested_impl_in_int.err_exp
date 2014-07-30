@@ -1,10 +1,10 @@
 nested_impl_in_int.m:020: In interface for module `nested_impl_in_int':
 nested_impl_in_int.m:020:   in definition of sub-module `child':
-nested_impl_in_int.m:020:   error: `:- implementation.' declaration for
+nested_impl_in_int.m:020:   error: `:- implementation' declaration for
 nested_impl_in_int.m:020:   sub-module occurs in interface section of parent
 nested_impl_in_int.m:020:   module.
 nested_impl_in_int.m:037: In interface for module `nested_impl_in_int':
 nested_impl_in_int.m:037:   in definition of sub-module `child2':
-nested_impl_in_int.m:037:   error: `:- implementation.' declaration for
+nested_impl_in_int.m:037:   error: `:- implementation' declaration for
 nested_impl_in_int.m:037:   sub-module occurs in interface section of parent
 nested_impl_in_int.m:037:   module.

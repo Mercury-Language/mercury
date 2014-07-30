@@ -1764,12 +1764,12 @@ generate_no_exports_warning(Globals, ModuleName, Spec, !IO) :-
         verbose_only(
             [words("To be useful, a module should export something."),
             words("A file should contain at least one declaration"),
-            words("other than"), quote(":- import_module"),
+            words("other than"), decl("import_module"),
             words("in its interface section(s)."),
             words("This would normally be a"),
-            quote(":- pred"), suffix(","), quote(":- func"), suffix(","),
-            quote(":- type"), suffix(","), quote(":- inst"), words("or"),
-            quote(":- mode"), words("declaration.")])
+            decl("pred"), suffix(","), decl("func"), suffix(","),
+            decl("type"), suffix(","), decl("inst"), words("or"),
+            decl("mode"), words("declaration.")])
         ]),
     Msg = simple_msg(Context, [Component]),
     Spec = error_spec(Severity, phase_term_to_parse_tree, [Msg]).
@@ -2216,8 +2216,8 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, FileName,
             words(choose_number(BothList, "module", "modules"))] ++
             component_list_to_pieces(list.map(wrap_symname, BothList)) ++
             [words(choose_number(BothList, "is", "are")),
-            words("imported using both"), quote(":- import_module"),
-            words("and"), quote(":- use_module"), words("declarations."), nl],
+            words("imported using both"), decl("import_module"),
+            words("and"), decl("use_module"), words("declarations."), nl],
         Msg = simple_msg(Context,
             [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
         Severity = severity_conditional(warn_simple_code, yes,
@@ -3497,8 +3497,7 @@ report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
     Pieces = [words("In interface for module"), sym_name(ParentModule),
         suffix(":"), nl, words("in definition of sub-module"),
         quote(ChildModule), suffix(":"), nl,
-        % XXX should there be a full stop after implementation?
-        words("error:"), quote(":- implementation."),
+        words("error:"), decl("implementation"),
         words("declaration for sub-module\n"),
         words("occurs in interface section of parent module.")],
     Msg = simple_msg(Context, [always(Pieces)]),

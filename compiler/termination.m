@@ -192,7 +192,7 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !Specs) :-
                         should_module_qualify, PPId),
                     Pieces =
                         [words("Warning:") | ProcNamePieces] ++
-                        [words("has a"), quote("pragma terminates"),
+                        [words("has a"), pragma_decl("terminates"),
                         words("declaration but also has the"),
                         quote("does_not_terminate"),
                         words("foreign code attribute set.")],
@@ -220,7 +220,7 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !Specs) :-
                         should_module_qualify, PPId),
                     Pieces =
                         [words("Warning:") | ProcNamePieces] ++
-                        [words("has a"), quote("pragma does_not_terminate"),
+                        [words("has a"), pragma_decl("does_not_terminate"),
                         words("declaration but also has the"),
                         quote("terminates"),
                         words("foreign code attribute set.")],

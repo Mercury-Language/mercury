@@ -3107,7 +3107,7 @@ add_stratified_pred(PragmaName, Name, Arity, Context, !ModuleInfo, !Specs) :-
         module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
     ;
         PredIds = [],
-        DescPieces = [quote(":- pragma " ++ PragmaName), words("declaration")],
+        DescPieces = [pragma_decl(PragmaName), words("declaration")],
         undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs)
     ).
 
@@ -3152,7 +3152,7 @@ do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
         module_info_set_predicate_table(PredTable, !ModuleInfo)
     ;
         PredIds = [],
-        DescPieces = [quote(":- pragma " ++ PragmaName), words("declaration")],
+        DescPieces = [pragma_decl(PragmaName), words("declaration")],
         undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs)
     ).
 
@@ -3183,7 +3183,7 @@ module_mark_as_external(PredName, Arity, Context, !ModuleInfo, !Specs) :-
     ;
         PredIds = [],
         undefined_pred_or_func_error(PredName, Arity, Context,
-            [quote(":- external"), words("declaration")], !Specs)
+            [decl("external"), words("declaration")], !Specs)
     ).
 
 :- pred module_mark_preds_as_external(list(pred_id)::in,

@@ -237,7 +237,7 @@ parse_implicitly_qualified_sym_name_and_args(DefaultModuleName, Term,
             \+ match_sym_name(ModuleName, DefaultModuleName)
         ->
             Pieces = [words("Error: module qualifier in definition"),
-                words("does not match preceding"), quote(":- module"),
+                words("does not match preceding"), decl("module"),
                 words("declaration."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(Term), [always(Pieces)])]),
@@ -365,7 +365,7 @@ parse_implicitly_qualified_symbol_name(DefaultModuleName, VarSet, Term,
             \+ match_sym_name(ModuleName, DefaultModuleName)
         ->
             Pieces = [words("Error: module qualifier in definition"),
-                words("does not match preceding"), quote(":- module"),
+                words("does not match preceding"), decl("module"),
                 words("declaration."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(Term), [always(Pieces)])]),

@@ -457,7 +457,7 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
         ; Target = target_erlang, LangStr = "Erlang"
         ),
         MainPieces = [words("Error: no"), fixed(LangStr),
-            quote("pragma foreign_type"), words("declaration for"),
+            pragma_decl("foreign_type"), words("declaration for"),
             sym_name_and_arity(Name/Arity), nl],
         VerbosePieces = [words("There are representations for this type"),
             words("on other back-ends, but none for this back-end."), nl],

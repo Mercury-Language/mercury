@@ -1,18 +1,19 @@
-reserve_tag.m:021: In `pragma reserve_tag' declaration for
+reserve_tag.m:021: In `:- pragma reserve_tag' declaration for
 reserve_tag.m:021:   `reserve_tag.undefined_type'/1:
 reserve_tag.m:021:   error: undefined type `reserve_tag.undefined_type'/1.
 reserve_tag.m:023: Error: expected type name/arity for `:- pragma reserve_tag'
 reserve_tag.m:023:   declaration, not `(list__list / 1)'.
-reserve_tag.m:024: In `pragma reserve_tag' declaration for
+reserve_tag.m:024: In `:- pragma reserve_tag' declaration for
 reserve_tag.m:024:   `reserve_tag.list'/1:
 reserve_tag.m:024:   error: undefined type `reserve_tag.list'/1.
-reserve_tag.m:025: In `pragma reserve_tag' declaration for
+reserve_tag.m:025: In `:- pragma reserve_tag' declaration for
 reserve_tag.m:025:   `reserve_tag.exported_type'/0:
-reserve_tag.m:025:   error: `pragma reserve_tag' declaration must have the same
-reserve_tag.m:025:   visibility as the type definition.
-reserve_tag.m:032: In `pragma reserve_tag' declaration for
+reserve_tag.m:025:   error: `:- pragma reserve_tag' declaration must have the
+reserve_tag.m:025:   same visibility as the type definition.
+reserve_tag.m:032: In `:- pragma reserve_tag' declaration for
 reserve_tag.m:032:   `reserve_tag.invalid_arity'/1:
 reserve_tag.m:032:   error: undefined type `reserve_tag.invalid_arity'/1.
-reserve_tag.m:044: In `pragma reserve_tag' declaration for `reserve_tag.foo'/0:
-reserve_tag.m:044:   warning: multiple `pragma reserved_tag' declarations for
-reserve_tag.m:044:   the same type.
+reserve_tag.m:044: In `:- pragma reserve_tag' declaration for
+reserve_tag.m:044:   `reserve_tag.foo'/0:
+reserve_tag.m:044:   warning: multiple `:- pragma reserved_tag' declarations
+reserve_tag.m:044:   for the same type.

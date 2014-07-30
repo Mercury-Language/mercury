@@ -368,7 +368,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
                 PragmaContext)
         ->
             ExportPieces = [words("Error:"),
-                quote(":- pragma foreign_export"), words("declaration"),
+                pragma_decl("foreign_export"), words("declaration"),
                 words("for a procedure that has a determinism of"),
                 fixed(determinism_to_string(NewDetism) ++ ".")],
             ExportSpec = error_spec(severity_error, phase_detism_check,

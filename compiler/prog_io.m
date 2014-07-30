@@ -473,9 +473,9 @@ check_end_module(EndModule, !Items, !Specs, !Error) :-
             StartModuleName \= EndModuleName
         ->
             Pieces = [words("Error:"),
-                quote(":- end_module"), words("declaration"),
+                decl("end_module"), words("declaration"),
                 words("does not match"),
-                quote(":- module"), words("declaration."), nl],
+                decl("module"), words("declaration."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(EndModuleContext, [always(Pieces)])]),
             !:Specs = [Spec | !.Specs],
@@ -684,7 +684,7 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
             term.context_init(!.SourceFileName, 1, FirstContext)
         ),
         Pieces = [words("Error: module must start with a"),
-            quote(":- module"), words("declaration."), nl],
+            decl("module"), words("declaration."), nl],
         Severity = severity_error,
         Msgs  = [always(Pieces)],
         Spec = error_spec(Severity, phase_term_to_parse_tree,
@@ -1518,7 +1518,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, Condition, MaybeDet,
                 [MaybeSugaredFuncTerm, ReturnTerm], _)
         ->
             FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
-            ContextPieces = [words("In"), quote(":- func"),
+            ContextPieces = [words("In"), decl("func"),
                 words("declaration")],
             parse_implicitly_qualified_sym_name_and_args(ModuleName, FuncTerm,
                 VarSet, ContextPieces, MaybeFuncNameAndArgs),
@@ -1535,7 +1535,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, Condition, MaybeDet,
                 ;
                     FuncTermStr = describe_error_term(VarSet, FuncTerm),
                     ArgsPieces = [words("Error: syntax error in arguments of"),
-                        quote(":- func"), words("declaration at"),
+                        decl("func"), words("declaration at"),
                         words(FuncTermStr), suffix("."), nl],
                     ArgsSpec = error_spec(severity_error,
                         phase_term_to_parse_tree,
@@ -1550,7 +1550,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, Condition, MaybeDet,
                     MaybeReturnArg = ok1(ReturnArgPrime)
                 ;
                     ReturnPieces = [words("Error: syntax error"),
-                        words("in return type of"), quote(":- func"),
+                        words("in return type of"), decl("func"),
                         words("declaration."), nl],
                     ReturnSpec = error_spec(severity_error,
                         phase_term_to_parse_tree,
@@ -1576,7 +1576,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, Condition, MaybeDet,
             )
         ;
             Pieces = [words("Error:"), quote("="), words("expected in"),
-                quote(":- func"), words("declaration."), nl],
+                decl("func"), words("declaration."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(Term), [always(Pieces)])]),
             MaybeItem = error1([Spec])
@@ -1755,7 +1755,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Condition, Attributes, WithInst,
             [MaybeSugaredFuncTerm, ReturnTypeTerm], _)
     ->
         FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
-        ContextPieces = [words("In function"), quote(":- mode"),
+        ContextPieces = [words("In function"), decl("mode"),
             words("declaration")],
         parse_implicitly_qualified_sym_name_and_args(ModuleName, FuncTerm,
             VarSet, ContextPieces, MaybeFunctorArgs),
@@ -1769,7 +1769,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Condition, Attributes, WithInst,
                 Attributes, Context, SeqNum, MaybeItem)
         )
     ;
-        ContextPieces = [words("In"), quote(":- mode"), words("declaration")],
+        ContextPieces = [words("In"), decl("mode"), words("declaration")],
         parse_implicitly_qualified_sym_name_and_args(ModuleName, Term,
             VarSet, ContextPieces, MaybeFunctorArgs),
         (
@@ -2250,9 +2250,9 @@ get_purity(Purity, !Attributes) :-
 :- func pred_or_func_decl_pieces(pred_or_func) = list(format_component).
 
 pred_or_func_decl_pieces(pf_function) =
-    [quote(":- func"), words("declaration")].
+    [decl("func"), words("declaration")].
 pred_or_func_decl_pieces(pf_predicate) =
-    [quote(":- pred"), words("declaration")].
+    [decl("pred"), words("declaration")].
 
 %-----------------------------------------------------------------------------%
 

@@ -1,2 +1,2 @@
 try_io_else.m:024: Error: a `try' goal with an `io' parameter cannot have an
-try_io_else.m:024:   else part.
+try_io_else.m:024:   `else' part.

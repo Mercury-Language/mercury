@@ -1,2 +1,2 @@
-foreign_type_missing.m:010: Error: no IL `pragma foreign_type' declaration for
-foreign_type_missing.m:010:   `foreign_type_missing.foreign'/0
+foreign_type_missing.m:010: Error: no IL `:- pragma foreign_type' declaration
+foreign_type_missing.m:010:   for `foreign_type_missing.foreign'/0
