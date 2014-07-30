@@ -1404,7 +1404,7 @@ report_eval_method_requires_ground_args(ProcInfo) = Spec :-
     proc_info_get_context(ProcInfo, Context),
     EvalMethodS = eval_method_to_string(EvalMethod),
     MainPieces = [words("Sorry, not implemented:"),
-        fixed("`pragma " ++ EvalMethodS ++ "'"),
+        pragma_decl(EvalMethodS),
         words("declaration not allowed for procedure"),
         words("with partially instantiated modes."), nl],
     VerbosePieces = [words("Tabling of predicates/functions"),
@@ -1422,7 +1422,7 @@ report_eval_method_destroys_uniqueness(ProcInfo) = Spec :-
     proc_info_get_context(ProcInfo, Context),
     EvalMethodS = eval_method_to_string(EvalMethod),
     MainPieces = [words("Error:"),
-        fixed("`pragma " ++ EvalMethodS ++ "'"),
+        pragma_decl(EvalMethodS),
         words("declaration not allowed for procedure"),
         words("with unique modes."), nl],
     VerbosePieces =

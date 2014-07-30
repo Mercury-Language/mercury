@@ -108,8 +108,8 @@ add_pass_2_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
         Allowed = no,
         (
             Origin = user,
-            error_if_exported(ImportStatus, Context, "`pragma' declaration",
-                !Specs)
+            error_if_exported(ImportStatus, Context,
+                [decl("pragma"), words("declaration")], !Specs)
         ;
             % We don't report this as an error as it just clutters up
             % the compiler output - the *real* error is whatever caused

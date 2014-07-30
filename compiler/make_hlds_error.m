@@ -53,13 +53,13 @@
     % Emit an error if something is exported. (Used to check for
     % when things shouldn't be exported.)
     %
-:- pred error_if_exported(import_status::in, prog_context::in, string::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred error_if_exported(import_status::in, prog_context::in,
+    format_components::in, list(error_spec)::in, list(error_spec)::out) is det.
 
     % Emit an error reporting that something should not have occurred in
     % a module interface.
     %
-:- pred error_is_exported(prog_context::in, string::in,
+:- pred error_is_exported(prog_context::in, format_components::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %----------------------------------------------------------------------------%
@@ -200,8 +200,9 @@ maybe_undefined_pred_error(Globals, Name, Arity, PredOrFunc, Status,
         !:Specs = [Spec | !.Specs]
     ).
 
-error_is_exported(Context, Item, !Specs) :-
-    Pieces = [words("Error:"), fixed(Item), words("in module interface."), nl],
+error_is_exported(Context, ItemPieces, !Specs) :-
+    Pieces = [words("Error:")] ++ ItemPieces ++
+        [words("in module interface."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].

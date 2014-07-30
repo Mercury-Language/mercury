@@ -1,10 +1,12 @@
-bad_initialise_decl.m:019: Error: `initialise' declaration in module interface.
 bad_initialise_decl.m:019: Error: `i2'/2 used in initialise declaration has
 bad_initialise_decl.m:019:   invalid signature.
+bad_initialise_decl.m:019: Error: `:- initialise' declaration in module
+bad_initialise_decl.m:019:   interface.
 bad_initialise_decl.m:026: Error: `i1'/2 used in initialise declaration has
 bad_initialise_decl.m:026:   invalid signature.
-bad_initialise_decl.m:027: Error: `i3'/2 used in initialise declaration does
-bad_initialise_decl.m:027:   not have a corresponding pred declaration.
+bad_initialise_decl.m:027: Error: `i3'/2 used in `:- initialise' declaration
+bad_initialise_decl.m:027:   does not have a corresponding `:- pred'
+bad_initialise_decl.m:027:   declaration.
 bad_initialise_decl.m:028: Error: `:- initialise' declaration requires arity,
 bad_initialise_decl.m:028:   found i4.
 bad_initialise_decl.m:029: Error: `:- initialise' declaration specifies a

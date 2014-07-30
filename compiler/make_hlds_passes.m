@@ -1043,7 +1043,8 @@ add_pass_2_initialise(ItemInitialise, Status, !ModuleInfo, !Specs) :-
     ( ImportStatus = status_exported ->
         (
             Origin = user,
-            error_is_exported(Context, "`initialise' declaration", !Specs)
+            error_is_exported(Context,
+                [decl("initialise"), words("declaration")], !Specs)
         ;
             Origin = compiler(Details),
             (
@@ -1077,7 +1078,8 @@ add_pass_2_finalise(ItemFinalise, Status, !ModuleInfo, !Specs) :-
     ( ImportStatus = status_exported ->
         (
             Origin = user,
-            error_is_exported(Context, "`finalise' declaration", !Specs)
+            error_is_exported(Context,
+                [decl("finalise"), words("declaration")], !Specs)
         ;
             % There are no source-to-source transformations that introduce
             % finalise declarations.
@@ -1097,7 +1099,8 @@ add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
         MutAttrs, _MutVarset, Context, _SeqNum),
     Status = item_status(ImportStatus, _),
     ( ImportStatus = status_exported ->
-        error_is_exported(Context, "`mutable' declaration", !Specs)
+        error_is_exported(Context,
+            [decl("mutable"), words("declaration")], !Specs)
     ;
         true
     ),
@@ -1187,7 +1190,8 @@ add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
             InvalidInstPieces = [
                 words("Error: the inst"),
                 quote(InstStr),
-                words("is not a valid inst for a mutable declaration.")
+                words("is not a valid inst for a"),
+                decl("mutable"), words("declaration.")
             ],
             % XXX We could provide more information about exactly *why* the
             % inst was not valid here as well.
@@ -1329,7 +1333,8 @@ add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs) :-
             UnqualifiedPredName = unqualify_name(PredName),
             ClauseId = simple_call_id_to_string(PredOrFunc,
                 unqualified(UnqualifiedPredName) / Arity),
-            error_is_exported(Context, "clause for " ++ ClauseId, !Specs)
+            error_is_exported(Context, [words("clause for " ++ ClauseId)],
+                !Specs)
         ;
             Origin = compiler(Details),
             (
@@ -1477,8 +1482,9 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
     (
         PredIds = [],
         Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
-            words("used in initialise declaration"),
-            words("does not have a corresponding pred declaration."), nl],
+            words("used in"), decl("initialise"), words("declaration"),
+            words("does not have a corresponding"),
+            decl("pred"), words("declaration."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
@@ -1654,8 +1660,9 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
     (
         PredIds = [],
         Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
-            words("used in finalise declaration"),
-            words("does not have a corresponding pred declaration."), nl],
+            words("used in"), decl("finalise"), words("declaration"),
+            words("does not have a corresponding"),
+            decl("pred"), words("declaration."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
@@ -1725,8 +1732,8 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
                     !ModuleInfo, !QualInfo, !Specs)
             ;
                 Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
-                    words("used in finalise declaration"),
-                    words("has invalid signature."), nl],
+                    words("used in"), decl("finalise"),
+                    words("declaration has invalid signature."), nl],
                 Msg = simple_msg(Context, [always(Pieces)]),
                 Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
                     [Msg]),
@@ -1735,8 +1742,9 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
         ;
             TailPredIds = [_ | _],
             Pieces = [words("Error:"), sym_name_and_arity(SymName/Arity),
-                words("used in finalise declaration"),
-                words("has multiple pred declarations."), nl],
+                words("used in"), decl("finalise"), words("declaration"),
+                words("has multiple"), decl("pred"), words("declarations."),
+                nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]

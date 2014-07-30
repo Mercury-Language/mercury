@@ -1,10 +1,10 @@
-uniq_mutable.m:016: Error: the inst `unique' is not a valid inst for a mutable
-uniq_mutable.m:016:   declaration.
+uniq_mutable.m:016: Error: the inst `unique' is not a valid inst for a
+uniq_mutable.m:016:   `:- mutable' declaration.
 uniq_mutable.m:017: Error: the inst `mostly_unique' is not a valid inst for a
-uniq_mutable.m:017:   mutable declaration.
-uniq_mutable.m:018: Error: the inst `free' is not a valid inst for a mutable
-uniq_mutable.m:018:   declaration.
+uniq_mutable.m:017:   `:- mutable' declaration.
+uniq_mutable.m:018: Error: the inst `free' is not a valid inst for a
+uniq_mutable.m:018:   `:- mutable' declaration.
 uniq_mutable.m:019: Error: the inst `clobbered' is not a valid inst for a
-uniq_mutable.m:019:   mutable declaration.
+uniq_mutable.m:019:   `:- mutable' declaration.
 uniq_mutable.m:020: Error: the inst `mostly_clobbered' is not a valid inst for
-uniq_mutable.m:020:   a mutable declaration.
+uniq_mutable.m:020:   a `:- mutable' declaration.
