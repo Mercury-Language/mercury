@@ -665,7 +665,7 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, SimpleCallId,
                 ( list.member(SuccIndStr, BodyPieces) ->
                     LangStr = foreign_language_string(Lang),
                     Pieces = [
-                        words("warning: the "), fixed(LangStr),
+                        words("Warning: the"), fixed(LangStr),
                         words("code for"), simple_call(SimpleCallId),
                         words("may set"), quote(SuccIndStr), suffix(","),
                         words("but it cannot fail.")
@@ -691,7 +691,7 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, SimpleCallId,
                 ;
                     LangStr = foreign_language_string(Lang),
                     Pieces = [
-                        words("warning: the "), fixed(LangStr),
+                        words("Warning: the"), fixed(LangStr),
                         words("code for"), simple_call(SimpleCallId),
                         words("does not appear to set"),
                         quote(SuccIndStr), suffix(","),
@@ -736,7 +736,7 @@ check_fp_body_for_return(Lang, Context, SimpleCallId, BodyPieces, !Specs) :-
         ( list.member("return", BodyPieces) ->
             LangStr = foreign_language_string(Lang),
             Pieces = [
-                words("warning: the "), fixed(LangStr),
+                words("Warning: the"), fixed(LangStr),
                 words("code for"), simple_call(SimpleCallId),
                 words("may contain a"), quote("return"),
                 words("statement."), nl
@@ -760,7 +760,7 @@ check_fp_body_for_return(Lang, Context, SimpleCallId, BodyPieces, !Specs) :-
             )
         ->
             Pieces = [
-                words("warning: the IL code for"), simple_call(SimpleCallId),
+                words("Warning: the IL code for"), simple_call(SimpleCallId),
                 words("may contain a"), quote("ret"),
                 words("or"), quote("jmp"),
                 words("instruction."), nl

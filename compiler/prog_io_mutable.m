@@ -60,7 +60,7 @@ parse_initialise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
         (
             SymNameSpecifier = name(_),
             TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error:"), quote("initialise"),
+            Pieces = [words("Error:"), decl("initialise"),
                 words("declaration"), words("requires arity, found"),
                 words(TermStr), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -75,10 +75,10 @@ parse_initialise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
                 MaybeItem = ok1(Item)
             ;
                 TermStr = describe_error_term(VarSet, Term),
-                Pieces = [words("Error:"), quote("initialise"),
+                Pieces = [words("Error:"), decl("initialise"),
                     words("declaration specifies a predicate"),
                     words("whose arity is not zero or two:"),
-                    words(TermStr), suffix("."), nl],
+                    fixed(TermStr), suffix("."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(Term), [always(Pieces)])]),
                 MaybeItem = error1([Spec])
@@ -98,9 +98,9 @@ parse_finalise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
         (
             SymNameSpecifier = name(_),
             TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error:"), quote("finalise"),
+            Pieces = [words("Error:"), decl("finalise"),
                 words("declaration"), words("requires arity, found"),
-                words(TermStr), suffix("."), nl],
+                fixed(TermStr), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(Term), [always(Pieces)])]),
             MaybeItem = error1([Spec])
@@ -113,7 +113,7 @@ parse_finalise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
                 MaybeItem = ok1(Item)
             ;
                 TermStr = describe_error_term(VarSet, Term),
-                Pieces = [words("Error:"), quote("finalise"),
+                Pieces = [words("Error:"), decl("finalise"),
                     words("declaration specifies a predicate"),
                     words("whose arity is not zero or two:"),
                     words(TermStr), suffix("."), nl],
@@ -190,8 +190,8 @@ parse_mutable_name(NameTerm, MaybeName) :-
 parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
     ( term.contains_var(TypeTerm, _) ->
         TypeTermStr = describe_error_term(VarSet, TypeTerm),
-        Pieces = [words("Error: the type in a mutable declaration"),
-            words("cannot contain variables:"),
+        Pieces = [words("Error: the type in a"), decl("mutable"),
+            words("declaration cannot contain variables:"),
             words(TypeTermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
@@ -206,8 +206,8 @@ parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
 parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
     ( term.contains_var(InstTerm, _) ->
         InstTermStr = describe_error_term(VarSet, InstTerm),
-        Pieces = [words("Error: the inst in a mutable declaration"),
-            words("cannot contain variables:"),
+        Pieces = [words("Error: the inst in a"), decl("mutable"),
+            words("declaration cannot contain variables:"),
             words(InstTermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(InstTerm), [always(Pieces)])]),
@@ -215,7 +215,8 @@ parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
     ; convert_inst(no_allow_constrained_inst_var, InstTerm, Inst) ->
         MaybeInst = ok1(Inst)
     ;
-        Pieces = [words("Error: invalid inst in mutable declaration."), nl],
+        Pieces = [words("Error: invalid inst in"), decl("mutable"),
+            words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(InstTerm), [always(Pieces)])]),
         MaybeInst = error1([Spec])
@@ -274,7 +275,7 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
     ;
         MutAttrsStr = mercury_term_to_string(VarSet, no, MutAttrsTerm),
         Pieces = [words("Error: malformed attribute list"),
-            words("in mutable declaration:"),
+            words("in"), decl("mutable"), words("declaration:"),
             words(MutAttrsStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(MutAttrsTerm), [always(Pieces)])]),
@@ -338,7 +339,7 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
         MutAttrResult = ok1(MutAttr)
     ;
         Pieces = [words("Error: unrecognised attribute"),
-            words("in mutable declaration."), nl],
+            words("in"), decl("mutable"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(MutAttrTerm), [always(Pieces)])]),
         MutAttrResult = error1([Spec])

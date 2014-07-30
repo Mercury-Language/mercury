@@ -1,44 +1,44 @@
-ee_invalid.m:033: In `pragma foreign_export_enum' declaration for `int'/0:
+ee_invalid.m:033: In `:- pragma foreign_export_enum' declaration for `int'/0:
 ee_invalid.m:033:   error: `int'/0 is an atomic type.
 ee_invalid.m:037: In pragma foreign_export_enum:
 ee_invalid.m:037:   error: undefined type `undefined_type'/0.
-ee_invalid.m:041: In `pragma foreign_export_enum' declaration for
+ee_invalid.m:041: In `:- pragma foreign_export_enum' declaration for
 ee_invalid.m:041:   `ee_invalid.foo'/1:
 ee_invalid.m:041:   error: `ee_invalid.foo'/1 is not an enumeration type. It
 ee_invalid.m:041:   has one or more non-zero arity constructors.
-ee_invalid.m:045: In `pragma foreign_export_enum' declaration for
+ee_invalid.m:045: In `:- pragma foreign_export_enum' declaration for
 ee_invalid.m:045:   `ee_invalid.bar'/0:
 ee_invalid.m:045:   error: `ee_invalid.bar'/0 is not an enumeration type.
-ee_invalid.m:052: In `pragma foreign_export_enum' declaration for
+ee_invalid.m:052: In `:- pragma foreign_export_enum' declaration for
 ee_invalid.m:052:   `ee_invalid.baz'/0:
 ee_invalid.m:052:   error: `ee_invalid.baz'/0 is not an enumeration type.
-ee_invalid.m:057: In `pragma foreign_export_enum' declaration for
+ee_invalid.m:057: In `:- pragma foreign_export_enum' declaration for
 ee_invalid.m:057:   `ee_invalid.alphabet'/0:
 ee_invalid.m:057:   user-specified foreign names for constructors that do not
 ee_invalid.m:057:   match match any of the constructors of
 ee_invalid.m:057:   `ee_invalid.alphabet'/0.
 ee_invalid.m:057:   The following constructor does not match:
 ee_invalid.m:057:       `deg'
-ee_invalid.m:061: In `pragma foreign_export_enum' declaration for
+ee_invalid.m:061: In `:- pragma foreign_export_enum' declaration for
 ee_invalid.m:061:   `ee_invalid.alphabet'/0:
 ee_invalid.m:061:   user-specified foreign names for constructors that do not
 ee_invalid.m:061:   match match any of the constructors of
 ee_invalid.m:061:   `ee_invalid.alphabet'/0.
 ee_invalid.m:061:   The following constructor does not match:
 ee_invalid.m:061:       `foo.def'
-ee_invalid.m:066: In `pragma foreign_export_enum' declaration for
+ee_invalid.m:066: In `:- pragma foreign_export_enum' declaration for
 ee_invalid.m:066:   `ee_invalid.alphabet'/0:
 ee_invalid.m:066:   error: the user-specified mapping between Mercury and
 ee_invalid.m:066:   foreign names does not form a bijection.
-ee_invalid.m:067: In `pragma foreign_export_enum' declaration for
+ee_invalid.m:067: In `:- pragma foreign_export_enum' declaration for
 ee_invalid.m:067:   `ee_invalid.alphabet'/0:
 ee_invalid.m:067:   error: the mapping between Mercury and foreign names does
 ee_invalid.m:067:   not form a bijection.
-ee_invalid.m:068: In `pragma foreign_export_enum' declaration for
+ee_invalid.m:068: In `:- pragma foreign_export_enum' declaration for
 ee_invalid.m:068:   `ee_invalid.alphabet'/0:
 ee_invalid.m:068:   error: the user-specified mapping between Mercury and
 ee_invalid.m:068:   foreign names does not form a bijection.
-ee_invalid.m:073: In `pragma foreign_export_enum' declaration for
+ee_invalid.m:073: In `:- pragma foreign_export_enum' declaration for
 ee_invalid.m:073:   `ee_invalid.strange_names'/0:
 ee_invalid.m:073:   error: not all the constructors of the type
 ee_invalid.m:073:   `ee_invalid.strange_names'/0 can be converted into valid C

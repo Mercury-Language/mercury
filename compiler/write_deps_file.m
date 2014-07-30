@@ -583,11 +583,6 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 % target will break.
                 ForeignImportTargets = [ObjFileName, PicObjFileName],
                 ForeignImportExt = ".mh"
-            ;
-                % XXX These are just the C ones at the moment.
-                Target = target_x86_64,
-                ForeignImportTargets = [ObjFileName, PicObjFileName],
-                ForeignImportExt = ".mh"
             ),
             WriteForeignImportTarget = (pred(ForeignImportTarget::in,
                     !.IO::di, !:IO::uo) is det :-
@@ -1141,7 +1136,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         ( Target = target_c
         ; Target = target_csharp
         ; Target = target_java
-        ; Target = target_x86_64
         ; Target = target_erlang
         ),
         ForeignModulesAndExts = []
@@ -1378,9 +1372,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
             ; Target = target_java
             ; Target = target_erlang
             )
-        ;
-            Target = target_x86_64,
-            unexpected($module, $pred, "--highlevel-code with --target x86_64")
         )
     ;
         % For the LLDS back-end, we don't use `.mih' files at all
@@ -1391,9 +1382,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".mhs = ", !IO),
     (
-        ( Target = target_c
-        ; Target = target_x86_64
-        ),
+        Target = target_c,
         write_compact_dependencies_list(Globals, Modules, "", ".mh", Basis,
             DepStream, !IO)
     ;
@@ -1751,9 +1740,7 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
             % XXX not yet
             Rules = []
         ;
-            ( Target = target_c
-            ; Target = target_x86_64    % XXX this is only provisional.
-            ),
+            Target = target_c,
             Rules = MainRule
         )
     ),
@@ -1847,9 +1834,7 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
             % XXX not done yet
             LibRules = []
         ;
-            ( Target = target_c
-            ; Target = target_x86_64    % XXX This is only provisional.
-            ),
+            Target = target_c,
             LibRules = LibRule
         )
     ),

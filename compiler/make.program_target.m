@@ -177,9 +177,6 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
             IntermediateTargetType = module_target_java_code,
             ObjectTargetType = module_target_java_class_code
         ;
-            CompilationTarget = target_x86_64,
-            sorry($module, $pred, "mmc --make and target x86_64")
-        ;
             CompilationTarget = target_erlang,
             IntermediateTargetType = module_target_erlang_code,
             ObjectTargetType = module_target_erlang_beam_code
@@ -398,7 +395,6 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
         ( CompilationTarget = target_java
         ; CompilationTarget = target_csharp
         ; CompilationTarget = target_il
-        ; CompilationTarget = target_x86_64
         ; CompilationTarget = target_erlang
         ),
         ObjectTargets = ForeignObjectTargets
@@ -584,9 +580,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             list.condense(ExtraForeignFiles)),
 
         (
-            ( CompilationTarget = target_c
-            ; CompilationTarget = target_x86_64
-            ),
+            CompilationTarget = target_c,
             maybe_pic_object_file_extension(NoLinkObjsGlobals, PIC,
                 ObjExtToUse)
         ;
@@ -626,9 +620,6 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
                 compile_target_code.link(ErrorStream, FileType, MainModuleName,
                     AllObjects, NoLinkObjsGlobals),
                 Succeeded, !IO)
-        ;
-            CompilationTarget = target_x86_64,
-            sorry($module, $pred, "mmc --make and target x86_64")
         ;
             CompilationTarget = target_il,
             Succeeded = yes
@@ -1225,9 +1216,6 @@ build_library(MainModuleName, AllModules, Globals, Succeeded, !Info, !IO) :-
         Target = target_java,
         build_java_library(Globals, MainModuleName, Succeeded, !Info, !IO)
     ;
-        Target = target_x86_64,
-        sorry($module, $pred, "target x86_64 not supported yet")
-    ;
         Target = target_erlang,
         build_erlang_library(Globals, MainModuleName, AllModules, Succeeded,
             !Info, !IO)
@@ -1408,7 +1396,6 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             ( Target = target_java
             ; Target = target_csharp
             ; Target = target_il
-            ; Target = target_x86_64
             ),
             HeaderSucceeded = yes
         ),

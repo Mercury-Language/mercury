@@ -1118,7 +1118,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
 
     (
         ( Target = target_c
-        ; Target = target_x86_64
         ; Target = target_erlang
         ),
         resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
@@ -1138,7 +1137,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ( Target = target_c
         ; Target = target_csharp
         ; Target = target_java
-        ; Target = target_x86_64
         ; Target = target_erlang
         ),
         MaybeIL = MaybeIL0
@@ -1151,7 +1149,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ( Target = target_c
         ; Target = target_il
         ; Target = target_java
-        ; Target = target_x86_64
         ; Target = target_erlang
         ),
         MaybeCSharp = MaybeCSharp0
@@ -1164,7 +1161,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ( Target = target_c
         ; Target = target_il
         ; Target = target_csharp
-        ; Target = target_x86_64
         ; Target = target_erlang
         ),
         MaybeJava = MaybeJava0
@@ -1177,7 +1173,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ( Target = target_c
         ; Target = target_il
         ; Target = target_csharp
-        ; Target = target_x86_64
         ; Target = target_java
         ),
         MaybeErlang = MaybeErlang0

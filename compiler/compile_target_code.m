@@ -2734,9 +2734,7 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
         !IO) :-
     globals.get_target(Globals, Target),
     (
-        ( Target = target_c
-        ; Target = target_x86_64
-        ),
+        Target = target_c,
         globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
         LinkOpt = "-l",
         LibSuffix = ""

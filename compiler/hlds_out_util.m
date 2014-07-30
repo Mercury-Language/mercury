@@ -432,6 +432,8 @@ in_argument_to_pieces(First, SubContext, !Pieces) :-
     start_in_message_to_pieces(First, !Pieces),
     SubContext = unify_sub_context(ConsId, ArgNum),
     ArgNumStr = int_to_string(ArgNum),
+    % XXX Using cons_id_and_arity_to_string here results in the
+    % quotes being in the wrong place.
     ConsIdStr = cons_id_and_arity_to_string(ConsId),
     !:Pieces = !.Pieces ++ [words("argument"), fixed(ArgNumStr),
         words("of functor"), quote(ConsIdStr), suffix(":"), nl].

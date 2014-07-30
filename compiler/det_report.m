@@ -245,10 +245,12 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 status_defined_in_this_module(ImportStatus) = yes
             ->
                 proc_info_get_detism_decl(ProcInfo, DetismDecl),
-                Message = "warning: " ++ detism_decl_name(DetismDecl) ++
-                    " could be tighter.\n",
+                MessagePieces = [words("warning:"),
+                    words(detism_decl_name(DetismDecl)),
+                    words("could be tighter."), nl
+                ],
                 report_determinism_problem(PredId, ProcId, !.ModuleInfo,
-                    Message, DeclaredDetism, InferredDetism, ReportMsgs),
+                    MessagePieces, DeclaredDetism, InferredDetism, ReportMsgs),
                 ReportSpec = error_spec(severity_warning, phase_detism_check,
                     ReportMsgs),
                 !:Specs = [ReportSpec | !.Specs]
@@ -258,10 +260,11 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
         ;
             Cmp = tighter,
             proc_info_get_detism_decl(ProcInfo, DetismDecl),
-            Message = "error: " ++ detism_decl_name(DetismDecl) ++
-                " not satisfied.\n",
-            report_determinism_problem(PredId, ProcId, !.ModuleInfo, Message,
-                DeclaredDetism, InferredDetism, ReportMsgs),
+            MessagePieces = [words("error:"),
+                words(detism_decl_name(DetismDecl)),
+                words("not satisfied."), nl],
+            report_determinism_problem(PredId, ProcId, !.ModuleInfo,
+                MessagePieces, DeclaredDetism, InferredDetism, ReportMsgs),
             proc_info_get_goal(ProcInfo, Goal),
             proc_info_get_vartypes(ProcInfo, VarTypes),
             proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InstMap0),
@@ -288,9 +291,8 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
     ;
         Valid = no,
         proc_info_get_context(ProcInfo, Context),
-        MainPieces =
-            [words("Error: `pragma "
-                ++ eval_method_to_pragma_name(EvalMethod) ++ "'"),
+        MainPieces = [words("Error:"),
+            pragma_decl(eval_method_to_pragma_name(EvalMethod)),
             words("declaration not allowed for procedure"),
             words("with determinism"),
             quote(determinism_to_string(InferredDetism)), suffix(".")],
@@ -490,20 +492,24 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
     ).
 
 :- pred report_determinism_problem(pred_id::in, proc_id::in, module_info::in,
-    string::in, determinism::in, determinism::in, list(error_msg)::out) is det.
+    format_components::in, determinism::in, determinism::in,
+    list(error_msg)::out) is det.
 
-report_determinism_problem(PredId, ProcId, ModuleInfo, Message,
+report_determinism_problem(PredId, ProcId, ModuleInfo, MessagePieces,
         DeclaredDetism, InferredDetism, Msgs) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_get_context(ProcInfo, Context),
     ProcPieces = describe_one_proc_name_mode(ModuleInfo,
         should_not_module_qualify, proc(PredId, ProcId)),
-    Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
-        words(Message), nl,
-        words("Declared"),
-        quote(determinism_to_string(DeclaredDetism)), suffix(","),
-        words("inferred"),
-        quote(determinism_to_string(InferredDetism)), suffix(".")],
+    Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl] ++
+        MessagePieces ++
+        [
+            nl,
+            words("Declared"),
+            quote(determinism_to_string(DeclaredDetism)), suffix(","),
+            words("inferred"),
+            quote(determinism_to_string(InferredDetism)), suffix(".")
+        ],
     Msgs = [simple_msg(Context, [always(Pieces)])].
 
 %-----------------------------------------------------------------------------%

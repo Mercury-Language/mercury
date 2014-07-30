@@ -1,2 +1,2 @@
-warn_return.m:020: warning: the C# code for predicate `warn_return.foo'/2 may
+warn_return.m:020: Warning: the C# code for predicate `warn_return.foo'/2 may
 warn_return.m:020:   contain a `return' statement.

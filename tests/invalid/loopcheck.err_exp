@@ -1,7 +1,7 @@
 loopcheck.m:009: In `main'(di, uo):
 loopcheck.m:009:   warning: determinism declaration could be tighter.
 loopcheck.m:009:   Declared `det', inferred `erroneous'.
-loopcheck.m:016: Error: `pragma loop_check' declaration not allowed for
+loopcheck.m:016: Error: `:- pragma loop_check' declaration not allowed for
 loopcheck.m:016:   procedure with determinism `erroneous'.
 loopcheck.m:016:   The pragma requested is only valid for the following
 loopcheck.m:016:   determinisms: cc_multi, cc_nondet, det, multi, nondet and

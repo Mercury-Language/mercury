@@ -1,8 +1,8 @@
 foreign_term_invalid.m:009: Warning: predicate `foreign_term_invalid.test1'/1
-foreign_term_invalid.m:009:   mode 0 has a `pragma does_not_terminate'
+foreign_term_invalid.m:009:   mode 0 has a `:- pragma does_not_terminate'
 foreign_term_invalid.m:009:   declaration but also has the `terminates' foreign
 foreign_term_invalid.m:009:   code attribute set.
 foreign_term_invalid.m:010: Warning: predicate `foreign_term_invalid.test2'/1
-foreign_term_invalid.m:010:   mode 0 has a `pragma terminates' declaration but
-foreign_term_invalid.m:010:   also has the `does_not_terminate' foreign code
-foreign_term_invalid.m:010:   attribute set.
+foreign_term_invalid.m:010:   mode 0 has a `:- pragma terminates' declaration
+foreign_term_invalid.m:010:   but also has the `does_not_terminate' foreign
+foreign_term_invalid.m:010:   code attribute set.

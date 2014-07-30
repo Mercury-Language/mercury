@@ -250,7 +250,7 @@ description(horder_call, _, _, Pieces, no) :-
     Pieces = [words("It contains a higher-order call.")].
 
 description(does_not_term_pragma(PredId), Single, Module, Pieces, no) :-
-    Pieces1 = [words("There is a"), quote(":- pragma does_not_terminate"),
+    Pieces1 = [words("There is a"), pragma_decl("does_not_terminate"),
         words("declaration for")],
     (
         Single = yes(PPId),

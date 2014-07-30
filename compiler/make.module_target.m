@@ -551,9 +551,6 @@ build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, Imports,
         il_assemble(ErrorStream, ModuleName, Imports ^ mai_has_main,
             Globals, Succeeded, !IO)
     ;
-        Target = target_x86_64,
-        sorry($module, $pred, "NYI mmc --make and target x86_64")
-    ;
         Target = target_erlang,
         module_name_to_file_name(Globals, ModuleName, ".erl", do_create_dirs,
             ErlangFile, !IO),
@@ -648,9 +645,6 @@ get_object_extension(Globals, PIC) = Ext :-
     ;
         CompilationTarget = target_java,
         sorry($module, $pred, "object extension for java")
-    ;
-        CompilationTarget = target_x86_64,
-        sorry($module, $pred, "mmc --make NYI and target x86_64")
     ;
         CompilationTarget = target_erlang,
         sorry($module, $pred, "mmc --make NYI and target erlang")
@@ -987,9 +981,6 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
             HeaderModuleNames = SourceFileModuleNames,
             HeaderTargets0 = make_target_file_list(HeaderModuleNames,
                 module_target_erlang_header)
-        ;
-            CompilationTarget = target_x86_64,
-            sorry($module, $pred, "NYI mmc --make and target x86_64")
         ),
 
         (
@@ -1083,7 +1074,6 @@ external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
         ( CompilationTarget = target_java
         ; CompilationTarget = target_csharp
         ; CompilationTarget = target_il
-        ; CompilationTarget = target_x86_64
         ; CompilationTarget = target_erlang
         ),
         ForeignFiles = ForeignFiles0

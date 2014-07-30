@@ -1,4 +1,4 @@
-oisu_check_add_pragma_errors.m:014: Duplicate `pragma oisu' declaration for
+oisu_check_add_pragma_errors.m:014: Duplicate `:- pragma oisu' declarations for
 oisu_check_add_pragma_errors.m:014:   `oisu_check_add_pragma_errors.foo'/0.
 oisu_check_add_pragma_errors.m:020: In pragma oisu:
 oisu_check_add_pragma_errors.m:020:   error: undefined type

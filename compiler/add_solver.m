@@ -215,9 +215,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         Target = target_erlang,
         Lang = lang_erlang
     ;
-        ( Target = target_il
-        ; Target = target_x86_64
-        ),
+        Target = target_il,
         WhatMsg = "solver type conversion functions for this backend",
         sorry($module, WhatMsg)
     ),

@@ -5,9 +5,9 @@ bad_mutable.m:013: Error: the inst `special_ground' is not a valid inst for a
 bad_mutable.m:013:   mutable declaration.
 bad_mutable.m:013: In declaration for mutable `not_an_inst':
 bad_mutable.m:013:   error: undefined inst `special_ground'/0.
-bad_mutable.m:015: Error: malformed attribute list in mutable declaration:
+bad_mutable.m:015: Error: malformed attribute list in `:- mutable' declaration:
 bad_mutable.m:015:   [untrailed, bad_attrib].
-bad_mutable.m:017: Error: the type in a mutable declaration cannot contain
+bad_mutable.m:017: Error: the type in a `:- mutable' declaration cannot contain
 bad_mutable.m:017:   variables: list(T).
 bad_mutable.m:019: Error: conflicting attributes in attribute list:
 bad_mutable.m:019:   [untrailed, trailed].

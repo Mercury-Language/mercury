@@ -152,7 +152,6 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         ;
             ( Target = target_c
             ; Target = target_java
-            ; Target = target_x86_64
             ; Target = target_erlang
             ),
             unexpected($module, $pred,

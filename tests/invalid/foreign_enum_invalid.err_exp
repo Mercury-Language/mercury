@@ -1,13 +1,13 @@
-foreign_enum_invalid.m:020: Error: `pragma foreign_enum' declaration for
+foreign_enum_invalid.m:020: Error: `:- pragma foreign_enum' declaration for
 foreign_enum_invalid.m:020:   `foreign_enum_invalid.in_int'/0 in module
 foreign_enum_invalid.m:020:   interface.
-foreign_enum_invalid.m:026: In `pragma foreign_enum' declaration for
+foreign_enum_invalid.m:026: In `:- pragma foreign_enum' declaration for
 foreign_enum_invalid.m:026:   `foreign_enum_invalid.incomplete'/0:
 foreign_enum_invalid.m:026:   error: not all constructors have a foreign value.
 foreign_enum_invalid.m:026:   The following constructor does not have a foreign
 foreign_enum_invalid.m:026:   value
 foreign_enum_invalid.m:026:       `foreign_enum_invalid.baz'
-foreign_enum_invalid.m:031: In `pragma foreign_enum' declaration for
+foreign_enum_invalid.m:031: In `:- pragma foreign_enum' declaration for
 foreign_enum_invalid.m:031:   `foreign_enum_invalid.incomplete2'/0:
 foreign_enum_invalid.m:031:   error: not all constructors have a foreign value.
 foreign_enum_invalid.m:031:   The following constructors do not have foreign
@@ -15,12 +15,12 @@ foreign_enum_invalid.m:031:   values
 foreign_enum_invalid.m:031:       `foreign_enum_invalid.bar2',
 foreign_enum_invalid.m:031:       `foreign_enum_invalid.baz2',
 foreign_enum_invalid.m:031:       `foreign_enum_invalid.foo2'
-foreign_enum_invalid.m:033: In `pragma foreign_enum' declaration for
+foreign_enum_invalid.m:033: In `:- pragma foreign_enum' declaration for
 foreign_enum_invalid.m:033:   `foreign_enum_invalid.not_a_bijection'/0:
 foreign_enum_invalid.m:033:   error: the mapping between Mercury enumeration
 foreign_enum_invalid.m:033:   values and foreign values does not form a
 foreign_enum_invalid.m:033:   bijection.
-foreign_enum_invalid.m:041: In `pragma foreign_enum' declaration for
+foreign_enum_invalid.m:041: In `:- pragma foreign_enum' declaration for
 foreign_enum_invalid.m:041:   `foreign_enum_invalid.dup_foreign_enum'/0:
 foreign_enum_invalid.m:041:   error: `foreign_enum_invalid.dup_foreign_enum'/0
 foreign_enum_invalid.m:041:   has multiple foreign_enum pragmas.

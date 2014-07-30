@@ -786,9 +786,7 @@ add_pass_1_mutable(Item, Status, !ModuleInfo, !Specs) :-
             WantLockDecls = no,
             WantUnsafeAccessDecls = no
         ;
-            ( CompilationTarget = target_il
-            ; CompilationTarget = target_x86_64
-            ),
+            CompilationTarget = target_il,
             % Not supported yet.
             WantPreInitDecl = yes,
             WantLockDecls = yes,
@@ -1165,9 +1163,7 @@ add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
                 IOStateInterface = no
             )
         ;
-            ( CompilationTarget = target_il
-            ; CompilationTarget = target_x86_64
-            ),
+            CompilationTarget = target_il,
             Pieces = [words("Error: foreign_name mutable attribute not yet"),
                 words("implemented for the"),
                 fixed(compilation_target_string(CompilationTarget)),
@@ -1599,9 +1595,7 @@ add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
             MaybeExportLang = yes(lang_erlang)
         ;
             % Untested.
-            ( CompilationTarget = target_il
-            ; CompilationTarget = target_x86_64
-            ),
+            CompilationTarget = target_il,
             MaybeExportLang = no
         ),
         (
@@ -1754,9 +1748,7 @@ add_pass_3_finalise(ItemFinalise, Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 target_lang_to_foreign_export_lang(CompilationTarget) = ExportLang :-
     (
-        ( CompilationTarget = target_c
-        ; CompilationTarget = target_x86_64
-        ),
+        CompilationTarget = target_c,
         ExportLang = lang_c
     ;
         CompilationTarget = target_erlang,
@@ -1846,9 +1838,7 @@ add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
             add_erlang_mutable_preds(ItemMutable, TargetMutableName,
                 Status, _, !ModuleInfo, !QualInfo, !Specs)
         ;
-            ( CompilationTarget = target_il
-            ; CompilationTarget = target_x86_64
-            )
+            CompilationTarget = target_il
             % Not supported yet.
         )
     ;
@@ -3117,7 +3107,7 @@ add_stratified_pred(PragmaName, Name, Arity, Context, !ModuleInfo, !Specs) :-
         module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
     ;
         PredIds = [],
-        DescPieces = [quote(":- pragma " ++ PragmaName), words("declaration")],
+        DescPieces = [pragma_decl(PragmaName), words("declaration")],
         undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs)
     ).
 
@@ -3162,7 +3152,7 @@ do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
         module_info_set_predicate_table(PredTable, !ModuleInfo)
     ;
         PredIds = [],
-        DescPieces = [quote(":- pragma " ++ PragmaName), words("declaration")],
+        DescPieces = [pragma_decl(PragmaName), words("declaration")],
         undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs)
     ).
 
@@ -3193,7 +3183,7 @@ module_mark_as_external(PredName, Arity, Context, !ModuleInfo, !Specs) :-
     ;
         PredIds = [],
         undefined_pred_or_func_error(PredName, Arity, Context,
-            [quote(":- external"), words("declaration")], !Specs)
+            [decl("external"), words("declaration")], !Specs)
     ).
 
 :- pred module_mark_preds_as_external(list(pred_id)::in,

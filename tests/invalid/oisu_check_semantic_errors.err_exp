@@ -31,7 +31,7 @@ oisu_check_semantic_errors.m:034: The second argument of predicate
 oisu_check_semantic_errors.m:034:   `destroy_foo3'/4 handles a previous handled
 oisu_check_semantic_errors.m:034:   OISU type.
 oisu_check_semantic_errors.m:035: predicate `destroy_foo4'/3 is mentioned in a
-oisu_check_semantic_errors.m:035:   `pragma oisu' declaration, so it should
+oisu_check_semantic_errors.m:035:   `:- pragma oisu' declaration, so it should
 oisu_check_semantic_errors.m:035:   have exactly one procedure.
 oisu_check_semantic_errors.m:039: predicate `create_bar1'/2 is declared to
 oisu_check_semantic_errors.m:039:   handle the following OISU types, but it

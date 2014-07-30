@@ -309,8 +309,6 @@
     ;       csharp              % target csharp
     ;       csharp_only         % target csharp + target_code_only
     % XXX The following options need to be documented.
-    ;       x86_64              % target x86_64
-    ;       x86_64_only         % target x86_64 + target_code_only
     ;       erlang              % target erlang
     ;       erlang_only         % target erlang + target_code_only
 
@@ -1296,8 +1294,6 @@ option_defaults_2(compilation_model_option, [
     csharp_only                         -   special,
     java                                -   special,
     java_only                           -   special,
-    x86_64                              -   special,
-    x86_64_only                         -   special,
     erlang                              -   special,
     erlang_only                         -   special,
 
@@ -2213,10 +2209,6 @@ long_option("csharp",               csharp).
 long_option("C#",                   csharp).
 long_option("csharp-only",          csharp_only).
 long_option("C#-only",              csharp_only).
-long_option("x86_64",               x86_64).
-long_option("x86-64",               x86_64).
-long_option("x86_64-only",          x86_64_only).
-long_option("x86-64-only",          x86_64_only).
 long_option("erlang",               erlang).
 long_option("Erlang",               erlang).
 long_option("erlang-only",          erlang_only).
@@ -2973,11 +2965,6 @@ special_handler(csharp, none, !.OptionTable, ok(!:OptionTable)) :-
     map.set(target, string("csharp"), !OptionTable).
 special_handler(csharp_only, none, !.OptionTable, ok(!:OptionTable)) :-
     map.set(target, string("csharp"), !OptionTable),
-    map.set(target_code_only, bool(yes), !OptionTable).
-special_handler(x86_64, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(target, string("x86_64"), !OptionTable).
-special_handler(x86_64_only, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(target, string("x86_64"), !OptionTable),
     map.set(target_code_only, bool(yes), !OptionTable).
 special_handler(erlang, none, !.OptionTable, ok(!:OptionTable)) :-
     map.set(target, string("erlang"), !OptionTable).

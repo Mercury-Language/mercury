@@ -327,6 +327,13 @@
     ;       simple_call(simple_call_id)
             % Output the identity of the given call.
 
+    ;       decl(string)
+            % Prefix the string with ":- ", surround with single quotes
+            % and then treat as fixed.
+
+    ;       pragma_decl(string)
+            % As above but prefix the string with ":- pragma ".
+
     ;       nl
             % Insert a line break if there has been text output since
             % the last line break.
@@ -1085,6 +1092,14 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Word = simple_call_id_to_string(SimpleCallId),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
+        Component = decl(Decl),
+        Word = add_quotes(":- " ++ Decl),
+        Str = join_string_and_tail(Word, Components, TailStr)
+    ;
+        Component = pragma_decl(PragmaName),
+        Word = add_quotes(":- pragma " ++ PragmaName),
+        Str = join_string_and_tail(Word, Components, TailStr)
+    ;
         Component = top_ctor_of_type(Type),
         ( type_to_ctor(Type, TypeCtor) ->
             TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
@@ -1092,7 +1107,7 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
             Word = sym_name_and_arity_to_word(SymName),
             Str = join_string_and_tail(Word, Components, TailStr)
         ;
-            error("error_pieces_to_string: type is variable")
+            unexpected($file, $pred, "type is variable")
         )
     ;
         Component = nl,
@@ -1213,7 +1228,7 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
             NewWord = plain_word(sym_name_and_arity_to_word(SymName)),
             RevWords1 = [NewWord | RevWords0]
         ;
-            error("convert_components_to_paragraphs_acc: type is variable")
+            unexpected($file, $pred, "type is variable")
         )
     ;
         Component = p_or_f(PredOrFunc),
@@ -1223,6 +1238,14 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         Component = simple_call(SimpleCallId),
         WordsStr = simple_call_id_to_string(SimpleCallId),
         break_into_words(WordsStr, RevWords0, RevWords1)
+    ;
+        Component = decl(DeclName),
+        Word = add_quotes(":- " ++ DeclName),
+        RevWords1 = [plain_word(Word) | RevWords0]
+    ;
+        Component = pragma_decl(PragmaName),
+        Word = add_quotes(":- pragma " ++ PragmaName),
+        RevWords1 = [plain_word(Word) | RevWords0]
     ;
         Component = nl,
         Strings = rev_words_to_strings(RevWords0),
@@ -1342,12 +1365,12 @@ lower_initial(Str0) = Str :-
 :- func sym_name_to_word(sym_name) = string.
 
 sym_name_to_word(SymName) =
-    "`" ++ sym_name_to_string(SymName) ++ "'".
+    add_quotes(sym_name_to_string(SymName)).
 
 :- func sym_name_and_arity_to_word(sym_name_and_arity) = string.
 
 sym_name_and_arity_to_word(SymName / Arity) =
-    "`" ++ sym_name_to_string(SymName) ++ "'" ++ "/" ++ int_to_string(Arity).
+    add_quotes(sym_name_to_string(SymName)) ++ "/" ++ int_to_string(Arity).
 
 :- pred break_into_words(string::in, list(word)::in, list(word)::out) is det.
 

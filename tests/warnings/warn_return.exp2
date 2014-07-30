@@ -1,2 +1,2 @@
-warn_return.m:028: warning: the Java code for predicate `warn_return.foo'/2 may
+warn_return.m:028: Warning: the Java code for predicate `warn_return.foo'/2 may
 warn_return.m:028:   contain a `return' statement.

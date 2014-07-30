@@ -3317,7 +3317,6 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
             ( Target = target_c
             ; Target = target_il
             ; Target = target_csharp
-            ; Target = target_x86_64
             ; Target = target_erlang
             ),
             PassArity = yes
