@@ -513,7 +513,8 @@ ifeq "$(filter il% csharp% java% erlang%,$(GRADE))" ""
 		foreign_type_assertion \
 		pragma_export \
 		runtime_opt \
-		target_mlobjs
+		target_mlobjs \
+        weak_ptr
 else
 	C_ONLY_PROGS =
 endif
@@ -882,6 +883,14 @@ tl_backjump_test.out: tl_backjump_test
 		grep . $@.tmp; \
 		exit 1; \
 	fi	
+
+# weak_ptr's output is extreamly volatile, it depends on Boehm GC's behavour
+# which can vary depending on many different things.  All we can hope to do
+# is check that it doesn't crash.
+
+weak_ptr.out: weak_ptr
+	./weak_ptr
+	echo "Output is not part of test, see Mmakefile" > $@
 
 #-----------------------------------------------------------------------------#
 

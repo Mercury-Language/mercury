@@ -159,7 +159,7 @@ drop(int n, list* cur)
     ").
 
 test(!IO) :-
-    % We provide a weak_ptr.exp2 file so that the test passws in non C
+    % We provide a weak_ptr.exp2 file so that the test passes in non C
     % grades.  Java and C# provide their own weak pointer code that we do
     % not need to test as part of the Mercury test suite.
     io.write_string("Test not supported in this grade.\n", !IO).
