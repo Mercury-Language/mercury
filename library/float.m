@@ -160,7 +160,7 @@
 	%
 :- func hash(float) = int.
 
-	% Is the float point number not a number or infinite?
+	% Is the floating point number not a number or infinite?
 	%
 :- pred is_nan_or_inf(float::in) is semidet.
 

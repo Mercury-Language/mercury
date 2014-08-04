@@ -74,8 +74,7 @@ ORDINARY_PROGS=	\
 		test_string_to_int_overflow \
 		test_univ \
 		unreachable \
-		unsafe_uniqueness \
-		weak_ptr
+		unsafe_uniqueness
 
 EXCEPTION_PROGS = \
 		map_corresponding \
@@ -150,13 +149,5 @@ string_format_test_3.out: string_format_test_3
 	# io_foldl `cat's its input to its output.
 io_foldl.out: io_foldl io_foldl.exp
 	./io_foldl < io_foldl.exp > io_foldl.out 2>&1
-
-# weak_ptr's output is extreamly volatile, it depends on Boehm GC's behavour
-# which can vary depending on many different things.  All we can hope to do
-# is check that it doesn't crash.
-
-weak_ptr.out: weak_ptr
-	./weak_ptr
-	echo "Output is not part of test, see Mmakefile" > $@
 
 #-----------------------------------------------------------------------------#
