@@ -218,7 +218,6 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
         ; GC = gc_boehm
         ; GC = gc_boehm_debug
         ; GC = gc_hgc
-        ; GC = gc_mps
         )
     ),
     maybe_report_stats(Stats, !IO),

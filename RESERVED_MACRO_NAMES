@@ -50,12 +50,6 @@ pthread_detach
 pthread_join
 pthread_sigmask
 #-----------------------------------------------------------------------------#
-# This is defined by mps_gc/code/mercury_mps.h,
-# which uses this macro for its header guard.
-# Normally it would be better to use uppercase for header guard macro names,
-# but that would be inconsistent with the coding style used in mps_gc/code.
-mercury_mps_h
-#-----------------------------------------------------------------------------#
 # This is defined by the mgnuc script in some grades.
 # It is used for configuring the Boehm collector.
 # XXX it should have a GC_ prefix.

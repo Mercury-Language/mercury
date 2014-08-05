@@ -7620,7 +7620,6 @@ The set of aspects and their alternatives are:
 @cindex .tr (grade modifier)
 @cindex .trseg (grade modifier)
 @cindex .gc (grade modifier)
-@cindex .mps (grade modifier)
 @cindex .agc (grade modifier)
 @cindex .spf (grade modifier)
 @cindex .stseg (grade modifier)
@@ -7762,9 +7761,6 @@ and grade modifier; they are followed by descriptions of those options.
 
 @item @samp{.gc}
 @code{--gc boehm}.
-
-@item @samp{.mps}
-@code{--gc mps}
 
 @item @samp{.agc}
 @code{--gc accurate}.
@@ -8151,12 +8147,11 @@ This option is supported for the C back-end, with @samp{--no-high-level-code}.
 For now, this option itself is for developers only.
 
 @sp 1
-@item @code{--gc @{none, boehm, mps, accurate, automatic@}}
-@itemx @code{--garbage-collection @{none, boehm, mps, accurate, automatic@}}
+@item @code{--gc @{none, boehm, accurate, automatic@}}
+@itemx @code{--garbage-collection @{none, boehm, accurate, automatic@}}
 @cindex Garbage collection
 @cindex Conservative garbage collection
 @cindex Boehm (et al) conservative garbage collector
-@cindex MPS conservative garbage collector
 @cindex Memory Pool System conservative garbage collector
 @cindex Accurate garbage collection
 @cindex Automatic garbage collection
@@ -8166,14 +8161,11 @@ Specify which method of garbage collection to use.
 Grades containing @samp{csharp}, @samp{java}, @samp{il} or @samp{erlang} use
 @samp{--gc automatic},
 grades containing @samp{.gc} use @samp{--gc boehm},
-grades containing @samp{.mps} use @samp{--gc mps},
 other grades use @samp{--gc none}.
 @samp{conservative} or @samp{boehm} is Hans Boehm et al's conservative
 garbage collector.
 @samp{accurate} is our own type-accurate copying collector.
 It requires @samp{--high-level-code}.
-@samp{mps} is another conservative collector based on Ravenbrook Limited's
-MPS (Memory Pool System) kit.
 @samp{automatic} means the target language provides it.
 This is the case for the IL, C#, Java and Erlang back-ends, which always use
 the underlying implementation's garbage collector.

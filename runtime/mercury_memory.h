@@ -28,9 +28,6 @@
 #include "mercury_conf.h"	/* for MR_CONSERVATIVE_GC, etc. */
 
 #if defined(MR_CONSERVATIVE_GC)
-  #if defined(MR_MPS_GC)
-    #include "mercury_mps.h"	/* for GC_FREE */
-  #endif
   #if defined(MR_BOEHM_GC)
     #define GC_I_HIDE_POINTERS
     #include "gc.h"		/* for GC_FREE */

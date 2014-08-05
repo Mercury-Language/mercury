@@ -537,7 +537,7 @@ static const char mercury_main_func[] =
     "#endif\n"
         /*
         ** Note that the address we use for the stack base
-        ** needs to be word-aligned (the MPS GC requires this).
+        ** needs to be word-aligned.
         ** That's why we give dummy the type `void *' rather than
         ** e.g. `char'.
         */

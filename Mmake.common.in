@@ -294,10 +294,6 @@ OBJ_CHECKS        = $(CHECK_OBJS:%=%.obj_check)
 # 		(the `mdbcomp' directory)
 # 	`GC_' for stuff in the Boehm et al conservative garbage collector
 # 		(the `boehm_gc' directory)
-# 	`MPS_' or `mps_' for stuff in the Memory Pool System toolkit
-# 		(the `mps_gc' directory, if present -- note that this
-# 		is in a separate CVS module and is not included in the
-# 		normal Mercury source distributions)
 # Exceptions to this policy must be listed in the RESERVED_MACRO_NAMES file
 # in the top directory (if applicable to all C source directories) or in
 # the relevant directory (if applicable only to some C source directories).
@@ -307,7 +303,7 @@ OBJ_CHECKS        = $(CHECK_OBJS:%=%.obj_check)
 # typeclass.
 
 GEN_MACRO_PREFIX_EXPRS = \
-	-e '^MR_' -e '^MERCURY_' -e '^GC_' -e '^MPS_' -e '^mps_'
+	-e '^MR_' -e '^MERCURY_' -e '^GC_'
 GEN_OBJ_PREFIX_EXPRS = \
 	-e '^@SYMPREFIX@MR_' -e '^_entry' -e '^@SYMPREFIX@mercury_' \
 	-e '^@SYMPREFIX@base_typeclass_info_'

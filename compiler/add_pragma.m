@@ -3872,7 +3872,6 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             ; GC_Method = gc_boehm
             ; GC_Method = gc_boehm_debug
             ; GC_Method = gc_hgc
-            ; GC_Method = gc_mps
             )
         ;
             ( GC_Method = gc_accurate

@@ -255,7 +255,6 @@ LDLIBS		= $(SHARED_GC_LIBS) $(MATH_LIB)
 
 THREADLIBS	= \
 		` case "$(GRADE)" in					\
-			*.mps*) echo $(THREAD_LIBS) ;;			\
 			*.hlc.par*) echo $(THREAD_LIBS) ;;		\
 			*.par*) echo "$(THREAD_LIBS) $(HWLOC_LIBS)" ;;	\
 		esac							\

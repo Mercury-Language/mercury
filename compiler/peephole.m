@@ -715,7 +715,6 @@ invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns) :-
         ; GC_Method = gc_none
         ; GC_Method = gc_boehm
         ; GC_Method = gc_boehm_debug
-        ; GC_Method = gc_mps
         ; GC_Method = gc_hgc
         ),
         InvalidPatterns0 = []

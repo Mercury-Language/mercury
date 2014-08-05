@@ -264,9 +264,6 @@ case "$GRADE" in
 	*.hgc*)
 		gc_grade=hgc
 		;;
-	*.mps*)
-		gc_grade=mps
-		;;
 	*)
 		gc_grade=nogc
 		;;
@@ -376,11 +373,6 @@ else
 	DEBUG_FLAG=""
 fi
 
-case $gc_method in
-	mps)
-		use_thread_libs=true
-		;;
-esac
 case $thread_safe in
 	true)
 		use_thread_libs=true

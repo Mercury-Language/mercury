@@ -99,7 +99,6 @@ case $gc_method in
 	boehm)		GRADE="$GRADE.gc" ;;
 	boehm_debug)	GRADE="$GRADE.gcd" ;;
 	hgc)		GRADE="$GRADE.hgc" ;;
-	mps)		GRADE="$GRADE.mps" ;;
 	accurate)	GRADE="$GRADE.agc" ;;
 esac
 

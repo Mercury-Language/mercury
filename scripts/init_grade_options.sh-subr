@@ -30,7 +30,7 @@ Grade options:
 	--gcc-global-registers
 	-H, --high-level-code
 	--parallel
-	--gc {boehm, boehm_debug, hgc, mps, accurate, none}
+	--gc {boehm, boehm_debug, hgc, accurate, none}
 	-p, --profiling
 	--profile-calls
 	--profile-time

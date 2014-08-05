@@ -92,19 +92,12 @@
     ;       gc_hgc
             % Ralph Becket's hgc conservative collector.
 
-    ;       gc_mps
-            % A different conservative collector, based on Ravenbrook Limited's
-            % MPS (Memory Pool System) kit. Benchmarking indicated that
-            % this one performed worse than the Boehm collector,
-            % so we don't really support this option anymore.
-
     ;       gc_accurate.
             % Our own Mercury-specific home-grown copying collector.
             % See runtime/mercury_accurate_gc.c and compiler/ml_elim_nested.m.
 
-    % Returns yes if the GC method is conservative, i.e. if it is `boehm'
-    % or `mps'. Conservative GC methods don't support heap reclamation
-    % on failure.
+    % Returns yes if the GC method is conservative, i.e. if it is `boehm'.
+    % Conservative GC methods don't support heap reclamation on failure.
     %
 :- func gc_is_conservative(gc_method) = bool.
 
@@ -412,7 +405,6 @@ convert_gc_method("conservative", gc_boehm).
 convert_gc_method("boehm", gc_boehm).
 convert_gc_method("boehm_debug", gc_boehm_debug).
 convert_gc_method("hgc", gc_hgc).
-convert_gc_method("mps", gc_mps).
 convert_gc_method("accurate", gc_accurate).
 convert_gc_method("automatic", gc_automatic).
 
@@ -594,7 +586,6 @@ simple_foreign_language_string(lang_erlang) = "erlang".
 gc_is_conservative(gc_boehm) = yes.
 gc_is_conservative(gc_boehm_debug) = yes.
 gc_is_conservative(gc_hgc) = yes.
-gc_is_conservative(gc_mps) = yes.
 gc_is_conservative(gc_none) = no.
 gc_is_conservative(gc_accurate) = no.
 gc_is_conservative(gc_automatic) = no.

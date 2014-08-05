@@ -156,10 +156,9 @@
 ** MR_USE_GCC_GLOBAL_REGISTERS
 ** MR_USE_GCC_NONLOCAL_GOTOS
 ** MR_USE_ASM_LABELS
-** MR_CONSERVATIVE_GC (= boehm_gc *or* MPS)
+** MR_CONSERVATIVE_GC (= boehm_gc)
 ** MR_BOEHM_GC
 ** MR_HGC
-** MR_MPS_GC
 ** MR_NATIVE_GC
 ** MR_NO_TYPE_LAYOUT
 ** MR_BOXED_FLOAT
@@ -845,18 +844,15 @@
 */
 
 /*
-** Both the Boehm collector and the MPS collector are conservative.
-** (Well, actually MPS supports a wide spectrum of methods, including
-** fully conservative, partly conservative (mostly copying),
-** and fully type-accurate collection; but currently we're using
-** the conservative collector part of MPS.)
+** The Boehm collector is our default garbage collector,
+** and it is a conservative collector.
 **
-** If MR_CONSERVATIVE_GC is defined without specifying which
-** collector to use, then default to using the Boehm collector.
+** If MR_CONSERVATIVE_GC is defined without specifying which collector to use,
+** then default to using the Boehm collector.
 */
-#if defined(MR_HGC) || defined(MR_BOEHM_GC) || defined(MR_MPS_GC)
+#if defined(MR_HGC) || defined(MR_BOEHM_GC)
   #ifndef MR_CONSERVATIVE_GC
-  #define MR_CONSERVATIVE_GC
+    #define MR_CONSERVATIVE_GC
   #endif
 #elif defined(MR_CONSERVATIVE_GC)
   #define MR_BOEHM_GC

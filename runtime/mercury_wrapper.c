@@ -585,10 +585,7 @@ mercury_runtime_init(int argc, char **argv)
     ** This is needed because our signal handler assumes that signals
     ** which it can't handle are fatal.
     */
-#if 1 /* XXX still some problems with this for MPS? -fjh */
-/* #ifndef MR_MPS_GC */
     MR_setup_signals();
-#endif
 
 #ifdef MR_BOEHM_GC
     /* Disable GC during startup, when little or no garbage is created. */
@@ -838,10 +835,6 @@ mercury_runtime_init(int argc, char **argv)
 
 #ifdef MR_CONSERVATIVE_GC
 
-  #ifdef MR_MPS_GC
-    MR_bool MR_mps_quiet = MR_TRUE;
-  #endif
-
   #ifdef MR_HIGHTAGS
     /* MR_HIGHTAGS disguises pointers and hides them from gc */
     #error "MR_HIGHTAGS is incompatible with MR_CONSERVATIVE_GC"
@@ -850,11 +843,7 @@ mercury_runtime_init(int argc, char **argv)
 void
 MR_init_conservative_GC(void)
 {
-  #if defined(MR_MPS_GC)
-
-    mercury_mps_init(MR_heap_size * 1024, !MR_mps_quiet);
-
-  #elif defined(MR_HGC)
+  #if defined(MR_HGC)
 
     MR_hgc_init();
     MR_runqueue_head = NULL;
@@ -2179,9 +2168,6 @@ MR_process_options(int argc, char **argv)
                     MR_sregdebug        = MR_TRUE;
                     MR_finaldebug       = MR_TRUE;
                     MR_tracedebug       = MR_TRUE;
-#ifdef MR_MPS_GC
-                    MR_mps_quiet        = MR_FALSE;
-#endif
 #ifdef MR_NATIVE_GC
                     MR_agc_debug        = MR_TRUE;
 #endif
@@ -2207,9 +2193,7 @@ MR_process_options(int argc, char **argv)
                 } else if (MR_streq(MR_optarg, "g")) {
                     MR_gotodebug    = MR_TRUE;
                 } else if (MR_streq(MR_optarg, "G")) {
-#ifdef MR_MPS_GC
-                    MR_mps_quiet = MR_FALSE;
-#elif defined(MR_NATIVE_GC)
+#if defined(MR_NATIVE_GC)
                     MR_agc_debug = MR_TRUE;
 #else
                     ; /* ignore inapplicable option */

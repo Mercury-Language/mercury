@@ -40,9 +40,6 @@
 #include "mercury_misc.h"		/* for MR_fatal_error() */
 
 #ifdef MR_CONSERVATIVE_GC
-  #ifdef MR_MPS_GC
-    #include "mercury_mps.h"
-  #endif
   #ifdef MR_BOEHM_GC
     #include "gc.h"
     #define GC_I_HIDE_POINTERS

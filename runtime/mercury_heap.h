@@ -37,9 +37,6 @@
 #endif
 
 #ifdef MR_CONSERVATIVE_GC
-  #ifdef MR_MPS_GC
-    #include "mercury_mps.h"
-  #endif
   #ifdef MR_HGC
     #include "mercury_hgc.h"
   #endif

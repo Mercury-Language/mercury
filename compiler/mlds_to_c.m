@@ -3806,7 +3806,6 @@ mlds_output_atomic_stmt(Opts, Indent, _FuncInfo, Statement, Context, !IO) :-
             ( GC_Method = gc_none
             ; GC_Method = gc_boehm
             ; GC_Method = gc_boehm_debug
-            ; GC_Method = gc_mps
             ; GC_Method = gc_hgc
             ; GC_Method = gc_automatic
             )

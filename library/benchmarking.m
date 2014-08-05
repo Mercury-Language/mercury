@@ -374,17 +374,6 @@ ML_report_stats(void)
     */
 
 #ifdef MR_CONSERVATIVE_GC
-  #ifdef MR_MPS_GC
-    {
-        size_t committed, spare;
-
-        committed = mps_arena_committed(mercury_mps_arena);
-        spare = mps_arena_spare_committed(mercury_mps_arena);
-
-        fprintf(stderr, ""\\nHeap in use: %.3fk, spare: %.3fk, total: %.3fk"",
-            (committed - spare) / 1024.0, spare / 1024.0, committed / 1024.0);
-    }
-  #endif /* MR_MPS_GC */
   #ifdef MR_BOEHM_GC
     fprintf(stderr, ""\\n#GCs: %lu, "",
         (unsigned long) GC_gc_no);

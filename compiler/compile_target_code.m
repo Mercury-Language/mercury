@@ -723,9 +723,6 @@ gather_grade_defines(Globals, PIC, GradeDefines) :-
         GC_Method = gc_hgc,
         GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_HGC "
     ;
-        GC_Method = gc_mps,
-        GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_MPS_GC "
-    ;
         GC_Method = gc_accurate,
         GC_Opt = "-DMR_NATIVE_GC "
     ),
@@ -2258,10 +2255,6 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             link_lib_args(Globals, TargetType, StdLibDir, "", LibExt,
                 GCGrade, StaticGCLibs, SharedGCLibs)
         ;
-            GCMethod = gc_mps,
-            link_lib_args(Globals, TargetType, StdLibDir, "", LibExt,
-                "mps", StaticGCLibs, SharedGCLibs)
-        ;
             GCMethod = gc_accurate,
             StaticGCLibs = "",
             SharedGCLibs = ""
@@ -2520,9 +2513,7 @@ get_system_libs(Globals, TargetType, SystemLibs) :-
 :- pred use_thread_libs(globals::in, bool::out) is det.
 
 use_thread_libs(Globals, UseThreadLibs) :-
-    globals.lookup_bool_option(Globals, parallel, Parallel),
-    globals.get_gc_method(Globals, GCMethod),
-    UseThreadLibs = ( ( Parallel = yes ; GCMethod = gc_mps ) -> yes ; no ).
+    globals.lookup_bool_option(Globals, parallel, UseThreadLibs).
 
     % When using --restricted-command-line with Visual C we add all the object
     % files to a temporary archive before linking an executable.

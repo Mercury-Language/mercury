@@ -1843,7 +1843,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         ; GC_Method = gc_boehm
         ; GC_Method = gc_boehm_debug
         ; GC_Method = gc_hgc
-        ; GC_Method = gc_mps
         )
     ),
 

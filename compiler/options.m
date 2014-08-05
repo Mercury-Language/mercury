@@ -4257,7 +4257,7 @@ options_help_compilation_model -->
 % The ilc grade is not documented because it is not useful;
 % it has been superceded by the il grade.
         "\tor one of those with one or more of the grade modifiers",
-        "\t`.gc', `.mps', `.prof', `.memprof', `.profdeep', `.tr',",
+        "\t`.gc', `.prof', `.memprof', `.profdeep', `.tr',",
         "\t`.spf', `.stseg', `.debug', `.par' and/or `.pic_reg' appended.",
         "\tDepending on your particular installation, only a subset",
         "\tof these possible grades will have been installed.",
@@ -4455,13 +4455,12 @@ options_help_compilation_model -->
 
     io.write_string("      Miscellaneous optional features\n"),
     write_tabbed_lines([
-        "--gc {none, boehm, hgc, mps, accurate, automatic}",
+        "--gc {none, boehm, hgc, accurate, automatic}",
         "--garbage-collection {none, boehm, hgc, mps, accurate, automatic}",
         "\t\t\t\t(`java', `csharp', `il' and `erlang'",
         "\t\t\t\t\tgrades use `--gc automatic',",
         "\t\t\t\t`.gc' grades use `--gc boehm',",
         "\t\t\t\t`.hgc' grades use `--gc hgc',",
-        "\t\t\t\t`.mps' grades use `--gc mps',",
         "\t\t\t\tother grades use `--gc none'.)",
         "\tSpecify which method of garbage collection to use",
         "\t(default: boehm).",
@@ -4469,8 +4468,6 @@ options_help_compilation_model -->
         "\t`hgc' is our own conservative collector;",
         "\t`accurate' is our own type-accurate copying GC;",
         "\tit requires `--high-level-code'.",
-        "\t`mps' is a different conservative collector, based on",
-        "\tRavenbrook Limited's MPS (Memory Pool System) kit.",
         "\t`automatic' means the target language provides it.",
         "\tThis is the case for the IL, C#, Java and Erlang back-ends,",
         "\twhich always use the garbage collector of the underlying",

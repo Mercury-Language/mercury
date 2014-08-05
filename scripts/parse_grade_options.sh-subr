@@ -86,7 +86,7 @@
     --gc)
         shift
         case "$1" in
-            accurate|conservative|boehm|boehm_debug|hgc|mps|none|automatic)
+            accurate|conservative|boehm|boehm_debug|hgc|none|automatic)
                 gc_method=$1 ;;
             *)
                 echo "$0: invalid gc method \`$1'" 1>&2
@@ -422,9 +422,6 @@
 
                 agc)
                     gc_method=accurate
-                    ;;
-                mps)
-                    gc_method=mps
                     ;;
                 gc)
                     gc_method=boehm

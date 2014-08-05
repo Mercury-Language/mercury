@@ -50,10 +50,9 @@ extern void             mercury_runtime_main(void);
 extern int              mercury_runtime_terminate(void);
 
 /*
-** MR_init_conservative_GC() initializes the conservative collector.
-** The conservative collector can be either the Boehm et al collector,
-** or the MPS (Memory Pool System) kit collector. This function is normally
-** called from mercury_runtime_init().
+** MR_init_conservative_GC() initializes the conservative collector,
+** which is usually the Boehm et al collector, but could be the hgc collector.
+** This function is normally called from mercury_runtime_init().
 */
 
 #ifdef MR_CONSERVATIVE_GC
