@@ -2076,15 +2076,19 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
             % that following link command will call sub-commands itself
             % and thus overflow the command line, so in this case
             % we first create an archive of all of the object files.
-            %
             RestrictedCommandLine = yes,
             io.make_temp(TmpFile, !IO),
             globals.lookup_string_option(Globals, library_extension, LibExt),
             TmpArchive = TmpFile ++ LibExt,
-            create_archive(Globals, ErrorStream, TmpArchive, yes, ObjectsList,
-                ArchiveSucceeded, !IO),
+            % Only include actual object files in the temporary archive,
+            % not other files such as other archives.
+            filter_object_files(Globals, ObjectsList,
+                ProperObjectFiles, NonObjectFiles),
+            create_archive(Globals, ErrorStream, TmpArchive, yes,
+                ProperObjectFiles, ArchiveSucceeded, !IO),
             MaybeDeleteTmpArchive = yes(TmpArchive),
-            Objects = TmpArchive
+            join_quoted_string_list([TmpArchive | NonObjectFiles],
+                "", "", " ", Objects)
         ;
             RestrictedCommandLine = no,
             ArchiveSucceeded = yes,
@@ -2578,6 +2582,33 @@ get_restricted_command_line_link_opts(Globals, LinkTargetType,
     ;
         RestrictedCommandLine = no,
         ResCmdLinkOpts = ""
+    ).
+
+    % Filter list of files into those with and without known object file
+    % extensions.
+    %
+:- pred filter_object_files(globals::in, list(string)::in,
+    list(string)::out, list(string)::out) is det.
+
+filter_object_files(Globals, Files, ObjectFiles, NonObjectFiles) :-
+    globals.lookup_string_option(Globals, object_file_extension, ObjExt),
+    globals.lookup_string_option(Globals, pic_object_file_extension,
+        PicObjExt),
+    globals.lookup_string_option(Globals, link_with_pic_object_file_extension,
+        LinkWithPicObjExt),
+    list.filter(has_object_file_extension(ObjExt, PicObjExt,
+        LinkWithPicObjExt), Files, ObjectFiles, NonObjectFiles).
+
+:- pred has_object_file_extension(string::in, string::in, string::in,
+    string::in) is semidet.
+
+has_object_file_extension(ObjExt, PicObjExt, LinkWithPicObjExt, FileName) :-
+    (
+        string.suffix(FileName, ObjExt)
+    ;
+        string.suffix(FileName, PicObjExt)
+    ;
+        string.suffix(FileName, LinkWithPicObjExt)
     ).
 
 post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
