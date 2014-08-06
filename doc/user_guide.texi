@@ -740,7 +740,7 @@ A list of @samp{-l} options specifying libraries used by the program
 @item MLOBJS and EXTRA_MLOBJS
 @vindex MLOBJS
 @vindex EXTRA_MLOBJS
-A list of extra object files to link into the program (or library)
+A list of extra object files or archives to link into the program or library
 that you are building.
 
 @item C2INITFLAGS and EXTRA_C2INITFLAGS
@@ -9560,10 +9560,10 @@ path is obtained from the shared library and not via the
 Link with the specified library.
 
 @sp 1
-@item --link-object @var{object}
+@item --link-object @var{file}
 @findex --link-object
 @cindex Object files, linking with
-Link with the specified object file.
+Link with the specified object file or archive of object files.
 
 @sp 1
 @item --search-lib-files-dir @var{directory}
