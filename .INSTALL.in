@@ -159,8 +159,13 @@ make install
 #          of the .NET grades (see README.DotNet).  This grades are only
 #          installed if the .NET SDK is found.
 #
-#          The option --enable-java-grade causes the installation of the Java
-#          grade.  This grade is only installed if the Java SDK is found.
+#          The option --disable-java-grade prevents the installation of the
+#          Java grade.  The Java grade will be installed by default if the
+#          Java SDK is found.
+#
+#          The option --disable-csharp-grade prevents the installation of the
+#          C# grade.  The C# grade will be installed by default if the
+#          .NET SDK is found.
 #
 #          The option --enable-erlang-grade causes the installation of the
 #          Erlang grade.  This grade is only installed if the Erlang/OTP

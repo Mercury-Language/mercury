@@ -3550,15 +3550,13 @@ AC_ARG_ENABLE(dotnet-grades,
     AC_HELP_STRING([--enable-dotnet-grades], [install the .NET grades]),
     enable_dotnet_grades="$enableval",enable_dotnet_grades=no)
 
-# We don't enable the csharp grade by default.
 AC_ARG_ENABLE(csharp-grade,
-   AC_HELP_STRING([--enable-csharp-grade], [install the C# grade]),
-   enable_csharp_grade="$enableval",enable_csharp_grade=no)
+   AC_HELP_STRING([--disable-csharp-grade], [do not install the C# grade]),
+   enable_csharp_grade="$enableval",enable_csharp_grade=yes)
 
-# We don't enable the java grade by default.
 AC_ARG_ENABLE(java-grade,
-   AC_HELP_STRING([--enable-java-grade], [install the Java grade]),
-   enable_java_grade="$enableval",enable_java_grade=no)
+   AC_HELP_STRING([--disable-java-grade], [do not install the Java grade]),
+   enable_java_grade="$enableval",enable_java_grade=yes)
 
 # We don't enable the Erlang grades by default because it is still
 # experimental.
