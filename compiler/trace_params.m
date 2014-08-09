@@ -282,17 +282,17 @@ usual_eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
     ->
         proc_info_get_has_user_event(ProcInfo, ProcHasUserEvent),
         (
-            ProcHasUserEvent = yes,
+            ProcHasUserEvent = has_user_event,
             EffTraceLevel = basic_user
         ;
-            ProcHasUserEvent = no,
-            module_info_get_contains_user_event(ModuleInfo,
+            ProcHasUserEvent = has_no_user_event,
+            module_info_get_has_user_event(ModuleInfo,
                 ModuleHasUserEvent),
             (
-                ModuleHasUserEvent = yes,
+                ModuleHasUserEvent = has_user_event,
                 EffTraceLevel = basic
             ;
-                ModuleHasUserEvent = no,
+                ModuleHasUserEvent = has_no_user_event,
                 EffTraceLevel = none
             )
         )

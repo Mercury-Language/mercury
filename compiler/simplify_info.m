@@ -126,11 +126,12 @@
 :- pred simplify_info_get_should_rerun_det(simplify_info::in, bool::out)
     is det.
 :- pred simplify_info_get_cost_delta(simplify_info::in, int::out) is det.
-:- pred simplify_info_get_has_parallel_conj(simplify_info::in, bool::out)
-    is det.
+:- pred simplify_info_get_has_parallel_conj(simplify_info::in,
+    has_parallel_conj::out) is det.
 :- pred simplify_info_get_found_contains_trace(simplify_info::in, bool::out)
     is det.
-:- pred simplify_info_get_has_user_event(simplify_info::in, bool::out) is det.
+:- pred simplify_info_get_has_user_event(simplify_info::in,
+    has_user_event::out) is det.
 
 :- pred simplify_info_set_simplify_tasks(simplify_tasks::in,
     simplify_info::in, simplify_info::out) is det.
@@ -153,11 +154,11 @@
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_cost_delta(int::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_has_parallel_conj(bool::in,
+:- pred simplify_info_set_has_parallel_conj(has_parallel_conj::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_found_contains_trace(bool::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_has_user_event(bool::in,
+:- pred simplify_info_set_has_user_event(has_user_event::in,
     simplify_info::in, simplify_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -245,14 +246,14 @@
                 ssimp_cost_delta            :: int,
 
                 % Have we seen a parallel conjunction?
-                ssimp_has_parallel_conj     :: bool,
+                ssimp_has_parallel_conj     :: has_parallel_conj,
 
                 % Have we seen a goal with a feature that says it contains
                 % a trace goal?
                 ssimp_found_contains_trace  :: bool,
 
                 % Have we seen an event call?
-                ssimp_has_user_event        :: bool
+                ssimp_has_user_event        :: has_user_event
             ).
 
 simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
@@ -263,8 +264,16 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+    ElimVars = [],
+    Specs = [],
+    ShouldRequantity = no,
+    ShouldRerunDet = no,
+    CostDelta = 0,
+    HasParallelConj = has_no_parallel_conj,
+    HasUserEvent = has_no_user_event,
     SubInfo = simplify_sub_info(PredId, ProcId, InstVarSet,
-        [], [], no, no, 0, no, no, no),
+        ElimVars, Specs, ShouldRequantity, ShouldRerunDet, CostDelta,
+        HasParallelConj, no, HasUserEvent),
     Info = simplify_info(SimplifyTasks, ModuleInfo, VarSet, VarTypes,
         RttiVarMaps, FullyStrict, SubInfo).
 
@@ -272,8 +281,8 @@ simplify_info_reinit(SimplifyTasks, !Info) :-
     !Info ^ simp_simplify_tasks := SimplifyTasks,
     !Info ^ simp_sub_info ^ ssimp_should_requantify := no,
     !Info ^ simp_sub_info ^ ssimp_should_rerun_det := no,
-    !Info ^ simp_sub_info ^ ssimp_has_parallel_conj := no,
-    !Info ^ simp_sub_info ^ ssimp_has_user_event := no.
+    !Info ^ simp_sub_info ^ ssimp_has_parallel_conj := has_no_parallel_conj,
+    !Info ^ simp_sub_info ^ ssimp_has_user_event := has_no_user_event.
 
 %-----------------------------------------------------------------------------%
 

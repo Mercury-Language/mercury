@@ -424,7 +424,7 @@ mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo, !InlinedProcs) :-
                                     % ones that must not be bound.
 
                 i_pred_markers      :: pred_markers,
-                                    % markers for the current predicate
+                                    % Markers for the current predicate.
 
                 % All the following fields are updated as a result of inlining.
 
@@ -442,7 +442,7 @@ mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo, !InlinedProcs) :-
                 i_inlined_parallel  :: bool,
                                     % Did  we inline any procs for which
                                     % proc_info_get_has_parallel_conj returns
-                                    % `yes'?
+                                    % `has_parallel_conj'?
 
                 i_need_requant      :: bool,
                                     % Does the goal need to be requantified?
@@ -509,7 +509,7 @@ inline_in_proc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
 
         (
             InlinedParallel = yes,
-            proc_info_set_has_parallel_conj(yes, !ProcInfo)
+            proc_info_set_has_parallel_conj(has_parallel_conj, !ProcInfo)
         ;
             InlinedParallel = no
         ),
@@ -695,10 +695,10 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
 
         proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
         (
-            HasParallelConj = yes,
+            HasParallelConj = has_parallel_conj,
             InlinedParallel = yes
         ;
-            HasParallelConj = no,
+            HasParallelConj = has_no_parallel_conj,
             InlinedParallel = InlinedParallel0
         ),
 

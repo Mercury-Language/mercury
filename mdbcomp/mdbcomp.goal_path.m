@@ -15,8 +15,8 @@
 % We can think of the goal that defines a procedure to be a tree, whose leaves
 % are primitive goals and whose interior nodes are compound goals. The goal_id,
 % forward_goal_path and reverse_goal_path types describe the position of a goal
-% in this tree. Therefore value of three types can uniquely identify a goal
-% within its defining procedure.
+% in this tree. Therefore values of these three types can uniquely identify
+% a goal within its defining procedure.
 %
 % Goal ids are allocated in a depth-first manner that guarantees the following
 % invariants:
@@ -31,10 +31,10 @@
 % switched-on var. For builtin types such as integer and string, for which
 % this number is effectively infinite, the second number won't be present.
 %
-% A forward goal path lists the step from the root of the tree to the goal
+% A forward goal path lists the steps from the root of the tree to the goal
 % being identified.
 %
-% A reverse goal path lists the step from to the goal being identified to
+% A reverse goal path lists the steps from to the goal being identified to
 % the root of the tree.
 %
 % The code in the compiler that allocates goal ids also returns a containing
@@ -42,7 +42,7 @@
 % (if there is one). When possible, new code should use this data structure,
 % though code that needs to identify goals in files outside the compiler
 % will probably continue to need to use goal paths. The string representations
-% of goal paths always list the steps in the forward order, even though
+% of goal paths always list the steps in the forward order. In contrast,
 % most operations inside the compiler use reverse goal paths, because most
 % operations on goal paths focus on the last element, not the first.
 %
@@ -216,7 +216,7 @@
     % Remove information from the goal path that depends on type information.
     %
     % This is necessary when using goal paths to lookup a map within the deep
-    % profiler.  The goal paths used to perform the query cannot construct the
+    % profiler. The goal paths used to perform the query cannot construct the
     % parts of the goal paths that depend on type information.
     %
 :- pred rev_goal_path_remove_type_info(reverse_goal_path::in,
@@ -228,11 +228,11 @@
     --->    whole_body_goal
             % This goal is the entire body of its procedure.
     ;       containing_goal(goal_id, goal_path_step).
-            % This goal is an contained immediately inside the larger goal
+            % This goal is contained immediately inside the larger goal
             % identified by the goal_id, from which you need to take the
-            % given goal_path step to get to this goal.
+            % given goal_path_step to get to this goal.
             %
-            % The goal_id of the containing goal is guaranteed to be always
+            % The goal_id of the containing goal is guaranteed to be
             % less than the goal_id of this goal.
 
 :- type containing_goal_map == map(goal_id, containing_goal).

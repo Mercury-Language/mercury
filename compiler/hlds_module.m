@@ -355,14 +355,16 @@
 :- pred module_info_set_contains_foreign_type(module_info::in,
     module_info::out) is det.
 
-:- pred module_info_get_contains_par_conj(module_info::in, bool::out) is det.
+:- pred module_info_get_has_parallel_conj(module_info::in,
+    has_parallel_conj::out) is det.
 
-:- pred module_info_set_contains_par_conj(module_info::in, module_info::out)
+:- pred module_info_set_has_parallel_conj(module_info::in, module_info::out)
     is det.
 
-:- pred module_info_get_contains_user_event(module_info::in, bool::out) is det.
+:- pred module_info_get_has_user_event(module_info::in, has_user_event::out)
+    is det.
 
-:- pred module_info_set_contains_user_event(module_info::in, module_info::out)
+:- pred module_info_set_has_user_event(module_info::in, module_info::out)
     is det.
 
 :- pred module_info_get_foreign_decl(module_info::in, foreign_decl_info::out)
@@ -742,8 +744,8 @@
                 msi_module_name                 :: module_name,
                 msi_dump_base_file_name         :: string,
                 msi_globals                     :: globals,
-                msi_contains_par_conj           :: bool,
-                msi_contains_user_event         :: bool,
+                msi_has_parallel_conj           :: has_parallel_conj,
+                msi_has_user_event              :: has_user_event,
                 msi_contains_foreign_type       :: bool,
                 msi_foreign_decl_info           :: foreign_decl_info,
                 msi_foreign_body_info           :: foreign_body_info,
@@ -892,8 +894,8 @@
 
 module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
         RecompInfo, ModuleInfo) :-
-    ContainsParConj = no,
-    ContainsUserEvent = no,
+    HasParallelConj = has_no_parallel_conj,
+    HasUserEvent = has_no_user_event,
     ContainsForeignType = no,
     ForeignDeclInfo = [],
     ForeignBodyInfo = [],
@@ -948,7 +950,7 @@ module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
     TSRevStringTable = [],
 
     ModuleSubInfo = module_sub_info(Name, DumpBaseFileName, Globals,
-        ContainsParConj, ContainsUserEvent, ContainsForeignType,
+        HasParallelConj, HasUserEvent, ContainsForeignType,
         ForeignDeclInfo, ForeignBodyInfo, ForeignImportModules, FactTableFiles,
         MaybeDependencyInfo, NumErrors, PragmaExportedProcs,
         MustBeStratifiedPreds, StratPreds, UnusedArgInfo,
@@ -1046,10 +1048,10 @@ module_info_get_dump_hlds_base_file_name(MI,
 module_info_get_globals(MI, MI ^ mi_sub_info ^ msi_globals).
 module_info_get_contains_foreign_type(MI,
     MI ^ mi_sub_info ^ msi_contains_foreign_type).
-module_info_get_contains_par_conj(MI,
-    MI ^ mi_sub_info ^ msi_contains_par_conj).
-module_info_get_contains_user_event(MI,
-    MI ^ mi_sub_info ^ msi_contains_user_event).
+module_info_get_has_parallel_conj(MI,
+    MI ^ mi_sub_info ^ msi_has_parallel_conj).
+module_info_get_has_user_event(MI,
+    MI ^ mi_sub_info ^ msi_has_user_event).
 module_info_get_foreign_decl(MI, MI ^ mi_sub_info ^ msi_foreign_decl_info).
 module_info_get_foreign_body_code(MI,
     MI ^ mi_sub_info ^ msi_foreign_body_info).
@@ -1179,10 +1181,10 @@ module_info_set_globals(NewVal, !MI) :-
     !MI ^ mi_sub_info ^ msi_globals := NewVal.
 module_info_set_contains_foreign_type(!MI) :-
     !MI ^ mi_sub_info ^ msi_contains_foreign_type := yes.
-module_info_set_contains_par_conj(!MI) :-
-    !MI ^ mi_sub_info ^ msi_contains_par_conj := yes.
-module_info_set_contains_user_event(!MI) :-
-    !MI ^ mi_sub_info ^ msi_contains_user_event := yes.
+module_info_set_has_parallel_conj(!MI) :-
+    !MI ^ mi_sub_info ^ msi_has_parallel_conj := has_parallel_conj.
+module_info_set_has_user_event(!MI) :-
+    !MI ^ mi_sub_info ^ msi_has_user_event := has_user_event.
 module_info_set_foreign_decl(NewVal, !MI) :-
     !MI ^ mi_sub_info ^ msi_foreign_decl_info := NewVal.
 module_info_set_foreign_body_code(NewVal, !MI) :-

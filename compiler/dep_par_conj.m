@@ -263,9 +263,9 @@ maybe_sync_dep_par_conjs_in_proc(PredId, ProcId, !ModuleInfo, !ProcsToScan,
     module_info_proc_info(!.ModuleInfo, PredId, ProcId, ProcInfo),
     proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
     (
-        HasParallelConj = no
+        HasParallelConj = has_no_parallel_conj
     ;
-        HasParallelConj = yes,
+        HasParallelConj = has_parallel_conj,
         sync_dep_par_conjs_in_proc(PredId, ProcId, set_of_var.init,
             !ModuleInfo, !ProcsToScan, !TSStringTable)
     ).
@@ -1911,7 +1911,7 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
         % Don't push signals or waits into any procedure that contains a new
         % parallel conjunction, unless this is a recursive call.
         (
-            proc_info_get_has_parallel_conj(ProcInfo, yes)
+            proc_info_get_has_parallel_conj(ProcInfo, has_parallel_conj)
         =>
             (
                 PredProcId = CallerPredProcId

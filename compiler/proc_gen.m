@@ -335,7 +335,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         (
             given_trace_level_is_none(TraceLevel) = no
         ;
-            HasParConj = yes,
+            HasParConj = has_parallel_conj,
             Parallel = yes
         )
     ->
@@ -418,8 +418,8 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         % reserved a stack slot for storing the value of maxfr; if we didn't,
         % a retry command in the debugger from a point in the middle of this
         % procedure will do the wrong thing.
-        proc_info_get_need_maxfr_slot(ProcInfo, HaveMaxfrSlot),
-        expect(unify(HaveMaxfrSlot, yes), $module, $pred,
+        proc_info_get_needs_maxfr_slot(ProcInfo, NeedsMaxfrSlot),
+        expect(unify(NeedsMaxfrSlot, needs_maxfr_slot), $module, $pred,
             "should have reserved a slot for maxfr, but didn't")
     ;
         true

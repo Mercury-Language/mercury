@@ -98,7 +98,7 @@
     ;       not_reg_wrapper_proc.
 
 :- pred init_lambda_info(prog_varset::in, vartypes::in, tvarset::in,
-    inst_varset::in, rtti_varmaps::in, bool::in, pred_info::in,
+    inst_varset::in, rtti_varmaps::in, has_parallel_conj::in, pred_info::in,
     module_info::in, lambda_info::out) is det.
 
 :- pred lambda_info_get_varset(lambda_info::in, prog_varset::out) is det.
@@ -165,7 +165,7 @@
                 li_tvarset              :: tvarset,
                 li_inst_varset          :: inst_varset,
                 li_rtti_varmaps         :: rtti_varmaps,
-                li_has_parallel_conj    :: bool,
+                li_has_parallel_conj    :: has_parallel_conj,
                 li_pred_info            :: pred_info,
                 li_module_info          :: module_info,
                 % True iff we need to recompute the nonlocals.

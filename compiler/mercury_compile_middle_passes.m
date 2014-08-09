@@ -46,6 +46,7 @@
 :- import_module bytecode_backend.bytecode.
 :- import_module bytecode_backend.bytecode_gen.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -1196,11 +1197,11 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, parallel, Parallel),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.lookup_bool_option(Globals, control_granularity, Control),
-    module_info_get_contains_par_conj(!.HLDS, ContainsParConj),
+    module_info_get_has_parallel_conj(!.HLDS, HasParallelConj),
     (
         % If either of these is false, there is no parallelism to control.
         Parallel = yes,
-        ContainsParConj = yes,
+        HasParallelConj = has_parallel_conj,
 
         % Our mechanism for granularity control only works for the low level
         % backend.
@@ -1241,11 +1242,11 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, parallel, Parallel),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.lookup_int_option(Globals, distance_granularity, Distance),
-    module_info_get_contains_par_conj(!.HLDS, ContainsParConj),
+    module_info_get_has_parallel_conj(!.HLDS, HasParallelConj),
     (
         % If either of these is false, there is no parallelism to control.
         Parallel = yes,
-        ContainsParConj = yes,
+        HasParallelConj = has_parallel_conj,
 
         % Our mechanism for granularity control only works for the low level
         % backend.
@@ -1283,15 +1284,15 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_impl_dependent_par_conjs(Verbose, Stats, !HLDS, !IO) :-
-    module_info_get_contains_par_conj(!.HLDS, ContainsParConj),
+    module_info_get_has_parallel_conj(!.HLDS, HasParallelConj),
     (
-        ContainsParConj = yes,
+        HasParallelConj = has_parallel_conj,
         module_info_get_globals(!.HLDS, Globals),
         current_grade_supports_par_conj(Globals, SupportsParConj),
         (
             SupportsParConj = no,
-            process_all_nonimported_procs(update_proc(parallel_to_plain_conjs),
-                !HLDS)
+            process_all_nonimported_procs(
+                update_proc_ids(parallel_to_plain_conjs), !HLDS)
         ;
             SupportsParConj = yes,
             maybe_write_string(Verbose,
@@ -1303,7 +1304,7 @@ maybe_impl_dependent_par_conjs(Verbose, Stats, !HLDS, !IO) :-
             maybe_report_stats(Stats, !IO)
         )
     ;
-        ContainsParConj = no
+        HasParallelConj = has_no_parallel_conj
     ).
 
 %-----------------------------------------------------------------------------%

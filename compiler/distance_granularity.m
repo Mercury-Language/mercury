@@ -262,7 +262,7 @@ apply_dg_to_procs(PredId, [ProcId | ProcIds], Distance, PredIdSpecialized,
     module_info_proc_info(!.ModuleInfo, proc(PredId, ProcId), ProcInfo0),
     proc_info_get_has_parallel_conj(ProcInfo0, HasParallelConj),
     (
-        HasParallelConj = yes,
+        HasParallelConj = has_parallel_conj,
         % The procedure contains parallel conjunction(s).
 
         proc_info_get_goal(ProcInfo0, Body),
@@ -285,7 +285,7 @@ apply_dg_to_procs(PredId, [ProcId | ProcIds], Distance, PredIdSpecialized,
             MaybeGranularityVar = no
         )
     ;
-        HasParallelConj = no
+        HasParallelConj = has_no_parallel_conj
         % No need to apply the distance granularity transformation to this
         % procedure as it does not contain any parallel conjunctions.
     ),

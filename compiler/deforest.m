@@ -2004,10 +2004,11 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
         proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo2, ProcInfo3),
         (
-            CalledHasParallelConj = yes,
-            proc_info_set_has_parallel_conj(yes, ProcInfo3, ProcInfo)
+            CalledHasParallelConj = has_parallel_conj,
+            proc_info_set_has_parallel_conj(has_parallel_conj,
+                ProcInfo3, ProcInfo)
         ;
-            CalledHasParallelConj = no,
+            CalledHasParallelConj = has_no_parallel_conj,
             % Leave the has_parallel_conj field of the proc_info as it is.
             ProcInfo = ProcInfo3
         ),

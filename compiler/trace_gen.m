@@ -311,11 +311,11 @@ do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo0, !ProcInfo) :-
         proc_info_get_goal(!.ProcInfo, Goal),
         code_util.goal_may_alloc_temp_frame(Goal, yes)
     ->
-        MaxfrFlag = yes
+        NeedsMaxfrSlot = needs_maxfr_slot
     ;
-        MaxfrFlag = no
+        NeedsMaxfrSlot = does_not_need_maxfr_slot
     ),
-    proc_info_set_need_maxfr_slot(MaxfrFlag, !ProcInfo).
+    proc_info_set_needs_maxfr_slot(NeedsMaxfrSlot, !ProcInfo).
 
     % trace_reserved_slots and trace_setup cooperate in the allocation of
     % stack slots for tracing purposes. The allocation is done in the
@@ -453,21 +453,21 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
             Trail = 0
         ),
         % Stage 6.
-        proc_info_get_need_maxfr_slot(ProcInfo, NeedMaxfr),
+        proc_info_get_needs_maxfr_slot(ProcInfo, NeedsMaxfrSlot),
         (
-            NeedMaxfr = yes,
+            NeedsMaxfrSlot = needs_maxfr_slot,
             Maxfr = 1
         ;
-            NeedMaxfr = no,
+            NeedsMaxfrSlot = does_not_need_maxfr_slot,
             Maxfr = 0
         ),
         % Stage 7.
-        proc_info_get_has_tail_call_events(ProcInfo, TailCallEvents),
+        proc_info_get_has_tail_call_event(ProcInfo, TailCallEvents),
         (
-            TailCallEvents = tail_call_events,
+            TailCallEvents = has_tail_call_event,
             TailRec = 1
         ;
-            TailCallEvents = no_tail_call_events,
+            TailCallEvents = has_no_tail_call_event,
             TailRec = 0
         ),
         ReservedSlots0 = Fixed + RedoLayout + FromFull + IoSeq + Trail +
@@ -555,16 +555,16 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, MaybeTailRecLabel,
             MaybeTrailLvals = no
         ),
         % Stage 6.
-        proc_info_get_need_maxfr_slot(ProcInfo, NeedMaxfr),
+        proc_info_get_needs_maxfr_slot(ProcInfo, NeedsMaxfrSlot),
         (
-            NeedMaxfr = yes,
+            NeedsMaxfrSlot = needs_maxfr_slot,
             MaxfrSlot = !.NextSlot,
             MaybeMaxfrSlot = yes(MaxfrSlot),
             MaxfrLval = stack_slot_num_to_lval(StackId, MaxfrSlot),
             MaybeMaxfrLval = yes(MaxfrLval),
             !:NextSlot = !.NextSlot + 1
         ;
-            NeedMaxfr = no,
+            NeedsMaxfrSlot = does_not_need_maxfr_slot,
             MaybeMaxfrSlot = no,
             MaybeMaxfrLval = no
         ),

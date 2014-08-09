@@ -46,6 +46,7 @@
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.
 :- import_module libs.globals.
@@ -372,7 +373,7 @@ simplify_goal_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
             simplify_par_conjuncts(Goals0, Goals,
                 NestedContext0, InstMap0, !.Common, !Info),
             GoalExpr = conj(parallel_conj, Goals),
-            simplify_info_set_has_parallel_conj(yes, !Info)
+            simplify_info_set_has_parallel_conj(has_parallel_conj, !Info)
         )
     ).
 

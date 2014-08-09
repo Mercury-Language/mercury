@@ -101,12 +101,12 @@ mark_tail_calls(Feature, ModuleInfo, proc(PredId, ProcId), PredInfo,
         proc_info_set_goal(Goal, !ProcInfo),
         (
             FoundTailCalls = found_tail_calls,
-            TailCallEvents = tail_call_events
+            TailCallEvents = has_tail_call_event
         ;
             FoundTailCalls = not_found_tail_calls,
-            TailCallEvents = no_tail_call_events
+            TailCallEvents = has_no_tail_call_event
         ),
-        proc_info_set_has_tail_call_events(TailCallEvents, !ProcInfo)
+        proc_info_set_has_tail_call_event(TailCallEvents, !ProcInfo)
     ).
 
 :- pred find_maybe_output_args(module_info::in,

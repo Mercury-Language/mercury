@@ -21,7 +21,10 @@
 %
 %     f2(X, W, Y) = if p(X, Y) then g(X, Y) else f2(X, W, h(W, Y))
 %
-% where W, X, Y may each stand for more several program variables.
+% where W, X, Y may each stand for one or more program variables.
+% X stands for the loop invariant original arguments,
+% W stands for the loop invariant variables that originally were not arguments,
+% and Y stands for the original arguments that are not loop invariant.
 %
 % In the HLDS, functions are converted to predicates, hence the above
 % will look like this:
@@ -43,8 +46,8 @@
 % We proceed as follows:
 %
 % 1. Identify the invariant args to f (that is, all input args that
-% are identical across all calls to f at the end of recursive paths
-% (a recursive path is a path from the start of the definition of f
+% are identical across all calls to f at the end of recursive paths.
+% (A recursive path is a path from the start of the definition of f
 % to a recursive call to f comprised entirely of model det goals,
 % other than in the conditions of if-then-elses or switch
 % unifications.)
@@ -76,8 +79,8 @@
 %
 %
 % NOTE that this version of the optimization does not perform
-% variable renaming, so the two calls to i/1 here will not be
-% hoisted because they have different output variables:
+% variable renaming, so the two calls to i/1 in the code below
+% will not be hoisted because they have different output variables:
 %
 %     f(X, Y, R) :-
 %         if      p(X, Y) then g(X, Y, R)
@@ -192,7 +195,7 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         % such goals, because if we hoisted out such goals, later
         % passes might think that the code which follows is actually
         % reachable, which may lead to internal errors because code
-        % which follow a call to error/1 need not be determinism-correct.
+        % after a call to error/1 does NOT need to be determinism-correct.
         %
         % We also must not hoist impure goals.
         %
@@ -200,8 +203,8 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         % InvVars) that should not be hoisted.
         do_not_hoist(!.ModuleInfo, InvGoals1, DontHoistGoals, DontHoistVars),
 
-        InvGoals = InvGoals1 `delete_elems` DontHoistGoals,
-        InvVars  = InvVars1  `delete_elems` DontHoistVars,
+        list.delete_elems(InvGoals1, DontHoistGoals, InvGoals),
+        list.delete_elems(InvVars1, DontHoistVars, InvVars),
 
         % We only apply the optimization if the set of invariant goals
         % is non-empty.
@@ -218,10 +221,10 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         % the whole invariant var set and the set of invariant args.
         %
         % Some of these variables may only appear in the invariant goals,
-        % and would be unused in the auxiliary procedure.  Head variables may
-        % become unused as well.  We rely on the unused argument elimination
+        % and would be unused in the auxiliary procedure. Head variables may
+        % become unused as well. We rely on the unused argument elimination
         % pass to remove both.
-        ComputedInvVars = InvVars `delete_elems` InvArgs,
+        list.delete_elems(InvVars, InvArgs, ComputedInvVars),
 
         % We need to calculate the initial instmap for the aux proc by applying
         % the instmap_deltas from the InvGoals to InitialInstMap.
@@ -230,7 +233,7 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         InitialAuxInstMap =
             compute_initial_aux_instmap(InvGoals, InitialInstMap),
 
-        % Create the pred for the aux proc.  This is initially a copy of the
+        % Create the pred for the aux proc. This is initially a copy of the
         % in proc with the head vars extended with the list of computed
         % inv vars. The body is adjusted appropriately in the next step.
         create_aux_pred(PredProcId, HeadVars, ComputedInvVars,
@@ -1053,7 +1056,7 @@ gen_aux_call(hlds_goal(CallAux0, _CallAuxInfo0), hlds_goal(Call, CallInfo)) =
         % Note that one might expect instmap_delta to change, however the
         % invariant arguments are just that -invariant- hence their insts
         % are not changed by the recursive call and there is no need
-        % to adjust the instmap_delta.  All other fields are correct for
+        % to adjust the instmap_delta. All other fields are correct for
         % CallInfo.
     ->
         hlds_goal(CallAux, CallInfo)
@@ -1104,11 +1107,11 @@ used_vars(ModuleInfo, Goal) = UsedVars :-
     ;
         GoalExpr = call_foreign_proc(_, PredId, ProcId,
             ForeignArgs, ExtraForeignArgs, _, _),
-        % XXX `Extras' should be empty for pure calls.  We cannot apply LIO
+        % XXX `Extras' should be empty for pure calls. We cannot apply LIO
         % to non-pure goals so we shouldn't need to consider `Extras'.
         % However, we currently don't deal with the situation where we may be
         % trying to apply LIO to a non-pure goal until *after* we have called
-        % this predicate, so `Extras' may not be empty.  As a work-around,
+        % this predicate, so `Extras' may not be empty. As a work-around,
         % we just add any variables in `Extras' to the set of variables
         % that cannot be hoisted.
         UsedArgVars = list.filter_map_corresponding(
@@ -1255,7 +1258,7 @@ input_arg(ModuleInfo, X, M) = X :-
 %-----------------------------------------------------------------------------%
 
     % Find the list of vars for a goal that are free before the call and bound
-    % afterwards.  This only applies to calls and unifications.
+    % afterwards. This only applies to calls and unifications.
     %
 :- func goal_outputs(module_info, hlds_goal) = prog_vars.
 

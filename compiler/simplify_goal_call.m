@@ -587,7 +587,7 @@ simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo,
         )
     ;
         GenericCall = event_call(_),
-        simplify_info_set_has_user_event(yes, !Info),
+        simplify_info_set_has_user_event(has_user_event, !Info),
         GoalExpr = GoalExpr0,
         Common = Common0
     ;

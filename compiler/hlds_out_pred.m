@@ -831,17 +831,17 @@ write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
             io.write_string("% address is not taken\n", !IO)
         ),
         (
-            HasParallelConj = yes,
+            HasParallelConj = has_parallel_conj,
             io.write_string("% contains parallel conjunction\n", !IO)
         ;
-            HasParallelConj = no,
+            HasParallelConj = has_no_parallel_conj,
             io.write_string("% does not contain parallel conjunction\n", !IO)
         ),
         (
-            HasUserEvent = yes,
+            HasUserEvent = has_user_event,
             io.write_string("% contains user event\n", !IO)
         ;
-            HasUserEvent = no,
+            HasUserEvent = has_no_user_event,
             io.write_string("% does not contain user event\n", !IO)
         ),
         (

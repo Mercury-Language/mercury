@@ -175,7 +175,8 @@ maybe_par_loop_control_proc(DepInfo, PredProcId, !ProcInfo, !ModuleInfo) :-
     proc_info::in) is semidet.
 
 loop_control_is_applicable(DepInfo, PredProcId, ProcInfo) :-
-    proc_info_get_has_parallel_conj(ProcInfo, yes),
+    proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
+    HasParallelConj = has_parallel_conj,
     proc_info_get_inferred_determinism(ProcInfo, Detism),
     % If the predicate itself is not deterministic then its recursive call
     % will not be deterministic and therefore will not be found in a parallel

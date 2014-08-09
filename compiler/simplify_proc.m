@@ -138,17 +138,17 @@ simplify_pred_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo,
     % parallel conjunctions.
     proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
     (
-        HasParallelConj = yes,
-        module_info_set_contains_par_conj(!ModuleInfo)
+        HasParallelConj = has_parallel_conj,
+        module_info_set_has_parallel_conj(!ModuleInfo)
     ;
-        HasParallelConj = no
+        HasParallelConj = has_no_parallel_conj
     ),
     proc_info_get_has_user_event(ProcInfo, HasUserEvent),
     (
-        HasUserEvent = yes,
-        module_info_set_contains_user_event(!ModuleInfo)
+        HasUserEvent = has_user_event,
+        module_info_set_has_user_event(!ModuleInfo)
     ;
-        HasUserEvent = no
+        HasUserEvent = has_no_user_event
     ),
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, !PredInfo),
