@@ -10,7 +10,7 @@
 #ifndef MERCURY_TRACE_EXTERNAL_H
 #define MERCURY_TRACE_EXTERNAL_H
 
-#include "mercury_trace.h"          /* for MR_TraceCmdInfo, etc.  */
+#include "mercury_trace.h"          /* for MR_TraceCmdInfo, etc.    */
 #include "mercury_conf.h"           /* for MR_USE_EXTERNAL_DEBUGGER */
 #include "mercury_types.h"          /* for MR_Code                  */
 #include "mercury_library_types.h"  /* for MercuryFile              */

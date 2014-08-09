@@ -43,6 +43,7 @@ MR_trace_cmd_step(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_Unsigned n;
 
     cmd->MR_trace_strict = MR_FALSE;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
@@ -69,6 +70,7 @@ MR_trace_cmd_goto(char **words, int word_count, MR_TraceCmdInfo *cmd,
     const char  *generator_name;
 
     cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
@@ -132,6 +134,7 @@ MR_trace_cmd_next(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
     depth = event_info->MR_call_depth;
     cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
@@ -204,6 +207,7 @@ MR_trace_cmd_finish(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
     depth = event_info->MR_call_depth;
     cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
@@ -289,6 +293,7 @@ MR_trace_cmd_fail(char **words, int word_count, MR_TraceCmdInfo *cmd,
     depth = event_info->MR_call_depth;
 
     cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
@@ -339,6 +344,7 @@ MR_trace_cmd_exception(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
@@ -362,6 +368,7 @@ MR_trace_cmd_return(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
@@ -385,6 +392,7 @@ MR_trace_cmd_user(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
@@ -404,6 +412,7 @@ MR_trace_cmd_forward(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
@@ -435,6 +444,7 @@ MR_trace_cmd_mindepth(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_Unsigned newdepth;
 
     cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
@@ -459,6 +469,7 @@ MR_trace_cmd_maxdepth(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_Unsigned newdepth;
 
     cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
     cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
@@ -481,13 +492,14 @@ MR_trace_cmd_continue(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     cmd->MR_trace_strict = MR_FALSE;
-    cmd->MR_trace_print_level = (MR_TraceCmdType) -1;
+    cmd->MR_trace_print_level_specified = MR_FALSE;
+    cmd->MR_trace_print_level = MR_default_print_level;
     MR_init_trace_check_integrity(cmd);
     if (! MR_trace_options_movement_cmd(cmd, &words, &word_count)) {
         ; /* the usage message has already been printed */
     } else if (word_count == 1) {
         cmd->MR_trace_cmd = MR_CMD_TO_END;
-        if (cmd->MR_trace_print_level == (MR_TraceCmdType) -1) {
+        if (! cmd->MR_trace_print_level_specified) {
             /*
             ** The user did not specify the print level;
             ** select the intelligent default.
@@ -555,14 +567,17 @@ MR_trace_options_movement_cmd(MR_TraceCmdInfo *cmd,
                 break;
 
             case 'a':
+                cmd->MR_trace_print_level_specified = MR_TRUE;
                 cmd->MR_trace_print_level = MR_PRINT_LEVEL_ALL;
                 break;
 
             case 'n':
+                cmd->MR_trace_print_level_specified = MR_TRUE;
                 cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
                 break;
 
             case 's':
+                cmd->MR_trace_print_level_specified = MR_TRUE;
                 cmd->MR_trace_print_level = MR_PRINT_LEVEL_SOME;
                 break;
 

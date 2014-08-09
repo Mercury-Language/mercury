@@ -827,6 +827,7 @@ MR_trace_event_external(MR_TraceCmdInfo *cmd, MR_EventInfo *event_info)
                         cmd->MR_trace_must_check = MR_FALSE;
                         cmd->MR_trace_strict = MR_TRUE;
                         MR_init_trace_check_integrity(cmd);
+                        cmd->MR_trace_print_level_specified = MR_TRUE;
                         cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
                         goto done;
                     }

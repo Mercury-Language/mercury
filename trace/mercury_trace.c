@@ -61,6 +61,7 @@ MR_TraceCmdInfo MR_trace_ctrl = {
     0,                      /* stop depth */
     0,                      /* stop event */
     NULL,                   /* stop generator */
+    MR_FALSE,               /* print level not specified */
     MR_PRINT_LEVEL_SOME,
     MR_FALSE,               /* not strict */
 #ifdef  MR_TRACE_CHECK_INTEGRITY

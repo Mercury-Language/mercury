@@ -252,6 +252,7 @@ typedef struct {
                             */
     MR_Unsigned             MR_trace_stop_event;
     const char              *MR_trace_stop_generator;
+    MR_bool                 MR_trace_print_level_specified;
     MR_TracePrintLevel      MR_trace_print_level;
     MR_bool                 MR_trace_strict;
 #ifdef  MR_TRACE_CHECK_INTEGRITY

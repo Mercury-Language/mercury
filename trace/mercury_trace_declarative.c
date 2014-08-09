@@ -1869,6 +1869,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
     */
     cmd->MR_trace_cmd = MR_CMD_STEP;
     cmd->MR_trace_strict = MR_TRUE;
+    cmd->MR_trace_print_level_specified = MR_TRUE;
     cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
     cmd->MR_trace_must_check = MR_FALSE;
 
@@ -2098,6 +2099,7 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_TraceCmdInfo *cmd,
 
     cmd->MR_trace_cmd = MR_CMD_GOTO;
     cmd->MR_trace_stop_event = event;
+    cmd->MR_trace_print_level_specified = MR_TRUE;
     cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_must_check = MR_FALSE;

@@ -1183,30 +1183,31 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
             MR_print_spy_print_what(fp, node);
 
             fprintf(fp, " (");
-            switch (node->MR_p_format) {
-                case MR_BROWSE_FORMAT_FLAT:
-                    fprintf(fp, "flat");
-                    break;
 
-                case MR_BROWSE_FORMAT_RAW_PRETTY:
-                    fprintf(fp, "raw pretty");
-                    break;
+            if ((int) node->MR_p_format ==  MR_BROWSE_DEFAULT_FORMAT) {
+                fprintf(fp, "default");
+            } else {
+                switch (node->MR_p_format) {
+                    case MR_BROWSE_FORMAT_FLAT:
+                        fprintf(fp, "flat");
+                        break;
 
-                case MR_BROWSE_FORMAT_PRETTY:
-                    fprintf(fp, "pretty");
-                    break;
+                    case MR_BROWSE_FORMAT_RAW_PRETTY:
+                        fprintf(fp, "raw pretty");
+                        break;
 
-                case MR_BROWSE_FORMAT_VERBOSE:
-                    fprintf(fp, "verbose");
-                    break;
+                    case MR_BROWSE_FORMAT_PRETTY:
+                        fprintf(fp, "pretty");
+                        break;
 
-                case MR_BROWSE_DEFAULT_FORMAT:
-                    fprintf(fp, "default");
-                    break;
+                    case MR_BROWSE_FORMAT_VERBOSE:
+                        fprintf(fp, "verbose");
+                        break;
 
-                default:
-                    MR_fatal_error("invalid node->MR_p_format");
-                    break;
+                    default:
+                        MR_fatal_error("invalid node->MR_p_format");
+                        break;
+                }
             }
 
             if (! node->MR_p_warn) {
@@ -1410,30 +1411,30 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
                     fprintf(fp, " -n");
                 }
 
-                switch (node->MR_p_format) {
-                    case MR_BROWSE_FORMAT_FLAT:
-                        fprintf(fp, " -f");
-                        break;
 
-                    case MR_BROWSE_FORMAT_RAW_PRETTY:
-                        /* -p is the closest approximation */
-                        fprintf(fp, " -p");
-                        break;
+                if ((int) node->MR_p_format != MR_BROWSE_DEFAULT_FORMAT) {
+                    switch (node->MR_p_format) {
+                        case MR_BROWSE_FORMAT_FLAT:
+                            fprintf(fp, " -f");
+                            break;
 
-                    case MR_BROWSE_FORMAT_PRETTY:
-                        fprintf(fp, " -p");
-                        break;
+                        case MR_BROWSE_FORMAT_RAW_PRETTY:
+                            /* -p is the closest approximation */
+                            fprintf(fp, " -p");
+                            break;
 
-                    case MR_BROWSE_FORMAT_VERBOSE:
-                        fprintf(fp, " -v");
-                        break;
+                        case MR_BROWSE_FORMAT_PRETTY:
+                            fprintf(fp, " -p");
+                            break;
 
-                    case MR_BROWSE_DEFAULT_FORMAT:
-                        break;
+                        case MR_BROWSE_FORMAT_VERBOSE:
+                            fprintf(fp, " -v");
+                            break;
 
-                    default:
-                        MR_fatal_error("invalid node->MR_p_format");
-                        break;
+                        default:
+                            MR_fatal_error("invalid node->MR_p_format");
+                            break;
+                    }
                 }
 
                 fprintf(fp, " ");

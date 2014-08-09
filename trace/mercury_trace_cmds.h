@@ -27,7 +27,7 @@ typedef MR_Next MR_TraceCmdFunc(char **words, int word_count,
 
 /*
 ** We keep a table of the available commands. The information we have about
-** each command is stored in a value of type MR_Trace_Command_Info.
+** each command is stored in a value of type MR_TraceCmdTableEntry.
 **
 ** The name of the command itself is stored in the name field; the category
 ** field contains name of the category to which the command belongs,
@@ -53,6 +53,6 @@ typedef struct
     MR_TraceCmdFunc             *MR_cmd_function;
     const char *const           *MR_cmd_arg_strings;
     const MR_MakeCompleter      MR_cmd_arg_completer;
-} MR_Trace_Command_Info;
+} MR_TraceCmdTableEntry;
 
 #endif  /* MERCURY_TRACE_CMDS_H */

@@ -96,7 +96,7 @@ extern  void    MR_trace_do_noop_tail_rec(void);
 ** If the given word is the name of a valid command, return its info.
 */
 
-extern  const MR_Trace_Command_Info
+extern  const MR_TraceCmdTableEntry
                 *MR_trace_valid_command(const char *word);
 
 /*
