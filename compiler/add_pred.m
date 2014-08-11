@@ -41,7 +41,8 @@
 :- pred do_add_new_proc(inst_varset::in, arity::in, list(mer_mode)::in,
     maybe(list(mer_mode))::in, maybe(list(is_live))::in,
     detism_decl::in, maybe(determinism)::in, prog_context::in,
-    is_address_taken::in, pred_info::in, pred_info::out, proc_id::out) is det.
+    is_address_taken::in, has_parallel_conj::in,
+    pred_info::in, pred_info::out, proc_id::out) is det.
 
     % Add a mode declaration for a predicate.
     %
@@ -383,14 +384,14 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
 
 do_add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
         MaybeArgLives, DetismDecl, MaybeDet, Context, IsAddressTaken,
-        PredInfo0, PredInfo, ModeId) :-
+        HasParallelConj, PredInfo0, PredInfo, ModeId) :-
     pred_info_get_procedures(PredInfo0, Procs0),
     pred_info_get_arg_types(PredInfo0, ArgTypes),
     pred_info_get_var_name_remap(PredInfo0, VarNameRemap),
     next_mode_id(Procs0, ModeId),
     proc_info_init(Context, Arity, ArgTypes, MaybeDeclaredArgModes, ArgModes,
-        MaybeArgLives, DetismDecl, MaybeDet, IsAddressTaken, VarNameRemap,
-        NewProc0),
+        MaybeArgLives, DetismDecl, MaybeDet, IsAddressTaken, HasParallelConj,
+        VarNameRemap, NewProc0),
     proc_info_set_inst_varset(InstVarSet, NewProc0, NewProc),
     map.det_insert(ModeId, NewProc, Procs0, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo).
@@ -471,9 +472,11 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
     ),
     % Add the mode declaration to the pred_info for this procedure.
     ArgLives = no,
+    % Before the simplification pass, HasParallelConj is not meaningful.
+    HasParallelConj = has_no_parallel_conj,
     do_add_new_proc(InstVarSet, Arity, Modes, yes(Modes), ArgLives,
         DetismDecl, MaybeDet, MContext, address_is_not_taken,
-        !PredInfo, ProcId).
+        HasParallelConj, !PredInfo, ProcId).
 
 preds_add_implicit_report_error(!ModuleInfo, ModuleName, PredName, Arity,
         PredOrFunc, Status, IsClassMethod, Context, Origin, DescPieces,

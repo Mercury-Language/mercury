@@ -21,35 +21,42 @@
 % rules for mode-correctness and determinism-correctness, and it has different
 % operational semantics.
 %
-%   [Operational semantics]
-%   - `,'/2 gives some operational guarantees that `&'/2 does not:
-%     if `--no-reorder-conj' is set, there is an implied ordering
-%     in the code:  conjunctions must not be reordered beyond the
-%     minimum necessary for mode correctness.
-%     This is justified for reasons performance modeling and ensuring
-%     predictable termination properties.
-%     Parallel conjunction does not of itself suggest any information
-%     about which order two goals should be executed, however if
-%     coroutining is being used, then the data dependencies between
-%     the two goals will constrain the order of execution at runtime.
+% Operational semantics:
 %
-%   [Mode correctness]
-%   - `,'/2 has a *sequential* behaviour `A, B' proves `A' *then*
-%     proves `B'. Mode analysis only allows unidirectional data-
-%     dependencies for conjunction. In independent and-parallelism,
-%     for the goal `A & B', mode analysis requires that `A' and `B'
-%     bind disjoint sets of free variables (or when mode analysis
-%     supports it properly, disjoint sets of type-nodes), and that
-%     `A' does not require any bindings made in `B' and vice versa.
-%     In dependant and-parallelism, mode analysis requires that each
-%     variable (or type-node) have a unique producer (as in independent
-%     and-parallelism), but an and-parallel goal may use bindings made
-%     in conjoined goals which may lead to coroutining.
+%   `,'/2 gives some operational guarantees that `&'/2 does not.
+%   If `--no-reorder-conj' is set, sequential conjunction provides
+%   an implied ordering to the code: the conjuncts must not be reordered
+%   beyond the minimum that is necessary for mode correctness.
+%   The reason for this is to allow programmers to model the performance
+%   of the code more simply, which also includes (in the extreme)
+%   simpler reasoning about termination properties.
 %
-% The current implementation mainly independent and-parallelism and
+%   Parallel conjunctions do not specify the order in which their conjuncts
+%   will be executed. However, any data dependencies between conjuncts
+%   will constrain the order of those conjuncts' execution at runtime.
+%   If the conjunction is executed with coroutining, a data dependency
+%   constrains the order of the start times of the conjuncts involved;
+%   if the conjunction is executed in parallel, the constraint does not
+%   extend that far, and imposes only a requirement for the standard
+%   reader-writer synchronization.
+%
+% Mode correctness:
+%   `,'/2 has a *sequential* behaviour: `A, B' proves *first* `A' and
+%   *then* proves `B'. Mode analysis only allows unidirectional data-
+%   dependencies for conjunction. Applying independent and-parallelism
+%   to `A & B', mode analysis would require that `A' and `B' bind
+%   disjoint sets of free variables (or when mode analysis supports
+%   it properly, disjoint sets of type-nodes), and that `A' does not
+%   require any bindings made in `B' and vice versa.
+%   With dependant and-parallelism, mode analysis requires that each
+%   variable (or type-node) have a unique producer (as in independent
+%   and-parallelism), but an and-parallel goal may use bindings made
+%   in conjoined goals to its left which may lead to coroutining.
+%   (Allowing it to use conjoined goals to its right would, in general,
+%   allow circular data dependencies, which would lead to deadlock.)
+%
+% The current system implements mainly independent and-parallelism and
 % a subset of dependent and-parallelism (see dep_par_conj.m).
-% The syntax for parallel conjunction is `&'/2 which behaves like `,'/2
-% in that sequences get flattened (ie A & (B & C) <=> (A & B) & C).
 %
 % Type checking and mode analysis work exactly the same for parallel
 % conjunction as for sequential conjunction.
@@ -58,25 +65,32 @@
 % its conjuncts in the same way as the determinism of a conjunction but
 % because the current runtime implementation only allows model_det parallel
 % conjunction, determinism analysis works by inferring the determinism of
-% each conjunct and reporting an error if it is not a model_det determinism.
+% each conjunct and reporting an error if it is not model_det.
 %
-% The code generated for a parallel conjunction consists of a piece of
-% initialization code which creates a term on the heap to be used for
-% controlling the synchronization of the conjuncts and the code for the
-% conjuncts.  The synchronization terms are referred to in the code as
-% 'sync_term's.  Conjuncts are executed "left to right".  At the start of
-% the i'th conjunct is a command to "spark" the i+1'th conjunct, i.e.
-% record enough information to begin executing the next conjunct either
-% in parallel, or to return to it after the current conjunct ends.
+% The code we generate for a parallel conjunction consists of
 %
-% At the end of each conjunct is a call to an join_and_continue instruction.
-% It executes the next parallel conjunct or, if the parallel conjunction is
-% finished, causes the code following the parallel conjunction to execute in
-% the context that originated the parallel conjunction.  If the originating
-% context can't execute the next conjunct and the parallel conjunction isn't
-% finished, it must suspend.  When a non-originating context later finds that
+%   - a piece of initialization code, which creates a term on the heap
+%     that we use for controlling the synchronization of the conjuncts
+%     (we call them `sync_term's), and
+%   - the code for the conjuncts themselves.
+%
+% We execute conjuncts left to right. Before the code of the i'th conjunct,
+% we put code to "spark" the i+1'th conjunct (if there is one). Sparking
+% a conjunct means either assigning its execution to a spare thread
+% (if there is one), or recording the information needed to begin executing it
+% when a thread becomes available. A thread *should* become available
+% when the ith conjunct ends.
+%
+% At the end of each conjunct we put a join_and_continue instruction.
+% This executes the next parallel conjunct if there is one, or if there isn't,
+% waits until all the conjuncts are finished, and then branches to the code
+% *following* the parallel conjunction. We take care to ensure that the
+% code following the parallel conjunction executes in the context
+% that *originated* the parallel conjunction. If the originating context
+% can't execute the next conjunct and the parallel conjunction isn't finished,
+% it must suspend. When a non-originating context later finds that
 % the parallel conjunction _is_ finished, it will then cause the originating
-% context to resume execution at the join point.  Please see the
+% context to resume execution at the join point. Please see the
 % implementation of MR_join_and_continue() for the details.
 %
 % The runtime support for parallel conjunction is documented in the runtime
@@ -112,6 +126,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
@@ -144,6 +159,7 @@
 %---------------------------------------------------------------------------%
 
 generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
+    % Some sanity checks.
     (
         CodeModel = model_det
     ;
@@ -238,7 +254,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         MaybeRestoreParentSpCode,
 
     % We can't release the sync slot right now, in case we are in a
-    % nested parallel conjunction.  Consider:
+    % nested parallel conjunction. Consider:
     %
     %   (
     %       (A & B)   % inner1
@@ -247,7 +263,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     %   )
     %
     % If inner1 released its sync slot now then it might end up being reused
-    % by inner2.  But inner1 and inner2 could be executing simultaneously.
+    % by inner2. But inner1 and inner2 could be executing simultaneously.
     % In general we can't release the sync slot of any parallel conjunction
     % until we leave the shallowest parallel conjunction, i.e. at depth 0.
     % For now we only release the sync slots of parallel conjunctions at the
@@ -377,8 +393,8 @@ generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI) :-
         CopyCode = cord.empty,
 
         % Mark the output values as available in registers, code inserted after
-        % the recursive call expects to be able to read them.  Because they're
-        % gaurnteed to be placed in distinct stack slots it's okay to produce
+        % the recursive call expects to be able to read them. Because they are
+        % guaranteed to be placed in distinct stack slots it's okay to produce
         % them a little early - really they could be produced from any point
         % after spawn_off until the barrier in the base case.
 

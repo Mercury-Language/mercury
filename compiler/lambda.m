@@ -613,37 +613,36 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         map.init(VarNameRemap),
         restrict_var_maps(AllArgVars, LambdaGoal, VarSet, LambdaVarSet,
             VarTypes, LambdaVarTypes, RttiVarMaps, LambdaRttiVarMaps),
-        proc_info_create(LambdaContext, LambdaVarSet, LambdaVarTypes,
-            AllArgVars, InstVarSet, AllArgModes, detism_decl_explicit, Detism,
-            LambdaGoal, LambdaRttiVarMaps, address_is_taken, VarNameRemap,
-            ProcInfo0),
+        some [!ProcInfo] (
+            % If the original procedure contained parallel conjunctions,
+            % then the one we are creating here may have them as well.
+            % If it does not, then the value in the proc_info of the lambda
+            % predicate will be an overconservative estimate.
+            proc_info_create(LambdaContext, LambdaVarSet, LambdaVarTypes,
+                AllArgVars, InstVarSet, AllArgModes, detism_decl_explicit,
+                Detism, LambdaGoal, LambdaRttiVarMaps, address_is_taken,
+                HasParallelConj, VarNameRemap, !:ProcInfo),
 
-        % The debugger ignores unnamed variables.
-        ensure_all_headvars_are_named(ProcInfo0, ProcInfo1),
+            % The debugger ignores unnamed variables.
+            ensure_all_headvars_are_named(!ProcInfo),
 
-        % If the original procedure contained parallel conjunctions, then the
-        % one we are creating here may have them as well. If it does not, then
-        % the value in the proc_info of the lambda predicate will be an
-        % overconservative estimate.
-        proc_info_set_has_parallel_conj(HasParallelConj, ProcInfo1, ProcInfo2),
-
-        % If we previously already needed to recompute the nonlocals,
-        % then we had better apply that recomputation for the procedure
-        % that we just created.
-        (
-            MustRecomputeNonLocals0 = yes,
-            requantify_proc_general(ordinary_nonlocals_maybe_lambda,
-                ProcInfo2, ProcInfo3)
-        ;
-            MustRecomputeNonLocals0 = no,
-            ProcInfo3 = ProcInfo2
-        ),
-        (
-            RegWrapperProc = reg_wrapper_proc(RegR_HeadVars),
-            proc_info_set_reg_r_headvars(RegR_HeadVars, ProcInfo3, ProcInfo)
-        ;
-            RegWrapperProc = not_reg_wrapper_proc,
-            ProcInfo = ProcInfo3
+            % If we previously already needed to recompute the nonlocals,
+            % then we had better apply that recomputation for the procedure
+            % that we just created.
+            (
+                MustRecomputeNonLocals0 = yes,
+                requantify_proc_general(ordinary_nonlocals_maybe_lambda,
+                    !ProcInfo)
+            ;
+                MustRecomputeNonLocals0 = no
+            ),
+            (
+                RegWrapperProc = reg_wrapper_proc(RegR_HeadVars),
+                proc_info_set_reg_r_headvars(RegR_HeadVars, !ProcInfo)
+            ;
+                RegWrapperProc = not_reg_wrapper_proc
+            ),
+            ProcInfo = !.ProcInfo
         ),
         set.init(Assertions),
         pred_info_create(ModuleName, PredName, PredOrFunc, LambdaContext,

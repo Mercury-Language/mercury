@@ -597,8 +597,8 @@
     instmap::in, sym_name::in, tvarset::in, vartypes::in,
     prog_constraints::in, rtti_varmaps::in, prog_varset::in,
     inst_varset::in, pred_markers::in, is_address_taken::in,
-    map(prog_var, string)::in, module_info::in, module_info::out,
-    pred_proc_id::out) is det.
+    has_parallel_conj::in, map(prog_var, string)::in,
+    module_info::in, module_info::out, pred_proc_id::out) is det.
 
     % Various predicates for accessing the information stored in the
     % pred_id and pred_info data structures.
@@ -1186,8 +1186,8 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 
 define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
         SymName, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
-        VarSet0, InstVarSet, Markers, IsAddressTaken, VarNameRemap,
-        ModuleInfo0, ModuleInfo, PredProcId) :-
+        VarSet0, InstVarSet, Markers, IsAddressTaken, HasParallelConj,
+        VarNameRemap, ModuleInfo0, ModuleInfo, PredProcId) :-
     Goal0 = hlds_goal(_GoalExpr, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -1244,7 +1244,8 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     MaybeDeclaredDetism = no,
     proc_info_create_with_declared_detism(Context, VarSet, VarTypes, ArgVars,
         InstVarSet, ArgModes, detism_decl_none, MaybeDeclaredDetism,
-        Detism, Goal0, RttiVarMaps, IsAddressTaken, VarNameRemap, ProcInfo0),
+        Detism, Goal0, RttiVarMaps, IsAddressTaken, HasParallelConj,
+        VarNameRemap, ProcInfo0),
     proc_info_set_maybe_termination_info(TermInfo, ProcInfo0, ProcInfo),
 
     set.init(Assertions),
@@ -1977,14 +1978,14 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_init(prog_context::in, arity::in, list(mer_type)::in,
     maybe(list(mer_mode))::in, list(mer_mode)::in, maybe(list(is_live))::in,
     detism_decl::in, maybe(determinism)::in, is_address_taken::in,
-    map(prog_var, string)::in, proc_info::out) is det.
+    has_parallel_conj::in, map(prog_var, string)::in, proc_info::out) is det.
 
 :- pred proc_info_create(prog_context::in,
     prog_varset::in, vartypes::in, list(prog_var)::in,
     inst_varset::in, list(mer_mode)::in,
     detism_decl::in, determinism::in, hlds_goal::in,
-    rtti_varmaps::in, is_address_taken::in, map(prog_var, string)::in,
-    proc_info::out) is det.
+    rtti_varmaps::in, is_address_taken::in, has_parallel_conj::in,
+    map(prog_var, string)::in, proc_info::out) is det.
 
 :- pred proc_info_set_body(prog_varset::in, vartypes::in,
     list(prog_var)::in, hlds_goal::in, rtti_varmaps::in,
@@ -2609,14 +2610,26 @@ table_step_stats_kind(Step) = KindStr :-
     ).
 
 proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
-        DetismDecl, MaybeDeclaredDetism, IsAddressTaken, VarNameRemap,
-        ProcInfo) :-
-    % Some parts of the procedure aren't known yet. We initialize them
-    % to any old garbage which we will later throw away.
+        DetismDecl, MaybeDeclaredDetism, IsAddressTaken, HasParallelConj,
+        VarNameRemap, ProcInfo) :-
+    % When this predicate is invoked during the construction of the HLDS,
+    % some parts of the procedure aren't known yet. In that case, we can
+    % simply initialize them to any old garbage which we will later throw away.
+    %
+    % However, when this predicate is invoked by HLDS transformation passes
+    % after the front-end has finished, this strategy won't work. We need
+    % to fill in every field with meaningful, correct information, unless
+    % we know for sure that before the next pass that needs the correct value
+    % in a field, we will invoke another pass that fills in the correct value
+    % in that field.
+    %
+    % XXX I (zs) am far from sure that all the field initializations below,
+    % in this predicate and in proc_info_create_with_declared_detism,
+    % fulfill this condition.
 
-    % Inferred determinism gets initialized to `erroneous'.
-    % This is what `det_analysis.m' wants. det_analysis.m
-    % will later provide the correct inferred determinism for it.
+    % Please use a variable for every field of the proc_info and proc_sub_info,
+    % and please keep the definitions of those variables in the same order
+    % as the fields themselves.
 
     % argument DetismDecl
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
@@ -2630,7 +2643,7 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     NeedsMaxfrSlot = does_not_need_maxfr_slot,
     HasUserEvent = has_no_user_event,
     HasTailCallEvent = has_no_tail_call_event,
-    HasParallelConj = has_no_parallel_conj,
+    % argument HasParallelConj
     MaybeCallTableTip = no `with_type` maybe(prog_var),
     MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
     MaybeTableAttrs = no `with_type` maybe(table_attributes),
@@ -2661,6 +2674,9 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     MaybeHeadModesConstraint = no `with_type` maybe(mode_constraint),
     % argument MaybeArgLives
     % argument MaybeDeclaredDetism
+        % Inferred determinism gets initialized to `erroneous'.
+        % This is what `det_analysis.m' wants. det_analysis.m
+        % will later provide the correct inferred determinism for it.
     InferredDetism = detism_erroneous,
     goal_info_init(GoalInfo),
     ClauseBody = hlds_goal(conj(plain_conj, []), GoalInfo),
@@ -2676,22 +2692,29 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
         ProcSubInfo).
 
 proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
-        DetismDecl, Detism, Goal, RttiVarMaps, IsAddressTaken, VarNameRemap,
-        ProcInfo) :-
+        DetismDecl, Detism, Goal, RttiVarMaps, IsAddressTaken, HasParallelConj,
+        VarNameRemap, ProcInfo) :-
     proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, HeadModes, DetismDecl, yes(Detism), Detism, Goal,
-        RttiVarMaps, IsAddressTaken, VarNameRemap, ProcInfo).
+        RttiVarMaps, IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo).
 
 :- pred proc_info_create_with_declared_detism(prog_context::in,
     prog_varset::in, vartypes::in, list(prog_var)::in,
     inst_varset::in, list(mer_mode)::in,
     detism_decl::in, maybe(determinism)::in, determinism::in, hlds_goal::in,
-    rtti_varmaps::in, is_address_taken::in, map(prog_var, string)::in,
-    proc_info::out) is det.
+    rtti_varmaps::in, is_address_taken::in, has_parallel_conj::in,
+    map(prog_var, string)::in, proc_info::out) is det.
 
 proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
         InstVarSet, Modes, DetismDecl, MaybeDeclaredDetism, Detism,
-        Goal, RttiVarMaps, IsAddressTaken, VarNameRemap, ProcInfo) :-
+        Goal, RttiVarMaps, IsAddressTaken, HasParallelConj, VarNameRemap,
+        ProcInfo) :-
+    % See the comment at the top of  proc_info_init; it applies here as well.
+
+    % Please use a variable for every field of the proc_info and proc_sub_info,
+    % and please keep the definitions of those variables in the same order
+    % as the fields themselves.
+
     % argument DetismDecl
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
     MaybeTermInfo = no `with_type` maybe(termination_info),
@@ -2704,7 +2727,7 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
     NeedsMaxfrSlot = does_not_need_maxfr_slot,
     HasUserEvent = has_no_user_event,
     HasTailCallEvent = has_no_tail_call_event,
-    HasParallelConj = has_no_parallel_conj,
+    % argument HasParallelConj
     MaybeCallTableTip = no `with_type` maybe(prog_var),
     MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
     MaybeTableAttrs = no `with_type` maybe(table_attributes),

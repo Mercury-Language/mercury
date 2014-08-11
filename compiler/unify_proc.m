@@ -326,9 +326,11 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         map.lookup(!.PredMap, PredId, !:PredInfo),
         list.length(ArgModes, Arity),
         DeclaredArgModes = no,
+        % Before the simplification pass, HasParallelConj is not meaningful.
+        HasParallelConj = has_no_parallel_conj,
         add_new_proc(InstVarSet, Arity, ArgModes, DeclaredArgModes, ArgLives,
             detism_decl_implicit, MaybeDet, Context, address_is_not_taken,
-            !PredInfo, ProcId),
+            HasParallelConj, !PredInfo, ProcId),
 
         % Copy the clauses for the procedure from the pred_info
         % to the proc_info, and mark the procedure as one that

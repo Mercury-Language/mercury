@@ -64,8 +64,7 @@
 %   update(Current, OutUpdate0, OutUpdate),
 %   assoc(Current, OutAssoc0, OutAssoc).
 %
-% which can be transformed by the algorithm in "State Update
-% Transformation" to
+% which can be transformed by the algorithm in "State Update Transformation" to
 %
 % p(In, OutUpdate, OutAssoc) :-
 %   initialize(AccUpdate),
@@ -81,8 +80,8 @@
 %   p_acc(Rest, OutUpdate, OutAssoc0, AccUpdate),
 %   assoc(Current, OutAssoc0, OutAssoc).
 %
-% we then apply the algorithm from "Making Mercury Programs Tail
-% Recursive" to p_acc to obtain
+% we then apply the algorithm from "Making Mercury Programs Tail Recursive"
+% to p_acc to obtain
 %
 % p_acc(In, OutUpdate, OutAssoc, AccUpdate) :-
 %   minimal(In),
@@ -1499,6 +1498,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
     proc_info_get_context(OrigProcInfo, Context),
     proc_info_get_rtti_varmaps(OrigProcInfo, RttiVarMaps),
     proc_info_get_is_address_taken(OrigProcInfo, IsAddressTaken),
+    proc_info_get_has_parallel_conj(OrigProcInfo, HasParallelConj),
     proc_info_get_var_name_remap(OrigProcInfo, VarNameRemap),
 
     Substs = accu_substs(AccVarSubst, _RecCallSubst, _AssocCallSubst,
@@ -1523,7 +1523,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
 
     proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
         HeadModes, detism_decl_none, Detism, Goal, RttiVarMaps,
-        IsAddressTaken, VarNameRemap, AccProcInfo).
+        IsAddressTaken, HasParallelConj, VarNameRemap, AccProcInfo).
 
 %-----------------------------------------------------------------------------%
 

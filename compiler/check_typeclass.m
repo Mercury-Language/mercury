@@ -1031,9 +1031,11 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     AddProc = (pred(ModeAndDet::in, NewProcId::out,
             OldPredInfo::in, NewPredInfo::out) is det :-
         ModeAndDet = modes_and_detism(Modes, InstVarSet, MaybeDet),
+        % Before the simplification pass, HasParallelConj is not meaningful.
+        HasParallelConj = has_no_parallel_conj,
         add_new_proc(InstVarSet, PredArity, Modes, yes(Modes), no,
             detism_decl_implicit, MaybeDet, Context, address_is_taken,
-            OldPredInfo, NewPredInfo, NewProcId)
+            HasParallelConj, OldPredInfo, NewPredInfo, NewProcId)
     ),
     list.map_foldl(AddProc, ArgModes, InstanceProcIds, PredInfo2, PredInfo),
 

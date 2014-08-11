@@ -767,6 +767,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, OrigOrigin),
+    proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
     pred_info_get_var_name_remap(PredInfo, VarNameRemap),
 
     PredModule = pred_info_module(PredInfo),
@@ -797,6 +798,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         InstVarSet,             % in
         Markers,                % in
         address_is_not_taken,   % in
+        HasParallelConj,        % in
         VarNameRemap,           % in
         ModuleInfo0,
         ModuleInfo,

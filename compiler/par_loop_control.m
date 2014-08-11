@@ -647,9 +647,9 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         proc_info_get_inferred_determinism(OldProcInfo, Detism),
         proc_info_create(Context, !.VarSet, !.VarTypes, HeadVars, InstVarSet,
             ArgModes, detism_decl_none, Detism, !.Body, RttiVarMaps,
-            address_is_not_taken, map.init, ProcInfo),
+            address_is_not_taken, has_parallel_conj, map.init, ProcInfo),
 
-        % Update the other structures
+        % Update the other structures.
         pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes, !PredInfo),
         pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo),
         module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)

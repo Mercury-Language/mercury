@@ -658,13 +658,14 @@ pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
+    proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
     proc_info_get_var_name_remap(ProcInfo, VarNameRemap),
     % XXX handle the extra typeinfo arguments for
     % --typeinfo-liveness properly.
     hlds_pred.define_new_pred(Origin, Goal, CallGoal, Args, _ExtraArgs,
         InstMap, SymName, TVarSet, VarTypes, ClassContext, RttiVarMaps,
-        VarSet, InstVarSet, Markers, address_is_not_taken, VarNameRemap,
-        ModuleInfo0, ModuleInfo, PredProcId),
+        VarSet, InstVarSet, Markers, address_is_not_taken, HasParallelConj,
+        VarNameRemap, ModuleInfo0, ModuleInfo, PredProcId),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
 %-----------------------------------------------------------------------------%

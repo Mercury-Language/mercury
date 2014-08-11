@@ -63,7 +63,10 @@ parallel_to_plain_conjs(_ModuleInfo, PredProcId, !ProcInfo) :-
         HasParallelConj = has_parallel_conj,
         proc_info_get_goal(!.ProcInfo, Goal0),
         parallel_to_plain_conjs_goal(Goal0, Goal),
-        proc_info_set_goal(Goal, !ProcInfo)
+        proc_info_set_goal(Goal, !ProcInfo),
+        % The procedure *had* one or more parallel conjunctions,
+        % but we just converted them all to sequential conjunctions.
+        proc_info_set_has_parallel_conj(has_no_parallel_conj, !ProcInfo)
     ).
 
 :- pred parallel_to_plain_conjs_goal(hlds_goal::in, hlds_goal::out) is det.

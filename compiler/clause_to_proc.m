@@ -124,9 +124,12 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         MaybePredArgLives = no,
         varset.init(InstVarSet),
         % No inst_vars in default func mode.
+        % Before the simplification pass, HasParallelConj is not meaningful.
+        HasParallelConj = has_no_parallel_conj,
         add_new_proc(InstVarSet, PredArity, PredArgModes, yes(PredArgModes),
             MaybePredArgLives, detism_decl_implicit, yes(Determinism),
-            Context, address_is_not_taken, PredInfo0, PredInfo, ProcId),
+            Context, address_is_not_taken, HasParallelConj,
+            PredInfo0, PredInfo, ProcId),
         MaybeProcId = yes(ProcId)
     ;
         PredInfo = PredInfo0,

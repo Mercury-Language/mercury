@@ -335,10 +335,18 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         (
             given_trace_level_is_none(TraceLevel) = no
         ;
-            HasParConj = has_parallel_conj,
-            Parallel = yes
+            HasParConj = has_parallel_conj
         )
     ->
+        (
+            HasParConj = has_parallel_conj,
+            % In sequential grades, any parallel conjunctions should have been
+            % converted to sequential conjunctions by parallel_to_plain_conj.m.
+            expect(unify(Parallel, yes), $module, $pred,
+                "found parallel conjunction in non-parallel grade")
+        ;
+            HasParConj = has_no_parallel_conj
+        ),
         fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap,
             ProcInfo1, ProcInfo),
         MaybeContainingGoalMap = yes(ContainingGoalMap)

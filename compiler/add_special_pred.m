@@ -401,10 +401,12 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
         PredInfo0),
     ArgLives = no,
     varset.init(InstVarSet),
-    % Should not be any inst vars here so it's ok to use a fresh inst_varset.
+    % Should not be any inst vars here so it is ok to use a fresh inst_varset.
+    % Before the simplification pass, HasParallelConj is not meaningful.
+    HasParallelConj = has_no_parallel_conj,
     do_add_new_proc(InstVarSet, Arity, ArgModes, yes(ArgModes), ArgLives,
         detism_decl_implicit, yes(Det), Context, address_is_not_taken,
-        PredInfo0, PredInfo, _ProcId),
+        HasParallelConj, PredInfo0, PredInfo, _ProcId),
 
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     predicate_table_insert(PredInfo, PredId, PredicateTable0, PredicateTable),
