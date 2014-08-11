@@ -589,7 +589,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Information for calls
+% Information for calls.
 %
 
     % There may be two sorts of "builtin" predicates - those that we open-code
@@ -605,7 +605,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Information for call_foreign_proc
+% Information for call_foreign_proc.
 %
 
     % In the usual case, the arguments of a foreign_proc are the arguments
@@ -642,29 +642,33 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Information for generic_calls
+% Information for generic_calls.
 %
 
 :- type generic_call
     --->    higher_order(
                 ho_call_var     :: prog_var,
                 ho_call_purity  :: purity,
+
+                % call/N (pred) or apply/N (func)
                 ho_call_kind    :: pred_or_func,
-                                % call/N (pred) or apply/N (func)
+
+                % number of arguments (including the higher-order term)
                 ho_call_arity   :: arity
-                                % number of arguments (including the
-                                % higher-order term)
             )
 
     ;       class_method(
+                % The variable that holds the typeclass_info for the instance.
                 method_tci      :: prog_var,
-                                % typeclass_info for the instance
+
+                % The number of the called method.
                 method_num      :: int,
-                                % number of the called method
+
+                % The name and arity of the class.
                 method_class_id :: class_id,
-                                % name and arity of the class
+
+                % The name of the called method.
                 method_name     :: simple_call_id
-                                % name of the called method
             )
 
     ;       event_call(
@@ -672,9 +676,9 @@
             )
 
     ;       cast(
+                % A cast generic_call with two arguments, Input and Output,
+                % assigns `Input' to `Output', performing a cast of this kind.
                 cast_kind       :: cast_kind
-                % cast(Input, Output): Assigns `Input' to `Output', performing
-                % a type and/or inst cast.
             ).
 
     % The various kinds of casts that we can do.
@@ -709,7 +713,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Information for unifications
+% Information for unifications.
 %
 
     % Initially all unifications are represented as
@@ -724,7 +728,7 @@
                 % The `is_existential_construction' field is only used
                 % after polymorphism.m strips off the `new ' prefix from
                 % existentially typed constructions.
-                rhs_is_exist_constr :: is_existential_construction,
+                rhs_is_exist_constr :: is_exist_constr,
                 rhs_args            :: list(prog_var)
             )
     ;       rhs_lambda_goal(
@@ -738,7 +742,7 @@
                 % Currently, we don't support any other value than `normal'.
                 rhs_eval_method     :: lambda_eval_method,
 
-                % Non-locals of the goal excluding the lambda quantified
+                % The nonlocals of the goal excluding the lambda quantified
                 % variables, in no particular order.
                 rhs_nonlocals       :: list(prog_var),
 
@@ -758,7 +762,9 @@
 
     % Was the constructor originally of the form 'new ctor'(...).
     %
-:- type is_existential_construction == bool.
+:- type is_exist_constr
+    --->    is_not_exist_constr
+    ;       is_exist_constr.
 
     % This type contains the fields of a construct unification that are needed
     % only rarely. If a value of this type is bound to no_construct_sub_info,
@@ -998,11 +1004,14 @@
 :- type cell_to_reuse
     --->    cell_to_reuse(
                 prog_var,
-                list(cons_id), % The cell to be reused may be tagged
-                                    % with one of these cons_ids.
-                list(needs_update)  % Whether the corresponding
-                                    % argument already has the correct value
-                                    % and does not need to be filled in.
+
+                % The cell to be reused may be tagged with one of these
+                % cons_ids.
+                list(cons_id),
+
+                % Whether the corresponding argument already has
+                % the correct value and does not need to be filled in.
+                list(needs_update)
             ).
 
     % Cells marked `cell_is_shared' can be allocated in read-only memory,
@@ -3617,7 +3626,7 @@ make_char_const_construction(Var, Char, Goal) :-
     make_const_construction(Var, char_const(Char), Goal).
 
 make_const_construction(Var, ConsId, hlds_goal(GoalExpr, GoalInfo)) :-
-    RHS = rhs_functor(ConsId, no, []),
+    RHS = rhs_functor(ConsId, is_not_exist_constr, []),
     Inst = bound(unique, inst_test_results_fgtc, [bound_functor(ConsId, [])]),
     Mode = (free -> Inst) - (Inst -> Inst),
     Unification = construct(Var, ConsId, [], [],
@@ -3631,14 +3640,14 @@ make_const_construction(Var, ConsId, hlds_goal(GoalExpr, GoalInfo)) :-
 
 construct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
-    Rhs = rhs_functor(ConsId, no, Args),
+    RHS = rhs_functor(ConsId, is_not_exist_constr, Args),
     UnifyMode = (free_inst -> ground_inst) - (ground_inst -> ground_inst),
     UniMode = ((free_inst - ground_inst) -> (ground_inst - ground_inst)),
     list.duplicate(Arity, UniMode, UniModes),
     Unification = construct(Var, ConsId, Args, UniModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     UnifyContext = unify_context(umc_explicit, []),
-    Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
+    Unify = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
     set_of_var.list_to_set([Var | Args], NonLocals),
     InstMapDelta = instmap_delta_bind_var(Var),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
@@ -3646,14 +3655,14 @@ construct_functor(Var, ConsId, Args, Goal) :-
 
 deconstruct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
-    Rhs = rhs_functor(ConsId, no, Args),
+    RHS = rhs_functor(ConsId, is_not_exist_constr, Args),
     UnifyMode = (ground_inst -> free_inst) - (ground_inst -> ground_inst),
     UniMode = ((ground_inst - free_inst) -> (ground_inst - ground_inst)),
     list.duplicate(Arity, UniMode, UniModes),
     UnifyContext = unify_context(umc_explicit, []),
     Unification = deconstruct(Var, ConsId, Args, UniModes, cannot_fail,
         cannot_cgc),
-    Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
+    Unify = unify(Var, RHS, UnifyMode, Unification, UnifyContext),
     set_of_var.list_to_set([Var | Args], NonLocals),
     InstMapDelta = instmap_delta_bind_vars(Args),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),

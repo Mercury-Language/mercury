@@ -718,7 +718,7 @@ extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
     Conjuncts0 = [DeconstructResult, TestNullTuple | Conjuncts1],
     DeconstructResult = hlds_goal(unify(_ResultVar, _, _, _, _), _),
     TestNullTuple = hlds_goal(unify(_, TestRHS, _, _, _), _),
-    TestRHS = rhs_functor(tuple_cons(0), no, []),
+    TestRHS = rhs_functor(tuple_cons(0), is_not_exist_constr, []),
 
     (
         Conjuncts1 = [hlds_goal(IfThenElse, _) | Rest],

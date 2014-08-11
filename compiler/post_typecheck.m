@@ -1111,7 +1111,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         ProcId = invalid_proc_id,
         ArgVars = ArgVars0 ++ [X0],
         FuncCallUnifyContext = call_unify_context(X0,
-            rhs_functor(ConsId0, no, ArgVars0), UnifyContext),
+            rhs_functor(ConsId0, is_not_exist_constr, ArgVars0), UnifyContext),
         FuncCall = plain_call(PredId, ProcId, ArgVars, not_builtin,
             yes(FuncCallUnifyContext), QualifiedFuncName),
         Goal = hlds_goal(FuncCall, GoalInfo0),
@@ -1156,8 +1156,9 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             MaybeProcId = yes(ProcId),
             ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
             ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
-            GoalExpr = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
-                Unification0, UnifyContext),
+            GoalExpr = unify(X0,
+                rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
+                Mode0, Unification0, UnifyContext),
             Goal = hlds_goal(GoalExpr, GoalInfo0),
             IsPlainUnify = is_not_plain_unify
         ;
@@ -1230,8 +1231,9 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         ;
             ConsId = ConsId0
         ),
-        GoalExpr = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
-            Unification0, UnifyContext),
+        GoalExpr = unify(X0,
+            rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
+            Mode0, Unification0, UnifyContext),
         Goal = hlds_goal(GoalExpr, GoalInfo0),
         IsPlainUnify = is_plain_unify
     ).
@@ -1342,8 +1344,9 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
 
     RestrictNonLocals = goal_info_get_nonlocals(OldGoalInfo),
     create_pure_atomic_unification_with_nonlocals(TermInputVar,
-        rhs_functor(ConsId, no, ArgVars), OldGoalInfo, RestrictNonLocals,
-        [FieldVar, TermInputVar], UnifyContext, FunctorGoal),
+        rhs_functor(ConsId, is_not_exist_constr, ArgVars),
+        OldGoalInfo, RestrictNonLocals, [FieldVar, TermInputVar],
+        UnifyContext, FunctorGoal),
     FunctorGoal = hlds_goal(GoalExpr, _).
 
 :- pred translate_set_function(module_info::in, pred_info::in, pred_info::out,
@@ -1378,9 +1381,9 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
         DeconstructRestrictNonLocals),
 
     create_pure_atomic_unification_with_nonlocals(TermInputVar,
-        rhs_functor(ConsId0, no, DeconstructArgs), OldGoalInfo,
-        DeconstructRestrictNonLocals, [TermInputVar | DeconstructArgs],
-        UnifyContext, DeconstructGoal),
+        rhs_functor(ConsId0, is_not_exist_constr, DeconstructArgs),
+        OldGoalInfo, DeconstructRestrictNonLocals,
+        [TermInputVar | DeconstructArgs], UnifyContext, DeconstructGoal),
 
     % Build a goal to construct the output.
     ConstructArgs = VarsBeforeField ++ [FieldVar | VarsAfterField],
@@ -1403,7 +1406,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     ),
 
     create_pure_atomic_unification_with_nonlocals(TermOutputVar,
-        rhs_functor(ConsId, no, ConstructArgs), OldGoalInfo,
+        rhs_functor(ConsId, is_not_exist_constr, ConstructArgs), OldGoalInfo,
         ConstructRestrictNonLocals, [TermOutputVar | ConstructArgs],
         UnifyContext, ConstructGoal),
 

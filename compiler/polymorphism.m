@@ -1576,10 +1576,10 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         ConsId0 = cons(Functor0, Arity, ConsTypeCtor),
         ( remove_new_prefix(Functor0, OrigFunctor) ->
             ConsId = cons(OrigFunctor, Arity, ConsTypeCtor),
-            IsConstruction = yes
+            IsExistConstr = is_exist_constr
         ;
             ConsId = ConsId0,
-            IsConstruction = no
+            IsExistConstr = is_not_exist_constr
         ),
 
         % Check whether the functor (with the "new " prefix removed)
@@ -1591,7 +1591,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
 
         lookup_var_types(VarTypes0, ArgVars0, ActualArgTypes),
         polymorphism_process_existq_unify_functor(ConsDefn,
-            IsConstruction, ActualArgTypes, TypeOfX, GoalInfo0,
+            IsExistConstr, ActualArgTypes, TypeOfX, GoalInfo0,
             ExtraVars, ExtraGoals, !Info),
         ArgVars = ExtraVars ++ ArgVars0,
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
@@ -1603,7 +1603,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         unification_typeinfos(TypeOfX, Unification0, Unification,
             GoalInfo1, GoalInfo, _Changed, !Info),
 
-        UnifyExpr = unify(X0, rhs_functor(ConsId, IsConstruction, ArgVars),
+        UnifyExpr = unify(X0, rhs_functor(ConsId, IsExistConstr, ArgVars),
             Mode0, Unification, UnifyContext),
         Unify = hlds_goal(UnifyExpr, GoalInfo),
         GoalList = ExtraGoals ++ [Unify],
@@ -1617,8 +1617,8 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         % XXX Return original Goal0 if Changed = no.
         unification_typeinfos(TypeOfX, Unification0, Unification,
             GoalInfo0, GoalInfo, Changed, !Info),
-        GoalExpr = unify(X0, rhs_functor(ConsId0, no, ArgVars0), Mode0,
-            Unification, UnifyContext),
+        RHS = rhs_functor(ConsId0, is_not_exist_constr, ArgVars0),
+        GoalExpr = unify(X0, RHS, Mode0, Unification, UnifyContext),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 
@@ -1640,7 +1640,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % The ConsId's type_ctor shouldn't matter in a call_unify_context.
     ConsId = cons(QualifiedPName, list.length(ArgVars0),
         cons_id_dummy_type_ctor),
-    RHS = rhs_functor(ConsId, no, ArgVars0),
+    RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
     CallUnifyContext = call_unify_context(X0, RHS, UnifyContext),
     LambdaGoalExpr = plain_call(PredId, ProcId, Args, not_builtin,
         yes(CallUnifyContext), QualifiedPName),
@@ -1747,11 +1747,12 @@ create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
     % Compute the extra arguments that we need to add to a unification with
     % an existentially quantified data constructor.
     %
-:- pred polymorphism_process_existq_unify_functor(ctor_defn::in, bool::in,
-    list(mer_type)::in, mer_type::in, hlds_goal_info::in, list(prog_var)::out,
-    list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
+:- pred polymorphism_process_existq_unify_functor(ctor_defn::in,
+    is_exist_constr::in, list(mer_type)::in, mer_type::in,
+    hlds_goal_info::in, list(prog_var)::out, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
 
-polymorphism_process_existq_unify_functor(CtorDefn, IsConstruction,
+polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
         ActualArgTypes, ActualRetType, GoalInfo,
         ExtraVars, ExtraGoals, !Info) :-
     CtorDefn = ctor_defn(CtorTypeVarSet, CtorExistQVars, CtorKindMap,
@@ -1784,7 +1785,7 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsConstruction,
     list.length(ParentExistentialConstraints, NumExistentialConstraints),
     Context = goal_info_get_context(GoalInfo),
     (
-        IsConstruction = yes,
+        IsExistConstr = is_exist_constr,
         % Assume it is a construction.
         lookup_hlds_constraint_list(ConstraintMap, unproven, GoalId,
             NumExistentialConstraints, ActualExistentialConstraints),
@@ -1792,7 +1793,7 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsConstruction,
             ExtraTypeClassVarsMCAs, ExtraTypeClassGoals, !Info),
         assoc_list.keys(ExtraTypeClassVarsMCAs, ExtraTypeClassVars)
     ;
-        IsConstruction = no,
+        IsExistConstr = is_not_exist_constr,
         % Assume it is a deconstruction.
         lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
             NumExistentialConstraints, ActualExistentialConstraints),
@@ -2952,7 +2953,7 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
             (ground(shared, none) -> ground(shared, none)),
         % XXX The UnifyContext is wrong.
         UnifyContext = unify_context(umc_explicit, []),
-        TypeClassInfoRHS = rhs_functor(ConstConsId, no, []),
+        TypeClassInfoRHS = rhs_functor(ConstConsId, is_not_exist_constr, []),
         GoalExpr = unify(TypeClassInfoVar, TypeClassInfoRHS, UnifyMode,
             Unification, UnifyContext),
 
@@ -2984,7 +2985,8 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
         AllArgVars = [BaseVar | ArgVars],
 
         % Create the construction unification to initialize the variable.
-        TypeClassInfoRHS = rhs_functor(ConsId, no, AllArgVars),
+        TypeClassInfoRHS =
+            rhs_functor(ConsId, is_not_exist_constr, AllArgVars),
         UniMode = (free - ground(shared, none) ->
             ground(shared, none) - ground(shared, none)),
         list.length(AllArgVars, NumArgs),
@@ -3397,7 +3399,8 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
                 (ground(shared, none) -> ground(shared, none)),
             UnifyContext = unify_context(umc_explicit, []),
             % XXX The UnifyContext is wrong.
-            TypeInfoRHS = rhs_functor(type_info_const(ConstNum), no, []),
+            TypeInfoRHS = rhs_functor(type_info_const(ConstNum),
+                is_not_exist_constr, []),
             Unify = unify(Var, TypeInfoRHS, UnifyMode, Unification,
                 UnifyContext),
 
@@ -3537,7 +3540,7 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
 
 do_init_type_info_var(Type, Cell, ConsId, ArgVars, MaybePreferredVar,
         TypeInfoVar, TypeInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
-    TypeInfoRHS = rhs_functor(ConsId, no, ArgVars),
+    TypeInfoRHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
     % Introduce a new variable.
     (
         MaybePreferredVar = yes(TypeInfoVar)
@@ -3595,7 +3598,7 @@ init_const_type_ctor_info_var_from_cons_id(Type, ConsId,
         !VarSet, !VarTypes, !RttiVarMaps),
 
     % Create the construction unification to initialize the variable.
-    TypeInfoRHS = rhs_functor(ConsId, no, []),
+    TypeInfoRHS = rhs_functor(ConsId, is_not_exist_constr, []),
     Unification = construct(TypeCtorInfoVar, ConsId, [], [],
         construct_dynamically, cell_is_shared, no_construct_sub_info),
     UnifyMode = (free -> ground(shared, none)) -
@@ -4157,7 +4160,7 @@ materialize_base_typeclass_info_var(Constraint, ConsId, Var, Goals, !Info) :-
             _VarType, !Info),
 
         % Create the construction unification to initialize the variable.
-        RHS = rhs_functor(ConsId, no, []),
+        RHS = rhs_functor(ConsId, is_not_exist_constr, []),
         Unification = construct(Var, ConsId, [], [],
             construct_dynamically, cell_is_shared, no_construct_sub_info),
         UnifyMode = (free -> ground(shared, none)) -
@@ -4196,7 +4199,7 @@ materialize_typeclass_info_var(Constraint, InstanceIdConstNum, Var, Goals,
 
         % Create the construction unification to initialize the variable.
         ConsId = typeclass_info_const(InstanceIdConstNum),
-        RHS = rhs_functor(ConsId, no, []),
+        RHS = rhs_functor(ConsId, is_not_exist_constr, []),
         Unification = construct(Var, ConsId, [], [],
             construct_statically, cell_is_shared, no_construct_sub_info),
         UnifyMode = (free -> ground(shared, none)) -

@@ -284,7 +284,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         Ground = ground(shared, none),
         ConsId = int_const(0),
         LHS = ZeroVar,
-        RHS = rhs_functor(ConsId, no, []),
+        RHS = rhs_functor(ConsId, is_not_exist_constr, []),
         UniMode = ((Free - Ground) -> (Ground - Ground)),
         Unification = construct(ZeroVar, ConsId, [], [UniMode],
             construct_dynamically, cell_is_shared, no_construct_sub_info),

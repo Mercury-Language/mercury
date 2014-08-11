@@ -694,7 +694,8 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     MinusCallSymName = qualified(unqualified("int"), "-"),
                     ConsId =
                         cons(MinusCallSymName, 2, cons_id_dummy_type_ctor),
-                    Rhs = rhs_functor(ConsId, no, [GranularityVar, Var]),
+                    Rhs = rhs_functor(ConsId, is_not_exist_constr,
+                        [GranularityVar, Var]),
                     MinusCallUnifyContext = yes(call_unify_context(VarResult,
                         Rhs, unify_context(
                         umc_implicit("distance_granularity"), []))),

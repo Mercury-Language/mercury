@@ -1030,7 +1030,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         adjust_func_arity(pf_function, FuncArity, PredArity),
         FuncSymName = qualified(FuncModule, FuncName),
         FuncConsId = cons(FuncSymName, FuncArity, cons_id_dummy_type_ctor),
-        FuncRHS = rhs_functor(FuncConsId, no, FuncArgs),
+        FuncRHS = rhs_functor(FuncConsId, is_not_exist_constr, FuncArgs),
         create_pure_atomic_complicated_unification(FuncRetVal,
             FuncRHS, Context, umc_explicit, [], Goal0),
         Goal0 = hlds_goal(GoalExpr, GoalInfo0),

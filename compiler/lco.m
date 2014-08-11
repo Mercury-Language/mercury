@@ -1675,8 +1675,7 @@ make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
         make_unification_args(GroundVar, ArgNum, 1, ArgTypes,
             ArgVars, ArgModes, !ProcInfo),
 
-        IsExistConstr = no,
-        RHS = rhs_functor(ConsId, IsExistConstr, ArgVars),
+        RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
 
         instmap_lookup_var(InstMap, AddrVar, AddrVarInst0),
         inst_expand(ModuleInfo, AddrVarInst0, AddrVarInst),

@@ -3166,13 +3166,15 @@ make_future_var(SharedVarName, SharedVarType, FutureVar, FutureVarType,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     ts_string_table::in, ts_string_table::out) is det.
 
-make_future_name_var_and_goal(Name, FutureNameVar, Goal, !VarSet, !VarTypes, !TSStringTable) :-
+make_future_name_var_and_goal(Name, FutureNameVar, Goal, !VarSet, !VarTypes,
+        !TSStringTable) :-
     varset.new_named_var("FutureName" ++ Name, FutureNameVar, !VarSet),
     IntType = builtin_type(builtin_type_int),
     add_var_type(FutureNameVar, IntType, !VarTypes),
     allocate_ts_string(Name, NameId, !TSStringTable),
     Ground = ground(unique, none),
-    GoalExpr = unify(FutureNameVar, rhs_functor(int_const(NameId), no, []),
+    GoalExpr = unify(FutureNameVar,
+        rhs_functor(int_const(NameId), is_not_exist_constr, []),
         (free(IntType) -> Ground) - (Ground -> Ground),
         construct(FutureNameVar, int_const(NameId), [], [],
             construct_statically, cell_is_unique, no_construct_sub_info),

@@ -659,7 +659,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
     ),
     ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
     ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
-    Functor = rhs_functor(ConsId, no, ArgVars),
+    Functor = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
 
     Unification = construct(Var, ConsId, ArgVars, UniModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),

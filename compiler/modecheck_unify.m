@@ -247,7 +247,7 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
 %-----------------------------------------------------------------------------%
 
 :- pred modecheck_unification_functor(prog_var::in, cons_id::in,
-    is_existential_construction::in, list(prog_var)::in, unification::in,
+    is_exist_constr::in, list(prog_var)::in, unification::in,
     unify_context::in, hlds_goal_info::in, hlds_goal_expr::out,
     mode_info::in, mode_info::out) is det.
 
@@ -295,7 +295,7 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
         % handled specially, because the term is inherently shared.
         cons_id_is_const_struct(ConsId, ConstNum)
     ->
-        expect(unify(IsExistConstruction, no), $module, $pred,
+        expect(unify(IsExistConstruction, is_not_exist_constr), $module, $pred,
             "const struct construction is existential"),
         expect(unify(ArgVars0, []), $module, $pred,
             "const struct construction has args"),
@@ -612,8 +612,8 @@ modecheck_unify_const_struct(X, ConsId, ConstNum, UnifyContext,
         ModeOfX = (InstOfX -> Inst),
         ModeOfY = (InstOfY -> Inst),
         Modes = ModeOfX - ModeOfY,
-        UnifyGoalExpr = unify(X, rhs_functor(ConsId, no, []), Modes,
-            Unification, UnifyContext)
+        UnifyGoalExpr = unify(X, rhs_functor(ConsId, is_not_exist_constr, []),
+            Modes, Unification, UnifyContext)
     ;
 %       abstractly_unify_inst(LiveX, InstOfX, InstOfY, real_unify,
 %           UnifyInst, Det1, ModuleInfo0, ModuleInfo1)
@@ -642,14 +642,14 @@ modecheck_unify_const_struct(X, ConsId, ConstNum, UnifyContext,
         ModeOfX = (InstOfX -> Inst),
         ModeOfY = (InstOfY -> Inst),
         Modes = ModeOfX - ModeOfY,
-        UnifyGoalExpr = unify(X, rhs_functor(ConsId, no, []), Modes,
-            Unification, UnifyContext)
+        UnifyGoalExpr = unify(X, rhs_functor(ConsId, is_not_exist_constr, []),
+            Modes, Unification, UnifyContext)
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modecheck_unify_functor(prog_var::in, mer_type::in, cons_id::in,
-    is_existential_construction::in, list(prog_var)::in, unification::in,
+    is_exist_constr::in, list(prog_var)::in, unification::in,
     unify_context::in, hlds_goal_info::in, hlds_goal_expr::out,
     mode_info::in, mode_info::out) is det.
 
@@ -664,7 +664,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         % If the unification was originally of the form X = 'new f'(Y),
         % it must be classified as a construction. If it were classified as a
         % deconstruction, the argument unifications would be ill-typed.
-        IsExistConstruction = yes,
+        IsExistConstruction = is_exist_constr,
         \+ inst_is_free(ModuleInfo0, InstOfX0)
     ->
         % To make sure the unification is classified as a construction,
@@ -1415,7 +1415,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
                 ),
                 RHSConsId = cons(qualified(PredModule, PredName), Arity,
                     RHSTypeCtor),
-                RHS = rhs_functor(RHSConsId, no, ArgVars)
+                RHS = rhs_functor(RHSConsId, is_not_exist_constr, ArgVars)
             ;
                 unexpected($module, $pred, "reintroduced lambda goal")
             )

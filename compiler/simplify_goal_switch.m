@@ -283,7 +283,8 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal, InstMap0, !Info) :-
     UnifyContext = unify_context(umc_explicit, []),
     Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail,
         cannot_cgc),
-    ExtraGoalExpr = unify(Var, rhs_functor(ConsId, no, ArgVars),
+    ExtraGoalExpr = unify(Var,
+        rhs_functor(ConsId, is_not_exist_constr, ArgVars),
         UniMode, Unification, UnifyContext),
     NonLocals = set_of_var.make_singleton(Var),
 

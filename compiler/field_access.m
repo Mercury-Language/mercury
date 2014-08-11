@@ -276,7 +276,8 @@ construct_field_access_function_call(AccessType, Context,
     field_access_function_name(AccessType, FieldName, FuncName),
     list.length(Args, Arity),
     Functor = cons(FuncName, Arity, cons_id_dummy_type_ctor),
-    make_atomic_unification(RetArg, rhs_functor(Functor, no, Args),
+    make_atomic_unification(RetArg,
+        rhs_functor(Functor, is_not_exist_constr, Args),
         Context, MainContext, SubContext, Purity, Goal, !QualInfo).
 
 maybe_parse_field_list(Term, VarSet, FieldNames) :-

@@ -295,7 +295,7 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
         TypeCtor = cons_id_dummy_type_ctor,
         ConsId = cons(SymName, Arity, TypeCtor),
         Context = goal_info_get_context(GoalInfo),
-        RHS = rhs_functor(ConsId, no, FuncArgs),
+        RHS = rhs_functor(ConsId, is_not_exist_constr, FuncArgs),
         create_pure_atomic_complicated_unification(RetArg, RHS,
             Context, umc_explicit, [], hlds_goal(GoalExpr, _)),
         Goal = hlds_goal(GoalExpr, GoalInfo)

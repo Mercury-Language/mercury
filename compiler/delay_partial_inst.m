@@ -435,7 +435,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
             then
                 ProgContext = goal_info_get_context(GoalInfo0),
                 create_pure_atomic_complicated_unification(RHSVar,
-                    rhs_functor(ConsId, no, CanonArgs),
+                    rhs_functor(ConsId, is_not_exist_constr, CanonArgs),
                     ProgContext, umc_explicit, [], TestGoal),
                 create_pure_atomic_complicated_unification(LHS, RHS0,
                     ProgContext, umc_implicit("delay_partial_inst"), [],

@@ -1232,7 +1232,7 @@ generate_du_unify_case(TypeCtor, X, Y, Context, CanCompareAsInt, Ctor, Goal,
         ArgTypes = [],
         CanCompareAsInt = yes
     ->
-        RHS = rhs_functor(FunctorConsId, no, []),
+        RHS = rhs_functor(FunctorConsId, is_not_exist_constr, []),
         create_pure_atomic_complicated_unification(X, RHS, Context,
             umc_explicit, [], UnifyX_Goal),
         info_new_named_var(int_type, "CastX", CastX, !Info),
@@ -1247,8 +1247,8 @@ generate_du_unify_case(TypeCtor, X, Y, Context, CanCompareAsInt, Ctor, Goal,
     ;
         make_fresh_vars(ArgTypes, ExistQTVars, Vars1, !Info),
         make_fresh_vars(ArgTypes, ExistQTVars, Vars2, !Info),
-        RHS1 = rhs_functor(FunctorConsId, no, Vars1),
-        RHS2 = rhs_functor(FunctorConsId, no, Vars2),
+        RHS1 = rhs_functor(FunctorConsId, is_not_exist_constr, Vars1),
+        RHS2 = rhs_functor(FunctorConsId, is_not_exist_constr, Vars2),
         create_pure_atomic_complicated_unification(X, RHS1, Context,
             umc_explicit, [], UnifyX_Goal),
         create_pure_atomic_complicated_unification(Y, RHS2, Context,
@@ -1315,7 +1315,7 @@ generate_du_index_case(TypeCtor, X, Index, Context, Ctor, Goal, !N, !Info) :-
     FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
     make_fresh_vars(ArgTypes, ExistQTVars, ArgVars, !Info),
     create_pure_atomic_complicated_unification(X,
-        rhs_functor(FunctorConsId, no, ArgVars),
+        rhs_functor(FunctorConsId, is_not_exist_constr, ArgVars),
         Context, umc_explicit, [], UnifyX_Goal),
     make_int_const_construction(Index, !.N, UnifyIndex_Goal),
     !:N = !.N + 1,
@@ -1628,7 +1628,7 @@ generate_compare_case(TypeCtor, Ctor, R, X, Y, Context, Kind, Case, !Info) :-
     FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
     (
         ArgTypes = [],
-        RHS = rhs_functor(FunctorConsId, no, []),
+        RHS = rhs_functor(FunctorConsId, is_not_exist_constr, []),
         create_pure_atomic_complicated_unification(X, RHS, Context,
             umc_explicit, [], UnifyX_Goal),
         generate_return_equal(R, Context, EqualGoal),
@@ -1648,8 +1648,8 @@ generate_compare_case(TypeCtor, Ctor, R, X, Y, Context, Kind, Case, !Info) :-
         ArgTypes = [_ | _],
         make_fresh_vars(ArgTypes, ExistQTVars, Vars1, !Info),
         make_fresh_vars(ArgTypes, ExistQTVars, Vars2, !Info),
-        RHS1 = rhs_functor(FunctorConsId, no, Vars1),
-        RHS2 = rhs_functor(FunctorConsId, no, Vars2),
+        RHS1 = rhs_functor(FunctorConsId, is_not_exist_constr, Vars1),
+        RHS2 = rhs_functor(FunctorConsId, is_not_exist_constr, Vars2),
         create_pure_atomic_complicated_unification(X, RHS1, Context,
             umc_explicit, [], UnifyX_Goal),
         create_pure_atomic_complicated_unification(Y, RHS2, Context,
@@ -1677,8 +1677,8 @@ generate_asymmetric_compare_case(TypeCtor, Ctor1, Ctor2, CompareOp, R, X, Y,
     FunctorConsId2 = cons(FunctorName2, FunctorArity2, TypeCtor),
     make_fresh_vars(ArgTypes1, ExistQTVars1, Vars1, !Info),
     make_fresh_vars(ArgTypes2, ExistQTVars2, Vars2, !Info),
-    RHS1 = rhs_functor(FunctorConsId1, no, Vars1),
-    RHS2 = rhs_functor(FunctorConsId2, no, Vars2),
+    RHS1 = rhs_functor(FunctorConsId1, is_not_exist_constr, Vars1),
+    RHS2 = rhs_functor(FunctorConsId2, is_not_exist_constr, Vars2),
     create_pure_atomic_complicated_unification(X, RHS1, Context,
         umc_explicit, [], UnifyX_Goal),
     create_pure_atomic_complicated_unification(Y, RHS2, Context,
@@ -2038,7 +2038,8 @@ compare_cons_id(Name) = cons(SymName, 0, compare_type_ctor) :-
 
 :- func compare_functor(string) = unify_rhs.
 
-compare_functor(Name) = rhs_functor(compare_cons_id(Name), no, []).
+compare_functor(Name) =
+    rhs_functor(compare_cons_id(Name), is_not_exist_constr, []).
 
 %-----------------------------------------------------------------------------%
 
