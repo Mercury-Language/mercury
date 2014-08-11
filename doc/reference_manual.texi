@@ -7891,8 +7891,8 @@ implementation-dependent.
 The following text describes how it is done for the University of Melbourne
 Mercury implementation.
 
-To link an existing object file into your Mercury code, use the command line
-option @samp{--link-object}.
+To link an existing object file or archive of object files into your Mercury
+code, use the command line option @samp{--link-object}.
 For example, the following will link the object file @samp{my_function.o} from
 the current directory when compiling the program @samp{prog}:
 
@@ -7907,7 +7907,7 @@ or perhaps the shared version @samp{libfancy_library.so}, from the directory
 @samp{/usr/local/contrib/lib}, when compiling the program @samp{prog}:
 
 @example
-mmc -R/usr/local/contrib/lib -L/usr/local/contrib/lib --lfancy_library prog
+mmc -R/usr/local/contrib/lib -L/usr/local/contrib/lib -lfancy_library prog
 @end example
 
 As illustrated by the example, the command line options @samp{-R}, @samp{-L}
