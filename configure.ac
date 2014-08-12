@@ -3076,6 +3076,7 @@ case "$host" in
         CFLAGS_FOR_THREADS="-DGC_SOLARIS_PTHREADS -D_REENTRANT"
         THREAD_LIBS="-lpthread -lrt -ldl"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
     *linux*)
@@ -3105,7 +3106,10 @@ case "$host" in
                 LD_LIBFLAGS_FOR_THREADS="-MD"
                 ;;
             *)
-                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB" ;;
+                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
+                ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+                ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+                ;;
         esac
         ;;
 
@@ -3132,6 +3136,8 @@ case "$host" in
                     CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
                     THREAD_LIBS=
                 fi
+                ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+                ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
                 ;;
         esac
         ;;
@@ -3139,11 +3145,15 @@ case "$host" in
     x86_64*w64*mingw32*)
         CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
         THREAD_LIBS="-lpthread"
+        ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
     *apple*darwin*)
         CFLAGS_FOR_THREADS="-DGC_DARWIN_THREADS"
         THREAD_LIBS=""
+        ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
 ### # The threads stuff on Digital Unix (OSF) is not yet enabled because
