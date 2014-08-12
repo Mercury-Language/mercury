@@ -25,6 +25,7 @@
  */
 
 #include "private/gc_pmark.h"
+#include "private/pthread_support.h" /* Mercury: for GC_setup_mark_lock */
 
 #include <stdio.h>
 #include <limits.h>
