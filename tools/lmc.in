@@ -92,6 +92,9 @@ then
 elif test -s $WORKSPACE/boehm_gc/libgc_ll_debug.$O
 then
 	gclib="$WORKSPACE/boehm_gc/libgc_ll_debug.$O"
+elif test -s $WORKSPACE/boehm_gc/libpar_gc_ll_debug.$O
+then
+	gclib="$WORKSPACE/boehm_gc/libpar_gc_ll_debug.$O"
 else
 	echo "$WORKSPACE/boehm_gc does not have a gc library"
 fi
