@@ -2510,14 +2510,17 @@ GC_INNER void GC_thr_init(void)
     /* After the join,thread id may have been recycled.          */
     /* FIXME: It would be better if this worked more like        */
     /* pthread_support.c.                                        */
-#   ifndef GC_WIN32_PTHREADS
+    /* Mercury-specific: Winpthreads allocates threads ids       */
+    /* incrementally (with wraparound) so should be practically  */
+    /* unique, but let's make the conservative assumption. --pw  */
+#   if !defined(GC_WIN32_PTHREADS) || defined(__WINPTHREADS_VERSION_MAJOR)
       while ((t = GC_lookup_pthread(pthread_id)) == 0)
         Sleep(10);
 #   endif
 
     result = pthread_join(pthread_id, retval);
 
-#   ifdef GC_WIN32_PTHREADS
+#   if defined(GC_WIN32_PTHREADS) && !defined(__WINPTHREADS_VERSION_MAJOR)
       /* win32_pthreads id are unique */
       t = GC_lookup_pthread(pthread_id);
 #   endif
