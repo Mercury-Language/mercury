@@ -3140,7 +3140,7 @@ case "$host" in
         esac
         ;;
 
-    x86_64*w64*mingw32*)
+    *-w64-mingw*)
         CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
         THREAD_LIBS="-lpthread"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
