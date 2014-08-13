@@ -16,7 +16,7 @@
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(MR_LL_PARALLEL_CONJ)
+#if defined(MR_THREAD_SAFE)
 
 /*
 ** Definitions for the atomic functions declared `extern inline'.
@@ -132,7 +132,7 @@ MR_OUTLINE_DEFN(
     }
 )
 
-#endif /* MR_LL_PARALLEL_CONJ */
+#endif /* MR_THREAD_SAFE */
 
 /*---------------------------------------------------------------------------*/
 
