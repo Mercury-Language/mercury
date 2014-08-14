@@ -2983,8 +2983,8 @@ AC_SUBST(CGIDIR)
 
 #-----------------------------------------------------------------------------#
 
-# Check if we are using the pthreads-win32 library.
-# NOTE: we currently only support this on MinGW.
+# Check if we are using a pthreads implementation on Win32.
+# NOTE: we currently only support this on MinGW or MinGW-w64.
 
 if test "$MR_HAVE_PTHREAD_H" = 1
 then
@@ -2994,39 +2994,37 @@ then
             if test $mercury_cv_have_pthreads_win32 = "yes"
             then
                 AC_DEFINE([MR_PTHREADS_WIN32])
-                WIN32_GC_THREADLIB="-DGC_WIN32_PTHREADS"
-            else
-                WIN32_GC_THREADLIB="-DGC_WIN32_THREADS"
             fi
-        ;;
-
+            WIN32_GC_THREADLIB="-DGC_WIN32_PTHREADS"
+            ;;
         *)
+            # XXX Building with GC_WIN32_THREADS instead of GC_WIN32_PTHREADS
+            # can lead to trouble if the Mercury implementation makes pthread
+            # calls which are not intercepted by Boehm GC.
             WIN32_GC_THREADLIB="-DGC_WIN32_THREADS"
-        ;;
+            ;;
     esac
 else
     WIN32_GC_THREADLIB="-DGC_WIN32_THREADS"
 fi
 
-AC_ARG_WITH([gc-pthreads-win32],
-   AC_HELP_STRING([--with-gc-pthreads-win32]
-                          [Force the use of the pthreads-win32 library with
-                          the Boehm GC.  This is the default for MinGW]),
-   [with_gc_pthreads_win32="$withval"],[with_gc_pthreads_win32="no"])
+AC_ARG_WITH([gc-win32-pthreads],
+   AC_HELP_STRING([--with-gc-win32-pthreads]
+            [Force the use of pthreads-win32 or winpthreads with Boehm GC.
+             This is the default for MinGW if detected.]),
+   [with_gc_win32_pthreads="$withval"],
+   [with_gc_win32_pthreads="no"])
 
-case "$with_gc_pthreads_win32" in
-
+case "$with_gc_win32_pthreads" in
     yes)
-        # Force the use of the pthreads-win32 library with the Boehm GC.
+        # Force the use of a MinGW* pthreads library with the Boehm GC.
         WIN32_GC_THREADLIB="-DGC_WIN32_PTHREADS"
-    ;;
-
+        ;;
     no)
-    ;;
-
+        ;;
     *)
-        AC_MSG_ERROR([unexpected argument to --with-gc-pthreads-win32])
-    ;;
+        AC_MSG_ERROR([unexpected argument to --with-gc-win32-pthreads])
+        ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -3066,6 +3064,7 @@ case "$host" in
         CFLAGS_FOR_THREADS="-DGC_SOLARIS_PTHREADS -D_REENTRANT"
         THREAD_LIBS="-lpthread -lrt -ldl"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
     *linux*)
@@ -3096,7 +3095,10 @@ case "$host" in
                 LD_LIBFLAGS_FOR_THREADS="-MD"
                 ;;
             *)
-                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB" ;;
+                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
+                ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+                ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+                ;;
         esac
         # avoid_sbrk?
         ;;
@@ -3124,18 +3126,24 @@ case "$host" in
                     CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
                     THREAD_LIBS=
                 fi
+                ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+                ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
                 ;;
         esac
         ;;
 
-    x86_64*w64*mingw32*)
+    *-w64-mingw*)
         CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
         THREAD_LIBS="-lpthread"
+        ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
     *apple*darwin*)
         CFLAGS_FOR_THREADS="-DGC_DARWIN_THREADS"
         THREAD_LIBS=""
+        ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
 ### # The threads stuff on HPUX is not yet enabled because
