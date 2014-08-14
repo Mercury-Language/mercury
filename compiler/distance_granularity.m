@@ -401,7 +401,7 @@ apply_dg_to_goal(!Goal, CallerPredId, CallerProcId, PredIdSpecialized,
     % Apply the distance granularity transformation to a plain call.
     %
 :- pred apply_dg_to_plain_call(
-    hlds_goal_expr::in(plain_call_expr), hlds_goal_expr::out,
+    hlds_goal_expr::in(goal_expr_plain_call), hlds_goal_expr::out,
     pred_id::in, pred_id::in, sym_name::in, proc_id::in, proc_info::in,
     proc_info::out, module_info::in, module_info::out, bool::in,
     maybe(prog_var)::in, maybe(prog_var)::out, bool::out) is det.
@@ -950,7 +950,7 @@ update_original_predicate_goal(!Goal, CallerPredId, CallerProcId,
     % specialized procedure.
     %
 :- pred update_original_predicate_plain_call(
-    hlds_goal::in(plain_call), hlds_goal::out,
+    hlds_goal::in(goal_plain_call), hlds_goal::out,
     pred_id::in, proc_id::in, pred_id::in, sym_name::in,
     proc_info::in, proc_info::out, int::in) is det.
 

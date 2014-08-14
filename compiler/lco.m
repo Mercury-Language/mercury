@@ -1552,7 +1552,7 @@ lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
 
 :- pred lco_transform_variant_plain_call(module_info::in, variant_map::in,
     var_to_target::in, instmap::in,
-    hlds_goal_expr::in(plain_call_expr), hlds_goal_expr::out,
+    hlds_goal_expr::in(goal_expr_plain_call), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out, bool::out,
     proc_info::in, proc_info::out) is det.
 

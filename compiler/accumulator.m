@@ -1421,13 +1421,13 @@ accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
 
 %-----------------------------------------------------------------------------%
 
-:- inst plain_call_goal
-    --->    stored_goal(plain_call, ground).
+:- inst stored_goal_plain_call
+    --->    stored_goal(goal_plain_call, ground).
 
     % Do a goal_store_lookup where the result is known to be a call.
     %
 :- pred lookup_call(accu_goal_store::in, accu_goal_id::in,
-    stored_goal::out(plain_call_goal)) is det.
+    stored_goal::out(stored_goal_plain_call)) is det.
 
 lookup_call(GoalStore, Id, stored_goal(Call, InstMap)) :-
     goal_store_lookup(GoalStore, Id, stored_goal(Goal, InstMap)),
@@ -1592,8 +1592,8 @@ accu_create_goal(RecCallId, Accs, AccPredId, AccProcId, AccName, Substs,
     % accumulator version of the call, which can have the substitutions
     % applied to it easily.
     %
-:- func create_acc_call(hlds_goal::in(plain_call), prog_vars::in,
-    pred_id::in, proc_id::in, sym_name::in) = (hlds_goal::out(plain_call))
+:- func create_acc_call(hlds_goal::in(goal_plain_call), prog_vars::in,
+    pred_id::in, proc_id::in, sym_name::in) = (hlds_goal::out(goal_plain_call))
     is det.
 
 create_acc_call(OrigCall, Accs, AccPredId, AccProcId, AccName) = Call :-

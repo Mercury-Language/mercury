@@ -568,7 +568,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
     ).
 
 :- pred indirect_reuse_analyse_plain_call(ir_background_info::in,
-    hlds_goal::in(plain_call), hlds_goal::out(plain_call),
+    hlds_goal::in(goal_plain_call), hlds_goal::out(goal_plain_call),
     ir_analysis_info::in, ir_analysis_info::out) is det.
 
 indirect_reuse_analyse_plain_call(BaseInfo, !Goal, !IrInfo) :-

@@ -66,8 +66,7 @@
 % track of variables which are bound to top-level functors with free arguments.
 % In place of the unifications we remove, we insert the unifications for the
 % sub-components which are ground. Only once the variable is ground, because
-% all its sub-components are ground, we construct the top-level data
-% structure.
+% all its sub-components are ground, do we create the top-level memory cell.
 %
 % The algorithm makes a single forward pass over each procedure. When we see
 % a unification that binds a variable V to a functor f/n with at least one
@@ -266,6 +265,8 @@ delay_partial_inst_proc(ModuleInfo, PredId, ProcTable, ProcId,
         )
     ).
 
+%-----------------------------------------------------------------------------%
+
 :- pred delay_partial_inst_in_goal(instmap::in, hlds_goal::in, hlds_goal::out,
     construct_map::in, construct_map::out,
     delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
@@ -279,7 +280,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
         Goal = hlds_goal(conj(ConjType, Goals), GoalInfo0)
     ;
         GoalExpr0 = disj(Goals0),
-        delay_partial_inst_in_goals(InstMap0, Goals0, Goals, !ConstructMap,
+        delay_partial_inst_in_disj(InstMap0, Goals0, Goals, !ConstructMap,
             !DelayInfo),
         Goal = hlds_goal(disj(Goals), GoalInfo0)
     ;
@@ -319,7 +320,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
     ;
         GoalExpr0 = unify(LHS, RHS0, Mode, Unify, Context),
         (
-            Unify = construct(Var, ConsId, Args, UniModes, _, _, _),
+            Unify = construct(_Var, ConsId, _Args, UniModes, _, _, _),
             ( if
                 % Is this construction of the form
                 %   V = f(A1, A2, A3, ...)
@@ -334,28 +335,8 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                     inst_is_free(ModuleInfo, RhsAfter)
                 )
             then
-                % Add an entry for Var to the construct map if it doesn't exist
-                % already, otherwise look up the canonical variables.
-                ( if
-                    map.search(!.ConstructMap, Var, CanonVarsMap0),
-                    map.search(CanonVarsMap0, ConsId, CanonVars0)
-                then
-                    CanonVars = CanonVars0
-                else
-                    create_canonical_variables(Args, CanonVars, !DelayInfo),
-                    add_to_construct_map(Var, ConsId, CanonVars, !ConstructMap)
-                ),
-
-                % Unify the canonical variables and corresponding ground
-                % arguments (if any).
-                ProgContext = goal_info_get_context(GoalInfo0),
-                SubUnifyGoals = list.filter_map_corresponding3(
-                    maybe_unify_var_with_ground_var(ModuleInfo, ProgContext),
-                    CanonVars, Args, UniModes),
-                conj_list_to_goal(SubUnifyGoals, GoalInfo0, Goal),
-
-                % Mark the procedure as changed.
-                !DelayInfo ^ dpi_changed := yes
+                delay_partial_inst_in_partial_construct(GoalInfo0, Unify, Goal,
+                    !ConstructMap, !DelayInfo)
             else
                 (
                     % Tranform lambda goals as well. Non-local variables in
@@ -380,70 +361,14 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                 )
             )
         ;
-            Unify = deconstruct(Var, ConsId, DeconArgs, UniModes,
+            Unify = deconstruct(_Var, _ConsId, _Args, _UniModes,
                 _CanFail, _CanCGC),
-            ( if
-                map.search(!.ConstructMap, Var, CanonVarsMap0),
-                map.search(CanonVarsMap0, ConsId, CanonArgs)
-            then
-                % Unify each ground argument with the corresponding canonical
-                % variable.
-                ModuleInfo = !.DelayInfo ^ dpi_module_info,
-                ProgContext = goal_info_get_context(GoalInfo0),
-                SubUnifyGoals = list.filter_map_corresponding3(
-                    maybe_unify_var_with_ground_var(ModuleInfo, ProgContext),
-                    CanonArgs, DeconArgs, UniModes),
-
-                % Construct Var if it should be ground now.
-                Mode = LHS_Mode - _RHS_Mode,
-                FinalInst = mode_get_final_inst(ModuleInfo, LHS_Mode),
-                ( if inst_is_ground(ModuleInfo, FinalInst) then
-                    construct_functor(Var, ConsId, CanonArgs, ConstructGoal),
-
-                    % Delete the variable on the LHS from the construct map
-                    % since it has been constructed.
-                    map.delete(ConsId, CanonVarsMap0, CanonVarsMap),
-                    map.det_update(Var, CanonVarsMap, !ConstructMap),
-
-                    ConjList = SubUnifyGoals ++ [ConstructGoal]
-                else
-                    ConjList = SubUnifyGoals
-                ),
-                conj_list_to_goal(ConjList, GoalInfo0, Goal)
-            else
-                Goal = Goal0
-            )
+            delay_partial_inst_in_deconstruct(Goal0, Mode, Unify, Goal,
+                !ConstructMap, !DelayInfo)
         ;
-            Unify = complicated_unify(_UniMode, CanFail, _TypeInfos),
-            % Deal with tests generated for calls to implied modes.
-            %
-            %       LHS := f(_),
-            %       p(RHS),
-            %       LHS ?= RHS
-            %   ===>
-            %       p(RHS),
-            %       RHS ?= f(_),
-            %       LHS := RHS
-            %
-            % XXX I have not seen a case where the LHS and RHS are swapped
-            % but we should handle that if it comes up.
-            ( if
-                CanFail = can_fail,
-                RHS0 = rhs_var(RHSVar),
-                get_sole_cons_id_and_canon_vars(!.ConstructMap, LHS, ConsId,
-                    CanonArgs)
-            then
-                ProgContext = goal_info_get_context(GoalInfo0),
-                create_pure_atomic_complicated_unification(RHSVar,
-                    rhs_functor(ConsId, is_not_exist_constr, CanonArgs),
-                    ProgContext, umc_explicit, [], TestGoal),
-                create_pure_atomic_complicated_unification(LHS, RHS0,
-                    ProgContext, umc_implicit("delay_partial_inst"), [],
-                    AssignGoal),
-                conjoin_goals(TestGoal, AssignGoal, Goal)
-            else
-                Goal = Goal0
-            )
+            Unify = complicated_unify(_UniMode, _CanFail, _TypeInfos),
+            delay_partial_inst_in_complicated_unify(Goal0, LHS, RHS0,
+                Unify, Goal, !ConstructMap, !DelayInfo)
         ;
             ( Unify = assign(_, _)
             ; Unify = simple_test(_, _)
@@ -465,7 +390,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
             % and if yes, why? This should be documented.
             delay_partial_inst_in_goal(InstMap0, MainGoal0, MainGoal,
                 !.ConstructMap, _, !DelayInfo),
-            delay_partial_inst_in_goals(InstMap0, OrElseGoals0, OrElseGoals,
+            delay_partial_inst_in_disj(InstMap0, OrElseGoals0, OrElseGoals,
                 !.ConstructMap, _, !DelayInfo),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners),
@@ -484,6 +409,107 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
             unexpected($module, $pred, "bi_implication")
         )
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% Handle compound goals.
+%
+
+:- pred delay_partial_inst_in_conj(instmap::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    construct_map::in, construct_map::out,
+    delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
+
+delay_partial_inst_in_conj(_, [], [], !ConstructMap, !DelayInfo).
+delay_partial_inst_in_conj(InstMap0, [HeadGoal0 | TailGoals0], Goals,
+        !ConstructMap, !DelayInfo) :-
+    delay_partial_inst_in_goal(InstMap0, HeadGoal0, HeadGoal, !ConstructMap,
+        !DelayInfo),
+    update_instmap(HeadGoal0, InstMap0, InstMap1),
+    delay_partial_inst_in_conj(InstMap1, TailGoals0, TailGoals, !ConstructMap,
+        !DelayInfo),
+    goal_to_conj_list(HeadGoal, HeadGoals),
+    Goals = HeadGoals ++ TailGoals.
+
+:- pred delay_partial_inst_in_disj(instmap::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    construct_map::in, construct_map::out,
+    delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
+
+delay_partial_inst_in_disj(_, [], [], !ConstructMap, !DelayInfo).
+delay_partial_inst_in_disj(InstMap0, [Goal0 | Goals0], [Goal | Goals],
+        !ConstructMap, !DelayInfo) :-
+    % Each time that a variable X is bound to a partially instantiated term
+    % with functor f/n somewhere in the disjunction, we want the same set of
+    % "canonical" variables to name the individual arguments of f/n.
+    % That is why we thread the construct map through the disjunctions,
+    % so we don't end up with different canonical variables per disjunct.
+    %
+    % XXX we depend on the fact that (it seems) after mode checking a
+    % variable won't become ground in each of the disjuncts, but rather
+    % will become ground after the disjunction as a whole. Otherwise
+    % entries could be removed from the construct map in earlier disjuncts
+    % that should be visible in later disjuncts. To lift this assumption we
+    % would need to use separate construct maps per disjunct, merge them
+    % afterwards and renaming variables so that there is only one set of
+    % canonical variables.
+    %
+    delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap,
+        !DelayInfo),
+    delay_partial_inst_in_disj(InstMap0, Goals0, Goals, !ConstructMap,
+        !DelayInfo).
+
+:- pred delay_partial_inst_in_cases(instmap::in,
+    list(case)::in, list(case)::out, construct_map::in, construct_map::out,
+    delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
+
+delay_partial_inst_in_cases(_, [], [], !ConstructMap, !DelayInfo).
+delay_partial_inst_in_cases(InstMap0, [Case0 | Cases0], [Case | Cases],
+        !ConstructMap, !DelayInfo) :-
+    % See comment in delay_partial_inst_in_goals.
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap,
+        !DelayInfo),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    delay_partial_inst_in_cases(InstMap0, Cases0, Cases, !ConstructMap,
+        !DelayInfo).
+
+%-----------------------------------------------------------------------------%
+%
+% Handle unifications that construct partially instantated terms.
+%
+
+:- pred delay_partial_inst_in_partial_construct(hlds_goal_info::in,
+    unification::in(unification_construct), hlds_goal::out,
+    construct_map::in, construct_map::out,
+    delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
+
+delay_partial_inst_in_partial_construct(GoalInfo0, Unify, Goal,
+        !ConstructMap, !DelayInfo) :-
+    Unify = construct(Var, ConsId, Args, UniModes, _, _, _),
+    % Add an entry for Var to the construct map if it doesn't exist
+    % already, otherwise look up the canonical variables.
+    ( if
+        map.search(!.ConstructMap, Var, CanonVarsMap0),
+        map.search(CanonVarsMap0, ConsId, CanonVars0)
+    then
+        CanonVars = CanonVars0
+    else
+        create_canonical_variables(Args, CanonVars, !DelayInfo),
+        add_to_construct_map(Var, ConsId, CanonVars, !ConstructMap)
+    ),
+
+    % Unify the canonical variables and corresponding ground
+    % arguments (if any).
+    ModuleInfo = !.DelayInfo ^ dpi_module_info,
+    ProgContext = goal_info_get_context(GoalInfo0),
+    SubUnifyGoals = list.filter_map_corresponding3(
+        maybe_unify_var_with_ground_var(ModuleInfo, ProgContext),
+        CanonVars, Args, UniModes),
+    conj_list_to_goal(SubUnifyGoals, GoalInfo0, Goal),
+
+    % Mark the procedure as changed.
+    !DelayInfo ^ dpi_changed := yes.
 
 :- pred create_canonical_variables(prog_vars::in, prog_vars::out,
     delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
@@ -509,6 +535,116 @@ add_to_construct_map(Var, ConsId, CanonVars, !ConstructMap) :-
     map.det_insert(ConsId, CanonVars, ConsIdMap1, ConsIdMap),
     map.set(Var, ConsIdMap, !ConstructMap).
 
+%-----------------------------------------------------------------------------%
+%
+% Handle deconstructions. In some of these, information flows from right to
+% left, i.e. from some of the function symbol's argument variables to the
+% LHS variable, which previously must have been bound to a partially
+% instantiated term.
+%
+
+:- pred delay_partial_inst_in_deconstruct(hlds_goal::in,
+    unify_mode::in, unification::in(unification_deconstruct), hlds_goal::out,
+    construct_map::in, construct_map::out,
+    delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
+
+delay_partial_inst_in_deconstruct(Goal0, UniMode, Unify, Goal,
+        !ConstructMap, !DelayInfo) :-
+    Unify = deconstruct(Var, ConsId, Args, UniModes, _CanFail, _CanCGC),
+    ( if
+        map.search(!.ConstructMap, Var, CanonVarsMap0),
+        map.search(CanonVarsMap0, ConsId, CanonArgs)
+    then
+        % Unify each ground argument with the corresponding canonical
+        % variable.
+        ModuleInfo = !.DelayInfo ^ dpi_module_info,
+        ProgContext = goal_info_get_context(GoalInfo0),
+        SubUnifyGoals = list.filter_map_corresponding3(
+            maybe_unify_var_with_ground_var(ModuleInfo, ProgContext),
+            CanonArgs, Args, UniModes),
+
+        % Construct Var if it should be ground now.
+        UniMode = LHS_Mode - _RHS_Mode,
+        FinalInst = mode_get_final_inst(ModuleInfo, LHS_Mode),
+        ( if inst_is_ground(ModuleInfo, FinalInst) then
+            construct_functor(Var, ConsId, CanonArgs, ConstructGoal),
+
+            % Delete the variable on the LHS from the construct map
+            % since it has been constructed.
+            map.delete(ConsId, CanonVarsMap0, CanonVarsMap),
+            map.det_update(Var, CanonVarsMap, !ConstructMap),
+
+            ConjList = SubUnifyGoals ++ [ConstructGoal]
+        else
+            ConjList = SubUnifyGoals
+        ),
+        Goal0 = hlds_goal(_, GoalInfo0),
+        conj_list_to_goal(ConjList, GoalInfo0, Goal)
+    else
+        Goal = Goal0
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Utility predicate used by handling of both partial constructions and
+% deconstructions.
+%
+
+:- func maybe_unify_var_with_ground_var(module_info::in, prog_context::in,
+    prog_var::in, prog_var::in, uni_mode::in) = (hlds_goal::out) is semidet.
+
+maybe_unify_var_with_ground_var(ModuleInfo, Context, LhsVar, RhsVar, ArgMode)
+        = Goal :-
+    ArgMode = (_ - _ -> Inst - _),
+    inst_is_ground(ModuleInfo, Inst),
+    create_pure_atomic_complicated_unification(LhsVar, rhs_var(RhsVar),
+        Context, umc_implicit("delay_partial_inst"), [], Goal).
+
+%-----------------------------------------------------------------------------%
+%
+% Handle complicated test unifications.
+%
+
+:- pred delay_partial_inst_in_complicated_unify(hlds_goal::in,
+    prog_var::in, unify_rhs::in,
+    unification::in(unification_complicated_unify), hlds_goal::out,
+    construct_map::in, construct_map::out,
+    delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
+
+delay_partial_inst_in_complicated_unify(Goal0, LHS, RHS0, Unify, Goal,
+        !ConstructMap, !DelayInfo) :-
+    Unify = complicated_unify(_UniMode, CanFail, _TypeInfos),
+    % Deal with tests generated for calls to implied modes.
+    %
+    %       LHS := f(_),
+    %       p(RHS),
+    %       LHS ?= RHS
+    %   ===>
+    %       p(RHS),
+    %       RHS ?= f(_),
+    %       LHS := RHS
+    %
+    % XXX I have not seen a case where the LHS and RHS are swapped
+    % but we should handle that if it comes up.
+    ( if
+        CanFail = can_fail,
+        RHS0 = rhs_var(RHSVar),
+        get_sole_cons_id_and_canon_vars(!.ConstructMap, LHS, ConsId,
+            CanonArgs)
+    then
+        Goal0 = hlds_goal(_, GoalInfo0),
+        ProgContext = goal_info_get_context(GoalInfo0),
+        create_pure_atomic_complicated_unification(RHSVar,
+            rhs_functor(ConsId, is_not_exist_constr, CanonArgs),
+            ProgContext, umc_explicit, [], TestGoal),
+        create_pure_atomic_complicated_unification(LHS, RHS0,
+            ProgContext, umc_implicit("delay_partial_inst"), [],
+            AssignGoal),
+        conjoin_goals(TestGoal, AssignGoal, Goal)
+    else
+        Goal = Goal0
+    ).
+
 :- pred get_sole_cons_id_and_canon_vars(construct_map::in, prog_var::in,
     cons_id::out, prog_vars::out) is semidet.
 
@@ -532,77 +668,6 @@ get_sole_cons_id_and_canon_vars(ConstructMap, Var, ConsId, CanonVars) :-
                 "bound to multiple functors")
         )
     ).
-
-:- func maybe_unify_var_with_ground_var(module_info::in, prog_context::in,
-    prog_var::in, prog_var::in, uni_mode::in) = (hlds_goal::out) is semidet.
-
-maybe_unify_var_with_ground_var(ModuleInfo, Context, LhsVar, RhsVar, ArgMode)
-        = Goal :-
-    ArgMode = (_ - _ -> Inst - _),
-    inst_is_ground(ModuleInfo, Inst),
-    create_pure_atomic_complicated_unification(LhsVar, rhs_var(RhsVar),
-        Context, umc_implicit("delay_partial_inst"), [], Goal).
-
-%-----------------------------------------------------------------------------%
-
-:- pred delay_partial_inst_in_conj(instmap::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
-    construct_map::in, construct_map::out,
-    delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
-
-delay_partial_inst_in_conj(_, [], [], !ConstructMap, !DelayInfo).
-delay_partial_inst_in_conj(InstMap0, [Goal0 | Goals0], Goals, !ConstructMap,
-        !DelayInfo) :-
-    delay_partial_inst_in_goal(InstMap0, Goal0, Goal1, !ConstructMap,
-        !DelayInfo),
-    update_instmap(Goal0, InstMap0, InstMap1),
-    delay_partial_inst_in_conj(InstMap1, Goals0, Goals1, !ConstructMap,
-        !DelayInfo),
-    goal_to_conj_list(Goal1, Goal1List),
-    Goals = Goal1List ++ Goals1.
-
-:- pred delay_partial_inst_in_goals(instmap::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
-    construct_map::in, construct_map::out,
-    delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
-
-delay_partial_inst_in_goals(_, [], [], !ConstructMap, !DelayInfo).
-delay_partial_inst_in_goals(InstMap0,
-        [Goal0 | Goals0], [Goal | Goals], !ConstructMap, !DelayInfo) :-
-    % Each time that a variable X is bound to a partially instantiated term
-    % with functor f/n somewhere in the disjunction, we want the same set of
-    % "canonical" variables to name the individual arguments of f/n.
-    % That is why we thread the construct map through the disjunctions,
-    % so we don't end up with different canonical variables per disjunct.
-    %
-    % XXX we depend on the fact that (it seems) after mode checking a
-    % variable won't become ground in each of the disjuncts, but rather
-    % will become ground after the disjunction as a whole. Otherwise
-    % entries could be removed from the construct map in earlier disjuncts
-    % that should be visible in later disjuncts. To lift this assumption we
-    % would need to use separate construct maps per disjunct, merge them
-    % afterwards and renaming variables so that there is only one set of
-    % canonical variables.
-    %
-    delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap,
-        !DelayInfo),
-    delay_partial_inst_in_goals(InstMap0, Goals0, Goals, !ConstructMap,
-        !DelayInfo).
-
-:- pred delay_partial_inst_in_cases(instmap::in,
-    list(case)::in, list(case)::out, construct_map::in, construct_map::out,
-    delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
-
-delay_partial_inst_in_cases(_, [], [], !ConstructMap, !DelayInfo).
-delay_partial_inst_in_cases(InstMap0, [Case0 | Cases0], [Case | Cases],
-        !ConstructMap, !DelayInfo) :-
-    % See comment in delay_partial_inst_in_goals.
-    Case0 = case(MainConsId, OtherConsIds, Goal0),
-    delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap,
-        !DelayInfo),
-    Case = case(MainConsId, OtherConsIds, Goal),
-    delay_partial_inst_in_cases(InstMap0, Cases0, Cases, !ConstructMap,
-        !DelayInfo).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.delay_partial_inst.

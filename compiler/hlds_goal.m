@@ -244,10 +244,8 @@
 :- inst goal_expr_shorthand
     --->    shorthand(ground).
 
-:- inst plain_call_expr
-    --->    plain_call(ground, ground, ground, ground, ground, ground).
-:- inst plain_call
-    --->    hlds_goal(plain_call_expr, ground).
+:- inst goal_plain_call
+    --->    hlds_goal(goal_expr_plain_call, ground).
 
 :- type conj_type
     --->    plain_conj
@@ -874,7 +872,7 @@
                 % Y = X where the type of Y and X is not an atomic type,
                 % and where the top-level node of both Y and X is input.
                 % May involve bi-directional data flow. Implemented using
-                % out-of-line call to a compiler generated unification
+                % an out-of-line call to a compiler generated unification
                 % predicate for that type & mode.
 
                 % The mode of the unification.
@@ -899,6 +897,17 @@
                 % if it ends up being a complicated unify.
                 compl_unify_typeinfos   :: list(prog_var)
             ).
+
+:- inst unification_construct
+    --->    construct(ground, ground, ground, ground, ground, ground, ground).
+:- inst unification_deconstruct
+    --->    deconstruct(ground, ground, ground, ground, ground, ground).
+:- inst unification_assign
+    --->    assign(ground, ground).
+:- inst unification_simple_test
+    --->    simple_test(ground, ground).
+:- inst unification_complicated_unify
+    --->    complicated_unify(ground, ground, ground).
 
 :- type term_size_value
     --->    known_size(

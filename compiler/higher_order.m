@@ -1216,7 +1216,7 @@ construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
     maybe_specialize_call(hlds_goal(GoalExpr1, GoalInfo),
         hlds_goal(GoalExpr, _), !Info).
 
-:- pred maybe_specialize_call(hlds_goal::in(plain_call), hlds_goal::out,
+:- pred maybe_specialize_call(hlds_goal::in(goal_plain_call), hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
 
 maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
