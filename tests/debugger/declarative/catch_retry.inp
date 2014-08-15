@@ -1,4 +1,4 @@
 echo on
 exception
-retry 10
+retry 8
 quit -y

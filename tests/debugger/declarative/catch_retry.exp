@@ -3,6 +3,6 @@ mdb> echo on
 Command echo enabled.
 mdb> exception
       E2:     C2 EXCP pred exception.throw_impl/1-0 (erroneous) exception.m:NNNN (exception.m:NNNN)
-mdb> retry 10
+mdb> retry 8
       E1:     C1 CALL pred catch_retry.main/2-0 (cc_multi) catch_retry.m:8
 mdb> quit -y
