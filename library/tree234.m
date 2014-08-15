@@ -779,10 +779,14 @@ match_kv_against_subtree_and_stack(KA, VA, LeftmostB, !StackB) :-
             KA = KB1,
             VA = VB1,
             % Update stack and return.
-            ( Right \= empty ->
+            (
+                ( Right = two(_, _, _, _)
+                ; Right = three(_, _, _, _, _, _, _)
+                ; Right = four(_, _, _, _, _, _, _, _, _, _)
+                ),
                 !:StackB = [Right | !.StackB]
             ;
-                true
+                Right = empty
             )
         ;
             ( Left = two(_, _, _, _)

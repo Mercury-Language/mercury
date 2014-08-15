@@ -197,7 +197,7 @@ gg_get_details(gg_multiple(Index, Num, P), Index, Num, P).
             ).
 
 :- pred preprocess_conjunction(list(pard_goal_detail)::in,
-    maybe(goals_for_parallelisation)::out(maybe(goals_for_parallelisation)),
+    maybe(goals_for_parallelisation)::out,
     program_location::in, cord(message)::in, cord(message)::out) is det.
 
 preprocess_conjunction(Goals, MaybeGoalsForParallelisation, Location,

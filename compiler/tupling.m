@@ -251,7 +251,7 @@ maybe_tuple_scc_individual_procs(TraceCounts, TuningParams, DepGraph,
         Procs, !ModuleInfo, !Counter, !TransformMap).
 
 :- pred maybe_tuple_scc(trace_counts::in, tuning_params::in,
-    dependency_graph::in, list(pred_proc_id)::in(bound([ground | ground])),
+    dependency_graph::in, list(pred_proc_id)::in,
     module_info::in, module_info::out, counter::in, counter::out,
     transform_map::in, transform_map::out) is det.
 

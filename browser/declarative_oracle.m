@@ -562,7 +562,7 @@ trusted(ProcLayout, Oracle) :-
     ).
 
 :- pred query_oracle_kb(oracle_kb::in, decl_question(T)::in,
-    decl_answer(T)::out) is semidet.
+    decl_answer(T)::out(known_answer)) is semidet.
 
 query_oracle_kb(KB, Question, Answer) :-
     Question = wrong_answer(Node, _, Atom),

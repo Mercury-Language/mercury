@@ -296,6 +296,8 @@ test_set_op(OpStr, Op, !IO) :-
             ), !IO).
 
 :- pred test_binary_op(string, (func(tbitmap, tbitmap) = T), io, io).
+:- mode test_binary_op(in, (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
+    di, uo) is det.
 :- mode test_binary_op(in, (func(tbitmap_ui, tbitmap_di) = out is det),
     di, uo) is det.
 
@@ -304,6 +306,8 @@ test_binary_op(OpStr, Op, !IO) :-
 
 :- pred test_binary_op(string, (func(tbitmap, tbitmap) = T),
     pred(T, io, io), io, io).
+:- mode test_binary_op(in, (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
+    (pred(in, di, uo) is det), di, uo) is det.
 :- mode test_binary_op(in, (func(tbitmap_ui, tbitmap_di) = out is det),
     (pred(in, di, uo) is det), di, uo) is det.
 
@@ -313,6 +317,8 @@ test_binary_op(OpStr, Op, Writer, !IO) :-
 
 :- pred test_binary_op(int, string, (func(tbitmap, tbitmap) = T),
     pred(T, io, io), io, io).
+:- mode test_binary_op(in, in, (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
+    (pred(in, di, uo) is det), di, uo) is det.
 :- mode test_binary_op(in, in, (func(tbitmap_ui, tbitmap_di) = out is det),
     (pred(in, di, uo) is det), di, uo) is det.
 
@@ -346,6 +352,9 @@ test_binary_op(BMLength, OpStr, Op, Writer, !IO) :-
     string, tbitmap, pred(T, io, io), io, io).
 :- mode test_binary_op_2(in, tbitmap_ui,
     in, (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
+    in, tbitmap_ui, (pred(in, di, uo) is det), di, uo) is det.
+:- mode test_binary_op_2(in, tbitmap_ui,
+    in, (func(in, in) = out is det),
     in, tbitmap_ui, (pred(in, di, uo) is det), di, uo) is det.
 
 test_binary_op_2(BMStr1, BM1, OpStr, Op, BMStr2, BM2, Writer, !IO) :-

@@ -1431,8 +1431,11 @@ accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
 
 lookup_call(GoalStore, Id, stored_goal(Call, InstMap)) :-
     goal_store_lookup(GoalStore, Id, stored_goal(Goal, InstMap)),
-    ( Goal = hlds_goal(plain_call(_, _, _, _, _, _), _) ->
-        Call = Goal
+    (
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        GoalExpr = plain_call(_, _, _, _, _, _)
+    ->
+        Call = hlds_goal(GoalExpr, GoalInfo)
     ;
         unexpected($module, $pred, "not a call")
     ).

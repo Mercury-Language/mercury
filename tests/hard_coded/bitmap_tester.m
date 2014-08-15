@@ -174,8 +174,10 @@
 :- mode to_byte_string(in) = out is det.
 
 :- func ordering(tbitmap, tbitmap) = comparison_result.
+:- mode ordering(tbitmap_ui, tbitmap_ui) = out is det.
 
 :- func test_unify(tbitmap, tbitmap) = bool.
+:- mode test_unify(tbitmap_ui, tbitmap_ui) = out is det.
 
 %-----------------------------------------------------------------------------%
 :- implementation.
