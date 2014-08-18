@@ -3348,6 +3348,11 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
 
 :- interface.
 
+    % is_unify_pred(PredInfo) succeeds iff the PredInfo is for a
+    % compiler-generated instance of a type-specific unify predicate.
+    %
+:- pred is_unify_pred(pred_info::in) is semidet.
+
     % is_unify_or_compare_pred(PredInfo) succeeds iff the PredInfo is for a
     % compiler generated instance of a type-specific special_pred (i.e. one
     % of the unify, compare, or index predicates generated as a type-specific
@@ -3371,6 +3376,10 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
 :- pred pred_info_is_promise(pred_info::in, promise_type::out) is semidet.
 
 :- implementation.
+
+is_unify_pred(PredInfo) :-
+    pred_info_get_origin(PredInfo, origin_special_pred(SpecialPred)),
+    SpecialPred = spec_pred_unify - _TypeCtor.
 
 is_unify_or_compare_pred(PredInfo) :-
     pred_info_get_origin(PredInfo, origin_special_pred(_)). % XXX bug

@@ -84,6 +84,11 @@ Changes to the Mercury standard library:
 
 Changes to the Mercury compiler:
 
+* We have enabled stricter checking of non-ground final insts to reject more
+  mode-incorrect code.  Due to compiler limitations, some code that should be
+  accepted will now be rejected.  They will require modifications to appease
+  the compiler.
+
 * We have fixed a long-standing bug causing crashes in deep profiling
   grades, related to unify/compare for tuples.  (Bug #3)
 

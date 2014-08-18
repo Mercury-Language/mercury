@@ -117,6 +117,19 @@
 :- pred inst_matches_final_typed(mer_inst::in, mer_inst::in, mer_type::in,
     module_info::in) is semidet.
 
+    % Normally ground matches bound(...) only if the latter is complete for the
+    % type. However, the mode checker would reject some compiler-generated
+    % predicates in the absence of mode checking. We work around the problem by
+    % allowing ground to match incomplete bound insts when checking the final
+    % insts of those generated predicates.
+    %
+:- type ground_matches_bound
+    --->    ground_matches_bound_if_complete
+    ;       ground_matches_bound_always.
+
+:- pred inst_matches_final_gmb(mer_inst::in, mer_inst::in, mer_type::in,
+    module_info::in, ground_matches_bound::in) is semidet.
+
     % The difference between inst_matches_initial and inst_matches_final is
     % that inst_matches_initial requires only something which is at least as
     % instantiated, whereas this predicate wants something which is an exact
@@ -409,7 +422,8 @@ inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst) :-
                 imi_maybe_sub               :: maybe(inst_var_sub),
                 imi_calculate_sub           :: calculate_sub,
                 imi_uniqueness_comparison   :: uniqueness_comparison,
-                imi_any_matches_any         :: bool
+                imi_any_matches_any         :: bool,
+                imi_ground_matches_bound    :: ground_matches_bound
             ).
 
     % The calculate_sub type determines how the inst var substitution
@@ -429,12 +443,13 @@ inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst) :-
             % Do not calculate inst var substitions.
 
 :- func init_inst_match_info(module_info, maybe(inst_var_sub),
-    calculate_sub, uniqueness_comparison, bool) = inst_match_info.
+    calculate_sub, uniqueness_comparison, bool, ground_matches_bound) =
+    inst_match_info.
 
 init_inst_match_info(ModuleInfo, MaybeSub, CalculateSub, Comparison,
-        AnyMatchesAny) =
+        AnyMatchesAny, GroundMatchesBound) =
     inst_match_info(ModuleInfo, expansion_init, MaybeSub, CalculateSub,
-        Comparison, AnyMatchesAny).
+        Comparison, AnyMatchesAny, GroundMatchesBound).
 
 :- type inst_matches_pred ==
     pred(mer_inst, mer_inst, maybe(mer_type),
@@ -577,13 +592,14 @@ inst_matches_initial_sub(InstA, InstB, Type, !ModuleInfo, !Sub) :-
     ).
 
 inst_matches_initial_no_implied_modes(InstA, InstB, Type, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_forward, uc_match, yes),
+    Info0 = init_inst_match_info(ModuleInfo, no, cs_forward, uc_match, yes,
+        ground_matches_bound_if_complete),
     inst_matches_final_mt(InstA, InstB, yes(Type), Info0, _).
 
 inst_matches_initial_no_implied_modes_sub(InstA, InstB, Type, !ModuleInfo,
         !Sub) :-
     Info0 = init_inst_match_info(!.ModuleInfo, yes(!.Sub), cs_forward,
-        uc_match, yes),
+        uc_match, yes, ground_matches_bound_if_complete),
     inst_matches_final_mt(InstA, InstB, yes(Type), Info0, Info),
     !:ModuleInfo = Info ^ imi_module_info,
     yes(!:Sub) = Info ^ imi_maybe_sub.
@@ -594,7 +610,7 @@ inst_matches_initial_no_implied_modes_sub(InstA, InstB, Type, !ModuleInfo,
 
 inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo, !MaybeSub) :-
     Info0 = init_inst_match_info(!.ModuleInfo, !.MaybeSub, cs_forward,
-        uc_match, yes),
+        uc_match, yes, ground_matches_bound_if_complete),
     inst_matches_initial_mt(InstA, InstB, yes(Type), Info0, Info),
     !:ModuleInfo = Info ^ imi_module_info,
     !:MaybeSub = Info ^ imi_maybe_sub.
@@ -885,7 +901,8 @@ pred_inst_matches(PredInstA, PredInstB, ModuleInfo) :-
     maybe(mer_type)::in, module_info::in) is semidet.
 
 pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes),
+    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
+        ground_matches_bound_if_complete),
     pred_inst_matches_2(PredInstA, PredInstB, MaybeType, Info0, _).
 
     % pred_inst_matches_2(PredInstA, PredInstB, !Info)
@@ -1041,11 +1058,17 @@ inst_list_matches_initial_mt([X | Xs], [Y | Ys], [MaybeType | MaybeTypes],
 %-----------------------------------------------------------------------------%
 
 inst_matches_final(InstA, InstB, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes),
+    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
+        ground_matches_bound_if_complete),
     inst_matches_final_mt(InstA, InstB, no, Info0, _).
 
 inst_matches_final_typed(InstA, InstB, Type, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes),
+    inst_matches_final_gmb(InstA, InstB, Type, ModuleInfo,
+        ground_matches_bound_if_complete).
+
+inst_matches_final_gmb(InstA, InstB, Type, ModuleInfo, GroundMatchesBound) :-
+    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
+        GroundMatchesBound),
     inst_matches_final_mt(InstA, InstB, yes(Type), Info0, _).
 
 :- pred inst_matches_final_mt(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
@@ -1143,14 +1166,13 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
             MaybeType = yes(Type),
             % We can only do this check if the type is known.
             bound_inst_list_is_complete_for_type(set.init, ModuleInfo,
-            BoundInstsB,
-                Type)
+                BoundInstsB, Type)
         ;
-            true
-            % XXX enabling the check for bound_inst_list_is_complete
-            % for type makes the mode checker too conservative in
-            % the absence of alias tracking, so we currently always
-            % succeed, even if this check fails.
+            % XXX the check for bound_inst_list_is_complete_for_type makes the
+            % mode checker too conservative in the absence of alias tracking.
+            % Bypass the check if instructed.
+            GroundMatchesBound = !.Info ^ imi_ground_matches_bound,
+            GroundMatchesBound = ground_matches_bound_always
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
@@ -1241,15 +1263,18 @@ bound_inst_list_matches_final([X | Xs], [Y | Ys], MaybeType, !Info) :-
     ).
 
 inst_is_at_least_as_instantiated(InstA, InstB, Type, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_instantiated, no),
+    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_instantiated, no,
+        ground_matches_bound_if_complete),
     inst_matches_initial_mt(InstA, InstB, yes(Type), Info0, _).
 
 inst_matches_binding(InstA, InstB, Type, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, no),
+    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, no,
+        ground_matches_bound_if_complete),
     inst_matches_binding_mt(InstA, InstB, yes(Type), Info0, _).
 
 inst_matches_binding_allow_any_any(InstA, InstB, Type, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes),
+    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
+        ground_matches_bound_if_complete),
     inst_matches_binding_mt(InstA, InstB, yes(Type), Info0, _).
 
 :- pred inst_matches_binding_mt(mer_inst::in, mer_inst::in,
@@ -1340,11 +1365,8 @@ inst_matches_binding_3(InstA, InstB, MaybeType, !Info) :-
             bound_inst_list_is_complete_for_type(set.init,
                 !.Info ^ imi_module_info, BoundInstsB, Type)
         ;
-            true
-            % XXX Enabling the check for bound_inst_list_is_complete
-            % for type makes the mode checker too conservative in
-            % the absence of alias tracking, so we currently always
-            % succeed, even if this check fails.
+            MaybeType = no,
+            fail
         )
     ;
         InstA = ground(_UniqA, HOInstInfoA),
