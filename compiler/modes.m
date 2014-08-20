@@ -219,23 +219,84 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                 DelayPartialInstantiations),
             (
                 DelayPartialInstantiations = yes,
+                BeforeDPISafeToContinue = SafeToContinue0,
+                BeforeDPISpecs = !.Specs,
+                BeforeDPIModuleInfo = !.ModuleInfo,
                 delay_partial_inst_preds(PredIds, ChangedPreds, !ModuleInfo),
                 % --delay-partial-instantiations requires mode checking to be
                 % run again.
                 modecheck_to_fixpoint(ChangedPreds, MaxIterations, WhatToCheck,
-                    MayChangeCalledProc, !ModuleInfo,
-                    SafeToContinue, FixpointSpecs),
-                % !.Specs and FixpointSpecs are two sets of warning messages
-                % about the program, with !.Specs being derived from the
-                % version before delay_partial_inst_preds, and FixpointSpecs
-                % being derived from the version after. They ought to be the
-                % same, but just in case they are not, we do not want to
-                % confuse users by reporting the same problem twice.
-                % Which version we pick is a question of taste. !.Specs
-                % is more closely related to the compiler's original expansion
-                % of the program, but FixpointSpecs may be more closely related
-                % to the expansion intended by the programmer.
-                !:Specs = FixpointSpecs
+                    MayChangeCalledProc, !.ModuleInfo, AfterDPIModuleInfo,
+                    AfterDPISafeToContinue, AfterDPISpecs),
+                MaybeBeforeDPISeverity =
+                    worst_severity_in_specs(Globals, BeforeDPISpecs),
+                MaybeAfterDPISeverity =
+                    worst_severity_in_specs(Globals, AfterDPISpecs),
+                % BeforeDPISpecs and AfterDPISpecs ought to be the same,
+                % but in its current form, delay_partial_inst can also
+                % INTRODUCE mode errors. This can happen in situations where
+                % a predicate (such as get_feedback_data in feedback.m in the
+                % mdbcomp directory) REQUIRES being passed a partially
+                % instantiated term.
+                %
+                % Ideally, we would apply the delay_partial_inst transformation
+                % to the predicates where it does not cause problems, and
+                % undo it in the predicates where it does. Unfortunately,
+                % in the presence of mode inference, separating the two
+                % categories is not easy, so we if delay_partial_inst
+                % causes ANY new problems, from ANY predicate, we undo
+                % ALL its updates.
+                (
+                    MaybeBeforeDPISeverity = no,
+                    MaybeAfterDPISeverity = no,
+                    % There is no difference; BeforeDPISpecs and AfterDPISpecs
+                    % are equivalent. Pick one.
+                    !:Specs = AfterDPISpecs,
+                    !:ModuleInfo = AfterDPIModuleInfo,
+                    SafeToContinue = AfterDPISafeToContinue
+                ;
+                    MaybeBeforeDPISeverity = no,
+                    MaybeAfterDPISeverity = yes(_),
+                    % delay_partial_inst introduced a problem. Undo its effect.
+                    !:Specs = BeforeDPISpecs,
+                    !:ModuleInfo = BeforeDPIModuleInfo,
+                    SafeToContinue = BeforeDPISafeToContinue
+                ;
+                    MaybeBeforeDPISeverity = yes(_),
+                    MaybeAfterDPISeverity = no,
+                    % delay_partial_inst fixed a problem. Keep its effect.
+                    !:Specs = AfterDPISpecs,
+                    !:ModuleInfo = AfterDPIModuleInfo,
+                    SafeToContinue = AfterDPISafeToContinue
+                ;
+                    MaybeBeforeDPISeverity = yes(BeforeDPISeverity),
+                    MaybeAfterDPISeverity = yes(AfterDPISeverity),
+                    WorstSeverity =
+                        worst_severity(BeforeDPISeverity, AfterDPISeverity),
+                    % We do not have a COUNT of the number of problems
+                    % in either BeforeDPISpecs or AfterDPISpecs, so we
+                    % cannot choose the one that reports fewer problems.
+                    % However, to a large extent that does not matter,
+                    % because what we actually want to minimize is the
+                    % total COMPLEXITY of the mode problems we report
+                    % to the user, and a single complex mode error can be
+                    % as hard to understand as several simpler ones.
+                    %
+                    % If the delay_partial_inst transformation does not fix
+                    % all the mode errors in the module (without necessarily
+                    % fixing all the warnings), then we prefer to go with
+                    % the untransformed version of the errors, since these
+                    % should be easier to relate to the code as written.
+                    ( AfterDPISeverity = WorstSeverity ->
+                        !:Specs = BeforeDPISpecs,
+                        !:ModuleInfo = BeforeDPIModuleInfo,
+                        SafeToContinue = BeforeDPISafeToContinue
+                    ;
+                        !:Specs = AfterDPISpecs,
+                        !:ModuleInfo = AfterDPIModuleInfo,
+                        SafeToContinue = AfterDPISafeToContinue
+                    )
+                )
             ;
                 DelayPartialInstantiations = no,
                 SafeToContinue = modes_safe_to_continue
