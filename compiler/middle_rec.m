@@ -32,6 +32,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_form.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.code_util.

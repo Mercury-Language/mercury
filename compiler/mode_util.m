@@ -200,6 +200,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_form.
 :- import_module hlds.hlds_data.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.

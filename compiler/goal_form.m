@@ -179,6 +179,24 @@
 :- func goal_may_modify_trail(hlds_goal_info) = bool.
 
 %-----------------------------------------------------------------------------%
+
+    % Returns yes if the goal, or subgoal contained within, contains
+    % any foreign code.
+    %
+:- func goal_has_foreign(hlds_goal) = bool.
+
+:- type has_subgoals
+    --->    has_subgoals
+    ;       does_not_have_subgoals.
+
+    % A goal is primitive iff it doesn't contain any sub-goals
+    % (except possibly goals inside lambda expressions --
+    % but lambda expressions will get transformed into separate
+    % predicates by lambda.m).
+    %
+:- func goal_expr_has_subgoals(hlds_goal_expr) = has_subgoals.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1072,6 +1090,128 @@ goal_cannot_modify_trail(GoalInfo) =
     ).
 
 goal_may_modify_trail(GoalInfo) = bool.not(goal_cannot_modify_trail(GoalInfo)).
+
+%-----------------------------------------------------------------------------%
+
+goal_has_foreign(Goal) = HasForeign :-
+    Goal = hlds_goal(GoalExpr, _),
+    (
+        ( GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ),
+        HasForeign = no
+    ;
+        GoalExpr = conj(_, Goals),
+        HasForeign = goal_list_has_foreign(Goals)
+    ;
+        GoalExpr = disj(Goals),
+        HasForeign = goal_list_has_foreign(Goals)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        HasForeign = case_list_has_foreign(Cases)
+    ;
+        GoalExpr = negation(SubGoal),
+        HasForeign = goal_has_foreign(SubGoal)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        (
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        ->
+            HasForeign = no
+        ;
+            HasForeign = goal_has_foreign(SubGoal)
+        )
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        (
+            ( goal_has_foreign(Cond) = yes
+            ; goal_has_foreign(Then) = yes
+            ; goal_has_foreign(Else) = yes
+            )
+        ->
+            HasForeign = yes
+        ;
+            HasForeign = no
+        )
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        HasForeign = yes
+    ;
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, _, _, _),
+            HasForeign = yes
+        ;
+            ShortHand = try_goal(_, _, SubGoal),
+            HasForeign = goal_has_foreign(SubGoal)
+        ;
+            ShortHand = bi_implication(GoalA, GoalB),
+            HasForeign = bool.or(goal_has_foreign(GoalA),
+                goal_has_foreign(GoalB))
+        )
+    ).
+
+:- func goal_list_has_foreign(list(hlds_goal)) = bool.
+
+goal_list_has_foreign([]) = no.
+goal_list_has_foreign([Goal | Goals]) = HasForeign :-
+    ( goal_has_foreign(Goal) = yes ->
+        HasForeign = yes
+    ;
+        HasForeign = goal_list_has_foreign(Goals)
+    ).
+
+:- func case_list_has_foreign(list(case)) = bool.
+
+case_list_has_foreign([]) = no.
+case_list_has_foreign([Case | Cases]) = HasForeign :-
+    Case = case(_, _, Goal),
+    ( goal_has_foreign(Goal) = yes ->
+        HasForeign = yes
+    ;
+        HasForeign = case_list_has_foreign(Cases)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+goal_expr_has_subgoals(GoalExpr) = HasSubGoals :-
+    (
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _,  _)
+        ),
+        HasSubGoals = does_not_have_subgoals
+    ;
+        ( GoalExpr = conj(_, SubGoals)
+        ; GoalExpr = disj(SubGoals)
+        ),
+        (
+            SubGoals = [],
+            HasSubGoals = does_not_have_subgoals
+        ;
+            SubGoals = [_ | _],
+            HasSubGoals = has_subgoals
+        )
+    ;
+        ( GoalExpr = if_then_else(_, _, _, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = scope(_, _)
+        ),
+        HasSubGoals = has_subgoals
+    ;
+        GoalExpr = shorthand(ShortHand),
+        ( ShortHand = atomic_goal(_, _, _, _, _, _, _)
+        ; ShortHand = try_goal(_, _, _)
+        ; ShortHand = bi_implication(_, _)
+        ),
+        HasSubGoals = has_subgoals
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.goal_form.

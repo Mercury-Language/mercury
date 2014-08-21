@@ -34,6 +34,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.make_goal.
 :- import_module libs.
 :- import_module libs.handle_options.
 :- import_module mdbcomp.

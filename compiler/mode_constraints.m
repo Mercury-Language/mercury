@@ -52,6 +52,7 @@
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module check_hlds.mode_ordering.
 :- import_module check_hlds.mode_util.
+:- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.hhf.
 :- import_module hlds.hlds_clauses.

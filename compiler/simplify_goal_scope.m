@@ -45,6 +45,7 @@
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
+:- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.

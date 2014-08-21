@@ -75,6 +75,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.

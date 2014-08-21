@@ -86,6 +86,7 @@
 :- import_module check_hlds.simplify.simplify_goal_unify.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
+:- import_module hlds.make_goal.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module mdbcomp.

@@ -52,6 +52,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module hlds.hlds_module.
+:- import_module hlds.make_goal.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.

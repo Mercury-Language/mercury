@@ -10,7 +10,7 @@
 % Main author: conway.
 %
 % This module provides various utility procedures for manipulating HLDS goals,
-% e.g. some functionality for renaming variables in goals.
+% e.g. attaching features to goals.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -100,7 +100,7 @@
 :- pred goal_vars(hlds_goal::in, set_of_progvar::out) is det.
 
     % Do the same job as goal_vars, but for a list of goals, and adding
-    % the goal's variables to the accumulator.
+    % the goals' variables to the accumulator.
     %
 :- pred goals_goal_vars(list(hlds_goal)::in,
     set_of_progvar::in, set_of_progvar::out) is det.
@@ -236,7 +236,7 @@
     --->    goal_is_atomic
     ;       goal_is_nonatomic.
 
-    % Returns whether a goal is atomic.  This is undefined for shorthand goals.
+    % Returns whether a goal is atomic. This is undefined for shorthand goals.
     %
 :- pred goal_is_atomic(hlds_goal::in, goal_is_atomic::out) is det.
 
@@ -378,14 +378,14 @@
     list(goal_feature)::in, instmap_delta::in,
     module_info::in, term.context::in, hlds_goal::out) is det.
 
-    % Generate a cast goal.  The input and output insts are just ground.
+    % Generate a cast goal. The input and output insts are just ground.
     %
 :- pred generate_cast(cast_kind::in, prog_var::in, prog_var::in,
     prog_context::in, hlds_goal::out) is det.
 
-    % This version takes input and output inst arguments, which may
-    % be necessary when casting, say, solver type values with inst
-    % any, or casting between enumeration types and ints.
+    % This version takes input and output inst arguments, which may be
+    % necessary when casting, say, solver type values with inst any,
+    % or casting between enumeration types and ints.
     %
 :- pred generate_cast_with_insts(cast_kind::in, prog_var::in, prog_var::in,
     mer_inst::in, mer_inst::in, prog_context::in, hlds_goal::out) is det.
@@ -407,9 +407,9 @@
     ;       goal_not_found.
 
     % Locate the goal described by the goal path and use its first argument to
-    % transform that goal before rebuilding the goal tree and returning.  If
-    % the goal is not found the result is no.  If the result of the higher
-    % order argument is no then the result is no.
+    % transform that goal before rebuilding the goal tree and returning.
+    % If the goal is not found, the result is no. If the result of the higher
+    % order argument is no, then the result is no.
     %
 :- pred maybe_transform_goal_at_goal_path(
     pred(hlds_goal, maybe_error(hlds_goal))::in(pred(in, out) is det),
@@ -425,8 +425,8 @@
     forward_goal_path::in, instmap::in, hlds_goal::in,
     maybe_transformed_goal::out) is det.
 
-    % Transform the given goal and all it's children according to the higher
-    % order argument.  Children are transformed before their parents, therefore
+    % Transform the given goal and all its children according to the higher
+    % order argument. Children are transformed before their parents, therefore
     % the higher order argument will receive a goal with children that have
     % already been transformed.
     %
@@ -811,7 +811,7 @@ attach_features_to_goal_expr(Features, InFromGroundTerm,
 
 extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         NonLocals, NonLocalTypeInfos) :-
-    % Find all non-local type vars.  That is, type vars that are existentially
+    % Find all non-local type vars. That is, type vars that are existentially
     % quantified or type vars that appear in the type of a non-local prog_var.
 
     set_of_var.to_sorted_list(NonLocals, NonLocalsList),

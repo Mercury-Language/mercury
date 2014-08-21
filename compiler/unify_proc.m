@@ -139,6 +139,7 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
+:- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.

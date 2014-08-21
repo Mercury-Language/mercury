@@ -174,6 +174,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module mdbcomp.prim_data.
@@ -2046,7 +2047,7 @@ construct_output(AtomicGoalVars, ResultType, ResultVar, StmInfo, Goals,
         OutputTypes = [_, _ | _],
         % Wrapper returns a tuple. Creates a tuple from the output values.
         make_type_info(ResultType, _, MakeType, !NewPredInfo),
-        hlds_goal.construct_tuple(ResultVar, OutputVars, Goal),
+        construct_tuple(ResultVar, OutputVars, Goal),
         Goals = [Goal | MakeType]
     ).
 

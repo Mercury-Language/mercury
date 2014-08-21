@@ -284,6 +284,7 @@
 
 :- implementation.
 
+:- import_module hlds.make_goal.
 :- import_module libs.options.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_util.

@@ -42,6 +42,7 @@
 
 :- implementation.
 
+:- import_module hlds.goal_form.
 :- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.

@@ -163,6 +163,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.unique_modes.
 :- import_module check_hlds.simplify.simplify_proc.
+:- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.

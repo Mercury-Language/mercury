@@ -30,6 +30,7 @@
 
 :- implementation.
 
+:- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.

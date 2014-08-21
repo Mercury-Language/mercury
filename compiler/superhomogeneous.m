@@ -102,6 +102,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.goal_expr_to_goal.

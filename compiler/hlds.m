@@ -55,6 +55,7 @@
 :- include_module hlds_code_util.
 :- include_module hlds_error_util.
 :- include_module hlds_statistics.
+:- include_module make_goal.
 :- include_module mark_static_terms.
 :- include_module mark_tail_calls.
 :- include_module passes_aux.

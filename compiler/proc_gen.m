@@ -74,6 +74,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.proc_label.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
