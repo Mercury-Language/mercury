@@ -1981,6 +1981,7 @@ long_option("halt-at-warn",             halt_at_warn).
 long_option("halt-at-syntax-errors",    halt_at_syntax_errors).
 long_option("halt-at-auto-parallel-failure", halt_at_auto_parallel_failure).
 long_option("warn-singleton-variables", warn_singleton_vars).
+long_option("warn-singleton-vars",      warn_singleton_vars).
 long_option("warn-overlapping-scopes",  warn_overlapping_scopes).
 long_option("warn-det-decls-too-lax",   warn_det_decls_too_lax).
 long_option("warn-inferred-erroneous",  warn_inferred_erroneous).
@@ -2002,6 +2003,8 @@ long_option("warn-missing-module-name", warn_missing_module_name).
 long_option("warn-wrong-module-name",   warn_wrong_module_name).
 long_option("warn-smart-recompilation", warn_smart_recompilation).
 long_option("warn-undefined-options-variables",
+                    warn_undefined_options_variables).
+long_option("warn-undefined-options-vars",
                     warn_undefined_options_variables).
 long_option("warn-non-tail-recursion",  warn_non_tail_recursion).
 long_option("warn-target-code",         warn_target_code).
@@ -3516,7 +3519,7 @@ options_help_warning -->
         "--inhibit-accumulator-warnings",
         "\tDon't warn about argument order rearrangement caused",
         "\tby --introduce-accumulators.",
-        "--no-warn-singleton-variables",
+        "--no-warn-singleton-vars, --no-warn-singleton-variables",
         "\tDon't warn about variables which only occur once.",
         "--no-warn-overlapping-scopes",
         "\tDon't warn about variables which occur in overlapping scopes.",
@@ -3579,6 +3582,7 @@ options_help_warning -->
         "\tdeclaration does not match the module's file name.",
         "--no-warn-smart-recompilation",
         "\tDisable warnings from the smart recompilation system.",
+        "--no-warn-undefined-options-vars",
         "--no-warn-undefined-options-variables",
         "\tDo not warn about references to undefined variables in",
         "\toptions files with `--make'.",

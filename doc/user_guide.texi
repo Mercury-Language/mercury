@@ -6432,8 +6432,11 @@ Don't warn about argument order rearrangement caused by
 @samp{--introduce-accumulators}.
 
 @sp 1
-@item --no-warn-singleton-variables
+@item --no-warn-singleton-vars
+@itemx --no-warn-singleton-variables
+@findex --no-warn-singleton-vars
 @findex --no-warn-singleton-variables
+@findex --warn-singleton-vars
 @findex --warn-singleton-variables
 Don't warn about variables which only occur once.
 
@@ -6558,7 +6561,9 @@ does not match the module's file name.
 Disable warnings from the smart recompilation system.
 
 @sp 1
-@item --no-warn-undefined-options-variables
+@item --no-warn-undefined-options-vars
+@itemx --no-warn-undefined-options-variables
+@findex --no-warn-undefined-options-vars
 @findex --no-warn-undefined-options-variables
 @findex --make
 Do not warn about references to undefined variables in
