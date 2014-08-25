@@ -71,10 +71,10 @@
 :- func simple_foreign_language_string(foreign_language) = string.
 
     % The GC method specifies how we do garbage collection.
-    % The last four alternatives are for the C and asm back-ends;
-    % the first alternative is for compiling to IL or Java,
-    % where the target language implementation handles garbage
-    % collection automatically.
+    % The last five alternatives are for the C back-ends;
+    % the first alternative is for compiling to C#, Java, Il or Erlang
+    % where the target language implementation handles garbage collection
+    % automatically.
     %
 :- type gc_method
     --->    gc_automatic

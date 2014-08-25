@@ -2965,7 +2965,7 @@ grade_component_table("hl", comp_gcc_ext, [
         highlevel_code          - bool(yes),
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(yes)],
-        yes([string("c"), string("asm")]), yes).
+        yes([string("c")]), yes).
 grade_component_table("hlc", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
@@ -2973,7 +2973,7 @@ grade_component_table("hlc", comp_gcc_ext, [
         highlevel_code          - bool(yes),
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(no)],
-        yes([string("c"), string("asm")]), yes).
+        yes([string("c")]), yes).
 grade_component_table("hl_nest", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
@@ -2981,7 +2981,7 @@ grade_component_table("hl_nest", comp_gcc_ext, [
         highlevel_code          - bool(yes),
         gcc_nested_functions    - bool(yes),
         highlevel_data          - bool(yes)],
-        yes([string("c"), string("asm")]), yes).
+        yes([string("c")]), yes).
 grade_component_table("hlc_nest", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
@@ -2989,7 +2989,7 @@ grade_component_table("hlc_nest", comp_gcc_ext, [
         highlevel_code          - bool(yes),
         gcc_nested_functions    - bool(yes),
         highlevel_data          - bool(no)],
-        yes([string("c"), string("asm")]), yes).
+        yes([string("c")]), yes).
 grade_component_table("il", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),

@@ -52,11 +52,6 @@
 :- pred do_compile_c_file(io.output_stream::in, pic::in,
     string::in, string::in, globals::in, bool::out, io::di, io::uo) is det.
 
-    % assemble(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO)
-    %
-:- pred assemble(io.output_stream::in, pic::in, module_name::in,
-    globals::in, bool::out, io::di, io::uo) is det.
-
     % compile_java_files(ErrorStream, JavaFiles, Succeeded, Globals, !IO)
     %
 :- pred compile_java_files(io.output_stream::in, list(string)::in,
@@ -1153,50 +1148,6 @@ java_classpath_separator = PathSeparator :-
     ;
         PathSeparator = ":"
     ).
-
-%-----------------------------------------------------------------------------%
-
-assemble(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO) :-
-    (
-        PIC = pic,
-        AsmExt = ".pic_s",
-        GCCFLAGS_FOR_ASM = "-x assembler ",
-        GCCFLAGS_FOR_PIC = "-fpic "
-    ;
-        PIC = link_with_pic,
-        % `--target asm' doesn't support any grades for
-        % which `.lpic_o' files are needed.
-        unexpected($module, $pred, "link_with_pic")
-    ;
-        PIC = non_pic,
-        AsmExt = ".s",
-        GCCFLAGS_FOR_ASM = "",
-        GCCFLAGS_FOR_PIC = ""
-    ),
-    module_name_to_file_name(Globals, ModuleName, AsmExt,
-        do_not_create_dirs, AsmFile, !IO),
-    maybe_pic_object_file_extension(Globals, PIC, ObjExt),
-    module_name_to_file_name(Globals, ModuleName, ObjExt,
-        do_create_dirs, ObjFile, !IO),
-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Assembling `", !IO),
-    maybe_write_string(Verbose, AsmFile, !IO),
-    maybe_write_string(Verbose, "':\n", !IO),
-    % XXX should we use new asm_* options rather than
-    % reusing cc, cflags, c_flag_to_name_object_file?
-    globals.lookup_string_option(Globals, cc, CC),
-    globals.lookup_string_option(Globals, c_flag_to_name_object_file,
-        NameObjectFile),
-    globals.lookup_accumulating_option(Globals, cflags, C_Flags_List),
-    join_string_list(C_Flags_List, "", "", " ", CFLAGS),
-    % Be careful with the order here.
-    % Also be careful that each option is separated by spaces.
-    string.append_list([CC, " ", CFLAGS, " ", GCCFLAGS_FOR_PIC,
-        GCCFLAGS_FOR_ASM, "-c ", AsmFile, " ", NameObjectFile, ObjFile],
-        Command),
-    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
-        Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 

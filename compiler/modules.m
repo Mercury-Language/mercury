@@ -2894,27 +2894,6 @@ append_to_init_list(DepStream, InitFileName, Module, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Find out which modules we need to generate C header files for,
-    % assuming we're compiling with `--target asm'.
-    %
-:- func modules_that_need_headers(list(module_name), deps_map)
-    = list(module_name).
-
-modules_that_need_headers(Modules, DepsMap) =
-    list.filter(module_needs_header(DepsMap), Modules).
-
-    % Succeed iff we need to generate a C header file for the specified
-    % module, assuming we're compiling with `--target asm'.
-    %
-:- pred module_needs_header(deps_map::in, module_name::in) is semidet.
-
-module_needs_header(DepsMap, Module) :-
-    map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    ModuleImports ^ mai_has_foreign_code = contains_foreign_code(Langs),
-    set.member(lang_c, Langs).
-
-%-----------------------------------------------------------------------------%
-
 process_module_private_interfaces(_, _, [], _, _, !DirectImports,
         !DirectUses, !Module, !IO).
 process_module_private_interfaces(Globals, HaveReadModuleMap,

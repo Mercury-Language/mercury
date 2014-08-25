@@ -570,10 +570,10 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 ForeignImportExt = ".hrl"
             ;
                 Target = target_c,
-                % NOTE: for C (and asm) the possible targets might be a .o
-                % file _or_ a .pic_o file.  We need to include dependencies
-                % for the latter otherwise invoking mmake with a <module>.pic_o
-                % target will break.
+                % NOTE: for C the possible targets might be a .o file _or_ a
+                % .pic_o file.  We need to include dependencies for the latter
+                % otherwise invoking mmake with a <module>.pic_o target will
+                % break.
                 ForeignImportTargets = [ObjFileName, PicObjFileName],
                 ForeignImportExt = ".mh"
             ;
