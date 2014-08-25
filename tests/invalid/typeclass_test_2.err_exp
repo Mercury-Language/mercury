@@ -7,5 +7,5 @@ typeclass_test_2.m:020:   `func(<Name> / <Arity>) is <InstanceName>', not
 typeclass_test_2.m:020:   ((type_num / 0) is foo_type_num).
 typeclass_test_2.m:023: Error: clause for function
 typeclass_test_2.m:023:   `typeclass_test_2.foo_type_num'/1
-typeclass_test_2.m:023:   without preceding `:- func' declaration.
+typeclass_test_2.m:023:   without corresponding `:- func' declaration.
 typeclass_test_2.m:023: Inferred :- func foo_type_num(T1) = int.

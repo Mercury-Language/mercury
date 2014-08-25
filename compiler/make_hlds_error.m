@@ -106,8 +106,6 @@ multiple_def_error(Status, Name, Arity, DefType, Context, OrigContext,
     ).
 
 undefined_pred_or_func_error(Name, Arity, Context, DescPieces, !Specs) :-
-    % This used to say `preceding' instead of `corresponding.'
-    % Which is more correct?
     Pieces = [words("Error:") | DescPieces] ++ [words("for"),
         sym_name_and_arity(Name / Arity),
         words("without corresponding"), decl("pred"), words("or"),
@@ -193,8 +191,8 @@ maybe_undefined_pred_error(Globals, Name, Arity, PredOrFunc, Status,
     ;
         Pieces = [words("Error:") | DescPieces] ++ [words("for"),
             simple_call(simple_call_id(PredOrFunc, Name, Arity)), nl,
-            words("without preceding"), decl(pred_or_func_to_str(PredOrFunc)),
-            words("declaration."), nl],
+            words("without corresponding"),
+            decl(pred_or_func_to_str(PredOrFunc)), words("declaration."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]

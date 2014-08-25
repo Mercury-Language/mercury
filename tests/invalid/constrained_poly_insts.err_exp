@@ -16,12 +16,12 @@ constrained_poly_insts.m:014:   (s((T :: in((I =< ground)))) = (T :: out((I =<
 constrained_poly_insts.m:014:   unique)))).
 constrained_poly_insts.m:023: Error: clause for predicate
 constrained_poly_insts.m:023:   `constrained_poly_insts.q'/2
-constrained_poly_insts.m:023:   without preceding `:- pred' declaration.
+constrained_poly_insts.m:023:   without corresponding `:- pred' declaration.
 constrained_poly_insts.m:023: Error: no mode declaration for predicate `q'/2.
 constrained_poly_insts.m:023: Inferred :- pred q(T1, T1).
 constrained_poly_insts.m:025: Error: clause for function
 constrained_poly_insts.m:025:   `constrained_poly_insts.s'/1
-constrained_poly_insts.m:025:   without preceding `:- func' declaration.
+constrained_poly_insts.m:025:   without corresponding `:- func' declaration.
 constrained_poly_insts.m:025: Inferred :- func s(T1) = T1.
 constrained_poly_insts.m:027: In clause for `t(in((I =< ground)), out((I =<
 constrained_poly_insts.m:027:   ground)))':

@@ -8,7 +8,7 @@ with_type.m:018:   error: expected higher order function type after
 with_type.m:018:   `with_type`.
 with_type.m:019: Error: `:- mode' declaration for function
 with_type.m:019:   `with_type.with_type_2'/3
-with_type.m:019:   without preceding `:- func' declaration.
+with_type.m:019:   without corresponding `:- func' declaration.
 with_type.m:021: In type declaration for predicate `with_type.with_type_3':
 with_type.m:021:   error: the `with_type` and `with_inst` annotations are
 with_type.m:021:   incompatible.

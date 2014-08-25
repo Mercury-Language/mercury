@@ -2,8 +2,8 @@ fundeps_vars.m:020: Error: the domain and range of a functional dependency must
 fundeps_vars.m:020:   be comma-separated lists of variables.
 fundeps_vars.m:027: Error: type variable F in the functional dependency is not
 fundeps_vars.m:027:   a parameter of this type class.
-fundeps_vars.m:035: Error: instance declaration for `coll'/2 without preceding
-fundeps_vars.m:035:   `:- typeclass' declaration.
+fundeps_vars.m:035: Error: instance declaration for `coll'/2 without
+fundeps_vars.m:035:   corresponding `:- typeclass' declaration.
 fundeps_vars.m:035: In declaration of instance of typeclass `coll'/2:
 fundeps_vars.m:035:   error: undefined typeclass `coll'/2.
 fundeps_vars.m:042: In definition of predicate `fundeps_vars.test'/2:

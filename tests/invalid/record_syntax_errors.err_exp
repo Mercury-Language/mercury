@@ -2,7 +2,7 @@ record_syntax_errors.m:014: Error: no clauses for predicate `dcg_syntax'/2.
 record_syntax_errors.m:016: Error: no clauses for predicate `dcg_syntax_2'/2.
 record_syntax_errors.m:023: Error: `:- mode' declaration for function
 record_syntax_errors.m:023:   `record_syntax_errors.field8'/1
-record_syntax_errors.m:023:   without preceding `:- func' declaration.
+record_syntax_errors.m:023:   without corresponding `:- func' declaration.
 record_syntax_errors.m:023: Inferred :- func field8(record_syntax_errors.cons2)
 record_syntax_errors.m:023:   = int.
 record_syntax_errors.m:028: In DCG field update goal:
@@ -27,7 +27,7 @@ record_syntax_errors.m:046:   Argument 2 has type `string',
 record_syntax_errors.m:046:   expected type was `int'.
 record_syntax_errors.m:048: Error: clause for predicate
 record_syntax_errors.m:048:   `record_syntax_errors.term_type_error'/1
-record_syntax_errors.m:048:   without preceding `:- pred' declaration.
+record_syntax_errors.m:048:   without corresponding `:- pred' declaration.
 record_syntax_errors.m:050: In clause for predicate `term_type_error'/1:
 record_syntax_errors.m:050:   in argument 2 of functor `field6 :=/2':
 record_syntax_errors.m:050:   in unification of argument

@@ -1,6 +1,6 @@
 bug197.m:020: Error: no clauses for predicate `foo'/4.
 bug197.m:022: Error: clause for predicate `bug197.foo'/3
-bug197.m:022:   without preceding `:- pred' declaration.
+bug197.m:022:   without corresponding `:- pred' declaration.
 bug197.m:023: In clause for predicate `foo'/3:
 bug197.m:023:   in argument 1 of call to predicate `list.foldl'/4:
 bug197.m:023:   type error: argument has type `pred(string, T, V_6, V_6)',

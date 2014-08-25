@@ -8,6 +8,6 @@ types.m:003:   defined.
 types.m:003: Error: constructor `types.f/1' for type `types.t/0' multiply
 types.m:003:   defined.
 types.m:017: Error: clause for predicate `types.r'/0
-types.m:017:   without preceding `:- pred' declaration.
+types.m:017:   without corresponding `:- pred' declaration.
 types.m:020: Error: clause for predicate `types.a'/1
-types.m:020:   without preceding `:- pred' declaration.
+types.m:020:   without corresponding `:- pred' declaration.
