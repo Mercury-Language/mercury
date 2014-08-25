@@ -602,10 +602,16 @@ GC_INNER unsigned char *GC_check_finalizer_nested(void)
 # define UNPROTECT_THREAD(t)
 #endif
 
+/* Mercury-specific: backported Winpthreads support */
 #ifdef CYGWIN32
 # define GC_PTHREAD_PTRVAL(pthread_id) pthread_id
-#elif defined(GC_WIN32_PTHREADS)
-# define GC_PTHREAD_PTRVAL(pthread_id) pthread_id.p
+#elif defined(GC_WIN32_PTHREADS) || defined(GC_PTHREADS_PARAMARK)
+# include <pthread.h> /* to check for winpthreads */
+# if defined(__WINPTHREADS_VERSION_MAJOR)
+#   define GC_PTHREAD_PTRVAL(pthread_id) pthread_id
+# else
+#   define GC_PTHREAD_PTRVAL(pthread_id) pthread_id.p
+# endif
 #endif
 
 /* If a thread has been joined, but we have not yet             */
@@ -2510,19 +2516,16 @@ GC_INNER void GC_thr_init(void)
     /* After the join,thread id may have been recycled.          */
     /* FIXME: It would be better if this worked more like        */
     /* pthread_support.c.                                        */
-    /* Mercury-specific: Winpthreads allocates threads ids       */
-    /* incrementally (with wraparound) so should be practically  */
-    /* unique, but let's make the conservative assumption. --pw  */
-#   if !defined(GC_WIN32_PTHREADS) || defined(__WINPTHREADS_VERSION_MAJOR)
+    /* Mercury-specific: backported Winpthreads support          */
+#   ifndef GC_WIN32_PTHREADS
       while ((t = GC_lookup_pthread(pthread_id)) == 0)
         Sleep(10);
-#   endif
-
-    result = pthread_join(pthread_id, retval);
-
-#   if defined(GC_WIN32_PTHREADS) && !defined(__WINPTHREADS_VERSION_MAJOR)
-      /* win32_pthreads id are unique */
+      result = pthread_join(pthread_id, retval);
+#   else
+      result = pthread_join(pthread_id, retval);
+      /* pthreads-win32 and winpthreads id are unique (not recycled). */
       t = GC_lookup_pthread(pthread_id);
+      if (NULL == t) ABORT("Thread not registered");
 #   endif
 
     if (!GC_win32_dll_threads) {

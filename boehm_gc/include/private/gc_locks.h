@@ -98,12 +98,19 @@
      /* integers for each thread, though that should be true as much    */
      /* as possible.                                                    */
      /* Refine to exclude platforms on which pthread_t is struct */
-     /* Mercury-specific: Winpthreads has numeric thread ids */
-#    if !defined(GC_WIN32_PTHREADS) || defined(__WINPTHREADS_VERSION_MAJOR)
+#    if !defined(GC_WIN32_PTHREADS)
 #      define NUMERIC_THREAD_ID(id) ((unsigned long)(id))
 #      define THREAD_EQUAL(id1, id2) ((id1) == (id2))
 #      define NUMERIC_THREAD_ID_UNIQUE
-#    else
+     /* Mercury-specific: backported Winpthreads support */
+#    elif defined(__WINPTHREADS_VERSION_MAJOR) /* winpthreads */
+#      define NUMERIC_THREAD_ID(id) ((unsigned long)(id))
+#      define THREAD_EQUAL(id1, id2) ((id1) == (id2))
+#      ifndef _WIN64
+         /* NUMERIC_THREAD_ID is 32-bit and not unique on Win64. */
+#        define NUMERIC_THREAD_ID_UNIQUE
+#      endif
+#    else /* pthreads-win32 */
 #      define NUMERIC_THREAD_ID(id) ((unsigned long)(id.p))
        /* Using documented internal details of win32-pthread library.   */
        /* Faster than pthread_equal(). Should not change with           */
