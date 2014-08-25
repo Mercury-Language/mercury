@@ -158,6 +158,7 @@ for common programming tasks --- see the Mercury Library Reference Manual.
 
 @menu
 * Syntax Overview::
+* Character Set::
 * Tokens::
 * Terms::
 * Builtin Operators::
@@ -189,6 +190,12 @@ is a term followed by a period.  Each term is composed of a sequence
 of tokens, and each token is composed of a sequence of characters.
 Like Prolog, Mercury has the Definite Clause Grammar (DCG) notation
 for clauses.
+
+@node Character Set
+@section Character Set
+
+Mercury program source files must be written using the UTF-8 encoding of
+the Unicode character set.
 
 @node Tokens
 @section Tokens
