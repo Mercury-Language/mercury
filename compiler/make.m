@@ -199,8 +199,7 @@
 :- type compilation_task_type
     --->    process_module(module_compilation_task_type)
 
-            % The `pic' argument is only used for
-            % `--target c' and `--target asm'.
+            % The `pic' argument is only used for `--target c'.
     ;       target_code_to_object_code(pic)
     ;       foreign_code_to_object_code(pic, foreign_language)
     ;       fact_table_code_to_object_code(pic, file_name).

@@ -2787,6 +2787,7 @@ mlds_output_type_prefix(Opts, MLDS_Type, !IO) :-
         % For binary compatibility with the --target asm back-end,
         % we need to output these as a generic type, rather than making
         % use of the C type name
+        % XXX target asm no longer exists, so no longer need to do this.
         io.write_string("MR_Box", !IO)
     ;
         MLDS_Type = mlds_class_type(Name, Arity, ClassKind),

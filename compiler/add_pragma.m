@@ -3864,9 +3864,8 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         globals.get_gc_method(Globals, GC_Method),
         (
             % We consider gc_automatic to be conservative even it may not be.
-            % This is okay because this feature is only of interest with the
-            % C or asm backends. We ignore it if the target language is
-            % something else.
+            % This is okay because this feature is only of interest with the C
+            % backends. We ignore it if the target language is something else.
 
             ( GC_Method = gc_automatic
             ; GC_Method = gc_boehm
