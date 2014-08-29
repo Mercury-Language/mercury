@@ -578,7 +578,7 @@ ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedConsId, MatchCond) :-
         ; Tag = ground_term_const_tag(_, _)
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = table_io_decl_tag(_, _)
+        ; Tag = table_io_entry_tag(_, _)
         ; Tag = single_functor_tag
         ; Tag = unshared_tag(_)
         ; Tag = direct_arg_tag(_)

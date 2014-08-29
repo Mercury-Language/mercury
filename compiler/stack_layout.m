@@ -62,7 +62,7 @@
     list(call_site_static_data)::out, list(coverage_point_info)::out,
     list(proc_layout_proc_static)::out,
     list(int)::out, list(int)::out, list(int)::out,
-    list(table_io_decl_data)::out, map(pred_proc_id, layout_slot_name)::out,
+    list(table_io_entry_data)::out, map(pred_proc_id, layout_slot_name)::out,
     list(layout_slot_name)::out, list(proc_layout_exec_trace)::out,
     list(proc_layout_data)::out, list(module_layout_data)::out) is det.
 
@@ -139,7 +139,7 @@ generate_llds_layout_data(ModuleInfo, !GlobalData,
         InternalLabelToLayoutMap, ProcLabelToLayoutMap,
         CallSiteStatics, CoveragePoints, ProcStatics,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes,
-        TableIoDecls, TableIoDeclMap, ProcEventLayouts, ExecTraces,
+        TableIoEntries, TableIoEntryMap, ProcEventLayouts, ExecTraces,
         ProcLayouts, ModuleLayouts) :-
 
     Params = init_stack_layout_params(ModuleInfo),
@@ -179,17 +179,18 @@ generate_llds_layout_data(ModuleInfo, !GlobalData,
         ProcLayoutInfo ^ pli_exec_traces ^ eti_rev_proc_var_names,
     RevProcEventLayouts =
         ProcLayoutInfo ^ pli_exec_traces ^ eti_rev_proc_event_layouts,
-    RevTableIoDecls =
-        ProcLayoutInfo ^ pli_exec_traces ^ eti_rev_table_io_decl_datas,
+    RevTableIoEntries =
+        ProcLayoutInfo ^ pli_exec_traces ^ eti_rev_table_io_entry_datas,
     RevExecTraces =
         ProcLayoutInfo ^ pli_exec_traces ^ eti_rev_exec_traces,
     list.reverse(RevProcHeadVarNums, ProcHeadVarNums),
     list.reverse(RevProcVarNames, ProcVarNames),
     list.reverse(RevProcEventLayouts, ProcEventLayouts),
-    list.reverse(RevTableIoDecls, TableIoDecls),
+    list.reverse(RevTableIoEntries, TableIoEntries),
     list.reverse(RevExecTraces, ExecTraces),
 
-    TableIoDeclMap = ProcLayoutInfo ^ pli_exec_traces ^ eti_table_io_decl_map,
+    TableIoEntryMap =
+        ProcLayoutInfo ^ pli_exec_traces ^ eti_table_io_entry_map,
 
     RevProcBodyBytecodes = ProcLayoutInfo ^ pli_rev_proc_bytes,
     RevProcLayouts = ProcLayoutInfo ^ pli_rev_proc_layouts,
@@ -436,7 +437,7 @@ construct_proc_and_label_layouts_for_proc(Params, PLI, !LabelTables,
         _MaybeCallLabel, _MaxTraceRegR, _MaxTraceRegF, HeadVars, _ArgModes,
         Goal, _NeedGoalRep, _InstMap,
         _TraceSlotInfo, ForceProcIdLayout, VarSet, _VarTypes,
-        InternalMap, MaybeTableIoDecl, _NeedsAllNames, _OISUKindFors,
+        InternalMap, MaybeTableIoEntry, _NeedsAllNames, _OISUKindFors,
         _MaybeDeepProfInfo),
     map.to_assoc_list(InternalMap, Internals),
     compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap),
@@ -445,7 +446,7 @@ construct_proc_and_label_layouts_for_proc(Params, PLI, !LabelTables,
     bool.or(Params ^ slp_procid_stack_layout, ForceProcIdLayout, ProcIdLayout),
     (
         ( ProcIdLayout = yes
-        ; MaybeTableIoDecl = yes(_)
+        ; MaybeTableIoEntry = yes(_)
         )
     ->
         UserOrUci = proc_label_user_or_uci(ProcLabel),
@@ -949,7 +950,7 @@ construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
     ;
         MaybeTableInfo = yes(TableInfo),
         (
-            TableInfo = proc_table_io_decl(_),
+            TableInfo = proc_table_io_entry(_),
             (
                 MaybeTableSlotName = yes(TableSlotName),
                 MaybeTable = yes(data_or_slot_is_slot(TableSlotName))
@@ -1072,29 +1073,36 @@ construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
 construct_exec_trace_table_data(PredProcId, ProcLayoutName, TableInfo,
         MaybeTableSlotName, !StaticCellInfo, !ExecTraceInfo) :-
     (
-        TableInfo = proc_table_io_decl(TableIOInfo),
-        TableIOInfo = proc_table_io_info(TableArgInfos),
-        convert_table_arg_info(TableArgInfos, NumPTIs, PTIVectorRval,
-            TVarVectorRval, !StaticCellInfo),
+        TableInfo = proc_table_io_entry(TableIOInfo),
+        TableIOInfo = proc_table_io_info(MaybeTableArgInfos),
+        (
+            MaybeTableArgInfos = no,
+            TableIoEntryData = table_io_entry_data(ProcLayoutName, no)
+        ;
+            MaybeTableArgInfos = yes(TableArgInfos),
+            convert_table_arg_info(TableArgInfos, NumPTIs, PTIVectorRval,
+                TVarVectorRval, !StaticCellInfo),
+            TableIoArgsData = table_io_args_data(NumPTIs, PTIVectorRval,
+                TVarVectorRval),
+            TableIoEntryData = table_io_entry_data(ProcLayoutName,
+                yes(TableIoArgsData))
+        ),
 
-        TableIoDeclData = table_io_decl_data(ProcLayoutName,
-            NumPTIs, PTIVectorRval, TVarVectorRval),
+        RevTableIoEntryDatas0 = !.ExecTraceInfo ^ eti_rev_table_io_entry_datas,
+        RevTableIoEntryDatas = [TableIoEntryData | RevTableIoEntryDatas0],
+        !ExecTraceInfo ^ eti_rev_table_io_entry_datas := RevTableIoEntryDatas,
 
-        RevTableIoDeclDatas0 = !.ExecTraceInfo ^ eti_rev_table_io_decl_datas,
-        RevTableIoDeclDatas = [TableIoDeclData | RevTableIoDeclDatas0],
-        !ExecTraceInfo ^ eti_rev_table_io_decl_datas := RevTableIoDeclDatas,
-
-        TableDataCounter0 = !.ExecTraceInfo ^ eti_next_table_io_decl_data,
+        TableDataCounter0 = !.ExecTraceInfo ^ eti_next_table_io_entry_data,
         counter.allocate(Slot, TableDataCounter0, TableDataCounter),
-        !ExecTraceInfo ^ eti_next_table_io_decl_data := TableDataCounter,
+        !ExecTraceInfo ^ eti_next_table_io_entry_data := TableDataCounter,
 
-        TableDataSlotName = layout_slot(proc_table_io_decl_array, Slot),
+        TableDataSlotName = layout_slot(proc_table_io_entry_array, Slot),
         MaybeTableSlotName = yes(TableDataSlotName),
 
-        TableIoDeclMap0 = !.ExecTraceInfo ^ eti_table_io_decl_map,
+        TableIoEntryMap0 = !.ExecTraceInfo ^ eti_table_io_entry_map,
         map.det_insert(PredProcId, TableDataSlotName,
-            TableIoDeclMap0, TableIoDeclMap),
-        !ExecTraceInfo ^ eti_table_io_decl_map := TableIoDeclMap
+            TableIoEntryMap0, TableIoEntryMap),
+        !ExecTraceInfo ^ eti_table_io_entry_map := TableIoEntryMap
     ;
         TableInfo = proc_table_struct(_TableStructInfo),
         % This structure is generated by add_tabling_info_struct in proc_gen.m.
@@ -1364,20 +1372,20 @@ add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter) :-
 :- type exec_traces_info
     --->    exec_traces_info(
                 % The arrays that hold (components of) exec trace structures.
-                eti_next_proc_head_var_num  :: int,
-                eti_next_proc_var_name      :: int,
-                eti_next_proc_event_layout  :: int,
-                eti_next_table_io_decl_data :: counter,
-                eti_next_exec_trace         :: counter,
+                eti_next_proc_head_var_num      :: int,
+                eti_next_proc_var_name          :: int,
+                eti_next_proc_event_layout      :: int,
+                eti_next_table_io_entry_data    :: counter,
+                eti_next_exec_trace             :: counter,
 
-                eti_rev_proc_head_var_nums  :: list(int),
-                eti_rev_proc_var_names      :: list(int),
-                eti_rev_proc_event_layouts  :: list(layout_slot_name),
-                eti_rev_table_io_decl_datas :: list(table_io_decl_data),
-                eti_rev_exec_traces         :: list(proc_layout_exec_trace),
+                eti_rev_proc_head_var_nums      :: list(int),
+                eti_rev_proc_var_names          :: list(int),
+                eti_rev_proc_event_layouts      :: list(layout_slot_name),
+                eti_rev_table_io_entry_datas    :: list(table_io_entry_data),
+                eti_rev_exec_traces             :: list(proc_layout_exec_trace),
 
-                eti_table_io_decl_map       :: map(pred_proc_id,
-                                                layout_slot_name)
+                eti_table_io_entry_map          :: map(pred_proc_id,
+                                                    layout_slot_name)
             ).
 
 :- func init_exec_traces_info = exec_traces_info.

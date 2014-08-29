@@ -789,8 +789,8 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         ConsId = tabling_info_const(_),
         sorry($module, $pred, "bytecode cannot implement tabling")
     ;
-        ConsId = table_io_decl(_),
-        sorry($module, $pred, "bytecode cannot implement table io decl")
+        ConsId = table_io_entry_desc(_),
+        sorry($module, $pred, "bytecode cannot implement table io entry desc")
     ;
         ConsId = deep_profiling_proc_layout(_),
         sorry($module, $pred, "bytecode cannot implement deep profiling")
@@ -842,9 +842,9 @@ map_cons_tag(tabling_info_tag(_, _), _) :-
 map_cons_tag(deep_profiling_proc_layout_tag(_, _), _) :-
     unexpected($module, $pred, "deep_profiling_proc_layout_tag cons tag " ++
         "for non-deep_profiling_proc_static cons id").
-map_cons_tag(table_io_decl_tag(_, _), _) :-
-    unexpected($module, $pred, "table_io_decl_tag cons tag " ++
-        "for non-table_io_decl cons id").
+map_cons_tag(table_io_entry_tag(_, _), _) :-
+    unexpected($module, $pred, "table_io_entry_tag cons tag " ++
+        "for non-table_io_entry_desc cons id").
 map_cons_tag(reserved_address_tag(_), _) :-
     % These should only be generated if the --num-reserved-addresses
     % or --num-reserved-objects options are used.

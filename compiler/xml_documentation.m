@@ -682,7 +682,7 @@ cons_id_to_xml(type_info_const(_)) = nyi("type_info_const").
 cons_id_to_xml(typeclass_info_const(_)) = nyi("typeclass_info_const").
 cons_id_to_xml(ground_term_const(_, _)) = nyi("ground_term_const").
 cons_id_to_xml(tabling_info_const(_)) = nyi("tabling_info_const").
-cons_id_to_xml(table_io_decl(_)) = nyi("table_io_decl").
+cons_id_to_xml(table_io_entry_desc(_)) = nyi("table_io_entry_desc").
 cons_id_to_xml(deep_profiling_proc_layout(_)) =
     nyi("deep_profiling_proc_layout").
 

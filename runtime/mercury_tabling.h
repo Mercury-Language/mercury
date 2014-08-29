@@ -183,7 +183,7 @@ struct MR_MemoNonRecord_Struct {
 **
 ** To enable debugging (especially performance debugging) of tabled predicates,
 ** the compiler generates one of these structures for each tabled predicate
-** (except I/O primitives, for which it generates an MR_TableIoDecl
+** (except I/O primitives, for which it generates an MR_TableIoEntry
 ** structure).
 **
 ** Each argument of a tabled predicate is an input or an output. Inputs are put

@@ -952,7 +952,7 @@ qualify_cons_id(Args, ConsId0, ConsId, InstConsId) :-
         ; ConsId0 = type_info_const(_)
         ; ConsId0 = typeclass_info_const(_)
         ; ConsId0 = ground_term_const(_, _)
-        ; ConsId0 = table_io_decl(_)
+        ; ConsId0 = table_io_entry_desc(_)
         ; ConsId0 = tabling_info_const(_)
         ; ConsId0 = deep_profiling_proc_layout(_)
         ),

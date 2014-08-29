@@ -1699,9 +1699,9 @@ output_data_id(Info, DataId, !IO) :-
         output_layout_name(LayoutName, !IO)
     ;
         DataId = layout_slot_id(Kind, PredProcId),
-        Kind = table_io_decl_id,
-        TableIoDeclMap = Info ^ lout_table_io_decl_map,
-        map.lookup(TableIoDeclMap, PredProcId, LayoutSlotName),
+        Kind = table_io_entry_id,
+        TableIoEntryMap = Info ^ lout_table_io_entry_map,
+        map.lookup(TableIoEntryMap, PredProcId, LayoutSlotName),
         MangledModuleName = Info ^ lout_mangled_module_name,
         output_layout_slot_id(use_layout_macro, MangledModuleName,
             LayoutSlotName, !IO)

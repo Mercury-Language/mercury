@@ -1088,9 +1088,15 @@ coverage_point_to_string(cp_type_branch_arm) = "branch arm".
     io::di, io::uo) is det.
 
 write_proc_table_io_info(TVarSet, ProcTableIOInfo, !IO) :-
-    ProcTableIOInfo = proc_table_io_info(ArgInfos),
-    io.write_string("% proc table io info: io tabled\n", !IO),
-    write_table_arg_infos(TVarSet, ArgInfos, !IO).
+    ProcTableIOInfo = proc_table_io_info(MaybeArgInfos),
+    (
+        MaybeArgInfos = no,
+        io.write_string("% proc table io info: io tabled, no arg_infos\n", !IO)
+    ;
+        MaybeArgInfos = yes(ArgInfos),
+        io.write_string("% proc table io info: io tabled, arg_infos:\n", !IO),
+        write_table_arg_infos(TVarSet, ArgInfos, !IO)
+    ).
 
 write_table_arg_infos(TVarSet, TableArgInfos, !IO) :-
     TableArgInfos = table_arg_infos(ArgInfos, TVarMap),

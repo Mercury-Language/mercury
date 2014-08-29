@@ -139,9 +139,9 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         Tag = deep_profiling_proc_layout_tag(PredId, ProcId)
     ;
-        ConsId = table_io_decl(ShroudedPredProcId),
+        ConsId = table_io_entry_desc(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        Tag = table_io_decl_tag(PredId, ProcId)
+        Tag = table_io_entry_tag(PredId, ProcId)
     ;
         ConsId = tuple_cons(Arity),
         % Tuples do not need a tag. Note that unary tuples are not treated

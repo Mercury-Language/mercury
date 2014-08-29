@@ -1614,8 +1614,8 @@ mercury_format_cons_id(NeedsBrackets, ConsId, !U) :-
         ConsId = tabling_info_const(_),
         add_string("<tabling info>", !U)
     ;
-        ConsId = table_io_decl(_),
-        add_string("<table_io_decl>", !U)
+        ConsId = table_io_entry_desc(_),
+        add_string("<table_io_entry_desc>", !U)
     ;
         ConsId = deep_profiling_proc_layout(_),
         add_string("<deep_profiling_proc_layout>", !U)

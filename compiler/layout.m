@@ -173,16 +173,35 @@
                 plps_coverage_points    :: maybe({int, int})
             ).
 
-:- type table_io_decl_data
-    --->    table_io_decl_data(
-                % defines MR_TableIoDecl
-                tid_proc_ptr            :: layout_name,
-                tid_num_ptis            :: int,
+:- type table_io_args_data
+    --->    table_io_args_data(
+                % The number of head variables that are stored in the answer
+                % block. Besides the values of the output arguments,
+                % which are needed to make the I/O action idempotent,
+                % it also includes the values of the input arguments.
+                % Some of these, the type_infos, mdb needs in order to
+                % convert the type-specific representations of the outputs
+                % to a term that the debugger's user can print or browse.
+                % The other inputs are needed to allow the debugger's user
+                % to judge whether the output are correct or not.
+                tia_answerblock_arity   :: int,
 
-                % pseudo-typeinfos for headvars
-                tid_ptis                :: rval,
+                % This rval stores a vector of answerblock_arity pseudo-
+                % typeinfos, one for each headvar stored in the answer block.
+                tia_ptis                :: rval,
 
-                tid_type_params         :: rval
+                % This rval represents a vector mapping each type variable
+                % that occurs in the above pseudo-typeinfos to the location
+                % of the type_info that is currently bound to that type
+                % variable.
+                tia_type_params         :: rval
+            ).
+
+:- type table_io_entry_data
+    --->    table_io_entry_data(
+                % defines MR_TableIoEntry
+                tie_proc_ptr            :: layout_name,
+                tie_maybe_args          :: maybe(table_io_args_data)
             ).
 
 :- type data_or_slot_id
@@ -356,7 +375,7 @@
             % A vector of variable names (represented as offsets into
             % the string table) for a procedure layout structure.
     ;       proc_body_bytecodes_array
-    ;       proc_table_io_decl_array
+    ;       proc_table_io_entry_array
     ;       proc_event_layouts_array
     ;       proc_exec_trace_array
     ;       threadscope_string_table_array

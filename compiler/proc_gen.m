@@ -501,7 +501,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
             ( map.search(TableStructMap, PredProcId, _TableStructInfo) ->
                 unexpected($module, $pred, "conflicting kinds of tabling")
             ;
-                MaybeTableInfo = yes(proc_table_io_decl(TableIOInfo))
+                MaybeTableInfo = yes(proc_table_io_entry(TableIOInfo))
             )
         ),
         proc_info_get_oisu_kind_fors(ProcInfo, OISUKindFors),

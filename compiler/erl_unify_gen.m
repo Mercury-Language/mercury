@@ -334,7 +334,7 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
     ;
         ( ConsId = tabling_info_const(_)
         ; ConsId = deep_profiling_proc_layout(_)
-        ; ConsId = table_io_decl(_)
+        ; ConsId = table_io_entry_desc(_)
         ),
         sorry($module, $pred,
             "tabling and deep profiling not supported on Erlang backend")

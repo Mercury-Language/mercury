@@ -1275,7 +1275,7 @@ qualify_bound_inst_list([bound_functor(ConsId, Insts0) | BoundInsts0],
         ; ConsId = typeclass_info_const(_)
         ; ConsId = ground_term_const(_, _)
         ; ConsId = tabling_info_const(_)
-        ; ConsId = table_io_decl(_)
+        ; ConsId = table_io_entry_desc(_)
         ; ConsId = deep_profiling_proc_layout(_)
         )
     ),

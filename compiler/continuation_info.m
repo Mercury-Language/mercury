@@ -165,7 +165,7 @@
             ).
 
 :- type proc_layout_table_info
-    --->    proc_table_io_decl(
+    --->    proc_table_io_entry(
                 proc_table_io_info
             )
     ;       proc_table_struct(

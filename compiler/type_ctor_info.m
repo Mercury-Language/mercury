@@ -712,7 +712,7 @@ make_foreign_enum_functors(TypeCtor, Lang, [Functor | Functors], NextOrdinal,
         ; ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
-        ; ConsTag = table_io_decl_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = single_functor_tag
         ; ConsTag = unshared_tag(_)
         ; ConsTag = direct_arg_tag(_)
@@ -895,7 +895,7 @@ get_maybe_reserved_rep(ConsTag, ConsRep) :-
         ; ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
-        ; ConsTag = table_io_decl_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
         ),
         unexpected($module, $pred, "bad cons_tag for du function symbol")
     ).

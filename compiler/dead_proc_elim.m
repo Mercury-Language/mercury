@@ -683,7 +683,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 ; ConsId = type_info_cell_constructor(_)
                 ; ConsId = typeclass_info_cell_constructor
                 ; ConsId = deep_profiling_proc_layout(_)
-                ; ConsId = table_io_decl(_)
+                ; ConsId = table_io_entry_desc(_)
                 )
                 % Do nothing.
             )

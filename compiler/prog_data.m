@@ -441,7 +441,7 @@ det_negation_det(detism_failure,   yes(detism_det)).
     ;       eval_loop_check             % loop check only
     ;       eval_memo                   % memoing + loop check
     ;       eval_table_io(              % memoing I/O actions for debugging
-                table_io_is_decl,
+                table_io_entry_kind,
                 table_io_is_unitize
             )
     ;       eval_minimal(eval_minimal_method).
@@ -490,11 +490,36 @@ det_negation_det(detism_failure,   yes(detism_det)).
     --->    hidden_arg_value
     ;       hidden_arg_addr.
 
-:- type table_io_is_decl
-    --->    table_io_decl       % The procedure is tabled for
-                                % declarative debugging.
-    ;       table_io_proc.      % The procedure is tabled only for
-                                % procedural debugging.
+:- type table_io_entry_kind
+    --->    entry_stores_outputs
+            % Each entry in the I/O table stores only the outputs of the
+            % action. The I/O action will be idempotent across retries
+            % in mdb, but attempts to print out the action will cause
+            % a core dump. This option is intended only for implementors
+            % measuring the overheads of the two alternatives just below.
+
+    ;       entry_stores_procid_outputs
+            % Each entry in the I/O table starts with a pointer to the
+            % MR_TableIoEntry structure of the procedure that performed
+            % the action, and also contains the outputs of the action.
+            % This makes the I/O action idempotent across retries and
+            % allows the *name* of the I/O predicate to be printed
+            % by mdb's "print action N" command, but not the values
+            % of the arguments. Not even the output arguments can be printed,
+            % since doing so requires knowing their types, and in general
+            % that requires access to input type_info arguments.
+
+    ;       entry_stores_procid_inputs_outputs.
+            % Each entry in the I/O table starts with a pointer to the
+            % MR_TableIoEntry structure of the procedure that performed
+            % the action, and also contains both the inputs and outputs
+            % of the action.
+            %
+            % This makes the I/O action idempotent across retries and
+            % allows both the name and all the arguments of the I/O predicate
+            % to be printed by mdb's "print action N" command. It also
+            % allows the declarative debugger to consider the action to
+            % be part of the effect of a call to its ancestors.
 
 :- type table_io_is_unitize
     --->    table_io_unitize    % The procedure is tabled for I/O
@@ -1624,7 +1649,7 @@ rename_var(Must, Renaming, Var0, Var) :-
             % about the table that implements memoization, loop checking
             % or the minimal model semantics for the given procedure.
 
-    ;       table_io_decl(shrouded_pred_proc_id)
+    ;       table_io_entry_desc(shrouded_pred_proc_id)
             % The address of a structure that describes the layout of the
             % answer block used by I/O tabling for declarative debugging.
 
@@ -1709,7 +1734,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
         ; ConsId = type_info_cell_constructor(_)
         ; ConsId = typeclass_info_cell_constructor
         ; ConsId = tabling_info_const(_)
-        ; ConsId = table_io_decl(_)
+        ; ConsId = table_io_entry_desc(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ),
         fail

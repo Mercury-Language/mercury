@@ -607,9 +607,9 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         FunctorName = "tabling_info_const",
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
-        ConsId = table_io_decl(_),
+        ConsId = table_io_entry_desc(_),
         term.context_init(Context),
-        FunctorName = "table_io_decl",
+        FunctorName = "table_io_entry_desc",
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = deep_profiling_proc_layout(_),

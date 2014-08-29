@@ -1,0 +1,33 @@
+      E1:     C1 CALL pred tabled_typeclass.main/2-0 (det) tabled_typeclass.m:30
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> register --quiet
+mdb> table_io allow
+mdb> table_io start
+I/O tabling started.
+mdb> finish
+1
+2
+3
+4
+5
+6
+      E2:     C1 EXIT pred tabled_typeclass.main/2-0 (det)
+mdb> print io *
+action 0: tc_action("the arguments are not available due to the presence of one or more typeclass constraints")
+action 1: notc_action(status, status_success, 2)
+action 2: tc_action("the arguments are not available due to the presence of one or more typeclass constraints")
+action 3: notc_action(status, status_no_memory, 4)
+action 4: tc_action("the arguments are not available due to the presence of one or more typeclass constraints")
+action 5: notc_action(status, status_null_pointer, 6)
+mdb> retry -f
+      E1:     C1 CALL pred tabled_typeclass.main/2-0 (det)
+mdb> continue
+1
+2
+3
+4
+5
+6

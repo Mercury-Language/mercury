@@ -144,8 +144,8 @@ MR_perform_registered_exception_cleanups(void);
 #define MR_proc_body_bytecodes(m)                   \
     MR_PASTE2(mercury_data__proc_body_bytecodes_array__, m)
 
-#define MR_proc_table_io_decls(m)                   \
-    MR_PASTE2(mercury_data__proc_table_io_decls_array__, m)
+#define MR_proc_table_io_entries(m)                   \
+    MR_PASTE2(mercury_data__proc_table_io_entries_array__, m)
 
 #define MR_proc_event_layouts(m)                    \
     MR_PASTE2(mercury_data__proc_event_layouts_array__, m)

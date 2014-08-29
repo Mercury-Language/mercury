@@ -45,7 +45,7 @@
     list(label_layout_short_vars)::in, list(label_layout_long_vars)::in,
     list(call_site_static_data)::in, list(coverage_point_info)::in,
     list(proc_layout_proc_static)::in,
-    list(int)::in, list(int)::in, list(int)::in, list(table_io_decl_data)::in,
+    list(int)::in, list(int)::in, list(int)::in, list(table_io_entry_data)::in,
     list(layout_slot_name)::in, list(proc_layout_exec_trace)::in,
     list(alloc_site_info)::in, io::di, io::uo) is det.
 
@@ -56,7 +56,7 @@
     list(label_layout_short_vars)::in, list(label_layout_long_vars)::in,
     list(call_site_static_data)::in, list(coverage_point_info)::in,
     list(proc_layout_proc_static)::in,
-    list(int)::in, list(int)::in, list(int)::in, list(table_io_decl_data)::in,
+    list(int)::in, list(int)::in, list(int)::in, list(table_io_entry_data)::in,
     list(layout_slot_name)::in, list(proc_layout_exec_trace)::in,
     list(string)::in, list(alloc_site_info)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -199,7 +199,7 @@ output_layout_array_decls(Info, PseudoTypeInfos, HLDSVarNums,
         ShortLocns, LongLocns, UserEventVarNums, UserEvents,
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
-        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls,
+        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoEntries,
         ProcEventLayouts, ExecTraces, AllocSites, !IO) :-
     MangledModuleName = Info ^ lout_mangled_module_name,
     (
@@ -344,12 +344,12 @@ output_layout_array_decls(Info, PseudoTypeInfos, HLDSVarNums,
         io.write_string("[];\n", !IO)
     ),
     (
-        TableIoDecls = []
+        TableIoEntries = []
     ;
-        TableIoDecls = [_ | _],
-        TableIoDeclArrayName = proc_table_io_decl_array,
+        TableIoEntries = [_ | _],
+        TableIoEntrieArrayName = proc_table_io_entry_array,
         output_layout_array_name_storage_type_name(MangledModuleName,
-            TableIoDeclArrayName, not_being_defined, !IO),
+            TableIoEntrieArrayName, not_being_defined, !IO),
         io.write_string("[];\n", !IO)
     ),
     (
@@ -384,7 +384,7 @@ output_layout_array_defns(Info, PseudoTypeInfos, HLDSVarNums,
         ShortLocns, LongLocns, UserEventVarNums, UserEvents,
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
-        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls,
+        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoEntries,
         ProcEventLayouts, ExecTraces, TSStringTable, AllocSites,
         !DeclSet, !IO) :-
     (
@@ -481,10 +481,10 @@ output_layout_array_defns(Info, PseudoTypeInfos, HLDSVarNums,
         output_proc_body_bytecodes_array(Info, ProcBodyBytecodes, !IO)
     ),
     (
-        TableIoDecls = []
+        TableIoEntries = []
     ;
-        TableIoDecls = [_ | _],
-        output_table_io_decl_array(Info, TableIoDecls, !IO)
+        TableIoEntries = [_ | _],
+        output_table_io_entry_array(Info, TableIoEntries, !IO)
     ),
     (
         ProcEventLayouts = []
@@ -1376,25 +1376,24 @@ output_proc_body_bytecodes_array(Info, Bytecodes, !IO) :-
 % Definition of array #17: table_io structures.
 %
 
-:- pred output_table_io_decl_array(llds_out_info::in,
-    list(table_io_decl_data)::in, io::di, io::uo) is det.
+:- pred output_table_io_entry_array(llds_out_info::in,
+    list(table_io_entry_data)::in, io::di, io::uo) is det.
 
-output_table_io_decl_array(Info, TableIoDecls, !IO) :-
+output_table_io_entry_array(Info, TableIoEntries, !IO) :-
     ModuleName = Info ^ lout_mangled_module_name,
-    list.length(TableIoDecls, NumTableIoDecls),
-    Name = proc_table_io_decl_array,
+    list.length(TableIoEntries, NumTableIoEntries),
+    Name = proc_table_io_entry_array,
     output_layout_array_name_storage_type_name(ModuleName, Name,
         being_defined, !IO),
-    io.format("[%d] = {\n", [i(NumTableIoDecls)], !IO),
-    list.foldl2(output_table_io_decl_slot(Info), TableIoDecls, 0, _, !IO),
+    io.format("[%d] = {\n", [i(NumTableIoEntries)], !IO),
+    list.foldl2(output_table_io_entry_slot(Info), TableIoEntries, 0, _, !IO),
     io.write_string("};\n\n", !IO).
 
-:- pred output_table_io_decl_slot(llds_out_info::in, table_io_decl_data::in,
+:- pred output_table_io_entry_slot(llds_out_info::in, table_io_entry_data::in,
     int::in, int::out, io::di, io::uo) is det.
 
-output_table_io_decl_slot(Info, TableIoDecl, !Slot, !IO) :-
-    TableIoDecl = table_io_decl_data(ProcLayoutName, NumPTIs,
-        PTIVectorRval, TypeParamsRval),
+output_table_io_entry_slot(Info, TableIoEntry, !Slot, !IO) :-
+    TableIoEntry = table_io_entry_data(ProcLayoutName, MaybeArgInfos),
     io.write_string("{ ", !IO),
     AutoComments = Info ^ lout_auto_comments,
     (
@@ -1406,11 +1405,19 @@ output_table_io_decl_slot(Info, TableIoDecl, !Slot, !IO) :-
     io.write_string("(const MR_ProcLayout *) &", !IO),
     output_layout_name(ProcLayoutName, !IO),
     io.write_string(",\n  ", !IO),
-    io.write_int(NumPTIs, !IO),
-    io.write_string(",\n  (const MR_PseudoTypeInfo *) ", !IO),
-    output_rval(Info, PTIVectorRval, !IO),
-    io.write_string(", (const MR_TypeParamLocns *) ", !IO),
-    output_rval(Info, TypeParamsRval, !IO),
+    (
+        MaybeArgInfos = no,
+        io.write_string("MR_FALSE, 0, NULL, NULL", !IO)
+    ;
+        MaybeArgInfos = yes(ArgInfos),
+        ArgInfos = table_io_args_data(NumPTIs, PTIVectorRval, TypeParamsRval),
+        io.write_string("MR_TRUE,\n  ", !IO),
+        io.write_int(NumPTIs, !IO),
+        io.write_string(",\n  (const MR_PseudoTypeInfo *) ", !IO),
+        output_rval(Info, PTIVectorRval, !IO),
+        io.write_string(", (const MR_TypeParamLocns *) ", !IO),
+        output_rval(Info, TypeParamsRval, !IO)
+    ),
     io.write_string(" },\n", !IO),
     !:Slot = !.Slot + 1.
 
@@ -1575,21 +1582,25 @@ eval_method_to_c_string(eval_minimal(MinimalMethod)) = Str :-
         MinimalMethod = own_stacks_generator,
         Str = "MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR"
     ).
-eval_method_to_c_string(eval_table_io(Decl, Unitize)) = Str :-
+eval_method_to_c_string(eval_table_io(EntryKind, Unitize)) = Str :-
     (
-        Decl = table_io_proc,
+        ( EntryKind = entry_stores_outputs
+        ; EntryKind = entry_stores_procid_outputs
+        ),
         Unitize = table_io_alone,
         Str = "MR_EVAL_METHOD_TABLE_IO"
     ;
-        Decl = table_io_proc,
+        ( EntryKind = entry_stores_outputs
+        ; EntryKind = entry_stores_procid_outputs
+        ),
         Unitize = table_io_unitize,
         Str = "MR_EVAL_METHOD_TABLE_IO_UNITIZE"
     ;
-        Decl = table_io_decl,
+        EntryKind = entry_stores_procid_inputs_outputs,
         Unitize = table_io_alone,
         Str = "MR_EVAL_METHOD_TABLE_IO_DECL"
     ;
-        Decl = table_io_decl,
+        EntryKind = entry_stores_procid_inputs_outputs,
         Unitize = table_io_unitize,
         Str = "MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL"
     ).
@@ -1744,8 +1755,8 @@ output_layout_array_name(UseMacro, ModuleName, ArrayName, !IO) :-
             ArrayName = proc_body_bytecodes_array,
             io.write_string("MR_proc_body_bytecodes", !IO)
         ;
-            ArrayName = proc_table_io_decl_array,
-            io.write_string("MR_proc_table_io_decls", !IO)
+            ArrayName = proc_table_io_entry_array,
+            io.write_string("MR_proc_table_io_entries", !IO)
         ;
             ArrayName = proc_event_layouts_array,
             io.write_string("MR_proc_event_layouts", !IO)
@@ -1813,8 +1824,8 @@ output_layout_array_name(UseMacro, ModuleName, ArrayName, !IO) :-
             ArrayName = proc_body_bytecodes_array,
             io.write_string("mercury_data__proc_body_bytecodes_array__", !IO)
         ;
-            ArrayName = proc_table_io_decl_array,
-            io.write_string("mercury_data__proc_table_io_decls_array__", !IO)
+            ArrayName = proc_table_io_entry_array,
+            io.write_string("mercury_data__proc_table_io_entries_array__", !IO)
         ;
             ArrayName = proc_event_layouts_array,
             io.write_string("mercury_data__proc_event_layouts_array__", !IO)
@@ -2079,8 +2090,8 @@ output_layout_array_name_storage_type_name(ModuleName, Name, BeingDefined,
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
-        Name = proc_table_io_decl_array,
-        io.write_string("const MR_TableIoDecl ", !IO),
+        Name = proc_table_io_entry_array,
+        io.write_string("const MR_TableIoEntry ", !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ;
@@ -3274,7 +3285,7 @@ output_layout_slots_in_vector(ModuleName, [SlotName | SlotNames], !IO) :-
         ; ArrayName = proc_var_names_array
         ; ArrayName = proc_head_var_nums_array
         ; ArrayName = proc_body_bytecodes_array
-        ; ArrayName = proc_table_io_decl_array
+        ; ArrayName = proc_table_io_entry_array
         ; ArrayName = proc_event_layouts_array
         ; ArrayName = proc_exec_trace_array
         ; ArrayName = threadscope_string_table_array

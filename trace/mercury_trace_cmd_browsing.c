@@ -400,6 +400,41 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
             next_io_action = hi_action + 1;
             have_next_io_action = MR_TRUE;
+        } else if (MR_streq(words[2], "*")) {
+            lo_action = MR_io_tabling_start;
+            hi_action = MR_io_tabling_counter_hwm - 1;
+
+            if (lo_action + MR_MAX_NUM_IO_ACTIONS_TO_PRINT < hi_action) {
+                fflush(MR_mdb_out);
+                fprintf(MR_mdb_err,
+                    "I/O tabling has recorded "
+                    "%" MR_INTEGER_LENGTH_MODIFIER "d actions, "
+                    "numbered %" MR_INTEGER_LENGTH_MODIFIER "u to "
+                    "%" MR_INTEGER_LENGTH_MODIFIER "u.\n"
+                    "Without an explicit request, "
+                    "only a maximum of %d actions will be printed.\n",
+                    MR_io_tabling_counter_hwm + MR_io_tabling_start - 1,
+                    MR_io_tabling_start, MR_io_tabling_counter_hwm - 1,
+                    MR_MAX_NUM_IO_ACTIONS_TO_PRINT);
+                return KEEP_INTERACTING;
+            }
+
+            for (action = lo_action; action <= hi_action; action++) { 
+                fprintf(MR_mdb_out,
+                    "action %" MR_INTEGER_LENGTH_MODIFIER "u: ", action);
+                problem = MR_trace_browse_action(MR_mdb_out, action,
+                    MR_trace_browse_goal_internal,
+                    MR_BROWSE_CALLER_PRINT, format);
+
+                if (problem != NULL) {
+                    fflush(MR_mdb_out);
+                    fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+                    return KEEP_INTERACTING;
+                }
+            }
+
+            next_io_action = hi_action + 1;
+            have_next_io_action = MR_TRUE;
         } else {
             MR_trace_usage_cur_cmd();
         }

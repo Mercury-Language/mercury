@@ -249,7 +249,7 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
         ; MainConsId = typeclass_info_const(_)
         ; MainConsId = ground_term_const(_, _)
         ; MainConsId = tabling_info_const(_)
-        ; MainConsId = table_io_decl(_)
+        ; MainConsId = table_io_entry_desc(_)
         ; MainConsId = deep_profiling_proc_layout(_)
         ),
         unexpected($module, $pred, "unexpected cons_id")

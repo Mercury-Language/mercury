@@ -743,28 +743,53 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
 */
 
 /*
-** The MR_TableIoDecl structure.
+** The MR_TableIoEntry structure.
 **
-** To enable declarative debugging of I/O actions, the compiler generates one
-** of these structures for each I/O primitive. The compiler transforms the
-** bodies of those primitives to create a block of memory and fill it in with
-** (1) a pointer to the primitive's MR_TableIoDecl structure and (2) the
-** values of the primitive's arguments (both input and output, but excluding
-** the I/O states). The array of pseudo-typeinfos pointed to by the ptis field
-** gives the types of these arguments, while the filtered_arity field gives
-** the number of saved arguments, which will be all the arguments except the
-** I/O states. The number in this field is the size of the ptis array, and
-** the size of the block exclusive of the pointer. The proc field allows us
-** to identify the primitive procedure. This is all the information we need
-** to describe the I/O action to the user.
+** To enable printing and declarative debugging of I/O actions, the compiler
+** generates one of these structures for each I/O primitive. The compiler
+** transforms the bodies of those primitives to create a block of memory
+** (the answerblock, the action's entry in the I/O table), and fill it in with
+** 
+** - a pointer to the primitive's MR_TableIoEntry structure, and
+** - the values of some of the primitive's arguments (excluding the
+**   I/O states, which are dummies).
+**
+** The arguments in the answerblock will always include the output arguments,
+** since I/O tabling needs these to make the primitive idempotent.
+** If the primitive does not have type class constraints, it will include
+** the values of the input arguments as well, for two reasons:
+**
+** - to present them to the user on request, either via mdb's browsing
+**   commands, or via the declarative debugger
+**
+** - the input typeinfo arguments are needed to present the value of other
+**   arguments, both inputs and outputs, to the user.
+**
+** In the presence of typeclass constraints on the predicate, we cannot
+** guarantee that we can encode the locations of the typeinfos (which may be
+** arbitrarily deep inside typeclass_infos) in our fixed size location
+** descriptions. We therefore set the have_arg_infos field to false,
+** indicating that none of the following fields contain meaningful information.
+**
+** In the absence of typeclass constraints on the predicate, we set the
+** have_arg_infos field to true. In that case, num_ptis will contain the
+** number of arguments in the answer block, the ptis field will point to
+** a vector of num_ptis pseudo-typeinfos (one for each argument in the answer
+** block), and the type_params field maps the type variables that occur
+** in the pseudo-typeinfos to the locations of the typeinfos describing
+** the types bound to them.
+**
+** The entry_proc field, which is always meaningful, identifies the procedure
+** that created the I/O table entry.
 */
 
-typedef struct MR_TableIoDecl_Struct {
-    const MR_ProcLayout         *MR_table_io_decl_proc;
-    MR_Integer                  MR_table_io_decl_filtered_arity;
-    const MR_PseudoTypeInfo     *MR_table_io_decl_ptis;
-    const MR_TypeParamLocns     *MR_table_io_decl_type_params;
-} MR_TableIoDecl;
+typedef struct MR_TableIoEntry_Struct {
+    const MR_ProcLayout         *MR_table_io_entry_proc;
+    MR_bool                     MR_table_io_entry_have_arg_infos;
+    MR_Integer                  MR_table_io_entry_num_ptis;
+    const MR_PseudoTypeInfo     *MR_table_io_entry_ptis;
+    const MR_TypeParamLocns     *MR_table_io_entry_type_params;
+} MR_TableIoEntry;
 
 /*
 ** MR_TableInfo: compiler generated information describing the tabling
@@ -780,7 +805,7 @@ typedef struct MR_TableIoDecl_Struct {
 
 typedef union {
     const void                  *MR_table_init;
-    const MR_TableIoDecl        *MR_table_io_decl;
+    const MR_TableIoEntry       *MR_table_io_entry;
     const MR_Table_Gen          *MR_table_gen;
     MR_ProcTableInfo            *MR_table_proc;
 } MR_TableInfo;

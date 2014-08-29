@@ -948,7 +948,7 @@ foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
         ; TagVal = ground_term_const_tag(_, _)
         ; TagVal = tabling_info_tag(_, _)
         ; TagVal = deep_profiling_proc_layout_tag(_, _)
-        ; TagVal = table_io_decl_tag(_, _)
+        ; TagVal = table_io_entry_tag(_, _)
         ; TagVal = single_functor_tag
         ; TagVal = unshared_tag(_)
         ; TagVal = direct_arg_tag(_)

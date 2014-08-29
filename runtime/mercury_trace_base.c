@@ -1001,21 +1001,16 @@ MR_trace_report_raw(int fd)
 
 MR_bool
 MR_trace_get_action(MR_IoActionNum action_number, MR_ConstString *proc_name_ptr,
-    MR_Word *is_func_ptr, MR_Word *arg_list_ptr)
+    MR_Word *is_func_ptr, MR_bool *have_arg_infos_ptr, MR_Word *arg_list_ptr)
 {
-    const MR_TableIoDecl    *table_io_decl;
+    const MR_TableIoEntry   *table_io_entry;
     const MR_ProcLayout     *proc_layout;
     MR_ConstString          proc_name;
     MR_Word                 is_func;
-    MR_Word                 arg_list;
-    MR_Word                 arg;
-    int                     filtered_arity;
     int                     arity;
     int                     hv;
     MR_TrieNode             answer_block_trie;
     MR_Word                 *answer_block;
-    MR_TypeInfo             *type_params;
-    MR_TypeInfo             type_info;
 
     if (! (MR_io_tabling_start <= action_number
         && action_number < MR_io_tabling_counter_hwm))
@@ -1032,34 +1027,50 @@ MR_trace_get_action(MR_IoActionNum action_number, MR_ConstString *proc_name_ptr,
         return MR_FALSE;
     }
 
-    table_io_decl = (const MR_TableIoDecl *) answer_block[0];
-    proc_layout = table_io_decl->MR_table_io_decl_proc;
-    filtered_arity = table_io_decl->MR_table_io_decl_filtered_arity;
-
+    table_io_entry = (const MR_TableIoEntry *) answer_block[0];
+    proc_layout = table_io_entry->MR_table_io_entry_proc;
     MR_generate_proc_name_from_layout(proc_layout, &proc_name, &arity,
         &is_func);
-
-    type_params = MR_materialize_answer_block_type_params(
-        table_io_decl->MR_table_io_decl_type_params, answer_block,
-        filtered_arity);
-
-    MR_restore_transient_hp();
-    arg_list = MR_list_empty();
-    MR_save_transient_hp();
-    for (hv = filtered_arity; hv >= 1; hv--) {
-        type_info = MR_create_type_info(type_params,
-            table_io_decl->MR_table_io_decl_ptis[hv - 1]);
-        MR_restore_transient_hp();
-        MR_new_univ_on_hp(arg, type_info, answer_block[hv]);
-        arg_list = MR_univ_list_cons(arg, arg_list);
-        MR_save_transient_hp();
-    }
-
-    MR_free(type_params);
-
     *proc_name_ptr = proc_name;
     *is_func_ptr = is_func;
-    *arg_list_ptr = arg_list;
+
+    if (table_io_entry->MR_table_io_entry_have_arg_infos) {
+        int         filtered_arity;
+        MR_Word     arg_list;
+        MR_Word     arg;
+        MR_TypeInfo *type_params;
+        MR_TypeInfo type_info;
+
+        *have_arg_infos_ptr = MR_TRUE;
+        filtered_arity = table_io_entry->MR_table_io_entry_num_ptis;
+        type_params = MR_materialize_answer_block_type_params(
+            table_io_entry->MR_table_io_entry_type_params, answer_block,
+            filtered_arity);
+
+        MR_restore_transient_hp();
+        arg_list = MR_list_empty();
+        MR_save_transient_hp();
+        for (hv = filtered_arity; hv >= 1; hv--) {
+            type_info = MR_create_type_info(type_params,
+                table_io_entry->MR_table_io_entry_ptis[hv - 1]);
+            MR_restore_transient_hp();
+            MR_new_univ_on_hp(arg, type_info, answer_block[hv]);
+            arg_list = MR_univ_list_cons(arg, arg_list);
+            MR_save_transient_hp();
+        }
+
+        MR_free(type_params);
+        *arg_list_ptr = arg_list;
+    } else {
+        *have_arg_infos_ptr = MR_FALSE;
+        /*
+        ** *arg_list_ptr is not meaningful when *have_arg_infos_ptr is false,
+        ** but setting it to the empty list makes it easier to catch any
+        ** caller that ignores that fact.
+        */
+        *arg_list_ptr = MR_list_empty();
+    }
+
     return MR_TRUE;
 }
 
@@ -1241,7 +1252,7 @@ MR_compare_in_sort_arena(const void *addr1, const void *addr2)
 void
 MR_io_tabling_stats(FILE *fp)
 {
-    const MR_TableIoDecl            *table_io_decl;
+    const MR_TableIoEntry           *table_io_entry;
     const MR_ProcLayout             *proc_layout;
     MR_ConstString                  proc_name;
     int                             arity;
@@ -1256,7 +1267,7 @@ MR_io_tabling_stats(FILE *fp)
     int                             i;
 
     /*
-    ** Create a fresh new hash table, separate the table created by
+    ** Create a fresh new hash table, separate from the table created by
     ** any previous call to this function. We can't use structure assignment,
     ** as that causes gcc 3.2 to throw a fit.
     */
@@ -1277,8 +1288,8 @@ MR_io_tabling_stats(FILE *fp)
             continue;
         }
 
-        table_io_decl = (const MR_TableIoDecl *) answer_block[0];
-        proc_layout = table_io_decl->MR_table_io_decl_proc;
+        table_io_entry = (const MR_TableIoEntry *) answer_block[0];
+        proc_layout = table_io_entry->MR_table_io_entry_proc;
 
         hash_record = MR_lookup_hash_table(hash_table, proc_layout);
         if (hash_record == NULL) {

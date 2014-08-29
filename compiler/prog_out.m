@@ -357,7 +357,7 @@ eval_method_to_pragma_name(eval_minimal(MinimalMethod)) = Str :-
         MinimalMethod = stack_copy,
         Str = "minimal_model"
     ).
-eval_method_to_pragma_name(eval_table_io(_IsDecl, _IsUnitize)) = _ :-
+eval_method_to_pragma_name(eval_table_io(_EntryKind, _IsUnitize)) = _ :-
     unexpected($module, $pred, "io").
 
 eval_method_to_string(eval_normal) = "normal".
@@ -374,13 +374,16 @@ eval_method_to_string(eval_minimal(MinimalMethod)) = Str :-
         MinimalMethod = stack_copy,
         Str = "minimal_model_stack_copy"
     ).
-eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
+eval_method_to_string(eval_table_io(EntryKind, IsUnitize)) = Str :-
     (
-        IsDecl = table_io_decl,
-        DeclStr = "decl, "
+        EntryKind = entry_stores_outputs,
+        EntryKindStr = "entry_stores_outputs, "
     ;
-        IsDecl = table_io_proc,
-        DeclStr = "proc, "
+        EntryKind = entry_stores_procid_outputs,
+        EntryKindStr = "entry_stores_procid_outputs, "
+    ;
+        EntryKind = entry_stores_procid_inputs_outputs,
+        EntryKindStr = "entry_stores_procid_inputs_outputs, "
     ),
     (
         IsUnitize = table_io_unitize,
@@ -389,7 +392,7 @@ eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
         IsUnitize = table_io_alone,
         UnitizeStr = "alone"
     ),
-    Str = "table_io(" ++ DeclStr ++ UnitizeStr ++ ")".
+    Str = "table_io(" ++ EntryKindStr ++ UnitizeStr ++ ")".
 
 write_eval_method(EvalMethod, !IO) :-
     io.write_string(eval_method_to_string(EvalMethod), !IO).

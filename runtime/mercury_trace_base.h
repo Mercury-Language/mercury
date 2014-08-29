@@ -536,23 +536,33 @@ extern  void    MR_tracing_not_enabled(void);
 /*
 ** Return the details of I/O action <action_number> in three pieces:
 ** the name of the I/O action procedure in *proc_name_ptr, a boolean that is
-** true iff procedure is a function in *is_func_ptr, and a Mercury
-** representation of the argument list (minus the IO state arguments)
+** true iff procedure is a function in *is_func_ptr, and (if available)
+** a Mercury representation of the argument list (minus the IO state arguments)
 ** in *arg_list_ptr.
 ** This function uses the heap pointer, so calls to it must be wrapped
 ** with MR_save_transient_hp() and MR_restore_transient_hp().
+**
+** If the procedure that performed the specified I/O action does not
+** have the information we need to construct a univ for each argument,
+** this function will set *have_arg_infos_ptr to false, and *arg_list_ptr
+** will NOT be meaningful. If the function does have the information it needs,
+** it will set *have_arg_infos_ptr to true, and will return a list of univs,
+** one univ per non-I/O-state argument, in *arg_list_ptr.
 **
 ** This function is called from the Mercury code in the debugger, in the
 ** browser directory. It is here, not in the trace directory, because code
 ** in the browser directory cannot call functions in the trace directory.
 **
-** If the io action, action_number, has not been tabled, then this
-** function will return MR_FALSE, otherwise it will return MR_TRUE.
+** All of the above is for the case where the io action <action_number>
+** has been tabled, which this function indicates by returning MR_TRUE.
+** If it has NOT been tabled, then this function will not return MR_FALSE,
+** and *proc_name_ptr, *is_func_ptr, *have_arg_infos_ptr, and *arg_list_ptr
+** will NOT be meaningful.
 */
 
 extern  MR_bool     MR_trace_get_action(MR_IoActionNum action_number,
                         MR_ConstString *proc_name_ptr, MR_Word *is_func_ptr,
-                        MR_Word *arg_list_ptr);
+                        MR_bool *have_arg_infos_ptr, MR_Word *arg_list_ptr);
 
 /*
 ** MR_turn_off_debug saves the current values of the variables controlling

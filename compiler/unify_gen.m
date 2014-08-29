@@ -444,8 +444,8 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         unexpected($module, $pred,
             "Attempted deep_profiling_proc_layout_tag unification")
     ;
-        ConsTag = table_io_decl_tag(_, _),
-        unexpected($module, $pred, "Attempted table_io_decl_tag unification")
+        ConsTag = table_io_entry_tag(_, _),
+        unexpected($module, $pred, "Attempted table_io_entry_tag unification")
     ;
         ConsTag = no_tag,
         TestRval = const(llconst_true)
@@ -670,11 +670,10 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
         assign_const_to_var(Var, const(llconst_data_addr(DataId, no)), !CI),
         Code = empty
     ;
-        ConsTag = table_io_decl_tag(PredId, ProcId),
-        expect(unify(Args, []), $module, $pred,
-            "table_io_decl has args"),
+        ConsTag = table_io_entry_tag(PredId, ProcId),
+        expect(unify(Args, []), $module, $pred, "table_io_entry has args"),
         PredProcId = proc(PredId, ProcId),
-        DataId = layout_slot_id(table_io_decl_id, PredProcId),
+        DataId = layout_slot_id(table_io_entry_id, PredProcId),
         assign_const_to_var(Var, const(llconst_data_addr(DataId, no)), !CI),
         Code = empty
     ;
@@ -1293,8 +1292,8 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
         Tag = ground_term_const_tag(_, _),
         unexpected($module, $pred, "ground_term_const_tag")
     ;
-        Tag = table_io_decl_tag(_, _),
-        unexpected($module, $pred, "table_io_decl_tag")
+        Tag = table_io_entry_tag(_, _),
+        unexpected($module, $pred, "table_io_entry_tag")
     ;
         Tag = no_tag,
         (
@@ -1774,7 +1773,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, ConstStructMap,
         ; ConsTag = typeclass_info_const_tag(_)
         ; ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
-        ; ConsTag = table_io_decl_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
         unexpected($module, $pred, "unexpected tag")
@@ -1884,7 +1883,7 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
         ; ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = closure_tag(_, _, _)
         ; ConsTag = tabling_info_tag(_, _)
-        ; ConsTag = table_io_decl_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
         unexpected($module, $pred, "unexpected tag")
@@ -2095,7 +2094,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
         ; ConsTag = typeclass_info_const_tag(_)
         ; ConsTag = ground_term_const_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
-        ; ConsTag = table_io_decl_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
         unexpected($module, $pred, "unexpected tag")

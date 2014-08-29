@@ -94,8 +94,8 @@
                 cfile_proc_var_names        :: list(int),
                 cfile_proc_body_bytecodes   :: list(int),
                 cfile_ts_string_table       :: list(string),
-                cfile_table_io_decls        :: list(table_io_decl_data),
-                cfile_table_io_decl_map     :: map(pred_proc_id,
+                cfile_table_io_entries      :: list(table_io_entry_data),
+                cfile_table_io_entry_map    :: map(pred_proc_id,
                                                 layout_slot_name),
                 cfile_proc_event_layouts    :: list(layout_slot_name),
                 cfile_exec_traces           :: list(proc_layout_exec_trace),
@@ -1265,7 +1265,7 @@
             % identified by the layout_slot_id_kind.
 
 :- type layout_slot_id_kind
-    --->    table_io_decl_id.
+    --->    table_io_entry_id.
 
     % There are two kinds of labels: entry labels and internal labels.
     % Entry labels are the entry points of procedures; internal labels are not.

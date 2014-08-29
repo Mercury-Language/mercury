@@ -17,6 +17,7 @@
 
 #include "mercury_imp.h"
 #include "mercury_array_macros.h"
+#include "mercury_builtin_types.h"
 #include "mercury_memory.h"
 #include "mercury_layout_util.h"
 #include "mercury_deconstruct.h"
@@ -1301,14 +1302,30 @@ MR_trace_browse_action(FILE *out, MR_IoActionNum action_number,
 {
     MR_ConstString  proc_name;
     MR_Word         is_func;
+    MR_bool         have_arg_infos;
     MR_Word         arg_list;
     MR_bool         io_action_tabled;
     MR_bool         saved_io_tabling_enabled;
 
     io_action_tabled = MR_trace_get_action(action_number, &proc_name, &is_func,
-        &arg_list);
+        &have_arg_infos, &arg_list);
     if (!io_action_tabled) {
         return "I/O action number not in range";
+    }
+
+    if (! have_arg_infos) {
+        MR_TypeInfo type_info;
+        MR_Word     value;
+        MR_Word     arg;
+
+        MR_restore_transient_hp();
+        arg_list = MR_list_empty();
+        type_info = (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0);
+        value = (MR_Word) MR_make_string_const(
+            "the arguments are not available due to the presence of one or more type class constraints");
+        MR_new_univ_on_hp(arg, type_info, value);
+        arg_list = MR_univ_list_cons(arg, arg_list);
+        MR_save_transient_hp();
     }
 
     saved_io_tabling_enabled = MR_io_tabling_enabled;

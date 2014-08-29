@@ -418,8 +418,8 @@ dump_data_id(vector_common_data_id(type_num(TypeNum), Offset)) =
         ++ int_to_string(Offset) ++ ")".
 dump_data_id(layout_id(LayoutName)) =
     "layout_id(" ++ dump_layout_name(LayoutName) ++ ")".
-dump_data_id(layout_slot_id(table_io_decl_id, PredProcId)) =
-    "table_io_decl_id(" ++ dump_pred_proc_id(PredProcId) ++ ")".
+dump_data_id(layout_slot_id(table_io_entry_id, PredProcId)) =
+    "table_io_entry_id(" ++ dump_pred_proc_id(PredProcId) ++ ")".
 
 :- func dump_pred_proc_id(pred_proc_id) = string.
 
@@ -585,8 +585,8 @@ dump_layout_array_name(ArrayName) = Str :-
         ArrayName = proc_body_bytecodes_array,
         Str = "proc_body_bytecodes_array"
     ;
-        ArrayName = proc_table_io_decl_array,
-        Str = "proc_table_io_decl_array"
+        ArrayName = proc_table_io_entry_array,
+        Str = "proc_table_io_entry_array"
     ;
         ArrayName = threadscope_string_table_array,
         Str = "threadscope_string_table_array"

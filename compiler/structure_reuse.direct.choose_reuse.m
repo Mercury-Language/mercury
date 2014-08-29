@@ -1038,7 +1038,7 @@ cons_has_normal_fields(ModuleInfo, Cons) :-
         ; Cons = type_info_cell_constructor(_)
         ; Cons = typeclass_info_cell_constructor
         ; Cons = tabling_info_const(_)
-        ; Cons = table_io_decl(_)
+        ; Cons = table_io_entry_desc(_)
         ; Cons = deep_profiling_proc_layout(_)
         ),
         unexpected($module, $pred, "unusual cons_id")

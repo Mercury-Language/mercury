@@ -130,7 +130,7 @@ output_single_c_file(Globals, CFile, !DeclSet, !IO) :-
         InternalLabelToLayoutMap, EntryLabelToLayoutMap,
         CallSiteStatics, CoveragePoints, ProcStatics,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TSStringTable,
-        TableIoDecls, TableIoDeclMap, ProcEventLayouts, ExecTraces,
+        TableIoEntries, TableIoEntryMap, ProcEventLayouts, ExecTraces,
         ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
         AllocSites, AllocSiteMap,
         Modules, UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
@@ -140,7 +140,7 @@ output_single_c_file(Globals, CFile, !DeclSet, !IO) :-
         !IO),
 
     Info = init_llds_out_info(ModuleName, SourceFileName, Globals,
-        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap,
+        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoEntryMap,
         AllocSiteMap),
     annotate_c_modules(Info, Modules, AnnotatedModules,
         cord.init, EntryLabelsCord, cord.init, InternalLabelsCord,
@@ -176,7 +176,7 @@ output_single_c_file(Globals, CFile, !DeclSet, !IO) :-
         ShortLocns, LongLocns, UserEventVarNums, UserEvents,
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
-        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls,
+        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoEntries,
         ProcEventLayouts, ExecTraces, AllocSites, !IO),
 
     list.foldl2(output_proc_layout_data_defn(Info), ProcLayoutDatas,
@@ -192,7 +192,7 @@ output_single_c_file(Globals, CFile, !DeclSet, !IO) :-
         ShortLocns, LongLocns, UserEventVarNums, UserEvents,
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
-        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls,
+        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoEntries,
         ProcEventLayouts, ExecTraces, TSStringTable, AllocSites,
         !DeclSet, !IO),
 

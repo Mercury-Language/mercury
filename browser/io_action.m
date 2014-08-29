@@ -91,19 +91,20 @@ io_action_to_browser_term(IoAction) = Term :-
 "{
     const char  *problem;
     const char  *proc_name;
-    MR_Bool     is_func;
-    MR_Word     args;
     MR_bool     io_action_tabled;
+    MR_Word     is_func;
+    MR_bool     have_arg_infos;
+    MR_Word     args;
     MR_String   ProcName;
 
     MR_save_transient_hp();
     io_action_tabled = MR_trace_get_action(SeqNum, &proc_name, &is_func,
-        &args);
+        &have_arg_infos, &args);
     MR_restore_transient_hp();
 
     /* cast away const */
     ProcName = (MR_String) (MR_Integer) proc_name;
-    if (io_action_tabled) {
+    if (io_action_tabled && have_arg_infos) {
         MaybeIOAction = MR_IO_ACTION_make_yes_io_action(ProcName, is_func,
             args);
     } else {

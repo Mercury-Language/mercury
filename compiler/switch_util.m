@@ -586,7 +586,7 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         ; Tag = ground_term_const_tag(_, _)
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = table_io_decl_tag(_, _)
+        ; Tag = table_io_entry_tag(_, _)
         ),
         unexpected($module, $pred, "non-switch tag")
     ).
@@ -1188,7 +1188,7 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ; Tag = ground_term_const_tag(_, _)
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = table_io_decl_tag(_, _)
+        ; Tag = table_io_entry_tag(_, _)
         ; Tag = reserved_address_tag(_)
         ; Tag = shared_with_reserved_addresses_tag(_, _)
         ),
@@ -1292,7 +1292,7 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
         ; Tag = ground_term_const_tag(_, _)
         ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = table_io_decl_tag(_, _)
+        ; Tag = table_io_entry_tag(_, _)
         ; Tag = reserved_address_tag(_)
         ; Tag = shared_with_reserved_addresses_tag(_, _)
         ),

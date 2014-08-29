@@ -23,6 +23,7 @@ MCFLAGS-shallow2 = --trace deep
 MCFLAGS-tabled_read = --trace-table-io-all
 MCFLAGS-tabled_read_unitize = --trace-table-io-all
 MCFLAGS-tabled_read_decl = --trace-table-io-all
+MCFLAGS-tabled_typeclass = --trace-table-io-all
 # By default, we reclaim heap on failure in non-Boehm-gc grades.
 # The extra stack slots required for this reclamation cause spurious
 # differences from the expected output on the nondet_stack test case.

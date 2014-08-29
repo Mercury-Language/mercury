@@ -720,10 +720,10 @@ functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums)
             ++ pred_id_to_string(ModuleInfo, PredId)
             ++ ", " ++ int_to_string(ProcIdInt) ++ ")"
     ;
-        ConsId = table_io_decl(ShroudedPredProcId),
+        ConsId = table_io_entry_desc(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         proc_id_to_int(ProcId, ProcIdInt),
-        Str = "table_io_decl("
+        Str = "table_io_entry_desc("
             ++ pred_id_to_string(ModuleInfo, PredId)
             ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
     ;
@@ -813,10 +813,10 @@ cons_id_and_arity_to_string(ConsId) = String :-
             "<tabling_info " ++ int_to_string(PredId) ++
             ", " ++ int_to_string(ProcId) ++ ">"
     ;
-        ConsId = table_io_decl(PredProcId),
+        ConsId = table_io_entry_desc(PredProcId),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),
         String =
-            "<table_io_decl " ++ int_to_string(PredId) ++ ", " ++
+            "<table_io_entry_desc " ++ int_to_string(PredId) ++ ", " ++
             int_to_string(ProcId) ++ ">"
     ;
         ConsId = deep_profiling_proc_layout(PredProcId),
@@ -940,10 +940,10 @@ cons_id_and_vars_or_arity_to_string(Qual, VarSet, ConsId, MaybeArgVars)
             "<tabling_info " ++ int_to_string(PredId) ++
             ", " ++ int_to_string(ProcId) ++ ">"
     ;
-        ConsId = table_io_decl(PredProcId),
+        ConsId = table_io_entry_desc(PredProcId),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),
         String =
-            "<table_io_decl " ++ int_to_string(PredId) ++ ", " ++
+            "<table_io_entry_desc " ++ int_to_string(PredId) ++ ", " ++
             int_to_string(ProcId) ++ ">"
     ;
         ConsId = deep_profiling_proc_layout(PredProcId),

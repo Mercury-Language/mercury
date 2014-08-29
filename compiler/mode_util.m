@@ -1686,7 +1686,7 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         ; ConsId = typeclass_info_const(_)
         ; ConsId = ground_term_const(_, _)
         ; ConsId = tabling_info_const(_)
-        ; ConsId = table_io_decl(_)
+        ; ConsId = table_io_entry_desc(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ),
         MaybeInst = yes(ground(shared, none))

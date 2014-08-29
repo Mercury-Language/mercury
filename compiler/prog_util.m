@@ -632,7 +632,7 @@ cons_id_arity(ConsId) = Arity :-
         ; ConsId = typeclass_info_const(_)
         ; ConsId = tabling_info_const(_)
         ; ConsId = deep_profiling_proc_layout(_)
-        ; ConsId = table_io_decl(_)
+        ; ConsId = table_io_entry_desc(_)
         ),
         unexpected($module, $pred, "unexpected cons_id")
     ).
@@ -655,7 +655,7 @@ cons_id_maybe_arity(ground_term_const(_, ConsId)) =
     cons_id_maybe_arity(ConsId).
 cons_id_maybe_arity(tabling_info_const(_)) = no.
 cons_id_maybe_arity(deep_profiling_proc_layout(_)) = no.
-cons_id_maybe_arity(table_io_decl(_)) = no.
+cons_id_maybe_arity(table_io_entry_desc(_)) = no.
 
 make_functor_cons_id(term.atom(Name), Arity) =
     cons(unqualified(Name), Arity, cons_id_dummy_type_ctor).

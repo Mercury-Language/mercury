@@ -1895,7 +1895,7 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % table_arg_infos is the one in the proc_info in which
                 % the proc_table_io_info is stored.
 
-                table_arg_infos
+                maybe(table_arg_infos)
             ).
 
 :- type table_step_desc
