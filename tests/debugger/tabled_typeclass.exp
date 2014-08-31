@@ -16,19 +16,22 @@ mdb> finish
 6
       E2:     C1 EXIT pred tabled_typeclass.main/2-0 (det)
 mdb> print io *
-action 0: tc_action("the arguments are not available due to the presence of one or more typeclass constraints")
+action 0: tc_action("the arguments are not available due to the presence of one
+or more type class constraints")
 action 1: write_int(1)
 action 2: write_char('\n')
 action 3: notc_action(status, status_success, 2)
 action 4: write_int(2)
 action 5: write_char('\n')
-action 6: tc_action("the arguments are not available due to the presence of one or more typeclass constraints")
+action 6: tc_action("the arguments are not available due to the presence of one
+or more type class constraints")
 action 7: write_int(3)
 action 8: write_char('\n')
 action 9: notc_action(status, status_no_memory, 4)
 action 10: write_int(4)
 action 11: write_char('\n')
-action 12: tc_action("the arguments are not available due to the presence of one or more typeclass constraints")
+action 12: tc_action("the arguments are not available due to the presence of
+one or more type class constraints")
 action 13: write_int(5)
 action 14: write_char('\n')
 action 15: notc_action(status, status_null_pointer, 6)
