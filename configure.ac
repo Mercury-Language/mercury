@@ -2506,11 +2506,12 @@ case "$ac_cv_prog_gcc" in yes)
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
             ;;
         i*86-*|x86_64*)
-            # On x86-64 with GCC 4.8, gcc labels do not work correctly with
-            # -ftree-dominator-opts -- we disable it for x86 in this case too.
+            # On x86-64 with GCC 4.8 and 4.9 gcc labels do not work correctly
+            # with -ftree-dominator-opts -- we disable it for x86 in this case
+            # too.
             #
             case "$C_COMPILER_TYPE" in
-                gcc_4_8_*)
+                gcc_4_8_*|gcc_4_9_*)
                   CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fno-tree-dominator-opts"
                 ;;
             esac

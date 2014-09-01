@@ -1265,7 +1265,8 @@ MR_dump_nondet_stack_from_layout(FILE *fp,
         } else {
             frame_size = apparent_frame_size;
             MR_print_nondetstackptr(fp, base_maxfr);
-            fprintf(fp, ": ordinary, %d words", frame_size);
+            fprintf(fp, ": ordinary, %" MR_INTEGER_LENGTH_MODIFIER "d words",
+                frame_size);
             if (print_vars && MR_find_matching_branch(base_maxfr, &branch)) {
                 fprintf(fp, ", ");
                 label_layout = MR_nondet_branch_infos[branch].branch_layout;
