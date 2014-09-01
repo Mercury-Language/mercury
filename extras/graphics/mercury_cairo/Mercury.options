@@ -12,8 +12,4 @@ MCFLAGS = \
 	--cflags $(CAIRO_CFLAGS)					\
 	--ld-flags $(CAIRO_LDFLAGS)
 
-# Workaround for Mercury bug #354.
-#
-MCFLAGS += --trace-table-io-only-retry
-
 MCFLAGS-mercury_cairo = --no-warn-nothing-exported --no-warn-interface-imports
