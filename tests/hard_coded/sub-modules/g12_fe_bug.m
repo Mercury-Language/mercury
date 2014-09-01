@@ -1,6 +1,6 @@
 % Compilation of this program with rotd-2011-09-04 and before resulted
 % in there being an erroneous error message about multiple foreign_enum
-% pragams being emitted when generating the .c file for the generic_search
+% pragmas being emitted when generating the .c file for the generic_search
 % sub-module.
 
 :- module g12_fe_bug.

@@ -4571,9 +4571,10 @@ interface section of its parent module.
 
 If a sub-module is declared but not explicitly defined,
 then there is an implicit definition with an empty implementation section
-for that sub-module (this will result in an error, if the interface
-section includes declarations but not definitions for any types,
-predicates, modes, or (doubly) nested sub-modules).
+for that sub-module.
+This will result in an error if the interface section
+includes declarations but not definitions for any types, insts, modes,
+predicates, functions, or (doubly) nested sub-modules.
 
 @node Separate sub-modules
 @subsection Separate sub-modules

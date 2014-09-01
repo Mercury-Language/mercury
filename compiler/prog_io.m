@@ -421,76 +421,6 @@ drop_one_qualifier_2(ParentQual, ChildName) =  PartialQual :-
 
 %-----------------------------------------------------------------------------%
 
-:- type module_end
-    --->    module_end_no
-    ;       module_end_yes(module_name, prog_context).
-
-    % Extract the final `:- end_module' declaration if any.
-    %
-:- pred get_end_module(module_name::in, list(item)::in, list(item)::out,
-    module_end::out) is det.
-
-get_end_module(ModuleName, RevItems0, RevItems, EndModule) :-
-    (
-        % Note: if the module name in the end_module declaration does not match
-        % what we expect, given the source file name, then we assume that it is
-        % for a nested module, and so we leave it alone. If it is not for a
-        % nested module, the error will be caught by make_hlds.
-
-        RevItems0 = [Item | RevItemsPrime],
-        Item = item_module_end(ItemModuleEnd),
-        ItemModuleEnd = item_module_end_info(ModuleName, Context, _SeqNum)
-    ->
-        RevItems = RevItemsPrime,
-        EndModule = module_end_yes(ModuleName, Context)
-    ;
-        RevItems = RevItems0,
-        EndModule = module_end_no
-    ).
-
-%-----------------------------------------------------------------------------%
-
-    % Check that the module starts with a :- module declaration,
-    % and that the end_module declaration (if any) is correct,
-    % and construct the final parsing result.
-    %
-:- pred check_end_module(module_end::in, list(item)::in, list(item)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    module_error::in, module_error::out) is det.
-
-check_end_module(EndModule, !Items, !Specs, !Error) :-
-    % Double-check that the first item is a `:- module ModuleName' declaration,
-    % and remove it from the front of the item list.
-    (
-        !.Items = [Item | !:Items],
-        Item = item_module_start(ItemModuleStart),
-        ItemModuleStart = item_module_start_info(StartModuleName, _, _)
-    ->
-        % Check that the end module declaration (if any) matches
-        % the begin module declaration.
-        (
-            EndModule = module_end_yes(EndModuleName, EndModuleContext),
-            StartModuleName \= EndModuleName
-        ->
-            Pieces = [words("Error:"),
-                decl("end_module"), words("declaration"),
-                words("does not match"),
-                decl("module"), words("declaration."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(EndModuleContext, [always(Pieces)])]),
-            !:Specs = [Spec | !.Specs],
-            !:Error = some_module_errors
-        ;
-            true
-        )
-    ;
-        % If there's no `:- module' declaration at this point, it is
-        % an internal error -- read_first_item should have inserted one.
-        unexpected($module, $pred, "no `:- module' declaration")
-    ).
-
-%-----------------------------------------------------------------------------%
-
     % Create a dummy term. Used for error messages that are not associated
     % with any particular term or context.
     %
@@ -568,38 +498,65 @@ find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
 
 read_all_items(Globals, DefaultModuleName, ModuleName, Items,
         !:Specs, !:Error, !IO) :-
-    some [!SeqNumCounter] (
+    some [!SeqNumCounter, !RevItems] (
         counter.init(1, !:SeqNumCounter),
 
-        % Read all the items (the first one is handled specially).
         io.input_stream(Stream, !IO),
         io.input_stream_name(Stream, SourceFileName0, !IO),
+        % We handle the first item specially. Read the documentation on
+        % read_first_item for the reason.
         read_first_item(DefaultModuleName, SourceFileName0, SourceFileName,
-            ModuleName, ModuleDeclItem, MaybeSecondTerm, !:Specs, !:Error,
-            !SeqNumCounter, !IO),
-        RevItems0 = [ModuleDeclItem],
-        (
-            MaybeSecondTerm = yes(SecondTerm),
-            % XXX Should this be SourceFileName instead of SourceFileName0?
-            read_term_to_item_result(ModuleName, SourceFileName0, SecondTerm,
-                !SeqNumCounter, MaybeSecondItem),
-
-            read_items_loop_2(Globals, MaybeSecondItem, ModuleName,
-                SourceFileName, RevItems0, RevItems1,
-                !Specs, !Error, !.SeqNumCounter, _, !IO)
-        ;
-            MaybeSecondTerm = no,
-            read_items_loop(Globals, ModuleName, SourceFileName,
-                RevItems0, RevItems1, !Specs, !Error, !.SeqNumCounter, _, !IO)
-        ),
-
-        % Get the end_module declaration (if any), check that it matches
-        % the initial module declaration (if any), and remove both of them
-        % from the final item list.
-        get_end_module(ModuleName, RevItems1, RevItems, EndModule),
-        list.reverse(RevItems, Items0),
-        check_end_module(EndModule, Items0, Items, !Specs, !Error)
+            ModuleName, ModuleDeclItem, MaybeSecondTermResult,
+            !:Specs, !:Error, !SeqNumCounter, !IO),
+        !:RevItems = [ModuleDeclItem],
+        read_items_loop(Globals, ModuleName, SourceFileName,
+            MaybeSecondTermResult, !RevItems, !Specs, !Error,
+            !.SeqNumCounter, _, !IO),
+        remove_main_module_start_end_wrappers(ModuleName, !.RevItems, Items)
     ).
+
+    % Unreverse the item list while removing from it both the initial
+    % ":- module" declaration and its matching ":- end_module" declaration,
+    % if there is one.
+    %
+:- pred remove_main_module_start_end_wrappers(module_name::in,
+    list(item)::in, list(item)::out) is det.
+
+remove_main_module_start_end_wrappers(MainModuleName, RevItems0, !:Items) :-
+    (
+        % Note: if the module name in the end_module declaration
+        % does not match name of the top level module stored in this
+        % source file, then that end_module declaration must be
+        % for a nested module, and we therefore leave it alone.
+        % If it is not for a nested module, the error will have been
+        % caught and reported by process_one_item_in_loop.
+
+        RevItems0 = [LastItem | RevItems1],
+        LastItem = item_module_end(ItemModuleEnd),
+        ItemModuleEnd = item_module_end_info(MainModuleName, _Context, _SeqNum)
+    ->
+        RevItems = RevItems1
+    ;
+        RevItems = RevItems0
+    ),
+    list.reverse(RevItems, !:Items),
+
+    % Double-check that the first item is a `:- module MainModuleName'
+    % declaration, and if it is, remove it from the front of the item list.
+    (
+        !.Items = [Item | !:Items],
+        Item = item_module_start(ItemModuleStart),
+        ItemModuleStart = item_module_start_info(MainModuleName, _, _)
+    ->
+        true
+    ;
+        % If there is no `:- module' declaration at this point, it is
+        % an internal error, since read_first_item should have inserted one.
+        unexpected($module, $pred,
+            "module does not start with `:- module' declaration")
+    ).
+
+%-----------------------------------------------------------------------------%
 
     % We need to jump through a few hoops when reading the first item,
     % to allow us to recover from a missing initial `:- module' declaration.
@@ -638,14 +595,14 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
             ModuleDeclItem, MaybeSecondTerm, Specs, Error, !SeqNumCounter, !IO)
     ;
-        % Check if the first term was a `:- module' decl.
+        % Check if the first term is a `:- module' decl.
         MaybeFirstItem = read_item_ok(FirstItem),
         FirstItem = item_module_start(FirstItemModuleStart),
         FirstItemModuleStart = item_module_start_info(StartModuleName,
             FirstContext, _FirstItemSeqNum)
     ->
-        % If so, then check that it matches the expected module name,
-        % and if not, report a warning.
+        % If it is, then check that it matches the expected module name.
+        % If it does not match, report a warning.
         ( match_sym_name(StartModuleName, DefaultModuleName) ->
             ModuleName = DefaultModuleName,
             Specs = [],
@@ -686,7 +643,7 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         Pieces = [words("Error: module must start with a"),
             decl("module"), words("declaration."), nl],
         Severity = severity_error,
-        Msgs  = [always(Pieces)],
+        Msgs = [always(Pieces)],
         Spec = error_spec(Severity, phase_term_to_parse_tree,
             [simple_msg(FirstContext, Msgs)]),
         Specs = [Spec],
@@ -709,96 +666,199 @@ make_module_decl(ModuleName, Context, Item) :-
 
 %-----------------------------------------------------------------------------%
 
-    % The code below was carefully optimized to run efficiently in NU-Prolog.
-    % We used to call read_item(MaybeItem) - which does all the work for
-    % a single item - via io.gc_call/1, which called the goal with
-    % garbage collection. But optimizing for NU-Prolog is no longer a concern.
+    % This loop reads in all the items in a file.
+    %
+    % Our top-level caller may or may not specify a term that it has already
+    % read in. (This is a side effect of the special handling of the first item
+    % by read_first_item.) The recursive calls never specify an already-read-in
+    % term. To avoid having to check for an already-read-in term on every
+    % iteration, we special case the mode where there isn't one.
+    %
+:- pred read_items_loop(globals, module_name, file_name, maybe(read_term),
+    list(item), list(item), list(error_spec), list(error_spec),
+    module_error, module_error, counter, counter, io, io).
+:- mode read_items_loop(in, in, in, in(bound(no)),
+    in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode read_items_loop(in, in, in, in,
+    in, out, in, out, in, out, in, out, di, uo) is det.
 
-:- pred read_items_loop(globals::in, module_name::in, file_name::in,
-    list(item)::in, list(item)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    module_error::in, module_error::out, counter::in, counter::out,
-    io::di, io::uo) is det.
-
-read_items_loop(Globals, ModuleName, SourceFileName, !Items,
-        !Specs, !Error, !SeqNumCounter, !IO) :-
-    read_item(ModuleName, SourceFileName, MaybeItem, !SeqNumCounter, !IO),
-    read_items_loop_2(Globals, MaybeItem, ModuleName, SourceFileName, !Items,
-        !Specs, !Error, !SeqNumCounter, !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- pred read_items_loop_2(globals::in, read_item_result::in, module_name::in,
-    file_name::in, list(item)::in, list(item)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    module_error::in, module_error::out, counter::in, counter::out,
-    io::di, io::uo) is det.
-
-read_items_loop_2(Globals, MaybeItemOrEOF, !.ModuleName, !.SourceFileName,
-        !Items, !Specs, !Error, !SeqNumCounter, !IO) :-
+read_items_loop(Globals, !.ModuleName, !.SourceFileName, MaybeReadTermResult,
+        !RevItems, !Specs, !Error, !SeqNumCounter, !IO) :-
     (
-        MaybeItemOrEOF = read_item_eof
-        % If the next item was end-of-file, then we're done.
+        MaybeReadTermResult = no,
+        parser.read_term_filename(!.SourceFileName, ReadTermResult, !IO)
+    ;
+        MaybeReadTermResult = yes(ReadTermResult)
+    ),
+    read_term_to_item_result(!.ModuleName, !.SourceFileName, ReadTermResult,
+        !SeqNumCounter, ReadItemResult),
+    (
+        ReadItemResult = read_item_eof
+        % If the next item was end-of-file, then we are done.
     ;
         % If the next item had some errors, then insert them
         % in the list of errors and continue looping.
 
-        MaybeItemOrEOF = read_item_errors(ItemSpecs),
+        ReadItemResult = read_item_errors(ItemSpecs),
         !:Specs = ItemSpecs ++ !.Specs,
         !:Error = some_module_errors,
-        read_items_loop(Globals, !.ModuleName, !.SourceFileName, !Items,
-            !Specs, !Error, !SeqNumCounter, !IO)
+        read_items_loop(Globals, !.ModuleName, !.SourceFileName, no,
+            !RevItems, !Specs, !Error, !SeqNumCounter, !IO)
     ;
-        MaybeItemOrEOF = read_item_ok(Item),
-        read_items_loop_ok(Globals, Item, !ModuleName, !SourceFileName, !Items,
-            !Specs, !Error, !IO),
-        read_items_loop(Globals, !.ModuleName, !.SourceFileName, !Items,
-            !Specs, !Error, !SeqNumCounter, !IO)
+        ReadItemResult = read_item_ok(Item),
+        process_one_item_in_loop(Globals, Item, !ModuleName, !SourceFileName,
+            !RevItems, !Specs, !Error, !IO),
+        read_items_loop(Globals, !.ModuleName, !.SourceFileName, no,
+            !RevItems, !Specs, !Error, !SeqNumCounter, !IO)
     ).
 
-:- pred read_items_loop_ok(globals::in, item::in,
+%-----------------------------------------------------------------------------%
+
+:- pred process_one_item_in_loop(globals::in, item::in,
     module_name::in, module_name::out, file_name::in, file_name::out,
     list(item)::in, list(item)::out,
     list(error_spec)::in, list(error_spec)::out,
     module_error::in, module_error::out, io::di, io::uo) is det.
 
-read_items_loop_ok(Globals, Item, !ModuleName, !SourceFileName, !Items,
-        !Specs, !Error, !IO) :-
+process_one_item_in_loop(Globals, Item, !ModuleName, !SourceFileName,
+        !RevItems, !Specs, !Error, !IO) :-
     % If the next item was a valid item, check whether it was a declaration
     % that affects the current parsing context -- i.e. either a `module' or
     % `end_module' declaration, or a `pragma source_file' declaration.
-    % If so, set the new parsing context according. Next, unless the item
+    % If so, update the new parsing context. Next, unless the item
     % is a `pragma source_file' declaration, insert it into the item list.
-    % Then continue looping.
+    % Then return to our caller to continue looping.
     (
         Item = item_module_start(ItemModuleStart),
-        ItemModuleStart = item_module_start_info(NestedModuleName, _, _),
-        !:ModuleName = NestedModuleName,
-        !:Items = [Item | !.Items]
+        ItemModuleStart = item_module_start_info(NewModuleSymName,
+            ItemContext, _),
+        (
+            NewModuleSymName = unqualified(NewModuleName),
+            !:ModuleName = qualified(!.ModuleName, NewModuleName)
+        ;
+            NewModuleSymName = qualified(NewQualifier, NewModuleName),
+            OldQualifiersList = sym_name_to_list(!.ModuleName),
+            NewQualifiersList = sym_name_to_list(NewQualifier),
+            ( list.sublist(NewQualifiersList, OldQualifiersList) ->
+                !:ModuleName = qualified(!.ModuleName, NewModuleName)
+            ;
+                Pieces = [words("Error:"),
+                    words("the module"), sym_name(NewModuleSymName),
+                    words("in this"), decl("module"), words("declaration"),
+                    words("cannot be a submodule of the current module"),
+                    sym_name(!.ModuleName), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(ItemContext, [always(Pieces)])]),
+                !:Specs = [Spec | !.Specs],
+                !:Error = fatal_module_errors,
+
+                % XXX Believing the incorrect submodule declaration follows
+                % the algorithm that this code used to use, but I (zs)
+                % am far from sure that this the least harmful thing we can
+                % do here, since it will surely lead to errors when the
+                % corresponding ":- end_module" declaration is reached.
+                !:ModuleName = NewModuleSymName
+            )
+        ),
+        !:RevItems = [Item | !.RevItems]
     ;
         Item = item_module_end(ItemModuleEnd),
-        ItemModuleEnd = item_module_end_info(NestedModuleName, _, _),
-        sym_name_get_module_name_default(NestedModuleName,
-            root_module_name, ParentModuleName),
-        !:ModuleName = ParentModuleName,
-        !:Items = [Item | !.Items]
+        ItemModuleEnd = item_module_end_info(EndModuleSymName, ItemContext, _),
+        sym_name_to_qualifier_list_and_name(EndModuleSymName,
+            EndQualifierList, EndModuleName),
+        sym_name_to_qualifier_list_and_name(!.ModuleName,
+            CurQualifierList, CurModuleName),
+        % The language spec says that a single ":- end_module" declaration
+        % can end only one nested module.
+        (
+            EndModuleName = CurModuleName,
+            list.sublist(EndQualifierList, CurQualifierList)
+        ->
+            sym_name_get_module_name_default(EndModuleSymName,
+                root_module_name, ParentModuleSymName),
+            !:ModuleName = ParentModuleSymName
+        ;
+            PrefixPieces = [words("Error:"),
+                words("this"), decl("end_module"), words("declaration"),
+                words("is not for the until-then-current module.")],
+            ( EndModuleName = CurModuleName ->
+                NamePieces = []
+            ;
+                NamePieces = [words("The module names do not match:"),
+                    words("actual"), quote(EndModuleName), words("vs"),
+                    words("expected"), quote(CurModuleName)]
+            ),
+            ( list.sublist(EndQualifierList, CurQualifierList) ->
+                QualifierPieces = []
+            ;
+                (
+                    EndModuleSymName = qualified(EndQualifier, _)
+                ;
+                    EndModuleSymName = unqualified(_),
+                    % An empty EndQualifierList should match EVERY
+                    % CurQualifierList, so the call to list.sublist above
+                    % should have succeeded.
+                    unexpected($module, $pred,
+                        "unqualified symname does not pass sublist test")
+                ),
+                (
+                    !.ModuleName = qualified(CurQualifier, _),
+                    CurQualifierPiece = sym_name(CurQualifier)
+                ;
+                    !.ModuleName = unqualified(_),
+                    CurQualifierPiece = words("no qualification")
+                ),
+                (
+                    NamePieces = [],
+                    LinkPieces = [words("The module qualifiers")]
+                ;
+                    NamePieces = [_ | _],
+                    LinkPieces = [suffix(", "),
+                        words("and the module qualifiers")]
+                ),
+                QualifierPieces = LinkPieces ++ [words("do not match:"),
+                    words("actual"), sym_name(EndQualifier), words("vs"),
+                    words("expected"), CurQualifierPiece]
+            ),
+
+            SuffixPieces = [suffix("."), nl],
+            Pieces = PrefixPieces ++ NamePieces ++ QualifierPieces
+                ++ SuffixPieces,
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(ItemContext, [always(Pieces)])]),
+            !:Specs = [Spec | !.Specs],
+            !:Error = fatal_module_errors,
+
+            % This setting of !:ModuleName effectively replaces
+            % the incorrect end_module declaration with the end_module
+            % declaration we expected here. This is the right thing
+            % to do e.g.if the end_module declaration is simply mistyped,
+            % but if the user actually intended to end several nested
+            % submodules with a single end_module declaration, then
+            % it will put the following items in a context that
+            % the programmer did not intend.
+            sym_name_get_module_name_default(EndModuleSymName,
+                root_module_name, ParentModuleSymName),
+            !:ModuleName = ParentModuleSymName
+        ),
+        !:RevItems = [Item | !.RevItems]
     ;
         Item = item_module_defn(ItemModuleDefn),
         ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
         ( ModuleDefn = md_import(Modules) ->
             list.map(make_pseudo_import_module_decl(Context, SeqNum),
                 Modules, ImportItems),
-            !:Items = ImportItems ++ !.Items
+            !:RevItems = ImportItems ++ !.RevItems
         ; ModuleDefn = md_use(Modules) ->
             list.map(make_pseudo_use_module_decl(Context, SeqNum),
                 Modules, UseItems),
-            !:Items = UseItems ++ !.Items
+            !:RevItems = UseItems ++ !.RevItems
         ; ModuleDefn = md_include_module(Modules) ->
             list.map(make_pseudo_include_module_decl(Context, SeqNum),
                 Modules, IncludeItems),
-            !:Items = IncludeItems ++ !.Items
+            !:RevItems = IncludeItems ++ !.RevItems
         ;
-            !:Items = [Item | !.Items]
+            !:RevItems = [Item | !.RevItems]
         )
     ;
         Item = item_pragma(ItemPragma),
@@ -806,7 +866,7 @@ read_items_loop_ok(Globals, Item, !ModuleName, !SourceFileName, !Items,
         ( Pragma = pragma_source_file(SFNInfo) ->
             SFNInfo = pragma_info_source_file(!:SourceFileName)
         ;
-            !:Items = [Item | !.Items]
+            !:RevItems = [Item | !.RevItems]
         )
     ;
         ( Item = item_clause(_)
@@ -822,13 +882,13 @@ read_items_loop_ok(Globals, Item, !ModuleName, !SourceFileName, !Items,
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
         ),
-        !:Items = [Item | !.Items]
+        !:RevItems = [Item | !.RevItems]
     ;
         Item = item_nothing(ItemNothing),
         ItemNothing = item_nothing_info(MaybeWarning, Context, NothingSeqNum),
         (
             MaybeWarning = no,
-            !:Items = [Item | !.Items]
+            !:RevItems = [Item | !.RevItems]
         ;
             MaybeWarning = yes(Warning),
             Warning = item_warning(MaybeOption, Msg, Term),
@@ -858,26 +918,18 @@ read_items_loop_ok(Globals, Item, !ModuleName, !SourceFileName, !Items,
             ),
             NoWarnItemNothing = item_nothing_info(no, Context, NothingSeqNum),
             NoWarnItem = item_nothing(NoWarnItemNothing),
-            !:Items = [NoWarnItem | !.Items]
+            !:RevItems = [NoWarnItem | !.RevItems]
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
+% XXX Move above.
+
 :- type read_item_result
     --->    read_item_eof
     ;       read_item_errors(list(error_spec))
     ;       read_item_ok(item).
-
-    % Read_item/1 reads a single item, and if it is a valid term parses it.
-    %
-:- pred read_item(module_name::in, file_name::in, read_item_result::out,
-    counter::in, counter::out, io::di, io::uo) is det.
-
-read_item(ModuleName, SourceFileName, MaybeItem, !SeqNumCounter, !IO) :-
-    parser.read_term_filename(SourceFileName, MaybeTerm, !IO),
-    read_term_to_item_result(ModuleName, SourceFileName, MaybeTerm,
-        !SeqNumCounter, MaybeItem).
 
 :- pred read_term_to_item_result(module_name::in, string::in, read_term::in,
     counter::in, counter::out, read_item_result::out) is det.
@@ -908,6 +960,8 @@ read_term_to_item_result(ModuleName, FileName, ReadTermResult,
         )
     ).
 
+%-----------------------------------------------------------------------------%
+
 parse_item(ModuleName, VarSet, Term, SeqNum, Result) :-
     (
         Term = term.functor(term.atom(":-"), [DeclTerm], _DeclContext)
@@ -927,12 +981,12 @@ parse_item(ModuleName, VarSet, Term, SeqNum, Result) :-
             Term = term.functor(term.atom(":-"),
                 [HeadTermPrime, BodyTermPrime], TermContext)
         ->
-            % It's a rule.
+            % Term is a rule.
             HeadTerm = HeadTermPrime,
             BodyTerm = BodyTermPrime,
             ClauseContext = TermContext
         ;
-            % It's a fact.
+            % Term is a fact.
             HeadTerm = Term,
             ClauseContext = get_term_context(HeadTerm),
             BodyTerm = term.functor(term.atom("true"), [], ClauseContext)
@@ -1156,9 +1210,9 @@ parse_attributed_decl(ModuleName, VarSet, Functor, ArgTerms, Attributes,
     ;
         Functor = "end_module",
         ArgTerms = [ModuleNameTerm],
-        % The name in an `end_module' declaration not inside the scope of the
-        % module being ended, so the default module name here (ModuleName)
-        % is the parent of the previous default module name.
+        % The name in an `end_module' declaration is NOT inside the scope
+        % of the module being ended, so the default module name here
+        % (ModuleName) is the PARENT of the previous default module name.
 
         sym_name_get_module_name_default(ModuleName, root_module_name,
             ParentOfModuleName),
@@ -1425,7 +1479,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm, Condition,
         ;
             MaybePredNameAndArgs = ok2(Functor, ArgTerms),
             ( parse_type_and_mode_list(InstConstraints, ArgTerms, Args) ->
-                ( verify_type_and_mode_list(Args) ->
+                ( type_and_mode_list_is_consistent(Args) ->
                     (
                         WithInst = yes(_),
                         Args = [type_only(_) | _]
@@ -1592,7 +1646,7 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
         VarSet, MaybeDet, Condition, ExistQVars, Constraints, Attributes0,
         Context, SeqNum, MaybeItem) :-
     (
-        verify_type_and_mode_list(Args)
+        type_and_mode_list_is_consistent(Args)
     ->
         ConsistentArgsSpecs = []
     ;
@@ -1683,25 +1737,33 @@ parse_type_and_mode(InstConstraints, Term, MaybeTypeAndMode) :-
     % Verify that among the arguments of a :- pred or :- func declaration,
     % either all arguments specify a mode or none of them do.
     %
-:- pred verify_type_and_mode_list(list(type_and_mode)::in) is semidet.
+:- pred type_and_mode_list_is_consistent(list(type_and_mode)::in) is semidet.
 
-verify_type_and_mode_list([]).
-verify_type_and_mode_list([First | Rest]) :-
-    verify_type_and_mode_list_2(Rest, First).
-
-:- pred verify_type_and_mode_list_2(list(type_and_mode)::in, type_and_mode::in)
-    is semidet.
-
-verify_type_and_mode_list_2([], _).
-verify_type_and_mode_list_2([Head | Tail], First) :-
+type_and_mode_list_is_consistent([]).
+type_and_mode_list_is_consistent([Head | Tail]) :-
     (
         Head = type_only(_),
-        First = type_only(_)
+        type_and_mode_list_is_consistent_type_only(Tail)
     ;
         Head = type_and_mode(_, _),
-        First = type_and_mode(_, _)
-    ),
-    verify_type_and_mode_list_2(Tail, First).
+        type_and_mode_list_is_consistent_type_and_mode(Tail)
+    ).
+
+:- pred type_and_mode_list_is_consistent_type_only(list(type_and_mode)::in)
+    is semidet.
+
+type_and_mode_list_is_consistent_type_only([]).
+type_and_mode_list_is_consistent_type_only([Head | Tail]) :-
+    Head = type_only(_),
+    type_and_mode_list_is_consistent_type_only(Tail).
+
+:- pred type_and_mode_list_is_consistent_type_and_mode(list(type_and_mode)::in)
+    is semidet.
+
+type_and_mode_list_is_consistent_type_and_mode([]).
+type_and_mode_list_is_consistent_type_and_mode([Head | Tail]) :-
+    Head = type_and_mode(_, _),
+    type_and_mode_list_is_consistent_type_and_mode(Tail).
 
 %-----------------------------------------------------------------------------%
 %

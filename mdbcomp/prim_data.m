@@ -173,9 +173,18 @@
 
     % sym_name_to_list(SymName) = List:
     %
-    % Convert a symbol name to a list of strings,
+    % Convert a symbol name to a list of its component strings,
+    % qualifiers first, actual name last.
     %
 :- func sym_name_to_list(sym_name) = list(string).
+
+    % sym_name_to_qualifier_list_and_name(SymName, QualifierList, Name):
+    %
+    % Convert a symbol name to a list of its component strings,
+    % returning the list of qualifiers separately from the actual name.
+    %
+:- pred sym_name_to_qualifier_list_and_name(sym_name::in,
+    list(string)::out, string::out) is det.
 
     % is_submodule(SymName1, SymName2):
     %
@@ -440,6 +449,11 @@ sym_name_to_list(unqualified(Name)) = [Name].
 sym_name_to_list(qualified(Module, Name))
     = sym_name_to_list(Module) ++ [Name].
 
+sym_name_to_qualifier_list_and_name(unqualified(Name), [], Name).
+sym_name_to_qualifier_list_and_name(qualified(Module, Name),
+        Qualifiers, Name) :-
+    Qualifiers = sym_name_to_list(Module).
+
 unqualify_name(unqualified(Name)) = Name.
 unqualify_name(qualified(_ModuleName, Name)) = Name.
 
@@ -463,11 +477,6 @@ sym_name_get_module_name_default_name(SymName, DefaultModuleName, ModuleName,
         SymName = qualified(ModuleName, Name)
     ).
 
-    % match_sym_name(PartialSymName, CompleteSymName):
-    %
-    % Succeeds iff there is some sequence of module qualifiers
-    % which when prefixed to PartialSymName gives CompleteSymName.
-    %
 match_sym_name(qualified(Module1, Name), qualified(Module2, Name)) :-
     match_sym_name(Module1, Module2).
 match_sym_name(unqualified(Name), unqualified(Name)).

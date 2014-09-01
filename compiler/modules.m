@@ -592,10 +592,9 @@ make_interface(Globals, SourceFileName, SourceFileModuleName, ModuleName,
                 % check for some warnings, and then write out the `.int'
                 % and `int2' files and touch the `.date' file.
 
-                strip_imported_items(!InterfaceItems),
-                strip_assertions(!InterfaceItems),
+                strip_imported_items_and_assertions(!InterfaceItems),
                 strip_unnecessary_impl_defns(!InterfaceItems),
-                check_for_clauses_in_interface(!InterfaceItems, [],
+                report_and_strip_clauses_in_interface(!InterfaceItems, [],
                     InterfaceSpecs0),
                 check_int_for_no_exports(Globals, !.InterfaceItems, ModuleName,
                     InterfaceSpecs0, InterfaceSpecs, !IO),
@@ -624,7 +623,7 @@ make_short_interface(Globals, SourceFileName, ModuleName, Items0, !IO) :-
         % Assertions are also stripped since they should only be written
         % to .opt files.
         strip_assertions(InterfaceItems0, InterfaceItems1),
-        check_for_clauses_in_interface(InterfaceItems1, InterfaceItems,
+        report_and_strip_clauses_in_interface(InterfaceItems1, InterfaceItems,
             !Specs),
         get_short_interface(InterfaceItems, int3, ShortInterfaceItems0),
         module_qualify_items(ShortInterfaceItems0, ShortInterfaceItems,
@@ -640,15 +639,24 @@ make_short_interface(Globals, SourceFileName, ModuleName, Items0, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred strip_imported_items_and_assertions(list(item)::in,
+    list(item)::out) is det.
+
+strip_imported_items_and_assertions(Items0, Items) :-
+    % The imported items loop has to process the items in their original order,
+    % but the loop that removes assertions does not care about the order.
+    strip_imported_items_loop(Items0, [], RevItems),
+    strip_assertions_loop(RevItems, [], Items).
+
 strip_imported_items(Items0, Items) :-
-    strip_imported_items_2(Items0, [], RevItems),
+    strip_imported_items_loop(Items0, [], RevItems),
     list.reverse(RevItems, Items).
 
-:- pred strip_imported_items_2(list(item)::in, list(item)::in, list(item)::out)
-    is det.
+:- pred strip_imported_items_loop(list(item)::in,
+    list(item)::in, list(item)::out) is det.
 
-strip_imported_items_2([], !RevItems).
-strip_imported_items_2([Item | Items], !RevItems) :-
+strip_imported_items_loop([], !RevItems).
+strip_imported_items_loop([Item | Items], !RevItems) :-
     (
         Item = item_module_defn(ItemModuleDefn),
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
@@ -674,7 +682,7 @@ strip_imported_items_2([Item | Items], !RevItems) :-
             ; ModuleDefn = md_version_numbers(_, _)
             ),
             !:RevItems = [Item | !.RevItems],
-            strip_imported_items_2(Items, !RevItems)
+            strip_imported_items_loop(Items, !RevItems)
         )
     ;
         ( Item = item_module_start(_)
@@ -695,22 +703,31 @@ strip_imported_items_2([Item | Items], !RevItems) :-
         ; Item = item_nothing(_)
         ),
         !:RevItems = [Item | !.RevItems],
-        strip_imported_items_2(Items, !RevItems)
+        strip_imported_items_loop(Items, !RevItems)
     ).
 
 :- pred strip_assertions(list(item)::in, list(item)::out) is det.
 
-strip_assertions([], []).
-strip_assertions([Head | Tail], Items) :-
+strip_assertions(Items0, Items) :-
+    strip_assertions_loop(Items0, [], RevItems),
+    list.reverse(RevItems, Items).
+
+:- pred strip_assertions_loop(list(item)::in,
+    list(item)::in, list(item)::out) is det.
+
+strip_assertions_loop([], !RevItems).
+strip_assertions_loop([Item | Items], !RevItems) :-
+    % If this code ever changes to care about the order of the items,
+    % you will need to modify strip_imported_items_and_assertions.
     (
-        Head = item_promise(ItemPromise),
+        Item = item_promise(ItemPromise),
         ItemPromise = item_promise_info(promise_type_true, _, _, _, _, _)
     ->
-        strip_assertions(Tail, Items)
+        true
     ;
-        strip_assertions(Tail, ItemsTail),
-        Items = [Head | ItemsTail]
-    ).
+        !:RevItems = [Item | !.RevItems]
+    ),
+    strip_assertions_loop(Items, !RevItems).
 
 %-----------------------------------------------------------------------------%
 
@@ -815,8 +832,8 @@ standardize_impl_items(Items0, Items) :-
     (
         Unexpected = yes,
         unexpected($module, $pred, "unexpected items")
-        % XXX If the above exception is thrown and you need a
-        % workaround you can replace the call to unexpected with this code:
+        % XXX If the above exception is thrown and you need a workaround,
+        % you can replace the call to unexpected with this code:
         % Items = Items0
     ;
         Unexpected = no,
@@ -1494,17 +1511,26 @@ foreign_enum_is_local(TypeDefnMap, Item) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred check_for_clauses_in_interface(list(item)::in, list(item)::out,
+:- pred report_and_strip_clauses_in_interface(list(item)::in, list(item)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_clauses_in_interface([], [], !Specs).
-check_for_clauses_in_interface([Item0 | Items0], Items, !Specs) :-
+report_and_strip_clauses_in_interface(Items0, Items, !Specs) :-
+    report_and_strip_clauses_in_interface_loop(Items0, [], RevItems, !Specs),
+    list.reverse(RevItems, Items).
+
+:- pred report_and_strip_clauses_in_interface_loop(list(item)::in,
+    list(item)::in, list(item)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_and_strip_clauses_in_interface_loop([], !RevItems, !Specs).
+report_and_strip_clauses_in_interface_loop([Item0 | Items0],
+        !RevItems, !Specs) :-
+    % We either add Item0 to !RevItems, or a new spec to !Specs.
     (
         Item0 = item_clause(ItemClause0),
         Context = ItemClause0 ^ cl_context,
         Spec = clause_in_interface_warning("clause", Context),
-        !:Specs = [Spec | !.Specs],
-        check_for_clauses_in_interface(Items0, Items, !Specs)
+        !:Specs = [Spec | !.Specs]
     ;
         Item0 = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, Context, _),
@@ -1512,12 +1538,10 @@ check_for_clauses_in_interface([Item0 | Items0], Items, !Specs) :-
         (
             AllowedInInterface = no,
             Spec = clause_in_interface_warning("pragma", Context),
-            !:Specs = [Spec | !.Specs],
-            check_for_clauses_in_interface(Items0, Items, !Specs)
+            !:Specs = [Spec | !.Specs]
         ;
             AllowedInInterface = yes,
-            check_for_clauses_in_interface(Items0, Items1, !Specs),
-            Items = [Item0 | Items1]
+            !:RevItems = [Item0 | !.RevItems]
         )
     ;
         ( Item0 = item_module_start(_)
@@ -1536,9 +1560,9 @@ check_for_clauses_in_interface([Item0 | Items0], Items, !Specs) :-
         ; Item0 = item_mutable(_)
         ; Item0 = item_nothing(_)
         ),
-        check_for_clauses_in_interface(Items0, Items1, !Specs),
-        Items = [Item0 | Items1]
-    ).
+        !:RevItems = [Item0 | !.RevItems]
+    ),
+    report_and_strip_clauses_in_interface_loop(Items0, !RevItems, !Specs).
 
 :- func clause_in_interface_warning(string, prog_context) = error_spec.
 
@@ -2366,11 +2390,11 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
     read_module_from_file(Globals, FileName, ".m", "Reading file",
         do_not_search, do_not_return_timestamp, Items, Specs0, Error,
         ModuleName, _, !IO),
-    SourceFileName = FileName ++ ".m",
     split_into_submodules(ModuleName, Items, SubModuleList, Specs0, Specs),
     % XXX _NumErrors
     write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
     assoc_list.keys(SubModuleList, SubModuleNames),
+    SourceFileName = FileName ++ ".m",
     list.map(init_dependencies(SourceFileName, ModuleName, SubModuleNames,
         [], Error, Globals), SubModuleList, ModuleImportsList),
     map.init(DepsMap0),
@@ -3363,11 +3387,11 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         ItemModuleStart =
             item_module_start_info(SubModuleName, Context, SeqNum)
     ->
-        % Parse in the items for the nested submodule.
+        % Parse the items for the nested submodule.
         split_into_submodules_2(SubModuleName, Items1, !.InInterface,
             Items2, SubModules0, !Specs),
 
-        % Parse in the remaining items for this module.
+        % Parse the remaining items for this module.
         split_into_submodules_3(ModuleName, Items2,
             InParentInterface, !.InInterface,
             ThisModuleItems0, Items3, SubModules1, !Specs),

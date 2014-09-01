@@ -1,0 +1,4 @@
+bad_end_module.m:018: Error: this `:- end_module' declaration is not for the
+bad_end_module.m:018:   until-then-current module. The module names do not
+bad_end_module.m:018:   match: actual `bad_end_module_different_name' vs
+bad_end_module.m:018:   expected `bad_end_module'.
