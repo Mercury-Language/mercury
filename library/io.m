@@ -4229,8 +4229,6 @@ io.resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "{
-    int i;
-
     Str = Buffer;
     Str[Len] = '\\0';
 
