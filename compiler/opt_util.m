@@ -321,6 +321,7 @@
 :- import_module hlds.special_pred.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 
 :- import_module int.

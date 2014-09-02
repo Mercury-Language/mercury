@@ -67,7 +67,8 @@
 :- import_module hlds.quantification.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
@@ -1259,4 +1260,6 @@ invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet, !SVarState, !Specs) :-
         not_builtin, MaybeUnifyContext, unqualified(UpdateStr)),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
+%----------------------------------------------------------------------------%
+:- end_module hlds.make_hlds.goal_expr_to_goal.
 %----------------------------------------------------------------------------%

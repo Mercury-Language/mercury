@@ -15,7 +15,7 @@
 :- module parse_tree.file_names.
 :- interface.
 
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 
@@ -149,7 +149,7 @@
 :- import_module libs.globals.
 :- import_module libs.handle_options.
 :- import_module libs.options.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.source_file_map.
 

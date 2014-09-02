@@ -29,6 +29,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.shared_utilities.
+:- import_module mdbcomp.sym_name.
 :- import_module mdbcomp.trace_counts.
 
 :- import_module assoc_list.

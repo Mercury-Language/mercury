@@ -20,10 +20,10 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
+:- import_module mdbcomp.prim_data.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.livemap.
 :- import_module ll_backend.llds.
-:- import_module mdbcomp.prim_data.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -149,6 +149,7 @@
 :- import_module hlds.special_pred.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 

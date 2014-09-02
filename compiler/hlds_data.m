@@ -20,7 +20,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module mdbcomp.goal_path.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

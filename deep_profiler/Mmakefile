@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: noet
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
@@ -60,6 +62,7 @@ VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
 #-----------------------------------------------------------------------------#
 
 MDBCOMP_MODULES = \
+	builtin_modules.m \
 	feedback.automatic_parallelism.m \
 	feedback.m \
 	mdbcomp.m \
@@ -69,6 +72,7 @@ MDBCOMP_MODULES = \
 	rtti_access.m \
 	shared_utilities.m \
 	slice_and_dice.m \
+	sym_name.m \
 	trace_counts.m
 
 MDBCOMP_ORIG_MODULES = $(patsubst %,$(MDBCOMP_DIR)/%,$(MDBCOMP_MODULES))

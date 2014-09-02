@@ -74,7 +74,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_pred.
 :- import_module libs.globals.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 
@@ -515,5 +515,5 @@ merge_common_inst_vars(A, A, A).
 
 
 %----------------------------------------------------------------------------%
-:- end_module hlds_code_util.
+:- end_module hlds.hlds_code_util.
 %----------------------------------------------------------------------------%

@@ -55,7 +55,9 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- use_module ml_backend.java_util.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name

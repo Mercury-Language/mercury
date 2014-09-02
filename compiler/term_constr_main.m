@@ -75,6 +75,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module libs.polyhedron.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.
 

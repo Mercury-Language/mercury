@@ -19,7 +19,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_data.
 :- import_module libs.globals.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
@@ -213,6 +213,8 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
 :- import_module libs.options.
+:- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.

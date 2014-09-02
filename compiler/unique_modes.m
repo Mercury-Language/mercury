@@ -93,7 +93,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.
 
 :- import_module bag.

@@ -50,7 +50,7 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.timestamp.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_util.
@@ -162,6 +162,7 @@
 :- implementation.
 
 :- import_module libs.options.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.

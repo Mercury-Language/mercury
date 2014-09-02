@@ -19,7 +19,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.make_hlds_passes.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 

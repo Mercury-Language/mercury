@@ -54,7 +54,8 @@
 :- import_module make.
 :- import_module make.options_file.
 :- import_module make.util.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.sym_name.
 :- import_module mdbcomp.shared_utilities.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_util.

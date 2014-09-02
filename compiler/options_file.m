@@ -17,7 +17,7 @@
 :- module make.options_file.
 :- interface.
 
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 
 :- import_module io.
 :- import_module list.

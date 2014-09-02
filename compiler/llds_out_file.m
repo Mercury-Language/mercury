@@ -84,6 +84,7 @@
 :- import_module ll_backend.llds_out.llds_out_util.
 :- import_module ll_backend.rtti_out.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.

@@ -17,7 +17,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 
 :- import_module bool.
 :- import_module io.

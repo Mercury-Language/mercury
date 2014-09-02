@@ -136,7 +136,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_closure_gen.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.

@@ -45,6 +45,7 @@
 :- implementation.
 
 :- import_module libs.options.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_target_util.

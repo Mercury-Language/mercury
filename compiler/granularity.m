@@ -34,6 +34,7 @@
 :- import_module libs.globals.
 :- import_module transform_hlds.dependency_graph.
 :- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 

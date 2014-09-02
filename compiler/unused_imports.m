@@ -52,7 +52,8 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 
@@ -655,4 +656,5 @@ item_visibility(ImportStatus) = Visibility :-
     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module check_hlds.unused_imports.
 %-----------------------------------------------------------------------------%

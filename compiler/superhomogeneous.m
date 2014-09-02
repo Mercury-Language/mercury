@@ -23,6 +23,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.state_var.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
@@ -108,6 +109,7 @@
 :- import_module hlds.make_hlds.goal_expr_to_goal.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module libs.globals.  % for get_maybe_from_ground_term_threshold
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_dcg.

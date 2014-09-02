@@ -20,7 +20,6 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module make.util.
-:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module enum.

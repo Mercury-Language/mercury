@@ -136,7 +136,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
@@ -775,4 +775,6 @@ normalise_goals([Goal0 | Goals0], [Goal | Goals]) :-
     normalise_goal(Goal0, Goal),
     normalise_goals(Goals0, Goals).
 
+%-----------------------------------------------------------------------------%
+:- end_module hlds.assertion.
 %-----------------------------------------------------------------------------%

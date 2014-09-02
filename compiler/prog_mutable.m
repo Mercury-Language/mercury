@@ -486,7 +486,7 @@
 :- module parse_tree.prog_mutable.
 :- interface.
 
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
@@ -595,6 +595,7 @@
 
 :- implementation.
 
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_foreign.

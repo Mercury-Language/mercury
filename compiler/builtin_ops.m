@@ -22,7 +22,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 
 :- import_module list.
 
@@ -170,6 +170,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module mdbcomp.builtin_modules.
 
 %-----------------------------------------------------------------------------%
 

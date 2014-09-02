@@ -21,7 +21,7 @@
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
-:- import_module mdbcomp.prim_data.     % for module_name
+:- import_module mdbcomp.sym_name.     % for module_name
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.

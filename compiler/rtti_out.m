@@ -26,9 +26,9 @@
 :- interface.
 
 :- import_module backend_libs.rtti.
+:- import_module mdbcomp.prim_data.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_util.
-:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module io.
@@ -108,6 +108,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.globals.
+:- import_module mdbcomp.sym_name.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds.

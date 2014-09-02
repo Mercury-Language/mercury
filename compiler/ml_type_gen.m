@@ -29,7 +29,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module libs.globals.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
@@ -118,6 +118,7 @@
 :- import_module check_hlds.polymorphism.
 :- import_module hlds.hlds_pred.
 :- import_module libs.options.
+:- import_module mdbcomp.builtin_modules.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.prog_data.

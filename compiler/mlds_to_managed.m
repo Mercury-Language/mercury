@@ -43,7 +43,7 @@
 :- import_module backend_libs.c_util.
 :- import_module libs.file_util.
 :- import_module libs.options.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ilds.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_util.

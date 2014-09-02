@@ -38,6 +38,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.make_hlds_error.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.
 
 :- import_module map.

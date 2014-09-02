@@ -51,7 +51,9 @@
 :- import_module hlds.special_pred.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.

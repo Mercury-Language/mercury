@@ -46,6 +46,8 @@
 
 :- implementation.
 
+:- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.

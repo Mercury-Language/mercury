@@ -24,6 +24,7 @@
 
 % If you add any modules here, you should update the lists in
 % deep_profiler/Mmakefile and slice/Mmakefile.
+:- include_module builtin_modules.
 :- include_module feedback.
 :- include_module goal_path.
 :- include_module prim_data.
@@ -31,6 +32,7 @@
 :- include_module rtti_access.
 :- include_module shared_utilities.
 :- include_module slice_and_dice.
+:- include_module sym_name.
 :- include_module trace_counts.
 
 :- implementation.

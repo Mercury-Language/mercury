@@ -52,8 +52,8 @@
 :- implementation.
 
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.rtti_access.
+:- import_module mdbcomp.sym_name.
 
 :- import_module char.
 :- import_module cord.

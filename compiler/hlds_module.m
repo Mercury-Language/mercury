@@ -32,7 +32,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.globals.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.

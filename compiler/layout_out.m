@@ -178,6 +178,7 @@
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.llds_out.llds_out_data.
 :- import_module mdbcomp.goal_path.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.

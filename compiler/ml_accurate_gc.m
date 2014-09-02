@@ -85,8 +85,10 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module libs.globals.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module parse_tree.builtin_lib_types.

@@ -72,7 +72,10 @@
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.continuation_info.
+:- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
@@ -4014,4 +4017,6 @@ table_info_init(ModuleInfo, PredInfo, ProcInfo, TableInfo) :-
 table_info_extract(TableInfo, ModuleInfo, PredInfo, ProcInfo) :-
     TableInfo = table_info(ModuleInfo, PredInfo, ProcInfo).
 
+%-----------------------------------------------------------------------------%
+:- end_module transform_hlds.table_gen.
 %-----------------------------------------------------------------------------%

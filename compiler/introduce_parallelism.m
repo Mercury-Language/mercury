@@ -51,6 +51,7 @@
 :- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.

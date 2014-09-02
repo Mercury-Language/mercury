@@ -26,7 +26,7 @@
 :- import_module libs.globals.
 :- import_module make.options_file.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.module_imports.
 

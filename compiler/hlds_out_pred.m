@@ -80,6 +80,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.

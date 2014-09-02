@@ -23,7 +23,7 @@
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data. % for module_name
+:- import_module mdbcomp.sym_name. % for module_name
 :- import_module mdbcomp.feedback.
 
 :- import_module bool.

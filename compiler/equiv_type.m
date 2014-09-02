@@ -18,7 +18,7 @@
 :- module parse_tree.equiv_type.
 :- interface.
 
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -109,6 +109,7 @@
 
 :- implementation.
 
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
@@ -1591,5 +1592,5 @@ finish_recording_expanded_items(Item, yes(_ - ExpandedItems),
     recompilation.record_expanded_items(Item, ExpandedItems, Info0, Info).
 
 %-----------------------------------------------------------------------------%
-:- end_module equiv_type.
+:- end_module parse_tree.equiv_type.
 %-----------------------------------------------------------------------------%

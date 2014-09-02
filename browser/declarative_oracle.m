@@ -34,8 +34,8 @@
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.declarative_user.
 :- import_module mdb.help.
-:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.rtti_access.
+:- import_module mdbcomp.sym_name.
 
 :- import_module bool. 
 :- import_module io. 

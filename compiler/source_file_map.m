@@ -20,7 +20,7 @@
 :- module parse_tree.source_file_map.
 :- interface.
 
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 

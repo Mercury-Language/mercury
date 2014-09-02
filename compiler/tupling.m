@@ -117,8 +117,10 @@
 :- import_module ll_backend.call_gen.
 :- import_module ll_backend.live_vars.
 :- import_module ll_backend.liveness.
+:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module mdbcomp.trace_counts.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.

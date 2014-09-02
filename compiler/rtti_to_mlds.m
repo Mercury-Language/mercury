@@ -55,7 +55,9 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.globals.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_closure_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_gen_info.

@@ -45,7 +45,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
@@ -555,5 +555,5 @@ same_type_list([A | As], [B | Bs]) :-
 %       inst_graph_info::in, inst_graph_info::out) is det.
 
 %------------------------------------------------------------------------%
-:- end_module hhf.
+:- end_module hlds.hhf.
 %------------------------------------------------------------------------%

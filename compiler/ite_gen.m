@@ -49,7 +49,7 @@
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.trace_gen.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.

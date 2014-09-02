@@ -34,6 +34,7 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -961,6 +962,7 @@
 :- implementation.
 
 :- import_module backend_libs.name_mangle.
+:- import_module mdbcomp.builtin_modules.
 :- import_module hlds.hlds_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.

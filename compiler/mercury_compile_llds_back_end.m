@@ -18,7 +18,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
 
@@ -78,6 +78,7 @@
 :- import_module ll_backend.store_alloc.
 :- import_module ll_backend.transform_llds.
 :- import_module ll_backend.unify_gen.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.

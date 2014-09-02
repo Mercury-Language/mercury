@@ -213,7 +213,9 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.trace_params.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.

@@ -39,7 +39,9 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 
 :- import_module counter.
 :- import_module int.

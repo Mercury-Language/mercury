@@ -339,6 +339,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_global_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
@@ -352,7 +353,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type mercury_module_name == prim_data.module_name.
+:- type mercury_module_name == sym_name.module_name.
 
 %
 % The type `mlds' is the actual MLDS.
@@ -1856,6 +1857,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module libs.globals.
+:- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_type.
@@ -2043,11 +2045,10 @@ mlds_get_arg_types(Parameters) = ArgTypes :-
 % prefix e.g. `mercury.builtin', `mercury.io', `mercury.univ', etc.,
 % when mapped to MLDS package names.
 
-% :- type mlds_module_name == prim_data.module_name.
 :- type mlds_module_name
     --->    mlds_module_name(
-                mmn_package_name    :: prim_data.module_name,
-                mmn_module_name     :: prim_data.module_name
+                mmn_package_name    :: mdbcomp.sym_name.module_name,
+                mmn_module_name     :: mdbcomp.sym_name.module_name
             ).
 
 mercury_module_and_package_name_to_mlds(MLDS_Package, MercuryModule)

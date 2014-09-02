@@ -17,7 +17,7 @@
 :- module parse_tree.java_names.
 :- interface.
 
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 
 %-----------------------------------------------------------------------------%
 

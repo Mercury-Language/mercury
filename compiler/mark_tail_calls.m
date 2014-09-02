@@ -48,6 +48,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 

@@ -52,6 +52,7 @@
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.

@@ -194,6 +194,8 @@
 
 :- implementation.
 
+:- import_module mdbcomp.sym_name.
+
 :- import_module char.
 :- import_module int.
 :- import_module require.

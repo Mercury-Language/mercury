@@ -163,7 +163,8 @@
 
 :- implementation.
 
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.sym_name.
 
 :- import_module map.
 :- import_module require.

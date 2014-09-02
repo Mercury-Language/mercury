@@ -30,7 +30,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_rtti.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 
 :- import_module list.
 :- import_module maybe.

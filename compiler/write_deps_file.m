@@ -15,7 +15,7 @@
 
 :- import_module libs.file_util.
 :- import_module libs.globals.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.deps_map.
 :- import_module parse_tree.module_imports.
 

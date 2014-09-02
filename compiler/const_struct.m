@@ -120,7 +120,7 @@
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 
 :- import_module int.
 :- import_module maybe.

@@ -82,6 +82,7 @@
 :- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_util.
                                          % for ml_gen_public_field_decl_flags,
                                          % which is used by the code that

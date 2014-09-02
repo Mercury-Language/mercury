@@ -187,6 +187,7 @@
 
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.rtti_access.
+:- import_module mdbcomp.sym_name.
 
 :- import_module float.
 :- import_module int.

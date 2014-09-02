@@ -94,6 +94,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.java_util.
 :- import_module ml_backend.ml_code_util.  % for ml_gen_local_var_decl_flags.
 :- import_module ml_backend.ml_global_data.

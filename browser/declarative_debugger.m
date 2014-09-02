@@ -311,8 +311,8 @@
 :- import_module mdb.declarative_edt.
 :- import_module mdb.declarative_oracle.
 :- import_module mdb.util.
-:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.rtti_access.
+:- import_module mdbcomp.sym_name.
 
 :- import_module bool.
 :- import_module exception.
