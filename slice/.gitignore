@@ -25,6 +25,7 @@ mcov
 *.prof
 SLICE_FLAGS
 Mercury
+builtin_modules.m
 feedback.m
 feedback.automatic_parallelism.m
 mdbcomp.m
@@ -33,6 +34,7 @@ prim_data.m
 program_representation.m
 rtti_access.m
 slice_and_dice.m
+sym_name.m
 trace_counts.m
 shared_utilities.m
 config.log
