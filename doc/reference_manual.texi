@@ -4572,9 +4572,23 @@ interface section of its parent module.
 If a sub-module is declared but not explicitly defined,
 then there is an implicit definition with an empty implementation section
 for that sub-module.
-This will result in an error if the interface section
-includes declarations but not definitions for any types, insts, modes,
-predicates, functions, or (doubly) nested sub-modules.
+This empty implementation section will result in an error
+if the interface section of a sub-module contains any of the following:
+
+@itemize @bullet
+@item
+a declaration for a function or a predicate;
+@item
+an abstract declaration for a type, inst, mode or typeclass,
+i.e.@ a declaration that does not itself serve as a definition
+of that type, inst, mode or typeclass;
+@item
+an abstract declaration of a typeclass instance; or
+@item
+a (doubly, triply, etc) nested sub-module
+(which perforce has only an interface section, and no implementation section)
+and which contains any of the above.
+@end itemize
 
 @node Separate sub-modules
 @subsection Separate sub-modules
