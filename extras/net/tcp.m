@@ -274,7 +274,7 @@ void ML_tcp_init(void)
         } else {
             addr = MR_GC_NEW(struct sockaddr_in);
             MR_memset(addr, 0, sizeof(struct sockaddr_in));
-            MR_memcpy(&(addr->sin_addr), host->h_addr, host->h_length);
+            MR_memcpy(&(addr->sin_addr), host->h_addr_list[0], host->h_length);
             addr->sin_family = host->h_addrtype;
             addr->sin_port = htons(Port);
             /*
@@ -334,7 +334,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
         } else {
             addr = MR_GC_NEW(struct sockaddr_in);
             MR_memset(addr, 0, sizeof(struct sockaddr_in));
-            MR_memcpy(&(addr->sin_addr), host->h_addr, host->h_length);
+            MR_memcpy(&(addr->sin_addr), host->h_addr_list[0], host->h_length);
             addr->sin_family = host->h_addrtype;
             addr->sin_port = htons(Port);
 

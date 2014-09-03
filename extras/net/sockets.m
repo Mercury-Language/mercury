@@ -70,7 +70,7 @@
 #ifdef MR_WIN32
   #include <winsock.h>
 
-  #define  error()      WSAGetLastError
+  #define  error()      WSAGetLastError()
 
 #else /* !MR_WIN32 */
 
@@ -184,7 +184,7 @@
     } else {
         addr = MR_GC_NEW(struct sockaddr_in);
 
-        MR_memcpy(&(addr->sin_addr), host->h_addr, host->h_length);
+        MR_memcpy(&(addr->sin_addr), host->h_addr_list[0], host->h_length);
         addr->sin_family = host->h_addrtype;
         addr->sin_port = htons(Port);
 
@@ -215,7 +215,7 @@
             Success = MR_NO;
         } else {
             addr = MR_GC_NEW(struct sockaddr_in);
-            MR_memcpy(&(addr->sin_addr), host->h_addr, host->h_length);
+            MR_memcpy(&(addr->sin_addr), host->h_addr_list[0], host->h_length);
             addr->sin_family = host->h_addrtype;
             addr->sin_port = service->s_port;
             SA = (MR_Word) addr;
