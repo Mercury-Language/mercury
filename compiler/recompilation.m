@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: recompilation.m.
 % Main author: stayl.
-% 
+%
 % Type declarations for smart recompilation.
 % Predicates to record program items used by a compilation.
 %
@@ -173,7 +173,7 @@
                 predicates      :: Set,
                 functions       :: Set,
                 mutables        :: Set,
-                foreign_procs   :: Set 
+                foreign_procs   :: Set
             ).
 
 :- type item_id_set(T) == item_id_set(T, T, T).

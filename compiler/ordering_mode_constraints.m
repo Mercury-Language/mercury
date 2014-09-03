@@ -811,5 +811,5 @@ dump_goal_goal_paths(Globals, Indent, Goal, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module ordering_mode_constraints.
+:- end_module check_hlds.ordering_mode_constraints.
 %-----------------------------------------------------------------------------%

@@ -524,7 +524,7 @@ project_single_arm_goal(multi_cons_id_arm(_, _, _)) = _ :-
 num_cases_in_table(cases_table(CasesMap, _)) = map.count(CasesMap).
 
 :- pred add_single_entry(cons_id::in, hlds_goal::in,
-    cases_table::in, cases_table::out) is det. 
+    cases_table::in, cases_table::out) is det.
 
 add_single_entry(ConsId, Goal, CasesTable0, CasesTable) :-
     CasesTable0 = cases_table(CasesMap0, ConflictConsIds0),
@@ -557,7 +557,7 @@ add_single_entry(ConsId, Goal, CasesTable0, CasesTable) :-
     CasesTable = cases_table(CasesMap, ConflictConsIds).
 
 :- pred add_multi_entry(cons_id::in, list(cons_id)::in, hlds_goal::in,
-    cases_table::in, cases_table::out) is det. 
+    cases_table::in, cases_table::out) is det.
 
 add_multi_entry(MainConsId, OtherConsIds, Goal, CasesTable0, CasesTable) :-
     Arm = multi_cons_id_arm(MainConsId, OtherConsIds, Goal),
@@ -565,7 +565,7 @@ add_multi_entry(MainConsId, OtherConsIds, Goal, CasesTable0, CasesTable) :-
         CasesTable0, CasesTable).
 
 :- pred add_multi_entry_for_cons_id(case_arm::in, cons_id::in,
-    cases_table::in, cases_table::out) is det. 
+    cases_table::in, cases_table::out) is det.
 
 add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
     CasesTable0 = cases_table(CasesMap0, ConflictConsIds0),

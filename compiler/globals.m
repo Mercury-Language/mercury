@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: globals.m.
 % Main author: fjh.
-% 
+%
 % This module exports the `globals' type and associated access predicates.
 % The globals type is used to collect together all the various data
 % that would be global variables in an imperative language.
 % This global data is stored in the io.state.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -115,7 +115,7 @@
 :- type may_be_thread_safe == bool.
 
     % For the C backends, what type of C compiler are we using?
-    % 
+    %
 :- type c_compiler_type
     --->    cc_gcc(
                 gcc_major_ver :: maybe(int),
@@ -123,7 +123,7 @@
 
                 gcc_minor_ver :: maybe(int),
                 % The minor version number, if known.
-                
+
                 gcc_patch_level :: maybe(int)
                 % The patch level, if known.
                 % This is only available since gcc 3.0.
@@ -164,7 +164,7 @@
     --->    env_type_posix
             % A generic POSIX-like environment: this covers most Linux systems,
             % Mac OS X, FreeBSD, Solaris etc.
-    
+
     ;       env_type_cygwin
             % The Cygwin shell and utilities on Windows.
 
@@ -172,18 +172,18 @@
             % MinGW with the MSYS environment on Windows.
 
     ;       env_type_win_cmd
-            % The Windows command-line interpreter (cmd.exe). 
-            
+            % The Windows command-line interpreter (cmd.exe).
+
     ;       env_type_powershell.
             % Windows PowerShell.
-            % (NOTE: COMSPEC must be pointing to powershell.exe not cmd.exe.)            
+            % (NOTE: COMSPEC must be pointing to powershell.exe not cmd.exe.)
 
     % The tracing levels to use for a module when doing the source to source
     % debugging tranformation.
 :- type ssdb_trace_level
     --->    none
             % No tracing of this module
-            
+
     ;       shallow
             % Shallow trace all procedures in this module
 
@@ -280,7 +280,7 @@
 :- pred set_trace_level_none(globals::in, globals::out) is det.
 :- pred set_ssdb_trace_level(ssdb_trace_level::in,
     globals::in, globals::out) is det.
-:- pred set_maybe_feedback_info(maybe(feedback_info)::in, 
+:- pred set_maybe_feedback_info(maybe(feedback_info)::in,
     globals::in, globals::out) is det.
 :- pred set_file_install_cmd(file_install_cmd::in,
     globals::in, globals::out) is det.
@@ -319,7 +319,7 @@
 :- pred current_grade_supports_par_conj(globals::in, bool::out) is det.
 
     % Check that code compiled in the current grade supports concurrent
-    % execution, i.e. that spawn/3 will create a new thread instead of 
+    % execution, i.e. that spawn/3 will create a new thread instead of
     % aborting execution.
     %
 :- pred current_grade_supports_concurrency(globals::in, bool::out) is det.
@@ -427,7 +427,7 @@ convert_c_compiler_type(CC_Str, C_CompilerType) :-
         convert_c_compiler_type_with_version(CC_Str, C_CompilerType)
     ).
 
-% NOTE: we currently accept strings of the form cl_<version> or 
+% NOTE: we currently accept strings of the form cl_<version> or
 % msvc_<version> for Visual C; support for the former is deprecated and
 % will be dropped once the configure script begins generated the latter.
 
@@ -462,7 +462,7 @@ convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
     % Create the value of C compiler type when we have (some) version
     % information for gcc available.
     % We only accept version information that has the following form:
-    % 
+    %
     %   u_u_u
     %   <major>_u_u
     %   <major>_<minor>_<u>
@@ -479,7 +479,7 @@ convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
     c_compiler_type::out) is semidet.
 
 convert_gcc_version(MajorStr, MinorStr, PatchStr, C_CompilerType) :-
-    ( 
+    (
         MajorStr = "u",
         MinorStr = "u",
         PatchStr = "u"
@@ -519,7 +519,7 @@ convert_gcc_version(MajorStr, MinorStr, PatchStr, C_CompilerType) :-
     % Create the value of C compiler type when we have (some) version
     % information for clang available.
     % We only accept version information that has the following form:
-    % 
+    %
     %   <major>_<minor>_<patch>
     %
 :- pred convert_clang_version(string::in, string::in, string::in,
@@ -764,14 +764,14 @@ current_grade_supports_tabling(Globals, TablingSupported) :-
     globals.get_target(Globals, Target),
     globals.get_gc_method(Globals, GC_Method),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-    ( 
+    (
         Target = target_c,
         GC_Method \= gc_accurate,
         HighLevelData = no
     ->
-        TablingSupported = yes 
+        TablingSupported = yes
     ;
-        TablingSupported = no 
+        TablingSupported = no
     ).
 
     % Parallel conjunctions only supported on lowlevel C parallel grades.
@@ -919,7 +919,6 @@ io_get_maybe_source_file_map(MaybeSourceFileMap, !IO) :-
 io_set_maybe_source_file_map(MaybeSourceFileMap, !IO) :-
     set_maybe_source_file_map(MaybeSourceFileMap, !IO).
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 :- end_module libs.globals.
 %-----------------------------------------------------------------------------%

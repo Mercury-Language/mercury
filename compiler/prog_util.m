@@ -785,5 +785,5 @@ goal_list_to_conj_2(Context, Goal0, [Goal1 | Goals]) =
     conj_expr(Goal0, goal_list_to_conj_2(Context, Goal1, Goals)) - Context.
 
 %-----------------------------------------------------------------------------%
-:- end_module prog_util.
+:- end_module parse_tree.prog_util.
 %-----------------------------------------------------------------------------%

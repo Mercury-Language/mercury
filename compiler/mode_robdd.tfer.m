@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -10,7 +12,7 @@
 % 
 %-----------------------------------------------------------------------------%
 
-:- module mode_robdd__tfer.
+:- module mode_robdd.tfer.
 
 :- interface.
 
@@ -583,3 +585,5 @@ to_robdd(X) = map__foldl(func(A, B, R) = R * eq_vars(A, B),
 			* conj_not_vars(X ^ false_vars)).
 
 %---------------------------------------------------------------------------%
+:- end_module mode_robdd.tfer.
+%-----------------------------------------------------------------------------%

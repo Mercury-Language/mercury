@@ -86,7 +86,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             NumEnclosingLambdas0, _ProcModelNon),
         LambdaNestedContext = simplify_nested_context(InsideDuplForSwitch,
             NumEnclosingLambdas0 + 1, ProcIsModelNon),
-            
+
         simplify_info_get_module_info(!.Info, ModuleInfo),
         instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
             InstMap0, LambdaInstMap0),

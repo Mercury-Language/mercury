@@ -1,19 +1,21 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: mode_robbd.check.m.
 % Main author: dmo
 % Stability: low
-% 
+%
 % This module implements every one of its operations on two robdds,
 % compares their results, and reports an error if they differ. This makes
 % it easier to debug a new, potantially faster mode_robdd implementation
 % by comparing its operation to the operation of an existing, trusted
 % implementation.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module mode_robdd.check.
@@ -196,7 +198,7 @@ check_robdd(X1, X2) = mode_robdd(X1, X2) :-
 
 % :- pred report_robdd_error(robdd(T)::in, robdd(T)::in, io::di, io::uo)
 %	is det.
-% 
+%
 % report_robdd_error(R1, R2) -->
 % 	% { R12 = R1 * (~ R2) },
 % 	% { R21 = R2 * (~ R1) },
@@ -295,3 +297,7 @@ robdd(X) = X ^ x1 ^ robdd.
 %-----------------------------------------------------------------------------%
 
 ensure_normalised(mode_robdd(X1, X2)) = mode_robdd(X1, ensure_normalised(X2)).
+
+%-----------------------------------------------------------------------------%
+:- end_module mode_robdd.check.
+%-----------------------------------------------------------------------------%

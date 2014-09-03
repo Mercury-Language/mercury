@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: timestamp.m.
 % Main author: stayl.
-% 
+%
 % Timestamp representation for smart recompilation.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module libs.timestamp.
@@ -208,3 +208,7 @@ plausible_timestamp_char(Char) :-
     char.to_int(Char, CharInt),
     char.to_int(':', HighestInt),
     CharInt =< HighestInt.
+
+%-----------------------------------------------------------------------------%
+:- end_module libs.timestamp.
+%-----------------------------------------------------------------------------%

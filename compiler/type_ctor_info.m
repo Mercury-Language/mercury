@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: type_ctor_info.m.
 % Authors: zs, trd.
-% 
+%
 % This module is responsible for the generation of the static type_ctor_info
 % structures of the types defined by the current module. This includes the
 % RTTI data structures that describe the representation of each type.
@@ -30,7 +30,7 @@
 % The documentation of the data structures built in this module is in
 % runtime/mercury_type_info.h; that file also contains a list of all
 % the files that depend on these data structures.
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module backend_libs.type_ctor_info.
@@ -647,7 +647,7 @@ make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
     map.det_insert(FunctorName, EnumFunctor, !NameMap).
 
 %---------------------------------------------------------------------------%
-    
+
     % Make the functor and layout tables for a foreign enum type.
     %
 :- pred make_foreign_enum_details(type_ctor::in, foreign_language::in,
@@ -671,7 +671,7 @@ make_foreign_enum_details(TypeCtor, Lang, Ctors, ConsTagMap, ReserveTag,
     FunctorNumberMap = make_functor_number_map(Ctors),
     Details = tcd_foreign_enum(Lang, EqualityAxioms, ForeignEnumFunctors,
         OrdinalMap, NameMap, FunctorNumberMap).
-    
+
     % Create a foreign_enum_functor structure for each functor in an enum type.
     % The functors are given to us in ordinal order (since that's how the HLDS
     % stored them), and that is how we return the list of rtti names of the
@@ -699,7 +699,7 @@ make_foreign_enum_functors(TypeCtor, Lang, [Functor | Functors], NextOrdinal,
     map.lookup(ConsTagMap, ConsId, ConsTag),
     (
         ConsTag = foreign_tag(ForeignTagLang, ForeignTagValue0),
-        expect(unify(Lang, ForeignTagLang), $module, $pred, 
+        expect(unify(Lang, ForeignTagLang), $module, $pred,
             "language mismatch between foreign tag and foreign enum"),
         ForeignTagValue = ForeignTagValue0
     ;

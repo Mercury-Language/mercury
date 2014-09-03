@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mlds_to_ilasm.m.
 % Main author: trd.
-% 
+%
 % This code converts the MLDS representation into IL assembler.  This module
 % takes care of creating the appropriate files and generating output, while
 % mlds_to_il takes care of generated IL from MLDS.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_ilasm.

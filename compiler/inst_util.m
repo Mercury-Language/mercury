@@ -641,7 +641,7 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
     ).
 
 % :- pred check_not_clobbered(uniqueness::in, unify_is_real::in) is det.
-% 
+%
 % check_not_clobbered(Uniq, Real) :-
 %     % Sanity check.
 %     ( Real = real_unify, Uniq = clobbered ->
@@ -1797,14 +1797,14 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         Inst = any(Uniq, none)
     ;
         InstA = free,
-        InstB = any(Uniq, HOInstInfo), 
+        InstB = any(Uniq, HOInstInfo),
         % We do not yet allow merge of any with free, except for
         % clobbered anys.
         ( Uniq = clobbered ; Uniq = mostly_clobbered ),
         Inst = any(Uniq, HOInstInfo)
     ;
         InstA = bound(UniqA, _InstResultsA, BoundInstsA),
-        InstB = any(UniqB, _), 
+        InstB = any(UniqB, _),
         merge_uniq_bound(UniqB, UniqA, BoundInstsA, !.ModuleInfo, Uniq),
         % We do not yet allow merge of any with free, except
         % for clobbered anys.
@@ -1822,7 +1822,7 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         Inst = any(Uniq, HOInstInfo)
     ;
         InstA = abstract_inst(_, _),
-        InstB = any(UniqB, _), 
+        InstB = any(UniqB, _),
         merge_uniq(shared, UniqB, Uniq),
         % We do not yet allow merge of any with free, except for
         % clobbered anys.
@@ -1830,7 +1830,7 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         Inst = any(Uniq, none)
     ;
         InstA = free,
-        InstB = free, 
+        InstB = free,
         Inst = free
     ;
         InstA = bound(UniqA, _InstResultsA, BoundInstsA),

@@ -907,5 +907,5 @@ promise_ex_error(PromiseType, Context, Message, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
-:- end_module make_hlds_warn.
+:- end_module hlds.make_hlds.make_hlds_warn.
 %-----------------------------------------------------------------------------%

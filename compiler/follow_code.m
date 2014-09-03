@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: follow_code.m.
 % Main author: conway.
 % Extensive modifications by zs.
-% 
+%
 % The problem attacked by this module is that sometimes the code generator
 % doesn't know where it should put the values of live variables at the end
 % of a branched control structure. All branches must put each live variable
@@ -25,7 +25,7 @@
 % where every live variable must be. If a branched control structure is
 % followed by builtin goals such as unifications, we push those goals into
 % each branch.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.follow_code.

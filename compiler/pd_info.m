@@ -740,3 +740,5 @@ pd_info.remove_version(PredProcId, !PDInfo) :-
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
 %-----------------------------------------------------------------------------%
+:- end_module transform_hlds.pd_info.
+%-----------------------------------------------------------------------------%

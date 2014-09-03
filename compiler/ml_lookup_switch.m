@@ -496,7 +496,7 @@ make_several_soln_lookup_vars(MLDS_Context, SeveralSolnLookupVars, !Info) :-
 
     LaterSlotVarRval = ml_lval(LaterSlotVarLval),
     NumLaterSolnsVarRval = ml_lval(NumLaterSolnsVarLval),
-    LimitAssignStmt = ml_stmt_atomic(assign(LimitVarLval, 
+    LimitAssignStmt = ml_stmt_atomic(assign(LimitVarLval,
         ml_binop(int_add, LaterSlotVarRval, NumLaterSolnsVarRval))),
     LimitAssignStatement = statement(LimitAssignStmt, MLDS_Context),
     IncrLaterSlotVarStmt = ml_stmt_atomic(assign(LaterSlotVarLval,

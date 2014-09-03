@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: inst_graph.m.
 % Author: dmo.
-% 
+%
 % This module defines operations on instantiation graphs. The purpose of the
 % data structure and of the operations on it are defined in chapter 6 of
 % David Overton's PhD thesis.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.inst_graph.
@@ -390,11 +390,11 @@ merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet, Sub) :-
 %       ), VarsB),
 %   list.foldl2(join_nodes(InstGraphB, VarSetB), VarsB, InstGraphA,
 %       InstGraph, VarSetA, VarSet).
-% 
+%
 % :- pred join_nodes(inst_graph, prog_varset, prog_var, inst_graph, inst_graph,
 %       prog_varset, prog_varset).
 % :- mode join_nodes(in, in, in, in, out, in, out) is det.
-% 
+%
 % join_nodes(_, _, _, _, _, _, _) :- error("join_nodes: NYI").
 
 %-----------------------------------------------------------------------------%
@@ -444,23 +444,21 @@ dump_var(VarSet, Var, !IO) :-
 
 :- type inst_graph_info
     --->    inst_graph_info(
+                % Inst graph derived from the mode declarations,
+                % if there are any. If there are no mode declarations
+                % for the pred, this is the same as the
+                % implementation_inst_graph.
                 interface_inst_graph    :: inst_graph,
-                                        % Inst graph derived from the mode
-                                        % declarations, if there are any.
-                                        % If there are no mode declarations
-                                        % for the pred, this is the same as
-                                        % the implementation_inst_graph.
 
+                % Vars that appear in the head of the mode declaration
+                % constraint.
                 interface_vars          :: list(prog_var),
-                                        % Vars that appear in the head of the
-                                        % mode declaration constraint.
 
+                % Varset used for interface_inst_graph.
                 interface_varset        :: prog_varset,
-                                        % Varset used for interface_inst_graph.
 
+                % Inst graph derived from the body of the predicate.
                 implementation_inst_graph :: inst_graph
-                                        % Inst graph derived from the body of
-                                        % the predicate.
             ).
 
 inst_graph_info_init = inst_graph_info(InstGraph, [], VarSet, InstGraph) :-

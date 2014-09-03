@@ -403,7 +403,7 @@ robdd_to_dot(Constraint, ProgVarSet, MCI, FileName, !IO) :-
     ),
     robdd_to_dot(Constraint ^ robdd, P, FileName, !IO).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%-----------------------------------------------------------------------------%
 
 atomic_prodvars_map(Constraint, MCI) = ProdVarsMap :-
     ( some_vars(VarsEntailed) = vars_entailed(ensure_normalised(Constraint)) ->
@@ -430,3 +430,7 @@ atomic_prodvars_map(Constraint, MCI) = ProdVarsMap :-
     ;
         unexpected($module, $pred, "zero constraint")
     ).
+
+%-----------------------------------------------------------------------------%
+:- end_module check_hlds.mode_constraint_robdd.
+%-----------------------------------------------------------------------------%

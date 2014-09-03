@@ -841,5 +841,5 @@ give_vars_consecutive_arg_infos([Var | Vars], RegType, N, ArgMode,
     give_vars_consecutive_arg_infos(Vars, RegType, N + 1, ArgMode, ArgInfos).
 
 %---------------------------------------------------------------------------%
-:- end_module call_gen.
+:- end_module ll_backend.call_gen.
 %---------------------------------------------------------------------------%

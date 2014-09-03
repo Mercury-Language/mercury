@@ -150,7 +150,7 @@ collect_rbmm_goal_info_goal(ModuleInfo, ProcInfo, Graph,
 
 collect_rbmm_goal_info_goal_expr(ModuleInfo, _, Graph, _, ResurRenamingProc,
         IteRenamingProc, NameToRegionVar, !Expr, !Info) :-
-    !.Expr = unify(_, _, _, Unification, _), 
+    !.Expr = unify(_, _, _, Unification, _),
     ProgPoint = program_point_init(!.Info),
     ( map.search(ResurRenamingProc, ProgPoint, ResurRenaming0) ->
         ResurRenaming = ResurRenaming0
@@ -242,13 +242,13 @@ keep_allocated_regions([_ | _], [], _, []) :-
 keep_allocated_regions([Input | Inputs], [RemovedRegion | RemovedRegions],
         Graph, RemovedAndAllocRegions) :-
     keep_allocated_regions(Inputs, RemovedRegions, Graph,
-        RemovedAndAllocRegions0), 
+        RemovedAndAllocRegions0),
     ( rptg_is_allocated_node(Graph, Input) ->
         RemovedAndAllocRegions = [RemovedRegion | RemovedAndAllocRegions0]
     ;
         RemovedAndAllocRegions = RemovedAndAllocRegions0
-    ). 
-    
+    ).
+
     % We do not handle generic calls and calls to foreign procs in RBMM yet,
     % so if a program has any of them the RBMM compilation will fail before
     % reaching here. We just call sorry now so that they are not
@@ -256,10 +256,10 @@ keep_allocated_regions([Input | Inputs], [RemovedRegion | RemovedRegions],
     %
 collect_rbmm_goal_info_goal_expr(_, _, _, _, _, _, _, !Expr, !Info) :-
     !.Expr = generic_call(_, _, _, _, _),
-    sorry($module, $pred, "generic call not handled"). 
+    sorry($module, $pred, "generic call not handled").
 collect_rbmm_goal_info_goal_expr(_, _, _, _, _, _, _, !Expr, !Info) :-
     !.Expr = call_foreign_proc(_, _, _, _, _, _, _),
-    sorry($module, $pred, "call to foreign proc not handled"). 
+    sorry($module, $pred, "call to foreign proc not handled").
 
 collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,
@@ -267,8 +267,8 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
     !.Expr = conj(ConjType, Conjs0),
     list.map(collect_rbmm_goal_info_goal(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,
-        NameToRegionVarProc), Conjs0, Conjs), 
-    !:Expr = conj(ConjType, Conjs), 
+        NameToRegionVarProc), Conjs0, Conjs),
+    !:Expr = conj(ConjType, Conjs),
 
     % Calculate created, removed, allocated into, used regions.
     compute_rbmm_info_conjunction(Conjs, rbmm_info_init, RbmmInfo0),
@@ -291,7 +291,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
     !.Expr = disj(Disjs0),
     list.map(collect_rbmm_goal_info_goal(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,
-        NameToRegionVarProc), Disjs0, Disjs), 
+        NameToRegionVarProc), Disjs0, Disjs),
     !:Expr = disj(Disjs),
 
     (
@@ -300,12 +300,12 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
     ;
         % Well-modedness requires that each disjunct creates, removes and
         % carries the same regions, which are also created, removed, carried
-        % by the disjunction. 
+        % by the disjunction.
         Disjs = [hlds_goal(_, DInfo) | _],
         DRbmmInfo = goal_info_get_rbmm(DInfo),
         DRbmmInfo = rbmm_goal_info(Created, Removed, Carried, _, _),
         RbmmInfo0 = rbmm_goal_info(Created, Removed, Carried, set.init,
-            set.init), 
+            set.init),
 
         % Calculate allocated-into and used regions.
         compute_rbmm_info_goals(Disjs, RbmmInfo0, RbmmInfo),
@@ -315,7 +315,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
 collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,
         NameToRegionVarProc, !Expr, !Info) :-
-    !.Expr = switch(A, B, Cases0), 
+    !.Expr = switch(A, B, Cases0),
     list.map(collect_rbmm_goal_info_case(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,
         NameToRegionVarProc), Cases0, Cases),
@@ -356,7 +356,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
 collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,
         NameToRegionVarProc, !Expr, !Info) :-
-    !.Expr = scope(Reason, Goal0), 
+    !.Expr = scope(Reason, Goal0),
     % XXX We should special-case the handling of from_ground_term_construct
     % scopes.
     collect_rbmm_goal_info_goal(ModuleInfo, ProcInfo, Graph,
@@ -384,7 +384,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
 
     % Well-modedness requires that the (cond, then) and the else parts create,
     % remove and carry the same regions, which are also created, removed,
-    % carried by the if-then-else. 
+    % carried by the if-then-else.
     Else = hlds_goal(_, ElseInfo),
     ElseRbmmInfo = goal_info_get_rbmm(ElseInfo),
     ElseRbmmInfo = rbmm_goal_info(Created, Removed, Carried, _, _),
@@ -394,7 +394,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
     goal_info_set_maybe_rbmm(yes(IteRbmmInfo), !Info).
 
 collect_rbmm_goal_info_goal_expr(_, _, _, _, _, _, _, !Expr, !Info) :-
-    !.Expr = shorthand(_), 
+    !.Expr = shorthand(_),
     % These should have been expanded out by now.
     unexpected($module, $pred, "shorthand").
 
@@ -423,15 +423,15 @@ compute_rbmm_info_conjunction([Conj | Conjs], !RbmmInfo) :-
     set.difference(set.union(CAllocatedInto, AllocatedInto0), Created,
         AllocatedInto),
     set.difference(set.union(CUsed, Used0), Created, Used),
-     
+
     !:RbmmInfo = rbmm_goal_info(Created, Removed, Carried, AllocatedInto,
         Used),
-    compute_rbmm_info_conjunction(Conjs, !RbmmInfo). 
+    compute_rbmm_info_conjunction(Conjs, !RbmmInfo).
 
     % The regions that are allocated into inside this list of goals are those
     % allocated into by any goals AND EXIST ...
-    % The regions that are read from inside this list of goals are those that 
-    % are read from by any goals AND EXIST ... 
+    % The regions that are read from inside this list of goals are those that
+    % are read from by any goals AND EXIST ...
     %
     % This predicate are used to compute the above information for the goals
     % in disjunction, cases, and if-then-else.
@@ -476,7 +476,7 @@ collect_rbmm_goal_info_unification(Unification, ModuleInfo, Graph,
         )
     ;
         Unification = deconstruct(DeconsCellVar, _, _, _, _, _),
-        rptg_get_node_by_variable(Graph, DeconsCellVar, Node), 
+        rptg_get_node_by_variable(Graph, DeconsCellVar, Node),
         NodeType = rptg_lookup_node_type(Graph, Node),
         ( if    type_not_stored_in_region(NodeType, ModuleInfo)
           then

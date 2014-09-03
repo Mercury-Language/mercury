@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ctgc.fixpoint_table.m.
 % Main author: nancy.
-% 
+%
 % This module defines a generic table to be used for fixpoint computations.
 % The purpose of this table is mainly to map pred_proc_ids onto abstract
 % substitutions representing either structure sharing or structure reuse.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.fixpoint_table.

@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -587,3 +589,7 @@ add_imp_map_clauses(MkLitA, MkLitB, IM, ImpVars) =
 			add_clause({MkLitA(VarA), MkLitB(VarB)}, IVs1),
 		    Vars, IVs0),
 	    IM, ImpVars).
+
+%---------------------------------------------------------------------------%
+:- end_module mode_robdd.implications.
+%---------------------------------------------------------------------------%

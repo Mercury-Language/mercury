@@ -5,7 +5,7 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: prog_mutable.m.
 % Main authors: rafe, juliensf.
 %
@@ -19,15 +19,15 @@
 % parse tree.  The transformation depends on the compilation target.
 %
 %-----------------------------------------------------------------------------%
-% 
+%
 % C BACKENDS
 %
-% For non-constant mutables the transformation is as follows: 
+% For non-constant mutables the transformation is as follows:
 %
 %   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
-% 
+%
 % ===>
-%   
+%
 %   :- pragma foreign_decl("C", "
 %           extern <CType> mutable_<varname>;
 %           #ifdef MR_THREAD_SAFE
@@ -35,7 +35,7 @@
 %           #endif
 %
 %   ").
-%   
+%
 %   :- pragma foreign_code("C", "
 %           <CType> mutable_<varname>;
 %           #ifdef MR_THREAD_SAFE
@@ -43,7 +43,7 @@
 %           #endif
 %   ").
 %
-% NOTES: 
+% NOTES:
 %
 %        * The name of the C global corresponding to mutable_<varname> may be
 %          mangled.
@@ -60,7 +60,7 @@
 %       impure pre_initialise_mutable_<varname>,
 %       impure X = <initval>,
 %       impure set_<varname>(X).
-% 
+%
 %   :- impure pred pre_initialise_mutable_<varname> is det.
 %   :- pragma foreign_proc("C",
 %       pre_initialise_mutable_<varname>,
@@ -71,7 +71,7 @@
 %       #endif
 %   ").
 %
-% Operations on mutables are defined in terms of the following four 
+% Operations on mutables are defined in terms of the following four
 % predicates.  Note that they are all marked `thread_safe' in order to
 % avoid having to acquire the global lock.
 %
@@ -89,15 +89,15 @@
 %       [promise_semipure, will_not_call_mercury, thread_safe],
 %   "
 %        X = mutable_<varname>;
-%   ").   
+%   ").
 %
 %   :- impure lock_<varname> is det.
 %   :- pragma foreign_proc("C",
 %       lock_<varname>,
 %       [will_not_call_mercury, promise_pure],
-%   "   
+%   "
 %       #ifdef MR_THREAD_SAFE
-%          MR_LOCK(&mutable_<varname>_lock, \"lock_<varname>/0\");      
+%          MR_LOCK(&mutable_<varname>_lock, \"lock_<varname>/0\");
 %       #endif
 %   ").
 %
@@ -105,9 +105,9 @@
 %   :- pragma foreign_proc("C",
 %       unlock_<varname>,
 %       [will_not_call_mercury, promise_pure],
-%   "   
+%   "
 %       #ifdef MR_THREAD_SAFE
-%          MR_UNLOCK(&mutable_<varname>_lock, \"unlock_<varname>/0\");      
+%          MR_UNLOCK(&mutable_<varname>_lock, \"unlock_<varname>/0\");
 %       #endif
 %   ").
 %
@@ -121,7 +121,7 @@
 %       impure unlock_<varname>.
 %
 %   :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
-% 
+%
 %   get_<varname>(X) :-
 %       promise_semipure (
 %           impure lock_<varname>
@@ -130,7 +130,7 @@
 %       ).
 %
 % etc.
-% 
+%
 % For thread-local mutables the transformation is as above, with the following
 % differences:
 %
@@ -160,7 +160,7 @@
 %       [promise_semipure, will_not_call_mercury, thread_safe],
 %   "
 %        MR_get_thread_local_mutable(<type>, X, mutable_<varname>);
-%   ").   
+%   ").
 %
 %   :- pragma foreign_proc("C",
 %       lock_<varname>,
@@ -192,12 +192,12 @@
 %   "
 %       X = mutable_<varname>;
 %   ").
-% 
+%
 % In order to initialise constant mutables we generate the following:
 %
 %   :- impure pred secret_initialization_only_set_<varname>(
 %       <vartype>::in(<varinst>)) is det.
-% 
+%
 %   :- pragma foreign_proc("C",
 %       secret_initialization_only_set_<varname>(X::in(<varinst>)),
 %       [will_not_call_mercury],
@@ -400,11 +400,11 @@
 %
 % In the transformations below, <varname> is a key derived from the name of the
 % mutable and the module name.  The module name must be included.
-% 
+%
 % For non-constant mutables:
 %
 %   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
-% 
+%
 % ===>
 %
 %   :- initialise initialise_mutable_<varname>/0.
@@ -452,12 +452,12 @@
 %               X = value
 %       end
 %   ").
-% 
+%
 % In order to initialise constant mutables we generate the following:
 %
 %   :- impure pred secret_initialization_only_set_<varname>(
 %       <vartype>::in(<varinst>)) is det.
-% 
+%
 %   :- pragma foreign_proc("Erlang",
 %       secret_initialization_only_set_<varname>(X::in(<varinst>)),
 %       [will_not_call_mercury],
@@ -477,7 +477,7 @@
 % way for spawned processes to inherit all the thread-local mutable values of
 % its parent process, but a child process in Erlang does not automatically
 % inherit its parent process's process dictionary).
-% 
+%
 % Trailed mutabled are not supported because the Erlang backend doesn't
 % support trailing.
 %
@@ -808,16 +808,16 @@ mutable_pre_init_pred_decl(ModuleName, Name, Context) = PreInitPredDeclItem :-
 
 %-----------------------------------------------------------------------------%
 
-mutable_lock_pred_sym_name(ModuleName, Name) = 
+mutable_lock_pred_sym_name(ModuleName, Name) =
     qualified(ModuleName, "lock_" ++ Name).
 
-mutable_unlock_pred_sym_name(ModuleName, Name) = 
+mutable_unlock_pred_sym_name(ModuleName, Name) =
     qualified(ModuleName, "unlock_" ++ Name).
 
 mutable_unsafe_get_pred_sym_name(ModuleName, Name) =
     qualified(ModuleName, "unsafe_get_" ++ Name).
 
-mutable_unsafe_set_pred_sym_name(ModuleName, Name) = 
+mutable_unsafe_set_pred_sym_name(ModuleName, Name) =
     qualified(ModuleName, "unsafe_set_" ++ Name).
 
 mutable_get_pred_sym_name(ModuleName, Name) =
@@ -832,7 +832,7 @@ mutable_secret_set_pred_sym_name(ModuleName, Name) =
 mutable_init_pred_sym_name(ModuleName, Name) =
     qualified(ModuleName, "initialise_mutable_" ++ Name).
 
-mutable_pre_init_pred_sym_name(ModuleName, Name) = 
+mutable_pre_init_pred_sym_name(ModuleName, Name) =
     qualified(ModuleName, "pre_initialise_mutable_" ++ Name).
 
 mutable_c_var_name(ModuleName, Name) = MangledCVarName :-
@@ -847,7 +847,7 @@ mutable_c_var_name(ModuleName, Name) = MangledCVarName :-
     MangledCVarName = sym_name_mangle(QualifiedCVarName).
 
 mutable_mutex_var_name(TargetMutableVarName) = MutexVarName :-
-    MutexVarName = TargetMutableVarName ++ "_lock". 
+    MutexVarName = TargetMutableVarName ++ "_lock".
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_mutable.

@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: erlang_rtti.m.
 % Authors: petdr, zs.
-% 
+%
 % Definitions of data structures for representing run-time type information
 % in the Erlang backend.
 %
 % Note we only define new types for from where the RTTI differs
 % from what is defined in rtti.m.
-% 
+%
 % In the context of the MLDS backend erlang_rtti.m is the equivalent of
 % rtti.m, while erl_rtti.m is the equivalent to rtti_to_mlds.m
 %
@@ -49,7 +49,7 @@
                 etcr_module_name    :: module_name,
                 etcr_type_name      :: string,
                 etcr_arity          :: int,
-                    
+
                 %
                 % It is possible that the type doesn't have
                 % a unify or compare predicate.
@@ -79,11 +79,11 @@
     ;       erlang_dummy(
                 edummy_name         :: string
             )
-                
+
                 % Mercury lists are represented as erlang lists
     ;       erlang_list
 
-                % 
+                %
     ;       erlang_array
 
     ;       erlang_eqv(
@@ -96,7 +96,7 @@
                 ebuiltin_ctor       :: builtin_ctor
             )
 
-                
+
                 % Types used just in the implementation.
     ;       erlang_impl_artifact(
                 eimpl_ctor          :: erlang_impl_ctor
@@ -109,7 +109,7 @@
     --->    erlang_du_functor(
                 edu_name            :: string,
                 edu_orig_arity      :: int,
-                    
+
                     % The declaration order of the functor.
                 edu_ordinal         :: int,
 
@@ -135,7 +135,7 @@
     ;       erlang_impl_ctor_type_ctor_info
     ;       erlang_impl_ctor_typeclass_info
     ;       erlang_impl_ctor_base_typeclass_info
-            
+
                 % The following are introduced in
                 % private_builtin and table_builtin
                 % but should never be used.

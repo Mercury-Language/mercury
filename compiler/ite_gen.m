@@ -593,7 +593,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
         ;
             MaybeRbmmInfo = yes(RbmmInfo),
             RbmmInfo = rbmm_goal_info(CondCreatedRegionVars,
-                CondRemovedRegionVars, CondCarriedRegionVars, 
+                CondRemovedRegionVars, CondCarriedRegionVars,
                 CondAllocRegionVars, _CondUsedRegionVars),
             list.reverse(CondGoals, ReversedCondGoals),
             code_info.get_module_info(!.CI, ModuleInfo),

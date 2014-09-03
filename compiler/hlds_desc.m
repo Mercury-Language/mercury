@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: hlds_desc.m.
 % Main author: zs.
-% 
+%
 % This module's functions are intended to generate short descriptions
 % of parts of the HLDS for use in debugging messages. Whereas the code
 % in hlds_out.m is intended to completely describe a given construct,
 % the code here is intended to orient programmers about what part of the HLDS
 % is currently being processed.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

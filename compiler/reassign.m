@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: reassign.m.
 % Author: zs.
-% 
+%
 % This module implements an LLDS->LLDS transformation that optimizes away
-% assignments to locations that already hold the assigned value.  It operates
+% assignments to locations that already hold the assigned value. It operates
 % entirely within extended basic blocks.
 %
 % It is intended for instruction sequences such as the following extract
@@ -44,9 +44,9 @@
 % TargetLval now contains SourceRval; if SourceRval is of the form
 % lval(SourceLval), we also record that SourceLval now contains
 % lval(TargetLval). Later on, if we find an assignment that assigns to an lval
-% a value that it already holds, we remove the assignment.  The removed
+% a value that it already holds, we remove the assignment. The removed
 % assignment will either be a copy of the original assignment TargetLval =
-% SourceRval, or its converse, SourceLval = lval(TargetLval).  The mechanism
+% SourceRval, or its converse, SourceLval = lval(TargetLval). The mechanism
 % that enables us to do this is a map that maps lvals (e.g. TargetLval)
 % to its known contents (e.g. SourceRval).
 %
@@ -91,7 +91,7 @@
 % it clobbers entries in the known contents map whenever an instruction *could*
 % affect the entry, even if it in fact doesn't. For example, we clobber the
 % known contents map at calls, labels and ticket resets.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.reassign.

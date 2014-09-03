@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: basic_block.m.
 % Main author: zs.
-% 
+%
 % This module defines a representation for basic blocks, sequences of
 % instructions with one entry and one exit, and provides predicates that
 % convert a list of instructions into a list of basic blocks and vice versa.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.basic_block.

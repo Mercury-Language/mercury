@@ -316,7 +316,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
         llds_instr(comment("lookup disj"), "")
     ),
 
-    Code = 
+    Code =
         Comment ++
         FlushCode ++
         BaseRegInitCode ++
@@ -614,7 +614,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             LaterRegionCode, LastRegionCode, BranchStart,
             MaybeEnd1, MaybeEnd, RestCode, !CI),
 
-        Code = 
+        Code =
             EntryResumePointCode ++
             RestoreHpCode ++
             RestoreTicketCode ++
@@ -666,7 +666,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 "End of disjunction")
         ),
 
-        Code = 
+        Code =
             EntryResumePointCode ++
             TraceCode ++      % XXX Should this be after LastRegionCode?
             RestoreHpCode ++
@@ -689,7 +689,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             ).
 
 :- pred maybe_create_disj_region_frame_nondet(add_region_ops::in,
-    hlds_goal_info::in, llds_code::out, llds_code::out, llds_code::out, 
+    hlds_goal_info::in, llds_code::out, llds_code::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
 maybe_create_disj_region_frame_nondet(DisjRegionOps, _DisjGoalInfo,

@@ -77,7 +77,7 @@
 :- func report_error_var(typecheck_info, prog_var, mer_type, type_assign_set)
     = error_spec.
 
-:- func report_error_var_either_type(typecheck_info, prog_var, 
+:- func report_error_var_either_type(typecheck_info, prog_var,
     mer_type, mer_type, type_assign_set) = error_spec.
 
 :- func report_error_arg_var(typecheck_info, prog_var, args_type_assign_set)
@@ -322,7 +322,7 @@ report_unknown_event_call_error(Info, EventName) = Spec :-
 
 report_event_args_mismatch(Info, EventName, EventArgTypes, Args) = Spec :-
     Context = Info ^ tc_info_context,
-    Pieces = 
+    Pieces =
         [words("Error:")] ++
         error_num_args_to_pieces(no, length(Args), [length(EventArgTypes)]) ++
         [words("in event"), quote(EventName), suffix(".")],
@@ -981,7 +981,7 @@ report_error_var_either_type(Info, Var, TypeA, TypeB, TypeAssignSet0) = Spec :-
     list.sort_and_remove_dups(ActualExpectedListB0, ActualExpectedListB),
 
     Pieces1 = [words("type error:")],
-    ( 
+    (
         ActualExpectedListA = [ActualExpectedA],
         ActualExpectedListB = [ActualExpectedB]
     ->
@@ -990,7 +990,7 @@ report_error_var_either_type(Info, Var, TypeA, TypeB, TypeAssignSet0) = Spec :-
         Pieces2 = argument_name_to_pieces(VarSet, Var) ++
             [words("has type"), prefix("`")] ++ ActualPieces ++
             [suffix("'"), suffix(","), nl,
-            words("expected type was either"), prefix("`")] ++ 
+            words("expected type was either"), prefix("`")] ++
             ExpectedPiecesA ++ [suffix("'"), words("or"), prefix("`")] ++
             ExpectedPiecesB ++ [suffix("'"), suffix("."), nl]
     ;

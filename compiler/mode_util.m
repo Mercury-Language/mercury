@@ -1331,7 +1331,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (
-            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars, 
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0, OrElseInners),
             Goals0 = [MainGoal0 | OrElseGoals0],
             NonLocals = goal_info_get_nonlocals(GoalInfo),
@@ -1567,7 +1567,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
         InstMap, InstMapDelta, !RI) :-
     % Deconstructions are the only types of unifications that can require
     % updating of the instmap_delta after simplify.m has been run.
-    % Type specialization may require constructions of type-infos, 
+    % Type specialization may require constructions of type-infos,
     % typeclass-infos or predicate constants to be added to the
     % instmap_delta.
     ModuleInfo0 = !.RI ^ ri_module_info,
@@ -1655,7 +1655,7 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         ; ConsId = tuple_cons(_)
         ),
         MaybeInst = no
-    ;   
+    ;
         % Note that before the change that introduced the char_const functor,
         % we used to handle character constants as user-defined cons_ids.
         ( ConsId = int_const(_)
@@ -1665,7 +1665,7 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         ),
         MaybeInst = yes(bound(shared, inst_test_results_fgtc,
             [bound_functor(ConsId, [])]))
-    ;   
+    ;
         ConsId = impl_defined_const(_),
         unexpected($module, $pred, "impl_defined_const")
     ;

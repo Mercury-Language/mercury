@@ -39,9 +39,9 @@
 % possibly adding a goto at the end to represent falling through to the next
 % label. In all other ways the original and the generalized version will be
 % identical.
-% 
+%
 %-----------------------------------------------------------------------------%
- 
+
 :- module ll_backend.dupelim.
 :- interface.
 
@@ -145,7 +145,7 @@ dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
     list.foldl(add_pragma_pref_labels, Instrs, !Fixed),
     dupelim_build_maps(Labels, BlockMap, !StdMap, !Fixed).
 
-    % Don't try to standardize blocks that have more instructions than this. 
+    % Don't try to standardize blocks that have more instructions than this.
     % They are extremely unlikely to be duplicate blocks, so the work would
     % be almost certainly wasted.
     %

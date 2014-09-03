@@ -213,5 +213,5 @@ error_if_exported(Status, Context, Item, !Specs) :-
     ).
 
 %----------------------------------------------------------------------------%
-:- end_module make_hlds_error.
+:- end_module hlds.make_hlds.make_hlds_error.
 %----------------------------------------------------------------------------%

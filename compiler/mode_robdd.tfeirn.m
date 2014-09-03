@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -10,7 +12,7 @@
 % 
 %-----------------------------------------------------------------------------%
 
-:- module mode_robdd__tfeirn.
+:- module mode_robdd.tfeirn.
 :- interface.
 
 :- import_module check_hlds.
@@ -776,3 +778,5 @@ to_robdd(X) =
 % 	^ add_implications(X ^ imp_vars).
 
 %---------------------------------------------------------------------------%
+:- end_module mode_robdd.tfeirn.
+%-----------------------------------------------------------------------------%

@@ -142,7 +142,7 @@
 :- pred build_typed_rvals(list(rval)::in, list(llds_type)::in,
     list(typed_rval)::out) is det.
 
-:- type common_cell_type 
+:- type common_cell_type
     --->    plain_type(list(llds_type))
             % The type is a structure with one field for each one
             % of the cell's arguments.
@@ -661,7 +661,7 @@
             % conjunct see runtime/mercury_context.{c,h}.
             % The synchronisation term is specified by the given lval.
             % The label gives the address of the code following the parallel
-            % conjunction. 
+            % conjunction.
 
     ;       lc_create_loop_control(int, lval)
             % Create a loop control structure with the given number of slots,
@@ -1043,7 +1043,7 @@
     % as the target of an assignment.
     %
 :- type lval
-    
+
     % Virtual machine registers.
 
     --->    reg(reg_type, int)
@@ -1218,7 +1218,7 @@
             % A constant in the target language.
             % It may be a #defined constant in C which is why
             % it is represented as string.
-            
+
     ;       llconst_float(float)
     ;       llconst_string(string)
     ;       llconst_multi_string(list(string))

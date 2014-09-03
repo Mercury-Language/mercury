@@ -478,7 +478,7 @@ gen_type_info_defn(ModuleInfo, RttiTypeInfo, Name, RttiId, !GlobalData) :-
                 % as well as the code for handling pseudo type-infos below.
                 %
                 InitializerArgs = [InitRttiName, InitCastRttiDatasArray]
-            ; 
+            ;
                 InitializerArgs = [
                     InitRttiName,
                     gen_init_int(list.length(ArgTypes)),
@@ -554,7 +554,7 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
             module_info_get_name(ModuleInfo, ModuleName),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, TargetLang),
-            
+
             InitRttiName = gen_init_rtti_name(ModuleName, RttiTypeCtor,
                 type_ctor_type_ctor_info),
             InitCastRttiDatasArray = gen_init_cast_rtti_datas_array(
@@ -573,7 +573,7 @@ gen_pseudo_type_info_defn(ModuleInfo, RttiPseudoTypeInfo, Name, RttiId,
                     InitCastRttiDatasArray
                 ]
             ),
-            Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), 
+            Initializer = init_struct(mlds_rtti_type(item_type(RttiId)),
                 InitializerArgs),
             rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
                 !GlobalData),

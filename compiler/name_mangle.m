@@ -295,5 +295,5 @@ mercury_vector_common_array_prefix = "mercury_vector_common_".
 mercury_common_type_prefix = "mercury_type_".
 
 %-----------------------------------------------------------------------------%
-:- end_module name_mangle.
+:- end_module backend_libs.name_mangle.
 %-----------------------------------------------------------------------------%

@@ -1573,7 +1573,7 @@ module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
                 ForeignModuleName =
                     foreign_language_module_name(ModuleName, Lang)
             ->
-                module_target_to_file_name_maybe_search(Globals,    
+                module_target_to_file_name_maybe_search(Globals,
                     ForeignModuleName, module_target_object_code(PIC), MkDir,
                     Search, FileName, !IO)
             ;
@@ -1984,7 +1984,7 @@ module_target_type_to_nonce(Type) = X :-
         X = 18 `mix` pic_to_nonce(PIC)
     ;
         Type = module_target_foreign_il_asm(_ForeignLang),
-        X = 19 
+        X = 19
     ;
         Type = module_target_foreign_object(_PIC, _ForeignLang),
         X = 20

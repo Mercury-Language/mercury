@@ -3186,8 +3186,9 @@ generate_error_goal(TableInfo, Context, Msg, !VarSet, !VarTypes, Goal) :-
     Message = Msg ++ " in " ++ PredOrFuncStr ++ " " ++ NameStr
         ++ "/" ++ ArityStr,
 
-    gen_string_construction("Message", Message, !VarSet, !VarTypes,
-        MessageVar, MessageStrGoal),
+    make_string_const_construction_alloc(Message, yes("Message"),
+        MessageStrGoal, MessageVar, !VarSet, !VarTypes),
+
     table_generate_call("table_error", detism_erroneous, [MessageVar],
         purity_pure, instmap_delta_bind_no_var, ModuleInfo, Context, CallGoal),
 
@@ -3271,22 +3272,6 @@ append_fail(Goal, GoalAndThenFail) :-
         purity_impure, Context, ConjGoalInfo),
     GoalAndThenFail =
         hlds_goal(conj(plain_conj, [Goal, fail_goal]), ConjGoalInfo).
-
-:- pred gen_int_construction(string::in, int::in,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    prog_var::out, hlds_goal::out) is det.
-
-gen_int_construction(VarName, VarValue, !VarSet, !VarTypes, Var, Goal) :-
-    make_int_const_construction_alloc(VarValue, yes(VarName), Goal, Var,
-        !VarSet, !VarTypes).
-
-:- pred gen_string_construction(string::in, string::in,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    prog_var::out, hlds_goal::out) is det.
-
-gen_string_construction(VarName, VarValue, !VarSet, !VarTypes, Var, Goal) :-
-    make_string_const_construction_alloc(VarValue, yes(VarName), Goal, Var,
-        !VarSet, !VarTypes).
 
 %-----------------------------------------------------------------------------%
 

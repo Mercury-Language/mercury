@@ -452,7 +452,7 @@ dump_rtti_name(type_ctor_res_addrs) = "res_addrs".
 dump_rtti_name(type_ctor_res_addr_functors) = "res_addr_functors".
 dump_rtti_name(type_ctor_enum_functor_desc(Ordinal)) =
     "enum_functor_desc_" ++ int_to_string(Ordinal).
-dump_rtti_name(type_ctor_foreign_enum_functor_desc(Ordinal)) = 
+dump_rtti_name(type_ctor_foreign_enum_functor_desc(Ordinal)) =
     "foreign_enum_functor_desc_" ++ int_to_string(Ordinal).
 dump_rtti_name(type_ctor_notag_functor_desc) = "notag_functor_desc_".
 dump_rtti_name(type_ctor_du_functor_desc(Ordinal)) =
@@ -937,7 +937,7 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
             Region_str = "no"
         ;
             MaybeRegionRval = yes(RegionRval),
-            Region_str = dump_rval(no, RegionRval) 
+            Region_str = dump_rval(no, RegionRval)
         ),
         (
             MaybeReuse = no_llds_reuse,
@@ -1220,7 +1220,7 @@ dump_component(_, foreign_proc_noop) = "".
 :- func dump_affects_liveness(proc_affects_liveness) = string.
 
 dump_affects_liveness(proc_affects_liveness) = "affects_liveness".
-dump_affects_liveness(proc_does_not_affect_liveness) =  
+dump_affects_liveness(proc_does_not_affect_liveness) =
     "does_not_affect_liveness".
 dump_affects_liveness(proc_default_affects_liveness) =
     "default_affects_liveness".
@@ -1275,3 +1275,7 @@ dump_fullinstrs(_MaybeProcLabel, _AutoComments, []) = "".
 dump_fullinstrs(MaybeProcLabel, AutoComments, [Instr | Instrs]) =
     dump_fullinstr(MaybeProcLabel, AutoComments, Instr)
     ++ dump_fullinstrs(MaybeProcLabel, AutoComments, Instrs).
+
+%-----------------------------------------------------------------------------%
+:- end_module ll_backend.opt_debug.
+%-----------------------------------------------------------------------------%

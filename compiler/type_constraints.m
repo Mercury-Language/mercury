@@ -441,7 +441,7 @@ set_goal_pred_id(PredId, Goal0, MaybeGoal) :-
         Goal = hlds_goal(GoalExpr, GoalInfo),
         MaybeGoal = ok(Goal)
     ;
-        MaybeGoal = error("Goal was not a plain call") 
+        MaybeGoal = error("Goal was not a plain call")
     ).
 
     % The following predicates extract the disjuncts from type constraints.

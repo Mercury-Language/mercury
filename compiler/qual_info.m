@@ -303,5 +303,5 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module qual_info.
+:- end_module hlds.make_hlds.qual_info.
 %-----------------------------------------------------------------------------%

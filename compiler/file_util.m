@@ -431,7 +431,7 @@ make_install_dir_command(Globals, SourceDirName, InstallDir) = Command :-
     ),
     Command = string.join_list("   ", list.map(quote_arg,
         [InstallCmd, InstallCmdDirOpt, SourceDirName, InstallDir])).
-        
+
 %-----------------------------------------------------------------------------%
 :- end_module libs.file_util.
 %-----------------------------------------------------------------------------%

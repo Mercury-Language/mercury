@@ -2683,7 +2683,7 @@ reserve_stack_size_flags(Globals) = Flags :-
     globals.lookup_int_option(Globals, cstack_reserve_size, ReserveStackSize),
     ( if ReserveStackSize = -1 then
         Flags = ""
-    else 
+    else
         get_c_compiler_type(Globals, C_CompilerType),
         (
             ( C_CompilerType = cc_gcc(_, _, _)

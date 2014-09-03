@@ -163,7 +163,7 @@ check_local_oisu_pred(ModuleInfo, KindMap, OISUTypeCtors,
                 !:Specs = [ProcsSpec | !.Specs],
                 Pair = Pair0
             )
-        ; 
+        ;
             pred_info_get_origin(PredInfo0, Origin),
             ( Origin = origin_special_pred(_) ->
                 true

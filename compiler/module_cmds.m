@@ -485,7 +485,7 @@ make_symlink_or_copy_dir(Globals, SourceDirName, DestinationDirName,
         (
             Succeeded = yes
         ;
-            Succeeded = no, 
+            Succeeded = no,
             io.progname_base("mercury_compile", ProgName, !IO),
             io.write_string(ProgName, !IO),
             io.write_string(": error copying directory", !IO),
@@ -606,8 +606,8 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
         MaybeProcessOutput = yes(ProcessOutput)
     ->
         io.make_temp(ProcessedTmpFile, !IO),
-       
-        % XXX we should get rid of use_win32 
+
+        % XXX we should get rid of use_win32
         ( use_win32 ->
             get_system_env_type(Globals, SystemEnvType),
             ( SystemEnvType = env_type_powershell ->

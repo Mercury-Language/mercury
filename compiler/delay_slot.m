@@ -5,24 +5,24 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: delay_slot.m.
 % Main author: zs.
-% 
-% This module attempts to fill the delay slots of branch instructions.  Since
-% it assumes the existence of one delay slot after every branch, this module
-% should not be invoked if the architecture we are targeting has no delay
-% slots on its branch instructions.
-% 
+%
+% This module attempts to fill the delay slots of branch instructions.
+% Since it assumes the existence of one delay slot after every branch,
+% this module should not be invoked if the architecture we are targeting
+% has no delay slots on its branch instructions.
+%
 % Since we are generating C code, not assembler, we cannot fill slots
-% directly.  However, we can let the C compiler know that the instruction
+% directly. However, we can let the C compiler know that the instruction
 % immediately after a condition branch instruction can be safely executed even
 % if the branch is not taken. We can do so by moving the instruction before
 % the conditional branch. This actually requires the instruction to be
 % executed in both continuations, therefore we want to do this only if there
 % is no chance that the C compiler would be able to fill the delay slot any
 % other way.
-% 
+%
 % The only code pattern that we recognize as being both safe and advantageous
 % to transform the code in order to fill a delay slot is this pattern,
 % produced by frameopt:
@@ -44,7 +44,7 @@
 % The initial store into stackvar(0) is into the first word above the
 % current detstack top. After the incr_sp is executed (if it ever is), this
 % word will become the bottom stack slot of the new frame, i.e. stackvar(N).
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.delay_slot.
@@ -87,5 +87,5 @@ fill_branch_delay_slot([Instr0 | Instrs0], Instrs) :-
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module delay_slot.
+:- end_module ll_backend.delay_slot.
 %-----------------------------------------------------------------------------%

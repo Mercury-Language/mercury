@@ -9,7 +9,7 @@
 % File: llds_out_data.m.
 % Main authors: conway, fjh, zs.
 %
-% This module defines the routines for printing out LLDS lvals, rvals, 
+% This module defines the routines for printing out LLDS lvals, rvals,
 % and global variables.
 %
 %----------------------------------------------------------------------------%
@@ -803,7 +803,7 @@ output_record_rvals_decls_format(Info, Rvals @ [_ | _],
     % that do not permit tail recursion, we can free up the stack frames
     % occupied by a bunch of loop iterations before the declarations of *all*
     % the rvals have been output.
-    % 
+    %
 :- pred output_record_rvals_decls_format_count(llds_out_info::in,
     list(rval)::in, list(rval)::out, int::in,
     string::in, string::in, int::in, int::out, decl_set::in,

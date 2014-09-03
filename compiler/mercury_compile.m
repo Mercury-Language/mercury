@@ -308,9 +308,9 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
     ),
     (
         MaybeMCFlags = yes(MCFlags),
-        % 
+        %
         % NOTE: the order of the flags here is important.  It must be:
-        % 
+        %
         %   (1) flags for detected library grades
         %   (2) flags from Mercury.config and any Mercury.options files
         %   (3) flags from any command line options
@@ -2073,7 +2073,7 @@ detect_libgrades(Globals, MaybeConfigMerStdLibDir, GradeOpts, !IO) :-
         % overrides one set using the MERCURY_STDLIB_DIR variable.
         ( if
             % Was the standard library directory set on the command line?
-            % 
+            %
             globals.lookup_maybe_string_option(Globals,
                 mercury_standard_library_directory, MaybeStdLibDir),
             MaybeStdLibDir = yes(MerStdLibDir)
@@ -2086,7 +2086,7 @@ detect_libgrades(Globals, MaybeConfigMerStdLibDir, GradeOpts, !IO) :-
         then
             do_detect_libgrades(VeryVerbose, MerStdLibDir, GradeOpts, !IO)
         else
-            GradeOpts = [] 
+            GradeOpts = []
         ),
         trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
             maybe_write_string(Verbose, "% done.\n", !TIO)
@@ -2158,7 +2158,7 @@ do_detect_libgrade(VeryVerbose, DirName, FileName, FileType, Continue,
         ),
         Continue = yes
     ).
-            
+
 :- pred maybe_report_detected_libgrade(bool::in, string::in,
     io::di, io::uo) is det.
 

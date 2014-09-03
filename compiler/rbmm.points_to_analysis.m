@@ -179,7 +179,7 @@ intra_analyse_case(Case, !RptaInfo) :-
     % For construction and deconstruction unifications, add an edge from
     % the node of the variable on the LHS to that of each variable on the RHS.
     % For construction, also mark the node of lhs variable allocated.
-    % 
+    %
     % For assignment unifications we merge the nodes corresponding to
     % the variables on either side.
     %
@@ -579,7 +579,7 @@ rule_1(Node, !Graph) :-
     % the predicate will not look further in the list.
     % The unification of nodes, if happends (Happened = yes),
     % will be propagated by calling rule_1 predicate mutually recursively.
-    % 
+    %
     % The loop in this predicate is similar to
     % for i = ... to N - 1
     %    for j = i+1 to N ...
@@ -868,7 +868,7 @@ apply_rules_outedges([Edge | Edges], CallerNode, CallSite, CalleeRptaInfo,
 :- pred rule_5(rptg_edge::in, program_point::in, rpta_info::in,
     rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
-rule_5(Edge, CallSite, CalleeRptaInfo, CallerNode, 
+rule_5(Edge, CallSite, CalleeRptaInfo, CallerNode,
         rpta_info(!.CallerGraph, CallerAlphaMapping),
         rpta_info(!:CallerGraph, CallerAlphaMapping)) :-
     % Find an out-edge in the caller's graph that has a same label
@@ -898,7 +898,7 @@ rule_5(Edge, CallSite, CalleeRptaInfo, CallerNode,
 :- pred rule_6(rptg_edge::in, program_point::in, rpta_info::in,
     rptg_node::in, rpta_info::in, rpta_info::out) is det.
 
-rule_6(Edge, CallSite, CalleeRptaInfo, CallerNode, 
+rule_6(Edge, CallSite, CalleeRptaInfo, CallerNode,
         rpta_info(!.CallerGraph, !.CallerAlphaMapping),
         rpta_info(!:CallerGraph, !:CallerAlphaMapping)) :-
     % Find an out-edge in the caller's graph that has a same label
@@ -923,7 +923,7 @@ rule_6(Edge, CallSite, CalleeRptaInfo, CallerNode,
             map.set(CalleeM, CallerM, AlphaAtCallSite0, AlphaAtCallSite1),
             map.set(CallSite, AlphaAtCallSite1, !CallerAlphaMapping),
 
-            % If CalleeM's is_allocated then CallerM is also allocated. 
+            % If CalleeM's is_allocated then CallerM is also allocated.
             % Otherwise leave CallerM alone.
             ( rptg_is_allocated_node(CalleeGraph, CalleeM) ->
                 rptg_set_node_is_allocated(CallerM, bool.yes, !CallerGraph)
@@ -1058,5 +1058,5 @@ wrapped_init(InfoTable, PPId) = Entry :-
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module rbmm.points_to_analysis.
+:- end_module transform_hlds.rbmm.points_to_analysis.
 %-----------------------------------------------------------------------------%

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: trace_params.m.
 % Author: zs.
-% 
+%
 % This module defines the parameters of execution tracing at various trace
 % levels and with various settings of the --suppress-trace option.
 %
@@ -29,7 +29,7 @@
 % effective trace levels. Most of the other functions defined in this module
 % convert the given (global) trace level into the effective trace level of
 % the relevant procedure before calculating their result.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module libs.trace_params.
@@ -655,3 +655,7 @@ port_number(port_disj_first) = 12.
 port_number(port_disj_later) = 13.
 port_number(port_switch) = 14.
 port_number(port_user) = 15.
+
+%-----------------------------------------------------------------------------%
+:- end_module libs.trace_params.
+%-----------------------------------------------------------------------------%

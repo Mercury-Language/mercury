@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -416,3 +418,7 @@ normalise(mode_robdd(TrueVars0, FalseVars0, Robdd0)) = X :-
 :- func x(tfr(T)::di_tfr, robdd(T)::in) = (tfr(T)::uo_tfr) is det.
 
 x(X, R) = X * mode_robdd(init, init, R).
+
+%-----------------------------------------------------------------------------%
+:- end_module mode_robdd.tfr.
+%-----------------------------------------------------------------------------%

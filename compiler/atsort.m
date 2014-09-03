@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: atsort.m.
 % Author: zs.
-% 
+%
 % Approximate topological sort. The sort is approximate because it must work
 % even on data that has cycles.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module libs.atsort.
@@ -51,14 +51,14 @@
 
 % :- pred main1(list(list(int))).
 % :- mode main1(out) is det.
-% 
+%
 % main1(L) :-
 %   test1(S, P),
 %   atsort(S, P, L).
-% 
+%
 % :- pred test1(relmap(int), relmap(int)).
 % :- mode test1(out, out) is det.
-% 
+%
 % test1(S, P) :-
 %   map.init(S0),
 %   map.set(S0, 1, [2, 3], S1),

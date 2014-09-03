@@ -839,7 +839,7 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo) :-
         ),
         OpaqueGoal = hlds_goal(_, OpaqueGoalInfo),
         OpaqueNonLocals = goal_info_get_nonlocals(OpaqueGoalInfo),
-        OpaqueVarsSet = set_of_var.set_to_bitset(OpaqueVars), 
+        OpaqueVarsSet = set_of_var.set_to_bitset(OpaqueVars),
         set_of_var.intersect(OpaqueNonLocals, OpaqueVarsSet, UsedOpaqueVars),
         set_of_var.is_non_empty(UsedOpaqueVars)
     ->

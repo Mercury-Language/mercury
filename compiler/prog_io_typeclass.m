@@ -252,7 +252,7 @@ tvars_in_fundeps(FunDeps) = list.condense(list.map(tvars_in_fundep, FunDeps)).
 
 tvars_in_fundep(fundep(Domain, Range)) = Domain ++ Range.
 
-:- pred parse_superclass_constraints(module_name::in, varset::in, term::in, 
+:- pred parse_superclass_constraints(module_name::in, varset::in, term::in,
     maybe2(list(prog_constraint), list(prog_fundep))::out) is det.
 
 parse_superclass_constraints(_ModuleName, VarSet, ConstraintsTerm, Result) :-

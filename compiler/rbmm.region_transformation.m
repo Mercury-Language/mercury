@@ -808,9 +808,9 @@ node_to_var_with_both_renamings(Graph, ResurRenaming, IteRenaming,
 region_name_to_var_with_both_renamings(Name0, ResurRenaming, IteRenaming,
         RegVar, !NameToVar, !VarSet, !VarTypes) :-
     ( map.search(ResurRenaming, Name0, ResurNameList) ->
-        list.det_last(ResurNameList, Name) 
+        list.det_last(ResurNameList, Name)
     ; map.search(IteRenaming, Name0, IteNameList) ->
-        list.det_last(IteNameList, Name) 
+        list.det_last(IteNameList, Name)
     ;
         Name = Name0
     ),

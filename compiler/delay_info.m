@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: delay_info.m.
 % Main author: fjh.
-% 
+%
 % This module implements part of the mode analysis algorithm.  In the mode
 % analysis, reordering of conjunctions is done by simulating coroutining at
-% compile time.  This module defines an abstract data type `delay_info' that 
+% compile time.  This module defines an abstract data type `delay_info' that
 % records the information necessary for suspending and waking up goals.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.delay_info.

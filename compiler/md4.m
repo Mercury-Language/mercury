@@ -93,8 +93,7 @@ static void mdfour64(struct mdfour *m, MR_uint_least32_t *M)
     ROUND1(A,B,C,D,  8,  3);  ROUND1(D,A,B,C,  9,  7);
     ROUND1(C,D,A,B, 10, 11);  ROUND1(B,C,D,A, 11, 19);
     ROUND1(A,B,C,D, 12,  3);  ROUND1(D,A,B,C, 13,  7);
-    ROUND1(C,D,A,B, 14, 11);  ROUND1(B,C,D,A, 15, 19);	
-
+    ROUND1(C,D,A,B, 14, 11);  ROUND1(B,C,D,A, 15, 19);
 
     ROUND2(A,B,C,D,  0,  3);  ROUND2(D,A,B,C,  4,  5);
     ROUND2(C,D,A,B,  8,  9);  ROUND2(B,C,D,A, 12, 13);
@@ -264,4 +263,6 @@ static void mdfour_result(const struct mdfour *m, unsigned char *out)
 md4sum(_) = _ :-
     sorry($file, $pred).
 
+%-----------------------------------------------------------------------------%
+:- end_module libs.md4.
 %-----------------------------------------------------------------------------%

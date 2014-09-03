@@ -1150,11 +1150,11 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
         ;
             % Emit a warning if the variable in the head of a
             % require_complete_switch scope does not occur somewhere in the
-            % body.  Note that since the goal inside the scope does not need to
+            % body. Note that since the goal inside the scope does not need to
             % be a switch, the variable will not necessarily appear in the
-            % non-locals set.  We only emit the  warning when the variable does
+            % non-locals set. We only emit the  warning when the variable does
             % not occur at all.
-            % 
+            %
             goal_vars(SubGoal, SubGoalVars),
             ( if set_of_var.member(SubGoalVars, RequiredVar) then
                 true
@@ -1408,7 +1408,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
 
     % If the error was in a call to a type-specific unification predicate
     % (i.e. in the unification itself), then don't print out the predicate
-    % name, just print out the context.  If it wasn't, then print them
+    % name, just print out the context. If it wasn't, then print them
     % both out. (The latter can happen if there is a determinism error
     % in a function call inside some unification.)
 
@@ -1628,5 +1628,5 @@ restore_option(Option - Value, !Globals) :-
     globals.set_option(Option, Value, !Globals).
 
 %-----------------------------------------------------------------------------%
-:- end_module det_report.
+:- end_module check_hlds.det_report.
 %-----------------------------------------------------------------------------%

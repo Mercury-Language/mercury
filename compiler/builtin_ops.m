@@ -5,7 +5,7 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: builtin_ops.m -- defines the builtin operator types.
 % Main author: fjh.
 %
@@ -13,7 +13,7 @@
 % operators.  Several of the different back-ends -- the bytecode back-end,
 % the LLDS, and the MLDS -- all use the same set of builtin operators.
 % These operators are defined here.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.builtin_ops.
@@ -292,5 +292,5 @@ builtin_translation("float", "=<", 0, [X, Y],
     test(binary(float_le, leaf(X), leaf(Y)))).
 
 %-----------------------------------------------------------------------------%
-:- end_module builtin_ops.
+:- end_module backend_libs.builtin_ops.
 %-----------------------------------------------------------------------------%

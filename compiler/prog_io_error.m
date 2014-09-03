@@ -16,7 +16,7 @@
 % The definition I (zs) am thinking of is a record that has one boolean
 % for every different kind of error we can encounter when reading in
 % the contents of a Mercury source file (.m, .int, .int2 etc).
-% 
+%
 % Different parts of the compiler care about different subsets of these
 % errors. Each will need its own utility predicate that tests for the
 % kinds of errors it cares about, and ignores the rest.

@@ -27,7 +27,7 @@
 :- include_module prog_data.
 
 % The parser.
-:- include_module prog_io. 
+:- include_module prog_io.
    :- include_module prog_io_dcg.
    :- include_module prog_io_error.
    :- include_module prog_io_find.

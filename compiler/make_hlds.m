@@ -174,3 +174,7 @@ produce_instance_method_clauses(InstanceProcDefn,
 
 set_module_recomp_info(QualInfo, !ModuleInfo) :-
     set_module_recompilation_info(QualInfo, !ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+:- end_module hlds.make_hlds.
+%-----------------------------------------------------------------------------%

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ll_pseudo_type_info.m.
 % Author: fjh.
-% 
+%
 % This module generates LLDS representations for pseudo-type-infos.
 %
 % Most of the work is done by pseudo_type_info.m, which generates a
@@ -18,7 +18,7 @@
 % The documentation of the structures of pseudo-type-infos is in
 % runtime/mercury_type_info.h; that file also contains a list of all the files
 % that depend on such data structures.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.ll_pseudo_type_info.
@@ -177,5 +177,5 @@ convert_compound_type_info(RttiTypeCtor, ArgRvals0, Args, !StaticCellInfo,
     Rval = const(llconst_data_addr(DataId, no)).
 
 %-----------------------------------------------------------------------------%
-:- end_module ll_pseudo_type_info.
+:- end_module ll_backend.ll_pseudo_type_info.
 %-----------------------------------------------------------------------------%

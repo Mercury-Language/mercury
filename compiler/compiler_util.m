@@ -5,7 +5,7 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: compiler_util.
 % Main author: zs.
 %
@@ -67,5 +67,5 @@ report_warning_to_stream(Globals, Stream, Message, !IO) :-
     io.write_string(Stream, Message, !IO).
 
 %-----------------------------------------------------------------------------%
-:- end_module compiler_util.
+:- end_module libs.compiler_util.
 %-----------------------------------------------------------------------------%

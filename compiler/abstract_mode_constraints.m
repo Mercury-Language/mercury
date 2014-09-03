@@ -681,5 +681,5 @@ pretty_print_binding(VarSet, Bindings, Var, !IO) :-
     io.nl(!IO).
 
 %----------------------------------------------------------------------------%
-:- end_module abstract_mode_constraints.
+:- end_module check_hlds.abstract_mode_constraints.
 %----------------------------------------------------------------------------%

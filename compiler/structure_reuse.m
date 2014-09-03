@@ -32,4 +32,6 @@
 :- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module check_hlds.
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.
+%-----------------------------------------------------------------------------%

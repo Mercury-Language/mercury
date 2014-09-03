@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%  
+%
 % File: ilds.m.
 % Main author: trd.
-% 
+%
 % ilds - The IL instruction set.
 %
 % The IL instruction set is documented in the Microsoft .NET Framework SDK.
@@ -45,9 +45,9 @@
                 ilmp_maybe_id :: maybe(ilds.id)
                               % The name of the parameter (if any).
             ).
-    
+
     % A method signature.
-    % 
+    %
 :- type signature
     --->    signature(
                 call_conv,  % calling convention
@@ -108,7 +108,7 @@
     % One is the sub-module name, which is used for references from the parent
     % module, and the other is the assembly name for when the name is
     % referenced from anywhere else.
-    % 
+    %
 :- type assembly_name
     --->    module(
                 il_module_name              :: ilds.id,
@@ -158,7 +158,7 @@
     ;       id(ilds.id).    % Ordinary method or field name.
 
     % Calling conventions.
-    % 
+    %
 :- type call_conv
     --->    call_conv(
                 bool,          % Is this an instance method call?

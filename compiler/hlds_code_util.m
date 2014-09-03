@@ -152,7 +152,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         (
             ( TargetLang = target_c
             ; TargetLang = target_erlang
-            ), 
+            ),
             ( Arity = 0 ->
                 Tag = int_tag(0)
             ;

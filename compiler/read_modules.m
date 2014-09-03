@@ -409,3 +409,5 @@ report_modification_time_warning(Globals, SourceFileName, Error, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module parse_tree.read_modules.
+%-----------------------------------------------------------------------------%

@@ -2791,7 +2791,7 @@ mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
         mercury_output_promise_eqv_solutions_goal(Vars, StateVars,
             DotSVars, ColonSVars, Goal, VarSet, Indent,
             "promise_equivalent_solution_sets", !IO)
-    ;   
+    ;
         Expr = promise_equivalent_solution_arbitrary_expr(Vars, StateVars,
             DotSVars, ColonSVars, Goal),
         mercury_output_promise_eqv_solutions_goal(Vars, StateVars,
@@ -3031,7 +3031,7 @@ mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
         Expr = call_expr(Name, Terms, Purity),
         write_purity_prefix(Purity, !IO),
         mercury_output_call(Name, Terms, VarSet, Indent, !IO)
-    ;   
+    ;
         Expr = unify_expr(A, B, Purity),
         write_purity_prefix(Purity, !IO),
         mercury_output_term(VarSet, no, A, !IO),
@@ -3879,7 +3879,7 @@ mercury_format_pragma_foreign_enum(FEInfo, !U) :-
 mercury_format_pragma_foreign_proc_export(FPEInfo, !U) :-
     FPEInfo = pragma_info_foreign_proc_export(Lang, PredNameModesPF,
         ExportName),
-    PredNameModesPF = pred_name_modes_pf(Name, ModeList, PredOrFunc), 
+    PredNameModesPF = pred_name_modes_pf(Name, ModeList, PredOrFunc),
     varset.init(Varset), % The varset isn't really used.
     InstInfo = simple_inst_info(Varset),
     add_string(":- pragma foreign_export(", !U),

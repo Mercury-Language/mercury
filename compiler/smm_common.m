@@ -147,5 +147,5 @@ dump_program_point(pp(Context, RevGoalPath), !IO):-
     io.write_string(rev_goal_path_to_string(RevGoalPath), !IO).
 
 %-----------------------------------------------------------------------------%
-:- end_module smm_common.
+:- end_module transform_hlds.smm_common.
 %-----------------------------------------------------------------------------%

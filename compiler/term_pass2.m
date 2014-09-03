@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: term_pass2.m.
 % Main author of original version: crs.
 % Main author of this version: zs.
-% 
+%
 % This file contains the code that tries to prove that procedures terminate.
 % For details, please refer to the papers mentioned in termination.m.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_pass2.
@@ -169,7 +169,7 @@ init_rec_input_suppliers([PPId | PPIds], ModuleInfo, RecSupplierMap) :-
 
 prove_termination_in_scc_single_arg(SCC, PassInfo, Terminates, !ModuleInfo,
         !IO) :-
-    ( 
+    (
         SCC = [FirstPPId | LaterPPIds],
         FirstArity = lookup_proc_arity(FirstPPId, !.ModuleInfo),
         find_min_arity_proc(LaterPPIds, FirstPPId, FirstArity, !.ModuleInfo,
@@ -212,11 +212,11 @@ prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, ArgNum0,
         PassInfo, Terminates, !ModuleInfo, !IO) :-
     (
         init_rec_input_suppliers_single_arg(TrialPPId, RestSCC,
-            ArgNum0, !.ModuleInfo, InitRecSuppliers) 
+            ArgNum0, !.ModuleInfo, InitRecSuppliers)
     ->
         prove_termination_in_scc_trial([TrialPPId | RestSCC], InitRecSuppliers,
             up, PassInfo, Termination, !ModuleInfo, !IO),
-        ( 
+        (
             Termination = cannot_loop(unit),
             Terminates = yes
         ;
@@ -412,7 +412,7 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
             !ModuleInfo, !IO)
     ;
         Info = term_traversal_error(Errors, CanLoop),
-        expect(unify(CanLoop, []), $module, $pred, 
+        expect(unify(CanLoop, []), $module, $pred,
             "can_loop detected in pass2 but not pass1"),
         Result = term_pass2_error(Errors)
     ).
@@ -502,7 +502,7 @@ add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
                 ),
                 map.det_update(CallPPId, EdgeInfo, NeighbourMap0, NeighbourMap)
             ;
-                map.det_insert(CallPPId, Context - GammaConst,  
+                map.det_insert(CallPPId, Context - GammaConst,
                     NeighbourMap0, NeighbourMap)
             ),
             map.det_update(PPId, NeighbourMap, CallWeights0, CallWeights1)

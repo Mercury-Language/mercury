@@ -58,9 +58,9 @@
     :- include_module term_constr_build.
     :- include_module term_constr_fixpoint.
         % Pass 2.
-    :- include_module term_constr_pass2.    
+    :- include_module term_constr_pass2.
         % Other bits.
-    :- include_module term_constr_util. 
+    :- include_module term_constr_util.
     :- include_module term_constr_data.
     :- include_module term_constr_errors.
 
@@ -110,6 +110,6 @@
 
 :- import_module check_hlds.
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.
-
 %-----------------------------------------------------------------------------%

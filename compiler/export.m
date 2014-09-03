@@ -771,7 +771,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
 produce_header_file_2([], !IO).
 produce_header_file_2([E | ExportedProcs], !IO) :-
     E = foreign_export_decl(Lang, C_RetType, C_Function, ArgDecls),
-    ( 
+    (
         Lang = lang_c,
         % Output the function header.
         io.write_string(C_RetType, !IO),

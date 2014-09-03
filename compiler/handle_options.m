@@ -374,7 +374,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     ;
         map.lookup(!.OptionTable, ssdb_trace_level, SSTrace),
         map.lookup(!.OptionTable, source_to_source_debug, SSDB),
-        ( 
+        (
             SSTrace = string(SSTraceStr),
             SSDB = bool(IsInSSDebugGrade),
             convert_ssdb_trace_level(SSTraceStr, IsInSSDebugGrade, SSTL)
@@ -581,8 +581,8 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         SystemEnvType0 = string(SystemEnvTypeStr),
         ( if SystemEnvTypeStr = "" then
             SystemEnvTypePrime = HostEnvType
-        else 
-            convert_env_type(SystemEnvTypeStr, SystemEnvTypePrime) 
+        else
+            convert_env_type(SystemEnvTypeStr, SystemEnvTypePrime)
         )
     ->
         SystemEnvType = SystemEnvTypePrime
@@ -3238,5 +3238,5 @@ convert_dump_alias("lco", "agiuvzD").
 convert_dump_alias("poly", "vxX").
 
 %-----------------------------------------------------------------------------%
-:- end_module handle_options.
+:- end_module libs.handle_options.
 %-----------------------------------------------------------------------------%

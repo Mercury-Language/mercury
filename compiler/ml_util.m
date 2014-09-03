@@ -926,3 +926,5 @@ gen_init_reserved_address(ModuleInfo, ReservedAddress) =
 wrap_init_obj(Rval) = init_obj(Rval).
 
 %-----------------------------------------------------------------------------%
+:- end_module ml_backend.ml_util.
+%-----------------------------------------------------------------------------%

@@ -287,7 +287,7 @@ fill_disj_id_slots(SlotInfo, GoalId, N0, !GoalNum, !ContainingGoalList,
     list(case)::in, list(case)::out) is det.
 
 fill_switch_id_slots(_, _, _, _, !GoalNum, !ContainingGoalList, [], []).
-fill_switch_id_slots(SlotInfo, GoalId, N0, MaybeNumFunctors, 
+fill_switch_id_slots(SlotInfo, GoalId, N0, MaybeNumFunctors,
         !GoalNum, !ContainingGoalList, [Case0 | Cases0], [Case | Cases]) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     N1 = N0 + 1,
@@ -432,7 +432,7 @@ fill_conj_path_slots(_, _, _, [], []).
 fill_conj_path_slots(RevPath0, N0, SlotInfo,
         [Goal0 | Goals0], [Goal | Goals]) :-
     N1 = N0 + 1,
-    fill_goal_path_slots(rgp_cons(RevPath0, step_conj(N1)), SlotInfo, 
+    fill_goal_path_slots(rgp_cons(RevPath0, step_conj(N1)), SlotInfo,
         Goal0, Goal),
     fill_conj_path_slots(RevPath0, N1, SlotInfo, Goals0, Goals).
 
@@ -443,7 +443,7 @@ fill_disj_path_slots(_, _, _, [], []).
 fill_disj_path_slots(RevPath0, N0, SlotInfo,
         [Goal0 | Goals0], [Goal | Goals]) :-
     N1 = N0 + 1,
-    fill_goal_path_slots(rgp_cons(RevPath0, step_disj(N1)), SlotInfo, 
+    fill_goal_path_slots(rgp_cons(RevPath0, step_disj(N1)), SlotInfo,
         Goal0, Goal),
     fill_disj_path_slots(RevPath0, N1, SlotInfo, Goals0, Goals).
 

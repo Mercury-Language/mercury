@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% Type checking
+% Type checking.
 %:- module type_analysis.
     :- include_module check_typeclass.
     :- include_module post_typecheck.
@@ -26,7 +26,7 @@
     :- include_module typeclasses.
 %:- end_module type_analysis.
 
-% Implementation-defined literals
+% Implementation-defined literals.
 :- include_module implementation_defined_literals. 
 
 % Polymorphism transformation.
@@ -66,7 +66,7 @@
 
 %:- end_module mode_analysis.
 
-% Indexing and determinism analysis
+% Indexing and determinism analysis.
 :- include_module cse_detection.
 :- include_module det_analysis.
 :- include_module det_report.
@@ -79,25 +79,21 @@
 % Order independent state update pragmas.
 :- include_module oisu_check.
 
-% Expand try goals
+% Expand try goals.
 :- include_module try_expand.
 
-% Warnings about simple code
+% Warnings about simple code.
 :- include_module simplify.
 
 % Warnings about insts with no matching types
 :- include_module inst_check.
 
-% Warnings about unused imports
+% Warnings about unused imports.
 :- include_module unused_imports.
 
-% Output XML representation useful for documentation of module
+% Output XML representation useful for documentation of module.
 :- include_module xml_documentation.
 
 %-----------------------------------------------------------------------------%
-
-:- implementation.
-
 :- end_module check_hlds.
-
 %-----------------------------------------------------------------------------%

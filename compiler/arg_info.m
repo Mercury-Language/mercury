@@ -5,22 +5,22 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: arg_info.m.
 % Main author: fjh.
-% 
+%
 % This module is one of the pre-passes of the code generator.
 % It initializes the arg_info field of the proc_info structure in the HLDS,
 % which records for each argument of each procedure, whether the
 % argument is input/output/unused, and which register it is supposed to
 % go into.
-% 
+%
 % The code in this module assumes that none of the modes are undefined.  The
 % predicates for partitioning arguments into input, unused and output should
 % not be used before undefined modes have been detected.  For an example of
 % how this kind of partitioning can be done in the presence of undefined modes,
 % see superhomogeneous.partition_args_and_lambda_vars/8.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.arg_info.

@@ -240,7 +240,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         Lang = lang_erlang,
         Impl = fp_impl_ordinary("Y = X", yes(Context))
     ),
-    
+
     % The `func(in) = out(<i_ground>) is det' mode.
     %
     ToGroundRepnSymName = solver_to_ground_repn_symname(TypeSymName, Arity),
@@ -334,5 +334,5 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         !QualInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
- :- end_module add_solver.
+:- end_module hlds.make_hlds.add_solver.
 %-----------------------------------------------------------------------------%

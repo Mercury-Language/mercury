@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: graph_colour.m.
 % Main author: conway.
-% 
+%
 % This file contains functionality to find a 'good' colouring of a graph.
 % The predicate group_elements(set(set(T)), set(set(T))),
 % takes a set of sets each containing elements that touch, and returns
@@ -21,7 +21,7 @@
 % more efficient representation depends on knowing that the elements are
 % variables and therefore in the enum type class, a generic module like this
 % cannot use that representation.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

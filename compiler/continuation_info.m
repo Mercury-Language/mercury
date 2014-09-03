@@ -669,7 +669,7 @@ generate_var_live_lvalues([Var - Lval | VarLvals], InstMap, VarLocs, ProcInfo,
         ModuleInfo, WantReturnVarLayout, [Live | Lives]) :-
     (
         WantReturnVarLayout = yes,
-        generate_layout_for_var(ModuleInfo, ProcInfo, InstMap, Var, 
+        generate_layout_for_var(ModuleInfo, ProcInfo, InstMap, Var,
             LiveValueType, TypeVars),
         find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeParams),
         Live = live_lvalue(locn_direct(Lval), LiveValueType, TypeParams)

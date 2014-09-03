@@ -85,3 +85,5 @@ represent_determinism(detism_cc_non) = detism_rep(cc_nondet_rep).
 represent_determinism(detism_cc_multi) = detism_rep(cc_multidet_rep).
 
 %-----------------------------------------------------------------------------%
+:- end_module hlds.code_model.
+%-----------------------------------------------------------------------------%

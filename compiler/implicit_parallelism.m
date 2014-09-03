@@ -23,4 +23,6 @@
 :- include_module introduce_parallelism.
 :- include_module push_goals_together.
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.implicit_parallelism.
+%-----------------------------------------------------------------------------%

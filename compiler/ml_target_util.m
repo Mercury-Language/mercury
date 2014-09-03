@@ -113,3 +113,5 @@ target_supports_inheritence(target_erlang) =
     unexpected($module, $pred, "target erlang").
 
 %-----------------------------------------------------------------------------%
+:- end_module ml_backend.ml_target_util.
+%-----------------------------------------------------------------------------%

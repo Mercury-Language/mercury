@@ -1738,7 +1738,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         (
             % Since the trace goal may not be enabled, it would be incorrect
             % to say that it ALWAYS aborts. That is why we convert a detism
-            % of detism_erroneous inside the scope to detism_det outside the 
+            % of detism_erroneous inside the scope to detism_det outside the
             % scope.
             (
                 Detism0 = detism_det,

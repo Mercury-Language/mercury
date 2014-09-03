@@ -136,7 +136,7 @@
 
 % An .analysis_status file contains a single line, which is one of:
 %
-% optimal.  
+% optimal.
 % suboptimal.
 % invalid.
 %

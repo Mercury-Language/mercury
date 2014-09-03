@@ -1362,7 +1362,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         (
             Target = target_c,
             % For the `--target c' MLDS back-end, we generate `.mih' files
-            % for every module.  
+            % for every module.
             write_compact_dependencies_list(Globals, Modules,
                 "$(mihs_subdir)", ".mih", Basis, DepStream, !IO)
         ;

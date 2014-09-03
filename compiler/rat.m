@@ -8,15 +8,15 @@
 %
 % File: rat.m.
 % Authors: vjteag, juliensf.
-% 
+%
 % Implements a rational number type using fixed precision integers.
-% The functionality here is limited to that which is used in the 
+% The functionality here is limited to that which is used in the
 % lp_rational module.
 %
 % NOTE: if you actually want a general purpose rational number type then use
 % the rational module in the standard library.  The stuff in this module
 % is pretty heavily geared towards a few specific tasks that are part of
-% the termination analysis. 
+% the termination analysis.
 %
 % TODO:
 %   - overflow checking would be nice
@@ -104,7 +104,7 @@
 :- type rat
     --->    r(int, int).
 
-'<'(X, Y) :- cmp(X, Y) = (<). 
+'<'(X, Y) :- cmp(X, Y) = (<).
 
 '>'(X, Y) :- cmp(X, Y) = (>).
 
@@ -143,7 +143,7 @@ X / Y = X * rat.reciprocal(Y).
 
 :- func rat.reciprocal(rat) = rat.
 
-reciprocal(r(Num, Den)) = 
+reciprocal(r(Num, Den)) =
     ( Num = 0  ->
         unexpected($module, $pred, "division by zero")
     ;
@@ -182,9 +182,9 @@ gcd_2(A, B) = ( B = 0 -> A ; gcd_2(B, A rem B) ).
 
 lcm(A, B) =
     ( A = 0 ->
-        0 
+        0
     ; B = 0 ->
-        0 
+        0
     ;
         int.abs((A // gcd(A, B)) * B)
     ).
@@ -218,14 +218,14 @@ is_negative(r(Num, _)) :- Num < 0.
 rat.to_string(r(Num, Denom)) =
     ( Num = 0  ->
         "0"
-    ; 
-        "(" ++ string.int_to_string(Num) ++ 
-            ( Denom = 1 -> 
+    ;
+        "(" ++ string.int_to_string(Num) ++
+            ( Denom = 1 ->
                 ""
-            ; 
+            ;
                 "/" ++ string.int_to_string(Denom)
-            ) 
-        ++ ")" 
+            )
+        ++ ")"
     ).
 
 write_rat(r(Numerator, Denominator), !IO) :-

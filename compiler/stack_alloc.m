@@ -360,5 +360,5 @@ allocate_dummy_stack_slots([Var | Vars], MainStack, N0, !StackSlots) :-
     allocate_dummy_stack_slots(Vars, MainStack, N0 - 1, !StackSlots).
 
 %-----------------------------------------------------------------------------%
-:- end_module stack_alloc.
+:- end_module ll_backend.stack_alloc.
 %-----------------------------------------------------------------------------%

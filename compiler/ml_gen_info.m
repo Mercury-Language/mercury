@@ -619,5 +619,5 @@ ml_gen_info_add_env_var_name(Name, !Info) :-
     ml_gen_info_set_env_var_names(EnvVarNames, !Info).
 
 %-----------------------------------------------------------------------------%
-:- end_module ml_gen_info.
+:- end_module ml_backend.ml_gen_info.
 %-----------------------------------------------------------------------------%

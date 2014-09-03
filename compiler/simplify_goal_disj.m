@@ -142,7 +142,7 @@ simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 :- pred warn_about_any_problem_partial_vars(innermost_proc::in,
     hlds_goal_info::in, instmap::in, instmap_delta::in,
     simplify_info::in, simplify_info::out) is det.
-    
+
 warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
         InstMapDelta, !Info) :-
     instmap_delta_to_assoc_list(InstMapDelta, InstMapDeltaChanges),
@@ -209,7 +209,7 @@ warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
     %
 :- pred is_var_a_problem_partial_var(module_info::in, instmap::in,
     pair(prog_var, mer_inst)::in, prog_var::out) is semidet.
-    
+
 is_var_a_problem_partial_var(ModuleInfo, InstMap0, Var - FinalInst, Var) :-
     instmap_lookup_var(InstMap0, Var, InitInst),
     ( inst_is_free(ModuleInfo, InitInst) ->

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: transform.m
 % Main author: bromage.
-% 
+%
 % This module defines the primitive operations that may be performed
 % on a logic program. These include:
 %
@@ -28,7 +28,7 @@
 %
 % Also included is a conjunction rescheduler. Useful just in case
 % your transformer upsets the ordering in a conjunction.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.transform.
@@ -76,4 +76,5 @@ reschedule_conj([Goal0 | Goals0], Goals, !ModeInfo) :-
     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module transform_hlds.transform.
 %-----------------------------------------------------------------------------%

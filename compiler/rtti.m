@@ -5,22 +5,22 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: rtti.m.
 % Authors: zs, fjh.
-% 
+%
 % Definitions of data structures for representing run-time type information
 % within the compiler. When output by rtti_out.m, values of most these types
 % will correspond to the types defined in runtime/mercury_type_info.h; the
 % documentation of those types can be found there.
 % The code to generate the structures is in type_ctor_info.m.
 % See also pseudo_type_info.m.
-% 
+%
 % This module is independent of whether we are compiling to LLDS or MLDS.  It
 % is used as an intermediate data structure that we generate from the HLDS,
 % and which we can then convert to either LLDS or MLDS.  The LLDS actually
 % incorporates this data structure unchanged.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.rtti.
@@ -1740,7 +1740,7 @@ type_ctor_details_num_ptags(tcd_foreign(_)) = -1.
 
 type_ctor_details_num_functors(tcd_enum(_, Functors, _, _, _, _)) =
     list.length(Functors).
-type_ctor_details_num_functors(tcd_foreign_enum(_, _, Functors, _, _, _)) = 
+type_ctor_details_num_functors(tcd_foreign_enum(_, _, Functors, _, _, _)) =
     list.length(Functors).
 type_ctor_details_num_functors(tcd_du(_, Functors, _, _, _)) =
     list.length(Functors).
@@ -1761,7 +1761,7 @@ du_arg_info_width(ArgInfo) = ArgInfo ^ du_arg_width.
 enum_functor_rtti_name(EnumFunctor) =
     type_ctor_enum_functor_desc(EnumFunctor ^ enum_ordinal).
 
-foreign_enum_functor_rtti_name(EnumFunctor) = 
+foreign_enum_functor_rtti_name(EnumFunctor) =
     type_ctor_foreign_enum_functor_desc(EnumFunctor ^ foreign_enum_ordinal).
 
 du_functor_rtti_name(DuFunctor) =

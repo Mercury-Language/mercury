@@ -2290,5 +2290,5 @@ var_type_msg(Type, Msg) :-
     string.append_list([TypeSymStr, "/", TypeArityStr], Msg).
 
 %---------------------------------------------------------------------------%
-:- end_module unify_gen.
+:- end_module ll_backend.unify_gen.
 %---------------------------------------------------------------------------%

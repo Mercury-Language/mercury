@@ -181,7 +181,7 @@ ml_gen_closure_layout(PredId, ProcId, Context,
         ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
         ml_stack_layout_construct_closure_args(ModuleInfo, ClosureArgs,
             ClosureArgInitsAndTypes, !GlobalData),
-        assoc_list.keys(ClosureArgInitsAndTypes, ClosureArgInits), 
+        assoc_list.keys(ClosureArgInitsAndTypes, ClosureArgInits),
 
         ml_stack_layout_construct_tvar_vector(ModuleInfo, "typevar_vector",
             Context, TVarLocnMap, TVarVectorRval, TVarVectorType, !GlobalData),

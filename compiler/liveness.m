@@ -265,7 +265,7 @@ detect_liveness_pred_proc(ModuleInfo, PredId, ProcId, !PredInfo) :-
 detect_liveness_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
     detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo).
 
-:- pred detect_liveness_proc_2(module_info::in, pred_id::in, 
+:- pred detect_liveness_proc_2(module_info::in, pred_id::in,
     proc_info::in, proc_info::out) is det.
 
 detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
@@ -645,7 +645,7 @@ detect_liveness_in_par_conj([Goal0 | Goals0], [Goal | Goals], Liveness0,
 
     % At any given program point, Deadness is the set of variables that are
     % live now and whose values will be needed beyond that program point.
-    % 
+    %
 :- pred detect_deadness_in_goal(hlds_goal::in, hlds_goal::out,
     set_of_progvar::in, set_of_progvar::out, set_of_progvar::in,
     live_info::in) is det.
@@ -1890,5 +1890,5 @@ live_info_init(ModuleInfo, TypeInfoLiveness, VarSet, VarTypes, RttiVarMaps,
         VarSet, VarTypes, RttiVarMaps).
 
 %-----------------------------------------------------------------------------%
-:- end_module liveness.
+:- end_module ll_backend.liveness.
 %-----------------------------------------------------------------------------%

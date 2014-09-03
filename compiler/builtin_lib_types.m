@@ -279,3 +279,5 @@ stm_dummy_output_functor = cons(Name, 0, TypeCtor) :-
     TypeCtor = stm_dummy_output_type_ctor.
 
 %-----------------------------------------------------------------------------%
+:- end_module parse_tree.builtin_lib_types.
+%-----------------------------------------------------------------------------%

@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: term_errors.m.
 % Main author: crs.
-% 
+%
 % This module prints out the various error messages that are produced by the
 % various modules of termination analysis.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_errors.
@@ -154,7 +154,7 @@
     % something about is not this piece.
     %
 :- func is_indirect_error(termination_error) = bool.
-   
+
     % A fatal error is one that prevents pass 2 from proving termination.
     %
 :- func is_fatal_error(termination_error) = bool.
@@ -331,7 +331,7 @@ output_term_error(TermErrorContext, Single, ErrorNum, Indent, Module, !IO) :-
                 "inf arg size procedure does not have inf arg size")
         )
     ;
-        Reason = no 
+        Reason = no
     ).
 
 :- pred description(termination_error::in,
@@ -356,7 +356,7 @@ description(TermError, Single, Module, Pieces, no) :-
     TermError = inf_call(CallerPPId, CalleePPId),
     (
         Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), $module, $pred, 
+        expect(unify(PPId, CallerPPId), $module, $pred,
             "inf_call: caller outside this SCC"),
         Pieces1 = [words("It")]
     ;
@@ -433,7 +433,7 @@ description(TermError, Single, Module, Pieces, yes(CalleePPId)) :-
     Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3].
 
 description(TermError, Single, Module, Pieces, no) :-
-    % 
+    %
     % XXX We should print out the names of the non-terminating closures.
     %
     TermError = ho_inf_termination_const(CallerPPId, _ClosurePPIds),

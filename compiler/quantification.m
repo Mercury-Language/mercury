@@ -21,10 +21,10 @@
 % existential quantification in the goal_info for each goal. In fact we could
 % (and maybe even should?) even delete any explicit existential quantifiers
 % that were present in the source code, since the information they convey will
-% be stored in the goal_info (we currently don't do that).
+% be stored in the goal_info. We currently don't do that.
 %
 % The important piece of information that later stages of the compiler want to
-% know is "Does this goal bind any of its nonlocal variables?".  So, rather
+% know is "Does this goal bind any of its nonlocal variables?". So, rather
 % than storing a list of the variables which _are_ existentially quantified in
 % the goal_info, we store the set of variables which are _not_ quantified.
 %
@@ -1016,7 +1016,7 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
         LambdaGoalNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
         list.filter(set_of_var.contains(LambdaGoalNonLocals),
             LambdaNonLocals0, LambdaNonLocals),
-        
+
         !:RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             LambdaNonLocals, LambdaVars, Modes, Det, Goal),
 

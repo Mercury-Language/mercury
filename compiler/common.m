@@ -11,7 +11,7 @@
 % Other authors: fjh, zs, stayl.
 %
 % The main task of this module is to look for conjoined goals that involve
-% the same structure (the "common" structure the module is named after), 
+% the same structure (the "common" structure the module is named after),
 % and to optimize those goals. The reason why we created this module was
 % code like this:
 %

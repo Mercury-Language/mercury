@@ -188,5 +188,5 @@ output_indent(FirstIndent, LaterIndent, N0, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module llds_out_util.
+:- end_module ll_backend.llds_out.llds_out_util.
 %---------------------------------------------------------------------------%

@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: wrap_blocks.m
 % Author: zs.
-% 
+%
 % The optimizations in use_local_vars.m insert into instruction sequences
 % references to temporary variables whose values need be preserved only within
 % an extended basic block. The wrap_blocks pass looks for references to
 % temporaries and introduces block instructions whenever it sees them. These
 % block instructions go from the first reference to a temporary to the end of
 % its extended basic block.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.wrap_blocks.

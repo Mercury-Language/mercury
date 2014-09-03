@@ -757,7 +757,7 @@
     ;         smart_atomic_indexing
     ;         smart_string_indexing
     ;         smart_tag_indexing
-    ;         smart_float_indexing  
+    ;         smart_float_indexing
 
     ;       static_ground_cells
     ;       static_ground_floats
@@ -1814,7 +1814,7 @@ option_defaults_2(link_option, [
     frameworks                          -   accumulating([]),
     framework_directories               -   accumulating([]),
     sign_assembly                       -   string(""),
-    cstack_reserve_size                 -   int(-1),    
+    cstack_reserve_size                 -   int(-1),
 
     shared_library_extension            -   string(".so"),
                                         % The `mmc' script will override the
@@ -3864,13 +3864,13 @@ options_help_output -->
         "\tPrint the flags that are passed to the C compiler to define the",
         "\tmacros used to specify the compilation grade.",
         "\tThe flags are printed to the standard output.",
-        "--output-c-include-dir-flags, --output-c-include-directory-flags", 
+        "--output-c-include-dir-flags, --output-c-include-directory-flags",
         "\tPrint the flags that are passed to the C compiler to specify",
         "\twhich directories to search for C header files.",
         "\tThis includes the C header files from the standard library.",
         "\tThe flags are printed to the standard output."
     ]).
-        
+
 :- pred options_help_aux_output(io::di, io::uo) is det.
 
 options_help_aux_output -->
@@ -5699,7 +5699,7 @@ options_help_link -->
         "\tin the specified key file.",
         "\t(This option is only meaningful when generating library",
         "\tassemblies with the C# backend.)",
-        
+
         "--cstack-reserve-size <size>",
         "\tSet the total size of the C stack in virtual memory for",
         "\texecutables.  The stack size is given in bytes.",

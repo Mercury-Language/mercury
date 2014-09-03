@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -10,7 +12,7 @@
 % 
 %-----------------------------------------------------------------------------%
 
-:- module mode_robdd__r.
+:- module mode_robdd.r.
 
 :- interface.
 
@@ -217,4 +219,5 @@ minimal_model(Vars, X, TrueVars, FalseVars) :-
 to_robdd(X) = X ^ robdd.
 
 %-----------------------------------------------------------------------------%
-
+:- end_module mode_robdd.r.
+%-----------------------------------------------------------------------------%

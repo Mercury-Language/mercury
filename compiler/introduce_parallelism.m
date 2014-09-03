@@ -207,7 +207,7 @@ cpc_proc_is_in_module(ModuleName, ProcLabel - CPC, IMProcLabel - CPC) :-
 :- pred maybe_parallelise_pred(parallelism_info::in,
     pred_id::in, pred_table::in, pred_table::out,
     introduced_parallelism::in, introduced_parallelism::out,
-    module_info::in, module_info::out, 
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 maybe_parallelise_pred(ParallelismInfo, PredId, !PredTable,
@@ -231,7 +231,7 @@ maybe_parallelise_pred(ParallelismInfo, PredId, !PredTable,
 :- pred maybe_parallelise_proc(parallelism_info::in,
     pred_info::in, pred_id::in, proc_id::in, proc_table::in, proc_table::out,
     introduced_parallelism::in, introduced_parallelism::out,
-    module_info::in, module_info::out, 
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 maybe_parallelise_proc(ParallelismInfo, PredInfo, _PredId, ProcId,

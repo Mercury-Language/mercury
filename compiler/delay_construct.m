@@ -86,7 +86,7 @@ delay_construct_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
     delay_construct_info::in, hlds_goal::out) is det.
 
 delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal) :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo0), 
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (

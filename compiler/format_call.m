@@ -21,7 +21,7 @@
 %
 % - The second job is to try to transform well formed calls into code
 %   that interprets the format string at compile time, rather than runtime.
-% 
+%
 % Our general approach to the first job is a backwards traversal of the
 % procedure body. During this traversal, we assign an id to every conjunction
 % (considering a cond and then parts of an if-then-else to be a conjunction).
@@ -666,7 +666,7 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
             % either a single constant, or the result of an operation on
             % strings, neither of which are things for which we build fgt
             % scopes. It can build the term to print, but that will happen
-            % only in degenerate cases. However, we do have some degenerate 
+            % only in degenerate cases. However, we do have some degenerate
             % cases in the test suite.
             not set_of_var.member(!.RelevantVars, TermVar)
         ->
@@ -930,7 +930,7 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
     ;
         GoalExpr0 = unify(_LHS, _RHS, _UnifyModes, Unification, _UnifyContext),
         (
-            Unification = construct(LHSVar, _ConsId, _RHSVars, _ArgModes, 
+            Unification = construct(LHSVar, _ConsId, _RHSVars, _ArgModes,
                 _How, _Unique, _SubInfo),
             not set_of_var.member(!.NeededVars, LHSVar),
             % If this succeeds, then the backward traversal cannot encounter
@@ -1141,16 +1141,16 @@ create_string_format_replacement(ModuleInfo, FormatStringChars, ResultVar,
 
 % For optimizing e.g. io.format("%d_%d", [i(X), i(Y), !IO), this diff currently
 % generates
-% 
+%
 %         V1 = int_to_string(X),
 %         V2 = "_"
 %         V3 = V2 ++ V1
 %         V4 = int_to_string(Y),
 %         V5 = V4 ++ V3
 %         io.write_string(V5, !IO)
-% 
+%
 % It could instead generate
-% 
+%
 %         V1 = int_to_string(X),
 %         io.write_string(V1, !IO),
 %         V2 = "_"

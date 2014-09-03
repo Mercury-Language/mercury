@@ -477,7 +477,7 @@ is_pushable_goal(PushInfo, Goal, Pushable) :-
             ;
                 Unification = deconstruct(_, _, Args, _, _, _),
                 RttiVarMaps = PushInfo ^ pi_rtti_varmaps,
-                % See the comment in move_follow_code_select in follow_code.m 
+                % See the comment in move_follow_code_select in follow_code.m
                 % for the reason for this test.
                 ( list.all_true(is_non_rtti_var(RttiVarMaps), Args) ->
                     Pushable = pushable

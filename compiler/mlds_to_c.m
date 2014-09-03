@@ -1778,7 +1778,7 @@ mlds_output_alloc_site_defns(Opts, Indent, MLDS_ModuleName, AllocSites, !IO) :-
         AllocSites = [_ | _],
         mlds_indent(Indent, !IO),
         list.length(AllocSites, NumAllocSites),
-        io.format("static MR_AllocSiteInfo MR_alloc_sites[%d] = {\n", 
+        io.format("static MR_AllocSiteInfo MR_alloc_sites[%d] = {\n",
             [i(NumAllocSites)], !IO),
         list.foldl(
             mlds_output_alloc_site_defn(Opts, Indent + 1, MLDS_ModuleName),

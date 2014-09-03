@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: det_util.m.
 % Main authors: fjh, zs.
-% 
+%
 % Utility predicates used in two or more of the modules concerned with
 % determinism: switch_detection, cse_detection, det_analysis, det_report
 % and simplify.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.det_util.
@@ -279,5 +279,5 @@ det_info_set_error_specs(Specs, !DetInfo) :-
     !DetInfo ^ di_error_specs := Specs.
 
 %-----------------------------------------------------------------------------%
-:- end_module det_util.
+:- end_module check_hlds.det_util.
 %-----------------------------------------------------------------------------%

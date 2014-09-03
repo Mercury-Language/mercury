@@ -2003,8 +2003,8 @@ output_layout_array_name_storage_type_name(ModuleName, Name, BeingDefined,
     (
         BeingDefined = being_defined,
         io.write_string("static ", !IO)
-    ;  
-        % Avoid problems with MS Visual C. 
+    ;
+        % Avoid problems with MS Visual C.
         % See the comments in llds_out_file.output_static_linkage_define/2
         % for a further explanation.
         BeingDefined = not_being_defined,

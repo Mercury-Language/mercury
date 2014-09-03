@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ilasm.m.
 % Main author: trd.
-% 
+%
 % Generate IL for the ilasm assembler.
 %
 % IL assembler syntax is documented in the Microsoft .NET Framework SDK.
@@ -24,7 +24,7 @@
 %   [ ] Fix up all the XXXs.
 %   [ ] Replace all reference to io.write with predicates that do not depend
 %       on the compiler's internal data representations.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ilasm.
@@ -1202,7 +1202,7 @@ output_instr(OutInfo, Instr, !Info, !IO) :-
     ;
         Instr = start_block(BlockType, Id),
         (
-            BlockType = bt_scope(Locals), 
+            BlockType = bt_scope(Locals),
             io.write_string("{", !IO),
             io.write_string("\t// #", !IO),
             io.write_int(Id, !IO),

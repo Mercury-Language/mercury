@@ -238,5 +238,5 @@ read_trans_opt_files(Globals, [Import | Imports], !Items, !Specs, !Error,
     read_trans_opt_files(Globals, Imports, !Items, !Specs, !Error, !IO).
 
 %-----------------------------------------------------------------------------%
-:- end_module trans_opt.
+:- end_module transform_hlds.trans_opt.
 %-----------------------------------------------------------------------------%

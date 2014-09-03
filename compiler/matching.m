@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: matching.m.
 % Authors: pjs, zs.
-% 
+%
 % Module `matching' - performs bipartite graph maximal matching computation
 % specialized for the stack slot optimization. The structure of the graph
 % on which the algorithm operates is documented in the paper "Using the heap
 % to eliminate stack accesses" by Zoltan Somogyi and Peter Stuckey.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.matching.

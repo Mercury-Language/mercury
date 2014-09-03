@@ -2012,7 +2012,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     --->    oisu_creator_for(type_ctor)
     ;       oisu_mutator_for(type_ctor)
     ;       oisu_destructor_for(type_ctor).
-    
+
     % Is a procedure the subject of any foreign_export pragmas?
     %
 :- type proc_foreign_exports
@@ -2506,7 +2506,7 @@ attribute_list_to_attributes(Attributes, Attributes).
 
                 % Is the procedure mentioned in any foreign_export pragma,
                 % regardless of what the current supported foreign languages
-                % are?  
+                % are?
                 psi_has_any_foreign_exports :: proc_foreign_exports
         ).
 

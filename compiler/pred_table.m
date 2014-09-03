@@ -803,7 +803,7 @@ predicate_table_lookup_pf_name_arity(PredicateTable, PredOrFunc, Name, Arity,
 predicate_table_lookup_pf_sym_arity(PredicateTable, IsFullyQualified,
         PredOrFunc, SymName, Arity, PredIds) :-
     (
-        SymName = qualified(Module, Name), 
+        SymName = qualified(Module, Name),
         predicate_table_lookup_pf_m_n_a(PredicateTable,
             IsFullyQualified, PredOrFunc, Module, Name, Arity, PredIds)
     ;
@@ -1225,7 +1225,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
         PredId = PredIdPrime
     ;
         string.int_to_string(Arity, ArityStr),
-        unexpected($module, $pred, 
+        unexpected($module, $pred,
             "can't locate " ++ ProcName ++ "/" ++ ArityStr)
     ),
     module_info_pred_info(Module, PredId, PredInfo),

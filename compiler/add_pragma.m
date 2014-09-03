@@ -1432,7 +1432,7 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
     ),
     (
         PredIds = [_ | _],
-        list.foldl3(add_pragma_type_spec_2(TSInfo, Context), PredIds,
+        list.foldl3(add_pragma_type_spec_for_pred(TSInfo, Context), PredIds,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         PredIds = [],
@@ -1440,12 +1440,12 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
             [pragma_decl("type_spec"), words("declaration")], !Specs)
     ).
 
-:- pred add_pragma_type_spec_2(pragma_info_type_spec::in,
+:- pred add_pragma_type_spec_for_pred(pragma_info_type_spec::in,
     prog_context::in, pred_id::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_type_spec_2(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
+add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
         !Specs) :-
     TSInfo0 = pragma_info_type_spec(SymName, SpecName, Arity, _, MaybeModes,
         Subst, TVarSet0, ExpandedItems),
@@ -2395,19 +2395,19 @@ module_add_pragma_tabled(TabledInfo, Context, !Status, !ModuleInfo,
         MaybeAttributes = no
     ),
     list.foldl4(
-        module_add_pragma_tabled_2(EvalMethod, PredName, Arity,
+        module_add_pragma_tabled_for_pred(EvalMethod, PredName, Arity,
             MaybePredOrFunc, MaybeModes, MaybeAttributes, Context),
         PredIds, !Status, !ModuleInfo, !QualInfo, !Specs).
 
-:- pred module_add_pragma_tabled_2(eval_method::in, sym_name::in, int::in,
-    maybe(pred_or_func)::in, maybe(list(mer_mode))::in,
+:- pred module_add_pragma_tabled_for_pred(eval_method::in,
+    sym_name::in, int::in, maybe(pred_or_func)::in, maybe(list(mer_mode))::in,
     maybe(table_attributes)::in, prog_context::in, pred_id::in,
     import_status::in, import_status::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
-        MaybeModes, MaybeAttributes, Context, PredId,
+module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
+        MaybePredOrFunc, MaybeModes, MaybeAttributes, Context, PredId,
         !Status, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     ( EvalMethod0 = eval_minimal(_) ->
@@ -2454,11 +2454,12 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     % Issue a warning if this predicate/function has a pragma inline
     % declaration. Tabled procedures cannot be inlined.
     pred_info_get_markers(PredInfo0, Markers),
-    globals.lookup_bool_option(Globals, warn_table_with_inline, WarnInline),
     SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
     (
         check_marker(Markers, marker_user_marked_inline),
-        WarnInline = yes
+        globals.lookup_bool_option(Globals, warn_table_with_inline,
+            WarnTableWithInline),
+        WarnTableWithInline = yes
     ->
         InlineWarningPieces = [words("Warning: "), simple_call(SimpleCallId),
             words("has a"), pragma_decl(EvalMethodStr),
@@ -2484,12 +2485,14 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         !:Specs = [Spec | !.Specs]
     ;
         % Do we have to make sure the tabled preds are stratified?
-        ( eval_method_needs_stratification(EvalMethod) = yes ->
+        NeedsStrat = eval_method_needs_stratification(EvalMethod),
+        (
+            NeedsStrat = yes,
             module_info_get_stratified_preds(!.ModuleInfo, StratPredIds0),
             set.insert(PredId, StratPredIds0, StratPredIds),
             module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
         ;
-            true
+            NeedsStrat = no
         ),
 
         % Add the eval model to the proc_info for this procedure.
