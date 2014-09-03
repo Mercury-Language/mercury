@@ -274,21 +274,45 @@ such as pretty-printing.
          (declarations, clauses, etc.)
 
 	<p>
-	The result of this stage is a parse tree that has a one-to-one
-	correspondence with the source code.  The parse tree data structure
-	definition is in prog_data.m and prog_item.m, while the code to create
-	it is in prog_io.m and its submodules prog_io_dcg.m (which handles
-	clauses using Definite Clause Grammar notation), prog_io_goal.m (which
-	handles goals), prog_io_pragma.m (which handles pragma declarations),
-	prog_io_typeclass.m (which handles typeclass and instance
-	declarations), prog_io_type_defn.m (which handles type definitions),
-	prog_io_mutable.m (which handles initialize, finalize
-	and mutable declarations), prog_io_sym_name.m (which handles parsing
-	symbol names and specifiers) and prog_io_util.m (which defines
-	types and predicates needed by the other prog_io*.m modules.
+	The result of this stage is a parse tree
+    that has a one-to-one correspondence with the source code.
+    The parse tree data structure definition is in prog_data.m and prog_item.m,
+    while the code to create it is in the prog_io*.m modules:
+    <ul>
+    <li>
+    prog_io.m handles the top level tasks of reading in
+    whole Mercury source files.
+    <li>
+    prog_io_find.m locates source files containing Mercury modules.
+    <li>
+    prog_io_item.m parses in the top level parts of items,
+    particularly declarations.
+    <li>
+    prog_io_dcg.m parses clauses using Definite Clause Grammar notation.
+    <li>
+    prog_io_goal.m parses goals.
+    <li>
+    prog_io_type_defn.m and prog_io_mode_defn parse type and mode definitions.
+    <li>
+	prog_io_typeclass.m parses typeclass and instance declarations.
+    <li>
+    prog_io_pragma.m parses pragma declarations.
+    <li>
+	prog_io_mutable.m parses initialize, finalize and mutable declarations.
+    <li>
+    prog_io_sym_name.m parses symbol names and specifiers.
+    <li>
+    prog_io_error.m defines the types that represents the possible outcomes
+    of parsing a source file.
+    <li>
+    prog_io_util.m defines some types and predicates needed by the other
+    prog_io*.m modules.
+    </ul>
+
+	<p>
+
 	builtin_lib_types.m contains definitions about types, type constructors
-	and function symbols that the Mercury implementation needs to know
-	about.
+	and function symbols that the Mercury implementation needs to know about.
 
 	<p>
 

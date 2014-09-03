@@ -42,7 +42,7 @@
 :- import_module libs.globals.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.module_imports.
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_error.
 
 :- import_module bool.
 :- import_module io.

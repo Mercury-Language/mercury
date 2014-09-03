@@ -82,11 +82,12 @@
 :- implementation.
 
 :- import_module libs.globals.
+:- import_module libs.timestamp.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.modules.        % for split_into_submodules;
                                             % undesirable dependencies
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.read_modules.
 
 :- import_module assoc_list.
@@ -221,4 +222,6 @@ read_dependencies(Globals, ModuleName, Search, ModuleImportsList, !IO) :-
     list.map(init_dependencies(FileName, ModuleName, SubModuleNames,
         [], Error, Globals), SubModuleList, ModuleImportsList).
 
+%-----------------------------------------------------------------------------%
+:- end_module parse_tree.deps_map.
 %-----------------------------------------------------------------------------%

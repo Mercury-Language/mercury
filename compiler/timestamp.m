@@ -18,6 +18,11 @@
 
 :- import_module time.
 
+    % For use by predicates that do or do not return timestamps, as requested.
+:- type maybe_return_timestamp
+    --->    do_return_timestamp
+    ;       do_not_return_timestamp.
+
     % A `timestamp' is similar to a `time_t' except that timestamps are system
     % independent. A timestamp string (obtained using timestamp_to_string)
     % written on one system can be read on any other system. Comparison of

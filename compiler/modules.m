@@ -374,7 +374,7 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -4623,5 +4623,5 @@ maybe_record_timestamp(ModuleName, Suffix, NeedQualifier, MaybeTimestamp,
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module modules.
+:- end_module parse_tree.modules.
 %-----------------------------------------------------------------------------%

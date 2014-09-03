@@ -54,7 +54,7 @@
 :- implementation.
 
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_find.
 :- import_module parse_tree.prog_out.
 
 :- import_module char.

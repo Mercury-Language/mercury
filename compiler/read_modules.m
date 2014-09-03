@@ -21,7 +21,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_error.
 
 :- import_module io.
 :- import_module list.
@@ -140,6 +140,8 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_find.
 
 :- import_module bool.
 :- import_module dir.

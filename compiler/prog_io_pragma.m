@@ -49,7 +49,6 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_ctgc.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_type_defn.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_mode.

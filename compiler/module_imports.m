@@ -11,6 +11,7 @@
 %
 % This module contains the data structure for recording module imports
 % and its access predicates.
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.module_imports.
@@ -23,8 +24,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_io.    % for module_error;
-                                        % undesirable dependency
+:- import_module parse_tree.prog_io_error.
 
 :- import_module cord.
 :- import_module list.

@@ -72,7 +72,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_item.

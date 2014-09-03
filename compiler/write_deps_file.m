@@ -87,7 +87,8 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_io.        % undesirable dependency
+:- import_module parse_tree.prog_io_error.
+:- import_module parse_tree.prog_io_find.        % XXX undesirable dependency
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.source_file_map.
 

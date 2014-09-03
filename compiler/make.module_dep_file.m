@@ -50,7 +50,7 @@
 :- import_module parse_tree.modules.
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
