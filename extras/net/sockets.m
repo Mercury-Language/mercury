@@ -34,44 +34,71 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred sockets.gethostbyname(string::in, string::out,
+    % gethostbyname(Hostname, RealName, !IO),
+    %
+    % Note, this does not return the address of the host, it returns the
+    % "official name of the host" gethostbyname(3), this may be a mistake.
+    %
+:- pred gethostbyname(string::in, string::out, io::di, io::uo) is det.
+
+    % getservbyname(ServiceName, Protocol, PortNum, !IO),
+    %
+    % Lookup the port number for a service name (eg "http") and a protocol
+    % (eg "tcp").  If the service was not found then -1 is returned.
+    %
+:- pred getservbyname(string::in, string::in, int::out, io::di, io::uo) is det.
+
+    % socket(Domain, Type, Protocol, Result, !IO),
+    %
+    % Create a new socket.
+    %
+:- pred socket(int::in, int::in, int::in, sockets.res(int)::out,
     io::di, io::uo) is det.
 
-:- pred sockets.getservbyname(string::in, string::in, int::out,
+    % port_address(Host, Port, Result, !IO),
+    %
+    % Lookup a hostname and build an address structure with the resulting
+    % address and the given port.
+    %
+:- pred port_address(string::in, int::in, sockets.res(c_pointer)::out,
     io::di, io::uo) is det.
 
-:- pred sockets.socket(int::in, int::in, int::in, sockets.res(int)::out,
-    io::di, io::uo) is det.
-
-:- pred sockets.port_address(string::in, int::in, sockets.res(c_pointer)::out,
-    io::di, io::uo) is det.
-
-:- pred sockets.service_address(string::in, string::in,
+    % service_address(Host, Service, Result, !IO),
+    %
+:- pred service_address(string::in, string::in,
     sockets.res(c_pointer)::out, io::di, io::uo) is det.
 
     % connect(Fd, Addr, Addrlen, Result, !IO),
     %
     % XXX: Where does the caller get the Addrlen parameter from?
     %
-:- pred sockets.connect(int::in, c_pointer::in, int::in, sockets.res::out,
+:- pred connect(int::in, c_pointer::in, int::in, sockets.res::out,
     io::di, io::uo) is det.
 
-:- pred sockets.bind(int::in, c_pointer::in, int::in, sockets.res::out,
+    % bind(Fd, Addr, Addrlen, Result, !IO),
+    %
+:- pred bind(int::in, c_pointer::in, int::in, sockets.res::out,
     io::di, io::uo) is det.
 
-:- pred sockets.listen(int::in, int::in, sockets.res::out, io::di, io::uo)
+    % listen(Fd, Backlog, Result, !IO),
+    %
+:- pred listen(int::in, int::in, sockets.res::out, io::di, io::uo)
     is det.
 
+    % accept(Fd, Addr, Result, !IO),
+    %
     % Accept will block until a connection to our socket is made.
     %
-:- pred sockets.accept(int::in, c_pointer::in, sockets.res(int)::out,
+:- pred accept(int::in, c_pointer::in, sockets.res(int)::out,
     io::di, io::uo) is det.
 
+    % close(Fd, Result, !IO),
+    %
     % This closes the socket with lingering enabled.  The call will not
     % return until all the queued data has been sent or he timeout expires
     % (2 seconds).
     %
-:- pred sockets.close(int::in, sockets.res::out, io::di, io::uo) is det.
+:- pred close(int::in, sockets.res::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -107,12 +134,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- initialise sockets.init/2.
+:- initialise init/2.
 
-:- pred sockets.init(io::di, io::uo) is det.
+:- pred init(io::di, io::uo) is det.
 
 :- pragma foreign_proc(c,
-    sockets.init(_IO0::di, _IO::uo),
+    init(_IO0::di, _IO::uo),
     [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
 #ifdef MR_WIN32
@@ -134,6 +161,8 @@
     }
 #endif /* MR_WIN32 */
 ").
+
+%-----------------------------------------------------------------------------%
 
     % XXX not thread safe.
 :- pragma foreign_proc(c,
@@ -158,6 +187,8 @@
         Port = -1;
     }
 ").
+
+%-----------------------------------------------------------------------------%
 
 socket(Domain, Type, Protocol, MaybeSocket, !IO) :-
     socket(Domain, Type, Protocol, Socket, Success, Errno, !IO),
@@ -185,6 +216,8 @@ socket(Domain, Type, Protocol, MaybeSocket, !IO) :-
         Success = MR_YES;
     }
 ").
+
+%-----------------------------------------------------------------------------%
 
 port_address(Host, Port, MaybeSA, !IO) :-
     port_address(Host, Port, SA, Success, Errno, !IO),
@@ -224,6 +257,8 @@ port_address(Host, Port, MaybeSA, !IO) :-
         Success = MR_YES;
     }
 ").
+
+%-----------------------------------------------------------------------------%
 
 service_address(Service, Host, MaybeSA, !IO) :-
     service_address(Service, Host, SA, Success, Errno, !IO),
@@ -270,6 +305,8 @@ service_address(Service, Host, MaybeSA, !IO) :-
     }
 ").
 
+%-----------------------------------------------------------------------------%
+
 connect(Fd, Addr, AddrLen, Result, !IO) :-
     connect(Fd, Addr, AddrLen, Success, Errno, !IO),
     (
@@ -296,6 +333,8 @@ connect(Fd, Addr, AddrLen, Result, !IO) :-
         Success = MR_YES;
     }
 ").
+
+%-----------------------------------------------------------------------------%
 
 bind(Fd, Addr, AddrLen, Result, !IO) :-
     bind(Fd, Addr, AddrLen, Success, Errno, !IO),
@@ -324,6 +363,8 @@ bind(Fd, Addr, AddrLen, Result, !IO) :-
     }
 ").
 
+%-----------------------------------------------------------------------------%
+
 listen(Fd, Backlog, Result, !IO) :-
     listen(Fd, Backlog, Success, Errno, !IO),
     (
@@ -348,6 +389,8 @@ listen(Fd, Backlog, Result, !IO) :-
         Success = MR_YES;
     }
 ").
+
+%-----------------------------------------------------------------------------%
 
 accept(Fd, Addr, MaybeNewSocket, !IO) :-
     accept(Fd, Addr, NewSocket, Success, Errno, !IO),
@@ -376,6 +419,8 @@ accept(Fd, Addr, MaybeNewSocket, !IO) :-
         Success = MR_YES;
     }
 ").
+
+%-----------------------------------------------------------------------------%
 
 close(Fd, Result, !IO) :-
     close(Fd, Success, Errno, !IO),
