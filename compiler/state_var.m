@@ -907,7 +907,7 @@ finish_svars_for_scope([SVar | SVars], StatusMapBeforeOutside,
 %   the final prog_var from one of the updated arms to represent the state var
 %   after the disjunction.
 %
-% - Pass two processes the arms to ensure that the picked prog_var represents
+% - Pass 2 processes the arms to ensure that the picked prog_var represents
 %   the final value of the state variable in all the arms. In arms that do not
 %   update the state variable, it introduces unifications to copy the initial
 %   value of the state var to be the final value. In arms that do update the

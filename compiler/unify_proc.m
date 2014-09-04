@@ -14,16 +14,16 @@
 % predicates such as compare/3.
 %
 % During mode analysis, we notice each different complicated unification
-% that occurs.  For each one we add a new mode to the out-of-line
+% that occurs. For each one we add a new mode to the out-of-line
 % unification predicate for that type, and we record in the `proc_requests'
 % table that we need to eventually modecheck that mode of the unification
 % procedure.
 %
 % After we've done mode analysis for all the ordinary predicates, we then
-% do mode analysis for the out-of-line unification procedures.  Note that
+% do mode analysis for the out-of-line unification procedures. Note that
 % unification procedures may call other unification procedures which have
 % not yet been encountered, causing new entries to be added to the
-% proc_requests table.  We store the entries in a queue and continue the
+% proc_requests table. We store the entries in a queue and continue the
 % process until the queue is empty.
 %
 % The same queuing mechanism is also used for procedures created by
@@ -31,10 +31,10 @@
 %
 % Currently if the same complicated unification procedure is called by
 % different modules, each module will end up with a copy of the code for
-% that procedure.  In the long run it would be desireable to either delay
+% that procedure. In the long run it would be desireable to either delay
 % generation of complicated unification procedures until link time (like
 % Cfront does with C++ templates) or to have a smart linker which could
-% merge duplicate definitions (like Borland C++).  However the amount of
+% merge duplicate definitions (like Borland C++). However the amount of
 % code duplication involved is probably very small, so it's definitely not
 % worth worrying about right now.
 %
@@ -214,17 +214,17 @@ lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det, Num) :-
         unexpected($module, $pred, "search_num failed")
     ).
 
-:- pred search_mode_num(module_info::in, type_ctor::in, uni_mode::in,
-    determinism::in, proc_id::out) is semidet.
-
     % Given the type, mode, and determinism of a unification, look up the
     % mode number for the unification proc.
     % We handle semidet unifications with mode (in, in) specially - they
-    % are always mode zero.  Similarly for unifications of `any' insts.
+    % are always mode zero. Similarly for unifications of `any' insts.
     % (It should be safe to use the `in, in' mode for any insts, since
     % we assume that `ground' and `any' have the same representation.)
     % For unreachable unifications, we also use mode zero.
     %
+:- pred search_mode_num(module_info::in, type_ctor::in, uni_mode::in,
+    determinism::in, proc_id::out) is semidet.
+
 search_mode_num(ModuleInfo, TypeCtor, UniMode, Determinism, ProcId) :-
     UniMode = (XInitial - YInitial -> _Final),
     (
@@ -987,7 +987,7 @@ generate_compare_proc_body(Type, TypeBody, Res, X, Y, Context, Clause,
         )
     ).
 
-    % This should only used for the Erlang backend right now.  We follow the
+    % This should only used for the Erlang backend right now. We follow the
     % Erlang order that tuples of smaller arity always precede tuples of larger
     % arity.
     %
@@ -1000,8 +1000,8 @@ compare_ctors_lexically(A, B, Res) :-
     compare(ArityRes, ArityA, ArityB),
     (
         ArityRes = (=),
-        % XXX this assumes the string ordering used by the Mercury compiler is
-        % the same as that of the target language compiler
+        % XXX This assumes the string ordering used by the Mercury compiler is
+        % the same as that of the target language compiler.
         NameA = unqualify_name(A ^ cons_name),
         NameB = unqualify_name(B ^ cons_name),
         compare(Res, NameA, NameB)
@@ -1140,14 +1140,11 @@ generate_eqv_compare_proc_body(EqvType, Res, X, Y, Context, Clause, !Info) :-
     % the same code we generate now. If it is an abstract type, we should call
     % its comparison procedure directly; if it is a concrete type, we should
     % generate the body of its comparison procedure inline here.
-    make_fresh_named_var_from_type(EqvType, "Cast_HeadVar", 1, CastX,
-        !Info),
-    make_fresh_named_var_from_type(EqvType, "Cast_HeadVar", 2, CastY,
-        !Info),
+    make_fresh_named_var_from_type(EqvType, "Cast_HeadVar", 1, CastX, !Info),
+    make_fresh_named_var_from_type(EqvType, "Cast_HeadVar", 2, CastY, !Info),
     generate_cast(equiv_type_cast, X, CastX, Context, CastXGoal),
     generate_cast(equiv_type_cast, Y, CastY, Context, CastYGoal),
-    build_call("compare", [Res, CastX, CastY], Context, CompareGoal,
-        !Info),
+    build_call("compare", [Res, CastX, CastY], Context, CompareGoal, !Info),
 
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
@@ -1194,13 +1191,13 @@ generate_eqv_compare_proc_body(EqvType, Res, X, Y, Context, Clause, !Info) :-
     % X, not with the constant. Doing this allows dupelim to take the code
     % fragments implementing the switch arms for constants and eliminate all
     % but one of them. This can be a significant code size saving for types
-    % with lots of constants which can lead to significant reductions in C
-    % compilation time. The keep_constant_binding feature on the cast goals is
-    % there to ask mode analysis to copy any known bound inst on the cast-from
-    % variable to the cast-to variable. This is necessary to keep determinism
-    % analysis working for modes in which the inputs of the unify predicate
-    % are known to be bound to the same constant, modes whose determinism
-    % should therefore be inferred to be det.
+    % with lots of constants, which can then lead to significant reductions in
+    % C compilation time. The keep_constant_binding feature on the cast goals
+    % is there to ask mode analysis to copy any known bound inst on the
+    % cast-from variable to the cast-to variable. This is necessary to keep
+    % determinism analysis working for modes in which the inputs of the unify
+    % predicate are known to be bound to the same constant, modes whose
+    % determinism should therefore be inferred to be det.
     % (tests/general/det_complicated_unify2.m tests this case.)
     %
 :- pred generate_du_unify_proc_body(type_ctor::in, list(constructor)::in,
@@ -1294,6 +1291,7 @@ can_compare_constants_as_ints(Info) = CanCompareAsInt :-
     %           X = h(_),
     %           Index = 2
     %       ).
+    %
 :- pred generate_du_index_proc_body(type_ctor::in, list(constructor)::in,
     prog_var::in, prog_var::in, prog_context::in, clause::out,
     unify_proc_info::in, unify_proc_info::out) is det.
