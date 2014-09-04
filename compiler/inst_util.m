@@ -1712,6 +1712,8 @@ inst_merge_2(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
     inst_expand(!.ModuleInfo, InstB, ExpandedInstB),
     ( ExpandedInstB = not_reached ->
         Inst = ExpandedInstA
+    ; ExpandedInstA = not_reached ->
+        Inst = ExpandedInstB
     ;
         inst_merge_3(ExpandedInstA, ExpandedInstB, MaybeType, Inst,
             !ModuleInfo)
@@ -1737,8 +1739,11 @@ inst_merge_3(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         ;
             inst_merge(SubInstA, InstB, MaybeType, Inst, !ModuleInfo)
         )
+    ; InstB = constrained_inst_vars(_InstVarsB, SubInstB) ->
+        % InstA \= constrained_inst_vars(_, _) is equivalent to
+        % constrained_inst_vars(InstVarsA, InstA) where InstVarsA = empty.
+        inst_merge(InstA, SubInstB, MaybeType, Inst, !ModuleInfo)
     ;
-        % XXX Why don't we look for InstB = constrained_inst_vars/2 here?
         inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo)
     ).
 
@@ -1863,9 +1868,6 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         MaybeTypes = list.duplicate(list.length(ArgsA), no),
         inst_list_merge(ArgsA, ArgsB, MaybeTypes, Args, !ModuleInfo),
         Inst = abstract_inst(Name, Args)
-    ;
-        InstA = not_reached,
-        Inst = InstB
     ).
 
     % merge_uniq(A, B, C) succeeds if C is minimum of A and B in the ordering

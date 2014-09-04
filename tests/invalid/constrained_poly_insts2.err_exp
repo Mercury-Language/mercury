@@ -1,0 +1,64 @@
+constrained_poly_insts2.m:041: In clause for `test6':
+constrained_poly_insts2.m:041:   in argument 2 of call to predicate
+constrained_poly_insts2.m:041:   `constrained_poly_insts2.q'/2:
+constrained_poly_insts2.m:041:   mode error: variable `V_2' has
+constrained_poly_insts2.m:041:   instantiatedness
+constrained_poly_insts2.m:041:   `unique((constrained_poly_insts2.orange))',
+constrained_poly_insts2.m:041:   expected instantiatedness was
+constrained_poly_insts2.m:041:   `bound((constrained_poly_insts2.apple))'.
+constrained_poly_insts2.m:043: In clause for `test8':
+constrained_poly_insts2.m:043:   in argument 2 of call to predicate
+constrained_poly_insts2.m:043:   `constrained_poly_insts2.q'/2:
+constrained_poly_insts2.m:043:   mode error: variable `V_2' has
+constrained_poly_insts2.m:043:   instantiatedness
+constrained_poly_insts2.m:043:   `unique((constrained_poly_insts2.orange))',
+constrained_poly_insts2.m:043:   expected instantiatedness was `(I =<
+constrained_poly_insts2.m:043:   bound((constrained_poly_insts2.apple)))'.
+constrained_poly_insts2.m:048: In clause for `p((pred(in((I =< ground))) is
+constrained_poly_insts2.m:048:   det), in)':
+constrained_poly_insts2.m:048:   in argument 2 (i.e. argument 1 of the called
+constrained_poly_insts2.m:048:   predicate) of higher-order predicate call:
+constrained_poly_insts2.m:048:   mode error: arguments `X' have the following
+constrained_poly_insts2.m:048:   insts:
+constrained_poly_insts2.m:048:     ground
+constrained_poly_insts2.m:048:   which does not match any of the modes for
+constrained_poly_insts2.m:048:   higher-order predicate call.
+constrained_poly_insts2.m:053: In clause for `p2((pred(in((I =< ground))) is
+constrained_poly_insts2.m:053:   det), in((J =<
+constrained_poly_insts2.m:053:   (constrained_poly_insts2.apple))))':
+constrained_poly_insts2.m:053:   in argument 2 (i.e. argument 1 of the called
+constrained_poly_insts2.m:053:   predicate) of higher-order predicate call:
+constrained_poly_insts2.m:053:   mode error: arguments `X' have the following
+constrained_poly_insts2.m:053:   insts:
+constrained_poly_insts2.m:053:     (J =< bound(apple))
+constrained_poly_insts2.m:053:   which does not match any of the modes for
+constrained_poly_insts2.m:053:   higher-order predicate call.
+constrained_poly_insts2.m:058: In clause for `p3((pred(in((I =<
+constrained_poly_insts2.m:058:   (constrained_poly_insts2.apple)))) is det),
+constrained_poly_insts2.m:058:   in((constrained_poly_insts2.orange)))':
+constrained_poly_insts2.m:058:   in argument 2 (i.e. argument 1 of the called
+constrained_poly_insts2.m:058:   predicate) of higher-order predicate call:
+constrained_poly_insts2.m:058:   mode error: variable `X' has instantiatedness
+constrained_poly_insts2.m:058:   `bound(orange)',
+constrained_poly_insts2.m:058:   expected instantiatedness was `(I =<
+constrained_poly_insts2.m:058:   bound(apple))'.
+constrained_poly_insts2.m:063: In clause for `p4((pred(in((I =<
+constrained_poly_insts2.m:063:   (constrained_poly_insts2.apple)))) is det),
+constrained_poly_insts2.m:063:   in((J =< (constrained_poly_insts2.apple))))':
+constrained_poly_insts2.m:063:   in argument 2 (i.e. argument 1 of the called
+constrained_poly_insts2.m:063:   predicate) of higher-order predicate call:
+constrained_poly_insts2.m:063:   mode error: arguments `X' have the following
+constrained_poly_insts2.m:063:   insts:
+constrained_poly_insts2.m:063:     (J =< bound(apple))
+constrained_poly_insts2.m:063:   which does not match any of the modes for
+constrained_poly_insts2.m:063:   higher-order predicate call.
+constrained_poly_insts2.m:068: In clause for `p5((pred(in((I =<
+constrained_poly_insts2.m:068:   (constrained_poly_insts2.apple)))) is det),
+constrained_poly_insts2.m:068:   in((constrained_poly_insts2.apple)))':
+constrained_poly_insts2.m:068:   in argument 2 (i.e. argument 1 of the called
+constrained_poly_insts2.m:068:   predicate) of higher-order predicate call:
+constrained_poly_insts2.m:068:   mode error: arguments `X' have the following
+constrained_poly_insts2.m:068:   insts:
+constrained_poly_insts2.m:068:     bound(apple)
+constrained_poly_insts2.m:068:   which does not match any of the modes for
+constrained_poly_insts2.m:068:   higher-order predicate call.

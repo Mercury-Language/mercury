@@ -687,9 +687,12 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         get_live_vars(HeadVars, ArgLives0, LiveVarsList),
         set_of_var.list_to_set(LiveVarsList, LiveVars),
 
+        get_constrained_inst_vars(!.ModuleInfo, ArgModes0, HeadInstVars),
+
         % Initialize the mode info.
         mode_info_init(!.ModuleInfo, PredId, ProcId, Context, LiveVars,
-            InstMap0, WhatToCheck, MayChangeCalledProc, !:ModeInfo),
+            HeadInstVars, InstMap0, WhatToCheck, MayChangeCalledProc,
+            !:ModeInfo),
         mode_info_set_changed_flag(!.Changed, !ModeInfo),
 
         pred_info_get_markers(PredInfo, Markers),

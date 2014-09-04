@@ -106,8 +106,8 @@
 
     % Initialize the mode_info.
     %
-:- pred mode_info_init(module_info::in, pred_id::in,
-    proc_id::in, prog_context::in, set_of_progvar::in, instmap::in,
+:- pred mode_info_init(module_info::in, pred_id::in, proc_id::in,
+    prog_context::in, set_of_progvar::in, head_inst_vars::in, instmap::in,
     how_to_check_goal::in, may_change_called_proc::in, mode_info::out) is det.
 
     % The mode_info contains a flag indicating whether initialisation calls,
@@ -190,6 +190,8 @@
 :- pred mode_info_get_may_change_called_proc(mode_info::in,
     may_change_called_proc::out) is det.
 :- pred mode_info_get_initial_instmap(mode_info::in, instmap::out) is det.
+:- pred mode_info_get_head_inst_vars(mode_info::in, head_inst_vars::out)
+    is det.
 :- pred mode_info_get_checking_extra_goals(mode_info::in, bool::out) is det.
 :- pred mode_info_get_may_init_solver_vars(mode_info::in,
     may_init_solver_vars::out) is det.
@@ -223,6 +225,8 @@
 :- pred mode_info_set_instmap(instmap::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_locked_vars(locked_vars::in,
+    mode_info::in, mode_info::out) is det.
+:- pred mode_info_set_instvarset(inst_varset::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_errors(list(mode_error_info)::in,
     mode_info::in, mode_info::out) is det.
@@ -337,11 +341,11 @@
 :- import_module check_hlds.delay_info.
 :- import_module check_hlds.mode_errors.
 :- import_module libs.
+:- import_module map.
 :- import_module libs.globals.
 :- import_module libs.options.
 
 :- import_module int.
-:- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module term.
@@ -421,6 +425,10 @@
                 % by an argument mode that enforces a subtype.
                 msi_initial_instmap         :: instmap,
 
+                % The inst vars that appear in the procedure head and their
+                % constraints.
+                msi_head_inst_vars          :: head_inst_vars,
+
                 % The mode warnings found.
                 msi_warnings                :: list(mode_warning_info),
 
@@ -491,8 +499,8 @@
 
 %-----------------------------------------------------------------------------%
 
-mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMap0,
-        HowToCheck, MayChangeProc, ModeInfo) :-
+mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
+        InstMap0, HowToCheck, MayChangeProc, ModeInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_modes, DebugModes),
     globals.lookup_int_option(Globals, debug_modes_pred_id,
@@ -536,9 +544,9 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMap0,
     ModeSubInfo = mode_sub_info(PredId, ProcId, VarSet, VarTypes, Debug,
         LockedVars, LiveVarsBag, InstVarSet, ParallelVars, HowToCheck,
         MayChangeProc, MayInitSolverVars, LastCheckpointInstMap, Changed,
-        CheckingExtraGoals, InstMap0, WarningList, NeedToRequantify,
-        InPromisePurityScope, InFromGroundTerm, HadFromGroundTerm,
-        MakeGroundTermsUnique, InDuplForSwitch),
+        CheckingExtraGoals, InstMap0, HeadInstVars, WarningList,
+        NeedToRequantify, InPromisePurityScope, InFromGroundTerm,
+        HadFromGroundTerm, MakeGroundTermsUnique, InDuplForSwitch),
 
     mode_context_init(ModeContext),
     delay_info_init(DelayInfo),
@@ -581,6 +589,7 @@ mode_info_get_may_change_called_proc(MI,
 mode_info_get_may_init_solver_vars(MI,
     MI ^ mi_sub_info ^ msi_may_init_solver_vars).
 mode_info_get_initial_instmap(MI, MI ^ mi_sub_info ^ msi_initial_instmap).
+mode_info_get_head_inst_vars(MI, MI ^ mi_sub_info ^ msi_head_inst_vars).
 mode_info_get_checking_extra_goals(MI,
     MI ^ mi_sub_info ^ msi_checking_extra_goals).
 mode_info_get_in_from_ground_term(MI,
@@ -603,6 +612,8 @@ mode_info_set_mode_context(ModeContext,
     MI, MI ^ mi_mode_context := ModeContext).
 mode_info_set_locked_vars(LockedVars, MI,
     MI ^ mi_sub_info ^ msi_locked_vars := LockedVars).
+mode_info_set_instvarset(InstVarSet, MI,
+    MI ^ mi_sub_info ^ msi_instvarset := InstVarSet).
 mode_info_set_errors(Errors, MI, MI ^ mi_errors := Errors).
 mode_info_set_warnings(Warnings, MI,
     MI ^ mi_sub_info ^ msi_warnings := Warnings).

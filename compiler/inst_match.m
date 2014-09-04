@@ -495,21 +495,20 @@ handle_inst_var_subs(Recurse, Continue, InstA, InstB, Type, !Info) :-
 
 handle_inst_var_subs_2(Recurse, Continue, InstA, InstB, Type, !Info) :-
     ( InstB = constrained_inst_vars(InstVarsB, SubInstB) ->
-        % InstB is a constrained_inst_var with upper bound SubInstB.
-        % We need to check that InstA matches_initial SubInstB and add the
-        % appropriate inst_var substitution.
-        Recurse(InstA, SubInstB, Type, !Info),
-
-        % Call abstractly_unify_inst to calculate the uniqueness of the
-        % inst represented by the constrained_inst_var.
+        % Add the substitution InstVarsB => InstA `glb` SubInstB
+        % (see get_subst_inst in dmo's thesis, page 78).
+        %
         % We pass `Live = is_dead' because we want
         % abstractly_unify(unique, unique) = unique, not shared.
-        Live = is_dead,
         ModuleInfo0 = !.Info ^ imi_module_info,
-        abstractly_unify_inst(Live, InstA, SubInstB, fake_unify,
+        abstractly_unify_inst(is_dead, InstA, SubInstB, fake_unify,
             Inst, _Det, ModuleInfo0, ModuleInfo),
         !Info ^ imi_module_info := ModuleInfo,
-        update_inst_var_sub(InstVarsB, Inst, Type, !Info)
+        update_inst_var_sub(InstVarsB, Inst, Type, !Info),
+
+        % Check that InstA matches InstB after applying the substitution
+        % to InstB.
+        Recurse(InstA, Inst, Type, !Info)
     ; InstA = constrained_inst_vars(_InstVarsA, SubInstA) ->
         Recurse(SubInstA, InstB, Type, !Info)
     ;

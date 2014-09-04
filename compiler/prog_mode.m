@@ -81,10 +81,16 @@
     mer_inst::in, mer_inst::out) is det.
 
     % inst_list_apply_substitution(Subst, Insts0, Insts) is true
-    % iff Inst is the inst that results from applying Subst to Insts0.
+    % iff Insts is the result of applying Subst to every inst in Insts0.
     %
 :- pred inst_list_apply_substitution(inst_var_sub::in,
     list(mer_inst)::in, list(mer_inst)::out) is det.
+
+    % inst_apply_substitution(Inst0, Subst, Inst) is true iff Inst is the inst
+    % that results from applying Subst to Inst0.
+    %
+:- pred inst_apply_substitution(inst_var_sub::in, mer_inst::in, mer_inst::out)
+    is det.
 
     % mode_list_apply_substitution(Subst, Modes0, Modes) is true
     % iff Mode is the mode that results from applying Subst to Modes0.
@@ -93,7 +99,7 @@
     list(mer_mode)::in, list(mer_mode)::out) is det.
 
 :- pred rename_apart_inst_vars(inst_varset::in, inst_varset::in,
-    list(mer_mode)::in, list(mer_mode)::out) is det.
+    inst_varset::out, list(mer_mode)::in, list(mer_mode)::out) is det.
 
     % inst_contains_unconstrained_var(Inst) iff Inst includes an
     % unconstrained inst variable.
@@ -299,12 +305,6 @@ inst_list_apply_substitution_2(Subst, [A0 | As0], [A | As]) :-
     inst_apply_substitution(Subst, A0, A),
     inst_list_apply_substitution_2(Subst, As0, As).
 
-    % inst_substitute_arg(Inst0, Subst, Inst) is true iff Inst is the inst that
-    % results from substituting all occurrences of Param in Inst0 with Arg.
-    %
-:- pred inst_apply_substitution(inst_var_sub::in, mer_inst::in, mer_inst::out)
-    is det.
-
 inst_apply_substitution(Subst, Inst0, Inst) :-
     (
         ( Inst0 = not_reached
@@ -432,8 +432,8 @@ mode_list_apply_substitution_2(Subst, [A0 | As0], [A | As]) :-
 
 %-----------------------------------------------------------------------------%
 
-rename_apart_inst_vars(VarSet, NewVarSet, Modes0, Modes) :-
-    varset.merge_renaming(VarSet, NewVarSet, _, Renaming),
+rename_apart_inst_vars(VarSet, NewVarSet, MergedVarSet, Modes0, Modes) :-
+    varset.merge_renaming(VarSet, NewVarSet, MergedVarSet, Renaming),
     list.map(rename_apart_inst_vars_in_mode(Renaming), Modes0, Modes).
 
 :- pred rename_apart_inst_vars_in_mode(renaming(inst_var_type)::in,

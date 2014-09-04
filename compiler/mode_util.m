@@ -1471,9 +1471,10 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
     ;
         proc_info_get_argmodes(ProcInfo, ArgModes0),
         proc_info_get_inst_varset(ProcInfo, ProcInstVarSet),
-        InstVarSet = !.RI ^ ri_inst_varset,
-        rename_apart_inst_vars(InstVarSet, ProcInstVarSet,
+        InstVarSet0 = !.RI ^ ri_inst_varset,
+        rename_apart_inst_vars(InstVarSet0, ProcInstVarSet, InstVarSet,
             ArgModes0, ArgModes1),
+        !RI ^ ri_inst_varset := InstVarSet,
         mode_list_get_initial_insts(ModuleInfo0, ArgModes1, InitialInsts),
 
         % Compute the inst_var substitution from the initial insts

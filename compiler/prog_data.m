@@ -2430,6 +2430,7 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 :- type inst_term   ==  term(inst_var_type).
 :- type inst_varset ==  varset(inst_var_type).
 
+:- type head_inst_vars  ==  map(inst_var, mer_inst).
 :- type inst_var_sub    ==  map(inst_var, mer_inst).
 
 % inst_defn/5 is defined in prog_item.m.

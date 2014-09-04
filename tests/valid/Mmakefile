@@ -90,6 +90,7 @@ OTHER_PROGS= \
 	constr_inst_syntax \
 	constrained_poly_bound_arg \
 	constrained_poly_insts \
+	constrained_poly_multi \
 	constraint_prop_bug \
 	constructor_arg_names \
 	dcg_test \

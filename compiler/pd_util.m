@@ -272,14 +272,16 @@ unique_modecheck_goal_live_vars(LiveVars, Goal0, Goal, Errors, !PDInfo) :-
     term.context_init(Context),
     pd_info_get_pred_info(!.PDInfo, PredInfo0),
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
+    pd_info_get_head_inst_vars(!.PDInfo, HeadInstVars),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo0,
         ModuleInfo0, ModuleInfo1),
 
     % If we perform generalisation, we shouldn't change any called procedures,
     % since that could cause a less efficient version to be chosen.
     MayChangeCalledProc = may_not_change_called_proc,
-    mode_info_init(ModuleInfo1, PredId, ProcId, Context, LiveVars, InstMap0,
-        check_unique_modes, MayChangeCalledProc, ModeInfo0),
+    mode_info_init(ModuleInfo1, PredId, ProcId, Context, LiveVars,
+        HeadInstVars, InstMap0, check_unique_modes, MayChangeCalledProc,
+        ModeInfo0),
 
     unique_modes_check_goal(Goal0, Goal, ModeInfo0, ModeInfo),
     mode_info_get_module_info(ModeInfo, ModuleInfo),

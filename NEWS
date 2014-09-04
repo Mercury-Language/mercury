@@ -67,6 +67,8 @@ Changes to the Mercury compiler:
 * We have fixed a long-standing bug causing crashes in deep profiling
   grades, related to unify/compare for tuples.  (Bug #3)
 
+* We have fixed some bugs with constrained polymorphic modes.
+
 * We have removed legacy support for the following systems: 
     - IRIX
     - OSF/1
