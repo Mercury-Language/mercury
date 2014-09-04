@@ -3314,16 +3314,22 @@ case "$mercury_cv_user_base_grade" in
      ;;
 esac
 
-# Force the use of the none grade on Apple x86/Darwin systems,
-# since the default gcc supplied with that system doesn't
-# work with either the reg or asm_fast grades.
-# XXX provide a workaround for the former; the latter is a problem
-# with gcc's Darwin support.
+# Force the use of the none grade on Apple x86_64 systems when using
+# GCC 4.1 or 4.2.  The asm_fast and reg grades do not work with those versions.
+# They do work properly on x86_64 systems with GCC version 4.3 onwards.
 #
+case "$C_COMPILER_TYPE" in
+    gcc_4_1_*|gcc_4_2_*)
+        case "$host" in x86_64*apple*darwin*) BEST_LLDS_BASE_GRADE=none ;;
+    esac
+esac
+
+# Force the use of the none grade on x86/Darwin systems.
+# XXX we should check whether asm_fast or reg work with recent GCCs.
 # The asm_fast and reg grades also do not currently work on Linux/PPC.
 #
 case "$host" in
-    i*86*apple*darwin*|x86_64*apple*darwin*|powerpc*-linux-gnu)
+    i*86*apple*darwin*|powerpc*-linux-gnu)
         BEST_LLDS_BASE_GRADE=none
         ;;
 esac
