@@ -20,14 +20,19 @@
 :- module sockets.
 :- interface.
 
-:- import_module bool.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
 
-:- type sockets.res(Type)
-    --->    ok(Type)
+:- type res(T)
+    --->    ok(T)
     ;       error(string).
+
+:- type res
+    --->    ok
+    ;       error(string).
+
+%-----------------------------------------------------------------------------%
 
 :- pred sockets.gethostbyname(string::in, string::out,
     io::di, io::uo) is det.
@@ -35,36 +40,45 @@
 :- pred sockets.getservbyname(string::in, string::in, int::out,
     io::di, io::uo) is det.
 
-:- pred sockets.socket(int::in, int::in, int::in, int::out, bool::out,
+:- pred sockets.socket(int::in, int::in, int::in, sockets.res(int)::out,
     io::di, io::uo) is det.
 
-:- pred sockets.port_address(string::in, int::in, c_pointer::out, bool::out,
+:- pred sockets.port_address(string::in, int::in, sockets.res(c_pointer)::out,
     io::di, io::uo) is det.
 
-:- pred sockets.service_address(string::in, string::in, c_pointer::out, 
-    bool::out, io::di, io::uo) is det.
+:- pred sockets.service_address(string::in, string::in,
+    sockets.res(c_pointer)::out, io::di, io::uo) is det.
 
-:- pred sockets.connect(int::in, c_pointer::in, int::in, bool::out,
-    io::di, io::uo) is det.
-
-:- pred sockets.bind(int::in, c_pointer::in, int::in, bool::out,
-    io::di, io::uo) is det.
-
-:- pred sockets.listen(int::in, int::in, bool::out, io::di, io::uo) is det.
-
-:- pred sockets.accept(int::in, c_pointer::in, int::out, bool::out,
-    io::di, io::uo) is det.
-
-:- pred sockets.close(int::in, io::di, io::uo) is det.
-
-    % Why did the socket operation fail?
+    % connect(Fd, Addr, Addrlen, Result, !IO),
     %
-:- pred sockets.error_message(string::out, io::di, io::uo) is det.
+    % XXX: Where does the caller get the Addrlen parameter from?
+    %
+:- pred sockets.connect(int::in, c_pointer::in, int::in, sockets.res::out,
+    io::di, io::uo) is det.
+
+:- pred sockets.bind(int::in, c_pointer::in, int::in, sockets.res::out,
+    io::di, io::uo) is det.
+
+:- pred sockets.listen(int::in, int::in, sockets.res::out, io::di, io::uo)
+    is det.
+
+    % Accept will block until a connection to our socket is made.
+    %
+:- pred sockets.accept(int::in, c_pointer::in, sockets.res(int)::out,
+    io::di, io::uo) is det.
+
+    % This closes the socket with lingering enabled.  The call will not
+    % return until all the queued data has been sent or he timeout expires
+    % (2 seconds).
+    %
+:- pred sockets.close(int::in, sockets.res::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module bool.
 
 :- pragma foreign_decl("C", "
 #ifdef MR_WIN32
@@ -86,18 +100,9 @@
 
   #define  INVALID_SOCKET   -1
 #endif /* !MR_WIN32 */
-  
+
   #include \"mercury_string.h\"
 
-  /*
-  ** Save the errno into this variable if a function fails.
-  */
-  extern int socket_errno;
-
-").
-
-:- pragma foreign_code("C", "
-    int socket_errno;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -113,9 +118,9 @@
 #ifdef MR_WIN32
     WORD    wVersionRequested;
     WSADATA wsaData;
-    int err; 
+    int err;
 
-    wVersionRequested = MAKEWORD( 2, 2 ); 
+    wVersionRequested = MAKEWORD( 2, 2 );
     err = WSAStartup(wVersionRequested, &wsaData);
 
     if ( err != 0 ) {
@@ -130,7 +135,7 @@
 #endif /* MR_WIN32 */
 ").
 
-    % XXX thread safe?
+    % XXX not thread safe.
 :- pragma foreign_proc(c,
     gethostbyname(Name::in, Host::out, _IO0::di, _IO::uo),
      [will_not_call_mercury, promise_pure, tabled_for_io],
@@ -140,7 +145,7 @@
     Host = (MR_String) host->h_name;
 ").
 
-    % XXX thread safe?
+    % XXX not thread safe.
 :- pragma foreign_proc(c,
     getservbyname(Name::in, Protocol::in, Port::out, _IO0::di, _IO::uo),
      [will_not_call_mercury, promise_pure, tabled_for_io],
@@ -154,24 +159,51 @@
     }
 ").
 
-    % XXX thread safe?
+socket(Domain, Type, Protocol, MaybeSocket, !IO) :-
+    socket(Domain, Type, Protocol, Socket, Success, Errno, !IO),
+    (
+        Success = yes,
+        MaybeSocket = ok(Socket)
+    ;
+        Success = no,
+        MaybeSocket = error(strerror(Errno))
+    ).
+
+:- pred socket(int::in, int::in, int::in, int::out, bool::out,
+    int::out, io::di, io::uo) is det.
+
 :- pragma foreign_proc(c,
     socket(Domain::in, Type::in, Protocol::in, Socket::out, Success::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io], 
+        Errno::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     Socket = socket(Domain, Type, Protocol);
     if (Socket == INVALID_SOCKET) {
-        socket_errno = error();
+        Errno = error();
         Success = MR_NO;
     } else {
         Success = MR_YES;
     }
 ").
 
-    % XXX thread safe?
+port_address(Host, Port, MaybeSA, !IO) :-
+    port_address(Host, Port, SA, Success, Errno, !IO),
+    (
+        Success = yes,
+        MaybeSA = ok(SA)
+    ;
+        Success = no,
+        MaybeSA = error(strerror(Errno))
+    ).
+
+:- pred port_address(string::in, int::in, c_pointer::out,  bool::out,
+    int::out, io::di, io::uo) is det.
+
+    % XXX Not thread safe as this uses gethostbyname
+    %
 :- pragma foreign_proc("C",
-    port_address(Host::in, Port::in, SA::out, Success::out, _IO0::di, _IO::uo),
+    port_address(Host::in, Port::in, SA::out, Success::out, Errno::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     struct hostent *host;
@@ -179,7 +211,7 @@
 
     host = gethostbyname(Host);
     if (host == NULL) {
-        socket_errno = error();
+        Errno = error();
         Success = MR_NO;
     } else {
         addr = MR_GC_NEW(struct sockaddr_in);
@@ -193,10 +225,24 @@
     }
 ").
 
-    % XXX thread safe?
+service_address(Service, Host, MaybeSA, !IO) :-
+    service_address(Service, Host, SA, Success, Errno, !IO),
+    (
+        Success = yes,
+        MaybeSA = ok(SA)
+    ;
+        Success = no,
+        MaybeSA = error(strerror(Errno))
+    ).
+
+:- pred service_address(string::in, string::in, c_pointer::out,
+    bool::out, int::out, io::di, io::uo) is det.
+
+    % XXX Not thread safe as this uses gethostbyname and getservbyname.
+    %
 :- pragma foreign_proc("C",
     service_address(Service::in, Host::in, SA::out, Success::out,
-        _IO0::di, _IO::uo),
+        Errno::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     struct hostent *host;
@@ -205,13 +251,13 @@
 
     host = gethostbyname(Host);
     if (host == NULL) {
-        socket_errno = error();
+        Errno = error();
         Success = MR_NO;
     } else {
         service = getservbyname(Service,""tcp"");
 
         if (service == NULL) {
-            socket_errno = error();
+            Errno = error();
             Success = MR_NO;
         } else {
             addr = MR_GC_NEW(struct sockaddr_in);
@@ -224,83 +270,159 @@
     }
 ").
 
-    % XXX thread safe?
+connect(Fd, Addr, AddrLen, Result, !IO) :-
+    connect(Fd, Addr, AddrLen, Success, Errno, !IO),
+    (
+        Success = yes,
+        Result = ok
+    ;
+        Success = no,
+        Result = error(strerror(Errno))
+    ).
+
+:- pred connect(int::in, c_pointer::in, int::in, bool::out,
+    int::out, io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
-    connect(Fd::in, Addr::in, AddrLen::in, Success::out, _IO0::di, _IO::uo), 
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    connect(Fd::in, Addr::in, AddrLen::in, Success::out, Errno::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     struct sockaddr *addr = (struct sockaddr *) Addr;
     if (connect(Fd, addr, AddrLen) == INVALID_SOCKET) {
-        socket_errno = error();
+        Errno = error();
         Success = MR_NO;
     } else {
         Success = MR_YES;
     }
 ").
 
-    % XXX thread safe?
+bind(Fd, Addr, AddrLen, Result, !IO) :-
+    bind(Fd, Addr, AddrLen, Success, Errno, !IO),
+    (
+        Success = yes,
+        Result = ok
+    ;
+        Success = no,
+        Result = error(strerror(Errno))
+    ).
+
+:- pred bind(int::in, c_pointer::in, int::in, bool::out, int::out,
+    io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
-    bind(Fd::in, Addr::in, AddrLen::in, Success::out, _IO0::di, _IO::uo), 
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    bind(Fd::in, Addr::in, AddrLen::in, Success::out, Errno::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     struct sockaddr *addr = (struct sockaddr *) Addr;
     if (bind(Fd, addr, AddrLen) == INVALID_SOCKET) {
-        socket_errno = error();
+        Errno = error();
         Success = MR_NO;
     } else {
         Success = MR_YES;
     }
 ").
 
-    % XXX thread safe?
+listen(Fd, Backlog, Result, !IO) :-
+    listen(Fd, Backlog, Success, Errno, !IO),
+    (
+        Success = yes,
+        Result = ok
+    ;
+        Success = no,
+        Result = error(strerror(Errno))
+    ).
+
+:- pred listen(int::in, int::in, bool::out, int::out,
+    io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
-    listen(Fd::in, BackLog::in, Success::out, _IO0::di, _IO::uo), 
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    listen(Fd::in, BackLog::in, Success::out, Errno::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     if (listen(Fd, BackLog) == INVALID_SOCKET) {
-        socket_errno = error();
+        Errno = error();
         Success = MR_NO;
     } else {
         Success = MR_YES;
     }
 ").
 
-    % This code can block, so we make it thread_safe
-    % so as to avoid other code blocking on the global mutex.
+accept(Fd, Addr, MaybeNewSocket, !IO) :-
+    accept(Fd, Addr, NewSocket, Success, Errno, !IO),
+    (
+        Success = yes,
+        MaybeNewSocket = ok(NewSocket)
+    ;
+        Success = no,
+        MaybeNewSocket = error(strerror(Errno))
+    ).
+
+:- pred accept(int::in, c_pointer::in, int::out, bool::out, int::out,
+    io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
-    accept(Fd::in, Addr::in, NewSocket::out, Success::out,
-        _IO0::di, _IO::uo), 
+    accept(Fd::in, Addr::in, NewSocket::out, Success::out, Errno::out,
+        _IO0::di, _IO::uo),
     [thread_safe, will_not_call_mercury, promise_pure, tabled_for_io],
 "
     struct sockaddr *addr = (struct sockaddr *) Addr;
     NewSocket = accept(Fd, addr, NULL);
     if (NewSocket == INVALID_SOCKET) {
-        socket_errno = error();
+        Errno = error();
         Success = MR_NO;
     } else {
         Success = MR_YES;
     }
 ").
 
-    % XXX thread safe?
+close(Fd, Result, !IO) :-
+    close(Fd, Success, Errno, !IO),
+    (
+        Success = yes,
+        Result = ok
+    ;
+        Success = no,
+        Result = error(strerror(Errno))
+    ).
+
+:- pred close(int::in, bool::out, int::out, io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
-    sockets.close(Fd::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    close(Fd::in, Success::out, Errno::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     struct linger sockets_linger = { MR_TRUE, 2 };
     setsockopt(Fd, SOL_SOCKET, SO_LINGER,
         &sockets_linger, sizeof(sockets_linger));
-    shutdown(Fd, 2);
+    if (-1 == shutdown(Fd, SHUT_RDWR)) {
+        Errno = error();
+        Success = MR_NO;
+    } else {
+        Success = MR_YES;
+    }
 ").
 
+%-----------------------------------------------------------------------------%
+
+    % Errno handling.
+    %
+:- func strerror(int) = string.
+
+strerror(Errno) = String :-
+    strerror(Errno, String).
+
+:- pred strerror(int::in, string::uo) is det.
+
 :- pragma foreign_proc("C",
-    error_message(Err::out, _IO0::di, _IO::uo),
+    strerror(Errno::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     char errbuf[MR_STRERROR_BUF_SIZE];
 
-    MR_make_aligned_string_copy(Err,
-        MR_strerror(socket_errno, errbuf, sizeof(errbuf)));
+    MR_make_aligned_string_copy(Str,
+        MR_strerror(Errno, errbuf, sizeof(errbuf)));
 ").
 
 %-----------------------------------------------------------------------------%
