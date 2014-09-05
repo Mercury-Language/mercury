@@ -164,6 +164,10 @@
     %
 :- pred char.digit_to_int(char::in, int::out) is semidet.
 
+    % As above, but calls error/1 instead of failing.
+    %
+:- func char.det_digit_to_int(char) = int.
+
     % char.int_to_uppercase_digit(Int, DigitChar):
     %
     % True iff `Int' is an integer in the range 0-35 and
@@ -488,6 +492,13 @@ char.digit_to_int(Digit, Int) :-
         char.int_to_digit(Int, Upper)
     ;
         char.int_to_digit(Int, Digit)
+    ).
+
+char.det_digit_to_int(Digit) = Int :-
+    ( digit_to_int(Digit, Int0) ->
+        Int = Int0
+    ;
+        error("char.digit_to_int failed")
     ).
 
 %-----------------------------------------------------------------------------%

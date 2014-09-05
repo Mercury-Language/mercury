@@ -35,6 +35,8 @@ Changes to the Mercury standard library:
 
 * Procedures in the store module no longer acquire the global lock.
 
+* We have added the function det_digit_to_int/1 to the char module.
+
 Changes to the Mercury compiler:
 
 * We have fixed a long-standing bug causing crashes in deep profiling
