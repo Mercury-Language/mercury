@@ -636,20 +636,26 @@
     % consists of only those applications of the function argument that
     % succeeded.
     %
-:- func list.filter_map_corresponding(func(A, B) = C, list(A), list(B))
-    = list(C).
+:- func list.filter_map_corresponding(func(A, B) = R, list(A), list(B))
+    = list(R).
 :- mode list.filter_map_corresponding(func(in, in) = out is semidet, in, in)
     = out is det.
+:- pred list.filter_map_corresponding(
+    pred(A, B, R)::in(pred(in, in, out) is semidet),
+    list(A)::in, list(B)::in, list(R)::out) is det.
 
     % list.filter_map_corresponding3/4 is like list.map_corresponding3/4
     % except the function argument is semidet and the output list
     % consists of only those applications of the function argument that
     % succeeded.
     %
-:- func list.filter_map_corresponding3(func(A, B, C) = D,
-    list(A), list(B), list(C)) = list(D).
+:- func list.filter_map_corresponding3(func(A, B, C) = R,
+    list(A), list(B), list(C)) = list(R).
 :- mode list.filter_map_corresponding3(func(in, in, in) = out is semidet,
     in, in, in) = out is det.
+:- pred list.filter_map_corresponding3(
+    pred(A, B, C, R)::in(pred(in, in, in, out) is semidet),
+    list(A)::in, list(B)::in, list(C)::in, list(R)::out) is det.
 
     % list.map_corresponding_foldl/6 is like list.map_corresponding except
     % that it has an accumulator threaded through it.
@@ -2509,25 +2515,25 @@ list.map_corresponding(_, [], [_ | _]) =
     unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding(_, [_ | _], []) =
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding(F, [A | As], [B | Bs]) =
-    [F(A, B) | list.map_corresponding(F, As, Bs)].
+list.map_corresponding(F, [HA | TAs], [HB | TBs]) =
+    [F(HA, HB) | list.map_corresponding(F, TAs, TBs)].
 
 list.map_corresponding(_, [], [], []).
 list.map_corresponding(_, [], [_ | _], _) :-
     unexpected($module, $pred, "mismatched list lengths").
 list.map_corresponding(_, [_ | _], [], _) :-
     unexpected($module, $pred, "mismatched list lengths").
-list.map_corresponding(P, [A | As], [B | Bs], [C | Cs]) :-
-    P(A, B, C),
-    list.map_corresponding(P, As, Bs, Cs).
+list.map_corresponding(P, [HA | TAs], [HB | TBs], [HR | TRs]) :-
+    P(HA, HB, HR),
+    list.map_corresponding(P, TAs, TBs, TRs).
 
 list.map_corresponding3(F, As, Bs, Cs) =
     (
-        As = [A | As0],
-        Bs = [B | Bs0],
-        Cs = [C | Cs0]
+        As = [HA | TAs],
+        Bs = [HB | TBs],
+        Cs = [HC | TCs]
     ->
-        [F(A, B, C) | list.map_corresponding3(F, As0, Bs0, Cs0)]
+        [F(HA, HB, HC) | list.map_corresponding3(F, TAs, TBs, TCs)]
     ;
         As = [],
         Bs = [],
@@ -2543,23 +2549,36 @@ list.filter_map_corresponding(_, [], [_ | _]) =
     unexpected($module, $pred, "mismatched list lengths").
 list.filter_map_corresponding(_, [_ | _], []) =
     unexpected($module, $pred, "mismatched list lengths").
-list.filter_map_corresponding(F, [A | As], [B | Bs]) =
-    ( F(A, B) = C ->
-        [C | list.filter_map_corresponding(F, As, Bs)]
+list.filter_map_corresponding(F, [HA | TAs], [HB | TBs]) =
+    ( F(HA, HB) = HR ->
+        [HR | list.filter_map_corresponding(F, TAs, TBs)]
     ;
-        list.filter_map_corresponding(F, As, Bs)
+        list.filter_map_corresponding(F, TAs, TBs)
+    ).
+
+list.filter_map_corresponding(_, [], [], []).
+list.filter_map_corresponding(_, [], [_ | _], _) :-
+    unexpected($module, $pred, "mismatched list lengths").
+list.filter_map_corresponding(_, [_ | _], [], _) :-
+    unexpected($module, $pred, "mismatched list lengths").
+list.filter_map_corresponding(P, [HA | TAs], [HB | TBs], Rs) :-
+    ( P(HA, HB, HR) ->
+        list.filter_map_corresponding(P, TAs, TBs, TRs),
+        Rs = [HR | TRs]
+    ;
+        list.filter_map_corresponding(P, TAs, TBs, Rs)
     ).
 
 list.filter_map_corresponding3(F, As, Bs, Cs) =
     (
-        As = [A | As0],
-        Bs = [B | Bs0],
-        Cs = [C | Cs0]
+        As = [HA | TAs],
+        Bs = [HB | TBs],
+        Cs = [HC | TCs]
     ->
-        ( F(A, B, C) = D ->
-            [D | list.filter_map_corresponding3(F, As0, Bs0, Cs0)]
+        ( F(HA, HB, HC) = HR ->
+            [HR | list.filter_map_corresponding3(F, TAs, TBs, TCs)]
         ;
-            list.filter_map_corresponding3(F, As0, Bs0, Cs0)
+            list.filter_map_corresponding3(F, TAs, TBs, TCs)
         )
     ;
         As = [],
@@ -2567,6 +2586,28 @@ list.filter_map_corresponding3(F, As, Bs, Cs) =
         Cs = []
     ->
         []
+    ;
+        unexpected($module, $pred, "mismatched list lengths")
+    ).
+
+list.filter_map_corresponding3(P, As, Bs, Cs, Rs) :-
+    (
+        As = [HA | TAs],
+        Bs = [HB | TBs],
+        Cs = [HC | TCs]
+    ->
+        ( P(HA, HB, HC, HR) ->
+            list.filter_map_corresponding3(P, TAs, TBs, TCs, TRs),
+            Rs = [HR | TRs]
+        ;
+            list.filter_map_corresponding3(P, TAs, TBs, TCs, Rs)
+        )
+    ;
+        As = [],
+        Bs = [],
+        Cs = []
+    ->
+        Rs = []
     ;
         unexpected($module, $pred, "mismatched list lengths")
     ).
