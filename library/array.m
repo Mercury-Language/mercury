@@ -308,23 +308,31 @@
 %:- mode array.copy(array_ui) = array_uo is det.
 :- mode array.copy(in) = array_uo is det.
 
-    % array.resize(Array0, Size, Init, Array):
+    % array.resize(Size, Init, Array0, Array):
     % The array is expanded or shrunk to make it fit the new size `Size'.
     % Any new entries are filled with `Init'.
     %
 :- pred array.resize(int, T, array(T), array(T)).
 :- mode array.resize(in, in, array_di, array_uo) is det.
 
+    % array.resize(Array0, Size, Init) = Array:
+    % The array is expanded or shrunk to make it fit the new size `Size'.
+    % Any new entries are filled with `Init'.
+    %
 :- func array.resize(array(T), int, T) = array(T).
 :- mode array.resize(array_di, in, in) = array_uo is det.
 
-    % array.shrink(Array0, Size, Array):
+    % array.shrink(Size, Array0, Array):
     % The array is shrunk to make it fit the new size `Size'.
     % Throws an exception if `Size' is larger than the size of `Array0'.
     %
 :- pred array.shrink(int, array(T), array(T)).
 :- mode array.shrink(in, array_di, array_uo) is det.
 
+    % array.shrink(Array0, Size) = Array:
+    % The array is shrunk to make it fit the new size `Size'.
+    % Throws an exception if `Size' is larger than the size of `Array0'.
+    %
 :- func array.shrink(array(T), int) = array(T).
 :- mode array.shrink(array_di, in) = array_uo is det.
 
@@ -391,17 +399,14 @@
     % if one is supplied, otherwise with respect to the Mercury standard
     % ordering).
     %
-:- pred array.approx_binary_search(array(T), T, int).
-:- mode array.approx_binary_search(array_ui, in, out) is semidet.
-
-:- pred array.approx_binary_search(comparison_func(T), array(T), T, int).
-:- mode array.approx_binary_search(in, array_ui, in, out) is semidet.
-
-:- pred array.binary_search(array(T), T, int).
-:- mode array.binary_search(array_ui, in, out) is semidet.
-
-:- pred array.binary_search(comparison_func(T), array(T), T, int).
-:- mode array.binary_search(in, array_ui, in, out) is semidet.
+:- pred array.approx_binary_search(array(T)::array_ui,
+    T::in, int::out) is semidet.
+:- pred array.approx_binary_search(comparison_func(T)::in, array(T)::array_ui,
+    T::in, int::out) is semidet.
+:- pred array.binary_search(array(T)::array_ui,
+    T::in, int::out) is semidet.
+:- pred array.binary_search(comparison_func(T)::in, array(T)::array_ui,
+    T::in, int::out) is semidet.
 
     % array.map(Closure, OldArray, NewArray) applies `Closure' to
     % each of the elements of `OldArray' to create `NewArray'.
