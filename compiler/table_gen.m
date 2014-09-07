@@ -593,6 +593,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 
     % The transformation doesn't pay attention to the purity of compound goals,
     % so recompute the purity here.
+    % XXX Fix this: generate correct-by-construction purity information.
     repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
     module_info_get_preds(!.ModuleInfo, PredTable1),
     map.det_update(PredId, !.PredInfo, PredTable1, PredTable),
@@ -3414,37 +3415,44 @@ add_proc_table_struct(PredProcId, ProcTableStructInfo, ProcInfo,
 
 :- type var_mode_method
     --->    var_mode_method(
-                prog_var,   % The head variable.
-                mer_mode,   % The mode of the head variable.
+                % The head variable.
+                prog_var,
+
+                % The mode of the head variable.
+                mer_mode,
+
+                % For input arguments, this is the arg method to use in
+                % looking up the argument in the call table. For output
+                % arguments, this is the arg method to use in looking up
+                % the argument in the answer table (if any).
                 arg_tabling_method
-                            % For input arguments, this is the arg method to
-                            % use in looking up the argument in the call table.
-                            % For output arguments, this is the arg method to
-                            % use in looking up the argument in the answer
-                            % table (if any).
             ).
 
 :- type var_mode_pos_method == var_mode_pos_method(arg_tabling_method).
 
 :- type var_mode_pos_method(T)
     --->    var_mode_pos_method(
-                prog_var,   % The head variable.
-                mer_mode,   % The mode of the head variable.
-                int,        % The offset of the head variable in the answer
-                            % block; the first slot is at offset 0.
+                % The head variable.
+                prog_var,
+
+                % The mode of the head variable.
+                mer_mode,
+
+                % The offset of the head variable in the answer block;
+                % the first slot is at offset 0.
+                int,
+
+                % For input arguments, this is the arg method to use in
+                % looking up the argument in the call table. For output
+                % arguments, this is the arg method to use in looking up
+                % the argument in the answer table (if any), which for now
+                % is always arg_value.
+                %
+                % When T is unit, there is no info about how to look up
+                % the variable in a call or return table. This is useful
+                % for recording the structure of answer blocks and sequences
+                % of arguments for I/O tabling.
                 T
-                            % For input arguments, this is the arg method to
-                            % use in looking up the argument in the call table.
-                            % For output arguments, this is the arg method to
-                            % use in looking up the argument in the answer
-                            % table (if any), which for now is always
-                            % arg_value.
-                            %
-                            % When T is unit, there is no info about how to
-                            % look up the variable in a call or return table.
-                            % This is useful for recording the structure of
-                            % answer blocks and sequences of arguments
-                            % for I/O tabling.
             ).
 
 :- func project_var(var_mode_pos_method(T)) = prog_var.
