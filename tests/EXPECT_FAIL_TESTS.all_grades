@@ -1,5 +1,6 @@
 debugger/declarative/condition_bug
 hard_coded/typeclasses/complicated_constraint
+hard_coded/write_float_special
 valid/bug85
 valid/constraint_prop_bug
 valid/csharp_hello
