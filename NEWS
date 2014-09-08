@@ -81,6 +81,9 @@ This is a bug-fix release.
 * Low-level C parallel grades now work on Windows instead of crashing
   at startup.  (Bug #338)
 * We now use thread-safe alternatives to strerror().  (Bug #340)
+* We have added the configure option --enable-gc-mmap.
+* We configure Boehm GC to use mmap in threaded grades on Linux to avoid
+  conflicts with glibc malloc leading to memory corruption.
 * A problem that caused string.format/[23] to sometimes return incorrect
   results when formatting floats with the 'g' conversion specifier has
   been fixed.  This bug only affected the non-C backends.  (Bug #342)
