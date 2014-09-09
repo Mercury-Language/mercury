@@ -749,7 +749,7 @@ bind_inst_to_functors(Type, MainConsId, OtherConsIds, InitInst, FinalInst,
         MainFinalInst, !ModuleInfo),
     bind_inst_to_functors_others(Type, OtherConsIds, InitInst,
         OtherFinalInsts, !ModuleInfo),
-    merge_var_insts([MainFinalInst | OtherFinalInsts], Type, !ModuleInfo,
+    merge_var_insts([MainFinalInst | OtherFinalInsts], yes(Type), !ModuleInfo,
         MaybeMergedInst),
     (
         MaybeMergedInst = yes(FinalInst)
@@ -952,7 +952,7 @@ merge_insts_of_vars([Var | Vars], ArmInstMaps, VarTypes, !InstMapping,
         !ModuleInfo, !:ErrorList),
     lookup_var_type(VarTypes, Var, VarType),
     list.map(lookup_var_in_arm_instmap(Var), ArmInstMaps, InstList),
-    merge_var_insts(InstList, VarType, !ModuleInfo, MaybeInst),
+    merge_var_insts(InstList, yes(VarType), !ModuleInfo, MaybeInst),
     (
         MaybeInst = no,
         list.map(arm_instmap_project_context, ArmInstMaps, Contexts),
@@ -996,13 +996,11 @@ lookup_var_in_arm_instmap(Var, ArmInstMap, Inst) :-
     % number of insts by four by merging groups of four adjacent insts.
     % The overall complexity is thus closer to N log N than N^2.
     %
-:- pred merge_var_insts(list(mer_inst)::in, mer_type::in,
+:- pred merge_var_insts(list(mer_inst)::in, maybe(mer_type)::in,
     module_info::in, module_info::out, maybe(mer_inst)::out) is det.
 
-merge_var_insts(Insts, Type, !ModuleInfo, MaybeMergedInst) :-
-    % Construct yes(Type) here once per merge_var pass to avoid merge_var_inst
-    % constructing the yes(Type) cell N times per pass.
-    merge_var_insts_pass(Insts, yes(Type), [], MergedInsts, !ModuleInfo,
+merge_var_insts(Insts, MaybeType, !ModuleInfo, MaybeMergedInst) :-
+    merge_var_insts_pass(Insts, MaybeType, [], MergedInsts, !ModuleInfo,
         no, Error),
     (
         Error = yes,
@@ -1017,7 +1015,8 @@ merge_var_insts(Insts, Type, !ModuleInfo, MaybeMergedInst) :-
             MaybeMergedInst = yes(MergedInst)
         ;
             MergedInsts = [_, _ | _],
-            merge_var_insts(MergedInsts, Type, !ModuleInfo, MaybeMergedInst)
+            merge_var_insts(MergedInsts, MaybeType, !ModuleInfo,
+                MaybeMergedInst)
         )
     ).
 
