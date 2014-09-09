@@ -2885,7 +2885,7 @@ AC_MSG_RESULT($mercury_cv_egcs)
 #
 
 AC_ARG_ENABLE(deep-profiler,
-   AC_HELP_STRING([--enable-deep-profiler=<directory>]
+   AC_HELP_STRING([--enable-deep-profiler=<directory>],
                   [install deep profiler CGI script in <directory>]),
    enable_deep_profiler="$enableval",enable_deep_profiler=default)
 
@@ -3010,7 +3010,7 @@ else
 fi
 
 AC_ARG_WITH([gc-win32-pthreads],
-   AC_HELP_STRING([--with-gc-win32-pthreads]
+   AC_HELP_STRING([--with-gc-win32-pthreads],
             [Force the use of pthreads-win32 or winpthreads with Boehm GC.
              This is the default for MinGW if detected.]),
    [with_gc_win32_pthreads="$withval"],
