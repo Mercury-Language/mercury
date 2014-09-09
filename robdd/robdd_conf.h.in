@@ -1,0 +1,16 @@
+/*
+** Autoconfigured parameters for bryant.[ch].
+*/
+
+#ifndef MR_ROBDD_CONF_H
+#define MR_ROBDD_CONF_H
+
+#undef MR_ROBDD_int
+#undef MR_ROBDD_uint
+#undef MR_ROBDD_int_max
+
+/* number of bits in an MR_ROBDD_int, and the log (base 2) of that */
+#undef MR_ROBDD_BITS_PER_WORD
+#undef MR_ROBDD_LOG_BITS_PER_WORD
+
+#endif

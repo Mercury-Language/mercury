@@ -150,7 +150,8 @@
 
 #if defined(MR_ROBDD_NO_CHEAP_SHIFT) && MR_ROBDD_BITS_PER_WORD == 32
   MR_ROBDD_bitmask MR_ROBDD_following_bits[MR_ROBDD_BITS_PER_WORD] =
-    {  0xffffffff, 0xfffffffe, 0xfffffffc, 0xfffffff8,
+    {
+       0xffffffff, 0xfffffffe, 0xfffffffc, 0xfffffff8,
        0xfffffff0, 0xffffffe0, 0xffffffc0, 0xffffff80,
        0xffffff00, 0xfffffe00, 0xfffffc00, 0xfffff800,
        0xfffff000, 0xffffe000, 0xffffc000, 0xffff8000,
@@ -161,7 +162,8 @@
     };
 
   MR_ROBDD_bitmask MR_ROBDD_preceding_bits[MR_ROBDD_BITS_PER_WORD] =
-    {  0x00000001, 0x00000003, 0x00000007, 0x0000000f,
+    {
+       0x00000001, 0x00000003, 0x00000007, 0x0000000f,
        0x0000001f, 0x0000003f, 0x0000007f, 0x000000ff,
        0x000001ff, 0x000003ff, 0x000007ff, 0x00000fff,
        0x00001fff, 0x00003fff, 0x00007fff, 0x0000ffff,
@@ -169,6 +171,94 @@
        0x001fffff, 0x003fffff, 0x007fffff, 0x00ffffff,
        0x01ffffff, 0x03ffffff, 0x07ffffff, 0x0fffffff,
        0x1fffffff, 0x3fffffff, 0x7fffffff, 0xffffffff
+    };
+#endif
+
+#if defined(MR_ROBDD_NO_CHEAP_SHIFT) && MR_ROBDD_BITS_PER_WORD == 64
+  MR_ROBDD_bitmask MR_ROBDD_following_bits[MR_ROBDD_BITS_PER_WORD] =
+    { 
+        0xffffffffffffffff, 0xfffffffffffffffe,
+        0xfffffffffffffffc, 0xfffffffffffffff8,
+        0xfffffffffffffff0, 0xffffffffffffffe0,
+        0xffffffffffffffc0, 0xffffffffffffff80,
+
+        0xffffffffffffff00, 0xfffffffffffffe00,
+        0xfffffffffffffc00, 0xfffffffffffff800,
+        0xfffffffffffff000, 0xffffffffffffe000,
+        0xffffffffffffc000, 0xffffffffffff8000,
+
+        0xffffffffffff0000, 0xfffffffffffe0000,
+        0xfffffffffffc0000, 0xfffffffffff80000,
+        0xfffffffffff00000, 0xffffffffffe00000,
+        0xffffffffffc00000, 0xffffffffff800000,
+
+        0xffffffffff000000, 0xfffffffffe000000,
+        0xfffffffffc000000, 0xfffffffff8000000,
+        0xfffffffff0000000, 0xffffffffe0000000,
+        0xffffffffc0000000, 0xffffffff80000000,
+
+        0xffffffff00000000, 0xfffffffe00000000,
+        0xfffffffc00000000, 0xfffffff800000000,
+        0xfffffff000000000, 0xffffffe000000000,
+        0xffffffc000000000, 0xffffff8000000000,
+
+        0xffffff0000000000, 0xfffffe0000000000,
+        0xfffffc0000000000, 0xfffff80000000000,
+        0xfffff00000000000, 0xffffe00000000000,
+        0xffffc00000000000, 0xffff800000000000,
+
+        0xffff000000000000, 0xfffe000000000000,
+        0xfffc000000000000, 0xfff8000000000000,
+        0xfff0000000000000, 0xffe0000000000000,
+        0xffc0000000000000, 0xff80000000000000,
+
+        0xff00000000000000, 0xfe00000000000000,
+        0xfc00000000000000, 0xf800000000000000,
+        0xf000000000000000, 0xe000000000000000,
+        0xc000000000000000, 0x8000000000000000
+    };
+
+  MR_ROBDD_bitmask MR_ROBDD_preceding_bits[MR_ROBDD_BITS_PER_WORD] =
+    {
+       0x0000000000000001, 0x0000000000000003,
+       0x0000000000000007, 0x000000000000000f,
+       0x000000000000001f, 0x000000000000003f,
+       0x000000000000007f, 0x00000000000000ff,
+
+       0x00000000000001ff, 0x00000000000003ff,
+       0x00000000000007ff, 0x0000000000000fff,
+       0x0000000000001fff, 0x0000000000003fff,
+       0x0000000000007fff, 0x000000000000ffff,
+
+       0x000000000001ffff, 0x000000000003ffff,
+       0x000000000007ffff, 0x00000000000fffff,
+       0x00000000001fffff, 0x00000000003fffff,
+       0x00000000007fffff, 0x0000000000ffffff,
+
+       0x0000000001ffffff, 0x0000000003ffffff,
+       0x0000000007ffffff, 0x000000000fffffff,
+       0x000000001fffffff, 0x000000003fffffff,
+       0x000000007fffffff, 0x00000000ffffffff,
+
+       0x00000001ffffffff, 0x00000003ffffffff,
+       0x00000007ffffffff, 0x0000000fffffffff,
+       0x0000001fffffffff, 0x0000003fffffffff,
+       0x0000007fffffffff, 0x000000ffffffffff,
+
+       0x000001ffffffffff, 0x000003ffffffffff,
+       0x000007ffffffffff, 0x00000fffffffffff,
+       0x00001fffffffffff, 0x00003fffffffffff,
+       0x00007fffffffffff, 0x0000ffffffffffff,
+
+       0x0001ffffffffffff, 0x0003ffffffffffff,
+       0x0007ffffffffffff, 0x000fffffffffffff,
+       0x001fffffffffffff, 0x003fffffffffffff,
+       0x007fffffffffffff, 0x00ffffffffffffff,
+
+       0x01ffffffffffffff, 0x03ffffffffffffff,
+       0x07ffffffffffffff, 0x0fffffffffffffff,
+       0x1fffffffffffffff, 0x3fffffffffffffff,
+       0x7fffffffffffffff, 0xffffffffffffffff
     };
 #endif
 
@@ -233,22 +323,22 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
    */
   #define MR_ROBDD_MAX_COUNT            1000
 
-  int MR_ROBDD_unique_table_hits, MR_ROBDD_unique_table_misses;
+  MR_ROBDD_int MR_ROBDD_unique_table_hits, MR_ROBDD_unique_table_misses;
 
-  #define MR_ROBDD_DECLARE_FN_COUNT(op) int op##_count;
+  #define MR_ROBDD_DECLARE_FN_COUNT(op) MR_ROBDD_int op##_count;
 
   #define MR_ROBDD_COUNT_FN(fn)         (++fn##_count)
 
   #define MR_ROBDD_INIT_FN_COUNT(fn)    fn##_count = 0
   #define MR_ROBDD_PRINT_FN_COUNT(fn) \
-    if (fn##_count!=0) printf("%6d calls to " #fn "\n", fn##_count);
+    if (fn##_count!=0) printf("%6ld calls to " #fn "\n", (long) fn##_count);
 
-  #define MR_ROBDD_COUNT_UNIQUE_HIT (++MR_ROBDD_unique_table_hits)
-  #define MR_ROBDD_COUNT_UNIQUE_MISS (++MR_ROBDD_unique_table_misses)
+  #define MR_ROBDD_COUNT_UNIQUE_HIT     (++MR_ROBDD_unique_table_hits)
+  #define MR_ROBDD_COUNT_UNIQUE_MISS    (++MR_ROBDD_unique_table_misses)
 
   #if defined(MR_ROBDD_COMPUTED_TABLE)
 
-    #define MR_ROBDD_COUNT_HIT(op) (++op##_computed_hits)
+    #define MR_ROBDD_COUNT_HIT(op)  (++op##_computed_hits)
     #define MR_ROBDD_COUNT_MISS(op) (++op##_computed_misses, ++cache->count)
     #define MR_ROBDD_INIT_CACHE(op)                                         \
     do {                                                                    \
@@ -257,19 +347,19 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
         MR_ROBDD_CLEAR_CACHE(op);                                           \
     } while (0)
 
-    #define MR_ROBDD_CACHE_COUNT_MEMBER int count;
+    #define MR_ROBDD_CACHE_COUNT_MEMBER MR_ROBDD_int count;
     #define MR_ROBDD_PRINT_CACHE_PERFORMANCE(op)                            \
     do {                                                                    \
         if (op##_computed_misses > 0 ) {                                    \
-            int i, size_count[MR_ROBDD_MAX_COUNT+2];                        \
+            MR_ROBDD_int i, size_count[MR_ROBDD_MAX_COUNT+2];               \
             printf(                                                         \
-                #op " computed table:  %d hits, %d misses, %.2f%% hit rate\n",\
-                op##_computed_hits, op##_computed_misses,                    \
+                #op " computed table:  %ld hits, %ld misses, %.2f%% hit rate\n",\
+                (long) op##_computed_hits, (long) op##_computed_misses,     \
             MR_ROBDD_PERCENTAGE(op##_computed_hits,                         \
                op##_computed_hits + op##_computed_misses));                 \
             MR_memset(size_count, 0, sizeof(size_count));                   \
             for (i=0; i<MR_ROBDD_COMPUTED_TABLE_SIZE; ++i) {                \
-                int count = op##_computed_cache[i].count;                   \
+                MR_ROBDD_int count = op##_computed_cache[i].count;          \
                 ++size_count[(count<=MR_ROBDD_MAX_COUNT ? count :           \
                     MR_ROBDD_MAX_COUNT+1)];                                 \
             }                                                               \
@@ -354,8 +444,8 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 
   #if defined(MR_ROBDD_STATISTICS)
     #define MR_ROBDD_DECLARE_CACHE(op, MR_ROBDD_type)                   \
-    static int op##_computed_hits;                                      \
-    static int op##_computed_misses;                                    \
+    static MR_ROBDD_int op##_computed_hits;                             \
+    static MR_ROBDD_int op##_computed_misses;                           \
     static MR_ROBDD_type op##_computed_cache[MR_ROBDD_COMPUTED_TABLE_SIZE]
   #else /* !MR_ROBDD_STATISTICS */
     #define MR_ROBDD_DECLARE_CACHE(op, MR_ROBDD_type)                   \
@@ -444,8 +534,8 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 
   typedef struct {
     MR_ROBDD_node *f;
-    int  n;
-    int  result;
+    MR_ROBDD_int  n;
+    MR_ROBDD_int  result;
     MR_ROBDD_CACHE_COUNT_MEMBER
   } var_entailed_cache_entry;
 
@@ -593,7 +683,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
         MR_ROBDD_node   *f;
         MR_ROBDD_node   *g;
         MR_ROBDD_node   *result;
-        int             thresh;
+        MR_ROBDD_int             thresh;
         MR_ROBDD_CACHE_COUNT_MEMBER
     } rglb_cache_entry;
 
@@ -609,10 +699,11 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
             (n1) = temp;                                                    \
         }                                                                   \
         cache = &rglb_computed_cache[MR_ROBDD_BINARY_NODE_HASH(n1,n2)];     \
-        if (cache->f==(n1) && cache->g==(n2) &&                             \
-            cache->thresh >= th) {                                          \
+        if (cache->f==(n1) && cache->g==(n2) && cache->thresh >= th) {      \
             MR_ROBDD_COUNT_HIT(rglb);                                       \
-            if (cache->thresh == th) return cache->result;                  \
+            if (cache->thresh == th) {                                      \
+                return cache->result;                                       \
+            }                                                               \
             return MR_ROBDD_restrictThresh(th, cache->result);              \
         }                                                                   \
     } while (0)
@@ -679,7 +770,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
         % MR_ROBDD_COMPUTED_TABLE_SIZE)
 
     typedef struct {
-        int             f;
+        MR_ROBDD_int    f;
         MR_ROBDD_node   *g;
         MR_ROBDD_node   *h;
         MR_ROBDD_node   *result;
@@ -780,13 +871,13 @@ extern void MR_ROBDD_printBryant(MR_ROBDD_node *a);
 /* if then else algorithm */
 MR_ROBDD_node   *MR_ROBDD_ite(MR_ROBDD_node *f, MR_ROBDD_node *g,
                     MR_ROBDD_node *h);
-MR_ROBDD_node   *MR_ROBDD_restricted_iff_conj_array(int v0, int n, int arr[],
-                    int thresh);
+MR_ROBDD_node   *MR_ROBDD_restricted_iff_conj_array(MR_ROBDD_int v0,
+                    MR_ROBDD_int n, MR_ROBDD_int arr[], MR_ROBDD_int thresh);
 
-MR_ROBDD_node   *MR_ROBDD_renameArray(MR_ROBDD_node *in, int count,
-                    int mappping[]);
-MR_ROBDD_node   *MR_ROBDD_reverseRenameArray(MR_ROBDD_node *in, int count,
-                    int rev_mappping[]);
+MR_ROBDD_node   *MR_ROBDD_renameArray(MR_ROBDD_node *in, MR_ROBDD_int count,
+                    MR_ROBDD_int mappping[]);
+MR_ROBDD_node   *MR_ROBDD_reverseRenameArray(MR_ROBDD_node *in,
+                    MR_ROBDD_int count, MR_ROBDD_int rev_mappping[]);
 
 MR_ROBDD_node   *MR_ROBDD_complete(MR_ROBDD_node *f, MR_ROBDD_node *g);
 MR_ROBDD_node   *MR_ROBDD_bin_univ(MR_ROBDD_node *f);
@@ -821,12 +912,12 @@ static int      MR_ROBDD_intcompare(const void *i, const void *j);
 
 #if defined(MR_ROBDD_NO_CHEAP_SHIFT)
 
-__inline int
-MR_ROBDD_next_element(MR_ROBDD_bitset *set, int *var, int *word,
-    MR_ROBDD_bitmask *mask)
+__inline MR_ROBDD_int
+MR_ROBDD_next_element(MR_ROBDD_bitset *set, MR_ROBDD_int *var,
+    MR_ROBDD_int *word, MR_ROBDD_bitmask *mask)
 {
-    int vr = *var;
-    int wd = *word;
+    MR_ROBDD_int vr = *var;
+    MR_ROBDD_int wd = *word;
     MR_ROBDD_bitmask f = MR_ROBDD_FOLLOWING_BITS(vr&(MR_ROBDD_BITS_PER_WORD-1));
     MR_ROBDD_bitmask *ptr = &(set->bits[wd]);
     MR_ROBDD_bitmask bits = *ptr;
@@ -836,7 +927,9 @@ MR_ROBDD_next_element(MR_ROBDD_bitset *set, int *var, int *word,
 
     if ((bits&f) == 0) {
         do {
-        if (++wd > ((MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD)) return MR_FALSE;
+            if (++wd > ((MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD)) {
+                return MR_FALSE;
+            }
         } while ((bits=*++ptr) == 0);
         vr = wd<<MR_ROBDD_LOG_BITS_PER_WORD;
         msk = 1;
@@ -855,19 +948,22 @@ MR_ROBDD_next_element(MR_ROBDD_bitset *set, int *var, int *word,
 
 #else /* !MR_ROBDD_NO_CHEAP_SHIFT */
 
-__inline int
-MR_ROBDD_next_element(MR_ROBDD_bitset *set, int *var, int *word,
-    MR_ROBDD_bitmask *mask)
+__inline MR_ROBDD_int
+MR_ROBDD_next_element(MR_ROBDD_bitset *set, MR_ROBDD_int *var,
+    MR_ROBDD_int *word, MR_ROBDD_bitmask *mask)
 {
-    int vr = *var;
-    int wd = *word;
+    MR_ROBDD_int vr = *var;
+    MR_ROBDD_int wd = *word;
     MR_ROBDD_bitmask *ptr = &(set->bits[wd]);
-    MR_ROBDD_bitmask bits = *ptr&MR_ROBDD_FOLLOWING_BITS(vr&(MR_ROBDD_BITS_PER_WORD-1));
+    MR_ROBDD_bitmask bits =
+        *ptr&MR_ROBDD_FOLLOWING_BITS(vr&(MR_ROBDD_BITS_PER_WORD-1));
 
     assert(vr >= 0 && vr < MR_ROBDD_MAXVAR);
 
     while (bits == 0) {
-        if (++wd > (MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD) return MR_FALSE;
+        if (++wd > (MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD) {
+            return MR_FALSE;
+        }
         bits = *++ptr;
     }
     vr = wd<<MR_ROBDD_LOG_BITS_PER_WORD;
@@ -889,16 +985,17 @@ MR_ROBDD_next_element(MR_ROBDD_bitset *set, int *var, int *word,
 
 #if defined(MR_ROBDD_NO_CHEAP_SHIFT)
 
-__inline int
-MR_ROBDD_prev_element(MR_ROBDD_bitset *set, int *var, int *word,
-    MR_ROBDD_bitmask *mask)
+__inline MR_ROBDD_int
+MR_ROBDD_prev_element(MR_ROBDD_bitset *set, MR_ROBDD_int *var,
+    MR_ROBDD_int *word, MR_ROBDD_bitmask *mask)
 {
-    int vr = *var;
-    int wd = *word;
+    MR_ROBDD_int vr = *var;
+    MR_ROBDD_int wd = *word;
 
     assert(vr >= 0 && vr < MR_ROBDD_MAXVAR);
 
-    MR_ROBDD_bitmask f = MR_ROBDD_PRECEDING_BITS(vr&(MR_ROBDD_BITS_PER_WORD-1));
+    MR_ROBDD_bitmask f =
+        MR_ROBDD_PRECEDING_BITS(vr&(MR_ROBDD_BITS_PER_WORD-1));
     MR_ROBDD_bitmask *ptr = &(set->bits[wd]);
     MR_ROBDD_bitmask bits = *ptr;
     MR_ROBDD_bitmask msk = *mask;
@@ -926,14 +1023,15 @@ MR_ROBDD_prev_element(MR_ROBDD_bitset *set, int *var, int *word,
 
 #else /* !MR_ROBDD_NO_CHEAP_SHIFT */
 
-__inline int
-MR_ROBDD_prev_element(MR_ROBDD_bitset *set, int *var, int *word,
-    MR_ROBDD_bitmask *mask)
+__inline MR_ROBDD_int
+MR_ROBDD_prev_element(MR_ROBDD_bitset *set, MR_ROBDD_int *var,
+    MR_ROBDD_int *word, MR_ROBDD_bitmask *mask)
 {
-    int vr = *var;
-    int wd = *word;
+    MR_ROBDD_int vr = *var;
+    MR_ROBDD_int wd = *word;
     MR_ROBDD_bitmask *ptr = &(set->bits[wd]);
-    MR_ROBDD_bitmask bits = *ptr&MR_ROBDD_PRECEDING_BITS(vr&(MR_ROBDD_BITS_PER_WORD-1));
+    MR_ROBDD_bitmask bits =
+        *ptr&MR_ROBDD_PRECEDING_BITS(vr&(MR_ROBDD_BITS_PER_WORD-1));
     MR_ROBDD_bitmask temp;
 
     assert(vr >= 0 && vr < MR_ROBDD_MAXVAR);
@@ -947,28 +1045,29 @@ MR_ROBDD_prev_element(MR_ROBDD_bitset *set, int *var, int *word,
 
     vr = MR_ROBDD_BITS_PER_WORD - MR_ROBDD_BITS_PER_CHAR;
     /* I know there's an earlier bit set in bits, so this is safe */
-    while ((temp=((bits>>vr)&MR_ROBDD_CHAR_MASK)) == 0) {
+    while ((temp = ((bits >> vr) & MR_ROBDD_CHAR_MASK)) == 0) {
         vr -= MR_ROBDD_BITS_PER_CHAR;
         assert(vr >= 0);
     }
-    vr += (int)MR_ROBDD_last_one_bit[(int)temp];
-    vr += (int)wd<<MR_ROBDD_LOG_BITS_PER_WORD;
+    vr += (MR_ROBDD_int) MR_ROBDD_last_one_bit[(MR_ROBDD_int) temp];
+    vr += (MR_ROBDD_int) wd << MR_ROBDD_LOG_BITS_PER_WORD;
 
     *var = vr;
     *word = wd;
-    *mask = 1<<(vr&(MR_ROBDD_BITS_PER_WORD-1));
+    *mask = 1 << (vr & (MR_ROBDD_BITS_PER_WORD-1));
     return MR_TRUE;
 }
 
 #endif /* MR_ROBDD_NO_CHEAP_SHIFT */
 
-__inline int
-MR_ROBDD_next_nonelement(MR_ROBDD_bitset *set, int *var, int *word,
-    MR_ROBDD_bitmask *mask)
+__inline MR_ROBDD_int
+MR_ROBDD_next_nonelement(MR_ROBDD_bitset *set, MR_ROBDD_int *var,
+    MR_ROBDD_int *word, MR_ROBDD_bitmask *mask)
 {
-    int vr = *var;
-    int wd = *word;
-    MR_ROBDD_bitmask f = MR_ROBDD_FOLLOWING_BITS(vr&(MR_ROBDD_BITS_PER_WORD-1));
+    MR_ROBDD_int vr = *var;
+    MR_ROBDD_int wd = *word;
+    MR_ROBDD_bitmask f =
+        MR_ROBDD_FOLLOWING_BITS(vr&(MR_ROBDD_BITS_PER_WORD-1));
     MR_ROBDD_bitmask *ptr = &(set->bits[wd]);
     MR_ROBDD_bitmask bits = *ptr;
     MR_ROBDD_bitmask msk = *mask;
@@ -995,16 +1094,17 @@ MR_ROBDD_next_nonelement(MR_ROBDD_bitset *set, int *var, int *word,
     return MR_TRUE;
 }
 
-__inline int
-MR_ROBDD_prev_nonelement(MR_ROBDD_bitset *set, int *var, int *word,
-    MR_ROBDD_bitmask *mask)
+__inline MR_ROBDD_int
+MR_ROBDD_prev_nonelement(MR_ROBDD_bitset *set, MR_ROBDD_int *var,
+    MR_ROBDD_int *word, MR_ROBDD_bitmask *mask)
 {
-    int vr = *var;
-        int wd = *word;
-        MR_ROBDD_bitmask f = MR_ROBDD_PRECEDING_BITS(vr&(MR_ROBDD_BITS_PER_WORD-1));
-        MR_ROBDD_bitmask *ptr = &(set->bits[wd]);
-        MR_ROBDD_bitmask bits = *ptr;
-        MR_ROBDD_bitmask msk = *mask;
+    MR_ROBDD_int vr = *var;
+    MR_ROBDD_int wd = *word;
+    MR_ROBDD_bitmask f =
+        MR_ROBDD_PRECEDING_BITS(vr&(MR_ROBDD_BITS_PER_WORD-1));
+    MR_ROBDD_bitmask *ptr = &(set->bits[wd]);
+    MR_ROBDD_bitmask bits = *ptr;
+    MR_ROBDD_bitmask msk = *mask;
 
     assert(vr >= 0 && vr < MR_ROBDD_MAXVAR);
 
@@ -1029,10 +1129,10 @@ MR_ROBDD_prev_nonelement(MR_ROBDD_bitset *set, int *var, int *word,
 }
 
 /* returns 1 if set1 is identical to set2 */
-__inline int
+__inline MR_ROBDD_int
 MR_ROBDD_bitset_equal(MR_ROBDD_bitset *set1, MR_ROBDD_bitset *set2);
 
-__inline int
+__inline MR_ROBDD_int
 MR_ROBDD_bitset_equal(MR_ROBDD_bitset *set1, MR_ROBDD_bitset *set2)
 {
     MR_ROBDD_bitmask *ptr1 = &set1->bits[0];
@@ -1052,10 +1152,10 @@ MR_ROBDD_bitset_equal(MR_ROBDD_bitset *set1, MR_ROBDD_bitset *set2)
 }
 
 /* returns 1 if 2 sets are disjoint, else 0 */
-__inline int
+__inline MR_ROBDD_int
 MR_ROBDD_bitset_disjoint(MR_ROBDD_bitset *set1, MR_ROBDD_bitset *set2);
 
-__inline int
+__inline MR_ROBDD_int
 MR_ROBDD_bitset_disjoint(MR_ROBDD_bitset *set1, MR_ROBDD_bitset *set2)
 {
     MR_ROBDD_bitmask *ptr1 = &set1->bits[0];
@@ -1075,10 +1175,10 @@ MR_ROBDD_bitset_disjoint(MR_ROBDD_bitset *set1, MR_ROBDD_bitset *set2)
 }
 
 /* returns 1 if set1 is a subset of set2 */
-__inline int
+__inline MR_ROBDD_int
 MR_ROBDD_bitset_subset(MR_ROBDD_bitset *set1, MR_ROBDD_bitset *set2);
 
-__inline int
+__inline MR_ROBDD_int
 MR_ROBDD_bitset_subset(MR_ROBDD_bitset *set1, MR_ROBDD_bitset *set2)
 {
     MR_ROBDD_bitmask *ptr1 = &set1->bits[0];
@@ -1096,12 +1196,12 @@ MR_ROBDD_bitset_subset(MR_ROBDD_bitset *set1, MR_ROBDD_bitset *set2)
         ++ptr2;
     }
     
-    }
+}
 
 /* returns 1 if set1 is a subset of set2 */
-__inline int MR_ROBDD_bitset_empty(MR_ROBDD_bitset *set);
+__inline MR_ROBDD_int MR_ROBDD_bitset_empty(MR_ROBDD_bitset *set);
 
-__inline int MR_ROBDD_bitset_empty(MR_ROBDD_bitset *set)
+__inline MR_ROBDD_int MR_ROBDD_bitset_empty(MR_ROBDD_bitset *set)
 {
     MR_ROBDD_bitmask *ptr = &set->bits[0];
     MR_ROBDD_bitmask *ptrend =
@@ -1125,7 +1225,7 @@ __inline int MR_ROBDD_bitset_empty(MR_ROBDD_bitset *set)
 
 #if defined(MR_ROBDD_BRYANT_CONSERVATIVE_GC)
 
-static int MR_ROBDD_removed_nodes = 0;
+static MR_ROBDD_int MR_ROBDD_removed_nodes = 0;
 
 void MR_ROBDD_remove_node(void *obj, void *client_data);
 void MR_ROBDD_remove_node(void *obj, void *client_data)
@@ -1157,10 +1257,10 @@ void MR_ROBDD_remove_node(void *obj, void *client_data)
   static MR_ROBDD_node  *MR_ROBDD_curr_pool_end_ptr = NULL;
 #endif /* MR_ROBDD_POOL */
 
-static int        MR_ROBDD_node_count = 0;
+static MR_ROBDD_int        MR_ROBDD_node_count = 0;
 
 static MR_ROBDD_node *
-MR_ROBDD_alloc_node(int value, MR_ROBDD_node* tr, MR_ROBDD_node* fa,
+MR_ROBDD_alloc_node(MR_ROBDD_int value, MR_ROBDD_node* tr, MR_ROBDD_node* fa,
     MR_ROBDD_BRYANT_hidden_node_pointer *bucket)
 {
     MR_ROBDD_node *n;
@@ -1190,7 +1290,7 @@ MR_ROBDD_alloc_node(int value, MR_ROBDD_node* tr, MR_ROBDD_node* fa,
 }
 
 /* return the number of graph nodes that have been created. */
-int
+MR_ROBDD_int
 MR_ROBDD_nodes_in_use(void)
 {
     return MR_ROBDD_node_count;
@@ -1199,7 +1299,7 @@ MR_ROBDD_nodes_in_use(void)
 MR_ROBDD_DECLARE_FN_COUNT(MR_ROBDD_make_node)
 
 MR_ROBDD_node *
-MR_ROBDD_make_node(int var, MR_ROBDD_node *tr, MR_ROBDD_node *fa)
+MR_ROBDD_make_node(MR_ROBDD_int var, MR_ROBDD_node *tr, MR_ROBDD_node *fa)
 {
     MR_ROBDD_BRYANT_hidden_node_pointer *bucket;
     MR_ROBDD_node *ptr;
@@ -1250,21 +1350,15 @@ MR_ROBDD_make_node(int var, MR_ROBDD_node *tr, MR_ROBDD_node *fa)
     return ptr;
 }
 
-void
-MR_ROBDD_free_rep(MR_ROBDD_node *n)
-{
-    /* never free ROBDD nodes */
-}
-
 /****************************************************************
 
                 The Basic Algorithms
 
  ****************************************************************/
 
-int MR_ROBDD_max_variable(void);
+MR_ROBDD_int MR_ROBDD_max_variable(void);
 
-int
+MR_ROBDD_int
 MR_ROBDD_max_variable(void)
 {
     return MR_ROBDD_MAXVAR;
@@ -1285,7 +1379,7 @@ MR_ROBDD_falseVar(void)
 MR_ROBDD_DECLARE_FN_COUNT(MR_ROBDD_variableRep)
 
 MR_ROBDD_node *
-MR_ROBDD_variableRep(int var)
+MR_ROBDD_variableRep(MR_ROBDD_int var)
 {
     MR_ROBDD_COUNT_FN(MR_ROBDD_variableRep);
     return MR_ROBDD_make_node(var, MR_ROBDD_one, MR_ROBDD_zero);
@@ -1300,7 +1394,7 @@ MR_ROBDD_ite(MR_ROBDD_node *f, MR_ROBDD_node *g, MR_ROBDD_node *h)
     MR_ROBDD_node *g_tr, *g_fa;
     MR_ROBDD_node *h_tr, *h_fa;
     MR_ROBDD_node *newnode;
-    int top;
+    MR_ROBDD_int top;
     MR_ROBDD_DECLARE_ITE_CACHE_ENTRY
 
     MR_ROBDD_COUNT_FN(MR_ROBDD_ite);
@@ -1372,7 +1466,7 @@ MR_ROBDD_ite_constant(MR_ROBDD_node *f, MR_ROBDD_node *g, MR_ROBDD_node *h)
     MR_ROBDD_node *h_tr, *h_fa;
     MR_ROBDD_node *tr_part, *fa_part;
     MR_ROBDD_node *result;
-    int top;
+    MR_ROBDD_int top;
     MR_ROBDD_DECLARE_ITE_CACHE_ENTRY
 
     MR_ROBDD_COUNT_FN(MR_ROBDD_ite);
@@ -1440,22 +1534,6 @@ MR_ROBDD_implies(MR_ROBDD_node *a, MR_ROBDD_node *b)
 {
     MR_ROBDD_COUNT_FN(MR_ROBDD_implies);
     return MR_ROBDD_ite(a, b, MR_ROBDD_one);
-}
-
-/* returns a copy of graph a */
-
-MR_ROBDD_node *
-MR_ROBDD_copy(MR_ROBDD_node *a)
-{
-    return a;
-}
-
-/* returns true if graph a and b are equiv */
-
-int
-MR_ROBDD_equiv(MR_ROBDD_node *a, MR_ROBDD_node *b)
-{
-    return (a == b);
 }
 
 MR_ROBDD_DECLARE_FN_COUNT(MR_ROBDD_lub)
@@ -1543,9 +1621,9 @@ MR_ROBDD_glb(MR_ROBDD_node *f, MR_ROBDD_node *g)
 #if defined(MR_ROBDD_NAIVE)
 
 MR_ROBDD_node *
-MR_ROBDD_glb_array(int n, int arr[])
+MR_ROBDD_glb_array(MR_ROBDD_int n, MR_ROBDD_int arr[])
 {
-    int i;
+    MR_ROBDD_int i;
     MR_ROBDD_node *result = MR_ROBDD_one;
 
     for (i = 0; i < n; ++i) {
@@ -1557,12 +1635,12 @@ MR_ROBDD_glb_array(int n, int arr[])
 #else /* !MR_ROBDD_NAIVE */
 
 MR_ROBDD_node *
-MR_ROBDD_glb_array(int n, int arr[])
+MR_ROBDD_glb_array(MR_ROBDD_int n, MR_ROBDD_int arr[])
 {
-    int i;
+    MR_ROBDD_int i;
     MR_ROBDD_node *result = MR_ROBDD_one;
 
-    qsort((char *)arr, n, sizeof(int), MR_ROBDD_intcompare);
+    qsort((char *)arr, n, sizeof(MR_ROBDD_int), MR_ROBDD_intcompare);
     for (i = n-1; i >= 0; --i) {
         result = MR_ROBDD_make_node(arr[i], result, MR_ROBDD_zero);
     }
@@ -1581,7 +1659,7 @@ MR_ROBDD_DECLARE_FN_COUNT(MR_ROBDD_restrict)
 
 /* restricts c in f. */
 MR_ROBDD_node *
-MR_ROBDD_restrict(int c, MR_ROBDD_node *f)
+MR_ROBDD_restrict(MR_ROBDD_int c, MR_ROBDD_node *f)
 {
     MR_ROBDD_COUNT_FN(MR_ROBDD_restrict);
     if (MR_ROBDD_IS_TERMINAL(f) || (f->value > c)) {
@@ -1598,9 +1676,9 @@ MR_ROBDD_DECLARE_FN_COUNT(MR_ROBDD_restrictThresh)
 
 #if !defined(MR_ROBDD_USE_THRESH) && !defined(MR_ROBDD_RESTRICT_SET)
 MR_ROBDD_node *
-MR_ROBDD_restrictThresh(int lo, int hi, MR_ROBDD_node *a)
+MR_ROBDD_restrictThresh(MR_ROBDD_int lo, MR_ROBDD_int hi, MR_ROBDD_node *a)
 {
-    int i;
+    MR_ROBDD_int i;
 
     MR_ROBDD_COUNT_FN(MR_ROBDD_restrictThresh);
     for(i = lo+1; i <= hi; ++i) {
@@ -1617,7 +1695,8 @@ MR_ROBDD_restrictThresh(int lo, int hi, MR_ROBDD_node *a)
 */
 
 static void
-MR_ROBDD_vars_present(MR_ROBDD_node *f, int thresh, MR_ROBDD_bitset *vars)
+MR_ROBDD_vars_present(MR_ROBDD_node *f, MR_ROBDD_int thresh,
+    MR_ROBDD_bitset *vars)
 {
     while (!MR_ROBDD_IS_TERMINAL(f)) {
         if (f->value > thresh) {
@@ -1629,11 +1708,11 @@ MR_ROBDD_vars_present(MR_ROBDD_node *f, int thresh, MR_ROBDD_bitset *vars)
 }
 
 MR_ROBDD_node *
-MR_ROBDD_restrictThresh(int thresh, MR_ROBDD_node *f)
+MR_ROBDD_restrictThresh(MR_ROBDD_int thresh, MR_ROBDD_node *f)
 {
     MR_ROBDD_bitset vars;
-    int var;
-    int word;
+    MR_ROBDD_int var;
+    MR_ROBDD_int word;
     MR_ROBDD_bitmask mask;
 
     MR_ROBDD_COUNT_FN(MR_ROBDD_restrictThresh);
@@ -1648,7 +1727,7 @@ MR_ROBDD_restrictThresh(int thresh, MR_ROBDD_node *f)
 #else /* MR_ROBDD_USE_THRESH */
 
 MR_ROBDD_node *
-MR_ROBDD_restrictThresh(int thresh, MR_ROBDD_node *f)
+MR_ROBDD_restrictThresh(MR_ROBDD_int thresh, MR_ROBDD_node *f)
 {
     /* restricts all variables greater than thresh. */
 
@@ -1678,7 +1757,8 @@ MR_ROBDD_restrictThresh(int thresh, MR_ROBDD_node *f)
 #if !defined(MR_ROBDD_USE_THRESH) && !defined(MR_ROBDD_RESTRICT_SET)
 
 MR_ROBDD_node *
-MR_ROBDD_restricted_glb(int lo, int hi, MR_ROBDD_node *f, MR_ROBDD_node *g)
+MR_ROBDD_restricted_glb(MR_ROBDD_int lo, MR_ROBDD_int hi,
+    MR_ROBDD_node *f, MR_ROBDD_node *g)
 {
     return MR_ROBDD_restrictThresh(lo, hi, MR_ROBDD_glb(f, g));
 }
@@ -1686,7 +1766,8 @@ MR_ROBDD_restricted_glb(int lo, int hi, MR_ROBDD_node *f, MR_ROBDD_node *g)
 #elif !defined(MR_ROBDD_USE_RGLB) /* && ( MR_ROBDD_USE_THRESH || MR_ROBDD_RESTRICT_SET ) */
 
 MR_ROBDD_node *
-MR_ROBDD_restricted_glb(int thresh, MR_ROBDD_node *f, MR_ROBDD_node *g)
+MR_ROBDD_restricted_glb(MR_ROBDD_int thresh,
+    MR_ROBDD_node *f, MR_ROBDD_node *g)
 {
     return MR_ROBDD_restrictThresh(thresh, MR_ROBDD_glb(f, g));
 }
@@ -1694,7 +1775,7 @@ MR_ROBDD_restricted_glb(int thresh, MR_ROBDD_node *f, MR_ROBDD_node *g)
 #else /* MR_ROBDD_USE_RGLB */
 
 /* returns true iff MR_ROBDD_glb(f, g) is not 'MR_ROBDD_zero' */
-static int
+static MR_ROBDD_int
 MR_ROBDD_exists_glb(MR_ROBDD_node *f, MR_ROBDD_node *g)
 {
     if (f == MR_ROBDD_zero) {
@@ -1717,7 +1798,7 @@ MR_ROBDD_exists_glb(MR_ROBDD_node *f, MR_ROBDD_node *g)
 }
 
 MR_ROBDD_node *
-MR_ROBDD_restricted_glb(int c, MR_ROBDD_node *f, MR_ROBDD_node *g)
+MR_ROBDD_restricted_glb(MR_ROBDD_int c, MR_ROBDD_node *f, MR_ROBDD_node *g)
 {
     if (MR_ROBDD_IS_TERMINAL(f)) {
         return (f == MR_ROBDD_one) ? MR_ROBDD_restrictThresh(c, g)
@@ -1727,7 +1808,7 @@ MR_ROBDD_restricted_glb(int c, MR_ROBDD_node *f, MR_ROBDD_node *g)
             : MR_ROBDD_zero;
     } MR_ROBDD_ELSE_TRY_EQUAL_TEST(f, g, MR_ROBDD_restrictThresh(c, f))
     else {
-        int v;
+        MR_ROBDD_int v;
         MR_ROBDD_node *tr1, *tr2, *fa1, *fa2;
         MR_ROBDD_node *result;
 
@@ -1784,7 +1865,7 @@ MR_ROBDD_DECLARE_FN_COUNT(MR_ROBDD_ite_var)
 
 /* A special case version of MR_ROBDD_ite_var, where we know that f < g->value */
 static MR_ROBDD_node *
-MR_ROBDD_ite_var_g(int f, MR_ROBDD_node *g, MR_ROBDD_node *h)
+MR_ROBDD_ite_var_g(MR_ROBDD_int f, MR_ROBDD_node *g, MR_ROBDD_node *h)
 {
     MR_ROBDD_COUNT_FN(MR_ROBDD_ite_var);
 
@@ -1816,7 +1897,7 @@ MR_ROBDD_ite_var_g(int f, MR_ROBDD_node *g, MR_ROBDD_node *h)
 */
 
 static MR_ROBDD_node *
-MR_ROBDD_ite_var_h(int f, MR_ROBDD_node *g, MR_ROBDD_node *h)
+MR_ROBDD_ite_var_h(MR_ROBDD_int f, MR_ROBDD_node *g, MR_ROBDD_node *h)
 {
     MR_ROBDD_COUNT_FN(MR_ROBDD_ite_var);
 
@@ -1879,10 +1960,10 @@ MR_ROBDD_ite_var_h(int f, MR_ROBDD_node *g, MR_ROBDD_node *h)
 */        
 
 MR_ROBDD_node *
-MR_ROBDD_ite_var(int f, MR_ROBDD_node *g, MR_ROBDD_node *h)
+MR_ROBDD_ite_var(MR_ROBDD_int f, MR_ROBDD_node *g, MR_ROBDD_node *h)
 {
-    int g_val = INT_MAX;
-    int h_val = INT_MAX;
+    MR_ROBDD_int g_val = MR_ROBDD_int_max;
+    MR_ROBDD_int h_val = MR_ROBDD_int_max;
     MR_ROBDD_node *result;
     MR_ROBDD_node *g_tr, *g_fa, *h_tr, *h_fa;
     MR_ROBDD_DECLARE_ITE_VAR_CACHE_ENTRY
@@ -1947,9 +2028,10 @@ MR_ROBDD_ite_var(int f, MR_ROBDD_node *g, MR_ROBDD_node *h)
 #endif /* !MR_ROBDD_NEW */
 
 MR_ROBDD_node *
-MR_ROBDD_renameArray(MR_ROBDD_node *f, int count, int mapping[])
+MR_ROBDD_renameArray(MR_ROBDD_node *f, MR_ROBDD_int count,
+    MR_ROBDD_int mapping[])
 {
-    int newval;
+    MR_ROBDD_int newval;
 
     MR_ROBDD_COUNT_FN(MR_ROBDD_renameArray);
     if (MR_ROBDD_IS_TERMINAL(f)) {
@@ -1967,10 +2049,11 @@ MR_ROBDD_renameArray(MR_ROBDD_node *f, int count, int mapping[])
 }
 
 MR_ROBDD_node *
-MR_ROBDD_reverseRenameArray(MR_ROBDD_node *f, int count, int mapping[])
+MR_ROBDD_reverseRenameArray(MR_ROBDD_node *f, MR_ROBDD_int count,
+    MR_ROBDD_int mapping[])
 {
-    int i, val, MR_ROBDD_max;
-    int rev_map[MR_ROBDD_MAXVAR];
+    MR_ROBDD_int i, val, MR_ROBDD_max;
+    MR_ROBDD_int rev_map[MR_ROBDD_MAXVAR];
 
     MR_ROBDD_COUNT_FN(MR_ROBDD_reverseRenameArray);
     /* NB:  four -1 bytes is the same as a -1 word */
@@ -1992,8 +2075,9 @@ MR_ROBDD_reverseRenameArray(MR_ROBDD_node *f, int count, int mapping[])
 #if !defined(MR_ROBDD_USE_THRESH) && !defined(MR_ROBDD_RESTRICT_SET)
 
 MR_ROBDD_node *
-MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
-    int mapping[], int lo, int hi)
+MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f,
+    MR_ROBDD_int count, MR_ROBDD_int mapping[],
+    MR_ROBDD_int lo, MR_ROBDD_int hi)
 {
     return MR_ROBDD_restricted_glb(lo, hi, context,
         MR_ROBDD_renameArray(f, count, mapping));
@@ -2002,8 +2086,8 @@ MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
 #elif 1 /* ( MR_ROBDD_USE_THRESH || MR_ROBDD_RESTRICT_SET ) */
 
 MR_ROBDD_node *
-MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
-    int mapping[], int thresh)
+MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f,
+    MR_ROBDD_int count, MR_ROBDD_int mapping[], MR_ROBDD_int thresh)
 {
     return MR_ROBDD_restricted_glb(thresh, context,
         MR_ROBDD_renameArray(f, count, mapping));
@@ -2019,7 +2103,7 @@ MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
 
 int
 MR_ROBDD_exists_restrict_sets(MR_ROBDD_node *f, MR_ROBDD_bitset *trues,
-    MR_ROBDD_bitset *falses, int hielt)
+    MR_ROBDD_bitset *falses, MR_ROBDD_int hielt)
 {
     for (;;) {
         if (MR_ROBDD_IS_TERMINAL(f)) {
@@ -2027,7 +2111,7 @@ MR_ROBDD_exists_restrict_sets(MR_ROBDD_node *f, MR_ROBDD_bitset *trues,
         } else if (f->value > hielt) {
             return MR_TRUE;
         } else {
-            int word = MR_ROBDD_BITSET_WORD(f->value);
+            MR_ROBDD_int word = MR_ROBDD_BITSET_WORD(f->value);
             MR_ROBDD_bitmask mask = MR_ROBDD_BITSET_MASK(f->value);
 
             if (MR_ROBDD_BITSET_MEMBER(*trues, word, mask)) {
@@ -2052,7 +2136,7 @@ MR_ROBDD_exists_restrict_sets(MR_ROBDD_node *f, MR_ROBDD_bitset *trues,
 
 MR_ROBDD_node *
 MR_ROBDD_restrict_sets(MR_ROBDD_node *f, MR_ROBDD_bitset *trues,
-    MR_ROBDD_bitset *falses, int hielt, int thresh)
+    MR_ROBDD_bitset *falses, MR_ROBDD_int hielt, MR_ROBDD_int thresh)
 {
     for (;;) {
         if (MR_ROBDD_IS_TERMINAL(f)) {
@@ -2063,7 +2147,7 @@ MR_ROBDD_restrict_sets(MR_ROBDD_node *f, MR_ROBDD_bitset *trues,
             return MR_ROBDD_exists_restrict_sets(f, trues, falses, hielt)
                 ? MR_ROBDD_one : MR_ROBDD_zero;
         } else {
-            int word = MR_ROBDD_BITSET_WORD(f->value);
+            MR_ROBDD_int word = MR_ROBDD_BITSET_WORD(f->value);
             MR_ROBDD_bitmask mask = MR_ROBDD_BITSET_MASK(f->value);
 
             if (MR_ROBDD_BITSET_MEMBER(*trues, word, mask)) {
@@ -2094,7 +2178,7 @@ MR_ROBDD_follow_path(MR_ROBDD_node *f, MR_ROBDD_bitset *trues,
 {
 
     while (!MR_ROBDD_IS_TERMINAL(f)) {
-        int word = MR_ROBDD_BITSET_WORD(f->value);
+        MR_ROBDD_int word = MR_ROBDD_BITSET_WORD(f->value);
         MR_ROBDD_bitmask mask = MR_ROBDD_BITSET_MASK(f->value);
         
         if (MR_ROBDD_BITSET_MEMBER(*trues, word, mask)) {
@@ -2116,13 +2200,13 @@ MR_ROBDD_follow_path(MR_ROBDD_node *f, MR_ROBDD_bitset *trues,
 */
 
 MR_ROBDD_node *
-MR_ROBDD_restricted_rename(MR_ROBDD_node *f, int count, int mapping[],
-    int thresh)
+MR_ROBDD_restricted_rename(MR_ROBDD_node *f, MR_ROBDD_int count,
+    MR_ROBDD_int mapping[], MR_ROBDD_int thresh)
 {
     if (MR_ROBDD_IS_TERMINAL(f)) {
         return f;
     } else {
-        int newval = mapping[f->value];
+        MR_ROBDD_int newval = mapping[f->value];
         MR_ROBDD_node *tr, *fa;
 
         tr = MR_ROBDD_restricted_rename(f->tr, count, mapping, thresh);
@@ -2147,9 +2231,9 @@ MR_ROBDD_restricted_rename(MR_ROBDD_node *f, int count, int mapping[],
 */
 
 MR_ROBDD_node *
-MR_ROBDD_abexit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
-    int mapping[], int thresh, MR_ROBDD_bitset *trues,
-    MR_ROBDD_bitset *falses, int hielt)
+MR_ROBDD_abexit(MR_ROBDD_node *context, MR_ROBDD_node *f, MR_ROBDD_int count,
+    MR_ROBDD_int mapping[], MR_ROBDD_int thresh, MR_ROBDD_bitset *trues,
+    MR_ROBDD_bitset *falses, MR_ROBDD_int hielt)
 {
     if (MR_ROBDD_IS_TERMINAL(f)) {
         if (f==MR_ROBDD_one) {
@@ -2159,7 +2243,7 @@ MR_ROBDD_abexit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
             return f;
         }
     } else {
-        int newval = mapping[f->value];
+        MR_ROBDD_int newval = mapping[f->value];
         MR_ROBDD_node *tr, *fa;
 
         if (newval == context->value) {
@@ -2179,9 +2263,9 @@ MR_ROBDD_abexit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
                     trues, falses, hielt);
             }
         } else {
-            int word = MR_ROBDD_BITSET_WORD(newval);
+            MR_ROBDD_int word = MR_ROBDD_BITSET_WORD(newval);
             MR_ROBDD_bitmask mask = MR_ROBDD_BITSET_MASK(newval);
-            int newhi = (newval>hielt ? newval : hielt);
+            MR_ROBDD_int newhi = (newval>hielt ? newval : hielt);
 
             MR_ROBDD_BITSET_ADD(*trues, word, mask); /* turn on true bit */
             tr = MR_ROBDD_abexit(context, f->tr, count, mapping, thresh,
@@ -2201,8 +2285,8 @@ MR_ROBDD_abexit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
 }
 
 MR_ROBDD_node *
-MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
-    int mapping[], int thresh)
+MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f,
+    MR_ROBDD_int count, MR_ROBDD_int mapping[], MR_ROBDD_int thresh)
 {
     MR_ROBDD_bitset trues;
     MR_ROBDD_bitset falses;
@@ -2235,14 +2319,14 @@ MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
 */
 
 #if defined(MR_ROBDD_ELIM_DUPS)
-  #define MR_ROBDD_DECLARE_PREV(init) int prev = (init);
-  #define MR_ROBDD_HANDLE_DUP(this, rel)                                 \
+  #define MR_ROBDD_DECLARE_PREV(init) MR_ROBDD_int prev = (init);
+  #define MR_ROBDD_HANDLE_DUP(this, rel)                                \
     if ((this) == prev) continue;                                       \
     assert((this) rel prev);                                            \
     prev = (this);
 #elif !defined(NDEBUG)
-  #define MR_ROBDD_DECLARE_PREV(init) int prev = (init);
-  #define MR_ROBDD_HANDLE_DUP(this, rel)                                 \
+  #define MR_ROBDD_DECLARE_PREV(init) MR_ROBDD_int prev = (init);
+  #define MR_ROBDD_HANDLE_DUP(this, rel)                                \
     assert((this) != prev);                                             \
     assert((this) rel prev);                                            \
     prev = (this);
@@ -2254,11 +2338,12 @@ MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
 MR_ROBDD_DECLARE_FN_COUNT(iff_conj)
 
 #if defined(MR_ROBDD_NAIVE)
-MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[])
+MR_ROBDD_node *
+MR_ROBDD_iff_conj_array(MR_ROBDD_int v0, MR_ROBDD_int n, MR_ROBDD_int arr[])
 {
     MR_ROBDD_node *conj = MR_ROBDD_one;
     MR_ROBDD_node *v_rep = MR_ROBDD_variableRep(v0);
-    int i;
+    MR_ROBDD_int i;
     MR_ROBDD_DECLARE_PREV(-1)
 
     MR_ROBDD_COUNT_FN(iff_conj);
@@ -2277,12 +2362,13 @@ MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[])
 
 #elif !defined(MR_ROBDD_USE_THRESH)
 
-MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[])
+MR_ROBDD_node *
+MR_ROBDD_iff_conj_array(MR_ROBDD_int v0, MR_ROBDD_int n, MR_ROBDD_int arr[])
 {
     MR_ROBDD_node *conj = MR_ROBDD_one;
     MR_ROBDD_node *pos_v = MR_ROBDD_variableRep(v0);
     MR_ROBDD_node *neg_v = MR_ROBDD_ite(pos_v, MR_ROBDD_zero, MR_ROBDD_one);
-    int *ptr;
+    MR_ROBDD_int *ptr;
     MR_ROBDD_DECLARE_PREV(MR_ROBDD_MAXVAR)
 
     MR_ROBDD_COUNT_FN(iff_conj);
@@ -2291,7 +2377,7 @@ MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[])
      * process, while the other way is n squared.
      */ 
     for (ptr=&arr[n-1]; ptr>=arr; --ptr) {
-        int vi = *ptr;
+        MR_ROBDD_int vi = *ptr;
         MR_ROBDD_HANDLE_DUP(vi, <)
         if (vi != v0) {
             conj = MR_ROBDD_glb(conj, MR_ROBDD_variableRep(vi));
@@ -2302,14 +2388,16 @@ MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[])
 
 #else /* MR_ROBDD_USE_THRESH */
 
-MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[])
+MR_ROBDD_node *
+MR_ROBDD_iff_conj_array(MR_ROBDD_int v0, MR_ROBDD_int n, MR_ROBDD_int arr[])
 {
     MR_ROBDD_node *thens = MR_ROBDD_one, *elses = MR_ROBDD_zero;
-    int *ptr;
-    int vi = 0;    /* this value doesn't matter */
+    MR_ROBDD_int *ptr;
+    MR_ROBDD_int vi = 0;    /* this value doesn't matter */
     MR_ROBDD_DECLARE_PREV(MR_ROBDD_MAXVAR)
 
     MR_ROBDD_COUNT_FN(iff_conj);
+
     /*
     ** first build part of graph below v0. For this, we build two subgraphs:
     ** MR_ROBDD_one for when v0 is true, and MR_ROBDD_one for false.
@@ -2329,7 +2417,8 @@ MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[])
     /* make v0 MR_ROBDD_node */
     thens = MR_ROBDD_make_node(v0, thens, elses);
 
-    /* Finally build part of graph above v0.  For this, we build
+    /*
+     * Finally build part of graph above v0.  For this, we build
      * only MR_ROBDD_one graph, whose then branch is the graph we've built
      * so far and whose else branch is ~v0.
      */
@@ -2350,8 +2439,9 @@ MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[])
 }
 #endif /* MR_ROBDD_OLD */
 
-MR_ROBDD_node *MR_ROBDD_restricted_iff_conj_array(int v0, int n, int arr[],
-    int thresh)
+MR_ROBDD_node *
+MR_ROBDD_restricted_iff_conj_array(MR_ROBDD_int v0, MR_ROBDD_int n,
+    MR_ROBDD_int arr[], MR_ROBDD_int thresh)
 {
     if (v0 > thresh) {
         return MR_ROBDD_one;
@@ -2362,8 +2452,9 @@ MR_ROBDD_node *MR_ROBDD_restricted_iff_conj_array(int v0, int n, int arr[],
 }
 
 #if !defined(MR_ROBDD_USE_THRESH) && !defined(MR_ROBDD_RESTRICT_SET)
-MR_ROBDD_node *MR_ROBDD_abstract_unify(MR_ROBDD_node *f, int v0, int n,
-    int arr[], int lo, int hi)
+MR_ROBDD_node *
+MR_ROBDD_abstract_unify(MR_ROBDD_node *f, MR_ROBDD_int v0,
+    MR_ROBDD_int n, MR_ROBDD_int arr[], MR_ROBDD_int lo, MR_ROBDD_int hi)
 {
     return MR_ROBDD_restricted_glb(lo, hi, f,
         MR_ROBDD_iff_conj_array(v0, n, arr));
@@ -2371,8 +2462,9 @@ MR_ROBDD_node *MR_ROBDD_abstract_unify(MR_ROBDD_node *f, int v0, int n,
 
 #elif 1 /* ( MR_ROBDD_USE_THRESH || MR_ROBDD_RESTRICT_SET ) */
 
-MR_ROBDD_node *MR_ROBDD_abstract_unify(MR_ROBDD_node *f, int v0, int n,
-    int arr[], int thresh)
+MR_ROBDD_node *
+MR_ROBDD_abstract_unify(MR_ROBDD_node *f, MR_ROBDD_int v0,
+    MR_ROBDD_int n, MR_ROBDD_int arr[], MR_ROBDD_int thresh)
 {
     return MR_ROBDD_restricted_glb(thresh, f,
         MR_ROBDD_iff_conj_array(v0, n, arr));
@@ -2381,7 +2473,8 @@ MR_ROBDD_node *MR_ROBDD_abstract_unify(MR_ROBDD_node *f, int v0, int n,
 #else /* !1 (this code is unused) */
 
 static MR_ROBDD_node *
-MR_ROBDD_build_and(int n, int arr[], MR_ROBDD_node *tr, MR_ROBDD_node *fa)
+MR_ROBDD_build_and(MR_ROBDD_int n, MR_ROBDD_int arr[], MR_ROBDD_node *tr,
+    MR_ROBDD_node *fa)
 {
     if (n<=0) {
         return tr;
@@ -2391,7 +2484,8 @@ MR_ROBDD_build_and(int n, int arr[], MR_ROBDD_node *tr, MR_ROBDD_node *fa)
     }
 }
 
-static MR_ROBDD_node *MR_ROBDD_glb_and(MR_ROBDD_node *f, int n, int arr[])
+static MR_ROBDD_node *
+MR_ROBDD_glb_and(MR_ROBDD_node *f, MR_ROBDD_int n, MR_ROBDD_int arr[])
 {
     if (f == MR_ROBDD_zero) {
         return MR_ROBDD_zero;
@@ -2419,7 +2513,7 @@ static MR_ROBDD_node *MR_ROBDD_glb_and(MR_ROBDD_node *f, int n, int arr[])
 }
 
 static MR_ROBDD_node *
-MR_ROBDD_glb_nand(MR_ROBDD_node *f, int n, int arr[])
+MR_ROBDD_glb_nand(MR_ROBDD_node *f, MR_ROBDD_int n, MR_ROBDD_int arr[])
 {
     if (f == MR_ROBDD_zero) {
         return MR_ROBDD_zero;
@@ -2451,8 +2545,8 @@ MR_ROBDD_glb_nand(MR_ROBDD_node *f, int n, int arr[])
 **  MR_ROBDD_build_and(n, arr, MR_ROBDD_one, MR_ROBDD_zero))
 */
 
-static int
-MR_ROBDD_exists_glb_and(MR_ROBDD_node *f, int n, int arr[])
+static MR_ROBDD_int
+MR_ROBDD_exists_glb_and(MR_ROBDD_node *f, MR_ROBDD_int n, MR_ROBDD_int arr[])
 {
     if (f == MR_ROBDD_zero) {
         return MR_FALSE;
@@ -2474,8 +2568,8 @@ MR_ROBDD_exists_glb_and(MR_ROBDD_node *f, int n, int arr[])
 **  MR_ROBDD_build_and(n, arr, MR_ROBDD_zero, MR_ROBDD_one))
 */
 
-static int
-MR_ROBDD_exists_glb_nand(MR_ROBDD_node *f, int n, int arr[])
+static MR_ROBDD_int
+MR_ROBDD_exists_glb_nand(MR_ROBDD_node *f, MR_ROBDD_int n, MR_ROBDD_int arr[])
 {
     if (f == MR_ROBDD_zero || n == 0) {
         return MR_FALSE;
@@ -2506,15 +2600,16 @@ MR_ROBDD_exists_glb_nand(MR_ROBDD_node *f, int n, int arr[])
 **  MR_ROBDD_iff_conj_array(v0, n, arr))
 */
 
-static int
-MR_ROBDD_exists_glb_iffconj(MR_ROBDD_node *f, int v0, int n, int arr[])
+static MR_ROBDD_int
+MR_ROBDD_exists_glb_iffconj(MR_ROBDD_node *f, MR_ROBDD_int v0, MR_ROBDD_int n,
+    MR_ROBDD_intarr[])
 {
     if (f == MR_ROBDD_zero) {
         return MR_FALSE;
     } else if (f == MR_ROBDD_one) {
         return MR_TRUE;
     } else {
-        int v = (n>0 && arr[0]<v0) ? arr[0] : v0;
+        MR_ROBDD_int v = (n>0 && arr[0]<v0) ? arr[0] : v0;
         
         if (f->value < v) {
             return (MR_ROBDD_exists_glb_iffconj(f->tr, v0, n, arr) ||
@@ -2545,7 +2640,8 @@ MR_ROBDD_exists_glb_iffconj(MR_ROBDD_node *f, int v0, int n, int arr[])
 */
 
 static MR_ROBDD_node *
-MR_ROBDD_rglb_and(MR_ROBDD_node *f, int n, int arr[], int thresh)
+MR_ROBDD_rglb_and(MR_ROBDD_node *f, MR_ROBDD_int n, MR_ROBDD_int arr[],
+    MR_ROBDD_int thresh)
 {
     if (f == MR_ROBDD_zero) {
         return MR_ROBDD_zero;
@@ -2566,7 +2662,7 @@ MR_ROBDD_rglb_and(MR_ROBDD_node *f, int n, int arr[], int thresh)
                            MR_ROBDD_rglb_and(f->fa, n, arr, thresh));
             }
         } else /* arr[0] <= f->value */ {
-            int v = arr[0];
+            MR_ROBDD_int v = arr[0];
 
             if (v == f->value) {
                 f = f->tr;
@@ -2589,7 +2685,8 @@ MR_ROBDD_rglb_and(MR_ROBDD_node *f, int n, int arr[], int thresh)
 */
 
 static MR_ROBDD_node *
-MR_ROBDD_rglb_nand(MR_ROBDD_node *f, int n, int arr[], int thresh)
+MR_ROBDD_rglb_nand(MR_ROBDD_node *f, MR_ROBDD_int n, MR_ROBDD_int arr[],
+    MR_ROBDD_int thresh)
 {
     if (f == MR_ROBDD_zero || n == 0) {
         return MR_ROBDD_zero;
@@ -2645,7 +2742,7 @@ MR_ROBDD_rglb_nand(MR_ROBDD_node *f, int n, int arr[], int thresh)
 */
 
 static MR_ROBDD_node *
-MR_ROBDD_rglb_notvar(MR_ROBDD_node *f, int v, int thresh)
+MR_ROBDD_rglb_notvar(MR_ROBDD_node *f, MR_ROBDD_int v, MR_ROBDD_int thresh)
 {
     if (f == MR_ROBDD_zero) {
         return MR_ROBDD_zero;
@@ -2678,14 +2775,15 @@ MR_ROBDD_rglb_notvar(MR_ROBDD_node *f, int v, int thresh)
 }
 
 MR_ROBDD_node *
-MR_ROBDD_abstract_unify(MR_ROBDD_node *f, int v0, int n, int arr[], int thresh)
+MR_ROBDD_abstract_unify(MR_ROBDD_node *f, MR_ROBDD_int v0, MR_ROBDD_int n,
+    MR_ROBDD_int arr[], MR_ROBDD_int thresh)
 {
     if (f == MR_ROBDD_zero) {
         return MR_ROBDD_zero;
     } else if (f == MR_ROBDD_one) {
         return MR_ROBDD_restricted_iff_conj_array(v0, n, arr, thresh);
     } else {
-        int v = (n>0 && arr[0]<v0) ? arr[0] : v0;
+        MR_ROBDD_int v = (n>0 && arr[0]<v0) ? arr[0] : v0;
         MR_ROBDD_node *result;
         
         if (f->value < v) {
@@ -2706,7 +2804,7 @@ MR_ROBDD_abstract_unify(MR_ROBDD_node *f, int v0, int n, int arr[], int thresh)
                 tr = f->tr; fa = f->fa;
             }
             if (v > thresh) {
-                int value;
+                MR_ROBDD_int value;
 
                 if (v == v0) {
                     value = (MR_ROBDD_exists_glb_nand(fa, n, arr) ||
@@ -2745,7 +2843,7 @@ MR_ROBDD_abstract_unify(MR_ROBDD_node *f, int v0, int n, int arr[], int thresh)
 */
 
 int
-MR_ROBDD_var_entailed(MR_ROBDD_node *f, int var)
+MR_ROBDD_var_entailed(MR_ROBDD_node *f, MR_ROBDD_int var)
 {
 #if defined(MR_ROBDD_NAIVE)
     return f == MR_ROBDD_glb(f, MR_ROBDD_variableRep(var));
@@ -2785,10 +2883,10 @@ MR_ROBDD_var_entailed(MR_ROBDD_node *f, int var)
 
 #if !defined(MR_ROBDD_NEW)
 MR_ROBDD_bitset *
-MR_ROBDD_vars_entailed(MR_ROBDD_node *f, int MR_ROBDD_topvar)
+MR_ROBDD_vars_entailed(MR_ROBDD_node *f, MR_ROBDD_int MR_ROBDD_topvar)
 {
     static MR_ROBDD_bitset def_vars;
-    int i;
+    MR_ROBDD_int i;
 
     MR_ROBDD_BITSET_CLEAR(def_vars);
 
@@ -2802,10 +2900,10 @@ MR_ROBDD_vars_entailed(MR_ROBDD_node *f, int MR_ROBDD_topvar)
 
 #elif 0    /* not using this version */
 
-int
-MR_ROBDD_topvar(MR_ROBDD_node *f, int n)
+MR_ROBDD_int
+MR_ROBDD_topvar(MR_ROBDD_node *f, MR_ROBDD_int n)
 {
-    int n1;
+    MR_ROBDD_int n1;
 
     if (MR_ROBDD_IS_TERMINAL(f)) return n;
 
@@ -2820,7 +2918,7 @@ MR_ROBDD_bitset *
 MR_ROBDD_vars_entailed(MR_ROBDD_node *f)
 {
     static MR_ROBDD_bitset def_vars;
-    int i = MR_ROBDD_topvar(f, 0);
+    MR_ROBDD_int i = MR_ROBDD_topvar(f, 0);
 
     MR_ROBDD_BITSET_CLEAR(def_vars);
 
@@ -2854,7 +2952,7 @@ void
 MR_ROBDD_vars_entailed_aux(MR_ROBDD_node *f)
 {
     while (!MR_ROBDD_IS_TERMINAL(f)) {
-        int word = MR_ROBDD_BITSET_WORD(f->value);
+        MR_ROBDD_int word = MR_ROBDD_BITSET_WORD(f->value);
         MR_ROBDD_bitmask mask = MR_ROBDD_BITSET_MASK(f->value);
         
         /* turn on bit for then branch */
@@ -2939,7 +3037,7 @@ MR_ROBDD_vars_entailed(MR_ROBDD_node *f)
 */
 
 MR_ROBDD_node *
-MR_ROBDD_init_set_sharing(int n)
+MR_ROBDD_init_set_sharing(MR_ROBDD_int n)
 {
     MR_ROBDD_node *result = MR_ROBDD_one;
     MR_ROBDD_node *other = MR_ROBDD_one;
@@ -2997,8 +3095,8 @@ MR_ROBDD_complete_one_or(MR_ROBDD_node *f, MR_ROBDD_node *prev)
     } else if (f->value == prev->value) {
         result = MR_ROBDD_make_node(f->value,
                    MR_ROBDD_complete_one_or(f->tr,
-                           MR_ROBDD_complete_one_or(f->fa,
-                                   prev->tr)),
+                       MR_ROBDD_complete_one_or(f->fa,
+                           prev->tr)),
                    MR_ROBDD_complete_one_or(f->fa, prev->fa));
     } else {
         result = MR_ROBDD_make_node(prev->value,
@@ -3117,7 +3215,7 @@ MR_ROBDD_node *
 MR_ROBDD_complete(MR_ROBDD_node *f, MR_ROBDD_node *g)
 {
     MR_ROBDD_node *result;
-    int fvar, gvar;
+    MR_ROBDD_int fvar, gvar;
     MR_ROBDD_DECLARE_BIN_CACHE_ENTRY
 
     MR_ROBDD_COUNT_FN(MR_ROBDD_complete);
@@ -3265,11 +3363,12 @@ MR_ROBDD_bin_univ(MR_ROBDD_node *f)
 #if defined(MR_ROBDD_STATISTICS)
 
 void
-MR_ROBDD_print_distribution(int array[], int MR_ROBDD_max)
+MR_ROBDD_print_distribution(MR_ROBDD_int array[], MR_ROBDD_int MR_ROBDD_max)
 {
-    int count;
-    int sum;
-    int total, zero_count;
+    MR_ROBDD_int count;
+    MR_ROBDD_int sum;
+    MR_ROBDD_int total;
+    MR_ROBDD_int zero_count;
 
     for (count=0, total=0; count<=MR_ROBDD_max; ++count) {
         total += array[count];
@@ -3279,16 +3378,18 @@ MR_ROBDD_print_distribution(int array[], int MR_ROBDD_max)
         if (array[count] > 0) {
             sum += array[count];
             printf(
-                "%5d nodes:%6d %5.2f%% (cum = %6d %5.1f%%, >0 = %6d %5.1f%%)\n",
-                count, array[count], MR_ROBDD_PERCENTAGE(array[count], total),
-                sum, MR_ROBDD_PERCENTAGE(sum, total), sum-zero_count,
+                "%5ld nodes:%6ld %5.2f%% (cum = %6ld %5.1f%%, >0 = %6ld %5.1f%%)\n",
+                (long) count, (long) array[count],
+                MR_ROBDD_PERCENTAGE(array[count], total),
+                (long) sum, MR_ROBDD_PERCENTAGE(sum, total),
+                (long) (sum - zero_count),
                 total == zero_count ? 999.999
                     : MR_ROBDD_PERCENTAGE(sum-zero_count, total-zero_count));
         }
     }
     if (array[MR_ROBDD_max+1] > 0) {
-        printf(">%4d nodes:%6d %2.2f%%\n",
-           MR_ROBDD_max, array[MR_ROBDD_max],
+        printf(">%4ild nodes:%6ld %2.2f%%\n",
+           (long) MR_ROBDD_max, (long) array[MR_ROBDD_max],
            MR_ROBDD_PERCENTAGE(array[MR_ROBDD_max], total));
     }
     printf("\n");
@@ -3380,9 +3481,9 @@ MR_ROBDD_concludeRep(void)
 {
 #if defined(MR_ROBDD_STATISTICS)
     MR_ROBDD_node *ptr;
-    int size_count[MR_ROBDD_MAX_COUNT+2];
+    MR_ROBDD_int size_count[MR_ROBDD_MAX_COUNT+2];
 
-    int i, count;
+    MR_ROBDD_int i, count;
 
     printf("\n\n\n================ Operation Counts ================\n\n");
     MR_ROBDD_PRINT_FN_COUNT(MR_ROBDD_make_node);
@@ -3414,10 +3515,11 @@ MR_ROBDD_concludeRep(void)
 #endif /* MR_ROBDD_SHARING */
     printf("\n================ Cache Performance ================\n\n");
     printf("%d nodes extant\n\n", MR_ROBDD_nodes_in_use());
-    printf("Unique table:  %d hits, %d misses, %f%% hits\n",
-           MR_ROBDD_unique_table_hits, MR_ROBDD_unique_table_misses,
+    printf("Unique table:  %ld hits, %ld misses, %f%% hits\n",
+           (long) MR_ROBDD_unique_table_hits,
+           (long) MR_ROBDD_unique_table_misses,
            MR_ROBDD_PERCENTAGE(MR_ROBDD_unique_table_hits,
-              MR_ROBDD_unique_table_hits+MR_ROBDD_unique_table_misses));
+              MR_ROBDD_unique_table_hits + MR_ROBDD_unique_table_misses));
     MR_memset(size_count, 0, sizeof(size_count));
     for (i=0; i<MR_ROBDD_UNIQUE_TABLE_SIZE; ++i) {
         count = 0;
@@ -3468,12 +3570,13 @@ MR_ROBDD_concludeRep(void)
 */
 
 MR_ROBDD_node *
-MR_ROBDD_testing_iff_conj_array(int v0, int n, int arr[])
+MR_ROBDD_testing_iff_conj_array(MR_ROBDD_int v0, MR_ROBDD_int n,
+    MR_ROBDD_int arr[])
 {
     MR_ROBDD_node *thens = MR_ROBDD_one;
     MR_ROBDD_node *elses = MR_ROBDD_zero;
-    int *ptr;
-    int vi;
+    MR_ROBDD_int *ptr;
+    MR_ROBDD_int vi;
 
     /*
     ** first build part of graph below v0.  For this, we build two
@@ -3510,5 +3613,11 @@ MR_ROBDD_testing_iff_conj_array(int v0, int n, int arr[])
     
 static int MR_ROBDD_intcompare(const void *a, const void *b)
 {
-    return (* ((int *) a) - * ((int *) b));
+    MR_ROBDD_int diff = (* ((MR_ROBDD_int *) a) - * ((MR_ROBDD_int *) b));
+    if (diff > 0)
+        return 1;
+    else if (diff < 0)
+        return -1;
+    else
+        return 0;
 }

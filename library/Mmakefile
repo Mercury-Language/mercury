@@ -465,6 +465,15 @@ $(os_subdir)par_builtin.pic_o \
 	../runtime/mercury_par_builtin.h \
 	../runtime/mercury_thread.h
 
+# robdd.m #includes both ../robdd/bryant.h and ../robdd/bryant.c
+# in foreign_decl and foreign_code respectively. They in turn
+# depend on ../robdd/robdd_conf.h.
+$(os_subdir)robdd.$O \
+$(os_subdir)robdd.pic_o \
+    : ../robdd/bryant.h \
+    ../robdd/bryant.c \
+    ../robdd/robdd_conf.h
+
 #-----------------------------------------------------------------------------#
 
 # In the past we generated liblibrary.* and then linked

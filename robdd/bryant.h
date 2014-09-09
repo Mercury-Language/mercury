@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 et ft=c
+*/
+/*
 ** Copyright (C) 1995, 2001-2005 Peter Schachte 
 ** Copyright (C) 1995, 2001-2005, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
@@ -10,7 +13,6 @@
   Author   : Peter Schachte
   Origin   : Sun Jul 30 15:08:53 1995
   Purpose  : header file for users of bryant.c ROBDD package
-
 *****************************************************************/
 
 #ifndef MERCURY_BRYANT_H
@@ -30,14 +32,17 @@
   #include "gc.h"
   #endif
   #define MR_ROBDD_BRYANT_CONSERVATIVE_GC
-  #define MR_ROBDD_HIDE_POINTER(p) 	HIDE_POINTER(p)
-  #define MR_ROBDD_REVEAL_POINTER(p)	REVEAL_POINTER(p)
+  #define MR_ROBDD_HIDE_POINTER(p)      HIDE_POINTER(p)
+  #define MR_ROBDD_REVEAL_POINTER(p)    REVEAL_POINTER(p)
 #else
-  #define MR_ROBDD_HIDE_POINTER(p)	(p)
-  #define MR_ROBDD_REVEAL_POINTER(p)	(p)
+  #define MR_ROBDD_HIDE_POINTER(p)      (p)
+  #define MR_ROBDD_REVEAL_POINTER(p)    (p)
 #endif
+
+#include "robdd_conf.h"
+
 /*****************************************************************
-			  Tunable Parameters
+              Tunable Parameters
 *****************************************************************/
 
 #if defined(AMIGA)
@@ -57,20 +62,15 @@
 #else
 
   /* number of buckets in unique table */
-  #define MR_ROBDD_UNIQUE_TABLE_SIZE 65537		/* first prime number > 64K */
+  #define MR_ROBDD_UNIQUE_TABLE_SIZE 65537      /* first prime number > 64K */
 
   /* number of entries in MR_ROBDD_ite computed table */
-  #define MR_ROBDD_COMPUTED_TABLE_SIZE 16411	/* first prime number > 16K */
+  #define MR_ROBDD_COMPUTED_TABLE_SIZE 16411    /* first prime number > 16K */
 
   /* allocate bryant nodes this many at a time */
   #define MR_ROBDD_POOL_SIZE 65535
 
 #endif
-
-/* number of bits in an unsigned long, and the log (base 2) of that */
-/* XXX this is wrong for 64-bit architectures */
-#define MR_ROBDD_BITS_PER_WORD 32
-#define MR_ROBDD_LOG_BITS_PER_WORD 5
 
 /* number of bits in an unsigned char, and a MR_ROBDD_bitmask the size of a char */
 #define MR_ROBDD_BITS_PER_CHAR 8
@@ -79,18 +79,18 @@
 #define MR_ROBDD_INTCAST(p) ((size_t)(p))
 
 /****************************************************************
-	       Bryant Graph (ROBDD) Node Data Structure
+           Bryant Graph (ROBDD) Node Data Structure
 ****************************************************************/
 
 typedef struct MR_ROBDD_graphnode {
-	int value;		/* contains name of variable */
-	struct MR_ROBDD_graphnode *tr;	/* true (then) child */
-	struct MR_ROBDD_graphnode *fa;	/* false (else) child */
+    MR_ROBDD_int value;     /* contains name of variable */
+    struct MR_ROBDD_graphnode *tr;  /* true (then) child */
+    struct MR_ROBDD_graphnode *fa;  /* false (else) child */
 #if defined(MR_ROBDD_BRYANT_CONSERVATIVE_GC)
-	GC_hidden_pointer unique; /* pointer to next elt in unique table */
-	GC_hidden_pointer uprev;  /* pointer to the prev elt in unique table */
+    GC_hidden_pointer unique; /* pointer to next elt in unique table */
+    GC_hidden_pointer uprev;  /* pointer to the prev elt in unique table */
 #else
-	struct MR_ROBDD_graphnode *unique;  /* pointer to next elt in unique table */
+    struct MR_ROBDD_graphnode *unique;  /* pointer to next elt in unique table */
 #endif
 } MR_ROBDD_node, MR_ROBDD_type;
 
@@ -103,21 +103,22 @@ typedef struct MR_ROBDD_graphnode {
 /* MR_ROBDD_zero and MR_ROBDD_one are terminal nodes (sinks). */
 #define MR_ROBDD_zero         ((MR_ROBDD_node *) 0)
 #define MR_ROBDD_one          ((MR_ROBDD_node *) 1)
-#define MR_ROBDD_nonterminal ((MR_ROBDD_node *) 2) /* only used by MR_ROBDD_ite_constant */
+#define MR_ROBDD_nonterminal  ((MR_ROBDD_node *) 2) /* only used by MR_ROBDD_ite_constant */
 
 #define MR_ROBDD_IS_TERMINAL(n) (MR_ROBDD_INTCAST(n) <= 1)
 
 /****************************************************************
-			Bit Set Data Structure
+            Bit Set Data Structure
 ****************************************************************/
 
 /* array must put it into a struct because arrays are pretty feeble in C */
 typedef struct {
-    unsigned long bits[1+(MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD];
+    MR_ROBDD_uint bits[1+(MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD];
 } MR_ROBDD_bitset;
-typedef unsigned long MR_ROBDD_bitmask;
+typedef MR_ROBDD_uint MR_ROBDD_bitmask;
 
-/* Operations to add, remove, toggle, and check for membership of a
+/*
+ * Operations to add, remove, toggle, and check for membership of a
  * single element.  The first two of these are used to find the word
  * and mask for use in the rest of them, given an element.  If I
  * trusted the compiler's common subexpression elimination algorithms,
@@ -151,31 +152,49 @@ typedef unsigned long MR_ROBDD_bitmask;
 #define MR_ROBDD_BITSET_TOGGLE_ELEMENT(set,n) \
   MR_ROBDD_BITSET_TOGGLE(set, MR_ROBDD_BITSET_WORD(n), MR_ROBDD_BITSET_MASK(n))
 
-/* Macros for operations on sets.  These are destructive: the first
+/*
+ * Macros for operations on sets.  These are destructive: the first
  * argument is modified to hold the result.  The i parameter is just a
  * usable integer variable that will be destroyed by the macro.  These
  * should probably be __inline functions, but I don't trust that,
  * either.  Portability, you know.
  */
-#define MR_ROBDD_BITSET_INTERSECTION(set,set1,set2)				\
-  do { int i; for (i=0; i<=((MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD); ++i)	\
-	 (set).bits[i] = (set1).bits[i] & (set2).bits[i];} while (0)
-#define MR_ROBDD_BITSET_DIFFERENCE(set,set1,set2)				\
-  do { int i; for (i=0; i<=((MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD); ++i)	\
-	 (set).bits[i] = (set1).bits[i] & ~((set2).bits[i]); } while (0)
-#define MR_ROBDD_BITSET_UNION(set,set1,set2)					\
-  do { int i; for (i=0; i<=((MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD); ++i) 	\
-	 (set).bits[i] = (set1).bits[i] | (set2).bits[i]; } while (0)
-#define MR_ROBDD_BITSET_EXCLUSIVE_UNION(set,set1,set2)			\
-  do { int i; for (i=0; i<=((MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD); ++i)	\
-	 (set).bits[i] = (set1).bits[i] ^ (set2).bits[i]; } while (0)
+#define MR_ROBDD_BITSET_INTERSECTION(set,set1,set2)                         \
+    do {                                                                    \
+        MR_ROBDD_int i;                                                     \
+        for (i=0; i<=((MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD); ++i)     \
+            (set).bits[i] = (set1).bits[i] & (set2).bits[i];                \
+    } while (0)
+#define MR_ROBDD_BITSET_DIFFERENCE(set,set1,set2)                           \
+    do {                                                                    \
+        MR_ROBDD_int i;                                                     \
+        for (i=0; i<=((MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD); ++i)     \
+            (set).bits[i] = (set1).bits[i] & ~((set2).bits[i]);             \
+    } while (0)
+#define MR_ROBDD_BITSET_UNION(set,set1,set2)                                \
+    do {                                                                    \
+        MR_ROBDD_int i;                                                     \
+        for (i=0; i<=((MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD); ++i)     \
+            (set).bits[i] = (set1).bits[i] | (set2).bits[i];                \
+    } while (0)
+#define MR_ROBDD_BITSET_EXCLUSIVE_UNION(set,set1,set2)                      \
+    do {                                                                    \
+        MR_ROBDD_int i;                                                     \
+        for (i=0; i<=((MR_ROBDD_MAXVAR-1)/MR_ROBDD_BITS_PER_WORD); ++i)     \
+            (set).bits[i] = (set1).bits[i] ^ (set2).bits[i];                \
+    } while (0)
 
-#define MR_ROBDD_BITSET_EQUAL(set1, set2) MR_ROBDD_bitset_equal(&set1, &set2)
-#define MR_ROBDD_BITSET_DISJOINT(set1, set2) MR_ROBDD_bitset_disjoint(&set1, &set2)
-#define MR_ROBDD_BITSET_SUBSET(set1, set2) MR_ROBDD_bitset_subset(&set1, &set2)
-#define MR_ROBDD_BITSET_EMPTY(set) MR_ROBDD_bitset_empty(&set)
+#define MR_ROBDD_BITSET_EQUAL(set1, set2)       \
+    MR_ROBDD_bitset_equal(&set1, &set2)
+#define MR_ROBDD_BITSET_DISJOINT(set1, set2)    \
+    MR_ROBDD_bitset_disjoint(&set1, &set2)
+#define MR_ROBDD_BITSET_SUBSET(set1, set2)      \
+    MR_ROBDD_bitset_subset(&set1, &set2)
+#define MR_ROBDD_BITSET_EMPTY(set)              \
+    MR_ROBDD_bitset_empty(&set)
 
-/* Successor and predecessor for possible set elements.  These are
+/*
+ * Successor and predecessor for possible set elements.  These are
  * expressions that are false if there are no more possible elements.
  */
 #define MR_ROBDD_NEXT_POSSIBLE_ELEMENT(var,word,mask) \
@@ -183,12 +202,13 @@ typedef unsigned long MR_ROBDD_bitmask;
 #define MR_ROBDD_PREV_POSSIBLE_ELEMENT(var,word,mask) \
   (--var>=0 && ((mask>>=1) || (mask=1<<(MR_ROBDD_BITS_PER_WORD-1),--word)))
 
-/* Enumerating sets.  Use these like for loops:  follow the macro call with
+/*
+ * Enumerating sets.  Use these like for loops:  follow the macro call with
  * a statement (or an open brace, some statements, and a close brace).  The
  * first three iterate from low to high, the last three from high to low.
  */
 #define MR_ROBDD_FOREACH_POSSIBLE_ELEMENT(var,word,mask) \
-  for (var=0,word=0,mask=1; var<MR_ROBDD_MAXVAR;		\
+  for (var=0,word=0,mask=1; var<MR_ROBDD_MAXVAR;        \
        (void) MR_ROBDD_NEXT_POSSIBLE_ELEMENT(var,word,mask))
 #define MR_ROBDD_FOREACH_ELEMENT(set,var,word,mask) \
   for (var=0,word=0,mask=1; MR_ROBDD_next_element(&set,&var,&word,&mask); \
@@ -210,7 +230,7 @@ typedef unsigned long MR_ROBDD_bitmask;
        (void) MR_ROBDD_PREV_POSSIBLE_ELEMENT(var,word,mask))
 
 /*****************************************************************
-			  Other Definitions
+              Other Definitions
 *****************************************************************/
 
 #ifndef MR_TRUE
@@ -259,7 +279,7 @@ typedef unsigned long MR_ROBDD_bitmask;
 #endif
 
 /*****************************************************************
-				 Public Data
+                 Public Data
 *****************************************************************/
 
 extern unsigned char MR_ROBDD_first_one_bit[256];
@@ -271,7 +291,7 @@ extern unsigned char MR_ROBDD_last_one_bit[256];
 #endif
 
 /*****************************************************************
-			      Prototypes
+                  Prototypes
 *****************************************************************/
 
 /* this must be called before any other function in this file */
@@ -285,171 +305,206 @@ extern void MR_ROBDD_init_caches(void);
 extern void MR_ROBDD_concludeRep(void);
 
 /* the basic make a MR_ROBDD_node or return an existing MR_ROBDD_node operation */
-extern MR_ROBDD_node *MR_ROBDD_make_node(int var, MR_ROBDD_node *tr, MR_ROBDD_node *fa);
+extern MR_ROBDD_node *  MR_ROBDD_make_node(MR_ROBDD_int var, MR_ROBDD_node *tr,
+                            MR_ROBDD_node *fa);
 
 /* returns MR_ROBDD_one (the Boolean function true) */
-extern MR_ROBDD_node *MR_ROBDD_trueVar(void);
+extern MR_ROBDD_node    *MR_ROBDD_trueVar(void);
 /* returns MR_ROBDD_zero (the Boolean function false) */
-extern MR_ROBDD_node *MR_ROBDD_falseVar(void);
+extern MR_ROBDD_node    *MR_ROBDD_falseVar(void);
 /* returns var, as an ROBDD.  */
-extern MR_ROBDD_node *MR_ROBDD_variableRep(int var);
+extern MR_ROBDD_node    *MR_ROBDD_variableRep(MR_ROBDD_int var);
 
 /* if then else algorithm */
-extern MR_ROBDD_node *MR_ROBDD_ite(MR_ROBDD_node *f, MR_ROBDD_node *g, MR_ROBDD_node *h);
+extern MR_ROBDD_node    *MR_ROBDD_ite(MR_ROBDD_node *f, MR_ROBDD_node *g,
+                            MR_ROBDD_node *h);
 
-/* This is sort of an "approximate MR_ROBDD_ite()."  It returns MR_ROBDD_zero or MR_ROBDD_one if
+/*
+** This is sort of an "approximate MR_ROBDD_ite()."
+** It returns MR_ROBDD_zero or MR_ROBDD_one if
 ** that's what MR_ROBDD_ite() would do.  Otherwise it just returns the
-** pseudo-MR_ROBDD_node `MR_ROBDD_nonterminal' or some real MR_ROBDD_node.  In any case, it does
-** not create any new nodes.
+** pseudo-MR_ROBDD_node `MR_ROBDD_nonterminal' or some real MR_ROBDD_node.
+** In any case, it does not create any new nodes.
 */
 #ifdef MR_ROBDD_USE_ITE_CONSTANT
-  extern MR_ROBDD_node *MR_ROBDD_ite_constant(MR_ROBDD_node *f,MR_ROBDD_node *g,MR_ROBDD_node *h);
+  extern MR_ROBDD_node  *MR_ROBDD_ite_constant(MR_ROBDD_node *f,
+                            MR_ROBDD_node *g, MR_ROBDD_node *h);
 #endif
 
-extern MR_ROBDD_node *MR_ROBDD_ite_var(int f, MR_ROBDD_node *g, MR_ROBDD_node *h);
+extern MR_ROBDD_node    *MR_ROBDD_ite_var(MR_ROBDD_int f, MR_ROBDD_node *g,
+                            MR_ROBDD_node *h);
 
 /* returns a \wedge b */
-extern MR_ROBDD_node *MR_ROBDD_glb(MR_ROBDD_node *a, MR_ROBDD_node *b);
+extern MR_ROBDD_node    *MR_ROBDD_glb(MR_ROBDD_node *a, MR_ROBDD_node *b);
 /* returns a \vee b */
-extern MR_ROBDD_node *MR_ROBDD_lub(MR_ROBDD_node *a, MR_ROBDD_node *b);
+extern MR_ROBDD_node    *MR_ROBDD_lub(MR_ROBDD_node *a, MR_ROBDD_node *b);
 /* returns a \rightarrow b */
-extern MR_ROBDD_node *MR_ROBDD_implies(MR_ROBDD_node *a, MR_ROBDD_node *b);
+extern MR_ROBDD_node    *MR_ROBDD_implies(MR_ROBDD_node *a, MR_ROBDD_node *b);
 
 /* returns \exists c . a */
-extern MR_ROBDD_node *MR_ROBDD_restrict(int c, MR_ROBDD_node *f);
+extern MR_ROBDD_node    *MR_ROBDD_restrict(MR_ROBDD_int c, MR_ROBDD_node *f);
 
 /* returns \bigglb_{0 \leq i \leq n} array[i] */
-extern MR_ROBDD_node *MR_ROBDD_glb_array(int n, int arr[]);
+extern MR_ROBDD_node    *MR_ROBDD_glb_array(MR_ROBDD_int n,
+                            MR_ROBDD_int arr[]);
 
 /* returns a with variable o renamed to n */
-extern MR_ROBDD_node *changename(int o, int n, MR_ROBDD_node *a);
+extern MR_ROBDD_node    *changename(MR_ROBDD_int o, MR_ROBDD_int n,
+                            MR_ROBDD_node *a);
 /* returns a with variable 1 renamed to v1, 2 renamed to v2, ... n renamed */
 /* to v_n.  Here n is the number of variables to rename */
-extern MR_ROBDD_node *renameList(MR_ROBDD_node *a, int n, int v1, int v2, int v3, int v4, int v5,
-		 int v6, int v7, int v8, int v9, int v10, int v11, int v12,
-		 int v13, int v14, int v15, int v16);
+extern MR_ROBDD_node    *renameList(MR_ROBDD_node *a, MR_ROBDD_int n,
+                            MR_ROBDD_int v1, MR_ROBDD_int v2,
+                            MR_ROBDD_int v3, MR_ROBDD_int v4,
+                            MR_ROBDD_int v5, MR_ROBDD_int v6,
+                            MR_ROBDD_int v7, MR_ROBDD_int v8,
+                            MR_ROBDD_int v9, MR_ROBDD_int v10,
+                            MR_ROBDD_int v11, MR_ROBDD_int v12,
+                            MR_ROBDD_int v13, MR_ROBDD_int v14,
+                            MR_ROBDD_int v15, MR_ROBDD_int v16);
 /* returns a with variable v1 renamed to 1, v2 renamed to 2, ... v_n renamed */
 /* to n.  Here n is the number of variables to rename */
-extern MR_ROBDD_node *reverseRenameList(MR_ROBDD_node *a, int n, int v1, int v2, int v3, int v4,
-			int v5, int v6, int v7, int v8, int v9, int v10,
-			int v11, int v12, int v13, int v14, int v15, int v16);
+extern MR_ROBDD_node    *reverseRenameList(MR_ROBDD_node *a, MR_ROBDD_int n,
+                            MR_ROBDD_int v1, MR_ROBDD_int v2,
+                            MR_ROBDD_int v3, MR_ROBDD_int v4,
+                            MR_ROBDD_int v5, MR_ROBDD_int v6,
+                            MR_ROBDD_int v7, MR_ROBDD_int v8,
+                            MR_ROBDD_int v9, MR_ROBDD_int v10,
+                            MR_ROBDD_int v11, MR_ROBDD_int v12,
+                            MR_ROBDD_int v13, MR_ROBDD_int v14,
+                            MR_ROBDD_int v15, MR_ROBDD_int v16);
 /* returns a with variable 0 renamed to mapping[0], 1 renamed to */
 /* mapping[1], ... count renamed to mapping[count]. */
-extern MR_ROBDD_node *MR_ROBDD_renameArray(MR_ROBDD_node *in, int count, int mappping[]);
+extern MR_ROBDD_node    *MR_ROBDD_renameArray(MR_ROBDD_node *in,
+                            MR_ROBDD_int count, MR_ROBDD_int mappping[]);
 /* returns a with variable mapping[0] renamed to 0, mapping[1] renamed to */
 /* 1, ... mapping[count] renamed to count. */
-extern MR_ROBDD_node *MR_ROBDD_reverseRenameArray(MR_ROBDD_node *in, int count, int rev_mappping[]);
+extern MR_ROBDD_node    *MR_ROBDD_reverseRenameArray(MR_ROBDD_node *in,
+                            MR_ROBDD_int count, MR_ROBDD_int rev_mappping[]);
 
 /* returns v0 \leftrightarrow \bigwedge_{i=0}^{n} arr[i] */
-extern MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[]);
+extern MR_ROBDD_node    *MR_ROBDD_iff_conj_array(MR_ROBDD_int v0,
+                            MR_ROBDD_int n, MR_ROBDD_int arr[]);
 /* returns v0 \leftrightarrow \bigwedge_{i=0}^{n} v_i */
-extern MR_ROBDD_node *iff_conj(int v0, int n, int v1, int v2, int v3, int v4, int v5,
-		      int v6, int v7, int v8, int v9, int v10, int v11,
-		      int v12, int v13, int v14, int v15, int v16);
+extern MR_ROBDD_node    *iff_conj(MR_ROBDD_int v0, MR_ROBDD_int n,
+                            MR_ROBDD_int v1, MR_ROBDD_int v2,
+                            MR_ROBDD_int v3, MR_ROBDD_int v4,
+                            MR_ROBDD_int v5, MR_ROBDD_int v6,
+                            MR_ROBDD_int v7, MR_ROBDD_int v8,
+                            MR_ROBDD_int v9, MR_ROBDD_int v10,
+                            MR_ROBDD_int v11, MR_ROBDD_int v12,
+                            MR_ROBDD_int v13, MR_ROBDD_int v14,
+                            MR_ROBDD_int v15, MR_ROBDD_int v16);
 /* returns non-MR_ROBDD_zero iff f entails variable number var */
-extern int MR_ROBDD_var_entailed(MR_ROBDD_node *f, int var);
+extern int              MR_ROBDD_var_entailed(MR_ROBDD_node *f,
+                            MR_ROBDD_int var);
 
 /* Finds the smallest n such that n \in set and n \geq *var.  word and */
 /* mask must be as set by MR_ROBDD_BITSET_WORD(*var) and MR_ROBDD_BITSET_MASK(*var), */
 /* respectively.  The resulting n is placed in *var, and *word and *mask */
 /* are updated correspondingly.  Returns MR_TRUE iff there is such an n. */
-int MR_ROBDD_next_element(MR_ROBDD_bitset *set, int *var, int *word, MR_ROBDD_bitmask *mask);
+extern MR_ROBDD_int     MR_ROBDD_next_element(MR_ROBDD_bitset *set,
+                            MR_ROBDD_int *var, MR_ROBDD_int *word,
+                            MR_ROBDD_bitmask *mask);
 
 /* Finds the largest n such that n \in set and n \leq *var.  word and */
 /* mask must be as set by MR_ROBDD_BITSET_WORD(*var) and MR_ROBDD_BITSET_MASK(*var), */
 /* respectively.  The resulting n is placed in *var, and *word and *mask */
 /* are updated correspondingly.  Returns MR_TRUE iff there is such an n. */
-int MR_ROBDD_prev_element(MR_ROBDD_bitset *set, int *var, int *word, MR_ROBDD_bitmask *mask);
+extern MR_ROBDD_int     MR_ROBDD_prev_element(MR_ROBDD_bitset *set,
+                            MR_ROBDD_int *var, MR_ROBDD_int *word,
+                            MR_ROBDD_bitmask *mask);
 
 /* Finds the smallest n such that n \not \in set and n \geq *var.  word and */
 /* mask must be as set by MR_ROBDD_BITSET_WORD(*var) and MR_ROBDD_BITSET_MASK(*var), */
 /* respectively.  The resulting n is placed in *var, and *word and *mask */
 /* are updated correspondingly.  Returns MR_TRUE iff there is such an n. */
-int MR_ROBDD_next_nonelement(MR_ROBDD_bitset *set, int *var, int *word, MR_ROBDD_bitmask *mask);
+extern MR_ROBDD_int     MR_ROBDD_next_nonelement(MR_ROBDD_bitset *set,
+                            MR_ROBDD_int *var, MR_ROBDD_int*word,
+                            MR_ROBDD_bitmask *mask);
 
 /* Finds the largest n such that n \not \in set and n \leq *var.  word and */
 /* mask must be as set by MR_ROBDD_BITSET_WORD(*var) and MR_ROBDD_BITSET_MASK(*var), */
 /* respectively.  The resulting n is placed in *var, and *word and *mask */
 /* are updated correspondingly.  Returns MR_TRUE iff there is such an n. */
-int MR_ROBDD_prev_nonelement(MR_ROBDD_bitset *set, int *var, int *word, MR_ROBDD_bitmask *mask);
+extern MR_ROBDD_int     MR_ROBDD_prev_nonelement(MR_ROBDD_bitset *set,
+                            MR_ROBDD_int *var, MR_ROBDD_int*word,
+                            MR_ROBDD_bitmask *mask);
 
 #if !defined(MR_ROBDD_USE_THRESH) && !defined(MR_ROBDD_RESTRICT_SET)
 
   /* returns a with all variables lo \leq v \leq hi restricted away */
-  extern MR_ROBDD_node *MR_ROBDD_restrictThresh(int lo, int hi, MR_ROBDD_node *a);
+  extern MR_ROBDD_node  *MR_ROBDD_restrictThresh(MR_ROBDD_int lo,
+                            MR_ROBDD_int hi, MR_ROBDD_node *a);
 
   /* returns f \wedge g with all variables lo \leq v \leq hi restricted away */
-  extern MR_ROBDD_node *MR_ROBDD_restricted_glb(int lo, int hi, MR_ROBDD_node *f, MR_ROBDD_node *g);
+  extern MR_ROBDD_node  *MR_ROBDD_restricted_glb(MR_ROBDD_int lo,
+                            MR_ROBDD_int hi, MR_ROBDD_node *f,
+                            MR_ROBDD_node *g);
 
   /* computes g = f with variable 0 renamed to mapping[0], 1 renamed to */
   /* mapping[1], ... count renamed to mapping[count].  Returns context */
   /* \wedge g with all variables lo \leq v \leq hi restricted away */
-  extern MR_ROBDD_node *MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count, int mapping[],
-		    int lo, int hi);
+  extern MR_ROBDD_node  *MR_ROBDD_abstract_exit(MR_ROBDD_node *context,
+                            MR_ROBDD_node *f, MR_ROBDD_int count,
+                            MR_ROBDD_int mapping[],
+                            MR_ROBDD_int lo, MR_ROBDD_int hi);
   /* returns f \wedge (v0 \leftrightarrow \bigwedge_{i=0}^{n} arr[i]), */
   /* with all variables lo \leq v \leq hi restricted away */
-  extern MR_ROBDD_node *MR_ROBDD_abstract_unify(MR_ROBDD_node *f, int v0, int n, int arr[],
-		    int lo, int hi);
+  extern MR_ROBDD_node  *MR_ROBDD_abstract_unify(MR_ROBDD_node *f,
+                            MR_ROBDD_int v0, MR_ROBDD_int n,
+                            MR_ROBDD_int arr[],
+                            MR_ROBDD_int lo, MR_ROBDD_int hi);
 
 #else /* MR_ROBDD_USE_THRESH || MR_ROBDD_RESTRICT_SET */
 
   /* returns a with all variables lo \leq v \leq hi restricted away */
-  extern MR_ROBDD_node *MR_ROBDD_restrictThresh(int c,MR_ROBDD_node *a);
+  extern MR_ROBDD_node  *MR_ROBDD_restrictThresh(MR_ROBDD_int c,
+                            MR_ROBDD_node *a);
 
   /* returns f \wedge g with all variables v \geq c restricted away */
-  extern MR_ROBDD_node *MR_ROBDD_restricted_glb(int c, MR_ROBDD_node *f, MR_ROBDD_node *g);
+  extern MR_ROBDD_node  *MR_ROBDD_restricted_glb(MR_ROBDD_int c,
+                            MR_ROBDD_node *f, MR_ROBDD_node *g);
 
   /* computes g = f with variable 0 renamed to mapping[0], 1 renamed to */
   /* mapping[1], ... count renamed to mapping[count].  Returns context */
   /* \wedge g with all variables v \geq thresh restricted away */
-  extern MR_ROBDD_node *MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count, int mapping[],
-		    int thresh);
+  extern MR_ROBDD_node  *MR_ROBDD_abstract_exit(MR_ROBDD_node *context,
+                            MR_ROBDD_node *f, MR_ROBDD_int count,
+                            MR_ROBDD_int mapping[], MR_ROBDD_int thresh);
 
   /* returns f \wedge (v0 \leftrightarrow \bigwedge_{i=0}^{n} arr[i]), */
   /* with all variables v \eq thresh restricted away */
-  extern MR_ROBDD_node *MR_ROBDD_abstract_unify(MR_ROBDD_node *f, int v0, int n, int arr[], int thresh);
+  extern MR_ROBDD_node  *MR_ROBDD_abstract_unify(MR_ROBDD_node *f,
+                            MR_ROBDD_int v0, MR_ROBDD_int n,
+                            MR_ROBDD_int arr[], MR_ROBDD_int thresh);
 
 #endif /* !MR_ROBDD_OLD || MR_ROBDD_USE_THRESH */
 
 #if !defined(MR_ROBDD_NEW)
   /* returns the set of all v MR_ROBDD_entailed by f where v \leq MR_ROBDD_topvar */
-  extern MR_ROBDD_bitset *MR_ROBDD_vars_entailed(MR_ROBDD_node *f, int MR_ROBDD_topvar);
+  extern MR_ROBDD_bitset *MR_ROBDD_vars_entailed(MR_ROBDD_node *f,
+                                MR_ROBDD_int MR_ROBDD_topvar);
 #else /* MR_ROBDD_NEW */
   /* returns the set of all v MR_ROBDD_entailed by f */
   extern MR_ROBDD_bitset *MR_ROBDD_vars_entailed(MR_ROBDD_node *f);
 #endif /* MR_ROBDD_NEW */
 
 /* return the initial set sharing representation for n variables */
-extern MR_ROBDD_node *MR_ROBDD_init_set_sharing(int n);
+extern MR_ROBDD_node    *MR_ROBDD_init_set_sharing(MR_ROBDD_int n);
 /* computes the set sharing upward closure of f */
-extern MR_ROBDD_node *MR_ROBDD_upclose(MR_ROBDD_node *f);
+extern MR_ROBDD_node    *MR_ROBDD_upclose(MR_ROBDD_node *f);
 /* performs Langen's MR_ROBDD_bin operation, used for set sharing analysis */
-extern MR_ROBDD_node *MR_ROBDD_bin(MR_ROBDD_node *f, MR_ROBDD_node *g);
+extern MR_ROBDD_node    *MR_ROBDD_bin(MR_ROBDD_node *f, MR_ROBDD_node *g);
 
 /* prints out the bryant graph a */
 extern void printOut(MR_ROBDD_node *a);
 
 /* for profiling purposes:  return the number of ROBDD nodes in use */
-extern int MR_ROBDD_nodes_in_use(void);
+extern MR_ROBDD_int     MR_ROBDD_nodes_in_use(void);
 /* for profiling only:  the same as MR_ROBDD_iff_conj_array(), but as efficient */
 /* as possible, whatever variables are #defined */
-MR_ROBDD_node *MR_ROBDD_testing_iff_conj_array(int v0, int n, int arr[]);
-
-/* These are not really useful for ROBDDs but are needed for other */
-/* representations of Boolean functions. */
-/* free n */
-extern void MR_ROBDD_free_rep(MR_ROBDD_node *n);
-/* free n if it doesn't share with m */
-extern void free_rep_if_diff(MR_ROBDD_node *n, MR_ROBDD_node *m);
-/* returns a MR_ROBDD_copy of a.  For ROBDDs this is just a */
-extern MR_ROBDD_node *MR_ROBDD_copy(MR_ROBDD_node *a);
-/* returns non-MR_ROBDD_zero iff a = b; for ROBDDs, use a==b instead */
-extern int MR_ROBDD_equiv(MR_ROBDD_node *a, MR_ROBDD_node *b);
-
-/* for a more efficient interface from Quintus Prolog. */
-#if defined(QUINTUS)
-  extern MR_ROBDD_node *renameTerm(MR_ROBDD_node *in, QP_term_ref term);
-  extern MR_ROBDD_node *reverseRenameTerm(MR_ROBDD_node *in, QP_term_ref term);
-#endif /* QUINTUS */
+extern MR_ROBDD_node    *MR_ROBDD_testing_iff_conj_array(MR_ROBDD_int v0,
+                            MR_ROBDD_int n, MR_ROBDD_int arr[]);
 
 #endif /* MERCURY_BRYANT_H */

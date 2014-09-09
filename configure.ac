@@ -100,6 +100,7 @@ AC_SUBST(RECONFIGURE_ARGS)
 #-----------------------------------------------------------------------------#
 
 AC_CONFIG_HEADER(runtime/mercury_conf.h)
+AC_CONFIG_HEADER(robdd/robdd_conf.h)
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 
 #-----------------------------------------------------------------------------#
@@ -1792,16 +1793,25 @@ AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
 MR_WORD_TYPE=$mercury_cv_word_type
 AC_SUBST(MR_WORD_TYPE)
 
+AC_DEFINE_UNQUOTED(MR_ROBDD_int, $mercury_cv_word_type)
+AC_SUBST(MR_ROBDD_int)
+AC_DEFINE_UNQUOTED(MR_ROBDD_uint, unsigned $mercury_cv_word_type)
+AC_SUBST(MR_ROBDD_uint)
+
 if test "$mercury_cv_word_type" = int; then
     AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "")
+    AC_DEFINE_UNQUOTED(MR_ROBDD_int_max, INT_MAX)
 elif test "$mercury_cv_word_type" = long; then
     AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "l")
+    AC_DEFINE_UNQUOTED(MR_ROBDD_int_max, LONG_MAX)
 elif test "$mercury_cv_word_type" = "long long"; then
     AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "ll")
+    AC_DEFINE_UNQUOTED(MR_ROBDD_int_max, LLONG_MAX)
 else
     AC_MSG_ERROR(Cannot determine the length modifier for the MR_Integer type.)
 fi
 AC_SUBST(MR_INTEGER_LENGTH_MODIFIER)
+AC_SUBST(MR_ROBDD_int_max)
 
 #-----------------------------------------------------------------------------#
 
@@ -2115,6 +2125,25 @@ AC_MSG_RESULT($mercury_cv_bits_per_word)
 AC_DEFINE_UNQUOTED(MR_BITS_PER_WORD, $mercury_cv_bits_per_word)
 BITS_PER_WORD=$mercury_cv_bits_per_word
 AC_SUBST(BITS_PER_WORD)
+
+AC_DEFINE_UNQUOTED(MR_ROBDD_BITS_PER_WORD, $mercury_cv_bits_per_word)
+AC_SUBST(MR_ROBDD_BITS_PER_WORD)
+case "$mercury_cv_bits_per_word" in
+    16)
+        mercury_cv_log_bits_per_word=4
+        ;;
+    32)
+        mercury_cv_log_bits_per_word=5
+        ;;
+    64)
+        mercury_cv_log_bits_per_word=6
+        ;;
+    *)
+        AC_MSG_ERROR([unexpected number of bits per word: expected 16, 32 or 64])
+        ;;
+esac
+AC_DEFINE_UNQUOTED(MR_ROBDD_LOG_BITS_PER_WORD, $mercury_cv_log_bits_per_word)
+AC_SUBST(MR_ROBDD_LOG_BITS_PER_WORD)
 
 #-----------------------------------------------------------------------------#
 
