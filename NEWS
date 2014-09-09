@@ -46,11 +46,6 @@ Changes to the Mercury compiler:
     - IRIX
     - OSF/1
 
-* We have added the configure option --enable-gc-mmap.
-
-* We configure Boehm GC to use mmap in threaded grades on Linux to avoid
-  conflicts with glibc malloc leading to memory corruption.
-
 * The asm_fast* and reg* grades now work on 64-bit Intel OS X systems when
   using GCC as the C compiler.
   See README.MacOS for further details.
