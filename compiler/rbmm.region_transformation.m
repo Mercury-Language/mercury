@@ -61,8 +61,8 @@
     %
 :- pred region_transform(rpta_info_table::in,
     proc_formal_region_args_table::in, proc_pp_actual_region_args_table::in,
-    renaming_table::in, renaming_table::in, region_instr_table::in,
-    renaming_annotation_table::in, renaming_annotation_table::in,
+    rbmm_renaming_table::in, rbmm_renaming_table::in, region_instr_table::in,
+    rbmm_renaming_annotation_table::in, rbmm_renaming_annotation_table::in,
     name_to_prog_var_table::in, name_to_prog_var_table::out,
     module_info::in, module_info::out) is det.
 
@@ -172,8 +172,8 @@ annotate_pred(PPId, FormalRegionArgs, !Processed, !ModuleInfo) :-
 :- pred region_transform_pred(rpta_info_table::in,
     proc_formal_region_args_table::in,
     proc_pp_actual_region_args_table::in,
-    renaming_table::in, renaming_table::in, region_instr_table::in,
-    renaming_annotation_table::in, renaming_annotation_table::in,
+    rbmm_renaming_table::in, rbmm_renaming_table::in, region_instr_table::in,
+    rbmm_renaming_annotation_table::in, rbmm_renaming_annotation_table::in,
     pred_id::in, name_to_prog_var_table::in, name_to_prog_var_table::out,
     module_info::in, module_info::out) is det.
 
@@ -205,8 +205,8 @@ region_transform_pred(RptaInfoTable, FormalRegionArgTable,
     %
 :- pred region_transform_proc(rpta_info_table::in,
     proc_formal_region_args_table::in, proc_pp_actual_region_args_table::in,
-    renaming_table::in, renaming_table::in, region_instr_table::in,
-    renaming_annotation_table::in, renaming_annotation_table::in,
+    rbmm_renaming_table::in, rbmm_renaming_table::in, region_instr_table::in,
+    rbmm_renaming_annotation_table::in, rbmm_renaming_annotation_table::in,
     pred_id::in, proc_id::in, name_to_prog_var_table::in,
     name_to_prog_var_table::out, module_info::in, module_info::out) is det.
 
@@ -261,9 +261,10 @@ region_transform_proc(RptaInfoTable, FormalRegionArgTable,
     %    + new calls to region instructions
     %
 :- pred annotate_proc(module_info::in, pred_info::in, rpt_graph::in,
-    region_args::in, pp_actual_region_args_table::in, renaming_proc::in,
-    renaming_proc::in, region_instr_proc::in, renaming_annotation_proc::in,
-    renaming_annotation_proc::in, prog_varset::in, prog_varset::out,
+    region_args::in, pp_actual_region_args_table::in, rbmm_renaming_proc::in,
+    rbmm_renaming_proc::in, region_instr_proc::in,
+    rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::in,
+    prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, list(prog_var)::in, list(prog_var)::out,
     list(mer_mode)::in, list(mer_mode)::out, hlds_goal::in, hlds_goal::out,
     name_to_prog_var::in, name_to_prog_var::out, proc_info::in,
@@ -340,10 +341,10 @@ annotate_proc(ModuleInfo, PredInfo, Graph, FormalRegionArgProc,
     % caused by renaming and annotations needed for resurrection problem.
     %
 :- pred region_transform_goal(module_info::in, rpt_graph::in,
-    renaming_proc::in, renaming_proc::in, pp_actual_region_args_table::in,
-    region_instr_proc::in, renaming_annotation_proc::in,
-    renaming_annotation_proc::in, hlds_goal::in, hlds_goal::out,
-    name_to_prog_var::in, name_to_prog_var::out,
+    rbmm_renaming_proc::in, rbmm_renaming_proc::in,
+    pp_actual_region_args_table::in, region_instr_proc::in,
+    rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::in,
+    hlds_goal::in, hlds_goal::out, name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
@@ -410,7 +411,7 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
     ).
 
 :- pred region_transform_goal_expr(module_info::in, rpt_graph::in,
-    renaming::in, renaming::in, pp_actual_region_args_table::in,
+    rbmm_renaming::in, rbmm_renaming::in, pp_actual_region_args_table::in,
     program_point::in, hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out, name_to_prog_var::in,
     name_to_prog_var::out, prog_varset::in, prog_varset::out,
@@ -491,10 +492,10 @@ region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
     % Because an atomic goal is turned into a conjunction, we need to
     % flatten its compounding conjunction if it is in one.
 :- pred region_transform_compound_goal(module_info::in, rpt_graph::in,
-    renaming_proc::in, renaming_proc::in, pp_actual_region_args_table::in,
-    region_instr_proc::in, renaming_annotation_proc::in,
-    renaming_annotation_proc::in, hlds_goal::in, hlds_goal::out,
-    name_to_prog_var::in, name_to_prog_var::out,
+    rbmm_renaming_proc::in, rbmm_renaming_proc::in,
+    pp_actual_region_args_table::in, region_instr_proc::in,
+    rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::in,
+    hlds_goal::in, hlds_goal::out, name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 region_transform_compound_goal(ModuleInfo, Graph,
@@ -592,7 +593,7 @@ region_transform_compound_goal(ModuleInfo, Graph,
     % The current implementation may not be correct.
     %
 :- pred annotate_constructions_unification(module_info::in, rpt_graph::in,
-    renaming::in, renaming::in, unification::in, unification::out,
+    rbmm_renaming::in, rbmm_renaming::in, unification::in, unification::out,
     name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
@@ -636,9 +637,10 @@ annotate_constructions_unification(_, _, _, _, !Unification, !VarSet,
     % Finally, we try to flatten this new conjunction.
     %
 :- pred region_transform_case(module_info::in, rpt_graph::in,
-    renaming_proc::in, renaming_proc::in, pp_actual_region_args_table::in,
-    region_instr_proc::in, renaming_annotation_proc::in,
-    renaming_annotation_proc::in, hlds_goal::in, case::in, case::out,
+    rbmm_renaming_proc::in, rbmm_renaming_proc::in,
+    pp_actual_region_args_table::in, region_instr_proc::in,
+    rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::in,
+    hlds_goal::in, case::in, case::out,
     name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
@@ -706,8 +708,9 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
     Switch = hlds_goal(_, ConjsInfo),
     !:Goal = hlds_goal(conj(plain_conj, FlatConjs), ConjsInfo).
 
-:- pred find_renamings_at_prog_point(renaming_proc::in, renaming_proc::in,
-    program_point::in, renaming::out, renaming::out) is det.
+:- pred find_renamings_at_prog_point(rbmm_renaming_proc::in,
+    rbmm_renaming_proc::in, program_point::in,
+    rbmm_renaming::out, rbmm_renaming::out) is det.
 
 find_renamings_at_prog_point(ResurRenamingProc, IteRenamingProc, ProgPoint,
         ResurRenaming, IteRenaming) :-
@@ -722,7 +725,7 @@ find_renamings_at_prog_point(ResurRenamingProc, IteRenamingProc, ProgPoint,
         IteRenaming = map.init
     ).
 
-:- pred assignments_from_ite_renaming_anno(renaming_annotation_proc::in,
+:- pred assignments_from_ite_renaming_anno(rbmm_renaming_annotation_proc::in,
     program_point::in, name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     hlds_goals::in, hlds_goals::out) is det.
@@ -737,8 +740,8 @@ assignments_from_ite_renaming_anno(IteRenamingAnnoProc, ProgPoint,
         true
     ).
 
-:- pred assignments_from_resur_renaming_anno(renaming_annotation_proc::in,
-    program_point::in, renaming::in, name_to_prog_var::in,
+:- pred assignments_from_resur_renaming_anno(rbmm_renaming_annotation_proc::in,
+    program_point::in, rbmm_renaming::in, name_to_prog_var::in,
     name_to_prog_var::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, hlds_goals::in, hlds_goals::out) is det.
 
@@ -784,8 +787,8 @@ region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes) :-
     % The same as node_to_var, but the corresponding region name is
     % subjected to resurrection and if-then-else renaming beforehand.
     %
-:- pred node_to_var_with_both_renamings(rpt_graph::in, renaming::in,
-    renaming::in, rptg_node::in, prog_var::out,
+:- pred node_to_var_with_both_renamings(rpt_graph::in, rbmm_renaming::in,
+    rbmm_renaming::in, rptg_node::in, prog_var::out,
     name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
@@ -801,8 +804,9 @@ node_to_var_with_both_renamings(Graph, ResurRenaming, IteRenaming,
     % applicable anymore. If more than one renaming exist, then we use
     % the last one.
     %
-:- pred region_name_to_var_with_both_renamings(string::in, renaming::in,
-    renaming::in, prog_var::out, name_to_prog_var::in, name_to_prog_var::out,
+:- pred region_name_to_var_with_both_renamings(string::in,
+    rbmm_renaming::in, rbmm_renaming::in, prog_var::out,
+    name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 region_name_to_var_with_both_renamings(Name0, ResurRenaming, IteRenaming,
@@ -821,8 +825,9 @@ region_name_to_var_with_both_renamings(Name0, ResurRenaming, IteRenaming,
     % renaming the region in a remove instruction added before a program
     % point.
     %
-:- pred region_name_to_var_with_both_renamings_before(string::in, renaming::in,
-    renaming::in, prog_var::out, name_to_prog_var::in, name_to_prog_var::out,
+:- pred region_name_to_var_with_both_renamings_before(string::in,
+    rbmm_renaming::in, rbmm_renaming::in, prog_var::out,
+    name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 region_name_to_var_with_both_renamings_before(Name0, ResurRenaming,
@@ -839,7 +844,7 @@ region_name_to_var_with_both_renamings_before(Name0, ResurRenaming,
     % The same as region_name_to_var, but the region name here is
     % subjected to resurrection renaming in advance.
     %
-:- pred region_name_to_var_with_renaming(string::in, renaming::in,
+:- pred region_name_to_var_with_renaming(string::in, rbmm_renaming::in,
     prog_var::out, name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
@@ -859,7 +864,7 @@ region_name_to_var_with_renaming(Name0, ResurRenaming, RegVar,
     % will recompute nonlocals, instmap delta anyway.
     %
 :- pred region_instruction_to_conj(module_info::in, term.context::in,
-    renaming::in, renaming::in, region_instr::in,
+    rbmm_renaming::in, rbmm_renaming::in, region_instr::in,
     name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     hlds_goals::in, hlds_goals::out) is det.
@@ -892,7 +897,7 @@ region_instruction_to_conj(ModuleInfo, Context, ResurRenaming, IteRenaming,
     % instruction we apply the first resurrection renaming.
     %
 :- pred region_instruction_to_conj_before(module_info::in, term.context::in,
-    renaming::in, renaming::in, region_instr::in,
+    rbmm_renaming::in, rbmm_renaming::in, region_instr::in,
     name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     hlds_goals::in, hlds_goals::out) is det.
@@ -930,7 +935,7 @@ region_instruction_to_conj_before(ModuleInfo, Context, ResurRenaming,
     % The original name of the region is subjected to the renaming due to
     % if-then-else, if such a renaming exists at the current program point.
     %
-:- pred resur_renaming_annotation_to_assignment(renaming::in,
+:- pred resur_renaming_annotation_to_assignment(rbmm_renaming::in,
     region_instr::in, name_to_prog_var::in, name_to_prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     hlds_goals::in, hlds_goals::out) is det.

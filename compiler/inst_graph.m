@@ -135,12 +135,11 @@
     list(prog_var)::in, list(prog_var)::in, prog_var::out, prog_var::out)
     is nondet.
 
-    % Merge two inst_graphs by renaming the variables in the second
-    % inst_graph. Also return the variable substitution map.
+    % Merge two inst_graphs by renaming the variables in the second inst_graph.
+    % Also return the variable substitution map.
     %
 :- pred merge(inst_graph::in, prog_varset::in, inst_graph::in, prog_varset::in,
-    inst_graph::out, prog_varset::out, map(prog_var, prog_var)::out)
-    is det.
+    inst_graph::out, prog_varset::out, map(prog_var, prog_var)::out) is det.
 
 %   % Join two inst_graphs together by taking the maximum unrolling
 %   % of the type tree of each variable from the two graphs.
@@ -360,24 +359,17 @@ corresponding_members([A | _], [B | _], A, B).
 corresponding_members([_ | As], [_ | Bs], A, B) :-
     corresponding_members(As, Bs, A, B).
 
-merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet, Sub) :-
-    varset.merge_subst_without_names(VarSet0, NewVarSet, VarSet, Sub0),
-    (
-        map.map_values_only(pred(term.variable(V, _)::in, V::out) is semidet,
-            Sub0, Sub1)
-    ->
-        Sub = Sub1
-    ;
-        unexpected($module, $pred, "non-variable terms in substitution")
-    ),
+merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet,
+        Renaming) :-
+    varset.merge_renaming_without_names(VarSet0, NewVarSet, VarSet, Renaming),
     map.foldl((pred(Var0::in, Node0::in, IG0::in, IG::out) is det :-
         Node0 = node(Functors0, MaybeParent),
         map.map_values_only(
             (pred(Args0::in, Args::out) is det :-
-                map.apply_to_list(Args0, Sub, Args)),
+                map.apply_to_list(Args0, Renaming, Args)),
             Functors0, Functors),
         Node = node(Functors, MaybeParent),
-        map.lookup(Sub, Var0, Var),
+        map.lookup(Renaming, Var0, Var),
         map.det_insert(Var, Node, IG0, IG)
     ), NewInstGraph, InstGraph0, InstGraph).
 

@@ -47,9 +47,9 @@
 :- import_module transform_hlds.rbmm.region_transformation.
 
 :- pred collect_rbmm_goal_info(rpta_info_table::in,
-    proc_pp_actual_region_args_table::in, renaming_table::in,
-    renaming_table::in, name_to_prog_var_table::in,
-    module_info::in, module_info::out) is det.
+    proc_pp_actual_region_args_table::in,
+    rbmm_renaming_table::in, rbmm_renaming_table::in,
+    name_to_prog_var_table::in, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -100,8 +100,9 @@ collect_rbmm_goal_info(RptaInfoTable, ActualRegionArgumentTable,
         !ModuleInfo).
 
 :- pred collect_rbmm_goal_info_proc(rpta_info_table::in,
-    renaming_table::in, renaming_table::in, name_to_prog_var_table::in,
-    pred_proc_id::in, pp_actual_region_args_table::in,
+    rbmm_renaming_table::in, rbmm_renaming_table::in,
+    name_to_prog_var_table::in, pred_proc_id::in,
+    pp_actual_region_args_table::in,
     module_info::in, module_info::out) is det.
 
 collect_rbmm_goal_info_proc(RptaInfoTable, ResurRenamingTable,
@@ -129,8 +130,8 @@ collect_rbmm_goal_info_proc(RptaInfoTable, ResurRenamingTable,
     module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
 
 :- pred collect_rbmm_goal_info_goal(module_info::in, proc_info::in,
-    rpt_graph::in, pp_actual_region_args_table::in, renaming_proc::in,
-    renaming_proc::in, name_to_prog_var::in,
+    rpt_graph::in, pp_actual_region_args_table::in,
+    rbmm_renaming_proc::in, rbmm_renaming_proc::in, name_to_prog_var::in,
     hlds_goal::in, hlds_goal::out) is det.
 
 collect_rbmm_goal_info_goal(ModuleInfo, ProcInfo, Graph,
@@ -143,8 +144,8 @@ collect_rbmm_goal_info_goal(ModuleInfo, ProcInfo, Graph,
     !:Goal = hlds_goal(Expr, Info).
 
 :- pred collect_rbmm_goal_info_goal_expr(module_info::in, proc_info::in,
-    rpt_graph::in, pp_actual_region_args_table::in, renaming_proc::in,
-    renaming_proc::in, name_to_prog_var::in,
+    rpt_graph::in, pp_actual_region_args_table::in,
+    rbmm_renaming_proc::in, rbmm_renaming_proc::in, name_to_prog_var::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
@@ -454,7 +455,7 @@ compute_rbmm_info_goals([Goal | Goals], !RbmmInfo) :-
     compute_rbmm_info_goals(Goals, !RbmmInfo).
 
 :- pred collect_rbmm_goal_info_unification(unification::in, module_info::in,
-    rpt_graph::in, renaming::in, renaming::in, name_to_prog_var::in,
+    rpt_graph::in, rbmm_renaming::in, rbmm_renaming::in, name_to_prog_var::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
 collect_rbmm_goal_info_unification(Unification, ModuleInfo, Graph,
@@ -541,8 +542,9 @@ is_create_region_call(plain_call(PredId, _ProcId, Args, _, _, _),
     Args = [CreatedRegion].
 
 :- pred collect_rbmm_goal_info_case(module_info::in, proc_info::in,
-    rpt_graph::in, pp_actual_region_args_table::in, renaming_proc::in,
-    renaming_proc::in, name_to_prog_var::in, case::in, case::out) is det.
+    rpt_graph::in, pp_actual_region_args_table::in,
+    rbmm_renaming_proc::in, rbmm_renaming_proc::in, name_to_prog_var::in,
+    case::in, case::out) is det.
 
 collect_rbmm_goal_info_case(ModuleInfo, ProcInfo, Graph,
         ActualRegionsArgsProc, ResurRenamingProc, IteRenamingProc,

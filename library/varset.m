@@ -156,7 +156,7 @@
     % fresh variable in VarSet.
     %
 :- pred varset.merge_renaming(varset(T)::in, varset(T)::in, varset(T)::out,
-    map(var(T), var(T))::out) is det.
+    renaming(T)::out) is det.
 
     % Does the same job as varset.merge_renaming, but returns the renaming
     % as a general substitution in which all the terms in the range happen
@@ -166,6 +166,7 @@
     %
 :- pred varset.merge_subst(varset(T)::in, varset(T)::in, varset(T)::out,
     substitution(T)::out) is det.
+:- pragma obsolete(varset.merge_subst/4).
 
     % varset.merge(VarSet0, NewVarSet, Terms0, VarSet, Terms):
     %
@@ -181,7 +182,7 @@
     % on the resulting varset.
     %
 :- pred varset.merge_renaming_without_names(varset(T)::in,
-    varset(T)::in, varset(T)::out, map(var(T), var(T))::out) is det.
+    varset(T)::in, varset(T)::out, renaming(T)::out) is det.
 
     % Same as varset.merge_subst, except that the names of variables
     % in NewVarSet are not included in the final varset.
@@ -192,6 +193,7 @@
     %
 :- pred varset.merge_subst_without_names(varset(T)::in,
     varset(T)::in, varset(T)::out, substitution(T)::out) is det.
+:- pragma obsolete(varset.merge_subst_without_names/4).
 
     % Same as varset.merge, except that the names of variables
     % in NewVarSet are not included in the final varset.
@@ -254,7 +256,7 @@
     % ordering of variables in the original varset is maintained.
     %
 :- pred varset.squash(varset(T)::in, list(var(T))::in,
-    varset(T)::out, map(var(T), var(T))::out) is det.
+    varset(T)::out, renaming(T)::out) is det.
 
     % Coerce the types of the variables in a varset.
     %
@@ -468,40 +470,40 @@ varset.set_bindings(VarSet, Values, VarSet ^ var_values := Values).
 
     % We scan through the second varset, introducing a fresh variable
     % into the first varset for each var in the second, and building up
-    % a substitution which maps the variables in the second varset into
+    % a renaming which maps the variables in the second varset into
     % the corresponding fresh variable in the first varset. We then apply
-    % this substitution to the list of terms.
+    % this renaming to the list of terms.
 
 varset.merge(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
-    varset.merge_subst(VarSetA, VarSetB, VarSet, Subst),
-    term.apply_substitution_to_list(TermList0, Subst, TermList).
+    varset.merge_renaming(VarSetA, VarSetB, VarSet, Renaming),
+    term.apply_renaming_to_list(TermList0, Renaming, TermList).
 
 varset.merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
-    varset.merge_subst_without_names(VarSetA, VarSetB, VarSet, Subst),
-    term.apply_substitution_to_list(TermList0, Subst, TermList).
+    varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming),
+    term.apply_renaming_to_list(TermList0, Renaming, TermList).
 
 %-----------------------------------------------------------------------------%
 %
 % The structure of this code is identical to the structure of the code
 % in the next block.
 
-varset.merge_renaming(VarSetA, VarSetB, VarSet, Subst) :-
+varset.merge_renaming(VarSetA, VarSetB, VarSet, Renaming) :-
     VarSetB = varset(SupplyB, NamesB, _ValuesB),
     term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
-    map.init(Subst0),
+    map.init(Renaming0),
     varset.merge_renaming_2(SupplyB0, SupplyB, NamesB,
-        SupplyA, Supply, NamesA, Names, Subst0, Subst),
+        SupplyA, Supply, NamesA, Names, Renaming0, Renaming),
     VarSet = varset(Supply, Names, ValuesA).
 
 :- pred varset.merge_renaming_2(var_supply(T)::in, var_supply(T)::in,
     map(var(T), string)::in,
     var_supply(T)::in, var_supply(T)::out,
     map(var(T), string)::in, map(var(T), string)::out,
-    map(var(T), var(T))::in, map(var(T), var(T))::out) is det.
+    renaming(T)::in, renaming(T)::out) is det.
 
 varset.merge_renaming_2(!.SupplyB, MaxSupplyB, NamesB,
-        !Supply, !Names, !Subst) :-
+        !Supply, !Names, !Renaming) :-
     ( !.SupplyB = MaxSupplyB ->
         true
     ;
@@ -512,33 +514,34 @@ varset.merge_renaming_2(!.SupplyB, MaxSupplyB, NamesB,
         ;
             true
         ),
-        map.det_insert(VarB, Var, !Subst),
+        map.det_insert(VarB, Var, !Renaming),
         varset.merge_renaming_2(!.SupplyB, MaxSupplyB, NamesB,
-            !Supply, !Names, !Subst)
+            !Supply, !Names, !Renaming)
     ).
 
-varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Subst) :-
+varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming) :-
     VarSetB = varset(SupplyB, _NamesB, _ValuesB),
     term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
-    map.init(Subst0),
+    map.init(Renaming0),
     varset.merge_renaming_without_names_2(SupplyB0, SupplyB,
-        SupplyA, Supply, Subst0, Subst),
+        SupplyA, Supply, Renaming0, Renaming),
     VarSet = varset(Supply, NamesA, ValuesA).
 
 :- pred varset.merge_renaming_without_names_2(var_supply(T)::in,
     var_supply(T)::in, var_supply(T)::in, var_supply(T)::out,
-    map(var(T), var(T))::in, map(var(T), var(T))::out) is det.
+    renaming(T)::in, renaming(T)::out) is det.
 
-varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB, !Supply, !Subst) :-
+varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB,
+        !Supply, !Renaming) :-
     ( !.SupplyB = MaxSupplyB ->
         true
     ;
         term.create_var(Var, !Supply),
         term.create_var(VarB, !SupplyB),
-        map.det_insert(VarB, Var, !Subst),
+        map.det_insert(VarB, Var, !Renaming),
         varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB,
-            !Supply, !Subst)
+            !Supply, !Renaming)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -690,7 +693,7 @@ varset.squash(OldVarSet, KeptVars, NewVarSet, Subst) :-
     map.from_corresponding_lists(KeptVars, NewVars, Subst),
     copy_var_names(VarNames, Subst, NewVarSet1, NewVarSet).
 
-:- pred copy_var_names(assoc_list(var(T), string)::in, map(var(T), var(T))::in,
+:- pred copy_var_names(assoc_list(var(T), string)::in, renaming(T)::in,
     varset(T)::in, varset(T)::out) is det.
 
 copy_var_names([], _Subst, !NewVarSet).

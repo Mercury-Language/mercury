@@ -172,6 +172,9 @@
 :- mode contains_var_list(in, in) is semidet.
 :- mode contains_var_list(in, out) is nondet.
 
+:- type renaming(T) == map(var(T), var(T)).
+:- type renaming    == renaming(generic).
+
 :- type substitution(T) == map(var(T), term(T)).
 :- type substitution    == substitution(generic).
 
@@ -276,9 +279,22 @@
 :- pred apply_substitution_to_list(list(term(T))::in,
     substitution(T)::in, list(term(T))::out) is det.
 
+    % apply_renaming(Term0, Renaming, Term):
+    %
+    % Apply renaming to Term0 and return the result in Term.
+    %
+:- func apply_renaming(term(T), renaming(T)) = term(T).
+:- pred apply_renaming(term(T)::in, renaming(T)::in, term(T)::out) is det.
+
+    % As above, except applies to a list of terms rather than a single term.
+    %
+:- func apply_renaming_to_list(list(term(T)), renaming(T)) = list(term(T)).
+:- pred apply_renaming_to_list(list(term(T))::in, renaming(T)::in,
+    list(term(T))::out) is det.
+
     % occurs(Term0, Var, Substitution):
     % True iff Var occurs in the term resulting after applying Substitution
-    % to Term0. Var variable must not be mapped by Substitution.
+    % to Term0. Var must not be mapped by Substitution.
     %
 :- pred occurs(term(T)::in, var(T)::in, substitution(T)::in) is semidet.
 
@@ -1088,8 +1104,8 @@ apply_rec_substitution_to_list([Term0 | Terms0], Substitution,
 apply_substitution(Term0, Substitution, Term) :-
     (
         Term0 = variable(Var, _),
-        ( map.search(Substitution, Var, Replacement) ->
-            Term = Replacement
+        ( map.search(Substitution, Var, ReplacementTerm) ->
+            Term = ReplacementTerm
         ;
             Term = Term0
         )
@@ -1103,6 +1119,25 @@ apply_substitution_to_list([], _Substitution, []).
 apply_substitution_to_list([Term0 | Terms0], Substitution, [Term | Terms]) :-
     apply_substitution(Term0, Substitution, Term),
     apply_substitution_to_list(Terms0, Substitution, Terms).
+
+apply_renaming(Term0, Renaming, Term) :-
+    (
+        Term0 = variable(Var, Context),
+        ( map.search(Renaming, Var, ReplacementVar) ->
+            Term = variable(ReplacementVar, Context)
+        ;
+            Term = Term0
+        )
+    ;
+        Term0 = functor(Name, Args0, Context),
+        apply_renaming_to_list(Args0, Renaming, Args),
+        Term = functor(Name, Args, Context)
+    ).
+
+apply_renaming_to_list([], _Renaming, []).
+apply_renaming_to_list([Term0 | Terms0], Renaming, [Term | Terms]) :-
+    apply_renaming(Term0, Renaming, Term),
+    apply_renaming_to_list(Terms0, Renaming, Terms).
 
 %-----------------------------------------------------------------------------%
 
@@ -1286,6 +1321,12 @@ apply_substitution(T1, S) = T2 :-
 
 apply_substitution_to_list(Ts1, S) = Ts2 :-
     apply_substitution_to_list(Ts1, S, Ts2).
+
+apply_renaming(T1, R) = T2 :-
+    apply_renaming(T1, R, T2).
+
+apply_renaming_to_list(Ts1, R) = Ts2 :-
+    apply_renaming_to_list(Ts1, R, Ts2).
 
 relabel_variable(T1, V1, V2) = T2 :-
     relabel_variable(T1, V1, V2, T2).

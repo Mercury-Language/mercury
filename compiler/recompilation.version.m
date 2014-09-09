@@ -1131,7 +1131,7 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
     % Apply the substitution to the modes so that the inst variables
     % from both declarations being checked are contained in the same
     % inst_varset, then check that they are identical.
-    varset.merge_subst(VarSet1, VarSet2, _, InstSubst),
+    varset.merge_renaming(VarSet1, VarSet2, _, InstRenaming),
 
     % Treat modes as terms here to use term.list_subsumes, which does just
     % what we want here.
@@ -1151,7 +1151,7 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
         AllModeTerms2 = ModeTerms2
     ),
 
-    term.apply_substitution_to_list(AllModeTerms2, InstSubst,
+    term.apply_renaming_to_list(AllModeTerms2, InstRenaming,
         SubstAllModeTerms2),
     term.list_subsumes(AllModeTerms1, SubstAllModeTerms2, _),
     term.list_subsumes(SubstAllModeTerms2, AllModeTerms1, _).

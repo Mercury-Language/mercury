@@ -35,11 +35,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type renaming_table ==
-    map(pred_proc_id, renaming_proc).
+:- type rbmm_renaming_table ==
+    map(pred_proc_id, rbmm_renaming_proc).
 
-:- type renaming_proc ==
-    map(program_point, renaming).
+:- type rbmm_renaming_proc ==
+    map(program_point, rbmm_renaming).
 
     % Most of the time, at a program point there is only one renaming for a
     % region variable. But at some resurrection points, two renamings exists
@@ -49,12 +49,12 @@
     %       create(R), % R -> R_Resur_2
     %   (i) goal
     % That's why multi_map is used.
-:- type renaming == multi_map(string, string).
+:- type rbmm_renaming == multi_map(string, string).
 
-:- type renaming_annotation_table ==
-    map(pred_proc_id, renaming_annotation_proc).
+:- type rbmm_renaming_annotation_table ==
+    map(pred_proc_id, rbmm_renaming_annotation_proc).
 
-:- type renaming_annotation_proc ==
+:- type rbmm_renaming_annotation_proc ==
     map(program_point, list(region_instr)).
 
 :- type proc_resurrection_path_table ==
@@ -120,25 +120,25 @@
     %
 :- pred collect_region_resurrection_renaming(proc_pp_region_set_table::in,
     proc_region_set_table::in, rpta_info_table::in,
-    proc_resurrection_path_table::in,
-    renaming_table::out) is det.
+    proc_resurrection_path_table::in, rbmm_renaming_table::out) is det.
 
     % This predicate collects *renaming* along the execution paths in
     % procedures where region resurrection happens. It also computes
     % the reversed renaming *annotations* to ensure the integrity use of
     % regions.
     %
-:- pred collect_renaming_and_annotation(renaming_table::in,
+:- pred collect_renaming_and_annotation(rbmm_renaming_table::in,
     join_point_region_name_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
     rpta_info_table::in, proc_resurrection_path_table::in,
-    execution_path_table::in, renaming_annotation_table::out,
-    renaming_table::out) is det.
+    execution_path_table::in, rbmm_renaming_annotation_table::out,
+    rbmm_renaming_table::out) is det.
 
     % Record the annotation for a procedure.
     %
 :- pred record_annotation(program_point::in, region_instr::in,
-    renaming_annotation_proc::in, renaming_annotation_proc::out) is det.
+    rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::out)
+    is det.
 
     % Make a region renaming instruction.
     %
@@ -438,9 +438,8 @@ collect_region_resurrection_renaming(BecomeLiveTable, LocalRTable,
 
 :- pred collect_region_resurrection_renaming_proc(
     proc_pp_region_set_table::in, proc_region_set_table::in,
-    rpta_info_table::in, pred_proc_id::in,
-    map(execution_path, region_set)::in, renaming_table::in,
-    renaming_table::out) is det.
+    rpta_info_table::in, pred_proc_id::in, map(execution_path, region_set)::in,
+    rbmm_renaming_table::in, rbmm_renaming_table::out) is det.
 
 collect_region_resurrection_renaming_proc(BecomeLiveTable, _LocalRTable,
         RptaInfoTable, PPId, PathsContainResurrection,
@@ -455,9 +454,8 @@ collect_region_resurrection_renaming_proc(BecomeLiveTable, _LocalRTable,
     map.set(PPId, ResurrectionRenameProc, !ResurrectionRenameTable).
 
 :- pred collect_region_resurrection_renaming_exec_path(rpt_graph::in,
-    pp_region_set_table::in, execution_path::in,
-    region_set::in, renaming_proc::in,
-    renaming_proc::out) is det.
+    pp_region_set_table::in, execution_path::in, region_set::in,
+    rbmm_renaming_proc::in, rbmm_renaming_proc::out) is det.
 
 collect_region_resurrection_renaming_exec_path(Graph, BecomeLiveProc,
         ExecPath, ResurrectedRegions, !ResurrectionRenameProc) :-
@@ -469,7 +467,7 @@ collect_region_resurrection_renaming_exec_path(Graph, BecomeLiveProc,
 :- pred collect_region_resurrection_renaming_prog_point(rpt_graph::in,
     pp_region_set_table::in, region_set::in,
     pair(program_point, hlds_goal)::in, counter::in, counter::out,
-    renaming_proc::in, renaming_proc::out) is det.
+    rbmm_renaming_proc::in, rbmm_renaming_proc::out) is det.
 
 collect_region_resurrection_renaming_prog_point(Graph, BecomeLiveProc,
         ResurrectedRegions, ProgPoint - _, !RenamingCounter,
@@ -488,7 +486,7 @@ collect_region_resurrection_renaming_prog_point(Graph, BecomeLiveProc,
     ).
 
 :- pred record_renaming_prog_point(rpt_graph::in, program_point::in, int::in,
-    rptg_node::in, renaming_proc::in, renaming_proc::out) is det.
+    rptg_node::in, rbmm_renaming_proc::in, rbmm_renaming_proc::out) is det.
 
 record_renaming_prog_point(Graph, ProgPoint, RenamingCounter, Region,
         !ResurrectionRenameProc) :-
@@ -529,9 +527,9 @@ collect_renaming_and_annotation(ResurrectionRenameTable, JoinPointTable,
     join_point_region_name_table::in, proc_pp_region_set_table::in,
     proc_pp_region_set_table::in, proc_region_set_table::in,
     rpta_info_table::in, proc_resurrection_path_table::in, pred_proc_id::in,
-    renaming_proc::in,
-    renaming_annotation_table::in, renaming_annotation_table::out,
-    renaming_table::in, renaming_table::out) is det.
+    rbmm_renaming_proc::in,
+    rbmm_renaming_annotation_table::in, rbmm_renaming_annotation_table::out,
+    rbmm_renaming_table::in, rbmm_renaming_table::out) is det.
 
 collect_renaming_and_annotation_proc(ExecPathTable, JoinPointTable,
         LRBeforeTable, LRAfterTable, BornRTable, RptaInfoTable,
@@ -568,25 +566,24 @@ collect_renaming_and_annotation_proc(ExecPathTable, JoinPointTable,
     % (3) R1 --> R1_2, R2 --> R2_1 //R1 becomes live again, needs a new name.
     % ...
     %
-:- pred collect_renaming_and_annotation_exec_path(renaming_proc::in,
+:- pred collect_renaming_and_annotation_exec_path(rbmm_renaming_proc::in,
     map(program_point, string)::in, pp_region_set_table::in,
     pp_region_set_table::in, region_set::in, rpt_graph::in, region_set::in,
     execution_path::in,
-    renaming_annotation_proc::in, renaming_annotation_proc::out,
-    renaming_proc::in, renaming_proc::out) is det.
+    rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::out,
+    rbmm_renaming_proc::in, rbmm_renaming_proc::out) is det.
 
 collect_renaming_and_annotation_exec_path(_, _, _, _, _, _, _, [],
         !AnnotationProc, !RenamingProc) :-
     unexpected($module, $pred, "empty execution path").
-
-    % This is the first program point in an execution path.
-    % It cannot be a join point. Renaming is needed at this point only
-    % when it is a resurrection point.
-    %
 collect_renaming_and_annotation_exec_path(ResurrectionRenameProc,
         JoinPointProc, LRBeforeProc, LRAfterProc, BornR, Graph,
         ResurrectedRegions, [ProgPoint - _ | ProgPoint_Goals],
         !AnnotationProc, !RenamingProc) :-
+    % This is the first program point in an execution path.
+    % It cannot be a join point. Renaming is needed at this point only
+    % when it is a resurrection point.
+    %
     ( map.search(ResurrectionRenameProc, ProgPoint, ResurRename) ->
         map.set(ProgPoint, ResurRename, !RenamingProc)
     ;
@@ -597,20 +594,22 @@ collect_renaming_and_annotation_exec_path(ResurrectionRenameProc,
         ResurrectedRegions, ProgPoint, ProgPoint_Goals, !AnnotationProc,
         !RenamingProc).
 
-:- pred collect_renaming_and_annotation_exec_path_2(renaming_proc::in,
+:- pred collect_renaming_and_annotation_exec_path_2(rbmm_renaming_proc::in,
     map(program_point, string)::in, pp_region_set_table::in,
     pp_region_set_table::in,
     region_set::in, rpt_graph::in, region_set::in, program_point::in,
     execution_path::in,
-    renaming_annotation_proc::in, renaming_annotation_proc::out,
-    renaming_proc::in, renaming_proc::out) is det.
+    rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::out,
+    rbmm_renaming_proc::in, rbmm_renaming_proc::out) is det.
 
-    % This means the first program point is also the last.
-    % We do not need to do anything more.
-    %
 collect_renaming_and_annotation_exec_path_2(_, _, _, _, _, _, _, _, [],
         !AnnotationProc, !RenamingProc).
-
+    % This means the first program point is also the last.
+    % We do not need to do anything more.
+collect_renaming_and_annotation_exec_path_2(ResurrectionRenameProc,
+        JoinPointProc, LRBeforeProc, LRAfterProc, BornR, Graph,
+        ResurrectedRegions, PrevProgPoint, [ProgPoint - _ | ProgPoint_Goals],
+        !AnnotationProc, !RenamingProc) :-
     % This is a program point which is not the first.
     %
     % A program point can belong to different execution paths, therefore
@@ -630,10 +629,6 @@ collect_renaming_and_annotation_exec_path_2(_, _, _, _, _, _, _, _, [],
     % At the last program point, we need to add annotations for any region
     % parameters which resurrect.
     %
-collect_renaming_and_annotation_exec_path_2(ResurrectionRenameProc,
-        JoinPointProc, LRBeforeProc, LRAfterProc, BornR, Graph,
-        ResurrectedRegions, PrevProgPoint, [ProgPoint - _ | ProgPoint_Goals],
-        !AnnotationProc, !RenamingProc) :-
     map.lookup(!.RenamingProc, PrevProgPoint, PrevRenaming),
     ( map.search(ResurrectionRenameProc, ProgPoint, ResurRenaming) ->
         % This is a resurrection point of some region(s). We need to merge
@@ -688,9 +683,9 @@ collect_renaming_and_annotation_exec_path_2(ResurrectionRenameProc,
     % point and records renaming from existing region name.
     %
 :- pred add_annotation_and_renaming_at_join_point(program_point::in,
-    rpt_graph::in, string::in, renaming::in, rptg_node::in,
-    renaming_annotation_proc::in, renaming_annotation_proc::out,
-    renaming::in, renaming::out) is det.
+    rpt_graph::in, string::in, rbmm_renaming::in, rptg_node::in,
+    rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::out,
+    rbmm_renaming::in, rbmm_renaming::out) is det.
 
 add_annotation_and_renaming_at_join_point(PrevProgPoint, Graph, JoinPointName,
         PrevRenaming, Region, !AnnotationProc, !Renaming) :-
@@ -717,8 +712,8 @@ add_annotation_and_renaming_at_join_point(PrevProgPoint, Graph, JoinPointName,
     ).
 
 :- pred add_annotation_at_last_prog_point(program_point::in, rpt_graph::in,
-    renaming::in, rptg_node::in, renaming_annotation_proc::in,
-    renaming_annotation_proc::out) is det.
+    rbmm_renaming::in, rptg_node::in, rbmm_renaming_annotation_proc::in,
+    rbmm_renaming_annotation_proc::out) is det.
 
 add_annotation_at_last_prog_point(ProgPoint, Graph, Renaming, Region,
         !AnnotationProc) :-
