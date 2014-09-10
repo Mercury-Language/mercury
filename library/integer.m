@@ -608,7 +608,7 @@ int_to_integer(D) = Int :-
         Int = i(-1, [D])
     ;
         ( int.min_int(D) ->
-            % were we to call int.abs, int overflow might occur.
+            % Were we to call int.abs, int overflow might occur.
             Int = integer(D + 1) - integer.one
         ;
             Int = big_sign(D, pos_int_to_digits(int.abs(D)))
@@ -1263,9 +1263,8 @@ printbase_pos_mul_list([X|Xs], Carry, Y) =
 
 %-----------------------------------------------------------------------------%
 
-integer.from_base_string(Base0, String) = Integer :-
+integer.from_base_string(Base, String) = Integer :-
     string.index(String, 0, Char),
-    Base = integer(Base0),
     Len = string.length(String),
     ( Char = ('-') ->
         Len > 1,
@@ -1283,14 +1282,13 @@ integer.from_base_string(Base0, String) = Integer :-
         Integer = N
     ).
 
-:- pred accumulate_integer(integer::in, char::in, integer::in, integer::out)
+:- pred accumulate_integer(int::in, char::in, integer::in, integer::out)
     is semidet.
 
 accumulate_integer(Base, Char, !N) :-
-    char.digit_to_int(Char, Digit0),
+    char.base_digit_to_int(Base, Char, Digit0),
     Digit = integer(Digit0),
-    Digit < Base,
-    !:N = (Base * !.N) + Digit.
+    !:N = (integer(Base) * !.N) + Digit.
 
 integer.det_from_base_string(Base, String) = Integer :-
     ( Integer0 = integer.from_base_string(Base, String) ->

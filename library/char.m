@@ -68,8 +68,8 @@
     % Converts an integer to its corresponding character. Aborts
     % if there isn't one.
     %
-:- pred char.det_from_int(int::in, char::out) is det.
 :- func char.det_from_int(int) = char.
+:- pred char.det_from_int(int::in, char::out) is det.
 
     % Returns the maximum numerical character code.
     %
@@ -141,48 +141,102 @@
     %
 :- pred char.is_binary_digit(char::in) is semidet.
 
-    % True iff the character is a octal digit (0-7) in the ASCII range.
+    % True iff the character is an octal digit (0-7) in the ASCII range.
     %
 :- pred char.is_octal_digit(char::in) is semidet.
 
-    % True iff the character is a hexadecimal digit (0-9, a-f, A-F)
-    % in the ASCII range.
+    % True iff the character is a decimal digit (0-9) in the ASCII range.
+    % Synonym for char.is_digit/1.
+    %
+:- pred char.is_decimal_digit(char::in) is semidet.
+
+    % True iff the character is a hexadecimal digit (0-9, a-f, A-F) in the
+    % ASCII range.
     %
 :- pred char.is_hex_digit(char::in) is semidet.
-
-:- pred char.is_hex_digit(char, int).
-:- mode char.is_hex_digit(in, out) is semidet.
-
-    % Convert an integer 0-15 to a hexadecimal digit (0-9, A-F)
-    % in the ASCII range.
+    
+    % is_base_digit(Base, Digit):
+    % True iff Digit is a digit in the given Base (0-9, a-z, A-Z).
+    % Throws an exception if Base < 2 or Base > 36.
     %
-:- pred char.int_to_hex_char(int, char).
-:- mode char.int_to_hex_char(in, out) is semidet.
+:- pred char.is_base_digit(int::in, char::in) is semidet.
+    
+    % Convert an integer in the range 0-1 to a binary digit (0 or 1) in the
+    % ASCII range.
+    %
+:- pred char.int_to_binary_digit(int::in, char::out) is semidet.
 
-    % Succeeds if char is a decimal digit (0-9) or letter (a-z or A-Z).
-    % Returns the character's value as a digit (0-9 or 10-35).
+    % Convert an integer 0-7 to an octal digit (0-7) in the ASCII range.
     %
-:- pred char.digit_to_int(char::in, int::out) is semidet.
+:- pred char.int_to_octal_digit(int::in, char::out) is semidet.
 
-    % As above, but calls error/1 instead of failing.
+    % Convert an integer 0-9 to a decimal digit (0-9) in the ASCII range.
     %
-:- func char.det_digit_to_int(char) = int.
+:- pred char.int_to_decimal_digit(int::in, char::out) is semidet.
 
-    % char.int_to_uppercase_digit(Int, DigitChar):
+    % Convert an integer 0-15 to an uppercase hexadecimal digit (0-9, A-F) in
+    % the ASCII range.
     %
-    % True iff `Int' is an integer in the range 0-35 and
-    % `DigitChar' is a decimal digit or uppercase letter
-    % whose value as a digit is `Int'.
+:- pred char.int_to_hex_digit(int::in, char::out) is semidet.
+    
+    % base_int_to_digit(Base, Int, Char):
+    % True iff Char is a decimal digit (0-9) or an uppercase letter (A-Z)
+    % representing the value Int (0-35) in the given base.
+    % Throws an exception if Base < 2 or Base > 36.
     %
-:- pred char.int_to_digit(int, char).
-:- mode char.int_to_digit(in, out) is semidet.
-:- mode char.int_to_digit(out, in) is semidet.
+:- pred char.base_int_to_digit(int::in, int::in, char::out) is semidet.
 
-    % Returns a decimal digit or uppercase letter corresponding to the value.
-    % Calls error/1 if the integer is not in the range 0-35.
+    % As above, but throw an exception instead of failing.
     %
-:- func char.det_int_to_digit(int) = char.
-:- pred char.det_int_to_digit(int::in, char::out) is det.
+:- func char.det_base_int_to_digit(int, int) = char.
+
+    % binary_digit_to_int(Char, Int):
+    % True iff Char is a binary digit (0-1) representing the value Int.
+    %
+:- pred char.binary_digit_to_int(char::in, int::out) is semidet.
+
+    % As above, but throws an exception instead of failing.
+    %
+:- func char.det_binary_digit_to_int(char) = int.
+
+    % octal_digit_to_int(Char, Int):
+    % True iff Char is an octal digit (0-7) representing the value Int.
+    %
+:- pred char.octal_digit_to_int(char::in, int::out) is semidet.
+
+    % As above, but throws an exception instead of failing.
+    %
+:- func char.det_octal_digit_to_int(char) = int.
+
+    % decimal_digit_to_int(Char, Int):
+    % True iff Char is a decimal digit (0-9) representing the value Int.
+    %
+:- pred char.decimal_digit_to_int(char::in, int::out) is semidet.
+
+    % As above, but throws an exception instead of failing.
+    %
+:- func char.det_decimal_digit_to_int(char) = int.
+
+    % hex_digit_to_int(Char, Int):
+    % True iff Char is a hexadecimal digit (0-9, a-z or A-F) representing the
+    % value Int.
+    %
+:- pred char.hex_digit_to_int(char::in, int::out) is semidet.
+
+    % As above, but throws an exception instead of failing.
+    %
+:- func char.det_hex_digit_to_int(char) = int.
+
+    % base_digit_to_int(Base, Char, Int):
+    % True iff Char is a decimal digit (0-9) or a letter (a-z, A-Z)
+    % representing the value Int (0-35) in the given base.
+    % Throws an exception if Base < 2 or Base > 36.
+    %
+:- pred char.base_digit_to_int(int::in, char::in, int::out) is semidet.
+
+    % As above, but throws an exception instead of failing.
+    %
+:- func char.det_base_digit_to_int(int, char) = int.
 
     % Convert a char to a pretty_printer.doc for formatting.
     %
@@ -212,6 +266,59 @@
 :- pred char.is_noncharacter(char::in) is semidet.
 
 %-----------------------------------------------------------------------------%
+
+% The following have all been deprecated.
+    
+    % Use hex_digit_to_int/2 instead.
+    %
+:- pred char.is_hex_digit(char, int).
+:- mode char.is_hex_digit(in, out) is semidet.
+
+    % Convert an integer 0-15 to a hexadecimal digit (0-9, A-F) in the ASCII
+    % range.
+    %
+    % Use char.int_to_hex_digit/2 instead.
+    %
+:- pred char.int_to_hex_char(int, char).
+:- mode char.int_to_hex_char(in, out) is semidet.
+
+    % Succeeds if char is a decimal digit (0-9) or letter (a-z or A-Z).
+    % Returns the character's value as a digit (0-9 or 10-35).
+    %
+:- pragma obsolete(char.digit_to_int/2).
+:- pred char.digit_to_int(char::in, int::out) is semidet.
+
+    % char.int_to_digit(Int, Char):
+    %
+    % True iff Int is an integer in the range 0-35 and Char is a
+    % decimal digit or uppercase letter whose value as a digit is Int.
+    %
+    % Use whichever of int_to_binary_digit/2, int_to_octal_digit/2,
+    % int_to_decimal_digit/2, int_to_hex_digit/2 or base_int_to_digit/3 is
+    % appropriate instead of the (in, out) mode 
+    %
+    % Use whichever of binary_digit_to_int/2, octal_digit_to_int/2,
+    % decimal_digit_to_int/2, hex_digit_to_int/2 or base_digit_to_int/3
+    % is appropriate instead of the (out, in) mode.
+    %
+:- pragma obsolete(char.int_to_digit/2).
+:- pred char.int_to_digit(int, char).
+:- mode char.int_to_digit(in, out) is semidet.
+:- mode char.int_to_digit(out, in) is semidet.
+
+    % Returns a decimal digit or uppercase letter corresponding to the value.
+    % Calls error/1 if the integer is not in the range 0-35.
+    %
+    % Use whichever of det_int_to_binary_digit/1, det_int_to_octal_digit/1
+    % det_int_to_decimal_digit/1, det_int_to_hex_digit/1 or
+    % det_base_int_to_digit/2 is appropriate instead.
+    %
+:- pragma obsolete(char.det_int_to_digit/1).
+:- func char.det_int_to_digit(int) = char.
+:- pragma obsolete(char.det_int_to_digit/2).
+:- pred char.det_int_to_digit(int::in, char::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -227,14 +334,14 @@
 
 % The information here is duplicated in lookup_token_action in lexer.m.
 % If you update this; you will also need update that.
-char.is_whitespace(' ').
-char.is_whitespace('\t').
-char.is_whitespace('\n').
-char.is_whitespace('\r').
-char.is_whitespace('\f').
-char.is_whitespace('\v').
+is_whitespace(' ').
+is_whitespace('\t').
+is_whitespace('\n').
+is_whitespace('\r').
+is_whitespace('\f').
+is_whitespace('\v').
 
-char.is_alpha(Char) :-
+is_alpha(Char) :-
     ( char.is_lower(Char) ->
         true
     ; char.is_upper(Char) ->
@@ -243,7 +350,7 @@ char.is_alpha(Char) :-
         fail
     ).
 
-char.is_alnum(Char) :-
+is_alnum(Char) :-
     ( char.is_alpha(Char) ->
         true
     ; char.is_digit(Char) ->
@@ -252,7 +359,7 @@ char.is_alnum(Char) :-
         fail
     ).
 
-char.is_alpha_or_underscore(Char) :-
+is_alpha_or_underscore(Char) :-
     ( Char = '_' ->
         true
     ;
@@ -262,7 +369,7 @@ char.is_alpha_or_underscore(Char) :-
     % We explicitly enumerate here for efficiency.
     % (The information here and in some of the following predicates,
     % e.g. char.lower_upper, is duplicated in lookup_token_action in lexer.m.)
-char.is_alnum_or_underscore(Char) :-
+is_alnum_or_underscore(Char) :-
     ( Char = '0'
     ; Char = '1'
     ; Char = '2'
@@ -334,30 +441,30 @@ char.is_alnum_or_underscore(Char) :-
 %       char.is_alpha_or_underscore(Char)
 %   ).
 
-char.is_lower(Lower) :-
+is_lower(Lower) :-
     char.lower_upper(Lower, _).
 
-char.is_upper(Upper) :-
+is_upper(Upper) :-
     ( char.lower_upper(_, Upper) ->
         true
     ;
         fail
     ).
 
-char.to_lower(C1) = C2 :-
+to_lower(C1) = C2 :-
     char.to_lower(C1, C2).
 
-char.to_lower(Char, Lower) :-
+to_lower(Char, Lower) :-
     ( char.lower_upper(LowerChar, Char) ->
         Lower = LowerChar
     ;
         Lower = Char
     ).
 
-char.to_upper(C1) = C2 :-
+to_upper(C1) = C2 :-
     char.to_upper(C1, C2).
 
-char.to_upper(Char, Upper) :-
+to_upper(Char, Upper) :-
     ( char.lower_upper(Char, UpperChar) ->
         Upper = UpperChar
     ;
@@ -372,71 +479,228 @@ char.to_upper(Char, Upper) :-
 % but these versions are very portable.
 
 %-----------------------------------------------------------------------------%
+%
+% Digit classification.
+%
 
-char.is_binary_digit('0').
-char.is_binary_digit('1').
+is_binary_digit('0').
+is_binary_digit('1').
 
-char.is_octal_digit('0').
-char.is_octal_digit('1').
-char.is_octal_digit('2').
-char.is_octal_digit('3').
-char.is_octal_digit('4').
-char.is_octal_digit('5').
-char.is_octal_digit('6').
-char.is_octal_digit('7').
+is_octal_digit('0').
+is_octal_digit('1').
+is_octal_digit('2').
+is_octal_digit('3').
+is_octal_digit('4').
+is_octal_digit('5').
+is_octal_digit('6').
+is_octal_digit('7').
 
-char.is_digit('0').
-char.is_digit('1').
-char.is_digit('2').
-char.is_digit('3').
-char.is_digit('4').
-char.is_digit('5').
-char.is_digit('6').
-char.is_digit('7').
-char.is_digit('8').
-char.is_digit('9').
+is_decimal_digit('0').
+is_decimal_digit('1').
+is_decimal_digit('2').
+is_decimal_digit('3').
+is_decimal_digit('4').
+is_decimal_digit('5').
+is_decimal_digit('6').
+is_decimal_digit('7').
+is_decimal_digit('8').
+is_decimal_digit('9').
 
-char.is_hex_digit(X) :- char.is_hex_digit(X, _).
+is_digit(D) :- is_decimal_digit(D).
 
-char.is_hex_digit('0', 0).
-char.is_hex_digit('1', 1).
-char.is_hex_digit('2', 2).
-char.is_hex_digit('3', 3).
-char.is_hex_digit('4', 4).
-char.is_hex_digit('5', 5).
-char.is_hex_digit('6', 6).
-char.is_hex_digit('7', 7).
-char.is_hex_digit('8', 8).
-char.is_hex_digit('9', 9).
-char.is_hex_digit('a', 10).
-char.is_hex_digit('b', 11).
-char.is_hex_digit('c', 12).
-char.is_hex_digit('d', 13).
-char.is_hex_digit('e', 14).
-char.is_hex_digit('f', 15).
-char.is_hex_digit('A', 10).
-char.is_hex_digit('B', 11).
-char.is_hex_digit('C', 12).
-char.is_hex_digit('D', 13).
-char.is_hex_digit('E', 14).
-char.is_hex_digit('F', 15).
+is_hex_digit('0').
+is_hex_digit('1').
+is_hex_digit('2').
+is_hex_digit('3').
+is_hex_digit('4').
+is_hex_digit('5').
+is_hex_digit('6').
+is_hex_digit('7').
+is_hex_digit('8').
+is_hex_digit('9').
+is_hex_digit('a').
+is_hex_digit('b').
+is_hex_digit('c').
+is_hex_digit('d').
+is_hex_digit('e').
+is_hex_digit('f').
+is_hex_digit('A').
+is_hex_digit('B').
+is_hex_digit('C').
+is_hex_digit('D').
+is_hex_digit('E').
+is_hex_digit('F').
 
-char.int_to_hex_char(0, '0').
-char.int_to_hex_char(1, '1').
-char.int_to_hex_char(2, '2').
-char.int_to_hex_char(3, '3').
-char.int_to_hex_char(4, '4').
-char.int_to_hex_char(5, '5').
-char.int_to_hex_char(6, '6').
-char.int_to_hex_char(7, '7').
-char.int_to_hex_char(8, '8').
-char.int_to_hex_char(9, '9').
-char.int_to_hex_char(10, 'A').
-char.int_to_hex_char(11, 'B').
-char.int_to_hex_char(12, 'C').
-char.int_to_hex_char(13, 'D').
-char.int_to_hex_char(14, 'E').
-char.int_to_hex_char(15, 'F').
+is_base_digit(Base, Digit) :-
+    ( Base > 1, Base < 37 ->
+        base_digit_to_int(Base, Digit, _Int)
+    ;
+        error("char.is_base_digit: invalid base")
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Digit to integer conversion.
+%
+
+binary_digit_to_int('0', 0).
+binary_digit_to_int('1', 1).
+
+det_binary_digit_to_int(Digit) = Int :-
+    ( binary_digit_to_int(Digit, Int0) ->
+        Int = Int0
+    ;
+        error("char.binary_digit_to_int failed")
+    ). 
+
+octal_digit_to_int('0', 0).
+octal_digit_to_int('1', 1).
+octal_digit_to_int('2', 2).
+octal_digit_to_int('3', 3).
+octal_digit_to_int('4', 4).
+octal_digit_to_int('5', 5).
+octal_digit_to_int('6', 6).
+octal_digit_to_int('7', 7).
+
+det_octal_digit_to_int(Digit) = Int :-
+    ( octal_digit_to_int(Digit, Int0) ->
+        Int = Int0
+    ;
+        error("char.octal_digit_to_int failed")
+    ).
+
+decimal_digit_to_int('0', 0).
+decimal_digit_to_int('1', 1).
+decimal_digit_to_int('2', 2).
+decimal_digit_to_int('3', 3).
+decimal_digit_to_int('4', 4).
+decimal_digit_to_int('5', 5).
+decimal_digit_to_int('6', 6).
+decimal_digit_to_int('7', 7).
+decimal_digit_to_int('8', 8).
+decimal_digit_to_int('9', 9).
+
+det_decimal_digit_to_int(Digit) = Int :-
+    ( decimal_digit_to_int(Digit, Int0) ->
+        Int = Int0
+    ;
+        error("char.decimal_digit_to_int failed")
+    ).
+
+is_hex_digit(Digit, Int) :-
+    hex_digit_to_int(Digit, Int).
+
+hex_digit_to_int('0', 0).
+hex_digit_to_int('1', 1).
+hex_digit_to_int('2', 2).
+hex_digit_to_int('3', 3).
+hex_digit_to_int('4', 4).
+hex_digit_to_int('5', 5).
+hex_digit_to_int('6', 6).
+hex_digit_to_int('7', 7).
+hex_digit_to_int('8', 8).
+hex_digit_to_int('9', 9).
+hex_digit_to_int('a', 10).
+hex_digit_to_int('b', 11).
+hex_digit_to_int('c', 12).
+hex_digit_to_int('d', 13).
+hex_digit_to_int('e', 14).
+hex_digit_to_int('f', 15).
+hex_digit_to_int('A', 10).
+hex_digit_to_int('B', 11).
+hex_digit_to_int('C', 12).
+hex_digit_to_int('D', 13).
+hex_digit_to_int('E', 14).
+hex_digit_to_int('F', 15).
+
+det_hex_digit_to_int(Digit) = Int :-
+    ( hex_digit_to_int(Digit, Int0) ->
+        Int = Int0
+    ;
+        error("char.hex_digit_to_int failed")
+    ).
+
+base_digit_to_int(Base, Digit, Int) :-
+    ( Base > 1, Base < 37 ->
+        ( char.lower_upper(Digit, Upper) ->
+            int_to_extended_digit(Int, Upper)
+        ;
+            int_to_extended_digit(Int, Digit)
+        ),
+        Int < Base
+    ;
+        error("char.base_digit_to_int: invalid base")
+    ).
+
+det_base_digit_to_int(Base, Digit) = Int :-
+    ( base_digit_to_int(Base, Digit, Int0) ->
+        Int = Int0
+    ;
+        error("char.base_digit_to_int failed")
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Integer to digit conversion.
+%
+
+int_to_binary_digit(0, '0').
+int_to_binary_digit(1, '1').
+
+int_to_octal_digit(0, '0').
+int_to_octal_digit(1, '1').
+int_to_octal_digit(2, '2').
+int_to_octal_digit(3, '3').
+int_to_octal_digit(4, '4').
+int_to_octal_digit(5, '5').
+int_to_octal_digit(6, '6').
+int_to_octal_digit(7, '7').
+
+int_to_decimal_digit(0, '0').
+int_to_decimal_digit(1, '1').
+int_to_decimal_digit(2, '2').
+int_to_decimal_digit(3, '3').
+int_to_decimal_digit(4, '4').
+int_to_decimal_digit(5, '5').
+int_to_decimal_digit(6, '6').
+int_to_decimal_digit(7, '7').
+int_to_decimal_digit(8, '8').
+int_to_decimal_digit(9, '9').
+
+int_to_hex_digit(0, '0').
+int_to_hex_digit(1, '1').
+int_to_hex_digit(2, '2').
+int_to_hex_digit(3, '3').
+int_to_hex_digit(4, '4').
+int_to_hex_digit(5, '5').
+int_to_hex_digit(6, '6').
+int_to_hex_digit(7, '7').
+int_to_hex_digit(8, '8').
+int_to_hex_digit(9, '9').
+int_to_hex_digit(10, 'A').
+int_to_hex_digit(11, 'B').
+int_to_hex_digit(12, 'C').
+int_to_hex_digit(13, 'D').
+int_to_hex_digit(14, 'E').
+int_to_hex_digit(15, 'F').
+
+int_to_hex_char(Int, Char) :-
+    int_to_hex_digit(Int, Char).
+
+base_int_to_digit(Base, Int, Digit) :-
+    ( Base > 1, Base < 37 ->
+        Int < Base,
+        int_to_extended_digit(Int, Digit)
+    ;
+        error("char.base_int_to_digit: invalid base")
+    ).
+
+det_base_int_to_digit(Base, Int) = Digit :-
+    ( base_int_to_digit(Base, Int, Digit0) ->
+        Digit = Digit0
+    ;
+        error("char.base_int_to_digit failed")
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -444,91 +708,91 @@ char.det_int_to_digit(N) = C :-
     char.det_int_to_digit(N, C).
 
 char.det_int_to_digit(Int, Digit) :-
-    ( char.int_to_digit(Int, Digit1) ->
+    ( int_to_extended_digit(Int, Digit1) ->
         Digit = Digit1
     ;
         error("char.int_to_digit failed")
     ).
 
-char.int_to_digit(0, '0').
-char.int_to_digit(1, '1').
-char.int_to_digit(2, '2').
-char.int_to_digit(3, '3').
-char.int_to_digit(4, '4').
-char.int_to_digit(5, '5').
-char.int_to_digit(6, '6').
-char.int_to_digit(7, '7').
-char.int_to_digit(8, '8').
-char.int_to_digit(9, '9').
-char.int_to_digit(10, 'A').
-char.int_to_digit(11, 'B').
-char.int_to_digit(12, 'C').
-char.int_to_digit(13, 'D').
-char.int_to_digit(14, 'E').
-char.int_to_digit(15, 'F').
-char.int_to_digit(16, 'G').
-char.int_to_digit(17, 'H').
-char.int_to_digit(18, 'I').
-char.int_to_digit(19, 'J').
-char.int_to_digit(20, 'K').
-char.int_to_digit(21, 'L').
-char.int_to_digit(22, 'M').
-char.int_to_digit(23, 'N').
-char.int_to_digit(24, 'O').
-char.int_to_digit(25, 'P').
-char.int_to_digit(26, 'Q').
-char.int_to_digit(27, 'R').
-char.int_to_digit(28, 'S').
-char.int_to_digit(29, 'T').
-char.int_to_digit(30, 'U').
-char.int_to_digit(31, 'V').
-char.int_to_digit(32, 'W').
-char.int_to_digit(33, 'X').
-char.int_to_digit(34, 'Y').
-char.int_to_digit(35, 'Z').
+:- pred int_to_extended_digit(int, char).
+:- mode int_to_extended_digit(in, out) is semidet.
+:- mode int_to_extended_digit(out, in) is semidet.
+
+int_to_extended_digit(0, '0').
+int_to_extended_digit(1, '1').
+int_to_extended_digit(2, '2').
+int_to_extended_digit(3, '3').
+int_to_extended_digit(4, '4').
+int_to_extended_digit(5, '5').
+int_to_extended_digit(6, '6').
+int_to_extended_digit(7, '7').
+int_to_extended_digit(8, '8').
+int_to_extended_digit(9, '9').
+int_to_extended_digit(10, 'A').
+int_to_extended_digit(11, 'B').
+int_to_extended_digit(12, 'C').
+int_to_extended_digit(13, 'D').
+int_to_extended_digit(14, 'E').
+int_to_extended_digit(15, 'F').
+int_to_extended_digit(16, 'G').
+int_to_extended_digit(17, 'H').
+int_to_extended_digit(18, 'I').
+int_to_extended_digit(19, 'J').
+int_to_extended_digit(20, 'K').
+int_to_extended_digit(21, 'L').
+int_to_extended_digit(22, 'M').
+int_to_extended_digit(23, 'N').
+int_to_extended_digit(24, 'O').
+int_to_extended_digit(25, 'P').
+int_to_extended_digit(26, 'Q').
+int_to_extended_digit(27, 'R').
+int_to_extended_digit(28, 'S').
+int_to_extended_digit(29, 'T').
+int_to_extended_digit(30, 'U').
+int_to_extended_digit(31, 'V').
+int_to_extended_digit(32, 'W').
+int_to_extended_digit(33, 'X').
+int_to_extended_digit(34, 'Y').
+int_to_extended_digit(35, 'Z').
+
+int_to_digit(Int, Digit) :-
+    int_to_extended_digit(Int, Digit).
 
 char.digit_to_int(Digit, Int) :-
     ( char.lower_upper(Digit, Upper) ->
-        char.int_to_digit(Int, Upper)
+        int_to_extended_digit(Int, Upper)
     ;
-        char.int_to_digit(Int, Digit)
-    ).
-
-char.det_digit_to_int(Digit) = Int :-
-    ( digit_to_int(Digit, Int0) ->
-        Int = Int0
-    ;
-        error("char.digit_to_int failed")
+        int_to_extended_digit(Int, Digit)
     ).
 
 %-----------------------------------------------------------------------------%
 
-char.lower_upper('a', 'A').
-char.lower_upper('b', 'B').
-char.lower_upper('c', 'C').
-char.lower_upper('d', 'D').
-char.lower_upper('e', 'E').
-char.lower_upper('f', 'F').
-char.lower_upper('g', 'G').
-char.lower_upper('h', 'H').
-char.lower_upper('i', 'I').
-char.lower_upper('j', 'J').
-char.lower_upper('k', 'K').
-char.lower_upper('l', 'L').
-char.lower_upper('m', 'M').
-char.lower_upper('n', 'N').
-char.lower_upper('o', 'O').
-char.lower_upper('p', 'P').
-char.lower_upper('q', 'Q').
-char.lower_upper('r', 'R').
-char.lower_upper('s', 'S').
-char.lower_upper('t', 'T').
-char.lower_upper('u', 'U').
-char.lower_upper('v', 'V').
-char.lower_upper('w', 'W').
-char.lower_upper('x', 'X').
-char.lower_upper('y', 'Y').
-char.lower_upper('z', 'Z').
+lower_upper('a', 'A').
+lower_upper('b', 'B').
+lower_upper('c', 'C').
+lower_upper('d', 'D').
+lower_upper('e', 'E').
+lower_upper('f', 'F').
+lower_upper('g', 'G').
+lower_upper('h', 'H').
+lower_upper('i', 'I').
+lower_upper('j', 'J').
+lower_upper('k', 'K').
+lower_upper('l', 'L').
+lower_upper('m', 'M').
+lower_upper('n', 'N').
+lower_upper('o', 'O').
+lower_upper('p', 'P').
+lower_upper('q', 'Q').
+lower_upper('r', 'R').
+lower_upper('s', 'S').
+lower_upper('t', 'T').
+lower_upper('u', 'U').
+lower_upper('v', 'V').
+lower_upper('w', 'W').
+lower_upper('x', 'X').
+lower_upper('y', 'Y').
+lower_upper('z', 'Z').
 
 %-----------------------------------------------------------------------------%
 
@@ -566,7 +830,7 @@ char.to_int(C) = N :-
 
 :- pragma foreign_proc("C",
     char.to_int(Character::out, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe,
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Character = Int;
@@ -653,7 +917,7 @@ char.max_char_value = N :-
 
 :- pragma foreign_proc("C",
     char.max_char_value(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Max = 0x10ffff;

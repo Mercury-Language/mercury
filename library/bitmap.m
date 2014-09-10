@@ -1396,9 +1396,9 @@ to_string_chars(Index, BM, !Chars) :-
         Byte = BM ^ unsafe_byte(Index),
         Mask = n_bit_mask(4),
         ( if
-            char.int_to_hex_char((Byte `unchecked_right_shift` 4) /\ Mask,
+            char.int_to_hex_digit((Byte `unchecked_right_shift` 4) /\ Mask,
                 HighChar),
-            char.int_to_hex_char(Byte /\ Mask, LowChar)
+            char.int_to_hex_digit(Byte /\ Mask, LowChar)
           then
             !:Chars = [HighChar, LowChar | !.Chars],
             to_string_chars(Index - 1, BM, !Chars)
@@ -1433,8 +1433,8 @@ hex_chars_to_bitmap(Str, Index, End, ByteIndex, !BM) :-
         % Each byte of the bitmap should have mapped to a pair of characters.
         fail
       else
-        char.is_hex_digit(Str ^ unsafe_elem(Index), HighNibble),
-        char.is_hex_digit(Str ^ unsafe_elem(Index + 1), LowNibble),
+        char.hex_digit_to_int(Str ^ unsafe_elem(Index), HighNibble),
+        char.hex_digit_to_int(Str ^ unsafe_elem(Index + 1), LowNibble),
         Byte = (HighNibble `unchecked_left_shift` 4) \/ LowNibble,
         !:BM = !.BM ^ unsafe_byte(ByteIndex) := Byte,
         hex_chars_to_bitmap(Str, Index + 2, End, ByteIndex + 1, !BM)

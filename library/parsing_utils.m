@@ -883,8 +883,7 @@ int_literal(Src, Int, !PS) :-
 
 digits(Base, Src, unit, !PS) :-
     next_char(Src, C, !PS),
-    char.digit_to_int(C, D),
-    D < Base,
+    char.is_base_digit(Base, C),
     digits_2(Base, Src, _, !PS).
 
 :- pred digits_2(int::in, src::in, unit::out, ps::in, ps::out) is semidet.
@@ -892,11 +891,10 @@ digits(Base, Src, unit, !PS) :-
 digits_2(Base, Src, unit, !PS) :-
     ( if
         next_char(Src, C, !PS),
-        char.digit_to_int(C, D),
-        D < Base
-      then
+        char.is_base_digit(Base, C)
+    then
         digits_2(Base, Src, _, !PS)
-      else
+    else
         true
     ).
 

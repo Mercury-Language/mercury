@@ -1193,8 +1193,7 @@ string.base_string_to_int(Base, String, Int) :-
 :- pred accumulate_int(int::in, char::in, int::in, int::out) is semidet.
 
 accumulate_int(Base, Char, N0, N) :-
-    char.digit_to_int(Char, M),
-    M < Base,
+    char.base_digit_to_int(Base, Char, M),
     N = (Base * N0) + M,
     ( N0 =< N ; Base \= 10 ).           % Fail on overflow for base 10 numbers.
 
@@ -1202,8 +1201,7 @@ accumulate_int(Base, Char, N0, N) :-
     int::in, int::out) is semidet.
 
 accumulate_negative_int(Base, Char, N0, N) :-
-    char.digit_to_int(Char, M),
-    M < Base,
+    char.base_digit_to_int(Base, Char, M),
     N = (Base * N0) - M,
     ( N =< N0 ; Base \= 10 ).       % Fail on underflow for base 10 numbers.
 
@@ -1518,12 +1516,12 @@ string.int_to_base_string_1(N, Base, Str) :-
 string.int_to_base_string_2(NegN, Base, !RevChars) :-
     ( NegN > -Base ->
         N = -NegN,
-        char.det_int_to_digit(N, DigitChar),
+        DigitChar = char.det_base_int_to_digit(Base, N),
         !:RevChars = [DigitChar | !.RevChars]
     ;
         NegN1 = NegN // Base,
         N10 = (NegN1 * Base) - NegN,
-        char.det_int_to_digit(N10, DigitChar),
+        DigitChar = char.det_base_int_to_digit(Base, N10),
         string.int_to_base_string_2(NegN1, Base, !RevChars),
         !:RevChars = [DigitChar | !.RevChars]
     ).
@@ -1609,12 +1607,12 @@ string.int_to_base_string_group_2(NegN, Base, Curr, Period, Sep, Str) :-
     ;
         ( NegN > -Base ->
             N = -NegN,
-            char.det_int_to_digit(N, DigitChar),
+            DigitChar = char.det_base_int_to_digit(Base, N),
             string.char_to_string(DigitChar, Str)
         ;
             NegN1 = NegN // Base,
             N10 = (NegN1 * Base) - NegN,
-            char.det_int_to_digit(N10, DigitChar),
+            DigitChar = char.det_base_int_to_digit(Base, N10),
             string.char_to_string(DigitChar, DigitString),
             string.int_to_base_string_group_2(NegN1, Base, Curr + 1, Period,
                 Sep, Str1),

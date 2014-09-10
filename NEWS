@@ -35,7 +35,32 @@ Changes to the Mercury standard library:
 
 * Procedures in the store module no longer acquire the global lock.
 
-* We have added the function det_digit_to_int/1 to the char module.
+* The following predicates and functions have been added to the char module:
+
+    - is_decimal_digit/1
+    - is_base_digit/2
+    - int_to_binary_digit/2
+    - int_to_octal_digit/2
+    - int_to_decimal_digit/2
+    - int_to_hex_digit/2
+    - base_int_to_digit/3, det_base_int_to_digit/2
+    - binary_digit_to_int/2, det_binary_digit_to_int/1
+    - octal_digit_to_int/2, det_octal_digit_to_int/1
+    - decimal_digit_to_int/2, det_decimal_digit_to_int/1
+    - hex_digit_to_int/2, det_hex_digit_to_int/1
+    - base_digit_to_int/3, det_base_digit_to_int/2
+
+  The following predicates in the char module have been deprecated and will
+  either be removed or have their semantics changed in a future release.
+
+    - is_hex_digit/2
+    - int_to_hex_char/2
+    - digit_to_int/2
+    - int_to_digit/2
+    - det_int_to_digit/1, det_int_to_digit/2
+
+  NOTE: existing code that calls char.digit_to_int/2 assuming that it will
+  only succeed for decimal digits (0-9) may be broken.
 
 Changes to the Mercury compiler:
 
