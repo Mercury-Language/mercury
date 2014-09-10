@@ -28,8 +28,9 @@
 
     % Warn about variables with overlapping scopes.
     %
-:- pred warn_overlap(list(quant_warning)::in, prog_varset::in,
-    simple_call_id::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred add_quant_warnings(simple_call_id::in, prog_varset::in,
+    list(quant_warning)::in, list(error_spec)::in, list(error_spec)::out)
+    is det.
 
     % Warn about variables which occur only once but don't start with
     % an underscore, or about variables which do start with an underscore
@@ -86,16 +87,16 @@
 
 %----------------------------------------------------------------------------%
 
-warn_overlap(Warnings, VarSet, PredCallId, !Specs) :-
-    !:Specs =
-        list.map(warn_overlap_to_spec(VarSet, PredCallId), Warnings)
-        ++ !.Specs.
+add_quant_warnings(PredCallId, VarSet, Warnings, !Specs) :-
+    WarningSpecs =
+        list.map(quant_warning_to_spec(PredCallId, VarSet), Warnings),
+    !:Specs = WarningSpecs ++ !.Specs.
 
-:- func warn_overlap_to_spec(prog_varset, simple_call_id, quant_warning)
+:- func quant_warning_to_spec(simple_call_id, prog_varset, quant_warning)
     = error_spec.
 
-warn_overlap_to_spec(VarSet, PredCallId, Warn) = Spec :-
-    Warn = warn_overlap(Vars, Context),
+quant_warning_to_spec(PredCallId, VarSet, Warning) = Spec :-
+    Warning = warn_overlap(Vars, Context),
     Pieces1 =
         [words("In clause for"), simple_call(PredCallId), suffix(":"), nl],
     ( Vars = [Var] ->

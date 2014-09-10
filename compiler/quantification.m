@@ -43,6 +43,17 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Quantification can detect some situations (currently just one)
+    % that users deserve warnings about. The reason we return warnings
+    % in the form of quant_warnings, which must be converted to error_specs
+    % by add_quant_warnings in make_hlds_warn.m, is that most invocations
+    % of quantification are AFTER semantic analysis, and as such, they
+    % do not report any warnings. Throwing away cheaply-built quant_warnings
+    % is much less of a waste than throwing away relatively expensively-built
+    % error_specs.
+:- type quant_warning
+    --->    warn_overlap(list(prog_var), prog_context).
+
     % When the compiler performs structure reuse, using the ordinary nonlocals
     % during code generation causes variables taken from the reused cell in
     % a reconstruction to be extracted and possibly stored on the stack
@@ -86,9 +97,6 @@
     % We return a list of warnings back to make_hlds.m.
     % Currently the only thing we warn about is variables with
     % overlapping scopes.
-
-:- type quant_warning
-    --->    warn_overlap(list(prog_var), prog_context).
 
     % free_goal_vars(Goal) = Vars:
     %

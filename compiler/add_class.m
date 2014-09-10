@@ -684,7 +684,7 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
         warn_singletons(!.ModuleInfo, SimpleCallId, VarSet, Goal, !Specs),
 
         % Warn about variables with overlapping scopes.
-        warn_overlap(Warnings, VarSet, SimpleCallId, !Specs)
+        add_quant_warnings(SimpleCallId, VarSet, Warnings, !Specs)
     ).
 
 :- pred pred_method_with_no_modes_error(pred_info::in,

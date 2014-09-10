@@ -313,7 +313,7 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args,
                     warn_singletons(!.ModuleInfo, SimpleCallId, VarSet, Goal,
                         !Specs),
                     % Warn about variables with overlapping scopes.
-                    warn_overlap(Warnings, VarSet, SimpleCallId, !Specs)
+                    add_quant_warnings(SimpleCallId, VarSet, Warnings, !Specs)
                 )
             )
         )
