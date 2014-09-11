@@ -45,10 +45,13 @@ generic_strerror(char *buf, size_t buflen, int errnum)
 const char *
 MR_strerror(int errnum, char *buf, size_t buflen)
 {
-#if defined(MR_HAVE_STRERROR_S)
+#if defined(MR_HAVE_STRERROR_S) && !defined(MR_MINGW)
     /*
     ** MSVC has strerror_s.  It also exists in C11 Annex K and is enabled by
     ** defining a preprocessor macro __STDC_WANT_LIB_EXT1__
+    **
+    ** On MinGW-w64, strerror_s results in an undefined reference to strerror_s
+    ** in MSVCRT.DLL on Windows XP.  Avoid it until we drop support for XP.
     */
     if (strerror_s(buf, buflen, errnum) != 0) {
         generic_strerror(buf, buflen, errnum);
