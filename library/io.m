@@ -7986,7 +7986,19 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     io.write_float(Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    io.mercury_current_text_output.get().write_or_throw(Double.toString(Val));
+    io.MR_TextOutputFile stream = io.mercury_current_text_output.get();
+
+    if (Double.isNaN(Val)) {
+        stream.write_or_throw(""nan"");
+    } else if (Double.isInfinite(Val)) {
+        if (Val < 0.0) {
+            stream.write_or_throw(""-infinity"");
+        } else {
+            stream.write_or_throw(""infinity"");
+        }
+    } else {
+        stream.write_or_throw(Double.toString(Val));
+    }
 ").
 
 :- pragma foreign_proc("Java",

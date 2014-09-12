@@ -62,6 +62,9 @@ Changes to the Mercury standard library:
   NOTE: existing code that calls char.digit_to_int/2 assuming that it will
   only succeed for decimal digits (0-9) may be broken.
 
+* Float special values, NaNs and Infinities, are now converted to strings in
+  a way that is backend and grade-independent.  (Bug #348)
+
 Changes to the Mercury compiler:
 
 * We have fixed a long-standing bug causing crashes in deep profiling

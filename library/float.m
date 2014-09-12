@@ -160,19 +160,32 @@
 	%
 :- func hash(float) = int.
 
-	% Is the floating point number not a number or infinite?
-	%
-:- pred is_nan_or_inf(float::in) is semidet.
+%----------------------------------------------------------------------------%
+%
+% Classification
+%
 
-	% Is the floating point number not a number?
-	%
-:- pred is_nan(float::in) is semidet.
+    % Is the floating point number of infinite magnitude?
+    %
+:- pred is_infinite(float::in) is semidet.
 
-	% Is the floating point number infinite?
+	% Synonym for the above.
 	%
 :- pred is_inf(float::in) is semidet.
 
-%---------------------------------------------------------------------------%
+    % Is the floating point number not a number?
+	%
+:- pred is_nan(float::in) is semidet.
+
+	% Is the floating point number not a number or of infinite magnitude?
+	%
+:- pred is_nan_or_infinite(float::in) is semidet.
+
+    % Synonym for is_nan_or_inf/1.
+    %
+:- pred is_nan_or_inf(float::in) is semidet.
+
+%----------------------------------------------------------------------------%
 %
 % System constants
 %
@@ -628,6 +641,9 @@ float.multiply_by_pow(Scale0, Base, Exp) = Result :-
 
 %---------------------------------------------------------------------------%
 
+is_nan_or_infinite(Float) :-
+    is_nan_or_inf(Float).
+
 is_nan_or_inf(Float) :-
 	( is_nan(Float)
 	; is_inf(Float)
@@ -668,6 +684,8 @@ is_nan_or_inf(Float) :-
     SUCCESS_INDICATOR = false
 ").
 
+is_infinite(F) :-
+   is_inf(F).
 
 :- pragma foreign_proc("C",
 	is_inf(Flt::in),

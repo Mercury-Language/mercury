@@ -3001,7 +3001,10 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
     ;
         % Valid float conversion specifiers.
         Spec = e(Float),
-        ( using_sprintf ->
+        (
+            not is_nan_or_infinite(Float),
+            using_sprintf
+        ->
             FormatStr = make_format(Flags, Width, Prec, "", "e"),
             String = native_format_float(FormatStr, Float)
         ;
@@ -3010,7 +3013,10 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
         )
     ;
         Spec = cE(Float),
-        ( using_sprintf ->
+        (
+            not is_nan_or_infinite(Float),
+            using_sprintf
+        ->
             FormatStr = make_format(Flags, Width, Prec, "", "E"),
             String = native_format_float(FormatStr, Float)
         ;
@@ -3019,7 +3025,10 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
         )
     ;
         Spec = f(Float),
-        ( using_sprintf ->
+        (
+            not is_nan_or_infinite(Float),
+            using_sprintf
+        ->
             FormatStr = make_format(Flags, Width, Prec, "", "f"),
             String = native_format_float(FormatStr, Float)
         ;
@@ -3028,7 +3037,10 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
         )
     ;
         Spec = cF(Float),
-        ( using_sprintf ->
+        (
+            not is_nan_or_infinite(Float),
+            using_sprintf
+        ->
             FormatStr = make_format(Flags, Width, Prec, "", "F"),
             String = native_format_float(FormatStr, Float)
         ;
@@ -3037,7 +3049,10 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
         )
     ;
         Spec = g(Float),
-        ( using_sprintf ->
+        (
+            not is_nan_or_infinite(Float),
+            using_sprintf
+        ->
             FormatStr = make_format(Flags, Width, Prec, "", "g"),
             String = native_format_float(FormatStr, Float)
         ;
@@ -3046,7 +3061,10 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
         )
     ;
         Spec = cG(Float),
-        ( using_sprintf ->
+        (
+            not is_nan_or_infinite(Float),
+            using_sprintf
+        ->
             FormatStr = make_format(Flags, Width, Prec, "", "G"),
             String = native_format_float(FormatStr, Float)
         ;
@@ -3510,8 +3528,8 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
 format_float(Flags, SpecCase, Width, Prec, Float) = NewFloat :-
     ( is_nan(Float) ->
         SignedStr = format_nan(SpecCase)
-    ; is_inf(Float) ->
-        SignedStr = format_inf(Float, SpecCase)
+    ; is_infinite(Float) ->
+        SignedStr = format_infinity(Float, SpecCase)
     ; 
         % Determine absolute value of string.
         Abs = abs(Float),
@@ -3565,8 +3583,8 @@ format_scientific_number_g(Flags, SpecCase, Width, Prec, Float, E)
         = NewFloat :-
     ( is_nan(Float) ->
         SignedStr = format_nan(SpecCase)
-    ; is_inf(Float) ->
-        SignedStr = format_inf(Float, SpecCase)
+    ; is_infinite(Float) ->
+        SignedStr = format_infinity(Float, SpecCase)
     ;       
         % Determine absolute value of string.
         Abs = abs(Float),
@@ -3612,8 +3630,8 @@ format_scientific_number_g(Flags, SpecCase, Width, Prec, Float, E)
 format_scientific_number(Flags, SpecCase, Width, Prec, Float, E) = NewFloat :-
     ( is_nan(Float) ->
         SignedStr = format_nan(SpecCase)
-    ; is_inf(Float) ->
-        SignedStr = format_inf(Float, SpecCase)
+    ; is_infinite(Float) ->
+        SignedStr = format_infinity(Float, SpecCase)
     ;       
         % Determine absolute value of string.
         Abs = abs(Float),
@@ -4148,15 +4166,15 @@ is_exponent('E').
 format_nan(spec_is_capital) = "NAN".
 format_nan(spec_is_not_capital) = "nan".
 
-:- func format_inf(float, spec_case) = string.
+:- func format_infinity(float, spec_case) = string.
 
-format_inf(F, SpecCase) = String :-
+format_infinity(F, SpecCase) = String :-
     (
         SpecCase = spec_is_capital,
-        String = ( if F < 0.0 then "-INF" else "INF" )
+        String = ( if F < 0.0 then "-INFINITY" else "INFINITY" )
     ;
         SpecCase = spec_is_not_capital,
-        String = ( if F < 0.0 then "-inf" else "inf" )
+        String = ( if F < 0.0 then "-infinity" else "infinity" )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -4203,9 +4221,15 @@ string.from_float(Flt) = string.float_to_string(Flt).
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    Str = Flt.ToString(""R"");
+    if (System.Double.IsNaN(Flt)) {
+        Str = ""nan"";
+    } else if (System.Double.IsPositiveInfinity(Flt)) {
+        Str = ""infinity"";
+    } else if (System.Double.IsNegativeInfinity(Flt)) {
+        Str = ""-infinity"";
+    } else {
 
-    if (!System.Double.IsNaN(Flt) && !System.Double.IsInfinity(Flt)) {
+        Str = Flt.ToString(""R"");
 
         /* Append '.0' if there is no 'e' or '.' in the string. */
         bool contains = false;
@@ -4226,7 +4250,17 @@ string.from_float(Flt) = string.float_to_string(Flt).
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    Str = java.lang.Double.toString(Flt);
+    if (Double.isNaN(Flt)) {
+        Str = ""nan"";
+    } else if (Double.isInfinite(Flt)) {
+        if (Flt < 0.0) {
+            Str = ""-infinity"";
+        } else {
+            Str = ""infinity"";
+        }
+    } else {
+        Str = java.lang.Double.toString(Flt);
+    }
 ").
 
 % XXX This implementation has problems when the mantissa cannot fit in an int.
