@@ -482,7 +482,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         MaybeProcTableStructInfo = no
     ;
         EvalMethod = eval_loop_check,
-        create_new_loop_goal(Detism, OrigGoal, Statistics,
+        create_new_loop_goal(OrigGoal, Statistics,
             PredId, ProcId, HeadVars, NumberedInputVars, NumberedOutputVars,
             VarSet0, VarSet, VarTypes0, VarTypes,
             TableInfo0, TableInfo, CallTableTip, Goal, InputSteps),
@@ -685,14 +685,14 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 %       )
 %   ).
 
-:- pred create_new_loop_goal(determinism::in, hlds_goal::in,
+:- pred create_new_loop_goal(hlds_goal::in,
     table_attr_statistics::in, pred_id::in, proc_id::in, list(prog_var)::in,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, hlds_goal::out,
     list(table_step_desc)::out) is det.
 
-create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
+create_new_loop_goal(OrigGoal, Statistics, PredId, ProcId,
         HeadVars, NumberedInputVars, NumberedOutputVars, !VarSet, !VarTypes,
         !TableInfo, TableTipVar, Goal, Steps) :-
     % Even if the original goal doesn't use all of the headvars,
@@ -746,6 +746,31 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         MarkActiveFailCode, purity_impure, instmap_delta_bind_no_var,
         ModuleInfo, Context, MarkActiveFailGoal),
 
+    % The actual determinism of a predicate can be tighter than its
+    % declared determinism. This can lead to problems, such as mantis bug 361.
+    %
+    % When we add code to the end of the procedure body to mark that the
+    % current subgoal is now inactive, we keep the original procedure body's
+    % determinism. This will cause a code generator abort (unexpected
+    % determinism) if the "mark inactive" goal has a looser determinism
+    % than the original body. This can happen by adding model_non "mark
+    % inactive" code to the end of a model_det or model_semi goal,
+    % or by adding model_semi "mark inactive" code to the end of a
+    % model_det goal.
+    %
+    % We could fix this in one of two ways.
+    %
+    % - We can set the determinism of the compound goal that includes
+    %   both the original body and the "mark inactive" goal based on the
+    %   code model of the "mark inactive goal, which should always be
+    %   the looser code model.
+    %
+    % - We can choose which transformation to apply based on the actual
+    %   determinism of the procedure body, not its declared determinism.
+    %
+    % We implement the second approach.
+
+    Detism = goal_info_get_determinism(OrigGoalInfo),
     determinism_to_code_model(Detism, CodeModel),
     set_of_var.list_to_set([TableTipVar | HeadVars], InactiveNonLocals),
     OutputVars = list.map(project_var, NumberedOutputVars),

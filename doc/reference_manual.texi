@@ -9794,6 +9794,9 @@ is the perfect model.)
 The current Mercury implementation supports
 three different pragmas for tabling, to cover these three cases:
 @samp{loop_check}, @samp{memo}, and @samp{minimal_model}.
+
+@itemize @bullet
+@item
 The @samp{loop_check} pragma asks only for loop checking.
 With this pragma, the memo table will map each distinct set of input arguments
 only to a single boolean saying whether
@@ -9801,6 +9804,19 @@ a call with those arguments is currently active or not;
 the pragma's only effect is to cause the predicate to throw an exception
 if this boolean says that the current call has the same arguments
 as one of its ancestors, which indicates an infinite recursive loop.
+
+Note that loop checking for nondet and multi predicates assumes that
+calls to these predicates generate all their solutions and then fail.
+If a caller asks them only for some solutions
+and then cuts away all later solutions
+(e.g. via a quantification
+that only asks whether a solution satisfying a particular test exists),
+then the cut-away call never get a chance
+to record the fact that it is not longer active.
+The next call to that predicate with the same arguments
+will therefore think that the previous call is still active,
+and will consider this call to be an infinite loop.
+@item
 The @samp{memo} pragma asks for both loop checking and memoization.
 With this pragma, the memo table will map each distinct set of input arguments
 either to the set of results computed previously for those arguments,
@@ -9811,6 +9827,7 @@ This predicate will thus look for infinite recursive loops
 but it will also record all its solutions in the memo table,
 and will avoid recomputing solutions
 that are already available in the memo table.
+@item
 The @samp{minimal_model} pragma asks for the computation
 of a ``minimal model'' semantics.
 These differ from the @samp{memo} pragma in that
@@ -9820,6 +9837,7 @@ to fail if the call concerned has no way of computing any solutions
 it hasn't already computed and recorded,
 and it does have such a way, then it switches the execution to explore
 those ways before coming back to the apparently infinitely recursive call.
+@end itemize
 
 The syntax for each of these declarations is
 
