@@ -310,6 +310,7 @@ ORDINARY_PROGS=	\
 	test_cord \
 	test_cord2 \
 	test_imported_no_tag \
+	test_infinity \
 	test_keys_and_values \
 	test_pretty_printer \
 	test_pretty_printer_defaults \

@@ -1,0 +1,15 @@
+write_float(infinity) = infinity
+write_float(-infinity) = -infinity
+to infinity and beyond!
+format(-infinity) = -infinity
+is_infinite(infinity) = yes
+is_infinite(-infinity) = yes
+is_finite(infinity) = no
+is_finite(-infinity) = no
+is_nan(infinity) = no
+is_nan(-infinity) = no
+is_zero(infinity) = no
+is_zero(-infinity) = no
+abs(infinity) = infinity
+abs(-infinity) = infinity
+pow(infinity, 0) = 1.000000

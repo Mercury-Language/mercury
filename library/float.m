@@ -189,7 +189,7 @@
     %
 :- pred is_nan_or_infinite(float::in) is semidet.
 
-    % Synonym for above.
+    % Synonym for the above.
     %
 :- pred is_nan_or_inf(float::in) is semidet.
 
@@ -219,9 +219,13 @@
     %
 :- func float.min = float.
 
+    % Positive infinity.
+    %
+:- func float.infinity = float.
+
     % Smallest number x such that 1.0 + x \= 1.0.
-    % This represents the largest relative spacing of two
-    % consecutive floating point numbers.
+    % This represents the largest relative spacing of two consecutive floating
+    % point numbers.
     %
     % epsilon = radix ** (1 - mantissa_digits)
     %
@@ -246,10 +250,12 @@
 
     % Maximum integer such that:
     %   radix ** (max_exponent - 1)
-    % is a normalised floating-point number.  In the literature,
-    % this is sometimes referred to as `e_max'.
+    % is a normalised floating-point number.
+    % In the literature, this is sometimes referred to as `e_max'.
     %
 :- func float.max_exponent = int.
+
+%---------------------------------------------------------------------------%
 
     % Convert a float to a pretty_printer.doc for formatting.
     %
@@ -838,6 +844,55 @@ is_zero(0.0).
 %   Java Language Specification also describes Java doubles as 64 bit IEEE.
 %
 float.min = 2.2250738585072014e-308.
+
+
+% Java and C# provide constants for +infinity.
+% For C, the situation is more complicated.
+% For single precision floats, we use the following
+% (1) the C99 INFINITY macro if available
+% (2) the HUGE_VALF macro if available
+% (3) HUGE_VAL
+% 
+% For double precision floats we just use the HUGE_VAL macro.
+% The C standard does not guarantee that this will be +infinity but it is on all
+% the systems that we support.  It will definitely be +infinity if the optional
+% annex F of C99 is supported or if the 2001 revision of POSIX is supported.
+
+:- pragma foreign_proc("C",
+    float.infinity = (F::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    #if defined(MR_USE_SINGLE_PREC_FLOAT)
+        #if defined(INFINITY)
+            F = INFINITY;
+        #elif defined(HUGE_VALF)
+            F = HUGE_VALF;
+        #else
+            F = HUGE_VAL;
+        #endif
+    #else
+        F = HUGE_VAL;
+    #endif
+").
+
+:- pragma foreign_proc("Java",
+    float.infinity = (F::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    F = java.lang.Double.POSITIVE_INFINITY;
+").
+
+:- pragma foreign_proc("C#",
+    float.infinity = (F::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    F = System.Double.PositiveInfinity;
+").
+
+float.infinity = _ :-
+    private_builtin.sorry(
+        "infinity/0 not currently available for this backend").
 
 :- pragma foreign_proc("C",
     float.epsilon = (Eps::out),
