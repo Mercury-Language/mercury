@@ -3002,7 +3002,7 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
         % Valid float conversion specifiers.
         Spec = e(Float),
         (
-            not is_nan_or_infinite(Float),
+            is_finite(Float),
             using_sprintf
         ->
             FormatStr = make_format(Flags, Width, Prec, "", "e"),
@@ -3014,7 +3014,7 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
     ;
         Spec = cE(Float),
         (
-            not is_nan_or_infinite(Float),
+            is_finite(Float),
             using_sprintf
         ->
             FormatStr = make_format(Flags, Width, Prec, "", "E"),
@@ -3026,7 +3026,7 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
     ;
         Spec = f(Float),
         (
-            not is_nan_or_infinite(Float),
+            is_finite(Float),
             using_sprintf
         ->
             FormatStr = make_format(Flags, Width, Prec, "", "f"),
@@ -3038,7 +3038,7 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
     ;
         Spec = cF(Float),
         (
-            not is_nan_or_infinite(Float),
+            is_finite(Float),
             using_sprintf
         ->
             FormatStr = make_format(Flags, Width, Prec, "", "F"),
@@ -3050,7 +3050,7 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
     ;
         Spec = g(Float),
         (
-            not is_nan_or_infinite(Float),
+            is_finite(Float),
             using_sprintf
         ->
             FormatStr = make_format(Flags, Width, Prec, "", "g"),
@@ -3062,7 +3062,7 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
     ;
         Spec = cG(Float),
         (
-            not is_nan_or_infinite(Float),
+            is_finite(Float),
             using_sprintf
         ->
             FormatStr = make_format(Flags, Width, Prec, "", "G"),

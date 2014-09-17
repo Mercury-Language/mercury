@@ -4929,6 +4929,7 @@ MERCURY_CHECK_FOR_IEEE_FUNC(isnanf)
 MERCURY_CHECK_FOR_IEEE_FUNC(isinf)
 MERCURY_CHECK_FOR_IEEE_FUNC(isinff)
 MERCURY_CHECK_FOR_IEEE_FUNC(finite)
+MERCURY_CHECK_FOR_IEEE_FUNC(isfinite)
 
 #-----------------------------------------------------------------------------#
 #

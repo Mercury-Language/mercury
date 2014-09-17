@@ -234,6 +234,18 @@ MR_Integer MR_hash_float(MR_Float);
     #define MR_is_infinite(f) MR_is_infinite_func((f))
 #endif
 
+/*
+** XXX I don't know whether isfinite works on Solaris or not.
+** The finite function apparently does, so we use that instead.
+*/
+#if defined(MR_HAVE_ISFINITE) && !defined(MR_SOLARIS)
+    #define MR_is_finite(f) isfinite((f))
+#elif defined(MR_HAVE_FINITE)
+    #define MR_is_finite(f) finite((f))
+#else
+    #define MR_is_finite(f) (!MR_is_infinite((f)) && !MR_is_nan((f)))
+#endif
+
 MR_bool MR_is_nan_func(MR_Float);
 MR_bool MR_is_infinite_func(MR_Float);
 

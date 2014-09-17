@@ -65,6 +65,13 @@ Changes to the Mercury standard library:
 * Float special values, NaNs and Infinities, are now converted to strings in
   a way that is backend and grade-independent.  (Bug #348)
 
+* The following classification predicates have been added to the float module:
+
+   - is_finite/1
+   - is_zero/1
+   - is_infinite/1      (synonym for the existing is_inf/1 predicate)
+   - is_nan_or_infinite/1 (synonym for the existing is_nan_or_inf/1 predicate)
+
 Changes to the Mercury compiler:
 
 * We have fixed a long-standing bug causing crashes in deep profiling

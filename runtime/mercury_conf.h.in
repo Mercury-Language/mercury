@@ -298,6 +298,7 @@
 **	MR_HAVE_ISINF		we have the isinf() function.
 **	MR_HAVE_ISINFF		we have the isinff() function.
 **	MR_HAVE_FINITE		we have the finite() function.
+**	MR_HAVE_ISFINITE        we have the isfinite() function.
 **	MR_HAVE_FESETROUND	we have the fesetround() function.
 **	MR_HAVE_FMA		we have the fma() function.
 */

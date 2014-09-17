@@ -78,7 +78,7 @@
 :- func int.log2(int) = int.
 :- pred int.log2(int::in, int::out) is det.
 
-    % addition
+    % Addition.
     %
 :- func int + int = int.
 :- mode in  + in  = uo  is det.
