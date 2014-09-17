@@ -76,7 +76,7 @@ MR_sprintf_float(char *buf, MR_Float f)
         return;
     }
 
-    if (MR_is_inf(f)) {
+    if (MR_is_infinite(f)) {
         if (f < 0) {
             strcpy(buf, "-infinity");
         } else {
@@ -122,7 +122,7 @@ MR_sprintf_float(char *buf, MR_Float f)
 }
 
 MR_bool
-MR_is_nan(MR_Float Flt)
+MR_is_nan_func(MR_Float Flt)
 {
 #if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISNANF)
     return isnanf(Flt);
@@ -136,7 +136,7 @@ MR_is_nan(MR_Float Flt)
 }
 
 MR_bool
-MR_is_inf(MR_Float Flt)
+MR_is_inf_func(MR_Float Flt)
 {
     /*
     ** On Solaris, isinf() is detected by configure but we pass -fno-builtin

@@ -210,7 +210,31 @@ void MR_sprintf_float(char *buf, MR_Float f);
 
 MR_Integer MR_hash_float(MR_Float);
 
-MR_bool MR_is_nan(MR_Float);
-MR_bool MR_is_inf(MR_Float);
+/*
+** We define MR_is_{nan,infinite} as macros if we support the relevant bits
+** of C99 since the resulting code is faster.
+*/
+#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISNANF)
+    #define MR_is_nan(f) isnanf((f))
+#elif defined(MR_HAVE_ISNAN)
+    #define MR_is_nan(f) isnan((f))
+#else
+    #define MR_is_nan(f) MS_is_nan_func((f))
+#endif
+
+/*
+** See comments for function MR_is_infinite_func in mercury_float.c for the
+** handling of Solaris here.
+*/
+#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISINFF) && !defined(MR_SOLARIS)
+    #define MR_is_infinite(f) isinff((f))
+#elif defined(MR_HAVE_ISINF) && !defined(MR_SOLARIS)
+    #define MR_is_infinite(f) isinf((f))
+#else
+    #define MR_is_infinite(f) MR_is_infinite_func((f))
+#endif
+
+MR_bool MR_is_nan_func(MR_Float);
+MR_bool MR_is_infinite_func(MR_Float);
 
 #endif /* not MERCURY_FLOAT_H */
