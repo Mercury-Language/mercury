@@ -271,7 +271,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     ;
         GC_Method = gc_none,   % dummy
         add_error("Invalid GC option (must be `none', " ++
-            "`conservative', `boehm', `hgc', `mps', `accurate', " ++
+            "`conservative', `boehm', `hgc', `accurate', " ++
             "or `automatic')",
             !Errors)
     ),
@@ -3018,7 +3018,6 @@ grade_component_table("threadscope", comp_par_threadscope,
 grade_component_table("gc", comp_gc, [gc - string("boehm")], no, yes).
 grade_component_table("gcd", comp_gc, [gc - string("boehm_debug")], no, yes).
 grade_component_table("hgc", comp_gc, [gc - string("hgc")], no, yes).
-grade_component_table("mps", comp_gc, [gc - string("mps")], no, yes).
 grade_component_table("agc", comp_gc, [gc - string("accurate")], no, yes).
 
     % Profiling components.

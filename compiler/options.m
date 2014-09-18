@@ -4460,7 +4460,7 @@ options_help_compilation_model -->
     io.write_string("      Miscellaneous optional features\n"),
     write_tabbed_lines([
         "--gc {none, boehm, hgc, accurate, automatic}",
-        "--garbage-collection {none, boehm, hgc, mps, accurate, automatic}",
+        "--garbage-collection {none, boehm, hgc, accurate, automatic}",
         "\t\t\t\t(`java', `csharp', `il' and `erlang'",
         "\t\t\t\t\tgrades use `--gc automatic',",
         "\t\t\t\t`.gc' grades use `--gc boehm',",
