@@ -746,7 +746,7 @@ GC_API void GC_CALL GC_init(void)
      }
 #   endif /* GC_WIN32_THREADS */
 #   ifdef PARALLEL_MARK
-#     if (defined(GC_PTHREADS) && !defined(GC_WIN32_THREADS))
+#     if defined(GC_PTHREADS) && !defined(GC_WIN32_THREADS)
         GC_setup_mark_lock();
 #     endif /* GC_PTHREADS */
 #   endif /* PARALLEL_MARK */
