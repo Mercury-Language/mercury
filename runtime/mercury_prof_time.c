@@ -139,8 +139,8 @@ MR_checked_setitimer(int which, struct itimerval *value)
 {
     errno = 0;
     if (setitimer(which, value, NULL) != 0) {
-        perror("Mercury runtime: cannot set timer for profiling");
-        exit(1);
+        MR_perror("cannot set timer for profiling");
+        exit(EXIT_FAILURE);
     }
 }
 

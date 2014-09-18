@@ -365,7 +365,10 @@ MR_init_context_stuff(void)
     #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
     pthread_mutex_init(&MR_par_cond_stats_lock, MR_MUTEX_ATTR);
     #endif
-    sem_init(&shutdown_ws_semaphore, 0, 0);
+    if (sem_init(&shutdown_ws_semaphore, 0, 0) == -1) {
+        MR_perror("cannot initialize semaphore");
+        exit(EXIT_FAILURE);
+    }
   #endif
     pthread_mutex_init(&MR_STM_lock, MR_MUTEX_ATTR);
 
@@ -399,7 +402,10 @@ MR_init_context_stuff(void)
     for (i = 0; i < MR_max_engines; i++) {
         engine_sleep_sync *esync = get_engine_sleep_sync(i);
 
-        sem_init(&esync->d.es_sleep_semaphore, 0, 0);
+        if (sem_init(&esync->d.es_sleep_semaphore, 0, 0) == -1 ) {
+            MR_perror("cannot initialize semaphore");
+            exit(EXIT_FAILURE);
+        };
         pthread_mutex_init(&esync->d.es_wake_lock, MR_MUTEX_ATTR);
         /*
         ** All engines are initially working (because telling them to wake up
@@ -470,7 +476,7 @@ MR_reset_available_cpus(void)
     }
 
     if (-1 == sched_getaffinity(0, cpuset_size, MR_available_cpus)) {
-        perror("Couldn't get CPU affinity");
+        MR_perror("Couldn't get CPU affinity");
         MR_thread_pinning = MR_FALSE;
         CPU_FREE(MR_available_cpus);
         MR_available_cpus = NULL;
@@ -636,7 +642,7 @@ static int MR_current_cpu(void)
         os_cpu = 0;
 
         if (MR_thread_pinning) {
-            perror("Warning: unable to determine the current CPU for "
+            MR_perror("Warning: unable to determine the current CPU for "
                 "this thread: ");
         }
     }
@@ -692,7 +698,7 @@ MR_do_pin_thread(int cpu)
     errno = hwloc_set_cpubind(MR_hw_topology, pu->cpuset,
         HWLOC_CPUBIND_THREAD);
     if (errno != 0) {
-        perror("Warning: Couldn't set CPU affinity: ");
+        MR_perror("Warning: Couldn't set CPU affinity: ");
         MR_thread_pinning = MR_FALSE;
         return MR_FALSE;
     }
@@ -704,7 +710,7 @@ MR_do_pin_thread(int cpu)
     CPU_ZERO_S(MR_cpuset_size, cpus);
     CPU_SET_S(cpu, MR_cpuset_size, cpus);
     if (sched_setaffinity(0, MR_cpuset_size, cpus) == -1) {
-        perror("Warning: Couldn't set CPU affinity: ");
+        MR_perror("Warning: Couldn't set CPU affinity: ");
         /*
         ** If this failed once, it will probably fail again,
         ** so we disable it.
@@ -886,7 +892,7 @@ MR_write_out_profiling_parallel_execution(void)
     return;
 
 Error:
-    perror(MR_PROFILE_PARALLEL_EXECUTION_FILENAME);
+    MR_perror(MR_PROFILE_PARALLEL_EXECUTION_FILENAME);
     abort();
 }
 
@@ -2445,7 +2451,7 @@ retry_sleep:
                     }
                     goto retry_sleep;
                 default:
-                    perror("sem_timedwait");
+                    MR_perror("sem_timedwait");
                     abort();
             }
         } /* if sem_wait raised an error */

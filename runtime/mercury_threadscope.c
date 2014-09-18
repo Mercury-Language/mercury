@@ -1946,7 +1946,7 @@ MR_open_output_file_and_write_prelude(void)
 
     MR_threadscope_output_file = fopen(MR_threadscope_output_filename, "w");
     if (!MR_threadscope_output_file) {
-        perror(MR_threadscope_output_filename);
+        MR_perror(MR_threadscope_output_filename);
         return;
     }
 
@@ -1972,7 +1972,7 @@ MR_close_output_file(void)
         put_be_uint16(&global_buffer, MR_TS_EVENT_DATA_END);
         if (flush_event_buffer(&global_buffer)) {
             if (EOF == fclose(MR_threadscope_output_file)) {
-                perror(MR_threadscope_output_filename);
+                MR_perror(MR_threadscope_output_filename);
             }
             MR_threadscope_output_file = NULL;
             MR_threadscope_output_filename = NULL;
@@ -2033,7 +2033,7 @@ flush_event_buffer(struct MR_threadscope_event_buffer *buffer)
         if (0 == fwrite(buffer->MR_tsbuffer_data, buffer->MR_tsbuffer_pos, 1,
             MR_threadscope_output_file))
         {
-            perror(MR_threadscope_output_filename);
+            MR_perror(MR_threadscope_output_filename);
             MR_threadscope_output_file = NULL;
             MR_threadscope_output_filename = NULL;
         }
@@ -2253,7 +2253,7 @@ gettimeofday_nsecs(void)
     struct timeval      tv;
 
     if (0 != gettimeofday(&tv, NULL)) {
-        perror("gettimeofday()");
+        MR_perror("gettimeofday()");
         /*
         ** Return a stupid value generating an obviously bad logfile
         ** rather than crashing a program that may otherwise work.
