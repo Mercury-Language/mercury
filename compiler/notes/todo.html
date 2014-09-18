@@ -111,14 +111,6 @@ For more information on any of these issues see our
 <li> see also the comments in compiler/ml_code_gen.m
 </ul>
 
-<h2> native code back-end </h2>
-<ul>
-<li> support on platforms other than Linux/x86.
-<li> commit GCC tail-call improvements to GCC CVS repository
-<li> support `--gc accurate'
-<li> support `--gc none'
-</ul>
-
 <h3> .NET back-end </h3>
 <ul>
 <li> finish off standard library implementation
@@ -281,17 +273,6 @@ For more information on any of these issues see our
 <li> trim stack frames before making recursive calls, to minimize stack usage
      (this would probably be a pessimization much of the time - zs)
      and to minimize unnecessary garbage retention.
-
-<li> target C--
-</ul>
-
-<h2> native code back-end </h2>
-
-<ul>
-<li> consider supporting exception handling in a manner
-     that is compatible with C++ and Java
-<li> inline more of the standard library primitives that are
-     currently implemented in C
 </ul>
 
 <h2> garbage collection <h2>
