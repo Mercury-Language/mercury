@@ -7633,20 +7633,21 @@ The set of aspects and their alternatives are:
 @c @cindex .ssdebug (grade modifier)
 @cindex .par (grade modifier)
 @cindex .threadscope (grade modifier)
-@cindex prof (grade modifier)
-@cindex memprof (grade modifier)
-@cindex profdeep (grade modifier)
-@cindex tr (grade modifier)
-@cindex trseg (grade modifier)
-@cindex gc (grade modifier)
-@cindex agc (grade modifier)
-@cindex spf (grade modifier)
-@cindex stseg (grade modifier)
-@cindex debug (grade modifier)
-@cindex decldebug (grade modifier)
-@c @cindex ssdebug (grade modifier)
-@cindex par (grade modifier)
-@cindex threadscope (grade modifier)
+@cindex .prof (grade modifier)
+@cindex .memprof (grade modifier)
+@cindex .profdeep (grade modifier)
+@cindex .tr (grade modifier)
+@cindex .trseg (grade modifier)
+@cindex .gc (grade modifier)
+@cindex .agc (grade modifier)
+@cindex .spf (grade modifier)
+@cindex .stseg (grade modifier)
+@cindex .debug (grade modifier)
+@cindex .decldebug (grade modifier)
+@c @cindex .ssdebug (grade modifier)
+@cindex .par (grade modifier)
+@cindex .threadscope (grade modifier)
+@cindex .mm (grade modifier)
 @table @asis
 @item What target language to use, what data representation to use, and (for C) what combination of GNU C extensions to use:
 @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
@@ -7683,6 +7684,9 @@ small segments: @samp{stseg} (the default is to used fixed size stacks)
 @item Whether to include support for profiling of parallel programs:
 @samp{threadscope} (the default is no support for profiling parallel programs).
 @c See also the @samp{--profile-parallel-execution} runtime option.
+
+@item Whether to include support for minimal model evaluation of procedures:
+@samp{mm} (the default is no support for minimal model evaluation).
 
 @end table
 
