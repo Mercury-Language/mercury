@@ -611,7 +611,7 @@ call_back_to_mercury(Goal, ThreadId, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_decl("C",
+:- pragma foreign_decl("C", local,
 "
 #if defined(MR_THREAD_SAFE) || !defined(MR_HIGHLEVEL_CODE)
   static void ML_incr_thread_barrier_count(void);
