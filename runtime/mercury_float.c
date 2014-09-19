@@ -136,7 +136,7 @@ MR_is_nan_func(MR_Float Flt)
 }
 
 MR_bool
-MR_is_inf_func(MR_Float Flt)
+MR_is_infinite_func(MR_Float Flt)
 {
     /*
     ** On Solaris, isinf() is detected by configure but we pass -fno-builtin
