@@ -2099,7 +2099,9 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
     ->
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
             native_if_possible, ml_lval(ArgLval), ArgRval),
-        Statement = ml_gen_assign(VarLval, ml_mkword(Ptag, ArgRval), Context),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
+        CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
+        Statement = ml_gen_assign(VarLval, CastRval, Context),
         Statements = [Statement]
     ;
         % Unused - unused: the unification has no effect.
