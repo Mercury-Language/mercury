@@ -211,38 +211,39 @@ void MR_sprintf_float(char *buf, MR_Float f);
 MR_Integer MR_hash_float(MR_Float);
 
 /*
-** We define MR_is_{nan,infinite} as macros if we support the relevant bits
-** of C99 since the resulting code is faster.
+** We define MR_is_{nan,infinite,finite} as macros if we support C99 
+** since the resulting code is faster.
 */
-#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISNANF)
-    #define MR_is_nan(f) isnanf((f))
-#elif defined(MR_HAVE_ISNAN)
-    #define MR_is_nan(f) isnan((f))
+#if __STDC_VERSION__ >= 199901
+    #if defined(MR_USE_SINGLE_PREC_FLOAT)
+        #define MR_is_nan(f) isnanf((f))
+    #else
+        #define MR_is_nan(f) isnan((f))
+    #endif
 #else
-    #define MR_is_nan(f) MS_is_nan_func((f))
+    #define MR_is_nan(f) MR_is_nan_func((f))
 #endif
 
 /*
 ** See comments for function MR_is_infinite_func in mercury_float.c for the
 ** handling of Solaris here.
 */
-#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISINFF) && !defined(MR_SOLARIS)
-    #define MR_is_infinite(f) isinff((f))
-#elif defined(MR_HAVE_ISINF) && !defined(MR_SOLARIS)
-    #define MR_is_infinite(f) isinf((f))
+#if __STDC_VERSION__ >= 199901 && !defined(MR_SOLARIS)
+    #if defined(MR_USE_SINGLE_PREC_FLOAT)
+        #define MR_is_infinite(f) isinff((f))
+    #else
+        #define MR_is_infinite(f) isinf((f))
+    #endif
 #else
     #define MR_is_infinite(f) MR_is_infinite_func((f))
 #endif
 
 /*
 ** XXX I don't know whether isfinite works on Solaris or not.
-** The finite function apparently does, so we use that instead.
 */
-#if defined(MR_HAVE_ISFINITE) && !defined(MR_SOLARIS)
+#if __STDC_VERSION__ >= 199901 && !defined(MR_SOLARIS)
     #define MR_is_finite(f) isfinite((f))
-#elif defined(MR_HAVE_FINITE)
-    #define MR_is_finite(f) finite((f))
-#else
+#else   
     #define MR_is_finite(f) (!MR_is_infinite((f)) && !MR_is_nan((f)))
 #endif
 
