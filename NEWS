@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 NEWS since Mercury 14.01.x
 --------------------------
 
@@ -95,6 +96,12 @@ Changes to the extras distribution:
 
 * We have added support for Unicode and other enhancements to the lex and
   regex libraries.  Thanks to Sebastian Godelet.
+
+
+NEWS for Mercury 14.01.2
+------------------------
+
+This is a bug-fix release.
 
 
 NEWS for Mercury 14.01.1
