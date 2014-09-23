@@ -4562,14 +4562,23 @@ OPT_FLAGS_FOR_CLANG="-O0"
 case "$mercury_cv_cc_type" in
 
     gcc*)
-        # Do not use -ansi on MinGW systems because with some versions of the
-        # system headers the types off_t and off64_t will not be defined with
-        # that option, but they are required in other places in the system
-        # headers.
-        case "$host" in
-            *mingw*)    CFLAGS_FOR_ANSI= ;;
-            *)          CFLAGS_FOR_ANSI="-ansi" ;;
-        esac
+        # We no longer pass -ansi to GCC on any system for the following
+        # reasons:
+        # * It restricts the dialect of C used to C90 and that prevents us
+        #   from using various C99 library features.  Every version of GCC we
+        #   support provides those features so there is no point in doing
+        #   this.  
+        # * It causes complications with the header files on some systems.
+        #   Notably with the definitions of the types off_t and off64_t on MinGW
+        #   systems.
+        # * This setting also affects the compilation of user written C code in
+        #   foreign_proc and and foreign code pragmas.
+        #
+        # NOTE: the --no-ansi option supported by the mgnuc script does more than
+        # simply pass the value of CFLAGS_FOR_ANSI to the C compiler.
+        # (See that script for details.)
+        # 
+        CFLAGS_FOR_ANSI=
 
         # For a full list of the other gcc warnings that we don't
         # enable, and why, see scripts/mgnuc.in.

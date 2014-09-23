@@ -133,8 +133,7 @@ Options:
     -v, --verbose
         Echo gcc command before executing it.
     --no-ansi
-        Don't pass \`-ansi' to gcc. Use the full contents of system headers,
-        rather than the ANSI subset.
+        Use the full contents of system headers, rather than the ANSI subset.
     --no-check
         Don't enable any of gcc's warnings.
     --low-level-debug
