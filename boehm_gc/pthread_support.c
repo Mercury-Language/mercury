@@ -935,6 +935,10 @@ STATIC void GC_fork_child_proc(void)
                                         ptr_t *startp, ptr_t *endp);
 #endif
 
+#ifdef PARALLEL_MARK
+  static void setup_mark_lock(void);
+#endif
+
 /* We hold the allocation lock. */
 GC_INNER void GC_thr_init(void)
 {
@@ -1056,6 +1060,7 @@ GC_INNER void GC_thr_init(void)
       GC_parallel = TRUE;
       /* Disable true incremental collection, but generational is OK.   */
       GC_time_limit = GC_TIME_UNLIMITED;
+      setup_mark_lock();
     }
     /* If we are using a parallel marker, actually start helper threads. */
     if (GC_parallel) {
@@ -1879,7 +1884,7 @@ static pthread_cond_t builder_cv = PTHREAD_COND_INITIALIZER;
   }
 #endif /* GLIBC_2_19_TSX_BUG */
 
-GC_INNER void GC_setup_mark_lock(void)
+static void setup_mark_lock(void)
 {
 # ifdef GLIBC_2_19_TSX_BUG
     pthread_mutexattr_t mattr;
