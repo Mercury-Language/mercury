@@ -498,6 +498,9 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
         ; GoalExpr = plain_call(_, _, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
+        goal_info_to_atomic_goal_rep_fields(GoalInfo, Instmap0, Info,
+            FileName, LineNo, BoundVars),
+        BoundVarsRep = map(var_to_var_rep(Info), BoundVars),
         (
             GoalExpr = unify(_, _, _, Uni, _),
             (
@@ -587,9 +590,6 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 compose(var_to_var_rep(Info), foreign_arg_var), Args),
             AtomicGoalRep = pragma_foreign_code_rep(ArgVarsRep)
         ),
-        goal_info_to_atomic_goal_rep_fields(GoalInfo, Instmap0, Info,
-            FileName, LineNo, BoundVars),
-        BoundVarsRep = map(var_to_var_rep(Info), BoundVars),
         GoalExprRep = atomic_goal_rep(FileName, LineNo, BoundVarsRep,
             AtomicGoalRep)
     ;
@@ -840,10 +840,11 @@ goal_info_to_atomic_goal_rep_fields(GoalInfo, Instmap0, Info, FileName, LineNo,
     ),
     term.context_line(Context, LineNo),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
-    instmap.apply_instmap_delta(Instmap0, InstmapDelta, Instmap),
-    instmap_changed_vars(Instmap0, Instmap, Info ^ pri_vartypes,
-        Info ^ pri_module_info, ChangedVars),
-    set_of_var.to_sorted_list(ChangedVars, BoundVars).
+    instmap_delta_changed_vars(InstmapDelta, ChangedVarsSet),
+    set_of_var.to_sorted_list(ChangedVarsSet, ChangedVars),
+    ModuleInfo = Info ^ pri_module_info,
+    list.negated_filter(var_is_ground_in_instmap(ModuleInfo, Instmap0),
+        ChangedVars, BoundVars).
 
 :- pred encode_cons_id_and_arity_rep(cons_id_arity_rep::in, list(int)::out,
     string_table_info::in, string_table_info::out) is det.
