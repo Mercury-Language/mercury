@@ -33,7 +33,7 @@ browser> track
 
 translation_pairs_to_xml([-("critical", "kritiek"), -("mission", "missie")]) = [elem("word", [], [|]/2), elem("word", [], [|]/2)]
 Valid? info
-Context of current question : condition_bug.m:38 (condition_bug.m:33)
+Context of current question : condition_bug.m:38 (condition_bug.m:34)
 Search mode                 : top down                               
 The current question was chosen because the marked subterm was bound by
 the unification inside the function
