@@ -157,7 +157,6 @@ MERCURY_CC_TYPE
 MERCURY_HAVE_CLANG=no
 MERCURY_HAVE_GCC=no
 MERCURY_HAVE_MSVC=no
-MERCURY_HAVE_LCC=no
 
 case "$mercury_cv_cc_type" in
     clang)
@@ -180,18 +179,7 @@ case "$mercury_cv_cc_type" in
     ;;
 
     *)
-        # XXX is there a better way to test for lcc other than
-        # to pattern match on its name?
-        case "$CC" in
-            *lcc*)
-                MERCURY_HAVE_LCC=yes
-                C_COMPILER_TYPE="lcc"
-            ;;
-
-            *)
-                C_COMPILER_TYPE="unknown"
-            ;;
-        esac
+        C_COMPILER_TYPE="unknown"
     ;;
 esac
 
@@ -1113,21 +1101,11 @@ else
     # which is used for interactive queries in the
     # Mercury debugger.  For gcc, this linker option can be enabled by
     # passing either `-rdynamic' or `-Wl,-export-dynamic' to gcc;
-    # we use the former.  For lcc 4.2, we need to use `-Wl-export-dynamic'.
+    # we use the former.
     #
     case $FULLARCH in
-        *-linux*aout)
-            # no special options needed
-            ;;
         *-linux*)
-            case "$CC" in
-                lcc*)
-                    LDFLAGS_FOR_TRACE="-Wl-export-dynamic"
-                    ;;
-                *)
-                    LDFLAGS_FOR_TRACE="-rdynamic"
-                    ;;
-            esac
+            LDFLAGS_FOR_TRACE="-rdynamic"
             ;;
     esac
 
@@ -4352,19 +4330,8 @@ case "$host" in
                 rm -f conftest*
                 ;;
             *)
-                case "$C_COMPILER_TYPE" in
-                    lcc)
-                        AC_MSG_RESULT(yes)
-                        EXT_FOR_SHARED_LIB=so
-                        EXE_RPATH_OPT="-Wl-rpath -Wl"
-                        EXE_RPATH_SEP=" -Wl-rpath -Wl"
-                        SHLIB_RPATH_OPT="-Wl-rpath -Wl"
-                        SHLIB_RPATH_SEP=" -Wl-rpath -Wl"
-                        ;;
-                    *)
-                        AC_MSG_RESULT(no)
-                        ;;
-                esac
+                AC_MSG_RESULT(no)
+                ;;
         esac
 
         EXT_FOR_LINK_WITH_PIC_OBJECTS=o
@@ -4608,18 +4575,6 @@ case "$mercury_cv_cc_type" in
         MCFLAGS_FOR_CC=
         ;;
 
-    lcc)
-        CFLAGS_FOR_ANSI=
-
-        # Turn off all warnings due to spurious warnings.
-        CFLAGS_FOR_WARNINGS="-w"
-
-        CFLAGS_FOR_OPT=
-        CFLAGS_FOR_DEBUG="-g"
-        CFLAGS_FOR_NO_STRICT_ALIASING=
-        MCFLAGS_FOR_CC=
-        ;;
-
     clang*)
 
         # We do not compile with -ansi when using clang because that (currently) puts
@@ -4692,7 +4647,7 @@ AC_SUBST([C_COMPILER_TYPE])
 
 LD_STATIC_FLAGS=
 case "$C_COMPILER_TYPE" in
-    gcc*|clang*|lcc)
+    gcc*|clang*)
         LD_STATIC_FLAGS=-static
         ;;
 esac
@@ -4708,25 +4663,6 @@ case "$FULLARCH" in
                 ;;
             clang*)
                 LD_STATIC_FLAGS="-static -Wl,-defsym -Wl,_DYNAMIC=0"
-                ;;
-            lcc)
-                # for lcc 4.1, we need to use "-Wl,".
-                # for lcc 4.2, we need to use "-Wl" without the comma,
-                # like we do for gcc.
-                AC_MSG_CHECKING([whether lcc requires comma after -Wl])
-                LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
-                rm -f conftest*
-                echo "int main() { return 0; }" > conftest.c
-                if
-                    echo $CC $LD_STATIC_FLAGS conftest.c >&AC_FD_CC 2>&1 &&
-                    $CC $LD_STATIC_FLAGS conftest.c >&AC_FD_CC 2>&1
-                then
-                    AC_MSG_RESULT(no)
-                else
-                    AC_MSG_RESULT(yes)
-                    LD_STATIC_FLAGS="-static -Wl,-defsym -Wl,_DYNAMIC=0"
-                fi
-                rm -f conftest*
                 ;;
         esac
         ;;

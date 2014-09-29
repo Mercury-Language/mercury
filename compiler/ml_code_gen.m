@@ -419,7 +419,7 @@
 %   - XXX define compare & unify preds for RTTI types
 %   - XXX need to generate correct layout information for closures
 %     so that tests/hard_coded/copy_pred works.
-%   - XXX fix ANSI/ISO C conformance of the generated code (i.e. port to lcc)
+%   - XXX fix ANSI/ISO C conformance of the generated code
 %
 % UNIMPLEMENTED FEATURES:
 %   - test --det-copy-out

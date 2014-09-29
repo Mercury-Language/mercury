@@ -74,9 +74,6 @@ case "$CC" in
 	*gcc*)
 		COMPILER=gcc
 		;;
-	*lcc*)
-		COMPILER=lcc
-		;;
 	*clang*)
 		COMPILER=clang
 		;;

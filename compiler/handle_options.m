@@ -484,7 +484,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     ;
         C_CompilerType = cc_unknown,   % dummy
         add_error("Invalid argument to option `--c-compiler-type'\n" ++
-            "\t(must be `gcc', `lcc', `clang', 'msvc', or `unknown').",
+            "\t(must be `gcc', `clang', 'msvc', or `unknown').",
             !Errors)
     ),
 

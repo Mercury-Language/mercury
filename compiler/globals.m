@@ -129,7 +129,6 @@
                 % This is only available since gcc 3.0.
             )
     ;       cc_clang(maybe(clang_version))
-    ;       cc_lcc
     ;       cc_cl(maybe(int))
     ;       cc_unknown.
 
@@ -436,7 +435,6 @@ convert_c_compiler_type(CC_Str, C_CompilerType) :-
 
 convert_c_compiler_type_simple("gcc",      cc_gcc(no, no, no)).
 convert_c_compiler_type_simple("clang",    cc_clang(no)).
-convert_c_compiler_type_simple("lcc",      cc_lcc).
 convert_c_compiler_type_simple("cl",       cc_cl(no)).
 convert_c_compiler_type_simple("msvc",     cc_cl(no)).
 convert_c_compiler_type_simple("unknown",  cc_unknown).

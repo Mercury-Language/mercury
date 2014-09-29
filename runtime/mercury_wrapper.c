@@ -785,17 +785,7 @@ mercury_runtime_init(int argc, char **argv)
     ** current context of the engine.
     */
 #ifndef MR_HIGHLEVEL_CODE
-  #ifndef __LCC__
     MR_save_context(&(MR_ENGINE(MR_eng_context)));
-  #else
-    {
-      /* XXX Work around lcc bug -- lcc 4.1 miscompiles the original code */
-      size_t offset = offsetof(MercuryEngine, MR_eng_context);
-      char *tmp = (char *) MR_cur_engine();
-      MR_Context *eng_context = (tmp += offset, (MR_Context *) tmp);
-      MR_save_context(eng_context);
-    }
-  #endif
 #endif
 
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS

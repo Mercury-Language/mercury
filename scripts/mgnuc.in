@@ -80,14 +80,6 @@ case "$C_COMPILER_TYPE" in
         DISABLE_OPTS_OPT="-O0"
         COMPILER=clang
         ;;
-    lcc*)
-        ANSI_OPTS=
-        CHECK_OPTS="-w"     # turn off all warnings due to spurious warnings.
-        OPT_OPTS=""
-        DEBUG_OPT="-g"
-        DISABLE_OPTS_OPT="-O0"
-        COMPILER=lcc
-        ;;
     msvc*|cl*)
         ANSI_OPTS=""
         CHECK_OPTS="-nologo"    # Suppress the MSVC banner message.

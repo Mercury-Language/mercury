@@ -657,7 +657,6 @@ mercury_cv_gcc_version=`$CC -dumpversion | tr . ' ' | {
 
 # Work out the C compiler type using a stronger test than AC_PROG_CC to
 # distinguish between clang and gcc.
-# (We don't handle lcc here - I don't think that it's possible to.)
 
 AC_DEFUN([MERCURY_CC_TYPE], [
 AC_REQUIRE([AC_PROG_CC])

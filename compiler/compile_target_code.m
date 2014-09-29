@@ -514,7 +514,6 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         ;
             % XXX Check whether we need to do anything for these C compilers?
             ( C_CompilerType = cc_clang(_)
-            ; C_CompilerType = cc_lcc
             ; C_CompilerType = cc_cl(_)
             ),
             C_FnAlignOpt = ""
@@ -1009,9 +1008,7 @@ gather_compiler_specific_flags(Globals, Flags) :-
         C_CompilerType = cc_cl(_),
         globals.lookup_accumulating_option(Globals, msvc_flags, FlagsList)
     ;
-        ( C_CompilerType = cc_lcc
-        ; C_CompilerType = cc_unknown
-        ),
+        C_CompilerType = cc_unknown,
         FlagsList = []
     ),
     join_string_list(FlagsList, "", "", " ", Flags).
@@ -2504,7 +2501,6 @@ get_restricted_command_line_link_opts(Globals, LinkTargetType,
             ;
                 ( C_CompilerType = cc_gcc(_, _, _)
                 ; C_CompilerType = cc_clang(_)
-                ; C_CompilerType = cc_lcc
                 ; C_CompilerType = cc_unknown
                 ),
                 ResCmdLinkOpts = ""
@@ -2671,7 +2667,6 @@ get_linker_output_option(Globals, LinkTargetType, OutputOpt) :-
     ;
         ( C_CompilerType = cc_gcc(_, _, _)
         ; C_CompilerType = cc_clang(_)
-        ; C_CompilerType = cc_lcc
         ; C_CompilerType = cc_unknown
         ),
         OutputOpt = " -o "
@@ -2688,7 +2683,6 @@ reserve_stack_size_flags(Globals) = Flags :-
         (
             ( C_CompilerType = cc_gcc(_, _, _)
             ; C_CompilerType = cc_clang(_)
-            ; C_CompilerType = cc_lcc
             ; C_CompilerType = cc_unknown
             ),
             string.format("-Wl,--stack=%d", [i(ReserveStackSize)], Flags)
@@ -2796,7 +2790,6 @@ create_archive(Globals, ErrorStream, LibFileName, Quote, ObjectList,
     ;
         ( C_CompilerType = cc_gcc(_, _, _)
         ; C_CompilerType = cc_clang(_)
-        ; C_CompilerType = cc_lcc
         ; C_CompilerType = cc_unknown
         ),
         ArOutputSpace = " "

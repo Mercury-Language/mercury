@@ -31,7 +31,6 @@
 
         --no-ansi)
             ANSI_OPTS=
-            DEFINE_OPTS="$DEFINE_OPTS -D__EXTENSIONS__ -D_GNU_SOURCE"
             ;;
 
         --no-check)
