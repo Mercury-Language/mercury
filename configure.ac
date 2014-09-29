@@ -174,8 +174,7 @@ case "$mercury_cv_cc_type" in
     msvc)
         MERCURY_HAVE_MSVC=yes
         MERCURY_MSVC_VERSION
-        # XXX For historical reasons msvc is identified as "cl".
-        C_COMPILER_TYPE="cl_${mercury_cv_msvc_version}"
+        C_COMPILER_TYPE="msvc_${mercury_cv_msvc_version}"
     ;;
 
     *)

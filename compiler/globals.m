@@ -426,16 +426,11 @@ convert_c_compiler_type(CC_Str, C_CompilerType) :-
         convert_c_compiler_type_with_version(CC_Str, C_CompilerType)
     ).
 
-% NOTE: we currently accept strings of the form cl_<version> or
-% msvc_<version> for Visual C; support for the former is deprecated and
-% will be dropped once the configure script begins generated the latter.
-
 :- pred convert_c_compiler_type_simple(string::in, c_compiler_type::out)
     is semidet.
 
 convert_c_compiler_type_simple("gcc",      cc_gcc(no, no, no)).
 convert_c_compiler_type_simple("clang",    cc_clang(no)).
-convert_c_compiler_type_simple("cl",       cc_cl(no)).
 convert_c_compiler_type_simple("msvc",     cc_cl(no)).
 convert_c_compiler_type_simple("unknown",  cc_unknown).
 
@@ -449,8 +444,6 @@ convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
         convert_gcc_version(Major, Minor, Patch, C_CompilerType)
     ; Tokens = ["clang", Major, Minor, Patch] ->
         convert_clang_version(Major, Minor, Patch, C_CompilerType)
-    ; Tokens = ["cl", Version] ->
-        convert_msvc_version(Version, C_CompilerType)
     ; Tokens = ["msvc", Version] ->
         convert_msvc_version(Version, C_CompilerType)
     ;
