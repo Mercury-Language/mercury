@@ -344,6 +344,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
@@ -440,7 +441,7 @@ inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst) :-
             % insts of higher order pred insts.
 
     ;       cs_none.
-            % Do not calculate inst var substitions.
+            % Do not calculate inst var substitution.
 
 :- func init_inst_match_info(module_info, maybe(inst_var_sub),
     calculate_sub, uniqueness_comparison, bool, ground_matches_bound) =
@@ -466,18 +467,22 @@ swap_sub(P, !Info) :-
     P(!Info),
     !Info ^ imi_calculate_sub := CalculateSub.
 
+:- pred unswap(inst_matches_pred::in(inst_matches_pred),
+    mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
+
+unswap(P, InstA, InstB, Type, !Info) :-
+    % Swap the arguments *and* undo swap_sub.
+    CalculateSub = !.Info ^ imi_calculate_sub,
+    !Info ^ imi_calculate_sub := swap_calculate_sub(CalculateSub),
+    P(InstB, InstA, Type, !Info),
+    !Info ^ imi_calculate_sub := CalculateSub.
+
 :- func swap_calculate_sub(calculate_sub) = calculate_sub.
 
 swap_calculate_sub(cs_forward) = cs_reverse.
 swap_calculate_sub(cs_reverse) = cs_forward.
 swap_calculate_sub(cs_none) = cs_none.
-
-:- pred swap_args(inst_matches_pred::in(inst_matches_pred),
-    mer_inst::in, mer_inst::in, maybe(mer_type)::in,
-    inst_match_info::in, inst_match_info::out) is semidet.
-
-swap_args(P, InstA, InstB, Type, !Info) :-
-    P(InstB, InstA, Type, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -495,7 +500,9 @@ handle_inst_var_subs(Recurse, Continue, InstA, InstB, Type, !Info) :-
             Type, !Info)
     ;
         CalculateSub = cs_reverse,
-        handle_inst_var_subs_2(swap_args(Recurse), swap_args(Continue),
+        % Calculate the inst var substitution with arguments swapped,
+        % but swap back for inst matching.
+        handle_inst_var_subs_2(unswap(Recurse), unswap(Continue),
             InstB, InstA, Type, !Info)
     ;
         CalculateSub = cs_none,
@@ -944,11 +951,27 @@ pred_inst_argmodes_matches([], [], [], !Info).
 pred_inst_argmodes_matches([ModeA | ModeAs], [ModeB | ModeBs],
         [MaybeType | MaybeTypes], !Info) :-
     ModuleInfo = !.Info ^ imi_module_info,
-    mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA),
+    mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA0),
     mode_get_insts(ModuleInfo, ModeB, InitialB, FinalB),
+    % inst_matches_final_mt should probably just accept cs_reverse directly.
     swap_sub(inst_matches_final_mt(InitialB, InitialA, MaybeType), !Info),
+    % Apply the substitution computed so far (it may be necessary for InitialA
+    % as well).
+    maybe_apply_substitution(!.Info, FinalA0, FinalA),
     inst_matches_final_mt(FinalA, FinalB, MaybeType, !Info),
     pred_inst_argmodes_matches(ModeAs, ModeBs, MaybeTypes, !Info).
+
+:- pred maybe_apply_substitution(inst_match_info::in,
+    mer_inst::in, mer_inst::out) is det.
+
+maybe_apply_substitution(Info, Inst0, Inst) :-
+    (
+        Info ^ imi_maybe_sub = yes(Subst),
+        inst_apply_substitution(Subst, Inst0, Inst)
+    ;
+        Info ^ imi_maybe_sub = no,
+        Inst = Inst0
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -780,8 +780,8 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
         % If the initial inst of the variable matches_final the initial inst
         % specified in the pred's mode declaration, then it's not a call
         % to an implied mode, it's an exact match with a genuine mode.
-        inst_matches_initial_no_implied_modes(VarInst1, InitialInst,
-            VarType, ModuleInfo0)
+        inst_matches_initial_no_implied_modes_sub(VarInst1, InitialInst,
+            VarType, ModuleInfo0, _ModuleInfo, map.init, _Sub)
     ->
         Var = Var0
     ;
