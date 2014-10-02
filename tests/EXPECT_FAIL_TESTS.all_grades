@@ -4,3 +4,4 @@ valid/bug85
 valid/constraint_prop_bug
 valid/csharp_hello
 valid/ho_and_type_spec_bug2
+invalid/constrained_poly_insts2

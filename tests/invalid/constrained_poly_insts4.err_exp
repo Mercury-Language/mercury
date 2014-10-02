@@ -1,0 +1,10 @@
+constrained_poly_insts4.m:020: In clause for `p2(in((I =<
+constrained_poly_insts4.m:020:   (constrained_poly_insts4.thing))), out((I =<
+constrained_poly_insts4.m:020:   (constrained_poly_insts4.thing))))':
+constrained_poly_insts4.m:020:   mode error: argument 2 became too
+constrained_poly_insts4.m:020:   instantiated.
+constrained_poly_insts4.m:020:   Final instantiatedness of `Y' was
+constrained_poly_insts4.m:020:   `bound((list.[]) ; list.'[|]'(ground,
+constrained_poly_insts4.m:020:   bound((list.[]) ; list.'[|]'(ground, ...))))',
+constrained_poly_insts4.m:020:   expected final instantiatedness was `(I =<
+constrained_poly_insts4.m:020:   bound((list.[]) ; list.'[|]'(ground, ...)))'.
