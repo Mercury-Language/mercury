@@ -20,6 +20,8 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module thread.
+:- import_module thread.mvar.
 
 main(!IO) :-
     command_line_arguments(Args, !IO),
@@ -43,7 +45,7 @@ main(!IO) :-
                     Result = ok
                 ;
                     MaybeOptions = error(Error),
-                    Result = error(format("Error processing options: %s\n", 
+                    Result = error(format("Error processing options: %s\n",
                         [s(Error)]))
                 )
             )
@@ -95,7 +97,7 @@ default_options(help,                   bool(no)).
 default_options(dim_x,                  maybe_int(no)).
 default_options(dim_y,                  maybe_int(no)).
 default_options(dependent_conjunctions, bool(no)).
-default_options(parallel,               bool(no)).
+default_options(parallel,               string("no")).
 
 :- type options
     --->    options(
@@ -110,7 +112,9 @@ default_options(parallel,               bool(no)).
     ;       use_independent_conjunctions.
 
 :- type parallel
-    --->    parallel
+    --->    parallel_conj
+    ;       parallel_spawn
+    ;       parallel_spawn_native
     ;       sequential.
 
 :- pred process_options(option_table(option)::in, maybe_error(options)::out)
@@ -125,27 +129,41 @@ process_options(Table, MaybeOptions) :-
         DepConjsBool = no,
         DepConjs = use_independent_conjunctions
     ),
-    getopt.lookup_bool_option(Table, parallel, ParallelBool),
+    getopt.lookup_string_option(Table, parallel, ParallelStr),
     (
-        ParallelBool = yes,
-        Parallel = parallel
+        (
+            ParallelStr = "no",
+            Parallel0 = sequential
+        ;
+            ParallelStr = "conj",
+            Parallel0 = parallel_conj
+        ;
+            ParallelStr = "spawn",
+            Parallel0 = parallel_spawn
+        ;
+            ParallelStr = "spawn_native",
+            Parallel0 = parallel_spawn_native
+        )
+    ->
+        MaybeParallel = ok(Parallel0)
     ;
-        ParallelBool = no,
-        Parallel = sequential
+        MaybeParallel = error(
+            "Parallel must be one of ""no"", ""conj"", ""spawn"" or " ++
+            """spawn_native""")
     ),
 
     getopt.lookup_maybe_int_option(Table, dim_x, MaybeX),
     getopt.lookup_maybe_int_option(Table, dim_y, MaybeY),
     (
         (
-            MaybeX = yes(DimX),
-            MaybeY = yes(DimY)
+            MaybeX = yes(DimX0),
+            MaybeY = yes(DimY0)
         ;
             MaybeX = no,
             MaybeY = no,
-            dimension(DimX, DimY)
+            dimension(DimX0, DimY0)
         ),
-        MaybeOptions = ok(options(DimX, DimY, DepConjs, Parallel))
+        MaybeDim = ok({DimX0, DimY0})
     ;
         (
             MaybeX = yes(_),
@@ -154,7 +172,19 @@ process_options(Table, MaybeOptions) :-
             MaybeX = no,
             MaybeY = yes(_)
         ),
-        MaybeOptions = error("Specify both of -x and -y or neither of them")
+        MaybeDim = error("Specify both of -x and -y or neither of them")
+    ),
+    (
+        MaybeDim = ok({DimX, DimY}),
+        MaybeParallel = ok(Parallel),
+        MaybeOptions = ok(options(DimX, DimY, DepConjs, Parallel))
+    ;
+        MaybeDim = ok(_),
+        MaybeParallel = error(Error),
+        MaybeOptions = error(Error)
+    ;
+        MaybeDim = error(Error),
+        MaybeOptions = error(Error)
     ).
 
 :- pred usage(io::di, io::uo) is det.
@@ -166,9 +196,11 @@ usage(!IO) :-
     write_string("\t-x X -y Y\n", !IO),
     write_string(
         "\t\tThe dimensions of the image, specify neither or both\n", !IO),
-    write_string("\t-p --parallel\n", !IO),
+    write_string("\t-p <how> --parallel <how>\n", !IO),
     write_string(
-        "\t\tUse explicit parallel conjunctions (grade dependent)\n", !IO),
+        "\t\t<how> is one of ""no"", ""conj"", ""spawn"" or\n", !IO),
+    write_string(
+        "\t\t""spawn_native"". These may be grade dependent.\n", !IO),
     write_string("\t-d --dependent-conjunctions\n", !IO),
     write_string(
         "\t\tUse an accumulator to represent the rows rendered so far\n", !IO).
@@ -211,8 +243,12 @@ draw_rows(Options, StartY, StepY, DimY, StartX, StepX, DimX, Rows) :-
 
 draw_rows_dep(sequential, Xs, Ys, Rows) :-
     map_foldl(draw_row(Xs), append_row, Ys, empty, Rows).
-draw_rows_dep(parallel, Xs, Ys, Rows) :-
-    map_foldl_par(draw_row(Xs), append_row, Ys, empty, Rows).
+draw_rows_dep(parallel_conj, Xs, Ys, Rows) :-
+    map_foldl_par_conj(draw_row(Xs), append_row, Ys, empty, Rows).
+draw_rows_dep(parallel_spawn, Xs, Ys, Rows) :-
+    map_foldl_par_spawn(draw_row(Xs), append_row, Ys, empty, Rows).
+draw_rows_dep(parallel_spawn_native, Xs, Ys, Rows) :-
+    map_foldl_par_spawn_native(draw_row(Xs), append_row, Ys, empty, Rows).
 
 :- pred draw_rows_indep(parallel::in, list(float)::in, list(float)::in,
     cord(colour)::out) is det.
@@ -222,13 +258,23 @@ draw_rows_indep(Parallel, Xs, Ys, Rows) :-
         Parallel = sequential,
         my_map(draw_row(Xs), Ys, RowList)
     ;
-        Parallel = parallel,
-        my_map_par(draw_row(Xs), Ys, RowList)
+        Parallel = parallel_conj,
+        my_map_par_conj(draw_row(Xs), Ys, RowList)
+    ;
+        Parallel = parallel_spawn,
+        promise_equivalent_solutions [RowList] (
+            my_map_par_spawn(draw_row(Xs), Ys, RowList)
+        )
+    ;
+        Parallel = parallel_spawn_native,
+        promise_equivalent_solutions [RowList] (
+            my_map_par_spawn_native(draw_row(Xs), Ys, RowList)
+        )
     ),
     foldl(append_row, RowList, empty, Rows).
 
 :- pred append_row(cord(X)::in, cord(X)::in, cord(X)::out) is det.
- 
+
 append_row(Row, !Rows) :-
     !:Rows = !.Rows ++ Row.
 
@@ -316,18 +362,34 @@ map_foldl(M, F, [X | Xs], !Acc) :-
     F(Y, !Acc),
     map_foldl(M, F, Xs, !Acc).
 
-:- pred map_foldl_par(pred(X, Y), pred(Y, A, A), list(X), A, A).
-:- mode map_foldl_par(pred(in, out) is det, pred(in, in, out) is det,
+:- pred map_foldl_par_conj(pred(X, Y), pred(Y, A, A), list(X), A, A).
+:- mode map_foldl_par_conj(pred(in, out) is det, pred(in, in, out) is det,
     in, in, out) is det.
 
-map_foldl_par(_, _, [], !Acc).
-map_foldl_par(M, F, [X | Xs], !Acc) :-
+map_foldl_par_conj(_, _, [], !Acc).
+map_foldl_par_conj(M, F, [X | Xs], !Acc) :-
     (
         M(X, Y),
         F(Y, !Acc)
     &
-        map_foldl_par(M, F, Xs, !Acc)
+        map_foldl_par_conj(M, F, Xs, !Acc)
     ).
+
+:- pred map_foldl_par_spawn(pred(X, Y), pred(Y, A, A), list(X), A, A).
+:- mode map_foldl_par_spawn(pred(in, out) is det, pred(in, in, out) is det,
+    in, in, out) is erroneous.
+
+map_foldl_par_spawn(_, _, _, !Acc) :-
+    % XXX: Do the parallel conjunction transformation by hand.
+    sorry($file, $pred, "Unimplemented").
+
+:- pred map_foldl_par_spawn_native(pred(X, Y), pred(Y, A, A), list(X), A, A).
+:- mode map_foldl_par_spawn_native(pred(in, out) is det,
+    pred(in, in, out) is det, in, in, out) is erroneous.
+
+map_foldl_par_spawn_native(_, _, _, !Acc) :-
+    % XXX: Do the parallel conjunction transformation by hand.
+    sorry($file, $pred, "Unimplemented").
 
 :- pred my_map(pred(X, Y), list(X), list(Y)).
 :- mode my_map(pred(in, out) is det, in, out) is det.
@@ -337,13 +399,65 @@ my_map(M, [X | Xs], [Y | Ys]) :-
     M(X, Y),
     my_map(M, Xs, Ys).
 
-:- pred my_map_par(pred(X, Y), list(X), list(Y)).
-:- mode my_map_par(pred(in, out) is det, in, out) is det.
+:- pred my_map_par_conj(pred(X, Y), list(X), list(Y)).
+:- mode my_map_par_conj(pred(in, out) is det, in, out) is det.
 
-my_map_par(_, [], []).
-my_map_par(M, [X | Xs], [Y | Ys]) :-
+my_map_par_conj(_, [], []).
+my_map_par_conj(M, [X | Xs], [Y | Ys]) :-
     M(X, Y) &
-    my_map_par(M, Xs, Ys).
+    my_map_par_conj(M, Xs, Ys).
+
+:- pred my_map_par_spawn(pred(X, Y), list(X), list(Y)).
+:- mode my_map_par_spawn(pred(in, out) is det, in, out) is cc_multi.
+
+my_map_par_spawn(_, [], []).
+my_map_par_spawn(M, [X | Xs], Ys) :-
+    promise_pure (
+        some [!IO] (
+            impure make_io(!:IO),
+            mvar.init(YMVar, !IO),
+            spawn((pred(IO0::di, IO::uo) is cc_multi :-
+                    M(X, Y0),
+                    mvar.put(YMVar, Y0, IO0, IO)
+                ), !IO),
+            my_map_par_spawn(M, Xs, Ys0),
+            mvar.take(YMVar, Y, !IO),
+            Ys = [Y | Ys0],
+            _ = !.IO
+        )
+    ).
+
+:- pred my_map_par_spawn_native(pred(X, Y), list(X), list(Y)).
+:- mode my_map_par_spawn_native(pred(in, out) is det, in, out) is cc_multi.
+
+my_map_par_spawn_native(_, [], []).
+my_map_par_spawn_native(M, [X | Xs], Ys) :-
+    promise_pure (
+        some [!IO] (
+            impure make_io(!:IO),
+            mvar.init(YMVar, !IO),
+            spawn_native((pred(_::in, IO0::di, IO::uo) is cc_multi :-
+                    M(X, Y0),
+                    mvar.put(YMVar, Y0, IO0, IO)
+                ), _, !IO),
+            my_map_par_spawn_native(M, Xs, Ys0),
+            mvar.take(YMVar, Y, !IO),
+            Ys = [Y | Ys0],
+            _ = !.IO
+        )
+    ).
+
+:- impure pred make_io(io::uo) is det.
+
+:- pragma foreign_proc("C",
+    make_io(IO::uo),
+    [will_not_call_mercury, thread_safe],
+    "IO = 0;").
+
+:- pragma foreign_proc("Java",
+    make_io(IO::uo),
+    [will_not_call_mercury, thread_safe],
+    "IO = 0;").
 
 %----------------------------------------------------------------------------%
 
