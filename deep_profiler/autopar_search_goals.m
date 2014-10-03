@@ -167,7 +167,7 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPath,
                 Disjs0, Disjs, 1, _, cord.empty, Candidates,
                 cord.empty, Pushes, cord.empty, Singles,
                 cord.empty, Messages),
-            disj_calc_cost(Disjs, Calls, Cost),
+            disj_calc_cost(DetismRep, Disjs, Calls, Cost),
             GoalExpr = disj_rep(Disjs)
         ;
             GoalExpr0 = switch_rep(Var, CanFail, Cases0),
@@ -786,7 +786,7 @@ goal_to_pard_goal(Info, RevGoalPath, Goal, DetailGoal, !Messages) :-
             GoalExpr = disj_rep(Disjs),
             list.map_foldl2(disj_to_pard_goals(Info, RevGoalPath),
                 Disjs, DetailDisjs, 1, _, !Messages),
-            disj_calc_cost(DetailDisjs, Before, Cost),
+            disj_calc_cost(Detism, DetailDisjs, Before, Cost),
             DetailGoalExpr = disj_rep(DetailDisjs)
         ;
             GoalExpr = switch_rep(Var, CanFail, Cases),
