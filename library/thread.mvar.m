@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2003, 2006-2007, 2011 The University of Melbourne.
+% Copyright (C) 2014 The Mercury Team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,8 +91,8 @@ mvar.init(Mvar, !IO) :-
     ).
 
 mvar.init = mvar(Full, Empty, Ref) :-
-    impure Full = semaphore.init(0),
-    impure Empty = semaphore.init(1),   % Initially a mvar starts empty.
+    impure semaphore.impure_init(0, Full),
+    impure semaphore.impure_init(1, Empty),   % Initially a mvar starts empty.
     impure new_mutvar0(Ref).
 
 mvar.take(mvar(Full, Empty, Ref), Data, !IO) :-

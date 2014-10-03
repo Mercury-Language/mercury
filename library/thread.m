@@ -1,8 +1,9 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001, 2003-2004, 2006-2008, 2010-2011, 2014 The
-% University of Melbourne.
+% Copyright (C) 2000-2001, 2003-2004, 2006-2008, 2010-2011 The University
+% of Melbourne.
+% Copyright (C) 2014 The Mercury Team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,6 +29,7 @@
 
 :- include_module barrier.
 :- include_module channel.
+:- include_module future.
 :- include_module mvar.
 :- include_module semaphore.
 

@@ -21,6 +21,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module thread.
+:- import_module thread.future.
 :- import_module thread.mvar.
 
 main(!IO) :-
@@ -115,6 +116,7 @@ default_options(parallel,               string("no")).
     --->    parallel_conj
     ;       parallel_spawn
     ;       parallel_spawn_native
+    ;       parallel_future
     ;       sequential.
 
 :- pred process_options(option_table(option)::in, maybe_error(options)::out)
@@ -143,13 +145,16 @@ process_options(Table, MaybeOptions) :-
         ;
             ParallelStr = "spawn_native",
             Parallel0 = parallel_spawn_native
+        ;
+            ParallelStr = "future",
+            Parallel0 = parallel_future
         )
     ->
         MaybeParallel = ok(Parallel0)
     ;
         MaybeParallel = error(
-            "Parallel must be one of ""no"", ""conj"", ""spawn"" or " ++
-            """spawn_native""")
+            "Parallel must be one of ""no"", ""conj"", ""spawn"", " ++
+            """spawn_native"" or ""future""")
     ),
 
     getopt.lookup_maybe_int_option(Table, dim_x, MaybeX),
@@ -198,9 +203,11 @@ usage(!IO) :-
         "\t\tThe dimensions of the image, specify neither or both\n", !IO),
     write_string("\t-p <how> --parallel <how>\n", !IO),
     write_string(
-        "\t\t<how> is one of ""no"", ""conj"", ""spawn"" or\n", !IO),
+        "\t\t<how> is one of ""no"", ""conj"", ""spawn"",\n", !IO),
     write_string(
-        "\t\t""spawn_native"". These may be grade dependent.\n", !IO),
+        "\t\t""spawn_native"" or ""future"". These may be grade", !IO),
+    write_string(
+        "\t\tdependent.\n", !IO),
     write_string("\t-d --dependent-conjunctions\n", !IO),
     write_string(
         "\t\tUse an accumulator to represent the rows rendered so far\n", !IO).
@@ -241,14 +248,20 @@ draw_rows(Options, StartY, StepY, DimY, StartX, StepX, DimX, Rows) :-
 :- pred draw_rows_dep(parallel::in, list(float)::in, list(float)::in,
     cord(colour)::out) is det.
 
-draw_rows_dep(sequential, Xs, Ys, Rows) :-
-    map_foldl(draw_row(Xs), append_row, Ys, empty, Rows).
-draw_rows_dep(parallel_conj, Xs, Ys, Rows) :-
-    map_foldl_par_conj(draw_row(Xs), append_row, Ys, empty, Rows).
-draw_rows_dep(parallel_spawn, Xs, Ys, Rows) :-
-    map_foldl_par_spawn(draw_row(Xs), append_row, Ys, empty, Rows).
-draw_rows_dep(parallel_spawn_native, Xs, Ys, Rows) :-
-    map_foldl_par_spawn_native(draw_row(Xs), append_row, Ys, empty, Rows).
+draw_rows_dep(Parallel, Xs, Ys, Rows) :-
+    (
+        Parallel = sequential,
+        map_foldl(draw_row(Xs), append_row, Ys, empty, Rows)
+    ;
+        Parallel = parallel_conj,
+        map_foldl_par_conj(draw_row(Xs), append_row, Ys, empty, Rows)
+    ;
+        ( Parallel = parallel_spawn
+        ; Parallel = parallel_spawn_native
+        ; Parallel = parallel_future
+        ),
+        sorry($file, $pred, string(Parallel))
+    ).
 
 :- pred draw_rows_indep(parallel::in, list(float)::in, list(float)::in,
     cord(colour)::out) is det.
@@ -270,6 +283,9 @@ draw_rows_indep(Parallel, Xs, Ys, Rows) :-
         promise_equivalent_solutions [RowList] (
             my_map_par_spawn_native(draw_row(Xs), Ys, RowList)
         )
+    ;
+        Parallel = parallel_future,
+        my_map_par_future(draw_row(Xs), Ys, RowList)
     ),
     foldl(append_row, RowList, empty, Rows).
 
@@ -375,22 +391,6 @@ map_foldl_par_conj(M, F, [X | Xs], !Acc) :-
         map_foldl_par_conj(M, F, Xs, !Acc)
     ).
 
-:- pred map_foldl_par_spawn(pred(X, Y), pred(Y, A, A), list(X), A, A).
-:- mode map_foldl_par_spawn(pred(in, out) is det, pred(in, in, out) is det,
-    in, in, out) is erroneous.
-
-map_foldl_par_spawn(_, _, _, !Acc) :-
-    % XXX: Do the parallel conjunction transformation by hand.
-    sorry($file, $pred, "Unimplemented").
-
-:- pred map_foldl_par_spawn_native(pred(X, Y), pred(Y, A, A), list(X), A, A).
-:- mode map_foldl_par_spawn_native(pred(in, out) is det,
-    pred(in, in, out) is det, in, in, out) is erroneous.
-
-map_foldl_par_spawn_native(_, _, _, !Acc) :-
-    % XXX: Do the parallel conjunction transformation by hand.
-    sorry($file, $pred, "Unimplemented").
-
 :- pred my_map(pred(X, Y), list(X), list(Y)).
 :- mode my_map(pred(in, out) is det, in, out) is det.
 
@@ -406,6 +406,16 @@ my_map_par_conj(_, [], []).
 my_map_par_conj(M, [X | Xs], [Y | Ys]) :-
     M(X, Y) &
     my_map_par_conj(M, Xs, Ys).
+
+:- pred my_map_par_future(pred(X, Y), list(X), list(Y)).
+:- mode my_map_par_future(pred(in, out) is det, in, out) is det.
+
+my_map_par_future(_, [], []).
+my_map_par_future(M, [X | Xs], Ys) :-
+    FutY = future((func) = Y0 :- M(X, Y0)),
+    my_map_par_future(M, Xs, Ys0),
+    Y = wait(FutY),
+    Ys = [Y | Ys0].
 
 :- pred my_map_par_spawn(pred(X, Y), list(X), list(Y)).
 :- mode my_map_par_spawn(pred(in, out) is det, in, out) is cc_multi.

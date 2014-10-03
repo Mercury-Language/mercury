@@ -301,6 +301,7 @@ mercury_std_library_module("time").
 mercury_std_library_module("thread").
 mercury_std_library_module("thread.barrier").
 mercury_std_library_module("thread.channel").
+mercury_std_library_module("thread.future").
 mercury_std_library_module("thread.mvar").
 mercury_std_library_module("thread.semaphore").
 mercury_std_library_module("tree234").

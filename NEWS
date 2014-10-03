@@ -24,11 +24,17 @@ Changes to the Mercury standard library:
   highly efficient set implementation for fat sets.  This module is a
   contribution from Yes Logic Pty. Ltd.
 
-* We have added a module that implements barriers for concurrent
-  programming.  This module is a contribution from Mission Critical IT.
++ We have added two new modules for concurrent programming: thread.barrier
+  and thread.future.  The barrier module provides a barrier type which can
+  be used to control progress in concurrent code.  The future module
+  provides future and future_io data types which can be used to compute
+  values in parallel using other threads.  These modules were contributed by
+  Mission Critical IT.
 
 * We have added thread.spawn_native/4 to dedicate an OS thread to a Mercury
   thread. thread.spawn/4 was added as well.
+
++ We have deprecated the impure init/1 function in thread.semaphore.
 
 * In C grades, the math module now provides the fused multiply-add operation
   on platforms that support it.

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2001,2003-2004, 2006-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 2014 The Mercury Team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,7 +12,7 @@
 % Stability: medium.
 %
 % This module implements a simple semaphore data type for allowing
-% coroutines to synchronise with one another.
+% threads to synchronise with one another.
 %
 % The operations in this module are no-ops in the hlc grades that do not
 % contain a .par component.
@@ -28,40 +29,103 @@
 
 :- type semaphore.
 
+    % init(Count, Sem, !IO) creates a new semaphore `Sem' with its counter
+    % initialized to `Count'.
+    %
+:- pred init(int::in, semaphore::uo, io::di, io::uo) is det.
+
     % init(Sem, !IO) creates a new semaphore `Sem' with its counter
     % initialized to 0.
     %
-:- pred semaphore.init(semaphore::out, io::di, io::uo) is det.
+:- pred init(semaphore::uo, io::di, io::uo) is det.
 
-    % Returns a new semaphore `Sem' with its counter initialized to Count.
+    % Sem = init(Count) returns a new semaphore `Sem' with its counter
+    % initialized to `Count'.
     %
-:- impure func semaphore.init(int::in) = (semaphore::uo) is det.
+:- impure func impure_init(int::in) = (semaphore::uo) is det.
+
+    % Sem = init(Count) returns a new semaphore `Sem' with its counter
+    % initialized to `Count'.
+    %
+    % This has been renamed to impure_init.
+    %
+:- impure func init(int::in) = (semaphore::uo) is det.
+:- pragma obsolete(init/1).
 
     % wait(Sem, !IO) blocks until the counter associated with `Sem'
     % becomes greater than 0, whereupon it wakes, decrements the
     % counter and returns.
     %
-:- pred semaphore.wait(semaphore::in, io::di, io::uo) is det.
+:- pred wait(semaphore::in, io::di, io::uo) is det.
 
     % try_wait(Sem, Succ, !IO) is the same as wait/3, except that
     % instead of blocking, it binds `Succ' to a boolean indicating
     % whether the call succeeded in obtaining the semaphore or not.
     %
-:- pred semaphore.try_wait(semaphore::in, bool::out, io::di, io::uo) is det.
+:- pred try_wait(semaphore::in, bool::out, io::di, io::uo) is det.
 
     % signal(Sem, !IO) increments the counter associated with `Sem'
     % and if the resulting counter has a value greater than 0, it wakes
-    % one or more coroutines that are waiting on this semaphore (if
+    % one or more threads that are waiting on this semaphore (if
     % any).
     %
-:- pred semaphore.signal(semaphore::in, io::di, io::uo) is det.
+:- pred signal(semaphore::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
 :- implementation.
 
+init(Count, Semaphore, !IO) :-
+    promise_pure (
+        impure impure_init(Count, Semaphore)
+    ).
+
+init(Semaphore, !IO) :-
+    init(0, Semaphore, !IO).
+
+impure_init(Count) = Semaphore :-
+    impure impure_init(Count, Semaphore).
+
+init(Count) = Semaphore :-
+    impure impure_init(Count, Semaphore).
+
+signal(Semaphore, !IO) :-
+    promise_pure (
+        impure impure_signal(Semaphore),
+        !:IO = !.IO
+    ).
+
+wait(Semaphore, !IO) :-
+    promise_pure (
+        impure impure_wait(Semaphore),
+        !:IO = !.IO
+    ).
+
+try_wait(Sem, Res, !IO) :-
+    promise_pure (
+        impure impure_try_wait(Sem, Res)
+    ).
+
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+:- interface.
+
+% The semaphore operations above can be used without the I/O state in impure
+% code.  These predicates are provided for use by implementors.
+
+:- impure pred impure_init(int::in, semaphore::uo) is det.
+
+:- impure pred impure_init(semaphore::uo) is det.
+
+:- impure pred impure_wait(semaphore::in) is det.
+
+:- impure pred impure_try_wait(semaphore::in, bool::out) is det.
+
+:- impure pred impure_signal(semaphore::in) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+:- implementation.
 
 :- pragma foreign_decl("C", "
     #include <stdio.h>
@@ -106,13 +170,11 @@ ML_finalize_semaphore(void *obj, void *cd);
 
 %-----------------------------------------------------------------------------%
 
-init(Semaphore, !IO) :-
-    promise_pure (
-        impure Semaphore = init(0)
-    ).
+impure_init(Semaphore) :-
+    impure impure_init(0, Semaphore).
 
 :- pragma foreign_proc("C",
-    init(Count::in) = (Semaphore::uo),
+    impure_init(Count::in, Semaphore::uo),
     [will_not_call_mercury, thread_safe],
 "
     ML_Semaphore    *sem;
@@ -142,7 +204,7 @@ init(Semaphore, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    init(Count::in) = (Semaphore::uo),
+    impure_init(Count::in, Semaphore::uo),
     [will_not_call_mercury, thread_safe],
 "
     Semaphore = new thread__semaphore.ML_Semaphore();
@@ -150,7 +212,7 @@ init(Semaphore, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    init(Count::in) = (Semaphore::uo),
+    impure_init(Count::in, Semaphore::uo),
     [will_not_call_mercury, thread_safe],
 "
     Semaphore = new jmercury.runtime.Semaphore(Count);
@@ -174,16 +236,18 @@ ML_finalize_semaphore(void *obj, void *cd)
 }
 ").
 
-    % semaphore.signal causes the calling context to resume in semaphore.nop,
+%-----------------------------------------------------------------------------%
+
+    % impure_signal causes the calling context to resume in semaphore.nop,
     % which simply jumps to the succip. That will return control to the caller
     % of semaphore.signal as intended, but not if this procedure is inlined.
     %
     % XXX get rid of this limitation at some stage.
     %
-:- pragma no_inline(semaphore.signal/3).
+:- pragma no_inline(semaphore.impure_signal/1).
 :- pragma foreign_proc("C",
-    signal(Semaphore::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    impure_signal(Semaphore::in),
+    [will_not_call_mercury, thread_safe],
 "
     ML_Semaphore    *sem;
 #ifndef MR_HIGHLEVEL_CODE
@@ -254,8 +318,8 @@ ML_finalize_semaphore(void *obj, void *cd)
 ").
 
 :- pragma foreign_proc("C#",
-    signal(Semaphore::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    impure_signal(Semaphore::in),
+    [will_not_call_mercury, thread_safe],
 "
     System.Threading.Monitor.Enter(Semaphore);
     Semaphore.count++;
@@ -265,22 +329,24 @@ ML_finalize_semaphore(void *obj, void *cd)
 ").
 
 :- pragma foreign_proc("Java",
-    signal(Semaphore::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    impure_signal(Semaphore::in),
+    [will_not_call_mercury, thread_safe],
 "
     Semaphore.release();
 ").
 
-    % semaphore.wait causes the calling context to resume in semaphore.nop,
+%-----------------------------------------------------------------------------%
+
+    % impure_wait causes the calling context to resume in semaphore.nop,
     % which simply jumps to the succip. That will return control to the caller
     % of semaphore.wait as intended, but not if this procedure is inlined.
     %
     % XXX get rid of this limitation at some stage.
     %
-:- pragma no_inline(semaphore.wait/3).
+:- pragma no_inline(impure_wait/1).
 :- pragma foreign_proc("C",
-    wait(Semaphore::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    impure_wait(Semaphore::in),
+    [will_not_call_mercury, thread_safe],
 "
     ML_Semaphore    *sem;
 #ifndef MR_HIGHLEVEL_CODE
@@ -342,8 +408,8 @@ ML_finalize_semaphore(void *obj, void *cd)
 ").
 
 :- pragma foreign_proc("C#",
-    wait(Semaphore::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    impure_wait(Semaphore::in),
+    [will_not_call_mercury, thread_safe],
 "
     System.Threading.Monitor.Enter(Semaphore);
 
@@ -357,8 +423,8 @@ ML_finalize_semaphore(void *obj, void *cd)
 ").
 
 :- pragma foreign_proc("Java",
-    wait(Semaphore::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    impure_wait(Semaphore::in),
+    [will_not_call_mercury, thread_safe],
 "
     /*
     ** acquire() might be useful as well; it will throw an exception if the
@@ -367,15 +433,17 @@ ML_finalize_semaphore(void *obj, void *cd)
     Semaphore.acquireUninterruptibly();
 ").
 
-semaphore.try_wait(Sem, Res, !IO) :-
-    try_wait_2(Sem, Res0, !IO),
+%-----------------------------------------------------------------------------%
+
+impure_try_wait(Sem, Res) :-
+    impure impure_try_wait_2(Sem, Res0),
     Res = ( Res0 = 0 -> yes ; no ).
 
-:- pred try_wait_2(semaphore::in, int::out, io::di, io::uo) is det.
+:- impure pred impure_try_wait_2(semaphore::in, int::out) is det.
 
 :- pragma foreign_proc("C",
-    try_wait_2(Semaphore::in, Res::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    impure_try_wait_2(Semaphore::in, Res::out),
+    [will_not_call_mercury, thread_safe],
 "
     ML_Semaphore    *sem;
 
@@ -393,8 +461,8 @@ semaphore.try_wait(Sem, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    try_wait_2(Semaphore::in, Res::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    impure_try_wait_2(Semaphore::in, Res::out),
+    [will_not_call_mercury, thread_safe],
 "
     if (System.Threading.Monitor.TryEnter(Semaphore)) {
         if (Semaphore.count > 0) {
@@ -411,8 +479,8 @@ semaphore.try_wait(Sem, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    try_wait_2(Semaphore::in, Res::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+    impure_try_wait_2(Semaphore::in, Res::out),
+    [will_not_call_mercury, thread_safe],
 "
     Res = Semaphore.tryAcquire() ? 0 : 1;
 ").
