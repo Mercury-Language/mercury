@@ -51,21 +51,23 @@
 :- import_module measurement_units.
 :- import_module measurements.
 :- import_module program_representation_utils.
+:- import_module read_profile.
 :- import_module recursion_patterns.
 :- import_module report.
 :- import_module var_use_analysis.
 
-:- import_module pair.
-:- import_module list.
 :- import_module array.
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module exception.
 :- import_module float.
-:- import_module io.
 :- import_module int.
+:- import_module io.
 :- import_module lazy.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -403,8 +405,28 @@ candidate_parallel_conjunctions_clique_proc(Opts, Deep, RecursionType,
         ),
 
         % Analyse this procedure for parallelism opportunities.
-        candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
-            RecursiveCallSiteCostMap, Candidates, ProcMessages),
+        promise_equivalent_solutions [Candidates, ProcMessages]
+        ( try [] (
+            candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr,
+                RecursionType, RecursiveCallSiteCostMap, CandidatesPrime,
+                ProcMessagesPrime)
+        )
+        then (
+            Candidates = CandidatesPrime,
+            ProcMessages = ProcMessagesPrime
+        )
+        catch_any Exp -> (
+            trace [io(!IO)] (
+                PDPtr = proc_dynamic_ptr(PDId),
+                deep_lookup_proc_dynamics(Deep, PDPtr, PD),
+                deep_lookup_proc_statics(Deep, PD ^ pd_proc_static, PS),
+                ProcName = PS ^ ps_q_refined_id,
+                io.format(io.stderr_stream,
+                    "Exception while analyising proc dynamic %d (%s)\n",
+                    [i(PDId), s(ProcName)], !IO)
+            ),
+            throw(Exp)
+        )),
         !:Messages = !.Messages ++ ProcMessages,
         Messages = !.Messages
     ).

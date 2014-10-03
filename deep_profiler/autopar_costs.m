@@ -35,7 +35,7 @@
 :- pred conj_calc_cost(list(pard_goal_detail)::in, int::in,
     goal_cost_csq::out) is det.
 
-:- pred disj_calc_cost(list(pard_goal_detail)::in, int::in,
+:- pred disj_calc_cost(detism_rep::in, list(pard_goal_detail)::in, int::in,
     goal_cost_csq::out) is det.
 
 :- pred switch_calc_cost(list(case_rep(pard_goal_detail_annotation))::in,
@@ -99,8 +99,25 @@ conj_calc_cost([Conj | Conjs], _, Cost) :-
     ConjCost = Conj ^ goal_annotation ^ pgd_cost,
     Cost = add_goal_costs_seq(ConjCost, ConjsCost).
 
-disj_calc_cost([], Calls, simple_goal_cost(Calls)).
-disj_calc_cost([Disj | Disjs], _, Cost) :-
+disj_calc_cost(Detism, Disjs, Calls, Cost) :-
+    Solutions = detism_get_solutions(Detism),
+    (
+        ( Solutions = at_most_zero_rep
+        ; Solutions = at_most_one_rep
+        ),
+        % This is a semidet or committed choice disjunction, there's no
+        % backtracking.
+        disj_calc_cost_semidet(Disjs, Calls, Cost)
+    ;
+        Solutions = at_most_many_rep,
+        disj_calc_cost_nondet(Disjs, Calls, Cost)
+    ).
+
+:- pred disj_calc_cost_semidet(list(pard_goal_detail)::in, int::in,
+    goal_cost_csq::out) is det.
+
+disj_calc_cost_semidet([], Calls, simple_goal_cost(Calls)).
+disj_calc_cost_semidet([Disj | Disjs], _, Cost) :-
     Coverage = Disj ^ goal_annotation ^ pgd_coverage,
     get_coverage_before_and_after_det(Coverage, Before, After),
     ( Before = 0 ->
@@ -109,12 +126,29 @@ disj_calc_cost([Disj | Disjs], _, Cost) :-
     ;
         _Successes = After,
         Failures = Before - After,
-        % XXX: We assume this is a semidet disjunction
-        disj_calc_cost(Disjs, Failures, FailureCost),
+        disj_calc_cost_semidet(Disjs, Failures, FailureCost),
         DisjCost = Disj ^ goal_annotation ^ pgd_cost,
         SuccessCost = atomic_goal_cost(After),
         BranchCost = add_goal_costs_branch(Before, FailureCost, SuccessCost),
         Cost = add_goal_costs_seq(DisjCost, BranchCost)
+    ).
+
+:- pred disj_calc_cost_nondet(list(pard_goal_detail)::in, int::in,
+    goal_cost_csq::out) is det.
+
+disj_calc_cost_nondet([], Calls, simple_goal_cost(Calls)).
+disj_calc_cost_nondet([Disj | Disjs], Calls, Cost) :-
+    Coverage = Disj ^ goal_annotation ^ pgd_coverage,
+    get_coverage_before_det(Coverage, Before),
+    ( Before = 0 ->
+        % Avoid a divide by zero.
+        Cost = dead_goal_cost
+    ;
+        % TODO: This is very approximate, it calculates the percall cost.
+        % For nondet code we probably want the per-call and per-redo cost.
+        disj_calc_cost_nondet(Disjs, Calls, DisjsCost),
+        DisjCost = Disj ^ goal_annotation ^ pgd_cost,
+        Cost = add_goal_costs_seq(DisjCost, DisjsCost)
     ).
 
 switch_calc_cost([], Calls, simple_goal_cost(Calls)).
