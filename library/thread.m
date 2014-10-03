@@ -287,7 +287,7 @@ spawn_context_2(_, Res, "", !IO) :-
     Task task = new Task(rg);
     ThreadId = String.valueOf(task.getId());
     rg.setId(ThreadId);
-    JavaInternal.getThreadPool().submitExclusiveThread(task);
+    JavaInternal.getThreadPool().submit(task);
     Success = bool.YES;
 ").
 

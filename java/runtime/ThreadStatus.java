@@ -9,6 +9,7 @@ package jmercury.runtime;
 public enum ThreadStatus {
     WORKING,
     IDLE,
+    BLOCKED,
 
     /*
      * A thread in any other state, currently the only possibility is after

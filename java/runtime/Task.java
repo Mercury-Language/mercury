@@ -57,6 +57,10 @@ public class Task implements Runnable
      * status change.
      */
     protected synchronized void updateStatus(Status status) {
+        if (MercuryThreadPool.debug) {
+            System.err.println("Thread: " + Thread.currentThread() +
+                "task: " + this + " status " + status);
+        }
         this.status = status;
         notifyAll();
     }
@@ -72,6 +76,10 @@ public class Task implements Runnable
         while (status != Status.FINISHED) {
             wait();
         }
+    }
+
+    public String toString() {
+        return "Task " + id;
     }
 }
 

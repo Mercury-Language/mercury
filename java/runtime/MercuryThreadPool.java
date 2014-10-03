@@ -24,9 +24,6 @@ import java.util.*;
  * new threads may be created to avoid deadlocks and attempt to keep all
  * processors busy.
  *
- * TODO: Currently the thread pool does not know when a thread is blocked by
- * a barrier, channel, mvar or semaphore.
- *
  * TODO: Currently the thread pool does not know when a thread is blocked in
  * foreign code or performing IO.
  *
@@ -50,6 +47,8 @@ import java.util.*;
 public class MercuryThreadPool
     implements Runnable
 {
+    public static final boolean         debug = false;
+
     private static MercuryThreadPool    instance;
 
     private MercuryThreadFactory        thread_factory;
@@ -80,6 +79,7 @@ public class MercuryThreadPool
      */
     private int                         num_threads_working;
     private volatile int                num_threads_waiting;
+    private int                         num_threads_blocked;
     private int                         num_threads_other;
     private LinkedList<MercuryThread>   threads;
     private Lock                        threads_lock;
@@ -111,6 +111,7 @@ public class MercuryThreadPool
         thread_pool_size = size;
         num_threads_working = 0;
         num_threads_waiting = 0;
+        num_threads_blocked = 0;
         num_threads_other = 0;
         threads = new LinkedList<MercuryThread>();
         threads_lock = new ReentrantLock();
@@ -236,6 +237,9 @@ public class MercuryThreadPool
                 case IDLE:
                     num_threads_waiting--;
                     break;
+                case BLOCKED:
+                    num_threads_blocked--;
+                    break;
                 case OTHER:
                     num_threads_other--;
                     break;
@@ -250,6 +254,9 @@ public class MercuryThreadPool
                 case IDLE:
                     num_threads_waiting++;
                     break;
+                case BLOCKED:
+                    num_threads_blocked++;
+                    break;
                 case OTHER:
                     num_threads_other++;
                     break;
@@ -260,10 +267,12 @@ public class MercuryThreadPool
             threads_lock.unlock();
         }
 
-        if ((new_ == ThreadStatus.IDLE) ||
-            (new_ == ThreadStatus.OTHER))
-        {
-            signalMainLoop();
+        switch (new_) {
+            case BLOCKED:
+                signalMainLoop();
+                break;
+            default:
+                break;
         }
     }
 
@@ -278,6 +287,9 @@ public class MercuryThreadPool
                     break;
                 case IDLE:
                     num_threads_waiting--;
+                    break;
+                case BLOCKED:
+                    num_threads_blocked--;
                     break;
                 case OTHER:
                     num_threads_other--;
@@ -331,15 +343,33 @@ public class MercuryThreadPool
     }
 
     /**
+     * Warm up the thread pool by starting some initial threads (currently
+     * one).
+     */
+    protected void startupInitialThreads()
+    {
+        MercuryWorkerThread t = thread_factory.newWorkerThread();
+
+        threads_lock.lock();
+        try {
+            threads.add(t);
+            num_threads_other++;
+        } finally {
+            threads_lock.unlock();
+        }
+
+        t.start();
+    }
+
+    /**
      * Check threads.
      * Checks the numbers and status of the worker threads and starts more
      * threads if required.
-     * @return The number of currently working/blocked threads.
      */
-    protected int checkThreads()
+    protected void checkThreads()
     {
         int num_new_threads;
-        int num_working_blocked_threads;
+        int num_tasks_waiting;
         List<MercuryWorkerThread> new_threads =
             new LinkedList<MercuryWorkerThread>();
 
@@ -352,43 +382,62 @@ public class MercuryThreadPool
         thread_pool_size = (user_specified_size > 0) ? user_specified_size :
             Runtime.getRuntime().availableProcessors();
 
-        /*
-         * If we have fewer than the default number of threads then start
-         * some new threads.
-         */
-        threads_lock.lock();
+        tasks_lock.lock();
         try {
-            int num_threads = num_threads_working + num_threads_waiting +
-                num_threads_other;
-            num_working_blocked_threads = num_threads_working +
-                num_threads_other;
-            num_new_threads = thread_pool_size - num_threads;
-            if (num_new_threads > 0) {
+            num_tasks_waiting = tasks.size();
+        } finally {
+            tasks_lock.unlock();
+        }
+
+        if (num_tasks_waiting > 0) {
+            /*
+             * If we have fewer than the default number of threads then
+             * start some new threads.
+             */
+            threads_lock.lock();
+            try {
+                int num_threads = num_threads_working + num_threads_waiting +
+                    num_threads_blocked + num_threads_other;
+                int num_threads_limit = thread_pool_size +
+                    num_threads_blocked;
+                // Determine the number of new threads that we want.
+                num_new_threads = num_tasks_waiting - num_threads_other -
+                    num_threads_waiting;
+                if (num_new_threads + num_threads > num_threads_limit) {
+                    /*
+                     * The number of threads that we want, plus the number
+                     * we already have, exceeds the number that we're
+                     * allowed to have.
+                     */
+                    num_new_threads = num_threads_limit - num_threads;
+                }
+                if (debug) {
+                    System.err.println("Pool has " +
+                        num_threads_working + " working threads, " +
+                        num_threads_blocked + " blocked threads, " +
+                        num_threads_waiting + " idle threads, " +
+                        num_threads_other + " other (starting up) threads. " +
+                        "will create " + num_new_threads + " new threads.");
+                }
+
                 for (int i = 0; i < num_new_threads; i++) {
                     MercuryWorkerThread t = thread_factory.newWorkerThread();
                     new_threads.add(t);
                     threads.add(t);
+                    num_threads_other++;
                 }
-                num_threads = thread_pool_size;
+            } finally {
+                threads_lock.unlock();
             }
-            num_threads_other += num_new_threads;
-        } finally {
-            threads_lock.unlock();
-        }
 
-        /*
-         * Start the threads while we're not holding the lock, this makes
-         * the above critical section smaller.
-         */
-        for (MercuryWorkerThread t : new_threads) {
-            t.start();
+            /*
+             * Start the threads while we're not holding the lock, this makes
+             * the above critical section smaller.
+             */
+            for (MercuryWorkerThread t : new_threads) {
+                t.start();
+            }
         }
-
-        /*
-         * If there are too many threads then superfluous threads will
-         * shut down when they try to get a new task.
-         */
-        return num_working_blocked_threads;
     }
 
     /**
@@ -420,7 +469,6 @@ public class MercuryThreadPool
     public void run()
     {
         boolean done = false;
-        int     num_working_blocked_threads;
         long    num_tasks_submitted;
         long    num_tasks_completed;
         boolean tasks_locked = false;
@@ -436,14 +484,14 @@ public class MercuryThreadPool
                     num_tasks_submitted = this.num_tasks_submitted;
                     num_tasks_completed = this.num_tasks_completed;
                     done = (num_tasks_submitted == num_tasks_completed);
-                    
+
                     if (!done) {
                         /*
                          * Start new threads if we have fewer than the
                          * thread_pool_size
                          */
-                        num_working_blocked_threads = checkThreads();
-                    
+                        checkThreads();
+
                         /*
                          * Acquire the main loop lock while we're still
                          * holding tasks_lock.  This prevents a race whereby
@@ -517,6 +565,7 @@ public class MercuryThreadPool
     public void runMain(Runnable run_main)
     {
         Task main_task = new Task(run_main);
+        startupInitialThreads();
         submit(main_task);
         try {
             /*
@@ -553,12 +602,7 @@ public class MercuryThreadPool
          * @param runnable The task the new thread should execute.
          */
         public MercuryThread newThread(final Runnable runnable) {
-            return new MercuryThread("Mercury Thread", allocateThreadId())
-                {
-                    public void run() {
-                        runnable.run();
-                    }
-                };
+            return new NativeThread(allocateThreadId(), runnable);
         }
 
         public MercuryWorkerThread newWorkerThread() {

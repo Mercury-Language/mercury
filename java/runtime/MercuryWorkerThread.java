@@ -78,5 +78,15 @@ public class MercuryWorkerThread extends MercuryThread
         pool.updateThreadCounts(status, new_status);
         status = new_status;
     }
+
+    public void blocked() {
+        pool.updateThreadCounts(status, ThreadStatus.BLOCKED);
+        status = ThreadStatus.BLOCKED;
+    }
+
+    public void running() {
+        pool.updateThreadCounts(status, ThreadStatus.WORKING);
+        status = ThreadStatus.WORKING;
+    }
 }
 
