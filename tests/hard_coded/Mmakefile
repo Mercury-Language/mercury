@@ -11,6 +11,7 @@ ORDINARY_PROGS=	\
 	address_of_builtins \
 	agg \
 	array_gen \
+	array_sort \
 	array_test \
 	array_test2 \
 	array_all_tf \

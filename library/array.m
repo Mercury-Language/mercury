@@ -432,6 +432,11 @@
 :- func array.sort(array(T)) = array(T).
 :- mode array.sort(array_di) = array_uo is det.
 
+    % array.sort was previously buggy. This symbol provides a way to ensure
+    % that you are using the fixed version.
+    %
+:- pred array.sort_fix_2014 is det.
+
     % array.foldl(Fn, Array, X) is equivalent to
     %   list.foldl(Fn, array.to_list(Array), X)
     % but more efficient.
@@ -2120,6 +2125,10 @@ array.member(A, X) :-
 
 array.sort(A) = samsort_subarray(A, array.min(A), array.max(A)).
 
+:- pragma no_inline(array.sort_fix_2014/0).
+
+array.sort_fix_2014.
+
 %------------------------------------------------------------------------------%
 
 array.binary_search(A, X, I) :-
@@ -2690,7 +2699,7 @@ do_all_false(Pred, I, UB, Array) :-
 :- pragma type_spec(samsort_subarray/3, T = string).
 
 samsort_subarray(A0, Lo, Hi) = A :-
-    samsort_up(0, A0, _, array.copy(A0), A, Lo, Hi, Lo).
+    samsort_up(0, array.copy(A0), A, A0, _, Lo, Hi, Lo).
 
 :- pred samsort_up(int::in, array(T)::array_di, array(T)::array_uo,
     array(T)::array_di, array(T)::array_uo, int::in, int::in, int::in) is det.
@@ -2703,25 +2712,49 @@ samsort_subarray(A0, Lo, Hi) = A :-
     %   A0 is sorted from Lo .. I - 1.
     %   A0 and B0 are identical from I .. Hi.
     % Postcondition:
-    %   B is sorted from Lo .. Hi.
+    %   A is sorted from Lo .. Hi.
     %
 samsort_up(N, A0, A, B0, B, Lo, Hi, I) :-
+    trace [compile_time(flag("array_sort"))] (
+        verify_sorted(A0, Lo, I - 1),
+        verify_identical(A0, B0, I, Hi)
+    ),
     ( I > Hi ->
         A = A0,
         B = B0
+        % A is sorted from Lo .. Hi.
     ; N > 0 ->
+        % B0 and A0 are identical from I .. Hi.
         samsort_down(N - 1, B0, B1, A0, A1, I, Hi, J),
         % A1 is sorted from I .. J - 1.
-        % A1 and B1 are identical from J .. Hi.
+        % B1 and A1 are identical from J .. Hi.
+
         merge_subarrays(A1, Lo, I - 1, I, J - 1, Lo, B1, B2),
         A2 = A1,
+
         % B2 is sorted from Lo .. J - 1.
-        samsort_up(N + 1, B2, B, A2, A, Lo, Hi, J)
+        % B2 and A2 are identical from J .. Hi.
+        samsort_up(N + 1, B2, B3, A2, A3, Lo, Hi, J),
+        % B3 is sorted from Lo .. Hi.
+
+        A = B3,
+        B = A3
+        % A is sorted from Lo .. Hi.
     ;
         % N = 0, I = Lo
         copy_run_ascending(A0, B0, B1, Lo, Hi, J),
+
         % B1 is sorted from Lo .. J - 1.
-        samsort_up(N + 1, B1, B, A0, A, Lo, Hi, J)
+        % B1 and A0 are identical from J .. Hi.
+        samsort_up(N + 1, B1, B2, A0, A2, Lo, Hi, J),
+        % B2 is sorted from Lo .. Hi.
+
+        A = B2,
+        B = A2
+        % A is sorted from Lo .. Hi.
+    ),
+    trace [compile_time(flag("array_sort"))] (
+        verify_sorted(A, Lo, Hi)
     ).
 
 :- pred samsort_down(int::in, array(T)::array_di, array(T)::array_uo,
@@ -2738,10 +2771,14 @@ samsort_up(N, A0, A, B0, B, Lo, Hi, I) :-
     %   A and B are identical from I .. Hi.
     %
 samsort_down(N, A0, A, B0, B, Lo, Hi, I) :-
+    trace [compile_time(flag("array_sort"))] (
+        verify_identical(A0, B0, Lo, Hi)
+    ),
     ( Lo > Hi ->
         A = A0,
         B = B0,
         I = Lo
+        % B is sorted from Lo .. I - 1.
     ; N > 0 ->
         samsort_down(N - 1, B0, B1, A0, A1, Lo, Hi, J),
         samsort_down(N - 1, B1, B2, A1, A2, J,  Hi, I),
@@ -2754,6 +2791,33 @@ samsort_down(N, A0, A, B0, B, Lo, Hi, I) :-
         A = A0,
         copy_run_ascending(A0, B0, B, Lo, Hi, I)
         % B is sorted from Lo .. I - 1.
+    ),
+    trace [compile_time(flag("array_sort"))] (
+        verify_sorted(B, Lo, I - 1),
+        verify_identical(A, B, I, Hi)
+    ).
+
+:- pred verify_sorted(array(T)::array_ui, int::in, int::in) is det.
+
+verify_sorted(A, Lo, Hi) :-
+    ( Lo >= Hi ->
+        true
+    ; compare((<), A ^ elem(Lo + 1), A ^ elem(Lo)) ->
+        unexpected($module, $pred, "array range not sorted")
+    ;
+        verify_sorted(A, Lo + 1, Hi)
+    ).
+
+:- pred verify_identical(array(T)::array_ui, array(T)::array_ui,
+    int::in, int::in) is det.
+
+verify_identical(A, B, Lo, Hi) :-
+    ( Lo > Hi ->
+        true
+    ; A ^ elem(Lo) = B ^ elem(Lo) ->
+        verify_identical(A, B, Lo + 1, Hi)
+    ;
+        unexpected($module, $pred, "array ranges not identical")
     ).
 
 %------------------------------------------------------------------------------%
