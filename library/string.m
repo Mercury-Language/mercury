@@ -79,115 +79,112 @@
     % NOTE: code points (characters) are encoded using one or more code units,
     % i.e. bytes for UTF-8; 16-bit integers for UTF-16.
     %
-:- func string.length(string::in) = (int::uo) is det.
-:- pred string.length(string, int).
-:- mode string.length(in, uo) is det.
-:- mode string.length(ui, uo) is det.
+:- func length(string::in) = (int::uo) is det.
+:- pred length(string, int).
+:- mode length(in, uo) is det.
+:- mode length(ui, uo) is det.
 
-    % Synonyms for string.length.
+    % Synonyms for length.
     %
-:- func string.count_code_units(string) = int.
-:- pred string.count_code_units(string::in, int::out) is det.
+:- func count_code_units(string) = int.
+:- pred count_code_units(string::in, int::out) is det.
 
     % Determine the number of code points in a string.
     %
-:- func string.count_codepoints(string) = int.
-:- pred string.count_codepoints(string::in, int::out) is det.
+:- func count_codepoints(string) = int.
+:- pred count_codepoints(string::in, int::out) is det.
 
-    % Determine the number of code units required to represent a string
-    % in UTF-8 encoding.
+    % Determine the number of code units required to represent a string in
+    % UTF-8 encoding.
     %
-:- func string.count_utf8_code_units(string) = int.
+:- func count_utf8_code_units(string) = int.
 
-    % string.codepoint_offset(String, CodePointCount, CodePointOffset):
-    % Equivalent to `string.codepoint_offset(String, 0, CodePointCount,
+    % codepoint_offset(String, CodePointCount, CodePointOffset):
+    % Equivalent to `codepoint_offset(String, 0, CodePointCount,
     % CodePointOffset)'.
     %
-:- pred string.codepoint_offset(string::in, int::in, int::out) is semidet.
+:- pred codepoint_offset(string::in, int::in, int::out) is semidet.
 
-    % string.codepoint_offset(String, StartOffset, CodePointCount,
-    %   CodePointOffset):
+    % codepoint_offset(String, StartOffset, CodePointCount, CodePointOffset):
     %
     % Return the offset into `String' where, starting from `StartOffset',
     % `CodePointCount' code points are skipped.  Fails if either `StartOffset'
     % or `CodePointOffset' are out of range.
     %
-:- pred string.codepoint_offset(string::in, int::in, int::in, int::out)
-    is semidet.
+:- pred codepoint_offset(string::in, int::in, int::in, int::out) is semidet.
 
     % Append two strings together.
     %
-:- func string.append(string::in, string::in) = (string::uo) is det.
+:- func append(string::in, string::in) = (string::uo) is det.
 
-:- pred string.append(string, string, string).
-:- mode string.append(in, in, in) is semidet.  % implied
-:- mode string.append(in, uo, in) is semidet.
-:- mode string.append(in, in, uo) is det.
-:- mode string.append(out, out, in) is multi.
+:- pred append(string, string, string).
+:- mode append(in, in, in) is semidet.  % implied
+:- mode append(in, uo, in) is semidet.
+:- mode append(in, in, uo) is det.
+:- mode append(out, out, in) is multi.
 % The following mode is semidet in the sense that it doesn't succeed more
 % than once - but it does create a choice-point, which means it's inefficient
 % and that the compiler can't deduce that it is semidet.
-% Use string.remove_suffix instead.
-% :- mode string.append(out, in, in) is semidet.
+% Use remove_suffix instead.
+% :- mode append(out, in, in) is semidet.
 
-    % S1 ++ S2 = S :- string.append(S1, S2, S).
+    % S1 ++ S2 = S :- append(S1, S2, S).
     %
     % Nicer syntax.
 :- func string ++ string = string.
 :- mode in ++ in = uo is det.
 
-    % string.remove_suffix(String, Suffix, Prefix):
-    % The same as string.append(Prefix, Suffix, String) except that
-    % this is semidet whereas string.append(out, in, in) is nondet.
+    % remove_suffix(String, Suffix, Prefix):
+    % The same as append(Prefix, Suffix, String) except that this is semidet
+    % whereas append(out, in, in) is nondet.
     %
-:- pred string.remove_suffix(string::in, string::in, string::out) is semidet.
+:- pred remove_suffix(string::in, string::in, string::out) is semidet.
 
-    % string.det_remove_suffix(String, Suffix) returns the same value
-    % as string.remove_suffix, except it aborts if String does not end
-    % with Suffix.
+    % det_remove_suffix(String, Suffix) returns the same value as
+    % remove_suffix, except it aborts if String does not end with Suffix.
     %
-:- func string.det_remove_suffix(string, string) = string.
+:- func det_remove_suffix(string, string) = string.
 
-    % string.remove_suffix_if_present(Suffix, String) returns `String' minus
-    % `Suffix' if `String' ends with `Suffix', `String' otherwise.
+    % remove_suffix_if_present(Suffix, String) returns `String' minus `Suffix'
+    % if `String' ends with `Suffix', `String' otherwise.
     %
-:- func string.remove_suffix_if_present(string, string) = string.
+:- func remove_suffix_if_present(string, string) = string.
 
-    % string.remove_prefix(Prefix, String, Suffix):
-    % This is a synonym for string.append(Prefix, Suffix, String) but with
-    % the arguments in a more convenient order for use with higher-order code.
+    % remove_prefix(Prefix, String, Suffix):
+    % This is a synonym for append(Prefix, Suffix, String) but with the
+    % arguments in a more convenient order for use with higher-order code.
     %
-:- pred string.remove_prefix(string::in, string::in, string::out) is semidet.
+:- pred remove_prefix(string::in, string::in, string::out) is semidet.
 
-    % string.remove_prefix_if_present(Prefix, String) = Suffix returns `String'
-    % minus `Prefix' if `String' begins with `Prefix', `String' otherwise.
+    % remove_prefix_if_present(Prefix, String) = Suffix returns `String' minus
+    % `Prefix' if `String' begins with `Prefix', `String' otherwise.
     %
-:- func string.remove_prefix_if_present(string, string) = string.
+:- func remove_prefix_if_present(string, string) = string.
 
-    % string.prefix(String, Prefix) is true iff Prefix is a prefix of String.
-    % Same as string.append(Prefix, _, String).
+    % prefix(String, Prefix) is true iff Prefix is a prefix of String.
+    % Same as append(Prefix, _, String).
     %
-:- pred string.prefix(string, string).
-:- mode string.prefix(in, in) is semidet.
-:- mode string.prefix(in, out) is multi.
+:- pred prefix(string, string).
+:- mode prefix(in, in) is semidet.
+:- mode prefix(in, out) is multi.
 
-    % string.suffix(String, Suffix) is true iff Suffix is a suffix of String.
-    % Same as string.append(_, Suffix, String).
+    % suffix(String, Suffix) is true iff Suffix is a suffix of String.
+    % Same as append(_, Suffix, String).
     %
-:- pred string.suffix(string, string).
-:- mode string.suffix(in, in) is semidet.
-:- mode string.suffix(in, out) is multi.
+:- pred suffix(string, string).
+:- mode suffix(in, in) is semidet.
+:- mode suffix(in, out) is multi.
 
-    % string.string(X): Returns a canonicalized string representation
-    % of the value X using the standard Mercury operators.
+    % string(X): Returns a canonicalized string representation of the value X
+    % using the standard Mercury operators.
     %
-:- func string.string(T) = string.
+:- func string(T) = string.
 
     % As above, but using the supplied table of operators.
     %
-:- func string.string_ops(ops.table, T) = string.
+:- func string_ops(ops.table, T) = string.
 
-    % string.string_ops_noncanon(NonCanon, OpsTable, X, String)
+    % string_ops_noncanon(NonCanon, OpsTable, X, String)
     %
     % As above, but the caller specifies what behaviour should occur for
     % non-canonical terms (i.e. terms where multiple representations
@@ -200,55 +197,53 @@
     % - `include_details_cc' will show the structure of any non-canonical
     %   subterms, but can only be called from a committed choice context.
     %
-:- pred string.string_ops_noncanon(noncanon_handling, ops.table, T, string).
-:- mode string.string_ops_noncanon(in(do_not_allow), in, in, out) is det.
-:- mode string.string_ops_noncanon(in(canonicalize), in, in, out) is det.
-:- mode string.string_ops_noncanon(in(include_details_cc), in, in, out)
-    is cc_multi.
-:- mode string.string_ops_noncanon(in, in, in, out) is cc_multi.
+:- pred string_ops_noncanon(noncanon_handling, ops.table, T, string).
+:- mode string_ops_noncanon(in(do_not_allow), in, in, out) is det.
+:- mode string_ops_noncanon(in(canonicalize), in, in, out) is det.
+:- mode string_ops_noncanon(in(include_details_cc), in, in, out) is cc_multi.
+:- mode string_ops_noncanon(in, in, in, out) is cc_multi.
 
-    % string.char_to_string(Char, String).
+    % char_to_string(Char, String).
     % Converts a character (code point) to a string or vice versa.
     %
-:- func string.char_to_string(char::in) = (string::uo) is det.
-:- pred string.char_to_string(char, string).
-:- mode string.char_to_string(in, uo) is det.
-:- mode string.char_to_string(out, in) is semidet.
+:- func char_to_string(char::in) = (string::uo) is det.
+:- pred char_to_string(char, string).
+:- mode char_to_string(in, uo) is det.
+:- mode char_to_string(out, in) is semidet.
 
-    % A synonym for string.char_to_string/1.
+    % A synonym for char_to_string/1.
     %
-:- func string.from_char(char::in) = (string::uo) is det.
+:- func from_char(char::in) = (string::uo) is det.
 
     % Convert an integer to a string.
     %
-:- func string.int_to_string(int::in) = (string::uo) is det.
-:- pred string.int_to_string(int::in, string::uo) is det.
+:- func int_to_string(int::in) = (string::uo) is det.
+:- pred int_to_string(int::in, string::uo) is det.
 
-    % A synonym for string.int_to_string/1.
+    % A synonym for int_to_string/1.
     %
-:- func string.from_int(int::in) = (string::uo) is det.
+:- func from_int(int::in) = (string::uo) is det.
 
     % Convert an integer to a string with commas as thousand separators.
     %
-:- func string.int_to_string_thousands(int::in) = (string::uo) is det.
+:- func int_to_string_thousands(int::in) = (string::uo) is det.
 
-    % string.int_to_base_string(Int, Base, String):
+    % int_to_base_string(Int, Base, String):
     % Convert an integer to a string in a given Base.
     % An exception is thrown if Base is not between 2 and 36.
     %
-:- func string.int_to_base_string(int::in, int::in) = (string::uo) is det.
-:- pred string.int_to_base_string(int::in, int::in, string::uo) is det.
+:- func int_to_base_string(int::in, int::in) = (string::uo) is det.
+:- pred int_to_base_string(int::in, int::in, string::uo) is det.
 
-    % string.int_to_base_string_group(Int, Base, GroupLength, Separator,
-    %   String):
+    % int_to_base_string_group(Int, Base, GroupLength, Separator, String):
     % Convert an integer to a string in a given Base (between 2 and 36)
     % and insert Separator between every GroupLength digits.
     % If GroupLength is less than one then no separators will appear in the
     % output.  An exception is thrown if Base is not between 2 and 36.
     % Useful for formatting numbers like "1,300,000".
     %
-:- func string.int_to_base_string_group(int, int, int, string) = string.
-:- mode string.int_to_base_string_group(in, in, in, in) = uo is det.
+:- func int_to_base_string_group(int, int, int, string) = string.
+:- mode int_to_base_string_group(in, in, in, in) = uo is det.
 
     % Convert a float to a string.
     % In the current implementation the resulting float will be in the form
@@ -258,659 +253,655 @@
     % The precision chosen from this range will be such to allow a successful
     % decimal -> binary conversion of the float.
     %
-:- func string.float_to_string(float::in) = (string::uo) is det.
-:- pred string.float_to_string(float::in, string::uo) is det.
+:- func float_to_string(float::in) = (string::uo) is det.
+:- pred float_to_string(float::in, string::uo) is det.
 
-    % A synonym for string.float_to_string/1.
+    % A synonym for float_to_string/1.
     %
-:- func string.from_float(float::in) = (string::uo) is det.
+:- func from_float(float::in) = (string::uo) is det.
 
     % Convert a c_pointer to a string.  The format is "c_pointer(0xXXXX)"
     % where XXXX is the hexadecimal representation of the pointer.
     %
-:- func string.c_pointer_to_string(c_pointer::in) = (string::uo) is det.
-:- pred string.c_pointer_to_string(c_pointer::in, string::uo) is det.
+:- func c_pointer_to_string(c_pointer::in) = (string::uo) is det.
+:- pred c_pointer_to_string(c_pointer::in, string::uo) is det.
 
-    % A synonym for string.c_pointer_to_string/1.
+    % A synonym for c_pointer_to_string/1.
     %
-:- func string.from_c_pointer(c_pointer::in) = (string::uo) is det.
+:- func from_c_pointer(c_pointer::in) = (string::uo) is det.
 
-    % string.first_char(String, Char, Rest) is true iff Char is the first
-    % character (code point) of String, and Rest is the remainder.
+    % first_char(String, Char, Rest) is true iff Char is the first character
+    % (code point) of String, and Rest is the remainder.
     %
-    % WARNING: string.first_char makes a copy of Rest because the garbage
-    % collector doesn't handle references into the middle of an object,
-    % at least not the way we use it. Repeated use of string.first_char
-    % to iterate over a string will result in very poor performance.
-    % Use string.foldl or string.to_char_list instead.
+    % WARNING: first_char makes a copy of Rest because the garbage collector
+    % doesn't handle references into the middle of an object, at least not the
+    % way we use it. Repeated use of first_char to iterate over a string will
+    % result in very poor performance.
+    % Use foldl or to_char_list instead.
     %
-:- pred string.first_char(string, char, string).
-:- mode string.first_char(in, in, in) is semidet.  % implied
-:- mode string.first_char(in, uo, in) is semidet.  % implied
-:- mode string.first_char(in, in, uo) is semidet.  % implied
-:- mode string.first_char(in, uo, uo) is semidet.
-:- mode string.first_char(uo, in, in) is det.
+:- pred first_char(string, char, string).
+:- mode first_char(in, in, in) is semidet.  % implied
+:- mode first_char(in, uo, in) is semidet.  % implied
+:- mode first_char(in, in, uo) is semidet.  % implied
+:- mode first_char(in, uo, uo) is semidet.
+:- mode first_char(uo, in, in) is det.
 
-    % string.replace(String0, Search, Replace, String):
-    % string.replace replaces the first occurrence of Search in String0
+    % replace(String0, Search, Replace, String):
+    % replace replaces the first occurrence of Search in String0
     % with Replace to give String. It fails if Search does not occur
     % in String0.
     %
-:- pred string.replace(string::in, string::in, string::in, string::uo)
+:- pred replace(string::in, string::in, string::in, string::uo)
     is semidet.
 
-    % string.replace_all(String0, Search, Replace, String):
-    % string.replace_all replaces any occurrences of Search in String0
-    % with Replace to give String.
+    % replace_all(String0, Search, Replace, String):
+    % Replaces any occurrences of Search in String0 with Replace to give
+    % String.
     %
-:- func string.replace_all(string::in, string::in, string::in) = (string::uo)
-    is det.
-:- pred string.replace_all(string::in, string::in, string::in, string::uo)
-    is det.
+:- func replace_all(string::in, string::in, string::in) = (string::uo) is det.
+:- pred replace_all(string::in, string::in, string::in, string::uo) is det.
 
     % Converts a string to lowercase.
     % Note that this only converts unaccented Latin letters.
     %
-:- func string.to_lower(string::in) = (string::uo) is det.
-:- pred string.to_lower(string, string).
-:- mode string.to_lower(in, uo) is det.
-:- mode string.to_lower(in, in) is semidet.        % implied
+:- func to_lower(string::in) = (string::uo) is det.
+:- pred to_lower(string, string).
+:- mode to_lower(in, uo) is det.
+:- mode to_lower(in, in) is semidet.        % implied
 
     % Converts a string to uppercase.
     % Note that this only converts unaccented Latin letters.
     %
-:- func string.to_upper(string::in) = (string::uo) is det.
-:- pred string.to_upper(string, string).
-:- mode string.to_upper(in, uo) is det.
-:- mode string.to_upper(in, in) is semidet.        % implied
+:- func to_upper(string::in) = (string::uo) is det.
+:- pred to_upper(string, string).
+:- mode to_upper(in, uo) is det.
+:- mode to_upper(in, in) is semidet.        % implied
 
     % Convert the first character (if any) of a string to uppercase.
     % Note that this only converts unaccented Latin letters.
     %
-:- func string.capitalize_first(string) = string.
-:- pred string.capitalize_first(string::in, string::out) is det.
+:- func capitalize_first(string) = string.
+:- pred capitalize_first(string::in, string::out) is det.
 
     % Convert the first character (if any) of a string to lowercase.
     % Note that this only converts unaccented Latin letters.
     %
-:- func string.uncapitalize_first(string) = string.
-:- pred string.uncapitalize_first(string::in, string::out) is det.
+:- func uncapitalize_first(string) = string.
+:- pred uncapitalize_first(string::in, string::out) is det.
 
     % Convert the string to a list of characters (code points).
     % Throws an exception if the list of characters contains a null character.
     %
     % NOTE: in future the same treatment may be afforded surrogate code points.
     %
-:- func string.to_char_list(string) = list(char).
-:- pred string.to_char_list(string, list(char)).
-:- mode string.to_char_list(in, out) is det.
-:- mode string.to_char_list(uo, in) is det.
+:- func to_char_list(string) = list(char).
+:- pred to_char_list(string, list(char)).
+:- mode to_char_list(in, out) is det.
+:- mode to_char_list(uo, in) is det.
 
     % Convert a list of characters (code points) to a string.
     % Throws an exception if the list of characters contains a null character.
     %
     % NOTE: in future the same treatment may be afforded surrogate code points.
     %
-:- func string.from_char_list(list(char)::in) = (string::uo) is det.
-:- pred string.from_char_list(list(char), string).
-:- mode string.from_char_list(in, uo) is det.
-:- mode string.from_char_list(out, in) is det.
+:- func from_char_list(list(char)::in) = (string::uo) is det.
+:- pred from_char_list(list(char), string).
+:- mode from_char_list(in, uo) is det.
+:- mode from_char_list(out, in) is det.
 
-    % As above, but fail instead of throwing an exception if the
-    % list contains a null character.
+    % As above, but fail instead of throwing an exception if the list contains
+    % a null character.
     %
     % NOTE: in future the same treatment may be afforded surrogate code points.
     %
-:- pred string.semidet_from_char_list(list(char)::in, string::uo) is semidet.
+:- pred semidet_from_char_list(list(char)::in, string::uo) is semidet.
 
-    % Same as string.from_char_list, except that it reverses the order
+    % Same as from_char_list, except that it reverses the order
     % of the characters.
     % Throws an exception if the list of characters contains a null character.
     %
     % NOTE: in future the same treatment may be afforded surrogate code points.
     %
-:- func string.from_rev_char_list(list(char)::in) = (string::uo) is det.
-:- pred string.from_rev_char_list(list(char)::in, string::uo) is det.
+:- func from_rev_char_list(list(char)::in) = (string::uo) is det.
+:- pred from_rev_char_list(list(char)::in, string::uo) is det.
 
-    % As above, but fail instead of throwing an exception if the
-    % list contains a null character.
+    % As above, but fail instead of throwing an exception if the list contains
+    % a null character.
     %
     % NOTE: in future the same treatment may be afforded surrogate code points.
     %
-:- pred string.semidet_from_rev_char_list(list(char)::in, string::uo)
-    is semidet.
+:- pred semidet_from_rev_char_list(list(char)::in, string::uo) is semidet.
 
     % Convert a string into a list of code units.
     %
-:- pred string.to_code_unit_list(string::in, list(int)::out) is det.
+:- pred to_code_unit_list(string::in, list(int)::out) is det.
 
     % Convert a list of code units to a string.
     % Fails if the list does not contain a valid encoding of a string,
     % in the encoding expected by the current process.
     %
-:- pred string.from_code_unit_list(list(int)::in, string::uo) is semidet.
+:- pred from_code_unit_list(list(int)::in, string::uo) is semidet.
 
-    % Converts a signed base 10 string to an int; throws an exception
-    % if the string argument does not match the regexp [+-]?[0-9]+
-    % or the number is not in the range [int.min_int+1, int.max_int].
+    % Converts a signed base 10 string to an int; throws an exception if the
+    % string argument does not match the regexp [+-]?[0-9]+ or the number is
+    % not in the range [min_int + 1, max_int].
     %
-:- func string.det_to_int(string) = int.
+:- func det_to_int(string) = int.
 
     % Convert a string to an int. The string must contain only digits [0-9],
     % optionally preceded by a plus or minus sign. If the string does
     % not match this syntax or the number is not in the range
-    % [int.min_int+1, int.max_int], string.to_int fails.
+    % [min_int + 1, max_int], to_int fails.
     %
-:- pred string.to_int(string::in, int::out) is semidet.
+:- pred to_int(string::in, int::out) is semidet.
 
     % Convert a string in the specified base (2-36) to an int. The string
     % must contain one or more digits in the specified base, optionally
     % preceded by a plus or minus sign. For bases > 10, digits 10 to 35
     % are represented by the letters A-Z or a-z. If the string does not match
     % this syntax or the base is 10 and the number is not in the range
-    % [int.min_int, int.max_int], the predicate fails.
+    % [min_int, max_int], the predicate fails.
     %
-:- pred string.base_string_to_int(int::in, string::in, int::out) is semidet.
+:- pred base_string_to_int(int::in, string::in, int::out) is semidet.
 
     % Converts a signed base N string to an int; throws an exception
     % if the string argument is not precisely an optional sign followed by
     % a non-empty string of base N digits and, if the base is 10, the number
-    % is in the range [int.min_int, int.max_int].
+    % is in the range [min_int, max_int].
     %
-:- func string.det_base_string_to_int(int, string) = int.
+:- func det_base_string_to_int(int, string) = int.
 
     % Convert a string to a float. Throws an exception if the string is not
     % a syntactically correct float literal.
     %
-:- func string.det_to_float(string) = float.
+:- func det_to_float(string) = float.
 
     % Convert a string to a float. If the string is not a syntactically correct
-    % float literal, string.to_float fails.
+    % float literal, to_float fails.
     %
-:- pred string.to_float(string::in, float::out) is semidet.
+:- pred to_float(string::in, float::out) is semidet.
 
     % True if string contains only alphabetic characters [A-Za-z].
     %
-:- pred string.is_all_alpha(string::in) is semidet.
+:- pred is_all_alpha(string::in) is semidet.
 
     % True if string contains only alphabetic characters [A-Za-z] and
     % underscores.
     %
-:- pred string.is_all_alpha_or_underscore(string::in) is semidet.
+:- pred is_all_alpha_or_underscore(string::in) is semidet.
 
     % True if string contains only alphabetic characters [A-Za-z],
     % digits [0-9], and underscores.
     %
-:- pred string.is_all_alnum_or_underscore(string::in) is semidet.
+:- pred is_all_alnum_or_underscore(string::in) is semidet.
 
     % True if the string contains only decimal digits (0-9).
     %
-:- pred string.is_all_digits(string::in) is semidet.
+:- pred is_all_digits(string::in) is semidet.
 
-    % string.all_match(TestPred, String):
+    % all_match(TestPred, String):
     %
     % True if TestPred is true when applied to each character (code point) in
     % String or if String is the empty string.
     %
-:- pred string.all_match(pred(char)::in(pred(in) is semidet), string::in)
-    is semidet.
+:- pred all_match(pred(char)::in(pred(in) is semidet), string::in) is semidet.
 
-    % string.pad_left(String0, PadChar, Width, String):
+    % pad_left(String0, PadChar, Width, String):
     % Insert `PadChar's at the left of `String0' until it is at least as long
     % as `Width', giving `String'.  Width is currently measured as the number
     % of code points.
     %
-:- func string.pad_left(string, char, int) = string.
-:- pred string.pad_left(string::in, char::in, int::in, string::out) is det.
+:- func pad_left(string, char, int) = string.
+:- pred pad_left(string::in, char::in, int::in, string::out) is det.
 
-    % string.pad_right(String0, PadChar, Width, String):
+    % pad_right(String0, PadChar, Width, String):
     % Insert `PadChar's at the right of `String0' until it is at least as long
     % as `Width', giving `String'.  Width is currently measured as the number
     % of code points.
     %
-:- func string.pad_right(string, char, int) = string.
-:- pred string.pad_right(string::in, char::in, int::in, string::out) is det.
+:- func pad_right(string, char, int) = string.
+:- pred pad_right(string::in, char::in, int::in, string::out) is det.
 
-    % string.duplicate_char(Char, Count, String):
+    % duplicate_char(Char, Count, String):
     % Construct a string consisting of `Count' occurrences of `Char'
     % code points in sequence.
     %
-:- func string.duplicate_char(char::in, int::in) = (string::uo) is det.
-:- pred string.duplicate_char(char::in, int::in, string::uo) is det.
+:- func duplicate_char(char::in, int::in) = (string::uo) is det.
+:- pred duplicate_char(char::in, int::in, string::uo) is det.
 
-    % string.contains_char(String, Char):
+    % contains_char(String, Char):
     % Succeed if the code point `Char' occurs in `String'.
     %
-:- pred string.contains_char(string::in, char::in) is semidet.
+:- pred contains_char(string::in, char::in) is semidet.
 
-    % string.index(String, Index, Char):
+    % index(String, Index, Char):
     % `Char' is the character (code point) in `String', beginning at the
     % code unit `Index'.  Fails if `Index' is out of range (negative, or
     % greater than or equal to the length of `String').
     %
     % Calls error/1 if an illegal sequence is detected.
     %
-:- pred string.index(string::in, int::in, char::uo) is semidet.
+:- pred index(string::in, int::in, char::uo) is semidet.
 
-    % string.det_index(String, Index, Char):
+    % det_index(String, Index, Char):
     % `Char' is the character (code point) in `String', beginning at the
     % code unit `Index'.
     % Calls error/1 if `Index' is out of range (negative, or greater than
     % or equal to the length of `String'), or if an illegal sequence is
     % detected.
     %
-:- func string.det_index(string, int) = char.
-:- pred string.det_index(string::in, int::in, char::uo) is det.
+:- func det_index(string, int) = char.
+:- pred det_index(string::in, int::in, char::uo) is det.
 
     % A synonym for det_index/2:
-    % String ^ elem(Index) = string.det_index(String, Index).
+    % String ^ elem(Index) = det_index(String, Index).
     %
 :- func string ^ elem(int) = char.
 
-    % string.unsafe_index(String, Index, Char):
+    % unsafe_index(String, Index, Char):
     % `Char' is the character (code point) in `String', beginning at the
     % code unit `Index'.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than or equal to the length of `String').
-    % This version is constant time, whereas string.det_index
+    % This version is constant time, whereas det_index
     % may be linear in the length of the string. Use with care!
     %
-:- func string.unsafe_index(string, int) = char.
-:- pred string.unsafe_index(string::in, int::in, char::uo) is det.
+:- func unsafe_index(string, int) = char.
+:- pred unsafe_index(string::in, int::in, char::uo) is det.
 
     % A synonym for unsafe_index/2:
-    % String ^ unsafe_elem(Index) = string.unsafe_index(String, Index).
+    % String ^ unsafe_elem(Index) = unsafe_index(String, Index).
     %
 :- func string ^ unsafe_elem(int) = char.
 
-    % string.index_next(String, Index, NextIndex, Char):
-    % Like `string.index'/3 but also returns the position of the code unit
+    % index_next(String, Index, NextIndex, Char):
+    % Like `index'/3 but also returns the position of the code unit
     % that follows the code point beginning at `Index',
     % i.e. NextIndex = Index + num_code_units_to_encode(Char).
     %
-:- pred string.index_next(string::in, int::in, int::out, char::uo) is semidet.
+:- pred index_next(string::in, int::in, int::out, char::uo) is semidet.
 
-    % string.unsafe_index_next(String, Index, NextIndex, Char):
+    % unsafe_index_next(String, Index, NextIndex, Char):
     % `Char' is the character (code point) in `String', beginning at the
     % code unit `Index'. `NextIndex' is the offset following the encoding
     % of `Char'. Fails if `Index' is equal to the length of `String'.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than the length of `String').
     %
-:- pred string.unsafe_index_next(string::in, int::in, int::out, char::uo)
+:- pred unsafe_index_next(string::in, int::in, int::out, char::uo)
     is semidet.
 
-    % string.prev_index(String, Index, CharIndex, Char):
+    % prev_index(String, Index, CharIndex, Char):
     % `Char' is the character (code point) in `String' immediately _before_
     % the code unit `Index'.  Fails if `Index' is out of range (non-positive,
     % or greater than the length of `String').
     %
-:- pred string.prev_index(string::in, int::in, int::out, char::uo) is semidet.
+:- pred prev_index(string::in, int::in, int::out, char::uo) is semidet.
 
-    % string.unsafe_prev_index(String, Index, CharIndex, Char):
+    % unsafe_prev_index(String, Index, CharIndex, Char):
     % `Char' is the character (code point) in `String' immediately _before_
     % the code unit `Index'. `CharIndex' is the offset of the beginning of
     % `Char'. Fails if `Index' is zero.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than or equal to the length of `String').
     %
-:- pred string.unsafe_prev_index(string::in, int::in, int::out, char::uo)
+:- pred unsafe_prev_index(string::in, int::in, int::out, char::uo)
     is semidet.
 
-    % string.unsafe_index_code_unit(String, Index, CodeUnit):
+    % unsafe_index_code_unit(String, Index, CodeUnit):
     % `CodeUnit' is the code unit in `String' at the offset `Index'.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than or equal to the length of `String').
     %
-:- pred string.unsafe_index_code_unit(string::in, int::in, int::out) is det.
+:- pred unsafe_index_code_unit(string::in, int::in, int::out) is det.
 
-    % string.chomp(String):
+    % chomp(String):
     % `String' minus any single trailing newline character.
     %
-:- func string.chomp(string) = string.
+:- func chomp(string) = string.
 
-    % string.lstrip(String):
+    % lstrip(String):
     % `String' minus any initial whitespace characters in the ASCII range.
     %
-:- func string.lstrip(string) = string.
+:- func lstrip(string) = string.
 
-    % string.rstrip(String):
+    % rstrip(String):
     % `String' minus any trailing whitespace characters in the ASCII range.
     %
-:- func string.rstrip(string) = string.
+:- func rstrip(string) = string.
 
-    % string.strip(String):
+    % strip(String):
     % `String' minus any initial and trailing whitespace characters in the
     % ASCII range.
     %
-:- func string.strip(string) = string.
+:- func strip(string) = string.
 
-    % string.lstrip_pred(Pred, String):
+    % lstrip_pred(Pred, String):
     % `String' minus the maximal prefix consisting entirely of characters
     % (code points) satisfying `Pred'.
     %
-:- func string.lstrip_pred(pred(char)::in(pred(in) is semidet), string::in)
+:- func lstrip_pred(pred(char)::in(pred(in) is semidet), string::in)
     = (string::out) is det.
 
-    % string.rstrip_pred(Pred, String):
+    % rstrip_pred(Pred, String):
     % `String' minus the maximal suffix consisting entirely of characters
     % (code points) satisfying `Pred'.
     %
-:- func string.rstrip_pred(pred(char)::in(pred(in) is semidet), string::in)
+:- func rstrip_pred(pred(char)::in(pred(in) is semidet), string::in)
     = (string::out) is det.
 
-    % string.prefix_length(Pred, String):
+    % prefix_length(Pred, String):
     % The length (in code units) of the maximal prefix of `String' consisting
     % entirely of characters (code points) satisfying Pred.
     %
-:- func string.prefix_length(pred(char)::in(pred(in) is semidet), string::in)
+:- func prefix_length(pred(char)::in(pred(in) is semidet), string::in)
     = (int::out) is det.
 
-    % string.suffix_length(Pred, String):
+    % suffix_length(Pred, String):
     % The length (in code units) of the maximal suffix of `String' consisting
     % entirely of characters (code points) satisfying Pred.
     %
-:- func string.suffix_length(pred(char)::in(pred(in) is semidet), string::in)
+:- func suffix_length(pred(char)::in(pred(in) is semidet), string::in)
     = (int::out) is det.
 
-    % string.set_char(Char, Index, String0, String):
+    % set_char(Char, Index, String0, String):
     % `String' is `String0', with the code point beginning at code unit
     % `Index' removed and replaced by `Char'.
     % Fails if `Index' is out of range (negative, or greater than or equal to
     % the length of `String0').
     %
-:- pred string.set_char(char, int, string, string).
-:- mode string.set_char(in, in, in, out) is semidet.
+:- pred set_char(char, int, string, string).
+:- mode set_char(in, in, in, out) is semidet.
 % XXX This mode is disabled because the compiler puts constant
 % strings into static data even when they might be updated.
-%:- mode string.set_char(in, in, di, uo) is semidet.
+%:- mode set_char(in, in, di, uo) is semidet.
 
-    % string.det_set_char(Char, Index, String0, String):
+    % det_set_char(Char, Index, String0, String):
     % `String' is `String0', with the code point beginning at code unit
     % `Index' removed and replaced by `Char'.
     % Calls error/1 if `Index' is out of range (negative, or greater than
     % or equal to the length of `String0').
     %
-:- func string.det_set_char(char, int, string) = string.
-:- pred string.det_set_char(char, int, string, string).
-:- mode string.det_set_char(in, in, in, out) is det.
+:- func det_set_char(char, int, string) = string.
+:- pred det_set_char(char, int, string, string).
+:- mode det_set_char(in, in, in, out) is det.
 % XXX This mode is disabled because the compiler puts constant
 % strings into static data even when they might be updated.
-%:- mode string.det_set_char(in, in, di, uo) is det.
+%:- mode det_set_char(in, in, di, uo) is det.
 
-    % string.unsafe_set_char(Char, Index, String0, String):
+    % unsafe_set_char(Char, Index, String0, String):
     % `String' is `String0', with the code point beginning at code unit
     % `Index' removed and replaced by `Char'.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than or equal to the length of `String0').
-    % This version is constant time, whereas string.det_set_char
+    % This version is constant time, whereas det_set_char
     % may be linear in the length of the string. Use with care!
     %
-:- func string.unsafe_set_char(char, int, string) = string.
-:- mode string.unsafe_set_char(in, in, in) = out is det.
+:- func unsafe_set_char(char, int, string) = string.
+:- mode unsafe_set_char(in, in, in) = out is det.
 % XXX This mode is disabled because the compiler puts constant
 % strings into static data even when they might be updated.
-%:- mode string.unsafe_set_char(in, in, di) = uo is det.
-:- pred string.unsafe_set_char(char, int, string, string).
-:- mode string.unsafe_set_char(in, in, in, out) is det.
+%:- mode unsafe_set_char(in, in, di) = uo is det.
+:- pred unsafe_set_char(char, int, string, string).
+:- mode unsafe_set_char(in, in, in, out) is det.
 % XXX This mode is disabled because the compiler puts constant
 % strings into static data even when they might be updated.
-%:- mode string.unsafe_set_char(in, in, di, uo) is det.
+%:- mode unsafe_set_char(in, in, di, uo) is det.
 
-    % string.foldl(Closure, String, !Acc):
+    % foldl(Closure, String, !Acc):
     % `Closure' is an accumulator predicate which is to be called for each
     % character (code point) of the string `String' in turn. The initial
     % value of the accumulator is `!.Acc' and the final value is `!:Acc'.
-    % (string.foldl is equivalent to
-    %   string.to_char_list(String, Chars),
+    % (foldl is equivalent to
+    %   to_char_list(String, Chars),
     %   list.foldl(Closure, Chars, !Acc)
     % but is implemented more efficiently.)
     %
-:- func string.foldl(func(char, A) = A, string, A) = A.
-:- pred string.foldl(pred(char, A, A), string, A, A).
-:- mode string.foldl(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode string.foldl(pred(in, in, out) is det, in, in, out) is det.
-:- mode string.foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode string.foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode string.foldl(pred(in, in, out) is multi, in, in, out) is multi.
+:- func foldl(func(char, A) = A, string, A) = A.
+:- pred foldl(pred(char, A, A), string, A, A).
+:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode foldl(pred(in, in, out) is multi, in, in, out) is multi.
 
-    % string.foldl2(Closure, String, !Acc1, !Acc2):
-    % A variant of string.foldl with two accumulators.
+    % foldl2(Closure, String, !Acc1, !Acc2):
+    % A variant of foldl with two accumulators.
     %
-:- pred string.foldl2(pred(char, A, A, B, B), string, A, A, B, B).
-:- mode string.foldl2(pred(in, di, uo, di, uo) is det,
+:- pred foldl2(pred(char, A, A, B, B), string, A, A, B, B).
+:- mode foldl2(pred(in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
-:- mode string.foldl2(pred(in, in, out, di, uo) is det,
+:- mode foldl2(pred(in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
-:- mode string.foldl2(pred(in, in, out, in, out) is det,
+:- mode foldl2(pred(in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode string.foldl2(pred(in, in, out, in, out) is semidet,
+:- mode foldl2(pred(in, in, out, in, out) is semidet,
     in, in, out, in, out) is semidet.
-:- mode string.foldl2(pred(in, in, out, in, out) is nondet,
+:- mode foldl2(pred(in, in, out, in, out) is nondet,
     in, in, out, in, out) is nondet.
-:- mode string.foldl2(pred(in, in, out, in, out) is multi,
+:- mode foldl2(pred(in, in, out, in, out) is multi,
     in, in, out, in, out) is multi.
 
-    % string.foldl_between(Closure, String, Start, End, !Acc)
-    % is equivalent to string.foldl(Closure, SubString, !Acc)
-    % where SubString = string.between(String, Start, End).
+    % foldl_between(Closure, String, Start, End, !Acc)
+    % is equivalent to foldl(Closure, SubString, !Acc)
+    % where SubString = between(String, Start, End).
     %
     % `Start' and `End' are in terms of code units.
     %
-:- func string.foldl_between(func(char, A) = A, string, int, int, A) = A.
-:- pred string.foldl_between(pred(char, A, A), string, int, int, A, A).
-:- mode string.foldl_between(pred(in, in, out) is det, in, in, in,
+:- func foldl_between(func(char, A) = A, string, int, int, A) = A.
+:- pred foldl_between(pred(char, A, A), string, int, int, A, A).
+:- mode foldl_between(pred(in, in, out) is det, in, in, in,
     in, out) is det.
-:- mode string.foldl_between(pred(in, di, uo) is det, in, in, in,
+:- mode foldl_between(pred(in, di, uo) is det, in, in, in,
     di, uo) is det.
-:- mode string.foldl_between(pred(in, in, out) is semidet, in, in, in,
+:- mode foldl_between(pred(in, in, out) is semidet, in, in, in,
     in, out) is semidet.
-:- mode string.foldl_between(pred(in, in, out) is nondet, in, in, in,
+:- mode foldl_between(pred(in, in, out) is nondet, in, in, in,
     in, out) is nondet.
-:- mode string.foldl_between(pred(in, in, out) is multi, in, in, in,
+:- mode foldl_between(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-    % string.foldl2_between(Closure, String, Start, End, !Acc1, !Acc2)
-    % A variant of string.foldl_between with two accumulators.
+    % foldl2_between(Closure, String, Start, End, !Acc1, !Acc2)
+    % A variant of foldl_between with two accumulators.
     %
     % `Start' and `End' are in terms of code units.
     %
-:- pred string.foldl2_between(pred(char, A, A, B, B),
+:- pred foldl2_between(pred(char, A, A, B, B),
     string, int, int, A, A, B, B).
-:- mode string.foldl2_between(pred(in, di, uo, di, uo) is det,
+:- mode foldl2_between(pred(in, di, uo, di, uo) is det,
     in, in, in, di, uo, di, uo) is det.
-:- mode string.foldl2_between(pred(in, in, out, di, uo) is det,
+:- mode foldl2_between(pred(in, in, out, di, uo) is det,
     in, in, in, in, out, di, uo) is det.
-:- mode string.foldl2_between(pred(in, in, out, in, out) is det,
+:- mode foldl2_between(pred(in, in, out, in, out) is det,
     in, in, in, in, out, in, out) is det.
-:- mode string.foldl2_between(pred(in, in, out, in, out) is semidet,
+:- mode foldl2_between(pred(in, in, out, in, out) is semidet,
     in, in, in, in, out, in, out) is semidet.
-:- mode string.foldl2_between(pred(in, in, out, in, out) is nondet,
+:- mode foldl2_between(pred(in, in, out, in, out) is nondet,
     in, in, in, in, out, in, out) is nondet.
-:- mode string.foldl2_between(pred(in, in, out, in, out) is multi,
+:- mode foldl2_between(pred(in, in, out, in, out) is multi,
     in, in, in, in, out, in, out) is multi.
 
-    % string.foldr(Closure, String, !Acc):
-    % As string.foldl/4, except that processing proceeds right-to-left.
+    % foldr(Closure, String, !Acc):
+    % As foldl/4, except that processing proceeds right-to-left.
     %
-:- func string.foldr(func(char, T) = T, string, T) = T.
-:- pred string.foldr(pred(char, T, T), string, T, T).
-:- mode string.foldr(pred(in, in, out) is det, in, in, out) is det.
-:- mode string.foldr(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode string.foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode string.foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode string.foldr(pred(in, in, out) is multi, in, in, out) is multi.
+:- func foldr(func(char, T) = T, string, T) = T.
+:- pred foldr(pred(char, T, T), string, T, T).
+:- mode foldr(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode foldr(pred(in, in, out) is multi, in, in, out) is multi.
 
-    % string.foldr_between(Closure, String, Start, End, !Acc)
-    % is equivalent to string.foldr(Closure, SubString, !Acc)
-    % where SubString = string.between(String, Start, End).
+    % foldr_between(Closure, String, Start, End, !Acc)
+    % is equivalent to foldr(Closure, SubString, !Acc)
+    % where SubString = between(String, Start, End).
     %
     % `Start' and `End' are in terms of code units.
     %
-:- func string.foldr_between(func(char, T) = T, string, int, int, T) = T.
-:- pred string.foldr_between(pred(char, T, T), string, int, int, T, T).
-:- mode string.foldr_between(pred(in, in, out) is det, in, in, in,
+:- func foldr_between(func(char, T) = T, string, int, int, T) = T.
+:- pred foldr_between(pred(char, T, T), string, int, int, T, T).
+:- mode foldr_between(pred(in, in, out) is det, in, in, in,
     in, out) is det.
-:- mode string.foldr_between(pred(in, di, uo) is det, in, in, in,
+:- mode foldr_between(pred(in, di, uo) is det, in, in, in,
     di, uo) is det.
-:- mode string.foldr_between(pred(in, in, out) is semidet, in, in, in,
+:- mode foldr_between(pred(in, in, out) is semidet, in, in, in,
     in, out) is semidet.
-:- mode string.foldr_between(pred(in, in, out) is nondet, in, in, in,
+:- mode foldr_between(pred(in, in, out) is nondet, in, in, in,
     in, out) is nondet.
-:- mode string.foldr_between(pred(in, in, out) is multi, in, in, in,
+:- mode foldr_between(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-    % string.foldl_substring(Closure, String, Start, Count, !Acc)
-    % Please use string.foldl_between instead.
+    % foldl_substring(Closure, String, Start, Count, !Acc)
+    % Please use foldl_between instead.
     %
-:- pragma obsolete(string.foldl_substring/5).
-:- pragma obsolete(string.foldl_substring/6).
-:- func string.foldl_substring(func(char, A) = A, string, int, int, A) = A.
-:- pred string.foldl_substring(pred(char, A, A), string, int, int, A, A).
-:- mode string.foldl_substring(pred(in, in, out) is det, in, in, in,
+:- pragma obsolete(foldl_substring/5).
+:- pragma obsolete(foldl_substring/6).
+:- func foldl_substring(func(char, A) = A, string, int, int, A) = A.
+:- pred foldl_substring(pred(char, A, A), string, int, int, A, A).
+:- mode foldl_substring(pred(in, in, out) is det, in, in, in,
     in, out) is det.
-:- mode string.foldl_substring(pred(in, di, uo) is det, in, in, in,
+:- mode foldl_substring(pred(in, di, uo) is det, in, in, in,
     di, uo) is det.
-:- mode string.foldl_substring(pred(in, in, out) is semidet, in, in, in,
+:- mode foldl_substring(pred(in, in, out) is semidet, in, in, in,
     in, out) is semidet.
-:- mode string.foldl_substring(pred(in, in, out) is nondet, in, in, in,
+:- mode foldl_substring(pred(in, in, out) is nondet, in, in, in,
     in, out) is nondet.
-:- mode string.foldl_substring(pred(in, in, out) is multi, in, in, in,
+:- mode foldl_substring(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-    % string.foldl2_substring(Closure, String, Start, Count, !Acc1, !Acc2)
-    % Please use string.foldl2_between instead.
+    % foldl2_substring(Closure, String, Start, Count, !Acc1, !Acc2)
+    % Please use foldl2_between instead.
     %
-:- pragma obsolete(string.foldl2_substring/8).
-:- pred string.foldl2_substring(pred(char, A, A, B, B),
+:- pragma obsolete(foldl2_substring/8).
+:- pred foldl2_substring(pred(char, A, A, B, B),
     string, int, int, A, A, B, B).
-:- mode string.foldl2_substring(pred(in, di, uo, di, uo) is det,
+:- mode foldl2_substring(pred(in, di, uo, di, uo) is det,
     in, in, in, di, uo, di, uo) is det.
-:- mode string.foldl2_substring(pred(in, in, out, di, uo) is det,
+:- mode foldl2_substring(pred(in, in, out, di, uo) is det,
     in, in, in, in, out, di, uo) is det.
-:- mode string.foldl2_substring(pred(in, in, out, in, out) is det,
+:- mode foldl2_substring(pred(in, in, out, in, out) is det,
     in, in, in, in, out, in, out) is det.
-:- mode string.foldl2_substring(pred(in, in, out, in, out) is semidet,
+:- mode foldl2_substring(pred(in, in, out, in, out) is semidet,
     in, in, in, in, out, in, out) is semidet.
-:- mode string.foldl2_substring(pred(in, in, out, in, out) is nondet,
+:- mode foldl2_substring(pred(in, in, out, in, out) is nondet,
     in, in, in, in, out, in, out) is nondet.
-:- mode string.foldl2_substring(pred(in, in, out, in, out) is multi,
+:- mode foldl2_substring(pred(in, in, out, in, out) is multi,
     in, in, in, in, out, in, out) is multi.
 
-    % string.foldr_substring(Closure, String, Start, Count, !Acc)
-    % Please use string.foldr_between instead.
+    % foldr_substring(Closure, String, Start, Count, !Acc)
+    % Please use foldr_between instead.
     %
-:- pragma obsolete(string.foldr_substring/5).
-:- pragma obsolete(string.foldr_substring/6).
-:- func string.foldr_substring(func(char, T) = T, string, int, int, T) = T.
-:- pred string.foldr_substring(pred(char, T, T), string, int, int, T, T).
-:- mode string.foldr_substring(pred(in, in, out) is det, in, in, in,
+:- pragma obsolete(foldr_substring/5).
+:- pragma obsolete(foldr_substring/6).
+:- func foldr_substring(func(char, T) = T, string, int, int, T) = T.
+:- pred foldr_substring(pred(char, T, T), string, int, int, T, T).
+:- mode foldr_substring(pred(in, in, out) is det, in, in, in,
     in, out) is det.
-:- mode string.foldr_substring(pred(in, di, uo) is det, in, in, in,
+:- mode foldr_substring(pred(in, di, uo) is det, in, in, in,
     di, uo) is det.
-:- mode string.foldr_substring(pred(in, in, out) is semidet, in, in, in,
+:- mode foldr_substring(pred(in, in, out) is semidet, in, in, in,
     in, out) is semidet.
-:- mode string.foldr_substring(pred(in, in, out) is nondet, in, in, in,
+:- mode foldr_substring(pred(in, in, out) is nondet, in, in, in,
     in, out) is nondet.
-:- mode string.foldr_substring(pred(in, in, out) is multi, in, in, in,
+:- mode foldr_substring(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-    % string.words_separator(SepP, String) returns the list of non-empty
+    % words_separator(SepP, String) returns the list of non-empty
     % substrings of String (in first to last order) that are delimited
     % by non-empty sequences of characters (code points) matched by SepP.
     % For example,
     %
-    % string.words_separator(char.is_whitespace, " the cat  sat on the  mat") =
+    % words_separator(char.is_whitespace, " the cat  sat on the  mat") =
     %   ["the", "cat", "sat", "on", "the", "mat"]
     %
-    % Note the difference to string.split_at_separator.
+    % Note the difference to split_at_separator.
     %
-:- func string.words_separator(pred(char), string) = list(string).
-:- mode string.words_separator(pred(in) is semidet, in) = out is det.
+:- func words_separator(pred(char), string) = list(string).
+:- mode words_separator(pred(in) is semidet, in) = out is det.
 
-    % string.words(String) =
-    %   string.words_separator(char.is_whitespace, String).
+    % words(String) =
+    %   words_separator(char.is_whitespace, String).
     %
-:- func string.words(string) = list(string).
+:- func words(string) = list(string).
 
-    % string.split_at_separator(SepP, String) returns the list of
+    % split_at_separator(SepP, String) returns the list of
     % substrings of String (in first to last order) that are delimited
     % by characters (code points) matched by SepP. For example,
     %
-    % string.split_at_separator(char.is_whitespace, " a cat  sat on the  mat")
+    % split_at_separator(char.is_whitespace, " a cat  sat on the  mat")
     %   = ["", "a", "cat", "", "sat", "on", "the", "", "mat"]
     %
-    % Note the difference to string.words_separator.
+    % Note the difference to words_separator.
     %
-:- func string.split_at_separator(pred(char), string) = list(string).
-:- mode string.split_at_separator(pred(in) is semidet, in) = out is det.
+:- func split_at_separator(pred(char), string) = list(string).
+:- mode split_at_separator(pred(in) is semidet, in) = out is det.
 
-    % string.split_at_char(Char, String) =
-    %     string.split_at_separator(unify(Char), String)
+    % split_at_char(Char, String) =
+    %     split_at_separator(unify(Char), String)
     %
-:- func string.split_at_char(char, string) = list(string).
+:- func split_at_char(char, string) = list(string).
 
-    % string.split_at_string(Separator, String) returns the list of substrings
+    % split_at_string(Separator, String) returns the list of substrings
     % of String that are delimited by Separator. For example,
     %
-    % string.split_at_string("|||", "|||fld2|||fld3") = ["", "fld2", [fld3"]
+    % split_at_string("|||", "|||fld2|||fld3") = ["", "fld2", [fld3"]
     %
     % Always the first match of Separator is used to break the String, for
-    % example: string.split_at_string("aa", "xaaayaaaz") = ["x", "ay", "az"]
+    % example: split_at_string("aa", "xaaayaaaz") = ["x", "ay", "az"]
     %
-:- func string.split_at_string(string, string) = list(string).
+:- func split_at_string(string, string) = list(string).
 
-    % string.split(String, Index, LeftSubstring, RightSubstring):
+    % split(String, Index, LeftSubstring, RightSubstring):
     % Split a string into two substrings, at the code unit `Index'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- pred string.split(string::in, int::in, string::out, string::out) is det.
+:- pred split(string::in, int::in, string::out, string::out) is det.
 
-    % string.split_by_codepoint(String, Count, LeftSubstring, RightSubstring):
+    % split_by_codepoint(String, Count, LeftSubstring, RightSubstring):
     % `LeftSubstring' is the left-most `Count' characters (code points) of
     % `String', and `RightSubstring' is the remainder of `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- pred string.split_by_codepoint(string::in, int::in, string::out, string::out)
+:- pred split_by_codepoint(string::in, int::in, string::out, string::out)
     is det.
 
-    % string.left(String, Count, LeftSubstring):
+    % left(String, Count, LeftSubstring):
     % `LeftSubstring' is the left-most `Count' code _units_ of `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- func string.left(string::in, int::in) = (string::out) is det.
-:- pred string.left(string::in, int::in, string::out) is det.
+:- func left(string::in, int::in) = (string::out) is det.
+:- pred left(string::in, int::in, string::out) is det.
 
-    % string.left_by_codepoint(String, Count, LeftSubstring):
+    % left_by_codepoint(String, Count, LeftSubstring):
     % `LeftSubstring' is the left-most `Count' characters (code points) of
     % `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- func string.left_by_codepoint(string::in, int::in) = (string::out) is det.
-:- pred string.left_by_codepoint(string::in, int::in, string::out) is det.
+:- func left_by_codepoint(string::in, int::in) = (string::out) is det.
+:- pred left_by_codepoint(string::in, int::in, string::out) is det.
 
-    % string.right(String, Count, RightSubstring):
+    % right(String, Count, RightSubstring):
     % `RightSubstring' is the right-most `Count' code _units_ of `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- func string.right(string::in, int::in) = (string::out) is det.
-:- pred string.right(string::in, int::in, string::out) is det.
+:- func right(string::in, int::in) = (string::out) is det.
+:- pred right(string::in, int::in, string::out) is det.
 
-    % string.right_by_codepoint(String, Count, RightSubstring):
+    % right_by_codepoint(String, Count, RightSubstring):
     % `RightSubstring' is the right-most `Count' characters (code points) of
     % `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
-:- func string.right_by_codepoint(string::in, int::in) = (string::out) is det.
-:- pred string.right_by_codepoint(string::in, int::in, string::out) is det.
+:- func right_by_codepoint(string::in, int::in) = (string::out) is det.
+:- pred right_by_codepoint(string::in, int::in, string::out) is det.
 
-    % string.between(String, Start, End, Substring):
+    % between(String, Start, End, Substring):
     % `Substring' consists of the segment of `String' within the half-open
     % interval [Start, End), where `Start' and `End' are code unit offsets.
     % (If `Start' is out of the range [0, length of `String'], it is treated
@@ -918,18 +909,18 @@
     % If `End' is out of the range [`Start', length of `String'],
     % it is treated as if it were the nearest end-point of that range.)
     %
-:- func string.between(string::in, int::in, int::in) = (string::uo) is det.
-:- pred string.between(string::in, int::in, int::in, string::uo) is det.
+:- func between(string::in, int::in, int::in) = (string::uo) is det.
+:- pred between(string::in, int::in, int::in, string::uo) is det.
 
-    % string.substring(String, Start, Count, Substring):
-    % Please use string.between instead.
+    % substring(String, Start, Count, Substring):
+    % Please use `between' instead.
     %
-:- pragma obsolete(string.substring/3).
-:- pragma obsolete(string.substring/4).
-:- func string.substring(string::in, int::in, int::in) = (string::uo) is det.
-:- pred string.substring(string::in, int::in, int::in, string::uo) is det.
+:- pragma obsolete(substring/3).
+:- pragma obsolete(substring/4).
+:- func substring(string::in, int::in, int::in) = (string::uo) is det.
+:- pred substring(string::in, int::in, int::in, string::uo) is det.
 
-    % string.between_codepoints(String, Start, End, Substring):
+    % between_codepoints(String, Start, End, Substring):
     % `Substring' is the part of `String' between the code point positions
     % `Start' and `End'.
     % (If `Start' is out of the range [0, length of `String'], it is treated
@@ -937,76 +928,70 @@
     % If `End' is out of the range [`Start', length of `String'],
     % it is treated as if it were the nearest end-point of that range.)
     %
-:- func string.between_codepoints(string::in, int::in, int::in)
-    = (string::uo) is det.
-:- pred string.between_codepoints(string::in, int::in, int::in, string::uo)
-    is det.
+:- func between_codepoints(string::in, int::in, int::in) = (string::uo) is det.
+:- pred between_codepoints(string::in, int::in, int::in, string::uo) is det.
 
-    % string.unsafe_between(String, Start, End, Substring):
+    % unsafe_between(String, Start, End, Substring):
     % `Substring' consists of the segment of `String' within the half-open
     % interval [Start, End), where `Start' and `End' are code unit offsets.
     % WARNING: if `Start' is out of the range [0, length of `String'] or
     % `End' is out of the range [`Start', length of `String']
     % then the behaviour is UNDEFINED. Use with care!
     % This version takes time proportional to the length of the substring,
-    % whereas string.substring may take time proportional to the length
+    % whereas substring may take time proportional to the length
     % of the whole string.
     %
-:- func string.unsafe_between(string::in, int::in, int::in) = (string::uo)
-    is det.
-:- pred string.unsafe_between(string::in, int::in, int::in, string::uo)
-    is det.
+:- func unsafe_between(string::in, int::in, int::in) = (string::uo) is det.
+:- pred unsafe_between(string::in, int::in, int::in, string::uo) is det.
 
-    % string.unsafe_substring(String, Start, Count, Substring):
-    % Please use string.unsafe_between instead.
+    % unsafe_substring(String, Start, Count, Substring):
+    % Please use unsafe_between instead.
     %
-:- pragma obsolete(string.unsafe_substring/3).
-:- pragma obsolete(string.unsafe_substring/4).
-:- func string.unsafe_substring(string::in, int::in, int::in) = (string::uo)
-    is det.
-:- pred string.unsafe_substring(string::in, int::in, int::in, string::uo)
-    is det.
+:- pragma obsolete(unsafe_substring/3).
+:- pragma obsolete(unsafe_substring/4).
+:- func unsafe_substring(string::in, int::in, int::in) = (string::uo) is det.
+:- pred unsafe_substring(string::in, int::in, int::in, string::uo) is det.
 
     % Append a list of strings together.
     %
-:- func string.append_list(list(string)::in) = (string::uo) is det.
-:- pred string.append_list(list(string)::in, string::uo) is det.
+:- func append_list(list(string)::in) = (string::uo) is det.
+:- pred append_list(list(string)::in, string::uo) is det.
 
-    % string.join_list(Separator, Strings) = JoinedString:
+    % join_list(Separator, Strings) = JoinedString:
     % Appends together the strings in Strings, putting Separator between
     % adjacent strings. If Strings is the empty list, returns the empty string.
     %
-:- func string.join_list(string::in, list(string)::in) = (string::uo) is det.
+:- func join_list(string::in, list(string)::in) = (string::uo) is det.
 
     % Compute a hash value for a string.
     %
-:- func string.hash(string) = int.
-:- pred string.hash(string::in, int::out) is det.
+:- func hash(string) = int.
+:- pred hash(string::in, int::out) is det.
 
     % Two other hash functions for strings.
     %
-:- func string.hash2(string) = int.
-:- func string.hash3(string) = int.
+:- func hash2(string) = int.
+:- func hash3(string) = int.
 
-    % string.sub_string_search(String, SubString, Index).
+    % sub_string_search(String, SubString, Index).
     % `Index' is the code unit position in `String' where the first
     % occurrence of `SubString' begins. Indices start at zero, so if
     % `SubString' is a prefix of `String', this will return Index = 0.
     %
-:- pred string.sub_string_search(string::in, string::in, int::out) is semidet.
+:- pred sub_string_search(string::in, string::in, int::out) is semidet.
 
-    % string.sub_string_search_start(String, SubString, BeginAt, Index).
+    % sub_string_search_start(String, SubString, BeginAt, Index).
     % `Index' is the code unit position in `String' where the first
     % occurrence of `SubString' occurs such that 'Index' is greater than or
     % equal to `BeginAt'.  Indices start at zero.
     %
-:- pred string.sub_string_search_start(string::in, string::in, int::in,
-    int::out) is semidet.
+:- pred sub_string_search_start(string::in, string::in, int::in, int::out)
+    is semidet.
 
     % A function similar to sprintf() in C.
     %
     % For example,
-    %   string.format("%s %i %c %f\n",
+    %   format("%s %i %c %f\n",
     %       [s("Square-root of"), i(2), c('='), f(1.41)], String)
     % will return
     %   String = "Square-root of 2 = 1.41\n".
@@ -1015,7 +1000,7 @@
     % a field width (or *), and a precision (could be a ".*").
     %
     % Valid conversion character types are {dioxXucsfeEgGp%}. %n is not
-    % supported. string.format will not return the length of the string.
+    % supported. format will not return the length of the string.
     %
     % conv  var     output form.        effect of '#'.
     % char. type.
@@ -1053,11 +1038,11 @@
     % The implementation uses the sprintf() function in C grades, so the actual
     % output will depend on the C standard library.
     %
-:- func string.format(string, list(string.poly_type)) = string.
-:- pred string.format(string::in, list(string.poly_type)::in, string::out)
+:- func format(string, list(poly_type)) = string.
+:- pred format(string::in, list(poly_type)::in, string::out)
     is det.
 
-:- type string.poly_type
+:- type poly_type
     --->    f(float)
     ;       i(int)
     ;       s(string)
@@ -1080,13 +1065,13 @@
     %  bb * 22
     % ccc * 333
     %
-:- func string.format_table(list(justified_column), string) = string.
+:- func format_table(list(justified_column), string) = string.
 
     % format_table_max(Columns, Separator) does the same job as format_table,
     % but allows the caller to associate an maximum width with each column.
     %
-:- func string.format_table_max(assoc_list(justified_column, maybe(int)),
-    string) = string.
+:- func format_table_max(assoc_list(justified_column, maybe(int)), string)
+    = string.
 
 :- type justified_column
     --->    left(list(string))
@@ -1099,7 +1084,7 @@
     % code point in length then it will be broken over two (or more) lines.
     % Sequences of whitespace characters are replaced by a single space.
     %
-:- func string.word_wrap(string, int) = string.
+:- func word_wrap(string, int) = string.
 
     % word_wrap_separator(Str, N, WordSeparator) = Wrapped.
     % word_wrap_separator/3 is like word_wrap/2, except that words that
@@ -1107,11 +1092,11 @@
     % between each piece. If the length of WordSeparator is greater than
     % or equal to N code points, then no separator is used.
     %
-:- func string.word_wrap_separator(string, int, string) = string.
+:- func word_wrap_separator(string, int, string) = string.
 
     % Convert a string to a pretty_printer.doc for formatting.
     %
-:- func string.string_to_doc(string) = pretty_printer.doc.
+:- func string_to_doc(string) = pretty_printer.doc.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -32,31 +32,31 @@
 
     % Initialise a channel.
     %
-:- pred channel.init(channel(T)::out, io::di, io::uo) is det.
+:- pred init(channel(T)::out, io::di, io::uo) is det.
 
     % Put an item at the end of the channel.
     %
-:- pred channel.put(channel(T)::in, T::in, io::di, io::uo) is det.
+:- pred put(channel(T)::in, T::in, io::di, io::uo) is det.
 
     % Take an item from the start of the channel, block if there is
     % nothing in the channel.
     %
-:- pred channel.take(channel(T)::in, T::out, io::di, io::uo) is det.
+:- pred take(channel(T)::in, T::out, io::di, io::uo) is det.
 
     % Take an item from the start of the channel.
     % Returns immediately with no if the channel was empty.
     %
-:- pred channel.try_take(channel(T)::in, maybe(T)::out, io::di, io::uo) is det.
+:- pred try_take(channel(T)::in, maybe(T)::out, io::di, io::uo) is det.
 
     % Duplicate a channel.  The new channel sees all (and only) the
-    % data written to the channel after the channel.duplicate call.
+    % data written to the channel after the `duplicate'/4 call.
     % 
-:- pred channel.duplicate(channel(T)::in, channel(T)::out, io::di, io::uo)
+:- pred duplicate(channel(T)::in, channel(T)::out, io::di, io::uo)
     is det.
 
     % Place an item back at the start of the channel.
     %
-:- pred channel.untake(channel(T)::in, T::in, io::di, io::uo) is det.
+:- pred untake(channel(T)::in, T::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

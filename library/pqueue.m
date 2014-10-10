@@ -37,82 +37,82 @@
 
     % Create an empty priority queue.
     %
-:- func pqueue.init = pqueue(K, V).
-:- pred pqueue.init(pqueue(K, V)::out) is det.
+:- func init = pqueue(K, V).
+:- pred init(pqueue(K, V)::out) is det.
 
     % True iff the priority queue is empty.
     %
-:- pred pqueue.is_empty(pqueue(K, V)::in) is semidet.
+:- pred is_empty(pqueue(K, V)::in) is semidet.
 
     % Insert a value V with key K into a priority queue
     % and return the new priority queue.
     %
-:- func pqueue.insert(pqueue(K, V), K, V) = pqueue(K, V).
-:- pred pqueue.insert(K::in, V::in, pqueue(K, V)::in, pqueue(K, V)::out)
+:- func insert(pqueue(K, V), K, V) = pqueue(K, V).
+:- pred insert(K::in, V::in, pqueue(K, V)::in, pqueue(K, V)::out)
     is det.
 
     % Extract the smallest key-value pair from the priority queue without
     % removing it.  Fails if the priority queue is empty.
     %
-:- pred pqueue.peek(pqueue(K, V)::in, K::out, V::out) is semidet.
+:- pred peek(pqueue(K, V)::in, K::out, V::out) is semidet.
 
     % Extract the smallest key from the priority queue without removing it.
     % Fails if the priority queue is empty.
     %
-:- pred pqueue.peek_key(pqueue(K, V)::in, K::out) is semidet.
+:- pred peek_key(pqueue(K, V)::in, K::out) is semidet.
 
     % Extract the smallest value from the priority queue without removing
     % it.  Fails if the priority queue is empty.
     %
-:- pred pqueue.peek_value(pqueue(K, V)::in, V::out) is semidet.
+:- pred peek_value(pqueue(K, V)::in, V::out) is semidet.
 
     % As above, but calls error/1 if the priority queue is empty.
     %
-:- pred pqueue.det_peek(pqueue(K, V)::in, K::out, V::out) is det.
-:- func pqueue.det_peek_key(pqueue(K, V)) = K.
-:- func pqueue.det_peek_value(pqueue(K, V)) = V.
+:- pred det_peek(pqueue(K, V)::in, K::out, V::out) is det.
+:- func det_peek_key(pqueue(K, V)) = K.
+:- func det_peek_value(pqueue(K, V)) = V.
 
     % Remove the smallest item from the priority queue.
     % Fails if the priority queue is empty.
     %
-:- pred pqueue.remove(K::out, V::out, pqueue(K, V)::in, pqueue(K, V)::out)
+:- pred remove(K::out, V::out, pqueue(K, V)::in, pqueue(K, V)::out)
     is semidet.
 
     % As above, but calls error/1 if the priority queue is empty.
     %
-:- pred pqueue.det_remove(K::out, V::out, pqueue(K, V)::in, pqueue(K, V)::out)
+:- pred det_remove(K::out, V::out, pqueue(K, V)::in, pqueue(K, V)::out)
     is det.
 
     % Merges all the entries of one priority queue with another, returning
     % the merged list.
     %
-:- func pqueue.merge(pqueue(K, V), pqueue(K, V)) = pqueue(K, V).
-:- pred pqueue.merge(pqueue(K, V)::in, pqueue(K, V)::in, pqueue(K, V)::out)
+:- func merge(pqueue(K, V), pqueue(K, V)) = pqueue(K, V).
+:- pred merge(pqueue(K, V)::in, pqueue(K, V)::in, pqueue(K, V)::out)
     is det.
 
     % Extract all the items from a priority queue by repeated
     % removal, and place them in an association list.
     %
-:- func pqueue.to_assoc_list(pqueue(K, V)) = assoc_list(K, V).
-:- pred pqueue.to_assoc_list(pqueue(K, V)::in, assoc_list(K, V)::out)
+:- func to_assoc_list(pqueue(K, V)) = assoc_list(K, V).
+:- pred to_assoc_list(pqueue(K, V)::in, assoc_list(K, V)::out)
     is det.
 
     % Insert all the key-value pairs in an association list
     % into a priority queue.
     %
-:- func pqueue.assoc_list_to_pqueue(assoc_list(K, V)) = pqueue(K, V).
-:- pred pqueue.assoc_list_to_pqueue(assoc_list(K, V)::in, pqueue(K, V)::out)
+:- func assoc_list_to_pqueue(assoc_list(K, V)) = pqueue(K, V).
+:- pred assoc_list_to_pqueue(assoc_list(K, V)::in, pqueue(K, V)::out)
     is det.
 
-    % A synonym for pqueue.assoc_list_to_pqueue/1.
+    % A synonym for assoc_list_to_pqueue/1.
     %
-:- func pqueue.from_assoc_list(assoc_list(K, V)) = pqueue(K, V).
+:- func from_assoc_list(assoc_list(K, V)) = pqueue(K, V).
 
     % length(PQueue) = Length.
     %
     % Length is the number of items in PQueue
     %
-:- func pqueue.length(pqueue(K, V)) = int.
+:- func length(pqueue(K, V)) = int.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

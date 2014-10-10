@@ -25,20 +25,20 @@
 
 :- type counter.
 
-    % counter.init(N, Counter) returns a counter whose first allocation
-    % will be the integer N.
+    % init(N, Counter) returns a counter whose first allocation will be the
+    % integer N.
     %
-:- pred counter.init(int::in, counter::out) is det.
+:- pred init(int::in, counter::out) is det.
 
-    % A function version of counter.init/2.
+    % A function version of init/2.
     %
-:- func counter.init(int) = counter.
+:- func init(int) = counter.
 
-    % counter.allocate(N, Counter0, Counter) takes a counter, and
-    % returns (a) the next integer to be allocated from that counter,
-    % and (b) the updated state of the counter.
+    % allocate(N, Counter0, Counter) takes a counter, and returns (a) the next
+    % integer to be allocated from that counter, and (b) the updated state of
+    % the counter.
     %
-:- pred counter.allocate(int::out, counter::in, counter::out) is det.
+:- pred allocate(int::out, counter::in, counter::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -55,3 +55,7 @@ counter.init(N) = counter(N).
 counter.init(N, counter.init(N)).
 
 counter.allocate(N, counter(N), counter(N + 1)).
+
+%-----------------------------------------------------------------------------%
+:- end_module counter.
+%-----------------------------------------------------------------------------%

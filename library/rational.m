@@ -33,13 +33,13 @@
 
 :- pred '>='(rational::in, rational::in) is semidet.
 
-:- func rational.rational(int) = rational.
+:- func rational(int) = rational.
 
-:- func rational.rational(int, int) = rational.
+:- func rational(int, int) = rational.
 
-:- func rational.from_integer(integer) = rational.
+:- func from_integer(integer) = rational.
 
-:- func rational.from_integers(integer, integer) = rational.
+:- func from_integers(integer, integer) = rational.
 
 % :- func float(rational) = float.
 
@@ -55,17 +55,17 @@
 
 :- func rational / rational = rational.
 
-:- func rational.numer(rational) = integer.
+:- func numer(rational) = integer.
 
-:- func rational.denom(rational) = integer.
+:- func denom(rational) = integer.
 
-:- func rational.abs(rational) = rational.
+:- func abs(rational) = rational.
 
-:- func rational.reciprocal(rational) = rational.
+:- func reciprocal(rational) = rational.
 
-:- func rational.one = rational.
+:- func one = rational.
 
-:- func rational.zero = rational.
+:- func zero = rational.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

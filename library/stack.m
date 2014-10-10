@@ -23,62 +23,62 @@
 
 :- type stack(T).
 
-	% `stack.init(Stack)' is true iff `Stack' is an empty stack.
+	% `init(Stack)' is true iff `Stack' is an empty stack.
 	%
-:- pred stack.init(stack(T)::out) is det.
-:- func stack.init = stack(T).
+:- pred init(stack(T)::out) is det.
+:- func init = stack(T).
 
-	% `stack.is_empty(Stack)' is true iff `Stack' is an empty stack.
+	% `is_empty(Stack)' is true iff `Stack' is an empty stack.
 	%
-:- pred stack.is_empty(stack(T)::in) is semidet.
+:- pred is_empty(stack(T)::in) is semidet.
 
-	% `stack.is_full(Stack)' is intended to be true iff `Stack'
+	% `is_full(Stack)' is intended to be true iff `Stack'
 	% is a stack whose capacity is exhausted.  This implementation
-	% allows arbitrary-sized stacks, so stack.is_full always fails.
+	% allows arbitrary-sized stacks, so is_full always fails.
 	%
-:- pred stack.is_full(stack(T)::in) is semidet.
+:- pred is_full(stack(T)::in) is semidet.
 
-	% `stack.push(Elem, Stack0, Stack)' is true iff `Stack' is
+	% `push(Elem, Stack0, Stack)' is true iff `Stack' is
 	% the stack which results from pushing `Elem' onto the top
 	% of `Stack0'.
 	%
-:- pred stack.push(T::in, stack(T)::in, stack(T)::out) is det.
-:- func stack.push(stack(T), T) = stack(T).
+:- pred push(T::in, stack(T)::in, stack(T)::out) is det.
+:- func push(stack(T), T) = stack(T).
 
-	% `stack.push_list(Elems, Stack0, Stack)' is true iff `Stack'
+	% `push_list(Elems, Stack0, Stack)' is true iff `Stack'
 	% is the stack which results from pushing the elements of the
 	% list `Elems' onto the top of `Stack0'.
 	%
-:- pred stack.push_list(list(T)::in, stack(T)::in, stack(T)::out) is det.
-:- func stack.push_list(stack(T), list(T)) = stack(T).
+:- pred push_list(list(T)::in, stack(T)::in, stack(T)::out) is det.
+:- func push_list(stack(T), list(T)) = stack(T).
 
-	% `stack.top(Stack, Elem)' is true iff `Stack' is a non-empty
+	% `top(Stack, Elem)' is true iff `Stack' is a non-empty
 	% stack whose top element is `Elem'.
 	%
-:- pred stack.top(stack(T)::in, T::out) is semidet.
+:- pred top(stack(T)::in, T::out) is semidet.
 
-	% `stack.det_top' is like `stack.top' except that it will
-	% call error/1 rather than failing if given an empty stack.
+	% `det_top' is like `top' except that it will
+	% call error/1 rather than failing if given an empty 
 	%
-:- pred stack.det_top(stack(T)::in, T::out) is det.
-:- func stack.det_top(stack(T)) = T.
+:- pred det_top(stack(T)::in, T::out) is det.
+:- func det_top(stack(T)) = T.
 
-	% `stack.pop(Elem, Stack0, Stack)' is true iff `Stack0' is
+	% `pop(Elem, Stack0, Stack)' is true iff `Stack0' is
 	% a non-empty stack whose top element is `Elem', and `Stack'
 	% the stack which results from popping `Elem' off `Stack0'.
 	%
-:- pred stack.pop(T::out, stack(T)::in, stack(T)::out) is semidet.
+:- pred pop(T::out, stack(T)::in, stack(T)::out) is semidet.
 
-	% `stack.det_pop' is like `stack.pop' except that it will
+	% `det_pop' is like `pop' except that it will
 	% call error/1 rather than failing if given an empty stack.
 	%
-:- pred stack.det_pop(T::out, stack(T)::in, stack(T)::out) is det.
+:- pred det_pop(T::out, stack(T)::in, stack(T)::out) is det.
 
-	% `stack.depth(Stack, Depth)' is true iff `Stack' is a stack
+	% `depth(Stack, Depth)' is true iff `Stack' is a stack
 	% containing `Depth' elements.
 	%
-:- pred stack.depth(stack(T)::in, int::out) is det.
-:- func stack.depth(stack(T)) = int.
+:- pred depth(stack(T)::in, int::out) is det.
+:- func depth(stack(T)) = int.
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%

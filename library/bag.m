@@ -28,97 +28,97 @@
 
     % Create an empty bag.
     %
-:- func bag.init = bag(T).
-:- pred bag.init(bag(T)::out) is det.
+:- func init = bag(T).
+:- pred init(bag(T)::out) is det.
 
     % Return the number of values in a bag (including duplicate values).
     %
-:- func bag.count(bag(T)) = int.
+:- func count(bag(T)) = int.
 
     % Return the number of unique values in a bag, duplicate values are counted
     % only once.
     %
-:- func bag.count_unique(bag(T)) = int.
+:- func count_unique(bag(T)) = int.
 
     % Insert a particular value in a bag.
     %
-:- func bag.insert(bag(T), T) = bag(T).
-:- pred bag.insert(T::in, bag(T)::in, bag(T)::out) is det.
+:- func insert(bag(T), T) = bag(T).
+:- pred insert(T::in, bag(T)::in, bag(T)::out) is det.
 
     % Insert a list of values into a bag.
     %
-:- func bag.insert_list(bag(T), list(T)) = bag(T).
-:- pred bag.insert_list(list(T)::in, bag(T)::in, bag(T)::out) is det.
+:- func insert_list(bag(T), list(T)) = bag(T).
+:- pred insert_list(list(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Insert a list of values into a bag.
     %
-:- func bag.insert_set(bag(T), set(T)) = bag(T).
-:- pred bag.insert_set(set(T)::in, bag(T)::in, bag(T)::out) is det.
+:- func insert_set(bag(T), set(T)) = bag(T).
+:- pred insert_set(set(T)::in, bag(T)::in, bag(T)::out) is det.
 
-    % bag.member(Val, Bag):
+    % member(Val, Bag):
     % True iff `Bag' contains at least one occurrence of `Val'.
     %
-:- pred bag.member(T::in, bag(T)::in) is semidet.
+:- pred member(T::in, bag(T)::in) is semidet.
 
-    % bag.member(Val, Bag, Remainder):
-    % Nondeterministically returns all values from Bag and the
-    % corresponding bag after the value has been removed. Duplicate values
-    % are returned as many times as they occur in the Bag.
+    % member(Val, Bag, Remainder):
+    % Nondeterministically returns all values from Bag and the corresponding
+    % bag after the value has been removed. Duplicate values are returned as
+    % many times as they occur in the Bag.
     %
-:- pred bag.member(T::out, bag(T)::in, bag(T)::out) is nondet.
+:- pred member(T::out, bag(T)::in, bag(T)::out) is nondet.
 
     % Make a bag from a list.
     %
-:- func bag.bag(list(T)) = bag(T).
-:- func bag.from_list(list(T)) = bag(T).
-:- pred bag.from_list(list(T)::in, bag(T)::out) is det.
+:- func bag(list(T)) = bag(T).
+:- func from_list(list(T)) = bag(T).
+:- pred from_list(list(T)::in, bag(T)::out) is det.
 
     % Make a bag from a set.
     %
-:- func bag.from_set(set(T)) = bag(T).
-:- pred bag.from_set(set(T)::in, bag(T)::out) is det.
+:- func from_set(set(T)) = bag(T).
+:- pred from_set(set(T)::in, bag(T)::out) is det.
 
     % Make a bag from a sorted list.
     %
-:- func bag.from_sorted_list(list(T)) = bag(T).
-:- pred bag.from_sorted_list(list(T)::in, bag(T)::out) is det.
+:- func from_sorted_list(list(T)) = bag(T).
+:- pred from_sorted_list(list(T)::in, bag(T)::out) is det.
 
-    % Given a bag, produce a sorted list containing all the values in
-    % the bag.  Each value will appear in the list the same number of
-    % times that it appears in the bag.
+    % Given a bag, produce a sorted list containing all the values in the bag.
+    % Each value will appear in the list the same number of times that it
+    % appears in the bag.
     %
-:- func bag.to_list(bag(T)) = list(T).
-:- pred bag.to_list(bag(T)::in, list(T)::out) is det.
+:- func to_list(bag(T)) = list(T).
+:- pred to_list(bag(T)::in, list(T)::out) is det.
 
     % Given a bag, produce a sorted list containing all the values in the bag.
     % Each value will appear in the list once, with the associated integer
     % giving the number of times that it appears in the bag.
     %
-:- func bag.to_assoc_list(bag(T)) = assoc_list(T, int).
-:- pred bag.to_assoc_list(bag(T)::in, assoc_list(T, int)::out) is det.
+:- func to_assoc_list(bag(T)) = assoc_list(T, int).
+:- pred to_assoc_list(bag(T)::in, assoc_list(T, int)::out) is det.
 
     % Given a bag, produce a sorted list with no duplicates containing
     % all the values in the bag.
     %
-:- func bag.to_list_without_duplicates(bag(T)) = list(T).
-:- pred bag.to_list_without_duplicates(bag(T)::in, list(T)::out) is det.
+:- func to_list_without_duplicates(bag(T)) = list(T).
+:- pred to_list_without_duplicates(bag(T)::in, list(T)::out) is det.
 
     % Given a bag, produce a set containing all the values in the bag.
     %
-:- func bag.to_set(bag(T)) = set(T).
-:- func bag.to_set_without_duplicates(bag(T)) = set(T).
-:- pred bag.to_set_without_duplicates(bag(T)::in, set(T)::out) is det.
+:- func to_set(bag(T)) = set(T).
+:- func to_set_without_duplicates(bag(T)) = set(T).
+:- pred to_set_without_duplicates(bag(T)::in, set(T)::out) is det.
 
     % Remove one occurrence of a particular value from a bag.
     % Fail if the item does not exist in the bag.
     %
-:- pred bag.remove(T::in, bag(T)::in, bag(T)::out) is semidet.
+:- pred remove(T::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove one occurrence of a particular value from a bag.
     % Abort if the item does not exist in the bag.
     %
-:- func bag.det_remove(bag(T), T) = bag(T).
-:- pred bag.det_remove(T::in, bag(T)::in, bag(T)::out) is det.
+:- func det_remove(bag(T), T) = bag(T).
+:- pred det_remove(T::in, bag(T)::in, bag(T)::out) is det.
 
     % Remove a list of values from a bag. Duplicates are removed from the bag
     % the appropriate number of times. Fail if any of the items in the list
@@ -126,85 +126,85 @@
     %
     % This call is logically equivalent to:
     %
-    %   bag.remove_list(Bag0, RemoveList, Bag) :-
-    %       bag.from_list(RemoveList, RemoveBag),
-    %       bag.is_subbag(RemoveBag, Bag0),
-    %       bag.subtract(Bag0, RemoveBag, Bag).
+    %   remove_list(Bag0, RemoveList, Bag) :-
+    %       from_list(RemoveList, RemoveBag),
+    %       is_subbag(RemoveBag, Bag0),
+    %       subtract(Bag0, RemoveBag, Bag).
     %
-:- pred bag.remove_list(list(T)::in, bag(T)::in, bag(T)::out) is semidet.
+:- pred remove_list(list(T)::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove a list of values from a bag. Duplicates are removed from the bag
     % the appropriate number of times.  Abort if any of the items in the list
     % do not exist in the bag.
     %
-:- func bag.det_remove_list(bag(T), list(T)) = bag(T).
-:- pred bag.det_remove_list(list(T)::in, bag(T)::in, bag(T)::out) is det.
+:- func det_remove_list(bag(T), list(T)) = bag(T).
+:- pred det_remove_list(list(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Remove a set of values from a bag. Each value is removed once.
     % Fail if any of the items in the set do not exist in the bag.
     %
-:- pred bag.remove_set(set(T)::in, bag(T)::in, bag(T)::out) is semidet.
+:- pred remove_set(set(T)::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove a set of values from a bag. Each value is removed once.
     % Abort if any of the items in the set do not exist in the bag.
     %
-:- func bag.det_remove_set(bag(T), set(T)) = bag(T).
-:- pred bag.det_remove_set(set(T)::in, bag(T)::in, bag(T)::out) is det.
+:- func det_remove_set(bag(T), set(T)) = bag(T).
+:- pred det_remove_set(set(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Delete one occurrence of a particular value from a bag.
     % If the key is not present, leave the bag unchanged.
     %
-:- func bag.delete(bag(T), T) = bag(T).
-:- pred bag.delete(T::in, bag(T)::in, bag(T)::out) is det.
+:- func delete(bag(T), T) = bag(T).
+:- pred delete(T::in, bag(T)::in, bag(T)::out) is det.
 
     % Remove all occurrences of a particular value from a bag.
     % Fail if the item does not exist in the bag.
     %
-:- pred bag.remove_all(T::in, bag(T)::in, bag(T)::out) is semidet.
+:- pred remove_all(T::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Delete all occurrences of a particular value from a bag.
     %
-:- func bag.delete_all(bag(T), T) = bag(T).
-:- pred bag.delete_all(T::in, bag(T)::in, bag(T)::out) is det.
+:- func delete_all(bag(T), T) = bag(T).
+:- pred delete_all(T::in, bag(T)::in, bag(T)::out) is det.
 
     % Check whether a bag contains a particular value.
     %
-:- pred bag.contains(bag(T)::in, T::in) is semidet.
+:- pred contains(bag(T)::in, T::in) is semidet.
 
     % Count how many occurrences of the value the bag contains.
     %
-:- func bag.count_value(bag(T), T) = int.
-:- pred bag.count_value(bag(T)::in, T::in, int::out) is det.
+:- func count_value(bag(T), T) = int.
+:- pred count_value(bag(T)::in, T::in, int::out) is det.
 
-    % bag.subtract(Bag0, SubBag, Bag):
+    % subtract(Bag0, SubBag, Bag):
     %
     % Subtracts SubBag from Bag0 to produce Bag. Each element in SubBag is
     % removed from Bag0 to produce Bag. If an element exists in SubBag,
     % but not in Bag, then that element is not removed. An example:
-    % bag.subtract({1, 1, 2, 2, 3 }, {1, 1, 2, 3, 3, 3}, {2}).
+    % subtract({1, 1, 2, 2, 3 }, {1, 1, 2, 3, 3, 3}, {2}).
     %
-:- func bag.subtract(bag(T), bag(T)) = bag(T).
-:- pred bag.subtract(bag(T)::in, bag(T)::in, bag(T)::out) is det.
+:- func subtract(bag(T), bag(T)) = bag(T).
+:- pred subtract(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % The third bag is the union of the first 2 bags,
     % e.g. {1, 1, 2, 2} U {2, 2, 3, 3} = {1, 1, 2, 2, 2, 2, 3, 3}.
     % If the two input bags are known to be unequal in size, then making
     % the first bag the larger bag will usually be more efficient.
     %
-:- func bag.union(bag(T), bag(T)) = bag(T).
-:- pred bag.union(bag(T)::in, bag(T)::in, bag(T)::out) is det.
+:- func union(bag(T), bag(T)) = bag(T).
+:- pred union(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % The third bag is the intersection of the first 2 bags. Every element
     % in the third bag exists in both of the first 2 bags, e.g.
-    % bag.intersect({1, 2, 2, 3, 3}, {2, 2, 3, 4}, {2, 2, 3}).
+    % intersect({1, 2, 2, 3, 3}, {2, 2, 3, 4}, {2, 2, 3}).
     %
-:- func bag.intersect(bag(T), bag(T)) = bag(T).
-:- pred bag.intersect(bag(T)::in, bag(T)::in, bag(T)::out) is det.
+:- func intersect(bag(T), bag(T)) = bag(T).
+:- pred intersect(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Fails if there is no intersection between the 2 bags.
-    % bag.intersect(A, B) :- bag.intersect(A, B, C), not bag.is_empty(C).
+    % intersect(A, B) :- intersect(A, B, C), not is_empty(C).
     %
-:- pred bag.intersect(bag(T)::in, bag(T)::in) is semidet.
+:- pred intersect(bag(T)::in, bag(T)::in) is semidet.
 
     % The third bag is the smallest bag that has both the first two bags
     % as subbags. If an element X is present N times in one of the first
@@ -213,61 +213,61 @@
     % If the two input bags are known to be unequal in size, then making
     % the first bag the larger bag will usually be more efficient.
     %
-:- func bag.least_upper_bound(bag(T), bag(T)) = bag(T).
-:- pred bag.least_upper_bound(bag(T)::in, bag(T)::in, bag(T)::out) is det.
+:- func least_upper_bound(bag(T), bag(T)) = bag(T).
+:- pred least_upper_bound(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Tests whether the first bag is a subbag of the second.
-    % bag.is_subbag(A, B) implies that every element in the bag A
+    % is_subbag(A, B) implies that every element in the bag A
     % is also in the bag B. If an element is in bag A multiple times,
     % it must be in bag B at least as many times.
-    % e.g. bag.is_subbag({1, 1, 2}, {1, 1, 2, 2, 3}).
-    % e.g. bag.is_subbag({1, 1, 2}, {1, 2, 3}) :- fail.
+    % e.g. is_subbag({1, 1, 2}, {1, 1, 2, 2, 3}).
+    % e.g. is_subbag({1, 1, 2}, {1, 2, 3}) :- fail.
     %
-:- pred bag.is_subbag(bag(T)::in, bag(T)::in) is semidet.
+:- pred is_subbag(bag(T)::in, bag(T)::in) is semidet.
 
     % Check whether a bag is empty.
     %
-:- pred bag.is_empty(bag(T)::in) is semidet.
+:- pred is_empty(bag(T)::in) is semidet.
 
     % Fails if the bag is empty.
     %
-:- pred bag.remove_smallest(T::out, bag(T)::in, bag(T)::out) is semidet.
+:- pred remove_smallest(T::out, bag(T)::in, bag(T)::out) is semidet.
 
     % Compares the two bags, and returns whether the first bag is a
     % subset (<), is equal (=), or is a superset (>) of the second.
-    % bag.subset_compare(<, {apple, orange}, {apple, apple, orange}).
-    % bag.subset_compare(=, {apple, orange}, {apple, orange}).
-    % bag.subset_compare(>, {apple, apple, orange}, {apple, orange}).
-    % bag.subset_compare(_, {apple, apple}, {orange, orange}) :- fail.
+    % subset_compare(<, {apple, orange}, {apple, apple, orange}).
+    % subset_compare(=, {apple, orange}, {apple, orange}).
+    % subset_compare(>, {apple, apple, orange}, {apple, orange}).
+    % subset_compare(_, {apple, apple}, {orange, orange}) :- fail.
     %
-:- pred bag.subset_compare(comparison_result::out, bag(T)::in, bag(T)::in)
+:- pred subset_compare(comparison_result::out, bag(T)::in, bag(T)::in)
     is semidet.
 
     % Perform a traversal of the bag, applying an accumulator predicate
     % to each value - count pair.
     %
-:- pred bag.foldl(pred(T, int, A, A), bag(T), A, A).
-:- mode bag.foldl(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode bag.foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode bag.foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode bag.foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
-:- mode bag.foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode bag.foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
+:- pred foldl(pred(T, int, A, A), bag(T), A, A).
+:- mode foldl(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 
     % As above, but with two accumulators.
     %
-:- pred bag.foldl2(pred(T, int, A, A, B, B), bag(T), A, A, B, B).
-:- mode bag.foldl2(pred(in, in, in, out, in, out) is det, in, in, out,
+:- pred foldl2(pred(T, int, A, A, B, B), bag(T), A, A, B, B).
+:- mode foldl2(pred(in, in, in, out, in, out) is det, in, in, out,
     in, out) is det.
-:- mode bag.foldl2(pred(in, in, in, out, mdi, muo) is det, in, in, out,
+:- mode foldl2(pred(in, in, in, out, mdi, muo) is det, in, in, out,
     mdi, muo) is det.
-:- mode bag.foldl2(pred(in, in, in, out, di, uo) is det, in, in, out,
+:- mode foldl2(pred(in, in, in, out, di, uo) is det, in, in, out,
     di, uo) is det.
-:- mode bag.foldl2(pred(in, in, in, out, in, out) is semidet, in, in, out,
+:- mode foldl2(pred(in, in, in, out, in, out) is semidet, in, in, out,
     in, out) is semidet.
-:- mode bag.foldl2(pred(in, in, in, out, mdi, muo) is semidet, in, in, out,
+:- mode foldl2(pred(in, in, in, out, mdi, muo) is semidet, in, in, out,
     mdi, muo) is semidet.
-:- mode bag.foldl2(pred(in, in, in, out, di, uo) is semidet, in, in, out,
+:- mode foldl2(pred(in, in, in, out, di, uo) is semidet, in, in, out,
     di, uo) is semidet.
 
 %---------------------------------------------------------------------------%

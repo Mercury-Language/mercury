@@ -76,16 +76,16 @@
     
     % Initialize an empty rtree.
     %
-:- func rtree.init = (rtree(K, V)::uo) is det <= region(K).
+:- func init = (rtree(K, V)::uo) is det <= region(K).
 
     % Succeeds iff the given rtree is empty.
     % 
-:- pred rtree.is_empty(rtree(K, V)::in) is semidet.
+:- pred is_empty(rtree(K, V)::in) is semidet.
 
     % Insert a new key and corresponding value into an rtree.
     %
-:- func rtree.insert(K, V, rtree(K, V)) = rtree(K, V) <= region(K).
-:- pred rtree.insert(K::in, V::in, rtree(K, V)::in, rtree(K, V)::out)
+:- func insert(K, V, rtree(K, V)) = rtree(K, V) <= region(K).
+:- pred insert(K::in, V::in, rtree(K, V)::in, rtree(K, V)::out)
     is det <= region(K).
 
     % Delete a key-value pair from an rtree.
@@ -94,16 +94,16 @@
     %
     % Fails if the key-value pair is not in the tree.
     %
-:- pred rtree.delete(K::in, V::in, rtree(K, V)::in, rtree(K, V)::out) 
+:- pred delete(K::in, V::in, rtree(K, V)::in, rtree(K, V)::out) 
     is semidet <= region(K).
 
     % Search for all values with keys that intersect the query key.
     % 
-:- func rtree.search_intersects(rtree(K, V), K) = list(V) <= region(K).
+:- func search_intersects(rtree(K, V), K) = list(V) <= region(K).
 
     % Search for all values with keys that contain the query key.
     %
-:- func rtree.search_contains(rtree(K, V), K) = list(V) <= region(K).
+:- func search_contains(rtree(K, V), K) = list(V) <= region(K).
 
     % search_general(KTest, VTest, T) = V.
     %
@@ -120,7 +120,7 @@
     %   search_contains(T, K, Vs)
     %       <=> search_general(contains(K), true, T, Vs)
     %
-:- func rtree.search_general(pred(K)::in(pred(in) is semidet),
+:- func search_general(pred(K)::in(pred(in) is semidet),
     pred(V)::in(pred(in) is semidet), rtree(K, V)::in) = (list(V)::out)
     is det.
 
@@ -138,8 +138,8 @@
     % If there exist multiple key-value pairs that satisfy the above 
     % conditions, then one of the candidates is chosen arbitrarily. 
     % 
-:- pred rtree.search_first(pred(K, L), pred(V, L), rtree(K, V), L, V, L).
-:- mode rtree.search_first(pred(in, out) is semidet, 
+:- pred search_first(pred(K, L), pred(V, L), rtree(K, V), L, V, L).
+:- mode search_first(pred(in, out) is semidet, 
     pred(in, out) is semidet, in, in, out, out) is semidet.
 
     % search_general_fold(KTest, VPred, T, !A).
@@ -148,27 +148,27 @@
     % KTest(K).  The same assumptions for KTest from search_general apply
     % here.
     %
-:- pred rtree.search_general_fold(pred(K), pred(K, V, A, A), rtree(K, V), 
+:- pred search_general_fold(pred(K), pred(K, V, A, A), rtree(K, V), 
     A, A).
-:- mode rtree.search_general_fold(pred(in) is semidet, 
+:- mode search_general_fold(pred(in) is semidet, 
     pred(in, in, in, out) is det, in, in, out) is det.
-:- mode rtree.search_general_fold(pred(in) is semidet,
+:- mode search_general_fold(pred(in) is semidet,
     pred(in, in, di, uo) is det, in, di, uo) is det.
 
     % Perform a traversal of the rtree, applying an accumulator predicate
     % for each key-value pair.
     % 
-:- pred rtree.fold(pred(K, V, A, A), rtree(K, V), A, A).
-:- mode rtree.fold(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode rtree.fold(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode rtree.fold(pred(in, in, in, out) is semidet, in, in, out)
+:- pred fold(pred(K, V, A, A), rtree(K, V), A, A).
+:- mode fold(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode fold(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode fold(pred(in, in, in, out) is semidet, in, in, out)
     is semidet.
 
     % Apply a transformation predicate to all the values in an rtree.
     %
-:- pred rtree.map_values(pred(K, V, W), rtree(K, V), rtree(K, W)).
-:- mode rtree.map_values(pred(in, in, out) is det, in, out) is det.
-:- mode rtree.map_values(pred(in, in, out) is semidet, in, out)
+:- pred map_values(pred(K, V, W), rtree(K, V), rtree(K, W)).
+:- mode map_values(pred(in, in, out) is det, in, out) is det.
+:- mode map_values(pred(in, in, out) is semidet, in, out)
     is semidet.
 
 %---------------------------------------------------------------------------%

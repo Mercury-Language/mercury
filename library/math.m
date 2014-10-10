@@ -43,164 +43,164 @@
 
     % Pythagoras' number.
     %
-:- func math.pi = float.
+:- func pi = float.
 
     % Base of natural logarithms.
     %
-:- func math.e = float.
+:- func e = float.
 
 %---------------------------------------------------------------------------%
 %
 % "Next integer" operations
 %
 
-    % math.ceiling(X) = Ceil is true if Ceil is the smallest integer
+    % ceiling(X) = Ceil is true if Ceil is the smallest integer
     % not less than X.
     %
-:- func math.ceiling(float) = float.
+:- func ceiling(float) = float.
 
-    % math.floor(X) = Floor is true if Floor is the largest integer
+    % floor(X) = Floor is true if Floor is the largest integer
     % not greater than X.
     %
-:- func math.floor(float) = float.
+:- func floor(float) = float.
 
-    % math.round(X) = Round is true if Round is the integer closest to X.
+    % round(X) = Round is true if Round is the integer closest to X.
     % If X has a fractional value of 0.5, it is rounded up.
     %
-:- func math.round(float) = float.
+:- func round(float) = float.
 
-    % math.truncate(X) = Trunc is true if Trunc is the integer closest to X
+    % truncate(X) = Trunc is true if Trunc is the integer closest to X
     % such that |Trunc| =< |X|.
     %
-:- func math.truncate(float) = float.
+:- func truncate(float) = float.
 
 %---------------------------------------------------------------------------%
 %
 % Polynomial roots
 %
 
-    % math.sqrt(X) = Sqrt is true if Sqrt is the positive square root of X.
+    % sqrt(X) = Sqrt is true if Sqrt is the positive square root of X.
     %
     % Domain restriction: X >= 0
     %
-:- func math.sqrt(float) = float.
-:- func math.unchecked_sqrt(float) = float.
+:- func sqrt(float) = float.
+:- func unchecked_sqrt(float) = float.
 
-:- type math.quadratic_roots
+:- type quadratic_roots
     --->    no_roots
     ;       one_root(float)
     ;       two_roots(float, float).
 
-    % math.solve_quadratic(A, B, C) = Roots is true if Roots are
+    % solve_quadratic(A, B, C) = Roots is true if Roots are
     % the solutions to the equation Ax^2 + Bx + C.
     %
     % Domain restriction: A \= 0
     %
-:- func math.solve_quadratic(float, float, float) = quadratic_roots.
+:- func solve_quadratic(float, float, float) = quadratic_roots.
 
 %---------------------------------------------------------------------------%
 %
 % Power/logarithm operations
 %
 
-    % math.pow(X, Y) = Res is true if Res is X raised to the power of Y.
+    % pow(X, Y) = Res is true if Res is X raised to the power of Y.
     %
     % Domain restriction: X >= 0 and (X = 0 implies Y > 0)
     %
-:- func math.pow(float, float) = float.
-:- func math.unchecked_pow(float, float) = float.
+:- func pow(float, float) = float.
+:- func unchecked_pow(float, float) = float.
 
-    % math.exp(X) = Exp is true if Exp is e raised to the power of X.
+    % exp(X) = Exp is true if Exp is e raised to the power of X.
     %
-:- func math.exp(float) = float.
+:- func exp(float) = float.
 
-    % math.ln(X) = Log is true if Log is the natural logarithm of X.
+    % ln(X) = Log is true if Log is the natural logarithm of X.
     %
     % Domain restriction: X > 0
     %
-:- func math.ln(float) = float.
-:- func math.unchecked_ln(float) = float.
+:- func ln(float) = float.
+:- func unchecked_ln(float) = float.
 
-    % math.log10(X) = Log is true if Log is the logarithm to base 10 of X.
+    % log10(X) = Log is true if Log is the logarithm to base 10 of X.
     %
     % Domain restriction: X > 0
     %
-:- func math.log10(float) = float.
-:- func math.unchecked_log10(float) = float.
+:- func log10(float) = float.
+:- func unchecked_log10(float) = float.
 
-    % math.log2(X) = Log is true if Log is the logarithm to base 2 of X.
+    % log2(X) = Log is true if Log is the logarithm to base 2 of X.
     %
     % Domain restriction: X > 0
     %
-:- func math.log2(float) = float.
-:- func math.unchecked_log2(float) = float.
+:- func log2(float) = float.
+:- func unchecked_log2(float) = float.
 
-    % math.log(B, X) = Log is true if Log is the logarithm to base B of X.
+    % log(B, X) = Log is true if Log is the logarithm to base B of X.
     %
     % Domain restriction: X > 0 and B > 0 and B \= 1
     %
-:- func math.log(float, float) = float.
-:- func math.unchecked_log(float, float) = float.
+:- func log(float, float) = float.
+:- func unchecked_log(float, float) = float.
 
 %---------------------------------------------------------------------------%
 %
 % Trigonometric operations
 %
 
-    % math.sin(X) = Sin is true if Sin is the sine of X.
+    % sin(X) = Sin is true if Sin is the sine of X.
     %
-:- func math.sin(float) = float.
+:- func sin(float) = float.
 
-    % math.cos(X) = Cos is true if Cos is the cosine of X.
+    % cos(X) = Cos is true if Cos is the cosine of X.
     %
-:- func math.cos(float) = float.
+:- func cos(float) = float.
 
-    % math.tan(X) = Tan is true if Tan is the tangent of X.
+    % tan(X) = Tan is true if Tan is the tangent of X.
     %
-:- func math.tan(float) = float.
+:- func tan(float) = float.
 
-    % math.asin(X) = ASin is true if ASin is the inverse sine of X,
+    % asin(X) = ASin is true if ASin is the inverse sine of X,
     % where ASin is in the range [-pi/2,pi/2].
     %
     % Domain restriction: X must be in the range [-1,1]
     %
-:- func math.asin(float) = float.
-:- func math.unchecked_asin(float) = float.
+:- func asin(float) = float.
+:- func unchecked_asin(float) = float.
 
-    % math.acos(X) = ACos is true if ACos is the inverse cosine of X,
+    % acos(X) = ACos is true if ACos is the inverse cosine of X,
     % where ACos is in the range [0, pi].
     %
     % Domain restriction: X must be in the range [-1,1]
     %
-:- func math.acos(float) = float.
-:- func math.unchecked_acos(float) = float.
+:- func acos(float) = float.
+:- func unchecked_acos(float) = float.
 
-    % math.atan(X) = ATan is true if ATan is the inverse tangent of X,
+    % atan(X) = ATan is true if ATan is the inverse tangent of X,
     % where ATan is in the range [-pi/2,pi/2].
     %
-:- func math.atan(float) = float.
+:- func atan(float) = float.
 
-    % math.atan2(Y, X) = ATan is true if ATan is the inverse tangent of Y/X,
+    % atan2(Y, X) = ATan is true if ATan is the inverse tangent of Y/X,
     % where ATan is in the range [-pi,pi].
     %
-:- func math.atan2(float, float) = float.
+:- func atan2(float, float) = float.
 
 %---------------------------------------------------------------------------%
 %
 % Hyperbolic functions
 %
 
-    % math.sinh(X) = Sinh is true if Sinh is the hyperbolic sine of X.
+    % sinh(X) = Sinh is true if Sinh is the hyperbolic sine of X.
     %
-:- func math.sinh(float) = float.
+:- func sinh(float) = float.
 
-    % math.cosh(X) = Cosh is true if Cosh is the hyperbolic cosine of X.
+    % cosh(X) = Cosh is true if Cosh is the hyperbolic cosine of X.
     %
-:- func math.cosh(float) = float.
+:- func cosh(float) = float.
 
-    % math.tanh(X) = Tanh is true if Tanh is the hyperbolic tangent of X.
+    % tanh(X) = Tanh is true if Tanh is the hyperbolic tangent of X.
     %
-:- func math.tanh(float) = float.
+:- func tanh(float) = float.
 
 %---------------------------------------------------------------------------%
 %
@@ -210,7 +210,7 @@
     % Succeeds if this grade and platform provide the fused multiply-add
     % operation.
     %
-:- pred math.have_fma is semidet.
+:- pred have_fma is semidet.
 
     % fma(X, Y, Z) = FMA is true if FMA = (X * Y) + Z, rounded as one
     % floating-point operation.
@@ -219,7 +219,7 @@
     % the target math library supports it.
     % Use have_fma/0 to check whether it is supported.
     %
-:- func math.fma(float, float, float) = float.
+:- func fma(float, float, float) = float.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

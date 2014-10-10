@@ -37,7 +37,7 @@
 
     % Stores and keys are indexed by a type S of typeclass store(S) that
     % is used to distinguish between different stores.  By using an
-    % existential type declaration for store.new (see below), we use the
+    % existential type declaration for `init'/1 (see below), we use the
     % type system to ensure at compile time that you never attempt to use
     % a key from one store to access a different store.
     %
@@ -49,7 +49,7 @@
 
     % Initialize a new store.
     %
-:- some [S] pred store.init(store(S)::uo) is det.
+:- some [S] pred init(store(S)::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -70,24 +70,24 @@
 
     % Create a new mutable variable, initialized with the specified value.
     %
-:- pred store.new_mutvar(T::in, generic_mutvar(T, S)::out, S::di, S::uo)
+:- pred new_mutvar(T::in, generic_mutvar(T, S)::out, S::di, S::uo)
     is det <= store(S).
 
     % copy_mutvar(OldMutvar, NewMutvar, S0, S) is equivalent to the sequence
     %   get_mutvar(OldMutvar, Value, S0, S1),
     %   new_mutvar(NewMutvar, Value, S1, S )
     %
-:- pred store.copy_mutvar(generic_mutvar(T, S)::in, generic_mutvar(T, S)::out,
+:- pred copy_mutvar(generic_mutvar(T, S)::in, generic_mutvar(T, S)::out,
     S::di, S::uo) is det <= store(S).
 
     % Lookup the value stored in a given mutable variable.
     %
-:- pred store.get_mutvar(generic_mutvar(T, S)::in, T::out,
+:- pred get_mutvar(generic_mutvar(T, S)::in, T::out,
     S::di, S::uo) is det <= store(S).
 
     % Replace the value stored in a given mutable variable.
     %
-:- pred store.set_mutvar(generic_mutvar(T, S)::in, T::in,
+:- pred set_mutvar(generic_mutvar(T, S)::in, T::in,
     S::di, S::uo) is det <= store(S).
 
     % new_cyclic_mutvar(Func, Mutvar):
@@ -109,10 +109,10 @@
     %       store(S)::di, store(S)::uo) is det.
     %
     %   init_cl(X, CList, !Store) :-
-    %       store.new_cyclic_mutvar(func(CL) = node(X, CL), CList,
+    %       new_cyclic_mutvar(func(CL) = node(X, CL), CList,
     %       !Store).
     %
-:- pred store.new_cyclic_mutvar((func(generic_mutvar(T, S)) = T)::in,
+:- pred new_cyclic_mutvar((func(generic_mutvar(T, S)) = T)::in,
     generic_mutvar(T, S)::out, S::di, S::uo) is det <= store(S).
 
 %-----------------------------------------------------------------------------%
@@ -143,7 +143,7 @@
     % It does however allocate one cell to hold the reference;
     % you can use new_arg_ref to avoid that.)
     %
-:- pred store.new_ref(T::di, generic_ref(T, S)::out,
+:- pred new_ref(T::di, generic_ref(T, S)::out,
     S::di, S::uo) is det <= store(S).
 
     % ref_functor(Ref, Functor, Arity):
@@ -151,7 +151,7 @@
     % Given a reference to a term, return the functor and arity
     % of that term.
     %
-:- pred store.ref_functor(generic_ref(T, S)::in, string::out, int::out,
+:- pred ref_functor(generic_ref(T, S)::in, string::out, int::out,
     S::di, S::uo) is det <= store(S).
 
     % arg_ref(Ref, ArgNum, ArgRef):
@@ -163,7 +163,7 @@
     % It is an error if the argument number is out of range,
     % or if the argument reference has the wrong type.
     %
-:- pred store.arg_ref(generic_ref(T, S)::in, int::in,
+:- pred arg_ref(generic_ref(T, S)::in, int::in,
     generic_ref(ArgT, S)::out, S::di, S::uo) is det <= store(S).
 
     % new_arg_ref(Val, ArgNum, ArgRef):
@@ -174,7 +174,7 @@
     % It is an error if the argument number is out of range,
     % or if the argument reference has the wrong type.
     %
-:- pred store.new_arg_ref(T::di, int::in, generic_ref(ArgT, S)::out,
+:- pred new_arg_ref(T::di, int::in, generic_ref(ArgT, S)::out,
     S::di, S::uo) is det <= store(S).
 
     % set_ref(Ref, ValueRef):
@@ -185,7 +185,7 @@
     % update the store so that the term referred to by Ref
     % is replaced with the term referenced by ValueRef.
     %
-:- pred store.set_ref(generic_ref(T, S)::in, generic_ref(T, S)::in,
+:- pred set_ref(generic_ref(T, S)::in, generic_ref(T, S)::in,
     S::di, S::uo) is det <= store(S).
 
     % set_ref_value(Ref, Value):
@@ -195,7 +195,7 @@
     % update the store so that the term referred to by Ref
     % is replaced with Value.
     %
-:- pred store.set_ref_value(generic_ref(T, S)::in, T::di,
+:- pred set_ref_value(generic_ref(T, S)::in, T::di,
     S::di, S::uo) is det <= store(S).
 
     % Given a reference to a term, return that term.
@@ -204,12 +204,12 @@
     % is most efficient with atomic terms.
     % XXX current implementation buggy (does shallow copy)
     %
-:- pred store.copy_ref_value(generic_ref(T, S)::in, T::uo,
+:- pred copy_ref_value(generic_ref(T, S)::in, T::uo,
     S::di, S::uo) is det <= store(S).
 
     % Same as above, but without making a copy. Destroys the store.
     %
-:- pred store.extract_ref_value(S::di, generic_ref(T, S)::in, T::out)
+:- pred extract_ref_value(S::di, generic_ref(T, S)::in, T::out)
     is det <= store(S).
 
 %-----------------------------------------------------------------------------%
@@ -236,10 +236,10 @@
     % or if the argument uses a packed representation,
     % then the behaviour is undefined, and probably harmful.
 
-:- pred store.unsafe_arg_ref(generic_ref(T, S)::in, int::in,
+:- pred unsafe_arg_ref(generic_ref(T, S)::in, int::in,
     generic_ref(ArgT, S)::out, S::di, S::uo) is det <= store(S).
 
-:- pred store.unsafe_new_arg_ref(T::di, int::in, generic_ref(ArgT, S)::out,
+:- pred unsafe_new_arg_ref(T::di, int::in, generic_ref(ArgT, S)::out,
     S::di, S::uo) is det <= store(S).
 
 %-----------------------------------------------------------------------------%

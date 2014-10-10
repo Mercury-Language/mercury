@@ -46,172 +46,172 @@
 
     % Construct an empty varset.
     %
-:- func varset.init = varset(T).
-:- pred varset.init(varset(T)::out) is det.
+:- func init = varset(T).
+:- pred init(varset(T)::out) is det.
 
     % Check whether a varset is empty.
     %
-:- pred varset.is_empty(varset(T)::in) is semidet.
+:- pred is_empty(varset(T)::in) is semidet.
 
     % Create a new variable.
     %
-:- pred varset.new_var(var(T)::out, varset(T)::in, varset(T)::out) is det.
+:- pred new_var(var(T)::out, varset(T)::in, varset(T)::out) is det.
 
     % Create a new named variable.
     %
-:- pred varset.new_named_var(string::in, var(T)::out,
+:- pred new_named_var(string::in, var(T)::out,
     varset(T)::in, varset(T)::out) is det.
 
     % Create a new named variable with a unique (w.r.t. the
     % varset) number appended to the name.
     %
-:- pred varset.new_uniquely_named_var(string::in, var(T)::out,
+:- pred new_uniquely_named_var(string::in, var(T)::out,
     varset(T)::in, varset(T)::out) is det.
 
     % Create a new variable, and maybe give it a name.
     %
-:- pred varset.new_maybe_named_var(maybe(string)::in, var(T)::out,
+:- pred new_maybe_named_var(maybe(string)::in, var(T)::out,
     varset(T)::in, varset(T)::out) is det.
 
     % Create multiple new variables.
     %
-:- pred varset.new_vars(int::in, list(var(T))::out,
+:- pred new_vars(int::in, list(var(T))::out,
     varset(T)::in, varset(T)::out) is det.
 
     % Delete the name and value for a variable.
     %
-:- func varset.delete_var(varset(T), var(T)) = varset(T).
-:- pred varset.delete_var(var(T)::in, varset(T)::in, varset(T)::out) is det.
+:- func delete_var(varset(T), var(T)) = varset(T).
+:- pred delete_var(var(T)::in, varset(T)::in, varset(T)::out) is det.
 
     % Delete the names and values for a list of variables.
     %
-:- func varset.delete_vars(varset(T), list(var(T))) = varset(T).
-:- pred varset.delete_vars(list(var(T))::in, varset(T)::in, varset(T)::out)
+:- func delete_vars(varset(T), list(var(T))) = varset(T).
+:- pred delete_vars(list(var(T))::in, varset(T)::in, varset(T)::out)
     is det.
 
     % Delete the names and values for a sorted list of variables.
     % (If the list is not sorted, the result will be either an abort
     % or incorrect output.)
     %
-:- func varset.delete_sorted_vars(varset(T), list(var(T))) = varset(T).
-:- pred varset.delete_sorted_vars(list(var(T))::in,
+:- func delete_sorted_vars(varset(T), list(var(T))) = varset(T).
+:- pred delete_sorted_vars(list(var(T))::in,
     varset(T)::in, varset(T)::out) is det.
 
     % Return a list of all the variables in a varset.
     %
-:- func varset.vars(varset(T)) = list(var(T)).
-:- pred varset.vars(varset(T)::in, list(var(T))::out) is det.
+:- func vars(varset(T)) = list(var(T)).
+:- pred vars(varset(T)::in, list(var(T))::out) is det.
 
     % Set the name of a variable.
     %
-:- func varset.name_var(varset(T), var(T), string) = varset(T).
-:- pred varset.name_var(var(T)::in, string::in,
+:- func name_var(varset(T), var(T), string) = varset(T).
+:- pred name_var(var(T)::in, string::in,
     varset(T)::in, varset(T)::out) is det.
 
     % Lookup the name of a variable;
     % create one if it doesn't have one using V_ as a prefix.
     %
-:- func varset.lookup_name(varset(T), var(T)) = string.
-:- pred varset.lookup_name(varset(T)::in, var(T)::in, string::out) is det.
+:- func lookup_name(varset(T), var(T)) = string.
+:- pred lookup_name(varset(T)::in, var(T)::in, string::out) is det.
 
     % Lookup the name of a variable;
     % create one if it doesn't have one using the specified prefix
     %
-:- func varset.lookup_name(varset(T), var(T), string) = string.
-:- pred varset.lookup_name(varset(T)::in, var(T)::in, string::in, string::out)
+:- func lookup_name(varset(T), var(T), string) = string.
+:- pred lookup_name(varset(T)::in, var(T)::in, string::in, string::out)
     is det.
 
     % Lookup the name of a variable;
     % fail if it doesn't have one
     %
-:- pred varset.search_name(varset(T)::in, var(T)::in, string::out) is semidet.
+:- pred search_name(varset(T)::in, var(T)::in, string::out) is semidet.
 
     % Bind a value to a variable.
     % This will overwrite any existing binding.
     %
-:- func varset.bind_var(varset(T), var(T), term(T)) = varset(T).
-:- pred varset.bind_var(var(T)::in, term(T)::in,
+:- func bind_var(varset(T), var(T), term(T)) = varset(T).
+:- pred bind_var(var(T)::in, term(T)::in,
     varset(T)::in, varset(T)::out) is det.
 
     % Bind a set of terms to a set of variables.
     %
-:- func varset.bind_vars(varset(T), substitution(T)) = varset(T).
-:- pred varset.bind_vars(substitution(T)::in,
+:- func bind_vars(varset(T), substitution(T)) = varset(T).
+:- pred bind_vars(substitution(T)::in,
     varset(T)::in, varset(T)::out) is det.
 
     % Lookup the value of a variable.
     %
-:- pred varset.search_var(varset(T)::in, var(T)::in, term(T)::out) is semidet.
+:- pred search_var(varset(T)::in, var(T)::in, term(T)::out) is semidet.
 
     % Get the bindings for all the bound variables.
     %
-:- func varset.lookup_vars(varset(T)) = substitution(T).
-:- pred varset.lookup_vars(varset(T)::in, substitution(T)::out) is det.
+:- func lookup_vars(varset(T)) = substitution(T).
+:- pred lookup_vars(varset(T)::in, substitution(T)::out) is det.
 
     % Combine two different varsets, renaming apart:
-    % varset.merge_renaming(VarSet0, NewVarSet, VarSet, Subst) is true
+    % merge_renaming(VarSet0, NewVarSet, VarSet, Subst) is true
     % iff VarSet is the varset that results from joining a suitably renamed
     % version of NewVarSet to VarSet0. (Any bindings in NewVarSet are ignored.)
     % Renaming map the variables in NewVarSet into the corresponding
     % fresh variable in VarSet.
     %
-:- pred varset.merge_renaming(varset(T)::in, varset(T)::in, varset(T)::out,
+:- pred merge_renaming(varset(T)::in, varset(T)::in, varset(T)::out,
     renaming(T)::out) is det.
 
-    % Does the same job as varset.merge_renaming, but returns the renaming
+    % Does the same job as merge_renaming, but returns the renaming
     % as a general substitution in which all the terms in the range happen
     % to be variables.
     %
-    % Consider using varset.merge_renaming instead.
+    % Consider using merge_renaming instead.
     %
-:- pred varset.merge_subst(varset(T)::in, varset(T)::in, varset(T)::out,
+:- pred merge_subst(varset(T)::in, varset(T)::in, varset(T)::out,
     substitution(T)::out) is det.
-:- pragma obsolete(varset.merge_subst/4).
+:- pragma obsolete(merge_subst/4).
 
-    % varset.merge(VarSet0, NewVarSet, Terms0, VarSet, Terms):
+    % merge(VarSet0, NewVarSet, Terms0, VarSet, Terms):
     %
-    % As varset.merge_renaming, except instead of returning the renaming,
+    % As merge_renaming, except instead of returning the renaming,
     % this predicate applies it to the given list of terms.
     %
-:- pred varset.merge(varset(T)::in, varset(T)::in, list(term(T))::in,
+:- pred merge(varset(T)::in, varset(T)::in, list(term(T))::in,
     varset(T)::out, list(term(T))::out) is det.
 
-    % Same as varset.merge_renaming, except that the names of variables
+    % Same as merge_renaming, except that the names of variables
     % in NewVarSet are not included in the final varset.
-    % This is useful if varset.create_name_var_map needs to be used
+    % This is useful if create_name_var_map needs to be used
     % on the resulting varset.
     %
-:- pred varset.merge_renaming_without_names(varset(T)::in,
+:- pred merge_renaming_without_names(varset(T)::in,
     varset(T)::in, varset(T)::out, renaming(T)::out) is det.
 
-    % Same as varset.merge_subst, except that the names of variables
+    % Same as merge_subst, except that the names of variables
     % in NewVarSet are not included in the final varset.
-    % This is useful if varset.create_name_var_map needs to be used
+    % This is useful if create_name_var_map needs to be used
     % on the resulting varset.
     %
-    % Consider using varset.merge_renaming_without_names instead.
+    % Consider using merge_renaming_without_names instead.
     %
-:- pred varset.merge_subst_without_names(varset(T)::in,
+:- pred merge_subst_without_names(varset(T)::in,
     varset(T)::in, varset(T)::out, substitution(T)::out) is det.
-:- pragma obsolete(varset.merge_subst_without_names/4).
+:- pragma obsolete(merge_subst_without_names/4).
 
-    % Same as varset.merge, except that the names of variables
+    % Same as merge, except that the names of variables
     % in NewVarSet are not included in the final varset.
-    % This is useful if varset.create_name_var_map needs to be used
+    % This is useful if create_name_var_map needs to be used
     % on the resulting varset.
     %
-:- pred varset.merge_without_names(varset(T)::in, varset(T)::in,
+:- pred merge_without_names(varset(T)::in, varset(T)::in,
     list(term(T))::in, varset(T)::out, list(term(T))::out) is det.
 
     % Get the bindings for all the bound variables.
     %
-:- func varset.get_bindings(varset(T)) = substitution(T).
-:- pred varset.get_bindings(varset(T)::in, substitution(T)::out) is det.
+:- func get_bindings(varset(T)) = substitution(T).
+:- pred get_bindings(varset(T)::in, substitution(T)::out) is det.
 
     % Set the bindings for all the bound variables.
     %
-:- func varset.set_bindings(varset(T), substitution(T)) = varset(T).
-:- pred varset.set_bindings(varset(T)::in, substitution(T)::in,
+:- func set_bindings(varset(T), substitution(T)) = varset(T).
+:- pred set_bindings(varset(T)::in, substitution(T)::in,
     varset(T)::out) is det.
 
     % Create a map from names to variables.
@@ -220,16 +220,16 @@
     % is only really useful if it is already known that no two
     % variables share the same name.
     %
-:- func varset.create_name_var_map(varset(T)) = map(string, var(T)).
-:- pred varset.create_name_var_map(varset(T)::in, map(string, var(T))::out)
+:- func create_name_var_map(varset(T)) = map(string, var(T)).
+:- pred create_name_var_map(varset(T)::in, map(string, var(T))::out)
     is det.
 
     % Return an association list giving the name of each variable.
     % Every variable has an entry in the returned association list,
     % even if it shares its name with another variable.
     %
-:- func varset.var_name_list(varset(T)) = assoc_list(var(T), string).
-:- pred varset.var_name_list(varset(T)::in, assoc_list(var(T), string)::out)
+:- func var_name_list(varset(T)) = assoc_list(var(T), string).
+:- pred var_name_list(varset(T)::in, assoc_list(var(T), string)::out)
     is det.
 
     % Given a list of variable and varset in which some variables have
@@ -238,16 +238,16 @@
     % If necessary, names will have suffixes added on the end;
     % the second argument gives the suffix to use.
     %
-:- func varset.ensure_unique_names(list(var(T)), string, varset(T))
+:- func ensure_unique_names(list(var(T)), string, varset(T))
     = varset(T).
-:- pred varset.ensure_unique_names(list(var(T))::in,
+:- pred ensure_unique_names(list(var(T))::in,
     string::in, varset(T)::in, varset(T)::out) is det.
 
     % Given a varset and a set of variables, remove the names
     % and values of any other variables stored in the varset.
     %
-:- func varset.select(varset(T), set(var(T))) = varset(T).
-:- pred varset.select(set(var(T))::in, varset(T)::in, varset(T)::out) is det.
+:- func select(varset(T), set(var(T))) = varset(T).
+:- pred select(set(var(T))::in, varset(T)::in, varset(T)::out) is det.
 
     % Given a varset and a list of variables, construct a new varset
     % containing one variable for each one in the list (and no others).
@@ -255,13 +255,13 @@
     % original varset into variables in the new varset. The relative
     % ordering of variables in the original varset is maintained.
     %
-:- pred varset.squash(varset(T)::in, list(var(T))::in,
+:- pred squash(varset(T)::in, list(var(T))::in,
     varset(T)::out, renaming(T)::out) is det.
 
     % Coerce the types of the variables in a varset.
     %
-:- func varset.coerce(varset(T)) = varset(U).
-:- pred varset.coerce(varset(T)::in, varset(U)::out) is det.
+:- func coerce(varset(T)) = varset(U).
+:- pred coerce(varset(T)::in, varset(U)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -276,9 +276,9 @@
     % Returns the highest numbered variable returned from this varset's
     % var_supply.
     %
-:- func varset.max_var(varset(T)) = var(T).
+:- func max_var(varset(T)) = var(T).
 
-:- func varset.num_allocated(varset(T)) = int.
+:- func num_allocated(varset(T)) = int.
 
 %-----------------------------------------------------------------------------%
 

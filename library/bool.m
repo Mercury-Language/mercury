@@ -35,34 +35,34 @@
 
     % or(A, B) = yes iff A = yes, or B = yes, or both.
     %
-:- func bool.or(bool, bool) = bool.
-:- pred bool.or(bool::in, bool::in, bool::out) is det.
+:- func or(bool, bool) = bool.
+:- pred or(bool::in, bool::in, bool::out) is det.
 
     % or_list(As) = yes iff there exists an element of As equal to yes.
     % (Note that or_list([]) = no.)
     %
-:- func bool.or_list(list(bool)) = bool.
-:- pred bool.or_list(list(bool)::in, bool::out) is det.
+:- func or_list(list(bool)) = bool.
+:- pred or_list(list(bool)::in, bool::out) is det.
 
     % and(A, B) = yes iff A = yes and B = yes.
     %
-:- func bool.and(bool, bool) = bool.
-:- pred bool.and(bool::in, bool::in, bool::out) is det.
+:- func and(bool, bool) = bool.
+:- pred and(bool::in, bool::in, bool::out) is det.
 
     % and_list(As) = yes iff every element of As is equal to yes.
     % (Note that and_list([]) = yes.)
     %
-:- func bool.and_list(list(bool)) = bool.
-:- pred bool.and_list(list(bool)::in, bool::out) is det.
+:- func and_list(list(bool)) = bool.
+:- pred and_list(list(bool)::in, bool::out) is det.
 
     % not(A) = yes iff A = no.
     %
-:- func bool.not(bool) = bool.
-:- pred bool.not(bool::in, bool::out) is det.
+:- func not(bool) = bool.
+:- pred not(bool::in, bool::out) is det.
 
     % xor(A, B) = yes iff A = yes, or B = yes, but not both.
     %
-:- func bool.xor(bool, bool) = bool.
+:- func xor(bool, bool) = bool.
 
     % pred_to_bool(P) = (if P then yes else no).
     %

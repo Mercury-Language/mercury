@@ -45,288 +45,280 @@
 
 :- type digraph_key_set(T) == sparse_bitset(digraph_key(T)).
 
-    % digraph.init creates an empty digraph.
+    % init creates an empty digraph.
     %
-:- func digraph.init = digraph(T).
-:- pred digraph.init(digraph(T)::out) is det.
+:- func init = digraph(T).
+:- pred init(digraph(T)::out) is det.
 
-    % digraph.add_vertex adds a vertex to the domain of a digraph.
+    % add_vertex adds a vertex to the domain of a digraph.
     % Returns the old key if one already exists for this vertex,
     % otherwise it allocates a new key.
     %
-:- pred digraph.add_vertex(T::in, digraph_key(T)::out,
+:- pred add_vertex(T::in, digraph_key(T)::out,
     digraph(T)::in, digraph(T)::out) is det.
 
-    % digraph.search_key returns the key associated with a vertex.
+    % search_key returns the key associated with a vertex.
     % Fails if the vertex is not in the graph.
     %
-:- pred digraph.search_key(digraph(T)::in, T::in, digraph_key(T)::out)
-    is semidet.
+:- pred search_key(digraph(T)::in, T::in, digraph_key(T)::out) is semidet.
 
-    % digraph.lookup_key returns the key associated with a vertex.
+    % lookup_key returns the key associated with a vertex.
     % Aborts if the vertex is not in the graph.
     %
-:- func digraph.lookup_key(digraph(T), T) = digraph_key(T).
-:- pred digraph.lookup_key(digraph(T)::in, T::in, digraph_key(T)::out)
-    is det.
+:- func lookup_key(digraph(T), T) = digraph_key(T).
+:- pred lookup_key(digraph(T)::in, T::in, digraph_key(T)::out) is det.
 
-    % digraph.lookup_vertex returns the vertex associated with a key.
+    % lookup_vertex returns the vertex associated with a key.
     %
-:- func digraph.lookup_vertex(digraph(T), digraph_key(T)) = T.
-:- pred digraph.lookup_vertex(digraph(T)::in, digraph_key(T)::in, T::out)
-    is det.
+:- func lookup_vertex(digraph(T), digraph_key(T)) = T.
+:- pred lookup_vertex(digraph(T)::in, digraph_key(T)::in, T::out) is det.
 
-    % digraph.add_edge adds an edge to the digraph if it doesn't already
+    % add_edge adds an edge to the digraph if it doesn't already
     % exist, and leaves the digraph unchanged otherwise.
     %
-:- func digraph.add_edge(digraph_key(T), digraph_key(T), digraph(T)) =
-    digraph(T).
-:- pred digraph.add_edge(digraph_key(T)::in, digraph_key(T)::in,
+:- func add_edge(digraph_key(T), digraph_key(T), digraph(T)) = digraph(T).
+:- pred add_edge(digraph_key(T)::in, digraph_key(T)::in,
     digraph(T)::in, digraph(T)::out) is det.
 
-    % digraph.add_vertices_and_edge adds a pair of vertices and an edge
+    % add_vertices_and_edge adds a pair of vertices and an edge
     % between them to the digraph.
     %
-    % digraph.add_vertices_and_edge(X, Y, !G) :-
-    %    digraph.add_vertex(X, XKey, !G),
-    %    digraph.add_vertex(Y, YKey, !G),
-    %    digraph.add_edge(XKey, YKey, !G).
+    % add_vertices_and_edge(X, Y, !G) :-
+    %    add_vertex(X, XKey, !G),
+    %    add_vertex(Y, YKey, !G),
+    %    add_edge(XKey, YKey, !G).
     %
-:- func digraph.add_vertices_and_edge(T, T, digraph(T)) = digraph(T).
-:- pred digraph.add_vertices_and_edge(T::in, T::in,
+:- func add_vertices_and_edge(T, T, digraph(T)) = digraph(T).
+:- pred add_vertices_and_edge(T::in, T::in,
     digraph(T)::in, digraph(T)::out) is det.
 
     % As above, but takes a pair of vertices in a single argument.
     %
-:- func digraph.add_vertex_pair(pair(T), digraph(T)) = digraph(T).
-:- pred digraph.add_vertex_pair(pair(T)::in,
-    digraph(T)::in, digraph(T)::out) is det.
+:- func add_vertex_pair(pair(T), digraph(T)) = digraph(T).
+:- pred add_vertex_pair(pair(T)::in, digraph(T)::in, digraph(T)::out) is det.
 
-    % digraph.add_assoc_list adds a list of edges to a digraph.
+    % add_assoc_list adds a list of edges to a digraph.
     %
-:- func digraph.add_assoc_list(assoc_list(digraph_key(T), digraph_key(T)),
+:- func add_assoc_list(assoc_list(digraph_key(T), digraph_key(T)),
     digraph(T)) = digraph(T).
-:- pred digraph.add_assoc_list(assoc_list(digraph_key(T), digraph_key(T))::in,
+:- pred add_assoc_list(assoc_list(digraph_key(T), digraph_key(T))::in,
     digraph(T)::in, digraph(T)::out) is det.
 
-    % digraph.delete_edge deletes an edge from the digraph if it exists,
+    % delete_edge deletes an edge from the digraph if it exists,
     % and leaves the digraph unchanged otherwise.
     %
-:- func digraph.delete_edge(digraph_key(T), digraph_key(T), digraph(T)) =
-    digraph(T).
-:- pred digraph.delete_edge(digraph_key(T)::in, digraph_key(T)::in,
+:- func delete_edge(digraph_key(T), digraph_key(T), digraph(T)) = digraph(T).
+:- pred delete_edge(digraph_key(T)::in, digraph_key(T)::in,
     digraph(T)::in, digraph(T)::out) is det.
 
-    % digraph.delete_assoc_list deletes a list of edges from a digraph.
+    % delete_assoc_list deletes a list of edges from a digraph.
     %
-:- func digraph.delete_assoc_list(assoc_list(digraph_key(T), digraph_key(T)),
+:- func delete_assoc_list(assoc_list(digraph_key(T), digraph_key(T)),
     digraph(T)) = digraph(T).
-:- pred digraph.delete_assoc_list(
+:- pred delete_assoc_list(
     assoc_list(digraph_key(T), digraph_key(T))::in,
     digraph(T)::in, digraph(T)::out) is det.
 
-    % digraph.is_edge checks to see if an edge is in the digraph.
+    % is_edge checks to see if an edge is in the digraph.
     %
-:- pred digraph.is_edge(digraph(T), digraph_key(T), digraph_key(T)).
-:- mode digraph.is_edge(in, in, out) is nondet.
-:- mode digraph.is_edge(in, in, in) is semidet.
+:- pred is_edge(digraph(T), digraph_key(T), digraph_key(T)).
+:- mode is_edge(in, in, out) is nondet.
+:- mode is_edge(in, in, in) is semidet.
 
-    % digraph.is_edge_rev is equivalent to digraph.is_edge, except that
+    % is_edge_rev is equivalent to is_edge, except that
     % the nondet mode works in the reverse direction.
     %
-:- pred digraph.is_edge_rev(digraph(T), digraph_key(T), digraph_key(T)).
-:- mode digraph.is_edge_rev(in, out, in) is nondet.
-:- mode digraph.is_edge_rev(in, in, in) is semidet.
+:- pred is_edge_rev(digraph(T), digraph_key(T), digraph_key(T)).
+:- mode is_edge_rev(in, out, in) is nondet.
+:- mode is_edge_rev(in, in, in) is semidet.
 
-    % Given key x, digraph.lookup_from returns the set of keys y such that
+    % Given key x, lookup_from returns the set of keys y such that
     % there is an edge (x,y) in the digraph.
     %
-:- func digraph.lookup_from(digraph(T), digraph_key(T)) = set(digraph_key(T)).
-:- pred digraph.lookup_from(digraph(T)::in, digraph_key(T)::in,
+:- func lookup_from(digraph(T), digraph_key(T)) = set(digraph_key(T)).
+:- pred lookup_from(digraph(T)::in, digraph_key(T)::in,
     set(digraph_key(T))::out) is det.
 
     % As above, but returns a digraph_key_set.
     %
-:- func digraph.lookup_key_set_from(digraph(T), digraph_key(T)) =
-    digraph_key_set(T).
-:- pred digraph.lookup_key_set_from(digraph(T)::in, digraph_key(T)::in,
+:- func lookup_key_set_from(digraph(T), digraph_key(T)) = digraph_key_set(T).
+:- pred lookup_key_set_from(digraph(T)::in, digraph_key(T)::in,
     digraph_key_set(T)::out) is det.
 
-    % Given a key y, digraph.lookup_to returns the set of keys x such that
+    % Given a key y, lookup_to returns the set of keys x such that
     % there is an edge (x,y) in the digraph.
     %
-:- func digraph.lookup_to(digraph(T), digraph_key(T)) = set(digraph_key(T)).
-:- pred digraph.lookup_to(digraph(T)::in, digraph_key(T)::in,
+:- func lookup_to(digraph(T), digraph_key(T)) = set(digraph_key(T)).
+:- pred lookup_to(digraph(T)::in, digraph_key(T)::in,
     set(digraph_key(T))::out) is det.
 
     % As above, but returns a digraph_key_set.
     %
-:- func digraph.lookup_key_set_to(digraph(T), digraph_key(T)) =
-    digraph_key_set(T).
-:- pred digraph.lookup_key_set_to(digraph(T)::in, digraph_key(T)::in,
+:- func lookup_key_set_to(digraph(T), digraph_key(T)) = digraph_key_set(T).
+:- pred lookup_key_set_to(digraph(T)::in, digraph_key(T)::in,
     digraph_key_set(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % digraph.to_assoc_list turns a digraph into a list of pairs of vertices,
+    % to_assoc_list turns a digraph into a list of pairs of vertices,
     % one for each edge.
     %
-:- func digraph.to_assoc_list(digraph(T)) = assoc_list(T, T).
-:- pred digraph.to_assoc_list(digraph(T)::in, assoc_list(T, T)::out) is det.
+:- func to_assoc_list(digraph(T)) = assoc_list(T, T).
+:- pred to_assoc_list(digraph(T)::in, assoc_list(T, T)::out) is det.
 
-    % digraph.to_key_assoc_list turns a digraph into a list of pairs of keys,
+    % to_key_assoc_list turns a digraph into a list of pairs of keys,
     % one for each edge.
     %
-:- func digraph.to_key_assoc_list(digraph(T)) =
+:- func to_key_assoc_list(digraph(T)) =
     assoc_list(digraph_key(T), digraph_key(T)).
-:- pred digraph.to_key_assoc_list(digraph(T)::in,
+:- pred to_key_assoc_list(digraph(T)::in,
     assoc_list(digraph_key(T), digraph_key(T))::out) is det.
 
-    % digraph.from_assoc_list turns a list of pairs of vertices into a digraph.
+    % from_assoc_list turns a list of pairs of vertices into a digraph.
     %
-:- func digraph.from_assoc_list(assoc_list(T, T)) = digraph(T).
-:- pred digraph.from_assoc_list(assoc_list(T, T)::in, digraph(T)::out) is det.
+:- func from_assoc_list(assoc_list(T, T)) = digraph(T).
+:- pred from_assoc_list(assoc_list(T, T)::in, digraph(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % digraph.dfs(G, Key, Dfs) is true if Dfs is a depth-first sorting of G
+    % dfs(G, Key, Dfs) is true if Dfs is a depth-first sorting of G
     % starting at Key. The set of keys in the list Dfs is equal to the
     % set of keys reachable from Key.
     %
-:- func digraph.dfs(digraph(T), digraph_key(T)) = list(digraph_key(T)).
-:- pred digraph.dfs(digraph(T)::in, digraph_key(T)::in,
+:- func dfs(digraph(T), digraph_key(T)) = list(digraph_key(T)).
+:- pred dfs(digraph(T)::in, digraph_key(T)::in,
     list(digraph_key(T))::out) is det.
 
-    % digraph.dfsrev(G, Key, DfsRev) is true if DfsRev is a reverse
+    % dfsrev(G, Key, DfsRev) is true if DfsRev is a reverse
     % depth-first sorting of G starting at Key. The set of keys in the
     % list DfsRev is equal to the set of keys reachable from Key.
     %
-:- func digraph.dfsrev(digraph(T), digraph_key(T)) = list(digraph_key(T)).
-:- pred digraph.dfsrev(digraph(T)::in, digraph_key(T)::in,
+:- func dfsrev(digraph(T), digraph_key(T)) = list(digraph_key(T)).
+:- pred dfsrev(digraph(T)::in, digraph_key(T)::in,
     list(digraph_key(T))::out) is det.
 
-    % digraph.dfs(G, Dfs) is true if Dfs is a depth-first sorting of G,
+    % dfs(G, Dfs) is true if Dfs is a depth-first sorting of G,
     % i.e. a list of all the keys in G such that all keys for children of
     % a vertex are placed in the list before the parent key. If the
     % digraph is cyclic, the position in which cycles are broken (that is,
     % in which a child is placed *after* its parent) is undefined.
     %
-:- func digraph.dfs(digraph(T)) = list(digraph_key(T)).
-:- pred digraph.dfs(digraph(T)::in, list(digraph_key(T))::out) is det.
+:- func dfs(digraph(T)) = list(digraph_key(T)).
+:- pred dfs(digraph(T)::in, list(digraph_key(T))::out) is det.
 
-    % digraph.dfsrev(G, DfsRev) is true if DfsRev is a reverse depth-first
-    % sorting of G. That is, DfsRev is the reverse of Dfs from digraph.dfs/2.
+    % dfsrev(G, DfsRev) is true if DfsRev is a reverse depth-first
+    % sorting of G. That is, DfsRev is the reverse of Dfs from dfs/2.
     %
-:- func digraph.dfsrev(digraph(T)) = list(digraph_key(T)).
-:- pred digraph.dfsrev(digraph(T)::in, list(digraph_key(T))::out) is det.
+:- func dfsrev(digraph(T)) = list(digraph_key(T)).
+:- pred dfsrev(digraph(T)::in, list(digraph_key(T))::out) is det.
 
-    % digraph.dfs(G, Key, !Visit, Dfs) is true if Dfs is a depth-first
+    % dfs(G, Key, !Visit, Dfs) is true if Dfs is a depth-first
     % sorting of G starting at Key, assuming we have already visited !.Visit
     % vertices. That is, Dfs is a list of vertices such that all the
     % unvisited children of a vertex are placed in the list before the
     % parent. !.Visit allows us to initialise a set of previously visited
     % vertices. !:Visit is Dfs + !.Visit.
     %
-:- pred digraph.dfs(digraph(T)::in, digraph_key(T)::in, digraph_key_set(T)::in,
+:- pred dfs(digraph(T)::in, digraph_key(T)::in, digraph_key_set(T)::in,
     digraph_key_set(T)::out, list(digraph_key(T))::out) is det.
 
-    % digraph.dfsrev(G, Key, !Visit, DfsRev) is true if DfsRev is a
+    % dfsrev(G, Key, !Visit, DfsRev) is true if DfsRev is a
     % reverse depth-first sorting of G starting at Key providing we have
-    % already visited !.Visit nodes, ie the reverse of Dfs from digraph.dfs/5.
+    % already visited !.Visit nodes, ie the reverse of Dfs from dfs/5.
     % !:Visit is !.Visit + DfsRev.
     %
-:- pred digraph.dfsrev(digraph(T)::in, digraph_key(T)::in,
+:- pred dfsrev(digraph(T)::in, digraph_key(T)::in,
     digraph_key_set(T)::in, digraph_key_set(T)::out,
     list(digraph_key(T))::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % digraph.vertices returns the set of vertices in a digraph.
+    % vertices returns the set of vertices in a digraph.
     %
-:- func digraph.vertices(digraph(T)) = set(T).
-:- pred digraph.vertices(digraph(T)::in, set(T)::out) is det.
+:- func vertices(digraph(T)) = set(T).
+:- pred vertices(digraph(T)::in, set(T)::out) is det.
 
-    % digraph.inverse(G, G') is true iff the domains of G and G' are equal,
+    % inverse(G, G') is true iff the domains of G and G' are equal,
     % and for all x, y in this domain, (x,y) is an edge in G iff (y,x) is
     % an edge in G'.
     %
-:- func digraph.inverse(digraph(T)) = digraph(T).
-:- pred digraph.inverse(digraph(T)::in, digraph(T)::out) is det.
+:- func inverse(digraph(T)) = digraph(T).
+:- pred inverse(digraph(T)::in, digraph(T)::out) is det.
 
-    % digraph.compose(G1, G2, G) is true if G is the composition
+    % compose(G1, G2, G) is true if G is the composition
     % of the digraphs G1 and G2. That is, there is an edge (x,y) in G iff
     % there exists vertex m such that (x,m) is in G1 and (m,y) is in G2.
     %
-:- func digraph.compose(digraph(T), digraph(T)) = digraph(T).
-:- pred digraph.compose(digraph(T)::in, digraph(T)::in, digraph(T)::out)
+:- func compose(digraph(T), digraph(T)) = digraph(T).
+:- pred compose(digraph(T)::in, digraph(T)::in, digraph(T)::out)
     is det.
 
-    % digraph.is_dag(G) is true iff G is a directed acyclic graph.
+    % is_dag(G) is true iff G is a directed acyclic graph.
     %
-:- pred digraph.is_dag(digraph(T)::in) is semidet.
+:- pred is_dag(digraph(T)::in) is semidet.
 
-    % digraph.components(G, Comp) is true if Comp is the set of the
+    % components(G, Comp) is true if Comp is the set of the
     % connected components of G.
     %
-:- func digraph.components(digraph(T)) = set(set(digraph_key(T))).
-:- pred digraph.components(digraph(T)::in, set(set(digraph_key(T)))::out)
+:- func components(digraph(T)) = set(set(digraph_key(T))).
+:- pred components(digraph(T)::in, set(set(digraph_key(T)))::out)
     is det.
 
-    % digraph.cliques(G, Cliques) is true if Cliques is the set of the
+    % cliques(G, Cliques) is true if Cliques is the set of the
     % cliques (strongly connected components) of G.
     %
-:- func digraph.cliques(digraph(T)) = set(set(digraph_key(T))).
-:- pred digraph.cliques(digraph(T)::in, set(set(digraph_key(T)))::out) is det.
+:- func cliques(digraph(T)) = set(set(digraph_key(T))).
+:- pred cliques(digraph(T)::in, set(set(digraph_key(T)))::out) is det.
 
-    % digraph.reduced(G, R) is true if R is the reduced digraph (digraph of
+    % reduced(G, R) is true if R is the reduced digraph (digraph of
     % cliques) obtained from G.
     %
-:- func digraph.reduced(digraph(T)) = digraph(set(T)).
-:- pred digraph.reduced(digraph(T)::in, digraph(set(T))::out) is det.
+:- func reduced(digraph(T)) = digraph(set(T)).
+:- pred reduced(digraph(T)::in, digraph(set(T))::out) is det.
 
     % As above, but also return a map from each key in the original digraph
     % to the key for its clique in the reduced digraph.
     %
-:- pred digraph.reduced(digraph(T)::in, digraph(set(T))::out,
+:- pred reduced(digraph(T)::in, digraph(set(T))::out,
     map(digraph_key(T), digraph_key(set(T)))::out) is det.
 
-    % digraph.tsort(G, TS) is true if TS is a topological sorting of G.
+    % tsort(G, TS) is true if TS is a topological sorting of G.
     % It fails if G is cyclic.
     %
-:- pred digraph.tsort(digraph(T)::in, list(T)::out) is semidet.
+:- pred tsort(digraph(T)::in, list(T)::out) is semidet.
 
-    % digraph.atsort(G, ATS) is true if ATS is a topological sorting
+    % atsort(G, ATS) is true if ATS is a topological sorting
     % of the cliques in G.
     %
-:- func digraph.atsort(digraph(T)) = list(set(T)).
-:- pred digraph.atsort(digraph(T)::in, list(set(T))::out) is det.
+:- func atsort(digraph(T)) = list(set(T)).
+:- pred atsort(digraph(T)::in, list(set(T))::out) is det.
 
-    % digraph.sc(G, SC) is true if SC is the symmetric closure of G.
+    % sc(G, SC) is true if SC is the symmetric closure of G.
     % That is, (x,y) is in SC iff either (x,y) or (y,x) is in G.
     %
-:- func digraph.sc(digraph(T)) = digraph(T).
-:- pred digraph.sc(digraph(T)::in, digraph(T)::out) is det.
+:- func sc(digraph(T)) = digraph(T).
+:- pred sc(digraph(T)::in, digraph(T)::out) is det.
 
-    % digraph.tc(G, TC) is true if TC is the transitive closure of G.
+    % tc(G, TC) is true if TC is the transitive closure of G.
     %
-:- func digraph.tc(digraph(T)) = digraph(T).
-:- pred digraph.tc(digraph(T)::in, digraph(T)::out) is det.
+:- func tc(digraph(T)) = digraph(T).
+:- pred tc(digraph(T)::in, digraph(T)::out) is det.
 
-    % digraph.rtc(G, RTC) is true if RTC is the reflexive transitive closure
+    % rtc(G, RTC) is true if RTC is the reflexive transitive closure
     % of G.
     %
-:- func digraph.rtc(digraph(T)) = digraph(T).
-:- pred digraph.rtc(digraph(T)::in, digraph(T)::out) is det.
+:- func rtc(digraph(T)) = digraph(T).
+:- pred rtc(digraph(T)::in, digraph(T)::out) is det.
 
-    % digraph.traverse(G, ProcessVertex, ProcessEdge) will traverse a digraph
+    % traverse(G, ProcessVertex, ProcessEdge) will traverse a digraph
     % calling ProcessVertex for each vertex in the digraph and ProcessEdge for
     % each edge in the digraph. Each vertex is processed followed by all the
     % edges originating at that vertex, until all vertices have been processed.
     %
-:- pred digraph.traverse(digraph(T), pred(T, A, A), pred(T, T, A, A), A, A).
-:- mode digraph.traverse(in, pred(in, di, uo) is det,
+:- pred traverse(digraph(T), pred(T, A, A), pred(T, T, A, A), A, A).
+:- mode traverse(in, pred(in, di, uo) is det,
     pred(in, in, di, uo) is det, di, uo) is det.
-:- mode digraph.traverse(in, pred(in, in, out) is det,
+:- mode traverse(in, pred(in, in, out) is det,
     pred(in, in, in, out) is det, in, out) is det.
 
 %-----------------------------------------------------------------------------%

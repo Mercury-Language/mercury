@@ -10,19 +10,18 @@
 % Main author: bromage.
 % Stability: medium-low
 % 
-% This file contains a set of predicates for generating an manipulating
-% a bt_array data structure.  This implementation allows O(log n) access
-% and update time, and does not require the bt_array to be unique.  If you
-% need O(1) access/update time, use the array datatype instead.
-% (`bt_array' is supposed to stand for either "binary tree array"
-% or "backtrackable array".)
+% This file contains a set of predicates for generating an manipulating a
+% bt_array data structure.  This implementation allows O(log n) access and
+% update time, and does not require the bt_array to be unique.  If you need
+% O(1) access/update time, use the array datatype instead.  (`bt_array' is
+% supposed to stand for either "binary tree array" or "backtrackable array".)
 % 
 % Implementation obscurity: This implementation is biased towards larger
-% indices.  The access/update time for a bt_array of size N with index I
-% is actually O(log(N-I)).  The reason for this is so that the resize
-% operations can be optimised for a (possibly very) common case, and to
-% exploit accumulator recursion in some operations.  See the documentation
-% of bt_array.resize and bt_array.shrink for more details.
+% indices.  The access/update time for a bt_array of size N with index I is
+% actually O(log(N-I)).  The reason for this is so that the resize operations
+% can be optimised for a (possibly very) common case, and to exploit
+% accumulator recursion in some operations.  See the documentation of resize
+% and shrink for more details.
 % 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -35,73 +34,72 @@
 
 %-----------------------------------------------------------------------------%
 
-    % bt_array.make_empty_array(Low, Array) is true iff Array is a
+    % make_empty_array(Low, Array) is true iff Array is a
     % bt_array of size zero starting at index Low.
     %
-:- pred bt_array.make_empty_array(int::in, bt_array(T)::out) is det.
-:- func bt_array.make_empty_array(int) = bt_array(T).
+:- pred make_empty_array(int::in, bt_array(T)::out) is det.
+:- func make_empty_array(int) = bt_array(T).
 
-    % bt_array.init(Low, High, Init, Array) is true iff Array is a
+    % init(Low, High, Init, Array) is true iff Array is a
     % bt_array with bounds from Low to High whose elements each equal Init.
     %
-:- pred bt_array.init(int::in, int::in, T::in, bt_array(T)::out) is det.
-:- func bt_array.init(int, int, T) = bt_array(T).
+:- pred init(int::in, int::in, T::in, bt_array(T)::out) is det.
+:- func init(int, int, T) = bt_array(T).
 
 %-----------------------------------------------------------------------------%
 
-    % array.min returns the lower bound of the array.
+    % Returns the lower bound of the array.
     %
-:- pred bt_array.min(bt_array(_T)::in, int::out) is det.
-:- func bt_array.min(bt_array(_T)) = int.
+:- pred min(bt_array(_T)::in, int::out) is det.
+:- func min(bt_array(_T)) = int.
 
-    % array.max returns the upper bound of the array.
+    % Returns the upper bound of the array.
     %
-:- pred bt_array.max(bt_array(_T)::in, int::out) is det.
-:- func bt_array.max(bt_array(_T)) = int.
+:- pred max(bt_array(_T)::in, int::out) is det.
+:- func max(bt_array(_T)) = int.
 
-    % array.size returns the length of the array,
+    % Returns the length of the array,
     % i.e. upper bound - lower bound + 1.
     %
-:- pred bt_array.size(bt_array(_T)::in, int::out) is det.
-:- func bt_array.size(bt_array(_T)) = int.
+:- pred size(bt_array(_T)::in, int::out) is det.
+:- func size(bt_array(_T)) = int.
 
-    % bt_array.bounds returns the upper and lower bounds of a bt_array.
+    % bounds returns the upper and lower bounds of a bt_array.
     %
-:- pred bt_array.bounds(bt_array(_T)::in, int::out, int::out) is det.
+:- pred bounds(bt_array(_T)::in, int::out, int::out) is det.
 
-    % bt_array.in_bounds checks whether an index is in the bounds
+    % in_bounds checks whether an index is in the bounds
     % of a bt_array.
     %
-:- pred bt_array.in_bounds(bt_array(_T)::in, int::in) is semidet.
+:- pred in_bounds(bt_array(_T)::in, int::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
-    % bt_array.lookup returns the Nth element of a bt_array.
+    % lookup returns the Nth element of a bt_array.
     % It is an error if the index is out of bounds.
     %
-:- pred bt_array.lookup(bt_array(T)::in, int::in, T::out) is det.
-:- func bt_array.lookup(bt_array(T), int) = T.
+:- pred lookup(bt_array(T)::in, int::in, T::out) is det.
+:- func lookup(bt_array(T), int) = T.
 
-    % bt_array.semidet_lookup is like bt_array.lookup except that it fails
-    % if the index is out of bounds.
+    % semidet_lookup is like lookup except that it fails if the index is out of
+    % bounds.
     %
-:- pred bt_array.semidet_lookup(bt_array(T)::in, int::in, T::out) is semidet.
+:- pred semidet_lookup(bt_array(T)::in, int::in, T::out) is semidet.
 
-    % bt_array.set sets the nth element of a bt_array, and returns the
-    % resulting bt_array. It is an error if the index is out of bounds.
+    % set sets the nth element of a bt_array, and returns the resulting
+    % bt_array. It is an error if the index is out of bounds.
     %
-:- pred bt_array.set(bt_array(T)::in, int::in, T::in, bt_array(T)::out)
-    is det.
-:- func bt_array.set(bt_array(T), int, T) = bt_array(T).
+:- pred set(bt_array(T)::in, int::in, T::in, bt_array(T)::out) is det.
+:- func set(bt_array(T), int, T) = bt_array(T).
 
-    % bt_array.set sets the nth element of a bt_array, and returns the
+    % set sets the nth element of a bt_array, and returns the
     % resulting bt_array (good opportunity for destructive update ;-).
     % It fails if the index is out of bounds.
     %
-:- pred bt_array.semidet_set(bt_array(T)::in, int::in, T::in,
-    bt_array(T)::out) is semidet.
+:- pred semidet_set(bt_array(T)::in, int::in, T::in, bt_array(T)::out)
+    is semidet.
 
-    % `bt_array.resize(BtArray0, Lo, Hi, Item, BtArray)' is true if BtArray
+    % `resize(BtArray0, Lo, Hi, Item, BtArray)' is true if BtArray
     % is a bt_array created by expanding or shrinking BtArray0 to fit the
     % bounds (Lo, Hi). If the new bounds are not wholly contained within
     % the bounds of BtArray0, Item is used to fill out the other places.
@@ -112,11 +110,11 @@
     % in size between the two bt_arrays. If this is not the case, it may take
     % time proportional to the larger of the two bt_arrays.
     %
-:- pred bt_array.resize(bt_array(T)::in, int::in, int::in, T::in,
+:- pred resize(bt_array(T)::in, int::in, int::in, T::in,
     bt_array(T)::out) is det.
-:- func bt_array.resize(bt_array(T), int, int, T) = bt_array(T).
+:- func resize(bt_array(T), int, int, T) = bt_array(T).
 
-    % bt_array.shrink(BtArray0, Lo, Hi, Item, BtArray) is true if BtArray
+    % shrink(BtArray0, Lo, Hi, Item, BtArray) is true if BtArray
     % is a bt_array created by shrinking BtArray0 to fit the bounds (Lo, Hi).
     % It is an error if the new bounds are not wholly within the bounds of
     % BtArray0.
@@ -127,48 +125,48 @@
     % in size between the two bt_arrays. If this is not the case, it may take
     % time proportional to the larger of the two bt_arrays.
     %
-:- pred bt_array.shrink(bt_array(T)::in, int::in, int::in, bt_array(T)::out)
+:- pred shrink(bt_array(T)::in, int::in, int::in, bt_array(T)::out)
     is det.
-:- func bt_array.shrink(bt_array(T), int, int) = bt_array(T).
+:- func shrink(bt_array(T), int, int) = bt_array(T).
 
-    % bt_array.from_list(Low, List, BtArray) takes a list (of possibly zero
+    % from_list(Low, List, BtArray) takes a list (of possibly zero
     % length), and returns a bt_array containing % those elements in the same
     % order that they occurred in the list. The lower bound of the new array
     % is `Low'.
-:- pred bt_array.from_list(int::in, list(T)::in, bt_array(T)::out) is det.
-:- func bt_array.from_list(int, list(T)) = bt_array(T).
+:- pred from_list(int::in, list(T)::in, bt_array(T)::out) is det.
+:- func from_list(int, list(T)) = bt_array(T).
 
-    % bt_array.to_list takes a bt_array and returns a list containing
+    % to_list takes a bt_array and returns a list containing
     % the elements of the bt_array in the same order that they occurred
     % in the bt_array.
     %
-:- pred bt_array.to_list(bt_array(T)::in, list(T)::out) is det.
-:- func bt_array.to_list(bt_array(T)) = list(T).
+:- pred to_list(bt_array(T)::in, list(T)::out) is det.
+:- func to_list(bt_array(T)) = list(T).
 
-    % bt_array.fetch_items takes a bt_array and a lower and upper index,
+    % fetch_items takes a bt_array and a lower and upper index,
     % and places those items in the bt_array between these indices into a list.
     % It is an error if either index is out of bounds.
     %
-:- pred bt_array.fetch_items(bt_array(T)::in, int::in, int::in, list(T)::out)
+:- pred fetch_items(bt_array(T)::in, int::in, int::in, list(T)::out)
     is det.
-:- func bt_array.fetch_items(bt_array(T), int, int) = list(T).
+:- func fetch_items(bt_array(T), int, int) = list(T).
 
-    % bt_array.bsearch takes a bt_array, an element to be matched and a
+    % bsearch takes a bt_array, an element to be matched and a
     % comparison predicate and returns the position of the first occurrence
     % in the bt_array of an element which is equivalent to the given one
     % in the ordering provided. Assumes the bt_array is sorted according
     % to this ordering. Fails if the element is not present.
     %
-:- pred bt_array.bsearch(bt_array(T)::in, T::in,
+:- pred bsearch(bt_array(T)::in, T::in,
     comparison_pred(T)::in(comparison_pred), int::out) is semidet.
 
     % Field selection for arrays.
-    % Array ^ elem(Index) = bt_array.lookup(Array, Index).
+    % Array ^ elem(Index) = lookup(Array, Index).
     %
-:- func bt_array.elem(int, bt_array(T)) = T.
+:- func elem(int, bt_array(T)) = T.
 
     % Field update for arrays.
-    % (Array ^ elem(Index) := Value) = bt_array.set(Array, Index, Value).
+    % (Array ^ elem(Index) := Value) = set(Array, Index, Value).
     %
 :- func 'elem :='(int, bt_array(T), T) = bt_array(T).
 

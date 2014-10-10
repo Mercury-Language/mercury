@@ -30,195 +30,175 @@
 
     % Swap the two sides of the pairs in each member of the list.
     %
-:- func assoc_list.reverse_members(assoc_list(K, V)) = assoc_list(V, K).
-:- pred assoc_list.reverse_members(assoc_list(K, V)::in,
-    assoc_list(V, K)::out) is det.
+:- func reverse_members(assoc_list(K, V)) = assoc_list(V, K).
+:- pred reverse_members(assoc_list(K, V)::in, assoc_list(V, K)::out) is det.
 
     % Zip together two lists; abort if they are of different lengths.
     %
-:- func assoc_list.from_corresponding_lists(list(K), list(V))
-    = assoc_list(K, V).
-:- pred assoc_list.from_corresponding_lists(list(K)::in, list(V)::in,
-    assoc_list(K, V)::out) is det.
+:- func from_corresponding_lists(list(K), list(V)) = assoc_list(K, V).
+:- pred from_corresponding_lists(list(K)::in, list(V)::in, assoc_list(K, V)::out)
+    is det.
 
     % Return the first member of each pair.
     %
-:- func assoc_list.keys(assoc_list(K, V)) = list(K).
-:- pred assoc_list.keys(assoc_list(K, V)::in, list(K)::out) is det.
+:- func keys(assoc_list(K, V)) = list(K).
+:- pred keys(assoc_list(K, V)::in, list(K)::out) is det.
 
     % Return the second member of each pair.
     %
-:- func assoc_list.values(assoc_list(K, V)) = list(V).
-:- pred assoc_list.values(assoc_list(K, V)::in, list(V)::out) is det.
+:- func values(assoc_list(K, V)) = list(V).
+:- pred values(assoc_list(K, V)::in, list(V)::out) is det.
 
     % Return the two lists contain respectively the first and second member
     % of each pair in the assoc_list.
     %
-:- pred assoc_list.keys_and_values(assoc_list(K, V)::in,
+:- pred keys_and_values(assoc_list(K, V)::in,
     list(K)::out, list(V)::out) is det.
 
     % Find the first element of the association list that matches
     % the given key, and return the associated value.
     %
-:- pred assoc_list.search(assoc_list(K, V)::in, K::in, V::out) is semidet.
+:- pred search(assoc_list(K, V)::in, K::in, V::out) is semidet.
 
-    % An alternative version of assoc_list.search.
+    % An alternative version of search.
     %
 :- func assoc_list(K, V) ^ elem(K) = V is semidet.
 
-    % An alternative version of assoc_list.search that throws an
-    % exception if the key in question does not appear in the assoc_list.
+    % An alternative version of search that throws an exception if the key in
+    % question does not appear in the assoc_list.
     %
 :- func assoc_list(K, V) ^ det_elem(K) = V is det.
 
-    % Find the first element of the association list that matches
-    % the given key. Return the associated value, and the original
-    % list with the selected element removed.
+    % Find the first element of the association list that matches the given
+    % key. Return the associated value, and the original list with the selected
+    % element removed.
     %
-:- pred assoc_list.remove(assoc_list(K, V)::in, K::in, V::out,
-    assoc_list(K, V)::out) is semidet.
+:- pred remove(assoc_list(K, V)::in, K::in, V::out, assoc_list(K, V)::out)
+    is semidet.
 
-:- pred assoc_list.map_keys_only(pred(K, L), 
-    assoc_list(K, V), assoc_list(L, V)).
-:- mode assoc_list.map_keys_only(pred(in, out) is det, in, out) is det.
+:- func map_keys_only(func(K) = L, assoc_list(K, V)) = assoc_list(L, V).
+:- pred map_keys_only(pred(K, L), assoc_list(K, V), assoc_list(L, V)).
+:- mode map_keys_only(pred(in, out) is det, in, out) is det.
 
-:- func assoc_list.map_keys_only(func(K) = L, assoc_list(K, V))
-    = assoc_list(L, V).
+:- func map_values_only(func(V) = W, assoc_list(K, V)) = assoc_list(K, W).
+:- pred map_values_only(pred(V, W), assoc_list(K, V), assoc_list(K, W)).
+:- mode map_values_only(pred(in, out) is det, in, out) is det.
 
-:- pred assoc_list.map_values_only(pred(V, W), 
-    assoc_list(K, V), assoc_list(K, W)).
-:- mode assoc_list.map_values_only(pred(in, out) is det, in, out) is det.
+:- func map_values(func(K, V) = W, assoc_list(K, V)) = assoc_list(K, W).
+:- pred map_values(pred(K, V, W), assoc_list(K, V), assoc_list(K, W)).
+:- mode map_values(pred(in, in, out) is det, in, out) is det.
 
-:- func assoc_list.map_values_only(func(V) = W, assoc_list(K, V))
-    = assoc_list(K, W).
-
-:- pred assoc_list.map_values(pred(K, V, W), 
-    assoc_list(K, V), assoc_list(K, W)).
-:- mode assoc_list.map_values(pred(in, in, out) is det, in, out) is det.
-
-:- func assoc_list.map_values(func(K, V) = W, assoc_list(K, V))
-    = assoc_list(K, W).
-
-    % assoc_list.filter(Pred, List, TrueList) takes a closure with one
+    % filter(Pred, List, TrueList) takes a closure with one
     % input argument and for each member K - V of List X, calls the closure
     % on the key. K - V is included in TrueList iff Pred(K) is true.
     %
-:- pred assoc_list.filter(pred(K)::in(pred(in) is semidet),
+:- pred filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
-:- func assoc_list.filter(pred(K)::in(pred(in) is semidet),
+:- func filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in) = (assoc_list(K, V)::out) is det.
 
-    % assoc_list.negated_filter(Pred, List, FalseList) takes a closure with one
+    % negated_filter(Pred, List, FalseList) takes a closure with one
     % input argument and for each member K - V of List X, calls the closure
     % on the key. K - V is included in FalseList iff Pred(K) is false.
     %
-:- pred assoc_list.negated_filter(pred(K)::in(pred(in) is semidet),
+:- pred negated_filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
-:- func assoc_list.negated_filter(pred(K)::in(pred(in) is semidet),
+:- func negated_filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in) = (assoc_list(K, V)::out) is det.
 
-    % assoc_list.filter(Pred, List, TrueList, FalseList) takes a closure with
+    % filter(Pred, List, TrueList, FalseList) takes a closure with
     % one input argument and for each member K - V of List X, calls the closure
     % on the key. K - V is included in TrueList iff Pred(K) is true.
     % K - V is included in FalseList iff Pred(K) is false.
     %
-:- pred assoc_list.filter(pred(K)::in(pred(in) is semidet),
+:- pred filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in, assoc_list(K, V)::out, assoc_list(K, V)::out) is det.
 
-    % assoc_list.merge(L1, L2, L):
+    % merge(L1, L2, L):
     %
     % L is the result of merging the elements of L1 and L2, in ascending order.
     % L1 and L2 must be sorted on the keys.
     %
-:- pred assoc_list.merge(assoc_list(K, V)::in, assoc_list(K, V)::in,
+:- pred merge(assoc_list(K, V)::in, assoc_list(K, V)::in,
     assoc_list(K, V)::out) is det.
-:- func assoc_list.merge(assoc_list(K, V), assoc_list(K, V))
-    = assoc_list(K, V).
+:- func merge(assoc_list(K, V), assoc_list(K, V)) = assoc_list(K, V).
 
-    % assoc_list.foldl_keys(Pred, List, Start End) calls Pred
+    % foldl_keys(Pred, List, Start End) calls Pred
     % with each key in List (working left-to-right) and an accumulator
     % (with initial value of Start), and returns the final value in End.
     %
-:- pred assoc_list.foldl_keys(pred(K, A, A), assoc_list(K, V), A, A).
-:- mode assoc_list.foldl_keys(pred(in, in, out) is det, in,
-    in, out) is det.
-:- mode assoc_list.foldl_keys(pred(in, mdi, muo) is det, in,
-    mdi, muo) is det.
-:- mode assoc_list.foldl_keys(pred(in, di, uo) is det, in,
-    di, uo) is det.
-:- mode assoc_list.foldl_keys(pred(in, in, out) is semidet, in,
-    in, out) is semidet.
-:- mode assoc_list.foldl_keys(pred(in, mdi, muo) is semidet, in,
-    mdi, muo) is semidet.
-:- mode assoc_list.foldl_keys(pred(in, di, uo) is semidet, in,
-    di, uo) is semidet.
-:- mode assoc_list.foldl_keys(pred(in, in, out) is multi, in,
-    in, out) is multi.
-:- mode assoc_list.foldl_keys(pred(in, in, out) is nondet, in,
-    in, out) is nondet.
+:- pred foldl_keys(pred(K, A, A), assoc_list(K, V), A, A).
+:- mode foldl_keys(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldl_keys(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldl_keys(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldl_keys(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl_keys(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldl_keys(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldl_keys(pred(in, in, out) is multi, in, in, out) is multi.
+:- mode foldl_keys(pred(in, in, out) is nondet, in, in, out) is nondet.
 
-    % assoc_list.foldl_values(Pred, List, Start End) calls Pred
+    % foldl_values(Pred, List, Start End) calls Pred
     % with each value in List (working left-to-right) and an accumulator
     % (with initial value of Start), and returns the final value in End.
     %
-:- pred assoc_list.foldl_values(pred(V, A, A), assoc_list(K, V), A, A).
-:- mode assoc_list.foldl_values(pred(in, in, out) is det, in,
+:- pred foldl_values(pred(V, A, A), assoc_list(K, V), A, A).
+:- mode foldl_values(pred(in, in, out) is det, in,
     in, out) is det.
-:- mode assoc_list.foldl_values(pred(in, mdi, muo) is det, in,
+:- mode foldl_values(pred(in, mdi, muo) is det, in,
     mdi, muo) is det.
-:- mode assoc_list.foldl_values(pred(in, di, uo) is det, in,
+:- mode foldl_values(pred(in, di, uo) is det, in,
     di, uo) is det.
-:- mode assoc_list.foldl_values(pred(in, in, out) is semidet, in,
+:- mode foldl_values(pred(in, in, out) is semidet, in,
     in, out) is semidet.
-:- mode assoc_list.foldl_values(pred(in, mdi, muo) is semidet, in,
+:- mode foldl_values(pred(in, mdi, muo) is semidet, in,
     mdi, muo) is semidet.
-:- mode assoc_list.foldl_values(pred(in, di, uo) is semidet, in,
+:- mode foldl_values(pred(in, di, uo) is semidet, in,
     di, uo) is semidet.
-:- mode assoc_list.foldl_values(pred(in, in, out) is multi, in,
+:- mode foldl_values(pred(in, in, out) is multi, in,
     in, out) is multi.
-:- mode assoc_list.foldl_values(pred(in, in, out) is nondet, in,
+:- mode foldl_values(pred(in, in, out) is nondet, in,
     in, out) is nondet.
 
     % As above, but with two accumulators.
     %
-:- pred assoc_list.foldl2_values(pred(V, A, A, B, B), assoc_list(K, V),
+:- pred foldl2_values(pred(V, A, A, B, B), assoc_list(K, V),
     A, A, B, B).
-:- mode assoc_list.foldl2_values(pred(in, in, out, in, out) is det, in,
+:- mode foldl2_values(pred(in, in, out, in, out) is det, in,
     in, out, in, out) is det.
-:- mode assoc_list.foldl2_values(pred(in, in, out, mdi, muo) is det, in,
+:- mode foldl2_values(pred(in, in, out, mdi, muo) is det, in,
     in, out, mdi, muo) is det.
-:- mode assoc_list.foldl2_values(pred(in, in, out, di, uo) is det, in,
+:- mode foldl2_values(pred(in, in, out, di, uo) is det, in,
     in, out, di, uo) is det.
-:- mode assoc_list.foldl2_values(pred(in, in, out, in, out) is semidet, in,
+:- mode foldl2_values(pred(in, in, out, in, out) is semidet, in,
     in, out, in, out) is semidet.
-:- mode assoc_list.foldl2_values(pred(in, in, out, mdi, muo) is semidet, in,
+:- mode foldl2_values(pred(in, in, out, mdi, muo) is semidet, in,
     in, out, mdi, muo) is semidet.
-:- mode assoc_list.foldl2_values(pred(in, in, out, di, uo) is semidet, in,
+:- mode foldl2_values(pred(in, in, out, di, uo) is semidet, in,
     in, out, di, uo) is semidet.
-:- mode assoc_list.foldl2_values(pred(in, in, out, in, out) is multi, in,
+:- mode foldl2_values(pred(in, in, out, in, out) is multi, in,
     in, out, in, out) is multi.
-:- mode assoc_list.foldl2_values(pred(in, in, out, in, out) is nondet, in,
+:- mode foldl2_values(pred(in, in, out, in, out) is nondet, in,
     in, out, in, out) is nondet.
     
     % As above, but with three accumulators.
     %
-:- pred assoc_list.foldl3_values(pred(V, A, A, B, B, C, C), assoc_list(K, V),
+:- pred foldl3_values(pred(V, A, A, B, B, C, C), assoc_list(K, V),
     A, A, B, B, C, C).
-:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, in, out) is det,
+:- mode foldl3_values(pred(in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
-:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, mdi, muo) is det,
+:- mode foldl3_values(pred(in, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, mdi, muo) is det.
-:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, di, uo) is det,
+:- mode foldl3_values(pred(in, in, out, in, out, di, uo) is det,
     in, in, out, in, out, di, uo) is det.
-:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, in, out) is semidet,
+:- mode foldl3_values(pred(in, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out) is semidet.
-:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, mdi, muo) is semidet,
+:- mode foldl3_values(pred(in, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, mdi, muo) is semidet.
-:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, di, uo) is semidet,
+:- mode foldl3_values(pred(in, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, di, uo) is semidet.
-:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, in, out) is multi,
+:- mode foldl3_values(pred(in, in, out, in, out, in, out) is multi,
     in, in, out, in, out, in, out) is multi.
-:- mode assoc_list.foldl3_values(pred(in, in, out, in, out, in, out) is nondet,
+:- mode foldl3_values(pred(in, in, out, in, out, in, out) is nondet,
     in, in, out, in, out, in, out) is nondet.
 
 %-----------------------------------------------------------------------------%

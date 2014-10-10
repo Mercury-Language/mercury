@@ -37,28 +37,28 @@
     % Returns the default separator between components of a pathname --
     % '/' on Unix systems and '\\' on Microsoft Windows systems.
     %
-:- func dir.directory_separator = character.
-:- pred dir.directory_separator(character::out) is det.
+:- func directory_separator = character.
+:- pred directory_separator(character::out) is det.
 
     % Is the character a directory separator.
     % On Microsoft Windows systems this will succeed for '/'
     % as well as '\\'.
     %
-:- pred dir.is_directory_separator(character).
-:- mode dir.is_directory_separator(in) is semidet.
-:- mode dir.is_directory_separator(out) is multi.
+:- pred is_directory_separator(character).
+:- mode is_directory_separator(in) is semidet.
+:- mode is_directory_separator(out) is multi.
 
     % Returns ".".
     %
-:- func dir.this_directory = string.
-:- pred dir.this_directory(string::out) is det.
+:- func this_directory = string.
+:- pred this_directory(string::out) is det.
 
     % Returns "..".
     %
-:- func dir.parent_directory = string.
-:- pred dir.parent_directory(string::out) is det.
+:- func parent_directory = string.
+:- pred parent_directory(string::out) is det.
 
-    % dir.split_name(PathName, DirName, BaseName).
+    % split_name(PathName, DirName, BaseName).
     %
     % Split a filename into a directory part and a filename part.
     %
@@ -72,14 +72,14 @@
     % if that doesn't change the meaning of DirName.
     %
     % On Windows, drive current directories are handled correctly,
-    % for example `dir.split_name("C:foo", "C:", "foo")'.
+    % for example `split_name("C:foo", "C:", "foo")'.
     % (`X:' is the current directory on drive `X').
     % Note that Cygwin doesn't support drive current directories,
-    % so `dir.split_name("C:foo, _, _)' will fail when running under Cygwin.
+    % so `split_name("C:foo, _, _)' will fail when running under Cygwin.
     %
-:- pred dir.split_name(string::in, string::out, string::out) is semidet.
+:- pred split_name(string::in, string::out, string::out) is semidet.
 
-    % dir.basename(PathName) = BaseName.
+    % basename(PathName) = BaseName.
     %
     % Returns the non-directory part of a filename.
     %
@@ -89,14 +89,14 @@
     % Trailing slashes are removed from PathName before splitting,
     % if that doesn't change the meaning of PathName.
     %
-:- func dir.basename(string) = string is semidet.
-:- pred dir.basename(string::in, string::out) is semidet.
+:- func basename(string) = string is semidet.
+:- pred basename(string::in, string::out) is semidet.
 
     % As above, but throws an exception instead of failing.
     %
-:- func dir.det_basename(string) = string.
+:- func det_basename(string) = string.
 
-    % dir.dirname(PathName) = DirName.
+    % dirname(PathName) = DirName.
     %
     % Returns the directory part of a filename.
     %
@@ -104,7 +104,7 @@
     %
     % Returns PathName for Windows paths such as "X:".
     %
-    % Returns `dir.this_directory' when given a filename
+    % Returns `this_directory' when given a filename
     % without any directory information (e.g. "foo").
     %
     % Trailing slashes in PathName are removed first, if that doesn't change
@@ -113,20 +113,20 @@
     % Trailing slashes are removed from DirName after splitting,
     % if that doesn't change the meaning of DirName.
     %
-:- func dir.dirname(string) = string.
-:- pred dir.dirname(string::in, string::out) is det.
+:- func dirname(string) = string.
+:- pred dirname(string::in, string::out) is det.
 
-    % dir.path_name_is_absolute(PathName)
+    % path_name_is_absolute(PathName)
     %
     % Is the path name syntactically an absolute path
     % (this doesn't check whether the path exists).
     %
     % An path is absolute iff it begins with a root directory
-    % (see dir.path_name_is_root_directory).
+    % (see path_name_is_root_directory).
     %
-:- pred dir.path_name_is_absolute(string::in) is semidet.
+:- pred path_name_is_absolute(string::in) is semidet.
 
-    % dir.path_name_is_root_directory(PathName)
+    % path_name_is_root_directory(PathName)
     %
     % On Unix, '/' is the only root directory.
     % On Windows, a root directory is one of the following:
@@ -139,7 +139,7 @@
     % Note that 'X:' is not a Windows root directory -- it specifies the
     % current directory on drive X, where X is any letter.
     %
-:- pred dir.path_name_is_root_directory(string::in) is semidet.
+:- pred path_name_is_root_directory(string::in) is semidet.
 
     % PathName = DirName / FileName
     %
@@ -156,21 +156,21 @@
     % drive relative path such as "C:".
     %
 :- func string / string = string.
-:- func dir.make_path_name(string, string) = string.
+:- func make_path_name(string, string) = string.
 
     % relative_path_name_from_components(List) = PathName.
     %
     % Return the relative pathname from the components in the list.  The
     % components of the list must not contain directory separators.
     %
-:- func dir.relative_path_name_from_components(list(string)) = string.
+:- func relative_path_name_from_components(list(string)) = string.
 
 %-----------------------------------------------------------------------------%
 
-    % dir.current_directory(Result)
+    % current_directory(Result)
     % Return the current working directory.
     %
-:- pred dir.current_directory(io.res(string)::out, io::di, io::uo) is det.
+:- pred current_directory(io.res(string)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -178,26 +178,26 @@
     % This will also succeed if the directory already exists
     % and is readable and writable by the current user.
     %
-:- pred dir.make_directory(string::in, io.res::out, io::di, io::uo) is det.
+:- pred make_directory(string::in, io.res::out, io::di, io::uo) is det.
 
     % Make only the given directory.
     % Fails if the directory already exists, or the parent directory doesn't.
     %
-:- pred dir.make_single_directory(string::in, io.res::out, io::di, io::uo)
+:- pred make_single_directory(string::in, io.res::out, io::di, io::uo)
     is det.
 
 %-----------------------------------------------------------------------------%
 
     % FoldlPred(DirName, BaseName, FileType, Continue, !Data, !IO).
     %
-    % A predicate passed to dir.foldl2 to process each entry in a directory.
+    % A predicate passed to foldl2 to process each entry in a directory.
     % Processing will stop if Continue is bound to `no'.
     %
-:- type dir.foldl_pred(T) ==
+:- type foldl_pred(T) ==
     pred(string, string, io.file_type, bool, T, T, io, io).
-:- inst dir.foldl_pred == (pred(in, in, in, out, in, out, di, uo) is det).
+:- inst foldl_pred == (pred(in, in, in, out, in, out, di, uo) is det).
 
-    % dir.foldl2(P, DirName, InitialData, Result, !IO).
+    % foldl2(P, DirName, InitialData, Result, !IO).
     %
     % Apply `P' to all files and directories in the given directory.
     % Directories are not processed recursively.
@@ -205,10 +205,10 @@
     % to `no'.
     % The order in which the entries are processed is unspecified.
     %
-:- pred dir.foldl2(dir.foldl_pred(T)::in(dir.foldl_pred), string::in,
+:- pred foldl2(foldl_pred(T)::in(foldl_pred), string::in,
     T::in, io.maybe_partial_res(T)::out, io::di, io::uo) is det.
 
-    % dir.recursive_foldl2(P, DirName, FollowSymLinks,
+    % recursive_foldl2(P, DirName, FollowSymLinks,
     %   InitialData, Result, !IO).
     %
     % As above, but recursively process subdirectories.
@@ -216,7 +216,7 @@
     % before its contents. If `FollowSymLinks' is `yes', recursively process
     % the directories referenced by symbolic links.
     %
-:- pred dir.recursive_foldl2(dir.foldl_pred(T)::in(dir.foldl_pred),
+:- pred recursive_foldl2(foldl_pred(T)::in(foldl_pred),
     string::in, bool::in, T::in, io.maybe_partial_res(T)::out,
     io::di, io::uo) is det.
 

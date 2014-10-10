@@ -34,13 +34,13 @@
 
 :- pred '>='(integer::in, integer::in) is semidet.
 
-:- func integer.integer(int) = integer.
+:- func integer(int) = integer.
 
-:- func integer.to_string(integer) = string.
+:- func to_string(integer) = string.
 
-:- func integer.from_string(string::in) = (integer::out) is semidet.
+:- func from_string(string::in) = (integer::out) is semidet.
 
-:- func integer.det_from_string(string) = integer.
+:- func det_from_string(string) = integer.
 
     % Convert a string in the specified base (2-36) to an integer.
     % The string must contain one or more digits in the specified base,
@@ -48,11 +48,11 @@
     % 10 to 35 are represented by the letters A-Z or a-z.  If the string
     % does not match this syntax then the function fails.
     %
-:- func integer.from_base_string(int, string) = integer is semidet.
+:- func from_base_string(int, string) = integer is semidet.
 
     % As above but throws an exception rather than failing.
     %
-:- func integer.det_from_base_string(int, string) = integer.
+:- func det_from_base_string(int, string) = integer.
 
 :- func '+'(integer) = integer.
 
@@ -90,16 +90,16 @@
 
 :- func \ integer = integer.
 
-:- func integer.abs(integer) = integer.
+:- func abs(integer) = integer.
 
-:- func integer.pow(integer, integer) = integer.
+:- func pow(integer, integer) = integer.
 
-:- func integer.float(integer) = float.
-:- func integer.int(integer) = int.
+:- func float(integer) = float.
+:- func int(integer) = int.
 
-:- func integer.zero = integer.
+:- func zero = integer.
 
-:- func integer.one = integer.
+:- func one = integer.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

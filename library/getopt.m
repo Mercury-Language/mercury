@@ -10,7 +10,7 @@
 % Authors: fjh, zs.
 % Stability: medium.
 %
-% This module exports the predicate getopt.process_options/4, which can be
+% This module exports the predicate process_options/4, which can be
 % used to parse command-line options.
 %
 % This version allows both short (single-character) options and GNU-style long
@@ -97,8 +97,8 @@
 :- import_module maybe.
 :- import_module set.
 
-% getopt.process_options(OptionOps, Args, NonOptionArgs, Result)
-% getopt.process_options(OptionOps, Args, OptionArgs, NonOptionArgs, Result)
+% process_options(OptionOps, Args, NonOptionArgs, Result)
+% process_options(OptionOps, Args, OptionArgs, NonOptionArgs, Result)
 %
 %   Scans through 'Args' looking for options, places all the option
 %   arguments in `OptionArgs', places all the non-option arguments in
@@ -131,18 +131,18 @@
 %   The canonical examples of special options are -O options in compilers,
 %   which set many other options at once.
 
-:- pred getopt.process_options(option_ops(OptionType)::in(option_ops),
+:- pred process_options(option_ops(OptionType)::in(option_ops),
     list(string)::in, list(string)::out,
     maybe_option_table(OptionType)::out) is det.
 
-:- pred getopt.process_options(option_ops(OptionType)::in(option_ops),
+:- pred process_options(option_ops(OptionType)::in(option_ops),
     list(string)::in, list(string)::out, list(string)::out,
     maybe_option_table(OptionType)::out) is det.
 
-% getopt.process_options_track(OptionOps, Args, OptionArgs,
+% process_options_track(OptionOps, Args, OptionArgs,
 %       NonOptionArgs, OptionTable0, Result, OptionsSet)
 
-:- pred getopt.process_options_track(
+:- pred process_options_track(
     option_ops_track(OptionType)::in(option_ops_track),
     list(string)::in, list(string)::out, list(string)::out,
     option_table(OptionType)::in, maybe_option_table(OptionType)::out,
@@ -152,15 +152,15 @@
 % These behave as the above versions except that any error values returned are
 % members of the option_error/1 type rather than strings.
 
-:- pred getopt.process_options_se(option_ops(OptionType)::in(option_ops),
+:- pred process_options_se(option_ops(OptionType)::in(option_ops),
     list(string)::in, list(string)::out, maybe_option_table_se(OptionType)::out)
     is det.
 
-:- pred getopt.process_options_se(option_ops(OptionType)::in(option_ops),
+:- pred process_options_se(option_ops(OptionType)::in(option_ops),
     list(string)::in, list(string)::out, list(string)::out,
     maybe_option_table_se(OptionType)::out) is det.
 
-:- pred getopt.process_options_track_se(
+:- pred process_options_track_se(
     option_ops_track(OptionType)::in(option_ops_track),
     list(string)::in, list(string)::out, list(string)::out,
     option_table(OptionType)::in, maybe_option_table_se(OptionType)::out,
@@ -325,37 +325,37 @@
             % The argument gives the contenst of the argument position on the
             % command line.
 
-:- func getopt.option_error_to_string(option_error(OptionType)) = string.
+:- func option_error_to_string(option_error(OptionType)) = string.
 
     % The following three predicates search the option table for
     % an option of the specified type; if it is not found, they
     % report an error by calling error/1.
 
-:- pred getopt.lookup_bool_option(option_table(Option)::in, Option::in,
+:- pred lookup_bool_option(option_table(Option)::in, Option::in,
     bool::out) is det.
-:- func getopt.lookup_bool_option(option_table(Option), Option) = bool.
+:- func lookup_bool_option(option_table(Option), Option) = bool.
 
-:- pred getopt.lookup_int_option(option_table(Option)::in, Option::in,
+:- pred lookup_int_option(option_table(Option)::in, Option::in,
     int::out) is det.
-:- func getopt.lookup_int_option(option_table(Option), Option) = int.
+:- func lookup_int_option(option_table(Option), Option) = int.
 
-:- pred getopt.lookup_string_option(option_table(Option)::in, Option::in,
+:- pred lookup_string_option(option_table(Option)::in, Option::in,
     string::out) is det.
-:- func getopt.lookup_string_option(option_table(Option), Option) = string.
+:- func lookup_string_option(option_table(Option), Option) = string.
 
-:- pred getopt.lookup_maybe_int_option(option_table(Option)::in, Option::in,
+:- pred lookup_maybe_int_option(option_table(Option)::in, Option::in,
     maybe(int)::out) is det.
-:- func getopt.lookup_maybe_int_option(option_table(Option), Option) =
+:- func lookup_maybe_int_option(option_table(Option), Option) =
     maybe(int).
 
-:- pred getopt.lookup_maybe_string_option(option_table(Option)::in,
+:- pred lookup_maybe_string_option(option_table(Option)::in,
     Option::in, maybe(string)::out) is det.
-:- func getopt.lookup_maybe_string_option(option_table(Option), Option) =
+:- func lookup_maybe_string_option(option_table(Option), Option) =
     maybe(string).
 
-:- pred getopt.lookup_accumulating_option(option_table(Option)::in,
+:- pred lookup_accumulating_option(option_table(Option)::in,
     Option::in, list(string)::out) is det.
-:- func getopt.lookup_accumulating_option(option_table(Option), Option) =
+:- func lookup_accumulating_option(option_table(Option), Option) =
     list(string).
 
 %-----------------------------------------------------------------------------%
@@ -458,11 +458,11 @@ process_options_track(OptionOps, Args0, OptionArgs, NonOptionArgs,
         Result = error(Msg)
     ).
 
-getopt.process_options_se(OptionOps, Args0, NonOptionArgs, Result) :-
-    getopt.process_options_se(OptionOps, Args0, _OptionArgs, NonOptionArgs,
+process_options_se(OptionOps, Args0, NonOptionArgs, Result) :-
+    process_options_se(OptionOps, Args0, _OptionArgs, NonOptionArgs,
         Result).
 
-getopt.process_options_se(OptionOps, Args0, OptionArgs, NonOptionArgs, Result) :-
+process_options_se(OptionOps, Args0, OptionArgs, NonOptionArgs, Result) :-
     (
         OptionOps = option_ops(Short, Long, Defaults),
         MaybeSpecial = none,
@@ -481,27 +481,27 @@ getopt.process_options_se(OptionOps, Args0, OptionArgs, NonOptionArgs, Result) :
         init_option_table_multi(Defaults, OptionTable0)
     ),
     Internal = option_ops_internal(Short, Long, MaybeSpecial),
-    getopt.process_arguments(Args0, NonOptionArgs, Internal,
+    process_arguments(Args0, NonOptionArgs, Internal,
         [], RevOptionArgs, OptionTable0, Result, set.init, _OptionsSet),
     OptionArgs = list.reverse(RevOptionArgs).
 
-getopt.process_options_track_se(OptionOps, Args0, OptionArgs, NonOptionArgs,
+process_options_track_se(OptionOps, Args0, OptionArgs, NonOptionArgs,
         OptionTable0, Result, OptionsSet) :-
     OptionOps = option_ops_track(Short, Long, Special),
     Internal = option_ops_internal(Short, Long, track(Special)),
-    getopt.process_arguments(Args0, NonOptionArgs, Internal,
+    process_arguments(Args0, NonOptionArgs, Internal,
         [], RevOptionArgs, OptionTable0, Result, set.init, OptionsSet),
     OptionArgs = list.reverse(RevOptionArgs).
 
-:- pred getopt.process_arguments(list(string)::in, list(string)::out,
+:- pred process_arguments(list(string)::in, list(string)::out,
     option_ops_internal(OptionType)::in(option_ops_internal), list(string)::in,
     list(string)::out, option_table(OptionType)::in,
     maybe_option_table_se(OptionType)::out,
     set(OptionType)::in, set(OptionType)::out) is det.
 
-getopt.process_arguments([], [], _, OptionArgs, OptionArgs,
+process_arguments([], [], _, OptionArgs, OptionArgs,
         OptionTable, ok(OptionTable), !OptionsSet).
-getopt.process_arguments([Option | Args0], Args, OptionOps,
+process_arguments([Option | Args0], Args, OptionOps,
         OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet) :-
     ( Option = "--" ->  % "--" terminates option processing
         OptionArgs = OptionArgs0,
@@ -515,7 +515,7 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
                 OptionTable0, Result1, !OptionsSet),
             (
                 Result1 = ok(OptionTable1),
-                getopt.process_arguments(Args0, Args, OptionOps,
+                process_arguments(Args0, Args, OptionOps,
                     [Option | OptionArgs0], OptionArgs, OptionTable1, Result,
                     !OptionsSet)
             ;
@@ -547,7 +547,7 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
         OptionName = "--" ++ LongOption,
         ( LongOptionPred(LongOption, Flag) ->
             ( map.search(OptionTable0, Flag, OptionData) ->
-                getopt.handle_long_option(OptionName, Flag, OptionData,
+                handle_long_option(OptionName, Flag, OptionData,
                     MaybeArg, Args0, Args, OptionOps,
                     [Option | OptionArgs0], OptionArgs,
                     OptionTable0, Result, !OptionsSet)
@@ -574,7 +574,7 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
                     OptionTable0, Result1, !OptionsSet),
                 (
                     Result1 = ok(OptionTable1),
-                    getopt.process_arguments(Args0, Args, OptionOps,
+                    process_arguments(Args0, Args, OptionOps,
                         [Option | OptionArgs0], OptionArgs,
                         OptionTable1, Result, !OptionsSet)
                 ;
@@ -595,12 +595,12 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
             % or part of it may be the argument of an option.
             % The first element of Args0 may also be an argument
             % of an option.
-            getopt.handle_short_options(ShortOptionsList, OptionOps,
+            handle_short_options(ShortOptionsList, OptionOps,
                 Args0, Args1, [Option | OptionArgs0], OptionArgs1,
                 OptionTable0, Result1, !OptionsSet),
             (
                 Result1 = ok(OptionTable1),
-                getopt.process_arguments(Args1, Args, OptionOps,
+                process_arguments(Args1, Args, OptionOps,
                     OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet)
             ;
                 Result1 = error(_),
@@ -613,23 +613,23 @@ getopt.process_arguments([Option | Args0], Args, OptionOps,
         % It's a normal non-option argument.
         % As a GNU extension, keep searching for options
         % in the remaining arguments.
-        getopt.process_arguments(Args0, Args1, OptionOps,
+        process_arguments(Args0, Args1, OptionOps,
             OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet),
         Args = [Option | Args1]
     ).
 
-:- pred getopt.handle_long_option(string::in, OptionType::in, option_data::in,
+:- pred handle_long_option(string::in, OptionType::in, option_data::in,
     maybe(string)::in, list(string)::in, list(string)::out,
     option_ops_internal(OptionType)::in(option_ops_internal), list(string)::in,
     list(string)::out, option_table(OptionType)::in,
     maybe_option_table_se(OptionType)::out,
     set(OptionType)::in, set(OptionType)::out) is det.
 
-getopt.handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
+handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
         Args0, Args, OptionOps, OptionArgs0, OptionArgs, OptionTable0, Result,
         !OptionsSet) :-
     (
-        getopt.need_arg(OptionData, yes),
+        need_arg(OptionData, yes),
         MaybeOptionArg0 = no
     ->
         (
@@ -660,7 +660,7 @@ getopt.handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
     ;
         MissingArg = no,
         (
-            getopt.need_arg(OptionData, no),
+            need_arg(OptionData, no),
             MaybeOptionArg = yes(ArgVal)
         ->
             Args = Args0,
@@ -668,11 +668,11 @@ getopt.handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
             Error = option_error(Flag, Option, does_not_allow_argument(ArgVal)),
             Result = error(Error)
         ;
-            getopt.process_option(OptionData, Option, Flag, MaybeOptionArg,
+            process_option(OptionData, Option, Flag, MaybeOptionArg,
                 OptionOps, OptionTable0, Result1, !OptionsSet),
             (
                 Result1 = ok(OptionTable1),
-                getopt.process_arguments(Args1, Args, OptionOps,
+                process_arguments(Args1, Args, OptionOps,
                     OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet)
             ;
                 Result1 = error(_),
@@ -683,22 +683,22 @@ getopt.handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
         )
     ).
 
-:- pred getopt.handle_short_options(list(char)::in,
+:- pred handle_short_options(list(char)::in,
     option_ops_internal(OptionType)::in(option_ops_internal), list(string)::in,
     list(string)::out, list(string)::in, list(string)::out,
     option_table(OptionType)::in,
     maybe_option_table_se(OptionType)::out,
     set(OptionType)::in, set(OptionType)::out) is det.
 
-getopt.handle_short_options([], _, Args, Args, OptionArgs, OptionArgs,
+handle_short_options([], _, Args, Args, OptionArgs, OptionArgs,
         OptionTable, ok(OptionTable), !OptionsSet).
-getopt.handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
+handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
         OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet) :-
     ShortOptionPred = OptionOps ^ short_option,
     ( ShortOptionPred(Opt, Flag) ->
         ( map.search(OptionTable0, Flag, OptionData) ->
-            ( getopt.need_arg(OptionData, yes) ->
-                getopt.get_short_option_arg(Opts0, Arg, Args0, Args1,
+            ( need_arg(OptionData, yes) ->
+                get_short_option_arg(Opts0, Arg, Args0, Args1,
                     OptionArgs0, OptionArgs1),
                 MaybeOptionArg = yes(Arg),
                 Opts1 = []
@@ -709,11 +709,11 @@ getopt.handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
                 Args1 = Args0
             ),
             string.from_char_list(['-', Opt], Option),
-            getopt.process_option(OptionData, Option, Flag, MaybeOptionArg,
+            process_option(OptionData, Option, Flag, MaybeOptionArg,
                 OptionOps, OptionTable0, Result1, !OptionsSet),
             (
                 Result1 = ok(OptionTable1),
-                getopt.handle_short_options(Opts1, OptionOps, Args1, Args,
+                handle_short_options(Opts1, OptionOps, Args1, Args,
                     OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet)
             ;
                 Result1 = error(_),
@@ -736,11 +736,11 @@ getopt.handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
         Args = Args0
     ).
 
-:- pred getopt.get_short_option_arg(list(char)::in, string::out,
+:- pred get_short_option_arg(list(char)::in, string::out,
     list(string)::in, list(string)::out, list(string)::in, list(string)::out)
     is det.
 
-getopt.get_short_option_arg(Opts, Arg, Args0, Args,
+get_short_option_arg(Opts, Arg, Args0, Args,
         OptionArgs0, OptionArgs) :-
     (
         Opts = [],
@@ -755,13 +755,13 @@ getopt.get_short_option_arg(Opts, Arg, Args0, Args,
         Args = Args0
     ).
 
-:- pred getopt.process_option(option_data::in, string::in, OptionType::in,
+:- pred process_option(option_data::in, string::in, OptionType::in,
     maybe(string)::in, option_ops_internal(OptionType)::in(option_ops_internal),
     option_table(OptionType)::in,
     maybe_option_table_se(OptionType)::out,
     set(OptionType)::in, set(OptionType)::out) is det.
 
-getopt.process_option(bool(_), _Option, Flag, MaybeArg, _OptionOps,
+process_option(bool(_), _Option, Flag, MaybeArg, _OptionOps,
         OptionTable0, Result, !OptionsSet) :-
     set.insert(Flag, !OptionsSet),
     (
@@ -773,7 +773,7 @@ getopt.process_option(bool(_), _Option, Flag, MaybeArg, _OptionOps,
         map.set(Flag, bool(yes), OptionTable0, OptionTable),
         Result = ok(OptionTable)
     ).
-getopt.process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
+process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
         !.OptionTable, Result, !OptionsSet) :-
     set.insert(Flag, !OptionsSet),
     (
@@ -782,13 +782,13 @@ getopt.process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
             map.set(Flag, int(IntArg), !OptionTable),
             Result = ok(!.OptionTable)
         ;
-            getopt.numeric_argument(Flag, Option, Arg, Result)
+            numeric_argument(Flag, Option, Arg, Result)
         )
     ;
         MaybeArg = no,
         error("integer argument expected in getopt.process_option")
     ).
-getopt.process_option(string(_), _Option, Flag, MaybeArg, _OptionOps,
+process_option(string(_), _Option, Flag, MaybeArg, _OptionOps,
         !.OptionTable, Result, !OptionsSet) :-
     set.insert(Flag, !OptionsSet),
     (
@@ -799,7 +799,7 @@ getopt.process_option(string(_), _Option, Flag, MaybeArg, _OptionOps,
         MaybeArg = no,
         error("string argument expected in getopt.process_option")
     ).
-getopt.process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
+process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
         !.OptionTable, Result, !OptionsSet) :-
     set.insert(Flag, !OptionsSet),
     (
@@ -808,13 +808,13 @@ getopt.process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
             map.set(Flag, maybe_int(yes(IntArg)), !OptionTable),
             Result = ok(!.OptionTable)
         ;
-            getopt.numeric_argument(Flag, Option, Arg, Result)
+            numeric_argument(Flag, Option, Arg, Result)
         )
     ;
         MaybeArg = no,
         error("integer argument expected in getopt.process_option")
     ).
-getopt.process_option(maybe_string(_), _Option, Flag, MaybeArg, _OptionOps,
+process_option(maybe_string(_), _Option, Flag, MaybeArg, _OptionOps,
         !.OptionTable, Result, !OptionsSet) :-
     set.insert(Flag, !OptionsSet),
     (
@@ -825,7 +825,7 @@ getopt.process_option(maybe_string(_), _Option, Flag, MaybeArg, _OptionOps,
         MaybeArg = no,
         error("string argument expected in getopt.process_option")
     ).
-getopt.process_option(accumulating(List0), _Option, Flag, MaybeArg, _OptionOps,
+process_option(accumulating(List0), _Option, Flag, MaybeArg, _OptionOps,
         !.OptionTable, Result, !OptionsSet) :-
     set.insert(Flag, !OptionsSet),
     (
@@ -837,7 +837,7 @@ getopt.process_option(accumulating(List0), _Option, Flag, MaybeArg, _OptionOps,
         MaybeArg = no,
         error("acumulating argument expected in getopt.process_option")
     ).
-getopt.process_option(special, Option, Flag, MaybeArg, OptionOps,
+process_option(special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet) :-
     set.insert(Flag, !OptionsSet),
     (
@@ -845,52 +845,52 @@ getopt.process_option(special, Option, Flag, MaybeArg, OptionOps,
         error("no special argument expected in getopt.process_option")
     ;
         MaybeArg = no,
-        getopt.process_special(Option, Flag, none,
+        process_special(Option, Flag, none,
             OptionOps, OptionTable0, Result, !OptionsSet)
     ).
-getopt.process_option(bool_special, Option, Flag, MaybeArg, OptionOps,
+process_option(bool_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet) :-
     set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(_Arg),
-        getopt.process_special(Option, Flag, bool(no),
+        process_special(Option, Flag, bool(no),
             OptionOps, OptionTable0, Result, !OptionsSet)
     ;
         MaybeArg = no,
-        getopt.process_special(Option, Flag, bool(yes),
+        process_special(Option, Flag, bool(yes),
             OptionOps, OptionTable0, Result, !OptionsSet)
     ).
-getopt.process_option(int_special, Option, Flag, MaybeArg, OptionOps,
+process_option(int_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet) :-
     set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
         ( string.to_int(Arg, IntArg) ->
-            getopt.process_special(Option, Flag, int(IntArg),
+            process_special(Option, Flag, int(IntArg),
                 OptionOps, OptionTable0, Result, !OptionsSet)
         ;
-            getopt.numeric_argument(Flag, Option, Arg, Result)
+            numeric_argument(Flag, Option, Arg, Result)
         )
     ;
         MaybeArg = no,
         error("int_special argument expected in getopt.process_option")
     ).
-getopt.process_option(string_special, Option, Flag, MaybeArg, OptionOps,
+process_option(string_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet) :-
     set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        getopt.process_special(Option, Flag, string(Arg),
+        process_special(Option, Flag, string(Arg),
             OptionOps, OptionTable0, Result, !OptionsSet)
     ;
         MaybeArg = no,
         error("string_special argument expected in getopt.process_option")
     ).
-getopt.process_option(maybe_string_special, Option, Flag, MaybeArg, OptionOps,
+process_option(maybe_string_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet) :-
     (
         MaybeArg = yes(_Arg),
-        getopt.process_special(Option, Flag, maybe_string(MaybeArg),
+        process_special(Option, Flag, maybe_string(MaybeArg),
             OptionOps, OptionTable0, Result, !OptionsSet)
     ;
         MaybeArg = no,
@@ -929,12 +929,12 @@ process_negated_option(Option, Flag, OptionOps, OptionTable0, Result,
         ;
             OptionData = bool_special,
             set.insert(Flag, !OptionsSet),
-            getopt.process_special(Option, Flag, bool(no),
+            process_special(Option, Flag, bool(no),
                 OptionOps, OptionTable0, Result, !OptionsSet)
         ;
             OptionData = maybe_string_special,
             set.insert(Flag, !OptionsSet),
-            getopt.process_special(Option, Flag, maybe_string(no),
+            process_special(Option, Flag, maybe_string(no),
                 OptionOps, OptionTable0, Result, !OptionsSet)
         ;
             ( OptionData = int_special
@@ -951,12 +951,12 @@ process_negated_option(Option, Flag, OptionOps, OptionTable0, Result,
         Result = error(Error)
     ).
 
-:- pred getopt.process_special(string::in, OptionType::in, special_data::in,
+:- pred process_special(string::in, OptionType::in, special_data::in,
     option_ops_internal(OptionType)::in(option_ops_internal),
     option_table(OptionType)::in, maybe_option_table_se(OptionType)::out,
     set(OptionType)::in, set(OptionType)::out) is det.
 
-getopt.process_special(Option, Flag, OptionData, OptionOps,
+process_special(Option, Flag, OptionData, OptionOps,
         OptionTable0, Result, !OptionsSet) :-
     MaybeHandler = OptionOps ^ special_handler,
     (
@@ -1005,24 +1005,24 @@ getopt.process_special(Option, Flag, OptionData, OptionOps,
 
 %-----------------------------------------------------------------------------%
 
-:- pred getopt.need_arg(option_data::in, bool::out) is det.
+:- pred need_arg(option_data::in, bool::out) is det.
 
-getopt.need_arg(bool(_), no).
-getopt.need_arg(int(_), yes).
-getopt.need_arg(string(_), yes).
-getopt.need_arg(maybe_int(_), yes).
-getopt.need_arg(maybe_string(_), yes).
-getopt.need_arg(accumulating(_), yes).
-getopt.need_arg(special, no).
-getopt.need_arg(bool_special, no).
-getopt.need_arg(int_special, yes).
-getopt.need_arg(string_special, yes).
-getopt.need_arg(maybe_string_special, yes).
+need_arg(bool(_), no).
+need_arg(int(_), yes).
+need_arg(string(_), yes).
+need_arg(maybe_int(_), yes).
+need_arg(maybe_string(_), yes).
+need_arg(accumulating(_), yes).
+need_arg(special, no).
+need_arg(bool_special, no).
+need_arg(int_special, yes).
+need_arg(string_special, yes).
+need_arg(maybe_string_special, yes).
 
-:- pred getopt.numeric_argument(OptionType::in, string::in, string::in,
+:- pred numeric_argument(OptionType::in, string::in, string::in,
     maybe_option_table_se(OptionType)::out) is det.
 
-getopt.numeric_argument(Flag, Option, Arg, Result) :-
+numeric_argument(Flag, Option, Arg, Result) :-
     Reason = requires_numeric_argument(Arg),
     Error = option_error(Flag, Option, Reason),
     Result = error(Error).
@@ -1072,60 +1072,60 @@ option_error_to_string(Error) = String :-
 
 %-----------------------------------------------------------------------------%
 
-getopt.lookup_bool_option(OT, Opt) = B :-
-    getopt.lookup_bool_option(OT, Opt, B).
+lookup_bool_option(OT, Opt) = B :-
+    lookup_bool_option(OT, Opt, B).
 
-getopt.lookup_bool_option(OptionTable, Opt, Val) :-
+lookup_bool_option(OptionTable, Opt, Val) :-
     ( map.lookup(OptionTable, Opt, bool(Val0)) ->
         Val = Val0
     ;
         error("Expected bool option and didn't get one.")
     ).
 
-getopt.lookup_int_option(OT, Opt) = N :-
-    getopt.lookup_int_option(OT, Opt, N).
+lookup_int_option(OT, Opt) = N :-
+    lookup_int_option(OT, Opt, N).
 
-getopt.lookup_int_option(OptionTable, Opt, Val) :-
+lookup_int_option(OptionTable, Opt, Val) :-
     ( map.lookup(OptionTable, Opt, int(Val0)) ->
         Val = Val0
     ;
         error("Expected int option and didn't get one.")
     ).
 
-getopt.lookup_string_option(OT, Opt) = S :-
-    getopt.lookup_string_option(OT, Opt, S).
+lookup_string_option(OT, Opt) = S :-
+    lookup_string_option(OT, Opt, S).
 
-getopt.lookup_string_option(OptionTable, Opt, Val) :-
+lookup_string_option(OptionTable, Opt, Val) :-
     ( map.lookup(OptionTable, Opt, string(Val0)) ->
         Val = Val0
     ;
         error("Expected string option and didn't get one.")
     ).
 
-getopt.lookup_maybe_int_option(OT, Opt) = MN :-
-    getopt.lookup_maybe_int_option(OT, Opt, MN).
+lookup_maybe_int_option(OT, Opt) = MN :-
+    lookup_maybe_int_option(OT, Opt, MN).
 
-getopt.lookup_maybe_int_option(OptionTable, Opt, Val) :-
+lookup_maybe_int_option(OptionTable, Opt, Val) :-
     ( map.lookup(OptionTable, Opt, maybe_int(Val0)) ->
         Val = Val0
     ;
         error("Expected maybe_int option and didn't get one.")
     ).
 
-getopt.lookup_maybe_string_option(OT, Opt) = MS :-
-    getopt.lookup_maybe_string_option(OT, Opt, MS).
+lookup_maybe_string_option(OT, Opt) = MS :-
+    lookup_maybe_string_option(OT, Opt, MS).
 
-getopt.lookup_maybe_string_option(OptionTable, Opt, Val) :-
+lookup_maybe_string_option(OptionTable, Opt, Val) :-
     ( map.lookup(OptionTable, Opt, maybe_string(Val0)) ->
         Val = Val0
     ;
         error("Expected maybe_string option and didn't get one.")
     ).
 
-getopt.lookup_accumulating_option(OT, Opt) = Ss :-
-    getopt.lookup_accumulating_option(OT, Opt, Ss).
+lookup_accumulating_option(OT, Opt) = Ss :-
+    lookup_accumulating_option(OT, Opt, Ss).
 
-getopt.lookup_accumulating_option(OptionTable, Opt, Val) :-
+lookup_accumulating_option(OptionTable, Opt, Val) :-
     ( map.lookup(OptionTable, Opt, accumulating(Val0)) ->
         Val = Val0
     ;

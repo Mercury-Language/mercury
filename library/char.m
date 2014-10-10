@@ -37,10 +37,10 @@
 
 :- instance enum(character).
 
-    % `char.to_int'/1 and `char.to_int(in, out)' convert a character to its
+    % `to_int'/1 and `to_int(in, out)' convert a character to its
     % corresponding numerical code (integer value).
     %
-    % `char.to_int(out, in)' converts an integer value to a character value.
+    % `to_int(out, in)' converts an integer value to a character value.
     % It fails for integer values outside of the Unicode range.
     %
     % Be aware that there is no guarantee that characters can be written to
@@ -51,219 +51,219 @@
     % (excluding surrogate and noncharacter code points).
     %
     % Note that '\0' is not accepted as a Mercury null character literal.
-    % Instead, a null character can be created using `char.det_from_int(0)'.
+    % Instead, a null character can be created using `det_from_int(0)'.
     % Null characters are not allowed in Mercury strings in C grades.
     %
-:- func char.to_int(char) = int.
-:- pred char.to_int(char, int).
-:- mode char.to_int(in, out) is det.
-:- mode char.to_int(in, in) is semidet.    % implied
-:- mode char.to_int(out, in) is semidet.
+:- func to_int(char) = int.
+:- pred to_int(char, int).
+:- mode to_int(in, out) is det.
+:- mode to_int(in, in) is semidet.    % implied
+:- mode to_int(out, in) is semidet.
 
     % Converts an integer to its corresponding character, if any.
-    % A more expressive name for the reverse mode of char.to_int.
+    % A more expressive name for the reverse mode of to_int.
     %
-:- pred char.from_int(int::in, char::out) is semidet.
+:- pred from_int(int::in, char::out) is semidet.
 
     % Converts an integer to its corresponding character. Aborts
     % if there isn't one.
     %
-:- func char.det_from_int(int) = char.
-:- pred char.det_from_int(int::in, char::out) is det.
+:- func det_from_int(int) = char.
+:- pred det_from_int(int::in, char::out) is det.
 
     % Returns the maximum numerical character code.
     %
-:- func char.max_char_value = int.
-:- pred char.max_char_value(int::out) is det.
+:- func max_char_value = int.
+:- pred max_char_value(int::out) is det.
 
     % Returns the minimum numerical character code.
     %
-:- func char.min_char_value = int.
-:- pred char.min_char_value(int::out) is det.
+:- func min_char_value = int.
+:- pred min_char_value(int::out) is det.
 
     % Convert a character to uppercase.
     % Note that this only converts letters (a-z) in the ASCII range.
     %
-:- func char.to_upper(char) = char.
-:- pred char.to_upper(char::in, char::out) is det.
+:- func to_upper(char) = char.
+:- pred to_upper(char::in, char::out) is det.
 
     % Convert a character to lowercase.
     % Note that this only converts letters (A-Z) in the ASCII range.
     %
-:- func char.to_lower(char) = char.
-:- pred char.to_lower(char::in, char::out) is det.
+:- func to_lower(char) = char.
+:- pred to_lower(char::in, char::out) is det.
 
-    % char.lower_upper(Lower, Upper) is true iff
+    % lower_upper(Lower, Upper) is true iff
     % Lower is a lowercase letter (a-z) and Upper is the corresponding
     % uppercase letter (A-Z) in the ASCII range.
     %
-:- pred char.lower_upper(char, char).
-:- mode char.lower_upper(in, out) is semidet.
-:- mode char.lower_upper(out, in) is semidet.
+:- pred lower_upper(char, char).
+:- mode lower_upper(in, out) is semidet.
+:- mode lower_upper(out, in) is semidet.
 
     % True iff the character is a whitespace character in the ASCII range,
     % i.e. a space, tab, newline, carriage return, form-feed, or vertical tab.
     %
-:- pred char.is_whitespace(char::in) is semidet.
+:- pred is_whitespace(char::in) is semidet.
 
     % True iff the character is an uppercase letter (A-Z) in the ASCII range.
     %
-:- pred char.is_upper(char::in) is semidet.
+:- pred is_upper(char::in) is semidet.
 
     % True iff the character is a lowercase letter (a-z) in the ASCII range.
     %
-:- pred char.is_lower(char::in) is semidet.
+:- pred is_lower(char::in) is semidet.
 
     % True iff the character is a letter (A-Z, a-z) in the ASCII range.
     %
-:- pred char.is_alpha(char::in) is semidet.
+:- pred is_alpha(char::in) is semidet.
 
     % True iff the character is a letter (A-Z, a-z) or digit (0-9)
     % in the ASCII range.
     %
-:- pred char.is_alnum(char::in) is semidet.
+:- pred is_alnum(char::in) is semidet.
 
     % True iff the character is a letter (A-Z, a-z) or an underscore (_)
     % in the ASCII range.
     %
-:- pred char.is_alpha_or_underscore(char::in) is semidet.
+:- pred is_alpha_or_underscore(char::in) is semidet.
 
     % True iff the character is a letter (A-Z, a-z), a digit (0-9) or an
     % underscore (_) in the ASCII range.
     %
-:- pred char.is_alnum_or_underscore(char::in) is semidet.
+:- pred is_alnum_or_underscore(char::in) is semidet.
 
     % True iff the character is a decimal digit (0-9) in the ASCII range.
     %
-:- pred char.is_digit(char::in) is semidet.
+:- pred is_digit(char::in) is semidet.
 
     % True iff the character is a binary digit (0 or 1) in the ASCII range.
     %
-:- pred char.is_binary_digit(char::in) is semidet.
+:- pred is_binary_digit(char::in) is semidet.
 
     % True iff the character is an octal digit (0-7) in the ASCII range.
     %
-:- pred char.is_octal_digit(char::in) is semidet.
+:- pred is_octal_digit(char::in) is semidet.
 
     % True iff the character is a decimal digit (0-9) in the ASCII range.
-    % Synonym for char.is_digit/1.
+    % Synonym for is_digit/1.
     %
-:- pred char.is_decimal_digit(char::in) is semidet.
+:- pred is_decimal_digit(char::in) is semidet.
 
     % True iff the character is a hexadecimal digit (0-9, a-f, A-F) in the
     % ASCII range.
     %
-:- pred char.is_hex_digit(char::in) is semidet.
+:- pred is_hex_digit(char::in) is semidet.
     
     % is_base_digit(Base, Digit):
     % True iff Digit is a digit in the given Base (0-9, a-z, A-Z).
     % Throws an exception if Base < 2 or Base > 36.
     %
-:- pred char.is_base_digit(int::in, char::in) is semidet.
+:- pred is_base_digit(int::in, char::in) is semidet.
     
     % Convert an integer in the range 0-1 to a binary digit (0 or 1) in the
     % ASCII range.
     %
-:- pred char.int_to_binary_digit(int::in, char::out) is semidet.
+:- pred int_to_binary_digit(int::in, char::out) is semidet.
 
     % Convert an integer 0-7 to an octal digit (0-7) in the ASCII range.
     %
-:- pred char.int_to_octal_digit(int::in, char::out) is semidet.
+:- pred int_to_octal_digit(int::in, char::out) is semidet.
 
     % Convert an integer 0-9 to a decimal digit (0-9) in the ASCII range.
     %
-:- pred char.int_to_decimal_digit(int::in, char::out) is semidet.
+:- pred int_to_decimal_digit(int::in, char::out) is semidet.
 
     % Convert an integer 0-15 to an uppercase hexadecimal digit (0-9, A-F) in
     % the ASCII range.
     %
-:- pred char.int_to_hex_digit(int::in, char::out) is semidet.
+:- pred int_to_hex_digit(int::in, char::out) is semidet.
     
     % base_int_to_digit(Base, Int, Char):
     % True iff Char is a decimal digit (0-9) or an uppercase letter (A-Z)
     % representing the value Int (0-35) in the given base.
     % Throws an exception if Base < 2 or Base > 36.
     %
-:- pred char.base_int_to_digit(int::in, int::in, char::out) is semidet.
+:- pred base_int_to_digit(int::in, int::in, char::out) is semidet.
 
     % As above, but throw an exception instead of failing.
     %
-:- func char.det_base_int_to_digit(int, int) = char.
+:- func det_base_int_to_digit(int, int) = char.
 
     % binary_digit_to_int(Char, Int):
     % True iff Char is a binary digit (0-1) representing the value Int.
     %
-:- pred char.binary_digit_to_int(char::in, int::out) is semidet.
+:- pred binary_digit_to_int(char::in, int::out) is semidet.
 
     % As above, but throws an exception instead of failing.
     %
-:- func char.det_binary_digit_to_int(char) = int.
+:- func det_binary_digit_to_int(char) = int.
 
     % octal_digit_to_int(Char, Int):
     % True iff Char is an octal digit (0-7) representing the value Int.
     %
-:- pred char.octal_digit_to_int(char::in, int::out) is semidet.
+:- pred octal_digit_to_int(char::in, int::out) is semidet.
 
     % As above, but throws an exception instead of failing.
     %
-:- func char.det_octal_digit_to_int(char) = int.
+:- func det_octal_digit_to_int(char) = int.
 
     % decimal_digit_to_int(Char, Int):
     % True iff Char is a decimal digit (0-9) representing the value Int.
     %
-:- pred char.decimal_digit_to_int(char::in, int::out) is semidet.
+:- pred decimal_digit_to_int(char::in, int::out) is semidet.
 
     % As above, but throws an exception instead of failing.
     %
-:- func char.det_decimal_digit_to_int(char) = int.
+:- func det_decimal_digit_to_int(char) = int.
 
     % hex_digit_to_int(Char, Int):
     % True iff Char is a hexadecimal digit (0-9, a-z or A-F) representing the
     % value Int.
     %
-:- pred char.hex_digit_to_int(char::in, int::out) is semidet.
+:- pred hex_digit_to_int(char::in, int::out) is semidet.
 
     % As above, but throws an exception instead of failing.
     %
-:- func char.det_hex_digit_to_int(char) = int.
+:- func det_hex_digit_to_int(char) = int.
 
     % base_digit_to_int(Base, Char, Int):
     % True iff Char is a decimal digit (0-9) or a letter (a-z, A-Z)
     % representing the value Int (0-35) in the given base.
     % Throws an exception if Base < 2 or Base > 36.
     %
-:- pred char.base_digit_to_int(int::in, char::in, int::out) is semidet.
+:- pred base_digit_to_int(int::in, char::in, int::out) is semidet.
 
     % As above, but throws an exception instead of failing.
     %
-:- func char.det_base_digit_to_int(int, char) = int.
+:- func det_base_digit_to_int(int, char) = int.
 
     % Convert a char to a pretty_printer.doc for formatting.
     %
-:- func char.char_to_doc(char) = pretty_printer.doc.
+:- func char_to_doc(char) = pretty_printer.doc.
 
     % Encode a Unicode code point in UTF-8.
     % Fails for surrogate code points.
     %
-:- pred char.to_utf8(char::in, list(int)::out) is semidet.
+:- pred to_utf8(char::in, list(int)::out) is semidet.
 
     % Encode a Unicode code point in UTF-16 (native endianness).
     % Fails for surrogate code points.
     %
-:- pred char.to_utf16(char::in, list(int)::out) is semidet.
+:- pred to_utf16(char::in, list(int)::out) is semidet.
 
     % Succeed if `Char' is a Unicode surrogate code point.
     % In UTF-16, a code point with a scalar value greater than 0xffff
     % is encoded with a pair of surrogate code points.
     %
-:- pred char.is_surrogate(char::in) is semidet.
+:- pred is_surrogate(char::in) is semidet.
 
     % Succeed if `Char' is a Noncharacter code point.
     % Sixty-six code points are not used to encode characters.
     % These code points should not be used for interchange, but may be used
     % internally.
     %
-:- pred char.is_noncharacter(char::in) is semidet.
+:- pred is_noncharacter(char::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -271,24 +271,24 @@
     
     % Use hex_digit_to_int/2 instead.
     %
-:- pred char.is_hex_digit(char, int).
-:- mode char.is_hex_digit(in, out) is semidet.
+:- pred is_hex_digit(char, int).
+:- mode is_hex_digit(in, out) is semidet.
 
     % Convert an integer 0-15 to a hexadecimal digit (0-9, A-F) in the ASCII
     % range.
     %
-    % Use char.int_to_hex_digit/2 instead.
+    % Use int_to_hex_digit/2 instead.
     %
-:- pred char.int_to_hex_char(int, char).
-:- mode char.int_to_hex_char(in, out) is semidet.
+:- pred int_to_hex_char(int, char).
+:- mode int_to_hex_char(in, out) is semidet.
 
     % Succeeds if char is a decimal digit (0-9) or letter (a-z or A-Z).
     % Returns the character's value as a digit (0-9 or 10-35).
     %
-:- pragma obsolete(char.digit_to_int/2).
-:- pred char.digit_to_int(char::in, int::out) is semidet.
+:- pragma obsolete(digit_to_int/2).
+:- pred digit_to_int(char::in, int::out) is semidet.
 
-    % char.int_to_digit(Int, Char):
+    % int_to_digit(Int, Char):
     %
     % True iff Int is an integer in the range 0-35 and Char is a
     % decimal digit or uppercase letter whose value as a digit is Int.
@@ -301,10 +301,10 @@
     % decimal_digit_to_int/2, hex_digit_to_int/2 or base_digit_to_int/3
     % is appropriate instead of the (out, in) mode.
     %
-:- pragma obsolete(char.int_to_digit/2).
-:- pred char.int_to_digit(int, char).
-:- mode char.int_to_digit(in, out) is semidet.
-:- mode char.int_to_digit(out, in) is semidet.
+:- pragma obsolete(int_to_digit/2).
+:- pred int_to_digit(int, char).
+:- mode int_to_digit(in, out) is semidet.
+:- mode int_to_digit(out, in) is semidet.
 
     % Returns a decimal digit or uppercase letter corresponding to the value.
     % Calls error/1 if the integer is not in the range 0-35.
@@ -313,10 +313,10 @@
     % det_int_to_decimal_digit/1, det_int_to_hex_digit/1 or
     % det_base_int_to_digit/2 is appropriate instead.
     %
-:- pragma obsolete(char.det_int_to_digit/1).
-:- func char.det_int_to_digit(int) = char.
-:- pragma obsolete(char.det_int_to_digit/2).
-:- pred char.det_int_to_digit(int::in, char::out) is det.
+:- pragma obsolete(det_int_to_digit/1).
+:- func det_int_to_digit(int) = char.
+:- pragma obsolete(det_int_to_digit/2).
+:- pred det_int_to_digit(int::in, char::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -328,8 +328,8 @@
 :- import_module term_io.
 
 :- instance enum(character) where [
-    (to_int(X) = Y :- char.to_int(X, Y)),
-    (from_int(X) = Y :- char.to_int(Y, X))
+    (to_int(X) = Y :- to_int(X, Y)),
+    (from_int(X) = Y :- to_int(Y, X))
 ].
 
 % The information here is duplicated in lookup_token_action in lexer.m.
@@ -342,18 +342,18 @@ is_whitespace('\f').
 is_whitespace('\v').
 
 is_alpha(Char) :-
-    ( char.is_lower(Char) ->
+    ( is_lower(Char) ->
         true
-    ; char.is_upper(Char) ->
+    ; is_upper(Char) ->
         true
     ;
         fail
     ).
 
 is_alnum(Char) :-
-    ( char.is_alpha(Char) ->
+    ( is_alpha(Char) ->
         true
-    ; char.is_digit(Char) ->
+    ; is_digit(Char) ->
         true
     ;
         fail
@@ -363,12 +363,12 @@ is_alpha_or_underscore(Char) :-
     ( Char = '_' ->
         true
     ;
-        char.is_alpha(Char)
+        is_alpha(Char)
     ).
 
     % We explicitly enumerate here for efficiency.
     % (The information here and in some of the following predicates,
-    % e.g. char.lower_upper, is duplicated in lookup_token_action in lexer.m.)
+    % e.g. lower_upper, is duplicated in lookup_token_action in lexer.m.)
 is_alnum_or_underscore(Char) :-
     ( Char = '0'
     ; Char = '1'
@@ -435,37 +435,37 @@ is_alnum_or_underscore(Char) :-
     ; Char = '_'
     ).
 % A more concise implementation is:
-%   ( char.is_digit(Char) ->
+%   ( is_digit(Char) ->
 %       true
 %   ;
-%       char.is_alpha_or_underscore(Char)
+%       is_alpha_or_underscore(Char)
 %   ).
 
 is_lower(Lower) :-
-    char.lower_upper(Lower, _).
+    lower_upper(Lower, _).
 
 is_upper(Upper) :-
-    ( char.lower_upper(_, Upper) ->
+    ( lower_upper(_, Upper) ->
         true
     ;
         fail
     ).
 
 to_lower(C1) = C2 :-
-    char.to_lower(C1, C2).
+    to_lower(C1, C2).
 
 to_lower(Char, Lower) :-
-    ( char.lower_upper(LowerChar, Char) ->
+    ( lower_upper(LowerChar, Char) ->
         Lower = LowerChar
     ;
         Lower = Char
     ).
 
 to_upper(C1) = C2 :-
-    char.to_upper(C1, C2).
+    to_upper(C1, C2).
 
 to_upper(Char, Upper) :-
-    ( char.lower_upper(Char, UpperChar) ->
+    ( lower_upper(Char, UpperChar) ->
         Upper = UpperChar
     ;
         Upper = Char
@@ -622,7 +622,7 @@ det_hex_digit_to_int(Digit) = Int :-
 
 base_digit_to_int(Base, Digit, Int) :-
     ( Base > 1, Base < 37 ->
-        ( char.lower_upper(Digit, Upper) ->
+        ( lower_upper(Digit, Upper) ->
             int_to_extended_digit(Int, Upper)
         ;
             int_to_extended_digit(Int, Digit)
@@ -704,10 +704,10 @@ det_base_int_to_digit(Base, Int) = Digit :-
 
 %-----------------------------------------------------------------------------%
 
-char.det_int_to_digit(N) = C :-
-    char.det_int_to_digit(N, C).
+det_int_to_digit(N) = C :-
+    det_int_to_digit(N, C).
 
-char.det_int_to_digit(Int, Digit) :-
+det_int_to_digit(Int, Digit) :-
     ( int_to_extended_digit(Int, Digit1) ->
         Digit = Digit1
     ;
@@ -758,8 +758,8 @@ int_to_extended_digit(35, 'Z').
 int_to_digit(Int, Digit) :-
     int_to_extended_digit(Int, Digit).
 
-char.digit_to_int(Digit, Int) :-
-    ( char.lower_upper(Digit, Upper) ->
+digit_to_int(Digit, Int) :-
+    ( lower_upper(Digit, Upper) ->
         int_to_extended_digit(Int, Upper)
     ;
         int_to_extended_digit(Int, Digit)
@@ -796,32 +796,32 @@ lower_upper('z', 'Z').
 
 %-----------------------------------------------------------------------------%
 
-char.from_int(Int, Char) :-
-    char.to_int(Char, Int).
+from_int(Int, Char) :-
+    to_int(Char, Int).
 
-char.det_from_int(Int, Char) :-
-    ( char.from_int(Int, CharPrime) ->
+det_from_int(Int, Char) :-
+    ( from_int(Int, CharPrime) ->
         Char = CharPrime
     ;
         error("char.det_from_int: conversion failed")
     ).
 
-char.det_from_int(Int) = Char :-
-    char.det_from_int(Int, Char).
+det_from_int(Int) = Char :-
+    det_from_int(Int, Char).
 
 :- pragma foreign_proc("C",
-    char.to_int(Character::in, Int::out),
+    to_int(Character::in, Int::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Int = (MR_UnsignedChar) Character;
 ").
 
-char.to_int(C) = N :-
-    char.to_int(C, N).
+to_int(C) = N :-
+    to_int(C, N).
 
 :- pragma foreign_proc("C",
-    char.to_int(Character::in, Int::in),
+    to_int(Character::in, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -829,7 +829,7 @@ char.to_int(C) = N :-
 ").
 
 :- pragma foreign_proc("C",
-    char.to_int(Character::out, Int::in),
+    to_int(Character::out, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -838,21 +838,21 @@ char.to_int(C) = N :-
 ").
 
 :- pragma foreign_proc("C#",
-    char.to_int(Character::in, Int::out),
+    to_int(Character::in, Int::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Int = Character;
 ").
 
 :- pragma foreign_proc("C#",
-    char.to_int(Character::in, Int::in),
+    to_int(Character::in, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = (Character == Int);
 ").
 
 :- pragma foreign_proc("C#",
-    char.to_int(Character::out, Int::in),
+    to_int(Character::out, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Character = Int;
@@ -860,21 +860,21 @@ char.to_int(C) = N :-
 ").
 
 :- pragma foreign_proc("Java",
-    char.to_int(Character::in, Int::out),
+    to_int(Character::in, Int::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Int = (int) Character;
 ").
 
 :- pragma foreign_proc("Java",
-    char.to_int(Character::in, Int::in),
+    to_int(Character::in, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = ((int) Character == Int);
 ").
 
 :- pragma foreign_proc("Java",
-    char.to_int(Character::out, Int::in),
+    to_int(Character::out, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Character = Int;
@@ -882,66 +882,66 @@ char.to_int(C) = N :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    char.to_int(Character::in, Int::out),
+    to_int(Character::in, Int::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Int = Character
 ").
 
 :- pragma foreign_proc("Erlang",
-    char.to_int(Character::in, Int::in),
+    to_int(Character::in, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = (Character =:= Int)
 ").
 
 :- pragma foreign_proc("Erlang",
-    char.to_int(Character::out, Int::in),
+    to_int(Character::out, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Character = Int,
     SUCCESS_INDICATOR = (Int >= 0 andalso Int =< 16#10ffff)
 ").
 
-char.min_char_value = N :-
-    char.min_char_value(N).
+min_char_value = N :-
+    min_char_value(N).
 
     % We used unsigned character codes, so the minimum character code
     % is always zero.
-char.min_char_value(0).
+min_char_value(0).
 
 :- pragma foreign_decl("C", "#include <limits.h>").
 
-char.max_char_value = N :-
-    char.max_char_value(N).
+max_char_value = N :-
+    max_char_value(N).
 
 :- pragma foreign_proc("C",
-    char.max_char_value(Max::out),
+    max_char_value(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
     Max = 0x10ffff;
 ").
 :- pragma foreign_proc("C#",
-    char.max_char_value(Max::out),
+    max_char_value(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = 0x10ffff;
 ").
 :- pragma foreign_proc("Java",
-    char.max_char_value(Max::out),
+    max_char_value(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = 0x10ffff;
 ").
 :- pragma foreign_proc("Erlang",
-    char.max_char_value(Max::out),
+    max_char_value(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = 16#10ffff
 ").
 
-char.to_utf8(Char, CodeUnits) :-
+to_utf8(Char, CodeUnits) :-
     Int = char.to_int(Char),
     ( Int =< 0x7f ->
         CodeUnits = [Int]
@@ -966,7 +966,7 @@ char.to_utf8(Char, CodeUnits) :-
         fail
     ).
 
-char.to_utf16(Char, CodeUnits) :-
+to_utf16(Char, CodeUnits) :-
     Int = char.to_int(Char),
     ( Int < 0xd800 ->
         % Common case.
@@ -986,18 +986,18 @@ char.to_utf16(Char, CodeUnits) :-
         fail
     ).
 
-char.is_surrogate(Char) :-
+is_surrogate(Char) :-
     Int = char.to_int(Char),
     Int >= 0xd800,
     Int =< 0xdfff.
 
-char.is_noncharacter(Char) :-
+is_noncharacter(Char) :-
     Int = char.to_int(Char),
     ( 0xfdd0 =< Int, Int =< 0xfdef
     ; Int /\ 0xfffe = 0xfffe
     ).
 
-char.char_to_doc(C) = str(term_io.quoted_char(C)).
+char_to_doc(C) = str(term_io.quoted_char(C)).
 
 %-----------------------------------------------------------------------------%
 :- end_module char.

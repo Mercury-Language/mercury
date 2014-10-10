@@ -24,7 +24,7 @@
 % different internal representations.  This means that two maps with the
 % same set of key-value pairs that may fail to unify and may compare as
 % unequal, for example if items were inserted into one of the maps in a
-% different order.  See map.equal/2 below which can be used to test if two
+% different order.  See equal/2 below which can be used to test if two
 % maps have the same set of key-value pairs.
 %
 %-----------------------------------------------------------------------------%
@@ -46,16 +46,16 @@
 
     % Initialize an empty map.
     %
-:- pred map.init(map(_, _)::uo) is det.
-:- func map.init = (map(K, V)::uo) is det.
+:- pred init(map(_, _)::uo) is det.
+:- func init = (map(K, V)::uo) is det.
 
     % Initialize a map containing the given key-value pair.
     %
-:- func map.singleton(K, V) = map(K, V).
+:- func singleton(K, V) = map(K, V).
 
     % Check whether a map is empty.
     %
-:- pred map.is_empty(map(_, _)::in) is semidet.
+:- pred is_empty(map(_, _)::in) is semidet.
 
     % True if both maps have the same set of key-value pairs, regardless of
     % how the maps were constructed.
@@ -64,232 +64,232 @@
     % structures of two maps that contain the same set of key-value pairs
     % may be different.
     %
-:- pred map.equal(map(K, V)::in, map(K, V)::in) is semidet.
+:- pred equal(map(K, V)::in, map(K, V)::in) is semidet.
 
     % Check whether map contains key
     %
-:- pred map.contains(map(K, _V)::in, K::in) is semidet.
+:- pred contains(map(K, _V)::in, K::in) is semidet.
 
-:- pred map.member(map(K, V)::in, K::out, V::out) is nondet.
+:- pred member(map(K, V)::in, K::out, V::out) is nondet.
 
     % Search map for key.
     %
-:- func map.search(map(K, V), K) = V is semidet.
-:- pred map.search(map(K, V)::in, K::in, V::out) is semidet.
+:- func search(map(K, V), K) = V is semidet.
+:- pred search(map(K, V)::in, K::in, V::out) is semidet.
 
     % Search map for key, but abort if search fails.
     %
-:- func map.lookup(map(K, V), K) = V.
-:- pred map.lookup(map(K, V)::in, K::in, V::out) is det.
+:- func lookup(map(K, V), K) = V.
+:- pred lookup(map(K, V)::in, K::in, V::out) is det.
 
     % Search for a key-value pair using the key.  If there is no entry
     % for the given key, returns the pair for the next lower key instead.
     % Fails if there is no key with the given or lower value.
     %
-:- pred map.lower_bound_search(map(K, V)::in, K::in, K::out, V::out)
+:- pred lower_bound_search(map(K, V)::in, K::in, K::out, V::out)
     is semidet.
 
     % Search for a key-value pair using the key.  If there is no entry
     % for the given key, returns the pair for the next lower key instead.
     % Aborts if there is no key with the given or lower value.
     %
-:- pred map.lower_bound_lookup(map(K, V)::in, K::in, K::out, V::out) is det.
+:- pred lower_bound_lookup(map(K, V)::in, K::in, K::out, V::out) is det.
 
     % Search for a key-value pair using the key.  If there is no entry
     % for the given key, returns the pair for the next higher key instead.
     % Fails if there is no key with the given or higher value.
     %
-:- pred map.upper_bound_search(map(K, V)::in, K::in, K::out, V::out)
+:- pred upper_bound_search(map(K, V)::in, K::in, K::out, V::out)
     is semidet.
 
     % Search for a key-value pair using the key.  If there is no entry
     % for the given key, returns the pair for the next higher key instead.
     % Aborts if there is no key with the given or higher value.
     %
-:- pred map.upper_bound_lookup(map(K, V)::in, K::in, K::out, V::out) is det.
+:- pred upper_bound_lookup(map(K, V)::in, K::in, K::out, V::out) is det.
 
     % Return the largest key in the map, if there is one.
     %
-:- func map.max_key(map(K, V)) = K is semidet.
+:- func max_key(map(K, V)) = K is semidet.
 
     % As above, but abort if there is no largest key.
     %
-:- func map.det_max_key(map(K, V)) = K.
+:- func det_max_key(map(K, V)) = K.
 
     % Return the smallest key in the map, if there is one.
     %
-:- func map.min_key(map(K,V)) = K is semidet.
+:- func min_key(map(K,V)) = K is semidet.
 
     % As above, but abort if there is no smallest key.
     %
-:- func map.det_min_key(map(K, V)) = K.
+:- func det_min_key(map(K, V)) = K.
 
     % Search map for data.
     %
-:- pred map.inverse_search(map(K, V)::in, V::in, K::out) is nondet.
+:- pred inverse_search(map(K, V)::in, V::in, K::out) is nondet.
 
     % Insert a new key and corresponding value into a map.
     % Fail if the key already exists.
     %
-:- func map.insert(map(K, V), K, V) = map(K, V) is semidet.
-:- pred map.insert(K::in, V::in, map(K, V)::in, map(K, V)::out) is semidet.
+:- func insert(map(K, V), K, V) = map(K, V) is semidet.
+:- pred insert(K::in, V::in, map(K, V)::in, map(K, V)::out) is semidet.
 
     % Insert a new key and corresponding value into a map.
     % Abort if the key already exists.
     %
-:- func map.det_insert(map(K, V), K, V) = map(K, V).
-:- pred map.det_insert(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
+:- func det_insert(map(K, V), K, V) = map(K, V).
+:- pred det_insert(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
 
-    % Apply map.det_insert to key - value pairs from corresponding lists.
+    % Apply det_insert to key - value pairs from corresponding lists.
     %
-:- func map.det_insert_from_corresponding_lists(map(K, V), list(K), list(V))
+:- func det_insert_from_corresponding_lists(map(K, V), list(K), list(V))
     = map(K, V).
-:- pred map.det_insert_from_corresponding_lists(list(K)::in,
+:- pred det_insert_from_corresponding_lists(list(K)::in,
     list(V)::in, map(K, V)::in, map(K, V)::out) is det.
 
-    % Apply map.det_insert to key - value pairs from the assoc_lists.
+    % Apply det_insert to key - value pairs from the assoc_lists.
     %
-:- func map.det_insert_from_assoc_list(map(K, V), assoc_list(K, V))
+:- func det_insert_from_assoc_list(map(K, V), assoc_list(K, V))
     = map(K, V).
-:- pred map.det_insert_from_assoc_list(assoc_list(K, V)::in,
+:- pred det_insert_from_assoc_list(assoc_list(K, V)::in,
     map(K, V)::in, map(K, V)::out) is det.
 
-    % Apply map.set to key - value pairs from corresponding lists.
+    % Apply set to key - value pairs from corresponding lists.
     %
-:- func map.set_from_corresponding_lists(map(K, V), list(K), list(V))
+:- func set_from_corresponding_lists(map(K, V), list(K), list(V))
     = map(K, V).
-:- pred map.set_from_corresponding_lists(list(K)::in, list(V)::in,
+:- pred set_from_corresponding_lists(list(K)::in, list(V)::in,
     map(K, V)::in, map(K, V)::out) is det.
 
-:- func map.set_from_assoc_list(map(K, V), assoc_list(K, V)) = map(K, V).
-:- pred map.set_from_assoc_list(assoc_list(K, V)::in,
+:- func set_from_assoc_list(map(K, V), assoc_list(K, V)) = map(K, V).
+:- pred set_from_assoc_list(assoc_list(K, V)::in,
     map(K, V)::in, map(K, V)::out) is det.
 
     % Update the value corresponding to a given key
     % Fail if the key doesn't already exist.
     %
-:- func map.update(map(K, V), K, V) = map(K, V) is semidet.
-:- pred map.update(K::in, V::in, map(K, V)::in, map(K, V)::out) is semidet.
+:- func update(map(K, V), K, V) = map(K, V) is semidet.
+:- pred update(K::in, V::in, map(K, V)::in, map(K, V)::out) is semidet.
 
     % Update the value corresponding to a given key
     % Abort if the key doesn't already exist.
     %
-:- func map.det_update(map(K, V), K, V) = map(K, V).
-:- pred map.det_update(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
+:- func det_update(map(K, V), K, V) = map(K, V).
+:- pred det_update(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
 
-    % map.search_insert(K, V, MaybeOldV, !Map):
+    % search_insert(K, V, MaybeOldV, !Map):
     %
     % Search for the key K in the map. If the key is already in the map,
     % with corresponding value OldV, set MaybeOldV to yes(OldV). If it
     % is not in the map, then insert it into the map with value V.
     %
-:- pred map.search_insert(K::in, V::in, maybe(V)::out,
+:- pred search_insert(K::in, V::in, maybe(V)::out,
     map(K, V)::in, map(K, V)::out) is det.
 
     % Update the value at the given key by applying the supplied
     % transformation to it.  Fails if the key is not found.  This is faster
     % than first searching for the value and then updating it.
     %
-:- pred map.transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
+:- pred transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
     map(K, V)::in, map(K, V)::out) is semidet.
 
     % Same as transform_value/4, but aborts instead of failing if the
     % key is not found.
     %
-:- func map.det_transform_value(func(V) = V, K, map(K, V)) = map(K, V).
-:- pred map.det_transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
+:- func det_transform_value(func(V) = V, K, map(K, V)) = map(K, V).
+:- pred det_transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
     map(K, V)::in, map(K, V)::out) is det.
 
     % Update value if the key is already present, otherwise
     % insert new key and value.
     %
-:- func map.set(map(K, V), K, V) = map(K, V).
-:- pred map.set(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
+:- func set(map(K, V), K, V) = map(K, V).
+:- pred set(K::in, V::in, map(K, V)::in, map(K, V)::out) is det.
 
     % Given a map, return a list of all the keys in the map.
     %
-:- func map.keys(map(K, _V)) = list(K).
-:- pred map.keys(map(K, _V)::in, list(K)::out) is det.
+:- func keys(map(K, _V)) = list(K).
+:- pred keys(map(K, _V)::in, list(K)::out) is det.
 
     % Given a map, return a list of all the keys in the map,
     % in sorted order.
     %
-:- func map.sorted_keys(map(K, _V)) = list(K).
-:- pred map.sorted_keys(map(K, _V)::in, list(K)::out) is det.
+:- func sorted_keys(map(K, _V)) = list(K).
+:- pred sorted_keys(map(K, _V)::in, list(K)::out) is det.
 
     % Given a map, return a list of all the data values in the map.
     %
-:- func map.values(map(_K, V)) = list(V).
-:- pred map.values(map(_K, V)::in, list(V)::out) is det.
+:- func values(map(_K, V)) = list(V).
+:- pred values(map(_K, V)::in, list(V)::out) is det.
 
-:- pred map.keys_and_values(map(K, V)::in, list(K)::out, list(V)::out) is det.
+:- pred keys_and_values(map(K, V)::in, list(K)::out, list(V)::out) is det.
 
     % Convert a map to an association list.
     %
-:- func map.to_assoc_list(map(K, V)) = assoc_list(K, V).
-:- pred map.to_assoc_list(map(K, V)::in, assoc_list(K, V)::out) is det.
+:- func to_assoc_list(map(K, V)) = assoc_list(K, V).
+:- pred to_assoc_list(map(K, V)::in, assoc_list(K, V)::out) is det.
 
     % Convert a map to an association list which is sorted on the keys.
     %
-:- func map.to_sorted_assoc_list(map(K, V)) = assoc_list(K, V).
-:- pred map.to_sorted_assoc_list(map(K, V)::in, assoc_list(K, V)::out) is det.
+:- func to_sorted_assoc_list(map(K, V)) = assoc_list(K, V).
+:- pred to_sorted_assoc_list(map(K, V)::in, assoc_list(K, V)::out) is det.
 
     % Convert an association list to a map.
     %
-:- func map.from_assoc_list(assoc_list(K, V)) = map(K, V).
-:- pred map.from_assoc_list(assoc_list(K, V)::in, map(K, V)::out) is det.
+:- func from_assoc_list(assoc_list(K, V)) = map(K, V).
+:- pred from_assoc_list(assoc_list(K, V)::in, map(K, V)::out) is det.
 
     % Convert a sorted association list with no duplicated keys to a map.
     %
-:- func map.from_sorted_assoc_list(assoc_list(K, V)) = map(K, V).
-:- pred map.from_sorted_assoc_list(assoc_list(K, V)::in, map(K, V)::out)
+:- func from_sorted_assoc_list(assoc_list(K, V)) = map(K, V).
+:- pred from_sorted_assoc_list(assoc_list(K, V)::in, map(K, V)::out)
     is det.
 
     % Convert a reverse sorted association list with no duplicated keys
     % to a map.
     %
-:- func map.from_rev_sorted_assoc_list(assoc_list(K, V)) = map(K, V).
-:- pred map.from_rev_sorted_assoc_list(assoc_list(K, V)::in, map(K, V)::out)
+:- func from_rev_sorted_assoc_list(assoc_list(K, V)) = map(K, V).
+:- pred from_rev_sorted_assoc_list(assoc_list(K, V)::in, map(K, V)::out)
     is det.
 
     % Delete a key-value pair from a map.
     % If the key is not present, leave the map unchanged.
     %
-:- func map.delete(map(K, V), K) = map(K, V).
-:- pred map.delete(K::in, map(K, V)::in, map(K, V)::out) is det.
+:- func delete(map(K, V), K) = map(K, V).
+:- pred delete(K::in, map(K, V)::in, map(K, V)::out) is det.
 
-    % Apply map.delete/3 to a list of keys.
+    % Apply delete/3 to a list of keys.
     %
-:- func map.delete_list(map(K, V), list(K)) = map(K, V).
-:- pred map.delete_list(list(K)::in, map(K, V)::in, map(K, V)::out) is det.
+:- func delete_list(map(K, V), list(K)) = map(K, V).
+:- pred delete_list(list(K)::in, map(K, V)::in, map(K, V)::out) is det.
 
-    % Apply map.delete/3 to a sorted list of keys. The fact that the list
+    % Apply delete/3 to a sorted list of keys. The fact that the list
     % is sorted may make this more efficient. (If the list is not sorted,
     % the result will be either an abort or incorrect output.)
     %
-:- func map.delete_sorted_list(map(K, V), list(K)) = map(K, V).
-:- pred map.delete_sorted_list(list(K)::in, map(K, V)::in, map(K, V)::out)
+:- func delete_sorted_list(map(K, V), list(K)) = map(K, V).
+:- pred delete_sorted_list(list(K)::in, map(K, V)::in, map(K, V)::out)
     is det.
 
     % Delete a key-value pair from a map and return the value.
     % Fail if the key is not present.
     %
-:- pred map.remove(K::in, V::out, map(K, V)::in, map(K, V)::out) is semidet.
+:- pred remove(K::in, V::out, map(K, V)::in, map(K, V)::out) is semidet.
 
     % Delete a key-value pair from a map and return the value.
     % Abort if the key is not present.
     %
-:- pred map.det_remove(K::in, V::out, map(K, V)::in, map(K, V)::out) is det.
+:- pred det_remove(K::in, V::out, map(K, V)::in, map(K, V)::out) is det.
 
     % Count the number of elements in the map.
     %
-:- func map.count(map(K, V)) = int.
-:- pred map.count(map(K, V)::in, int::out) is det.
+:- func count(map(K, V)) = int.
+:- pred count(map(K, V)::in, int::out) is det.
 
     % Convert a pair of lists (which must be of the same length) to a map.
     %
-:- func map.from_corresponding_lists(list(K), list(V)) = map(K, V).
-:- pred map.from_corresponding_lists(list(K)::in, list(V)::in, map(K, V)::out)
+:- func from_corresponding_lists(list(K), list(V)) = map(K, V).
+:- pred from_corresponding_lists(list(K)::in, list(V)::in, map(K, V)::out)
     is det.
 
     % Merge the contents of the two maps.
@@ -299,383 +299,383 @@
     % in the second map, so for efficiency, you want to put the bigger map
     % first and the smaller map second.
     %
-:- func map.merge(map(K, V), map(K, V)) = map(K, V).
-:- pred map.merge(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
+:- func merge(map(K, V), map(K, V)) = map(K, V).
+:- pred merge(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
 
-    % For map.overlay(MapA, MapB, Map), if MapA and MapB both contain the
+    % For overlay(MapA, MapB, Map), if MapA and MapB both contain the
     % same key, then Map will map that key to the value from MapB.
     % In other words, MapB takes precedence over MapA.
     %
-:- func map.overlay(map(K, V), map(K, V)) = map(K, V).
-:- pred map.overlay(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
+:- func overlay(map(K, V), map(K, V)) = map(K, V).
+:- pred overlay(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
 
-    % map.overlay_large_map(MapA, MapB, Map) performs the same task as
-    % map.overlay(MapA, MapB, Map). However, while map.overlay takes time
-    % proportional to the size of MapB, map.overlay_large_map takes time
+    % overlay_large_map(MapA, MapB, Map) performs the same task as
+    % overlay(MapA, MapB, Map). However, while overlay takes time
+    % proportional to the size of MapB, overlay_large_map takes time
     % proportional to the size of MapA. In other words, it preferable when
-    % MapB is a large map.
+    % MapB is a large 
     %
-:- func map.overlay_large_map(map(K, V), map(K, V)) = map(K, V).
-:- pred map.overlay_large_map(map(K, V)::in, map(K, V)::in, map(K, V)::out)
+:- func overlay_large_map(map(K, V), map(K, V)) = map(K, V).
+:- pred overlay_large_map(map(K, V)::in, map(K, V)::in, map(K, V)::out)
     is det.
 
-    % map.select takes a map and a set of keys, and returns a map
+    % select takes a map and a set of keys, and returns a map
     % containing the keys in the set and their corresponding values.
     %
-:- func map.select(map(K, V), set(K)) = map(K, V).
-:- pred map.select(map(K, V)::in, set(K)::in, map(K, V)::out) is det.
+:- func select(map(K, V), set(K)) = map(K, V).
+:- pred select(map(K, V)::in, set(K)::in, map(K, V)::out) is det.
 
-    % map.select_sorted_list takes a map and a sorted list of keys, and returns
+    % select_sorted_list takes a map and a sorted list of keys, and returns
     % a map containing the keys in the list and their corresponding values.
     %
-:- func map.select_sorted_list(map(K, V), list(K)) = map(K, V).
-:- pred map.select_sorted_list(map(K, V)::in, list(K)::in, map(K, V)::out)
+:- func select_sorted_list(map(K, V), list(K)) = map(K, V).
+:- pred select_sorted_list(map(K, V)::in, list(K)::in, map(K, V)::out)
     is det.
 
     % Given a list of keys, produce a list of their corresponding
     % values in a specified map.
     %
-:- func map.apply_to_list(list(K), map(K, V)) = list(V).
-:- pred map.apply_to_list(list(K)::in, map(K, V)::in, list(V)::out) is det.
+:- func apply_to_list(list(K), map(K, V)) = list(V).
+:- pred apply_to_list(list(K)::in, map(K, V)::in, list(V)::out) is det.
 
     % Declaratively, a NOP.
     % Operationally, a suggestion that the implementation
     % optimize the representation of the map in the expectation
     % of a number of lookups but few or no modifications.
     %
-:- func map.optimize(map(K, V)) = map(K, V).
-:- pred map.optimize(map(K, V)::in, map(K, V)::out) is det.
+:- func optimize(map(K, V)) = map(K, V).
+:- pred optimize(map(K, V)::in, map(K, V)::out) is det.
 
     % Remove the smallest item from the map, fail if the map is empty.
     %
-:- pred map.remove_smallest(K::out, V::out, map(K, V)::in, map(K, V)::out)
+:- pred remove_smallest(K::out, V::out, map(K, V)::in, map(K, V)::out)
     is semidet.
 
     % Perform an inorder traversal of the map, applying
     % an accumulator predicate for each key-value pair.
     %
-:- func map.foldl(func(K, V, A) = A, map(K, V), A) = A.
-:- pred map.foldl(pred(K, V, A, A), map(K, V), A, A).
-:- mode map.foldl(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode map.foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode map.foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode map.foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
-:- mode map.foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode map.foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode map.foldl(pred(in, in, in, out) is cc_multi, in, in, out) is cc_multi.
-:- mode map.foldl(pred(in, in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode map.foldl(pred(in, in, mdi, muo) is cc_multi, in, mdi, muo)
+:- func foldl(func(K, V, A) = A, map(K, V), A) = A.
+:- pred foldl(pred(K, V, A, A), map(K, V), A, A).
+:- mode foldl(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldl(pred(in, in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode foldl(pred(in, in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldl(pred(in, in, mdi, muo) is cc_multi, in, mdi, muo)
     is cc_multi.
 
     % Perform an inorder traversal of the map, applying an accumulator
     % predicate with two accumulators for each key-value pair.
-    % (Although no more expressive than map.foldl, this is often
+    % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred map.foldl2(pred(K, V, A, A, B, B), map(K, V), A, A, B, B).
-:- mode map.foldl2(pred(in, in, in, out, in, out) is det,
+:- pred foldl2(pred(K, V, A, A, B, B), map(K, V), A, A, B, B).
+:- mode foldl2(pred(in, in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode map.foldl2(pred(in, in, in, out, mdi, muo) is det,
+:- mode foldl2(pred(in, in, in, out, mdi, muo) is det,
     in, in, out, mdi, muo) is det.
-:- mode map.foldl2(pred(in, in, in, out, di, uo) is det,
+:- mode foldl2(pred(in, in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
-:- mode map.foldl2(pred(in, in, di, uo, di, uo) is det,
+:- mode foldl2(pred(in, in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
-:- mode map.foldl2(pred(in, in, in, out, in, out) is semidet,
+:- mode foldl2(pred(in, in, in, out, in, out) is semidet,
     in, in, out, in, out) is semidet.
-:- mode map.foldl2(pred(in, in, in, out, mdi, muo) is semidet,
+:- mode foldl2(pred(in, in, in, out, mdi, muo) is semidet,
     in, in, out, mdi, muo) is semidet.
-:- mode map.foldl2(pred(in, in, in, out, di, uo) is semidet,
+:- mode foldl2(pred(in, in, in, out, di, uo) is semidet,
     in, in, out, di, uo) is semidet.
-:- mode map.foldl2(pred(in, in, in, out, in, out) is cc_multi,
+:- mode foldl2(pred(in, in, in, out, in, out) is cc_multi,
     in, in, out, in, out) is cc_multi.
-:- mode map.foldl2(pred(in, in, in, out, mdi, muo) is cc_multi,
+:- mode foldl2(pred(in, in, in, out, mdi, muo) is cc_multi,
     in, in, out, mdi, muo) is cc_multi.
-:- mode map.foldl2(pred(in, in, in, out, di, uo) is cc_multi,
+:- mode foldl2(pred(in, in, in, out, di, uo) is cc_multi,
     in, in, out, di, uo) is cc_multi.
-:- mode map.foldl2(pred(in, in, di, uo, di, uo) is cc_multi,
+:- mode foldl2(pred(in, in, di, uo, di, uo) is cc_multi,
     in, di, uo, di, uo) is cc_multi.
 
     % Perform an inorder traversal of the map, applying an accumulator
     % predicate with three accumulators for each key-value pair.
-    % (Although no more expressive than map.foldl, this is often
+    % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred map.foldl3(pred(K, V, A, A, B, B, C, C), map(K, V), A, A, B, B, C, C).
-:- mode map.foldl3(pred(in, in, in, out, in, out, in, out) is det,
+:- pred foldl3(pred(K, V, A, A, B, B, C, C), map(K, V), A, A, B, B, C, C).
+:- mode foldl3(pred(in, in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
-:- mode map.foldl3(pred(in, in, in, out, in, out, mdi, muo) is det,
+:- mode foldl3(pred(in, in, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, mdi, muo) is det.
-:- mode map.foldl3(pred(in, in, in, out, in, out, di, uo) is det,
+:- mode foldl3(pred(in, in, in, out, in, out, di, uo) is det,
     in, in, out, in, out, di, uo) is det.
-:- mode map.foldl3(pred(in, in, in, out, di, uo, di, uo) is det,
+:- mode foldl3(pred(in, in, in, out, di, uo, di, uo) is det,
     in, in, out, di, uo, di, uo) is det.
-:- mode map.foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
+:- mode foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo) is det.
-:- mode map.foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
+:- mode foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out) is semidet.
-:- mode map.foldl3(pred(in, in, in, out, in, out, mdi, muo) is semidet,
+:- mode foldl3(pred(in, in, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, mdi, muo) is semidet.
-:- mode map.foldl3(pred(in, in, in, out, in, out, di, uo) is semidet,
+:- mode foldl3(pred(in, in, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, di, uo) is semidet.
 
     % Perform an inorder traversal of the map, applying an accumulator
     % predicate with four accumulators for each key-value pair.
-    % (Although no more expressive than map.foldl, this is often
+    % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred map.foldl4(pred(K, V, A, A, B, B, C, C, D, D), map(K, V),
+:- pred foldl4(pred(K, V, A, A, B, B, C, C, D, D), map(K, V),
     A, A, B, B, C, C, D, D).
-:- mode map.foldl4(pred(in, in, in, out, in, out, in, out, in, out) is det,
+:- mode foldl4(pred(in, in, in, out, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out, in, out) is det.
-:- mode map.foldl4(pred(in, in, in, out, in, out, in, out, in, out) is semidet,
+:- mode foldl4(pred(in, in, in, out, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out, in, out) is semidet.
-:- mode map.foldl4(pred(in, in, in, out, in, out, in, out, di, uo) is det,
+:- mode foldl4(pred(in, in, in, out, in, out, in, out, di, uo) is det,
     in, in, out, in, out, in, out, di, uo) is det.
-:- mode map.foldl4(pred(in, in, in, out, in, out, di, uo, di, uo) is det,
+:- mode foldl4(pred(in, in, in, out, in, out, di, uo, di, uo) is det,
     in, in, out, in, out, di, uo, di, uo) is det.
-:- mode map.foldl4(pred(in, in, in, out, di, uo, di, uo, di, uo) is det,
+:- mode foldl4(pred(in, in, in, out, di, uo, di, uo, di, uo) is det,
     in, in, out, di, uo, di, uo, di, uo) is det.
-:- mode map.foldl4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
+:- mode foldl4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo, di, uo) is det.
 
     % Perform an inorder traversal by key of the map, applying an accumulator
     % predicate for value.
     %
-:- pred map.foldl_values(pred(V, A, A), map(K, V), A, A).
-:- mode map.foldl_values(pred(in, in, out) is det, in, in, out) is det.
-:- mode map.foldl_values(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode map.foldl_values(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode map.foldl_values(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode map.foldl_values(pred(in, mdi, muo) is semidet, in, mdi, muo)
+:- pred foldl_values(pred(V, A, A), map(K, V), A, A).
+:- mode foldl_values(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldl_values(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldl_values(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldl_values(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl_values(pred(in, mdi, muo) is semidet, in, mdi, muo)
     is semidet.
-:- mode map.foldl_values(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode map.foldl_values(pred(in, in, out) is cc_multi, in, in, out)
+:- mode foldl_values(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldl_values(pred(in, in, out) is cc_multi, in, in, out)
     is cc_multi.
-:- mode map.foldl_values(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode map.foldl_values(pred(in, mdi, muo) is cc_multi, in, mdi, muo)
+:- mode foldl_values(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldl_values(pred(in, mdi, muo) is cc_multi, in, mdi, muo)
     is cc_multi.
 
     % As above, but with two accumulators.
     %
-:- pred map.foldl2_values(pred(V, A, A, B, B), map(K, V), A, A, B, B).
-:- mode map.foldl2_values(pred(in, in, out, in, out) is det, in,
+:- pred foldl2_values(pred(V, A, A, B, B), map(K, V), A, A, B, B).
+:- mode foldl2_values(pred(in, in, out, in, out) is det, in,
     in, out, in, out) is det.
-:- mode map.foldl2_values(pred(in, in, out, mdi, muo) is det, in,
+:- mode foldl2_values(pred(in, in, out, mdi, muo) is det, in,
     in, out, mdi, muo) is det.
-:- mode map.foldl2_values(pred(in, in, out, di, uo) is det, in,
+:- mode foldl2_values(pred(in, in, out, di, uo) is det, in,
     in, out, di, uo) is det.
-:- mode map.foldl2_values(pred(in, in, out, in, out) is semidet, in,
+:- mode foldl2_values(pred(in, in, out, in, out) is semidet, in,
     in, out, in, out) is semidet.
-:- mode map.foldl2_values(pred(in, in, out, mdi, muo) is semidet, in,
+:- mode foldl2_values(pred(in, in, out, mdi, muo) is semidet, in,
     in, out, mdi, muo) is semidet.
-:- mode map.foldl2_values(pred(in, in, out, di, uo) is semidet, in,
+:- mode foldl2_values(pred(in, in, out, di, uo) is semidet, in,
     in, out, di, uo) is semidet.
-:- mode map.foldl2_values(pred(in, in, out, in, out) is cc_multi, in,
+:- mode foldl2_values(pred(in, in, out, in, out) is cc_multi, in,
     in, out, in, out) is cc_multi.
-:- mode map.foldl2_values(pred(in, in, out, mdi, muo) is cc_multi, in,
+:- mode foldl2_values(pred(in, in, out, mdi, muo) is cc_multi, in,
     in, out, mdi, muo) is cc_multi.
-:- mode map.foldl2_values(pred(in, in, out, di, uo) is cc_multi, in,
+:- mode foldl2_values(pred(in, in, out, di, uo) is cc_multi, in,
     in, out, di, uo) is cc_multi.
 
     % As above, but with three accumulators.
     %
-:- pred map.foldl3_values(pred(V, A, A, B, B, C, C), map(K, V),
+:- pred foldl3_values(pred(V, A, A, B, B, C, C), map(K, V),
     A, A, B, B, C, C).
-:- mode map.foldl3_values(pred(in, in, out, in, out, in, out) is det, in,
+:- mode foldl3_values(pred(in, in, out, in, out, in, out) is det, in,
     in, out, in, out, in, out) is det.
-:- mode map.foldl3_values(pred(in, in, out, in, out, mdi, muo) is det, in,
+:- mode foldl3_values(pred(in, in, out, in, out, mdi, muo) is det, in,
     in, out, in, out, mdi, muo) is det.
-:- mode map.foldl3_values(pred(in, in, out, in, out, di, uo) is det, in,
+:- mode foldl3_values(pred(in, in, out, in, out, di, uo) is det, in,
     in, out, in, out, di, uo) is det.
-:- mode map.foldl3_values(pred(in, in, out, in, out, in, out) is semidet, in,
+:- mode foldl3_values(pred(in, in, out, in, out, in, out) is semidet, in,
     in, out, in, out, in, out) is semidet.
-:- mode map.foldl3_values(pred(in, in, out, in, out, mdi, muo) is semidet, in,
+:- mode foldl3_values(pred(in, in, out, in, out, mdi, muo) is semidet, in,
     in, out, in, out, mdi, muo) is semidet.
-:- mode map.foldl3_values(pred(in, in, out, in, out, di, uo) is semidet, in,
+:- mode foldl3_values(pred(in, in, out, in, out, di, uo) is semidet, in,
     in, out, in, out, di, uo) is semidet.
-:- mode map.foldl3_values(pred(in, in, out, in, out, in, out) is cc_multi, in,
+:- mode foldl3_values(pred(in, in, out, in, out, in, out) is cc_multi, in,
     in, out, in, out, in, out) is cc_multi.
-:- mode map.foldl3_values(pred(in, in, out, in, out, mdi, muo) is cc_multi, in,
+:- mode foldl3_values(pred(in, in, out, in, out, mdi, muo) is cc_multi, in,
     in, out, in, out, mdi, muo) is cc_multi.
-:- mode map.foldl3_values(pred(in, in, out, in, out, di, uo) is cc_multi, in,
+:- mode foldl3_values(pred(in, in, out, in, out, di, uo) is cc_multi, in,
     in, out, in, out, di, uo) is cc_multi.
 
-:- func map.foldr(func(K, V, A) = A, map(K, V), A) = A.
-:- pred map.foldr(pred(K, V, A, A), map(K, V), A, A).
-:- mode map.foldr(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode map.foldr(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode map.foldr(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode map.foldr(pred(in, in, in, out) is semidet, in, in, out) is semidet.
-:- mode map.foldr(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode map.foldr(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode map.foldr(pred(in, in, in, out) is cc_multi, in, in, out) is cc_multi.
-:- mode map.foldr(pred(in, in, mdi, muo) is cc_multi, in, mdi, muo)
+:- func foldr(func(K, V, A) = A, map(K, V), A) = A.
+:- pred foldr(pred(K, V, A, A), map(K, V), A, A).
+:- mode foldr(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode foldr(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldr(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode foldr(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldr(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldr(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldr(pred(in, in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode foldr(pred(in, in, mdi, muo) is cc_multi, in, mdi, muo)
     is cc_multi.
-:- mode map.foldr(pred(in, in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldr(pred(in, in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 
-:- pred map.foldr2(pred(K, V, A, A, B, B), map(K, V), A, A, B, B).
-:- mode map.foldr2(pred(in, in, in, out, in, out) is det,
+:- pred foldr2(pred(K, V, A, A, B, B), map(K, V), A, A, B, B).
+:- mode foldr2(pred(in, in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode map.foldr2(pred(in, in, in, out, mdi, muo) is det,
+:- mode foldr2(pred(in, in, in, out, mdi, muo) is det,
     in, in, out, mdi, muo) is det.
-:- mode map.foldr2(pred(in, in, in, out, di, uo) is det,
+:- mode foldr2(pred(in, in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
-:- mode map.foldr2(pred(in, in, di, uo, di, uo) is det,
+:- mode foldr2(pred(in, in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
-:- mode map.foldr2(pred(in, in, in, out, in, out) is semidet,
+:- mode foldr2(pred(in, in, in, out, in, out) is semidet,
     in, in, out, in, out) is semidet.
-:- mode map.foldr2(pred(in, in, in, out, mdi, muo) is semidet,
+:- mode foldr2(pred(in, in, in, out, mdi, muo) is semidet,
     in, in, out, mdi, muo) is semidet.
-:- mode map.foldr2(pred(in, in, in, out, di, uo) is semidet,
+:- mode foldr2(pred(in, in, in, out, di, uo) is semidet,
     in, in, out, di, uo) is semidet.
 
-:- pred map.foldr3(pred(K, V, A, A, B, B, C, C), map(K, V), A, A, B, B, C, C).
-:- mode map.foldr3(pred(in, in, in, out, in, out, in, out) is det,
+:- pred foldr3(pred(K, V, A, A, B, B, C, C), map(K, V), A, A, B, B, C, C).
+:- mode foldr3(pred(in, in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
-:- mode map.foldr3(pred(in, in, in, out, in, out, mdi, muo) is det,
+:- mode foldr3(pred(in, in, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, mdi, muo) is det.
-:- mode map.foldr3(pred(in, in, in, out, in, out, di, uo) is det,
+:- mode foldr3(pred(in, in, in, out, in, out, di, uo) is det,
     in, in, out, in, out, di, uo) is det.
-:- mode map.foldr3(pred(in, in, in, out, di, uo, di, uo) is det,
+:- mode foldr3(pred(in, in, in, out, di, uo, di, uo) is det,
     in, in, out, di, uo, di, uo) is det.
-:- mode map.foldr3(pred(in, in, di, uo, di, uo, di, uo) is det,
+:- mode foldr3(pred(in, in, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo) is det.
-:- mode map.foldr3(pred(in, in, in, out, in, out, in, out) is semidet,
+:- mode foldr3(pred(in, in, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out) is semidet.
-:- mode map.foldr3(pred(in, in, in, out, in, out, mdi, muo) is semidet,
+:- mode foldr3(pred(in, in, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, mdi, muo) is semidet.
-:- mode map.foldr3(pred(in, in, in, out, in, out, di, uo) is semidet,
+:- mode foldr3(pred(in, in, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, di, uo) is semidet.
 
-:- pred map.foldr4(pred(K, V, A, A, B, B, C, C, D, D), map(K, V),
+:- pred foldr4(pred(K, V, A, A, B, B, C, C, D, D), map(K, V),
     A, A, B, B, C, C, D, D).
-:- mode map.foldr4(pred(in, in, in, out, in, out, in, out, in, out) is det,
+:- mode foldr4(pred(in, in, in, out, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out, in, out) is det.
-:- mode map.foldr4(pred(in, in, in, out, in, out, in, out, mdi, muo) is det,
+:- mode foldr4(pred(in, in, in, out, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, in, out, mdi, muo) is det.
-:- mode map.foldr4(pred(in, in, in, out, in, out, in, out, di, uo) is det,
+:- mode foldr4(pred(in, in, in, out, in, out, in, out, di, uo) is det,
     in, in, out, in, out, in, out, di, uo) is det.
-:- mode map.foldr4(pred(in, in, in, out, in, out, di, uo, di, uo) is det,
+:- mode foldr4(pred(in, in, in, out, in, out, di, uo, di, uo) is det,
     in, in, out, in, out, di, uo, di, uo) is det.
-:- mode map.foldr4(pred(in, in, in, out, di, uo, di, uo, di, uo) is det,
+:- mode foldr4(pred(in, in, in, out, di, uo, di, uo, di, uo) is det,
     in, in, out, di, uo, di, uo, di, uo) is det.
-:- mode map.foldr4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
+:- mode foldr4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo, di, uo) is det.
-:- mode map.foldr4(pred(in, in, in, out, in, out, in, out, in, out) is semidet,
+:- mode foldr4(pred(in, in, in, out, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out, in, out) is semidet.
-:- mode map.foldr4(pred(in, in, in, out, in, out, in, out, mdi, muo) is semidet,
+:- mode foldr4(pred(in, in, in, out, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, in, out, mdi, muo) is semidet.
-:- mode map.foldr4(pred(in, in, in, out, in, out, in, out, di, uo) is semidet,
+:- mode foldr4(pred(in, in, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, di, uo) is semidet.
 
     % Apply a transformation predicate to all the values in a map.
     %
-:- func map.map_values(func(K, V) = W, map(K, V)) = map(K, W).
-:- pred map.map_values(pred(K, V, W), map(K, V), map(K, W)).
-:- mode map.map_values(pred(in, in, out) is det, in, out) is det.
-:- mode map.map_values(pred(in, in, out) is semidet, in, out) is semidet.
+:- func map_values(func(K, V) = W, map(K, V)) = map(K, W).
+:- pred map_values(pred(K, V, W), map(K, V), map(K, W)).
+:- mode map_values(pred(in, in, out) is det, in, out) is det.
+:- mode map_values(pred(in, in, out) is semidet, in, out) is semidet.
 
-    % Same as map.map_values, but do not pass the key to the given predicate.
+    % Same as map_values, but do not pass the key to the given predicate.
     %
-:- func map.map_values_only(func(V) = W, map(K, V)) = map(K, W).
-:- pred map.map_values_only(pred(V, W), map(K, V), map(K, W)).
-:- mode map.map_values_only(pred(in, out) is det, in, out) is det.
-:- mode map.map_values_only(pred(in, out) is semidet, in, out) is semidet.
+:- func map_values_only(func(V) = W, map(K, V)) = map(K, W).
+:- pred map_values_only(pred(V, W), map(K, V), map(K, W)).
+:- mode map_values_only(pred(in, out) is det, in, out) is det.
+:- mode map_values_only(pred(in, out) is semidet, in, out) is semidet.
 
     % Perform an inorder traversal by key of the map, applying a transformation
     % predicate to each value while updating an accumulator.
     %
-:- pred map.map_foldl(pred(K, V, W, A, A), map(K, V), map(K, W), A, A).
-:- mode map.map_foldl(pred(in, in, out, in, out) is det, in, out, in, out)
+:- pred map_foldl(pred(K, V, W, A, A), map(K, V), map(K, W), A, A).
+:- mode map_foldl(pred(in, in, out, in, out) is det, in, out, in, out)
     is det.
-:- mode map.map_foldl(pred(in, in, out, mdi, muo) is det, in, out, mdi, muo)
+:- mode map_foldl(pred(in, in, out, mdi, muo) is det, in, out, mdi, muo)
     is det.
-:- mode map.map_foldl(pred(in, in, out, di, uo) is det, in, out, di, uo)
+:- mode map_foldl(pred(in, in, out, di, uo) is det, in, out, di, uo)
     is det.
-:- mode map.map_foldl(pred(in, in, out, in, out) is semidet, in, out,
+:- mode map_foldl(pred(in, in, out, in, out) is semidet, in, out,
     in, out) is semidet.
-:- mode map.map_foldl(pred(in, in, out, mdi, muo) is semidet, in, out,
+:- mode map_foldl(pred(in, in, out, mdi, muo) is semidet, in, out,
     mdi, muo) is semidet.
-:- mode map.map_foldl(pred(in, in, out, di, uo) is semidet, in, out,
+:- mode map_foldl(pred(in, in, out, di, uo) is semidet, in, out,
     di, uo) is semidet.
 
-    % As map.map_foldl, but with two accumulators.
+    % As map_foldl, but with two accumulators.
     %
-:- pred map.map_foldl2(pred(K, V, W, A, A, B, B), map(K, V), map(K, W),
+:- pred map_foldl2(pred(K, V, W, A, A, B, B), map(K, V), map(K, W),
     A, A, B, B).
-:- mode map.map_foldl2(pred(in, in, out, in, out, in, out) is det,
+:- mode map_foldl2(pred(in, in, out, in, out, in, out) is det,
     in, out, in, out, in, out) is det.
-:- mode map.map_foldl2(pred(in, in, out, in, out, mdi, muo) is det,
+:- mode map_foldl2(pred(in, in, out, in, out, mdi, muo) is det,
     in, out, in, out, mdi, muo) is det.
-:- mode map.map_foldl2(pred(in, in, out, in, out, di, uo) is det,
+:- mode map_foldl2(pred(in, in, out, in, out, di, uo) is det,
     in, out, in, out, di, uo) is det.
-:- mode map.map_foldl2(pred(in, in, out, di, uo, di, uo) is det,
+:- mode map_foldl2(pred(in, in, out, di, uo, di, uo) is det,
     in, out, di, uo, di, uo) is det.
-:- mode map.map_foldl2(pred(in, in, out, in, out, in, out) is semidet,
+:- mode map_foldl2(pred(in, in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out) is semidet.
-:- mode map.map_foldl2(pred(in, in, out, in, out, mdi, muo) is semidet,
+:- mode map_foldl2(pred(in, in, out, in, out, mdi, muo) is semidet,
     in, out, in, out, mdi, muo) is semidet.
-:- mode map.map_foldl2(pred(in, in, out, in, out, di, uo) is semidet,
+:- mode map_foldl2(pred(in, in, out, in, out, di, uo) is semidet,
     in, out, in, out, di, uo) is semidet.
 
-    % As map.map_foldl, but with three accumulators.
+    % As map_foldl, but with three accumulators.
     %
-:- pred map.map_foldl3(pred(K, V, W, A, A, B, B, C, C), map(K, V), map(K, W),
+:- pred map_foldl3(pred(K, V, W, A, A, B, B, C, C), map(K, V), map(K, W),
     A, A, B, B, C, C).
-:- mode map.map_foldl3(pred(in, in, out, in, out, in, out, in, out) is det,
+:- mode map_foldl3(pred(in, in, out, in, out, in, out, in, out) is det,
     in, out, in, out, in, out, in, out) is det.
-:- mode map.map_foldl3(pred(in, in, out, in, out, in, out, mdi, muo) is det,
+:- mode map_foldl3(pred(in, in, out, in, out, in, out, mdi, muo) is det,
     in, out, in, out, in, out, mdi, muo) is det.
-:- mode map.map_foldl3(pred(in, in, out, di, uo, di, uo, di, uo) is det,
+:- mode map_foldl3(pred(in, in, out, di, uo, di, uo, di, uo) is det,
     in, out, di, uo, di, uo, di, uo) is det.
-:- mode map.map_foldl3(pred(in, in, out, in, out, in, out, di, uo) is det,
+:- mode map_foldl3(pred(in, in, out, in, out, in, out, di, uo) is det,
     in, out, in, out, in, out, di, uo) is det.
-:- mode map.map_foldl3(pred(in, in, out, in, out, di, uo, di, uo) is det,
+:- mode map_foldl3(pred(in, in, out, in, out, di, uo, di, uo) is det,
     in, out, in, out, di, uo, di, uo) is det.
-:- mode map.map_foldl3(pred(in, in, out, in, out, in, out, in, out) is semidet,
+:- mode map_foldl3(pred(in, in, out, in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out, in, out) is semidet.
-:- mode map.map_foldl3(pred(in, in, out, in, out, in, out, mdi, muo) is semidet,
+:- mode map_foldl3(pred(in, in, out, in, out, in, out, mdi, muo) is semidet,
     in, out, in, out, in, out, mdi, muo) is semidet.
-:- mode map.map_foldl3(pred(in, in, out, in, out, in, out, di, uo) is semidet,
+:- mode map_foldl3(pred(in, in, out, in, out, in, out, di, uo) is semidet,
     in, out, in, out, in, out, di, uo) is semidet.
 
-    % As map.map_foldl, but without passing the key to the predicate.
+    % As map_foldl, but without passing the key to the predicate.
     %
-:- pred map.map_values_foldl(pred(V, W, A, A), map(K, V), map(K, W), A, A).
-:- mode map.map_values_foldl(pred(in, out, di, uo) is det,
+:- pred map_values_foldl(pred(V, W, A, A), map(K, V), map(K, W), A, A).
+:- mode map_values_foldl(pred(in, out, di, uo) is det,
     in, out, di, uo) is det.
-:- mode map.map_values_foldl(pred(in, out, in, out) is det,
+:- mode map_values_foldl(pred(in, out, in, out) is det,
     in, out, in, out) is det.
-:- mode map.map_values_foldl(pred(in, out, in, out) is semidet,
+:- mode map_values_foldl(pred(in, out, in, out) is semidet,
     in, out, in, out) is semidet.
 
-    % As map.map_values_foldl, but with two accumulators.
+    % As map_values_foldl, but with two accumulators.
     %
-:- pred map.map_values_foldl2(pred(V, W, A, A, B, B), map(K, V), map(K, W),
+:- pred map_values_foldl2(pred(V, W, A, A, B, B), map(K, V), map(K, W),
     A, A, B, B).
-:- mode map.map_values_foldl2(pred(in, out, di, uo, di, uo) is det,
+:- mode map_values_foldl2(pred(in, out, di, uo, di, uo) is det,
     in, out, di, uo, di, uo) is det.
-:- mode map.map_values_foldl2(pred(in, out, in, out, di, uo) is det,
+:- mode map_values_foldl2(pred(in, out, in, out, di, uo) is det,
     in, out, in, out, di, uo) is det.
-:- mode map.map_values_foldl2(pred(in, out, in, out, in, out) is det,
+:- mode map_values_foldl2(pred(in, out, in, out, in, out) is det,
     in, out, in, out, in, out) is det.
-:- mode map.map_values_foldl2(pred(in, out, in, out, in, out) is semidet,
+:- mode map_values_foldl2(pred(in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out) is semidet.
 
-    % As map.map_values_foldl, but with three accumulators.
+    % As map_values_foldl, but with three accumulators.
     %
-:- pred map.map_values_foldl3(pred(V, W, A, A, B, B, C, C),
+:- pred map_values_foldl3(pred(V, W, A, A, B, B, C, C),
     map(K, V), map(K, W), A, A, B, B, C, C).
-:- mode map.map_values_foldl3(pred(in, out, di, uo, di, uo, di, uo) is det,
+:- mode map_values_foldl3(pred(in, out, di, uo, di, uo, di, uo) is det,
     in, out, di, uo, di, uo, di, uo) is det.
-:- mode map.map_values_foldl3(pred(in, out, in, out, di, uo, di, uo) is det,
+:- mode map_values_foldl3(pred(in, out, in, out, di, uo, di, uo) is det,
     in, out, in, out, di, uo, di, uo) is det.
-:- mode map.map_values_foldl3(pred(in, out, in, out, in, out, di, uo) is det,
+:- mode map_values_foldl3(pred(in, out, in, out, in, out, di, uo) is det,
     in, out, in, out, in, out, di, uo) is det.
-:- mode map.map_values_foldl3(pred(in, out, in, out, in, out, in, out) is det,
+:- mode map_values_foldl3(pred(in, out, in, out, in, out, in, out) is det,
     in, out, in, out, in, out, in, out) is det.
-:- mode map.map_values_foldl3(
+:- mode map_values_foldl3(
     pred(in, out, in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out, in, out) is semidet.
 
@@ -686,19 +686,19 @@
     % Fail if and only if this predicate fails on the values associated
     % with some common key.
     %
-:- pred map.intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
-:- mode map.intersect(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode map.intersect(pred(in, in, out) is det, in, in, out) is det.
+:- pred intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
+:- mode intersect(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode intersect(pred(in, in, out) is det, in, in, out) is det.
 
-:- func map.intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
+:- func intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 
-    % Calls map.intersect. Aborts if map.intersect fails.
+    % Calls intersect. Aborts if intersect fails.
     %
-:- pred map.det_intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
-:- mode map.det_intersect(pred(in, in, out) is semidet, in, in, out) is det.
+:- pred det_intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
+:- mode det_intersect(pred(in, in, out) is semidet, in, in, out) is det.
 
-:- func map.det_intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
-:- mode map.det_intersect(func(in, in) = out is semidet, in, in) = out is det.
+:- func det_intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
+:- mode det_intersect(func(in, in) = out is semidet, in, in) = out is det.
 
     % Given two maps M1 and M2, create a third map M3 that has only the
     % keys that occur in both M1 and M2. For keys that occur in both M1
@@ -710,11 +710,11 @@
     % key/value pairs, computes the intersection of those two sets, and
     % returns the map corresponding to the intersection.
     %
-    % map.common_subset is very similar to map.intersect, but can succeed
+    % common_subset is very similar to intersect, but can succeed
     % even with an output map that does not contain an entry for a key
     % value that occurs in both input maps.
     %
-:- func map.common_subset(map(K, V), map(K, V)) = map(K, V).
+:- func common_subset(map(K, V), map(K, V)) = map(K, V).
 
     % Given two maps M1 and M2, create a third map M3 that contains all
     % the keys that occur in either M1 and M2. For keys that occur in both M1
@@ -723,42 +723,42 @@
     % Fail if and only if this closure fails on the values associated
     % with some common key.
     %
-:- func map.union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
-:- pred map.union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
-:- mode map.union(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode map.union(pred(in, in, out) is det, in, in, out) is det.
+:- func union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
+:- pred union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
+:- mode union(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode union(pred(in, in, out) is det, in, in, out) is det.
 
-    % Calls map.union. Aborts if map.union fails.
+    % Calls union. Aborts if union fails.
     %
-:- pred map.det_union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
-:- mode map.det_union(pred(in, in, out) is semidet, in, in, out) is det.
+:- pred det_union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
+:- mode det_union(pred(in, in, out) is semidet, in, in, out) is det.
 
-:- func map.det_union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
-:- mode map.det_union(func(in, in) = out is semidet, in, in) = out is det.
+:- func det_union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
+:- mode det_union(func(in, in) = out is semidet, in, in) = out is det.
 
     % Consider the original map a set of key-value pairs. This predicate
     % returns a map that maps each value to the set of keys it is paired
     % with in the original map.
     %
-:- func map.reverse_map(map(K, V)) = map(V, set(K)).
+:- func reverse_map(map(K, V)) = map(V, set(K)).
 
     % Field selection for maps.
 
-    % Map ^ elem(Key) = map.search(Map, Key).
+    % Map ^ elem(Key) = search(Map, Key).
     %
-:- func map.elem(K, map(K, V)) = V is semidet.
+:- func elem(K, map(K, V)) = V is semidet.
 
-    % Map ^ det_elem(Key) = map.lookup(Map, Key).
+    % Map ^ det_elem(Key) = lookup(Map, Key).
     %
-:- func map.det_elem(K, map(K, V)) = V.
+:- func det_elem(K, map(K, V)) = V.
 
     % Field update for maps.
 
-    % (Map ^ elem(Key) := Value) = map.set(Map, Key, Value).
+    % (Map ^ elem(Key) := Value) = set(Map, Key, Value).
     %
 :- func 'elem :='(K, map(K, V), V) = map(K, V).
 
-    % (Map ^ det_elem(Key) := Value) = map.det_update(Map, Key, Value).
+    % (Map ^ det_elem(Key) := Value) = det_update(Map, Key, Value).
     %
 :- func 'det_elem :='(K, map(K, V), V) = map(K, V).
 

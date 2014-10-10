@@ -50,33 +50,33 @@
 
     % Absolute value.
     %
-:- func int.abs(int) = int.
-:- pred int.abs(int::in, int::out) is det.
+:- func abs(int) = int.
+:- pred abs(int::in, int::out) is det.
 
     % Maximum.
     %
-:- func int.max(int, int) = int.
-:- pred int.max(int::in, int::in, int::out) is det.
+:- func max(int, int) = int.
+:- pred max(int::in, int::in, int::out) is det.
 
     % Minimum.
     %
-:- func int.min(int, int) = int.
-:- pred int.min(int::in, int::in, int::out) is det.
+:- func min(int, int) = int.
+:- pred min(int::in, int::in, int::out) is det.
 
     % Exponentiation.
-    % int.pow(X, Y, Z): Z is X raised to the Yth power.
+    % pow(X, Y, Z): Z is X raised to the Yth power.
     % Throws a `math.domain_error' exception if Y is negative.
     %
-:- func int.pow(int, int) = int.
-:- pred int.pow(int::in, int::in, int::out) is det.
+:- func pow(int, int) = int.
+:- pred pow(int::in, int::in, int::out) is det.
 
     % Base 2 logarithm.
-    % int.log2(X) = N is the least integer such that 2 to the power N
+    % log2(X) = N is the least integer such that 2 to the power N
     % is greater than or equal to X.
     % Throws a `math.domain_error' exception if X is not positive.
     %
-:- func int.log2(int) = int.
-:- pred int.log2(int::in, int::out) is det.
+:- func log2(int) = int.
+:- pred log2(int::in, int::out) is det.
 
     % Addition.
     %
@@ -85,12 +85,12 @@
 :- mode uo  + in  = in  is det.
 :- mode in  + uo  = in  is det.
 
-:- func int.plus(int, int) = int.
+:- func plus(int, int) = int.
 
     % Multiplication.
     %
 :- func (int::in) * (int::in) = (int::uo) is det.
-:- func int.times(int, int) = int.
+:- func times(int, int) = int.
 
     % Subtraction.
     %
@@ -99,7 +99,7 @@
 :- mode uo  - in  = in  is det.
 :- mode in  - uo  = in  is det.
 
-:- func int.minus(int, int) = int.
+:- func minus(int, int) = int.
 
     % Flooring integer division.
     % Truncates towards minus infinity, e.g. (-10) div 3 = (-4).
@@ -161,7 +161,7 @@
 
     % unchecked_left_shift(X, Y) is the same as X << Y
     % except that the behaviour is undefined if Y is negative,
-    % or greater than or equal to the result of `int.bits_per_int/1'.
+    % or greater than or equal to the result of `bits_per_int/1'.
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(int::in, int::in) = (int::uo) is det.
@@ -175,7 +175,7 @@
 
     % unchecked_right_shift(X, Y) is the same as X >> Y
     % except that the behaviour is undefined if Y is negative,
-    % or greater than or equal to the result of `int.bits_per_int/1'.
+    % or greater than or equal to the result of `bits_per_int/1'.
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(int::in, int::in) = (int::uo) is det.
@@ -198,10 +198,10 @@
 
     % Bitwise exclusive or (xor).
     %
-:- func int.xor(int, int) = int.
-:- mode int.xor(in, in) = uo is det.
-:- mode int.xor(in, uo) = in is det.
-:- mode int.xor(uo, in) = in is det.
+:- func xor(int, int) = int.
+:- mode xor(in, in) = uo is det.
+:- mode xor(in, uo) = in is det.
+:- mode xor(uo, in) = in is det.
 
     % Bitwise complement.
     %
@@ -221,187 +221,187 @@
 :- mode is(uo, di) is det.
 :- mode is(out, in) is det.
 
-    % int.max_int is the maximum value of an int on this machine.
+    % max_int is the maximum value of an int on this machine.
     %
-:- func int.max_int = int.
-:- pred int.max_int(int::out) is det.
+:- func max_int = int.
+:- pred max_int(int::out) is det.
 
-    % int.min_int is the minimum value of an int on this machine.
+    % min_int is the minimum value of an int on this machine.
     %
-:- func int.min_int = int.
-:- pred int.min_int(int::out) is det.
+:- func min_int = int.
+:- pred min_int(int::out) is det.
 
-    % int.bits_per_int is the number of bits in an int on this machine.
+    % bits_per_int is the number of bits in an int on this machine.
     %
-:- func int.bits_per_int = int.
-:- pred int.bits_per_int(int::out) is det.
+:- func bits_per_int = int.
+:- pred bits_per_int(int::out) is det.
 
     % fold_up(F, Low, High, !Acc) <=> list.foldl(F, Low .. High, !Acc)
     %
-    % NOTE: fold_up/5 is undefined if High = int.max_int.
+    % NOTE: fold_up/5 is undefined if High = max_int.
     %
-:- pred int.fold_up(pred(int, T, T), int, int, T, T).
-:- mode int.fold_up(pred(in, in, out) is det, in, in, in, out) is det.
-:- mode int.fold_up(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
-:- mode int.fold_up(pred(in, di, uo) is det, in, in, di, uo) is det.
-:- mode int.fold_up(pred(in, array_di, array_uo) is det, in, in,
+:- pred fold_up(pred(int, T, T), int, int, T, T).
+:- mode fold_up(pred(in, in, out) is det, in, in, in, out) is det.
+:- mode fold_up(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
+:- mode fold_up(pred(in, di, uo) is det, in, in, di, uo) is det.
+:- mode fold_up(pred(in, array_di, array_uo) is det, in, in,
     array_di, array_uo) is det.
-:- mode int.fold_up(pred(in, in, out) is semidet, in, in, in, out)
+:- mode fold_up(pred(in, in, out) is semidet, in, in, in, out)
     is semidet.
-:- mode int.fold_up(pred(in, mdi, muo) is semidet, in, in, mdi, muo)
+:- mode fold_up(pred(in, mdi, muo) is semidet, in, in, mdi, muo)
     is semidet.
-:- mode int.fold_up(pred(in, di, uo) is semidet, in, in, di, uo)
+:- mode fold_up(pred(in, di, uo) is semidet, in, in, di, uo)
     is semidet.
-:- mode int.fold_up(pred(in, in, out) is nondet, in, in, in, out)
+:- mode fold_up(pred(in, in, out) is nondet, in, in, in, out)
     is nondet.
-:- mode int.fold_up(pred(in, mdi, muo) is nondet, in, in, mdi, muo) 
+:- mode fold_up(pred(in, mdi, muo) is nondet, in, in, mdi, muo) 
     is nondet.
-:- mode int.fold_up(pred(in, di, uo) is cc_multi, in, in, di, uo)
+:- mode fold_up(pred(in, di, uo) is cc_multi, in, in, di, uo)
     is cc_multi.
-:- mode int.fold_up(pred(in, in, out) is cc_multi, in, in, in, out)
+:- mode fold_up(pred(in, in, out) is cc_multi, in, in, in, out)
     is cc_multi.
 
     % fold_up(F, Low, High, Acc) <=> list.foldl(F, Low .. High, Acc)
     %
-    % NOTE: fold_up/4 is undefined if High = int.max_int.
+    % NOTE: fold_up/4 is undefined if High = max_int.
     %
-:- func int.fold_up(func(int, T) = T, int, int, T) = T.
+:- func fold_up(func(int, T) = T, int, int, T) = T.
 
     % fold_down(F, Low, High, !Acc) <=> list.foldr(F, Low .. High, !Acc)
     %
-    % NOTE: fold_down/5 is undefined if Low int.min_int.
+    % NOTE: fold_down/5 is undefined if Low min_int.
     %
-:- pred int.fold_down(pred(int, T, T), int, int, T, T).
-:- mode int.fold_down(pred(in, in, out) is det, in, in, in, out) is det.
-:- mode int.fold_down(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
-:- mode int.fold_down(pred(in, di, uo) is det, in, in, di, uo) is det.
-:- mode int.fold_down(pred(in, array_di, array_uo) is det, in, in,
+:- pred fold_down(pred(int, T, T), int, int, T, T).
+:- mode fold_down(pred(in, in, out) is det, in, in, in, out) is det.
+:- mode fold_down(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
+:- mode fold_down(pred(in, di, uo) is det, in, in, di, uo) is det.
+:- mode fold_down(pred(in, array_di, array_uo) is det, in, in,
     array_di, array_uo) is det.
-:- mode int.fold_down(pred(in, in, out) is semidet, in, in, in, out)
+:- mode fold_down(pred(in, in, out) is semidet, in, in, in, out)
     is semidet.
-:- mode int.fold_down(pred(in, mdi, muo) is semidet, in, in, mdi, muo)
+:- mode fold_down(pred(in, mdi, muo) is semidet, in, in, mdi, muo)
     is semidet.
-:- mode int.fold_down(pred(in, di, uo) is semidet, in, in, di, uo)
+:- mode fold_down(pred(in, di, uo) is semidet, in, in, di, uo)
     is semidet.
-:- mode int.fold_down(pred(in, in, out) is nondet, in, in, in, out)
+:- mode fold_down(pred(in, in, out) is nondet, in, in, in, out)
     is nondet.
-:- mode int.fold_down(pred(in, mdi, muo) is nondet, in, in, mdi, muo)
+:- mode fold_down(pred(in, mdi, muo) is nondet, in, in, mdi, muo)
     is nondet.
-:- mode int.fold_down(pred(in, in, out) is cc_multi, in, in, in, out)
+:- mode fold_down(pred(in, in, out) is cc_multi, in, in, in, out)
     is cc_multi.
-:- mode int.fold_down(pred(in, di, uo) is cc_multi, in, in, di, uo)
+:- mode fold_down(pred(in, di, uo) is cc_multi, in, in, di, uo)
     is cc_multi.
 
     % fold_down(F, Low, High, Acc) <=> list.foldr(F, Low .. High, Acc)
     %
-    % NOTE: fold_down/4 is undefined if Low = int.min_int.
+    % NOTE: fold_down/4 is undefined if Low = min_int.
     %
-:- func int.fold_down(func(int, T) = T, int, int, T) = T.
+:- func fold_down(func(int, T) = T, int, int, T) = T.
 
     % fold_up2(F, Low, High, !Acc1, Acc2) <=>
     %   list.foldl2(F, Low .. High, !Acc1, !Acc2)
     %
-    % NOTE: fold_up2/7 is undefined if High = int.max_int.
+    % NOTE: fold_up2/7 is undefined if High = max_int.
     %
-:- pred int.fold_up2(pred(int, T, T, U, U), int, int, T, T, U, U).
-:- mode int.fold_up2(pred(in, in, out, in, out) is det, in, in, in, out,
+:- pred fold_up2(pred(int, T, T, U, U), int, int, T, T, U, U).
+:- mode fold_up2(pred(in, in, out, in, out) is det, in, in, in, out,
     in, out) is det.
-:- mode int.fold_up2(pred(in, in, out, mdi, muo) is det, in, in, in, out,
+:- mode fold_up2(pred(in, in, out, mdi, muo) is det, in, in, in, out,
     mdi, muo) is det.
-:- mode int.fold_up2(pred(in, in, out, di, uo) is det, in, in, in, out,
+:- mode fold_up2(pred(in, in, out, di, uo) is det, in, in, in, out,
     di, uo) is det.
-:- mode int.fold_up2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
+:- mode fold_up2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
     di, uo) is det.
-:- mode int.fold_up2(pred(in, in, out, array_di, array_uo) is det, in, in,
+:- mode fold_up2(pred(in, in, out, array_di, array_uo) is det, in, in,
     in, out, array_di, array_uo) is det.
-:- mode int.fold_up2(pred(in, in, out, in, out) is semidet, in, in,
+:- mode fold_up2(pred(in, in, out, in, out) is semidet, in, in,
     in, out, in, out) is semidet.
-:- mode int.fold_up2(pred(in, in, out, mdi, muo) is semidet, in, in,
+:- mode fold_up2(pred(in, in, out, mdi, muo) is semidet, in, in,
     in, out, mdi, muo) is semidet.
-:- mode int.fold_up2(pred(in, in, out, di, uo) is semidet, in, in,
+:- mode fold_up2(pred(in, in, out, di, uo) is semidet, in, in,
     in, out, di, uo) is semidet.
-:- mode int.fold_up2(pred(in, in, out, in, out) is nondet, in, in,
+:- mode fold_up2(pred(in, in, out, in, out) is nondet, in, in,
     in, out, in, out) is nondet.
-:- mode int.fold_up2(pred(in, in, out, mdi, muo) is nondet, in, in,
+:- mode fold_up2(pred(in, in, out, mdi, muo) is nondet, in, in,
     in, out, mdi, muo) is nondet.
 
     % fold_down2(F, Low, High, !Acc1, !Acc2) <=>
     %   list.foldr2(F, Low .. High, !Acc1, Acc2).
     %
-    % NOTE: fold_down2/7 is undefined if Low = int.min_int.
+    % NOTE: fold_down2/7 is undefined if Low = min_int.
     %
-:- pred int.fold_down2(pred(int, T, T, U, U), int, int, T, T, U, U).
-:- mode int.fold_down2(pred(in, in, out, in, out) is det, in, in, in, out,
+:- pred fold_down2(pred(int, T, T, U, U), int, int, T, T, U, U).
+:- mode fold_down2(pred(in, in, out, in, out) is det, in, in, in, out,
     in, out) is det.
-:- mode int.fold_down2(pred(in, in, out, mdi, muo) is det, in, in, in, out,
+:- mode fold_down2(pred(in, in, out, mdi, muo) is det, in, in, in, out,
     mdi, muo) is det.
-:- mode int.fold_down2(pred(in, in, out, di, uo) is det, in, in, in, out,
+:- mode fold_down2(pred(in, in, out, di, uo) is det, in, in, in, out,
     di, uo) is det.
-:- mode int.fold_down2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
+:- mode fold_down2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
     di, uo) is det.
-:- mode int.fold_down2(pred(in, in, out, array_di, array_uo) is det, in, in,
+:- mode fold_down2(pred(in, in, out, array_di, array_uo) is det, in, in,
     in, out, array_di, array_uo) is det.
-:- mode int.fold_down2(pred(in, in, out, in, out) is semidet, in, in,
+:- mode fold_down2(pred(in, in, out, in, out) is semidet, in, in,
     in, out, in, out) is semidet.
-:- mode int.fold_down2(pred(in, in, out, di, uo) is semidet, in, in,
+:- mode fold_down2(pred(in, in, out, di, uo) is semidet, in, in,
     in, out, di, uo) is semidet.
-:- mode int.fold_down2(pred(in, in, out, in, out) is nondet, in, in,
+:- mode fold_down2(pred(in, in, out, in, out) is nondet, in, in,
     in, out, in, out) is nondet.
-:- mode int.fold_down2(pred(in, in, out, mdi, muo) is nondet, in, in,
+:- mode fold_down2(pred(in, in, out, mdi, muo) is nondet, in, in,
     in, out, mdi, muo) is nondet.
     
     % fold_up3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
     %   list.foldl3(F, Low .. High, !Acc1, !Acc2, !Acc3)
     %
-    % NOTE: fold_up3/9 is undefined if High = int.max_int.
+    % NOTE: fold_up3/9 is undefined if High = max_int.
     %
-:- pred int.fold_up3(pred(int, T, T, U, U, V, V), int, int, T, T, U, U, V, V).
-:- mode int.fold_up3(pred(in, in, out, in, out, in, out) is det,
+:- pred fold_up3(pred(int, T, T, U, U, V, V), int, int, T, T, U, U, V, V).
+:- mode fold_up3(pred(in, in, out, in, out, in, out) is det,
     in, in, in, out, in, out, in, out) is det.
-:- mode int.fold_up3(pred(in, in, out, in, out, mdi, muo) is det,
+:- mode fold_up3(pred(in, in, out, in, out, mdi, muo) is det,
     in, in, in, out, in, out, mdi, muo) is det.
-:- mode int.fold_up3(pred(in, in, out, in, out, di, uo) is det,
+:- mode fold_up3(pred(in, in, out, in, out, di, uo) is det,
     in, in, in, out, in, out, di, uo) is det.
-:- mode int.fold_up3(pred(in, in, out, di, uo, di, uo) is det,
+:- mode fold_up3(pred(in, in, out, di, uo, di, uo) is det,
     in, in, in, out, di, uo, di, uo) is det.
-:- mode int.fold_up3(pred(in, in, out, in, out, array_di, array_uo) is det,
+:- mode fold_up3(pred(in, in, out, in, out, array_di, array_uo) is det,
     in, in, in, out, in, out, array_di, array_uo) is det.
-:- mode int.fold_up3(pred(in, in, out, in, out, in, out) is semidet,
+:- mode fold_up3(pred(in, in, out, in, out, in, out) is semidet,
     in, in, in, out, in, out, in, out) is semidet.
-:- mode int.fold_up3(pred(in, in, out, in, out, mdi, muo) is semidet,
+:- mode fold_up3(pred(in, in, out, in, out, mdi, muo) is semidet,
     in, in, in, out, in, out, mdi, muo) is semidet.
-:- mode int.fold_up3(pred(in, in, out, in, out, di, uo) is semidet,
+:- mode fold_up3(pred(in, in, out, in, out, di, uo) is semidet,
     in, in, in, out, in, out, di, uo) is semidet.
-:- mode int.fold_up3(pred(in, in, out, in, out, in, out) is nondet,
+:- mode fold_up3(pred(in, in, out, in, out, in, out) is nondet,
     in, in, in, out, in, out, in, out) is nondet.
-:- mode int.fold_up3(pred(in, in, out, in, out, mdi, muo) is nondet,
+:- mode fold_up3(pred(in, in, out, in, out, mdi, muo) is nondet,
     in, in, in, out, in, out, mdi, muo) is nondet.
     
     % fold_up3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
     %   list.foldr3(F, Low .. High, !Acc1, !Acc2, !Acc3)
     %
-    % NOTE: fold_down3/9 is undefined if Low = int.min_int.
+    % NOTE: fold_down3/9 is undefined if Low = min_int.
     %
-:- pred int.fold_down3(pred(int, T, T, U, U, V, V), int, int, T, T, U, U, V, V).
-:- mode int.fold_down3(pred(in, in, out, in, out, in, out) is det,
+:- pred fold_down3(pred(int, T, T, U, U, V, V), int, int, T, T, U, U, V, V).
+:- mode fold_down3(pred(in, in, out, in, out, in, out) is det,
     in, in, in, out, in, out, in, out) is det.
-:- mode int.fold_down3(pred(in, in, out, in, out, mdi, muo) is det,
+:- mode fold_down3(pred(in, in, out, in, out, mdi, muo) is det,
     in, in, in, out, in, out, mdi, muo) is det.
-:- mode int.fold_down3(pred(in, in, out, in, out, di, uo) is det,
+:- mode fold_down3(pred(in, in, out, in, out, di, uo) is det,
     in, in, in, out, in, out, di, uo) is det.
-:- mode int.fold_down3(pred(in, in, out, di, uo, di, uo) is det,
+:- mode fold_down3(pred(in, in, out, di, uo, di, uo) is det,
     in, in, in, out, di, uo, di, uo) is det.
-:- mode int.fold_down3(pred(in, in, out, in, out, array_di, array_uo) is det,
+:- mode fold_down3(pred(in, in, out, in, out, array_di, array_uo) is det,
     in, in, in, out, in, out, array_di, array_uo) is det.
-:- mode int.fold_down3(pred(in, in, out, in, out, in, out) is semidet,
+:- mode fold_down3(pred(in, in, out, in, out, in, out) is semidet,
     in, in, in, out, in, out, in, out) is semidet.
-:- mode int.fold_down3(pred(in, in, out, in, out, mdi, muo) is semidet,
+:- mode fold_down3(pred(in, in, out, in, out, mdi, muo) is semidet,
     in, in, in, out, in, out, mdi, muo) is semidet.
-:- mode int.fold_down3(pred(in, in, out, in, out, di, uo) is semidet,
+:- mode fold_down3(pred(in, in, out, in, out, di, uo) is semidet,
     in, in, in, out, in, out, di, uo) is semidet.
-:- mode int.fold_down3(pred(in, in, out, in, out, in, out) is nondet,
+:- mode fold_down3(pred(in, in, out, in, out, in, out) is nondet,
     in, in, in, out, in, out, in, out) is nondet.
-:- mode int.fold_down3(pred(in, in, out, in, out, mdi, muo) is nondet,
+:- mode fold_down3(pred(in, in, out, in, out, mdi, muo) is nondet,
     in, in, in, out, in, out, mdi, muo) is nondet.
 
     % nondet_int_in_range(Lo, Hi, I):
@@ -412,7 +412,7 @@
 
     % Convert an int to a pretty_printer.doc for formatting.
     %
-:- func int.int_to_doc(int) = pretty_printer.doc.
+:- func int_to_doc(int) = pretty_printer.doc.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -449,20 +449,20 @@
     % Used by floor_to_multiple_of_bits_per_int, placed here to make sure
     % they go in the `.opt' file.
 
-    % int.quot_bits_per_int(X) = X // bits_per_int.
+    % quot_bits_per_int(X) = X // bits_per_int.
     %
-:- func int.quot_bits_per_int(int) = int.
+:- func quot_bits_per_int(int) = int.
 
-    % int.times_bits_per_int(X) = X * bits_per_int.
+    % times_bits_per_int(X) = X * bits_per_int.
     %
-:- func int.times_bits_per_int(int) = int.
+:- func times_bits_per_int(int) = int.
 
     % Used by bitmap.m.  Like the ones above, the purpose of defining this in C
     % is to make it clearer to gcc that this can be optimized.
 
-    % int.rem_bits_per_int(X) = X `rem` bits_per_int.
+    % rem_bits_per_int(X) = X `rem` bits_per_int.
     %
-:- func int.rem_bits_per_int(int) = int.
+:- func rem_bits_per_int(int) = int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -577,7 +577,7 @@ floor_to_multiple_of_bits_per_int(X) = Floor :-
 X mod Y = X - (X div Y) * Y.
 
 X << Y = Z :-
-    int.bits_per_int(IntBits),
+    bits_per_int(IntBits),
     ( Y >= 0 ->
         ( Y >= IntBits ->
             Z = 0
@@ -595,7 +595,7 @@ X << Y = Z :-
     % Note: this assumes two's complement arithmetic.
     % tests/hard_coded/shift_test.m will fail if this is not the case.
 X >> Y = Z :-
-    int.bits_per_int(IntBits),
+    bits_per_int(IntBits),
     ( Y >= 0 ->
         ( Y >= IntBits ->
             Z = (if X >= 0 then 0 else -1)
@@ -618,52 +618,52 @@ even(X):-
 odd(X):-
     (X /\ 1) \= 0.
 
-int.abs(Num) = Abs :-
-    int.abs(Num, Abs).
+abs(Num) = Abs :-
+    abs(Num, Abs).
 
-int.abs(Num, Abs) :-
+abs(Num, Abs) :-
     ( Num < 0 ->
         Abs = 0 - Num
     ;
         Abs = Num
     ).
 
-int.max(X, Y) = Max :-
-    int.max(X, Y, Max).
+max(X, Y) = Max :-
+    max(X, Y, Max).
 
-int.max(X, Y, Max) :-
+max(X, Y, Max) :-
     ( X > Y ->
         Max = X
     ;
         Max = Y
     ).
 
-int.min(X, Y) = Min :-
-    int.min(X, Y, Min).
+min(X, Y) = Min :-
+    min(X, Y, Min).
 
-int.min(X, Y, Min) :-
+min(X, Y, Min) :-
     ( X < Y ->
         Min = X
     ;
         Min = Y
     ).
 
-int.pow(Base, Exp) = Result :-
-    int.pow(Base, Exp, Result).
+pow(Base, Exp) = Result :-
+    pow(Base, Exp, Result).
 
-int.pow(Base, Exp, Result) :-
+pow(Base, Exp, Result) :-
     ( int_domain_checks, Exp < 0 ->
         throw(math.domain_error("int.pow: zero base"))
     ;
-        Result = int.multiply_by_pow(1, Base, Exp)
+        Result = multiply_by_pow(1, Base, Exp)
     ).
 
     % Returns Scale0 * (Base ** Exp).
     % Requires that Exp >= 0.
     %
-:- func int.multiply_by_pow(int, int, int) = int.
+:- func multiply_by_pow(int, int, int) = int.
 
-int.multiply_by_pow(Scale0, Base, Exp) = Result :-
+multiply_by_pow(Scale0, Base, Exp) = Result :-
     ( Exp = 0 ->
         Result = Scale0
     ;
@@ -672,30 +672,30 @@ int.multiply_by_pow(Scale0, Base, Exp) = Result :-
         ;
             Scale1 = Scale0
         ),
-        Result = int.multiply_by_pow(Scale1, Base * Base, Exp div 2)
+        Result = multiply_by_pow(Scale1, Base * Base, Exp div 2)
     ).
 
-int.log2(X) = N :-
-    int.log2(X, N).
+log2(X) = N :-
+    log2(X, N).
 
-int.log2(X, N) :-
+log2(X, N) :-
     ( int_domain_checks, X =< 0 ->
         throw(math.domain_error("int.log2: taking logarithm of zero"))
     ;
-        int.log2_2(X, 0, N)
+        log2_2(X, 0, N)
     ).
 
-:- pred int.log2_2(int, int, int).
-:- mode int.log2_2(in, in, out) is det.
+:- pred log2_2(int, int, int).
+:- mode log2_2(in, in, out) is det.
 
-int.log2_2(X, N0, N) :-
+log2_2(X, N0, N) :-
     ( X = 1 ->
         N = N0
     ;
         X1 = X + 1,
         X2 = X1 // 2,
         N1 = N0 + 1,
-        int.log2_2(X2, N1, N)
+        log2_2(X2, N1, N)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -713,11 +713,11 @@ is(X, X).
     #define ML_BITS_PER_INT     (sizeof(MR_Integer) * CHAR_BIT)
 ").
 
-int.max_int = X :-
-    int.max_int(X).
+max_int = X :-
+    max_int(X).
 
 :- pragma foreign_proc("C",
-    int.max_int(Max::out),
+    max_int(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -734,11 +734,11 @@ int.max_int = X :-
     }
 ").
 
-int.min_int = X :-
-    int.min_int(X).
+min_int = X :-
+    min_int(X).
 
 :- pragma foreign_proc("C",
-    int.min_int(Min::out),
+    min_int(Min::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -755,11 +755,11 @@ int.min_int = X :-
     }
 ").
 
-int.bits_per_int = X :-
-    int.bits_per_int(X).
+bits_per_int = X :-
+    bits_per_int(X).
 
 :- pragma foreign_proc("C",
-    int.bits_per_int(Bits::out),
+    bits_per_int(Bits::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -767,7 +767,7 @@ int.bits_per_int = X :-
 ").
 
 :- pragma foreign_proc("C",
-    int.quot_bits_per_int(Int::in) = (Div::out),
+    quot_bits_per_int(Int::in) = (Div::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -775,7 +775,7 @@ int.bits_per_int = X :-
 ").
 
 :- pragma foreign_proc("C",
-    int.times_bits_per_int(Int::in) = (Result::out),
+    times_bits_per_int(Int::in) = (Result::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -783,7 +783,7 @@ int.bits_per_int = X :-
 ").
 
 :- pragma foreign_proc("C",
-    int.rem_bits_per_int(Int::in) = (Rem::out),
+    rem_bits_per_int(Int::in) = (Rem::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -791,21 +791,21 @@ int.bits_per_int = X :-
 ").
 
 :- pragma foreign_proc("C#",
-    int.max_int(Max::out),
+    max_int(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = System.Int32.MaxValue;
 ").
 
 :- pragma foreign_proc("C#",
-    int.min_int(Min::out),
+    min_int(Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Min = System.Int32.MinValue;
 ").
 
 :- pragma foreign_proc("C#",
-    int.bits_per_int(Bits::out),
+    bits_per_int(Bits::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // we are using int32 in the compiler.
@@ -814,21 +814,21 @@ int.bits_per_int = X :-
 ").
 
 :- pragma foreign_proc("Java",
-    int.max_int(Max::out),
+    max_int(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = java.lang.Integer.MAX_VALUE;
 ").
 
 :- pragma foreign_proc("Java",
-    int.min_int(Min::out),
+    min_int(Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Min = java.lang.Integer.MIN_VALUE;
 ").
 
 :- pragma foreign_proc("Java",
-    int.bits_per_int(Bits::out),
+    bits_per_int(Bits::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // Java ints are 32 bits.
@@ -836,7 +836,7 @@ int.bits_per_int = X :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    int.max_int(Max::out),
+    max_int(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     % XXX Erlang ints are actually arbitrary precision.
@@ -844,7 +844,7 @@ int.bits_per_int = X :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    int.min_int(Min::out),
+    min_int(Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     % XXX Erlang ints are actually arbitrary precision.
@@ -852,65 +852,65 @@ int.bits_per_int = X :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    int.bits_per_int(Bits::out),
+    bits_per_int(Bits::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     % XXX Erlang ints are actually arbitrary precision.
     Bits = 32
 ").
 
-int.quot_bits_per_int(Int::in) = (Result::out) :-
-    Result = Int // int.bits_per_int.
+quot_bits_per_int(Int::in) = (Result::out) :-
+    Result = Int // bits_per_int.
 
-int.times_bits_per_int(Int::in) = (Result::out) :-
-    Result = Int * int.bits_per_int.
+times_bits_per_int(Int::in) = (Result::out) :-
+    Result = Int * bits_per_int.
 
-int.rem_bits_per_int(Int::in) = (Result::out) :-
-    Result = Int rem int.bits_per_int.
-
-%-----------------------------------------------------------------------------%
-
-int.fold_up(P, Lo, Hi, !A) :-
-    ( if    Lo =< Hi
-      then  P(Lo, !A), int.fold_up(P, Lo + 1, Hi, !A)
-      else  true
-    ).
-
-int.fold_up(F, Lo, Hi, A) =
-    ( if Lo =< Hi then int.fold_up(F, Lo + 1, Hi, F(Lo, A)) else A ).
-
-int.fold_up2(P, Lo, Hi, !A, !B) :-
-    ( if    Lo =< Hi
-      then  P(Lo, !A, !B), int.fold_up2(P, Lo + 1, Hi, !A, !B)
-      else  true
-    ).
-
-int.fold_up3(P, Lo, Hi, !A, !B, !C) :-
-    ( if    Lo =< Hi
-      then  P(Lo, !A, !B, !C), int.fold_up3(P, Lo + 1, Hi, !A, !B, !C)
-      else  true
-    ).
+rem_bits_per_int(Int::in) = (Result::out) :-
+    Result = Int rem bits_per_int.
 
 %-----------------------------------------------------------------------------%
 
-int.fold_down(P, Lo, Hi, !A) :-
+fold_up(P, Lo, Hi, !A) :-
     ( if    Lo =< Hi
-      then  P(Hi, !A), int.fold_down(P, Lo, Hi - 1, !A)
+      then  P(Lo, !A), fold_up(P, Lo + 1, Hi, !A)
       else  true
     ).
 
-int.fold_down(F, Lo, Hi, A) =
-    ( if Lo =< Hi then int.fold_down(F, Lo, Hi - 1, F(Hi, A)) else A ).
+fold_up(F, Lo, Hi, A) =
+    ( if Lo =< Hi then fold_up(F, Lo + 1, Hi, F(Lo, A)) else A ).
 
-int.fold_down2(P, Lo, Hi, !A, !B) :-
+fold_up2(P, Lo, Hi, !A, !B) :-
     ( if    Lo =< Hi
-      then  P(Hi, !A, !B), int.fold_down2(P, Lo, Hi - 1, !A, !B)
+      then  P(Lo, !A, !B), fold_up2(P, Lo + 1, Hi, !A, !B)
       else  true
     ).
 
-int.fold_down3(P, Lo, Hi, !A, !B, !C) :-
+fold_up3(P, Lo, Hi, !A, !B, !C) :-
     ( if    Lo =< Hi
-      then  P(Hi, !A, !B, !C), int.fold_down3(P, Lo, Hi - 1, !A, !B, !C)
+      then  P(Lo, !A, !B, !C), fold_up3(P, Lo + 1, Hi, !A, !B, !C)
+      else  true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+fold_down(P, Lo, Hi, !A) :-
+    ( if    Lo =< Hi
+      then  P(Hi, !A), fold_down(P, Lo, Hi - 1, !A)
+      else  true
+    ).
+
+fold_down(F, Lo, Hi, A) =
+    ( if Lo =< Hi then fold_down(F, Lo, Hi - 1, F(Hi, A)) else A ).
+
+fold_down2(P, Lo, Hi, !A, !B) :-
+    ( if    Lo =< Hi
+      then  P(Hi, !A, !B), fold_down2(P, Lo, Hi - 1, !A, !B)
+      else  true
+    ).
+
+fold_down3(P, Lo, Hi, !A, !B, !C) :-
+    ( if    Lo =< Hi
+      then  P(Hi, !A, !B, !C), fold_down3(P, Lo, Hi - 1, !A, !B, !C)
       else  true
     ).
 
@@ -932,7 +932,7 @@ nondet_int_in_range(Lo, Hi, I) :-
 
 %-----------------------------------------------------------------------------%
 
-int.int_to_doc(X) = str(string.int_to_string(X)).
+int_to_doc(X) = str(string.int_to_string(X)).
 
 %-----------------------------------------------------------------------------%
 :- end_module int.

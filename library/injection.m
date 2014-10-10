@@ -44,233 +44,229 @@
 
     % Initialize an empty injection.
     %
-:- func injection.init = injection(K, V).
-:- pred injection.init(injection(K, V)::out) is det.
+:- func init = injection(K, V).
+:- pred init(injection(K, V)::out) is det.
 
     % Intialise an injection wit the given key-value pair.
     %
-:- func injection.singleton(K, V) = injection(K, V).
+:- func singleton(K, V) = injection(K, V).
 
     % Check whether an injection is empty.
     %
-:- pred injection.is_empty(injection(K, V)::in) is semidet.
+:- pred is_empty(injection(K, V)::in) is semidet.
 
     % Search the injection for the value corresponding to a given key.
     %
-:- func injection.forward_search(injection(K, V), K) = V is semidet.
-:- pred injection.forward_search(injection(K, V)::in, K::in, V::out)
+:- func forward_search(injection(K, V), K) = V is semidet.
+:- pred forward_search(injection(K, V)::in, K::in, V::out)
     is semidet.
 
     % Search the injection for the key corresponding to a given value.
     %
-:- func injection.reverse_search(injection(K, V), V) = K is semidet.
-:- pred injection.reverse_search(injection(K, V)::in, K::out, V::in)
+:- func reverse_search(injection(K, V), V) = K is semidet.
+:- pred reverse_search(injection(K, V)::in, K::out, V::in)
     is semidet.
 
     % Combined forward/reverse search.
     % (Declaratively equivalent to reverse_search.)
     %
-:- pred injection.search(injection(K, V), K, V).
-:- mode injection.search(in, in, out) is cc_nondet.
-:- mode injection.search(in, out, in) is semidet.
+:- pred search(injection(K, V), K, V).
+:- mode search(in, in, out) is cc_nondet.
+:- mode search(in, out, in) is semidet.
 
     % Look up the value for a given key, but throw an exception if it
     % is not present.
     %
-:- func injection.lookup(injection(K, V), K) = V.
-:- pred injection.lookup(injection(K, V)::in, K::in, V::out) is det.
+:- func lookup(injection(K, V), K) = V.
+:- pred lookup(injection(K, V)::in, K::in, V::out) is det.
 
     % Look up the key for a given value, but throw an exception if it
     % is not present.
     %
-:- func injection.reverse_lookup(injection(K, V), V) = K.
-:- pred injection.reverse_lookup(injection(K, V)::in, K::out, V::in) is det.
+:- func reverse_lookup(injection(K, V), V) = K.
+:- pred reverse_lookup(injection(K, V)::in, K::out, V::in) is det.
 
     % Return the list of all keys in the injection.
     %
-:- func injection.keys(injection(K, V)) = list(K).
-:- pred injection.keys(injection(K, V)::in, list(K)::out) is det.
+:- func keys(injection(K, V)) = list(K).
+:- pred keys(injection(K, V)::in, list(K)::out) is det.
 
     % Return the list of all values in the injection.
     %
-:- func injection.values(injection(K, V)) = list(V).
-:- pred injection.values(injection(K, V)::in, list(V)::out) is det.
+:- func values(injection(K, V)) = list(V).
+:- pred values(injection(K, V)::in, list(V)::out) is det.
 
     % Succeeds if the injection contains the given key.
     %
-:- pred injection.contains_key(injection(K, V)::in, K::in) is semidet.
+:- pred contains_key(injection(K, V)::in, K::in) is semidet.
 
     % Succeeds if the injection contains the given value.
     %
-:- pred injection.contains_value(injection(K, V)::in, V::in) is semidet.
+:- pred contains_value(injection(K, V)::in, V::in) is semidet.
 
     % Insert a new key-value pair into the injection.  Fails if either
     % the key or value already exists.
     %
-:- func injection.insert(injection(K, V), K, V) = injection(K, V) is semidet.
-:- pred injection.insert(injection(K, V)::in, K::in, V::in,
+:- func insert(injection(K, V), K, V) = injection(K, V) is semidet.
+:- pred insert(injection(K, V)::in, K::in, V::in,
     injection(K, V)::out) is semidet.
 
     % As above but throws an exception if the key or the value already
     % exists.
     %
-:- func injection.det_insert(injection(K, V), K, V) = injection(K, V).
-:- pred injection.det_insert(injection(K, V)::in, K::in, V::in,
+:- func det_insert(injection(K, V), K, V) = injection(K, V).
+:- pred det_insert(injection(K, V)::in, K::in, V::in,
     injection(K, V)::out) is det.
 
     % Update the value associated with a given key.  Fails if the key
     % does not already exist, or if the value is already associated
     % with a key.
     %
-:- func injection.update(injection(K, V), K, V) = injection(K, V) is semidet.
-:- pred injection.update(injection(K, V)::in, K::in, V::in,
+:- func update(injection(K, V), K, V) = injection(K, V) is semidet.
+:- pred update(injection(K, V)::in, K::in, V::in,
     injection(K, V)::out) is semidet.
 
     % As above, but throws an exception if the key does not already exist,
     % or if the value is already associated with a key.
     %
-:- func injection.det_update(injection(K, V), K, V) = injection(K, V).
-:- pred injection.det_update(injection(K, V)::in, K::in, V::in,
+:- func det_update(injection(K, V), K, V) = injection(K, V).
+:- pred det_update(injection(K, V)::in, K::in, V::in,
     injection(K, V)::out) is det.
 
     % Sets the value associated with a given key, regardless of whether
     % the key exists already or not.  Fails if the value is already
     % associated with a key that is different from the given key.
     %
-:- func injection.set(injection(K, V), K, V) = injection(K, V) is semidet.
-:- pred injection.set(injection(K, V)::in, K::in, V::in,
+:- func set(injection(K, V), K, V) = injection(K, V) is semidet.
+:- pred set(injection(K, V)::in, K::in, V::in,
     injection(K, V)::out) is semidet.
 
     % As above, but throws an exception if the value is already associated
     % with a key that is different from the given key.
     %
-:- func injection.det_set(injection(K, V), K, V) = injection(K, V).
-:- pred injection.det_set(injection(K, V)::in, K::in, V::in,
+:- func det_set(injection(K, V), K, V) = injection(K, V).
+:- pred det_set(injection(K, V)::in, K::in, V::in,
     injection(K, V)::out) is det.
 
     % Insert key-value pairs from an assoc_list into the given injection.
     % Fails if any of the individual inserts would fail.
     %
-:- func injection.insert_from_assoc_list(assoc_list(K, V), injection(K, V)) =
+:- func insert_from_assoc_list(assoc_list(K, V), injection(K, V)) =
     injection(K, V) is semidet.
-:- pred injection.insert_from_assoc_list(assoc_list(K, V)::in,
+:- pred insert_from_assoc_list(assoc_list(K, V)::in,
     injection(K, V)::in, injection(K, V)::out) is semidet.
 
     % As above, but throws an exception if any of the individual
     % inserts would fail.
     %
-:- func injection.det_insert_from_assoc_list(assoc_list(K, V),
+:- func det_insert_from_assoc_list(assoc_list(K, V),
     injection(K, V)) = injection(K, V).
-:- pred injection.det_insert_from_assoc_list(assoc_list(K, V)::in,
+:- pred det_insert_from_assoc_list(assoc_list(K, V)::in,
     injection(K, V)::in, injection(K, V)::out) is det.
 
     % Set key-value pairs from an assoc_list into the given injection.
     % Fails of any of the individual sets would fail.
     %
-:- func injection.set_from_assoc_list(assoc_list(K, V), injection(K, V)) =
+:- func set_from_assoc_list(assoc_list(K, V), injection(K, V)) =
     injection(K, V) is semidet.
-:- pred injection.set_from_assoc_list(assoc_list(K, V)::in,
+:- pred set_from_assoc_list(assoc_list(K, V)::in,
     injection(K, V)::in, injection(K, V)::out) is semidet.
 
     % As above, but throws an exception if any of the individual sets
     % would fail.
     %
-:- func injection.det_set_from_assoc_list(assoc_list(K, V), injection(K, V)) =
+:- func det_set_from_assoc_list(assoc_list(K, V), injection(K, V)) =
     injection(K, V).
-:- pred injection.det_set_from_assoc_list(assoc_list(K, V)::in,
+:- pred det_set_from_assoc_list(assoc_list(K, V)::in,
     injection(K, V)::in, injection(K, V)::out) is det.
 
     % Insert key-value pairs from corresponding lists into the given
     % injection.  Fails if any of the individual inserts would fail.
     % Throws an exception if the lists are not of equal length.
     %
-:- func injection.insert_from_corresponding_lists(list(K), list(V),
+:- func insert_from_corresponding_lists(list(K), list(V),
     injection(K, V)) = injection(K, V) is semidet.
-:- pred injection.insert_from_corresponding_lists(list(K)::in, list(V)::in,
+:- pred insert_from_corresponding_lists(list(K)::in, list(V)::in,
     injection(K, V)::in, injection(K, V)::out) is semidet.
 
     % As above, but throws an exception if any of the individual
     % inserts would fail.
     %
-:- func injection.det_insert_from_corresponding_lists(list(K), list(V),
+:- func det_insert_from_corresponding_lists(list(K), list(V),
     injection(K, V)) = injection(K, V).
-:- pred injection.det_insert_from_corresponding_lists(list(K)::in, list(V)::in,
+:- pred det_insert_from_corresponding_lists(list(K)::in, list(V)::in,
     injection(K, V)::in, injection(K, V)::out) is det.
 
     % Set key-value pairs from corresponding lists into the given
     % injection.  Fails of any of the individual sets would fail.
     % Throws an exception if the lists are not of equal length.
     %
-:- func injection.set_from_corresponding_lists(list(K), list(V),
+:- func set_from_corresponding_lists(list(K), list(V),
     injection(K, V)) = injection(K, V) is semidet.
-:- pred injection.set_from_corresponding_lists(list(K)::in, list(V)::in,
+:- pred set_from_corresponding_lists(list(K)::in, list(V)::in,
     injection(K, V)::in, injection(K, V)::out) is semidet.
 
     % As above, but throws an exception if any of the individual sets
     % would fail.
     %
-:- func injection.det_set_from_corresponding_lists(list(K), list(V),
+:- func det_set_from_corresponding_lists(list(K), list(V),
     injection(K, V)) = injection(K, V).
-:- pred injection.det_set_from_corresponding_lists(list(K)::in, list(V)::in,
+:- pred det_set_from_corresponding_lists(list(K)::in, list(V)::in,
     injection(K, V)::in, injection(K, V)::out) is det.
 
     % Delete a key from an injection.  Also deletes any values that
     % correspond to that key.  If the key is not present, leave the
     % injection unchanged.
     %
-:- func injection.delete_key(injection(K, V), K) = injection(K, V).
-:- pred injection.delete_key(K::in, injection(K, V)::in, injection(K, V)::out)
-    is det.
+:- func delete_key(injection(K, V), K) = injection(K, V).
+:- pred delete_key(K::in, injection(K, V)::in, injection(K, V)::out) is det.
 
     % Delete a value from an injection.  Throws an exception if there is
     % a key that maps to this value.  If the value is not present, leave
     % the injection unchanged.
     %
-:- func injection.delete_value(injection(K, V), V) = injection(K, V).
-:- pred injection.delete_value(V::in, injection(K, V)::in,
+:- func delete_value(injection(K, V), V) = injection(K, V).
+:- pred delete_value(V::in, injection(K, V)::in, injection(K, V)::out) is det.
+
+    % Apply delete_key to a list of keys.
+    %
+:- func delete_keys(injection(K, V), list(K)) = injection(K, V).
+:- pred delete_keys(list(K)::in, injection(K, V)::in,
     injection(K, V)::out) is det.
 
-    % Apply injection.delete_key to a list of keys.
+    % Apply delete_value to a list of values.
     %
-:- func injection.delete_keys(injection(K, V), list(K)) = injection(K, V).
-:- pred injection.delete_keys(list(K)::in, injection(K, V)::in,
-    injection(K, V)::out) is det.
-
-    % Apply injection.delete_value to a list of values.
-    %
-:- func injection.delete_values(injection(K, V), list(V)) = injection(K, V).
-:- pred injection.delete_values(list(V)::in, injection(K, V)::in,
+:- func delete_values(injection(K, V), list(V)) = injection(K, V).
+:- pred delete_values(list(V)::in, injection(K, V)::in,
     injection(K, V)::out) is det.
 
     % Merge the contents of the two injections.  Both sets of keys must
     % be disjoint, and both sets of values must be disjoint.
     %
-:- func injection.merge(injection(K, V), injection(K, V)) = injection(K, V).
-:- pred injection.merge(injection(K, V)::in, injection(K, V)::in,
-    injection(K, V)::out) is det.
+:- func merge(injection(K, V), injection(K, V)) = injection(K, V).
+:- pred merge(injection(K, V)::in, injection(K, V)::in, injection(K, V)::out)
+    is det.
 
     % Merge the contents of the two injections.  For keys that occur in
     % both injections, map them to the value in the second argument.
     % Both sets of values must be disjoint.
     %
-:- func injection.overlay(injection(K, V), injection(K, V)) = injection(K, V).
-:- pred injection.overlay(injection(K, V)::in, injection(K, V)::in,
-    injection(K, V)::out) is det.
+:- func overlay(injection(K, V), injection(K, V)) = injection(K, V).
+:- pred overlay(injection(K, V)::in, injection(K, V)::in, injection(K, V)::out)
+    is det.
 
-    % Apply an injection to a list of keys.  Throws an exception if any
-    % of the keys are not present.
+    % Apply an injection to a list of keys.
+    % Throws an exception if any of the keys are not present.
     %
-:- func injection.apply_forward_map_to_list(injection(K, V), list(K)) =
-    list(V).
-:- pred injection.apply_forward_map_to_list(injection(K, V)::in, list(K)::in,
+:- func apply_forward_map_to_list(injection(K, V), list(K)) = list(V).
+:- pred apply_forward_map_to_list(injection(K, V)::in, list(K)::in,
     list(V)::out) is det.
 
-    % Apply the inverse of an injection to a list of values.  Throws an
-    % exception if any of the values are not present.
+    % Apply the inverse of an injection to a list of values.
+    % Throws an exception if any of the values are not present.
     %
-:- func injection.apply_reverse_map_to_list(injection(K, V), list(V)) =
-    list(K).
-:- pred injection.apply_reverse_map_to_list(injection(K, V)::in, list(V)::in,
+:- func apply_reverse_map_to_list(injection(K, V), list(V)) = list(K).
+:- pred apply_reverse_map_to_list(injection(K, V)::in, list(V)::in,
     list(K)::out) is det.
 
     % Apply a transformation to all the keys in the injection.  If two
@@ -278,15 +274,14 @@
     % value associated with the greater of these two keys is used in the
     % result.
     %
-:- func injection.map_keys(func(V, K) = L, injection(K, V)) = injection(L, V).
-:- pred injection.map_keys(pred(V, K, L)::in(pred(in, in, out) is det),
+:- func map_keys(func(V, K) = L, injection(K, V)) = injection(L, V).
+:- pred map_keys(pred(V, K, L)::in(pred(in, in, out) is det),
     injection(K, V)::in, injection(L, V)::out) is det.
 
-    % Same as injection.map_keys, but deletes any keys for which the
+    % Same as map_keys, but deletes any keys for which the
     % transformation fails.
     %
-:- pred injection.filter_map_keys(
-    pred(V, K, L)::in(pred(in, in, out) is semidet),
+:- pred filter_map_keys(pred(V, K, L)::in(pred(in, in, out) is semidet),
     injection(K, V)::in, injection(L, V)::out) is det.
 
     % Apply a transformation to all the values in the injection.  If two
@@ -294,20 +289,19 @@
     % reverse search of these two values in the original map must lead
     % to the same key.  If it doesn't, then throw an exception.
     %
-:- func injection.map_values(func(K, V) = W, injection(K, V)) =
-    injection(K, W).
-:- pred injection.map_values(pred(K, V, W)::in(pred(in, in, out) is det),
+:- func map_values(func(K, V) = W, injection(K, V)) = injection(K, W).
+:- pred map_values(pred(K, V, W)::in(pred(in, in, out) is det),
     injection(K, V)::in, injection(K, W)::out) is det.
 
     % Extract the forward map from an injection.
     %
-:- func injection.forward_map(injection(K, V)) = map(K, V).
-:- pred injection.forward_map(injection(K, V)::in, map(K, V)::out) is det.
+:- func forward_map(injection(K, V)) = map(K, V).
+:- pred forward_map(injection(K, V)::in, map(K, V)::out) is det.
 
     % Extract the reverse map from an injection.
     %
-:- func injection.reverse_map(injection(K, V)) = map(V, K).
-:- pred injection.reverse_map(injection(K, V)::in, map(V, K)::out) is det.
+:- func reverse_map(injection(K, V)) = map(V, K).
+:- pred reverse_map(injection(K, V)::in, map(V, K)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -31,30 +31,30 @@
 % Types used by streams.
 %
 
-:- type stream.name == string.
+:- type name == string.
 
-:- type stream.result(Error)
+:- type result(Error)
     --->    ok
     ;       eof
     ;       error(Error).
 
-:- type stream.result(T, Error)
+:- type result(T, Error)
     --->    ok(T)
     ;       eof
     ;       error(Error).
 
-:- type stream.res(Error)
+:- type res(Error)
     --->    ok
     ;       error(Error).
 
-:- type stream.res(T, Error)
+:- type res(T, Error)
     --->    ok(T)
     ;       error(Error).
 
-    % stream.maybe_partial_res is used when it is possible to return
-    % a partial result when an error occurs.
+    % maybe_partial_res is used when it is possible to return a partial result
+    % when an error occurs.
     %
-:- type stream.maybe_partial_res(T, Error)
+:- type maybe_partial_res(T, Error)
     --->    ok(T)
     ;       error(T, Error).
 
@@ -63,7 +63,7 @@
 % Stream errors.
 %
 
-:- typeclass stream.error(Error) where
+:- typeclass error(Error) where
 [
 
     % Convert a stream error into a human-readable format.
@@ -81,12 +81,12 @@
     % The state type is threaded through, and destructively updated by,
     % the stream operations.
     %
-:- typeclass stream.stream(Stream, State) <= (Stream -> State) where
+:- typeclass stream(Stream, State) <= (Stream -> State) where
 [
         % Returns a descriptive name for the stream.
         % Intended for use in error messages.
         %
-        pred name(Stream::in, stream.name::out, State::di, State::uo) is det
+        pred name(Stream::in, name::out, State::di, State::uo) is det
 ].
 
 %-----------------------------------------------------------------------------%
@@ -96,15 +96,14 @@
 
     % An input stream is a source of data.
     %
-:- typeclass stream.input(Stream, State) <= stream(Stream, State) where [].
+:- typeclass input(Stream, State) <= stream(Stream, State) where [].
 
     % A reader stream is a subclass of specific input stream that can be
     % used to read data of a specific type from that input stream.
     % A single input stream can support multiple reader subclasses.
     %
-:- typeclass stream.reader(Stream, Unit, State, Error)
-    <= (stream.input(Stream, State), stream.error(Error),
-        (Stream, Unit -> Error)) where
+:- typeclass reader(Stream, Unit, State, Error)
+    <= (input(Stream, State), error(Error), (Stream, Unit -> Error)) where
 [
     % Get the next unit from the given stream.
     %
@@ -119,7 +118,7 @@
     % XXX We should provide an interface to allow the user to reset the
     % error status to try again if an error is transient.
     %
-    pred get(Stream::in, stream.result(Unit, Error)::out,
+    pred get(Stream::in, result(Unit, Error)::out,
         State::di, State::uo) is det
 ].
 
@@ -129,8 +128,8 @@
     % streams may be able to efficiently read bytes into a bitmap.
     % A single input stream can support multiple bulk_reader subclasses.
     %
-:- typeclass stream.bulk_reader(Stream, Index, Store, State, Error)
-    <= (stream.input(Stream, State), stream.error(Error),
+:- typeclass bulk_reader(Stream, Index, Store, State, Error)
+    <= (input(Stream, State), error(Error),
         (Stream, Index, Store -> Error)) where
 [
     % bulk_get(Stream, Index, NumItems, !Store, NumItemsRead, Result, !State).
@@ -160,7 +159,7 @@
     %
     pred bulk_get(Stream::in, Index::in, int::in,
         Store::bulk_get_di, Store::bulk_get_uo,
-        int::out, stream.res(Error)::out, State::di, State::uo) is det
+        int::out, res(Error)::out, State::di, State::uo) is det
 ].
 
     % XXX These should be di and uo, but with the current state of the mode
@@ -179,7 +178,7 @@
     % an explicit error type.  They should handle errors by throwing
     % exceptions.
     %
-:- typeclass stream.output(Stream, State)
+:- typeclass output(Stream, State)
     <= stream(Stream, State) where
 [
     % For buffered output streams completely write out any data in the
@@ -192,8 +191,8 @@
     % used to write data of a specific type to that output stream.
     % A single output stream can support multiple writer subclasses.
     %
-:- typeclass stream.writer(Stream, Unit, State)
-    <= stream.output(Stream, State) where
+:- typeclass writer(Stream, Unit, State)
+    <= output(Stream, State) where
 [
     % Write the next unit to the given stream.
     % Blocks if the whole unit can't be written to the stream at the time
@@ -211,8 +210,8 @@
     % and destination of data, i.e. it is a both an input and
     % an output stream.
     %
-:- typeclass stream.duplex(Stream, State)
-    <= (stream.input(Stream, State), stream.output(Stream, State))
+:- typeclass duplex(Stream, State)
+    <= (input(Stream, State), output(Stream, State))
         where [].
 
 %----------------------------------------------------------------------------%
@@ -220,13 +219,12 @@
 % Putback streams.
 %
 
-    % A putback stream is an input stream that allows data to be
-    % pushed back onto the stream.  As with reader subclasses it is
-    % possible to define multiple putback subclasses for a
-    % single input stream.
+    % A putback stream is an input stream that allows data to be pushed back
+    % onto the stream.  As with reader subclasses it is possible to define
+    % multiple putback subclasses for a single input stream.
     %
-:- typeclass stream.putback(Stream, Unit, State, Error)
-    <= stream.reader(Stream, Unit, State, Error) where
+:- typeclass putback(Stream, Unit, State, Error)
+    <= reader(Stream, Unit, State, Error) where
 [
     % Un-gets a unit from the specified input stream.
     % Only one unit of putback is guaranteed to be successful.
@@ -234,34 +232,34 @@
     pred unget(Stream::in, Unit::in, State::di, State::uo) is det
 ].
 
-    % As above but guarantees that an unlimited number of units may
-    % be pushed back onto the stream.
+    % As above but guarantees that an unlimited number of units may be pushed
+    % back onto the stream.
     %
-:- typeclass stream.unbounded_putback(Stream, Unit, State, Error)
-    <= stream.putback(Stream, Unit, State, Error) where [].
+:- typeclass unbounded_putback(Stream, Unit, State, Error)
+    <= putback(Stream, Unit, State, Error) where [].
 
 %----------------------------------------------------------------------------%
 %
 % Seekable streams.
 %
 
-    % stream.whence denotes the base for a seek operation.
+    % whence denotes the base for a seek operation.
     %   set - seek relative to the start of the file
     %   cur - seek relative to the current position in the file
     %   end - seek relative to the end of the file.
     %
-:- type stream.whence
+:- type whence
     --->    set
     ;       cur
     ;       end.
 
-:- typeclass stream.seekable(Stream, State) <= stream(Stream, State)
+:- typeclass seekable(Stream, State) <= stream(Stream, State)
     where
 [
     % Seek to an offset relative to whence on the specified stream.
     % The offset is measured in bytes.
     %
-    pred seek(Stream::in, stream.whence::in, int::in, State::di, State::uo)
+    pred seek(Stream::in, whence::in, int::in, State::di, State::uo)
         is det
 ].
 
@@ -272,7 +270,7 @@
 
     % A line oriented stream is a stream that keeps track of line numbers.
     %
-:- typeclass stream.line_oriented(Stream, State) <= stream(Stream, State)
+:- typeclass line_oriented(Stream, State) <= stream(Stream, State)
     where
 [
     % Get the current line number for the specified stream.
@@ -289,38 +287,38 @@
 % Generic folds over input streams.
 %
 
-    % Applies the given closure to each Unit read from the input stream
-    % in turn, until eof or error.
+    % Applies the given closure to each Unit read from the input stream in
+    % turn, until eof or error.
     %
-:- pred stream.input_stream_fold(Stream, pred(Unit, T, T), T,
-    stream.maybe_partial_res(T, Error), State, State)
-    <= stream.reader(Stream, Unit, State, Error).
-:- mode stream.input_stream_fold(in, in(pred(in, in, out) is det),
+:- pred input_stream_fold(Stream, pred(Unit, T, T), T,
+    maybe_partial_res(T, Error), State, State)
+    <= reader(Stream, Unit, State, Error).
+:- mode input_stream_fold(in, in(pred(in, in, out) is det),
     in, out, di, uo) is det.
-:- mode stream.input_stream_fold(in, in(pred(in, in, out) is cc_multi),
+:- mode input_stream_fold(in, in(pred(in, in, out) is cc_multi),
     in, out, di, uo) is cc_multi.
 
-    % Applies the given closure to each Unit read from the input stream
-    % in turn, until eof or error.
+    % Applies the given closure to each Unit read from the input stream in
+    % turn, until eof or error.
     %
-:- pred stream.input_stream_fold_state(Stream, pred(Unit, State, State),
-    stream.res(Error), State, State)
-    <= stream.reader(Stream, Unit, State, Error).
-:- mode stream.input_stream_fold_state(in, in(pred(in, di, uo) is det),
+:- pred input_stream_fold_state(Stream, pred(Unit, State, State),
+    res(Error), State, State)
+    <= reader(Stream, Unit, State, Error).
+:- mode input_stream_fold_state(in, in(pred(in, di, uo) is det),
     out, di, uo) is det.
-:- mode stream.input_stream_fold_state(in, in(pred(in, di, uo) is cc_multi),
+:- mode input_stream_fold_state(in, in(pred(in, di, uo) is cc_multi),
     out, di, uo) is cc_multi.
 
     % Applies the given closure to each Unit read from the input stream
     % in turn, until eof or error.
     %
-:- pred stream.input_stream_fold2_state(Stream,
-    pred(Unit, T, T, State, State), T, stream.maybe_partial_res(T, Error),
-    State, State) <= stream.reader(Stream, Unit, State, Error).
-:- mode stream.input_stream_fold2_state(in,
+:- pred input_stream_fold2_state(Stream,
+    pred(Unit, T, T, State, State), T, maybe_partial_res(T, Error),
+    State, State) <= reader(Stream, Unit, State, Error).
+:- mode input_stream_fold2_state(in,
     in(pred(in, in, out, di, uo) is det),
     in, out, di, uo) is det.
-:- mode stream.input_stream_fold2_state(in,
+:- mode input_stream_fold2_state(in,
     in(pred(in, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
@@ -328,13 +326,13 @@
     % in turn, until eof or error, or the closure returns `no' as its
     % second argument.
     %
-:- pred stream.input_stream_fold2_state_maybe_stop(Stream,
+:- pred input_stream_fold2_state_maybe_stop(Stream,
     pred(Unit, bool, T, T, State, State),
-    T, stream.maybe_partial_res(T, Error), State, State)
-    <= stream.reader(Stream, Unit, State, Error).
-:- mode stream.input_stream_fold2_state_maybe_stop(in,
+    T, maybe_partial_res(T, Error), State, State)
+    <= reader(Stream, Unit, State, Error).
+:- mode input_stream_fold2_state_maybe_stop(in,
     in(pred(in, out, in, out, di, uo) is det), in, out, di, uo) is det.
-:- mode stream.input_stream_fold2_state_maybe_stop(in,
+:- mode input_stream_fold2_state_maybe_stop(in,
     in(pred(in, out, in, out, di, uo) is cc_multi), in, out, di, uo)
     is cc_multi.
 
@@ -345,9 +343,9 @@
 
     % Discard all the whitespace from the specified stream.
     %
-:- pred stream.ignore_whitespace(Stream::in, stream.result(Error)::out,
+:- pred ignore_whitespace(Stream::in, result(Error)::out,
     State::di, State::uo)
-    is det <= stream.putback(Stream, char, State, Error).
+    is det <= putback(Stream, char, State, Error).
 
 %-----------------------------------------------------------------------------%
 %
@@ -360,7 +358,7 @@
     %
 :- pred put_list(Stream, pred(Stream, T, State, State),
     pred(Stream, State, State), list(T), State, State)
-    <= stream.output(Stream, State).
+    <= output(Stream, State).
 :- mode put_list(in, pred(in, in, di, uo) is det, pred(in, di, uo) is det,
     in, di, uo) is det.
 :- mode put_list(in, pred(in, in, di, uo) is cc_multi,
@@ -383,12 +381,12 @@
 % Folds over input streams.
 %
 
-stream.input_stream_fold(Stream, Pred, T0, Res, !S) :-
+input_stream_fold(Stream, Pred, T0, Res, !S) :-
     get(Stream, Result, !S),
     (
         Result = ok(Unit),
         Pred(Unit, T0, T1),
-        stream.input_stream_fold(Stream, Pred, T1, Res, !S)
+        input_stream_fold(Stream, Pred, T1, Res, !S)
     ;
         Result = eof,
         Res = ok(T0)
@@ -397,12 +395,12 @@ stream.input_stream_fold(Stream, Pred, T0, Res, !S) :-
         Res = error(T0, Error)
     ).
 
-stream.input_stream_fold_state(Stream, Pred, Res, !S) :-
+input_stream_fold_state(Stream, Pred, Res, !S) :-
     get(Stream, Result0, !S),
     (
         Result0 = ok(Result),
         Pred(Result, !S),
-        stream.input_stream_fold_state(Stream, Pred, Res, !S)
+        input_stream_fold_state(Stream, Pred, Res, !S)
     ;
         Result0 = eof,
         Res = ok
@@ -411,12 +409,12 @@ stream.input_stream_fold_state(Stream, Pred, Res, !S) :-
         Res = error(Error)
     ).
 
-stream.input_stream_fold2_state(Stream, Pred, T0, Res, !S) :-
+input_stream_fold2_state(Stream, Pred, T0, Res, !S) :-
     get(Stream, Result0, !S),
     (
         Result0 = ok(Result),
         Pred(Result, T0, T1, !S),
-        stream.input_stream_fold2_state(Stream, Pred, T1, Res, !S)
+        input_stream_fold2_state(Stream, Pred, T1, Res, !S)
     ;
         Result0 = eof,
         Res = ok(T0)
@@ -425,7 +423,7 @@ stream.input_stream_fold2_state(Stream, Pred, T0, Res, !S) :-
         Res = error(T0, Error)
     ).
 
-stream.input_stream_fold2_state_maybe_stop(Stream, Pred, T0, Res, !S) :-
+input_stream_fold2_state_maybe_stop(Stream, Pred, T0, Res, !S) :-
     get(Stream, Result0, !S),
     (
         Result0 = ok(Result),
@@ -435,7 +433,7 @@ stream.input_stream_fold2_state_maybe_stop(Stream, Pred, T0, Res, !S) :-
             Res = ok(T1)
         ;
             Continue = yes,
-            stream.input_stream_fold2_state_maybe_stop(Stream, Pred, T1, Res,
+            input_stream_fold2_state_maybe_stop(Stream, Pred, T1, Res,
                 !S)
         )
     ;
@@ -448,7 +446,7 @@ stream.input_stream_fold2_state_maybe_stop(Stream, Pred, T0, Res, !S) :-
 
 %-----------------------------------------------------------------------------%
 
-stream.ignore_whitespace(Stream, Result, !State) :-
+ignore_whitespace(Stream, Result, !State) :-
     get(Stream, CharResult, !State),
     (
         CharResult = error(Error),
@@ -459,7 +457,7 @@ stream.ignore_whitespace(Stream, Result, !State) :-
     ;
         CharResult = ok(Char),
         ( is_whitespace(Char) ->
-            stream.ignore_whitespace(Stream, Result, !State)
+            ignore_whitespace(Stream, Result, !State)
         ;
             unget(Stream, Char, !State),
             Result = ok

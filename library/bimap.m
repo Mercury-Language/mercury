@@ -35,16 +35,16 @@
 
     % Initialize an empty bimap.
     %
-:- func bimap.init = bimap(K, V).
-:- pred bimap.init(bimap(K, V)::out) is det.
+:- func init = bimap(K, V).
+:- pred init(bimap(K, V)::out) is det.
 
     % Initialize a bimap with the given key-value pair.
     %
-:- func bimap.singleton(K, V) = bimap(K, V).
+:- func singleton(K, V) = bimap(K, V).
 
     % Check whether a bimap is empty.
     %
-:- pred bimap.is_empty(bimap(K, V)::in) is semidet.
+:- pred is_empty(bimap(K, V)::in) is semidet.
 
     % True if both bimaps have the same set of key-value pairs, regardless of
     % how the bimaps were constructed.
@@ -53,70 +53,70 @@
     % structures of two bimaps that contain the same set of key-value pairs
     % may be different.
     %
-:- pred bimap.equal(bimap(K, V)::in, bimap(K, V)::in) is semidet.
+:- pred equal(bimap(K, V)::in, bimap(K, V)::in) is semidet.
 
     % Search the bimap. The first mode searches for a value given a key
     % and the second mode searches for a key given a value.
     %
-:- pred bimap.search(bimap(K, V), K, V).
-:- mode bimap.search(in, in, out) is semidet.
-:- mode bimap.search(in, out, in) is semidet.
+:- pred search(bimap(K, V), K, V).
+:- mode search(in, in, out) is semidet.
+:- mode search(in, out, in) is semidet.
 
     % Search the bimap for the value corresponding to a given key.
     %
-:- func bimap.forward_search(bimap(K, V), K) = V is semidet.
-:- pred bimap.forward_search(bimap(K, V)::in, K::in, V::out) is semidet.
+:- func forward_search(bimap(K, V), K) = V is semidet.
+:- pred forward_search(bimap(K, V)::in, K::in, V::out) is semidet.
 
     % Search the bimap for the key corresponding to the given value.
     %
-:- func bimap.reverse_search(bimap(K, V), V) = K is semidet.
-:- pred bimap.reverse_search(bimap(K, V)::in, K::out, V::in) is semidet.
+:- func reverse_search(bimap(K, V), V) = K is semidet.
+:- pred reverse_search(bimap(K, V)::in, K::out, V::in) is semidet.
 
     % Look up the value in the bimap corresponding to the given key.
     % Throws an exception if the key is not present in the bimap.
     %
-:- func bimap.lookup(bimap(K, V), K) = V.
-:- pred bimap.lookup(bimap(K, V)::in, K::in, V::out) is det.
+:- func lookup(bimap(K, V), K) = V.
+:- pred lookup(bimap(K, V)::in, K::in, V::out) is det.
 
     % Look up the key in the bimap corresponding to the given value.
     % Throws an exception if the value is not present in the bimap.
     %
-:- func bimap.reverse_lookup(bimap(K, V), V) = K.
-:- pred bimap.reverse_lookup(bimap(K, V)::in, K::out, V::in) is det.
+:- func reverse_lookup(bimap(K, V), V) = K.
+:- pred reverse_lookup(bimap(K, V)::in, K::out, V::in) is det.
 
     % Given a bimap, return a list of all the keys in the bimap.
     %
-:- func bimap.ordinates(bimap(K, V)) = list(K).
-:- pred bimap.ordinates(bimap(K, V)::in, list(K)::out) is det.
+:- func ordinates(bimap(K, V)) = list(K).
+:- pred ordinates(bimap(K, V)::in, list(K)::out) is det.
 
     % Given a bimap, return a list of all the data values in the bimap.
     %
-:- func bimap.coordinates(bimap(K, V)) = list(V).
-:- pred bimap.coordinates(bimap(K, V)::in, list(V)::out) is det.
+:- func coordinates(bimap(K, V)) = list(V).
+:- pred coordinates(bimap(K, V)::in, list(V)::out) is det.
 
     % Succeeds iff the bimap contains the given key.
     %
-:- pred bimap.contains_key(bimap(K, V)::in, K::in) is semidet.
+:- pred contains_key(bimap(K, V)::in, K::in) is semidet.
 
     % Succeeds iff the bimap contains the given value.
     %
-:- pred bimap.contains_value(bimap(K, V)::in, V::in) is semidet.
+:- pred contains_value(bimap(K, V)::in, V::in) is semidet.
 
     % Insert a new key-value pair into the bimap.
     % Fails if either the key or value already exists.
     %
-:- func bimap.insert(bimap(K, V), K, V) = bimap(K, V) is semidet.
-:- pred bimap.insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
+:- func insert(bimap(K, V), K, V) = bimap(K, V) is semidet.
+:- pred insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
     is semidet.
 
     % As above but throws an exception if the key or value already
     % exists.
     %
-:- func bimap.det_insert(bimap(K, V), K, V) = bimap(K, V).
-:- pred bimap.det_insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
+:- func det_insert(bimap(K, V), K, V) = bimap(K, V).
+:- pred det_insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
     is det.
 
-    % bimap.search_insert(K, V, MaybeOldV, !Bimap):
+    % search_insert(K, V, MaybeOldV, !Bimap):
     %
     % Search for the key K in the bimap. If the key is already in the bimap,
     % with corresponding value OldV, set MaybeOldV to yes(OldV). If it
@@ -124,7 +124,7 @@
     % should be guaranteed to be different to all the values already
     % in !.Bimap. If it isn't, this predicate will abort.
     %
-:- pred bimap.search_insert(K::in, V::in, maybe(V)::out,
+:- pred search_insert(K::in, V::in, maybe(V)::out,
     bimap(K, V)::in, bimap(K, V)::out) is det.
 
     % Update the key and value if already present, otherwise insert the
@@ -133,210 +133,210 @@
     % NOTE: setting the key-value pair (K, V) will remove the key-value pairs
     % (K, V1) and (K1, V) if they exist.
     %
-:- func bimap.set(bimap(K, V), K, V) = bimap(K, V).
-:- pred bimap.set(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out) is det.
+:- func set(bimap(K, V), K, V) = bimap(K, V).
+:- pred set(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out) is det.
 
     % Insert key-value pairs from an association list into the given bimap.
     % Fails if the contents of the association list and the initial bimap
     % do not implicitly form a bijection.
     %
-:- func bimap.insert_from_assoc_list(assoc_list(K, V), bimap(K, V)) =
+:- func insert_from_assoc_list(assoc_list(K, V), bimap(K, V)) =
     bimap(K, V) is semidet.
-:- pred bimap.insert_from_assoc_list(assoc_list(K, V)::in,
+:- pred insert_from_assoc_list(assoc_list(K, V)::in,
     bimap(K, V)::in, bimap(K, V)::out) is semidet.
 
     % As above but throws an exception if the association list and
     % initial bimap are not implicitly bijective.
     %
-:- func bimap.det_insert_from_assoc_list(assoc_list(K, V), bimap(K, V))
+:- func det_insert_from_assoc_list(assoc_list(K, V), bimap(K, V))
     = bimap(K, V).
-:- pred bimap.det_insert_from_assoc_list(assoc_list(K, V)::in,
+:- pred det_insert_from_assoc_list(assoc_list(K, V)::in,
     bimap(K, V)::in, bimap(K, V)::out) is det.
 
     % Insert key-value pairs from a pair of corresponding lists.
     % Throws an exception if the lists are not of equal lengths
     % or if they do not implicitly define a bijection.
     %
-:- func bimap.det_insert_from_corresponding_lists(list(K), list(V),
+:- func det_insert_from_corresponding_lists(list(K), list(V),
     bimap(K, V)) = bimap(K, V).
-:- pred bimap.det_insert_from_corresponding_lists(list(K)::in, list(V)::in,
+:- pred det_insert_from_corresponding_lists(list(K)::in, list(V)::in,
     bimap(K, V)::in, bimap(K, V)::out) is det.
 
-    % Apply bimap.set to each key-value pair in the association list.
+    % Apply set to each key-value pair in the association list.
     % The key-value pairs from the association list may update existing keys
     % and values in the bimap.
     %
-:- func bimap.set_from_assoc_list(assoc_list(K, V), bimap(K, V))
+:- func set_from_assoc_list(assoc_list(K, V), bimap(K, V))
     = bimap(K, V).
-:- pred bimap.set_from_assoc_list(assoc_list(K, V)::in,
+:- pred set_from_assoc_list(assoc_list(K, V)::in,
     bimap(K, V)::in, bimap(K, V)::out) is det.
 
     % As above but with a pair of corresponding lists in place of an
     % association list. Throws an exception if the lists are not of
     % equal length.
     %
-:- func bimap.set_from_corresponding_lists(list(K), list(V),
+:- func set_from_corresponding_lists(list(K), list(V),
     bimap(K, V)) = bimap(K, V).
-:- pred bimap.set_from_corresponding_lists(list(K)::in, list(V)::in,
+:- pred set_from_corresponding_lists(list(K)::in, list(V)::in,
     bimap(K, V)::in, bimap(K, V)::out) is det.
 
     % Delete a key-value pair from a bimap. If the key is not present,
     % leave the bimap unchanged.
     %
-:- func bimap.delete_key(bimap(K, V), K) = bimap(K, V).
-:- pred bimap.delete_key(K::in, bimap(K, V)::in, bimap(K, V)::out) is det.
+:- func delete_key(bimap(K, V), K) = bimap(K, V).
+:- pred delete_key(K::in, bimap(K, V)::in, bimap(K, V)::out) is det.
 
     % Delete a key-value pair from a bimap. If the value is not present,
     % leave the bimap unchanged.
     %
-:- func bimap.delete_value(bimap(K, V), V) = bimap(K, V).
-:- pred bimap.delete_value(V::in, bimap(K, V)::in, bimap(K, V)::out) is det.
+:- func delete_value(bimap(K, V), V) = bimap(K, V).
+:- pred delete_value(V::in, bimap(K, V)::in, bimap(K, V)::out) is det.
 
-    % Apply bimap.delete_key to a list of keys.
+    % Apply delete_key to a list of keys.
     %
-:- func bimap.delete_keys(bimap(K, V), list(K)) = bimap(K, V).
-:- pred bimap.delete_keys(list(K)::in, bimap(K, V)::in, bimap(K, V)::out)
+:- func delete_keys(bimap(K, V), list(K)) = bimap(K, V).
+:- pred delete_keys(list(K)::in, bimap(K, V)::in, bimap(K, V)::out)
     is det.
 
-    % Apply bimap.delete_value to a list of values.
+    % Apply delete_value to a list of values.
     %
-:- func bimap.delete_values(bimap(K, V), list(V)) = bimap(K, V).
-:- pred bimap.delete_values(list(V)::in, bimap(K, V)::in, bimap(K, V)::out)
+:- func delete_values(bimap(K, V), list(V)) = bimap(K, V).
+:- pred delete_values(list(V)::in, bimap(K, V)::in, bimap(K, V)::out)
     is det.
 
-    % bimap.overlay(BIMapA, BIMapB, BIMap):
+    % overlay(BIMapA, BIMapB, BIMap):
     % Apply map.overlay to the forward maps of BIMapA and BIMapB,
     % and compute the reverse map from the resulting map.
     %
-:- func bimap.overlay(bimap(K, V), bimap(K, V)) = bimap(K, V).
-:- pred bimap.overlay(bimap(K, V)::in, bimap(K, V)::in, bimap(K, V)::out)
+:- func overlay(bimap(K, V), bimap(K, V)) = bimap(K, V).
+:- pred overlay(bimap(K, V)::in, bimap(K, V)::in, bimap(K, V)::out)
     is det.
 
     % Count the number of key-value pairs in the bimap.
     %
-:- func bimap.count(bimap(K, V)) = int.
+:- func count(bimap(K, V)) = int.
 
     % Convert a bimap to an association list.
     %
-:- func bimap.to_assoc_list(bimap(K, V)) = assoc_list(K, V).
-:- pred bimap.to_assoc_list(bimap(K, V)::in, assoc_list(K, V)::out) is det.
+:- func to_assoc_list(bimap(K, V)) = assoc_list(K, V).
+:- pred to_assoc_list(bimap(K, V)::in, assoc_list(K, V)::out) is det.
 
     % Convert an association list to a bimap. Fails if the association list
     % does not implicitly define a bijection, i.e. a key or value occurs
     % multiple times in the association list.
     %
-:- func bimap.from_assoc_list(assoc_list(K, V)) = bimap(K, V) is semidet.
-:- pred bimap.from_assoc_list(assoc_list(K, V)::in, bimap(K, V)::out)
+:- func from_assoc_list(assoc_list(K, V)) = bimap(K, V) is semidet.
+:- pred from_assoc_list(assoc_list(K, V)::in, bimap(K, V)::out)
     is semidet.
 
     % As above but throws an exception instead of failing if the
     % association list does not implicitly define a bijection.
     %
-:- func bimap.det_from_assoc_list(assoc_list(K, V)) = bimap(K, V).
-:- pred bimap.det_from_assoc_list(assoc_list(K, V)::in, bimap(K, V)::out)
+:- func det_from_assoc_list(assoc_list(K, V)) = bimap(K, V).
+:- pred det_from_assoc_list(assoc_list(K, V)::in, bimap(K, V)::out)
     is det.
 
     % Convert a pair of lists into a bimap. Fails if the lists do not
     % implicitly define a bijection or if the lists are of unequal length.
     %
-:- func bimap.from_corresponding_lists(list(K), list(V)) = bimap(K, V)
+:- func from_corresponding_lists(list(K), list(V)) = bimap(K, V)
     is semidet.
-:- pred bimap.from_corresponding_lists(list(K)::in, list(V)::in,
+:- pred from_corresponding_lists(list(K)::in, list(V)::in,
     bimap(K, V)::out) is semidet.
 
     % As above but throws an exception instead of failing if the lists
     % do not implicitly define a bijection or are of unequal length.
     %
-:- func bimap.det_from_corresponding_lists(list(K), list(V)) = bimap(K, V).
-:- pred bimap.det_from_corresponding_lists(list(K)::in, list(V)::in,
+:- func det_from_corresponding_lists(list(K), list(V)) = bimap(K, V).
+:- pred det_from_corresponding_lists(list(K)::in, list(V)::in,
     bimap(K, V)::out) is det.
 
-:- func bimap.apply_forward_map_to_list(bimap(K, V), list(K)) = list(V).
-:- pred bimap.apply_forward_map_to_list(bimap(K, V)::in, list(K)::in,
+:- func apply_forward_map_to_list(bimap(K, V), list(K)) = list(V).
+:- pred apply_forward_map_to_list(bimap(K, V)::in, list(K)::in,
     list(V)::out) is det.
 
-:- func bimap.apply_reverse_map_to_list(bimap(K, V), list(V)) = list(K).
-:- pred bimap.apply_reverse_map_to_list(bimap(K, V)::in, list(V)::in,
+:- func apply_reverse_map_to_list(bimap(K, V), list(V)) = list(K).
+:- pred apply_reverse_map_to_list(bimap(K, V)::in, list(V)::in,
     list(K)::out) is det.
 
     % Apply a transformation predicate to all the keys.
     % Throws an exception if the resulting bimap is not bijective.
     %
-:- func bimap.map_keys(func(V, K) = L, bimap(K, V)) = bimap(L, V).
-:- pred bimap.map_keys(pred(V, K, L)::in(pred(in, in, out) is det),
+:- func map_keys(func(V, K) = L, bimap(K, V)) = bimap(L, V).
+:- pred map_keys(pred(V, K, L)::in(pred(in, in, out) is det),
     bimap(K, V)::in, bimap(L, V)::out) is det.
 
     % Apply a transformation predicate to all the values.
     % Throws an exception if the resulting bimap is not bijective.
     %
-:- func bimap.map_values(func(K, V) = W, bimap(K, V)) = bimap(K, W).
-:- pred bimap.map_values(pred(K, V, W)::in(pred(in, in, out) is det),
+:- func map_values(func(K, V) = W, bimap(K, V)) = bimap(K, W).
+:- pred map_values(pred(K, V, W)::in(pred(in, in, out) is det),
     bimap(K, V)::in, bimap(K, W)::out) is det.
 
     % Perform an inorder traversal, by key, of the bimap, applying an
     % accumulator predicate for each key-value pair.
     %
-:- func bimap.foldl(func(K, V, A) = A, bimap(K, V), A) = A.
-:- pred bimap.foldl(pred(K, V, A, A), bimap(K, V), A, A).
-:- mode bimap.foldl(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode bimap.foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode bimap.foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode bimap.foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
-:- mode bimap.foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode bimap.foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
+:- func foldl(func(K, V, A) = A, bimap(K, V), A) = A.
+:- pred foldl(pred(K, V, A, A), bimap(K, V), A, A).
+:- mode foldl(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 
     % Perform a traversal of the bimap, applying an accumulator predicate
     % with two accumulators for each key-value pair. (Although no more
-    % expressive than bimap.foldl, this is often a more convenient format,
+    % expressive than foldl, this is often a more convenient format,
     % and a little more efficient).
     %
-:- pred bimap.foldl2(pred(K, V, A, A, B, B), bimap(K, V), A, A, B, B).
-:- mode bimap.foldl2(pred(in, in, in, out, in, out) is det,
+:- pred foldl2(pred(K, V, A, A, B, B), bimap(K, V), A, A, B, B).
+:- mode foldl2(pred(in, in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode bimap.foldl2(pred(in, in, in, out, mdi, muo) is det,
+:- mode foldl2(pred(in, in, in, out, mdi, muo) is det,
     in, in, out, mdi, muo) is det.
-:- mode bimap.foldl2(pred(in, in, in, out, di, uo) is det,
+:- mode foldl2(pred(in, in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
-:- mode bimap.foldl2(pred(in, in, di, uo, di, uo) is det,
+:- mode foldl2(pred(in, in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
-:- mode bimap.foldl2(pred(in, in, in, out, in, out) is semidet,
+:- mode foldl2(pred(in, in, in, out, in, out) is semidet,
     in, in, out, in, out) is semidet.
-:- mode bimap.foldl2(pred(in, in, in, out, mdi, muo) is semidet,
+:- mode foldl2(pred(in, in, in, out, mdi, muo) is semidet,
     in, in, out, mdi, muo) is semidet.
-:- mode bimap.foldl2(pred(in, in, in, out, di, uo) is semidet,
+:- mode foldl2(pred(in, in, in, out, di, uo) is semidet,
     in, in, out, di, uo) is semidet.
 
     % Perform a traversal of the bimap, applying an accumulator predicate
     % with three accumulators for each key-value pair. (Although no more
-    % expressive than bimap.foldl, this is often a more convenient format,
+    % expressive than foldl, this is often a more convenient format,
     % and a little more efficient).
     %
-:- pred bimap.foldl3(pred(K, V, A, A, B, B, C, C), bimap(K, V),
+:- pred foldl3(pred(K, V, A, A, B, B, C, C), bimap(K, V),
     A, A, B, B, C, C).
-:- mode bimap.foldl3(pred(in, in, in, out, in, out, in, out) is det,
+:- mode foldl3(pred(in, in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
-:- mode bimap.foldl3(pred(in, in, in, out, in, out, mdi, muo) is det,
+:- mode foldl3(pred(in, in, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, mdi, muo) is det.
-:- mode bimap.foldl3(pred(in, in, in, out, in, out, di, uo) is det,
+:- mode foldl3(pred(in, in, in, out, in, out, di, uo) is det,
     in, in, out, in, out, di, uo) is det.
-:- mode bimap.foldl3(pred(in, in, in, out, di, uo, di, uo) is det,
+:- mode foldl3(pred(in, in, in, out, di, uo, di, uo) is det,
     in, in, out, di, uo, di, uo) is det.
-:- mode bimap.foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
+:- mode foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo) is det.
-:- mode bimap.foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
+:- mode foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out) is semidet.
-:- mode bimap.foldl3(pred(in, in, in, out, in, out, mdi, muo) is semidet,
+:- mode foldl3(pred(in, in, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, mdi, muo) is semidet.
-:- mode bimap.foldl3(pred(in, in, in, out, in, out, di, uo) is semidet,
+:- mode foldl3(pred(in, in, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, di, uo) is semidet.
 
     % Extract a the forward map from the bimap, the map from key to value.
     %
-:- func bimap.forward_map(bimap(K, V)) = map(K, V).
+:- func forward_map(bimap(K, V)) = map(K, V).
 
     % Extract the reverse map from the bimap, the map from value to key.
     %
-:- func bimap.reverse_map(bimap(K, V)) = map(V, K).
+:- func reverse_map(bimap(K, V)) = map(V, K).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

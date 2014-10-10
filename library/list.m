@@ -48,32 +48,32 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred list.is_empty(list(T)::in) is semidet.
+:- pred is_empty(list(T)::in) is semidet.
 
-:- pred list.is_not_empty(list(T)::in) is semidet.
+:- pred is_not_empty(list(T)::in) is semidet.
 
-    % list.cons(X, Y, Z) <=> Z = [X | Y].
+    % cons(X, Y, Z) <=> Z = [X | Y].
     %
-:- pred list.cons(T::in, list(T)::in, list(T)::out) is det.
-:- func list.cons(T, list(T)) = list(T).
+:- pred cons(T::in, list(T)::in, list(T)::out) is det.
+:- func cons(T, list(T)) = list(T).
 
     % Standard append predicate:
-    % list.append(Start, End, List) is true iff
+    % append(Start, End, List) is true iff
     % `List' is the result of concatenating `Start' and `End'.
     %
-:- pred list.append(list(T), list(T), list(T)).
-:- mode list.append(di, di, uo) is det.
-:- mode list.append(in, in, out) is det.
-:- mode list.append(in, in, in) is semidet.    % implied
-:- mode list.append(in, out, in) is semidet.
-:- mode list.append(out, out, in) is multi.
+:- pred append(list(T), list(T), list(T)).
+:- mode append(di, di, uo) is det.
+:- mode append(in, in, out) is det.
+:- mode append(in, in, in) is semidet.    % implied
+:- mode append(in, out, in) is semidet.
+:- mode append(out, out, in) is multi.
 %   The following mode is semidet in the sense that it doesn't
 %   succeed more than once - but it does create a choice-point,
 %   which means it's inefficient and that the compiler can't deduce
-%   that it is semidet.  Use list.remove_suffix instead.
-% :- mode list.append(out, in, in) is semidet.
+%   that it is semidet.  Use remove_suffix instead.
+% :- mode append(out, in, in) is semidet.
 
-:- func list.append(list(T), list(T)) = list(T).
+:- func append(list(T), list(T)) = list(T).
 
     % associativity of append
 :- promise all [A, B, C, ABC]
@@ -87,296 +87,296 @@
     % to a rewrite rule.
 :- promise all [L, H, T] ( append([H], T, L) <=> L = [H | T] ).
 
-    % L1 ++ L2 = L :- list.append(L1, L2, L).
+    % L1 ++ L2 = L :- append(L1, L2, L).
     %
 :- func list(T) ++ list(T) = list(T).
 
-    % list.remove_suffix(List, Suffix, Prefix):
+    % remove_suffix(List, Suffix, Prefix):
     %
-    % The same as list.append(Prefix, Suffix, List) except that
-    % this is semidet whereas list.append(out, in, in) is nondet.
+    % The same as append(Prefix, Suffix, List) except that
+    % this is semidet whereas append(out, in, in) is nondet.
     %
-:- pred list.remove_suffix(list(T)::in, list(T)::in, list(T)::out) is semidet.
+:- pred remove_suffix(list(T)::in, list(T)::in, list(T)::out) is semidet.
 
-    % list.merge(L1, L2, L):
+    % merge(L1, L2, L):
     %
     % L is the result of merging the elements of L1 and L2, in ascending order.
     % L1 and L2 must be sorted.
     %
-:- pred list.merge(list(T)::in, list(T)::in, list(T)::out) is det.
-:- func list.merge(list(T), list(T)) = list(T).
+:- pred merge(list(T)::in, list(T)::in, list(T)::out) is det.
+:- func merge(list(T), list(T)) = list(T).
 
-    % list.merge_and_remove_dups(L1, L2, L):
+    % merge_and_remove_dups(L1, L2, L):
     %
     % L is the result of merging the elements of L1 and L2, in ascending order,
     % and eliminating any duplicates. L1 and L2 must be sorted and must each
     % not contain any duplicates.
     %
-:- pred list.merge_and_remove_dups(list(T)::in, list(T)::in, list(T)::out)
+:- pred merge_and_remove_dups(list(T)::in, list(T)::in, list(T)::out)
     is det.
-:- func list.merge_and_remove_dups(list(T), list(T)) = list(T).
+:- func merge_and_remove_dups(list(T), list(T)) = list(T).
 
-    % list.remove_adjacent_dups(L0, L):
+    % remove_adjacent_dups(L0, L):
     %
     % L is the result of replacing every sequence of duplicate elements in L0
     % with a single such element.
     %
-:- pred list.remove_adjacent_dups(list(T)::in, list(T)::out) is det.
-:- func list.remove_adjacent_dups(list(T)) = list(T).
+:- pred remove_adjacent_dups(list(T)::in, list(T)::out) is det.
+:- func remove_adjacent_dups(list(T)) = list(T).
 
-    % list.remove_dups(L0, L):
+    % remove_dups(L0, L):
     %
     % L is the result of deleting the second and subsequent occurrences
     % of every element that occurs twice in L0.
     %
-:- pred list.remove_dups(list(T)::in, list(T)::out) is det.
-:- func list.remove_dups(list(T)) = list(T).
+:- pred remove_dups(list(T)::in, list(T)::out) is det.
+:- func remove_dups(list(T)) = list(T).
 
-    % list.member(Elem, List):
+    % member(Elem, List):
     %
     % True iff `List' contains `Elem'.
     %
-:- pred list.member(T, list(T)).
-:- mode list.member(in, in) is semidet.
-:- mode list.member(out, in) is nondet.
+:- pred member(T, list(T)).
+:- mode member(in, in) is semidet.
+:- mode member(out, in) is nondet.
 
-    % list.member(Elem, List, SubList):
+    % member(Elem, List, SubList):
     %
     % True iff `List' contains `Elem', and `SubList' is a suffix of `List'
     % beginning with `Elem'.
-    % Same as `SubList = [Elem | _], list.append(_, SubList, List)'.
+    % Same as `SubList = [Elem | _], append(_, SubList, List)'.
     %
-:- pred list.member(T::out, list(T)::in, list(T)::out) is nondet.
+:- pred member(T::out, list(T)::in, list(T)::out) is nondet.
 
-    % list.member_index0(Elem, List, Index).
+    % member_index0(Elem, List, Index).
     %
     % True iff `List' contains `Elem' at the zero-based index `Index'.
     %
-:- pred list.member_index0(T, list(T), int).
-:- mode list.member_index0(in, in, in) is semidet.
-:- mode list.member_index0(in, in, out) is nondet.
-:- mode list.member_index0(out, in, out) is nondet.
+:- pred member_index0(T, list(T), int).
+:- mode member_index0(in, in, in) is semidet.
+:- mode member_index0(in, in, out) is nondet.
+:- mode member_index0(out, in, out) is nondet.
 
-    % list.contains(List, Elem) iff list.member(Elem, List).
+    % contains(List, Elem) iff member(Elem, List).
     % Sometimes you need the arguments in this order, because you want to
     % construct a closure with only the list.
     %
-:- pred list.contains(list(T)::in, T::in) is semidet.
+:- pred contains(list(T)::in, T::in) is semidet.
 
-    % list.length(List, Length):
+    % length(List, Length):
     %
     % True iff `Length' is the length of `List', i.e. if `List' contains
     % `Length' elements.
     %
-:- pred list.length(list(_T), int).
-:- mode list.length(in, out) is det.
+:- pred length(list(_T), int).
+:- mode length(in, out) is det.
     % XXX The current mode checker can't handle this mode
-% :- mode list.length(input_list_skel, out) is det.
+% :- mode length(input_list_skel, out) is det.
 
-:- func list.length(list(T)) = int.
+:- func length(list(T)) = int.
 
-    % list.same_length(ListA, ListB):
+    % same_length(ListA, ListB):
     %
     % True iff `ListA' and `ListB' have the same length,
     % i.e. iff they both contain the same number of elements.
     %
-:- pred list.same_length(list(T1), list(T2)).
+:- pred same_length(list(T1), list(T2)).
     % XXX The current mode checker can't handle these modes.
-% :- mode list.same_length(in, output_list_skel) is det.
-% :- mode list.same_length(output_list_skel, in) is det.
-:- mode list.same_length(in, in) is semidet.
+% :- mode same_length(in, output_list_skel) is det.
+% :- mode same_length(output_list_skel, in) is det.
+:- mode same_length(in, in) is semidet.
 % XXX The current mode checker can't handle these modes
-% :- mode list.same_length(input_list_skel, output_list_skel) is det.
-% :- mode list.same_length(output_list_skel, input_list_skel) is det.
+% :- mode same_length(input_list_skel, output_list_skel) is det.
+% :- mode same_length(output_list_skel, input_list_skel) is det.
 
     % As above, but for three lists.
     %
-:- pred list.same_length3(list(T1)::in, list(T2)::in, list(T3)::in)
+:- pred same_length3(list(T1)::in, list(T2)::in, list(T3)::in)
     is semidet.
 
-    % list.split_list(Len, List, Start, End):
+    % split_list(Len, List, Start, End):
     %
     % splits `List' into a prefix `Start' of length `Len', and a remainder
-    % `End'. See also: list.take, list.drop and list.split_upto.
+    % `End'. See also: take, drop and split_upto.
     %
-:- pred list.split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
+:- pred split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
     is semidet.
 
-    % list.det_split_list(Len, List, Start, End):
+    % det_split_list(Len, List, Start, End):
     %
-    % A deterministic version of list.split_list, which aborts instead
-    % of failing if Len > list.length(List).
+    % A deterministic version of split_list, which aborts instead
+    % of failing if Len > length(List).
     %
-:- pred list.det_split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
+:- pred det_split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
     is det.
 
-    % list.split_upto(Len, List, Start, End):
+    % split_upto(Len, List, Start, End):
     %
     % splits `List' into a prefix `Start' of length `min(Len, length(List))',
-    % and a remainder `End'. See also: list.split_list, list.take, list.drop.
+    % and a remainder `End'. See also: split_list, take, drop.
     %
-:- pred list.split_upto(int::in, list(T)::in, list(T)::out, list(T)::out)
+:- pred split_upto(int::in, list(T)::in, list(T)::out, list(T)::out)
     is det.
 
-    % list.take(Len, List, Start):
+    % take(Len, List, Start):
     %
     % `Start' is the first `Len' elements of `List'. Fails if `List' has
-    % less than `Len' elements. See also: list.split_list.
+    % less than `Len' elements. See also: split_list.
     %
-:- pred list.take(int::in, list(T)::in, list(T)::out) is semidet.
+:- pred take(int::in, list(T)::in, list(T)::out) is semidet.
 
-    % list.det_take(Len, List, Start):
+    % det_take(Len, List, Start):
     %
     % As above, but throw an exception instead of failing.
     %
-:- pred list.det_take(int::in, list(T)::in, list(T)::out) is det.
+:- pred det_take(int::in, list(T)::in, list(T)::out) is det.
 
-    % list.take_upto(Len, List, Start):
+    % take_upto(Len, List, Start):
     %
     % `Start' is the first `Len' elements of `List'. If `List' has less than
     % `Len' elements, return the entire list.
     %
-:- pred list.take_upto(int::in, list(T)::in, list(T)::out) is det.
-:- func list.take_upto(int, list(T)) = list(T).
+:- pred take_upto(int::in, list(T)::in, list(T)::out) is det.
+:- func take_upto(int, list(T)) = list(T).
 
-    % list.drop(Len, List, End):
+    % drop(Len, List, End):
     %
     % `End' is the remainder of `List' after removing the first `Len' elements.
     % Fails if `List' does not have at least `Len' elements.
-    % See also: list.split_list.
+    % See also: split_list.
     %
-:- pred list.drop(int::in, list(T)::in, list(T)::out) is semidet.
+:- pred drop(int::in, list(T)::in, list(T)::out) is semidet.
 
-    % list.det_drop(Len, List, End):
+    % det_drop(Len, List, End):
     %
     % `End' is the remainder of `List' after removing the first `Len' elements.
     % Aborts if `List' does not have at least `Len' elements.
-    % See also: list.split_list.
+    % See also: split_list.
     %
-:- pred list.det_drop(int::in, list(T)::in, list(T)::out) is det.
+:- pred det_drop(int::in, list(T)::in, list(T)::out) is det.
 
-    % list.insert(Elem, List0, List):
+    % insert(Elem, List0, List):
     %
     % `List' is the result of inserting `Elem' somewhere in `List0'.
-    % Same as `list.delete(List, Elem, List0)'.
+    % Same as `delete(List, Elem, List0)'.
     %
-:- pred list.insert(T, list(T), list(T)).
-:- mode list.insert(in, in, in) is semidet.
-:- mode list.insert(in, out, in) is nondet.
-:- mode list.insert(out, out, in) is nondet.
-:- mode list.insert(in, in, out) is multi.
+:- pred insert(T, list(T), list(T)).
+:- mode insert(in, in, in) is semidet.
+:- mode insert(in, out, in) is nondet.
+:- mode insert(out, out, in) is nondet.
+:- mode insert(in, in, out) is multi.
 
-    % list.delete(List, Elem, Remainder):
+    % delete(List, Elem, Remainder):
     %
     % True iff `Elem' occurs in `List', and `Remainder' is the result of
     % deleting one occurrence of `Elem' from `List'.
     %
-:- pred list.delete(list(T), T, list(T)).
-:- mode list.delete(in, in, in) is semidet.
-:- mode list.delete(in, in, out) is nondet.
-:- mode list.delete(in, out, out) is nondet.
-:- mode list.delete(out, in, in) is multi.
+:- pred delete(list(T), T, list(T)).
+:- mode delete(in, in, in) is semidet.
+:- mode delete(in, in, out) is nondet.
+:- mode delete(in, out, out) is nondet.
+:- mode delete(out, in, in) is multi.
 
-:- func list.delete_all(list(T), T) = list(T).
+:- func delete_all(list(T), T) = list(T).
 
-    % list.delete_first(List0, Elem, List) is true iff Elem occurs in List0
+    % delete_first(List0, Elem, List) is true iff Elem occurs in List0
     % and List is List0 with the first occurrence of Elem removed.
     %
-:- pred list.delete_first(list(T)::in, T::in, list(T)::out) is semidet.
+:- pred delete_first(list(T)::in, T::in, list(T)::out) is semidet.
 
-    % list.delete_all(List0, Elem, List) is true iff List is List0 with
+    % delete_all(List0, Elem, List) is true iff List is List0 with
     % all occurrences of Elem removed.
     %
-:- pred list.delete_all(list(T), T, list(T)).
-:- mode list.delete_all(di, in, uo) is det.
-:- mode list.delete_all(in, in, out) is det.
+:- pred delete_all(list(T), T, list(T)).
+:- mode delete_all(di, in, uo) is det.
+:- mode delete_all(in, in, out) is det.
 
-    % list.delete_elems(List0, Elems, List) is true iff List is List0 with
+    % delete_elems(List0, Elems, List) is true iff List is List0 with
     % all occurrences of all elements of Elems removed.
     %
-:- pred list.delete_elems(list(T)::in, list(T)::in, list(T)::out) is det.
-:- func list.delete_elems(list(T), list(T)) = list(T).
+:- pred delete_elems(list(T)::in, list(T)::in, list(T)::out) is det.
+:- func delete_elems(list(T), list(T)) = list(T).
 
-    % list.replace(List0, D, R, List) is true iff List is List0
+    % replace(List0, D, R, List) is true iff List is List0
     % with an occurrence of D replaced with R.
     %
-:- pred list.replace(list(T), T, T, list(T)).
-:- mode list.replace(in, in, in, in) is semidet.
-:- mode list.replace(in, in, in, out) is nondet.
+:- pred replace(list(T), T, T, list(T)).
+:- mode replace(in, in, in, in) is semidet.
+:- mode replace(in, in, in, out) is nondet.
 
-    % list.replace_first(List0, D, R, List) is true iff List is List0
+    % replace_first(List0, D, R, List) is true iff List is List0
     % with the first occurrence of D replaced with R.
     %
-:- pred list.replace_first(list(T)::in, T::in, T::in, list(T)::out)
+:- pred replace_first(list(T)::in, T::in, T::in, list(T)::out)
     is semidet.
 
-    % list.replace_all(List0, D, R, List) is true iff List is List0
+    % replace_all(List0, D, R, List) is true iff List is List0
     % with all occurrences of D replaced with R.
     %
-:- pred list.replace_all(list(T)::in, T::in, T::in, list(T)::out) is det.
-:- func list.replace_all(list(T), T, T) = list(T).
+:- pred replace_all(list(T)::in, T::in, T::in, list(T)::out) is det.
+:- func replace_all(list(T), T, T) = list(T).
 
-    % list.replace_nth(List0, N, R, List) is true iff List is List0
+    % replace_nth(List0, N, R, List) is true iff List is List0
     % with Nth element replaced with R.
     % Fails if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %
-:- pred list.replace_nth(list(T)::in, int::in, T::in, list(T)::out)
+:- pred replace_nth(list(T)::in, int::in, T::in, list(T)::out)
     is semidet.
 
-    % list.det_replace_nth(List0, N, R, List) is true iff List is List0
+    % det_replace_nth(List0, N, R, List) is true iff List is List0
     % with Nth element replaced with R.
     % Aborts if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %
-:- pred list.det_replace_nth(list(T)::in, int::in, T::in, list(T)::out) is det.
-:- func list.det_replace_nth(list(T), int, T) = list(T).
+:- pred det_replace_nth(list(T)::in, int::in, T::in, list(T)::out) is det.
+:- func det_replace_nth(list(T), int, T) = list(T).
 
-    % list.sort_and_remove_dups(List0, List):
+    % sort_and_remove_dups(List0, List):
     %
     % List is List0 sorted with the second and subsequent occurrence of
     % any duplicates removed.
     %
-:- pred list.sort_and_remove_dups(list(T)::in, list(T)::out) is det.
-:- func list.sort_and_remove_dups(list(T)) = list(T).
+:- pred sort_and_remove_dups(list(T)::in, list(T)::out) is det.
+:- func sort_and_remove_dups(list(T)) = list(T).
 
-    % list.sort(List0, List):
+    % sort(List0, List):
     %
     % List is List0 sorted.
     %
-:- pred list.sort(list(T)::in, list(T)::out) is det.
-:- func list.sort(list(T)) = list(T).
+:- pred sort(list(T)::in, list(T)::out) is det.
+:- func sort(list(T)) = list(T).
 
-    % list.reverse(List, Reverse):
+    % reverse(List, Reverse):
     %
     % `Reverse' is a list containing the same elements as `List'
     % but in reverse order.
     %
-:- pred list.reverse(list(T), list(T)).
-:- mode list.reverse(in, out) is det.
-:- mode list.reverse(out, in) is det.
+:- pred reverse(list(T), list(T)).
+:- mode reverse(in, out) is det.
+:- mode reverse(out, in) is det.
 
-:- func list.reverse(list(T)) = list(T).
+:- func reverse(list(T)) = list(T).
 
-    % list.perm(List0, List):
+    % perm(List0, List):
     %
     % True iff `List' is a permutation of `List0'.
     %
-:- pred list.perm(list(T)::in, list(T)::out) is multi.
+:- pred perm(list(T)::in, list(T)::out) is multi.
 
-    % list.nth_member_search(List, Elem, Position):
+    % nth_member_search(List, Elem, Position):
     %
     % Elem is the Position'th member of List.
     % (Position numbers start from 1.)
     %
-:- pred list.nth_member_search(list(T)::in, T::in, int::out) is semidet.
+:- pred nth_member_search(list(T)::in, T::in, int::out) is semidet.
 
-    % A deterministic version of list.nth_member_search, which aborts
+    % A deterministic version of nth_member_search, which aborts
     % instead of failing if the element is not found in the list.
     %
-:- pred list.nth_member_lookup(list(T)::in, T::in, int::out) is det.
+:- pred nth_member_lookup(list(T)::in, T::in, int::out) is det.
 
-    % list.index*(List, Position, Elem):
+    % index*(List, Position, Elem):
     %
     % These predicates select an element in a list from it's position.
     % The `index0' preds consider the first element to be element
@@ -385,28 +385,28 @@
     % is out of range, whereas the semidet preds fail if the index is out of
     % range.
     %
-:- pred list.index0(list(T)::in, int::in, T::out) is semidet.
-:- pred list.index1(list(T)::in, int::in, T::out) is semidet.
-:- pred list.det_index0(list(T)::in, int::in, T::out) is det.
-:- pred list.det_index1(list(T)::in, int::in, T::out) is det.
+:- pred index0(list(T)::in, int::in, T::out) is semidet.
+:- pred index1(list(T)::in, int::in, T::out) is semidet.
+:- pred det_index0(list(T)::in, int::in, T::out) is det.
+:- pred det_index1(list(T)::in, int::in, T::out) is det.
 
-:- func list.det_index0(list(T), int) = T.
-:- func list.det_index1(list(T), int) = T.
+:- func det_index0(list(T), int) = T.
+:- func det_index1(list(T), int) = T.
 
-    % list.index*_of_first_occurrence(List, Elem, Position):
+    % index*_of_first_occurrence(List, Elem, Position):
     %
     % Computes the least value of Position such that
     % list_index*(List, Position, Elem). The `det_' funcs call error/1
     % if Elem is not a member of List.
     %
-:- pred list.index0_of_first_occurrence(list(T)::in, T::in, int::out)
+:- pred index0_of_first_occurrence(list(T)::in, T::in, int::out)
     is semidet.
-:- pred list.index1_of_first_occurrence(list(T)::in, T::in, int::out)
+:- pred index1_of_first_occurrence(list(T)::in, T::in, int::out)
     is semidet.
-:- func list.det_index0_of_first_occurrence(list(T), T) = int.
-:- func list.det_index1_of_first_occurrence(list(T), T) = int.
+:- func det_index0_of_first_occurrence(list(T), T) = int.
+:- func det_index1_of_first_occurrence(list(T), T) = int.
 
-    % list.zip(ListA, ListB, List):
+    % zip(ListA, ListB, List):
     %
     % List is the result of alternating the elements of ListA and ListB,
     % starting with the first element of ListA (followed by the first element
@@ -414,23 +414,23 @@
     % of ListB, etc.). When there are no more elements remaining in one of
     % the lists, the remainder of the nonempty list is appended.
     %
-:- pred list.zip(list(T)::in, list(T)::in, list(T)::out) is det.
-:- func list.zip(list(T), list(T)) = list(T).
+:- pred zip(list(T)::in, list(T)::in, list(T)::out) is det.
+:- func zip(list(T), list(T)) = list(T).
 
-    % list.duplicate(Count, Elem, List) is true iff List is a list
+    % duplicate(Count, Elem, List) is true iff List is a list
     % containing Count duplicate copies of Elem.
     %
-:- pred list.duplicate(int::in, T::in, list(T)::out) is det.
-:- func list.duplicate(int, T) = list(T).
+:- pred duplicate(int::in, T::in, list(T)::out) is det.
+:- func duplicate(int, T) = list(T).
 
-    % list.condense(ListOfLists, List):
+    % condense(ListOfLists, List):
     %
     % `List' is the result of concatenating all the elements of `ListOfLists'.
     %
-:- pred list.condense(list(list(T))::in, list(T)::out) is det.
-:- func list.condense(list(list(T))) = list(T).
+:- pred condense(list(list(T))::in, list(T)::out) is det.
+:- func condense(list(list(T))) = list(T).
 
-    % list.chunk(List, ChunkSize, Chunks):
+    % chunk(List, ChunkSize, Chunks):
     %
     % Takes a list `List' and breaks it into a list of lists `Chunks',
     % such that the length of each list in `Chunks' is at most `ChunkSize.
@@ -438,37 +438,37 @@
     % last one is exactly `ChunkSize', and the length of the last list in
     % `Chunks' is between one and `ChunkSize'.)
     %
-:- pred list.chunk(list(T)::in, int::in, list(list(T))::out) is det.
-:- func list.chunk(list(T), int) = list(list(T)).
+:- pred chunk(list(T)::in, int::in, list(list(T))::out) is det.
+:- func chunk(list(T), int) = list(list(T)).
 
-    % list.sublist(SubList, FullList) is true if one can obtain SubList
+    % sublist(SubList, FullList) is true if one can obtain SubList
     % by starting with FullList and deleting some of its elements.
     %
-:- pred list.sublist(list(T)::in, list(T)::in) is semidet.
+:- pred sublist(list(T)::in, list(T)::in) is semidet.
 
-    % list.all_same(List) is true if all elements of the list are the same.
+    % all_same(List) is true if all elements of the list are the same.
     %
-:- pred list.all_same(list(T)::in) is semidet.
+:- pred all_same(list(T)::in) is semidet.
 
-    % list.last(List, Last) is true if Last is the last element of List.
+    % last(List, Last) is true if Last is the last element of List.
     %
-:- pred list.last(list(T)::in, T::out) is semidet.
+:- pred last(list(T)::in, T::out) is semidet.
 
-    % A deterministic version of list.last, which aborts instead of
+    % A deterministic version of last, which aborts instead of
     % failing if the input list is empty.
     %
-:- pred list.det_last(list(T)::in, T::out) is det.
-:- func list.det_last(list(T)) = T.
+:- pred det_last(list(T)::in, T::out) is det.
+:- func det_last(list(T)) = T.
 
-    % list.split_last(List, AllButLast, Last) is true if Last is the
+    % split_last(List, AllButLast, Last) is true if Last is the
     % last element of List and AllButLast is the list of elements before it.
     %
-:- pred list.split_last(list(T)::in, list(T)::out, T::out) is semidet.
+:- pred split_last(list(T)::in, list(T)::out, T::out) is semidet.
 
-    % A deterministic version of list.split_last, which aborts instead of
+    % A deterministic version of split_last, which aborts instead of
     % failing if the input list is empty.
     %
-:- pred list.det_split_last(list(T)::in, list(T)::out, T::out) is det.
+:- pred det_split_last(list(T)::in, list(T)::out, T::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -478,1128 +478,1128 @@
 %
 %-----------------------------------------------------------------------------%
 
-    % list.map(T, L, M) uses the closure T
+    % map(T, L, M) uses the closure T
     % to transform the elements of L into the elements of M.
     %
-:- pred list.map(pred(X, Y), list(X), list(Y)).
-:- mode list.map(pred(in, out) is det, in, out) is det.
-:- mode list.map(pred(in, out) is cc_multi, in, out) is cc_multi.
-:- mode list.map(pred(in, out) is semidet, in, out) is semidet.
-:- mode list.map(pred(in, out) is multi, in, out) is multi.
-:- mode list.map(pred(in, out) is nondet, in, out) is nondet.
-:- mode list.map(pred(in, in) is semidet, in, in) is semidet.
+:- pred map(pred(X, Y), list(X), list(Y)).
+:- mode map(pred(in, out) is det, in, out) is det.
+:- mode map(pred(in, out) is cc_multi, in, out) is cc_multi.
+:- mode map(pred(in, out) is semidet, in, out) is semidet.
+:- mode map(pred(in, out) is multi, in, out) is multi.
+:- mode map(pred(in, out) is nondet, in, out) is nondet.
+:- mode map(pred(in, in) is semidet, in, in) is semidet.
 
-:- func list.map(func(X) = Y, list(X)) = list(Y).
+:- func map(func(X) = Y, list(X)) = list(Y).
 
-    % list.map2(T, L, M1, M2) uses the closure T
+    % map2(T, L, M1, M2) uses the closure T
     % to transform the elements of L into the elements of M1 and M2.
     %
-:- pred list.map2(pred(A, B, C), list(A), list(B), list(C)).
-:- mode list.map2(pred(in, out, out) is det, in, out, out) is det.
-:- mode list.map2(pred(in, out, out) is cc_multi, in, out, out) is cc_multi.
-:- mode list.map2(pred(in, out, out) is semidet, in, out, out) is semidet.
-:- mode list.map2(pred(in, out, out) is multi, in, out, out) is multi.
-:- mode list.map2(pred(in, out, out) is nondet, in, out, out) is nondet.
-:- mode list.map2(pred(in, in, in) is semidet, in, in, in) is semidet.
+:- pred map2(pred(A, B, C), list(A), list(B), list(C)).
+:- mode map2(pred(in, out, out) is det, in, out, out) is det.
+:- mode map2(pred(in, out, out) is cc_multi, in, out, out) is cc_multi.
+:- mode map2(pred(in, out, out) is semidet, in, out, out) is semidet.
+:- mode map2(pred(in, out, out) is multi, in, out, out) is multi.
+:- mode map2(pred(in, out, out) is nondet, in, out, out) is nondet.
+:- mode map2(pred(in, in, in) is semidet, in, in, in) is semidet.
 
-    % list.map3(T, L, M1, M2, M3) uses the closure T
+    % map3(T, L, M1, M2, M3) uses the closure T
     % to transform the elements of L into the elements of M1, M2 and M3.
     %
-:- pred list.map3(pred(A, B, C, D), list(A), list(B), list(C), list(D)).
-:- mode list.map3(pred(in, out, out, out) is det, in, out, out, out) is det.
-:- mode list.map3(pred(in, out, out, out) is cc_multi, in, out, out, out)
+:- pred map3(pred(A, B, C, D), list(A), list(B), list(C), list(D)).
+:- mode map3(pred(in, out, out, out) is det, in, out, out, out) is det.
+:- mode map3(pred(in, out, out, out) is cc_multi, in, out, out, out)
     is cc_multi.
-:- mode list.map3(pred(in, out, out, out) is semidet, in, out, out, out)
+:- mode map3(pred(in, out, out, out) is semidet, in, out, out, out)
     is semidet.
-:- mode list.map3(pred(in, out, out, out) is multi, in, out, out, out)
+:- mode map3(pred(in, out, out, out) is multi, in, out, out, out)
     is multi.
-:- mode list.map3(pred(in, out, out, out) is nondet, in, out, out, out)
+:- mode map3(pred(in, out, out, out) is nondet, in, out, out, out)
     is nondet.
-:- mode list.map3(pred(in, in, in, in) is semidet, in, in, in, in) is semidet.
+:- mode map3(pred(in, in, in, in) is semidet, in, in, in, in) is semidet.
 
-    % list.map4(T, L, M1, M2, M3, M4) uses the closure T
+    % map4(T, L, M1, M2, M3, M4) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3 and M4.
     %
-:- pred list.map4(pred(A, B, C, D, E), list(A), list(B), list(C), list(D),
+:- pred map4(pred(A, B, C, D, E), list(A), list(B), list(C), list(D),
     list(E)).
-:- mode list.map4(pred(in, out, out, out, out) is det, in, out, out, out, out)
+:- mode map4(pred(in, out, out, out, out) is det, in, out, out, out, out)
     is det.
-:- mode list.map4(pred(in, out, out, out, out) is cc_multi, in, out, out, out,
+:- mode map4(pred(in, out, out, out, out) is cc_multi, in, out, out, out,
     out) is cc_multi.
-:- mode list.map4(pred(in, out, out, out, out) is semidet, in, out, out, out,
+:- mode map4(pred(in, out, out, out, out) is semidet, in, out, out, out,
     out) is semidet.
-:- mode list.map4(pred(in, out, out, out, out) is multi, in, out, out, out,
+:- mode map4(pred(in, out, out, out, out) is multi, in, out, out, out,
     out) is multi.
-:- mode list.map4(pred(in, out, out, out, out) is nondet, in, out, out, out,
+:- mode map4(pred(in, out, out, out, out) is nondet, in, out, out, out,
     out) is nondet.
-:- mode list.map4(pred(in, in, in, in, in) is semidet, in, in, in, in, in)
+:- mode map4(pred(in, in, in, in, in) is semidet, in, in, in, in, in)
     is semidet.
 
-    % list.map5(T, L, M1, M2, M3, M4, M5) uses the closure T
+    % map5(T, L, M1, M2, M3, M4, M5) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4
     % and M5.
     %
-:- pred list.map5(pred(A, B, C, D, E, F), list(A), list(B), list(C), list(D),
+:- pred map5(pred(A, B, C, D, E, F), list(A), list(B), list(C), list(D),
     list(E), list(F)).
-:- mode list.map5(pred(in, out, out, out, out, out) is det, in, out, out, out,
+:- mode map5(pred(in, out, out, out, out, out) is det, in, out, out, out,
     out, out) is det.
-:- mode list.map5(pred(in, out, out, out, out, out) is cc_multi, in, out, out,
+:- mode map5(pred(in, out, out, out, out, out) is cc_multi, in, out, out,
     out, out, out) is cc_multi.
-:- mode list.map5(pred(in, out, out, out, out, out) is semidet, in, out, out,
+:- mode map5(pred(in, out, out, out, out, out) is semidet, in, out, out,
     out, out, out) is semidet.
-:- mode list.map5(pred(in, out, out, out, out, out) is multi, in, out, out,
+:- mode map5(pred(in, out, out, out, out, out) is multi, in, out, out,
     out, out, out) is multi.
-:- mode list.map5(pred(in, out, out, out, out, out) is nondet, in, out, out,
+:- mode map5(pred(in, out, out, out, out, out) is nondet, in, out, out,
     out, out, out) is nondet.
-:- mode list.map5(pred(in, in, in, in, in, in) is semidet, in, in, in, in, in,
+:- mode map5(pred(in, in, in, in, in, in) is semidet, in, in, in, in, in,
     in) is semidet.
 
-    % list.map6(T, L, M1, M2, M3, M4, M5, M6) uses the closure T
+    % map6(T, L, M1, M2, M3, M4, M5, M6) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5 and M6.
     %
-:- pred list.map6(pred(A, B, C, D, E, F, G), list(A), list(B), list(C),
+:- pred map6(pred(A, B, C, D, E, F, G), list(A), list(B), list(C),
     list(D), list(E), list(F), list(G)).
-:- mode list.map6(pred(in, out, out, out, out, out, out) is det, in, out, out,
+:- mode map6(pred(in, out, out, out, out, out, out) is det, in, out, out,
     out, out, out, out) is det.
-:- mode list.map6(pred(in, out, out, out, out, out, out) is cc_multi, in, out,
+:- mode map6(pred(in, out, out, out, out, out, out) is cc_multi, in, out,
     out, out, out, out, out) is cc_multi.
-:- mode list.map6(pred(in, out, out, out, out, out, out) is semidet, in, out,
+:- mode map6(pred(in, out, out, out, out, out, out) is semidet, in, out,
     out, out, out, out, out) is semidet.
-:- mode list.map6(pred(in, out, out, out, out, out, out) is multi, in, out,
+:- mode map6(pred(in, out, out, out, out, out, out) is multi, in, out,
     out, out, out, out, out) is multi.
-:- mode list.map6(pred(in, out, out, out, out, out, out) is nondet, in, out,
+:- mode map6(pred(in, out, out, out, out, out, out) is nondet, in, out,
     out, out, out, out, out) is nondet.
-:- mode list.map6(pred(in, in, in, in, in, in, in) is semidet, in, in, in, in,
+:- mode map6(pred(in, in, in, in, in, in, in) is semidet, in, in, in, in,
     in, in, in) is semidet.
 
-    % list.map7(T, L, M1, M2, M3, M4, M5, M6, M7) uses the closure T
+    % map7(T, L, M1, M2, M3, M4, M5, M6, M7) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5, M6 and M7.
     %
-:- pred list.map7(pred(A, B, C, D, E, F, G, H), list(A), list(B), list(C),
+:- pred map7(pred(A, B, C, D, E, F, G, H), list(A), list(B), list(C),
     list(D), list(E), list(F), list(G), list(H)).
-:- mode list.map7(pred(in, out, out, out, out, out, out, out) is det,
+:- mode map7(pred(in, out, out, out, out, out, out, out) is det,
     in, out, out, out, out, out, out, out) is det.
-:- mode list.map7(pred(in, out, out, out, out, out, out, out) is cc_multi,
+:- mode map7(pred(in, out, out, out, out, out, out, out) is cc_multi,
     in, out, out, out, out, out, out, out) is cc_multi.
-:- mode list.map7(pred(in, out, out, out, out, out, out, out) is semidet,
+:- mode map7(pred(in, out, out, out, out, out, out, out) is semidet,
     in, out, out, out, out, out, out, out) is semidet.
-:- mode list.map7(pred(in, out, out, out, out, out, out, out) is multi,
+:- mode map7(pred(in, out, out, out, out, out, out, out) is multi,
     in, out, out, out, out, out, out, out) is multi.
-:- mode list.map7(pred(in, out, out, out, out, out, out, out) is nondet,
+:- mode map7(pred(in, out, out, out, out, out, out, out) is nondet,
     in, out, out, out, out, out, out, out) is nondet.
-:- mode list.map7(pred(in, in, in, in, in, in, in, in) is semidet,
+:- mode map7(pred(in, in, in, in, in, in, in, in) is semidet,
     in, in, in, in, in, in, in, in) is semidet.
 
-    % list.map8(T, L, M1, M2, M3, M4, M5, M6, M7) uses the closure T
+    % map8(T, L, M1, M2, M3, M4, M5, M6, M7) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5, M6, M7 and M8.
     %
-:- pred list.map8(pred(A, B, C, D, E, F, G, H, I), list(A), list(B), list(C),
+:- pred map8(pred(A, B, C, D, E, F, G, H, I), list(A), list(B), list(C),
     list(D), list(E), list(F), list(G), list(H), list(I)).
-:- mode list.map8(pred(in, out, out, out, out, out, out, out, out) is det,
+:- mode map8(pred(in, out, out, out, out, out, out, out, out) is det,
     in, out, out, out, out, out, out, out, out) is det.
-:- mode list.map8(pred(in, out, out, out, out, out, out, out, out) is cc_multi,
+:- mode map8(pred(in, out, out, out, out, out, out, out, out) is cc_multi,
     in, out, out, out, out, out, out, out, out) is cc_multi.
-:- mode list.map8(pred(in, out, out, out, out, out, out, out, out) is semidet,
+:- mode map8(pred(in, out, out, out, out, out, out, out, out) is semidet,
     in, out, out, out, out, out, out, out, out) is semidet.
-:- mode list.map8(pred(in, out, out, out, out, out, out, out, out) is multi,
+:- mode map8(pred(in, out, out, out, out, out, out, out, out) is multi,
     in, out, out, out, out, out, out, out, out) is multi.
-:- mode list.map8(pred(in, out, out, out, out, out, out, out, out) is nondet,
+:- mode map8(pred(in, out, out, out, out, out, out, out, out) is nondet,
     in, out, out, out, out, out, out, out, out) is nondet.
-:- mode list.map8(pred(in, in, in, in, in, in, in, in, in) is semidet,
+:- mode map8(pred(in, in, in, in, in, in, in, in, in) is semidet,
     in, in, in, in, in, in, in, in, in) is semidet.
 
-    % list.map_corresponding(F, [A1, .. An], [B1, .. Bn]) =
+    % map_corresponding(F, [A1, .. An], [B1, .. Bn]) =
     %   [F(A1, B1), .., F(An, Bn)].
     %
     % An exception is raised if the list arguments differ in length.
     %
-:- func list.map_corresponding(func(A, B) = C, list(A), list(B)) = list(C).
-:- pred list.map_corresponding(pred(A, B, C), list(A), list(B), list(C)).
-:- mode list.map_corresponding(in(pred(in, in, out) is det), in, in, out)
+:- func map_corresponding(func(A, B) = C, list(A), list(B)) = list(C).
+:- pred map_corresponding(pred(A, B, C), list(A), list(B), list(C)).
+:- mode map_corresponding(in(pred(in, in, out) is det), in, in, out)
     is det.
-:- mode list.map_corresponding(in(pred(in, in, out) is semidet), in, in, out)
+:- mode map_corresponding(in(pred(in, in, out) is semidet), in, in, out)
     is semidet.
 
-    % list.map_corresponding3(F, [A1, .. An], [B1, .. Bn], [C1, .. Cn]) =
+    % map_corresponding3(F, [A1, .. An], [B1, .. Bn], [C1, .. Cn]) =
     %   [F(A1, B1, C1), .., F(An, Bn, Cn)].
     %
     % An exception is raised if the list arguments differ in length.
     %
-:- func list.map_corresponding3(func(A, B, C) = D, list(A), list(B), list(C))
+:- func map_corresponding3(func(A, B, C) = D, list(A), list(B), list(C))
     = list(D).
 
-    % list.filter_map_corresponding/3 is like list.map_corresponding/3
+    % filter_map_corresponding/3 is like map_corresponding/3
     % except the function argument is semidet and the output list
     % consists of only those applications of the function argument that
     % succeeded.
     %
-:- func list.filter_map_corresponding(func(A, B) = R, list(A), list(B))
+:- func filter_map_corresponding(func(A, B) = R, list(A), list(B))
     = list(R).
-:- mode list.filter_map_corresponding(func(in, in) = out is semidet, in, in)
+:- mode filter_map_corresponding(func(in, in) = out is semidet, in, in)
     = out is det.
-:- pred list.filter_map_corresponding(
+:- pred filter_map_corresponding(
     pred(A, B, R)::in(pred(in, in, out) is semidet),
     list(A)::in, list(B)::in, list(R)::out) is det.
 
-    % list.filter_map_corresponding3/4 is like list.map_corresponding3/4
+    % filter_map_corresponding3/4 is like map_corresponding3/4
     % except the function argument is semidet and the output list
     % consists of only those applications of the function argument that
     % succeeded.
     %
-:- func list.filter_map_corresponding3(func(A, B, C) = R,
+:- func filter_map_corresponding3(func(A, B, C) = R,
     list(A), list(B), list(C)) = list(R).
-:- mode list.filter_map_corresponding3(func(in, in, in) = out is semidet,
+:- mode filter_map_corresponding3(func(in, in, in) = out is semidet,
     in, in, in) = out is det.
-:- pred list.filter_map_corresponding3(
+:- pred filter_map_corresponding3(
     pred(A, B, C, R)::in(pred(in, in, in, out) is semidet),
     list(A)::in, list(B)::in, list(C)::in, list(R)::out) is det.
 
-    % list.map_corresponding_foldl/6 is like list.map_corresponding except
+    % map_corresponding_foldl/6 is like map_corresponding except
     % that it has an accumulator threaded through it.
     %
-:- pred list.map_corresponding_foldl(pred(A, B, C, D, D),
+:- pred map_corresponding_foldl(pred(A, B, C, D, D),
     list(A), list(B), list(C), D, D).
-:- mode list.map_corresponding_foldl(pred(in, in, out, in, out) is det,
+:- mode map_corresponding_foldl(pred(in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode list.map_corresponding_foldl(pred(in, in, out, mdi, muo) is det,
+:- mode map_corresponding_foldl(pred(in, in, out, mdi, muo) is det,
     in, in, out, mdi, muo) is det.
-:- mode list.map_corresponding_foldl(pred(in, in, out, di, uo) is det,
+:- mode map_corresponding_foldl(pred(in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
-:- mode list.map_corresponding_foldl(pred(in, in, out, in, out) is semidet,
+:- mode map_corresponding_foldl(pred(in, in, out, in, out) is semidet,
     in, in, out, in, out) is semidet.
-:- mode list.map_corresponding_foldl(pred(in, in, out, mdi, muo) is semidet,
+:- mode map_corresponding_foldl(pred(in, in, out, mdi, muo) is semidet,
     in, in, out, mdi, muo) is semidet.
-:- mode list.map_corresponding_foldl(pred(in, in, out, di, uo) is semidet,
+:- mode map_corresponding_foldl(pred(in, in, out, di, uo) is semidet,
     in, in, out, di, uo) is semidet.
 
-    % Like list.map_corresponding_foldl/6 except that it has two
+    % Like map_corresponding_foldl/6 except that it has two
     % accumulators.
     %
-:- pred list.map_corresponding_foldl2(pred(A, B, C, D, D, E, E),
+:- pred map_corresponding_foldl2(pred(A, B, C, D, D, E, E),
     list(A), list(B), list(C), D, D, E, E).
-:- mode list.map_corresponding_foldl2(
+:- mode map_corresponding_foldl2(
     pred(in, in, out, in, out, in, out) is det, in, in, out, in, out,
     in, out) is det.
-:- mode list.map_corresponding_foldl2(
+:- mode map_corresponding_foldl2(
     pred(in, in, out, in, out, mdi, muo) is det, in, in, out, in, out,
     mdi, muo) is det.
-:- mode list.map_corresponding_foldl2(
+:- mode map_corresponding_foldl2(
     pred(in, in, out, in, out, di, uo) is det, in, in, out, in, out,
     di, uo) is det.
-:- mode list.map_corresponding_foldl2(
+:- mode map_corresponding_foldl2(
     pred(in, in, out, in, out, in, out) is semidet, in, in, out, in, out,
     in, out) is semidet.
-:- mode list.map_corresponding_foldl2(
+:- mode map_corresponding_foldl2(
     pred(in, in, out, in, out, mdi, muo) is semidet, in, in, out, in, out,
     mdi, muo) is semidet.
-:- mode list.map_corresponding_foldl2(
+:- mode map_corresponding_foldl2(
     pred(in, in, out, in, out, di, uo) is semidet, in, in, out, in, out,
     di, uo) is semidet.
 
-    % Like list.map_corresponding_foldl/6 except that it has three
+    % Like map_corresponding_foldl/6 except that it has three
     % accumulators.
     %
-:- pred list.map_corresponding_foldl3(pred(A, B, C, D, D, E, E, F, F),
+:- pred map_corresponding_foldl3(pred(A, B, C, D, D, E, E, F, F),
     list(A), list(B), list(C), D, D, E, E, F, F).
-:- mode list.map_corresponding_foldl3(
+:- mode map_corresponding_foldl3(
     pred(in, in, out, in, out, in, out, in, out) is det, in, in, out, in, out,
     in, out, in, out) is det.
-:- mode list.map_corresponding_foldl3(
+:- mode map_corresponding_foldl3(
     pred(in, in, out, in, out, in, out, mdi, muo) is det, in, in, out, in, out,
     in, out, mdi, muo) is det.
-:- mode list.map_corresponding_foldl3(
+:- mode map_corresponding_foldl3(
     pred(in, in, out, in, out, in, out, di, uo) is det, in, in, out, in, out,
     in, out, di, uo) is det.
-:- mode list.map_corresponding_foldl3(
+:- mode map_corresponding_foldl3(
     pred(in, in, out, in, out, in, out, in, out) is semidet, in, in, out,
     in, out, in, out, in, out) is semidet.
-:- mode list.map_corresponding_foldl3(
+:- mode map_corresponding_foldl3(
     pred(in, in, out, in, out, in, out, mdi, muo) is semidet, in, in, out,
     in, out, in, out, mdi, muo) is semidet.
-:- mode list.map_corresponding_foldl3(
+:- mode map_corresponding_foldl3(
     pred(in, in, out, in, out, in, out, di, uo) is semidet, in, in, out,
     in, out, in, out, di, uo) is semidet.
 
-    % list.map_corresponding3_foldl/7 is like list.map_corresponding3 except
+    % map_corresponding3_foldl/7 is like map_corresponding3 except
     % that it has an accumulator threaded through it.
     %
-:- pred list.map_corresponding3_foldl(pred(A, B, C, D, E, E),
+:- pred map_corresponding3_foldl(pred(A, B, C, D, E, E),
     list(A), list(B), list(C), list(D), E, E).
-:- mode list.map_corresponding3_foldl(pred(in, in, in, out, in, out) is det,
+:- mode map_corresponding3_foldl(pred(in, in, in, out, in, out) is det,
     in, in, in, out, in, out) is det.
-:- mode list.map_corresponding3_foldl(pred(in, in, in, out, mdi, muo) is det,
+:- mode map_corresponding3_foldl(pred(in, in, in, out, mdi, muo) is det,
     in, in, in, out, mdi, muo) is det.
-:- mode list.map_corresponding3_foldl(pred(in, in, in, out, di, uo) is det,
+:- mode map_corresponding3_foldl(pred(in, in, in, out, di, uo) is det,
     in, in, in, out, di, uo) is det.
-:- mode list.map_corresponding3_foldl(
+:- mode map_corresponding3_foldl(
     pred(in, in, in, out, in, out) is semidet,
     in, in, in, out, in, out) is semidet.
-:- mode list.map_corresponding3_foldl(
+:- mode map_corresponding3_foldl(
     pred(in, in, in, out, mdi, muo) is semidet,
     in, in, in, out, mdi, muo) is semidet.
-:- mode list.map_corresponding3_foldl(
+:- mode map_corresponding3_foldl(
     pred(in, in, in, out, di, uo) is semidet,
     in, in, in, out, di, uo) is semidet.
 
-    % list.foldl(Pred, List, Start, End) calls Pred with each
+    % foldl(Pred, List, Start, End) calls Pred with each
     % element of List (working left-to-right) and an accumulator
     % (with the initial value of Start), and returns the final
     % value in End.
     %
-:- pred list.foldl(pred(L, A, A), list(L), A, A).
-:- mode list.foldl(pred(in, in, out) is det, in, in, out) is det.
-:- mode list.foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode list.foldl(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode list.foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode list.foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode list.foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode list.foldl(pred(in, in, out) is multi, in, in, out) is multi.
-:- mode list.foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode list.foldl(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode list.foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
-:- mode list.foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- pred foldl(pred(L, A, A), list(L), A, A).
+:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldl(pred(in, in, out) is multi, in, in, out) is multi.
+:- mode foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode foldl(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
+:- mode foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 
-:- func list.foldl(func(L, A) = A, list(L), A) = A.
+:- func foldl(func(L, A) = A, list(L), A) = A.
 
-    % list.foldl2(Pred, List, !Acc1, !Acc2):
-    % Does the same job as list.foldl, but with two accumulators.
-    % (Although no more expressive than list.foldl, this is often
+    % foldl2(Pred, List, !Acc1, !Acc2):
+    % Does the same job as foldl, but with two accumulators.
+    % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred list.foldl2(pred(L, A, A, Z, Z), list(L), A, A, Z, Z).
-:- mode list.foldl2(pred(in, in, out, in, out) is det,
+:- pred foldl2(pred(L, A, A, Z, Z), list(L), A, A, Z, Z).
+:- mode foldl2(pred(in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode list.foldl2(pred(in, in, out, mdi, muo) is det,
+:- mode foldl2(pred(in, in, out, mdi, muo) is det,
     in, in, out, mdi, muo) is det.
-:- mode list.foldl2(pred(in, in, out, di, uo) is det,
+:- mode foldl2(pred(in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
-:- mode list.foldl2(pred(in, di, uo, di, uo) is det,
+:- mode foldl2(pred(in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
-:- mode list.foldl2(pred(in, in, out, in, out) is semidet,
+:- mode foldl2(pred(in, in, out, in, out) is semidet,
     in, in, out, in, out) is semidet.
-:- mode list.foldl2(pred(in, in, out, mdi, muo) is semidet,
+:- mode foldl2(pred(in, in, out, mdi, muo) is semidet,
     in, in, out, mdi, muo) is semidet.
-:- mode list.foldl2(pred(in, in, out, di, uo) is semidet,
+:- mode foldl2(pred(in, in, out, di, uo) is semidet,
     in, in, out, di, uo) is semidet.
-:- mode list.foldl2(pred(in, in, out, in, out) is nondet,
+:- mode foldl2(pred(in, in, out, in, out) is nondet,
     in, in, out, in, out) is nondet.
-:- mode list.foldl2(pred(in, in, out, mdi, muo) is nondet,
+:- mode foldl2(pred(in, in, out, mdi, muo) is nondet,
     in, in, out, mdi, muo) is nondet.
-:- mode list.foldl2(pred(in, in, out, in, out) is cc_multi,
+:- mode foldl2(pred(in, in, out, in, out) is cc_multi,
     in, in, out, in, out) is cc_multi.
-:- mode list.foldl2(pred(in, in, out, mdi, muo) is cc_multi,
+:- mode foldl2(pred(in, in, out, mdi, muo) is cc_multi,
     in, in, out, mdi, muo) is cc_multi.
-:- mode list.foldl2(pred(in, in, out, di, uo) is cc_multi,
+:- mode foldl2(pred(in, in, out, di, uo) is cc_multi,
     in, in, out, di, uo) is cc_multi.
-:- mode list.foldl2(pred(in, di, uo, di, uo) is cc_multi,
+:- mode foldl2(pred(in, di, uo, di, uo) is cc_multi,
     in, di, uo, di, uo) is cc_multi.
 
-    % list.foldl3(Pred, List, !Acc1, !Acc2, !Acc3):
-    % Does the same job as list.foldl, but with three accumulators.
-    % (Although no more expressive than list.foldl, this is often
+    % foldl3(Pred, List, !Acc1, !Acc2, !Acc3):
+    % Does the same job as foldl, but with three accumulators.
+    % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred list.foldl3(pred(L, A, A, B, B, C, C), list(L),
+:- pred foldl3(pred(L, A, A, B, B, C, C), list(L),
     A, A, B, B, C, C).
-:- mode list.foldl3(pred(in, in, out, in, out, in, out) is det,
+:- mode foldl3(pred(in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
-:- mode list.foldl3(pred(in, in, out, in, out, mdi, muo) is det,
+:- mode foldl3(pred(in, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, mdi, muo) is det.
-:- mode list.foldl3(pred(in, in, out, in, out, di, uo) is det,
+:- mode foldl3(pred(in, in, out, in, out, di, uo) is det,
     in, in, out, in, out, di, uo) is det.
-:- mode list.foldl3(pred(in, in, out, in, out, in, out) is semidet,
+:- mode foldl3(pred(in, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out) is semidet.
-:- mode list.foldl3(pred(in, in, out, in, out, mdi, muo) is semidet,
+:- mode foldl3(pred(in, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, mdi, muo) is semidet.
-:- mode list.foldl3(pred(in, in, out, in, out, di, uo) is semidet,
+:- mode foldl3(pred(in, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, di, uo) is semidet.
-:- mode list.foldl3(pred(in, in, out, in, out, in, out) is nondet,
+:- mode foldl3(pred(in, in, out, in, out, in, out) is nondet,
     in, in, out, in, out, in, out) is nondet.
-:- mode list.foldl3(pred(in, in, out, in, out, mdi, muo) is nondet,
+:- mode foldl3(pred(in, in, out, in, out, mdi, muo) is nondet,
     in, in, out, in, out, mdi, muo) is nondet.
-:- mode list.foldl3(pred(in, in, out, in, out, in, out) is cc_multi,
+:- mode foldl3(pred(in, in, out, in, out, in, out) is cc_multi,
     in, in, out, in, out, in, out) is cc_multi.
-:- mode list.foldl3(pred(in, in, out, in, out, di, uo) is cc_multi,
+:- mode foldl3(pred(in, in, out, in, out, di, uo) is cc_multi,
     in, in, out, in, out, di, uo) is cc_multi.
 
-    % list.foldl4(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4):
-    % Does the same job as list.foldl, but with four accumulators.
-    % (Although no more expressive than list.foldl, this is often
+    % foldl4(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4):
+    % Does the same job as foldl, but with four accumulators.
+    % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred list.foldl4(pred(L, A, A, B, B, C, C, D, D), list(L),
+:- pred foldl4(pred(L, A, A, B, B, C, C, D, D), list(L),
     A, A, B, B, C, C, D, D).
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is det,
+:- mode foldl4(pred(in, in, out, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out, in, out) is det.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is det,
+:- mode foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, in, out, mdi, muo) is det.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, di, uo) is det,
+:- mode foldl4(pred(in, in, out, in, out, in, out, di, uo) is det,
     in, in, out, in, out, in, out, di, uo) is det.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is cc_multi,
+:- mode foldl4(pred(in, in, out, in, out, in, out, in, out) is cc_multi,
     in, in, out, in, out, in, out, in, out) is cc_multi.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, di, uo) is cc_multi,
+:- mode foldl4(pred(in, in, out, in, out, in, out, di, uo) is cc_multi,
     in, in, out, in, out, in, out, di, uo) is cc_multi.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is semidet,
+:- mode foldl4(pred(in, in, out, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out, in, out) is semidet.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is semidet,
+:- mode foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, in, out, mdi, muo) is semidet.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, di, uo) is semidet,
+:- mode foldl4(pred(in, in, out, in, out, in, out, di, uo) is semidet,
     in, in, out, in, out, in, out, di, uo) is semidet.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is nondet,
+:- mode foldl4(pred(in, in, out, in, out, in, out, in, out) is nondet,
     in, in, out, in, out, in, out, in, out) is nondet.
-:- mode list.foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is nondet,
+:- mode foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is nondet,
     in, in, out, in, out, in, out, mdi, muo) is nondet.
 
-    % list.foldl5(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5):
-    % Does the same job as list.foldl, but with five accumulators.
-    % (Although no more expressive than list.foldl, this is often
+    % foldl5(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5):
+    % Does the same job as foldl, but with five accumulators.
+    % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred list.foldl5(pred(L, A, A, B, B, C, C, D, D, E, E), list(L),
+:- pred foldl5(pred(L, A, A, B, B, C, C, D, D, E, E), list(L),
     A, A, B, B, C, C, D, D, E, E).
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
+:- mode foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
     is det,
     in, in, out, in, out, in, out, in, out, in, out) is det.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
+:- mode foldl5(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
     is det,
     in, in, out, in, out, in, out, in, out, mdi, muo) is det.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, di, uo)
+:- mode foldl5(pred(in, in, out, in, out, in, out, in, out, di, uo)
     is det,
     in, in, out, in, out, in, out, in, out, di, uo) is det.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
+:- mode foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
     is semidet,
     in, in, out, in, out, in, out, in, out, in, out) is semidet.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
+:- mode foldl5(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
     is semidet,
     in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, di, uo)
+:- mode foldl5(pred(in, in, out, in, out, in, out, in, out, di, uo)
     is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
+:- mode foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
     is nondet,
     in, in, out, in, out, in, out, in, out, in, out) is nondet.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
+:- mode foldl5(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
     is nondet,
     in, in, out, in, out, in, out, in, out, mdi, muo) is nondet.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
+:- mode foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
     is cc_multi,
     in, in, out, in, out, in, out, in, out, in, out) is cc_multi.
-:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, di, uo)
+:- mode foldl5(pred(in, in, out, in, out, in, out, in, out, di, uo)
     is cc_multi,
     in, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
 
-    % list.foldl6(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6):
-    % Does the same job as list.foldl, but with six accumulators.
-    % (Although no more expressive than list.foldl, this is often
+    % foldl6(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6):
+    % Does the same job as foldl, but with six accumulators.
+    % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred list.foldl6(pred(L, A, A, B, B, C, C, D, D, E, E, F, F), list(L),
+:- pred foldl6(pred(L, A, A, B, B, C, C, D, D, E, E, F, F), list(L),
     A, A, B, B, C, C, D, D, E, E, F, F).
-:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+:- mode foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     in, out) is det,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
-:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+:- mode foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     mdi, muo) is det,
     in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
-:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+:- mode foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     di, uo) is det,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
-:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+:- mode foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     in, out) is cc_multi,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is cc_multi.
-:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+:- mode foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     di, uo) is cc_multi,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
-:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+:- mode foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     in, out) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
-:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+:- mode foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     mdi, muo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
-:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+:- mode foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     di, uo) is semidet,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
-:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+:- mode foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     in, out) is nondet,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
 
-    % list.foldr(Pred, List, Start, End) calls Pred with each
+    % foldr(Pred, List, Start, End) calls Pred with each
     % element of List (working right-to-left) and an accumulator
     % (with the initial value of Start), and returns the final
     % value in End.
     %
-:- pred list.foldr(pred(L, A, A), list(L), A, A).
-:- mode list.foldr(pred(in, in, out) is det, in, in, out) is det.
-:- mode list.foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode list.foldr(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode list.foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode list.foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode list.foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode list.foldr(pred(in, in, out) is multi, in, in, out) is multi.
-:- mode list.foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode list.foldr(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode list.foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode list.foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- pred foldr(pred(L, A, A), list(L), A, A).
+:- mode foldr(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldr(pred(in, in, out) is multi, in, in, out) is multi.
+:- mode foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode foldr(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
+:- mode foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
-:- func list.foldr(func(L, A) = A, list(L), A) = A.
+:- func foldr(func(L, A) = A, list(L), A) = A.
 
-    % list.foldr2(Pred, List, !Acc1, !Acc2):
-    % Does the same job as list.foldr, but with two accumulators.
-    % (Although no more expressive than list.foldl, this is often
+    % foldr2(Pred, List, !Acc1, !Acc2):
+    % Does the same job as foldr, but with two accumulators.
+    % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred list.foldr2(pred(L, A, A, B, B), list(L), A, A, B, B).
-:- mode list.foldr2(pred(in, in, out, in, out) is det, in, in, out,
+:- pred foldr2(pred(L, A, A, B, B), list(L), A, A, B, B).
+:- mode foldr2(pred(in, in, out, in, out) is det, in, in, out,
     in, out) is det.
-:- mode list.foldr2(pred(in, in, out, mdi, muo) is det, in, in, out,
+:- mode foldr2(pred(in, in, out, mdi, muo) is det, in, in, out,
     mdi, muo) is det.
-:- mode list.foldr2(pred(in, in, out, di, uo) is det, in, in, out,
+:- mode foldr2(pred(in, in, out, di, uo) is det, in, in, out,
     di, uo) is det.
-:- mode list.foldr2(pred(in, in, out, in, out) is semidet, in, in, out,
+:- mode foldr2(pred(in, in, out, in, out) is semidet, in, in, out,
     in, out) is semidet.
-:- mode list.foldr2(pred(in, in, out, mdi, muo) is semidet, in, in, out,
+:- mode foldr2(pred(in, in, out, mdi, muo) is semidet, in, in, out,
     mdi, muo) is semidet.
-:- mode list.foldr2(pred(in, in, out, di, uo) is semidet, in, in, out,
+:- mode foldr2(pred(in, in, out, di, uo) is semidet, in, in, out,
     di, uo) is semidet.
-:- mode list.foldr2(pred(in, in, out, in, out) is nondet, in, in, out,
+:- mode foldr2(pred(in, in, out, in, out) is nondet, in, in, out,
     in, out) is nondet.
-:- mode list.foldr2(pred(in, in, out, mdi, muo) is nondet, in, in, out,
+:- mode foldr2(pred(in, in, out, mdi, muo) is nondet, in, in, out,
     mdi, muo) is nondet.
 
-    % list.foldr3(Pred, List, !Acc1, !Acc2, !Acc3):
-    % Does the same job as list.foldr, but with two accumulators.
-    % (Although no more expressive than list.foldl, this is often
+    % foldr3(Pred, List, !Acc1, !Acc2, !Acc3):
+    % Does the same job as foldr, but with two accumulators.
+    % (Although no more expressive than foldl, this is often
     % a more convenient format, and a little more efficient).
     %
-:- pred list.foldr3(pred(L, A, A, B, B, C, C), list(L), A, A, B, B, C, C).
-:- mode list.foldr3(pred(in, in, out, in, out, in, out) is det, in,
+:- pred foldr3(pred(L, A, A, B, B, C, C), list(L), A, A, B, B, C, C).
+:- mode foldr3(pred(in, in, out, in, out, in, out) is det, in,
     in, out, in, out, in, out) is det.
-:- mode list.foldr3(pred(in, in, out, in, out, mdi, muo) is det, in,
+:- mode foldr3(pred(in, in, out, in, out, mdi, muo) is det, in,
     in, out, in, out, mdi, muo) is det.
-:- mode list.foldr3(pred(in, in, out, in, out, di, uo) is det, in,
+:- mode foldr3(pred(in, in, out, in, out, di, uo) is det, in,
     in, out, in, out, di, uo) is det.
-:- mode list.foldr3(pred(in, in, out, in, out, in, out) is semidet, in,
+:- mode foldr3(pred(in, in, out, in, out, in, out) is semidet, in,
     in, out, in, out, in, out) is semidet.
-:- mode list.foldr3(pred(in, in, out, in, out, mdi, muo) is semidet, in,
+:- mode foldr3(pred(in, in, out, in, out, mdi, muo) is semidet, in,
     in, out, in, out, mdi, muo) is semidet.
-:- mode list.foldr3(pred(in, in, out, in, out, di, uo) is semidet, in,
+:- mode foldr3(pred(in, in, out, in, out, di, uo) is semidet, in,
     in, out, in, out, di, uo) is semidet.
-:- mode list.foldr3(pred(in, in, out, in, out, in, out) is nondet, in,
+:- mode foldr3(pred(in, in, out, in, out, in, out) is nondet, in,
     in, out, in, out, in, out) is nondet.
-:- mode list.foldr3(pred(in, in, out, in, out, mdi, muo) is nondet, in,
+:- mode foldr3(pred(in, in, out, in, out, mdi, muo) is nondet, in,
     in, out, in, out, mdi, muo) is nondet.
 
-    % list.foldl_corresponding(P, As, Bs, !Acc):
-    % Does the same job as list.foldl, but works on two lists in
+    % foldl_corresponding(P, As, Bs, !Acc):
+    % Does the same job as foldl, but works on two lists in
     % parallel.  An exception is raised if the list arguments differ
     % in length.
     %
-:- pred list.foldl_corresponding(pred(A, B, C, C), list(A), list(B), C, C).
-:- mode list.foldl_corresponding(pred(in, in, in, out) is det,
+:- pred foldl_corresponding(pred(A, B, C, C), list(A), list(B), C, C).
+:- mode foldl_corresponding(pred(in, in, in, out) is det,
     in, in, in, out) is det.
-:- mode list.foldl_corresponding(pred(in, in, mdi, muo) is det,
+:- mode foldl_corresponding(pred(in, in, mdi, muo) is det,
     in, in, mdi, muo) is det.
-:- mode list.foldl_corresponding(pred(in, in, di, uo) is det,
+:- mode foldl_corresponding(pred(in, in, di, uo) is det,
     in, in, di, uo) is det.
-:- mode list.foldl_corresponding(pred(in, in, in, out) is semidet,
+:- mode foldl_corresponding(pred(in, in, in, out) is semidet,
     in, in, in, out) is semidet.
-:- mode list.foldl_corresponding(pred(in, in, mdi, muo) is semidet,
+:- mode foldl_corresponding(pred(in, in, mdi, muo) is semidet,
     in, in, mdi, muo) is semidet.
-:- mode list.foldl_corresponding(pred(in, in, di, uo) is semidet,
+:- mode foldl_corresponding(pred(in, in, di, uo) is semidet,
     in, in, di, uo) is semidet.
-:- mode list.foldl_corresponding(pred(in, in, in, out) is nondet,
+:- mode foldl_corresponding(pred(in, in, in, out) is nondet,
     in, in, in, out) is nondet.
-:- mode list.foldl_corresponding(pred(in, in, mdi, muo) is nondet,
+:- mode foldl_corresponding(pred(in, in, mdi, muo) is nondet,
     in, in, mdi, muo) is nondet.
-:- mode list.foldl_corresponding(pred(in, in, in, out) is cc_multi,
+:- mode foldl_corresponding(pred(in, in, in, out) is cc_multi,
     in, in, in, out) is cc_multi.
-:- mode list.foldl_corresponding(pred(in, in, di, uo) is cc_multi,
+:- mode foldl_corresponding(pred(in, in, di, uo) is cc_multi,
     in, in, di, uo) is cc_multi.
 
-:- func list.foldl_corresponding(func(A, B, C) = C, list(A), list(B), C) = C.
+:- func foldl_corresponding(func(A, B, C) = C, list(A), list(B), C) = C.
 
-    % list.foldl2_corresponding(F, As, Bs, !Acc1, !Acc2):
-    % Does the same job as list.foldl_corresponding, but has two
+    % foldl2_corresponding(F, As, Bs, !Acc1, !Acc2):
+    % Does the same job as foldl_corresponding, but has two
     % accumulators.
     %
-:- pred list.foldl2_corresponding(pred(A, B, C, C, D, D), list(A), list(B),
+:- pred foldl2_corresponding(pred(A, B, C, C, D, D), list(A), list(B),
     C, C, D, D).
-:- mode list.foldl2_corresponding(pred(in, in, in, out, in, out) is det,
+:- mode foldl2_corresponding(pred(in, in, in, out, in, out) is det,
     in, in, in, out, in, out) is det.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, mdi, muo) is det,
+:- mode foldl2_corresponding(pred(in, in, in, out, mdi, muo) is det,
     in, in, in, out, mdi, muo) is det.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, di, uo) is det,
+:- mode foldl2_corresponding(pred(in, in, in, out, di, uo) is det,
     in, in, in, out, di, uo) is det.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, in, out) is semidet,
+:- mode foldl2_corresponding(pred(in, in, in, out, in, out) is semidet,
     in, in, in, out, in, out) is semidet.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, mdi, muo) is semidet,
+:- mode foldl2_corresponding(pred(in, in, in, out, mdi, muo) is semidet,
     in, in, in, out, mdi, muo) is semidet.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, di, uo) is semidet,
+:- mode foldl2_corresponding(pred(in, in, in, out, di, uo) is semidet,
     in, in, in, out, di, uo) is semidet.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, in, out) is nondet,
+:- mode foldl2_corresponding(pred(in, in, in, out, in, out) is nondet,
     in, in, in, out, in, out) is nondet.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, mdi, muo) is nondet,
+:- mode foldl2_corresponding(pred(in, in, in, out, mdi, muo) is nondet,
     in, in, in, out, mdi, muo) is nondet.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, in, out) is cc_multi,
+:- mode foldl2_corresponding(pred(in, in, in, out, in, out) is cc_multi,
     in, in, in, out, in, out) is cc_multi.
-:- mode list.foldl2_corresponding(pred(in, in, in, out, di, uo) is cc_multi,
+:- mode foldl2_corresponding(pred(in, in, in, out, di, uo) is cc_multi,
     in, in, in, out, di, uo) is cc_multi.
 
-    % list.foldl3_corresponding(F, As, Bs, !Acc1, !Acc2, !Acc3):
-    % Does the same job as list.foldl_corresponding, but has three
+    % foldl3_corresponding(F, As, Bs, !Acc1, !Acc2, !Acc3):
+    % Does the same job as foldl_corresponding, but has three
     % accumulators.
     %
-:- pred list.foldl3_corresponding(pred(A, B, C, C, D, D, E, E),
+:- pred foldl3_corresponding(pred(A, B, C, C, D, D, E, E),
     list(A), list(B), C, C, D, D, E, E).
-:- mode list.foldl3_corresponding(
+:- mode foldl3_corresponding(
     pred(in, in, in, out, in, out, in, out) is det, in, in, in, out,
     in, out, in, out) is det.
-:- mode list.foldl3_corresponding(
+:- mode foldl3_corresponding(
     pred(in, in, in, out, in, out, mdi, muo) is det, in, in, in, out,
     in, out, mdi, muo) is det.
-:- mode list.foldl3_corresponding(
+:- mode foldl3_corresponding(
     pred(in, in, in, out, in, out, di, uo) is det, in, in, in, out,
     in, out, di, uo) is det.
-:- mode list.foldl3_corresponding(
+:- mode foldl3_corresponding(
     pred(in, in, in, out, in, out, in, out) is semidet, in, in, in, out,
     in, out, in, out) is semidet.
-:- mode list.foldl3_corresponding(
+:- mode foldl3_corresponding(
     pred(in, in, in, out, in, out, mdi, muo) is semidet, in, in, in, out,
     in, out, mdi, muo) is semidet.
-:- mode list.foldl3_corresponding(
+:- mode foldl3_corresponding(
     pred(in, in, in, out, in, out, di, uo) is semidet, in, in, in, out,
     in, out, di, uo) is semidet.
 
-    % list.foldl_corresponding3(P, As, Bs, Cs, !Acc):
-    % Like list.foldl_corresponding but folds over three corresponding
+    % foldl_corresponding3(P, As, Bs, Cs, !Acc):
+    % Like foldl_corresponding but folds over three corresponding
     % lists.
     %
-:- pred list.foldl_corresponding3(pred(A, B, C, D, D),
+:- pred foldl_corresponding3(pred(A, B, C, D, D),
     list(A), list(B), list(C), D, D).
-:- mode list.foldl_corresponding3(pred(in, in, in, in, out) is det,
+:- mode foldl_corresponding3(pred(in, in, in, in, out) is det,
     in, in, in, in, out) is det.
-:- mode list.foldl_corresponding3(pred(in, in, in, mdi, muo) is det,
+:- mode foldl_corresponding3(pred(in, in, in, mdi, muo) is det,
     in, in, in, mdi, muo) is det.
-:- mode list.foldl_corresponding3(pred(in, in, in, di, uo) is det,
+:- mode foldl_corresponding3(pred(in, in, in, di, uo) is det,
     in, in, in, di, uo) is det.
-:- mode list.foldl_corresponding3(pred(in, in, in, in, out) is semidet,
+:- mode foldl_corresponding3(pred(in, in, in, in, out) is semidet,
     in, in, in, in, out) is semidet.
-:- mode list.foldl_corresponding3(pred(in, in, in, mdi, muo) is semidet,
+:- mode foldl_corresponding3(pred(in, in, in, mdi, muo) is semidet,
     in, in, in, mdi, muo) is semidet.
-:- mode list.foldl_corresponding3(pred(in, in, in, di, uo) is semidet,
+:- mode foldl_corresponding3(pred(in, in, in, di, uo) is semidet,
     in, in, in, di, uo) is semidet.
 
-    % list.foldl2_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2):
-    % like list.foldl_corresponding3 but with two accumulators.
+    % foldl2_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2):
+    % like foldl_corresponding3 but with two accumulators.
     %
-:- pred list.foldl2_corresponding3(pred(A, B, C, D, D, E, E),
+:- pred foldl2_corresponding3(pred(A, B, C, D, D, E, E),
     list(A), list(B), list(C), D, D, E, E).
-:- mode list.foldl2_corresponding3(pred(in, in, in, in, out, in, out) is det,
+:- mode foldl2_corresponding3(pred(in, in, in, in, out, in, out) is det,
     in, in, in, in, out, in, out) is det.
-:- mode list.foldl2_corresponding3(pred(in, in, in, in, out, mdi, muo) is det,
+:- mode foldl2_corresponding3(pred(in, in, in, in, out, mdi, muo) is det,
     in, in, in, in, out, mdi, muo) is det.
-:- mode list.foldl2_corresponding3(pred(in, in, in, in, out, di, uo) is det,
+:- mode foldl2_corresponding3(pred(in, in, in, in, out, di, uo) is det,
     in, in, in, in, out, di, uo) is det.
-:- mode list.foldl2_corresponding3(
+:- mode foldl2_corresponding3(
     pred(in, in, in, in, out, in, out) is semidet,
     in, in, in, in, out, in, out) is semidet.
-:- mode list.foldl2_corresponding3(
+:- mode foldl2_corresponding3(
     pred(in, in, in, in, out, mdi, muo) is semidet,
     in, in, in, in, out, mdi, muo) is semidet.
-:- mode list.foldl2_corresponding3(
+:- mode foldl2_corresponding3(
     pred(in, in, in, in, out, di, uo) is semidet,
     in, in, in, in, out, di, uo) is semidet.
 
-    % list.foldl3_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3):
-    % like list.foldl_corresponding3 but with three accumulators.
+    % foldl3_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3):
+    % like foldl_corresponding3 but with three accumulators.
     %
-:- pred list.foldl3_corresponding3(pred(A, B, C, D, D, E, E, F, F),
+:- pred foldl3_corresponding3(pred(A, B, C, D, D, E, E, F, F),
     list(A), list(B), list(C), D, D, E, E, F, F).
-:- mode list.foldl3_corresponding3(
+:- mode foldl3_corresponding3(
     pred(in, in, in, in, out, in, out, in, out) is det,
     in, in, in, in, out, in, out, in, out) is det.
-:- mode list.foldl3_corresponding3(
+:- mode foldl3_corresponding3(
     pred(in, in, in, in, out, in, out, mdi, muo) is det,
     in, in, in, in, out, in, out, mdi, muo) is det.
-:- mode list.foldl3_corresponding3(
+:- mode foldl3_corresponding3(
     pred(in, in, in, in, out, in, out, di, uo) is det,
     in, in, in, in, out, in, out, di, uo) is det.
-:- mode list.foldl3_corresponding3(
+:- mode foldl3_corresponding3(
     pred(in, in, in, in, out, in, out, in, out) is semidet,
     in, in, in, in, out, in, out, in, out) is semidet.
-:- mode list.foldl3_corresponding3(
+:- mode foldl3_corresponding3(
     pred(in, in, in, in, out, in, out, mdi, muo) is semidet,
     in, in, in, in, out, in, out, mdi, muo) is semidet.
-:- mode list.foldl3_corresponding3(
+:- mode foldl3_corresponding3(
     pred(in, in, in, in, out, in, out, di, uo) is semidet,
     in, in, in, in, out, in, out, di, uo) is semidet.
 
-    % list.foldl4_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3, !Acc4):
-    % like list.foldl_corresponding3 but with four accumulators.
+    % foldl4_corresponding3(P, As, Bs, Cs, !Acc1, !Acc2, !Acc3, !Acc4):
+    % like foldl_corresponding3 but with four accumulators.
     %
-:- pred list.foldl4_corresponding3(pred(A, B, C, D, D, E, E, F, F, G, G),
+:- pred foldl4_corresponding3(pred(A, B, C, D, D, E, E, F, F, G, G),
     list(A), list(B), list(C), D, D, E, E, F, F, G, G).
-:- mode list.foldl4_corresponding3(
+:- mode foldl4_corresponding3(
     pred(in, in, in, in, out, in, out, in, out, in, out) is det,
     in, in, in, in, out, in, out, in, out, in, out) is det.
-:- mode list.foldl4_corresponding3(
+:- mode foldl4_corresponding3(
     pred(in, in, in, in, out, in, out, in, out, mdi, muo) is det,
     in, in, in, in, out, in, out, in, out, mdi, muo) is det.
-:- mode list.foldl4_corresponding3(
+:- mode foldl4_corresponding3(
     pred(in, in, in, in, out, in, out, in, out, di, uo) is det,
     in, in, in, in, out, in, out, in, out, di, uo) is det.
-:- mode list.foldl4_corresponding3(
+:- mode foldl4_corresponding3(
     pred(in, in, in, in, out, in, out, in, out, in, out) is semidet,
     in, in, in, in, out, in, out, in, out, in, out) is semidet.
-:- mode list.foldl4_corresponding3(
+:- mode foldl4_corresponding3(
     pred(in, in, in, in, out, in, out, in, out, mdi, muo) is semidet,
     in, in, in, in, out, in, out, in, out, mdi, muo) is semidet.
-:- mode list.foldl4_corresponding3(
+:- mode foldl4_corresponding3(
     pred(in, in, in, in, out, in, out, in, out, di, uo) is semidet,
     in, in, in, in, out, in, out, in, out, di, uo) is semidet.
 
-    % list.map_foldl(Pred, InList, OutList, Start, End) calls Pred
+    % map_foldl(Pred, InList, OutList, Start, End) calls Pred
     % with an accumulator (with the initial value of Start) on
     % each element of InList (working left-to-right) to transform
     % InList into OutList.  The final value of the accumulator is
     % returned in End.
     %
-:- pred list.map_foldl(pred(L, M, A, A), list(L), list(M), A, A).
-:- mode list.map_foldl(pred(in, out, in, out) is det, in, out, in, out)
+:- pred map_foldl(pred(L, M, A, A), list(L), list(M), A, A).
+:- mode map_foldl(pred(in, out, in, out) is det, in, out, in, out)
     is det.
-:- mode list.map_foldl(pred(in, out, mdi, muo) is det, in, out, mdi, muo)
+:- mode map_foldl(pred(in, out, mdi, muo) is det, in, out, mdi, muo)
     is det.
-:- mode list.map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
+:- mode map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
     is det.
-:- mode list.map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
+:- mode map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
     is semidet.
-:- mode list.map_foldl(pred(in, out, mdi, muo) is semidet, in, out, mdi, muo)
+:- mode map_foldl(pred(in, out, mdi, muo) is semidet, in, out, mdi, muo)
     is semidet.
-:- mode list.map_foldl(pred(in, out, di, uo) is semidet, in, out, di, uo)
+:- mode map_foldl(pred(in, out, di, uo) is semidet, in, out, di, uo)
     is semidet.
-:- mode list.map_foldl(pred(in, in, di, uo) is semidet, in, in, di, uo)
+:- mode map_foldl(pred(in, in, di, uo) is semidet, in, in, di, uo)
     is semidet.
-:- mode list.map_foldl(pred(in, out, in, out) is nondet, in, out, in, out)
+:- mode map_foldl(pred(in, out, in, out) is nondet, in, out, in, out)
     is nondet.
-:- mode list.map_foldl(pred(in, out, mdi, muo) is nondet, in, out, mdi, muo)
+:- mode map_foldl(pred(in, out, mdi, muo) is nondet, in, out, mdi, muo)
     is nondet.
-:- mode list.map_foldl(pred(in, out, in, out) is cc_multi, in, out, in, out)
+:- mode map_foldl(pred(in, out, in, out) is cc_multi, in, out, in, out)
     is cc_multi.
-:- mode list.map_foldl(pred(in, out, mdi, muo) is cc_multi, in, out, mdi, muo)
+:- mode map_foldl(pred(in, out, mdi, muo) is cc_multi, in, out, mdi, muo)
     is cc_multi.
-:- mode list.map_foldl(pred(in, out, di, uo) is cc_multi, in, out, di, uo)
+:- mode map_foldl(pred(in, out, di, uo) is cc_multi, in, out, di, uo)
     is cc_multi.
 
-    % Same as list.map_foldl, but with two accumulators.
+    % Same as map_foldl, but with two accumulators.
     %
-:- pred list.map_foldl2(pred(L, M, A, A, B, B), list(L), list(M), A, A, B, B).
-:- mode list.map_foldl2(pred(in, out, in, out, in, out) is det,
+:- pred map_foldl2(pred(L, M, A, A, B, B), list(L), list(M), A, A, B, B).
+:- mode map_foldl2(pred(in, out, in, out, in, out) is det,
     in, out, in, out, in, out) is det.
-:- mode list.map_foldl2(pred(in, out, in, out, mdi, muo) is det,
+:- mode map_foldl2(pred(in, out, in, out, mdi, muo) is det,
     in, out, in, out, mdi, muo) is det.
-:- mode list.map_foldl2(pred(in, out, in, out, di, uo) is det,
+:- mode map_foldl2(pred(in, out, in, out, di, uo) is det,
     in, out, in, out, di, uo) is det.
-:- mode list.map_foldl2(pred(in, out, in, out, in, out) is semidet,
+:- mode map_foldl2(pred(in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out) is semidet.
-:- mode list.map_foldl2(pred(in, out, in, out, mdi, muo) is semidet,
+:- mode map_foldl2(pred(in, out, in, out, mdi, muo) is semidet,
     in, out, in, out, mdi, muo) is semidet.
-:- mode list.map_foldl2(pred(in, out, in, out, di, uo) is semidet,
+:- mode map_foldl2(pred(in, out, in, out, di, uo) is semidet,
     in, out, in, out, di, uo) is semidet.
-:- mode list.map_foldl2(pred(in, in, in, out, di, uo) is semidet,
+:- mode map_foldl2(pred(in, in, in, out, di, uo) is semidet,
     in, in, in, out, di, uo) is semidet.
-:- mode list.map_foldl2(pred(in, out, in, out, in, out) is cc_multi,
+:- mode map_foldl2(pred(in, out, in, out, in, out) is cc_multi,
     in, out, in, out, in, out) is cc_multi.
-:- mode list.map_foldl2(pred(in, out, in, out, mdi, muo) is cc_multi,
+:- mode map_foldl2(pred(in, out, in, out, mdi, muo) is cc_multi,
     in, out, in, out, mdi, muo) is cc_multi.
-:- mode list.map_foldl2(pred(in, out, in, out, di, uo) is cc_multi,
+:- mode map_foldl2(pred(in, out, in, out, di, uo) is cc_multi,
     in, out, in, out, di, uo) is cc_multi.
-:- mode list.map_foldl2(pred(in, out, in, out, in, out) is nondet,
+:- mode map_foldl2(pred(in, out, in, out, in, out) is nondet,
     in, out, in, out, in, out) is nondet.
 
-    % Same as list.map_foldl, but with three accumulators.
+    % Same as map_foldl, but with three accumulators.
     %
-:- pred list.map_foldl3(pred(L, M, A, A, B, B, C, C), list(L), list(M),
+:- pred map_foldl3(pred(L, M, A, A, B, B, C, C), list(L), list(M),
     A, A, B, B, C, C).
-:- mode list.map_foldl3(pred(in, out, in, out, in, out, di, uo) is det,
+:- mode map_foldl3(pred(in, out, in, out, in, out, di, uo) is det,
     in, out, in, out, in, out, di, uo) is det.
-:- mode list.map_foldl3(pred(in, out, in, out, in, out, in, out) is det,
+:- mode map_foldl3(pred(in, out, in, out, in, out, in, out) is det,
     in, out, in, out, in, out, in, out) is det.
-:- mode list.map_foldl3(pred(in, out, in, out, in, out, di, uo) is cc_multi,
+:- mode map_foldl3(pred(in, out, in, out, in, out, di, uo) is cc_multi,
     in, out, in, out, in, out, di, uo) is cc_multi.
-:- mode list.map_foldl3(pred(in, out, in, out, in, out, in, out) is cc_multi,
+:- mode map_foldl3(pred(in, out, in, out, in, out, in, out) is cc_multi,
     in, out, in, out, in, out, in, out) is cc_multi.
-:- mode list.map_foldl3(pred(in, out, in, out, in, out, in, out) is semidet,
+:- mode map_foldl3(pred(in, out, in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out, in, out) is semidet.
-:- mode list.map_foldl3(pred(in, out, in, out, in, out, in, out) is nondet,
+:- mode map_foldl3(pred(in, out, in, out, in, out, in, out) is nondet,
     in, out, in, out, in, out, in, out) is nondet.
 
-    % Same as list.map_foldl, but with four accumulators.
+    % Same as map_foldl, but with four accumulators.
     %
-:- pred list.map_foldl4(pred(L, M, A, A, B, B, C, C, D, D), list(L), list(M),
+:- pred map_foldl4(pred(L, M, A, A, B, B, C, C, D, D), list(L), list(M),
     A, A, B, B, C, C, D, D).
-:- mode list.map_foldl4(pred(in, out, in, out, in, out, in, out, di, uo)
+:- mode map_foldl4(pred(in, out, in, out, in, out, in, out, di, uo)
     is det,
     in, out, in, out, in, out, in, out, di, uo) is det.
-:- mode list.map_foldl4(pred(in, out, in, out, in, out, in, out, in, out)
+:- mode map_foldl4(pred(in, out, in, out, in, out, in, out, in, out)
     is det,
     in, out, in, out, in, out, in, out, in, out) is det.
-:- mode list.map_foldl4(pred(in, out, in, out, in, out, in, out, di, uo)
+:- mode map_foldl4(pred(in, out, in, out, in, out, in, out, di, uo)
     is cc_multi,
     in, out, in, out, in, out, in, out, di, uo) is cc_multi.
-:- mode list.map_foldl4(pred(in, out, in, out, in, out, in, out, in, out)
+:- mode map_foldl4(pred(in, out, in, out, in, out, in, out, in, out)
     is cc_multi,
     in, out, in, out, in, out, in, out, in, out) is cc_multi.
-:- mode list.map_foldl4(pred(in, out, in, out, in, out, in, out, in, out)
+:- mode map_foldl4(pred(in, out, in, out, in, out, in, out, in, out)
     is semidet,
     in, out, in, out, in, out, in, out, in, out) is semidet.
-:- mode list.map_foldl4(pred(in, out, in, out, in, out, in, out, in, out)
+:- mode map_foldl4(pred(in, out, in, out, in, out, in, out, in, out)
     is nondet,
     in, out, in, out, in, out, in, out, in, out) is nondet.
 
-    % Same as list.map_foldl, but with five accumulators.
+    % Same as map_foldl, but with five accumulators.
     %
-:- pred list.map_foldl5(pred(L, M, A, A, B, B, C, C, D, D, E, E),
+:- pred map_foldl5(pred(L, M, A, A, B, B, C, C, D, D, E, E),
     list(L), list(M), A, A, B, B, C, C, D, D, E, E).
-:- mode list.map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
     di, uo) is det,
     in, out, in, out, in, out, in, out, in, out, di, uo) is det.
-:- mode list.map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
     in, out) is det,
     in, out, in, out, in, out, in, out, in, out, in, out) is det.
-:- mode list.map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
     di, uo) is cc_multi,
     in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
-:- mode list.map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
     in, out) is cc_multi,
     in, out, in, out, in, out, in, out, in, out, in, out) is cc_multi.
-:- mode list.map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
     in, out) is semidet,
     in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
-:- mode list.map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
     in, out) is nondet,
     in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
 
-    % Same as list.map_foldl, but with six accumulators.
+    % Same as map_foldl, but with six accumulators.
     %
-:- pred list.map_foldl6(pred(L, M, A, A, B, B, C, C, D, D, E, E, F, F),
+:- pred map_foldl6(pred(L, M, A, A, B, B, C, C, D, D, E, E, F, F),
     list(L), list(M), A, A, B, B, C, C, D, D, E, E, F, F).
-:- mode list.map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
     in, out, di, uo) is det,
     in, out, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
-:- mode list.map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
     in, out, in, out) is det,
     in, out, in, out, in, out, in, out, in, out, in, out, in, out) is det.
-:- mode list.map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
     in, out, di, uo) is cc_multi,
     in, out, in, out, in, out, in, out, in, out, in, out, di, uo)
     is cc_multi.
-:- mode list.map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
     in, out, in, out) is cc_multi,
     in, out, in, out, in, out, in, out, in, out, in, out, in, out)
     is cc_multi.
-:- mode list.map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
     in, out, in, out) is semidet,
     in, out, in, out, in, out, in, out, in, out, in, out, in, out)
     is semidet.
-:- mode list.map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
+:- mode map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
     in, out, in, out) is nondet,
     in, out, in, out, in, out, in, out, in, out, in, out, in, out)
     is nondet.
 
-    % Same as list.map_foldl, but with two mapped outputs.
+    % Same as map_foldl, but with two mapped outputs.
     %
-:- pred list.map2_foldl(pred(L, M, N, A, A), list(L), list(M), list(N),
+:- pred map2_foldl(pred(L, M, N, A, A), list(L), list(M), list(N),
     A, A).
-:- mode list.map2_foldl(pred(in, out, out, in, out) is det, in, out, out,
+:- mode map2_foldl(pred(in, out, out, in, out) is det, in, out, out,
     in, out) is det.
-:- mode list.map2_foldl(pred(in, out, out, mdi, muo) is det, in, out, out,
+:- mode map2_foldl(pred(in, out, out, mdi, muo) is det, in, out, out,
     mdi, muo) is det.
-:- mode list.map2_foldl(pred(in, out, out, di, uo) is det, in, out, out,
+:- mode map2_foldl(pred(in, out, out, di, uo) is det, in, out, out,
     di, uo) is det.
-:- mode list.map2_foldl(pred(in, out, out, in, out) is semidet, in, out, out,
+:- mode map2_foldl(pred(in, out, out, in, out) is semidet, in, out, out,
     in, out) is semidet.
-:- mode list.map2_foldl(pred(in, out, out, mdi, muo) is semidet, in, out, out,
+:- mode map2_foldl(pred(in, out, out, mdi, muo) is semidet, in, out, out,
     mdi, muo) is semidet.
-:- mode list.map2_foldl(pred(in, out, out, di, uo) is semidet, in, out, out,
+:- mode map2_foldl(pred(in, out, out, di, uo) is semidet, in, out, out,
     di, uo) is semidet.
-:- mode list.map2_foldl(pred(in, out, out, in, out) is nondet, in, out, out,
+:- mode map2_foldl(pred(in, out, out, in, out) is nondet, in, out, out,
     in, out) is nondet.
-:- mode list.map2_foldl(pred(in, out, out, mdi, muo) is nondet, in, out, out,
+:- mode map2_foldl(pred(in, out, out, mdi, muo) is nondet, in, out, out,
     mdi, muo) is nondet.
-:- mode list.map2_foldl(pred(in, out, out, in, out) is cc_multi, in, out, out,
+:- mode map2_foldl(pred(in, out, out, in, out) is cc_multi, in, out, out,
     in, out) is cc_multi.
-:- mode list.map2_foldl(pred(in, out, out, di, uo) is cc_multi, in, out, out,
+:- mode map2_foldl(pred(in, out, out, di, uo) is cc_multi, in, out, out,
     di, uo) is cc_multi.
 
-    % Same as list.map_foldl, but with two mapped outputs and two
+    % Same as map_foldl, but with two mapped outputs and two
     % accumulators.
     %
-:- pred list.map2_foldl2(pred(L, M, N, A, A, B, B), list(L), list(M), list(N),
+:- pred map2_foldl2(pred(L, M, N, A, A, B, B), list(L), list(M), list(N),
     A, A, B, B).
-:- mode list.map2_foldl2(pred(in, out, out, in, out, di, uo) is det,
+:- mode map2_foldl2(pred(in, out, out, in, out, di, uo) is det,
     in, out, out, in, out, di, uo) is det.
-:- mode list.map2_foldl2(pred(in, out, out, in, out, in, out) is det,
+:- mode map2_foldl2(pred(in, out, out, in, out, in, out) is det,
     in, out, out, in, out, in, out) is det.
-:- mode list.map2_foldl2(pred(in, out, out, in, out, di, uo) is cc_multi,
+:- mode map2_foldl2(pred(in, out, out, in, out, di, uo) is cc_multi,
     in, out, out, in, out, di, uo) is cc_multi.
-:- mode list.map2_foldl2(pred(in, out, out, in, out, in, out) is cc_multi,
+:- mode map2_foldl2(pred(in, out, out, in, out, in, out) is cc_multi,
     in, out, out, in, out, in, out) is cc_multi.
-:- mode list.map2_foldl2(pred(in, out, out, in, out, in, out) is semidet,
+:- mode map2_foldl2(pred(in, out, out, in, out, in, out) is semidet,
     in, out, out, in, out, in, out) is semidet.
-:- mode list.map2_foldl2(pred(in, out, out, in, out, in, out) is nondet,
+:- mode map2_foldl2(pred(in, out, out, in, out, in, out) is nondet,
     in, out, out, in, out, in, out) is nondet.
 
-    % Same as list.map_foldl, but with two mapped outputs and three
+    % Same as map_foldl, but with two mapped outputs and three
     % accumulators.
     %
-:- pred list.map2_foldl3(pred(L, M, N, A, A, B, B, C, C),
+:- pred map2_foldl3(pred(L, M, N, A, A, B, B, C, C),
     list(L), list(M), list(N), A, A, B, B, C, C).
-:- mode list.map2_foldl3(
+:- mode map2_foldl3(
     pred(in, out, out, in, out, in, out, in, out) is det,
     in, out, out, in, out, in, out, in, out) is det.
-:- mode list.map2_foldl3(
+:- mode map2_foldl3(
     pred(in, out, out, in, out, in, out, di, uo) is det,
     in, out, out, in, out, in, out, di, uo) is det.
-:- mode list.map2_foldl3(
+:- mode map2_foldl3(
     pred(in, out, out, in, out, in, out, in, out) is cc_multi,
     in, out, out, in, out, in, out, in, out) is cc_multi.
-:- mode list.map2_foldl3(
+:- mode map2_foldl3(
     pred(in, out, out, in, out, in, out, di, uo) is cc_multi,
     in, out, out, in, out, in, out, di, uo) is cc_multi.
-:- mode list.map2_foldl3(
+:- mode map2_foldl3(
     pred(in, out, out, in, out, in, out, in, out) is semidet,
     in, out, out, in, out, in, out, in, out) is semidet.
-:- mode list.map2_foldl3(
+:- mode map2_foldl3(
     pred(in, out, out, in, out, in, out, in, out) is nondet,
     in, out, out, in, out, in, out, in, out) is nondet.
 
-    % Same as list.map_foldl, but with two mapped outputs and four
+    % Same as map_foldl, but with two mapped outputs and four
     % accumulators.
     %
-:- pred list.map2_foldl4(pred(L, M, N, A, A, B, B, C, C, D, D),
+:- pred map2_foldl4(pred(L, M, N, A, A, B, B, C, C, D, D),
     list(L), list(M), list(N), A, A, B, B, C, C, D, D).
-:- mode list.map2_foldl4(
+:- mode map2_foldl4(
     pred(in, out, out, in, out, in, out, in, out, in, out) is det,
     in, out, out, in, out, in, out, in, out, in, out) is det.
-:- mode list.map2_foldl4(
+:- mode map2_foldl4(
     pred(in, out, out, in, out, in, out, in, out, di, uo) is det,
     in, out, out, in, out, in, out, in, out, di, uo) is det.
-:- mode list.map2_foldl4(
+:- mode map2_foldl4(
     pred(in, out, out, in, out, in, out, in, out, in, out) is cc_multi,
     in, out, out, in, out, in, out, in, out, in, out) is cc_multi.
-:- mode list.map2_foldl4(
+:- mode map2_foldl4(
     pred(in, out, out, in, out, in, out, in, out, di, uo) is cc_multi,
     in, out, out, in, out, in, out, in, out, di, uo) is cc_multi.
-:- mode list.map2_foldl4(
+:- mode map2_foldl4(
     pred(in, out, out, in, out, in, out, in, out, in, out) is semidet,
     in, out, out, in, out, in, out, in, out, in, out) is semidet.
-:- mode list.map2_foldl4(
+:- mode map2_foldl4(
     pred(in, out, out, in, out, in, out, in, out, in, out) is nondet,
     in, out, out, in, out, in, out, in, out, in, out) is nondet.
 
-    % Same as list.map_foldl, but with three mapped outputs.
+    % Same as map_foldl, but with three mapped outputs.
     %
-:- pred list.map3_foldl(pred(L, M, N, O, A, A), list(L), list(M), list(N),
+:- pred map3_foldl(pred(L, M, N, O, A, A), list(L), list(M), list(N),
     list(O), A, A).
-:- mode list.map3_foldl(pred(in, out, out, out, in, out) is det, in, out, out,
+:- mode map3_foldl(pred(in, out, out, out, in, out) is det, in, out, out,
     out, in, out) is det.
-:- mode list.map3_foldl(pred(in, out, out, out, mdi, muo) is det, in, out, out,
+:- mode map3_foldl(pred(in, out, out, out, mdi, muo) is det, in, out, out,
     out, mdi, muo) is det.
-:- mode list.map3_foldl(pred(in, out, out, out, di, uo) is det, in, out, out,
+:- mode map3_foldl(pred(in, out, out, out, di, uo) is det, in, out, out,
     out, di, uo) is det.
-:- mode list.map3_foldl(pred(in, out, out, out, in, out) is semidet, in, out, 
+:- mode map3_foldl(pred(in, out, out, out, in, out) is semidet, in, out, 
     out, out, in, out) is semidet.
-:- mode list.map3_foldl(pred(in, out, out, out, mdi, muo) is semidet, in, out,
+:- mode map3_foldl(pred(in, out, out, out, mdi, muo) is semidet, in, out,
     out, out, mdi, muo) is semidet.
-:- mode list.map3_foldl(pred(in, out, out, out, di, uo) is semidet, in, out, 
+:- mode map3_foldl(pred(in, out, out, out, di, uo) is semidet, in, out, 
     out, out, di, uo) is semidet.
-:- mode list.map3_foldl(pred(in, out, out, out, in, out) is nondet, in, out, 
+:- mode map3_foldl(pred(in, out, out, out, in, out) is nondet, in, out, 
     out, out, in, out) is nondet.
-:- mode list.map3_foldl(pred(in, out, out, out, mdi, muo) is nondet, in, out,
+:- mode map3_foldl(pred(in, out, out, out, mdi, muo) is nondet, in, out,
     out, out, mdi, muo) is nondet.
-:- mode list.map3_foldl(pred(in, out, out, out, in, out) is cc_multi, in, out, 
+:- mode map3_foldl(pred(in, out, out, out, in, out) is cc_multi, in, out, 
     out, out, in, out) is cc_multi.
-:- mode list.map3_foldl(pred(in, out, out, out, di, uo) is cc_multi, in, out, 
+:- mode map3_foldl(pred(in, out, out, out, di, uo) is cc_multi, in, out, 
     out, out, di, uo) is cc_multi.
 
-    % Same as list.map_foldl, but with three mapped outputs and two
+    % Same as map_foldl, but with three mapped outputs and two
     % accumulators.
     %
-:- pred list.map3_foldl2(pred(L, M, N, O, A, A, B, B), list(L),
+:- pred map3_foldl2(pred(L, M, N, O, A, A, B, B), list(L),
     list(M), list(N), list(O), A, A, B, B).
-:- mode list.map3_foldl2(pred(in, out, out, out, in, out, di, uo) is det,
+:- mode map3_foldl2(pred(in, out, out, out, in, out, di, uo) is det,
     in, out, out, out, in, out, di, uo) is det.
-:- mode list.map3_foldl2(pred(in, out, out, out, in, out, in, out) is det,
+:- mode map3_foldl2(pred(in, out, out, out, in, out, in, out) is det,
     in, out, out, out, in, out, in, out) is det.
-:- mode list.map3_foldl2(pred(in, out, out, out, in, out, di, uo) is cc_multi,
+:- mode map3_foldl2(pred(in, out, out, out, in, out, di, uo) is cc_multi,
     in, out, out, out, in, out, di, uo) is cc_multi.
-:- mode list.map3_foldl2(pred(in, out, out, out, in, out, in, out) is cc_multi,
+:- mode map3_foldl2(pred(in, out, out, out, in, out, in, out) is cc_multi,
     in, out, out, out, in, out, in, out) is cc_multi.
-:- mode list.map3_foldl2(pred(in, out, out, out, in, out, in, out) is semidet,
+:- mode map3_foldl2(pred(in, out, out, out, in, out, in, out) is semidet,
     in, out, out, out, in, out, in, out) is semidet.
-:- mode list.map3_foldl2(pred(in, out, out, out, in, out, in, out) is nondet,
+:- mode map3_foldl2(pred(in, out, out, out, in, out, in, out) is nondet,
     in, out, out, out, in, out, in, out) is nondet.
 
-    % Same as list.map_foldl, but with four mapped outputs.
+    % Same as map_foldl, but with four mapped outputs.
     %
-:- pred list.map4_foldl(pred(L, M, N, O, P, A, A), list(L), list(M), list(N),
+:- pred map4_foldl(pred(L, M, N, O, P, A, A), list(L), list(M), list(N),
     list(O), list(P), A, A).
-:- mode list.map4_foldl(pred(in, out, out, out, out, in, out) is det,
+:- mode map4_foldl(pred(in, out, out, out, out, in, out) is det,
     in, out, out, out, out, in, out) is det.
-:- mode list.map4_foldl(pred(in, out, out, out, out, mdi, muo) is det,
+:- mode map4_foldl(pred(in, out, out, out, out, mdi, muo) is det,
     in, out, out, out, out, mdi, muo) is det.
-:- mode list.map4_foldl(pred(in, out, out, out, out, di, uo) is det,
+:- mode map4_foldl(pred(in, out, out, out, out, di, uo) is det,
     in, out, out, out, out, di, uo) is det.
-:- mode list.map4_foldl(pred(in, out, out, out, out, in, out) is semidet,
+:- mode map4_foldl(pred(in, out, out, out, out, in, out) is semidet,
     in, out, out, out, out, in, out) is semidet.
-:- mode list.map4_foldl(pred(in, out, out, out, out, mdi, muo) is semidet,
+:- mode map4_foldl(pred(in, out, out, out, out, mdi, muo) is semidet,
     in, out, out, out, out, mdi, muo) is semidet.
-:- mode list.map4_foldl(pred(in, out, out, out, out, di, uo) is semidet,
+:- mode map4_foldl(pred(in, out, out, out, out, di, uo) is semidet,
     in, out, out, out, out, di, uo) is semidet.
-:- mode list.map4_foldl(pred(in, out, out, out, out, in, out) is nondet,
+:- mode map4_foldl(pred(in, out, out, out, out, in, out) is nondet,
     in, out, out, out, out, in, out) is nondet.
-:- mode list.map4_foldl(pred(in, out, out, out, out, mdi, muo) is nondet,
+:- mode map4_foldl(pred(in, out, out, out, out, mdi, muo) is nondet,
     in, out, out, out, out, mdi, muo) is nondet.
-:- mode list.map4_foldl(pred(in, out, out, out, out, in, out) is cc_multi,
+:- mode map4_foldl(pred(in, out, out, out, out, in, out) is cc_multi,
     in, out, out, out, out, in, out) is cc_multi.
-:- mode list.map4_foldl(pred(in, out, out, out, out, di, uo) is cc_multi,
+:- mode map4_foldl(pred(in, out, out, out, out, di, uo) is cc_multi,
     in, out, out, out, out, di, uo) is cc_multi.
 
-    % list.map_foldr(Pred, InList, OutList, Start, End) calls Pred
+    % map_foldr(Pred, InList, OutList, Start, End) calls Pred
     % with an accumulator (with the initial value of Start) on
     % each element of InList (working right-to-left) to transform
     % InList into OutList.  The final value of the accumulator is
     % returned in End.
     %
-:- pred list.map_foldr(pred(L, M, A, A), list(L), list(M), A, A).
-:- mode list.map_foldr(pred(in, out, in, out) is det, in, out, in, out)
+:- pred map_foldr(pred(L, M, A, A), list(L), list(M), A, A).
+:- mode map_foldr(pred(in, out, in, out) is det, in, out, in, out)
     is det.
-:- mode list.map_foldr(pred(in, out, mdi, muo) is det, in, out, mdi, muo)
+:- mode map_foldr(pred(in, out, mdi, muo) is det, in, out, mdi, muo)
     is det.
-:- mode list.map_foldr(pred(in, out, di, uo) is det, in, out, di, uo)
+:- mode map_foldr(pred(in, out, di, uo) is det, in, out, di, uo)
     is det.
-:- mode list.map_foldr(pred(in, out, in, out) is semidet, in, out, in, out)
+:- mode map_foldr(pred(in, out, in, out) is semidet, in, out, in, out)
     is semidet.
-:- mode list.map_foldr(pred(in, out, mdi, muo) is semidet, in, out, mdi, muo)
+:- mode map_foldr(pred(in, out, mdi, muo) is semidet, in, out, mdi, muo)
     is semidet.
-:- mode list.map_foldr(pred(in, out, di, uo) is semidet, in, out, di, uo)
+:- mode map_foldr(pred(in, out, di, uo) is semidet, in, out, di, uo)
     is semidet.
-:- mode list.map_foldr(pred(in, in, di, uo) is semidet, in, in, di, uo)
+:- mode map_foldr(pred(in, in, di, uo) is semidet, in, in, di, uo)
     is semidet.
 
-    % list.filter_map_foldl(Transformer, List, TrueList, Start, End):
+    % filter_map_foldl(Transformer, List, TrueList, Start, End):
     % Takes a predicate with one input argument, one output argument and an
     % accumulator. It is called with each element of List. If a call succeeds,
     % then the output is included in TrueList and the accumulator is updated.
     %
-:- pred list.filter_map_foldl(pred(X, Y, A, A)::in(pred(in, out, in, out)
+:- pred filter_map_foldl(pred(X, Y, A, A)::in(pred(in, out, in, out)
     is semidet), list(X)::in, list(Y)::out, A::in, A::out) is det.
 
-    % list.all_true(Pred, List) takes a closure with one input argument.
+    % all_true(Pred, List) takes a closure with one input argument.
     % If Pred succeeds for every member of List, all_true succeeds.
     % If Pred fails for any member of List, all_true fails.
     %
-:- pred list.all_true(pred(X)::in(pred(in) is semidet), list(X)::in)
+:- pred all_true(pred(X)::in(pred(in) is semidet), list(X)::in)
     is semidet.
 
-    % list.all_true_corresponding(Pred, ListA, ListB):
+    % all_true_corresponding(Pred, ListA, ListB):
     % Succeeds if Pred succeeds for every corresponding pair of elements from
     % ListA and ListB.  Fails if Pred fails for any pair of corresponding
     % elements.
     %
     % An exception is raised if the list arguments differ in length.
     %
-:- pred list.all_true_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
+:- pred all_true_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
     list(X)::in, list(Y)::in) is semidet.
 
-    % list.all_false(Pred, List) takes a closure with one input argument.
+    % all_false(Pred, List) takes a closure with one input argument.
     % If Pred fails for every member of List, all_false succeeds.
     % If Pred succeeds for any member of List, all_false fails.
     %
-:- pred list.all_false(pred(X)::in(pred(in) is semidet), list(X)::in)
+:- pred all_false(pred(X)::in(pred(in) is semidet), list(X)::in)
     is semidet.
 
-    % list.all_false_corresponding(Pred, ListA, ListB):
+    % all_false_corresponding(Pred, ListA, ListB):
     % Succeeds if Pred fails for every corresponding pair of elements from
     % ListA and ListB.  Fails if Pred succeeds for any pair of corresponding
     % elements.
     %
     % An exception is raised if the list arguments differ in length.
     %
-:- pred list.all_false_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
+:- pred all_false_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
     list(X)::in, list(Y)::in) is semidet.
 
-    % list.find_first_match(Pred, List, FirstMatch) takes a closure with one
+    % find_first_match(Pred, List, FirstMatch) takes a closure with one
     % input argument. It returns the element X of the list (if any) for which
     % Pred(X) is true.
     %
-:- pred list.find_first_match(pred(X)::in(pred(in) is semidet), list(X)::in,
+:- pred find_first_match(pred(X)::in(pred(in) is semidet), list(X)::in,
     X::out) is semidet.
 
-    % list.filter(Pred, List, TrueList) takes a closure with one
+    % filter(Pred, List, TrueList) takes a closure with one
     % input argument and for each member X of List, calls the closure.
     % X is included in TrueList iff Pred(X) is true.
     %
-:- pred list.filter(pred(X)::in(pred(in) is semidet), list(X)::in,
+:- pred filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out) is det.
-:- func list.filter(pred(X)::in(pred(in) is semidet), list(X)::in)
+:- func filter(pred(X)::in(pred(in) is semidet), list(X)::in)
     = (list(X)::out) is det.
 
-    % list.negated_filter(Pred, List, FalseList) takes a closure with one
+    % negated_filter(Pred, List, FalseList) takes a closure with one
     % input argument and for each member of List `X', calls the closure.
     % X is included in FalseList iff Pred(X) is true.
     %
-:- pred list.negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in,
+:- pred negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out) is det.
-:- func list.negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in)
+:- func negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in)
     = (list(X)::out) is det.
 
-    % list.filter(Pred, List, TrueList, FalseList) takes a closure with one
+    % filter(Pred, List, TrueList, FalseList) takes a closure with one
     % input argument and for each member X of List, calls the closure.
     % X is included in TrueList iff Pred(X) is true.
     % X is included in FalseList iff Pred(X) is true.
     %
-:- pred list.filter(pred(X)::in(pred(in) is semidet), list(X)::in,
+:- pred filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out, list(X)::out) is det.
 
-    % list.filter_map(Transformer, List, TrueList) takes a predicate
+    % filter_map(Transformer, List, TrueList) takes a predicate
     % with one input argument and one output argument. It is called
     % with each element of List. If a call succeeds, then the output is
     % included in TrueList.
     %
-:- pred list.filter_map(pred(X, Y)::in(pred(in, out) is semidet),
+:- pred filter_map(pred(X, Y)::in(pred(in, out) is semidet),
     list(X)::in, list(Y)::out) is det.
 
-:- func list.filter_map(func(X) = Y, list(X)) = list(Y).
-:- mode list.filter_map(func(in) = out is semidet, in) = out is det.
+:- func filter_map(func(X) = Y, list(X)) = list(Y).
+:- mode filter_map(func(in) = out is semidet, in) = out is det.
 
-    % list.filter_map(Transformer, List, TrueList, FalseList) takes
+    % filter_map(Transformer, List, TrueList, FalseList) takes
     % a predicate with one input argument and one output argument.
     % It is called with each element of List. If a call succeeds,
     % then the output is included in TrueList; otherwise, the failing
     % input is included in FalseList.
     %
-:- pred list.filter_map(pred(X, Y)::in(pred(in, out) is semidet),
+:- pred filter_map(pred(X, Y)::in(pred(in, out) is semidet),
     list(X)::in, list(Y)::out, list(X)::out) is det.
 
-    % Same as list.filter_map/3 except that it only returns the first
+    % Same as filter_map/3 except that it only returns the first
     % match:
-    %   find_first_map(X, Y, Z) <=> list.filter_map(X, Y, [Z | _])
+    %   find_first_map(X, Y, Z) <=> filter_map(X, Y, [Z | _])
     %
-:- pred list.find_first_map(pred(X, Y)::in(pred(in, out) is semidet),
+:- pred find_first_map(pred(X, Y)::in(pred(in, out) is semidet),
     list(X)::in, Y::out) is semidet.
 
-    % Same as list.find_first_map, except with two outputs.
+    % Same as find_first_map, except with two outputs.
     %
-:- pred list.find_first_map2(pred(X, A, B)::in(pred(in, out, out) is semidet),
+:- pred find_first_map2(pred(X, A, B)::in(pred(in, out, out) is semidet),
     list(X)::in, A::out, B::out) is semidet.
 
-    % Same as list.find_first_map, except with three outputs.
+    % Same as find_first_map, except with three outputs.
     %
-:- pred list.find_first_map3(
+:- pred find_first_map3(
     pred(X, A, B, C)::in(pred(in, out, out, out) is semidet),
     list(X)::in, A::out, B::out, C::out) is semidet.
 
@@ -1608,51 +1608,51 @@
     % Find the index of an item in the list for which Match is true where the
     % first element in the list has the index Index0.
     %
-:- pred list.find_index_of_match(pred(T), list(T), int, int).
-:- mode list.find_index_of_match(pred(in) is semidet, in, in, out) is semidet.
+:- pred find_index_of_match(pred(T), list(T), int, int).
+:- mode find_index_of_match(pred(in) is semidet, in, in, out) is semidet.
 
-    % list.takewhile(Predicate, List, UptoList, AfterList) takes a
+    % takewhile(Predicate, List, UptoList, AfterList) takes a
     % closure with one input argument, and calls it on successive members
     % of List as long as the calls succeed. The elements for which
     % the call succeeds are placed in UptoList and the first element for
     % which the call fails, and all the remaining elements of List are
     % placed in AfterList.
     %
-:- pred list.takewhile(pred(T)::in(pred(in) is semidet), list(T)::in,
+:- pred takewhile(pred(T)::in(pred(in) is semidet), list(T)::in,
     list(T)::out, list(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % list.sort(Compare, Unsorted, Sorted) is true iff Sorted is a
+    % sort(Compare, Unsorted, Sorted) is true iff Sorted is a
     % list containing the same elements as Unsorted, where Sorted is
     % sorted with respect to the ordering defined by the predicate
     % term Compare, and the elements that are equivalent in this ordering
     % appear in the same sequence in Sorted as they do in Unsorted
     % (that is, the sort is stable).
     %
-:- pred list.sort(comparison_pred(X)::in(comparison_pred), list(X)::in,
+:- pred sort(comparison_pred(X)::in(comparison_pred), list(X)::in,
     list(X)::out) is det.
-:- func list.sort(comparison_func(X), list(X)) = list(X).
+:- func sort(comparison_func(X), list(X)) = list(X).
 
-    % list.sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff
+    % sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff
     % Sorted is a list containing the same elements as Unsorted, where
     % Sorted is sorted with respect to the ordering defined by the
     % predicate term Compare, except that if two elements in Unsorted
     % are equivalent with respect to this ordering only the one which
     % occurs first will be in Sorted.
     %
-:- pred list.sort_and_remove_dups(comparison_pred(X)::in(comparison_pred),
+:- pred sort_and_remove_dups(comparison_pred(X)::in(comparison_pred),
     list(X)::in, list(X)::out) is det.
 
-    % list.remove_adjacent_dups(P, L0, L) is true iff L is the result
+    % remove_adjacent_dups(P, L0, L) is true iff L is the result
     % of replacing every sequence of elements in L0 which are equivalent
     % with respect to the ordering, with the first occurrence in L0 of
     % such an element.
     %
-:- pred list.remove_adjacent_dups(comparison_pred(X)::in(comparison_pred),
+:- pred remove_adjacent_dups(comparison_pred(X)::in(comparison_pred),
     list(X)::in, list(X)::out) is det.
 
-    % list.merge(Compare, As, Bs, Sorted) is true iff, assuming As and
+    % merge(Compare, As, Bs, Sorted) is true iff, assuming As and
     % Bs are sorted with respect to the ordering defined by Compare,
     % Sorted is a list containing the elements of As and Bs which is
     % also sorted.  For elements which are equivalent in the ordering,
@@ -1660,12 +1660,12 @@
     % sequence in Sorted as they do in that list, otherwise the elements
     % from As appear before the elements from Bs.
     %
-:- pred list.merge(comparison_pred(X)::in(comparison_pred),
+:- pred merge(comparison_pred(X)::in(comparison_pred),
     list(X)::in, list(X)::in, list(X)::out) is det.
 
-:- func list.merge(comparison_func(X), list(X), list(X)) = list(X).
+:- func merge(comparison_func(X), list(X), list(X)) = list(X).
 
-    % list.merge_and_remove_dups(P, As, Bs, Sorted) is true iff, assuming
+    % merge_and_remove_dups(P, As, Bs, Sorted) is true iff, assuming
     % As and Bs are sorted with respect to the ordering defined by
     % Compare and neither contains any duplicates, Sorted is a list
     % containing the elements of As and Bs which is also sorted and
@@ -1673,22 +1673,22 @@
     % Bs (that is, they are equivalent in the ordering), then the element
     % from As is the one that appears in Sorted.
     %
-:- pred list.merge_and_remove_dups(comparison_pred(X)::in(comparison_pred),
+:- pred merge_and_remove_dups(comparison_pred(X)::in(comparison_pred),
     list(X)::in, list(X)::in, list(X)::out) is det.
 
-:- func list.merge_and_remove_dups(comparison_func(X), list(X), list(X))
+:- func merge_and_remove_dups(comparison_func(X), list(X), list(X))
     = list(X).
 
 %-----------------------------------------------------------------------------%
 
-    % list.series(X, OK, Succ) = [X0, X1, ..., Xn]
+    % series(X, OK, Succ) = [X0, X1, ..., Xn]
     %
     % where X0 = X and successive elements Xj, Xk are computed as
     % Xk = Succ(Xj). The series terminates as soon as an element Xi is
     % generated such that OK(Xi) fails; Xi is not included in the output.
     %
-:- func list.series(T, pred(T), func(T) = T) = list(T).
-:- mode list.series(in, pred(in) is semidet, func(in) = out is det) = out
+:- func series(T, pred(T), func(T) = T) = list(T).
+:- mode series(in, pred(in) is semidet, func(in) = out is det) = out
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -1700,19 +1700,19 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func list.head(list(T)) = T is semidet.
+:- func head(list(T)) = T is semidet.
 
-:- func list.tail(list(T)) = list(T) is semidet.
+:- func tail(list(T)) = list(T) is semidet.
 
-    % list.det_head(List) returns the first element of List,
+    % det_head(List) returns the first element of List,
     % calling error/1 if List is empty.
     %
-:- func list.det_head(list(T)) = T.
+:- func det_head(list(T)) = T.
 
-    % list.det_tail(List) returns the tail of List,
+    % det_tail(List) returns the tail of List,
     % calling error/1 if List is empty.
     %
-:- func list.det_tail(list(T)) = list(T).
+:- func det_tail(list(T)) = list(T).
 
 %-----------------------------------------------------------------------------%
 

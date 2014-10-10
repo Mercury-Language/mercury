@@ -159,7 +159,7 @@
 
     % pow(Base, Exponent) returns Base raised to the power Exponent.
     % Fewer domain restrictions than math.pow: works for negative Base,
-    % and float.pow(B, 0) = 1.0 for all B, even B=0.0.
+    % and pow(B, 0) = 1.0 for all B, even B=0.0.
     % Only pow(0, <negative>) throws a `math.domain_error' exception.
     %
 :- func pow(float, int) = float.
@@ -211,17 +211,17 @@
     %
     % max = (1 - radix ** mantissa_digits) * radix ** max_exponent
     %
-:- func float.max = float.
+:- func max = float.
 
     % Minimum normalised positive floating-point number.
     %
     % min = radix ** (min_exponent - 1)
     %
-:- func float.min = float.
+:- func min = float.
 
     % Positive infinity.
     %
-:- func float.infinity = float.
+:- func infinity = float.
 
     % Smallest number x such that 1.0 + x \= 1.0.
     % This represents the largest relative spacing of two consecutive floating
@@ -229,37 +229,37 @@
     %
     % epsilon = radix ** (1 - mantissa_digits)
     %
-:- func float.epsilon = float.
+:- func epsilon = float.
 
     % Radix of the floating-point representation.
     % In the literature, this is sometimes referred to as `b'.
     %
-:- func float.radix = int.
+:- func radix = int.
 
     % The number of base-radix digits in the mantissa.
     % In the literature, this is sometimes referred to as `p' or `t'.
     %
-:- func float.mantissa_digits = int.
+:- func mantissa_digits = int.
 
     % Minimum negative integer such that:
     %   radix ** (min_exponent - 1)
     % is a normalised floating-point number.  In the literature,
     % this is sometimes referred to as `e_min'.
     %
-:- func float.min_exponent = int.
+:- func min_exponent = int.
 
     % Maximum integer such that:
     %   radix ** (max_exponent - 1)
     % is a normalised floating-point number.
     % In the literature, this is sometimes referred to as `e_max'.
     %
-:- func float.max_exponent = int.
+:- func max_exponent = int.
 
 %---------------------------------------------------------------------------%
 
     % Convert a float to a pretty_printer.doc for formatting.
     %
-:- func float.float_to_doc(float) = doc.
+:- func float_to_doc(float) = doc.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
