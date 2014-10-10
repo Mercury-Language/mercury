@@ -457,10 +457,10 @@ since this makes it harder to resort the group with a single editor command.
 
 <h2> Standard library predicates </h2>
 
-The descriptive comment for any predicate or function
-that occurs in the interface of a standard library module
-must be positioned above the predicate/function declaration.
-It should be formatted like the following example: 
+The descriptive comment for any predicate or function that occurs in the
+interface of a standard library module must be positioned above the predicate
+or function declaration.
+It should be formatted as in following example:
 
 <pre>
 
@@ -470,11 +470,10 @@ It should be formatted like the following example:
 	:- mode foo(...
 </pre>
 
-A group of related predicate, mode and function declarations
-may be grouped together under a single description
-provided that it is formatted as above.
-If there is a function declaration in such a grouping
-then it should be listed before the others. 
+A group of related predicate, mode and function declarations may be grouped
+together under a single description provided that it is formatted as above.
+If there is a function declaration in such a grouping then it should be listed
+before the others.
 
 For example:
 
@@ -483,15 +482,19 @@ For example:
 		% Insert a new key and corresponding value into a map.
 		% Fail if the key already exists.
 		%
-	:- func map.insert(map(K, V), K, V) = map(K, V).
-	:- pred map.insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
+	:- func insert(map(K, V), K, V) = map(K, V).
+	:- pred insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
 
 </pre>
 
-The reason for using this particular style is that
-the reference manual for the standard library
-is automatically generated from the module interfaces,
-and we want to maintain a uniform appearance as much as is possible.
+The reason for using this particular style is that the reference manual for the
+standard library is automatically generated from the module interfaces, and we
+want to maintain a uniform appearance as much as is possible.
+
+<p>
+
+Avoid module qualification in the interface sections of library modules except
+where necessary to resolve ambiguity.
 
 <h2> Testing </h2>
 
