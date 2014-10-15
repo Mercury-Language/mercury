@@ -44,7 +44,7 @@
 :- typeclass store(T) where [].
 :- type store(S).
 
-:- instance store(io.state).
+:- instance store(io).
 :- instance store(store(S)).
 
     % Initialize a new store.
@@ -65,7 +65,7 @@
     % namely variables attached to the I/O state.
     %
 :- type generic_mutvar(T, S).
-:- type io_mutvar(T) == generic_mutvar(T, io.state).
+:- type io_mutvar(T) == generic_mutvar(T, io).
 :- type store_mutvar(T, S) == generic_mutvar(T, store(S)).
 
     % Create a new mutable variable, initialized with the specified value.
@@ -130,7 +130,7 @@
     % namely references attached to the I/O state.
     %
 :- type generic_ref(T, S).
-:- type io_ref(T, S) == generic_ref(T, io.state).
+:- type io_ref(T, S) == generic_ref(T, io).
 :- type store_ref(T, S) == generic_ref(T, store(S)).
 
     % new_ref(Val, Ref):
@@ -251,7 +251,7 @@
 :- import_module require.
 
 :- instance store(store(S)) where [].
-:- instance store(io.state) where [].
+:- instance store(io) where [].
 
 % The store type itself is just a dummy type,
 % with no real representation.
