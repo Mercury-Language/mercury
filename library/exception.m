@@ -625,9 +625,15 @@ exc_univ_value(Univ) = univ.univ_value(Univ).
 :- inst handler == (pred(in, out) is det).
 
 %
-% catch_impl/3 is actually impure (why?).
-% XXX Mercury supports impure higher-order pred terms now.
+% catch_impl/3 is actually impure. If the call tree of p(...) contains more
+% than one throw, it returns just ONE of the exceptions p(...) can throw,
+% and the declarative semantics does not say WHICH one it returns.
 %
+% XXX We don't declare catch_impl as impure because there do not yet exist
+% unsorted_solutions/2 and unsorted_aggregate/2 predicates that take impure
+% higher-order pred terms.
+%
+:- pragma promise_pure(catch_impl/3).
 :- /* impure */
    pred catch_impl(pred(T), handler(T), T).
 :- mode catch_impl(pred(out) is det,       in(handler), out) is det.
