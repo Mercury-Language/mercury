@@ -935,6 +935,10 @@ STATIC void GC_fork_child_proc(void)
                                         ptr_t *startp, ptr_t *endp);
 #endif
 
+#ifdef PARALLEL_MARK
+  static void setup_mark_lock(void);
+#endif
+
 /* We hold the allocation lock. */
 GC_INNER void GC_thr_init(void)
 {
@@ -1056,6 +1060,7 @@ GC_INNER void GC_thr_init(void)
       GC_parallel = TRUE;
       /* Disable true incremental collection, but generational is OK.   */
       GC_time_limit = GC_TIME_UNLIMITED;
+      setup_mark_lock();
     }
     /* If we are using a parallel marker, actually start helper threads. */
     if (GC_parallel) {
@@ -1854,35 +1859,53 @@ GC_INNER void GC_lock(void)
 
 static pthread_cond_t builder_cv = PTHREAD_COND_INITIALIZER;
 
-GC_INNER void GC_setup_mark_lock(void)
+#ifdef GLIBC_2_19_TSX_BUG
+  /* Parse string like <major>[.<minor>[<tail>]] and return major value. */
+  static int parse_version(int *pminor, const char *pverstr) {
+    char *endp;
+    unsigned long value = strtoul(pverstr, &endp, 10);
+    int major = (int)value;
+
+    if (major < 0 || (char *)pverstr == endp || (unsigned)major != value) {
+      /* Parse error */
+      return -1;
+    }
+    if (*endp != '.') {
+      /* No minor part. */
+      *pminor = -1;
+    } else {
+      value = strtoul(endp + 1, &endp, 10);
+      *pminor = (int)value;
+      if (*pminor < 0 || (unsigned)(*pminor) != value) {
+        return -1;
+      }
+    }
+    return major;
+  }
+#endif /* GLIBC_2_19_TSX_BUG */
+
+static void setup_mark_lock(void)
 {
-#if !defined(GLIBC_2_1_MUTEX_HACK)
-    pthread_mutexattr_t attr;
+# ifdef GLIBC_2_19_TSX_BUG
+    pthread_mutexattr_t mattr;
+    int glibc_minor = -1;
+    int glibc_major = parse_version(&glibc_minor, gnu_get_libc_version());
 
-    if (0 != pthread_mutexattr_init(&attr)) {
-        goto error;
+    if (glibc_major > 2 || (glibc_major == 2 && glibc_minor >= 19)) {
+      /* TODO: disable this workaround for glibc with fixed TSX */
+      /* This disables lock elision to workaround a bug in glibc 2.19+  */
+      if (0 != pthread_mutexattr_init(&mattr)) {
+        ABORT("pthread_mutexattr_init failed");
+      }
+      if (0 != pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_NORMAL)) {
+        ABORT("pthread_mutexattr_settype failed");
+      }
+      if (0 != pthread_mutex_init(&mark_mutex, &mattr)) {
+        ABORT("pthread_mutex_init failed");
+      }
+      pthread_mutexattr_destroy(&mattr);
     }
-
-    /*
-     * By explicitly setting a mutex type we disable lock elision and work
-     * around a bug in glibc 2.19
-     */
-    if (0 != pthread_mutexattr_settype(&attr,
-                PTHREAD_MUTEX_NORMAL))
-    {
-        goto error;
-    }
-
-    if (0 != pthread_mutex_init(&mark_mutex, &attr)) {
-        goto error;
-    }
-    pthread_mutexattr_destroy(&attr);
-    return;
-
-error:
-    perror("Error setting up marker mutex");
-    exit(1);
-#endif /* ! GLIBC_2_1_MUTEX_HACK */
+# endif
 }
 
 GC_INNER void GC_acquire_mark_lock(void)

@@ -25,7 +25,6 @@
  */
 
 #include "private/gc_pmark.h"
-#include "private/pthread_support.h" /* Mercury: for GC_setup_mark_lock */
 
 #include <stdio.h>
 #include <limits.h>
@@ -745,11 +744,6 @@ GC_API void GC_CALL GC_init(void)
         /* else */ InitializeCriticalSection (&GC_allocate_ml);
      }
 #   endif /* GC_WIN32_THREADS */
-#   ifdef PARALLEL_MARK
-#     if (defined(GC_PTHREADS) && !defined(GC_WIN32_THREADS))
-        GC_setup_mark_lock();
-#     endif /* GC_PTHREADS */
-#   endif /* PARALLEL_MARK */
 #   if (defined(MSWIN32) || defined(MSWINCE)) && defined(THREADS)
       InitializeCriticalSection(&GC_write_cs);
 #   endif
