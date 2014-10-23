@@ -253,6 +253,10 @@ mdb> break_print -b0 none
 mdb> break_print -b0 *
  0: + stop  interface func breakpoints.a.testmod.test_in_a/0-0 (det)
             all (flat)
+mdb> break nonexistent.m:1000
+mdb: there is no debuggable source file named nonexistent.m.
+mdb> break breakpoints.m:1000
+mdb: there is no event at line 1000 in breakpoints.m.
 mdb> continue
      E15:     C9 EXIT func breakpoints.a.testmod.test_in_a/0-0 (det) breakpoints.a.testmod.m:10 (breakpoints.m:27)
        HeadVar__1             	"a"

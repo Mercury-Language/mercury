@@ -740,6 +740,8 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
     int             old_size;
     int             new_size;
     char            *filename;
+    int             num_file_matches = 0;
+    int             num_line_matches = 0;
 
     *problem = NULL;
     if (ignore_when != MR_SPY_DONT_IGNORE) {
@@ -758,24 +760,46 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
 
     old_size = MR_spied_label_next;
     MR_process_file_line_layouts(filename, linenumber,
-        MR_add_line_spy_point_callback, point_slot);
+        MR_add_line_spy_point_callback, point_slot,
+        &num_file_matches, &num_line_matches);
     new_size = MR_spied_label_next;
 
     if (new_size == old_size) {
+        if (num_line_matches != 0) {
+            /* Every line match should add a new spy point. */
+            MR_fatal_error("MR_add_line_spy_point: num_line_matches != 0");
+        }
+
         /* there were no matching labels */
 #ifdef  MR_HAVE_A_SNPRINTF
-        snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
-            "there is no event at %s:%d", filename, linenumber);
+        if (num_file_matches == 0) {
+            snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
+                "there is no debuggable source file named %s", filename);
+        } else {
+            snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
+                "there is no event at line %d in %s",
+                linenumber, filename);
+        }
 #else
         /* not absolutely safe, but the risk of overflow is minimal */
-        sprintf(MR_error_msg_buf, "there is no event at %s:%d",
-            filename, linenumber);
+        if (num_file_matches == 0) {
+            sprintf(MR_error_msg_buf,
+                "there is no debuggable source file named %s", filename);
+        } else {
+            sprintf(MR_error_msg_buf,
+                "there is no event at line %d in file %s",
+                linenumber, filename);
+        }
         if (strlen(MR_error_msg_buf) >= MR_ERROR_MSG_BUF_SIZE) {
             MR_fatal_error("MR_add_line_spy_point: buf overflow");
         }
 #endif
         *problem = MR_error_msg_buf;
         return -1;
+    }
+
+    if (num_line_matches == 0) {
+        MR_fatal_error("MR_add_line_spy_point: num_line_matches == 0");
     }
 
     /*

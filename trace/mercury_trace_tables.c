@@ -75,7 +75,7 @@ static  void            MR_process_matching_procedures_in_module(
 static  void            MR_process_line_layouts(const MR_ModuleFileLayout
                             *file_layout, int line,
                             MR_file_line_callback callback_func,
-                            int callback_arg);
+                            int callback_arg, int *num_line_matches_ptr);
 
 static  MR_bool         MR_module_in_arena(const char *name, char **names,
                             int num_names);
@@ -337,7 +337,8 @@ MR_insert_module_info(const MR_ModuleLayout *module)
 
 void
 MR_process_file_line_layouts(const char *file, int line,
-    MR_file_line_callback callback_func, int callback_arg)
+    MR_file_line_callback callback_func, int callback_arg,
+    int *num_file_matches_ptr, int *num_line_matches_ptr)
 {
     const MR_ModuleFileLayout   *file_layout;
     size_t                      i;
@@ -347,8 +348,9 @@ MR_process_file_line_layouts(const char *file, int line,
         for (j = 0; j < MR_module_infos[i]->MR_ml_filename_count; j++) {
             file_layout = MR_module_infos[i]->MR_ml_module_file_layout[j];
             if (MR_streq(file_layout->MR_mfl_filename, file)) {
+                *num_file_matches_ptr = *num_file_matches_ptr + 1;
                 MR_process_line_layouts(file_layout, line, callback_func,
-                    callback_arg);
+                    callback_arg, num_line_matches_ptr);
             }
         }
     }
@@ -356,7 +358,8 @@ MR_process_file_line_layouts(const char *file, int line,
 
 static void
 MR_process_line_layouts(const MR_ModuleFileLayout *file_layout, int line,
-    MR_file_line_callback callback_func, int callback_arg)
+    MR_file_line_callback callback_func, int callback_arg,
+    int *num_line_matches_ptr)
 {
     int         k;
     MR_bool     found;
@@ -366,13 +369,17 @@ MR_process_line_layouts(const MR_ModuleFileLayout *file_layout, int line,
 
     if (found) {
         /*
-        ** The binary search found *one* label with the given linenumber;
-        ** we now find the *first* such label.
+        ** The binary search found *one* label with the given linenumber.
+        ** We now find the *first* such label, ...
         */
 
         while (k > 0 && file_layout->MR_mfl_label_lineno[k - 1] == line) {
             k--;
         }
+
+        /*
+        ** ... and the call *all* such labels.
+        */
 
         while (k < file_layout->MR_mfl_label_count
             && file_layout->MR_mfl_label_lineno[k] == line)
@@ -380,6 +387,7 @@ MR_process_line_layouts(const MR_ModuleFileLayout *file_layout, int line,
             (*callback_func)(file_layout->MR_mfl_label_layout[k],
                 callback_arg);
             k++;
+            *num_line_matches_ptr = *num_line_matches_ptr + 1;
         }
     }
 }

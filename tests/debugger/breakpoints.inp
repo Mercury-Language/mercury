@@ -75,5 +75,7 @@ break info
 continue
 break_print -b0 none
 break_print -b0 *
+break nonexistent.m:1000
+break breakpoints.m:1000
 continue
 continue
