@@ -356,6 +356,11 @@
     %
 :- pred type_constructors_are_type_info(list(constructor)::in) is semidet.
 
+    % Is the discriminated union type with the given list of constructors
+    % an enum? Is yes, return the number of bits required to represent it.
+    %
+:- pred du_type_is_enum(list(constructor)::in, int::out) is semidet.
+
     % type_ctor_should_be_notag(Globals, TypeCtor, ReservedTag, Ctors,
     %   MaybeUserEqComp, SingleFunctorName, SingleArgType, MaybeSingleArgName):
     %
@@ -423,6 +428,7 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type_subst.
 
+:- import_module int.
 :- import_module require.
 :- import_module string.
 
@@ -1000,6 +1006,21 @@ name_is_type_info("type_info").
 name_is_type_info("type_ctor_info").
 name_is_type_info("typeclass_info").
 name_is_type_info("base_typeclass_info").
+
+%-----------------------------------------------------------------------------%
+
+du_type_is_enum(Ctors, NumBits) :-
+    Ctors = [_, _ | _],
+    all [Ctor] (
+        list.member(Ctor, Ctors)
+    => (
+        Ctor = ctor(ExistQTVars, ExistConstraints, _Name, Args, _Context),
+        ExistQTVars = [],
+        ExistConstraints = [],
+        Args = []
+    )),
+    list.length(Ctors, NumFunctors),
+    int.log2(NumFunctors, NumBits).
 
 %-----------------------------------------------------------------------------%
 

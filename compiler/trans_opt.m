@@ -89,8 +89,8 @@
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.modules.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.

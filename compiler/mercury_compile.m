@@ -73,6 +73,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.source_file_map.
+:- import_module parse_tree.write_module_interface_files.
 :- import_module parse_tree.write_deps_file.
 :- import_module recompilation.
 :- import_module recompilation.check.
@@ -88,6 +89,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module char.
 :- import_module cord.
 :- import_module dir.
 :- import_module gc.
@@ -1227,7 +1229,7 @@ compile_all_submodules(Globals, FileName, SourceFileModuleName,
 
 call_make_interface(Globals, SourceFileName, SourceFileModuleName,
         MaybeTimestamp, ModuleName - Items, !IO) :-
-    make_interface(Globals, SourceFileName, SourceFileModuleName,
+    write_interface_file(Globals, SourceFileName, SourceFileModuleName,
         ModuleName, MaybeTimestamp, Items, !IO).
 
 :- pred call_make_short_interface(globals::in, file_name::in, module_name::in,
@@ -1236,7 +1238,8 @@ call_make_interface(Globals, SourceFileName, SourceFileModuleName,
 
 call_make_short_interface(Globals, SourceFileName, _, _, ModuleName - Items,
         !IO) :-
-    make_short_interface(Globals, SourceFileName, ModuleName, Items, !IO).
+    write_short_interface_file(Globals, SourceFileName, ModuleName,
+        Items, !IO).
 
 :- pred call_make_private_interface(globals::in, file_name::in,
     module_name::in, maybe(timestamp)::in, pair(module_name, list(item))::in,
@@ -1244,7 +1247,7 @@ call_make_short_interface(Globals, SourceFileName, _, _, ModuleName - Items,
 
 call_make_private_interface(Globals, SourceFileName, SourceFileModuleName,
         MaybeTimestamp, ModuleName - Items, !IO) :-
-    make_private_interface(Globals, SourceFileName, SourceFileModuleName,
+    write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
         ModuleName, MaybeTimestamp, Items, !IO).
 
 :- pred halt_at_module_error(bool::in, module_error::in) is semidet.
@@ -1823,6 +1826,117 @@ invoke_module_qualify_items(Globals, Items0, Items,
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
+
+%-----------------------------------------------------------------------------%
+
+    % maybe_read_dependency_file(Globals, ModuleName, MaybeTransOptDeps, !IO):
+    %
+    % If transitive intermodule optimization has been enabled, then read
+    % <ModuleName>.d to find the modules which <ModuleName>.trans_opt may
+    % depend on. Otherwise return `no'.
+    %
+:- pred maybe_read_dependency_file(globals::in, module_name::in,
+    maybe(list(module_name))::out, io::di, io::uo) is det.
+
+maybe_read_dependency_file(Globals, ModuleName, MaybeTransOptDeps, !IO) :-
+    globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
+    (
+        TransOpt = yes,
+        globals.lookup_bool_option(Globals, verbose, Verbose),
+        module_name_to_file_name(Globals, ModuleName, ".d", do_not_create_dirs,
+            DependencyFileName, !IO),
+        maybe_write_string(Verbose, "% Reading auto-dependency file `", !IO),
+        maybe_write_string(Verbose, DependencyFileName, !IO),
+        maybe_write_string(Verbose, "'...", !IO),
+        maybe_flush_output(Verbose, !IO),
+        io.open_input(DependencyFileName, OpenResult, !IO),
+        (
+            OpenResult = ok(Stream),
+            io.set_input_stream(Stream, OldStream, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".trans_opt_date",
+                do_not_create_dirs, TransOptDateFileName0, !IO),
+            string.to_char_list(TransOptDateFileName0, TransOptDateFileName),
+            SearchPattern = TransOptDateFileName ++ [' ', ':'],
+            read_dependency_file_find_start(SearchPattern, FindResult, !IO),
+            (
+                FindResult = yes,
+                read_dependency_file_get_modules(TransOptDeps, !IO),
+                MaybeTransOptDeps = yes(TransOptDeps)
+            ;
+                FindResult = no,
+                % error reading .d file
+                MaybeTransOptDeps = no
+            ),
+            io.set_input_stream(OldStream, _, !IO),
+            io.close_input(Stream, !IO),
+            maybe_write_string(Verbose, " done.\n", !IO)
+        ;
+            OpenResult = error(IOError),
+            maybe_write_string(Verbose, " failed.\n", !IO),
+            maybe_flush_output(Verbose, !IO),
+            io.error_message(IOError, IOErrorMessage),
+            string.append_list(["error opening file `", DependencyFileName,
+                "' for input: ", IOErrorMessage], Message),
+            report_error(Message, !IO),
+            MaybeTransOptDeps = no
+        )
+    ;
+        TransOpt = no,
+        MaybeTransOptDeps = no
+    ).
+
+    % Read lines from the dependency file (module.d) until one is found
+    % which begins with SearchPattern.
+    %
+:- pred read_dependency_file_find_start(list(char)::in, bool::out,
+    io::di, io::uo) is det.
+
+read_dependency_file_find_start(SearchPattern, Success, !IO) :-
+    io.read_line(Result, !IO),
+    ( Result = ok(CharList) ->
+        ( list.append(SearchPattern, _, CharList) ->
+            % Have found the start.
+            Success = yes
+        ;
+            read_dependency_file_find_start(SearchPattern, Success, !IO)
+        )
+    ;
+        Success = no
+    ).
+
+    % Read lines until one is found which does not contain whitespace
+    % followed by a word which ends in .trans_opt. Remove the .trans_opt
+    % ending from all the words which are read in and return the resulting
+    % list of modules.
+    %
+:- pred read_dependency_file_get_modules(list(module_name)::out,
+    io::di, io::uo) is det.
+
+read_dependency_file_get_modules(TransOptDeps, !IO) :-
+    io.read_line(Result, !IO),
+    (
+        Result = ok(CharList0),
+        % Remove any whitespace from the beginning of the line,
+        % then take all characters until another whitespace occurs.
+        list.takewhile(char.is_whitespace, CharList0, _, CharList1),
+        NotIsWhitespace = (pred(Char::in) is semidet :-
+            \+ char.is_whitespace(Char)
+        ),
+        list.takewhile(NotIsWhitespace, CharList1, CharList, _),
+        string.from_char_list(CharList, FileName0),
+        string.remove_suffix(FileName0, ".trans_opt", FileName)
+    ->
+        ( string.append("Mercury/trans_opts/", BaseFileName, FileName) ->
+            ModuleFileName = BaseFileName
+        ;
+            ModuleFileName = FileName
+        ),
+        file_name_to_module_name(ModuleFileName, Module),
+        read_dependency_file_get_modules(TransOptDeps0, !IO),
+        TransOptDeps = [Module | TransOptDeps0]
+    ;
+        TransOptDeps = []
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -17,6 +17,7 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.deps_map.
+:- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.module_imports.
 
 :- import_module bool.
@@ -39,6 +40,26 @@
 :- pred write_dependency_file(globals::in, module_and_imports::in,
     set(module_name)::in, maybe(list(module_name))::in, io::di, io::uo) is det.
 
+    % generate_dependencies_write_d_files(Globals, Modules,
+    %   IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
+    %   TransOptOrder, DepsMap, !IO):
+    %
+    % This predicate writes out the .d files for all the modules in the
+    % Modules list.
+    % IntDepsGraph gives the interface dependency graph.
+    % ImplDepsGraph gives the implementation dependency graph.
+    % IndirectDepsGraph gives the indirect dependency graph
+    % (this includes dependencies on `*.int2' files).
+    % IndirectOptDepsGraph gives the indirect optimization dependencies
+    % (this includes dependencies via `.opt' and `.trans_opt' files).
+    % These are all computed from the DepsMap.
+    % TransOptOrder gives the ordering that is used to determine
+    % which other modules the .trans_opt files may depend on.
+    %
+:- pred generate_dependencies_write_d_files(globals::in, list(deps)::in,
+    deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
+    list(module_name)::in, deps_map::in, io::di, io::uo) is det.
+
     % Write out the `.dv' file, using the information collected in the
     % deps_map data structure.
     %
@@ -50,6 +71,9 @@
     %
 :- pred generate_dependencies_write_dep_file(globals::in, file_name::in,
     module_name::in, deps_map::in, io::di, io::uo) is det.
+
+:- pred maybe_output_module_order(globals::in, module_name::in,
+    list(set(module_name))::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -90,6 +114,7 @@
 :- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.prog_io_find.        % XXX undesirable dependency
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.source_file_map.
 
 :- import_module assoc_list.
@@ -100,6 +125,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
@@ -1015,6 +1041,93 @@ write_subdirs_shorthand_rule(Globals, DepStream, ModuleName, Ext, !IO) :-
     io.write_string(DepStream, ": ", !IO),
     io.write_string(DepStream, Target, !IO),
     io.nl(DepStream, !IO).
+
+%-----------------------------------------------------------------------------%
+
+generate_dependencies_write_d_files(_, [], _, _, _, _, _, _, !IO).
+generate_dependencies_write_d_files(Globals, [Dep | Deps],
+        IntDepsGraph, ImplDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+        TransOptOrder, DepsMap, !IO) :-
+    some [!Module] (
+        Dep = deps(_, !:Module),
+
+        % Look up the interface/implementation/indirect dependencies
+        % for this module from the respective dependency graphs,
+        % and save them in the module_and_imports structure.
+
+        module_and_imports_get_module_name(!.Module, ModuleName),
+        get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
+            IndirectOptDeps),
+        globals.lookup_bool_option(Globals, intermodule_optimization,
+            Intermod),
+        (
+            Intermod = yes,
+            % Be conservative with inter-module optimization -- assume a
+            % module depends on the `.int', `.int2' and `.opt' files
+            % for all transitively imported modules.
+            IntDeps = IndirectOptDeps,
+            ImplDeps = IndirectOptDeps,
+            IndirectDeps = IndirectOptDeps
+        ;
+            Intermod = no,
+            get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDeps),
+            get_dependencies_from_graph(ImplDepsGraph, ModuleName, ImplDeps),
+            get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
+                IndirectDeps)
+        ),
+
+        globals.get_target(Globals, Target),
+        ( Target = target_c, Lang = lang_c
+        ; Target = target_java, Lang = lang_java
+        ; Target = target_csharp, Lang = lang_csharp
+        ; Target = target_il, Lang = lang_il
+        ; Target = target_erlang, Lang = lang_erlang
+        ),
+        % Assume we need the `.mh' files for all imported modules
+        % (we will if they define foreign types).
+        ForeignImports = list.map(
+            (func(ThisDep) = foreign_import_module_info(Lang, ThisDep,
+                term.context_init)),
+            IndirectOptDeps),
+        !Module ^ mai_foreign_import_modules := ForeignImports,
+
+        module_and_imports_set_int_deps(IntDeps, !Module),
+        module_and_imports_set_impl_deps(ImplDeps, !Module),
+        module_and_imports_set_indirect_deps(IndirectDeps, !Module),
+
+        % Compute the trans-opt dependencies for this module. To avoid
+        % the possibility of cycles, each module is only allowed to depend
+        % on modules that occur later than it in the TransOptOrder.
+
+        FindModule = (pred(OtherModule::in) is semidet :-
+            ModuleName \= OtherModule
+        ),
+        list.takewhile(FindModule, TransOptOrder, _, TransOptDeps0),
+        ( TransOptDeps0 = [_ | TransOptDeps1] ->
+            % The module was found in the list.
+            TransOptDeps = TransOptDeps1
+        ;
+            TransOptDeps = []
+        ),
+
+        % Note that even if a fatal error occured for one of the files
+        % that the current Module depends on, a .d file is still produced,
+        % even though it probably contains incorrect information.
+        Error = !.Module ^ mai_error,
+        (
+            ( Error = no_module_errors
+            ; Error = some_module_errors
+            ),
+            write_dependency_file(Globals, !.Module,
+                set.list_to_set(IndirectOptDeps), yes(TransOptDeps), !IO)
+        ;
+            Error = fatal_module_errors
+        ),
+        generate_dependencies_write_d_files(Globals, Deps,
+            IntDepsGraph, ImplDepsGraph,
+            IndirectDepsGraph, IndirectOptDepsGraph,
+            TransOptOrder, DepsMap, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -2241,6 +2354,45 @@ get_source_file(DepsMap, ModuleName, FileName) :-
     ;
         unexpected($module, $pred, "source file name doesn't end in `.m'")
     ).
+
+%-----------------------------------------------------------------------------%
+
+maybe_output_module_order(Globals, Module, DepsOrdering, !IO) :-
+    globals.lookup_bool_option(Globals, generate_module_order, Order),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    (
+        Order = yes,
+        module_name_to_file_name(Globals, Module, ".order",
+            do_create_dirs, OrdFileName, !IO),
+        maybe_write_string(Verbose, "% Creating module order file `", !IO),
+        maybe_write_string(Verbose, OrdFileName, !IO),
+        maybe_write_string(Verbose, "'...", !IO),
+        io.open_output(OrdFileName, OrdResult, !IO),
+        (
+            OrdResult = ok(OrdStream),
+            io.write_list(OrdStream, DepsOrdering, "\n\n",
+                write_module_scc(OrdStream), !IO),
+            io.close_output(OrdStream, !IO),
+            maybe_write_string(Verbose, " done.\n", !IO)
+        ;
+            OrdResult = error(IOError),
+            maybe_write_string(Verbose, " failed.\n", !IO),
+            maybe_flush_output(Verbose, !IO),
+            io.error_message(IOError, IOErrorMessage),
+            string.append_list(["error opening file `", OrdFileName,
+                "' for output: ", IOErrorMessage], OrdMessage),
+            report_error(OrdMessage, !IO)
+        )
+    ;
+        Order = no
+    ).
+
+:- pred write_module_scc(io.output_stream::in, set(module_name)::in,
+    io::di, io::uo) is det.
+
+write_module_scc(Stream, SCC0, !IO) :-
+    set.to_sorted_list(SCC0, SCC),
+    io.write_list(Stream, SCC, "\n", prog_out.write_sym_name, !IO).
 
 %-----------------------------------------------------------------------------%
 

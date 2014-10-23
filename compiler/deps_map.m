@@ -8,8 +8,10 @@
 %
 % File: deps_map.m.
 %
-% This module contains the data structure for recording module dependencies
-% and its access predicates.
+% This module contains a data structure for recording module dependencies
+% and its access predicates. The module_deps_graph module contains another
+% data structure, used for similar purposes, that is built on top of this one.
+% XXX Document the exact relationship between the two.
 %
 %-----------------------------------------------------------------------------%
 

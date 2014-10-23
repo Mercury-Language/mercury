@@ -54,6 +54,7 @@
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.write_module_interface_files.
 
 :- import_module assoc_list.
 :- import_module cord.
@@ -292,8 +293,8 @@ do_write_module_dep_file(Globals, Imports, !IO) :-
     ;
         ProgDepResult = error(Error),
         io.error_message(Error, Msg),
-        io.write_strings(["Error opening ", ProgDepFile,
-            " for output: ", Msg, "\n"], !IO),
+        io.write_strings(["Error opening ", ProgDepFile, " for output: ",
+            Msg, "\n"], !IO),
         io.set_exit_status(1, !IO)
     ).
 
@@ -858,8 +859,8 @@ make_short_interfaces(ErrorStream, SourceFileName, SubModuleList, Globals,
     list.foldl(
         (pred(SubModule::in, !.IO::di, !:IO::uo) is det :-
             SubModule = SubModuleName - SubModuleItems,
-            modules.make_short_interface(Globals, SourceFileName,
-                SubModuleName, SubModuleItems, !IO)
+            write_short_interface_file(Globals, SourceFileName, SubModuleName,
+                SubModuleItems, !IO)
         ), SubModuleList, !IO),
     io.set_output_stream(OutputStream, _, !IO),
     io.get_exit_status(ExitStatus, !IO),

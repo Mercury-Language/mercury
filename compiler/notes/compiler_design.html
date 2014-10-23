@@ -341,20 +341,15 @@ such as pretty-printing.
 	.int, .opt etc files.
 
 	<p>
-	modules.m has the code to write out `.int', `.int2', `.int3',
-	`.d' and `.dep' files.
+	write_module_interface_files.m has the code to write out
+    `.int0', `.int', `.int2', and `.int3' files.
+
+	<p>
+	modules.m figures out what interface files to read,
+    and also does a bunch of other semi-related things.
 
 	<p>
 	write_deps_file.m writes out Makefile fragments.
-
-	<p>
-	file_names.m does conversions between module names and file names.
-	It uses java_names.m, which contains predicates for dealing with names
-	of things in Java.
-
-	<p>
-	module_cmds.m handles the commands for manipulating interface files of
-	various kinds.
 
 	<p>
 	module_imports.m contains the module_imports type and its access
@@ -362,12 +357,25 @@ such as pretty-printing.
 	direct dependencies (those caused by imports) between modules.
 
 	<p>
-	deps_map.m contains the data structure for recording indirect
-	dependencies between modules, and the predicates for creating it.
+	deps_map.m and module_deps_graph.m contain data structures
+    for recording indirect dependencies between modules,
+    and the predicates for creating and using them.
+
+	<p>
+	file_names.m does conversions between module names and file names.
+	It uses java_names.m, which contains predicates for dealing with names
+	of things in Java.
 
 	<p>
 	source_file_map.m contains code to read, write and search
 	the mapping between module names and file names.
+
+	<p>
+	module_cmds.m handles the commands for manipulating interface files of
+	various kinds.
+
+	<p>
+	item_util.m contains some utility predicates dealing with items.
 
 <li><p> module qualification of types, insts and modes
 

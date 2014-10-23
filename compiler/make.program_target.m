@@ -44,7 +44,7 @@
 :- import_module libs.process_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.modules.
+:- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
@@ -682,7 +682,7 @@ linked_target_cleanup(Globals, MainModuleName, FileType, OutputFileName,
 %-----------------------------------------------------------------------------%
 
     % When compiling to Java we want to invoke `javac' just once, passing it a
-    % list of all out-of-date `.java' files.  This is a lot quicker than
+    % list of all out-of-date `.java' files. This is a lot quicker than
     % compiling each Java file individually.
     %
 :- pred make_java_files(globals::in, module_name::in, list(module_name)::in,
@@ -1050,9 +1050,9 @@ build_analysis_files(Globals, MainModuleName, AllModules,
     ->
         Succeeded = no
     ;
-        % Ensure all interface files are present before continuing.  This
-        % prevents a problem when two parallel branches try to generate the
-        % same missing interface file later.
+        % Ensure all interface files are present before continuing.
+        % This prevents a problem when two parallel branches try to generate
+        % the same missing interface file later.
         % (Although we can't actually build analysis files in parallel yet.)
         make_all_interface_files(Globals, AllModules, Succeeded1, !Info, !IO),
         (
@@ -1130,26 +1130,29 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
     ).
 
     % Return a list of modules in reverse order of their dependencies, i.e.
-    % the list is the module dependency graph from bottom-up.  Mutually
+    % the list is the module dependency graph from bottom-up. Mutually
     % dependent modules (modules which form a clique in the dependency graph)
     % are returned adjacent in the list in arbitrary order.
     %
-:- pred reverse_ordered_modules(map(module_name,
-    maybe(module_and_imports))::in,
+:- pred reverse_ordered_modules(
+    map(module_name, maybe(module_and_imports))::in,
     list(module_name)::in, list(module_name)::out) is det.
 
 reverse_ordered_modules(ModuleDeps, Modules0, Modules) :-
-    list.foldl2(add_module_relations(lookup_module_and_imports(ModuleDeps)),
+    list.foldl2(add_module_relations(
+        lookup_module_and_imports_in_maybe_map(ModuleDeps)),
         Modules0, digraph.init, _IntDepsGraph, digraph.init, ImplDepsGraph),
     digraph.atsort(ImplDepsGraph, Order0),
     list.reverse(Order0, Order1),
     list.map(set.to_sorted_list, Order1, Order2),
     list.condense(Order2, Modules).
 
-:- func lookup_module_and_imports(map(module_name, maybe(module_and_imports)),
-    module_name) = module_and_imports.
+:- func lookup_module_and_imports_in_maybe_map(
+    map(module_name, maybe(module_and_imports)), module_name)
+    = module_and_imports.
 
-lookup_module_and_imports(ModuleDeps, ModuleName) = ModuleImports :-
+lookup_module_and_imports_in_maybe_map(ModuleDeps, ModuleName)
+        = ModuleImports :-
     map.lookup(ModuleDeps, ModuleName, MaybeModuleImports),
     (
         MaybeModuleImports = yes(ModuleImports)
@@ -1715,7 +1718,7 @@ maybe_install_library_file(Globals, Linkage, FileName, InstallDir, Succeeded,
             Succeeded0 = yes
         ->
             % Since mmc --make uses --use-subdirs the above FileName will
-            % be directory qualified.  We don't care about the build
+            % be directory qualified. We don't care about the build
             % directory here so we strip that qualification off.
 
             BaseFileName = dir.det_basename(FileName),
@@ -2138,7 +2141,7 @@ check_library_is_installed(Globals, Dirs, Grade, LibName, !Succeeded, !IO) :-
                 [s(LibName), s(Grade)], !IO)
         ), !IO),
     % We check for the presence of a library in a particular grade by seeing
-    % whether its .init file exists.  This will work because all libraries
+    % whether its .init file exists. This will work because all libraries
     % have a grade dependent .init file.
     InitFileName = LibName ++ ".init",
     search_for_file_returning_dir(do_not_open_file, Dirs, InitFileName,
