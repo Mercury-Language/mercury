@@ -906,13 +906,13 @@ get_maybe_reserved_rep(ConsTag, ConsRep) :-
     du_arg_info::out) is det.
 
 generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo) :-
-    ConstructorArg = ctor_arg(MaybeArgSymName, ArgType, ArgWidth, _Ctxt),
+    ConstructorArg = ctor_arg(MaybeCtorFieldName, ArgType, ArgWidth, _Ctxt),
     (
-        MaybeArgSymName = yes(SymName),
+        MaybeCtorFieldName = yes(ctor_field_name(SymName, _)),
         ArgName = unqualify_name(SymName),
         MaybeArgName = yes(ArgName)
     ;
-        MaybeArgSymName = no,
+        MaybeCtorFieldName = no,
         MaybeArgName = no
     ),
     % The C runtime cannot yet handle the "self" type representation,

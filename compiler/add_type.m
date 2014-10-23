@@ -696,10 +696,10 @@ convert_type_defn(parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
     cons_table::in, cons_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-ctors_add([], _, _, _, _, _, _, _, _, _, !FieldNameTable, !Ctors, !Specs).
-ctors_add([Ctor | Rest], TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
+ctors_add([], _, _, _, _, _, _, _, _, _, !FieldNameTable, !ConsTable, !Specs).
+ctors_add([Ctor | Ctors], TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
         KindMap, NeedQual, PQInfo, _Context, ImportStatus, !FieldNameTable,
-        !Ctors, !Specs) :-
+        !ConsTable, !Specs) :-
     Ctor = ctor(ExistQVars, Constraints, Name, Args, Context),
     list.length(Args, Arity),
     BaseName = unqualify_name(Name),
@@ -717,7 +717,7 @@ ctors_add([Ctor | Rest], TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
     % Check that there is at most one definition of a given cons_id
     % in each type.
     (
-        search_cons_table(!.Ctors, QualifiedConsIdA, QualifiedConsDefnsA),
+        search_cons_table(!.ConsTable, QualifiedConsIdA, QualifiedConsDefnsA),
         some [OtherConsDefn] (
             list.member(OtherConsDefn, QualifiedConsDefnsA),
             OtherConsDefn ^ cons_type_ctor = TypeCtor
@@ -754,19 +754,18 @@ ctors_add([Ctor | Rest], TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
 
             % Do the scheduled additions.
             insert_into_cons_table(MainConsId, !.OtherConsIds, ConsDefn,
-                !Ctors)
+                !ConsTable)
         )
     ),
 
     FieldNames = list.map(func(C) = C ^ arg_field_name, Args),
     FirstField = 1,
     add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
-        QualifiedConsIdA, Context, ImportStatus, FirstField,
-        !FieldNameTable, !Specs),
+        QualifiedConsIdA, ImportStatus, FirstField, !FieldNameTable, !Specs),
 
-    ctors_add(Rest, TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
+    ctors_add(Ctors, TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
         KindMap, NeedQual, PQInfo, Context, ImportStatus, !FieldNameTable,
-        !Ctors, !Specs).
+        !ConsTable, !Specs).
 
 :- pred add_ctor_to_list(type_ctor::in, string::in, int::in, module_name::in,
     list(cons_id)::in, list(cons_id)::out) is det.
@@ -779,28 +778,27 @@ add_ctor_to_list(TypeCtor, ConsName, Arity, ModuleQual, !ConsIds) :-
 
 :- pred add_ctor_field_names(list(maybe(ctor_field_name))::in,
     need_qualifier::in, list(module_name)::in, type_ctor::in, cons_id::in,
-    prog_context::in, import_status::in, int::in,
+    import_status::in, int::in,
     ctor_field_table::in, ctor_field_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_ctor_field_names([], _, _, _, _, _, _, _, !FieldNameTable, !Specs).
-add_ctor_field_names([MaybeFieldName | FieldNames], NeedQual,
-        PartialQuals, TypeCtor, ConsId, Context, ImportStatus,
+add_ctor_field_names([], _, _, _, _, _, _, !FieldNameTable, !Specs).
+add_ctor_field_names([MaybeCtorFieldName | MaybeCtorFieldNames], NeedQual,
+        PartialQuals, TypeCtor, ConsId, ImportStatus,
         FieldNumber, !FieldNameTable, !Specs) :-
     (
-        MaybeFieldName = yes(FieldName),
-        FieldDefn = hlds_ctor_field_defn(Context, ImportStatus, TypeCtor,
-            ConsId, FieldNumber),
+        MaybeCtorFieldName = yes(ctor_field_name(FieldName, FieldNameContext)),
+        FieldDefn = hlds_ctor_field_defn(FieldNameContext, ImportStatus,
+            TypeCtor, ConsId, FieldNumber),
         add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
             !FieldNameTable, !Specs)
     ;
-        MaybeFieldName = no
+        MaybeCtorFieldName = no
     ),
-    add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
-        ConsId, Context, ImportStatus, FieldNumber + 1,
-        !FieldNameTable, !Specs).
+    add_ctor_field_names(MaybeCtorFieldNames, NeedQual, PartialQuals, TypeCtor,
+        ConsId, ImportStatus, FieldNumber + 1, !FieldNameTable, !Specs).
 
-:- pred add_ctor_field_name(ctor_field_name::in, hlds_ctor_field_defn::in,
+:- pred add_ctor_field_name(sym_name::in, hlds_ctor_field_defn::in,
     need_qualifier::in, list(module_name)::in,
     ctor_field_table::in, ctor_field_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -833,13 +831,13 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _),
         FieldString = sym_name_to_string(FieldName),
         Pieces = [words("Error: field"), quote(FieldString),
-            words("multiply defined.")],
-        Msg1 = simple_msg(Context, [always(Pieces)]),
+            words("multiply defined."), nl],
+        HereMsg = simple_msg(Context, [always(Pieces)]),
         PrevPieces = [words("Here is the previous definition of field"),
-            quote(FieldString), suffix(".")],
-        Msg2 = simple_msg(OrigContext, [always(PrevPieces)]),
+            quote(FieldString), suffix("."), nl],
+        PrevMsg = simple_msg(OrigContext, [always(PrevPieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-            [Msg1, Msg2]),
+            [HereMsg, PrevMsg]),
         !:Specs = [Spec | !.Specs]
     ;
         UnqualFieldName = unqualify_name(FieldName),

@@ -24,6 +24,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
@@ -35,7 +36,7 @@
 :- type cons_error
     --->    foreign_type_constructor(type_ctor, hlds_type_defn)
     ;       abstract_imported_type
-    ;       invalid_field_update(ctor_field_name, hlds_ctor_field_defn,
+    ;       invalid_field_update(sym_name, hlds_ctor_field_defn,
                 tvarset, list(tvar))
     ;       new_on_non_existential_type(type_ctor).
 
@@ -107,7 +108,6 @@
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.options.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.

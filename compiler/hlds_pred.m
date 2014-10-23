@@ -3284,7 +3284,7 @@ var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var) :-
     % From the access type and the name of the field,
     % construct a function name.
     %
-:- pred field_access_function_name(field_access_type::in, ctor_field_name::in,
+:- pred field_access_function_name(field_access_type::in, sym_name::in,
     sym_name::out) is det.
 
     % is_field_access_function_name(ModuleInfo, FuncName, Arity,
@@ -3293,7 +3293,7 @@ var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var) :-
     % Inverse of the above.
     %
 :- pred is_field_access_function_name(module_info::in, sym_name::in,
-    arity::out, field_access_type::out, ctor_field_name::out) is semidet.
+    arity::out, field_access_type::out, sym_name::out) is semidet.
 
 :- pred pred_info_is_field_access_function(module_info::in, pred_info::in)
     is semidet.

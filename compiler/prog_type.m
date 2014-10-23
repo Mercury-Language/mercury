@@ -1032,17 +1032,23 @@ type_ctor_should_be_notag(Globals, _TypeCtor, ReserveTagPragma, Ctors,
     MaybeUserEqCmp = no,
 
     type_is_single_ctor_single_arg(Ctors, SingleFunctorName, SingleArgType,
-        MaybeSingleArgName0),
+        MaybeCtorFieldName),
 
-    % We don't handle unary tuples as no_tag types -- they are rare enough
-    % that it's not worth the implementation effort.
+    % We do not handle unary tuples as no_tag types -- they are rare enough
+    % that it is not worth the implementation effort.
     %
     % XXX Since the tuple type constructor doesn't have a HLDS type defn body,
     % will this test ever fail? Even if it can fail, we should test TypeCtor,
     % not SingleFunctorName.
     SingleFunctorName \= unqualified("{}"),
 
-    MaybeSingleArgName = map_maybe(unqualify_name, MaybeSingleArgName0).
+    (
+        MaybeCtorFieldName = no,
+        MaybeSingleArgName = no
+    ;
+        MaybeCtorFieldName = yes(ctor_field_name(SymName, _)),
+        MaybeSingleArgName = yes(unqualify_name(SymName))
+    ).
 
 %-----------------------------------------------------------------------------%
 %

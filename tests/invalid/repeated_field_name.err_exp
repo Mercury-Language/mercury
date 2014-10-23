@@ -1,0 +1,8 @@
+repeated_field_name.m:011: Error: field `repeated_field_name.f2' multiply
+repeated_field_name.m:011:   defined.
+repeated_field_name.m:010:   Here is the previous definition of field
+repeated_field_name.m:010:   `repeated_field_name.f2'.
+repeated_field_name.m:012: Error: field `repeated_field_name.f2' multiply
+repeated_field_name.m:012:   defined.
+repeated_field_name.m:010:   Here is the previous definition of field
+repeated_field_name.m:010:   `repeated_field_name.f2'.

@@ -417,15 +417,15 @@ constructor_to_xml(C, TVarset,
 :- func constructor_arg_to_xml(comments, tvarset, constructor_arg) = xml.
 
 constructor_arg_to_xml(C, TVarset, CtorArg) = Xml :-
-    CtorArg = ctor_arg(MaybeFieldName, Type, _Width, Context),
+    CtorArg = ctor_arg(MaybeCtorFieldName, Type, _Width, Context),
     XmlType = elem("arg_type", [], [mer_type_to_xml(TVarset, Type)]),
     XmlContext = prog_context_to_xml(Context),
     (
-        MaybeFieldName = yes(FieldName),
+        MaybeCtorFieldName = yes(ctor_field_name(FieldName, _FieldNameCtxt)),
         Id = attr("id", sym_name_to_id("field", FieldName)),
         XmlMaybeFieldName = [elem("field", [Id], [name_to_xml(FieldName)])]
     ;
-        MaybeFieldName = no,
+        MaybeCtorFieldName = no,
         XmlMaybeFieldName = []
     ),
     Xml0 = elem("ctor_arg", [], [XmlType, XmlContext | XmlMaybeFieldName]),

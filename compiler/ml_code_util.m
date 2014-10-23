@@ -1363,7 +1363,8 @@ ml_gen_field_name(MaybeFieldName, ArgNum) = FieldName :-
     % If the programmer specified a field name, we use that,
     % otherwise we just use `F' followed by the field number.
     (
-        MaybeFieldName = yes(QualifiedFieldName),
+        MaybeFieldName = yes(ctor_field_name(QualifiedFieldName,
+            _FieldNameCtxt)),
         FieldName = unqualify_name(QualifiedFieldName)
     ;
         MaybeFieldName = no,

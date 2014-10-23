@@ -344,11 +344,11 @@ cons_table_optimize(!ConsTable) :-
 
 :- interface.
 
-:- type ctor_field_table == map(ctor_field_name, list(hlds_ctor_field_defn)).
+:- type ctor_field_table == map(sym_name, list(hlds_ctor_field_defn)).
 
 :- type hlds_ctor_field_defn
     --->    hlds_ctor_field_defn(
-                % Context of the field definition.
+                % The context of the field definition.
                 field_context   :: prog_context,
 
                 field_status    :: import_status,

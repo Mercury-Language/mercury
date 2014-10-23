@@ -325,23 +325,24 @@ convert_constructor_arg_list(ModuleName, VarSet, [Term | Terms])
                 MaybeConstructorArgs = error1([Spec])
             ;
                 SymNameArgs = [],
-                MaybeFieldName = yes(SymName),
+                NameCtxt = get_term_context(NameTerm),
+                MaybeCtorFieldName = yes(ctor_field_name(SymName, NameCtxt)),
                 MaybeConstructorArgs =
                     convert_constructor_arg_list_2(ModuleName,
-                        VarSet, MaybeFieldName, TypeTerm, Terms)
+                        VarSet, MaybeCtorFieldName, TypeTerm, Terms)
             )
         )
     ;
-        MaybeFieldName = no,
+        MaybeCtorFieldName = no,
         TypeTerm = Term,
         MaybeConstructorArgs = convert_constructor_arg_list_2(ModuleName,
-            VarSet, MaybeFieldName, TypeTerm, Terms)
+            VarSet, MaybeCtorFieldName, TypeTerm, Terms)
     ).
 
-:- func convert_constructor_arg_list_2(module_name, varset, maybe(sym_name),
-    term, list(term)) = maybe1(list(constructor_arg)).
+:- func convert_constructor_arg_list_2(module_name, varset,
+    maybe(ctor_field_name), term, list(term)) = maybe1(list(constructor_arg)).
 
-convert_constructor_arg_list_2(ModuleName, VarSet, MaybeFieldName,
+convert_constructor_arg_list_2(ModuleName, VarSet, MaybeCtorFieldName,
         TypeTerm, Terms) = MaybeArgs :-
     ContextPieces = [words("In type definition:")],
     parse_type(TypeTerm, VarSet, ContextPieces, MaybeType),
@@ -349,7 +350,7 @@ convert_constructor_arg_list_2(ModuleName, VarSet, MaybeFieldName,
         MaybeType = ok1(Type),
         Context = get_term_context(TypeTerm),
         % Initially every argument is assumed to occupy one word.
-        Arg = ctor_arg(MaybeFieldName, Type, full_word, Context),
+        Arg = ctor_arg(MaybeCtorFieldName, Type, full_word, Context),
         MaybeTailArgs =
             convert_constructor_arg_list(ModuleName, VarSet, Terms),
         (

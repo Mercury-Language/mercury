@@ -1278,8 +1278,7 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
     %
 :- pred finish_field_access_function(module_info::in,
     pred_info::in, pred_info::out, vartypes::in, vartypes::out,
-    prog_varset::in, prog_varset::out,
-    field_access_type::in, ctor_field_name::in,
+    prog_varset::in, prog_varset::out, field_access_type::in, sym_name::in,
     unify_context::in, prog_var::in, list(prog_var)::in,
     hlds_goal_info::in, hlds_goal::out) is det.
 
@@ -1299,10 +1298,9 @@ finish_field_access_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
             GoalInfo, GoalExpr)
     ).
 
-:- pred translate_get_function(module_info::in,
-    pred_info::in, pred_info::out, vartypes::in, vartypes::out,
-    prog_varset::in, prog_varset::out, ctor_field_name::in,
-    unify_context::in, prog_var::in, prog_var::in,
+:- pred translate_get_function(module_info::in, pred_info::in, pred_info::out,
+    vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+    sym_name::in, unify_context::in, prog_var::in, prog_var::in,
     hlds_goal_info::in, hlds_goal_expr::out) is det.
 
 translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
@@ -1354,8 +1352,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
 
 :- pred translate_set_function(module_info::in, pred_info::in, pred_info::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
-    ctor_field_name::in, unify_context::in,
-    prog_var::in, prog_var::in, prog_var::in,
+    sym_name::in, unify_context::in, prog_var::in, prog_var::in, prog_var::in,
     hlds_goal_info::in, hlds_goal_expr::out) is det.
 
 translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
@@ -1526,9 +1523,9 @@ split_list_at_index(Index, List, Before, At, After) :-
     % given field name.
     %
 :- pred get_constructor_containing_field(module_info::in, mer_type::in,
-    ctor_field_name::in, cons_id::out, int::out) is det.
+    sym_name::in, cons_id::out, int::out) is det.
 
-get_constructor_containing_field(ModuleInfo, TermType, FieldName,
+get_constructor_containing_field(ModuleInfo, TermType, FieldSymName,
         ConsId, FieldNumber) :-
     type_to_ctor_det(TermType, TermTypeCtor),
     module_info_get_type_table(ModuleInfo, TypeTable),
@@ -1536,6 +1533,7 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
     hlds_data.get_type_defn_body(TermTypeDefn, TermTypeBody),
     (
         TermTypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
+        FieldName = unqualify_name(FieldSymName),
         get_constructor_containing_field_2(TermTypeCtor, Ctors, FieldName,
             ConsId, FieldNumber)
     ;
@@ -1548,39 +1546,35 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
     ).
 
 :- pred get_constructor_containing_field_2(type_ctor::in,
-    list(constructor)::in, ctor_field_name::in, cons_id::out, int::out) is det.
+    list(constructor)::in, string::in, cons_id::out, int::out) is det.
 
 get_constructor_containing_field_2(_, [], _, _, _) :-
     unexpected($module, $pred, "can't find field").
-get_constructor_containing_field_2(TypeCtor, [Ctor | Ctors], FieldName,
+get_constructor_containing_field_2(TypeCtor, [Ctor | Ctors], UnqualFieldName,
         ConsId, FieldNumber) :-
     Ctor = ctor(_, _, SymName, CtorArgs, _Ctxt),
-    (
-        get_constructor_containing_field_3(CtorArgs, FieldName,
-            1, FieldNumber0)
-    ->
+    ( search_for_named_field(CtorArgs, UnqualFieldName, 1, FieldNumberPrime) ->
         list.length(CtorArgs, Arity),
         ConsId = cons(SymName, Arity, TypeCtor),
-        FieldNumber = FieldNumber0
+        FieldNumber = FieldNumberPrime
     ;
-        get_constructor_containing_field_2(TypeCtor, Ctors, FieldName,
+        get_constructor_containing_field_2(TypeCtor, Ctors, UnqualFieldName,
             ConsId, FieldNumber)
     ).
 
-:- pred get_constructor_containing_field_3(list(constructor_arg)::in,
-    ctor_field_name::in, int::in, int::out) is semidet.
+:- pred search_for_named_field(list(constructor_arg)::in,
+    string::in, int::in, int::out) is semidet.
 
-get_constructor_containing_field_3([CtorArg | CtorArgs],
-        FieldName, FieldNumber0, FieldNumber) :-
+search_for_named_field([CtorArg | CtorArgs],
+        UnqualFieldName, CurFieldNumber, NamedFieldNumber) :-
     (
-        CtorArg ^ arg_field_name = yes(ArgFieldName),
-        UnqualFieldName = unqualify_name(ArgFieldName),
-        UnqualFieldName = unqualify_name(FieldName)
+        CtorArg ^ arg_field_name = yes(ctor_field_name(ArgFieldName, _)),
+        UnqualFieldName = unqualify_name(ArgFieldName)
     ->
-        FieldNumber = FieldNumber0
+        NamedFieldNumber = CurFieldNumber
     ;
-        get_constructor_containing_field_3(CtorArgs, FieldName,
-            FieldNumber0 + 1, FieldNumber)
+        search_for_named_field(CtorArgs, UnqualFieldName,
+            CurFieldNumber + 1, NamedFieldNumber)
     ).
 
 %-----------------------------------------------------------------------------%

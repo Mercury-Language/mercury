@@ -2767,7 +2767,7 @@ builtin_field_access_function_type(Info, GoalId, ConsId, Arity,
 
 :- pred make_field_access_function_cons_type_info(typecheck_info::in,
     goal_id::in, sym_name::in, arity::in, field_access_type::in,
-    ctor_field_name::in, hlds_ctor_field_defn::in,
+    sym_name::in, hlds_ctor_field_defn::in,
     maybe_cons_type_info::out) is semidet.
 
 make_field_access_function_cons_type_info(Info, GoalId, FuncName, Arity,
@@ -2830,7 +2830,7 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
     ;       error(cons_error).
 
 :- pred convert_field_access_cons_type_info(class_table::in,
-    field_access_type::in, ctor_field_name::in, hlds_ctor_field_defn::in,
+    field_access_type::in, sym_name::in, hlds_ctor_field_defn::in,
     cons_type_info::in, existq_tvars::in, maybe_cons_type_info::out) is det.
 
 convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,

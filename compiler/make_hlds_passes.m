@@ -3281,7 +3281,7 @@ maybe_check_field_access_function(ModuleInfo, FuncName, FuncArity, Status,
     ).
 
 :- pred check_field_access_function(module_info::in, field_access_type::in,
-    ctor_field_name::in, sym_name::in, arity::in, import_status::in,
+    sym_name::in, sym_name::in, arity::in, import_status::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncName,

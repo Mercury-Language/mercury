@@ -19,6 +19,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.state_var.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_util.
@@ -29,7 +31,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type field_list == assoc_list(ctor_field_name, list(prog_term)).
+:- type field_list == assoc_list(sym_name, list(prog_term)).
 
     % Expand a field update goal into a list of goals which each get or set
     % one level of the structure.
@@ -267,7 +269,7 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
 
 :- pred construct_field_access_function_call(field_access_type::in,
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,
-    ctor_field_name::in, prog_var::in, list(prog_var)::in, purity::in,
+    sym_name::in, prog_var::in, list(prog_var)::in, purity::in,
     cons_id::out, hlds_goal::out, qual_info::in, qual_info::out) is det.
 
 construct_field_access_function_call(AccessType, Context,

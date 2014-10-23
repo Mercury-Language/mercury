@@ -2061,7 +2061,7 @@ mercury_output_remaining_ctor_args(Varset, [A | As], !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_ctor_arg_name_prefix(no, !IO).
-mercury_output_ctor_arg_name_prefix(yes(Name), !IO) :-
+mercury_output_ctor_arg_name_prefix(yes(ctor_field_name(Name, _Ctxt)), !IO) :-
     mercury_output_bracketed_sym_name(Name, !IO),
     io.write_string(" :: ", !IO).
 

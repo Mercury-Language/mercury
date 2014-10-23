@@ -1202,7 +1202,7 @@ check_functor_ambiguities(NeedQualifier, TypeCtor, Ctor, !Info) :-
 
 check_field_ambiguities(_, _, ctor_arg(no, _, _, _), !Info).
 check_field_ambiguities(NeedQualifier, ResolvedCtor,
-        ctor_arg(yes(FieldName), _, _, _), !Info) :-
+        ctor_arg(yes(ctor_field_name(FieldName, _Ctxt)), _, _, _), !Info) :-
     % XXX The arities to match below will need to change if we ever
     % allow taking the address of field access functions.
     field_access_function_name(get, FieldName, ExtractFuncName),

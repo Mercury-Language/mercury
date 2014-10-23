@@ -1825,7 +1825,11 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 arg_context         :: prog_context
             ).
 
-:- type ctor_field_name == sym_name.
+:- type ctor_field_name
+    --->    ctor_field_name(
+                sym_name,           % The name of the field.
+                prog_context        % The context of the name in the source.
+            ).
 
     % How much space does a constructor argument occupy in the underlying
     % representation.

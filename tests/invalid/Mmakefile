@@ -192,6 +192,7 @@ SINGLEMODULE= \
 	record_syntax_errors \
 	ref_to_implicit_comma \
 	ref_to_implicit_pred \
+	repeated_field_name \
 	repeated_instance_vars_unsat \
 	require_det_in_lambda \
 	require_scopes \
