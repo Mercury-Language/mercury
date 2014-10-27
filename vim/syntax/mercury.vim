@@ -79,6 +79,7 @@ syn match   mercuryNumCode      +0'.\|0[box][0-9a-fA-F]*+
 syn region  mercuryAtom         start=+'+ skip=+\\.+ end=+'+
 syn region  mercuryString       start=+"+ skip=+\\.+ end=+"+                              contains=mercuryStringFmt
 syn match   mercuryStringFmt    +\\[abfnrtv]\|\\x[0-9a-fA-F]*\\\|%[-+# *.0-9]*[dioxXucsfeEgGp]+                                                                           contained
+syn	match   mercuryStringFmt    /\\[abfnrtv\\"]\|\\x[0-9a-fA-F]\+\\\|%[-+#*.0-9]*[dioxXucsfeEgGp]/ contained
 syn region  mercuryClauseHead   start=+^[a-zA-Z]+ end=+=\|:-\|\.\s*$\|-->+                    contains=mercuryComment,mercuryCComment,mercuryAtom,mercuryString
 syn region  mercuryCComment     start=+/\*+ end=+\*/+                                         contains=mercuryToDo
 if !exists("mercury_no_highlight_overlong") || !mercury_no_highlight_overlong

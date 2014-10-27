@@ -1,4 +1,4 @@
-Mercury Syntax Highlighting Under Vim 6.0
+Mercury Syntax Highlighting Under Vim 6.0+
 
 1. Create a diretory `~/.vim':
 
@@ -8,24 +8,31 @@ Mercury Syntax Highlighting Under Vim 6.0
 
 	$ cp -r . ~/.vim
 
-IMPORTANT: If you already have a file `~/.vim/after/filetype.vim' then you
-should copy the files from this directory one by one, except for
-`after/filetype.vim' which you should append to your own
-`~/.vim/after/filetype.vim'.
-
 3. Ensure you have the following lines in your `~/.vimrc' file:
 
 	filetype on
 	filetype plugin on
 	syntax enable
+	set modeline
 
-4. If you wish to change the colour scheme used by Vim's syntax highlighting,
+4. It is advisable to have the following file encoding detection lines
+in your ~/.vimrc:
+
+	if has("multi_byte")
+	  set encoding=utf-8
+	  setglobal fileencoding=utf-8
+	  if &termencoding == ""
+	    let &termencoding = &encoding
+	  endif
+	endif
+
+5. If you wish to change the colour scheme used by Vim's syntax highlighting,
 we suggest you put the necessary commands in `~/.vim/colors/mycolours.vim'
 and append the following to the above list of commands in your `~/.vimrc':
 
 	colors mycolours
 
-4. Vim will load `~/.vim/syntax/mercury.vim' and `~/.vim/ftplugin/mercury.vim'
+6. Vim will load `~/.vim/syntax/mercury.vim' and `~/.vim/ftplugin/mercury.vim'
 automatically when opening a .m or .moo file.
 
 The syntax file describes two options you may wish to alter from your
@@ -33,3 +40,6 @@ The syntax file describes two options you may wish to alter from your
 
 The ftplugin file defines a number of useful keyboard mappings you may wish to
 consider.
+
+If you want to add a custom extension for Mercury source files, then modify the
+ftdetect/mercury.vim file. Currently .m and .moo are recognised.
