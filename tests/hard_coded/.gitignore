@@ -2,7 +2,11 @@
 *.d
 *.date
 *.dv
-*.c *.out *.res
+*.c
+*.o
+*.obj
+*.out
+*.res
 *.int
 *.int2
 *.err

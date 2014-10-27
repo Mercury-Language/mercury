@@ -1,0 +1,5 @@
+*.res
+*.out
+glob_test
+glob_test_2
+ref_test

@@ -11,4 +11,5 @@ Mercury/**
 *.lib
 lib*.dylib
 lib*.so
+lib*.beams
 lib*.a
