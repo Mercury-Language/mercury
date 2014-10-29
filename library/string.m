@@ -425,6 +425,11 @@
     %
 :- pred is_all_alpha(string::in) is semidet.
 
+    % True if string contains only alphabetic characters [A-Za-z] and digits
+    % [0-9].
+    %
+:- pred is_all_alnum(string::in) is semidet.
+
     % True if string contains only alphabetic characters [A-Za-z] and
     % underscores.
     %
@@ -2130,22 +2135,22 @@ string.uncapitalize_first(S0, S) :-
         S = S0
     ).
 
-string.all_match(P, String) :-
+all_match(P, String) :-
     all_match_2(P, String, 0).
 
 :- pred all_match_2(pred(char)::in(pred(in) is semidet), string::in, int::in)
     is semidet.
 
-string.all_match_2(P, String, I) :-
+all_match_2(P, String, I) :-
     ( string.unsafe_index_next(String, I, J, Char) ->
         P(Char),
-        string.all_match_2(P, String, J)
+        all_match_2(P, String, J)
     ;
         true
     ).
 
-string.is_all_alpha(S) :-
-    string.all_match(char.is_alpha, S).
+is_all_alpha(S) :-
+    all_match(char.is_alpha, S).
 
     % The C version is faster than the Mercury version.
 :- pragma foreign_proc("C",
@@ -2180,8 +2185,11 @@ string.is_all_alpha(S) :-
     }
 ").
 
-string.is_all_alpha_or_underscore(S) :-
-    string.all_match(char.is_alpha_or_underscore, S).
+is_all_alnum(S) :-
+    all_match(char.is_alnum, S).
+
+is_all_alpha_or_underscore(S) :-
+    all_match(char.is_alpha_or_underscore, S).
 
     % The C version is faster than the Mercury version.
 :- pragma foreign_proc("C",
@@ -2218,8 +2226,8 @@ string.is_all_alpha_or_underscore(S) :-
     }
 ").
 
-string.is_all_alnum_or_underscore(S) :-
-    string.all_match(char.is_alnum_or_underscore, S).
+is_all_alnum_or_underscore(S) :-
+    all_match(char.is_alnum_or_underscore, S).
 
     % The C version is faster than the Mercury version.
 :- pragma foreign_proc("C",
@@ -2259,8 +2267,8 @@ string.is_all_alnum_or_underscore(S) :-
     }
 ").
 
-string.is_all_digits(S) :-
-    string.all_match(char.is_digit, S).
+is_all_digits(S) :-
+    all_match(char.is_digit, S).
 
     % The C version is faster than the Mercury version.
 :- pragma foreign_proc("C",

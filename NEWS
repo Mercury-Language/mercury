@@ -82,6 +82,10 @@ Changes to the Mercury standard library:
 
    - infinity/0
 
+* The following predicate has been added to the string module:
+
+   - is_all_alnum/1
+
 Changes to the Mercury compiler:
 
 * We have enabled stricter checking of non-ground final insts to reject more
