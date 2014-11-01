@@ -155,10 +155,6 @@ make install
 #          The option --enable-stseg-grades causes the installation of grades
 #          that use stack segments.
 #
-#          The option --enable-dotnet-grades causes the installation
-#          of the .NET grades (see README.DotNet).  This grades are only
-#          installed if the .NET SDK is found.
-#
 #          The option --disable-java-grade prevents the installation of the
 #          Java grade.  The Java grade will be installed by default if the
 #          Java SDK is found.
