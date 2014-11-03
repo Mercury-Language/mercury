@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1998,2001-2008,2010, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -19,7 +19,7 @@
 % should ensure that in cases where the only valid answer is a "NaN"
 % (the IEEE float representation for "not a number"), the det
 % functions here will halt with a runtime error (or throw an exception)
-% rather than returning a NaN.  Quiet (non-signalling) NaNs have a
+% rather than returning a NaN. Quiet (non-signalling) NaNs have a
 % semantics which is not valid in Mercury, since they don't obey the
 % axiom "all [X] X = X".
 %
@@ -27,13 +27,13 @@
 % do that on all platforms, since neither ANSI C nor POSIX provide
 % any portable way of ensuring that floating point operations
 % whose result is not representable will raise a signal rather
-% than returning a NaN.  (Maybe C9X will help...?)
+% than returning a NaN. (Maybe C9X will help...?)
 % The behaviour is correct on Linux and Digital Unix,
 % but not on Solaris, for example.
 %
 % IEEE floating point also specifies that some functions should
 % return different results for +0.0 and -0.0, but that +0.0 and -0.0
-% should compare equal.  This semantics is not valid in Mercury,
+% should compare equal. This semantics is not valid in Mercury,
 % since it doesn't obey the axiom `all [F, X, Y] X = Y => F(X) = F(Y)'.
 % Again, the resolution is that in Mercury, functions which would
 % return different results for +0.0 and -0.0 should instead halt
@@ -243,7 +243,7 @@
 
     % Minimum negative integer such that:
     %   radix ** (min_exponent - 1)
-    % is a normalised floating-point number.  In the literature,
+    % is a normalised floating-point number. In the literature,
     % this is sometimes referred to as `e_min'.
     %
 :- func min_exponent = int.
@@ -268,7 +268,7 @@
 
 :- interface.
 
-% These functions are hidden for now.  `int' is not guaranteed to be able to
+% These functions are hidden for now. `int' is not guaranteed to be able to
 % represent a double, so we return strings for now. Endianness and treatment
 % of special values also needs to be considered.
 
@@ -367,7 +367,7 @@ X / Y = Z :-
 % Conversion functions
 %
 %   For Java, overflows are not detected, so this must be tested for
-%   explicitly.  So every time there's a cast to int, the bounds are
+%   explicitly. So every time there's a cast to int, the bounds are
 %   checked first.
 
 :- pragma foreign_proc("C",
@@ -586,7 +586,7 @@ float.pow(Base, Exp) = Ans :-
 
     % Returns Scale0 * (Base ** Exp) (where X ** 0 == 1.0 for all X).
     % Requires that Exp >= 0.
-    % Uses a simple "Russian peasants" algorithm.  O(lg(Exp+1)).
+    % Uses a simple "Russian peasants" algorithm. O(lg(Exp+1)).
     %
 :- func float.multiply_by_pow(float, float, int) = float.
 
@@ -604,7 +604,7 @@ float.multiply_by_pow(Scale0, Base, Exp) = Result :-
 
     % The reason for using unchecked_quotient in float.pow is so
     % that float.pow(+/-0.5, -1111) gives +/-infinity rather than
-    % a domain error.  (N.B. This relies on unchecked_quotient(1.0,
+    % a domain error. (N.B. This relies on unchecked_quotient(1.0,
     % +/-0.0) giving +/-infinity, whereas the documentation in
     % float.m says that the results are undefined.)
     % Using Result = float.multiply_by_pow(1.0, 1.0 / Base, -Exp)
@@ -616,7 +616,7 @@ float.multiply_by_pow(Scale0, Base, Exp) = Result :-
     % low zero bits in Exp before calling this loop: the loop for the low
     % zero bits needs only square Base, it needn't update Acc until the
     % end of that loop at which point Acc can be simply assigned from the
-    % then-current value of Base.  This optimization would be especially
+    % then-current value of Base. This optimization would be especially
     % valuable for expensive `*' operations; maybe provide a
     % std_util.monoid_pow(func(T,T)=T MonoidOperator, T Identity, int
     % Exp, T Base) = T Result function to complement the existing
@@ -845,18 +845,18 @@ is_zero(0.0).
 %
 float.min = 2.2250738585072014e-308.
 
-
 % Java and C# provide constants for +infinity.
 % For C, the situation is more complicated.
 % For single precision floats, we use the following
 % (1) the C99 INFINITY macro if available
 % (2) the HUGE_VALF macro if available
 % (3) HUGE_VAL
-% 
+%
 % For double precision floats we just use the HUGE_VAL macro.
-% The C standard does not guarantee that this will be +infinity but it is on all
-% the systems that we support.  It will definitely be +infinity if the optional
-% annex F of C99 is supported or if the 2001 revision of POSIX is supported.
+% The C standard does not guarantee that this will be +infinity,
+% but it actually is on all the systems that we support. It will definitely be
+% +infinity if the optional annex F of C99 is supported or if the 2001
+% revision of POSIX is supported.
 
 :- pragma foreign_proc("C",
     float.infinity = (F::out),
@@ -904,7 +904,7 @@ float.infinity = _ :-
 % C#:
 %   We can't use System.Double.Epsilon, because in v1 of the .NET CLR,
 %   that means something completely different: the smallest (denormal)
-%   positive number.  I don't know what the people who designed that
+%   positive number. I don't know what the people who designed that
 %   were smoking; that semantics for 'epsilon' is different from the
 %   use of 'epsilon' in C, Lisp, Ada, etc., not to mention Mercury.
 %   Instead, we just hard-code the appropriate value (copied from the
@@ -1039,7 +1039,7 @@ float.float_to_doc(X) = str(string.float_to_string(X)).
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     #if defined(MR_INT_LEAST64_TYPE)
-    
+
         union {
             double f;
             MR_int_least64_t i;
@@ -1059,7 +1059,7 @@ float.float_to_doc(X) = str(string.float_to_string(X)).
             sprintf(buf, ""%I64d"", u.i);
         #else
             sprintf(buf, ""%"" MR_INT_LEAST64_LENGTH_MODIFIER ""d"", u.i);
-        #endif 
+        #endif
         MR_make_aligned_string_copy(Str, buf);
     #else
         MR_fatal_error(

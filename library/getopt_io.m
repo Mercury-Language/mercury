@@ -158,8 +158,8 @@
 % members of the option_error/1 type rather than strings.
 
 :- pred process_options_se(option_ops(OptionType)::in(option_ops),
-    list(string)::in, list(string)::out, maybe_option_table_se(OptionType)::out,
-    io::di, io::uo) is det.
+    list(string)::in, list(string)::out,
+    maybe_option_table_se(OptionType)::out, io::di, io::uo) is det.
 
 :- pred process_options_se(option_ops(OptionType)::in(option_ops),
     list(string)::in, list(string)::out, list(string)::out,
@@ -318,7 +318,8 @@
             % The special option handler predicate for the option failed.
 
     ;       special_handler_missing
-            % A special option handler predicate was not provided for the option.
+            % A special option handler predicate was not provided
+            % for the option.
 
     ;       special_handler_error(string)
             % The special option handler predicate for the option returned an
@@ -692,7 +693,8 @@ handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
         ->
             Args = Args0,
             OptionArgs = OptionArgs1,
-            Error = option_error(Flag, Option, does_not_allow_argument(ArgVal)),
+            Error = option_error(Flag, Option,
+                does_not_allow_argument(ArgVal)),
             Result = error(Error)
         ;
             process_option(OptionData, Option, Flag, MaybeOptionArg,
@@ -785,9 +787,9 @@ get_short_option_arg(Opts, Arg, Args0, Args,
     ).
 
 :- pred process_option(option_data::in, string::in, OptionType::in,
-    maybe(string)::in, option_ops_internal(OptionType)::in(option_ops_internal),
-    option_table(OptionType)::in,
-    maybe_option_table_se(OptionType)::out,
+    maybe(string)::in,
+    option_ops_internal(OptionType)::in(option_ops_internal),
+    option_table(OptionType)::in, maybe_option_table_se(OptionType)::out,
     set(OptionType)::in, set(OptionType)::out, io::di, io::uo) is det.
 
 process_option(bool(_), _Option, Flag, MaybeArg, _OptionOps,

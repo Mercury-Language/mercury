@@ -474,7 +474,8 @@
 
 :- pred write_line(text_output_stream::in, T::in, io::di, io::uo) is det.
 
-:- pred write_line(text_output_stream, deconstruct.noncanon_handling, T, io, io).
+:- pred write_line(text_output_stream, deconstruct.noncanon_handling, T,
+    io, io).
 :- mode write_line(in, in(do_not_allow), in, di, uo) is det.
 :- mode write_line(in, in(canonicalize), in, di, uo) is det.
 :- mode write_line(in, in(include_details_cc), in, di, uo) is cc_multi.

@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: assoc_list.m.
 % Main authors: fjh, zs.
 % Stability: medium to high.
-% 
+%
 % This file contains the definition of the type assoc_list(K, V)
 % and some predicates which operate on those types.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -36,8 +36,8 @@
     % Zip together two lists; abort if they are of different lengths.
     %
 :- func from_corresponding_lists(list(K), list(V)) = assoc_list(K, V).
-:- pred from_corresponding_lists(list(K)::in, list(V)::in, assoc_list(K, V)::out)
-    is det.
+:- pred from_corresponding_lists(list(K)::in, list(V)::in,
+    assoc_list(K, V)::out) is det.
 
     % Return the first member of each pair.
     %
@@ -179,7 +179,7 @@
     in, out, in, out) is multi.
 :- mode foldl2_values(pred(in, in, out, in, out) is nondet, in,
     in, out, in, out) is nondet.
-    
+
     % As above, but with three accumulators.
     %
 :- pred foldl3_values(pred(V, A, A, B, B, C, C), assoc_list(K, V),

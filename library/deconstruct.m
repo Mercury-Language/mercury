@@ -800,7 +800,8 @@ univ_arg_can(Term, Index, Arg) :-
     list.index0(Arguments, Index, Arg).
 
 univ_arg_idcc(Term, Index, DummyUniv, Argument, Success) :-
-    local_deconstruct(Term, include_details_cc, _Functor, _, _Arity, Arguments),
+    local_deconstruct(Term, include_details_cc, _Functor, _FunctorNumber,
+        _Arity, Arguments),
     ( list.index0(Arguments, Index, Arg) ->
         Argument = Arg,
         Success = 1
