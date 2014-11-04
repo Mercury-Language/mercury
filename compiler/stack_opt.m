@@ -629,7 +629,7 @@ add_anchor_inserts(Goal, ArgVarsViaCellVar, InsertIntervals, Anchor,
     AnchorFollow = anchor_follow_info(_, AnchorIntervals),
     set.intersect(AnchorIntervals, InsertIntervals,
         AnchorInsertIntervals),
-    ( set.non_empty(AnchorInsertIntervals) ->
+    ( set.is_non_empty(AnchorInsertIntervals) ->
         Insert = insert_spec(Goal, ArgVarsViaCellVar),
         InsertMap0 = !.StackOptInfo ^ soi_left_anchor_inserts,
         ( map.search(InsertMap0, Anchor, Inserts0) ->

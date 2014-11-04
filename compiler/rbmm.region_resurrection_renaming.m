@@ -223,7 +223,7 @@ compute_resurrection_paths_exec_path(LRBeforeProc, LRAfterProc,
         BecomeDeadAfterProc), ExecPath,
         set.init, _, set.init, _, set.init, ResurrectedRegionsInExecPath),
     % We want to record only execution paths in which resurrections happen.
-    ( set.empty(ResurrectedRegionsInExecPath) ->
+    ( set.is_empty(ResurrectedRegionsInExecPath) ->
         true
     ;
         map.set(ExecPath, ResurrectedRegionsInExecPath,
@@ -404,7 +404,7 @@ path_containing_join_point(JoinPointProc, PPId, ResurrectedRegionsProc,
     assoc_list.keys(NonResurPath, ProgPointsInPath),
     map.foldl(find_join_points_in_path(ProgPointsInPath), JoinPointProc,
         set.init, JoinPointsInThisPath),
-    ( set.empty(JoinPointsInThisPath) ->
+    ( set.is_empty(JoinPointsInThisPath) ->
         true
     ;
         map.lookup(!.PathContainsResurrectionTable, PPId,
@@ -476,7 +476,7 @@ collect_region_resurrection_renaming_prog_point(Graph, BecomeLiveProc,
     set.intersect(ResurrectedRegions, BecomeLiveProgPoint,
         ToBeRenamedRegions),
     % We only record the program points where resurrection renaming exists.
-    ( set.empty(ToBeRenamedRegions) ->
+    ( set.is_empty(ToBeRenamedRegions) ->
         true
     ;
         counter.allocate(N, !RenamingCounter),

@@ -274,7 +274,7 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
             record_recompilation_reason(recompile_for_module_changed(FileName),
                 !Info)
         else if
-            ( set.non_empty(Errors)
+            ( set.is_non_empty(Errors)
             ; MaybeNewTimestamp = no
             )
         then

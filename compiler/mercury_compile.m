@@ -1253,10 +1253,10 @@ call_make_private_interface(Globals, SourceFileName, SourceFileModuleName,
 :- pred halt_at_module_error(bool::in, read_module_errors::in) is semidet.
 
 halt_at_module_error(HaltSyntax, Errors) :-
-    set.non_empty(Errors),
+    set.is_non_empty(Errors),
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     (
-        set.non_empty(FatalErrors)
+        set.is_non_empty(FatalErrors)
     ;
         HaltSyntax = yes
     ).

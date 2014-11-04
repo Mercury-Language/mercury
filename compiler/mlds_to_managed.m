@@ -258,7 +258,7 @@ generate_method_code(Globals, DataRep, Defn, !IO) :-
             has_foreign_languages(Statement, Langs),
             list.member(lang_csharp, Langs)
         ->
-            expect(set.empty(EnvVarNames), $module, $pred, "EnvVarNames"),
+            expect(set.is_empty(EnvVarNames), $module, $pred, "EnvVarNames"),
             Params = mlds_func_params(Inputs, Outputs),
             (
                 Outputs = [],

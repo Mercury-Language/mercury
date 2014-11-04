@@ -1260,8 +1260,8 @@ write_intermod_info(IntermodInfo, !IO) :-
         % If none of these item types need writing, nothing else
         % needs to be written.
 
-        set.empty(Preds),
-        set.empty(PredDecls),
+        set.is_empty(Preds),
+        set.is_empty(PredDecls),
         Instances = [],
         module_info_get_type_table(ModuleInfo, TypeTable),
         get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
@@ -2491,7 +2491,7 @@ grab_opt_files(Globals, !Module, FoundError, !IO) :-
     % and let our caller figure out what to do with them.
     module_and_imports_get_results(!.Module, _Items, _Specs, ModuleErrors),
     (
-        ( set.non_empty(ModuleErrors)
+        ( set.is_non_empty(ModuleErrors)
         ; OptError = yes
         ; UA_SR_Error = yes
         )

@@ -197,11 +197,11 @@ complete_clique_slots(SlotNum, InitDeep, Clique, PSSites, PDSites,
         list.map(extract_csdptr_callee(InitDeep), ValidCSDPtrs, CalleePDPtrs),
         CalleePDPtrSet = set.list_to_set(CalleePDPtrs),
         set.intersect(CalleePDPtrSet, Clique, Common),
-        ( set.empty(Common) ->
+        ( set.is_empty(Common) ->
             true
         ;
             set.difference(CalleePDPtrSet, Clique, NewMembers),
-            ( set.empty(NewMembers) ->
+            ( set.is_empty(NewMembers) ->
                 !:AddedPD = no
             ;
                 set.to_sorted_list(NewMembers, NewMemberList),

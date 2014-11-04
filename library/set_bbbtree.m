@@ -30,15 +30,17 @@
 :- func init = set_bbbtree(T).
 :- pred init(set_bbbtree(T)::uo) is det.
 
-    % `empty(Set) is true iff `Set' is contains no elements.
+    % `empty(Set)' is true iff `Set' is an empty set.
+    % `is_empty' is a synonym for `empty'.
     %
 :- pred empty(set_bbbtree(T)::in) is semidet.
-
-    % A synonym for the above.
-    %
 :- pred is_empty(set_bbbtree(T)::in) is semidet.
 
+    % `non_empty(Set)' is true iff `Set' is not an empty set.
+    % `is_non_empty' is a synonym for `non_empty'.
+    %
 :- pred non_empty(set_bbbtree(T)::in) is semidet.
+:- pred is_non_empty(set_bbbtree(T)::in) is semidet.
 
     % `count(Set, Count)' is true iff `Set' has `Count' elements.
     % i.e. `Count' is the cardinality (size) of the set.
@@ -471,10 +473,10 @@ set_bbbtree.init(empty).
 %------------------------------------------------------------------------------%
 
 set_bbbtree.empty(empty).
-
 set_bbbtree.is_empty(empty).
 
 set_bbbtree.non_empty(tree(_, _, _, _)).
+set_bbbtree.is_non_empty(tree(_, _, _, _)).
 
 %------------------------------------------------------------------------------%
 

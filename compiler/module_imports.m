@@ -345,7 +345,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
     % Figure out whether the items contain foreign code.
     get_item_list_foreign_code(Globals, Items, LangSet,
         ForeignImports0, ForeignIncludeFiles, ContainsForeignExport),
-    ( set.empty(LangSet) ->
+    ( set.is_empty(LangSet) ->
         ContainsForeignCode = contains_no_foreign_code
     ;
         ContainsForeignCode = contains_foreign_code(LangSet)

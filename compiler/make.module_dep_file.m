@@ -759,7 +759,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             do_not_search, do_return_timestamp, Items, Specs0, Errors,
             SourceFileName, _, !IO),
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
-        ( if set.non_empty(FatalErrors) then
+        ( if set.is_non_empty(FatalErrors) then
             io.set_output_stream(ErrorStream, _, !IO),
             write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),

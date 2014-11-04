@@ -209,7 +209,7 @@ read_dependencies(Globals, ModuleName, Search, ModuleImportsList, !IO) :-
     (
         Items0 = [],
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
-        set.non_empty(FatalErrors)
+        set.is_non_empty(FatalErrors)
     ->
         read_module_ignore_errors(Globals, ModuleName, ".int",
             "Getting dependencies for module interface", Search,

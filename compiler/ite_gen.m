@@ -602,9 +602,9 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
             set.difference(CondRemovedRegionVars, RemovedAtEndOfThen,
                 NeedToBeProtectedRegionVars),
             (
-                set.empty(CondCreatedRegionVars),
-                set.empty(NeedToBeProtectedRegionVars),
-                set.empty(CondAllocRegionVars)
+                set.is_empty(CondCreatedRegionVars),
+                set.is_empty(NeedToBeProtectedRegionVars),
+                set.is_empty(CondAllocRegionVars)
             ->
                 % When no region-related operations occur in the
                 % condition we do not need the backtracking support code.

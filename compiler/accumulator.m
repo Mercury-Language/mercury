@@ -691,18 +691,18 @@ accu_stage1(ModuleInfo, VarTypes, FullyStrict, DoLCO, GoalId, M, GoalStore,
     % Continue the transformation only if the set reject is empty and
     % the set assoc or update contains something that needs to be moved
     % before the recursive call.
-    set.empty(Reject),
+    set.is_empty(Reject),
     (
-        not set.empty(Assoc)
+        not set.is_empty(Assoc)
     ;
-        not set.empty(Update)
+        not set.is_empty(Update)
     ),
     (
         DoLCO = no,
         % If LCMC is not turned on then there must be no construction
         % unifications after the recursive call.
-        set.empty(Construct),
-        set.empty(ConstructAssoc)
+        set.is_empty(Construct),
+        set.is_empty(ConstructAssoc)
     ;
         DoLCO = yes
     ).

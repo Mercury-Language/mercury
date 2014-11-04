@@ -799,7 +799,7 @@ par_conj_overlap_is_dependent(peo_conjunction(Left, _, VarSet0),
         IsDependent = conjuncts_are_dependent(VarSet)
     ;
         IsDependent0 = conjuncts_are_independent,
-        ( set.empty(VarSet0) ->
+        ( set.is_empty(VarSet0) ->
             IsDependent = conjuncts_are_independent
         ;
             IsDependent = conjuncts_are_dependent(VarSet0)

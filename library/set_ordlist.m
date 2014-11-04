@@ -73,10 +73,14 @@
 :- pred equal(set_ordlist(T)::in, set_ordlist(T)::in) is semidet.
 
     % `empty(Set)' is true iff `Set' is an empty set.
+    % `is_empty' is a synonym for `empty'.
     %
 :- pred empty(set_ordlist(_T)::in) is semidet.
 :- pred is_empty(set_ordlist(T)::in) is semidet.
 
+    % `non_empty(Set)' is true iff `Set' is not an empty set.
+    % `is_non_empty' is a synonym for `non_empty'.
+    %
 :- pred non_empty(set_ordlist(T)::in) is semidet.
 :- pred is_non_empty(set_ordlist(T)::in) is semidet.
 

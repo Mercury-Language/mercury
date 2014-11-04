@@ -211,7 +211,7 @@ write_usage_file_2(ModuleInfo, NestedSubModules, RecompInfo, Timestamps,
         io.write_string("\n).\n\n", !IO)
     ),
 
-    ( set.empty(UsedClasses) ->
+    ( set.is_empty(UsedClasses) ->
         io.write_string("used_classes.\n", !IO)
     ;
         io.write_string("used_classes(", !IO),
@@ -719,7 +719,7 @@ do_record_used_functor(ModuleQualifier, SymName, Arity, Recorded,
     Name = unqualify_name(SymName),
     set.fold(find_items_used_by_functor(Name, Arity), MatchingCtors, !Info),
 
-    ( set.empty(MatchingCtors) ->
+    ( set.is_empty(MatchingCtors) ->
         Recorded = no
     ;
         Recorded = yes,

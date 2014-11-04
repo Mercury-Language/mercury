@@ -2066,7 +2066,7 @@ fundeps_closure(FunDeps, TVars) = fundeps_closure_2(FunDeps, TVars, set.init).
 :- func fundeps_closure_2(induced_fundeps, set(tvar), set(tvar)) = set(tvar).
 
 fundeps_closure_2(FunDeps0, NewVars0, Result0) = Result :-
-    ( set.empty(NewVars0) ->
+    ( set.is_empty(NewVars0) ->
         Result = Result0
     ;
         Result1 = set.union(Result0, NewVars0),
@@ -2086,7 +2086,7 @@ remove_vars(Vars, fundep(Domain0, Range0)) = fundep(Domain, Range) :-
     induced_fundeps::out, set(tvar)::in, set(tvar)::out) is det.
 
 collect_determined_vars(FunDep @ fundep(Domain, Range), !FunDeps, !Vars) :-
-    ( set.empty(Domain) ->
+    ( set.is_empty(Domain) ->
         !:Vars = set.union(Range, !.Vars)
     ;
         !:FunDeps = [FunDep | !.FunDeps]

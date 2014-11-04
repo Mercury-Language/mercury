@@ -464,7 +464,7 @@ record_non_local_regions(RevPath, Created, Removed, !NonLocalRegionProc) :-
                 set.difference(Created, Removed, NonLocalRegions)
             ),
             % Only record if some non-local region(s) exist.
-            ( set.empty(NonLocalRegions) ->
+            ( set.is_empty(NonLocalRegions) ->
                 true
             ;
                 map.set(RevPathToCond, NonLocalRegions, !NonLocalRegionProc)
@@ -644,7 +644,7 @@ record_regions_created_in_condition(RevPath, Created, !InCondRegionsProc) :-
             ),
             % Only record if some regions are actually created inside
             % the condition.
-            ( set.empty(InCondRegions) ->
+            ( set.is_empty(InCondRegions) ->
                 true
             ;
                 map.set(RevPath, InCondRegions, !InCondRegionsProc)
@@ -781,7 +781,7 @@ collect_ite_renamed_regions_ite(NonLocalRegionsProc, PathToCond,
         InCondRegions, !IteRenamedRegionProc) :-
     ( map.search(NonLocalRegionsProc, PathToCond, NonLocalRegions) ->
         set.intersect(NonLocalRegions, InCondRegions, RenamedRegions),
-        ( set.empty(RenamedRegions) ->
+        ( set.is_empty(RenamedRegions) ->
             true
         ;
             map.set(PathToCond, RenamedRegions, !IteRenamedRegionProc)

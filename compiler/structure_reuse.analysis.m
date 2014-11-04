@@ -380,7 +380,7 @@ handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
         maybe_write_string(VeryVerbose, "% done.\n", !IO)
     ),
 
-    ( set.empty(NewRequests) ->
+    ( set.is_empty(NewRequests) ->
         trace [io(!IO)] (
             maybe_write_string(VeryVerbose,
                 "% No more structure reuse requests.\n", !IO)

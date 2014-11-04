@@ -77,13 +77,17 @@
     %
 :- pred equal(set(T)::in, set(T)::in) is semidet.
 
-:- pred empty(set(T)::in) is semidet.
-
-:- pred non_empty(set(T)::in) is semidet.
-
-    % A synonym for empty/1.
+    % `empty(Set)' is true iff `Set' is an empty set.
+    % `is_empty' is a synonym for `empty'.
     %
+:- pred empty(set(T)::in) is semidet.
 :- pred is_empty(set(T)::in) is semidet.
+
+    % `non_empty(Set)' is true iff `Set' is not an empty set.
+    % `is_non_empty' is a synonym for `non_empty'.
+    %
+:- pred non_empty(set(T)::in) is semidet.
+:- pred is_non_empty(set(T)::in) is semidet.
 
     % `subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
     %
@@ -218,7 +222,7 @@
 :- pred difference(set(T)::in, set(T)::in, set(T)::out) is det.
 
     % `count(Set, Count)' is true iff `Set' has `Count' elements.
-    % i.e. `Count' is the cardinality (size) of the 
+    % i.e. `Count' is the cardinality (size) of the
     %
 :- func count(set(T)) = int.
 :- pred count(set(T)::in, int::out) is det.
@@ -585,13 +589,16 @@ set.equal(SetA, SetB) :-
     set_ordlist.equal(SetA, SetB).
 
 set.empty(Set) :-
-    set_ordlist.empty(Set).
+    set_ordlist.is_empty(Set).
 
 set.is_empty(Set) :-
-    set_ordlist.empty(Set).
+    set_ordlist.is_empty(Set).
 
 set.non_empty(Set) :-
-    \+ set_ordlist.empty(Set).
+    set_ordlist.is_non_empty(Set).
+
+set.is_non_empty(Set) :-
+    set_ordlist.is_non_empty(Set).
 
 set.subset(SetA, SetB) :-
     set_ordlist.subset(SetA, SetB).
@@ -697,7 +704,7 @@ set.filter(P, Set, TrueSet) :-
 set.filter(P, Set, TrueSet, FalseSet) :-
     set_ordlist.filter(P, Set, TrueSet, FalseSet).
 
-set.filter_map(PF, Set) = 
+set.filter_map(PF, Set) =
     set_ordlist.filter_map(PF, Set).
 
 set.filter_map(P, Set, TransformedTrueSet) :-

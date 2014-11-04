@@ -323,7 +323,7 @@ scc_has_local_callers(CalleeProcs, DepGraph) :-
 proc_has_local_callers(CalleeProc, DepGraph) :-
     digraph.lookup_key(DepGraph, CalleeProc, CalleeKey),
     digraph.lookup_to(DepGraph, CalleeKey, CallingKeys),
-    not set.empty(CallingKeys).
+    set.is_non_empty(CallingKeys).
 
 %-----------------------------------------------------------------------------%
 
@@ -1456,7 +1456,7 @@ cls_put_in_regs_via_deconstruct(CountInfo,
         VarsToLoad = set.difference(
             set.from_list(DeconstructFieldVars),
             set.from_list(TupleFieldVars)),
-        ( set.non_empty(VarsToLoad) ->
+        ( set.is_non_empty(VarsToLoad) ->
             cls_require_var_in_reg_with_cost(CvLoadCost, DeconstructCellVar,
                 !State),
             set.fold(cls_require_var_in_reg_with_cost(FvLoadCost), VarsToLoad,

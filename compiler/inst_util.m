@@ -1727,7 +1727,7 @@ inst_merge_3(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         ( InstB = constrained_inst_vars(InstVarsB, SubInstB) ->
             inst_merge(SubInstA, SubInstB, MaybeType, Inst0, !ModuleInfo),
             set.intersect(InstVarsA, InstVarsB, InstVars),
-            ( set.non_empty(InstVars) ->
+            ( set.is_non_empty(InstVars) ->
                 Inst = constrained_inst_vars(InstVars, Inst0)
                 % We can keep the constrained_inst_vars here since
                 % Inst0 = SubInstA `lub` SubInstB and the original constraint

@@ -306,7 +306,7 @@ higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
     ->
         HigherOrderInfo = strat_ho_info(HOCalls, _),
         set.intersect(HOCalls, WholeScc, HOLoops),
-        ( set.empty(HOLoops) ->
+        ( set.is_empty(HOLoops) ->
             HighOrderLoops = no
         ;
             HighOrderLoops = yes

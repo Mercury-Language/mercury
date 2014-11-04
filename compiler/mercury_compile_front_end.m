@@ -809,13 +809,12 @@ check_stratification(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_non_stratification, Warn),
     (
-        ( \+ set.empty(StratifiedPreds)
+        ( set.is_non_empty(StratifiedPreds)
         ; Warn = yes
         )
     ->
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
-        maybe_write_string(Verbose,
-            "% Checking stratification...\n", !IO),
+        maybe_write_string(Verbose, "% Checking stratification...\n", !IO),
         check_module_for_stratification(!HLDS, StratifySpecs),
         !:Specs = StratifySpecs ++ !.Specs,
         FoundError = contains_errors(Globals, StratifySpecs),

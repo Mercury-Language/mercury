@@ -103,7 +103,7 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
             % See if there are sets that can share a colour with the
             % selected var.
             NotContaining = [_ | _],
-            ( set.empty(RestVars) ->
+            ( set.is_empty(RestVars) ->
                 % There were no variables left that could share a colour,
                 % so create a singleton set containing this variable.
                 SameColour = set.make_singleton_set(Var),
@@ -157,7 +157,7 @@ divide_constraints(Var, [S | Ss], C, NC, !Vars) :-
     divide_constraints(Var, Ss, C0, NC0, !Vars),
     ( set.member(Var, S) ->
         set.delete(Var, S, T),
-        ( set.empty(T) ->
+        ( set.is_empty(T) ->
             C = C0
         ;
             C = [T | C0]

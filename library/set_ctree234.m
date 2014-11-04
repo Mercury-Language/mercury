@@ -50,12 +50,16 @@
 :- pred is_singleton(set_ctree234(T)::in, T::out) is semidet.
 
     % `empty(Set)' is true iff `Set' is an empty set.
+    % `is_empty' is a synonym for `empty'.
     %
 :- pred empty(set_ctree234(_T)::in) is semidet.
-
 :- pred is_empty(set_ctree234(_T)::in) is semidet.
 
+    % `non_empty(Set)' is true iff `Set' is not an empty set.
+    % `is_non_empty' is a synonym for `non_empty'.
+    %
 :- pred non_empty(set_ctree234(T)::in) is semidet.
+:- pred is_non_empty(set_ctree234(T)::in) is semidet.
 
     % `member(X, Set)' is true iff `X' is a member of `Set'.
     %
@@ -429,10 +433,10 @@ set_ctree234.make_singleton_set(X) = ct(1, two(X, empty, empty)).
 set_ctree234.is_singleton(ct(1, two(X, empty, empty)), X).
 
 set_ctree234.empty(ct(0, _)).
-
 set_ctree234.is_empty(ct(0, _)).
 
 set_ctree234.non_empty(ct(N, _)) :- N \= 0.
+set_ctree234.is_non_empty(ct(N, _)) :- N \= 0.
 
 :- pragma promise_equivalent_clauses(set_ctree234.member/2).
 

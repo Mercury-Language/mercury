@@ -75,12 +75,16 @@
 :- pred equal(set_unordlist(T)::in, set_unordlist(T)::in) is semidet.
 
     % `empty(Set)' is true iff `Set' is an empty set.
+    % `is_empty' is a synonym of `empty'.
     %
 :- pred empty(set_unordlist(_T)::in) is semidet.
-
-:- pred non_empty(set_unordlist(_T)::in) is semidet.
-
 :- pred is_empty(set_unordlist(_T)::in) is semidet.
+
+    % `non_empty(Set)' is true iff `Set' is not an empty set.
+    % `is_non_empty' is a synonym of `non_empty'.
+    %
+:- pred non_empty(set_unordlist(_T)::in) is semidet.
+:- pred is_non_empty(set_unordlist(_T)::in) is semidet.
 
     % `subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
     %
@@ -412,10 +416,10 @@ set_unordlist.equal(SetA, SetB) :-
     set_unordlist.subset(SetB, SetA).
 
 set_unordlist.empty(sul([])).
-
 set_unordlist.is_empty(sul([])).
 
 set_unordlist.non_empty(sul([_ | _])).
+set_unordlist.is_non_empty(sul([_ | _])).
 
 set_unordlist.subset(sul([]), _).
 set_unordlist.subset(sul([E | S0]), S1) :-

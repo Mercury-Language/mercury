@@ -407,9 +407,9 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
                 DisjRemovedRegionVars, _DisjCarriedRegionVars,
                 DisjAllocRegionVars, _DisjUsedRegionVars),
             (
-                set.empty(DisjCreatedRegionVars),
-                set.empty(DisjRemovedRegionVars),
-                set.empty(DisjAllocRegionVars)
+                set.is_empty(DisjCreatedRegionVars),
+                set.is_empty(DisjRemovedRegionVars),
+                set.is_empty(DisjAllocRegionVars)
             ->
                 BeforeEnterRegionCode = empty,
                 LaterRegionCode = empty,

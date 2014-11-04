@@ -102,7 +102,7 @@ deps_list_to_deps_graph([Deps | DepsList], DepsMap,
     Deps = deps(_, ModuleImports),
     ModuleErrors = ModuleImports ^ mai_errors,
     set.intersect(ModuleErrors, fatal_read_module_errors, FatalModuleErrors),
-    ( if set.empty(FatalModuleErrors) then
+    ( if set.is_empty(FatalModuleErrors) then
         add_module_and_imports_to_deps_graph(ModuleImports,
             lookup_module_and_imports_in_deps_map(DepsMap),
             !IntDepsGraph, !ImplDepsGraph)

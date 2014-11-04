@@ -1002,7 +1002,7 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, FileName,
     set.list_to_set(!.ImportedModules, ImportedSet),
     set.list_to_set(!.UsedModules, UsedSet),
     set.intersect(ImportedSet, UsedSet, BothSet),
-    ( set.empty(BothSet) ->
+    ( set.is_empty(BothSet) ->
         true
     ;
         set.to_sorted_list(BothSet, BothList),
@@ -1070,7 +1070,7 @@ process_module_private_interfaces(Globals, HaveReadModuleMap,
 
         set.intersect(PrivateIntErrors, fatal_read_module_errors,
             FatalPrivateIntErrors),
-        ( if set.empty(FatalPrivateIntErrors) then
+        ( if set.is_empty(FatalPrivateIntErrors) then
             ModAncestors = [Ancestor | ModAncestors0]
         else
             ModAncestors = ModAncestors0
@@ -1128,7 +1128,7 @@ process_module_long_interfaces(Globals, HaveReadModuleMap, NeedQualifier,
 
         set.intersect(LongIntErrors, fatal_read_module_errors,
             FatalLongIntErrors),
-        ( if set.empty(FatalLongIntErrors) then
+        ( if set.is_empty(FatalLongIntErrors) then
             maybe_record_timestamp(Import, Ext, NeedQualifier, MaybeTimestamp,
                 !Module),
             ModImplementationImports = [Import | ModImplementationImports0]
@@ -1469,7 +1469,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
     ModuleDep = deps(_, ModuleImports),
     Errors = ModuleImports ^ mai_errors,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
-    ( if set.non_empty(FatalErrors) then
+    ( if set.is_non_empty(FatalErrors) then
         ModuleString = sym_name_to_string(ModuleName),
         ( if set.contains(FatalErrors, rme_could_not_open_file) then
             string.append_list(["cannot read source file for module `",
@@ -1695,7 +1695,7 @@ split_into_submodules(ModuleName, Items0, ModuleList, !Specs) :-
     Duplicates = set.intersect(
         set.list_to_set(NestedSubmodules),
         set.list_to_set(SeparateSubModules)),
-    ( set.empty(Duplicates) ->
+    ( set.is_empty(Duplicates) ->
         true
     ;
         report_duplicate_modules(Duplicates, Items0, !Specs)

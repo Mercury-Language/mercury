@@ -625,7 +625,7 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
 
         (
             Target = target_il,
-            not set.empty(LangSet)
+            set.is_non_empty(LangSet)
         ->
             Langs = set.to_sorted_list(LangSet),
             list.foldl(write_foreign_dependency_for_il(Globals, DepStream,

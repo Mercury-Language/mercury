@@ -124,7 +124,7 @@ specialize_higher_order(!ModuleInfo, !IO) :-
         % performed in case any of the specialized versions are called
         % from other modules.
 
-        ( set.empty(UserSpecPreds) ->
+        ( set.is_empty(UserSpecPreds) ->
             PredIds = PredIds0,
             UserSpecPredList = []
         ;
@@ -195,7 +195,7 @@ process_ho_spec_requests(!GlobalInfo, !IO) :-
     higher_order_global_info::out, io::di, io::uo) is det.
 
 recursively_process_ho_spec_requests(!GlobalInfo, !IO) :-
-    ( set.empty(!.GlobalInfo ^ hogi_requests) ->
+    ( set.is_empty(!.GlobalInfo ^ hogi_requests) ->
         true
     ;
         process_ho_spec_requests(!GlobalInfo, !IO),

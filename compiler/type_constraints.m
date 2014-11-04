@@ -514,7 +514,7 @@ find_variable_type(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
             ( set.is_singleton(Types, Type0) ->
                 Type = Type0,
                 Error = no
-            ; set.empty(Types) ->
+            ; set.is_empty(Types) ->
                 Type = DefaultType,
                 Error = no  % This error is handled elsewhere.
             ;
@@ -1214,7 +1214,7 @@ type_domain_union(DomainA, DomainB, Domain) :-
         DomainA = tdomain_singleton(TypeA),
         DomainB = tdomain(TypesB),
         % Symmetrical case below.
-        ( set.empty(TypesB) ->
+        ( set.is_empty(TypesB) ->
             Domain = DomainA
         ;
             Domain = tdomain(set.insert(TypesB, TypeA))
@@ -1227,7 +1227,7 @@ type_domain_union(DomainA, DomainB, Domain) :-
         DomainA = tdomain(TypesA),
         DomainB = tdomain_singleton(TypeB),
         % Symmetrical case above.
-        ( set.empty(TypesA) ->
+        ( set.is_empty(TypesA) ->
             Domain = DomainB
         ;
             Domain = tdomain(set.insert(TypesA, TypeB))
@@ -1261,7 +1261,7 @@ constraint_is_satisfiable(DomainMap, SimpleConstraints) :-
 non_empty_domain(tdomain_any).
 non_empty_domain(tdomain_singleton(_)).
 non_empty_domain(tdomain(D)) :-
-    set.non_empty(D).
+    set.is_non_empty(D).
 
     % Checks whether the given variable domain is compatible with the
     % domain map.
@@ -1292,7 +1292,7 @@ equal_domain(tdomain(A), tdomain(B)) :-
 :- pred has_empty_domain(pair(tvar, type_domain)::in, tvar::out) is semidet.
 
 has_empty_domain(TVar - tdomain(Domain), TVar) :-
-    set.empty(Domain).
+    set.is_empty(Domain).
 
     % Checks if a variable which was not previously known to have a singleton
     % domain has a singleton domain.

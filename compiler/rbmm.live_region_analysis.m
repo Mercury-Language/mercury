@@ -220,7 +220,7 @@ foldl8(P, [H|T], !A, !B, !C, !D, !E, !F, !G, !H) :-
     proc_info::in, region_set::out) is det.
 
 lv_to_lr(LVSet, Graph, ModuleInfo, ProcInfo, LRSet) :-
-    ( set.empty(LVSet) ->
+    ( set.is_empty(LVSet) ->
         set.init(LRSet)
     ;
         % Collect reachable regions at this program point.

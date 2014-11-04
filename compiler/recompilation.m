@@ -447,7 +447,7 @@ record_used_item(ItemType, Id, QualifiedId, !Info) :-
     ).
 
 record_expanded_items(Item, ExpandedItems, !Info) :-
-    ( set.empty(ExpandedItems) ->
+    ( set.is_empty(ExpandedItems) ->
         true
     ;
         DepsMap0 = !.Info ^ dependencies,

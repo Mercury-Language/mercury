@@ -2915,7 +2915,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                     set.list_to_set(OrigExistTVars)
                 ),
                 ExistQVarsInFieldAndOthers),
-            ( set.empty(ExistQVarsInFieldAndOthers) ->
+            ( set.is_empty(ExistQVarsInFieldAndOthers) ->
                 % Rename apart type variables occurring only in the field
                 % to be replaced - the values of those type variables will be
                 % supplied by the replacement field value.
@@ -2987,7 +2987,7 @@ project_constraint(CallTVars, Constraint) :-
     type_vars_list(TypesToCheck, TVarsToCheck0),
     set.list_to_set(TVarsToCheck0, TVarsToCheck),
     set.intersect(TVarsToCheck, CallTVars, RelevantTVars),
-    \+ set.empty(RelevantTVars).
+    set.is_non_empty(RelevantTVars).
 
 :- pred rename_constraint(tvar_renaming::in, hlds_constraint::in,
     hlds_constraint::out) is semidet.

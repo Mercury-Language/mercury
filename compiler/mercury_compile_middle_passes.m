@@ -838,7 +838,7 @@ maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
     (
         ( HigherOrder = yes
         ; Types = yes
-        ; \+ set.empty(TypeSpecPreds)
+        ; set.is_non_empty(TypeSpecPreds)
         )
     ->
         maybe_write_string(Verbose,

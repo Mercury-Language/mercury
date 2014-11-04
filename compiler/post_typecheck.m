@@ -330,7 +330,7 @@ check_var_type_bindings_2([Var - Type | VarTypes], HeadTypeParams,
         type_vars(Type, TVars),
         set.list_to_set(TVars, TVarsSet0),
         set.delete_list(HeadTypeParams, TVarsSet0, TVarsSet1),
-        ( set.empty(TVarsSet1) ->
+        ( set.is_empty(TVarsSet1) ->
             true
         ;
             !:UnresolvedVarsTypes = [Var - Type | !.UnresolvedVarsTypes],

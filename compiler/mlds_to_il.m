@@ -1068,7 +1068,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
     Entity = mlds_function(_MaybePredProcId, Params, MaybeStatement,
         Attributes, EnvVarNames),
 
-    expect(set.empty(EnvVarNames), $module, $pred, "EnvVarNames"),
+    expect(set.is_empty(EnvVarNames), $module, $pred, "EnvVarNames"),
 
     il_info_get_module_name(!.Info, ModuleName),
 

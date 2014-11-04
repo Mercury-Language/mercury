@@ -402,7 +402,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         set.list_to_set(ExistQVars, ExistQVarsSet),
         set.list_to_set(Params, ParamsSet),
         set.intersect(ExistQVarsSet, ParamsSet, ExistQParamsSet),
-        set.non_empty(ExistQParamsSet)
+        set.is_non_empty(ExistQParamsSet)
     ->
         % There should be no duplicate names to remove.
         set.to_sorted_list(ExistQParamsSet, ExistQParams),

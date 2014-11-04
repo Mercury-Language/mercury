@@ -145,7 +145,7 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
 
     % Check whether we succeeded.
     module_and_imports_get_results(Module, Items1, Specs0, Errors),
-    ( if set.non_empty(Errors) then
+    ( if set.is_non_empty(Errors) then
         module_name_to_file_name(Globals, ModuleName, ".int0",
             do_not_create_dirs, FileName, !IO),
         % XXX _NumErrors
@@ -364,7 +364,7 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName, ModuleName,
         % Check whether we succeeded.
         module_and_imports_get_results(Module0, !:InterfaceItems,
             Specs0, Errors),
-        ( if set.non_empty(Errors) then
+        ( if set.is_non_empty(Errors) then
             % XXX _NumErrors
             write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),

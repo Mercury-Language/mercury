@@ -2724,7 +2724,7 @@ get_var_name(VLI, Var, Name) :-
 
 nonempty_state(State) :-
     State = var_state(LvalSet, MaybeConstRval, MaybeExprRval, _, _),
-    ( set.non_empty(LvalSet)
+    ( set.is_non_empty(LvalSet)
     ; MaybeConstRval = yes(_)
     ; MaybeExprRval = yes(_)
     ).
