@@ -63,18 +63,13 @@
 
     % actually_read_module(OpenFile, FileName, DefaultModuleName,
     %   ReturnTimestamp, MaybeFileInfo, ActualModuleName, Items,
-    %   Specs, Error, MaybeModuleTimestamp, !IO):
+    %   Specs, Errors, MaybeModuleTimestamp, !IO):
     %
     % Reads and parses the file opened by OpenFile using the default module
     % name DefaultModuleName. If ReturnTimestamp is `yes', attempt to return
     % the modification timestamp in MaybeModuleTimestamp.
     %
-    % Error is `fatal_module_errors' if the file coudn't be opened,
-    % `some_module_errors' if a syntax error was detected, and
-    % `no_module_errors' otherwise. XXX This may have once been true,
-    % but isn't anymore: we return fatal_module_errors in more situations
-    % than that.
-    %
+    % Errors is the set of errors we have encountered.
     % MaybeFileInfo is the information about the file (usually the file or
     % directory name) returned by OpenFile. ActualModuleName is the module name
     % specified in the `:- module' declaration, if any, or the
@@ -85,12 +80,13 @@
     open_file_pred(FileInfo)::in(open_file_pred), module_name::in,
     maybe_return_timestamp::in, maybe(FileInfo)::out,
     module_name::out, list(item)::out, list(error_spec)::out,
-    module_error::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
+    read_module_errors::out, maybe(io.res(timestamp))::out,
+    io::di, io::uo) is det.
 
 :- pred actually_read_module_if_changed(globals::in,
     open_file_pred(FileInfo)::in(open_file_pred),
     module_name::in, timestamp::in, maybe(FileInfo)::out, module_name::out,
-    list(item)::out, list(error_spec)::out, module_error::out,
+    list(item)::out, list(error_spec)::out, read_module_errors::out,
     maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
     % Same as actually_read_module, but use intermod_directories instead of
@@ -99,7 +95,7 @@
     % the expected module name.
     %
 :- pred actually_read_opt_file(globals::in, file_name::in, module_name::in,
-    list(item)::out, list(error_spec)::out, module_error::out,
+    list(item)::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
     % check_module_has_expected_name(FileName, ExpectedName, ActualName):
@@ -143,6 +139,7 @@
 :- import_module counter.
 :- import_module parser.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
@@ -150,26 +147,26 @@
 %-----------------------------------------------------------------------------%
 
 actually_read_module(Globals, OpenFile, DefaultModuleName, ReturnTimestamp,
-        FileData, ModuleName, Items, Specs, Error, MaybeModuleTimestamp,
+        FileData, ModuleName, Items, Specs, Errors, MaybeModuleTimestamp,
         !IO) :-
     do_actually_read_module(Globals, OpenFile, DefaultModuleName,
         no, ReturnTimestamp, FileData, ModuleName,
-        Items, Specs, Error, MaybeModuleTimestamp, !IO).
+        Items, Specs, Errors, MaybeModuleTimestamp, !IO).
 
 actually_read_module_if_changed(Globals, OpenFile, DefaultModuleName,
-        OldTimestamp, FileData, ModuleName, Items, Specs, Error,
+        OldTimestamp, FileData, ModuleName, Items, Specs, Errors,
         MaybeModuleTimestamp, !IO) :-
     do_actually_read_module(Globals, OpenFile, DefaultModuleName,
         yes(OldTimestamp), do_return_timestamp, FileData, ModuleName,
-        Items, Specs, Error,MaybeModuleTimestamp, !IO).
+        Items, Specs, Errors, MaybeModuleTimestamp, !IO).
 
 actually_read_opt_file(Globals, FileName, DefaultModuleName,
-        Items, Specs, Error, !IO) :-
+        Items, Specs, Errors, !IO) :-
     globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
     do_actually_read_module(Globals,
         search_for_file(open_file, Dirs, FileName),
         DefaultModuleName, no, do_not_return_timestamp, _, ModuleName, Items,
-        ItemSpecs, Error, _, !IO),
+        ItemSpecs, Errors, _, !IO),
     check_module_has_expected_name(FileName, DefaultModuleName, ModuleName,
         NameSpecs),
     Specs = ItemSpecs ++ NameSpecs.
@@ -200,11 +197,12 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName, Specs) :-
     open_file_pred(T)::in(open_file_pred), module_name::in,
     maybe(timestamp)::in, maybe_return_timestamp::in,
     maybe(T)::out, module_name::out, list(item)::out, list(error_spec)::out,
-    module_error::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
+    read_module_errors::out, maybe(io.res(timestamp))::out,
+    io::di, io::uo) is det.
 
 do_actually_read_module(Globals, OpenFile, DefaultModuleName,
         MaybeOldTimestamp, ReturnTimestamp, MaybeFileData, ModuleName,
-        Items, Specs, Error, MaybeModuleTimestamp, !IO) :-
+        Items, Specs, Errors, MaybeModuleTimestamp, !IO) :-
     io.input_stream(OldInputStream, !IO),
     OpenFile(OpenResult, !IO),
     (
@@ -237,10 +235,10 @@ do_actually_read_module(Globals, OpenFile, DefaultModuleName,
             ModuleName = DefaultModuleName,
             Items = [],
             Specs = [],
-            Error = no_module_errors
+            set.init(Errors)
         ;
             read_all_items(Globals, DefaultModuleName, ModuleName, Items,
-                Specs, Error, !IO)
+                Specs, Errors, !IO)
         ),
         io.set_input_stream(OldInputStream, ModuleInputStream, !IO),
         io.close_input(ModuleInputStream, !IO)
@@ -256,7 +254,7 @@ do_actually_read_module(Globals, OpenFile, DefaultModuleName,
         Spec = error_spec(severity_error, phase_read_files,
             [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
         Specs = [Spec],
-        Error = fatal_module_errors
+        Errors = set.make_singleton_set(rme_could_not_open_file)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -275,11 +273,11 @@ do_actually_read_module(Globals, OpenFile, DefaultModuleName,
     % We use a continuation-passing style here.
     %
 :- pred read_all_items(globals::in, module_name::in, module_name::out,
-    list(item)::out, list(error_spec)::out, module_error::out,
+    list(item)::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
 read_all_items(Globals, DefaultModuleName, ModuleName, Items,
-        !:Specs, !:Error, !IO) :-
+        !:Specs, !:Errors, !IO) :-
     some [!SeqNumCounter, !RevItems] (
         counter.init(1, !:SeqNumCounter),
 
@@ -289,10 +287,10 @@ read_all_items(Globals, DefaultModuleName, ModuleName, Items,
         % read_first_item for the reason.
         read_first_item(DefaultModuleName, SourceFileName0, SourceFileName,
             ModuleName, ModuleDeclItem, MaybeSecondTermResult,
-            !:Specs, !:Error, !SeqNumCounter, !IO),
+            !:Specs, !:Errors, !SeqNumCounter, !IO),
         !:RevItems = [ModuleDeclItem],
         read_items_loop(Globals, ModuleName, SourceFileName,
-            MaybeSecondTermResult, !RevItems, !Specs, !Error,
+            MaybeSecondTermResult, !RevItems, !Specs, !Errors,
             !.SeqNumCounter, _, !IO),
         remove_main_module_start_end_wrappers(ModuleName, !.RevItems, Items)
     ).
@@ -343,7 +341,7 @@ remove_main_module_start_end_wrappers(MainModuleName, RevItems0, !:Items) :-
 peek_at_file(DefaultModuleName, SourceFileName0, ModuleName, Specs, !IO) :-
     counter.init(1, SeqNumCounter0),
     read_first_item(DefaultModuleName, SourceFileName0, _SourceFileName,
-        ModuleName, _ModuleDeclItem, _MaybeSecondTerm, Specs, _Error,
+        ModuleName, _ModuleDeclItem, _MaybeSecondTerm, Specs, _Errors,
         SeqNumCounter0, _, !IO).
 
     % We need to jump through a few hoops when reading the first item,
@@ -360,11 +358,11 @@ peek_at_file(DefaultModuleName, SourceFileName0, ModuleName, Specs, !IO) :-
     %
 :- pred read_first_item(module_name::in, file_name::in, file_name::out,
     module_name::out, item::out, maybe(read_term)::out,
-    list(error_spec)::out, module_error::out, counter::in, counter::out,
+    list(error_spec)::out, read_module_errors::out, counter::in, counter::out,
     io::di, io::uo) is det.
 
 read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
-        ModuleDeclItem, MaybeSecondTerm, Specs, Error, !SeqNumCounter, !IO) :-
+        ModuleDeclItem, MaybeSecondTerm, Specs, Errors, !SeqNumCounter, !IO) :-
     % Parse the first term, treating it as occurring within the scope
     % of the special "root" module (so that any `:- module' declaration
     % is taken to be a non-nested module unless explicitly qualified).
@@ -381,7 +379,8 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
     ->
         SFNInfo = pragma_info_source_file(!:SourceFileName),
         read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
-            ModuleDeclItem, MaybeSecondTerm, Specs, Error, !SeqNumCounter, !IO)
+            ModuleDeclItem, MaybeSecondTerm, Specs, Errors, !SeqNumCounter,
+            !IO)
     ;
         % Check if the first term is a `:- module' decl.
         MaybeFirstItem = read_item_ok(FirstItem),
@@ -394,11 +393,11 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         ( match_sym_name(StartModuleName, DefaultModuleName) ->
             ModuleName = DefaultModuleName,
             Specs = [],
-            Error = no_module_errors
+            set.init(Errors)
         ; match_sym_name(DefaultModuleName, StartModuleName) ->
             ModuleName = StartModuleName,
             Specs = [],
-            Error = no_module_errors
+            set.init(Errors)
         ;
             % XXX I think this should be an error, not a warning. -zs
             Pieces = [words("Error: source file"), quote(!.SourceFileName),
@@ -416,7 +415,7 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
             % name (computed from the filename) but now we use the declared
             % one.
             ModuleName = StartModuleName,
-            Error = some_module_errors
+            Errors = set.make_singleton_set(rme_unexpected_module_name)
         ),
         make_module_decl(ModuleName, FirstContext, ModuleDeclItem),
         MaybeSecondTerm = no
@@ -435,7 +434,7 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         Spec = error_spec(Severity, phase_term_to_parse_tree,
             [simple_msg(FirstContext, Msgs)]),
         Specs = [Spec],
-        Error = some_module_errors,
+        Errors = set.make_singleton_set(rme_no_module_decl_at_start),
 
         ModuleName = DefaultModuleName,
         make_module_decl(ModuleName, FirstContext, ModuleDeclItem),
@@ -464,14 +463,14 @@ make_module_decl(ModuleName, Context, Item) :-
     %
 :- pred read_items_loop(globals, module_name, file_name, maybe(read_term),
     list(item), list(item), list(error_spec), list(error_spec),
-    module_error, module_error, counter, counter, io, io).
+    read_module_errors, read_module_errors, counter, counter, io, io).
 :- mode read_items_loop(in, in, in, in(bound(no)),
     in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode read_items_loop(in, in, in, in,
     in, out, in, out, in, out, in, out, di, uo) is det.
 
 read_items_loop(Globals, !.ModuleName, !.SourceFileName, MaybeReadTermResult,
-        !RevItems, !Specs, !Error, !SeqNumCounter, !IO) :-
+        !RevItems, !Specs, !Errors, !SeqNumCounter, !IO) :-
     (
         MaybeReadTermResult = no,
         parser.read_term_filename(!.SourceFileName, ReadTermResult, !IO)
@@ -484,27 +483,27 @@ read_items_loop(Globals, !.ModuleName, !.SourceFileName, MaybeReadTermResult,
         ReadItemResult = read_item_eof
         % If the next item was end-of-file, then we are done.
     ;
+        ReadItemResult = read_item_errors(ItemSpecs, ItemErrors),
         % If the next item had some errors, then insert them
-        % in the list of errors and continue looping.
+        % into the list of errors and continue looping.
 
-        ReadItemResult = read_item_errors(ItemSpecs),
         !:Specs = ItemSpecs ++ !.Specs,
-        !:Error = some_module_errors,
+        !:Errors = set.union(!.Errors, ItemErrors),
         read_items_loop(Globals, !.ModuleName, !.SourceFileName, no,
-            !RevItems, !Specs, !Error, !SeqNumCounter, !IO)
+            !RevItems, !Specs, !Errors, !SeqNumCounter, !IO)
     ;
         ReadItemResult = read_item_ok(Item),
         process_one_item_in_loop(Globals, Item, !ModuleName, !SourceFileName,
-            !RevItems, !Specs, !Error, !IO),
+            !RevItems, !Specs, !Errors, !IO),
         read_items_loop(Globals, !.ModuleName, !.SourceFileName, no,
-            !RevItems, !Specs, !Error, !SeqNumCounter, !IO)
+            !RevItems, !Specs, !Errors, !SeqNumCounter, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- type read_item_result
     --->    read_item_eof
-    ;       read_item_errors(list(error_spec))
+    ;       read_item_errors(list(error_spec), set(read_module_error))
     ;       read_item_ok(item).
 
 :- pred read_term_to_item_result(module_name::in, string::in, read_term::in,
@@ -522,7 +521,8 @@ read_term_to_item_result(ModuleName, FileName, ReadTermResult,
         Context = term.context_init(FileName, LineNumber),
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
-        ReadItemResult = read_item_errors([Spec])
+        ReadItemResult = read_item_errors([Spec],
+            set.make_singleton_set(rme_could_not_read_term))
     ;
         ReadTermResult = term(VarSet, Term),
         counter.allocate(SeqNum, !SeqNumCounter),
@@ -532,7 +532,8 @@ read_term_to_item_result(ModuleName, FileName, ReadTermResult,
             ReadItemResult = read_item_ok(Item)
         ;
             MaybeItem = error1(Specs),
-            ReadItemResult = read_item_errors(Specs)
+            ReadItemResult = read_item_errors(Specs,
+                set.make_singleton_set(rme_could_not_parse_item))
         )
     ).
 
@@ -542,10 +543,10 @@ read_term_to_item_result(ModuleName, FileName, ReadTermResult,
     module_name::in, module_name::out, file_name::in, file_name::out,
     list(item)::in, list(item)::out,
     list(error_spec)::in, list(error_spec)::out,
-    module_error::in, module_error::out, io::di, io::uo) is det.
+    read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
 
 process_one_item_in_loop(Globals, Item, !ModuleName, !SourceFileName,
-        !RevItems, !Specs, !Error, !IO) :-
+        !RevItems, !Specs, !Errors, !IO) :-
     % If the next item was a valid item, check whether it was a declaration
     % that affects the current parsing context -- i.e. either a `module' or
     % `end_module' declaration, or a `pragma source_file' declaration.
@@ -574,7 +575,7 @@ process_one_item_in_loop(Globals, Item, !ModuleName, !SourceFileName,
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(ItemContext, [always(Pieces)])]),
                 !:Specs = [Spec | !.Specs],
-                !:Error = fatal_module_errors,
+                set.insert(rme_bad_submodule_start, !Errors),
 
                 % XXX Believing the incorrect submodule declaration follows
                 % the algorithm that this code used to use, but I (zs)
@@ -651,7 +652,7 @@ process_one_item_in_loop(Globals, Item, !ModuleName, !SourceFileName,
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(ItemContext, [always(Pieces)])]),
             !:Specs = [Spec | !.Specs],
-            !:Error = fatal_module_errors,
+            set.insert(rme_bad_module_end, !Errors),
 
             % This setting of !:ModuleName effectively replaces
             % the incorrect end_module declaration with the end_module
@@ -733,7 +734,7 @@ process_one_item_in_loop(Globals, Item, !ModuleName, !SourceFileName,
                 globals.lookup_bool_option(Globals, halt_at_warn, Halt),
                 (
                     Halt = yes,
-                    !:Error = some_module_errors
+                    set.insert(rme_warn_item_nothing, !Errors)
                 ;
                     Halt = no
                 )

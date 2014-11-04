@@ -82,6 +82,7 @@
 :- import_module bool.
 :- import_module map.
 :- import_module pair.
+:- import_module set.
 :- import_module sparse_bitset.
 :- import_module string.
 
@@ -99,12 +100,13 @@ deps_list_to_deps_graph([], _, !IntDepsGraph, !ImplDepsGraph).
 deps_list_to_deps_graph([Deps | DepsList], DepsMap,
         !IntDepsGraph, !ImplDepsGraph) :-
     Deps = deps(_, ModuleImports),
-    ModuleError = ModuleImports ^ mai_error,
-    ( ModuleError \= fatal_module_errors ->
+    ModuleErrors = ModuleImports ^ mai_errors,
+    set.intersect(ModuleErrors, fatal_read_module_errors, FatalModuleErrors),
+    ( if set.empty(FatalModuleErrors) then
         add_module_and_imports_to_deps_graph(ModuleImports,
             lookup_module_and_imports_in_deps_map(DepsMap),
             !IntDepsGraph, !ImplDepsGraph)
-    ;
+    else
         true
     ),
     deps_list_to_deps_graph(DepsList, DepsMap, !IntDepsGraph, !ImplDepsGraph).

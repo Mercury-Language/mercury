@@ -1052,7 +1052,7 @@ process_module_private_interfaces(Globals, HaveReadModuleMap,
             ReturnTimestamp),
         maybe_read_module(Globals, HaveReadModuleMap, Ancestor, ".int0",
             "Reading private interface for module", do_search, ReturnTimestamp,
-            PrivateIntItems0, PrivateIntSpecs, PrivateIntError,
+            PrivateIntItems0, PrivateIntSpecs, PrivateIntErrors,
             _AncestorFileName, MaybeTimestamp, !IO),
 
         maybe_record_timestamp(Ancestor, ".int0", may_be_unqualified,
@@ -1063,19 +1063,17 @@ process_module_private_interfaces(Globals, HaveReadModuleMap,
 
         module_and_imports_add_items(cord.from_list(PrivateIntItems), !Module),
         module_and_imports_add_specs(PrivateIntSpecs, !Module),
-        module_and_imports_add_interface_error(PrivateIntError, !Module),
+        module_and_imports_add_interface_error(PrivateIntErrors, !Module),
 
         globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
         maybe_report_stats(Statistics, !IO),
 
-        (
-            PrivateIntError = fatal_module_errors,
-            ModAncestors = ModAncestors0
-        ;
-            ( PrivateIntError = no_module_errors
-            ; PrivateIntError = some_module_errors
-            ),
+        set.intersect(PrivateIntErrors, fatal_read_module_errors,
+            FatalPrivateIntErrors),
+        ( if set.empty(FatalPrivateIntErrors) then
             ModAncestors = [Ancestor | ModAncestors0]
+        else
+            ModAncestors = ModAncestors0
         ),
         get_dependencies(PrivateIntItems, AncDirectImports, AncDirectUses),
         !:DirectImports = !.DirectImports ++ AncDirectImports,
@@ -1112,7 +1110,7 @@ process_module_long_interfaces(Globals, HaveReadModuleMap, NeedQualifier,
             ReturnTimestamp),
         maybe_read_module(Globals, HaveReadModuleMap, Import, Ext,
             "Reading interface for module", do_search, ReturnTimestamp,
-            LongIntItems0, LongIntSpecs, LongIntError, _LongIntFileName,
+            LongIntItems0, LongIntSpecs, LongIntErrors, _LongIntFileName,
             MaybeTimestamp, !IO),
 
         get_dependencies_int_imp(LongIntItems0,
@@ -1123,21 +1121,19 @@ process_module_long_interfaces(Globals, HaveReadModuleMap, NeedQualifier,
 
         module_and_imports_add_items(cord.from_list(LongIntItems), !Module),
         module_and_imports_add_specs(LongIntSpecs, !Module),
-        module_and_imports_add_interface_error(LongIntError, !Module),
+        module_and_imports_add_interface_error(LongIntErrors, !Module),
 
         globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
         maybe_report_stats(Statistics, !IO),
 
-        (
-            LongIntError = fatal_module_errors,
-            ModImplementationImports = ModImplementationImports0
-        ;
-            ( LongIntError = no_module_errors
-            ; LongIntError = some_module_errors
-            ),
+        set.intersect(LongIntErrors, fatal_read_module_errors,
+            FatalLongIntErrors),
+        ( if set.empty(FatalLongIntErrors) then
             maybe_record_timestamp(Import, Ext, NeedQualifier, MaybeTimestamp,
                 !Module),
             ModImplementationImports = [Import | ModImplementationImports0]
+        else
+            ModImplementationImports = ModImplementationImports0
         ),
         !:IndirectImports = !.IndirectImports ++ IndirectImports1
             ++ IndirectUses1,
@@ -1248,11 +1244,12 @@ init_module_and_imports(SourceFileName, SourceFileModuleName, ModuleName,
     % by changing the module_and_imports structure.
     maybe_add_foreign_import_module(ModuleName, Items0, Items),
     ItemsCord = cord.from_list(Items),
+    set.init(Errors),
     Module = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, [], [], [], [], [], PublicChildren,
         NestedChildren, FactDeps, contains_foreign_code_unknown, [],
         ForeignIncludeFiles, contains_no_foreign_export, ItemsCord, Specs,
-        no_module_errors, MaybeTimestamps, no_main, dir.this_directory).
+        Errors, MaybeTimestamps, no_main, dir.this_directory).
 
 %-----------------------------------------------------------------------------%
 
@@ -1470,17 +1467,19 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
 
     map.lookup(DepsMap, ModuleName, ModuleDep),
     ModuleDep = deps(_, ModuleImports),
-    Error = ModuleImports ^ mai_error,
-    (
-        Error = fatal_module_errors,
+    Errors = ModuleImports ^ mai_errors,
+    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+    ( if set.non_empty(FatalErrors) then
         ModuleString = sym_name_to_string(ModuleName),
-        string.append_list(["can't read source file for module `",
-            ModuleString, "'."], Message),
-        report_error(Message, !IO)
-    ;
-        ( Error = no_module_errors
-        ; Error = some_module_errors
+        ( if set.contains(FatalErrors, rme_could_not_open_file) then
+            string.append_list(["cannot read source file for module `",
+                ModuleString, "'."], Message)
+        else
+            string.append_list(["cannot parse source file for module `",
+                ModuleString, "'."], Message)
         ),
+        report_error(Message, !IO)
+    else
         (
             Mode = output_d_file_only
         ;
@@ -1538,7 +1537,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
 
         % Compute the indirect optimization dependencies: indirect
         % dependencies including those via `.opt' or `.trans_opt' files.
-        % Actually we can't compute that, since we don't know
+        % Actually we cannot compute that, since we don't know
         % which modules the `.opt' files will import!
         % Instead, we need to make a conservative (over-)approximation,
         % and assume that the each module's `.opt' file might import any

@@ -122,7 +122,7 @@
                 % Whether an error has been encountered when reading in
                 % this module.
                 mai_specs                       :: list(error_spec),
-                mai_error                       :: module_error,
+                mai_errors                      :: read_module_errors,
 
                 % If we are doing smart recompilation, we need to keep
                 % the timestamps of the modules read in.
@@ -157,13 +157,13 @@
 :- pred module_and_imports_set_indirect_deps(list(module_name)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-:- pred module_and_imports_set_error(module_error::in,
+:- pred module_and_imports_set_errors(read_module_errors::in,
     module_and_imports::in, module_and_imports::out) is det.
 
 :- pred module_and_imports_add_specs(list(error_spec)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-:- pred module_and_imports_add_interface_error(module_error::in,
+:- pred module_and_imports_add_interface_error(read_module_errors::in,
     module_and_imports::in, module_and_imports::out) is det.
 
     % Add items to the end of the list.
@@ -178,16 +178,17 @@
     % specifications.
     %
 :- pred module_and_imports_get_results(module_and_imports::in,
-    list(item)::out, list(error_spec)::out, module_error::out) is det.
+    list(item)::out, list(error_spec)::out, read_module_errors::out) is det.
 
 %-----------------------------------------------------------------------------%
 
     % init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
-    %   Specs, Error, Globals, ModuleName - Items, ModuleImports).
+    %   Specs, Errors, Globals, ModuleName - Items, ModuleImports).
     %
 :- pred init_dependencies(file_name::in, module_name::in,
-    list(module_name)::in, list(error_spec)::in, module_error::in, globals::in,
-    pair(module_name, list(item))::in, module_and_imports::out) is det.
+    list(module_name)::in, list(error_spec)::in, read_module_errors::in,
+    globals::in, pair(module_name, list(item))::in,
+    module_and_imports::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -284,8 +285,8 @@ module_and_imports_set_impl_deps(ImplDeps, !Module) :-
     !Module ^ mai_impl_deps := ImplDeps.
 module_and_imports_set_indirect_deps(IndirectDeps, !Module) :-
     !Module ^ mai_indirect_deps := IndirectDeps.
-module_and_imports_set_error(Error, !Module) :-
-    !Module ^ mai_error := Error.
+module_and_imports_set_errors(Errors, !Module) :-
+    !Module ^ mai_errors := Errors.
 
 module_and_imports_add_specs(NewSpecs, !Module) :-
     Specs0 = !.Module ^ mai_specs,
@@ -297,26 +298,20 @@ module_and_imports_add_items(NewItems, !Module) :-
     Items = Items0 ++ NewItems,
     !Module ^ mai_items_cord := Items.
 
-module_and_imports_add_interface_error(InterfaceError, !Module) :-
-    (
-        InterfaceError = no_module_errors
-    ;
-        ( InterfaceError = some_module_errors
-        ; InterfaceError = fatal_module_errors
-        ),
-        % XXX What if Error0 = fatal_module_errors?
-        !Module ^ mai_error := some_module_errors
-    ).
+module_and_imports_add_interface_error(InterfaceErrors, !Module) :-
+    Errors0 = !.Module ^ mai_errors,
+    set.union(Errors0, InterfaceErrors, Errors),
+    !Module ^ mai_errors := Errors.
 
-module_and_imports_get_results(Module, Items, Specs, Error) :-
+module_and_imports_get_results(Module, Items, Specs, Errors) :-
     Items = cord.list(Module ^ mai_items_cord),
     Specs = Module ^ mai_specs,
-    Error = Module ^ mai_error.
+    Errors = Module ^ mai_errors.
 
 %-----------------------------------------------------------------------------%
 
 init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
-        Specs, Error, Globals, ModuleName - Items, ModuleImports) :-
+        Specs, Errors, Globals, ModuleName - Items, ModuleImports) :-
     ParentDeps = get_ancestors(ModuleName),
 
     get_dependencies(Items, ImplImportDeps0, ImplUseDeps0),
@@ -400,7 +395,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         InterfaceIncludeDeps, NestedDeps, FactTableDeps,
         ContainsForeignCode, ForeignImports, ForeignIncludeFiles,
         ContainsForeignExport,
-        cord.empty, Specs, Error, no, HasMain, dir.this_directory).
+        cord.empty, Specs, Errors, no, HasMain, dir.this_directory).
 
 %-----------------------------------------------------------------------------%
 

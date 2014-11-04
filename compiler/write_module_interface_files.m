@@ -144,11 +144,8 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
         ModuleName, Items0, Module, !IO),
 
     % Check whether we succeeded.
-    % XXX zs: why is fatal_module_errors with no_module_errors instead of
-    % some_module_errors?
-    module_and_imports_get_results(Module, Items1, Specs0, Error),
-    (
-        Error = some_module_errors,
+    module_and_imports_get_results(Module, Items1, Specs0, Errors),
+    ( if set.non_empty(Errors) then
         module_name_to_file_name(Globals, ModuleName, ".int0",
             do_not_create_dirs, FileName, !IO),
         % XXX _NumErrors
@@ -156,10 +153,7 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
             !IO),
         io.write_strings(["Error reading interface files.\n",
             "`", FileName, "' not written.\n"], !IO)
-    ;
-        ( Error = no_module_errors
-        ; Error = fatal_module_errors
-        ),
+    else
         % Module-qualify all items.
         module_name_to_file_name(Globals, ModuleName, ".m",
             do_not_create_dirs, FileName, !IO),
@@ -369,11 +363,8 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName, ModuleName,
 
         % Check whether we succeeded.
         module_and_imports_get_results(Module0, !:InterfaceItems,
-            Specs0, Error),
-        % XXX zs: why is fatal_module_errors with no_module_errors instead of
-        % some_module_errors?
-        (
-            Error = some_module_errors,
+            Specs0, Errors),
+        ( if set.non_empty(Errors) then
             % XXX _NumErrors
             write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
@@ -384,10 +375,7 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName, ModuleName,
             io.write_strings(["Error reading short interface files.\n",
                 "`", IntFileName, "' and ",
                 "`", Int2FileName, "' not written.\n"], !IO)
-        ;
-            ( Error = no_module_errors
-            ; Error = fatal_module_errors
-            ),
+        else
             % Module-qualify all items.
             module_name_to_file_name(Globals, ModuleName, ".m",
                 do_not_create_dirs, FileName, !IO),
@@ -400,12 +388,12 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName, ModuleName,
                 Globals, NoHaltAtWarnGlobals),
             write_error_specs(Specs, NoHaltAtWarnGlobals,
                 0, _NumWarnings, 0, NumErrors, !IO),
-            ( NumErrors > 0 ->
+            ( if NumErrors > 0 then
                 module_name_to_file_name(Globals, ModuleName, ".int",
                     do_not_create_dirs, IntFileName, !IO),
                 io.write_strings(["`", IntFileName, "' ", "not written.\n"],
                     !IO)
-            ;
+            else
                 % Strip out the imported interfaces, assertions are also
                 % stripped since they should only be written to .opt files,
                 % check for some warnings, and then write out the `.int'
@@ -1420,10 +1408,10 @@ actually_write_interface_file(Globals, _SourceFileName, ModuleName, Suffix,
     globals.lookup_bool_option(NoLineNumGlobals, generate_item_version_numbers,
         GenerateVersionNumbers),
     io_get_disable_generate_item_version_numbers(DisableVersionNumbers, !IO),
-    (
+    ( if
         GenerateVersionNumbers = yes,
         DisableVersionNumbers = no
-    ->
+    then
         % Find the timestamp of the current module.
         (
             MaybeTimestamp = yes(Timestamp),
@@ -1431,15 +1419,11 @@ actually_write_interface_file(Globals, _SourceFileName, ModuleName, Suffix,
             % Read in the previous version of the file.
             read_module_ignore_errors(NoLineNumGlobals, ModuleName, Suffix,
                 "Reading old interface for module",
-                do_search, do_not_return_timestamp, OldItems, OldError,
+                do_search, do_not_return_timestamp, OldItems, OldErrors,
                 _OldIntFileName, _OldTimestamp, !IO),
-            (
-                OldError = no_module_errors,
+            ( if set.is_empty(OldErrors) then
                 MaybeOldItems = yes(OldItems)
-            ;
-                ( OldError = some_module_errors
-                ; OldError = fatal_module_errors
-                ),
+            else
                 % If we can't read in the old file, the timestamps will
                 % all be set to the modification time of the source file.
                 MaybeOldItems = no
@@ -1450,16 +1434,16 @@ actually_write_interface_file(Globals, _SourceFileName, ModuleName, Suffix,
                 md_version_numbers(ModuleName, VersionNumbers),
                 term.context_init, -1),
             VersionNumberItem = item_module_defn(VersionNumberItemModuleDefn),
-            (
+            ( if
                 InterfaceItems0 = [FirstItem | InterfaceItems1],
                 FirstItem = item_module_defn(FirstItemModuleDefn),
                 FirstItemModuleDefn =
                     item_module_defn_info(FirstModuleDefn, _, _),
                 FirstModuleDefn = md_interface
-            ->
+            then
                 InterfaceItems = [FirstItem, VersionNumberItem
                     | InterfaceItems1]
-            ;
+            else
                 InterfaceItems = [make_pseudo_decl(md_interface),
                     VersionNumberItem | InterfaceItems0]
             )
@@ -1468,7 +1452,7 @@ actually_write_interface_file(Globals, _SourceFileName, ModuleName, Suffix,
             unexpected($module, $pred,
                 "with `--smart-recompilation', timestamp not read")
         )
-    ;
+    else
         InterfaceItems = InterfaceItems0
     ),
     convert_to_mercury(NoLineNumGlobals, ModuleName, TmpOutputFileName,

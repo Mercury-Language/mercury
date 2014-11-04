@@ -42,12 +42,12 @@
                 module_timestamp,
                 list(item),
                 list(error_spec),
-                module_error,
+                read_module_errors,
                 file_name
             ).
 
     % read_module(Globals, ModuleName, Extension, Descr, Search,
-    %   ReturnTimestamp, Items, Specs, Error, SourceFileName, MaybeTimestamp):
+    %   ReturnTimestamp, Items, Specs, Errors, SourceFileName, MaybeTimestamp):
     %
     % Given a module name and a file extension (e.g. `.m', `.int', or `int2'),
     % read in the list of items in that file.
@@ -68,11 +68,11 @@
     %
 :- pred read_module(globals::in, module_name::in, string::in, string::in,
     maybe_search::in, maybe_return_timestamp::in, list(item)::out,
-    list(error_spec)::out, module_error::out, file_name::out,
+    list(error_spec)::out, read_module_errors::out, file_name::out,
     maybe(timestamp)::out, io::di, io::uo) is det.
 
     % read_module_if_changed(Globals, ModuleName, Extension, Descr, Search,
-    %   OldTimestamp, Items, Specs, Error, SourceFileName, MaybeTimestamp):
+    %   OldTimestamp, Items, Specs, Errors, SourceFileName, MaybeTimestamp):
     %
     % If the timestamp of the file specified by the given module name and
     % file extension is newer than OldTimestamp, read the file, returning
@@ -85,18 +85,18 @@
     %
 :- pred read_module_if_changed(globals::in, module_name::in,
     string::in, string::in, maybe_search::in, timestamp::in, list(item)::out,
-    list(error_spec)::out, module_error::out, file_name::out,
+    list(error_spec)::out, read_module_errors::out, file_name::out,
     maybe(timestamp)::out, io::di, io::uo) is det.
 
     % Similar to read_module, but doesn't return error messages.
     %
 :- pred read_module_ignore_errors(globals::in, module_name::in,
     string::in, string::in, maybe_search::in, maybe_return_timestamp::in,
-    list(item)::out, module_error::out, file_name::out, maybe(timestamp)::out,
-    io::di, io::uo) is det.
+    list(item)::out, read_module_errors::out, file_name::out,
+    maybe(timestamp)::out, io::di, io::uo) is det.
 
     % read_module_from_file(SourceFileName, Extension, Descr, Search,
-    %   ReturnTimestamp, Items, Specs, Error, ModuleName, MaybeTimestamp):
+    %   ReturnTimestamp, Items, Specs, Errors, ModuleName, MaybeTimestamp):
     %
     % Given a file name and a file extension (e.g. `.m', `.int', or `int2'),
     % read in the list of items in that file.
@@ -111,7 +111,7 @@
     %
 :- pred read_module_from_file(globals::in, file_name::in, string::in,
     string::in, maybe_search::in, maybe_return_timestamp::in, list(item)::out,
-    list(error_spec)::out, module_error::out, module_name::out,
+    list(error_spec)::out, read_module_errors::out, module_name::out,
     maybe(timestamp)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -119,17 +119,17 @@
 :- pred maybe_read_module(globals::in, have_read_module_map::in,
     module_name::in, string::in, string::in, maybe_search::in,
     maybe_return_timestamp::in, list(item)::out, list(error_spec)::out,
-    module_error::out, file_name::out, maybe(timestamp)::out, io::di, io::uo)
-    is det.
+    read_module_errors::out, file_name::out, maybe(timestamp)::out,
+    io::di, io::uo) is det.
 
     % find_read_module(HaveReadModuleMap, ModuleName, Suffix,
-    %   ReturnTimestamp, Items, Specs, Error, FileName, MaybeTimestamp)
+    %   ReturnTimestamp, Items, Specs, Errors, FileName, MaybeTimestamp)
     %
     % Check whether a file was read during recompilation checking.
     %
 :- pred find_read_module(have_read_module_map::in, module_name::in,
     string::in, maybe_return_timestamp::in, list(item)::out,
-    list(error_spec)::out, module_error::out,
+    list(error_spec)::out, read_module_errors::out,
     file_name::out, maybe(timestamp)::out) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -145,6 +145,7 @@
 
 :- import_module bool.
 :- import_module dir.
+:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -154,31 +155,31 @@
     ;       do_not_ignore_errors.
 
 read_module(Globals, ModuleName, Extension, Descr, Search, ReturnTimestamp,
-        Items, Specs, Error, FileName, MaybeTimestamp, !IO) :-
+        Items, Specs, Errors, FileName, MaybeTimestamp, !IO) :-
     do_read_module(Globals, do_not_ignore_errors, ModuleName, Extension,
-        Descr, Search, no, ReturnTimestamp, Items, Specs, Error,
+        Descr, Search, no, ReturnTimestamp, Items, Specs, Errors,
         FileName, MaybeTimestamp, !IO).
 
 read_module_if_changed(Globals, ModuleName, Extension, Descr, Search,
-        OldTimestamp, Items, Specs, Error, FileName, MaybeTimestamp, !IO) :-
+        OldTimestamp, Items, Specs, Errors, FileName, MaybeTimestamp, !IO) :-
     do_read_module(Globals, do_not_ignore_errors, ModuleName, Extension,
         Descr, Search, yes(OldTimestamp), do_return_timestamp, Items, Specs,
-        Error, FileName, MaybeTimestamp, !IO).
+        Errors, FileName, MaybeTimestamp, !IO).
 
 read_module_ignore_errors(Globals, ModuleName, Extension, Descr, Search,
-        ReturnTimestamp, Items, Error, FileName, MaybeTimestamp, !IO) :-
+        ReturnTimestamp, Items, Errors, FileName, MaybeTimestamp, !IO) :-
     do_read_module(Globals, ignore_errors, ModuleName, Extension,
-        Descr, Search, no, ReturnTimestamp, Items, _Specs, Error,
+        Descr, Search, no, ReturnTimestamp, Items, _Specs, Errors,
         FileName, MaybeTimestamp, !IO).
 
 :- pred do_read_module(globals::in, maybe_ignore_errors::in, module_name::in,
     string::in, string::in, maybe_search::in, maybe(timestamp)::in,
     maybe_return_timestamp::in, list(item)::out, list(error_spec)::out,
-    module_error::out, file_name::out, maybe(timestamp)::out, io::di, io::uo)
-    is det.
+    read_module_errors::out, file_name::out, maybe(timestamp)::out,
+    io::di, io::uo) is det.
 
 do_read_module(Globals, IgnoreErrors, ModuleName, Extension, Descr, Search,
-        MaybeOldTimestamp, ReturnTimestamp, Items, Specs, Error, FileName,
+        MaybeOldTimestamp, ReturnTimestamp, Items, Specs, Errors, FileName,
         MaybeTimestamp, !IO) :-
     (
         Search = do_search,
@@ -218,11 +219,11 @@ do_read_module(Globals, IgnoreErrors, ModuleName, Extension, Descr, Search,
         MaybeOldTimestamp = yes(OldTimestamp),
         actually_read_module_if_changed(Globals, OpenFile, ModuleName,
             OldTimestamp, MaybeFileName, ActualModuleName,
-            Items, ModuleSpecs, Error, MaybeTimestamp0, !IO)
+            Items, ModuleSpecs, Errors, MaybeTimestamp0, !IO)
     ;
         MaybeOldTimestamp = no,
         actually_read_module(Globals, OpenFile, ModuleName, ReturnTimestamp,
-            MaybeFileName, ActualModuleName, Items, ModuleSpecs, Error,
+            MaybeFileName, ActualModuleName, Items, ModuleSpecs, Errors,
             MaybeTimestamp0, !IO)
     ),
 
@@ -240,7 +241,7 @@ do_read_module(Globals, IgnoreErrors, ModuleName, Extension, Descr, Search,
         IgnoreErrors = ignore_errors,
         Specs = NameSpecs,      % Do not include ModuleSpecs.
         (
-            Error = fatal_module_errors,
+            set.contains(Errors, rme_could_not_open_file),
             Items = []
         ->
             maybe_write_string(VeryVerbose, "not found.\n", !IO)
@@ -250,27 +251,12 @@ do_read_module(Globals, IgnoreErrors, ModuleName, Extension, Descr, Search,
     ;
         IgnoreErrors = do_not_ignore_errors,
         ModuleNameSpecs = NameSpecs ++ ModuleSpecs,
-        (
-            Error = fatal_module_errors,
-            maybe_write_string(VeryVerbose, "fatal error(s).\n", !IO),
-            maybe_write_out_errors_no_module(VeryVerbose, Globals,
-                ModuleNameSpecs, Specs, !IO),
-            io.set_exit_status(1, !IO)
-        ;
-            Error = some_module_errors,
-            maybe_write_string(VeryVerbose, "parse error(s).\n", !IO),
-            maybe_write_out_errors_no_module(VeryVerbose, Globals,
-                ModuleNameSpecs, Specs, !IO),
-            io.set_exit_status(1, !IO)
-        ;
-            Error = no_module_errors,
-            maybe_write_string(VeryVerbose, "successful parse.\n", !IO),
-            Specs = ModuleNameSpecs
-        )
+        handle_any_read_module_errors(Globals, VeryVerbose, Errors,
+            ModuleNameSpecs, Specs, !IO)
     ).
 
 read_module_from_file(Globals, FileName, Extension, Descr, Search,
-        ReturnTimestamp, Items, Specs, Error, ModuleName, MaybeTimestamp,
+        ReturnTimestamp, Items, Specs, Errors, ModuleName, MaybeTimestamp,
         !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     maybe_write_string(VeryVerbose, "% ", !IO),
@@ -296,52 +282,55 @@ read_module_from_file(Globals, FileName, Extension, Descr, Search,
     ),
     OpenFile = search_for_file(open_file, SearchDirs, FullFileName),
     actually_read_module(Globals, OpenFile, DefaultModuleName, ReturnTimestamp,
-        _, ModuleName, Items, Specs0, Error, MaybeTimestamp0, !IO),
+        _, ModuleName, Items, Specs0, Errors, MaybeTimestamp0, !IO),
     check_timestamp(Globals, FullFileName, MaybeTimestamp0, MaybeTimestamp,
         !IO),
-    (
-        Error = fatal_module_errors,
-        maybe_write_string(VeryVerbose, "fatal error(s).\n", !IO),
-        maybe_write_out_errors_no_module(VeryVerbose, Globals, Specs0, Specs,
-            !IO),
+    handle_any_read_module_errors(Globals, VeryVerbose, Errors,
+        Specs0, Specs, !IO).
+
+:- pred handle_any_read_module_errors(globals::in, bool::in,
+    read_module_errors::in, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
+
+handle_any_read_module_errors(Globals, VeryVerbose, Errors, !Specs, !IO) :-
+    ( if set.is_empty(Errors) then
+        maybe_write_string(VeryVerbose, "successful parse.\n", !IO)
+    else
+        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+        ( if set.is_empty(FatalErrors) then
+            maybe_write_string(VeryVerbose, "parse error(s).\n", !IO)
+        else
+            maybe_write_string(VeryVerbose, "fatal error(s).\n", !IO)
+        ),
+        maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
         io.set_exit_status(1, !IO)
-    ;
-        Error = some_module_errors,
-        maybe_write_string(VeryVerbose, "parse error(s).\n", !IO),
-        maybe_write_out_errors_no_module(VeryVerbose, Globals, Specs0, Specs,
-            !IO),
-        io.set_exit_status(1, !IO)
-    ;
-        Error = no_module_errors,
-        maybe_write_string(VeryVerbose, "successful parse.\n", !IO),
-        Specs = Specs0
     ).
 
 %-----------------------------------------------------------------------------%
 
 maybe_read_module(Globals, HaveReadModuleMap, ModuleName, Extension, Descr,
-        Search, ReturnTimestamp, Items, Specs, Error, FileName, MaybeTimestamp,
-        !IO) :-
+        Search, ReturnTimestamp, Items, Specs, Errors, FileName,
+        MaybeTimestamp, !IO) :-
     (
         find_read_module(HaveReadModuleMap, ModuleName, Extension,
-            ReturnTimestamp, ItemsPrime, SpecsPrime, ErrorPrime,
+            ReturnTimestamp, ItemsPrime, SpecsPrime, ErrorsPrime,
             FileNamePrime, MaybeTimestampPrime)
     ->
-        Error = ErrorPrime,
+        Errors = ErrorsPrime,
         Items = ItemsPrime,
         Specs = SpecsPrime,
         MaybeTimestamp = MaybeTimestampPrime,
         FileName = FileNamePrime
     ;
         read_module(Globals, ModuleName, Extension, Descr, Search,
-            ReturnTimestamp, Items, Specs, Error, FileName, MaybeTimestamp,
+            ReturnTimestamp, Items, Specs, Errors, FileName, MaybeTimestamp,
             !IO)
     ).
 
 find_read_module(HaveReadModuleMap, ModuleName, Suffix, ReturnTimestamp,
-        Items, Specs, Error, FileName, MaybeTimestamp) :-
+        Items, Specs, Errors, FileName, MaybeTimestamp) :-
     map.search(HaveReadModuleMap, ModuleName - Suffix, HaveReadModule),
-    HaveReadModule = have_read_module(ModuleTimestamp, Items, Specs, Error,
+    HaveReadModule = have_read_module(ModuleTimestamp, Items, Specs, Errors,
         FileName),
     (
         ReturnTimestamp = do_return_timestamp,

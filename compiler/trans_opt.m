@@ -203,7 +203,8 @@ grab_trans_opt_files(Globals, TransOptDeps, !Module, FoundError, !IO) :-
     append_pseudo_decl(md_opt_imported, !Module),
     module_and_imports_add_items(OptItems, !Module),
     module_and_imports_add_specs(OptSpecs, !Module),
-    module_and_imports_set_error(no_module_errors, !Module),
+    % XXX why ignore any existing errors?
+    module_and_imports_set_errors(set.init, !Module),
 
     maybe_write_string(Verbose, "% Done.\n", !IO).
 

@@ -835,12 +835,12 @@ file_or_module_to_module_name(fm_module(ModuleName)) = ModuleName.
 :- pred read_module_or_file(globals::in, globals::out, file_or_module::in,
     maybe_return_timestamp::in, module_name::out, file_name::out,
     maybe(timestamp)::out, list(item)::out,
-    list(error_spec)::out, module_error::out,
+    list(error_spec)::out, read_module_errors::out,
     have_read_module_map::in, have_read_module_map::out,
     io::di, io::uo) is det.
 
 read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
-        ModuleName, SourceFileName, MaybeTimestamp, Items, Specs, Error,
+        ModuleName, SourceFileName, MaybeTimestamp, Items, Specs, Errors,
         !HaveReadModuleMap, !IO) :-
     (
         FileOrModuleName = fm_module(ModuleName),
@@ -853,7 +853,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
             % Avoid rereading the module if it was already read
             % by recompilation_version.m.
             find_read_module(!.HaveReadModuleMap, ModuleName, ".m",
-                ReturnTimestamp, ItemsPrime, SpecsPrime, ErrorPrime,
+                ReturnTimestamp, ItemsPrime, SpecsPrime, ErrorsPrime,
                 SourceFileNamePrime, MaybeTimestampPrime)
         ->
             % XXX When we have read the module before, it *could* have had
@@ -862,7 +862,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
             map.delete(ModuleName - ".m", !HaveReadModuleMap),
             Items = ItemsPrime,
             Specs = SpecsPrime,
-            Error = ErrorPrime,
+            Errors = ErrorsPrime,
             SourceFileName = SourceFileNamePrime,
             MaybeTimestamp = MaybeTimestampPrime
         ;
@@ -870,7 +870,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
             % because that can result in the generated interface files
             % being created in the wrong directory.
             read_module(Globals0, ModuleName, ".m", "Reading module",
-                do_not_search, ReturnTimestamp, Items, Specs, Error,
+                do_not_search, ReturnTimestamp, Items, Specs, Errors,
                 SourceFileName, MaybeTimestamp, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
@@ -896,7 +896,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
             % Avoid rereading the module if it was already read
             % by recompilation_version.m.
             find_read_module(!.HaveReadModuleMap, DefaultModuleName, ".m",
-                ReturnTimestamp, ItemsPrime, SpecsPrime, ErrorPrime,
+                ReturnTimestamp, ItemsPrime, SpecsPrime, ErrorsPrime,
                 _, MaybeTimestampPrime)
         ->
             % XXX When we have read the module before, it *could* have had
@@ -906,14 +906,14 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
             ModuleName = DefaultModuleName,
             Items = ItemsPrime,
             Specs = SpecsPrime,
-            Error = ErrorPrime,
+            Errors = ErrorsPrime,
             MaybeTimestamp = MaybeTimestampPrime
         ;
             % We don't search `--search-directories' for source files
             % because that can result in the generated interface files
             % being created in the wrong directory.
             read_module_from_file(Globals0, FileName, ".m", "Reading file",
-                do_not_search, ReturnTimestamp, Items, Specs, Error,
+                do_not_search, ReturnTimestamp, Items, Specs, Errors,
                 ModuleName, MaybeTimestamp, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
@@ -1002,9 +1002,9 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
         )
     ->
         read_module_or_file(Globals0, Globals, FileOrModule, ReturnTimestamp,
-            ModuleName, FileName, MaybeTimestamp, Items, Specs0, Error,
+            ModuleName, FileName, MaybeTimestamp, Items, Specs0, Errors,
             map.init, _, !IO),
-        ( halt_at_module_error(HaltSyntax, Error) ->
+        ( halt_at_module_error(HaltSyntax, Errors) ->
             true
         ;
             split_into_submodules(ModuleName, Items, SubModuleList,
@@ -1023,11 +1023,11 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
         ConvertToMercury = yes
     ->
         read_module_or_file(Globals0, Globals, FileOrModule,
-            do_not_return_timestamp, ModuleName, _, _, Items, Specs, Error,
+            do_not_return_timestamp, ModuleName, _, _, Items, Specs, Errors,
             map.init, _, !IO),
         % XXX _NumErrors
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
-        ( halt_at_module_error(HaltSyntax, Error) ->
+        ( halt_at_module_error(HaltSyntax, Errors) ->
             true
         ;
             module_name_to_file_name(Globals, ModuleName, ".ugly",
@@ -1138,10 +1138,10 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
     ),
 
     read_module_or_file(Globals0, Globals, FileOrModule, do_return_timestamp,
-        ModuleName, FileName, MaybeTimestamp, Items, Specs0, Error,
+        ModuleName, FileName, MaybeTimestamp, Items, Specs0, Errors,
         HaveReadModuleMap0, HaveReadModuleMap, !IO),
     globals.lookup_bool_option(Globals, halt_at_syntax_errors, HaltSyntax),
-    ( halt_at_module_error(HaltSyntax, Error) ->
+    ( halt_at_module_error(HaltSyntax, Errors) ->
         % XXX _NumErrors
         write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
             !IO),
@@ -1250,10 +1250,16 @@ call_make_private_interface(Globals, SourceFileName, SourceFileModuleName,
     write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
         ModuleName, MaybeTimestamp, Items, !IO).
 
-:- pred halt_at_module_error(bool::in, module_error::in) is semidet.
+:- pred halt_at_module_error(bool::in, read_module_errors::in) is semidet.
 
-halt_at_module_error(_, fatal_module_errors).
-halt_at_module_error(HaltSyntax, some_module_errors) :- HaltSyntax = yes.
+halt_at_module_error(HaltSyntax, Errors) :-
+    set.non_empty(Errors),
+    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+    (
+        set.non_empty(FatalErrors)
+    ;
+        HaltSyntax = yes
+    ).
 
 :- pred module_to_link(pair(module_name, list(item))::in, string::out) is det.
 
@@ -1387,16 +1393,13 @@ compile(Globals, SourceFileName, SourceFileModuleName, NestedSubModules0,
     grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         ModuleName, NestedSubModules, HaveReadModuleMap, MaybeTimestamp,
         Items, Module, !IO),
-    module_and_imports_get_results(Module, _, ImportedSpecs, Error),
+    module_and_imports_get_results(Module, _, ImportedSpecs, Errors),
     !:Specs = ImportedSpecs ++ !.Specs,
-    (
-        ( Error = no_module_errors
-        ; Error = some_module_errors
-        ),
+    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+    ( if set.is_empty(FatalErrors) then
         mercury_compile(Globals, Module, NestedSubModules, FindTimestampFiles,
             ExtraObjFiles, no_prev_dump, _, !Specs, !IO)
-    ;
-        Error = fatal_module_errors,
+    else
         ExtraObjFiles = []
     ).
 

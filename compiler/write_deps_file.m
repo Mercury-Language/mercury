@@ -1113,15 +1113,13 @@ generate_dependencies_write_d_files(Globals, [Dep | Deps],
         % Note that even if a fatal error occured for one of the files
         % that the current Module depends on, a .d file is still produced,
         % even though it probably contains incorrect information.
-        Error = !.Module ^ mai_error,
-        (
-            ( Error = no_module_errors
-            ; Error = some_module_errors
-            ),
+        Errors = !.Module ^ mai_errors,
+        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+        ( if set.is_empty(FatalErrors) then
             write_dependency_file(Globals, !.Module,
                 set.list_to_set(IndirectOptDeps), yes(TransOptDeps), !IO)
-        ;
-            Error = fatal_module_errors
+        else
+            true
         ),
         generate_dependencies_write_d_files(Globals, Deps,
             IntDepsGraph, ImplDepsGraph,
@@ -1613,15 +1611,12 @@ select_ok_modules([], _, []).
 select_ok_modules([Module | Modules0], DepsMap, Modules) :-
     select_ok_modules(Modules0, DepsMap, ModulesTail),
     map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    module_and_imports_get_results(ModuleImports, _Items, _Specs, Error),
-    (
-        Error = fatal_module_errors,
-        Modules = ModulesTail
-    ;
-        ( Error = no_module_errors
-        ; Error = some_module_errors
-        ),
+    module_and_imports_get_results(ModuleImports, _Items, _Specs, Errors),
+    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+    ( if set.is_empty(FatalErrors) then
         Modules = [Module | ModulesTail]
+    else
+        Modules = ModulesTail
     ).
 
 %-----------------------------------------------------------------------------%

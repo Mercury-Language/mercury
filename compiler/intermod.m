@@ -76,10 +76,10 @@
     ;       trans_opt_file.
 
     % update_error_status(Globals, OptFileType, FileName,
-    %   ModuleSpecs, !Specs, ModuleError, !Error):
+    %   ModuleSpecs, !Specs, ModuleErrors, !Error):
     %
     % Work out whether any fatal errors have occurred while reading
-    % `.opt' files, updating !Error if there were fatal errors.
+    % `.opt' files, updating !Errors if there were fatal errors.
     %
     % A missing `.opt' file is only a fatal error if
     % `--warn-missing-opt-files --halt-at-warn' was passed the compiler.
@@ -90,7 +90,7 @@
     %
 :- pred update_error_status(globals::in, opt_file_type::in, string::in,
     list(error_spec)::in, list(error_spec)::in, list(error_spec)::out,
-    module_error::in, bool::in, bool::out) is det.
+    read_module_errors::in, bool::in, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2489,9 +2489,9 @@ grab_opt_files(Globals, !Module, FoundError, !IO) :-
     % Figure out whether anything went wrong.
     % XXX We should try to put all the relevant error indications into !Module,
     % and let our caller figure out what to do with them.
-    module_and_imports_get_results(!.Module, _Items, _Specs, FoundError0),
+    module_and_imports_get_results(!.Module, _Items, _Specs, ModuleErrors),
     (
-        ( FoundError0 \= no_module_errors
+        ( set.non_empty(ModuleErrors)
         ; OptError = yes
         ; UA_SR_Error = yes
         )
@@ -2552,19 +2552,14 @@ read_optimization_interfaces(Globals, Transitive, ModuleName,
         !Items, !Specs, !Error, !IO).
 
 update_error_status(_Globals, FileType, FileName,
-        ModuleSpecs, !Specs, ModuleError, !Error) :-
-    (
-        ModuleError = no_module_errors
+        ModuleSpecs, !Specs, ModuleErrors, !Error) :-
+    ( if set.is_empty(ModuleErrors) then
         % OptSpecs contains no errors. I (zs) don't know whether it could
         % contain any warnings or informational messages, but if it could,
         % we should add those error_specs to !Specs. Not doing so preserves
         % old behavior.
-    ;
-        ModuleError = some_module_errors,
-        !:Specs = ModuleSpecs ++ !.Specs,
-        !:Error = yes
-    ;
-        ModuleError = fatal_module_errors,
+        true
+    else if set.contains(ModuleErrors, rme_could_not_open_file) then
         % We get here if we couldn't find and/or open the file.
         % ModuleSpecs will already contain an error_severity error_spec
         % about that, with more details than the message we generate below,
@@ -2572,8 +2567,9 @@ update_error_status(_Globals, FileType, FileName,
         % there being no error, only a warning, and on the text below.
         % That is why we do not add ModuleSpecs to !Specs here.
         %
-        % I (zs) don't know whether adding a version of ModuleSpecs (possibly
-        % with downgraded severity) to !Specs would be a better idea.
+        % I (zs) don't know whether we should add a version of ModuleSpecs
+        % with downgraded severity to !Specs instead of the Spec we generate
+        % below.
         (
             FileType = opt_file,
             WarningOption = warn_missing_opt_files
@@ -2589,6 +2585,13 @@ update_error_status(_Globals, FileType, FileName,
         Msg = error_msg(no, treat_as_first, 0, Pieces),
         Spec = error_spec(Severity, phase_read_files, [Msg]),
         !:Specs = [Spec | !.Specs]
+        % NOTE: We do NOT update !Error, since a missing optimization
+        % interface file is not necessarily an error.
+    else
+        % ModuleErrors may or may not contain fatal errors other than
+        % rme_could_not_open_file, but we do not care.
+        !:Specs = ModuleSpecs ++ !.Specs,
+        !:Error = yes
     ).
 
 %-----------------------------------------------------------------------------%

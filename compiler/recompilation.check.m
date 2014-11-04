@@ -228,7 +228,7 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
     % Check that the format of the usage file is the current format.
     read_term_check_for_error_or_eof(!.Info, "usage file version number",
         VersionNumberTerm, !IO),
-    (
+    ( if
         VersionNumberTerm = term.functor(term.atom(","),
             [UsageFileVersionNumberTerm,
             VersionNumbersVersionNumberTerm], _),
@@ -236,9 +236,9 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
             term.functor( term.integer(usage_file_version_number), _, _),
         VersionNumbersVersionNumberTerm =
             term.functor( term.integer(version_numbers_version_number), _, _)
-    ->
+    then
         true
-    ;
+    else
         io.input_stream_name(UsageFileName, !IO),
         Reason = recompile_for_file_error(UsageFileName,
             [words("invalid usage file version number in file"),
@@ -261,30 +261,32 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
         % If the module has changed, recompile.
         ModuleName = !.Info ^ rci_module_name,
         read_module_if_changed(Globals, ModuleName, ".m", "Reading module",
-            do_search, RecordedTimestamp, Items, Specs, Error, FileName,
+            do_search, RecordedTimestamp, Items, Specs, Errors, FileName,
             MaybeNewTimestamp, !IO),
-        (
+        ( if
             MaybeNewTimestamp = yes(NewTimestamp),
             NewTimestamp \= RecordedTimestamp
-        ->
+        then
             record_read_file(ModuleName,
                 ModuleTimestamp ^ timestamp := NewTimestamp,
-                Items, Specs, Error, FileName, !Info),
+                Items, Specs, Errors, FileName, !Info),
             !Info ^ rci_modules_to_recompile := all_modules,
             record_recompilation_reason(recompile_for_module_changed(FileName),
                 !Info)
-        ;
-            ( Error \= no_module_errors
+        else if
+            ( set.non_empty(Errors)
             ; MaybeNewTimestamp = no
             )
-        ->
+        then
             % We are throwing away Specs, even though some of its elements
             % could illuminate the cause of the problem. XXX Is this OK?
             Pieces = [words("error reading file"), quote(FileName),
                 suffix("."), nl],
             Reason = recompile_for_file_error(FileName, Pieces),
+            % XXX Some of the errors in Errors could be errors other than
+            % syntax errors.
             throw_syntax_error(Reason, !.Info)
-        ;
+        else
             % We are throwing away Specs. Since it should be a repeat of the
             % errors we saw when the file was first read in, this should be OK.
             true
@@ -294,13 +296,13 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
     % Find out whether this module has any inline sub-modules.
     read_term_check_for_error_or_eof(!.Info, "inline sub-modules",
         SubModulesTerm, !IO),
-    (
+    ( if
         SubModulesTerm = term.functor(term.atom("sub_modules"),
             SubModuleTerms, _),
         list.map(try_parse_sym_name_and_no_args, SubModuleTerms, SubModules)
-    ->
+    then
         !Info ^ rci_sub_modules := SubModules
-    ;
+    else
         Reason1 = recompile_for_syntax_error(get_term_context(SubModulesTerm),
             "error in sub_modules term"),
         throw_syntax_error(Reason1, !.Info)
@@ -318,13 +320,13 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
 
     read_term_check_for_error_or_eof(!.Info, "used classes",
         UsedClassesTerm, !IO),
-    (
+    ( if
         UsedClassesTerm = term.functor(term.atom("used_classes"),
             UsedClassTerms, _),
         list.map(parse_name_and_arity_to_used, UsedClassTerms, UsedClasses)
-    ->
+    then
         !Info ^ rci_used_typeclasses := set.list_to_set(UsedClasses)
-    ;
+    else
         Reason3 = recompile_for_syntax_error(get_term_context(UsedClassesTerm),
             "error in used_typeclasses term"),
         throw_syntax_error(Reason3, !.Info)
@@ -682,12 +684,12 @@ check_imported_module(Globals, Term, !Info, !IO) :-
         % read for other modules checked during this compilation.
         !.Info ^ rci_is_inline_sub_module = yes,
         find_read_module(!.Info ^ rci_have_read_module_map, ImportedModuleName,
-            Suffix, do_return_timestamp, ItemsPrime, SpecsPrime, ErrorPrime,
+            Suffix, do_return_timestamp, ItemsPrime, SpecsPrime, ErrorsPrime,
             FileNamePrime, MaybeNewTimestampPrime)
     ->
         Items = ItemsPrime,
         Specs = SpecsPrime,
-        Error = ErrorPrime,
+        Errors = ErrorsPrime,
         FileName = FileNamePrime,
         MaybeNewTimestamp = MaybeNewTimestampPrime,
         Recorded = bool.yes
@@ -695,23 +697,22 @@ check_imported_module(Globals, Term, !Info, !IO) :-
         Recorded = bool.no,
         read_module_if_changed(Globals, ImportedModuleName, Suffix,
             "Reading interface file for module", do_search, RecordedTimestamp,
-            Items, Specs, Error, FileName, MaybeNewTimestamp, !IO)
+            Items, Specs, Errors, FileName, MaybeNewTimestamp, !IO)
     ),
-    (
-        Error = no_module_errors,
-        (
+    ( if set.is_empty(Errors) then
+        ( if
             MaybeNewTimestamp = yes(NewTimestamp),
             NewTimestamp \= RecordedTimestamp
-        ->
+        then
             (
                 Recorded = no,
                 record_read_file(ImportedModuleName,
                     ModuleTimestamp ^ timestamp := NewTimestamp,
-                    Items, Specs, Error, FileName, !Info)
+                    Items, Specs, Errors, FileName, !Info)
             ;
                 Recorded = yes
             ),
-            (
+            ( if
                 MaybeUsedItemsTerm = yes(UsedItemsTerm),
                 Items = [InterfaceItem, VersionNumberItem | OtherItems],
                 InterfaceItem = item_module_defn(InterfaceItemModuleDefn),
@@ -723,23 +724,20 @@ check_imported_module(Globals, Term, !Info, !IO) :-
                     item_module_defn_info(
                         md_version_numbers(_, VersionNumbers),
                         _, _)
-            ->
+            then
                 check_module_used_items(ImportedModuleName, NeedQualifier,
                     RecordedTimestamp, UsedItemsTerm, VersionNumbers,
                     OtherItems, !Info)
-            ;
+            else
                 record_recompilation_reason(
                     recompile_for_module_changed(FileName), !Info)
             )
-        ;
+        else
             % We are throwing away Specs. Since it should be a repeat of the
             % errors we saw when the file was first read in, this should be OK.
             true
         )
-    ;
-        ( Error = some_module_errors
-        ; Error = fatal_module_errors
-        ),
+    else
         % We are throwing away Specs, even though some of its elements
         % could illuminate the cause of the problem. XXX Is this OK?
         throw_syntax_error(
@@ -1391,14 +1389,15 @@ add_module_to_recompile(Module, !Info) :-
     ).
 
 :- pred record_read_file(module_name::in, module_timestamp::in,
-    list(item)::in, list(error_spec)::in, module_error::in, file_name::in,
+    list(item)::in, list(error_spec)::in,
+    read_module_errors::in, file_name::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-record_read_file(ModuleName, ModuleTimestamp, Items, Specs, Error, FileName,
+record_read_file(ModuleName, ModuleTimestamp, Items, Specs, Errors, FileName,
         !Info) :-
     Imports0 = !.Info ^ rci_have_read_module_map,
     map.set(ModuleName - ModuleTimestamp ^ suffix,
-        have_read_module(ModuleTimestamp, Items, Specs, Error, FileName),
+        have_read_module(ModuleTimestamp, Items, Specs, Errors, FileName),
         Imports0, Imports),
     !Info ^ rci_have_read_module_map := Imports.
 

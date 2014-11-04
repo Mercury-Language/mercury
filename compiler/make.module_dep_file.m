@@ -271,7 +271,7 @@ write_module_dep_file(Globals, Imports0, !IO) :-
     init_dependencies(Imports0 ^ mai_source_file_name,
         Imports0 ^ mai_source_file_module_name,
         Imports0 ^ mai_nested_children,
-        Imports0 ^ mai_specs, no_module_errors, Globals,
+        Imports0 ^ mai_specs, set.init, Globals,
         Imports0 ^ mai_module_name - Items, Imports),
     do_write_module_dep_file(Globals, Imports, !IO).
 
@@ -541,7 +541,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         PublicChildren = [],
         Items = cord.empty,
         Specs = [],
-        Errors = no_module_errors,
+        set.init(Errors),
         MaybeTimestamps = no,
         Imports = module_and_imports(SourceFileName, SourceFileModuleName,
             ModuleName, Parents, IntDeps, ImplDeps, IndirectDeps,
@@ -756,10 +756,10 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         % XXX Why ask for the timestamp if we then ignore it?
         read_module(Globals, ModuleName, ".m",
             "Getting dependencies for module",
-            do_not_search, do_return_timestamp, Items, Specs0, Error,
+            do_not_search, do_return_timestamp, Items, Specs0, Errors,
             SourceFileName, _, !IO),
-        (
-            Error = fatal_module_errors,
+        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+        ( if set.non_empty(FatalErrors) then
             io.set_output_stream(ErrorStream, _, !IO),
             write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
@@ -784,10 +784,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             % XXX Could this be map.det_update?
             map.set(ModuleName, no, ModuleDepMap0, ModuleDepMap),
             !Info ^ module_dependencies := ModuleDepMap
-        ;
-            ( Error = no_module_errors
-            ; Error = some_module_errors
-            ),
+        else
             io.set_output_stream(ErrorStream, _, !IO),
             split_into_submodules(ModuleName, Items, SubModuleList,
                 Specs0, Specs),
@@ -798,7 +795,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
 
             assoc_list.keys(SubModuleList, SubModuleNames),
             list.map(init_dependencies(SourceFileName, ModuleName,
-                SubModuleNames, [], Error, Globals),
+                SubModuleNames, [], Errors, Globals),
                 SubModuleList, ModuleImportList),
             list.foldl(
                 (pred(ModuleImports::in, Info0::in, Info::out) is det :-
@@ -811,8 +808,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             % while we have the contents of the module. The `int3' file
             % does not depend on anything else.
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-            (
-                Error = no_module_errors,
+            ( if set.is_empty(Errors) then
                 Target = target_file(ModuleName,
                     module_target_unqualified_short_interface),
                 maybe_make_target_message_to_stream(Globals, OldOutputStream,
@@ -825,8 +821,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                     ),
                     cleanup_short_interfaces(Globals, SubModuleNames),
                     Succeeded, !Info, !IO)
-            ;
-                Error = some_module_errors,
+            else
                 Succeeded = no
             ),
 

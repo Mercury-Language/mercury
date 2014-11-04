@@ -205,14 +205,15 @@ insert_into_deps_map(ModuleImports, !DepsMap) :-
 read_dependencies(Globals, ModuleName, Search, ModuleImportsList, !IO) :-
     read_module_ignore_errors(Globals, ModuleName, ".m",
         "Getting dependencies for module", Search, do_not_return_timestamp,
-        Items0, Error, FileName0, _, !IO),
+        Items0, Errors, FileName0, _, !IO),
     (
         Items0 = [],
-        Error = fatal_module_errors
+        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+        set.non_empty(FatalErrors)
     ->
         read_module_ignore_errors(Globals, ModuleName, ".int",
             "Getting dependencies for module interface", Search,
-            do_not_return_timestamp, Items, _Error, FileName, _, !IO),
+            do_not_return_timestamp, Items, _Errors, FileName, _, !IO),
         SubModuleList = [ModuleName - Items]
     ;
         FileName = FileName0,
@@ -222,7 +223,7 @@ read_dependencies(Globals, ModuleName, Search, ModuleImportsList, !IO) :-
     ),
     assoc_list.keys(SubModuleList, SubModuleNames),
     list.map(init_dependencies(FileName, ModuleName, SubModuleNames,
-        [], Error, Globals), SubModuleList, ModuleImportsList).
+        [], Errors, Globals), SubModuleList, ModuleImportsList).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.deps_map.
