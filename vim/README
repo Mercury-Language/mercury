@@ -2,37 +2,42 @@ Mercury Syntax Highlighting Under Vim 6.0+
 
 1. Create a diretory `~/.vim':
 
-	$ mkdir ~/.vim
+    $ mkdir ~/.vim
 
 2. Copy everything recursively from this directory into `~/.vim':
 
-	$ cp -r . ~/.vim
+    $ cp -r . ~/.vim
 
 3. Ensure you have the following lines in your `~/.vimrc' file:
 
-	filetype on
-	filetype plugin on
-	syntax enable
-	set modeline
+    filetype on
+    filetype plugin on
+    syntax enable
 
 4. It is advisable to have the following file encoding detection lines
 in your ~/.vimrc:
 
-	if has("multi_byte")
-	  set encoding=utf-8
-	  setglobal fileencoding=utf-8
-	  if &termencoding == ""
-	    let &termencoding = &encoding
-	  endif
-	endif
+    if has("multi_byte")
+      set encoding=utf-8
+      setglobal fileencoding=utf-8
+      if &termencoding == ""
+        let &termencoding = &encoding
+      endif
+    endif
 
-5. If you wish to change the colour scheme used by Vim's syntax highlighting,
+5. Optionally enable modeline detection.  This configures vim to use the
+"vim:" lines at the beginning of some source files to configure settings
+local to that file.
+
+    set modeline
+
+6. If you wish to change the colour scheme used by Vim's syntax highlighting,
 we suggest you put the necessary commands in `~/.vim/colors/mycolours.vim'
 and append the following to the above list of commands in your `~/.vimrc':
 
-	colors mycolours
+    colors mycolours
 
-6. Vim will load `~/.vim/syntax/mercury.vim' and `~/.vim/ftplugin/mercury.vim'
+7. Vim will load `~/.vim/syntax/mercury.vim' and `~/.vim/ftplugin/mercury.vim'
 automatically when opening a .m or .moo file.
 
 The syntax file describes two options you may wish to alter from your
