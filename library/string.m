@@ -2719,7 +2719,7 @@ string.format(FormatString, PolyList, String) :-
 #include <stdio.h>
 
 #include ""mercury_string.h""   /* for MR_allocate_aligned_string*() etc. */
-#include ""mercury_tags.h"" /* for MR_list_cons*() */
+#include ""mercury_tags.h""     /* for MR_list_cons*() */
 ").
 
 %-----------------------------------------------------------------------------%

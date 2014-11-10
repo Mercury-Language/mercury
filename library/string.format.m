@@ -8,7 +8,7 @@
 %
 % File: string.format.m.
 %
-% This modules implement string.format.
+% This module implements string.format.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -38,13 +38,6 @@
 
 :- pragma foreign_decl("C",
 "
-#include <ctype.h>
-#include <string.h>
-#include <stdio.h>
-
-#include ""mercury_string.h""   /* for MR_allocate_aligned_string*() etc. */
-#include ""mercury_tags.h"" /* for MR_list_cons*() */
-
 /*
 ** The following macro should expand to MR_TRUE if the C grades should
 ** implement string.format using C's sprintf function.
@@ -54,6 +47,73 @@
 #define ML_USE_SPRINTF MR_TRUE
 ").
 
+%---------------------------------------------------------------------------%
+
+:- type flag_hash
+    --->    flag_hash_clear
+    ;       flag_hash_set.
+
+:- type flag_space
+    --->    flag_space_clear
+    ;       flag_space_set.
+
+:- type flag_zero
+    --->    flag_zero_clear
+    ;       flag_zero_set.
+
+:- type flag_minus
+    --->    flag_minus_clear
+    ;       flag_minus_set.
+
+:- type flag_plus
+    --->    flag_plus_clear
+    ;       flag_plus_set.
+
+:- type flags
+    --->    flags(
+                flag_hash       :: flag_hash,
+                flag_space      :: flag_space,
+                flag_zero       :: flag_zero,
+                flag_minus      :: flag_minus,
+                flag_plus       :: flag_plus
+            ).
+
+:- type maybe_width == maybe(int).
+:- type maybe_prec == maybe(int).
+
+:- type int_base
+    --->    base_octal
+    ;       base_decimal
+    ;       base_hex_lc     % use spec_case?
+    ;       base_hex_uc
+    ;       base_hex_p.
+
+:- type float_kind
+    --->    kind_e_scientific_lc
+    ;       kind_e_scientific_uc
+    ;       kind_f_plain_lc
+    ;       kind_f_plain_uc
+    ;       kind_g_flexible_lc
+    ;       kind_g_flexible_uc.
+
+:- type spec_case
+    --->    case_is_capital
+    ;       case_is_not_capital.
+
+:- type spec(I, F, C, S)
+    --->    spec_percent
+    ;       spec_signed_int(flags, maybe_width, maybe_prec, I)
+    ;       spec_unsigned_int(flags, maybe_width, maybe_prec, int_base, I)
+    ;       spec_float(flags, maybe_width, maybe_prec, float_kind, F)
+    ;       spec_char(flags, maybe_width, maybe_prec, C)
+    ;       spec_string(flags, maybe_width, maybe_prec, S).
+
+:- type spec == spec(int, float, char, string).
+
+:- type format_str_component
+    --->    comp_str(list(char))
+    ;       comp_conv_spec(spec).
+
 %-----------------------------------------------------------------------------%
 
 string.format.format_impl(FormatString, PolyList, String) :-
@@ -61,38 +121,28 @@ string.format.format_impl(FormatString, PolyList, String) :-
     % -- memory usage is a significant problem for programs which do a lot of
     % formatted IO.
     Chars = to_char_list(FormatString),
-    format_string_to_components(Specifiers, PolyList, PolyListLeftOver,
-        Chars, CharsLeftOver),
+    format_string_to_components(Chars, CharsLeftOver,
+        PolyList, PolyListLeftOver, Components),
     (
         PolyListLeftOver = [],
         CharsLeftOver = []
     ->
-        components_to_strings(Specifiers, SpecStrs),
-        String = string.append_list(SpecStrs)
+        components_to_strings(Components, ComponentStrs),
+        String = string.append_list(ComponentStrs)
     ;
         error("string.format: format string invalid.")
     ).
-
-:- type format_str_component
-    --->    comp_str(list(char))
-    ;       comp_conv(
-                % We should consider using a tuple of bools to represent flags.
-                flags       :: list(char),
-                width       :: maybe(int),
-                precision   :: maybe(int),
-                spec        :: spec
-            ).
 
     % This predicate parses as much of a format string as it can.
     % It stops parsing when it encounters something that looks like
     % a conversion specification (i.e. it starts with a '%' character),
     % but which cannot be parsed as one.
     %
-:- pred format_string_to_components(list(format_str_component)::out,
+:- pred format_string_to_components(list(char)::in, list(char)::out,
     list(string.poly_type)::in, list(string.poly_type)::out,
-    list(char)::in, list(char)::out) is det.
+    list(format_str_component)::out) is det.
 
-format_string_to_components(Specifiers, !PolyTypes, !Chars) :-
+format_string_to_components(!Chars, !PolyTypes, Components) :-
     gather_non_percent_chars(NonConversionSpecChars, !Chars),
     ( !.Chars = ['%' | !:Chars] ->
         % NOTE conversion_specification could return a list of errors,
@@ -101,19 +151,19 @@ format_string_to_components(Specifiers, !PolyTypes, !Chars) :-
         % Unfortunately, in the common cases of missing or extra PolyTypes,
         % all the errors after the first would be avalanche errors,
         % and would probably be more confusing than helpful.
-        parse_conversion_specification(ConversionSpec, !PolyTypes, !Chars),
-        format_string_to_components(SpecifiersTail, !PolyTypes, !Chars),
-        Specifiers0 = [ConversionSpec | SpecifiersTail]
+        parse_conversion_specification(!Chars, !PolyTypes, ConvComponent),
+        format_string_to_components(!Chars, !PolyTypes, ComponentsTail),
+        Components0 = [ConvComponent | ComponentsTail]
     ;
-        Specifiers0 = []
+        Components0 = []
     ),
     (
         NonConversionSpecChars = [],
-        Specifiers = Specifiers0
+        Components = Components0
     ;
         NonConversionSpecChars = [_ | _],
-        NonConversionSpec = comp_str(NonConversionSpecChars),
-        Specifiers = [NonConversionSpec | Specifiers0]
+        StringComponent = comp_str(NonConversionSpecChars),
+        Components = [StringComponent | Components0]
     ).
 
     % Parse a string which doesn't contain any conversion specifications.
@@ -137,32 +187,38 @@ gather_non_percent_chars(Result, !Chars) :-
     % In between there may be (in this order) zero or more flags, an optional
     % minimum field width, and an optional precision.
     %
-:- pred parse_conversion_specification(format_str_component::out,
+:- pred parse_conversion_specification(list(char)::in, list(char)::out,
     list(string.poly_type)::in, list(string.poly_type)::out,
-    list(char)::in, list(char)::out) is det.
+    format_str_component::out) is det.
 
-parse_conversion_specification(Specifier, !PolyTypes, !Chars) :-
-    gather_flag_chars(Flags, !Chars),
-    get_optional_width(MaybeWidth, !PolyTypes, !Chars),
-    get_optional_prec(MaybePrec, !PolyTypes, !Chars),
-    ( spec(Spec, !PolyTypes, !Chars) ->
-        Specifier = comp_conv(Flags, MaybeWidth, MaybePrec, Spec)
+parse_conversion_specification(!Chars, !PolyTypes, Component) :-
+    Flags0 = flags(flag_hash_clear, flag_space_clear, flag_zero_clear,
+        flag_minus_clear, flag_plus_clear),
+    gather_flag_chars(!Chars, Flags0, Flags),
+    get_optional_width(!Chars, !PolyTypes, MaybeWidth),
+    get_optional_prec(!Chars, !PolyTypes, MaybePrec),
+    ( get_first_spec(!Chars, !PolyTypes, Flags, MaybeWidth, MaybePrec, Spec) ->
+        Component = comp_conv_spec(Spec)
     ;
         error("string.format: invalid conversion specifier.")
     ).
 
-:- pred gather_flag_chars(list(char)::out,
-    list(char)::in, list(char)::out) is det.
+:- pred gather_flag_chars(list(char)::in, list(char)::out,
+    flags::in, flags::out) is det.
 
-gather_flag_chars(FlagChars, !Chars) :-
+gather_flag_chars(!Chars, !Flags) :-
     (
         !.Chars = [Char | !:Chars],
-        is_flag_char(Char)
+        ( Char = '#',   !Flags ^ flag_hash  := flag_hash_set
+        ; Char = ' ',   !Flags ^ flag_space := flag_space_set
+        ; Char = '0',   !Flags ^ flag_zero  := flag_zero_set
+        ; Char = ('-'), !Flags ^ flag_minus := flag_minus_set
+        ; Char = ('+'), !Flags ^ flag_plus  := flag_plus_set
+        )
     ->
-        gather_flag_chars(TailFlagChars, !Chars),
-        FlagChars = [Char | TailFlagChars]
+        gather_flag_chars(!Chars, !Flags)
     ;
-        FlagChars = []
+        true
     ).
 
     % Is it a valid flag character?
@@ -177,11 +233,11 @@ is_flag_char('+').
 
     % Do we have a minimum field width? If yes, get it.
     %
-:- pred get_optional_width(maybe(int)::out,
+:- pred get_optional_width(list(char)::in, list(char)::out,
     list(string.poly_type)::in, list(string.poly_type)::out,
-    list(char)::in, list(char)::out) is det.
+    maybe_width::out) is det.
 
-get_optional_width(MaybeWidth, !PolyTypes, !Chars) :-
+get_optional_width(!Chars, !PolyTypes, MaybeWidth) :-
     ( !.Chars = ['*' | !:Chars] ->
         ( !.PolyTypes = [i(PolyWidth) | !:PolyTypes] ->
             MaybeWidth = yes(PolyWidth)
@@ -189,7 +245,7 @@ get_optional_width(MaybeWidth, !PolyTypes, !Chars) :-
             error("string.format",
                 "`*' width modifier not associated with an integer.")
         )
-    ; get_nonzero_number_prefix(Width, !Chars) ->
+    ; get_nonzero_number_prefix(!Chars, Width) ->
         MaybeWidth = yes(Width)
     ;
         MaybeWidth = no
@@ -197,11 +253,11 @@ get_optional_width(MaybeWidth, !PolyTypes, !Chars) :-
 
     % Do we have a precision? If yes, get it.
     %
-:- pred get_optional_prec(maybe(int)::out,
+:- pred get_optional_prec(list(char)::in, list(char)::out,
     list(string.poly_type)::in, list(string.poly_type)::out,
-    list(char)::in, list(char)::out) is det.
+    maybe_prec::out) is det.
 
-get_optional_prec(MaybePrec, !PolyTypes, !Chars) :-
+get_optional_prec(!Chars, !PolyTypes, MaybePrec) :-
     ( !.Chars = ['.' | !:Chars] ->
         ( !.Chars = ['*' | !:Chars] ->
             ( !.PolyTypes = [i(PolyPrec) | !:PolyTypes] ->
@@ -211,103 +267,117 @@ get_optional_prec(MaybePrec, !PolyTypes, !Chars) :-
                     "`*' precision modifier not associated with an integer.")
             )
         ;
-            get_number_prefix(0, Prec, !Chars)
+            get_number_prefix(!Chars, 0, Prec)
         ),
         MaybePrec = yes(Prec)
     ;
         MaybePrec = no
     ).
 
-:- pred get_nonzero_number_prefix(int::out, list(char)::in, list(char)::out)
-    is semidet.
+:- pred get_nonzero_number_prefix(list(char)::in, list(char)::out,
+    int::out) is semidet.
 
-get_nonzero_number_prefix(N, !Chars) :-
+get_nonzero_number_prefix(!Chars, N) :-
     !.Chars = [Char | !:Chars],
     Char \= '0',
     char.decimal_digit_to_int(Char, CharValue),
-    get_number_prefix(CharValue, N, !Chars).
+    get_number_prefix(!Chars, CharValue, N).
 
-:- pred get_number_prefix(int::in, int::out, list(char)::in, list(char)::out)
-    is det.
+:- pred get_number_prefix(list(char)::in, list(char)::out,
+    int::in, int::out) is det.
 
-get_number_prefix(N0, N, !Chars) :-
+get_number_prefix(!Chars, N0, N) :-
     (
         !.Chars = [Char | !:Chars],
         char.decimal_digit_to_int(Char, CharValue)
     ->
         N1 = N0 * 10 + CharValue,
-        get_number_prefix(N1, N, !Chars)
+        get_number_prefix(!Chars, N1, N)
     ;
         N = N0
     ).
 
-% NOTE the capital letter specifiers are preceded with a 'c'.
-:- type spec
-            % valid integer specifiers
-    --->    d(int)
-    ;       i(int)
-    ;       o(int)
-    ;       u(int)
-    ;       x(int)
-    ;       cX(int)
-    ;       p(int)
-
-            % valid float specifiers
-    ;       e(float)
-    ;       cE(float)
-    ;       f(float)
-    ;       cF(float)
-    ;       g(float)
-    ;       cG(float)
-
-            % valid char specifiers
-    ;       c(char)
-
-            % valid string specifiers
-    ;       s(string)
-
-            % specifier representing "%%"
-    ;       percent.
-
-    % Is the spec a capital letter?
-    %
-:- type spec_case
-    --->    spec_is_capital
-    ;       spec_is_not_capital.
+%---------------------------------------------------------------------------%
 
     % Do we have a valid conversion specifier?
     % We check to ensure that the specifier also matches the type
     % from the input list.
     %
-:- pred spec(spec::out,
+:- pred get_first_spec(list(char)::in, list(char)::out,
     list(string.poly_type)::in, list(string.poly_type)::out,
-    list(char)::in, list(char)::out) is semidet.
+    flags::in, maybe_width::in, maybe_prec::in, spec::out) is semidet.
 
-% Valid integer conversion specifiers.
-spec(d(Int),  [i(Int) | Ps], Ps, !Chars) :- !.Chars = ['d' | !:Chars].
-spec(i(Int),  [i(Int) | Ps], Ps, !Chars) :- !.Chars = ['i' | !:Chars].
-spec(o(Int),  [i(Int) | Ps], Ps, !Chars) :- !.Chars = ['o' | !:Chars].
-spec(u(Int),  [i(Int) | Ps], Ps, !Chars) :- !.Chars = ['u' | !:Chars].
-spec(x(Int),  [i(Int) | Ps], Ps, !Chars) :- !.Chars = ['x' | !:Chars].
-spec(cX(Int), [i(Int) | Ps], Ps, !Chars) :- !.Chars = ['X' | !:Chars].
-spec(p(Int),  [i(Int) | Ps], Ps, !Chars) :- !.Chars = ['p' | !:Chars].
-
-% Valid float conversion specifiers.
-spec(e(Float),  [f(Float) | Ps], Ps, !Chars) :- !.Chars = ['e' | !:Chars].
-spec(cE(Float), [f(Float) | Ps], Ps, !Chars) :- !.Chars = ['E' | !:Chars].
-spec(f(Float),  [f(Float) | Ps], Ps, !Chars) :- !.Chars = ['f' | !:Chars].
-spec(cF(Float), [f(Float) | Ps], Ps, !Chars) :- !.Chars = ['F' | !:Chars].
-spec(g(Float),  [f(Float) | Ps], Ps, !Chars) :- !.Chars = ['g' | !:Chars].
-spec(cG(Float), [f(Float) | Ps], Ps, !Chars) :- !.Chars = ['G' | !:Chars].
-
-% Valid char conversion specifiers.
-spec(c(Char), [c(Char) | Ps], Ps, !Chars) :- !.Chars = ['c' | !:Chars].
-
-% Valid string conversion specifiers.
-spec(s(Str), [s(Str) | Ps], Ps, !Chars) :- !.Chars = ['s' | !:Chars].
-
-% Conversion specifier representing the "%" sign.
-spec(percent, Ps, Ps, !Chars) :- !.Chars = ['%' | !:Chars].
+get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, Spec) :-
+    !.Chars = [SpecChar | !:Chars],
+    (
+        SpecChar = '%',
+        Spec = spec_percent
+    ;
+        (
+            SpecChar = 'd'
+        ;
+            SpecChar = 'i'
+        ),
+        !.PolyTypes = [SpecPolyType | !:PolyTypes],
+        SpecPolyType = i(Int),
+        % Base is always decimal
+        Spec = spec_signed_int(!.Flags, MaybeWidth, MaybePrec, Int)
+    ;
+        (
+            SpecChar = 'o',
+            Base = base_octal
+        ;
+            SpecChar = 'u',
+            Base = base_decimal
+        ;
+            SpecChar = 'x',
+            Base = base_hex_lc
+        ;
+            SpecChar = 'X',
+            Base = base_hex_uc
+        ;
+            SpecChar = 'p',
+            Base = base_hex_p,
+            % XXX This should not be necessary.
+            !Flags ^ flag_hash := flag_hash_set
+        ),
+        !.PolyTypes = [SpecPolyType | !:PolyTypes],
+        SpecPolyType = i(Int),
+        Spec = spec_unsigned_int(!.Flags, MaybeWidth, MaybePrec, Base, Int)
+    ;
+        (
+            SpecChar = 'e',
+            FloatKind = kind_e_scientific_lc
+        ;
+            SpecChar = 'E',
+            FloatKind = kind_e_scientific_uc
+        ;
+            SpecChar = 'f',
+            FloatKind = kind_f_plain_lc
+        ;
+            SpecChar = 'F',
+            FloatKind = kind_f_plain_uc
+        ;
+            SpecChar = 'g',
+            FloatKind = kind_g_flexible_lc
+        ;
+            SpecChar = 'G',
+            FloatKind = kind_g_flexible_uc
+        ),
+        !.PolyTypes = [SpecPolyType | !:PolyTypes],
+        SpecPolyType = f(Float),
+        Spec = spec_float(!.Flags, MaybeWidth, MaybePrec, FloatKind, Float)
+    ;
+        SpecChar = 'c',
+        !.PolyTypes = [SpecPolyType | !:PolyTypes],
+        SpecPolyType = c(Char),
+        Spec = spec_char(!.Flags, MaybeWidth, MaybePrec, Char)
+    ;
+        SpecChar = 's',
+        !.PolyTypes = [SpecPolyType | !:PolyTypes],
+        SpecPolyType = s(Str),
+        Spec = spec_string(!.Flags, MaybeWidth, MaybePrec, Str)
+    ).
 
 :- pred components_to_strings(list(format_str_component)::in,
     list(string)::out) is det.
@@ -323,187 +393,95 @@ component_to_string(Component, String) :-
     Component = comp_str(Chars),
     String = string.from_char_list(Chars).
 component_to_string(Component, String) :-
-    Component = comp_conv(Flags, Width, Prec, Spec),
+    Component = comp_conv_spec(Spec),
     (
-        % Valid int conversion specifiers.
-        Spec = d(Int),
+        % Conversion specifier representing the "%" sign.
+        Spec = spec_percent,
+        String = "%"
+    ;
+        % Signed int conversion specifiers.
+        Spec = spec_signed_int(Flags, MaybeWidth, MaybePrec, Int),
         ( using_sprintf ->
-            FormatStr = make_format(Flags, Width, Prec, int_length_modifer,
-                "d"),
+            % XXX The "d" could be "i"; we don't keep track.
+            FormatStr = make_format(Flags, MaybeWidth, MaybePrec,
+                int_length_modifer, "d"),
             String = native_format_int(FormatStr, Int)
         ;
-            String = format_int(Flags, Width, Prec, Int)
+            String = format_int(Flags, MaybeWidth, MaybePrec, Int)
         )
     ;
-        Spec = i(Int),
+        % Unsigned int conversion specifiers.
+        Spec = spec_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int),
         ( using_sprintf ->
-            FormatStr = make_format(Flags, Width, Prec, int_length_modifer,
-                "i"),
+            ( Base = base_octal,   SpecChar = "o"
+            ; Base = base_decimal, SpecChar = "u"
+            ; Base = base_hex_lc,  SpecChar = "x"
+            ; Base = base_hex_uc,  SpecChar = "X"
+            ; Base = base_hex_p,   SpecChar = "p"
+            ),
+            FormatStr = make_format(Flags, MaybeWidth, MaybePrec,
+                int_length_modifer, SpecChar),
             String = native_format_int(FormatStr, Int)
         ;
-            String = format_int(Flags, Width, Prec, Int)
+            String = gen_format_unsigned_int(Flags, MaybeWidth, MaybePrec,
+                Base, Int)
         )
     ;
-        Spec = o(Int),
-        ( using_sprintf ->
-            FormatStr = make_format(Flags, Width, Prec, int_length_modifer,
-                "o"),
-            String = native_format_int(FormatStr, Int)
-        ;
-            String = format_unsigned_int(Flags, Width, Prec,
-                8, Int, no, "")
-        )
-    ;
-        Spec = u(Int),
-        ( using_sprintf ->
-            FormatStr = make_format(Flags, Width, Prec, int_length_modifer,
-                "u"),
-            String = native_format_int(FormatStr, Int)
-        ;
-            String = format_unsigned_int(Flags, Width, Prec,
-                10, Int, no, "")
-        )
-    ;
-        Spec = x(Int),
-        ( using_sprintf ->
-            FormatStr = make_format(Flags, Width, Prec, int_length_modifer,
-                "x"),
-            String = native_format_int(FormatStr, Int)
-        ;
-            String = format_unsigned_int(Flags, Width, Prec,
-                16, Int, no, "0x")
-        )
-    ;
-        Spec = cX(Int),
-        ( using_sprintf ->
-            FormatStr = make_format(Flags, Width, Prec, int_length_modifer,
-                "X"),
-            String = native_format_int(FormatStr, Int)
-        ;
-            String = format_unsigned_int(Flags, Width, Prec,
-                16, Int, no, "0X")
-        )
-    ;
-        Spec = p(Int),
-        ( using_sprintf ->
-            FormatStr = make_format(Flags, Width, Prec, int_length_modifer,
-                "p"),
-            String = native_format_int(FormatStr, Int)
-        ;
-            String = format_unsigned_int(['#' | Flags], Width, Prec,
-                16, Int, yes, "0x")
-        )
-    ;
-        % Valid float conversion specifiers.
-        Spec = e(Float),
+        % Float conversion specifiers.
+        Spec = spec_float(Flags, MaybeWidth, MaybePrec, Kind, Float),
         (
             is_finite(Float),
             using_sprintf
         ->
-            FormatStr = make_format(Flags, Width, Prec, "", "e"),
+            ( Kind = kind_e_scientific_lc, SpecChar = "e"
+            ; Kind = kind_e_scientific_uc, SpecChar = "E"
+            ; Kind = kind_f_plain_lc,      SpecChar = "f"
+            ; Kind = kind_f_plain_uc,      SpecChar = "F"
+            ; Kind = kind_g_flexible_lc,   SpecChar = "g"
+            ; Kind = kind_g_flexible_uc,   SpecChar = "G"
+            ),
+            FormatStr = make_format(Flags, MaybeWidth, MaybePrec,
+                "", SpecChar),
             String = native_format_float(FormatStr, Float)
         ;
-            String = format_scientific_number(Flags, spec_is_not_capital,
-                Width, Prec, Float, "e")
-        )
-    ;
-        Spec = cE(Float),
-        (
-            is_finite(Float),
-            using_sprintf
-        ->
-            FormatStr = make_format(Flags, Width, Prec, "", "E"),
-            String = native_format_float(FormatStr, Float)
-        ;
-            String = format_scientific_number(Flags, spec_is_capital,
-                Width, Prec, Float, "E")
-        )
-    ;
-        Spec = f(Float),
-        (
-            is_finite(Float),
-            using_sprintf
-        ->
-            FormatStr = make_format(Flags, Width, Prec, "", "f"),
-            String = native_format_float(FormatStr, Float)
-        ;
-            String = format_float(Flags, spec_is_not_capital, Width, Prec,
+            String = gen_format_float(Flags, MaybeWidth, MaybePrec, Kind,
                 Float)
         )
     ;
-        Spec = cF(Float),
-        (
-            is_finite(Float),
-            using_sprintf
-        ->
-            FormatStr = make_format(Flags, Width, Prec, "", "F"),
-            String = native_format_float(FormatStr, Float)
-        ;
-            String = format_float(Flags, spec_is_capital, Width, Prec, Float)
-        )
-    ;
-        Spec = g(Float),
-        (
-            is_finite(Float),
-            using_sprintf
-        ->
-            FormatStr = make_format(Flags, Width, Prec, "", "g"),
-            String = native_format_float(FormatStr, Float)
-        ;
-            String = format_scientific_number_g(Flags, spec_is_not_capital,
-                Width, Prec, Float, "e")
-        )
-    ;
-        Spec = cG(Float),
-        (
-            is_finite(Float),
-            using_sprintf
-        ->
-            FormatStr = make_format(Flags, Width, Prec, "", "G"),
-            String = native_format_float(FormatStr, Float)
-        ;
-            String = format_scientific_number_g(Flags, spec_is_capital,
-                Width, Prec, Float, "E")
-        )
-    ;
-        % Valid char conversion specifiers.
-        Spec = c(Char),
+        % Char conversion specifiers.
+        Spec = spec_char(Flags, MaybeWidth, MaybePrec, Char),
         ( using_sprintf_for_char(Char) ->
-            FormatStr = make_format(Flags, Width, Prec, "", "c"),
+            FormatStr = make_format(Flags, MaybeWidth, MaybePrec, "", "c"),
             String = native_format_char(FormatStr, Char)
         ;
-            String = format_char(Flags, Width, Char)
+            String = format_char(Flags, MaybeWidth, Char)
         )
     ;
-        % Valid string conversion specifiers.
-        Spec = s(Str),
+        % String conversion specifiers.
+        Spec = spec_string(Flags, MaybeWidth, MaybePrec, Str),
         (
             (
                 using_sprintf,
-                Flags = [],
-                Width = no,
-                Prec = no
+                Flags = flags(flag_hash_clear, flag_space_clear,
+                    flag_zero_clear, flag_minus_clear, flag_plus_clear),
+                MaybeWidth = no,
+                MaybePrec = no
             ;
                 using_sprintf_for_string(Str)
             )
         ->
-            FormatStr = make_format(Flags, Width, Prec, "", "s"),
+            FormatStr = make_format(Flags, MaybeWidth, MaybePrec, "", "s"),
             String = native_format_string(FormatStr, Str)
         ;
-            String = format_string(Flags, Width, Prec, Str)
+            String = format_string(Flags, MaybeWidth, MaybePrec, Str)
         )
-    ;
-        % Conversion specifier representing the "%" sign.
-        Spec = percent,
-        String = "%"
     ).
 
 %-----------------------------------------------------------------------------%
 
     % Construct a format string.
     %
-:- func make_format(list(char), maybe(int), maybe(int), string, string)
-    = string.
+:- func make_format(flags, maybe_width, maybe_prec, string, string) = string.
 
 make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
     ( using_sprintf ->
@@ -587,10 +565,26 @@ using_sprintf_for_string(_) :-
 
     % Construct a format string suitable to passing to sprintf.
     %
-:- func make_format_sprintf(list(char), maybe(int), maybe(int), string,
+:- func make_format_sprintf(flags, maybe_width, maybe_prec, string,
     string) = string.
 
 make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
+    Flags = flags(FlagHash, FlagSpace, FlagZero, FlagMinus, FlagPlus),
+    ( FlagHash  = flag_hash_clear,  FlagHashStr  = ""
+    ; FlagHash  = flag_hash_set,    FlagHashStr  = "#"
+    ),
+    ( FlagSpace = flag_space_clear, FlagSpaceStr = ""
+    ; FlagSpace = flag_space_set,   FlagSpaceStr = " "
+    ),
+    ( FlagZero  = flag_zero_clear,  FlagZeroStr  = ""
+    ; FlagZero  = flag_zero_set,    FlagZeroStr  = "0"
+    ),
+    ( FlagMinus = flag_minus_clear, FlagMinusStr = ""
+    ; FlagMinus = flag_minus_set,   FlagMinusStr = "-"
+    ),
+    ( FlagPlus  = flag_plus_clear,  FlagPlusStr  = ""
+    ; FlagPlus  = flag_plus_set,    FlagPlusStr  = "+"
+    ),
     (
         MaybeWidth = yes(Width),
         WidthStr = int_to_string(Width)
@@ -607,7 +601,8 @@ make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
         PrecPrefixStr = "",
         PrecStr = ""
     ),
-    String = string.append_list(["%", from_char_list(Flags),
+    String = string.append_list(["%",
+        FlagHashStr, FlagSpaceStr, FlagZeroStr, FlagMinusStr, FlagPlusStr,
         WidthStr, PrecPrefixStr, PrecStr, LengthMod, Spec]).
 
     % Construct a format string suitable to passing to .NET's formatting
@@ -615,7 +610,7 @@ make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
     % XXX this code is not yet complete. We need to do a lot more work
     % to make this work perfectly.
     %
-:- func make_format_dotnet(list(char), maybe(int), maybe(int), string,
+:- func make_format_dotnet(flags, maybe_width, maybe_prec, string,
     string) = string.
 
 make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0)
@@ -751,40 +746,36 @@ native_format_char(_, _) = _ :-
 
 %-----------------------------------------------------------------------------%
 
-:- type flags == list(char).
-:- type maybe_width == maybe(int).
-:- type maybe_precision == maybe(int).
-
-    % Format a character (c).
+    % Format a character.
     %
 :- func format_char(flags, maybe_width, char) = string.
 
-format_char(Flags, Width, Char) = String :-
+format_char(Flags, MaybeWidth, Char) = String :-
     CharStr = string.char_to_string(Char),
-    String = justify_string(Flags, Width, CharStr).
+    String = justify_string(Flags, MaybeWidth, CharStr).
 
-    % Format a string (s).
+    % Format a string.
     %
-:- func format_string(flags, maybe_width, maybe_precision, string) = string.
+:- func format_string(flags, maybe_width, maybe_prec, string) = string.
 
-format_string(Flags, Width, Prec, OldStr) = NewStr :-
+format_string(Flags, MaybeWidth, MaybePrec, OldStr) = NewStr :-
     (
-        Prec = yes(NumChars),
+        MaybePrec = yes(NumChars),
         PrecStr = string.left_by_codepoint(OldStr, NumChars)
     ;
-        Prec = no,
+        MaybePrec = no,
         PrecStr = OldStr
     ),
-    NewStr = justify_string(Flags, Width, PrecStr).
+    NewStr = justify_string(Flags, MaybeWidth, PrecStr).
 
-:- func format_int(flags, maybe_width, maybe_precision, int) = string.
+:- func format_int(flags, maybe_width, maybe_prec, int) = string.
 
-format_int(Flags, Width, Prec, Int) = String :-
+format_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
     % Find the integer's absolute value, and take care of the special case
     % of precision zero with an integer of 0.
     (
         Int = 0,
-        Prec = yes(0)
+        MaybePrec = yes(0)
     ->
         AbsIntStr = ""
     ;
@@ -796,23 +787,23 @@ format_int(Flags, Width, Prec, Int) = String :-
 
     % Do we need to increase precision?
     (
-        Prec = yes(Precision),
-        Precision > AbsIntStrLength
+        MaybePrec = yes(Prec),
+        Prec > AbsIntStrLength
     ->
-        PrecStr = string.pad_left(AbsIntStr, '0', Precision)
+        PrecStr = string.pad_left(AbsIntStr, '0', Prec)
     ;
         PrecStr = AbsIntStr
     ),
 
     % Do we need to pad to the field width?
     (
-        Width = yes(FieldWidth),
-        FieldWidth > string.count_codepoints(PrecStr),
-        member('0', Flags),
-        \+ member('-', Flags),
-        Prec = no
+        MaybeWidth = yes(Width),
+        Width > string.count_codepoints(PrecStr),
+        Flags ^ flag_zero = flag_zero_set,
+        Flags ^ flag_minus = flag_minus_clear,
+        MaybePrec = no
     ->
-        FieldStr = string.pad_left(PrecStr, '0', FieldWidth - 1),
+        FieldStr = string.pad_left(PrecStr, '0', Width - 1),
         ZeroPadded = yes
     ;
         FieldStr = PrecStr,
@@ -822,20 +813,36 @@ format_int(Flags, Width, Prec, Int) = String :-
     % Prefix with appropriate sign or zero padding.
     % The previous step has deliberately left room for this.
     SignedStr = add_int_prefix_if_needed(Flags, ZeroPadded, Int, FieldStr),
-    String = justify_string(Flags, Width, SignedStr).
+    String = justify_string(Flags, MaybeWidth, SignedStr).
+
+:- func gen_format_unsigned_int(flags, maybe_width, maybe_prec, int_base,
+    int) = string.
+
+gen_format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
+    % XXX The octal prefix used to be "".
+    ( Base = base_octal,   BaseNum =  8, IsP =  no, Prefix = "0"
+    ; Base = base_decimal, BaseNum = 10, IsP =  no, Prefix = ""
+    ; Base = base_hex_lc,  BaseNum = 16, IsP =  no, Prefix = "0x"
+    ; Base = base_hex_uc,  BaseNum = 16, IsP =  no, Prefix = "0X"
+    ; Base = base_hex_p,   BaseNum = 16, IsP = yes, Prefix = "0x"
+    ),
+    % XXX arglist
+    String = format_unsigned_int(Flags, MaybeWidth, MaybePrec,
+        BaseNum, Int, IsP, Prefix).
 
     % Format an unsigned int, unsigned octal, or unsigned hexadecimal
     % (u,o,x,X).
     %
-:- func format_unsigned_int(flags, maybe_width, maybe_precision,
+:- func format_unsigned_int(flags, maybe_width, maybe_prec,
     int, int, bool, string) = string.
 
-format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
+format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int, IsTypeP, Prefix)
+        = String :-
     % Find the integer's absolute value, and take care of the special case
     % of precision zero with an integer of 0.
     (
         Int = 0,
-        Prec = yes(0)
+        MaybePrec = yes(0)
     ->
         AbsIntStr = ""
     ;
@@ -844,11 +851,11 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
         ( Base = 10 ->
             AbsIntStr0 = integer.to_string(UnsignedInteger)
         ; Base = 8 ->
-            AbsIntStr0 = to_octal(UnsignedInteger)
+            AbsIntStr0 = abs_integer_to_octal(UnsignedInteger)
         ; Prefix = "0x" ->
-            AbsIntStr0 = to_hex(UnsignedInteger)
+            AbsIntStr0 = abs_integer_to_hex_lc(UnsignedInteger)
         ;
-            AbsIntStr0 = to_capital_hex(UnsignedInteger)
+            AbsIntStr0 = abs_integer_to_hex_uc(UnsignedInteger)
         ),
 
         % Just in case Int = 0 (base converters return "").
@@ -862,10 +869,10 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
 
     % Do we need to increase precision?
     (
-        Prec = yes(Precision),
-        Precision > AbsIntStrLength
+        MaybePrec = yes(Prec),
+        Prec > AbsIntStrLength
     ->
-        PrecStr = string.pad_left(AbsIntStr, '0', Precision)
+        PrecStr = string.pad_left(AbsIntStr, '0', Prec)
     ;
         PrecStr = AbsIntStr
     ),
@@ -873,7 +880,7 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
     % Do we need to increase the precision of an octal?
     (
         Base = 8,
-        member('#', Flags),
+        Flags ^ flag_hash = flag_hash_set,
         \+ string.prefix(PrecStr, "0")
     ->
         PrecModStr = append("0", PrecStr)
@@ -883,23 +890,23 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
 
     % Do we need to pad to the field width?
     (
-        Width = yes(FieldWidth),
-        FieldWidth > string.count_codepoints(PrecModStr),
-        member('0', Flags),
-        \+ member('-', Flags),
-        Prec = no
+        MaybeWidth = yes(Width),
+        Width > string.count_codepoints(PrecModStr),
+        Flags ^ flag_zero = flag_zero_set,
+        Flags ^ flag_minus = flag_minus_clear,
+        MaybePrec = no
     ->
         % Do we need to make room for "0x" or "0X" ?
         (
             Base = 16,
-            member('#', Flags),
+            Flags ^ flag_hash = flag_hash_set,
             ( Int \= 0
             ; IsTypeP = yes
             )
         ->
-            FieldStr = string.pad_left(PrecModStr, '0', FieldWidth - 2)
+            FieldStr = string.pad_left(PrecModStr, '0', Width - 2)
         ;
-            FieldStr = string.pad_left(PrecModStr, '0', FieldWidth)
+            FieldStr = string.pad_left(PrecModStr, '0', Width)
         )
     ;
         FieldStr = PrecModStr
@@ -908,7 +915,7 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
     % Do we have to prefix "0x" or "0X"?
     (
         Base = 16,
-        member('#', Flags),
+        Flags ^ flag_hash = flag_hash_set,
         ( Int \= 0
         ; IsTypeP = yes
         )
@@ -918,14 +925,47 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
         FieldModStr = FieldStr
     ),
 
-    String = justify_string(Flags, Width, FieldModStr).
+    String = justify_string(Flags, MaybeWidth, FieldModStr).
 
-    % Format a float (f)
-    %
-:- func format_float(flags, spec_case, maybe_width, maybe_precision, float)
+%-----------------------------------------------------------------------------%
+
+:- func gen_format_float(flags, maybe_width, maybe_prec, float_kind, float)
     = string.
 
-format_float(Flags, SpecCase, Width, Prec, Float) = NewFloat :-
+gen_format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
+    % XXX function choice, arglists
+    (
+        Kind = kind_e_scientific_lc,
+        String = format_scientific_number(Flags, case_is_not_capital,
+            MaybeWidth, MaybePrec, Float, "e")
+    ;
+        Kind = kind_e_scientific_uc,
+        String = format_scientific_number(Flags, case_is_capital,
+            MaybeWidth, MaybePrec, Float, "E")
+    ;
+        Kind = kind_f_plain_lc,
+        String = format_float(Flags, case_is_not_capital,
+            MaybeWidth, MaybePrec, Float)
+    ;
+        Kind = kind_f_plain_uc,
+        String = format_float(Flags, case_is_capital,
+            MaybeWidth, MaybePrec, Float)
+    ;
+        Kind = kind_g_flexible_lc,
+        String = format_scientific_number_g(Flags, case_is_not_capital,
+            MaybeWidth, MaybePrec, Float, "e")
+    ;
+        Kind = kind_g_flexible_uc,
+        String = format_scientific_number_g(Flags, case_is_capital,
+            MaybeWidth, MaybePrec, Float, "E")
+    ).
+
+    % Format a float.
+    %
+:- func format_float(flags, spec_case, maybe_width, maybe_prec, float)
+    = string.
+
+format_float(Flags, SpecCase, MaybeWidth, MaybePrec, Float) = NewFloat :-
     ( is_nan(Float) ->
         SignedStr = format_nan(SpecCase)
     ; is_infinite(Float) ->
@@ -937,17 +977,17 @@ format_float(Flags, SpecCase, Width, Prec, Float) = NewFloat :-
         % Change precision (default is 6).
         AbsStr = convert_float_to_string(Abs),
         (
-            Prec = yes(Precision),
-            PrecStr = change_precision(Precision, AbsStr)
+            MaybePrec = yes(Prec),
+            PrecStr = change_precision(Prec, AbsStr)
         ;
-            Prec = no,
+            MaybePrec = no,
             PrecStr = change_precision(6, AbsStr)
         ),
 
         % Do we need to remove the decimal point?
         (
-            \+ member('#', Flags),
-            Prec = yes(0)
+            Flags ^ flag_hash = flag_hash_clear,
+            MaybePrec = yes(0)
         ->
             PrecStrLen = string.count_codepoints(PrecStr),
             PrecModStr = string.between(PrecStr, 0, PrecStrLen - 1)
@@ -957,12 +997,12 @@ format_float(Flags, SpecCase, Width, Prec, Float) = NewFloat :-
 
         % Do we need to change field width?
         (
-            Width = yes(FieldWidth),
-            FieldWidth > string.count_codepoints(PrecModStr),
-            member('0', Flags),
-            \+ member('-', Flags)
+            MaybeWidth = yes(Width),
+            Width > string.count_codepoints(PrecModStr),
+            Flags ^ flag_zero = flag_zero_set,
+            Flags ^ flag_minus = flag_minus_clear
         ->
-            FieldStr = string.pad_left(PrecModStr, '0', FieldWidth - 1),
+            FieldStr = string.pad_left(PrecModStr, '0', Width - 1),
             ZeroPadded = yes
         ;
             FieldStr = PrecModStr,
@@ -972,16 +1012,16 @@ format_float(Flags, SpecCase, Width, Prec, Float) = NewFloat :-
         SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float,
             FieldStr)
     ),
-    NewFloat = justify_string(Flags, Width, SignedStr).
+    NewFloat = justify_string(Flags, MaybeWidth, SignedStr).
 
     % Format a scientific number to a specified number of significant
     % figures (g,G)
     %
-:- func format_scientific_number_g(flags, spec_case, maybe_width,
-    maybe_precision, float, string) = string.
+:- func format_scientific_number_g(flags, spec_case, maybe_width, maybe_prec,
+    float, string) = string.
 
-format_scientific_number_g(Flags, SpecCase, Width, Prec, Float, E)
-        = NewFloat :-
+format_scientific_number_g(Flags, SpecCase, MaybeWidth, MaybePrec, Float, E)
+        = String :-
     ( is_nan(Float) ->
         SignedStr = format_nan(SpecCase)
     ; is_infinite(Float) ->
@@ -993,43 +1033,44 @@ format_scientific_number_g(Flags, SpecCase, Width, Prec, Float, E)
         % Change precision (default is 6).
         AbsStr = convert_float_to_string(Abs),
         (
-            Prec = yes(Precision),
-            ( Precision = 0 ->
+            MaybePrec = yes(Prec),
+            ( Prec = 0 ->
                 PrecStr = change_to_g_notation(AbsStr, 1, E, Flags)
             ;
-                PrecStr = change_to_g_notation(AbsStr, Precision, E, Flags)
+                PrecStr = change_to_g_notation(AbsStr, Prec, E, Flags)
             )
         ;
-            Prec = no,
+            MaybePrec = no,
             PrecStr = change_to_g_notation(AbsStr, 6, E, Flags)
         ),
 
         % Do we need to change field width?
         (
-            Width = yes(FieldWidth),
-            FieldWidth > string.count_codepoints(PrecStr),
-            member('0', Flags),
-            \+ member('-', Flags)
+            MaybeWidth = yes(Width),
+            Width > string.count_codepoints(PrecStr),
+            Flags ^ flag_zero = flag_zero_set,
+            Flags ^ flag_minus = flag_minus_clear
         ->
-            FieldStr = string.pad_left(PrecStr, '0', FieldWidth - 1),
+            FieldStr = string.pad_left(PrecStr, '0', Width - 1),
             ZeroPadded = yes
         ;
             FieldStr = PrecStr,
             ZeroPadded = no
         ),
 
-        % Finishing up ..
+        % Finishing up.
         SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float,
             FieldStr)
     ),
-    NewFloat = justify_string(Flags, Width, SignedStr).
+    String = justify_string(Flags, MaybeWidth, SignedStr).
 
     % Format a scientific number (e,E)
     %
-:- func format_scientific_number(flags, spec_case, maybe_width,
-    maybe_precision, float, string) = string.
+:- func format_scientific_number(flags, spec_case, maybe_width, maybe_prec,
+    float, string) = string.
 
-format_scientific_number(Flags, SpecCase, Width, Prec, Float, E) = NewFloat :-
+format_scientific_number(Flags, SpecCase, MaybeWidth, MaybePrec, Float, E)
+        = String :-
     ( is_nan(Float) ->
         SignedStr = format_nan(SpecCase)
     ; is_infinite(Float) ->
@@ -1041,17 +1082,17 @@ format_scientific_number(Flags, SpecCase, Width, Prec, Float, E) = NewFloat :-
         % Change precision (default is 6).
         AbsStr = convert_float_to_string(Abs),
         (
-            Prec = yes(Precision),
-            PrecStr = change_to_e_notation(AbsStr, Precision, E)
+            MaybePrec = yes(Prec),
+            PrecStr = change_to_e_notation(AbsStr, Prec, E)
         ;
-            Prec = no,
+            MaybePrec = no,
             PrecStr = change_to_e_notation(AbsStr, 6, E)
         ),
 
         % Do we need to remove the decimal point?
         (
-            \+ member('#', Flags),
-            Prec = yes(0)
+            Flags ^ flag_hash = flag_hash_clear,
+            MaybePrec = yes(0)
         ->
             split_at_decimal_point(PrecStr, BaseStr, ExponentStr),
             PrecModStr = BaseStr ++ ExponentStr
@@ -1061,32 +1102,32 @@ format_scientific_number(Flags, SpecCase, Width, Prec, Float, E) = NewFloat :-
 
         % Do we need to change field width?
         (
-            Width = yes(FieldWidth),
-            FieldWidth > string.count_codepoints(PrecModStr),
-            member('0', Flags),
-            \+ member('-', Flags)
+            MaybeWidth = yes(Width),
+            Width > string.count_codepoints(PrecModStr),
+            Flags ^ flag_zero = flag_zero_set,
+            Flags ^ flag_minus = flag_minus_clear
         ->
-            FieldStr = string.pad_left(PrecModStr, '0', FieldWidth - 1),
+            FieldStr = string.pad_left(PrecModStr, '0', Width - 1),
             ZeroPadded = yes
         ;
             FieldStr = PrecModStr,
             ZeroPadded = no
         ),
 
-        % Finishing up ..
+        % Finishing up.
         SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float,
             FieldStr)
     ),
-    NewFloat = justify_string(Flags, Width, SignedStr).
+    String = justify_string(Flags, MaybeWidth, SignedStr).
 
 :- func add_int_prefix_if_needed(flags, bool, int, string) = string.
 
 add_int_prefix_if_needed(Flags, ZeroPadded, Int, FieldStr) = SignedStr :-
     ( Int < 0 ->
         SignedStr = "-" ++ FieldStr
-    ; member('+', Flags) ->
+    ; Flags ^ flag_plus = flag_plus_set ->
         SignedStr = "+" ++ FieldStr
-    ; member(' ', Flags) ->
+    ; Flags ^ flag_space = flag_space_set ->
         SignedStr = " " ++ FieldStr
     ;
         (
@@ -1107,9 +1148,9 @@ add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr) = SignedStr :-
     % for the other backends.
     ( Float < 0.0 ->
         SignedStr = "-" ++ FieldStr
-    ; member('+', Flags) ->
+    ; Flags ^ flag_plus = flag_plus_set ->
         SignedStr = "+" ++ FieldStr
-    ; member(' ', Flags) ->
+    ; Flags ^ flag_space = flag_space_set ->
         SignedStr = " " ++ FieldStr
     ;
         (
@@ -1123,27 +1164,29 @@ add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr) = SignedStr :-
 
 :- func justify_string(flags, maybe_width, string) = string.
 
-justify_string(Flags, Width, Str) = JustifiedStr :-
+justify_string(Flags, MaybeWidth, Str) = JustifiedStr :-
     (
-        Width = yes(FWidth),
-        FWidth > string.count_codepoints(Str)
+        MaybeWidth = yes(Width),
+        Width > string.count_codepoints(Str)
     ->
-        ( member('-', Flags) ->
-            string.pad_right(Str, ' ', FWidth, JustifiedStr)
+        ( Flags ^ flag_minus = flag_minus_set ->
+            string.pad_right(Str, ' ', Width, JustifiedStr)
         ;
-            string.pad_left(Str, ' ', FWidth, JustifiedStr)
+            string.pad_left(Str, ' ', Width, JustifiedStr)
         )
     ;
         JustifiedStr = Str
     ).
 
-    % Convert an integer to an octal string.
-    %
-:- func to_octal(integer) = string.
+%---------------------------------------------------------------------------%
 
-to_octal(Num) = NumStr :-
+    % Convert a non-negative integer to an octal string.
+    %
+:- func abs_integer_to_octal(integer) = string.
+
+abs_integer_to_octal(Num) = NumStr :-
     ( Num > integer(0) ->
-        Rest = to_octal(Num // integer(8)),
+        Rest = abs_integer_to_octal(Num // integer(8)),
         Rem = Num rem integer(8),
         RemStr = integer.to_string(Rem),
         NumStr = append(Rest, RemStr)
@@ -1151,75 +1194,75 @@ to_octal(Num) = NumStr :-
         NumStr = ""
     ).
 
-    % Convert an integer to a hexadecimal string using a-f.
+    % Convert a non-negative integer to a hexadecimal string,
+    % using a-f for to_hex_lc and A-F for to_hex_uc.
     %
-:- func to_hex(integer) = string.
+    % XXX append; integer vs int
+    %
+:- func abs_integer_to_hex_lc(integer) = string.
+:- func abs_integer_to_hex_uc(integer) = string.
 
-to_hex(Num) = NumStr :-
+abs_integer_to_hex_lc(Num) = NumStr :-
     ( Num > integer(0) ->
-        Rest = to_hex(Num // integer(16)),
+        Rest = abs_integer_to_hex_lc(Num // integer(16)),
         Rem = Num rem integer(16),
-        RemStr = get_hex_int(Rem),
+        RemInt = int(Rem),
+        RemStr = get_hex_digit_lc(RemInt),
         NumStr = append(Rest, RemStr)
     ;
         NumStr = ""
     ).
 
-    % Convert an integer to a hexadecimal string using A-F.
-    %
-:- func to_capital_hex(integer) = string.
-
-to_capital_hex(Num) = NumStr :-
+abs_integer_to_hex_uc(Num) = NumStr :-
     ( Num > integer(0) ->
-        Rest = to_capital_hex(Num // integer(16)),
+        Rest = abs_integer_to_hex_uc(Num // integer(16)),
         Rem = Num rem integer(16),
-        RemStr = get_capital_hex_int(Rem),
+        RemInt = int(Rem),
+        RemStr = get_hex_digit_uc(RemInt),
         NumStr = append(Rest, RemStr)
     ;
         NumStr = ""
     ).
 
-    % Given a decimal integer, return the hexadecimal equivalent (using % a-f).
+    % Given an int between 0 and 15, return the hexadecimal digit
+    % representing it, using a-f for get_hex_digit_lc and
+    % A-F for get_hex_digit_uc.
     %
-:- func get_hex_int(integer) = string.
+:- func get_hex_digit_lc(int) = string.
+:- func get_hex_digit_uc(int) = string.
 
-get_hex_int(Int) = HexStr :-
-    ( Int < integer(10) ->
-        HexStr = integer.to_string(Int)
-    ; Int = integer(10) ->
-        HexStr = "a"
-    ; Int = integer(11) ->
-        HexStr = "b"
-    ; Int = integer(12) ->
-        HexStr = "c"
-    ; Int = integer(13) ->
-        HexStr = "d"
-    ; Int = integer(14) ->
-        HexStr = "e"
+get_hex_digit_lc(Int) = HexLC :-
+    ( hex_digits(Int, HexLCPrime, _HexUC) ->
+        HexLC = HexLCPrime
     ;
-        HexStr = "f"
+        unexpected($module, $pred, "hex_digits failed")
     ).
 
-    % Convert an integer to a hexadecimal string using A-F.
-    %
-:- func get_capital_hex_int(integer) = string.
-
-get_capital_hex_int(Int) = HexStr :-
-    ( Int < integer(10) ->
-        HexStr = integer.to_string(Int)
-    ; Int = integer(10) ->
-        HexStr = "A"
-    ; Int = integer(11) ->
-        HexStr = "B"
-    ; Int = integer(12) ->
-        HexStr = "C"
-    ; Int = integer(13) ->
-        HexStr = "D"
-    ; Int = integer(14) ->
-        HexStr = "E"
+get_hex_digit_uc(Int) = HexUC :-
+    ( hex_digits(Int, _HexLC, HexUCPrime) ->
+        HexUC = HexUCPrime
     ;
-        HexStr = "F"
+        unexpected($module, $pred, "hex_digits failed")
     ).
+
+:- pred hex_digits(int::in, string::out, string::out) is semidet.
+
+hex_digits( 0, "0", "0").
+hex_digits( 1, "1", "1").
+hex_digits( 2, "2", "2").
+hex_digits( 3, "3", "3").
+hex_digits( 4, "4", "4").
+hex_digits( 5, "5", "5").
+hex_digits( 6, "6", "6").
+hex_digits( 7, "7", "7").
+hex_digits( 8, "8", "8").
+hex_digits( 9, "9", "9").
+hex_digits(10, "a", "A").
+hex_digits(11, "b", "B").
+hex_digits(12, "c", "C").
+hex_digits(13, "d", "D").
+hex_digits(14, "e", "E").
+hex_digits(15, "f", "F").
 
     % Unlike the standard library function, this function converts a float
     % to a string without resorting to scientific notation.
@@ -1319,7 +1362,7 @@ change_to_g_notation(Float, Prec, E, Flags) = FormattedFloat :-
         ),
 
         % Do we remove trailing zeros?
-        ( member('#', Flags) ->
+        ( Flags ^ flag_hash = flag_hash_set ->
             FormattedFloat = FormattedFloat0
         ;
             FormattedFloat = remove_trailing_zeros(FormattedFloat0)
@@ -1330,7 +1373,7 @@ change_to_g_notation(Float, Prec, E, Flags) = FormattedFloat :-
         UncheckedFloat = change_to_e_notation(Float, Prec - 1, E),
 
         % Do we need to remove trailing zeros?
-        ( member('#', Flags) ->
+        ( Flags ^ flag_hash = flag_hash_set ->
             FormattedFloat = UncheckedFloat
         ;
             split_at_exponent(UncheckedFloat, BaseStr, ExponentStr),
@@ -1570,17 +1613,17 @@ is_exponent('E').
 
 :- func format_nan(spec_case) = string.
 
-format_nan(spec_is_capital) = "NAN".
-format_nan(spec_is_not_capital) = "nan".
+format_nan(case_is_capital) = "NAN".
+format_nan(case_is_not_capital) = "nan".
 
 :- func format_infinity(float, spec_case) = string.
 
 format_infinity(F, SpecCase) = String :-
     (
-        SpecCase = spec_is_capital,
+        SpecCase = case_is_capital,
         String = ( if F < 0.0 then "-INFINITY" else "INFINITY" )
     ;
-        SpecCase = spec_is_not_capital,
+        SpecCase = case_is_not_capital,
         String = ( if F < 0.0 then "-infinity" else "infinity" )
     ).
 
