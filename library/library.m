@@ -137,7 +137,8 @@
 :- import_module version_store.
 
 % The modules intended for Mercury system implementors.
-% NOTE: changes to this list may need to be reflected in mdbcomp/prim_data.m.
+% NOTE: changes to this list may need to be reflected
+% in mdbcomp/builtin_modules.m.
 %
 :- import_module erlang_builtin.
 :- import_module erlang_rtti_implementation.
@@ -148,6 +149,8 @@
 :- import_module region_builtin.
 :- import_module rtti_implementation.
 :- import_module stm_builtin.
+:- import_module string.format.
+:- import_module string.to_string.
 :- import_module table_builtin.
 :- import_module term_size_prof_builtin.
 :- import_module test_bitset.
@@ -290,6 +293,8 @@ mercury_std_library_module("stream").
 mercury_std_library_module("stream.string_writer").
 mercury_std_library_module("string").
 mercury_std_library_module("string.builder").
+mercury_std_library_module("string.format").
+mercury_std_library_module("string.to_string").
 mercury_std_library_module("table_builtin").
 mercury_std_library_module("table_statistics").
 mercury_std_library_module("term").

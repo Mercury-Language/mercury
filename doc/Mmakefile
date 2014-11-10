@@ -122,7 +122,7 @@ mercury.info: mercury.info.in ../VERSION
 	# formatted versions of the man pages.
 	# But it might make sense to add them.
 .PHONY: all
-all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC) 
+all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC)
 #all: ps pdf text formatted_manpages
 
 #-----------------------------------------------------------------------------#
@@ -131,39 +131,39 @@ all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC)
 dvi: $(TEXINFO_FILES:%=%.dvi)
 
 .PHONY: warn_no_dvi
-warn_no_dvi: 
+warn_no_dvi:
 	# Warning: Unable to build .dvi files.
-	# This is probably due to a missing `texi2dvi'
+	# This is probably due to a missing `texi2dvi'.
 
 .PHONY: info
 info: mercury.info $(TEXINFO_INFO_FILES)
 
 .PHONY: warn_no_info
-warn_no_info: 
+warn_no_info:
 	# Warning: Unable to build .info files.
-	# This is probably due to a missing `makeinfo'
+	# This is probably due to a missing `makeinfo'.
 
 .PHONY: html
 html: mercury.html $(TEXINFO_INFO_FILES:%.info=%.html)
 
 .PHONY: warn_no_html
-warn_no_html: 
+warn_no_html:
 	# Warning: Unable to build .html files.
-	# This is probably due to a missing `perl'
+	# This is probably due to a missing `perl'.
 
 .PHONY: ps
 ps: $(TEXINFO_FILES:%=%.ps)
 
 .PHONY: warn_no_ps
-warn_no_ps: 
+warn_no_ps:
 	# Warning: Unable to build .ps files.
-	# This is probably due to a missing `dvips' or `text2dvi'
+	# This is probably due to a missing `dvips' or `text2dvi'.
 
 .PHONY: pdf
 pdf: $(TEXINFO_FILES:%=%.pdf)
 
 .PHONY: warn_no_pdf
-warn_no_pdf: 
+warn_no_pdf:
 	# Warning: Unable to build .pdf files.
 	# This is probably due to a missing `pdftex'.
 
@@ -220,9 +220,9 @@ mercury_library/index.html: library.texi_pp
 #-----------------------------------------------------------------------------#
 
 .PHONY: warn_no_mdb_doc
-warn_no_mdb_doc: 
+warn_no_mdb_doc:
 	# Warning: Unable to build mdb documentation.
-	# This is probably due to a missing `makeinfo' or `info'
+	# This is probably due to a missing `makeinfo' or `info'.
 
 mdb_doc: generate_mdb_doc mercury_user_guide.info mdb_categories
 	./generate_mdb_doc
@@ -277,6 +277,10 @@ library-menu.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
 				;;					\
 			$(LIBRARY_DIR)/stm_builtin.m)			\
 				;;					\
+			$(LIBRARY_DIR)/string.format.m)			\
+				;;					\
+			$(LIBRARY_DIR)/string.to_string.m)		\
+				;;					\
 			$(LIBRARY_DIR)/table_builtin.m)			\
 				;;					\
 			$(LIBRARY_DIR)/term_size_prof_builtin.m)	\
@@ -316,6 +320,10 @@ library-chapters.texi_pp: ../VERSION $(LIBRARY_DIR)/[a-z]*.m
 			$(LIBRARY_DIR)/rtti_implementation.m)		\
 				;;					\
 			$(LIBRARY_DIR)/stm_builtin.m)			\
+				;;					\
+			$(LIBRARY_DIR)/string.format.m)			\
+				;;					\
+			$(LIBRARY_DIR)/string.to_string.m)		\
 				;;					\
 			$(LIBRARY_DIR)/table_builtin.m)			\
 				;;					\
