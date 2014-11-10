@@ -671,9 +671,6 @@ abstractly_unify_inst_list([InstA | InstsA], [InstB | InstsB], Live, Real,
 
 %-----------------------------------------------------------------------------%
 
-    % This is the abstract unification operation which unifies a variable
-    % (or rather, it's instantiatedness) with a functor.
-    %
 abstractly_unify_inst_functor(Live, InstA0, ConsIdB, ArgInstsB, ArgLives,
         Real, Type, Inst, Detism, !ModuleInfo) :-
     inst_expand(!.ModuleInfo, InstA0, InstA),

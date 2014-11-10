@@ -11,7 +11,7 @@ qualified_cons_id2.m:020:   `test(in(bound(qualified_cons_id2.yes(ground))),
 qualified_cons_id2.m:020:   out)':
 qualified_cons_id2.m:020:   in argument 1 of clause head:
 qualified_cons_id2.m:020:   warning: unification of `HeadVar__1' and maybe.yes
-qualified_cons_id2.m:020:   cannot succeed
+qualified_cons_id2.m:020:   cannot succeed.
 qualified_cons_id2.m:020:   `HeadVar__1' has instantiatedness
 qualified_cons_id2.m:020:   `bound(qualified_cons_id2.yes(ground))'.
 For more information, recompile with `-E'.

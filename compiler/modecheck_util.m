@@ -235,8 +235,8 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
         GoalInfo0, Args0, Args, InstMap0, Goal, !ModeInfo) :-
     mode_info_get_errors(!.ModeInfo, Errors),
     (
-        % There's no point adding extra goals if the code is
-        % unreachable anyway.
+        % There is no point adding extra goals if the code is unreachable
+        % anyway.
         instmap_is_reachable(InstMap0),
 
         % If we recorded errors processing the goal, it will have to be
@@ -277,7 +277,7 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
         % there is a bug in the code to add extra goals.
         mode_info_set_checking_extra_goals(yes, !ModeInfo),
 
-        % We've already worked out which procedure should be called,
+        % We have already worked out which procedure should be called,
         % we don't need to do it again.
         mode_info_set_may_change_called_proc(may_not_change_called_proc,
             !ModeInfo),
@@ -319,7 +319,7 @@ modecheck_conj_list_no_delay([Goal0 | Goals0], [Goal | Goals], !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap),
     ( instmap_is_unreachable(InstMap) ->
         % We should not mode-analyse the remaining goals, since they
-        % are unreachable.  Instead we optimize them away, so that
+        % are unreachable. Instead we optimize them away, so that
         % later passes won't complain about them not having mode information.
         mode_info_remove_goals_live_vars(Goals0, !ModeInfo),
         Goals  = []
@@ -675,10 +675,11 @@ modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
         instmap_lookup_var(InstMap0, Var0, OldInst),
         mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
         % The final new inst must be computed by unifying the old inst
-        % and the tentative new inst. However, unifying a large inst with
-        % itself can be VERY expensive; it can be worse than quadratic.
-        % The OldInst = NewInst here may incrase execution time slightly
-        % in normal cases, but should reduce it greatly in worst cases.
+        % and the tentative new inst. However, abstractly unifying
+        % a large inst with itself can be VERY expensive; it can be worse
+        % than quadratic. The OldInst = NewInst test here may increase
+        % execution time slightly in normal cases, but should reduce it
+        % greatly in the worst cases.
         (
             OldInst = NewInst
         ->
@@ -718,11 +719,11 @@ modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
             % only if we haven't bound any part of the var.
             \+ inst_matches_binding(Inst, OldInst, Type, ModuleInfo),
 
-            % We've bound part of the var.  If the var was locked,
-            % then we need to report an error...
+            % We have bound part of the var. If the var was locked,
+            % then we need to report an error ...
             mode_info_var_is_locked(!.ModeInfo, Var0, Reason0),
             \+ (
-                % ...unless the goal is a unification and the var was unified
+                % ... unless the goal is a unification and the var was unified
                 % with something no more instantiated than itself. This allows
                 % for the case of `any = free', for example. The call to
                 % inst_matches_binding, above will fail for the var with
@@ -984,7 +985,7 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, ArgTypes, NonLocals,
     module_info_pred_proc_info(ModuleInfo0, CalleePredId, CalleeProcId,
         CalleePredInfo, CalleeProcInfo),
 
-    % Create a poly_info for the caller.  We have to set the varset and
+    % Create a poly_info for the caller. We have to set the varset and
     % vartypes from the mode_info, not the proc_info, because new vars may
     % have been introduced during mode analysis (e.g., when adding
     % unifications to handle implied modes).

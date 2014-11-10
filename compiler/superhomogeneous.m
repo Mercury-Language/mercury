@@ -206,7 +206,7 @@ expansion_to_goal_wrap_if_fgti(GoalInfo, Expansion, Goal) :-
         ->
             goal_info_set_nonlocals(set_of_var.make_singleton(TermVar),
                 GoalInfo, MarkedGoalInfo),
-            mark_nonlocals_in_ground_term_construct(Goals, MarkedGoals),
+            mark_nonlocals_in_ground_term_initial(Goals, MarkedGoals),
             ConjGoalExpr = conj(plain_conj, MarkedGoals),
             ConjGoal = hlds_goal(ConjGoalExpr, MarkedGoalInfo),
             Reason = from_ground_term(TermVar, from_ground_term_initial),
@@ -234,7 +234,7 @@ expansion_to_goal_cord_wrap_if_fgti(GoalInfo, Expansion,
         Goals = cord.list(GoalCord),
         goal_info_set_nonlocals(set_of_var.make_singleton(TermVar),
             GoalInfo, MarkedGoalInfo),
-        mark_nonlocals_in_ground_term_construct(Goals, MarkedGoals),
+        mark_nonlocals_in_ground_term_initial(Goals, MarkedGoals),
         ConjGoalExpr = conj(plain_conj, MarkedGoals),
         ConjGoal = hlds_goal(ConjGoalExpr, MarkedGoalInfo),
         Reason = from_ground_term(TermVar, from_ground_term_initial),
@@ -245,11 +245,11 @@ expansion_to_goal_cord_wrap_if_fgti(GoalInfo, Expansion,
         MaybeWrappedGoalCord = GoalCord
     ).
 
-:- pred mark_nonlocals_in_ground_term_construct(
+:- pred mark_nonlocals_in_ground_term_initial(
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-mark_nonlocals_in_ground_term_construct([], []).
-mark_nonlocals_in_ground_term_construct([Goal0 | Goals0], [Goal | Goals]) :-
+mark_nonlocals_in_ground_term_initial([], []).
+mark_nonlocals_in_ground_term_initial([Goal0 | Goals0], [Goal | Goals]) :-
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     (
         GoalExpr = unify(LHSVar, RHS, _, _, _),
@@ -261,7 +261,7 @@ mark_nonlocals_in_ground_term_construct([Goal0 | Goals0], [Goal | Goals]) :-
     ;
         unexpected($module, $pred, "wrong shape goal")
     ),
-    mark_nonlocals_in_ground_term_construct(Goals0, Goals).
+    mark_nonlocals_in_ground_term_initial(Goals0, Goals).
 
 %-----------------------------------------------------------------------------%
 

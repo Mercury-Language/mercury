@@ -115,6 +115,11 @@
 :- pred get_arg_insts(mer_inst::in, cons_id::in, arity::in,
     list(mer_inst)::out) is semidet.
 
+    % As above, but abort instead of failing.
+    %
+:- pred get_arg_insts_det(mer_inst::in, cons_id::in, arity::in,
+    list(mer_inst)::out) is det.
+
     % Given a (list of) bound_insts, get the corresponding cons_ids.
     % The type_ctor, if given,
     %
@@ -691,6 +696,13 @@ get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
     ;
         Inst = any(Uniq, _),
         list.duplicate(Arity, any(Uniq, none), ArgInsts)
+    ).
+
+get_arg_insts_det(Inst, ConsId, Arity, ArgInsts) :-
+    ( get_arg_insts(Inst, ConsId, Arity, ArgInstsPrime) ->
+        ArgInsts = ArgInstsPrime
+    ;
+        unexpected($module, $pred, "get_arg_insts failed")
     ).
 
 :- pred get_arg_insts_2(list(bound_inst)::in, cons_id::in, list(mer_inst)::out)

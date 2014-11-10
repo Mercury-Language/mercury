@@ -1,7 +1,7 @@
 simple_code.m:010: Warning: this disjunct will never have any solutions.
 simple_code.m:015: Warning: the condition of this if-then-else cannot fail.
 simple_code.m:018: In clause for `p(in, out)':
-simple_code.m:018:   warning: unification of `X' and 2 cannot succeed
+simple_code.m:018:   warning: unification of `X' and 2 cannot succeed.
 simple_code.m:018:   `X' has instantiatedness `unique(3)'.
 simple_code.m:020: Warning: the condition of this if-then-else cannot succeed.
 simple_code.m:025: Warning: the condition of this if-then-else cannot succeed.
@@ -15,6 +15,6 @@ simple_code.m:039:   `simple_code.obsolete'/0.
 simple_code.m:042: Warning: the condition of this if-then-else cannot fail.
 simple_code.m:064: In clause for `r(in(bound(1)), out(bound(42)))':
 simple_code.m:064:   in argument 1 of clause head:
-simple_code.m:064:   warning: unification of `HeadVar__1' and 2 cannot succeed
+simple_code.m:064:   warning: unification of `HeadVar__1' and 2 cannot succeed.
 simple_code.m:064:   `HeadVar__1' has instantiatedness `bound(1)'.
 simple_code.m:097: Warning: recursive call will lead to infinite recursion.

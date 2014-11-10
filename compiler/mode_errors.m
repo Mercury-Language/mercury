@@ -186,7 +186,8 @@
 
 :- type mode_warning
     --->    cannot_succeed_var_var(prog_var, prog_var, mer_inst, mer_inst)
-    ;       cannot_succeed_var_functor(prog_var, mer_inst, cons_id).
+    ;       cannot_succeed_var_functor(prog_var, mer_inst, cons_id)
+    ;       cannot_succeed_ground_occur_check(prog_var, cons_id).
 
 :- type mode_warning_info
     --->    mode_warning_info(
@@ -376,6 +377,10 @@ mode_warning_info_to_spec(!.ModeInfo, Warning) = Spec :-
         ModeWarning = cannot_succeed_var_functor(Var, Inst, ConsId),
         Spec = mode_warning_cannot_succeed_var_functor(!.ModeInfo,
             Var, Inst, ConsId)
+    ;
+        ModeWarning = cannot_succeed_ground_occur_check(Var, ConsId),
+        Spec = mode_warning_cannot_succeed_ground_occur_check(!.ModeInfo,
+            Var, ConsId)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1095,7 +1100,7 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Spec :-
     Pieces = [words("warning: unification of"),
         quote(mercury_var_to_string(VarSet, no, X)),
         words("and"), quote(mercury_var_to_string(VarSet, no, Y)),
-        words("cannot succeed"), nl,
+        words("cannot succeed."), nl,
         quote(mercury_var_to_string(VarSet, no, X)),
         words("has instantiatedness"),
         words_quote(inst_to_string(ModeInfo, InstX)), suffix(","), nl,
@@ -1116,12 +1121,29 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
     Pieces = [words("warning: unification of"),
         quote(mercury_var_to_string(VarSet, no, X)), words("and"),
         words(mercury_cons_id_to_string(does_not_need_brackets, ConsId)),
-        words("cannot succeed"), nl,
+        words("cannot succeed."), nl,
         quote(mercury_var_to_string(VarSet, no, X)),
         words("has instantiatedness"),
         words_quote(inst_to_string(ModeInfo, InstX)), suffix("."), nl],
     Spec = error_spec(severity_warning,
         phase_mode_check(report_only_if_in_all_modes),
+        [simple_msg(Context, [always(Preamble ++ Pieces)])]).
+
+:- func mode_warning_cannot_succeed_ground_occur_check(mode_info, prog_var,
+    cons_id) = error_spec.
+
+mode_warning_cannot_succeed_ground_occur_check(ModeInfo, X, ConsId) = Spec :-
+    Preamble = mode_info_context_preamble(ModeInfo),
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_varset(ModeInfo, VarSet),
+    Pieces = [words("warning: unification of"),
+        quote(mercury_var_to_string(VarSet, no, X)), words("and"),
+        words(mercury_cons_id_to_string(does_not_need_brackets, ConsId)),
+        words("cannot succeed, because"),
+        quote(mercury_var_to_string(VarSet, no, X)),
+        words("cannot be equal to a term containing itself."), nl],
+    Spec = error_spec(severity_warning,
+        phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 %-----------------------------------------------------------------------------%

@@ -11,8 +11,8 @@ occurs.m:010: In `p2':
 occurs.m:010:   warning: determinism declaration could be tighter.
 occurs.m:010:   Declared `semidet', inferred `failure'.
 occurs.m:013: In clause for `p2':
-occurs.m:013:   warning: unification of `X' and occurs.f cannot succeed
-occurs.m:013:   `X' has instantiatedness `unique((occurs.[]))'.
+occurs.m:013:   warning: unification of `X' and occurs.f cannot succeed,
+occurs.m:013:   because `X' cannot be equal to a term containing itself.
 occurs.m:018: In clause for `p3':
 occurs.m:018:   mode error in unification of `X' and `occurs.f(X)'.
 occurs.m:018:   Variable `X' has instantiatedness `unique(occurs.f(free))',

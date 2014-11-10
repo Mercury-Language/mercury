@@ -1,5 +1,5 @@
 unify_f_g.m:024: In clause for `p(in, in, out, in, out)':
 unify_f_g.m:024:   warning: unification of `STATE_VARIABLE_In_0' and maybe.yes
-unify_f_g.m:024:   cannot succeed
+unify_f_g.m:024:   cannot succeed.
 unify_f_g.m:024:   `STATE_VARIABLE_In_0' has instantiatedness
 unify_f_g.m:024:   `bound((maybe.no))'.
