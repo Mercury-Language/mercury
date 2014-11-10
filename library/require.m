@@ -32,6 +32,15 @@
     %
 :- func func_error(string) = _ is erroneous.
 
+    % error(Pred, Message):
+    % func_error(Pred, Message):
+    %
+    % Equivalent to invoking error or func_error on the string
+    % Pred ++ ": " ++ Message.
+    %
+:- pred error(string::in, string::in) is erroneous.
+:- func func_error(string, string) = _ is erroneous.
+
 %-----------------------------------------------------------------------------%
 
     % sorry(Module, What):
@@ -146,21 +155,30 @@
 
 %-----------------------------------------------------------------------------%
 
-% Hopefully error/1 won't be called often (!), so no point inlining it.
+% Hopefully error won't be called often (!), so no point inlining it.
 :- pragma no_inline(error/1).
+:- pragma no_inline(error/2).
+:- pragma no_inline(func_error/1).
+:- pragma no_inline(func_error/2).
 
-% We declare error/1 to be terminating so that all of the standard library
+% We declare error to be terminating so that all of the standard library
 % will treat it as terminating.
 :- pragma terminates(error/1).
+:- pragma terminates(error/2).
+:- pragma terminates(func_error/1).
+:- pragma terminates(func_error/2).
 
 error(Message) :-
     throw(software_error(Message)).
 
-% Hopefully func_error/1 won't be called often (!), so no point inlining it.
-:- pragma no_inline(func_error/1).
+error(Pred, Message) :-
+    error(Pred ++ ": " ++ Message).
 
 func_error(Message) = _ :-
     error(Message).
+
+func_error(Pred, Message) = _ :-
+    error(Pred, Message).
 
 %-----------------------------------------------------------------------------%
 

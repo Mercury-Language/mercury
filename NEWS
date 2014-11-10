@@ -75,12 +75,17 @@ Changes to the Mercury standard library:
 
    - is_finite/1
    - is_zero/1
-   - is_infinite/1      (synonym for the existing is_inf/1 predicate)
+   - is_infinite/1        (synonym for the existing is_inf/1 predicate)
    - is_nan_or_infinite/1 (synonym for the existing is_nan_or_inf/1 predicate)
 
   The following function has been added to the float module:
 
    - infinity/0
+
+* The following predicates and functions have been added to the require module:
+
+   - error/2
+   - func_error/2
 
 * The following predicate has been added to the string module:
 

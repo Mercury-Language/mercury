@@ -532,7 +532,7 @@ is_hex_digit('E').
 is_hex_digit('F').
 
 is_base_digit(Base, Digit) :-
-    ( Base > 1, Base < 37 ->
+    ( 2 =< Base, Base =< 36 ->
         base_digit_to_int(Base, Digit, _Int)
     ;
         error("char.is_base_digit: invalid base")
