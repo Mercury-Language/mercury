@@ -84,7 +84,7 @@
 :- type int_base
     --->    base_octal
     ;       base_decimal
-    ;       base_hex_lc     % use spec_case?
+    ;       base_hex_lc
     ;       base_hex_uc
     ;       base_hex_p.
 
@@ -95,10 +95,6 @@
     ;       kind_f_plain_uc
     ;       kind_g_flexible_lc
     ;       kind_g_flexible_uc.
-
-:- type spec_case
-    --->    case_is_capital
-    ;       case_is_not_capital.
 
 :- type spec(I, F, C, S)
     --->    spec_percent
@@ -444,8 +440,7 @@ component_to_string(Component, String) :-
                 "", SpecChar),
             String = native_format_float(FormatStr, Float)
         ;
-            String = gen_format_float(Flags, MaybeWidth, MaybePrec, Kind,
-                Float)
+            String = format_float(Flags, MaybeWidth, MaybePrec, Kind, Float)
         )
     ;
         % Char conversion specifiers.
@@ -969,174 +964,91 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
 
 %-----------------------------------------------------------------------------%
 
-:- func gen_format_float(flags, maybe_width, maybe_prec, float_kind, float)
-    = string.
-
-gen_format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
-    % XXX function choice, arglists
-    (
-        Kind = kind_e_scientific_lc,
-        String = format_scientific_number(Flags, case_is_not_capital,
-            MaybeWidth, MaybePrec, Float, "e")
-    ;
-        Kind = kind_e_scientific_uc,
-        String = format_scientific_number(Flags, case_is_capital,
-            MaybeWidth, MaybePrec, Float, "E")
-    ;
-        Kind = kind_f_plain_lc,
-        String = format_float(Flags, case_is_not_capital,
-            MaybeWidth, MaybePrec, Float)
-    ;
-        Kind = kind_f_plain_uc,
-        String = format_float(Flags, case_is_capital,
-            MaybeWidth, MaybePrec, Float)
-    ;
-        Kind = kind_g_flexible_lc,
-        String = format_scientific_number_g(Flags, case_is_not_capital,
-            MaybeWidth, MaybePrec, Float, "e")
-    ;
-        Kind = kind_g_flexible_uc,
-        String = format_scientific_number_g(Flags, case_is_capital,
-            MaybeWidth, MaybePrec, Float, "E")
-    ).
-
     % Format a float.
     %
-:- func format_float(flags, spec_case, maybe_width, maybe_prec, float)
+:- func format_float(flags, maybe_width, maybe_prec, float_kind, float)
     = string.
 
-format_float(Flags, SpecCase, MaybeWidth, MaybePrec, Float) = NewFloat :-
+format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
     ( is_nan(Float) ->
-        SignedStr = format_nan(SpecCase)
+        (
+            ( Kind = kind_e_scientific_lc
+            ; Kind = kind_f_plain_lc
+            ; Kind = kind_g_flexible_lc
+            ),
+            SignedStr = "nan"
+        ;
+            ( Kind = kind_e_scientific_uc
+            ; Kind = kind_f_plain_uc
+            ; Kind = kind_g_flexible_uc
+            ),
+            SignedStr = "NAN"
+        )
     ; is_infinite(Float) ->
-        SignedStr = format_infinity(Float, SpecCase)
+        (
+            ( Kind = kind_e_scientific_lc
+            ; Kind = kind_f_plain_lc
+            ; Kind = kind_g_flexible_lc
+            ),
+            SignedStr = ( if Float < 0.0 then "-infinity" else "infinity" )
+        ;
+            ( Kind = kind_e_scientific_uc
+            ; Kind = kind_f_plain_uc
+            ; Kind = kind_g_flexible_uc
+            ),
+            SignedStr = ( if Float < 0.0 then "-INFINITY" else "INFINITY" )
+        )
     ;
-        % Determine absolute value of string.
-        Abs = abs(Float),
+        % XXX This general approach of converting the float to a string
+        % using convert_float_to_string and then post-processing it
+        % is far from ideal, since it is significantly less efficient
+        % than building the right string directly.
+        AbsFloat = abs(Float),
+        AbsStr = convert_float_to_string(AbsFloat),
 
-        % Change precision (default is 6).
-        AbsStr = convert_float_to_string(Abs),
+        % Change precision if needed.
         (
-            MaybePrec = yes(Prec),
-            PrecStr = change_precision(Prec, AbsStr)
-        ;
-            MaybePrec = no,
-            PrecStr = change_precision(6, AbsStr)
-        ),
+            ( Kind = kind_e_scientific_lc, E = "e"
+            ; Kind = kind_e_scientific_uc, E = "E"
+            ),
+            Prec = get_prec_to_use(MaybePrec),
+            PrecStr = change_to_e_notation(AbsStr, Prec, E),
 
-        % Do we need to remove the decimal point?
-        (
-            Flags ^ flag_hash = flag_hash_clear,
-            MaybePrec = yes(0)
-        ->
-            PrecStrLen = string.count_codepoints(PrecStr),
-            PrecModStr = string.between(PrecStr, 0, PrecStrLen - 1)
-        ;
-            PrecModStr = PrecStr
-        ),
-
-        % Do we need to change field width?
-        (
-            MaybeWidth = yes(Width),
-            Width > string.count_codepoints(PrecModStr),
-            Flags ^ flag_zero = flag_zero_set,
-            Flags ^ flag_minus = flag_minus_clear
-        ->
-            FieldStr = string.pad_left(PrecModStr, '0', Width - 1),
-            ZeroPadded = yes
-        ;
-            FieldStr = PrecModStr,
-            ZeroPadded = no
-        ),
-        % Finishing up.
-        SignedStr = add_sign_like_prefix_to_float_if_needed(Flags,
-            ZeroPadded, Float, FieldStr)
-    ),
-    NewFloat = justify_string(Flags, MaybeWidth, SignedStr).
-
-    % Format a scientific number to a specified number of significant
-    % figures (g,G)
-    %
-:- func format_scientific_number_g(flags, spec_case, maybe_width, maybe_prec,
-    float, string) = string.
-
-format_scientific_number_g(Flags, SpecCase, MaybeWidth, MaybePrec, Float, E)
-        = String :-
-    ( is_nan(Float) ->
-        SignedStr = format_nan(SpecCase)
-    ; is_infinite(Float) ->
-        SignedStr = format_infinity(Float, SpecCase)
-    ;
-        % Determine absolute value of string.
-        Abs = abs(Float),
-
-        % Change precision (default is 6).
-        AbsStr = convert_float_to_string(Abs),
-        (
-            MaybePrec = yes(Prec),
-            ( Prec = 0 ->
-                PrecStr = change_to_g_notation(AbsStr, 1, E, Flags)
+            % Do we need to remove the decimal point?
+            (
+                Flags ^ flag_hash = flag_hash_clear,
+                MaybePrec = yes(0)
+            ->
+                split_at_decimal_point(PrecStr, BaseStr, ExponentStr),
+                PrecModStr = BaseStr ++ ExponentStr
             ;
-                PrecStr = change_to_g_notation(AbsStr, Prec, E, Flags)
+                PrecModStr = PrecStr
             )
         ;
-            MaybePrec = no,
-            PrecStr = change_to_g_notation(AbsStr, 6, E, Flags)
-        ),
+            ( Kind = kind_f_plain_lc
+            ; Kind = kind_f_plain_uc
+            ),
+            Prec = get_prec_to_use(MaybePrec),
+            PrecStr = change_precision(AbsStr, Prec),
 
-        % Do we need to change field width?
-        (
-            MaybeWidth = yes(Width),
-            Width > string.count_codepoints(PrecStr),
-            Flags ^ flag_zero = flag_zero_set,
-            Flags ^ flag_minus = flag_minus_clear
-        ->
-            FieldStr = string.pad_left(PrecStr, '0', Width - 1),
-            ZeroPadded = yes
+            % Do we need to remove the decimal point?
+            (
+                Flags ^ flag_hash = flag_hash_clear,
+                MaybePrec = yes(0)
+            ->
+                PrecStrLen = string.count_codepoints(PrecStr),
+                PrecModStr = string.between(PrecStr, 0, PrecStrLen - 1)
+            ;
+                PrecModStr = PrecStr
+            )
         ;
-            FieldStr = PrecStr,
-            ZeroPadded = no
-        ),
-
-        % Finishing up.
-        SignedStr = add_sign_like_prefix_to_float_if_needed(Flags,
-            ZeroPadded, Float, FieldStr)
-    ),
-    String = justify_string(Flags, MaybeWidth, SignedStr).
-
-    % Format a scientific number (e,E)
-    %
-:- func format_scientific_number(flags, spec_case, maybe_width, maybe_prec,
-    float, string) = string.
-
-format_scientific_number(Flags, SpecCase, MaybeWidth, MaybePrec, Float, E)
-        = String :-
-    ( is_nan(Float) ->
-        SignedStr = format_nan(SpecCase)
-    ; is_infinite(Float) ->
-        SignedStr = format_infinity(Float, SpecCase)
-    ;
-        % Determine absolute value of string.
-        Abs = abs(Float),
-
-        % Change precision (default is 6).
-        AbsStr = convert_float_to_string(Abs),
-        (
-            MaybePrec = yes(Prec),
-            PrecStr = change_to_e_notation(AbsStr, Prec, E)
-        ;
-            MaybePrec = no,
-            PrecStr = change_to_e_notation(AbsStr, 6, E)
-        ),
-
-        % Do we need to remove the decimal point?
-        (
-            Flags ^ flag_hash = flag_hash_clear,
-            MaybePrec = yes(0)
-        ->
-            split_at_decimal_point(PrecStr, BaseStr, ExponentStr),
-            PrecModStr = BaseStr ++ ExponentStr
-        ;
+            ( Kind = kind_g_flexible_lc, E = "e"
+            ; Kind = kind_g_flexible_uc, E = "E"
+            ),
+            Prec = get_prec_to_use_minimum_1(MaybePrec),
+            PrecStr = change_to_g_notation(AbsStr, Prec, E, Flags),
+            % Don't ever remove the decimal point.
+            % XXX Why? Does change_to_g_notation do it?
             PrecModStr = PrecStr
         ),
 
@@ -1155,15 +1067,45 @@ format_scientific_number(Flags, SpecCase, MaybeWidth, MaybePrec, Float, E)
         ),
 
         % Finishing up.
-        SignedStr = add_sign_like_prefix_to_float_if_needed(Flags,
-            ZeroPadded, Float, FieldStr)
+        SignedStr = add_sign_like_prefix_to_float_if_needed(Flags, ZeroPadded,
+            Float, FieldStr)
     ),
     String = justify_string(Flags, MaybeWidth, SignedStr).
+
+:- func get_prec_to_use(maybe_prec) = int.
+:- pragma inline(get_prec_to_use/1).
+
+get_prec_to_use(MaybePrec) = Prec :-
+    (
+        MaybePrec = yes(Prec)
+    ;
+        MaybePrec = no,
+        % The default precision is 6.
+        Prec = 6
+    ).
+
+:- func get_prec_to_use_minimum_1(maybe_prec) = int.
+:- pragma inline(get_prec_to_use_minimum_1/1).
+
+get_prec_to_use_minimum_1(MaybePrec) = Prec :-
+    (
+        MaybePrec = yes(Prec0),
+        ( Prec0 = 0 ->
+            Prec = 1
+        ;
+            Prec = Prec0
+        )
+    ;
+        MaybePrec = no,
+        % The default precision is 6.
+        Prec = 6
+    ).
 
 %---------------------------------------------------------------------------%
 
 :- func add_sign_like_prefix_to_int_if_needed(flags, bool, int, string)
     = string.
+:- pragma inline(add_sign_like_prefix_to_int_if_needed/4).
 
 add_sign_like_prefix_to_int_if_needed(Flags, ZeroPadded, Int, FieldStr)
         = SignedStr :-
@@ -1185,6 +1127,7 @@ add_sign_like_prefix_to_int_if_needed(Flags, ZeroPadded, Int, FieldStr)
 
 :- func add_sign_like_prefix_to_float_if_needed(flags, bool, float, string)
     = string.
+:- pragma inline(add_sign_like_prefix_to_float_if_needed/4).
 
 add_sign_like_prefix_to_float_if_needed(Flags, ZeroPadded, Float, FieldStr)
         = SignedStr :-
@@ -1235,11 +1178,11 @@ justify_string(Flags, MaybeWidth, Str) = JustifiedStr :-
 % - the original number is an unsigned int, and its value has the most
 %   significant bit set,
 %
-% then the absolute value of that number cannot be represent as Mercury int,
-% which is always signed and always word-sized. However, once we have divided
-% the original integer by 8, 10 or 16, the result is guaranteed not to suffer
-% from either of the problems above, so we process it as an Mercury int,
-% which is a lot faster.
+% then the absolute value of that number cannot be represented as
+% a Mercury int, which is always signed and always word-sized. However,
+% once we have divided the original integer by 8, 10 or 16, the result
+% is guaranteed not to suffer from either of the problems above,
+% so we process it as an Mercury int, which is a lot faster.
 
     % Convert a non-negative integer to an octal string.
     %
@@ -1348,6 +1291,7 @@ abs_int_to_hex_uc(Num) = NumStr :-
     % Given an int between 0 and 7, return the octal digit representing it.
     %
 :- func get_octal_digit(int) = string.
+:- pragma inline(get_octal_digit/1).
 
 get_octal_digit(Int) = Octal :-
     ( octal_digit(Int, OctalPrime) ->
@@ -1359,6 +1303,7 @@ get_octal_digit(Int) = Octal :-
     % Given an int between 0 and 9, return the decimal digit representing it.
     %
 :- func get_decimal_digit(int) = string.
+:- pragma inline(get_decimal_digit/1).
 
 get_decimal_digit(Int) = Decimal :-
     ( decimal_digit(Int, DecimalPrime) ->
@@ -1373,6 +1318,8 @@ get_decimal_digit(Int) = Decimal :-
     %
 :- func get_hex_digit_lc(int) = string.
 :- func get_hex_digit_uc(int) = string.
+:- pragma inline(get_hex_digit_lc/1).
+:- pragma inline(get_hex_digit_uc/1).
 
 get_hex_digit_lc(Int) = HexLC :-
     ( hex_digit(Int, HexLCPrime, _HexUC) ->
@@ -1516,8 +1463,8 @@ change_to_g_notation(Float, Prec, E, Flags) = FormattedFloat :-
         ( Exponent =< 0 ->
             % Deal with floats such as 0.00000000xyz.
             DecimalPos = decimal_pos(Float),
-            FormattedFloat0 = change_precision(abs(DecimalPos) - 1 + Prec,
-                Float)
+            FormattedFloat0 = change_precision(Float,
+                abs(DecimalPos) - 1 + Prec)
         ;
             % Deal with floats such as ddddddd.mmmmmmmm.
             ScientificFloat = change_to_e_notation(Float, Prec - 1, "e"),
@@ -1700,15 +1647,15 @@ calculate_base_unsafe(Float, Prec) = Exp :-
     ),
     MantissaAndPoint = ExpMantissaStr ++ ".",
     UnroundedExpStr = MantissaAndPoint ++ ExpFractionStr,
-    Exp = change_precision(Prec, UnroundedExpStr).
+    Exp = change_precision(UnroundedExpStr, Prec).
 
     % Change the precision of a float to a specified number of decimal places.
     %
     % n.b. OldFloat must be positive for this function to work.
     %
-:- func change_precision(int, string) = string.
+:- func change_precision(string, int) = string.
 
-change_precision(Prec, OldFloat) = NewFloat :-
+change_precision(OldFloat, Prec) = NewFloat :-
     split_at_decimal_point(OldFloat, MantissaStr, FractionStr),
     FracStrLen = string.count_codepoints(FractionStr),
     ( Prec > FracStrLen ->
@@ -1779,21 +1726,5 @@ is_decimal_point('.').
 
 is_exponent('e').
 is_exponent('E').
-
-:- func format_nan(spec_case) = string.
-
-format_nan(case_is_capital) = "NAN".
-format_nan(case_is_not_capital) = "nan".
-
-:- func format_infinity(float, spec_case) = string.
-
-format_infinity(F, SpecCase) = String :-
-    (
-        SpecCase = case_is_capital,
-        String = ( if F < 0.0 then "-INFINITY" else "INFINITY" )
-    ;
-        SpecCase = case_is_not_capital,
-        String = ( if F < 0.0 then "-infinity" else "infinity" )
-    ).
 
 %-----------------------------------------------------------------------------%
