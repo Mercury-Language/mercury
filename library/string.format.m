@@ -44,7 +44,7 @@
 ** Setting it to MR_FALSE will cause string.format to use the Mercury
 ** implementation of string formatting in C grades.
 */
-#define ML_USE_SPRINTF MR_FALSE
+#define ML_USE_SPRINTF MR_TRUE
 ").
 
 %---------------------------------------------------------------------------%
@@ -423,7 +423,7 @@ component_to_string(Component, String) :-
                 int_length_modifer, SpecChar),
             String = native_format_int(FormatStr, Int)
         ;
-            String = gen_format_unsigned_int(Flags, MaybeWidth, MaybePrec,
+            String = format_unsigned_int(Flags, MaybeWidth, MaybePrec,
                 Base, Int)
         )
     ;
@@ -781,9 +781,17 @@ format_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
             AbsIntStr = "0"
         )
     ;
-        Integer = integer(Int),
-        AbsInteger = integer.abs(Integer),
-        AbsIntStr = abs_integer_to_decimal(AbsInteger)
+        % If the platform we are running on can't represent the absolute
+        % value of a 16 bit signed number natively, we are in big trouble.
+        % (The "absolute value of" part is why the test below excludes
+        % -32768.)
+        ( -32767 =< Int, Int =< 32767 ->
+            AbsInt = int.abs(Int),
+            AbsIntStr = abs_int_to_decimal(AbsInt)
+        ;
+            AbsInteger = integer.abs(integer(Int)),
+            AbsIntStr = abs_integer_to_decimal(AbsInteger)
+        )
     ),
     AbsIntStrLength = string.count_codepoints(AbsIntStr),
 
@@ -814,32 +822,17 @@ format_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
 
     % Prefix with appropriate sign or zero padding.
     % The previous step has deliberately left room for this.
-    SignedStr = add_int_prefix_if_needed(Flags, ZeroPadded, Int, FieldStr),
+    SignedStr = add_sign_like_prefix_to_int_if_needed(Flags, ZeroPadded, Int,
+        FieldStr),
     String = justify_string(Flags, MaybeWidth, SignedStr).
 
-:- func gen_format_unsigned_int(flags, maybe_width, maybe_prec, int_base,
-    int) = string.
-
-gen_format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
-    % XXX The octal prefix used to be "".
-    ( Base = base_octal,   BaseNum =  8, IsP =  no, Prefix = "0"
-    ; Base = base_decimal, BaseNum = 10, IsP =  no, Prefix = ""
-    ; Base = base_hex_lc,  BaseNum = 16, IsP =  no, Prefix = "0x"
-    ; Base = base_hex_uc,  BaseNum = 16, IsP =  no, Prefix = "0X"
-    ; Base = base_hex_p,   BaseNum = 16, IsP = yes, Prefix = "0x"
-    ),
-    % XXX arglist
-    String = format_unsigned_int(Flags, MaybeWidth, MaybePrec,
-        BaseNum, Int, IsP, Prefix).
-
     % Format an unsigned int, unsigned octal, or unsigned hexadecimal
-    % (u,o,x,X).
+    % (u,o,x,X,p).
     %
-:- func format_unsigned_int(flags, maybe_width, maybe_prec,
-    int, int, bool, string) = string.
+:- func format_unsigned_int(flags, maybe_width, maybe_prec, int_base, int)
+    = string.
 
-format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int, IsTypeP, Prefix)
-        = String :-
+format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
     ( Int = 0 ->
         % Zero is a special case. The abs_integer_to_decimal function
         % returns "" for 0, but returning no digits at all is ok
@@ -850,16 +843,49 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int, IsTypeP, Prefix)
             AbsIntStr = "0"
         )
     ;
-        Div = integer.pow(integer(2), integer(int.bits_per_int)),
-        UnsignedInteger = integer(Int) mod Div,
-        ( Base = 10 ->
-            AbsIntStr = abs_integer_to_decimal(UnsignedInteger)
-        ; Base = 8 ->
-            AbsIntStr = abs_integer_to_octal(UnsignedInteger)
-        ; Prefix = "0x" ->
-            AbsIntStr = abs_integer_to_hex_lc(UnsignedInteger)
+        % If the platform we are running on can't represent the absolute
+        % value of a 16 bit signed number natively, we are in big trouble.
+        %
+        % Our caller wants us to treat Int as unsigned, but Mercury treats it
+        % as signed. We use native arithmetic on ints (as opposed to arbitrary
+        % precision arithmetic on integers) on Int only in cases where
+        % the two notions coincide, i.e. if we know that Int is positive
+        % even when viewed as a signed number, and that is so even on
+        % 16 bit machines.
+        ( 0 =< Int, Int =< 32767 ->
+            (
+                Base = base_octal,
+                AbsIntStr = abs_int_to_octal(Int)
+            ;
+                Base = base_decimal,
+                AbsIntStr = abs_int_to_decimal(Int)
+            ;
+                ( Base = base_hex_lc
+                ; Base = base_hex_p
+                ),
+                AbsIntStr = abs_int_to_hex_lc(Int)
+            ;
+                Base = base_hex_uc,
+                AbsIntStr = abs_int_to_hex_uc(Int)
+            )
         ;
-            AbsIntStr = abs_integer_to_hex_uc(UnsignedInteger)
+            Div = integer.pow(integer(2), integer(int.bits_per_int)),
+            UnsignedInteger = integer(Int) mod Div,
+            (
+                Base = base_octal,
+                AbsIntStr = abs_integer_to_octal(UnsignedInteger)
+            ;
+                Base = base_decimal,
+                AbsIntStr = abs_integer_to_decimal(UnsignedInteger)
+            ;
+                ( Base = base_hex_lc
+                ; Base = base_hex_p
+                ),
+                AbsIntStr = abs_integer_to_hex_lc(UnsignedInteger)
+            ;
+                Base = base_hex_uc,
+                AbsIntStr = abs_integer_to_hex_uc(UnsignedInteger)
+            )
         )
     ),
     AbsIntStrLength = string.count_codepoints(AbsIntStr),
@@ -876,7 +902,7 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int, IsTypeP, Prefix)
 
     % Do we need to increase the precision of an octal?
     (
-        Base = 8,
+        Base = base_octal,
         Flags ^ flag_hash = flag_hash_set,
         \+ string.prefix(PrecStr, "0")
     ->
@@ -895,31 +921,48 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int, IsTypeP, Prefix)
     ->
         % Do we need to make room for "0x" or "0X" ?
         (
-            Base = 16,
             Flags ^ flag_hash = flag_hash_set,
-            ( Int \= 0
-            ; IsTypeP = yes
+            (
+                Base = base_hex_p,
+                Prefix = "0x"
+            ;
+                Base = base_hex_lc,
+                Int \= 0,
+                Prefix = "0x"
+            ;
+                Base = base_hex_uc,
+                Int \= 0,
+                Prefix = "0X"
             )
         ->
-            FieldStr = string.pad_left(PrecModStr, '0', Width - 2)
+            FieldStr = string.pad_left(PrecModStr, '0', Width - 2),
+            FieldModStr = Prefix ++ FieldStr
         ;
-            FieldStr = string.pad_left(PrecModStr, '0', Width)
+            FieldStr = string.pad_left(PrecModStr, '0', Width),
+            FieldModStr = FieldStr
         )
     ;
-        FieldStr = PrecModStr
-    ),
-
-    % Do we have to prefix "0x" or "0X"?
-    (
-        Base = 16,
-        Flags ^ flag_hash = flag_hash_set,
-        ( Int \= 0
-        ; IsTypeP = yes
+        FieldStr = PrecModStr,
+        % Do we have to prefix "0x" or "0X"?
+        (
+            Flags ^ flag_hash = flag_hash_set,
+            (
+                Base = base_hex_p,
+                Prefix = "0x"
+            ;
+                Base = base_hex_lc,
+                Int \= 0,
+                Prefix = "0x"
+            ;
+                Base = base_hex_uc,
+                Int \= 0,
+                Prefix = "0X"
+            )
+        ->
+            FieldModStr = Prefix ++ FieldStr
+        ;
+            FieldModStr = FieldStr
         )
-    ->
-        FieldModStr = Prefix ++ FieldStr
-    ;
-        FieldModStr = FieldStr
     ),
 
     String = justify_string(Flags, MaybeWidth, FieldModStr).
@@ -1006,8 +1049,8 @@ format_float(Flags, SpecCase, MaybeWidth, MaybePrec, Float) = NewFloat :-
             ZeroPadded = no
         ),
         % Finishing up.
-        SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float,
-            FieldStr)
+        SignedStr = add_sign_like_prefix_to_float_if_needed(Flags,
+            ZeroPadded, Float, FieldStr)
     ),
     NewFloat = justify_string(Flags, MaybeWidth, SignedStr).
 
@@ -1056,8 +1099,8 @@ format_scientific_number_g(Flags, SpecCase, MaybeWidth, MaybePrec, Float, E)
         ),
 
         % Finishing up.
-        SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float,
-            FieldStr)
+        SignedStr = add_sign_like_prefix_to_float_if_needed(Flags,
+            ZeroPadded, Float, FieldStr)
     ),
     String = justify_string(Flags, MaybeWidth, SignedStr).
 
@@ -1112,14 +1155,18 @@ format_scientific_number(Flags, SpecCase, MaybeWidth, MaybePrec, Float, E)
         ),
 
         % Finishing up.
-        SignedStr = add_float_prefix_if_needed(Flags, ZeroPadded, Float,
-            FieldStr)
+        SignedStr = add_sign_like_prefix_to_float_if_needed(Flags,
+            ZeroPadded, Float, FieldStr)
     ),
     String = justify_string(Flags, MaybeWidth, SignedStr).
 
-:- func add_int_prefix_if_needed(flags, bool, int, string) = string.
+%---------------------------------------------------------------------------%
 
-add_int_prefix_if_needed(Flags, ZeroPadded, Int, FieldStr) = SignedStr :-
+:- func add_sign_like_prefix_to_int_if_needed(flags, bool, int, string)
+    = string.
+
+add_sign_like_prefix_to_int_if_needed(Flags, ZeroPadded, Int, FieldStr)
+        = SignedStr :-
     ( Int < 0 ->
         SignedStr = "-" ++ FieldStr
     ; Flags ^ flag_plus = flag_plus_set ->
@@ -1136,9 +1183,11 @@ add_int_prefix_if_needed(Flags, ZeroPadded, Int, FieldStr) = SignedStr :-
         )
     ).
 
-:- func add_float_prefix_if_needed(flags, bool, float, string) = string.
+:- func add_sign_like_prefix_to_float_if_needed(flags, bool, float, string)
+    = string.
 
-add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr) = SignedStr :-
+add_sign_like_prefix_to_float_if_needed(Flags, ZeroPadded, Float, FieldStr)
+        = SignedStr :-
     % XXX Float < 0.0 is the wrong test, because it fails for -0.0.
     % We should test the sign bit instead. This can be done using
     % signbit(Float) in C, but I (zs) don't know its equivalents
