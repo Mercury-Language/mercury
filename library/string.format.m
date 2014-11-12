@@ -44,7 +44,7 @@
 ** Setting it to MR_FALSE will cause string.format to use the Mercury
 ** implementation of string formatting in C grades.
 */
-#define ML_USE_SPRINTF MR_TRUE
+#define ML_USE_SPRINTF MR_FALSE
 ").
 
 %---------------------------------------------------------------------------%
@@ -771,17 +771,19 @@ format_string(Flags, MaybeWidth, MaybePrec, OldStr) = NewStr :-
 :- func format_int(flags, maybe_width, maybe_prec, int) = string.
 
 format_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
-    % Find the integer's absolute value, and take care of the special case
-    % of precision zero with an integer of 0.
-    (
-        Int = 0,
-        MaybePrec = yes(0)
-    ->
-        AbsIntStr = ""
+    ( Int = 0 ->
+        % Zero is a special case. The abs_integer_to_decimal function
+        % returns "" for 0, but returning no digits at all is ok
+        % only if our caller explicitly allowed us to do so.
+        ( MaybePrec = yes(0) ->
+            AbsIntStr = ""
+        ;
+            AbsIntStr = "0"
+        )
     ;
         Integer = integer(Int),
         AbsInteger = integer.abs(Integer),
-        AbsIntStr = integer.to_string(AbsInteger)
+        AbsIntStr = abs_integer_to_decimal(AbsInteger)
     ),
     AbsIntStrLength = string.count_codepoints(AbsIntStr),
 
@@ -838,31 +840,26 @@ gen_format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
 
 format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int, IsTypeP, Prefix)
         = String :-
-    % Find the integer's absolute value, and take care of the special case
-    % of precision zero with an integer of 0.
-    (
-        Int = 0,
-        MaybePrec = yes(0)
-    ->
-        AbsIntStr = ""
+    ( Int = 0 ->
+        % Zero is a special case. The abs_integer_to_decimal function
+        % returns "" for 0, but returning no digits at all is ok
+        % only if our caller explicitly allowed us to do so.
+        ( MaybePrec = yes(0) ->
+            AbsIntStr = ""
+        ;
+            AbsIntStr = "0"
+        )
     ;
         Div = integer.pow(integer(2), integer(int.bits_per_int)),
         UnsignedInteger = integer(Int) mod Div,
         ( Base = 10 ->
-            AbsIntStr0 = integer.to_string(UnsignedInteger)
+            AbsIntStr = abs_integer_to_decimal(UnsignedInteger)
         ; Base = 8 ->
-            AbsIntStr0 = abs_integer_to_octal(UnsignedInteger)
+            AbsIntStr = abs_integer_to_octal(UnsignedInteger)
         ; Prefix = "0x" ->
-            AbsIntStr0 = abs_integer_to_hex_lc(UnsignedInteger)
+            AbsIntStr = abs_integer_to_hex_lc(UnsignedInteger)
         ;
-            AbsIntStr0 = abs_integer_to_hex_uc(UnsignedInteger)
-        ),
-
-        % Just in case Int = 0 (base converters return "").
-        ( AbsIntStr0 = "" ->
-            AbsIntStr = "0"
-        ;
-            AbsIntStr = AbsIntStr0
+            AbsIntStr = abs_integer_to_hex_uc(UnsignedInteger)
         )
     ),
     AbsIntStrLength = string.count_codepoints(AbsIntStr),
@@ -1179,16 +1176,69 @@ justify_string(Flags, MaybeWidth, Str) = JustifiedStr :-
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Each of these functions converts a non-negative integer (that originally
+% came from a Mercury int) to a string of octal, decimal or hex digits.
+%
+% The input is an arbitrary precision integer because if either
+%
+% - the original number is a signed int, and its value is minint, or
+% - the original number is an unsigned int, and its value has the most
+%   significant bit set,
+%
+% then the absolute value of that number cannot be represent as Mercury int,
+% which is always signed and always word-sized. However, once we have divided
+% the original integer by 8, 10 or 16, the result is guaranteed not to suffer
+% from either of the problems above, so we process it as an Mercury int,
+% which is a lot faster.
 
     % Convert a non-negative integer to an octal string.
     %
 :- func abs_integer_to_octal(integer) = string.
+:- func abs_int_to_octal(int) = string.
 
 abs_integer_to_octal(Num) = NumStr :-
     ( Num > integer(0) ->
-        Rest = abs_integer_to_octal(Num // integer(8)),
-        Rem = Num rem integer(8),
-        RemStr = integer.to_string(Rem),
+        Integer8 = integer(8),
+        Rest = abs_int_to_octal(int(Num // Integer8)),
+        Rem = Num rem Integer8,
+        RemStr = get_octal_digit(int(Rem)),
+        NumStr = append(Rest, RemStr)
+    ;
+        NumStr = ""
+    ).
+
+abs_int_to_octal(Num) = NumStr :-
+    ( Num > 0 ->
+        Rest = abs_int_to_octal(Num // 8),
+        Rem = Num rem 8,
+        RemStr = get_octal_digit(Rem),
+        NumStr = append(Rest, RemStr)
+    ;
+        NumStr = ""
+    ).
+
+    % Convert a non-negative integer to a decimal string.
+    %
+:- func abs_integer_to_decimal(integer) = string.
+:- func abs_int_to_decimal(int) = string.
+
+abs_integer_to_decimal(Num) = NumStr :-
+    ( Num > integer(0) ->
+        Integer10 = integer(10),
+        Rest = abs_int_to_decimal(int(Num // Integer10)),
+        Rem = Num rem Integer10,
+        RemStr = get_decimal_digit(int(Rem)),
+        NumStr = append(Rest, RemStr)
+    ;
+        NumStr = ""
+    ).
+
+abs_int_to_decimal(Num) = NumStr :-
+    ( Num > 0 ->
+        Rest = abs_int_to_decimal(Num // 10),
+        Rem = Num rem 10,
+        RemStr = get_decimal_digit(Rem),
         NumStr = append(Rest, RemStr)
     ;
         NumStr = ""
@@ -1197,31 +1247,75 @@ abs_integer_to_octal(Num) = NumStr :-
     % Convert a non-negative integer to a hexadecimal string,
     % using a-f for to_hex_lc and A-F for to_hex_uc.
     %
-    % XXX append; integer vs int
-    %
 :- func abs_integer_to_hex_lc(integer) = string.
 :- func abs_integer_to_hex_uc(integer) = string.
+:- func abs_int_to_hex_lc(int) = string.
+:- func abs_int_to_hex_uc(int) = string.
 
 abs_integer_to_hex_lc(Num) = NumStr :-
     ( Num > integer(0) ->
-        Rest = abs_integer_to_hex_lc(Num // integer(16)),
-        Rem = Num rem integer(16),
-        RemInt = int(Rem),
-        RemStr = get_hex_digit_lc(RemInt),
-        NumStr = append(Rest, RemStr)
+        Integer16 = integer(16),
+        RestStr = abs_int_to_hex_lc(int(Num // Integer16)),
+        Rem = Num rem Integer16,
+        RemStr = get_hex_digit_lc(int(Rem)),
+        NumStr = append(RestStr, RemStr)
     ;
         NumStr = ""
     ).
 
 abs_integer_to_hex_uc(Num) = NumStr :-
     ( Num > integer(0) ->
-        Rest = abs_integer_to_hex_uc(Num // integer(16)),
-        Rem = Num rem integer(16),
-        RemInt = int(Rem),
-        RemStr = get_hex_digit_uc(RemInt),
-        NumStr = append(Rest, RemStr)
+        Integer16 = integer(16),
+        RestStr = abs_int_to_hex_uc(int(Num // Integer16)),
+        Rem = Num rem Integer16,
+        RemStr = get_hex_digit_uc(int(Rem)),
+        NumStr = append(RestStr, RemStr)
     ;
         NumStr = ""
+    ).
+
+abs_int_to_hex_lc(Num) = NumStr :-
+    ( Num > 0 ->
+        RestStr = abs_int_to_hex_lc(Num // 16),
+        Rem = Num rem 16,
+        RemStr = get_hex_digit_lc(Rem),
+        NumStr = append(RestStr, RemStr)
+    ;
+        NumStr = ""
+    ).
+
+abs_int_to_hex_uc(Num) = NumStr :-
+    ( Num > 0 ->
+        RestStr = abs_int_to_hex_uc(Num // 16),
+        Rem = Num rem 16,
+        RemStr = get_hex_digit_uc(Rem),
+        NumStr = append(RestStr, RemStr)
+    ;
+        NumStr = ""
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % Given an int between 0 and 7, return the octal digit representing it.
+    %
+:- func get_octal_digit(int) = string.
+
+get_octal_digit(Int) = Octal :-
+    ( octal_digit(Int, OctalPrime) ->
+        Octal = OctalPrime
+    ;
+        unexpected($module, $pred, "octal_digit failed")
+    ).
+
+    % Given an int between 0 and 9, return the decimal digit representing it.
+    %
+:- func get_decimal_digit(int) = string.
+
+get_decimal_digit(Int) = Decimal :-
+    ( decimal_digit(Int, DecimalPrime) ->
+        Decimal = DecimalPrime
+    ;
+        unexpected($module, $pred, "decimal_digit failed")
     ).
 
     % Given an int between 0 and 15, return the hexadecimal digit
@@ -1232,37 +1326,63 @@ abs_integer_to_hex_uc(Num) = NumStr :-
 :- func get_hex_digit_uc(int) = string.
 
 get_hex_digit_lc(Int) = HexLC :-
-    ( hex_digits(Int, HexLCPrime, _HexUC) ->
+    ( hex_digit(Int, HexLCPrime, _HexUC) ->
         HexLC = HexLCPrime
     ;
-        unexpected($module, $pred, "hex_digits failed")
+        unexpected($module, $pred, "hex_digit failed")
     ).
 
 get_hex_digit_uc(Int) = HexUC :-
-    ( hex_digits(Int, _HexLC, HexUCPrime) ->
+    ( hex_digit(Int, _HexLC, HexUCPrime) ->
         HexUC = HexUCPrime
     ;
-        unexpected($module, $pred, "hex_digits failed")
+        unexpected($module, $pred, "hex_digit failed")
     ).
 
-:- pred hex_digits(int::in, string::out, string::out) is semidet.
+:- pred octal_digit(int::in, string::out) is semidet.
 
-hex_digits( 0, "0", "0").
-hex_digits( 1, "1", "1").
-hex_digits( 2, "2", "2").
-hex_digits( 3, "3", "3").
-hex_digits( 4, "4", "4").
-hex_digits( 5, "5", "5").
-hex_digits( 6, "6", "6").
-hex_digits( 7, "7", "7").
-hex_digits( 8, "8", "8").
-hex_digits( 9, "9", "9").
-hex_digits(10, "a", "A").
-hex_digits(11, "b", "B").
-hex_digits(12, "c", "C").
-hex_digits(13, "d", "D").
-hex_digits(14, "e", "E").
-hex_digits(15, "f", "F").
+octal_digit(0, "0").
+octal_digit(1, "1").
+octal_digit(2, "2").
+octal_digit(3, "3").
+octal_digit(4, "4").
+octal_digit(5, "5").
+octal_digit(6, "6").
+octal_digit(7, "7").
+
+:- pred decimal_digit(int::in, string::out) is semidet.
+
+decimal_digit(0, "0").
+decimal_digit(1, "1").
+decimal_digit(2, "2").
+decimal_digit(3, "3").
+decimal_digit(4, "4").
+decimal_digit(5, "5").
+decimal_digit(6, "6").
+decimal_digit(7, "7").
+decimal_digit(8, "8").
+decimal_digit(9, "9").
+
+:- pred hex_digit(int::in, string::out, string::out) is semidet.
+
+hex_digit( 0, "0", "0").
+hex_digit( 1, "1", "1").
+hex_digit( 2, "2", "2").
+hex_digit( 3, "3", "3").
+hex_digit( 4, "4", "4").
+hex_digit( 5, "5", "5").
+hex_digit( 6, "6", "6").
+hex_digit( 7, "7", "7").
+hex_digit( 8, "8", "8").
+hex_digit( 9, "9", "9").
+hex_digit(10, "a", "A").
+hex_digit(11, "b", "B").
+hex_digit(12, "c", "C").
+hex_digit(13, "d", "D").
+hex_digit(14, "e", "E").
+hex_digit(15, "f", "F").
+
+%-----------------------------------------------------------------------------%
 
     % Unlike the standard library function, this function converts a float
     % to a string without resorting to scientific notation.
