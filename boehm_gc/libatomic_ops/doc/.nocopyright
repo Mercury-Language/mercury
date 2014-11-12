@@ -1,8 +1,0 @@
-COPYING
-LICENSING.txt
-Makefile.am
-Makefile.in
-README_malloc.txt
-README_stack.txt
-README.txt
-README_win32.txt
