@@ -7109,8 +7109,8 @@ Print the target architecture to the standard output.
 @item --output-class-directory
 @findex --output-class-dir
 @findex --output-class-directory
-Print the name of the directory in which generated Java class files
-will be placed to the standard output.
+Print to standard output the name of the directory in which generated Java
+class files will be placed.
 
 @end table
 

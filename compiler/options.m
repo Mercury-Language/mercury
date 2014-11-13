@@ -3879,8 +3879,8 @@ options_help_output -->
         "--output-target-arch",
         "\tPrint the target architecture to the standard output.",
         "--output-class-dir, --output-class-directory",
-        "\tPrint the name of the directory in which generated Java",
-        "\tclass files will be placed to the standard output."
+        "\tPrint to standard output the name of the directory in which",
+        "\tgenerated Java class will be placed."
     ]).
 
 :- pred options_help_aux_output(io::di, io::uo) is det.
