@@ -3067,7 +3067,7 @@ ENABLE_BOEHM_PARALLEL_MARK=
 # This following variable is used for passing any other C compiler
 # flags to the version of the Boehm GC built in parallel grades.
 #
-BOEHM_MISC_CFLAGS_FOR_THREADS=
+BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS"
 
 # This should be set if both the system malloc and Boehm GC (in the default
 # configuration) may both call sbrk.
@@ -3075,7 +3075,7 @@ avoid_sbrk=
 
 case "$host" in
     *solaris*)
-        CFLAGS_FOR_THREADS="-DGC_SOLARIS_PTHREADS -D_REENTRANT"
+        CFLAGS_FOR_THREADS="-DGC_THREADS -D_REENTRANT"
         THREAD_LIBS="-lpthread -lrt -ldl"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
         ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
@@ -3085,7 +3085,7 @@ case "$host" in
         # Note that for old versions of Linux / glibc,
         # you may also need to make sure that you don't
         # pass -ansi to gcc.
-        CFLAGS_FOR_THREADS="-DGC_LINUX_THREADS -D_THREAD_SAFE -D_REENTRANT"
+        CFLAGS_FOR_THREADS="-DGC_THREADS -D_THREAD_SAFE -D_REENTRANT"
         THREAD_LIBS="-lpthread -ldl"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
         ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
@@ -3096,7 +3096,8 @@ case "$host" in
         # (With the current collector these settings only appear to work
         # correctly on Linux.)
         # XXX disabled as it aborts on GC_free when --enable-gc-munmap is used
-        # BOEHM_MISC_CFLAGS_FOR_THREADS="-DHBLKSIZE=32768 -DCPP_LOG_HBLKSIZE=15"
+        # BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS -DHBLKSIZE=32768 \
+        # -DCPP_LOG_HBLKSIZE=15"
         avoid_sbrk=yes
         ;;
 
@@ -3104,16 +3105,15 @@ case "$host" in
         THREAD_LIBS=""
         case "$mercury_cv_cc_type" in
             msvc)
-                CFLAGS_FOR_THREADS="-DGC_WIN32_THREADS -MD"
+                CFLAGS_FOR_THREADS="-DGC_THREADS -MD"
                 LDFLAGS_FOR_THREADS="-MD"
                 LD_LIBFLAGS_FOR_THREADS="-MD"
                 ;;
             *)
                 CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
                 ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
-                # Disable parallel marking on Windows until next upgrade.
-                # It is broken on Windows 7+ (see bdwgc commit 57cc049).
-                # ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+                ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+                BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS $WIN32_GC_THREADLIB"
                 ;;
         esac
         # avoid_sbrk?
@@ -3123,7 +3123,7 @@ case "$host" in
         THREAD_LIBS=""
         case "$mercury_cv_cc_type" in
             msvc)
-                CFLAGS_FOR_THREADS="-DGC_WIN32_THREADS -MD"
+                CFLAGS_FOR_THREADS="-DGC_THREADS -MD"
                 LDFLAGS_FOR_THREADS="-MD"
                 LD_LIBFLAGS_FOR_THREADS="-MD"
                 ;;
@@ -3132,25 +3132,28 @@ case "$host" in
                 then
                     # By default the MinGW port of GCC targets the i386
                     # architecture.  We need to tell it to target a later
-                    # architecture for the GCC built-in atomic ops to be available.
+                    # architecture for the GCC built-in atomic ops to be
+                    # available.
                     CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -march=i686"
+                    BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS $WIN32_GC_THREADLIB"
                     THREAD_LIBS="-lpthread"
                 else
                     # The compiler is unconditionally linked against the thread
                     # libraries so if pthreads is not present then we need to
                     # set THREAD_LIBS to empty in order to avoid linker errors.
                     CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
+                    BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS $WIN32_GC_THREADLIB"
                     THREAD_LIBS=
                 fi
                 ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
-                # Disable parallel marking on Windows until next upgrade.
-                # ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+                ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
                 ;;
         esac
         ;;
 
     *-w64-mingw*)
         CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
+        BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS $WIN32_GC_THREADLIB"
         THREAD_LIBS="-lpthread"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
         # Disable parallel marking on Windows until next upgrade.
@@ -3158,14 +3161,14 @@ case "$host" in
         ;;
 
     *apple*darwin*)
-        CFLAGS_FOR_THREADS="-DGC_DARWIN_THREADS"
+        CFLAGS_FOR_THREADS="-DGC_THREADS"
         THREAD_LIBS=""
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
         ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
     *freebsd*)
-        CFLAGS_FOR_THREADS="-DGC_FREEBSD_THREADS"
+        CFLAGS_FOR_THREADS="-DGC_THREADS"
         THREAD_LIBS="-lpthread"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
         ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
@@ -3184,12 +3187,13 @@ case "$host" in
         # (2) a port of the Boehm gc for that architecture
         # that works with threads.
         CFLAGS_FOR_THREADS=""
+        BOEHM_CFLAGS_FOR_THREADS=""
         ;;
 esac
 
 if test "$avoid_sbrk" = yes; then
     if test "$ac_cv_func_mmap" = yes; then
-        BOEHM_MISC_CFLAGS_FOR_THREADS="$BOEHM_MISC_CFLAGS_FOR_THREADS -DUSE_MMAP"
+        BOEHM_CFLAGS_FOR_THREADS="$BOEHM_CFLAGS_FOR_THREADS -DUSE_MMAP"
         if test "$enable_gc_mmap" = no; then
             AC_MSG_NOTICE([using mmap for Boehm GC in threaded grades])
         fi
@@ -3204,7 +3208,7 @@ AC_SUBST(LDFLAGS_FOR_THREADS)
 AC_SUBST(LD_LIBFLAGS_FOR_THREADS)
 AC_SUBST(ENABLE_BOEHM_THREAD_LOCAL_ALLOC)
 AC_SUBST(ENABLE_BOEHM_PARALLEL_MARK)
-AC_SUBST(BOEHM_MISC_CFLAGS_FOR_THREADS)
+AC_SUBST(BOEHM_CFLAGS_FOR_THREADS)
 
 save_LIBS="$LIBS"
 LIBS="$THREAD_LIBS"

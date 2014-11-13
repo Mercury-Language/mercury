@@ -17,13 +17,21 @@ Mercury compiler, version @VERSION@.
 	contact us.  We are willing to offer alternative arrangements,
 	if the need should arise.
 	
-The subdirectory `boehm_gc' contains a slightly modified copy of version 7.2 of
-the conservative garbage collector distributed by Hans Boehm:
+The subdirectory `boehm_gc' contains a slightly modified copy of version
+7.4.2 of the conservative garbage collector distributed by Hans Boehm:
 
-	Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers
-	Copyright (c) 1991-1995 by Xerox Corporation.  All rights reserved.
-	Copyright (c) 1996-1999 by Silicon Graphics.  All rights reserved.
-	Copyright (c) 1999-2001 by Hewlett-Packard. All rights reserved.
+    Copyright (c) 1988, 1989 Hans-J. Boehm, Alan J. Demers
+    Copyright (c) 1991-1996 by Xerox Corporation. All rights reserved.
+    Copyright (c) 1996-1999 by Silicon Graphics. All rights reserved.
+    Copyright (c) 1999-2011 by Hewlett-Packard Development Company.
+
+    The file boehm_gc/linux_threads.c is also
+
+        Copyright (c) 1998 by Fergus Henderson. All rights reserved.
+
+    The files boehm_gc/Makefile.am, and boehm_gc/configure.in are
+
+        Copyright (c) 2001 by Red Hat Inc. All rights reserved.
 
 	THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY EXPRESSED
 	OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
@@ -39,6 +47,11 @@ the conservative garbage collector distributed by Hans Boehm:
 	that appears not to significantly restrict use of the collector, though
 	use of those files for a purpose other than building the collector may
 	require the resulting code to be covered by the GPL.
+
+    The atomic_ops library (libatomic_ops) contains some code that
+    is covered by the GNU General Public License, but is not needed by, nor
+    linked into the collector library or Mercury. It is included here only
+    because the libatomic_ops distribution is included in its entirety.
 
 A few files (config.guess, config.sub) are derived from code that is
 copyright by the Free Software Foundation, Inc, and are distributed

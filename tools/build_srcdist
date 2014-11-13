@@ -94,8 +94,7 @@ if [ -n "$RELEASE_VERSION" ]; then
     mv VERSION.new VERSION
 fi
 /bin/rm -f Mmake.params Mmake.stage.params
-aclocal -I m4 &&
-autoconf &&
+./prepare.sh
 mercury_cv_low_tag_bits=$NUM_TAG_BITS \
 mercury_cv_bits_per_word=$BITS_PER_WORD \
 mercury_cv_bytes_per_word=$BYTES_PER_WORD \

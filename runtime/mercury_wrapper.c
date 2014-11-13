@@ -2339,7 +2339,7 @@ MR_process_options(int argc, char **argv)
 
             case 'x':
 #ifdef MR_BOEHM_GC
-                GC_dont_gc = MR_TRUE;
+                GC_disable();
 #endif
                 break;
 

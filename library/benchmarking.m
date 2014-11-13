@@ -349,9 +349,14 @@ ML_report_stats(void)
 #ifdef MR_BOEHM_GC
     {
         char local_var;
+        struct GC_stack_base base;
 
-        fprintf(stderr, "" C Stack: %.3fk,"",
-            labs(&local_var - (char *) GC_stackbottom) / 1024.0);
+        if (GC_SUCCESS == GC_get_stack_base(&base)) {
+            fprintf(stderr, "" C Stack: %.3fk,"",
+                labs(&local_var - (char *)base.mem_base) / 1024.0);
+        } else {
+            fprintf(stderr, "" Cannot locate C stack base."");
+        }
     }
 #endif
 
@@ -376,7 +381,7 @@ ML_report_stats(void)
 #ifdef MR_CONSERVATIVE_GC
   #ifdef MR_BOEHM_GC
     fprintf(stderr, ""\\n#GCs: %lu, "",
-        (unsigned long) GC_gc_no);
+        (unsigned long) GC_get_gc_no());
     if (GC_mercury_calc_gc_time) {
         /* convert from unsigned long milliseconds to float seconds */
         fprintf(stderr, ""total GC time: %.2fs, "",

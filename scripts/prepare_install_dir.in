@@ -42,26 +42,26 @@ mkdir ${installdir}/boehm_gc/Mac_files
 mkdir ${installdir}/boehm_gc/cord
 mkdir ${installdir}/boehm_gc/include
 mkdir ${installdir}/boehm_gc/include/private
+mkdir ${installdir}/boehm_gc/src
+mkdir ${installdir}/boehm_gc/tools
 cp boehm_gc/NT_MAKEFILE ${installdir}/boehm_gc
 cp boehm_gc/*.[Mm]ak ${installdir}/boehm_gc
 cp boehm_gc/Makefile* ${installdir}/boehm_gc
 cp boehm_gc/Mmake* ${installdir}/boehm_gc
-cp boehm_gc/ac* ${installdir}/boehm_gc
 cp boehm_gc/*.cc ${installdir}/boehm_gc
 cp boehm_gc/*.cpp ${installdir}/boehm_gc
 cp boehm_gc/*.[chsS] ${installdir}/boehm_gc
-cp boehm_gc/Mac_files/*.[ch] ${installdir}/boehm_gc/Mac_files
 cp boehm_gc/cord/*.[ch] ${installdir}/boehm_gc/cord
 cp boehm_gc/include/*.[ch] ${installdir}/boehm_gc/include
 cp boehm_gc/include/private/*.[ch] ${installdir}/boehm_gc/include/private
+cp boehm_gc/src/*.[chsS] ${installdir}/boehm_gc/src
+cp boehm_gc/tools/*.[ch] ${installdir}/boehm_gc/tools
 cp boehm_gc/build_atomic_ops.sh* ${installdir}/boehm_gc
-cp -Rp boehm_gc/libatomic_ops-*[0-9] ${installdir}/boehm_gc
-cp -Rp boehm_gc/libatomic_ops ${installdir}/boehm_gc
+cp -Rp libatomic_ops ${installdir}
+ln -s ${installdir}/libatomic_ops ${installdir}/boehm_gc
 cp -Rp boehm_gc/extra ${installdir}/boehm_gc
-rm -fr ${installdir}/boehm_gc/libatomic_ops-*[0-9]/src/*.o
-rm -fr ${installdir}/boehm_gc/libatomic_ops-*[0-9]/src/*.a
-rm -fr ${installdir}/boehm_gc/libatomic_ops/src/*.o
-rm -fr ${installdir}/boehm_gc/libatomic_ops/src/*.a
+rm -fr ${installdir}/libatomic_ops/src/*.o
+rm -fr ${installdir}/libatomic_ops/src/*.a
 mkdir ${installdir}/runtime
 mkdir ${installdir}/runtime/machdeps
 cp runtime/Mmake* ${installdir}/runtime
