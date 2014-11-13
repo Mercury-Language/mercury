@@ -7099,6 +7099,19 @@ to search for C header files.
 This includes the C header files from the standard library.
 The flags are printed to the standard output.
 
+@sp 1
+@item --output-target-arch
+@findex --output-target-arch
+Print the target architecture to the standard output.
+
+@sp 1
+@item --output-class-dir
+@item --output-class-directory
+@findex --output-class-dir
+@findex --output-class-directory
+Print the name of the direcoty in which generated Java class files
+will be placed to the standard output.
+
 @end table
 
 @node Auxiliary output options

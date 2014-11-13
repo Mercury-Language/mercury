@@ -212,6 +212,8 @@
     ;       output_library_link_flags
     ;       output_grade_defines
     ;       output_c_include_directory_flags
+    ;       output_target_arch
+    ;       output_class_dir
 
     % Auxiliary output options
     ;       smart_recompilation
@@ -1010,7 +1012,7 @@
     ;       typecheck_ambiguity_error_limit
     ;       help
     ;       version
-    ;       fullarch
+    ;       target_arch
     ;       cross_compiling
     ;       local_module_id
     ;       analysis_file_cache_dir
@@ -1213,7 +1215,9 @@ option_defaults_2(output_option, [
     output_cflags                       -   bool(no),
     output_library_link_flags           -   bool(no),
     output_grade_defines                -   bool(no),
-    output_c_include_directory_flags    -   bool(no)
+    output_c_include_directory_flags    -   bool(no),
+    output_target_arch                  -   bool(no),
+    output_class_dir                    -   bool(no)
 ]).
 option_defaults_2(aux_output_option, [
     % Auxiliary Output Options
@@ -1922,7 +1926,7 @@ option_defaults_2(miscellaneous_option, [
     typecheck_ambiguity_error_limit     -   int(3000),
     help                                -   bool(no),
     version                             -   bool(no),
-    fullarch                            -   string(""),
+    target_arch                         -   string(""),
     cross_compiling                     -   bool(no),
     local_module_id                     -   accumulating([]),
     analysis_file_cache_dir             -   string(""),
@@ -2121,6 +2125,9 @@ long_option("output-c-include-directory-flags",
     output_c_include_directory_flags).
 long_option("output-c-include-dir-flags",
     output_c_include_directory_flags).
+long_option("output-target-arch",       output_target_arch).
+long_option("output-class-directory",   output_class_dir).
+long_option("output-class-dir",         output_class_dir).
 
 % aux output options
 long_option("smart-recompilation",      smart_recompilation).
@@ -2901,8 +2908,8 @@ long_option("typecheck-ambiguity-error-limit",
 long_option("help",                 help).
 long_option("version",              version).
 long_option("filenames-from-stdin", filenames_from_stdin).
-long_option("fullarch",             fullarch).
-long_option("target-arch",          fullarch).
+long_option("fullarch",             target_arch).
+long_option("target-arch",          target_arch).
 long_option("cross-compiling",      cross_compiling).
 long_option("local-module-id",      local_module_id).
 long_option("analysis-file-cache-dir",  analysis_file_cache_dir).
@@ -3868,7 +3875,12 @@ options_help_output -->
         "\tPrint the flags that are passed to the C compiler to specify",
         "\twhich directories to search for C header files.",
         "\tThis includes the C header files from the standard library.",
-        "\tThe flags are printed to the standard output."
+        "\tThe flags are printed to the standard output.",
+        "--output-target-arch",
+        "\tPrint the target architecture to the standard output.",
+        "--output-class-dir, --output-class-directory",
+        "\tPrint the name of the directory in which generated Java",
+        "\tclass files will be placed to the standard output."
     ]).
 
 :- pred options_help_aux_output(io::di, io::uo) is det.
@@ -5919,8 +5931,9 @@ options_help_misc -->
         "--version",
         "\tDisplay the compiler version.",
 
-        % The `--fullarch' option is reserved for
-        % use by the `Mercury.config' file.
+        % The `--target-arch' options is reserved for use by the
+        % `Mercury.config' file.  The `--fullarch' option is a deprecated
+        % synonym for this.
 
         "--cross-compiling",
         "\tDo not assume that the code being generated is for the",

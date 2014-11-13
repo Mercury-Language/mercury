@@ -1015,11 +1015,11 @@ create_analysis_cache_dir(Globals, Succeeded, CacheDir, !IO) :-
 
 choose_cache_dir_name(Globals, DirName, !IO) :-
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_string_option(Globals, fullarch, FullArch),
+    globals.lookup_string_option(Globals, target_arch, TargetArch),
     (
         UseGradeSubdirs = yes,
         grade_directory_component(Globals, Grade),
-        DirComponents = ["Mercury", Grade, FullArch, "Mercury",
+        DirComponents = ["Mercury", Grade, TargetArch, "Mercury",
             "analysis_cache"]
     ;
         UseGradeSubdirs = no,

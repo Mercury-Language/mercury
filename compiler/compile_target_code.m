@@ -574,11 +574,11 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     % See the hard_coded/ppc_bug test case for an example
     % program which fails with this optimization.
 
-    globals.lookup_string_option(Globals, fullarch, FullArch),
+    globals.lookup_string_option(Globals, target_arch, TargetArch),
     (
         globals.lookup_bool_option(Globals, highlevel_code, no),
         globals.lookup_bool_option(Globals, gcc_global_registers, yes),
-        string.prefix(FullArch, "powerpc-apple-darwin")
+        string.prefix(TargetArch, "powerpc-apple-darwin")
     ->
         AppleGCCRegWorkaroundOpt = "-fno-loop-optimize "
     ;
@@ -590,7 +590,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     % (Changes here need to be reflected in scripts/mgnuc.in.)
     (
         globals.lookup_bool_option(Globals, exec_trace, yes),
-        arch_is_apple_darwin(FullArch)
+        arch_is_apple_darwin(TargetArch)
     ->
         OverrideOpts = "-O0"
     ;
@@ -1088,14 +1088,14 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
 
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_string_option(Globals, fullarch, FullArch),
+    globals.lookup_string_option(Globals, target_arch, TargetArch),
     (
         UseSubdirs = yes,
         (
             UseGradeSubdirs = yes,
             grade_directory_component(Globals, Grade),
-            SourceDirName = "Mercury"/Grade/FullArch/"Mercury"/"javas",
-            DestDirName = "Mercury"/Grade/FullArch/"Mercury"/"classs"
+            SourceDirName = "Mercury"/Grade/TargetArch/"Mercury"/"javas",
+            DestDirName = "Mercury"/Grade/TargetArch/"Mercury"/"classs"
         ;
             UseGradeSubdirs = no,
             SourceDirName = "Mercury"/"javas",
@@ -1180,13 +1180,13 @@ compile_erlang_file(ErrorStream, ErlangFile, Globals, Succeeded, !IO) :-
 
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_string_option(Globals, fullarch, FullArch),
+    globals.lookup_string_option(Globals, target_arch, TargetArch),
     (
         UseSubdirs = yes,
         (
             UseGradeSubdirs = yes,
             grade_directory_component(Globals, Grade),
-            DirName = "Mercury"/Grade/FullArch/"Mercury"/"beams"
+            DirName = "Mercury"/Grade/TargetArch/"Mercury"/"beams"
         ;
             UseGradeSubdirs = no,
             DirName = "Mercury"/"beams"

@@ -2017,7 +2017,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     option_implies(generate_source_file_mapping, warn_wrong_module_name,
         bool(no), !Globals),
 
-    globals.lookup_string_option(!.Globals, fullarch, FullArch),
+    globals.lookup_string_option(!.Globals, target_arch, TargetArch),
 
     % Add the standard library directory.
     globals.lookup_maybe_string_option(!.Globals,
@@ -2154,18 +2154,18 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         search_library_files_directories, SearchLibFilesDirs),
     globals.lookup_accumulating_option(!.Globals,
         intermod_directories, IntermodDirs2),
-    ToGradeSubdir = (func(Dir) = Dir/"Mercury"/GradeString/FullArch),
+    ToGradeSubdir = (func(Dir) = Dir/"Mercury"/GradeString/TargetArch),
     (
         UseGradeSubdirs = yes,
         % With `--use-grade-subdirs', `.opt', `.trans_opt' and
         % `.mih' files are placed in a directory named
-        % `Mercury/<grade>/<fullarch>/Mercury/<ext>s'.
+        % `Mercury/<grade>/<target_arch>/Mercury/<ext>s'.
         % When searching for a `.opt' file, module_name_to_file_name
         % produces `Mercury/<ext>/<module>.ext' so that searches
         % for installed files work, so we need to add
-        % `--intermod-directory Mercury/<grade>/<fullarch>'
+        % `--intermod-directory Mercury/<grade>/<target_arch>'
         % to find the `.opt' files in the current directory.
-        GradeSubdir = "Mercury"/GradeString/FullArch,
+        GradeSubdir = "Mercury"/GradeString/TargetArch,
 
         % Directories listed with --search-library-files-directories need
         % to be treated in the same way as the current directory.
@@ -2187,8 +2187,8 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     (
         UseGradeSubdirs = yes,
         % With --use-grade-subdirs we need to search in
-        % `Mercury/<grade>/<fullarch>/Mercury/lib' for libraries and
-        % `Mercury/<grade>/<fullarch>/Mercury/inits' for init files,
+        % `Mercury/<grade>/<target_arch>/Mercury/lib' for libraries and
+        % `Mercury/<grade>/<target_arch>/Mercury/inits' for init files,
         % for each directory listed with --search-library-files-directory.
         ToGradeLibDir = (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"lib"),
         SearchGradeLibDirs = list.map(ToGradeLibDir, SearchLibFilesDirs),

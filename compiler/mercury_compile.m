@@ -380,6 +380,10 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
         OutputGradeDefines),
     globals.lookup_bool_option(Globals, output_c_include_directory_flags,
         OutputCInclDirFlags),
+    globals.lookup_bool_option(Globals, output_target_arch,
+        OutputTargetArch),
+    globals.lookup_bool_option(Globals, output_class_dir,
+        OutputClassDir),
     globals.lookup_bool_option(Globals, make, Make),
     globals.lookup_maybe_string_option(Globals,
         generate_standalone_interface, GenerateStandaloneInt),
@@ -451,6 +455,14 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
     ; OutputCInclDirFlags = yes ->
         io.stdout_stream(StdOut, !IO),
         output_c_include_directory_flags(Globals, StdOut, !IO)
+    ; OutputTargetArch = yes ->
+        io.stdout_stream(StdOut, !IO),
+        globals.lookup_string_option(Globals, target_arch, TargetArch),
+        io.write_string(StdOut, TargetArch ++ "\n", !IO)
+    ; OutputClassDir = yes ->
+        io.stdout_stream(StdOut, !IO),
+        get_class_dir_name(Globals, ClassName),
+        io.write_string(StdOut, ClassName ++ "\n", !IO)
     ; GenerateMapping = yes ->
         source_file_map.write_source_file_map(Globals, Args, !IO)
     ; GenerateStandaloneInt = yes(StandaloneIntBasename) ->
@@ -461,6 +473,9 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
             ; Target = target_java
             ; Target = target_erlang
             ),
+            % XXX this message is nonsense.  These targets do
+            % not require standalone interfaces since they natively
+            % provide an equivalent mechanism.
             NYIMsg = [
                 words("Sorry,"),
                 quote("--generate-standalone-interface"),
