@@ -277,10 +277,10 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                             MaybeVariables = yes(Variables),
                             lookup_mmc_options(FlagsArgsGlobals, Variables,
                                 MaybeMCFlags, !IO),
-                            lookup_mercury_stdlib_dir(FlagsArgsGlobals, Variables,
-                                MaybeMerStdLibDir, !IO),
-                            detect_libgrades(FlagsArgsGlobals, MaybeMerStdLibDir,
-                                DetectedGradeFlags, !IO)
+                            lookup_mercury_stdlib_dir(FlagsArgsGlobals,
+                                Variables, MaybeMerStdLibDir, !IO),
+                            detect_libgrades(FlagsArgsGlobals,
+                                MaybeMerStdLibDir, DetectedGradeFlags, !IO)
                         ;
                             MaybeVariables = no,
                             MaybeMCFlags = no,
