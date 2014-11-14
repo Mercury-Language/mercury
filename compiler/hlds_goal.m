@@ -488,6 +488,13 @@
             % This scope reason should not exist after the first invocation
             % of simplification.
 
+    ;       require_switch_arms_detism(prog_var, determinism)
+            % If the wrapped subgoal is a switch on the given variable,
+            % require every arm of that switch to have the specified
+            % determinism. If it does not, report an error.
+            % This scope reason should not exist after the first invocation
+            % of simplification.
+
     ;       commit(force_pruning)
             % This scope exists to delimit a piece of code
             % with at_most_many components but with no outputs,
@@ -2459,12 +2466,16 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             rename_var_list(Must, Subn, Vars0, Vars),
             Reason = promise_solutions(Vars, Kind)
         ;
+            Reason0 = require_detism(_Detism),
+            Reason = Reason0
+        ;
             Reason0 = require_complete_switch(Var0),
             rename_var(Must, Subn, Var0, Var),
             Reason = require_complete_switch(Var)
         ;
-            Reason0 = require_detism(_),
-            Reason = Reason0
+            Reason0 = require_switch_arms_detism(Var0, Detism),
+            rename_var(Must, Subn, Var0, Var),
+            Reason = require_switch_arms_detism(Var, Detism)
         ;
             Reason0 = barrier(_),
             Reason = Reason0
@@ -2697,12 +2708,16 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
             rename_var_list(need_not_rename, Subn, Vars0, Vars),
             Reason = promise_solutions(Vars, Kind)
         ;
+            Reason0 = require_detism(_Detism),
+            Reason = Reason0
+        ;
             Reason0 = require_complete_switch(Var0),
             rename_var(need_not_rename, Subn, Var0, Var),
             Reason = require_complete_switch(Var)
         ;
-            Reason0 = require_detism(_),
-            Reason = Reason0
+            Reason0 = require_switch_arms_detism(Var0, Detism),
+            rename_var(need_not_rename, Subn, Var0, Var),
+            Reason = require_switch_arms_detism(Var, Detism)
         ;
             Reason0 = barrier(_),
             Reason = Reason0

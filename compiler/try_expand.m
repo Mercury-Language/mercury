@@ -384,6 +384,7 @@ expand_try_goals_in_goal(Instmap, Goal0, Goal, !Info) :-
             ; Reason = promise_purity(_)
             ; Reason = require_detism(_)
             ; Reason = require_complete_switch(_)
+            ; Reason = require_switch_arms_detism(_, _)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = from_ground_term(_, from_ground_term_deconstruct)

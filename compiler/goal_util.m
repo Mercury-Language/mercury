@@ -596,7 +596,9 @@ goal_vars_2(Goal, !Set) :-
             Reason = from_ground_term(Var, _),
             set_of_var.insert(Var, !Set)
         ;
-            Reason = require_complete_switch(Var),
+            ( Reason = require_complete_switch(Var)
+            ; Reason = require_switch_arms_detism(Var, _)
+            ),
             set_of_var.insert(Var, !Set)
         ;
             Reason = loop_control(LCVar, LCSVar, _),

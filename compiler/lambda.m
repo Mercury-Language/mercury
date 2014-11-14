@@ -857,6 +857,7 @@ find_used_vars_in_goal(Goal, !VarUses) :-
         ;
             ( Reason = require_detism(_)
             ; Reason = require_complete_switch(_)
+            ; Reason = require_switch_arms_detism(_, _)
             ),
             % These scopes should have been deleted by now.
             unexpected($module, $pred, "unexpected scope")

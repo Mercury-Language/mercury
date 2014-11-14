@@ -2857,6 +2857,41 @@ mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
         mercury_output_newline(Indent, !IO),
         io.write_string(")", !IO)
     ;
+        Expr = require_switch_arms_detism_expr(Var, Detism, Goal),
+        (
+            Detism = detism_det,
+            io.write_string("require_switch_arms_det", !IO)
+        ;
+            Detism = detism_semi,
+            io.write_string("require_switch_arms_semidet", !IO)
+        ;
+            Detism = detism_multi,
+            io.write_string("require_switch_arms_multi", !IO)
+        ;
+            Detism = detism_non,
+            io.write_string("require_switch_arms_nondet", !IO)
+        ;
+            Detism = detism_cc_multi,
+            io.write_string("require_switch_arms_cc_multi", !IO)
+        ;
+            Detism = detism_cc_non,
+            io.write_string("require_switch_arms_cc_nondet", !IO)
+        ;
+            Detism = detism_erroneous,
+            io.write_string("require_switch_arms_erroneous", !IO)
+        ;
+            Detism = detism_failure,
+            io.write_string("require_switch_arms_failure", !IO)
+        ),
+        io.write_string(" [", !IO),
+        mercury_output_var(VarSet, no, Var, !IO),
+        io.write_string("] (", !IO),
+        Indent1 = Indent + 1,
+        mercury_output_newline(Indent1, !IO),
+        mercury_output_goal(Goal, VarSet, Indent1, !IO),
+        mercury_output_newline(Indent, !IO),
+        io.write_string(")", !IO)
+    ;
         Expr = atomic_expr(Outer, Inner, _, MainExpr, OrElseExprs),
         io.write_string("atomic [outer(", !IO),
         (
@@ -3070,6 +3105,7 @@ mercury_output_connected_goal(Goal, VarSet, Indent, !IO) :-
         ; Expr = promise_purity_expr(_, _)
         ; Expr = require_detism_expr(_, _)
         ; Expr = require_complete_switch_expr(_, _)
+        ; Expr = require_switch_arms_detism_expr(_, _, _)
         ; Expr = conj_expr(_, _)
         ; Expr = atomic_expr(_, _, _, _, _)
         ; Expr = trace_expr(_, _, _, _, _)

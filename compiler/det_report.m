@@ -122,16 +122,6 @@
     globals::in, globals::out) is det.
 
 %-----------------------------------------------------------------------------%
-
-:- type det_comparison
-    --->    tighter
-    ;       sameas
-    ;       looser.
-
-:- pred compare_determinisms(determinism::in, determinism::in,
-    det_comparison::out) is det.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -196,9 +186,9 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
         MaybeDetism = yes(DeclaredDetism),
         compare_determinisms(DeclaredDetism, InferredDetism, Cmp),
         (
-            Cmp = sameas
+            Cmp = first_detism_same_as
         ;
-            Cmp = looser,
+            Cmp = first_detism_looser_than,
             module_info_get_globals(!.ModuleInfo, Globals),
             globals.lookup_bool_option(Globals, warn_det_decls_too_lax,
                 ShouldIssueWarning),
@@ -258,7 +248,9 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 true
             )
         ;
-            Cmp = tighter,
+            ( Cmp = first_detism_tighter_than
+            ; Cmp = first_detism_incomparable
+            ),
             proc_info_get_detism_decl(ProcInfo, DetismDecl),
             MessagePieces = [words("error:"),
                 words(detism_decl_name(DetismDecl)),
@@ -463,7 +455,9 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         !DetInfo) :-
     compare_determinisms(DeclaredDetism, InferredDetism, Cmp),
     (
-        Cmp = tighter,
+        ( Cmp = first_detism_tighter_than
+        ; Cmp = first_detism_incomparable
+        ),
         det_info_get_pred_id(!.DetInfo, PredId),
         det_info_get_proc_id(!.DetInfo, ProcId),
         Context = goal_info_get_context(GoalInfo),
@@ -484,8 +478,8 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
             [simple_msg(Context, [always(Pieces)])] ++ SortedGoalMsgs),
         det_info_add_error_spec(Spec, !DetInfo)
     ;
-        ( Cmp = sameas
-        ; Cmp = looser
+        ( Cmp = first_detism_same_as
+        ; Cmp = first_detism_looser_than
         )
         % We don't bother issuing warnings if the determinism was too loose;
         % that will often be the case, and should not be warned about.
@@ -514,58 +508,6 @@ report_determinism_problem(PredId, ProcId, ModuleInfo, MessagePieces,
 
 %-----------------------------------------------------------------------------%
 
-compare_determinisms(DeclaredDetism, InferredDetism, CmpDetism) :-
-    determinism_components(DeclaredDetism, DeclaredCanFail, DeclaredSolns),
-    determinism_components(InferredDetism, InferredCanFail, InferredSolns),
-    compare_canfails(DeclaredCanFail, InferredCanFail, CmpCanFail),
-    compare_solncounts(DeclaredSolns, InferredSolns, CmpSolns),
-
-    % We can get e.g. tighter canfail and looser solncount
-    % e.g. for a predicate declared multidet and inferred semidet.
-    % Therefore the ordering of the following two tests is important:
-    % we want errors to take precedence over warnings.
-
-    ( ( CmpCanFail = tighter ; CmpSolns = tighter ) ->
-        CmpDetism = tighter
-    ; ( CmpCanFail = looser ; CmpSolns = looser ) ->
-        CmpDetism = looser
-    ;
-        CmpDetism = sameas
-    ).
-
-:- pred compare_canfails(can_fail::in, can_fail::in, det_comparison::out)
-    is det.
-
-compare_canfails(cannot_fail, cannot_fail, sameas).
-compare_canfails(cannot_fail, can_fail,    tighter).
-compare_canfails(can_fail,    cannot_fail, looser).
-compare_canfails(can_fail,    can_fail,    sameas).
-
-:- pred compare_solncounts(soln_count::in, soln_count::in, det_comparison::out)
-    is det.
-
-compare_solncounts(at_most_zero,    at_most_zero,    sameas).
-compare_solncounts(at_most_zero,    at_most_one,     tighter).
-compare_solncounts(at_most_zero,    at_most_many_cc, tighter).
-compare_solncounts(at_most_zero,    at_most_many,    tighter).
-
-compare_solncounts(at_most_one,     at_most_zero,    looser).
-compare_solncounts(at_most_one,     at_most_one,     sameas).
-compare_solncounts(at_most_one,     at_most_many_cc, tighter).
-compare_solncounts(at_most_one,     at_most_many,    tighter).
-
-compare_solncounts(at_most_many_cc, at_most_zero,    looser).
-compare_solncounts(at_most_many_cc, at_most_one,     looser).
-compare_solncounts(at_most_many_cc, at_most_many_cc, sameas).
-compare_solncounts(at_most_many_cc, at_most_many,    tighter).
-
-compare_solncounts(at_most_many,    at_most_zero,    looser).
-compare_solncounts(at_most_many,    at_most_one,     looser).
-compare_solncounts(at_most_many,    at_most_many_cc, looser).
-compare_solncounts(at_most_many,    at_most_many,    sameas).
-
-%-----------------------------------------------------------------------------%
-
     % The given goal should have determinism Desired, but doesn't.
     % Find out what is wrong, and return a list of messages giving the causes.
     %
@@ -576,10 +518,17 @@ compare_solncounts(at_most_many,    at_most_many,    sameas).
 det_diagnose_goal(Goal, InstMap0, Desired, SwitchContexts, !DetInfo, Msgs) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     Actual = goal_info_get_determinism(GoalInfo),
-    ( compare_determinisms(Desired, Actual, tighter) ->
+    compare_determinisms(Desired, Actual, CompareResult),
+    (
+        ( CompareResult = first_detism_tighter_than
+        ; CompareResult = first_detism_incomparable
+        ),
         det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
             SwitchContexts, !DetInfo, Msgs)
     ;
+        ( CompareResult = first_detism_same_as
+        ; CompareResult = first_detism_looser_than
+        ),
         Msgs = []
     ).
 
@@ -764,17 +713,17 @@ det_diagnose_primitive_goal(Desired, Actual, Context, StartingPieces, Msgs) :-
     determinism_components(Actual, ActualCanFail, ActualSolns),
     compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail),
     (
-        CmpCanFail = tighter,
+        CmpCanFail = first_tighter_than,
         CanFailPieces = [words("can fail")]
     ;
-        ( CmpCanFail = sameas
-        ; CmpCanFail = looser
+        ( CmpCanFail = first_same_as
+        ; CmpCanFail = first_looser_than
         ),
         CanFailPieces = []
     ),
     compare_solncounts(DesiredSolns, ActualSolns, CmpSolns),
     (
-        CmpSolns = tighter,
+        CmpSolns = first_tighter_than,
         (
             CanFailPieces = [_ | _],
             ConnectPieces = [words("and")]
@@ -793,8 +742,8 @@ det_diagnose_primitive_goal(Desired, Actual, Context, StartingPieces, Msgs) :-
             SolnsPieces = [words("can succeed")]
         )
     ;
-        ( CmpSolns = sameas
-        ; CmpSolns = looser
+        ( CmpSolns = first_same_as
+        ; CmpSolns = first_looser_than
         ),
         ConnectPieces = [],
         SolnsPieces = []
@@ -1093,29 +1042,14 @@ reqscope_check_goal(Goal, InstMap0, !DetInfo) :-
 reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
     (
         Reason = require_detism(RequiredDetism),
-        SubGoal = hlds_goal(_, SubGoalInfo),
-        ActualDetism = goal_info_get_determinism(SubGoalInfo),
-        ( ActualDetism = RequiredDetism ->
-            true
-        ;
-            RequiredDetismStr = determinism_to_string(RequiredDetism),
-            ActualDetismStr = determinism_to_string(ActualDetism),
-            DetismPieces = [words("Error: required determinism is"),
-                quote(RequiredDetismStr), suffix(","),
-                words("but actual determinism is"),
-                quote(ActualDetismStr), suffix("."), nl],
-            Context = goal_info_get_context(ScopeGoalInfo),
-            DetismMsg = simple_msg(Context, [always(DetismPieces)]),
-            DetismSpec = error_spec(severity_error, phase_detism_check,
-                [DetismMsg]),
-            det_info_add_error_spec(DetismSpec, !DetInfo)
-        )
+        reqscope_check_goal_detism(RequiredDetism, SubGoal,
+            check_require_detism(ScopeGoalInfo), !DetInfo)
     ;
         Reason = require_complete_switch(RequiredVar),
         % We must test the version of the subgoal that has not yet been
-        % simplified, since simplification can convert a complete
-        % switch into an incomplete switch by deleting an arm
-        % consisting of nothing but `fail'.
+        % simplified, since simplification can convert a complete switch
+        % into an incomplete switch by deleting an arm that contains
+        % only `fail'.
         SubGoal = hlds_goal(SubGoalExpr, _),
         (
             SubGoalExpr = switch(SwitchVar, CanFail, Cases),
@@ -1148,32 +1082,21 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
                 det_info_add_error_spec(SwitchSpec, !DetInfo)
             )
         ;
-            % Emit a warning if the variable in the head of a
-            % require_complete_switch scope does not occur somewhere in the
-            % body. Note that since the goal inside the scope does not need to
-            % be a switch, the variable will not necessarily appear in the
-            % non-locals set. We only emit the  warning when the variable does
-            % not occur at all.
-            %
-            goal_vars(SubGoal, SubGoalVars),
-            ( if set_of_var.member(SubGoalVars, RequiredVar) then
-                true
-            else
-                det_get_proc_info(!.DetInfo, ProcInfo),
-                proc_info_get_varset(ProcInfo, VarSet),
-                VarStr = mercury_var_to_string(VarSet, no, RequiredVar),
-                MissingRequiredPieces = [
-                    words("Warning: variable "), quote(VarStr),
-                    words("is the subject of a require_complete_switch scope"),
-                    words("but it does not occur in the sub-goal.")
-                ],
-                Context = goal_info_get_context(ScopeGoalInfo),
-                MissingRequiredMsg = simple_msg(Context,
-                    [always(MissingRequiredPieces)]),
-                MissingRequiredSpec = error_spec(severity_warning,
-                    phase_detism_check, [MissingRequiredMsg]),
-                det_info_add_error_spec(MissingRequiredSpec, !DetInfo)
-            )
+            generate_warning_for_switch_var_if_missing(RequiredVar, SubGoal,
+                ScopeGoalInfo, !DetInfo)
+        )
+    ;
+        Reason = require_switch_arms_detism(RequiredVar, RequiredDetism),
+        SubGoal = hlds_goal(SubGoalExpr, _),
+        (
+            SubGoalExpr = switch(SwitchVar, _CanFail, Cases),
+            SwitchVar = RequiredVar
+        ->
+            reqscope_check_goal_detism_for_cases(RequiredDetism, Cases,
+                check_require_switch_arms_detism, !DetInfo)
+        ;
+            generate_warning_for_switch_var_if_missing(RequiredVar, SubGoal,
+                ScopeGoalInfo, !DetInfo)
         )
     ;
         Reason = loop_control(_, _, _),
@@ -1210,6 +1133,109 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
         )
     ).
 
+    % Are we checking the determinism of a goal for a require_{det,...} scope,
+    % or for a require_switch_arms_{det,...} scope?
+    %
+:- type detism_check_kind
+    --->    check_require_detism(hlds_goal_info)
+    ;       check_require_switch_arms_detism.
+
+:- pred reqscope_check_goal_detism(determinism::in, hlds_goal::in,
+    detism_check_kind::in, det_info::in, det_info::out) is det.
+
+reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, !DetInfo) :-
+    Goal = hlds_goal(_, GoalInfo),
+    ActualDetism = goal_info_get_determinism(GoalInfo),
+    compare_determinisms(ActualDetism, RequiredDetism, CompareResult),
+    (
+        (
+            CheckKind = check_require_detism(_),
+            % For require_detism scopes, the programmer requires an exact
+            % match.
+            % keyword is the most appropriate scope.
+            CompareResult = first_detism_same_as
+        ;
+            CheckKind = check_require_switch_arms_detism,
+            % For require_switch_arms_detism scopes, the programmer requires
+            % only that each switch arm's determinism must be at least as tight
+            % as RequiredDetism.
+            ( CompareResult = first_detism_tighter_than
+            ; CompareResult = first_detism_same_as
+            )
+        )
+    ->
+        true
+    ;
+        (
+            CheckKind = check_require_detism(ScopeGoalInfo),
+            % For require_detism scopes, the context of the require_detism
+            % keyword is the most appropriate scope.
+            Context = goal_info_get_context(ScopeGoalInfo)
+        ;
+            CheckKind = check_require_switch_arms_detism,
+            % For require_switch_arms_detism scopes, the context of the
+            % require_switch_arms_detism keyword won't work, since it
+            % won't tell the user *which* arm's determinism isn't right.
+            % We have to use the switch arm goal's own scope.
+            Context = goal_info_get_context(GoalInfo)
+        ),
+        RequiredDetismStr = determinism_to_string(RequiredDetism),
+        ActualDetismStr = determinism_to_string(ActualDetism),
+        Pieces = [words("Error: required determinism is"),
+            quote(RequiredDetismStr), suffix(","),
+            words("but actual determinism is"),
+            quote(ActualDetismStr), suffix("."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_detism_check, [Msg]),
+        det_info_add_error_spec(Spec, !DetInfo)
+    ).
+
+:- pred reqscope_check_goal_detism_for_cases(determinism::in, list(case)::in,
+    detism_check_kind::in, det_info::in, det_info::out) is det.
+
+reqscope_check_goal_detism_for_cases(_RequiredDetism, [], _CheckKind,
+        !DetInfo).
+reqscope_check_goal_detism_for_cases(RequiredDetism, [Case | Cases], CheckKind,
+        !DetInfo) :-
+    Case = case(_MainConsId, _OtherConsIds, Goal),
+    reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, !DetInfo),
+    reqscope_check_goal_detism_for_cases(RequiredDetism, Cases, CheckKind,
+        !DetInfo).
+
+    % Emit a warning if the variable in the head of a require_complete_switch
+    % or require_switch_arms_detism scope does not occur somewhere in the goal
+    % inside the scope. Note that since the goal inside the scope does not
+    % need to be a switch, the variable will not necessarily appear in the
+    % non-locals set. We only emit the warning when the variable does
+    % not occur at all.
+    %
+:- pred generate_warning_for_switch_var_if_missing(prog_var::in, hlds_goal::in,
+    hlds_goal_info::in, det_info::in, det_info::out) is det.
+
+generate_warning_for_switch_var_if_missing(RequiredVar, Goal, ScopeGoalInfo,
+        !DetInfo) :-
+    goal_vars(Goal, GoalVars),
+    ( if set_of_var.member(GoalVars, RequiredVar) then
+        true
+    else
+        det_get_proc_info(!.DetInfo, ProcInfo),
+        proc_info_get_varset(ProcInfo, VarSet),
+        VarStr = mercury_var_to_string(VarSet, no, RequiredVar),
+        MissingRequiredPieces = [
+            words("Warning: variable "), quote(VarStr),
+            words("is the subject of a require_complete_switch scope"),
+            words("but it does not occur in the sub-goal.")
+        ],
+        Context = goal_info_get_context(ScopeGoalInfo),
+        MissingRequiredMsg = simple_msg(Context,
+            [always(MissingRequiredPieces)]),
+        MissingRequiredSpec = error_spec(severity_warning,
+            phase_detism_check, [MissingRequiredMsg]),
+        det_info_add_error_spec(MissingRequiredSpec, !DetInfo)
+    ).
+
+%-----------------------------------------------------------------------------%
+
 :- pred reqscope_check_conj(list(hlds_goal)::in, instmap::in,
     det_info::in, det_info::out) is det.
 
@@ -1239,8 +1265,6 @@ reqscope_check_switch(Var, VarType, [Case | Cases], InstMap0, !DetInfo) :-
     det_info_set_module_info(ModuleInfo, !DetInfo),
     reqscope_check_goal(Goal, InstMap1, !DetInfo),
     reqscope_check_switch(Var, VarType, Cases, InstMap0, !DetInfo).
-
-%-----------------------------------------------------------------------------%
 
 :- pred lambda_update_instmap(assoc_list(prog_var, mer_mode)::in,
     module_info::in, instmap::in, instmap::out) is det.

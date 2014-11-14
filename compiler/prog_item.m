@@ -808,6 +808,11 @@
                 prog_var,
                 goal
             )
+    ;       require_switch_arms_detism_expr(
+                prog_var,
+                determinism,
+                goal
+            )
     ;       trace_expr(
                 texpr_compiletime   :: maybe(trace_expr(trace_compiletime)),
                 texpr_runtime       :: maybe(trace_expr(trace_runtime)),

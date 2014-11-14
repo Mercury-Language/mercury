@@ -737,6 +737,7 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
         ; Reason0 = promise_solutions(_, _)
         ; Reason0 = require_detism(_)
         ; Reason0 = require_complete_switch(_)
+        ; Reason0 = require_switch_arms_detism(_, _)
         ; Reason0 = commit(_)
         ; Reason0 = barrier(_)
         ; Reason0 = loop_control(_, _, _)
@@ -807,6 +808,7 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
             ; Reason0 = promise_solutions(_, _)
             ; Reason0 = require_detism(_)
             ; Reason0 = require_complete_switch(_)
+            ; Reason0 = require_switch_arms_detism(_, _)
             ; Reason0 = commit(_)
             ; Reason0 = barrier(_)
             ; Reason0 = from_ground_term(_, _)
@@ -1892,7 +1894,9 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
                 !:Set, !:LambdaSet),
             set_of_var.insert_list(Vars, !Set)
         ;
-            Reason = require_complete_switch(Var),
+            ( Reason = require_complete_switch(Var)
+            ; Reason = require_switch_arms_detism(Var, _)
+            ),
             goal_vars_both_maybe_lambda(NonLocalsToRecompute, SubGoal,
                 !:Set, !:LambdaSet),
             set_of_var.insert(Var, !Set)
@@ -2065,7 +2069,9 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
                 !:Set, !:LambdaSet),
             set_of_var.insert_list(Vars, !Set)
         ;
-            Reason = require_complete_switch(Var),
+            ( Reason = require_complete_switch(Var)
+            ; Reason = require_switch_arms_detism(Var, _)
+            ),
             goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
                 !:Set, !:LambdaSet),
             set_of_var.insert(Var, !Set)
@@ -2219,7 +2225,9 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
             goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set),
             set_of_var.insert_list(Vars, !Set)
         ;
-            Reason = require_complete_switch(Var),
+            ( Reason = require_complete_switch(Var)
+            ; Reason = require_switch_arms_detism(Var, _)
+            ),
             goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set),
             set_of_var.insert(Var, !Set)
         ;

@@ -27,7 +27,11 @@ main(!IO) :-
     test_switch_scope(f1, !IO),
     test_switch_scope(f2, !IO),
     test_switch_scope(f3(10), !IO),
-    test_switch_scope(f3(20), !IO).
+    test_switch_scope(f3(20), !IO),
+    test_switch_arms_detism_scope(f1, !IO),
+    test_switch_arms_detism_scope(f1, !IO),
+    test_switch_arms_detism_scope(f3(10), !IO),
+    test_switch_arms_detism_scope(f3(20), !IO).
 
 :- pred test_detism_scope(int::in, io::di, io::uo) is det.
 
@@ -75,4 +79,46 @@ do_test_switch_scope(A, X) :-
             ; X = B + 1
             )
         )
+    ).
+
+:- pred test_switch_arms_detism_scope(t::in, io::di, io::uo) is det.
+
+test_switch_arms_detism_scope(A, !IO) :-
+    solutions(do_test_switch_arms_detism_scope(A), Solns),
+    io.write_string("test_switch_arms_detism_scope(", !IO),
+    io.write(A, !IO),
+    io.write_string(") = ", !IO),
+    io.write(Solns, !IO),
+    io.nl(!IO).
+
+:- pred do_test_switch_arms_detism_scope(t::in, int::out) is nondet.
+
+do_test_switch_arms_detism_scope(A, X) :-
+    require_switch_arms_det [A] (
+        (
+            A = f1,
+            B = 1
+        ;
+            A = f3(B)
+        )
+    ),
+    require_switch_arms_semidet [B] (
+        (
+            B = 1,
+            C = 101
+        ;
+            B = 2,
+            C = 102
+        ;
+            B = 10,
+            C = 110
+        ;
+            B = 20,
+            fail
+        )
+    ),
+    (
+        X = C
+    ;
+        X = 1000 + C
     ).

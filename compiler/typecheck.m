@@ -1306,6 +1306,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             ( Reason = promise_purity(_)
             ; Reason = require_detism(_)
             ; Reason = require_complete_switch(_)
+            ; Reason = require_switch_arms_detism(_, _)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = from_ground_term(_, _)

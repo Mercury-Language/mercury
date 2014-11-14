@@ -688,6 +688,7 @@ goal_contains_stm_atomic_or_try(GoalExpr - _Context,
             SubGoal)
         ; GoalExpr = require_detism_expr(_, SubGoal)
         ; GoalExpr = require_complete_switch_expr(_, SubGoal)
+        ; GoalExpr = require_switch_arms_detism_expr(_, _, SubGoal)
         ; GoalExpr = trace_expr(_, _, _, _, SubGoal)
         ),
         goal_contains_stm_atomic_or_try(SubGoal, ContainsAtomic, ContainsTry)

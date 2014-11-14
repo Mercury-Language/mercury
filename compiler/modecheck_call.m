@@ -78,7 +78,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.det_report.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_errors.
@@ -723,10 +722,28 @@ compare_proc(ModeInfo, ProcId, OtherProcId, ArgVars, Procs, Compare) :-
     % Compare the determinisms.
     proc_info_interface_determinism(ProcInfo, Detism),
     proc_info_interface_determinism(OtherProcInfo, OtherDetism),
-    compare_determinisms(Detism, OtherDetism, CompareDet0),
-    ( CompareDet0 = tighter, CompareDet = better
-    ; CompareDet0 = looser, CompareDet = worse
-    ; CompareDet0 = sameas, CompareDet = same
+    determinism_components(Detism, CanFail, SolnCount),
+    determinism_components(OtherDetism, OtherCanFail, OtherSolnCount),
+    compare_solncounts(SolnCount, OtherSolnCount, CompareSolnCounts),
+    (
+        CompareSolnCounts = first_tighter_than,
+        CompareDet = better
+    ;
+        CompareSolnCounts = first_same_as,
+        compare_canfails(CanFail, OtherCanFail, CompareCanFails),
+        (
+            CompareCanFails = first_tighter_than,
+            CompareDet = better
+        ;
+            CompareCanFails = first_same_as,
+            CompareDet = same
+        ;
+            CompareCanFails = first_looser_than,
+            CompareDet = worse
+        )
+    ;
+        CompareSolnCounts = first_looser_than,
+        CompareDet = worse
     ),
 
     % Combine the results, with the insts & lives comparisons

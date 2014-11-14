@@ -362,6 +362,7 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
         ;
             ( Reason = require_detism(_)
             ; Reason = require_complete_switch(_)
+            ; Reason = require_switch_arms_detism(_, _)
             ),
             % These scopes should have been deleted by now.
             unexpected($module, $pred, "unexpected scope")

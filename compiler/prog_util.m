@@ -359,6 +359,11 @@ rename_in_goal_expr(OldVar, NewVar, Expr0, Expr) :-
         rename_in_goal(OldVar, NewVar, Goal0, Goal),
         Expr = require_complete_switch_expr(Var, Goal)
     ;
+        Expr0 = require_switch_arms_detism_expr(Var0, Detism, Goal0),
+        rename_in_var(OldVar, NewVar, Var0, Var),
+        rename_in_goal(OldVar, NewVar, Goal0, Goal),
+        Expr = require_switch_arms_detism_expr(Var, Detism, Goal)
+    ;
         Expr0 = trace_expr(CompileTime, RunTime, MaybeIO0, Mutables0, Goal0),
         (
             MaybeIO0 = no,

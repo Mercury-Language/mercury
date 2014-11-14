@@ -1898,11 +1898,6 @@ write_goal_scope(!.Info, GoalExpr, ModuleInfo, VarSet,
         mercury_output_vars(VarSet, AppendVarNums, Vars, !IO),
         io.write_string("] (\n", !IO)
     ;
-        Reason = require_complete_switch(Var),
-        io.write_string("require_complete_switch [", !IO),
-        mercury_output_var(VarSet, AppendVarNums, Var, !IO),
-        io.write_string("] (\n", !IO)
-    ;
         Reason = require_detism(Detism),
         (
             Detism = detism_det,
@@ -1930,6 +1925,41 @@ write_goal_scope(!.Info, GoalExpr, ModuleInfo, VarSet,
             io.write_string("require_erroneous", !IO)
         ),
         io.write_string(" (\n", !IO)
+    ;
+        Reason = require_complete_switch(Var),
+        io.write_string("require_complete_switch [", !IO),
+        mercury_output_var(VarSet, AppendVarNums, Var, !IO),
+        io.write_string("] (\n", !IO)
+    ;
+        Reason = require_switch_arms_detism(Var, Detism),
+        (
+            Detism = detism_det,
+            io.write_string("require_switch_arms_det", !IO)
+        ;
+            Detism = detism_semi,
+            io.write_string("require_switch_arms_semidet", !IO)
+        ;
+            Detism = detism_non,
+            io.write_string("require_switch_arms_nondet", !IO)
+        ;
+            Detism = detism_multi,
+            io.write_string("require_switch_arms_multi", !IO)
+        ;
+            Detism = detism_cc_multi,
+            io.write_string("require_switch_arms_cc_multi", !IO)
+        ;
+            Detism = detism_cc_non,
+            io.write_string("require_switch_arms_cc_nondet", !IO)
+        ;
+            Detism = detism_failure,
+            io.write_string("require_switch_arms_failure", !IO)
+        ;
+            Detism = detism_erroneous,
+            io.write_string("require_switch_arms_erroneous", !IO)
+        ),
+        io.write_string(" [", !IO),
+        mercury_output_var(VarSet, AppendVarNums, Var, !IO),
+        io.write_string("] (\n", !IO)
     ;
         Reason = barrier(removable),
         io.write_string("(\n", !IO),

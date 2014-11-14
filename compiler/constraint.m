@@ -185,6 +185,7 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
         ;
             ( Reason = require_detism(_)
             ; Reason = require_complete_switch(_)
+            ; Reason = require_switch_arms_detism(_, _)
             ; Reason = from_ground_term(_, from_ground_term_initial)
             ),
             % These scopes should have been deleted or converted by now.

@@ -608,31 +608,64 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
             MaybeVars = ok1(Vars0),
             MaybeSubGoal = ok1(SubGoal)
         ->
+            parse_one_var_list(Vars0, SubGoal, ContextPieces, Functor,
+                MaybeVar),
             (
-                Vars0 = [],
-                SubGoal = _ - SubContext,
-                RCSPieces = ContextPieces ++
-                    [words("Error: the first argument of"),
-                    words("require_complete_switch"),
-                    words("must contain a variable."), nl],
-                RCSSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(SubContext, [always(RCSPieces)])]),
-                MaybeGoal = error1([RCSSpec])
-            ;
-                Vars0 = [Var0],
-                term.coerce_var(Var0, Var),
+                MaybeVar = ok1(Var),
                 MaybeGoal = ok1(require_complete_switch_expr(Var, SubGoal)
                     - Context)
             ;
-                Vars0 = [_, _ | _],
-                SubGoal = _ - SubContext,
-                RCSPieces = ContextPieces ++
-                    [words("Error: the first argument of"),
-                    words("require_complete_switch"),
-                    words("cannot contain more than one variable."), nl],
-                RCSSpec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(SubContext, [always(RCSPieces)])]),
-                MaybeGoal = error1([RCSSpec])
+                MaybeVar = error1(RCSSpecs),
+                MaybeGoal = error1(RCSSpecs)
+            )
+        ;
+            VarsSpecs = get_any_errors1(MaybeVars),
+            SubGoalSpecs = get_any_errors1(MaybeSubGoal),
+            MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
+        )
+    ;
+        (
+            Functor = "require_switch_arms_det",
+            Detism = detism_det
+        ;
+            Functor = "require_switch_arms_semidet",
+            Detism = detism_semi
+        ;
+            Functor = "require_switch_arms_multi",
+            Detism = detism_multi
+        ;
+            Functor = "require_switch_arms_nondet",
+            Detism = detism_non
+        ;
+            Functor = "require_switch_arms_cc_multi",
+            Detism = detism_cc_multi
+        ;
+            Functor = "require_switch_arms_cc_nondet",
+            Detism = detism_cc_non
+        ;
+            Functor = "require_switch_arms_erroneous",
+            Detism = detism_erroneous
+        ;
+            Functor = "require_switch_arms_failure",
+            Detism = detism_failure
+        ),
+        Args = [VarsTerm, SubTerm],
+        varset.coerce(!.VarSet, GenericVarSet),
+        parse_vars(VarsTerm, GenericVarSet, ContextPieces, MaybeVars),
+        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        (
+            MaybeVars = ok1(Vars0),
+            MaybeSubGoal = ok1(SubGoal)
+        ->
+            parse_one_var_list(Vars0, SubGoal, ContextPieces, Functor,
+                MaybeVar),
+            (
+                MaybeVar = ok1(Var),
+                MaybeGoal = ok1(require_switch_arms_detism_expr(Var,
+                    Detism, SubGoal) - Context)
+            ;
+                MaybeVar = error1(RCSSpecs),
+                MaybeGoal = error1(RCSSpecs)
             )
         ;
             VarsSpecs = get_any_errors1(MaybeVars),
@@ -743,6 +776,36 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         term.coerce(ATerm0, ATerm),
         term.coerce(BTerm0, BTerm),
         MaybeGoal = ok1(unify_expr(ATerm, BTerm, purity_pure) - Context)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred parse_one_var_list(list(var(T))::in, goal::in,
+    list(format_component)::in, string::in, maybe1(prog_var)::out) is det.
+
+parse_one_var_list(Vars0, Goal, ContextPieces, ConstructName, MaybeVar) :-
+    (
+        Vars0 = [],
+        Goal = _ - Context,
+        Pieces = ContextPieces ++
+            [words("Error: the first argument of"), words(ConstructName),
+            words("must contain a variable."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeVar = error1([Spec])
+    ;
+        Vars0 = [Var0],
+        term.coerce_var(Var0, Var),
+        MaybeVar = ok1(Var)
+    ;
+        Vars0 = [_, _ | _],
+        Goal = _ - Context,
+        Pieces = ContextPieces ++
+            [words("Error: the first argument of"), words(ConstructName),
+            words("cannot contain more than one variable."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeVar = error1([Spec])
     ).
 
 %-----------------------------------------------------------------------------%

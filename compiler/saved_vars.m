@@ -323,6 +323,7 @@ can_push(Var, Goal) = CanPush :-
             ;
                 ( Reason = require_detism(_)
                 ; Reason = require_complete_switch(_)
+                ; Reason = require_switch_arms_detism(_, _)
                 ; Reason = from_ground_term(_, from_ground_term_initial)
                 ),
                 % These scopes should have been deleted by now.

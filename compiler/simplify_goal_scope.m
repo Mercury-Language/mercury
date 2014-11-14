@@ -181,6 +181,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             ;
                 ( FinalReason = require_detism(_)
                 ; FinalReason = require_complete_switch(_)
+                ; FinalReason = require_switch_arms_detism(_, _)
                 ),
                 % The scope has served its purpose, and it is not needed
                 % anymore.

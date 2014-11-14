@@ -553,12 +553,12 @@ add_imports(Imports, !Info) :-
     %
 :- pred process_assert(goal::in, list(sym_name)::out, bool::out) is det.
 
+process_assert(Goal, Symbols, Success) :-
     % AAA Some more stuff to do accumulator introduction on, it
     % would be better to rewrite using maybes and then to declare
     % the maybe_and predicate to be associative.
     % NB. accumulator introduction doesn't work on this case yet.
     %
-process_assert(Goal, Symbols, Success) :-
     Goal = GoalExpr - _Context,
     (
         ( GoalExpr = conj_expr(GA, GB)
@@ -589,6 +589,7 @@ process_assert(Goal, Symbols, Success) :-
         ; GoalExpr = promise_equivalent_solution_arbitrary_expr(_, _, _, _, G)
         ; GoalExpr = require_detism_expr(_, G)
         ; GoalExpr = require_complete_switch_expr(_, G)
+        ; GoalExpr = require_switch_arms_detism_expr(_, _, G)
         ; GoalExpr = trace_expr(_, _, _, _, G)
         ),
         process_assert(G, Symbols, Success)

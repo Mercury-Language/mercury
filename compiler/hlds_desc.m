@@ -145,6 +145,9 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
             Reason = require_complete_switch(_),
             Desc = "scope require complete switch"
         ;
+            Reason = require_switch_arms_detism(_, _),
+            Desc = "scope require switch arm detism"
+        ;
             Reason = commit(_),
             Desc = "scope commit"
         ;

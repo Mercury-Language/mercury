@@ -675,6 +675,7 @@ goal_contains_trace(Goal0, Goal, ContainsTrace) :-
             ; Reason = promise_purity(_)
             ; Reason = require_detism(_)
             ; Reason = require_complete_switch(_)
+            ; Reason = require_switch_arms_detism(_, _)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = loop_control(_, _, _)

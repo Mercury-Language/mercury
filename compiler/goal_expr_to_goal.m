@@ -215,6 +215,15 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal,
         goal_info_init(GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
+        Expr = require_switch_arms_detism_expr(Var0, Detism, SubExpr),
+        rename_var(need_not_rename, Renaming, Var0, Var),
+        transform_goal_expr_context_to_goal(LocKind, SubExpr, Renaming,
+            SubGoal, !SVarState, !SVarStore, !VarSet,
+            !ModuleInfo, !QualInfo, !Specs),
+        GoalExpr = scope(require_switch_arms_detism(Var, Detism), SubGoal),
+        goal_info_init(GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
         Expr = atomic_expr(Outer0, Inner0, MaybeOutputVars0,
             MainExpr, OrElseExprs),
         (

@@ -1776,8 +1776,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             RightFailingContexts, MaybePromiseEqvSolutionSets0,
             Detism, GoalFailingContexts, !DetInfo)
     ;
-        ( Reason = require_complete_switch(_)
-        ; Reason = require_detism(_)
+        ( Reason = require_detism(_)
+        ; Reason = require_complete_switch(_)
+        ; Reason = require_switch_arms_detism(_, _)
         ),
         det_info_set_has_req_scope(!DetInfo),
         det_infer_goal(Goal0, Goal, InstMap0, SolnContext,

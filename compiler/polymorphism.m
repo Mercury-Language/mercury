@@ -1195,6 +1195,7 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 ( Reason0 = promise_purity(_)
                 ; Reason0 = require_detism(_)
                 ; Reason0 = require_complete_switch(_)
+                ; Reason0 = require_switch_arms_detism(_, _)
                 ; Reason0 = commit(_)
                 ; Reason0 = barrier(_)
                 ; Reason0 = loop_control(_, _, _)
