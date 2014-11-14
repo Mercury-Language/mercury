@@ -558,94 +558,281 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
         ModeContext, Context, NondetLiveVarsBag, ModeSubInfo).
 
 %-----------------------------------------------------------------------------%
+%
+% Getter and setter predicates for mode_info.
+% The setter predicates where the new value of the field is often
+% the same as its old value check whether the new value may differ
+% from the old one, and allocate a new mode_info structure (and maybe
+% a new mode_sub_info structure) only if the old and new values are
+% *not* guaranteed to be the same.
+%
+% I (zs) used profiling data derived from a bootcheck to establish
+% which mode_info fields fall into this category. See below for further info.
 
-mode_info_get_module_info(MI, MI ^ mi_module_info).
-mode_info_get_pred_id(MI, MI ^ mi_sub_info ^ msi_pred_id).
-mode_info_get_proc_id(MI, MI ^ mi_sub_info ^ msi_proc_id).
-mode_info_get_debug_modes(MI, MI ^ mi_sub_info ^ msi_debug).
-mode_info_get_varset(MI, MI ^ mi_sub_info ^ msi_varset).
-mode_info_get_var_types(MI, MI ^ mi_sub_info ^ msi_vartypes).
-mode_info_get_context(MI, MI ^ mi_context).
-mode_info_get_mode_context(MI, MI ^ mi_mode_context).
-mode_info_get_instmap(MI, MI ^ mi_instmap).
-mode_info_get_instvarset(ModeInfo, ModeInfo ^ mi_sub_info ^ msi_instvarset).
-mode_info_get_locked_vars(MI, MI ^ mi_sub_info ^ msi_locked_vars).
-mode_info_get_errors(MI, MI ^ mi_errors).
-mode_info_get_warnings(MI, MI ^ mi_sub_info ^ msi_warnings).
-mode_info_get_need_to_requantify(MI,
-    MI ^ mi_sub_info ^ msi_need_to_requantify).
-mode_info_get_in_promise_purity_scope(MI,
-    MI ^ mi_sub_info ^ msi_in_promise_purity_scope).
-mode_info_get_delay_info(MI, MI ^ mi_delay_info).
-mode_info_get_live_vars(MI, MI ^ mi_sub_info ^ msi_live_vars).
-mode_info_get_nondet_live_vars(MI, MI ^ mi_nondet_live_vars).
-mode_info_get_last_checkpoint_insts(MI,
-    MI ^ mi_sub_info ^ msi_last_checkpoint_insts).
-mode_info_get_parallel_vars(MI, MI ^  mi_sub_info ^ msi_par_conj).
-mode_info_get_changed_flag(MI, MI ^ mi_sub_info ^ msi_changed_flag).
-mode_info_get_how_to_check(MI, MI ^ mi_sub_info ^ msi_how_to_check).
-mode_info_get_may_change_called_proc(MI,
-    MI ^ mi_sub_info ^ msi_may_change_called_proc).
-mode_info_get_may_init_solver_vars(MI,
-    MI ^ mi_sub_info ^ msi_may_init_solver_vars).
-mode_info_get_initial_instmap(MI, MI ^ mi_sub_info ^ msi_initial_instmap).
-mode_info_get_head_inst_vars(MI, MI ^ mi_sub_info ^ msi_head_inst_vars).
-mode_info_get_checking_extra_goals(MI,
-    MI ^ mi_sub_info ^ msi_checking_extra_goals).
-mode_info_get_in_from_ground_term(MI,
-    MI ^ mi_sub_info ^ msi_in_from_ground_term).
-mode_info_get_had_from_ground_term(MI,
-    MI ^ mi_sub_info ^ msi_had_from_ground_term).
-mode_info_get_make_ground_terms_unique(MI,
-    MI ^ mi_sub_info ^ msi_make_ground_terms_unique).
-mode_info_get_in_dupl_for_switch(MI,
-    MI ^ mi_sub_info ^ msi_in_dupl_for_switch).
+mode_info_get_module_info(MI, X) :-
+    X = MI ^ mi_module_info.
+mode_info_get_pred_id(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_pred_id.
+mode_info_get_proc_id(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_proc_id.
+mode_info_get_debug_modes(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_debug.
+mode_info_get_varset(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_varset.
+mode_info_get_var_types(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_vartypes.
+mode_info_get_context(MI, X) :-
+    X = MI ^ mi_context.
+mode_info_get_mode_context(MI, X) :-
+    X = MI ^ mi_mode_context.
+mode_info_get_instmap(MI, X) :-
+    X = MI ^ mi_instmap.
+mode_info_get_instvarset(ModeInfo, X) :-
+    X = ModeInfo ^ mi_sub_info ^ msi_instvarset.
+mode_info_get_locked_vars(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_locked_vars.
+mode_info_get_errors(MI, X) :-
+    X = MI ^ mi_errors.
+mode_info_get_warnings(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_warnings.
+mode_info_get_need_to_requantify(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_need_to_requantify.
+mode_info_get_in_promise_purity_scope(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_in_promise_purity_scope.
+mode_info_get_delay_info(MI, X) :-
+    X = MI ^ mi_delay_info.
+mode_info_get_live_vars(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_live_vars.
+mode_info_get_nondet_live_vars(MI, X) :-
+    X = MI ^ mi_nondet_live_vars.
+mode_info_get_last_checkpoint_insts(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_last_checkpoint_insts.
+mode_info_get_parallel_vars(MI, X) :-
+    X = MI ^  mi_sub_info ^ msi_par_conj.
+mode_info_get_changed_flag(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_changed_flag.
+mode_info_get_how_to_check(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_how_to_check.
+mode_info_get_may_change_called_proc(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_may_change_called_proc.
+mode_info_get_may_init_solver_vars(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_may_init_solver_vars.
+mode_info_get_initial_instmap(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_initial_instmap.
+mode_info_get_head_inst_vars(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_head_inst_vars.
+mode_info_get_checking_extra_goals(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_checking_extra_goals.
+mode_info_get_in_from_ground_term(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_in_from_ground_term.
+mode_info_get_had_from_ground_term(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_had_from_ground_term.
+mode_info_get_make_ground_terms_unique(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_make_ground_terms_unique.
+mode_info_get_in_dupl_for_switch(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_in_dupl_for_switch.
 
-mode_info_set_module_info(ModuleInfo, MI, MI ^ mi_module_info := ModuleInfo).
-mode_info_set_pred_id(PredId, MI, MI ^ mi_sub_info ^ msi_pred_id := PredId).
-mode_info_set_proc_id(ProcId, MI, MI ^ mi_sub_info ^ msi_proc_id := ProcId).
-mode_info_set_varset(VarSet, MI, MI ^ mi_sub_info ^ msi_varset := VarSet).
-mode_info_set_var_types(VarTypes, MI,
-    MI ^ mi_sub_info ^ msi_vartypes := VarTypes).
-mode_info_set_context(Context, MI, MI ^ mi_context := Context).
-mode_info_set_mode_context(ModeContext,
-    MI, MI ^ mi_mode_context := ModeContext).
-mode_info_set_locked_vars(LockedVars, MI,
-    MI ^ mi_sub_info ^ msi_locked_vars := LockedVars).
-mode_info_set_instvarset(InstVarSet, MI,
-    MI ^ mi_sub_info ^ msi_instvarset := InstVarSet).
-mode_info_set_errors(Errors, MI, MI ^ mi_errors := Errors).
-mode_info_set_warnings(Warnings, MI,
-    MI ^ mi_sub_info ^ msi_warnings := Warnings).
-mode_info_set_need_to_requantify(NTRQ, MI,
-    MI ^ mi_sub_info ^ msi_need_to_requantify := NTRQ).
-mode_info_set_in_promise_purity_scope(INC, MI,
-    MI ^ mi_sub_info ^ msi_in_promise_purity_scope := INC).
-mode_info_set_delay_info(DelayInfo, MI, MI ^ mi_delay_info := DelayInfo).
-mode_info_set_live_vars(LiveVarsList, MI,
-    MI ^ mi_sub_info ^ msi_live_vars := LiveVarsList).
-mode_info_set_nondet_live_vars(NondetLiveVars, MI,
-    MI ^ mi_nondet_live_vars := NondetLiveVars).
-mode_info_set_last_checkpoint_insts(LastCheckpointInsts, MI,
-    MI ^ mi_sub_info ^ msi_last_checkpoint_insts := LastCheckpointInsts).
-mode_info_set_parallel_vars(PVars, MI,
-    MI ^ mi_sub_info ^ msi_par_conj := PVars).
-mode_info_set_changed_flag(Changed, MI,
-    MI ^ mi_sub_info ^ msi_changed_flag := Changed).
-mode_info_set_how_to_check(How, MI,
-    MI ^ mi_sub_info ^ msi_how_to_check := How).
-mode_info_set_may_change_called_proc(MayChange, MI,
-    MI ^ mi_sub_info ^ msi_may_change_called_proc := MayChange).
-mode_info_set_may_init_solver_vars(MayInit, MI,
-    MI ^ mi_sub_info ^ msi_may_init_solver_vars := MayInit).
-mode_info_set_in_from_ground_term(IFGI, MI,
-    MI ^ mi_sub_info ^ msi_in_from_ground_term := IFGI).
-mode_info_set_had_from_ground_term(HFGI, MI,
-    MI ^ mi_sub_info ^ msi_had_from_ground_term := HFGI).
-mode_info_set_make_ground_terms_unique(MGTU, MI,
-    MI ^ mi_sub_info ^ msi_make_ground_terms_unique := MGTU).
-mode_info_set_in_dupl_for_switch(INFS, MI,
-    MI ^ mi_sub_info ^ msi_in_dupl_for_switch := INFS).
+mode_info_set_module_info(X, !MI) :-
+    ( old_and_new_may_differ(X, !.MI ^ mi_module_info) ->
+        !MI ^ mi_module_info := X
+    ;
+        true
+    ).
+mode_info_set_pred_id(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_pred_id := X.
+mode_info_set_proc_id(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_proc_id := X.
+mode_info_set_varset(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_varset := X.
+mode_info_set_var_types(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_vartypes := X.
+mode_info_set_context(X, !MI) :-
+    ( old_and_new_may_differ(X, !.MI ^ mi_context) ->
+        !MI ^ mi_context := X
+    ;
+        true
+    ).
+mode_info_set_mode_context(X, !MI) :-
+    !MI ^ mi_mode_context := X.
+mode_info_set_locked_vars(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_locked_vars := X.
+mode_info_set_instvarset(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_instvarset := X.
+mode_info_set_errors(X, !MI) :-
+    ( old_and_new_may_differ(X, !.MI ^ mi_errors) ->
+        !MI ^ mi_errors := X
+    ;
+        true
+    ).
+mode_info_set_warnings(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_warnings := X.
+mode_info_set_need_to_requantify(X, !MI) :-
+    ( old_and_new_may_differ(X, !.MI ^ mi_sub_info ^ msi_need_to_requantify) ->
+        !MI ^ mi_sub_info ^ msi_need_to_requantify := X
+    ;
+        true
+    ).
+mode_info_set_in_promise_purity_scope(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_in_promise_purity_scope := X.
+mode_info_set_delay_info(X, !MI) :-
+    ( old_and_new_may_differ(X, !.MI ^ mi_delay_info) ->
+        !MI ^ mi_delay_info := X
+    ;
+        true
+    ).
+mode_info_set_live_vars(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_live_vars := X.
+mode_info_set_nondet_live_vars(X, !MI) :-
+    ( old_and_new_may_differ(X, !.MI ^ mi_nondet_live_vars) ->
+        !MI ^ mi_nondet_live_vars := X
+    ;
+        true
+    ).
+mode_info_set_last_checkpoint_insts(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_last_checkpoint_insts := X.
+mode_info_set_parallel_vars(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_par_conj := X.
+mode_info_set_changed_flag(X, !MI) :-
+    ( old_and_new_may_differ(X, !.MI ^ mi_sub_info ^ msi_changed_flag) ->
+        !MI ^ mi_sub_info ^ msi_changed_flag := X
+    ;
+        true
+    ).
+mode_info_set_how_to_check(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_how_to_check := X.
+mode_info_set_may_change_called_proc(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_may_change_called_proc := X.
+mode_info_set_may_init_solver_vars(X, !MI) :-
+    (
+        old_and_new_may_differ(X,
+            !.MI ^ mi_sub_info ^ msi_may_init_solver_vars)
+    ->
+        !MI ^ mi_sub_info ^ msi_may_init_solver_vars := X
+    ;
+        true
+    ).
+mode_info_set_in_from_ground_term(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_in_from_ground_term := X.
+mode_info_set_had_from_ground_term(X, !MI) :-
+    (
+        old_and_new_may_differ(X,
+            !.MI ^ mi_sub_info ^ msi_had_from_ground_term)
+    ->
+        !MI ^ mi_sub_info ^ msi_had_from_ground_term := X
+    ;
+        true
+    ).
+mode_info_set_make_ground_terms_unique(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_make_ground_terms_unique := X.
+mode_info_set_in_dupl_for_switch(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_in_dupl_for_switch := X.
+
+    % Can the old and new values of a field od mode_info differ?
+    %
+    % In C grades, we check the bit patterns. If they are identical,
+    % then they cannot differ. If the bit patterns differ, then the
+    % values may as well (or they may be a different term with the
+    % same meaning; we cannot tell).
+    %
+    % In non-C grades, we conservatively always report that they may differ.
+    %
+:- pred old_and_new_may_differ(T::in, T::in) is semidet.
+
+old_and_new_may_differ(_, _).
+
+:- pragma foreign_proc("C",
+    old_and_new_may_differ(Old::in, New::in),
+    [will_not_call_mercury, promise_pure],
+"
+    if (((MR_Unsigned) Old) == ((MR_Unsigned) New)) {
+        SUCCESS_INDICATOR = MR_FALSE;
+    } else {
+        SUCCESS_INDICATOR = MR_TRUE;
+    }
+").
+
+%-----------------------------------------------------------------------------%
+
+% I (zs) decided which mode_info fields to call old_and_new_may_differ for
+% based on this profiling information derived from a bootcheck. During this
+% bootcheck, each of the setter predicates was given a number from 0 to 25,
+% and called gather_mode_info_stats below to record whether the new value
+% was the same bit pattern as the old one (the same test as used by
+% old_and_new_may_differ above.
+%
+% The profiling code follows the data derived from it.
+
+%          same      diff    same%
+%  0:  22869923    651583  97.230% module_info
+%  1:         0         1   0.000% pred_id
+%  2:         1         0 100.000% proc_id
+%  3:         4      8815   0.045% varset
+%  4:         4      8815   0.045% vartypes
+%  5:   1824389   3523646  34.113% context
+%  6:   1314611  32769008   3.857% mode_context
+%  7:         0    438852   0.000% locked_vars
+%  8:         0   1283911   0.000% instvarset
+%  9:   3234680   1901125  62.983% errors
+% 10:         0       892   0.000% warnings
+% 11:     57326     19964  74.170% need_to_requantify
+% 12:         0       868   0.000% promise_purity_scope
+% 13:  12223802   2022001  85.806% delay_info
+% 14:     58338   9161895   0.633% live_vars
+% 15:   1707132  12480878  12.032% nondet_live_vars
+% 16:         0         0          last_checkpoint
+% 17:         0         0          parallel vars
+% 18:    604507       562  99.907% changed_flag
+% 19:         0         0          how_to_check
+% 20:         0     16620   0.000% may_change_called_proc
+% 21:   1156755    684924  62.810% may_init_solver_vars
+% 22:         0         0          in_from_ground_term
+% 23:      2355      1775  57.022% had_from_ground_term
+% 24:         0         1   0.000% make_ground_term_unique
+% 25:       212     16930   1.237% in_dupl_for_switch
+
+% :- import_module io.
+% :- pred write_mode_info_stats(io::di, io::uo) is det.
+% 
+% :- pragma foreign_decl("C", local,
+% "
+% #define MR_NUM_MODE_INFO_STATS    26
+% unsigned long MR_stats_same[MR_NUM_MODE_INFO_STATS];
+% unsigned long MR_stats_diff[MR_NUM_MODE_INFO_STATS];
+% ").
+% 
+% :- pred gather_mode_info_stats(int::in, T::in, T::in,
+%     mode_info::in, mode_info::out) is det.
+% 
+% :- pragma foreign_proc("C",
+%     gather_mode_info_stats(N::in, Old::in, New::in, MI0::in, MI::out),
+%     [will_not_call_mercury, promise_pure],
+% "
+%     if (((MR_Unsigned) Old) == ((MR_Unsigned) New)) {
+%         ++MR_stats_same[N];
+%     } else {
+%         ++MR_stats_diff[N];
+%     }
+% 
+%     MI = MI0;
+% ").
+% 
+% :- pragma foreign_proc("C",
+%     write_mode_info_stats(IO0::di, IO::uo),
+%     [will_not_call_mercury, promise_pure],
+% "
+%     FILE *fp;
+% 
+%     fp = fopen(""/tmp/MODE_INFO_STATS"", ""a"");
+%     if (fp != NULL) {
+%         int i;
+%         for (i = 0; i < MR_NUM_MODE_INFO_STATS; i++) {
+%             fprintf(fp, ""%d: %lu %lu\\n"",
+%                 i, MR_stats_same[i], MR_stats_diff[i]);
+%         }
+%     }
+% 
+%     IO = IO0;
+% ").
 
 %-----------------------------------------------------------------------------%
 
