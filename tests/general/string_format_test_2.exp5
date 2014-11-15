@@ -1,5 +1,5 @@
 Uncaught Mercury exception:
-Software Error: string.format: format string invalid.
+Software Error: string.format: There is no first conversion specifier, but there is an input.
 Stack dump follows:
 	mercury__exception:-throw_impl_1_p_0/1-fun-0-/1
 	mercury__io:format_4_p_0/2

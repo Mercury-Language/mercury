@@ -1,19 +1,33 @@
 string_format_bad.m:021: Mismatched format and values in call to
 string_format_bad.m:021:   `string.format'/3:
-string_format_bad.m:021:   format string invalid.
+string_format_bad.m:021:   There is no first conversion specifier, but there is
+string_format_bad.m:021:   an input.
 string_format_bad.m:023: Mismatched format and values in call to
 string_format_bad.m:023:   `string.format'/3:
-string_format_bad.m:023:   invalid conversion specifier.
+string_format_bad.m:023:   The first conversion specifier uses the specifier
+string_format_bad.m:023:   character `d', but the corresponding input is a
+string_format_bad.m:023:   string.
 string_format_bad.m:026: Mismatched format and values in call to `io.format'/4:
-string_format_bad.m:026:   invalid conversion specifier.
+string_format_bad.m:026:   The first conversion specifier uses the specifier
+string_format_bad.m:026:   character `d', but the corresponding input is a
+string_format_bad.m:026:   string.
 string_format_bad.m:027: Mismatched format and values in call to `io.format'/5:
-string_format_bad.m:027:   invalid conversion specifier.
+string_format_bad.m:027:   The first conversion specifier uses the specifier
+string_format_bad.m:027:   character `d', but the corresponding input is a
+string_format_bad.m:027:   string.
 string_format_bad.m:028: Mismatched format and values in call to
 string_format_bad.m:028:   `stream.string_writer.format'/5:
-string_format_bad.m:028:   invalid conversion specifier.
+string_format_bad.m:028:   The first conversion specifier uses the specifier
+string_format_bad.m:028:   character `d', but the corresponding input is a
+string_format_bad.m:028:   string.
 string_format_bad.m:029: Mismatched format and values in call to `io.format'/4:
-string_format_bad.m:029:   invalid conversion specifier.
+string_format_bad.m:029:   The first conversion specifier uses the unknown
+string_format_bad.m:029:   specifier character `w'.
 string_format_bad.m:038: Mismatched format and values in call to `io.format'/5:
-string_format_bad.m:038:   invalid conversion specifier.
+string_format_bad.m:038:   The second conversion specifier uses the specifier
+string_format_bad.m:038:   character `f', but the corresponding input is an
+string_format_bad.m:038:   integer.
 string_format_bad.m:043: Mismatched format and values in call to `io.format'/5:
-string_format_bad.m:043:   invalid conversion specifier.
+string_format_bad.m:043:   The first conversion specifier uses the specifier
+string_format_bad.m:043:   character `d', but the corresponding input is a
+string_format_bad.m:043:   float.

@@ -1,5 +1,5 @@
 Uncaught Mercury exception:
-Software Error: string.format: format string invalid.
+Software Error: string.format: There is no first conversion specifier, but there is an input.
 Stack dump follows:
    0       pred exception.throw/1-0 (erroneous) (exception.m:NNNN)
    1       pred require.error/1-0 (erroneous) (require.m:NNNN)

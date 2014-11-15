@@ -2,19 +2,28 @@ string_format_unknown.m:023: Unknown format string in call to
 string_format_unknown.m:023:   `string.format'/3.
 string_format_unknown.m:025: Mismatched format and values in call to
 string_format_unknown.m:025:   `string.format'/3:
-string_format_unknown.m:025:   invalid conversion specifier.
+string_format_unknown.m:025:   The first conversion specifier uses the
+string_format_unknown.m:025:   specifier character `d', but the corresponding
+string_format_unknown.m:025:   input is a string.
 string_format_unknown.m:028: Mismatched format and values in call to
 string_format_unknown.m:028:   `io.format'/4:
-string_format_unknown.m:028:   invalid conversion specifier.
+string_format_unknown.m:028:   The first conversion specifier uses the
+string_format_unknown.m:028:   specifier character `d', but the corresponding
+string_format_unknown.m:028:   input is a string.
 string_format_unknown.m:029: Mismatched format and values in call to
 string_format_unknown.m:029:   `io.format'/5:
-string_format_unknown.m:029:   invalid conversion specifier.
+string_format_unknown.m:029:   The first conversion specifier uses the
+string_format_unknown.m:029:   specifier character `d', but the corresponding
+string_format_unknown.m:029:   input is a string.
 string_format_unknown.m:030: Mismatched format and values in call to
 string_format_unknown.m:030:   `io.format'/4:
-string_format_unknown.m:030:   invalid conversion specifier.
+string_format_unknown.m:030:   The first conversion specifier uses the unknown
+string_format_unknown.m:030:   specifier character `w'.
 string_format_unknown.m:040: Unknown format values in call to `io.format'/5.
 string_format_unknown.m:041: Unknown format values in call to
 string_format_unknown.m:041:   `stream.string_writer.format'/5.
 string_format_unknown.m:046: Mismatched format and values in call to
 string_format_unknown.m:046:   `io.format'/5:
-string_format_unknown.m:046:   invalid conversion specifier.
+string_format_unknown.m:046:   The first conversion specifier uses the
+string_format_unknown.m:046:   specifier character `d', but the corresponding
+string_format_unknown.m:046:   input is a float.

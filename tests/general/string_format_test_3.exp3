@@ -1,2 +1,2 @@
 Uncaught Mercury exception:
-Software Error: string.format: invalid conversion specifier.
+Software Error: string.format: The first conversion specifier, which uses specifier character `s', is missing its input.

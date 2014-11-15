@@ -1,5 +1,5 @@
 Uncaught Mercury exception:
-Software Error: string.format: invalid conversion specifier.
+Software Error: string.format: The first conversion specifier, which uses specifier character `s', is missing its input.
 Stack dump follows:
    0       pred exception.throw/1-0 (erroneous) (exception.m:NNNN)
    1       pred require.error/1-0 (erroneous) (require.m:NNNN)

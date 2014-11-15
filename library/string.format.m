@@ -96,86 +96,295 @@
     ;       kind_g_flexible_lc
     ;       kind_g_flexible_uc.
 
-:- type spec(I, F, C, S)
+:- type format_str_spec
     --->    spec_percent
-    ;       spec_signed_int(flags, maybe_width, maybe_prec, I)
-    ;       spec_unsigned_int(flags, maybe_width, maybe_prec, int_base, I)
-    ;       spec_float(flags, maybe_width, maybe_prec, float_kind, F)
-    ;       spec_char(flags, maybe_width, maybe_prec, C)
-    ;       spec_string(flags, maybe_width, maybe_prec, S).
-
-:- type spec == spec(int, float, char, string).
+    ;       spec_signed_int(flags, maybe_width, maybe_prec, int)
+    ;       spec_unsigned_int(flags, maybe_width, maybe_prec, int_base, int)
+    ;       spec_float(flags, maybe_width, maybe_prec, float_kind, float)
+    ;       spec_char(flags, maybe_width, char)
+    ;       spec_string(flags, maybe_width, maybe_prec, string).
 
 :- type format_str_component
-    --->    comp_str(list(char))
-    ;       comp_conv_spec(spec).
+    --->    comp_str(string)
+    ;       comp_conv_spec(format_str_spec).
+
+:- type poly_kind
+    --->    poly_kind_char
+    ;       poly_kind_str
+    ;       poly_kind_int
+    ;       poly_kind_float.
+
+:- type format_str_error
+    --->    error_no_specifier(
+                int,        % Which specifier were we expecting?
+                int         % How many extra polytypes?
+            )
+    ;       error_unknown_specifier(
+                int,        % Which specifier?
+                char        % The unexpected specifier character.
+            )
+    ;       error_wrong_polytype(
+                int,        % Which specifier?
+                char,       % The specifier character.
+                poly_kind   % The polytype we found.
+            )
+    ;       error_no_polytype(
+                int,        % Which specifier?
+                char        % The specifier character.
+            )
+    ;       error_nonint_star_width(
+                int,        % Which specifier?
+                poly_kind   % The non-i() polytype we found.
+            )
+    ;       error_missing_star_width(
+                int         % Which specifier?
+            )
+    ;       error_nonint_star_prec(
+                int,        % Which specifier?
+                poly_kind   % The non-i() polytype we found.
+            )
+    ;       error_missing_star_prec(
+                int         % Which specifier?
+            )
+    ;       error_extra_polytypes(
+                int,        % Which specifier were we expecting?
+                int         % How many extra polytypes?
+            ).
 
 %-----------------------------------------------------------------------------%
 
 string.format.format_impl(FormatString, PolyList, String) :-
-    % This predicate has been optimised to produce the least memory possible
-    % -- memory usage is a significant problem for programs which do a lot of
-    % formatted IO.
+    % The call tree of predicate should be optimised to turn over
+    % the least amount of memory possible, since memory usage is a significant
+    % problem for programs which do a lot of formatted IO.
+    %
+    % XXX The repeated string appends performed in the call tree
+    % do still allocate nontrivial amounts of memory for temporaries.
     Chars = to_char_list(FormatString),
-    format_string_to_components(Chars, CharsLeftOver,
-        PolyList, PolyListLeftOver, Components),
+    format_string_to_components(Chars, PolyList, 1, Components, Errors),
     (
-        PolyListLeftOver = [],
-        CharsLeftOver = []
-    ->
+        Errors = [],
         components_to_strings(Components, ComponentStrs),
         String = string.append_list(ComponentStrs)
     ;
-        error("string.format: format string invalid.")
+        Errors = [HeadError | _],
+        % In the common cases of missing or extra PolyTypes, all the errors
+        % after the first may be avalanche errors, and would probably be more
+        % confusing than helpful. This is why we traditionally print a message
+        % only for the first one.
+        %
+        % XXX We should try printing messages for all the errors, not just
+        % the first, and see whether the usefulness of the extra information
+        % outweighs the costs of any extra confusion.
+        Msg = format_str_error_to_msg(HeadError),
+        error("string.format", Msg)
     ).
+
+:- func format_str_error_to_msg(format_str_error) = string.
+
+format_str_error_to_msg(Error) = Msg :-
+    (
+        Error = error_no_specifier(SpecNum, NumExtraPolyTypes),
+        Msg0 = nth_specifier(SpecNum) ++ " is missing",
+        ( NumExtraPolyTypes = 0 ->
+            Msg = Msg0 ++ ", along with its input."
+        ; NumExtraPolyTypes = 1 ->
+            Msg = Msg0 ++ "."
+        ;
+            Msg = Msg0 ++ ", and there are "
+                ++ string.int_to_string(NumExtraPolyTypes - 1)
+                ++ " extra inputs."
+        )
+    ;
+        Error = error_unknown_specifier(SpecNum, SpecChar),
+        Msg = nth_specifier(SpecNum) ++ " uses the unknown "
+            ++ specifier_char(SpecChar) ++ "."
+    ;
+        Error = error_wrong_polytype(SpecNum, SpecChar, PolyKind),
+        Msg = nth_specifier(SpecNum) ++ " uses the "
+            ++ specifier_char(SpecChar)
+            ++ ", but the corresponding input is "
+            ++ poly_kind_desc(PolyKind) ++ "."
+    ;
+        Error = error_no_polytype(SpecNum, SpecChar),
+        Msg = nth_specifier(SpecNum)
+            ++ ", which uses " ++ specifier_char(SpecChar)
+            ++ ", is missing its input."
+    ;
+        Error = error_nonint_star_width(SpecNum, PolyKind),
+        Msg = nth_specifier(SpecNum)
+            ++ " says the width is a runtime input,"
+            ++ " but the next input is " ++ poly_kind_desc(PolyKind)
+            ++ ", not an integer."
+    ;
+        Error = error_missing_star_width(SpecNum),
+        Msg = nth_specifier(SpecNum)
+            ++ " says the width is a runtime input,"
+            ++ " but there is no next input."
+    ;
+        Error = error_nonint_star_prec(SpecNum, PolyKind),
+        Msg = nth_specifier(SpecNum)
+            ++ " says the precision is a runtime input,"
+            ++ " but the next input is " ++ poly_kind_desc(PolyKind)
+            ++ ", not an integer."
+    ;
+        Error = error_missing_star_prec(SpecNum),
+        Msg = nth_specifier(SpecNum)
+            ++ " says the precision is a runtime input,"
+            ++ " but there is no next input."
+    ;
+        Error = error_extra_polytypes(SpecNum, NumExtraPolyTypes),
+        ( SpecNum = 1 ->
+            % They aren't extra, since there is no other inputs before them.
+            Extra = ""
+        ;
+            Extra = "extra "
+        ),
+        Msg0 = "There is no " ++ nth(SpecNum) ++ " conversion specifier,",
+        ( NumExtraPolyTypes = 1 ->
+            Msg = Msg0 ++ " but there is an " ++ Extra ++ "input."
+        ;
+            Msg = Msg0 ++ " but there are " ++
+                string.int_to_string(NumExtraPolyTypes) ++ Extra ++ "inputs."
+        )
+    ).
+
+:- func nth_specifier(int) = string.
+
+nth_specifier(SpecNum) =
+    "The " ++ nth(SpecNum) ++ " conversion specifier".
+
+:- func nth(int) = string.
+
+nth(N) = NStr :-
+    ( N = 1 ->
+        NStr = "first"
+    ; N = 2 ->
+        NStr = "second"
+    ; N = 3 ->
+        NStr = "third"
+    ; N = 4 ->
+        NStr = "fourth"
+    ; N = 5 ->
+        NStr = "fifth"
+    ; N = 6 ->
+        NStr = "sixth"
+    ; N = 7 ->
+        NStr = "seventh"
+    ; N = 8 ->
+        NStr = "eighth"
+    ; N = 9 ->
+        NStr = "ninth"
+    ; N = 10 ->
+        NStr = "tenth"
+    ;
+        NStr = string.int_to_string(N) ++ "th"
+    ).
+
+:- func specifier_char(char) = string.
+
+specifier_char(SpecChar) =
+    "specifier character `" ++ string.char_to_string(SpecChar) ++ "'".
+
+:- func poly_kind_desc(poly_kind) = string.
+
+poly_kind_desc(poly_kind_char) = "a character".
+poly_kind_desc(poly_kind_str) = "a string".
+poly_kind_desc(poly_kind_int) = "an integer".
+poly_kind_desc(poly_kind_float) = "a float".
+
+:- func poly_type_to_kind(poly_type) = poly_kind.
+
+poly_type_to_kind(c(_)) = poly_kind_char.
+poly_type_to_kind(s(_)) = poly_kind_str.
+poly_type_to_kind(i(_)) = poly_kind_int.
+poly_type_to_kind(f(_)) = poly_kind_float.
+
+%-----------------------------------------------------------------------------%
 
     % This predicate parses as much of a format string as it can.
     % It stops parsing when it encounters something that looks like
     % a conversion specification (i.e. it starts with a '%' character),
     % but which cannot be parsed as one.
     %
-:- pred format_string_to_components(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out,
-    list(format_str_component)::out) is det.
+    % Note that making this predicate use an accumulator for the lists
+    % of components and errors seen so far would yield cleaner code,
+    % but would probably be slower since our caller would have to unreverse
+    % the list of components we return.
+    %
+    % The lack of tail recursion here should not be a problem, since no
+    % format string will be long enough to make us consume too much stack.
+    %
+:- pred format_string_to_components(list(char)::in, list(string.poly_type)::in,
+    int::in, list(format_str_component)::out, list(format_str_error)::out)
+    is det.
 
-format_string_to_components(!Chars, !PolyTypes, Components) :-
-    gather_non_percent_chars(NonConversionSpecChars, !Chars),
-    ( !.Chars = ['%' | !:Chars] ->
-        % NOTE conversion_specification could return a list of errors,
-        % so that if the format string has more than one error, we can
-        % throw an exception describing them all, not just one the first one.
-        % Unfortunately, in the common cases of missing or extra PolyTypes,
-        % all the errors after the first would be avalanche errors,
-        % and would probably be more confusing than helpful.
-        parse_conversion_specification(!Chars, !PolyTypes, ConvComponent),
-        format_string_to_components(!Chars, !PolyTypes, ComponentsTail),
-        Components0 = [ConvComponent | ComponentsTail]
+format_string_to_components(!.Chars, !.PolyTypes, SpecNum,
+        Components, Errors) :-
+    gather_non_percent_chars(!.Chars, NonConversionSpecChars, GatherEndedBy),
+    (
+        GatherEndedBy = found_end_of_string,
+        Components0 = [],
+        (
+            !.PolyTypes = [],
+            Errors = []
+        ;
+            !.PolyTypes = [_ | _],
+            Errors = [error_extra_polytypes(SpecNum, list.length(!.PolyTypes))]
+        )
     ;
-        Components0 = []
+        GatherEndedBy = found_percent(!:Chars),
+        parse_conversion_specification(!Chars, !PolyTypes, SpecNum,
+            Spec, SpecErrors),
+        format_string_to_components(!.Chars, !.PolyTypes, SpecNum + 1,
+            ComponentsTail, ErrorsTail),
+        (
+            SpecErrors = [],
+            ConvComponent = comp_conv_spec(Spec),
+            Components0 = [ConvComponent | ComponentsTail],
+            Errors = ErrorsTail
+        ;
+            SpecErrors = [_ | _],
+            Components0 = ComponentsTail,
+            Errors = SpecErrors ++ ErrorsTail
+        )
     ),
     (
         NonConversionSpecChars = [],
         Components = Components0
     ;
         NonConversionSpecChars = [_ | _],
-        StringComponent = comp_str(NonConversionSpecChars),
+        NonConversionSpecString =
+            string.from_char_list(NonConversionSpecChars),
+        StringComponent = comp_str(NonConversionSpecString),
         Components = [StringComponent | Components0]
     ).
 
+:- type gather_ended_by
+    --->    found_end_of_string
+    ;       found_percent(list(char)).  % The list of chars after the percent.
+
     % Parse a string which doesn't contain any conversion specifications.
     %
-:- pred gather_non_percent_chars(list(char)::out,
-    list(char)::in, list(char)::out) is det.
+:- pred gather_non_percent_chars(list(char)::in, list(char)::out,
+    gather_ended_by::out) is det.
 
-gather_non_percent_chars(Result, !Chars) :-
+gather_non_percent_chars(Chars, NonConversionSpecChars, GatherEndedBy) :-
     (
-        !.Chars = [Char | !:Chars],
-        Char \= '%'
-    ->
-        gather_non_percent_chars(Result0, !Chars),
-        Result = [Char | Result0]
+        Chars = [HeadChar | TailChars],
+        ( HeadChar = '%' ->
+            NonConversionSpecChars = [],
+            % We eat the percent sign.
+            GatherEndedBy = found_percent(TailChars)
+        ;
+            gather_non_percent_chars(TailChars, TailNonConversionSpecChars,
+                GatherEndedBy),
+            NonConversionSpecChars = [HeadChar | TailNonConversionSpecChars]
+        )
     ;
-        Result = []
+        Chars = [],
+        NonConversionSpecChars = [],
+        GatherEndedBy = found_end_of_string
     ).
 
     % Each conversion specification is introduced by the character '%'
@@ -184,25 +393,27 @@ gather_non_percent_chars(Result, !Chars) :-
     % minimum field width, and an optional precision.
     %
 :- pred parse_conversion_specification(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out,
-    format_str_component::out) is det.
+    list(string.poly_type)::in, list(string.poly_type)::out, int::in,
+    format_str_spec::out, list(format_str_error)::out) is det.
 
-parse_conversion_specification(!Chars, !PolyTypes, Component) :-
+parse_conversion_specification(!Chars, !PolyTypes, SpecNum, Spec, Errors) :-
     Flags0 = flags(flag_hash_clear, flag_space_clear, flag_zero_clear,
         flag_minus_clear, flag_plus_clear),
     gather_flag_chars(!Chars, Flags0, Flags),
-    get_optional_width(!Chars, !PolyTypes, MaybeWidth),
-    get_optional_prec(!Chars, !PolyTypes, MaybePrec),
-    ( get_first_spec(!Chars, !PolyTypes, Flags, MaybeWidth, MaybePrec, Spec) ->
-        Component = comp_conv_spec(Spec)
-    ;
-        error("string.format: invalid conversion specifier.")
-    ).
+    get_optional_width(!Chars, !PolyTypes, SpecNum, MaybeWidth, WidthErrors),
+    get_optional_prec(!Chars, !PolyTypes, SpecNum, MaybePrec, PrecErrors),
+    get_first_spec(!Chars, !PolyTypes, Flags, MaybeWidth, MaybePrec, SpecNum,
+        Spec, SpecErrors),
+    Errors = WidthErrors ++ PrecErrors ++ SpecErrors.
 
+    % Record and skip past any flag characters at the start of the char list.
+    %
 :- pred gather_flag_chars(list(char)::in, list(char)::out,
     flags::in, flags::out) is det.
 
 gather_flag_chars(!Chars, !Flags) :-
+    % XXX Should we return an error if we find that the format string
+    % sets the same flag twice?
     (
         !.Chars = [Char | !:Chars],
         ( Char = '#',   !Flags ^ flag_hash  := flag_hash_set
@@ -217,57 +428,70 @@ gather_flag_chars(!Chars, !Flags) :-
         true
     ).
 
-    % Is it a valid flag character?
-    %
-:- pred is_flag_char(char::in) is semidet.
-
-is_flag_char('#').
-is_flag_char('0').
-is_flag_char('-').
-is_flag_char(' ').
-is_flag_char('+').
-
     % Do we have a minimum field width? If yes, get it.
     %
 :- pred get_optional_width(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out,
-    maybe_width::out) is det.
+    list(string.poly_type)::in, list(string.poly_type)::out, int::in,
+    maybe_width::out, list(format_str_error)::out) is det.
 
-get_optional_width(!Chars, !PolyTypes, MaybeWidth) :-
+get_optional_width(!Chars, !PolyTypes, SpecNum, MaybeWidth, Errors) :-
     ( !.Chars = ['*' | !:Chars] ->
-        ( !.PolyTypes = [i(PolyWidth) | !:PolyTypes] ->
-            MaybeWidth = yes(PolyWidth)
+        (
+            !.PolyTypes = [PolyType | !:PolyTypes],
+            ( PolyType = i(PolyWidth) ->
+                MaybeWidth = yes(PolyWidth),
+                Errors = []
+            ;
+                MaybeWidth = no,
+                Errors = [error_nonint_star_width(SpecNum,
+                    poly_type_to_kind(PolyType))]
+            )
         ;
-            error("string.format",
-                "`*' width modifier not associated with an integer.")
+            !.PolyTypes = [],
+            MaybeWidth = no,
+            Errors = [error_missing_star_width(SpecNum)]
         )
     ; get_nonzero_number_prefix(!Chars, Width) ->
-        MaybeWidth = yes(Width)
+        MaybeWidth = yes(Width),
+        Errors = []
     ;
-        MaybeWidth = no
+        MaybeWidth = no,
+        Errors = []
     ).
 
     % Do we have a precision? If yes, get it.
     %
 :- pred get_optional_prec(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out,
-    maybe_prec::out) is det.
+    list(string.poly_type)::in, list(string.poly_type)::out, int::in,
+    maybe_prec::out, list(format_str_error)::out) is det.
 
-get_optional_prec(!Chars, !PolyTypes, MaybePrec) :-
+get_optional_prec(!Chars, !PolyTypes, SpecNum, MaybePrec, Errors) :-
     ( !.Chars = ['.' | !:Chars] ->
         ( !.Chars = ['*' | !:Chars] ->
-            ( !.PolyTypes = [i(PolyPrec) | !:PolyTypes] ->
-                Prec = PolyPrec
+            (
+                !.PolyTypes = [PolyType | !:PolyTypes],
+                ( PolyType = i(PolyPrec) ->
+                    MaybePrec = yes(PolyPrec),
+                    Errors = []
+                ;
+                    MaybePrec = no,
+                    Errors = [error_nonint_star_prec(SpecNum,
+                        poly_type_to_kind(PolyType))]
+                )
             ;
-                error("string.format",
-                    "`*' precision modifier not associated with an integer.")
+                !.PolyTypes = [],
+                MaybePrec = no,
+                Errors = [error_missing_star_prec(SpecNum)]
             )
         ;
-            get_number_prefix(!Chars, 0, Prec)
-        ),
-        MaybePrec = yes(Prec)
+            % This treats an empty string as an EXPLICIT zero.
+            get_number_prefix(!Chars, 0, Prec),
+            MaybePrec = yes(Prec),
+            Errors = []
+        )
     ;
-        MaybePrec = no
+        MaybePrec = no,
+        Errors = []
     ).
 
 :- pred get_nonzero_number_prefix(list(char)::in, list(char)::out,
@@ -295,84 +519,188 @@ get_number_prefix(!Chars, N0, N) :-
 
 %---------------------------------------------------------------------------%
 
-    % Do we have a valid conversion specifier?
-    % We check to ensure that the specifier also matches the type
-    % from the input list.
+    % get_first_spec(!Chars, !PolyTypes, Flags, MaybeWidth, MaybePrec,
+    %   SpecNum, Spec, Errors):
+    %
+    % Try to read one conversion specifier, whose percent sign, flags,
+    % width and precision have already been read, from !Chars.
+    %
+    % If successful, consume the corresponding poly_type from !PolyTypes,
+    % we return the specifier as Spec and return an empty error list.
+    %
+    % If there is a problem, we return garbage Spec and a nonempty errors list.
+    % We also consume the poly_type that corresponds (or at least, looks like
+    % it corresponds) to the specifier, if there is one.
     %
 :- pred get_first_spec(list(char)::in, list(char)::out,
     list(string.poly_type)::in, list(string.poly_type)::out,
-    flags::in, maybe_width::in, maybe_prec::in, spec::out) is semidet.
+    flags::in, maybe_width::in, maybe_prec::in, int::in,
+    format_str_spec::out, list(format_str_error)::out) is det.
 
-get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, Spec) :-
+get_first_spec(!Chars, !PolyTypes, _Flags, _MaybeWidth, _MaybePrec, SpecNum,
+        Spec, Errors) :-
+    !.Chars = [],
+    Spec = spec_percent,
+    Errors = [error_no_specifier(SpecNum, list.length(!.PolyTypes))].
+get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
+        Spec, Errors) :-
     !.Chars = [SpecChar | !:Chars],
     (
-        SpecChar = '%',
-        Spec = spec_percent
-    ;
         (
-            SpecChar = 'd'
+            SpecChar = '%',
+            SpecPrime = spec_percent,
+            ErrorsPrime = []
         ;
-            SpecChar = 'i'
-        ),
-        !.PolyTypes = [SpecPolyType | !:PolyTypes],
-        SpecPolyType = i(Int),
-        % Base is always decimal
-        Spec = spec_signed_int(!.Flags, MaybeWidth, MaybePrec, Int)
+            ( SpecChar = 'd'
+            ; SpecChar = 'i'
+            ),
+            require_det
+            (
+                !.PolyTypes = [SpecPolyType | !:PolyTypes],
+                ( SpecPolyType = i(Int) ->
+                    % Base is always decimal
+                    SpecPrime = spec_signed_int(!.Flags,
+                        MaybeWidth, MaybePrec, Int),
+                    ErrorsPrime = []
+                ;
+                    Error = error_wrong_polytype(SpecNum, SpecChar,
+                        poly_type_to_kind(SpecPolyType)),
+                    SpecPrime = spec_percent,
+                    ErrorsPrime = [Error]
+                )
+            ;
+                !.PolyTypes = [],
+                Error = error_no_polytype(SpecNum, SpecChar),
+                SpecPrime = spec_percent,
+                ErrorsPrime = [Error]
+            )
+        ;
+            (
+                SpecChar = 'o',
+                Base = base_octal
+            ;
+                SpecChar = 'u',
+                Base = base_decimal
+            ;
+                SpecChar = 'x',
+                Base = base_hex_lc
+            ;
+                SpecChar = 'X',
+                Base = base_hex_uc
+            ;
+                SpecChar = 'p',
+                Base = base_hex_p,
+                % XXX This should not be necessary.
+                !Flags ^ flag_hash := flag_hash_set
+            ),
+            require_det
+            (
+                !.PolyTypes = [SpecPolyType | !:PolyTypes],
+                ( SpecPolyType = i(Int) ->
+                    SpecPrime = spec_unsigned_int(!.Flags,
+                        MaybeWidth, MaybePrec, Base, Int),
+                    ErrorsPrime = []
+                ;
+                    Error = error_wrong_polytype(SpecNum, SpecChar,
+                        poly_type_to_kind(SpecPolyType)),
+                    SpecPrime = spec_percent,
+                    ErrorsPrime = [Error]
+                )
+            ;
+                !.PolyTypes = [],
+                Error = error_no_polytype(SpecNum, SpecChar),
+                SpecPrime = spec_percent,
+                ErrorsPrime = [Error]
+            )
+        ;
+            (
+                SpecChar = 'e',
+                FloatKind = kind_e_scientific_lc
+            ;
+                SpecChar = 'E',
+                FloatKind = kind_e_scientific_uc
+            ;
+                SpecChar = 'f',
+                FloatKind = kind_f_plain_lc
+            ;
+                SpecChar = 'F',
+                FloatKind = kind_f_plain_uc
+            ;
+                SpecChar = 'g',
+                FloatKind = kind_g_flexible_lc
+            ;
+                SpecChar = 'G',
+                FloatKind = kind_g_flexible_uc
+            ),
+            require_det
+            (
+                !.PolyTypes = [SpecPolyType | !:PolyTypes],
+                ( SpecPolyType = f(Float) ->
+                    SpecPrime = spec_float(!.Flags,
+                        MaybeWidth, MaybePrec, FloatKind, Float),
+                    ErrorsPrime = []
+                ;
+                    Error = error_wrong_polytype(SpecNum, SpecChar,
+                        poly_type_to_kind(SpecPolyType)),
+                    SpecPrime = spec_percent,
+                    ErrorsPrime = [Error]
+                )
+            ;
+                !.PolyTypes = [],
+                Error = error_no_polytype(SpecNum, SpecChar),
+                SpecPrime = spec_percent,
+                ErrorsPrime = [Error]
+            )
+        ;
+            SpecChar = 'c',
+            require_det
+            (
+                !.PolyTypes = [SpecPolyType | !:PolyTypes],
+                ( SpecPolyType = c(Char) ->
+                    % XXX Should we generate an error if MaybePrec = yes(...)?
+                    SpecPrime = spec_char(!.Flags, MaybeWidth, Char),
+                    ErrorsPrime = []
+                ;
+                    Error = error_wrong_polytype(SpecNum, SpecChar,
+                        poly_type_to_kind(SpecPolyType)),
+                    SpecPrime = spec_percent,
+                    ErrorsPrime = [Error]
+                )
+            ;
+                !.PolyTypes = [],
+                Error = error_no_polytype(SpecNum, SpecChar),
+                SpecPrime = spec_percent,
+                ErrorsPrime = [Error]
+            )
+        ;
+            SpecChar = 's',
+            require_det
+            (
+                !.PolyTypes = [SpecPolyType | !:PolyTypes],
+                ( SpecPolyType = s(Str) ->
+                    SpecPrime = spec_string(!.Flags,
+                        MaybeWidth, MaybePrec, Str),
+                    ErrorsPrime = []
+                ;
+                    Error = error_wrong_polytype(SpecNum, SpecChar,
+                        poly_type_to_kind(SpecPolyType)),
+                    SpecPrime = spec_percent,
+                    ErrorsPrime = [Error]
+                )
+            ;
+                !.PolyTypes = [],
+                Error = error_no_polytype(SpecNum, SpecChar),
+                SpecPrime = spec_percent,
+                ErrorsPrime = [Error]
+            )
+        )
+    ->
+        Spec = SpecPrime,
+        Errors = ErrorsPrime
     ;
-        (
-            SpecChar = 'o',
-            Base = base_octal
-        ;
-            SpecChar = 'u',
-            Base = base_decimal
-        ;
-            SpecChar = 'x',
-            Base = base_hex_lc
-        ;
-            SpecChar = 'X',
-            Base = base_hex_uc
-        ;
-            SpecChar = 'p',
-            Base = base_hex_p,
-            % XXX This should not be necessary.
-            !Flags ^ flag_hash := flag_hash_set
-        ),
-        !.PolyTypes = [SpecPolyType | !:PolyTypes],
-        SpecPolyType = i(Int),
-        Spec = spec_unsigned_int(!.Flags, MaybeWidth, MaybePrec, Base, Int)
-    ;
-        (
-            SpecChar = 'e',
-            FloatKind = kind_e_scientific_lc
-        ;
-            SpecChar = 'E',
-            FloatKind = kind_e_scientific_uc
-        ;
-            SpecChar = 'f',
-            FloatKind = kind_f_plain_lc
-        ;
-            SpecChar = 'F',
-            FloatKind = kind_f_plain_uc
-        ;
-            SpecChar = 'g',
-            FloatKind = kind_g_flexible_lc
-        ;
-            SpecChar = 'G',
-            FloatKind = kind_g_flexible_uc
-        ),
-        !.PolyTypes = [SpecPolyType | !:PolyTypes],
-        SpecPolyType = f(Float),
-        Spec = spec_float(!.Flags, MaybeWidth, MaybePrec, FloatKind, Float)
-    ;
-        SpecChar = 'c',
-        !.PolyTypes = [SpecPolyType | !:PolyTypes],
-        SpecPolyType = c(Char),
-        Spec = spec_char(!.Flags, MaybeWidth, MaybePrec, Char)
-    ;
-        SpecChar = 's',
-        !.PolyTypes = [SpecPolyType | !:PolyTypes],
-        SpecPolyType = s(Str),
-        Spec = spec_string(!.Flags, MaybeWidth, MaybePrec, Str)
+        Error = error_unknown_specifier(SpecNum, SpecChar),
+        Spec = spec_percent,
+        Errors = [Error]
     ).
 
 :- pred components_to_strings(list(format_str_component)::in,
@@ -386,8 +714,7 @@ components_to_strings([Component | Components], [String | Strings]) :-
 :- pred component_to_string(format_str_component::in, string::out) is det.
 
 component_to_string(Component, String) :-
-    Component = comp_str(Chars),
-    String = string.from_char_list(Chars).
+    Component = comp_str(String).
 component_to_string(Component, String) :-
     Component = comp_conv_spec(Spec),
     (
@@ -444,9 +771,9 @@ component_to_string(Component, String) :-
         )
     ;
         % Char conversion specifiers.
-        Spec = spec_char(Flags, MaybeWidth, MaybePrec, Char),
+        Spec = spec_char(Flags, MaybeWidth, Char),
         ( using_sprintf_for_char(Char) ->
-            FormatStr = make_format(Flags, MaybeWidth, MaybePrec, "", "c"),
+            FormatStr = make_format(Flags, MaybeWidth, no, "", "c"),
             String = native_format_char(FormatStr, Char)
         ;
             String = format_char(Flags, MaybeWidth, Char)
