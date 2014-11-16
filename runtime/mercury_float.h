@@ -203,7 +203,7 @@
     do {                                                                    \
         char buf[MR_SPRINTF_FLOAT_BUF_SIZE];                                \
         MR_sprintf_float(buf, Float);                                       \
-        MR_make_aligned_string_copy_msg(Str, buf, (alloc_id));              \
+        MR_make_aligned_string_copy_msg(String, buf, (alloc_id));           \
     } while (0)
 
 void MR_sprintf_float(char *buf, MR_Float f);
