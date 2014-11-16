@@ -38,12 +38,15 @@
 
 :- pragma foreign_decl("C",
 "
+#include ""mercury_float.h""    /* for MR_float_to_string */
+
 /*
 ** The following macro should expand to MR_TRUE if the C grades should
 ** implement string.format using C's sprintf function.
 ** Setting it to MR_FALSE will cause string.format to use the Mercury
 ** implementation of string formatting in C grades.
 */
+
 #define ML_USE_SPRINTF MR_TRUE
 ").
 
@@ -1716,7 +1719,7 @@ hex_digit(15, "f", "F").
 :- func convert_float_to_string(float) = string.
 
 convert_float_to_string(Float) = String :-
-    string.lowlevel_float_to_string(Float, FloatStr),
+    float_to_string_first_pass(Float, FloatStr),
 
     % Check for scientific representation.
     (
@@ -1762,6 +1765,57 @@ convert_float_to_string(Float) = String :-
     ;
         String = FloatStr
     ).
+
+    % float_to_string_first_pass differs from string.float_to_string in that
+    % it must be implemented without calling string.format, as this is the
+    % predicate that the implementation of string.format uses to get
+    % the initial string representation of a float.
+    %
+    % The string returned must match one of the following regular expression:
+    %   ^[+-]?[0-9]*\.?[0-9]+((e|E)[0-9]+)?$
+    %   ^[nN][aA][nN]$
+    %   ^[+-]?[iI][nN][fF][iI][nN][iI][tT][yY]$
+    %   ^[+-]?[iI][nN][fF]$
+    % and the string returned must have sufficient precision for representing
+    % the float.
+    %
+:- pred float_to_string_first_pass(float::in, string::uo) is det.
+
+:- pragma foreign_proc("C",
+    float_to_string_first_pass(FloatVal::in, FloatString::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"{
+    /*
+    ** Note any changes here will require the same changes in
+    ** string.float_to_string.
+    */
+    MR_float_to_string(FloatVal, FloatString, MR_ALLOC_ID);
+}").
+:- pragma foreign_proc("C#",
+    float_to_string_first_pass(FloatVal::in, FloatString::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // The R format string prints the double out such that it can be
+    // round-tripped.
+    // XXX According to the documentation it tries the 15 digits of precision,
+    // then 17 digits skipping 16 digits of precision, unlike what we do
+    // for the C backend.
+    FloatString = FloatVal.ToString(""R"");
+").
+:- pragma foreign_proc("Java",
+    float_to_string_first_pass(FloatVal::in, FloatString::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatString = java.lang.Double.toString(FloatVal);
+").
+:- pragma foreign_proc("Erlang",
+    float_to_string_first_pass(FloatVal::in, FloatString::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    List = io_lib:format(""~.17g"", [FloatVal]),
+    FloatString = list_to_binary(List)
+").
 
     % Converts a floating point number to a specified number of standard
     % figures. The style used depends on the value converted; style e (or E)
