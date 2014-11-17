@@ -42,6 +42,7 @@
 %
 % This module is divided into several sections. These sections are:
 %
+% - Wrapper types that associate particular semantics with raw strings.
 % - Converting between strings and lists of characters.
 % - Reading characters from strings.
 % - Writing characters to strings.
@@ -78,9 +79,21 @@
 :- import_module pretty_printer.
 
 %----------------------------------------------------------------------------%
+%
+% Wrapper types that associate particular semantics with raw strings.
+%
+% These types are used for defining stream typeclass instances
+% where you want different instances for strings representing different
+% semantic entities. Using the string type itself, without a wrapper,
+% would be ambiguous in such situations.
+%
+% While each module that associates semantics with strings could define
+% its own wrapper types, the notions of lines and text files are so common
+% that it is simpler to defined them just once, and this is the logical
+% place to do that.
+%
 
-    % This type is used for defining stream typeclass instances where the raw
-    % string type would be ambiguous. A line is:
+    % A line is:
     %
     % - a possibly empty sequence of non-newline characters terminated by a
     %   newline character; or
@@ -90,9 +103,8 @@
 :- type line
     --->    line(string).
 
-    % This type is used for defining stream typeclass instances where the raw
-    % string type would be ambiguous. A text file is a possibly empty sequence
-    % of characters terminated by the end of file.
+    % A text file is a possibly empty sequence of characters
+    % terminated by the end of the file.
     %
 :- type text_file
     --->    text_file(string).
@@ -105,8 +117,8 @@
     % Convert the string to a list of characters (code points).
     % Throws an exception if the list of characters contains a null character.
     %
-    % NOTE: in future the same treatment may be afforded
-    % surrogate code points.
+    % NOTE: In the future we may also throw an exception if the list contains
+    % a surrogate code point.
     %
 :- func to_char_list(string) = list(char).
 :- pred to_char_list(string, list(char)).
@@ -116,8 +128,8 @@
     % Convert a list of characters (code points) to a string.
     % Throws an exception if the list of characters contains a null character.
     %
-    % NOTE: in future the same treatment may be afforded
-    % surrogate code points.
+    % NOTE: In the future we may also throw an exception if the list contains
+    % a surrogate code point.
     %
 :- func from_char_list(list(char)::in) = (string::uo) is det.
 :- pred from_char_list(list(char), string).
@@ -127,8 +139,8 @@
     % As above, but fail instead of throwing an exception if the list contains
     % a null character.
     %
-    % NOTE: in future the same treatment may be afforded
-    % surrogate code points.
+    % NOTE: In the future we may also throw an exception if the list contains
+    % a surrogate code point.
     %
 :- pred semidet_from_char_list(list(char)::in, string::uo) is semidet.
 
@@ -136,8 +148,8 @@
     % of the characters.
     % Throws an exception if the list of characters contains a null character.
     %
-    % NOTE: in future the same treatment may be afforded
-    % surrogate code points.
+    % NOTE: In the future we may also throw an exception if the list contains
+    % a surrogate code point.
     %
 :- func from_rev_char_list(list(char)::in) = (string::uo) is det.
 :- pred from_rev_char_list(list(char)::in, string::uo) is det.
@@ -145,8 +157,8 @@
     % As above, but fail instead of throwing an exception if the list contains
     % a null character.
     %
-    % NOTE: in future the same treatment may be afforded
-    % surrogate code points.
+    % NOTE: In the future we may also throw an exception if the list contains
+    % a surrogate code point.
     %
 :- pred semidet_from_rev_char_list(list(char)::in, string::uo) is semidet.
 
@@ -334,6 +346,10 @@
 :- pred count_code_units(string::in, int::out) is det.
 
     % Determine the number of code points in a string.
+    %
+    % NOTE The names of this predicate and several other predicates
+    % may be changed in the future to refer to code_points, not codepoints,
+    % for consistency with predicate names that talk about code_units.
     %
 :- func count_codepoints(string) = int.
 :- pred count_codepoints(string::in, int::out) is det.
@@ -2174,7 +2190,7 @@ string.set_char(Char, Index, !Str) :-
         SUCCESS_INDICATOR = MR_TRUE;
         MR_allocate_aligned_string_msg(Str, len, MR_ALLOC_ID);
         strcpy(Str, Str0);
-        MR_set_code_unit(Str, Index, Ch);
+        Str[Index] = Ch;
     } else {
         int oldc = MR_utf8_get(Str0, Index);
         if (oldc < 0) {
@@ -2295,7 +2311,7 @@ string.unsafe_set_char(Char, Index, !Str) :-
         /* Fast path. */
         MR_allocate_aligned_string_msg(Str, len, MR_ALLOC_ID);
         strcpy(Str, Str0);
-        MR_set_code_unit(Str, Index, Ch);
+        Str[Index] = Ch;
     } else {
         int oldc = MR_utf8_get(Str0, Index);
         size_t oldwidth = MR_utf8_width(oldc);
@@ -2344,34 +2360,6 @@ string.unsafe_set_char(Char, Index, !Str) :-
 "
     <<Left:Index/binary, _/utf8, Right/binary>> = Str0,
     Str = unicode:characters_to_binary([Left, Ch, Right])
-").
-
-:- pragma foreign_decl("C",
-"
-#ifdef MR_USE_GCC_GLOBAL_REGISTERS
-    /*
-    ** GNU C version egcs-1.1.2 crashes with `fixed or forbidden register
-    ** spilled' in grade asm_fast.gc.tr.debug if we write this inline.
-    */
-    extern void MR_set_code_unit(MR_String str, MR_Integer ind, char ch);
-#else
-    #define MR_set_code_unit(str, ind, ch) \\
-        ((str)[ind] = (ch))
-#endif
-").
-
-:- pragma foreign_code("C",
-"
-#ifdef MR_USE_GCC_GLOBAL_REGISTERS
-    /*
-    ** GNU C version egcs-1.1.2 crashes with `fixed or forbidden register
-    ** spilled' in grade asm_fast.gc.tr.debug if we write this inline.
-    */
-    void MR_set_code_unit(MR_String str, MR_Integer ind, char ch)
-    {
-        str[ind] = ch;
-    }
-#endif
 ").
 
 %----------------------------------------------------------------------------%
