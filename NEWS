@@ -3,6 +3,23 @@ NEWS since Mercury 14.01.x
 
 Changes to the Mercury language:
 
+* We have added a new kind of scope to the language: determinism checks
+  for switch arms. These scopes are introduced by any of the new keywords
+
+      require_switch_arms_det
+      require_switch_arms_semidet
+      require_switch_arms_multi
+      require_switch_arms_nondet
+      require_switch_arms_cc_multi
+      require_switch_arms_cc_nondet
+      require_switch_arms_erroneous
+      require_switch_arms_failure
+
+  If `Goal' is switch on `Var', then e.g. `require_switch_arms_det [Var] Goal'
+  tells the compiler to require all the arms of that switch to have
+  determinisms at least as tight as det, and to generate error messages
+  for any violations of this requirement.
+
 * We have added an extension to include external files
   in pragma foreign_decl and pragma foreign_code declarations.
 
@@ -103,7 +120,7 @@ Changes to the Mercury compiler:
 
 * We have fixed some bugs with constrained polymorphic modes.
 
-* We have removed legacy support for the following systems: 
+* We have removed legacy support for the following systems:
     - IRIX
     - OSF/1
 
@@ -170,7 +187,7 @@ Changes to the Mercury compiler:
 * The compiler now supports stripping of executables in a separate
   post-link step.  The new options, --strip-executable-command,
   --strip-executable-shared-flags and --strip-executable-static-flags
-  are used to control this.  
+  are used to control this.
   (This is now the default on Mac OS X systems.)
 
 

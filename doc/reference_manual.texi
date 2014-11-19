@@ -513,6 +513,14 @@ promise_impure                  fx                950
 promise_pure                    fx                950
 promise_semipure                fx                950
 require_complete_switch         fxy               950
+require_switch_arms_det         fxy               950
+require_switch_arms_semidet     fxy               950
+require_switch_arms_multi       fxy               950
+require_switch_arms_nondet      fxy               950
+require_switch_arms_cc_multi    fxy               950
+require_switch_arms_cc_nondet   fxy               950
+require_switch_arms_erroneous   fxy               950
+require_switch_arms_failure     fxy               950
 require_det                     fx                950
 require_semidet                 fx                950
 require_multi                   fx                950
@@ -924,6 +932,51 @@ is equivalent to @var{Goal}.
 This is intended to allow these scopes to be used
 even if @var{Var} is input to the scope
 only in some but not all modes of the containing predicate.
+
+@item @code{require_switch_arms_det [@var{Var}] @var{Goal}}
+@itemx @code{require_switch_arms_semidet [@var{Var}] @var{Goal}}
+@itemx @code{require_switch_arms_multi [@var{Var}] @var{Goal}}
+@itemx @code{require_switch_arms_nondet [@var{Var}] @var{Goal}}
+@itemx @code{require_switch_arms_cc_multi [@var{Var}] @var{Goal}}
+@itemx @code{require_switch_arms_cc_nondet [@var{Var}] @var{Goal}}
+@itemx @code{require_switch_arms_erroneous [@var{Var}] @var{Goal}}
+@itemx @code{require_switch_arms_failure [@var{Var}] @var{Goal}}
+A determinism check, typically used to enhance the robustness of code.
+@var{Goal} must be a valid goal.
+If @var{Goal} is a switch on @var{Var},
+and all arms of the switch would be allowable in a det context,
+@code{require_switch_arms_det [@var{Var}] @var{Goal}}
+is equivalent to @var{Goal}.
+If @var{Goal} is a switch on @var{Var},
+but some arms of the switch would @emph{not} be allowable in a det context,
+then the compiler is required to generate an error message.
+If @var{Goal} is not a switch on @var{Var},
+then @code{require_switch_arms_det [@var{Var}] @var{Goal}}
+is equivalent to @var{Goal}.
+This is intended to allow these scopes to be used
+even if @var{Var} is input to the scope
+only in some but not all modes of the containing predicate.
+
+The @code{require_switch_arms_det} keyword
+may be replaced with
+@code{require_switch_arms_semidet},
+@code{require_switch_arms_multi},
+@code{require_switch_arms_nondet},
+@code{require_switch_arms_cc_multi},
+@code{require_switch_arms_cc_nondet},
+@code{require_switch_arms_erroneous} or
+@code{require_switch_arms_failure},
+each of which requires
+the arms of the switch on @var{Var} to have a determinism
+that is @emph{at least as tight} as the named determinism.
+The determinism match need not be exact;
+the requirement is that the arms' determinisms should make
+all the promises about the minimum and maximum number of solutions
+as the named determinism does.
+For example, it is ok to have a det switch arm
+in a @code{require_switch_arms_semidet} scope,
+even though it would not be ok
+to have a det goal in a @code{require_semidet} scope.
 
 @item @code{trace @var{Params} @var{Goal}}
 A trace goal, typically used for debugging or logging.
