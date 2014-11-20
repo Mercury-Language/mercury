@@ -206,7 +206,7 @@ make_simple_assign(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Unification = assign(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     goal_info_init(set_of_var.list_to_set([X, Y]), instmap_delta_bind_var(X),
-        detism_semi, purity_pure, GoalInfo),
+        detism_det, purity_pure, GoalInfo),
     GoalExpr = unify(X, rhs_var(Y), Mode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
