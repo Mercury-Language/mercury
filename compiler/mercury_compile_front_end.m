@@ -505,7 +505,7 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
 
         check_oisu_pragmas(Verbose, Stats, !HLDS, FoundOISUError,
             !Specs, !IO),
-        maybe_dump_hlds(!.HLDS, 60, "stratification", !DumpInfo, !IO),
+        maybe_dump_hlds(!.HLDS, 61, "oisu", !DumpInfo, !IO),
 
         process_try_goals(Verbose, Stats, !HLDS, FoundTryError, !Specs, !IO),
         maybe_dump_hlds(!.HLDS, 62, "try", !DumpInfo, !IO),
