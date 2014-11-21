@@ -112,6 +112,7 @@
 :- import_module pqueue.
 :- import_module pretty_printer.
 :- import_module prolog.
+:- import_module psqueue.
 :- import_module queue.
 :- import_module random.
 :- import_module rational.
@@ -284,6 +285,7 @@ mercury_std_library_module("pretty_printer").
 mercury_std_library_module("private_builtin").
 mercury_std_library_module("profiling_builtin").
 mercury_std_library_module("prolog").
+mercury_std_library_module("psqueue").
 mercury_std_library_module("queue").
 mercury_std_library_module("random").
 mercury_std_library_module("rational").

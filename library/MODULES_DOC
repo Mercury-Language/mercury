@@ -49,6 +49,7 @@ pprint.m
 pqueue.m
 pretty_printer.m
 prolog.m
+psqueue.m
 queue.m
 random.m
 rational.m
