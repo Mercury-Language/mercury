@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 expandtab tw=0 wm=0 ft=mercury
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2009-2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: pretty_printer.m
 % Main author: rafe
@@ -39,7 +39,7 @@
 % lines to be output, and a limit on the depth for formatting arbitrary terms.
 % Output is replaced with ellipsis ("...") when limits are exceeded.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module pretty_printer.
 :- interface.
@@ -51,7 +51,7 @@
 :- import_module type_desc.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type doc
     --->    str(string)
@@ -236,8 +236,8 @@
 :- pred write_doc(doc::in, io::di, io::uo) is det.
 :- pred write_doc(io.output_stream::in, doc::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -254,7 +254,7 @@
 :- import_module tree234.               % For tree234_to_doc.
 :- import_module version_array.         % For version_array_to_doc.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type formatter_map == map(string, map(string, map(int, formatter))).
 
@@ -280,11 +280,11 @@
     ;       set_limit(formatting_limit).
             % Set the truncation limit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 new_formatter_map = map.init.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0) = FMap :-
     ( if FMap0 ^ elem(ModuleName) = FMap0_Type_Arity then
@@ -301,7 +301,7 @@ set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0) = FMap :-
         FMap = FMap0 ^ elem(ModuleName) := FMap_Type_Arity
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_formatter(formatter_map::in, string::in, string::in, int::in,
     formatter::out) is semidet.
@@ -309,26 +309,26 @@ set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0) = FMap :-
 get_formatter(FMap, ModuleName, TypeName, Arity, Formatter) :-
     Formatter = FMap ^ elem(ModuleName) ^ elem(TypeName) ^ elem(Arity).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 indent(Indent, Docs) =
     docs([pp_internal(indent(Indent)), docs(Docs), pp_internal(outdent)]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 indent(Docs) =
     indent("  ", Docs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 group(Docs) =
     docs([pp_internal(open_group), docs(Docs), pp_internal(close_group)]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 format(X) = format_univ(univ(X)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 format_arg(Doc) =
     docs([
@@ -337,7 +337,7 @@ format_arg(Doc) =
         Doc
     ]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, MaxLines, Limit,
         Doc, !IO) :-
@@ -347,7 +347,7 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, MaxLines, Limit,
     write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc],
         RemainingWidth, _, Indents, _, MaxLines, _, Limit, _, Pri, _, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % format(FMap, LineWidth, Docs, !RemainingWidth, !Indents,
     %   !RemainingLines, !Limit, !Pri, !IO):
@@ -469,7 +469,7 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
             !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred output_current_group(Stream::in, int::in, indents::in, int::in,
     docs::in, docs::out, int::in, int::out, int::in, int::out,
@@ -508,7 +508,7 @@ output_current_group(Stream, LineWidth, Indents, OpenGroups,
             Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % expand_docs(Canonicalize, Docs0, Docs, G, !L, !P, !R) expands out any
     % doc(_), pp_univ(_), format_list(_, _), and pp_term(_) constructors in
@@ -620,7 +620,7 @@ expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Output a newline followed by indentation.
     %
@@ -643,7 +643,7 @@ output_indentation(Stream, [Indent | Indents], !RemainingWidth, !IO) :-
     stream.put(Stream, Indent, !IO),
     !:RemainingWidth = !.RemainingWidth - string.count_codepoints(Indent).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Expand a univ into docs using the first pretty-printer in the given list
     % that succeeds, otherwise use the generic pretty- printer. If the
@@ -677,7 +677,7 @@ expand_pp(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
         expand_format_term(Name, Args, Doc, !Limit, CurrentPri)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Expand a list of univs into docs using the given separator.
     %
@@ -702,7 +702,7 @@ expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Expand a name and list of univs into docs corresponding to Mercury
     % term syntax.
@@ -732,7 +732,7 @@ expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
     decrement_limit(!Limit),
     Doc = set_formatting_limit_correctly(!.Limit, Doc0).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred expand_format_susp(((func) = doc)::in, doc::out,
     formatting_limit::in, formatting_limit::out) is det.
@@ -745,7 +745,7 @@ expand_format_susp(Susp, Doc, !Limit) :-
         Doc = set_formatting_limit_correctly(!.Limit, apply(Susp))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Expand a name and list of univs into docs corresponding to Mercury
     % operator syntax.
@@ -813,7 +813,7 @@ expand_format_op(Op, [ArgA, ArgB], CurrentPri, Docs) :-
         Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Update the limits properly after processing a pp_term.
     %
@@ -824,7 +824,7 @@ set_formatting_limit_correctly(linear(_), Doc) =
 set_formatting_limit_correctly(Limit @ triangular(_), Doc0) =
     docs([Doc0, pp_internal(set_limit(Limit))]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Add parentheses around a doc if required by operator priority.
     %
@@ -837,14 +837,14 @@ add_parens_if_needed(OpPriority, EnclosingPriority, Doc) =
         Doc
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func adjust_priority(ops.priority, ops.assoc) = ops.priority.
 
 adjust_priority(Priority, Assoc) = AdjustedPriority :-
     ops.adjust_priority_for_assoc(Priority, Assoc, AdjustedPriority).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Succeeds if the pretty-printer state limits have been used up.
     %
@@ -855,7 +855,7 @@ limit_overrun(linear(N)) :-
 limit_overrun(triangular(N)) :-
     N =< 0.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Reduce the pretty-printer limit by one.
     %
@@ -864,8 +864,8 @@ limit_overrun(triangular(N)) :-
 decrement_limit(linear(N), linear(N - 1)).
 decrement_limit(triangular(N), triangular(N - 1)).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Convenience predicates.
 %
@@ -878,7 +878,7 @@ decrement_limit(triangular(N), triangular(N - 1)).
 :- mutable(io_pp_params, pp_params, pp_params(78, 100, triangular(100)),
     ground, [attach_to_io_state, untrailed]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Because there is no guaranteed order of module initialisation, we need
     % to ensure that we do the right thing if other modules try to update the
@@ -913,7 +913,7 @@ decrement_limit(triangular(N), triangular(N - 1)).
                 defaultFormatterMap = null;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred pretty_printer_is_initialised(bool::out, io::di, io::uo)
         is det.
@@ -951,7 +951,7 @@ decrement_limit(triangular(N), triangular(N - 1)).
     end
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate must not be called unless pretty_printer_is_initialised ==
     % MR_TRUE, which occurs when set_default_formatter_map has been called at
@@ -992,7 +992,7 @@ decrement_limit(triangular(N), triangular(N - 1)).
     end
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_default_formatter_map(FMap, !IO) :-
     pretty_printer_is_initialised(Okay, !IO),
@@ -1005,7 +1005,7 @@ get_default_formatter_map(FMap, !IO) :-
         unsafe_get_default_formatter_map(FMap, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
         set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
@@ -1041,14 +1041,14 @@ get_default_formatter_map(FMap, !IO) :-
         {set_mutable, pretty_printer_default_formatter_map, FMap}
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_default_formatter(ModuleName, TypeName, Arity, Formatter, !IO) :-
     get_default_formatter_map(FMap0, !IO),
     FMap = set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0),
     set_default_formatter_map(FMap, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_default_params(Params, !IO) :-
     get_io_pp_params(Params, !IO).
@@ -1056,7 +1056,7 @@ get_default_params(Params, !IO) :-
 set_default_params(Params, !IO) :-
     set_io_pp_params(Params, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 write_doc(Doc, !IO) :-
     write_doc(io.stdout_stream, Doc, !IO).
@@ -1069,7 +1069,7 @@ write_doc(Stream, Doc, !IO) :-
             LineWidth, MaxLines, Limit, Doc, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Construct the initial default formatter map. This function
     % should be extended as more specialised formatters are added
@@ -1089,7 +1089,7 @@ initial_formatter_map = !:Formatters :-
     set_formatter_sv("version_array", "version_array", 1, fmt_version_array,
         !Formatters).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred set_formatter_sv(string::in, string::in, int::in, formatter::in,
     formatter_map::in, formatter_map::out) is det.
@@ -1097,35 +1097,35 @@ initial_formatter_map = !:Formatters :-
 set_formatter_sv(ModuleName, TypeName, Arity, Formatter, FMap0, FMap) :-
     FMap = set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func fmt_char(univ, list(type_desc)) = doc.
 
 fmt_char(Univ, _ArgDescs) =
     ( if Univ = univ(X) then char_to_doc(X) else str("?char?") ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func fmt_float(univ, list(type_desc)) = doc.
 
 fmt_float(Univ, _ArgDescs) =
     ( if Univ = univ(X) then float_to_doc(X) else str("?float?") ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func fmt_int(univ, list(type_desc)) = doc.
 
 fmt_int(Univ, _ArgDescs) =
     ( if Univ = univ(X) then int_to_doc(X) else str("?int?") ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func fmt_string(univ, list(type_desc)) = doc.
 
 fmt_string(Univ, _ArgDescs) =
     ( if Univ = univ(X) then string_to_doc(X) else str("?string?") ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func fmt_array(univ, list(type_desc)) = doc.
 
@@ -1141,7 +1141,7 @@ fmt_array(Univ, ArgDescs) =
         str("?array?")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func fmt_version_array(univ, list(type_desc)) = doc.
 
@@ -1157,7 +1157,7 @@ fmt_version_array(Univ, ArgDescs) =
         str("?version_array?")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func fmt_list(univ, list(type_desc)) = doc.
 
@@ -1173,7 +1173,7 @@ fmt_list(Univ, ArgDescs) =
         str("?list?")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func fmt_tree234(univ, list(type_desc)) = doc.
 
@@ -1190,11 +1190,11 @@ fmt_tree234(Univ, ArgDescs) =
         str("?tree234?")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func ellipsis = doc.
 
 ellipsis = str("...").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

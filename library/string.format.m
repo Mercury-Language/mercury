@@ -1,29 +1,29 @@
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: string.format.m.
 %
 % This module implements string.format.
 %
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module string.format.
 :- interface.
 
 :- import_module list.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred format_impl(string::in, list(poly_type)::in, string::out) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -34,7 +34,7 @@
 :- import_module maybe.
 :- import_module require.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C",
 "
@@ -50,7 +50,7 @@
 #define ML_USE_SPRINTF MR_TRUE
 ").
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type flag_hash
     --->    flag_hash_clear
@@ -154,7 +154,7 @@
                 int         % How many extra polytypes?
             ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 string.format.format_impl(FormatString, PolyList, String) :-
     % The call tree of predicate should be optimised to turn over
@@ -303,7 +303,7 @@ poly_type_to_kind(s(_)) = poly_kind_str.
 poly_type_to_kind(i(_)) = poly_kind_int.
 poly_type_to_kind(f(_)) = poly_kind_float.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate parses the entire format string. When it encounters
     % something that looks like a conversion specification (i.e. it starts
@@ -521,7 +521,7 @@ get_number_prefix(!Chars, N0, N) :-
         N = N0
     ).
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % get_first_spec(!Chars, !PolyTypes, Flags, MaybeWidth, MaybePrec,
     %   SpecNum, Spec, Errors):
@@ -750,7 +750,7 @@ component_to_string(Component, String) :-
         format_string_component(Flags, MaybeWidth, MaybePrec, Str, String)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred format_char_component(flags::in, maybe_width::in, char::in,
     string::out) is det.
@@ -840,7 +840,7 @@ format_float_component(Flags, MaybeWidth, MaybePrec, Kind, Float, String) :-
         String = format_float(Flags, MaybeWidth, MaybePrec, Kind, Float)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Construct a format string.
     %
@@ -1107,7 +1107,7 @@ native_format_char(_, _) = _ :-
     % by default.
     error("string.native_format_char/2 not defined").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Format a character.
     %
@@ -1336,7 +1336,7 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
 
     String = justify_string(Flags, MaybeWidth, FieldModStr).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Format a float.
     %
@@ -1475,7 +1475,7 @@ get_prec_to_use_minimum_1(MaybePrec) = Prec :-
         Prec = 6
     ).
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func add_sign_like_prefix_to_int_if_needed(flags, bool, int, string)
     = string.
@@ -1541,7 +1541,7 @@ justify_string(Flags, MaybeWidth, Str) = JustifiedStr :-
         JustifiedStr = Str
     ).
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Each of these functions converts a non-negative integer (that originally
 % came from a Mercury int) to a string of octal, decimal or hex digits.
@@ -1652,7 +1652,7 @@ abs_int_to_hex_uc(Num) = NumStr :-
         NumStr = ""
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given an int between 0 and 7, return the octal digit representing it.
     %
@@ -1744,7 +1744,7 @@ hex_digit(13, "d", "D").
 hex_digit(14, "e", "E").
 hex_digit(15, "f", "F").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Unlike the standard library function, this function converts a float
     % to a string without resorting to scientific notation.
@@ -2144,4 +2144,4 @@ is_decimal_point('.').
 is_exponent('e').
 is_exponent('E').
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

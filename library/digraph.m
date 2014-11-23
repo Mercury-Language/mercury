@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995-1999,2002-2007,2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: digraph.m
 % Main author: bromage, petdr
@@ -15,8 +15,8 @@
 % type T, and a set of edges of type pair(T). The endpoints of each edge
 % must be included in the set of vertices; cycles and loops are allowed.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module digraph.
 :- interface.
@@ -29,7 +29,7 @@
 :- import_module set.
 :- import_module sparse_bitset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The type of directed graphs with vertices in T.
     %
@@ -158,7 +158,7 @@
 :- pred lookup_key_set_to(digraph(T)::in, digraph_key(T)::in,
     digraph_key_set(T)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % to_assoc_list turns a digraph into a list of pairs of vertices,
     % one for each edge.
@@ -179,7 +179,7 @@
 :- func from_assoc_list(assoc_list(T, T)) = digraph(T).
 :- pred from_assoc_list(assoc_list(T, T)::in, digraph(T)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % dfs(G, Key, Dfs) is true if Dfs is a depth-first sorting of G
     % starting at Key. The set of keys in the list Dfs is equal to the
@@ -231,7 +231,7 @@
     digraph_key_set(T)::in, digraph_key_set(T)::out,
     list(digraph_key(T))::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % vertices returns the set of vertices in a digraph.
     %
@@ -321,8 +321,8 @@
 :- mode traverse(in, pred(in, in, out) is det,
     pred(in, in, in, out) is det, in, out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -330,7 +330,7 @@
 :- import_module int.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type digraph_key(T)
     --->    digraph_key(int).
@@ -355,7 +355,7 @@
                 bwd_map             :: key_set_map(T)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Note that the integer keys in these maps are actually digraph keys.
     % We use the raw integers as keys to allow type specialization.
@@ -390,7 +390,7 @@ key_set_map_delete(Map0, XI, Y) = Map :-
         Map = Map0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.init = G :-
     digraph.init(G).
@@ -400,7 +400,7 @@ digraph.init(digraph(0, VMap, FwdMap, BwdMap)) :-
     map.init(FwdMap),
     map.init(BwdMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.add_vertex(Vertex, Key, !G) :-
     ( bimap.search(!.G ^ vertex_map, Vertex, Key0) ->
@@ -417,7 +417,7 @@ allocate_key(digraph_key(I), !G) :-
     I = !.G ^ next_key,
     !G ^ next_key := I + 1.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.search_key(G, Vertex, Key) :-
     bimap.search(G ^ vertex_map, Vertex, Key).
@@ -442,7 +442,7 @@ digraph.lookup_vertex(G, Key, Vertex) :-
         unexpected($module, $pred, "search for vertex failed")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.add_edge(X, Y, !.G) = !:G :-
     digraph.add_edge(X, Y, !G).
@@ -475,7 +475,7 @@ digraph.add_assoc_list([X - Y | Edges], !G) :-
     digraph.add_edge(X, Y, !G),
     digraph.add_assoc_list(Edges, !G).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.delete_edge(X, Y, !.G) = !:G :-
     digraph.delete_edge(X, Y, !G).
@@ -494,7 +494,7 @@ digraph.delete_assoc_list([X - Y | Edges], !G) :-
     digraph.delete_edge(X, Y, !G),
     digraph.delete_assoc_list(Edges, !G).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.is_edge(G, digraph_key(XI), Y) :-
     map.search(G ^ fwd_map, XI, YSet),
@@ -504,7 +504,7 @@ digraph.is_edge_rev(G, X, digraph_key(YI)) :-
     map.search(G ^ bwd_map, YI, XSet),
     member(X, XSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.lookup_from(G, X) = Ys :-
     digraph.lookup_from(G, X, Ys).
@@ -538,8 +538,8 @@ digraph.lookup_key_set_to(G, digraph_key(YI), Xs) :-
         init(Xs)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.to_assoc_list(G) = List :-
     digraph.to_assoc_list(G, List).
@@ -598,8 +598,8 @@ digraph.from_assoc_list(AL) = G :-
 digraph.from_assoc_list(AL, G) :-
     list.foldl(add_vertex_pair, AL, digraph.init, G).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.dfs(G, X) = Dfs :-
     digraph.dfs(G, X, Dfs).
@@ -652,7 +652,7 @@ digraph.dfs_2(G, X, !Visited, !DfsRev) :-
         !:DfsRev = [X | !.DfsRev]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.vertices(G) = Vs :-
     digraph.vertices(G, Vs).
@@ -666,7 +666,7 @@ digraph.vertices(G, Vs) :-
 digraph.keys(G, Keys) :-
     bimap.coordinates(G ^ vertex_map, Keys).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.inverse(G) = InvG :-
     digraph.inverse(G, InvG).
@@ -675,7 +675,7 @@ digraph.inverse(G, InvG) :-
     G = digraph(Next, VMap, Fwd, Bwd),
     InvG = digraph(Next, VMap, Bwd, Fwd).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.compose(G1, G2) = Comp :-
     digraph.compose(G1, G2, Comp).
@@ -749,7 +749,7 @@ accumulate_digraph_key_set(KMap, X, !Set) :-
     map.lookup(KMap, XI, Y),
     !:Set = insert(!.Set, Y).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.is_dag(G) :-
     % Traverses the digraph depth-first, keeping track of all ancestors.
@@ -786,7 +786,7 @@ digraph.is_dag_2(G, Ancestors, X, !Visited) :-
         foldl(digraph.is_dag_2(G, [X | Ancestors]), SuccXs, !Visited)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.components(G) = Components :-
     digraph.components(G, Components).
@@ -828,7 +828,7 @@ digraph.reachable_from(G, Keys0, !Comp) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.cliques(G) = Cliques :-
     digraph.cliques(G, Cliques).
@@ -869,7 +869,7 @@ digraph.cliques_2([X | Xs0], GInv, !.Visited, !Cliques) :-
     list.delete_elems(Xs0, CliqueList, Xs),
     digraph.cliques_2(Xs, GInv, !.Visited, !Cliques).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.reduced(G) = R :-
     digraph.reduced(G, R).
@@ -923,7 +923,7 @@ digraph.make_reduced_graph(CliqMap, [X - Y | Edges], !R) :-
     ),
     digraph.make_reduced_graph(CliqMap, Edges, !R).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.tsort(G, Tsort) :-
     digraph.dfsrev(G, Tsort0),
@@ -941,7 +941,7 @@ digraph.check_tsort(G, Vis0, [X | Xs]) :-
     empty(BackPointers),
     digraph.check_tsort(G, Vis, Xs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.atsort(G) = ATsort :-
     digraph.atsort(G, ATsort).
@@ -973,7 +973,7 @@ digraph.atsort_2([X | Xs], GInv, !.Vis, !ATsort) :-
     ),
     digraph.atsort_2(Xs, GInv, !.Vis, !ATsort).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.sc(G) = Sc :-
     digraph.sc(G, Sc).
@@ -983,7 +983,7 @@ digraph.sc(G, Sc) :-
     digraph.to_key_assoc_list(GInv, GInvList),
     digraph.add_assoc_list(GInvList, G, Sc).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.tc(G) = Tc :-
     digraph.tc(G, Tc).
@@ -1025,7 +1025,7 @@ digraph.detect_fake_reflexives(G, Rtc, [X | Xs], !Fakes) :-
     ),
     digraph.detect_fake_reflexives(G, Rtc, Xs, !Fakes).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.rtc(G) = Rtc :-
     digraph.rtc(G, Rtc).
@@ -1085,7 +1085,7 @@ digraph.add_cartesian_product(KeySet1, KeySet2, !Rtc) :-
         foldl(digraph.add_edge(Key1), KeySet2, !Rtc)
     ), KeySet1, !Rtc).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 digraph.traverse(G, ProcessVertex, ProcessEdge, !Acc) :-
     digraph.keys(G, Keys),
@@ -1122,6 +1122,6 @@ digraph.traverse_children([X | Xs], Parent, G, ProcessEdge, !Acc) :-
     ProcessEdge(Parent, Child, !Acc),
     digraph.traverse_children(Xs, Parent, G, ProcessEdge, !Acc).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module digraph.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

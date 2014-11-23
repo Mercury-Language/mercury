@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: rtti_implementation.m.
 % Main author: trd, petdr, wangp.
@@ -30,8 +30,8 @@
 % At least, that may have been the plan at some point.  Currently this module
 % is used for the Java and IL backends only.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module rtti_implementation.
 :- interface.
@@ -40,7 +40,7 @@
 :- import_module list.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Our type_info and type_ctor_info implementations are both
     % abstract types.
@@ -91,7 +91,7 @@
 :- mode univ_named_arg(in, in(include_details_cc), in, out)
     is semidet. % conceptually committed-choice
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Implementations for use from construct.
 
@@ -109,8 +109,8 @@
 :- pred type_info_get_functor_lex(type_info::in, int::in, int::out)
     is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -123,7 +123,7 @@
 :- import_module string.
 :- import_module type_desc.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % It is convenient to represent the type_ctor_rep as a Mercury
     % enumeration, so we can switch on the values.
@@ -240,8 +240,8 @@
     }
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Implementation of the interface to construct.
 %
@@ -433,7 +433,7 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
         Names = list.duplicate(Arity, null_string)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Unlike get_arg_type_info, existentially quantified type variables are
     % simply returned with no attempt to extract the type infos from terms.
@@ -495,7 +495,7 @@ create_pseudo_type_info(TypeInfo, PseudoTypeInfo) = ArgPseudoTypeInfo :-
 make_type_info(_, _, _) = _ :-
    private_builtin.sorry("make_type_info/3").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_functor_enum(type_ctor_rep::in(enum), type_ctor_info::in, int::in,
     string::out, int::out, list(pseudo_type_info)::out, list(string)::out)
@@ -531,7 +531,7 @@ get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
     PseudoTypeInfoList = [ArgType],
     Names = [ArgName].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
@@ -608,14 +608,14 @@ type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
         fail
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 type_info_get_functor_lex(TypeInfo0, Ordinal, FunctorNumber) :-
     TypeInfo = collapse_equivalences(TypeInfo0),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     type_ctor_search_functor_number_map(TypeCtorInfo, Ordinal, FunctorNumber).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("Java",
     get_type_info(_T::unused) = (TypeInfo::out),
@@ -666,8 +666,8 @@ get_type_info(_) = _ :-
 get_var_arity_typeinfo_arity(_) = _ :-
     private_builtin.sorry("get_var_arity_typeinfo_arity").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generic_compare(Res, X, Y) :-
     TypeInfo = get_type_info(X),
@@ -829,8 +829,8 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Implement generic calls -- we could use call/N but then we would
     % have to create a real closure.
@@ -905,8 +905,8 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         _::in, _::in) :-
     det_unimplemented("result_call_9").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We override the above definitions in the .NET backend.
 
@@ -1024,8 +1024,8 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     Res = (builtin.Comparison_result_0) pred(A, B, C, D, E, X, Y);
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We override the above definitions in the Java backend.
 
@@ -1117,8 +1117,8 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, D, E, X, Y);
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_export("C#", compare_type_infos(out, in, in),
     "ML_compare_type_infos").
@@ -1390,8 +1390,8 @@ compare_pseudo_type_info_args(Res, Args1, Args2) :-
         error("compare_pseudo_type_info_args: argument list mismatch")
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func collapse_equivalences(type_info) = type_info.
 :- pragma foreign_export("C#", collapse_equivalences(in) = out,
@@ -1455,8 +1455,8 @@ collapse_equivalences_pseudo(PTI) = NewPTI :-
 get_layout_equiv(_) = _ :-
     private_builtin.sorry("get_layout_equiv").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 type_ctor_name_and_arity(TypeCtorInfo, ModuleName, Name, Arity) :-
     ModuleName = type_ctor_module_name(TypeCtorInfo),
@@ -1486,8 +1486,8 @@ iterate(Start, Max, Func) = Results :-
         Results = []
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C#",
     pseudo_type_ctor_and_args(PseudoTypeInfo::in, TypeCtorInfo::out,
@@ -1594,8 +1594,8 @@ is_univ_pseudo_type_info(_, _) :-
 is_exist_pseudo_type_info(_, _) :-
     private_builtin.sorry("is_exist_pseudo_type_info/2").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_code("C#",
 "
@@ -2388,7 +2388,7 @@ is_exist_pseudo_type_info(_, _) :-
 construct(_, _, _) = _ :-
     private_builtin.sorry("construct/3").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C#",
     construct_tuple_2(Args::in, ArgTypes::in, Arity::in) = (Tuple::out),
@@ -2438,8 +2438,8 @@ construct(_, _, _) = _ :-
 construct_tuple_2(_Args, _ArgTypes, _Arity) = _ :-
     private_builtin.sorry("construct_tuple_2/3").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
     TypeInfo = get_type_info(Term),
@@ -3503,8 +3503,8 @@ public static final int last_univ_quant_varnum = 512;
 public static final int first_exist_quant_varnum = 513;
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % XXX we have only implemented the .NET backend for the low-level data case.
 
@@ -3641,8 +3641,8 @@ same_pointer_value_untyped(_, _) :-
     % matching foreign_proc version.
     private_builtin.sorry("same_pointer_value_untyped").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func get_primary_tag(T) = int.
 :- func get_remote_secondary_tag(T) = int.
@@ -4039,8 +4039,8 @@ typeclass_info_type_info(TypeClassInfo, Index) = TypeInfo :-
         PrivateTypeInfo),
     private_builtin.unsafe_type_cast(PrivateTypeInfo, TypeInfo).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func var_arity_type_info_index_as_ti(type_info, int) = type_info.
 :- func var_arity_type_info_index_as_pti(type_info, int) = pseudo_type_info.
@@ -4204,8 +4204,8 @@ det_unimplemented(S) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func type_ctor_arity(type_ctor_info) = int.
 :- pragma foreign_proc("C#",
@@ -4557,7 +4557,7 @@ type_ctor_num_functors(_) = _ :-
 type_ctor_search_functor_number_map(_, _, _) :-
     private_builtin.sorry("type_ctor_search_functor_number_map/3").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % TypeFunctors
 %
@@ -4847,7 +4847,7 @@ get_du_functor_exist_info(DuFunctorDesc, ExistInfo) :-
     SUCCESS_INDICATOR = (ExistInfo != null);
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func get_enum_functor_desc(type_ctor_rep::in(enum), int::in,
     type_functors::in) = (enum_functor_desc::out) is det.
@@ -4929,7 +4929,7 @@ enum_functor_ordinal(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(1).
     Ordinal = EnumFunctorDesc.enum_functor_ordinal;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func foreign_enum_functor_desc(type_ctor_rep, int, type_functors)
     = foreign_enum_functor_desc.
@@ -5005,7 +5005,7 @@ foreign_enum_functor_ordinal(_) = -1.
     Ordinal = ForeignEnumFunctorDesc.foreign_enum_functor_ordinal;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func notag_functor_desc(type_ctor_rep, int, type_functors)
     = notag_functor_desc.
@@ -5085,8 +5085,8 @@ notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
     ArgName = NotagFunctorDesc.no_tag_functor_arg_name;
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % XXX get rid of this
 :- func unsafe_index(int, T) = U.
@@ -5103,7 +5103,7 @@ notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
 unsafe_index(_, _) = _ :-
     private_builtin.sorry("rtti_implementation.unsafe_index").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func unsafe_make_enum(int) = T.
 :- pragma foreign_proc("C#",
@@ -5115,7 +5115,7 @@ unsafe_index(_, _) = _ :-
 unsafe_make_enum(_) = _ :-
     private_builtin.sorry("rtti_implementation.unsafe_make_enum").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred null(T::in) is semidet.
 :- pragma foreign_proc("C",
@@ -5141,7 +5141,7 @@ null(_) :-
     % matching foreign_proc version.
     private_builtin.sorry("rtti_implementation.null/1").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func null_string = string.
 :- pragma foreign_proc("C",
@@ -5167,7 +5167,7 @@ null_string = _ :-
     % matching foreign_proc version.
     private_builtin.sorry("rtti_implementation.null_string/0").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func unsafe_get_enum_value(T) = int.
 
@@ -5197,7 +5197,7 @@ unsafe_get_enum_value(_) = _ :-
     % matching foreign_proc version.
     private_builtin.sorry("rtti_implementation.unsafe_get_enum_value/1").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func unsafe_get_foreign_enum_value(T) = int.
 
@@ -5217,5 +5217,5 @@ unsafe_get_foreign_enum_value(_) = _ :-
     private_builtin.sorry(
         "rtti_implementation.unsafe_get_foreign_enum_value/1").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

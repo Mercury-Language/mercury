@@ -12,8 +12,8 @@
 %
 % This module implements sets using 2-3-4 trees.
 %
-%--------------------------------------------------------------------------%
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module set_tree234.
 :- interface.
@@ -22,7 +22,7 @@
 :- import_module list.
 :- import_module set.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type set_tree234(_T).
 
@@ -474,8 +474,8 @@
 :- pred divide_by_set(set_tree234(T)::in, set_tree234(T)::in,
     set_tree234(T)::out, set_tree234(T)::out) is det.
 
-%--------------------------------------------------------------------------%
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -534,7 +534,7 @@
 % :- mode uo_set_tree234(T) == free >> uniq_set_tree234(T).
 % :- mode uo_set_tree234    == free >> uniq_set_tree234(ground).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.init = empty.
 
@@ -684,7 +684,7 @@ set_tree234.is_member(T, E) = R :-
 set_tree234.contains(T, E) :-
     set_tree234.is_member(T, E, yes).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.list_to_set(List) = Tree :-
     set_tree234.list_to_set_2(List, empty, Tree).
@@ -716,7 +716,7 @@ set_tree234.list_to_set_2([E | Es], !Tree) :-
 set_tree234.to_set(Tree) =
     set.sorted_list_to_set(set_tree234.to_sorted_list(Tree)).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.to_sorted_list(Tree) = List :-
     set_tree234.to_sorted_list_2(Tree, [], List).
@@ -744,7 +744,7 @@ set_tree234.to_sorted_list_2(four(E0, E1, E2, T0, T1, T2, T3), L0, L) :-
 set_tree234.from_set(Set) =
     set_tree234.sorted_list_to_set(set.to_sorted_list(Set)).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.equal(SetA, SetB) :-
     set_tree234.to_sorted_list(SetA, ListA),
@@ -774,7 +774,7 @@ set_tree234.subset(four(E0, E1, E2, T0, T1, T2, T3), Set) :-
 set_tree234.superset(SuperSet, Set) :-
     set_tree234.subset(Set, SuperSet).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst two(E, T)   ---> two(E, T, T).
 :- inst three(E, T) ---> three(E, E, T, T, T).
@@ -798,7 +798,7 @@ set_tree234.superset(SuperSet, Set) :-
 % :- mode di_four  == di(uniq_four(unique, unique)).
 % :- mode sdi_four == di(uniq_four(ground, uniq_tree234_gg)).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.insert(E, Tin) = Tout :-
     set_tree234.insert(E, Tin, Tout).
@@ -1077,7 +1077,7 @@ set_tree234.insert3(E, Tin, Tout) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.insert_new(E, Tin, Tout) :-
     (
@@ -1343,7 +1343,7 @@ set_tree234.insert_new3(E, Tin, Tout) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.insert_list(Es, Set0) = Set :-
     set_tree234.insert_list(Es, Set0, Set).
@@ -1353,7 +1353,7 @@ set_tree234.insert_list([E | Es], !Set) :-
     set_tree234.insert(E, !Set),
     set_tree234.insert_list(Es, !Set).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred set_tree234.split_four(set_tree234(E)::in_four, E::out,
     set_tree234(E)::out_two, set_tree234(E)::out_two) is det.
@@ -1364,7 +1364,7 @@ set_tree234.split_four(Tin, MidE, Sub0, Sub1) :-
     MidE = E1,
     Sub1 = two(E2, T2, T3).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.delete(E, Tin) = Tout :-
     set_tree234.delete(E, Tin, Tout).
@@ -1624,7 +1624,7 @@ set_tree234.delete_list([E | Es], !Set) :-
     set_tree234.delete(E, !Set),
     set_tree234.delete_list(Es, !Set).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We use the same algorithm as set_tree234.delete.
 
@@ -1876,7 +1876,7 @@ set_tree234.remove_list([E | Es], !Set) :-
     set_tree234.remove(E, !Set),
     set_tree234.remove_list(Es, !Set).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The algorithm we use similar to set_tree234.delete, except that we
     % always go down the left subtree.
@@ -1950,7 +1950,7 @@ set_tree234.remove_least_2(Tin, E, Tout, RH) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The input to the following group of predicates are the components
     % of a two-, three- or four-node in which the height of the indicated
@@ -2250,7 +2250,7 @@ fix_4node_t3(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         % RH = no
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.union(SetA, SetB) = Set :-
     set_tree234.union(SetA, SetB, Set).
@@ -2330,7 +2330,7 @@ set_tree234.power_union_2(four(E0, E1, E2, T0, T1, T2, T3), !Union) :-
     set_tree234.union(E2, !Union),
     set_tree234.power_union_2(T3, !Union).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.intersect(SetA, SetB) = Set :-
     set_tree234.intersect(SetA, SetB, Set).
@@ -2421,7 +2421,7 @@ set_tree234.power_intersect(Sets) = Intersect :-
 set_tree234.power_intersect(Sets, Intersect) :-
     Intersect = set_tree234.intersect_list(set_tree234.to_sorted_list(Sets)).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % `set_tree234.difference(SetA, SetB, Set)' is true iff `Set' is the
     % set containing all the elements of `SetA' except those that
@@ -2456,7 +2456,7 @@ set_tree234.difference_2(four(E0, E1, E2, T0, T1, T2, T3), !Set) :-
     set_tree234.delete(E2, !Set),
     set_tree234.difference_2(T3, !Set).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.count(empty) = 0.
 set_tree234.count(two(_, T0, T1)) = N :-
@@ -2490,7 +2490,7 @@ set_tree234.height(Tree, Height) :-
         Height = T0Height + 1
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.fold(Pred, Tree, !A) :-
     set_tree234.foldl(Pred, Tree, !A).
@@ -2655,7 +2655,7 @@ set_tree234.foldl6(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D,
     Pred(E2, !A, !B, !C, !D, !E, !F),
     set_tree234.foldl6(Pred, T3, !A, !B, !C, !D, !E, !F).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.all_true(Pred, T) :-
     (
@@ -2683,7 +2683,7 @@ set_tree234.all_true(Pred, T) :-
         set_tree234.all_true(Pred, T3)
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.map(Pred, SetA, SetB) :-
     set_tree234.map_pred(Pred, SetA, [], ListB),
@@ -2758,7 +2758,7 @@ set_tree234.map_func(Func, Tin, !List) :-
     !:List = [N2 | !.List],
     set_tree234.map_func(Func, T3, !List).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.filter_map(Pred, SetA, SetB) :-
     set_tree234.filter_map_pred(Pred, SetA, [], ListB),
@@ -2871,7 +2871,7 @@ set_tree234.filter_map_func(Func, Tin, !List) :-
     ),
     set_tree234.filter_map_func(Func, T3, !List).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_tree234.filter(Pred, Set) = TrueSet :-
     % XXX This should be more efficient.
@@ -2945,4 +2945,4 @@ set_tree234.divide_by_set(DivideBySet, Set, TrueSet, FalseSet) :-
     set_tree234.divide(set_tree234.contains(DivideBySet), Set,
         TrueSet, FalseSet).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

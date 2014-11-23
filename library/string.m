@@ -1,10 +1,10 @@
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: string.m.
 % Main authors: fjh, petdr.
@@ -38,7 +38,7 @@
 % - Java's String.compareTo() method, when compiling to Java; and
 % - C#'s System.String.CompareOrdinal() method, when compiling to C#.
 %
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This module is divided into several sections. These sections are:
 %
@@ -61,7 +61,7 @@
 % - Converting values of arbitrary types to strings.
 % - Converting values to strings based on a format string.
 %
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module string.
 :- interface.
@@ -78,7 +78,7 @@
 :- import_module ops.
 :- import_module pretty_printer.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Wrapper types that associate particular semantics with raw strings.
 %
@@ -109,7 +109,7 @@
 :- type text_file
     --->    text_file(string).
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Conversions between strings and lists of characters.
 %
@@ -180,7 +180,7 @@
 :- func duplicate_char(char::in, int::in) = (string::uo) is det.
 :- pred duplicate_char(char::in, int::in, string::uo) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Reading characters from strings.
 %
@@ -272,7 +272,7 @@
     %
 :- pred unsafe_index_code_unit(string::in, int::in, int::out) is det.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Writing characters to strings.
 %
@@ -324,7 +324,7 @@
 % into static data even when they might be updated.
 % :- mode unsafe_set_char(in, in, di, uo) is det.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Determining the lengths of strings.
 %
@@ -373,7 +373,7 @@
     %
 :- pred codepoint_offset(string::in, int::in, int::out) is semidet.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Computing hashes of strings.
 %
@@ -388,7 +388,7 @@
 :- func hash2(string) = int.
 :- func hash3(string) = int.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Tests on strings.
 %
@@ -462,7 +462,7 @@
 :- pred sub_string_search_start(string::in, string::in, int::in, int::out)
     is semidet.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Appending strings.
 %
@@ -502,7 +502,7 @@
     %
 :- func join_list(string::in, list(string)::in) = (string::uo) is det.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Splitting up strings.
 %
@@ -680,7 +680,7 @@
     %
 :- func split_at_string(string, string) = list(string).
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Dealing with prefixes and suffixes.
 %
@@ -728,7 +728,7 @@
     %
 :- func remove_suffix_if_present(string, string) = string.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Transformations of strings.
 %
@@ -858,7 +858,7 @@
     %
 :- func word_wrap_separator(string, int, string) = string.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Folds over the characters in strings.
 %
@@ -1022,7 +1022,7 @@
 :- mode foldr_substring(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Formatting tables.
 %
@@ -1057,7 +1057,7 @@
 :- func format_table_max(assoc_list(justified_column, maybe(int)), string)
     = string.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Converting strings to docs.
 %
@@ -1066,7 +1066,7 @@
     %
 :- func string_to_doc(string) = pretty_printer.doc.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Converting strings to values of builtin types.
 %
@@ -1110,7 +1110,7 @@
     %
 :- func det_to_float(string) = float.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Converting values of builtin types to strings.
 %
@@ -1189,7 +1189,7 @@
     %
 :- func from_c_pointer(c_pointer::in) = (string::uo) is det.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Converting values of arbitrary types to strings.
 %
@@ -1222,7 +1222,7 @@
 :- mode string_ops_noncanon(in(include_details_cc), in, in, out) is cc_multi.
 :- mode string_ops_noncanon(in, in, in, out) is cc_multi.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Converting values to strings based on a format string.
 %
@@ -1286,8 +1286,8 @@
 :- func format(string, list(poly_type)) = string.
 :- pred format(string::in, list(poly_type)::in, string::out) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -1319,7 +1319,7 @@
 #include ""mercury_tags.h""     /* for MR_list_cons*() */
 ").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Conversions between strings and lists of characters.
 %
@@ -1808,7 +1808,7 @@ string.duplicate_char(C, N) = S :-
 string.duplicate_char(Char, Count, String) :-
     String = string.from_char_list(list.duplicate(Count, Char)).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Reading characters from strings.
 %
@@ -2159,7 +2159,7 @@ string.index_check(Index, Length) :-
     <<_:Index/binary, Code/integer, _/binary>> = Str
 ").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Writing characters to strings.
 %
@@ -2362,7 +2362,7 @@ string.unsafe_set_char(Char, Index, !Str) :-
     Str = unicode:characters_to_binary([Left, Ch, Right])
 ").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Determining the lengths of strings.
 %
@@ -2586,7 +2586,7 @@ codepoint_offset_loop(String, Offset, Length, N, Index) :-
         string.codepoint_offset_loop(String, NextOffset, Length, N - 1, Index)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Computing hashes of strings.
 %
@@ -2653,7 +2653,7 @@ string.hash3_loop(String, Index, Length, !HashVal) :-
         true
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Tests on strings.
 %
@@ -3003,7 +3003,7 @@ sub_string_search_start_loop(String, SubString, I, Len, SubLen, Index) :-
             Index)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Appending strings.
 %
@@ -3406,7 +3406,7 @@ string.join_list(Sep, [H | T]) = H ++ string.join_list_loop(Sep, T).
 join_list_loop(_, []) = "".
 join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Splitting up strings.
 %
@@ -4143,7 +4143,7 @@ split_at_string_loop(StartAt, NeedleLen, Needle, Total) = Out :-
         Out = [Last]
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Dealing with prefixes and suffixes.
 %
@@ -4244,7 +4244,7 @@ string.remove_suffix_if_present(Suffix, String) = Out :-
         Out = String
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Transformations of strings.
 %
@@ -4518,7 +4518,7 @@ break_up_string_reverse(Str, N, Prev) = Strs :-
         Strs = break_up_string_reverse(Right, N, [Left | Prev])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Folds over the characters in strings.
 %
@@ -4663,7 +4663,7 @@ string.foldr_substring(Closure, String, Start, Count, !Acc) :-
     convert_endpoints(Start, Count, ClampStart, ClampEnd),
     string.foldr_between(Closure, String, ClampStart, ClampEnd, !Acc).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Formating tables.
 %
@@ -4848,14 +4848,14 @@ max_str_length(Str, PrevMaxLen, MaxLen) :-
         MaxLen = PrevMaxLen
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Converting strings to docs.
 %
 
 string.string_to_doc(S) = docs([str("\""), str(S), str("\"")]).
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Converting strings to values of builtin types.
 %
@@ -5019,7 +5019,7 @@ string.det_to_float(FloatString) = Float :-
         error("string.det_to_float/1: conversion failed.")
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Converting values of builtin types to strings.
 %
@@ -5285,7 +5285,7 @@ string.c_pointer_to_string(C_Pointer, Str) :-
 string.from_c_pointer(P) = S :-
     string.c_pointer_to_string(P, S).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Converting values of arbitrary types to strings.
 %
@@ -5299,7 +5299,7 @@ string.string_ops(OpsTable, X) =
 string.string_ops_noncanon(NonCanon, OpsTable, X, String) :-
     string.to_string.string_ops_noncanon_impl(NonCanon, OpsTable, X, String).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Converting values to strings based on a format string.
 %
@@ -5310,4 +5310,4 @@ string.format(FormatString, PolyList, String) :-
 string.format(S1, PT) = S2 :-
     string.format(S1, PT, S2).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

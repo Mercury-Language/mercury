@@ -25,8 +25,8 @@
 % considerably, or we may end up making new single-threaded versions of these
 % modules.
 % 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module varset.
 :- interface.
@@ -38,7 +38,7 @@
 :- import_module set.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type varset(T).
 
@@ -263,8 +263,8 @@
 :- func coerce(varset(T)) = varset(U).
 :- pred coerce(varset(T)::in, varset(U)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -280,7 +280,7 @@
 
 :- func num_allocated(varset(T)) = int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -296,7 +296,7 @@
                 var_values  :: map(var(T), term(T))
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.init = VS :-
     varset.init(VS).
@@ -306,12 +306,12 @@ varset.init(varset(VarSupply, Names, Values)) :-
     map.init(Names),
     map.init(Values).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.is_empty(varset(VarSupply, _, _)) :-
     term.init_var_supply(VarSupply).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.new_var(Var, !VarSet) :-
     MaxId0 = !.VarSet ^ var_supply,
@@ -358,7 +358,7 @@ varset.new_vars_2(NumVars, !RevNewVars, !VarSet) :-
         error("varset.new_vars - invalid call")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.delete_var(DeleteVar, !VarSet) :-
     !.VarSet = varset(MaxId, Names0, Values0),
@@ -366,7 +366,7 @@ varset.delete_var(DeleteVar, !VarSet) :-
     map.delete(DeleteVar, Values0, Values),
     !:VarSet = varset(MaxId, Names, Values).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.delete_vars(DeleteVars, !VarSet) :-
     !.VarSet = varset(MaxId, Names0, Values0),
@@ -380,7 +380,7 @@ varset.delete_sorted_vars(DeleteVars, !VarSet) :-
     map.delete_sorted_list(DeleteVars, Values0, Values),
     !:VarSet = varset(MaxId, Names, Values).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.vars(VarSet0, Vars) :-
     MaxId0 = VarSet0 ^ var_supply,
@@ -399,14 +399,14 @@ varset.vars_2(N, Max, RevVars0) = RevVars :-
         RevVars = varset.vars_2(NPrime, Max, [Var | RevVars0])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.name_var(Id, Name, !VarSet) :-
     Names0 = !.VarSet ^ var_names,
     map.set(Id, Name, Names0, Names),
     !VarSet ^ var_names := Names.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.lookup_name(VarSet, Id, Name) :-
     ( varset.search_name(VarSet, Id, Name0) ->
@@ -429,14 +429,14 @@ varset.lookup_name(VarSet, Id, Prefix, Name) :-
 varset.search_name(varset(_, Names, _), Id, Name) :-
     map.search(Names, Id, Name).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.bind_var(Id, Val, !VarSet) :-
     Values0 = !.VarSet ^ var_values,
     map.set(Id, Val, Values0, Values),
     !VarSet ^ var_values := Values.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.bind_vars(Subst, !VarSet) :-
     map.to_assoc_list(Subst, VarTermList),
@@ -450,23 +450,23 @@ varset.bind_vars_2([V - T | Rest], !VarSet) :-
     varset.bind_var(V, T, !VarSet),
     varset.bind_vars_2(Rest, !VarSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.search_var(VarSet, Id, Val) :-
     Values = VarSet ^ var_values,
     map.search(Values, Id, Val).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.lookup_vars(VarSet, VarSet ^ var_values).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.get_bindings(VarSet, VarSet ^ var_values).
 
 varset.set_bindings(VarSet, Values, VarSet ^ var_values := Values).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We scan through the second varset, introducing a fresh variable
     % into the first varset for each var in the second, and building up
@@ -482,7 +482,7 @@ varset.merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
     varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming),
     term.apply_renaming_to_list(TermList0, Renaming, TermList).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The structure of this code is identical to the structure of the code
 % in the next block.
@@ -544,7 +544,7 @@ varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB,
             !Supply, !Renaming)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The structure of this code is identical to the structure of the code
 % in the previous block.
@@ -607,7 +607,7 @@ varset.merge_subst_without_names_2(!.SupplyB, MaxSupplyB, !Supply, !Subst) :-
             !Supply, !Subst)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.create_name_var_map(VarSet, NameVars) :-
     VarNames = VarSet ^ var_names,
@@ -615,13 +615,13 @@ varset.create_name_var_map(VarSet, NameVars) :-
     map.values(VarNames, Names),
     map.from_corresponding_lists(Names, Vars, NameVars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.var_name_list(VarSet, VarNameList) :-
     VarNames = VarSet ^ var_names,
     map.to_assoc_list(VarNames, VarNameList).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.ensure_unique_names(AllVars, Suffix, !VarSet) :-
     VarNames0 = !.VarSet ^ var_names,
@@ -667,7 +667,7 @@ append_suffix_until_unique(Trial0, Suffix, UsedNames, Final) :-
         Final = Trial0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.select(Vars, VarSet0, VarSet) :-
     VarSet0 = varset(Supply, VarNameMap0, Values0),
@@ -675,7 +675,7 @@ varset.select(Vars, VarSet0, VarSet) :-
     map.select(Values0, Vars, Values),
     VarSet = varset(Supply, VarNameMap, Values).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.squash(OldVarSet, KeptVars, NewVarSet, Subst) :-
     % Create a new varset with the same number of variables.
@@ -705,7 +705,7 @@ copy_var_names([OldVar - Name | Rest], Subst, !NewVarSet) :-
     ),
     copy_var_names(Rest, Subst, !NewVarSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.coerce(A, B) :-
     % Normally calls to this predicate should only be generated by the
@@ -713,14 +713,14 @@ varset.coerce(A, B) :-
     % compiler's runtime.
     private_builtin.unsafe_type_cast(A, B).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 varset.max_var(varset(VarSupply, _, _)) = term.var_supply_max_var(VarSupply).
 
 varset.num_allocated(varset(VarSupply, _, _)) =
     term.var_supply_num_allocated(VarSupply).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
 %   Function forms added.
 
@@ -775,6 +775,6 @@ varset.select(!.VS, S) = !:VS :-
 varset.coerce(!.VS) = !:VS :-
     varset.coerce(!VS).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %:- end_module varset.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

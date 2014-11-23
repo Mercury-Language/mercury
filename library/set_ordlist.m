@@ -13,8 +13,8 @@
 % This file contains a `set' ADT.
 % Sets are implemented here as sorted lists without duplicates.
 %
-%--------------------------------------------------------------------------%
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module set_ordlist.
 :- interface.
@@ -22,7 +22,7 @@
 :- import_module bool.
 :- import_module list.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type set_ordlist(_T).
 
@@ -479,8 +479,8 @@
 :- pred divide_by_set(set_ordlist(T)::in, set_ordlist(T)::in,
     set_ordlist(T)::out, set_ordlist(T)::out) is det.
 
-%--------------------------------------------------------------------------%
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -506,11 +506,11 @@
 :- pragma type_spec(set_ordlist.intersect_list/2, T = var(_)).
 :- pragma type_spec(set_ordlist.difference/3, T = var(_)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We use a d.u. type to work around spurious type ambiguity errors when a
     % program makes calls unqualified procedures which could be confused with
@@ -520,7 +520,7 @@
 :- type set_ordlist(T)
     --->    sol(list(T)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.init = S :-
     set_ordlist.init(S).
@@ -565,7 +565,7 @@ set_ordlist.to_sorted_list(S) = Xs :-
 
 set_ordlist.to_sorted_list(sol(List), List).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.insert(!.S, T) = !:S :-
     set_ordlist.insert(T, !S).
@@ -619,7 +619,7 @@ set_ordlist.insert_list(List0, !Set) :-
     list.sort_and_remove_dups(List0, List),
     set_ordlist.union(sol(List), !Set).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.delete(!.S, T) = !:S :-
     set_ordlist.delete(T, !S).
@@ -634,7 +634,7 @@ set_ordlist.delete_list(D, !Set) :-
     list.sort_and_remove_dups(D, DS),
     set_ordlist.difference(!.Set, sol(DS), !:Set).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.remove_list(Elems, !Set) :-
     set_ordlist.sort_no_dups(Elems, ElemSet),
@@ -671,7 +671,7 @@ set_ordlist.remove(Elem, sol(Set0), sol(Set)) :-
 
 set_ordlist.remove_least(Elem, sol([Elem | Set]), sol(Set)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma promise_equivalent_clauses(set_ordlist.member/2).
 
@@ -702,7 +702,7 @@ set_ordlist.is_member_2(E, [H | T], R) :-
 set_ordlist.contains(S, E) :-
     set_ordlist.member(E, S).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.subset(Subset, Set) :-
     set_ordlist.intersect(Set, Subset, Subset).
@@ -737,7 +737,7 @@ set_ordlist.power_union_2([NextSet | SetofSets], Set0, Set) :-
     set_ordlist.union(Set0, NextSet, Set1),
     set_ordlist.power_union_2(SetofSets, Set1, Set).
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.intersect(S1, S2) = S3 :-
     set_ordlist.intersect(S1, S2, S3).
@@ -785,7 +785,7 @@ set_ordlist.intersect_list([S0 | Ss]) = S :-
 set_ordlist.intersect_list(ListofSets, Set) :-
     Set = set_ordlist.intersect_list(ListofSets).
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.difference(S1, S2) = S3 :-
     set_ordlist.difference(S1, S2, S3).
@@ -812,7 +812,7 @@ set_ordlist.difference_2([X | Xs], [Y | Ys], Set) :-
         set_ordlist.difference_2([X | Xs], Ys, Set)
     ).
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.count(S) = N :-
     set_ordlist.count(S, N).
@@ -820,7 +820,7 @@ set_ordlist.count(S) = N :-
 set_ordlist.count(sol(Set), Count) :-
     list.length(Set, Count).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.fold(F, S, A) =
     set_ordlist.foldl(F, S, A).
@@ -864,12 +864,12 @@ set_ordlist.fold6(P, S, !A, !B, !C, !D, !E, !F) :-
 set_ordlist.foldl6(P, S, !A, !B, !C, !D, !E, !F) :-
     list.foldl6(P, set_ordlist.to_sorted_list(S), !A, !B, !C, !D, !E, !F).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.all_true(P, sol(L)) :-
     list.all_true(P, L).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.filter(P, Set) = TrueSet :-
     List = set_ordlist.to_sorted_list(Set),
@@ -885,7 +885,7 @@ set_ordlist.filter(P, Set, TrueSet, FalseSet) :-
     set_ordlist.sorted_list_to_set(TrueList, TrueSet),
     set_ordlist.sorted_list_to_set(FalseList, FalseSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.map(F, Set) = TransformedSet :-
     List = set_ordlist.to_sorted_list(Set),
@@ -902,7 +902,7 @@ set_ordlist.filter_map(PF, Set, TransformedTrueSet) :-
     list.filter_map(PF, List, TransformedTrueList),
     set_ordlist.list_to_set(TransformedTrueList, TransformedTrueSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ordlist.divide(Pred, sol(Set), sol(TruePart), sol(FalsePart)) :-
     % The calls to reverse allow us to make divide_2 tail recursive.
@@ -956,6 +956,6 @@ set_ordlist.divide_by_set_2([Div | Divs], [H | T], !RevTrue, !RevFalse) :-
         set_ordlist.divide_by_set_2([Div | Divs], T, !RevTrue, !RevFalse)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module set_ordlist.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

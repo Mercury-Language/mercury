@@ -21,8 +21,8 @@
 %   operand or the other, the counts allow us to choose to be linear in the
 %   size of the smaller set.
 % 
-%--------------------------------------------------------------------------%
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module set_ctree234.
 :- interface.
@@ -30,7 +30,7 @@
 :- import_module bool.
 :- import_module list.
 
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type set_ctree234(_T).
 
@@ -362,8 +362,8 @@
 
 :- pred verify_depths(set_ctree234(T)::in, list(int)::out) is det.
 
-%--------------------------------------------------------------------------%
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -422,7 +422,7 @@
     ;       four(T, T, T, set_tree234(T), set_tree234(T),
                 set_tree234(T), set_tree234(T)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.init = ct(0, empty).
 
@@ -581,7 +581,7 @@ set_ctree234.contains(ct(_, T), E) :-
 set_ctree234.do_contains(Tree, E) :-
     set_ctree234.do_is_member(Tree, E, yes).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.list_to_set(List) = ct(Size, Tree) :-
     set_ctree234.do_list_to_set(List, 0, Size, empty, Tree).
@@ -698,7 +698,7 @@ set_ctree234.do_sorted_list_to_set(List0, Tail, Bite, LevelSizes0, Tree) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.to_sorted_list(ct(_, Tree)) = List :-
     set_ctree234.do_to_sorted_list(Tree, [], List).
@@ -720,7 +720,7 @@ set_ctree234.do_to_sorted_list(four(E0, E1, E2, T0, T1, T2, T3), L0, L) :-
     set_ctree234.do_to_sorted_list(T1, [E1 | L2], L3),
     set_ctree234.do_to_sorted_list(T0, [E0 | L3], L).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.equal(SetA, SetB) :-
     SetA = ct(SizeA, TreeA),
@@ -764,7 +764,7 @@ set_ctree234.do_subset(four(E0, E1, E2, T0, T1, T2, T3), Set) :-
 set_ctree234.superset(SuperSet, Set) :-
     set_ctree234.subset(Set, SuperSet).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- inst two(E, T)   ---> two(E, T, T).
 :- inst three(E, T) ---> three(E, E, T, T, T).
@@ -775,7 +775,7 @@ set_ctree234.superset(SuperSet, Set) :-
 :- mode in_three  == in(three(ground, ground)).
 :- mode in_four  == in(four(ground, ground)).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.insert(E, Tin) = Tout :-
     set_ctree234.insert(E, Tin, Tout).
@@ -1080,7 +1080,7 @@ set_ctree234.insert3(E, Incr, Tin, Tout) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.insert_new(E, ct(Sizein, Tin), ct(Sizeout, Tout)) :-
     set_ctree234.do_insert_new(E, Tin, Tout),
@@ -1349,7 +1349,7 @@ set_ctree234.insert_new3(E, Tin, Tout) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.insert_list(Es, Set0) = Set :-
     set_ctree234.insert_list(Es, Set0, Set).
@@ -1366,7 +1366,7 @@ set_ctree234.do_insert_list([E | Es], !Size, !Set) :-
     !:Size = !.Size + Incr,
     set_ctree234.do_insert_list(Es, !Size, !Set).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma inline(set_ctree234.split_four/4).
 
@@ -1379,7 +1379,7 @@ set_ctree234.split_four(Tin, MidE, Sub0, Sub1) :-
     MidE = E1,
     Sub1 = two(E2, T2, T3).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.delete(E, Tin) = Tout :-
     set_ctree234.delete(E, Tin, Tout).
@@ -1654,7 +1654,7 @@ set_ctree234.do_delete_list([E | Es], !Size, !Set) :-
     !:Size = !.Size - Decr,
     set_ctree234.do_delete_list(Es, !Size, !Set).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We use the same algorithm as set_ctree234.delete.
 
@@ -1914,7 +1914,7 @@ set_ctree234.do_remove_list([E | Es], !Size, !Set) :-
     !:Size = !.Size - 1,
     set_ctree234.do_remove_list(Es, !Size, !Set).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The algorithm we use similar to set_ctree234.delete, except that we
     % always go down the left subtree.
@@ -1989,7 +1989,7 @@ set_ctree234.do_remove_least(Tin, E, Tout, RH) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The input to the following group of predicates are the components
     % of a two-, three- or four-node in which the height of the indicated
@@ -2289,7 +2289,7 @@ fix_4node_t3(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         % RH = no
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.union(SetA, SetB) = Set :-
     set_ctree234.union(SetA, SetB, Set).
@@ -2382,7 +2382,7 @@ set_ctree234.do_power_union(four(E0, E1, E2, T0, T1, T2, T3), !Size, !Tree) :-
     set_ctree234.do_union(ET2, !Size, !Tree),
     set_ctree234.do_power_union(T3, !Size, !Tree).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.intersect(SetA, SetB) = Set :-
     set_ctree234.intersect(SetA, SetB, Set).
@@ -2479,7 +2479,7 @@ set_ctree234.do_intersect_list(SizeIn, TreeIn, [Head | Tail], Size, Tree) :-
 set_ctree234.power_intersect(Sets) =
     set_ctree234.intersect_list(set_ctree234.to_sorted_list(Sets)).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % `set_ctree234.difference(SetA, SetB, Set)' is true iff `Set' is the
     % set containing all the elements of `SetA' except those that
@@ -2521,7 +2521,7 @@ set_ctree234.do_difference(four(E0, E1, E2, T0, T1, T2, T3), !Size, !Tree) :-
     !:Size = !.Size - Decr2,
     set_ctree234.do_difference(T3, !Size, !Tree).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.count(ct(N, Tree)) = N :-
     require(unify(N, set_ctree234.do_count(Tree)),
@@ -2546,7 +2546,7 @@ set_ctree234.do_count(four(_, _, _, T0, T1, T2, T3)) = N :-
     N3 = set_ctree234.do_count(T3),
     N = 3 + N0 + N1 + N2 + N3.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.fold(Pred, ct(_, Tin), !A) :-
     set_ctree234.do_fold_pred(Pred, Tin, !A).
@@ -2837,7 +2837,7 @@ set_ctree234.do_fold6_pred(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B,
     Pred(E2, !A, !B, !C, !D, !E, !F),
     set_ctree234.do_fold6_pred(Pred, T3, !A, !B, !C, !D, !E, !F).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.map(Pred, ct(_, TreeA), SetB) :-
     set_ctree234.map_pred(Pred, TreeA, [], ListB),
@@ -2911,7 +2911,7 @@ set_ctree234.map_func(Func, Tin, !List) :-
     !:List = [N2 | !.List],
     set_ctree234.map_func(Func, T3, !List).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.all_true(Pred, ct(_, T)) :-
     set_ctree234.all_true_tree(Pred, T).
@@ -2945,7 +2945,7 @@ set_ctree234.all_true_tree(Pred, T) :-
         set_ctree234.all_true_tree(Pred, T3)
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.filter_map(Pred, ct(_, TreeA), SetB) :-
     set_ctree234.filter_map_pred(Pred, TreeA, [], ListB),
@@ -3057,7 +3057,7 @@ set_ctree234.filter_map_func(Func, Tin, !List) :-
     ),
     set_ctree234.filter_map_func(Func, T3, !List).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set_ctree234.filter(Pred, Set, TrueSet) :-
     % XXX This should be more efficient.
@@ -3128,7 +3128,7 @@ set_ctree234.divide_by_set(DivideBySet, Set, TrueSet, FalseSet) :-
     set_ctree234.divide(set_ctree234.contains(DivideBySet), Set,
         TrueSet, FalseSet).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 verify_depths(ct(_, Tree), Depths) :-
     do_verify_depths(Tree, 0, [], Depths).
@@ -3155,4 +3155,4 @@ do_verify_depths(four(_, _, _, T0, T1, T2, T3), Depth, !Depths) :-
     do_verify_depths(T2, Depth + 1, !Depths),
     do_verify_depths(T3, Depth + 1, !Depths).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

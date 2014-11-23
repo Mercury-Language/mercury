@@ -16,7 +16,7 @@
 %
 % which each convert a value of an arbitrary type to a string.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module string.to_string.
 :- interface.
@@ -24,7 +24,7 @@
 :- import_module deconstruct.
 :- import_module ops.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func string_impl(T) = string.
 
@@ -37,8 +37,8 @@
     is cc_multi.
 :- mode string_ops_noncanon_impl(in, in, in, out) is cc_multi.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -58,7 +58,7 @@
 :- use_module rtti_implementation.
 :- use_module term_io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 string_impl(Univ) = String :-
     string_ops_noncanon_impl(canonicalize, ops.init_mercury_op_table,
@@ -71,7 +71,7 @@ string_ops_noncanon_impl(NonCanon, OpsTable, X, String) :-
     value_to_revstrings(NonCanon, OpsTable, X, [], RevStrings),
     String = string.append_list(list.reverse(RevStrings)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % For efficiency, these predicates collect a list of strings which,
     % when concatenated in reverse order, produce the final output.
@@ -84,7 +84,7 @@ string_ops_noncanon_impl(NonCanon, OpsTable, X, String) :-
 
 add_revstring(String, RevStrings, [String | RevStrings]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred value_to_revstrings(noncanon_handling, ops.table, T,
     revstrings, revstrings).
@@ -506,4 +506,4 @@ private_builtin_type_info_to_revstrings(PrivateBuiltinTypeInfo, !Rs) :-
 det_dynamic_cast(X, Y) :-
     det_univ_to_type(univ(X), Y).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

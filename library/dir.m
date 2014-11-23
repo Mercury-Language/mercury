@@ -19,8 +19,8 @@
 % Duplicate directory separators and trailing separators are also removed
 % where that doesn't change the meaning of the path name.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module dir.
 :- interface.
@@ -29,7 +29,7 @@
 :- import_module io.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates to isolate system dependencies
 %
@@ -165,14 +165,14 @@
     %
 :- func relative_path_name_from_components(list(string)) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % current_directory(Result)
     % Return the current working directory.
     %
 :- pred current_directory(io.res(string)::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Make the given directory, and all parent directories.
     % This will also succeed if the directory already exists
@@ -186,7 +186,7 @@
 :- pred make_single_directory(string::in, io.res::out, io::di, io::uo)
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % FoldlPred(DirName, BaseName, FileType, Continue, !Data, !IO).
     %
@@ -220,7 +220,7 @@
     string::in, bool::in, T::in, io.maybe_partial_res(T)::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Implement brace expansion, as in sh: return the sequence of strings
     % generated from the given input string. Throw an exception if the
@@ -243,8 +243,8 @@
     %
 :- func expand_braces(string) = list(string).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -256,8 +256,8 @@
     %
 :- pred dir.use_windows_paths is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -268,7 +268,7 @@
 :- import_module std_util.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 dir.directory_separator = (if have_win32 then ('\\') else ('/')).
 
@@ -339,7 +339,7 @@ dir.parent_directory = "..".
 
 dir.parent_directory(dir.parent_directory).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 dir.det_basename(FileName) =
     ( BaseName = dir.basename(FileName) ->
@@ -369,7 +369,7 @@ dir.basename(FileName) = BaseName :-
 
 dir.basename(S, dir.basename(S)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 dir.dirname(FileName) = DirName :-
     FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
@@ -716,7 +716,7 @@ is_dotnet_root_directory_2(_) :-
     }
 }").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 dir.path_name_is_absolute(FileName) :-
     (
@@ -777,7 +777,7 @@ dir.dotnet_path_name_is_absolute_2(_) :-
     }
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 dir.make_path_name(DirName, FileName) = DirName/FileName.
 
@@ -852,7 +852,7 @@ dir.relative_path_name_from_components(Components) = PathName :-
     Sep = string.from_char(dir.directory_separator),
     PathName = string.join_list(Sep, Components).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
     dir.current_directory(Res::out, _IO0::di, _IO::uo),
@@ -948,7 +948,7 @@ dir.relative_path_name_from_components(Components) = PathName :-
     end
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 dir.make_directory(PathName, Result, !IO) :-
     ( can_implement_make_directory ->
@@ -1291,7 +1291,7 @@ dir.check_dir_accessibility(DirName, Res, !IO) :-
     % Check whether we can read and write the directory.
     io.check_file_accessibility(DirName, [read, write, execute], Res, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 dir.foldl2(P, DirName, T, Res, !IO) :-
     dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], no,
@@ -2039,7 +2039,7 @@ dir.read_entry(Dir0, Res, !IO) :-
     Error = null
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 expand_braces(ArgStr) = ExpandStrs :-
     ArgChar = string.to_char_list(ArgStr),
@@ -2117,6 +2117,6 @@ find_matching_brace_or_comma([Char | Chars], Alternatives0, CurAlternative,
             BraceLevel, Alternatives, Left)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module dir.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,0 +1,15 @@
+#!/bin/sh
+# vim: ts=4 sw=4 wm=0
+# Ensure that all divider lines (lines that match the regular expression %--*%)
+# in Mercury source files are of two standard lengths, one short, one long.
+# The long lines are intended to separate major sections of a file, while
+# the short ones separate just the different parts of a section.
+
+for f in *.m
+do
+    echo "${f}"
+    tmpf="${f}.tmp"
+    sed -e '/^%------------------------*%$/s//%===========================================================================%/' -e '/^%--*%$/s//%---------------------%/' < "${f}" > "${tmpf}"
+    sed -e 's/%===========================================================================%/%---------------------------------------------------------------------------%/' < "${tmpf}" > "${f}"
+    /bin/rm ${tmpf}
+done

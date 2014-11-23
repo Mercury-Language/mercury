@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_to_xml.m.
 % Main author: maclarty.
@@ -47,8 +47,8 @@
 % In both methods the XML document can be annotated with a stylesheet
 % reference.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module term_to_xml.
 :- interface.
@@ -59,7 +59,7 @@
 :- import_module stream.
 :- import_module type_desc.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Method 1 interface
 %
@@ -201,7 +201,7 @@
 :- pred write_xml_header(Stream::in, maybe(string)::in,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Method 2 interface
 %
@@ -467,8 +467,8 @@
 :- mode write_xml_element_general(in, in, in(element_mapping),
     in, in, di, uo) is cc_multi.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -482,7 +482,7 @@
 :- import_module unit.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 write_xml_doc(Stream, Term, !State) :-
     write_xml_doc_style_dtd(Stream, Term, no_stylesheet, no_dtd, !State).
@@ -706,7 +706,7 @@ get_element_pred(simple, make_simple_element).
 get_element_pred(unique, make_unique_element).
 get_element_pred(custom(P), P).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Some reserved element names for the predefined mapping schemes. Reserved
 % element names all start with a capital letter so as not to conflict with a
@@ -747,7 +747,7 @@ is_primitive_type(TypeDesc, Element) :-
         Element = "Float"
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Mangling functions.
 %
@@ -795,7 +795,7 @@ mangle_char(Chr, PrevChrs, list.append(PrevChrs, Chrs)) :-
             char.to_int(Chr)))]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return a list of elements, functors and arities
     % (if the type is a discriminated union), argument types and
@@ -861,7 +861,7 @@ primitive_value(Univ, PrimValue) :-
         PrimValue = float_to_string(Float)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The following type is used to decide if an entity should be formatted
     % (i.e. be indented and have a newline at the end). We do not format
@@ -959,7 +959,7 @@ maybe_indent(Stream, Format, Indent, !State) :-
         Format = no_format
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred write_xml_element_univ(Stream, deconstruct.noncanon_handling,
     element_pred, int, univ, list(maybe(string)),
@@ -1069,7 +1069,7 @@ find_field_names(TypeDesc, [FunctorNum | FunctorNums], Functor, Arity,
             MaybeFieldNames)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred write_child_xml_elements(Stream, deconstruct.noncanon_handling,
     element_pred, int, list(univ), list(maybe(string)), State, State)
@@ -1138,7 +1138,7 @@ write_xml_element_univ_include_details_cc(Stream, MakeElement, IndentLevel,
     write_xml_element_univ(Stream, include_details_cc, MakeElement,
         IndentLevel, Univ, MaybeFieldNames0, MaybeFieldNames, !State).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates for writing elements.
 %
@@ -1308,7 +1308,7 @@ xml_predefined_entity(('&'), "&amp;").
 xml_predefined_entity(('\''), "&apos;").
 xml_predefined_entity(('\"'), "&quot;").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates to write the DTD for a type.
 %
@@ -1638,6 +1638,6 @@ dtd_allowed_functors_regex(MakeElement, TypeDesc) = Regex :-
         Regex = ElementsStr
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module term_to_xml.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

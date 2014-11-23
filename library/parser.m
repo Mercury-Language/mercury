@@ -32,8 +32,8 @@
 % precedences.  It uses `lexer.get_token_list' to read a list of tokens.
 % It uses the routines in module `ops' to look up operator precedences.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parser.
 :- interface.
@@ -43,7 +43,7 @@
 :- import_module ops.
 :- import_module term_io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % read_term(Result):
     %
@@ -76,7 +76,7 @@
 :- pred read_term_filename_with_op_table(Ops::in, string::in,
     read_term(T)::out, io::di, io::uo) is det <= op_table(Ops).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The read_term_from_string predicates are the same as the read_term
     % predicates, except that the term is read from a string rather than from
@@ -109,7 +109,7 @@
     string::in, int::in, posn::in, posn::out, read_term(T)::out) is det
     <= op_table(Ops).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % parse_tokens(FileName, TokenList, Result):
     %
@@ -120,8 +120,8 @@
 :- pred parse_tokens_with_op_table(Ops::in, string::in, token_list::in,
     read_term(T)::out) is det <= op_table(Ops).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -137,7 +137,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type parse(T)
     --->    ok(T)
@@ -149,7 +149,7 @@
     ;       argument
     ;       list_elem.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read_term(Result, !IO) :-
     io.input_stream_name(FileName, !IO),
@@ -187,7 +187,7 @@ read_term_from_substring_with_op_table(Ops, FileName, String, Len,
     lexer.string_get_token_list_max(String, Len, Tokens, StartPos, EndPos),
     parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_tokens(FileName, Tokens, Result) :-
     parse_tokens_with_op_table(ops.init_mercury_op_table, FileName, Tokens,
@@ -592,7 +592,7 @@ parse_backquoted_operator_2(Qualifier0, Qualifier, OpCtxt0, OpName0, OpName,
         OpName = OpName0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_simple_term(token::in, token_context::in, int::in,
     parse(term(T))::out,
@@ -879,8 +879,8 @@ parse_args(List, !PS) :-
         List = error(Message, Tokens)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 %
 % Routines that manipulate the parser state.
@@ -940,7 +940,7 @@ parser_state_set_tokens_left(ParserState0, Tokens) =
 parser_state_set_var_names(ParserState0, Names) =
     ParserState0 ^ var_names := Names.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We encountered an error. See if the next token was an infix or postfix
     % operator. If so, it would normally form part of the term, so the error
@@ -979,14 +979,14 @@ parser_unexpected_tok(Token, Context, UsualMessage, Error, !PS) :-
         Error = make_error(!.PS, UsualMessage)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func make_error(state(Ops, T), string) = parse(U).
 
 make_error(ParserState, Message) = error(Message, Tokens) :-
     Tokens = parser_state_get_tokens_left(ParserState).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred could_start_term(token::in, bool::out) is det.
 
@@ -1013,14 +1013,14 @@ could_start_term(io_error(_), no).
 could_start_term(eof, no).
 could_start_term(integer_dot(_), no).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred max_int_plus_1(int::in, string::in) is semidet.
 
 max_int_plus_1(32, "2147483648").
 max_int_plus_1(64, "9223372036854775808").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred init_parser_state(Ops::in, string::in, token_list::in,
     state(Ops, T)::out) is det <= op_table(Ops).
@@ -1037,7 +1037,7 @@ final_parser_state(ParserState, VarSet, TokenList) :-
     VarSet = parser_state_get_varset(ParserState),
     TokenList = parser_state_get_tokens_left(ParserState).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The following implied modes allow us to check that an expected token
     % matches the actual token before creating a new parser state.  This is
@@ -1082,7 +1082,7 @@ parser_peek_token_context(Token, Context, ParserState, ParserState) :-
     Tokens = parser_state_get_tokens_left(ParserState),
     Tokens = token_cons(Token, Context, _).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_var(string::in, var(T)::out,
     state(Ops, T)::in, state(Ops, T)::out) is det.
@@ -1112,8 +1112,8 @@ add_var(VarName, Var, ParserState0, ParserState) :-
 get_ops_table(ParserState, OpTable) :-
     OpTable = parser_state_get_ops_table(ParserState).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred check_priority(ops.assoc::in, int::in, int::in) is semidet.
 
@@ -1129,5 +1129,5 @@ get_term_context(ParserState, TokenContext, TermContext) :-
     FileName = parser_state_get_stream_name(ParserState),
     term.context_init(FileName, TokenContext, TermContext).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

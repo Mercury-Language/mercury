@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: exception.m.
 % Main author: fjh.
@@ -17,8 +17,8 @@
 % `pragma foreign_export' throws an exception which is not caught within that
 % procedure, then you will get undefined behaviour.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module exception.
 :- interface.
@@ -29,7 +29,7 @@
 :- import_module store.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Exceptions of this type are used by many parts of the Mercury
     % implementation to indicate an internal error.
@@ -206,12 +206,12 @@
 
 :- impure pred throw_if_near_stack_limits is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -240,7 +240,7 @@
 :- mode unsafe_try_stm(in(pred(out, di, uo) is cc_multi),
     out(cannot_fail), di, uo) is cc_multi.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This is used in the implementation of `try' goals.  It should never be
     % called.
@@ -263,7 +263,7 @@
 
 :- some [T] func exc_univ_value(univ) = T.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -271,7 +271,7 @@
 :- import_module string.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % These are not worth inlining, since they will (presumably) not be called
 % frequently, and so any increase in speed from inlining is not worth the
@@ -357,7 +357,7 @@ finally_2(P, Cleanup, PRes, CleanupRes, !IO) :-
     [will_not_call_mercury, thread_safe],
     "void").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred wrap_success(pred(T), exception_result(T)).
 :- mode wrap_success(pred(out) is det, out(cannot_fail)) is det.
@@ -384,7 +384,7 @@ wrap_success_or_failure(Goal, Result) :-
 
 wrap_exception(Exception, exception(Exception)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma promise_equivalent_clauses((try)/2).
 
@@ -431,7 +431,7 @@ try(Goal::pred(out) is cc_multi, Result::out(cannot_fail)) :-
 try(Goal::pred(out) is cc_nondet, Result::out) :-
     catch_impl(wrap_success_or_failure(Goal), wrap_exception, Result).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma promise_equivalent_clauses(try_all/3).
 
@@ -489,13 +489,13 @@ process_one_exception_result(succeeded(S), !MaybeException, !Solutions) :-
 process_one_exception_result(failed, !MaybeException, !Solutions) :-
     throw(software_error("process_one_exception_result: unexpected failure")).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 incremental_try_all(Goal, AccPred, !Acc) :-
     unsorted_aggregate(catch_impl(wrap_success(Goal), wrap_exception),
         AccPred, !Acc).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 try_io(IO_Goal, Result, IO0, IO) :-
     try(unsafe_call_io_goal(IO_Goal, IO0), Result0),
@@ -522,7 +522,7 @@ unsafe_call_io_goal(Goal, IO0, {Result, IO}) :-
     unsafe_promise_unique(IO0, IO1),
     Goal(Result, IO1, IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 try_store(StoreGoal, Result, Store0, Store) :-
     try(unsafe_call_store_goal(StoreGoal, Store0), Result0),
@@ -558,7 +558,7 @@ unsafe_call_store_goal(Goal, Store0, {Result, Store}) :-
     unsafe_promise_unique(Store0, Store1),
     Goal(Result, Store1, Store).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 try_stm(Goal, Result, !STM) :-
     unsafe_try_stm(Goal, Result0, !STM),
@@ -604,7 +604,7 @@ unsafe_call_transaction_goal(Goal, STM0, {Result, STM}) :-
     unsafe_promise_unique(STM0, STM1),
     Goal(Result, STM1, STM).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 magic_exception_result(succeeded({})).
 magic_exception_result(succeeded({})).  % force cc_multi
@@ -617,7 +617,7 @@ exc_univ_to_type(Univ, Object) :-
 
 exc_univ_value(Univ) = univ.univ_value(Univ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred throw_impl(univ::in) is erroneous.
 
@@ -685,7 +685,7 @@ catch_impl(Pred, Handler, T) :-
 :- external(builtin_throw/1).
 :- external(builtin_catch/3).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The --high-level-code implementation
 %
@@ -1231,7 +1231,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 #endif /* MR_HIGHLEVEL_CODE */
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_code("C#", "
 /*
@@ -1344,7 +1344,7 @@ public static SsdbHooks ssdb_hooks = new SsdbHooks();
     SUCCESS_INDICATOR = false;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("Erlang",
     throw_impl(T::in),
@@ -1406,7 +1406,7 @@ public static SsdbHooks ssdb_hooks = new SsdbHooks();
         end.
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred call_goal(pred(T), T).
 :- mode call_goal(pred(out) is det, out) is det.
@@ -1459,7 +1459,7 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 :- pragma foreign_export("Java", call_handler(pred(in, out) is det, in, out),
     "ML_call_handler_det").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_code("Java", "
 /*
@@ -1591,7 +1591,7 @@ static {
     SUCCESS_INDICATOR = false;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The --no-high-level-code implementation.
 %
@@ -2602,7 +2602,7 @@ mercury_sys_init_exceptions_write_out_proc_statics(FILE *deep_fp,
 
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_export("C", report_uncaught_exception(in, di, uo),
     "ML_report_uncaught_exception").
@@ -2670,7 +2670,7 @@ set_get_message_hook(!IO).
     IO = IO0;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma no_inline(throw_if_near_stack_limits/0).
 
@@ -2712,7 +2712,7 @@ throw_if_near_stack_limits :-
 now_near_stack_limits :-
     semidet_fail.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The Java runtime system sometimes wants to report exceptions.  Create
     % a reference that it can use to call library code to report exceptions.
@@ -2734,5 +2734,5 @@ static {
 }
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

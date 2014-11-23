@@ -4,7 +4,7 @@
 % Copyright (C) 1995, 1997, 2000, 2002-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % 
 % File: multi_map.m.
 % Main author: dylan.  Based on map.m, by fjh, conway.
@@ -18,8 +18,8 @@
 %
 % This is implemented almost as a special case of map.m.
 % 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module multi_map.
 :- interface.
@@ -29,11 +29,11 @@
 :- import_module map.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type multi_map(Key, Data) == map(Key, list(Data)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Initialize an empty multi_map.
     %
@@ -258,8 +258,8 @@
 :- pred remove_smallest(K::out, list(V)::out,
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -267,7 +267,7 @@
 :- import_module pair.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 multi_map.init(M) :-
     map.init(M).
@@ -402,7 +402,7 @@ multi_map.count_list([_A | As], Count0, Count) :-
     Count1 = Count0 + 1,
     multi_map.count_list(As, Count1, Count).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % XXX inefficient
 
@@ -410,7 +410,7 @@ multi_map.inverse_search(MultiMap, Value, Key) :-
     map.member(MultiMap, Key, ValueList),
     list.member(Value, ValueList).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 multi_map.from_corresponding_lists(Keys, Values, MultiMap) :-
     multi_map.init(MultiMap0),
@@ -434,7 +434,7 @@ multi_map.from_corresponding_lists_2([Key | Keys], [Value | Values], !MultiMap) 
 multi_map.from_corresponding_list_lists(Keys, Values, MultiMap) :-
     map.from_corresponding_lists(Keys, Values, MultiMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 multi_map.merge(M0, M1, M) :-
     multi_map.to_assoc_list(M0, ML0),
@@ -467,29 +467,29 @@ multi_map.assoc_list_merge([(KeyA - DataA) | ListA], [(KeyB - DataB) | ListB],
         multi_map.assoc_list_merge([(KeyA - DataA) | ListA], ListB, List)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 multi_map.optimize(MultiMap0, MultiMap) :-
     map.optimize(MultiMap0, MultiMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 multi_map.select(Original, KeySet, NewMultiMap) :-
     map.select(Original, KeySet, NewMultiMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 multi_map.apply_to_list([], _, []).
 multi_map.apply_to_list([K | Keys], MultiMap, Values) :-
     map.apply_to_list([K | Keys], MultiMap, Values0),
     list.condense(Values0, Values).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 multi_map.remove_smallest(MultiMap0, Key, Values, MultiMap) :-
     map.remove_smallest(MultiMap0, Key, Values, MultiMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Functional versions.
 
@@ -565,5 +565,5 @@ multi_map.apply_to_list(Keys, MultiMap) = Values :-
 multi_map.optimize(MultiMap0) = MultiMap :-
     multi_map.optimize(MultiMap0, MultiMap).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

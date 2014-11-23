@@ -1,24 +1,24 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % 
 % File: type_desc.m.
 % Main author: fjh, zs.
 % Stability: low.
 % 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module type_desc.
 :- interface.
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The `type_desc', `pseudo_type_desc' and `type_ctor_desc' types
     % provide access to type information.
@@ -203,8 +203,8 @@
     %
 :- func det_make_type(type_ctor_desc, list(type_desc)) = type_desc.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -226,8 +226,8 @@
 :- pred type_info_list_to_type_desc_list(
     list(rtti_implementation.type_info)::in, list(type_desc)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -263,7 +263,7 @@ import jmercury.runtime.TypeCtorInfo_Struct;
 import jmercury.runtime.TypeInfo_Struct;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 type_desc_to_type_info(TypeDesc, TypeInfo) :-
     ( type_info_desc_same_representation ->
@@ -311,7 +311,7 @@ pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc, PseudoTypeInfo) :-
 type_info_desc_same_representation :-
     semidet_true.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We need to call the rtti_implementation module -- so that we get the
     % dependencies right it's easiest to do it from Mercury.
@@ -328,7 +328,7 @@ type_info_desc_same_representation :-
 call_rtti_compare_type_infos(Res, T1, T2) :-
     rtti_implementation.compare_type_infos(Res, T1, T2).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for type manipulation
 %
@@ -624,7 +624,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
         error("det_make_type/2: make_type/2 failed (wrong arity)")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
     type_ctor(TypeInfo::in) = (TypeCtor::out),
@@ -737,7 +737,7 @@ pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, ArgPseudoTypeDescs) :-
             ArgPseudoTypeDescs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Make a type_info_desc from a type_ctor_info.  A type_info_desc is
     % different to a type_ctor_info in the case of variable arity types,
@@ -846,7 +846,7 @@ make_type_ctor_desc(_, _, _) :-
 make_type_ctor_desc_with_arity(_, _, _) :-
     private_builtin.sorry("make_type_ctor_desc_with_arity/3").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % This is the forwards mode of make_type/2: given a type constructor and
 % a list of argument types, check that the length of the argument types
@@ -1010,7 +1010,7 @@ make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
     }
 }").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 type_ctor_name_and_arity(TypeCtorDesc, ModuleName, TypeCtorName,
         TypeCtorArity) :-
@@ -1023,7 +1023,7 @@ type_ctor_name_and_arity(TypeCtorDesc, ModuleName, TypeCtorName,
             ModuleName, TypeCtorName, TypeCtorArity)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This function returns the type_info for the builtin type "typeinfo"
     % itself. It is intended for use from C code, since Mercury code can access
@@ -1043,7 +1043,7 @@ get_type_info_for_type_info = TypeDesc :-
     Type = type_of(1),
     TypeDesc = type_of(Type).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_code("C#", "
     public static bool
@@ -1174,4 +1174,4 @@ get_type_info_for_type_info = TypeDesc :-
     eval_if_function(X) -> X.
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

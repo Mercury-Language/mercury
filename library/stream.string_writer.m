@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: stream.string_writer.m.
 % Authors: trd, fjh, stayl
 %
 % Predicates to write to streams that accept strings.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module stream.string_writer.
 :- interface.
@@ -24,7 +24,7 @@
 :- import_module string.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred put_int(Stream::in, int::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
@@ -123,8 +123,8 @@
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -172,7 +172,7 @@
 :- pragma type_spec(put_float/4, (Stream = io.output_stream, State = io.state)).
 :- pragma type_spec(put_char/4, (Stream = io.output_stream, State = io.state)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -243,7 +243,7 @@ format(Stream, FormatString, Arguments, !State) :-
 nl(Stream, !State) :-
     put(Stream, "\n", !State).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Various different versions of print
 %
@@ -287,7 +287,7 @@ print_quoted(Stream, NonCanon, Term, !State) :-
 %       using print_quoted, rather than write ...
 %   )
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Various different versions of write
 %
@@ -302,7 +302,7 @@ write(Stream, NonCanon, Term, !State) :-
     type_to_univ(Term, Univ),
     do_write_univ(Stream, NonCanon, Univ, !State).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Various different versions of write_univ
 %
@@ -737,7 +737,7 @@ write_arg(Stream, NonCanon, X, !State) :-
 % hard-code it.
 arg_priority(1000, !State).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred write_type_desc(Stream::in, type_desc::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
@@ -806,4 +806,4 @@ write_private_builtin_type_info(Stream, PrivateBuiltinTypeInfo, !State) :-
     type_info_to_type_desc(TypeInfo, TypeDesc),
     write_type_desc(Stream, TypeDesc, !State).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: tree_bitset.m.
 % Author: zs, based on sparse_bitset.m by stayl.
@@ -30,8 +30,8 @@
 % For the time being, this module can only handle items that map to nonnegative
 % integers. This may change once unsigned integer operations are available.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module tree_bitset.
 :- interface.
@@ -42,7 +42,7 @@
 
 :- use_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type tree_bitset(T). % <= enum(T).
 
@@ -334,8 +334,8 @@
     <= enum(T).
 :- mode filter(pred(in) is semidet, in, out, out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -428,8 +428,8 @@
 :- pragma type_spec(all_true/2, T = int).
 :- pragma type_spec(all_true/2, T = var(_)).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -442,7 +442,7 @@
 :- import_module maybe.
 :- import_module pair.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We describe a set using a tree. The basic idea is the following.
     %
@@ -539,14 +539,14 @@
 
 bits_per_level = 5.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func make_leaf_node(int, int) = leaf_node.
 :- pragma inline(make_leaf_node/2).
 
 make_leaf_node(Offset, Bits) = leaf_node(Offset, Bits).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func enum_to_index(T) = int <= enum(T).
 
@@ -568,7 +568,7 @@ index_to_enum(Index) = Elem :-
         unexpected($module, $pred, "`enum.from_int/1' failed")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % This function should be the only place in the module that adds the
 % tree_bitset/1 wrapper around node lists, and therefore the only place
@@ -742,7 +742,7 @@ integrity_interior_nodes([Head | Tail], Level, Init, Limit) = OK :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred range_of_parent_node(int::in, int::in, int::out, int::out) is det.
 
@@ -910,7 +910,7 @@ head_and_tail([], _, _) :-
     unexpected($module, $pred, "empty list").
 head_and_tail([Head | Tail], Head, Tail).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init = wrap_tree_bitset(leaf_list([])).
 
@@ -939,7 +939,7 @@ equal(SetA, SetB) :-
     ),
     SetA = SetB.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 to_sorted_list(Set) = foldr(list.cons, Set, []).
 
@@ -950,7 +950,7 @@ to_set(Set) = set.sorted_list_to_set(to_sorted_list(Set)).
 
 from_set(Set) = sorted_list_to_set(set.to_sorted_list(Set)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % XXX We should make these more efficient. At least, we could filter the bits
 % in the leaf nodes, yielding a new list of leaf nodes, and we could put the
@@ -967,11 +967,11 @@ filter(Pred, Set, TrueSet, FalseSet) :-
     TrueSet = sorted_list_to_set(SortedTrueList),
     FalseSet = sorted_list_to_set(SortedFalseList).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 count(Set) = foldl((func(_, Acc) = Acc + 1), Set, 0).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_singleton_set(A) = insert(init, A).
 
@@ -982,7 +982,7 @@ is_singleton(Set, Elem) :-
         bits_per_int, [], List),
     List = [Elem].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 insert(Set0, Elem) = Set :-
     Set0 = tree_bitset(List0),
@@ -1108,7 +1108,7 @@ interiorlist_insert(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         Nodes = [Head0 | Tail]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 insert_new(Elem, Set0, Set) :-
     Set0 = tree_bitset(List0),
@@ -1234,11 +1234,11 @@ interiorlist_insert_new(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         Nodes = [Head0 | Tail]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 insert_list(Set, List) = union(list_to_set(List), Set).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 delete(Set0, Elem) = Set :-
     Set0 = tree_bitset(List0),
@@ -1316,7 +1316,7 @@ leaflist_delete([Head0 | Tail0], Index, Result) :-
         Result = [Head0 | Tail0]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 delete_list(Set, List) = difference(Set, list_to_set(List)).
 
@@ -1329,7 +1329,7 @@ remove_list(Elems, !Set) :-
     subset(ElemsSet, !.Set),
     !:Set = difference(!.Set, ElemsSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 remove_leq(Set0, Elem) = Set :-
     Set0 = tree_bitset(List0),
@@ -1406,7 +1406,7 @@ remove_leq_leaf([Head0 | Tail0], Index, Result) :-
         Result = [Head0 | Tail0]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 remove_gt(Set0, Elem) = Set :-
     Set0 = tree_bitset(List0),
@@ -1487,7 +1487,7 @@ remove_gt_leaf([Head0 | Tail0], Index, Result) :-
         Result = []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 remove_least(Elem, Set0, Set) :-
     Set0 = tree_bitset(List0),
@@ -1603,14 +1603,14 @@ find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 list_to_set(List) = sorted_list_to_set(list.sort(List)).
 
 list_to_set(List, Set) :-
     Set = list_to_set(List).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 sorted_list_to_set(Elems) = Set :-
     items_to_index(Elems, Indexes),
@@ -1778,7 +1778,7 @@ group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
         Remaining = [Head | Tail]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 subset(Subset, Set) :-
     intersect(Set, Subset, Subset).
@@ -1786,7 +1786,7 @@ subset(Subset, Set) :-
 superset(Superset, Set) :-
     subset(Set, Superset).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 contains(Set, Elem) :-
     Set = tree_bitset(NodeList),
@@ -1827,7 +1827,7 @@ interiorlist_contains([Head | Tail], Index) :-
         interiorlist_contains(Tail, Index)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma promise_equivalent_clauses(member/2).
 
@@ -1892,7 +1892,7 @@ leafnode_member(Index, Offset, Size, Bits) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 union(SetA, SetB) = Set :-
     SetA = tree_bitset(ListA),
@@ -2063,7 +2063,7 @@ interiorlist_union(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
         List = [HeadB | Tail]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 intersect(SetA, SetB) = Set :-
     SetA = tree_bitset(ListA),
@@ -2312,7 +2312,7 @@ interiorlist_intersect(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
         interiorlist_intersect(ListA, TailB, List)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 difference(SetA, SetB) = Set :-
     SetA = tree_bitset(ListA),
@@ -2852,7 +2852,7 @@ interiorlist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
         interiorlist_difference(ListA, TailB, List)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 union_list(Sets) = Set :-
     union_list(Sets, Set).
@@ -2889,7 +2889,7 @@ union_list_pass([SetA, SetB | Sets0], !MergedSets) :-
     !:MergedSets = [SetAB | !.MergedSets],
     union_list_pass(Sets0, !MergedSets).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 intersect_list(Sets) = Set :-
     intersect_list(Sets, Set).
@@ -2926,7 +2926,7 @@ intersect_list_pass([SetA, SetB | Sets0], !MergedSets) :-
     !:MergedSets = [SetAB | !.MergedSets],
     intersect_list_pass(Sets0, !MergedSets).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 divide(Pred, Set, InSet, OutSet) :-
     Set = tree_bitset(List),
@@ -3044,7 +3044,7 @@ interiornode_divide(Pred, [Head | Tail], InNodes, OutNodes) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 divide_by_set(DivideBySet, Set, InSet, OutSet) :-
     DivideBySet = tree_bitset(DivideByList),
@@ -3608,7 +3608,7 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %         interiorlist_difference(ListA, TailB, List)
 %     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return the offset of the element of a set which should contain the given
     % element, and an int with the bit corresponding to that element set.
@@ -3644,7 +3644,7 @@ clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1, Bit).
 
 mask(N) = \ unchecked_left_shift(\ 0, N).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 insert(Elem, !Set) :-
     !:Set = insert(!.Set, Elem).
@@ -3664,7 +3664,7 @@ intersect(A, B, intersect(A, B)).
 
 difference(A, B, difference(A, B)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type fold_direction
     --->    low_to_high
@@ -4050,7 +4050,7 @@ fold2_bits(Dir, P, Offset, Bits, Size, !AccA, !AccB) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 all_true(P, Set) :-
     Set = tree_bitset(List),
@@ -4116,4 +4116,4 @@ all_true_bits(P, Offset, Bits, Size) :-
         all_true_bits(P, Offset + HalfSize, HighBits, HalfSize)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

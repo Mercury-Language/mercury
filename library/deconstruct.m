@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % 
 % File: deconstruct.m.
 % Main author: zs.
 % Stability: low.
 % 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module deconstruct.
 :- interface.
@@ -21,7 +21,7 @@
 :- import_module maybe.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Values of type noncanon_handling are intended to control how
     % predicates that deconstruct terms behave when they find that
@@ -267,8 +267,8 @@
 :- pred limited_deconstruct_cc(T::in, int::in,
     maybe({string, int, list(univ)})::out) is cc_multi.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -291,7 +291,7 @@
 
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % XXX The no-inline pragmas are necessary because when it inlines a predicate
 % defined by foreign_procs, the compiler does not preserve the names of the
@@ -306,7 +306,7 @@
 :- pragma no_inline(deconstruct/5).
 :- pragma no_inline(limited_deconstruct/6).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 functor(Term, NonCanon, Functor, Arity) :-
     (
@@ -487,7 +487,7 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
         MaybeResult = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred functor_dna(T::in, string::out, int::out) is det.
 :- pred functor_can(T::in, string::out, int::out) is det.
@@ -553,7 +553,7 @@ functor_can(Term, Functor, Arity) :-
 functor_idcc(Term, Functor, Arity) :-
     local_deconstruct(Term, include_details_cc, Functor, _, Arity, _Arguments).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
     functor_number(Term::in, FunctorNumber::out, Arity::out),
@@ -610,7 +610,7 @@ functor_number_cc(Term, FunctorNumber, Arity) :-
         rtti_implementation.functor_number_cc(Term, FunctorNumber, Arity)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % XXX These predicates return univs instead of existentially typed arguments
 % in order to work around the typechecking bug reported on 30 Jan, 2002
@@ -829,7 +829,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
         Success = 0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred deconstruct_dna(T::in, string::out,
     int::out, int::out, list(univ)::out) is det.
@@ -1047,8 +1047,8 @@ limited_deconstruct_idcc(Term, _MaxArity, Functor, Arity, Arguments) :-
     % For this one, the caller checks Arity =< MaxArity.
     local_deconstruct(Term, include_details_cc, Functor, _, Arity, Arguments).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred local_deconstruct(T, noncanon_handling, string, int, int, list(univ)).
 :- mode local_deconstruct(in, in(do_not_allow), out, out, out, out) is det.
@@ -1081,5 +1081,5 @@ local_univ_named_arg(Term, NonCanon, Name, Argument) :-
         rtti_implementation.univ_named_arg(Term, NonCanon, Name, Argument)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

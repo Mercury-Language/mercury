@@ -15,8 +15,8 @@
 % Terms are polymorphic so that terms representing different kinds of
 % thing can be made to be of different types so they don't get mixed up.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module term.
 :- interface.
@@ -27,7 +27,7 @@
 :- import_module type_desc.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type term(T)
     --->    functor(
@@ -62,7 +62,7 @@
 
 :- func get_term_context(term(T)) = term.context.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The following predicates can convert values of (almost) any type
     % to the type `term' and back again.
@@ -131,7 +131,7 @@
 :- func univ_to_term(univ) = term(_).
 :- pred univ_to_term(univ::in, term(_)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % vars(Term, Vars):
     %
@@ -356,7 +356,7 @@
     %
 :- pred is_ground(term(T)::in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % To manage a supply of variables, use the following 2 predicates.
     % (We might want to give these a unique mode later.)
@@ -381,7 +381,7 @@
     %
 :- func var_id(var(T)) = int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % from_int/1 should only be applied to integers returned by to_int/1.
     % This instance declaration is needed to allow sets of variables to be
@@ -394,7 +394,7 @@
 :- func var_to_int(var(T)) = int.
 :- pred var_to_int(var(T)::in, int::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given a term context, return the source line number.
     %
@@ -429,7 +429,7 @@
 :- func var_list_to_term_list(list(var(T))) = list(term(T)).
 :- pred var_list_to_term_list(list(var(T))::in, list(term(T))::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % generic_term(Term) is true iff `Term' is a term of type
     % `term' ie `term(generic)'. It is useful because in some instances
@@ -453,15 +453,15 @@
 :- func coerce_var_supply(var_supply(T)) = var_supply(U).
 :- pred coerce_var_supply(var_supply(T)::in, var_supply(U)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 % Everything below here is not intended to be part of the public interface,
 % and will not be included in the Mercury library reference manual.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -471,8 +471,8 @@
 
 :- func var_supply_num_allocated(var_supply(T)) = int.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -485,7 +485,7 @@
 :- import_module string.
 :- import_module version_array.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type var_supply(T)
     --->    var_supply(int).
@@ -493,14 +493,14 @@
 :- type var(T)
     --->    var(int).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_term_context(Term) = Context :-
     ( Term = functor(_, _, Context)
     ; Term = variable(_, Context)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 term_to_type(Term, Val) :-
     try_term_to_type(Term, ok(Val)).
@@ -707,7 +707,7 @@ det_term_to_type(Term, X) :-
         error(Message)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 type_to_term(Val, Term) :-
     type_to_univ(Val, Univ),
@@ -812,7 +812,7 @@ type_info_to_term(Context, TypeInfo, Term) :-
         Term = functor(atom(":"), [Arg1, Arg2], Context)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % vars(Term, Vars) is true if Vars is the list of variables
     % contained in Term obtained by depth-first left-to-right traversal
@@ -837,7 +837,7 @@ vars_2_list([Term | Terms], !Vars) :-
     vars_2_list(Terms, !Vars),
     vars_2(Term, !Vars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 contains_var(variable(Var, _), Var).
 contains_var(functor(_, Args, _), Var) :-
@@ -848,14 +848,14 @@ contains_var_list([Term | _], Var) :-
 contains_var_list([_ | Terms], Var) :-
     contains_var_list(Terms, Var).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 context_line(context(_, LineNumber), LineNumber).
 context_file(context(FileName, _), FileName).
 context_init(context("", 0)).
 context_init(File, LineNumber, context(File, LineNumber)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 unify_term(variable(X, _), VarY @ variable(Y, _), !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
@@ -1020,7 +1020,7 @@ list_subsumes(Terms1, Terms2, Subst) :-
     map.init(Subst0),
     unify_term_list_dont_bind(Terms1, Terms2, Terms2Vars, Subst0, Subst).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 occurs(variable(X, _), Y, Bindings) :-
     ( X = Y ->
@@ -1039,7 +1039,7 @@ occurs_list([Term | Terms], Y, Bindings) :-
         occurs_list(Terms, Y, Bindings)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 substitute(V @ variable(Var, _), SearchVar, Replacement, Term) :-
     ( Var = SearchVar ->
@@ -1080,7 +1080,7 @@ substitute_corresponding_2([S | Ss], [R | Rs], !Subst) :-
     map.set(S, R, !Subst),
     substitute_corresponding_2(Ss, Rs, !Subst).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 apply_rec_substitution(V @ variable(Var, _), Substitution, Term) :-
     ( map.search(Substitution, Var, Replacement) ->
@@ -1099,7 +1099,7 @@ apply_rec_substitution_to_list([Term0 | Terms0], Substitution,
     apply_rec_substitution(Term0, Substitution, Term),
     apply_rec_substitution_to_list(Terms0, Substitution, Terms).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 apply_substitution(Term0, Substitution, Term) :-
     (
@@ -1139,7 +1139,7 @@ apply_renaming_to_list([Term0 | Terms0], Renaming, [Term | Terms]) :-
     apply_renaming(Term0, Renaming, Term),
     apply_renaming_to_list(Terms0, Renaming, Terms).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init_var_supply(var_supply(0)).
 
@@ -1147,11 +1147,11 @@ create_var(var(V), var_supply(V0), var_supply(V)) :-
     % We number variables using sequential numbers.
     V = V0 + 1.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 var_id(var(V)) = V.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- instance enum(var(_)) where [
     to_int(X) = term.var_to_int(X),
@@ -1170,7 +1170,7 @@ var_supply_max_var(var_supply(V)) = var(V).
 
 var_supply_num_allocated(var_supply(V)) = V.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 relabel_variable(functor(Const, Terms0, Cont), OldVar, NewVar,
         functor(Const, Terms, Cont)) :-
@@ -1212,7 +1212,7 @@ apply_variable_renaming_to_vars(Renaming, [Var0 | Vars0], [Var | Vars]) :-
     apply_variable_renaming_to_var(Renaming, Var0, Var),
     apply_variable_renaming_to_vars(Renaming, Vars0, Vars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 term_list_to_var_list([], []).
 term_list_to_var_list([variable(Var, _) | Terms], [Var | Vars]) :-
@@ -1222,7 +1222,7 @@ var_list_to_term_list([], []).
 var_list_to_term_list([Var | Vars], [variable(Var, context_init) | Terms]) :-
     var_list_to_term_list(Vars, Terms).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 is_ground_in_bindings(variable(V, _), Bindings) :-
     map.search(Bindings, V, Binding),
@@ -1238,7 +1238,7 @@ is_ground_in_bindings_list([Term | Terms], Bindings) :-
     is_ground_in_bindings(Term, Bindings),
     is_ground_in_bindings_list(Terms, Bindings).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 is_ground(functor(_, Args, _)) :-
     is_ground_list(Args).
@@ -1250,11 +1250,11 @@ is_ground_list([Term | Terms]) :-
     is_ground(Term),
     is_ground_list(Terms).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generic_term(_).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 coerce(A, B) :-
     % Normally calls to this predicate should only be generated by the

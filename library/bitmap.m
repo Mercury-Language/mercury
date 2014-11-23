@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2007, 2009-2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: bitmap.m.
 % Main author: rafe, stayl.
@@ -19,8 +19,8 @@
 % a small burden on the programmer to ensure the correctness of his
 % code that would otherwise be assured by the compiler.)
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module bitmap.
 :- interface.
@@ -28,7 +28,7 @@
 :- import_module bool.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Type `bitmap' is equivalent to `array(bool)', but is implemented much
     % more efficiently.  Accessing bitmaps as if they are an array of
@@ -53,7 +53,7 @@
 :- type bitmap_error
     --->    bitmap_error(string).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type bit_index == int.
 :- type byte_index == int.
@@ -68,7 +68,7 @@
     %
 :- type word == int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % init(N, B) creates a bitmap of size N (indexed 0 .. N-1)
     % setting each bit if B = yes and clearing each bit if B = no.
@@ -135,7 +135,7 @@
     %
 :- func bits_per_byte = int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     %
     % Get or set the given bit.
@@ -156,7 +156,7 @@
 :- func (bitmap     ^ unsafe_bit(bit_index) := bool) = bitmap.
 :- mode (bitmap_di  ^ unsafe_bit(in)        := in)   = bitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     %
     % Bitmap ^ bits(OffSet, NumBits) = Word.
@@ -180,7 +180,7 @@
 :- mode (bitmap_di  ^ unsafe_bits(in, in)              := in)   = bitmap_uo
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     %
     % BM ^ byte(ByteNumber)
@@ -206,7 +206,7 @@
 :- func (bitmap     ^ unsafe_byte(byte_index)   := byte) = bitmap.
 :- mode (bitmap_di  ^ unsafe_byte(in)           := in)   = bitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Slice = bitmap.slice(BM, StartIndex, NumBits)
     %
@@ -233,7 +233,7 @@
 :- func slice ^ slice_start_byte_index = byte_index.
 :- func slice ^ slice_num_bytes = num_bytes.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Flip the given bit.
     %
@@ -243,7 +243,7 @@
 :- func unsafe_flip(bitmap, bit_index) = bitmap.
 :- mode unsafe_flip(bitmap_di, in) = bitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     %
     % Set operations; for binary operations the second argument is altered
@@ -269,13 +269,13 @@
 %:- mode xor(bitmap_ui, bitmap_di) = bitmap_uo is det.
 :- mode xor(in, bitmap_di) = bitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Condense a list of bitmaps into a single bitmap.
 :- func append_list(list(bitmap)) = bitmap.
 :- mode append_list(in) = bitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     %
     % Operations to copy part of a bitmap.
@@ -316,7 +316,7 @@
     byte_index, num_bytes) = bitmap.
 :- mode copy_bytes_in_bitmap(bitmap_di, in, in, in) = bitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Convert a bitmap to a string of the form "<length:hex digits>",
     % e.g. "<24:10AFBD>".
@@ -337,7 +337,7 @@
 %:- mode to_byte_string(bitmap_ui) = out is det.
 :- mode to_byte_string(in) = out is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Compute a hash function for a bitmap.
     %
@@ -345,7 +345,7 @@
 %:- mode hash(bitmap_ui) = out is det.
 :- mode hash(in) = out is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     %
     % Variations that might be slightly more efficient by not
@@ -410,8 +410,8 @@
 :- pred flip(bit_index, bitmap, bitmap).
 :- mode flip(in, bitmap_di, bitmap_uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 :- interface.
@@ -423,7 +423,7 @@
 :- pred throw_bounds_error(bitmap::in, string::in, bit_index::in, num_bits::in)
     is erroneous.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -432,7 +432,7 @@
 :- import_module int.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init(N) = init(N, no).
 
@@ -445,7 +445,7 @@ init(N, B) = BM :-
         BM   = clear_filler_bits(BM0)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 resize(!.BM, NewSize, InitializerBit) = !:BM :-
     ( if NewSize =< 0 then
@@ -472,7 +472,7 @@ resize(!.BM, NewSize, InitializerBit) = !:BM :-
         !:BM = clear_filler_bits(!.BM)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 shrink_without_copying(!.BM, NewSize) = !:BM :-
     ( if 0 =< NewSize, NewSize =< !.BM ^ num_bits then
@@ -482,7 +482,7 @@ shrink_without_copying(!.BM, NewSize) = !:BM :-
             "bitmap.shrink_without_copying", NewSize) = _ : int
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func clear_filler_bits(bitmap) = bitmap.
 :- mode clear_filler_bits(bitmap_di) = bitmap_uo is det.
@@ -505,7 +505,7 @@ set_trailing_bits_in_byte(!.BM, Bit, Initializer) = !:BM :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func initializer(bool) = byte.
 
@@ -530,7 +530,7 @@ initialize_bitmap_bytes(BM, ByteIndex, LastByteIndex, Init) =
             ByteIndex + 1, LastByteIndex, Init)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 in_range(BM, I) :- 0 =< I, I < num_bits(BM).
 
@@ -542,7 +542,7 @@ in_range_rexcl(BM, I) :- 0 =< I, I =< num_bits(BM).
 byte_in_range(BM, I) :-
     in_range(BM, I * bits_per_byte + bits_per_byte - 1).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 BM ^ bit(I) =
     ( if in_range(BM, I)
@@ -562,7 +562,7 @@ BM ^ unsafe_bit(I) =
 (BM ^ unsafe_bit(I) := yes) = unsafe_set(BM, I).
 (BM ^ unsafe_bit(I) := no) = unsafe_clear(BM, I).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 BM ^ bits(FirstBit, NumBits) =
     ( if
@@ -625,7 +625,7 @@ extract_bits_from_byte_index(ByteIndex, FirstBitIndex,
                         FirstBitIndex, NumBitsThisByte),
     !:Bits = (!.Bits `unchecked_left_shift` NumBitsThisByte) \/ BitsThisByte.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 (BM ^ bits(FirstBit, NumBits) := Bits) =
     ( if
@@ -684,7 +684,7 @@ set_bits_in_byte_index(ByteIndex, LastBitIndex,
                 set_bits_in_byte(!.BM ^ unsafe_byte(ByteIndex),
                     FirstBitInByte, NumBitsThisByte, Bits).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type bitmap.slice
     --->    bitmap.slice_ctor(
@@ -727,7 +727,7 @@ quotient_bits_per_byte_with_rem_zero(Pred, Int) = Quotient :-
         throw_bitmap_error(Pred ++ ": not a byte slice.")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 set(BM, I) =
     ( if in_range(BM, I)
@@ -753,7 +753,7 @@ clear(I, BM, clear(BM, I)).
 
 flip(I, BM, flip(BM, I)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 unsafe_set(BM0, I) = BM :-
     ByteIndex = byte_index_for_bit(I),
@@ -779,7 +779,7 @@ unsafe_clear(I, BM, unsafe_clear(BM, I)).
 
 unsafe_flip(I, BM, unsafe_flip(BM, I)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 is_set(BM, I) :-
     ( if in_range(BM, I)
@@ -793,7 +793,7 @@ is_clear(BM, I) :-
       else throw_bounds_error(BM, "bitmap.is_clear", I) = _ : int
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 unsafe_is_set(BM, I) :-
     \+ unsafe_is_clear(BM, I).
@@ -801,7 +801,7 @@ unsafe_is_set(BM, I) :-
 unsafe_is_clear(BM, I) :-
     BM ^ unsafe_byte(byte_index_for_bit(I)) /\ bitmask(I) = 0.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 complement(BM) =
     clear_filler_bits(complement_2(byte_index_for_bit(num_bits(BM) - 1), BM)).
@@ -820,7 +820,7 @@ complement_2(ByteI, BM0) = BM :-
         BM = complement_2(ByteI - 1, BM1)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 union(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
@@ -829,7 +829,7 @@ union(BMa, BMb) =
         throw_bitmap_error("bitmap.union: bitmaps not the same size")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 intersect(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
@@ -838,7 +838,7 @@ intersect(BMa, BMb) =
         throw_bitmap_error("bitmap.intersect: bitmaps not the same size")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 difference(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
@@ -847,7 +847,7 @@ difference(BMa, BMb) =
         throw_bitmap_error("bitmap.difference: bitmaps not the same size")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 xor(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
@@ -856,7 +856,7 @@ xor(BMa, BMb) =
         throw_bitmap_error("bitmap.xor: bitmaps not the same size")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Applies a function to every corresponding element between +ve I
     % and 0 inclusive, destructively updating the second bitmap.
@@ -891,7 +891,7 @@ zip2(I, Fn, BMa, BMb) = BM :-
         BM = BMb
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 append_list(BMs) = !:BM :-
     BMSize = list.foldl((func(BM, Size) = Size + BM ^ num_bits), BMs, 0),
@@ -905,7 +905,7 @@ copy_bitmap_into_place(ThisBM, !Index, !BM) :-
     !:BM = unsafe_copy_bits(0, ThisBM, 0, !.BM, !.Index, ThisBM ^ num_bits),
     !:Index = !.Index + ThisBM ^ num_bits.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 copy_bits(SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits) =
     copy_bits(0, SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits).
@@ -1373,7 +1373,7 @@ choose_copy_direction(SameBM, SrcStartBit, DestStartBit) =
       else left_to_right
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Note: this should be kept in sync with MR_bitmap_to_string in
     % runtime/mercury_bitmap.c.
@@ -1440,7 +1440,7 @@ hex_chars_to_bitmap(Str, Index, End, ByteIndex, !BM) :-
         hex_chars_to_bitmap(Str, Index + 2, End, ByteIndex + 1, !BM)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 to_byte_string(BM) = string.join_list(".", bitmap_to_byte_strings(BM)).
 
@@ -1477,7 +1477,7 @@ bitmap_to_byte_strings(BM, NumBits, !.Strs) = !:Strs :-
         !:Strs = bitmap_to_byte_strings(BM, NumBits - BitsThisByte, !.Strs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % NOTE: bitmap.hash is also defined as MR_hash_bitmap in
     % runtime/mercury_bitmap.h. The two definitions must be kept identical.
@@ -1509,7 +1509,7 @@ combine_hash(X, H0, H) :-
     H1 = H0 `xor` (H0 << 5),
     H = H1 `xor` X.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     %
     % A bitmap is represented in C as a size (in bits) and an array of bytes.
@@ -1709,7 +1709,7 @@ bytes_compare(Result, Index, MaxIndex, BM1, BM2) :-
         Result = (=)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 num_bytes(BM) = Bytes :-
     NumBits = BM ^ num_bits,
@@ -1724,7 +1724,7 @@ det_num_bytes(BM) = Bytes :-
             "bitmap.det_num_bytes: bitmap has a partial final byte")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
 
@@ -1756,7 +1756,7 @@ num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
     {_, NumBits} = BM
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func 'num_bits :='(bitmap, num_bits) = bitmap.
 :- mode 'num_bits :='(bitmap_di, in) = bitmap_uo is det.
@@ -1793,7 +1793,7 @@ num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
     BM = {Bin, NumBits}
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 BM ^ byte(N) =
     ( if N >= 0, in_range(BM, N * bits_per_byte + bits_per_byte - 1)
@@ -1832,7 +1832,7 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     <<_:N/binary, Byte/integer, _/binary>> = Bin
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 (BM ^ byte(N) := Byte) =
     ( if N >= 0, in_range(BM, N * bits_per_byte + bits_per_byte - 1)
@@ -1877,7 +1877,7 @@ _ ^ unsafe_byte(_) = _ :- private_builtin.sorry("bitmap.unsafe_byte").
     BM = {Bin, NumBits}
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func allocate_bitmap(num_bits) = bitmap.
 :- mode allocate_bitmap(in) = bitmap_uo is det.
@@ -1955,11 +1955,11 @@ copy(BM0) = BM :-
     BM = clear_filler_bits(
         unsafe_copy_bits(0, BM0, 0, allocate_bitmap(NumBits), 0, NumBits)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 bits_per_byte = 8.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The byte index containing the given bit.
     %
@@ -1972,7 +1972,7 @@ byte_index_for_bit(I) =
         unchecked_quotient(I, bits_per_byte)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return the bit number in the bitmap of the first bit in the
     % same byte as the given bit.
@@ -1992,7 +1992,7 @@ floor_to_multiple_of_bits_per_byte(X) = Floor :-
         Floor = Floor0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type bit_index_in_byte == int.
 
@@ -2003,7 +2003,7 @@ floor_to_multiple_of_bits_per_byte(X) = Floor :-
 
 bit_index_in_byte(I) = I `unchecked_rem` bits_per_byte.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Construct the bitmask for a given bit in a byte.  Bits are numbered
     % from most significant to least significant (starting at zero).
@@ -2016,7 +2016,7 @@ bit_index_in_byte(I) = I `unchecked_rem` bits_per_byte.
 bitmask(I) = 1 `unchecked_left_shift`
                     (bits_per_byte - 1 - bit_index_in_byte(I)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Construct a bitmask containing the N least significant bits set.
     %
@@ -2029,7 +2029,7 @@ n_bit_mask(N) = BitsMask :-
     BitMask  = 1 `unchecked_left_shift` (N - 1),
     BitsMask = BitMask \/ (BitMask - 1).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % extract_bits_from_byte(Byte, FirstBit, NumBits)
     % Return an integer whose NumBits least significant bits contain
@@ -2061,7 +2061,7 @@ set_bits_in_byte(Byte0, FirstBit, NumBits, Bits) = Byte :-
     Byte = (Byte0 /\ \ (Mask `unchecked_left_shift` Shift))
             \/ (BitsToSet `unchecked_left_shift` Shift).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % throw_bounds_error(BM, PredName, Index)
     %
@@ -2111,5 +2111,5 @@ throw_bitmap_error(Msg) = _ :-
 throw_bitmap_error(Msg) :-
     throw(bitmap_error(Msg)).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

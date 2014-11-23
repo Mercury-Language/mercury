@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % 
 % File: solutions.m.
 % Main author: fjh.
 % Stability: medium.
 % 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module solutions.
 :- interface.
@@ -20,7 +20,7 @@
 :- import_module list.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
     
     % solutions/2 collects all the solutions to a predicate and returns
     % them as a list in sorted order, with duplicates removed.
@@ -192,21 +192,21 @@
 :- mode do_while(pred(out) is nondet, pred(in, out, di, uo) is cc_multi, di, uo)
     is cc_multi.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module mutvar.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % NOTE: the all-solutions predicates are handled specially in
 %       browser/declarative_tree.m.  Any changes here may need to be reflected
 %       there.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 solutions(Pred, List) :-
     builtin_solutions(Pred, UnsortedList),
@@ -250,7 +250,7 @@ unsorted_aggregate2(Generator, Accumulator, !Acc1, !Acc2) :-
     cc_multi_equal(!Acc1),
     cc_multi_equal(!Acc2).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred builtin_solutions(pred(T), list(T)).
 :- mode builtin_solutions(pred(out) is multi, out(non_empty_list))
@@ -281,7 +281,7 @@ assert_num_solutions(_Pred::pred(out) is multi,
     ).
 assert_num_solutions(_Pred::pred(out) is nondet, List::in, List::out).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This section defines builtin_aggregate/4 which takes a closure of type
 % pred(T) in which the remaining argument is output, and backtracks over
@@ -405,7 +405,7 @@ builtin_aggregate(GeneratorPred, CollectorPred, !Accumulator) :-
         impure discard_trail_ticket
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma promise_pure(builtin_aggregate2/6).
 
@@ -482,7 +482,7 @@ builtin_aggregate2(GeneratorPred, CollectorPred, !Accumulator1, !Accumulator2) :
         impure discard_trail_ticket
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % The code for do_while/4 is essentially the same as the code for
 % builtin_aggregate (above).  See the detailed comments above.
@@ -1009,6 +1009,6 @@ end_all_soln_neg_context_more.
 
 end_all_soln_neg_context_no_more.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module solutions.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

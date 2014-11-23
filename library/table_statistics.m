@@ -16,8 +16,8 @@
 % the data structure that this predicate will return, and some operations
 % on this data structure.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module table_statistics.
 :- interface.
@@ -137,7 +137,7 @@
 
 :- pred write_table_stats(table_stats::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -515,7 +515,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
     }
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 table_stats_difference(StatsA, StatsB) = StatsDiff :-
     StatsA = table_stats(LookupsA, LookupsIsDuplA, StepsA),
@@ -646,7 +646,7 @@ table_step_stats_detail_diff(DetailsA, DetailsB, DetailsDiff) :-
             HashResizeNewEntriesA - HashResizeNewEntriesB)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 write_table_stats(Stats, !IO) :-
     Stats = table_stats(Lookups, LookupsIsDupl, Steps),

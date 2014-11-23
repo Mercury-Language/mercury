@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2010-2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % File: bit_buffer.read.m.
 % Main author: stayl.
 % Stability: low.
@@ -29,8 +29,8 @@
 % a small burden on the programmer to ensure the correctness of his
 % code that would otherwise be assured by the compiler.)
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module bit_buffer.read.
 :- interface.
@@ -158,7 +158,7 @@
     <= stream.bulk_reader(Stream, byte_index, bitmap, State, Error).
 :- mode finalize(read_buffer_di, out, uo, bitmap_uo, out, out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- implementation.
 
 /*
@@ -196,7 +196,7 @@
     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
 */
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- implementation.
 
 :- import_module require.
@@ -621,7 +621,7 @@ set_buffer_error(Error, read_buffer(!.Buffer), read_buffer(!:Buffer)) :-
 do_set_buffer_error(Error, !Buffer) :-
     set_read_status(Error, !Buffer).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % None of these instances work because of limitations in the type and
 % RTTI system.
