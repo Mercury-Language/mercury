@@ -431,25 +431,20 @@ gen_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
     get_module_info(ByteInfo, ModuleInfo),
     ModuleName = predicate_module(ModuleInfo, PredId),
     PredName = predicate_name(ModuleInfo, PredId),
+    builtin_ops.translate_builtin(ModuleName, PredName, ProcId, Args,
+        SimpleCode),
     (
-        builtin_ops.translate_builtin(ModuleName, PredName, ProcId,
-            Args, SimpleCode)
-    ->
-        (
-            SimpleCode = test(Test),
-            map_test(ByteInfo, Test, Code)
-        ;
-            SimpleCode = assign(Var, Expr),
-            map_assign(ByteInfo, Var, Expr, Code)
-        ;
-            SimpleCode = ref_assign(_Var, _Expr),
-            unexpected($module, $pred, "ref_assign")
-        ;
-            SimpleCode = noop(_DefinedVars),
-            Code = empty
-        )
+        SimpleCode = test(Test),
+        map_test(ByteInfo, Test, Code)
     ;
-        unexpected($module, $pred, "unknown builtin predicate " ++ PredName)
+        SimpleCode = assign(Var, Expr),
+        map_assign(ByteInfo, Var, Expr, Code)
+    ;
+        SimpleCode = ref_assign(_Var, _Expr),
+        unexpected($module, $pred, "ref_assign")
+    ;
+        SimpleCode = noop(_DefinedVars),
+        Code = empty
     ).
 
 :- pred map_test(byte_info::in, simple_expr(prog_var)::in(simple_test_expr),

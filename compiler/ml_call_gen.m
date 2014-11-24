@@ -725,14 +725,8 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ModuleName = predicate_module(ModuleInfo, PredId),
     PredName = predicate_name(ModuleInfo, PredId),
-    (
-        builtin_ops.translate_builtin(ModuleName, PredName,
-            ProcId, ArgLvals, SimpleCode0)
-    ->
-        SimpleCode = SimpleCode0
-    ;
-        unexpected($module, $pred, "unknown builtin predicate")
-    ),
+    builtin_ops.translate_builtin(ModuleName, PredName, ProcId, ArgLvals,
+        SimpleCode),
     (
         CodeModel = model_det,
         (

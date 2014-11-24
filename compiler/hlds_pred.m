@@ -3396,20 +3396,24 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, allow_inlining, AllowInlining),
-    globals.lookup_bool_option(Globals, inline_builtins, InlineBuiltins),
+    % XXX backend
     (
-        % The automatically generated "recursive" call in the
-        % goal for each builtin must be generated inline, or
-        % we would generate an infinite loop.
+        is_inline_builtin(ModuleName, PredName, ProcId, Arity),
         (
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, allow_inlining,
+                AllowInlining),
             AllowInlining = yes,
+            globals.lookup_bool_option(Globals, inline_builtins,
+                InlineBuiltins),
             InlineBuiltins = yes
         ;
+            % The "recursive" call in the automatically generated body
+            % of each builtin predicate MUST be generated inline.
+            % If it isn't generated inline, then any call to the predicate
+            % form of the builtin would fall into an infinite loop.
             CallerPredId = PredId
-        ),
-        is_inline_builtin(ModuleName, PredName, ProcId, Arity)
+        )
     ->
         BuiltinState = inline_builtin
     ;
@@ -3421,9 +3425,8 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
 
 is_inline_builtin(ModuleName, PredName, ProcId, Arity) :-
     Arity =< 3,
-    prog_varset_init(VarSet),
-    varset.new_vars(Arity, Args, VarSet, _),
-    builtin_ops.translate_builtin(ModuleName, PredName, ProcId, Args, _).
+    list.duplicate(Arity, 0, Args),
+    builtin_ops.test_if_builtin(ModuleName, PredName, ProcId, Args).
 
 :- pred prog_varset_init(prog_varset::out) is det.
 

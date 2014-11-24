@@ -374,14 +374,8 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
     erl_gen_info_get_var_types(!.Info, VarTypes),
     ModuleName = predicate_module(ModuleInfo, PredId),
     PredName = predicate_name(ModuleInfo, PredId),
-    (
-        builtin_ops.translate_builtin(ModuleName, PredName,
-            ProcId, ArgVars, SimpleCode0)
-    ->
-        SimpleCode = SimpleCode0
-    ;
-        unexpected($module, $pred, "unknown builtin predicate")
-    ),
+    builtin_ops.translate_builtin(ModuleName, PredName, ProcId, ArgVars,
+        SimpleCode),
     (
         CodeModel = model_det,
         (

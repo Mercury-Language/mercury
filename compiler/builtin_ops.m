@@ -10,7 +10,7 @@
 % Main author: fjh.
 %
 % This module defines various types which enumerate the different builtin
-% operators.  Several of the different back-ends -- the bytecode back-end,
+% operators. Several of the different back-ends -- the bytecode back-end,
 % the LLDS, and the MLDS -- all use the same set of builtin operators.
 % These operators are defined here.
 %
@@ -99,7 +99,7 @@
     % array_index operation.
     %
     % Currently array index operations are only generated in limited
-    % circumstances.  Using a simple representation for them here,
+    % circumstances. Using a simple representation for them here,
     % rather than just putting the MLDS type here, avoids the need
     % for this module to depend on back-end specific stuff like MLDS types.
 :- type array_elem_type
@@ -111,20 +111,31 @@
     ;       scalar_elem_int       % mlds_native_int_type
     ;       scalar_elem_generic.  % mlds_generic_type
 
-    % translate_builtin:
+    % test_if_builtin(ModuleName, PredName, ProcId, Args):
     %
     % Given a module name, a predicate name, a proc_id and a list of the
     % arguments, find out if that procedure of that predicate is an inline
-    % builtin. If so, return code which can be used to evaluate that call:
-    % either an assignment (if the builtin is det) or a test (if the builtin
+    % builtin.
+    %
+:- pred test_if_builtin(module_name::in, string::in, proc_id::in,
+    list(T)::in) is semidet.
+
+    % translate_builtin(ModuleName, PredName, ProcId, Args, Code):
+    %
+    % This predicate should be invoked only in cases where
+    % test_if_builtin(ModuleName, PredName, ProcId, Args) has succeeded.
+    %
+    % In such cases, it returns an abstract representation of the code
+    % that can be used to evaluate that call, which will be either
+    % an assignment (if the builtin is det) or a test (if the builtin
     % is semidet).
     %
     % There are some further guarantees on the form of the expressions
-    % in the code returned -- see below for details.
+    % in the code returned, expressed in the form of the insts below.
     % (bytecode_gen.m depends on these guarantees.)
     %
 :- pred translate_builtin(module_name::in, string::in, proc_id::in,
-    list(T)::in, simple_code(T)::out(simple_code)) is semidet.
+    list(T)::in, simple_code(T)::out(simple_code)) is det.
 
 :- type simple_code(T)
     --->    assign(T, simple_expr(T))
@@ -173,123 +184,198 @@
 
 :- import_module mdbcomp.builtin_modules.
 
+:- import_module require.
+:- import_module string.
+
 %-----------------------------------------------------------------------------%
 
-translate_builtin(FullyQualifiedModule, PredName, ProcId, Args, Code) :-
-    proc_id_to_int(ProcId, ProcInt),
+test_if_builtin(FullyQualifiedModule, PredName, ProcId, Args) :-
     is_std_lib_module_name(FullyQualifiedModule, ModuleName),
-    builtin_translation(ModuleName, PredName, ProcInt, Args, Code).
+    proc_id_to_int(ProcId, ProcNum),
+    builtin_translation(ModuleName, PredName, ProcNum, Args, _Code).
+
+translate_builtin(FullyQualifiedModule, PredName, ProcId, Args, Code) :-
+    (
+        is_std_lib_module_name(FullyQualifiedModule, ModuleName),
+        proc_id_to_int(ProcId, ProcNum),
+        builtin_translation(ModuleName, PredName, ProcNum, Args, CodePrime)
+    ->
+        Code = CodePrime
+    ;
+        list.length(Args, Arity),
+        string.format("unknown builtin %s/%d", [s(PredName), i(Arity)], Msg),
+        unexpected($module, $pred, Msg)
+    ).
 
 :- pred builtin_translation(string::in, string::in, int::in, list(T)::in,
     simple_code(T)::out(simple_code)) is semidet.
+:- pragma inline(builtin_translation/5).
 
-builtin_translation("private_builtin", "trace_get_io_state", 0, [X],
-    noop([X])).
-builtin_translation("private_builtin", "trace_set_io_state", 0, [_X],
-    noop([])).
-
-builtin_translation("private_builtin", "store_at_ref", 0, [X, Y],
-    ref_assign(X, Y)).
-builtin_translation("private_builtin", "store_at_ref_impure", 0, [X, Y],
-    ref_assign(X, Y)).
-
-    % Note that the code we generate for unsafe_type_cast is not type-correct.
-    % Back-ends that require type-correct intermediate code (e.g. the MLDS
-    % back-end) must handle unsafe_type_cast separately, rather than by calling
-    % builtin_translation.
-builtin_translation("private_builtin", "unsafe_type_cast", 0, [X, Y],
-    assign(Y, leaf(X))).
-builtin_translation("builtin", "unsafe_promise_unique", 0, [X, Y],
-    assign(Y, leaf(X))).
-
-builtin_translation("private_builtin", "builtin_int_gt", 0, [X, Y],
-    test(binary(int_gt, leaf(X), leaf(Y)))).
-builtin_translation("private_builtin", "builtin_int_lt", 0, [X, Y],
-    test(binary(int_lt, leaf(X), leaf(Y)))).
-
-builtin_translation("private_builtin", "builtin_compound_eq", 0, [X, Y],
-    test(binary(compound_eq, leaf(X), leaf(Y)))).
-builtin_translation("private_builtin", "builtin_compound_lt", 0, [X, Y],
-    test(binary(compound_lt, leaf(X), leaf(Y)))).
-
-builtin_translation("term_size_prof_builtin", "term_size_plus", 0, [X, Y, Z],
-    assign(Z, binary(int_add, leaf(X), leaf(Y)))).
-
-builtin_translation("int", "+", 0, [X, Y, Z],
-    assign(Z, binary(int_add, leaf(X), leaf(Y)))).
-builtin_translation("int", "+", 1, [X, Y, Z],
-    assign(X, binary(int_sub, leaf(Z), leaf(Y)))).
-builtin_translation("int", "+", 2, [X, Y, Z],
-    assign(Y, binary(int_sub, leaf(Z), leaf(X)))).
-builtin_translation("int", "plus", 0, [X, Y, Z],
-    assign(Z, binary(int_add, leaf(X), leaf(Y)))).
-builtin_translation("int", "-", 0, [X, Y, Z],
-    assign(Z, binary(int_sub, leaf(X), leaf(Y)))).
-builtin_translation("int", "-", 1, [X, Y, Z],
-    assign(X, binary(int_add, leaf(Y), leaf(Z)))).
-builtin_translation("int", "-", 2, [X, Y, Z],
-    assign(Y, binary(int_sub, leaf(X), leaf(Z)))).
-builtin_translation("int", "minus", 0, [X, Y, Z],
-    assign(Z, binary(int_sub, leaf(X), leaf(Y)))).
-builtin_translation("int", "*", 0, [X, Y, Z],
-    assign(Z, binary(int_mul, leaf(X), leaf(Y)))).
-builtin_translation("int", "times", 0, [X, Y, Z],
-    assign(Z, binary(int_mul, leaf(X), leaf(Y)))).
-builtin_translation("int", "unchecked_quotient", 0, [X, Y, Z],
-    assign(Z, binary(int_div, leaf(X), leaf(Y)))).
-builtin_translation("int", "unchecked_rem", 0, [X, Y, Z],
-    assign(Z, binary(int_mod, leaf(X), leaf(Y)))).
-builtin_translation("int", "unchecked_left_shift", 0, [X, Y, Z],
-    assign(Z, binary(unchecked_left_shift, leaf(X), leaf(Y)))).
-builtin_translation("int", "unchecked_right_shift", 0, [X, Y, Z],
-    assign(Z, binary(unchecked_right_shift, leaf(X), leaf(Y)))).
-builtin_translation("int", "/\\", 0, [X, Y, Z],
-    assign(Z, binary(bitwise_and, leaf(X), leaf(Y)))).
-builtin_translation("int", "\\/", 0, [X, Y, Z],
-    assign(Z, binary(bitwise_or, leaf(X), leaf(Y)))).
-builtin_translation("int", "xor", 0, [X, Y, Z],
-    assign(Z, binary(bitwise_xor, leaf(X), leaf(Y)))).
-builtin_translation("int", "xor", 1, [X, Y, Z],
-    assign(Y, binary(bitwise_xor, leaf(X), leaf(Z)))).
-builtin_translation("int", "xor", 2, [X, Y, Z],
-    assign(X, binary(bitwise_xor, leaf(Y), leaf(Z)))).
-builtin_translation("int", "+", 0, [X, Y],
-    assign(Y, leaf(X))).
-builtin_translation("int", "-", 0, [X, Y],
-    assign(Y, binary(int_sub, int_const(0), leaf(X)))).
-builtin_translation("int", "\\", 0, [X, Y],
-    assign(Y, unary(bitwise_complement, leaf(X)))).
-
-builtin_translation("int", ">", 0, [X, Y],
-    test(binary(int_gt, leaf(X), leaf(Y)))).
-builtin_translation("int", "<", 0, [X, Y],
-    test(binary(int_lt, leaf(X), leaf(Y)))).
-builtin_translation("int", ">=", 0, [X, Y],
-    test(binary(int_ge, leaf(X), leaf(Y)))).
-builtin_translation("int", "=<", 0, [X, Y],
-    test(binary(int_le, leaf(X), leaf(Y)))).
-
-builtin_translation("float", "+", 0, [X, Y, Z],
-    assign(Z, binary(float_plus, leaf(X), leaf(Y)))).
-builtin_translation("float", "-", 0, [X, Y, Z],
-    assign(Z, binary(float_minus, leaf(X), leaf(Y)))).
-builtin_translation("float", "*", 0, [X, Y, Z],
-    assign(Z, binary(float_times, leaf(X), leaf(Y)))).
-builtin_translation("float", "unchecked_quotient", 0, [X, Y, Z],
-    assign(Z, binary(float_divide, leaf(X), leaf(Y)))).
-builtin_translation("float", "+", 0, [X, Y],
-    assign(Y, leaf(X))).
-builtin_translation("float", "-", 0, [X, Y],
-    assign(Y, binary(float_minus, float_const(0.0), leaf(X)))).
-
-builtin_translation("float", ">", 0, [X, Y],
-    test(binary(float_gt, leaf(X), leaf(Y)))).
-builtin_translation("float", "<", 0, [X, Y],
-    test(binary(float_lt, leaf(X), leaf(Y)))).
-builtin_translation("float", ">=", 0, [X, Y],
-    test(binary(float_ge, leaf(X), leaf(Y)))).
-builtin_translation("float", "=<", 0, [X, Y],
-    test(binary(float_le, leaf(X), leaf(Y)))).
+builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
+    (
+        ModuleName = "builtin",
+        PredName = "unsafe_promise_unique", ProcNum = 0, Args = [X, Y],
+        Code = assign(Y, leaf(X))
+    ;
+        ModuleName = "private_builtin",
+        (
+            PredName = "trace_get_io_state", ProcNum = 0, Args = [X],
+            Code = noop([X])
+        ;
+            PredName = "trace_set_io_state", ProcNum = 0, Args = [_X],
+            Code = noop([])
+        ;
+            PredName = "store_at_ref", ProcNum = 0, Args = [X, Y],
+            Code = ref_assign(X, Y)
+        ;
+            PredName = "store_at_ref_impure", ProcNum = 0, Args = [X, Y],
+            Code = ref_assign(X, Y)
+        ;
+            PredName = "unsafe_type_cast", ProcNum = 0, Args = [X, Y],
+            % Note that the code we generate for unsafe_type_cast
+            % is not type-correct. Back-ends that require type-correct
+            % intermediate code (e.g. the MLDS back-end) must handle
+            % unsafe_type_cast separately, rather than by calling
+            % builtin_translation.
+            Code = assign(Y, leaf(X))
+        ;
+            PredName = "builtin_int_gt", ProcNum = 0, Args = [X, Y],
+            Code = test(binary(int_gt, leaf(X), leaf(Y)))
+        ;
+            PredName = "builtin_int_lt", ProcNum = 0, Args = [X, Y],
+            Code = test(binary(int_lt, leaf(X), leaf(Y)))
+        ;
+            PredName = "builtin_compound_eq", ProcNum = 0, Args = [X, Y],
+            Code = test(binary(compound_eq, leaf(X), leaf(Y)))
+        ;
+            PredName = "builtin_compound_lt", ProcNum = 0, Args = [X, Y],
+            Code = test(binary(compound_lt, leaf(X), leaf(Y)))
+        )
+    ;
+        ModuleName = "term_size_prof_builtin",
+        PredName = "term_size_plus", ProcNum = 0, Args = [X, Y, Z],
+        Code = assign(Z, binary(int_add, leaf(X), leaf(Y)))
+    ;
+        ModuleName = "int",
+        (
+            PredName = "+",
+            (
+                Args = [X, Y, Z],
+                (
+                    ProcNum = 0,
+                    Code = assign(Z, binary(int_add, leaf(X), leaf(Y)))
+                ;
+                    ProcNum = 1,
+                    Code = assign(X, binary(int_sub, leaf(Z), leaf(Y)))
+                ;
+                    ProcNum = 2,
+                    Code = assign(Y, binary(int_sub, leaf(Z), leaf(X)))
+                )
+            ;
+                Args = [X, Y],
+                ProcNum = 0,
+                Code = assign(Y, leaf(X))
+            )
+        ;
+            PredName = "-",
+            (
+                Args = [X, Y, Z],
+                (
+                    ProcNum = 0,
+                    Code = assign(Z, binary(int_sub, leaf(X), leaf(Y)))
+                ;
+                    ProcNum = 1,
+                    Code = assign(X, binary(int_add, leaf(Y), leaf(Z)))
+                ;
+                    ProcNum = 2,
+                    Code = assign(Y, binary(int_sub, leaf(X), leaf(Z)))
+                )
+            ;
+                Args = [X, Y],
+                ProcNum = 0,
+                Code = assign(Y, binary(int_sub, int_const(0), leaf(X)))
+            )
+        ;
+            PredName = "xor", Args = [X, Y, Z],
+            (
+                ProcNum = 0,
+                Code = assign(Z, binary(bitwise_xor, leaf(X), leaf(Y)))
+            ;
+                ProcNum = 1,
+                Code = assign(Y, binary(bitwise_xor, leaf(X), leaf(Z)))
+            ;
+                ProcNum = 2,
+                Code = assign(X, binary(bitwise_xor, leaf(Y), leaf(Z)))
+            )
+        ;
+            ( PredName = "plus", ArithOp = int_add
+            ; PredName = "minus", ArithOp = int_sub
+            ; PredName = "*", ArithOp = int_mul
+            ; PredName = "times", ArithOp = int_mul
+            ; PredName = "unchecked_quotient", ArithOp = int_div
+            ; PredName = "unchecked_rem", ArithOp = int_mod
+            ; PredName = "unchecked_left_shift",
+                ArithOp = unchecked_left_shift
+            ; PredName = "unchecked_right_shift",
+                ArithOp = unchecked_right_shift
+            ; PredName = "/\\", ArithOp = bitwise_and
+            ; PredName = "\\/", ArithOp = bitwise_or
+            ),
+            ProcNum = 0, Args = [X, Y, Z],
+            Code = assign(Z, binary(ArithOp, leaf(X), leaf(Y)))
+        ;
+            PredName = "\\", ProcNum = 0, Args = [X, Y],
+            Code = assign(Y, unary(bitwise_complement, leaf(X)))
+        ;
+            ( PredName = ">", CompareOp = int_gt
+            ; PredName = "<", CompareOp = int_lt
+            ; PredName = ">=", CompareOp = int_ge
+            ; PredName = "=<", CompareOp = int_le
+            ),
+            ProcNum = 0, Args = [X, Y],
+            Code = test(binary(CompareOp, leaf(X), leaf(Y)))
+        )
+    ;
+        ModuleName = "float",
+        (
+            PredName = "+",
+            (
+                Args = [X, Y],
+                ProcNum = 0,
+                Code = assign(Y, leaf(X))
+            ;
+                Args = [X, Y, Z],
+                ProcNum = 0,
+                Code = assign(Z, binary(float_plus, leaf(X), leaf(Y)))
+            )
+        ;
+            PredName = "-",
+            (
+                Args = [X, Y],
+                ProcNum = 0,
+                Code = assign(Y,
+                    binary(float_minus, float_const(0.0), leaf(X)))
+            ;
+                Args = [X, Y, Z],
+                ProcNum = 0,
+                Code = assign(Z, binary(float_minus, leaf(X), leaf(Y)))
+            )
+        ;
+            ( PredName = "*", ArithOp = float_times
+            ; PredName = "unchecked_quotient", ArithOp = float_divide
+            ),
+            ProcNum = 0, Args = [X, Y, Z],
+            Code = assign(Z, binary(ArithOp, leaf(X), leaf(Y)))
+        ;
+            ( PredName = ">", CompareOp = float_gt
+            ; PredName = "<", CompareOp = float_lt
+            ; PredName = ">=", CompareOp = float_ge
+            ; PredName = "=<", CompareOp = float_le
+            ),
+            ProcNum = 0, Args = [X, Y],
+            Code = test(binary(CompareOp, leaf(X), leaf(Y)))
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module backend_libs.builtin_ops.
