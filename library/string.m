@@ -67,8 +67,6 @@
 :- interface.
 
 :- include_module builder.
-:- include_module format.
-:- include_module to_string.
 
 :- import_module assoc_list.
 :- import_module char.
@@ -1227,6 +1225,12 @@
 % Converting values to strings based on a format string.
 %
 
+% NOTE_TO_IMPLEMENTORS If you modify this type, you will also need to modify
+% NOTE_TO_IMPLEMENTORS the type that represents abstract poly_types,
+% NOTE_TO_IMPLEMENTORS abstract_poly_type in compiler/parse_string_format.m,
+% NOTE_TO_IMPLEMENTORS as well as the predicates that parse concrete and
+% NOTE_TO_IMPLEMENTORS abstract poly_types, in library/string.parse_runtime.m
+% NOTE_TO_IMPLEMENTORS and in compiler/parse_string_format.m.
 :- type poly_type
     --->    f(float)
     ;       i(int)
@@ -1290,6 +1294,21 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
+% The modules string.format and string.parse_util have to be visible
+% from outside the string module, since they need to be visible to the
+% compiler (specifically, to format_call.m and its submodule
+% parse_format_string.m.). However, they should not be part of the
+% publically documented interface of the Mercury standard library,
+% since we don't want any user code to depend on the implementation
+% details they contain.
+:- interface.
+:- include_module format.
+:- include_module parse_util.
+:- implementation.
+
+:- include_module parse_runtime.
+:- include_module to_string.
 
 :- import_module array.
 :- import_module bitmap.

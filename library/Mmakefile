@@ -170,7 +170,7 @@ endif
 # targets
 
 .PHONY: all
-all:	mercury all-ints $(TAGS_FILE_EXISTS)
+all:	mercury all-ints $(TAGS_FILE_EXISTS) check_doc_undoc
 
 .PHONY: mercury
 mercury: lib_std
@@ -207,6 +207,21 @@ opts:	$(STD_LIB_NAME).opts
 .PHONY: trans_opts
 trans_opts: $(STD_LIB_NAME).trans_opts
 $(STD_LIB_NAME).trans_opts: $($(STD_LIB_NAME).trans_opts)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: check_doc_undoc
+check_doc_undoc: MODULES_DOC MODULES_UNDOC *.m
+	@{																\
+		cat MODULES_DOC MODULES_UNDOC | sort > FILES_VIA_MODULES;	\
+		ls *.m > FILES_VIA_LS;										\
+		if diff -u FILES_VIA_MODULES FILES_VIA_LS; then				\
+			true;													\
+		else														\
+			false;													\
+		fi;															\
+		rm -f FILES_VIA_MODULES FILES_VIA_LS;						\
+	}
 
 #-----------------------------------------------------------------------------#
 

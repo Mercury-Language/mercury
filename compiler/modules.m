@@ -684,9 +684,16 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         ),
 
         % Add `builtin' and `private_builtin' to the list of imported modules.
-        add_implicit_imports(Items1, Globals,
-            IntImportedModules1, IntImportedModules2,
-            IntUsedModules1, IntUsedModules2),
+
+        % Add `builtin' and `private_builtin', and any other builtin modules
+        % needed by any of the items, to the imported modules.
+        % XXX Why are these added to the interface, and not the implementation
+        % dependencies?
+        get_implicit_dependencies(Items1, Globals,
+            ImplicitIntImportedModules, ImplicitIntUsedModules),
+        IntImportedModules2 =
+            ImplicitIntImportedModules ++ IntImportedModules1,
+        IntUsedModules2 = ImplicitIntUsedModules ++ IntUsedModules1,
 
         % Process the ancestor modules.
         %
@@ -776,11 +783,6 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         module_and_imports_add_specs(AccessSpecs, !Module)
     ).
 
-    % grab_unqual_imported_modules:
-    %
-    % Like grab_imported_modules, but gets the `.int3' files
-    % instead of the `.int' and `.int2' files.
-    %
 grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         ModuleName, Items0, !:Module, !IO) :-
     % Find out which modules this one depends on.
@@ -792,9 +794,14 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
     init_module_and_imports(SourceFileName, SourceFileModuleName, ModuleName,
         Items0, [], [], [], [], [], no, !:Module),
 
-    % Add `builtin' and `private_builtin' to the imported modules.
-    add_implicit_imports(Items0, Globals,
-        IntImportDeps0, IntImportDeps, IntUseDeps0, IntUseDeps),
+    % Add `builtin' and `private_builtin', and any other builtin modules
+    % needed by any of the items, to the imported modules.
+    % XXX Why are these added to the interface, and not the implementation
+    % dependencies?
+    get_implicit_dependencies(Items0, Globals,
+        ImplicitIntImportDeps, ImplicitIntUseDeps),
+    IntImportDeps = ImplicitIntImportDeps ++ IntImportDeps0,
+    IntUseDeps = ImplicitIntUseDeps ++ IntUseDeps0,
 
     % Get the .int3s and .int0s that the current module depends on.
     map.init(HaveReadModuleMap),
@@ -959,9 +966,9 @@ warn_imported_ancestor(ModuleName, FileName, AncestorName, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-    % This predicate ensures that all every import_module declaration is
-    % checked against every use_module declaration, except for the case
-    % where the interface has `:- use_module foo.' and the implementation
+    % This predicate ensures that every import_module declaration is checked
+    % against every use_module declaration, except for the case where
+    % the interface has `:- use_module foo.' and the implementation
     % `:- import_module foo.'.
     %
 :- pred warn_if_duplicate_use_import_decls(module_name::in, string::in,
@@ -1672,9 +1679,6 @@ get_accessible_children_acc(!.Visible, [Item | Items], !IncludeDeps) :-
 
 :- type submodule_map == map(module_name, list(item)).
 
-    % Given a module (well, a list of items), split it into
-    % its constituent sub-modules, in top-down order.
-    %
 split_into_submodules(ModuleName, Items0, ModuleList, !Specs) :-
     InParentInterface = no,
     split_into_submodules_2(ModuleName, Items0, InParentInterface,

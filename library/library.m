@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2007, 2009-2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -37,11 +37,27 @@
 
 :- implementation.
 
-% Note: if you add a new module to this list, you must also a new clause to
-% mercury_std_library_module/1. Conversely, this should list all the modules
-% named by mercury_std_library_module, except library itself.
+% NOTE: If you add a new module to the library, you also need to do the
+% following.
 %
-% Please keep both parts of this list in alphabetical order.
+% - Unless the new module is a private submodule of an existing library module,
+%   import the new module in one of the two lists below: the list of modules
+%   intended for application programmers, or the list of modules intended
+%   only for Mercury system implementors.
+%
+% - Add the module name to the definition of mercury_std_library_module below.
+%   This is regardless of whether the module is for implementors or not,
+%   and whether it is a private submodule or not. The
+%   mercury_std_library_module predicate should list all the modules
+%   in a Mercury source file in the library directory.
+%
+% - Add the file name either to MODULES_DOC (if it is intended for application
+%   programmers, and should therefore be included in the automatically
+%   generated user-facing documentation), or to MODULES_UNDOC (if it is
+%   intended only for Mercury system implementors, in which case it should
+%   not be included in that documentation).
+%
+% Please keep all these lists in alphabetical order.
 
 % The modules intended for application programmers.
 
@@ -118,6 +134,8 @@
 :- import_module stream.string_writer.
 :- import_module string.
 :- import_module string.builder.
+:- import_module string.format.
+:- import_module string.parse_util.
 :- import_module table_statistics.
 :- import_module term.
 :- import_module term_io.
@@ -149,8 +167,6 @@
 :- import_module region_builtin.
 :- import_module rtti_implementation.
 :- import_module stm_builtin.
-:- import_module string.format.
-:- import_module string.to_string.
 :- import_module table_builtin.
 :- import_module term_size_prof_builtin.
 :- import_module test_bitset.
@@ -294,6 +310,8 @@ mercury_std_library_module("stream.string_writer").
 mercury_std_library_module("string").
 mercury_std_library_module("string.builder").
 mercury_std_library_module("string.format").
+mercury_std_library_module("string.parse_runtime").
+mercury_std_library_module("string.parse_util").
 mercury_std_library_module("string.to_string").
 mercury_std_library_module("table_builtin").
 mercury_std_library_module("table_statistics").

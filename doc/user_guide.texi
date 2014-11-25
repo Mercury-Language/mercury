@@ -6623,6 +6623,13 @@ the compiler knows for sure contain mismatches between the format
 string and the supplied values.
 
 @sp 1
+@item --no-warn-only-one-format-string-error
+@findex --no-warn-only-one-format-string-error
+If a format string has more than one mismatch with the supplied values,
+generate a warning for all mismatches, not just the first.
+The later mismatches may be avalanche errors caused by earlier mismatches.
+
+@sp 1
 @item --warn-unknown-format-calls
 @findex --warn-unknown-format-calls
 Warn about calls to string.format or io.format for which

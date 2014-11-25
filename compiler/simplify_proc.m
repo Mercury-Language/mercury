@@ -767,6 +767,27 @@ simplify_may_introduce_calls(ModuleName, PredName, _Arity) :-
         ; PredName = "++"
         )
     ;
+        ModuleName = "string.format",
+        ( PredName = "format_char_component_nowidth"
+        ; PredName = "format_char_component_width"
+        ; PredName = "format_string_component_nowidth_noprec"
+        ; PredName = "format_string_component_nowidth_prec"
+        ; PredName = "format_string_component_width_noprec"
+        ; PredName = "format_string_component_width_prec"
+        ; PredName = "format_signed_int_component_nowidth_noprec"
+        ; PredName = "format_signed_int_component_nowidth_prec"
+        ; PredName = "format_signed_int_component_width_noprec"
+        ; PredName = "format_signed_int_component_width_prec"
+        ; PredName = "format_unsigned_int_component_nowidth_noprec"
+        ; PredName = "format_unsigned_int_component_nowidth_prec"
+        ; PredName = "format_unsigned_int_component_width_noprec"
+        ; PredName = "format_unsigned_int_component_width_prec"
+        ; PredName = "format_float_component_nowidth_noprec"
+        ; PredName = "format_float_component_nowidth_prec"
+        ; PredName = "format_float_component_width_noprec"
+        ; PredName = "format_float_component_width_prec"
+        )
+    ;
         ModuleName = "table_builtin",
 
         ( PredName = "table_lookup_insert_start_int"

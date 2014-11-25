@@ -269,12 +269,12 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         TypeBody = hlds_du_type(Ctors, ConsTagMap, CheaperTagTest, DuTypeKind,
             MaybeUserEqComp, MaybeDirectArgCtors, ReservedTag, ReservedAddr,
             Foreign),
-        io.write_string(" --->\n", !IO),
         (
             CheaperTagTest = no_cheaper_tag_test
         ;
             CheaperTagTest = cheaper_tag_test(ExpConsId, ExpConsTag,
                 CheapConsId, CheapConsTag),
+            write_indent(Indent, !IO),
             io.write_string("/* cheaper tag test: ", !IO),
             write_cons_id_and_arity(ExpConsId, !IO),
             io.write_string(" tag ", !IO),
@@ -318,6 +318,7 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
             io.write_string(" */\n", !IO)
         ;
             DuTypeKind = du_type_kind_general,
+            write_indent(Indent, !IO),
             io.write_string("/* KIND general */\n", !IO)
         ),
         (
@@ -373,13 +374,13 @@ write_constructors(_TypeCtor, _Indent, _TVarSet, [], _, !IO) :-
     unexpected($module, $pred, "empty constructor list").
 write_constructors(TypeCtor, Indent, TVarSet, [Ctor], TagValues, !IO) :-
     write_indent(Indent, !IO),
-    io.write_char('\t', !IO),
+    io.write_string("--->    ", !IO),
     write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO).
 write_constructors(TypeCtor, Indent, TVarSet, [Ctor | Ctors], TagValues,
         !IO) :-
     Ctors = [_ | _],
     write_indent(Indent, !IO),
-    io.write_char('\t', !IO),
+    io.write_string("--->    ", !IO),
     write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO),
     io.write_string("\n", !IO),
     write_constructors_loop(TypeCtor, Indent, TVarSet, Ctors, TagValues, !IO).
@@ -391,7 +392,7 @@ write_constructors_loop(_TypeCtor, _Indent, _TVarSet, [], _, !IO).
 write_constructors_loop(TypeCtor, Indent, TVarSet, [Ctor | Ctors], TagValues,
         !IO) :-
     write_indent(Indent, !IO),
-    io.write_string(";\t", !IO),
+    io.write_string(";       ", !IO),
     write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO),
     (
         Ctors = []

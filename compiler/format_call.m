@@ -65,13 +65,14 @@
 % This design is about as cheap in terms of compilation time as we can make it.
 % Its cost has two components. The first component is the traversal, and its
 % cost is roughly proportional to the size of the procedure body. The second
-% cost is the checking of each call to string.format or io.format. The expected
-% complexity of this part is proportional to the number of such calls
-% multiplied by the average number of arguments they print. In the worst case,
-% this can be multiplied again by the number of conjunctions in the procedure
-% body, but I expect that in most cases the variables involved in the relevant
-% calls will be found in the same conjunction as the call itself, so the
-% typical number of conjunctions that has to be searched will in fact be one.
+% cost is the checking of each call to string.format, io.format and similar
+% predicates. The expected complexity of this part is proportional to the
+% number of such calls multiplied by the average number of arguments
+% they print. In the worst case, this can be multiplied again by the number
+% of conjunctions in the procedure body, but I expect that in most cases
+% the variables involved in the relevant calls will be found in the same
+% conjunction as the call itself, so the typical number of conjunctions
+% that has to be searched will in fact be one.
 %
 % Note that if the value of e.g. a format string is an input to the procedure
 % or is computed by a call rather than a unification, we won't be able to check
@@ -79,23 +80,22 @@
 % cases is controlled by a separate option, which is consulted in det_report.m.
 %
 % We could in theory track e.g. format strings through calls to library
-% functions such as string.append. However, there is no convenient way to
-% evaluate the extent of a need for this capability until this change is
-% bootstrapped, so that is left for future work.
+% functions such as string.append. However, we have not yet felt the need
+% for this in practice.
 %
-% The second job (optimizing the calls) starts by gathering the information
-% we need during the first pass through the code. If we find that a format_call
-% can be executed by string.format on dummy values of the appropriate type
-% without throwing an exception, we check to see if the format string is simple
-% enough for us to interpret it at compile time. At the moment, it is simple
-% enough if it consists of only raw text to be printed and uses of the %d,
-% %c and %s specifiers without any flags, width or precision specifications
-% or anything like that. If the format string falls into this category,
-% then we construct code to replace the call right away.
+% The second job (optimizing the calls) starts by procesing the information
+% gathered by the first pass through the code. For each call site, we
+% systematically convert each component of the format string and its associated
+% value to be printed (if any) to a string, and then either append the
+% resulting strings together (if the original call was to string.format),
+% or print the resulting strings as they are produced (if the original call
+% was to io.format). We do not yet optimize calls to the predicate
+% stream.string_writer.format. For each call site that we could optimize,
+% we record its replacement in a map.
 %
 % If there are any such replacements, we perform a second backward traversal of
-% the procedure body, looking for the goals to be replaced, which we identity
-% by goal_id.
+% the procedure body, looking for the goals to be replaced (which we identity
+% by goal_id), and replace them.
 %
 % For each call we want to optimize, we also want to delete the code that
 % constructs the format string and the lists of poly_types. The first pass
@@ -141,6 +141,9 @@
 
 :- implementation.
 
+:- include_module parse_string_format.
+
+:- import_module check_hlds.simplify.format_call.parse_string_format.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_pred.
@@ -166,6 +169,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module string.parse_util.
 :- import_module term.
 :- import_module univ.
 :- import_module varset.
@@ -201,16 +205,13 @@
 :- type list_skeleton_map   == map(prog_var, list_skeleton_state).
 
     % Maps each variable representing a polytype in the list of values to be
-    % printed to the variable whose value is to be printed, and a dummy value
-    % of the same kind. We don't include the actual value to be printed, since
-    % (a) in almost all cases that won't be available statically in the
-    % program, and (b) we don't actually need it.
-:- type what_to_print
-    --->    what_to_print(
-                var_to_print        :: prog_var,
-                dummy_to_print      :: string.poly_type
-            ).
-:- type list_element_map    == map(prog_var, what_to_print).
+    % printed to an abtract representation of that polytype, with the
+    % actual value to be printed replaced by the variable that will hold
+    % that value at runtime.
+    %
+    % For example, when we find the unification X = string.poly_type.s(Y),
+    % we add to the list_element_map an entry mapping X to apt_s(Y).
+:- type list_element_map    == map(prog_var, abstract_poly_type).
 
     % Maps each variable defined in terms of another variable to the variable
     % it is assigned from.
@@ -275,6 +276,12 @@ is_format_call(ModuleName, Name, Args) :-
 
 is_format_call_kind_and_vars(ModuleName, Name, Args, Kind,
         FormatStringVar, FormattedValuesVar) :-
+    % If you modify this code to recognize any previously unrecognized
+    % predicates, then you also need to update the call tree of
+    % get_implicit_dependencies in module_imports.m. That code tests whether
+    % a list of items calls one of these predicates, so that it can record
+    % the need to implicitly import the modules that contain the predicates
+    % that implement their optimized versions.
     Name = "format",
     (
         ModuleName = mercury_string_module
@@ -347,29 +354,33 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
 
 check_format_call_site(ModuleInfo, OptFormatCalls, ConjMaps, PredMap,
         FormatCallSite, !GoalIdMap, !Specs, !VarSet, !VarTypes) :-
-    FormatCallSite = format_call_site(GoalId, StringVar, ValuesVar, Kind,
+    FormatCallSite = format_call_site(GoalId, StringVar, ValuesVar, CallKind,
         ModuleName, Name, Arity, Context, CurId),
     SymName = qualified(ModuleName, Name),
+    module_info_get_globals(ModuleInfo, Globals),
 
     (
         follow_format_string(ConjMaps, PredMap, CurId, StringVar,
             MaybeFormatString0),
         MaybeFormatString0 = yes(FormatString0)
     ->
-        MaybeFormatStringVar = yes({FormatString0, StringVar})
+        MaybeFormatString = yes(FormatString0)
     ;
-        MaybeFormatStringVar = no,
-        UnknownFormatPieces = [words("Unknown format string in call to"),
-            sym_name_and_arity(SymName / Arity), suffix("."), nl],
-        UnknownFormatSeverity =
-            severity_conditional(warn_unknown_format_calls, yes,
-                severity_warning, no),
-        UnknownFormatMsg = simple_msg(Context,
-            [option_is_set(warn_unknown_format_calls, yes,
-                [always(UnknownFormatPieces)])]),
-        UnknownFormatSpec = error_spec(UnknownFormatSeverity,
-            phase_detism_check, [UnknownFormatMsg]),
-        !:Specs = [UnknownFormatSpec | !.Specs]
+        MaybeFormatString = no,
+        globals.lookup_bool_option(Globals, warn_unknown_format_calls,
+            WarnUnknownFormatCallsA),
+        (
+            WarnUnknownFormatCallsA = no
+        ;
+            WarnUnknownFormatCallsA = yes,
+            UnknownFormatPieces = [words("Unknown format string in call to"),
+                sym_name_and_arity(SymName / Arity), suffix("."), nl],
+            UnknownFormatMsg = simple_msg(Context,
+                [always(UnknownFormatPieces)]),
+            UnknownFormatSpec = error_spec(severity_warning,
+                phase_simplify(report_in_any_mode), [UnknownFormatMsg]),
+            !:Specs = [UnknownFormatSpec | !.Specs]
+        )
     ),
 
     (
@@ -377,73 +388,75 @@ check_format_call_site(ModuleInfo, OptFormatCalls, ConjMaps, PredMap,
             SkeletonResult),
         SkeletonResult = follow_skeleton_result(PolytypeVars0, SkeletonVars0),
         list.map(follow_list_value(ConjMaps, PredMap, CurId), PolytypeVars0,
-            WhatToPrintMaybes0),
-        project_all_yes(WhatToPrintMaybes0, WhatToPrints0)
+            MaybeAbstractPolyTypes0),
+        project_all_yes(MaybeAbstractPolyTypes0, AbstractPolyTypes0)
     ->
-        ToDeleteVars0 = [ValuesVar | SkeletonVars0] ++ PolytypeVars0,
-        MaybeSkeletonInfo = yes({ToDeleteVars0, WhatToPrints0})
+        ToDeleteVars0 =
+            [StringVar, ValuesVar | SkeletonVars0] ++ PolytypeVars0,
+        MaybeSkeletonInfo = yes({ToDeleteVars0, AbstractPolyTypes0})
     ;
         MaybeSkeletonInfo = no,
-        UnknownFormatValuesPieces =
-            [words("Unknown format values in call to"),
-            sym_name_and_arity(SymName / Arity), suffix("."), nl],
-        UnknownFormatValuesSeverity =
-            severity_conditional(warn_unknown_format_calls, yes,
-                severity_warning, no),
-        UnknownFormatValuesMsg = simple_msg(Context,
-            [option_is_set(warn_unknown_format_calls, yes,
-                [always(UnknownFormatValuesPieces)])]),
-        UnknownFormatValuesSpec = error_spec(UnknownFormatValuesSeverity,
-            phase_detism_check, [UnknownFormatValuesMsg]),
-        !:Specs = [UnknownFormatValuesSpec | !.Specs]
+        globals.lookup_bool_option(Globals, warn_unknown_format_calls,
+            WarnUnknownFormatCallsB),
+        (
+            WarnUnknownFormatCallsB = no
+        ;
+            WarnUnknownFormatCallsB = yes,
+            UnknownFormatValuesPieces =
+                [words("Unknown format values in call to"),
+                sym_name_and_arity(SymName / Arity), suffix("."), nl],
+            UnknownFormatValuesMsg = simple_msg(Context,
+                [always(UnknownFormatValuesPieces)]),
+            UnknownFormatValuesSpec = error_spec(severity_warning,
+                phase_simplify(report_in_any_mode), [UnknownFormatValuesMsg]),
+            !:Specs = [UnknownFormatValuesSpec | !.Specs]
+        )
     ),
 
     (
-        MaybeFormatStringVar = yes({FormatString, StringVar1}),
-        MaybeSkeletonInfo = yes({ValuesToDeleteVars, WhatToPrints})
+        MaybeFormatString = yes(FormatString),
+        MaybeSkeletonInfo = yes({ToDeleteVars, AbstractPolyTypes})
     ->
-        DummiesToPrint = list.map(project_dummy_to_print, WhatToPrints),
-        promise_equivalent_solutions [Result] (
-            try(string.format(FormatString, DummiesToPrint), Result)
-        ),
+        string.to_char_list(FormatString, FormatStringChars),
+        parse_and_flatten_format_string(FormatStringChars, AbstractPolyTypes,
+            MaybeComponents),
         (
-            Result = exception(ExceptionUniv),
-            ( univ_to_type(ExceptionUniv, ExceptionError) ->
-                ExceptionError = software_error(ExceptionMsg0),
-                ( string.append("string.format: ", Msg, ExceptionMsg0) ->
-                    ExceptionMsg = Msg
+            MaybeComponents = error(HeadError - TailErrors),
+            globals.lookup_bool_option(Globals, warn_known_bad_format_calls,
+                WarnKnownBadFormatCalls),
+            (
+                WarnKnownBadFormatCalls = no
+            ;
+                WarnKnownBadFormatCalls = yes,
+                PrefixPieces = [words("Mismatched format and values"),
+                    words("in call to"),
+                    sym_name_and_arity(SymName / Arity), suffix(":"), nl],
+                globals.lookup_bool_option(Globals,
+                    warn_only_one_format_string_error,
+                    WarnOnlyOneFormatStringError),
+                (
+                    WarnOnlyOneFormatStringError = yes,
+                    ErrorPieces = [string_format_error_to_words(HeadError)]
                 ;
-                    ExceptionMsg = ExceptionMsg0
+                    WarnOnlyOneFormatStringError = no,
+                    ErrorPieces = [string_format_error_to_words(HeadError) |
+                        list.map(string_format_error_to_words, TailErrors)]
                 ),
-                BadFormatPieces =
-                    [words("Mismatched format and values in call to"),
-                    sym_name_and_arity(SymName / Arity), suffix(":"), nl,
-                    words(ExceptionMsg)],
+
                 BadFormatMsg = simple_msg(Context,
-                    [option_is_set(warn_known_bad_format_calls, yes,
-                        [always(BadFormatPieces)])]),
-                BadFormatSeverity = severity_conditional(
-                    warn_known_bad_format_calls, yes, severity_warning, no),
-                BadFormatSpec = error_spec(BadFormatSeverity,
+                    [always(PrefixPieces), always(ErrorPieces)]),
+                BadFormatSpec = error_spec(severity_warning,
                     phase_simplify(report_in_any_mode), [BadFormatMsg]),
                 !:Specs = [BadFormatSpec | !.Specs]
-            ;
-                % We can't decode arbitrary exception values, but string.m
-                % shouldn't throw anything but software_errors, so ignoring
-                % the exception should be ok.
-                true
             )
         ;
-            % There is no need for any error message; the format works.
-            Result = succeeded(_),
+            MaybeComponents = ok(Components),
             (
                 OptFormatCalls = no
             ;
                 OptFormatCalls = yes,
-                try_create_replacement_goal(ModuleInfo, GoalId,
-                    Kind, FormatString, StringVar1,
-                    ValuesToDeleteVars, WhatToPrints,
-                    !GoalIdMap, !VarSet, !VarTypes)
+                create_replacement_goal(ModuleInfo, GoalId, CallKind,
+                    Components, ToDeleteVars, !GoalIdMap, !VarSet, !VarTypes)
             )
         )
     ;
@@ -451,65 +464,10 @@ check_format_call_site(ModuleInfo, OptFormatCalls, ConjMaps, PredMap,
         true
     ).
 
-:- pred try_create_replacement_goal(module_info::in, goal_id::in,
-    format_call_kind::in, string::in, prog_var::in,
-    list(prog_var)::in, list(what_to_print)::in,
-    fc_goal_id_map::in, fc_goal_id_map::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+:- func string_format_error_to_words(string_format_error) = format_component.
 
-try_create_replacement_goal(ModuleInfo, GoalId, Kind,
-        FormatString, StringVar, ValuesToDeleteVars,
-        WhatToPrints, !GoalIdMap, !VarSet, !VarTypes) :-
-    string.to_char_list(FormatString, FormatStringChars),
-    VarsToPrint = list.map(project_var_to_print, WhatToPrints),
-    % Note that every predicate or function that this code generates calls to
-    % needs to be listed in simplify_may_introduce_calls, in order to prevent
-    % its definition from being thrown away by dead_pred_elim before execution
-    % gets here.
-    (
-        Kind = kind_string_format(ResultVar),
-        (
-            create_string_format_replacement(ModuleInfo,
-                FormatStringChars, ResultVar, VarsToPrint,
-                ReplacementGoal, !VarSet, !VarTypes)
-        ->
-            AllToDeleteVars = [StringVar | ValuesToDeleteVars],
-            FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
-                set_of_var.list_to_set(AllToDeleteVars)),
-            map.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
-        ;
-            % create_string_format_replacement does not (yet) recognize
-            % all possible format strings. We cannot optimize the ones
-            % it cannot recognize.
-            true
-        )
-    ;
-        (
-            Kind = kind_io_format_nostream(IOInVar, IOOutVar),
-            MaybeStreamVar = no
-        ;
-            Kind = kind_io_format_stream(StreamVar, IOInVar, IOOutVar),
-            MaybeStreamVar = yes(StreamVar)
-        ),
-        (
-            create_io_format_replacement(ModuleInfo, FormatStringChars,
-                MaybeStreamVar, IOInVar, IOOutVar, VarsToPrint,
-                ReplacementGoal, !VarSet, !VarTypes)
-        ->
-            AllToDeleteVars = [StringVar | ValuesToDeleteVars],
-            FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
-                set_of_var.list_to_set(AllToDeleteVars)),
-            map.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
-        ;
-            % create_string_format_replacement does not (yet) recognize
-            % all possible format strings. We cannot optimize the ones
-            % it cannot recognize.
-            true
-        )
-    ;
-        Kind = kind_stream_string_writer(_, _, _, _)
-        % XXX Optimize these.
-    ).
+string_format_error_to_words(Error) =
+    words(string_format_error_to_msg(Error)).
 
 :- pred follow_format_string(conj_maps::in, conj_pred_map::in, conj_id::in,
     prog_var::in, maybe(string)::out) is det.
@@ -528,11 +486,11 @@ follow_format_string(ConjMaps, PredMap, CurId, StringVar, MaybeString) :-
     ).
 
 :- type follow_skeleton_result
-    --->    follow_skeleton_result(
+    --->    no_follow_skeleton_result
+    ;       follow_skeleton_result(
                 fsr_polytype_vars       :: list(prog_var),
                 fsr_skeleton_vars       :: list(prog_var)
-            )
-    ;       no_follow_skeleton_result.
+            ).
 
 :- pred follow_list_skeleton(conj_maps::in, conj_pred_map::in, conj_id::in,
     prog_var::in, follow_skeleton_result::out) is det.
@@ -558,8 +516,7 @@ follow_list_skeleton(ConjMaps, PredMap, CurId, ListVar, Result) :-
                     TailSkeletonVars),
                 PolytypeVars = [HeadVar | TailPolytypeVars],
                 SkeletonVars = [TailVar | TailSkeletonVars],
-                Result = follow_skeleton_result(PolytypeVars,
-                    SkeletonVars)
+                Result = follow_skeleton_result(PolytypeVars, SkeletonVars)
             )
         )
     ; map.search(PredMap, CurId, PredId) ->
@@ -569,29 +526,23 @@ follow_list_skeleton(ConjMaps, PredMap, CurId, ListVar, Result) :-
     ).
 
 :- pred follow_list_value(conj_maps::in, conj_pred_map::in,
-    conj_id::in, prog_var::in, maybe(what_to_print)::out) is det.
+    conj_id::in, prog_var::in, maybe(abstract_poly_type)::out) is det.
 
-follow_list_value(ConjMaps, PredMap, CurId, PolytypeVar, MaybeResult) :-
+follow_list_value(ConjMaps, PredMap, CurId, PolytypeVar,
+        MaybeAbstractPolyType) :-
     ConjMap = get_conj_map(ConjMaps, CurId),
     ConjMap = conj_map(_, _, ElementMap, EqvMap),
     ( map.search(EqvMap, PolytypeVar, EqvVar) ->
-        follow_list_value(ConjMaps, PredMap, CurId, EqvVar, MaybeResult)
-    ; map.search(ElementMap, PolytypeVar, WhatToPrint) ->
-        MaybeResult = yes(WhatToPrint)
+        follow_list_value(ConjMaps, PredMap, CurId, EqvVar,
+            MaybeAbstractPolyType)
+    ; map.search(ElementMap, PolytypeVar, AbstractPolyType) ->
+        MaybeAbstractPolyType = yes(AbstractPolyType)
     ; map.search(PredMap, CurId, PredId) ->
-        follow_list_value(ConjMaps, PredMap, PredId, PolytypeVar, MaybeResult)
+        follow_list_value(ConjMaps, PredMap, PredId, PolytypeVar,
+            MaybeAbstractPolyType)
     ;
-        MaybeResult = no
+        MaybeAbstractPolyType = no
     ).
-
-:- func project_dummy_to_print(what_to_print) = string.poly_type.
-
-project_dummy_to_print(what_to_print(_VarToPrint, DummyToPrint))
-    = DummyToPrint.
-
-:- func project_var_to_print(what_to_print) = prog_var.
-
-project_var_to_print(what_to_print(VarToPrint, _DummyToPrint)) = VarToPrint.
 
 :- pred project_all_yes(list(maybe(T))::in, list(T)::out) is semidet.
 
@@ -668,15 +619,15 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
             % scopes. It can build the term to print, but that will happen
             % only in degenerate cases. However, we do have some degenerate
             % cases in the test suite.
-            not set_of_var.member(!.RelevantVars, TermVar)
+            set_of_var.member(!.RelevantVars, TermVar)
         ->
-            % It is ok not to traverse the subgoal. The scope cannot contain
-            % any calls, and the unifications it does contain are apparently
-            % not of interest to any later formal call.
-            true
-        ;
             format_call_traverse_conj(ModuleInfo, [SubGoal], CurId,
                 !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars)
+        ;
+            % It is ok not to traverse the subgoal. The scope cannot contain
+            % any calls, and the unifications it does contain are apparently
+            % not of interest to any later format call.
+            true
         )
     ;
         GoalExpr = generic_call(_, _, _, _, _)
@@ -765,55 +716,71 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
             (
                 ConsId = string_const(StringConst)
             ->
+                expect(unify(ArgVars, []), $module, $pred,
+                    "string constant with args"),
                 set_of_var.delete(CellVar, !RelevantVars),
                 map.det_insert(CellVar, StringConst, StringMap0, StringMap),
                 ConjMap = conj_map(StringMap, ListMap0, ElementMap0, EqvMap0)
             ;
                 ConsId = cons(SymName, Arity, TypeCtor),
-                TypeCtor = list_type_ctor,
+                TypeCtor = list_type_ctor
+            ->
                 Functor = unqualify_name(SymName),
                 (
-                    Functor = "[|]",
-                    Arity = 2,
-                    ArgVars = [ArgVar1, ArgVar2],
-                    List = list_skeleton_cons(ArgVar1, ArgVar2)
+                    (
+                        Functor = "[|]",
+                        Arity = 2,
+                        ArgVars = [ArgVar1, ArgVar2],
+                        ListPrime = list_skeleton_cons(ArgVar1, ArgVar2)
+                    ;
+                        Functor = "[]",
+                        Arity = 0,
+                        ArgVars = [],
+                        ListPrime = list_skeleton_nil
+                    )
+                ->
+                    List = ListPrime
                 ;
-                    Functor = "[]",
-                    Arity = 0,
-                    ArgVars = [],
-                    List = list_skeleton_nil
-                )
-            ->
+                    unexpected($module, $pred, "unexpected list functor")
+                ),
                 set_of_var.delete(CellVar, !RelevantVars),
                 set_of_var.insert_list(ArgVars, !RelevantVars),
                 map.det_insert(CellVar, List, ListMap0, ListMap),
                 ConjMap = conj_map(StringMap0, ListMap, ElementMap0, EqvMap0)
             ;
                 ConsId = cons(SymName, Arity, TypeCtor),
-                TypeCtor = poly_type_type_ctor,
-                Arity = 1,
-                Functor = unqualify_name(SymName),
-                (
-                    Functor = "f",
-                    Dummy = f(0.0)
-                ;
-                    Functor = "i",
-                    Dummy = i(0)
-                ;
-                    Functor = "s",
-                    Dummy = s("0")
-                ;
-                    Functor = "c",
-                    Dummy = c('0')
-                )
+                TypeCtor = poly_type_type_ctor
             ->
-                set_of_var.delete(CellVar, !RelevantVars),
-                ( ArgVars = [ArgVar] ->
-                    WhatToPrint = what_to_print(ArgVar, Dummy)
+                (
+                    Arity = 1,
+                    ArgVars = [ArgVar]
+                ->
+                    Functor = unqualify_name(SymName),
+                    (
+                        (
+                            Functor = "f",
+                            VarPolyTypePrime = apt_f(ArgVar)
+                        ;
+                            Functor = "i",
+                            VarPolyTypePrime = apt_i(ArgVar)
+                        ;
+                            Functor = "s",
+                            VarPolyTypePrime = apt_s(ArgVar)
+                        ;
+                            Functor = "c",
+                            VarPolyTypePrime = apt_c(ArgVar)
+                        )
+                    ->
+                        VarPolyType = VarPolyTypePrime
+                    ;
+                        unexpected($module, $pred,
+                            "unexpected poly_type functor")
+                    )
                 ;
-                    unexpected($module, $pred, "arity mismatch")
+                    unexpected($module, $pred, "poly_type arity mismatch")
                 ),
-                map.det_insert(CellVar, WhatToPrint, ElementMap0, ElementMap),
+                set_of_var.delete(CellVar, !RelevantVars),
+                map.det_insert(CellVar, VarPolyType, ElementMap0, ElementMap),
                 ConjMap = conj_map(StringMap0, ListMap0, ElementMap, EqvMap0)
             ;
                 ConjMap = ConjMap0
@@ -1117,172 +1084,99 @@ opt_format_call_sites_in_switch([Case0 | Cases0], [Case | Cases], !GoalIdMap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred create_string_format_replacement(module_info::in, list(char)::in,
-    prog_var::in, list(prog_var)::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is semidet.
+:- pred create_replacement_goal(module_info::in, goal_id::in,
+    format_call_kind::in, list(flat_component)::in,
+    list(prog_var)::in, fc_goal_id_map::in, fc_goal_id_map::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-create_string_format_replacement(ModuleInfo, FormatStringChars, ResultVar,
-        VarsToPrint, Goal, !VarSet, !VarTypes) :-
-    interpret_format_string(FormatStringChars, [], VarsToPrint, Components),
+create_replacement_goal(ModuleInfo, GoalId, CallKind, Components,
+        ToDeleteVars, !GoalIdMap, !VarSet, !VarTypes) :-
+    % Note that every predicate or function that this code generates calls to
+    % must be listed in simplify_may_introduce_calls, in order to prevent
+    % its definition from being thrown away by dead_pred_elim before execution
+    % gets here.
+    (
+        CallKind = kind_string_format(ResultVar),
+        create_string_format_replacement(ModuleInfo, Components, ResultVar,
+            ReplacementGoal, !VarSet, !VarTypes),
+        FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
+            set_of_var.list_to_set(ToDeleteVars)),
+        map.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
+    ;
+        (
+            CallKind = kind_io_format_nostream(IOInVar, IOOutVar),
+            MaybeStreamVar = no
+        ;
+            CallKind = kind_io_format_stream(StreamVar, IOInVar, IOOutVar),
+            MaybeStreamVar = yes(StreamVar)
+        ),
+        create_io_format_replacement(ModuleInfo, Components,
+            MaybeStreamVar, IOInVar, IOOutVar, ReplacementGoal,
+            !VarSet, !VarTypes),
+        FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
+            set_of_var.list_to_set(ToDeleteVars)),
+        map.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
+    ;
+        CallKind = kind_stream_string_writer(_, _, _, _)
+        % XXX Optimize these.
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % For optimizing e.g. string.format("%3d_%.5x", [i(X), i(Y)], Result),
+    % generate code that looks like this:
+    %
+    %   ... set up Flags1 ...
+    %   Prec2 = 5,
+    %   format_signed_int_component_nowidth_prec(Flags1, Prec2, Y, Str3),
+    %   Str4 = "_",
+    %   Str5 = Str5 ++ Str4,
+    %   ... set up Flags6 ...
+    %   Width7 = 3,
+    %   Base8 = base_hex_lc,
+    %   format_unsigned_int_component_width_noprec(Flags5, Width7, Base8, X,
+    %       Str9),
+    %   Result = Str9 ++ Str5
+    %
+    % We build the string back to front to minimize the amount of
+    % re-re-recopying that the calls to append (++) have to do.
+    % Since we execute the appends back-to-front, we create their
+    % arguments back-to-front as well. This way, each component's
+    % variable is used immediately after it is constructed, so
+    % it shouldn't need to be stored on the stack.
+    %
+:- pred create_string_format_replacement(module_info::in,
+    list(flat_component)::in, prog_var::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+create_string_format_replacement(ModuleInfo, Components, ResultVar, Goal,
+        !VarSet, !VarTypes) :-
     replace_string_format(ModuleInfo, Components, yes(ResultVar),
-        ActualResultVar, Goals, !VarSet, !VarTypes),
+        ActualResultVar, Goals, ValueVars, !VarSet, !VarTypes),
     ( ActualResultVar = ResultVar ->
         AllGoals = Goals
     ;
-        make_simple_assign(ResultVar, ActualResultVar, umc_explicit, [],
-            AssignGoal),
+        % Since replace_string_format can always put the result
+        % in the desired variable, this code point is never actually reached.
+        % This code is here just in case that ever changes.
+        make_simple_assign(ResultVar, ActualResultVar,
+            umc_implicit("replace_string_format"), [], AssignGoal),
         AllGoals = Goals ++ [AssignGoal]
     ),
-    NonLocals = set_of_var.list_to_set([ResultVar | VarsToPrint]),
+    set_of_var.insert(ResultVar, ValueVars, NonLocals),
     InstMapDelta = instmap_delta_bind_var(ResultVar),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
         term.context_init, GoalInfo),
     conj_list_to_goal(AllGoals, GoalInfo, Goal).
 
-% For optimizing e.g. io.format("%d_%d", [i(X), i(Y), !IO), this diff currently
-% generates
-%
-%         V1 = int_to_string(X),
-%         V2 = "_"
-%         V3 = V2 ++ V1
-%         V4 = int_to_string(Y),
-%         V5 = V4 ++ V3
-%         io.write_string(V5, !IO)
-%
-% It could instead generate
-%
-%         V1 = int_to_string(X),
-%         io.write_string(V1, !IO),
-%         V2 = "_"
-%         io.write_string(V2, !IO),
-%         V3 = int_to_string(Y),
-%         io.write_string(V3, !IO)
-%
-% The latter avoid allocating memory for the results of concatenation,
-% but those concatenations could be done at compile-time is the values
-% of X and Y were known statically. The latter also retrieves the current
-% stream more than once, but this could be factored out, and is in any case
-% not an issue for io.format/5.
-%
-% For the time being, we always generate the first form. Later, we could
-% try to switch to the second form in cases where this seems profitable.
-
-:- pred create_io_format_replacement(module_info::in, list(char)::in,
-    maybe(prog_var)::in, prog_var::in, prog_var::in, list(prog_var)::in,
-    hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is semidet.
-
-create_io_format_replacement(ModuleInfo, FormatStringChars,
-        MaybeStreamVar, IOInVar, IOOutVar, VarsToPrint, Goal,
-        !VarSet, !VarTypes) :-
-    interpret_format_string(FormatStringChars, [], VarsToPrint, Components),
-    replace_string_format(ModuleInfo, Components, no, ResultVar, Goals,
-        !VarSet, !VarTypes),
-    (
-        MaybeStreamVar = yes(StreamVar),
-        ArgVars = [StreamVar, ResultVar, IOInVar, IOOutVar]
-    ;
-        MaybeStreamVar = no,
-        ArgVars = [ResultVar, IOInVar, IOOutVar]
-    ),
-    InstMapDelta = instmap_delta_from_assoc_list(
-        [IOOutVar - ground(unique, none)]),
-    generate_simple_call(mercury_io_module, "write_string",
-        pf_predicate, only_mode, detism_det, purity_pure, ArgVars, [],
-        InstMapDelta, ModuleInfo, term.context_init, CallGoal),
-
-    AllGoals = Goals ++ [CallGoal],
-    NonLocals = set_of_var.list_to_set(ArgVars ++ VarsToPrint),
-    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
-        term.context_init, GoalInfo),
-    conj_list_to_goal(AllGoals, GoalInfo, Goal).
-
-%-----------------------------------------------------------------------------%
-
-:- type string_component
-    --->    string_constant(string)
-    ;       var_to_print_int(prog_var)
-    ;       var_to_print_float(prog_var)
-    ;       var_to_print_string(prog_var)
-    ;       var_to_print_char(prog_var).
-
-:- pred interpret_format_string(list(char)::in, list(char)::in,
-    list(prog_var)::in, list(string_component)::out) is semidet.
-
-interpret_format_string([], RevConstChars, [], Components) :-
-    (
-        RevConstChars = [],
-        Components = []
-    ;
-        RevConstChars = [_ | _],
-        list.reverse(RevConstChars, ConstChars),
-        string.from_char_list(ConstChars, ConstString),
-        Components = [string_constant(ConstString)]
-    ).
-interpret_format_string([Char0 | Chars0], !.RevConstChars, Vars0,
-        Components) :-
-    ( Char0 = '%' ->
-        % A valid format string cannot end on an unescaped percent sign.
-        Chars0 = [Char1 | Chars1],
-        ( Char1 = '%' ->
-            % Char0 escapes Char1. Keep Char1, but throw away
-            !:RevConstChars = [Char1 | !.RevConstChars],
-            interpret_format_string(Chars1, !.RevConstChars, Vars0, Components)
-        ;
-            Vars0 = [Var0 | Vars1],
-            (
-                !.RevConstChars = [],
-                ConstComponents = []
-            ;
-                !.RevConstChars = [_ | _],
-                list.reverse(!.RevConstChars, ConstChars),
-                string.from_char_list(ConstChars, ConstString),
-                ConstComponents = [string_constant(ConstString)]
-            ),
-            (
-                Char1 = 'd',
-                VarComponent = var_to_print_int(Var0)
-            ;
-                Char1 = 'f',
-                VarComponent = var_to_print_float(Var0),
-                % Currently, string.m does not export the predicate it uses
-                % by default to format float values. This predicate generates
-                % strings of six characters in the absence of an explicit
-                % precision specification, so it often pads numbers on the
-                % right with zeros, whereas plain old string.float_to_string
-                % does no such thing. Under these circumstances, replacing
-                % an invocation of string.format with one of float_to_string
-                % would change the output.
-                fail
-            ;
-                Char1 = 's',
-                VarComponent = var_to_print_string(Var0)
-            ;
-                Char1 = 'c',
-                VarComponent = var_to_print_char(Var0)
-            ),
-            interpret_format_string(Chars1, [], Vars1, TailComponents),
-            Components = ConstComponents ++ [VarComponent | TailComponents]
-        )
-    ;
-        % We do not want to look for Char0 = '\\', because any escape sequences
-        % started that way have already been processed. If we did throw away
-        % backslashes in favor of the character they supposedly escaped,
-        % this would change the output.
-        %
-        % XXX Do we need to watch out for any escape mechanisms besides
-        % percent signs and backslashes?
-
-        !:RevConstChars = [Char0 | !.RevConstChars],
-        interpret_format_string(Chars0, !.RevConstChars, Vars0, Components)
-    ).
-
-:- pred replace_string_format(module_info::in, list(string_component)::in,
+:- pred replace_string_format(module_info::in, list(flat_component)::in,
     maybe(prog_var)::in, prog_var::out, list(hlds_goal)::out,
+    set_of_progvar::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 replace_string_format(ModuleInfo, Components, MaybeResultVar, ResultVar, Goals,
-        !VarSet, !VarTypes) :-
+        !:ValueVars, !VarSet, !VarTypes) :-
+    set_of_var.init(!:ValueVars),
     (
         Components = [],
         make_result_var_if_needed(MaybeResultVar, ResultVar,
@@ -1290,28 +1184,514 @@ replace_string_format(ModuleInfo, Components, MaybeResultVar, ResultVar, Goals,
         make_string_const_construction(ResultVar, "", Goal),
         Goals = [Goal]
     ;
-        Components = [FirstComponent | LaterComponents],
-        (
-            LaterComponents = [],
-            represent_component(ModuleInfo, FirstComponent,
-                MaybeResultVar, ResultVar, Goals, !VarSet, !VarTypes)
-        ;
-            LaterComponents = [_ | _],
-            replace_string_format(ModuleInfo, LaterComponents,
-                no, LaterResultVar, LaterGoals, !VarSet, !VarTypes),
-            represent_component(ModuleInfo, FirstComponent,
-                no, FirstResultVar, FirstGoals,!VarSet, !VarTypes),
-            make_result_var_if_needed(MaybeResultVar, ResultVar,
-                !VarSet, !VarTypes),
-            generate_simple_call(mercury_string_module, "++", pf_function,
-                only_mode, detism_det, purity_pure,
-                [FirstResultVar, LaterResultVar, ResultVar], [],
-                instmap_delta_from_assoc_list(
-                    [ResultVar - ground(unique, none)]),
-                ModuleInfo, term.context_init, AppendGoal),
-            Goals = LaterGoals ++ FirstGoals ++ [AppendGoal]
-        )
+        Components = [HeadComponent | TailComponents],
+        replace_string_format_nonempty(ModuleInfo,
+            HeadComponent, TailComponents, MaybeResultVar, ResultVar, Goals,
+            !ValueVars, !VarSet, !VarTypes)
     ).
+
+:- pred replace_string_format_nonempty(module_info::in,
+    flat_component::in, list(flat_component)::in,
+    maybe(prog_var)::in, prog_var::out, list(hlds_goal)::out,
+    set_of_progvar::in, set_of_progvar::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+replace_string_format_nonempty(ModuleInfo, HeadComponent, TailComponents,
+        MaybeResultVar, ResultVar, Goals, !ValueVars, !VarSet, !VarTypes) :-
+    (
+        TailComponents = [],
+        represent_component(ModuleInfo, HeadComponent, MaybeResultVar,
+            ResultVar, Goals, !ValueVars, !VarSet, !VarTypes)
+    ;
+        TailComponents = [FirstTailComponent | LaterTailComponents],
+        replace_string_format_nonempty(ModuleInfo,
+            FirstTailComponent, LaterTailComponents,
+            no, TailComponentsVar, TailComponentsGoals,
+            !ValueVars, !VarSet, !VarTypes),
+        represent_component(ModuleInfo, HeadComponent,
+            no, HeadComponentVar, HeadComponentGoals,
+            !ValueVars, !VarSet, !VarTypes),
+        make_result_var_if_needed(MaybeResultVar, ResultVar,
+            !VarSet, !VarTypes),
+        generate_simple_call(mercury_string_module, "++", pf_function,
+            only_mode, detism_det, purity_pure,
+            [HeadComponentVar, TailComponentsVar, ResultVar], [],
+            instmap_delta_from_assoc_list(
+                [ResultVar - ground(unique, none)]),
+            ModuleInfo, term.context_init, AppendGoal),
+        Goals = TailComponentsGoals ++ HeadComponentGoals ++ [AppendGoal]
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % For optimizing e.g. io.format(Stream, "%3d_%.5x", [i(X), i(Y)], IO0, IO),
+    % generate code that looks like this:
+    %
+    %   ... set up Flags1 ...
+    %   Width2 = 3,
+    %   Base3 = base_hex_lc,
+    %   format_unsigned_int_component_width_noprec(Flags1, Width2, Base3, X,
+    %       Str4),
+    %   io.write_string(Stream, Str4, IO0, IO5),
+    %   Str5 = "_",
+    %   io.write_string(Stream, Str5, IO5, IO6),
+    %   ... set up Flags7 ...
+    %   Prec8 = 5,
+    %   format_signed_int_component_nowidth_prec(Flags1, Prec2, Y, Str9),
+    %   io.write_string(Stream, Str9, IO5, IO),
+    %
+    % We convert the components in the original order, and print each string
+    % resulting from converting a component as soon as it is ready.
+    % These strings should therefore never need to be stored in stack slots.
+    %
+    % If the original call was to io.format/4 instead of io.format/5,
+    % i.e. if the stream to be printed on was implicit, then the calls
+    % to io.write_string that we generate will also have the stream to be
+    % printed on implicit. The runtime system will retrieve the current
+    % output stream in each of those calls to io.write_string/3. We could
+    % test to see whether factoring out this hidden repetition would be
+    % worthwhile.
+    %
+:- pred create_io_format_replacement(module_info::in, list(flat_component)::in,
+    maybe(prog_var)::in, prog_var::in, prog_var::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+create_io_format_replacement(ModuleInfo, Components,
+        MaybeStreamVar, IOInVar, IOOutVar, Goal, !VarSet, !VarTypes) :-
+    replace_io_format(ModuleInfo, Components, MaybeStreamVar,
+        IOInVar, IOOutVar, Goals, ValueVars, !VarSet, !VarTypes),
+
+    Uniq = ground(unique, none),
+    Clobbered = ground(clobbered, none),
+    InstMapDelta = instmap_delta_from_assoc_list(
+        [IOInVar - Clobbered, IOOutVar - Uniq]),
+    set_of_var.insert_list([IOInVar, IOOutVar], ValueVars, NonLocals),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+        term.context_init, GoalInfo),
+    conj_list_to_goal(Goals, GoalInfo, Goal).
+
+:- pred replace_io_format(module_info::in, list(flat_component)::in,
+    maybe(prog_var)::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
+    set_of_progvar::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+replace_io_format(ModuleInfo, Components, MaybeStreamVar, IOInVar, IOOutVar,
+        Goals, !:ValueVars, !VarSet, !VarTypes) :-
+    set_of_var.init(!:ValueVars),
+    (
+        Components = [],
+        Unification = assign(IOOutVar, IOInVar),
+        Uniq = ground(unique, none),
+        Clobbered = ground(clobbered, none),
+        UniMode = ((free -> Uniq) - (Uniq -> Clobbered)),
+        UnifyMainContext = umc_implicit("replace_io_format"),
+        UnifyContext = unify_context(UnifyMainContext, []),
+        GoalExpr = unify(IOOutVar, rhs_var(IOInVar), UniMode, Unification,
+            UnifyContext),
+        InstMapDelta = instmap_delta_from_assoc_list(
+            [IOInVar - Clobbered, IOOutVar - Uniq]),
+        goal_info_init(set_of_var.list_to_set([IOInVar, IOOutVar]),
+            InstMapDelta, detism_det, purity_pure, GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        Goals = [Goal]
+    ;
+        Components = [HeadComponent | TailComponents],
+        replace_io_format_nonempty(ModuleInfo, HeadComponent, TailComponents,
+            MaybeStreamVar, IOInVar, IOOutVar, Goals,
+            !ValueVars, !VarSet, !VarTypes)
+    ).
+
+:- pred replace_io_format_nonempty(module_info::in,
+    flat_component::in, list(flat_component)::in,
+    maybe(prog_var)::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
+    set_of_progvar::in, set_of_progvar::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+replace_io_format_nonempty(ModuleInfo, HeadComponent, TailComponents,
+        MaybeStreamVar, IOInVar, IOOutVar, Goals,
+        !ValueVars, !VarSet, !VarTypes) :-
+    (
+        TailComponents = [],
+        replace_one_io_format(ModuleInfo, HeadComponent,
+            MaybeStreamVar, IOInVar, IOOutVar, Goals,
+            !ValueVars, !VarSet, !VarTypes)
+    ;
+        TailComponents = [FirstTailComponent | LaterTailComponents],
+        varset.new_var(IOMidVar, !VarSet),
+        add_var_type(IOMidVar, io_state_type, !VarTypes),
+        replace_one_io_format(ModuleInfo, HeadComponent,
+            MaybeStreamVar, IOInVar, IOMidVar, HeadComponentGoals,
+            !ValueVars, !VarSet, !VarTypes),
+        replace_io_format_nonempty(ModuleInfo,
+            FirstTailComponent, LaterTailComponents,
+            MaybeStreamVar, IOMidVar, IOOutVar, TailComponentsGoals,
+            !ValueVars, !VarSet, !VarTypes),
+        Goals = HeadComponentGoals ++ TailComponentsGoals
+    ).
+
+:- pred replace_one_io_format(module_info::in, flat_component::in,
+    maybe(prog_var)::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
+    set_of_progvar::in, set_of_progvar::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+replace_one_io_format(ModuleInfo, Component, MaybeStreamVar,
+        IOInVar, IOOutVar, Goals, !ValueVars, !VarSet, !VarTypes) :-
+    represent_component(ModuleInfo, Component,
+        no, ComponentVar, ComponentGoals, !ValueVars, !VarSet, !VarTypes),
+    (
+        MaybeStreamVar = yes(StreamVar),
+        ArgVars = [StreamVar, ComponentVar, IOInVar, IOOutVar]
+    ;
+        MaybeStreamVar = no,
+        ArgVars = [ComponentVar, IOInVar, IOOutVar]
+    ),
+    Uniq = ground(unique, none),
+    Clobbered = ground(clobbered, none),
+    InstMapDelta = instmap_delta_from_assoc_list(
+        [IOInVar - Clobbered, IOOutVar - Uniq]),
+    generate_simple_call(mercury_io_module, "write_string",
+        pf_predicate, only_mode, detism_det, purity_pure, ArgVars, [],
+        InstMapDelta, ModuleInfo, term.context_init, CallGoal),
+    Goals = ComponentGoals ++ [CallGoal].
+
+%-----------------------------------------------------------------------------%
+
+:- pred represent_component(module_info::in, flat_component::in,
+    maybe(prog_var)::in, prog_var::out, list(hlds_goal)::out,
+    set_of_progvar::in, set_of_progvar::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+represent_component(ModuleInfo, Component, MaybeResultVar, ResultVar,
+        Goals, !ValueVars, !VarSet, !VarTypes) :-
+    (
+        Component = flat_string_const(StringConstant),
+        make_result_var_if_needed(MaybeResultVar, ResultVar,
+            !VarSet, !VarTypes),
+        make_string_const_construction(ResultVar, StringConstant, Goal),
+        Goals = [Goal]
+    ;
+        Component = flat_format_char(Flags, MaybeWidth, ValueVar),
+        set_of_var.insert(ValueVar, !ValueVars),
+        make_result_var_if_needed(MaybeResultVar, ResultVar,
+            !VarSet, !VarTypes),
+        build_flags_arg(Flags, FlagsVar, FlagsGoals, !VarSet, !VarTypes),
+        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
+            !VarSet, !VarTypes),
+        generate_simple_call(mercury_string_format_module,
+            "format_char_component" ++ WidthSuffix,
+            pf_predicate, only_mode, detism_det, purity_pure,
+            [FlagsVar] ++ WidthVars ++ [ValueVar, ResultVar], [],
+            instmap_delta_from_assoc_list(
+                [ResultVar - ground(unique, none)]),
+            ModuleInfo, term.context_init, CallGoal),
+        Goals = FlagsGoals ++ WidthGoals ++ [CallGoal]
+    ;
+        Component = flat_format_string(Flags, MaybeWidth, MaybePrec, ValueVar),
+        set_of_var.insert(ValueVar, !ValueVars),
+        make_result_var_if_needed(MaybeResultVar, ResultVar,
+            !VarSet, !VarTypes),
+        build_flags_arg(Flags, FlagsVar, FlagsGoals, !VarSet, !VarTypes),
+        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
+            !VarSet, !VarTypes),
+        maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
+            !VarSet, !VarTypes),
+        generate_simple_call(mercury_string_format_module,
+            "format_string_component" ++ WidthSuffix ++ PrecSuffix,
+            pf_predicate, only_mode, detism_det, purity_pure,
+            [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar], [],
+            instmap_delta_from_assoc_list(
+                [ResultVar - ground(unique, none)]),
+            ModuleInfo, term.context_init, CallGoal),
+        Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [CallGoal]
+    ;
+        Component = flat_format_signed_int(Flags, MaybeWidth, MaybePrec,
+            ValueVar),
+        set_of_var.insert(ValueVar, !ValueVars),
+        make_result_var_if_needed(MaybeResultVar, ResultVar,
+            !VarSet, !VarTypes),
+        build_flags_arg(Flags, FlagsVar, FlagsGoals, !VarSet, !VarTypes),
+        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
+            !VarSet, !VarTypes),
+        maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
+            !VarSet, !VarTypes),
+        generate_simple_call(mercury_string_format_module,
+            "format_signed_int_component" ++ WidthSuffix ++ PrecSuffix,
+            pf_predicate, only_mode, detism_det, purity_pure,
+            [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar], [],
+            instmap_delta_from_assoc_list(
+                [ResultVar - ground(unique, none)]),
+            ModuleInfo, term.context_init, CallGoal),
+        Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [CallGoal]
+    ;
+        Component = flat_format_unsigned_int(Flags, MaybeWidth, MaybePrec,
+            Base, ValueVar),
+        set_of_var.insert(ValueVar, !ValueVars),
+        make_result_var_if_needed(MaybeResultVar, ResultVar,
+            !VarSet, !VarTypes),
+        build_flags_arg(Flags, FlagsVar, FlagsGoals, !VarSet, !VarTypes),
+        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
+            !VarSet, !VarTypes),
+        maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
+            !VarSet, !VarTypes),
+        build_int_base_arg(Base, BaseVar, BaseGoal, !VarSet, !VarTypes),
+        generate_simple_call(mercury_string_format_module,
+            "format_unsigned_int_component" ++ WidthSuffix ++ PrecSuffix,
+            pf_predicate, only_mode, detism_det, purity_pure,
+            [FlagsVar] ++ WidthVars ++ PrecVars ++
+                [BaseVar, ValueVar, ResultVar], [],
+            instmap_delta_from_assoc_list(
+                [ResultVar - ground(unique, none)]),
+            ModuleInfo, term.context_init, CallGoal),
+        Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [BaseGoal, CallGoal]
+    ;
+        Component = flat_format_float(Flags, MaybeWidth, MaybePrec,
+            Kind, ValueVar),
+        set_of_var.insert(ValueVar, !ValueVars),
+        make_result_var_if_needed(MaybeResultVar, ResultVar,
+            !VarSet, !VarTypes),
+        build_flags_arg(Flags, FlagsVar, FlagsGoals, !VarSet, !VarTypes),
+        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
+            !VarSet, !VarTypes),
+        maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
+            !VarSet, !VarTypes),
+        build_float_kind_arg(Kind, KindVar, KindGoal, !VarSet, !VarTypes),
+        generate_simple_call(mercury_string_format_module,
+            "format_float_component" ++ WidthSuffix ++ PrecSuffix,
+            pf_predicate, only_mode, detism_det, purity_pure,
+            [FlagsVar] ++ WidthVars ++ PrecVars ++
+                [KindVar, ValueVar, ResultVar], [],
+            instmap_delta_from_assoc_list(
+                [ResultVar - ground(unique, none)]),
+            ModuleInfo, term.context_init, CallGoal),
+        Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [KindGoal, CallGoal]
+    ).
+
+    % This predicate generates code of the form
+    %
+    %   VarHash  = flag_hash_clear,
+    %   VarSpace = flag_hash_set,
+    %   VarZero  = flag_hash_clear,
+    %   VarMinus = flag_hash_clear,
+    %   VarPlus  = flag_hash_clear,
+    %   Flags = string_format_flags(VarHash, VarSpace, VarZero, VarMinus,
+    %       VarPlus)
+    %
+    % While this looke like a lot, it should actually compile down into
+    % a single machine instruction, due to the packing of enums inside
+    % structures.
+    %
+:- pred build_flags_arg(string_format_flags::in, prog_var::out,
+    list(hlds_goal)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+build_flags_arg(Flags, Var, Goals, !VarSet, !VarTypes) :-
+    Flags = string_format_flags(FlagHash, FlagSpace, FlagZero, 
+        FlagMinus, FlagPlus),
+    varset.new_var(VarHash,  !VarSet),
+    varset.new_var(VarSpace, !VarSet),
+    varset.new_var(VarZero,  !VarSet),
+    varset.new_var(VarMinus, !VarSet),
+    varset.new_var(VarPlus,  !VarSet),
+    ParseUtil = mercury_string_parse_util_module,
+    TypeSymNameHash  = qualified(ParseUtil, "string_format_flag_hash"),
+    TypeSymNameSpace = qualified(ParseUtil, "string_format_flag_space"),
+    TypeSymNameZero  = qualified(ParseUtil, "string_format_flag_zero"),
+    TypeSymNameMinus = qualified(ParseUtil, "string_format_flag_minus"),
+    TypeSymNamePlus  = qualified(ParseUtil, "string_format_flag_plus"),
+    TypeCtorHash  = type_ctor(TypeSymNameHash,  0),
+    TypeCtorSpace = type_ctor(TypeSymNameSpace, 0),
+    TypeCtorZero  = type_ctor(TypeSymNameZero,  0),
+    TypeCtorMinus = type_ctor(TypeSymNameMinus, 0),
+    TypeCtorPlus  = type_ctor(TypeSymNamePlus,  0),
+    TypeHash  = defined_type(TypeSymNameHash,  [], kind_star),
+    TypeSpace = defined_type(TypeSymNameSpace, [], kind_star),
+    TypeZero  = defined_type(TypeSymNameZero,  [], kind_star),
+    TypeMinus = defined_type(TypeSymNameMinus, [], kind_star),
+    TypePlus  = defined_type(TypeSymNamePlus,  [], kind_star),
+    add_var_type(VarHash,  TypeHash,  !VarTypes),
+    add_var_type(VarSpace, TypeSpace, !VarTypes),
+    add_var_type(VarZero,  TypeZero,  !VarTypes),
+    add_var_type(VarMinus, TypeMinus, !VarTypes),
+    add_var_type(VarPlus,  TypePlus,  !VarTypes),
+    (
+        FlagHash = flag_hash_clear,
+        ConsNameHash = "flag_hash_clear"
+    ;
+        FlagHash = flag_hash_set,
+        ConsNameHash = "flag_hash_set"
+    ),
+    (
+        FlagSpace = flag_space_clear,
+        ConsNameSpace = "flag_space_clear"
+    ;
+        FlagSpace = flag_space_set,
+        ConsNameSpace = "flag_space_set"
+    ),
+    (
+        FlagZero = flag_zero_clear,
+        ConsNameZero = "flag_zero_clear"
+    ;
+        FlagZero = flag_zero_set,
+        ConsNameZero = "flag_zero_set"
+    ),
+    (
+        FlagMinus = flag_minus_clear,
+        ConsNameMinus = "flag_minus_clear"
+    ;
+        FlagMinus = flag_minus_set,
+        ConsNameMinus = "flag_minus_set"
+    ),
+    (
+        FlagPlus = flag_plus_clear,
+        ConsNamePlus = "flag_plus_clear"
+    ;
+        FlagPlus = flag_plus_set,
+        ConsNamePlus = "flag_plus_set"
+    ),
+    ConsIdHash  = cons(qualified(ParseUtil, ConsNameHash),  0, TypeCtorHash),
+    ConsIdSpace = cons(qualified(ParseUtil, ConsNameSpace), 0, TypeCtorSpace),
+    ConsIdZero  = cons(qualified(ParseUtil, ConsNameZero),  0, TypeCtorZero),
+    ConsIdMinus = cons(qualified(ParseUtil, ConsNameMinus), 0, TypeCtorMinus),
+    ConsIdPlus  = cons(qualified(ParseUtil, ConsNamePlus),  0, TypeCtorPlus),
+    make_const_construction(VarHash,  ConsIdHash,  GoalHash),
+    make_const_construction(VarSpace, ConsIdSpace, GoalSpace),
+    make_const_construction(VarZero,  ConsIdZero,  GoalZero),
+    make_const_construction(VarMinus, ConsIdMinus, GoalMinus),
+    make_const_construction(VarPlus,  ConsIdPlus,  GoalPlus),
+
+    TypeNameCombine = qualified(ParseUtil, "string_format_flags"),
+    TypeCombine = defined_type(TypeNameCombine, [], kind_star),
+    varset.new_var(Var, !VarSet),
+    add_var_type(Var, TypeCombine, !VarTypes),
+
+    TypeCtorCombine = type_ctor(TypeNameCombine, 0),
+    ConsSymNameCombine = qualified(ParseUtil, "string_format_flags"),
+    ConsIdCombine = cons(ConsSymNameCombine, 5, TypeCtorCombine),
+    ComponentVars = [VarHash, VarSpace, VarZero, VarMinus, VarPlus],
+    construct_functor(Var, ConsIdCombine, ComponentVars, GoalCombine),
+
+    Goals = [GoalHash, GoalSpace, GoalZero, GoalMinus, GoalPlus, GoalCombine].
+
+    % Decide whether we have a specified width.
+    %
+    % If yes, return both the variable that represents the specified width
+    % and the goals that construct it.
+    %
+:- pred maybe_build_width_arg(compiler_format_maybe_width::in,
+    string::out, list(prog_var)::out, list(hlds_goal)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+maybe_build_width_arg(MaybeWidth, PredNameSuffix, MaybeWidthVar,
+        MaybeWidthGoals, !VarSet, !VarTypes) :-
+    (
+        MaybeWidth = compiler_no_specified_width,
+        PredNameSuffix = "_nowidth",
+        MaybeWidthVar = [],
+        MaybeWidthGoals = []
+    ;
+        MaybeWidth = compiler_manifest_width(WidthInt),
+        PredNameSuffix = "_width",
+        make_int_const_construction_alloc(WidthInt, no, WidthGoal, WidthVar,
+            !VarSet, !VarTypes),
+        MaybeWidthVar = [WidthVar],
+        MaybeWidthGoals = [WidthGoal]
+    ;
+        MaybeWidth = compiler_var_width(WidthVar),
+        PredNameSuffix = "_width",
+        MaybeWidthVar = [WidthVar],
+        MaybeWidthGoals = []
+    ).
+
+    % Decide whether we have a specified precision.
+    %
+    % If yes, return both the variable that represents the specified precision
+    % and the goals that construct it.
+    %
+:- pred maybe_build_prec_arg(compiler_format_maybe_prec::in,
+    string::out, list(prog_var)::out, list(hlds_goal)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+maybe_build_prec_arg(MaybePrec, PredNameSuffix, MaybePrecVar,
+        MaybePrecGoals, !VarSet, !VarTypes) :-
+    (
+        MaybePrec = compiler_no_specified_prec,
+        PredNameSuffix = "_noprec",
+        MaybePrecVar = [],
+        MaybePrecGoals = []
+    ;
+        MaybePrec = compiler_manifest_prec(PrecInt),
+        PredNameSuffix = "_prec",
+        make_int_const_construction_alloc(PrecInt, no, PrecGoal, PrecVar,
+            !VarSet, !VarTypes),
+        MaybePrecVar = [PrecVar],
+        MaybePrecGoals = [PrecGoal]
+    ;
+        MaybePrec = compiler_var_prec(PrecVar),
+        PredNameSuffix = "_prec",
+        MaybePrecVar = [PrecVar],
+        MaybePrecGoals = []
+    ).
+
+:- pred build_int_base_arg(string_format_int_base::in,
+    prog_var::out, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+build_int_base_arg(Base, Var, Goal, !VarSet, !VarTypes) :-
+    ParseUtil = mercury_string_parse_util_module,
+    TypeName = qualified(ParseUtil, "string_format_int_base"),
+    TypeCtor = type_ctor(TypeName, 0),
+    Type = defined_type(TypeName, [], kind_star),
+    (
+        Base = base_octal,
+        ConsName = "base_octal"
+    ;
+        Base = base_decimal,
+        ConsName = "base_decimal"
+    ;
+        Base = base_hex_lc,
+        ConsName = "base_hex_lc"
+    ;
+        Base = base_hex_uc,
+        ConsName = "base_hex_uc"
+    ;
+        Base = base_hex_p,
+        ConsName = "base_hex_p"
+    ),
+    ConsId = cons(qualified(ParseUtil, ConsName), 0, TypeCtor),
+    make_const_construction_alloc(ConsId, Type, no, Goal, Var,
+        !VarSet, !VarTypes).
+
+:- pred build_float_kind_arg(string_format_float_kind::in,
+    prog_var::out, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+build_float_kind_arg(Kind, Var, Goal, !VarSet, !VarTypes) :-
+    ParseUtil = mercury_string_parse_util_module,
+    TypeName = qualified(ParseUtil, "string_format_float_kind"),
+    TypeCtor = type_ctor(TypeName, 0),
+    Type = defined_type(TypeName, [], kind_star),
+    (
+        Kind = kind_e_scientific_lc,
+        ConsName = "kind_e_scientific_lc"
+    ;
+        Kind = kind_e_scientific_uc,
+        ConsName = "kind_e_scientific_uc"
+    ;
+        Kind = kind_f_plain_lc,
+        ConsName = "kind_f_plain_lc"
+    ;
+        Kind = kind_f_plain_uc,
+        ConsName = "kind_f_plain_uc"
+    ;
+        Kind = kind_g_flexible_lc,
+        ConsName = "kind_g_flexible_lc"
+    ;
+        Kind = kind_g_flexible_uc,
+        ConsName = "kind_g_flexible_uc"
+    ),
+    ConsId = cons(qualified(ParseUtil, ConsName), 0, TypeCtor),
+    make_const_construction_alloc(ConsId, Type, no, Goal, Var,
+        !VarSet, !VarTypes).
 
 :- pred make_result_var_if_needed(maybe(prog_var)::in, prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
@@ -1323,57 +1703,6 @@ make_result_var_if_needed(MaybeResultVar, ResultVar, !VarSet, !VarTypes) :-
         MaybeResultVar = no,
         varset.new_var(ResultVar, !VarSet),
         add_var_type(ResultVar, string_type, !VarTypes)
-    ).
-
-:- pred represent_component(module_info::in, string_component::in,
-    maybe(prog_var)::in, prog_var::out, list(hlds_goal)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
-
-represent_component(ModuleInfo, Component, MaybeResultVar, ResultVar,
-        Goals, !VarSet, !VarTypes) :-
-    (
-        Component = string_constant(StringConstant),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
-        make_string_const_construction(ResultVar, StringConstant, Goal),
-        Goals = [Goal]
-    ;
-        Component = var_to_print_int(IntVar),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
-        generate_simple_call(mercury_string_module, "int_to_string",
-            pf_function, only_mode, detism_det, purity_pure,
-            [IntVar, ResultVar], [],
-            instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none)]),
-            ModuleInfo, term.context_init, Goal),
-        Goals = [Goal]
-    ;
-        Component = var_to_print_float(FloatVar),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
-        generate_simple_call(mercury_string_module, "float_to_string",
-            pf_function, only_mode, detism_det, purity_pure,
-            [FloatVar, ResultVar], [],
-            instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none)]),
-            ModuleInfo, term.context_init, Goal),
-        Goals = [Goal]
-    ;
-        Component = var_to_print_char(CharVar),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
-        generate_simple_call(mercury_string_module, "char_to_string",
-            pf_function, only_mode, detism_det, purity_pure,
-            [CharVar, ResultVar], [],
-            instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none)]),
-            ModuleInfo, term.context_init, Goal),
-        Goals = [Goal]
-    ;
-        Component = var_to_print_string(StringVar),
-        ResultVar = StringVar,
-        Goals = []
     ).
 
 %-----------------------------------------------------------------------------%

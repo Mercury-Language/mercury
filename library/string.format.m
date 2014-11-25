@@ -17,10 +17,64 @@
 :- interface.
 
 :- import_module list.
+:- import_module string.parse_util.
 
 %---------------------------------------------------------------------------%
 
+    % The implementation of string.format. This is exported for use
+    % by string.m.
+    %
 :- pred format_impl(string::in, list(poly_type)::in, string::out) is det.
+
+    % Functions to print characters, strings, signed and unsigned ints,
+    % and floats. These versions of these functions are not called
+    % by the runtime, but they have calls generated to them by
+    % compiler/format_call.m. By having specialized versions for each
+    % possible combination of which of parameters (width and precision)
+    % are specified, we can avoid requiring the compiler to generate code
+    % that allocates memory on the heap.
+    %
+:- pred format_char_component_nowidth(string_format_flags::in,
+    char::in, string::out) is det.
+:- pred format_char_component_width(string_format_flags::in,
+    int::in, char::in, string::out) is det.
+
+:- pred format_string_component_nowidth_noprec(string_format_flags::in,
+    string::in, string::out) is det.
+:- pred format_string_component_nowidth_prec(string_format_flags::in,
+    int::in, string::in, string::out) is det.
+:- pred format_string_component_width_noprec(string_format_flags::in,
+    int::in, string::in, string::out) is det.
+:- pred format_string_component_width_prec(string_format_flags::in,
+    int::in, int::in, string::in, string::out) is det.
+
+:- pred format_signed_int_component_nowidth_noprec(string_format_flags::in,
+    int::in, string::out) is det.
+:- pred format_signed_int_component_nowidth_prec(string_format_flags::in,
+    int::in, int::in, string::out) is det.
+:- pred format_signed_int_component_width_noprec(string_format_flags::in,
+    int::in, int::in, string::out) is det.
+:- pred format_signed_int_component_width_prec(string_format_flags::in,
+    int::in, int::in, int::in, string::out) is det.
+
+:- pred format_unsigned_int_component_nowidth_noprec(string_format_flags::in,
+    string_format_int_base::in, int::in, string::out) is det.
+:- pred format_unsigned_int_component_nowidth_prec(string_format_flags::in,
+    int::in, string_format_int_base::in, int::in, string::out) is det.
+:- pred format_unsigned_int_component_width_noprec(string_format_flags::in,
+    int::in, string_format_int_base::in, int::in, string::out) is det.
+:- pred format_unsigned_int_component_width_prec(string_format_flags::in,
+    int::in, int::in, string_format_int_base::in, int::in, string::out) is det.
+
+:- pred format_float_component_nowidth_noprec(string_format_flags::in,
+    string_format_float_kind::in, float::in, string::out) is det.
+:- pred format_float_component_nowidth_prec(string_format_flags::in,
+    int::in, string_format_float_kind::in, float::in, string::out) is det.
+:- pred format_float_component_width_noprec(string_format_flags::in,
+    int::in, string_format_float_kind::in, float::in, string::out) is det.
+:- pred format_float_component_width_prec(string_format_flags::in,
+    int::in, int::in, string_format_float_kind::in, float::in, string::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -33,6 +87,7 @@
 :- import_module integer.
 :- import_module maybe.
 :- import_module require.
+:- import_module string.parse_runtime.
 
 %---------------------------------------------------------------------------%
 
@@ -52,119 +107,15 @@
 
 %---------------------------------------------------------------------------%
 
-:- type flag_hash
-    --->    flag_hash_clear
-    ;       flag_hash_set.
-
-:- type flag_space
-    --->    flag_space_clear
-    ;       flag_space_set.
-
-:- type flag_zero
-    --->    flag_zero_clear
-    ;       flag_zero_set.
-
-:- type flag_minus
-    --->    flag_minus_clear
-    ;       flag_minus_set.
-
-:- type flag_plus
-    --->    flag_plus_clear
-    ;       flag_plus_set.
-
-:- type flags
-    --->    flags(
-                flag_hash       :: flag_hash,
-                flag_space      :: flag_space,
-                flag_zero       :: flag_zero,
-                flag_minus      :: flag_minus,
-                flag_plus       :: flag_plus
-            ).
-
-:- type maybe_width == maybe(int).
-:- type maybe_prec == maybe(int).
-
-:- type int_base
-    --->    base_octal
-    ;       base_decimal
-    ;       base_hex_lc
-    ;       base_hex_uc
-    ;       base_hex_p.
-
-:- type float_kind
-    --->    kind_e_scientific_lc
-    ;       kind_e_scientific_uc
-    ;       kind_f_plain_lc
-    ;       kind_f_plain_uc
-    ;       kind_g_flexible_lc
-    ;       kind_g_flexible_uc.
-
-:- type format_str_spec
-    --->    spec_percent
-    ;       spec_signed_int(flags, maybe_width, maybe_prec, int)
-    ;       spec_unsigned_int(flags, maybe_width, maybe_prec, int_base, int)
-    ;       spec_float(flags, maybe_width, maybe_prec, float_kind, float)
-    ;       spec_char(flags, maybe_width, char)
-    ;       spec_string(flags, maybe_width, maybe_prec, string).
-
-:- type format_str_component
-    --->    comp_str(string)
-    ;       comp_conv_spec(format_str_spec).
-
-:- type poly_kind
-    --->    poly_kind_char
-    ;       poly_kind_str
-    ;       poly_kind_int
-    ;       poly_kind_float.
-
-:- type format_str_error
-    --->    error_no_specifier(
-                int,        % Which specifier were we expecting?
-                int         % How many extra polytypes?
-            )
-    ;       error_unknown_specifier(
-                int,        % Which specifier?
-                char        % The unexpected specifier character.
-            )
-    ;       error_wrong_polytype(
-                int,        % Which specifier?
-                char,       % The specifier character.
-                poly_kind   % The polytype we found.
-            )
-    ;       error_no_polytype(
-                int,        % Which specifier?
-                char        % The specifier character.
-            )
-    ;       error_nonint_star_width(
-                int,        % Which specifier?
-                poly_kind   % The non-i() polytype we found.
-            )
-    ;       error_missing_star_width(
-                int         % Which specifier?
-            )
-    ;       error_nonint_star_prec(
-                int,        % Which specifier?
-                poly_kind   % The non-i() polytype we found.
-            )
-    ;       error_missing_star_prec(
-                int         % Which specifier?
-            )
-    ;       error_extra_polytypes(
-                int,        % Which specifier were we expecting?
-                int         % How many extra polytypes?
-            ).
-
-%---------------------------------------------------------------------------%
-
 string.format.format_impl(FormatString, PolyList, String) :-
-    % The call tree of predicate should be optimised to turn over
+    % The call tree of this predicate should be optimised to turn over
     % the least amount of memory possible, since memory usage is a significant
     % problem for programs which do a lot of formatted IO.
     %
     % XXX The repeated string appends performed in the call tree
     % do still allocate nontrivial amounts of memory for temporaries.
     Chars = to_char_list(FormatString),
-    format_string_to_components(Chars, PolyList, 1, Components, Errors),
+    parse_format_string(Chars, PolyList, 1, Components, Errors),
     (
         Errors = [],
         components_to_strings(Components, ComponentStrs),
@@ -179,536 +130,13 @@ string.format.format_impl(FormatString, PolyList, String) :-
         % XXX We should try printing messages for all the errors, not just
         % the first, and see whether the usefulness of the extra information
         % outweighs the costs of any extra confusion.
-        Msg = format_str_error_to_msg(HeadError),
+        Msg = string_format_error_to_msg(HeadError),
         error("string.format", Msg)
     ).
 
-:- func format_str_error_to_msg(format_str_error) = string.
-
-format_str_error_to_msg(Error) = Msg :-
-    (
-        Error = error_no_specifier(SpecNum, NumExtraPolyTypes),
-        Msg0 = nth_specifier(SpecNum) ++ " is missing",
-        ( if NumExtraPolyTypes = 0 then
-            Msg = Msg0 ++ ", along with its input."
-        else if NumExtraPolyTypes = 1 then
-            Msg = Msg0 ++ "."
-        else
-            Msg = Msg0 ++ ", and there are "
-                ++ string.int_to_string(NumExtraPolyTypes - 1)
-                ++ " extra inputs."
-        )
-    ;
-        Error = error_unknown_specifier(SpecNum, SpecChar),
-        Msg = nth_specifier(SpecNum) ++ " uses the unknown "
-            ++ specifier_char(SpecChar) ++ "."
-    ;
-        Error = error_wrong_polytype(SpecNum, SpecChar, PolyKind),
-        Msg = nth_specifier(SpecNum) ++ " uses the "
-            ++ specifier_char(SpecChar)
-            ++ ", but the corresponding input is "
-            ++ poly_kind_desc(PolyKind) ++ "."
-    ;
-        Error = error_no_polytype(SpecNum, SpecChar),
-        Msg = nth_specifier(SpecNum)
-            ++ ", which uses " ++ specifier_char(SpecChar)
-            ++ ", is missing its input."
-    ;
-        Error = error_nonint_star_width(SpecNum, PolyKind),
-        Msg = nth_specifier(SpecNum)
-            ++ " says the width is a runtime input,"
-            ++ " but the next input is " ++ poly_kind_desc(PolyKind)
-            ++ ", not an integer."
-    ;
-        Error = error_missing_star_width(SpecNum),
-        Msg = nth_specifier(SpecNum)
-            ++ " says the width is a runtime input,"
-            ++ " but there is no next input."
-    ;
-        Error = error_nonint_star_prec(SpecNum, PolyKind),
-        Msg = nth_specifier(SpecNum)
-            ++ " says the precision is a runtime input,"
-            ++ " but the next input is " ++ poly_kind_desc(PolyKind)
-            ++ ", not an integer."
-    ;
-        Error = error_missing_star_prec(SpecNum),
-        Msg = nth_specifier(SpecNum)
-            ++ " says the precision is a runtime input,"
-            ++ " but there is no next input."
-    ;
-        Error = error_extra_polytypes(SpecNum, NumExtraPolyTypes),
-        ( if SpecNum = 1 then
-            % They aren't extra, since there is no other inputs before them.
-            Extra = ""
-        else
-            Extra = "extra "
-        ),
-        Msg0 = "There is no " ++ nth(SpecNum) ++ " conversion specifier,",
-        ( if NumExtraPolyTypes = 1 then
-            Msg = Msg0 ++ " but there is an " ++ Extra ++ "input."
-        else
-            Msg = Msg0 ++ " but there are " ++
-                string.int_to_string(NumExtraPolyTypes) ++ Extra ++ "inputs."
-        )
-    ).
-
-:- func nth_specifier(int) = string.
-
-nth_specifier(SpecNum) =
-    "The " ++ nth(SpecNum) ++ " conversion specifier".
-
-:- func nth(int) = string.
-
-nth(N) = NStr :-
-    ( if N = 1 then
-        NStr = "first"
-    else if N = 2 then
-        NStr = "second"
-    else if N = 3 then
-        NStr = "third"
-    else if N = 4 then
-        NStr = "fourth"
-    else if N = 5 then
-        NStr = "fifth"
-    else if N = 6 then
-        NStr = "sixth"
-    else if N = 7 then
-        NStr = "seventh"
-    else if N = 8 then
-        NStr = "eighth"
-    else if N = 9 then
-        NStr = "ninth"
-    else if N = 10 then
-        NStr = "tenth"
-    else
-        NStr = string.int_to_string(N) ++ "th"
-    ).
-
-:- func specifier_char(char) = string.
-
-specifier_char(SpecChar) =
-    "specifier character `" ++ string.char_to_string(SpecChar) ++ "'".
-
-:- func poly_kind_desc(poly_kind) = string.
-
-poly_kind_desc(poly_kind_char) = "a character".
-poly_kind_desc(poly_kind_str) = "a string".
-poly_kind_desc(poly_kind_int) = "an integer".
-poly_kind_desc(poly_kind_float) = "a float".
-
-:- func poly_type_to_kind(poly_type) = poly_kind.
-
-poly_type_to_kind(c(_)) = poly_kind_char.
-poly_type_to_kind(s(_)) = poly_kind_str.
-poly_type_to_kind(i(_)) = poly_kind_int.
-poly_type_to_kind(f(_)) = poly_kind_float.
-
 %---------------------------------------------------------------------------%
 
-    % This predicate parses the entire format string. When it encounters
-    % something that looks like a conversion specification (i.e. it starts
-    % with a '%' character), but which cannot be parsed as one, it records
-    % an error message, and keeps going.
-    %
-    % Note that making this predicate use an accumulator for the lists
-    % of components and errors seen so far would yield cleaner code,
-    % but would probably be slower since our caller would have to unreverse
-    % the list of components we return.
-    %
-    % The lack of tail recursion here should not be a problem, since no
-    % format string will be long enough to make us consume too much stack.
-    %
-:- pred format_string_to_components(list(char)::in,
-    list(string.poly_type)::in, int::in,
-    list(format_str_component)::out, list(format_str_error)::out) is det.
-
-format_string_to_components(!.Chars, !.PolyTypes, SpecNum,
-        Components, Errors) :-
-    gather_non_percent_chars(!.Chars, NonConversionSpecChars, GatherEndedBy),
-    (
-        GatherEndedBy = found_end_of_string,
-        Components0 = [],
-        (
-            !.PolyTypes = [],
-            Errors = []
-        ;
-            !.PolyTypes = [_ | _],
-            Error = error_extra_polytypes(SpecNum, list.length(!.PolyTypes)),
-            Errors = [Error]
-        )
-    ;
-        GatherEndedBy = found_percent(!:Chars),
-        parse_conversion_specification(!Chars, !PolyTypes, SpecNum,
-            Spec, SpecErrors),
-        format_string_to_components(!.Chars, !.PolyTypes, SpecNum + 1,
-            ComponentsTail, ErrorsTail),
-        (
-            SpecErrors = [],
-            ConvComponent = comp_conv_spec(Spec),
-            Components0 = [ConvComponent | ComponentsTail],
-            Errors = ErrorsTail
-        ;
-            SpecErrors = [_ | _],
-            Components0 = ComponentsTail,
-            Errors = SpecErrors ++ ErrorsTail
-        )
-    ),
-    (
-        NonConversionSpecChars = [],
-        Components = Components0
-    ;
-        NonConversionSpecChars = [_ | _],
-        NonConversionSpecString =
-            string.from_char_list(NonConversionSpecChars),
-        StringComponent = comp_str(NonConversionSpecString),
-        Components = [StringComponent | Components0]
-    ).
-
-:- type gather_ended_by
-    --->    found_end_of_string
-    ;       found_percent(list(char)).  % The list of chars after the percent.
-
-    % Parse a string which doesn't contain any conversion specifications.
-    %
-:- pred gather_non_percent_chars(list(char)::in, list(char)::out,
-    gather_ended_by::out) is det.
-
-gather_non_percent_chars(Chars, NonConversionSpecChars, GatherEndedBy) :-
-    (
-        Chars = [HeadChar | TailChars],
-        ( if HeadChar = '%' then
-            NonConversionSpecChars = [],
-            % We eat the percent sign.
-            GatherEndedBy = found_percent(TailChars)
-        else
-            gather_non_percent_chars(TailChars, TailNonConversionSpecChars,
-                GatherEndedBy),
-            NonConversionSpecChars = [HeadChar | TailNonConversionSpecChars]
-        )
-    ;
-        Chars = [],
-        NonConversionSpecChars = [],
-        GatherEndedBy = found_end_of_string
-    ).
-
-    % Each conversion specification starts with the character '%' (which
-    % our caller has already read) and ends with a conversion specifier.
-    % In between there may be (in this order) zero or more flags, an optional
-    % minimum field width, and an optional precision.
-    %
-:- pred parse_conversion_specification(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out, int::in,
-    format_str_spec::out, list(format_str_error)::out) is det.
-
-parse_conversion_specification(!Chars, !PolyTypes, SpecNum, Spec, Errors) :-
-    Flags0 = flags(flag_hash_clear, flag_space_clear, flag_zero_clear,
-        flag_minus_clear, flag_plus_clear),
-    gather_flag_chars(!Chars, Flags0, Flags),
-    get_optional_width(!Chars, !PolyTypes, SpecNum, MaybeWidth, WidthErrors),
-    get_optional_prec(!Chars, !PolyTypes, SpecNum, MaybePrec, PrecErrors),
-    get_first_spec(!Chars, !PolyTypes, Flags, MaybeWidth, MaybePrec, SpecNum,
-        Spec, SpecErrors),
-    Errors = WidthErrors ++ PrecErrors ++ SpecErrors.
-
-    % Record and skip past any flag characters at the start of the char list.
-    %
-:- pred gather_flag_chars(list(char)::in, list(char)::out,
-    flags::in, flags::out) is det.
-
-gather_flag_chars(!Chars, !Flags) :-
-    % XXX Should we return an error if we find that the format string
-    % sets the same flag twice?
-    ( if
-        !.Chars = [Char | !:Chars],
-        ( Char = '#',   !Flags ^ flag_hash  := flag_hash_set
-        ; Char = ' ',   !Flags ^ flag_space := flag_space_set
-        ; Char = '0',   !Flags ^ flag_zero  := flag_zero_set
-        ; Char = ('-'), !Flags ^ flag_minus := flag_minus_set
-        ; Char = ('+'), !Flags ^ flag_plus  := flag_plus_set
-        )
-    then
-        gather_flag_chars(!Chars, !Flags)
-    else
-        true
-    ).
-
-    % Do we have a minimum field width? If yes, get it.
-    %
-:- pred get_optional_width(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out, int::in,
-    maybe_width::out, list(format_str_error)::out) is det.
-
-get_optional_width(!Chars, !PolyTypes, SpecNum, MaybeWidth, Errors) :-
-    ( if !.Chars = ['*' | !:Chars] then
-        (
-            !.PolyTypes = [PolyType | !:PolyTypes],
-            ( if PolyType = i(PolyWidth) then
-                MaybeWidth = yes(PolyWidth),
-                Errors = []
-            else
-                MaybeWidth = no,
-                Errors = [error_nonint_star_width(SpecNum,
-                    poly_type_to_kind(PolyType))]
-            )
-        ;
-            !.PolyTypes = [],
-            MaybeWidth = no,
-            Errors = [error_missing_star_width(SpecNum)]
-        )
-    else if get_nonzero_number_prefix(!Chars, Width) then
-        MaybeWidth = yes(Width),
-        Errors = []
-    else
-        MaybeWidth = no,
-        Errors = []
-    ).
-
-    % Do we have a precision? If yes, get it.
-    %
-:- pred get_optional_prec(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out, int::in,
-    maybe_prec::out, list(format_str_error)::out) is det.
-
-get_optional_prec(!Chars, !PolyTypes, SpecNum, MaybePrec, Errors) :-
-    ( if !.Chars = ['.' | !:Chars] then
-        ( if !.Chars = ['*' | !:Chars] then
-            (
-                !.PolyTypes = [PolyType | !:PolyTypes],
-                ( if PolyType = i(PolyPrec) then
-                    MaybePrec = yes(PolyPrec),
-                    Errors = []
-                else
-                    MaybePrec = no,
-                    Errors = [error_nonint_star_prec(SpecNum,
-                        poly_type_to_kind(PolyType))]
-                )
-            ;
-                !.PolyTypes = [],
-                MaybePrec = no,
-                Errors = [error_missing_star_prec(SpecNum)]
-            )
-        else
-            % This treats an empty string as an EXPLICIT zero.
-            get_number_prefix(!Chars, 0, Prec),
-            MaybePrec = yes(Prec),
-            Errors = []
-        )
-    else
-        MaybePrec = no,
-        Errors = []
-    ).
-
-:- pred get_nonzero_number_prefix(list(char)::in, list(char)::out,
-    int::out) is semidet.
-
-get_nonzero_number_prefix(!Chars, N) :-
-    !.Chars = [Char | !:Chars],
-    Char \= '0',
-    char.decimal_digit_to_int(Char, CharValue),
-    get_number_prefix(!Chars, CharValue, N).
-
-:- pred get_number_prefix(list(char)::in, list(char)::out,
-    int::in, int::out) is det.
-
-get_number_prefix(!Chars, N0, N) :-
-    ( if
-        !.Chars = [Char | !:Chars],
-        char.decimal_digit_to_int(Char, CharValue)
-    then
-        N1 = N0 * 10 + CharValue,
-        get_number_prefix(!Chars, N1, N)
-    else
-        N = N0
-    ).
-
-%---------------------------------------------------------------------------%
-
-    % get_first_spec(!Chars, !PolyTypes, Flags, MaybeWidth, MaybePrec,
-    %   SpecNum, Spec, Errors):
-    %
-    % Try to read one conversion specifier, whose percent sign, flags,
-    % width and precision have already been read, from !Chars.
-    %
-    % If successful, consume the corresponding poly_type from !PolyTypes,
-    % we return the specifier as Spec and return an empty error list.
-    %
-    % If there is a problem, we return a garbage Spec and a nonempty
-    % errors list. We also consume the poly_type that corresponds
-    % (or at least, looks like it corresponds) to the specifier,
-    % if there is one.
-    %
-:- pred get_first_spec(list(char)::in, list(char)::out,
-    list(string.poly_type)::in, list(string.poly_type)::out,
-    flags::in, maybe_width::in, maybe_prec::in, int::in,
-    format_str_spec::out, list(format_str_error)::out) is det.
-
-get_first_spec(!Chars, !PolyTypes, _Flags, _MaybeWidth, _MaybePrec, SpecNum,
-        Spec, Errors) :-
-    !.Chars = [],
-    Spec = spec_percent,
-    Errors = [error_no_specifier(SpecNum, list.length(!.PolyTypes))].
-get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
-        Spec, Errors) :-
-    !.Chars = [SpecChar | !:Chars],
-    ( if
-        (
-            SpecChar = '%',
-            SpecPrime = spec_percent,
-            ErrorsPrime = []
-        ;
-            ( SpecChar = 'd'
-            ; SpecChar = 'i'
-            ),
-            require_det
-            (
-                !.PolyTypes = [SpecPolyType | !:PolyTypes],
-                ( if SpecPolyType = i(Int) then
-                    % Base is always decimal
-                    SpecPrime = spec_signed_int(!.Flags,
-                        MaybeWidth, MaybePrec, Int),
-                    ErrorsPrime = []
-                else
-                    Error = error_wrong_polytype(SpecNum, SpecChar,
-                        poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = spec_percent,
-                    ErrorsPrime = [Error]
-                )
-            ;
-                !.PolyTypes = [],
-                Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = spec_percent,
-                ErrorsPrime = [Error]
-            )
-        ;
-            (
-                SpecChar = 'o',
-                Base = base_octal
-            ;
-                SpecChar = 'u',
-                Base = base_decimal
-            ;
-                SpecChar = 'x',
-                Base = base_hex_lc
-            ;
-                SpecChar = 'X',
-                Base = base_hex_uc
-            ;
-                SpecChar = 'p',
-                Base = base_hex_p,
-                % XXX This should not be necessary.
-                !Flags ^ flag_hash := flag_hash_set
-            ),
-            require_det
-            (
-                !.PolyTypes = [SpecPolyType | !:PolyTypes],
-                ( if SpecPolyType = i(Int) then
-                    SpecPrime = spec_unsigned_int(!.Flags,
-                        MaybeWidth, MaybePrec, Base, Int),
-                    ErrorsPrime = []
-                else
-                    Error = error_wrong_polytype(SpecNum, SpecChar,
-                        poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = spec_percent,
-                    ErrorsPrime = [Error]
-                )
-            ;
-                !.PolyTypes = [],
-                Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = spec_percent,
-                ErrorsPrime = [Error]
-            )
-        ;
-            (
-                SpecChar = 'e',
-                FloatKind = kind_e_scientific_lc
-            ;
-                SpecChar = 'E',
-                FloatKind = kind_e_scientific_uc
-            ;
-                SpecChar = 'f',
-                FloatKind = kind_f_plain_lc
-            ;
-                SpecChar = 'F',
-                FloatKind = kind_f_plain_uc
-            ;
-                SpecChar = 'g',
-                FloatKind = kind_g_flexible_lc
-            ;
-                SpecChar = 'G',
-                FloatKind = kind_g_flexible_uc
-            ),
-            require_det
-            (
-                !.PolyTypes = [SpecPolyType | !:PolyTypes],
-                ( if SpecPolyType = f(Float) then
-                    SpecPrime = spec_float(!.Flags,
-                        MaybeWidth, MaybePrec, FloatKind, Float),
-                    ErrorsPrime = []
-                else
-                    Error = error_wrong_polytype(SpecNum, SpecChar,
-                        poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = spec_percent,
-                    ErrorsPrime = [Error]
-                )
-            ;
-                !.PolyTypes = [],
-                Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = spec_percent,
-                ErrorsPrime = [Error]
-            )
-        ;
-            SpecChar = 'c',
-            require_det
-            (
-                !.PolyTypes = [SpecPolyType | !:PolyTypes],
-                ( if SpecPolyType = c(Char) then
-                    % XXX Should we generate an error if MaybePrec = yes(...)?
-                    SpecPrime = spec_char(!.Flags, MaybeWidth, Char),
-                    ErrorsPrime = []
-                else
-                    Error = error_wrong_polytype(SpecNum, SpecChar,
-                        poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = spec_percent,
-                    ErrorsPrime = [Error]
-                )
-            ;
-                !.PolyTypes = [],
-                Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = spec_percent,
-                ErrorsPrime = [Error]
-            )
-        ;
-            SpecChar = 's',
-            require_det
-            (
-                !.PolyTypes = [SpecPolyType | !:PolyTypes],
-                ( if SpecPolyType = s(Str) then
-                    SpecPrime = spec_string(!.Flags,
-                        MaybeWidth, MaybePrec, Str),
-                    ErrorsPrime = []
-                else
-                    Error = error_wrong_polytype(SpecNum, SpecChar,
-                        poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = spec_percent,
-                    ErrorsPrime = [Error]
-                )
-            ;
-                !.PolyTypes = [],
-                Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = spec_percent,
-                ErrorsPrime = [Error]
-            )
-        )
-    then
-        Spec = SpecPrime,
-        Errors = ErrorsPrime
-    else
-        Error = error_unknown_specifier(SpecNum, SpecChar),
-        Spec = spec_percent,
-        Errors = [Error]
-    ).
-
-:- pred components_to_strings(list(format_str_component)::in,
+:- pred components_to_strings(list(string_format_component)::in,
     list(string)::out) is det.
 
 components_to_strings([], []).
@@ -716,7 +144,7 @@ components_to_strings([Component | Components], [String | Strings]) :-
     component_to_string(Component, String),
     components_to_strings(Components, Strings).
 
-:- pred component_to_string(format_str_component::in, string::out) is det.
+:- pred component_to_string(string_format_component::in, string::out) is det.
 
 component_to_string(Component, String) :-
     Component = comp_str(String).
@@ -752,28 +180,133 @@ component_to_string(Component, String) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred format_char_component(flags::in, maybe_width::in, char::in,
-    string::out) is det.
+format_char_component_nowidth(Flags, Char, String) :-
+    MaybeWidth = no_specified_width,
+    format_char_component(Flags, MaybeWidth, Char, String).
+
+format_char_component_width(Flags, Width, Char, String) :-
+    MaybeWidth = specified_width(Width),
+    format_char_component(Flags, MaybeWidth, Char, String).
+
+%---------------------------------------------------------------------------%
+
+format_string_component_nowidth_noprec(Flags, Str, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = no_specified_prec,
+    format_string_component(Flags, MaybeWidth, MaybePrec, Str, String).
+
+format_string_component_nowidth_prec(Flags, Prec, Str, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = specified_prec(Prec),
+    format_string_component(Flags, MaybeWidth, MaybePrec, Str, String).
+
+format_string_component_width_noprec(Flags, Width, Str, String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = no_specified_prec,
+    format_string_component(Flags, MaybeWidth, MaybePrec, Str, String).
+
+format_string_component_width_prec(Flags, Width, Prec, Str, String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = specified_prec(Prec),
+    format_string_component(Flags, MaybeWidth, MaybePrec, Str, String).
+
+%---------------------------------------------------------------------------%
+
+format_signed_int_component_nowidth_noprec(Flags, Int, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = no_specified_prec,
+    format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int, String).
+
+format_signed_int_component_nowidth_prec(Flags, Prec, Int, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = specified_prec(Prec),
+    format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int, String).
+
+format_signed_int_component_width_noprec(Flags, Width, Int, String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = no_specified_prec,
+    format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int, String).
+
+format_signed_int_component_width_prec(Flags, Width, Prec, Int, String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = specified_prec(Prec),
+    format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int, String).
+
+%---------------------------------------------------------------------------%
+
+format_unsigned_int_component_nowidth_noprec(Flags, Base, Int, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = no_specified_prec,
+    format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
+        String).
+
+format_unsigned_int_component_nowidth_prec(Flags, Prec, Base, Int, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = specified_prec(Prec),
+    format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
+        String).
+
+format_unsigned_int_component_width_noprec(Flags, Width, Base, Int, String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = no_specified_prec,
+    format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
+        String).
+
+format_unsigned_int_component_width_prec(Flags, Width, Prec, Base, Int,
+        String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = specified_prec(Prec),
+    format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
+        String).
+
+%---------------------------------------------------------------------------%
+
+format_float_component_nowidth_noprec(Flags, Kind, Float, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = no_specified_prec,
+    format_float_component(Flags, MaybeWidth, MaybePrec, Kind, Float, String).
+
+format_float_component_nowidth_prec(Flags, Prec, Kind, Float, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = specified_prec(Prec),
+    format_float_component(Flags, MaybeWidth, MaybePrec, Kind, Float, String).
+
+format_float_component_width_noprec(Flags, Width, Kind, Float, String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = no_specified_prec,
+    format_float_component(Flags, MaybeWidth, MaybePrec, Kind, Float, String).
+
+format_float_component_width_prec(Flags, Width, Prec, Kind, Float, String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = specified_prec(Prec),
+    format_float_component(Flags, MaybeWidth, MaybePrec, Kind, Float, String).
+
+%---------------------------------------------------------------------------%
+
+:- pred format_char_component(string_format_flags::in,
+    string_format_maybe_width::in, char::in, string::out) is det.
 
 format_char_component(Flags, MaybeWidth, Char, String) :-
     ( if using_sprintf_for_char(Char) then
-        FormatStr = make_format(Flags, MaybeWidth, no, "", "c"),
+        FormatStr = make_format(Flags, MaybeWidth, no_specified_prec,
+            "", "c"),
         String = native_format_char(FormatStr, Char)
     else
         String = format_char(Flags, MaybeWidth, Char)
     ).
 
-:- pred format_string_component(flags::in, maybe_width::in, maybe_prec::in,
+:- pred format_string_component(string_format_flags::in,
+    string_format_maybe_width::in, string_format_maybe_prec::in,
     string::in, string::out) is det.
 
 format_string_component(Flags, MaybeWidth, MaybePrec, Str, String) :-
     ( if
         (
             using_sprintf,
-            Flags = flags(flag_hash_clear, flag_space_clear,
+            Flags = string_format_flags(flag_hash_clear, flag_space_clear,
                 flag_zero_clear, flag_minus_clear, flag_plus_clear),
-            MaybeWidth = no,
-            MaybePrec = no
+            MaybeWidth = no_specified_width,
+            MaybePrec = no_specified_prec
         ;
             using_sprintf_for_string(Str)
         )
@@ -784,8 +317,9 @@ format_string_component(Flags, MaybeWidth, MaybePrec, Str, String) :-
         String = format_string(Flags, MaybeWidth, MaybePrec, Str)
     ).
 
-:- pred format_signed_int_component(flags::in,
-    maybe_width::in, maybe_prec::in, int::in, string::out) is det.
+:- pred format_signed_int_component(string_format_flags::in,
+    string_format_maybe_width::in, string_format_maybe_prec::in,
+    int::in, string::out) is det.
 
 format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int, String) :-
     ( if using_sprintf then
@@ -797,9 +331,9 @@ format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int, String) :-
         String = format_signed_int(Flags, MaybeWidth, MaybePrec, Int)
     ).
 
-:- pred format_unsigned_int_component(flags::in,
-    maybe_width::in, maybe_prec::in, int_base::in, int::in, string::out)
-    is det.
+:- pred format_unsigned_int_component(string_format_flags::in,
+    string_format_maybe_width::in, string_format_maybe_prec::in,
+    string_format_int_base::in, int::in, string::out) is det.
 
 format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
         String) :-
@@ -817,9 +351,9 @@ format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
         String = format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int)
     ).
 
-:- pred format_float_component(flags::in,
-    maybe_width::in, maybe_prec::in, float_kind::in, float::in, string::out)
-    is det.
+:- pred format_float_component(string_format_flags::in,
+    string_format_maybe_width::in, string_format_maybe_prec::in,
+    string_format_float_kind::in, float::in, string::out) is det.
 
 format_float_component(Flags, MaybeWidth, MaybePrec, Kind, Float, String) :-
     ( if
@@ -844,7 +378,8 @@ format_float_component(Flags, MaybeWidth, MaybePrec, Kind, Float, String) :-
 
     % Construct a format string.
     %
-:- func make_format(flags, maybe_width, maybe_prec, string, string) = string.
+:- func make_format(string_format_flags, string_format_maybe_width,
+    string_format_maybe_prec, string, string) = string.
 
 make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
     ( if using_sprintf then
@@ -928,11 +463,12 @@ using_sprintf_for_string(_) :-
 
     % Construct a format string suitable to passing to sprintf.
     %
-:- func make_format_sprintf(flags, maybe_width, maybe_prec, string,
-    string) = string.
+:- func make_format_sprintf(string_format_flags, string_format_maybe_width,
+    string_format_maybe_prec, string, string) = string.
 
 make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
-    Flags = flags(FlagHash, FlagSpace, FlagZero, FlagMinus, FlagPlus),
+    Flags = string_format_flags(FlagHash, FlagSpace, FlagZero,
+        FlagMinus, FlagPlus),
     ( FlagHash  = flag_hash_clear,  FlagHashStr  = ""
     ; FlagHash  = flag_hash_set,    FlagHashStr  = "#"
     ),
@@ -949,18 +485,18 @@ make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
     ; FlagPlus  = flag_plus_set,    FlagPlusStr  = "+"
     ),
     (
-        MaybeWidth = yes(Width),
+        MaybeWidth = specified_width(Width),
         WidthStr = int_to_string(Width)
     ;
-        MaybeWidth = no,
+        MaybeWidth = no_specified_width,
         WidthStr = ""
     ),
     (
-        MaybePrec = yes(Prec),
+        MaybePrec = specified_prec(Prec),
         PrecPrefixStr = ".",
         PrecStr = int_to_string(Prec)
     ;
-        MaybePrec = no,
+        MaybePrec = no_specified_prec,
         PrecPrefixStr = "",
         PrecStr = ""
     ),
@@ -973,25 +509,25 @@ make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
     % XXX this code is not yet complete. We need to do a lot more work
     % to make this work perfectly.
     %
-:- func make_format_dotnet(flags, maybe_width, maybe_prec, string,
-    string) = string.
+:- func make_format_dotnet(string_format_flags, string_format_maybe_width,
+    string_format_maybe_prec, string, string) = string.
 
 make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0)
         = String :-
     (
-        MaybeWidth = yes(Width),
+        MaybeWidth = specified_width(Width),
         WidthPrefixStr = ",",
         WidthStr = int_to_string(Width)
     ;
-        MaybeWidth = no,
+        MaybeWidth = no_specified_width,
         WidthPrefixStr = "",
         WidthStr = ""
     ),
     (
-        MaybePrec = yes(Prec),
+        MaybePrec = specified_prec(Prec),
         PrecStr = int_to_string(Prec)
     ;
-        MaybePrec = no,
+        MaybePrec = no_specified_prec,
         PrecStr = ""
     ),
     ( if Spec0 = "i" then
@@ -1111,7 +647,8 @@ native_format_char(_, _) = _ :-
 
     % Format a character.
     %
-:- func format_char(flags, maybe_width, char) = string.
+:- func format_char(string_format_flags, string_format_maybe_width, char)
+    = string.
 
 format_char(Flags, MaybeWidth, Char) = String :-
     CharStr = string.char_to_string(Char),
@@ -1119,26 +656,28 @@ format_char(Flags, MaybeWidth, Char) = String :-
 
     % Format a string.
     %
-:- func format_string(flags, maybe_width, maybe_prec, string) = string.
+:- func format_string(string_format_flags, string_format_maybe_width,
+    string_format_maybe_prec, string) = string.
 
 format_string(Flags, MaybeWidth, MaybePrec, OldStr) = NewStr :-
     (
-        MaybePrec = yes(NumChars),
+        MaybePrec = specified_prec(NumChars),
         PrecStr = string.left_by_codepoint(OldStr, NumChars)
     ;
-        MaybePrec = no,
+        MaybePrec = no_specified_prec,
         PrecStr = OldStr
     ),
     NewStr = justify_string(Flags, MaybeWidth, PrecStr).
 
-:- func format_signed_int(flags, maybe_width, maybe_prec, int) = string.
+:- func format_signed_int(string_format_flags, string_format_maybe_width,
+    string_format_maybe_prec, int) = string.
 
 format_signed_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
     ( if Int = 0 then
         % Zero is a special case. The abs_integer_to_decimal function
         % returns "" for 0, but returning no digits at all is ok
         % only if our caller explicitly allowed us to do so.
-        ( if MaybePrec = yes(0) then
+        ( if MaybePrec = specified_prec(0) then
             AbsIntStr = ""
         else
             AbsIntStr = "0"
@@ -1166,7 +705,7 @@ format_signed_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
 
     % Do we need to increase precision?
     ( if
-        MaybePrec = yes(Prec),
+        MaybePrec = specified_prec(Prec),
         Prec > AbsIntStrLength
     then
         PrecStr = string.pad_left(AbsIntStr, '0', Prec)
@@ -1176,11 +715,11 @@ format_signed_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
 
     % Do we need to pad to the field width?
     ( if
-        MaybeWidth = yes(Width),
+        MaybeWidth = specified_width(Width),
         Width > string.count_codepoints(PrecStr),
         Flags ^ flag_zero = flag_zero_set,
         Flags ^ flag_minus = flag_minus_clear,
-        MaybePrec = no
+        MaybePrec = no_specified_prec
     then
         FieldStr = string.pad_left(PrecStr, '0', Width - 1),
         ZeroPadded = yes
@@ -1198,15 +737,15 @@ format_signed_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
     % Format an unsigned int, unsigned octal, or unsigned hexadecimal
     % (u,o,x,X,p).
     %
-:- func format_unsigned_int(flags, maybe_width, maybe_prec, int_base, int)
-    = string.
+:- func format_unsigned_int(string_format_flags, string_format_maybe_width,
+    string_format_maybe_prec, string_format_int_base, int) = string.
 
 format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
     ( if Int = 0 then
         % Zero is a special case. The abs_integer_to_decimal function
         % returns "" for 0, but returning no digits at all is ok
         % only if our caller explicitly allowed us to do so.
-        ( if MaybePrec = yes(0) then
+        ( if MaybePrec = specified_prec(0) then
             AbsIntStr = ""
         else
             AbsIntStr = "0"
@@ -1261,7 +800,7 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
 
     % Do we need to increase precision?
     ( if
-        MaybePrec = yes(Prec),
+        MaybePrec = specified_prec(Prec),
         Prec > AbsIntStrLength
     then
         PrecStr = string.pad_left(AbsIntStr, '0', Prec)
@@ -1282,11 +821,11 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
 
     % Do we need to pad to the field width?
     ( if
-        MaybeWidth = yes(Width),
+        MaybeWidth = specified_width(Width),
         Width > string.count_codepoints(PrecModStr),
         Flags ^ flag_zero = flag_zero_set,
         Flags ^ flag_minus = flag_minus_clear,
-        MaybePrec = no
+        MaybePrec = no_specified_prec
     then
         % Do we need to make room for "0x" or "0X" ?
         ( if
@@ -1340,8 +879,8 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
 
     % Format a float.
     %
-:- func format_float(flags, maybe_width, maybe_prec, float_kind, float)
-    = string.
+:- func format_float(string_format_flags, string_format_maybe_width,
+    string_format_maybe_prec, string_format_float_kind, float) = string.
 
 format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
     ( if is_nan(Float) then
@@ -1391,7 +930,7 @@ format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
             % Do we need to remove the decimal point?
             ( if
                 Flags ^ flag_hash = flag_hash_clear,
-                MaybePrec = yes(0)
+                MaybePrec = specified_prec(0)
             then
                 split_at_decimal_point(PrecStr, BaseStr, ExponentStr),
                 PrecModStr = BaseStr ++ ExponentStr
@@ -1408,7 +947,7 @@ format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
             % Do we need to remove the decimal point?
             ( if
                 Flags ^ flag_hash = flag_hash_clear,
-                MaybePrec = yes(0)
+                MaybePrec = specified_prec(0)
             then
                 PrecStrLen = string.count_codepoints(PrecStr),
                 PrecModStr = string.between(PrecStr, 0, PrecStrLen - 1)
@@ -1428,7 +967,7 @@ format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
 
         % Do we need to change field width?
         ( if
-            MaybeWidth = yes(Width),
+            MaybeWidth = specified_width(Width),
             Width > string.count_codepoints(PrecModStr),
             Flags ^ flag_zero = flag_zero_set,
             Flags ^ flag_minus = flag_minus_clear
@@ -1446,39 +985,39 @@ format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
     ),
     String = justify_string(Flags, MaybeWidth, SignedStr).
 
-:- func get_prec_to_use(maybe_prec) = int.
+:- func get_prec_to_use(string_format_maybe_prec) = int.
 :- pragma inline(get_prec_to_use/1).
 
 get_prec_to_use(MaybePrec) = Prec :-
     (
-        MaybePrec = yes(Prec)
+        MaybePrec = specified_prec(Prec)
     ;
-        MaybePrec = no,
+        MaybePrec = no_specified_prec,
         % The default precision is 6.
         Prec = 6
     ).
 
-:- func get_prec_to_use_minimum_1(maybe_prec) = int.
+:- func get_prec_to_use_minimum_1(string_format_maybe_prec) = int.
 :- pragma inline(get_prec_to_use_minimum_1/1).
 
 get_prec_to_use_minimum_1(MaybePrec) = Prec :-
     (
-        MaybePrec = yes(Prec0),
+        MaybePrec = specified_prec(Prec0),
         ( if Prec0 = 0 then
             Prec = 1
         else
             Prec = Prec0
         )
     ;
-        MaybePrec = no,
+        MaybePrec = no_specified_prec,
         % The default precision is 6.
         Prec = 6
     ).
 
 %---------------------------------------------------------------------------%
 
-:- func add_sign_like_prefix_to_int_if_needed(flags, bool, int, string)
-    = string.
+:- func add_sign_like_prefix_to_int_if_needed(string_format_flags, bool,
+    int, string) = string.
 :- pragma inline(add_sign_like_prefix_to_int_if_needed/4).
 
 add_sign_like_prefix_to_int_if_needed(Flags, ZeroPadded, Int, FieldStr)
@@ -1499,8 +1038,8 @@ add_sign_like_prefix_to_int_if_needed(Flags, ZeroPadded, Int, FieldStr)
         )
     ).
 
-:- func add_sign_like_prefix_to_float_if_needed(flags, bool, float, string)
-    = string.
+:- func add_sign_like_prefix_to_float_if_needed(string_format_flags, bool,
+    float, string) = string.
 :- pragma inline(add_sign_like_prefix_to_float_if_needed/4).
 
 add_sign_like_prefix_to_float_if_needed(Flags, ZeroPadded, Float, FieldStr)
@@ -1525,11 +1064,12 @@ add_sign_like_prefix_to_float_if_needed(Flags, ZeroPadded, Float, FieldStr)
         )
     ).
 
-:- func justify_string(flags, maybe_width, string) = string.
+:- func justify_string(string_format_flags, string_format_maybe_width,
+    string) = string.
 
 justify_string(Flags, MaybeWidth, Str) = JustifiedStr :-
     ( if
-        MaybeWidth = yes(Width),
+        MaybeWidth = specified_width(Width),
         Width > string.count_codepoints(Str)
     then
         ( if Flags ^ flag_minus = flag_minus_set then
@@ -1861,7 +1401,8 @@ convert_float_to_string(Float) = String :-
     % is specified: a decimal-point character appears only if it is followed
     % by a digit.
     %
-:- func change_to_g_notation(string, int, string, flags) = string.
+:- func change_to_g_notation(string, int, string, string_format_flags)
+    = string.
 
 change_to_g_notation(Float, Prec, E, Flags) = FormattedFloat :-
     Exponent = size_of_required_exponent(Float, Prec),
@@ -1973,8 +1514,8 @@ size_of_required_exponent(Float, Prec) = Exponent :-
         Exponent = UnsafeExponent
     ).
 
-    % Given a string representing a floating point number, function returns
-    % a string with all trailing zeros removed.
+    % Given a string representing a floating point number, this function
+    % returns the string with all its trailing zeros removed.
     %
 :- func remove_trailing_zeros(string) = string.
 
@@ -1985,8 +1526,8 @@ remove_trailing_zeros(Float) = TrimmedFloat :-
     TrimmedFloatCharList = list.reverse(TrimmedFloatRevCharList),
     TrimmedFloat = string.from_char_list(TrimmedFloatCharList).
 
-    % Given a char list, this function removes all leading zeros, including
-    % decimal point, if need be.
+    % Given a char list, this function removes all leading zeros,
+    % including the decimal point, if need be.
     %
 :- func remove_zeros(list(char)) = list(char).
 
@@ -1999,8 +1540,8 @@ remove_zeros(CharNum) = TrimmedNum :-
         TrimmedNum = CharNum
     ).
 
-    % Determine the location of the decimal point in the string that
-    % represents a floating point number.
+    % Determine the location of the decimal point in a string
+    % that represents a floating point number.
     %
 :- func decimal_pos(string) = int.
 

@@ -672,6 +672,8 @@ then
         # See comment below for why we use $LN rather than $LN_S here
         $LN $root/library/library_strong_name.sn .
         $LN_S $root/library/print_extra_inits .
+        $LN_S $root/library/MODULES_DOC .
+        $LN_S $root/library/MODULES_UNDOC .
         cp $root/library/Mmake* $root/library/Mercury.options .
         cp $root/library/*_FLAGS.in .
         cp $root/library/INTER_FLAGS* .
@@ -1183,6 +1185,8 @@ then
     $LN_S $root/library/*.hrl .
     $LN_S $root/library/print_extra_inits .
     $LN_S $root/library/library_strong_name.sn .
+    $LN_S $root/library/MODULES_DOC .
+    $LN_S $root/library/MODULES_UNDOC .
     cp $root/library/Mmake* $root/library/Mercury.options .
     cp $root/library/*_FLAGS.in .
     cp $root/library/INTER_FLAGS* .
