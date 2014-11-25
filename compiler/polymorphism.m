@@ -1563,7 +1563,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
             ArgVars0, CalleeArgTypes, UnifyContext, GoalInfo1, Context,
             ModuleInfo0, Functor0, VarSet0, VarSet, VarTypes0, VarTypes),
-        poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
+        poly_info_set_varset_types(VarSet, VarTypes, !Info),
         % Process the unification in its new form.
         polymorphism_process_unify(X0, Functor0, Mode0, Unification0,
             UnifyContext, GoalInfo1, Goal, !Info),
@@ -2286,9 +2286,10 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
 
 fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
     (
-        % Optimize common case.
+        % Optimize a common case.
         ExistQVars = [],
-        rtti_varmaps_no_tvars(!.Info ^ poly_rtti_varmaps),
+        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+        rtti_varmaps_no_tvars(RttiVarMaps0),
         poly_info_get_num_reuses(!.Info, NumReuses),
         NumReuses = 0
     ->
@@ -2301,8 +2302,7 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
         implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
             set_to_bitset(OutsideVars), _Warnings, Goal0, Goal,
             VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
-        poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
-        poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
+        poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info)
     ).
 
     % If the lambda goal we are processing is polymorphically typed, we may
@@ -2338,8 +2338,7 @@ fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
         implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
             OutsideVars, _Warnings, !Goal,
             VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
-        poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
-        poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
+        poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2404,7 +2403,8 @@ make_typeclass_info_var(Constraint, Seen, ExistQVars, Context,
     ;
         % We don't have the typeclass_info, so we must either have a proof
         % that tells us how to make it, or ...
-        map.search(!.Info ^ poly_proof_map, Constraint, Proof)
+        poly_info_get_proof_map(!.Info, ProofMap),
+        map.search(ProofMap, Constraint, Proof)
     ->
         make_typeclass_info_from_proof(Constraint, Seen, Proof, ExistQVars,
             Context, TypeClassInfoVarMCA, Goals, !Info)
@@ -2720,15 +2720,21 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
 
                         io.write_string(IndentStr, !IO),
                         io.write_string("type_info_var_map ", !IO),
-                        io.write(!.Info ^ poly_type_info_var_map, !IO),
+                        poly_info_get_type_info_var_map(!.Info,
+                            TypeInfoVarMap),
+                        io.write(TypeInfoVarMap, !IO),
                         io.nl(!IO),
                         io.write_string(IndentStr, !IO),
                         io.write_string("typeclass_info_map ", !IO),
-                        io.write(!.Info ^ poly_typeclass_info_map, !IO),
+                        poly_info_get_typeclass_info_map(!.Info,
+                            TypeClassInfoMap),
+                        io.write(TypeClassInfoMap, !IO),
                         io.nl(!IO),
                         io.write_string(IndentStr, !IO),
                         io.write_string("struct_var_map ", !IO),
-                        io.write(!.Info ^ poly_const_struct_var_map, !IO),
+                        poly_info_get_const_struct_var_map(!.Info,
+                            ConstStructVarMap),
+                        io.write(ConstStructVarMap, !IO),
                         io.nl(!IO),
                         io.nl(!IO)
                     )
@@ -2748,7 +2754,7 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     module_info_get_class_table(ModuleInfo, ClassTable),
     poly_info_get_typevarset(!.Info, TypeVarSet),
-    poly_info_get_proofs(!.Info, Proofs0),
+    poly_info_get_proof_map(!.Info, ProofMap0),
 
     InstanceId = ciid(InstanceNum, Constraint, Seen),
     Constraint = constraint(ClassName, ConstrainedTypes),
@@ -2760,7 +2766,7 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
     list.det_index1(InstanceList, InstanceNum, ProofInstanceDefn),
 
     ProofInstanceDefn = hlds_instance_defn(_, _, _, InstanceConstraints,
-        InstanceTypes, _, _, _, InstanceTVarset, InstanceProofs),
+        InstanceTypes, _, _, _, InstanceTVarset, InstanceProofMap),
 
     % XXX kind inference:
     % we assume all tvars have kind `star'.
@@ -2789,9 +2795,9 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
     list.delete_elems(ActualInstanceConstraints0, Seen,
         ActualInstanceConstraints),
     apply_variable_renaming_to_constraint_proofs(Renaming,
-        InstanceProofs, RenamedInstanceProofs),
+        InstanceProofMap, RenamedInstanceProofMap),
     apply_rec_subst_to_constraint_proofs(InstanceSubst,
-        RenamedInstanceProofs, ActualInstanceProofs),
+        RenamedInstanceProofMap, ActualInstanceProofMap),
 
     apply_variable_renaming_to_tvar_list(Renaming, UnconstrainedTvars,
         RenamedUnconstrainedTvars),
@@ -2800,7 +2806,7 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
     apply_rec_subst_to_tvar_list(RenamedKindMap, InstanceSubst,
         RenamedUnconstrainedTvars, ActualUnconstrainedTypes),
 
-    map.overlay(Proofs0, ActualInstanceProofs, Proofs),
+    map.overlay(ProofMap0, ActualInstanceProofMap, ProofMap),
 
     get_var_maps_snapshot("make_typeclass_info_from_instance",
         InitialVarMapsSnapshot, !Info),
@@ -2824,7 +2830,7 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
 
     map.lookup(ClassTable, ClassId, ClassDefn),
 
-    get_arg_superclass_vars(ClassDefn, ConstrainedTypes, Proofs,
+    get_arg_superclass_vars(ClassDefn, ConstrainedTypes, ProofMap,
         ExistQVars, ArgSuperClassVarsMCAs, SuperClassGoals, !Info),
 
     PrevGoals = UnconstrainedTypeInfoGoals ++ TypeInfoGoals ++
@@ -3034,9 +3040,9 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
     assoc_list(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
-get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofs, ExistQVars,
-        SuperClassTypeClassInfoVarsMCAs, SuperClassGoals, !Info) :-
-    poly_info_get_proofs(!.Info, Proofs),
+get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofMap,
+        ExistQVars, SuperClassTypeClassInfoVarsMCAs, SuperClassGoals, !Info) :-
+    poly_info_get_proof_map(!.Info, ProofMap),
 
     poly_info_get_typevarset(!.Info, TVarSet0),
     SuperClasses0 = ClassDefn ^ class_supers,
@@ -3053,22 +3059,22 @@ get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofs, ExistQVars,
     apply_rec_subst_to_prog_constraint_list(TypeSubst,
         SuperClasses1, SuperClasses),
 
-    poly_info_set_proofs(SuperClassProofs, !Info),
-    make_superclasses_from_proofs(SuperClasses, ExistQVars,
+    poly_info_set_proof_map(SuperClassProofMap, !Info),
+    make_typeclass_infos_for_superclasses(SuperClasses, ExistQVars,
         SuperClassTypeClassInfoVarsMCAs, SuperClassGoals, !Info),
-    poly_info_set_proofs(Proofs, !Info).
+    poly_info_set_proof_map(ProofMap, !Info).
 
-:- pred make_superclasses_from_proofs(list(prog_constraint)::in,
+:- pred make_typeclass_infos_for_superclasses(list(prog_constraint)::in,
     existq_tvars::in, assoc_list(prog_var, maybe(const_struct_arg))::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-make_superclasses_from_proofs([], _, [], [], !Info).
-make_superclasses_from_proofs([Constraint | Constraints], ExistQVars,
+make_typeclass_infos_for_superclasses([], _, [], [], !Info).
+make_typeclass_infos_for_superclasses([Constraint | Constraints], ExistQVars,
         [TypeClassInfoVarMCA | TypeClassInfoVarsMCAs], Goals, !Info) :-
     term.context_init(Context),
     make_typeclass_info_var(Constraint, [], ExistQVars, Context,
         TypeClassInfoVarMCA, HeadGoals, !Info),
-    make_superclasses_from_proofs(Constraints, ExistQVars,
+    make_typeclass_infos_for_superclasses(Constraints, ExistQVars,
         TypeClassInfoVarsMCAs, TailGoals, !Info),
     Goals = HeadGoals ++ TailGoals.
 
@@ -3276,8 +3282,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         poly_info_set_const_struct_var_map(ConstStructVarMap1, !Info)
     ),
 
-    poly_info_set_varset_and_types(VarSet1, VarTypes1, !Info),
-    poly_info_set_rtti_varmaps(RttiVarMaps1, !Info),
+    poly_info_set_varset_types_rtti(VarSet1, VarTypes1, RttiVarMaps1, !Info),
 
     % The rest of this predicate create code that constructs the second cell
     % of a type_info for Type if we need a second cell for Type. This cell
@@ -3346,7 +3351,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         MCA = yes(TypeCtorConstArg),
         ExtraGoals = ArgTypeInfoGoals ++ TypeCtorGoals,
         update_var_type(TypeCtorVar, TypeInfoType, VarTypes1, VarTypes),
-        poly_info_set_varset_and_types(VarSet1, VarTypes, !Info)
+        poly_info_set_varset_types(VarSet1, VarTypes, !Info)
     ;
         % We do need a second cell for a separate typeinfo.
         Cell = type_info_cell(TypeCtor),
@@ -3450,8 +3455,8 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
                 ExtraGoals = TypeCtorGoals ++ ArgTypeInfoGoals ++
                     [TypeInfoGoal]
             ),
-            poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
-            poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
+            poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps,
+                !Info),
             MCA = no
         )
     ).
@@ -3624,7 +3629,8 @@ init_const_type_ctor_info_var_from_cons_id(Type, ConsId,
 
 make_head_vars([], _, [], !Info).
 make_head_vars([TypeVar | TypeVars], TypeVarSet, TypeInfoVars, !Info) :-
-    get_tvar_kind(!.Info ^ poly_tvar_kinds, TypeVar, Kind),
+    poly_info_get_tvar_kind_map(!.Info, TVarKindMap),
+    get_tvar_kind(TVarKindMap, TypeVar, Kind),
     Type = type_variable(TypeVar, Kind),
     new_type_info_var(Type, type_info, Var, !Info),
     ( varset.search_name(TypeVarSet, TypeVar, TypeVarName) ->
@@ -3647,8 +3653,7 @@ new_type_info_var(Type, Kind, Var, !Info) :-
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     new_type_info_var_raw(Type, Kind, Var, VarSet0, VarSet,
         VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
-    poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
-    poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
+    poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info).
 
 new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
     % Introduce new variable.
@@ -3679,8 +3684,8 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
     % If we have already allocated a location for this type_info, then all
     % we need to do is to extract the type_info variable from its location.
     (
-        rtti_search_type_info_locn(!.Info ^ poly_rtti_varmaps, TypeVar,
-            TypeInfoLocnPrime)
+        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+        rtti_search_type_info_locn(RttiVarMaps0, TypeVar, TypeInfoLocnPrime)
     ->
         TypeInfoLocn = TypeInfoLocnPrime
     ;
@@ -3694,13 +3699,16 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
         % predicate, not in a type_info variable. maybe_extract_type_info
         % will fix this up when the typeclass_info is created.
 
-        get_tvar_kind(!.Info ^ poly_tvar_kinds, TypeVar, Kind),
+        poly_info_get_tvar_kind_map(!.Info, TVarKindMap),
+        get_tvar_kind(TVarKindMap, TypeVar, Kind),
         Type = type_variable(TypeVar, Kind),
         new_type_info_var(Type, type_info, Var, !Info),
         TypeInfoLocn = type_info(Var),
-        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+        % Since the call to new_type_info_var above may update the rtti
+        % varmaps, we have to get them again here; we can't use RttiVarMaps0.
+        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps1),
         rtti_det_insert_type_info_locn(TypeVar, TypeInfoLocn,
-            RttiVarMaps0, RttiVarMaps),
+            RttiVarMaps1, RttiVarMaps),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
     ).
 
@@ -3733,15 +3741,14 @@ polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index, Goals,
     poly_info_get_var_types(!.Info, VarTypes0),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     poly_info_get_module_info(!.Info, ModuleInfo),
-    poly_info_get_tvar_kinds(!.Info, TVarKinds),
-    get_tvar_kind(TVarKinds, TypeVar, Kind),
+    poly_info_get_tvar_kind_map(!.Info, TVarKindMap),
+    get_tvar_kind(TVarKindMap, TypeVar, Kind),
     IndexIntOrVar = iov_var(IndexVar),
     gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
         IndexIntOrVar, ExtractGoals, TypeInfoVar,
         VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
     Goals = IndexGoals ++ ExtractGoals,
-    poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
-    poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
+    poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info).
 
 gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
         IndexIntOrVar, Goals, TypeInfoVar, !VarSet, !VarTypes, !RttiVarMaps) :-
@@ -3784,7 +3791,7 @@ get_poly_const(IntConst, IntVar, Goals, !Info) :-
             Goal, IntVar, VarSet0, VarSet, VarTypes0, VarTypes),
         map.det_insert(IntConst, IntVar, IntConstMap0, IntConstMap),
         poly_info_set_int_const_map(IntConstMap, !Info),
-        poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
+        poly_info_set_varset_types(VarSet, VarTypes, !Info),
         Goals = [Goal]
     ).
 
@@ -3925,8 +3932,7 @@ new_typeclass_info_var(Constraint, VarKind, Var, VarType, !Info) :-
     rtti_det_insert_typeclass_info_var(Constraint, Var,
         RttiVarMaps0, RttiVarMaps),
 
-    poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
-    poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
+    poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info).
 
 build_typeclass_info_type(_Constraint, DictionaryType) :-
     PrivateBuiltin = mercury_private_builtin_module,
@@ -4267,17 +4273,14 @@ make_const_or_var_arg(Var - MCA, ConstOrVarArg) :-
 
 :- type poly_info
     --->    poly_info(
-                % The first two fields are from the proc_info.
+                poly_module_info            :: module_info,
+
                 poly_varset                 :: prog_varset,
                 poly_vartypes               :: vartypes,
-
-                % The next two fields from the pred_info.
-                poly_typevarset             :: tvarset,
-                poly_tvar_kinds             :: tvar_kind_map,
-
-                % Gives information about the locations of type_infos
-                % and typeclass_infos.
                 poly_rtti_varmaps           :: rtti_varmaps,
+
+                poly_typevarset             :: tvarset,
+                poly_tvar_kind_map          :: tvar_kind_map,
 
                 % Specifies why each constraint that was eliminated from the
                 % pred was able to be eliminated (this allows us to efficiently
@@ -4314,10 +4317,7 @@ make_const_or_var_arg(Var - MCA, ConstOrVarArg) :-
                 % The database of constant structures of the module.
                 % If a type_info or typeclass_info we construct is a constant
                 % term, we allocate it in this database.
-                poly_const_struct_db        :: const_struct_db,
-
-                poly_pred_info              :: pred_info,
-                poly_module_info            :: module_info
+                poly_const_struct_db        :: const_struct_db
             ).
 
 %---------------------------------------------------------------------------%
@@ -4333,7 +4333,7 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
     clauses_info_get_vartypes(ClausesInfo, VarTypes),
     pred_info_get_typevarset(PredInfo, TypeVarSet),
     pred_info_get_tvar_kinds(PredInfo, TypeVarKinds),
-    pred_info_get_constraint_proofs(PredInfo, Proofs),
+    pred_info_get_constraint_proofs(PredInfo, ProofMap),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     rtti_varmaps_init(RttiVarMaps),
     map.init(TypeInfoVarMap),
@@ -4343,10 +4343,10 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
     NumReuses = 0,
     SnapshotNum = 0,
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
-    PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
-        RttiVarMaps, Proofs, ConstraintMap,
+    PolyInfo = poly_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps,
+        TypeVarSet, TypeVarKinds, ProofMap, ConstraintMap,
         TypeInfoVarMap, TypeClassInfoMap, IntConstMap, ConstStructVarMap,
-        NumReuses, SnapshotNum, ConstStructDb, PredInfo, ModuleInfo).
+        NumReuses, SnapshotNum, ConstStructDb).
 
     % Create_poly_info creates a poly_info for an existing procedure.
     % (See also init_poly_info.)
@@ -4354,7 +4354,7 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
 create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     pred_info_get_typevarset(PredInfo, TypeVarSet),
     pred_info_get_tvar_kinds(PredInfo, TypeVarKinds),
-    pred_info_get_constraint_proofs(PredInfo, Proofs),
+    pred_info_get_constraint_proofs(PredInfo, ProofMap),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -4366,16 +4366,16 @@ create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     NumReuses = 0,
     SnapshotNum = 0,
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
-    PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
-        RttiVarMaps, Proofs, ConstraintMap, TypeInfoVarMap,
-        TypeClassInfoMap, IntConstMap, ConstStructVarMap,
-        NumReuses, SnapshotNum, ConstStructDb, PredInfo, ModuleInfo).
+    PolyInfo = poly_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps,
+        TypeVarSet, TypeVarKinds, ProofMap, ConstraintMap,
+        TypeInfoVarMap, TypeClassInfoMap, IntConstMap, ConstStructVarMap,
+        NumReuses, SnapshotNum, ConstStructDb).
 
 poly_info_extract(Info, !PredInfo, !ProcInfo, !:ModuleInfo) :-
-    Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
-        RttiVarMaps, _Proofs, _ConstraintMap,
+    Info = poly_info(!:ModuleInfo, VarSet, VarTypes, RttiVarMaps,
+        TypeVarSet, TypeVarKinds, _ProofMap, _ConstraintMap,
         _TypeInfoVarMap, _TypeClassInfoMap, _IntConstMap, _ConstStructVarMap,
-        _NumReuses, _SnapshotNum, ConstStructDb, _OldPredInfo, !:ModuleInfo),
+        _NumReuses, _SnapshotNum, ConstStructDb),
 
     module_info_set_const_struct_db(ConstStructDb, !ModuleInfo),
 
@@ -4388,55 +4388,91 @@ poly_info_extract(Info, !PredInfo, !ProcInfo, !:ModuleInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred poly_info_get_varset(poly_info::in, prog_varset::out) is det.
-:- pred poly_info_get_var_types(poly_info::in, vartypes::out) is det.
-:- pred poly_info_get_typevarset(poly_info::in, tvarset::out) is det.
-:- pred poly_info_get_tvar_kinds(poly_info::in, tvar_kind_map::out) is det.
-:- pred poly_info_get_rtti_varmaps(poly_info::in, rtti_varmaps::out) is det.
-:- pred poly_info_get_proofs(poly_info::in, constraint_proof_map::out) is det.
-:- pred poly_info_get_constraint_map(poly_info::in, constraint_map::out)
-    is det.
+:- pred poly_info_get_module_info(poly_info::in,
+    module_info::out) is det.
+:- pred poly_info_get_varset(poly_info::in,
+    prog_varset::out) is det.
+:- pred poly_info_get_var_types(poly_info::in,
+    vartypes::out) is det.
+:- pred poly_info_get_rtti_varmaps(poly_info::in,
+    rtti_varmaps::out) is det.
+:- pred poly_info_get_typevarset(poly_info::in,
+    tvarset::out) is det.
+:- pred poly_info_get_tvar_kind_map(poly_info::in,
+    tvar_kind_map::out) is det.
+:- pred poly_info_get_proof_map(poly_info::in,
+    constraint_proof_map::out) is det.
+:- pred poly_info_get_constraint_map(poly_info::in,
+    constraint_map::out) is det.
 :- pred poly_info_get_type_info_var_map(poly_info::in,
     type_info_var_map::out) is det.
 :- pred poly_info_get_typeclass_info_map(poly_info::in,
     typeclass_info_map::out) is det.
-:- pred poly_info_get_int_const_map(poly_info::in, int_const_map::out) is det.
-:- pred poly_info_get_num_reuses(poly_info::in, int::out) is det.
-:- pred poly_info_get_const_struct_db(poly_info::in, const_struct_db::out)
-    is det.
+:- pred poly_info_get_int_const_map(poly_info::in,
+    int_const_map::out) is det.
+:- pred poly_info_get_num_reuses(poly_info::in,
+    int::out) is det.
+:- pred poly_info_get_const_struct_db(poly_info::in,
+    const_struct_db::out) is det.
 :- pred poly_info_get_const_struct_var_map(poly_info::in,
     const_struct_var_map::out) is det.
-:- pred poly_info_get_pred_info(poly_info::in, pred_info::out) is det.
-:- pred poly_info_get_module_info(poly_info::in, module_info::out) is det.
 
-poly_info_get_varset(PolyInfo, PolyInfo ^ poly_varset).
-poly_info_get_var_types(PolyInfo, PolyInfo ^ poly_vartypes).
-poly_info_get_typevarset(PolyInfo, PolyInfo ^ poly_typevarset).
-poly_info_get_tvar_kinds(PolyInfo, PolyInfo ^ poly_tvar_kinds).
-poly_info_get_rtti_varmaps(PolyInfo, PolyInfo ^ poly_rtti_varmaps).
-poly_info_get_proofs(PolyInfo, PolyInfo ^ poly_proof_map).
-poly_info_get_constraint_map(PolyInfo, PolyInfo ^ poly_constraint_map).
-poly_info_get_type_info_var_map(PolyInfo, PolyInfo ^ poly_type_info_var_map).
-poly_info_get_typeclass_info_map(PolyInfo, PolyInfo ^ poly_typeclass_info_map).
-poly_info_get_int_const_map(PolyInfo, PolyInfo ^ poly_int_const_map).
-poly_info_get_num_reuses(PolyInfo, PolyInfo ^ poly_num_reuses).
-poly_info_get_const_struct_db(PolyInfo, PolyInfo ^ poly_const_struct_db).
-poly_info_get_const_struct_var_map(PolyInfo,
-    PolyInfo ^ poly_const_struct_var_map).
-poly_info_get_pred_info(PolyInfo, PolyInfo ^ poly_pred_info).
-poly_info_get_module_info(PolyInfo, PolyInfo ^ poly_module_info).
+:- pragma inline(poly_info_get_module_info/2).
+:- pragma inline(poly_info_get_varset/2).
+:- pragma inline(poly_info_get_var_types/2).
+:- pragma inline(poly_info_get_rtti_varmaps/2).
+:- pragma inline(poly_info_get_typevarset/2).
+:- pragma inline(poly_info_get_tvar_kind_map/2).
+:- pragma inline(poly_info_get_proof_map/2).
+:- pragma inline(poly_info_get_constraint_map/2).
+:- pragma inline(poly_info_get_type_info_var_map/2).
+:- pragma inline(poly_info_get_typeclass_info_map/2).
+:- pragma inline(poly_info_get_int_const_map/2).
+:- pragma inline(poly_info_get_num_reuses/2).
+:- pragma inline(poly_info_get_const_struct_db/2).
+:- pragma inline(poly_info_get_const_struct_var_map/2).
+
+poly_info_get_varset(!.PI, X) :-
+    X = !.PI ^ poly_varset.
+poly_info_get_var_types(!.PI, X) :-
+    X = !.PI ^ poly_vartypes.
+poly_info_get_rtti_varmaps(!.PI, X) :-
+    X = !.PI ^ poly_rtti_varmaps.
+poly_info_get_typevarset(!.PI, X) :-
+    X = !.PI ^ poly_typevarset.
+poly_info_get_tvar_kind_map(!.PI, X) :-
+    X = !.PI ^ poly_tvar_kind_map.
+poly_info_get_proof_map(!.PI, X) :-
+    X = !.PI ^ poly_proof_map.
+poly_info_get_constraint_map(!.PI, X) :-
+    X = !.PI ^ poly_constraint_map.
+poly_info_get_type_info_var_map(!.PI, X) :-
+    X = !.PI ^ poly_type_info_var_map.
+poly_info_get_typeclass_info_map(!.PI, X) :-
+    X = !.PI ^ poly_typeclass_info_map.
+poly_info_get_int_const_map(!.PI, X) :-
+    X = !.PI ^ poly_int_const_map.
+poly_info_get_num_reuses(!.PI, X) :-
+    X = !.PI ^ poly_num_reuses.
+poly_info_get_const_struct_db(!.PI, X) :-
+    X = !.PI ^ poly_const_struct_db.
+poly_info_get_const_struct_var_map(!.PI, X) :-
+    X = !.PI ^ poly_const_struct_var_map.
+poly_info_get_module_info(!.PI, X) :-
+    X = !.PI ^ poly_module_info.
 
 :- pred poly_info_set_varset(prog_varset::in,
     poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_varset_and_types(prog_varset::in, vartypes::in,
+:- pred poly_info_set_varset_types(prog_varset::in, vartypes::in,
     poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_typevarset(tvarset::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_tvar_kinds(tvar_kind_map::in,
+:- pred poly_info_set_varset_types_rtti(prog_varset::in, vartypes::in,
+    rtti_varmaps::in,
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_rtti_varmaps(rtti_varmaps::in,
     poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_proofs(constraint_proof_map::in,
+:- pred poly_info_set_typevarset(tvarset::in,
+    poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_proof_map(constraint_proof_map::in,
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_type_info_var_map(type_info_var_map::in,
     poly_info::in, poly_info::out) is det.
@@ -4451,31 +4487,200 @@ poly_info_get_module_info(PolyInfo, PolyInfo ^ poly_module_info).
 :- pred poly_info_set_const_struct_var_map(const_struct_var_map::in,
     poly_info::in, poly_info::out) is det.
 
-poly_info_set_varset(VarSet, !PI) :-
-    !PI ^ poly_varset := VarSet.
-poly_info_set_varset_and_types(VarSet, VarTypes, !PI) :-
-    !PI ^ poly_varset := VarSet,
-    !PI ^ poly_vartypes := VarTypes.
-poly_info_set_typevarset(TVarSet, !PI) :-
-    !PI ^ poly_typevarset := TVarSet.
-poly_info_set_tvar_kinds(TVarKinds, !PI) :-
-    !PI ^ poly_tvar_kinds := TVarKinds.
-poly_info_set_rtti_varmaps(RttiVarMaps, !PI) :-
-    !PI ^ poly_rtti_varmaps := RttiVarMaps.
-poly_info_set_proofs(Proofs, !PI) :-
-    !PI ^ poly_proof_map := Proofs.
-poly_info_set_type_info_var_map(TypeInfoVarMap, !PI) :-
-    !PI ^ poly_type_info_var_map := TypeInfoVarMap.
-poly_info_set_typeclass_info_map(TypeClassInfoMap, !PI) :-
-    !PI ^ poly_typeclass_info_map := TypeClassInfoMap.
-poly_info_set_int_const_map(IntConstMap, !PI) :-
-    !PI ^ poly_int_const_map := IntConstMap.
-poly_info_set_num_reuses(NumReuses, !PI) :-
-    !PI ^ poly_num_reuses := NumReuses.
-poly_info_set_const_struct_db(ConstStructDb, !PI) :-
-    !PI ^ poly_const_struct_db := ConstStructDb.
-poly_info_set_const_struct_var_map(ConstStructVarMap, !PI) :-
-    !PI ^ poly_const_struct_var_map := ConstStructVarMap.
+:- pragma inline(poly_info_set_varset/3).
+:- pragma inline(poly_info_set_varset_types/4).
+:- pragma inline(poly_info_set_varset_types_rtti/5).
+:- pragma inline(poly_info_set_rtti_varmaps/3).
+:- pragma inline(poly_info_set_typevarset/3).
+:- pragma inline(poly_info_set_proof_map/3).
+:- pragma inline(poly_info_set_type_info_var_map/3).
+:- pragma inline(poly_info_set_typeclass_info_map/3).
+:- pragma inline(poly_info_set_int_const_map/3).
+:- pragma inline(poly_info_set_num_reuses/3).
+:- pragma inline(poly_info_set_const_struct_db/3).
+:- pragma inline(poly_info_set_const_struct_var_map/3).
+
+poly_info_set_varset(X, !PI) :-
+    !PI ^ poly_varset := X.
+poly_info_set_varset_types(X, Y, !PI) :-
+    !:PI = ((!.PI
+        ^ poly_varset := X)
+        ^ poly_vartypes := Y).
+poly_info_set_varset_types_rtti(X, Y, Z, !PI) :-
+    !:PI = (((!.PI
+        ^ poly_varset := X)
+        ^ poly_vartypes := Y)
+        ^ poly_rtti_varmaps := Z).
+poly_info_set_rtti_varmaps(X, !PI) :-
+    ( if private_builtin.pointer_equal(X, !.PI ^ poly_rtti_varmaps) then
+        true
+    else
+        !PI ^ poly_rtti_varmaps := X
+    ).
+poly_info_set_typevarset(X, !PI) :-
+    !PI ^ poly_typevarset := X.
+poly_info_set_proof_map(X, !PI) :-
+    ( if private_builtin.pointer_equal(X, !.PI ^ poly_proof_map) then
+        true
+    else
+        !PI ^ poly_proof_map := X
+    ).
+poly_info_set_type_info_var_map(X, !PI) :-
+    ( if private_builtin.pointer_equal(X, !.PI ^ poly_type_info_var_map) then
+        true
+    else
+        !PI ^ poly_type_info_var_map := X
+    ).
+poly_info_set_typeclass_info_map(X, !PI) :-
+    ( if private_builtin.pointer_equal(X, !.PI ^ poly_typeclass_info_map) then
+        true
+    else
+        !PI ^ poly_typeclass_info_map := X
+    ).
+poly_info_set_int_const_map(X, !PI) :-
+    ( if private_builtin.pointer_equal(X, !.PI ^ poly_int_const_map) then
+        true
+    else
+        !PI ^ poly_int_const_map := X
+    ).
+poly_info_set_num_reuses(X, !PI) :-
+    ( if X = !.PI ^ poly_num_reuses then
+        true
+    else
+        !PI ^ poly_num_reuses := X
+    ).
+poly_info_set_const_struct_db(X, !PI) :-
+    ( if private_builtin.pointer_equal(X, !.PI ^ poly_const_struct_db) then
+        true
+    else
+        !PI ^ poly_const_struct_db := X
+    ).
+poly_info_set_const_struct_var_map(X, !PI) :-
+    ( if
+        private_builtin.pointer_equal(X, !.PI ^ poly_const_struct_var_map)
+    then
+        true
+    else
+        !PI ^ poly_const_struct_var_map := X
+    ).
+
+%  i      read      same      diff   same%
+%  0   6245285         0   1560789   0.000% varset
+%  1   6662703         0         0          vartypes
+%  2         0      1110    129008   0.853% varset, vartypes
+% 17         0    131468   1961967   6.280% varset, vartypes, rtti_varmaps
+%  3   3052707         4    245972   0.002% typevarset
+%  4   1578929         0         0          tvar_kind_map
+%  5   8959328   2116731    988195  68.173% rtti_varmaps
+%  6     14812      3980      4058  49.515% proof_map
+%  7   3030093         0         0          constraint_map
+%  8    811687    776589    288951  72.882% type_info_var_map
+%  9    385071    863384      6104  99.298% typeclass_info_map
+% 10    385706    863310      8464  99.029% int_const_map
+% 11    253310    331092     41528  88.855% num_reuses
+% 12   2559364     25821     15631  62.291% const_struct_db
+% 13    583633    780835    286464  73.160% const_struct_var_map
+% 14         0         0         0          pred_info
+% 15   3933469         0         0          module_info
+% 16         0    431065     87104  83.190% cache_maps_snapshot
+
+% :- pragma foreign_decl("C", local,
+% "
+% #define MR_NUM_INFO_STATS    18
+% unsigned long MR_stats_read[MR_NUM_INFO_STATS];
+% unsigned long MR_stats_same[MR_NUM_INFO_STATS];
+% unsigned long MR_stats_diff[MR_NUM_INFO_STATS];
+% ").
+%
+% :- pred gather_poly_info_read_stats(int::in,
+%     poly_info::in, poly_info::out) is det.
+%
+% :- pragma foreign_proc("C",
+%     gather_poly_info_read_stats(N::in, PI0::in, PI::out),
+%     [will_not_call_mercury, promise_pure],
+% "
+%     ++MR_stats_read[N];
+%     PI = PI0;
+% ").
+%
+% :- pred gather_poly_info_write_stats(int::in, T::in, T::in,
+%     poly_info::in, poly_info::out) is det.
+%
+% :- pragma foreign_proc("C",
+%     gather_poly_info_write_stats(N::in, Old::in, New::in,
+%         PI0::in, PI::out),
+%     [will_not_call_mercury, promise_pure],
+% "
+%     if (((MR_Unsigned) Old) == ((MR_Unsigned) New)) {
+%         ++MR_stats_same[N];
+%     } else {
+%         ++MR_stats_diff[N];
+%     }
+%
+%     PI = PI0;
+% ").
+%
+% :- pred gather_poly_info_write_stats_2(int::in, T::in, T::in, U::in, U::in,
+%     poly_info::in, poly_info::out) is det.
+%
+% :- pragma foreign_proc("C",
+%     gather_poly_info_write_stats_2(N::in, OldA::in, NewA::in,
+%         OldB::in, NewB::in, PI0::in, PI::out),
+%     [will_not_call_mercury, promise_pure],
+% "
+%     if ((((MR_Unsigned) OldA) == ((MR_Unsigned) NewA)) &&
+%         (((MR_Unsigned) OldB) == ((MR_Unsigned) NewB)))
+%     {
+%         ++MR_stats_same[N];
+%     } else {
+%         ++MR_stats_diff[N];
+%     }
+%
+%     PI = PI0;
+% ").
+%
+% :- pred gather_poly_info_write_stats_3(int::in, T::in, T::in, U::in, U::in,
+%     V::in, V::in, poly_info::in, poly_info::out) is det.
+%
+% :- pragma foreign_proc("C",
+%     gather_poly_info_write_stats_3(N::in, OldA::in, NewA::in,
+%         OldB::in, NewB::in, OldC::in, NewC::in, PI0::in, PI::out),
+%     [will_not_call_mercury, promise_pure],
+% "
+%     if ((((MR_Unsigned) OldA) == ((MR_Unsigned) NewA)) &&
+%         (((MR_Unsigned) OldB) == ((MR_Unsigned) NewB)) &&
+%         (((MR_Unsigned) OldC) == ((MR_Unsigned) NewC)))
+%     {
+%         ++MR_stats_same[N];
+%     } else {
+%         ++MR_stats_diff[N];
+%     }
+%
+%     PI = PI0;
+% ").
+%
+% :- interface.
+% :- import_module io.
+% :- pred write_poly_info_stats(io::di, io::uo) is det.
+% :- implementation.
+%
+% :- pragma foreign_proc("C",
+%     write_poly_info_stats(IO0::di, IO::uo),
+%     [will_not_call_mercury, promise_pure],
+% "
+%     FILE *fp;
+%
+%     fp = fopen(""/tmp/POLY_INFO_STATS"", ""a"");
+%     if (fp != NULL) {
+%         int i;
+%         for (i = 0; i < MR_NUM_INFO_STATS; i++) {
+%             fprintf(fp, ""stat_rsd %d %lu %lu %lu\\n"",
+%                 i, MR_stats_read[i], MR_stats_same[i], MR_stats_diff[i]);
+%         }
+%     }
+%
+%     IO = IO0;
+% ").
 
 %---------------------------------------------------------------------------%
 
@@ -4490,16 +4695,14 @@ poly_info_set_const_struct_var_map(ConstStructVarMap, !PI) :-
 
 :- pred get_cache_maps_snapshot(string::in, cache_maps::out,
     poly_info::in, poly_info::out) is det.
-:- pred set_cache_maps_snapshot(string::in, cache_maps::in,
-    poly_info::in, poly_info::out) is det.
-:- pred empty_cache_maps(poly_info::in, poly_info::out) is det.
 
 get_cache_maps_snapshot(Name, CacheMaps, !Info) :-
+    poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap),
+    poly_info_get_typeclass_info_map(!.Info, TypeClassInfoMap),
+    poly_info_get_int_const_map(!.Info, IntConstMap),
+    poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap),
+
     SnapshotNum = !.Info ^ poly_snapshot_num,
-    TypeInfoVarMap = !.Info ^ poly_type_info_var_map,
-    TypeClassInfoMap = !.Info ^ poly_typeclass_info_map,
-    IntConstMap = !.Info ^ poly_int_const_map,
-    ConstStructVarMap = !.Info ^ poly_const_struct_var_map,
     CacheMaps = cache_maps(SnapshotNum, TypeInfoVarMap, TypeClassInfoMap,
         IntConstMap, ConstStructVarMap),
     !Info ^ poly_snapshot_num := SnapshotNum + 1,
@@ -4518,7 +4721,8 @@ get_cache_maps_snapshot(Name, CacheMaps, !Info) :-
                     io.format("get_cache_maps_snapshot %d %s\n",
                         [i(SnapshotNum), s(Name)], !IO),
                     io.write_string(IndentStr, !IO),
-                    NumVars = varset.num_allocated(!.Info ^ poly_varset),
+                    poly_info_get_varset(!.Info, VarSet),
+                    NumVars = varset.num_allocated(VarSet),
                     io.format("num_allocated vars: %d\n\n", [i(NumVars)], !IO)
                 ;
                     true
@@ -4527,13 +4731,30 @@ get_cache_maps_snapshot(Name, CacheMaps, !Info) :-
         )
     ).
 
+:- pred set_cache_maps_snapshot(string::in, cache_maps::in,
+    poly_info::in, poly_info::out) is det.
+
 set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
     CacheMaps = cache_maps(SnapshotNum, TypeInfoVarMap, TypeClassInfoMap,
         IntConstMap, ConstStructVarMap),
-    !Info ^ poly_type_info_var_map := TypeInfoVarMap,
-    !Info ^ poly_typeclass_info_map := TypeClassInfoMap,
-    !Info ^ poly_int_const_map := IntConstMap,
-    !Info ^ poly_const_struct_var_map := ConstStructVarMap,
+    (
+        private_builtin.pointer_equal(TypeInfoVarMap,
+            !.Info ^ poly_type_info_var_map),
+        private_builtin.pointer_equal(TypeClassInfoMap,
+            !.Info ^ poly_typeclass_info_map),
+        private_builtin.pointer_equal(IntConstMap,
+            !.Info ^ poly_int_const_map),
+        private_builtin.pointer_equal(ConstStructVarMap,
+            !.Info ^ poly_const_struct_var_map)
+    ->
+        true
+    ;
+        !:Info = ((((!.Info
+            ^ poly_type_info_var_map := TypeInfoVarMap)
+            ^ poly_typeclass_info_map := TypeClassInfoMap)
+            ^ poly_int_const_map := IntConstMap)
+            ^ poly_const_struct_var_map := ConstStructVarMap)
+    ),
 
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
         some [SelectedPred, Level, IndentStr] (
@@ -4549,7 +4770,8 @@ set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
                     io.format("set_cache_maps_snapshot %d %s\n",
                         [i(SnapshotNum), s(Name)], !IO),
                     io.write_string(IndentStr, !IO),
-                    NumVars = varset.num_allocated(!.Info ^ poly_varset),
+                    poly_info_get_varset(!.Info, VarSet),
+                    NumVars = varset.num_allocated(VarSet),
                     io.format("num_allocated vars: %d\n\n", [i(NumVars)], !IO),
 
                     io.write_string(IndentStr, !IO),
@@ -4572,11 +4794,13 @@ set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
         )
     ).
 
+:- pred empty_cache_maps(poly_info::in, poly_info::out) is det.
+
 empty_cache_maps(!Info) :-
-    !Info ^ poly_type_info_var_map := map.init,
-    !Info ^ poly_typeclass_info_map := map.init,
-    !Info ^ poly_int_const_map := map.init,
-    !Info ^ poly_const_struct_var_map := map.init.
+    poly_info_set_type_info_var_map(map.init, !Info),
+    poly_info_set_typeclass_info_map(map.init, !Info),
+    poly_info_set_int_const_map(map.init, !Info),
+    poly_info_set_const_struct_var_map(map.init, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -4594,9 +4818,9 @@ empty_cache_maps(!Info) :-
 
 get_var_maps_snapshot(Name, VarMaps, !Info) :-
     SnapshotNum = !.Info ^ poly_snapshot_num,
-    VarSet = !.Info ^ poly_varset,
-    VarTypes = !.Info ^ poly_vartypes,
-    RttiVarMaps = !.Info ^ poly_rtti_varmaps,
+    poly_info_get_varset(!.Info, VarSet),
+    poly_info_get_var_types(!.Info, VarTypes),
+    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps),
 
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
         some [SelectedPred, Level, IndentStr] (
@@ -4660,9 +4884,7 @@ set_var_maps_snapshot(Name, VarMaps, !Info) :-
         )
     ),
 
-    !Info ^ poly_varset := VarSet,
-    !Info ^ poly_vartypes := VarTypes,
-    !Info ^ poly_rtti_varmaps := RttiVarMaps,
+    poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info),
     set_cache_maps_snapshot("", CacheMaps, !Info).
 
 %---------------------------------------------------------------------------%

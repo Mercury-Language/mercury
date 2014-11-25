@@ -3,7 +3,7 @@
 #
 # A program to test different versions of the compiler.
 
-usage="Usage: speedtest [-dstz] [-l | -1] [-e dir] [-g grade] [-c cmd] [-o option]* [-nN] [-ON] [-fFILE] batchname"
+usage="Usage: speedtest [-dsmtz] [-l | -1] [-e dir] [-g grade] [-c cmd] [-o option]* [-nN] [-ON] [-fFILE] batchname"
 
 single_modulelist="typecheck.m"
 # As of 22 nov 2014, these are the ten largest modules of the compiler.
@@ -37,6 +37,7 @@ debug=false
 execdir="arena"
 grade="--grade asm_fast.gc"
 framesizefile=""
+mix=false
 modulelist="$short_modulelist"
 limit=6
 options=""
@@ -91,6 +92,10 @@ do
 
         -1)
             modulelist="${single_modulelist}"
+            ;;
+
+        -m)
+            mix=true
             ;;
 
         -n)
@@ -157,7 +162,6 @@ fi
 batch=$1
 
 root=`/bin/pwd`
-files=`ls batch/$batch.mercury_compile.*`
 
 if $zip
 then
@@ -171,73 +175,107 @@ else
     ECHO=echo
 fi
 
-for file in ${files}
+maybe_zipped_files=`ls batch/$batch.mercury_compile.*`
+for maybe_zipped_file in ${maybe_zipped_files}
 do
-    case ${file} in
+    case ${maybe_zipped_file} in
     *.gz)
-        gunzip ${file}
-        file=batch/`basename ${file} .gz`
+        gunzip ${maybe_zipped_file}
         ;;
     esac
+done
 
-    paramfile=`echo ${file} | sed 's/mercury_compile/params/'`
-    if test -r ${paramfile}
-    then
-        cat ${paramfile}
-    fi
-
-    if ${size}
-    then
-        size ${file}
-    fi
-
-    MERCURY_COMPILER=${root}/${file}
-    export MERCURY_COMPILER
-    cd ${execdir}
+files=`ls batch/$batch.mercury_compile.*`
+if ${mix}
+then
     count=1
+    cd ${execdir}
     while test ${count} -le ${limit}
     do
-        if test "${framesizefile}" != ""
-        then
-            rm ${framesizefile} > /dev/null 2>&1
-        fi
-
-        briefname=`echo "${file}" | sed "s:batch/$batch.::"`
-        $ECHO -n "${briefname} "
-        if ${debug}
-        then
-            if ${table_io}
+        for file in ${files}
+        do
+            MERCURY_COMPILER=${root}/${file}
+            export MERCURY_COMPILER
+            briefname=`echo "${file}" | sed "s:batch/$batch.::"`
+            $ECHO -n "${briefname} "
+            if ${debug}
             then
-                (echo "table_io start" ; echo "c" ) \
-                    | ${root}/tools/dotime mdb ${cmd}
+                if ${table_io}
+                then
+                    (echo "table_io start" ; echo "c" ) \
+                        | ${root}/tools/dotime mdb ${cmd}
+                else
+                    echo "c" | ${root}/tools/dotime mdb ${cmd}
+                fi
             else
-                echo "c" | ${root}/tools/dotime mdb ${cmd}
+                ${root}/tools/dotime ${cmd}
             fi
-        else
-            ${root}/tools/dotime ${cmd}
-        fi
-
-        if test -s Deep.data
-        then
-            mv Deep.data \
-                ${root}/batch/Deep.data.`basename ${file} .gz`.run${count}
-        fi
-
-        if test "${count}" -eq 1 -a "${framesizefile}" != ""
-        then
-            echo
-            cat ${framesizefile}
-            echo
-        fi
-
+        done
         count=`expr ${count} + 1`
     done
-
     cd ${root}
-    if ${zip}
-    then
-        gzip ${file}
-    fi
-done
+else
+    for file in ${files}
+    do
+        paramfile=`echo ${file} | sed 's/mercury_compile/params/'`
+        if test -r ${paramfile}
+        then
+            cat ${paramfile}
+        fi
+
+        if ${size}
+        then
+            size ${file}
+        fi
+
+        MERCURY_COMPILER=${root}/${file}
+        export MERCURY_COMPILER
+        cd ${execdir}
+        count=1
+        while test ${count} -le ${limit}
+        do
+            if test "${framesizefile}" != ""
+            then
+                rm ${framesizefile} > /dev/null 2>&1
+            fi
+
+            briefname=`echo "${file}" | sed "s:batch/$batch.::"`
+            $ECHO -n "${briefname} "
+            if ${debug}
+            then
+                if ${table_io}
+                then
+                    (echo "table_io start" ; echo "c" ) \
+                        | ${root}/tools/dotime mdb ${cmd}
+                else
+                    echo "c" | ${root}/tools/dotime mdb ${cmd}
+                fi
+            else
+                ${root}/tools/dotime ${cmd}
+            fi
+
+            if test -s Deep.data
+            then
+                mv Deep.data \
+                    ${root}/batch/Deep.data.`basename ${file} .gz`.run${count}
+            fi
+
+            if test "${count}" -eq 1 -a "${framesizefile}" != ""
+            then
+                echo
+                cat ${framesizefile}
+                echo
+            fi
+
+            count=`expr ${count} + 1`
+        done
+
+        cd ${root}
+        if ${zip}
+        then
+            gzip ${file}
+        fi
+    done
+fi
 
 exit 0
