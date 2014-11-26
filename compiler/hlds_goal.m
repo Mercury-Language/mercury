@@ -2005,34 +2005,59 @@ goal_info_get_maybe_mode_constr(GoalInfo) =
 goal_info_get_maybe_ctgc(GoalInfo) = GoalInfo ^ gi_extra ^ egi_maybe_ctgc.
 goal_info_get_maybe_dp_info(GoalInfo) = GoalInfo ^ gi_extra ^ egi_maybe_dp.
 
-goal_info_set_determinism(Determinism, !GoalInfo) :-
-    !GoalInfo ^ gi_determinism := Determinism.
-goal_info_set_instmap_delta(InstMapDelta, !GoalInfo) :-
-    !GoalInfo ^ gi_instmap_delta := InstMapDelta.
-goal_info_set_nonlocals(NonLocals, !GoalInfo) :-
-    !GoalInfo ^ gi_nonlocals := NonLocals.
-goal_info_set_purity(Purity, !GoalInfo) :-
-    !GoalInfo ^ gi_purity := Purity.
-goal_info_set_features(Features, !GoalInfo) :-
-    !GoalInfo ^ gi_features := Features.
-goal_info_set_goal_id(GoalId, !GoalInfo) :-
-    !GoalInfo ^ gi_goal_id := GoalId.
-goal_info_set_reverse_goal_path(RevGoalPath, !GoalInfo) :-
-    !GoalInfo ^ gi_extra ^ egi_rev_goal_path := RevGoalPath.
-goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo) :-
-    !GoalInfo ^ gi_code_gen_info := CodeGenInfo.
-goal_info_set_context(Context, !GoalInfo) :-
-    !GoalInfo ^ gi_extra ^ egi_context := Context.
-goal_info_set_ho_values(Values, !GoalInfo) :-
-    !GoalInfo ^ gi_extra ^ egi_ho_vals := Values.
-goal_info_set_maybe_rbmm(RBMMInfo, !GoalInfo) :-
-    !GoalInfo ^ gi_extra ^ egi_maybe_rbmm := RBMMInfo.
-goal_info_set_maybe_mode_constr(ModeConstrInfo, !GoalInfo) :-
-    !GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := ModeConstrInfo.
-goal_info_set_maybe_ctgc(CTGCInfo, !GoalInfo) :-
-    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := CTGCInfo.
-goal_info_set_maybe_dp_info(DPInfo, !GoalInfo) :-
-    !GoalInfo ^ gi_extra ^ egi_maybe_dp := DPInfo.
+goal_info_set_determinism(X, !GoalInfo) :-
+    !GoalInfo ^ gi_determinism := X.
+goal_info_set_instmap_delta(X, !GoalInfo) :-
+    ( if private_builtin.pointer_equal(X, !.GoalInfo ^ gi_instmap_delta) then
+        true
+    else
+        !GoalInfo ^ gi_instmap_delta := X
+    ).
+goal_info_set_nonlocals(X, !GoalInfo) :-
+    !GoalInfo ^ gi_nonlocals := X.
+goal_info_set_purity(X, !GoalInfo) :-
+    ( if X = !.GoalInfo ^ gi_purity then
+        true
+    else
+        !GoalInfo ^ gi_purity := X
+    ).
+goal_info_set_features(X, !GoalInfo) :-
+    !GoalInfo ^ gi_features := X.
+goal_info_set_goal_id(X, !GoalInfo) :-
+    !GoalInfo ^ gi_goal_id := X.
+goal_info_set_reverse_goal_path(X, !GoalInfo) :-
+    !GoalInfo ^ gi_extra ^ egi_rev_goal_path := X.
+goal_info_set_code_gen_info(X, !GoalInfo) :-
+    !GoalInfo ^ gi_code_gen_info := X.
+goal_info_set_context(X, !GoalInfo) :-
+    !GoalInfo ^ gi_extra ^ egi_context := X.
+goal_info_set_ho_values(X, !GoalInfo) :-
+    ( if private_builtin.pointer_equal(X, !.GoalInfo ^ gi_extra ^ egi_ho_vals)
+    then
+        true
+    else
+        !GoalInfo ^ gi_extra ^ egi_ho_vals := X
+    ).
+goal_info_set_maybe_rbmm(X, !GoalInfo) :-
+    !GoalInfo ^ gi_extra ^ egi_maybe_rbmm := X.
+goal_info_set_maybe_mode_constr(X, !GoalInfo) :-
+    !GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := X.
+goal_info_set_maybe_ctgc(X, !GoalInfo) :-
+    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := X.
+goal_info_set_maybe_dp_info(X, !GoalInfo) :-
+    !GoalInfo ^ gi_extra ^ egi_maybe_dp := X.
+
+%  i       same      diff   same%
+%  0     389614   2409489  13.919%  determinism
+%  1   10027360  13578654  42.478%  instmap_delta
+%  2     497826  15861153   3.043%  nonlocals
+%  3   10060683     41741  99.587%  purity
+%  4       8442   4617849   0.182%  features
+%  5      19010   3313840   0.570%  goal_id
+%  6        164      2328   6.581%  rev_goal_path
+%  7          0   4323322   0.000%  code_gen_info
+%  8    1761371   2616953  40.229%  context
+%  9        174         3  98.305%  ho_values
 
     % The code-gen non-locals are always the same as the
     % non-locals when structure reuse is not being performed.
