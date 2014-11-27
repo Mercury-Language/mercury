@@ -345,8 +345,6 @@ typed_compare(R, X, Y) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(pointer_equal/2).
-
 :- pragma foreign_proc("C", pointer_equal(A::in, B::in),
     [promise_pure, thread_safe, will_not_call_mercury,
         will_not_throw_exception, terminates],

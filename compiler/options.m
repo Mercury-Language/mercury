@@ -1428,7 +1428,9 @@ option_defaults_2(internal_use_option, [
     lexically_order_constructors        -   bool(no),
     mutable_always_boxed                -   bool(yes),
     delay_partial_instantiations        -   bool(no),
-    allow_defn_of_builtins              -   bool(no),
+    allow_defn_of_builtins              -   bool(yes),
+                                            % temporarily, for bootstrapping
+                                            % pointer_equal
     special_preds                       -   bool(yes),
     type_ctor_info                      -   bool(yes),
     type_ctor_layout                    -   bool(yes),

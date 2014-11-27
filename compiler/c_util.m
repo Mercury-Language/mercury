@@ -61,7 +61,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% String and character handling
+% String and character handling.
 %
 
     % Chooses between C and Java literal syntax.
@@ -118,7 +118,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Float literals
+% Float literals.
 %
 
     % Convert a float to a string suitable for use as a C (or Java, or IL)
@@ -133,7 +133,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Operators
+% Operators.
 %
 % The following predicates all take as input an operator, and return the name
 % of the corresponding C operator that can be used to implement it.
@@ -146,6 +146,7 @@
 
 :- type binop_category
     --->    array_index_binop
+    ;       pointer_compare_binop
     ;       compound_compare_binop
     ;       string_compare_binop
     ;       unsigned_compare_binop
@@ -541,12 +542,12 @@ reverse_append([], L, L).
 reverse_append([X | Xs], L0, L) :-
     reverse_append(Xs, [X | L0], L).
 
-:- pred octal_escape_any_char(char::in, list(char)::out) is det.
-
     % Convert a character to the corresponding C octal escape code.
     % XXX This assumes that the target language compiler's representation
     % of characters is the same as the Mercury compiler's.
     %
+:- pred octal_escape_any_char(char::in, list(char)::out) is det.
+
 octal_escape_any_char(Char, EscapeCodeChars) :-
     char.to_int(Char, Int),
     octal_escape_any_int(Int, EscapeCodeChars).
@@ -567,7 +568,7 @@ unicode_escape_any_char(Char, EscapeCodeChars) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Floating point literals
+% Floating point literals.
 %
 % XXX These routines do not yet handle infinities and NaNs properly.
 
@@ -584,7 +585,7 @@ output_float_literal(Float, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Operators
+% Operators.
 %
 
 unary_prefix_op(mktag,              "MR_mktag").
@@ -603,6 +604,8 @@ unary_prefix_op(hash_string3,       "MR_hash_string3").
 % dummies; they should never be used.
 
 binop_category_string(array_index(_), array_index_binop, "ARRAY_INDEX").
+
+binop_category_string(pointer_equal_conservative, pointer_compare_binop, "==").
 
 binop_category_string(compound_lt, compound_compare_binop, "COMPOUND_LT").
 binop_category_string(compound_eq, compound_compare_binop, "COMPOUND_EQ").

@@ -457,6 +457,9 @@ erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
             SimpleExpr1 = erl_gen_simple_expr(ModuleInfo, VarTypes, Expr1),
             SimpleExpr2 = erl_gen_simple_expr(ModuleInfo, VarTypes, Expr2),
             Expr = elds_binop(Op, SimpleExpr1, SimpleExpr2)
+        ; StdOp = pointer_equal_conservative ->
+            % This is as conservative as possible.
+            Expr = elds_term(elds_false)
         ;
             sorry($module, $pred,
                 "binary builtin not supported on erlang target")
@@ -465,57 +468,79 @@ erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
 
 :- pred std_unop_to_elds(unary_op::in, elds_unop::out) is semidet.
 
-std_unop_to_elds(mktag, _) :- fail.
-std_unop_to_elds(tag, _) :- fail.
-std_unop_to_elds(unmktag, _) :- fail.
-std_unop_to_elds(strip_tag, _) :- fail.
-std_unop_to_elds(mkbody, _) :- fail.
-std_unop_to_elds(unmkbody, _) :- fail.
-std_unop_to_elds(hash_string, _) :- fail.
-std_unop_to_elds(bitwise_complement, elds.bnot).
-std_unop_to_elds(logical_not, elds.logical_not).
+std_unop_to_elds(StdUnOp, EldsUnOp) :-
+    require_complete_switch [StdUnOp]
+    (
+        ( StdUnOp = mktag
+        ; StdUnOp = tag
+        ; StdUnOp = unmktag
+        ; StdUnOp = strip_tag
+        ; StdUnOp = mkbody
+        ; StdUnOp = unmkbody
+        ; StdUnOp = hash_string
+        ; StdUnOp = hash_string2
+        ; StdUnOp = hash_string3
+        ),
+        fail
+    ;
+        ( StdUnOp = bitwise_complement, EldsUnOp = elds.bnot
+        ; StdUnOp = logical_not,        EldsUnOp = elds.logical_not
+        )
+    ).
 
 :- pred std_binop_to_elds(binary_op::in, elds_binop::out) is semidet.
 
-std_binop_to_elds(int_add, elds.add).
-std_binop_to_elds(int_sub, elds.sub).
-std_binop_to_elds(int_mul, elds.mul).
-std_binop_to_elds(int_div, elds.int_div).
-std_binop_to_elds(int_mod, elds.(rem)).
-std_binop_to_elds(unchecked_left_shift, elds.bsl).
-std_binop_to_elds(unchecked_right_shift, elds.bsr).
-std_binop_to_elds(bitwise_and, elds.band).
-std_binop_to_elds(bitwise_or, elds.bor).
-std_binop_to_elds(bitwise_xor, elds.bxor).
-std_binop_to_elds(logical_and, elds.andalso).
-std_binop_to_elds(logical_or, elds.orelse).
-std_binop_to_elds(eq, elds.(=:=)).
-std_binop_to_elds(ne, elds.(=/=)).
-std_binop_to_elds(body, _) :- fail.
-std_binop_to_elds(array_index(_), _) :- fail.
-std_binop_to_elds(str_eq, elds.(=:=)).
-std_binop_to_elds(str_ne, elds.(=/=)).
-std_binop_to_elds(str_lt, elds.(<)).
-std_binop_to_elds(str_gt, elds.(>)).
-std_binop_to_elds(str_le, elds.(=<)).
-std_binop_to_elds(str_ge, elds.(>=)).
-std_binop_to_elds(int_lt, elds.(<)).
-std_binop_to_elds(int_gt, elds.(>)).
-std_binop_to_elds(int_le, elds.(=<)).
-std_binop_to_elds(int_ge, elds.(>=)).
-std_binop_to_elds(unsigned_le, _) :- fail.
-std_binop_to_elds(float_plus, elds.add).
-std_binop_to_elds(float_minus, elds.sub).
-std_binop_to_elds(float_times, elds.mul).
-std_binop_to_elds(float_divide, elds.float_div).
-std_binop_to_elds(float_eq, elds.(=:=)).
-std_binop_to_elds(float_ne, elds.(=/=)).
-std_binop_to_elds(float_lt, elds.(<)).
-std_binop_to_elds(float_gt, elds.(>)).
-std_binop_to_elds(float_le, elds.(=<)).
-std_binop_to_elds(float_ge, elds.(>=)).
-std_binop_to_elds(compound_eq, elds.(=:=)).
-std_binop_to_elds(compound_lt, elds.(<)).
+std_binop_to_elds(StdBinOp, EldsBinOp) :-
+    require_complete_switch [StdBinOp]
+    (
+        ( StdBinOp = body
+        ; StdBinOp = array_index(_)
+        ; StdBinOp = unsigned_le
+        ; StdBinOp = float_from_dword
+        ; StdBinOp = float_word_bits
+        ; StdBinOp = str_cmp
+        ; StdBinOp = pointer_equal_conservative % handled in our caller
+        ),
+        fail
+    ;
+        ( StdBinOp = int_add,               EldsBinOp = elds.add
+        ; StdBinOp = int_sub,               EldsBinOp = elds.sub
+        ; StdBinOp = int_mul,               EldsBinOp = elds.mul
+        ; StdBinOp = int_div,               EldsBinOp = elds.int_div
+        ; StdBinOp = int_mod,               EldsBinOp = elds.(rem)
+        ; StdBinOp = unchecked_left_shift,  EldsBinOp = elds.bsl
+        ; StdBinOp = unchecked_right_shift, EldsBinOp = elds.bsr
+        ; StdBinOp = bitwise_and,           EldsBinOp = elds.band
+        ; StdBinOp = bitwise_or,            EldsBinOp = elds.bor
+        ; StdBinOp = bitwise_xor,           EldsBinOp = elds.bxor
+        ; StdBinOp = logical_and,           EldsBinOp = elds.andalso
+        ; StdBinOp = logical_or,            EldsBinOp = elds.orelse
+        ; StdBinOp = eq,                    EldsBinOp = elds.(=:=)
+        ; StdBinOp = ne,                    EldsBinOp = elds.(=/=)
+        ; StdBinOp = str_eq,                EldsBinOp = elds.(=:=)
+        ; StdBinOp = str_ne,                EldsBinOp = elds.(=/=)
+        ; StdBinOp = str_lt,                EldsBinOp = elds.(<)
+        ; StdBinOp = str_gt,                EldsBinOp = elds.(>)
+        ; StdBinOp = str_le,                EldsBinOp = elds.(=<)
+        ; StdBinOp = str_ge,                EldsBinOp = elds.(>=)
+        ; StdBinOp = int_lt,                EldsBinOp = elds.(<)
+        ; StdBinOp = int_gt,                EldsBinOp = elds.(>)
+        ; StdBinOp = int_le,                EldsBinOp = elds.(=<)
+        ; StdBinOp = int_ge,                EldsBinOp = elds.(>=)
+        ; StdBinOp = float_plus,            EldsBinOp = elds.add
+        ; StdBinOp = float_minus,           EldsBinOp = elds.sub
+        ; StdBinOp = float_times,           EldsBinOp = elds.mul
+        ; StdBinOp = float_divide,          EldsBinOp = elds.float_div
+        ; StdBinOp = float_eq,              EldsBinOp = elds.(=:=)
+        ; StdBinOp = float_ne,              EldsBinOp = elds.(=/=)
+        ; StdBinOp = float_lt,              EldsBinOp = elds.(<)
+        ; StdBinOp = float_gt,              EldsBinOp = elds.(>)
+        ; StdBinOp = float_le,              EldsBinOp = elds.(=<)
+        ; StdBinOp = float_ge,              EldsBinOp = elds.(>=)
+        ; StdBinOp = compound_eq,           EldsBinOp = elds.(=:=)
+        ; StdBinOp = compound_lt,           EldsBinOp = elds.(<)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 %

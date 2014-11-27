@@ -3600,6 +3600,12 @@ output_binop(Info, Op, X, Y, !IO) :-
         io.write_string(".CompareOrdinal(", !IO),
         output_rval(Info, Y, !IO),
         io.write_string("))", !IO)
+    ; Op = pointer_equal_conservative ->
+        io.write_string("System.Object.ReferenceEquals(", !IO),
+        output_rval(Info, X, !IO),
+        io.write_string(", ", !IO),
+        output_rval(Info, Y, !IO),
+        io.write_string(")", !IO)
     ;
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),

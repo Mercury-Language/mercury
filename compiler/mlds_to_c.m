@@ -4496,6 +4496,15 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         % the Erlang backend.
         unexpected($module, $pred, "compound_compare_binop")
     ;
+        Category = pointer_compare_binop,
+        io.write_string("(((MR_Word) ", !IO),
+        mlds_output_rval(Opts, X, !IO),
+        io.write_string(") ", !IO),
+        io.write_string(OpStr, !IO),
+        io.write_string(" ((MR_Word) ", !IO),
+        mlds_output_rval(Opts, Y, !IO),
+        io.write_string("))", !IO)
+    ;
         Category = string_compare_binop,
         io.write_string("(strcmp(", !IO),
         mlds_output_rval(Opts, X, !IO),
@@ -4538,9 +4547,15 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         mlds_output_rval_as_op_arg(Opts, Y, !IO),
         io.write_string(")", !IO)
     ;
-        ( Category = macro_binop
-        ; Category = float_macro_binop
-        ),
+        Category = macro_binop,
+        io.write_string(OpStr, !IO),
+        io.write_string("(", !IO),
+        mlds_output_rval_as_op_arg(Opts, X, !IO),
+        io.write_string(", ", !IO),
+        mlds_output_rval_as_op_arg(Opts, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        Category = float_macro_binop,
         (
             Op = float_from_dword,
             is_aligned_dword_field(X, Y, PtrRval)

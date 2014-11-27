@@ -1754,6 +1754,7 @@ binop_return_type(float_from_dword, lt_float).
 binop_return_type(body, lt_word).
 binop_return_type(compound_eq, lt_bool).
 binop_return_type(compound_lt, lt_bool).
+binop_return_type(pointer_equal_conservative, lt_bool).
 
 register_type(reg_r, lt_word).
 register_type(reg_f, lt_float).

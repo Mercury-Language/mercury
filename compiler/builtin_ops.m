@@ -90,6 +90,8 @@
     ;       float_word_bits
     ;       float_from_dword
 
+    ;       pointer_equal_conservative
+
     ;       compound_eq
     ;       compound_lt.
             % Comparisons on values of non-atomic types. This is likely to be
@@ -225,10 +227,10 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             PredName = "trace_set_io_state", ProcNum = 0, Args = [_X],
             Code = noop([])
         ;
-            PredName = "store_at_ref", ProcNum = 0, Args = [X, Y],
-            Code = ref_assign(X, Y)
-        ;
-            PredName = "store_at_ref_impure", ProcNum = 0, Args = [X, Y],
+            ( PredName = "store_at_ref"
+            ; PredName = "store_at_ref_impure"
+            ),
+            ProcNum = 0, Args = [X, Y],
             Code = ref_assign(X, Y)
         ;
             PredName = "unsafe_type_cast", ProcNum = 0, Args = [X, Y],
@@ -239,17 +241,26 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             % builtin_translation.
             Code = assign(Y, leaf(X))
         ;
-            PredName = "builtin_int_gt", ProcNum = 0, Args = [X, Y],
-            Code = test(binary(int_gt, leaf(X), leaf(Y)))
+            ( PredName = "builtin_int_gt", CompareOp = int_gt
+            ; PredName = "builtin_int_lt", CompareOp = int_lt
+            ),
+            ProcNum = 0, Args = [X, Y],
+            Code = test(binary(CompareOp, leaf(X), leaf(Y)))
         ;
-            PredName = "builtin_int_lt", ProcNum = 0, Args = [X, Y],
-            Code = test(binary(int_lt, leaf(X), leaf(Y)))
+            ( PredName = "builtin_compound_eq", CompareOp = compound_eq
+            ; PredName = "builtin_compound_lt", CompareOp = compound_lt
+            ),
+            ProcNum = 0, Args = [X, Y],
+            Code = test(binary(CompareOp, leaf(X), leaf(Y)))
+
         ;
-            PredName = "builtin_compound_eq", ProcNum = 0, Args = [X, Y],
-            Code = test(binary(compound_eq, leaf(X), leaf(Y)))
-        ;
-            PredName = "builtin_compound_lt", ProcNum = 0, Args = [X, Y],
-            Code = test(binary(compound_lt, leaf(X), leaf(Y)))
+            PredName = "pointer_equal", ProcNum = 0,
+            % The arity of this predicate is two during parsing,
+            % and three after the polymorphism pass.
+            ( Args = [X, Y]
+            ; Args = [_TypeInfo, X, Y]
+            ),
+            Code = test(binary(pointer_equal_conservative, leaf(X), leaf(Y)))
         )
     ;
         ModuleName = "term_size_prof_builtin",

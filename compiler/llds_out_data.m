@@ -869,6 +869,15 @@ output_rval(Info, Rval, !IO) :-
             output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
             io.write_string("]", !IO)
         ;
+            Category = pointer_compare_binop,
+            io.write_string("(((MR_Word) ", !IO),
+            output_rval(Info, SubRvalA, !IO),
+            io.write_string(") ", !IO),
+            io.write_string(OpStr, !IO),
+            io.write_string(" ((MR_Word) ", !IO),
+            output_rval(Info, SubRvalB, !IO),
+            io.write_string("))", !IO)
+        ;
             Category = compound_compare_binop,
             % These operators are intended to be generated only when using
             % the Erlang backend.
@@ -983,7 +992,8 @@ output_rval(Info, Rval, !IO) :-
                 Op = float_from_dword
             ->
                 ( is_aligned_dword_ptr(SubRvalA, SubRvalB, MemRef) ->
-                    io.write_string("MR_float_from_dword_ptr(MR_dword_ptr(", !IO),
+                    io.write_string("MR_float_from_dword_ptr(MR_dword_ptr(",
+                        !IO),
                     output_rval(Info, mem_addr(MemRef), !IO),
                     io.write_string("))", !IO)
                 ;

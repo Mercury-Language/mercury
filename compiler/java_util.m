@@ -26,6 +26,9 @@
 % operator of the specified kind, and if so, return the name of the
 % corresponding Java operator that can be used to implement it.
 %
+% XXX This scheme seems fundamentally incapable of providing a guarantee
+% that a piece of code that switches on binary_ops is a *complete* switch,
+% i.e. that it handles *all* binary operators.
 
     % The operator returned will be either a prefix operator or function name.
     % The operand needs to be placed in parentheses after the operator name.

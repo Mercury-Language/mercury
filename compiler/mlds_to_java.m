@@ -4967,6 +4967,12 @@ output_binop(Info, Op, X, Y, !IO) :-
         io.write_string(".compareTo(", !IO),
         output_rval(Info, Y, !IO),
         io.write_string(")) ", !IO)
+    ; Op = pointer_equal_conservative ->
+        io.write_string("(", !IO),
+        output_rval(Info, X, !IO),
+        io.write_string(" == ", !IO),
+        output_rval(Info, Y, !IO),
+        io.write_string(") ", !IO)
     ; rval_is_enum_object(X) ->
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),

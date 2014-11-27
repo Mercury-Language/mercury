@@ -2805,6 +2805,8 @@ binaryop_to_il(float_le, from_list([cgt(signed), ldc(int32, i(0)), ceq]),
 binaryop_to_il(float_ge, from_list([clt(signed), ldc(int32, i(0)), ceq]),
         !Info).
 
+binaryop_to_il(pointer_equal_conservative, _, !Info) :-
+    unexpected($module, $pred, "pointer_equal_conservative").
 binaryop_to_il(compound_eq, _, !Info) :-
     unexpected($module, $pred, "compound_eq").
 binaryop_to_il(compound_lt, _, !Info) :-

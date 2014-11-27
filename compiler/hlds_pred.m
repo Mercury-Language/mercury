@@ -3396,8 +3396,8 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    % XXX backend
     (
+        % XXX This should ask: is this an inline builtin FOR THIS BACKEND?
         is_inline_builtin(ModuleName, PredName, ProcId, Arity),
         (
             module_info_get_globals(ModuleInfo, Globals),

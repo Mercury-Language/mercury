@@ -598,6 +598,7 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = array_index(_)   % should not be an initializer anyway
         ; Op = compound_eq
         ; Op = compound_lt
+        ; Op = pointer_equal_conservative
         ),
         IsFloat = no
     ;

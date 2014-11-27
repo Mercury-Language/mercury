@@ -703,6 +703,7 @@ dump_binop(int_le) = "<=".
 dump_binop(int_ge) = ">=".
 dump_binop(str_cmp) = "strcmp".
 dump_binop(body) = "body".
+dump_binop(pointer_equal_conservative) = "pointer_equal_conservative".
 
 dump_maybe_rvals(_, [], _) = "".
 dump_maybe_rvals(MaybeProcLabel, [MR | MRs], N) = Str :-
