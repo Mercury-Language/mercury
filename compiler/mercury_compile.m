@@ -1688,23 +1688,6 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         ExtraObjFiles = []
     ).
 
-:- pred mercury_compile_asm_c_code(globals::in, module_name::in,
-    string::out, io::di, io::uo) is det.
-
-mercury_compile_asm_c_code(Globals, ModuleName, CCode_O_File, !IO) :-
-    get_linked_target_type(Globals, TargetType),
-    get_object_code_type(Globals, TargetType, PIC),
-    maybe_pic_object_file_extension(Globals, PIC, Obj),
-    module_name_to_file_name(Globals, ModuleName, ".c",
-        do_not_create_dirs, CCode_C_File, !IO),
-    ForeignModuleName = foreign_language_module_name(ModuleName, lang_c),
-    module_name_to_file_name(Globals, ForeignModuleName, Obj,
-        do_create_dirs, CCode_O_File, !IO),
-    io.output_stream(OutputStream, !IO),
-    do_compile_c_file(OutputStream, PIC, CCode_C_File, CCode_O_File,
-        Globals, CompileOK, !IO),
-    maybe_set_exit_status(CompileOK, !IO).
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
