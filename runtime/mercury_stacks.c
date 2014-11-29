@@ -278,9 +278,8 @@ MR_new_detstack_segment(MR_Word *sp, int n)
 ** We implement commits by taking a snapshot of maxfr and later restoring it.
 ** Since the nondet stack frames cut away by such a restoration of maxfr
 ** do not get any control at commits, freeing nondet stack segments only
-** when control reaches the placeholder frame at the bottom of such frames
-** is clearly not sufficient on its own to eventually recover all nondet stack
-** segments.
+** when control reaches the frame at the bottom of such segments is clearly
+** not sufficient on its own to eventually recover all nondet stack segments.
 **
 ** We could make commits free all nondet stack segments beyond the one
 ** containing the restored maxfr. However, that solution has three problems.
