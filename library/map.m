@@ -1436,17 +1436,18 @@ map.det_intersect(PF, M1, M2) = M3 :-
 map.intersect(CommonPred, Map1, Map2, Common) :-
     map.to_sorted_assoc_list(Map1, AssocList1),
     map.to_sorted_assoc_list(Map2, AssocList2),
-    map.init(Common0),
-    map.intersect_2(AssocList1, AssocList2, CommonPred, Common0, Common).
+    map.intersect_loop(AssocList1, AssocList2, CommonPred,
+        [], RevCommonAssocList),
+    map.from_rev_sorted_assoc_list(RevCommonAssocList, Common).
 
-:- pred map.intersect_2(assoc_list(K, V), assoc_list(K, V), pred(V, V, V),
-    map(K, V), map(K, V)).
-:- mode map.intersect_2(in, in, pred(in, in, out) is semidet, in, out)
+:- pred map.intersect_loop(assoc_list(K, V), assoc_list(K, V), pred(V, V, V),
+    assoc_list(K, V), assoc_list(K, V)).
+:- mode map.intersect_loop(in, in, pred(in, in, out) is semidet, in, out)
     is semidet.
-:- mode map.intersect_2(in, in, pred(in, in, out) is det, in, out)
+:- mode map.intersect_loop(in, in, pred(in, in, out) is det, in, out)
     is det.
 
-map.intersect_2(AssocList1, AssocList2, CommonPred, !Common) :-
+map.intersect_loop(AssocList1, AssocList2, CommonPred, !RevCommonAssocList) :-
     (
         AssocList1 = [],
         AssocList2 = []
@@ -1463,14 +1464,17 @@ map.intersect_2(AssocList1, AssocList2, CommonPred, !Common) :-
         (
             R = (=),
             CommonPred(Value1, Value2, Value),
-            map.det_insert(Key1, Value, !Common),
-            map.intersect_2(AssocTail1, AssocTail2, CommonPred, !Common)
+            !:RevCommonAssocList = [Key1 - Value | !.RevCommonAssocList],
+            map.intersect_loop(AssocTail1, AssocTail2, CommonPred,
+                !RevCommonAssocList)
         ;
             R = (<),
-            map.intersect_2(AssocTail1, AssocList2, CommonPred, !Common)
+            map.intersect_loop(AssocTail1, AssocList2, CommonPred,
+                !RevCommonAssocList)
         ;
             R = (>),
-            map.intersect_2(AssocList1, AssocTail2, CommonPred, !Common)
+            map.intersect_loop(AssocList1, AssocTail2, CommonPred,
+                !RevCommonAssocList)
         )
     ).
 
@@ -1486,13 +1490,13 @@ map.det_intersect(CommonPred, Map1, Map2, Common) :-
 map.common_subset(Map1, Map2) = Common :-
     map.to_sorted_assoc_list(Map1, AssocList1),
     map.to_sorted_assoc_list(Map2, AssocList2),
-    map.init(Common0),
-    map.common_subset_2(AssocList1, AssocList2, Common0) = Common.
+    map.common_subset_loop(AssocList1, AssocList2, [], RevCommonAssocList),
+    map.from_rev_sorted_assoc_list(RevCommonAssocList, Common).
 
-:- func map.common_subset_2(assoc_list(K, V), assoc_list(K, V),
-    map(K, V)) = map(K, V).
+:- pred map.common_subset_loop(assoc_list(K, V)::in, assoc_list(K, V)::in,
+    assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
 
-map.common_subset_2(AssocList1, AssocList2, !.Common) = !:Common :-
+map.common_subset_loop(AssocList1, AssocList2, !RevCommonAssocList) :-
     (
         AssocList1 = [],
         AssocList2 = []
@@ -1509,17 +1513,16 @@ map.common_subset_2(AssocList1, AssocList2, !.Common) = !:Common :-
         (
             R = (=),
             ( Value1 = Value2 ->
-                map.det_insert(Key1, Value1, !Common)
+                !:RevCommonAssocList = [Key1 - Value1 | !.RevCommonAssocList]
             ;
                 true
             ),
-            !:Common = map.common_subset_2(AssocTail1, AssocTail2, !.Common)
+            map.common_subset_loop(AssocTail1, AssocTail2, !RevCommonAssocList)
         ;
-            R = (<),
-            !:Common = map.common_subset_2(AssocTail1, AssocList2, !.Common)
-        ;
-            R = (>),
-            !:Common = map.common_subset_2(AssocList1, AssocTail2, !.Common)
+            ( R = (<)
+            ; R = (>)
+            ),
+            map.common_subset_loop(AssocList1, AssocTail2, !RevCommonAssocList)
         )
     ).
 
@@ -1536,26 +1539,44 @@ map.det_union(F, M1, M2) = M3 :-
 map.union(CommonPred, Map1, Map2, Common) :-
     map.to_sorted_assoc_list(Map1, AssocList1),
     map.to_sorted_assoc_list(Map2, AssocList2),
-    map.init(Common0),
-    map.union_2(AssocList1, AssocList2, CommonPred, Common0, Common).
+    map.union_loop(AssocList1, AssocList2, CommonPred, [], RevCommonAssocList),
+    map.from_rev_sorted_assoc_list(RevCommonAssocList, Common).
 
-:- pred map.union_2(assoc_list(K, V), assoc_list(K, V), pred(V, V, V),
-    map(K, V), map(K, V)).
-:- mode map.union_2(in, in, pred(in, in, out) is semidet, in, out) is semidet.
-:- mode map.union_2(in, in, pred(in, in, out) is det, in, out) is det.
+    % The real intended modes of this predicate are the last two.
+    % The first four modes are just specialized versions for use by
+    % recursive calls after it has been determined that one or other input
+    % list has run out of elements. These specialized versions don't do
+    % redundant tests to see whether the known-empty list is empty or not.
+    %
+:- pred map.union_loop(assoc_list(K, V), assoc_list(K, V), pred(V, V, V),
+    assoc_list(K, V), assoc_list(K, V)).
+:- mode map.union_loop(in(bound([])), in, pred(in, in, out) is semidet, in, out)
+    is semidet.
+:- mode map.union_loop(in(bound([])), in, pred(in, in, out) is det, in, out)
+    is det.
+:- mode map.union_loop(in, in(bound([])), pred(in, in, out) is semidet, in, out)
+    is semidet.
+:- mode map.union_loop(in, in(bound([])), pred(in, in, out) is det, in, out)
+    is det.
+:- mode map.union_loop(in, in, pred(in, in, out) is semidet, in, out)
+    is semidet.
+:- mode map.union_loop(in, in, pred(in, in, out) is det, in, out)
+    is det.
 
-map.union_2(AssocList1, AssocList2, CommonPred, !Common) :-
+map.union_loop(AssocList1, AssocList2, CommonPred, !RevCommonAssocList) :-
     (
         AssocList1 = [],
         AssocList2 = []
     ;
-        AssocList1 = [_ | _],
+        AssocList1 = [Key1 - Value1 | AssocTail1],
         AssocList2 = [],
-        map.det_insert_from_assoc_list(AssocList1, !Common)
+        !:RevCommonAssocList = [Key1 - Value1 | !.RevCommonAssocList],
+        map.union_loop(AssocTail1, AssocList2, CommonPred, !RevCommonAssocList)
     ;
         AssocList1 = [],
-        AssocList2 = [_ | _],
-        map.det_insert_from_assoc_list(AssocList2, !Common)
+        AssocList2 = [Key2 - Value2 | AssocTail2],
+        !:RevCommonAssocList = [Key2 - Value2 | !.RevCommonAssocList],
+        map.union_loop(AssocList1, AssocTail2, CommonPred, !RevCommonAssocList)
     ;
         AssocList1 = [Key1 - Value1 | AssocTail1],
         AssocList2 = [Key2 - Value2 | AssocTail2],
@@ -1563,16 +1584,19 @@ map.union_2(AssocList1, AssocList2, CommonPred, !Common) :-
         (
             R = (=),
             CommonPred(Value1, Value2, Value),
-            map.det_insert(Key1, Value, !Common),
-            map.union_2(AssocTail1, AssocTail2, CommonPred, !Common)
+            !:RevCommonAssocList = [Key1 - Value | !.RevCommonAssocList],
+            map.union_loop(AssocTail1, AssocTail2, CommonPred,
+                !RevCommonAssocList)
         ;
             R = (<),
-            map.det_insert(Key1, Value1, !Common),
-            map.union_2(AssocTail1, AssocList2, CommonPred, !Common)
+            !:RevCommonAssocList = [Key1 - Value1 | !.RevCommonAssocList],
+            map.union_loop(AssocTail1, AssocList2, CommonPred,
+                !RevCommonAssocList)
         ;
             R = (>),
-            map.det_insert(Key2, Value2, !Common),
-            map.union_2(AssocList1, AssocTail2, CommonPred, !Common)
+            !:RevCommonAssocList = [Key2 - Value2 | !.RevCommonAssocList],
+            map.union_loop(AssocList1, AssocTail2, CommonPred,
+                !RevCommonAssocList)
         )
     ).
 
@@ -1582,6 +1606,8 @@ map.det_union(CommonPred, Map1, Map2, Union) :-
     ;
         error("map.det_union: map.union failed")
     ).
+
+%-----------------------------------------------------------------------------%
 
 map.reverse_map(Map) = RevMap :-
     map.foldl(map.reverse_map_2, Map, map.init, RevMap).
