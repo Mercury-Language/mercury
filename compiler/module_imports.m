@@ -746,7 +746,7 @@ gather_implicit_import_needs_in_goal(GoalExpr - _Context,
             ; CalleeSymName = qualified(unqualified("io"), "format")
             ; CalleeSymName = qualified(unqualified("stream"), "format")
             ; CalleeSymName = qualified(unqualified("string_writer"), "format")
-            ; CalleeSymName = qualified(qualified(unqualified("string_writer"),
+            ; CalleeSymName = qualified(qualified(unqualified("stream"),
                 "string_writer"), "format")
             )
         then

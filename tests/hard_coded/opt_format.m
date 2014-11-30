@@ -19,17 +19,28 @@
 :- import_module char.
 :- import_module int.
 :- import_module list.
+:- import_module stream.
+:- import_module stream.string_writer.
 :- import_module string.
 
 main(!IO) :-	
-	io.write_string(test_string_format_1(42, 'x', "HAL"), !IO),
+	io.write_string(test_string_format_1(42,  'x', "HAL"), !IO),
 	io.write_string(test_string_format_2(142, 'y', "IBM"), !IO),
 	io.write_string(test_string_format_2(242, 'z', "JCN"), !IO),
 	io.write_string(test_string_format_2(342, 'v', "KDO"), !IO),
-    test_io_format_1(42, 'a', "WHAL", !IO),
+    io.nl(!IO),
+    test_io_format_1(42,  'a', "WHAL", !IO),
     test_io_format_2(142, 'b', "WIBM", !IO),
     test_io_format_2(242, 'c', "WJCN", !IO),
-    test_io_format_2(342, 'd', "WKDO", !IO).
+    test_io_format_2(342, 'd', "WKDO", !IO),
+    io.nl(!IO),
+    io.output_stream(OutStream, !IO),
+    test_stream_writer_format_1(OutStream, 42,  'e', "XHAL", !IO),
+    test_stream_writer_format_2(OutStream, 142, 'f', "XIBM", !IO),
+    test_stream_writer_format_2(OutStream, 242, 'g', "XJCN", !IO),
+    test_stream_writer_format_2(OutStream, 342, 'h', "XKDO", !IO).
+
+%-----------------------------------------------------------------------------%
 
 :- func test_string_format_1(int, char, string) = string.
 
@@ -45,7 +56,7 @@ test_string_format_2(Int, Char, Str) = Result :-
     ->
         Tail = [c(Char), PolyStr],
         IntX = Int + 1,
-        Result = string.format("abc_%d_def_%%%c_ghi_%s_jkl\\\n",
+        Result = string.format("abc_%04d_def_%%%c_ghi_%s_jkl\\\n",
             [i(IntX) | Tail])
     ;
         Int > 200,
@@ -57,14 +68,17 @@ test_string_format_2(Int, Char, Str) = Result :-
     ;
         IntX = Int + 1,
         Tail = [PolyStr],
-        Result = string.format("cba_%c_def_%%%d_ghi_%s_jkl\\\n",
+        Result = string.format("cba_%c_def_%%%d_ghi_%-7s_jkl\\\n",
             [c(Char), i(IntX) | Tail])
     ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred test_io_format_1(int::in, char::in, string::in, io::di, io::uo) is det.
 
 test_io_format_1(Int, Char, Str, !IO) :-
-    io.format("abc_%d_def_%%%c_ghi_%s_jkl\\\n", [i(Int), c(Char), s(Str)], !IO).
+    io.format("abc_%d_def_%%%c_ghi_%s_jkl\\\n",
+        [i(Int), c(Char), s(Str)], !IO).
 
 :- pred test_io_format_2(int::in, char::in, string::in, io::di, io::uo) is det.
 
@@ -76,7 +90,7 @@ test_io_format_2(Int, Char, Str, !IO) :-
     ->
         Tail = [c(Char), PolyStr],
         IntX = Int + 1,
-        io.format("abc_%d_def_%%%c_ghi_%s_jkl\\\n", [i(IntX) | Tail], !IO)
+        io.format("abc_%05.3d_def_%%%c_ghi_%5s_jkl\\\n", [i(IntX) | Tail], !IO)
     ;
         Int > 200,
         IntY = Int - 1,
@@ -89,4 +103,39 @@ test_io_format_2(Int, Char, Str, !IO) :-
         Tail = [PolyStr],
         io.format(OutStream, "cba_%c_def_%%%d_ghi_%s_jkl\\\n",
             [c(Char), i(IntX) | Tail], !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred test_stream_writer_format_1(Stream::in, int::in, char::in, string::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
+
+test_stream_writer_format_1(Stream, Int, Char, Str, !State) :-
+    stream.string_writer.format(Stream, "abc_%d_def_%%%c_ghi_%s_jkl\\\n",
+        [i(Int), c(Char), s(Str)], !State).
+
+:- pred test_stream_writer_format_2(Stream::in, int::in, char::in, string::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
+
+test_stream_writer_format_2(Stream, Int, Char, Str, !State) :-
+    PolyStr = s(Str),
+    (
+        Int > 300
+    ->
+        Tail = [c(Char), PolyStr],
+        IntX = Int + 1,
+        stream.string_writer.format(Stream,
+            "abc_%05.3d_def_%%%c_ghi_%5s_jkl\\\n", [i(IntX) | Tail], !State)
+    ;
+        Int > 200,
+        IntY = Int - 1,
+        FmtStr = "cba_%s_fed_%%%c_ghi_%d_jkl\\\n",
+        Values = [PolyStr, c(Char), i(IntY)]
+    ->
+        stream.string_writer.format(Stream, FmtStr, Values, !State)
+    ;
+        IntX = Int + 1,
+        Tail = [PolyStr],
+        stream.string_writer.format(Stream, "cba_%c_def_%%%d_ghi_%s_jkl\\\n",
+            [c(Char), i(IntX) | Tail], !State)
     ).

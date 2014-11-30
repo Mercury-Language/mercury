@@ -124,6 +124,10 @@
     %
 :- func mercury_io_module = sym_name.
 
+    % Returns the name of the stream module.
+    %
+:- func mercury_stream_module = sym_name.
+
     % Returns the sym_name of the module with the given name in the
     % Mercury standard library.
     %
@@ -195,6 +199,7 @@ mercury_string_format_module = qualified(unqualified("string"), "format").
 mercury_string_parse_util_module =
     qualified(unqualified("string"), "parse_util").
 mercury_io_module = unqualified("io").
+mercury_stream_module = unqualified("stream").
 
 is_std_lib_module_name(ModuleName, Name) :-
     % -- not yet:

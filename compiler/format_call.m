@@ -1112,10 +1112,7 @@ create_replacement_goal(ModuleInfo, GoalId, CallKind, Components,
     (
         CallKind = kind_string_format(ResultVar),
         create_string_format_replacement(ModuleInfo, Components, ResultVar,
-            ReplacementGoal, !VarSet, !VarTypes),
-        FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
-            set_of_var.list_to_set(ToDeleteVars)),
-        map.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
+            ReplacementGoal, !VarSet, !VarTypes)
     ;
         (
             CallKind = kind_io_format_nostream(IOInVar, IOOutVar),
@@ -1126,14 +1123,17 @@ create_replacement_goal(ModuleInfo, GoalId, CallKind, Components,
         ),
         create_io_format_replacement(ModuleInfo, Components,
             MaybeStreamVar, IOInVar, IOOutVar, ReplacementGoal,
-            !VarSet, !VarTypes),
-        FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
-            set_of_var.list_to_set(ToDeleteVars)),
-        map.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
+            !VarSet, !VarTypes)
     ;
-        CallKind = kind_stream_string_writer(_, _, _, _)
-        % XXX Optimize these.
-    ).
+        CallKind = kind_stream_string_writer(TC_InfoVarForStream, StreamVar,
+            StateInVar, StateOutVar),
+        create_stream_string_writer_format_replacement(ModuleInfo, Components,
+            TC_InfoVarForStream, StreamVar, StateInVar, StateOutVar,
+            ReplacementGoal, !VarSet, !VarTypes)
+    ),
+    FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
+        set_of_var.list_to_set(ToDeleteVars)),
+    map.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -1163,8 +1163,8 @@ create_replacement_goal(ModuleInfo, GoalId, CallKind, Components,
     list(flat_component)::in, prog_var::in, hlds_goal::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-create_string_format_replacement(ModuleInfo, Components, ResultVar, Goal,
-        !VarSet, !VarTypes) :-
+create_string_format_replacement(ModuleInfo, Components, ResultVar,
+        ReplacementGoal, !VarSet, !VarTypes) :-
     replace_string_format(ModuleInfo, Components, yes(ResultVar),
         ActualResultVar, Goals, ValueVars, !VarSet, !VarTypes),
     ( ActualResultVar = ResultVar ->
@@ -1181,7 +1181,7 @@ create_string_format_replacement(ModuleInfo, Components, ResultVar, Goal,
     InstMapDelta = instmap_delta_bind_var(ResultVar),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
         term.context_init, GoalInfo),
-    conj_list_to_goal(AllGoals, GoalInfo, Goal).
+    conj_list_to_goal(AllGoals, GoalInfo, ReplacementGoal).
 
 :- pred replace_string_format(module_info::in, list(flat_component)::in,
     maybe(prog_var)::in, prog_var::out, list(hlds_goal)::out,
@@ -1273,18 +1273,16 @@ replace_string_format_nonempty(ModuleInfo, HeadComponent, TailComponents,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 create_io_format_replacement(ModuleInfo, Components,
-        MaybeStreamVar, IOInVar, IOOutVar, Goal, !VarSet, !VarTypes) :-
+        MaybeStreamVar, IOInVar, IOOutVar, ReplacementGoal,
+        !VarSet, !VarTypes) :-
     replace_io_format(ModuleInfo, Components, MaybeStreamVar,
         IOInVar, IOOutVar, Goals, ValueVars, !VarSet, !VarTypes),
 
-    Uniq = ground(unique, none),
-    Clobbered = ground(clobbered, none),
-    InstMapDelta = instmap_delta_from_assoc_list(
-        [IOInVar - Clobbered, IOOutVar - Uniq]),
+    make_di_uo_instmap_delta(IOInVar, IOOutVar, InstMapDelta),
     set_of_var.insert_list([IOInVar, IOOutVar], ValueVars, NonLocals),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
         term.context_init, GoalInfo),
-    conj_list_to_goal(Goals, GoalInfo, Goal).
+    conj_list_to_goal(Goals, GoalInfo, ReplacementGoal).
 
 :- pred replace_io_format(module_info::in, list(flat_component)::in,
     maybe(prog_var)::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
@@ -1304,8 +1302,7 @@ replace_io_format(ModuleInfo, Components, MaybeStreamVar, IOInVar, IOOutVar,
         UnifyContext = unify_context(UnifyMainContext, []),
         GoalExpr = unify(IOOutVar, rhs_var(IOInVar), UniMode, Unification,
             UnifyContext),
-        InstMapDelta = instmap_delta_from_assoc_list(
-            [IOInVar - Clobbered, IOOutVar - Uniq]),
+        make_di_uo_instmap_delta(IOInVar, IOOutVar, InstMapDelta),
         goal_info_init(set_of_var.list_to_set([IOInVar, IOOutVar]),
             InstMapDelta, detism_det, purity_pure, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -1361,14 +1358,54 @@ replace_one_io_format(ModuleInfo, Component, MaybeStreamVar,
         MaybeStreamVar = no,
         ArgVars = [ComponentVar, IOInVar, IOOutVar]
     ),
-    Uniq = ground(unique, none),
-    Clobbered = ground(clobbered, none),
-    InstMapDelta = instmap_delta_from_assoc_list(
-        [IOInVar - Clobbered, IOOutVar - Uniq]),
+    make_di_uo_instmap_delta(IOInVar, IOOutVar, InstMapDelta),
     generate_simple_call(mercury_io_module, "write_string",
         pf_predicate, only_mode, detism_det, purity_pure, ArgVars, [],
         InstMapDelta, ModuleInfo, term.context_init, CallGoal),
     Goals = ComponentGoals ++ [CallGoal].
+
+%-----------------------------------------------------------------------------%
+
+    % For optimizing e.g.
+    %   stream.string_writer.format(Stream, "%3d_%.5x",
+    %       [i(X), i(Y)], State0, State),
+    % generate code that looks like this:
+    %
+    %   ... optimized code for string.format("%dd_%.5x", [i(X), i(Y)], FS) ...
+    %   stream.put(Stream, FS, State0, State)
+    %
+    % This mimics the current implementation of stream.string_writer.format
+    % in the runtime.
+    %
+    % XXX We should investigate whether switching to an approach similar
+    % to the one we follow for io.format, which in this case would mean
+    % invoking put on each component as soon as it is formatted, would
+    % yield faster code. We can answer that question only with access
+    % to a representative sample of code that uses stream.string_writer.format.
+    %
+:- pred create_stream_string_writer_format_replacement(module_info::in,
+    list(flat_component)::in, prog_var::in, prog_var::in,
+    prog_var::in, prog_var::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+create_stream_string_writer_format_replacement(ModuleInfo, Components,
+        TC_InfoVarForStream, StreamVar, StateInVar, StateOutVar,
+        ReplacementGoal, !VarSet, !VarTypes) :-
+    replace_string_format(ModuleInfo, Components, no, ResultVar,
+        StringFormatGoals, ValueVars, !VarSet, !VarTypes),
+    ArgVars = [TC_InfoVarForStream, StreamVar, ResultVar,
+        StateInVar, StateOutVar],
+    make_di_uo_instmap_delta(StateInVar, StateOutVar, InstMapDelta),
+    generate_simple_call(mercury_stream_module, "put",
+        pf_predicate, only_mode, detism_det, purity_pure, ArgVars, [],
+        InstMapDelta, ModuleInfo, term.context_init, CallGoal),
+    Goals = StringFormatGoals ++ [CallGoal],
+
+    set_of_var.insert_list([TC_InfoVarForStream, StreamVar,
+        StateInVar, StateOutVar], ValueVars, NonLocals),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+        term.context_init, GoalInfo),
+    conj_list_to_goal(Goals, GoalInfo, ReplacementGoal).
 
 %-----------------------------------------------------------------------------%
 
@@ -1720,6 +1757,15 @@ make_result_var_if_needed(MaybeResultVar, ResultVar, !VarSet, !VarTypes) :-
         varset.new_var(ResultVar, !VarSet),
         add_var_type(ResultVar, string_type, !VarTypes)
     ).
+
+:- pred make_di_uo_instmap_delta(prog_var::in, prog_var::in,
+    instmap_delta::out) is det.
+
+make_di_uo_instmap_delta(InVar, OutVar, InstMapDelta) :-
+    Uniq = ground(unique, none),
+    Clobbered = ground(clobbered, none),
+    InstMapDelta = instmap_delta_from_assoc_list(
+        [InVar - Clobbered, OutVar - Uniq]).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.simplify.format_call.
