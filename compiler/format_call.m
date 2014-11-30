@@ -83,7 +83,7 @@
 % functions such as string.append. However, we have not yet felt the need
 % for this in practice.
 %
-% The second job (optimizing the calls) starts by procesing the information
+% The second job (optimizing the calls) starts by processing the information
 % gathered by the first pass through the code. For each call site, we
 % systematically convert each component of the format string and its associated
 % value to be printed (if any) to a string, and then either append the
@@ -205,7 +205,7 @@
 :- type list_skeleton_map   == map(prog_var, list_skeleton_state).
 
     % Maps each variable representing a polytype in the list of values to be
-    % printed to an abtract representation of that polytype, with the
+    % printed to an abstract representation of that polytype, with the
     % actual value to be printed replaced by the variable that will hold
     % that value at runtime.
     %
@@ -1248,9 +1248,11 @@ replace_string_format_nonempty(ModuleInfo, HeadComponent, TailComponents,
     % i.e. if the stream to be printed on was implicit, then the calls
     % to io.write_string that we generate will also have the stream to be
     % printed on implicit. The runtime system will retrieve the current
-    % output stream in each of those calls to io.write_string/3. We could
-    % test to see whether factoring out this hidden repetition would be
-    % worthwhile.
+    % output stream in each of those calls to io.write_string/3. Factoring out
+    % this hidden repetition could be worthwhile, but if it is, then
+    % it should also be worth doing for code explicitly written by the user,
+    % so this is not the place to worry about it. Instead, it should be done
+    % by a later optimization pass.
     %
 :- pred create_io_format_replacement(module_info::in, list(flat_component)::in,
     maybe(prog_var)::in, prog_var::in, prog_var::in, hlds_goal::out,
@@ -1476,7 +1478,7 @@ represent_component(ModuleInfo, Component, MaybeResultVar, ResultVar,
     %   Flags = string_format_flags(VarHash, VarSpace, VarZero, VarMinus,
     %       VarPlus)
     %
-    % While this looke like a lot, it should actually compile down into
+    % While this looks like a lot, it should actually compile down into
     % a single machine instruction, due to the packing of enums inside
     % structures.
     %

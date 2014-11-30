@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1997-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
@@ -133,10 +135,10 @@ LN	= ln
 
 #-----------------------------------------------------------------------------#
 
-# Set the install name for Darwin shared libraries.  We disable the
+# Set the install name for Darwin shared libraries. We disable the
 # --shlib-linker-use-install-name mmc option so that the -install_name linker
-# option is not passed in the .dep files.  We do this to avoid a problem when
-# building from the C source distribution:  if the C source distribution is
+# option is not passed in the .dep files. We do this to avoid a problem when
+# building from the C source distribution: if the C source distribution is
 # generated on a non-Darwin system then the -install_name option is not passed
 # in the .dep files, so it must be passed here, however if a C source
 # distribution is generated on a Darwin system then by default the
@@ -212,15 +214,15 @@ $(STD_LIB_NAME).trans_opts: $($(STD_LIB_NAME).trans_opts)
 
 .PHONY: check_doc_undoc
 check_doc_undoc: MODULES_DOC MODULES_UNDOC *.m
-	@{																\
-		cat MODULES_DOC MODULES_UNDOC | sort > FILES_VIA_MODULES;	\
-		ls *.m > FILES_VIA_LS;										\
-		if diff -u FILES_VIA_MODULES FILES_VIA_LS; then				\
-			true;													\
-		else														\
-			false;													\
-		fi;															\
-		rm -f FILES_VIA_MODULES FILES_VIA_LS;						\
+	@{								  \
+		cat MODULES_DOC MODULES_UNDOC | sort > FILES_VIA_MODULES; \
+		ls *.m > FILES_VIA_LS;					  \
+		if diff -u FILES_VIA_MODULES FILES_VIA_LS; then		  \
+			true;						  \
+		else							  \
+			false;						  \
+		fi;							  \
+		rm -f FILES_VIA_MODULES FILES_VIA_LS;			  \
 	}
 
 #-----------------------------------------------------------------------------#
@@ -261,7 +263,7 @@ endif
 
 # javac expects to find the sources for symbols named jmercury.runtime.* in
 # jmercury/runtime/*, but in our sources those symbols actually come from
-# java/runtime/*.  So we set up a symbolic link to help javac find the way to
+# java/runtime/*. So we set up a symbolic link to help javac find the way to
 # the sources.
 .PHONY: copy_java_runtime_files
 .PHONY: install_mer_rt
@@ -315,7 +317,7 @@ RUNTIME_DLLS=mercury_dotnet.dll mercury_il.dll
 CSCFLAGS=/t:module
 
 # If you do generate a new strong name, you had better update
-# compiler/mlds_to_il.m to generate references to it.  It is also hard-coded
+# compiler/mlds_to_il.m to generate references to it. It is also hard-coded
 # in runtime/mercury_il.il.
 # This is hard-coding is sub-optimal -- the compiler should automatically find
 # out what the strong name is.
@@ -485,9 +487,9 @@ $(os_subdir)par_builtin.pic_o \
 # depend on ../robdd/robdd_conf.h.
 $(os_subdir)robdd.$O \
 $(os_subdir)robdd.pic_o \
-    : ../robdd/bryant.h \
-    ../robdd/bryant.c \
-    ../robdd/robdd_conf.h
+	: ../robdd/bryant.h \
+	../robdd/bryant.c \
+	../robdd/robdd_conf.h
 
 #-----------------------------------------------------------------------------#
 
@@ -552,9 +554,9 @@ install_library: mercury.dll install_grade_dirs install_gac \
 #	EXTRA_CSCFLAGS=/debug+ /debug:full
 #
 # XXX Unfortunately, however, this is a problem with AL, which prohibits
-# linking debuggable C# code with IL code.  The following
-# horrible hack avoids that problem.  After modifying Mmake.params as
-# described above, invoke `mmake install_debug_library'.
+# linking debuggable C# code with IL code. The following horrible hack
+# avoids that problem.  After modifying Mmake.params as described above,
+# invoke `mmake install_debug_library'.
 
 .PHONY: install_debug_library
 install_debug_library:
@@ -582,7 +584,7 @@ else
 .PHONY: install_library
 install_library: lib$(STD_LIB_NAME) lib$(STD_LIB_NAME).install_library
 
-endif  #ifneq (,$(findstring il,$(GRADE)))
+endif	#ifneq (,$(findstring il,$(GRADE)))
 
 else	#ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
@@ -632,7 +634,7 @@ endif
 munge_dll_debug_info:
 	for file in *csharp_code.dll; do \
 		ildasm /out:$$file.ild $$file; \
-		sed  's/01 00 00 01/01 00 01 01/' $$file.ild \
+		sed 's/01 00 00 01/01 00 01 01/' $$file.ild \
 			> $$file.ild.munged; \
 		ilasm /quiet /dll /debug /out:$$file $$file.ild.munged; \
 	done

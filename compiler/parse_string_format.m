@@ -2,8 +2,8 @@
 % vim: ts=4 sw=4 et ft=mercury
 %----------------------------------------------------------------------------%
 % Copyright (C) 2014 The Mercury team.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
 %
 % File: parse_string_format.m.
@@ -82,7 +82,7 @@
             ).
 
     % Parse the entire format string. Return either a list of things to be
-    % formated and printed, or a list of error messages.
+    % formatted and printed, or a list of error messages.
     %
 :- pred parse_and_flatten_format_string(list(char)::in,
     list(abstract_poly_type)::in,
