@@ -327,8 +327,22 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
         set_of_var.init, _),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, optimize_format_calls, OptFormatCalls),
+    globals.lookup_bool_option(Globals, exec_trace, ExecTrace),
+    % If users write a call to e.g. to string.format, they expect the debugger
+    % to show them calls to string.format. Showing a sequence of calls to
+    % lower level predicates instead of that higher level call would probably
+    % confuse debugger users.
+    ( if
+        OptFormatCalls = yes,
+        ExecTrace = no
+    then
+        ShouldOptFormatCalls = yes
+    else
+        ShouldOptFormatCalls = no
+    ),
     list.foldl4(
-        check_format_call_site(ModuleInfo, OptFormatCalls, ConjMaps, PredMap),
+        check_format_call_site(ModuleInfo, ShouldOptFormatCalls,
+            ConjMaps, PredMap),
         FormatCallSites, map.init, GoalIdMap, [], Specs, !VarSet, !VarTypes),
     ( map.is_empty(GoalIdMap) ->
         % We have not found anything to improve in Goal1.
@@ -352,7 +366,7 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
     list(error_spec)::in, list(error_spec)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-check_format_call_site(ModuleInfo, OptFormatCalls, ConjMaps, PredMap,
+check_format_call_site(ModuleInfo, ShouldOptFormatCalls, ConjMaps, PredMap,
         FormatCallSite, !GoalIdMap, !Specs, !VarSet, !VarTypes) :-
     FormatCallSite = format_call_site(GoalId, StringVar, ValuesVar, CallKind,
         ModuleName, Name, Arity, Context, CurId),
@@ -452,9 +466,9 @@ check_format_call_site(ModuleInfo, OptFormatCalls, ConjMaps, PredMap,
         ;
             MaybeComponents = ok(Components),
             (
-                OptFormatCalls = no
+                ShouldOptFormatCalls = no
             ;
-                OptFormatCalls = yes,
+                ShouldOptFormatCalls = yes,
                 create_replacement_goal(ModuleInfo, GoalId, CallKind,
                     Components, ToDeleteVars, !GoalIdMap, !VarSet, !VarTypes)
             )
