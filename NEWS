@@ -108,6 +108,11 @@ Changes to the Mercury standard library:
 
    - is_all_alnum/1
 
+* The following predicates have been added to the map module:
+
+   - foldl5/12
+   - foldr5/12
+
 Changes to the Mercury compiler:
 
 * We have enabled stricter checking of non-ground final insts to reject more
