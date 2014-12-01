@@ -101,10 +101,12 @@ candidate_parallel_conjunctions(Params, Deep, Messages, !Feedback) :-
     assoc_list.map_values_only(
         convert_candidate_par_conjunctions_proc(pard_goal_detail_to_pard_goal),
         ConjunctionsAssocList0, ConjunctionsAssocList),
-    CandidateParallelConjunctions =
-        feedback_data_candidate_parallel_conjunctions(Params,
+    CandidateInfo =
+        feedback_info_candidate_parallel_conjunctions(Params,
             ConjunctionsAssocList),
-    put_feedback_data(CandidateParallelConjunctions, !Feedback).
+    ProfiledProgramName = Deep ^ profile_stats ^ prs_program_name,
+    add_feedback_candidate_parallel_conjunctions(ProfiledProgramName,
+        CandidateInfo, !Feedback).
 
 %----------------------------------------------------------------------------%
 %

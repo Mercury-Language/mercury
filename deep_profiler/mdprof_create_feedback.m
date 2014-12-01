@@ -123,26 +123,26 @@ generate_requested_feedback(ProgName, Options, InputFileName, OutputFileName,
             deep_get_maybe_progrep(Deep, MaybeProgRep),
             (
                 MaybeProgRep = ok(_),
-                ProfileProgName = Deep ^ profile_stats ^ prs_program_name,
-                feedback.read_or_create(OutputFileName, ProfileProgName,
-                    FeedbackReadResult, !IO),
+                ProfiledProgramName = Deep ^ profile_stats ^ prs_program_name,
+                read_or_create_feedback_file(OutputFileName,
+                    ProfiledProgramName, FeedbackReadResult, !IO),
                 (
                     FeedbackReadResult = ok(Feedback0),
                     process_deep_to_feedback(RequestedFeedbackInfo,
                         Deep, Messages, Feedback0, Feedback),
                     (
                         Report = yes,
-                        print_feedback_report(ProfileProgName, Feedback, !IO)
+                        print_feedback_report(Feedback, !IO)
                     ;
                         Report = no
                     ),
-                    write_feedback_file(OutputFileName, ProfileProgName,
-                        Feedback, WriteResult, !IO),
+                    write_feedback_file(OutputFileName, Feedback,
+                        WriteResult, !IO),
                     (
-                        WriteResult = ok
+                        WriteResult = fwr_ok
                     ;
-                        ( WriteResult = open_error(Error)
-                        ; WriteResult = write_error(Error)
+                        ( WriteResult = fwr_open_error(Error)
+                        ; WriteResult = fwr_write_error(Error)
                         ),
                         io.error_message(Error, ErrorMessage),
                         io.format(Stderr, "%s: %s: %s\n",
@@ -155,7 +155,7 @@ generate_requested_feedback(ProgName, Options, InputFileName, OutputFileName,
                     write_out_messages(Stderr, Messages, !IO)
                 ;
                     FeedbackReadResult = error(FeedbackReadError),
-                    feedback.read_error_message_string(OutputFileName,
+                    feedback_read_error_message_string(OutputFileName,
                         FeedbackReadError, Message),
                     io.write_string(Stderr, Message, !IO),
                     io.set_exit_status(1, !IO)
@@ -526,7 +526,7 @@ get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
     io.stderr_stream(Stderr, !IO),
     !:Error = have_not_found_error,
     % For each feedback type, determine if it is requested, and fill in the
-    % field in the RequestedFeedbackInfo structure.
+    % corresponding field in the RequestedFeedbackInfo structure.
     lookup_bool_option(Options, candidate_parallel_conjunctions,
         CandidateParallelConjunctions),
     (

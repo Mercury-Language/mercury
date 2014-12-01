@@ -166,12 +166,12 @@ do_apply_implicit_parallelism_transformation(SourceFileMap, Specs,
     parallelism_info::out) is semidet.
 
 get_implicit_parallelism_feedback(ModuleName, FeedbackInfo, ParallelismInfo) :-
-    FeedbackData =
-        feedback_data_candidate_parallel_conjunctions(_, _),
-    get_feedback_data(FeedbackInfo, FeedbackData),
-    FeedbackData =
-        feedback_data_candidate_parallel_conjunctions(Parameters, AssocList),
-    make_module_candidate_par_conjs_map(ModuleName, AssocList,
+    MaybeCandidates =
+        get_feedback_candidate_parallel_conjunctions(FeedbackInfo),
+    MaybeCandidates = yes(Candidates),
+    Candidates =
+        feedback_info_candidate_parallel_conjunctions(Parameters, ProcsConjs),
+    make_module_candidate_par_conjs_map(ModuleName, ProcsConjs,
         CandidateParConjsMap),
     ParallelismInfo = parallelism_info(Parameters, CandidateParConjsMap).
 

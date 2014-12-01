@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
+% Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,8 +11,11 @@
 % Main author: pbone.
 %
 % This module defines data structures for representing feedback information
-% as well as procedures for reading and writing feedback files.  It is
-% included in the compiler and in any tools that generate feedback data.
+% in Mercury code, as well as procedures for reading and writing the feedback
+% files that represent such information on disk.
+%
+% This module is included both in the compiler and in the tools that
+% generate this feedback data.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -30,163 +34,185 @@
 :- import_module assoc_list.
 :- import_module io.
 :- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
-    % Feedback information is stored in this datatype when in memory.
+    % The feedback_info type stores the data that may be fed back
+    % into the compiler. For a detailed description, see the comment
+    % on the non-abstract definition in the implementation section.
     %
 :- type feedback_info.
 
-%-----------------------------------------------------------------------------%
-
-    % This type stores the data that may be fed back into the compiler.
-    % Each constructor here corresponds to a constructor of the feedback_type
-    % type.
+    % init_feedback_info(ProfiledProgramName) = FeedbackInfo:
     %
-    % NOTE: When making changes to this structure or structures in
-    % mdbcomp.program_representation, be sure to:
+    % Create a new empty feedback info structure, recording that it is
+    % intended to hold feedback information for the program with the given
+    % name.
     %
-    %   - Increment the file format version number towards the bottom of this
-    %     file.
-    %
-    %   - Update the feedback_data_query instantiation state below.
-    %
-    %   - Update the feedback_type structure within this file.
-    %
-    %   - Update the feedback_data_type/2 predicate in this file.
-    %
-:- type feedback_data
-    --->    feedback_data_calls_above_threshold_sorted(
-                % Feedback data of this type represents a list of call sites
-                % sorted in descending order of mean or median call cost
-                % where that cost is greater than a given threshold.
-
-                threshold       :: int,
-                stat_measure    :: stat_measure,
-                calls           :: list(call_site)
-            )
-    ;       feedback_data_candidate_parallel_conjunctions(
-                % Data of this type represents a list of candidate
-                % conjunctions for implicit parallelism.
-
-                parameters      :: candidate_par_conjunctions_params,
-
-                % Assoclist of procedure labels and candidate parallel
-                % conjunctions.
-                conjunctions    :: assoc_list(string_proc_label,
-                                        candidate_par_conjunctions_proc)
-            ).
-
-:- inst feedback_data_query
-    --->    feedback_data_calls_above_threshold_sorted(free, free, free)
-    ;       feedback_data_candidate_parallel_conjunctions(free, free).
-
-:- mode feedback_data_query ==
-    feedback_data_query >> ground.
-
-%-----------------------------------------------------------------------------%
-
-    % put_feedback_data(Data, !Info)
-    %
-    % Put feedback data into the feedback files.
-    %
-    % Data loaded from file (not added with put) will be removed from the
-    % internal state when data for the same type is added.
-    %
-:- pred put_feedback_data(feedback_data::in,
-    feedback_info::in, feedback_info::out) is det.
-
-%-----------------------------------------------------------------------------%
-
-    % get_feedback_data(Info, Data):
-    %
-    % When given a partially instantiated Data term representing the query,
-    % get_feedback_data will either fully instantiate Data, or fail.
-    %
-:- pred get_feedback_data(feedback_info::in,
-    feedback_data::feedback_data_query) is semidet.
-
-:- pred get_all_feedback_data(feedback_info::in, list(feedback_data)::out)
-    is det.
-
-    % Get the name of the program that generated this feedback information.
-    %
-:- func get_feedback_program_name(feedback_info) = string.
-
-%-----------------------------------------------------------------------------%
-
-    % read_feedback_file(Path, FeedbackInfo, !IO):
-    %
-    % This predicate reads in feedback data from a specified file.
-    % It should be called once per compiler invocation.
-    %
-:- pred read_feedback_file(string::in,
-    feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
-
-:- type feedback_read_result(T)
-    --->    ok(T)
-    ;       error(feedback_read_error).
-
-:- type feedback_read_error
-    --->    open_error(io.error)
-    ;       read_error(io.error)
-    ;       parse_error(
-                fre_pe_message          :: string,
-                fre_pe_line_no          :: int
-            )
-    ;       unexpected_eof
-    ;       incorrect_version(string)
-    ;       incorrect_first_line
-    ;       incorrect_program_name(
-                fre_ipn_expected        :: string,
-                fre_ipn_got             :: string
-            ).
-
-%-----------------------------------------------------------------------------%
-
-    % read_error_message_string(File, Error, Message):
-    %
-    % Create a string describing the read error.
-    %
-:- pred read_error_message_string(string::in, feedback_read_error::in,
-    string::out) is det.
-
-%-----------------------------------------------------------------------------%
-
-    % read_or_create(Path, ProgramName, Result, !IO):
-    %
-    % Try to read in a feedback file, if the file doesn't exist create a new
-    % empty feedback state in memory.
-    %
-    % ProgramName is the name of the program that generated this feedback file.
-    % It is used to set this information for new feedback files or to verify
-    % that the name in an existing file matches what was expected.
-    %
-:- pred read_or_create(string::in, string::in,
-    feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
-
-    % init_feedback_info(ProgramName) = FeedbackInfo:
-    %
-    % Create a new empty feedback info structure.
+    % XXX The predicates that add information to feedback_infos now require
+    % their callers to specify what profiled program their information is for,
+    % and this is checked against the profiled program name in the
+    % feedback_info. We could instead initialize feedback_infos *without*
+    % storing the program name, and record that name on the first update
+    % of the feedback_info instead. This would remove one source of possible
+    % name mismatches.
     %
 :- func init_feedback_info(string) = feedback_info.
 
 %-----------------------------------------------------------------------------%
+%
+% The kinds of information that we can record in a feedback file.
+%
+% Historically, we also supported a feedback type that was used by
+% Jerome Tannier's attempt at discovering a useful set of conjunctions
+% to parallelise. However, this early attempt at automatic parallelisation
+% yielded results that were much inferior to our current system, so it
+% should interest only historians. The code supporting Tanner's feedback
+% type was removed from the feedback system on 2014 december 1;
+% if you want it, look in the git archives for commits on that date.
+%
 
-    % write_feedback_file(Path, ProgName, FeedbackInfo, FeedbackWriteResult,
-    %   !IO):
+    % Values of this type represent a list of candidate conjunctions
+    % for implicit parallelism.
     %
-    % Write out the feedback data to a given file name.
+:- type feedback_info_candidate_parallel_conjunctions
+    --->    feedback_info_candidate_parallel_conjunctions(
+                cpc_parameters      :: candidate_par_conjunctions_params,
+
+                % For each procedure that has some candidate parallel
+                % conjunctions, list those candidates.
+                cpc_conjunctions    :: assoc_list(string_proc_label,
+                                        candidate_par_conjunctions_proc)
+            ).
+
+%-----------------------------------------------------------------------------%
+%
+% The getter predicates of feedback_info.
+%
+
+    % Get the name of the program whose profiled execution the given
+    % feedback_info was derived from.
     %
-:- pred write_feedback_file(string::in, string::in, feedback_info::in,
-    feedback_write_result::out, io::di, io::uo) is det.
+:- func get_feedback_profiled_program_name(feedback_info) = string.
+
+    % get_feedback_*(Info) = Data:
+    %
+    % Get any feedback data of the given kind from the given feedback_info.
+    %
+:- func get_feedback_candidate_parallel_conjunctions(feedback_info) =
+    maybe(feedback_info_candidate_parallel_conjunctions).
+
+    % Get all the information held in the given feedback info. Callers should
+    % call this predicate, instead of the ones above, if they want to guarantee
+    % that even if the feedback_info type is updated, they will still get
+    % all the information present in the given feedback_info.
+    %
+:- pred get_all_feedback_info(feedback_info::in,
+    string::out, maybe(feedback_info_candidate_parallel_conjunctions)::out)
+    is det.
+
+%-----------------------------------------------------------------------------%
+%
+% The setter predicates of feedback_info.
+%
+
+    % add_feedback_*(ProfiledProgramName, Data, !Info)
+    %
+    % Put Data into the selected field of the feedback_info, which must hold
+    % information about ProfiledProgramName. Requires the old feedback_info
+    % to have no previous information in that field.
+    %
+:- pred add_feedback_candidate_parallel_conjunctions(string::in,
+    feedback_info_candidate_parallel_conjunctions::in,
+    feedback_info::in, feedback_info::out) is det.
+
+    % replace_feedback_*(ProfiledProgramName, Data, !Info)
+    %
+    % Put Data into the selected field of the feedback_info, which must hold
+    % information about ProfiledProgramName. Requires the old feedback_info
+    % Any previous information in that field of feedback_info
+    % is replaced by Data.
+    %
+:- pred replace_feedback_candidate_parallel_conjunctions(string::in,
+    feedback_info_candidate_parallel_conjunctions::in,
+    feedback_info::in, feedback_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Reading in feedback files.
+%
+
+:- type feedback_read_result(T) == maybe_error(T, feedback_read_error).
+
+:- type feedback_read_error
+    --->    fre_open_error(io.error)
+    ;       fre_read_error(io.error)
+    ;       fre_parse_error(
+                fre_pe_message          :: string,
+                fre_pe_line_no          :: int
+            )
+    ;       fre_unexpected_eof
+    ;       fre_incorrect_version(string)
+    ;       fre_incorrect_first_line
+    ;       fre_incorrect_profiled_program_name(
+                fre_ippn_expected       :: string,
+                fre_ippn_got            :: string
+            )
+    ;       fre_repeated_component(
+                fre_component_name      :: string
+            ).
+
+    % feedback_read_error_message_string(File, Error, Message):
+    %
+    % Create a string describing the read error.
+    %
+:- pred feedback_read_error_message_string(string::in, feedback_read_error::in,
+    string::out) is det.
+
+    % read_or_create_feedback_file(Path, ProfiledProgramName, Result, !IO):
+    %
+    % If Path stores a feedback file for ProfiledProgramName, read it in.
+    % If it does not exist, return an empty feedback state for
+    % ProfiledProgramName, and return that. Return an error if Path does exist,
+    % but either does not contain a valid feedback file, or contains a valid
+    % feedback file for some other profiled program.
+    %
+    % ProfiledProgramName is the name of the program whose profiled execution
+    % the feedback file was (or should be) generated from.
+    % We record this to avoid mixing the feedback information of unrelated
+    % executables.
+    %
+:- pred read_or_create_feedback_file(string::in, string::in,
+    feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
+
+    % read_feedback_file(Path, MaybeProfiledProgramName, FeedbackInfo, !IO):
+    %
+    % This predicate attempts to read in feedback data from Path. If
+    % MaybeProfiledProgramName is yes(ProfiledProgramName), generate an
+    % error if the feedback data is not for ProfiledProgramName.
+    %
+    % This predicate should be called once per compiler invocation.
+    %
+:- pred read_feedback_file(string::in, maybe(string)::in,
+    feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Writing out feedback files.
+%
 
 :- type feedback_write_result
-    --->    ok
-    ;       open_error(io.error)
-    ;       write_error(io.error).
+    --->    fwr_ok
+    ;       fwr_open_error(io.error)
+    ;       fwr_write_error(io.error).
+
+    % write_feedback_file(Path, FeedbackInfo, FeedbackWriteResult, !IO):
+    %
+    % Write out the feedback data in FeedbackWriteResult to Path.
+    %
+:- pred write_feedback_file(string::in, feedback_info::in,
+    feedback_write_result::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -200,105 +226,189 @@
 :- import_module unit.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+% There are several kinds of information that we may be interested in
+% feeding back to the compiler. Our design for representing feedback
+% information allows for a tool to generate an arbitrary subset of
+% the possible kinds of information. A feedback-generating tool will
+% put each kind of information that it generates in its assigned slot
+% with a yes(...) wrapped around it, while it will put a "no" in all
+% other slots.
+%
+% If you want add a new kind of feedback information, you will need to
+%
+%   - add a new maybe field to the feedback_info type;
+%   - add a getter predicate and two setter predicates for that field;
+%   - update the init_feedback_info predicate;
+%   - update the get_all_feedback_info predicate;
+%   - update the print_feedback_report predicate;
+%   - add a new alternative to the feedback_component_wrapper type;
+%   - add code to add_feedback_components to read in the new kind of
+%     information;
+%   - add code to actually_write_feedback_file to write out the new kind of
+%     information;
+%   - increment the file format version number at the bottom of this file.
+%
+% You will also need to increment the file format version number
+% if you change the definition of any of the types referred to, directly
+% or indirectly, by the feedback_component_wrapper type, including the types
+% in mdbcomp.program_representation.
 
 :- type feedback_info
     --->    feedback_info(
-                fi_program_name :: string,
+                % The name of the program whose execution generated
+                % the profiling data file that the feedback is derived from,
+                % and therefore the program whose compilation the feedback
+                % is intended for.
+                fi_profiled_program_name     :: string,
 
                 % The actual feedback data as read from the feedback file.
-                fi_map          :: map(feedback_type, feedback_data)
+                % Should be set to yes(...) iff feedback of the given sort
+                % is present in the file.
+                fi_maybe_candidate_parallel_conjunctions ::
+                        maybe(feedback_info_candidate_parallel_conjunctions)
             ).
 
-    % This type is used as a key for the data that may be fed back into the
-    % compiler.
-    %
-:- type feedback_type
-    --->    feedback_type_calls_above_threshold_sorted
-    ;       feedback_type_candidate_parallel_conjunctions.
+:- type feedback_component_wrapper
+    --->    fcw_candidate_parallel_conjunctions(
+                feedback_info_candidate_parallel_conjunctions
+            ).
 
 %-----------------------------------------------------------------------------%
+%
+% Initialization and getter and setter predicates for feedback_infos.
+%
 
-get_feedback_data(Info, Data) :-
-    feedback_data_type(Type, Data),
-    Map = Info ^ fi_map,
-    map.search(Map, Type, DataPrime),
-    % This disjunction will either unify Data to DataPrime, or throw an
-    % exception, the impure annotation is required so to avoid a compiler
-    % warning saying that the second disjunct will not succeed, which must be
-    % promised away.
-    promise_pure (
-        Data = DataPrime
-    ;
-        impure impure_true,
-        feedback_data_mismatch_error("get_feedback_data/3: ", Type, DataPrime)
-    ).
+init_feedback_info(ProgramName) = feedback_info(ProgramName, no).
 
-get_all_feedback_data(Info, AllData) :-
-    map.values(Info ^ fi_map, AllData).
+get_feedback_profiled_program_name(Info) = Info ^ fi_profiled_program_name.
+get_feedback_candidate_parallel_conjunctions(Info) =
+    Info ^ fi_maybe_candidate_parallel_conjunctions.
 
-get_feedback_program_name(Info) = Info ^ fi_program_name.
+get_all_feedback_info(Info, ProfiledProgramName,
+        MaybeCandidateParallelConjs) :-
+    Info = feedback_info(ProfiledProgramName, MaybeCandidateParallelConjs).
 
-%-----------------------------------------------------------------------------%
+add_feedback_candidate_parallel_conjunctions(ProfiledProgramName, Data,
+        !Info) :-
+    expect(unify(!.Info ^ fi_profiled_program_name, ProfiledProgramName),
+        $pred, "adding candidate parallel conjunctions for wrong program"),
+    expect(unify(!.Info ^ fi_maybe_candidate_parallel_conjunctions, no),
+        $pred, "overwriting old _candidate_parallel_conjunctions data"),
+    !Info ^ fi_maybe_candidate_parallel_conjunctions := yes(Data).
 
-put_feedback_data(Data, !Info) :-
-    feedback_data_type(Type, Data),
-    some [!Map] (
-        !:Map = !.Info ^ fi_map,
-        map.set(Type, Data, !Map),
-        !Info ^ fi_map := !.Map
-    ).
+replace_feedback_candidate_parallel_conjunctions(ProfiledProgramName, Data,
+        !Info) :-
+    expect(unify(!.Info ^ fi_profiled_program_name, ProfiledProgramName),
+        $pred, "replacing candidate parallel conjunctions for wrong program"),
+    !Info ^ fi_maybe_candidate_parallel_conjunctions := yes(Data).
 
 %----------------------------------------------------------------------------%
+%
+% Interpreting the errors that can happen when reading in feedback files.
+%
 
-:- pred feedback_data_type(feedback_type, feedback_data).
-:- mode feedback_data_type(out, in(feedback_data_query)) is det.
-:- mode feedback_data_type(out, in) is det.
+feedback_read_error_message_string(File, Error, Message) :-
+    (
+        ( Error = fre_open_error(Code)
+        ; Error = fre_read_error(Code)
+        ),
+        error_message(Code, MessagePart)
+    ;
+        Error = fre_parse_error(ParseMessage, Line),
+        MessagePart = ParseMessage ++ " on line " ++ string(Line)
+    ;
+        Error = fre_unexpected_eof,
+        MessagePart = "Unexpected end of file"
+    ;
+        Error = fre_incorrect_version(Expected),
+        MessagePart = "Incorrect file format version; expected " ++ Expected
+    ;
+        Error = fre_incorrect_first_line,
+        MessagePart = "Incorrect file format"
+    ;
+        Error = fre_incorrect_profiled_program_name(Expected, Got),
+        MessagePart =
+            "The name of the program the feedback is for didn't match,"
+            ++ " is this the right feedback file?\n"
+            ++ string.format("Expected: '%s' Got: '%s'", [s(Expected), s(Got)])
+    ;
+        Error = fre_repeated_component(ComponentName),
+        MessagePart = "File contains more than one "
+            ++ ComponentName ++ " component"
+    ),
+    string.format("%s: %s\n", [s(File), s(MessagePart)], Message).
 
-feedback_data_type(feedback_type_calls_above_threshold_sorted,
-    feedback_data_calls_above_threshold_sorted(_, _, _)).
-feedback_data_type(feedback_type_candidate_parallel_conjunctions,
-    feedback_data_candidate_parallel_conjunctions(_, _)).
+%----------------------------------------------------------------------------%
+%
+% Reading feedback files.
+%
 
-:- pred feedback_data_mismatch_error(string::in, feedback_type::in,
-    feedback_data::in) is erroneous.
+read_or_create_feedback_file(Path, ExpectedProfiledProgramName, FeedbackResult,
+        !IO) :-
+    read_feedback_file(Path, yes(ExpectedProfiledProgramName), ReadResult,
+        !IO),
+    (
+        ReadResult = ok(_Feedback),
+        FeedbackResult = ReadResult
+    ;
+        ReadResult = error(Error),
+        (
+            % XXX We assume that an open error is probably caused by the file
+            % not existing, but we can't be sure because io.error is a string,
+            % and the message string for any error may change.
+            Error = fre_open_error(_),
+            FeedbackResult = ok(
+                init_feedback_info(ExpectedProfiledProgramName))
+        ;
+            ( Error = fre_read_error(_)
+            ; Error = fre_parse_error(_, _)
+            ; Error = fre_unexpected_eof
+            ; Error = fre_incorrect_version(_)
+            ; Error = fre_incorrect_first_line
+            ; Error = fre_incorrect_profiled_program_name(_, _)
+            ; Error = fre_repeated_component(_)
+            ),
+            FeedbackResult = ReadResult
+        )
+    ).
 
-feedback_data_mismatch_error(Predicate, Type, Data) :-
-    error(string.format(
-        "%s: Feedback data doesn't match type\n\tType: %s\n\tData: %s\n",
-        [s(Predicate), s(string(Type)), s(string(Data))])).
-
-%-----------------------------------------------------------------------------%
-
-read_feedback_file(Path, ReadResultFeedbackInfo, !IO) :-
+read_feedback_file(Path, MaybeExpectedProfiledProgramName,
+        ResultFeedbackInfo, !IO) :-
     io.open_input(Path, IOResStream, !IO),
     (
-        % Set the data file as the current stream and call read2.
-
         IOResStream = ok(Stream),
         some [!Result] (
-            % Read each part of the file and continue reading of this is
-            % succesful.  read_cont takes care of this logic.
+            % Read each part of the file. The calls that actually do the
+            % reading are wrapped inside calls to maybe_read, which guarantees
+            % that we stop reading as soon as we found some error.
+            %
+            % The result so far starts as a unit (containing no information),
+            % turns into a string representing the name of the profiled
+            % program after the call to read_profiled_program_name, and
+            % then into the feedback_info after read_all_feedback_data.
 
-            read_check_line(feedback_first_line, incorrect_first_line, Stream,
-                unit, !:Result, !IO),
+            read_check_line(feedback_first_line, fre_incorrect_first_line,
+                Stream, unit, !:Result, !IO),
             maybe_read(
                 read_check_line(feedback_version,
-                    incorrect_version(feedback_version), Stream),
+                    fre_incorrect_version(feedback_version), Stream),
                 !Result, !IO),
-            maybe_read(read_program_name(Stream), !Result, !IO),
-            maybe_read(read_data(Stream), !Result, !IO),
-            ReadResultFeedbackInfo = !.Result
+            maybe_read(
+                read_profiled_program_name(MaybeExpectedProfiledProgramName,
+                    Stream),
+                !Result, !IO),
+            maybe_read(read_all_feedback_data(Stream), !Result, !IO),
+            ResultFeedbackInfo = !.Result
         ),
         io.close_input(Stream, !IO)
     ;
         IOResStream = error(ErrorCode),
-        ReadResultFeedbackInfo = error(open_error(ErrorCode))
+        ResultFeedbackInfo = error(fre_open_error(ErrorCode))
     ).
 
-    % If the result so far is successful, call the closure and return its
-    % result. Otherwise, return the accumulated result without calling the
-    % closure.
+    % If the result so far is successful, call the closure on the result so far
+    % (which may be a unit) and return the closure's output as the new result.
+    % Otherwise, return the previous error result without calling the closure.
     %
 :- pred maybe_read(
     pred(A, feedback_read_result(B), io, io)::
@@ -336,195 +446,157 @@ read_check_line(TestLine, NotMatchError, Stream, _, Result, !IO) :-
         )
     ;
         IOResultLine = eof,
-        Result = error(unexpected_eof)
+        Result = error(fre_unexpected_eof)
     ;
         IOResultLine = error(Error),
-        Result = error(read_error(Error))
+        Result = error(fre_read_error(Error))
     ).
 
-    % Read and don't check a line of the file.
-    %
-:- pred read_no_check_line(io.input_stream::in, unit::in,
-    feedback_read_result(unit)::out, io::di, io::uo) is det.
+:- pred read_profiled_program_name(maybe(string)::in, io.input_stream::in,
+    unit::in, feedback_read_result(string)::out, io::di, io::uo) is det.
 
-read_no_check_line(Stream, _, Result, !IO) :-
-    io.read_line_as_string(Stream, IOResultLine, !IO),
-    (
-        IOResultLine = ok(_),
-        Result = ok(unit)
-    ;
-        IOResultLine = eof,
-        Result = error(unexpected_eof)
-    ;
-        IOResultLine = error(Error),
-        Result = error(read_error(Error))
-    ).
-
-:- pred read_program_name(io.input_stream::in, unit::in,
-    feedback_read_result(string)::out, io::di, io::uo) is det.
-
-read_program_name(Stream, _, Result, !IO) :-
+read_profiled_program_name(MaybeExpectedProfiledProgramName, Stream,
+        _, Result, !IO) :-
     io.read_line_as_string(Stream, IOResultLine, !IO),
     (
         IOResultLine = ok(String),
-        Result = ok(strip(String))
+        ActualProfiledProgramName = string.strip(String),
+        (
+            MaybeExpectedProfiledProgramName = no,
+            Result = ok(ActualProfiledProgramName)
+        ;
+            MaybeExpectedProfiledProgramName =
+                yes(ExpectedProfiledProgramName),
+            ( ActualProfiledProgramName = ExpectedProfiledProgramName ->
+                Result = ok(ActualProfiledProgramName)
+            ;
+                Result = error(fre_incorrect_profiled_program_name(
+                    ExpectedProfiledProgramName, ActualProfiledProgramName))
+
+            )
+        )
     ;
         IOResultLine = eof,
-        Result = error(unexpected_eof)
+        Result = error(fre_unexpected_eof)
     ;
         IOResultLine = error(Error),
-        Result = error(read_error(Error))
+        Result = error(fre_read_error(Error))
     ).
 
     % Read the feedback data from the file.
     %
-:- pred read_data(io.input_stream::in, string::in,
+    % The feedback data in the file should be a single large term.
+    % This term should be a list, each element of which is an identifying
+    % wrapper around a feedback component.
+    %
+    % The overall term is handled by read_all_feedback_data, while
+    % the list elements are handled by add_feedback_components.
+    %
+:- pred read_all_feedback_data(io.input_stream::in, string::in,
     feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
 
-read_data(Stream, ProgramName, Result, !IO) :-
-    io.read(Stream, ReadResultDataAssocList, !IO),
+read_all_feedback_data(Stream, ProfiledProgramName, Result, !IO) :-
+    io.read(Stream, ReadResult, !IO),
     (
-        ReadResultDataAssocList = ok(DataList),
-        list.foldl(det_insert_feedback_data, DataList, map.init, Map),
-        Result = ok(feedback_info(ProgramName, Map))
+        ReadResult = ok(Components),
+        Info0 = init_feedback_info(ProfiledProgramName),
+        add_feedback_components(Components, Info0, Result)
     ;
-        ReadResultDataAssocList = eof,
-        Result = error(unexpected_eof)
+        ReadResult = eof,
+        Result = error(fre_unexpected_eof)
     ;
-        ReadResultDataAssocList = error(Error, Line),
-        Result = error(parse_error(Error, Line))
+        ReadResult = error(Error, Line),
+        Result = error(fre_parse_error(Error, Line))
     ).
 
-:- pred det_insert_feedback_data(feedback_data::in, map(feedback_type,
-    feedback_data)::in, map(feedback_type, feedback_data)::out) is det.
+:- pred add_feedback_components(list(feedback_component_wrapper)::in,
+    feedback_info::in, feedback_read_result(feedback_info)::out) is det.
 
-det_insert_feedback_data(Data, !Map) :-
-    feedback_data_type(Key, Data),
-    map.det_insert(Key, Data, !Map).
-
-%-----------------------------------------------------------------------------%
-
-read_or_create(Path, ExpectedProgName, ReadResultFeedback, !IO) :-
-    read_feedback_file(Path, ReadResultFeedback1, !IO),
+add_feedback_components([], !.Info, Result) :-
+    Result = ok(!.Info).
+add_feedback_components([Wrapper | Wrappers], !.Info, Result) :-
     (
-        ReadResultFeedback1 = ok(Feedback),
-        GotProgName = get_feedback_program_name(Feedback),
-        ( ExpectedProgName = GotProgName ->
-            ReadResultFeedback = ReadResultFeedback1
-        ;
-            ReadResultFeedback = error(
-                incorrect_program_name(ExpectedProgName, GotProgName))
-        )
-    ;
-        ReadResultFeedback1 = error(Error),
+        Wrapper = fcw_candidate_parallel_conjunctions(Candidates),
+        MaybeCandidates0 = !.Info ^ fi_maybe_candidate_parallel_conjunctions,
         (
-            % XXX: Assume that an open error is probably caused by the file not
-            % existing, (but we can't be sure because io.error is a string
-            % internally, and error messages may change and are not portable).
-            Error = open_error(_),
-            ReadResultFeedback = ok(init_feedback_info(ExpectedProgName))
+            MaybeCandidates0 = no,
+            !Info ^ fi_maybe_candidate_parallel_conjunctions
+                := yes(Candidates),
+            add_feedback_components(Wrappers, !.Info, Result)
         ;
-            ( Error = read_error(_)
-            ; Error = parse_error(_, _)
-            ; Error = unexpected_eof
-            ; Error = incorrect_version(_)
-            ; Error = incorrect_first_line
-            ; Error = incorrect_program_name(_, _)
-            ),
-            ReadResultFeedback = ReadResultFeedback1
+            MaybeCandidates0 = yes(_),
+            Result = error(fre_repeated_component(
+                "candidate_parallel_conjunctions"))
         )
     ).
 
 %-----------------------------------------------------------------------------%
+%
+% Writing feedback files.
+%
 
-read_error_message_string(File, Error, Message) :-
+write_feedback_file(Path, Feedback, Result, !IO) :-
+    io.open_output(Path, OpenResult, !IO),
     (
-        ( Error = open_error(Code)
-        ; Error = read_error(Code)
-        ),
-        error_message(Code, MessagePart)
-    ;
-        Error = parse_error(ParseMessage, Line),
-        MessagePart = ParseMessage ++ " on line " ++ string(Line)
-    ;
-        Error = unexpected_eof,
-        MessagePart = "Unexpected end of file"
-    ;
-        Error = incorrect_version(Expected),
-        MessagePart = "Incorrect file format version; expected " ++ Expected
-    ;
-        Error = incorrect_first_line,
-        MessagePart = "Incorrect file format"
-    ;
-        Error = incorrect_program_name(Expected, Got),
-        MessagePart =
-            "Program name didn't match, is this the right feedback file?\n"
-            ++ string.format("Expected: '%s' Got: '%s'", [s(Expected), s(Got)])
-    ),
-    string.format("%s: %s\n", [s(File), s(MessagePart)], Message).
-
-%-----------------------------------------------------------------------------%
-
-:- pred display_read_error(string::in, feedback_read_error::in,
-    io::di, io::uo) is det.
-
-display_read_error(File, Error, !IO) :-
-    read_error_message_string(File, Error, Message),
-    io.write_string(Message, !IO).
-
-%-----------------------------------------------------------------------------%
-
-init_feedback_info(ProgramName) = feedback_info(ProgramName, map.init).
-
-%-----------------------------------------------------------------------------%
-
-write_feedback_file(Path, ProgName, Feedback, Res, !IO) :-
-    io.open_output(Path, OpenRes, !IO),
-    (
-        OpenRes = ok(Stream),
-        promise_equivalent_solutions [!:IO, ExcpRes] (
-            try_io(write_feedback_file_2(Stream, ProgName, Feedback),
-                ExcpRes, !IO)
+        OpenResult = ok(Stream),
+        promise_equivalent_solutions [!:IO, ExcpResult] (
+            try_io(actually_write_feedback_file(Stream, Feedback),
+                ExcpResult, !IO)
         ),
         (
-            ExcpRes = succeeded(_),
-            Res = ok
+            ExcpResult = succeeded(_),
+            Result = fwr_ok
         ;
-            ExcpRes = exception(ExcpUniv),
+            ExcpResult = exception(ExcpUniv),
 
             % If the exception is not of a type we expected, then re-throw it.
             ( univ_to_type(ExcpUniv, Excp) ->
-                Res = write_error(Excp)
+                Result = fwr_write_error(Excp)
             ;
-                rethrow(ExcpRes)
+                rethrow(ExcpResult)
             )
         )
     ;
-        OpenRes = error(ErrorCode),
-        Res = open_error(ErrorCode)
+        OpenResult = error(ErrorCode),
+        Result = fwr_open_error(ErrorCode)
     ).
 
     % Write out the data. This is called by try_io to catch any exceptions
     % that close_output and the other predicates we call here (e.g. io.write)
     % may throw.
     %
-:- pred write_feedback_file_2(output_stream::in, string::in, feedback_info::in,
+:- pred actually_write_feedback_file(output_stream::in, feedback_info::in,
     unit::out, io::di, io::uo) is det.
 
-write_feedback_file_2(Stream, ProgName, Feedback, unit, !IO) :-
+actually_write_feedback_file(Stream, FeedbackInfo, unit, !IO) :-
+    FeedbackInfo = feedback_info(ProfiledProgramName,
+        MaybeCandidateParallelConjs),
     io.write_string(Stream, feedback_first_line, !IO),
     io.nl(Stream, !IO),
     io.write_string(Stream, feedback_version, !IO),
     io.nl(Stream, !IO),
-    io.write_string(Stream, ProgName, !IO),
+    io.write_string(Stream, ProfiledProgramName, !IO),
     io.nl(Stream, !IO),
-    Map = Feedback ^ fi_map,
-    map.values(Map, FeedbackList),
-    io.write(Stream, FeedbackList, !IO),
+    % In the future, we expect to support more than one kind of feedback.
+    some [!RevComponents] (
+        !:RevComponents = [],
+        (
+            MaybeCandidateParallelConjs = no
+        ;
+            MaybeCandidateParallelConjs = yes(Candidates),
+            CandComponent = fcw_candidate_parallel_conjunctions(Candidates),
+            !:RevComponents = [CandComponent | !.RevComponents]
+        ),
+        list.reverse(!.RevComponents, Components)
+    ),
+    io.write(Stream, Components, !IO),
     io.write_string(Stream, ".\n", !IO),
     io.close_output(Stream, !IO).
 
 %-----------------------------------------------------------------------------%
+%
+% The identifying marks of feedback files.
+%
 
 :- func feedback_first_line = string.
 
@@ -532,7 +604,7 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "18".
+feedback_version = "19".
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.

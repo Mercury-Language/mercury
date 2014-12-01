@@ -24,8 +24,7 @@
 :- import_module cord.
 :- import_module io.
 
-:- pred print_feedback_report(string::in, feedback_info::in, io::di, io::uo)
-    is det.
+:- pred print_feedback_report(feedback_info::in, io::di, io::uo) is det.
 
 :- pred create_candidate_parallel_conj_report(var_name_table::in,
     candidate_par_conjunction(pard_goal)::in, cord(string)::out) is det.
@@ -53,33 +52,41 @@
 
 %----------------------------------------------------------------------------%
 
-print_feedback_report(ProgName, Feedback, !IO) :-
-    get_all_feedback_data(Feedback, AllFeedback),
-    list.map(create_feedback_report, AllFeedback, Reports),
-    ReportStr = string.append_list(Reports),
-    io.format("Feedback report for %s:\n\n%s", [s(ProgName), s(ReportStr)],
-        !IO).
-
-:- pred create_feedback_report(feedback_data::in, string::out) is det.
-
-create_feedback_report(FeedbackData, Report) :-
+print_feedback_report(FeedbackInfo, !IO) :-
+    get_all_feedback_info(FeedbackInfo, ProfiledProgramName,
+        MaybeCandidateParConjs),
+    % This code is structured like this to make it easy to add
+    % new feedback components.
+    some [!RevReports] (
+        !:RevReports = [],
+        (
+            MaybeCandidateParConjs = no
+        ;
+            MaybeCandidateParConjs = yes(CandidateParConjs),
+            create_feedback_autopar_report(CandidateParConjs,
+                CandidateParConjsReport),
+            !:RevReports = [CandidateParConjsReport | !.RevReports]
+        ),
+        list.reverse(!.RevReports, Reports)
+    ),
     (
-        FeedbackData = feedback_data_calls_above_threshold_sorted(_, _, _),
-        Report =
-            "  feedback_data_calls_above_threshold_sorted is not supported\n"
+        Reports = [],
+        Report = "no report available.\n"
     ;
-        FeedbackData = feedback_data_candidate_parallel_conjunctions(
-            Parameters, Conjs),
-        create_feedback_autopar_report(Parameters, Conjs, Report)
-    ).
+        Reports = [_ | _],
+        string.append_list(Reports, Report)
+    ),
+    io.format("Feedback report for %s:\n\n%s",
+        [s(ProfiledProgramName), s(Report)], !IO).
 
 %----------------------------------------------------------------------------%
 
-:- pred create_feedback_autopar_report(candidate_par_conjunctions_params::in,
-    assoc_list(string_proc_label, candidate_par_conjunctions_proc)::in,
-    string::out) is det.
+:- pred create_feedback_autopar_report(
+    feedback_info_candidate_parallel_conjunctions::in, string::out) is det.
 
-create_feedback_autopar_report(Parameters, ProcConjs, Report) :-
+create_feedback_autopar_report(CandidateParConjs, Report) :-
+    CandidateParConjs =
+        feedback_info_candidate_parallel_conjunctions(Parameters, ProcConjs),
     NumProcConjs = length(ProcConjs),
     foldl(count_conjunctions_in_procs, ProcConjs, 0, NumConjs),
     Parameters = candidate_par_conjunctions_params(DesiredParallelism,

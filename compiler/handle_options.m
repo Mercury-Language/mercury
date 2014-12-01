@@ -549,13 +549,21 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         FeedbackFile0 = string(FeedbackFile),
         FeedbackFile \= ""
     ->
-        read_feedback_file(FeedbackFile, FeedbackReadResult, !IO),
+        % When we are compiling a single module, we generally don't know
+        % the name of the executable that the compiled module will end up in,
+        % and in fact the compiled module may end up in more than one
+        % executable. We therefore cannot require that we use feedback files
+        % derived from any one profiled program.
+        MaybeExpectedProfiledProgramName = no,
+        read_feedback_file(FeedbackFile, MaybeExpectedProfiledProgramName,
+            FeedbackReadResult, !IO),
         (
             FeedbackReadResult = ok(FeedbackInfo),
             MaybeFeedbackInfo = yes(FeedbackInfo)
         ;
             FeedbackReadResult = error(Error),
-            read_error_message_string(FeedbackFile, Error, ErrorMessage),
+            feedback_read_error_message_string(FeedbackFile, Error,
+                ErrorMessage),
             add_error(ErrorMessage, !Errors),
             MaybeFeedbackInfo = no
         )

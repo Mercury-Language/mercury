@@ -42,6 +42,7 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -64,16 +65,15 @@ main(!IO) :-
         ;
             (
                 Args = [FeedbackFileName],
-                feedback.read_feedback_file(FeedbackFileName,
-                    FeedbackReadResult, !IO),
+                feedback.read_feedback_file(FeedbackFileName, no,
+                    FeedbackResult, !IO),
                 (
-                    FeedbackReadResult = ok(Feedback),
-                    ProfileProgName = get_feedback_program_name(Feedback),
-                    print_feedback_report(ProfileProgName, Feedback, !IO)
+                    FeedbackResult = ok(Feedback),
+                    print_feedback_report(Feedback, !IO)
                 ;
-                    FeedbackReadResult = error(FeedbackReadError),
-                    feedback.read_error_message_string(FeedbackFileName,
-                        FeedbackReadError, Message),
+                    FeedbackResult = error(FeedbackError),
+                    feedback_read_error_message_string(FeedbackFileName,
+                        FeedbackError, Message),
                     io.format(Stderr, "%s: %s\n",
                         [s(ProgName), s(Message)], !IO),
                     io.set_exit_status(1, !IO)
@@ -97,7 +97,7 @@ main(!IO) :-
 :- func help_message(string) = string.
 
 help_message(ProgName) = HelpMessage :-
-    FormatStr = 
+    FormatStr =
 "Usage: %s [options] <feedbackfile>
     This command outputs a report that shows the contents of the named
     feedback file in a human-readable form.
@@ -123,8 +123,7 @@ write_help_message(ProgName, !IO) :-
 write_version_message(ProgName, !IO) :-
     library.version(Version, Fullarch),
     io.format("%s: Mercury deep profiler\n", [s(ProgName)], !IO),
-    io.format("version: %s, on %s.\n",
-        [s(Version), s(Fullarch)], !IO).
+    io.format("version: %s, on %s.\n", [s(Version), s(Fullarch)], !IO).
 
 %----------------------------------------------------------------------------%
 %
