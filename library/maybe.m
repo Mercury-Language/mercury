@@ -18,6 +18,8 @@
 :- module maybe.
 :- interface.
 
+:- import_module list.
+
 %---------------------------------------------------------------------------%
 
 :- type maybe(T)
@@ -37,6 +39,7 @@
 
 :- type maybe_error(T) == maybe_error(T, string).
 
+    % Either a T, or an error E.
 :- type maybe_error(T, E)
     --->    ok(T)
     ;       error(E).
@@ -46,6 +49,20 @@
     ;       error(ground).
 
 :- inst maybe_error_ok(I)
+    --->    ok(I).
+
+:- type maybe_errors(T) == maybe_errors(T, string).
+
+    % Either a T, or one or more errors E.
+:- type maybe_errors(T, E)
+    --->    ok(T)
+    ;       error(E, list(E)).
+
+:- inst maybe_errors(I)
+    --->    ok(I)
+    ;       error(ground).
+
+:- inst maybe_errors_ok(I)
     --->    ok(I).
 
     % map_maybe(P, yes(Value0), yes(Value)) :- P(Value, Value).

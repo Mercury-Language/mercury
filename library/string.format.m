@@ -115,11 +115,11 @@ string.format.format_impl(FormatString, PolyList, String) :-
     % XXX The repeated string appends performed in the call tree
     % do still allocate nontrivial amounts of memory for temporaries.
     Chars = to_char_list(FormatString),
-    parse_format_string(Chars, PolyList, 1, Components, Errors),
+    parse_format_string(Chars, PolyList, 1, Specs, Errors),
     (
         Errors = [],
-        components_to_strings(Components, ComponentStrs),
-        String = string.append_list(ComponentStrs)
+        specs_to_strings(Specs, SpecStrs),
+        String = string.append_list(SpecStrs)
     ;
         Errors = [HeadError | _],
         % In the common cases of missing or extra PolyTypes, all the errors
@@ -136,24 +136,20 @@ string.format.format_impl(FormatString, PolyList, String) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred components_to_strings(list(string_format_component)::in,
+:- pred specs_to_strings(list(string_format_spec)::in,
     list(string)::out) is det.
 
-components_to_strings([], []).
-components_to_strings([Component | Components], [String | Strings]) :-
-    component_to_string(Component, String),
-    components_to_strings(Components, Strings).
+specs_to_strings([], []).
+specs_to_strings([Spec | Specs], [String | Strings]) :-
+    spec_to_string(Spec, String),
+    specs_to_strings(Specs, Strings).
 
-:- pred component_to_string(string_format_component::in, string::out) is det.
+:- pred spec_to_string(string_format_spec::in, string::out) is det.
 
-component_to_string(Component, String) :-
-    Component = comp_str(String).
-component_to_string(Component, String) :-
-    Component = comp_conv_spec(Spec),
+spec_to_string(Spec, String) :-
     (
-        % Conversion specifier representing the "%" sign.
-        Spec = spec_percent,
-        String = "%"
+        % Constant strings.
+        Spec = spec_constant_string(String)
     ;
         % Signed int conversion specifiers.
         Spec = spec_signed_int(Flags, MaybeWidth, MaybePrec, Int),

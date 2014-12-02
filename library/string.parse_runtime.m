@@ -24,7 +24,9 @@
 %---------------------------------------------------------------------------%
 
 :- type string_format_spec
-    --->    spec_percent
+    --->    spec_constant_string(
+                string
+            )
     ;       spec_char(
                 string_format_flags,
                 string_format_maybe_width,
@@ -57,26 +59,22 @@
                 float
             ).
 
-:- type string_format_component
-    --->    comp_str(string)
-    ;       comp_conv_spec(string_format_spec).
-
     % This predicate parses the entire format string. When it encounters
     % something that looks like a conversion specification (i.e. it starts
     % with a '%' character), but which cannot be parsed as one, it records
     % an error message, and keeps going.
     %
     % Note that making this predicate use an accumulator for the lists
-    % of components and errors seen so far would yield cleaner code,
+    % of specs and errors seen so far would yield cleaner code,
     % but would probably be slower since our caller would have to unreverse
-    % the list of components we return.
+    % the list of specs we return.
     %
     % The lack of tail recursion here should not be a problem, since no
     % format string will be long enough to make us consume too much stack.
     %
 :- pred parse_format_string(list(char)::in,
     list(string.poly_type)::in, int::in,
-    list(string_format_component)::out, list(string_format_error)::out) is det.
+    list(string_format_spec)::out, list(string_format_error)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -92,11 +90,11 @@
 
 %---------------------------------------------------------------------------%
 
-parse_format_string(!.Chars, !.PolyTypes, SpecNum, Components, Errors) :-
+parse_format_string(!.Chars, !.PolyTypes, SpecNum, Specs, Errors) :-
     gather_non_percent_chars(!.Chars, NonConversionSpecChars, GatherEndedBy),
     (
         GatherEndedBy = found_end_of_string,
-        Components0 = [],
+        Specs0 = [],
         (
             !.PolyTypes = [],
             Errors = []
@@ -108,29 +106,28 @@ parse_format_string(!.Chars, !.PolyTypes, SpecNum, Components, Errors) :-
     ;
         GatherEndedBy = found_percent(!:Chars),
         parse_conversion_specification(!Chars, !PolyTypes, SpecNum,
-            Spec, SpecErrors),
+            HeadSpec, HeadErrors),
         parse_format_string(!.Chars, !.PolyTypes, SpecNum + 1,
-            ComponentsTail, ErrorsTail),
+            TailSpecs, TailErrors),
         (
-            SpecErrors = [],
-            ConvComponent = comp_conv_spec(Spec),
-            Components0 = [ConvComponent | ComponentsTail],
-            Errors = ErrorsTail
+            HeadErrors = [],
+            Specs0 = [HeadSpec | TailSpecs],
+            Errors = TailErrors
         ;
-            SpecErrors = [_ | _],
-            Components0 = ComponentsTail,
-            Errors = SpecErrors ++ ErrorsTail
+            HeadErrors = [_ | _],
+            Specs0 = TailSpecs,
+            Errors = HeadErrors ++ TailErrors
         )
     ),
     (
         NonConversionSpecChars = [],
-        Components = Components0
+        Specs = Specs0
     ;
         NonConversionSpecChars = [_ | _],
         NonConversionSpecString =
             string.from_char_list(NonConversionSpecChars),
-        StringComponent = comp_str(NonConversionSpecString),
-        Components = [StringComponent | Components0]
+        StringSpec = spec_constant_string(NonConversionSpecString),
+        Specs = [StringSpec | Specs0]
     ).
 
     % Each conversion specification starts with the character '%' (which
@@ -243,7 +240,7 @@ get_optional_prec(!Chars, !PolyTypes, SpecNum, MaybePrec, Errors) :-
 get_first_spec(!Chars, !PolyTypes, _Flags, _MaybeWidth, _MaybePrec, SpecNum,
         Spec, Errors) :-
     !.Chars = [],
-    Spec = spec_percent,
+    Spec = spec_constant_string(""),
     Errors = [error_no_specifier(SpecNum, list.length(!.PolyTypes))].
 get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
         Spec, Errors) :-
@@ -251,7 +248,7 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
     ( if
         (
             SpecChar = '%',
-            SpecPrime = spec_percent,
+            SpecPrime = spec_constant_string("%"),
             ErrorsPrime = []
         ;
             ( SpecChar = 'd'
@@ -268,13 +265,13 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
                 else
                     Error = error_wrong_polytype(SpecNum, SpecChar,
                         poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = spec_percent,
+                    SpecPrime = spec_constant_string(""),
                     ErrorsPrime = [Error]
                 )
             ;
                 !.PolyTypes = [],
                 Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = spec_percent,
+                SpecPrime = spec_constant_string(""),
                 ErrorsPrime = [Error]
             )
         ;
@@ -306,13 +303,13 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
                 else
                     Error = error_wrong_polytype(SpecNum, SpecChar,
                         poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = spec_percent,
+                    SpecPrime = spec_constant_string(""),
                     ErrorsPrime = [Error]
                 )
             ;
                 !.PolyTypes = [],
                 Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = spec_percent,
+                SpecPrime = spec_constant_string(""),
                 ErrorsPrime = [Error]
             )
         ;
@@ -345,13 +342,13 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
                 else
                     Error = error_wrong_polytype(SpecNum, SpecChar,
                         poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = spec_percent,
+                    SpecPrime = spec_constant_string(""),
                     ErrorsPrime = [Error]
                 )
             ;
                 !.PolyTypes = [],
                 Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = spec_percent,
+                SpecPrime = spec_constant_string(""),
                 ErrorsPrime = [Error]
             )
         ;
@@ -366,13 +363,13 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
                 else
                     Error = error_wrong_polytype(SpecNum, SpecChar,
                         poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = spec_percent,
+                    SpecPrime = spec_constant_string(""),
                     ErrorsPrime = [Error]
                 )
             ;
                 !.PolyTypes = [],
                 Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = spec_percent,
+                SpecPrime = spec_constant_string(""),
                 ErrorsPrime = [Error]
             )
         ;
@@ -387,13 +384,13 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
                 else
                     Error = error_wrong_polytype(SpecNum, SpecChar,
                         poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = spec_percent,
+                    SpecPrime = spec_constant_string(""),
                     ErrorsPrime = [Error]
                 )
             ;
                 !.PolyTypes = [],
                 Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = spec_percent,
+                SpecPrime = spec_constant_string(""),
                 ErrorsPrime = [Error]
             )
         )
@@ -402,7 +399,7 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
         Errors = ErrorsPrime
     else
         Error = error_unknown_specifier(SpecNum, SpecChar),
-        Spec = spec_percent,
+        Spec = spec_constant_string(""),
         Errors = [Error]
     ).
 
