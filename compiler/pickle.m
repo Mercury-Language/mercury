@@ -202,7 +202,7 @@ user_defined_pickler(picklers(Pickles), TypeCtorDesc, Pickle) :-
     pickler_inst_cast(A::in, B::out(pickler_pred)),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    B = A;
+    B = A
 ").
 
 :- pragma foreign_proc("C#",
@@ -342,7 +342,7 @@ user_defined_unpickler(unpicklers(Unpicklers), TypeCtorDesc, Unpickle) :-
     unpickler_inst_cast(A::in, B::out(unpickler_pred)),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    B = A;
+    B = A
 ").
 
 :- pragma foreign_proc("C#",

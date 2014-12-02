@@ -738,7 +738,8 @@ mode_info_set_in_dupl_for_switch(X, !MI) :-
     %
 :- pred old_and_new_may_differ(T::in, T::in) is semidet.
 
-old_and_new_may_differ(_, _).
+old_and_new_may_differ(_, _) :-
+    semidet_true.
 
 :- pragma foreign_proc("C",
     old_and_new_may_differ(Old::in, New::in),
