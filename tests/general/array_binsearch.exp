@@ -1,9 +1,414 @@
-searching array([1, 2, 4, 5, 5, 7]) for 0 - exact fails - approx fails
-searching array([1, 2, 4, 5, 5, 7]) for 1 - exact     0 - approx     0
-searching array([1, 2, 4, 5, 5, 7]) for 2 - exact     1 - approx     1
-searching array([1, 2, 4, 5, 5, 7]) for 3 - exact fails - approx     1
-searching array([1, 2, 4, 5, 5, 7]) for 4 - exact     2 - approx     2
-searching array([1, 2, 4, 5, 5, 7]) for 5 - exact     4 - approx     4
-searching array([1, 2, 4, 5, 5, 7]) for 6 - exact fails - approx     4
-searching array([1, 2, 4, 5, 5, 7]) for 7 - exact     5 - approx     5
-searching array([1, 2, 4, 5, 5, 7]) for 8 - exact fails - approx     5
+Undistracted tests
+[1, 1, 1, 3, 3, 3, 5, 5, 7, 7, 8, 8, 10, 10, 11, 11, 13, 13, 13, 16, 16, 19, 20, 20, 21, 21, 23, 27, 28, 28, 28, 29, 31]
+
+exact  search for   0 fails    correctly
+exact  search for   1 succeeds correctly   at   1, first   0, last   2
+exact  search for   2 fails    correctly
+exact  search for   3 succeeds correctly   at   3, first   3, last   5
+exact  search for   4 fails    correctly
+exact  search for   5 succeeds correctly   at   7, first   6, last   7
+exact  search for   6 fails    correctly
+exact  search for   7 succeeds correctly   at   9, first   8, last   9
+exact  search for   8 succeeds correctly   at  11, first  10, last  11
+exact  search for   9 fails    correctly
+exact  search for  10 succeeds correctly   at  13, first  12, last  13
+exact  search for  11 succeeds correctly   at  14, first  14, last  15
+exact  search for  12 fails    correctly
+exact  search for  13 succeeds correctly   at  16, first  16, last  18
+exact  search for  14 fails    correctly
+exact  search for  15 fails    correctly
+exact  search for  16 succeeds correctly   at  20, first  19, last  20
+exact  search for  17 fails    correctly
+exact  search for  18 fails    correctly
+exact  search for  19 succeeds correctly   at  21, first  21, last  21
+exact  search for  20 succeeds correctly   at  22, first  22, last  23
+exact  search for  21 succeeds correctly   at  24, first  24, last  25
+exact  search for  22 fails    correctly
+exact  search for  23 succeeds correctly   at  26, first  26, last  26
+exact  search for  24 fails    correctly
+exact  search for  25 fails    correctly
+exact  search for  26 fails    correctly
+exact  search for  27 succeeds correctly   at  27, first  27, last  27
+exact  search for  28 succeeds correctly   at  28, first  28, last  30
+exact  search for  29 succeeds correctly   at  31, first  31, last  31
+exact  search for  30 fails    correctly
+exact  search for  31 succeeds correctly   at  32, first  32, last  32
+exact  search for  32 fails    correctly
+
+approx search for   0 fails    correctly
+approx search for   1 succeeds correctly   at   1, first   0, last   2
+approx search for   2 succeeds correctly   at   2, first   0, last   2
+approx search for   3 succeeds correctly   at   3, first   3, last   5
+approx search for   4 succeeds correctly   at   5, first   3, last   5
+approx search for   5 succeeds correctly   at   7, first   6, last   7
+approx search for   6 succeeds correctly   at   7, first   6, last   7
+approx search for   7 succeeds correctly   at   9, first   8, last   9
+approx search for   8 succeeds correctly   at  11, first  10, last  11
+approx search for   9 succeeds correctly   at  11, first  10, last  11
+approx search for  10 succeeds correctly   at  13, first  12, last  13
+approx search for  11 succeeds correctly   at  14, first  14, last  15
+approx search for  12 succeeds correctly   at  15, first  14, last  15
+approx search for  13 succeeds correctly   at  16, first  16, last  18
+approx search for  14 succeeds correctly   at  18, first  16, last  18
+approx search for  15 succeeds correctly   at  18, first  16, last  18
+approx search for  16 succeeds correctly   at  20, first  19, last  20
+approx search for  17 succeeds correctly   at  20, first  19, last  20
+approx search for  18 succeeds correctly   at  20, first  19, last  20
+approx search for  19 succeeds correctly   at  21, first  21, last  21
+approx search for  20 succeeds correctly   at  22, first  22, last  23
+approx search for  21 succeeds correctly   at  24, first  24, last  25
+approx search for  22 succeeds correctly   at  25, first  24, last  25
+approx search for  23 succeeds correctly   at  26, first  26, last  26
+approx search for  24 succeeds correctly   at  26, first  26, last  26
+approx search for  25 succeeds correctly   at  26, first  26, last  26
+approx search for  26 succeeds correctly   at  26, first  26, last  26
+approx search for  27 succeeds correctly   at  27, first  27, last  27
+approx search for  28 succeeds correctly   at  28, first  28, last  30
+approx search for  29 succeeds correctly   at  31, first  31, last  31
+approx search for  30 succeeds correctly   at  31, first  31, last  31
+approx search for  31 succeeds correctly   at  32, first  32, last  32
+approx search for  32 succeeds correctly   at  32, first  32, last  32
+
+Distracted tests
+[401, 1, 301, 403, 103, 303, 5, 5, 207, 307, 408, 108, 210, 10, 411, 311, 113, 213, 213, 316, 216, 319, 420, 220, 321, 121, 323, 227, 28, 228, 28, 29, 231]
+
+exact  search for   0 fails    correctly
+exact  search for   1 succeeds correctly   at   1, first   0, last   2
+exact  search for   2 fails    correctly
+exact  search for   3 succeeds correctly   at   3, first   3, last   5
+exact  search for   4 fails    correctly
+exact  search for   5 succeeds correctly   at   7, first   6, last   7
+exact  search for   6 fails    correctly
+exact  search for   7 succeeds correctly   at   9, first   8, last   9
+exact  search for   8 succeeds correctly   at  11, first  10, last  11
+exact  search for   9 fails    correctly
+exact  search for  10 succeeds correctly   at  13, first  12, last  13
+exact  search for  11 succeeds correctly   at  14, first  14, last  15
+exact  search for  12 fails    correctly
+exact  search for  13 succeeds correctly   at  16, first  16, last  18
+exact  search for  14 fails    correctly
+exact  search for  15 fails    correctly
+exact  search for  16 succeeds correctly   at  20, first  19, last  20
+exact  search for  17 fails    correctly
+exact  search for  18 fails    correctly
+exact  search for  19 succeeds correctly   at  21, first  21, last  21
+exact  search for  20 succeeds correctly   at  22, first  22, last  23
+exact  search for  21 succeeds correctly   at  24, first  24, last  25
+exact  search for  22 fails    correctly
+exact  search for  23 succeeds correctly   at  26, first  26, last  26
+exact  search for  24 fails    correctly
+exact  search for  25 fails    correctly
+exact  search for  26 fails    correctly
+exact  search for  27 succeeds correctly   at  27, first  27, last  27
+exact  search for  28 succeeds correctly   at  28, first  28, last  30
+exact  search for  29 succeeds correctly   at  31, first  31, last  31
+exact  search for  30 fails    correctly
+exact  search for  31 succeeds correctly   at  32, first  32, last  32
+exact  search for  32 fails    correctly
+
+exact  search for 100 fails    correctly
+exact  search for 101 succeeds correctly   at   1, first   0, last   2
+exact  search for 102 fails    correctly
+exact  search for 103 succeeds correctly   at   3, first   3, last   5
+exact  search for 104 fails    correctly
+exact  search for 105 succeeds correctly   at   7, first   6, last   7
+exact  search for 106 fails    correctly
+exact  search for 107 succeeds correctly   at   9, first   8, last   9
+exact  search for 108 succeeds correctly   at  11, first  10, last  11
+exact  search for 109 fails    correctly
+exact  search for 110 succeeds correctly   at  13, first  12, last  13
+exact  search for 111 succeeds correctly   at  14, first  14, last  15
+exact  search for 112 fails    correctly
+exact  search for 113 succeeds correctly   at  16, first  16, last  18
+exact  search for 114 fails    correctly
+exact  search for 115 fails    correctly
+exact  search for 116 succeeds correctly   at  20, first  19, last  20
+exact  search for 117 fails    correctly
+exact  search for 118 fails    correctly
+exact  search for 119 succeeds correctly   at  21, first  21, last  21
+exact  search for 120 succeeds correctly   at  22, first  22, last  23
+exact  search for 121 succeeds correctly   at  24, first  24, last  25
+exact  search for 122 fails    correctly
+exact  search for 123 succeeds correctly   at  26, first  26, last  26
+exact  search for 124 fails    correctly
+exact  search for 125 fails    correctly
+exact  search for 126 fails    correctly
+exact  search for 127 succeeds correctly   at  27, first  27, last  27
+exact  search for 128 succeeds correctly   at  28, first  28, last  30
+exact  search for 129 succeeds correctly   at  31, first  31, last  31
+exact  search for 130 fails    correctly
+exact  search for 131 succeeds correctly   at  32, first  32, last  32
+exact  search for 132 fails    correctly
+
+exact  search for 200 fails    correctly
+exact  search for 201 succeeds correctly   at   1, first   0, last   2
+exact  search for 202 fails    correctly
+exact  search for 203 succeeds correctly   at   3, first   3, last   5
+exact  search for 204 fails    correctly
+exact  search for 205 succeeds correctly   at   7, first   6, last   7
+exact  search for 206 fails    correctly
+exact  search for 207 succeeds correctly   at   9, first   8, last   9
+exact  search for 208 succeeds correctly   at  11, first  10, last  11
+exact  search for 209 fails    correctly
+exact  search for 210 succeeds correctly   at  13, first  12, last  13
+exact  search for 211 succeeds correctly   at  14, first  14, last  15
+exact  search for 212 fails    correctly
+exact  search for 213 succeeds correctly   at  16, first  16, last  18
+exact  search for 214 fails    correctly
+exact  search for 215 fails    correctly
+exact  search for 216 succeeds correctly   at  20, first  19, last  20
+exact  search for 217 fails    correctly
+exact  search for 218 fails    correctly
+exact  search for 219 succeeds correctly   at  21, first  21, last  21
+exact  search for 220 succeeds correctly   at  22, first  22, last  23
+exact  search for 221 succeeds correctly   at  24, first  24, last  25
+exact  search for 222 fails    correctly
+exact  search for 223 succeeds correctly   at  26, first  26, last  26
+exact  search for 224 fails    correctly
+exact  search for 225 fails    correctly
+exact  search for 226 fails    correctly
+exact  search for 227 succeeds correctly   at  27, first  27, last  27
+exact  search for 228 succeeds correctly   at  28, first  28, last  30
+exact  search for 229 succeeds correctly   at  31, first  31, last  31
+exact  search for 230 fails    correctly
+exact  search for 231 succeeds correctly   at  32, first  32, last  32
+exact  search for 232 fails    correctly
+
+exact  search for 300 fails    correctly
+exact  search for 301 succeeds correctly   at   1, first   0, last   2
+exact  search for 302 fails    correctly
+exact  search for 303 succeeds correctly   at   3, first   3, last   5
+exact  search for 304 fails    correctly
+exact  search for 305 succeeds correctly   at   7, first   6, last   7
+exact  search for 306 fails    correctly
+exact  search for 307 succeeds correctly   at   9, first   8, last   9
+exact  search for 308 succeeds correctly   at  11, first  10, last  11
+exact  search for 309 fails    correctly
+exact  search for 310 succeeds correctly   at  13, first  12, last  13
+exact  search for 311 succeeds correctly   at  14, first  14, last  15
+exact  search for 312 fails    correctly
+exact  search for 313 succeeds correctly   at  16, first  16, last  18
+exact  search for 314 fails    correctly
+exact  search for 315 fails    correctly
+exact  search for 316 succeeds correctly   at  20, first  19, last  20
+exact  search for 317 fails    correctly
+exact  search for 318 fails    correctly
+exact  search for 319 succeeds correctly   at  21, first  21, last  21
+exact  search for 320 succeeds correctly   at  22, first  22, last  23
+exact  search for 321 succeeds correctly   at  24, first  24, last  25
+exact  search for 322 fails    correctly
+exact  search for 323 succeeds correctly   at  26, first  26, last  26
+exact  search for 324 fails    correctly
+exact  search for 325 fails    correctly
+exact  search for 326 fails    correctly
+exact  search for 327 succeeds correctly   at  27, first  27, last  27
+exact  search for 328 succeeds correctly   at  28, first  28, last  30
+exact  search for 329 succeeds correctly   at  31, first  31, last  31
+exact  search for 330 fails    correctly
+exact  search for 331 succeeds correctly   at  32, first  32, last  32
+exact  search for 332 fails    correctly
+
+exact  search for 400 fails    correctly
+exact  search for 401 succeeds correctly   at   1, first   0, last   2
+exact  search for 402 fails    correctly
+exact  search for 403 succeeds correctly   at   3, first   3, last   5
+exact  search for 404 fails    correctly
+exact  search for 405 succeeds correctly   at   7, first   6, last   7
+exact  search for 406 fails    correctly
+exact  search for 407 succeeds correctly   at   9, first   8, last   9
+exact  search for 408 succeeds correctly   at  11, first  10, last  11
+exact  search for 409 fails    correctly
+exact  search for 410 succeeds correctly   at  13, first  12, last  13
+exact  search for 411 succeeds correctly   at  14, first  14, last  15
+exact  search for 412 fails    correctly
+exact  search for 413 succeeds correctly   at  16, first  16, last  18
+exact  search for 414 fails    correctly
+exact  search for 415 fails    correctly
+exact  search for 416 succeeds correctly   at  20, first  19, last  20
+exact  search for 417 fails    correctly
+exact  search for 418 fails    correctly
+exact  search for 419 succeeds correctly   at  21, first  21, last  21
+exact  search for 420 succeeds correctly   at  22, first  22, last  23
+exact  search for 421 succeeds correctly   at  24, first  24, last  25
+exact  search for 422 fails    correctly
+exact  search for 423 succeeds correctly   at  26, first  26, last  26
+exact  search for 424 fails    correctly
+exact  search for 425 fails    correctly
+exact  search for 426 fails    correctly
+exact  search for 427 succeeds correctly   at  27, first  27, last  27
+exact  search for 428 succeeds correctly   at  28, first  28, last  30
+exact  search for 429 succeeds correctly   at  31, first  31, last  31
+exact  search for 430 fails    correctly
+exact  search for 431 succeeds correctly   at  32, first  32, last  32
+exact  search for 432 fails    correctly
+
+approx search for   0 fails    correctly
+approx search for   1 succeeds correctly   at   1, first   0, last   2
+approx search for   2 succeeds correctly   at   2, first   0, last   2
+approx search for   3 succeeds correctly   at   3, first   3, last   5
+approx search for   4 succeeds correctly   at   5, first   3, last   5
+approx search for   5 succeeds correctly   at   7, first   6, last   7
+approx search for   6 succeeds correctly   at   7, first   6, last   7
+approx search for   7 succeeds correctly   at   9, first   8, last   9
+approx search for   8 succeeds correctly   at  11, first  10, last  11
+approx search for   9 succeeds correctly   at  11, first  10, last  11
+approx search for  10 succeeds correctly   at  13, first  12, last  13
+approx search for  11 succeeds correctly   at  14, first  14, last  15
+approx search for  12 succeeds correctly   at  15, first  14, last  15
+approx search for  13 succeeds correctly   at  16, first  16, last  18
+approx search for  14 succeeds correctly   at  18, first  16, last  18
+approx search for  15 succeeds correctly   at  18, first  16, last  18
+approx search for  16 succeeds correctly   at  20, first  19, last  20
+approx search for  17 succeeds correctly   at  20, first  19, last  20
+approx search for  18 succeeds correctly   at  20, first  19, last  20
+approx search for  19 succeeds correctly   at  21, first  21, last  21
+approx search for  20 succeeds correctly   at  22, first  22, last  23
+approx search for  21 succeeds correctly   at  24, first  24, last  25
+approx search for  22 succeeds correctly   at  25, first  24, last  25
+approx search for  23 succeeds correctly   at  26, first  26, last  26
+approx search for  24 succeeds correctly   at  26, first  26, last  26
+approx search for  25 succeeds correctly   at  26, first  26, last  26
+approx search for  26 succeeds correctly   at  26, first  26, last  26
+approx search for  27 succeeds correctly   at  27, first  27, last  27
+approx search for  28 succeeds correctly   at  28, first  28, last  30
+approx search for  29 succeeds correctly   at  31, first  31, last  31
+approx search for  30 succeeds correctly   at  31, first  31, last  31
+approx search for  31 succeeds correctly   at  32, first  32, last  32
+approx search for  32 succeeds correctly   at  32, first  32, last  32
+
+approx search for 100 fails    correctly
+approx search for 101 succeeds correctly   at   1, first   0, last   2
+approx search for 102 succeeds correctly   at   2, first   0, last   2
+approx search for 103 succeeds correctly   at   3, first   3, last   5
+approx search for 104 succeeds correctly   at   5, first   3, last   5
+approx search for 105 succeeds correctly   at   7, first   6, last   7
+approx search for 106 succeeds correctly   at   7, first   6, last   7
+approx search for 107 succeeds correctly   at   9, first   8, last   9
+approx search for 108 succeeds correctly   at  11, first  10, last  11
+approx search for 109 succeeds correctly   at  11, first  10, last  11
+approx search for 110 succeeds correctly   at  13, first  12, last  13
+approx search for 111 succeeds correctly   at  14, first  14, last  15
+approx search for 112 succeeds correctly   at  15, first  14, last  15
+approx search for 113 succeeds correctly   at  16, first  16, last  18
+approx search for 114 succeeds correctly   at  18, first  16, last  18
+approx search for 115 succeeds correctly   at  18, first  16, last  18
+approx search for 116 succeeds correctly   at  20, first  19, last  20
+approx search for 117 succeeds correctly   at  20, first  19, last  20
+approx search for 118 succeeds correctly   at  20, first  19, last  20
+approx search for 119 succeeds correctly   at  21, first  21, last  21
+approx search for 120 succeeds correctly   at  22, first  22, last  23
+approx search for 121 succeeds correctly   at  24, first  24, last  25
+approx search for 122 succeeds correctly   at  25, first  24, last  25
+approx search for 123 succeeds correctly   at  26, first  26, last  26
+approx search for 124 succeeds correctly   at  26, first  26, last  26
+approx search for 125 succeeds correctly   at  26, first  26, last  26
+approx search for 126 succeeds correctly   at  26, first  26, last  26
+approx search for 127 succeeds correctly   at  27, first  27, last  27
+approx search for 128 succeeds correctly   at  28, first  28, last  30
+approx search for 129 succeeds correctly   at  31, first  31, last  31
+approx search for 130 succeeds correctly   at  31, first  31, last  31
+approx search for 131 succeeds correctly   at  32, first  32, last  32
+approx search for 132 succeeds correctly   at  32, first  32, last  32
+
+approx search for 200 fails    correctly
+approx search for 201 succeeds correctly   at   1, first   0, last   2
+approx search for 202 succeeds correctly   at   2, first   0, last   2
+approx search for 203 succeeds correctly   at   3, first   3, last   5
+approx search for 204 succeeds correctly   at   5, first   3, last   5
+approx search for 205 succeeds correctly   at   7, first   6, last   7
+approx search for 206 succeeds correctly   at   7, first   6, last   7
+approx search for 207 succeeds correctly   at   9, first   8, last   9
+approx search for 208 succeeds correctly   at  11, first  10, last  11
+approx search for 209 succeeds correctly   at  11, first  10, last  11
+approx search for 210 succeeds correctly   at  13, first  12, last  13
+approx search for 211 succeeds correctly   at  14, first  14, last  15
+approx search for 212 succeeds correctly   at  15, first  14, last  15
+approx search for 213 succeeds correctly   at  16, first  16, last  18
+approx search for 214 succeeds correctly   at  18, first  16, last  18
+approx search for 215 succeeds correctly   at  18, first  16, last  18
+approx search for 216 succeeds correctly   at  20, first  19, last  20
+approx search for 217 succeeds correctly   at  20, first  19, last  20
+approx search for 218 succeeds correctly   at  20, first  19, last  20
+approx search for 219 succeeds correctly   at  21, first  21, last  21
+approx search for 220 succeeds correctly   at  22, first  22, last  23
+approx search for 221 succeeds correctly   at  24, first  24, last  25
+approx search for 222 succeeds correctly   at  25, first  24, last  25
+approx search for 223 succeeds correctly   at  26, first  26, last  26
+approx search for 224 succeeds correctly   at  26, first  26, last  26
+approx search for 225 succeeds correctly   at  26, first  26, last  26
+approx search for 226 succeeds correctly   at  26, first  26, last  26
+approx search for 227 succeeds correctly   at  27, first  27, last  27
+approx search for 228 succeeds correctly   at  28, first  28, last  30
+approx search for 229 succeeds correctly   at  31, first  31, last  31
+approx search for 230 succeeds correctly   at  31, first  31, last  31
+approx search for 231 succeeds correctly   at  32, first  32, last  32
+approx search for 232 succeeds correctly   at  32, first  32, last  32
+
+approx search for 300 fails    correctly
+approx search for 301 succeeds correctly   at   1, first   0, last   2
+approx search for 302 succeeds correctly   at   2, first   0, last   2
+approx search for 303 succeeds correctly   at   3, first   3, last   5
+approx search for 304 succeeds correctly   at   5, first   3, last   5
+approx search for 305 succeeds correctly   at   7, first   6, last   7
+approx search for 306 succeeds correctly   at   7, first   6, last   7
+approx search for 307 succeeds correctly   at   9, first   8, last   9
+approx search for 308 succeeds correctly   at  11, first  10, last  11
+approx search for 309 succeeds correctly   at  11, first  10, last  11
+approx search for 310 succeeds correctly   at  13, first  12, last  13
+approx search for 311 succeeds correctly   at  14, first  14, last  15
+approx search for 312 succeeds correctly   at  15, first  14, last  15
+approx search for 313 succeeds correctly   at  16, first  16, last  18
+approx search for 314 succeeds correctly   at  18, first  16, last  18
+approx search for 315 succeeds correctly   at  18, first  16, last  18
+approx search for 316 succeeds correctly   at  20, first  19, last  20
+approx search for 317 succeeds correctly   at  20, first  19, last  20
+approx search for 318 succeeds correctly   at  20, first  19, last  20
+approx search for 319 succeeds correctly   at  21, first  21, last  21
+approx search for 320 succeeds correctly   at  22, first  22, last  23
+approx search for 321 succeeds correctly   at  24, first  24, last  25
+approx search for 322 succeeds correctly   at  25, first  24, last  25
+approx search for 323 succeeds correctly   at  26, first  26, last  26
+approx search for 324 succeeds correctly   at  26, first  26, last  26
+approx search for 325 succeeds correctly   at  26, first  26, last  26
+approx search for 326 succeeds correctly   at  26, first  26, last  26
+approx search for 327 succeeds correctly   at  27, first  27, last  27
+approx search for 328 succeeds correctly   at  28, first  28, last  30
+approx search for 329 succeeds correctly   at  31, first  31, last  31
+approx search for 330 succeeds correctly   at  31, first  31, last  31
+approx search for 331 succeeds correctly   at  32, first  32, last  32
+approx search for 332 succeeds correctly   at  32, first  32, last  32
+
+approx search for 400 fails    correctly
+approx search for 401 succeeds correctly   at   1, first   0, last   2
+approx search for 402 succeeds correctly   at   2, first   0, last   2
+approx search for 403 succeeds correctly   at   3, first   3, last   5
+approx search for 404 succeeds correctly   at   5, first   3, last   5
+approx search for 405 succeeds correctly   at   7, first   6, last   7
+approx search for 406 succeeds correctly   at   7, first   6, last   7
+approx search for 407 succeeds correctly   at   9, first   8, last   9
+approx search for 408 succeeds correctly   at  11, first  10, last  11
+approx search for 409 succeeds correctly   at  11, first  10, last  11
+approx search for 410 succeeds correctly   at  13, first  12, last  13
+approx search for 411 succeeds correctly   at  14, first  14, last  15
+approx search for 412 succeeds correctly   at  15, first  14, last  15
+approx search for 413 succeeds correctly   at  16, first  16, last  18
+approx search for 414 succeeds correctly   at  18, first  16, last  18
+approx search for 415 succeeds correctly   at  18, first  16, last  18
+approx search for 416 succeeds correctly   at  20, first  19, last  20
+approx search for 417 succeeds correctly   at  20, first  19, last  20
+approx search for 418 succeeds correctly   at  20, first  19, last  20
+approx search for 419 succeeds correctly   at  21, first  21, last  21
+approx search for 420 succeeds correctly   at  22, first  22, last  23
+approx search for 421 succeeds correctly   at  24, first  24, last  25
+approx search for 422 succeeds correctly   at  25, first  24, last  25
+approx search for 423 succeeds correctly   at  26, first  26, last  26
+approx search for 424 succeeds correctly   at  26, first  26, last  26
+approx search for 425 succeeds correctly   at  26, first  26, last  26
+approx search for 426 succeeds correctly   at  26, first  26, last  26
+approx search for 427 succeeds correctly   at  27, first  27, last  27
+approx search for 428 succeeds correctly   at  28, first  28, last  30
+approx search for 429 succeeds correctly   at  31, first  31, last  31
+approx search for 430 succeeds correctly   at  31, first  31, last  31
+approx search for 431 succeeds correctly   at  32, first  32, last  32
+approx search for 432 succeeds correctly   at  32, first  32, last  32
+

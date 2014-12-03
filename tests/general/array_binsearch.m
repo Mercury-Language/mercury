@@ -2,7 +2,7 @@
 % array_binsearch.m
 % Ralph Becket <rafe@csse.unimelb.edu.au>
 % Tue Sep  1 11:08:30 EST 2009
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %
 % Test the array.[approx_]binary_search predicates.
 %
@@ -14,8 +14,6 @@
 
 :- import_module io.
 
-
-
 :- pred main(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -23,32 +21,345 @@
 
 :- implementation.
 
-:- import_module array, int, list, solutions, string.
+:- import_module array.
+:- import_module int.
+:- import_module list.
+:- import_module random.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
-    solutions.aggregate(run_test, io.write_string, !IO).
+    random.init(42, Supply0),
+    build_random_list_with_repeats(20, 1, Max, Supply0, Supply1,
+        [], RevSortedList),
+    list.reverse(RevSortedList, SortedList),
+    run_undistracted_tests(SortedList, Max, !IO),
+
+    add_distractions(Supply1, _Supply, SortedList, DistractedSortedList),
+    run_distracted_tests(DistractedSortedList, Max, !IO).
+
+:- pred build_random_list_with_repeats(int::in, int::in, int::out,
+    random.supply::in, random.supply::out, list(int)::in, list(int)::out)
+    is det.
+
+build_random_list_with_repeats(NumChunksToAdd, CurNum, LastNum,
+        !Supply, !RevSortedList) :-
+    ( if NumChunksToAdd = 0 then
+        LastNum = CurNum
+    else
+        random.random(0, 4, NumRepeats, !Supply),
+        !:RevSortedList =
+            list.duplicate(NumRepeats, CurNum) ++ !.RevSortedList,
+        random.random(0, 2, ShouldJump, !Supply),
+        ( if ShouldJump = 0 then
+            NextNum = CurNum + 1
+        else
+            NextNum = CurNum + 2
+        ),
+        build_random_list_with_repeats(NumChunksToAdd - 1, NextNum, LastNum,
+            !Supply, !RevSortedList)
+    ).
+
+:- pred add_distractions(random.supply::in, random.supply::out,
+    list(int)::in, list(int)::out) is det.
+
+add_distractions(!Supply, [], []).
+add_distractions(!Supply, [Head | Tail], [DistHead | DistTail]) :-
+    distract(Head, DistHead, !Supply),
+    add_distractions(!Supply, Tail, DistTail).
+
+:- pred distract(int::in, int::out, random.supply::in, random.supply::out)
+    is det.
+
+distract(N0, N, !Supply) :-
+    random.random(0, 5, Distraction, !Supply),
+    N = Distraction * 100 + N0.
+
+:- func distraction_ordering(int, int) = comparison_result.
+
+distraction_ordering(A, B) = R :-
+    UndistractedA = A rem 100,
+    UndistractedB = B rem 100,
+    R = ordering(UndistractedA, UndistractedB).
 
 %-----------------------------------------------------------------------------%
 
-:- pred run_test(string::out) is nondet.
+:- pred run_undistracted_tests(list(int)::in, int::in, io::di, io::uo) is det.
 
-run_test(Result) :-
-    A = array([1, 2, 4, 5, 5, 7]),
-    list.member(X, 0..8),
-    Result0 = "searching " ++ string.string(A) ++ " for " ++ string.string(X),
-    ( if array.binary_search(A, X, I) then
-        Result1 = " - exact     " ++ string.string(I)
-      else
-        Result1 = " - exact fails"
-    ),
-    ( if array.approx_binary_search(A, X, J) then
-        Result2 = " - approx     " ++ string.string(J)
-      else
-        Result2 = " - approx fails"
-    ),
-    Result = Result0 ++ Result1 ++ Result2 ++ "\n".
+run_undistracted_tests(SortedList, Max, !IO) :-
+    array.from_list(SortedList, Array),
+    io.write_string("Undistracted tests\n", !IO),
+    io.write(SortedList, !IO),
+    io.nl(!IO),
+    io.nl(!IO),
+    undistracted_exact_test_loop(Array, 0, Max, !IO),
+    undistracted_approx_test_loop(Array, 0, Max, !IO).
+
+:- pred undistracted_exact_test_loop(array(int)::in, int::in, int::in,
+    io::di, io::uo) is det.
+
+undistracted_exact_test_loop(Array, Cur, Max, !IO) :-
+    ( if Cur > Max then
+        io.nl(!IO)
+    else
+        io.format("exact  search for %3d ", [i(Cur)], !IO),
+        ( if array.binary_search(ordering, Array, Cur, Index) then
+            ( if
+                exact_verify_success(ordering, Array, Max, Cur, Index,
+                    First, Last)
+            then
+                io.format("succeeds correctly   at %3d", [i(Index)], !IO),
+                io.format(", first %3d, last %3d\n", [i(First), i(Last)], !IO)
+            else
+                io.format("succeeds INCORRECTLY at %3d\n", [i(Index)], !IO)
+            )
+        else
+            ( if exact_verify_failure(ordering, Array, Max, Cur) then
+                io.format("fails    correctly\n", [], !IO)
+            else
+                io.format("fails    INCORRECTLY\n", [], !IO)
+            )
+        ),
+        undistracted_exact_test_loop(Array, Cur + 1, Max, !IO)
+    ).
+
+:- pred undistracted_approx_test_loop(array(int)::in, int::in, int::in,
+    io::di, io::uo) is det.
+
+undistracted_approx_test_loop(Array, Cur, Max, !IO) :-
+    ( if Cur > Max then
+        io.nl(!IO)
+    else
+        io.format("approx search for %3d ", [i(Cur)], !IO),
+        ( if
+            array.approx_binary_search(ordering, Array, Cur, Index)
+        then
+            ( if
+                approx_verify_success(distraction_ordering, Array, Max, Cur,
+                    Index, First, Last)
+            then
+                io.format("succeeds correctly   at %3d", [i(Index)], !IO),
+                io.format(", first %3d, last %3d\n", [i(First), i(Last)], !IO)
+            else
+                io.format("succeeds INCORRECTLY at %3d\n", [i(Index)], !IO)
+            )
+        else
+            ( if
+                approx_verify_failure(distraction_ordering, Array, Max, Cur)
+            then
+                io.format("fails    correctly\n", [], !IO)
+            else
+                io.format("fails    INCORRECTLY\n", [], !IO)
+            )
+        ),
+        undistracted_approx_test_loop(Array, Cur + 1, Max, !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred run_distracted_tests(list(int)::in, int::in, io::di, io::uo) is det.
+
+run_distracted_tests(SortedList, Max, !IO) :-
+    array.from_list(SortedList, Array),
+    io.write_string("Distracted tests\n", !IO),
+    io.write(SortedList, !IO),
+    io.nl(!IO),
+    io.nl(!IO),
+    distracted_exact_test_loop(Array, 0, 0, Max, !IO),
+    distracted_exact_test_loop(Array, 1, 0, Max, !IO),
+    distracted_exact_test_loop(Array, 2, 0, Max, !IO),
+    distracted_exact_test_loop(Array, 3, 0, Max, !IO),
+    distracted_exact_test_loop(Array, 4, 0, Max, !IO),
+    distracted_approx_test_loop(Array, 0, 0, Max, !IO),
+    distracted_approx_test_loop(Array, 1, 0, Max, !IO),
+    distracted_approx_test_loop(Array, 2, 0, Max, !IO),
+    distracted_approx_test_loop(Array, 3, 0, Max, !IO),
+    distracted_approx_test_loop(Array, 4, 0, Max, !IO).
+
+:- pred distracted_exact_test_loop(array(int)::in, int::in, int::in, int::in,
+    io::di, io::uo) is det.
+
+distracted_exact_test_loop(Array, Distraction, Cur, Max, !IO) :-
+    ( if Cur > Max then
+        io.nl(!IO)
+    else
+        DCur = Distraction * 100 + Cur,
+        io.format("exact  search for %3d ", [i(DCur)], !IO),
+        ( if
+            array.binary_search(distraction_ordering, Array, DCur, Index)
+        then
+            ( if
+                exact_verify_success(distraction_ordering, Array, Max, DCur,
+                    Index, First, Last)
+            then
+                io.format("succeeds correctly   at %3d", [i(Index)], !IO),
+                io.format(", first %3d, last %3d\n", [i(First), i(Last)], !IO)
+            else
+                io.format("succeeds INCORRECTLY at %3d\n", [i(Index)], !IO)
+            )
+        else
+            ( if
+                exact_verify_failure(distraction_ordering, Array, Max, DCur)
+            then
+                io.format("fails    correctly\n", [], !IO)
+            else
+                io.format("fails    INCORRECTLY\n", [], !IO)
+            )
+        ),
+        distracted_exact_test_loop(Array, Distraction, Cur + 1, Max, !IO)
+    ).
+
+:- pred distracted_approx_test_loop(array(int)::in, int::in, int::in, int::in,
+    io::di, io::uo) is det.
+
+distracted_approx_test_loop(Array, Distraction, Cur, Max, !IO) :-
+    ( if Cur > Max then
+        io.nl(!IO)
+    else
+        DCur = Distraction * 100 + Cur,
+        io.format("approx search for %3d ", [i(DCur)], !IO),
+        ( if
+            array.approx_binary_search(distraction_ordering, Array,
+                DCur, Index)
+        then
+            ( if
+                approx_verify_success(distraction_ordering, Array, Max, DCur,
+                    Index, First, Last)
+            then
+                io.format("succeeds correctly   at %3d", [i(Index)], !IO),
+                io.format(", first %3d, last %3d\n", [i(First), i(Last)], !IO)
+            else
+                io.format("succeeds INCORRECTLY at %3d\n", [i(Index)], !IO)
+            )
+        else
+            ( if
+                approx_verify_failure(distraction_ordering, Array, Max, DCur)
+            then
+                io.format("fails    correctly\n", [], !IO)
+            else
+                io.format("fails    INCORRECTLY\n", [], !IO)
+            )
+        ),
+        distracted_approx_test_loop(Array, Distraction, Cur + 1, Max, !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred exact_verify_success(comparison_func(int)::in, array(int)::in,
+    int::in, int::in, int::in, int::out, int::out) is semidet.
+
+exact_verify_success(Cmp, Array, Max, Value, FoundIndex,
+        FirstIndex, LastIndex) :-
+    array.lookup(Array, FoundIndex, ValueAtFoundIndex),
+    Cmp(ValueAtFoundIndex, Value) = Res,
+    Res = (=),
+    require_det (
+        exact_search_back(Cmp, Array, Value, FoundIndex, FirstIndex),
+        exact_search_forward(Cmp, Array, Max, Value, FoundIndex, LastIndex)
+    ).
+
+:- pred exact_search_back(comparison_func(int)::in, array(int)::in,
+    int::in, int::in, int::out) is det.
+
+exact_search_back(Cmp, Array, Value, CurIndex, FirstIndex) :-
+    % invariant: Array[CurIndex] = Value
+    NextIndex = CurIndex - 1,
+    ( if NextIndex >= 0 then
+        array.lookup(Array, NextIndex, ValueAtNextIndex),
+        ( if Cmp(ValueAtNextIndex, Value) = (=) then
+            exact_search_back(Cmp, Array, Value, NextIndex, FirstIndex)
+        else
+            FirstIndex = CurIndex
+        )
+    else
+        FirstIndex = CurIndex
+    ).
+
+:- pred exact_search_forward(comparison_func(int)::in, array(int)::in,
+    int::in, int::in, int::in, int::out) is det.
+
+exact_search_forward(Cmp, Array, Max, Value, CurIndex, LastIndex) :-
+    % invariant: Array[CurIndex] = Value
+    NextIndex = CurIndex + 1,
+    ( if NextIndex < Max then
+        array.lookup(Array, NextIndex, ValueAtNextIndex),
+        ( if Cmp(ValueAtNextIndex, Value) = (=) then
+            exact_search_forward(Cmp, Array, Max, Value, NextIndex, LastIndex)
+        else
+            LastIndex = CurIndex
+        )
+    else
+        LastIndex = CurIndex
+    ).
+
+:- pred exact_verify_failure(comparison_func(int)::in, array(int)::in,
+    int::in, int::in) is semidet.
+
+exact_verify_failure(Cmp, Array, Max, Value) :-
+    exact_verify_failure_loop(Cmp, Array, 0, Max, Value).
+
+:- pred exact_verify_failure_loop(comparison_func(int)::in, array(int)::in,
+    int::in, int::in, int::in) is semidet.
+
+exact_verify_failure_loop(Cmp, Array, Cur, Max, Value) :-
+    ( if Cur = Max then
+        true
+    else
+        array.lookup(Array, Cur, CurValue),
+        Cmp(CurValue, Value) \= (=),
+        exact_verify_failure_loop(Cmp, Array, Cur + 1, Max, Value)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred approx_verify_success(comparison_func(int)::in, array(int)::in,
+    int::in, int::in, int::in, int::out, int::out) is semidet.
+
+approx_verify_success(Cmp, Array, Max, Value, FoundIndex,
+        FirstIndex, LastIndex) :-
+    array.lookup(Array, FoundIndex, ValueAtFoundIndex),
+    Cmp(ValueAtFoundIndex, Value) = Res,
+    (
+        Res = (=),
+        require_det (
+            exact_search_back(Cmp, Array, Value, FoundIndex, FirstIndex),
+            exact_search_forward(Cmp, Array, Max, Value, FoundIndex, LastIndex)
+        )
+    ;
+        Res = (<),
+        require_det (
+            exact_search_back(Cmp, Array, ValueAtFoundIndex,
+                FoundIndex, FirstIndex),
+            exact_search_forward(Cmp, Array, Max, ValueAtFoundIndex,
+                FoundIndex, LastIndex)
+        ),
+        FollowIndex = LastIndex + 1,
+        ( if FollowIndex < Max then
+            array.lookup(Array, FollowIndex, ValueAtFollowIndex),
+            Cmp(Value, ValueAtFollowIndex) = (<)
+        else
+            true
+        )
+    ).
+
+:- pred approx_verify_failure(comparison_func(int)::in, array(int)::in,
+    int::in, int::in) is semidet.
+
+approx_verify_failure(Cmp, Array, Max, Value) :-
+    approx_verify_failure_loop(Cmp, Array, 0, Max, Value).
+
+:- pred approx_verify_failure_loop(comparison_func(int)::in, array(int)::in,
+    int::in, int::in, int::in) is semidet.
+
+approx_verify_failure_loop(Cmp, Array, Cur, Max, Value) :-
+    ( if Cur = Max then
+        true
+    else
+        array.lookup(Array, Cur, CurValue),
+        Cmp(CurValue, Value) = (>),
+        approx_verify_failure_loop(Cmp, Array, Cur + 1, Max, Value)
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

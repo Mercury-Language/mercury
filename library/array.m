@@ -385,27 +385,45 @@
 %:- mode bsearch(array_ui, in, in(comparison_func)) = out is det.
 :- mode bsearch(in, in, in(comparison_func)) = out is det.
 
-    % approx_binary_search(A, X, I) performs a binary search for an
-    % approximate match for X in array A, computing I as the result.  More
-    % specifically, if the call succeeds, then either A ^ elem(I) = X or
-    % A ^ elem(I) @< X and either X @< A ^ elem(I + 1) or I is the last index
-    % in A.
+    % binary_search(A, X, I) does a binary search for the element X
+    % in the array A. If there is an element with that value in the array,
+    % it returns its index I; otherwise, it fails.
     %
-    % binary_search(A, X, I) performs a binary search for an
-    % exact match for X in array A (i.e., it succeeds iff X = A ^ elem(I)).
+    % The array A must be sorted into ascending order with respect to the
+    % the builtin Mercury order on terms for binary_search/3, and with respect
+    % to supplied comparison predicate for binary_search/4.
     %
-    % A must be sorted into ascending order, but may contain duplicates
-    % (the ordering must be with respect to the supplied comparison predicate
-    % if one is supplied, otherwise with respect to the Mercury standard
-    % ordering).
+    % The array may contain duplicates. If it does, and a search looks for
+    % a duplicated value, the search will return the index of one of the
+    % copies, but it is not specified *which* copy's index it will return.
+    %
+:- pred binary_search(array(T)::array_ui,
+    T::in, int::out) is semidet.
+:- pred binary_search(comparison_func(T)::in, array(T)::array_ui,
+    T::in, int::out) is semidet.
+
+    % approx_binary_search(A, X, I) does a binary search for the element X
+    % in the array A. If there is an element with that value in the array,
+    % it returns its index I. If there is no element with that value in the
+    % array, it returns an index whose slot contains the highest value in the
+    % array that is less than X, as messured by the builtin Mercury order
+    % on terms for approx_binary_search/3, and as measured by the supplied
+    % ordering for approx_binary_search/4. It will fail only if there is
+    % no value smaller than X in the array.
+    %
+    % The array A must be sorted into ascending order with respect to the
+    % the builtin Mercury order on terms for approx_binary_search/3, and
+    % with respect to supplied comparison predicate for approx_binary_search/4.
+    %
+    % The array may contain duplicates. If it does, and if either the
+    % searched-for value or (if that does not exist) the highest value
+    % smaller than the searched-for value is duplicated, the search will return
+    % the index of one of the copies, but it is not specified *which* copy's
+    % index it will return.
     %
 :- pred approx_binary_search(array(T)::array_ui,
     T::in, int::out) is semidet.
 :- pred approx_binary_search(comparison_func(T)::in, array(T)::array_ui,
-    T::in, int::out) is semidet.
-:- pred binary_search(array(T)::array_ui,
-    T::in, int::out) is semidet.
-:- pred binary_search(comparison_func(T)::in, array(T)::array_ui,
     T::in, int::out) is semidet.
 
     % map(Closure, OldArray, NewArray) applies `Closure' to
@@ -2135,8 +2153,32 @@ array.binary_search(A, X, I) :-
     array.binary_search(ordering, A, X, I).
 
 array.binary_search(Cmp, A, X, I) :-
-    array.approx_binary_search(Cmp, A, X, I),
-    A ^ elem(I) = X.
+    Lo = 0,
+    Hi = array.size(A) - 1,
+    binary_search_loop(Cmp, A, X, Lo, Hi, I).
+
+:- pred binary_search_loop(comparison_func(T)::in, array(T)::array_ui,
+    T::in, int::in, int::in, int::out) is semidet.
+
+binary_search_loop(Cmp, A, X, Lo, Hi, I) :-
+    % loop invariant: if X is anywhere in A[0] .. A[array.size(A)-1],
+    % then it is in A[Lo] .. A[Hi].
+    Lo =< Hi,
+    Mid = (Lo + Hi) / 2,
+    array.unsafe_lookup(A, Mid, MidX),
+    O = Cmp(MidX, X),
+    (
+        O = (>),
+        binary_search_loop(Cmp, A, X, Lo, Mid - 1, I)
+    ;
+        O = (=),
+        I = Mid         % XXX repetitions
+    ;
+        O = (<),
+        binary_search_loop(Cmp, A, X, Mid + 1, Hi, I)
+    ).
+
+%---------------------------------------------------------------------------%
 
 array.approx_binary_search(A, X, I) :-
     array.approx_binary_search(ordering, A, X, I).
@@ -2144,27 +2186,39 @@ array.approx_binary_search(A, X, I) :-
 array.approx_binary_search(Cmp, A, X, I) :-
     Lo = 0,
     Hi = array.size(A) - 1,
-    approx_binary_search_2(Cmp, A, X, Lo, Hi, I).
+    approx_binary_search_loop(Cmp, A, X, Lo, Hi, I).
 
-:- pred approx_binary_search_2(comparison_func(T)::in, array(T)::array_ui,
+:- pred approx_binary_search_loop(comparison_func(T)::in, array(T)::array_ui,
     T::in, int::in, int::in, int::out) is semidet.
 
-approx_binary_search_2(Cmp, A, X, Lo, Hi, I) :-
+approx_binary_search_loop(Cmp, A, X, Lo, Hi, I) :-
+    % loop invariant: if X is anywhere in A[0] .. A[array.size(A)-1],
+    % then it is in A[Lo] .. A[Hi].
     Lo =< Hi,
     Mid = (Lo + Hi) / 2,
-    O = Cmp(A ^ elem(Mid), X),
+    array.unsafe_lookup(A, Mid, MidX),
+    O = Cmp(MidX, X),
     (
         O = (>),
-        approx_binary_search_2(Cmp, A, X, Lo, Mid - 1, I)
+        approx_binary_search_loop(Cmp, A, X, Lo, Mid - 1, I)
     ;
         O = (=),
-        I = Mid
+        I = Mid         % XXX repetitions
     ;
         O = (<),
-        ( if ( Mid < Hi, X @< A ^ elem(Mid + 1) ; Mid = Hi ) then
+        ( if
+            (
+                Mid < Hi,
+                % Mid + 1 cannot exceed Hi, so the array access is safe.
+                array.unsafe_lookup(A, Mid + 1, MidP1X),
+                (<) = Cmp(X, MidP1X)
+            ;
+                Mid = Hi
+            )
+        then
             I = Mid
-          else
-            approx_binary_search_2(Cmp, A, X, Mid + 1, Hi, I)
+        else
+            approx_binary_search_loop(Cmp, A, X, Mid + 1, Hi, I)
         )
     ).
 
