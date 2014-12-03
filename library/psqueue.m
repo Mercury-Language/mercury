@@ -13,14 +13,16 @@
 %
 % This module implements a priority search queue ADT.
 %
-% A psqueue is a priority search queue. A priority search queue holds a
-% collection of keys together with a priority; the interface provides
-% operations to create an empty priority queue, to insert a key with an
-% associated priority into a priority queue, to remove the key with the highest
-% priority, to look up a key and its priority and to adjust the priority of a
-% key.
+% A priority search queue (pqueue) provides both map-like and priority queue
+% functionality in a single ADT.  This combination is very powerful and
+% useful in many situations.
 %
-% The implementation here follows closely the description given in Ralf Hinze's
+% Psqueues map from priorities to keys and back.  They
+% provide methods to lookup the priority of a key, insert and delete
+% priority-key pairs, adjust the priority of a given key and retrive the
+% priority and key with the highest priority.
+%
+% The implementation here closely follows the description given in Ralf Hinze's
 % paper "A Simple Implementation Technique for Priority Search Queues", ICFP
 % 2001, pp. 110-121.
 %
@@ -48,11 +50,12 @@
 :- func init = psqueue(P, K).
 :- pred init(psqueue(P, K)::out) is det.
 
-    % true iff the priority search queue is empty.
+    % True iff the priority search queue is empty.
     %
 :- pred is_empty(psqueue(P, K)::in) is semidet.
 
     % Insert key K with priority P into a priority search queue.
+    % Fail if the key already exists.
     %
 :- func insert(P, K, psqueue(P, K)) = psqueue(P, K) is det.
 :- pred insert(P::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is det.
@@ -102,7 +105,7 @@
 :- func lookup(K, psqueue(P, K)) = P is semidet.
 :- pred lookup(K::in, psqueue(P, K)::in, P::out) is semidet.
 
-    % Look-up the priority of the specified element, call error/1 if element is
+    % Lookup the priority of the specified key, calls error/1 if the element is
     % not present.
     %
 :- func det_lookup(K, psqueue(P, K)) = P is det.
@@ -119,25 +122,34 @@
 :- func size(psqueue(P, K)) = int is det.
 :- pred size(psqueue(P, K)::in, int::out) is det.
 
-    % true iff the priority search queue respects the semi heap properties,
-    % i.e., 1) the top element has the highest priority and 2) for each node of
-    % the loser tree, the priority of the loser is higher or equal to the
-    % priorities in the subtree from which the loser originates.
+%---------------------------------------------------------------------------%
+
+% These predicates may be used by the test suite to check the correctness of
+% the implementation.  They should always be true.
+
+    % True iff the priority search queue respects the semi heap properties:
+    %
+    %   1) the top element has the highest priority and
+    %   2) for each node of the loser tree, the priority of the loser is higher
+    %      or equal to the priorities in the subtree from which the loser
+    %      originates.
     %
 :- pred is_semi_heap(psqueue(P, K)::in) is semidet.
 
-    % true iff the priority search queue respects the search tree properties,
-    % i.e., for each node the keys in the left subtree are smaller as or equal
-    % to the split key and the keys in the right subtree are larger than the
-    % split key.
+    % True iff the priority search queue respects the search tree properties:
+    %
+    %   1) for each node the keys in the left subtree are smaller as or equal
+    %      to the split key and
+    %   2) the keys in the right subtree are larger than the
+    %      split key.
     %
 :- pred is_search_tree(psqueue(P, K)::in) is semidet.
 
-    % true, iff maximal key and all split keys are present
+    % True iff maximal key and all split keys are present
     %
 :- pred key_condition(psqueue(P, K)::in) is semidet.
 
-    % true, iff keys are unique
+    % True iff keys are unique.
     %
 :- pred is_finite_map(psqueue(P, K)::in) is semidet.
 
@@ -153,6 +165,23 @@
 :- import_module require.
 
 %---------------------------------------------------------------------------%
+
+% The PSQueue data structure uses the 'tournament' metaphore.  Consider
+% multiple compeditors playing matches, with the winners from each matches
+% playing one another to find the champion.  The winner is the item with the
+% lowest priority.  The data structure here follows a similar tree.  However,
+% two modifications are made:
+%
+% + First, a tournament tree contains the data in the leaves of the tree and
+%   repeats the winners within the tree.  To avoid this duplication we do not
+%   store any information in the leaves and store the loosers internally within
+%   the tree.  The champion is stored at the root node of the tree.
+%
+% + To facilitate sorting by key, sort keys are stored inside each node.  The
+%   items in the left subtree have keys less than or equal to the sort key, the
+%   keys in the right subtree have keys greater than the sort key.  The looser
+%   (stored in this node) is considered to be part of one of the two subtrees,
+%   depending how it's key compares with the sort key.
 
 :- type psqueue(P, K) --->
     void
@@ -201,16 +230,12 @@ max_key(PSQ) = K :-
 max_key(PSQ, MaxKey) :-
     PSQ = winner(_, _, _, MaxKey).
 
-
-    % play tournament to combine two priority search queues, see Ralf Hinze's
-    % paper for explanantion
+    % Play tournament to combine two priority search queues, see Ralf Hinze's
+    % paper for explanantion.
     %
 :- func tournament(psqueue(P, K), psqueue(P, K)) = psqueue(P, K) is det.
 :- pred tournament(psqueue(P, K)::in, psqueue(P, K)::in, psqueue(P, K)::out)
     is det.
-
-    % generate specialized code for integral priorities
-    %
 :- pragma type_spec(tournament/3, P = int).
 
 tournament(PSQ0, PSQ1, PSQ) :-
