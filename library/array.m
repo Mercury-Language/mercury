@@ -370,7 +370,7 @@
 :- mode fetch_items(in, in, in) = out is det.
 
     % XXX We prefer users to call the new binary_search predicate
-    % instead of bsearch, which may be deprecated in later releases.
+    % instead of bsearch, which is why bsearch is marked as obsolete.
     %
     % bsearch takes an array, an element to be matched and a comparison
     % predicate and returns the position of the first occurrence in the array
@@ -380,10 +380,12 @@
 :- pred bsearch(array(T), T, comparison_pred(T), maybe(int)).
 %:- mode bsearch(array_ui, in, in(comparison_pred), out) is det.
 :- mode bsearch(in, in, in(comparison_pred), out) is det.
+:- pragma obsolete(bsearch/4).
 
 :- func bsearch(array(T), T, comparison_func(T)) = maybe(int).
 %:- mode bsearch(array_ui, in, in(comparison_func)) = out is det.
 :- mode bsearch(in, in, in(comparison_func)) = out is det.
+:- pragma obsolete(bsearch/3).
 
     % binary_search(A, X, I) does a binary search for the element X
     % in the array A. If there is an element with that value in the array,
@@ -406,7 +408,7 @@
     % in the array A. If there is an element with that value in the array,
     % it returns its index I. If there is no element with that value in the
     % array, it returns an index whose slot contains the highest value in the
-    % array that is less than X, as messured by the builtin Mercury order
+    % array that is less than X, as measured by the builtin Mercury order
     % on terms for approx_binary_search/3, and as measured by the supplied
     % ordering for approx_binary_search/4. It will fail only if there is
     % no value smaller than X in the array.
