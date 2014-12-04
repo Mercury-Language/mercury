@@ -54,11 +54,21 @@
     %
 :- pred is_empty(psqueue(P, K)::in) is semidet.
 
+    % create singleton psqueue
+    %
+:- pred singleton(P::in, K::in, psqueue(P, K)::out) is det.
+:- func singleton(P, K) = psqueue(P, K).
+
     % Insert key K with priority P into a priority search queue.
     % Fail if the key already exists.
     %
-:- func insert(P, K, psqueue(P, K)) = psqueue(P, K) is det.
-:- pred insert(P::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is det.
+:- pred insert(P::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is semidet.
+
+    % Insert key K with priority P into a priority search queue.
+    % Abort if the key already exists.
+    %
+:- func det_insert(psqueue(P, K), P, K) = psqueue(P, K) is det.
+:- pred det_insert(P::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is det.
 
     % Peek at highest priority key, do not change the priority search queue.
     %
@@ -70,18 +80,19 @@
 
     % Remove element with minimal priority.
     %
-:- pred del_min(P::out, K::out, psqueue(P, K)::in, psqueue(P, K)::out)
+:- pred remove_least(P::out, K::out, psqueue(P, K)::in, psqueue(P, K)::out)
     is semidet.
 
     % Remove element with minimal priority, call error/1 if priority search
-    % queue is empty
-:- pred det_del_min(P::out, K::out, psqueue(P, K)::in, psqueue(P, K)::out)
+    % queue is empty.
+    %
+:- pred det_remove_least(P::out, K::out, psqueue(P, K)::in, psqueue(P, K)::out)
     is det.
 
     % Create an ordered association list from a priority search queue.
     %
-:- func to_ord_assoc_list(psqueue(P, K)) = assoc_list(P, K).
-:- pred to_ord_assoc_list(psqueue(P, K)::in, assoc_list(P, K)::out) is det.
+:- func to_assoc_list(psqueue(P, K)) = assoc_list(P, K).
+:- pred to_assoc_list(psqueue(P, K)::in, assoc_list(P, K)::out) is det.
 
     % Create a priority search queue from an assoc_list of priority, key pairs
     %
@@ -90,32 +101,32 @@
 
     % Remove element with specific key from a priority queue.
     %
-:- func delete(K, psqueue(P, K)) = psqueue(P, K) is det.
-:- pred delete(K::in, psqueue(P, K)::in, psqueue(P, K)::out) is det.
+:- pred remove(P::out, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is semidet.
+
+:- pred det_remove(P::out, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is det.
 
     % Adjust priority of specified element. The old priority is given as an
-    % argument to the adjustment function.
+    % argument to the adjustment function. Fails if the element is not
+    % found.
     %
-:- func adjust(func(P) = P, K, psqueue(P, K)) = psqueue(P, K) is det.
 :- pred adjust((func(P) = P)::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out)
-    is det.
+    is semidet.
 
-    % Look-up the priority of the specified key.
+    % Search for the priority of the specified element.
     %
-:- func lookup(K, psqueue(P, K)) = P is semidet.
-:- pred lookup(K::in, psqueue(P, K)::in, P::out) is semidet.
+:- pred search(psqueue(P, K)::in, K::in, P::out) is semidet.
 
     % Lookup the priority of the specified key, calls error/1 if the element is
     % not present.
     %
-:- func det_lookup(K, psqueue(P, K)) = P is det.
-:- pred det_lookup(K::in, psqueue(P, K)::in, P::out) is det.
+:- func lookup(psqueue(P, K), K) = P.
+:- pred lookup(psqueue(P, K)::in, K::in, P::out) is det.
 
     % Range query for all priority - key pairs less or equal to a specified
     % priority
     %
-:- func at_most(P, psqueue(P, K)) = assoc_list(P, K).
-:- pred at_most(P::in, psqueue(P, K)::in, assoc_list(P, K)::out) is det.
+:- func at_most(psqueue(P, K), P) = assoc_list(P, K).
+:- pred at_most(psqueue(P, K)::in, P::in, assoc_list(P, K)::out) is det.
 
     % Return the size of the priority search queue as the number of elements.
     %
@@ -205,39 +216,11 @@
                 l_right_tree    :: ltree(K, P)
             ).
 
-%---------------------------------------------------------------------------%
-
-    % create empty psqueue
-    %
-psqueue.init = PSQ :-
-    psqueue.init(PSQ).
-
-psqueue.init(void).
-
-    % check for empty psqueue
-    %
-psqueue.is_empty(void).
-
-
-    % create singleton psqueue
-    %
-:- pred singleton(K::in, P::in, psqueue(P, K)::out) is det.
-:- func singleton(K, P) = psqueue(P, K).
-
-singleton(K, P) = Res :-
-    singleton(K, P, Res).
-
-singleton(K, P, PSQ) :-
-    PSQ = winner(K, P, start, K).
-
+%-----------------------------------------------------------------------%
 
     % extract maximal (highest priority) key
     %
-:- func max_key(psqueue(P, K)) = K is semidet.
 :- pred max_key(psqueue(P, K)::in, K::out) is semidet.
-
-max_key(PSQ) = K :-
-    max_key(PSQ, K).
 
 max_key(PSQ, MaxKey) :-
     PSQ = winner(_, _, _, MaxKey).
@@ -297,12 +280,107 @@ second_best(LTree, Key) = Res :-
         )
     ).
 
-to_ord_assoc_list(PSQ) = Res :-
-    to_ord_assoc_list(PSQ, Res).
+%---------------------------------------------------------------------------%
 
-to_ord_assoc_list(PSQ, AList) :-
-    ( psqueue.del_min(K, P, PSQ, PSQ0) ->
-        to_ord_assoc_list(PSQ0, AList0),
+    % create empty psqueue
+    %
+init = PSQ :-
+    init(PSQ).
+
+init(void).
+
+    % check for empty psqueue
+    %
+is_empty(void).
+
+singleton(P, K) = Res :-
+    singleton(P, K, Res).
+
+singleton(P, K, PSQ) :-
+    PSQ = winner(K, P, start, K).
+
+%-----------------------------------------------------------------------%
+
+insert(P, K, !PSQ) :-
+    insert_tv(K, P, tournament_view(!.PSQ), !:PSQ).
+
+det_insert(P, K, !PSQ) :-
+    ( insert(P, K, !PSQ) ->
+        true
+    ;
+        unexpected($file, $pred,
+            "error on inserting element into priority search queue")
+    ).
+
+det_insert(PSQ0, P, K) = PSQ :-
+    det_insert(P, K, PSQ0, PSQ).
+
+:- pred insert_tv(K::in, P::in,
+    t_tournament_view(K, P)::in, psqueue(P, K)::out) is semidet.
+
+insert_tv(IK, IP, TV, Res) :-
+    (
+        TV = emptySet,
+        Res = psqueue.singleton(IP, IK)
+    ;
+        TV = singleton(Key, Prio),
+        compare(CMP, IK, Key),
+        (
+            CMP = (<),
+            Res = tournament(psqueue.singleton(IP, IK),
+                psqueue.singleton(Prio, Key))
+        ;
+            CMP = (>),
+            Res = tournament(psqueue.singleton(Prio, Key),
+                psqueue.singleton(IP, IK))
+        )
+    ;
+        TV = tournament_between(T1, T2),
+        T1 = winner(_, _, _, MaxKey1),
+        T2 = winner(_, _, _, _),
+        ( IK `leq` MaxKey1 ->
+            insert(IP, IK, T1, Left),
+            Res = tournament(Left, T2)
+        ;
+            insert(IP, IK, T2, Right),
+            Res = tournament(T1, Right)
+        )
+    ).
+
+%-----------------------------------------------------------------------%
+
+peek(PSQ, MinPrio, MinKey) :-
+    PSQ = winner(MinKey, MinPrio, _, _).
+
+det_peek(PSQ, MinPrio, MinKey) :-
+    ( peek(PSQ, MinPrio0, MinKey0) ->
+        MinKey = MinKey0,
+        MinPrio = MinPrio0
+    ;
+        unexpected($file, $pred, "priority search queue is empty")
+    ).
+
+remove_least(MinPrio, MinKey, PSQ, NewPSQ) :-
+    PSQ = winner(MinKey, MinPrio, L, MaxKey),
+    NewPSQ = second_best(L, MaxKey).
+
+det_remove_least(MinPrio, MinKey, PSQ, NewPSQ) :-
+    ( remove_least(MinPrio0, MinKey0, PSQ, NewPSQ0) ->
+        NewPSQ = NewPSQ0,
+        MinKey = MinKey0,
+        MinPrio = MinPrio0
+    ;
+        unexpected($file, $pred, "priority search queue is empty")
+    ).
+
+%-----------------------------------------------------------------------%
+
+to_assoc_list(PSQ) = Res :-
+    to_assoc_list(PSQ, Res).
+
+to_assoc_list(PSQ, AList) :-
+    ( remove_least(K, P, PSQ, PSQ0) ->
+        to_assoc_list(PSQ0, AList0),
         AList = [K - P | AList0]
     ;
         AList = []
@@ -317,104 +395,232 @@ from_assoc_list(AList, PSQ) :-
 :- pred from_assoc_list2(assoc_list(P, K)::in, psqueue(P, K)::in,
                        psqueue(P, K)::out) is det.
 
-from_assoc_list2(AList, PSQ0, PSQ) :-
+from_assoc_list2([], !PSQ).
+from_assoc_list2([(Prio - Key) | Rest], !PSQ) :-
+    det_insert(Prio, Key, !PSQ),
+    from_assoc_list2(Rest, !PSQ).
+
+%-----------------------------------------------------------------------%
+
+remove(P, K, !PSQ) :-
+    remove_tv(P, K, tournament_view(!.PSQ), !:PSQ).
+
+det_remove(P, K, !PSQ) :-
+    ( remove(PPrime, K, !.PSQ, PSQPrime) ->
+        P = PPrime,
+        !:PSQ = PSQPrime
+    ;
+        unexpected($file, $pred, "element not found")
+    ).
+
+:- pred remove_tv(P::out, K::in,
+    t_tournament_view(K, P)::in, psqueue(P, K)::out) is semidet.
+
+remove_tv(Prio, Key, TV, Res) :-
     (
-      AList = [],
-      PSQ = PSQ0
+        TV = emptySet,
+        false
     ;
-      AList = [Pair | Rest],
-      Pair = (Prio - Key),
-      insert(Prio, Key, PSQ0, PSQ1),
-      from_assoc_list2(Rest, PSQ1, PSQ)
+        TV = singleton(Key, Prio),
+        Res = void
+    ;
+        TV = tournament_between(TL, TR),
+        TL = winner(_, _, _, MaxKey1),
+        ( Key `leq` MaxKey1 ->
+            remove(Prio, Key, TL, Left),
+            Res = tournament(Left, TR)
+        ;
+            remove(Prio, Key, TR, Right),
+            Res = tournament(TL, Right)
+        )
     ).
 
-det_del_min(MinPrio, MinKey, PSQ, NewPSQ) :-
-    ( del_min(MinPrio0, MinKey0, PSQ, NewPSQ0) ->
-        NewPSQ = NewPSQ0,
-        MinKey = MinKey0,
-        MinPrio = MinPrio0
-    ;
-        unexpected($file, $pred, "priority search queue is empty")
-    ).
-
-del_min(MinPrio, MinKey, PSQ, NewPSQ) :-
-    PSQ = winner(MinKey, MinPrio, L, MaxKey),
-    NewPSQ = second_best(L, MaxKey).
-
-peek(PSQ, MinPrio, MinKey) :-
-    PSQ = winner(MinKey, MinPrio, _, _).
-
-det_peek(PSQ, MinPrio, MinKey) :-
-    ( peek(PSQ, MinPrio0, MinKey0) ->
-        MinKey = MinKey0,
-        MinPrio = MinPrio0
-    ;
-        unexpected($file, $pred, "priority search queue is empty")
-    ).
+%---------------------------------------------------------------------------%
 
 :- pred leq(V::in, V::in) is semidet.
 :- pragma type_spec(leq/2, V = int).
+
 leq(ValLeft, ValRight) :-
     compare(CMP, ValLeft, ValRight),
-    ( CMP = (>) ->
-        fail
+    ( CMP = (<)
+    ; CMP = (=)
+    ).
+
+%-----------------------------------------------------------------------%
+
+adjust(F, K, !PSQ) :-
+    adjust_tv(F, K, tournament_view(!.PSQ), !:PSQ).
+
+:- pred adjust_tv(func(P) = P, K, t_tournament_view(K, P), psqueue(P, K)).
+:- mode adjust_tv(func(in) = out is det, in, in, out) is semidet.
+
+adjust_tv(Func, K, TV, Res) :-
+    (
+        TV = emptySet,
+        false
     ;
-        true
+        TV = singleton(Key, Prio),
+        ( K = Key ->
+            Res = psqueue.singleton(Func(Prio), Key)
+        ;
+            Res = psqueue.singleton(Prio, Key)
+        )
+    ;
+        TV = tournament_between(TL, TR),
+        TL = winner(_, _, _, MaxKey1),
+        ( K `leq` MaxKey1 ->
+            adjust(Func, K, TL, Left),
+            Res = tournament(Left, TR)
+        ;
+            adjust(Func, K, TR, Right),
+            Res = tournament(TL, Right)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+search(PSQ, K, P) :-
+    search_tv(tournament_view(PSQ), K, P).
+
+:- pred search_tv(t_tournament_view(K, P)::in, K::in, P::out) is semidet.
+
+search_tv(TV, K, Res) :-
+    (
+        TV = singleton(Key, Prio),
+        Key = K,
+        Res = Prio
+    ;
+        TV = tournament_between(TL, TR),
+        TL = winner(_, _, _, MaxKey1),
+        ( K `leq` MaxKey1 ->
+            search(TL, K, Res)
+        ;
+            search(TR, K, Res)
+        )
+    ).
+
+lookup(PSQ, K, P) :-
+    ( search(PSQ, K, PPrime) ->
+        P = PPrime
+    ;
+        unexpected($file, $pred, "element not found")
+    ).
+
+lookup(PSQ, K) = P :-
+    lookup(PSQ, K, P).
+
+%-----------------------------------------------------------------------%
+
+at_most(PSQ, P) = Res :-
+    at_most(PSQ, P, Res).
+
+at_most(PSQ, Pt, AList) :-
+    MView = min_view(PSQ),
+    (
+        MView = empty,
+        AList = []
+    ;
+        MView = min(_, Prio, _),
+        compare(CMP, Prio, Pt),
+        (
+            CMP = (>),
+            AList = []
+        ;
+            ( CMP = (=)
+            ; CMP = (<)
+            ),
+            TView = tournament_view(PSQ),
+            (
+                TView = emptySet,
+                AList = []
+            ;
+                TView = singleton(Prio0, Key0),
+                AList = [Key0 - Prio0]
+            ;
+                TView = tournament_between(T1, T2),
+                at_most(T1, Pt, AL0),
+                at_most(T2, Pt, AL1),
+                AList = AL0 ++ AL1
+            )
+        )
+    ).
+
+size(PSQ, Size) :-
+    (
+        PSQ = void,
+        Size = 0
+    ;
+        PSQ = winner(_, _, LTree, _),
+        Size = ltree_size(LTree)
+    ).
+
+size(PSQ) = Res :-
+    size(PSQ, Res).
+
+:- func ltree_size(ltree(K, P)) = t_ltree_size.
+
+ltree_size(LTree) = Res :-
+    (
+        LTree = start, Res = 0
+    ;
+        LTree = loser(Res, _, _, _, _, _)
     ).
 
 %---------------------------------------------------------------------------%
 % view types for min view, tournament view and tree view
 %---------------------------------------------------------------------------%
 
-:- type t_min_view(K, P) --->
-    empty
-    ; min(K, P, psqueue(P, K)).
+:- type t_min_view(K, P)
+    --->        empty
+    ;           min(K, P, psqueue(P, K)).
 
-:- type t_tournament_view(K, P) --->
-    emptySet
-    ; singleton(K, P)
-    ; tournament_between(psqueue(P, K), psqueue(P, K)).
+:- type t_tournament_view(K, P)
+    --->        emptySet
+    ;           singleton(K, P)
+    ;           tournament_between(psqueue(P, K), psqueue(P, K)).
 
-:- type t_tree_view(K, P) --->
-    leaf
-    ; node(K, P, ltree(K, P), K, ltree(K, P)).
+:- type t_tree_view(K, P)
+    --->        leaf
+    ;           node(K, P, ltree(K, P), K, ltree(K, P)).
 
 %---------------------------------------------------------------------------%
 
     % get min view of priority search queue
     %
-:- func min_view(psqueue(P, K)) = t_min_view(K, P) is det.
+:- func min_view(psqueue(P, K)) = t_min_view(K, P).
 
 min_view(PSQ) = Res :-
     (
-      PSQ = void, Res = empty
+        PSQ = void,
+        Res = empty
     ;
-      PSQ = winner(Key, Prio, LTree, MaxKey),
-      Res = min(Key, Prio, second_best(LTree, MaxKey))
+        PSQ = winner(Key, Prio, LTree, MaxKey),
+        Res = min(Key, Prio, second_best(LTree, MaxKey))
     ).
 
     % get tournament view of priority search queue
     %
-:- func tournament_view(psqueue(P, K)) = t_tournament_view(K, P) is det.
+:- func tournament_view(psqueue(P, K)) = t_tournament_view(K, P).
 
 tournament_view(PSQ) = Res :-
     (
-      PSQ = void,
-      Res = emptySet
+        PSQ = void,
+        Res = emptySet
     ;
-      PSQ = winner(K, P, LTree, MaxKey),
-      (
-        LTree = start, Res = singleton(K, P)
-      ;
-        LTree = loser(_, LK, LP, TL, SplitKey, TR),
-        ( LK `leq` SplitKey ->
-            Res = tournament_between(winner(LK, LP, TL, SplitKey),
-                                     winner(K, P, TR, MaxKey))
+        PSQ = winner(K, P, LTree, MaxKey),
+        (
+            LTree = start,
+            Res = singleton(K, P)
         ;
-            Res = tournament_between(winner(K, P, TL, SplitKey),
+            LTree = loser(_, LK, LP, TL, SplitKey, TR),
+            ( LK `leq` SplitKey ->
+                Res = tournament_between(winner(LK, LP, TL, SplitKey),
+                                     winner(K, P, TR, MaxKey))
+            ;
+                Res = tournament_between(winner(K, P, TL, SplitKey),
                                      winner(LK, LP, TR, MaxKey))
+            )
         )
-      )
     ).
 
 
@@ -424,200 +630,11 @@ tournament_view(PSQ) = Res :-
 
 tree_view(LTree) = Res :-
     (
-      LTree = start, Res = leaf
+        LTree = start,
+        Res = leaf
     ;
-      LTree = loser(_, LK, LP, LL, SplitKey, LR),
-      Res = node(LK, LP, LL, SplitKey, LR)
-    ).
-
-
-lookup(K, PSQ) = lookup_tv(K, tournament_view(PSQ)).
-
-lookup(K, PSQ, P) :-
-    P = lookup(K, PSQ).
-
-det_lookup(K, PSQ) = Res :-
-    ( Res0 = lookup(K, PSQ) ->
-        Res = Res0
-    ;
-        unexpected($file, $pred, "element to look-up is not present in\
-                  priority search queue")
-    ).
-
-det_lookup(K, PSQ, P) :-
-    P = det_lookup(K, PSQ).
-
-:- func lookup_tv(K, t_tournament_view(K, P)) = P is semidet.
-lookup_tv(K, TV) = Res :-
-    (
-      TV = singleton(Key, Prio),
-      Key = K,
-      Res = Prio
-    ;
-      TV = tournament_between(TL, TR),
-      TL = winner(_, _, _, MaxKey1),
-      ( K `leq` MaxKey1 ->
-          Res = lookup(K, TL)
-      ;
-          Res = lookup(K, TR)
-      )
-    ).
-
-
-adjust(F, K, PSQ) = Res :-
-    ( PSQ0 = adjust_tv(F, K, tournament_view(PSQ)) ->
-        Res = PSQ0
-    ;
-        unexpected($file, $pred, "error while adjusting priority of an element")
-    ).
-
-adjust(F, K, PSQ, PSQ0) :-
-    PSQ0 = adjust(F, K, PSQ).
-
-:- func adjust_tv(func(P) = P, K, t_tournament_view(K, P)) = psqueue(P, K)
-    is semidet.
-adjust_tv(Func, K, TV) = Res :-
-    (
-      TV = emptySet, Res = void
-    ;
-      TV = singleton(Key, Prio),
-      ( K = Key ->
-          Res = psqueue.singleton(Key, Func(Prio))
-      ;
-          Res = psqueue.singleton(Key, Prio)
-      )
-    ;
-      TV = tournament_between(TL, TR),
-      TL = winner(_, _, _, MaxKey1),
-      ( K `leq` MaxKey1 ->
-          Res = tournament(adjust(Func, K, TL), TR)
-      ;
-          Res = tournament(TL, adjust(Func, K, TR))
-      )
-    ).
-
-insert(IP, IK, PSQ) = Res :-
-    ( PSQ0 = insert_tv(IK, IP, tournament_view(PSQ)) ->
-        Res = PSQ0
-    ;
-        unexpected($file, $pred, "error on inserting element into priority\
-                  search queue")
-    ).
-
-insert(IP, IK, PSQ, PSQ0) :-
-    PSQ0 = insert(IP, IK, PSQ).
-
-:- func insert_tv(K, P, t_tournament_view(K, P)) = psqueue(P, K) is semidet.
-insert_tv(IK, IP, TV) = Res :-
-    (
-      TV = emptySet, Res = psqueue.singleton(IK, IP)
-    ;
-      TV = singleton(Key, Prio),
-      compare(CMP, IK, Key),
-      (
-        CMP = (<), Res = tournament(psqueue.singleton(IK, IP),
-                                    psqueue.singleton(Key, Prio))
-      ;
-        CMP = (=), Res = psqueue.singleton(IK, IP)
-      ;
-        CMP = (>), Res = tournament(psqueue.singleton(Key, Prio),
-                                    psqueue.singleton(IK, IP))
-      )
-    ;
-      TV = tournament_between(T1, T2),
-      T1 = winner(_, _, _, MaxKey1),
-      T2 = winner(_, _, _, _),
-      ( IK `leq` MaxKey1 ->
-          Res = tournament(insert(IP, IK, T1), T2)
-      ;
-          Res = tournament(T1, insert(IP, IK, T2))
-      )
-    ).
-
-delete(DK, PSQ) = Res :-
-    ( PSQ0 = delete_tv(DK, tournament_view(PSQ)) ->
-        Res = PSQ0
-    ;
-        unexpected($file, $pred, "error while deleting an element")
-    ).
-
-delete(DK, PSQ, PSQ0) :-
-    PSQ0 = delete(DK, PSQ).
-
-:- func delete_tv(K, t_tournament_view(K, P)) = psqueue(P, K) is semidet.
-delete_tv(DK, TV) = Res :-
-    (
-      (
-        TV = emptySet, Res = void
-      ;
-        TV = singleton(Key, Prio),
-        ( DK = Key ->
-            Res = void
-        ;
-            Res = psqueue.singleton(Key, Prio)
-        )
-      )
-    ;
-      TV = tournament_between(TL, TR),
-      TL = winner(_, _, _, MaxKey1),
-      ( DK `leq` MaxKey1 ->
-          Res = tournament(delete(DK, TL), TR)
-      ;
-          Res = tournament(TL, delete(DK, TR))
-      )
-    ).
-
-at_most(P, PSQ) = Res :-
-    at_most(P, PSQ, Res).
-
-at_most(Pt, PSQ, AList) :-
-    MView = min_view(PSQ),
-    (
-      MView = empty,
-      AList = []
-    ;
-      MView = min(_, Prio, _),
-      compare(CMP, Prio, Pt),
-      (
-        CMP = (>),
-        AList = []
-      ;
-        ( CMP = (=); CMP = (<) ),
-        (
-          TView = tournament_view(PSQ),
-          (
-            TView = emptySet,
-            AList = []
-          ;
-            TView = singleton(Prio0, Key0),
-            AList = [Key0 - Prio0]
-          ;
-            TView = tournament_between(T1, T2),
-            at_most(Pt, T1, AL0),
-            at_most(Pt, T2, AL1),
-            AList = AL0 ++ AL1
-          )
-        )
-      )
-    ).
-
-size(PSQ, Size) :-
-    (
-      PSQ = void, Size = 0
-    ;
-      PSQ = winner(_, _, LTree, _),
-      Size = ltree_size(LTree)
-    ).
-
-size(PSQ) = Res :-
-    size(PSQ, Res).
-
-:- func ltree_size(ltree(K, P)) = t_ltree_size is det.
-ltree_size(LTree) = Res :-
-    (
-      LTree = start, Res = 0
-    ;
-      LTree = loser(Res, _, _, _, _, _)
+        LTree = loser(_, LK, LP, LL, SplitKey, LR),
+        Res = node(LK, LP, LL, SplitKey, LR)
     ).
 
 %---------------------------------------------------------------------------%
