@@ -1,5 +1,6 @@
-:- module calendar_test.
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 
+:- module calendar_test.
 :- interface.
 
 :- import_module io.
@@ -74,8 +75,31 @@ main(!IO) :-
     io.nl(!IO),
     io.write_string("Parse test:\n", !IO),
     io.write_string(duration_to_string(
-    	det_duration_from_string("P1Y18M100DT10H15M90.0003S")), !IO),
+        det_duration_from_string("P1Y18M100DT10H15M90.0003S")), !IO),
+    io.nl(!IO),
+    io.nl(!IO),
+    io.write_string("Month-to-int (1-based):\n", !IO),
+    list.foldl(test_month_to_int, all_months, !IO),
+    io.nl(!IO),
+    io.write_string("Month-to-int (0-based):\n", !IO),
+    list.foldl(test_month_to_int0, all_months, !IO),
+    io.nl(!IO),
+    io.write_string("Int-to-month (1-based):\n", !IO),
+    list.foldl(test_int_to_month, -1..13, !IO),
+    io.nl(!IO),
+    io.write_string("Int-to-month (0-based):\n", !IO),
+    list.foldl(test_int0_to_month, -1..13, !IO),
+    io.nl(!IO),
+    io.write_string("Same date:\n", !IO),
+    Date1 = det_date_from_string("2014-12-04 12:53:00"),
+    Date2 = det_date_from_string("2014-12-04 12:54:00"),
+    Date3 = det_date_from_string("2014-12-05 12:53:00"),
+    test_same_date(Date1, Date1, !IO),
+    test_same_date(Date1, Date2, !IO),
+    test_same_date(Date1, Date3, !IO),
+    test_same_date(Date2, Date3, !IO),
     io.nl(!IO).
+    
 
 :- pred test_dur_leq(string::in, string::in, io::di, io::uo) is det.
 
@@ -153,3 +177,57 @@ test_day_of_week(DateStr, !IO) :-
     io.write_string(DateStr ++ " : ", !IO),
     io.write(day_of_week(det_date_from_string(DateStr)), !IO),
     io.nl(!IO).
+
+:- pred test_month_to_int(month::in, io::di, io::uo) is det.
+
+test_month_to_int(Month, !IO) :-
+    Int = month_to_int(Month),
+    io.format("%s -> %d\n", [s(string(Month)), i(Int)], !IO).
+
+:- pred test_month_to_int0(month::in, io::di, io::uo) is det.
+
+test_month_to_int0(Month, !IO) :-
+    Int = month_to_int0(Month),
+    io.format("%s -> %d\n", [s(string(Month)), i(Int)], !IO).
+
+:- pred test_int_to_month(int::in, io::di, io::uo) is det.
+
+test_int_to_month(Int, !IO) :-
+    ( if int_to_month(Int, Month)
+    then Result = string(Month)
+    else Result = "out-of-range"
+    ),
+    io.format("%d -> %s\n", [i(Int), s(Result)], !IO).
+
+:- pred test_int0_to_month(int::in, io::di, io::uo) is det.
+
+test_int0_to_month(Int, !IO) :-
+    ( if int0_to_month(Int, Month)
+    then Result = string(Month)
+    else Result = "out-of-range"
+    ),
+    io.format("%d -> %s\n", [i(Int), s(Result)], !IO).
+
+:- pred test_same_date(date::in, date::in, io::di, io::uo) is det.
+
+test_same_date(A, B, !IO) :-
+    Result = ( if A `same_date` B then "==" else "!=" ),
+    io.format("%s %s %s\n",
+        [s(date_to_string(A)), s(Result), s(date_to_string(B))], !IO).
+
+:- func all_months = list(month).
+
+all_months = [
+    january,
+    february,
+    march,
+    april,
+    may,
+    june,
+    july,
+    august,
+    september,
+    october,
+    november,
+    december
+].

@@ -102,3 +102,72 @@ Day of the week:
 
 Parse test:
 P2Y6M100DT10H16M30.0003S
+
+Month-to-int (1-based):
+january -> 1
+february -> 2
+march -> 3
+april -> 4
+may -> 5
+june -> 6
+july -> 7
+august -> 8
+september -> 9
+october -> 10
+november -> 11
+december -> 12
+
+Month-to-int (0-based):
+january -> 0
+february -> 1
+march -> 2
+april -> 3
+may -> 4
+june -> 5
+july -> 6
+august -> 7
+september -> 8
+october -> 9
+november -> 10
+december -> 11
+
+Int-to-month (1-based):
+-1 -> out-of-range
+0 -> out-of-range
+1 -> january
+2 -> february
+3 -> march
+4 -> april
+5 -> may
+6 -> june
+7 -> july
+8 -> august
+9 -> september
+10 -> october
+11 -> november
+12 -> december
+13 -> out-of-range
+
+Int-to-month (0-based):
+-1 -> out-of-range
+0 -> january
+1 -> february
+2 -> march
+3 -> april
+4 -> may
+5 -> june
+6 -> july
+7 -> august
+8 -> september
+9 -> october
+10 -> november
+11 -> december
+12 -> out-of-range
+13 -> out-of-range
+
+Same date:
+2014-12-04 12:53:00 == 2014-12-04 12:53:00
+2014-12-04 12:53:00 == 2014-12-04 12:54:00
+2014-12-04 12:53:00 != 2014-12-05 12:53:00
+2014-12-04 12:54:00 != 2014-12-05 12:53:00
+

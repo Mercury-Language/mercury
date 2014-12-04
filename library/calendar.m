@@ -77,7 +77,41 @@
 :- func second(date) = second.
 :- func microsecond(date) = microsecond.
 
-    % init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date).
+    % int_to_month(Int, Month):
+    % Int is the number of Month where months are numbered from 1-12.
+    %
+:- pred int_to_month(int, month).
+:- mode int_to_month(in, out) is semidet.
+:- mode int_to_month(out, in) is det.
+
+    % det_int_to_month(Int) returns the month corresponding to Int.
+    % Throws an exception if Int is not in 1-12.
+    %
+:- func det_int_to_month(int) = month.
+
+    % int_to_month(Int, Month):
+    % Int is the number of Month where months are numbered from 0-11.
+    %
+:- pred int0_to_month(int, month) is semidet.
+:- mode int0_to_month(in, out) is semidet.
+:- mode int0_to_month(out, in) is det.
+
+    % det_int0_to_month(Int) returns the month corresponding to Int.
+    % Throws an exception if Int is not in 0-11.
+    %
+:- func det_int0_to_month(int) = month.
+
+    % month_to_int(Month) returns the number of Month where months are
+    % numbered from 1-12.
+    %
+:- func month_to_int(month) = int.
+
+    % month_to_int0(Month) returns the number of Month where months are
+    % numbered from 0-11.
+    %
+:- func month_to_int0(month) = int.
+
+    % init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date):
     % Initialize a new date. Fails if the given date is invalid.
     %
 :- pred init_date(year::in, month::in, day_of_month::in, hour::in,
@@ -124,6 +158,11 @@
     % Returns 1970/01/01 00:00:00.
     %
 :- func unix_epoch = date.
+
+%---------------------------------------------------------------------------%
+%
+% Durations.
+%
 
     % A period of time measured in years, months, days, hours, minutes,
     % seconds and microseconds. Internally a duration is represented
@@ -340,6 +379,14 @@
     in, out, in, out, di, uo) is semidet.
 
 %---------------------------------------------------------------------------%
+
+    % same_date(A, B):
+    % True iff A and B are equal with respect to only their date components.
+    % The time components are ignored.
+    %
+:- pred same_date(date::in, date::in) is semidet.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -373,6 +420,7 @@
             ).
 
 %---------------------------------------------------------------------------%
+%
 % Parsing.
 %
 
@@ -438,7 +486,7 @@ read_int_and_num_chars(Val, N, !Chars) :-
 read_int_and_num_chars_2(!Val, !N, !Chars) :-
     (
         !.Chars = [Char | Rest],
-        char_to_digit(Char, Digit)
+        decimal_digit_to_int(Char, Digit)
     ->
         !:Val = !.Val * 10 + Digit,
         read_int_and_num_chars_2(!Val, !.N + 1, !:N, Rest, !:Chars)
@@ -550,7 +598,7 @@ read_int(Val, !Chars) :-
 read_int_2(!Val, !Chars) :-
     (
         !.Chars = [Char | Rest],
-        char_to_digit(Char, Digit)
+        decimal_digit_to_int(Char, Digit)
     ->
         !:Val = !.Val * 10 + Digit,
         read_int_2(!Val, Rest, !:Chars)
@@ -619,6 +667,7 @@ det_duration_from_string(Str) = Duration :-
     ).
 
 %---------------------------------------------------------------------------%
+%
 % Serialization.
 %
 
@@ -633,7 +682,7 @@ date_to_string(Date) = Str :-
     ),
     MicroSecondStr = microsecond_string(MicroSecond),
     Str = string.format("%s%04d-%02d-%02d %02d:%02d:%02d%s",
-        [s(SignStr), i(Year), i(month_num(Month)), i(Day), i(Hour), i(Minute),
+        [s(SignStr), i(Year), i(month_to_int(Month)), i(Day), i(Hour), i(Minute),
          i(Second), s(MicroSecondStr)]).
 
 :- func microsecond_string(microseconds) = string.
@@ -1019,7 +1068,7 @@ det_day_of_week_from_mod(Mod) = DayOfWeek :-
 %
 
 year(Date) = Date ^ dt_year.
-month(Date) = det_month(Date ^ dt_month).
+month(Date) = det_int_to_month(Date ^ dt_month).
 day_of_month(Date) = Date ^ dt_day.
 hour(Date) = Date ^ dt_hour.
 minute(Date) = Date ^ dt_minute.
@@ -1034,14 +1083,48 @@ minutes(Dur) = (Dur ^ dur_seconds rem 3600) // 60.
 seconds(Dur) = Dur ^ dur_seconds rem 60.
 microseconds(Dur) = Dur ^ dur_microseconds.
 
+int_to_month(1, january).
+int_to_month(2, february).
+int_to_month(3, march).
+int_to_month(4, april).
+int_to_month(5, may).
+int_to_month(6, june).
+int_to_month(7, july).
+int_to_month(8, august).
+int_to_month(9, september).
+int_to_month(10, october).
+int_to_month(11, november).
+int_to_month(12, december).
+
+det_int_to_month(Int) =
+    ( if int_to_month(Int, Month)
+    then Month
+    else func_error("det_int_to_month: invalid month: " ++ int_to_string(Int))
+    ).
+
+month_to_int(Month) = Int :-
+    int_to_month(Int, Month).
+
+int0_to_month(Int, Month) :-
+    int_to_month(Int + 1, Month).
+
+det_int0_to_month(Int) =
+    ( if int0_to_month(Int, Month)
+    then Month
+    else func_error("det_int0_to_month: invalid month: " ++ int_to_string(Int)) 
+    ).
+
+month_to_int0(Month) = Int :-
+    int0_to_month(Int, Month).
+
 init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date) :-
     Day >= 1,
-    Day =< max_day_in_month_for(Year, month_num(Month)),
+    Day =< max_day_in_month_for(Year, month_to_int(Month)),
     Hour < 24,
     Minute < 60,
     Second < 62,
     MicroSecond < 1000000,
-    Date = date(Year, month_num(Month), Day, Hour, Minute, Second,
+    Date = date(Year, month_to_int(Month), Day, Hour, Minute, Second,
         MicroSecond).
 
 det_init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond)
@@ -1050,12 +1133,12 @@ det_init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond)
         Date = Date0
     ;
         error(string.format("calendar.det_init_date: invalid date: " ++
-            "%i-%i-%i %i:%i:%i", [i(Year), i(month_num(Month)), i(Day), i(Hour),
+            "%i-%i-%i %i:%i:%i", [i(Year), i(month_to_int(Month)), i(Day), i(Hour),
             i(Minute), i(Second)]))
     ).
 
 unpack_date(date(Year, Month, Day, Hour, Minute, Second, MicroSecond),
-    Year, det_month(Month), Day, Hour, Minute, Second, MicroSecond).
+    Year, det_int_to_month(Month), Day, Hour, Minute, Second, MicroSecond).
 
 current_local_time(Now, !IO) :-
     time.time(TimeT, !IO),
@@ -1091,49 +1174,6 @@ negate(duration(Months, Days, Seconds, MicroSeconds)) =
     duration(-Months, -Days, -Seconds, -MicroSeconds).
 
 zero_duration = duration(0, 0, 0, 0).
-
-:- func det_month(int) = month.
-
-det_month(N) = Month :-
-    ( num_to_month(N, Month0) ->
-        Month = Month0
-    ;
-        error("det_month: invalid month: " ++ int_to_string(N))
-    ).
-
-:- func month_num(month) = int.
-
-month_num(Month) = N :- num_to_month(N, Month).
-
-:- pred num_to_month(int, month).
-:- mode num_to_month(in, out) is semidet.
-:- mode num_to_month(out, in) is det.
-
-num_to_month(1, january).
-num_to_month(2, february).
-num_to_month(3, march).
-num_to_month(4, april).
-num_to_month(5, may).
-num_to_month(6, june).
-num_to_month(7, july).
-num_to_month(8, august).
-num_to_month(9, september).
-num_to_month(10, october).
-num_to_month(11, november).
-num_to_month(12, december).
-
-:- pred char_to_digit(char::in, int::out) is semidet.
-
-char_to_digit('0', 0).
-char_to_digit('1', 1).
-char_to_digit('2', 2).
-char_to_digit('3', 3).
-char_to_digit('4', 4).
-char_to_digit('5', 5).
-char_to_digit('6', 6).
-char_to_digit('7', 7).
-char_to_digit('8', 8).
-char_to_digit('9', 9).
 
 :- pred day_of_week_num(day_of_week, int).
 :- mode day_of_week_num(in, out) is det.
@@ -1189,6 +1229,12 @@ foldl3_days(Pred, !.Curr, End, !Acc1, !Acc2, !Acc3) :-
     ;
         Res = (>)
     ).
+
+%---------------------------------------------------------------------------%
+
+same_date(A, B) :-
+    A = date(Year, Month, Day, _, _, _, _),
+    B = date(Year, Month, Day, _, _, _, _).
 
 %---------------------------------------------------------------------------%
 :- end_module calendar.

@@ -115,6 +115,16 @@ Changes to the Mercury standard library:
 
 * We have a added a new type, maybe_errors, to the maybe module.
 
+* The following predicates and functions have been added to the calendar module
+
+   - int_to_month/2
+   - det_int_to_month/1
+   - int0_to_month/2
+   - det_int0_to_month/1
+   - month_to_int/1
+   - month_to_int0/1
+   - same_date/1
+
 Changes to the Mercury compiler:
 
 * We have enabled stricter checking of non-ground final insts to reject more
