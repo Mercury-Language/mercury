@@ -10959,8 +10959,15 @@ the argument of @samp{--generate-standalone-interface} option.
 @c XXX Mention that stand-alone interfaces work with debugging or
 @c (deep) profiling?
 
-Stand-alone interfaces are not currently supported for target languages
-other than C.
+Stand-alone interfaces are not required if the target language is Java
+or C#.
+For those target languages the Mercury runtime will be automatically
+initialised when the classes or library assemblies containing code generated
+by the Mercury compiler are loaded.
+
+Stand-alone interfaces are not currently supported when the target language is
+Erlang.
+
 For an example of using a stand-alone interface see the
 @samp{samples/c_interface/standalone_c} directory in the Mercury distribution.
 

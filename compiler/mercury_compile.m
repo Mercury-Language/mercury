@@ -471,11 +471,18 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
             ( Target = target_il
             ; Target = target_csharp
             ; Target = target_java
-            ; Target = target_erlang
             ),
-            % XXX this message is nonsense.  These targets do
-            % not require standalone interfaces since they natively
-            % provide an equivalent mechanism.
+            NotRequiredMsg = [
+                words("Error:"),
+                quote("--generate-standalone-interface"),
+                words("is not required for target language"),
+                words(compilation_target_string(Target)),
+                suffix(".")
+            ],
+            write_error_pieces_plain(Globals, NotRequiredMsg, !IO),
+            io.set_exit_status(1, !IO)
+        ;
+            Target = target_erlang,
             NYIMsg = [
                 words("Sorry,"),
                 quote("--generate-standalone-interface"),
