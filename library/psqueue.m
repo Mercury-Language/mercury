@@ -183,15 +183,27 @@
 %   (stored in this node) is considered to be part of one of the two subtrees,
 %   depending how it's key compares with the sort key.
 
-:- type psqueue(P, K) --->
-    void
-    ; winner(K, P, ltree(K, P), K).
+:- type psqueue(P, K)
+    --->    void
+    ;       winner(
+                w_key       :: K,
+                w_prio      :: P,
+                w_loosers   :: ltree(K, P),
+                w_max_key   :: K
+            ).
 
 :- type t_ltree_size == int.
 
-:- type ltree(K, P) --->
-    start
-    ; loser(t_ltree_size, K, P, ltree(K, P), K, ltree(K, P)).
+:- type ltree(K, P)
+    --->    start
+    ;       loser(
+                l_size          :: t_ltree_size,
+                l_looser_key    :: K,
+                l_looser_prio   :: P,
+                l_left_tree     :: ltree(K, P),
+                l_sort_key      :: K,
+                l_right_tree    :: ltree(K, P)
+            ).
 
 %---------------------------------------------------------------------------%
 
@@ -233,7 +245,6 @@ max_key(PSQ, MaxKey) :-
     % Play tournament to combine two priority search queues, see Ralf Hinze's
     % paper for explanantion.
     %
-:- func tournament(psqueue(P, K), psqueue(P, K)) = psqueue(P, K) is det.
 :- pred tournament(psqueue(P, K)::in, psqueue(P, K)::in, psqueue(P, K)::out)
     is det.
 :- pragma type_spec(tournament/3, P = int).
@@ -241,12 +252,17 @@ max_key(PSQ, MaxKey) :-
 tournament(PSQ0, PSQ1, PSQ) :-
     PSQ = tournament(PSQ0, PSQ1).
 
+:- func tournament(psqueue(P, K), psqueue(P, K)) = psqueue(P, K).
+:- pragma type_spec(tournament/2, P = int).
+
 tournament(PSQ1, PSQ2) = Res :-
-    ( PSQ1 = void,
+    (
+        PSQ1 = void,
         Res = PSQ2
     ;
         PSQ1 = winner(K1, Prio1, L1, MaxKey1),
-        ( PSQ2 = void,
+        (
+            PSQ2 = void,
             Res = PSQ1
         ;
             PSQ2 = winner(K2, Prio2, L2, MaxKey2),
@@ -262,23 +278,23 @@ tournament(PSQ1, PSQ2) = Res :-
         )
     ).
 
-
 :- func second_best(ltree(K, P), K) = psqueue(P, K) is det.
+
 second_best(LTree, Key) = Res :-
     (
-      LTree = start,
-      Res = void
+        LTree = start,
+        Res = void
     ;
-      LTree = loser(_, LK, LP, T, SplitKey, U),
-      ( LK `leq` SplitKey ->
-          T1 = winner(LK, LP, T, SplitKey),
-          T2 = second_best(U, Key),
-          Res = tournament(T1, T2)
-      ;
-          T1 = second_best(T, SplitKey),
-          T2 = winner(LK, LP, U, Key),
-          Res = tournament(T1, T2)
-      )
+        LTree = loser(_, LK, LP, T, SplitKey, U),
+        ( LK `leq` SplitKey ->
+            T1 = winner(LK, LP, T, SplitKey),
+            T2 = second_best(U, Key),
+            Res = tournament(T1, T2)
+        ;
+            T1 = second_best(T, SplitKey),
+            T2 = winner(LK, LP, U, Key),
+            Res = tournament(T1, T2)
+        )
     ).
 
 to_ord_assoc_list(PSQ) = Res :-
@@ -373,8 +389,8 @@ min_view(PSQ) = Res :-
     (
       PSQ = void, Res = empty
     ;
-      PSQ = winner(Prio, Key, LTree, MaxKey),
-      Res = min(Prio, Key, second_best(LTree, MaxKey))
+      PSQ = winner(Key, Prio, LTree, MaxKey),
+      Res = min(Key, Prio, second_best(LTree, MaxKey))
     ).
 
     % get tournament view of priority search queue
@@ -730,28 +746,27 @@ double_right(K1, P1, TVL, S2, T3) = Res :-
 
 is_semi_heap(PSQ) :-
     (
-      PSQ = void
+        PSQ = void
     ;
-      PSQ = winner(_, Prio, LTree, _),
-      all_keys_larger_ltree(Prio, LTree),
-      all_nodes_loser_prio(LTree)
+        PSQ = winner(_, Prio, LTree, _),
+        all_keys_larger_ltree(Prio, LTree),
+        all_nodes_loser_prio(LTree)
     ).
 
 :- pred all_keys_larger_ltree(P::in, ltree(K, P)::in) is semidet.
+
 all_keys_larger_ltree(Prio, LTree) :-
     (
-      LTree = start
+        LTree = start
     ;
-      LTree = loser(_, _, LP, LT, _, RT),
-      Prio `leq` LP,
-      all_keys_larger_ltree(Prio, LT),
-      all_keys_larger_ltree(Prio, RT)
+        LTree = loser(_, _, LP, LT, _, RT),
+        Prio `leq` LP,
+        all_keys_larger_ltree(Prio, LT),
+        all_keys_larger_ltree(Prio, RT)
     ).
 
-:- pred min_prio_loser_tree(ltree(K, P)::in, maybe(P)::out) is det.
-:- pred min_prio_loser_tree(ltree(K, P)::in, P::in, maybe(P)::out) is det.
-
 :- func min(V, V) = V is det.
+
 min(P1, P2) = Res :-
     ( P1 `leq` P2 ->
         Res = P1
@@ -760,6 +775,7 @@ min(P1, P2) = Res :-
     ).
 
 :- func max(V, V) = V is det.
+
 max(P1, P2) = Res :-
     ( P1 `leq` P2 ->
         Res = P2
@@ -767,296 +783,311 @@ max(P1, P2) = Res :-
         Res = P1
     ).
 
+:- pred min_prio_loser_tree(ltree(K, P)::in, maybe(P)::out) is det.
+
 min_prio_loser_tree(LTree, MinPrio) :-
     (
-      LTree = start,
-      MinPrio = no
+        LTree = start,
+        MinPrio = no
     ;
-      LTree = loser(_, _, Prio, TL, _, TR),
-      min_prio_loser_tree(TL, Prio, MinPrio1),
-      min_prio_loser_tree(TR, Prio, MinPrio2),
-      (
-        MinPrio1 = no,
-        MinPrio2 = no,
-        MinPrio = yes(Prio)
-      ;
-        MinPrio1 = yes(MinPrio1Val),
-        MinPrio2 = no,
-        MinPrio = yes(min(MinPrio1Val, Prio))
-      ;
-        MinPrio2 = yes(MinPrio2Val),
-        MinPrio1 = no,
-        MinPrio = yes(min(MinPrio2Val, Prio))
-      ;
-        MinPrio1 = yes(MinPrio1Val),
-        MinPrio2 = yes(MinPrio2Val),
-        MinPrio = yes(min(MinPrio1Val,
+        LTree = loser(_, _, Prio, TL, _, TR),
+        min_prio_loser_tree(TL, Prio, MinPrio1),
+        min_prio_loser_tree(TR, Prio, MinPrio2),
+        (
+            MinPrio1 = no,
+            MinPrio2 = no,
+            MinPrio = yes(Prio)
+        ;
+            MinPrio1 = yes(MinPrio1Val),
+            MinPrio2 = no,
+            MinPrio = yes(min(MinPrio1Val, Prio))
+        ;
+            MinPrio2 = yes(MinPrio2Val),
+            MinPrio1 = no,
+            MinPrio = yes(min(MinPrio2Val, Prio))
+        ;
+            MinPrio1 = yes(MinPrio1Val),
+            MinPrio2 = yes(MinPrio2Val),
+            MinPrio = yes(min(MinPrio1Val,
                           min(Prio, MinPrio2Val)))
-      )
+        )
     ).
+
+:- pred min_prio_loser_tree(ltree(K, P)::in, P::in, maybe(P)::out) is det.
 
 min_prio_loser_tree(LTree, CurrMin, MinPrio) :-
     (
-      LTree = start, MinPrio = no
+        LTree = start,
+        MinPrio = no
     ;
-      LTree = loser(_, _, Prio, TL, _, TR),
-      ( CurrMin `leq` Prio ->
-          NewPrio = CurrMin
-      ;
-          NewPrio = Prio
-      ),
-      min_prio_loser_tree(TL, NewPrio, MinPrio1),
-      min_prio_loser_tree(TR, NewPrio, MinPrio2),
-      (
-        MinPrio1 = no,
-        MinPrio2 = no,
-        MinPrio = yes(NewPrio)
-      ;
-        MinPrio1 = yes(MinPrio1Val),
-        MinPrio2 = no,
-        MinPrio = yes(min(MinPrio1Val, NewPrio))
-      ;
-        MinPrio2 = yes(MinPrio2Val),
-        MinPrio1 = no,
-        MinPrio = yes(min(MinPrio2Val, NewPrio))
-      ;
-        MinPrio1 = yes(MinPrio1Val),
-        MinPrio2 = yes(MinPrio2Val),
-        MinPrio = yes(min(MinPrio1Val,
+        LTree = loser(_, _, Prio, TL, _, TR),
+        ( CurrMin `leq` Prio ->
+            NewPrio = CurrMin
+        ;
+            NewPrio = Prio
+        ),
+        min_prio_loser_tree(TL, NewPrio, MinPrio1),
+        min_prio_loser_tree(TR, NewPrio, MinPrio2),
+        (
+            MinPrio1 = no,
+            MinPrio2 = no,
+            MinPrio = yes(NewPrio)
+        ;
+            MinPrio1 = yes(MinPrio1Val),
+            MinPrio2 = no,
+            MinPrio = yes(min(MinPrio1Val, NewPrio))
+        ;
+            MinPrio2 = yes(MinPrio2Val),
+            MinPrio1 = no,
+            MinPrio = yes(min(MinPrio2Val, NewPrio))
+        ;
+            MinPrio1 = yes(MinPrio1Val),
+            MinPrio2 = yes(MinPrio2Val),
+            MinPrio = yes(min(MinPrio1Val,
                           min(MinPrio2Val, NewPrio)))
-      )
+        )
     ).
 
 :- pred all_nodes_loser_prio(ltree(K, P)::in) is semidet.
+
 all_nodes_loser_prio(LTree) :-
     (
-      LTree = start
+        LTree = start
     ;
-      LTree = loser(_, K, Prio, TL, SplitKey, TR),
-      ( K `leq` SplitKey ->
-          min_prio_loser_tree(TL, Prio, MinPrio)
-      ;
-          min_prio_loser_tree(TR, Prio, MinPrio)
-      ),
-      ( MinPrio = no ->
-          MinPrio0 = Prio
-      ;
-          MinPrio = yes(MinPrio0)
-      ),
-      compare(CMP, Prio, MinPrio0),
-      CMP = (=),
-      all_nodes_loser_prio(TL),
-      all_nodes_loser_prio(TR)
+        LTree = loser(_, K, Prio, TL, SplitKey, TR),
+        ( K `leq` SplitKey ->
+            min_prio_loser_tree(TL, Prio, MinPrio)
+        ;
+            min_prio_loser_tree(TR, Prio, MinPrio)
+        ),
+        ( MinPrio = no ->
+            MinPrio0 = Prio
+        ;
+            MinPrio = yes(MinPrio0)
+        ),
+        compare(CMP, Prio, MinPrio0),
+        CMP = (=),
+        all_nodes_loser_prio(TL),
+        all_nodes_loser_prio(TR)
     ).
+
+%-----------------------------------------------------------------------%
 
 is_search_tree(PSQ) :-
     (
-      PSQ = void
+        PSQ = void
     ;
-      PSQ = winner(_, _, LTree, _),
-      all_search_keys(LTree)
+        PSQ = winner(_, _, LTree, _),
+        all_search_keys(LTree)
     ).
 
 :- pred all_search_keys(ltree(K, P)::in) is semidet.
+
 all_search_keys(LTree) :-
     (
-      LTree = start
+        LTree = start
     ;
-      LTree = loser(_, _, _, TL, SplitKey, TR),
-      max_key_loser_tree(TL, MaxKeyL),
-      min_key_loser_tree(TR, MinKeyR),
-      (
-        MaxKeyL = no
-      ;
-        MaxKeyL = yes(MaxKey),
-        MaxKey `leq` SplitKey,
-        all_search_keys(TL)
-      ),
-      (
-        MinKeyR = no
-      ;
-        MinKeyR = yes(MinKey),
-        compare(CMP, MinKey, SplitKey),
-        CMP = (>),
-        all_search_keys(TR)
-      )
+        LTree = loser(_, _, _, TL, SplitKey, TR),
+        max_key_loser_tree(TL, MaxKeyL),
+        min_key_loser_tree(TR, MinKeyR),
+        (
+            MaxKeyL = no
+        ;
+            MaxKeyL = yes(MaxKey),
+            MaxKey `leq` SplitKey,
+            all_search_keys(TL)
+        ),
+        (
+            MinKeyR = no
+        ;
+            MinKeyR = yes(MinKey),
+            compare(CMP, MinKey, SplitKey),
+            CMP = (>),
+            all_search_keys(TR)
+        )
     ).
 
 :- pred min_key_loser_tree(ltree(K, P)::in, maybe(K)::out) is det.
-:- pred min_key_loser_tree(ltree(K, P)::in, K::in, maybe(K)::out) is det.
 
 min_key_loser_tree(LTree, MinKey) :-
     (
-      LTree = start,
-      MinKey = no
+        LTree = start,
+        MinKey = no
     ;
-      LTree = loser(_, Key, _, TL, _, TR),
-      min_key_loser_tree(TL, Key, MinKey1),
-      min_key_loser_tree(TR, Key, MinKey2),
-      (
-        MinKey1 = no,
-        MinKey2 = no,
-        MinKey = yes(Key)
-      ;
-        MinKey1 = yes(MinKey1Val),
-        MinKey2 = no,
-        MinKey = yes(min(MinKey1Val, Key))
-      ;
-        MinKey2 = yes(MinKey2Val),
-        MinKey1 = no,
-        MinKey = yes(min(MinKey2Val, Key))
-      ;
-        MinKey1 = yes(MinKey1Val),
-        MinKey2 = yes(MinKey2Val),
-        MinKey = yes(min(MinKey1Val,
+        LTree = loser(_, Key, _, TL, _, TR),
+        min_key_loser_tree(TL, Key, MinKey1),
+        min_key_loser_tree(TR, Key, MinKey2),
+        (
+            MinKey1 = no,
+            MinKey2 = no,
+            MinKey = yes(Key)
+        ;
+            MinKey1 = yes(MinKey1Val),
+            MinKey2 = no,
+            MinKey = yes(min(MinKey1Val, Key))
+        ;
+            MinKey2 = yes(MinKey2Val),
+            MinKey1 = no,
+            MinKey = yes(min(MinKey2Val, Key))
+        ;
+            MinKey1 = yes(MinKey1Val),
+            MinKey2 = yes(MinKey2Val),
+            MinKey = yes(min(MinKey1Val,
                          min(Key, MinKey2Val)))
-      )
+        )
     ).
+
+:- pred min_key_loser_tree(ltree(K, P)::in, K::in, maybe(K)::out) is det.
 
 min_key_loser_tree(LTree, CurrMin, MinKey) :-
     (
-      LTree = start, MinKey = no
+        LTree = start, MinKey = no
     ;
-      LTree = loser(_, Key, _, TL, _, TR),
-      ( CurrMin `leq` Key ->
-          NewKey = CurrMin
-      ;
-          NewKey = Key
-      ),
-      min_key_loser_tree(TL, NewKey, MinKey1),
-      min_key_loser_tree(TR, NewKey, MinKey2),
-      (
-        MinKey1 = no,
-        MinKey2 = no,
-        MinKey = yes(NewKey)
-      ;
-        MinKey1 = yes(MinKey1Val),
-        MinKey2 = no,
-        MinKey = yes(min(MinKey1Val, NewKey))
-      ;
-        MinKey2 = yes(MinKey2Val),
-        MinKey1 = no,
-        MinKey = yes(min(MinKey2Val, NewKey))
-      ;
-        MinKey1 = yes(MinKey1Val),
-        MinKey2 = yes(MinKey2Val),
-        MinKey = yes(min(MinKey1Val,
+        LTree = loser(_, Key, _, TL, _, TR),
+        ( CurrMin `leq` Key ->
+            NewKey = CurrMin
+        ;
+            NewKey = Key
+        ),
+        min_key_loser_tree(TL, NewKey, MinKey1),
+        min_key_loser_tree(TR, NewKey, MinKey2),
+        (
+            MinKey1 = no,
+            MinKey2 = no,
+            MinKey = yes(NewKey)
+        ;
+            MinKey1 = yes(MinKey1Val),
+            MinKey2 = no,
+            MinKey = yes(min(MinKey1Val, NewKey))
+        ;
+            MinKey2 = yes(MinKey2Val),
+            MinKey1 = no,
+            MinKey = yes(min(MinKey2Val, NewKey))
+        ;
+            MinKey1 = yes(MinKey1Val),
+            MinKey2 = yes(MinKey2Val),
+            MinKey = yes(min(MinKey1Val,
                          min(MinKey2Val, NewKey)))
-      )
+        )
     ).
 
 :- pred max_key_loser_tree(ltree(K, P)::in, maybe(K)::out) is det.
-:- pred max_key_loser_tree(ltree(K, P)::in, K::in, maybe(K)::out) is det.
 
 max_key_loser_tree(LTree, MaxKey) :-
     (
-      LTree = start,
-      MaxKey = no
+        LTree = start,
+        MaxKey = no
     ;
-      LTree = loser(_, Key, _, TL, _, TR),
-      max_key_loser_tree(TL, Key, MaxKey1),
-      max_key_loser_tree(TR, Key, MaxKey2),
-      (
-        MaxKey1 = no,
-        MaxKey2 = no,
-        MaxKey = yes(Key)
-      ;
-        MaxKey1 = yes(MaxKey1Val),
-        MaxKey2 = no,
-        MaxKey = yes(max(MaxKey1Val, Key))
-      ;
-        MaxKey2 = yes(MaxKey2Val),
-        MaxKey1 = no,
-        MaxKey = yes(max(MaxKey2Val, Key))
-      ;
-        MaxKey1 = yes(MaxKey1Val),
-        MaxKey2 = yes(MaxKey2Val),
-        MaxKey = yes(max(MaxKey1Val,
+        LTree = loser(_, Key, _, TL, _, TR),
+        max_key_loser_tree(TL, Key, MaxKey1),
+        max_key_loser_tree(TR, Key, MaxKey2),
+        (
+            MaxKey1 = no,
+            MaxKey2 = no,
+            MaxKey = yes(Key)
+        ;
+            MaxKey1 = yes(MaxKey1Val),
+            MaxKey2 = no,
+            MaxKey = yes(max(MaxKey1Val, Key))
+        ;
+            MaxKey2 = yes(MaxKey2Val),
+            MaxKey1 = no,
+            MaxKey = yes(max(MaxKey2Val, Key))
+        ;
+            MaxKey1 = yes(MaxKey1Val),
+            MaxKey2 = yes(MaxKey2Val),
+            MaxKey = yes(max(MaxKey1Val,
                          max(Key, MaxKey2Val)))
-      )
+        )
     ).
+
+:- pred max_key_loser_tree(ltree(K, P)::in, K::in, maybe(K)::out) is det.
 
 max_key_loser_tree(LTree, CurrMax, MaxKey) :-
     (
-      LTree = start, MaxKey = no
+        LTree = start, MaxKey = no
     ;
-      LTree = loser(_, Key, _, TL, _, TR),
-      compare(CMP, CurrMax, Key),
-      (
-        ( CMP = (=); CMP = (>) ),
-        NewKey = CurrMax
-      ;
-        CMP = (<),
-        NewKey = Key
-      ),
-      max_key_loser_tree(TL, NewKey, MaxKey1),
-      max_key_loser_tree(TR, NewKey, MaxKey2),
-      (
-        MaxKey1 = no,
-        MaxKey2 = no,
-        MaxKey = yes(NewKey)
-      ;
-        MaxKey1 = yes(MaxKey1Val),
-        MaxKey2 = no,
-        MaxKey = yes(max(MaxKey1Val, NewKey))
-      ;
-        MaxKey2 = yes(MaxKey2Val),
-        MaxKey1 = no,
-        MaxKey = yes(max(MaxKey2Val, NewKey))
-      ;
-        MaxKey1 = yes(MaxKey1Val),
-        MaxKey2 = yes(MaxKey2Val),
-        MaxKey = yes(max(MaxKey1Val,
+        LTree = loser(_, Key, _, TL, _, TR),
+        compare(CMP, CurrMax, Key),
+        (
+            ( CMP = (=)
+            ; CMP = (>)
+            ),
+            NewKey = CurrMax
+        ;
+            CMP = (<),
+            NewKey = Key
+        ),
+        max_key_loser_tree(TL, NewKey, MaxKey1),
+        max_key_loser_tree(TR, NewKey, MaxKey2),
+        (
+            MaxKey1 = no,
+            MaxKey2 = no,
+            MaxKey = yes(NewKey)
+        ;
+            MaxKey1 = yes(MaxKey1Val),
+            MaxKey2 = no,
+            MaxKey = yes(max(MaxKey1Val, NewKey))
+        ;
+            MaxKey2 = yes(MaxKey2Val),
+            MaxKey1 = no,
+            MaxKey = yes(max(MaxKey2Val, NewKey))
+        ;
+            MaxKey1 = yes(MaxKey1Val),
+            MaxKey2 = yes(MaxKey2Val),
+            MaxKey = yes(max(MaxKey1Val,
                          max(MaxKey2Val, NewKey)))
-      )
+        )
     ).
 
+%-----------------------------------------------------------------------%
 
 key_condition(PSQ) :-
     (
-      PSQ = void
+        PSQ = void
     ;
-      PSQ = winner(_, _, T, MaxKey),
-      lookup(MaxKey, PSQ, _),
-      key_condition(PSQ, T)
+        PSQ = winner(_, _, T, MaxKey),
+        search(PSQ, MaxKey, _),
+        key_condition(PSQ, T)
     ).
 
 :- pred key_condition(psqueue(P, K)::in, ltree(K, P)::in) is semidet.
 
 key_condition(PSQ, T) :-
     (
-      T = start
+        T = start
     ;
-      T = loser(_, _, _, TL, SplitKey, TR),
-      lookup(SplitKey, PSQ, _),
-      key_condition(PSQ, TL),
-      key_condition(PSQ, TR)
+        T = loser(_, _, _, TL, SplitKey, TR),
+        search(PSQ, SplitKey, _),
+        key_condition(PSQ, TL),
+        key_condition(PSQ, TR)
     ).
 
+%-----------------------------------------------------------------------%
 
 is_finite_map(PSQ) :-
     (
-      PSQ = void
+        PSQ = void
     ;
-      PSQ = winner(_, _, T, _),
-      KeyList = get_keys(T),
-      UniqList = list.sort_and_remove_dups(KeyList),
-      length(KeyList, LK),
-      length(UniqList, LUK),
-      LK = LUK
+        PSQ = winner(_, _, T, _),
+        KeyList = get_keys(T),
+        UniqList = list.sort_and_remove_dups(KeyList),
+        length(KeyList, LK),
+        length(UniqList, LUK),
+        LK = LUK
     ).
 
 :- func get_keys(ltree(K, P)) = list(K).
 
 get_keys(T) = Res :-
     (
-      T = start,
-      Res = []
+        T = start,
+        Res = []
     ;
-      T = loser(_, K, _, TL, _, TR),
-      Res = [K | get_keys(TL) ++ get_keys(TR)]
+        T = loser(_, K, _, TL, _, TR),
+        Res = [K | get_keys(TL) ++ get_keys(TR)]
     ).
 
 %---------------------------------------------------------------------------%
-
 :- end_module psqueue.
+%---------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 empty test: ok
 paper example test: winner("Lennart", 1, loser(7, "Phil", 3, loser(3, "Erik", 2, loser(1, "Charles", 4, start, "Charles", start), "Erik", loser(1, "Mary", 6, start, "Lennart", start)), "Mary", loser(3, "Simon", 5, loser(1, "Richard", 7, start, "Phil", start), "Richard", loser(1, "Warren", 8, start, "Simon", start))), "Warren")
-sol([1 - "Lennart", 2 - "Erik", 3 - "Phil", 4 - "Charles"])
+at_most 4: sol([1 - "Lennart", 2 - "Erik", 3 - "Phil", 4 - "Charles"])
 to_ord_assoc_list test: [1 - "Lennart", 2 - "Erik", 3 - "Phil", 4 - "Charles", 5 - "Simon", 6 - "Mary", 7 - "Richard", 8 - "Warren"]
 delete and to_or_assoc: [1 - "Lennart", 2 - "Erik", 4 - "Charles", 5 - "Simon", 6 - "Mary", 7 - "Richard", 8 - "Warren"]
 from_assoc_list: [0 - "M", 1 - "L", 2 - "B", 3 - "N", 4 - "H"]
-[1 - "L", 2 - "B", 3 - "N", 4 - "H", 10 - "M"]
+Adjust: [1 - "L", 2 - "B", 3 - "N", 4 - "H", 10 - "M"]
