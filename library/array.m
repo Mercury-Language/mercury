@@ -2174,7 +2174,7 @@ binary_search_loop(Cmp, A, X, Lo, Hi, I) :-
         binary_search_loop(Cmp, A, X, Lo, Mid - 1, I)
     ;
         O = (=),
-        I = Mid         % XXX repetitions
+        I = Mid
     ;
         O = (<),
         binary_search_loop(Cmp, A, X, Mid + 1, Hi, I)
@@ -2205,7 +2205,7 @@ approx_binary_search_loop(Cmp, A, X, Lo, Hi, I) :-
         approx_binary_search_loop(Cmp, A, X, Lo, Mid - 1, I)
     ;
         O = (=),
-        I = Mid         % XXX repetitions
+        I = Mid
     ;
         O = (<),
         ( if
