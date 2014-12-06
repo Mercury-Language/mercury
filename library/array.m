@@ -2209,12 +2209,12 @@ approx_binary_search_loop(Cmp, A, X, Lo, Hi, I) :-
     ;
         O = (<),
         ( if
-            (
-                Mid < Hi,
-                % Mid + 1 cannot exceed Hi, so the array access is safe.
+            ( if Mid < Hi then
+                % We get here only if Mid + 1 cannot exceed Hi,
+                % so the array access is safe.
                 array.unsafe_lookup(A, Mid + 1, MidP1X),
                 (<) = Cmp(X, MidP1X)
-            ;
+            else
                 Mid = Hi
             )
         then
