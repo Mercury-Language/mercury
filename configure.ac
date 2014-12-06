@@ -101,6 +101,7 @@ AC_SUBST(RECONFIGURE_ARGS)
 
 AC_CONFIG_HEADER(runtime/mercury_conf.h)
 AC_CONFIG_HEADER(robdd/robdd_conf.h)
+DEFAULT_PREFIX="/usr/local/mercury-`. ./VERSION; echo $VERSION`"
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 
 #-----------------------------------------------------------------------------#
@@ -350,7 +351,7 @@ if test "$BOOTSTRAP_MC" != ""
 then
     AC_MSG_CHECKING(whether the above mmc works and is sufficiently recent)
     cat > conftest.m << EOF
-        % This module contains features which didn't work in
+        % This module contains features which did not work in
         % previous versions of the Mercury compiler.
         % We may also test to see if the installed compiler is
         % recent enough by checking what flags mmc takes.
@@ -538,8 +539,9 @@ EOF
             test -f $PREFIX/bin/mercury_compile ||
             test -f $PREFIX/bin/mercury_compile.exe
         then
-            # This variable is used to let the tests in the following section know
-            # that we are going to attempt to bootstrap with the compiler $PREFIX/bin.
+            # This variable is used to let the tests in the following section
+            # know that we are going to attempt to bootstrap with the compiler
+            # $PREFIX/bin.
             bootstrap_from_prefix="yes"
             AC_MSG_WARN(
 [using $PREFIX/bin/mercury_compile to bootstrap])
@@ -5524,8 +5526,23 @@ do
 done
 
 MERCURY_MSG("")
-num_installed_grades=0
+MERCURY_MSG("using ${DEFAULT_GRADE} as the default grade for applications")
+MERCURY_MSG("using ${BEST_GRADE_FOR_COMPILER} to compile the compiler")
+
+if test "${BOOTSTRAP_MC_COMPILER}" != ""
+then
+    MERCURY_MSG("")
+    MERCURY_MSG("using ${BOOTSTRAP_MC_COMPILER} as the installed compiler")
+fi
+if test "${PREFIX}" != "" -a "${PREFIX}" != "${DEFAULT_PREFIX}"
+then
+    MERCURY_MSG("")
+    MERCURY_MSG("using ${PREFIX} as the install prefix")
+fi
+
+MERCURY_MSG("")
 MERCURY_MSG("the set of library grades to install will be")
+num_installed_grades=0
 > .configured_library_grades
 for grade in $LIBGRADES
 do
@@ -5554,11 +5571,12 @@ then
 else
     MERCURY_MSG("This will likely take $min_minutes to $max_minutes minutes.")
 fi
-# This message would be easier to read with some parentheses or commas,
-# but getting m4 to accept either seems to be impossible.
-MERCURY_MSG("You can make the install faster by installing fewer grades")
-MERCURY_MSG("as shown by the fine-tuning section of the INSTALL file or by")
-MERCURY_MSG("compiling the files of each grade in parallel which you can do")
-MERCURY_MSG("via a command such as make PARALLEL=-j2 install.")
+MERCURY_MSG("")
+# Putting commas directly into the message confuses m4, even if escaped.
+COMMA=","
+MERCURY_MSG("You can make the install faster by installing fewer grades${COMMA}")
+MERCURY_MSG("as shown by the fine-tuning section of the INSTALL file${COMMA}")
+MERCURY_MSG("or by compiling the files of each grade in parallel${COMMA}")
+MERCURY_MSG("which you can do via a command such as make PARALLEL=-j2 install.")
 
 #-----------------------------------------------------------------------------#
