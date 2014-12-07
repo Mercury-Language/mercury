@@ -125,6 +125,10 @@ Changes to the Mercury standard library:
    - month_to_int0/1
    - same_date/1
 
++ We have added a new module, psqueue, that implements a priority search
+  queue ADT.  This is a blend between a priority queue and a map.  This was
+  contributed by Matthias Güdemann.
+
 Changes to the Mercury compiler:
 
 * We have enabled stricter checking of non-ground final insts to reject more
