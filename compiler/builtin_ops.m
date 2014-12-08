@@ -165,19 +165,19 @@
     ;       test(simple_test_expr)
     ;       noop(ground).
 
-:- inst simple_arg_expr
-    --->    leaf(ground)
-    ;       int_const(ground)
-    ;       float_const(ground).
+:- inst simple_assign_expr
+    --->    unary(ground, simple_arg_expr)
+    ;       binary(ground, simple_arg_expr, simple_arg_expr)
+    ;       leaf(ground).
 
 :- inst simple_test_expr
     --->    unary(ground, simple_arg_expr)
     ;       binary(ground, simple_arg_expr, simple_arg_expr).
 
-:- inst simple_assign_expr
-    --->    unary(ground, simple_arg_expr)
-    ;       binary(ground, simple_arg_expr, simple_arg_expr)
-    ;       leaf(ground).
+:- inst simple_arg_expr
+    --->    leaf(ground)
+    ;       int_const(ground)
+    ;       float_const(ground).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -218,6 +218,15 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
         ModuleName = "builtin",
         PredName = "unsafe_promise_unique", ProcNum = 0, Args = [X, Y],
         Code = assign(Y, leaf(X))
+    ;
+        ModuleName = "io",
+        (
+            PredName = "unsafe_get_io_state", ProcNum = 0, Args = [X],
+            Code = noop([X])
+        ;
+            PredName = "unsafe_set_io_state", ProcNum = 0, Args = [_X],
+            Code = noop([])
+        )
     ;
         ModuleName = "private_builtin",
         (
