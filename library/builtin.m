@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: builtin.m.
 % Main author: fjh.
 % Stability: low.
-% 
+%
 % This file is automatically imported into every module.
 % It is intended for things that are part of the language,
 % but which are implemented just as normal user-level code
 % rather than with special coding in the compiler.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -38,7 +38,7 @@
     % C interface.
     %
     % NOTE: we strongly recommend using a `foreign_type' pragma instead
-    %       of using this type. 
+    %       of using this type.
     %
 :- type c_pointer.
 
@@ -130,7 +130,7 @@
 %
 % Dynamic modes
 %
-    
+
     % Solver type modes.
     %
 :- mode ia == any >> any.
@@ -362,7 +362,7 @@
 %   call/N
 
 %---------------------------------------------------------------------------%
-    
+
     % `semidet_succeed' is exactly the same as `true', except that
     % the compiler thinks that it is semi-deterministic.  You can use
     % calls to `semidet_succeed' to suppress warnings about determinism
@@ -382,7 +382,7 @@
     % A synonym for semidet_fail/0
     %
 :- pred semidet_false is semidet.
-    
+
     % `cc_multi_equal(X, Y)' is the same as `X = Y' except that it
     % is cc_multi rather than det.
     %
@@ -399,7 +399,7 @@
 :- semipure pred semipure_true is det.
 
 %---------------------------------------------------------------------------%
-    
+
     % dynamic_cast(X, Y) succeeds with Y = X iff X has the same ground type
     % as Y (so this may succeed if Y is of type list(int), say, but not if
     % Y is of type list(T)).
