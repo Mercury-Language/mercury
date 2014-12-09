@@ -49,8 +49,6 @@ public class MercuryThreadPool
 {
     public static final boolean         debug = false;
 
-    private static MercuryThreadPool    instance;
-
     private MercuryThreadFactory        thread_factory;
 
     /*
@@ -438,29 +436,6 @@ public class MercuryThreadPool
                 t.start();
             }
         }
-    }
-
-    /**
-     * Get the number of currently queued tasks.
-     * @return true if all tasks have been completed.
-     */
-    protected boolean checkTasks()
-    {
-        long    num_tasks_submitted;
-        long    num_tasks_completed;
-        boolean done;
-
-        tasks_lock.lock();
-        try {
-            num_tasks_submitted = this.num_tasks_submitted;
-            num_tasks_completed = this.num_tasks_completed;
-
-            done = (num_tasks_submitted == num_tasks_completed);
-        } finally {
-            tasks_lock.unlock();
-        }
-
-        return done;
     }
 
     /**
