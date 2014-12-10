@@ -634,9 +634,9 @@ extract_trace_mutable_var(Context, VarSet, Mutable, MutableHLDS, StateVar,
     goal::out, goal::out) is det.
 
 extract_trace_io_var(Context, StateVar, GetGoal, SetGoal) :-
-    Builtin = mercury_private_builtin_module,
-    GetPredName = qualified(Builtin, "trace_get_io_state"),
-    SetPredName = qualified(Builtin, "trace_set_io_state"),
+    IO = mercury_io_module,
+    GetPredName = qualified(IO, "unsafe_get_io_state"),
+    SetPredName = qualified(IO, "unsafe_set_io_state"),
     SetVar = functor(atom("!:"), [variable(StateVar, Context)], Context),
     UseVar = functor(atom("!."), [variable(StateVar, Context)], Context),
     GetPurity = purity_semipure,

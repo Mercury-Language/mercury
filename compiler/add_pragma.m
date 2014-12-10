@@ -3226,11 +3226,11 @@ add_pragma_fact_table(FTInfo, Status, Context, !ModuleInfo, !Specs) :-
             % disjunctions.
             some [!IO] (
                 promise_pure (
-                    semipure private_builtin.trace_get_io_state(!:IO),
+                    semipure io.unsafe_get_io_state(!:IO),
                     fact_table_compile_facts(Pred, Arity, FileName,
                         PredInfo0, PredInfo, Context, !.ModuleInfo,
                         C_HeaderCode, PrimaryProcId, !IO),
-                    impure private_builtin.trace_set_io_state(!.IO)
+                    impure io.unsafe_set_io_state(!.IO)
                 )
             ),
 
@@ -3302,11 +3302,11 @@ add_fact_table_proc(ProcId, PrimaryProcId, ProcTable, SymName,
     % when we replace fact tables with fast code for large disjunctions.
     some [!IO] (
         promise_pure (
-            semipure private_builtin.trace_get_io_state(!:IO),
+            semipure io.unsafe_get_io_state(!:IO),
             fact_table_generate_c_code(SymName, PragmaVars, ProcId,
                 PrimaryProcId, ProcInfo, ArgTypes, !.ModuleInfo,
                 C_ProcCode, C_ExtraCode, !IO),
-            impure private_builtin.trace_set_io_state(!.IO)
+            impure io.unsafe_set_io_state(!.IO)
         )
     ),
 

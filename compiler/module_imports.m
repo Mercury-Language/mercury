@@ -482,12 +482,12 @@ get_implicit_dependencies(Items, Globals, !:ImportDeps, !:UseDeps) :-
     !:UseDeps = [mercury_private_builtin_module],
     ImplicitImportNeeds0 = implicit_import_needs(
         dont_need_tabling, dont_need_tabling_statistics,
-        dont_need_stm, dont_need_exception, dont_need_format),
+        dont_need_stm, dont_need_exception, dont_need_format, dont_need_io),
     gather_implicit_import_needs_in_items(Items,
         ImplicitImportNeeds0, ImplicitImportNeeds),
     ImplicitImportNeeds = implicit_import_needs(
         ItemsNeedTabling, ItemsNeedTablingStatistics,
-        ItemsNeedSTM, ItemsNeedException, ItemsNeedFormat),
+        ItemsNeedSTM, ItemsNeedException, ItemsNeedFormat, ItemsNeedIO),
     % We should include mercury_table_builtin_module if the Items contain
     % a tabling pragma, or if one of --use-minimal-model (either kind) and
     % --trace-table-io is specified. In the former case, we may also need
@@ -541,6 +541,12 @@ get_implicit_dependencies(Items, Globals, !:ImportDeps, !:UseDeps) :-
             mercury_string_parse_util_module | !.UseDeps]
     ;
         ItemsNeedFormat = dont_need_format
+    ),
+    (
+        ItemsNeedIO = do_need_io,
+        !:UseDeps = [mercury_io_module | !.UseDeps]
+    ;
+        ItemsNeedIO = dont_need_io
     ),
     globals.lookup_bool_option(Globals, profile_deep, Deep),
     (
@@ -616,6 +622,10 @@ get_implicit_dependencies(Items, Globals, !:ImportDeps, !:UseDeps) :-
     --->    dont_need_format
     ;       do_need_format.
 
+:- type maybe_need_io
+    --->    dont_need_io
+    ;       do_need_io.
+
     % XXX We currently discover the need to import the modules needed
     % to compile away format strings by traversing all parts of all clauses,
     % and checking every predicate name and functor name to see whether
@@ -633,7 +643,8 @@ get_implicit_dependencies(Items, Globals, !:ImportDeps, !:UseDeps) :-
                 iin_tabling_statistics  :: maybe_need_tabling_statistics,
                 iin_stm                 :: maybe_need_stm,
                 iin_exception           :: maybe_need_exception,
-                iin_format              :: maybe_need_format
+                iin_format              :: maybe_need_format,
+                iin_io                  :: maybe_need_io
             ).
 
 :- pred gather_implicit_import_needs_in_items(list(item)::in,
@@ -709,8 +720,16 @@ gather_implicit_import_needs_in_goal(GoalExpr - _Context,
         ; GoalExpr = require_complete_switch_expr(_SwitchVar, SubGoal)
         ; GoalExpr = require_switch_arms_detism_expr(_SwitchVar, _Detism,
             SubGoal)
-        ; GoalExpr = trace_expr(_CompCond, _RunCond, _MaybeIO, _Mutables,
-            SubGoal)
+        ),
+        gather_implicit_import_needs_in_goal(SubGoal, !ImplicitImportNeeds)
+    ;
+        GoalExpr = trace_expr(_CompCond, _RunCond, MaybeIO, _Mutables,
+            SubGoal),
+        (
+            MaybeIO = yes(_),
+            !ImplicitImportNeeds ^ iin_io := do_need_io
+        ;
+            MaybeIO = no
         ),
         gather_implicit_import_needs_in_goal(SubGoal, !ImplicitImportNeeds)
     ;

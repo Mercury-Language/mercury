@@ -1701,6 +1701,14 @@
     %
 :- func handle_system_command_exit_status(int) = io.res(system_result).
 
+%
+% For use by the compiler transformation that implements trace [io(!IO)]:
+%
+
+:- semipure pred unsafe_get_io_state(io::uo) is det.
+
+:- impure pred unsafe_set_io_state(io::di) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

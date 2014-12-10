@@ -257,7 +257,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
             ; Name = "builtin_compound_lt"
             )
         ;
-            % These predicates are incompatible with Java and Erlang.
+            % These predicates are incompatible with some backends.
             ( Name = "store_at_ref_impure"
             ; Name = "store_at_ref"
             ),
@@ -274,8 +274,13 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         VarSet = VarSet0,
         Stub = yes
     ;
-        Module = mercury_private_builtin_module,
-        Name = "trace_get_io_state"
+        (
+            Module = mercury_private_builtin_module,
+            Name = "trace_get_io_state"
+        ;
+            Module = mercury_io_module,
+            Name = "unsafe_get_io_state"
+        )
     ->
         varset.new_var(ZeroVar, VarSet0, VarSet),
         ExtraVars = [ZeroVar],
@@ -312,8 +317,13 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         GoalInfo = GoalInfo1,
         Stub = no
     ;
-        Module = mercury_private_builtin_module,
-        Name = "trace_set_io_state"
+        (
+            Module = mercury_private_builtin_module,
+            Name = "trace_set_io_state"
+        ;
+            Module = mercury_io_module,
+            Name = "unsafe_set_io_state"
+        )
     ->
         ConjExpr = conj(plain_conj, []),
         ConjGoal = hlds_goal(ConjExpr, GoalInfo),
