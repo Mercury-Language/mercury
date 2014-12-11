@@ -885,7 +885,7 @@ is_empty(VA) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    VA = ML_va_rewind_dolock(VA0);
+    VA = ML_va_rewind_dolock(VA0, MR_ALLOC_ID);
 ").
 
 :- pragma foreign_proc("C#",
@@ -962,7 +962,7 @@ ML_va_set_dolock(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *,
 ** including the argument.
 */
 extern ML_va_ptr
-ML_va_rewind_dolock(ML_va_ptr);
+ML_va_rewind_dolock(ML_va_ptr, MR_AllocSiteInfoPtr);
 
 /*
 ** Resize a version array.
@@ -1011,14 +1011,15 @@ ML_va_flat_copy(ML_const_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id);
 ** i.e. recreate the state of the version array as captured in VA0.
 */
 static void
-ML_va_rewind_into(ML_va_ptr VA, ML_const_va_ptr VA0);
+ML_va_rewind_into(ML_va_ptr VA, ML_const_va_ptr VA0,
+    MR_AllocSiteInfoPtr alloc_id);
 
 /*
 ** `Rewinds' a version array, invalidating all extant successors
 ** including the argument.
 */
 static ML_va_ptr
-ML_va_rewind(ML_va_ptr VA);
+ML_va_rewind(ML_va_ptr VA, MR_AllocSiteInfoPtr alloc_id);
 
 /*
 ** Resize a version array.
@@ -1216,13 +1217,14 @@ ML_va_flat_copy(ML_const_va_ptr VA0, MR_AllocSiteInfoPtr alloc_id)
     }
 #endif
 
-    ML_va_rewind_into(VA, VA0);
+    ML_va_rewind_into(VA, VA0, alloc_id);
 
     return VA;
 }
 
 static void
-ML_va_rewind_into(ML_va_ptr VA_dest, ML_const_va_ptr VA_src)
+ML_va_rewind_into(ML_va_ptr VA_dest, ML_const_va_ptr VA_src,
+    MR_AllocSiteInfoPtr alloc_id)
 {
     MR_Integer      I;
     MR_Word         X;
@@ -1240,7 +1242,7 @@ ML_va_rewind_into(ML_va_ptr VA_dest, ML_const_va_ptr VA_src)
     ** ensure that we never update an array slot twice.
     */
     cur = VA_src;
-    MR_allocate_bitmap_msg(bitmap, VA_dest->rest.array->size, MR_ALLOC_ID);
+    MR_allocate_bitmap_msg(bitmap, VA_dest->rest.array->size, alloc_id);
     MR_bitmap_zero(bitmap);
     while (!ML_va_latest_version(cur)) {
         I = cur->index;
@@ -1255,14 +1257,14 @@ ML_va_rewind_into(ML_va_ptr VA_dest, ML_const_va_ptr VA_src)
 }
 
 ML_va_ptr
-ML_va_rewind_dolock(ML_va_ptr VA)
+ML_va_rewind_dolock(ML_va_ptr VA, MR_AllocSiteInfoPtr alloc_id)
 {
 #ifdef MR_THREAD_SAFE
     MercuryLock *lock = VA->lock;
 #endif
     ML_maybe_lock(lock);
 
-    VA = ML_va_rewind(VA);
+    VA = ML_va_rewind(VA, alloc_id);
 
     ML_maybe_unlock(lock);
 
@@ -1270,7 +1272,7 @@ ML_va_rewind_dolock(ML_va_ptr VA)
 }
 
 static ML_va_ptr
-ML_va_rewind(ML_va_ptr VA)
+ML_va_rewind(ML_va_ptr VA, MR_AllocSiteInfoPtr alloc_id)
 {
     MR_Integer      I;
     MR_Word         X;
@@ -1290,7 +1292,7 @@ ML_va_rewind(ML_va_ptr VA)
     */
     cur = VA;
     array = ML_va_get_latest(VA)->rest.array;
-    MR_allocate_bitmap_msg(bitmap, array->size, MR_ALLOC_ID);
+    MR_allocate_bitmap_msg(bitmap, array->size, alloc_id);
     while (!ML_va_latest_version(cur)) {
         I = cur->index;
         X = cur->value;
@@ -1368,7 +1370,7 @@ ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X,
     }
 #endif
 
-    ML_va_rewind_into(VA, VA0);
+    ML_va_rewind_into(VA, VA0, alloc_id);
 
     for (i = min; i < N; i++) {
         VA->rest.array->elements[i] = X;
