@@ -178,7 +178,7 @@
 %---------------------------------------------------------------------------%
 
 % The PSQueue data structure uses the 'tournament' metaphore.  Consider
-% multiple competitors playing matches, with the winners from each matche
+% multiple competitors playing matches, with the winners from each match
 % playing one another to find the champion.  The winner is the item with the
 % lowest priority.  The data structure here follows a similar tree.  However,
 % two modifications are made:
