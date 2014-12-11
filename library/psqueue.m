@@ -19,7 +19,7 @@
 %
 % Psqueues map from priorities to keys and back.  They
 % provide methods to lookup the priority of a key, insert and delete
-% priority-key pairs, adjust the priority of a given key and retrive the
+% priority-key pairs, adjust the priority of a given key and retrieve the
 % priority and key with the highest priority.
 %
 % The implementation here closely follows the description given in Ralf Hinze's
@@ -27,7 +27,7 @@
 % 2001, pp. 110-121.
 %
 % The priority-key pairs are stored in a weight-balanced tree for efficient
-% acces.
+% access.
 %
 % read highest priority element:       O(1)
 % remove highest priority element      O(log n)
@@ -178,19 +178,19 @@
 %---------------------------------------------------------------------------%
 
 % The PSQueue data structure uses the 'tournament' metaphore.  Consider
-% multiple compeditors playing matches, with the winners from each matches
+% multiple competitors playing matches, with the winners from each matche
 % playing one another to find the champion.  The winner is the item with the
 % lowest priority.  The data structure here follows a similar tree.  However,
 % two modifications are made:
 %
 % + First, a tournament tree contains the data in the leaves of the tree and
 %   repeats the winners within the tree.  To avoid this duplication we do not
-%   store any information in the leaves and store the loosers internally within
+%   store any information in the leaves and store the losers internally within
 %   the tree.  The champion is stored at the root node of the tree.
 %
 % + To facilitate sorting by key, sort keys are stored inside each node.  The
 %   items in the left subtree have keys less than or equal to the sort key, the
-%   keys in the right subtree have keys greater than the sort key.  The looser
+%   keys in the right subtree have keys greater than the sort key.  The loser
 %   (stored in this node) is considered to be part of one of the two subtrees,
 %   depending how it's key compares with the sort key.
 
@@ -199,7 +199,7 @@
     ;       winner(
                 w_key       :: K,
                 w_prio      :: P,
-                w_loosers   :: ltree(K, P),
+                w_losers    :: ltree(K, P),
                 w_max_key   :: K
             ).
 
@@ -209,8 +209,8 @@
     --->    start
     ;       loser(
                 l_size          :: t_ltree_size,
-                l_looser_key    :: K,
-                l_looser_prio   :: P,
+                l_loser_key     :: K,
+                l_loser_prio    :: P,
                 l_left_tree     :: ltree(K, P),
                 l_sort_key      :: K,
                 l_right_tree    :: ltree(K, P)
@@ -218,15 +218,15 @@
 
 %-----------------------------------------------------------------------%
 
-    % extract maximal (highest priority) key
+    % Extract maximal (highest priority) key.
     %
 :- pred max_key(psqueue(P, K)::in, K::out) is semidet.
 
 max_key(PSQ, MaxKey) :-
     PSQ = winner(_, _, _, MaxKey).
 
-    % Play tournament to combine two priority search queues, see Ralf Hinze's
-    % paper for explanantion.
+    % Play tournament to combine two priority search queues.
+    % See Ralf Hinze's paper for an explanation.
     %
 :- pred tournament(psqueue(P, K)::in, psqueue(P, K)::in, psqueue(P, K)::out)
     is det.
