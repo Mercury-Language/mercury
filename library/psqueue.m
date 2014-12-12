@@ -707,17 +707,7 @@ insert(InsertPrio, InsertKey, !PSQ) :-
         !:PSQ = singleton(InsertPrio, InsertKey)
     ;
         !.PSQ = nonempty_psqueue(Winner0),
-        TournamentView0 = get_tournament_view(Winner0),
-        trace [io(!IO), compiletime(flag("notset"))] (
-            io.format("inserting %s %s\n",
-                [s(string(InsertPrio)), s(string(InsertKey))], !IO),
-            ( string.string(InsertKey) = "\"Lennart\"" ->
-                io.write_string(dump_tournament(0, TournamentView0), !IO)
-            ;
-                true
-            )
-        ),
-        insert_tv(InsertPrio, InsertKey, TournamentView0, Winner),
+        insert_tv(InsertPrio, InsertKey, get_tournament_view(Winner0), Winner),
         !:PSQ = nonempty_psqueue(Winner)
     ).
 
