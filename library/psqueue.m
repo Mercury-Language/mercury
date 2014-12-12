@@ -1,8 +1,7 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2014 The Mercury Team
-%
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -11,27 +10,34 @@
 % Main author: Matthias Güdemann.
 % Stability: low.
 %
-% This module implements a priority search queue ADT.
+% This module implements priority search queues. A priority search queue,
+% or psqueue for short, combines in a single ADT the functionality of both
+% a map and a priority queue.
 %
-% A priority search queue (pqueue) provides both map-like and priority queue
-% functionality in a single ADT.  This combination is very powerful and
-% useful in many situations.
+% Psqueues map from priorities to keys and back. This modules provide functions
+% and predicates to lookup the priority of a key, to insert and to remove
+% priority-key pairs, to adjust the priority of a given key, and to retrieve
+% the priority/key pair with the highest conceptual priority. However,
+% since in many applications of psqueues, a low number represents represents
+% high priority; for example, Dijkstra's shortest path algorithm wants to
+% process the nearest nodes first. Therefore, given two priorities PrioA and
+% PrioB, this module considers priority PrioA to have the higher conceptual
+% priority if compare(CMP, PrioA, PrioB) returns CMP = (<). If priorities
+% are numerical, which is common but is not required, then higher priorities
+% are represented by lower numbers.
 %
-% Psqueues map from priorities to keys and back.  They
-% provide methods to lookup the priority of a key, insert and delete
-% priority-key pairs, adjust the priority of a given key and retrieve the
-% priority and key with the highest priority.
+% The operations in this module are based on the algorithms described in
+% Ralf Hinze: A simple implementation technique for priority search queues,
+% Proceedings of the International Conference on Functional Programming 2001,
+% pages 110-121. They use a weight-balanced tree to store priority/key pairs,
+% to allow the following operation complexities:
 %
-% The implementation here closely follows the description given in Ralf Hinze's
-% paper "A Simple Implementation Technique for Priority Search Queues", ICFP
-% 2001, pp. 110-121.
-%
-% The priority-key pairs are stored in a weight-balanced tree for efficient
-% access.
-%
-% read highest priority element:       O(1)
-% remove highest priority element      O(log n)
-% delete/insert/ajdust/lookup element: O(log n)
+% psqueue.insert        insert new priority/key pair:   O(log n)
+% psqueue.lookup        lookup the priority of a key:   O(log n)
+% psqueue.adjust        adjust the priority of a key:   O(log n)
+% psqueue.peek:         read highest priority pair:     O(1)
+% psqueue.remove_least: remove highest priority pair:   O(log n)
+% psqueue.remove        remove pair with given key:     O(log n)
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -54,91 +60,126 @@
     %
 :- pred is_empty(psqueue(P, K)::in) is semidet.
 
-    % create singleton psqueue
+    % Create a singleton psqueue.
     %
-:- pred singleton(P::in, K::in, psqueue(P, K)::out) is det.
 :- func singleton(P, K) = psqueue(P, K).
+:- pred singleton(P::in, K::in, psqueue(P, K)::out) is det.
 
-    % Insert key K with priority P into a priority search queue.
+    % Insert key K with priority P into the given priority search queue.
     % Fail if the key already exists.
     %
 :- pred insert(P::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is semidet.
+:- pragma type_spec(insert/4, P = int).
 
-    % Insert key K with priority P into a priority search queue.
+    % Insert key K with priority P into the given priority search queue.
     % Abort if the key already exists.
     %
-:- func det_insert(psqueue(P, K), P, K) = psqueue(P, K) is det.
+:- func det_insert(psqueue(P, K), P, K) = psqueue(P, K).
 :- pred det_insert(P::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is det.
+:- pragma type_spec(det_insert/3, P = int).
+:- pragma type_spec(det_insert/4, P = int).
 
-    % Peek at highest priority key, do not change the priority search queue.
+    % Return the highest priority priority/key pair in the given queue.
+    % Fail if the queue is empty.
     %
 :- pred peek(psqueue(P, K)::in, P::out, K::out) is semidet.
 
-    % As peek/3, will call error/1 if the psqueue is empty.
+    % Return the highest priority priority/key pair in the given queue.
+    % Throw an exception if the queue is empty.
     %
 :- pred det_peek(psqueue(P, K)::in, P::out, K::out) is det.
 
-    % Remove element with minimal priority.
+    % Remove the element with the top priority. If the queue is empty, fail.
     %
 :- pred remove_least(P::out, K::out, psqueue(P, K)::in, psqueue(P, K)::out)
     is semidet.
+:- pragma type_spec(remove_least/4, P = int).
 
-    % Remove element with minimal priority, call error/1 if priority search
-    % queue is empty.
+    % Remove the element with the top priority. If the queue is empty,
+    % throw an exception.
     %
 :- pred det_remove_least(P::out, K::out, psqueue(P, K)::in, psqueue(P, K)::out)
     is det.
+:- pragma type_spec(det_remove_least/4, P = int).
 
-    % Create an ordered association list from a priority search queue.
+    % Create an association list from a priority search queue.
+    % The returned list will be in ascending order, sorted first on priority,
+    % and then on key.
     %
 :- func to_assoc_list(psqueue(P, K)) = assoc_list(P, K).
 :- pred to_assoc_list(psqueue(P, K)::in, assoc_list(P, K)::out) is det.
+:- pragma type_spec(to_assoc_list/1, P = int).
+:- pragma type_spec(to_assoc_list/2, P = int).
 
-    % Create a priority search queue from an assoc_list of priority, key pairs
+    % Create a priority search queue from an assoc_list of priority/key pairs.
     %
 :- func from_assoc_list(assoc_list(P, K)) = psqueue(P, K).
 :- pred from_assoc_list(assoc_list(P, K)::in, psqueue(P, K)::out) is det.
+:- pragma type_spec(from_assoc_list/1, P = int).
+:- pragma type_spec(from_assoc_list/2, P = int).
 
-    % Remove element with specific key from a priority queue.
+    % Remove the element with the given key from a priority queue.
+    % Fail if it is not in the queue.
     %
 :- pred remove(P::out, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is semidet.
+:- pragma type_spec(remove/4, P = int).
 
+    % Remove the element with the given key from a priority queue.
+    % Throw an exception if it is not in the queue.
+    %
 :- pred det_remove(P::out, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is det.
+:- pragma type_spec(det_remove/4, P = int).
 
-    % Adjust priority of specified element. The old priority is given as an
-    % argument to the adjustment function. Fails if the element is not
-    % found.
+    % Adjust the priority of the specified element; the new priority will be
+    % the value returned by the given adjustment function on the old priority.
+    % Fail if the element is not in the queue.
     %
 :- pred adjust((func(P) = P)::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out)
     is semidet.
+:- pragma type_spec(adjust/4, P = int).
 
-    % Search for the priority of the specified element.
+    % Search for the priority of the specified key. If it is not in the queue,
+    % fail.
     %
 :- pred search(psqueue(P, K)::in, K::in, P::out) is semidet.
+:- pragma type_spec(search/3, P = int).
 
-    % Lookup the priority of the specified key, calls error/1 if the element is
-    % not present.
+    % Search for the priority of the specified key. If it is not in the queue,
+    % throw an exception.
     %
 :- func lookup(psqueue(P, K), K) = P.
 :- pred lookup(psqueue(P, K)::in, K::in, P::out) is det.
+:- pragma type_spec(lookup/2, P = int).
+:- pragma type_spec(lookup/3, P = int).
 
-    % Range query for all priority - key pairs less or equal to a specified
-    % priority
+    % Return all priority/key pairs whose priority is less than or equal to
+    % the given priority.
     %
 :- func at_most(psqueue(P, K), P) = assoc_list(P, K).
 :- pred at_most(psqueue(P, K)::in, P::in, assoc_list(P, K)::out) is det.
+:- pragma type_spec(at_most/2, P = int).
+:- pragma type_spec(at_most/3, P = int).
 
-    % Return the size of the priority search queue as the number of elements.
+    % Return the number of priority/key pairs in the given queue.
     %
-:- func size(psqueue(P, K)) = int is det.
+:- func size(psqueue(P, K)) = int.
 :- pred size(psqueue(P, K)::in, int::out) is det.
+:- pragma type_spec(size/1, P = int).
+:- pragma type_spec(size/2, P = int).
 
 %---------------------------------------------------------------------------%
 
-% These predicates may be used by the test suite to check the correctness of
-% the implementation.  They should always be true.
+:- implementation.
+:- interface.
 
-    % True iff the priority search queue respects the semi heap properties:
+% The following part of the interface is not for public consumption;
+% it is intended only for use by the test suite, e.g. psqueue_test.m
+% in tests/hardcoded.
+%
+% If the implementation is working correctly, then is_semi_heap,
+% is_search_tree, has_key_condition and is_finite_map should always succeed.
+
+    % Succeed iff the priority search queue respects the semi heap properties:
     %
     %   1) the top element has the highest priority and
     %   2) for each node of the loser tree, the priority of the loser is higher
@@ -147,292 +188,860 @@
     %
 :- pred is_semi_heap(psqueue(P, K)::in) is semidet.
 
-    % True iff the priority search queue respects the search tree properties:
+    % Succeed iff the loser tree in the given priority search queue
+    % respects the search tree properties:
     %
-    %   1) for each node the keys in the left subtree are smaller as or equal
-    %      to the split key and
-    %   2) the keys in the right subtree are larger than the
-    %      split key.
+    %   1) for each node, the keys in the left subtree are smaller than
+    %      or equal to the split key, and
+    %   2) the keys in the right subtree are greater than the split key.
     %
 :- pred is_search_tree(psqueue(P, K)::in) is semidet.
 
-    % True iff maximal key and all split keys are present
+    % Succeed iff the maximal key in the winner structure and the split keys
+    % in loser nodes are all present in the search tree.
     %
-:- pred key_condition(psqueue(P, K)::in) is semidet.
+:- pred has_key_condition(psqueue(P, K)::in) is semidet.
 
-    % True iff keys are unique.
+    % Succeed iff all keys in the queue are present just once.
     %
 :- pred is_finite_map(psqueue(P, K)::in) is semidet.
+
+    % Return a string representation of the queue suitable for debugging.
+    %
+:- func dump_psqueue(psqueue(P, K)) = string.
+
+    % Return a string representation of the queue suitable for debugging,
+    % AFTER checking to see that it passes all four of the above integrity
+    % tests.
+    %
+:- func verify_and_dump_psqueue(psqueue(P, K)) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
-% The PSQueue data structure uses the 'tournament' metaphore.  Consider
-% multiple competitors playing matches, with the winners from each match
-% playing one another to find the champion.  The winner is the item with the
-% lowest priority.  The data structure here follows a similar tree.  However,
-% two modifications are made:
+% The psqueue data structure is based on the idea of a knockout tournament
+% between the priority/key tuple in the queue. Pairs of priority/key tuples
+% play matches, with the loser dropping out of the tournament, while
+% the winner plays matches with other winners. Eventually, there is
+% only one priority/key tuple left, the champion.
 %
-% + First, a tournament tree contains the data in the leaves of the tree and
-%   repeats the winners within the tree.  To avoid this duplication we do not
-%   store any information in the leaves and store the losers internally within
-%   the tree.  The champion is stored at the root node of the tree.
+% In this view, the champion does not lose any matches, while every other
+% tuple loses exactly one match. The representation of psqueues is based
+% on this fact. When representing nonempty queues, it stores the champion
+% tuple in the w_prio/w_key fields of the winner structure of the
+% psqueue type, while it stores all the other tuples in the l_prio/l_key
+% fields of loser_node structures in the loser_tree type.
 %
-% + To facilitate sorting by key, sort keys are stored inside each node.  The
-%   items in the left subtree have keys less than or equal to the sort key, the
-%   keys in the right subtree have keys greater than the sort key.  The loser
-%   (stored in this node) is considered to be part of one of the two subtrees,
-%   depending how it's key compares with the sort key.
+% In a binary tree representing a knockout tournament, each winner of a match
+% is represented at least twice in the tree: as the winner, and as one of the
+% players. The loser_tree type is designed to avoid this redundancy. The idea
+% is to have a tree, the loser_tree, whose structure is identical to the
+% structure of the binary tree representing the matched of the knockout
+% tournament, but to store information about each player in the node
+% that corresponds to the match that the player LOST. Since the chamption
+% does not lose any matches, its details cannot be stored in such a tree,
+% which is why they are stored above the tree, in the winner structure.
+% The loser_tree type gets its name from the fact that each node stores
+% information about the loser of the match it represents (even though
+% the loser of that match may have won other matches).
+%
+% When a psqueue is viewed as a mapping from keys to priorities, the mapping
+% must be a function: a key cannot appear in the psqueue more than once.
+% When a psqueue is viewed as a mapping from priorities to keys, the mapping
+% need not be a function: a prioriy *may* appear in the psqueue more than once.
 
 :- type psqueue(P, K)
-    --->    void
-    ;       winner(
-                w_key       :: K,
+    --->    empty_psqueue
+    ;       nonempty_psqueue(winner(P, K)).
+
+:- type winner(P, K)
+    --->    winner(
+                % The w_prio and w_key fields contain the priority/key pair
+                % with the lowest numerical priority. If there is more than one
+                % pair with the same priority, it will contain the pair with
+                % the smaller key.
                 w_prio      :: P,
-                w_losers    :: ltree(K, P),
+                w_key       :: K,
+
+                % The w_losers field contains all the priority/key pairs
+                % in the priority search queue other than the pair in the
+                % w_prio/w_key fields.
+                w_losers    :: loser_tree(P, K),
+
+                % The w_max_key contains the highest key in the queue;
+                % it must be equal to either w_key here, or to l_key
+                % in one of the nodes of the tree in the w_losers field.
+                % *somewhere* in the entire psqueue. This is first half of
+                % the *key condition*.
                 w_max_key   :: K
             ).
 
-:- type t_ltree_size == int.
+:- type loser_tree_size == int.
 
-:- type ltree(K, P)
-    --->    start
-    ;       loser(
-                l_size          :: t_ltree_size,
-                l_loser_key     :: K,
-                l_loser_prio    :: P,
-                l_left_tree     :: ltree(K, P),
+:- type loser_tree(P, K)
+    --->    loser_leaf
+    ;       loser_node(
+                % The number of priority/key pairs in this loser tree.
+                % The insertion algorithms use this measure of weight
+                % to keep the loser tree weight balanced. In our case,
+                % this means that either both subtrees have at most element,
+                % or if the ratio of the weights of the two subtrees
+                % (weight of the heavier subtree divided by the weight
+                % of the lighter subtree) is no more than the limit ratio
+                % given the balance_omega function.
+                l_size          :: loser_tree_size,
+
+                % The l_prio/l_key pair represents the loser of the match
+                % that is represented by this node.
+                %
+                % The l_prio field must be less than or equal to the priorities
+                % of all the priority/key pairs in the subtree from which the
+                % l_prio/l_key pair originates. This loser originates from
+                % the left subtree (l_left_tree) if l_key is less than or
+                % equal to l_sort_key; otherwise, it originates from the right
+                % subtree. This is the *semi-heap condition*.
+
+                l_prio          :: P,
+                l_key           :: K,
+
+                % The l_left_tree field contains all the priority/key pairs
+                % in this loser tree in which the key is less than or equal to
+                % the key in the l_sort_key field, while
+                % the l_right_tree field contains all the priority/key pairs
+                % in this loser tree in which the key is greater than
+                % the key in the l_sort_key field. This is the *search tree
+                % condition*.
+                %
+                % The sort key may appear in l_left_tree, or it may be absent
+                % from l_left_tree. It can never appear in l_right_tree.
+                %
+                % The key in l_sort_key must appear as a key (w_key or l_key)
+                % *somewhere* in the entire psqueue. This is second half of
+                % the *key condition*.
+                l_left_tree     :: loser_tree(P, K),
                 l_sort_key      :: K,
-                l_right_tree    :: ltree(K, P)
+                l_right_tree    :: loser_tree(P, K)
             ).
 
-%-----------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% This type defines an alternate ways of looking at psqueues: as a tournament
+% between priority/key pairs.
+%
+% Ralf Hinze's paper also talks about two other views, the min view and
+% the tree view. We don't need the min view because the one task that it is
+% used for in the paper (implementing at_most) we can accomplish more
+% efficiently without it, and we don't need the tree view because it is
+% isomorphic to the actual representation of loser trees.
 
-    % Extract maximal (highest priority) key.
+:- type tournament_view(P, K)
+    --->    singleton_tournament(P, K)
+            % A tournament with one entrant.
+
+    ;       tournament_between(winner(P, K), winner(P, K)).
+            % A tournament between two nonempty sets of entrants.
+            %
+            % For tournament_between(WinnerA, WinnerB), all the keys
+            % in WinnerB will be strictly greater than the maximum key
+            % in WinnerA.
+
+%---------------------------------------------------------------------------%
+
+    % Get a tournament view of a nonempty priority search queue.
     %
-:- pred max_key(psqueue(P, K)::in, K::out) is semidet.
+:- func get_tournament_view(winner(P, K)) = tournament_view(P, K).
+:- pragma type_spec(get_tournament_view/1, P = int).
 
-max_key(PSQ, MaxKey) :-
-    PSQ = winner(_, _, _, MaxKey).
-
-    % Play tournament to combine two priority search queues.
-    % See Ralf Hinze's paper for an explanation.
-    %
-:- pred tournament(psqueue(P, K)::in, psqueue(P, K)::in, psqueue(P, K)::out)
-    is det.
-:- pragma type_spec(tournament/3, P = int).
-
-tournament(PSQ0, PSQ1, PSQ) :-
-    PSQ = tournament(PSQ0, PSQ1).
-
-:- func tournament(psqueue(P, K), psqueue(P, K)) = psqueue(P, K).
-:- pragma type_spec(tournament/2, P = int).
-
-tournament(PSQ1, PSQ2) = Res :-
+get_tournament_view(Winner) = TournamentView :-
+    Winner = winner(WinnerPrio, WinnerKey, LTree, MaxKey),
     (
-        PSQ1 = void,
-        Res = PSQ2
+        LTree = loser_leaf,
+        TournamentView = singleton_tournament(WinnerPrio, WinnerKey)
     ;
-        PSQ1 = winner(K1, Prio1, L1, MaxKey1),
-        (
-            PSQ2 = void,
-            Res = PSQ1
+        LTree = loser_node(_, LoserPrio, LoserKey,
+            SubLTreeL, SplitKey, SubLTreeR),
+        ( LoserKey `leq` SplitKey ->
+            WinnerA = winner(LoserPrio, LoserKey, SubLTreeL, SplitKey),
+            WinnerB = winner(WinnerPrio, WinnerKey, SubLTreeR, MaxKey)
         ;
-            PSQ2 = winner(K2, Prio2, L2, MaxKey2),
-            ( Prio1 `leq` Prio2 ->
-                % left wins
-                Res = winner(K1, Prio1,
-                             balance(K2, Prio2, L1, MaxKey1, L2), MaxKey2)
-            ;
-                % right wins
-                Res = winner(K2, Prio2,
-                             balance(K1, Prio1, L1, MaxKey1, L2), MaxKey2)
-            )
+            WinnerA = winner(WinnerPrio, WinnerKey, SubLTreeL, SplitKey),
+            WinnerB = winner(LoserPrio, LoserKey, SubLTreeR, MaxKey)
+        ),
+        TournamentView = tournament_between(WinnerA, WinnerB)
+    ).
+
+    % Play a tournament to combine two priority search queues, PSQA and PSQB.
+    % All the keys in PSQA are guaranteed to be less than or equal to
+    % PSQA's max key, while all the keys in LTreeR are guaranteed to be
+    % strictly greater than PSQA's max key.
+    %
+    % See Ralf Hinze's paper for a more detailed explanation.
+    %
+    % The other combine_*_via_tournament predicates are special cases
+    % for situations in which we know that one or both psqueues are
+    % nonempty.
+    %
+:- pred combine_psqueues_via_tournament(psqueue(P, K)::in, psqueue(P, K)::in,
+    psqueue(P, K)::out) is det.
+:- pragma type_spec(combine_psqueues_via_tournament/3, P = int).
+
+combine_psqueues_via_tournament(PSQA, PSQB, CombinedPSQ) :-
+    (
+        PSQA = empty_psqueue,
+        CombinedPSQ = PSQB
+        % has the same effect as
+        % (
+        %     PSQB = empty_psqueue,
+        %     CombinedPSQ = empty_psqueue
+        % ;
+        %     PSQB = nonempty_psqueue(WinnerB),
+        %     CombinedPSQ = PSQB
+        % )
+    ;
+        PSQA = nonempty_psqueue(WinnerA),
+        (
+            PSQB = empty_psqueue,
+            CombinedPSQ = PSQA
+        ;
+            PSQB = nonempty_psqueue(WinnerB),
+            combine_winners_via_tournament(WinnerA, WinnerB, CombinedWinner),
+            CombinedPSQ = nonempty_psqueue(CombinedWinner)
         )
     ).
 
-:- func second_best(ltree(K, P), K) = psqueue(P, K) is det.
+:- pred combine_winner_psqueue_via_tournament(
+    winner(P, K)::in, psqueue(P, K)::in, winner(P, K)::out) is det.
+:- pragma type_spec(combine_winner_psqueue_via_tournament/3, P = int).
 
-second_best(LTree, Key) = Res :-
+combine_winner_psqueue_via_tournament(WinnerA, PSQB, CombinedWinner) :-
     (
-        LTree = start,
-        Res = void
+        PSQB = empty_psqueue,
+        CombinedWinner = WinnerA
     ;
-        LTree = loser(_, LK, LP, T, SplitKey, U),
-        ( LK `leq` SplitKey ->
-            T1 = winner(LK, LP, T, SplitKey),
-            T2 = second_best(U, Key),
-            Res = tournament(T1, T2)
+        PSQB = nonempty_psqueue(WinnerB),
+        combine_winners_via_tournament(WinnerA, WinnerB, CombinedWinner)
+    ).
+
+:- pred combine_psqueue_winner_via_tournament(
+    psqueue(P, K)::in, winner(P, K)::in, winner(P, K)::out) is det.
+:- pragma type_spec(combine_psqueue_winner_via_tournament/3, P = int).
+
+combine_psqueue_winner_via_tournament(PSQA, WinnerB, CombinedWinner) :-
+    (
+        PSQA = empty_psqueue,
+        CombinedWinner = WinnerB
+    ;
+        PSQA = nonempty_psqueue(WinnerA),
+        combine_winners_via_tournament(WinnerA, WinnerB, CombinedWinner)
+    ).
+
+:- pred combine_winners_via_tournament(winner(P, K)::in, winner(P, K)::in,
+    winner(P, K)::out) is det.
+:- pragma type_spec(combine_winners_via_tournament/3, P = int).
+
+combine_winners_via_tournament(WinnerA, WinnerB, CombinedWinner) :-
+    WinnerA = winner(PrioA, KeyA, LTreeA, MaxKeyA),
+    WinnerB = winner(PrioB, KeyB, LTreeB, MaxKeyB),
+    ( PrioA `leq` PrioB ->
+        % WinnerA wins
+        LTree = balance(PrioB, KeyB, LTreeA, MaxKeyA, LTreeB),
+        CombinedWinner = winner(PrioA, KeyA, LTree, MaxKeyB)
+    ;
+        % WinnerB wins
+        LTree = balance(PrioA, KeyA, LTreeA, MaxKeyA, LTreeB),
+        CombinedWinner = winner(PrioB, KeyB, LTree, MaxKeyB)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Balancing functions for weight balanced trees.
+%
+
+    % balance(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree:
+    %
+    % Construct LTree, a loser tree that contains:
+    %
+    % - the priority/key pair Prio/Key,
+    % - all the priority/key pairs in LTreeL, and
+    % - all the priority/key pairs in LTreeR.
+    %
+    % All the keys in LTreeL are guaranteed to be less than or equal to
+    % SplitKey, while all the keys in LTreeR are guaranteed to be strictly
+    % greater than SplitKey.
+    %
+    % XXX It would be nice to add assertions to the code to enforce this
+    % invariant, and see whether they are violated during stress tests
+    % of this module. However, right now we don't have any such stress tests.
+    %
+    % NOTE All the calls to unexpected below when finding loser_leaf are there
+    % because there is no way to tell Mercury that finding that e.g. LTreeL
+    % is heavier than LTreeR implies that LTreeL cannot be empty.
+    %
+:- func balance(P, K, loser_tree(P, K), K, loser_tree(P, K))
+    = loser_tree(P, K).
+:- pragma type_spec(balance/5, P = int).
+
+balance(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
+    SizeL = loser_tree_size(LTreeL),
+    SizeR = loser_tree_size(LTreeR),
+    (
+        SizeR + SizeL < 2
+    ->
+        LTree = construct_node(Prio, Key, LTreeL, SplitKey, LTreeR)
+    ;
+        compare(CMPL, SizeR, balance_omega * SizeL),
+        CMPL = (>)
+    ->
+        LTree = balance_left(Prio, Key, LTreeL, SplitKey, LTreeR)
+    ;
+        compare(CMPR, SizeL, balance_omega * SizeR),
+        CMPR = (>)
+    ->
+        LTree = balance_right(Prio, Key, LTreeL, SplitKey, LTreeR)
+    ;
+        LTree = construct_node(Prio, Key, LTreeL, SplitKey, LTreeR)
+    ).
+
+    % The implementation of balance for the case when
+    %   size(LTreeR) > balance_omega * size(LTreeL),
+    % so we want to rotate the tree to move weight towards the left.
+    %
+:- func balance_left(P, K, loser_tree(P, K), K, loser_tree(P, K))
+    = loser_tree(P, K).
+:- pragma type_spec(balance_left/5, P = int).
+
+balance_left(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
+    (
+        LTreeR = loser_node(_, _, _, SubLTreeRL, _, SubLTreeRR),
+        compare(CMP, loser_tree_size(SubLTreeRL), loser_tree_size(SubLTreeRR)),
+        ( CMP = (<) ->
+            LTree = single_left(Prio, Key, LTreeL, SplitKey, LTreeR)
         ;
-            T1 = second_best(T, SplitKey),
-            T2 = winner(LK, LP, U, Key),
-            Res = tournament(T1, T2)
+            LTree = double_left(Prio, Key, LTreeL, SplitKey, LTreeR)
+        )
+    ;
+        LTreeR = loser_leaf,
+        unexpected($file, $pred, "heavier tree is a leaf")
+    ).
+
+    % The implementation of balance for the case when
+    %   size(LTreeL) > balance_omega * size(LTreeR).
+    % so we want to rotate the tree to move weight towards the right.
+    %
+:- func balance_right(P, K, loser_tree(P, K), K, loser_tree(P, K))
+    = loser_tree(P, K).
+:- pragma type_spec(balance_right/5, P = int).
+
+balance_right(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
+    (
+        LTreeL = loser_node(_, _, _, SubLTreeLL, _, SubLTreeLR),
+        compare(CMP, loser_tree_size(SubLTreeLR), loser_tree_size(SubLTreeLL)),
+        ( CMP = (<) ->
+            LTree = single_right(Prio, Key, LTreeL, SplitKey, LTreeR)
+        ;
+            LTree = double_right(Prio, Key, LTreeL, SplitKey, LTreeR)
+        )
+    ;
+        LTreeL = loser_leaf,
+        unexpected($file, $pred, "heavier tree is a leaf")
+    ).
+
+    % The implementation of balance for the case when we need a double
+    % rotation to the left.
+    %
+:- func double_left(P, K, loser_tree(P, K), K, loser_tree(P, K))
+    = loser_tree(P, K).
+:- pragma type_spec(double_left/5, P = int).
+
+double_left(InsertPrio, InsertKey, LTreeA, SplitKeyAB, LTreeBC) = LTree :-
+    (
+        LTreeBC = loser_node(_, LoserPrio, LoserKey,
+            LTreeB, SplitKeyBC, LTreeC),
+        LTree = single_left(InsertPrio, InsertKey,
+            LTreeA,
+            SplitKeyAB,
+            single_right(LoserPrio, LoserKey, LTreeB, SplitKeyBC, LTreeC))
+    ;
+        LTreeBC = loser_leaf,
+        unexpected($file, $pred, "heavier tree is a leaf")
+    ).
+
+    % The implementation of balance for the case when we need a double
+    % rotation to the right.
+    %
+:- func double_right(P, K, loser_tree(P, K), K, loser_tree(P, K))
+    = loser_tree(P, K).
+:- pragma type_spec(double_right/5, P = int).
+
+double_right(InsertPrio, InsertKey, LTreeAB, SplitKeyBC, LTreeC) = LTree :-
+    (
+        LTreeAB = loser_node(_, LoserPrio, LoserKey,
+            LTreeA, SplitKeyAB, LTreeB),
+        LTree = single_right(InsertPrio, InsertKey,
+            single_left(LoserPrio, LoserKey, LTreeA, SplitKeyAB, LTreeB),
+            SplitKeyBC,
+            LTreeC)
+    ;
+        LTreeAB = loser_leaf,
+        unexpected($file, $pred, "heavier tree is a leaf")
+    ).
+
+    % The implementation of balance for the case when we need a single
+    % rotation to the left.
+    %
+:- func single_left(P, K, loser_tree(P, K), K, loser_tree(P, K))
+    = loser_tree(P, K).
+:- pragma type_spec(single_left/5, P = int).
+
+single_left(InsertPrio, InsertKey, LTreeA, SplitKeyAB, LTreeBC) = LTree :-
+    (
+        LTreeBC = loser_node(_, LoserPrio, LoserKey,
+            LTreeB, SplitKeyBC, LTreeC),
+        (
+            LoserKey `leq` SplitKeyBC,
+            InsertPrio `leq` LoserPrio
+        ->
+            LTree = construct_node(InsertPrio, InsertKey,
+                construct_node(LoserPrio, LoserKey,
+                    LTreeA, SplitKeyAB, LTreeB),
+                SplitKeyBC,
+                LTreeC)
+        ;
+            LTree = construct_node(LoserPrio, LoserKey,
+                construct_node(InsertPrio, InsertKey,
+                    LTreeA, SplitKeyAB, LTreeB),
+                SplitKeyBC,
+                LTreeC)
+        )
+    ;
+        LTreeBC = loser_leaf,
+        unexpected($file, $pred, "heavier tree is a leaf")
+    ).
+
+    % The implementation of balance for the case when we need a single
+    % rotation to the right.
+    %
+:- func single_right(P, K, loser_tree(P, K), K, loser_tree(P, K))
+    = loser_tree(P, K).
+:- pragma type_spec(single_right/5, P = int).
+
+single_right(InsertPrio, InsertKey, LTreeAB, SplitKeyBC, LTreeC) = LTree :-
+    (
+        LTreeAB = loser_node(_, LoserPrio, LoserKey,
+            LTreeA, SplitKeyAB, LTreeB),
+        (
+            compare(CMP0, LoserKey, SplitKeyAB),
+            CMP0 = (>),
+            InsertPrio `leq` LoserPrio
+        ->
+            LTree = construct_node(InsertPrio, InsertKey,
+                LTreeA,
+                SplitKeyAB,
+                construct_node(LoserPrio, LoserKey,
+                    LTreeB, SplitKeyBC, LTreeC))
+        ;
+            LTree = construct_node(LoserPrio, LoserKey,
+                LTreeA,
+                SplitKeyAB,
+                construct_node(InsertPrio, InsertKey,
+                    LTreeB, SplitKeyBC, LTreeC))
+        )
+    ;
+        LTreeAB = loser_leaf,
+        unexpected($file, $pred, "heavier tree is a leaf")
+    ).
+
+    % Balance factor, must be over 3.75 (see Ralf Hinze's paper).
+    %
+:- func balance_omega = loser_tree_size.
+
+balance_omega = 4.
+
+:- func construct_node(P, K, loser_tree(P, K), K, loser_tree(P, K))
+    = loser_tree(P, K).
+:- pragma inline(construct_node/5).
+
+construct_node(Prio, Key, SubLTreeL, SplitKey, SubLTreeR) = LTree :-
+    Size = 1 + loser_tree_size(SubLTreeL) + loser_tree_size(SubLTreeR),
+    LTree = loser_node(Size, Prio, Key, SubLTreeL, SplitKey, SubLTreeR).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+init = PSQ :-
+    init(PSQ).
+
+init(empty_psqueue).
+
+is_empty(empty_psqueue).
+
+singleton(Prio, Key) = PSQ :-
+    singleton(Prio, Key, PSQ).
+
+singleton(Prio, Key, PSQ) :-
+    PSQ = nonempty_psqueue(singleton_winner(Prio, Key)).
+
+:- func singleton_winner(P, K) = winner(P, K).
+:- pragma inline(singleton_winner/2).
+
+singleton_winner(Prio, Key) =
+    winner(Prio, Key, loser_leaf, Key).
+
+%---------------------------------------------------------------------------%
+
+insert(InsertPrio, InsertKey, !PSQ) :-
+    (
+        !.PSQ = empty_psqueue,
+        !:PSQ = singleton(InsertPrio, InsertKey)
+    ;
+        !.PSQ = nonempty_psqueue(Winner0),
+        TournamentView0 = get_tournament_view(Winner0),
+        trace [io(!IO), compiletime(flag("notset"))] (
+            io.format("inserting %s %s\n",
+                [s(string(InsertPrio)), s(string(InsertKey))], !IO),
+            ( string.string(InsertKey) = "\"Lennart\"" ->
+                io.write_string(dump_tournament(0, TournamentView0), !IO)
+            ;
+                true
+            )
+        ),
+        insert_tv(InsertPrio, InsertKey, TournamentView0, Winner),
+        !:PSQ = nonempty_psqueue(Winner)
+    ).
+
+det_insert(PSQ0, InsertPrio, InsertKey) = PSQ :-
+    det_insert(InsertPrio, InsertKey, PSQ0, PSQ).
+
+det_insert(InsertPrio, InsertKey, !PSQ) :-
+    ( insert(InsertPrio, InsertKey, !PSQ) ->
+        true
+    ;
+        unexpected($file, $pred, "key being inserted is already present")
+    ).
+
+:- pred insert_tv(P::in, K::in,
+    tournament_view(P, K)::in, winner(P, K)::out) is semidet.
+:- pragma type_spec(insert_tv/4, P = int).
+
+insert_tv(InsertPrio, InsertKey, TV, Winner) :-
+    (
+        TV = singleton_tournament(Prio, Key),
+        compare(CMP, InsertKey, Key),
+        (
+            CMP = (<),
+            WinnerA = singleton_winner(InsertPrio, InsertKey),
+            WinnerB = singleton_winner(Prio, Key)
+        ;
+            CMP = (>),
+            WinnerA = singleton_winner(Prio, Key),
+            WinnerB = singleton_winner(InsertPrio, InsertKey)
+        ),
+        % XXX Why call a general-purpose predicate for combining
+        % two singletons?
+        combine_winners_via_tournament(WinnerA, WinnerB, Winner)
+    ;
+        TV = tournament_between(WinnerA, WinnerB),
+        WinnerA = winner(_, _, _, MaxKeyA),
+        WinnerB = winner(_, _, _, _),
+        ( InsertKey `leq` MaxKeyA ->
+            insert_tv(InsertPrio, InsertKey,
+                get_tournament_view(WinnerA), UpdatedWinnerA),
+            combine_winners_via_tournament(UpdatedWinnerA, WinnerB, Winner)
+        ;
+            insert_tv(InsertPrio, InsertKey,
+                get_tournament_view(WinnerB), UpdatedWinnerB),
+            combine_winners_via_tournament(WinnerA, UpdatedWinnerB, Winner)
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-    % create empty psqueue
-    %
-init = PSQ :-
-    init(PSQ).
-
-init(void).
-
-    % check for empty psqueue
-    %
-is_empty(void).
-
-singleton(P, K) = Res :-
-    singleton(P, K, Res).
-
-singleton(P, K, PSQ) :-
-    PSQ = winner(K, P, start, K).
-
-%-----------------------------------------------------------------------%
-
-insert(P, K, !PSQ) :-
-    insert_tv(K, P, tournament_view(!.PSQ), !:PSQ).
-
-det_insert(P, K, !PSQ) :-
-    ( insert(P, K, !PSQ) ->
-        true
-    ;
-        unexpected($file, $pred,
-            "error on inserting element into priority search queue")
-    ).
-
-det_insert(PSQ0, P, K) = PSQ :-
-    det_insert(P, K, PSQ0, PSQ).
-
-:- pred insert_tv(K::in, P::in,
-    t_tournament_view(K, P)::in, psqueue(P, K)::out) is semidet.
-
-insert_tv(IK, IP, TV, Res) :-
-    (
-        TV = emptySet,
-        Res = psqueue.singleton(IP, IK)
-    ;
-        TV = singleton(Key, Prio),
-        compare(CMP, IK, Key),
-        (
-            CMP = (<),
-            Res = tournament(psqueue.singleton(IP, IK),
-                psqueue.singleton(Prio, Key))
-        ;
-            CMP = (>),
-            Res = tournament(psqueue.singleton(Prio, Key),
-                psqueue.singleton(IP, IK))
-        )
-    ;
-        TV = tournament_between(T1, T2),
-        T1 = winner(_, _, _, MaxKey1),
-        T2 = winner(_, _, _, _),
-        ( IK `leq` MaxKey1 ->
-            insert(IP, IK, T1, Left),
-            Res = tournament(Left, T2)
-        ;
-            insert(IP, IK, T2, Right),
-            Res = tournament(T1, Right)
-        )
-    ).
-
-%-----------------------------------------------------------------------%
-
 peek(PSQ, MinPrio, MinKey) :-
-    PSQ = winner(MinKey, MinPrio, _, _).
+    PSQ = nonempty_psqueue(winner(MinPrio, MinKey, _, _)).
 
 det_peek(PSQ, MinPrio, MinKey) :-
-    ( peek(PSQ, MinPrio0, MinKey0) ->
-        MinKey = MinKey0,
-        MinPrio = MinPrio0
+    ( peek(PSQ, MinPrioPrime, MinKeyPrime) ->
+        MinKey = MinKeyPrime,
+        MinPrio = MinPrioPrime
     ;
         unexpected($file, $pred, "priority search queue is empty")
     ).
 
-remove_least(MinPrio, MinKey, PSQ, NewPSQ) :-
-    PSQ = winner(MinKey, MinPrio, L, MaxKey),
-    NewPSQ = second_best(L, MaxKey).
+remove_least(MinPrio, MinKey, !PSQ) :-
+    !.PSQ = nonempty_psqueue(winner(MinPrio, MinKey, LTree, MaxKey)),
+    !:PSQ = convert_loser_tree_to_psqueue(LTree, MaxKey).
 
-det_remove_least(MinPrio, MinKey, PSQ, NewPSQ) :-
-    ( remove_least(MinPrio0, MinKey0, PSQ, NewPSQ0) ->
-        NewPSQ = NewPSQ0,
-        MinKey = MinKey0,
-        MinPrio = MinPrio0
+det_remove_least(MinPrio, MinKey, !PSQ) :-
+    ( remove_least(MinPrioPrime, MinKeyPrime, !PSQ) ->
+        MinKey = MinKeyPrime,
+        MinPrio = MinPrioPrime
     ;
         unexpected($file, $pred, "priority search queue is empty")
     ).
 
-%-----------------------------------------------------------------------%
+    % convert_loser_tree_to_psqueue(LTree, MaxKey):
+    %
+    % Convert LTree to a psqueue. All the keys in LTree are guaranteed
+    % to be less than or equal to MaxKey.
+    %
+:- func convert_loser_tree_to_psqueue(loser_tree(P, K), K) = psqueue(P, K).
+:- pragma type_spec(convert_loser_tree_to_psqueue/2, P = int).
 
-to_assoc_list(PSQ) = Res :-
-    to_assoc_list(PSQ, Res).
-
-to_assoc_list(PSQ, AList) :-
-    ( remove_least(K, P, PSQ, PSQ0) ->
-        to_assoc_list(PSQ0, AList0),
-        AList = [K - P | AList0]
+convert_loser_tree_to_psqueue(LTree, MaxKey) = PSQ :-
+    (
+        LTree = loser_leaf,
+        PSQ = empty_psqueue
     ;
-        AList = []
+        LTree = loser_node(_, LoserPrio, LoserKey,
+            SubLTreeL, SplitKey, SubLTreeR),
+        ( LoserKey `leq` SplitKey ->
+            WinnerA = winner(LoserPrio, LoserKey, SubLTreeL, SplitKey),
+            PSQA = nonempty_psqueue(WinnerA),
+            PSQB = convert_loser_tree_to_psqueue(SubLTreeR, MaxKey)
+        ;
+            PSQA = convert_loser_tree_to_psqueue(SubLTreeL, SplitKey),
+            WinnerB = winner(LoserPrio, LoserKey, SubLTreeR, MaxKey),
+            PSQB = nonempty_psqueue(WinnerB)
+        ),
+        combine_psqueues_via_tournament(PSQA, PSQB, PSQ)
     ).
 
-from_assoc_list(AList) = Res :-
-    from_assoc_list(AList, Res).
+%---------------------------------------------------------------------------%
 
-from_assoc_list(AList, PSQ) :-
-    from_assoc_list2(AList, init, PSQ).
+to_assoc_list(PSQ) = AssocList :-
+    to_assoc_list(PSQ, AssocList).
 
-:- pred from_assoc_list2(assoc_list(P, K)::in, psqueue(P, K)::in,
-                       psqueue(P, K)::out) is det.
+to_assoc_list(PSQ0, AssocList) :-
+    ( remove_least(K, P, PSQ0, PSQ1) ->
+        to_assoc_list(PSQ1, AssocListTail),
+        AssocList = [K - P | AssocListTail]
+    ;
+        AssocList = []
+    ).
 
-from_assoc_list2([], !PSQ).
-from_assoc_list2([(Prio - Key) | Rest], !PSQ) :-
+from_assoc_list(AssocList) = PSQ :-
+    from_assoc_list(AssocList, PSQ).
+
+from_assoc_list(AssocList, PSQ) :-
+    from_assoc_list_loop(AssocList, init, PSQ).
+
+:- pred from_assoc_list_loop(assoc_list(P, K)::in,
+    psqueue(P, K)::in, psqueue(P, K)::out) is det.
+:- pragma type_spec(from_assoc_list_loop/3, P = int).
+
+from_assoc_list_loop([], !PSQ).
+from_assoc_list_loop([Prio - Key | PriosKeys], !PSQ) :-
     det_insert(Prio, Key, !PSQ),
-    from_assoc_list2(Rest, !PSQ).
+    from_assoc_list_loop(PriosKeys, !PSQ).
 
-%-----------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-remove(P, K, !PSQ) :-
-    remove_tv(P, K, tournament_view(!.PSQ), !:PSQ).
+remove(MatchingPrio, SearchKey, !PSQ) :-
+    (
+        !.PSQ = empty_psqueue,
+        fail
+    ;
+        !.PSQ = nonempty_psqueue(Winner0),
+        remove_tv(MatchingPrio, SearchKey, get_tournament_view(Winner0), !:PSQ)
+    ).
 
-det_remove(P, K, !PSQ) :-
-    ( remove(PPrime, K, !.PSQ, PSQPrime) ->
-        P = PPrime,
-        !:PSQ = PSQPrime
+det_remove(MatchingPrio, SearchKey, !PSQ) :-
+    ( remove(MatchingPrioPrime, SearchKey, !PSQ) ->
+        MatchingPrio = MatchingPrioPrime
     ;
         unexpected($file, $pred, "element not found")
     ).
 
 :- pred remove_tv(P::out, K::in,
-    t_tournament_view(K, P)::in, psqueue(P, K)::out) is semidet.
+    tournament_view(P, K)::in, psqueue(P, K)::out) is semidet.
+:- pragma type_spec(remove_tv/4, P = int).
 
-remove_tv(Prio, Key, TV, Res) :-
+remove_tv(MatchingPrio, SearchKey, TournamentView, PSQ) :-
     (
-        TV = emptySet,
-        false
-    ;
-        TV = singleton(Key, Prio),
-        Res = void
-    ;
-        TV = tournament_between(TL, TR),
-        TL = winner(_, _, _, MaxKey1),
-        ( Key `leq` MaxKey1 ->
-            remove(Prio, Key, TL, Left),
-            Res = tournament(Left, TR)
+        TournamentView = singleton_tournament(Prio, Key),
+        ( Key = SearchKey ->
+            MatchingPrio = Prio,
+            PSQ = empty_psqueue
         ;
-            remove(Prio, Key, TR, Right),
-            Res = tournament(TL, Right)
+            fail
         )
+    ;
+        TournamentView = tournament_between(WinnerA, WinnerB),
+        WinnerA = winner(_, _, _, MaxKeyA),
+        ( SearchKey `leq` MaxKeyA ->
+            remove_tv(MatchingPrio, SearchKey,
+                get_tournament_view(WinnerA), UpdatedPSQA),
+            combine_psqueue_winner_via_tournament(UpdatedPSQA, WinnerB,
+                CombinedWinner)
+        ;
+            remove_tv(MatchingPrio, SearchKey,
+                get_tournament_view(WinnerB), UpdatedPSQB),
+            combine_winner_psqueue_via_tournament(WinnerA, UpdatedPSQB,
+                CombinedWinner)
+        ),
+        PSQ = nonempty_psqueue(CombinedWinner)
+    ).
+
+%---------------------------------------------------------------------------%
+
+adjust(AdjustFunc, SearchKey, !PSQ) :-
+    (
+        !.PSQ = empty_psqueue,
+        fail
+    ;
+        !.PSQ = nonempty_psqueue(Winner0),
+        adjust_tv(AdjustFunc, SearchKey, get_tournament_view(Winner0), Winner),
+        !:PSQ = nonempty_psqueue(Winner)
+    ).
+
+:- pred adjust_tv(func(P) = P::in(func(in) = out is det),
+    K::in, tournament_view(P, K)::in, winner(P, K)::out) is semidet.
+:- pragma type_spec(adjust_tv/4, P = int).
+
+adjust_tv(AdjustFunc, SearchKey, TournamentView, Winner) :-
+    (
+        TournamentView = singleton_tournament(Prio, Key),
+        ( Key = SearchKey ->
+            Winner = singleton_winner(AdjustFunc(Prio), Key)
+        ;
+            % XXX was Winner = singleton_winner(Prio, Key)
+            fail
+        )
+    ;
+        TournamentView = tournament_between(WinnerA, WinnerB),
+        WinnerA = winner(_, _, _, MaxKeyA),
+        ( SearchKey `leq` MaxKeyA ->
+            adjust_tv(AdjustFunc, SearchKey,
+                get_tournament_view(WinnerA), UpdatedWinnerA),
+            combine_winners_via_tournament(UpdatedWinnerA, WinnerB, Winner)
+        ;
+            adjust_tv(AdjustFunc, SearchKey,
+                get_tournament_view(WinnerB), UpdatedWinnerB),
+            combine_winners_via_tournament(WinnerA, UpdatedWinnerB, Winner)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+search(PSQ, SearchKey, MatchingPrio) :-
+    (
+        PSQ = empty_psqueue,
+        fail
+    ;
+        PSQ = nonempty_psqueue(Winner),
+        % XXX Why do we transform PSQ into a tournament view
+        % before searching it? Why don't we search it directly?
+        % It should be both simpler and faster.
+        search_tv(get_tournament_view(Winner), SearchKey, MatchingPrio)
+    ).
+
+:- pred search_tv(tournament_view(P, K)::in, K::in, P::out) is semidet.
+:- pragma type_spec(search_tv/3, P = int).
+
+search_tv(TournamentView, SearchKey, MatchingPrio) :-
+    (
+        TournamentView = singleton_tournament(Prio, Key),
+        ( Key = SearchKey ->
+            MatchingPrio = Prio
+        ;
+            fail
+        )
+    ;
+        TournamentView = tournament_between(WinnerA, WinnerB),
+        WinnerA = winner(_, _, _, MaxKeyA),
+        ( SearchKey `leq` MaxKeyA ->
+            search_tv(get_tournament_view(WinnerA), SearchKey, MatchingPrio)
+        ;
+            search_tv(get_tournament_view(WinnerB), SearchKey, MatchingPrio)
+        )
+    ).
+
+lookup(PSQ, SearchKey) = MatchingPrio :-
+    lookup(PSQ, SearchKey, MatchingPrio).
+
+lookup(PSQ, SearchKey, MatchingPrio) :-
+    ( search(PSQ, SearchKey, MatchingPrioPrime) ->
+        MatchingPrio = MatchingPrioPrime
+    ;
+        unexpected($file, $pred, "key not found")
+    ).
+
+%---------------------------------------------------------------------------%
+
+at_most(PSQ, MaxPrio) = AssocList :-
+    at_most(PSQ, MaxPrio, AssocList).
+
+at_most(PSQ, MaxPrio, AssocList) :-
+    (
+        PSQ = empty_psqueue,
+        AssocList = []
+    ;
+        PSQ = nonempty_psqueue(Winner),
+        at_most_in_winner(Winner, MaxPrio, Cord),
+        AssocList = cord.list(Cord)
+    ).
+
+:- pred at_most_in_winner(winner(P, K)::in, P::in, cord(pair(P, K))::out)
+    is det.
+:- pragma type_spec(at_most_in_winner/3, P = int).
+
+at_most_in_winner(Winner, MaxPrio, Cord) :-
+    Winner = winner(WinnerPrio, _, _, _),
+    compare(CMP, WinnerPrio, MaxPrio),
+    (
+        CMP = (>),
+        Cord = cord.init
+    ;
+        ( CMP = (=)
+        ; CMP = (<)
+        ),
+        TournamentView = get_tournament_view(Winner),
+        (
+            TournamentView = singleton_tournament(SinglePrio, SingleKey),
+            Cord = cord.singleton(SinglePrio - SingleKey)
+        ;
+            TournamentView = tournament_between(WinnerA, WinnerB),
+            at_most_in_winner(WinnerA, MaxPrio, CordA),
+            at_most_in_winner(WinnerB, MaxPrio, CordB),
+            Cord = CordA ++ CordB
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+size(PSQ) = Size :-
+    size(PSQ, Size).
+
+size(PSQ, Size) :-
+    (
+        PSQ = empty_psqueue,
+        Size = 0
+    ;
+        PSQ = nonempty_psqueue(winner(_, _, LTree, _)),
+        % XXX was just loser_tree_size(LTree)
+        Size = 1 + loser_tree_size(LTree)
+    ).
+
+:- func loser_tree_size(loser_tree(P, K)) = loser_tree_size.
+
+loser_tree_size(LTree) = Size :-
+    (
+        LTree = loser_leaf,
+        Size = 0
+    ;
+        LTree = loser_node(Size, _, _, _, _, _)
     ).
 
 %---------------------------------------------------------------------------%
@@ -446,663 +1055,405 @@ leq(ValLeft, ValRight) :-
     ; CMP = (=)
     ).
 
-%-----------------------------------------------------------------------%
+:- func min2(V, V) = V.
+:- pragma type_spec(min2/2, V = int).
 
-adjust(F, K, !PSQ) :-
-    adjust_tv(F, K, tournament_view(!.PSQ), !:PSQ).
-
-:- pred adjust_tv(func(P) = P, K, t_tournament_view(K, P), psqueue(P, K)).
-:- mode adjust_tv(func(in) = out is det, in, in, out) is semidet.
-
-adjust_tv(Func, K, TV, Res) :-
-    (
-        TV = emptySet,
-        false
+min2(A, B) = Min :-
+    ( A `leq` B ->
+        Min = A
     ;
-        TV = singleton(Key, Prio),
-        ( K = Key ->
-            Res = psqueue.singleton(Func(Prio), Key)
-        ;
-            Res = psqueue.singleton(Prio, Key)
-        )
+        Min = B
+    ).
+
+:- func max2(V, V) = V.
+:- pragma type_spec(max2/2, V = int).
+
+max2(A, B) = Max :-
+    ( A `leq` B ->
+        Max = B
     ;
-        TV = tournament_between(TL, TR),
-        TL = winner(_, _, _, MaxKey1),
-        ( K `leq` MaxKey1 ->
-            adjust(Func, K, TL, Left),
-            Res = tournament(Left, TR)
-        ;
-            adjust(Func, K, TR, Right),
-            Res = tournament(TL, Right)
-        )
+        Max = A
     ).
 
 %---------------------------------------------------------------------------%
-
-search(PSQ, K, P) :-
-    search_tv(tournament_view(PSQ), K, P).
-
-:- pred search_tv(t_tournament_view(K, P)::in, K::in, P::out) is semidet.
-
-search_tv(TV, K, Res) :-
-    (
-        TV = singleton(Key, Prio),
-        Key = K,
-        Res = Prio
-    ;
-        TV = tournament_between(TL, TR),
-        TL = winner(_, _, _, MaxKey1),
-        ( K `leq` MaxKey1 ->
-            search(TL, K, Res)
-        ;
-            search(TR, K, Res)
-        )
-    ).
-
-lookup(PSQ, K, P) :-
-    ( search(PSQ, K, PPrime) ->
-        P = PPrime
-    ;
-        unexpected($file, $pred, "element not found")
-    ).
-
-lookup(PSQ, K) = P :-
-    lookup(PSQ, K, P).
-
-%-----------------------------------------------------------------------%
-
-at_most(PSQ, P) = Res :-
-    at_most(PSQ, P, Res).
-
-at_most(PSQ, Pt, AList) :-
-    MView = min_view(PSQ),
-    (
-        MView = empty,
-        AList = []
-    ;
-        MView = min(_, Prio, _),
-        compare(CMP, Prio, Pt),
-        (
-            CMP = (>),
-            AList = []
-        ;
-            ( CMP = (=)
-            ; CMP = (<)
-            ),
-            TView = tournament_view(PSQ),
-            (
-                TView = emptySet,
-                AList = []
-            ;
-                TView = singleton(Prio0, Key0),
-                AList = [Key0 - Prio0]
-            ;
-                TView = tournament_between(T1, T2),
-                at_most(T1, Pt, AL0),
-                at_most(T2, Pt, AL1),
-                AList = AL0 ++ AL1
-            )
-        )
-    ).
-
-size(PSQ, Size) :-
-    (
-        PSQ = void,
-        Size = 0
-    ;
-        PSQ = winner(_, _, LTree, _),
-        Size = ltree_size(LTree)
-    ).
-
-size(PSQ) = Res :-
-    size(PSQ, Res).
-
-:- func ltree_size(ltree(K, P)) = t_ltree_size.
-
-ltree_size(LTree) = Res :-
-    (
-        LTree = start, Res = 0
-    ;
-        LTree = loser(Res, _, _, _, _, _)
-    ).
-
 %---------------------------------------------------------------------------%
-% view types for min view, tournament view and tree view
-%---------------------------------------------------------------------------%
-
-:- type t_min_view(K, P)
-    --->        empty
-    ;           min(K, P, psqueue(P, K)).
-
-:- type t_tournament_view(K, P)
-    --->        emptySet
-    ;           singleton(K, P)
-    ;           tournament_between(psqueue(P, K), psqueue(P, K)).
-
-:- type t_tree_view(K, P)
-    --->        leaf
-    ;           node(K, P, ltree(K, P), K, ltree(K, P)).
-
-%---------------------------------------------------------------------------%
-
-    % get min view of priority search queue
-    %
-:- func min_view(psqueue(P, K)) = t_min_view(K, P).
-
-min_view(PSQ) = Res :-
-    (
-        PSQ = void,
-        Res = empty
-    ;
-        PSQ = winner(Key, Prio, LTree, MaxKey),
-        Res = min(Key, Prio, second_best(LTree, MaxKey))
-    ).
-
-    % get tournament view of priority search queue
-    %
-:- func tournament_view(psqueue(P, K)) = t_tournament_view(K, P).
-
-tournament_view(PSQ) = Res :-
-    (
-        PSQ = void,
-        Res = emptySet
-    ;
-        PSQ = winner(K, P, LTree, MaxKey),
-        (
-            LTree = start,
-            Res = singleton(K, P)
-        ;
-            LTree = loser(_, LK, LP, TL, SplitKey, TR),
-            ( LK `leq` SplitKey ->
-                Res = tournament_between(winner(LK, LP, TL, SplitKey),
-                                     winner(K, P, TR, MaxKey))
-            ;
-                Res = tournament_between(winner(K, P, TL, SplitKey),
-                                     winner(LK, LP, TR, MaxKey))
-            )
-        )
-    ).
-
-
-    % get tree view of priority search queue
-    %
-:- func tree_view(ltree(K, P)) = t_tree_view(K, P) is det.
-
-tree_view(LTree) = Res :-
-    (
-        LTree = start,
-        Res = leaf
-    ;
-        LTree = loser(_, LK, LP, LL, SplitKey, LR),
-        Res = node(LK, LP, LL, SplitKey, LR)
-    ).
-
-%---------------------------------------------------------------------------%
-% smart constructors
-%---------------------------------------------------------------------------%
-
-:- func construct_leaf = ltree(K, P).
-construct_leaf = start.
-
-:- func construct_node(K, P, ltree(K, P), K, ltree(K, P)) = ltree(K, P).
-construct_node(Key, Prio, L, SplitKey, R) = Res :-
-    Size = 1 + ltree_size(L) + ltree_size(R),
-    Res = loser(Size, Key, Prio, L, SplitKey, R).
-
-
-%---------------------------------------------------------------------------%
-% balancing functions for weight balanced trees
-%---------------------------------------------------------------------------%
-
-    % balance factor, must be over 3.75 (see Ralf Hinze's paper)
-    %
-:- func balance_omega = t_ltree_size.
-balance_omega = 4.
-
-:- func balance(K, P, ltree(K, P), K, ltree(K, P)) = ltree(K, P) is det.
-:- func balance_left(K, P, ltree(K, P), K, ltree(K, P)) = ltree(K, P) is det.
-:- func balance_right(K, P, ltree(K, P), K, ltree(K, P)) = ltree(K, P) is det.
-:- func single_left(K, P, ltree(K, P), K, t_tree_view(K, P)) = ltree(K, P)
-    is det.
-:- func single_right(K, P, t_tree_view(K, P), K, ltree(K, P)) = ltree(K, P)
-    is det.
-:- func double_left(K, P, ltree(K, P), K, t_tree_view(K, P)) = ltree(K, P)
-    is det.
-:- func double_right(K, P, t_tree_view(K, P), K, ltree(K, P)) = ltree(K, P)
-    is det.
-
-balance(Key, Prio, L, SplitKey, R) = Res :-
-    SizeL = ltree_size(L),
-    SizeR = ltree_size(R),
-    ( (SizeR + SizeL) < 2 ->
-        Res = construct_node(Key, Prio, L, SplitKey, R)
-    ;
-        (( compare(CMP, SizeR, balance_omega * SizeL), CMP = (>)) ->
-            Res = balance_left(Key, Prio, L, SplitKey, R)
-        ;
-            (( compare(CMP, SizeL, balance_omega * SizeR), CMP = (>)) ->
-                Res = balance_right(Key, Prio, L, SplitKey, R)
-            ;
-                Res = construct_node(Key, Prio, L, SplitKey, R)
-            )
-        )
-    ).
-
-balance_left(Key, Prio, L, SplitKey, R) = Res :-
-    TVR = tree_view(R),
-    ( TVR = node(_, _, RL, _, RR) ->
-        ( (compare(CMP, ltree_size(RL), ltree_size(RR)), CMP = (<)) ->
-            Res = single_left(Key, Prio, L, SplitKey, TVR)
-        ;
-            Res = double_left(Key, Prio, L, SplitKey, TVR)
-        )
-    ;
-        unexpected($file, $pred, "error in left balance")
-    ).
-
-balance_right(Key, Prio, L, SplitKey, R) = Res :-
-    TVL = tree_view(L),
-    ( TVL = node(_, _, LL, _, LR) ->
-        ( (compare(CMP, ltree_size(LR), ltree_size(LL)), CMP = (<)) ->
-            Res = single_right(Key, Prio, TVL, SplitKey, R)
-        ;
-            Res = double_right(Key, Prio, TVL, SplitKey, R)
-        )
-    ;
-        unexpected($file, $pred, "error in right balance")
-    ).
-
-single_left(K1, P1, T1, S1, TVR) = Res :-
-    ( TVR = node(K2, P2, T2, S2, T3) ->
-        ( ( K2 `leq` S2, P1 `leq` P2 ) ->
-            Res = construct_node(K1, P1,
-                                 construct_node(K2, P2, T1, S1, T2), S2, T3)
-        ;
-            Res = construct_node(K2, P2,
-                                 construct_node(K1, P1, T1, S1, T2), S2, T3)
-        )
-    ;
-        unexpected($file, $pred, "error in single left rotation")
-    ).
-
-single_right(K1, P1, TVL, S2, T3) = Res :-
-    ( TVL = node(K2, P2, T1, S1, T2) ->
-        ( ( compare(CMP0, K2, S1), CMP0 = (>), P1 `leq` P2 ) ->
-            Res = construct_node(K1, P1, T1, S1,
-                                 construct_node(K2, P2, T2, S2, T3))
-        ;
-            Res = construct_node(K2, P2, T1, S1,
-                                 construct_node(K1, P1, T2, S2, T3))
-        )
-    ;
-        unexpected($file, $pred, "error in single right rotation")
-    ).
-
-double_left(K1, P1, T1, S1, TVR) = Res :-
-    ( TVR = node(K2, P2, T2, S2, T3) ->
-        Res = single_left(K1, P1, T1, S1,
-                          tree_view(single_right(K2, P2,
-                                                 tree_view(T2), S2, T3)))
-    ;
-        unexpected($file, $pred, "error in doulbe left rotation")
-    ).
-
-double_right(K1, P1, TVL, S2, T3) = Res :-
-    ( TVL = node(K2, P2, T1, S1, T2) ->
-        Res = single_right(K1, P1,
-                           tree_view(single_left(K2, P2, T1, S1,
-                                                 tree_view(T2))),
-                           S2, T3)
-    ;
-        unexpected($file, $pred, "error in double right rotation")
-    ).
-
-%---------------------------------------------------------------------------%
-% test predicates for correct implementation of psqueue
-%---------------------------------------------------------------------------%
+%
+% The integrity test predicates.
+%
 
 is_semi_heap(PSQ) :-
     (
-        PSQ = void
+        PSQ = empty_psqueue
     ;
-        PSQ = winner(_, Prio, LTree, _),
-        all_keys_larger_ltree(Prio, LTree),
-        all_nodes_loser_prio(LTree)
+        PSQ = nonempty_psqueue(winner(WinnerPrio, _, LTree, _)),
+        all_prios_in_loser_tree_at_or_above_prio(WinnerPrio, LTree),
+        all_nodes_obey_semi_heap(LTree)
     ).
 
-:- pred all_keys_larger_ltree(P::in, ltree(K, P)::in) is semidet.
+    % Succeed iff all priorities in the given ltree are numerically
+    % at least as high as the given priority.
+    %
+:- pred all_prios_in_loser_tree_at_or_above_prio(P::in, loser_tree(P, K)::in)
+    is semidet.
 
-all_keys_larger_ltree(Prio, LTree) :-
+all_prios_in_loser_tree_at_or_above_prio(WinnerPrio, LTree) :-
     (
-        LTree = start
+        LTree = loser_leaf
     ;
-        LTree = loser(_, _, LP, LT, _, RT),
-        Prio `leq` LP,
-        all_keys_larger_ltree(Prio, LT),
-        all_keys_larger_ltree(Prio, RT)
+        LTree = loser_node(_, LoserPrio, _, SubLTreeL, _, SubLTreeR),
+        WinnerPrio `leq` LoserPrio,
+        all_prios_in_loser_tree_at_or_above_prio(WinnerPrio, SubLTreeL),
+        all_prios_in_loser_tree_at_or_above_prio(WinnerPrio, SubLTreeR)
     ).
 
-:- func min(V, V) = V is det.
+:- pred all_nodes_obey_semi_heap(loser_tree(P, K)::in) is semidet.
 
-min(P1, P2) = Res :-
-    ( P1 `leq` P2 ->
-        Res = P1
-    ;
-        Res = P2
-    ).
-
-:- func max(V, V) = V is det.
-
-max(P1, P2) = Res :-
-    ( P1 `leq` P2 ->
-        Res = P2
-    ;
-        Res = P1
-    ).
-
-:- pred min_prio_loser_tree(ltree(K, P)::in, maybe(P)::out) is det.
-
-min_prio_loser_tree(LTree, MinPrio) :-
+all_nodes_obey_semi_heap(LTree) :-
     (
-        LTree = start,
-        MinPrio = no
+        LTree = loser_leaf
     ;
-        LTree = loser(_, _, Prio, TL, _, TR),
-        min_prio_loser_tree(TL, Prio, MinPrio1),
-        min_prio_loser_tree(TR, Prio, MinPrio2),
+        LTree = loser_node(_, Prio, Key, SubLTreeL, SplitKey, SubLTreeR),
+        ( Key `leq` SplitKey ->
+            min_prio_in_loser_tree_acc(SubLTreeL, Prio, MaybeMinPrio)
+        ;
+            min_prio_in_loser_tree_acc(SubLTreeR, Prio, MaybeMinPrio)
+        ),
         (
-            MinPrio1 = no,
-            MinPrio2 = no,
-            MinPrio = yes(Prio)
+            MaybeMinPrio = no
         ;
-            MinPrio1 = yes(MinPrio1Val),
-            MinPrio2 = no,
-            MinPrio = yes(min(MinPrio1Val, Prio))
-        ;
-            MinPrio2 = yes(MinPrio2Val),
-            MinPrio1 = no,
-            MinPrio = yes(min(MinPrio2Val, Prio))
-        ;
-            MinPrio1 = yes(MinPrio1Val),
-            MinPrio2 = yes(MinPrio2Val),
-            MinPrio = yes(min(MinPrio1Val,
-                          min(Prio, MinPrio2Val)))
-        )
+            MaybeMinPrio = yes(MinPrio),
+            compare(CMP, Prio, MinPrio),
+            CMP = (=)
+        ),
+        all_nodes_obey_semi_heap(SubLTreeL),
+        all_nodes_obey_semi_heap(SubLTreeR)
     ).
 
-:- pred min_prio_loser_tree(ltree(K, P)::in, P::in, maybe(P)::out) is det.
+:- pred min_prio_in_loser_tree_acc(loser_tree(P, K)::in, P::in, maybe(P)::out)
+    is det.
 
-min_prio_loser_tree(LTree, CurrMin, MinPrio) :-
+min_prio_in_loser_tree_acc(LTree, !.CurMinPrio, MaybeMinPrio) :-
     (
-        LTree = start,
-        MinPrio = no
+        LTree = loser_leaf,
+        MaybeMinPrio = no
     ;
-        LTree = loser(_, _, Prio, TL, _, TR),
-        ( CurrMin `leq` Prio ->
-            NewPrio = CurrMin
-        ;
-            NewPrio = Prio
-        ),
-        min_prio_loser_tree(TL, NewPrio, MinPrio1),
-        min_prio_loser_tree(TR, NewPrio, MinPrio2),
+        LTree = loser_node(_, Prio, _, SubLTreeL, _, SubLTreeR),
+        compare(CMP, !.CurMinPrio, Prio),
         (
-            MinPrio1 = no,
-            MinPrio2 = no,
-            MinPrio = yes(NewPrio)
+            ( CMP = (<)
+            ; CMP = (=)
+            )
         ;
-            MinPrio1 = yes(MinPrio1Val),
-            MinPrio2 = no,
-            MinPrio = yes(min(MinPrio1Val, NewPrio))
-        ;
-            MinPrio2 = yes(MinPrio2Val),
-            MinPrio1 = no,
-            MinPrio = yes(min(MinPrio2Val, NewPrio))
-        ;
-            MinPrio1 = yes(MinPrio1Val),
-            MinPrio2 = yes(MinPrio2Val),
-            MinPrio = yes(min(MinPrio1Val,
-                          min(MinPrio2Val, NewPrio)))
-        )
+            CMP = (>),
+            !:CurMinPrio = Prio
+        ),
+        min_prio_in_loser_tree_acc(SubLTreeL, !.CurMinPrio, MaybeMinPrioL),
+        min_prio_in_loser_tree_acc(SubLTreeR, !.CurMinPrio, MaybeMinPrioR),
+        take_min_xmxmx(!.CurMinPrio, MaybeMinPrioL, MaybeMinPrioR, MinPrio),
+        MaybeMinPrio = yes(MinPrio)
     ).
 
-:- pred all_nodes_loser_prio(ltree(K, P)::in) is semidet.
-
-all_nodes_loser_prio(LTree) :-
-    (
-        LTree = start
-    ;
-        LTree = loser(_, K, Prio, TL, SplitKey, TR),
-        ( K `leq` SplitKey ->
-            min_prio_loser_tree(TL, Prio, MinPrio)
-        ;
-            min_prio_loser_tree(TR, Prio, MinPrio)
-        ),
-        ( MinPrio = no ->
-            MinPrio0 = Prio
-        ;
-            MinPrio = yes(MinPrio0)
-        ),
-        compare(CMP, Prio, MinPrio0),
-        CMP = (=),
-        all_nodes_loser_prio(TL),
-        all_nodes_loser_prio(TR)
-    ).
-
-%-----------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 is_search_tree(PSQ) :-
     (
-        PSQ = void
+        PSQ = empty_psqueue
     ;
-        PSQ = winner(_, _, LTree, _),
-        all_search_keys(LTree)
+        PSQ = nonempty_psqueue(winner(_, _, LTree, _)),
+        loser_tree_has_search_property(LTree)
     ).
 
-:- pred all_search_keys(ltree(K, P)::in) is semidet.
+:- pred loser_tree_has_search_property(loser_tree(P, K)::in) is semidet.
 
-all_search_keys(LTree) :-
+loser_tree_has_search_property(LTree) :-
     (
-        LTree = start
+        LTree = loser_leaf
     ;
-        LTree = loser(_, _, _, TL, SplitKey, TR),
-        max_key_loser_tree(TL, MaxKeyL),
-        min_key_loser_tree(TR, MinKeyR),
+        LTree = loser_node(_, _, _, SubLTreeL, SplitKey, SubLTreeR),
+        max_key_in_loser_tree(SubLTreeL, MaybeMaxKeyL),
+        min_key_in_loser_tree(SubLTreeR, MaybeMinKeyR),
         (
-            MaxKeyL = no
+            MaybeMaxKeyL = no
         ;
-            MaxKeyL = yes(MaxKey),
-            MaxKey `leq` SplitKey,
-            all_search_keys(TL)
+            MaybeMaxKeyL = yes(MaxKeyL),
+            compare(CMPL, MaxKeyL, SplitKey),
+            ( CMPL = (<) ; CMPL = (=) ),
+            loser_tree_has_search_property(SubLTreeL)
         ),
         (
-            MinKeyR = no
+            MaybeMinKeyR = no
         ;
-            MinKeyR = yes(MinKey),
-            compare(CMP, MinKey, SplitKey),
+            MaybeMinKeyR = yes(MinKeyR),
+            compare(CMPR, MinKeyR, SplitKey),
+            CMPR = (>),
+            loser_tree_has_search_property(SubLTreeR)
+        )
+    ).
+
+%------------------%
+
+:- pred min_key_in_loser_tree(loser_tree(P, K)::in, maybe(K)::out) is det.
+
+min_key_in_loser_tree(LTree, MaybeMinKey) :-
+    (
+        LTree = loser_leaf,
+        MaybeMinKey = no
+    ;
+        LTree = loser_node(_, _, Key, SubLTreeL, _, SubLTreeR),
+        CurMin = Key,
+        min_key_in_loser_tree_acc(SubLTreeL, CurMin, MaybeMinKeyL),
+        min_key_in_loser_tree_acc(SubLTreeR, CurMin, MaybeMinKeyR),
+        take_min_xmxmx(CurMin, MaybeMinKeyL, MaybeMinKeyR, MinKey),
+        MaybeMinKey = yes(MinKey)
+    ).
+
+:- pred min_key_in_loser_tree_acc(loser_tree(P, K)::in, K::in,
+    maybe(K)::out) is det.
+
+min_key_in_loser_tree_acc(LTree, !.CurMin, MaybeMinKey) :-
+    (
+        LTree = loser_leaf,
+        MaybeMinKey = no
+    ;
+        LTree = loser_node(_, _, Key, SubLTreeL, _, SubLTreeR),
+        compare(CMP, !.CurMin, Key),
+        (
+            ( CMP = (<)
+            ; CMP = (=)
+            )
+        ;
             CMP = (>),
-            all_search_keys(TR)
-        )
-    ).
-
-:- pred min_key_loser_tree(ltree(K, P)::in, maybe(K)::out) is det.
-
-min_key_loser_tree(LTree, MinKey) :-
-    (
-        LTree = start,
-        MinKey = no
-    ;
-        LTree = loser(_, Key, _, TL, _, TR),
-        min_key_loser_tree(TL, Key, MinKey1),
-        min_key_loser_tree(TR, Key, MinKey2),
-        (
-            MinKey1 = no,
-            MinKey2 = no,
-            MinKey = yes(Key)
-        ;
-            MinKey1 = yes(MinKey1Val),
-            MinKey2 = no,
-            MinKey = yes(min(MinKey1Val, Key))
-        ;
-            MinKey2 = yes(MinKey2Val),
-            MinKey1 = no,
-            MinKey = yes(min(MinKey2Val, Key))
-        ;
-            MinKey1 = yes(MinKey1Val),
-            MinKey2 = yes(MinKey2Val),
-            MinKey = yes(min(MinKey1Val,
-                         min(Key, MinKey2Val)))
-        )
-    ).
-
-:- pred min_key_loser_tree(ltree(K, P)::in, K::in, maybe(K)::out) is det.
-
-min_key_loser_tree(LTree, CurrMin, MinKey) :-
-    (
-        LTree = start, MinKey = no
-    ;
-        LTree = loser(_, Key, _, TL, _, TR),
-        ( CurrMin `leq` Key ->
-            NewKey = CurrMin
-        ;
-            NewKey = Key
+            !:CurMin = Key
         ),
-        min_key_loser_tree(TL, NewKey, MinKey1),
-        min_key_loser_tree(TR, NewKey, MinKey2),
-        (
-            MinKey1 = no,
-            MinKey2 = no,
-            MinKey = yes(NewKey)
-        ;
-            MinKey1 = yes(MinKey1Val),
-            MinKey2 = no,
-            MinKey = yes(min(MinKey1Val, NewKey))
-        ;
-            MinKey2 = yes(MinKey2Val),
-            MinKey1 = no,
-            MinKey = yes(min(MinKey2Val, NewKey))
-        ;
-            MinKey1 = yes(MinKey1Val),
-            MinKey2 = yes(MinKey2Val),
-            MinKey = yes(min(MinKey1Val,
-                         min(MinKey2Val, NewKey)))
-        )
+        min_key_in_loser_tree_acc(SubLTreeL, !.CurMin, MaybeMinKeyL),
+        min_key_in_loser_tree_acc(SubLTreeR, !.CurMin, MaybeMinKeyR),
+        take_min_xmxmx(!.CurMin, MaybeMinKeyL, MaybeMinKeyR, MinKey),
+        MaybeMinKey = yes(MinKey)
     ).
 
-:- pred max_key_loser_tree(ltree(K, P)::in, maybe(K)::out) is det.
+%------------------%
 
-max_key_loser_tree(LTree, MaxKey) :-
+:- pred max_key_in_loser_tree(loser_tree(P, K)::in, maybe(K)::out) is det.
+
+max_key_in_loser_tree(LTree, MaybeMaxKey) :-
     (
-        LTree = start,
-        MaxKey = no
+        LTree = loser_leaf,
+        MaybeMaxKey = no
     ;
-        LTree = loser(_, Key, _, TL, _, TR),
-        max_key_loser_tree(TL, Key, MaxKey1),
-        max_key_loser_tree(TR, Key, MaxKey2),
-        (
-            MaxKey1 = no,
-            MaxKey2 = no,
-            MaxKey = yes(Key)
-        ;
-            MaxKey1 = yes(MaxKey1Val),
-            MaxKey2 = no,
-            MaxKey = yes(max(MaxKey1Val, Key))
-        ;
-            MaxKey2 = yes(MaxKey2Val),
-            MaxKey1 = no,
-            MaxKey = yes(max(MaxKey2Val, Key))
-        ;
-            MaxKey1 = yes(MaxKey1Val),
-            MaxKey2 = yes(MaxKey2Val),
-            MaxKey = yes(max(MaxKey1Val,
-                         max(Key, MaxKey2Val)))
-        )
+        LTree = loser_node(_, _, Key, SubLTreeL, _, SubLTreeR),
+        CurMax = Key,
+        max_key_in_loser_tree_acc(SubLTreeL, CurMax, MaybeMaxKeyL),
+        max_key_in_loser_tree_acc(SubLTreeR, CurMax, MaybeMaxKeyR),
+        take_max_xmxmx(CurMax, MaybeMaxKeyL, MaybeMaxKeyR, MaxKey),
+        MaybeMaxKey = yes(MaxKey)
     ).
 
-:- pred max_key_loser_tree(ltree(K, P)::in, K::in, maybe(K)::out) is det.
+:- pred max_key_in_loser_tree_acc(loser_tree(P, K)::in, K::in,
+    maybe(K)::out) is det.
 
-max_key_loser_tree(LTree, CurrMax, MaxKey) :-
+max_key_in_loser_tree_acc(LTree, !.CurMax, MaybeMaxKey) :-
     (
-        LTree = start, MaxKey = no
+        LTree = loser_leaf,
+        MaybeMaxKey = no
     ;
-        LTree = loser(_, Key, _, TL, _, TR),
-        compare(CMP, CurrMax, Key),
+        LTree = loser_node(_, _, Key, SubLTreeL, _, SubLTreeR),
+        compare(CMP, !.CurMax, Key),
         (
+            CMP = (<),
+            !:CurMax = Key
+        ;
             ( CMP = (=)
             ; CMP = (>)
-            ),
-            NewKey = CurrMax
-        ;
-            CMP = (<),
-            NewKey = Key
+            )
         ),
-        max_key_loser_tree(TL, NewKey, MaxKey1),
-        max_key_loser_tree(TR, NewKey, MaxKey2),
-        (
-            MaxKey1 = no,
-            MaxKey2 = no,
-            MaxKey = yes(NewKey)
-        ;
-            MaxKey1 = yes(MaxKey1Val),
-            MaxKey2 = no,
-            MaxKey = yes(max(MaxKey1Val, NewKey))
-        ;
-            MaxKey2 = yes(MaxKey2Val),
-            MaxKey1 = no,
-            MaxKey = yes(max(MaxKey2Val, NewKey))
-        ;
-            MaxKey1 = yes(MaxKey1Val),
-            MaxKey2 = yes(MaxKey2Val),
-            MaxKey = yes(max(MaxKey1Val,
-                         max(MaxKey2Val, NewKey)))
-        )
+        max_key_in_loser_tree_acc(SubLTreeL, !.CurMax, MaybeMaxKeyL),
+        max_key_in_loser_tree_acc(SubLTreeR, !.CurMax, MaybeMaxKeyR),
+        take_max_xmxmx(!.CurMax, MaybeMaxKeyL, MaybeMaxKeyR, MaxKey),
+        MaybeMaxKey = yes(MaxKey)
     ).
 
-%-----------------------------------------------------------------------%
+%------------------%
 
-key_condition(PSQ) :-
+:- pred take_min_xmxmx(T::in, maybe(T)::in, maybe(T)::in, T::out) is det.
+
+take_min_xmxmx(X, MaybeL, MaybeR, Min) :-
     (
-        PSQ = void
+        MaybeL = no,
+        MaybeR = no,
+        Min = X
     ;
-        PSQ = winner(_, _, T, MaxKey),
+        MaybeL = yes(L),
+        MaybeR = no,
+        Min = min2(X, L)
+    ;
+        MaybeL = no,
+        MaybeR = yes(R),
+        Min = min2(X, R)
+    ;
+        MaybeL = yes(L),
+        MaybeR = yes(R),
+        Min = min2(X, min2(L, R))
+    ).
+
+:- pred take_max_xmxmx(T::in, maybe(T)::in, maybe(T)::in, T::out) is det.
+
+take_max_xmxmx(X, MaybeL, MaybeR, Min) :-
+    (
+        MaybeL = no,
+        MaybeR = no,
+        Min = X
+    ;
+        MaybeL = yes(L),
+        MaybeR = no,
+        Min = max2(X, L)
+    ;
+        MaybeL = no,
+        MaybeR = yes(R),
+        Min = max2(X, R)
+    ;
+        MaybeL = yes(L),
+        MaybeR = yes(R),
+        Min = max2(X, max2(L, R))
+    ).
+
+%---------------------------------------------------------------------------%
+
+has_key_condition(PSQ) :-
+    (
+        PSQ = empty_psqueue
+    ;
+        PSQ = nonempty_psqueue(winner(_, _, LTree, MaxKey)),
         search(PSQ, MaxKey, _),
-        key_condition(PSQ, T)
+        loser_split_keys_are_present(PSQ, LTree)
     ).
 
-:- pred key_condition(psqueue(P, K)::in, ltree(K, P)::in) is semidet.
+    % loser_split_keys_are_present(PSQ, LTree):
+    %
+    % Succeed iff all the split keys in LTree are present *somewhere* in PSQ.
+    % They do not have to be present in LTree itself, and in fact, they often
+    % won't be.
+    %
+:- pred loser_split_keys_are_present(psqueue(P, K)::in, loser_tree(P, K)::in)
+    is semidet.
 
-key_condition(PSQ, T) :-
+loser_split_keys_are_present(PSQ, LTree) :-
     (
-        T = start
+        LTree = loser_leaf
     ;
-        T = loser(_, _, _, TL, SplitKey, TR),
+        LTree = loser_node(_, _, _, SubLTreeL, SplitKey, SubLTreeR),
         search(PSQ, SplitKey, _),
-        key_condition(PSQ, TL),
-        key_condition(PSQ, TR)
+        loser_split_keys_are_present(PSQ, SubLTreeL),
+        loser_split_keys_are_present(PSQ, SubLTreeR)
     ).
 
-%-----------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 is_finite_map(PSQ) :-
     (
-        PSQ = void
+        PSQ = empty_psqueue
     ;
-        PSQ = winner(_, _, T, _),
-        KeyList = get_keys(T),
-        UniqList = list.sort_and_remove_dups(KeyList),
-        length(KeyList, LK),
-        length(UniqList, LUK),
-        LK = LUK
+        PSQ = nonempty_psqueue(Winner),
+        Winner = winner(_, _, LTree, _),
+        Keys = get_keys(LTree),
+        list.sort_and_remove_dups(Keys, UniqKeys),
+        list.length(Keys, NumKeys),
+        list.length(UniqKeys, NumUniqKeys),
+        NumKeys = NumUniqKeys
     ).
 
-:- func get_keys(ltree(K, P)) = list(K).
+    % Return a list of the keys in the given loser tree, in no particular
+    % order.
+    %
+:- func get_keys(loser_tree(P, K)) = list(K).
 
-get_keys(T) = Res :-
+get_keys(LTree) = Keys :-
     (
-        T = start,
-        Res = []
+        LTree = loser_leaf,
+        Keys = []
     ;
-        T = loser(_, K, _, TL, _, TR),
-        Res = [K | get_keys(TL) ++ get_keys(TR)]
+        LTree = loser_node(_, _, Key, SubLTreeL, _, SubLTreeR),
+        Keys = [Key | get_keys(SubLTreeL) ++ get_keys(SubLTreeR)]
+    ).
+
+%---------------------------------------------------------------------------%
+
+dump_psqueue(PSQ) =
+    dump_psqueue(0, PSQ).
+
+verify_and_dump_psqueue(PSQ) = Str :-
+    (
+        is_semi_heap(PSQ),
+        is_search_tree(PSQ),
+        has_key_condition(PSQ),
+        is_finite_map(PSQ)
+    ->
+        Str = dump_psqueue(PSQ)
+    ;
+        unexpected($module, $pred, "verification failed")
+    ).
+
+:- func indent_string(int) = string.
+
+indent_string(Indent) = IndentStr :-
+    string.duplicate_char(' ', Indent * 2, IndentStr).
+
+:- func dump_psqueue(int, psqueue(P, K)) = string.
+
+dump_psqueue(Indent, PSQ) = Str :-
+    IndentStr = indent_string(Indent),
+    (
+        PSQ = empty_psqueue,
+        Str = IndentStr ++ "void"
+    ;
+        PSQ = nonempty_psqueue(Winner),
+        Str = dump_winner(Indent, Winner)
+    ).
+
+:- func dump_winner(int, winner(P, K)) = string.
+
+dump_winner(Indent, Winner) = Str :-
+    IndentStr = indent_string(Indent),
+    Winner = winner(WinnerPrio, WinnerKey, LTree, MaxKey),
+    Str = IndentStr ++ "winner(prio " ++ string(WinnerPrio) ++
+        ", key " ++ string(WinnerKey) ++
+        ", maxkey " ++ string(MaxKey) ++ ",\n" ++
+            dump_loser_tree(Indent + 1, LTree) ++
+        IndentStr ++ ")\n".
+
+:- func dump_loser_tree(int, loser_tree(P, K)) = string.
+
+dump_loser_tree(Indent, LTree) = Str :-
+    IndentStr = indent_string(Indent),
+    (
+        LTree = loser_leaf,
+        Str = IndentStr ++ "loser_leaf\n"
+    ;
+        LTree = loser_node(Size, LoserPrio, LoserKey,
+            LTreeL, SplitKey, LTreeR),
+        Str = IndentStr ++ "loser_node(size " ++ int_to_string(Size) ++
+            ", prio " ++ string(LoserPrio) ++
+            ", key " ++ string(LoserKey) ++ "\n" ++
+                dump_loser_tree(Indent + 1, LTreeL) ++
+            IndentStr ++ "split key " ++ string(SplitKey) ++ "\n" ++
+                dump_loser_tree(Indent + 1, LTreeR) ++
+            IndentStr ++ ")\n"
+    ).
+
+:- func dump_tournament(int, tournament_view(P, K)) = string.
+
+dump_tournament(Indent, Tournament) = Str :-
+    IndentStr = indent_string(Indent),
+    (
+        Tournament = singleton_tournament(Prio, Key),
+        Str = IndentStr ++ "singleton_tournament(key " ++ string(Key) ++
+            ", prio " ++ string(Prio) ++ ")\n"
+    ;
+        Tournament = tournament_between(WinnerA, WinnerB),
+        Str = IndentStr ++ "tournament_between(\n" ++
+                dump_winner(Indent + 1, WinnerA) ++
+            IndentStr ++ "and\n" ++
+                dump_winner(Indent + 1, WinnerB) ++
+            IndentStr ++ ")\n"
     ).
 
 %---------------------------------------------------------------------------%

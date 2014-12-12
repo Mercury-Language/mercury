@@ -1,8 +1,322 @@
 empty test: ok
-paper example test: winner("Lennart", 1, loser(7, "Phil", 3, loser(3, "Erik", 2, loser(1, "Charles", 4, start, "Charles", start), "Erik", loser(1, "Mary", 6, start, "Lennart", start)), "Mary", loser(3, "Simon", 5, loser(1, "Richard", 7, start, "Phil", start), "Richard", loser(1, "Warren", 8, start, "Simon", start))), "Warren")
-at_most 4: sol([1 - "Lennart", 2 - "Erik", 3 - "Phil", 4 - "Charles"])
-to_ord_assoc_list test: [1 - "Lennart", 2 - "Erik", 3 - "Phil", 4 - "Charles", 5 - "Simon", 6 - "Mary", 7 - "Richard", 8 - "Warren"]
-delete Phil: [1 - "Lennart", 2 - "Erik", 4 - "Charles", 5 - "Simon", 6 - "Mary", 7 - "Richard", 8 - "Warren"], 3
-from_assoc_list: [0 - "M", 1 - "L", 2 - "B", 3 - "N", 4 - "H"]
-Adjust: [1 - "L", 2 - "B", 3 - "N", 4 - "H", 10 - "M"]
+nonempty test: ok
+empty test after remove: ok
 
+extended paper example test:
+size before insert is 0
+inserting prio 1, key Lennart2, giving
+winner(prio 1, key "Lennart2", maxkey "Lennart2",
+  loser_leaf
+)
+size after insert is 1
+
+size before insert is 1
+inserting prio 8, key Warren, giving
+winner(prio 1, key "Lennart2", maxkey "Warren",
+  loser_node(size 1, prio 8, key "Warren"
+    loser_leaf
+  split key "Lennart2"
+    loser_leaf
+  )
+)
+size after insert is 2
+
+size before insert is 2
+inserting prio 2, key Erik, giving
+winner(prio 1, key "Lennart2", maxkey "Warren",
+  loser_node(size 2, prio 8, key "Warren"
+    loser_node(size 1, prio 2, key "Erik"
+      loser_leaf
+    split key "Erik"
+      loser_leaf
+    )
+  split key "Lennart2"
+    loser_leaf
+  )
+)
+size after insert is 3
+
+size before insert is 3
+inserting prio 7, key Richard, giving
+winner(prio 1, key "Lennart2", maxkey "Warren",
+  loser_node(size 3, prio 7, key "Richard"
+    loser_node(size 1, prio 2, key "Erik"
+      loser_leaf
+    split key "Erik"
+      loser_leaf
+    )
+  split key "Lennart2"
+    loser_node(size 1, prio 8, key "Warren"
+      loser_leaf
+    split key "Richard"
+      loser_leaf
+    )
+  )
+)
+size after insert is 4
+
+size before insert is 4
+inserting prio 5, key Simon, giving
+winner(prio 1, key "Lennart2", maxkey "Warren",
+  loser_node(size 4, prio 5, key "Simon"
+    loser_node(size 1, prio 2, key "Erik"
+      loser_leaf
+    split key "Erik"
+      loser_leaf
+    )
+  split key "Lennart2"
+    loser_node(size 2, prio 7, key "Richard"
+      loser_leaf
+    split key "Richard"
+      loser_node(size 1, prio 8, key "Warren"
+        loser_leaf
+      split key "Simon"
+        loser_leaf
+      )
+    )
+  )
+)
+size after insert is 5
+
+size before insert is 5
+inserting prio 4, key Charles, giving
+winner(prio 1, key "Lennart2", maxkey "Warren",
+  loser_node(size 5, prio 5, key "Simon"
+    loser_node(size 2, prio 2, key "Erik"
+      loser_node(size 1, prio 4, key "Charles"
+        loser_leaf
+      split key "Charles"
+        loser_leaf
+      )
+    split key "Erik"
+      loser_leaf
+    )
+  split key "Lennart2"
+    loser_node(size 2, prio 7, key "Richard"
+      loser_leaf
+    split key "Richard"
+      loser_node(size 1, prio 8, key "Warren"
+        loser_leaf
+      split key "Simon"
+        loser_leaf
+      )
+    )
+  )
+)
+size after insert is 6
+
+size before insert is 6
+inserting prio 6, key Mary, giving
+winner(prio 1, key "Lennart2", maxkey "Warren",
+  loser_node(size 6, prio 5, key "Simon"
+    loser_node(size 2, prio 2, key "Erik"
+      loser_node(size 1, prio 4, key "Charles"
+        loser_leaf
+      split key "Charles"
+        loser_leaf
+      )
+    split key "Erik"
+      loser_leaf
+    )
+  split key "Lennart2"
+    loser_node(size 3, prio 6, key "Mary"
+      loser_node(size 1, prio 7, key "Richard"
+        loser_leaf
+      split key "Mary"
+        loser_leaf
+      )
+    split key "Richard"
+      loser_node(size 1, prio 8, key "Warren"
+        loser_leaf
+      split key "Simon"
+        loser_leaf
+      )
+    )
+  )
+)
+size after insert is 7
+
+size before insert is 7
+inserting prio 3, key Phil, giving
+winner(prio 1, key "Lennart2", maxkey "Warren",
+  loser_node(size 7, prio 3, key "Phil"
+    loser_node(size 2, prio 2, key "Erik"
+      loser_node(size 1, prio 4, key "Charles"
+        loser_leaf
+      split key "Charles"
+        loser_leaf
+      )
+    split key "Erik"
+      loser_leaf
+    )
+  split key "Lennart2"
+    loser_node(size 4, prio 5, key "Simon"
+      loser_node(size 2, prio 6, key "Mary"
+        loser_leaf
+      split key "Mary"
+        loser_node(size 1, prio 7, key "Richard"
+          loser_leaf
+        split key "Phil"
+          loser_leaf
+        )
+      )
+    split key "Richard"
+      loser_node(size 1, prio 8, key "Warren"
+        loser_leaf
+      split key "Simon"
+        loser_leaf
+      )
+    )
+  )
+)
+size after insert is 8
+
+size before insert is 8
+inserting prio 1, key Lennart, giving
+winner(prio 1, key "Lennart", maxkey "Warren",
+  loser_node(size 8, prio 3, key "Phil"
+    loser_node(size 3, prio 2, key "Erik"
+      loser_node(size 1, prio 4, key "Charles"
+        loser_leaf
+      split key "Charles"
+        loser_leaf
+      )
+    split key "Erik"
+      loser_node(size 1, prio 1, key "Lennart2"
+        loser_leaf
+      split key "Lennart"
+        loser_leaf
+      )
+    )
+  split key "Lennart2"
+    loser_node(size 4, prio 5, key "Simon"
+      loser_node(size 2, prio 6, key "Mary"
+        loser_leaf
+      split key "Mary"
+        loser_node(size 1, prio 7, key "Richard"
+          loser_leaf
+        split key "Phil"
+          loser_leaf
+        )
+      )
+    split key "Richard"
+      loser_node(size 1, prio 8, key "Warren"
+        loser_leaf
+      split key "Simon"
+        loser_leaf
+      )
+    )
+  )
+)
+size after insert is 9
+
+size before insert is 9
+inserting prio 2, key Erik2, giving
+winner(prio 1, key "Lennart", maxkey "Warren",
+  loser_node(size 9, prio 3, key "Phil"
+    loser_node(size 4, prio 2, key "Erik"
+      loser_node(size 1, prio 4, key "Charles"
+        loser_leaf
+      split key "Charles"
+        loser_leaf
+      )
+    split key "Erik"
+      loser_node(size 2, prio 1, key "Lennart2"
+        loser_node(size 1, prio 2, key "Erik2"
+          loser_leaf
+        split key "Erik2"
+          loser_leaf
+        )
+      split key "Lennart"
+        loser_leaf
+      )
+    )
+  split key "Lennart2"
+    loser_node(size 4, prio 5, key "Simon"
+      loser_node(size 2, prio 6, key "Mary"
+        loser_leaf
+      split key "Mary"
+        loser_node(size 1, prio 7, key "Richard"
+          loser_leaf
+        split key "Phil"
+          loser_leaf
+        )
+      )
+    split key "Richard"
+      loser_node(size 1, prio 8, key "Warren"
+        loser_leaf
+      split key "Simon"
+        loser_leaf
+      )
+    )
+  )
+)
+size after insert is 10
+
+
+at_most tests
+at_most 0: []
+at_most 1: [1 - "Lennart", 1 - "Lennart2"]
+at_most 2: [2 - "Erik", 2 - "Erik2", 1 - "Lennart", 1 - "Lennart2"]
+at_most 3: [2 - "Erik", 2 - "Erik2", 1 - "Lennart", 1 - "Lennart2", 3 - "Phil"]
+at_most 4: [4 - "Charles", 2 - "Erik", 2 - "Erik2", 1 - "Lennart", 1 - "Lennart2", 3 - "Phil"]
+at_most 5: [4 - "Charles", 2 - "Erik", 2 - "Erik2", 1 - "Lennart", 1 - "Lennart2", 3 - "Phil", 5 - "Simon"]
+at_most 6: [4 - "Charles", 2 - "Erik", 2 - "Erik2", 1 - "Lennart", 1 - "Lennart2", 6 - "Mary", 3 - "Phil", 5 - "Simon"]
+at_most 7: [4 - "Charles", 2 - "Erik", 2 - "Erik2", 1 - "Lennart", 1 - "Lennart2", 6 - "Mary", 3 - "Phil", 7 - "Richard", 5 - "Simon"]
+at_most 8: [4 - "Charles", 2 - "Erik", 2 - "Erik2", 1 - "Lennart", 1 - "Lennart2", 6 - "Mary", 3 - "Phil", 7 - "Richard", 5 - "Simon", 8 - "Warren"]
+at_most 9: [4 - "Charles", 2 - "Erik", 2 - "Erik2", 1 - "Lennart", 1 - "Lennart2", 6 - "Mary", 3 - "Phil", 7 - "Richard", 5 - "Simon", 8 - "Warren"]
+
+to_ord_assoc_list test:
+[1 - "Lennart", 1 - "Lennart2", 2 - "Erik", 2 - "Erik2", 3 - "Phil", 4 - "Charles", 5 - "Simon", 6 - "Mary", 7 - "Richard", 8 - "Warren"]
+
+delete tests
+delete key Lennart2: prio 1, left [1 - "Lennart", 2 - "Erik", 2 - "Erik2", 3 - "Phil", 4 - "Charles", 5 - "Simon", 6 - "Mary", 7 - "Richard", 8 - "Warren"]
+delete key Warren: prio 8, left [1 - "Lennart", 1 - "Lennart2", 2 - "Erik", 2 - "Erik2", 3 - "Phil", 4 - "Charles", 5 - "Simon", 6 - "Mary", 7 - "Richard"]
+delete key Erik: prio 2, left [1 - "Lennart", 1 - "Lennart2", 2 - "Erik2", 3 - "Phil", 4 - "Charles", 5 - "Simon", 6 - "Mary", 7 - "Richard", 8 - "Warren"]
+delete key Richard: prio 7, left [1 - "Lennart", 1 - "Lennart2", 2 - "Erik", 2 - "Erik2", 3 - "Phil", 4 - "Charles", 5 - "Simon", 6 - "Mary", 8 - "Warren"]
+delete key Simon: prio 5, left [1 - "Lennart", 1 - "Lennart2", 2 - "Erik", 2 - "Erik2", 3 - "Phil", 4 - "Charles", 6 - "Mary", 7 - "Richard", 8 - "Warren"]
+delete key Charles: prio 4, left [1 - "Lennart", 1 - "Lennart2", 2 - "Erik", 2 - "Erik2", 3 - "Phil", 5 - "Simon", 6 - "Mary", 7 - "Richard", 8 - "Warren"]
+delete key Mary: prio 6, left [1 - "Lennart", 1 - "Lennart2", 2 - "Erik", 2 - "Erik2", 3 - "Phil", 4 - "Charles", 5 - "Simon", 7 - "Richard", 8 - "Warren"]
+delete key Phil: prio 3, left [1 - "Lennart", 1 - "Lennart2", 2 - "Erik", 2 - "Erik2", 4 - "Charles", 5 - "Simon", 6 - "Mary", 7 - "Richard", 8 - "Warren"]
+delete key Lennart: prio 1, left [1 - "Lennart2", 2 - "Erik", 2 - "Erik2", 3 - "Phil", 4 - "Charles", 5 - "Simon", 6 - "Mary", 7 - "Richard", 8 - "Warren"]
+delete key Erik2: prio 2, left [1 - "Lennart", 1 - "Lennart2", 2 - "Erik", 3 - "Phil", 4 - "Charles", 5 - "Simon", 6 - "Mary", 7 - "Richard", 8 - "Warren"]
+delete key NotThere: failed
+
+from_assoc_list test:
+via from_assoc_list and via inserts assoc lists agree:
+[0 - "M", 1 - "L", 2 - "B", 3 - "N", 4 - "H"]
+via from_assoc_list and via inserts psqueues agree:
+winner(prio 0, key "M", maxkey "N",
+  loser_node(size 4, prio 2, key "B"
+    loser_node(size 1, prio 4, key "H"
+      loser_leaf
+    split key "B"
+      loser_leaf
+    )
+  split key "H"
+    loser_node(size 2, prio 1, key "L"
+      loser_leaf
+    split key "L"
+      loser_node(size 1, prio 3, key "N"
+        loser_leaf
+      split key "M"
+        loser_leaf
+      )
+    )
+  )
+)
+
+
+adjust tests on
+[0 - "M", 1 - "L", 2 - "B", 3 - "N", 4 - "H"]
+adjusting priority of H to 0 succeeded
+[0 - "H", 0 - "M", 1 - "L", 2 - "B", 3 - "N"]
+adjusting priority of L to 8 succeeded
+[0 - "M", 2 - "B", 3 - "N", 4 - "H", 8 - "L"]
+adjusting priority of B to 2 succeeded
+[0 - "M", 1 - "L", 2 - "B", 3 - "N", 4 - "H"]
+adjusting priority of M to 2 succeeded
+[1 - "L", 2 - "B", 2 - "M", 3 - "N", 4 - "H"]
+adjusting priority of N to 1 succeeded
+[0 - "M", 1 - "L", 1 - "N", 2 - "B", 4 - "H"]
+adjusting priority of X to 7 failed
