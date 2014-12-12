@@ -343,37 +343,6 @@ typed_compare(R, X, Y) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
-    pointer_equal(A::in, B::in),
-    [promise_pure, thread_safe, will_not_call_mercury,
-        will_not_throw_exception, terminates],
-"
-    SUCCESS_INDICATOR = (A == B);
-").
-
-:- pragma foreign_proc("Java",
-    pointer_equal(A::in, B::in),
-    [promise_pure, thread_safe, will_not_call_mercury,
-        will_not_throw_exception, terminates],
-"
-    SUCCESS_INDICATOR = (A == B);
-").
-
-:- pragma foreign_proc("C#",
-    pointer_equal(A::in, B::in),
-    [promise_pure, thread_safe, will_not_call_mercury,
-        will_not_throw_exception, terminates],
-"
-    SUCCESS_INDICATOR = System.Object.ReferenceEquals(A, B);
-").
-
-% Conservative default for backends that do not have pointer equality,
-% such as Erlang. (Erlang does have erts_debug:same/1 but we don't know
-% whether we can rely on that.)
-pointer_equal(_A, _B) :- semidet_false.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
 % This section of the module handles the runtime representation of
