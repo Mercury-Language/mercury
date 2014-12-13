@@ -455,6 +455,7 @@ public class MercuryThreadPool
                  * Have all the tasks been completed?
                  */
                 tasks_lock.lock();
+                tasks_locked = true;
                 try {
                     num_tasks_submitted = this.num_tasks_submitted;
                     num_tasks_completed = this.num_tasks_completed;
