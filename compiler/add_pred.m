@@ -396,7 +396,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
 do_add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
         MaybeArgLives, DetismDecl, MaybeDet, Context, IsAddressTaken,
         HasParallelConj, PredInfo0, PredInfo, ModeId) :-
-    pred_info_get_procedures(PredInfo0, Procs0),
+    pred_info_get_proc_table(PredInfo0, Procs0),
     pred_info_get_arg_types(PredInfo0, ArgTypes),
     pred_info_get_var_name_remap(PredInfo0, VarNameRemap),
     next_mode_id(Procs0, ModeId),
@@ -405,7 +405,7 @@ do_add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
         VarNameRemap, NewProc0),
     proc_info_set_inst_varset(InstVarSet, NewProc0, NewProc),
     map.det_insert(ModeId, NewProc, Procs0, Procs),
-    pred_info_set_procedures(Procs, PredInfo0, PredInfo).
+    pred_info_set_proc_table(Procs, PredInfo0, PredInfo).
 
 %-----------------------------------------------------------------------------%
 

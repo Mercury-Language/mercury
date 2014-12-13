@@ -444,13 +444,13 @@ copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
     ->
         PredTable = PredTable0
     ;
-        pred_info_get_procedures(PredInfo0, ProcTable0),
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
         map.lookup(OldPredTable, PredId, OldPredInfo),
-        pred_info_get_procedures(OldPredInfo, OldProcTable),
+        pred_info_get_proc_table(OldPredInfo, OldProcTable),
         map.keys(OldProcTable, OldProcIds),
         list.foldl(copy_proc_body(OldProcTable), OldProcIds,
             ProcTable0, ProcTable),
-        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
         map.set(PredId, PredInfo, PredTable0, PredTable)
     ).
 
@@ -563,7 +563,7 @@ do_modecheck_pred(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
         !ModuleInfo, !Changed, DeclSpecs, ProcSpecs) :-
     (
         WhatToCheck = check_modes,
-        pred_info_get_procedures(PredInfo0, ProcTable),
+        pred_info_get_proc_table(PredInfo0, ProcTable),
         (
             some [ProcInfo] (
                 map.member(ProcTable, _ProcId, ProcInfo),
@@ -638,9 +638,9 @@ maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             !ModuleInfo, ProcInfo0, ProcInfo, !Changed, Specs),
         module_info_get_preds(!.ModuleInfo, Preds1),
         map.lookup(Preds1, PredId, PredInfo1),
-        pred_info_get_procedures(PredInfo1, Procs1),
+        pred_info_get_proc_table(PredInfo1, Procs1),
         map.set(ProcId, ProcInfo, Procs1, Procs),
-        pred_info_set_procedures(Procs, PredInfo1, PredInfo),
+        pred_info_set_proc_table(Procs, PredInfo1, PredInfo),
         map.set(PredId, PredInfo, Preds1, Preds),
         module_info_set_preds(Preds, !ModuleInfo)
     ).
@@ -1033,13 +1033,13 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
 
     module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, Procs0),
+    pred_info_get_proc_table(PredInfo0, Procs0),
     map.lookup(Procs0, ProcId, ProcInfo0),
 
     proc_info_set_can_process(yes, ProcInfo0, ProcInfo1),
 
     map.det_update(ProcId, ProcInfo1, Procs0, Procs1),
-    pred_info_set_procedures(Procs1, PredInfo0, PredInfo1),
+    pred_info_set_proc_table(Procs1, PredInfo0, PredInfo1),
     map.det_update(PredId, PredInfo1, Preds0, Preds1),
     module_info_set_preds(Preds1, !ModuleInfo),
 
@@ -1059,14 +1059,14 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
 
             module_info_get_preds(!.ModuleInfo, Preds2),
             map.lookup(Preds2, PredId, PredInfo2),
-            pred_info_get_procedures(PredInfo2, Procs2),
+            pred_info_get_proc_table(PredInfo2, Procs2),
             map.lookup(Procs2, ProcId, ProcInfo2),
 
             SwitchDetectInfo = init_switch_detect_info(!.ModuleInfo),
             detect_switches_in_proc(SwitchDetectInfo, ProcInfo2, ProcInfo3),
 
             map.det_update(ProcId, ProcInfo3, Procs2, Procs3),
-            pred_info_set_procedures(Procs3, PredInfo2, PredInfo3),
+            pred_info_set_proc_table(Procs3, PredInfo2, PredInfo3),
             map.det_update(PredId, PredInfo3, Preds2, Preds3),
             module_info_set_preds(Preds3, !ModuleInfo),
 
@@ -1095,9 +1095,9 @@ save_proc_info(ProcId, PredId, ModuleInfo, !OldPredTable) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
     map.lookup(!.OldPredTable, PredId, OldPredInfo0),
-    pred_info_get_procedures(OldPredInfo0, OldProcTable0),
+    pred_info_get_proc_table(OldPredInfo0, OldProcTable0),
     map.set(ProcId, ProcInfo, OldProcTable0, OldProcTable),
-    pred_info_set_procedures(OldProcTable, OldPredInfo0, OldPredInfo),
+    pred_info_set_proc_table(OldProcTable, OldPredInfo0, OldPredInfo),
     map.det_update(PredId, OldPredInfo, !OldPredTable).
 
 %-----------------------------------------------------------------------------%

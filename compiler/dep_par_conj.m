@@ -2274,9 +2274,9 @@ create_new_spec_parallel_pred(FutureArgs, OrigPPId, NewPPId,
     % Assign the old procedure to a new predicate, which will be modified
     % in a later pass.
     OrigPPId = proc(_, ProcId),
-    pred_info_get_procedures(NewPredInfo0, NewProcs0),
+    pred_info_get_proc_table(NewPredInfo0, NewProcs0),
     map.set(ProcId, OrigProcInfo, NewProcs0, NewProcs),
-    pred_info_set_procedures(NewProcs, NewPredInfo0, NewPredInfo),
+    pred_info_set_proc_table(NewProcs, NewPredInfo0, NewPredInfo),
 
     % Add the new predicate to the pred table.
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),

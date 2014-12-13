@@ -511,13 +511,13 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
     pred_info::in, pred_info::out) is det.
 
 polymorphism_introduce_exists_casts_pred(ModuleInfo, !PredInfo) :-
-    pred_info_get_procedures(!.PredInfo, Procs0),
+    pred_info_get_proc_table(!.PredInfo, Procs0),
     map.map_values_only(
         (pred(!.ProcInfo::in, !:ProcInfo::out) is det :-
             % Add the extra goals to each procedure.
             introduce_exists_casts_proc(ModuleInfo, !.PredInfo, !ProcInfo)
         ), Procs0, Procs),
-    pred_info_set_procedures(Procs, !PredInfo).
+    pred_info_set_proc_table(Procs, !PredInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -581,10 +581,10 @@ polymorphism_process_pred(PredId, !ModuleInfo) :-
     % with modes for the extra arguments.
 
     ProcIds = pred_info_procids(PredInfo2),
-    pred_info_get_procedures(PredInfo2, Procs0),
+    pred_info_get_proc_table(PredInfo2, Procs0),
     list.foldl(polymorphism_process_proc_in_table(PredInfo2, ClausesInfo,
         ExtraArgModes), ProcIds, Procs0, Procs),
-    pred_info_set_procedures(Procs, PredInfo2, PredInfo),
+    pred_info_set_proc_table(Procs, PredInfo2, PredInfo),
 
     trace [compiletime(flag("debug_poly_caches"))] (
         promise_pure (
@@ -975,7 +975,7 @@ produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
     poly_info_get_var_types(!.Info, VarTypes0),
     poly_info_get_constraint_map(!.Info, ConstraintMap),
     pred_info_get_arg_types(PredInfo, ArgTypes),
-    pred_info_get_tvar_kinds(PredInfo, KindMap),
+    pred_info_get_tvar_kind_map(PredInfo, KindMap),
     pred_info_get_class_context(PredInfo, PredClassContext),
 
     % Generate code to produce values for any existentially quantified
@@ -2042,7 +2042,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
         PredArgTypes),
-    pred_info_get_tvar_kinds(PredInfo, PredKindMap),
+    pred_info_get_tvar_kind_map(PredInfo, PredKindMap),
     pred_info_get_class_context(PredInfo, PredClassContext),
 
     % VarTypes, TypeVarSet* etc come from the caller.
@@ -2794,9 +2794,9 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
     % XXX does anyone know what the preceding line means?
     list.delete_elems(ActualInstanceConstraints0, Seen,
         ActualInstanceConstraints),
-    apply_variable_renaming_to_constraint_proofs(Renaming,
+    apply_variable_renaming_to_constraint_proof_map(Renaming,
         InstanceProofMap, RenamedInstanceProofMap),
-    apply_rec_subst_to_constraint_proofs(InstanceSubst,
+    apply_rec_subst_to_constraint_proof_map(InstanceSubst,
         RenamedInstanceProofMap, ActualInstanceProofMap),
 
     apply_variable_renaming_to_tvar_list(Renaming, UnconstrainedTvars,
@@ -4027,7 +4027,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
         !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     % Find which of the constraints on the pred is the one introduced
@@ -4092,7 +4092,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
 
     proc_info_set_goal(BodyGoal, ProcInfo0, ProcInfo),
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1),
     ( pred_info_is_imported(PredInfo1) ->
         pred_info_set_import_status(status_opt_imported, PredInfo1, PredInfo)
     ;
@@ -4332,8 +4332,8 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
     clauses_info_get_varset(ClausesInfo, VarSet),
     clauses_info_get_vartypes(ClausesInfo, VarTypes),
     pred_info_get_typevarset(PredInfo, TypeVarSet),
-    pred_info_get_tvar_kinds(PredInfo, TypeVarKinds),
-    pred_info_get_constraint_proofs(PredInfo, ProofMap),
+    pred_info_get_tvar_kind_map(PredInfo, TypeVarKinds),
+    pred_info_get_constraint_proof_map(PredInfo, ProofMap),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     rtti_varmaps_init(RttiVarMaps),
     map.init(TypeInfoVarMap),
@@ -4353,8 +4353,8 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
     %
 create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     pred_info_get_typevarset(PredInfo, TypeVarSet),
-    pred_info_get_tvar_kinds(PredInfo, TypeVarKinds),
-    pred_info_get_constraint_proofs(PredInfo, ProofMap),
+    pred_info_get_tvar_kind_map(PredInfo, TypeVarKinds),
+    pred_info_get_constraint_proof_map(PredInfo, ProofMap),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -4384,7 +4384,7 @@ poly_info_extract(Info, !PredInfo, !ProcInfo, !:ModuleInfo) :-
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
     pred_info_set_typevarset(TypeVarSet, !PredInfo),
-    pred_info_set_tvar_kinds(TypeVarKinds, !PredInfo).
+    pred_info_set_tvar_kind_map(TypeVarKinds, !PredInfo).
 
 %---------------------------------------------------------------------------%
 

@@ -2977,7 +2977,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     proc_info_get_argmodes(!.NewProcInfo, ArgModes0),
     pred_info_get_exist_quant_tvars(!.NewPredInfo, ExistQVars0),
     pred_info_get_typevarset(!.NewPredInfo, TypeVarSet0),
-    pred_info_get_tvar_kinds(!.NewPredInfo, KindMap0),
+    pred_info_get_tvar_kind_map(!.NewPredInfo, KindMap0),
     pred_info_get_arg_types(!.NewPredInfo, OriginalArgTypes0),
 
     CallerPredProcId = proc(CallerPredId, _),
@@ -3189,7 +3189,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
 
     NewPredProcId = proc(_, NewProcId),
     NewProcs = map.singleton(NewProcId, !.NewProcInfo),
-    pred_info_set_procedures(NewProcs, !NewPredInfo).
+    pred_info_set_proc_table(NewProcs, !NewPredInfo).
 
 :- pred update_var_types(pair(prog_var, mer_type)::in,
     vartypes::in, vartypes::out) is det.

@@ -114,10 +114,10 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
 
             pred_info_set_var_name_remap(ConsensusMap, !PredInfo),
             ProcIds = pred_info_all_procids(!.PredInfo),
-            pred_info_get_procedures(!.PredInfo, ProcTable0),
+            pred_info_get_proc_table(!.PredInfo, ProcTable0),
             list.foldl(set_var_name_remap_in_proc(ConsensusMap), ProcIds,
                 ProcTable0, ProcTable),
-            pred_info_set_procedures(ProcTable, !PredInfo)
+            pred_info_set_proc_table(ProcTable, !PredInfo)
         )
     ).
 

@@ -148,7 +148,7 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_arg_types(PredInfo0, Types),
     pred_info_get_origin(PredInfo0, Origin),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
     proc_info_interface_determinism(ProcInfo0, Detism),
@@ -196,7 +196,7 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
             ProcInfo1, CloneProcInfo),
         map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable1),
         map.det_insert(CloneProcId, CloneProcInfo, ProcTable1, ProcTable),
-        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
         map.det_update(PredId, PredInfo, PredTable0, PredTable),
         module_info_set_preds(PredTable, !ModuleInfo)
     ;
@@ -584,10 +584,10 @@ figure_out_rec_call_numbers_in_case_list([Case|Cases], !N, !TailCallSites) :-
 deep_prof_transform_pred(ModuleInfo, PredId, !PredMap) :-
     map.lookup(!.PredMap, PredId, PredInfo0),
     ProcIds = pred_info_non_imported_procids(PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     list.foldl(deep_prof_maybe_transform_proc(ModuleInfo, PredId),
         ProcIds, ProcTable0, ProcTable),
-    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     map.det_update(PredId, PredInfo, !PredMap).
 
 :- pred deep_prof_maybe_transform_proc(module_info::in,

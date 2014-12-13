@@ -450,7 +450,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
                 !VarInfo, !Constraints)
         ;
             % At least one declared mode
-            pred_info_get_procedures(CalleePredInfo, CalleeProcTable),
+            pred_info_get_proc_table(CalleePredInfo, CalleeProcTable),
             map.values(CalleeProcTable, CalleeProcInfos),
             list.map(proc_info_get_argmodes, CalleeProcInfos,
                 CalleeArgModeDecls),

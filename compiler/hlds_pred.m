@@ -624,39 +624,60 @@
     %
 :- func pred_info_is_pred_or_func(pred_info) = pred_or_func.
 
-:- pred pred_info_get_context(pred_info::in, prog_context::out) is det.
-:- pred pred_info_get_origin(pred_info::in, pred_origin::out) is det.
-:- pred pred_info_get_import_status(pred_info::in, import_status::out) is det.
-:- pred pred_info_get_goal_type(pred_info::in, goal_type::out) is det.
-:- pred pred_info_get_markers(pred_info::in, pred_markers::out) is det.
-:- pred pred_info_get_attributes(pred_info::in, pred_attributes::out) is det.
-:- pred pred_info_get_arg_types(pred_info::in, list(mer_type)::out) is det.
-:- pred pred_info_get_typevarset(pred_info::in, tvarset::out) is det.
-:- pred pred_info_get_tvar_kinds(pred_info::in, tvar_kind_map::out) is det.
-:- pred pred_info_get_exist_quant_tvars(pred_info::in, existq_tvars::out)
-    is det.
-:- pred pred_info_get_existq_tvar_binding(pred_info::in, tsubst::out) is det.
-:- pred pred_info_get_head_type_params(pred_info::in, head_type_params::out)
-    is det.
-:- pred pred_info_get_class_context(pred_info::in, prog_constraints::out)
-    is det.
-:- pred pred_info_get_constraint_proofs(pred_info::in,
+:- pred pred_info_get_module_name(pred_info::in,
+    module_name::out) is det.
+:- pred pred_info_get_name(pred_info::in,
+    string::out) is det.
+:- pred pred_info_get_orig_arity(pred_info::in,
+    arity::out) is det.
+:- pred pred_info_get_is_pred_or_func(pred_info::in,
+    pred_or_func::out) is det.
+:- pred pred_info_get_context(pred_info::in,
+    prog_context::out) is det.
+:- pred pred_info_get_origin(pred_info::in,
+    pred_origin::out) is det.
+:- pred pred_info_get_import_status(pred_info::in,
+    import_status::out) is det.
+:- pred pred_info_get_goal_type(pred_info::in,
+    goal_type::out) is det.
+:- pred pred_info_get_markers(pred_info::in,
+    pred_markers::out) is det.
+:- pred pred_info_get_attributes(pred_info::in,
+    pred_attributes::out) is det.
+:- pred pred_info_get_arg_types(pred_info::in,
+    list(mer_type)::out) is det.
+:- pred pred_info_get_typevarset(pred_info::in,
+    tvarset::out) is det.
+:- pred pred_info_get_tvar_kind_map(pred_info::in,
+    tvar_kind_map::out) is det.
+:- pred pred_info_get_exist_quant_tvars(pred_info::in,
+    existq_tvars::out) is det.
+:- pred pred_info_get_existq_tvar_binding(pred_info::in,
+    tsubst::out) is det.
+:- pred pred_info_get_head_type_params(pred_info::in,
+    head_type_params::out) is det.
+:- pred pred_info_get_class_context(pred_info::in,
+    prog_constraints::out) is det.
+:- pred pred_info_get_constraint_proof_map(pred_info::in,
     constraint_proof_map::out) is det.
 :- pred pred_info_get_constraint_map(pred_info::in,
     constraint_map::out) is det.
 :- pred pred_info_get_unproven_body_constraints(pred_info::in,
     list(prog_constraint)::out) is det.
-:- pred pred_info_get_inst_graph_info(pred_info::in, inst_graph_info::out)
-    is det.
-:- pred pred_info_get_arg_modes_maps(pred_info::in, list(arg_modes_map)::out)
-    is det.
+:- pred pred_info_get_inst_graph_info(pred_info::in,
+    inst_graph_info::out) is det.
+:- pred pred_info_get_arg_modes_maps(pred_info::in,
+    list(arg_modes_map)::out) is det.
 :- pred pred_info_get_var_name_remap(pred_info::in,
     map(prog_var, string)::out) is det.
-:- pred pred_info_get_assertions(pred_info::in, set(assert_id)::out) is det.
+:- pred pred_info_get_assertions(pred_info::in,
+    set(assert_id)::out) is det.
 :- pred pred_info_get_instance_method_arg_types(pred_info::in,
     list(mer_type)::out) is det.
-:- pred pred_info_get_clauses_info(pred_info::in, clauses_info::out) is det.
-:- pred pred_info_get_procedures(pred_info::in, proc_table::out) is det.
+:- pred pred_info_get_clauses_info(pred_info::in,
+    clauses_info::out) is det.
+:- pred pred_info_get_proc_table(pred_info::in,
+    proc_table::out) is det.
 
     % Setting the name of a pred_info after its creation won't remove its name
     % from the indexes under its old name or insert into the indexes under its
@@ -678,11 +699,9 @@
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_markers(pred_markers::in,
     pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_attributes(pred_attributes::in,
-    pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_typevarset(tvarset::in,
     pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_tvar_kinds(tvar_kind_map::in,
+:- pred pred_info_set_tvar_kind_map(tvar_kind_map::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_existq_tvar_binding(tsubst::in,
     pred_info::in, pred_info::out) is det.
@@ -690,7 +709,7 @@
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_class_context(prog_constraints::in,
     pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_constraint_proofs(constraint_proof_map::in,
+:- pred pred_info_set_constraint_proof_map(constraint_proof_map::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_constraint_map(constraint_map::in,
     pred_info::in, pred_info::out) is det.
@@ -708,7 +727,7 @@
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_clauses_info(clauses_info::in,
     pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_procedures(proc_table::in,
+:- pred pred_info_set_proc_table(proc_table::in,
     pred_info::in, pred_info::out) is det.
 
     % Mode information for the arguments of a procedure.
@@ -1004,22 +1023,22 @@ calls_are_fully_qualified(Markers) =
 :- type pred_sub_info
     --->    pred_sub_info(
                 % The location (line #) of the :- pred decl.
-                context             :: prog_context,
+                psi_context             :: prog_context,
 
                 % Whether the goals seen so far, if any, for this predicate
                 % are clauses or foreign_code(...) pragmas.
-                goal_type           :: goal_type,
+                psi_goal_type           :: goal_type,
 
                 % Various attributes.
-                attributes          :: pred_attributes,
+                psi_attributes          :: pred_attributes,
 
                 % Kinds of the type vars.
-                tvar_kinds          :: tvar_kind_map,
+                psi_tvar_kind_map       :: tvar_kind_map,
 
                 % The statically known bindings of existentially quantified
                 % type variables inside this predicate. This field is set
                 % at the end of the polymorphism stage.
-                existq_tvar_binding :: tsubst,
+                psi_existq_tvar_binding :: tsubst,
 
                 % The set of type variables which the body of the predicate
                 % can't bind, and whose type_infos are produced elsewhere.
@@ -1027,91 +1046,91 @@ calls_are_fully_qualified(Markers) =
                 % type_infos are passed in) plus existentially quantified types
                 % in preds called from the body (the type_infos are returned
                 % from the called predicates). Computed during type checking.
-                head_type_params    :: head_type_params,
+                psi_head_type_params    :: head_type_params,
 
                 % Explanations of how redundant constraints were eliminated.
                 % These are needed by polymorphism.m to work out where to get
                 % the typeclass_infos from. Computed during type checking.
-                constraint_proofs   :: constraint_proof_map,
+                psi_constraint_proof_map :: constraint_proof_map,
 
                 % Maps constraint identifiers to the actual constraints.
                 % Computed during type checking.
-                constraint_map      :: constraint_map,
+                psi_constraint_map      :: constraint_map,
 
                 % Unproven class constraints on type variables in the
                 % predicate's body, if any (if this remains non-empty after
                 % type checking has finished, post_typecheck.m will report a
                 % type error).
-                unproven_body_constraints :: list(prog_constraint),
+                psi_unproven_body_constraints :: list(prog_constraint),
 
                 % The predicate's inst graph, for constraint based
                 % mode analysis.
-                inst_graph_info     :: inst_graph_info,
+                psi_inst_graph_info     :: inst_graph_info,
 
                 % Mode information extracted from constraint based
                 % mode analysis.
-                arg_modes_maps      :: list(arg_modes_map),
+                psi_arg_modes_maps      :: list(arg_modes_map),
 
                 % Renames of some head variables computed by headvar_names.m,
                 % for use by the debugger.
-                var_name_remap      :: map(prog_var, string),
+                psi_var_name_remap      :: map(prog_var, string),
 
                 % List of assertions which mention this predicate.
-                assertions          :: set(assert_id),
+                psi_assertions          :: set(assert_id),
 
                 % If this predicate is a class method implementation, this
                 % list records the argument types before substituting the type
                 % variables for the instance.
                 % XXX does that make sense?
-                instance_method_arg_types :: list(mer_type)
+                psi_instance_method_arg_types :: list(mer_type)
             ).
 
 :- type pred_info
     --->    pred_info(
                 % Module in which pred occurs.
-/*  1 */        module_name         :: module_name,
+/*  1 */        pi_module_name          :: module_name,
 
                 % Predicate name.
-/*  2 */        name                :: string,
+/*  2 */        pi_name                 :: string,
 
                 % The arity of the pred (*not* counting any inserted type_info
                 % arguments).
-/*  3 */        orig_arity          :: arity,
+/*  3 */        pi_orig_arity           :: arity,
 
                 % Whether this "predicate" is really a predicate or a function.
-/*  4 */        is_pred_or_func     :: pred_or_func,
+/*  4 */        pi_is_pred_or_func      :: pred_or_func,
 
                 % Where did the predicate come from.
-/*  5 */        pred_origin         :: pred_origin,
+/*  5 */        pi_pred_origin          :: pred_origin,
 
-/*  6 */        import_status       :: import_status,
+/*  6 */        pi_import_status        :: import_status,
 
                 % Various boolean flags.
-/*  7 */        markers             :: pred_markers,
+/*  7 */        pi_markers              :: pred_markers,
 
                 % Argument types.
-/*  8 */        arg_types           :: list(mer_type),
+/*  8 */        pi_arg_types            :: list(mer_type),
 
                 % Names of type vars in the predicate's type declaration.
-/*  9 */        decl_typevarset     :: tvarset,
+/*  9 */        pi_decl_typevarset      :: tvarset,
 
                 % Names of type vars in the predicate's type declaration
                 % or in the variable type assignments.
-/* 10 */        typevarset          :: tvarset,
+/* 10 */        pi_typevarset           :: tvarset,
 
                 % The set of existentially quantified type variables in the
                 % predicate's type declaration.
-/* 11 */        exist_quant_tvars   :: existq_tvars,
+/* 11 */        pi_exist_quant_tvars    :: existq_tvars,
 
                 % The class constraints on the type variables in the
                 % predicate's type declaration.
-/* 12 */        class_context       :: prog_constraints,
+/* 12 */        pi_class_context        :: prog_constraints,
 
-/* 13 */        clauses_info        :: clauses_info,
+/* 13 */        pi_clauses_info         :: clauses_info,
 
-/* 14 */        procedures          :: proc_table,
+/* 14 */        pi_proc_table           :: proc_table,
 
-/* 15 */        pred_sub_info       :: pred_sub_info
+/* 15 */        pi_pred_sub_info        :: pred_sub_info
 
                 % If you are adding any new fields, please try to ensure
                 % that the number of fields doesn't cross a threshold that
@@ -1267,111 +1286,231 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     instmap::in, instmap::in, list(mer_type)::out, list(mer_mode)::out) is det.
 
 compute_arg_types_modes([], _, _, _, [], []).
-compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
+compute_arg_types_modes([Var | Vars], VarTypes, InstMapInit, InstMapFinal,
         [Type | Types], [Mode | Modes]) :-
     lookup_var_type(VarTypes, Var, Type),
-    instmap_lookup_var(InstMap0, Var, Inst0),
-    instmap_lookup_var(InstMap, Var, Inst),
-    Mode = (Inst0 -> Inst),
-    compute_arg_types_modes(Vars, VarTypes, InstMap0, InstMap, Types, Modes).
+    instmap_lookup_var(InstMapInit, Var, InstInit),
+    instmap_lookup_var(InstMapFinal, Var, InstFinal),
+    Mode = (InstInit -> InstFinal),
+    compute_arg_types_modes(Vars, VarTypes, InstMapInit, InstMapFinal,
+        Types, Modes).
 
 %-----------------------------------------------------------------------------%
 
 % The trivial access predicates.
 
-pred_info_module(PI) = PI ^ module_name.
-pred_info_name(PI) = PI ^ name.
-pred_info_orig_arity(PI) = PI ^ orig_arity.
-pred_info_is_pred_or_func(PI) = PI ^ is_pred_or_func.
+pred_info_module(PI) = X :-
+    pred_info_get_module_name(PI, X).
+pred_info_name(PI) = X :-
+    pred_info_get_name(PI, X).
+pred_info_orig_arity(PI) = X :-
+    pred_info_get_orig_arity(PI, X).
+pred_info_is_pred_or_func(PI) = X :-
+    pred_info_get_is_pred_or_func(PI, X).
 
-pred_info_get_context(PI, PI ^ pred_sub_info ^ context).
-pred_info_get_origin(PI, PI ^ pred_origin).
-pred_info_get_import_status(PI, PI ^ import_status).
-pred_info_get_goal_type(PI, PI ^ pred_sub_info ^ goal_type).
-pred_info_get_markers(PI, PI ^ markers).
-pred_info_get_attributes(PI, PI ^ pred_sub_info ^ attributes).
-pred_info_get_arg_types(PI, PI ^ arg_types).
-pred_info_get_typevarset(PI, PI ^ typevarset).
-pred_info_get_tvar_kinds(PI, PI ^ pred_sub_info ^ tvar_kinds).
-pred_info_get_exist_quant_tvars(PI, PI ^ exist_quant_tvars).
-pred_info_get_existq_tvar_binding(PI,
-    PI ^ pred_sub_info ^ existq_tvar_binding).
-pred_info_get_head_type_params(PI, PI ^ pred_sub_info ^ head_type_params).
-pred_info_get_class_context(PI, PI ^ class_context).
-pred_info_get_constraint_proofs(PI, PI ^ pred_sub_info ^ constraint_proofs).
-pred_info_get_constraint_map(PI, PI ^ pred_sub_info ^ constraint_map).
-pred_info_get_unproven_body_constraints(PI,
-    PI ^ pred_sub_info ^ unproven_body_constraints).
-pred_info_get_inst_graph_info(PI, PI ^ pred_sub_info ^ inst_graph_info).
-pred_info_get_arg_modes_maps(PI, PI ^ pred_sub_info ^ arg_modes_maps).
-pred_info_get_var_name_remap(PI, PI ^ pred_sub_info ^ var_name_remap).
-pred_info_get_assertions(PI, PI ^ pred_sub_info ^ assertions).
-pred_info_get_instance_method_arg_types(PI,
-    PI ^ pred_sub_info ^ instance_method_arg_types).
-pred_info_get_clauses_info(PI, PI ^ clauses_info).
-pred_info_get_procedures(PI, PI ^ procedures).
+pred_info_get_module_name(!.PI, X) :-
+    X = !.PI ^ pi_module_name.
+pred_info_get_name(!.PI, X) :-
+    X = !.PI ^ pi_name.
+pred_info_get_orig_arity(!.PI, X) :-
+    X = !.PI ^ pi_orig_arity.
+pred_info_get_is_pred_or_func(!.PI, X) :-
+    X = !.PI ^ pi_is_pred_or_func.
+
+pred_info_get_context(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_context.
+pred_info_get_origin(!.PI, X) :-
+    X = !.PI ^ pi_pred_origin.
+pred_info_get_import_status(!.PI, X) :-
+    X = !.PI ^ pi_import_status.
+pred_info_get_goal_type(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_goal_type.
+pred_info_get_markers(!.PI, X) :-
+    X = !.PI ^ pi_markers.
+pred_info_get_attributes(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_attributes.
+pred_info_get_arg_types(!.PI, X) :-
+    X = !.PI ^ pi_arg_types.
+pred_info_get_typevarset(!.PI, X) :-
+    X = !.PI ^ pi_typevarset.
+pred_info_get_tvar_kind_map(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_tvar_kind_map.
+pred_info_get_exist_quant_tvars(!.PI, X) :-
+    X = !.PI ^ pi_exist_quant_tvars.
+pred_info_get_existq_tvar_binding(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_existq_tvar_binding.
+pred_info_get_head_type_params(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_head_type_params.
+pred_info_get_class_context(!.PI, X) :-
+    X = !.PI ^ pi_class_context.
+pred_info_get_constraint_proof_map(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_constraint_proof_map.
+pred_info_get_constraint_map(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_constraint_map.
+pred_info_get_unproven_body_constraints(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_unproven_body_constraints.
+pred_info_get_inst_graph_info(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_inst_graph_info.
+pred_info_get_arg_modes_maps(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_arg_modes_maps.
+pred_info_get_var_name_remap(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_var_name_remap.
+pred_info_get_assertions(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_assertions.
+pred_info_get_instance_method_arg_types(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_instance_method_arg_types.
+pred_info_get_clauses_info(!.PI, X) :-
+    X = !.PI ^ pi_clauses_info.
+pred_info_get_proc_table(!.PI, X) :-
+    X = !.PI ^ pi_proc_table.
 
 pred_info_set_name(X, !PI) :-
-    !PI ^ name := X.
+    !PI ^ pi_name := X.
 pred_info_set_orig_arity(X, !PI) :-
-    !PI ^ orig_arity := X.
+    !PI ^ pi_orig_arity := X.
 pred_info_set_is_pred_or_func(X, !PI) :-
-    !PI ^ is_pred_or_func := X.
+    ( if X = !.PI ^ pi_is_pred_or_func then
+        true
+    else
+        !PI ^ pi_is_pred_or_func := X
+    ).
 pred_info_set_origin(X, !PI) :-
-    !PI ^ pred_origin := X.
+    ( if private_builtin.pointer_equal(X, !.PI ^ pi_pred_origin) then
+        true
+    else
+        !PI ^ pi_pred_origin := X
+    ).
 pred_info_set_import_status(X, !PI) :-
-    !PI ^ import_status := X.
+    !PI ^ pi_import_status := X.
 pred_info_set_goal_type(X, !PI) :-
-    !PI ^ pred_sub_info ^ goal_type := X.
+    !PI ^ pi_pred_sub_info ^ psi_goal_type := X.
 pred_info_set_markers(X, !PI) :-
-    !PI ^ markers := X.
-pred_info_set_attributes(X, !PI) :-
-    !PI ^ pred_sub_info ^ attributes := X.
+    !PI ^ pi_markers := X.
 pred_info_set_typevarset(X, !PI) :-
-    !PI ^ typevarset := X.
-pred_info_set_tvar_kinds(X, !PI) :-
-    !PI ^ pred_sub_info ^ tvar_kinds := X.
+    ( if private_builtin.pointer_equal(X, !.PI ^ pi_typevarset) then
+        true
+    else
+        !PI ^ pi_typevarset := X
+    ).
+pred_info_set_tvar_kind_map(X, !PI) :-
+    ( if
+        private_builtin.pointer_equal(X,
+            !.PI ^ pi_pred_sub_info ^ psi_tvar_kind_map)
+    then
+        true
+    else
+        !PI ^ pi_pred_sub_info ^ psi_tvar_kind_map:= X
+    ).
 pred_info_set_existq_tvar_binding(X, !PI) :-
-    !PI ^ pred_sub_info ^ existq_tvar_binding := X.
+    !PI ^ pi_pred_sub_info ^ psi_existq_tvar_binding := X.
 pred_info_set_head_type_params(X, !PI) :-
-    !PI ^ pred_sub_info ^ head_type_params := X.
+    ( if
+        private_builtin.pointer_equal(X,
+            !.PI ^ pi_pred_sub_info ^ psi_head_type_params)
+    then
+        true
+    else
+        !PI ^ pi_pred_sub_info ^ psi_head_type_params := X
+    ).
 pred_info_set_class_context(X, !PI) :-
-    !PI ^ class_context := X.
-pred_info_set_constraint_proofs(X, !PI) :-
-    !PI ^ pred_sub_info ^ constraint_proofs := X.
+    !PI ^ pi_class_context := X.
+pred_info_set_constraint_proof_map(X, !PI) :-
+    ( if
+        private_builtin.pointer_equal(X,
+            !.PI ^ pi_pred_sub_info ^ psi_constraint_proof_map)
+    then
+        true
+    else
+        !PI ^ pi_pred_sub_info ^ psi_constraint_proof_map := X
+    ).
 pred_info_set_constraint_map(X, !PI) :-
-    !PI ^ pred_sub_info ^ constraint_map := X.
+    ( if
+        private_builtin.pointer_equal(X,
+            !.PI ^ pi_pred_sub_info ^ psi_constraint_map)
+    then
+        true
+    else
+        !PI ^ pi_pred_sub_info ^ psi_constraint_map := X
+    ).
 pred_info_set_unproven_body_constraints(X, !PI) :-
-    !PI ^ pred_sub_info ^ unproven_body_constraints := X.
+    ( if
+        private_builtin.pointer_equal(X,
+            !.PI ^ pi_pred_sub_info ^ psi_unproven_body_constraints)
+    then
+        true
+    else
+        !PI ^ pi_pred_sub_info ^ psi_unproven_body_constraints := X
+    ).
 pred_info_set_inst_graph_info(X, !PI) :-
-    !PI ^ pred_sub_info ^ inst_graph_info := X.
+    !PI ^ pi_pred_sub_info ^ psi_inst_graph_info := X.
 pred_info_set_arg_modes_maps(X, !PI) :-
-    !PI ^ pred_sub_info ^ arg_modes_maps := X.
+    !PI ^ pi_pred_sub_info ^ psi_arg_modes_maps := X.
 pred_info_set_var_name_remap(X, !PI) :-
-    !PI ^ pred_sub_info ^ var_name_remap := X.
+    ( if
+        private_builtin.pointer_equal(X,
+            !.PI ^ pi_pred_sub_info ^ psi_var_name_remap)
+    then
+        true
+    else
+        !PI ^ pi_pred_sub_info ^ psi_var_name_remap := X
+    ).
 pred_info_set_assertions(X, !PI) :-
-    !PI ^ pred_sub_info ^ assertions := X.
+    !PI ^ pi_pred_sub_info ^ psi_assertions := X.
 pred_info_set_instance_method_arg_types(X, !PI) :-
-    !PI ^ pred_sub_info ^ instance_method_arg_types := X.
+    !PI ^ pi_pred_sub_info ^ psi_instance_method_arg_types := X.
 pred_info_set_clauses_info(X, !PI) :-
-    !PI ^ clauses_info := X.
-pred_info_set_procedures(X, !PI) :-
-    !PI ^ procedures := X.
+    !PI ^ pi_clauses_info := X.
+pred_info_set_proc_table(X, !PI) :-
+    !PI ^ pi_proc_table := X.
+
+% Access stats for the pred_info structure, derived on 2014 dec 13:
+%
+%  i      read      same      diff   same%
+%  0  43651895         0         0            module_name
+%  1  32003757         0       795   0.00%    name
+%  2  25261836         0         0            orig_arity
+%  3  15356498       727        68  91.45%    is_pred_or_func
+%  4   1667832         0         0            context
+%  5  12075408    382680     89618  81.03%    origin
+%  6  72037616     96336   1082541   8.17%    import_status
+%  7   6629313    100630   1054197   8.71%    goal_type
+%  8  24876447    905599   1098352  45.19%    markers
+%  9        10         0         0            attributes
+% 10  20415273         0         0            arg_types
+% 11  11783136   9736724    752983  92.82%    typevarset
+% 12   3820195     85054         0 100.00%    tvar_kind_map
+% 13   1374911         0         0            exist_quant_vars
+% 14     22563         0        80   0.00%    existq_tvar_binding
+% 15    476703    276426    152903  64.39%    head_type_params
+% 16   7871038         0   2700797   0.00%    class_context
+% 17   2591016    425209      3483  99.19%    constraint_proof_map
+% 18   2752537    404771     23921  94.42%    constrant_map
+% 19    285538    428650         4 100.00%    unproven_body_constraints
+% 20         0         0         0            inst_graph_info
+% 21         0         0         0            arg_modes_maps
+% 22   5892199      6544      6726  49.31%    var_name_remap
+% 23      3834         0      3797   0.00%    assertions
+% 24         0         0     19439   0.00%    instance_method_arg_types
+% 25  22294552     19444  12496762   0.16%    clauses_info
+% 26 124287827    348040  31892426   1.08%    procedures
+% 27  11128685   4600914   1642568  73.69%    three fields: decl_typevarset,
+%                                             exist_quant_vars and arg_types
 
 %-----------------------------------------------------------------------------%
 
 % The non-trivial access predicates.
 
 pred_info_all_procids(PredInfo) = ProcIds :-
-    ProcTable = PredInfo ^ procedures,
+    pred_info_get_proc_table(PredInfo, ProcTable),
     map.keys(ProcTable, ProcIds).
 
 pred_info_procids(PredInfo) = ValidProcIds :-
     AllProcIds = pred_info_all_procids(PredInfo),
-    ProcTable = PredInfo ^ procedures,
+    pred_info_get_proc_table(PredInfo, ProcTable),
     IsValid = (pred(ProcId::in) is semidet :-
         ProcInfo = map.lookup(ProcTable, ProcId),
-        proc_info_is_valid_mode(ProcInfo)),
+        proc_info_is_valid_mode(ProcInfo)
+    ),
     list.filter(IsValid, AllProcIds, ValidProcIds).
 
 pred_info_non_imported_procids(PredInfo) = ProcIds :-
@@ -1451,24 +1590,28 @@ pred_info_exported_procids(PredInfo) = ProcIds :-
     ).
 
 pred_info_remove_procid(ProcId, !PredInfo) :-
-    pred_info_get_procedures(!.PredInfo, Procs0),
+    pred_info_get_proc_table(!.PredInfo, Procs0),
     map.delete(ProcId, Procs0, Procs),
-    pred_info_set_procedures(Procs, !PredInfo).
+    pred_info_set_proc_table(Procs, !PredInfo).
 
-pred_info_get_arg_types(PredInfo, PredInfo ^ decl_typevarset,
-        PredInfo ^ exist_quant_tvars, PredInfo ^ arg_types).
+pred_info_get_arg_types(!.PredInfo, X, Y, Z) :-
+    X = !.PredInfo ^ pi_decl_typevarset,
+    Y = !.PredInfo ^ pi_exist_quant_tvars,
+    Z = !.PredInfo ^ pi_arg_types.
 
-pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes, !PredInfo) :-
-    !PredInfo ^ decl_typevarset := TypeVarSet,
-    !PredInfo ^ exist_quant_tvars := ExistQVars,
-    !PredInfo ^ arg_types := ArgTypes.
+pred_info_set_arg_types(X, Y, Z, !PredInfo) :-
+    !PredInfo ^ pi_decl_typevarset := X,
+    !PredInfo ^ pi_exist_quant_tvars := Y,
+    !PredInfo ^ pi_arg_types := Z.
 
 pred_info_proc_info(PredInfo, ProcId, ProcInfo) :-
-    ProcInfo = map.lookup(PredInfo ^ procedures, ProcId).
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.lookup(ProcTable, ProcId, ProcInfo).
 
-pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo) :-
-    PredInfo = PredInfo0 ^ procedures :=
-        map.set(PredInfo0 ^ procedures, ProcId, ProcInfo).
+pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo) :-
+    pred_info_get_proc_table(!.PredInfo, Procedures0),
+    map.set(ProcId, ProcInfo, Procedures0, Procedures),
+    pred_info_set_proc_table(Procedures, !PredInfo).
 
 pred_info_is_imported(PredInfo) :-
     pred_info_get_import_status(PredInfo, Status),
@@ -1538,9 +1681,10 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         )
     ).
 
-pred_info_mark_as_external(PredInfo0, PredInfo) :-
-    PredInfo = PredInfo0 ^ import_status :=
-        status_external(PredInfo0 ^ import_status).
+pred_info_mark_as_external(!PredInfo) :-
+    pred_info_get_import_status(!.PredInfo, Status0),
+    Status = status_external(Status0),
+    pred_info_set_import_status(Status, !PredInfo).
 
 pred_info_clause_goal_type(PredInfo) :-
     pred_info_get_goal_type(PredInfo, GoalType),
@@ -1586,12 +1730,12 @@ pred_info_update_goal_type(GoalType1, !PredInfo) :-
         GoalType0 = goal_type_promise(_),
         unexpected($module, $pred, "promise")
     ),
-    ( GoalType = GoalType0 ->
-        % Avoid unnecessary memory allocation.
-        true
-    ;
-        pred_info_set_goal_type(GoalType, !PredInfo)
-    ).
+    % ( GoalType = GoalType0 ->
+    %     % Avoid unnecessary memory allocation.
+    %     true
+    % ;
+        pred_info_set_goal_type(GoalType, !PredInfo).
+    % ).
 
 pred_info_requested_inlining(PredInfo0) :-
     pred_info_get_markers(PredInfo0, Markers),
@@ -3088,7 +3232,7 @@ proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
         InterfaceTypeInfoLiveness = no
     ;
         pred_info_get_import_status(PredInfo, Status),
-        pred_info_get_procedures(PredInfo, ProcTable),
+        pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_get_is_address_taken(ProcInfo, IsAddressTaken),
         non_special_interface_should_use_typeinfo_liveness(Status,

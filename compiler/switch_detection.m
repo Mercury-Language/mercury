@@ -173,12 +173,12 @@ detect_switches_in_pred(Info, PredId, !PredInfo) :-
             write_pred_progress_message("% Detecting switches in ", PredId,
                 ModuleInfo, !IO)
         ),
-        pred_info_get_procedures(!.PredInfo, ProcTable0),
+        pred_info_get_proc_table(!.PredInfo, ProcTable0),
         map.to_assoc_list(ProcTable0, ProcList0),
         detect_switches_in_procs(Info, NonImportedProcIds,
             ProcList0, ProcList),
         map.from_sorted_assoc_list(ProcList, ProcTable),
-        pred_info_set_procedures(ProcTable, !PredInfo)
+        pred_info_set_proc_table(ProcTable, !PredInfo)
 
         % This is where we should print statistics, if we ever need
         % to debug the performance of switch detection.

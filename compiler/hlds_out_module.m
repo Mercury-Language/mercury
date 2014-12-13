@@ -545,7 +545,7 @@ write_instance_defns(Info, Indent, ClassId - InstanceDefns, !IO) :-
 write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
     InstanceDefn = hlds_instance_defn(_InstanceModule, _Status,
         Context, Constraints, Types, OriginalTypes, Body,
-        MaybePredProcIds, VarSet, Proofs),
+        MaybePredProcIds, VarSet, ProofMap),
 
     term.context_file(Context, FileName),
     term.context_line(Context, LineNumber),
@@ -606,7 +606,7 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
     ;
         MaybePredProcIds = no
     ),
-    write_constraint_proofs(Indent, VarSet, Proofs, AppendVarNums, !IO),
+    write_constraint_proof_map(Indent, VarSet, ProofMap, AppendVarNums, !IO),
     io.nl(!IO).
 
 %-----------------------------------------------------------------------------%

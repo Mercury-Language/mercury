@@ -1461,7 +1461,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
             CallUnifyContext = no,
             InitMsgs = []
         ),
-        pred_info_get_procedures(PredInfo, ProcTable),
+        pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_declared_argmodes(ProcInfo, ArgModes),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),

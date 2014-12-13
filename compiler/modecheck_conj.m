@@ -537,7 +537,7 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         % Find a deterministic proc for this call.
         mode_info_get_preds(ModeInfo, Preds),
         map.lookup(Preds, PredId, PredInfo),
-        pred_info_get_procedures(PredInfo, ProcTable),
+        pred_info_get_proc_table(PredInfo, ProcTable),
         map.values(ProcTable, ProcInfos),
         list.member(ProcInfo, ProcInfos),
         proc_info_get_declared_determinism(ProcInfo, yes(DeclaredDetism)),

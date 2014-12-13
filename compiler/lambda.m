@@ -222,15 +222,15 @@ expand_lambdas_in_pred(PredId, !ModuleInfo) :-
 expand_lambdas_in_proc(PredId, ProcId, !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     expand_lambdas_in_proc_2(ProcInfo0, ProcInfo, PredInfo0, PredInfo1,
         !ModuleInfo),
 
-    pred_info_get_procedures(PredInfo1, ProcTable1),
+    pred_info_get_proc_table(PredInfo1, ProcTable1),
     map.det_update(ProcId, ProcInfo, ProcTable1, ProcTable),
-    pred_info_set_procedures(ProcTable, PredInfo1, PredInfo),
+    pred_info_set_proc_table(ProcTable, PredInfo1, PredInfo),
     module_info_get_preds(!.ModuleInfo, PredTable1),
     map.det_update(PredId, PredInfo, PredTable1, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).

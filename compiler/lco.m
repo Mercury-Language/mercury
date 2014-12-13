@@ -321,9 +321,9 @@ lco_process_proc_update(PredProcId - NewProcInfo, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, Procs0),
+    pred_info_get_proc_table(PredInfo0, Procs0),
     map.det_update(ProcId, NewProcInfo, Procs0, Procs),
-    pred_info_set_procedures(Procs, PredInfo0, PredInfo),
+    pred_info_set_proc_table(Procs, PredInfo0, PredInfo),
     map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
@@ -366,7 +366,7 @@ lco_process_proc_variant(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
         % We throw away any other procs in the variant predicate, because
         % we create a separate predicate for each variant.
         VariantProcs = map.singleton(VariantProcId, VariantProcInfo),
-        pred_info_set_procedures(VariantProcs, !VariantPredInfo),
+        pred_info_set_proc_table(VariantProcs, !VariantPredInfo),
         map.det_update(VariantPredId, !.VariantPredInfo, !PredTable),
         module_info_set_preds(!.PredTable, !ModuleInfo)
     ).

@@ -290,7 +290,7 @@ llds_backend_pass_for_pred(!HLDS, ConstStructMap, PredId, PredInfo,
         [ProcId | ProcIds], [ProcLabel - ProcCode | ProcCodes],
         !GlobalData, !IO) :-
     ProcLabel = make_proc_label(!.HLDS, PredId, ProcId),
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
     llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
         ProcId, ProcInfo, ProcCode, !GlobalData, !IO),

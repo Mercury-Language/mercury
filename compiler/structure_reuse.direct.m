@@ -139,7 +139,7 @@ direct_reuse_process_proc(SharingTable, PredId, ProcId,
         !ModuleInfo, !ReuseTable) :-
     module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, Pred0),
-    pred_info_get_procedures(Pred0, Procs0),
+    pred_info_get_proc_table(Pred0, Procs0),
     map.lookup(Procs0, ProcId, Proc0),
 
     direct_reuse_process_proc_2(SharingTable, PredId, ProcId,
@@ -150,7 +150,7 @@ direct_reuse_process_proc(SharingTable, PredId, ProcId,
     reuse_as_table_set(proc(PredId, ProcId), AsAndStatus, !ReuseTable),
 
     map.det_update(ProcId, Proc, Procs0, Procs),
-    pred_info_set_procedures(Procs, Pred0, Pred),
+    pred_info_set_proc_table(Procs, Pred0, Pred),
     map.det_update(PredId, Pred, Preds0, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
 

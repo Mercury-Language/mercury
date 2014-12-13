@@ -1344,7 +1344,7 @@ report_mode_inference_messages(ModuleInfo, OutputDetism, [PredId | PredIds]) =
     pred_info_get_markers(PredInfo, Markers),
     ( check_marker(Markers, marker_infer_modes) ->
         ProcIds = pred_info_all_procids(PredInfo),
-        pred_info_get_procedures(PredInfo, Procs),
+        pred_info_get_proc_table(PredInfo, Procs),
         HeadSpecs = report_mode_inference_messages_2(ModuleInfo, OutputDetism,
             PredInfo, Procs, ProcIds),
         Specs = HeadSpecs ++ TailSpecs
@@ -1458,7 +1458,7 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
 
 report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
         PredId, PredInfo) = Spec :-
-    pred_info_get_procedures(PredInfo, Procs),
+    pred_info_get_proc_table(PredInfo, Procs),
     map.lookup(Procs, OldProcId, OldProcInfo),
     map.lookup(Procs, NewProcId, NewProcInfo),
     proc_info_get_context(OldProcInfo, OldContext),
@@ -1484,7 +1484,7 @@ mode_decl_to_string(ProcId, PredInfo) = String :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Name0 = pred_info_name(PredInfo),
     Name = unqualified(Name0),
-    pred_info_get_procedures(PredInfo, Procs),
+    pred_info_get_proc_table(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
     proc_info_declared_argmodes(ProcInfo, Modes0),
     proc_info_get_declared_determinism(ProcInfo, MaybeDet),

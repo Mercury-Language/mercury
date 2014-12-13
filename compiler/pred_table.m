@@ -1046,7 +1046,7 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_get_arg_types(PredInfo, PredTVarSet, PredExistQVars0,
             PredArgTypes0),
-        pred_info_get_tvar_kinds(PredInfo, PredKindMap),
+        pred_info_get_tvar_kind_map(PredInfo, PredKindMap),
 
         arg_type_list_subsumes(TVarSet, ExistQTVars, ArgTypes, HeadTypeParams,
             PredTVarSet, PredKindMap, PredExistQVars0, PredArgTypes0),

@@ -159,7 +159,7 @@ encode_oisu_type_procs(ModuleInfo, [Pair | Pairs], NumOISUTypes, Bytes) :-
 
 encode_oisu_proc(ModuleInfo, PredId, BytesCord) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, Procs),
     ( Procs = [ProcId - _ProcInfo] ->
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),

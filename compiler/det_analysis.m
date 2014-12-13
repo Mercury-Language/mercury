@@ -260,7 +260,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % Get the proc_info structure for this procedure.
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     % Remember the old inferred determinism of this procedure.
@@ -388,7 +388,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
 
     % Put back the new proc_info structure.
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1),
 
     pred_info_get_markers(PredInfo1, Markers1),
     (
@@ -1843,7 +1843,7 @@ det_find_matching_non_cc_mode(DetInfo, PredId, !ProcId) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     module_info_get_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, ProcList),
     det_find_matching_non_cc_mode_procs(ProcList, ModuleInfo, PredInfo,
         !ProcId).
@@ -2110,7 +2110,7 @@ determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
     ->
         !:NoInferProcs = [PredProcId | !.NoInferProcs]
     ;
-        pred_info_get_procedures(PredInfo, ProcTable),
+        pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
         (
@@ -2135,14 +2135,14 @@ determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
 
 set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, Procs0),
+    pred_info_get_proc_table(PredInfo0, Procs0),
     map.lookup(Procs0, ProcId, ProcInfo0),
     proc_info_get_declared_determinism(ProcInfo0, MaybeDet),
     (
         MaybeDet = yes(Det),
         proc_info_set_inferred_determinism(Det, ProcInfo0, ProcInfo),
         map.det_update(ProcId, ProcInfo, Procs0, Procs),
-        pred_info_set_procedures(Procs, PredInfo0, PredInfo),
+        pred_info_set_proc_table(Procs, PredInfo0, PredInfo),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ;
         MaybeDet = no

@@ -381,10 +381,10 @@ replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
             !.EquivTypeInfo, MaybeRecompInfo0, MaybeRecompInfo),
         module_info_set_maybe_recompilation_info(MaybeRecompInfo, !ModuleInfo),
 
-        pred_info_get_procedures(!.PredInfo, ProcMap0),
+        pred_info_get_proc_table(!.PredInfo, ProcMap0),
         map.map_values_foldl3(replace_in_proc(EqvMap), ProcMap0, ProcMap,
             !ModuleInfo, !PredInfo, !Cache),
-        pred_info_set_procedures(ProcMap, !PredInfo),
+        pred_info_set_proc_table(ProcMap, !PredInfo),
         module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
     ).
 

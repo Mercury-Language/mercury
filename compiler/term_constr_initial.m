@@ -162,10 +162,10 @@ process_imported_pred(PredId, !ModuleInfo) :-
 
 process_imported_procs(!PredInfo) :-
     some [!ProcTable] (
-        pred_info_get_procedures(!.PredInfo, !:ProcTable),
+        pred_info_get_proc_table(!.PredInfo, !:ProcTable),
         ProcIds = pred_info_procids(!.PredInfo),
         list.foldl(process_imported_proc, ProcIds, !ProcTable),
-        pred_info_set_procedures(!.ProcTable, !PredInfo)
+        pred_info_set_proc_table(!.ProcTable, !PredInfo)
     ).
 
 :- pred process_imported_proc(proc_id::in, proc_table::in, proc_table::out)
@@ -285,7 +285,7 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
     pred_info_get_markers(!.PredInfo, Markers),
     pred_info_get_context(!.PredInfo, Context),
     some [!ProcTable] (
-        pred_info_get_procedures(!.PredInfo, !:ProcTable),
+        pred_info_get_proc_table(!.PredInfo, !:ProcTable),
         ProcIds = pred_info_procids(!.PredInfo),
         (
             set_compiler_gen_terminates(!.PredInfo, ProcIds, PredId,
@@ -358,7 +358,7 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
         ;
             true
         ),
-        pred_info_set_procedures(!.ProcTable, !PredInfo)
+        pred_info_set_proc_table(!.ProcTable, !PredInfo)
     ).
 :- pred set_compiler_gen_terminates(pred_info::in, list(proc_id)::in,
     pred_id::in, module_info::in, proc_table::in, proc_table::out)

@@ -520,7 +520,7 @@ predicate_documentation(C, PredInfo) = Xml :-
     XmlConstraints = prog_constraints_to_xml(TVarset, Constraints),
     XmlVisibility = visibility_to_xml(ImportStatus),
 
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     map.foldl(pred_mode_documentation(C), ProcTable, [], XmlProcs),
     XmlModes = elem("pred_modes", [], XmlProcs),
 

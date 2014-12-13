@@ -278,7 +278,7 @@ mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs) :-
         SimpleThreshold = Params ^ simple_goal_threshold,
         PredProcId = proc(PredId, ProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_procedures(PredInfo, Procs),
+        pred_info_get_proc_table(PredInfo, Procs),
         map.lookup(Procs, ProcId, ProcInfo),
         proc_info_get_goal(ProcInfo, CalledGoal),
         Entity = entity_proc(PredId, ProcId),
@@ -469,7 +469,7 @@ inline_in_proc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
     some [!PredInfo, !ProcInfo] (
         module_info_get_preds(!.ModuleInfo, PredTable0),
         map.lookup(PredTable0, PredId, !:PredInfo),
-        pred_info_get_procedures(!.PredInfo, ProcTable0),
+        pred_info_get_proc_table(!.PredInfo, ProcTable0),
         map.lookup(ProcTable0, ProcId, !:ProcInfo),
 
         pred_info_get_univ_quant_tvars(!.PredInfo, UnivQTVars),
@@ -530,7 +530,7 @@ inline_in_proc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
         ),
 
         map.det_update(ProcId, !.ProcInfo, ProcTable0, ProcTable),
-        pred_info_set_procedures(ProcTable, !PredInfo),
+        pred_info_set_proc_table(ProcTable, !PredInfo),
 
         (
             PurityChanged = yes,

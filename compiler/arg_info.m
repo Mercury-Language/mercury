@@ -177,7 +177,7 @@ generate_proc_list_arg_info(_PredId, [], !ModuleInfo).
 generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     pred_info_get_markers(PredInfo0, Markers),
     pred_info_get_arg_types(PredInfo0, ArgTypes),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
@@ -186,7 +186,7 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
         ProcInfo0, ProcInfo),
 
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     generate_proc_list_arg_info(PredId, ProcIds, !ModuleInfo).

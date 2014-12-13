@@ -153,13 +153,13 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
     % the module_info if modecheck didn't take a whole module_info.
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     detect_cse_in_proc_pass(!.ModuleInfo, Redo, ProcInfo0, ProcInfo1),
 
     map.det_update(ProcId, ProcInfo1, ProcTable0, ProcTable1),
-    pred_info_set_procedures(ProcTable1, PredInfo0, PredInfo1),
+    pred_info_set_proc_table(ProcTable1, PredInfo0, PredInfo1),
     map.det_update(PredId, PredInfo1, PredTable0, PredTable1),
     module_info_set_preds(PredTable1, !ModuleInfo),
 
@@ -208,14 +208,14 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
 
         module_info_get_preds(!.ModuleInfo, PredTable2),
         map.lookup(PredTable2, PredId, PredInfo2),
-        pred_info_get_procedures(PredInfo2, ProcTable2),
+        pred_info_get_proc_table(PredInfo2, ProcTable2),
         map.lookup(ProcTable2, ProcId, ProcInfo2),
 
         SwitchDetectInfo = init_switch_detect_info(!.ModuleInfo),
         detect_switches_in_proc(SwitchDetectInfo, ProcInfo2, ProcInfo),
 
         map.det_update(ProcId, ProcInfo, ProcTable2, ProcTable3),
-        pred_info_set_procedures(ProcTable3, PredInfo2, PredInfo3),
+        pred_info_set_proc_table(ProcTable3, PredInfo2, PredInfo3),
         map.det_update(PredId, PredInfo3, PredTable2, PredTable3),
         module_info_set_preds(PredTable3, !ModuleInfo),
 

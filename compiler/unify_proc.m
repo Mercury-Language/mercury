@@ -337,7 +337,7 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         % Copy the clauses for the procedure from the pred_info
         % to the proc_info, and mark the procedure as one that
         % cannot be processed yet.
-        pred_info_get_procedures(!.PredInfo, !:ProcMap),
+        pred_info_get_proc_table(!.PredInfo, !:ProcMap),
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
         map.lookup(!.ProcMap, ProcId, !:ProcInfo),
         proc_info_set_can_process(no, !ProcInfo),
@@ -366,7 +366,7 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         proc_info_set_goal(!.Goal, !ProcInfo),
 
         map.det_update(ProcId, !.ProcInfo, !ProcMap),
-        pred_info_set_procedures(!.ProcMap, !PredInfo),
+        pred_info_set_proc_table(!.ProcMap, !PredInfo),
         map.det_update(PredId, !.PredInfo, !PredMap),
         module_info_set_preds(!.PredMap, !ModuleInfo),
 

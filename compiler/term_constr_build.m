@@ -151,7 +151,7 @@ term_constr_build_abstract_scc(DepOrder, SCC, Options, Errors,
 
         AR = AR0 ^ ap_size_varset := SizeVarset,
         map.lookup(!.PredTable, PredId, PredInfo0),
-        pred_info_get_procedures(PredInfo0, ProcTable0),
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
         map.lookup(ProcTable0, ProcId, ProcInfo0),
         some [!TermInfo] (
             proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
@@ -173,7 +173,7 @@ term_constr_build_abstract_scc(DepOrder, SCC, Options, Errors,
             proc_info_set_termination2_info(!.TermInfo, ProcInfo0, ProcInfo)
         ),
         map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
         map.det_update(PredId, PredInfo, !PredTable),
         list.append(ProcErrors, !Errors)
     ),

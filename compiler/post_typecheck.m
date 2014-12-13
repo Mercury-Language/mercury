@@ -285,13 +285,13 @@ check_pred_type_bindings(ModuleInfo, PredId, !PredInfo, NumBadErrors,
             VarSet, UnresolvedVarsTypes, !NoTypeErrorSpecs),
 
         % Bind all the type variables in `Set' to `void' ...
-        pred_info_get_constraint_proofs(!.PredInfo, Proofs0),
+        pred_info_get_constraint_proof_map(!.PredInfo, ProofMap0),
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap0),
-        bind_type_vars_to_void(Set, VarTypesMap0, VarTypesMap, Proofs0, Proofs,
-            ConstraintMap0, ConstraintMap),
+        bind_type_vars_to_void(Set, VarTypesMap0, VarTypesMap,
+            ProofMap0, ProofMap, ConstraintMap0, ConstraintMap),
         clauses_info_set_vartypes(VarTypesMap, ClausesInfo0, ClausesInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo),
-        pred_info_set_constraint_proofs(Proofs, !PredInfo),
+        pred_info_set_constraint_proof_map(ProofMap, !PredInfo),
         pred_info_set_constraint_map(ConstraintMap, !PredInfo)
     ).
 
@@ -346,7 +346,7 @@ check_var_type_bindings_2([Var - Type | VarTypes], HeadTypeParams,
     constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out) is det.
 
-bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !Proofs,
+bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !ProofMap,
         !ConstraintMap) :-
     % Create a substitution that maps all of the unbound type variables
     % to `void'.
@@ -357,7 +357,7 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !Proofs,
 
     % Then apply the substitution we just created to the various maps.
     apply_subst_to_vartypes(VoidSubst, !VarTypes),
-    apply_subst_to_constraint_proofs(VoidSubst, !Proofs),
+    apply_subst_to_constraint_proof_map(VoidSubst, !ProofMap),
     apply_subst_to_constraint_map(VoidSubst, !ConstraintMap).
 
 %-----------------------------------------------------------------------------%
@@ -871,12 +871,12 @@ check_type_of_main(PredInfo, !Specs) :-
 
 propagate_types_into_modes(ModuleInfo, ErrorProcIds, !PredInfo) :-
     pred_info_get_arg_types(!.PredInfo, ArgTypes),
-    pred_info_get_procedures(!.PredInfo, Procs0),
+    pred_info_get_proc_table(!.PredInfo, Procs0),
     ProcIds = pred_info_procids(!.PredInfo),
     propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
         [], RevErrorProcIds, Procs0, Procs),
     ErrorProcIds = list.reverse(RevErrorProcIds),
-    pred_info_set_procedures(Procs, !PredInfo).
+    pred_info_set_proc_table(Procs, !PredInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -914,10 +914,10 @@ report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcIds, !PredInfo,
         ErrorProcIds = []
     ;
         ErrorProcIds = [_ | _],
-        pred_info_get_procedures(!.PredInfo, ProcTable0),
+        pred_info_get_proc_table(!.PredInfo, ProcTable0),
         list.foldl2(report_unbound_inst_var_error(ModuleInfo, PredId),
             ErrorProcIds, ProcTable0, ProcTable, !Specs),
-        pred_info_set_procedures(ProcTable, !PredInfo)
+        pred_info_set_proc_table(ProcTable, !PredInfo)
     ).
 
 :- pred report_unbound_inst_var_error(module_info::in,

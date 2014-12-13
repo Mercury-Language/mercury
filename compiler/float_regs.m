@@ -460,15 +460,15 @@ insert_reg_wrappers_pred(PredId, !ModuleInfo, !Specs) :-
 insert_reg_wrappers_proc(PredId, ProcId, !ModuleInfo, !Specs) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     insert_reg_wrappers_proc_2(ProcInfo0, ProcInfo, PredInfo0, PredInfo1,
         !ModuleInfo, !Specs),
 
-    pred_info_get_procedures(PredInfo1, ProcTable1),
+    pred_info_get_proc_table(PredInfo1, ProcTable1),
     map.det_update(ProcId, ProcInfo, ProcTable1, ProcTable),
-    pred_info_set_procedures(ProcTable, PredInfo1, PredInfo),
+    pred_info_set_proc_table(ProcTable, PredInfo1, PredInfo),
     module_info_get_preds(!.ModuleInfo, PredTable1),
     map.det_update(PredId, PredInfo, PredTable1, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
@@ -1131,7 +1131,7 @@ insert_reg_wrappers_plain_call(PredId, ProcId, Vars0, Vars, WrapGoals,
         MissingProc, InstMap0, Context, !Info, !Specs) :-
     lambda_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     ( map.search(ProcTable, ProcId, ProcInfo) ->
         pred_info_get_arg_types(PredInfo, ArgTypes),
         proc_info_get_argmodes(ProcInfo, ArgModes),

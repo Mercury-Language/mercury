@@ -777,7 +777,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
     PredArity = pred_info_orig_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     adjust_func_arity(PredOrFunc, Arity, PredArity),
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     list.map(
         (pred(TheProcId::in, ModesAndDetism::out) is det :-
             map.lookup(ProcTable, TheProcId, ProcInfo),

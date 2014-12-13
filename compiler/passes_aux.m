@@ -330,7 +330,7 @@ par_process_nonimported_procs_in_preds(ModuleInfo, Task, ValidPredIdSet,
 par_process_nonimported_procs(_, _, _, [], !PredInfo).
 par_process_nonimported_procs(ModuleInfo, Task, PredId, [ProcId | ProcIds],
         !PredInfo) :-
-    pred_info_get_procedures(!.PredInfo, ProcMap0),
+    pred_info_get_proc_table(!.PredInfo, ProcMap0),
     map.lookup(ProcMap0, ProcId, Proc0),
 
     PredProcId = proc(PredId, ProcId),
@@ -346,7 +346,7 @@ par_process_nonimported_procs(ModuleInfo, Task, PredId, [ProcId | ProcIds],
     ),
 
     map.det_update(ProcId, Proc, ProcMap0, ProcMap),
-    pred_info_set_procedures(ProcMap, !PredInfo),
+    pred_info_set_proc_table(ProcMap, !PredInfo),
 
     par_process_nonimported_procs(ModuleInfo, Task, PredId, ProcIds,
         !PredInfo).
@@ -375,7 +375,7 @@ seq_process_nonimported_procs(PredId, [ProcId | ProcIds], !Task,
         !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, Pred0),
-    pred_info_get_procedures(Pred0, Procs0),
+    pred_info_get_proc_table(Pred0, Procs0),
     map.lookup(Procs0, ProcId, Proc0),
 
     PredProcId = proc(PredId, ProcId),
@@ -400,10 +400,10 @@ seq_process_nonimported_procs(PredId, [ProcId | ProcIds], !Task,
 
     module_info_get_preds(!.ModuleInfo, Preds8),
     map.lookup(Preds8, PredId, Pred8),
-    pred_info_get_procedures(Pred8, Procs8),
+    pred_info_get_proc_table(Pred8, Procs8),
 
     map.det_update(ProcId, Proc, Procs8, Procs),
-    pred_info_set_procedures(Procs, Pred8, Pred),
+    pred_info_set_proc_table(Procs, Pred8, Pred),
     map.det_update(PredId, Pred, Preds8, Preds),
     module_info_set_preds(Preds, !ModuleInfo),
 

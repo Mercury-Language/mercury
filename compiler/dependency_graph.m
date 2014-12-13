@@ -293,7 +293,7 @@ add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo, IncludeImported,
         !DepGraph) :-
     module_info_get_preds(ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     (
         IncludeImported = do_not_include_imported,

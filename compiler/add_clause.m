@@ -349,7 +349,7 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
         ),
 
         % Now find the procedure which matches these mode annotations.
-        pred_info_get_procedures(PredInfo, Procs),
+        pred_info_get_proc_table(PredInfo, Procs),
         map.to_assoc_list(Procs, ExistingProcs),
         (
             get_procedure_matching_declmodes_with_renaming(ExistingProcs,

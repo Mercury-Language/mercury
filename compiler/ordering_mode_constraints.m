@@ -704,7 +704,7 @@ dump_goal_paths(ModuleInfo, PredIds0, !IO) :-
 
 dump_pred_goal_paths(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     ProcIds = map.keys(ProcTable),
 
     % Start with a blank line.

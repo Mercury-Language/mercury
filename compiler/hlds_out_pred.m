@@ -114,7 +114,7 @@ write_pred(Info, Lang, Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_class_context(PredInfo, ClassContext),
-    pred_info_get_constraint_proofs(PredInfo, Proofs),
+    pred_info_get_constraint_proof_map(PredInfo, ProofMap),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     pred_info_get_purity(PredInfo, Purity),
     pred_info_get_head_type_params(PredInfo, HeadTypeParams),
@@ -169,11 +169,11 @@ write_pred(Info, Lang, Indent, ModuleInfo, PredId, PredInfo, !IO) :-
         ),
         write_rtti_varmaps(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet,
             !IO),
-        ( map.is_empty(Proofs) ->
+        ( map.is_empty(ProofMap) ->
             true
         ;
-            write_constraint_proofs(Indent, TVarSet, Proofs, AppendVarNums,
-                !IO),
+            write_constraint_proof_map(Indent, TVarSet, ProofMap,
+                AppendVarNums, !IO),
             io.write_string("\n", !IO)
         ),
         ( map.is_empty(ConstraintMap) ->
@@ -427,7 +427,7 @@ write_annotated_clause_heads(ModuleInfo, Lang, Context, PredId,
 write_annotated_clause_head(ModuleInfo, Lang, Context, PredId, ProcId, VarSet,
         AppendVarNums, HeadTerms, PredOrFunc, UseDeclaredModes, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, Procedures),
+    pred_info_get_proc_table(PredInfo, Procedures),
     ( map.search(Procedures, ProcId, ProcInfo) ->
         % When writing `.opt' files, use the declared argument modes so that
         % the modes are guaranteed to be syntactically identical to those
@@ -704,7 +704,7 @@ write_var_name_remap(Head, Tail, VarSet, !IO) :-
 
 write_procs(Info, Indent, AppendVarNums, ModuleInfo, PredId, ImportStatus,
         PredInfo, !IO) :-
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     ProcIds = pred_info_procids(PredInfo),
     write_procs_loop(Info, ProcIds, AppendVarNums, ModuleInfo, Indent, PredId,
         ImportStatus, ProcTable, !IO).

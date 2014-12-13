@@ -471,7 +471,7 @@ dead_proc_examine_proc(proc(PredId, ProcId), ModuleInfo, !Queue, !Needed) :-
         map.lookup(PredTable, PredId, PredInfo),
         ProcIds = pred_info_non_imported_procids(PredInfo),
         list.member(ProcId, ProcIds),
-        pred_info_get_procedures(PredInfo, ProcTable),
+        pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo)
     ->
         trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
@@ -821,11 +821,11 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         )
     ->
         ProcIds = pred_info_procids(PredInfo0),
-        pred_info_get_procedures(PredInfo0, ProcTable0),
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
         list.foldl3(dead_proc_eliminate_proc(PredId, Keep, WarnForThisPred,
             !.ProcElimInfo),
             ProcIds, ProcTable0, ProcTable, Changed0, Changed, Specs0, Specs),
-        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
         map.det_update(PredId, PredInfo, PredTable0, PredTable),
         !:ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable, Changed,
             Specs)
@@ -840,7 +840,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
     ->
         Changed = yes,
         ProcIds = pred_info_procids(PredInfo0),
-        pred_info_get_procedures(PredInfo0, ProcTable0),
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
 
         % Reduce memory usage by replacing the goals with "true".
         DestroyGoal =
@@ -850,7 +850,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
                 map.det_update(Id, ProcInfo, PTable0, PTable)
             ),
         list.foldl(DestroyGoal, ProcIds, ProcTable0, ProcTable),
-        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1),
         pred_info_set_import_status(status_imported(import_locn_interface),
             PredInfo1, PredInfo),
         map.det_update(PredId, PredInfo, PredTable0, PredTable),

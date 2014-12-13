@@ -298,10 +298,10 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
         OpenCompileErrors = OpenErrors ++ CompileErrors,
         (
             OpenCompileErrors = [],
-            pred_info_get_procedures(!.PredInfo, ProcTable0),
+            pred_info_get_proc_table(!.PredInfo, ProcTable0),
             infer_determinism_pass_2(ProcFiles, Globals, ExistsAllInMode,
                 ProcTable0, ProcTable, !IO),
-            pred_info_set_procedures(ProcTable, !PredInfo),
+            pred_info_set_proc_table(ProcTable, !PredInfo),
             io.make_temp(DataFileName, !IO),
             write_fact_table_arrays(ProcFiles, DataFileName, StructName,
                 ProcTable, ModuleInfo, NumFacts, FactArgInfos, WriteHashTables,
@@ -449,7 +449,7 @@ check_fact_term_2(PredOrFunc, Arity, PredInfo, ModuleInfo, Terms, Context,
         pred_info_get_arg_types(PredInfo, Types),
         check_fact_type_and_mode(Types, Terms, 0, PredOrFunc, Context,
             Result, !Errors),
-        pred_info_get_procedures(PredInfo, ProcTable),
+        pred_info_get_proc_table(PredInfo, ProcTable),
         string.int_to_string(FactNum, FactNumStr),
         write_sort_file_lines(ProcStreams, ProcTable, Terms,
             ModuleInfo, FactNumStr, FactArgInfos, yes, !IO),
@@ -789,7 +789,7 @@ fill_in_fact_arg_infos([Mode | Modes], ModuleInfo, [Info0 | Infos0],
 infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
         ExistsAllInMode, WriteHashTables, WriteDataTable,
         !FactArgInfos, !Errors) :-
-    pred_info_get_procedures(!.PredInfo, ProcTable0),
+    pred_info_get_proc_table(!.PredInfo, ProcTable0),
     ProcIDs = pred_info_procids(!.PredInfo),
     ( ProcIDs = [] ->
         % There are no declared modes so report an error.
@@ -824,7 +824,7 @@ infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
         % We need to get the order right for CheckProcs because the first
         % procedure in list is used to derive the primary lookup key.
         list.reverse(CheckProcs1, CheckProcs),
-        pred_info_set_procedures(ProcTable, !PredInfo)
+        pred_info_set_proc_table(ProcTable, !PredInfo)
     ).
 
 :- pred infer_proc_determinism_pass_1(list(proc_id)::in, module_info::in,

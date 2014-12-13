@@ -529,7 +529,7 @@ find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars, !MOI) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_inst_graph_info(PredInfo, CalleeInstGraphInfo),
     CalleeInstGraph = CalleeInstGraphInfo ^ interface_inst_graph,
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, ProcList),
     (
         find_matching_proc_2(ProcList, ProdVars, Args,

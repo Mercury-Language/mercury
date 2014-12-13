@@ -98,7 +98,7 @@ maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
     maybe_add_default_func_modes(PredIds, Preds1, Preds).
 
 maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
-    pred_info_get_procedures(PredInfo0, Procs0),
+    pred_info_get_proc_table(PredInfo0, Procs0),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     (
         % Is this a function with no modes?
@@ -171,11 +171,11 @@ should_copy_clauses_to_procs(PredInfo) :-
 :- pred copy_clauses_to_procs(pred_info::in, pred_info::out) is det.
 
 copy_clauses_to_procs(!PredInfo) :-
-    pred_info_get_procedures(!.PredInfo, Procs0),
+    pred_info_get_proc_table(!.PredInfo, Procs0),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
     ProcIds = pred_info_all_non_imported_procids(!.PredInfo),
     copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs0, Procs),
-    pred_info_set_procedures(Procs, !PredInfo).
+    pred_info_set_proc_table(Procs, !PredInfo).
 
 :- pred copy_clauses_to_procs_2(list(proc_id)::in, clauses_info::in,
     proc_table::in, proc_table::out) is det.
@@ -343,11 +343,11 @@ introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
         % Only process preds for which we copied clauses to procs.
         should_copy_clauses_to_procs(PredInfo0)
     ->
-        pred_info_get_procedures(PredInfo0, Procs0),
+        pred_info_get_proc_table(PredInfo0, Procs0),
         ProcIds = pred_info_all_non_imported_procids(PredInfo0),
         introduce_exists_casts_procs(ModuleInfo, PredInfo0, ProcIds,
             Procs0, Procs),
-        pred_info_set_procedures(Procs, PredInfo0, PredInfo),
+        pred_info_set_proc_table(Procs, PredInfo0, PredInfo),
         map.det_update(PredId, PredInfo, !PredTable)
     ;
         true

@@ -424,7 +424,7 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
 
 typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         OldExplicitVarTypes, NewTypeVarSet, NewHeadTypeParams,
-        NewVarTypes, NewTypeConstraints, NewConstraintProofs,
+        NewVarTypes, NewTypeConstraints, NewConstraintProofMap,
         NewConstraintMap, TSubst, ExistTypeRenaming) :-
     TypeAssignSet = tc_info_type_assign_set(Info),
     (
@@ -434,12 +434,12 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         type_assign_get_var_types(TypeAssign, VarTypes0),
         type_assign_get_type_bindings(TypeAssign, TypeBindings),
         type_assign_get_typeclass_constraints(TypeAssign, HLDSTypeConstraints),
-        type_assign_get_constraint_proofs(TypeAssign, ConstraintProofs0),
+        type_assign_get_constraint_proofs(TypeAssign, ConstraintProofMap0),
         type_assign_get_constraint_map(TypeAssign, ConstraintMap0),
 
         ( map.is_empty(TypeBindings) ->
             VarTypes1 = VarTypes0,
-            ConstraintProofs = ConstraintProofs0,
+            ConstraintProofMap = ConstraintProofMap0,
             ConstraintMap1 = ConstraintMap0,
             vartypes_types(VarTypes1, Types1),
             type_vars_list(Types1, TypeVars1)
@@ -447,8 +447,8 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
             transform_foldl_var_types(expand_types(TypeBindings),
                 VarTypes0, VarTypes1, set.init, TypeVarsSet1),
             set.to_sorted_list(TypeVarsSet1, TypeVars1),
-            apply_rec_subst_to_constraint_proofs(TypeBindings,
-                ConstraintProofs0, ConstraintProofs),
+            apply_rec_subst_to_constraint_proof_map(TypeBindings,
+                ConstraintProofMap0, ConstraintProofMap),
             apply_rec_subst_to_constraint_map(TypeBindings,
                 ConstraintMap0, ConstraintMap1)
         ),
@@ -493,7 +493,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         % which do not occur in the type of any variable (e.g. this can happen
         % in the case of code containing type errors). We'd better keep those,
         % too, to avoid errors when we apply the TSubst to the HeadTypeParams.
-        % (XXX should we do the same for TypeConstraints and ConstraintProofs
+        % (XXX should we do the same for TypeConstraints and ConstraintProofMap
         % too?)
 
         vartypes_types(OldExplicitVarTypes, ExplicitTypes),
@@ -515,7 +515,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
             NewVarTypes = VarTypes1,
             NewHeadTypeParams = HeadTypeParams,
             NewTypeConstraints = TypeConstraints,
-            NewConstraintProofs = ConstraintProofs,
+            NewConstraintProofMap = ConstraintProofMap,
             NewConstraintMap = ConstraintMap
         ;
             transform_var_types(apply_variable_renaming_to_type(TSubst),
@@ -523,8 +523,8 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
             map.apply_to_list(HeadTypeParams, TSubst, NewHeadTypeParams),
             apply_variable_renaming_to_prog_constraints(TSubst,
                 TypeConstraints, NewTypeConstraints),
-            apply_variable_renaming_to_constraint_proofs(TSubst,
-                ConstraintProofs, NewConstraintProofs),
+            apply_variable_renaming_to_constraint_proof_map(TSubst,
+                ConstraintProofMap, NewConstraintProofMap),
             apply_variable_renaming_to_constraint_map(TSubst,
                 ConstraintMap, NewConstraintMap)
         )

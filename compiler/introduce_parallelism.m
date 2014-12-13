@@ -214,7 +214,7 @@ maybe_parallelise_pred(ParallelismInfo, PredId, !PredTable,
         !AnyPredIntroducedParallelism, !ModuleInfo, !Specs) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
     ProcIds = pred_info_non_imported_procids(PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     list.foldl4(maybe_parallelise_proc(ParallelismInfo, PredInfo0, PredId),
         ProcIds, ProcTable0, ProcTable,
         have_not_introduced_parallelism, AnyProcIntroducedParallelism,
@@ -224,7 +224,7 @@ maybe_parallelise_pred(ParallelismInfo, PredId, !PredTable,
     ;
         AnyProcIntroducedParallelism = introduced_parallelism,
         !:AnyPredIntroducedParallelism = introduced_parallelism,
-        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
         map.det_update(PredId, PredInfo, !PredTable)
     ).
 

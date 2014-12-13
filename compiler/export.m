@@ -381,7 +381,7 @@ get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
         HowToDeclareLabel = "MR_declare_static"
     ),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_maybe_arg_info(ProcInfo, MaybeArgInfos),
     pred_info_get_markers(PredInfo, Markers),

@@ -64,7 +64,7 @@ runtime_granularity_test_in_scc(SCC, !ModuleInfo) :-
 runtime_granularity_test_in_proc(SCC, proc(PredId, ProcId), !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     proc_info_get_has_parallel_conj(ProcInfo0, HasParallelConj),
     (
@@ -80,7 +80,7 @@ runtime_granularity_test_in_proc(SCC, proc(PredId, ProcId), !ModuleInfo) :-
             requantify_proc_general(ordinary_nonlocals_no_lambda,
                 ProcInfo1, ProcInfo),
             map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-            pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+            pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
             map.det_update(PredId, PredInfo, PredTable0, PredTable),
             module_info_set_preds(PredTable, !ModuleInfo)
         )

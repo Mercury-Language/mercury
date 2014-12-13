@@ -422,7 +422,7 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 %-----------------------------------------------------------------------------%
 
 repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
-    pred_info_get_procedures(!.PredInfo, Procs0),
+    pred_info_get_proc_table(!.PredInfo, Procs0),
     map.lookup(Procs0, ProcId, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
     proc_info_get_vartypes(ProcInfo0, VarTypes0),
@@ -445,7 +445,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
         ProcInfo = ProcInfo3
     ),
     map.det_update(ProcId, ProcInfo, Procs0, Procs),
-    pred_info_set_procedures(Procs, !PredInfo),
+    pred_info_set_proc_table(Procs, !PredInfo),
 
     % A predicate should never become less pure after inlining, so update
     % any promises in the pred_info if the purity of the goal worsened

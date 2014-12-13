@@ -188,7 +188,7 @@ erl_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus, !Defns, !IO) :-
         ProcIds = [_ | _],
         write_pred_progress_message("% Generating ELDS code for ",
             PredId, ModuleInfo, !IO),
-        pred_info_get_procedures(PredInfo, ProcTable),
+        pred_info_get_proc_table(PredInfo, ProcTable),
         erl_gen_procs(ProcIds, ModuleInfo, PredId, PredInfo, ProcTable, !Defns)
     ).
 

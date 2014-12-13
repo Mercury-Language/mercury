@@ -623,7 +623,7 @@ mc_process_pred(PredId, SCC, !ModeConstraint, !MCI,
 
     pred_info_get_inst_graph_info(PredInfo0, InstGraphInfo),
     InstGraph = InstGraphInfo ^ implementation_inst_graph,
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
 
@@ -645,7 +645,7 @@ mc_process_pred(PredId, SCC, !ModeConstraint, !MCI,
             zero, DeclConstraint, ModeDeclInfo0, ModeDeclInfo),
         !:MCI = ModeDeclInfo ^ mc_info,
         HOModes = ModeDeclInfo ^ ho_modes,
-        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1)
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1)
     ),
     !:ModeConstraint = !.ModeConstraint * DeclConstraint,
     set_input_nodes(!ModeConstraint, !MCI),
@@ -1290,7 +1290,7 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
                 % The predicate has mode declarations so use them
                 % to obtain the constraints for the call.
 
-                pred_info_get_procedures(PredInfo, ProcTable),
+                pred_info_get_proc_table(PredInfo, ProcTable),
                 map.values(ProcTable, ProcInfos),
                 update_md_info((pred(C::out, S0::in, S::out) is det :-
                     list.foldl2(
@@ -2135,7 +2135,7 @@ vars(hlds_goal(_, GoalInfo)) = OccurringVars :-
 :- pred pred_can_succeed(pred_info::in) is semidet.
 
 pred_can_succeed(PredInfo) :-
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     some [ProcInfo] (
         map.member(ProcTable, _ProcId, ProcInfo),
         proc_can_succeed(ProcInfo)

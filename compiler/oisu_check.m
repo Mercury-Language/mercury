@@ -130,7 +130,7 @@ check_local_oisu_pred(ModuleInfo, KindMap, OISUTypeCtors,
     ;
         IsDefnInModule = yes,
         ( map.search(KindMap, PredId, KindFors) ->
-            pred_info_get_procedures(PredInfo0, ProcTable0),
+            pred_info_get_proc_table(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, Procs0),
             (
                 Procs0 = [],
@@ -146,7 +146,7 @@ check_local_oisu_pred(ModuleInfo, KindMap, OISUTypeCtors,
                 proc_info_set_oisu_kind_fors(KindFors, ProcInfo0, ProcInfo),
                 Procs = [ProcId - ProcInfo],
                 map.from_assoc_list(Procs, ProcTable),
-                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+                pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 Pair = PredId - PredInfo,
                 set.insert(proc(PredId, ProcId), !OISUProcs)
             ;

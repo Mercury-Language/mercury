@@ -310,7 +310,7 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         get_clause_list(ClausesRep, Clauses),
 
         [ProcId | _ProcIds] = pred_info_procids(PredInfo),
-        pred_info_get_procedures(PredInfo, Procs),
+        pred_info_get_proc_table(PredInfo, Procs),
         map.lookup(Procs, ProcId, ProcInfo),
 
         % At this point, the goal size includes some dummy unifications
@@ -668,7 +668,7 @@ add_proc_2(PredId, DoWrite, !Info) :-
         (
             check_marker(Markers, marker_infer_modes)
         ;
-            pred_info_get_procedures(PredInfo, Procs),
+            pred_info_get_proc_table(PredInfo, Procs),
             list.member(ProcId, ProcIds),
             map.lookup(Procs, ProcId, ProcInfo),
             proc_info_get_declared_determinism(ProcInfo, no)
@@ -1685,7 +1685,7 @@ intermod_write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
             FuncArgTypes, FuncRetType, no, Purity, ClassContext, Context,
             AppendVarNums, !IO)
     ),
-    pred_info_get_procedures(PredInfo, Procs),
+    pred_info_get_proc_table(PredInfo, Procs),
     ProcIds = pred_info_procids(PredInfo),
         % Make sure the mode declarations go out in the same order
         % they came in, so that the all the modes get the same proc_id
@@ -1807,7 +1807,7 @@ intermod_write_clause(OutInfo, ModuleInfo, PredId, VarSet, HeadVars,
     ;
         ImplLang = impl_lang_foreign(_),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_procedures(PredInfo, Procs),
+        pred_info_get_proc_table(PredInfo, Procs),
         (
             (
                 % Pull the foreign code out of the goal.

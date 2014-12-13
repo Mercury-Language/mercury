@@ -1055,12 +1055,12 @@ unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         make_new_pred_info(!.ModuleInfo, UnusedArgs, Status,
             proc(PredId, ProcId), OrigPredInfo, NewPredInfo0),
         NewPredName = pred_info_name(NewPredInfo0),
-        pred_info_get_procedures(NewPredInfo0, NewProcs0),
+        pred_info_get_proc_table(NewPredInfo0, NewProcs0),
 
         % Assign the old procedure to a new predicate, which will be fixed up
         % in unused_args_fixup_module.
         map.set(ProcId, OrigProcInfo, NewProcs0, NewProcs),
-        pred_info_set_procedures(NewProcs, NewPredInfo0, NewPredInfo),
+        pred_info_set_proc_table(NewProcs, NewPredInfo0, NewPredInfo),
 
         % Add the new proc to the pred table.
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
@@ -1111,9 +1111,9 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
     proc_info_get_argmodes(OrigProcInfo, ArgModes0),
     remove_listof_elements(1, UnusedArgs2, ArgModes0, IntermodArgModes),
     proc_info_set_argmodes(IntermodArgModes, ExtraProc1, ExtraProc),
-    pred_info_get_procedures(ExtraPredInfo0, ExtraProcs0),
+    pred_info_get_proc_table(ExtraPredInfo0, ExtraProcs0),
     map.set(ProcId, ExtraProc, ExtraProcs0, ExtraProcs),
-    pred_info_set_procedures(ExtraProcs, ExtraPredInfo0, ExtraPredInfo),
+    pred_info_set_proc_table(ExtraProcs, ExtraPredInfo0, ExtraPredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_insert(ExtraPredInfo, _, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
@@ -1237,7 +1237,7 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs, !ProcCallInfo,
     make_new_pred_info(!.ModuleInfo, UnusedArgs,
         status_imported(import_locn_interface), OptProc,
         PredInfo0, NewPredInfo0),
-    pred_info_get_procedures(NewPredInfo0, NewProcs0),
+    pred_info_get_proc_table(NewPredInfo0, NewProcs0),
 
     % Assign the old procedure to a new predicate.
     proc_info_get_headvars(ProcInfo0, HeadVars0),
@@ -1247,7 +1247,7 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs, !ProcCallInfo,
     remove_listof_elements(1, UnusedArgs, ArgModes0, ArgModes),
     proc_info_set_argmodes(ArgModes, ProcInfo1, ProcInfo),
     map.set(ProcId, ProcInfo, NewProcs0, NewProcs),
-    pred_info_set_procedures(NewProcs, NewPredInfo0, NewPredInfo),
+    pred_info_set_proc_table(NewProcs, NewPredInfo0, NewPredInfo),
 
     % Add the new proc to the pred table.
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
@@ -1356,7 +1356,7 @@ do_unused_args_fixup_proc(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
         PredInfo0, ProcInfo0),
     proc_info_get_vartypes(ProcInfo0, VarTypes0),
     module_info_get_preds(ModuleInfo0, Preds0),
-    pred_info_get_procedures(PredInfo0, Procs0),
+    pred_info_get_proc_table(PredInfo0, Procs0),
 
     proc_info_get_headvars(ProcInfo0, HeadVars0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
@@ -1396,7 +1396,7 @@ do_unused_args_fixup_proc(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
     ),
 
     map.set(ProcId, ProcInfo, Procs0, Procs),
-    pred_info_set_procedures(Procs, PredInfo0, PredInfo),
+    pred_info_set_proc_table(Procs, PredInfo0, PredInfo),
     map.set(PredId, PredInfo, Preds0, Preds),
     module_info_set_preds(Preds, ModuleInfo0, ModuleInfo).
 
@@ -1817,7 +1817,7 @@ maybe_warn_unused_args(yes, ModuleInfo, PredInfo, PredId, ProcId,
         true
     ;
         set.insert(PredId, !WarnedPredIds),
-        pred_info_get_procedures(PredInfo, Procs),
+        pred_info_get_proc_table(PredInfo, Procs),
         map.lookup(Procs, ProcId, Proc),
         proc_info_get_headvars(Proc, HeadVars),
         list.length(HeadVars, NumHeadVars),

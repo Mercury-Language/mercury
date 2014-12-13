@@ -72,7 +72,7 @@ write_proc_stats_for_pred(OutStream, Msg, ModuleInfo, PredId - PredInfo,
     ->
         true
     ;
-        pred_info_get_procedures(PredInfo, ProcTable),
+        pred_info_get_proc_table(PredInfo, ProcTable),
         map.to_assoc_list(ProcTable, Procs),
         list.foldl(
             write_proc_stats_for_proc(OutStream, Msg, ModuleInfo, PredId),

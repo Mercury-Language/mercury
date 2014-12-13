@@ -130,7 +130,7 @@ gen_pred(PredId, [ProcId | ProcIds], PredInfo, ModuleInfo, Code, !IO) :-
     module_info::in, byte_tree::out) is det.
 
 gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
 
     proc_info_get_goal(ProcInfo, Goal),

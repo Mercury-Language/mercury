@@ -187,7 +187,7 @@ det_lookup_pred_info_and_detism(DetInfo, PredId, ModeId, PredInfo, Detism) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     module_info_get_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ModeId, ProcInfo),
     proc_info_interface_determinism(ProcInfo, Detism).
 
@@ -197,7 +197,7 @@ det_get_proc_info(DetInfo, ProcInfo) :-
     det_info_get_proc_id(DetInfo, ProcId),
     module_info_get_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo).
 
 det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-

@@ -349,7 +349,7 @@ pred_info_used_modules(_PredId, PredInfo, !UsedModules) :-
         list.foldl(prog_constraint_used_module(Visibility),
             ExistConstraints, !UsedModules),
 
-        pred_info_get_procedures(PredInfo, ProcTable),
+        pred_info_get_proc_table(PredInfo, ProcTable),
         map.foldl(proc_info_used_modules(Visibility), ProcTable, !UsedModules),
 
         pred_info_get_clauses_info(PredInfo, ClausesInfo),

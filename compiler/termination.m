@@ -441,14 +441,14 @@ set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo),
     map.lookup(OutputSupplierMap, PPId, OutputSuppliers),
     ArgSizeInfo = finite(Gamma, OutputSuppliers),
     % XXX intermod
     proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo), ProcInfo, ProcInfo1),
     map.set(ProcId, ProcInfo1, ProcTable0, ProcTable),
-    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     map.set(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     set_finite_arg_size_infos(Solns, OutputSupplierMap, !ModuleInfo).
@@ -461,12 +461,12 @@ set_infinite_arg_size_infos([PPId | PPIds], ArgSizeInfo, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     % XXX intermod
     proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo), ProcInfo0, ProcInfo),
     map.set(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     map.set(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     set_infinite_arg_size_infos(PPIds, ArgSizeInfo, !ModuleInfo).
@@ -481,13 +481,13 @@ set_termination_infos([PPId | PPIds], TerminationInfo, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     % XXX intermod
     proc_info_set_maybe_termination_info(yes(TerminationInfo),
         ProcInfo0, ProcInfo),
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     set_termination_infos(PPIds, TerminationInfo, !ModuleInfo).
@@ -615,7 +615,7 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_import_status(PredInfo0, ImportStatus),
     pred_info_get_context(PredInfo0, Context),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
     pred_info_get_markers(PredInfo0, Markers),
     ProcIds = pred_info_procids(PredInfo0),
     (
@@ -678,7 +678,7 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     ;
         ProcTable = ProcTable2
     ),
-    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     map.set(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     check_preds(PredIds, !ModuleInfo, !IO).
@@ -935,7 +935,7 @@ write_pred_termination_info(ModuleInfo, PredId, !IO) :-
         ProcIds = pred_info_procids(PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         ModuleName = pred_info_module(PredInfo),
-        pred_info_get_procedures(PredInfo, ProcTable),
+        pred_info_get_proc_table(PredInfo, ProcTable),
         pred_info_get_context(PredInfo, Context),
         SymName = qualified(ModuleName, PredName),
         write_proc_termination_info(PredId, ProcIds, ProcTable,

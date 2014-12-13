@@ -710,7 +710,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
     get_module_info(!.CI, ModuleInfo),
     module_info_get_preds(ModuleInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, Procs),
+    pred_info_get_proc_table(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
 
     % We handle currying of a higher-order pred variable as a special case.

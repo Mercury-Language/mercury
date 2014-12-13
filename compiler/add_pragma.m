@@ -457,7 +457,7 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
         Modes, ExportedName, Context, !ModuleInfo, !Specs) :-
     predicate_table_get_preds(PredTable, Preds),
     map.lookup(Preds, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, Procs),
+    pred_info_get_proc_table(PredInfo, Procs),
     map.to_assoc_list(Procs, ExistingProcs),
     (
         get_procedure_matching_declmodes_with_renaming(ExistingProcs,
@@ -1455,7 +1455,7 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
         !ModuleInfo, !Specs),
     (
         SubstOk = yes(RenamedSubst),
-        pred_info_get_procedures(PredInfo0, Procs0),
+        pred_info_get_proc_table(PredInfo0, Procs0),
         handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
             MaybeProcIds, Procs0, Procs1, !ModuleInfo, !Specs),
         % Remove any imported structure sharing and reuse information for the
@@ -1544,7 +1544,7 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
                 Context, Origin, Status, goal_type_none, Markers,
                 Types, TVarSet, ExistQVars, ClassContext, Proofs,
                 ConstraintMap, Clauses, VarNameRemap, NewPredInfo0),
-            pred_info_set_procedures(Procs, NewPredInfo0, NewPredInfo),
+            pred_info_set_proc_table(Procs, NewPredInfo0, NewPredInfo),
             module_info_get_predicate_table(!.ModuleInfo, PredTable0),
             predicate_table_insert(NewPredInfo, NewPredId,
                 PredTable0, PredTable),
@@ -1880,7 +1880,7 @@ add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
         PredIds = [PredId],
         module_info_get_preds(!.ModuleInfo, PredTable0),
         map.lookup(PredTable0, PredId, PredInfo0),
-        pred_info_get_procedures(PredInfo0, ProcTable0),
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
         map.to_assoc_list(ProcTable0, ProcList),
         (
             get_procedure_matching_declmodes_with_renaming(ProcList,
@@ -1901,7 +1901,7 @@ add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
                     ProcInfo0, ProcInfo)
             ),
             map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-            pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+            pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
             map.det_update(PredId, PredInfo, PredTable0, PredTable),
             module_info_set_preds(PredTable, !ModuleInfo)
         ;
@@ -1953,7 +1953,7 @@ add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
             PredIds = [PredId],
             module_info_get_preds(!.ModuleInfo, PredTable0),
             map.lookup(PredTable0, PredId, PredInfo0),
-            pred_info_get_procedures(PredInfo0, ProcTable0),
+            pred_info_get_proc_table(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
             (
                 get_procedure_matching_declmodes_with_renaming(ProcList,
@@ -1963,7 +1963,7 @@ add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
                 proc_info_set_imported_structure_sharing(HeadVars, Types,
                     SharingDomain, ProcInfo0, ProcInfo),
                 map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+                pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 map.det_update(PredId, PredInfo, PredTable0, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
@@ -2018,7 +2018,7 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
             PredIds = [PredId],
             module_info_get_preds(!.ModuleInfo, PredTable0),
             map.lookup(PredTable0, PredId, PredInfo0),
-            pred_info_get_procedures(PredInfo0, ProcTable0),
+            pred_info_get_proc_table(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
             (
                 get_procedure_matching_declmodes_with_renaming(ProcList,
@@ -2028,7 +2028,7 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
                 proc_info_set_imported_structure_reuse(HeadVars, Types,
                     ReuseDomain, ProcInfo0, ProcInfo),
                 map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+                pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 map.det_update(PredId, PredInfo, PredTable0, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
@@ -2078,7 +2078,7 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
         PredIds = [PredId],
         module_info_get_preds(!.ModuleInfo, PredTable0),
         map.lookup(PredTable0, PredId, PredInfo0),
-        pred_info_get_procedures(PredInfo0, ProcTable0),
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
         map.to_assoc_list(ProcTable0, ProcList),
         (
             get_procedure_matching_declmodes_with_renaming(ProcList,
@@ -2094,7 +2094,7 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
             proc_info_set_maybe_termination_info(MaybeTerminationInfo,
                 ProcInfo1, ProcInfo),
             map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-            pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+            pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
             map.det_update(PredId, PredInfo, PredTable0, PredTable),
             module_info_set_preds(PredTable, !ModuleInfo)
         ;
@@ -2254,7 +2254,7 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
             module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
         ;
             % Add the pragma declaration to the proc_info for this procedure.
-            pred_info_get_procedures(!.PredInfo, Procs),
+            pred_info_get_proc_table(!.PredInfo, Procs),
             map.to_assoc_list(Procs, ExistingProcs),
             pragma_get_modes(PVars, Modes),
             SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
@@ -2496,7 +2496,7 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
         ),
 
         % Add the eval model to the proc_info for this procedure.
-        pred_info_get_procedures(PredInfo0, ProcTable0),
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
         map.to_assoc_list(ProcTable0, ExistingProcs),
         (
             MaybeModes = yes(Modes),
@@ -2509,7 +2509,7 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
                     SimpleCallId, yes, EvalMethod, MaybeAttributes,
                     ProcTable0, ProcTable, !Status, !ModuleInfo, !QualInfo,
                     !Specs),
-                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+                pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             ;
                 Pieces = [words("Error:"),
@@ -2546,7 +2546,7 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
                     SimpleCallId, SingleProc, EvalMethod, MaybeAttributes,
                     ProcTable0, ProcTable, !Status, !ModuleInfo, !QualInfo,
                     !Specs),
-                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+                pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             )
         )
@@ -3235,7 +3235,7 @@ add_pragma_fact_table(FTInfo, Status, Context, !ModuleInfo, !Specs) :-
             ),
 
             module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
-            pred_info_get_procedures(PredInfo, ProcTable),
+            pred_info_get_proc_table(PredInfo, ProcTable),
             pred_info_get_arg_types(PredInfo, ArgTypes),
             ProcIds = pred_info_procids(PredInfo),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),

@@ -127,7 +127,7 @@ simplify_pred_procs(SimplifyTasks, PredId, [ProcId | ProcIds], !ModuleInfo,
 
 simplify_pred_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo,
         !PredInfo, !Specs) :-
-    pred_info_get_procedures(!.PredInfo, ProcTable0),
+    pred_info_get_proc_table(!.PredInfo, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     simplify_proc_return_msgs(SimplifyTasks, PredId, ProcId,
         !ModuleInfo, ProcInfo0, ProcInfo, ProcSpecs),
@@ -151,7 +151,7 @@ simplify_pred_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo,
         HasUserEvent = has_no_user_event
     ),
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_procedures(ProcTable, !PredInfo),
+    pred_info_set_proc_table(ProcTable, !PredInfo),
     accumulate_error_specs_for_proc(ProcSpecs, !Specs).
 
 simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo)  :-
@@ -409,9 +409,9 @@ simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, ProcId,
 
         module_info_get_preds(!.ModuleInfo, PredTable0),
         map.lookup(PredTable0, PredId, PredInfo0),
-        pred_info_get_procedures(PredInfo0, ProcTable0),
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
         map.det_update(ProcId, !.ProcInfo, ProcTable0, ProcTable),
-        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1),
 
         pred_info_get_markers(PredInfo1, Markers1),
         remove_marker(marker_has_format_call, Markers1, Markers),

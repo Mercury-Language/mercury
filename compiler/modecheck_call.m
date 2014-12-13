@@ -105,7 +105,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_purity(PredInfo, Purity),
-    pred_info_get_procedures(PredInfo, Procs),
+    pred_info_get_proc_table(PredInfo, Procs),
     (
         MayChangeCalledProc = may_not_change_called_proc,
         ( ProcId0 = invalid_proc_id ->
@@ -545,7 +545,7 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
     % and compare_proc/5 below.
     %
 modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
-    pred_info_get_procedures(PredInfo, Procs),
+    pred_info_get_proc_table(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
     map.lookup(Procs, OtherProcId, OtherProcInfo),
 
@@ -585,7 +585,7 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
     % and modes_are_indistinguishable/4 above.
     %
 modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
-    pred_info_get_procedures(PredInfo, Procs),
+    pred_info_get_proc_table(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
     map.lookup(Procs, OtherProcId, OtherProcInfo),
 

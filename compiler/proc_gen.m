@@ -293,7 +293,7 @@ generate_pred_code(ModuleInfo, ConstStructMap, PredId, PredInfo, ProcIds,
 generate_proc_list_code(_, _, _, _, [], !GlobalData, !Procs).
 generate_proc_list_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
         [ProcId | ProcIds], !GlobalData, !Procs) :-
-    pred_info_get_procedures(PredInfo, ProcInfos),
+    pred_info_get_proc_table(PredInfo, ProcInfos),
     map.lookup(ProcInfos, ProcId, ProcInfo),
     generate_proc_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
         ProcId, ProcInfo, !GlobalData, Proc),

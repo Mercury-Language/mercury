@@ -173,7 +173,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_constraint_proofs(int::in, tvarset::in,
+:- pred write_constraint_proof_map(int::in, tvarset::in,
     constraint_proof_map::in, bool::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -960,10 +960,10 @@ cons_id_and_vars_or_arity_to_string(Qual, VarSet, ConsId, MaybeArgVars)
 % Write out constraint proofs.
 %
 
-write_constraint_proofs(Indent, VarSet, Proofs, AppendVarNums, !IO) :-
+write_constraint_proof_map(Indent, VarSet, ProofMap, AppendVarNums, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% Proofs: \n", !IO),
-    map.to_assoc_list(Proofs, ProofsList),
+    map.to_assoc_list(ProofMap, ProofsList),
     io.write_list(ProofsList, "\n",
         write_constraint_proof(Indent, VarSet, AppendVarNums), !IO).
 

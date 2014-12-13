@@ -597,7 +597,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
         typecheck_check_for_ambiguity(whole_pred, HeadVars, !Info),
         typecheck_info_get_final_info(!.Info, !.HeadTypeParams, ExistQVars0,
             ExplicitVarTypes0, TypeVarSet, !:HeadTypeParams, InferredVarTypes0,
-            InferredTypeConstraints0, ConstraintProofs, ConstraintMap,
+            InferredTypeConstraints0, ConstraintProofMap, ConstraintMap,
             TVarRenaming, ExistTypeRenaming),
         typecheck_info_get_pred_markers(!.Info, PredMarkers),
         vartypes_optimize(InferredVarTypes0, InferredVarTypes),
@@ -620,7 +620,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
         clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
         pred_info_set_typevarset(TypeVarSet, !PredInfo),
-        pred_info_set_constraint_proofs(ConstraintProofs, !PredInfo),
+        pred_info_set_constraint_proof_map(ConstraintProofMap, !PredInfo),
         pred_info_set_constraint_map(ConstraintMap, !PredInfo),
         pred_info_set_markers(PredMarkers, !PredInfo),
 
@@ -659,8 +659,8 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
             (
                 % If the argument types and the type constraints are identical
                 % up to renaming, then nothing has changed.
-                pred_info_get_tvar_kinds(!.PredInfo, TVarKinds),
-                argtypes_identical_up_to_renaming(TVarKinds, ExistQVars0,
+                pred_info_get_tvar_kind_map(!.PredInfo, TVarKindMap),
+                argtypes_identical_up_to_renaming(TVarKindMap, ExistQVars0,
                     ArgTypes0, OldTypeConstraints, ExistQVars, ArgTypes,
                     InferredTypeConstraints)
             ->

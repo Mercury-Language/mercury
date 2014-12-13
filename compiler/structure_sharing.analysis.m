@@ -182,11 +182,11 @@ process_imported_sharing_in_pred(PredId, !ModuleInfo) :-
 
 process_imported_sharing_in_procs(!PredInfo) :-
     some [!ProcTable] (
-        pred_info_get_procedures(!.PredInfo, !:ProcTable),
+        pred_info_get_proc_table(!.PredInfo, !:ProcTable),
         ProcIds = pred_info_procids(!.PredInfo),
         list.foldl(process_imported_sharing_in_proc(!.PredInfo),
             ProcIds, !ProcTable),
-        pred_info_set_procedures(!.ProcTable, !PredInfo)
+        pred_info_set_proc_table(!.ProcTable, !PredInfo)
     ).
 
 :- pred process_imported_sharing_in_proc(pred_info::in, proc_id::in,
@@ -264,13 +264,13 @@ process_intermod_analysis_imported_sharing_in_pred(PredId, !ModuleInfo) :-
 process_intermod_analysis_imported_sharing_in_procs(ModuleInfo, AnalysisInfo,
         PredId, !PredInfo) :-
     some [!ProcTable] (
-        pred_info_get_procedures(!.PredInfo, !:ProcTable),
+        pred_info_get_proc_table(!.PredInfo, !:ProcTable),
         ProcIds = pred_info_procids(!.PredInfo),
         list.foldl(
             process_intermod_analysis_imported_sharing_in_proc(ModuleInfo,
                 AnalysisInfo, PredId, !.PredInfo),
             ProcIds, !ProcTable),
-        pred_info_set_procedures(!.ProcTable, !PredInfo)
+        pred_info_set_proc_table(!.ProcTable, !PredInfo)
     ).
 
 :- pred process_intermod_analysis_imported_sharing_in_proc(module_info::in,
@@ -960,7 +960,7 @@ write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
     ProcIds = pred_info_procids(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ModuleName = pred_info_module(PredInfo),
-    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     pred_info_get_context(PredInfo, Context),
     SymName = qualified(ModuleName, PredName),
     pred_info_get_typevarset(PredInfo, TypeVarSet),
