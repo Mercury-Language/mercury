@@ -1431,12 +1431,7 @@ get_octal_escape(Stream, QuoteChar, Chars, OctalChars, Token, !IO) :-
             finish_octal_escape(Stream, QuoteChar, Chars,
                 OctalChars, Token, !IO)
         ;
-            % XXX We don't report this as an error since we need bug-for-bug
-            % compatibility with NU-Prolog.
-            % Token = error("unterminated octal escape")
-            io.putback_char(Stream, Char, !IO),
-            finish_octal_escape(Stream, QuoteChar, Chars, OctalChars, Token,
-                !IO)
+            Token = error("unterminated octal escape")
         )
     ).
 
@@ -1454,12 +1449,8 @@ string_get_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
             string_finish_octal_escape(String, Len, QuoteChar, Chars,
                 OctalChars, Posn0, Token, Context, !Posn)
         ;
-            % XXX We don't report this as an error since we need bug-for-bug
-            % compatibility with NU-Prolog.
-            % Token = error("unterminated octal escape")
-            string_ungetchar(String, !Posn),
-            string_finish_octal_escape(String, Len, QuoteChar, Chars,
-                OctalChars, Posn0, Token, Context, !Posn)
+            string_get_context(Posn0, Context, !Posn),
+            Token = error("unterminated octal escape")
         )
     ;
         Token = eof,

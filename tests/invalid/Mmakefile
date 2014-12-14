@@ -263,6 +263,7 @@ SINGLEMODULE= \
 	unsatisfiable_constraint_bug \
 	unsatisfiable_constraint_msg \
 	unsatisfiable_super \
+	unterminated_octal_escape \
 	user_eq_dummy \
 	uu_type \
 	vars_in_wrong_places \

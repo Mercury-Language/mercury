@@ -12,7 +12,7 @@ main -->
 	print("Hello world\r\n"),
 	print("\r\n"),
 	print("\a\b\v\f\t\n"),
-	print("\077"),
-	print("\0123"),
-	print("\0321"),
+	print("\077\"),
+	print("\0123\"),
+	print("\0321\"),
 	print("\n").
