@@ -633,10 +633,10 @@ mode_info_get_in_dupl_for_switch(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_in_dupl_for_switch.
 
 mode_info_set_module_info(X, !MI) :-
-    ( old_and_new_may_differ(X, !.MI ^ mi_module_info) ->
-        !MI ^ mi_module_info := X
-    ;
+    ( private_builtin.pointer_equal(X, !.MI ^ mi_module_info) ->
         true
+    ;
+        !MI ^ mi_module_info := X
     ).
 mode_info_set_pred_id(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_pred_id := X.
@@ -647,10 +647,10 @@ mode_info_set_varset(X, !MI) :-
 mode_info_set_var_types(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_vartypes := X.
 mode_info_set_context(X, !MI) :-
-    ( old_and_new_may_differ(X, !.MI ^ mi_context) ->
-        !MI ^ mi_context := X
-    ;
+    ( private_builtin.pointer_equal(X, !.MI ^ mi_context) ->
         true
+    ;
+        !MI ^ mi_context := X
     ).
 mode_info_set_mode_context(X, !MI) :-
     !MI ^ mi_mode_context := X.
@@ -659,44 +659,47 @@ mode_info_set_locked_vars(X, !MI) :-
 mode_info_set_instvarset(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_instvarset := X.
 mode_info_set_errors(X, !MI) :-
-    ( old_and_new_may_differ(X, !.MI ^ mi_errors) ->
-        !MI ^ mi_errors := X
-    ;
+    ( private_builtin.pointer_equal(X, !.MI ^ mi_errors) ->
         true
+    ;
+        !MI ^ mi_errors := X
     ).
 mode_info_set_warnings(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_warnings := X.
 mode_info_set_need_to_requantify(X, !MI) :-
-    ( old_and_new_may_differ(X, !.MI ^ mi_sub_info ^ msi_need_to_requantify) ->
-        !MI ^ mi_sub_info ^ msi_need_to_requantify := X
-    ;
+    (
+        private_builtin.pointer_equal(X,
+            !.MI ^ mi_sub_info ^ msi_need_to_requantify)
+    ->
         true
+    ;
+        !MI ^ mi_sub_info ^ msi_need_to_requantify := X
     ).
 mode_info_set_in_promise_purity_scope(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_in_promise_purity_scope := X.
 mode_info_set_delay_info(X, !MI) :-
-    ( old_and_new_may_differ(X, !.MI ^ mi_delay_info) ->
-        !MI ^ mi_delay_info := X
-    ;
+    ( private_builtin.pointer_equal(X, !.MI ^ mi_delay_info) ->
         true
+    ;
+        !MI ^ mi_delay_info := X
     ).
 mode_info_set_live_vars(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_live_vars := X.
 mode_info_set_nondet_live_vars(X, !MI) :-
-    ( old_and_new_may_differ(X, !.MI ^ mi_nondet_live_vars) ->
-        !MI ^ mi_nondet_live_vars := X
-    ;
+    ( private_builtin.pointer_equal(X, !.MI ^ mi_nondet_live_vars) ->
         true
+    ;
+        !MI ^ mi_nondet_live_vars := X
     ).
 mode_info_set_last_checkpoint_insts(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_last_checkpoint_insts := X.
 mode_info_set_parallel_vars(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_par_conj := X.
 mode_info_set_changed_flag(X, !MI) :-
-    ( old_and_new_may_differ(X, !.MI ^ mi_sub_info ^ msi_changed_flag) ->
-        !MI ^ mi_sub_info ^ msi_changed_flag := X
-    ;
+    ( private_builtin.pointer_equal(X, !.MI ^ mi_sub_info ^ msi_changed_flag) ->
         true
+    ;
+        !MI ^ mi_sub_info ^ msi_changed_flag := X
     ).
 mode_info_set_how_to_check(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_how_to_check := X.
@@ -704,62 +707,36 @@ mode_info_set_may_change_called_proc(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_may_change_called_proc := X.
 mode_info_set_may_init_solver_vars(X, !MI) :-
     (
-        old_and_new_may_differ(X,
+        private_builtin.pointer_equal(X,
             !.MI ^ mi_sub_info ^ msi_may_init_solver_vars)
     ->
-        !MI ^ mi_sub_info ^ msi_may_init_solver_vars := X
-    ;
         true
+    ;
+        !MI ^ mi_sub_info ^ msi_may_init_solver_vars := X
     ).
 mode_info_set_in_from_ground_term(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_in_from_ground_term := X.
 mode_info_set_had_from_ground_term(X, !MI) :-
     (
-        old_and_new_may_differ(X,
+        private_builtin.pointer_equal(X,
             !.MI ^ mi_sub_info ^ msi_had_from_ground_term)
     ->
-        !MI ^ mi_sub_info ^ msi_had_from_ground_term := X
-    ;
         true
+    ;
+        !MI ^ mi_sub_info ^ msi_had_from_ground_term := X
     ).
 mode_info_set_make_ground_terms_unique(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_make_ground_terms_unique := X.
 mode_info_set_in_dupl_for_switch(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_in_dupl_for_switch := X.
 
-    % Can the old and new values of a field od mode_info differ?
-    %
-    % In C grades, we check the bit patterns. If they are identical,
-    % then they cannot differ. If the bit patterns differ, then the
-    % values may as well (or they may be a different term with the
-    % same meaning; we cannot tell).
-    %
-    % In non-C grades, we conservatively always report that they may differ.
-    %
-:- pred old_and_new_may_differ(T::in, T::in) is semidet.
-
-old_and_new_may_differ(_, _) :-
-    semidet_true.
-
-:- pragma foreign_proc("C",
-    old_and_new_may_differ(Old::in, New::in),
-    [will_not_call_mercury, promise_pure],
-"
-    if (((MR_Unsigned) Old) == ((MR_Unsigned) New)) {
-        SUCCESS_INDICATOR = MR_FALSE;
-    } else {
-        SUCCESS_INDICATOR = MR_TRUE;
-    }
-").
-
 %-----------------------------------------------------------------------------%
 
-% I (zs) decided which mode_info fields to call old_and_new_may_differ for
+% I (zs) decided which mode_info fields to call pointer_equal for
 % based on this profiling information derived from a bootcheck. During this
 % bootcheck, each of the setter predicates was given a number from 0 to 25,
 % and called gather_mode_info_stats below to record whether the new value
-% was the same bit pattern as the old one (the same test as used by
-% old_and_new_may_differ above.
+% was the same bit pattern as the old one.
 %
 % The profiling code follows the data derived from it.
 
