@@ -64,18 +64,16 @@
 simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, Common0, Common, !Info) :-
     % (A -> B ; C) is logically equivalent to (A, B ; ~A, C).
-    % If the determinism of A means that one of these disjuncts
-    % cannot succeed, then we replace the if-then-else with the
-    % other disjunct. (We could also eliminate A, but we leave
-    % that to the recursive invocations.)
+    % If the determinism of A means that one of these disjuncts cannot succeed,
+    % then we replace the if-then-else with the other disjunct. (We could
+    % also eliminate A, but we leave that to the recursive invocations.)
     %
-    % Note however that rerunning determinism analysis, which
-    % we do at the end of simplification, may introduce more
-    % occurrences of these; since we don't iterate simplification
-    % and determinism anaysis until a fixpoint is reached,
-    % we don't guarantee to eliminate all such if-then-elses.
-    % Hence the code generator must be prepared to handle the
-    % case when the condition of an if-then-else has determinism
+    % Note however that rerunning determinism analysis, which we do
+    % at the end of simplification, may introduce more occurrences of these;
+    % since we don't iterate simplification and determinism anaysis until
+    % a fixpoint is reached, we don't guarantee to eliminate all such
+    % if-then-elses. Hence the code generator must be prepared to handle
+    % the case when the condition of an if-then-else has determinism
     % `det' or `failure'.
     %
     % The conjunction operator in the remaining disjunct ought to be
@@ -446,11 +444,11 @@ can_switch_on_type(TypeBody) = CanSwitchOnType :-
         unexpected($module, $pred, "eqv type")
     ;
         TypeBody = hlds_foreign_type(_),
-        % If the type is foreign, how can have a Mercury unification using it?
+        % If the type is foreign, how can a Mercury unification use it?
         unexpected($module, $pred, "foreign type")
     ;
         TypeBody = hlds_abstract_type(_),
-        % If the type is abstract, how can have a Mercury unification using it?
+        % If the type is abstract, how can a Mercury unification use it?
         unexpected($module, $pred, "abstract type")
     ;
         TypeBody = hlds_solver_type(_, _),
@@ -495,17 +493,17 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         true
     ),
     (
-        % replace `not true' with `fail'
+        % Replace `not true' with `fail'.
         SubGoal1 = hlds_goal(conj(plain_conj, []), _)
     ->
         hlds_goal(GoalExpr, GoalInfo) = fail_goal_with_context(Context)
     ;
-        % replace `not fail' with `true'
+        % Replace `not fail' with `true'.
         SubGoal1 = hlds_goal(disj([]), _)
     ->
         hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
     ;
-        % remove double negation
+        % Remove double negation.
         SubGoal1 =
             hlds_goal(negation(hlds_goal(SubSubGoal, SubSubGoalInfo)), _),
         % XXX BUG! This optimization is only safe if it preserves
@@ -521,8 +519,8 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         GoalInfo = GoalInfo0
     ),
     % Execution continues after the negation scope iff the goal inside the
-    % scope failed. We don't know when it failed, so we cannot depend on it
-    % having created any structures.
+    % scope failed. In general, we don't know when it failed, so we cannot
+    % depend on it having created any structures.
     Common = Common0.
 
 %---------------------------------------------------------------------------%

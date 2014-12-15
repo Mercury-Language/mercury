@@ -67,10 +67,10 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         list.map(bound_inst_to_cons_id(VarTypeCtor), BoundInsts, ConsIds0),
         list.sort(ConsIds0, ConsIds),
         delete_unreachable_cases(Cases0, ConsIds, Cases1),
-        MaybeConsIds = yes(ConsIds)
+        MaybeInstConsIds = yes(ConsIds)
     ;
         Cases1 = Cases0,
-        MaybeConsIds = no
+        MaybeInstConsIds = no
     ),
     simplify_switch_cases(Var, Cases1, [], RevCases, [], RevInstMapDeltas,
         not_seen_non_ground_term, SeenNonGroundTerm,
@@ -93,7 +93,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         MainConsIdArity = cons_id_arity(MainConsId),
         (
             SwitchCanFail = can_fail,
-            MaybeConsIds \= yes([MainConsId])
+            MaybeInstConsIds \= yes([MainConsId])
         ->
             % Don't optimize in the case of an existentially typed constructor
             % because currently create_test_unification does not handle the
