@@ -1,5 +1,6 @@
 //
 // Copyright (C) 2001-2003, 2009 The University of Melbourne.
+// Copyright (C) 2014 The Mercury Team.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -9,33 +10,46 @@
 package jmercury.runtime;
 
 /**
- * Internals for Mercury's runtime system on the Java backend.
- * At the moment this class is used to store the main module's name (progname),
- * command line arguments and the exit status.  We can't put them in one of the
+ * Internals and static objects for Mercury's runtime system on the Java
+ * backend.
+ * This class is used to store the main module's name (progname), command
+ * line arguments and the exit status.  We can't put them in one of the
  * library modules because we need to hold them in a class variable in a top
  * level class.
  *
- * The class also contains utility methods.
+ * The class also contains utility methods and other objects such as a
+ * reference to the thread pool.
+ *
+ * No instance of this class is ever created, all it's members and methods
+ * are static.
  */
 public class JavaInternal {
 
-    private static JavaInternal         instance;
-
+    /**
+     * Private constructor.
+     * This private constructor doesn't do anything and isn't called by
+     * anyone.  It exists only to prevent people from creating an instance.
+     */
     private JavaInternal() {
-        options = new MercuryOptions();
-        options.process();
-        thread_pool = new MercuryThreadPool(options.getNumProcessors());
     }
 
-    private MercuryThreadPool thread_pool;
-    private MercuryOptions options;
+    private static MercuryThreadPool    thread_pool = null;
+    private static MercuryOptions       options = null;
 
-    public static MercuryThreadPool getThreadPool() {
-        return instance.thread_pool;
+    public static synchronized MercuryThreadPool getThreadPool() {
+        if (thread_pool == null) {
+            thread_pool = new MercuryThreadPool(
+                getOptions().getNumProcessors());
+        }
+        return thread_pool;
     }
 
-    public static MercuryOptions getOptions() {
-        return instance.options;
+    public static synchronized MercuryOptions getOptions() {
+        if (options == null) {
+            options = new MercuryOptions();
+            options.process();
+        }
+        return options;
     }
 
     public static java.lang.String      progname;
@@ -57,11 +71,12 @@ public class JavaInternal {
     }
 
     /**
-     * Run the main task using the thread pool.
+     * Run the main task.
+     * The maun task is executed by the thread pool so that when it blocks
+     * the thread pool is notified correctly.
      */
     public static void runMain(Runnable main)
     {
-        instance = new JavaInternal();
         getThreadPool().runMain(main);
     }
 

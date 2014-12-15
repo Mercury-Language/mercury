@@ -14,7 +14,7 @@ MER_JARS = $(MER_LIB_DIR)/mer_std.jar:$(MER_LIB_DIR)/mer_rt.jar
 .PHONY: all
 all: run
 
-JavaMain.class: JavaMain.java mercury_lib.jar
+JavaMain.class: JavaMain.java libmercury_lib.jar
 	$(JAVAC) JavaMain.java -cp $(MER_JARS):Mercury/classs -d .
 
 libmercury_lib.jar: mercury_lib.m

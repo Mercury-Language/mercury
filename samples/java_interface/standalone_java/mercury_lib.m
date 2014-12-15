@@ -17,6 +17,11 @@
     %
 :- func cube(int) = int.
 
+    % fibs(N) returns the Nth fibbonanci number using a parallelised naive
+    % algorithm.
+    %
+:- func fibs(int) = int.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -25,6 +30,8 @@
 :- import_module int.
 :- import_module list.
 :- import_module string.
+:- import_module thread.
+:- import_module thread.future.
 
 %-----------------------------------------------------------------------------%
 
@@ -40,6 +47,41 @@ write_hello(!IO) :-
     "cube").
 
 cube(X) = X * X * X.
+
+%-----------------------------------------------------------------------------%
+
+%
+% Trivial concurrency test.  No one would normally write fibs this way.
+%
+:- pragma foreign_export("Java", fibs(in) = out,
+    "fibs").
+fibs(N) = fibs_par(N).
+
+:- func fibs_par(int) = int.
+
+fibs_par(N) = F :-
+    ( N < 2 ->
+        F = 1
+    ; N > fibs_thresh ->
+        F2 = future((func) = fibs_par(N-2)),
+        F1 = fibs_par(N-1),
+        F = F1 + wait(F2)
+    ;
+        F = fibs_seq(N-1) + fibs_seq(N-2)
+    ).
+
+:- func fibs_seq(int) = int.
+
+fibs_seq(N) =
+    ( N < 2 ->
+        1
+    ;
+        fibs_seq(N-2) + fibs_seq(N-1)
+    ).
+
+:- func fibs_thresh = int.
+
+fibs_thresh = 20.
 
 %-----------------------------------------------------------------------------%
 %
