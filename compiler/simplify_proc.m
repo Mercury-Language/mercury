@@ -788,6 +788,9 @@ simplify_may_introduce_calls(ModuleName, PredName, _Arity) :-
         ; PredName = "format_float_component_width_prec"
         )
     ;
+        ModuleName = "stream",
+        PredName = "put"
+    ;
         ModuleName = "table_builtin",
 
         ( PredName = "table_lookup_insert_start_int"

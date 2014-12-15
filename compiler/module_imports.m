@@ -482,12 +482,14 @@ get_implicit_dependencies(Items, Globals, !:ImportDeps, !:UseDeps) :-
     !:UseDeps = [mercury_private_builtin_module],
     ImplicitImportNeeds0 = implicit_import_needs(
         dont_need_tabling, dont_need_tabling_statistics,
-        dont_need_stm, dont_need_exception, dont_need_format, dont_need_io),
+        dont_need_stm, dont_need_exception,
+        dont_need_string_format, dont_need_stream_format, dont_need_io),
     gather_implicit_import_needs_in_items(Items,
         ImplicitImportNeeds0, ImplicitImportNeeds),
     ImplicitImportNeeds = implicit_import_needs(
         ItemsNeedTabling, ItemsNeedTablingStatistics,
-        ItemsNeedSTM, ItemsNeedException, ItemsNeedFormat, ItemsNeedIO),
+        ItemsNeedSTM, ItemsNeedException,
+        ItemsNeedStringFormat, ItemsNeedStreamFormat, ItemsNeedIO),
     % We should include mercury_table_builtin_module if the Items contain
     % a tabling pragma, or if one of --use-minimal-model (either kind) and
     % --trace-table-io is specified. In the former case, we may also need
@@ -536,11 +538,17 @@ get_implicit_dependencies(Items, Globals, !:ImportDeps, !:UseDeps) :-
         ItemsNeedException = dont_need_exception
     ),
     (
-        ItemsNeedFormat = do_need_format,
+        ItemsNeedStringFormat = do_need_string_format,
         !:UseDeps = [mercury_string_format_module,
             mercury_string_parse_util_module | !.UseDeps]
     ;
-        ItemsNeedFormat = dont_need_format
+        ItemsNeedStringFormat = dont_need_string_format
+    ),
+    (
+        ItemsNeedStreamFormat = do_need_stream_format,
+        !:UseDeps = [mercury_stream_module | !.UseDeps]
+    ;
+        ItemsNeedStreamFormat = dont_need_stream_format
     ),
     (
         ItemsNeedIO = do_need_io,
@@ -618,9 +626,13 @@ get_implicit_dependencies(Items, Globals, !:ImportDeps, !:UseDeps) :-
     --->    dont_need_exception
     ;       do_need_exception.
 
-:- type maybe_need_format
-    --->    dont_need_format
-    ;       do_need_format.
+:- type maybe_need_string_format
+    --->    dont_need_string_format
+    ;       do_need_string_format.
+
+:- type maybe_need_stream_format
+    --->    dont_need_stream_format
+    ;       do_need_stream_format.
 
 :- type maybe_need_io
     --->    dont_need_io
@@ -643,7 +655,8 @@ get_implicit_dependencies(Items, Globals, !:ImportDeps, !:UseDeps) :-
                 iin_tabling_statistics  :: maybe_need_tabling_statistics,
                 iin_stm                 :: maybe_need_stm,
                 iin_exception           :: maybe_need_exception,
-                iin_format              :: maybe_need_format,
+                iin_string_format       :: maybe_need_string_format,
+                iin_stream_format       :: maybe_need_stream_format,
                 iin_io                  :: maybe_need_io
             ).
 
@@ -760,19 +773,50 @@ gather_implicit_import_needs_in_goal(GoalExpr - _Context,
     ;
         GoalExpr = call_expr(CalleeSymName, Args, _Purity),
         ( if
-            ( CalleeSymName = unqualified("format")
-            ; CalleeSymName = qualified(unqualified("string"), "format")
-            ; CalleeSymName = qualified(unqualified("io"), "format")
-            ; CalleeSymName = qualified(unqualified("stream"), "format")
-            ; CalleeSymName = qualified(unqualified("string_writer"), "format")
-            ; CalleeSymName = qualified(qualified(unqualified("stream"),
-                "string_writer"), "format")
-            )
+            CalleeSymName = qualified(ModuleName, "format")
         then
-            !ImplicitImportNeeds ^ iin_format := do_need_format
+            ( if 
+                ( ModuleName = unqualified("string")
+                ; ModuleName = unqualified("io")
+                )
+            then
+                % For io.format, we need to pull in the same modules
+                % as for string.format.
+                !ImplicitImportNeeds ^ iin_string_format
+                    := do_need_string_format
+            else if
+                ( ModuleName = unqualified("stream")
+                ; ModuleName = unqualified("string_writer")
+                ; ModuleName = qualified(unqualified("stream"),
+                    "string_writer")
+                )
+            then
+                % The replacement of calls to stream.string_writer.format
+                % needs everything that the replacement of calls to
+                % string.format or io.format needs.
+                !ImplicitImportNeeds ^ iin_string_format
+                    := do_need_string_format,
+                !ImplicitImportNeeds ^ iin_stream_format
+                    := do_need_stream_format
+            else
+                % The callee cannot be any of the predicates that
+                % format_call.m is designed to optimize.
+                true
+            )
+        else if
+            CalleeSymName = unqualified("format")
+        then
+            % We don't know whether this will resolve to string.format,
+            % io.format, or stream.string.writer.format. Ideally, we would
+            % set iin_stream_format only if the current context contains
+            % an import of stream.string_writer.m, but we don't have that
+            % information here, or in our caller.
+            !ImplicitImportNeeds ^ iin_string_format := do_need_string_format,
+            !ImplicitImportNeeds ^ iin_stream_format := do_need_stream_format
         else
-            gather_implicit_import_needs_in_terms(Args, !ImplicitImportNeeds)
-        )
+            true
+        ),
+        gather_implicit_import_needs_in_terms(Args, !ImplicitImportNeeds)
     ;
         GoalExpr = event_expr(_EventName, EventArgs),
         gather_implicit_import_needs_in_terms(EventArgs, !ImplicitImportNeeds)
@@ -829,12 +873,23 @@ gather_implicit_import_needs_in_term(Term, !ImplicitImportNeeds) :-
         (
             Const = atom(Atom),
             ( if
-                ( Atom = "format"
-                ; Atom = "string.format"
+                Atom = "format"
+            then
+                !ImplicitImportNeeds ^ iin_string_format
+                    := do_need_string_format,
+                !ImplicitImportNeeds ^ iin_stream_format
+                    := do_need_stream_format
+            else if
+                ( Atom = "string.format"
                 ; Atom = "string__format"
                 ; Atom = "io.format"
                 ; Atom = "io__format"
-                ; Atom = "stream.format"
+                )
+            then
+                !ImplicitImportNeeds ^ iin_string_format
+                    := do_need_string_format
+            else if
+                ( Atom = "stream.format"
                 ; Atom = "stream__format"
                 ; Atom = "string_writer.format"
                 ; Atom = "string_writer__format"
@@ -844,7 +899,13 @@ gather_implicit_import_needs_in_term(Term, !ImplicitImportNeeds) :-
                 ; Atom = "stream__string_writer__format"
                 )
             then
-                !ImplicitImportNeeds ^ iin_format := do_need_format
+                % The replacement of calls to stream.string_writer.format
+                % needs everything that the replacement of calls to
+                % string.format or io.format needs.
+                !ImplicitImportNeeds ^ iin_string_format
+                    := do_need_string_format,
+                !ImplicitImportNeeds ^ iin_stream_format
+                    := do_need_stream_format
             else
                 true
             )

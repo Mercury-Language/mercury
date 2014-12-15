@@ -10,11 +10,11 @@ ORDINARY_PROGS=	\
 	abstract_eqv \
 	address_of_builtins \
 	agg \
+	array_all_tf \
 	array_gen \
 	array_sort \
 	array_test \
 	array_test2 \
-	array_all_tf \
 	backquoted_qualified_ops \
 	bag_various \
 	bidirectional \
@@ -274,6 +274,7 @@ ORDINARY_PROGS=	\
 	static_no_tag \
 	stream_format \
 	stream_ignore_ws \
+	stream_put_bug \
 	stream_putback \
 	stream_putback_binary \
 	stream_test \

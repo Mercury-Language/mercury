@@ -1224,9 +1224,10 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
     ->
         PredId = PredIdPrime
     ;
-        string.int_to_string(Arity, ArityStr),
         unexpected($module, $pred,
-            "can't locate " ++ ProcName ++ "/" ++ ArityStr)
+            string.format("can't locate %s.%s/%d",
+                [s(sym_name_to_string(ModuleName)),
+                    s(ProcName), i(Arity)]))
     ),
     module_info_pred_info(Module, PredId, PredInfo),
     ProcIds = pred_info_procids(PredInfo),
@@ -1236,8 +1237,9 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
             ProcId = ProcId0
         ;
             unexpected($module, $pred,
-                string.format("expected single mode for %s/%d",
-                    [s(ProcName), i(Arity)]))
+                string.format("expected single mode for %s.%s/%d",
+                    [s(sym_name_to_string(ModuleName)),
+                        s(ProcName), i(Arity)]))
         )
     ;
         ModeNo = mode_no(N),
@@ -1245,8 +1247,9 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
             ProcId = ProcId0
         ;
             unexpected($module, $pred,
-                string.format("there is no mode %d for %s/%d",
-                    [i(N), s(ProcName), i(Arity)]))
+                string.format("there is no mode %d for %s.%s/%d",
+                    [i(N), s(sym_name_to_string(ModuleName)),
+                        s(ProcName), i(Arity)]))
         )
     ).
 
