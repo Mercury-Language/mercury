@@ -17,7 +17,7 @@
     %
 :- func cube(int) = int.
 
-    % fibs(N) returns the Nth fibbonanci number using a parallelised naive
+    % fibs(N) returns the Nth Fibonacci number using a parallelised naive
     % algorithm.
     %
 :- func fibs(int) = int.

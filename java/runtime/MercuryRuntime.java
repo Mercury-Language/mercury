@@ -9,7 +9,7 @@ package jmercury.runtime;
 /**
  * Interface to the Mercury Runtime System for Java code.
  *
- * No instance of this class is ever created, all it's members and methods
+ * No instance of this class is ever created, all its members and methods
  * are static.
  */
 public class MercuryRuntime
@@ -40,7 +40,7 @@ public class MercuryRuntime
     }
 
     /**
-     * Retrive the exit status stored in the IO state.
+     * Retrive the exit status stored in the I/O state.
      */
     public static int getExitStatus() {
         return JavaInternal.exit_status;
@@ -48,8 +48,8 @@ public class MercuryRuntime
 
     /**
      * Finalise the runtime system.
-     * This _must_ be cAlled at the normal end of any program.  Currently
-     * it runs finalisers and stops the thread pool.
+     * This _must_ be called at the normal end of any program.  It runs
+     * finalisers and stops the thread pool.
      */
     public static void finalise() {
         JavaInternal.run_finalisers();

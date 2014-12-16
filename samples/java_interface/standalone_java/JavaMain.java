@@ -25,14 +25,17 @@ public class JavaMain {
         try {
             runProgram(args);
         } finally {
-            // When we have finished calling Mercury procedures then we need to
-            // tell the Mercury Runtime that we've finished using it.
-            // This invokes any finalisers specified using ':- finalise'
-            // declarations in the set of Mercury libraries we are using.  It
-            // also tells the thread pool to shutdown, if the thread pool is not
-            // runnuing then this does nothing.
+            // When we have finished calling Mercury procedures then we need
+            // to tell the Mercury Runtime that we've finished using it.
             // The static method finalise() in the MercuryRuntime class does
-            // this.
+            // this.  This call is (currently) mandatory otherwise the JVM
+            // may not exit cleanly, therefore it should be called in a
+            // finally block as in this example.
+            //`
+            // This call will invoke any finalisers specified using
+            // ':- finalise' declarations in the set of Mercury libraries we
+            // are using.  It also tells the thread pool to shutdown, if the
+            // thread pool is not runnuing then this does nothing.
             //
             MercuryRuntime.finalise();
 

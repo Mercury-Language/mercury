@@ -453,7 +453,7 @@ public class MercuryThreadPool
 
     /**
      * Run the thread pool.
-     * The calling thread is used to "run" the thread pool.  It's main job
+     * The calling thread is used to "run" the thread pool.  Its main job
      * is to keep the correct number of worker threads alive.  It does not
      * return until the thread pool is stopped (with a call to shutdown()).
      * run() is usually called by runMain(), and shutdown() is usually
@@ -556,11 +556,11 @@ public class MercuryThreadPool
     }
 
     /**
-     * Start the thread pool in it's own thread.
+     * Start the thread pool in its own thread.
      * Normally the thread pool ie executed directly by the main thread.
      * However, when Mercury is used as a library by a native Java
      * application this is not true, and the thread pool runs in a thread of
-     * it's own.
+     * its own.
      */
     public MercuryThread startup()
     {
@@ -591,10 +591,10 @@ public class MercuryThreadPool
      * Request that the thread pool shutdown.
      * This method does not wait for the thread pool to shutdown, it's an
      * asychronous signal.  The thread pool will shutdown if: shutdown() has
-     * been called (implicitly when running as an application) and there are
-     * no remaining tasks either queued or running (spawn_native tasks are
-     * not included).  The requirement that the process does not exit until
-     * all tasks have finish is maintained by the JVM.
+     * been called (implicitly when main/2 is written in Mercury) and there
+     * are no remaining tasks either queued or running (spawn_native tasks
+     * are not included).  The requirement that the process does not exit
+     * until all tasks have finish is maintained by the JVM.
      */
     public boolean shutdown()
     {

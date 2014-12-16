@@ -72,7 +72,7 @@ public class JavaInternal {
 
     /**
      * Run the main task.
-     * The maun task is executed by the thread pool so that when it blocks
+     * The main task is executed by the thread pool so that when it blocks
      * the thread pool is notified correctly.
      */
     public static void runMain(Runnable main)
