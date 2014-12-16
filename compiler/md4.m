@@ -47,11 +47,16 @@
 
 :- pragma foreign_decl("C", "local", "
 
+#include ""mercury_string.h""
+
 struct mdfour {
-    MR_uint_least32_t A, B, C, D;
-    MR_uint_least32_t totalN;
-    unsigned char tail[64];
-    unsigned tail_len;
+    MR_uint_least32_t   A;
+    MR_uint_least32_t   B;
+    MR_uint_least32_t   C;
+    MR_uint_least32_t   D;
+    MR_uint_least32_t   totalN;
+    unsigned char       tail[64];
+    unsigned            tail_len;
 };
 
 static void mdfour_begin(struct mdfour *md);
@@ -241,7 +246,7 @@ static void mdfour_result(const struct mdfour *m, unsigned char *out)
     size_t i;
 
     mdfour_begin(&md);
-    mdfour_update(&md, (const unsigned char *)In, strlen(In));
+    mdfour_update(&md, (const unsigned char *) In, strlen(In));
     mdfour_update(&md, NULL, 0);
     mdfour_result(&md, sum);
 

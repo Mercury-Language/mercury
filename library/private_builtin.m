@@ -1459,13 +1459,6 @@ __Compare__private_builtin__ref_1_0(
 
 :- semipure pred trace_evaluate_runtime_condition is semidet.
 
-:- import_module io.    % Needed for trace_{get,set}_io_state;
-                        % undesirable dependency.
-
-:- semipure pred trace_get_io_state(io::uo) is det.
-
-:- impure pred trace_set_io_state(io::di) is det.
-
 :- implementation.
 
 unused :-
