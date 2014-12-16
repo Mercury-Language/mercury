@@ -25,7 +25,7 @@ public class MercuryRuntime
     private static MercuryThreadPool    thread_pool = null;
 
     /**
-     * Return the thread pool, initalising it if required.
+     * Return the thread pool, initialising it if required.
      * This does not start the thread pool.  It is started either when
      * startup() is called or automatically when the first task is
      * submitted.
@@ -40,7 +40,7 @@ public class MercuryRuntime
     }
 
     /**
-     * Retrive the exit status stored in the I/O state.
+     * Retrieve the exit status stored in the I/O state.
      */
     public static int getExitStatus() {
         return JavaInternal.exit_status;

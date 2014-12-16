@@ -590,7 +590,7 @@ public class MercuryThreadPool
     /**
      * Request that the thread pool shutdown.
      * This method does not wait for the thread pool to shutdown, it's an
-     * asychronous signal.  The thread pool will shutdown if: shutdown() has
+     * asynchronous signal.  The thread pool will shutdown if: shutdown() has
      * been called (implicitly when main/2 is written in Mercury) and there
      * are no remaining tasks either queued or running (spawn_native tasks
      * are not included).  The requirement that the process does not exit

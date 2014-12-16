@@ -35,7 +35,7 @@ public class JavaMain {
             // This call will invoke any finalisers specified using
             // ':- finalise' declarations in the set of Mercury libraries we
             // are using.  It also tells the thread pool to shutdown, if the
-            // thread pool is not runnuing then this does nothing.
+            // thread pool is not running then this does nothing.
             //
             MercuryRuntime.finalise();
 
