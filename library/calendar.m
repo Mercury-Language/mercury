@@ -34,6 +34,10 @@
     %
 :- type date.
 
+    % A more meaningful name for the above.
+    %
+:- type date_time == date.
+
     % Date components.
     %
 :- type year == int.         % Year 0 is 1 BC, -1 is 2 BC, etc.
