@@ -112,8 +112,8 @@
     % outermost resumption point, and info about the non-fixed
     % stack slots used for tracing purposes.
     %
-:- pred code_info_init(bool::in, globals::in, pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, abs_follow_vars::in, module_info::in,
+:- pred code_info_init(module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, proc_info::in, bool::in, abs_follow_vars::in,
     static_cell_info::in, const_struct_map::in, resume_point_info::out,
     trace_slot_info::out, maybe(containing_goal_map)::in,
     list(string)::in, int::in, code_info::out) is det.
@@ -342,13 +342,13 @@
 
 :- type code_info_static
     --->    code_info_static(
-                % For the code generation options.
-                cis_globals             :: globals,
-                cis_exprn_opts          :: exprn_opts,
-
                 % The module_info structure - you just never know
                 % when you might need it.
                 cis_module_info         :: module_info,
+
+                % For the code generation options.
+                cis_globals             :: globals,
+                cis_exprn_opts          :: exprn_opts,
 
                 % The id of the current predicate.
                 cis_pred_id             :: pred_id,
@@ -509,10 +509,11 @@
 
 %---------------------------------------------------------------------------%
 
-code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
-        FollowVars, ModuleInfo, StaticCellInfo, ConstStructMap, ResumePoint,
+code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
+        SaveSuccip, FollowVars, StaticCellInfo, ConstStructMap, ResumePoint,
         TraceSlotInfo, MaybeContainingGoalMap,
         TSRevStringTable, TSStringTableSize, CodeInfo) :-
+    module_info_get_globals(ModuleInfo, Globals),
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
     proc_info_get_liveness_info(ProcInfo, Liveness),
@@ -591,9 +592,9 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
         LCMCNull),
     CodeInfo0 = code_info(
         code_info_static(
+            ModuleInfo,
             Globals,
             ExprnOpts,
-            ModuleInfo,
             PredId,
             ProcId,
             PredInfo,

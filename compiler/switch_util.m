@@ -91,11 +91,15 @@
     %
 :- func estimate_switch_tag_test_cost(cons_tag) = int.
 
+:- type may_use_smart_indexing
+    --->    may_not_use_smart_indexing
+    ;       may_use_smart_indexing.
+
     % Succeeds if smart indexing for the given switch category has been
     % disabled by the user on the command line.
     %
-:- pred is_smart_indexing_disabled_category(globals::in, switch_category::in)
-    is semidet.
+:- pred find_switch_category(module_info::in, mer_type::in,
+    switch_category::out, may_use_smart_indexing::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -439,11 +443,11 @@ tag_cases_plain(ModuleInfo, SwitchVarType, CaseNum, [Case | Cases],
     list(case)::in, list(tagged_case)::out, int::in, int::out, int::in,
     int::out, int::in, int::out, is_int_switch::in, is_int_switch::out) is det.
 
-tag_cases_in_int_switch(_, _, _, [], [], !LowerLimit, !UpperLimit, !NumValues,
-        !IsIntSwitch).
+tag_cases_in_int_switch(_, _, _, [], [], !LowerLimit, !UpperLimit,
+        !NumValues, !IsIntSwitch).
 tag_cases_in_int_switch(ModuleInfo, SwitchVarType, CaseNum, [Case | Cases],
-        [TaggedCase | TaggedCases], !LowerLimit, !UpperLimit, !NumValues,
-        !IsIntSwitch) :-
+        [TaggedCase | TaggedCases], !LowerLimit, !UpperLimit,
+        !NumValues, !IsIntSwitch) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     tag_cons_id_in_int_switch(ModuleInfo, MainConsId, TaggedMainConsId,
         !LowerLimit, !UpperLimit, !NumValues, !IsIntSwitch),
@@ -453,8 +457,8 @@ tag_cases_in_int_switch(ModuleInfo, SwitchVarType, CaseNum, [Case | Cases],
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
         CaseNum, Goal),
     tag_cases_in_int_switch(ModuleInfo, SwitchVarType, CaseNum + 1,
-        Cases, TaggedCases, !LowerLimit, !UpperLimit, !NumValues,
-        !IsIntSwitch).
+        Cases, TaggedCases, !LowerLimit, !UpperLimit,
+        !NumValues, !IsIntSwitch).
 
 :- pred tag_cons_id(module_info::in, cons_id::in, tagged_cons_id::out) is det.
 
@@ -591,19 +595,64 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
         unexpected($module, $pred, "non-switch tag")
     ).
 
-is_smart_indexing_disabled_category(Globals, SwitchCategory) :-
+find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
+        MayUseSmartIndexing) :-
+    SwitchTypeCtorCat = classify_type(ModuleInfo, SwitchVarType),
+    SwitchCategory = type_ctor_cat_to_switch_cat(SwitchTypeCtorCat),
+
+    module_info_get_globals(ModuleInfo, Globals),
+    (
+        (
+            % We cannot use smart indexing if smart indexing is turned off
+            % in general.
+            globals.lookup_bool_option(Globals, smart_indexing, SmartIndexing),
+            SmartIndexing = no
+        ;
+            % We cannot use smart indexing if smart indexing is turned off
+            % for this category of switches.
+            SmartIndexingForCategory = is_smart_indexing_allowed_for_category(
+                Globals, SwitchCategory),
+            SmartIndexingForCategory = no
+        ;
+            % We cannot use smart indexing if some values in the type
+            % of the switched-on variable are represented by reserved
+            % addresses.
+            %
+            % XXX We could generate better code for some such switches
+            % if we first checked for and handled any reserved addresses
+            % in the type of the switched-on variable, and then used the
+            % usual smart indexing schemes for the other function symbols.
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            type_to_ctor_det(SwitchVarType, SwitchVarTypeCtor),
+            % The search will fail for builtin types, but these won't use
+            % reserved addresses anyway.
+            search_type_ctor_defn(TypeTable, SwitchVarTypeCtor,
+                SwitchVarTypeDefn),
+            hlds_data.get_type_defn_body(SwitchVarTypeDefn, SwitchVarTypeBody),
+            SwitchVarTypeBody ^ du_type_reserved_addr = uses_reserved_address
+        )
+    ->
+        MayUseSmartIndexing = may_not_use_smart_indexing
+    ;
+        MayUseSmartIndexing = may_use_smart_indexing
+    ).
+
+:- func is_smart_indexing_allowed_for_category(globals, switch_category)
+    = bool.
+
+is_smart_indexing_allowed_for_category(Globals, SwitchCategory) = Allowed :-
     (
         SwitchCategory = atomic_switch,
-        globals.lookup_bool_option(Globals, smart_atomic_indexing, no)
+        globals.lookup_bool_option(Globals, smart_atomic_indexing, Allowed)
     ;
         SwitchCategory = string_switch,
-        globals.lookup_bool_option(Globals, smart_string_indexing, no)
+        globals.lookup_bool_option(Globals, smart_string_indexing, Allowed)
     ;
         SwitchCategory = tag_switch,
-        globals.lookup_bool_option(Globals, smart_tag_indexing, no)
+        globals.lookup_bool_option(Globals, smart_tag_indexing, Allowed)
     ;
         SwitchCategory = float_switch,
-        globals.lookup_bool_option(Globals, smart_float_indexing, no)
+        globals.lookup_bool_option(Globals, smart_float_indexing, Allowed)
     ).
 
 %-----------------------------------------------------------------------------%

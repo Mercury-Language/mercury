@@ -161,38 +161,19 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
     % type constructor is not known.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_variable_type(!.Info, SwitchVar, SwitchVarType),
-    type_to_ctor_det(SwitchVarType, SwitchVarTypeCtor),
     tag_cases(ModuleInfo, SwitchVarType, Cases, TaggedCases,
         MaybeIntSwitchInfo),
 
-    % Figure out what kind of switch this is.
-    TypeCtorCategory = classify_type(ModuleInfo, SwitchVarType),
-    SwitchCategory = type_ctor_cat_to_switch_cat(TypeCtorCategory),
-    ml_gen_info_get_globals(!.Info, Globals),
-    globals.lookup_bool_option(Globals, smart_indexing, Indexing),
+    find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
+        MayUseSmartIndexing),
     (
-        (
-            Indexing = no
-        ;
-            % Check for a switch on a type whose representation uses
-            % reserved addresses.
-            % The search will fail for builtin types.
-            module_info_get_type_table(ModuleInfo, TypeTable),
-            search_type_ctor_defn(TypeTable, SwitchVarTypeCtor,
-                SwitchVarTypeDefn),
-            hlds_data.get_type_defn_body(SwitchVarTypeDefn, SwitchVarTypeBody),
-            SwitchVarTypeBody ^ du_type_reserved_addr = uses_reserved_address
-        ;
-            is_smart_indexing_disabled_category(Globals, SwitchCategory)
-        )
-    ->
-        % XXX In some cases, we could generate better code if we first checked
-        % for and handled the reserved addresses, and then used one of the
-        % smart indexing schemes for the other cases.
+        MayUseSmartIndexing = may_not_use_smart_indexing,
         ml_switch_generate_if_then_else_chain(TaggedCases, SwitchVar,
             CodeModel, CanFail, Context, Statements, !Info),
         Decls = []
     ;
+        MayUseSmartIndexing = may_use_smart_indexing,
+        module_info_get_globals(ModuleInfo, Globals),
         (
             SwitchCategory = atomic_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),

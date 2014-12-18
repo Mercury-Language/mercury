@@ -123,41 +123,31 @@
 
 %-----------------------------------------------------------------------------%
 
-generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
+generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     % Choose which method to use to generate the switch.
     % CanFail says whether the switch covers all cases.
 
     goal_info_get_store_map(GoalInfo, StoreMap),
     get_next_label(EndLabel, !CI),
     get_module_info(!.CI, ModuleInfo),
-    VarType = variable_type(!.CI, Var),
-    tag_cases(ModuleInfo, VarType, Cases, TaggedCases0, MaybeIntSwitchInfo),
+    SwitchVarType = variable_type(!.CI, SwitchVar),
+    tag_cases(ModuleInfo, SwitchVarType, Cases, TaggedCases0,
+        MaybeIntSwitchInfo),
     list.sort_and_remove_dups(TaggedCases0, TaggedCases),
-    get_globals(!.CI, Globals),
-    globals.lookup_bool_option(Globals, smart_indexing, Indexing),
 
-    type_to_ctor_det(VarType, VarTypeCtor),
-    CtorCat = classify_type(ModuleInfo, VarType),
-    SwitchCategory = type_ctor_cat_to_switch_cat(CtorCat),
+    SwitchVarName = variable_name(!.CI, SwitchVar),
+    produce_variable(SwitchVar, SwitchVarCode, SwitchVarRval, !CI),
 
-    VarName = variable_name(!.CI, Var),
-    produce_variable(Var, VarCode, VarRval, !CI),
+    find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
+        MayUseSmartIndexing),
     (
-        (
-            Indexing = no
-        ;
-            module_info_get_type_table(ModuleInfo, TypeTable),
-            % The search will fail for builtin types.
-            search_type_ctor_defn(TypeTable, VarTypeCtor, VarTypeDefn),
-            hlds_data.get_type_defn_body(VarTypeDefn, VarTypeBody),
-            VarTypeBody ^ du_type_reserved_addr = uses_reserved_address
-        ;
-            is_smart_indexing_disabled_category(Globals, SwitchCategory)
-        )
-    ->
-        order_and_generate_cases(TaggedCases, VarRval, VarType, VarName,
-            CodeModel, CanFail, GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
+        MayUseSmartIndexing = may_not_use_smart_indexing,
+        order_and_generate_cases(TaggedCases, SwitchVarRval, SwitchVarType,
+            SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel, MaybeEnd,
+            SwitchCode, !CI)
     ;
+        MayUseSmartIndexing = may_use_smart_indexing,
+        module_info_get_globals(ModuleInfo, Globals),
         (
             SwitchCategory = atomic_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
@@ -186,7 +176,7 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                 filter_out_failing_cases_if_needed(CodeModel,
                     TaggedCases, FilteredTaggedCases,
                     CanFail, FilteredCanFail),
-                find_int_lookup_switch_params(ModuleInfo, VarType,
+                find_int_lookup_switch_params(ModuleInfo, SwitchVarType,
                     FilteredCanFail, LowerLimit, UpperLimit, NumValues,
                     ReqDensity, NeedBitVecCheck, NeedRangeCheck,
                     FirstVal, LastVal),
@@ -195,7 +185,7 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
             ->
                 % We update MaybeEnd1 to MaybeEnd to account for the possible
                 % reservation of temp slots for nondet switches.
-                generate_int_lookup_switch(VarRval, LookupSwitchInfo,
+                generate_int_lookup_switch(SwitchVarRval, LookupSwitchInfo,
                     EndLabel, StoreMap, FirstVal, LastVal,
                     NeedBitVecCheck, NeedRangeCheck,
                     MaybeEnd1, MaybeEnd, SwitchCode, !CI)
@@ -208,17 +198,17 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                 NumArms > 1,
                 globals.lookup_int_option(Globals, dense_switch_req_density,
                     ReqDensity),
-                tagged_case_list_is_dense_switch(!.CI, VarType, TaggedCases,
-                    LowerLimit, UpperLimit, NumValues, ReqDensity, CanFail,
-                    DenseSwitchInfo)
+                tagged_case_list_is_dense_switch(!.CI, SwitchVarType,
+                    TaggedCases, LowerLimit, UpperLimit, NumValues,
+                    ReqDensity, CanFail, DenseSwitchInfo)
             ->
-                generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel,
-                    GoalInfo, DenseSwitchInfo, EndLabel,
-                    no, MaybeEnd, SwitchCode, !CI)
+                generate_dense_switch(TaggedCases, SwitchVarRval,
+                    SwitchVarName, CodeModel, GoalInfo, DenseSwitchInfo,
+                    EndLabel, no, MaybeEnd, SwitchCode, !CI)
             ;
-                order_and_generate_cases(TaggedCases, VarRval, VarType,
-                    VarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                    MaybeEnd, SwitchCode, !CI)
+                order_and_generate_cases(TaggedCases, SwitchVarRval,
+                    SwitchVarType, SwitchVarName, CodeModel, CanFail,
+                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
             )
         ;
             SwitchCategory = string_switch,
@@ -240,13 +230,13 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                         % We update MaybeEnd1 to MaybeEnd to account for the
                         % possible reservation of temp slots for nondet
                         % switches.
-                        generate_string_hash_lookup_switch(VarRval,
+                        generate_string_hash_lookup_switch(SwitchVarRval,
                             LookupSwitchInfo, FilteredCanFail, EndLabel,
                             StoreMap, MaybeEnd1, MaybeEnd, SwitchCode, !CI)
                     ;
-                        generate_string_hash_switch(TaggedCases, VarRval,
-                            VarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                            MaybeEnd, SwitchCode, !CI)
+                        generate_string_hash_switch(TaggedCases, SwitchVarRval,
+                            SwitchVarName, CodeModel, CanFail,
+                            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
                     )
                 ; NumConsIds >= StringBinarySwitchSize ->
                     (
@@ -257,59 +247,46 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                         % We update MaybeEnd1 to MaybeEnd to account for the
                         % possible reservation of temp slots for nondet
                         % switches.
-                        generate_string_binary_lookup_switch(VarRval,
+                        generate_string_binary_lookup_switch(SwitchVarRval,
                             LookupSwitchInfo, FilteredCanFail, EndLabel,
                             StoreMap, MaybeEnd1, MaybeEnd, SwitchCode, !CI)
                     ;
-                        generate_string_binary_switch(TaggedCases, VarRval,
-                            VarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                            MaybeEnd, SwitchCode, !CI)
+                        generate_string_binary_switch(TaggedCases,
+                            SwitchVarRval, SwitchVarName, CodeModel, CanFail,
+                            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
                     )
                 ;
-                    order_and_generate_cases(TaggedCases, VarRval, VarType,
-                        VarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                        MaybeEnd, SwitchCode, !CI)
+                    order_and_generate_cases(TaggedCases, SwitchVarRval,
+                        SwitchVarType, SwitchVarName, CodeModel, CanFail,
+                        GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
                 )
             ;
-                order_and_generate_cases(TaggedCases, VarRval, VarType,
-                    VarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                    MaybeEnd, SwitchCode, !CI)
+                order_and_generate_cases(TaggedCases, SwitchVarRval,
+                    SwitchVarType, SwitchVarName, CodeModel, CanFail,
+                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
             )
         ;
             SwitchCategory = tag_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
             globals.lookup_int_option(Globals, tag_switch_size, TagSize),
             ( NumConsIds >= TagSize, NumArms > 1 ->
-                generate_tag_switch(TaggedCases, VarRval, VarType, VarName,
-                    CodeModel, CanFail, GoalInfo, EndLabel, no, MaybeEnd,
-                    SwitchCode, !CI)
+                generate_tag_switch(TaggedCases, SwitchVarRval, SwitchVarType,
+                    SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel,
+                    no, MaybeEnd, SwitchCode, !CI)
             ;
-                order_and_generate_cases(TaggedCases, VarRval, VarType,
-                    VarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                    MaybeEnd, SwitchCode, !CI)
+                order_and_generate_cases(TaggedCases, SwitchVarRval,
+                    SwitchVarType, SwitchVarName, CodeModel, CanFail,
+                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
             )
         ;
             SwitchCategory = float_switch,
-            order_and_generate_cases(TaggedCases, VarRval, VarType,
-                VarName, CodeModel, CanFail, GoalInfo, EndLabel,
+            order_and_generate_cases(TaggedCases, SwitchVarRval, SwitchVarType,
+                SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel,
                 MaybeEnd, SwitchCode, !CI)
         )
     ),
-    Code = VarCode ++ SwitchCode,
+    Code = SwitchVarCode ++ SwitchCode,
     after_all_branches(StoreMap, MaybeEnd, !CI).
-
-%-----------------------------------------------------------------------------%
-
-    % We categorize switches according to whether the value being switched on
-    % is an atomic type, a string, or something more complicated.
-    %
-:- func determine_switch_category(code_info, prog_var) = switch_category.
-
-determine_switch_category(CI, Var) = SwitchCategory :-
-    Type = variable_type(CI, Var),
-    get_module_info(CI, ModuleInfo),
-    CtorCat = classify_type(ModuleInfo, Type),
-    SwitchCategory = type_ctor_cat_to_switch_cat(CtorCat).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

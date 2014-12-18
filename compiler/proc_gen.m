@@ -382,8 +382,8 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     global_data_get_threadscope_rev_string_table(!.GlobalData,
         TSRevStringTable0, TSStringTableSize0),
 
-    code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo,
-        ProcInfo, FollowVars, ModuleInfo, StaticCellInfo0, ConstStructMap,
+    code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
+        SaveSuccip, FollowVars, StaticCellInfo0, ConstStructMap,
         OutsideResumePoint, TraceSlotInfo, MaybeContainingGoalMap,
         TSRevStringTable0, TSStringTableSize0, CodeInfo0),
 
