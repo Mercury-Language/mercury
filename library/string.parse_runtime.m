@@ -246,6 +246,7 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
         Spec, Errors) :-
     !.Chars = [SpecChar | !:Chars],
     ( if
+        require_switch_arms_det [SpecChar]
         (
             SpecChar = '%',
             SpecPrime = spec_constant_string("%"),
@@ -254,7 +255,6 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
             ( SpecChar = 'd'
             ; SpecChar = 'i'
             ),
-            require_det
             (
                 !.PolyTypes = [SpecPolyType | !:PolyTypes],
                 ( if SpecPolyType = i(Int) then
@@ -293,7 +293,6 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
                 % XXX This should not be necessary.
                 !Flags ^ flag_hash := flag_hash_set
             ),
-            require_det
             (
                 !.PolyTypes = [SpecPolyType | !:PolyTypes],
                 ( if SpecPolyType = i(Int) then
@@ -332,7 +331,6 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
                 SpecChar = 'G',
                 FloatKind = kind_g_flexible_uc
             ),
-            require_det
             (
                 !.PolyTypes = [SpecPolyType | !:PolyTypes],
                 ( if SpecPolyType = f(Float) then
@@ -353,7 +351,6 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
             )
         ;
             SpecChar = 'c',
-            require_det
             (
                 !.PolyTypes = [SpecPolyType | !:PolyTypes],
                 ( if SpecPolyType = c(Char) then
@@ -374,7 +371,6 @@ get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
             )
         ;
             SpecChar = 's',
-            require_det
             (
                 !.PolyTypes = [SpecPolyType | !:PolyTypes],
                 ( if SpecPolyType = s(Str) then

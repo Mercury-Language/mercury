@@ -336,6 +336,7 @@ get_first_spec(!Chars, !PolyTypes, OverallContext, !.Flags,
         MaybeWidth, MaybePrec, SpecNum, Spec, Errors) :-
     !.Chars = [SpecChar | !:Chars],
     ( if
+        require_switch_arms_det [SpecChar]
         (
             SpecChar = '%',
             SpecPrime = compiler_const_string(OverallContext, "%"),
@@ -344,7 +345,6 @@ get_first_spec(!Chars, !PolyTypes, OverallContext, !.Flags,
             ( SpecChar = 'd'
             ; SpecChar = 'i'
             ),
-            require_det
             (
                 !.PolyTypes = [SpecPolyType | !:PolyTypes],
                 ( if SpecPolyType = apt_i(IntVar, PolyContext) then
@@ -383,7 +383,6 @@ get_first_spec(!Chars, !PolyTypes, OverallContext, !.Flags,
                 % XXX This should not be necessary.
                 !Flags ^ flag_hash := flag_hash_set
             ),
-            require_det
             (
                 !.PolyTypes = [SpecPolyType | !:PolyTypes],
                 ( if SpecPolyType = apt_i(IntVar, PolyContext) then
@@ -422,7 +421,6 @@ get_first_spec(!Chars, !PolyTypes, OverallContext, !.Flags,
                 SpecChar = 'G',
                 FloatKind = kind_g_flexible_uc
             ),
-            require_det
             (
                 !.PolyTypes = [SpecPolyType | !:PolyTypes],
                 ( if SpecPolyType = apt_f(FloatVar, PolyContext) then
@@ -443,7 +441,6 @@ get_first_spec(!Chars, !PolyTypes, OverallContext, !.Flags,
             )
         ;
             SpecChar = 'c',
-            require_det
             (
                 !.PolyTypes = [SpecPolyType | !:PolyTypes],
                 ( if SpecPolyType = apt_c(CharVar, PolyContext) then
@@ -465,7 +462,6 @@ get_first_spec(!Chars, !PolyTypes, OverallContext, !.Flags,
             )
         ;
             SpecChar = 's',
-            require_det
             (
                 !.PolyTypes = [SpecPolyType | !:PolyTypes],
                 ( if SpecPolyType = apt_s(StrVar, PolyContext) then
