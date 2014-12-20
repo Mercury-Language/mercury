@@ -82,34 +82,34 @@ find_best_parallelisation(Info, Location, Goals, MaybeBestParallelisation,
 
 %-----------------------------------------------------------------------------%
 
-:- type best_par_algorithm_simple
-    --->    bpas_complete(maybe(int))
-    ;       bpas_greedy.
+:- type alg_for_finding_best_par_simple
+    --->    affbps_complete(maybe(int))
+    ;       affbps_greedy.
 
 :- pred choose_algorithm(implicit_parallelism_info::in,
-    int::in, best_par_algorithm_simple::out) is det.
+    int::in, alg_for_finding_best_par_simple::out) is det.
 
 choose_algorithm(Info, ConjunctionSize, Algorithm) :-
-    Algorithm0 = Info ^ ipi_opts ^ cpcp_best_par_alg,
+    Algorithm0 = Info ^ ipi_opts ^ cpcp_alg_for_best_par,
     (
         (
-            Algorithm0 = bpa_complete_branches(BranchesLimit),
+            Algorithm0 = affbp_complete_branches(BranchesLimit),
             MaybeBranchesLimit = yes(BranchesLimit)
         ;
-            Algorithm0 = bpa_complete,
+            Algorithm0 = affbp_complete,
             MaybeBranchesLimit = no
         ),
-        Algorithm = bpas_complete(MaybeBranchesLimit)
+        Algorithm = affbps_complete(MaybeBranchesLimit)
     ;
-        Algorithm0 = bpa_complete_size(SizeLimit),
+        Algorithm0 = affbp_complete_size(SizeLimit),
         ( SizeLimit < ConjunctionSize ->
-            Algorithm = bpas_greedy
+            Algorithm = affbps_greedy
         ;
-            Algorithm = bpas_complete(no)
+            Algorithm = affbps_complete(no)
         )
     ;
-        Algorithm0 = bpa_greedy,
-        Algorithm = bpas_greedy
+        Algorithm0 = affbp_greedy,
+        Algorithm = affbps_greedy
     ).
 
 %-----------------------------------------------------------------------------%
@@ -168,7 +168,7 @@ gg_get_details(gg_multiple(Index, Num, P), Index, Num, P).
 
     % A summary of goals before parallelisation.
     %
-    % All indexes are 0-based except where otherwise noded.
+    % All indexes are 0-based except where otherwise noted.
     %
 :- type goals_for_parallelisation
     --->    goals_for_parallelisation(
@@ -340,8 +340,8 @@ goal_accumulate_detism(_, Goal, !Detism) :-
         GoalCommittedChoice = committed_choice,
         CommittedChoice = CommittedChoice0
     ;
-        GoalCommittedChoice = not_committed_cnoice,
-        CommittedChoice = not_committed_cnoice
+        GoalCommittedChoice = not_committed_choice,
+        CommittedChoice = not_committed_choice
     ),
     (
         promise_equivalent_solutions [FinalDetism] (
@@ -383,7 +383,7 @@ preprocess_conjunction_into_groups(Index, Goal, !RevGoalGroups) :-
     % Find the best parallelisation using the branch and bound algorithm.
     %
 :- pred find_best_parallelisation_complete_bnb(implicit_parallelism_info::in,
-    program_location::in, best_par_algorithm_simple::in,
+    program_location::in, alg_for_finding_best_par_simple::in,
     goals_for_parallelisation::in, maybe(full_parallelisation)::out) is det.
 
 find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
@@ -466,14 +466,14 @@ find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
             ).
 
 :- pred generate_parallelisations(implicit_parallelism_info::in,
-    best_par_algorithm_simple::in, goals_for_parallelisation::in,
+    alg_for_finding_best_par_simple::in, goals_for_parallelisation::in,
     pair(list(incomplete_parallelisation), bnb_profile)::out) is det.
 
 generate_parallelisations(Info, Algorithm, GoalsForParallelisation,
         EqualBestSolns - FinalProfile) :-
-    some [!GoalGroups, !MaybeBestSolns, !Profile] (
+    some [!GoalGroups, !MaybeBestSolns, !Profile, !IncompleteParallelisation] (
         start_building_parallelisation(GoalsForParallelisation,
-            IncompleteParallelisation0),
+            !:IncompleteParallelisation),
 
         % Set the last scheduled goal to the goal at the end of the first
         % group, popping the first group off the list. This initialises the
@@ -497,16 +497,15 @@ generate_parallelisations(Info, Algorithm, GoalsForParallelisation,
             !.GoalGroups = [_ | !:GoalGroups],
             gg_get_details(Group, Index, Num, _),
             LastScheduledGoal = Index + Num - 1,
-            IncompleteParallelisation1 =
-                IncompleteParallelisation0 ^ ip_last_scheduled_goal
-                    := LastScheduledGoal
+            !IncompleteParallelisation ^ ip_last_scheduled_goal
+                := LastScheduledGoal
         ),
 
         !:MaybeBestSolns = no_best_solutions,
         !:Profile = bnb_profile(0, 0, 0, 0, 0, 0),
 
         generate_parallelisations_loop(Info, Algorithm, !.GoalGroups,
-            IncompleteParallelisation1, !MaybeBestSolns, !Profile),
+            !.IncompleteParallelisation, !MaybeBestSolns, !Profile),
 
 % XXX
 %       ( semipure should_expand_search(BNBState, Algorithm) ->
@@ -528,7 +527,8 @@ generate_parallelisations(Info, Algorithm, GoalsForParallelisation,
     ).
 
 :- pred generate_parallelisations_loop(implicit_parallelism_info::in,
-    best_par_algorithm_simple::in, list(goal_group(goal_classification))::in,
+    alg_for_finding_best_par_simple::in,
+    list(goal_group(goal_classification))::in,
     incomplete_parallelisation::in,
     best_solutions(incomplete_parallelisation)::in,
     best_solutions(incomplete_parallelisation)::out,
@@ -678,11 +678,11 @@ finalise_parallelisation(Incomplete, Best) :-
     % True if we should expand the search for parallelisation alternatives by
     % creating a choice point.
     %
-:- pred should_expand_search(best_par_algorithm_simple::in, bnb_profile::in)
-    is semidet.
+:- pred should_expand_search(alg_for_finding_best_par_simple::in,
+    bnb_profile::in) is semidet.
 
 should_expand_search(Algorithm, Profile) :-
-    Algorithm = bpas_complete(MaybeLimit),
+    Algorithm = affbps_complete(MaybeLimit),
     (
         MaybeLimit = yes(Limit),
         NumIncompleteTests =

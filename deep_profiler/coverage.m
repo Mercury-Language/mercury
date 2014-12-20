@@ -648,7 +648,7 @@ ite_annotate_coverage(Cond, Then, Else, Info, RevGoalPath, Before, After,
         ( CondSolns = at_most_one_rep
         ; CondSolns = at_most_zero_rep
         ),
-        % Assumeing that Cond never throws an exception and we know the
+        % Assuming that Cond never throws an exception and we know the
         % coverage before the ite and at the beginning of Then, then the
         % coverage at the beginning of Else can be inferred.
         (

@@ -72,9 +72,6 @@
 
 %-----------------------------------------------------------------------------%
 
-	% A type of message, values of type 'message' are instances of values of
-    % type 'message_type'.
-    %
 :- type message_type
     --->    info_found_candidate_conjunction
             % A candidate parallel conjunction has been found.
@@ -90,9 +87,9 @@
             % we are considering them for parallelisation against one another.
 
     ;       info_split_conjunction_into_partitions(int)
-            % The conjunction being consdered for parallelisation had to be
-            % split into several 'partitions' because it contains some non
-            % atomic goals, this can limit the amount of parallelism
+            % The conjunction being considered for parallelisation had to be
+            % split into several 'partitions' because it contains some
+            % nonatomic goals; this can limit the amount of parallelism
             % available.
 
     ;       info_found_n_conjunctions_with_positive_speedup(int)
@@ -124,7 +121,7 @@
 
     ;       notice_candidate_conjunction_not_det(detism_rep)
             % The candidate conjunction has goals that are not
-            % determinstic or cc_multi amongst the costly calls.
+            % deterministic or cc_multi amongst the costly calls.
 
     ;       warning_cannot_lookup_proc_defn
             % Couldn't find the proc defn in the progrep data, maybe the
@@ -318,7 +315,7 @@ message_type_to_string(MessageType) = Cord :-
     ;
         (
             MessageType = info_found_conjs_above_callsite_threshold(Num),
-            MessageStr = "Found %d conjuncts above callsite threashold"
+            MessageStr = "Found %d conjuncts above callsite threshold"
         ;
             MessageType = info_found_n_conjunctions_with_positive_speedup(Num),
             MessageStr = "Found %d conjunctions with a positive speedup due"
@@ -331,7 +328,7 @@ message_type_to_string(MessageType) = Cord :-
         string.format(MessageStr, [i(Num)], String)
     ;
         MessageType = info_found_pushed_conjs_above_callsite_threshold,
-        String = "Found pushed conjuncts above callsite threashold"
+        String = "Found pushed conjuncts above callsite threshold"
     ;
         MessageType = notice_duplicate_instantiation(CandidateConjuncts),
         string.format(
@@ -349,7 +346,7 @@ message_type_to_string(MessageType) = Cord :-
             [i(PartNum), i(NumCalls)], String)
     ;
         MessageType = notice_candidate_conjunction_not_det(Detism),
-        string.format("There are %d goals amoungst goals above the "
+        string.format("There are %d goals amongst goals above the "
                 ++ "parallelisation overhead.",
             [s(string(Detism))], String)
     ;
@@ -362,7 +359,7 @@ message_type_to_string(MessageType) = Cord :-
             ++ "\n  falling back to some other method"
     ;
         MessageType = error_extra_proc_dynamics_in_clique_proc,
-        String = "extra proc dynamnics for a clique proc are not currenty"
+        String = "extra proc dynamics for a clique proc are not currently"
             ++ " handled."
     ;
         (

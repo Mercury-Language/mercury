@@ -388,7 +388,7 @@
 
 :- type committed_choice
     --->    committed_choice
-    ;       not_committed_cnoice.
+    ;       not_committed_choice.
 
 :- func detism_get_solutions(detism_rep) = solution_count_rep.
 
@@ -916,14 +916,14 @@ detism_components(cc_nondet_rep,    at_most_one_rep,    can_fail_rep).
 detism_components(erroneous_rep,    at_most_zero_rep,   cannot_fail_rep).
 detism_components(failure_rep,      at_most_zero_rep,   can_fail_rep).
 
-detism_committed_choice(det_rep,            not_committed_cnoice).
-detism_committed_choice(semidet_rep,        not_committed_cnoice).
-detism_committed_choice(multidet_rep,       not_committed_cnoice).
-detism_committed_choice(nondet_rep,         not_committed_cnoice).
+detism_committed_choice(det_rep,            not_committed_choice).
+detism_committed_choice(semidet_rep,        not_committed_choice).
+detism_committed_choice(multidet_rep,       not_committed_choice).
+detism_committed_choice(nondet_rep,         not_committed_choice).
 detism_committed_choice(cc_multidet_rep,    committed_choice).
 detism_committed_choice(cc_nondet_rep,      committed_choice).
-detism_committed_choice(erroneous_rep,      not_committed_cnoice).
-detism_committed_choice(failure_rep,        not_committed_cnoice).
+detism_committed_choice(erroneous_rep,      not_committed_choice).
+detism_committed_choice(failure_rep,        not_committed_choice).
 
 %-----------------------------------------------------------------------------%
 
@@ -2038,7 +2038,7 @@ pred_is_external("par_builtin", "lc_wait_free_slot", 2).
 
 %-----------------------------------------------------------------------------%
 %
-% Please keep runtime/mercury_deep_profiling.h updated when modifing this
+% Please keep runtime/mercury_deep_profiling.h updated when modifying this
 % section.
 %
 

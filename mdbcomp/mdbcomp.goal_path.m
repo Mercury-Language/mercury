@@ -259,7 +259,7 @@
     reverse_goal_path.
 
     % Given a containing_goal_map, create a map that maps each goal_id in it
-    % to a forwward goal path.
+    % to a forward goal path.
     %
 :- func create_forward_goal_path_map(containing_goal_map) =
     goal_forward_path_map.
@@ -311,7 +311,7 @@
 :- pred update_goal_attribute(goal_id::in, T::in,
     goal_attr_array(T)::gaa_di, goal_attr_array(T)::gaa_uo) is det.
 
-    % get_goal_attribute(Arra, GoalId) = Attribute.
+    % get_goal_attribute(Array, GoalId) = Attribute.
     %
     % Get a goal attribute.
     %

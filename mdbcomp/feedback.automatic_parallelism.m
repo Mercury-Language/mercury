@@ -43,7 +43,7 @@
                 % The number of desired busy sparks.
                 cpcp_desired_parallelism    :: float,
 
-                % Follow variable use across module boundaries.
+                % Should we follow variable use across module boundaries?
                 cpcp_intermodule_var_use    :: bool,
 
                 % The cost of creating a spark and adding it to the local
@@ -97,7 +97,7 @@
                 % the speedup we get for them.
                 cpcp_parallelise_dep_conjs  :: parallelise_dep_conjs,
 
-                cpcp_best_par_alg           :: best_par_algorithm
+                cpcp_alg_for_best_par       :: alg_for_finding_best_par
             ).
 
 :- type parallelise_dep_conjs
@@ -108,9 +108,6 @@
     --->    estimate_speedup_naively
             % Be naive to dependent parallelism, pretend it is independent.
 
-    ;       estimate_speedup_by_num_vars
-            % Use the num vars approximation for how much conjuncts overlap.
-
     ;       estimate_speedup_by_overlap.
             % Use the overlap calculation for dependent parallelism.
 
@@ -120,25 +117,25 @@
     % TODO: The type name could be improved to make it distinct from the
     % algorithm use use to search through the clique graph.
     %
-:- type best_par_algorithm
-    --->    bpa_complete_branches(
+:- type alg_for_finding_best_par
+    --->    affbp_complete_branches(
                 % Use the complete algorithm until this many branches have been
-                % created during the search.  Once this many evaluations have
-                % occurred the greedy algorithm is used; that is to say that
-                % once this fallsback, all existing alternatives will be
-                % explored but no new ones will be generated.
+                % created during the search, and then fall back to the greedy
+                % algorithm. After such a fall back, all existing alternatives
+                % will be explored, but no new ones will be generated.
                 int
             )
-    ;       bpa_complete_size(
+    ;       affbp_complete_size(
                 % Use the complete algorithm for conjunctions with fewer than
-                % this many conjuncts, or a greedy algorithm.  The recommended
+                % this many conjuncts, or a greedy algorithm. The recommended
                 % value is 50.
+                % XXX I (zs) think that 50 seems way too high.
                 int
             )
-    ;       bpa_complete
-            % The complete (bnb) algorithm with no fallback.
-    ;       bpa_greedy.
-            % Always use a greedy and linear algorithm.
+    ;       affbp_complete
+            % Use the complete brand-and-bound algorithm with no fallback.
+    ;       affbp_greedy.
+            % Use the linear greedy algorithm.
 
     % The set of candidate parallel conjunctions within a procedure.
     %
@@ -323,9 +320,9 @@
                 pem_par_time                :: float,
 
                 % The overheads of parallel execution. These are already
-                % included in pem_par_time.  Overheads are seperated into
+                % included in pem_par_time. Overheads are separated into
                 % different causes.
-                pem_par_overhead_xpark_cost :: float,
+                pem_par_overhead_spark_cost :: float,
                 pem_par_overhead_barrier    :: float,
                 pem_par_overhead_signals    :: float,
                 pem_par_overhead_waits      :: float,

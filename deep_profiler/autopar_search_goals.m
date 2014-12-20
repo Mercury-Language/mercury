@@ -329,7 +329,7 @@ conj_get_conjunctions_worth_parallelising(Info, RevGoalPath,
         SinglesSoFar1 = Singles
     ;
         Costly = is_not_costly_goal,
-        % This goal might be costly if it is pushed into the cotexted
+        % This goal might be costly if it is pushed into the context
         % of one of SinglesSoFar. This is common for recursive goals.
         list.filter(single_context_makes_goal_costly(Info, Conj),
             SinglesSoFar0, SinglesSoFarMakeConjCostly),

@@ -476,7 +476,7 @@ insert_into_push_map(PushGoal, !Map) :-
             map.det_update(GoalPathStr, NewTriple, !Map)
         ;
             % There seem to be separate push requests inside the same
-            % conjunction that want to push different seets of conjuncts.
+            % conjunction that want to push different sets of conjuncts.
             % Since they could interfere with each other, we keep only one.
             % Since we don't have any good basis on which to make the choice,
             % we keep the earlier pushes.
@@ -674,7 +674,7 @@ debug_cliques_exceeded_parallelism(Clique, !IO) :-
     CliquePtr = Clique ^ ccc_clique,
     CliquePtr = clique_ptr(CliqueNum),
     io.format(
-        "D: Not entiring clique %d, " ++
+        "D: Not entering clique %d, " ++
         "no more parallelisation resources available at this context\n\n",
         [i(CliqueNum)], !IO).
 

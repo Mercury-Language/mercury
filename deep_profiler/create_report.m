@@ -1003,7 +1003,7 @@ summarize_callers(Deep, CallerCSDPtrs0, CalleePSPtr, !PSSeen, !NumDynamic,
         deep_lookup_proc_dynamics(Deep, CallerPDPtr, CallerPD),
         CallerPSPtr = CallerPD ^ pd_proc_static,
         ( CallerPSPtr = CalleePSPtr ->
-            % exclude recursive calls.
+            % Exclude recursive calls.
             true
         ;
             !:NumDynamic = !.NumDynamic + 1,

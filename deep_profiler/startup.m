@@ -769,7 +769,7 @@ summarize_proc_dynamic(PDOwnArray, PDDescArray, PDCompTableArray, PDI, PD,
 
 summarize_proc_dynamics_with_coverage_data(!Deep) :-
     % These arrays are one based, the +1 here is necessary to allocate the
-    % correect amount of storage.
+    % correct amount of storage.
     NPS = !.Deep ^ profile_stats ^ prs_num_ps + 1,
     array_foldl3_from_1(
         summarize_proc_dynamic_with_coverage(!.Deep ^ pd_own,

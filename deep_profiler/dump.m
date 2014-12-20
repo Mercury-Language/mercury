@@ -39,8 +39,8 @@
             ).
 
     % This type is used to describe if a restricted set of "css" and "ps"
-    % structures should be shown, (those for code that was executed), or if all
-    % "css" and "ps" structures should be shown.
+    % structures should be shown, (those for code that was executed),
+    % or if all "css" and "ps" structures should be shown.
     %
 :- type show_restricted_dump
     --->        show_restricted_dump
@@ -62,8 +62,8 @@
     --->        show_stats
     ;           do_not_show_stats.
 
-    % Types to specifiy if cliques, rev (proc static to caller) links and
-    % propagated measurements should be dumpped by dump_deep/3.
+    % Types to specify if cliques, rev (proc static to caller) links and
+    % propagated measurements should be dumped by dump_deep/3.
     %
 :- type dump_cliques
     --->        dump_cliques
@@ -79,7 +79,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % returns the default dump options.
+    % Return the default dump options.
     %
 :- func default_dump_options = dump_options.
 
@@ -96,15 +96,15 @@
 
     % dump_array_options_to_dump_options takes a list of strings of the
     % accumulating array dump options and create a dump_options structure
-    % based on the default plus these spacific array options.
+    % based on the default plus these specific array options.
     %
 :- pred dump_array_options_to_dump_options(list(string)::in,
     dump_options::out) is det.
 
     % dump_initial_deep(InitialDeep, DumpOptions, !IO):
     %
-    % Print selected parts of InitialDeep to standard output.  Which parts
-    % to print is controlled by DumpOptions.
+    % Print selected parts of InitialDeep to standard output.
+    % Which parts to print is controlled by DumpOptions.
     %
 :- pred dump_initial_deep(initial_deep::in, dump_options::in, io::di,
     io::uo) is det.

@@ -215,7 +215,7 @@
                 % The type of recursion in this clique.
                 crr_recursion_type          :: recursion_type,
 
-                % The number of procuedures in the clique.
+                % The number of procedures in the clique.
                 crr_num_procs               :: int
             ).
 

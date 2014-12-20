@@ -326,7 +326,7 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
 %
 % This section describes and processes command line options. Individual
 % feedback information can be requested by the user, as well as options named
-% after optimizations that may imply one or more feedback inforemation types,
+% after optimizations that may imply one or more feedback information types,
 % which that optimization uses.
 %
 
@@ -358,7 +358,7 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
     ;       ipar_speedup_threshold
     ;       ipar_dep_conjs
     ;       ipar_speedup_alg
-    ;       ipar_best_par_alg.
+    ;       ipar_alg_for_finding_best_par.
 
 % TODO: Introduce an option to disable parallelisation of dependent
 % conjunctions, or switch to the simple calculations for independent
@@ -437,9 +437,11 @@ long("implicit-parallelism-speedup-threshold",
 long("ipar-speedup-threshold",
     ipar_speedup_threshold).
 long("implicit-parallelism-best-parallelisation-algorithm",
-    ipar_best_par_alg).
+    ipar_alg_for_finding_best_par).
 long("ipar-best-par-alg",
-    ipar_best_par_alg).
+    ipar_alg_for_finding_best_par).
+long("ipar-alg-for-finding-best-par",
+    ipar_alg_for_finding_best_par).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
@@ -467,7 +469,7 @@ defaults(ipar_call_site_cost_threshold,     int(2000)).
 defaults(ipar_dep_conjs,                    bool(yes)).
 defaults(ipar_speedup_threshold,            string("1.01")).
 defaults(ipar_speedup_alg,                  string("overlap")).
-defaults(ipar_best_par_alg,                 string("complete-branches(1000)")).
+defaults(ipar_alg_for_finding_best_par,     string("complete-branches(1000)")).
 
 :- pred construct_measure(string::in, stat_measure::out) is semidet.
 
@@ -596,41 +598,44 @@ get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
             !:Error = found_error,
             SpeedupAlg = do_not_parallelise_dep_conjs    % dummy value
         ),
-        lookup_string_option(Options, ipar_best_par_alg, BestParAlgStr),
-        parse_best_par_algorithm(BestParAlgStr, MaybeBestParAlg),
+        lookup_string_option(Options, ipar_alg_for_finding_best_par,
+            AlgForFindingBestParStr),
+        parse_best_par_algorithm(AlgForFindingBestParStr,
+            MaybeAlgForFindingBestPar),
         (
-            MaybeBestParAlg = ok(BestParAlg)
+            MaybeAlgForFindingBestPar = ok(AlgForFindingBestPar)
         ;
-            MaybeBestParAlg = error(MaybeMessage, _Line, _Col),
+            MaybeAlgForFindingBestPar = error(MaybeMessage, _Line, _Col),
             (
                 MaybeMessage = yes(Message),
                 io.format(Stderr,
-                    "%s: error: %s is not a best parallelisation " ++
-                        "algorithm: %s.\n",
-                    [s(ProgName), s(BestParAlgStr), s(Message)], !IO)
+                    "%s: error: %s is not an algorithm for " ++
+                        "finding the best parallelisation: %s\n",
+                    [s(ProgName), s(AlgForFindingBestParStr), s(Message)], !IO)
             ;
                 MaybeMessage = no,
                 io.format(Stderr,
-                    "%s: error: %s is not a best parallelisation algorithm.\n",
-                    [s(ProgName), s(BestParAlgStr)], !IO)
+                    "%s: error: %s is not an algorithm for " ++
+                        "finding the best parallelisation.\n",
+                    [s(ProgName), s(AlgForFindingBestParStr)], !IO)
             ),
             !:Error = found_error,
-            BestParAlg = bpa_greedy    % dummy value
+            AlgForFindingBestPar = affbp_greedy    % dummy value
         ),
-        AutoParOpts =
-            candidate_par_conjunctions_params(DesiredParallelism,
-                IntermoduleVarUse,
-                SparkingCost,
-                SparkingDelay,
-                BarrierCost,
-                FutureSignalCost,
-                FutureWaitCost,
-                ContextWakeupDelay,
-                CPCCliqueThreshold,
-                CPCCallSiteThreshold,
-                SpeedupThreshold,
-                SpeedupAlg,
-                BestParAlg),
+        AutoParOpts = candidate_par_conjunctions_params(
+            DesiredParallelism,
+            IntermoduleVarUse,
+            SparkingCost,
+            SparkingDelay,
+            BarrierCost,
+            FutureSignalCost,
+            FutureWaitCost,
+            ContextWakeupDelay,
+            CPCCliqueThreshold,
+            CPCCallSiteThreshold,
+            SpeedupThreshold,
+            SpeedupAlg,
+            AlgForFindingBestPar),
         MaybeAutoParOpts = yes(AutoParOpts)
     ;
         CandidateParallelConjunctions = no,
@@ -639,37 +644,37 @@ get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
     Requested = requested_feedback_info(MaybeAutoParOpts).
 
 :- pred parse_best_par_algorithm(string::in,
-    parse_result(best_par_algorithm)::out) is det.
+    parse_result(alg_for_finding_best_par)::out) is det.
 
 parse_best_par_algorithm(String, Result) :-
     promise_equivalent_solutions [Result] (
-        parse(String, best_par_algorithm_parser, Result)
+        parse(String, parse_alg_for_finding_best_par, Result)
     ).
 
-:- pred best_par_algorithm_parser(src::in, best_par_algorithm::out,
+:- pred parse_alg_for_finding_best_par(src::in, alg_for_finding_best_par::out,
     ps::in, ps::out) is semidet.
 
-best_par_algorithm_parser(Src, Algorithm, !PS) :-
+parse_alg_for_finding_best_par(Src, Algorithm, !PS) :-
     whitespace(Src, _, !PS),
     (
         keyword(idchars, "greedy", Src, _, !PS)
     ->
-        Algorithm = bpa_greedy
+        Algorithm = affbp_greedy
     ;
         keyword(idchars, "complete-branches", Src, _, !PS),
         brackets("(", ")", int_literal, Src, N, !PS),
         N >= 0
     ->
-        Algorithm = bpa_complete_branches(N)
+        Algorithm = affbp_complete_branches(N)
     ;
         keyword(idchars, "complete-size", Src, _, !PS),
         brackets("(", ")", int_literal, Src, N, !PS),
         N >= 0
     ->
-        Algorithm = bpa_complete_size(N)
+        Algorithm = affbp_complete_size(N)
     ;
         keyword(idchars, "complete", Src, _, !PS),
-        Algorithm = bpa_complete
+        Algorithm = affbp_complete
     ),
     eof(Src, _, !PS).
 
@@ -683,8 +688,6 @@ idchars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_".
 parse_parallelise_dep_conjs_string(no, _, do_not_parallelise_dep_conjs).
 parse_parallelise_dep_conjs_string(yes, "naive",
     parallelise_dep_conjs(estimate_speedup_naively)).
-parse_parallelise_dep_conjs_string(yes, "num_vars",
-    parallelise_dep_conjs(estimate_speedup_by_num_vars)).
 parse_parallelise_dep_conjs_string(yes, "overlap",
     parallelise_dep_conjs(estimate_speedup_by_overlap)).
 

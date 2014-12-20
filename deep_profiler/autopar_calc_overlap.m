@@ -202,7 +202,6 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
     ;
         ( Algorithm = do_not_parallelise_dep_conjs
         ; Algorithm = parallelise_dep_conjs(estimate_speedup_naively)
-        ; Algorithm = parallelise_dep_conjs(estimate_speedup_by_num_vars)
         ),
 
         CostBPar = CostB + SparkCost,
@@ -213,10 +212,10 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
         DeadTime = 0.0
     ),
 
-    % CostB    - the cost of B if it where to be executed in sequence.
-    % CostBPar - CostB plus the overheads of parallel exection (not including
+    % CostB    - the cost of B if it were to be executed in sequence.
+    % CostBPar - CostB plus the overheads of parallel execution (not including
     %            the dead time).
-    % DeadTime - The time that B spends blocked on other computations.
+    % DeadTime - The time that B spends blocked, waiting on other computations.
     % XXX: Need to account for SparkDelay here,
     !:Metrics = init_parallel_exec_metrics_incomplete(!.Metrics, CostSignals,
         CostWaits, CostB, CostBPar, DeadTime),
@@ -318,7 +317,7 @@ calculate_dependent_parallel_cost_consumption(Info, ProductionsMap,
     (
         % True if Q had to suspend waiting for P. Note that we don't include
         % FutureSyncTime here. This is true if Q has to block at all even if
-        % it can be made runable before the context switch is complete.
+        % it can be made runnable before the context switch is complete.
         ProdTime > ParConsTimeNotBlocked
     ->
         % Include the time that it may take to resume this thread.
@@ -569,9 +568,9 @@ var_productions(TimeBefore, Goal, Var, Var - Time) :-
 
     % var_first_use_time(FindProdOrCons, Time0, Goal, Var, Time).
     %
-    % if FindProdOrCons = find_production
+    % if FindProdOrCons = find_production:
     %   Time is Time0 + the time that Goal produces Var.
-    % elif FindProdOrCons = find_consumption
+    % if FindProdOrCons = find_consumption:
     %   Time is Time0 + the time that Goal first consumes Var.
     %
 :- pred var_first_use_time(find_production_or_consumption::in,

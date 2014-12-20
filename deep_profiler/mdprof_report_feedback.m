@@ -129,7 +129,7 @@ write_version_message(ProgName, !IO) :-
 %
 % This section describes and processes command line options. Individual
 % feedback information can be requested by the user, as well as options named
-% after optimizations that may imply one or more feedback inforemation types,
+% after optimizations that may imply one or more feedback information types,
 % which that optimization uses.
 %
 

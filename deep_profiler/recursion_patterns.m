@@ -303,7 +303,7 @@ goal_recursion_data(Info, RevGoalPath, GoalRep, !:RecursionData) :-
     ( get_coverage_before(CoverageInfo, CallsPrime) ->
         Calls = CallsPrime
     ;
-        unexpected($module, $pred, "couldn't retrive coverage information")
+        unexpected($module, $pred, "couldn't retrieve coverage information")
     ),
     ( Calls = 0 ->
         !:RecursionData = proc_dead_code
@@ -495,7 +495,7 @@ ite_recursion_data(Info, RevGoalPath, Cond, Then, Else, Calls,
 
     % Because the condition goal has coverage information as if it is
     % entered before either branch, we have to model it in the same way here,
-    % even though it would be fesable to model it sas something that happens
+    % even though it would be feasible to model it as something that happens
     % in sequence with both the then and else branches (within each branch).
     merge_recursion_data_after_branch(ThenRecursionData,
         ElseRecursionData, !:RecursionData),
@@ -623,8 +623,8 @@ merge_recursion_data_after_branch(A, B, Result) :-
 
     % merge_recursion_data_sequence(A, B, Merged).
     %
-    % Merge the recursion datas A and B to produce Merged.  This is not
-    % commutative, A must represent something occuring before B.
+    % Merge the recursion datas A and B to produce Merged.
+    % This is not commutative; A must represent something occurring before B.
     %
     % Consider the following conjoined switches.
     %
@@ -639,9 +639,8 @@ merge_recursion_data_after_branch(A, B, Result) :-
     %     rec2
     % )
     %
-    % It's like algabra! Treating the conjunction as multiplication and
+    % It's like algebra! Treating the conjunction as multiplication and
     % disjunction as addition we might factorise it as:
-    % Note that this is just to show the pattern I can see here.
     %
     % base1*base2 + base1*rec2 + base2*rec1 + rec1*rec2.
     %
@@ -715,7 +714,7 @@ condense_recursions_2(NumA - RecA, [NumB - RecB | Pairs0], Pairs) :-
     %
     % A X B = C <=> A.1 * B.1 + A.1 * B.2 + A.2 * B.1 + A.2 * B.2 = C
     %
-    % Note that this is not commutative.  A represents a computation occuring
+    % Note that this is not commutative. A represents a computation occurring
     % before B.
     %
 :- pred recursions_cross_product(assoc_list(int, recursion_level)::in,
@@ -845,7 +844,7 @@ rec_types_freq_build_histogram(Deep, _, CliquePtr, !Histogram) :-
         MaybeFirstPDPtr = no,
         MaybeFirstProcInfo = no
     ),
-    foldl(update_histogram(MaybeFirstProcInfo), SimpleTypes, !Histogram).
+    list.foldl(update_histogram(MaybeFirstProcInfo), SimpleTypes, !Histogram).
 
 :- type first_proc_info
     --->    first_proc_info(
@@ -853,7 +852,7 @@ rec_types_freq_build_histogram(Deep, _, CliquePtr, !Histogram) :-
                 fpi_prof_info           :: own_and_inherit_prof_info
             ).
 
-    % XXX: Consider moving this to measuerments.m
+    % XXX Consider moving this to measurements.m
     %
 :- type own_and_inherit_prof_info
     --->    own_and_inherit_prof_info(

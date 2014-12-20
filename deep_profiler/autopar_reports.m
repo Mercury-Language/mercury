@@ -93,8 +93,9 @@ create_feedback_autopar_report(CandidateParConjs, Report) :-
         IntermoduleVarUse, SparkingCost, SparkingDelay, BarrierCost,
         SignalCost, WaitCost, ContextWakeupDelay, CliqueThreshold,
         CallSiteThreshold, SpeedupThreshold,
-        ParalleliseDepConjs, BestParAlgorithm),
-    best_par_algorithm_string(BestParAlgorithm, BestParAlgorithmStr),
+        ParalleliseDepConjs, AlgForFindingBestPar),
+    AlgForFindingBestParStr =
+        alg_for_finding_best_par_to_string(AlgForFindingBestPar),
     ReportHeader = singleton(format(
         "  Candidate parallel conjunctions:\n" ++
         "    Desired parallelism:       %f\n" ++
@@ -125,7 +126,7 @@ create_feedback_autopar_report(CandidateParConjs, Report) :-
          i(CallSiteThreshold),
          f(SpeedupThreshold),
          s(ParalleliseDepConjsStr),
-         s(BestParAlgorithmStr),
+         s(AlgForFindingBestParStr),
          i(NumProcConjs),
          i(NumConjs)])),
     (
@@ -133,10 +134,6 @@ create_feedback_autopar_report(CandidateParConjs, Report) :-
         (
             SpeedupAlg = estimate_speedup_naively,
             ParalleliseDepConjsStr = "yes, pretend they're independent"
-        ;
-            SpeedupAlg = estimate_speedup_by_num_vars,
-            ParalleliseDepConjsStr =
-                "yes, the more shared variables the less overlap there is"
         ;
             SpeedupAlg = estimate_speedup_by_overlap,
             ParalleliseDepConjsStr = "yes, use overlap calculation"
@@ -156,20 +153,20 @@ count_conjunctions_in_procs(_ - Cands, !NumConjs) :-
     Cands = candidate_par_conjunctions_proc(_VarNameTable, _Pushes, Conjs),
     !:NumConjs = !.NumConjs + length(Conjs).
 
-:- pred best_par_algorithm_string(best_par_algorithm::in, string::out) is det.
+:- func alg_for_finding_best_par_to_string(alg_for_finding_best_par) = string.
 
-best_par_algorithm_string(Alg, Str) :-
+alg_for_finding_best_par_to_string(Alg) = Str :-
     (
-        Alg = bpa_greedy,
+        Alg = affbp_greedy,
         Str = "greedy"
     ;
-        Alg = bpa_complete_branches(N),
+        Alg = affbp_complete_branches(N),
         Str = string.format("complete-branches(%d)", [i(N)])
     ;
-        Alg = bpa_complete_size(N),
+        Alg = affbp_complete_size(N),
         Str = string.format("complete-size(%d)", [i(N)])
     ;
-        Alg = bpa_complete,
+        Alg = affbp_complete,
         Str = "complete"
     ).
 
@@ -215,12 +212,12 @@ create_candidate_parallel_conj_report(VarNameTable, CandidateParConjunction,
     ParOverheads = parallel_exec_metrics_get_overheads(ParExecMetrics),
     (
         IsDependent = conjuncts_are_independent,
-        DependanceString = "no"
+        DependenceString = "no"
     ;
         IsDependent = conjuncts_are_dependent(Vars),
         map(lookup_var_name(VarNameTable), Vars, VarNames),
         VarsString = join_list(", ", to_sorted_list(VarNames)),
-        DependanceString = format("on %s", [s(VarsString)])
+        DependenceString = format("on %s", [s(VarsString)])
     ),
     Speedup = parallel_exec_metrics_get_speedup(ParExecMetrics),
     TimeSaving = parallel_exec_metrics_get_time_saving(ParExecMetrics),
@@ -260,7 +257,7 @@ create_candidate_parallel_conj_report(VarNameTable, CandidateParConjunction,
         "      First conj dead time: %s\n" ++
         "      Future dead time: %s\n" ++
         "      Total dead time: %s\n\n",
-        [s(DependanceString),
+        [s(DependenceString),
          s(commas(NumCalls)),
          s(two_decimal_fraction(SeqTime)),
          s(two_decimal_fraction(ParTime)),

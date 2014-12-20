@@ -220,7 +220,7 @@ pessimistic_var_use_time(VarUseType, ProcCost, CostUntilUse) :-
 
 %-----------------------------------------------------------------------------%
 
-    % XXX: If the CSD represents a closure then the argument position will be
+    % XXX If the CSD represents a closure then the argument position will be
     % incorrect. This is not currently important as we assume that the
     % compiler will not push signals and waits into higher order calls.
     % Therefore this should never be called for a higher order call site.
@@ -334,7 +334,7 @@ clique_var_use_info(CliquePtr, ArgNum, VarUseOptions, MaybeVarUseInfo) :-
                     RecursionType = rt_not_recursive,
                     recursion_type_get_maybe_avg_max_depth(RecursionType,
                         yes(Depth)),
-                    % XXX: This shouldn't need the recursion information
+                    % XXX This shouldn't need the recursion information
                     % anymore.
                     proc_dynamic_var_use_info(CliquePtr, FirstPDPtr,
                         ArgNum, RecursionType, Depth, Cost, set.init,
@@ -584,7 +584,7 @@ prepare_for_proc_var_first_use(CliquePtr, PDPtr, ArgNum, RecursionType, Depth,
 
 %----------------------------------------------------------------------------%
 %
-% The actual first use analyais code.
+% The actual first use analysis code.
 %
 % Any changes here should be reflected in the recursion and base case specific
 % versions of this code below.
@@ -969,7 +969,7 @@ conj_var_first_use(RevGoalPath, ConjNum, [Conj | Conjs], StaticInfo,
         % must have only partially instantiated it. Instmaps can be used
         % to track this. This is relevant when searching for the producer
         % of a variable.
-        % XXX: For now, we assume that no variable is bound more than once.
+        % XXX For now, we assume that no variable is bound more than once.
         HeadFoundFirstUse = found_first_use(_),
         FoundFirstUse = HeadFoundFirstUse
     ;
@@ -1242,9 +1242,9 @@ filter_recursive_call_sites(GoalPathStep, !RecCallSites) :-
     %
     % Find the first use in both the recursive and base cases.
     %
-    % This sorks under the following assumptions.
+    % This works under the following assumptions.
     %   + All sub goals succeed at most once.
-    %   + The first use is not conjoind with a switch where some switch
+    %   + The first use is not conjoined with a switch where some switch
     %     branches are recursive and some are not. (or ITE)
     %   + The cost of disjunctions is not computed correctly.
     %
@@ -1356,7 +1356,7 @@ rec_conj_var_first_use([Conj | Conjs], ConjNum, RecCalls, StaticInfo,
     rec_conj_var_first_use(Conjs, ConjNum + 1, RecCalls, StaticInfo,
         ConjsFoundFirstUse, !CostSoFar),
     (
-        % XXX: if a variable is bound more than once, because it's used
+        % XXX if a variable is bound more than once, because it's used
         % with partial instantiation then we want to use the last time it
         % is bound. Instmaps can be used to track this. This is relevant
         % when searching for the producer of a variable.
@@ -1364,13 +1364,13 @@ rec_conj_var_first_use([Conj | Conjs], ConjNum, RecCalls, StaticInfo,
         FoundFirstUse = found_first_use(UseTime)
     ;
         ConjFoundFirstUse = have_not_found_first_use,
-        % XXX: Use time should be adjusted for the probability of entering
-        % Conjs (the success of Conj) But doing so means a weighted everage
+        % XXX Use time should be adjusted for the probability of entering
+        % Conjs (the success of Conj) But doing so means a weighted average
         % between the success and failure paths, which only makes sense if
-        % the consuption (because this is semidet) might be done in the
+        % the consumption (because this is semidet) might be done in the
         % failure case. This also has to be done if the probability of
-        % recursion in one of the two cases is different. For now we
-        % assume that Conjs will always be entred.
+        % recursion in one of the two cases is different. For now we assume
+        % that Conjs will always be entered.
         FoundFirstUse = ConjsFoundFirstUse
     ).
 
@@ -1380,11 +1380,11 @@ rec_conj_var_first_use([Conj | Conjs], ConjNum, RecCalls, StaticInfo,
     found_first_use::out, float::in, float::out) is det.
 
 rec_disj_var_first_use(Disjs, RecCalls, Info, FoundFirstUse, !CostSoFar) :-
-    % We do not handle disjunctions, just use a pesimistic default.
+    % We do not handle disjunctions, just use a pessimistic default.
     % For calculating the cost of the disjunction, assume that is is a semidet
     % disjunction. Doing this will find the incorrect cost for the
-    % disjunction, however disjunctions occur rarely, this is not likely to
-    % drametically effect anything.
+    % disjunction, however disjunctions occur rarely, so this is not likely
+    % to dramatically affect anything.
     CostBeforeDisjunction = !.CostSoFar,
     rec_disj_var_first_use_2(Disjs, 1, RecCalls, Info, FoundFirstUse0,
         !CostSoFar),
@@ -1463,10 +1463,10 @@ rec_switch_var_first_use(Cases, SwitchedOnVar, RecCalls, Info,
             FoundFirstUse = have_not_found_first_use
         ;
             VarUseType = Info ^ fui_var_use_opts ^ vuo_var_use_type,
-            % XXX: this is also flawed, the default costs should not be the
+            % XXX this is also flawed, the default costs should not be the
             % average costs, they should be the cost for the specific case
             % where that default would be used.
-            % XXX: Secondly, this needs to also support the 'don't insert waits
+            % XXX Secondly, this needs to also support the 'don't insert waits
             % on all branches' optimisation.
             (
                 VarUseType = var_use_consumption,
@@ -1598,8 +1598,8 @@ adjust_weight_for_recursion(RecCase, RecProb, !Weight) :-
 
     % Give the probability that this goal leads to a recursion.
     %
-    % Note that this does not compute whether this goal is on a recursive path
-    % so it's not sufficent on it's own. See rec_goal_var_first_use.
+    % Note that this does not compute whether this goal is on a recursive path,
+    % so it is not sufficient on its own. See rec_goal_var_first_use.
     %
 :- pred goal_rec_prob(goal_rep(goal_id)::in, recursive_calls_list::in,
     var_first_use_static_info::in, probability::out,
@@ -1662,8 +1662,8 @@ conj_rec_prob([Conj | Conjs], ConjNum, RecCalls, Info, Prob, !ProbArray) :-
     Coverage = get_goal_attribute_det(Info ^ fui_coverage_array, ConjId),
     get_coverage_before_and_after_det(Coverage, Before, After),
     ( Before = 0 ->
-        % This code is dead, pevent a divide by zero and make a short cut
-        % here.
+        % This code is dead. Return the result without a division
+        % to prevent a divide by zero.
         Prob = impossible
     ;
         conj_rec_prob(Conjs, ConjNum + 1, RecCalls, Info, ConjsProb0,
@@ -1693,7 +1693,7 @@ disj_rec_prob([Disj | Disjs], DisjNum, RecCalls, Info, Prob, !ProbArray) :-
     ;
         disj_rec_prob(Disjs, DisjNum + 1, RecCalls, Info, DisjsProb0,
             !ProbArray),
-        % Assume that this disjuction is in a single solution context.
+        % Assume that this disjunction is in a single solution context.
         FailureProb = probable(float(Before - After) / float(Before)),
         DisjsProb = and(FailureProb, DisjsProb0),
 

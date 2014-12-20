@@ -135,7 +135,7 @@
 :- func or(probability, probability) = probability.
 :- func and(probability, probability) = probability.
 
-    % The probability of the given probability not occuring.
+    % The probability of the given probability not occurring.
     %
 :- func not_probability(probability) = probability.
 

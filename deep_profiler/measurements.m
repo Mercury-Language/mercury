@@ -167,18 +167,18 @@
 
 :- func call_goal_cost(cs_cost_csq) = goal_cost_csq.
 
-    % add_goal_costs_seq(Earlier, Later) = Cost.
+    % add_goal_costs_seq(EarlierGoalCost, LaterGoalCost) = Cost.
     %
-    % Add goal costs that form a sequence with Earlier being the cost of goals
-    % earlier in the sequence and Later being the cost of goals later in the
-    % sequence. This operation is associative provided that the above
-    % condition is met.
+    % Compute the total cost of two goals executed one after the other,
+    % either because EarlierGoal and LaterGoal are in a conjunction,
+    % or because execution can backtrack from EarlierGoal to LaterGoal.
     %
 :- func add_goal_costs_seq(goal_cost_csq, goal_cost_csq) = goal_cost_csq.
 
-    % add_goal_costs_branch(TotalCalls, BranchA, BranchB) = Cost.
+    % add_goal_costs_branch(TotalCalls, EarlierBranchCost, LaterBranchCost)
+    %   = Cost.
     %
-    % Add the costs of goal accross the arms of a branch.
+    % Compute the total cost of two alternative branches of execution.
     %
 :- func add_goal_costs_branch(int, goal_cost_csq, goal_cost_csq) =
     goal_cost_csq.
@@ -695,7 +695,7 @@ build_cs_cost_csq_percall(Calls, PercallCost) =
 
 zero_cs_cost =
     % Build this using the percall structure so that if a percall cost is ever
-    % retrived we don't have to divide by zero. This is only a partial
+    % retrieved, we don't have to divide by zero. This is only a partial
     % solution.
     build_cs_cost_csq_percall(0.0, 0.0).
 
@@ -713,7 +713,7 @@ cs_cost_to_proc_cost(cs_cost_csq(CSCalls, CSCost), TotalCalls,
         proc_cost_csq(NRCalls, RCalls, PCost)) :-
     NRCalls = round_to_int(CSCalls),
     RCalls = TotalCalls - round_to_int(CSCalls),
-    % The negative one represents the cost of the callsite itsself.
+    % The negative one represents the cost of the callsite itself.
     PCost = cost_total(cost_get_total(CSCalls, CSCost) - 1.0 * CSCalls).
 
 cs_cost_per_proc_call(cs_cost_csq(CSCalls0, CSCost0), ParentCost) =
@@ -927,14 +927,14 @@ zero_static_coverage = no.
 add_coverage_arrays(Array, no, yes(Array)).
 add_coverage_arrays(NewArray, yes(!.Array), yes(!:Array)) :-
     (
-        bounds(NewArray, Min, Max),
-        bounds(!.Array, Min, Max)
+        array.bounds(NewArray, Min, Max),
+        array.bounds(!.Array, Min, Max)
     ->
         !:Array = copy(!.Array),
         array_foldl_from_0(
             (pred(Index::in, E::in, A0::array_di, A::array_uo) is det :-
-                lookup(A0, Index, Value),
-                set(Index, Value + E, A0, A)
+                array.lookup(A0, Index, Value),
+                array.set(Index, Value + E, A0, A)
             ), NewArray, !Array)
     ;
         unexpected($module, $pred, "arrays' bounds do not match")
@@ -1215,17 +1215,20 @@ pem_get_wait_costs(pem_additional(Left, _, WaitsR, _, _, _)) = Waits :-
 %----------------------------------------------------------------------------%
 
 weighted_average(Weights, Values, Average) :-
-    list.foldl2_corresponding(
-        (pred(Value::in, Weight::in, Sum0::in, Sum::out,
-                WeightSum0::in, WeightSum::out) is det :-
-            Sum = Sum0 + (Value * Weight),
-            WeightSum = WeightSum0 + Weight
-        ), Values, Weights, 0.0, Total, 0.0, TotalWeight),
+    list.foldl2_corresponding(update_weighted_sum,
+        Weights, Values, 0.0, WeightedSum, 0.0, TotalWeight),
     ( abs(TotalWeight) < epsilon ->
         Average = 0.0
     ;
-        Average = Total / TotalWeight
+        Average = WeightedSum / TotalWeight
     ).
+
+:- pred update_weighted_sum(float::in, float::in,
+    float::in, float::out, float::in, float::out) is det.
+
+update_weighted_sum(Weight, Value, !WeightedSum, !TotalWeight) :-
+    !:WeightedSum = !.WeightedSum + (Weight * Value),
+    !:TotalWeight = !.TotalWeight + Weight.
 
 %----------------------------------------------------------------------------%
 :- end_module measurements.
