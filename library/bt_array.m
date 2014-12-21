@@ -1,28 +1,28 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997, 1999-2000, 2002-2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 1997,1999-2000,2002-2003,2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: bt_array.m
 % Main author: bromage.
 % Stability: medium-low
-% 
+%
 % This file contains a set of predicates for generating an manipulating a
-% bt_array data structure.  This implementation allows O(log n) access and
-% update time, and does not require the bt_array to be unique.  If you need
-% O(1) access/update time, use the array datatype instead.  (`bt_array' is
+% bt_array data structure. This implementation allows O(log n) access and
+% update time, and does not require the bt_array to be unique. If you need
+% O(1) access/update time, use the array datatype instead. (`bt_array' is
 % supposed to stand for either "binary tree array" or "backtrackable array".)
-% 
+%
 % Implementation obscurity: This implementation is biased towards larger
-% indices.  The access/update time for a bt_array of size N with index I is
-% actually O(log(N-I)).  The reason for this is so that the resize operations
+% indices. The access/update time for a bt_array of size N with index I is
+% actually O(log(N-I)). The reason for this is so that the resize operations
 % can be optimised for a (possibly very) common case, and to exploit
-% accumulator recursion in some operations.  See the documentation of resize
+% accumulator recursion in some operations. See the documentation of resize
 % and shrink for more details.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -385,19 +385,19 @@ reverse_from_ra_list_count(I, RaList0, Xs0, Xs) :-
 
 %---------------------------------------------------------------------------%
 
-bsearch(A, El, Compare, I) :-
+bsearch(A, SearchX, Compare, I) :-
     bounds(A, Lo, Hi),
     Lo =< Hi,
-    bsearch_2(A, Lo, Hi, El, Compare, I).
+    bsearch_loop(A, Lo, Hi, SearchX, Compare, I).
 
     % XXX Would we gain anything by traversing the ra_list instead
     % of doing a vanilla binary chop?
 
-:- pred bsearch_2(bt_array(T)::in, int::in, int::in, T::in,
+:- pred bsearch_loop(bt_array(T)::in, int::in, int::in, T::in,
     pred(T, T, comparison_result)::in(pred(in, in, out) is det), int::out)
     is semidet.
 
-bsearch_2(A, Lo, Hi, El, Compare, I) :-
+bsearch_loop(A, Lo, Hi, SearchX, Compare, I) :-
     Width = Hi - Lo,
 
     % If Width < 0, there is no range left.
@@ -406,29 +406,26 @@ bsearch_2(A, Lo, Hi, El, Compare, I) :-
     % If Width == 0, we may just have found our element.
     % Do a Compare to check.
     ( Width = 0 ->
-        lookup(A, Lo, X),
-        Compare(El, X, (=)),
+        lookup(A, Lo, LoX),
+        Compare(SearchX, LoX, (=)),
         I = Lo
     ;
-        % Otherwise find the middle element of the range and check against
-        % that. NOTE: We can't use "// 2" because division always rounds
-        % towards zero whereas we want the result to be rounded down.
-        % (Indices can be negative.)  We could use "div 2", but that's a
-        % little more expensive, and we know that we're always dividing
-        % by a power of 2. Until such time as we implement strength reduction,
-        % the >> 1 stays.
-
-        Mid = (Lo + Hi) >> 1,
-        lookup(A, Mid, XMid),
-        Compare(XMid, El, Comp),
-        ( Comp = (<),
-            Mid1 = Mid + 1,
-            bsearch_2(A, Mid1, Hi, El, Compare, I)
-        ; Comp = (=),
-            bsearch_2(A, Lo, Mid, El, Compare, I)
-        ; Comp = (>),
-            Mid1 = Mid - 1,
-            bsearch_2(A, Lo, Mid1, El, Compare, I)
+        % We calculate Mid this way to avoid overflow, and because it works
+        % even if Lo, and maybe Hi, is negative.
+        Mid = Lo + ((Hi - Lo) `unchecked_right_shift` 1),
+        % The right shift by one bit is a fast implementation
+        % of division by 2.
+        lookup(A, Mid, MidX),
+        Compare(MidX, SearchX, Comp),
+        (
+            Comp = (<),
+            bsearch_loop(A, Mid + 1, Hi, SearchX, Compare, I)
+        ;
+            Comp = (=),
+            bsearch_loop(A, Lo, Mid, SearchX, Compare, I)
+        ;
+            Comp = (>),
+            bsearch_loop(A, Lo, Mid - 1, SearchX, Compare, I)
         )
     ).
 
@@ -439,9 +436,9 @@ bsearch_2(A, Lo, Hi, El, Compare, I) :-
 % when this was written. :-(
 
 % The heart of the implementation of bt_array is a `random access list'
-% or ra_list for short.  It is very similar to a list data type, and
+% or ra_list for short. It is very similar to a list data type, and
 % it supports O(1) head/tail/cons operations, but O(log n) lookup and
-% update.  The representation is a list of perfectly balanced binary trees.
+% update. The representation is a list of perfectly balanced binary trees.
 %
 % For more details on the implementation:
 %

@@ -2051,15 +2051,15 @@ array.bsearch(A, X, F) = MN :-
     P = (pred(X1::in, X2::in, C::out) is det :- C = F(X1, X2)),
     array.bsearch(A, X, P, MN).
 
-array.bsearch(A, El, Compare, Result) :-
+array.bsearch(A, SearchX, Compare, Result) :-
     array.bounds(A, Lo, Hi),
-    array.bsearch_2(A, Lo, Hi, El, Compare, Result).
+    array.bsearch_2(A, Lo, Hi, SearchX, Compare, Result).
 
 :- pred array.bsearch_2(array(T)::in, int::in, int::in, T::in,
     pred(T, T, comparison_result)::in(pred(in, in, out) is det),
     maybe(int)::out) is det.
 
-array.bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
+array.bsearch_2(Array, Lo, Hi, SearchX, Compare, Result) :-
     Width = Hi - Lo,
 
     % If Width < 0, there is no range left.
@@ -2069,8 +2069,8 @@ array.bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
         % If Width == 0, we may just have found our element.
         % Do a Compare to check.
         ( Width = 0 ->
-            array.lookup(Array, Lo, X),
-            ( Compare(El, X, (=)) ->
+            array.lookup(Array, Lo, LoX),
+            ( Compare(SearchX, LoX, (=)) ->
                 Result = yes(Lo)
             ;
                 Result = no
@@ -2078,20 +2078,21 @@ array.bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
         ;
             % Otherwise find the middle element of the range
             % and check against that.
-            Mid = (Lo + Hi) >> 1,   % `>> 1' is hand-optimized `div 2'.
-            array.lookup(Array, Mid, XMid),
-            Compare(XMid, El, Comp),
+            % We calculate Mid this way to avoid overflow.
+            Mid = Lo + ((Hi - Lo) `unchecked_right_shift` 1),
+            % The right shift by one bit is a fast implementation
+            % of division by 2.
+            array.lookup(Array, Mid, MidX),
+            Compare(MidX, SearchX, Comp),
             (
                 Comp = (<),
-                Mid1 = Mid + 1,
-                array.bsearch_2(Array, Mid1, Hi, El, Compare, Result)
+                array.bsearch_2(Array, Mid + 1, Hi, SearchX, Compare, Result)
             ;
                 Comp = (=),
-                array.bsearch_2(Array, Lo, Mid, El, Compare, Result)
+                array.bsearch_2(Array, Lo, Mid, SearchX, Compare, Result)
             ;
                 Comp = (>),
-                Mid1 = Mid - 1,
-                array.bsearch_2(Array, Lo, Mid1, El, Compare, Result)
+                array.bsearch_2(Array, Lo, Mid - 1, SearchX, Compare, Result)
             )
         )
     ).
@@ -2151,58 +2152,64 @@ array.sort_fix_2014.
 
 %---------------------------------------------------------------------------%
 
-array.binary_search(A, X, I) :-
-    array.binary_search(ordering, A, X, I).
+array.binary_search(A, SearchX, I) :-
+    array.binary_search(ordering, A, SearchX, I).
 
-array.binary_search(Cmp, A, X, I) :-
+array.binary_search(Cmp, A, SearchX, I) :-
     Lo = 0,
     Hi = array.size(A) - 1,
-    binary_search_loop(Cmp, A, X, Lo, Hi, I).
+    binary_search_loop(Cmp, A, SearchX, Lo, Hi, I).
 
 :- pred binary_search_loop(comparison_func(T)::in, array(T)::array_ui,
     T::in, int::in, int::in, int::out) is semidet.
 
-binary_search_loop(Cmp, A, X, Lo, Hi, I) :-
-    % loop invariant: if X is anywhere in A[0] .. A[array.size(A)-1],
+binary_search_loop(Cmp, A, SearchX, Lo, Hi, I) :-
+    % loop invariant: if SearchX is anywhere in A[0] .. A[array.size(A)-1],
     % then it is in A[Lo] .. A[Hi].
     Lo =< Hi,
-    Mid = (Lo + Hi) / 2,
+    % We calculate Mid this way to avoid overflow.
+    Mid = Lo + ((Hi - Lo) `unchecked_right_shift` 1),
+    % The right shift by one bit is a fast implementation
+    % of division by 2.
     array.unsafe_lookup(A, Mid, MidX),
-    O = Cmp(MidX, X),
+    O = Cmp(MidX, SearchX),
     (
         O = (>),
-        binary_search_loop(Cmp, A, X, Lo, Mid - 1, I)
+        binary_search_loop(Cmp, A, SearchX, Lo, Mid - 1, I)
     ;
         O = (=),
         I = Mid
     ;
         O = (<),
-        binary_search_loop(Cmp, A, X, Mid + 1, Hi, I)
+        binary_search_loop(Cmp, A, SearchX, Mid + 1, Hi, I)
     ).
 
 %---------------------------------------------------------------------------%
 
-array.approx_binary_search(A, X, I) :-
-    array.approx_binary_search(ordering, A, X, I).
+array.approx_binary_search(A, SearchX, I) :-
+    array.approx_binary_search(ordering, A, SearchX, I).
 
-array.approx_binary_search(Cmp, A, X, I) :-
+array.approx_binary_search(Cmp, A, SearchX, I) :-
     Lo = 0,
     Hi = array.size(A) - 1,
-    approx_binary_search_loop(Cmp, A, X, Lo, Hi, I).
+    approx_binary_search_loop(Cmp, A, SearchX, Lo, Hi, I).
 
 :- pred approx_binary_search_loop(comparison_func(T)::in, array(T)::array_ui,
     T::in, int::in, int::in, int::out) is semidet.
 
-approx_binary_search_loop(Cmp, A, X, Lo, Hi, I) :-
-    % loop invariant: if X is anywhere in A[0] .. A[array.size(A)-1],
+approx_binary_search_loop(Cmp, A, SearchX, Lo, Hi, I) :-
+    % loop invariant: if SearchX is anywhere in A[0] .. A[array.size(A)-1],
     % then it is in A[Lo] .. A[Hi].
     Lo =< Hi,
-    Mid = (Lo + Hi) / 2,
+    % We calculate Mid this way to avoid overflow.
+    Mid = Lo + ((Hi - Lo) `unchecked_right_shift` 1),
+    % The right shift by one bit is a fast implementation
+    % of division by 2.
     array.unsafe_lookup(A, Mid, MidX),
-    O = Cmp(MidX, X),
+    O = Cmp(MidX, SearchX),
     (
         O = (>),
-        approx_binary_search_loop(Cmp, A, X, Lo, Mid - 1, I)
+        approx_binary_search_loop(Cmp, A, SearchX, Lo, Mid - 1, I)
     ;
         O = (=),
         I = Mid
@@ -2213,14 +2220,14 @@ approx_binary_search_loop(Cmp, A, X, Lo, Hi, I) :-
                 % We get here only if Mid + 1 cannot exceed Hi,
                 % so the array access is safe.
                 array.unsafe_lookup(A, Mid + 1, MidP1X),
-                (<) = Cmp(X, MidP1X)
+                (<) = Cmp(SearchX, MidP1X)
             else
                 Mid = Hi
             )
         then
             I = Mid
         else
-            approx_binary_search_loop(Cmp, A, X, Mid + 1, Hi, I)
+            approx_binary_search_loop(Cmp, A, SearchX, Mid + 1, Hi, I)
         )
     ).
 
