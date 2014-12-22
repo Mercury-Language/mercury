@@ -4827,11 +4827,11 @@ io.print_line(Term, !IO) :-
 
 io.print_line(Stream, Term, !IO) :-
     io.print(Stream, Term, !IO),
-    io.nl(!IO).
+    io.nl(Stream, !IO).
 
 io.print_line(Stream, NonCanon, Term, !IO) :-
     io.print(Stream, NonCanon, Term, !IO),
-    io.nl(!IO).
+    io.nl(Stream, !IO).
 
 io.print_line_cc(Term, !IO) :-
     io.print_cc(Term, !IO),
