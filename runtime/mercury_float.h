@@ -213,13 +213,12 @@ MR_Integer MR_hash_float(MR_Float);
 /*
 ** We define MR_is_{nan,infinite,finite} as macros if we support C99 
 ** since the resulting code is faster.
+** MSVC also supports these macros (from VS2013 onwards) but it does not
+** set __STDC_VERSION__ appropriately.
+** (1800 is the internal MSVC version number for VS2013.)
 */
-#if __STDC_VERSION__ >= 199901
-    #if defined(MR_USE_SINGLE_PREC_FLOAT)
-        #define MR_is_nan(f) isnanf((f))
-    #else
-        #define MR_is_nan(f) isnan((f))
-    #endif
+#if __STDC_VERSION__ >= 199901 || MR_MSVC >= 1800
+    #define MR_is_nan(f) isnan((f))
 #else
     #define MR_is_nan(f) MR_is_nan_func((f))
 #endif
@@ -228,12 +227,8 @@ MR_Integer MR_hash_float(MR_Float);
 ** See comments for function MR_is_infinite_func in mercury_float.c for the
 ** handling of Solaris here.
 */
-#if __STDC_VERSION__ >= 199901 && !defined(MR_SOLARIS)
-    #if defined(MR_USE_SINGLE_PREC_FLOAT)
-        #define MR_is_infinite(f) isinff((f))
-    #else
-        #define MR_is_infinite(f) isinf((f))
-    #endif
+#if (__STDC_VERSION__ >= 199901 && !defined(MR_SOLARIS)) || MR_MSVC >= 1800
+    #define MR_is_infinite(f) isinf((f))
 #else
     #define MR_is_infinite(f) MR_is_infinite_func((f))
 #endif
@@ -241,7 +236,7 @@ MR_Integer MR_hash_float(MR_Float);
 /*
 ** XXX I don't know whether isfinite works on Solaris or not.
 */
-#if __STDC_VERSION__ >= 199901 && !defined(MR_SOLARIS)
+#if (__STDC_VERSION__ >= 199901 && !defined(MR_SOLARIS)) || MR_MSVC >= 1800
     #define MR_is_finite(f) isfinite((f))
 #else   
     #define MR_is_finite(f) (!MR_is_infinite((f)) && !MR_is_nan((f)))
