@@ -258,6 +258,18 @@
     %
 :- pred is_surrogate(char::in) is semidet.
 
+    % Succeed if `Char' is a leading Unicode surrogate code point.
+    % A leading surrogate code point is in the inclusive range from
+    % 0xd800 to 0xdbff.
+    %
+:- pred is_leading_surrogate(char::in) is semidet.
+
+    % Succeed if `Char' is a trailing Unicode surrogate code point.
+    % A trailing surrogate code point is in the inclusive range from
+    % 0xdc00 to 0xdfff.
+    %
+:- pred is_trailing_surrogate(char::in) is semidet.
+
     % Succeed if `Char' is a Noncharacter code point.
     % Sixty-six code points are not used to encode characters.
     % These code points should not be used for interchange, but may be used
@@ -989,6 +1001,16 @@ to_utf16(Char, CodeUnits) :-
 is_surrogate(Char) :-
     Int = char.to_int(Char),
     Int >= 0xd800,
+    Int =< 0xdfff.
+
+is_leading_surrogate(Char) :-
+    Int = char.to_int(Char),
+    Int >= 0xd800,
+    Int =< 0xdbff.
+
+is_trailing_surrogate(Char) :-
+    Int = char.to_int(Char),
+    Int >= 0xdc00,
     Int =< 0xdfff.
 
 is_noncharacter(Char) :-
