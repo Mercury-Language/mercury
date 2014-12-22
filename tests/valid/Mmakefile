@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = valid
 
@@ -41,6 +43,7 @@ TYPECLASS_PROGS= \
 	mpj6 \
 	mpj7 \
 	repeated_class_constraint \
+	string_format_in_instance \
 	superclass_bug \
 	superclass_improvement \
 	tc_map_lookup \

@@ -1864,10 +1864,8 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 % This is how types are represented.
 
-% One day we might allow types to take
-% value parameters as well as type parameters.
-
-% type_defn/3 is defined in prog_item.m as a constructor for item/0
+% One day we might allow types to take value parameters as well as
+% type parameters.
 
 :- type type_defn
     --->    parse_tree_du_type(

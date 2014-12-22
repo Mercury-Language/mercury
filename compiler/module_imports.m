@@ -666,36 +666,124 @@ get_implicit_dependencies(Items, Globals, !:ImportDeps, !:UseDeps) :-
 gather_implicit_import_needs_in_items([], !ImplicitImportNeeds).
 gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
     (
+        Item = item_clause(ItemClause),
+        gather_implicit_import_needs_in_clause(ItemClause,
+            !ImplicitImportNeeds)
+    ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _, _),
-        Pragma = pragma_tabled(TableInfo),
-        TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes)
-    ->
-        !ImplicitImportNeeds ^ iin_tabling := do_need_tabling,
+        ItemPragma = item_pragma_info(_Origin, Pragma, _Context, _SeqNum),
         (
-            MaybeAttributes = no
-        ;
-            MaybeAttributes = yes(Attributes),
-            StatsAttr = Attributes ^ table_attr_statistics,
+            Pragma = pragma_tabled(TableInfo),
+            TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes)
+        ->
+            !ImplicitImportNeeds ^ iin_tabling := do_need_tabling,
             (
-                StatsAttr = table_gather_statistics,
-                !ImplicitImportNeeds ^ iin_tabling_statistics
-                    := do_need_tabling_statistics
+                MaybeAttributes = no
             ;
-                StatsAttr = table_dont_gather_statistics
+                MaybeAttributes = yes(Attributes),
+                StatsAttr = Attributes ^ table_attr_statistics,
+                (
+                    StatsAttr = table_gather_statistics,
+                    !ImplicitImportNeeds ^ iin_tabling_statistics
+                        := do_need_tabling_statistics
+                ;
+                    StatsAttr = table_dont_gather_statistics
+                )
             )
+        ;
+            true
         )
     ;
-        Item = item_clause(ItemClause)
-    ->
-        HeadArgs = ItemClause ^ cl_head_args,
-        gather_implicit_import_needs_in_terms(HeadArgs, !ImplicitImportNeeds),
-        Body = ItemClause ^ cl_body,
-        gather_implicit_import_needs_in_goal(Body, !ImplicitImportNeeds)
+        Item = item_promise(ItemPromise),
+        ItemPromise = item_promise_info(_PromiseType, Goal, _VarSet,
+            _UnivQuantVars, _Context, _SeqNum),
+        gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds)
     ;
-        true
+        Item = item_instance(ItemInstance),
+        ItemInstance = item_instance_info(_DerivingClass, _ClassName,
+            _Types, _OriginalTypes, InstanceBody, _VarSet,
+            _ModuleContainingInstance, _Context, _SeqNum),
+        (
+            InstanceBody = instance_body_abstract
+        ;
+            InstanceBody = instance_body_concrete(InstanceMethods),
+            list.foldl(gather_implicit_import_needs_in_instance_method,
+                InstanceMethods, !ImplicitImportNeeds)
+        )
+    ;
+        Item = item_mutable(ItemMutableInfo),
+        gather_implicit_import_needs_in_mutable(ItemMutableInfo,
+            !ImplicitImportNeeds)
+    ;
+        Item = item_type_defn(ItemTypeDefn),
+        ItemTypeDefn = item_type_defn_info(_TVarSet, _TypeCtorName,
+            _TypeParams, TypeDefn, _Cond, _Context, _SeqNum),
+        (
+            TypeDefn = parse_tree_du_type(_Constructor,
+                _MaybeUnifyComparePredNames, _MaybeDirectArgs)
+        ;
+            TypeDefn = parse_tree_eqv_type(_EqvType)
+        ;
+            TypeDefn = parse_tree_abstract_type(_Details)
+        ;
+            TypeDefn = parse_tree_solver_type(SolverTypeDetails,
+                _MaybeUnifyComparePredNames),
+            SolverTypeDetails = solver_type_details(_RepresentationType,
+                _InitPred, _GroundInst, _AnyInst, MutableItems),
+            list.foldl(gather_implicit_import_needs_in_mutable, MutableItems,
+                !ImplicitImportNeeds)
+        ;
+            TypeDefn = parse_tree_foreign_type(_ForeignLangType,
+                _MaybeUnifyComparePredNames, _ForeignAssertions)
+        )
+    ;
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_module_defn(_)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_nothing(_)
+        )
     ),
     gather_implicit_import_needs_in_items(Items, !ImplicitImportNeeds).
+
+:- pred gather_implicit_import_needs_in_instance_method(instance_method::in,
+    implicit_import_needs::in, implicit_import_needs::out) is det.
+
+gather_implicit_import_needs_in_instance_method(InstanceMethod,
+        !ImplicitImportNeeds) :-
+    InstanceMethod = instance_method(_PredOrFunc, _MethodName, ProcDef,
+        _Arity, _Context),
+    (
+        ProcDef = instance_proc_def_name(_Name)
+    ;
+        ProcDef = instance_proc_def_clauses(ItemClauses),
+        list.foldl(gather_implicit_import_needs_in_clause, ItemClauses,
+            !ImplicitImportNeeds)
+    ).
+
+:- pred gather_implicit_import_needs_in_mutable(item_mutable_info::in,
+    implicit_import_needs::in, implicit_import_needs::out) is det.
+
+gather_implicit_import_needs_in_mutable(ItemMutableInfo,
+        !ImplicitImportNeeds) :-
+    ItemMutableInfo = item_mutable_info(_Name, _Type, InitValue, _Inst,
+        _Attrs, _VarSet, _Context, _SeqNum),
+    gather_implicit_import_needs_in_term(InitValue, !ImplicitImportNeeds).
+
+:- pred gather_implicit_import_needs_in_clause(item_clause_info::in,
+    implicit_import_needs::in, implicit_import_needs::out) is det.
+
+gather_implicit_import_needs_in_clause(ItemClause, !ImplicitImportNeeds) :-
+    ItemClause = item_clause_info(_Origin, _VarSet, _PredOrFunc,
+        _PredName, HeadTerms, Goal, _Context, _SeqNum),
+    gather_implicit_import_needs_in_terms(HeadTerms, !ImplicitImportNeeds),
+    gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds).
 
 :- pred gather_implicit_import_needs_in_goal(goal::in,
     implicit_import_needs::in, implicit_import_needs::out) is det.
