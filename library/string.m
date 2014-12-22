@@ -1105,8 +1105,8 @@
 :- pred to_float(string::in, float::out) is semidet.
 
     % Convert a string to a float, returning infinity or -infinity if the
-    % conversion overflows.  Fails if the string is not a syntactically correct
-    % float literal.
+    % conversion overflows.  Throws an exception if the string is not a
+    % syntactically correct float literal.
     %
 :- func det_to_float(string) = float.
 
