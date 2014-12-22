@@ -51,8 +51,12 @@
     % If the argument is just a single string or character, it will be printed
     % out exactly as is (unquoted).  If the argument is of type integer (i.e.
     % an arbitrary precision integer), then its decimal representation will be
-    % printed.  If the argument is of type univ, then it will print out the
-    % value stored in the univ, but not the type.
+    % printed.  If the argument is of type univ, then the value stored in the
+    % the univ will be printed out, but not the type.  If the argument is of
+    % type date_time, it will be printed out in the same form as the string
+    % returned by the function date_to_string/1.  If the argument is of type
+    % duration, it will be printed out in the same form as the string
+    % returned by the function duration_to_string/1.
     %
     % print/5 is the same as print/4 except that it allows the caller to
     % specify how non-canonical types should be handled.  print/4 implicitly
@@ -178,6 +182,7 @@
 
 :- import_module array.
 :- import_module bitmap.
+:- import_module calendar.
 :- import_module int.
 :- import_module integer.
 :- import_module require.
@@ -264,6 +269,10 @@ print(Stream, NonCanon, Term, !State) :-
         write_univ(Stream, OrigUniv, !State)
     ; dynamic_cast(Term, BigInt) ->
         put(Stream, integer.to_string(BigInt), !State)
+    ; dynamic_cast(Term, DateTime) ->
+        put(Stream, date_to_string(DateTime), !State)
+    ; dynamic_cast(Term, Duration) ->
+        put(Stream, duration_to_string(Duration), !State)
     ;
         print_quoted(Stream, NonCanon, Term, !State)
     ).
