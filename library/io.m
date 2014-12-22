@@ -8428,7 +8428,19 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
     io.write_float_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
-    ((io.MR_TextOutputFile) Stream).write_or_throw(String.valueOf(Val));
+    io.MR_TextOutputFile stream = (io.MR_TextOutputFile) Stream;
+
+    if (Double.isNaN(Val)) {
+        stream.write_or_throw(""nan"");
+    } else if (Double.isInfinite(Val)) {
+        if (Val < 0.0) {
+            stream.write_or_throw(""-infinity"");
+        } else {
+            stream.write_or_throw(""infinity"");
+        }
+    } else {
+        stream.write_or_throw(Double.toString(Val));
+    }
 ").
 
 :- pragma foreign_proc("Java",
