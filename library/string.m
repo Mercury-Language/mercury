@@ -1098,13 +1098,15 @@
     %
 :- func det_base_string_to_int(int, string) = int.
 
-    % Convert a string to a float. If the string is not a syntactically
-    % correct float literal, to_float fails.
+    % Convert a string to a float, returning infinity or -infinity if the
+    % conversion overflows.  Fails if the string is not a syntactically correct
+    % float literal.
     %
 :- pred to_float(string::in, float::out) is semidet.
 
-    % Convert a string to a float. Throws an exception if the string is not
-    % a syntactically correct float literal.
+    % Convert a string to a float, returning infinity or -infinity if the
+    % conversion overflows.  Fails if the string is not a syntactically correct
+    % float literal.
     %
 :- func det_to_float(string) = float.
 
@@ -4684,7 +4686,7 @@ string.foldr_substring(Closure, String, Start, Count, !Acc) :-
 
 %---------------------------------------------------------------------------%
 %
-% Formating tables.
+% Formatting tables.
 %
 % Currently, string.format_table simply assumes each code point occupies
 % a single column in a fixed-width output device. Thus the output will
@@ -4948,21 +4950,25 @@ accumulate_negative_int(Base, Char, N0, N) :-
     FloatVal = 0.0;     // FloatVal must be initialized to suppress
                         // error messages when the predicate fails.
 
-    // leading or trailing whitespace is not allowed
+    // Leading or trailing whitespace is not allowed.
     if (FloatString.Length == 0 ||
         System.Char.IsWhiteSpace(FloatString, 0) ||
         System.Char.IsWhiteSpace(FloatString, FloatString.Length - 1))
     {
         SUCCESS_INDICATOR = false;
     } else {
-        /*
-        ** XXX should we also catch System.OverflowException?
-        */
         try {
             FloatVal = System.Convert.ToDouble(FloatString);
             SUCCESS_INDICATOR = true;
         } catch (System.FormatException) {
             SUCCESS_INDICATOR = false;
+        } catch (System.OverflowException) {
+            if (FloatString[0] == '-') {
+                FloatVal = System.Double.NegativeInfinity;
+            } else {
+                FloatVal = System.Double.PositiveInfinity;
+            }
+            SUCCESS_INDICATOR = true;
         }
     }
 }").
@@ -4973,7 +4979,7 @@ accumulate_negative_int(Base, Char, N0, N) :-
     FloatVal = 0.0;     // FloatVal must be initialized to suppress
                         // error messages when the predicate fails.
 
-    // leading or trailing whitespace is not allowed
+    // Leading or trailing whitespace is not allowed.
     if (FloatString.length() == 0 || FloatString.trim() != FloatString) {
         SUCCESS_INDICATOR = false;
     } else {

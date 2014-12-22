@@ -301,6 +301,7 @@ ORDINARY_PROGS=	\
 	string_switch \
 	string_switch2 \
 	string_switch3 \
+	string_to_float_overflow \
 	string_various \
 	sv_nested_closures \
 	sv_record_update \
