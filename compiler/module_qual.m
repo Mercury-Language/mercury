@@ -701,7 +701,7 @@ process_assert_catch(catch_expr(Pattern0, Goal), Symbols, Success) :-
     % Performs process_assert on a list of goals.
     %
 :- pred process_assert_list(list(goal)::in, list(sym_name)::out,
-        bool::out) is det.
+    bool::out) is det.
 
 process_assert_list(ExprList, Symbols, Success) :-
     (
@@ -1737,30 +1737,36 @@ find_unique_match(Id0, Id, Ids, TypeOfId, !Info, !Specs) :-
     % Find all IDs which match the current id.
     Id0 = mq_id(SymName0, Arity),
     mq_info_get_modules(!.Info, Modules),
-    id_set_search_sym_arity(Ids, SymName0, Arity, Modules, MatchingModules0),
+    id_set_search_sym_arity(Ids, SymName0, Arity, Modules, MatchingModules),
 
     ( mq_info_get_import_status(!.Info, mq_status_exported) ->
         % Items in the interface may only refer to modules
         % imported in the interface.
         mq_info_get_interface_visible_modules(!.Info, InterfaceImports),
-        list.filter(set.contains(InterfaceImports),
-            MatchingModules0, MatchingModules)
+        set.intersect(InterfaceImports, MatchingModules,
+            ApplicableMatchingModules)
     ;
-        MatchingModules = MatchingModules0
+        ApplicableMatchingModules = MatchingModules
     ),
 
+    set.to_sorted_list(ApplicableMatchingModules,
+        ApplicableMatchingModulesList),
     (
-        MatchingModules = [],
+        ApplicableMatchingModulesList = [],
         % No matches for this id.
         Id = Id0,
-        ( mq_info_get_report_error_flag(!.Info, yes) ->
-            report_undefined(MatchingModules0, !.Info, Id0, TypeOfId, !Specs),
+        mq_info_get_report_error_flag(!.Info, ReportErrors),
+        (
+            ReportErrors = yes,
+            % XXX Why not ApplicableMatchingModulesList?
+            report_undefined(set.to_sorted_list(MatchingModules),
+                !.Info, Id0, TypeOfId, !Specs),
             mq_info_set_error_flag(TypeOfId, !Info)
         ;
-            true
+            ReportErrors = no
         )
     ;
-        MatchingModules = [Module],
+        ApplicableMatchingModulesList = [Module],
         % A unique match for this ID.
         IdName = unqualify_name(SymName0),
         Id = mq_id(qualified(Module, IdName), Arity),
@@ -1772,16 +1778,18 @@ find_unique_match(Id0, Id, Ids, TypeOfId, !Info, !Specs) :-
             recompilation.record_used_item(ItemType, ItemName0, ItemName),
             !Info)
     ;
-        MatchingModules = [_, _ | _],
+        ApplicableMatchingModulesList = [_, _ | _],
         % There are multiple matches.
         Id = Id0,
-        ( mq_info_get_report_error_flag(!.Info, yes) ->
+        mq_info_get_report_error_flag(!.Info, ReportErrors),
+        (
+            ReportErrors = yes,
             mq_info_get_error_context(!.Info, ErrorContext),
             report_ambiguous_match(ErrorContext, Id0, TypeOfId,
-                MatchingModules, !Specs),
+                ApplicableMatchingModulesList, !Specs),
             mq_info_set_error_flag(TypeOfId, !Info)
         ;
-            true
+            ReportErrors = no
         )
     ).
 
@@ -1882,6 +1890,9 @@ report_undefined(MatchingModules, Info, Id, IdType, !Specs) :-
             words("has not been imported.)"), nl]
     ;
         (
+            MatchingModules = [],
+            Pieces2 = []
+        ;
             MatchingModules = [_ | MatchingModulesTail],
             (
                 MatchingModulesTail = [],
@@ -1897,9 +1908,6 @@ report_undefined(MatchingModules, Info, Id, IdType, !Specs) :-
                 component_list_to_pieces(MatchingSymNames) ++
                 [fixed(HasWord),
                     words("not been imported in the interface.)"), nl]
-        ;
-            MatchingModules = [],
-            Pieces2 = []
         )
     ),
     Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
@@ -2346,14 +2354,15 @@ mq_info_set_module_used(Module, !Info) :-
     ).
 
 %----------------------------------------------------------------------------%
+%
 % Define a type for representing sets of ids during module qualification
 % to allow efficient retrieval of all the modules which define an id
 % with a certain name and arity.
 
-% The first set of module_names can be used without module qualifiers,
-% items from the second set can only be used with module qualifiers.
-% Items from modules imported with a :- use_module declaration and from `.opt'
-% files should go into the second set.
+    % The first set of module_names can be used without module qualifiers,
+    % items from the second set can only be used with module qualifiers.
+    % Items from modules imported with a :- use_module declaration
+    % and from `.opt' files should go into the second set.
 :- type id_set == map(pair(string, arity), pair(set(module_name))).
 
 :- type type_id_set == id_set.
@@ -2375,75 +2384,70 @@ id_set_init(IdSet) :-
 :- pred id_set_insert(need_qualifier::in, mq_id::in, id_set::in, id_set::out)
     is det.
 
-id_set_insert(_, mq_id(unqualified(_), _), _, _) :-
-    unexpected($module, $pred, "unqualified id").
-id_set_insert(NeedQualifier, mq_id(qualified(Module, Name), Arity), !IdSet) :-
-    ( map.search(!.IdSet, Name - Arity, ImportModules0 - UseModules0) ->
-        ImportModules1 = ImportModules0,
-        UseModules1 = UseModules0
-    ;
-        set.init(ImportModules1),
-        set.init(UseModules1)
-    ),
+id_set_insert(NeedQualifier, MQId,!IdSet) :-
+    MQId = mq_id(SymName, Arity), 
     (
-        NeedQualifier = must_be_qualified,
-        set.insert(Module, UseModules1, UseModules),
-        ImportModules = ImportModules1
+        SymName = unqualified(_),
+        unexpected($module, $pred, "unqualified id")
     ;
-        NeedQualifier = may_be_unqualified,
-        set.insert(Module, ImportModules1, ImportModules),
-        UseModules = UseModules1
-    ),
-    map.set(Name - Arity, ImportModules - UseModules, !IdSet).
+        SymName = qualified(Module, Name),
+        ( map.search(!.IdSet, Name - Arity, ImportModules0 - UseModules0) ->
+            ImportModules1 = ImportModules0,
+            UseModules1 = UseModules0
+        ;
+            set.init(ImportModules1),
+            set.init(UseModules1)
+        ),
+        (
+            NeedQualifier = must_be_qualified,
+            set.insert(Module, UseModules1, UseModules),
+            ImportModules = ImportModules1
+        ;
+            NeedQualifier = may_be_unqualified,
+            set.insert(Module, ImportModules1, ImportModules),
+            UseModules = UseModules1
+        ),
+        map.set(Name - Arity, ImportModules - UseModules, !IdSet)
+    ).
 
 :- pred id_set_search_sym_arity(id_set::in, sym_name::in, int::in,
-    module_id_set::in, list(module_name)::out) is det.
+    module_id_set::in, set(module_name)::out) is det.
 
-id_set_search_sym_arity(IdSet, Sym, Arity, Modules, MatchingModules) :-
+id_set_search_sym_arity(IdSet, Sym, Arity, ModuleIdSet, MatchingModules) :-
     UnqualName = unqualify_name(Sym),
-    (
-        map.search(IdSet, UnqualName - Arity, ImportModules - UseModules)
-    ->
+    ( map.search(IdSet, UnqualName - Arity, ImportModules - UseModules) ->
         (
             Sym = unqualified(_),
-            set.to_sorted_list(ImportModules, MatchingModules)
+            % XXX was set.to_sorted_list(ImportModules, MatchingModules)
+            MatchingModules = ImportModules
         ;
             Sym = qualified(Module, _),
 
-            % First, compute the set of modules that this module specifier
+            % Compute the set of modules that this module specifier
             % could possibly refer to.
             %
             % Do a recursive search to find nested modules that match
             % the specified module name.
             ModuleArity = 0,
-            id_set_search_sym_arity(Modules, Module, ModuleArity,
-                Modules, MatchingParentModules),
+            id_set_search_sym_arity(ModuleIdSet, Module, ModuleArity,
+                ModuleIdSet, MatchingParentModules),
             UnqualModule = unqualify_name(Module),
             AppendModuleName = (pred(X::in, Y::out) is det :-
                 Y = qualified(X, UnqualModule)
             ),
-            list.map(AppendModuleName,
+            set.map(AppendModuleName,
                 MatchingParentModules, MatchingNestedModules),
 
             % Add the specified module name itself, in case it refers to
             % a top-level (unnested) module name, since top-level modules
             % don't get inserted into the module_id_set.
-            AllMatchingModules = [Module | MatchingNestedModules],
+            set.insert(Module, MatchingNestedModules, AllMatchingModules),
 
-            % Second, compute the set of modules that define this symbol.
             set.union(ImportModules, UseModules, DefiningModules),
-
-            % Third, take the intersection of the sets computed in
-            % the first two steps.
-            FindMatch = (pred(MatchModule::out) is nondet :-
-                list.member(MatchModule, AllMatchingModules),
-                set.member(MatchModule, DefiningModules)
-            ),
-            % ZZZ
-            solutions(FindMatch, MatchingModules)
+            set.intersect(AllMatchingModules, DefiningModules, MatchingModules)
         )
     ;
-        MatchingModules = []
+        set.init(MatchingModules)
     ).
 
 %-----------------------------------------------------------------------------%
