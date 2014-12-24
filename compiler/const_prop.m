@@ -24,25 +24,27 @@
 :- interface.
 
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module parse_tree.prog_data.
+:- import_module libs.
+:- import_module libs.globals.
 
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
-    % evaluate_call(ModuleName, PredName, Args, VarTypes, Instmap, ModuleInfo,
-    %   GoalExpr, !GoalInfo):
+    % evaluate_call(Globals, VarTypes, Instmap,
+    %   ModuleName, ProcName, ModeNum, Args, GoalExpr, !GoalInfo):
     %
-    % This attempts to evaluate a call to the specified procedure with the
-    % specified arguments. If the call can be statically evaluated, or
-    % simplified, evaluate_builtin will succeed, returning the new goal
-    % in GoalExpr (and updating GoalInfo). Otherwise it fails.
+    % Try to statically evaluate a call to ModuleName.ProcName(Args)
+    % (which may be a call to a predicate or a function) in the mode ModeNum.
+    % If the attempt succeeds, return in GoalExpr and the updated GoalInfo
+    % a goal that binds the output variables of the call to their statically
+    % known values. If the attempt fails, fail.
     %
-:- pred evaluate_call(string::in, string::in, int::in, list(prog_var)::in,
-    vartypes::in, instmap::in, module_info::in, hlds_goal_expr::out,
-    hlds_goal_info::in, hlds_goal_info::out) is semidet.
+:- pred evaluate_call(globals::in, vartypes::in, instmap::in,
+    string::in, string::in, int::in, list(prog_var)::in,
+    hlds_goal_expr::out, hlds_goal_info::in, hlds_goal_info::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -67,8 +69,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % This type groups the information from the HLDS about a procedure call
-    % argument.
+    % This type groups together all the information we need from the HLDS
+    % about a procedure call argument.
     %
 :- type arg_hlds_info
     --->    arg_hlds_info(
@@ -77,26 +79,24 @@
                 arg_inst    :: mer_inst
             ).
 
-evaluate_call(ModuleName, PredName, ProcIdInt, Args, VarTypes, InstMap,
-        ModuleInfo, GoalExpr, !GoalInfo) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, cross_compiling, CrossCompiling),
+evaluate_call(Globals, VarTypes, InstMap,
+        ModuleName, ProcName, ModeNum, Args, GoalExpr, !GoalInfo) :-
     LookupArgs = (func(Var) = arg_hlds_info(Var, Type, Inst) :-
         instmap_lookup_var(InstMap, Var, Inst),
         lookup_var_type(VarTypes, Var, Type)
     ),
     ArgHldsInfos = list.map(LookupArgs, Args),
-    evaluate_call_2(ModuleName, PredName, ProcIdInt, ArgHldsInfos,
-       CrossCompiling, GoalExpr, !GoalInfo).
+    evaluate_call_2(Globals, ModuleName, ProcName, ModeNum, ArgHldsInfos,
+       GoalExpr, !GoalInfo).
 
-:- pred evaluate_call_2(string::in, string::in, int::in,
-    list(arg_hlds_info)::in, bool::in, hlds_goal_expr::out,
+:- pred evaluate_call_2(globals::in, string::in, string::in, int::in,
+    list(arg_hlds_info)::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out) is semidet.
 
-evaluate_call_2(ModuleName, Pred, ModeNum, Args, CrossCompiling, GoalExpr,
+evaluate_call_2(Globals, ModuleName, Pred, ModeNum, Args, GoalExpr,
         !GoalInfo) :-
     (
-        evaluate_det_call(ModuleName, Pred, ModeNum, CrossCompiling,
+        evaluate_det_call(Globals, ModuleName, Pred, ModeNum,
             Args, OutputArg, Cons)
     ->
         make_construction_goal(OutputArg, Cons, GoalExpr, !GoalInfo)
@@ -115,7 +115,7 @@ evaluate_call_2(ModuleName, Pred, ModeNum, Args, CrossCompiling, GoalExpr,
             make_assignment_goal(OutputArg, InputArg, GoalExpr, !GoalInfo)
         ;
             Result = no,
-            make_true_or_fail(no, GoalExpr)
+            GoalExpr = fail_goal_expr
         )
     ;
         fail
@@ -123,83 +123,92 @@ evaluate_call_2(ModuleName, Pred, ModeNum, Args, CrossCompiling, GoalExpr,
 
 %---------------------------------------------------------------------------%
 
-    % evaluate_det_call(ModuleName, ProcName, ModeNum, CrossCompiling,
-    %   Args, OutputArg, OutputArgVal):
+    % evaluate_det_call(Globals, ModuleName, ProcName, ModeNum, Args,
+    %   OutputArg, OutputArgVal):
     %
     % This attempts to evaluate a call to
     %   ModuleName.ProcName(Args)
-    % whose mode is specified by ModeNum.
+    % in mode ModeNum.
     %
     % If the call is a det call with one output that can be statically
     % evaluated, evaluate_det_call succeeds with OutputArg being whichever of
     % Args is output, and with OutputArgVal being the computed value of
     % OutputArg. Otherwise it fails.
     %
-:- pred evaluate_det_call(string::in, string::in, int::in, bool::in,
+:- pred evaluate_det_call(globals::in, string::in, string::in, int::in,
     list(arg_hlds_info)::in, arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call(ModuleName, ProcName, ModeNum, CrossCompiling, Args,
+evaluate_det_call(Globals, ModuleName, ProcName, ModeNum, Args,
         OutputArg, OutputArgVal) :-
+    % Note that many of these functions have predicate versions as well.
+    % In every one of those cases, the code we use to evaluate the function
+    % version will also evaluate the predicate version, because all the
+    % library predicates we evaluate here the same argument sequence for
+    % the two versions once the function return values have been put
+    % at the end of the argument list. (If the argument orders were different
+    % between the two versions for some predicates, we could still evaluate
+    % both; we would just need our caller to pass us a pred_or_func
+    % indication.)
     (
         Args = [X],
         % Constant functions.
         (
             ModuleName = "int",
-            evaluate_det_call_int_1(ProcName, ModeNum, CrossCompiling,
-                X, OutputArg, OutputArgVal)
+            evaluate_det_call_int_1(Globals, ProcName, ModeNum, X,
+                OutputArg, OutputArgVal)
         )
     ;
         Args = [X, Y],
         % Unary functions.
         (
             ModuleName = "int",
-            evaluate_det_call_int_2(ProcName, ModeNum, CrossCompiling,
-                X, Y, OutputArg, OutputArgVal)
+            evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
+                OutputArg, OutputArgVal)
         ;
             ModuleName = "float",
-            evaluate_det_call_float_2(ProcName, ModeNum, CrossCompiling,
-                X, Y, OutputArg, OutputArgVal)
+            evaluate_det_call_float_2(Globals, ProcName, ModeNum, X, Y,
+                OutputArg, OutputArgVal)
         ;
             ModuleName = "string",
-            evaluate_det_call_string_2(ProcName, ModeNum, CrossCompiling,
-                X, Y, OutputArg, OutputArgVal)
+            evaluate_det_call_string_2(Globals, ProcName, ModeNum, X, Y,
+                OutputArg, OutputArgVal)
         )
     ;
         Args = [X, Y, Z],
         % Binary functions.
         (
             ModuleName = "int",
-            evaluate_det_call_int_3(ProcName, ModeNum, CrossCompiling,
-                X, Y, Z, OutputArg, OutputArgVal)
+            evaluate_det_call_int_3(Globals, ProcName, ModeNum, X, Y, Z,
+                OutputArg, OutputArgVal)
         ;
             ModuleName = "float",
-            evaluate_det_call_float_3(ProcName, ModeNum, CrossCompiling,
-                X, Y, Z, OutputArg, OutputArgVal)
+            evaluate_det_call_float_3(Globals, ProcName, ModeNum, X, Y, Z,
+                OutputArg, OutputArgVal)
         ;
             ModuleName = "string",
-            evaluate_det_call_string_3(ProcName, ModeNum, CrossCompiling,
-                X, Y, Z, OutputArg, OutputArgVal)
+            evaluate_det_call_string_3(Globals, ProcName, ModeNum, X, Y, Z,
+                OutputArg, OutputArgVal)
         )
     ).
 
-:- pred evaluate_det_call_int_1(string::in, int::in, bool::in,
+:- pred evaluate_det_call_int_1(globals::in, string::in, int::in,
     arg_hlds_info::in, arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call_int_1(ProcName, ModeNum, CrossCompiling, X,
+evaluate_det_call_int_1(Globals, ProcName, ModeNum, X,
         OutputArg, int_const(OutputArgVal)) :-
     (
         ProcName = "bits_per_int",
         ModeNum = 0,
-        CrossCompiling = no,
+        globals.lookup_bool_option(Globals, cross_compiling, no),
         OutputArg = X,
         OutputArgVal = int.bits_per_int
     ).
 
-:- pred evaluate_det_call_int_2(string::in, int::in, bool::in,
+:- pred evaluate_det_call_int_2(globals::in, string::in, int::in,
     arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::out, cons_id::out)
     is semidet.
 
-evaluate_det_call_int_2(ProcName, ModeNum, CrossCompiling, X, Y,
+evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
         OutputArg, int_const(OutputArgVal)) :-
     (
         ProcName = "+",
@@ -222,38 +231,38 @@ evaluate_det_call_int_2(ProcName, ModeNum, CrossCompiling, X, Y,
     ;
         ProcName = "floor_to_multiple_of_bits_per_int",
         ModeNum = 0,
-        CrossCompiling = no,
+        globals.lookup_bool_option(Globals, cross_compiling, no),
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = int.floor_to_multiple_of_bits_per_int(XVal)
     ;
         ProcName = "quot_bits_per_int",
         ModeNum = 0,
-        CrossCompiling = no,
+        globals.lookup_bool_option(Globals, cross_compiling, no),
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = int.quot_bits_per_int(XVal)
     ;
         ProcName = "times_bits_per_int",
         ModeNum = 0,
-        CrossCompiling = no,
+        globals.lookup_bool_option(Globals, cross_compiling, no),
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = int.times_bits_per_int(XVal)
     ;
         ProcName = "rem_bits_per_int",
         ModeNum = 0,
-        CrossCompiling = no,
+        globals.lookup_bool_option(Globals, cross_compiling, no),
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
         OutputArgVal = int.rem_bits_per_int(XVal)
     ).
 
-:- pred evaluate_det_call_float_2(string::in, int::in, bool::in,
+:- pred evaluate_det_call_float_2(globals::in, string::in, int::in,
     arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::out, cons_id::out)
     is semidet.
 
-evaluate_det_call_float_2(ProcName, ModeNum, _CrossCompiling, X, Y,
+evaluate_det_call_float_2(_Globals, ProcName, ModeNum, X, Y,
         OutputArg, float_const(OutputArgVal)) :-
     (
         ProcName = "+",
@@ -269,11 +278,11 @@ evaluate_det_call_float_2(ProcName, ModeNum, _CrossCompiling, X, Y,
         OutputArgVal = -XVal
     ).
 
-:- pred evaluate_det_call_string_2(string::in, int::in, bool::in,
+:- pred evaluate_det_call_string_2(globals::in, string::in, int::in,
     arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::out,
     cons_id::out) is semidet.
 
-evaluate_det_call_string_2(ProcName, ModeNum, _CrossCompiling, X, Y,
+evaluate_det_call_string_2(_Globals, ProcName, ModeNum, X, Y,
         OutputArg, OutputArgVal) :-
     ProcName = "count_codepoints",
     ModeNum = 0,
@@ -282,11 +291,11 @@ evaluate_det_call_string_2(ProcName, ModeNum, _CrossCompiling, X, Y,
     CodePointCountX = string.count_codepoints(XVal),
     OutputArgVal = int_const(CodePointCountX).
 
-:- pred evaluate_det_call_int_3(string::in, int::in, bool::in,
+:- pred evaluate_det_call_int_3(globals::in, string::in, int::in,
     arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
     arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call_int_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
+evaluate_det_call_int_3(_Globals, ProcName, ModeNum, X, Y, Z,
         OutputArg, int_const(OutputArgVal)) :-
     (
         ProcName = "plus",
@@ -449,11 +458,11 @@ evaluate_det_call_int_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
         OutputArgVal = xor(XVal, YVal)
     ).
 
-:- pred evaluate_det_call_float_3(string::in, int::in, bool::in,
+:- pred evaluate_det_call_float_3(globals::in, string::in, int::in,
     arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
     arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call_float_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
+evaluate_det_call_float_3(_Globals, ProcName, ModeNum, X, Y, Z,
         OutputArg, float_const(OutputArgVal)) :-
     (
         ProcName = "+",
@@ -494,19 +503,17 @@ evaluate_det_call_float_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
         OutputArgVal = unchecked_quotient(XVal, YVal)
     ).
 
-:- pred evaluate_det_call_string_3(string::in, int::in, bool::in,
+:- pred evaluate_det_call_string_3(globals::in, string::in, int::in,
     arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
     arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call_string_3(ProcName, ModeNum, _CrossCompiling, X, Y, Z,
+evaluate_det_call_string_3(_Globals, ProcName, ModeNum, X, Y, Z,
         OutputArg, string_const(OutputArgVal)) :-
     (
         ( ProcName = "++"
         ; ProcName = "append"
         ),
-        % We can only do the append if Z is free (this allows us to ignore
-        % the mode number and pick up both the predicate and function versions
-        % of append).
+        % We can only do the append if Z is free.
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(string_const(XVal), [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(string_const(YVal), [])]),
@@ -627,7 +634,7 @@ evaluate_test("private_builtin", "typed_unify", Mode, Args, Result) :-
     %
     % This attempts to evaluate a call to
     %   ModuleName.ProcName(Args)
-    % whose mode is specified by ModeNum.
+    % in mode ModeNum.
     %
     % If the call is a semidet call with one output that can be statically
     % evaluated, evaluate_semidet_call succeeds with Result being "no"
@@ -717,8 +724,8 @@ make_assignment_goal(OutputArg, InputArg, Goal, !GoalInfo) :-
 :- pred make_construction_goal(arg_hlds_info::in, cons_id::in,
     hlds_goal_expr::out, hlds_goal_info::in, hlds_goal_info::out) is det.
 
-make_construction_goal(OutputArg, Cons, Goal, !GoalInfo) :-
-    make_construction(OutputArg, Cons, Goal),
+make_construction_goal(OutputArg, Cons, GoalExpr, !GoalInfo) :-
+    make_construction_goal_expr(OutputArg, Cons, GoalExpr),
     Delta0 = goal_info_get_instmap_delta(!.GoalInfo),
     Inst = bound(unique, inst_test_results_fgtc, [bound_functor(Cons, [])]),
     instmap_delta_set_var(OutputArg ^ arg_var, Inst, Delta0, Delta),
@@ -742,11 +749,15 @@ make_assignment(OutputArg, InputArg, Goal) :-
     % recompute_instmap_delta is run by simplify.m if anything changes,
     % so the insts are not important here.
     %
-:- pred make_construction(arg_hlds_info::in, cons_id::in, hlds_goal_expr::out)
-    is det.
+:- pred make_construction_goal_expr(arg_hlds_info::in, cons_id::in,
+    hlds_goal_expr::out) is det.
 
-make_construction(Arg, ConsId, GoalExpr) :-
-    make_const_construction(Arg ^ arg_var, ConsId, hlds_goal(GoalExpr, _)).
+make_construction_goal_expr(Arg, ConsId, GoalExpr) :-
+    make_const_construction(Arg ^ arg_var, ConsId, Goal),
+    % We ignore the generic goal info returned by make_const_construction;
+    % our caller will construct a goal info that is specialized to the
+    % call being replaced.
+    Goal = hlds_goal(GoalExpr, _).
 
 %---------------------------------------------------------------------------%
 

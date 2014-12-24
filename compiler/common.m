@@ -100,6 +100,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -121,18 +122,18 @@
     % variables (to remove the redundant call), and a warning (since the
     % programmer probably did not mean to write a redundant call).
     %
-    % A call is considered replaceable if it has no destructive inputs
-    % and no uniquely moded outputs. It is the caller's responsibility
-    % to check that the call is pure.
+    % A call is considered replaceable if it is pure, and it has neither
+    % destructive inputs nor uniquely moded outputs.
     %
 :- pred common_optimise_call(pred_id::in, proc_id::in, list(prog_var)::in,
-    hlds_goal_info::in, hlds_goal_expr::in, hlds_goal_expr::out,
+    purity::in, hlds_goal_info::in,
+    hlds_goal_expr::in, maybe(hlds_goal_expr)::out,
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 :- pred common_optimise_higher_order_call(prog_var::in, list(prog_var)::in,
-    list(mer_mode)::in, determinism::in, hlds_goal_info::in,
-    hlds_goal_expr::in, hlds_goal_expr::out,
+    list(mer_mode)::in, determinism::in, purity::in, hlds_goal_info::in,
+    hlds_goal_expr::in, maybe(hlds_goal_expr)::out,
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
@@ -557,9 +558,10 @@ record_equivalence(VarA, VarB, !Common) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-common_optimise_call(PredId, ProcId, Args, GoalInfo, GoalExpr0, GoalExpr,
-        !Common, !Info) :-
+common_optimise_call(PredId, ProcId, Args, Purity, GoalInfo,
+        GoalExpr0, MaybeAssignsGoalExpr, !Common, !Info) :-
     (
+        Purity = purity_pure,
         Det = goal_info_get_determinism(GoalInfo),
         check_call_detism(Det),
         simplify_info_get_var_types(!.Info, VarTypes),
@@ -570,15 +572,16 @@ common_optimise_call(PredId, ProcId, Args, GoalInfo, GoalExpr0, GoalExpr,
             InputArgs, OutputArgs, OutputModes)
     ->
         common_optimise_call_2(seen_call(PredId, ProcId), InputArgs,
-            OutputArgs, OutputModes, GoalInfo, GoalExpr0, GoalExpr,
-            !Common, !Info)
+            OutputArgs, OutputModes, GoalInfo,
+            GoalExpr0, MaybeAssignsGoalExpr, !Common, !Info)
     ;
-        GoalExpr = GoalExpr0
+        MaybeAssignsGoalExpr = no
     ).
 
-common_optimise_higher_order_call(Closure, Args, Modes, Det, GoalInfo,
-        GoalExpr0, GoalExpr, !Common, !Info) :-
+common_optimise_higher_order_call(Closure, Args, Modes, Det, Purity, GoalInfo,
+        GoalExpr0, MaybeAssignsGoalExpr, !Common, !Info) :-
     (
+        Purity = purity_pure,
         check_call_detism(Det),
         simplify_info_get_var_types(!.Info, VarTypes),
         simplify_info_get_module_info(!.Info, ModuleInfo),
@@ -586,10 +589,10 @@ common_optimise_higher_order_call(Closure, Args, Modes, Det, GoalInfo,
             InputArgs, OutputArgs, OutputModes)
     ->
         common_optimise_call_2(higher_order_call, [Closure | InputArgs],
-            OutputArgs, OutputModes, GoalInfo, GoalExpr0, GoalExpr,
-            !Common, !Info)
+            OutputArgs, OutputModes, GoalInfo,
+            GoalExpr0, MaybeAssignsGoalExpr, !Common, !Info)
     ;
-        GoalExpr = GoalExpr0
+        MaybeAssignsGoalExpr = no
     ).
 
 :- pred check_call_detism(determinism::in) is semidet.
@@ -603,12 +606,12 @@ check_call_detism(Det) :-
 
 :- pred common_optimise_call_2(seen_call_id::in, list(prog_var)::in,
     list(prog_var)::in, list(mer_mode)::in, hlds_goal_info::in,
-    hlds_goal_expr::in, hlds_goal_expr::out,
+    hlds_goal_expr::in, maybe(hlds_goal_expr)::out,
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
 common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
-        GoalExpr0, GoalExpr, Common0, Common, !Info) :-
+        GoalExpr0, MaybeAssignsGoalExpr, Common0, Common, !Info) :-
     Eqv0 = Common0 ^ var_eqv,
     SeenCalls0 = Common0 ^ seen_calls,
     ( map.search(SeenCalls0, SeenCall, SeenCallsList0) ->
@@ -619,16 +622,13 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             simplify_info_get_module_info(!.Info, ModuleInfo),
             modes_to_uni_modes(ModuleInfo, Modes, Modes, UniModes),
             create_output_unifications(GoalInfo, OutputArgs, OutputArgs2,
-                UniModes, Goals, Common0, Common, !Info),
-            % The call we are optimising is usually a conjunct in a
-            % conjunction. If we replace the call with a conjunction,
-            % then our ancestor simplify_call will traverse the returned
-            % goal *again*.
-            ( Goals = [hlds_goal(OnlyGoalExpr, _OnlyGoalInfo)] ->
-                GoalExpr = OnlyGoalExpr
+                UniModes, AssignGoals, Common0, Common, !Info),
+            ( AssignGoals = [hlds_goal(OnlyGoalExpr, _OnlyGoalInfo)] ->
+                AssignsGoalExpr = OnlyGoalExpr
             ;
-                GoalExpr = conj(plain_conj, Goals)
+                AssignsGoalExpr = conj(plain_conj, AssignGoals)
             ),
+            MaybeAssignsGoalExpr = yes(AssignsGoalExpr),
             simplify_info_get_var_types(!.Info, VarTypes),
             (
                 simplify_do_warn_duplicate_calls(!.Info),
@@ -682,14 +682,14 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             map.det_update(SeenCall, [ThisCall | SeenCallsList0],
                 SeenCalls0, SeenCalls),
             Common = Common0 ^ seen_calls := SeenCalls,
-            GoalExpr = GoalExpr0
+            MaybeAssignsGoalExpr = no
         )
     ;
         Context = goal_info_get_context(GoalInfo),
         ThisCall = call_args(Context, InputArgs, OutputArgs),
         map.det_insert(SeenCall, [ThisCall], SeenCalls0, SeenCalls),
         Common = Common0 ^ seen_calls := SeenCalls,
-        GoalExpr = GoalExpr0
+        MaybeAssignsGoalExpr = no
     ).
 
 %---------------------------------------------------------------------------%
@@ -790,7 +790,7 @@ common_vars_are_equiv(X, Y, VarEqv) :-
     % corresponding var in OldOutputArgs. This needs to be done even if
     % OutputArg is not a nonlocal in the original goal, because later goals
     % in the conjunction may match against the cell and need all the output
-    % arguments. The unneeded assignments will be removed later.
+    % arguments. Any unneeded assignments will be removed later.
     %
 :- pred create_output_unifications(hlds_goal_info::in, list(prog_var)::in,
     list(prog_var)::in, list(uni_mode)::in, list(hlds_goal)::out,
@@ -798,35 +798,34 @@ common_vars_are_equiv(X, Y, VarEqv) :-
     simplify_info::in, simplify_info::out) is det.
 
 create_output_unifications(OldGoalInfo, OutputArgs, OldOutputArgs, UniModes,
-        Goals, !Common, !Info) :-
+        AssignGoals, !Common, !Info) :-
     (
-        OutputArgs = [OutputArg | OutputArgsTail],
-        OldOutputArgs = [OldOutputArg | OldOutputArgsTail],
-        UniModes = [UniMode | UniModesTail]
+        OutputArgs = [HeadOutputArg | TailOutputArgs],
+        OldOutputArgs = [HeadOldOutputArg | TailOldOutputArgs],
+        UniModes = [HeadUniMode | TailUniModes]
     ->
-        (
+        ( HeadOutputArg = HeadOldOutputArg ->
             % This can happen if the first cell was created
             % with a partially instantiated deconstruction.
-            OutputArg \= OldOutputArg
-        ->
-            generate_assign(OutputArg, OldOutputArg, UniMode, OldGoalInfo,
-                GoalExpr, GoalInfo, !Common, !Info),
-            Goal = hlds_goal(GoalExpr, GoalInfo),
             create_output_unifications(OldGoalInfo,
-                OutputArgsTail, OldOutputArgsTail, UniModesTail, GoalsTail,
-                !Common, !Info),
-            Goals = [Goal | GoalsTail]
+                TailOutputArgs, TailOldOutputArgs, TailUniModes,
+                AssignGoals, !Common, !Info)
         ;
+            generate_assign(HeadOutputArg, HeadOldOutputArg, HeadUniMode,
+                OldGoalInfo, HeadAssignGoalExpr, HeadAssignGoalInfo,
+                !Common, !Info),
+            HeadAssignGoal = hlds_goal(HeadAssignGoalExpr, HeadAssignGoalInfo),
             create_output_unifications(OldGoalInfo,
-                OutputArgsTail, OldOutputArgsTail, UniModesTail, Goals,
-                !Common, !Info)
+                TailOutputArgs, TailOldOutputArgs, TailUniModes,
+                TailAssignGoals, !Common, !Info),
+            AssignGoals = [HeadAssignGoal | TailAssignGoals]
         )
     ;
         OutputArgs = [],
         OldOutputArgs = [],
         UniModes = []
     ->
-        Goals = []
+        AssignGoals = []
     ;
         unexpected($module, $pred, "mode mismatch")
     ).

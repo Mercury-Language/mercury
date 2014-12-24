@@ -548,7 +548,7 @@ get_one_solution_io(Pred, X, !IO) :-
 ordering(X, Y) = R :-
     compare(R, X, Y).
 
-    % simplify.goal automatically inlines these definitions.
+    % simplify.simplify_goal_call.m automatically inlines these definitions.
     %
 X  @< Y :-
     compare((<), X, Y).
