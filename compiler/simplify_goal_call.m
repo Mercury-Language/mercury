@@ -83,6 +83,8 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
+:- import_module string.
 :- import_module varset.
 
 %----------------------------------------------------------------------------%
@@ -154,8 +156,8 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 MaybeAssignsGoalExpr = no,
                 (
                     % Step 3.
-                    simplify_improve_library_call(ModuleName, PredName,
-                        ModeNum, Args, ImprovedGoalExpr,
+                    simplify_improve_library_call(InstMap0,
+                        ModuleName, PredName, ModeNum, Args, ImprovedGoalExpr,
                         GoalInfo0, ImprovedGoalInfo, InstMap0, !Info)
                 ->
                     % simplify_improve_library_call will have set
@@ -243,8 +245,8 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
         PredName = pred_info_name(PredInfo),
         proc_id_to_int(ProcId, ModeNum),
         ArgVars = list.map(foreign_arg_var, Args0),
-        simplify_improve_library_call(ModuleName, PredName, ModeNum, ArgVars,
-            ImprovedGoalExpr, !GoalInfo, InstMap0, !Info)
+        simplify_improve_library_call(InstMap0, ModuleName, PredName,
+            ModeNum, ArgVars, ImprovedGoalExpr, !GoalInfo, InstMap0, !Info)
     ->
         GoalExpr = ImprovedGoalExpr,
         Common = Common0
@@ -487,8 +489,8 @@ simplify_look_for_duplicate_call(PredId, ProcId, Args, GoalExpr0, GoalInfo0,
         MaybeAssignsGoalExpr = no
     ).
 
-    % simplify_improve_library_call(ModuleName, PredName, ModeNum, Args,
-    %   ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo, !Info):
+    % simplify_improve_library_call(InstMap0, ModuleName, PredName,
+    %   ModeNum, Args, ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo, !Info):
     %
     % This attempts to improve a call to ModuleName.PredName(Args)
     % in mode ModeNum by replacing it with less expensive code.
@@ -498,12 +500,12 @@ simplify_look_for_duplicate_call(PredId, ProcId, Args, GoalExpr0, GoalInfo0,
     % to prevent dead_proc_elim from deleting them from the predicate table
     % before we get here.
     %
-:- pred simplify_improve_library_call(string::in, string::in, int::in,
-    list(prog_var)::in, hlds_goal_expr::out,
+:- pred simplify_improve_library_call(instmap::in,
+    string::in, string::in, int::in, list(prog_var)::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     instmap::in, simplify_info::in, simplify_info::out) is semidet.
 
-simplify_improve_library_call(ModuleName, PredName, ModeNum, Args,
+simplify_improve_library_call(InstMap0, ModuleName, PredName, ModeNum, Args,
         ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo, InstMap0, !Info) :-
     (
         ModuleName = "builtin",
@@ -533,7 +535,7 @@ simplify_improve_library_call(ModuleName, PredName, ModeNum, Args,
         )
     ;
         ModuleName = "int",
-        simplify_improve_int_call(PredName, ModeNum, Args,
+        simplify_improve_int_call(InstMap0, PredName, ModeNum, Args,
             ImprovedGoalExpr, GoalInfo0, ImprovedGoalInfo, !Info)
     ),
     simplify_info_set_should_requantify(!Info).
@@ -658,17 +660,13 @@ simplify_improve_builtin_compare(_ModeNum, Args, ImprovedGoalExpr, !GoalInfo,
         ImprovedGoalExpr = if_then_else([], CondEq, ReturnEq, Rest)
     ).
 
-:- pred simplify_improve_int_call(string::in, int::in, list(prog_var)::in,
-    hlds_goal_expr::out, hlds_goal_info::in, hlds_goal_info::out,
+:- pred simplify_improve_int_call(instmap::in, string::in, int::in,
+    list(prog_var)::in, hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is semidet.
 
-simplify_improve_int_call(PredName, _ModeNum, Args, ImprovedGoalExpr,
+simplify_improve_int_call(InstMap0, PredName, _ModeNum, Args, ImprovedGoalExpr,
         !GoalInfo, !Info) :-
-    % XXX Why do we insist on const_prop here? What we do here
-    % is NOT constant propagation.
-    % XXX Except for the code for bits_per_int, which duplicates what
-    % const_prop.m does.
-    simplify_do_const_prop(!.Info),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, cross_compiling, no),
@@ -678,49 +676,89 @@ simplify_improve_int_call(PredName, _ModeNum, Args, ImprovedGoalExpr,
         % There is no point in checking whether bits_per_int is 0;
         % it isn't.
         Op = "unchecked_quotient",
-        simplify_improve_int_arity2_op(Op, X, Y, ImprovedGoalExpr,
-            !GoalInfo, !Info)
+        simplify_make_int_ico_op(Op, X, int.bits_per_int, Y, ImprovedGoalExpr,
+            !.GoalInfo, !Info)
     ;
         PredName = "times_bits_per_int",
         Args = [X, Y],
         Op = "*",
-        simplify_improve_int_arity2_op(Op, X, Y, ImprovedGoalExpr,
-            !GoalInfo, !Info)
+        simplify_make_int_ico_op(Op, X, int.bits_per_int, Y, ImprovedGoalExpr,
+            !.GoalInfo, !Info)
     ;
         PredName = "rem_bits_per_int",
         Args = [X, Y],
         % There is no point in checking whether bits_per_int is 0;
         % it isn't.
         Op = "unchecked_rem",
-        simplify_improve_int_arity2_op(Op, X, Y, ImprovedGoalExpr,
-            !GoalInfo, !Info)
+        simplify_make_int_ico_op(Op, X, int.bits_per_int, Y, ImprovedGoalExpr,
+            !.GoalInfo, !Info)
     ;
-        PredName = "bits_per_int",
-        Args = [X],
-        require_det (
-            ConstConsId = int_const(int.bits_per_int),
-            RHS = rhs_functor(ConstConsId, is_not_exist_constr, []),
-            ModeOfX = out_mode,
-            ModeOfConstConsId = in_mode,
-            UnifyMode = ModeOfX - ModeOfConstConsId,
-            How = construct_dynamically,
-            IsUnique = cell_is_shared,
-            Sub = no_construct_sub_info,
-            Unification = construct(X, ConstConsId, [], [], How,
-                IsUnique, Sub),
-            UnifyMainContext = umc_implicit("simplify_improve_int_call"),
-            UnifyContext = unify_context(UnifyMainContext, []),
-            ImprovedGoalExpr =
-                unify(X, RHS, UnifyMode, Unification, UnifyContext)
-        )
+        ( PredName = "/"
+        ; PredName = "//"
+        ),
+        Args = [X, Y, Z],
+        instmap_lookup_var(InstMap0, Y, InstY),
+        InstY = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        YVal \= 0,
+        Op = "unchecked_quotient",
+        simplify_make_int_binary_op_goal_expr(!.Info, Op, inline_builtin,
+            X, Y, Z, ImprovedGoalExpr)
+    ;
+        PredName = "rem",
+        Args = [X, Y, Z],
+        instmap_lookup_var(InstMap0, Y, InstY),
+        InstY = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        YVal \= 0,
+        Op = "unchecked_rem",
+        simplify_make_int_binary_op_goal_expr(!.Info, Op, inline_builtin,
+            X, Y, Z, ImprovedGoalExpr)
+    ;
+        PredName = "<<",
+        Args = [X, Y, Z],
+        instmap_lookup_var(InstMap0, Y, InstY),
+        InstY = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        YVal >= 0,
+        YVal < int.bits_per_int,
+        Op = "unchecked_left_shift",
+        simplify_make_int_binary_op_goal_expr(!.Info, Op, inline_builtin,
+            X, Y, Z, ImprovedGoalExpr)
+    ;
+        PredName = ">>",
+        Args = [X, Y, Z],
+        instmap_lookup_var(InstMap0, Y, InstY),
+        InstY = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        YVal >= 0,
+        YVal < int.bits_per_int,
+        Op = "unchecked_right_shift",
+        simplify_make_int_binary_op_goal_expr(!.Info, Op, inline_builtin,
+            X, Y, Z, ImprovedGoalExpr)
     ).
 
-:- pred simplify_improve_int_arity2_op(string::in,
-    prog_var::in, prog_var::in, hlds_goal_expr::out,
-    hlds_goal_info::in, hlds_goal_info::out,
-    simplify_info::in, simplify_info::out) is semidet.
+    % simplify_make_int_ico_op(Op, X, IntConst, Y, GoalExpr, OrigGoalInfo,
+    %   !Info):
+    %
+    % Return a GoalExpr that computes Y := X Op IntConst.
+    % (The ico stands for the three arguments being Input, Constant input,
+    % and Output.)
+    %
+:- pred simplify_make_int_ico_op(string::in,
+    prog_var::in, int::in, prog_var::in, hlds_goal_expr::out,
+    hlds_goal_info::in,
+    simplify_info::in, simplify_info::out) is det.
 
-simplify_improve_int_arity2_op(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
+simplify_make_int_ico_op(Op, X, IntConst, Y, GoalExpr, OrigGoalInfo, !Info) :-
+    simplify_make_int_const(IntConst, ConstVar, ConstGoal, !Info),
+    simplify_make_int_binary_op_goal_expr(!.Info, Op, inline_builtin,
+        X, ConstVar, Y, OpGoalExpr),
+    % set_of_var.list_to_set([X, Y, ConstVar], NonLocals),
+    % goal_info_set_nonlocals(NonLocals, OrigGoalInfo, OpGoalInfo),
+    OpGoal = hlds_goal(OpGoalExpr, OrigGoalInfo),
+    GoalExpr = conj(plain_conj, [ConstGoal, OpGoal]).
+
+:- pred simplify_make_int_const(int::in, prog_var::out, hlds_goal::out,
+    simplify_info::in, simplify_info::out) is det.
+
+simplify_make_int_const(IntConst, ConstVar, Goal, !Info) :-
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     varset.new_var(ConstVar, VarSet0, VarSet),
@@ -728,44 +766,43 @@ simplify_improve_int_arity2_op(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
     simplify_info_set_varset(VarSet, !Info),
     simplify_info_set_var_types(VarTypes, !Info),
 
-    ConstConsId = int_const(int.bits_per_int),
-    ConstUnification = construct(ConstVar, ConstConsId, [], [],
+    ConstConsId = int_const(IntConst),
+    Unification = construct(ConstVar, ConstConsId, [], [],
         construct_dynamically, cell_is_shared, no_construct_sub_info),
-    ConstRHS = rhs_functor(ConstConsId, is_not_exist_constr, []),
+    RHS = rhs_functor(ConstConsId, is_not_exist_constr, []),
     % The context shouldn't matter.
-    ConstUnifyContext = unify_context(umc_explicit, []),
+    UnifyContext = unify_context(umc_explicit, []),
     Ground = ground_inst,
-    ConstMode = (free -> Ground) - (Ground -> Ground),
-    ConstGoalExpr = unify(ConstVar, ConstRHS, ConstMode, ConstUnification,
-        ConstUnifyContext),
-    ConstNonLocals = set_of_var.make_singleton(ConstVar),
+    Mode = (free -> Ground) - (Ground -> Ground),
+    GoalExpr = unify(ConstVar, RHS, Mode, Unification, UnifyContext),
+    NonLocals = set_of_var.make_singleton(ConstVar),
     InstMapDelta = instmap_delta_bind_var(ConstVar),
-    goal_info_init(ConstNonLocals, InstMapDelta,
-        detism_det, purity_pure, ConstGoalInfo),
-    ConstGoal = hlds_goal(ConstGoalExpr, ConstGoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
+:- pred simplify_make_int_binary_op_goal_expr(simplify_info::in,
+    string::in, builtin_state::in,
+    prog_var::in, prog_var::in, prog_var::in, hlds_goal_expr::out) is det.
+
+simplify_make_int_binary_op_goal_expr(Info, Op, IsBuiltin, X, Y, Z,
+        GoalExpr) :-
     IntModuleSymName = mercury_std_lib_module_name(unqualified("int")),
     OpSymName = qualified(IntModuleSymName, Op),
-    simplify_info_get_module_info(!.Info, ModuleInfo),
+    simplify_info_get_module_info(Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredTable),
     predicate_table_lookup_func_sym_arity(PredTable, is_fully_qualified,
         OpSymName, 2, OpPredIds),
-    OpPredIds = [OpPredId],
+    ( OpPredIds = [OpPredIdPrime] ->
+        OpPredId = OpPredIdPrime
+    ;
+        unexpected($module, $pred, "cannot find " ++ Op)
+    ),
     OpProcIdInt = 0,
     proc_id_to_int(OpProcId, OpProcIdInt),
-    OpArgs = [X, ConstVar, Y],
+    OpArgs = [X, Y, Z],
     MaybeUnifyContext = no,
-    IsBuiltin = inline_builtin,
-    OpGoalExpr = plain_call(OpPredId, OpProcId, OpArgs, IsBuiltin,
-        MaybeUnifyContext, OpSymName),
-
-    OpGoalInfo0 = !.GoalInfo,
-    OpNonLocals0 = goal_info_get_nonlocals(OpGoalInfo0),
-    set_of_var.insert(ConstVar, OpNonLocals0, OpNonLocals),
-    goal_info_set_nonlocals(OpNonLocals, OpGoalInfo0, OpGoalInfo),
-    OpGoal = hlds_goal(OpGoalExpr, OpGoalInfo),
-
-    GoalExpr = conj(plain_conj, [ConstGoal, OpGoal]).
+    GoalExpr = plain_call(OpPredId, OpProcId, OpArgs, IsBuiltin,
+        MaybeUnifyContext, OpSymName).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.simplify.simplify_goal_call.

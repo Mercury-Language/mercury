@@ -752,9 +752,11 @@ simplify_may_introduce_calls(ModuleName, PredName, _Arity) :-
         )
     ;
         ModuleName = "int",
-        ( PredName = "unchecked_quotient"
+        ( PredName = "*"
+        ; PredName = "unchecked_quotient"
         ; PredName = "unchecked_rem"
-        ; PredName = "*"
+        ; PredName = "unchecked_left_shift"
+        ; PredName = "unchecked_right_shift"
         )
     ;
         ModuleName = "io",
