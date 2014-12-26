@@ -1,7 +1,4 @@
 %-----------------------------------------------------------------------------%
-% array_binsearch.m
-% Ralph Becket <rafe@csse.unimelb.edu.au>
-% Tue Sep  1 11:08:30 EST 2009
 % vim: ts=4 sw=4 et ft=mercury
 %
 % Test the array.[approx_]binary_search predicates.
@@ -24,57 +21,20 @@
 :- import_module array.
 :- import_module int.
 :- import_module list.
-:- import_module random.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
-    random.init(42, Supply0),
-    build_random_list_with_repeats(20, 1, Max, Supply0, Supply1,
-        [], RevSortedList),
-    list.reverse(RevSortedList, SortedList),
+    SortedList = [1, 1, 1, 3, 3, 3, 5, 5, 7, 7, 8, 8, 10, 10, 11, 11,
+        13, 13, 13, 16, 16, 19, 20, 20, 21, 21, 23, 27, 28, 28, 28, 29, 31],
+    DistractedSortedList = [401, 1, 301, 403, 103, 303, 5, 5, 207, 307,
+        408, 108, 210, 10, 411, 311,
+        113, 213, 213, 316, 216, 319, 420, 220, 321, 121,
+        323, 227, 28, 228, 28, 29, 231],
+    Max = 32,
     run_undistracted_tests(SortedList, Max, !IO),
-
-    add_distractions(Supply1, _Supply, SortedList, DistractedSortedList),
     run_distracted_tests(DistractedSortedList, Max, !IO).
-
-:- pred build_random_list_with_repeats(int::in, int::in, int::out,
-    random.supply::in, random.supply::out, list(int)::in, list(int)::out)
-    is det.
-
-build_random_list_with_repeats(NumChunksToAdd, CurNum, LastNum,
-        !Supply, !RevSortedList) :-
-    ( if NumChunksToAdd = 0 then
-        LastNum = CurNum
-    else
-        random.random(0, 4, NumRepeats, !Supply),
-        !:RevSortedList =
-            list.duplicate(NumRepeats, CurNum) ++ !.RevSortedList,
-        random.random(0, 2, ShouldJump, !Supply),
-        ( if ShouldJump = 0 then
-            NextNum = CurNum + 1
-        else
-            NextNum = CurNum + 2
-        ),
-        build_random_list_with_repeats(NumChunksToAdd - 1, NextNum, LastNum,
-            !Supply, !RevSortedList)
-    ).
-
-:- pred add_distractions(random.supply::in, random.supply::out,
-    list(int)::in, list(int)::out) is det.
-
-add_distractions(!Supply, [], []).
-add_distractions(!Supply, [Head | Tail], [DistHead | DistTail]) :-
-    distract(Head, DistHead, !Supply),
-    add_distractions(!Supply, Tail, DistTail).
-
-:- pred distract(int::in, int::out, random.supply::in, random.supply::out)
-    is det.
-
-distract(N0, N, !Supply) :-
-    random.random(0, 5, Distraction, !Supply),
-    N = Distraction * 100 + N0.
 
 :- func distraction_ordering(int, int) = comparison_result.
 
