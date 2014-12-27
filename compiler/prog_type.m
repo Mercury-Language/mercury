@@ -386,6 +386,12 @@
 :- pred type_unify_list(list(mer_type)::in, list(mer_type)::in, list(tvar)::in,
     tsubst::in, tsubst::out) is semidet.
 
+    % type_subsumes(TypeA, TypeB, Subst) succeeds iff TypeA subsumes
+    % (is more general than) TypeB, producing a type substitution
+    % which when applied to TypeA will give TypeB.
+    %
+:- pred type_subsumes(mer_type::in, mer_type::in, tsubst::out) is semidet.
+
     % type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list
     % TypesA subsumes (is more general than) TypesB, producing a
     % type substitution which when applied to TypesA will give TypesB.
@@ -1347,6 +1353,14 @@ type_occurs_list([X | Xs], Y,  Bindings) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+type_subsumes(TypeA, TypeB, TypeSubst) :-
+    % TypeA subsumes TypeB iff TypeA can be unified with TypeB
+    % without binding any of the type variables in TypeB.
+
+    type_vars(TypeB, TypeBVars),
+    map.init(TypeSubst0),
+    type_unify(TypeA, TypeB, TypeBVars, TypeSubst0, TypeSubst).
 
 type_list_subsumes(TypesA, TypesB, TypeSubst) :-
     % TypesA subsumes TypesB iff TypesA can be unified with TypesB
