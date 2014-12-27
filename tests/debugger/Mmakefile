@@ -415,7 +415,7 @@ implied_instance.out: implied_instance implied_instance.inp
 
 io_tab_goto.out: io_tab_goto io_tab_goto.inp
 	$(MDB_STD) ./io_tab_goto < io_tab_goto.inp 2>&1 | \
-		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
+		sed 's/c_pointer(0x[-0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
 		> io_tab_goto.out 2>&1
 
 lambda_expr.out: lambda_expr lambda_expr.inp
@@ -506,7 +506,7 @@ print_goal.out: print_goal print_goal.inp
 print_io_actions.out: print_io_actions print_io_actions.inp \
 		print_io_actions.data
 	$(MDB_STD) ./print_io_actions < print_io_actions.inp | \
-		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
+		sed 's/c_pointer(0x[-0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
 		> print_io_actions.out 2>&1
 
 print_table.out: print_table print_table.inp
@@ -570,7 +570,7 @@ switch_on_unbounded.out: switch_on_unbounded switch_on_unbounded.inp
 
 tabled_read.out: tabled_read tabled_read.inp tabled_read.data
 	$(MDB_STD) ./tabled_read < tabled_read.inp 2>&1 | \
-		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
+		sed 's/c_pointer(0x[-0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
 		> tabled_read.out 2>&1
 
 tabled_read_unitize.out: tabled_read_unitize.data
@@ -581,7 +581,7 @@ tabled_read_unitize.out: tabled_read_unitize tabled_read_unitize.inp
 
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp tabled_read_decl.data
 	$(MDB_STD) ./tabled_read_decl < tabled_read_decl.inp 2>&1 | \
-		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
+		sed 's/c_pointer(0x[-0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
 		> tabled_read_decl.out 2>&1
 
 tabled_typeclass.out: tabled_typeclass tabled_typeclass.inp

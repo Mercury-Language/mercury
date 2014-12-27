@@ -529,13 +529,13 @@ supertree_warning.out: supertree_warning supertree_warning.inp
 
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp
 	$(MDB_STD) ./tabled_read_decl < tabled_read_decl.inp 2>&1 | \
-		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
+		sed 's/c_pointer(0x[-0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
 		> tabled_read_decl.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 tabled_read_decl_goto.out: tabled_read_decl_goto tabled_read_decl_goto.inp
 	$(MDB_STD) ./tabled_read_decl_goto < tabled_read_decl_goto.inp 2>&1 | \
-		sed 's/c_pointer(0x[0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
+		sed 's/c_pointer(0x[-0-9A-Fa-f]*)/c_pointer(0xXXXX)/g' \
 		> tabled_read_decl_goto.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
