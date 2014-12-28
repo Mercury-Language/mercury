@@ -798,6 +798,9 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
 
 :- type mismatch_info
     --->    mismatch_info(
+                % XXX We should report the context of the argument,
+                % but unfortunately that information is not stored
+                % in the HLDS.
                 int,                % Argument number, starting from 1.
                 prog_var,           % Variable in that position
                 type_mismatch,      % The first mismatch for this arg.
@@ -825,28 +828,50 @@ find_mismatched_args(_, [], _,
 find_mismatched_args(CurArgNum, [Arg - ExpType | ArgExpTypes], TypeAssignSet,
         !RevSubsumesMismatches, !RevNoSubsumeMismatches) :-
     get_type_stuff(TypeAssignSet, Arg, TypeStuffList),
-    list.filter_map(substitute_types_check_match(ExpType), TypeStuffList,
-        TypeMismatches0),
-    list.sort_and_remove_dups(TypeMismatches0, TypeMismatches),
+    list.foldl2(substitute_types_check_match(ExpType), TypeStuffList,
+        [], TypeMismatches0, no_type_stuff_matches, DoesSomeTypeStuffMatch),
     (
-        TypeMismatches = []
+        DoesSomeTypeStuffMatch = some_type_stuff_matches
+        % It is possible some TypeStuff in TypeStuffList matches,
+        % and some doesn't, so TypeMismatches0 may not be empty.
+        % We could gather it and return it in a new accumulator,
+        % to be printed if the final contents of both RevSubsumesMismatches
+        % and RevNoSubsumeMismatches is empty. However, this should never
+        % happen, since report_error_functor_arg_types should not be invoked
+        % in the absence of a known mismatch in argument types.
     ;
-        TypeMismatches = [HeadTypeMismatch | TailTypeMismatches],
-        Mismatch = mismatch_info(CurArgNum, Arg, HeadTypeMismatch,
-            TailTypeMismatches),
-        ( all_no_subsume_mismatches(TypeMismatches) ->
-            !:RevNoSubsumeMismatches = [Mismatch | !.RevNoSubsumeMismatches]
+        DoesSomeTypeStuffMatch = no_type_stuff_matches,
+        list.sort_and_remove_dups(TypeMismatches0, TypeMismatches),
+        (
+            TypeMismatches = [],
+            unexpected($module, $pred,
+                "no_type_stuff_matches but TypeMismatches = []")
         ;
-            !:RevSubsumesMismatches = [Mismatch | !.RevSubsumesMismatches]
+            TypeMismatches = [HeadTypeMismatch | TailTypeMismatches],
+            Mismatch = mismatch_info(CurArgNum, Arg, HeadTypeMismatch,
+                TailTypeMismatches),
+            ( all_no_subsume_mismatches(TypeMismatches) ->
+                !:RevNoSubsumeMismatches =
+                    [Mismatch | !.RevNoSubsumeMismatches]
+            ;
+                !:RevSubsumesMismatches =
+                    [Mismatch | !.RevSubsumesMismatches]
+            )
         )
     ),
     find_mismatched_args(CurArgNum + 1, ArgExpTypes, TypeAssignSet,
         !RevSubsumesMismatches, !RevNoSubsumeMismatches).
 
-:- pred substitute_types_check_match(mer_type::in, type_stuff::in,
-    type_mismatch::out) is semidet.
+:- type does_some_type_stuff_match
+    --->    no_type_stuff_matches
+    ;       some_type_stuff_matches.
 
-substitute_types_check_match(ExpType, TypeStuff, TypeMismatch) :-
+:- pred substitute_types_check_match(mer_type::in, type_stuff::in,
+    list(type_mismatch)::in, list(type_mismatch)::out,
+    does_some_type_stuff_match::in, does_some_type_stuff_match::out) is det.
+
+substitute_types_check_match(ExpType, TypeStuff,
+        !TypeMismatches, !DoesSomeTypeStuffMatch) :-
     TypeStuff = type_stuff(ArgType, TVarSet, TypeBindings, HeadTypeParams),
     apply_rec_subst_to_type(TypeBindings, ArgType, FullArgType),
     apply_rec_subst_to_type(TypeBindings, ExpType, FullExpType),
@@ -861,7 +886,7 @@ substitute_types_check_match(ExpType, TypeStuff, TypeMismatch) :-
             FullArgType = defined_type(unqualified("<any>"), [], _)
         )
     ->
-        fail
+        !:DoesSomeTypeStuffMatch = some_type_stuff_matches
     ;
         ( type_subsumes(FullArgType, FullExpType, _Subst) ->
             ActualSubsumesExpected = actual_subsumes_expected
@@ -873,7 +898,8 @@ substitute_types_check_match(ExpType, TypeStuff, TypeMismatch) :-
         ActualPieces = type_to_pieces(add_quotes, FullArgType,
             TVarSet, HeadTypeParams),
         TypeMismatch = type_mismatch_exp_act(ExpectedPieces, ActualPieces,
-            ActualSubsumesExpected)
+            ActualSubsumesExpected),
+        !:TypeMismatches = [TypeMismatch | !.TypeMismatches]
     ).
 
 :- pred all_no_subsume_mismatches(list(type_mismatch)::in) is semidet.
