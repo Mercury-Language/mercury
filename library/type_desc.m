@@ -63,6 +63,8 @@
     %
 :- func ground_pseudo_type_desc_to_type_desc(pseudo_type_desc) = type_desc
     is semidet.
+:- pred ground_pseudo_type_desc_to_type_desc(pseudo_type_desc::in,
+    type_desc::out) is semidet.
 
     % Convert a pseudo_type_desc describing a ground type to a type_desc.
     % If the pseudo_type_desc describes a non-ground type, abort.
@@ -438,6 +440,9 @@ type_desc_to_pseudo_type_desc(_TypeDesc) = _PseudoTypeDesc :-
     private_builtin.sorry("type_desc_to_pseudo_type_desc").
 
 ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
+    ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc, TypeDesc).
+
+ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc, TypeDesc) :-
     ( pseudo_type_desc_is_ground(PseudoTypeDesc) ->
         private_builtin.unsafe_type_cast(PseudoTypeDesc, TypeDesc)
     ;

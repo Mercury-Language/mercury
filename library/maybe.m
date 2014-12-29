@@ -79,6 +79,11 @@
     %
 :- func map_maybe(func(T) = U, maybe(T)) = maybe(U).
 
+    % fold_maybe(_, no, Acc) = Acc.
+    % fold_maybe(F, yes(Value), Acc0) = F(Acc0).
+    %
+:- func fold_maybe(func(T, U) = U, maybe(T), U) = U.
+
     % fold_maybe(_, no, !Acc).
     % fold_maybe(P, yes(Value), !Acc) :- P(Value, !Acc).
     %
@@ -90,10 +95,21 @@
 :- mode fold_maybe(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
 :- mode fold_maybe(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 
-    % fold_maybe(_, no, Acc) = Acc.
-    % fold_maybe(F, yes(Value), Acc0) = F(Acc0).
+    % As above, but with two accumulators.
     %
-:- func fold_maybe(func(T, U) = U, maybe(T), U) = U.
+:- pred fold2_maybe(pred(T, U, U, V, V), maybe(T), U, U, V, V).
+:- mode fold2_maybe(pred(in, in, out, in, out) is det, in, in, out,
+    in, out) is det.
+:- mode fold2_maybe(pred(in, in, out, mdi, muo) is det, in, in, out,
+    mdi, muo) is det.
+:- mode fold2_maybe(pred(in, in, out, di, uo) is det, in, in, out,
+    di, uo) is det.
+:- mode fold2_maybe(pred(in, in, out, in, out) is semidet, in, in, out,
+    in, out) is semidet.
+:- mode fold2_maybe(pred(in, in, out, mdi, muo) is semidet, in, in, out,
+    mdi, muo) is semidet.
+:- mode fold2_maybe(pred(in, in, out, di, uo) is semidet, in, in, out,
+    di, uo) is semidet.
 
     % map_fold_maybe(_, no, no, !Acc).
     % map_fold_maybe(P, yes(Value0), yes(Value), !Acc) :-
@@ -164,11 +180,16 @@ map_maybe(P, yes(T0), yes(T)) :- P(T0, T).
 map_maybe(_, no) = no.
 map_maybe(F, yes(T)) = yes(F(T)).
 
-fold_maybe(_, no, !Acc).
-fold_maybe(P, yes(Value), !Acc) :- P(Value, !Acc).
-
 fold_maybe(_, no, Acc) = Acc.
 fold_maybe(F, yes(Value), Acc0) = F(Value, Acc0).
+
+fold_maybe(_, no, !Acc).
+fold_maybe(P, yes(Value), !Acc) :-
+    P(Value, !Acc).
+
+fold2_maybe(_, no, !Acc1, !Acc2).
+fold2_maybe(P, yes(Value), !Acc1, !Acc2) :-
+    P(Value, !Acc1, !Acc2).
 
 map_fold_maybe(_, no, no, Acc, Acc).
 map_fold_maybe(P, yes(T0), yes(T), Acc0, Acc) :-

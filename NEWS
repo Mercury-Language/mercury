@@ -116,6 +116,10 @@ Changes to the Mercury standard library:
 
 * We have a added a new type, maybe_errors, to the maybe module.
 
+  The following predicate has been added to the maybe module:
+
+   - fold2_maybe/6
+
 * The following predicates and functions have been added to the calendar module
 
    - int_to_month/2
