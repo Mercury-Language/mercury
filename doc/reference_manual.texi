@@ -4841,6 +4841,8 @@ If @samp{finalpredname/arity} terminates with an uncaught exception then
 the program will immediately abort execution.  No predicates specified
 by other @samp{finalise} directives that have not yet been executed will
 be executed.
+If the program's @samp{main/2} predicate terminates with an uncaught
+exception then no finalisation predicates will be executed.
 
 @samp{finalize} is also allowed as a synonym for @samp{finalise}.
 

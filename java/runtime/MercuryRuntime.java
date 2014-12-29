@@ -48,17 +48,32 @@ public class MercuryRuntime
 
     /**
      * Finalise the runtime system.
-     * This _must_ be called at the normal end of any program.  It runs
-     * finalisers and stops the thread pool.
-     * This will wait for the thread pool to shutdown.
+     * This _must_ be called at the end of any program.  It runs
+     * finalisers and stops the thread pool.  This will wait for the thread
+     * pool to shutdown (unless abort=true).
      */
-    public static void finalise() {
+    public static void finalise(boolean abort) {
         MercuryThreadPool pool;
 
         pool = getThreadPool();
-        JavaInternal.run_finalisers();
-        pool.shutdown();
-        pool.waitForShutdown();
+        if (!abort) {
+            JavaInternal.run_finalisers();
+        }
+        pool.shutdown(abort);
+        if (!abort) {
+            pool.waitForShutdown();
+        }
+    }
+
+    /**
+     * Finalise the runtime system.
+     * This _must_ be called at the end of any program.  It runs
+     * finalisers and stops the thread pool.  This will wait for the thread
+     * pool to shutdown.
+     * This is the same as calling finalise(false)
+     */
+    public static void finalise() {
+        finalise(false);
     }
 }
 

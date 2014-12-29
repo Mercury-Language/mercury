@@ -93,6 +93,9 @@ public class MercuryThreadPool
 
     // Has a shutdown request been received (protected by tasks_lock)
     private boolean                 shutdown_request;
+    // Shutdown because the program is aborting (if true then don't run
+    // finalisers).
+    private boolean                 shutdown_abort;
     // True if worker threads should exit (the pool is shutting down).
     private boolean                 shutdown_now;
     // True if the thread pool is running (including starting up and
@@ -129,6 +132,7 @@ public class MercuryThreadPool
          */
         tasks = new ArrayDeque<Task>(size*4);
         shutdown_request = false;
+        shutdown_abort = false;
         shutdown_now = false;
         running = false;
         num_tasks_submitted = 0;
@@ -495,7 +499,8 @@ public class MercuryThreadPool
                     num_tasks_submitted = this.num_tasks_submitted;
                     num_tasks_completed = this.num_tasks_completed;
                     okay_to_shutdown =
-                        (num_tasks_submitted == num_tasks_completed);
+                        (num_tasks_submitted == num_tasks_completed) ||
+                        shutdown_abort;
                     will_shutdown = okay_to_shutdown && shutdown_request;
 
                     if (!will_shutdown) {
@@ -648,12 +653,13 @@ public class MercuryThreadPool
      * This method is asynchronous, it will not wait for the thread pool to
      * shutdown.
      */
-    public boolean shutdown()
+    public boolean shutdown(boolean abort)
     {
         tasks_lock.lock();
         try {
             if (running && !shutdown_request) {
                 shutdown_request = true;
+                shutdown_abort = abort;
             } else {
                 return false;
             }
@@ -676,10 +682,13 @@ public class MercuryThreadPool
 
         run_main_and_shutdown = new Runnable() {
             public void run() {
+                boolean aborted = true;
+
                 try {
                     run_main.run();
+                    aborted = false;
                 } finally {
-                    shutdown();
+                    shutdown(aborted);
                 }
             }
         };
@@ -703,7 +712,9 @@ public class MercuryThreadPool
              * until the program is finished
              */
             run();
-            jmercury.runtime.JavaInternal.run_finalisers();
+            if (!shutdown_abort) {
+                jmercury.runtime.JavaInternal.run_finalisers();
+            }
             /*
              * We always wait for the thread pool to shutdown as worker
              * threads may either be completing work or reporting the reason
