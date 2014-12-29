@@ -681,7 +681,7 @@ mercury_runtime_init(int argc, char **argv)
 
     /*
     ** Setup the threadscope string tables before the standard library is
-    ** initalised or engines are created.
+    ** initialised or engines are created.
     */
     (*MR_address_of_init_modules_threadscope_string_table)();
   #endif
