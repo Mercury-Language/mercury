@@ -86,11 +86,7 @@ convert_NFA_to_DFA(NFA) = DFA :-
         %
     DFAStateNos      = number_state_sets(DFAStateSets),
     map.lookup(DFAStateNos, DFAStartStateSet, DFAStartState),
-    DFAStopStates0   = list.map(
-                            map.lookup(DFAStateNos),
-                            set.to_sorted_list(DFAStopStateSets)
-                       ),
-    DFAStopStates    = set.list_to_set(DFAStopStates0),
+    DFAStopStates = set.map(map.lookup(DFAStateNos), DFAStopStateSets),
     DFATransitions   = map_state_set_transitions_to_numbers(
                             DFAStateNos,
                             DFAStateSetTransitions
@@ -251,20 +247,16 @@ number_state_sets(Ss) = StateNos :-
 
 %-----------------------------------------------------------------------------%
 
-:- func map_state_set_transitions_to_numbers(state_set_no_map,
-            state_set_transitions
-        ) = transitions.
-:- mode map_state_set_transitions_to_numbers(in, in) =
-            out(atom_transitions).
+:- func map_state_set_transitions_to_numbers(state_set_no_map::in,
+    state_set_transitions::in) = (transitions::out(atom_transitions)).
 
-map_state_set_transitions_to_numbers(Map, STs) =
-    list.map(
-        ( func(trans(SX, C, SY)) = trans(X, C, Y) :-
-            X = map.lookup(Map, SX),
-            Y = map.lookup(Map, SY)
-        ),
-        STs
-    ).
+map_state_set_transitions_to_numbers(_Map, []) = [].
+map_state_set_transitions_to_numbers(Map, [ST | STs]) = [T | Ts] :-
+    Ts = map_state_set_transitions_to_numbers(Map, STs),
+    ST = trans(SX, C, SY),
+    X = map.lookup(Map, SX),
+    Y = map.lookup(Map, SY),
+    T = trans(X, C ,Y).
 
 %-----------------------------------------------------------------------------%
 :- end_module lex.convert_NFA_to_DFA.

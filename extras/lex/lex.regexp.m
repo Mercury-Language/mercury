@@ -114,6 +114,7 @@ remove_null_transitions(NFA0) = NFA :-
                 ^ smc_state_transitions := NullFreeTs )
                 ^ smc_stop_states       := StopStates).
 
+
 %-----------------------------------------------------------------------------%
 
 :- pred split_transitions(transitions, transitions, transitions).
@@ -134,30 +135,21 @@ split_transitions([trans(X, C, Y) | Ts], NTs, [trans(X, C, Y) | CTs]) :-
 :- pred trans_closure(transitions, null_map, null_map, null_map, null_map).
 :- mode trans_closure(in(null_transitions), in, out, in, out) is det.
 
-trans_closure(Ts, Ins0, Ins, Outs0, Outs) :-
-    list.foldl2(add_edge, Ts, Ins0, Ins, Outs0, Outs).
-
-%-----------------------------------------------------------------------------%
-
-:- pred add_edge(transition, null_map, null_map, null_map, null_map).
-:- mode add_edge(in(null_transition), in, out, in, out) is det.
-
-add_edge(null(X, Y), Ins0, Ins, Outs0, Outs) :-
-    XInAndX  = set.insert(null_map_lookup(X, Ins0), X),
-    YOutAndY = set.insert(null_map_lookup(Y, Outs0), Y),
-    Xs = set.to_sorted_list(XInAndX),
-    Ys = set.to_sorted_list(YOutAndY),
-    Outs = list.foldl(add_to_null_mapping(YOutAndY), Xs, Outs0),
-    Ins  = list.foldl(add_to_null_mapping(XInAndX),  Ys, Ins0).
+trans_closure([], !Ins, !Outs).
+trans_closure([T | Ts], !Ins, !Outs) :-
+    T = null(X, Y),
+    XInAndX  = set.insert(null_map_lookup(X, !.Ins), X),
+    YOutAndY = set.insert(null_map_lookup(Y, !.Outs), Y),
+    !:Outs = set.fold(add_to_null_mapping(YOutAndY), XInAndX, !.Outs),
+    !:Ins = set.fold(add_to_null_mapping(XInAndX),  YOutAndY, !.Ins),
+    trans_closure(Ts, !Ins, !Outs).
 
 %-----------------------------------------------------------------------------%
 
 :- func null_map_lookup(state_no, null_map) = set(state_no).
 
 null_map_lookup(X, Map) =
-    ( if map.search(Map, X, Ys) then Ys
-                                 else set.init
-    ).
+    ( if map.search(Map, X, Ys) then Ys else set.init ).
 
 %-----------------------------------------------------------------------------%
 
@@ -168,12 +160,26 @@ add_to_null_mapping(Xs, Y, Map) =
 
 %-----------------------------------------------------------------------------%
 
+    % XXX add_atom_transitions (and its callees) originally used the inst-
+    % subtyping given in the commented out mode declarations.  Limitations in
+    % the compiler meant that this code compiled when it was originally written
+    % but with more recent versions of the compiler it causes a compilation
+    % error due to the aforementioned limitations having been lifted.
+    %
+    % As a workaround we perform a runtime check in maybe_copy_transition/4
+    % below and then use an unsafe cast (defined via a foreign_proc) to restore
+    % the subtype inst.  Doing so means that other code in this library that
+    % uses the same inst-subtyping continues to work without modification.
+    %
+    % If / when the standard library has versions of list.condense, list.map etc
+    % that preserve subtype insts then the original modes can be restored (and
+    % the workarounds deleted).
+    %
 :- func add_atom_transitions(null_map, transitions) = transitions.
-:- mode add_atom_transitions(in, in(atom_transitions)) =
-            out(atom_transitions) is det.
+:- mode add_atom_transitions(in, in(atom_transitions)) = out(atom_transitions).
 
-add_atom_transitions(Outs, CTs) =
-    list.sort_and_remove_dups(
+add_atom_transitions(Outs, CTs) = NullFreeTs :-
+    NullFreeTs0 = list.sort_and_remove_dups(
         list.condense(
             [ CTs
             | list.map(
@@ -182,14 +188,46 @@ add_atom_transitions(Outs, CTs) =
               )
             ]
         )
-    ).
+    ),
+    unsafe_cast_to_atom_transitions(NullFreeTs0, NullFreeTs).
+
+:- pred unsafe_cast_to_atom_transitions(transitions::in,
+    transitions::out(atom_transitions)) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_cast_to_atom_transitions(X::in, Y::out(atom_transitions)),
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
+"
+    Y = X;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_cast_to_atom_transitions(X::in, Y::out(atom_transitions)),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    Y = X;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_cast_to_atom_transitions(X::in, Y::out(atom_transitions)),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    Y = X;
+").
+
+:- pragma foreign_proc("Erlang",
+    unsafe_cast_to_atom_transitions(X::in, Y::out(atom_transitions)),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    Y = X
+").
 
 %-----------------------------------------------------------------------------%
 
 :- func add_atom_transitions_0(transitions, pair(state_no, set(state_no))) =
             transitions.
-:- mode add_atom_transitions_0(in(atom_transitions), in) =
-            out(atom_transitions) is det.
+%:- mode add_atom_transitions_0(in(atom_transitions), in) =
+%            out(atom_transitions) is det.
 
 add_atom_transitions_0(CTs, X - Ys) =
     list.condense(
@@ -199,8 +237,8 @@ add_atom_transitions_0(CTs, X - Ys) =
 %-----------------------------------------------------------------------------%
 
 :- func add_atom_transitions_1(transitions, state_no, state_no) = transitions.
-:- mode add_atom_transitions_1(in(atom_transitions), in, in) =
-            out(atom_transitions) is det.
+%:- mode add_atom_transitions_1(in(atom_transitions), in, in) =
+%            out(atom_transitions) is det.
 
 add_atom_transitions_1(CTs0, X, Y) = CTs :-
     list.filter_map(maybe_copy_transition(X, Y), CTs0, CTs).
@@ -208,9 +246,12 @@ add_atom_transitions_1(CTs0, X, Y) = CTs :-
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_copy_transition(state_no, state_no, transition, transition).
-:- mode maybe_copy_transition(in,in,in(atom_transition),out(atom_transition))
-            is semidet.
+%:- mode maybe_copy_transition(in,in,in(atom_transition),out(atom_transition))
+%            is semidet.
+:- mode maybe_copy_transition(in, in, in, out) is semidet.
 
+maybe_copy_transition(_, _, null(_, _) , _) :-
+    unexpected($file, $pred, "null transition").
 maybe_copy_transition(X, Y, trans(Y, C, Z), trans(X, C, Z)).
 
 %-----------------------------------------------------------------------------%
