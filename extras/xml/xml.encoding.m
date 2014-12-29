@@ -46,14 +46,14 @@ decode_ascii7(_, U) -->
 
 encode_ascii7(_, Us, Str) :-
     unicodesToAscii7(Us, Cs, []),
-    string__from_char_list(Cs, Str).
+    string.from_char_list(Cs, Str).
 
 :- pred unicodesToAscii7(list(unicode), list(char), list(char)).
 :- mode unicodesToAscii7(in, out, in) is det.
 
 unicodesToAscii7([]) --> [].
 unicodesToAscii7([U|Us]) -->
-    ( { U > 0x00, U < 0x80, char__to_int(C, U) } ->
+    ( { U > 0x00, U < 0x80, char.to_int(C, U) } ->
     	[C],
 	unicodesToAscii7(Us)
     ;
@@ -78,14 +78,14 @@ decode_latin1(_, U) -->
 
 encode_latin1(_, Us, Str) :-
     unicodesToLatin1(Us, Cs, []),
-    string__from_char_list(Cs, Str).
+    string.from_char_list(Cs, Str).
 
 :- pred unicodesToLatin1(list(unicode), list(char), list(char)).
 :- mode unicodesToLatin1(in, out, in) is det.
 
 unicodesToLatin1([]) --> [].
 unicodesToLatin1([U|Us]) -->
-    ( { char__to_int(C, U) } ->
+    ( { char.to_int(C, U) } ->
     	[C],
 	unicodesToLatin1(Us)
     ;
@@ -135,7 +135,7 @@ decode_utf8(_, U) -->
 
 encode_utf8(_, Us, Str) :-
     unicodesToUTF8(Us, Cs, []),
-    string__from_char_list(Cs, Str).
+    string.from_char_list(Cs, Str).
 
 :- pred unicodesToUTF8(list(unicode), list(char), list(char)).
 :- mode unicodesToUTF8(in, out, in) is det.
@@ -144,15 +144,15 @@ unicodesToUTF8([]) --> [].
 unicodesToUTF8([U|Us]) -->
     (
         { U > 0x00, U =< 0x7F },
-        { char__to_int(C, U) }
+        { char.to_int(C, U) }
     ->
     	[C]
     ;
         { U >= 0x80, U =< 0x07FF },
 	{ U0 = 0xC0 \/ (0x1F /\ (U >> 6)) },
 	{ U1 = 0x80 \/ (0x3F /\ U) },
-        { char__to_int(C0, U0) },
-        { char__to_int(C1, U1) }
+        { char.to_int(C0, U0) },
+        { char.to_int(C1, U1) }
     ->
     	[C0, C1]
     ;
@@ -160,9 +160,9 @@ unicodesToUTF8([U|Us]) -->
 	{ U0 = 0xE0 \/ (0x0F /\ (U >> 12)) },
 	{ U1 = 0x80 \/ (0x3F /\ (U >> 6)) },
 	{ U2 = 0x80 \/ (0x3F /\ U) },
-        { char__to_int(C0, U0) },
-        { char__to_int(C1, U1) },
-        { char__to_int(C2, U2) }
+        { char.to_int(C0, U0) },
+        { char.to_int(C1, U1) },
+        { char.to_int(C2, U2) }
     ->
     	[C0, C1, C2]
     ;
@@ -171,10 +171,10 @@ unicodesToUTF8([U|Us]) -->
 	{ U1 = 0x80 \/ (0x3F /\ (U >> 12)) },
 	{ U2 = 0x80 \/ (0x3F /\ (U >> 6)) },
 	{ U3 = 0x80 \/ (0x3F /\ U) },
-        { char__to_int(C0, U0) },
-        { char__to_int(C1, U1) },
-        { char__to_int(C2, U2) },
-        { char__to_int(C3, U3) }
+        { char.to_int(C0, U0) },
+        { char.to_int(C1, U1) },
+        { char.to_int(C2, U2) },
+        { char.to_int(C3, U3) }
     ->
     	[C0, C1, C2, C3]
     ;
@@ -184,11 +184,11 @@ unicodesToUTF8([U|Us]) -->
 	{ U2 = 0x80 \/ (0x3F /\ (U >> 12)) },
 	{ U3 = 0x80 \/ (0x3F /\ (U >> 6)) },
 	{ U4 = 0x80 \/ (0x3F /\ U) },
-        { char__to_int(C0, U0) },
-        { char__to_int(C1, U1) },
-        { char__to_int(C2, U2) },
-        { char__to_int(C3, U3) },
-        { char__to_int(C4, U4) }
+        { char.to_int(C0, U0) },
+        { char.to_int(C1, U1) },
+        { char.to_int(C2, U2) },
+        { char.to_int(C3, U3) },
+        { char.to_int(C4, U4) }
     ->
     	[C0, C1, C2, C3, C4]
     ;
@@ -199,12 +199,12 @@ unicodesToUTF8([U|Us]) -->
 	{ U3 = 0x80 \/ (0x3F /\ (U >> 12)) },
 	{ U4 = 0x80 \/ (0x3F /\ (U >> 6)) },
 	{ U5 = 0x80 \/ (0x3F /\ U) },
-        { char__to_int(C0, U0) },
-        { char__to_int(C1, U1) },
-        { char__to_int(C2, U2) },
-        { char__to_int(C3, U3) },
-        { char__to_int(C4, U4) },
-        { char__to_int(C5, U5) }
+        { char.to_int(C0, U0) },
+        { char.to_int(C1, U1) },
+        { char.to_int(C2, U2) },
+        { char.to_int(C3, U3) },
+        { char.to_int(C4, U4) },
+        { char.to_int(C5, U5) }
     ->
     	[C0, C1, C2, C3, C4, C5]
     ;
@@ -219,7 +219,7 @@ unicodesToUTF8([U|Us]) -->
 
 [U | E] = E0 :-
     E0^curr < E0^leng,
-    string__unsafe_index(E0^text, E0^curr, C),
-    char__to_int(C, U),
+    string.unsafe_index(E0^text, E0^curr, C),
+    char.to_int(C, U),
     E = E0^curr := (E0^curr + 1).
 

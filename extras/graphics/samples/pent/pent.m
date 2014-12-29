@@ -15,7 +15,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 :- implementation.
@@ -36,16 +36,16 @@
 main -->
 	init_globals,
 		% Process the command line options...
-	io__command_line_arguments(Args0),
-	{ getopt__process_options(option_ops(short, long, defaults),
+	io.command_line_arguments(Args0),
+	{ getopt.process_options(option_ops(short, long, defaults),
 		Args0, _Args, MOpts) },
 	(
 		{ MOpts = ok(Opts) },
 			% Create the pentomino boards
-		io__write_string("generating pentominoes...."),
-		io__flush_output,
-		{ getopt__lookup_int_option(Opts, width, Width) },
-		{ getopt__lookup_int_option(Opts, height, Height) },
+		io.write_string("generating pentominoes...."),
+		io.flush_output,
+		{ getopt.lookup_int_option(Opts, width, Width) },
+		{ getopt.lookup_int_option(Opts, height, Height) },
 		set_global("Size", float(MaxX)), % XXX
 		set_global("MaxX", MaxX),
 		set_global("MaxY", MaxY), 
@@ -59,34 +59,34 @@ main -->
 		{ solutions(fill_board(MaxX, MaxY, Sqs0, Pieces, Board0),
 			Boards) },
 
-		io__write_string(" done.\n"),
-		io__flush_output,
+		io.write_string(" done.\n"),
+		io.flush_output,
 			% enter Tcl/Tk.
 		main(doit(Boards, MaxX, MaxY), ["maze"])
 
 	;
 		{ MOpts = error(Str) },
-		{ string__format("usage: maze [-xN] [-yN] [-sN]\nerror: %s\n",
+		{ string.format("usage: maze [-xN] [-yN] [-sN]\nerror: %s\n",
 			[s(Str)], Msg) },
-		io__stderr_stream(StdErr),
-		io__write_string(StdErr, Msg)
+		io.stderr_stream(StdErr),
+		io.write_string(StdErr, Msg)
 	).
 
 %------------------------------------------------------------------------------%
 
 	% Main callback from Tcl/Tk.
 
-:- pred doit(list(board), int, int, tcl_interp, io__state, io__state).
+:- pred doit(list(board), int, int, tcl_interp, io, io).
 :- mode doit(in, in, in, in, di, uo) is det.
 
 doit([], _, _, _) --> { error("no solutions to draw") }.
 doit([Board | Boards], MaxX, MaxY, Interp) -->
 		% Initialize the Togl widget.
-	mtogl__init(Interp, Res0),
-	{ Res0 \= tcl_ok -> error("Mtogl__init failed") ; true },
-	mtogl__create(pent__create(Board, MaxX, MaxY)),
-	mtogl__display(pent__display),
-	mtogl__reshape(pent__reshape),
+	mtogl.init(Interp, Res0),
+	{ Res0 \= tcl_ok -> error("Mtogl.init failed") ; true },
+	mtogl.create(pent.create(Board, MaxX, MaxY)),
+	mtogl.display(pent.display),
+	mtogl.reshape(pent.reshape),
 
 	set_global("Boards", Boards),
 	set_global("Phi", 0.0),
@@ -103,7 +103,7 @@ doit([Board | Boards], MaxX, MaxY, Interp) -->
 
 	% Compute each frame of the display.
 :- pred nextframe(tcl_interp, list(string),
-		tcl_status, string, io__state, io__state).
+		tcl_status, string, io, io).
 :- mode nextframe(in, in, out, out, di, uo) is det.
 
 nextframe(Interp, _Args, tcl_ok, "") -->
@@ -115,12 +115,12 @@ nextframe(Interp, _Args, tcl_ok, "") -->
 
 %------------------------------------------------------------------------------%
 
-:- pred pent__create(board, int, int, togl, io__state, io__state).
-:- mode pent__create(in, in, in, in, di, uo) is det.
+:- pred pent.create(board, int, int, togl, io, io).
+:- mode pent.create(in, in, in, in, di, uo) is det.
 
 	% Set up everything for the display.
 
-pent__create(_Board, _MaxX, _MaxY, _Togl) -->
+pent.create(_Board, _MaxX, _MaxY, _Togl) -->
 
 	get_global("Size", Size),
 
@@ -149,7 +149,7 @@ pent__create(_Board, _MaxX, _MaxY, _Togl) -->
 	shade_model(smooth),
 	enable(depth_test).
 
-:- pred make_mlist(list(pair(square, piece)), io__state, io__state).
+:- pred make_mlist(list(pair(square, piece)), io, io).
 :- mode make_mlist(in, di, uo) is det.
 
 make_mlist([]) --> [].
@@ -174,7 +174,7 @@ make_mlist([Pos - Piece |Rest]) -->
 	),
 	make_mlist(Rest).
 
-:- pred set_colour_of_piece(piece::in, io__state::di, io__state::uo) is det.
+:- pred set_colour_of_piece(piece::in, io::di, io::uo) is det.
 
 set_colour_of_piece(i) --> material(front, specular(0.6, 0.0, 1.0, 1.0)).
 set_colour_of_piece(y) --> material(front, specular(0.8, 0.4, 0.8, 1.0)).
@@ -190,7 +190,7 @@ set_colour_of_piece(u) --> material(front, specular(0.6, 0.0, 0.8, 1.0)).
 set_colour_of_piece(x) --> material(front, specular(0.0, 0.4, 1.0, 1.0)).
 set_colour_of_piece(e) --> material(front, specular(0.4, 0.0, 0.4, 1.0)).
 
-:- pred draw_cube(io__state::di, io__state::uo) is det.
+:- pred draw_cube(io::di, io::uo) is det.
 
 draw_cube -->
 	{ Left = 0.10 },
@@ -233,24 +233,24 @@ draw_cube -->
 
 	% The stuff that happens for each frame.
 
-:- pred pent__display(togl, io__state, io__state).
-:- mode pent__display(in, di, uo) is det.
+:- pred pent.display(togl, io, io).
+:- mode pent.display(in, di, uo) is det.
 
-pent__display(Togl) -->
+pent.display(Togl) -->
 
 	clear_color(0.0, 0.0, 0.0, 0.0),
 	clear([color, depth]),
 
 	draw_maze,
 
-	mtogl__swap_buffers(Togl).
+	mtogl.swap_buffers(Togl).
 
 	% The stuff that happens if we resize the togl widget.
 
-:- pred pent__reshape(togl, io__state, io__state).
-:- mode pent__reshape(in, di, uo) is det.
+:- pred pent.reshape(togl, io, io).
+:- mode pent.reshape(in, di, uo) is det.
 
-pent__reshape(_Togl) -->
+pent.reshape(_Togl) -->
 	matrix_mode(projection),
 	load_identity,
 	perspective(55.0, 1.0, 0.1, 10000.0),
@@ -258,7 +258,7 @@ pent__reshape(_Togl) -->
 
 %------------------------------------------------------------------------------%
 
-:- pred draw_maze(io__state, io__state).
+:- pred draw_maze(io, io).
 :- mode draw_maze(di, uo) is det.
 
 draw_maze -->

@@ -38,17 +38,17 @@
 :- type module_error
 	--->	error(string, int).
 
-:- pred read_module(module_result, io.state, io.state).
+:- pred read_module(module_result, io, io).
 :- mode read_module(out, di, uo) is det.
 
 :- type lines
 	--->	lines
 	;	nolines.
 
-:- pred write_element(lines, element, io.state, io.state).
+:- pred write_element(lines, element, io, io).
 :- mode write_element(in, in, di, uo) is det.
 
-:- pred write_module(lines, (module), io.state, io.state).
+:- pred write_module(lines, (module), io, io).
 :- mode write_module(in, in, di, uo) is det.
 
 :- type (type)
@@ -75,7 +75,7 @@
 :- pred term_to_goal(term, goal).
 :- mode term_to_goal(in, out) is semidet.
 
-:- pred write_goal(varset, goal, io.state, io.state).
+:- pred write_goal(varset, goal, io, io).
 :- mode write_goal(in, in, di, uo) is det.
 
 :- type vars == list(var).
@@ -106,7 +106,7 @@ read_module(Result, !IO) :-
 	;	error(string, int).
 
 :- pred read_module(module, list(module_error), module_result,
-		io.state, io.state).
+		io, io).
 :- mode read_module(in, in, out, di, uo) is det.
 
 read_module(Module, Errors, Result, !IO) :-
@@ -122,7 +122,7 @@ read_module(Module, Errors, Result, !IO) :-
 		read_module(Module, [error(Msg, Line) | Errors], Result, !IO)
 	).
 
-:- pred read_element(element_result, io.state, io.state).
+:- pred read_element(element_result, io, io).
 :- mode read_element(out, di, uo) is det.
 
 read_element(Result, !IO) :-
@@ -301,7 +301,7 @@ get_context(functor(_, _, Context), Context).
 
 %------------------------------------------------------------------------------%
 
-:- pred write_ind(int, io.state, io.state).
+:- pred write_ind(int, io, io).
 :- mode write_ind(in, di, uo) is det.
 
 write_ind(N, !IO) :-
@@ -312,12 +312,12 @@ write_ind(N, !IO) :-
 		true	
 	).
 
-:- pred dot_nl(io.state, io.state).
+:- pred dot_nl(io, io).
 :- mode dot_nl(di, uo) is det.
 
 dot_nl(!IO) :- io.write_string(".\n", !IO).
 
-:- pred write_term(lines, int, varset, term, io.state, io.state).
+:- pred write_term(lines, int, varset, term, io, io).
 :- mode write_term(in, in, in, in, di, uo) is det.
 
 write_term(lines, Ind, VarSet, Term, !IO) :-
@@ -453,7 +453,7 @@ term_to_goal0("<=>", [A, B], _, (GoalA <=> GoalB)) :-
 write_goal(VarSet, Goal, !IO) :-
 	write_goal(nolines, 1, normal, Goal, VarSet, !IO).
 
-:- pred write_goal(lines, int, goal_type, goal, varset, io.state, io.state).
+:- pred write_goal(lines, int, goal_type, goal, varset, io, io).
 :- mode write_goal(in, in, in, in, in, di, uo) is det.
 
 write_goal(Lines, Ind, _GoalType, call(Term), VarSet, !IO) :-
@@ -550,7 +550,7 @@ write_goal(Lines, Ind, GoalType, (A <=> B), VarSet, !IO) :-
 %------------------------------------------------------------------------------%
 
 :- pred write_conj(lines, int, goal_type, list(goal), varset,
-		io.state, io.state).
+		io, io).
 :- mode write_conj(in, in, in, in, in, di, uo) is det.
 
 write_conj(_Lines, Ind, Type, [], _VarSet, !IO) :-
@@ -575,7 +575,7 @@ write_conj(Lines, Ind, Type, [Goal|Goals], VarSet, !IO) :-
 %------------------------------------------------------------------------------%
 
 :- pred write_disj(lines, int, goal_type, list(goal), varset,
-		io.state, io.state).
+		io, io).
 :- mode write_disj(in, in, in, in, in, di, uo) is det.
 
 write_disj(Lines, Ind, Type, Goals, VarSet, !IO) :-
@@ -586,7 +586,7 @@ write_disj(Lines, Ind, Type, Goals, VarSet, !IO) :-
 	io.write_string(")", !IO).
 
 :- pred write_disj0(lines, int, goal_type, list(goal), varset,
-		io.state, io.state).
+		io, io).
 :- mode write_disj0(in, in, in, in, in, di, uo) is det.
 
 write_disj0(_Lines, Ind, Type, [], _VarSet, !IO) :-
@@ -624,7 +624,7 @@ collect_ite(Goal0, IfThens, Else) :-
 	).
 
 :- pred write_ite(lines, int, goal_type, list(pair(goal)), goal, varset,
-		io.state, io.state).
+		io, io).
 :- mode write_ite(in, in, in, in, in, in, di, uo) is det.
 
 write_ite(Lines, Ind, Type, IfThens, Else, VarSet, !IO) :-
@@ -639,7 +639,7 @@ write_ite(Lines, Ind, Type, IfThens, Else, VarSet, !IO) :-
 	io.write_string(")", !IO).
 
 :- pred write_ite0(lines, int, goal_type, list(pair(goal)), varset,
-		io.state, io.state).
+		io, io).
 :- mode write_ite0(in, in, in, in, in, di, uo) is det.
 
 write_ite0(_Lines, _Ind, _Type, [], _VarSet, !IO) :-
@@ -665,7 +665,7 @@ write_ite0(Lines, Ind, Type, [If - Then | Rest], VarSet, !IO) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred write_vars(vars, varset, io.state, io.state).
+:- pred write_vars(vars, varset, io, io).
 :- mode write_vars(in, in, di, uo) is det.
 
 write_vars([], _, !IO).

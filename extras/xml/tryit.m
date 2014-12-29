@@ -13,31 +13,31 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- import_module parsing, xml, xml__cat, xml__encoding.
-:- import_module xml__parse, xml__ns.
+:- import_module parsing, xml, xml.cat, xml.encoding.
+:- import_module xml.parse, xml.ns.
 :- import_module char, list, map, maybe, pair, string.
 
 main -->
-    io__command_line_arguments(Args),
+    io.command_line_arguments(Args),
     main(Args).
 
-:- pred main(list(string), io__state, io__state).
+:- pred main(list(string), io, io).
 :- mode main(in, di, uo) is det.
 
 main([]) --> [].
 main([File|Files]) -->
     see(File, Res0),		
     ( { Res0 = ok } ->
-	io__read_file_as_string(TextResult),
+	io.read_file_as_string(TextResult),
 	(
 	    { TextResult = error(_, TextErr) },
 	    stderr_stream(StdErr0),
 	    format(StdErr0, "error reading file `%s': %s\n",
-	    	[s(File), s(io__error_message(TextErr))])
+	    	[s(File), s(io.error_message(TextErr))])
 	;
     	    { TextResult = ok(Text) },
 	    pstate(mkEntity(Text), mkEncoding(utf8), init),
@@ -65,7 +65,7 @@ main([File|Files]) -->
 		)
 	    ), Cat),
 	    set(gCatalog, Cat),
-	    { map__from_assoc_list([
+	    { map.from_assoc_list([
 		"ASCII"		- mkEncoding(ascii7),
 		"ascii"		- mkEncoding(ascii7),
 		"Latin-1"	- mkEncoding(latin1),
@@ -102,7 +102,7 @@ main([File|Files]) -->
 :- mode split(in, in, out) is det.
 
 split(C, Str0, Strs) :-
-    string__to_char_list(Str0, Chars),
+    string.to_char_list(Str0, Chars),
     split1(C, [], Strs0, Chars, _),
     reverse(Strs0, Strs).
 
@@ -115,7 +115,7 @@ split1(C, Strs0, Strs) -->
 	split2(C, [], Cs0),
 	{ reverse(Cs0, Cs) },
 	( { Cs \= [] } ->
-	    { string__from_char_list(Cs, Str) },
+	    { string.from_char_list(Cs, Str) },
 	    { Strs1 = [Str|Strs0] }
 	;
 	    { Strs1 = Strs0 }

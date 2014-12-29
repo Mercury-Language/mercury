@@ -98,7 +98,7 @@ nsTranslate(Doc, NsDoc) :-
 :- mode traverse(in, in, out) is det. 
 
 traverse(Doc, Acc0, Acc) :-
-	traverse(Doc^content, map__init, "", Doc^root, Acc0, Acc).
+	traverse(Doc^content, map.init, "", Doc^root, Acc0, Acc).
 
 	% Carries out the actual traverse and transformation.
 	% If the content is an element, change it to a namespace aware 
@@ -124,7 +124,7 @@ traverse(ContentArray, Namespaces0, Default0, ContentRef, Acc0, Acc) :-
 
 		% extract any namespace declaration and insert into tree
 		extractNamespaceDecls(Attrs1, NSList, _Attrs2),
-		list__foldl((pred((Pref - URI)::in, NSs1::in,
+		list.foldl((pred((Pref - URI)::in, NSs1::in,
 			NSs2::out) is det :-
 			map.set(Pref, URI, NSs1, NSs2)
 		), NSList, Namespaces0, Namespaces),
@@ -140,11 +140,11 @@ traverse(ContentArray, Namespaces0, Default0, ContentRef, Acc0, Acc) :-
 
 		% visit its siblings
       		Kids = Elem^eContent,
-		list__reverse(Kids, Kids0),
+		list.reverse(Kids, Kids0),
 		NsElem = nsElement(nsElement(Name, Attrs, Elem^eContent,     
 		 		 	NSList)),
 	 	Acc1 = [NsElem|Acc0], 
-		xml__ns__foldl(traverse, ContentArray, Namespaces, Default,
+		xml.ns.foldl(traverse, ContentArray, Namespaces, Default,
 		                       Kids0, Acc1, Acc)
     	;
 		Content = comment(_),
@@ -195,7 +195,7 @@ extractNamespaceDecls([Attr|Attrs], NSList, NewAttrs) :-
 		NSList = [(Suffix - Attr^aValue) | NSList0],
 		NewAttrs = NewAttrs0
 	;
-		NSList = NSList0,	
+		NSList = NSList0,
 	 	NewAttrs = [Attr|NewAttrs0]
 	),
 	extractNamespaceDecls(Attrs, NSList0, NewAttrs0).
@@ -210,13 +210,13 @@ namespaceizeName(Namespaces, Default, Name, QName) :-
 	split_on_colon(Name, Prefix, Suffix),
 	(
 		% for case when element name = prefix:suffix 
-		map__search(Namespaces, Prefix, URI)
+		map.search(Namespaces, Prefix, URI)
 	->
 		QName = qName(Suffix, URI)
 	;	
 		% for case when attribute name = xmlns:suffix
 		is_xmlns(Prefix),
-		map__search(Namespaces, Suffix, URI)
+		map.search(Namespaces, Suffix, URI)
 	->
 		QName = qName(Suffix, URI)
 	;
@@ -230,11 +230,11 @@ namespaceizeName(Namespaces, Default, Name, QName) :-
 
 split_on_colon(Name, Prefix, Suffix) :-
 	( 
-	    string__sub_string_search(Name, ":", Index)
+	    string.sub_string_search(Name, ":", Index)
 	->
-	    string__length(Name, Length), 
-	    string__right(Name, Length-(Index+1), Suffix),
-	    string__left(Name, Index, Prefix)
+	    string.length(Name, Length), 
+	    string.right(Name, Length-(Index+1), Suffix),
+	    string.left(Name, Index, Prefix)
 	;
   	    Suffix = Name,
  	    Prefix = "" 
@@ -252,17 +252,17 @@ is_xmlns("xmlns").
 convert_type(comment(S)) = comment(S).
 convert_type(data(S)) = data(S).
 convert_type(pi(S,S0)) = pi(S,S0).
-convert_type(element(_)) = _ :- require__error("Convert element failed.").
+convert_type(element(_)) = _ :- require.error("Convert element failed.").
 
 
 	% Traverse children in the document tree. 
-:- pred xml__ns__foldl(pred(array(content), namespaces, string, ref(content),
+:- pred xml.ns.foldl(pred(array(content), namespaces, string, ref(content),
  	T, T), array(content), namespaces, string, list(ref(content)), T, T).
-:- mode xml__ns__foldl(pred(in, in, in, in, in, out) is det, in, in, in, in,
+:- mode xml.ns.foldl(pred(in, in, in, in, in, out) is det, in, in, in, in,
 	in, out) is det.
 	
-xml__ns__foldl(_Pred, _, _, _, [], Acc, Acc).
-xml__ns__foldl(Pred, Content, NameSpaces, Default, [Ref|Refs], Acc0, Acc) :-
+xml.ns.foldl(_Pred, _, _, _, [], Acc, Acc).
+xml.ns.foldl(Pred, Content, NameSpaces, Default, [Ref|Refs], Acc0, Acc) :-
  	foldl(Pred, Content, NameSpaces, Default, Refs, Acc1, Acc),
  	call(Pred, Content, NameSpaces, Default, Ref, Acc0, Acc1).
 

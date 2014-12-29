@@ -36,24 +36,24 @@ factor(Num)	--->	['('], exprn(Num), [')'].
 factor(Num)	--->	[num(Num)].
 
 scan(Chars, Toks) :-
-	scan(Chars, array__make_empty_array, Toks0),
+	scan(Chars, array.make_empty_array, Toks0),
 	Toks = array_reverse(Toks0).
 
 :- pred scan(array(char), array(token), array(token)).
 :- mode scan(in, in, out) is det.
 
 scan(Cs0, Toks0, Toks) :-
-	( array__size(Cs0) = 0 ->
+	( array.size(Cs0) = 0 ->
 		Toks = array_cons(eof, Toks0)
 	;
 		C = Cs0^elem(0),
 		Cs = array_tail(Cs0),
 		(if		
-				char__is_whitespace(C)
+				char.is_whitespace(C)
 		 then
 				scan(Cs, Toks0, Toks)
 		 else if 
-				char__digit_to_int(C, Num) 
+				char.digit_to_int(C, Num)
 		 then
 				scan(Cs, array_cons(num(Num), Toks0), Toks)
 		 else if 	

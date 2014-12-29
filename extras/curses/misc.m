@@ -13,7 +13,7 @@
 %
 %----------------------------------------------------------------------------%
 
-:- module mcurses__misc.
+:- module mcurses.misc.
 :- interface.
 
 :- import_module array, int.
@@ -27,7 +27,7 @@
   %
   % main -->
   %     for(0, 5, (pred(Num::in, di, uo) is det -->
-  %             io__print(Num)
+  %             io.print(Num)
   %     )).
   %
   % Would print "012345".

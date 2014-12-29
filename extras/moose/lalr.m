@@ -55,7 +55,7 @@
 :- mode lr0items(in, in, out, out) is det.
 
 :- pred lookaheads(set(items), gotos, rules, first, index, lookaheads,
-		io.state, io.state).
+		io, io).
 :- mode lookaheads(in, in, in, in, in, out, di, uo) is det.
 
 %------------------------------------------------------------------------------%

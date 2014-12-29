@@ -37,8 +37,7 @@
 
 :- pred initial_pieces(list(piece)::out) is det.
 
-:- pred write_board(int::in, int::in, board::in, io__state::di, 
-	io__state::uo) is det.
+:- pred write_board(int::in, int::in, board::in, io::di, io::uo) is det.
 
 :- func make_sq(int::in, int::in) = (square::out) is det.
 :- func sq_x(square::in) = (int::out) is det.
@@ -74,7 +73,7 @@ fill_board_2(MaxX, MaxY, [Sq0 | EmptySqs0], Pieces0, Board0, Board) :-
 
 place_piece(Sq0, MaxX, MaxY, EmptySqs0, EmptySqs, Pieces0, Pieces, 
 		Board0, Board) :-
-	list__delete(Pieces0, Piece, Pieces),
+	list.delete(Pieces0, Piece, Pieces),
 	get_piece(Piece, PieceDesc),
 	PieceDesc = [ PointSq | _ ],
 	Sq1 = translate_sq(Sq0, 0 -(sq_x(PointSq)), 0),
@@ -95,7 +94,7 @@ place(Piece, [Sq1 | Rest], MaxX, MaxY, Sq0, EmptySqs0,
 	sq_x(Sq) =< MaxX,
 	sq_y(Sq) =< MaxY,
 	Board1 = [Sq - Piece | Board0],
-	list__delete_first(EmptySqs0, Sq, EmptySqs1),
+	list.delete_first(EmptySqs0, Sq, EmptySqs1),
 	place(Piece, Rest, MaxX, MaxY, Sq0, EmptySqs1, EmptySqs,
 		Board1, Board).
 
@@ -142,26 +141,26 @@ between(Min, Max, I) :-
 
 	% The Board must be sorted in advance.
 write_board(MaxX, MaxY, Board) -->
-	{ list__sort(Board, SortedBoard) },
+	{ list.sort(Board, SortedBoard) },
 	write_board_rows(0, MaxX, MaxY, SortedBoard, _).
 
 :- pred write_board_rows(int::in, int::in, int::in, board::in, board::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 write_board_rows(Y, MaxX, MaxY, Board0, Board) -->
 	( 
 		{ Y =< MaxY }
 	->
 		write_board_row(0, Y, MaxX, Board0, Board1),
-		io__write_string("\n"),
+		io.write_string("\n"),
 		write_board_rows(Y + 1, MaxX, MaxY, Board1, Board)
 	;
 		{ Board = Board0 },
-		io__write_string("\n")
+		io.write_string("\n")
 	).
 
 
 :- pred write_board_row(int::in, int::in, int::in, board::in, board::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 write_board_row(X, Y, MaxX, Board0, Board) -->
 	(
 		{ X =< MaxX }
@@ -175,7 +174,7 @@ write_board_row(X, Y, MaxX, Board0, Board) -->
 			Elem = e,
 			Board2 = Board0
 		},
-		io__write(Elem),
+		io.write(Elem),
 		write_board_row(X + 1, Y, MaxX, Board2, Board)
 	;
 		{ Board = Board0 }

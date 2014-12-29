@@ -22,7 +22,7 @@
 %     * Colour on a character by character basis.
 %
 %----------------------------------------------------------------------------%
-:- module mcurses__user.
+:- module mcurses.user.
 :- interface.
 
 :- import_module char, io, list, pair.
@@ -76,51 +76,51 @@
   % Initialise curses, giving back the root window.
 	% The initialisation procedures in this library turn off echoing, and
 	% enable character-at-a-time input.
-:- pred init(win, io__state, io__state).
+:- pred init(win, io, io).
 :- mode init(out, di, uo) is det.
 
   % Redraw the screen
-:- pred redraw(io__state, io__state).
+:- pred redraw(io, io).
 :- mode redraw(di, uo) is det.
 
   % Refresh the screen.
-:- pred refresh(io__state, io__state).
+:- pred refresh(io, io).
 :- mode refresh(di, uo) is det.
 
   % create(Parent, Options, ParentX, ParentY, NumCols, NumRows, Child, IO0, IO)
   % create a new window, which will be a child of the window Parent. It is
   % created at position ParentX, ParentY in the parent window, and is of size
   % NumCols, NumRows.
-:- pred create(win, list(wopt), int, int, int, int, win, io__state, io__state).
+:- pred create(win, list(wopt), int, int, int, int, win, io, io).
 :- mode create(in, in, in, in, in, in, out, di, uo) is det.
 
   % destroy the specified window.
-:- pred destroy(win, io__state, io__state).
+:- pred destroy(win, io, io).
 :- mode destroy(in, di, uo) is det.
 
   % Hide the specified window.
-:- pred hide(win, io__state, io__state).
+:- pred hide(win, io, io).
 :- mode hide(in, di, uo) is det.
 
   % Show the (previously hidden) specified window
-:- pred show(win, io__state, io__state).
+:- pred show(win, io, io).
 :- mode show(in, di, uo) is det.
 
   % Raise the specified window.
-:- pred raise(win, io__state, io__state).
+:- pred raise(win, io, io).
 :- mode raise(in, di, uo) is det.
 
   % Lower the specified window.
-:- pred lower(win, io__state, io__state).
+:- pred lower(win, io, io).
 :- mode lower(in, di, uo) is det.
 
   % Clear the specified window. Fills the window with spaces.
-:- pred clear(win, io__state, io__state).
+:- pred clear(win, io, io).
 :- mode clear(in, di, uo) is det.
 
   % place_char(Window, X, Y, (Char - Attributes), IO0, IO)
   % Place a character into Window at position X, Y.
-:- pred place_char(win, int, int, chtype, io__state, io__state).
+:- pred place_char(win, int, int, chtype, io, io).
 :- mode place_char(in, in, in, in, di, uo) is det.
 
   % place_string(Window, X, Y, String, IO0, IO)
@@ -128,12 +128,12 @@
   %
   % XXX Note that presently, character attributes are not supported for
   % strings
-:- pred place_string(win, int, int, string, io__state, io__state).
+:- pred place_string(win, int, int, string, io, io).
 :- mode place_string(in, in, in, in, di, uo) is det.
 
   % scroll(Window, Amount, IO0, IO)
   % Scroll Window upwards by Amount lines.
-:- pred scroll(win, int, io__state, io__state).
+:- pred scroll(win, int, io, io).
 :- mode scroll(in, in, di, uo) is det.
 
 %----------------------------------------------------------------------------%
@@ -182,10 +182,10 @@ init(Win) -->
 	init,
 	cols(Cols),
 	rows(Rows),
-	{ array__init(Cols*Rows, ' ' - [], Data) },
+	{ array.init(Cols*Rows, ' ' - [], Data) },
 	{ MakeWin = (func(Self) = win(Self, Cols, Rows, [], Data, [], [])) },
 	{ init_curse_store(Curse0) },
-	{ store__new_cyclic_mutvar(MakeWin, Win, Curse0, Curse) },
+	{ store.new_cyclic_mutvar(MakeWin, Win, Curse0, Curse) },
 	set_curse_store(Curse),
 	set_root(Win),
 	refresh.
@@ -200,10 +200,10 @@ create(Parent, Opts, X, Y, W, H, Child) -->
 		X+W =< W0,
 		Y+H =< H0
 	), "create: window out of range!") },
-	{ array__init(W*H, ' ' -[], Data) },
+	{ array.init(W*H, ' ' -[], Data) },
 	{ CWindow = win(P0, W, H, Opts, Data, [], []) },
 	new_win(CWindow, Child),
-	{ list__append(Visi0, [child(X, Y, Child)], Visi) },
+	{ list.append(Visi0, [child(X, Y, Child)], Visi) },
 	{ PWindow = win(Parent, W0, H0, Opts0, PData, Visi, Hidden) },
 	set_win(Parent, PWindow).
 
@@ -241,7 +241,7 @@ refresh -->
 	refresh(Root),
 	update.
 
-:- pred refresh(win, io__state, io__state).
+:- pred refresh(win, io, io).
 :- mode refresh(in, di, uo) is det.
 
 refresh(Win) -->
@@ -249,10 +249,10 @@ refresh(Win) -->
 	{ Window = win(_Parent, Cols, Rows, Opts, Data, Visi, _Hidden) },
 	get_cursor(cursor(X0, Y0)),
 	{ solutions((pred(Ti::out) is nondet :-
-		list__member(ZZ, Opts),
+		list.member(ZZ, Opts),
 		ZZ = title(Ti)
 	), Titles) },
-	( { list__member(border, Opts) } ->
+	( { list.member(border, Opts) } ->
 		for(Y0+1, Y0+Rows, (pred(By::in, di, uo) is det -->
 			cursor(X0, By),
 			putchar('|'),
@@ -276,7 +276,7 @@ refresh(Win) -->
 		cursor(X0, Y0+Rows+1), putchar('+'),
 		cursor(X0+Cols+1, Y0+Rows+1), putchar('+'),
 		( { Titles = [Title0|_] } ->
-			{ string__length(Title0, N0) },
+			{ string.length(Title0, N0) },
 			( { N0 > Cols-2 } ->
 				{ N = Cols - 2 },
 				{ split(Title0, N, Title, _) }
@@ -306,7 +306,7 @@ refresh(Win) -->
 	)),
 	foldl(refresh_child, Visi).
 
-:- pred refresh_child(child, io__state, io__state).
+:- pred refresh_child(child, io, io).
 :- mode refresh_child(in, di, uo) is det.
 
 refresh_child(child(X, Y, Win)) -->
@@ -317,7 +317,7 @@ refresh_child(child(X, Y, Win)) -->
 
 %----------------------------------------------------------------------------%
 
-:- pred putch(char, list(cattr), io__state, io__state).
+:- pred putch(char, list(cattr), io, io).
 :- mode putch(in, in, di, uo) is det.
 
 putch(Char, []) --> putchar(Char).
@@ -325,7 +325,7 @@ putch(Char, [A|B]) -->
 	{ chtype(Char, Chtype) },
 	putch2(Chtype, [A|B]).
 
-:- pred putch2(int, list(cattr), io__state, io__state).
+:- pred putch2(int, list(cattr), io, io).
 :- mode putch2(in, in, di, uo) is det.
 
 putch2(Chtype, []) --> putch3(Chtype).
@@ -381,7 +381,7 @@ putch2(Chtype0, [Attrib | Attribs], IO0, IO) :-
 	    putch2(Chtype, Attribs, IO0, IO)
 	).
 
-:- pred putch3(int, io__state, io__state).
+:- pred putch3(int, io, io).
 :- mode putch3(in, di, uo) is det.
 :- pragma foreign_proc("C",
 	putch3(C::in, IO0::di, IO::uo),
@@ -539,7 +539,7 @@ place_string(Win, X, Y, Str) -->
 		X >= 0, Y >= 0,
 		X < Cols, Y < Cols
 	), "place_string: out of range") },
-	{ string__to_char_list(Str, Chars) },
+	{ string.to_char_list(Str, Chars) },
 	{ update_data(Chars, Y*Cols, X, X+Cols, u(Data0), Data) },
 	set_win(Win, win(Parent, Cols, Rows, Opts, Data, Visi, Hidden)).
 
@@ -558,10 +558,10 @@ update_data([C|Cs], Y, X, Xmax, Data0, Data) :-
 
 %----------------------------------------------------------------------------%
 
-:- pred get_root(win, io__state, io__state).
+:- pred get_root(win, io, io).
 :- mode get_root(out, di, uo) is det.
 
-:- pred set_root(win, io__state, io__state).
+:- pred set_root(win, io, io).
 :- mode set_root(in, di, uo) is det.
 
 :- pragma foreign_decl("C", "
@@ -590,32 +590,32 @@ update_data([C|Cs], Y, X, Xmax, Data0, Data) :-
 
 %----------------------------------------------------------------------------%
 
-:- pred new_win(window::in, win::out, io__state::di, io__state::uo) is det.
+:- pred new_win(window::in, win::out, io::di, io::uo) is det.
 
 new_win(Window, Win) -->
 	get_curse_store(Curse0),
-	{ store__new_mutvar(Window, Win, Curse0, Curse) },
+	{ store.new_mutvar(Window, Win, Curse0, Curse) },
 	set_curse_store(Curse).
 
-:- pred get_win(win::in, window::out, io__state::di, io__state::uo) is det.
+:- pred get_win(win::in, window::out, io::di, io::uo) is det.
 
 get_win(Win, Window) -->
 	get_curse_store(Curse0),
-	{ store__get_mutvar(Win, Window, Curse0, Curse) },
+	{ store.get_mutvar(Win, Window, Curse0, Curse) },
 	set_curse_store(Curse).
 
-:- pred set_win(win::in, window::in, io__state::di, io__state::uo) is det.
+:- pred set_win(win::in, window::in, io::di, io::uo) is det.
 
 set_win(Win, Window) -->
 	get_curse_store(Curse0),
-	{ store__set_mutvar(Win, Window, Curse0, Curse) },
+	{ store.set_mutvar(Win, Window, Curse0, Curse) },
 	set_curse_store(Curse).
 
 %----------------------------------------------------------------------------%
 
-:- pred get_cursor(cursor::out, io__state::di, io__state::uo) is det.
+:- pred get_cursor(cursor::out, io::di, io::uo) is det.
 
-:- pred set_cursor(cursor::in, io__state::di, io__state::uo) is det.
+:- pred set_cursor(cursor::in, io::di, io::uo) is det.
 
 :- pragma foreign_decl("C", "
 	extern MR_Word	curse_cursor;
@@ -649,9 +649,9 @@ set_win(Win, Window) -->
 
 :- pred init_curse_store(curse_store::uo) is det.
 
-:- pred get_curse_store(curse_store::uo, io__state::di, io__state::uo) is det.
+:- pred get_curse_store(curse_store::uo, io::di, io::uo) is det.
 
-:- pred set_curse_store(curse_store::di, io__state::di, io__state::uo) is det.
+:- pred set_curse_store(curse_store::di, io::di, io::uo) is det.
 
 :- pragma foreign_decl("C", "
 	extern MR_Word	curse_store;

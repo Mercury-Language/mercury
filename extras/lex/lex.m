@@ -216,7 +216,7 @@
 
     % Handy read predicates.
     %
-:- pred read_from_stdin(offset, read_result, io.state, io.state).
+:- pred read_from_stdin(offset, read_result, io, io).
 :- mode read_from_stdin(in, out, di, uo) is det.
 
 :- pred read_from_string(offset, read_result, string, string).

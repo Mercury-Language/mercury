@@ -49,7 +49,7 @@
 :- mode check_inf_derivations(in, in, out) is det.
 
 	% write an error message to stderr.
-:- pred write_error(check.error, io.state, io.state).
+:- pred write_error(check.error, io, io).
 :- mode write_error(in, di, uo) is det.
 
 %------------------------------------------------------------------------------%

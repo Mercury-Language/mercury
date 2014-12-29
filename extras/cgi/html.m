@@ -11,7 +11,7 @@
 % for representing and outputting arbitrary HTML text. 
 % It is intended for use in CGI scripts.
 %
-% Basically all the predicates here are wrappers around io__write_string.
+% Basically all the predicates here are wrappers around io.write_string.
 % However, the types defined here let you indicate the structure of your
 % HTML text in the structure of the Mercury terms used to represent it.
 
@@ -152,11 +152,11 @@
 :- pred output_markup(markup, state, state).
 :- mode output_markup(in, di, uo) is det.
 
-:- pred output_field(string, field, io__state, io__state). 
+:- pred output_field(string, field, io, io).
 :- mode output_field(in, in, di, uo) is det. 
 
-:- pred output_form_start(string::in, io__state::di, io__state::uo) is det. 
-:- pred output_form_end(io__state::di, io__state::uo) is det. 
+:- pred output_form_start(string::in, io::di, io::uo) is det.
+:- pred output_form_end(io::di, io::uo) is det.
 
 % convert any special characters in a HTML markup string into
 % appropriate HTML escapes
@@ -260,13 +260,13 @@ output_markup(br) -->
 output_markup(hr) -->
 	write_string("<hr>\n").
 
-:- pred output_definition(pair(markup), io__state, io__state).
+:- pred output_definition(pair(markup), io, io).
 :- mode output_definition(in, di, uo) is det.
 output_definition(Item - Description) -->
 	write_string("<dt> "), output_markup(Item), nl,
 	write_string("<dd> "), output_markup(Description), nl.
 
-:- pred output_list_item(markup, io__state, io__state).
+:- pred output_list_item(markup, io, io).
 :- mode output_list_item(in, di, uo) is det.
 output_list_item(Item) -->
 	write_string("<li> "), output_markup(Item), nl.
@@ -329,7 +329,7 @@ output_field(Name, hidden(Value)) -->
 	format("<INPUT NAME=%s TYPE=hidden VALUE=""%s"">",
 		[s(Name), s(escape_attr_string(Value))]).
 
-:- pred output_selection_option(pair(string, bool), io__state, state).
+:- pred output_selection_option(pair(string, bool), io, state).
 :- mode output_selection_option(in, di, uo) is det.
 
 output_selection_option(Text - Selected) -->
@@ -349,7 +349,7 @@ output_markup_scope(Name, OutputBody) -->
 	OutputBody,
 	format("</%s>\n", [s(Name)]).
 
-:- pred output_list(pred(T, state, state), list(T), io__state, io__state).
+:- pred output_list(pred(T, state, state), list(T), io, io).
 :- mode output_list(pred(in, di, uo) is det, in, di, uo) is det.
 output_list(Pred, List) -->
 	foldl(Pred, List).
@@ -359,9 +359,9 @@ output_list(Pred, List) -->
 escape_html_string(S) = ES :- escape_html_string(S, ES).
 
 escape_html_string(String, EscapedString) :-
-	string__to_char_list(String, Chars),
+	string.to_char_list(String, Chars),
 	escape_html_chars(Chars, EscapedChars, []),
-	string__from_char_list(EscapedChars, EscapedString).
+	string.from_char_list(EscapedChars, EscapedString).
 
 :- pred escape_html_chars(list(char)::in, list(char)::out, list(char)::in)
 	is det.
@@ -373,7 +373,7 @@ escape_html_chars([Char|Chars]) -->
 :- pred escape_html_char(char::in, list(char)::out, list(char)::in) is det.
 escape_html_char(Char) -->
 	( { special_html_char(Char, String) } ->
-		{ string__to_char_list(String, Chars) },
+		{ string.to_char_list(String, Chars) },
 		insert(Chars)
 	;
 		[Char]
@@ -382,9 +382,9 @@ escape_html_char(Char) -->
 escape_attr_string(S) = ES :- escape_attr_string(S, ES).
 
 escape_attr_string(String, EscapedString) :-
-	string__to_char_list(String, Chars),
+	string.to_char_list(String, Chars),
 	escape_attr_chars(Chars, EscapedChars, []),
-	string__from_char_list(EscapedChars, EscapedString).
+	string.from_char_list(EscapedChars, EscapedString).
 
 :- pred escape_attr_chars(list(char)::in, list(char)::out, list(char)::in)
 	is det.
@@ -396,7 +396,7 @@ escape_attr_chars([Char|Chars]) -->
 :- pred escape_attr_char(char::in, list(char)::out, list(char)::in) is det.
 escape_attr_char(Char) -->
 	( { special_attr_char(Char, String) } ->
-		{ string__to_char_list(String, Chars) },
+		{ string.to_char_list(String, Chars) },
 		insert(Chars)
 	;
 		[Char]
@@ -419,18 +419,18 @@ special_attr_char('"',"&#34;").
 :- pred insert(list(T), list(T), list(T)).
 :- mode insert(in, out, in) is det.
 insert(NewChars, Chars, Chars0) :-
-	list__append(NewChars, Chars0, Chars).
+	list.append(NewChars, Chars0, Chars).
 
 /******
 This is junk
-	( { char__is_alnum(Char) } ->
+	( { char.is_alnum(Char) } ->
 		[Char]
 	;
-		{ char__to_int(Char, Val) },
+		{ char.to_int(Char, Val) },
 		{ Hex1 is (Val /\ 0xf0) >> 4 },
 		{ Hex2 is Val /\ 0x0f },
-		{ char__det_int_to_digit(Hex1, HexChar1) },
-		{ char__det_int_to_digit(Hex2, HexChar2) },
+		{ char.det_int_to_digit(Hex1, HexChar1) },
+		{ char.det_int_to_digit(Hex2, HexChar2) },
 		['%', HexChar1, HexChar2]
 	).
 *******/

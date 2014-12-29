@@ -15,13 +15,13 @@
 
 :- import_module io.
 
-:- pred init_globals(io__state, io__state).
+:- pred init_globals(io, io).
 :- mode init_globals(di, uo) is det.
 
-:- pred get_global(string, T, io__state, io__state).
+:- pred get_global(string, T, io, io).
 :- mode get_global(in, out, di, uo) is det.
 
-:- pred set_global(string, T, io__state, io__state).
+:- pred set_global(string, T, io, io).
 :- mode set_global(in, in, di, uo) is det.
 
 :- implementation.
@@ -36,28 +36,28 @@ init_globals -->
 	{ my_map_init(Map) },
 	{ type_to_univ(Map, UMap1) },
 	{ unsafe_promise_unique(UMap1, UMap) },
-	io__set_globals(UMap).
+	io.set_globals(UMap).
 
 get_global(Name, Value) -->
-	io__get_globals(UMap0),
+	io.get_globals(UMap0),
 	(
 		{ univ_to_type(UMap0, Map0) }
 	->
 		(
-			{ map__search(Map0, Name, UValue) }
+			{ map.search(Map0, Name, UValue) }
 		->
 			(
 				{ univ_to_type(UValue, Value0) }
 			->
 				{ Value = Value0 }
 			;
-				{ string__format(
+				{ string.format(
 					"globals: value for `%s' has bad type",
 					[s(Name)], Str) },
 				{ error(Str) }
 			)
 		;
-			{ string__format("globals: %s not found",
+			{ string.format("globals: %s not found",
 				[s(Name)], Str) },
 			{ error(Str) }
 		)
@@ -66,15 +66,15 @@ get_global(Name, Value) -->
 	).
 
 set_global(Name, Value) -->
-	io__get_globals(UMap0),
+	io.get_globals(UMap0),
 	(
 		{ univ_to_type(UMap0, Map0) }
 	->
 		{ type_to_univ(Value, UValue) },
-		{ map__set(Name, UValue, Map0, Map) },
+		{ map.set(Name, UValue, Map0, Map) },
 		{ type_to_univ(Map, UMap1) },
 		{ unsafe_promise_unique(UMap1, UMap) },
-		io__set_globals(UMap)
+		io.set_globals(UMap)
 	;
 		{ error("globals: global store stuffed up") }
 	).
@@ -82,4 +82,4 @@ set_global(Name, Value) -->
 :- pred my_map_init(map(string, univ)::out) is det.
 
 my_map_init(Map) :-
-	map__init(Map).
+	map.init(Map).

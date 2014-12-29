@@ -384,7 +384,7 @@ same_type(_, _).
 
 :- func entities = (name -> entityDef).
 entities = Entities :-
-    map__from_assoc_list([
+    map.from_assoc_list([
     	"lt"	- internal("&#60;"),
     	"gt"	- internal("&#62;"),
     	"amp"	- internal("&#38;"),
@@ -397,7 +397,7 @@ entities = Entities :-
 
 initDTD(Root, DTD) :-
     init(Elems),
-    map__from_assoc_list([
+    map.from_assoc_list([
     	"lt"	- internal("&#60;"),
     	"gt"	- internal("&#62;"),
     	"amp"	- internal("&#38;"),
@@ -715,7 +715,7 @@ pubidChar(Q) -->
         ;
     	    C >= '0', C =< '9'
         ;
-            char__to_int(Ch, C),
+            char.to_int(Ch, C),
     	    contains_char("-'()+,./:=?;!*#@$_%\"", Ch)
         }
     ->
@@ -1021,7 +1021,7 @@ versionNumChar -->
     ;
     	C >= '0', C =< '9'
     ;
-    	char__to_int(Ch, C),
+    	char.to_int(Ch, C),
     	contains_char("_.:-", Ch)
     } ->
     	return(C)
@@ -3699,7 +3699,7 @@ getEntity(external(system(SystemId))) -->
 	    return(Entity)
 	;
 	    { Res1 = error(_, Err) },
-	    { io__error_message(Err, Msg) },
+	    { io.error_message(Err, Msg) },
 	    error(Msg)
 	)
     ;
@@ -3723,7 +3723,7 @@ getEntity(external(public(PublicId, SystemId))) -->
 
 warn(Msg) -->
     io((pred(di, uo) is det -->
-    	io__stderr_stream(StdErr),
+    	io.stderr_stream(StdErr),
 	write_string(StdErr, "warning: "),
 	write_string(StdErr, Msg),
 	write_string(StdErr, "\n")

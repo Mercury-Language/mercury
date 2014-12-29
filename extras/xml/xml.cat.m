@@ -29,10 +29,10 @@
 	;	error(string)
 	.
 
-:- pred load(string, dirs, catRes(catalog), io__state, io__state).
+:- pred load(string, dirs, catRes(catalog), io, io).
 :- mode load(in, in, out, di, uo) is det.
 
-:- pred find(string, dirs, catRes(string), io__state, io__state).
+:- pred find(string, dirs, catRes(string), io, io).
 :- mode find(in, in, out, di, uo) is det.
 
 :- implementation.
@@ -63,7 +63,7 @@ load(Name, Dirs, Res) -->
 	    ), Errors)
 	;
 	    { Res1 = error(_, Err) },
-	    { io__error_message(Err, Msg) },
+	    { io.error_message(Err, Msg) },
 	    { Res = error(Msg) }
 	)
     ;
@@ -148,7 +148,7 @@ parseEntry(Entry) -->
 :- mode ws(in, out) is det.
 
 ws -->
-    ( [C], { char__is_whitespace(C) } ->
+    ( [C], { char.is_whitespace(C) } ->
     	ws
     ;
     	[]
@@ -159,7 +159,7 @@ ws -->
 
 string(Str) -->
     ['"'], untilDiscard('"', Cs),
-    { string__from_char_list(Cs, Str) }.
+    { string.from_char_list(Cs, Str) }.
 
 :- pred untilDiscard(char, [char], [char], [char]).
 :- mode untilDiscard(in, out, in, out) is det.
