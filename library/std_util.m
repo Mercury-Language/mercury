@@ -29,7 +29,6 @@
     % compose(F, G, X) = F(G(X))
     %
     % Function composition.
-    % XXX It would be nice to have infix `o' or somesuch for this.
     %
 :- func compose(func(T2) = T3, func(T1) = T2, T1) = T3.
 
