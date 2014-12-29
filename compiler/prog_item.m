@@ -950,8 +950,8 @@
     ;       contains_no_foreign_export.
 
 :- pred get_item_list_foreign_code(globals::in, list(item)::in,
-    set(foreign_language)::out, foreign_import_module_info_list::out,
-    foreign_include_file_info_list::out, contains_foreign_export::out) is det.
+    set(foreign_language)::out, foreign_import_module_infos::out,
+    foreign_include_file_infos::out, contains_foreign_export::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -960,6 +960,7 @@
 
 :- import_module parse_tree.prog_foreign.
 
+:- import_module cord.
 :- import_module map.
 
 %-----------------------------------------------------------------------------%
@@ -1126,14 +1127,14 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
     --->    module_foreign_info(
                 used_foreign_languages      :: set(foreign_language),
                 foreign_proc_languages      :: map(sym_name, foreign_language),
-                all_foreign_import_modules  :: foreign_import_module_info_list,
-                all_foreign_include_files   :: foreign_include_file_info_list,
+                all_foreign_import_modules  :: foreign_import_module_infos,
+                all_foreign_include_files   :: foreign_include_file_infos,
                 module_has_foreign_export   :: contains_foreign_export
             ).
 
 get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
         ForeignIncludeFiles, ContainsForeignExport) :-
-    Info0 = module_foreign_info(set.init, map.init, [], [],
+    Info0 = module_foreign_info(set.init, map.init, cord.init, cord.init,
         contains_no_foreign_export),
     list.foldl(get_item_foreign_code(Globals), Items, Info0, Info),
     Info = module_foreign_info(LangSet0, LangMap, ForeignImports,
@@ -1234,9 +1235,12 @@ do_get_item_foreign_code(Globals, Pragma, Context, !Info) :-
         Pragma = pragma_foreign_import_module(FIMInfo),
         FIMInfo = pragma_info_foreign_import_module(Lang, Import),
         ( list.member(Lang, BackendLangs) ->
-            !Info ^ all_foreign_import_modules :=
-                [foreign_import_module_info(Lang, Import, Context) |
-                    !.Info ^ all_foreign_import_modules]
+            ForeignImportModule =
+                foreign_import_module_info(Lang, Import, Context),
+            ForeignImportModulesCord0 = !.Info ^ all_foreign_import_modules,
+            ForeignImportModulesCord =
+                cord.snoc(ForeignImportModulesCord0, ForeignImportModule),
+            !Info ^ all_foreign_import_modules := ForeignImportModulesCord
         ;
             true
         )
@@ -1306,9 +1310,9 @@ do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info) :-
     ;
         LiteralOrInclude = include_file(FileName),
         IncludeFile = foreign_include_file_info(Lang, FileName),
-        IncludeFiles0 = !.Info ^ all_foreign_include_files,
-        IncludeFiles = [IncludeFile | IncludeFiles0],
-        !Info ^ all_foreign_include_files := IncludeFiles
+        IncludeFilesCord0 = !.Info ^ all_foreign_include_files,
+        IncludeFilesCord = cord.snoc(IncludeFilesCord0, IncludeFile),
+        !Info ^ all_foreign_include_files := IncludeFilesCord
     ).
 
 %-----------------------------------------------------------------------------%

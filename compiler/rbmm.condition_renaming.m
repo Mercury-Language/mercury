@@ -154,7 +154,7 @@
 collect_non_local_and_in_cond_regions(ModuleInfo, RptaInfoTable,
         LRBeforeTable, LRAfterTable, ResurRenamingTable,
         ResurRenamingAnnoTable, NonLocalRegionsTable, InCondRegionsTable) :-
-    module_info_get_valid_predids(PredIds, ModuleInfo, _),
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     list.foldl2(collect_non_local_and_in_cond_regions_pred(ModuleInfo,
         RptaInfoTable, LRBeforeTable, LRAfterTable, ResurRenamingTable,
         ResurRenamingAnnoTable), PredIds,

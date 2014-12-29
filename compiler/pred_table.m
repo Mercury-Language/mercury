@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et
+% vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
@@ -28,6 +28,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module set_tree234.
 
 :- implementation.
 
@@ -80,35 +81,27 @@
 
     % Set the pred_id->pred_info map.
     % NB You shouldn't modify the keys in this table, only
-    % use predicate_table_insert, predicate_table_remove_predid and
+    % use predicate_table_insert, predicate_table_make_pred_id_invalid and
     % predicate_table_remove_predicate.
     %
 :- pred predicate_table_set_preds(pred_table::in,
     predicate_table::in, predicate_table::out) is det.
 
-    % Get a list of all the valid predids in the predicate_table.
+    % Get a set of all the valid pred_ids in the predicate_table.
     % (Predicates whose definition contains a type error, etc.
     % get removed from this list, so that later passes can rely
     % on the predicates in this list being type-correct, etc.)
     %
-    % This operation does not logically change the predicate table,
-    % but does update it physically.
+:- pred predicate_table_get_valid_pred_id_set(predicate_table::in,
+    set_tree234(pred_id)::out) is det.
+
+    % Remove one or more pred_ids from the valid list.
     %
-:- pred predicate_table_get_valid_predids(list(pred_id)::out,
+:- pred predicate_table_make_pred_id_invalid(pred_id::in,
+    predicate_table::in, predicate_table::out) is det.
+:- pred predicate_table_make_pred_ids_invalid(list(pred_id)::in,
     predicate_table::in, predicate_table::out) is det.
 
-    % Set the list of the pred_ids of all the valid predicates.
-    % NOTE: The only approved way to specify the list is to call
-    % module_info_get_valid_predids or predicate_table_get_valid_predids,
-    % and remove some pred_ids from that list.
-    %
-:- pred predicate_table_set_valid_predids(list(pred_id)::in,
-    predicate_table::in, predicate_table::out) is det.
-
-    % Remove a pred_id from the valid list.
-    %
-:- pred predicate_table_remove_predid(pred_id::in,
-    predicate_table::in, predicate_table::out) is det.
 :- pred predicate_table_remove_predicate(pred_id::in,
     predicate_table::in, predicate_table::out) is det.
 
@@ -325,12 +318,10 @@
                 % The next available pred_id.
                 next_pred_id                    :: pred_id,
 
-                % The keys of the pred_table - cached here for efficiency.
-                % The old pred_ids are listed in order; the new pred_ids
-                % are listed in reverse order. You can get the full list
-                % with old_pred_ids ++ reverse(new_rev_pred_ids).
-                old_pred_ids                    :: list(pred_id),
-                new_rev_pred_ids                :: list(pred_id),
+                % The set of pred ids that may be processed further.
+                % Every pred_id in valid_pred_ids must be a key in preds,
+                % but it is ok for a key in preds not to be in valid_pred_ids.
+                valid_pred_ids                  :: set_tree234(pred_id),
 
                 % Maps each pred_id to its accessibility by (partially)
                 % unqualified names.
@@ -375,8 +366,7 @@
 predicate_table_init(PredicateTable) :-
     map.init(Preds),
     NextPredId = hlds_pred.initial_pred_id,
-    OldPredIds = [],
-    NewRevPredIds = [],
+    ValidPredIds = set_tree234.init,
     map.init(AccessibilityTable),
     map.init(Pred_N_Index),
     map.init(Pred_NA_Index),
@@ -385,13 +375,13 @@ predicate_table_init(PredicateTable) :-
     map.init(Func_NA_Index),
     map.init(Func_MNA_Index),
     PredicateTable = predicate_table(Preds, NextPredId,
-        OldPredIds, NewRevPredIds, AccessibilityTable,
+        ValidPredIds, AccessibilityTable,
         Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
         Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
 predicate_table_optimize(PredicateTable0, PredicateTable) :-
     PredicateTable0 = predicate_table(Preds, NextPredId,
-        OldPredIds, NewRevPredIds, Accessibility,
+        ValidPredIds, AccessibilityTable,
         Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
         Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
     map.optimize(Pred_N_Index0, Pred_N_Index),
@@ -401,7 +391,7 @@ predicate_table_optimize(PredicateTable0, PredicateTable) :-
     map.optimize(Func_NA_Index0, Func_NA_Index),
     map.optimize(Func_MNA_Index0, Func_MNA_Index),
     PredicateTable = predicate_table(Preds, NextPredId,
-        OldPredIds, NewRevPredIds, Accessibility,
+        ValidPredIds, AccessibilityTable,
         Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
         Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
@@ -410,37 +400,24 @@ predicate_table_get_preds(PredicateTable, PredicateTable ^ preds).
 predicate_table_set_preds(Preds, !PredicateTable) :-
     !PredicateTable ^ preds := Preds.
 
-predicate_table_get_valid_predids(PredIds, !PredicateTable) :-
-    OldPredIds = !.PredicateTable ^ old_pred_ids,
-    NewRevPredIds = !.PredicateTable ^ new_rev_pred_ids,
-    (
-        NewRevPredIds = [],
-        PredIds = OldPredIds
-    ;
-        NewRevPredIds = [_ | _],
-        PredIds = OldPredIds ++ list.reverse(NewRevPredIds)
-    ),
-    !PredicateTable ^ old_pred_ids := PredIds,
-    !PredicateTable ^ new_rev_pred_ids := [].
+predicate_table_get_valid_pred_id_set(PredicateTable, ValidPredIds) :-
+    ValidPredIds = PredicateTable ^ valid_pred_ids.
 
-predicate_table_set_valid_predids(PredIds, !PredicateTable) :-
-    !PredicateTable ^ old_pred_ids := PredIds,
-    !PredicateTable ^ new_rev_pred_ids := [].
+predicate_table_make_pred_id_invalid(InvalidPredId, !PredicateTable) :-
+    ValidPredIds0 = !.PredicateTable ^ valid_pred_ids,
+    set_tree234.delete(InvalidPredId, ValidPredIds0, ValidPredIds),
+    !PredicateTable ^ valid_pred_ids := ValidPredIds.
 
-predicate_table_remove_predid(PredId, !PredicateTable) :-
-    OldPredIds0 = !.PredicateTable ^ old_pred_ids,
-    NewRevPredIds0 = !.PredicateTable ^ new_rev_pred_ids,
-    list.delete_all(OldPredIds0, PredId, OldPredIds),
-    list.delete_all(NewRevPredIds0, PredId, NewRevPredIds),
-    !PredicateTable ^ old_pred_ids := OldPredIds,
-    !PredicateTable ^ new_rev_pred_ids := NewRevPredIds.
+predicate_table_make_pred_ids_invalid(InvalidPredIds, !PredicateTable) :-
+    ValidPredIds0 = !.PredicateTable ^ valid_pred_ids,
+    set_tree234.delete_list(InvalidPredIds, ValidPredIds0, ValidPredIds),
+    !PredicateTable ^ valid_pred_ids := ValidPredIds.
 
 predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
     PredicateTable0 = predicate_table(Preds0, NextPredId,
-        OldPredIds0, NewRevPredIds0, AccessibilityTable0,
+        ValidPredIds0, AccessibilityTable0,
         PredN0, PredNA0, PredMNA0, FuncN0, FuncNA0, FuncMNA0),
-    list.delete_all(OldPredIds0, PredId, OldPredIds),
-    list.delete_all(NewRevPredIds0, PredId, NewRevPredIds),
+    set_tree234.delete(PredId, ValidPredIds0, ValidPredIds),
     map.det_remove(PredId, PredInfo, Preds0, Preds),
     map.det_remove(PredId, _, AccessibilityTable0, AccessibilityTable),
     Module = pred_info_module(PredInfo),
@@ -452,7 +429,7 @@ predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
         predicate_table_remove_from_index(Module, Name, Arity, PredId,
             PredN0, PredN, PredNA0, PredNA, PredMNA0, PredMNA),
         PredicateTable = predicate_table(Preds, NextPredId,
-            OldPredIds, NewRevPredIds, AccessibilityTable,
+            ValidPredIds, AccessibilityTable,
             PredN, PredNA, PredMNA, FuncN0, FuncNA0, FuncMNA0)
     ;
         IsPredOrFunc = pf_function,
@@ -461,7 +438,7 @@ predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
             PredId, FuncN0, FuncN, FuncNA0, FuncNA,
             FuncMNA0, FuncMNA),
         PredicateTable = predicate_table(Preds, NextPredId,
-            OldPredIds, NewRevPredIds, AccessibilityTable,
+            ValidPredIds, AccessibilityTable,
             PredN0, PredNA0, PredMNA0, FuncN, FuncNA, FuncMNA)
     ).
 
@@ -839,11 +816,7 @@ predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
     AccessibilityTable = OrigPredicateTable ^ accessibility_table,
     list.foldl(
         reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable),
-        PredIds, !PredicateTable),
-    predicate_table_get_valid_predids(NewPredIds, !PredicateTable),
-    list.sort(NewPredIds, SortedNewPredIds),
-    !PredicateTable ^ old_pred_ids := SortedNewPredIds,
-    !PredicateTable ^ new_rev_pred_ids := [].
+        PredIds, !PredicateTable).
 
 :- pred reinsert_for_restrict(partial_qualifier_info::in, pred_table::in,
     accessibility_table::in, pred_id::in,
@@ -876,7 +849,8 @@ reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable, PredId,
 
 predicate_table_reset(PredicateTable0, PredicateTable) :-
     NextPredId = PredicateTable0 ^ next_pred_id,
-    PredicateTable = predicate_table(map.init, NextPredId, [], [], map.init,
+    PredicateTable = predicate_table(map.init, NextPredId,
+        set_tree234.init, map.init,
         map.init, map.init, map.init, map.init, map.init, map.init).
 
 %-----------------------------------------------------------------------------%
@@ -897,7 +871,7 @@ predicate_table_insert_qual(PredInfo, NeedQual, QualInfo, PredId,
 do_predicate_table_insert(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
         PredId, !PredicateTable) :-
     !.PredicateTable = predicate_table(Preds0, NextPredId0,
-        OldPredIds0, NewRevPredIds0, AccessibilityTable0,
+        ValidPredIds0, AccessibilityTable0,
         Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
         Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
     Module = pred_info_module(PredInfo),
@@ -942,14 +916,12 @@ do_predicate_table_insert(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
         Pred_MNA_Index = Pred_MNA_Index0
     ),
 
-    % Insert the pred_id into the new pred_id list.
-    NewRevPredIds = [PredId | NewRevPredIds0],
-
     % Save the pred_info for this pred_id.
     map.det_insert(PredId, PredInfo, Preds0, Preds),
+    set_tree234.insert(PredId, ValidPredIds0, ValidPredIds),
 
     !:PredicateTable = predicate_table(Preds, NextPredId,
-        OldPredIds0, NewRevPredIds, AccessibilityTable,
+        ValidPredIds, AccessibilityTable,
         Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
         Func_N_Index, Func_NA_Index, Func_MNA_Index).
 

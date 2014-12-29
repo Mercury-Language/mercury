@@ -805,11 +805,11 @@ check_unique_modes(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 check_stratification(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
-    module_info_get_stratified_preds(!.HLDS, StratifiedPreds),
+    module_info_get_must_be_stratified_preds(!.HLDS, MustBeStratifiedPreds),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_non_stratification, Warn),
     (
-        ( set.is_non_empty(StratifiedPreds)
+        ( set.is_non_empty(MustBeStratifiedPreds)
         ; Warn = yes
         )
     ->

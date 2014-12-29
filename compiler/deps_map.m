@@ -93,6 +93,7 @@
 :- import_module parse_tree.read_modules.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module list.
 :- import_module pair.
 :- import_module set.
@@ -156,7 +157,7 @@ generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap, !IO) :-
             list.map(
                 (func(foreign_import_module_info(_, ImportedModule, _))
                     = ImportedModule),
-                ModuleImports ^ mai_foreign_import_modules),
+                cord.list(ModuleImports ^ mai_foreign_import_modules)),
         list.condense(
             [ModuleImports ^ mai_parent_deps,
             ModuleImports ^ mai_int_deps,

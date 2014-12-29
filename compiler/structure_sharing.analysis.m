@@ -162,7 +162,7 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
 :- pred process_imported_sharing(module_info::in, module_info::out) is det.
 
 process_imported_sharing(!ModuleInfo):-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl(process_imported_sharing_in_pred, PredIds, !ModuleInfo).
 
 :- pred process_imported_sharing_in_pred(pred_id::in, module_info::in,
@@ -236,7 +236,7 @@ process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
     module_info::out) is det.
 
 process_intermod_analysis_imported_sharing(!ModuleInfo):-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl(process_intermod_analysis_imported_sharing_in_pred, PredIds,
         !ModuleInfo).
 
@@ -394,7 +394,7 @@ sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
         MakeAnalysisRegistry = yes,
         some [!AnalysisInfo] (
             module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
-            module_info_get_valid_predids(PredIds, !ModuleInfo),
+            module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
             list.foldl(maybe_record_sharing_analysis_result(!.ModuleInfo,
                 !.SharingTable), PredIds, !AnalysisInfo),
             list.foldl(handle_dep_procs(!.ModuleInfo), DepProcs,
@@ -915,7 +915,7 @@ ss_fixpoint_table_get_final_as_semidet(PPId, T, SharingAs_Status) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for writing out optimization interfaces
+% Code for writing out optimization interfaces.
 %
 
 :- pred make_opt_int(module_info::in, io::di, io::uo) is det.
@@ -935,7 +935,7 @@ make_opt_int(ModuleInfo, !IO) :-
     (
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
         list.foldl(write_pred_sharing_info(ModuleInfo), PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(OptFile, !IO),
@@ -951,7 +951,7 @@ make_opt_int(ModuleInfo, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for writing out structure_sharing pragmas
+% Code for writing out structure_sharing pragmas.
 %
 
 write_pred_sharing_info(ModuleInfo, PredId, !IO) :-

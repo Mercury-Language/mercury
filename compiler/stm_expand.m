@@ -245,7 +245,7 @@
 %-----------------------------------------------------------------------------%
 
 stm_process_module(!ModuleInfo) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl(stm_process_pred, PredIds, !ModuleInfo),
     module_info_clobber_dependency_info(!ModuleInfo).
 

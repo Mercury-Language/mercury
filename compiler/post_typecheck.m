@@ -171,7 +171,7 @@
 
 post_typecheck_finish_preds(!ModuleInfo, NumBadErrors,
         AlwaysSpecs, NoTypeErrorSpecs) :-
-    module_info_get_valid_predids(ValidPredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
     ValidPredIdSet = set_tree234.list_to_set(ValidPredIds),
     module_info_get_preds(!.ModuleInfo, PredMap0),
     map.to_assoc_list(PredMap0, PredIdsInfos0),
@@ -619,7 +619,7 @@ post_typecheck_finish_promise(PromiseType, PromiseId, !ModuleInfo, !Specs) :-
     store_promise(PromiseType, PromiseId, !ModuleInfo, Goal),
 
     % Remove from further processing.
-    module_info_remove_predid(PromiseId, !ModuleInfo),
+    module_info_make_pred_id_invalid(PromiseId, !ModuleInfo),
 
     % If the promise is in the interface, then ensure that it doesn't refer
     % to any local symbols.

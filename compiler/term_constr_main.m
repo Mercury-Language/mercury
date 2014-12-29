@@ -469,7 +469,7 @@ maybe_make_optimization_interface(ModuleInfo, !IO) :-
         MakeOptInt),
     (
         MakeOptInt = yes,
-        module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
         make_opt_int(PredIds, ModuleInfo, !IO)
     ;
         MakeOptInt = no

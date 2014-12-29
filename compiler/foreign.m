@@ -93,24 +93,24 @@
     % The first return value is the list of matches, the second is
     % the list of mis-matches.
     %
-:- pred filter_decls(foreign_language::in, foreign_decl_info::in,
-    foreign_decl_info::out, foreign_decl_info::out) is det.
+:- pred filter_decls(foreign_language::in, list(foreign_decl_code)::in,
+    list(foreign_decl_code)::out, list(foreign_decl_code)::out) is det.
+
+    % Filter the bodys for the given foreign language.
+    % The first return value is the list of matches, the second is
+    % the list of mis-matches.
+    %
+:- pred filter_bodys(foreign_language::in, list(foreign_body_code)::in,
+    list(foreign_body_code)::out, list(foreign_body_code)::out) is det.
 
     % Filter the module imports for the given foreign language.
     % The first return value is the list of matches, the second is
     % the list of mis-matches.
     %
 :- pred filter_imports(foreign_language::in,
-    foreign_import_module_info_list::in,
-    foreign_import_module_info_list::out, foreign_import_module_info_list::out)
-    is det.
-
-    % Filter the bodys for the given foreign language.
-    % The first return value is the list of matches, the second is
-    % the list of mis-matches.
-    %
-:- pred filter_bodys(foreign_language::in, foreign_body_info::in,
-    foreign_body_info::out, foreign_body_info::out) is det.
+    list(foreign_import_module_info)::in,
+    list(foreign_import_module_info)::out,
+    list(foreign_import_module_info)::out) is det.
 
     % Filter the foreign exports for the given foreign language.
     % The first return value is the list of matches, the second is
@@ -178,15 +178,15 @@ filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
         WantedLang = Lang),
     list.filter(IsWanted, Decls0, LangDecls, NotLangDecls).
 
-filter_imports(WantedLang, Imports0, LangImports, NotLangImports) :-
-    IsWanted = (pred(foreign_import_module_info(Lang, _, _)::in) is semidet :-
-        WantedLang = Lang),
-    list.filter(IsWanted, Imports0, LangImports, NotLangImports).
-
 filter_bodys(WantedLang, Bodys0, LangBodys, NotLangBodys) :-
     IsWanted = (pred(foreign_body_code(Lang, _, _)::in) is semidet :-
         WantedLang = Lang),
     list.filter(IsWanted, Bodys0, LangBodys, NotLangBodys).
+
+filter_imports(WantedLang, Imports0, LangImports, NotLangImports) :-
+    IsWanted = (pred(foreign_import_module_info(Lang, _, _)::in) is semidet :-
+        WantedLang = Lang),
+    list.filter(IsWanted, Imports0, LangImports, NotLangImports).
 
 filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
     IsWanted = (pred(pragma_exported_proc(Lang, _, _, _, _)::in) is semidet :-

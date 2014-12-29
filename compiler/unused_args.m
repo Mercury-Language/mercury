@@ -292,7 +292,7 @@ unused_args_process_module(!ModuleInfo, !Specs, !IO) :-
     (
         MakeAnalysisRegistry = yes,
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
-        module_info_get_valid_predids(PredIds, !ModuleInfo),
+        module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
         list.foldl(
             maybe_record_intermod_unused_args(!.ModuleInfo, UnusedArgInfo),
             PredIds, AnalysisInfo0, AnalysisInfo1),
@@ -338,7 +338,7 @@ unused_args_process_module(!ModuleInfo, !Specs, !IO) :-
 init_var_usage(VarUsage, PredProcList, ProcCallInfo, !ModuleInfo) :-
     map.init(ProcCallInfo0),
     map.init(VarUsage0),
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     setup_local_var_usage(PredIds, VarUsage0, VarUsage, [], PredProcList,
         ProcCallInfo0, ProcCallInfo, !ModuleInfo).
 

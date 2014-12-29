@@ -46,33 +46,14 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Foreign_interface_info holds information used when generating
-    % code that uses the foreign language interface.
-    %
-:- type foreign_interface_info
-    --->    foreign_interface_info(
-                module_name,
-
-                % Info about stuff imported from C:
-                foreign_decl_info,
-                foreign_import_module_info_list,
-                foreign_body_info,
-
-                % Info about stuff exported to C:
-                foreign_export_decls,
-                foreign_export_defns
-            ).
-
-%-----------------------------------------------------------------------------%
-
     % The type `c_file' is the actual LLDS.
 
 :- type c_file
     --->    c_file(
                 cfile_modulename            :: module_name,
-                cfile_foreign_decl          :: foreign_decl_info,
-                cfile_foreign_code          :: list(user_foreign_code),
-                cfile_foreign_export        :: list(foreign_export),
+                cfile_foreign_decl_codes    :: list(foreign_decl_code),
+                cfile_foreign_body_codes    :: list(foreign_body_code),
+                cfile_foreign_export_defns  :: list(foreign_export_defn),
                 cfile_vars                  :: list(tabling_info_struct),
                 cfile_scalar_common_data    :: list(scalar_common_data_array),
                 cfile_vector_common_data    :: list(vector_common_data_array),

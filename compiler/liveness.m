@@ -219,7 +219,7 @@
 %-----------------------------------------------------------------------------%
 
 detect_liveness_preds_parallel(!HLDS) :-
-    module_info_get_valid_predids(PredIds, !HLDS),
+    module_info_get_valid_pred_ids(!.HLDS, PredIds),
     detect_liveness_preds_parallel_2(PredIds, !.HLDS, !HLDS).
 
 :- pred detect_liveness_preds_parallel_2(list(pred_id)::in,

@@ -123,7 +123,7 @@ output_llds_2(Globals, CFile, !IO) :-
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_single_c_file(Globals, CFile, !DeclSet, !IO) :-
-    CFile = c_file(ModuleName, C_HeaderLines, UserForeignCode, Exports,
+    CFile = c_file(ModuleName, C_HeaderLines, ForeignBodyCodes, Exports,
         TablingInfoStructs, ScalarCommonDatas, VectorCommonDatas,
         RttiDatas, PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns,
         UserEventVarNums, UserEvents,
@@ -199,8 +199,13 @@ output_single_c_file(Globals, CFile, !DeclSet, !IO) :-
 
     list.foldl2(output_annotated_c_module(Info), AnnotatedModules,
         !DeclSet, !IO),
-    list.foldl(output_user_foreign_code(Info), UserForeignCode, !IO),
-    list.foldl(io.write_string, Exports, !IO),
+    list.foldl(output_foreign_body_code(Info), ForeignBodyCodes, !IO),
+    WriteForeignExportDefn =
+        (pred(ForeignExportDefn::in, IO0::di, IO::uo) is det :-
+            ForeignExportDefn = foreign_export_defn(ForeignExportCode),
+            io.write_string(ForeignExportCode, IO0, IO)
+        ),
+    list.foldl(WriteForeignExportDefn, Exports, !IO),
     io.write_string("\n", !IO),
     output_c_module_init_list(Info, ModuleName, AnnotatedModules, RttiDatas,
         ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable,
@@ -865,11 +870,11 @@ output_static_linkage_define(!IO) :-
 
 %----------------------------------------------------------------------------%
 
-:- pred output_user_foreign_code(llds_out_info::in, user_foreign_code::in,
+:- pred output_foreign_body_code(llds_out_info::in, foreign_body_code::in,
     io::di, io::uo) is det.
 
-output_user_foreign_code(Info, UserForeignCode, !IO) :-
-    UserForeignCode = user_foreign_code(Lang, LiteralOrInclude, Context),
+output_foreign_body_code(Info, ForeignBodyCode, !IO) :-
+    ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
     (
         Lang = lang_c,
         output_foreign_decl_or_code(Info, "foreign_code", Lang,

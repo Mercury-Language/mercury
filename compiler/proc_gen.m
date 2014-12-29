@@ -44,7 +44,7 @@
 
     % Translate a HLDS module to LLDS.
     %
-:- pred generate_module_code(module_info::in, module_info::out,
+:- pred generate_module_code(module_info::in,
     global_data::in, global_data::out,
     list(c_procedure)::out, io::di, io::uo) is det.
 
@@ -120,11 +120,11 @@
 
 %---------------------------------------------------------------------------%
 
-generate_module_code(!ModuleInfo, !GlobalData, Procedures, !IO) :-
+generate_module_code(ModuleInfo, !GlobalData, Procedures, !IO) :-
     % Get a list of all the predicate ids for which we will generate code.
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     % Check if we want to use parallel code generation.
-    module_info_get_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, parallel_code_gen, ParallelCodeGen),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
@@ -132,11 +132,11 @@ generate_module_code(!ModuleInfo, !GlobalData, Procedures, !IO) :-
     (
         VeryVerbose = yes,
         io.write_string("% Generating constant structures\n", !IO),
-        generate_const_structs(!.ModuleInfo, ConstStructMap, !GlobalData),
+        generate_const_structs(ModuleInfo, ConstStructMap, !GlobalData),
         maybe_report_stats(Statistics, !IO)
     ;
         VeryVerbose = no,
-        generate_const_structs(!.ModuleInfo, ConstStructMap, !GlobalData)
+        generate_const_structs(ModuleInfo, ConstStructMap, !GlobalData)
     ),
 
     (
@@ -145,10 +145,10 @@ generate_module_code(!ModuleInfo, !GlobalData, Procedures, !IO) :-
         VeryVerbose = no,
         Statistics = no
     ->
-        generate_code_parallel(!.ModuleInfo, ConstStructMap, PredIds,
+        generate_code_parallel(ModuleInfo, ConstStructMap, PredIds,
             !GlobalData, Procedures)
     ;
-        generate_code_sequential(!.ModuleInfo, VeryVerbose, Statistics,
+        generate_code_sequential(ModuleInfo, VeryVerbose, Statistics,
             ConstStructMap, PredIds, !GlobalData, Procedures, !IO)
     ).
 

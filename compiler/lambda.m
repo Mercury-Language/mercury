@@ -206,7 +206,7 @@ lambda_info_set_recompute_nonlocals(Recompute, !Info) :-
 %
 
 expand_lambdas_in_module(!ModuleInfo) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl(expand_lambdas_in_pred, PredIds, !ModuleInfo),
     % Need update the dependency graph to include the lambda predicates.
     module_info_clobber_dependency_info(!ModuleInfo).

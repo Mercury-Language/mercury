@@ -271,7 +271,7 @@ module_info_ssdb_trace_level(ModuleInfo, SSTraceLevel) :-
 :- pred ssdebug_first_pass(module_info::in, module_info::out) is det.
 
 ssdebug_first_pass(!ModuleInfo) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl2(ssdebug_first_pass_in_pred, PredIds,
         map.init, _ProxyMap, !ModuleInfo).
 

@@ -33,15 +33,13 @@
 :- import_module mdbcomp.sym_name.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module list.
-:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
-:- type foreign_decl_info == list(foreign_decl_code).
-                                % in reverse order
-:- type foreign_body_info == list(foreign_body_code).
-                                % in reverse order
+:- type foreign_decl_codes == cord(foreign_decl_code).
+:- type foreign_body_codes == cord(foreign_body_code).
 
 :- type foreign_decl_code
     --->    foreign_decl_code(
@@ -58,10 +56,18 @@
                 fbody_context       :: prog_context
             ).
 
-:- type foreign_export_defns == list(foreign_export).
+:- type foreign_export_defns == list(foreign_export_defn).
+
+:- type foreign_export_defn
+    --->    foreign_export_defn(
+                % The code for `pragma foreign_export' is generated directly
+                % as strings by export.m.
+                string
+            ).
+
 :- type foreign_export_decls
     --->    foreign_export_decls(
-                fexp_decls_info     :: foreign_decl_info,
+                fexp_decls_codes    :: list(foreign_decl_code),
                 fexp_decls_list     :: list(foreign_export_decl)
             ).
 
@@ -79,22 +85,6 @@
                 fexp_decl_arg_decls :: string
                                     % Argument declarations.
             ).
-
-    % Some code from a `pragma foreign_code' declaration that is not
-    % associated with a given procedure.
-    % XXX any difference from foreign_body_code?
-    %
-:- type user_foreign_code
-    --->    user_foreign_code(
-                foreign_language,   % language of this code
-                foreign_literal_or_include,
-                term.context        % source code location
-            ).
-
-    % The code for `pragma foreign_export' is generated directly as strings
-    % by export.m.
-    %
-:- type foreign_export  ==  string.
 
 %-----------------------------------------------------------------------------%
 

@@ -62,8 +62,7 @@
     % needed, record how many times they are referenced (this information
     % is used by our inlining heuristics).
     %
-:- pred dead_proc_analyze(module_info::in, module_info::out, needed_map::out)
-    is det.
+:- pred dead_proc_analyze(module_info::in, needed_map::out) is det.
 
     % Optimize away any dead predicates. This is performed immediately after
     % building the HLDS to avoid doing semantic checking and optimization
@@ -97,6 +96,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module io.
 :- import_module maybe.
@@ -136,11 +136,11 @@
 :- type entity_queue    ==  queue(entity).
 :- type examined_set    ==  set_tree234(entity).
 
-dead_proc_analyze(!ModuleInfo, !:Needed) :-
-    do_dead_proc_analyze(!ModuleInfo, analyze_procs, !:Needed).
+dead_proc_analyze(ModuleInfo, !:Needed) :-
+    do_dead_proc_analyze(ModuleInfo, analyze_procs, !:Needed).
 
 dead_proc_elim(ElimOptImported, !ModuleInfo, Specs) :-
-    do_dead_proc_analyze(!ModuleInfo, analyze_all, Needed),
+    do_dead_proc_analyze(!.ModuleInfo, analyze_all, Needed),
     dead_proc_eliminate(ElimOptImported, Needed, !ModuleInfo, Specs).
 
 %-----------------------------------------------------------------------------%
@@ -149,42 +149,43 @@ dead_proc_elim(ElimOptImported, !ModuleInfo, Specs) :-
     --->    analyze_procs
     ;       analyze_all.
 
-:- pred do_dead_proc_analyze(module_info::in, module_info::out,
+:- pred do_dead_proc_analyze(module_info::in,
     analyze_what::in, needed_map::out) is det.
 
-do_dead_proc_analyze(!ModuleInfo, AnalyeWhat, !:Needed) :-
+do_dead_proc_analyze(ModuleInfo, AnalyeWhat, !:Needed) :-
     Examined0 = set_tree234.init,
-    dead_proc_initialize(!ModuleInfo, Queue0, !:Needed),
-    dead_proc_examine(Queue0, Examined0, AnalyeWhat, !.ModuleInfo, !Needed).
+    dead_proc_initialize(ModuleInfo, Queue0, !:Needed),
+    dead_proc_examine(Queue0, Examined0, AnalyeWhat, ModuleInfo, !Needed).
 
     % Add all exported entities to the queue and map.
     % NOTE: changes here are likely to require changes to dead_pred_elim
     % as well.
     %
-:- pred dead_proc_initialize(module_info::in,module_info::out,
+:- pred dead_proc_initialize(module_info::in,
     entity_queue::out, needed_map::out) is det.
 
-dead_proc_initialize(!ModuleInfo, !:Queue, !:Needed) :-
+dead_proc_initialize(ModuleInfo, !:Queue, !:Needed) :-
     !:Queue = queue.init,
     !:Needed = map.init,
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
-    module_info_get_preds(!.ModuleInfo, PredTable),
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+    module_info_get_preds(ModuleInfo, PredTable),
     dead_proc_initialize_preds(PredIds, PredTable, !Queue, !Needed),
 
-    module_info_get_pragma_exported_procs(!.ModuleInfo, PragmaExports),
-    dead_proc_initialize_pragma_exports(PragmaExports, !Queue, !Needed),
+    module_info_get_pragma_exported_procs(ModuleInfo, PragmaExports),
+    dead_proc_initialize_pragma_exports(cord.list(PragmaExports),
+        !Queue, !Needed),
 
-    module_info_user_init_pred_procs(!.ModuleInfo, InitProcs),
+    module_info_user_init_pred_procs(ModuleInfo, InitProcs),
     dead_proc_initialize_init_fn_procs(InitProcs, !Queue, !Needed),
 
-    module_info_user_final_pred_procs(!.ModuleInfo, FinalPreds),
+    module_info_user_final_pred_procs(ModuleInfo, FinalPreds),
     dead_proc_initialize_init_fn_procs(FinalPreds, !Queue, !Needed),
 
-    module_info_get_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos),
+    module_info_get_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
     dead_proc_initialize_type_ctor_infos(TypeCtorGenInfos, !Queue, !Needed),
 
-    module_info_get_class_table(!.ModuleInfo, Classes),
-    module_info_get_instance_table(!.ModuleInfo, Instances),
+    module_info_get_class_table(ModuleInfo, Classes),
+    module_info_get_instance_table(ModuleInfo, Instances),
     dead_proc_initialize_class_methods(Classes, Instances, !Queue, !Needed).
 
     % Add all normally exported procedures within the listed predicates
@@ -735,7 +736,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
     module_info::in, module_info::out, list(error_spec)::out) is det.
 
 dead_proc_eliminate(ElimOptImported, !.Needed, !ModuleInfo, Specs) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     Changed0 = no,
     ProcElimInfo0 = proc_elim_info(!.Needed, !.ModuleInfo, PredTable0,
@@ -993,7 +994,7 @@ dead_pred_elim(!ModuleInfo) :-
     queue.init(Queue0),
     map.init(Needed0),
     module_info_get_pragma_exported_procs(!.ModuleInfo, PragmaExports),
-    dead_proc_initialize_pragma_exports(PragmaExports, Queue0, _,
+    dead_proc_initialize_pragma_exports(cord.list(PragmaExports), Queue0, _,
         Needed0, Needed1),
 
     % The goals for the class method procs need to be examined because
@@ -1009,7 +1010,7 @@ dead_pred_elim(!ModuleInfo) :-
     list.foldl2(dead_pred_elim_add_entity, Entities, Queue1, Queue,
         NeededPreds0, NeededPreds1),
 
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
 
     Preds0 = set_tree234.init,
     Names0 = set_tree234.init,

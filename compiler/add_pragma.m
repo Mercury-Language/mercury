@@ -85,6 +85,7 @@
 :- import_module bag.
 :- import_module bimap.
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module io.
 :- import_module list.
@@ -123,15 +124,19 @@ add_pass_2_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
     (
         Pragma = pragma_foreign_decl(FDInfo),
         FDInfo = pragma_info_foreign_decl(Lang, IsLocal, C_Header),
-        module_add_foreign_decl(Lang, IsLocal, C_Header, Context, !ModuleInfo)
+        ForeignDeclCode = foreign_decl_code(Lang, IsLocal, C_Header, Context),
+        module_add_foreign_decl_code(ForeignDeclCode, !ModuleInfo)
     ;
         Pragma = pragma_foreign_code(FCInfo),
         FCInfo = pragma_info_foreign_code(Lang, Body_Code),
-        module_add_foreign_body_code(Lang, Body_Code, Context, !ModuleInfo)
+        ForeignBodyCode = foreign_body_code(Lang, Body_Code, Context),
+        module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
     ;
         Pragma = pragma_foreign_import_module(FIMInfo),
         FIMInfo = pragma_info_foreign_import_module(Lang, Import),
-        module_add_foreign_import_module(Lang, Import, Context, !ModuleInfo)
+        ForeignImportModule =
+            foreign_import_module_info(Lang, Import, Context),
+        module_add_foreign_import_module(ForeignImportModule, !ModuleInfo)
     ;
         Pragma = pragma_inline(PredNameArity),
         PredNameArity = pred_name_arity(Name, Arity),
@@ -494,7 +499,7 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
                 NewExportedProc = pragma_exported_proc(Lang,
                     PredId, ProcId, ExportedName, Context),
                 PragmaExportedProcs =
-                    [NewExportedProc | PragmaExportedProcs0],
+                    cord.snoc(PragmaExportedProcs0, NewExportedProc),
                 module_info_set_pragma_exported_procs(PragmaExportedProcs,
                     !ModuleInfo)
             ;
@@ -2488,9 +2493,10 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
         NeedsStrat = eval_method_needs_stratification(EvalMethod),
         (
             NeedsStrat = yes,
-            module_info_get_stratified_preds(!.ModuleInfo, StratPredIds0),
+            module_info_get_must_be_stratified_preds(!.ModuleInfo,
+                StratPredIds0),
             set.insert(PredId, StratPredIds0, StratPredIds),
-            module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
+            module_info_set_must_be_stratified_preds(StratPredIds, !ModuleInfo)
         ;
             NeedsStrat = no
         ),
@@ -3242,8 +3248,9 @@ add_pragma_fact_table(FTInfo, Status, Context, !ModuleInfo, !Specs) :-
             adjust_func_arity(PredOrFunc, Arity, NumArgs),
 
             % Create foreign_decls to declare extern variables.
-            module_add_foreign_decl(lang_c, foreign_decl_is_local,
-                literal(C_HeaderCode), Context, !ModuleInfo),
+            ForeignDeclCode = foreign_decl_code(lang_c, foreign_decl_is_local,
+                literal(C_HeaderCode), Context),
+            module_add_foreign_decl_code(ForeignDeclCode, !ModuleInfo),
 
             module_add_fact_table_file(FileName, !ModuleInfo),
 
@@ -3324,8 +3331,9 @@ add_fact_table_proc(ProcId, PrimaryProcId, ProcTable, SymName,
     ( C_ExtraCode = "" ->
         true
     ;
-        module_add_foreign_body_code(lang_c, literal(C_ExtraCode), Context,
-            !ModuleInfo)
+        ForeignBodyCode = foreign_body_code(lang_c, literal(C_ExtraCode),
+            Context),
+        module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
     ),
 
     % The C code for fact tables includes C labels; we cannot inline this code,

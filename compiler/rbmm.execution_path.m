@@ -50,7 +50,7 @@
 %
 
 execution_path_analysis(ModuleInfo, ExecPathTable) :-
-    module_info_get_valid_predids(PredIds, ModuleInfo, _),
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     map.init(ExecPathTable0),
     list.foldl(execution_path_analysis_pred(ModuleInfo), PredIds,
         ExecPathTable0, ExecPathTable).

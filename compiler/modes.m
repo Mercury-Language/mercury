@@ -171,6 +171,7 @@
 :- import_module maybe.
 :- import_module queue.
 :- import_module require.
+:- import_module set_tree234.
 :- import_module string.
 :- import_module term.
 
@@ -193,7 +194,7 @@ modecheck_module(ModuleInfo0, {ModuleInfo, SafeToContinue, Specs}) :-
 
 check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
         SafeToContinue, !:Specs) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_int_option(Globals, mode_inference_iteration_limit,
         MaxIterations),
@@ -204,7 +205,7 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
         InferenceSpecs = report_mode_inference_messages(!.ModuleInfo,
             include_detism_on_modes, PredIds),
         !:Specs = InferenceSpecs ++ !.Specs,
-        check_eval_methods(!ModuleInfo, !Specs),
+        check_eval_methods(!.ModuleInfo, !Specs),
         SafeToContinue = SafeToContinue0
     ;
         WhatToCheck = check_modes,
@@ -517,7 +518,7 @@ maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
         ContainsError = contains_errors(Globals, ThisPredProcSpecs),
         (
             ContainsError = yes,
-            module_info_remove_predid(PredId, !ModuleInfo)
+            module_info_make_pred_id_invalid(PredId, !ModuleInfo)
         ;
             ContainsError = no
         ),
@@ -974,8 +975,8 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
         % XXX inefficient! This is O(N*M).
 
         PredProcId = proc(PredId, _ProcId),
-        module_info_get_valid_predids(ValidPredIds, !ModuleInfo),
-        ( list.member(PredId, ValidPredIds) ->
+        module_info_get_valid_pred_id_set(!.ModuleInfo, ValidPredIds),
+        ( set_tree234.member(PredId, ValidPredIds) ->
             trace [io(!IO)] (
                 queued_proc_progress_message(!.ModuleInfo, PredProcId,
                     HowToCheckGoal, !IO)
@@ -1050,7 +1051,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
     ModeErrors = contains_errors(Globals, ModeSpecs),
     (
         ModeErrors = yes,
-        module_info_remove_predid(PredId, !ModuleInfo),
+        module_info_make_pred_id_invalid(PredId, !ModuleInfo),
         Specs = ModeSpecs
     ;
         ModeErrors = no,
@@ -1385,12 +1386,12 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, GroundMatchesBound,
     % Check that the evaluation method is OK for the given mode(s).
     % We also check the mode of main/2 here.
     %
-:- pred check_eval_methods(module_info::in, module_info::out,
+:- pred check_eval_methods(module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_eval_methods(!ModuleInfo, !Specs) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
-    pred_check_eval_methods(!.ModuleInfo, PredIds, !Specs).
+check_eval_methods(ModuleInfo, !Specs) :-
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+    pred_check_eval_methods(ModuleInfo, PredIds, !Specs).
 
 :- pred pred_check_eval_methods(module_info::in, list(pred_id)::in,
     list(error_spec)::in, list(error_spec)::out) is det.

@@ -81,7 +81,7 @@
 
 record_region_arguments(ModuleInfo, RptaInfoTable, ConstantRTable,
         DeadRTable, BornRTable, FormalRegionArgTable, ActualRegionArgTable) :-
-    module_info_get_valid_predids(PredIds, ModuleInfo, _),
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     list.foldl2(record_actual_region_arguments_pred(ModuleInfo,
         RptaInfoTable, ConstantRTable, DeadRTable, BornRTable),
         PredIds, map.init, FormalRegionArgTable,

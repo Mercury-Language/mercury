@@ -84,8 +84,9 @@ check_module_for_stratification(!ModuleInfo, Specs) :-
     dep_sets_to_lists_and_sets(FOSCCs1, [], FOSCCs),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, warn_non_stratification, Warn),
-    module_info_get_stratified_preds(!.ModuleInfo, StratifiedPreds),
-    first_order_check_sccs(FOSCCs, StratifiedPreds, Warn, !.ModuleInfo,
+    module_info_get_must_be_stratified_preds(!.ModuleInfo,
+        MustBeStratifiedPreds),
+    first_order_check_sccs(FOSCCs, MustBeStratifiedPreds, Warn, !.ModuleInfo,
         [], Specs).
 
     % The following code was used for the second pass of this module but
@@ -93,7 +94,7 @@ check_module_for_stratification(!ModuleInfo, Specs) :-
     % is disabled because it is currently unable to detect cases where a
     % higher order proc is hidden in some complex data structure.
     %
-    % gen_conservative_graph(!ModuleInfo, DepGraph0, DepGraph, HOInfo),
+    % gen_conservative_graph(!.ModuleInfo, DepGraph0, DepGraph, HOInfo),
     % digraph.atsort(DepGraph, HOSCCs1),
     % dep_sets_to_lists_and_sets(HOSCCs1, [], HOSCCs),
     % higher_order_check_sccs(HOSCCs, HOInfo, ModuleInfo, !Specs).
@@ -124,21 +125,22 @@ get_proc_id(proc(PredId, _), PredId).
     list(error_spec)::in, list(error_spec)::out) is det.
 
 first_order_check_sccs([], _, _, _, !Specs).
-first_order_check_sccs([SCCl - SCCs | Rest], StratifiedPreds, Warn0,
+first_order_check_sccs([HeadSCC| TailSCCs], MustBeStratifiedPreds, Warn,
         ModuleInfo, !Specs) :-
-    set.intersect(SCCs, StratifiedPreds, Intersection),
-    ( set.is_empty(Intersection) ->
-        Warn = Warn0
-    ;
-        Warn = yes
-    ),
+    HeadSCC = HeadSCCProcs - HeadSCCPreds,
+    set.intersect(HeadSCCPreds, MustBeStratifiedPreds,
+        MustBeStratifiedPredsInScc),
     (
-        Warn = yes,
-        first_order_check_scc(SCCl, is_warning, ModuleInfo, !Specs)
+        ( Warn = yes
+        ; set.is_non_empty(MustBeStratifiedPredsInScc)
+        )
+    ->
+        first_order_check_scc(HeadSCCProcs, is_warning, ModuleInfo, !Specs)
     ;
-        Warn = no
+        true
     ),
-    first_order_check_sccs(Rest, StratifiedPreds, Warn0, ModuleInfo, !Specs).
+    first_order_check_sccs(TailSCCs, MustBeStratifiedPreds, Warn,
+        ModuleInfo, !Specs).
 
 :- pred first_order_check_scc(list(pred_proc_id)::in, error_or_warning::in,
     module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
@@ -284,9 +286,11 @@ first_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
     module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 higher_order_check_sccs([], _HOInfo, _ModuleInfo, !Specs).
-higher_order_check_sccs([SCCl - SCCs | Rest], HOInfo, ModuleInfo, !Specs) :-
-    higher_order_check_scc(SCCl, SCCs, HOInfo, ModuleInfo, !Specs),
-    higher_order_check_sccs(Rest, HOInfo, ModuleInfo, !Specs).
+higher_order_check_sccs([HeadSCC | TailSCCs], HOInfo, ModuleInfo, !Specs) :-
+    HeadSCC = HeadSCCProcs - HeadSCCPreds,
+    higher_order_check_scc(HeadSCCProcs, HeadSCCPreds, HOInfo, ModuleInfo,
+        !Specs),
+    higher_order_check_sccs(TailSCCs, HOInfo, ModuleInfo, !Specs).
 
 :- pred higher_order_check_scc(list(pred_proc_id)::in, set(pred_proc_id)::in,
     ho_map::in, module_info::in, list(error_spec)::in, list(error_spec)::out)
@@ -486,11 +490,11 @@ higher_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
     % a new dependency graph with all possible higher order calls added.
     % It also returns a map of all the higher order info it collects.
     %
-:- pred gen_conservative_graph(module_info::in, module_info::out,
+:- pred gen_conservative_graph(module_info::in,
     dependency_graph::in, dependency_graph::out, ho_map::out) is det.
 
-gen_conservative_graph(!ModuleInfo, !DepGraph, HOInfo) :-
-    get_call_info(!ModuleInfo, ProcCalls, HOInfo0, CallsHO),
+gen_conservative_graph(ModuleInfo, !DepGraph, HOInfo) :-
+    get_call_info(ModuleInfo, ProcCalls, HOInfo0, CallsHO),
     map.keys(ProcCalls, Callers),
     iterate_solution(Callers, ProcCalls, CallsHO, HOInfo0, HOInfo),
     map.to_assoc_list(HOInfo, HOInfoL),
@@ -501,15 +505,15 @@ gen_conservative_graph(!ModuleInfo, !DepGraph, HOInfo) :-
     % This pred also returns a set of all non imported procedures that
     % make a higher order call.
     %
-:- pred get_call_info(module_info::in, module_info::out, call_map::out,
+:- pred get_call_info(module_info::in, call_map::out,
     ho_map::out, set(pred_proc_id)::out) is det.
 
-get_call_info(!ModuleInfo, !:ProcCalls, !:HOInfo, !:CallsHO) :-
+get_call_info(ModuleInfo, !:ProcCalls, !:HOInfo, !:CallsHO) :-
     map.init(!:ProcCalls),
     map.init(!:HOInfo),
     set.init(!:CallsHO),
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
-    expand_predids(PredIds, !.ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+    expand_predids(PredIds, ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
 
     % Finds the transitive closure of a given list of procedures.
     % This pred is used to see how face(???) a higher order address

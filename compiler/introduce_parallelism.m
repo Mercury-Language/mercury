@@ -107,7 +107,7 @@ do_apply_implicit_parallelism_transformation(SourceFileMap, Specs,
             ParallelismInfo)
     ->
         % Retrieve and process predicates.
-        module_info_get_valid_predids(PredIds, !ModuleInfo),
+        module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
         predicate_table_get_preds(PredTable0, PredMap0),
         list.foldl4(maybe_parallelise_pred(ParallelismInfo),

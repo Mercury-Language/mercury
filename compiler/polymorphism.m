@@ -4056,7 +4056,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
         % flow-on errors. We also mark the predicate as invalid, also to avoid
         % flow-on errors.
         Detism = detism_non,
-        module_info_remove_predid(PredId, !ModuleInfo)
+        module_info_make_pred_id_invalid(PredId, !ModuleInfo)
     ),
 
     % Work out which argument corresponds to the constraint which is introduced

@@ -32,6 +32,7 @@
 
 :- import_module assoc_list.
 :- import_module char.
+:- import_module cord.
 :- import_module bool.
 :- import_module list.
 :- import_module map.
@@ -993,8 +994,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 
 :- interface.
 
-    % In reverse order.
-:- type foreign_import_module_info_list  == list(foreign_import_module_info).
+:- type foreign_import_module_infos == cord(foreign_import_module_info).
 
 :- type foreign_import_module_info
     --->    foreign_import_module_info(
@@ -1010,8 +1010,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 
 :- interface.
 
-    % In reverse order.
-:- type foreign_include_file_info_list == list(foreign_include_file_info).
+:- type foreign_include_file_infos == cord(foreign_include_file_info).
 
 :- type foreign_include_file_info
     --->    foreign_include_file_info(

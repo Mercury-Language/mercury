@@ -133,8 +133,8 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
     Module = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, ParentDeps, IntDeps, ImplDeps, IndirectDeps,
         _Children, InclDeps, NestedDeps, FactDeps0,
-        ContainsForeignCode, ForeignImports0, ForeignIncludeFiles,
-        _ContainsForeignExport,
+        ForeignImportsCord0, ForeignIncludeFilesCord,
+        ContainsForeignCode, _ContainsForeignExport,
         Items, _Specs, _Error, _Timestamps, _HasMain, _Dir),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -300,6 +300,7 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             list.foldl(Write, NestedExts, !IO)
         ),
 
+        ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
         % This is conservative: a target file for foreign language A does not
         % does not truly depend on a file included for foreign language B.
         write_foreign_include_file_dependencies_list(DepStream,
@@ -548,26 +549,27 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
 
         (
             ContainsForeignCode = contains_foreign_code(LangSet),
-            ForeignImports = ForeignImports0
+            ForeignImportsCord = ForeignImportsCord0
         ;
             ContainsForeignCode = contains_foreign_code_unknown,
             get_item_list_foreign_code(Globals, cord.list(Items), LangSet,
-                ForeignImports1, _, _),
-            % If we're generating the `.dep' file, ForeignImports0 will contain
-            % a conservative approximation to the set of foreign imports
-            % needed which will include imports required by imported modules.
-            (
-                ForeignImports0 = [],
-                ForeignImports = ForeignImports1
+                ForeignImportsCord1, _, _),
+            % If we are generating the `.dep' file, ForeignImports0
+            % will contain a conservative approximation to the set of
+            % foreign imports needed which will include imports
+            % required by imported modules.
+            ( cord.is_empty(ForeignImportsCord0) ->
+                ForeignImportsCord = ForeignImportsCord1
             ;
-                ForeignImports0 = [_ | _],
-                ForeignImports = ForeignImports0
+                ForeignImportsCord = ForeignImportsCord0
             )
         ;
             ContainsForeignCode = contains_no_foreign_code,
             set.init(LangSet),
-            ForeignImports = ForeignImports0
+            ForeignImportsCord = ForeignImportsCord0
         ),
+
+        ForeignImports = cord.list(ForeignImportsCord),
 
         % Handle dependencies introduced by
         % `:- pragma foreign_import_module' declarations.
@@ -886,7 +888,7 @@ write_dll_dependency(Globals, Module, Prefix, DepStream, !IO) :-
     io.write_string(DepStream, FileName, !IO).
 
 :- pred write_foreign_include_file_dependencies_list(io.output_stream::in,
-    file_name::in, foreign_include_file_info_list::in, io::di, io::uo) is det.
+    file_name::in, list(foreign_include_file_info)::in, io::di, io::uo) is det.
 
 write_foreign_include_file_dependencies_list(DepStream, SourceFileName,
         IncludeFiles, !IO) :-
@@ -959,7 +961,7 @@ write_file_dependencies_list([FileName | FileNames], Suffix, DepStream, !IO) :-
     % scripts/Mmake.rules).
     %
 :- pred write_foreign_dependency_for_il(globals::in, io.output_stream::in,
-    sym_name::in, list(module_name)::in, foreign_import_module_info_list::in,
+    sym_name::in, list(module_name)::in, list(foreign_import_module_info)::in,
     foreign_language::in, io::di, io::uo) is det.
 
 write_foreign_dependency_for_il(Globals, DepStream, ModuleName, AllDeps,
@@ -1077,11 +1079,11 @@ generate_dependencies_write_d_files(Globals, [Dep | Deps],
         ),
 
         globals.get_target(Globals, Target),
-        ( Target = target_c, Lang = lang_c
-        ; Target = target_java, Lang = lang_java
-        ; Target = target_csharp, Lang = lang_csharp
-        ; Target = target_il, Lang = lang_il
-        ; Target = target_erlang, Lang = lang_erlang
+        ( Target = target_c,        Lang = lang_c
+        ; Target = target_java,     Lang = lang_java
+        ; Target = target_csharp,   Lang = lang_csharp
+        ; Target = target_il,       Lang = lang_il
+        ; Target = target_erlang,   Lang = lang_erlang
         ),
         % Assume we need the `.mh' files for all imported modules
         % (we will if they define foreign types).
@@ -1089,7 +1091,7 @@ generate_dependencies_write_d_files(Globals, [Dep | Deps],
             (func(ThisDep) = foreign_import_module_info(Lang, ThisDep,
                 term.context_init)),
             IndirectOptDeps),
-        !Module ^ mai_foreign_import_modules := ForeignImports,
+        !Module ^ mai_foreign_import_modules := cord.from_list(ForeignImports),
 
         module_and_imports_set_int_deps(IntDeps, !Module),
         module_and_imports_set_impl_deps(ImplDeps, !Module),

@@ -792,7 +792,7 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
 
     % Construct the initial module import structure.
     init_module_and_imports(SourceFileName, SourceFileModuleName, ModuleName,
-        Items0, [], [], [], [], [], no, !:Module),
+        Items0, [], [], [], [], cord.init, no, !:Module),
 
     % Add `builtin' and `private_builtin', and any other builtin modules
     % needed by any of the items, to the imported modules.
@@ -918,7 +918,6 @@ split_clauses_and_decls([Item | Items], !:ClauseItems, !:InterfaceItems) :-
 
 warn_if_import_self_or_ancestor(ModuleName, FileName, AncestorModules,
         ImportedModules, UsedModules, !Specs) :-
-    % ZZZ
     IsImportedAncestor = (pred(Import::out) is nondet :-
         list.member(Import, AncestorModules),
         ( list.member(Import, ImportedModules)
@@ -1240,7 +1239,7 @@ process_module_short_interfaces(Globals, HaveReadModuleMap, [Import | Imports],
 :- pred init_module_and_imports(file_name::in,
     module_name::in, module_name::in, list(item)::in, list(error_spec)::in,
     list(module_name)::in, list(module_name)::in, list(string)::in,
-    foreign_include_file_info_list::in,
+    foreign_include_file_infos::in,
     maybe(module_timestamps)::in, module_and_imports::out) is det.
 
 init_module_and_imports(SourceFileName, SourceFileModuleName, ModuleName,
@@ -1254,9 +1253,10 @@ init_module_and_imports(SourceFileName, SourceFileModuleName, ModuleName,
     set.init(Errors),
     Module = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, [], [], [], [], [], PublicChildren,
-        NestedChildren, FactDeps, contains_foreign_code_unknown, [],
-        ForeignIncludeFiles, contains_no_foreign_export, ItemsCord, Specs,
-        Errors, MaybeTimestamps, no_main, dir.this_directory).
+        NestedChildren, FactDeps, cord.init, ForeignIncludeFiles,
+        contains_foreign_code_unknown, contains_no_foreign_export,
+        ItemsCord, Specs, Errors, MaybeTimestamps,
+        no_main, dir.this_directory).
 
 %-----------------------------------------------------------------------------%
 

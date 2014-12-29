@@ -162,7 +162,7 @@ untuple_arguments(!ModuleInfo, !IO) :-
     transform_map::out) is det.
 
 expand_args_in_module(!ModuleInfo, TransformMap) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl3(expand_args_in_pred, PredIds,
         !ModuleInfo, map.init, TransformMap, counter.init(0), _).
 
@@ -457,7 +457,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     module_info::out) is det.
 
 fix_calls_to_expanded_procs(TransformMap, !ModuleInfo) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl(fix_calls_in_pred(TransformMap), PredIds, !ModuleInfo).
 
 :- pred fix_calls_in_pred(transform_map::in, pred_id::in, module_info::in,

@@ -344,10 +344,10 @@ get_il_data_rep(Globals, ILDataRep) :-
 
 has_foreign_code_defined(ForeignCodeMap, Lang) :-
     ForeignCode = map.search(ForeignCodeMap, Lang),
-    ForeignCode = mlds_foreign_code(Decls, Imports, Codes, Exports),
-    ( Decls = [_ | _]
+    ForeignCode = mlds_foreign_code(DeclCodes, BodyCodes, Imports, Exports),
+    ( DeclCodes = [_ | _]
+    ; BodyCodes = [_ | _]
     ; Imports = [_ | _]
-    ; Codes = [_ | _]
     ; Exports = [_ | _]
     ).
 

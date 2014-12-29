@@ -223,7 +223,7 @@
 %-----------------------------------------------------------------------------%
 
 puritycheck_module(!ModuleInfo, !Specs) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     check_preds_purity(PredIds, !ModuleInfo, !Specs).
 
 :- pred check_preds_purity(list(pred_id)::in,

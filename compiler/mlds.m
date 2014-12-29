@@ -956,9 +956,9 @@
     %
 :- type mlds_foreign_code
     --->    mlds_foreign_code(
-                foreign_decl_info,
-                foreign_import_module_info_list,
-                list(user_foreign_code),
+                list(foreign_decl_code),
+                list(foreign_body_code),
+                list(foreign_import_module_info),
                 list(mlds_pragma_export)
             ).
 

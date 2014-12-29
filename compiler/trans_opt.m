@@ -145,7 +145,7 @@ write_trans_opt_file(ModuleInfo, !IO) :-
         % Select all the predicates for which something should be written
         % into the .trans_opt file.
 
-        module_info_get_valid_predids(PredIds, ModuleInfo, _UpdatedModuleInfo),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
         PredIdsSet = set.from_list(PredIds),
         module_info_get_structure_reuse_preds(ModuleInfo, ReusePredsSet),
         PredIdsNoReusePredsSet = set.difference(PredIdsSet, ReusePredsSet),

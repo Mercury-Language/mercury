@@ -189,7 +189,7 @@ analyse_exceptions_in_module(!ModuleInfo, !IO) :-
     (
         MakeAnalysisReg = yes,
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
-        module_info_get_valid_predids(PredIds, !ModuleInfo),
+        module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
         list.foldl(maybe_record_exception_result(!.ModuleInfo),
             PredIds, AnalysisInfo0, AnalysisInfo),
         module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
@@ -1239,7 +1239,7 @@ make_optimization_interface(ModuleInfo, !IO) :-
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
         module_info_get_exception_info(ModuleInfo, ExceptionInfo),
-        module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
         list.foldl(write_pragma_exceptions(ModuleInfo, ExceptionInfo),
             PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),

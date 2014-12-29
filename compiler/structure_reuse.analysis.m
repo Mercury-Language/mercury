@@ -275,7 +275,7 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
         MakeOptInt = yes,
         IntermodAnalysis = no
     ->
-        make_opt_int(!ModuleInfo, !IO)
+        make_opt_int(!.ModuleInfo, !IO)
     ;
         true
     ),
@@ -496,7 +496,7 @@ maybe_create_forwarding_procedures_intermod_analysis(ReuseTable, PredProcId,
 :- pred process_imported_reuse(module_info::in, module_info::out) is det.
 
 process_imported_reuse(!ModuleInfo):-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl(process_imported_reuse_in_pred, PredIds, !ModuleInfo).
 
 :- pred process_imported_reuse_in_pred(pred_id::in, module_info::in,
@@ -571,7 +571,7 @@ process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
 
 process_intermod_analysis_reuse(!ModuleInfo, ReuseTable, ExternalRequests,
         MustHaveReuseVersions) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl4(process_intermod_analysis_reuse_pred, PredIds,
         !ModuleInfo, reuse_as_table_init, ReuseTable, [], ExternalRequests0,
         [], MustHaveReuseVersions),
@@ -766,11 +766,11 @@ annotate_in_use_information(ModuleInfo, !ProcInfo) :-
 % Code for writing out optimization interfaces
 %
 
-:- pred make_opt_int(module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred make_opt_int(module_info::in, io::di, io::uo) is det.
 
-make_opt_int(!ModuleInfo, !IO) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    module_info_get_name(!.ModuleInfo, ModuleName),
+make_opt_int(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
         do_not_create_dirs, OptFileName, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -783,8 +783,8 @@ make_opt_int(!ModuleInfo, !IO) :-
     (
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_valid_predids(PredIds, !ModuleInfo),
-        list.foldl(write_pred_reuse_info(!.ModuleInfo), PredIds, !IO),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+        list.foldl(write_pred_reuse_info(ModuleInfo), PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(OptFile, !IO),
         maybe_write_string(Verbose, " done.\n", !IO)

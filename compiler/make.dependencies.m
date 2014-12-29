@@ -190,6 +190,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module dir.
 :- import_module solutions.
 
@@ -969,8 +970,9 @@ find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
     get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
+        ForeignModulesInfoCord = Imports ^ mai_foreign_import_modules,
         ForeignModulesList = get_foreign_imported_modules_lang(Languages,
-            Imports ^ mai_foreign_import_modules),
+            cord.list(ForeignModulesInfoCord)),
         module_names_to_index_set(ForeignModulesList, ForeignModules, !Info),
         Success = yes
     ;
@@ -979,20 +981,20 @@ find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
         Success = no
     ).
 
-:- func get_foreign_imported_modules(foreign_import_module_info_list) =
+:- func get_foreign_imported_modules(list(foreign_import_module_info)) =
     list(module_name).
 
 get_foreign_imported_modules(ForeignImportModules) =
     get_foreign_imported_modules_2(no, ForeignImportModules).
 
 :- func get_foreign_imported_modules_lang(set(foreign_language),
-    foreign_import_module_info_list) = list(module_name).
+    list(foreign_import_module_info)) = list(module_name).
 
 get_foreign_imported_modules_lang(Languages, ForeignImportModules) =
     get_foreign_imported_modules_2(yes(Languages), ForeignImportModules).
 
 :- func get_foreign_imported_modules_2(maybe(set(foreign_language)),
-    foreign_import_module_info_list) = list(module_name).
+    list(foreign_import_module_info)) = list(module_name).
 
 get_foreign_imported_modules_2(MaybeLanguages, ForeignImportModules) =
     list.filter_map(get_foreign_imported_modules_3(MaybeLanguages),
@@ -1030,10 +1032,11 @@ foreign_imports_lang(Lang, Globals, ModuleIndex, Success, Modules,
     get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
+        ForeignModulesInfoCord = Imports ^ mai_foreign_import_modules,
         list.filter_map(
             (pred(FI::in, M::out) is semidet :-
                 FI = foreign_import_module_info(Lang, M, _)
-            ), Imports ^ mai_foreign_import_modules, ModulesList),
+            ), cord.list(ForeignModulesInfoCord), ModulesList),
         module_names_to_index_set(ModulesList, Modules, !Info),
         Success = yes
     ;
@@ -1119,9 +1122,9 @@ foreign_include_files(Globals, ModuleIndex, Success, Files, !Info, !IO) :-
         MaybeImports = yes(Imports),
         Success = yes,
         SourceFileName = Imports ^ mai_source_file_name,
-        ForeignIncludeFiles = Imports ^ mai_foreign_include_files,
+        ForeignIncludeFilesCord = Imports ^ mai_foreign_include_files,
         FilesList = get_foreign_include_files(set.from_list(Languages),
-            SourceFileName, ForeignIncludeFiles),
+            SourceFileName, cord.list(ForeignIncludeFilesCord)),
         Files = set.from_list(FilesList)
     ;
         MaybeImports = no,
@@ -1130,7 +1133,7 @@ foreign_include_files(Globals, ModuleIndex, Success, Files, !Info, !IO) :-
     ).
 
 :- func get_foreign_include_files(set(foreign_language), file_name,
-    foreign_include_file_info_list) = list(dependency_file).
+    list(foreign_include_file_info)) = list(dependency_file).
 
 get_foreign_include_files(Languages, SourceFileName, ForeignIncludes)
         = Files :-
@@ -1264,7 +1267,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                         Imports ^ mai_parent_deps,
                         Imports ^ mai_children,
                         get_foreign_imported_modules(
-                            Imports ^ mai_foreign_import_modules)
+                            cord.list(Imports ^ mai_foreign_import_modules))
                     ])
                 ;
                     DependenciesType = all_imports,
@@ -1273,7 +1276,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                         Imports ^ mai_impl_deps,
                         Imports ^ mai_parent_deps,
                         get_foreign_imported_modules(
-                            Imports ^ mai_foreign_import_modules)
+                            cord.list(Imports ^ mai_foreign_import_modules))
                     ])
                 ),
                 module_names_to_index_set(ImportsToCheck, ImportsToCheckSet,

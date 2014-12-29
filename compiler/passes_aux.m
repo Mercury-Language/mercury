@@ -230,7 +230,7 @@
 %-----------------------------------------------------------------------------%
 
 process_all_nonimported_preds_errors(Task, !ModuleInfo, !Specs, !IO) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl2(process_nonimported_pred(Task), PredIds, !ModuleInfo, !Specs).
 
 :- pred process_nonimported_pred(update_pred_task::in(update_pred_task),
@@ -272,7 +272,7 @@ process_all_nonimported_procs(Task, !ModuleInfo) :-
     process_all_nonimported_procs_update(Task, _, !ModuleInfo).
 
 process_all_nonimported_procs_update(!Task, !ModuleInfo) :-
-    module_info_get_valid_predids(ValidPredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
     (
         ( !.Task = update_proc(_)
         ; !.Task = update_proc_ids(_)

@@ -121,7 +121,7 @@ introduce_region_instructions(ModuleInfo, RptaInfoTable, ExecPathTable,
         DeadRTable, LocalRTable,
         BecomeLiveTable, BecomeDeadBeforeTable, BecomeDeadAfterTable,
         RegionInstructionTable) :-
-    module_info_get_valid_predids(PredIds, ModuleInfo, _),
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     list.foldl4(introduce_region_instructions_pred(ModuleInfo,
         RptaInfoTable, ExecPathTable, LRBeforeTable, LRAfterTable,
         VoidVarRegionTable, BornRTable, DeadRTable, LocalRTable), PredIds,

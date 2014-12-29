@@ -131,6 +131,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module io.
 :- import_module map.
 :- import_module pair.
@@ -142,7 +143,7 @@
 %-----------------------------------------------------------------------------%
 
 determinism_pass(!ModuleInfo, Specs) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     determinism_declarations(!.ModuleInfo, PredIds,
         DeclaredProcs, UndeclaredProcs, NoInferProcs),
     list.foldl(set_non_inferred_proc_determinism, NoInferProcs, !ModuleInfo),
@@ -355,7 +356,12 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % pragma exported procs that have been declared to have these determinisms
     % should have been picked up in make_hlds, so this is just to catch those
     % whose determinisms need to be inferred.
-    module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcs),
+    module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcsCord0),
+    ExportedProcs = cord.list(ExportedProcsCord0),
+    ExportedProcsCord = cord.from_list(ExportedProcs),
+    % So that any later conversion from cord to list will do nothing
+    % except take off the cord wrapper.
+    module_info_set_pragma_exported_procs(ExportedProcsCord, !ModuleInfo),
     (
         list.member(pragma_exported_proc(_, PredId, ProcId, _, _),
             ExportedProcs),

@@ -302,12 +302,10 @@ do_write_module_dep_file(Globals, Imports, !IO) :-
     module_dep_file_version::out) is det.
 
 choose_module_dep_file_version(Imports, Version) :-
-    ForeignIncludeFiles = Imports ^ mai_foreign_include_files,
-    (
-        ForeignIncludeFiles = [],
+    ForeignIncludeFilesCord = Imports ^ mai_foreign_include_files,
+    ( cord.is_empty(ForeignIncludeFilesCord) ->
         Version = module_dep_file_v1
     ;
-        ForeignIncludeFiles = [_ | _],
         Version = module_dep_file_v2
     ).
 
@@ -350,7 +348,7 @@ do_write_module_dep_file_2(Imports, Version, !IO) :-
     io.write_list(ForeignLanguages,
         ", ", mercury_output_foreign_language_string, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(Imports ^ mai_foreign_import_modules,
+    io.write_list(cord.list(Imports ^ mai_foreign_import_modules),
         ", ", write_foreign_import_module_info, !IO),
     io.write_string("},\n\t", !IO),
     contains_foreign_export_to_string(Imports ^ mai_contains_foreign_export,
@@ -364,7 +362,7 @@ do_write_module_dep_file_2(Imports, Version, !IO) :-
     ;
         Version = module_dep_file_v2,
         io.write_string(",\n\t{", !IO),
-        io.write_list(list.reverse(Imports ^ mai_foreign_include_files),
+        io.write_list(cord.list(Imports ^ mai_foreign_include_files),
             ", ", write_foreign_include_file_info, !IO),
         io.write_string("}", !IO)
     ),
@@ -546,8 +544,8 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         Imports = module_and_imports(SourceFileName, SourceFileModuleName,
             ModuleName, Parents, IntDeps, ImplDeps, IndirectDeps,
             Children, PublicChildren, NestedChildren, FactDeps,
-            ContainsForeignCode, ForeignImports, ForeignIncludes,
-            ContainsForeignExport,
+            cord.from_list(ForeignImports), cord.from_list(ForeignIncludes),
+            ContainsForeignCode, ContainsForeignExport,
             Items, Specs, Errors, MaybeTimestamps, HasMain, ModuleDir),
 
         % Discard the module dependencies if the module is a local module

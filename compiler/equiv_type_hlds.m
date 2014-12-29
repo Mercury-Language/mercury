@@ -82,7 +82,7 @@ replace_in_hlds(!ModuleInfo) :-
     replace_in_cons_table(EqvMap, ConsTable0, ConsTable),
     module_info_set_cons_table(ConsTable, !ModuleInfo),
 
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl2(replace_in_pred(EqvMap), PredIds, !ModuleInfo, InstCache, _).
 
 %-----------------------------------------------------------------------------%

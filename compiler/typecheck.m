@@ -153,8 +153,8 @@ typecheck_module(!ModuleInfo, Specs, ExceededIterationLimit) :-
     globals.lookup_int_option(Globals, type_inference_iteration_limit,
         MaxIterations),
 
-    module_info_get_valid_predids(OrigValidPredIds, !ModuleInfo),
-    OrigValidPredIdSet = set_tree234.list_to_set(OrigValidPredIds),
+    module_info_get_valid_pred_id_set(!.ModuleInfo, OrigValidPredIdSet),
+    OrigValidPredIds = set_tree234.to_sorted_list(OrigValidPredIdSet),
 
     module_info_get_preds(!.ModuleInfo, PredMap0),
     map.to_assoc_list(PredMap0, PredIdsInfos0),
@@ -231,10 +231,8 @@ typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
     map.from_sorted_assoc_list(PredIdsInfos, PredMap),
     module_info_set_preds(PredMap, !ModuleInfo),
 
-    set_tree234.delete_list(NewlyInvalidPredIds,
-        OrigValidPredIdSet, NewValidPredIdSet),
-    NewValidPredIds = set_tree234.to_sorted_list(NewValidPredIdSet),
-    module_info_set_valid_predids(NewValidPredIds, !ModuleInfo),
+    module_info_make_pred_ids_invalid(NewlyInvalidPredIds, !ModuleInfo),
+    module_info_get_valid_pred_id_set(!.ModuleInfo, NewValidPredIdSet),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     (

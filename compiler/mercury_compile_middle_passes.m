@@ -752,7 +752,7 @@ maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats, !DumpInfo, !IO) :-
         maybe_dump_hlds(HLDS1, 505, "bytecode_args_to_regs", !DumpInfo, !IO),
         maybe_write_string(Verbose, "% Generating bytecodes...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        bytecode_gen.gen_module(HLDS1, _HLDS2, Bytecode, !IO),
+        bytecode_gen.gen_module(HLDS1, Bytecode, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         module_name_to_file_name(Globals, ModuleName, ".bytedebug",

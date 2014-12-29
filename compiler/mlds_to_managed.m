@@ -167,11 +167,10 @@ output_csharp_header_code(Globals, !IO) :-
     mlds_foreign_code::in, io::di, io::uo) is det.
 
 generate_foreign_header_code(Globals, SourceFileName, ForeignCode, !IO) :-
-    ForeignCode = mlds_foreign_code(RevHeaderCode, _RevImports,
-        _RevBodyCode, _ExportDefns),
+    ForeignCode = mlds_foreign_code(DeclCodes, _BodyCodes, _Imports,
+        _ExportDefns),
 
-    HeaderCode = list.reverse(RevHeaderCode),
-    io.write_list(HeaderCode, "\n",
+    io.write_list(DeclCodes, "\n",
         % XXX Ignoring _IsLocal may not be the right thing to do.
         (pred(ForeignDeclCode::in, !.IO::di, !:IO::uo) is det :-
             ForeignDeclCode = foreign_decl_code(CodeLang, _IsLocal,
@@ -207,19 +206,18 @@ generate_namespace_details(ClassName, NameSpaceFmtStr, Namespace) :-
     io::di, io::uo) is det.
 
 generate_foreign_code(Globals, SourceFileName, ForeignCode, !IO) :-
-    ForeignCode = mlds_foreign_code(_RevHeaderCode, _RevImports,
-        RevBodyCode, _ExportDefns),
-    BodyCode = list.reverse(RevBodyCode),
-    io.write_list(BodyCode, "\n",
-        (pred(user_foreign_code(CodeLang, LiteralOrInclude, Context)::in,
+    ForeignCode = mlds_foreign_code(_DeclCodes, BodyCodes,
+        _Imports, _ExportDefns),
+    io.write_list(BodyCodes, "\n",
+        (pred(foreign_body_code(CodeLang, LiteralOrInclude, Context)::in,
                 !.IO::di, !:IO::uo) is det :-
             ( CodeLang = lang_csharp ->
                 output_foreign_literal_or_include(Globals, SourceFileName,
                     LiteralOrInclude, Context, !IO)
             ;
-                sorry($module, $pred, "wrong foreign code")
+                sorry($module, $pred, "wrong foreign language")
             ),
-            output_reset_context(Globals, !IO)
+        output_reset_context(Globals, !IO)
     ), !IO).
 
 :- pred output_foreign_literal_or_include(globals::in, string::in,

@@ -141,14 +141,14 @@ module_info_ensure_dependency_info(!ModuleInfo) :-
         MaybeDepInfo = yes(_)
     ;
         MaybeDepInfo = no,
-        module_info_get_valid_predids(PredIds, !ModuleInfo),
+        module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
         build_dependency_graph(!.ModuleInfo, PredIds, do_not_include_imported,
             DepInfo),
         module_info_set_dependency_info(DepInfo, !ModuleInfo)
     ).
 
 module_info_rebuild_dependency_info(!ModuleInfo, DepInfo) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     build_dependency_graph(!.ModuleInfo, PredIds, do_not_include_imported,
         DepInfo),
     module_info_set_dependency_info(DepInfo, !ModuleInfo).

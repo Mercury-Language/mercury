@@ -54,6 +54,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module getopt_io.
 :- import_module int.
 :- import_module list.
@@ -81,45 +82,49 @@ ml_code_gen(!ModuleInfo, MLDS) :-
 :- pred ml_gen_foreign_code(module_info::in,
     map(foreign_language, mlds_foreign_code)::out) is det.
 
-ml_gen_foreign_code(ModuleInfo, AllForeignCode) :-
-    module_info_get_foreign_decl(ModuleInfo, ForeignDecls),
-    module_info_get_foreign_import_module(ModuleInfo, ForeignImports),
-    module_info_get_foreign_body_code(ModuleInfo, ForeignBodys),
-    module_info_get_pragma_exported_procs(ModuleInfo, ForeignExports),
+ml_gen_foreign_code(ModuleInfo, AllForeignCodeMap) :-
+    module_info_get_foreign_decl_codes(ModuleInfo, ForeignDeclCodeCord),
+    module_info_get_foreign_body_codes(ModuleInfo, ForeignBodyCodeCord),
+    module_info_get_foreign_import_modules(ModuleInfo, ForeignImportCord),
+    module_info_get_pragma_exported_procs(ModuleInfo, ForeignExportsCord),
+    ForeignDeclCodes = cord.list(ForeignDeclCodeCord),
+    ForeignBodyCodes = cord.list(ForeignBodyCodeCord),
+    ForeignImports = cord.list(ForeignImportCord),
+    ForeignExports = cord.list(ForeignExportsCord),
+
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_backend_foreign_languages(Globals, BackendForeignLanguages),
-
     WantedForeignImports = list.condense(
         list.map((func(L) = Imports :-
             foreign.filter_imports(L, ForeignImports, Imports, _)
         ), BackendForeignLanguages)),
 
-    list.foldl(ml_gen_foreign_code_lang(ModuleInfo, ForeignDecls,
-        ForeignBodys, WantedForeignImports, ForeignExports),
-        BackendForeignLanguages, map.init, AllForeignCode).
+    list.foldl(
+        ml_gen_foreign_code_lang(ModuleInfo,
+            ForeignDeclCodes, ForeignBodyCodes,
+            WantedForeignImports, ForeignExports),
+        BackendForeignLanguages, map.init, AllForeignCodeMap).
 
-:- pred ml_gen_foreign_code_lang(module_info::in, foreign_decl_info::in,
-    foreign_body_info::in, foreign_import_module_info_list::in,
-    list(pragma_exported_proc)::in, foreign_language::in,
+:- pred ml_gen_foreign_code_lang(module_info::in,
+    list(foreign_decl_code)::in, list(foreign_body_code)::in,
+    list(foreign_import_module_info)::in, list(pragma_exported_proc)::in,
+    foreign_language::in,
     map(foreign_language, mlds_foreign_code)::in,
     map(foreign_language, mlds_foreign_code)::out) is det.
 
-ml_gen_foreign_code_lang(ModuleInfo, ForeignDecls, ForeignBodys,
+ml_gen_foreign_code_lang(ModuleInfo, ForeignDeclCodes, ForeignBodyCodes,
         WantedForeignImports, ForeignExports, Lang, !Map) :-
-    foreign.filter_decls(Lang, ForeignDecls, WantedForeignDecls,
-        _OtherForeignDecls),
-    foreign.filter_bodys(Lang, ForeignBodys, WantedForeignBodys,
-        _OtherForeignBodys),
+    foreign.filter_decls(Lang, ForeignDeclCodes, WantedForeignDeclCodes,
+        _OtherForeignDeclCodes),
+    foreign.filter_bodys(Lang, ForeignBodyCodes, WantedForeignBodyCodes,
+        _OtherForeignBodyCodes),
     foreign.filter_exports(Lang, ForeignExports, WantedForeignExports,
         _OtherForeignExports),
-    ConvBody = (func(foreign_body_code(L, S, C)) =
-        user_foreign_code(L, S, C)),
-    MLDSWantedForeignBodys = list.map(ConvBody, WantedForeignBodys),
     list.map(ml_gen_pragma_export_proc(ModuleInfo),
         WantedForeignExports, MLDSWantedForeignExports),
-    MLDS_ForeignCode = mlds_foreign_code(WantedForeignDecls,
-        WantedForeignImports, MLDSWantedForeignBodys,
-        MLDSWantedForeignExports),
+    MLDS_ForeignCode = mlds_foreign_code(
+        WantedForeignDeclCodes, WantedForeignBodyCodes,
+        WantedForeignImports, MLDSWantedForeignExports),
     map.det_insert(Lang, MLDS_ForeignCode, !Map).
 
 :- pred ml_gen_imports(module_info::in, mlds_imports::out) is det.

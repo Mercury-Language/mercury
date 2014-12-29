@@ -160,7 +160,7 @@ write_opt_file(!ModuleInfo, !IO) :-
     ;
         Result = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
-        module_info_get_valid_predids(RealPredIds, !ModuleInfo),
+        module_info_get_valid_pred_ids(!.ModuleInfo, RealPredIds),
         module_info_get_assertion_table(!.ModuleInfo, AssertionTable),
         assertion_table_pred_ids(AssertionTable, AssertPredIds),
         PredIds = AssertPredIds ++ RealPredIds,
@@ -1318,8 +1318,8 @@ write_intermod_info_body(IntermodInfo, !IO) :-
     OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
     (
         WriteHeader = yes,
-        module_info_get_foreign_import_module(ModuleInfo, RevForeignImports),
-        ForeignImports = list.reverse(RevForeignImports),
+        module_info_get_foreign_import_modules(ModuleInfo, ForeignImportsCord),
+        ForeignImports = cord.list(ForeignImportsCord),
 
         list.foldl(
             (pred(ForeignImport::in, IO0::di, IO::uo) is det :-
@@ -2190,7 +2190,7 @@ adjust_pred_import_status(!ModuleInfo) :-
             !IO)
     ),
 
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     globals.lookup_int_option(Globals, intermod_inline_simple_threshold,
         Threshold),
     globals.lookup_bool_option(Globals, deforestation, Deforestation),

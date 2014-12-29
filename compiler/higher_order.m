@@ -114,7 +114,7 @@ specialize_higher_order(!ModuleInfo, !IO) :-
         !:GlobalInfo = higher_order_global_info(Requests0, NewPredMap0,
             VersionInfo0, !.ModuleInfo, GoalSizes0, Params, counter.init(1)),
 
-        module_info_get_valid_predids(PredIds0, !ModuleInfo),
+        module_info_get_valid_pred_ids(!.ModuleInfo, PredIds0),
         module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, UserSpecPreds, _, _),
 

@@ -108,7 +108,7 @@
 % Also look at builtin_compound_eq, builtin_compound_lt.
 
 preprocess_module(!ModuleInfo, !IO) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     process_builtin_preds(PredIds, !ModuleInfo, !IO),
     process_imported_preds(PredIds, !ModuleInfo).
 
@@ -360,6 +360,7 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
         ),
         pred_info_set_proc_table(!.ProcTable, !PredInfo)
     ).
+
 :- pred set_compiler_gen_terminates(pred_info::in, list(proc_id)::in,
     pred_id::in, module_info::in, proc_table::in, proc_table::out)
     is semidet.

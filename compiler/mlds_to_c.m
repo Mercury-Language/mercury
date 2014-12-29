@@ -15,7 +15,7 @@
 %   - RTTI for debugging (module_layout, proc_layout, internal_layout)
 %   - trail ops
 %   - foreign language interfacing for languages other than C
-%     (handle `user_foreign_code' and `foreign_code_decl' --
+%     (handle `foreign_body_code' and `foreign_code_decl' --
 %     actually perhaps this should be done in an earlier pass,
 %     in which case the only thing that would need to be done here
 %     is to change some calls to sorry/2 to unexpected/2).
@@ -550,9 +550,11 @@ mlds_output_src_start(Opts, Indent, ModuleName, ForeignCode,
 
     % If there are `:- pragma foreign_export' declarations,
     % #include the `.mh' file.
-    ( ForeignCode = mlds_foreign_code(_, _, _, []) ->
-        true
+    ForeignCode = mlds_foreign_code(_, _, _, Exports),
+    (
+        Exports = []
     ;
+        Exports = [_ | _],
         mlds_output_src_import(Opts, Indent,
             mercury_import(user_visible_interface,
                 mercury_module_name_to_mlds(ModuleName)), !IO)
@@ -901,9 +903,8 @@ mlds_output_call_to_register_alloc_sites(AllocSites, !IO) :-
     mlds_module_name::in, mlds_foreign_code::in, io::di, io::uo) is det.
 
 mlds_output_c_hdr_decls(Opts, Indent, ModuleName, ForeignCode, !IO) :-
-    ForeignCode = mlds_foreign_code(RevHeaderCode, _RevImports,
-        _RevBodyCode, _ExportDefns),
-    HeaderCode = list.reverse(RevHeaderCode),
+    ForeignCode = mlds_foreign_code(DeclCodes, _BodyCodes, _Imports,
+        _ExportDefns),
     ( is_std_lib_module(ModuleName, StdlibModuleName) ->
         SymName = StdlibModuleName
     ;
@@ -913,11 +914,11 @@ mlds_output_c_hdr_decls(Opts, Indent, ModuleName, ForeignCode, !IO) :-
     DeclGuard = decl_guard(SymName),
     io.write_strings(["#ifndef ", DeclGuard, "\n#define ", DeclGuard, "\n"],
         !IO),
-    %
+
     % We need to make sure we #include the .mih files for any ancestor modules
     % in cases any foreign_types defined in them are referenced by the extern
     % declarations required by mutables.
-    %
+
     AncestorModuleNames = get_ancestors(SymName),
     list.map(module_name_to_file_name_stem,
         AncestorModuleNames, AncestorFileNames),
@@ -925,7 +926,7 @@ mlds_output_c_hdr_decls(Opts, Indent, ModuleName, ForeignCode, !IO) :-
         io.write_strings(["#include \"", Ancestor, ".mih", "\"\n"], !IO)
     ),
     list.foldl(WriteAncestorInclude, AncestorFileNames, !IO),
-    io.write_list(HeaderCode, "\n",
+    io.write_list(DeclCodes, "\n",
         mlds_output_c_hdr_decl(Opts, Indent, yes(foreign_decl_is_exported)),
         !IO),
     io.write_string("\n#endif\n", !IO).
@@ -965,23 +966,20 @@ mlds_output_c_hdr_decl(Opts, _Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
     mlds_foreign_code::in, io::di, io::uo) is det.
 
 mlds_output_c_decls(Opts, Indent, ForeignCode, !IO) :-
-    ForeignCode = mlds_foreign_code(RevHeaderCode, _RevImports,
-        _RevBodyCode, _ExportDefns),
-    HeaderCode = list.reverse(RevHeaderCode),
-    io.write_list(HeaderCode, "\n",
+    ForeignCode = mlds_foreign_code(HeaderCodes, _BodyCodes, _Imports,
+        _ExportDefns),
+    io.write_list(HeaderCodes, "\n",
         mlds_output_c_hdr_decl(Opts, Indent, yes(foreign_decl_is_local)), !IO).
 
 :- pred mlds_output_c_defns(mlds_to_c_opts::in, mlds_module_name::in,
     indent::in, mlds_foreign_code::in, io::di, io::uo) is det.
 
 mlds_output_c_defns(Opts, ModuleName, Indent, ForeignCode, !IO) :-
-    ForeignCode = mlds_foreign_code(_RevHeaderCode, RevImports,
-        RevBodyCode, ExportDefns),
-    Imports = list.reverse(RevImports),
+    ForeignCode = mlds_foreign_code(_HeaderCodes, BodyCodes,
+        Imports, ExportDefns),
     list.foldl(mlds_output_c_foreign_import_module(Opts, Indent),
         Imports, !IO),
-    BodyCode = list.reverse(RevBodyCode),
-    io.write_list(BodyCode, "\n", mlds_output_c_defn(Opts, Indent), !IO),
+    io.write_list(BodyCodes, "\n", mlds_output_c_defn(Opts, Indent), !IO),
     io.write_string("\n", !IO),
     io.write_list(ExportDefns, "\n",
         mlds_output_pragma_export_defn(Opts, ModuleName, Indent), !IO).
@@ -1006,10 +1004,10 @@ mlds_output_c_foreign_import_module(Opts, Indent, ForeignImport, !IO) :-
     ).
 
 :- pred mlds_output_c_defn(mlds_to_c_opts::in, indent::in,
-    user_foreign_code::in, io::di, io::uo) is det.
+    foreign_body_code::in, io::di, io::uo) is det.
 
-mlds_output_c_defn(Opts, _Indent, UserForeignCode, !IO) :-
-    UserForeignCode = user_foreign_code(Lang, LiteralOrInclude, Context),
+mlds_output_c_defn(Opts, _Indent, ForeignBodyCode, !IO) :-
+    ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
     (
         Lang = lang_c,
         mlds_output_foreign_literal_or_include(Opts, LiteralOrInclude, Context,

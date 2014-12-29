@@ -63,7 +63,7 @@
 
 live_variable_analysis(ModuleInfo, ExecPathTable, LVBeforeTable,
         LVAfterTable, VoidVarTable) :-
-    module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     map.init(LVBeforeTable0),
     map.init(LVAfterTable0),
     map.init(VoidVarTable0),

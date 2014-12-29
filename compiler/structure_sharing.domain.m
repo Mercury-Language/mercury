@@ -932,7 +932,7 @@ top_sharing_not_found(PPId) = TopSharing :-
 %-----------------------------------------------------------------------------%
 
 load_structure_sharing_table(ModuleInfo) = SharingTable :-
-    module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     list.foldl(load_structure_sharing_table_2(ModuleInfo), PredIds,
         sharing_as_table_init, SharingTable).
 

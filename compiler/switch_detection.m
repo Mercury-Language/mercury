@@ -132,7 +132,7 @@ detect_switches_in_module(!ModuleInfo) :-
     % Traverse the module structure, calling `detect_switches_in_goal'
     % for each procedure body.
     Info = init_switch_detect_info(!.ModuleInfo),
-    module_info_get_valid_predids(ValidPredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
     ValidPredIdSet = set_tree234.list_to_set(ValidPredIds),
 
     module_info_get_preds(!.ModuleInfo, PredMap0),

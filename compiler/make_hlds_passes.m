@@ -3111,9 +3111,9 @@ add_stratified_pred(PragmaName, Name, Arity, Context, !ModuleInfo, !Specs) :-
         Name, Arity, PredIds),
     (
         PredIds = [_ | _],
-        module_info_get_stratified_preds(!.ModuleInfo, StratPredIds0),
+        module_info_get_must_be_stratified_preds(!.ModuleInfo, StratPredIds0),
         set.insert_list(PredIds, StratPredIds0, StratPredIds),
-        module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
+        module_info_set_must_be_stratified_preds(StratPredIds, !ModuleInfo)
     ;
         PredIds = [],
         DescPieces = [pragma_decl(PragmaName), words("declaration")],

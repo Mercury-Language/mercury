@@ -177,7 +177,7 @@
 %
 
 control_distance_granularity(!ModuleInfo, Distance) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     apply_dg_to_preds(PredIds, Distance, !ModuleInfo).
 
     % Apply the distance granularity transformation to each predicate in the

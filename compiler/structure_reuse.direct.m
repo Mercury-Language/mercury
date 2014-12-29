@@ -72,7 +72,7 @@
 
 direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable) :-
     % Gather the pred_ids of the preds that need to be analysed.
-    module_info_get_valid_predids(AllPredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, AllPredIds),
     list.filter(pred_requires_analysis(!.ModuleInfo), AllPredIds,
         ToBeAnalysedPredIds),
 

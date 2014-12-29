@@ -368,10 +368,10 @@ warn_non_tail_calls_in_proc(Globals, PredId, ProcId, PredInfo, ProcInfo,
 
 :- pred nontailcall_in_hlds(module_info::in, tailcall_warning::out) is nondet.
 
-nontailcall_in_hlds(!.ModuleInfo, Warning) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+nontailcall_in_hlds(ModuleInfo, Warning) :-
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     list.member(PredId, PredIds),
-    nontailcall_in_pred(!.ModuleInfo, PredId, Warning).
+    nontailcall_in_pred(ModuleInfo, PredId, Warning).
 
 :- pred nontailcall_in_pred(module_info::in, pred_id::in,
     tailcall_warning::out) is nondet.

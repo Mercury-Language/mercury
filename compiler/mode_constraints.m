@@ -114,7 +114,7 @@
 ].
 
 mc_process_module(!ModuleInfo, !IO) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, simple_mode_constraints, Simple),
     globals.lookup_bool_option(Globals, prop_mode_constraints, New),
@@ -122,7 +122,7 @@ mc_process_module(!ModuleInfo, !IO) :-
     (
         New = no,
         list.foldl2(convert_pred_to_hhf(Simple), PredIds, !ModuleInfo, !IO),
-        get_predicate_sccs(!ModuleInfo, SCCs),
+        get_predicate_sccs(!.ModuleInfo, SCCs),
 
         % Stage 1: Process SCCs bottom-up to determine variable producers.
         list.foldl2(mc_process_scc(Simple), SCCs,
@@ -142,7 +142,7 @@ mc_process_module(!ModuleInfo, !IO) :-
         clear_caches(!IO)
     ;
         New = yes,
-        get_predicate_sccs(!ModuleInfo, SCCs),
+        get_predicate_sccs(!.ModuleInfo, SCCs),
 
         % Preprocess to accommodate implied modes.
         % XXX The following transformation adds more unifications than is
@@ -1859,12 +1859,11 @@ keep_var(_ForwardGoalPathMap, NonLocals, GoalVars, _GoalId, AtomicGoals,
 
     % Obtain the SCCs for the module.
     %
-:- pred get_predicate_sccs(module_info::in, module_info::out, sccs::out)
-    is det.
+:- pred get_predicate_sccs(module_info::in, sccs::out) is det.
 
-get_predicate_sccs(!ModuleInfo, SCCs) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
-    dependency_graph.build_pred_dependency_graph(!.ModuleInfo, PredIds,
+get_predicate_sccs(ModuleInfo, SCCs) :-
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+    dependency_graph.build_pred_dependency_graph(ModuleInfo, PredIds,
         do_not_include_imported, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs0),
 
@@ -1874,12 +1873,12 @@ get_predicate_sccs(!ModuleInfo, SCCs) :-
     % the rest of their SCC since the mode declaration can be used in any
     % calls to them.  Such predicates should be processed last to take
     % advantage of mode info inferred from other predicates.
-    extract_mode_decl_preds(!.ModuleInfo, SCCs0, [], SCCs1),
+    extract_mode_decl_preds(ModuleInfo, SCCs0, [], SCCs1),
 
     % We add imported preds to the end of the SCC list, one SCC per pred.
     % This allows a constraint to be created for each imported pred
     % based on its mode declarations.
-    add_imported_preds(!.ModuleInfo, SCCs1, SCCs).
+    add_imported_preds(ModuleInfo, SCCs1, SCCs).
 
 :- pred extract_mode_decl_preds(module_info::in, sccs::in, sccs::in, sccs::out)
     is det.
@@ -1913,7 +1912,7 @@ pred_has_mode_decl(ModuleInfo, PredId) :-
 :- pred add_imported_preds(module_info::in, sccs::in, sccs::out) is det.
 
 add_imported_preds(ModuleInfo, SCCs0, SCCs) :-
-    module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     list.filter_map(
         (pred(PredId::in, [PredId]::out) is semidet :-
             module_info_pred_info(ModuleInfo, PredId, PredInfo),

@@ -377,10 +377,8 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Get the foreign code for Java
     % XXX We should not ignore _RevImports.
     ForeignCode = mlds_get_java_foreign_code(AllForeignCode),
-    ForeignCode = mlds_foreign_code(RevForeignDecls, _RevImports,
-        RevBodyCode, ExportDefns),
-    ForeignDecls = list.reverse(RevForeignDecls),
-    ForeignBodyCode = list.reverse(RevBodyCode),
+    ForeignCode = mlds_foreign_code(ForeignDeclCodes, ForeignBodyCodes,
+        _Imports, ExportDefns),
 
     % Output transformed MLDS as Java source.
     %
@@ -392,9 +390,9 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_source_filename(Globals, ModuleName, SourceFileName, !IO),
     Info = init_java_out_info(ModuleInfo, SourceFileName, AddrOfMap),
-    output_src_start(Info, Indent, ModuleName, Imports, ForeignDecls, Defns,
-        !IO),
-    io.write_list(ForeignBodyCode, "\n", output_java_body_code(Info, Indent),
+    output_src_start(Info, Indent, ModuleName, Imports, ForeignDeclCodes,
+        Defns, !IO),
+    io.write_list(ForeignBodyCodes, "\n", output_java_body_code(Info, Indent),
         !IO),
 
     list.filter(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
@@ -461,10 +459,10 @@ output_java_decl(Info, Indent, DeclCode, !IO) :-
     ).
 
 :- pred output_java_body_code(java_out_info::in, indent::in,
-    user_foreign_code::in, io::di, io.state::uo) is det.
+    foreign_body_code::in, io::di, io.state::uo) is det.
 
-output_java_body_code(Info, Indent, UserForeignCode, !IO) :-
-    UserForeignCode = user_foreign_code(Lang, LiteralOrInclude, Context),
+output_java_body_code(Info, Indent, ForeignBodyCode, !IO) :-
+    ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
     % Only output Java code.
     (
         Lang = lang_java,

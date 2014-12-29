@@ -517,24 +517,15 @@ usage_file_version_number = 2.
 
 %-----------------------------------------------------------------------------%
 
-:- pred visible_modules(module_info::in, module_name::out) is nondet.
-
-visible_modules(ModuleInfo, VisibleModule) :-
-    visible_module(VisibleModule, ModuleInfo),
-    \+ module_info_get_name(ModuleInfo, VisibleModule).
-
 :- pred insert_into_imported_items_map(module_name::in,
     imported_items::in, imported_items::out) is det.
 
 insert_into_imported_items_map(VisibleModule, !ImportedItemsMap) :-
     ModuleItems = init_item_id_set(set.init),
 
-        %
-        % Use set rather than det_insert as this routine may be
-        % called multiple times with the same VisibleModule
-        % depending on why the module is visible.
-        % eg it's both imported and an ancestor module
-        %
+    % Use map.set rather than map.det_insert as this routine may be called
+    % multiple times with the same VisibleModule, for example if the module
+    % is both imported and an ancestor module.
     map.set(VisibleModule, ModuleItems, !ImportedItemsMap).
 
     % Go over the set of imported items found to be used and
@@ -552,11 +543,13 @@ find_all_used_imported_items(ModuleInfo,
     % file, even if nothing was used from it. This will cause
     % recompilation_check.m to check for new items causing ambiguity
     % when the interface of the module changes.
+    module_info_get_visible_modules(ModuleInfo, AllVisibleModules),
+    module_info_get_name(ModuleInfo, ModuleName),
+    set.delete(ModuleName, AllVisibleModules, ImportedVisibleModules),
+
     map.init(ImportedItems0),
-    promise_equivalent_solutions [ImportedItems1] (
-        solutions.unsorted_aggregate(visible_modules(ModuleInfo),
-            insert_into_imported_items_map, ImportedItems0, ImportedItems1)
-    ),
+    set.foldl(insert_into_imported_items_map, ImportedVisibleModules,
+        ImportedItems0, ImportedItems1),
 
     queue.init(ItemsToProcess0),
     map.init(ModuleUsedClasses),
@@ -577,8 +570,7 @@ find_all_used_imported_items(ModuleInfo,
         ImportedItems1, ModuleUsedClasses, Dependencies,
         ResolvedUsedItems0, UsedClasses0),
 
-    find_all_used_imported_items_2(UsedItems,
-        Info0, Info),
+    find_all_used_imported_items_2(UsedItems, Info0, Info),
 
     ImportedItems = Info ^ imported_items,
     ModuleInstances = Info ^ module_instances,

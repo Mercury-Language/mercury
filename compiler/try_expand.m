@@ -257,7 +257,7 @@ expand_try_goals_in_module(!ModuleInfo, !Specs) :-
             disable_det_warnings(OptionsToRestore, !Globals),
             module_info_set_globals(!.Globals, !ModuleInfo),
 
-            module_info_get_valid_predids(PredIds, !ModuleInfo),
+            module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
             list.foldl2(expand_try_goals_in_pred, PredIds,
                 !ModuleInfo, !Specs),
 

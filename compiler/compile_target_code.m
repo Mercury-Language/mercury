@@ -252,6 +252,7 @@
 :- import_module parse_tree.write_deps_file.
 :- import_module parse_tree.prog_foreign.
 
+:- import_module cord.
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module require.
@@ -372,7 +373,7 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
         (func(M) =
             foreign_import_module_name_from_module(M,
                 Imports ^ mai_module_name)),
-        Imports ^ mai_foreign_import_modules),
+        cord.list(Imports ^ mai_foreign_import_modules)),
     ReferencedDlls = referenced_dlls(Imports ^ mai_module_name,
         Imports ^ mai_int_deps ++ Imports ^ mai_impl_deps ++ ForeignDeps),
     list.map_foldl(

@@ -137,6 +137,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module solutions.
 :- import_module string.
 :- import_module term.
@@ -185,19 +186,19 @@ check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
             maybe_write_string(Verbose,
                 "% Checking for missing concrete instances...\n", !IO4)
         ),
-        check_for_missing_concrete_instances(!ModuleInfo, !Specs),
+        check_for_missing_concrete_instances(!.ModuleInfo, !Specs),
 
         trace [io(!IO5)] (
             maybe_write_string(Verbose,
                 "% Checking functional dependencies on instances...\n", !IO5)
         ),
-        check_functional_dependencies(!ModuleInfo, !Specs),
+        check_functional_dependencies(!.ModuleInfo, !Specs),
 
         trace [io(!IO6)] (
             maybe_write_string(Verbose,
                 "% Checking typeclass constraints...\n", !IO6)
         ),
-        check_typeclass_constraints(!ModuleInfo, !Specs)
+        check_typeclass_constraints(!.ModuleInfo, !Specs)
     ;
         !.Specs = [_ | _]
     ).
@@ -557,15 +558,15 @@ check_one_class(ClassTable, ClassId - InstanceDefns0, ClassId - InstanceDefns,
         !:Specs = [Spec | !.Specs],
         InstanceDefns = InstanceDefns0
     ;
-        solutions(
-            ( pred(PredId::out) is nondet :-
-                list.member(ClassProc, ClassInterface),
-                ClassProc = hlds_class_proc(PredId, _)
+        GetClassProcPredId =
+            (pred(ClassProc::in, ClassProcPredId::out) is det :-
+                ClassProc = hlds_class_proc(ClassProcPredId, _ClassProcProcId)
             ),
-            PredIds),
+        list.map(GetClassProcPredId, ClassInterface, ClassProcPredIds0),
+        list.sort_and_remove_dups(ClassProcPredIds0, ClassProcPredIds),
         list.map_foldl3(
             check_class_instance(ClassId, SuperClasses, ClassVars,
-                ClassInterface, Interface, ClassVarSet, PredIds),
+                ClassInterface, Interface, ClassVarSet, ClassProcPredIds),
             InstanceDefns0, InstanceDefns,
             !ModuleInfo, !QualInfo, !Specs)
     ).
@@ -752,10 +753,12 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
         !InstanceCheckInfo, !Specs) :-
     !.InstanceCheckInfo = instance_check_info(InstanceDefn0,
         OrderedMethods0, ModuleInfo0, QualInfo0),
-    solutions((pred(ProcId::out) is nondet :-
-            list.member(ClassProc, ClassInterface),
-            ClassProc = hlds_class_proc(PredId, ProcId)
-        ), ProcIds),
+    GetClassProcProcId =
+        (pred(ClassProc::in, ClassProcProcId::out) is semidet :-
+            ClassProc = hlds_class_proc(PredId, ClassProcProcId)
+        ),
+    list.filter_map(GetClassProcProcId, ClassInterface, ClassProcProcIds0),
+    list.sort_and_remove_dups(ClassProcProcIds0, ClassProcProcIds),
     module_info_pred_info(ModuleInfo0, PredId, PredInfo),
     pred_info_get_arg_types(PredInfo, ArgTypeVars, ExistQVars, ArgTypes),
     pred_info_get_class_context(PredInfo, ClassContext0),
@@ -788,7 +791,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
             proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
             proc_info_get_inst_varset(ProcInfo, InstVarSet),
             ModesAndDetism = modes_and_detism(Modes, InstVarSet, MaybeDetism)
-        ), ProcIds, ArgModes),
+        ), ClassProcProcIds, ArgModes),
 
     InstanceDefn0 = hlds_instance_defn(_, Status, _, _, InstanceTypes, _,
         _, _, _, _),
@@ -1190,11 +1193,11 @@ constraint_list_to_string_2(VarSet, [C | Cs], String) :-
     % Check that every abstract instance in the module has a
     % corresponding concrete instance in the implementation.
     %
-:- pred check_for_missing_concrete_instances(module_info::in, module_info::out,
+:- pred check_for_missing_concrete_instances(module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_missing_concrete_instances(!ModuleInfo, !Specs) :-
-    module_info_get_instance_table(!.ModuleInfo, InstanceTable),
+check_for_missing_concrete_instances(ModuleInfo, !Specs) :-
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
     % Grab all the instance declarations that occur in this module
     % and partition them into two sets: abstract instance declarations
     % and concrete instance declarations.
@@ -1457,25 +1460,26 @@ add_path_element(class_id(Name, Arity), RevPieces0) =
     % general unifier of corresponding domain arguments (if it exists) is
     % also a unifier of the corresponding range arguments.
     %
-:- pred check_functional_dependencies(module_info::in, module_info::out,
+:- pred check_functional_dependencies(module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_functional_dependencies(!ModuleInfo, !Specs) :-
-    module_info_get_instance_table(!.ModuleInfo, InstanceTable),
+check_functional_dependencies(ModuleInfo, !Specs) :-
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
     map.keys(InstanceTable, ClassIds),
-    list.foldl2(check_fundeps_class, ClassIds, !ModuleInfo, !Specs).
+    list.foldl(check_fundeps_for_class(ModuleInfo), ClassIds, !Specs).
 
-:- pred check_fundeps_class(class_id::in, module_info::in, module_info::out,
+:- pred check_fundeps_for_class(module_info::in, class_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_fundeps_class(ClassId, !ModuleInfo, !Specs) :-
-    module_info_get_class_table(!.ModuleInfo, ClassTable),
+check_fundeps_for_class(ModuleInfo, ClassId, !Specs) :-
+    module_info_get_class_table(ModuleInfo, ClassTable),
     map.lookup(ClassTable, ClassId, ClassDefn),
-    module_info_get_instance_table(!.ModuleInfo, InstanceTable),
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
     map.lookup(InstanceTable, ClassId, InstanceDefns),
     FunDeps = ClassDefn ^ class_fundeps,
-    check_coverage(ClassId, InstanceDefns, FunDeps, !ModuleInfo, !Specs),
-    module_info_get_globals(!.ModuleInfo, Globals),
+    check_coverage_for_instance_defns(ModuleInfo, ClassId, InstanceDefns,
+        FunDeps, !Specs),
+    module_info_get_globals(ModuleInfo, Globals),
     % Abstract definitions will always overlap with concrete definitions,
     % so we filter out the abstract definitions for this module. If
     % --intermodule-optimization is enabled then we strip out the imported
@@ -1494,7 +1498,7 @@ check_fundeps_class(ClassId, !ModuleInfo, !Specs) :-
             ConcreteInstanceDefns)
     ),
     check_consistency(ClassId, ClassDefn, ConcreteInstanceDefns, FunDeps,
-        !ModuleInfo, !Specs).
+        !Specs).
 
 :- pred is_concrete_instance_defn(hlds_instance_defn::in) is semidet.
 
@@ -1511,22 +1515,25 @@ is_concrete_or_imported_instance_defn(InstanceDefn) :-
         status_is_imported(InstanceDefn ^ instance_status) = yes
     ).
 
-:- pred check_coverage(class_id::in, list(hlds_instance_defn)::in,
-    hlds_class_fundeps::in, module_info::in, module_info::out,
+:- pred check_coverage_for_instance_defns(module_info::in, class_id::in,
+    list(hlds_instance_defn)::in, hlds_class_fundeps::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_coverage(_, [], _, !ModuleInfo, !Specs).
-check_coverage(ClassId, [InstanceDefn | InstanceDefns], FunDeps, !ModuleInfo,
+check_coverage_for_instance_defns(_, _, [], _, !Specs).
+check_coverage_for_instance_defns(ModuleInfo, ClassId,
+        [InstanceDefn | InstanceDefns], FunDeps, !Specs) :-
+    list.foldl(
+        check_coverage_for_instance_defn(ModuleInfo, ClassId, InstanceDefn),
+        FunDeps, !Specs),
+    check_coverage_for_instance_defns(ModuleInfo, ClassId,
+        InstanceDefns, FunDeps, !Specs).
+
+:- pred check_coverage_for_instance_defn(module_info::in, class_id::in,
+    hlds_instance_defn::in, hlds_class_fundep::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_coverage_for_instance_defn(ModuleInfo, ClassId, InstanceDefn, FunDep,
         !Specs) :-
-    list.foldl2(check_coverage_2(ClassId, InstanceDefn), FunDeps, !ModuleInfo,
-        !Specs),
-    check_coverage(ClassId, InstanceDefns, FunDeps, !ModuleInfo, !Specs).
-
-:- pred check_coverage_2(class_id::in, hlds_instance_defn::in,
-    hlds_class_fundep::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_coverage_2(ClassId, InstanceDefn, FunDep, !ModuleInfo, !Specs) :-
     TVarSet = InstanceDefn ^ instance_tvarset,
     Types = InstanceDefn ^ instance_types,
     FunDep = fundep(Domain, Range),
@@ -1535,8 +1542,8 @@ check_coverage_2(ClassId, InstanceDefn, FunDep, !ModuleInfo, !Specs) :-
     RangeTypes = restrict_list_elements(Range, Types),
     type_vars_list(RangeTypes, RangeVars),
     Constraints = InstanceDefn ^ instance_constraints,
-    get_unbound_tvars(TVarSet, DomainVars, RangeVars, Constraints,
-        !.ModuleInfo, UnboundVars),
+    get_unbound_tvars(ModuleInfo, TVarSet, DomainVars, RangeVars,
+        Constraints, UnboundVars),
     (
         UnboundVars = []
     ;
@@ -1549,24 +1556,22 @@ check_coverage_2(ClassId, InstanceDefn, FunDep, !ModuleInfo, !Specs) :-
     %
 :- pred check_consistency(class_id::in, hlds_class_defn::in,
     list(hlds_instance_defn)::in, hlds_class_fundeps::in,
-    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_consistency(_, _, [], _, !ModuleInfo, !Specs).
+check_consistency(_, _, [], _, !Specs).
 check_consistency(ClassId, ClassDefn, [Instance | Instances], FunDeps,
-        !ModuleInfo, !Specs) :-
-    list.foldl2(check_consistency_pair(ClassId, ClassDefn, FunDeps, Instance),
-        Instances, !ModuleInfo, !Specs),
+        !Specs) :-
+    list.foldl(check_consistency_pair(ClassId, ClassDefn, FunDeps, Instance),
+        Instances, !Specs),
     check_consistency(ClassId, ClassDefn, Instances, FunDeps,
-        !ModuleInfo, !Specs).
+        !Specs).
 
 :- pred check_consistency_pair(class_id::in, hlds_class_defn::in,
     hlds_class_fundeps::in, hlds_instance_defn::in, hlds_instance_defn::in,
-    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_consistency_pair(ClassId, ClassDefn, FunDeps, InstanceA, InstanceB,
-        !ModuleInfo, !Specs) :-
+        !Specs) :-
     % If both instances are imported from the same module then we don't need
     % to check the consistency, since this would have been checked when
     % compiling that module.
@@ -1576,18 +1581,17 @@ check_consistency_pair(ClassId, ClassDefn, FunDeps, InstanceA, InstanceB,
     ->
         true
     ;
-        list.foldl2(
+        list.foldl(
             check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB),
-            FunDeps, !ModuleInfo, !Specs)
+            FunDeps, !Specs)
     ).
 
 :- pred check_consistency_pair_2(class_id::in, hlds_class_defn::in,
     hlds_instance_defn::in, hlds_instance_defn::in, hlds_class_fundep::in,
-    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
-        !ModuleInfo, !Specs) :-
+        !Specs) :-
     TVarSetA = InstanceA ^ instance_tvarset,
     TVarSetB = InstanceB ^ instance_tvarset,
     tvarset_merge_renaming(TVarSetA, TVarSetB, _, Renaming),
@@ -1683,22 +1687,21 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     % by the type variables in the constructor arguments and the functional
     % dependencies.
     %
-:- pred check_typeclass_constraints(module_info::in, module_info::out,
+:- pred check_typeclass_constraints(module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_typeclass_constraints(!ModuleInfo, !Specs) :-
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
-    list.foldl2(check_pred_constraints, PredIds, !ModuleInfo, !Specs),
-    module_info_get_type_table(!.ModuleInfo, TypeTable),
+check_typeclass_constraints(ModuleInfo, !Specs) :-
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+    list.foldl(check_pred_constraints(ModuleInfo), PredIds, !Specs),
+    module_info_get_type_table(ModuleInfo, TypeTable),
     get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
-    list.foldl2(check_ctor_constraints, TypeCtorsDefns, !ModuleInfo, !Specs).
+    list.foldl(check_ctor_constraints(ModuleInfo), TypeCtorsDefns, !Specs).
 
-:- pred check_pred_constraints(pred_id::in,
-    module_info::in, module_info::out,
+:- pred check_pred_constraints(module_info::in, pred_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_pred_constraints(PredId, !ModuleInfo, !Specs) :-
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+check_pred_constraints(ModuleInfo, PredId, !Specs) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
     NeedsAmbiguityCheck = needs_ambiguity_check(ImportStatus),
     (
@@ -1707,10 +1710,10 @@ check_pred_constraints(PredId, !ModuleInfo, !Specs) :-
         NeedsAmbiguityCheck = yes,
         trace [io(!IO)] (
             write_pred_progress_message("% Checking typeclass constraints on ",
-                PredId, !.ModuleInfo, !IO)
+                PredId, ModuleInfo, !IO)
         ),
-        check_pred_type_ambiguities(PredInfo, !ModuleInfo, !Specs),
-        check_constraint_quant(PredInfo, !ModuleInfo, !Specs)
+        check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs),
+        check_constraint_quant(PredInfo, !Specs)
     ).
 
 :- func needs_ambiguity_check(import_status) = bool.
@@ -1727,19 +1730,18 @@ needs_ambiguity_check(status_pseudo_exported) =         yes.
 needs_ambiguity_check(status_exported_to_submodules) =  yes.
 needs_ambiguity_check(status_local) =                   yes.
 
-:- pred check_pred_type_ambiguities(pred_info::in,
-    module_info::in, module_info::out,
+:- pred check_pred_type_ambiguities(module_info::in, pred_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_pred_type_ambiguities(PredInfo, !ModuleInfo, !Specs) :-
+check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_class_context(PredInfo, Constraints),
     type_vars_list(ArgTypes, ArgTVars),
     prog_constraints_get_tvars(Constraints, ConstrainedTVars),
     Constraints = constraints(UnivCs, ExistCs),
-    get_unbound_tvars(TVarSet, ArgTVars, ConstrainedTVars, UnivCs ++ ExistCs,
-        !.ModuleInfo, UnboundTVars),
+    get_unbound_tvars(ModuleInfo, TVarSet, ArgTVars, ConstrainedTVars,
+        UnivCs ++ ExistCs, UnboundTVars),
     (
         UnboundTVars = []
     ;
@@ -1748,16 +1750,16 @@ check_pred_type_ambiguities(PredInfo, !ModuleInfo, !Specs) :-
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred check_ctor_constraints(pair(type_ctor, hlds_type_defn)::in,
-    module_info::in, module_info::out,
+:- pred check_ctor_constraints(module_info::in,
+    pair(type_ctor, hlds_type_defn)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_ctor_constraints(TypeCtor - TypeDefn, !ModuleInfo, !Specs) :-
+check_ctor_constraints(ModuleInfo, TypeCtor - TypeDefn, !Specs) :-
     get_type_defn_body(TypeDefn, Body),
     (
         Body = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
-        list.foldl2(check_ctor_type_ambiguities(TypeCtor, TypeDefn), Ctors,
-            !ModuleInfo, !Specs)
+        list.foldl(check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn),
+            Ctors, !Specs)
     ;
         ( Body = hlds_eqv_type(_)
         ; Body = hlds_foreign_type(_)
@@ -1766,11 +1768,11 @@ check_ctor_constraints(TypeCtor - TypeDefn, !ModuleInfo, !Specs) :-
         )
     ).
 
-:- pred check_ctor_type_ambiguities(type_ctor::in, hlds_type_defn::in,
-    constructor::in, module_info::in, module_info::out,
+:- pred check_ctor_type_ambiguities(module_info::in, type_ctor::in,
+    hlds_type_defn::in, constructor::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_ctor_type_ambiguities(TypeCtor, TypeDefn, Ctor, !ModuleInfo, !Specs) :-
+check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn, Ctor, !Specs) :-
     Ctor = ctor(ExistQVars, Constraints, _, CtorArgs, _),
     ArgTypes = list.map(func(ctor_arg(_, T, _, _)) = T, CtorArgs),
     type_vars_list(ArgTypes, ArgTVars),
@@ -1778,8 +1780,8 @@ check_ctor_type_ambiguities(TypeCtor, TypeDefn, Ctor, !ModuleInfo, !Specs) :-
         ArgTVars, ExistQArgTVars),
     constraint_list_get_tvars(Constraints, ConstrainedTVars),
     get_type_defn_tvarset(TypeDefn, TVarSet),
-    get_unbound_tvars(TVarSet, ExistQArgTVars, ConstrainedTVars, Constraints,
-        !.ModuleInfo, UnboundTVars),
+    get_unbound_tvars(ModuleInfo, TVarSet, ExistQArgTVars, ConstrainedTVars,
+        Constraints, UnboundTVars),
     (
         UnboundTVars = []
     ;
@@ -1903,31 +1905,30 @@ report_unbound_tvars_explanation =
     % universally (existentially) quantified.
     %
 :- pred check_constraint_quant(pred_info::in,
-    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_constraint_quant(PredInfo, !ModuleInfo, !Specs) :-
+check_constraint_quant(PredInfo, !Specs) :-
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
     pred_info_get_class_context(PredInfo, Constraints),
     Constraints = constraints(UnivCs, ExistCs),
     prog_type.constraint_list_get_tvars(UnivCs, UnivTVars),
-    solutions.solutions((pred(V::out) is nondet :-
+    solutions.solutions(
+        (pred(V::out) is nondet :-
             list.member(V, UnivTVars),
             list.member(V, ExistQVars)
         ), BadUnivTVars),
     maybe_report_badly_quantified_vars(PredInfo, universal_constraint,
-        BadUnivTVars, !ModuleInfo, !Specs),
+        BadUnivTVars, !Specs),
     prog_type.constraint_list_get_tvars(ExistCs, ExistTVars),
     list.delete_elems(ExistTVars, ExistQVars, BadExistTVars),
     maybe_report_badly_quantified_vars(PredInfo, existential_constraint,
-        BadExistTVars, !ModuleInfo, !Specs).
+        BadExistTVars, !Specs).
 
 :- pred maybe_report_badly_quantified_vars(pred_info::in, quant_error_type::in,
-    list(tvar)::in, module_info::in, module_info::out,
+    list(tvar)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_report_badly_quantified_vars(PredInfo, QuantErrorType, TVars,
-        !ModuleInfo, !Specs) :-
+maybe_report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
     (
         TVars = []
     ;
@@ -1976,10 +1977,10 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars) = Spec :-
 % Utility predicates.
 %
 
-:- pred get_unbound_tvars(tvarset::in, list(tvar)::in, list(tvar)::in,
-    list(prog_constraint)::in, module_info::in, list(tvar)::out) is det.
+:- pred get_unbound_tvars(module_info::in, tvarset::in, list(tvar)::in,
+    list(tvar)::in, list(prog_constraint)::in, list(tvar)::out) is det.
 
-get_unbound_tvars(TVarSet, RootTVars, AllTVars, Constraints, ModuleInfo,
+get_unbound_tvars(ModuleInfo, TVarSet, RootTVars, AllTVars, Constraints,
         UnboundTVars) :-
     module_info_get_class_table(ModuleInfo, ClassTable),
     InducedFunDeps = induced_fundeps(ClassTable, TVarSet, Constraints),
@@ -1997,13 +1998,14 @@ get_unbound_tvars(TVarSet, RootTVars, AllTVars, Constraints, ModuleInfo,
 :- func induced_fundeps(class_table, tvarset, list(prog_constraint))
     = induced_fundeps.
 
-induced_fundeps(ClassTable, TVarSet, Constraints)
-    = foldl(induced_fundeps_2(ClassTable, TVarSet), Constraints, []).
+induced_fundeps(ClassTable, TVarSet, Constraints) = FunDeps :-
+    list.foldl(induced_fundeps_2(ClassTable, TVarSet), Constraints,
+        [], FunDeps).
 
-:- func induced_fundeps_2(class_table, tvarset, prog_constraint,
-    induced_fundeps) = induced_fundeps.
+:- pred induced_fundeps_2(class_table::in, tvarset::in, prog_constraint::in,
+    induced_fundeps::in, induced_fundeps::out) is det.
 
-induced_fundeps_2(ClassTable, TVarSet, Constraint, FunDeps0) = FunDeps :-
+induced_fundeps_2(ClassTable, TVarSet, Constraint, !FunDeps) :-
     Constraint = constraint(Name, Args),
     Arity = length(Args),
     ClassDefn = map.lookup(ClassTable, class_id(Name, Arity)),
@@ -2012,8 +2014,7 @@ induced_fundeps_2(ClassTable, TVarSet, Constraint, FunDeps0) = FunDeps :-
     ClassAncestors = ClassDefn ^ class_fundep_ancestors,
     (
         % Optimize the common case.
-        ClassAncestors = [],
-        FunDeps = FunDeps0
+        ClassAncestors = []
     ;
         ClassAncestors = [_ | _],
         ClassTVarSet = ClassDefn ^ class_tvarset,
@@ -2032,25 +2033,25 @@ induced_fundeps_2(ClassTable, TVarSet, Constraint, FunDeps0) = FunDeps :-
         map.from_corresponding_lists(RenamedParams, Args, Subst),
         apply_subst_to_prog_constraint_list(Subst, RenamedAncestors,
             Ancestors),
-        FunDeps = foldl(induced_fundeps_3(ClassTable), Ancestors, FunDeps0)
+        list.foldl(induced_fundeps_3(ClassTable), Ancestors, !FunDeps)
     ).
 
-:- func induced_fundeps_3(class_table, prog_constraint, induced_fundeps)
-    = induced_fundeps.
+:- pred induced_fundeps_3(class_table::in, prog_constraint::in,
+    induced_fundeps::in, induced_fundeps::out) is det.
 
-induced_fundeps_3(ClassTable, Constraint, FunDeps0) = FunDeps :-
+induced_fundeps_3(ClassTable, Constraint, !FunDeps) :-
     Constraint = constraint(Name, Args),
     Arity = length(Args),
     ClassDefn = map.lookup(ClassTable, class_id(Name, Arity)),
-    FunDeps = foldl(induced_fundep(Args), ClassDefn ^ class_fundeps, FunDeps0).
+    list.foldl(induced_fundep(Args), ClassDefn ^ class_fundeps, !FunDeps).
 
-:- func induced_fundep(list(mer_type), hlds_class_fundep, induced_fundeps)
-    = induced_fundeps.
+:- pred induced_fundep(list(mer_type)::in, hlds_class_fundep::in,
+    induced_fundeps::in, induced_fundeps::out) is det.
 
-induced_fundep(Args, fundep(Domain0, Range0), FunDeps)
-        = [fundep(Domain, Range) | FunDeps] :-
+induced_fundep(Args, fundep(Domain0, Range0), !FunDeps) :-
     Domain = set.fold(induced_vars(Args), Domain0, set.init),
-    Range = set.fold(induced_vars(Args), Range0, set.init).
+    Range = set.fold(induced_vars(Args), Range0, set.init),
+    !:FunDeps = [fundep(Domain, Range) | !.FunDeps].
 
 :- func induced_vars(list(mer_type), int, set(tvar)) = set(tvar).
 
@@ -2097,7 +2098,6 @@ collect_determined_vars(FunDep @ fundep(Domain, Range), !FunDeps, !Vars) :-
 %
 % Error reporting.
 %
-%---------------------------------------------------------------------------%
 
     % Duplicate method definition error.
     %
@@ -2145,8 +2145,6 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
 
 %---------------------------------------------------------------------------%
 
-    % Undefined method error.
-    %
 :- pred report_undefined_method(class_id::in, hlds_instance_defn::in,
     pred_or_func::in, sym_name::in, arity::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -2179,8 +2177,6 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
 
 report_bogus_instance_methods(ClassId, BogusInstanceMethods, Context,
         !Specs) :-
-    % There were one or more bogus methods.
-    % Construct an appropriate error message.
     ClassId = class_id(ClassName, ClassArity),
     ErrorMsgStart =  [words("In instance declaration for"),
         sym_name_and_arity(ClassName / ClassArity), suffix(":"),

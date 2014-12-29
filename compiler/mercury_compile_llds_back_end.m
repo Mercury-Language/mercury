@@ -89,6 +89,7 @@
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -191,7 +192,7 @@ llds_backend_pass_by_phases(!HLDS, !GlobalData, !:LLDS, !DumpInfo, !IO) :-
     io::di, io::uo) is det.
 
 llds_backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
-    module_info_get_valid_predids(PredIds, !HLDS),
+    module_info_get_valid_pred_ids(!.HLDS, PredIds),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, optimize_proc_dups, ProcDups),
     (
@@ -567,7 +568,7 @@ allocate_store_map(Verbose, Stats, !HLDS, !IO) :-
 generate_llds_code_for_module(HLDS, Verbose, Stats, !GlobalData, LLDS, !IO) :-
     maybe_write_string(Verbose, "% Generating code...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    generate_module_code(HLDS, _HLDS, !GlobalData, LLDS, !IO),
+    generate_module_code(HLDS, !GlobalData, LLDS, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -651,11 +652,11 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
     RttiDatas = TypeCtorRttiData ++ TypeClassInfoRttiData,
     module_info_get_complexity_proc_infos(HLDS, ComplexityProcs),
 
-    C_InterfaceInfo = foreign_interface_info(ModuleSymName, C_HeaderCode0,
-        C_Includes, C_BodyCode0, _C_ExportDecls, C_ExportDefns),
+    C_InterfaceInfo = foreign_interface_info(ModuleSymName,
+        C_HeaderCodes0, C_BodyCodes, C_Includes,
+        _C_ExportDecls, C_ExportDefns),
     MangledModuleName = sym_name_mangle(ModuleSymName),
     CModuleName = MangledModuleName ++ "_module",
-    get_c_body_code(C_BodyCode0, C_BodyCode),
 
     % Split the code up into bite-size chunks for the C compiler.
     %
@@ -669,23 +670,22 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
         combine_chunks(ChunkedProcs, CModuleName, ChunkedModules)
     ),
     list.map_foldl(make_foreign_import_header_code(Globals), C_Includes,
-        C_IncludeHeaderCode, !IO),
+        C_IncludeHeaderCodes, !IO),
 
-    % The lists are reversed because insertions into them are at the front.
-    % We don't want to put C_LocalHeaderCode between Start and End, because
-    % C_IncludeHeaderCode may include our own header file, which defines
+    % We don't want to put C_LocalHeaderCodes between Start and End, because
+    % C_IncludeHeaderCodes may include our own header file, which defines
     % the module's guard macro, which in turn #ifdefs out the stuff between
     % Start and End.
-    list.filter(foreign_decl_code_is_local, list.reverse(C_HeaderCode0),
-        C_LocalHeaderCode, C_ExportedHeaderCode),
+    list.filter(foreign_decl_code_is_local, C_HeaderCodes0,
+        C_LocalHeaderCodes, C_ExportedHeaderCodes),
     make_decl_guards(ModuleSymName, Start, End),
-    C_HeaderCode = list.reverse(C_IncludeHeaderCode) ++
-        C_LocalHeaderCode ++ [Start | C_ExportedHeaderCode] ++ [End],
+    C_HeaderCodes = C_IncludeHeaderCodes ++ C_LocalHeaderCodes ++
+        [Start | C_ExportedHeaderCodes] ++ [End],
 
     module_info_user_init_pred_c_names(HLDS, UserInitPredCNames),
     module_info_user_final_pred_c_names(HLDS, UserFinalPredCNames),
 
-    CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode, C_ExportDefns,
+    CFile = c_file(ModuleSymName, C_HeaderCodes, C_BodyCodes, C_ExportDefns,
         TablingInfoStructs, ScalarCommonCellDatas, VectorCommonCellDatas,
         RttiDatas, PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns,
         UserEventVarNums, UserEvents,
@@ -711,7 +711,7 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
             TargetCodeOnly = no,
             io.output_stream(OutputStream, !IO),
             llds_c_to_obj(Globals, OutputStream, ModuleName, CompileOK, !IO),
-            module_get_fact_table_files(HLDS, FactTableBaseFiles),
+            module_get_fact_table_file_names(HLDS, FactTableBaseFiles),
             list.map2_foldl(compile_fact_table_file(Globals, OutputStream),
                 FactTableBaseFiles, FactTableObjFiles, FactTableCompileOKs,
                 !IO),
@@ -728,6 +728,23 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
         FactTableObjFiles = []
     ).
 
+    % Foreign_interface_info holds information used when generating
+    % code that uses the foreign language interface.
+    %
+:- type foreign_interface_info
+    --->    foreign_interface_info(
+                module_name,
+
+                % Info about stuff imported from C:
+                list(foreign_decl_code),
+                list(foreign_body_code),
+                list(foreign_import_module_info),
+
+                % Info about stuff exported to C:
+                foreign_export_decls,
+                foreign_export_defns
+            ).
+
     % Gather together the information from the HLDS, given the foreign
     % language we are going to use, that is used for the foreign language
     % interface.
@@ -741,34 +758,36 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
 
 llds_get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
     module_info_get_name(HLDS, ModuleName),
-    module_info_get_foreign_decl(HLDS, ForeignDecls),
-    module_info_get_foreign_import_module(HLDS, ForeignImports0),
+    ForeignSelfImport = foreign_import_module_info(UseForeignLanguage,
+        ModuleName, term.context_init),
+    module_info_get_foreign_decl_codes(HLDS, ForeignDeclCodeCord),
+    module_info_get_foreign_body_codes(HLDS, ForeignBodyCodeCord),
+    module_info_get_foreign_import_modules(HLDS, ForeignImportsCord0),
+    ForeignDeclCodes = cord.list(ForeignDeclCodeCord),
+    ForeignBodyCodes = cord.list(ForeignBodyCodeCord),
+    ForeignImportsCord = cord.snoc(ForeignImportsCord0, ForeignSelfImport),
+    ForeignImports = cord.list(ForeignImportsCord),
 
     % Always include the module we are compiling amongst the foreign import
     % modules so that pragma foreign_exported procedures are visible to
     % foreign code in this module.
     %
-    % XXX The frontend should really handle this but it is quite
-    % inconsistent in its treatement of self-imports.  Both this backend
-    % (the LLDS) and the MLDS backend currently handle self foreign imports
-    % directly.
+    % XXX The frontend should really handle this but it is quite inconsistent
+    % in its treatement of self-imports. Both this backend (the LLDS)
+    % and the MLDS backend currently handle self foreign imports directly.
 
-    ForeignSelfImport = foreign_import_module_info(UseForeignLanguage,
-        ModuleName, term.context_init),
-    ForeignImports = [ ForeignSelfImport | ForeignImports0 ],
-    module_info_get_foreign_body_code(HLDS, ForeignBodyCode),
-    foreign.filter_decls(UseForeignLanguage, ForeignDecls,
-        WantedForeignDecls, _OtherDecls),
+    foreign.filter_decls(UseForeignLanguage, ForeignDeclCodes,
+        WantedForeignDeclCodes, _OtherDeclCodes),
+    foreign.filter_bodys(UseForeignLanguage, ForeignBodyCodes,
+        WantedForeignBodyCodes, _OtherBodyCodes),
     foreign.filter_imports(UseForeignLanguage, ForeignImports,
         WantedForeignImports, _OtherImports),
-    foreign.filter_bodys(UseForeignLanguage, ForeignBodyCode,
-        WantedForeignBodys, _OtherBodys),
     export.get_foreign_export_decls(HLDS, Foreign_ExportDecls),
     export.get_foreign_export_defns(HLDS, Foreign_ExportDefns),
 
     Foreign_InterfaceInfo = foreign_interface_info(ModuleName,
-        WantedForeignDecls, WantedForeignImports,
-        WantedForeignBodys, Foreign_ExportDecls, Foreign_ExportDefns).
+        WantedForeignDeclCodes, WantedForeignBodyCodes,
+        WantedForeignImports, Foreign_ExportDecls, Foreign_ExportDefns).
 
 :- pred foreign_decl_code_is_local(foreign_decl_code::in) is semidet.
 
@@ -818,14 +837,6 @@ make_foreign_import_header_code(Globals, ForeignImportModule, Include, !IO) :-
         sorry($module, $pred, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for Erlang")
     ).
-
-:- pred get_c_body_code(foreign_body_info::in, list(user_foreign_code)::out)
-    is det.
-
-get_c_body_code([], []).
-get_c_body_code([foreign_body_code(Lang, Code, Context) | CodesAndContexts],
-        [user_foreign_code(Lang, Code, Context) | C_Modules]) :-
-    get_c_body_code(CodesAndContexts, C_Modules).
 
 :- pred combine_chunks(list(list(c_procedure))::in, string::in,
     list(comp_gen_c_module)::out) is det.

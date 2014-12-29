@@ -52,7 +52,7 @@
     % When generating the dependencies (for `--generate-dependencies'), the
     % two fields that hold the direct imports do not include the imports via
     % ancestors when the module is first read in; the ancestor imports are
-    % added later, once all the modules have been read in.  Similarly the
+    % added later, once all the modules have been read in. Similarly the
     % indirect imports field is initially set to the empty list and filled
     % in later.
     %
@@ -101,16 +101,16 @@
                 % The list of filenames for fact tables in this module.
                 mai_fact_table_deps             :: list(string),
 
-                % Whether or not the module contains foreign code, and if yes,
-                % which languages they use.
-                mai_has_foreign_code            :: contains_foreign_code,
-
                 % The `:- pragma foreign_import_module' declarations.
-                mai_foreign_import_modules  :: foreign_import_module_info_list,
+                mai_foreign_import_modules      :: foreign_import_module_infos,
 
                 % The list of filenames referenced by `:- pragma foreign_decl'
                 % or `:- pragma foreign_code' declarations.
-                mai_foreign_include_files   :: foreign_include_file_info_list,
+                mai_foreign_include_files       :: foreign_include_file_infos,
+
+                % Whether or not the module contains foreign code, and if yes,
+                % which languages they use.
+                mai_has_foreign_code            :: contains_foreign_code,
 
                 % Does the module contain any `:- pragma foreign_export'
                 % declarations?
@@ -251,7 +251,7 @@
     % This replicates part of get_item_list_foreign_code.
     %
 :- pred get_foreign_include_files(list(item)::in,
-    foreign_include_file_info_list::out) is det.
+    foreign_include_file_infos::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -357,7 +357,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         (func(Lang) = foreign_import_module_info(Lang, ModuleName,
             term.context_init)),
         SelfImportLangs),
-    ForeignImports = ForeignSelfImports ++ ForeignImports0,
+    ForeignImports = cord.from_list(ForeignSelfImports) ++ ForeignImports0,
 
     % Work out whether the items contain main/2.
     (
@@ -391,8 +391,8 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         ModuleName, ParentDeps, InterfaceDeps,
         ImplementationDeps, IndirectDeps, IncludeDeps,
         InterfaceIncludeDeps, NestedDeps, FactTableDeps,
-        ContainsForeignCode, ForeignImports, ForeignIncludeFiles,
-        ContainsForeignExport,
+        ForeignImports, ForeignIncludeFiles,
+        ContainsForeignCode, ContainsForeignExport,
         cord.empty, Specs, Errors, no, HasMain, dir.this_directory).
 
 %-----------------------------------------------------------------------------%
@@ -1040,10 +1040,10 @@ get_fact_table_dependencies_2([Item | Items], !Deps) :-
 %-----------------------------------------------------------------------------%
 
 get_foreign_include_files(Items, IncludeFiles) :-
-    list.foldl(get_foreign_include_file, Items, [], IncludeFiles).
+    list.foldl(get_foreign_include_file, Items, cord.init, IncludeFiles).
 
 :- pred get_foreign_include_file(item::in,
-    foreign_include_file_info_list::in, foreign_include_file_info_list::out)
+    foreign_include_file_infos::in, foreign_include_file_infos::out)
     is det.
 
 get_foreign_include_file(Item, !IncludeFiles) :-
@@ -1063,7 +1063,7 @@ get_foreign_include_file(Item, !IncludeFiles) :-
         ;
             LiteralOrInclude = include_file(FileName),
             IncludeFile = foreign_include_file_info(Lang, FileName),
-            !:IncludeFiles = [IncludeFile | !.IncludeFiles]
+            !:IncludeFiles = cord.snoc(!.IncludeFiles, IncludeFile)
         )
     ;
         true

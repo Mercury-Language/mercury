@@ -69,6 +69,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -107,8 +108,8 @@ erl_gen_imports(ModuleInfo, AllImports) :-
     list(foreign_body_code)::out, list(pragma_exported_proc)::out,
     io::di, io::uo) is det.
 
-filter_erlang_foreigns(ModuleInfo, ForeignDecls, ForeignBodies, PragmaExports,
-        !IO) :-
+filter_erlang_foreigns(ModuleInfo, ForeignDeclCodes, ForeignBodyCodes,
+        PragmaExports, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_backend_foreign_languages(Globals, BackendForeignLanguages),
     ( BackendForeignLanguages = [lang_erlang] ->
@@ -116,18 +117,15 @@ filter_erlang_foreigns(ModuleInfo, ForeignDecls, ForeignBodies, PragmaExports,
     ;
         unexpected($module, $pred, "foreign language other than Erlang")
     ),
-    module_info_get_foreign_decl(ModuleInfo, AllForeignDecls),
-    module_info_get_foreign_body_code(ModuleInfo, AllForeignBodys),
-    module_info_get_pragma_exported_procs(ModuleInfo, AllPragmaExports),
-    foreign.filter_decls(lang_erlang, AllForeignDecls, RevForeignDecls,
-        _OtherForeignDecls),
-    foreign.filter_bodys(lang_erlang, AllForeignBodys, RevForeignBodies,
-        _OtherForeignBodys),
-    foreign.filter_exports(lang_erlang, AllPragmaExports, RevPragmaExports,
-        _OtherForeignExports),
-    ForeignDecls = list.reverse(RevForeignDecls),
-    ForeignBodies = list.reverse(RevForeignBodies),
-    PragmaExports = list.reverse(RevPragmaExports).
+    module_info_get_foreign_decl_codes(ModuleInfo, ForeignDeclCodeCord),
+    module_info_get_foreign_body_codes(ModuleInfo, ForeignBodyCodeCord),
+    module_info_get_pragma_exported_procs(ModuleInfo, PragmaExportsCord),
+    foreign.filter_decls(lang_erlang, cord.list(ForeignDeclCodeCord),
+        ForeignDeclCodes, _OtherForeignDeclCodes),
+    foreign.filter_bodys(lang_erlang, cord.list(ForeignBodyCodeCord),
+        ForeignBodyCodes, _OtherForeignBodyCodes),
+    foreign.filter_exports(lang_erlang, cord.list(PragmaExportsCord),
+        PragmaExports, _OtherForeignExports).
 
 %-----------------------------------------------------------------------------%
 

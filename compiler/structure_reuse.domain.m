@@ -980,7 +980,7 @@ dump_entries(ModuleInfo, PPId, reuse_as_and_status(ReuseAs, _Status), !IO) :-
     io.nl(!IO).
 
 load_structure_reuse_table(ModuleInfo) = ReuseTable :-
-    module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     list.foldl(load_structure_reuse_table_2(ModuleInfo), PredIds,
         reuse_as_table_init, ReuseTable).
 

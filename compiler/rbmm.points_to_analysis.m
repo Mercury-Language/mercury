@@ -84,7 +84,7 @@ region_points_to_analysis(InfoTable, !ModuleInfo) :-
     rpta_info_table::in, rpta_info_table::out) is det.
 
 intra_proc_rpta(ModuleInfo, !InfoTable) :-
-    module_info_get_valid_predids(PredIds, ModuleInfo, _),
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     list.foldl(intra_proc_rpta_pred(ModuleInfo), PredIds, !InfoTable).
 
 :- pred intra_proc_rpta_pred(module_info::in, pred_id::in,

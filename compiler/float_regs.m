@@ -179,7 +179,7 @@ insert_reg_wrappers(!ModuleInfo, Specs) :-
     % In the first phase, update the pred_inst_infos in argument modes to
     % include information about the register type that should be used for
     % each higher-order argument.
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl(add_arg_regs_in_pred, PredIds, !ModuleInfo),
 
     % In the second phase, go over every procedure goal, update instmap deltas

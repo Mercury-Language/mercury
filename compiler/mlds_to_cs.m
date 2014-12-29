@@ -156,21 +156,19 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     ),
 
     % Get the foreign code for C#
-    % XXX We should not ignore _RevImports.
+    % XXX We should not ignore _Imports.
     ForeignCode = mlds_get_csharp_foreign_code(AllForeignCode),
-    ForeignCode = mlds_foreign_code(RevForeignDecls, _RevImports,
-        RevBodyCode, ExportDefns),
-    ForeignDecls = list.reverse(RevForeignDecls),
-    ForeignBodyCode = list.reverse(RevBodyCode),
+    ForeignCode = mlds_foreign_code(ForeignDeclCodes, ForeignBodyCodes,
+        _Imports, ExportDefns),
 
     % Output transformed MLDS as C# source.
     module_info_get_globals(ModuleInfo, Globals),
     module_source_filename(Globals, ModuleName, SourceFileName, !IO),
     Info = init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs),
-    output_src_start(Info, Indent, ModuleName, Imports, ForeignDecls, Defns,
-        !IO),
-    io.write_list(ForeignBodyCode, "\n", output_csharp_body_code(Info, Indent),
-        !IO),
+    output_src_start(Info, Indent, ModuleName, Imports, ForeignDeclCodes,
+        Defns, !IO),
+    io.write_list(ForeignBodyCodes, "\n",
+        output_csharp_body_code(Info, Indent), !IO),
 
     output_pragma_warning_disable(!IO),
 
@@ -244,10 +242,10 @@ output_csharp_decl(Info, Indent, DeclCode, !IO) :-
     ).
 
 :- pred output_csharp_body_code(csharp_out_info::in, indent::in,
-    user_foreign_code::in, io::di, io.state::uo) is det.
+    foreign_body_code::in, io::di, io.state::uo) is det.
 
-output_csharp_body_code(Info, Indent, UserForeignCode, !IO) :-
-    UserForeignCode = user_foreign_code(Lang, LiteralOrInclude, Context),
+output_csharp_body_code(Info, Indent, ForeignBodyCode, !IO) :-
+    ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
     % Only output C# code.
     (
         Lang = lang_csharp,

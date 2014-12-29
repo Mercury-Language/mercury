@@ -1826,13 +1826,14 @@ bound_type_to_pieces(Type0, TypeVarSet, TypeBindings, HeadTypeParams)
 maybe_report_missing_import_addendum(Info, ModuleQualifier) = Pieces :-
     % First check if this module wasn't imported.
     ModuleInfo = Info ^ tc_info_module_info,
+    module_info_get_visible_modules(ModuleInfo, VisibleModules),
+
+    set.filter(match_sym_name(ModuleQualifier),
+        VisibleModules, MatchingVisibleModules),
     (
-        % If the module qualifier couldn't match any of the visible modules,
+        % If the module qualifier does not match any of the visible modules,
         % then we report that the module has not been imported.
-        \+ (
-            visible_module(VisibleModule, ModuleInfo),
-            match_sym_name(ModuleQualifier, VisibleModule)
-        )
+        set.is_empty(MatchingVisibleModules)
     ->
         Pieces = [nl, words("(the module"), sym_name(ModuleQualifier),
             words("has not been imported)."), nl]
@@ -1840,28 +1841,30 @@ maybe_report_missing_import_addendum(Info, ModuleQualifier) = Pieces :-
         % The module qualifier matches one or more of the visible modules.
         % But maybe the user forgot to import the parent module(s) of that
         % module...
-        solutions.solutions(get_unimported_parent(ModuleQualifier,
-            ModuleInfo), UnimportedParents),
-        UnimportedParents = [_ | _]
-    ->
-        Pieces = [nl | report_unimported_parents(UnimportedParents)]
-    ;
-        Pieces = [suffix("."), nl]
+        solutions.solutions(
+            get_unimported_parent(VisibleModules, MatchingVisibleModules),
+            UnimportedParents),
+        (
+            UnimportedParents = [_ | _],
+            Pieces = [nl | report_unimported_parents(UnimportedParents)]
+        ;
+            UnimportedParents = [],
+            Pieces = [suffix("."), nl]
+        )
     ).
 
-    % Nondeterministically return all the possible parent modules which could
-    % be parent modules of the given module qualifier, and which are not
-    % imported.
+    % Nondeterministically return all the possible parent modules
+    % of a module in MatchingModuleNames which are not imported
+    % (i.e. not visible).
     %
-:- pred get_unimported_parent(module_name::in, module_info::in,
-    module_name::out) is nondet.
+:- pred get_unimported_parent(set(module_name)::in, set(module_name)::in,
+   module_name::out) is nondet.
 
-get_unimported_parent(ModuleQualifier, ModuleInfo, UnimportedParent) :-
-    visible_module(ModuleName, ModuleInfo),
-    match_sym_name(ModuleQualifier, ModuleName),
-    ParentModules = get_ancestors(ModuleName),
+get_unimported_parent(VisibleModules, MatchingModuleNames, UnimportedParent) :-
+    set.member(MatchingModuleName, MatchingModuleNames),
+    ParentModules = get_ancestors(MatchingModuleName),
     list.member(UnimportedParent, ParentModules),
-    \+ visible_module(UnimportedParent, ModuleInfo).
+    not set.contains(VisibleModules, UnimportedParent).
 
 :- func report_unimported_parents(list(module_name)) = list(format_component).
 
