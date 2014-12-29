@@ -1245,13 +1245,21 @@ replace_type_ctor(Location, EqvMap, TypeCtorsAlreadyExpanded, Type0,
 :- pred type_ctor_used_modules(eqv_type_location::in, type_ctor::in,
     used_modules::in, used_modules::out) is det.
 
-type_ctor_used_modules(eqv_type_out_of_module, _, !UsedModules).
-type_ctor_used_modules(eqv_type_in_interface, type_ctor(Name, _),
-        !UsedModules) :-
-    add_sym_name_module(visibility_public, Name, !UsedModules).
-type_ctor_used_modules(eqv_type_in_implementation, type_ctor(Name, _),
-        !UsedModules) :-
-    add_sym_name_module(visibility_private, Name, !UsedModules).
+type_ctor_used_modules(EqvTypeLocn, TypeCtor, !UsedModules) :-
+    (
+        EqvTypeLocn = eqv_type_out_of_module
+    ;
+        (
+            EqvTypeLocn = eqv_type_in_interface,
+            Visibility = visibility_public
+        ;
+            EqvTypeLocn = eqv_type_in_implementation,
+            Visibility = visibility_private
+        ),
+        TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
+        record_sym_name_module_as_used(Visibility, TypeCtorSymName,
+            !UsedModules)
+    ).
 
 :- pred replace_in_inst(eqv_type_location::in,
     mer_inst::in, eqv_inst_map::in, mer_inst::out,

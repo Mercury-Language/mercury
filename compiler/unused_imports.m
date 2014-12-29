@@ -39,7 +39,7 @@
     % which is not directly used in this module, plus those
     % which are in the interface but should be in the implementation.
     %
-:- pred unused_imports(module_info::in, list(error_spec)::out,
+:- pred warn_about_unused_imports(module_info::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -67,56 +67,42 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-unused_imports(ModuleInfo, !:Specs, !IO) :-
-    !:Specs = [],
+warn_about_unused_imports(ModuleInfo, !:Specs, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
         FileName, !IO),
 
-    % Each parent module of the current module imports are inherited by
-    % this module so we have to add the used modules of the parents to
-    % the set of used modules, as an import in the parent may only be
-    % consumed by the parent.
-    %
-    % We also consider the implicitly imported modules to be used as
-    % the user cannot do anything about them.
+    find_all_non_warn_modules(ModuleInfo, UsedModules),
 
-    ImplicitImports = all_builtin_modules,
-    module_info_get_used_modules(ModuleInfo, UsedModules0),
-    list.foldl(add_all_modules(visibility_public), ImplicitImports,
-        UsedModules0, UsedModules1),
-    used_modules(ModuleInfo, UsedModules1, UsedModules),
-
-    % The unused imports is simply the set of imports minus all the
+    % The unused imports is simply the set of all imports minus all the
     % used modules.
     module_info_get_imported_module_specifiers(ModuleInfo, ImportedModules),
     UsedInImplementation = UsedModules ^ impl_used_modules,
-    UnusedImports = to_sorted_list(ImportedModules `difference`
-        (UsedInInterface `union` UsedInImplementation)),
+    UnusedImports = ImportedModules `set.difference`
+        (UsedInInterface `set.union` UsedInImplementation),
 
-    (
-        UnusedImports = [_ | _],
-        ImportSpec = generate_warning(ModuleName, FileName, UnusedImports, ""),
-        !:Specs = [ImportSpec | !.Specs]
+    ( set.is_non_empty(UnusedImports) ->
+        ImportSpec = generate_warning(ModuleName, FileName,
+            set.to_sorted_list(UnusedImports), ""),
+        !:Specs = [ImportSpec]
     ;
-        UnusedImports = []
+        !:Specs = []
     ),
 
     % Determine the modules imported in the interface but not used in
     % the interface.
     module_info_get_interface_module_specifiers(ModuleInfo, InterfaceImports),
     UsedInInterface = UsedModules ^ int_used_modules,
-    UnusedInterfaceImports = to_sorted_list(InterfaceImports
-        `difference` UsedInInterface `difference` set(UnusedImports)),
+    UnusedInterfaceImports = (InterfaceImports
+        `set.difference` UsedInInterface) `set.difference` UnusedImports,
 
-    (
-        UnusedInterfaceImports = [_ | _],
+    ( set.is_non_empty(UnusedInterfaceImports) ->
         InterfaceImportSpec = generate_warning(ModuleName, FileName,
-            UnusedInterfaceImports, " interface"),
+            set.to_sorted_list(UnusedInterfaceImports), " interface"),
         !:Specs = [InterfaceImportSpec | !.Specs]
     ;
-        UnusedInterfaceImports = []
+        true
     ).
 
 :- func generate_warning(module_name, string, list(module_name), string)
@@ -155,14 +141,30 @@ wrap_module_name(SymName) = sym_name(SymName).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % Scan each item in the module_info recording the module qualifications on
-    % the item and if that module is used in the interface or implementation
-    % section of the module.
+    % Scan each entity in the module_info, and record the module defining
+    % that entity as being used in the appropriate section of the current
+    % module (interface or implementation).
     %
-:- pred used_modules(module_info::in,
-    used_modules::in, used_modules::out) is det.
+    % Also include in the returned set the modules that we shouldn't
+    % generate unused module warnings about because the user cannot
+    % eliminate their import.
+    %
+:- pred find_all_non_warn_modules(module_info::in, used_modules::out) is det.
 
-used_modules(ModuleInfo, !UsedModules) :-
+find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
+    % Each parent module of the current module has imports that are
+    % inherited by this module, so we have to add the used modules
+    % of the parents to the set of used modules, as an import in the parent
+    % may only be consumed by the parent.
+    module_info_get_used_modules(ModuleInfo, !:UsedModules),
+
+    % We do not want to generate unused module warnings for implicitly
+    % imported modules, since the user cannot prevent their imports.
+    % We therefore include them as "used" modules.
+    ImplicitImports = all_builtin_modules,
+    list.foldl(record_module_and_ancestors_as_used(visibility_public),
+        ImplicitImports, !UsedModules),
+
     module_info_get_type_table(ModuleInfo, TypeTable),
     foldl_over_type_ctor_defns(type_used_modules, TypeTable, !UsedModules),
 
@@ -231,7 +233,7 @@ ctor_used_modules(Visibility,
 
 prog_constraint_used_module(Visibility, constraint(ClassName, Args),
         !UsedModules) :-
-    add_sym_name_module(Visibility, ClassName, !UsedModules),
+    record_sym_name_module_as_used(Visibility, ClassName, !UsedModules),
     list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules).
 
 %-----------------------------------------------------------------------------%
@@ -269,7 +271,7 @@ mode_used_modules(mode_id(Name, _Arity), ModeDefn, !UsedModules) :-
     (
         DefinedInThisModule = yes,
         Visibility = item_visibility(ImportStatus),
-        add_sym_name_module(Visibility, Name, !UsedModules),
+        record_sym_name_module_as_used(Visibility, Name, !UsedModules),
         ModeBody = ModeDefn ^ mody_body,
         ModeBody = eqv_mode(Mode),
         mer_mode_used_modules(Visibility, Mode, !UsedModules)
@@ -289,7 +291,7 @@ class_used_modules(class_id(Name, _Arity), ClassDefn, !UsedModules) :-
     (
         DefinedInThisModule = yes,
         Visibility = item_visibility(ImportStatus),
-        add_sym_name_module(Visibility, Name, !UsedModules),
+        record_sym_name_module_as_used(Visibility, Name, !UsedModules),
         list.foldl(prog_constraint_used_module(Visibility),
             ClassDefn ^ class_supers, !UsedModules)
     ;
@@ -317,7 +319,7 @@ instance_used_modules_2(class_id(Name, _Arity), InstanceDefn, !UsedModules) :-
         % will be processed by pred_info_used_modules.
         % XXX is this true?
         Visibility = item_visibility(ImportStatus),
-        add_sym_name_module(Visibility, Name, !UsedModules),
+        record_sym_name_module_as_used(Visibility, Name, !UsedModules),
         list.foldl(prog_constraint_used_module(Visibility),
             InstanceDefn ^ instance_constraints, !UsedModules),
         list.foldl(mer_type_used_modules(Visibility),
@@ -396,16 +398,24 @@ hlds_goal_used_modules(Goal, !UsedModules) :-
         GoalExpr = unify(_, Rhs, _, _, _),
         unify_rhs_used_modules(Rhs, !UsedModules)
     ;
-        GoalExpr = plain_call(_, _, _, _, _, Name),
-        add_sym_name_module(visibility_private, Name, !UsedModules)
+        GoalExpr = plain_call(_, _, _, _, _, SymName),
+        record_sym_name_module_as_used(visibility_private, SymName, !UsedModules),
+        Name = unqualify_name(SymName),
+        ( Name = "format" ->
+            record_format_modules_as_used(!UsedModules)
+        ;
+            true
+        )
     ;
         GoalExpr = generic_call(Call, _, _, _, _),
         (
             Call = class_method(_, _, ClassId, CallId),
             ClassId = class_id(ClassName, _),
-            add_sym_name_module(visibility_private, ClassName, !UsedModules),
             CallId = simple_call_id(_, MethodName, _),
-            add_sym_name_module(visibility_private, MethodName, !UsedModules)
+            record_sym_name_module_as_used(visibility_private, ClassName,
+                !UsedModules),
+            record_sym_name_module_as_used(visibility_private, MethodName,
+                !UsedModules)
         ;
             ( Call = higher_order(_, _, _, _)
             ; Call = event_call(_)
@@ -478,12 +488,12 @@ cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
         ( ConsId = cons(SymName, _, _)
         ; ConsId = type_info_cell_constructor(type_ctor(SymName, _))
         ),
-        add_sym_name_module(Visibility, SymName, !UsedModules)
+        record_sym_name_module_as_used(Visibility, SymName, !UsedModules)
     ;
         ( ConsId = type_ctor_info_const(ModuleName, _, _)
         ; ConsId = base_typeclass_info_const(ModuleName, _, _, _)
         ),
-        add_all_modules(Visibility, ModuleName, !UsedModules)
+        record_sym_name_module_as_used(Visibility, ModuleName, !UsedModules)
     ;
         ( ConsId = tuple_cons(_)
         ; ConsId = closure_cons(_, _)
@@ -517,7 +527,7 @@ mer_type_used_modules(Visibility, Type, !UsedModules) :-
 mer_type_used_modules_2(_Status, type_variable(_, _), !UsedModules).
 mer_type_used_modules_2(Visibility, defined_type(Name, Args, _),
         !UsedModules) :-
-    add_sym_name_module(Visibility, Name, !UsedModules),
+    record_sym_name_module_as_used(Visibility, Name, !UsedModules),
     list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules).
 mer_type_used_modules_2(_Status, builtin_type(_), !UsedModules).
 mer_type_used_modules_2(Visibility,
@@ -547,7 +557,7 @@ mer_mode_used_modules(Visibility, Inst0 -> Inst, !UsedModules) :-
     mer_inst_used_modules(Visibility, Inst, !UsedModules).
 mer_mode_used_modules(Visibility, user_defined_mode(Name, Insts),
         !UsedModules) :-
-    add_sym_name_module(Visibility, Name, !UsedModules),
+    record_sym_name_module_as_used(Visibility, Name, !UsedModules),
     list.foldl(mer_inst_used_modules(Visibility), Insts, !UsedModules).
 
 %-----------------------------------------------------------------------------%
@@ -583,7 +593,7 @@ mer_inst_used_modules(Visibility, Inst, !UsedModules) :-
         inst_name_used_modules(Visibility, InstName, !UsedModules)
     ;
         Inst = abstract_inst(Name, ArgInsts),
-        add_sym_name_module(Visibility, Name, !UsedModules),
+        record_sym_name_module_as_used(Visibility, Name, !UsedModules),
         list.foldl(mer_inst_used_modules(Visibility), ArgInsts, !UsedModules)
     ).
 
@@ -613,7 +623,7 @@ ho_inst_info_used_modules(_, none, !UsedModules).
 inst_name_used_modules(Visibility, InstName, !UsedModules) :-
     (
         InstName = user_inst(Name, Insts),
-        add_sym_name_module(Visibility, Name, !UsedModules),
+        record_sym_name_module_as_used(Visibility, Name, !UsedModules),
         list.foldl(mer_inst_used_modules(Visibility), Insts, !UsedModules)
     ;
         ( InstName = merge_inst(InstA, InstB)

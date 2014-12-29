@@ -1348,8 +1348,8 @@ module_info_get_all_deps(ModuleInfo, AllImports) :-
 
 module_info_add_parents_to_used_modules(Modules, !MI) :-
     module_info_get_used_modules(!.MI, UsedModules0),
-    list.foldl(add_all_modules(visibility_public), Modules,
-        UsedModules0, UsedModules),
+    list.foldl(record_module_and_ancestors_as_used(visibility_public),
+        Modules, UsedModules0, UsedModules),
     !MI ^ mi_sub_info ^ msi_used_modules := UsedModules.
 
 %---------------------%

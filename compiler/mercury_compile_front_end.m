@@ -471,7 +471,7 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
     maybe_polymorphism(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 30, "polymorphism", !DumpInfo, !IO),
 
-    maybe_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_warn_about_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 31, "unused_imports", !DumpInfo, !IO),
 
     % XXX Convert the mode constraints pass to use error_specs.
@@ -624,11 +624,11 @@ maybe_polymorphism(Verbose, Stats, !HLDS, !Specs, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_unused_imports(bool::in, bool::in,
+:- pred maybe_warn_about_unused_imports(bool::in, bool::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO) :-
+maybe_warn_about_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_unused_imports,
         WarnUnusedImports),
@@ -636,7 +636,7 @@ maybe_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO) :-
         WarnUnusedImports = yes,
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "% Checking for unused imports...", !IO),
-        unused_imports(!.HLDS, UnusedImportSpecs, !IO),
+        warn_about_unused_imports(!.HLDS, UnusedImportSpecs, !IO),
         !:Specs = UnusedImportSpecs ++ !.Specs,
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),

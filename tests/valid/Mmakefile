@@ -148,8 +148,8 @@ OTHER_PROGS= \
 	indexing \
 	inhibit_warn_test \
 	inlining_bug \
-	instmap_generic_failure \
 	inst_perf_bug_1 \
+	instmap_generic_failure \
 	int64 \
 	intermod_bug_nested \
 	intermod_char \
@@ -213,6 +213,7 @@ OTHER_PROGS= \
 	neg_erroneous \
 	nested_mod_type_bug \
 	nested_module_bug \
+	no_warn_format_imports \
 	no_warn_obsolete \
 	no_warn_unresolved_poly \
 	nondet_live \

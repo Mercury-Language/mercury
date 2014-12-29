@@ -127,6 +127,7 @@ MCFLAGS-middle_rec_labels	= --middle-rec
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-mpj6			= --infer-all
 MCFLAGS-neg_erroneous		= -O3
+MCFLAGS-no_warn_format_imports = --warn-unused-imports --halt-at-warn
 MCFLAGS-no_warn_obsolete	= --no-warn-obsolete
 MCFLAGS-no_warn_unresolved_poly = --no-warn-unresolved-polymorphism
 MCFLAGS-opt_det_warn            = --intermodule-optimization --halt-at-warn

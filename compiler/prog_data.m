@@ -45,6 +45,9 @@
 
 :- implementation.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
+
 :- import_module libs.options.
 :- import_module require.
 :- import_module string.
@@ -2695,16 +2698,20 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     %
 :- func used_modules_init = used_modules.
 
-    % Given a sym_name call add_all_modules on the module part of the name.
+    % Given a sym_name, call record_module_and_ancestors_as_used on the module
+    % part of the name.
     %
-:- pred add_sym_name_module(item_visibility::in, sym_name::in,
+:- pred record_sym_name_module_as_used(item_visibility::in, sym_name::in,
     used_modules::in, used_modules::out) is det.
 
-    % Given a module name add the module and all of its parent modules
+    % Given a module name, add the module and all of its parent modules
     % to the used_modules.
     %
-:- pred add_all_modules(item_visibility::in, sym_name::in,
+:- pred record_module_and_ancestors_as_used(item_visibility::in, sym_name::in,
     used_modules::in, used_modules::out) is det.
+
+:- pred record_format_modules_as_used(used_modules::in, used_modules::out)
+    is det.
 
 :- func lookup_current_backend(globals) = backend.
 
@@ -2712,26 +2719,47 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 
 used_modules_init = used_modules(set.init, set.init).
 
-add_sym_name_module(_Visibility, unqualified(_), !UsedModules).
-add_sym_name_module(Visibility, qualified(ModuleName, _), !UsedModules) :-
-    add_all_modules(Visibility, ModuleName, !UsedModules).
+record_sym_name_module_as_used(Visibility, SymName, !UsedModules) :-
+    (
+        SymName = unqualified(_)
+    ;
+        SymName = qualified(ModuleName, _),
+        record_module_and_ancestors_as_used(Visibility, ModuleName,
+            !UsedModules)
+    ).
 
-add_all_modules(Visibility, ModuleName @ unqualified(_), !UsedModules) :-
-    add_module(Visibility, ModuleName, !UsedModules).
-add_all_modules(Visibility, ModuleName @ qualified(Parent, _), !UsedModules) :-
-    add_module(Visibility, ModuleName, !UsedModules),
-    add_all_modules(Visibility, Parent, !UsedModules).
+record_module_and_ancestors_as_used(Visibility, ModuleName, !UsedModules) :-
+    (
+        ModuleName = unqualified(_),
+        record_module_as_used(Visibility, ModuleName, !UsedModules)
+    ;
+        ModuleName = qualified(ParentModuleName, _),
+        record_module_as_used(Visibility, ModuleName, !UsedModules),
+        record_module_and_ancestors_as_used(Visibility, ParentModuleName,
+            !UsedModules)
+    ).
 
-:- pred add_module(item_visibility::in, module_name::in,
+:- pred record_module_as_used(item_visibility::in, module_name::in,
     used_modules::in, used_modules::out) is det.
 
-add_module(visibility_public, Module, !UsedModules) :-
-    IntUsedModules0 = !.UsedModules ^ int_used_modules,
-    set.insert(Module, IntUsedModules0, IntUsedModules),
-    !UsedModules ^ int_used_modules := IntUsedModules.
-add_module(visibility_private, Module, !UsedModules) :-
+record_module_as_used(Visibility, ModuleName, !UsedModules) :-
+    (
+        Visibility = visibility_public,
+        IntUsedModules0 = !.UsedModules ^ int_used_modules,
+        set.insert(ModuleName, IntUsedModules0, IntUsedModules),
+        !UsedModules ^ int_used_modules := IntUsedModules
+    ;
+        Visibility = visibility_private,
+        ImplUsedModules0 = !.UsedModules ^ impl_used_modules,
+        set.insert(ModuleName, ImplUsedModules0, ImplUsedModules),
+        !UsedModules ^ impl_used_modules := ImplUsedModules
+    ).
+
+record_format_modules_as_used(!UsedModules) :-
     ImplUsedModules0 = !.UsedModules ^ impl_used_modules,
-    set.insert(Module, ImplUsedModules0, ImplUsedModules),
+    FormatModules = [mercury_string_format_module,
+        mercury_string_parse_util_module, mercury_stream_module],
+    set.insert_list(FormatModules, ImplUsedModules0, ImplUsedModules),
     !UsedModules ^ impl_used_modules := ImplUsedModules.
 
 lookup_current_backend(Globals) = CurrentBackend :-
