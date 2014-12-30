@@ -50,10 +50,15 @@ public class MercuryRuntime
      * Finalise the runtime system.
      * This _must_ be called at the normal end of any program.  It runs
      * finalisers and stops the thread pool.
+     * This will wait for the thread pool to shutdown.
      */
     public static void finalise() {
+        MercuryThreadPool pool;
+
+        pool = getThreadPool();
         JavaInternal.run_finalisers();
-        getThreadPool().shutdown();
+        pool.shutdown();
+        pool.waitForShutdown();
     }
 }
 

@@ -59,6 +59,8 @@ public class MercuryWorkerThread extends MercuryThread
                     // The task threw a Mercury exception.
                     pool.taskFailed(task, e);
                     JavaInternal.reportUncaughtException(e);
+                    // Make the thread exit after throwing an exception.
+                    break;
                 } catch (Throwable e) {
                     // Some other error occured. bail out.
                     System.err.println("Uncaught exception: " + e.toString());

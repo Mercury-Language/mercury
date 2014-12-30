@@ -311,6 +311,8 @@ public class MercuryThreadPool
         } finally {
             threads_lock.unlock();
         }
+
+        signalMainLoop();
     }
 
     public void taskDone(Task task)
@@ -346,7 +348,12 @@ public class MercuryThreadPool
     {
         main_loop_lock.lock();
         try {
-            main_loop_condition.signal();
+            /*
+             * There may be more than one thread waiting on this condition
+             * such as when more than one thread calls waitForShutdown().
+             * I can't imagine this happening, bit it is allowed.
+             */
+            main_loop_condition.signalAll();
         } finally {
             main_loop_lock.unlock();
         }
@@ -407,8 +414,7 @@ public class MercuryThreadPool
              */
             threads_lock.lock();
             try {
-                int num_threads = num_threads_working + num_threads_waiting +
-                    num_threads_blocked + num_threads_other;
+                int num_threads = numThreads();
                 int num_threads_limit = thread_pool_size +
                     num_threads_blocked;
                 // Determine the number of new threads that we want.
@@ -449,6 +455,15 @@ public class MercuryThreadPool
                 t.start();
             }
         }
+    }
+
+    /**
+     * Get the total number of threads.
+     * Caller must hold threads lock.
+     */
+    private int numThreads() {
+        return num_threads_working + num_threads_waiting +
+            num_threads_blocked + num_threads_other;
     }
 
     /**
@@ -542,16 +557,52 @@ public class MercuryThreadPool
             }
         }
 
-        /*
-         * Shutdown
-         */
+        doShutdown();
+    }
+
+    /**
+     * Perform the shutdown.
+     */
+    private void doShutdown()
+    {
         tasks_lock.lock();
         try {
             shutdown_now = true;
-            thread_wait_for_task_condition.signalAll();
             running = false;
+            thread_wait_for_task_condition.signalAll();
         } finally {
             tasks_lock.unlock();
+        }
+    }
+
+    /**
+     * Wait for all the worker threads to exit.
+     * Even though the JVM is not supposed to exit until all the non-daemon
+     * threads have exited the effects of some threads may get lost.  I
+     * suspect this may be because the main thread closes stdout and stderr.
+     * Waiting for the worker threads fixes the problem - pbone.
+     */
+    public boolean waitForShutdown()
+    {
+        boolean has_shutdown = false;
+
+        if (shutdown_request) {
+            do {
+                main_loop_lock.lock();
+                try {
+                    has_shutdown = numThreads() == 0;
+                    if (!has_shutdown) {
+                        main_loop_condition.await();
+                    }
+                } catch (InterruptedException e) {
+                    continue;
+                } finally {
+                    main_loop_lock.unlock();
+                }
+            } while (!has_shutdown);
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -589,12 +640,13 @@ public class MercuryThreadPool
 
     /**
      * Request that the thread pool shutdown.
-     * This method does not wait for the thread pool to shutdown, it's an
-     * asynchronous signal.  The thread pool will shutdown if: shutdown() has
+     * The thread pool will shutdown if: shutdown() has
      * been called (implicitly when main/2 is written in Mercury) and there
      * are no remaining tasks either queued or running (spawn_native tasks
-     * are not included).  The requirement that the process does not exit
-     * until all tasks have finish is maintained by the JVM.
+     * are not included).
+     *
+     * This method is asynchronous, it will not wait for the thread pool to
+     * shutdown.
      */
     public boolean shutdown()
     {
@@ -624,8 +676,11 @@ public class MercuryThreadPool
 
         run_main_and_shutdown = new Runnable() {
             public void run() {
-                run_main.run();
-                shutdown();
+                try {
+                    run_main.run();
+                } finally {
+                    shutdown();
+                }
             }
         };
         main_task = new Task(run_main_and_shutdown);
@@ -649,6 +704,12 @@ public class MercuryThreadPool
              */
             run();
             jmercury.runtime.JavaInternal.run_finalisers();
+            /*
+             * We always wait for the thread pool to shutdown as worker
+             * threads may either be completing work or reporting the reason
+             * why the runtime is aborting.
+             */
+            waitForShutdown();
         } catch (jmercury.runtime.Exception e) {
             JavaInternal.reportUncaughtException(e);
         }
