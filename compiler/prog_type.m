@@ -392,6 +392,10 @@
     %
 :- pred type_subsumes(mer_type::in, mer_type::in, tsubst::out) is semidet.
 
+    % Same as type_subsumes, but aborts instead of failing.
+    %
+:- pred type_subsumes_det(mer_type::in, mer_type::in, tsubst::out) is det.
+
     % type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list
     % TypesA subsumes (is more general than) TypesB, producing a
     % type substitution which when applied to TypesA will give TypesB.
@@ -399,7 +403,7 @@
 :- pred type_list_subsumes(list(mer_type)::in, list(mer_type)::in, tsubst::out)
     is semidet.
 
-    % This does the same as type_list_subsumes, but aborts instead of failing.
+    % Same as type_list_subsumes, but aborts instead of failing.
     %
 :- pred type_list_subsumes_det(list(mer_type)::in, list(mer_type)::in,
     tsubst::out) is det.
@@ -1357,15 +1361,20 @@ type_occurs_list([X | Xs], Y,  Bindings) :-
 type_subsumes(TypeA, TypeB, TypeSubst) :-
     % TypeA subsumes TypeB iff TypeA can be unified with TypeB
     % without binding any of the type variables in TypeB.
-
     type_vars(TypeB, TypeBVars),
     map.init(TypeSubst0),
     type_unify(TypeA, TypeB, TypeBVars, TypeSubst0, TypeSubst).
 
+type_subsumes_det(TypeA, TypeB, TypeSubst) :-
+    ( type_subsumes(TypeA, TypeB, TypeSubstPrime) ->
+        TypeSubst = TypeSubstPrime
+    ;
+        unexpected($module, $pred, "type_subsumes failed")
+    ).
+
 type_list_subsumes(TypesA, TypesB, TypeSubst) :-
     % TypesA subsumes TypesB iff TypesA can be unified with TypesB
     % without binding any of the type variables in TypesB.
-
     type_vars_list(TypesB, TypesBVars),
     map.init(TypeSubst0),
     type_unify_list(TypesA, TypesB, TypesBVars, TypeSubst0, TypeSubst).

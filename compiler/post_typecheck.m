@@ -1325,11 +1325,8 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
         ExistQVars = [_ | _],
         lookup_var_type(!.VarTypes, FieldVar, FieldType),
         list.det_index1(ArgTypes0, FieldNumber, FieldArgType),
-        ( type_list_subsumes([FieldArgType], [FieldType], FieldSubst) ->
-            apply_rec_subst_to_type_list(FieldSubst, ArgTypes0, ArgTypes)
-        ;
-            unexpected($module, $pred, "type_list_subsumes failed")
-        )
+        type_subsumes_det(FieldArgType, FieldType, FieldSubst),
+        apply_rec_subst_to_type_list(FieldSubst, ArgTypes0, ArgTypes)
     ;
         ExistQVars = [],
         ArgTypes = ArgTypes0

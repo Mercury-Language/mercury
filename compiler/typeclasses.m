@@ -687,9 +687,7 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
     tvarset_merge_renaming(!.TVarSet, InstanceTVarSet, NewTVarSet, Renaming),
     apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
         InstanceTypes),
-    (
-        type_list_subsumes(InstanceTypes, Types, Subst)
-    ->
+    ( type_list_subsumes(InstanceTypes, Types, Subst) ->
         !:TVarSet = NewTVarSet,
         apply_variable_renaming_to_prog_constraint_list(Renaming,
             ProgConstraints0, ProgConstraints1),

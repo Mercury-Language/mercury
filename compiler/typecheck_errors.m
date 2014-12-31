@@ -747,8 +747,8 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
         % Since the argument may be just list(T) because it is [],
         % we don't mention these arguments (which are likely to be red
         % herrings, i.e. not the actual cause of the problem) unless
-        % there are no arguments whose possible the actual types do not
-        % include one that subsumes the expected type.
+        % there are no arguments whose possible actual types do not include
+        % one that subsumes the expected type.
         (
             RevNoSubsumeMismatches = [_ | _],
             list.reverse(RevNoSubsumeMismatches, NoSubsumeMismatches),

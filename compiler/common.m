@@ -979,7 +979,7 @@ calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst) :-
     (
         FromVarRttiInfo = type_info_var(FromVarTypeInfoType),
         ToVarRttiInfo = type_info_var(ToVarTypeInfoType),
-        type_list_subsumes([ToVarTypeInfoType], [FromVarTypeInfoType], TSubst)
+        type_subsumes(ToVarTypeInfoType, FromVarTypeInfoType, TSubst)
     ;
         FromVarRttiInfo = typeclass_info_var(FromVarConstraint),
         ToVarRttiInfo = typeclass_info_var(ToVarConstraint),

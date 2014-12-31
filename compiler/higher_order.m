@@ -3163,20 +3163,15 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     ;
         ExistQVars = [_ | _],
         lookup_var_types(VarTypes7, HeadVars0, OriginalHeadTypes),
-        (
-            type_list_subsumes(OriginalArgTypes,
-                OriginalHeadTypes, ExistentialSubn)
-        ->
-            apply_rec_subst_to_type_list(ExistentialSubn, ExtraHeadVarTypes0,
-                ExtraHeadVarTypes),
-            assoc_list.from_corresponding_lists(ExtraHeadVars,
-                ExtraHeadVarTypes, ExtraHeadVarsAndTypes),
-            list.foldl(update_var_types, ExtraHeadVarsAndTypes,
-                VarTypes7, VarTypes8),
-            proc_info_set_vartypes(VarTypes8, !NewProcInfo)
-        ;
-            unexpected($module, $pred, "type_list_subsumes failed")
-        )
+        type_list_subsumes_det(OriginalArgTypes, OriginalHeadTypes,
+            ExistentialSubn),
+        apply_rec_subst_to_type_list(ExistentialSubn, ExtraHeadVarTypes0,
+            ExtraHeadVarTypes),
+        assoc_list.from_corresponding_lists(ExtraHeadVars,
+            ExtraHeadVarTypes, ExtraHeadVarsAndTypes),
+        list.foldl(update_var_types, ExtraHeadVarsAndTypes,
+            VarTypes7, VarTypes8),
+        proc_info_set_vartypes(VarTypes8, !NewProcInfo)
     ),
 
     % Find the new class context.
