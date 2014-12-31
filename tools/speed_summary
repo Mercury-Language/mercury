@@ -1,4 +1,6 @@
 #!/usr/bin/awk -f
+# vim: ts=4 sw=4 et
+#
 # This script is intended to summarize timing results such as those produced
 # by the speedtest script.
 #
@@ -29,86 +31,81 @@
 # given base time by setting the variable BASE on the command line (e.g. with
 # a command such as "speed_summary BASE=13.7 batchname").
 
-$1 ~ /[a-z].*/	{
-		variant = $1;
+$1 ~ /[a-z].*/  {
+        variant = $1;
 
-		if (variants[variant] == "") {
-			variants[variant] = variant;
-			variant_order[cur_variant + 0] = variant;
-			cur_variant++;
-		}
+        if (variants[variant] == "") {
+            variants[variant] = variant;
+            variant_order[cur_variant + 0] = variant;
+            cur_variant++;
+        }
 
-		time = substr($2, 1, length($2) - 1);
-		# printf "read %s %9.2f\n", variant, time;
+        time = substr($2, 1, length($2) - 1);
+        # printf "read %s %9.2f\n", variant, time;
 
-		i = times_count[variant] + 0;
-		times[variant "@" i] = time;
-		times_count[variant]++;
+        i = times_count[variant] + 0;
+        times[variant "@" i] = time;
+        times_count[variant]++;
 
-		texts[variant] = texts[variant] text;
-		text = "";
+        texts[variant] = texts[variant] text;
+        text = "";
 
-		# printf "assigned %s %d %s %9.2f\n", \
-		# variant, i, variant "@" i, times[variant "@" i];
-		next;
-	}
-	{
-		text = text $0 "\n";
-		next;
-	}
-END	{
-		for (ordinal = 0; ordinal < cur_variant; ordinal++) {
-			variant = variant_order[ordinal];
-			count = times_count[variant];
+        # printf "assigned %s %d %s %9.2f\n", \
+        # variant, i, variant "@" i, times[variant "@" i];
+        next;
+    }
+    {
+        text = text $0 "\n";
+        next;
+    }
+END {
+        for (ordinal = 0; ordinal < cur_variant; ordinal++) {
+            variant = variant_order[ordinal];
+            count = times_count[variant];
 
-			# perform insertion sort on times[variant "@" *]
-			for (i = 1; i < count; i++) {
-				for (j = 0; j < i; j++) {
-					if (times[variant "@" j] > \
-						times[variant "@" i])
-					{
-						break;
-					}
-				}
+            # perform insertion sort on times[variant "@" *]
+            for (i = 1; i < count; i++) {
+                for (j = 0; j < i; j++) {
+                    if (times[variant "@" j] > times[variant "@" i]) {
+                        break;
+                    }
+                }
 
-				insert = times[variant "@" i];
-				for (k = i - 1; k >= j; k--) {
-					times[variant "@" k+1] = \
-						times[variant "@" k];
-				}
+                insert = times[variant "@" i];
+                for (k = i - 1; k >= j; k--) {
+                    times[variant "@" k+1] = \
+                        times[variant "@" k];
+                }
 
-				times[variant "@" j] = insert;
-			}
+                times[variant "@" j] = insert;
+            }
 
-			# for (i = 0; i < count; i++) {
-			# 	printf "sorted %s %d %9.2f\n", \
-			#		variant, i, times[variant "@" i];
-			# }
+            # for (i = 0; i < count; i++) {
+            #   printf "sorted %s %d %9.2f\n", \
+            #       variant, i, times[variant "@" i];
+            # }
 
-			printf "%s", texts[variant];
+            printf "%s", texts[variant];
 
-			for (ignore = 1; ignore <= 1 && ignore * 2 < count;
-				ignore++)
-			{
-				num = 0;
-				total = 0;
+            for (ignore = 1; ignore <= 1 && ignore * 2 < count; ignore++) {
+                num = 0;
+                total = 0;
 
-				for (i = ignore; i < count - ignore; i++) {
-					num++;
-					total += times[variant "@" i];
-				}
+                for (i = ignore; i < count - ignore; i++) {
+                    num++;
+                    total += times[variant "@" i];
+                }
 
-				printf "%s average of %d with ignore=%d %9.2f",
-					variant, count, ignore, total/num;
-				if (BASE + 0 != 0) {
-					percent = (100 * total/num) / BASE;
-					printf " (%6.2f%%)", percent;
-				}
+                avg = total/num;
+                printf "%s average of %d with ignore=%d %9.2f",
+                    variant, count, ignore, avg
+                if (BASE + 0 != 0) {
+                    percent = (100 * avg) / BASE;
+                    printf " (%6.2f%%)", percent;
+                }
+            }
 
-				printf "\n"
-			}
+            printf "\n";
+        }
 
-			printf "\n";
-		}
-
-	}
+    }
