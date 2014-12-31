@@ -205,11 +205,9 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         globals.get_target(Globals, Target),
         globals.lookup_bool_option(Globals, make_optimization_interface,
             MakeOptInt),
-        ( Body = hlds_foreign_type(_) ->
-            module_info_set_contains_foreign_type(!ModuleInfo)
-        ;
-            true
-        ),
+        % We used to record that we have seen a foreign type, using the call
+        %   module_info_set_contains_foreign_type(!ModuleInfo)
+        % but we deleted the code that used this information some time ago.
         (
             % ... then if this definition was abstract, ignore it
             % (but update the status of the old defn if necessary).
