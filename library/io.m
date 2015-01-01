@@ -2352,7 +2352,7 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
         RetString[i] = '\\0';
     } else {
         /*
-        ** We can't just return NULL here, because  otherwise mdb will break
+        ** We can't just return NULL here, because otherwise mdb will break
         ** when it tries to print the string.
         */
         RetString = MR_make_string_const("""");
