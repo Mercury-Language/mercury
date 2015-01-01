@@ -261,6 +261,7 @@
     ;       force_disable_ssdebug
     ;       generate_bytecode
     ;       line_numbers
+    ;       line_numbers_for_c_headers
     ;       auto_comments
     ;       frameopt_comments
     ;       max_error_line_width
@@ -1246,6 +1247,7 @@ option_defaults_2(aux_output_option, [
     force_disable_ssdebug               -   bool(no),
     generate_bytecode                   -   bool(no),
     line_numbers                        -   bool(yes),
+    line_numbers_for_c_headers          -   bool(no),
     auto_comments                       -   bool(no),
     frameopt_comments                   -   bool(no),
     max_error_line_width                -   maybe_int(yes(79)),
@@ -2163,6 +2165,7 @@ long_option("stack-trace-higher-order", stack_trace_higher_order).
 long_option("force-disable-ssdebug",    force_disable_ssdebug).
 long_option("generate-bytecode",        generate_bytecode).
 long_option("line-numbers",             line_numbers).
+long_option("line-numbers-for-c-headers", line_numbers_for_c_headers).
 long_option("auto-comments",            auto_comments).
 long_option("frameopt-comments",        frameopt_comments).
 long_option("max-error-line-width",     max_error_line_width).
@@ -4007,9 +4010,16 @@ options_help_aux_output -->
         "\tOutput a bytecode form of the module for use",
         "\tby an experimental debugger.",
         "-n-, --no-line-numbers",
-        "\tDo not put source line numbers in the generated code.",
+        "\tDo not put source line numbers into the generated code.",
         "\tThe generated code may be in C (the usual case),",
         "\tor in Mercury (with the option --convert-to-mercury).",
+        "--line-numbers-for-c-headers",
+        "\tPut source line numbers in the generated C header files.",
+        "\tThis can make it easier to track down any problems with",
+        "\tC code in foreign_decl pragmas, but may cause unnecessary",
+        "\trecompilations of other modules if any of these line numbers",
+        "\tchanges (e.g. because the location of a predicate declaration",
+        "\tchanges in the Mercury source file).",
         "--auto-comments",
         "\tOutput comments in the `<module>.c' file.",
 % This option is for developers only. Since it can include one C comment inside

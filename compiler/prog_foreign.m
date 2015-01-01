@@ -88,6 +88,11 @@
 
 %-----------------------------------------------------------------------------%
 
+:- pred foreign_decl_code_is_for_lang(foreign_language::in,
+    foreign_decl_code::in) is semidet.
+:- pred foreign_body_code_is_for_lang(foreign_language::in,
+    foreign_body_code::in) is semidet.
+
     % foreign_import_module_name(ForeignImport)
     %
     % returns the module name which represents the ForeignImport.
@@ -192,6 +197,12 @@
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
+
+foreign_decl_code_is_for_lang(Lang, DeclCode) :-
+    Lang = DeclCode ^ fdecl_lang.
+
+foreign_body_code_is_for_lang(Lang, BodyCode) :-
+    Lang = BodyCode ^ fbody_lang.
 
 foreign_import_module_name(ImportModule) = ModuleName :-
     ImportModule = foreign_import_module_info(Lang, ForeignImportModule, _),

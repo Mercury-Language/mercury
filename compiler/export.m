@@ -745,13 +745,28 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
             "#endif\n",
             "\n"], !IO),
 
-        io.write_strings([
-            "#ifndef ", decl_guard(ModuleName), "\n",
-            "#define ", decl_guard(ModuleName), "\n"], !IO),
-        list.foldl(output_exported_enum(ModuleInfo), ExportedEnums, !IO),
-        list.foldl(output_foreign_decl(Globals, SourceFileName,
-            yes(foreign_decl_is_exported)), ForeignDeclCodes, !IO),
-        io.write_string("\n#endif\n", !IO),
+        list.filter(exported_enum_is_for_c, ExportedEnums, CExportedEnums),
+        list.filter(foreign_decl_code_is_for_lang(lang_c),
+            ForeignDeclCodes, CForeignDeclCodes),
+        ( if
+            CExportedEnums = [],
+            CForeignDeclCodes = []
+        then
+            % The two folds below won't output anything.
+            % There is no point in printing guards around nothing.
+            true
+        else
+            io.write_strings([
+                "#ifndef ", decl_guard(ModuleName), "\n",
+                "#define ", decl_guard(ModuleName), "\n"], !IO),
+            list.foldl(output_exported_c_enum(ModuleInfo),
+                CExportedEnums, !IO),
+            list.foldl(
+                output_foreign_decl(Globals, SourceFileName,
+                    yes(foreign_decl_is_exported)),
+                CForeignDeclCodes, !IO),
+            io.write_string("\n#endif\n", !IO)
+        ),
 
         produce_header_file_2(C_ExportDecls, !IO),
         io.write_strings([
@@ -808,8 +823,8 @@ produce_header_file_2([E | ExportedProcs], !IO) :-
 output_foreign_decl(Globals, SourceFileName, MaybeDesiredIsLocal, DeclCode,
         !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, LiteralOrInclude, Context),
+    expect(unify(Lang, lang_c), $module, $pred, "Lang != lang_c"),
     (
-        Lang = lang_c,
         (
             MaybeDesiredIsLocal = no
         ;
@@ -851,28 +866,19 @@ output_foreign_literal_or_include(Globals, SourceFileName, LiteralOrInclude,
 % For C/C++ we emit a #defined constant for constructors exported from an
 % enumeration.
 
-:- pred output_exported_enum(module_info::in, exported_enum_info::in,
-    io::di, io::uo) is det.
+:- pred exported_enum_is_for_c(exported_enum_info::in) is semidet.
 
-output_exported_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
+exported_enum_is_for_c(ExportedEnumInfo) :-
     ExportedEnumInfo = exported_enum_info(Lang, _, _, _),
-    (
-        Lang = lang_c,
-        output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO)
-    ;
-        ( Lang = lang_csharp
-        ; Lang = lang_java
-        ; Lang = lang_il
-        ; Lang = lang_erlang
-        )
-    ).
+    Lang = lang_c.
 
-:- pred output_exported_enum_2(module_info::in, exported_enum_info::in,
+:- pred output_exported_c_enum(module_info::in, exported_enum_info::in,
     io::di, io::uo) is det.
 
-output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO) :-
-    ExportedEnumInfo = exported_enum_info(_Lang, Context, TypeCtor,
+output_exported_c_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
+    ExportedEnumInfo = exported_enum_info(Lang, Context, TypeCtor,
         NameMapping),
+    expect(unify(Lang, lang_c), $module, $pred, "Lang != lang_c"),
     module_info_get_type_table(ModuleInfo, TypeTable),
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, TypeBody),
@@ -907,7 +913,7 @@ output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO) :-
             term.context_line(Context, Line),
             c_util.set_line_num(Globals, File, Line, !IO),
             io.write_list(ForeignNamesAndTags, "\n",
-                output_exported_enum_3(ModuleInfo), !IO),
+                output_exported_enum_constname_tag(ModuleInfo), !IO),
             io.nl(!IO),
             c_util.reset_line_num(Globals, !IO)
         )
@@ -920,10 +926,10 @@ output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO) :-
     --->    ee_tag_rep_int(int)
     ;       ee_tag_rep_string(string).
 
-:- pred output_exported_enum_3(module_info::in,
+:- pred output_exported_enum_constname_tag(module_info::in,
     pair(string, exported_enum_tag_rep)::in, io::di, io::uo) is det.
 
-output_exported_enum_3(_, ConstName - Tag, !IO) :-
+output_exported_enum_constname_tag(_, ConstName - Tag, !IO) :-
     (
         Tag = ee_tag_rep_int(RawIntTag),
         io.format("#define %s %d", [s(ConstName), i(RawIntTag)], !IO)
