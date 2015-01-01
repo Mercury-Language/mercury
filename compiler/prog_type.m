@@ -781,8 +781,8 @@ constraint_list_get_tvars(Constraints, TVars) :-
     list.map(constraint_get_tvars, Constraints, TVarsList),
     list.condense(TVarsList, TVars).
 
-constraint_get_tvars(constraint(_Name, Args), TVars) :-
-    type_vars_list(Args, TVars).
+constraint_get_tvars(constraint(_ClassName, ArgTypes), TVars) :-
+    type_vars_list(ArgTypes, TVars).
 
 get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
     constraint_list_get_tvars(Constraints, ConstrainedTvars),

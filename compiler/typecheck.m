@@ -901,9 +901,10 @@ restrict_to_head_vars_2(ClassConstraints, HeadTypeVars, HeadClassConstraints,
 :- pred is_head_class_constraint(list(tvar)::in, prog_constraint::in)
     is semidet.
 
-is_head_class_constraint(HeadTypeVars, constraint(_Name, Types)) :-
+is_head_class_constraint(HeadTypeVars, Constraint) :-
+    Constraint = constraint(_ClassName, ArgTypes),
     all [TVar] (
-            prog_type.type_list_contains_var(Types, TVar)
+            prog_type.type_list_contains_var(ArgTypes, TVar)
         =>
             list.member(TVar, HeadTypeVars)
     ).
@@ -2982,7 +2983,7 @@ project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
 :- pred project_constraint(set(tvar)::in, hlds_constraint::in) is semidet.
 
 project_constraint(CallTVars, Constraint) :-
-    Constraint = hlds_constraint(_, _, TypesToCheck),
+    Constraint = hlds_constraint(_Ids, _ClassName, TypesToCheck),
     type_vars_list(TypesToCheck, TVarsToCheck0),
     set.list_to_set(TVarsToCheck0, TVarsToCheck),
     set.intersect(TVarsToCheck, CallTVars, RelevantTVars),
@@ -2992,13 +2993,13 @@ project_constraint(CallTVars, Constraint) :-
     hlds_constraint::out) is semidet.
 
 rename_constraint(TVarRenaming, Constraint0, Constraint) :-
-    Constraint0 = hlds_constraint(Ids, Name, Types0),
+    Constraint0 = hlds_constraint(Ids, ClassName, ArgTypes0),
     some [Var] (
-        type_list_contains_var(Types0, Var),
+        type_list_contains_var(ArgTypes0, Var),
         map.contains(TVarRenaming, Var)
     ),
-    apply_variable_renaming_to_type_list(TVarRenaming, Types0, Types),
-    Constraint = hlds_constraint(Ids, Name, Types).
+    apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes0, ArgTypes),
+    Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

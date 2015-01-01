@@ -791,10 +791,13 @@ prog_context_to_xml(context(FileName, LineNumber)) =
 
 :- func prog_constraint_to_xml(tvarset, prog_constraint) = xml.
 
-prog_constraint_to_xml(TVarset, constraint(ClassName, Types)) = Xml :-
-    Id = sym_name_and_arity_to_id("constraint", ClassName, list.length(Types)),
+prog_constraint_to_xml(TVarset, Constraint) = Xml :-
+    Constraint = constraint(ClassName, ArgTypes),
+    Id = sym_name_and_arity_to_id("constraint", ClassName,
+        list.length(ArgTypes)),
     XmlName = name_to_xml(ClassName),
-    XmlTypes = xml_list("constraint_types", mer_type_to_xml(TVarset), Types),
+    XmlTypes = xml_list("constraint_types", mer_type_to_xml(TVarset),
+        ArgTypes),
     Xml = elem("constraint", [attr("ref", Id)], [XmlName, XmlTypes]).
 
 %-----------------------------------------------------------------------------%

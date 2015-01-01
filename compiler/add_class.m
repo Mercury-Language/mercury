@@ -172,7 +172,7 @@ module_add_class_defn(ItemTypeClassInfo, Status, !ModuleInfo, !Specs) :-
         % Ancestors is not set until check_typeclass.
         Ancestors = [],
         % XXX kind inference:
-        % We set all the kinds to `star' at the moment.  This should be
+        % We set all the kinds to `star' at the moment. This should be
         % done differently when we have a proper kind system.
         Kinds = map.init,
         Defn = hlds_class_defn(ImportStatus, Constraints, HLDSFunDeps,
@@ -260,10 +260,10 @@ module_add_class_interface(Name, Vars, Methods, Status, PredProcIds,
         add_class_pred_or_func_methods(Name, Vars, PredOrFuncMethods, Status,
             !:PPIds, !ModuleInfo, !Specs),
 
-        % Add the pred_or_func_mode decls.  Since we have already added the
+        % Add the pred_or_func_mode decls. Since we have already added the
         % predicate/function method decls there should already be an entry in
         % the predicate table corresponding to the mode item we are about to
-        % add.  If not, report an error.
+        % add. If not, report an error.
         list.foldl3(add_class_pred_or_func_mode_method(Name, Vars, Status),
             ModeMethods, !PPIds, !ModuleInfo, !Specs),
         check_method_modes(Methods, !.PPIds, PredProcIds, !ModuleInfo, !Specs)
@@ -356,7 +356,7 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
             PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst,
             MaybeDet, _Cond, Purity, ClassContext, Context),
         % XXX kind inference:
-        % We set the kinds to `star' at the moment.  This will be different
+        % We set the kinds to `star' at the moment. This will be different
         % when we have a kind system.
         prog_type.var_list_to_type_list(map.init, Vars, Args),
         ClassContext = constraints(UnivCnstrs, ExistCnstrs),
@@ -512,10 +512,8 @@ report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
 
-
-    %
     % If two instance declarations are about the same type, then
-    % the declarations must be compatible.  This consists of checking
+    % the declarations must be compatible. This consists of checking
     % that the constraints are identical.
     % In other words, the abstract declaration must match the
     % concrete definition.

@@ -1207,20 +1207,19 @@ maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_constraint(Renaming, !Constraint) :-
-    !.Constraint = hlds_constraint(Ids, ClassName, ClassArgTypes0),
-    apply_variable_renaming_to_type_list(Renaming,
-        ClassArgTypes0, ClassArgTypes),
-    !:Constraint = hlds_constraint(Ids, ClassName, ClassArgTypes).
+    !.Constraint = hlds_constraint(Ids, ClassName, ArgTypes0),
+    apply_variable_renaming_to_type_list(Renaming, ArgTypes0, ArgTypes),
+    !:Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 apply_subst_to_constraint(Subst, !Constraint) :-
-    !.Constraint = hlds_constraint(Ids, ClassName, Types0),
-    apply_subst_to_type_list(Subst, Types0, Types),
-    !:Constraint = hlds_constraint(Ids, ClassName, Types).
+    !.Constraint = hlds_constraint(Ids, ClassName, ArgTypes0),
+    apply_subst_to_type_list(Subst, ArgTypes0, ArgTypes),
+    !:Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 apply_rec_subst_to_constraint(Subst, !Constraint) :-
-    !.Constraint = hlds_constraint(Ids, Name, Types0),
-    apply_rec_subst_to_type_list(Subst, Types0, Types),
-    !:Constraint = hlds_constraint(Ids, Name, Types).
+    !.Constraint = hlds_constraint(Ids, ClassName, ArgTypes0),
+    apply_rec_subst_to_type_list(Subst, ArgTypes0, ArgTypes),
+    !:Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 %-----------------------------------------------------------------------------%
 

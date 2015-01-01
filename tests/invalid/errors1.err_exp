@@ -13,7 +13,7 @@ errors1.m:049: Error: constructor `errors1.a/0' for type
 errors1.m:049:   `errors1.type_with_multiply_defined_ctors/0' multiply defined.
 errors1.m:049: Error: constructor `errors1.f/1' for type
 errors1.m:049:   `errors1.type_with_multiply_defined_ctors/0' multiply defined.
-errors1.m:051: In definition of type
+errors1.m:051: In the first argument of function symbol `f' of the type
 errors1.m:051:   `errors1.du_type_which_references_undefined_type'/0:
 errors1.m:051:   error: undefined type `undefined_type'/0.
 errors1.m:053: In definition of type

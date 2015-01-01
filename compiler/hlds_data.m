@@ -1438,7 +1438,7 @@ num_extra_instance_args(InstanceDefn, NumExtra) :-
 
     % The identifier of a constraint is stored along with the constraint.
     % Each value of this type may have more than one identifier because
-    % if two constraints in a context are equivalent then we merge them
+    % if two constraints in a context are equivalent, then we merge them
     % together in order to not have to prove the same constraint twice.
     %
 :- type hlds_constraint
@@ -1591,8 +1591,9 @@ init_hlds_constraint_list(ProgConstraints, Constraints) :-
 
 :- pred init_hlds_constraint(prog_constraint::in, hlds_constraint::out) is det.
 
-init_hlds_constraint(constraint(Name, Types),
-    hlds_constraint([], Name, Types)).
+init_hlds_constraint(Constraint, HLDSConstraint) :-
+    Constraint = constraint(ClassName, ArgTypes),
+    HLDSConstraint = hlds_constraint([], ClassName, ArgTypes).
 
 make_head_hlds_constraints(ClassTable, TVarSet, ProgConstraints,
         Constraints) :-
@@ -1635,27 +1636,27 @@ make_hlds_constraint_list(ProgConstraints, ConstraintType, GoalId,
 
 make_hlds_constraint_list_2([], _, _, _, []).
 make_hlds_constraint_list_2([ProgConstraint | ProgConstraints], ConstraintType,
-        GoalId, N, [HLDSConstraint | HLDSConstraints]) :-
-    ProgConstraint = constraint(Name, Types),
-    Id = constraint_id(ConstraintType, GoalId, N),
-    HLDSConstraint = hlds_constraint([Id], Name, Types),
-    make_hlds_constraint_list_2(ProgConstraints, ConstraintType, GoalId,
-        N + 1, HLDSConstraints).
+        GoalId, CurArgNum, [HLDSConstraint | HLDSConstraints]) :-
+    ProgConstraint = constraint(ClassName, ArgTypes),
+    Id = constraint_id(ConstraintType, GoalId, CurArgNum),
+    HLDSConstraint = hlds_constraint([Id], ClassName, ArgTypes),
+    make_hlds_constraint_list_2(ProgConstraints, ConstraintType,
+        GoalId, CurArgNum + 1, HLDSConstraints).
 
 merge_hlds_constraints(ConstraintsA, ConstraintsB, Constraints) :-
     ConstraintsA = hlds_constraints(UnprovenA, AssumedA,
         RedundantA, AncestorsA),
     ConstraintsB = hlds_constraints(UnprovenB, AssumedB,
         RedundantB, AncestorsB),
-    list.append(UnprovenA, UnprovenB, Unproven),
-    list.append(AssumedA, AssumedB, Assumed),
+    Unproven = UnprovenA ++ UnprovenB,
+    Assumed = AssumedA ++ AssumedB,
     map.union(set.union, RedundantA, RedundantB, Redundant),
-    map.union(shortest_list, AncestorsA, AncestorsB, Ancestors),
+    map.union(pick_shorter_list, AncestorsA, AncestorsB, Ancestors),
     Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
 
-:- pred shortest_list(list(T)::in, list(T)::in, list(T)::out) is det.
+:- pred pick_shorter_list(list(T)::in, list(T)::in, list(T)::out) is det.
 
-shortest_list(As, Bs, Cs) :-
+pick_shorter_list(As, Bs, Cs) :-
     ( is_shorter(As, Bs) ->
         Cs = As
     ;
@@ -1678,30 +1679,30 @@ retrieve_prog_constraint_list(Constraints, ProgConstraints) :-
     list.map(retrieve_prog_constraint, Constraints, ProgConstraints).
 
 retrieve_prog_constraint(Constraint, ProgConstraint) :-
-    Constraint = hlds_constraint(_, Name, Types),
-    ProgConstraint = constraint(Name, Types).
+    Constraint = hlds_constraint(_Ids, ClassName, ArgTypes),
+    ProgConstraint = constraint(ClassName, ArgTypes).
 
 matching_constraints(ConstraintA, ConstraintB) :-
-    ConstraintA = hlds_constraint(_, Name, Types),
-    ConstraintB = hlds_constraint(_, Name, Types).
+    ConstraintA = hlds_constraint(_IdsA, ClassName, ArgTypes),
+    ConstraintB = hlds_constraint(_IdsB, ClassName, ArgTypes).
 
-compare_hlds_constraints(ConstraintA, ConstraintB, R) :-
-    ConstraintA = hlds_constraint(_, NA, TA),
-    ConstraintB = hlds_constraint(_, NB, TB),
-    compare(R0, NA, NB),
+compare_hlds_constraints(ConstraintA, ConstraintB, CmpRes) :-
+    ConstraintA = hlds_constraint(_IdsA, ClassNameA, ArgTypesA),
+    ConstraintB = hlds_constraint(_IdsB, ClassNameB, ArgTypesB),
+    compare(NameCmpRes, ClassNameA, ClassNameB),
     (
-        R0 = (=),
-        compare(R, TA, TB)
+        NameCmpRes = (=),
+        compare(CmpRes, ArgTypesA, ArgTypesB)
     ;
-        ( R0 = (<)
-        ; R0 = (>)
+        ( NameCmpRes = (<)
+        ; NameCmpRes = (>)
         ),
-        R = R0
+        CmpRes = NameCmpRes
     ).
 
-update_constraint_map(Constraint, !ConstraintMap) :-
-    Constraint = hlds_constraint(Ids, Name, Types),
-    ProgConstraint = constraint(Name, Types),
+update_constraint_map(HLDSConstraint, !ConstraintMap) :-
+    HLDSConstraint = hlds_constraint(Ids, ClassName, ArgTypes),
+    ProgConstraint = constraint(ClassName, ArgTypes),
     list.foldl(update_constraint_map_2(ProgConstraint), Ids, !ConstraintMap).
 
 :- pred update_constraint_map_2(prog_constraint::in, constraint_id::in,
@@ -1719,9 +1720,9 @@ update_redundant_constraints(ClassTable, TVarSet, Constraints, !Redundant) :-
     redundant_constraints::out) is det.
 
 update_redundant_constraints_2(ClassTable, TVarSet, Constraint, !Redundant) :-
-    Constraint = hlds_constraint(_, Name, Args),
-    list.length(Args, Arity),
-    ClassId = class_id(Name, Arity),
+    Constraint = hlds_constraint(_Ids, ClassName, ArgTypes),
+    list.length(ArgTypes, Arity),
+    ClassId = class_id(ClassName, Arity),
     map.lookup(ClassTable, ClassId, ClassDefn),
     ClassAncestors0 = ClassDefn ^ class_fundep_ancestors,
     list.map(init_hlds_constraint, ClassAncestors0, ClassAncestors),
@@ -1743,7 +1744,7 @@ update_redundant_constraints_2(ClassTable, TVarSet, Constraint, !Redundant) :-
             ClassAncestors, RenamedAncestors),
         apply_variable_renaming_to_tvar_list(Renaming, ClassParams,
             RenamedParams),
-        map.from_corresponding_lists(RenamedParams, Args, Subst),
+        map.from_corresponding_lists(RenamedParams, ArgTypes, Subst),
         apply_subst_to_constraint_list(Subst, RenamedAncestors, Ancestors),
         list.foldl(add_redundant_constraint, Ancestors, !Redundant)
     ).
@@ -1752,9 +1753,9 @@ update_redundant_constraints_2(ClassTable, TVarSet, Constraint, !Redundant) :-
     redundant_constraints::in, redundant_constraints::out) is det.
 
 add_redundant_constraint(Constraint, !Redundant) :-
-    Constraint = hlds_constraint(_, Name, Args),
-    list.length(Args, Arity),
-    ClassId = class_id(Name, Arity),
+    Constraint = hlds_constraint(_Ids, ClassName, ArgTypes),
+    list.length(ArgTypes, Arity),
+    ClassId = class_id(ClassName, Arity),
     ( map.search(!.Redundant, ClassId, Constraints0) ->
         set.insert(Constraint, Constraints0, Constraints)
     ;
@@ -1814,9 +1815,9 @@ update_ancestor_constraints(ClassTable, TVarSet, HLDSConstraint, !Ancestors) :-
 
 update_ancestor_constraints_2(ClassTable, TVarSet, Descendants0, Constraint,
         !Ancestors) :-
-    Constraint = constraint(Class, Args),
-    list.length(Args, Arity),
-    ClassId = class_id(Class, Arity),
+    Constraint = constraint(ClassName, ArgTypes),
+    list.length(ArgTypes, Arity),
+    ClassId = class_id(ClassName, Arity),
     map.lookup(ClassTable, ClassId, ClassDefn),
 
     % We can ignore the resulting tvarset, since any new variables
@@ -1829,7 +1830,7 @@ update_ancestor_constraints_2(ClassTable, TVarSet, Descendants0, Constraint,
         ClassDefn ^ class_supers, RenamedSupers),
     apply_variable_renaming_to_tvar_list(Renaming, ClassDefn ^ class_vars,
         RenamedParams),
-    map.from_corresponding_lists(RenamedParams, Args, Subst),
+    map.from_corresponding_lists(RenamedParams, ArgTypes, Subst),
     apply_subst_to_prog_constraint_list(Subst, RenamedSupers, Supers),
 
     Descendants = [Constraint | Descendants0],

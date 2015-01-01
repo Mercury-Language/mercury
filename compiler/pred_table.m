@@ -1085,10 +1085,10 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
 univ_constraints_match([], []).
 univ_constraints_match([ProvenConstraint | ProvenConstraints],
         [CalleeConstraint | CalleeConstraints]) :-
-    ProvenConstraint = constraint(Name, ProvenArgs),
-    list.length(ProvenArgs, Arity),
-    CalleeConstraint = constraint(Name, CalleeArgs),
-    list.length(CalleeArgs, Arity),
+    ProvenConstraint = constraint(ClassName, ProvenArgTypes),
+    list.length(ProvenArgTypes, Arity),
+    CalleeConstraint = constraint(ClassName, CalleeArgTypes),
+    list.length(CalleeArgTypes, Arity),
     univ_constraints_match(ProvenConstraints, CalleeConstraints).
 
 get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,

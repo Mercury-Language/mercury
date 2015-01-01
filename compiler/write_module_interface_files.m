@@ -1244,7 +1244,7 @@ get_requirements_of_impl_typeclass(Item, !Modules) :-
     set(module_name)::in, set(module_name)::out) is det.
 
 get_requirements_of_impl_from_constraint(Constraint, !Modules) :-
-    Constraint = constraint(ClassName, Args),
+    Constraint = constraint(ClassName, ArgTypes),
     % NOTE: This assumes that everything has been module qualified.
     (
         ClassName = qualified(ModuleName, _),
@@ -1253,7 +1253,7 @@ get_requirements_of_impl_from_constraint(Constraint, !Modules) :-
         ClassName = unqualified(_),
         unexpected($module, $pred, "unknown typeclass in constraint")
     ),
-    get_modules_from_constraint_arg_types(Args, !Modules).
+    get_modules_from_constraint_arg_types(ArgTypes, !Modules).
 
 :- pred get_modules_from_constraint_arg_types(list(mer_type)::in,
     set(module_name)::in, set(module_name)::out) is det.

@@ -1147,10 +1147,12 @@ find_items_used_by_pred(PredOrFunc, Name - Arity, PredId - PredModule,
         % of the universal class constraints in the pred_info.
         pred_info_get_class_context(PredInfo, MethodClassContext),
         MethodClassContext = constraints(MethodUnivConstraints, _),
-        ( MethodUnivConstraints = [constraint(ClassName0, ClassArgs) | _] ->
-            ClassName = ClassName0,
-            ClassArity = list.length(ClassArgs)
+        (
+            MethodUnivConstraints = [MethodUnivConstraint | _],
+            MethodUnivConstraint = constraint(ClassName, ClassArgTypes),
+            ClassArity = list.length(ClassArgTypes)
         ;
+            MethodUnivConstraints = [],
             unexpected($module, $pred,
                 "class method with no class constraints")
         ),
@@ -1406,7 +1408,8 @@ find_items_used_by_class_constraints(Constraints, !Info) :-
 :- pred find_items_used_by_class_constraint(prog_constraint::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_class_constraint(constraint(ClassName, ArgTypes), !Info) :-
+find_items_used_by_class_constraint(Constraint, !Info) :-
+    Constraint = constraint(ClassName, ArgTypes),
     ClassArity = list.length(ArgTypes),
     maybe_record_item_to_process(typeclass_item,
         item_name(ClassName, ClassArity), !Info),

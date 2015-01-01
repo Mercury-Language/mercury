@@ -210,9 +210,9 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
 
 all_constraints_are_satisfiable([], _).
 all_constraints_are_satisfiable([Constraint | Constraints], HeadTypeParams) :-
-    Constraint = hlds_constraint(_Ids, _ClassName, Types),
+    Constraint = hlds_constraint(_Ids, _ClassName, ArgTypes),
     some [TVar] (
-        type_list_contains_var(Types, TVar),
+        type_list_contains_var(ArgTypes, TVar),
         not list.member(TVar, HeadTypeParams)
     ),
     all_constraints_are_satisfiable(Constraints, HeadTypeParams).
@@ -305,11 +305,11 @@ merge_adjacent_constraints_2(C0, [C1 | Cs], Constraints) :-
     hlds_constraint::out) is semidet.
 
 merge_constraints(ConstraintA, ConstraintB, Constraint) :-
-    ConstraintA = hlds_constraint(IdsA, Name, Types),
-    ConstraintB = hlds_constraint(IdsB, Name, Types),
+    ConstraintA = hlds_constraint(IdsA, ClassName, ArgTypes),
+    ConstraintB = hlds_constraint(IdsB, ClassName, ArgTypes),
     list.append(IdsA, IdsB, Ids0),
     list.sort_and_remove_dups(Ids0, Ids),
-    Constraint = hlds_constraint(Ids, Name, Types).
+    Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 :- pred apply_improvement_rules(class_table::in, instance_table::in,
     head_type_params::in, hlds_constraints::in, tvarset::in, tvarset::out,
@@ -352,8 +352,10 @@ do_class_improvement_2(ClassTable, HeadTypeParams, RedundantConstraints,
 
 :- pred has_class_id(class_id::in, hlds_constraint::in) is semidet.
 
-has_class_id(class_id(Name, Arity), hlds_constraint(_, Name, Args)) :-
-    list.length(Args, Arity).
+has_class_id(ClassId, Constraint) :-
+    ClassId = class_id(ClassName, Arity),
+    Constraint = hlds_constraint(_, ClassName, ArgTypes),
+    list.length(ArgTypes, Arity).
 
     % Try to find an opportunity for improvement for each (unordered)
     % pair of constraints from the list.
@@ -403,8 +405,8 @@ do_class_improvement_pair(ConstraintA, ConstraintB, [FunDep | FunDeps],
 
 do_class_improvement_fundep(ConstraintA, ConstraintB, FunDep, HeadTypeParams,
         !Bindings, !Changed) :-
-    ConstraintA = hlds_constraint(_, _, TypesA),
-    ConstraintB = hlds_constraint(_, _, TypesB),
+    ConstraintA = hlds_constraint(_IdsA, _ClassNameA, TypesA),
+    ConstraintB = hlds_constraint(_IdsB, _ClassNameB, TypesB),
     FunDep = fundep(Domain, Range),
     (
         % We already know that the name/arity of the constraints match,
@@ -492,7 +494,7 @@ do_instance_improvement_4(FunDeps, InstanceTypes, HeadTypeParams, Constraint,
 
 do_instance_improvement_fundep(Constraint, InstanceTypes0, HeadTypeParams,
         FunDep, !Bindings, !Changed) :-
-    Constraint = hlds_constraint(_, _, ConstraintTypes),
+    Constraint = hlds_constraint(_Ids, _ClassName, ConstraintTypes),
     FunDep = fundep(Domain, Range),
     (
         % We already know that the name/arity of the constraints match,
@@ -614,8 +616,8 @@ apply_instance_rules_2(_, _, !TVarSet, !Proofs, !ConstraintMap, !Redundant,
         !Seen, [], [], no).
 apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
         !ConstraintMap, !Redundant, !Seen, [C | Cs], Constraints, Changed) :-
-    C = hlds_constraint(_, ClassName, Types),
-    list.length(Types, Arity),
+    C = hlds_constraint(_Ids, ClassName, ArgTypes),
+    list.length(ArgTypes, Arity),
     map.lookup(InstanceTable, class_id(ClassName, Arity), Instances),
     InitialTVarSet = !.TVarSet,
     (
@@ -680,14 +682,14 @@ find_matching_instance_rule(Instances, Constraint, !TVarSet, !Proofs,
 
 find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
         !TVarSet, !Proofs, NewConstraints) :-
-    Constraint = hlds_constraint(_Ids, _Name, Types),
+    Constraint = hlds_constraint(_Ids, _ClassName, ArgTypes),
     ProgConstraints0 = Instance ^ instance_constraints,
     InstanceTypes0 = Instance ^ instance_types,
     InstanceTVarSet = Instance ^ instance_tvarset,
     tvarset_merge_renaming(!.TVarSet, InstanceTVarSet, NewTVarSet, Renaming),
     apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
         InstanceTypes),
-    ( type_list_subsumes(InstanceTypes, Types, Subst) ->
+    ( type_list_subsumes(InstanceTypes, ArgTypes, Subst) ->
         !:TVarSet = NewTVarSet,
         apply_variable_renaming_to_prog_constraint_list(Renaming,
             ProgConstraints0, ProgConstraints1),

@@ -219,8 +219,8 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
 :- pred ctor_used_modules(item_visibility::in, constructor::in,
     used_modules::in, used_modules::out) is det.
 
-ctor_used_modules(Visibility,
-        ctor(_, Constraints, _, Args, _), !UsedModules) :-
+ctor_used_modules(Visibility, Ctor, !UsedModules) :-
+    Ctor = ctor(_, Constraints, _, Args, _),
     list.foldl(prog_constraint_used_module(Visibility), Constraints,
         !UsedModules),
     list.foldl(
@@ -231,10 +231,10 @@ ctor_used_modules(Visibility,
 :- pred prog_constraint_used_module(item_visibility::in, prog_constraint::in,
     used_modules::in, used_modules::out) is det.
 
-prog_constraint_used_module(Visibility, constraint(ClassName, Args),
-        !UsedModules) :-
+prog_constraint_used_module(Visibility, Constraint, !UsedModules) :-
+    Constraint = constraint(ClassName, ArgTypes),
     record_sym_name_module_as_used(Visibility, ClassName, !UsedModules),
-    list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules).
+    list.foldl(mer_type_used_modules(Visibility), ArgTypes, !UsedModules).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

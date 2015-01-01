@@ -1077,6 +1077,15 @@ default_export_enum_attributes =
     % expected semantics. (This invariant now applies to all types, but is
     % especially important here.)
     %
+    % Values of type prog_constraint are used as keys in several maps;
+    % currently (december 2014) these are represented by the types
+    % ancestor_constraints, constraint_proof_map and typeclass_info_varmap.
+    % We cannot store the context of each constraint in here, since after
+    % we have put a constraint into one of these maps with one context,
+    % we wouldn't find it if searching for it with another context, which
+    % would thus defeat the purpose of those maps (to find common uses
+    % of the same constraint).
+    %
 :- type prog_constraint
     --->    constraint(
                 constraint_class        :: class_name,

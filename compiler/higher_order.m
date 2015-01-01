@@ -1029,12 +1029,12 @@ maybe_specialize_method_call(TypeClassInfoVar, Method, Args, Goal0, Goals,
         proc_info_get_rtti_varmaps(CallerProcInfo0, CallerRttiVarMaps),
         rtti_varmaps_var_info(CallerRttiVarMaps, TypeClassInfoVar,
             typeclass_info_var(ClassConstraint)),
-        ClassConstraint = constraint(ClassName, ClassArgs),
-        list.length(ClassArgs, ClassArity),
+        ClassConstraint = constraint(ClassName, ClassArgTypes),
+        list.length(ClassArgTypes, ClassArity),
         module_info_get_instance_table(ModuleInfo, InstanceTable),
         map.lookup(InstanceTable, class_id(ClassName, ClassArity), Instances),
         pred_info_get_typevarset(CallerPredInfo0, TVarSet0),
-        find_matching_instance_method(Instances, Method, ClassArgs,
+        find_matching_instance_method(Instances, Method, ClassArgTypes,
             PredId, ProcId, InstanceConstraints, UnconstrainedTVarTypes,
             TVarSet0, TVarSet)
     ->
@@ -1607,14 +1607,14 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
     % match which didn't before the substitution was applied.
     list.member(CalleeUnivConstraint0 - CalleeUnivConstraint,
         CalleeUnivConstraintAL),
-    CalleeUnivConstraint0 = constraint(ClassName, ConstraintArgs0),
-    list.length(ConstraintArgs0, ClassArity),
-    CalleeUnivConstraint = constraint(_, ConstraintArgs),
+    CalleeUnivConstraint0 = constraint(ClassName, ConstraintArgTypes0),
+    list.length(ConstraintArgTypes0, ClassArity),
+    CalleeUnivConstraint = constraint(_ClassName, ConstraintArgTypes),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     map.search(InstanceTable, class_id(ClassName, ClassArity), Instances),
     list.member(Instance, Instances),
-    instance_matches(ConstraintArgs, Instance, _, _, TVarSet, _),
-    \+ instance_matches(ConstraintArgs0, Instance, _, _, TVarSet, _).
+    instance_matches(ConstraintArgTypes, Instance, _, _, TVarSet, _),
+    \+ instance_matches(ConstraintArgTypes0, Instance, _, _, TVarSet, _).
 
 :- type find_result
     --->    find_result_match(match)
@@ -3344,8 +3344,8 @@ add_rtti_info(Var, VarInfo, !RttiVarMaps) :-
             true
         ;
             rtti_det_insert_typeclass_info_var(Constraint, Var, !RttiVarMaps),
-            Constraint = constraint(_, ConstraintTypes),
-            list.foldl2(update_type_info_locn(Var), ConstraintTypes, 1, _,
+            Constraint = constraint(_ClassName, ConstraintArgTypes),
+            list.foldl2(update_type_info_locn(Var), ConstraintArgTypes, 1, _,
                 !RttiVarMaps)
         )
     ;

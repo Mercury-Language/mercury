@@ -5,10 +5,11 @@ undef_type.m:001:   should contain at least one declaration other than
 undef_type.m:001:   `:- import_module' in its interface section(s). This would
 undef_type.m:001:   normally be a `:- pred', `:- func', `:- type', `:- inst' or
 undef_type.m:001:   `:- mode' declaration.
-undef_type.m:003: In definition of type `undef_type.t1'/0:
+undef_type.m:003: In the first argument of function symbol `d' of the type
+undef_type.m:003:   `undef_type.t1'/0:
 undef_type.m:003:   error: undefined type `undef1'/0.
-undef_type.m:010: In definition of predicate `undef_type.q'/1:
+undef_type.m:010: In declaration of predicate `undef_type.q'/1:
 undef_type.m:010:   error: undefined type `undef2'/0.
-undef_type.m:013: In definition of predicate `undef_type.r'/1:
+undef_type.m:013: In declaration of predicate `undef_type.r'/1:
 undef_type.m:013:   error: undefined type `io.state'/0.
 undef_type.m:013:   (The module `io' has not been imported.)

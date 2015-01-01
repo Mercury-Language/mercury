@@ -942,60 +942,61 @@ contains_var_bit_vector_size = 16.
 :- pred generate_exist_into(list(tvar)::in, list(prog_constraint)::in,
     class_table::in, exist_info::out) is det.
 
-generate_exist_into(ExistTvars, Constraints, ClassTable, ExistInfo) :-
+generate_exist_into(ExistTVars, Constraints, ClassTable, ExistInfo) :-
+    % XXX The Ts being gathered are not type variables, they are types.
     list.map((pred(C::in, Ts::out) is det :- C = constraint(_, Ts)),
-        Constraints, ConstrainedTvars0),
-    list.condense(ConstrainedTvars0, ConstrainedTvars1),
-    type_vars_list(ConstrainedTvars1, ConstrainedTvars2),
-    list.delete_elems(ExistTvars, ConstrainedTvars2, UnconstrainedTvars),
-        % We do this to maintain the ordering of the type variables.
-    list.delete_elems(ExistTvars, UnconstrainedTvars, ConstrainedTvars),
+        Constraints, ConstrainedTVars0),
+    list.condense(ConstrainedTVars0, ConstrainedTVars1),
+    type_vars_list(ConstrainedTVars1, ConstrainedTVars2),
+    list.delete_elems(ExistTVars, ConstrainedTVars2, UnconstrainedTVars),
+    % We do this to maintain the ordering of the type variables.
+    list.delete_elems(ExistTVars, UnconstrainedTVars, ConstrainedTVars),
     map.init(LocnMap0),
     list.foldl2((pred(T::in, N0::in, N::out, Lm0::in, Lm::out) is det :-
             Locn = plain_typeinfo(N0),
             map.det_insert(T, Locn, Lm0, Lm),
             N = N0 + 1
-        ), UnconstrainedTvars, 0, TIsPlain, LocnMap0, LocnMap1),
-    list.length(ExistTvars, AllTIs),
+        ), UnconstrainedTVars, 0, TIsPlain, LocnMap0, LocnMap1),
+    list.length(ExistTVars, AllTIs),
     TIsInTCIs = AllTIs - TIsPlain,
     list.foldl(find_type_info_index(Constraints, ClassTable, TIsPlain),
-        ConstrainedTvars, LocnMap1, LocnMap),
+        ConstrainedTVars, LocnMap1, LocnMap),
     TCConstraints = list.map(generate_class_constraint, Constraints),
-    list.map((pred(Tvar::in, Locn::out) is det :-
-        map.lookup(LocnMap, Tvar, Locn)),
-        ExistTvars, ExistLocns),
+    list.map((pred(TVar::in, Locn::out) is det :-
+        map.lookup(LocnMap, TVar, Locn)),
+        ExistTVars, ExistLocns),
     ExistInfo = exist_info(TIsPlain, TIsInTCIs, TCConstraints, ExistLocns).
 
 :- pred find_type_info_index(list(prog_constraint)::in, class_table::in,
     int::in, tvar::in, map(tvar, exist_typeinfo_locn)::in,
     map(tvar, exist_typeinfo_locn)::out) is det.
 
-find_type_info_index(Constraints, ClassTable, StartSlot, Tvar, !LocnMap) :-
-    first_matching_type_class_info(Constraints, Tvar,
+find_type_info_index(Constraints, ClassTable, StartSlot, TVar, !LocnMap) :-
+    first_matching_type_class_info(Constraints, TVar,
         FirstConstraint, StartSlot, Slot, TypeInfoIndex),
-    FirstConstraint = constraint(ClassName, Args),
-    list.length(Args, ClassArity),
+    FirstConstraint = constraint(ClassName, ArgTypes),
+    list.length(ArgTypes, ClassArity),
     map.lookup(ClassTable, class_id(ClassName, ClassArity), ClassDefn),
     list.length(ClassDefn ^ class_supers, NumSuperClasses),
     RealTypeInfoIndex = TypeInfoIndex + NumSuperClasses,
     Locn = typeinfo_in_tci(Slot, RealTypeInfoIndex),
-    map.det_insert(Tvar, Locn, !LocnMap).
+    map.det_insert(TVar, Locn, !LocnMap).
 
 :- pred first_matching_type_class_info(list(prog_constraint)::in, tvar::in,
     prog_constraint::out, int::in, int::out, int::out) is det.
 
 first_matching_type_class_info([], _, _, !N, _) :-
     unexpected($module, $pred, "not found").
-first_matching_type_class_info([C | Cs], Tvar, MatchingConstraint, !N,
+first_matching_type_class_info([C | Cs], TVar, MatchingConstraint, !N,
         TypeInfoIndex) :-
-    C = constraint(_, Ts),
-    type_vars_list(Ts, TVs),
-    ( list.nth_member_search(TVs, Tvar, Index) ->
+    C = constraint(_, ArgTypes),
+    type_vars_list(ArgTypes, TVs),
+    ( list.nth_member_search(TVs, TVar, Index) ->
         MatchingConstraint = C,
         TypeInfoIndex = Index
     ;
         !:N = !.N + 1,
-        first_matching_type_class_info(Cs, Tvar, MatchingConstraint, !N,
+        first_matching_type_class_info(Cs, TVar, MatchingConstraint, !N,
             TypeInfoIndex)
     ).
 

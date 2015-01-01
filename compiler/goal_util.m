@@ -843,7 +843,7 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
             % that the goal could have used.
             rtti_varmaps_reusable_constraints(RttiVarMaps, Constraints),
             list.member(Constraint, Constraints),
-            Constraint = constraint(_Name, ArgTypes),
+            Constraint = constraint(_ClassName, ArgTypes),
             type_list_contains_var(ArgTypes, TypeVar),
             set_of_var.member(NonLocalTypeVars, TypeVar),
 

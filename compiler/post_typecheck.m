@@ -1494,9 +1494,9 @@ constraint_list_subsumes_det(ConstraintsA, ConstraintsB, Subst) :-
 
 unify_constraint_list([], [], _, !Subst).
 unify_constraint_list([A | As], [B | Bs], TVars, !Subst) :-
-    A = constraint(_, ArgsA),
-    B = constraint(_, ArgsB),
-    type_unify_list(ArgsA, ArgsB, TVars, !Subst),
+    A = constraint(_ClassNameA, ArgTypesA),
+    B = constraint(_ClassNameB, ArgTypesB),
+    type_unify_list(ArgTypesA, ArgTypesB, TVars, !Subst),
     unify_constraint_list(As, Bs, TVars, !Subst).
 
 :- pred split_list_at_index(int::in, list(T)::in, list(T)::out, T::out,

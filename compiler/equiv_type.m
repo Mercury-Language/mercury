@@ -871,10 +871,10 @@ replace_in_prog_constraint(EqvMap, Constraint0, Constraint, !VarSet,
 
 replace_in_prog_constraint_location(Location, EqvMap, Constraint0, Constraint,
         !VarSet, !EquivTypeInfo, !UsedModules) :-
-    Constraint0 = constraint(ClassName, Ts0),
-    replace_in_type_list_location_circ(Location, EqvMap, Ts0, Ts, _, _,
-        !VarSet, !EquivTypeInfo, !UsedModules),
-    Constraint = constraint(ClassName, Ts).
+    Constraint0 = constraint(ClassName, ArgTypes0),
+    replace_in_type_list_location_circ(Location, EqvMap, ArgTypes0, ArgTypes,
+        _, _, !VarSet, !EquivTypeInfo, !UsedModules),
+    Constraint = constraint(ClassName, ArgTypes).
 
 %-----------------------------------------------------------------------------%
 
