@@ -217,11 +217,11 @@ is left unchanged.
 (@pxref{Auxiliary output options}).
 @findex --smart-recompilation
 
-Files ending in @file{.d} are automatically-generated Makefile fragments
+Files ending in @file{.d} are automatically generated Makefile fragments
 which contain the dependencies for a module.
-Files ending in @file{.dep} are automatically-generated Makefile fragments
+Files ending in @file{.dep} are automatically generated Makefile fragments
 which contain the rules for an entire program.
-Files ending in @file{.dv} are automatically-generated Makefile fragments
+Files ending in @file{.dv} are automatically generated Makefile fragments
 which contain variable definitions for an entire program.
 
 As usual, @file{.c} files are C source code,
@@ -519,7 +519,7 @@ all programs in the directory.
 
 If there is a file called @samp{Mmake} or @samp{Mmakefile} in the
 current directory,
-Mmake will include that file in its automatically-generated Makefile.
+Mmake will include that file in its automatically generated Makefile.
 The @samp{Mmake} file can override the default values of
 various variables used by Mmake's builtin rules,
 or it can add additional rules, dependencies, and actions.
@@ -528,7 +528,7 @@ Mmake's builtin rules are defined by the file
 @file{@var{prefix}/lib/mercury/mmake/Mmake.rules}
 (where @var{prefix} is @file{/usr/local/mercury-@var{version}} by default,
 and @var{version} is the version number, e.g.@: @samp{0.6}),
-as well as the rules and variables in the automatically-generated
+as well as the rules and variables in the automatically generated
 @file{.dep} and @file{.dv} files.
 These rules define the following targets:
 
@@ -1143,7 +1143,7 @@ MAIN_TARGET = libmypackage
 depend: mypackage.depend
 @end example
 
-The Mmake target @samp{lib@var{foo}} is a built-in target for
+The Mmake target @samp{lib@var{foo}} is a builtin target for
 creating a library whose top-level module is @samp{@var{foo}.m}.
 The automatically generated Mmake rules for the target @samp{lib@var{foo}}
 will create all the files needed to use the library.
@@ -1158,7 +1158,7 @@ Static libraries are created using the standard tools @samp{ar}
 and @samp{ranlib}.
 Shared libraries are created using the @samp{--make-shared-lib}
 option to @samp{ml}.
-The automatically-generated Make rules for @samp{libmypackage}
+The automatically generated Make rules for @samp{libmypackage}
 will look something like this:
 
 @example
@@ -2254,7 +2254,7 @@ by prefixing the name of the held variable with a dollar sign.
 @sp 1
 @item user defined events
 @cindex user defined events (in mdb)
-Besides the built-in set of events,
+Besides the builtin set of events,
 the Mercury debugger also supports events defined by the user.
 Each event appears in the source code of the Mercury program
 as a call prefixed by the keyword @samp{event},
@@ -2332,7 +2332,7 @@ within the predicate or function to which the procedure belongs.
 @node User defined events
 @section User defined events
 
-Besides the built-in set of events,
+Besides the builtin set of events,
 the Mercury debugger also supports events defined by the user.
 The intention is that users can define one kind of event
 for each semantically important event in the program
@@ -7533,7 +7533,7 @@ Enable termination analysis, and emit warnings for some predicates or
 functions that cannot be proved to terminate.  In many cases in which the
 compiler is unable to prove termination, the problem is either a lack of
 information about the termination properties of other predicates, or the
-fact that the program used language constructs (such as higher order
+fact that the program used language constructs (such as higher-order
 calls) which cannot be analysed.  In these cases the compiler does
 not emit a warning of non-termination, as it is likely to be spurious.
 
@@ -10325,7 +10325,7 @@ grade.
 @c @findex --threadscope-use-tsc
 @c Requests that the runtime's threadscope support use the CPU's time stamp
 @c counter (TSC) to measure time rather than gettimeofday().  The TSC may
-@c not always be available so the runtime may still use gettomeofday() even
+@c not always be available so the runtime may still use gettimeofday() even
 @c with this option.
 
 @sp 1

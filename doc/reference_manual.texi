@@ -206,7 +206,7 @@ is used as a line number directive (see below) and the
 backquote (@samp{`}) token.
 
 The different tokens are as follows.  Tokens may be separated by
-whitespace or line number directives.
+whitespace.
 
 @table @emph
 
@@ -547,9 +547,9 @@ end_module                      fx                1199
 import_module                   fx                1199
 include_module                  fx                1199
 initialise                      fx                1199
-initialize			fx		  1199	
-finalise			fx		  1199 
-finalize			fx		  1199
+initialize                      fx                1199	
+finalise                        fx                1199 
+finalize                        fx                1199
 inst                            fx                1199
 instance                        fx                1199
 mode                            fx                1199
@@ -610,8 +610,8 @@ The allowed declarations are:
 :- end_module
 @end example
 
-The @samp{type}, @samp{pred} and @samp{func} declarations are used for the
-type system,
+The @samp{type}, @samp{solver type}, @samp{pred}, @samp{func}, @samp{typeclass}
+and @samp{instance} declarations are used for the type system,
 the @samp{inst} and @samp{mode} declarations are for the mode system,
 the @samp{pragma} declarations are for the foreign language interface, and for
 compiler hints about inlining, and the remainder are for the module system. 
@@ -1476,9 +1476,9 @@ function applications, higher-order function applications, lambda
 expressions, and explicit type qualifications.
 
 A data-term is either a variable, a data-functor, or a special data-term.
-A special data-term is a conditional expression, a record syntax expression,
-a lambda expression, a higher-order function application,
-or an explicit type qualification.
+A special data-term is a conditional expression, a record syntax expression, a
+unification expression, a lambda expression, a higher-order function
+application, or an explicit type qualification.
 
 @menu
 * Data-functors::
@@ -5048,8 +5048,8 @@ For example, the following is allowed:
 The parameters must be distinct variables.
 Each @code{typeclass} declaration must have at least one parameter.
 
-It is OK for a @code{typeclass} declaration to declare no methods,
-e.g.
+It is legal for a @code{typeclass} declaration to declare no methods,
+for example
 
 @example
 :- typeclass foo(T) where [].
@@ -6552,12 +6552,10 @@ If the foreign language code is declared @samp{not_thread_safe},
 then the Mercury implementation must not invoke the code concurrently from
 multiple threads.  If the Mercury implementation does use multithreading,
 then it must take appropriate steps to prevent this.
-(The experimental multithreaded version of the current
-University of Melbourne Mercury implementation protects
-@samp{not_thread_safe} code using a mutex:
-C code that is not thread-safe has code inserted around it to obtain
-and release a mutex.  All non-thread-safe foreign language code shares a
-single mutex.)
+(The multithreaded version of the University of Melbourne Mercury
+implementation protects @samp{not_thread_safe} code using a mutex: C code that
+is not thread-safe has code inserted around it to obtain and release a mutex.
+All non-thread-safe foreign language code shares a single mutex.)
 @c XXX this can cause deadlocks if not_thread_safe foreign language code calls
 @c     Mercury which calls foreign language code
 If the foreign language code is declared @samp{maybe_thread_safe} then
@@ -7412,7 +7410,7 @@ as part of a @samp{foreign_decl} declaration of the form
 @end example
 
 This declaration will have effects equivalent to including the specified
-@var{DeclCode} in an automatically-generated source file of the specified
+@var{DeclCode} in an automatically generated source file of the specified
 programming language, in a place appropriate for declarations,
 and linking that source file with the Mercury program
 (after having compiled it with a compiler for the specified programming
@@ -7522,7 +7520,7 @@ variables) may be included using a declaration of the form
 @end example
 
 This declaration will have effects equivalent to including the specified
-@var{Code} in an automatically-generated source file of the specified
+@var{Code} in an automatically generated source file of the specified
 programming language, in a place appropriate for definitions,
 and linking that source file with the Mercury program
 (after having compiled it with a compiler for the specified programming
@@ -8048,7 +8046,7 @@ type @samp{int}.
 @subsubsection Using pragma foreign_proc for C#
 
 The C# code from C# pragma foreign_proc declarations will be placed in
-the bodies of static member functions of an automatically-generated C# class.
+the bodies of static member functions of an automatically generated C# class.
 Since such C# code will become part of a static member function,
 it must not refer to the @samp{this} keyword.
 It may however refer to static member variables or static member
@@ -8147,8 +8145,8 @@ For example:
 
 The C# code from @samp{pragma foreign_proc} declarations for C# will be
 placed in the bodies of static member functions of an
-automatically-generated C# class.  @samp{pragma foreign_code}
-can be used to define additional members of this automatically-generated
+automatically generated C# class.  @samp{pragma foreign_code}
+can be used to define additional members of this automatically generated
 class, which can then be referenced by @samp{pragma foreign_proc}
 declarations for C# from that module.
 
@@ -8232,7 +8230,7 @@ the Mercury constructor @samp{foo} would be @code{foo}.
 @subsubsection Using pragma foreign_proc for Java
 
 The Java code from Java pragma foreign_proc declarations will be placed in
-the bodies of static member functions of an automatically-generated Java class.
+the bodies of static member functions of an automatically generated Java class.
 Since such Java code will become part of a static member function,
 it must not refer to the @samp{this} keyword.
 It may however refer to static member variables or static member
@@ -8344,8 +8342,8 @@ class MyApplet extends JApplet @{
 
 The Java code from @samp{pragma foreign_proc} declarations for Java will be
 placed in the bodies of static member functions of an
-automatically-generated Java class.  @samp{pragma foreign_code}
-can be used to define additional members of this automatically-generated
+automatically generated Java class.  @samp{pragma foreign_code}
+can be used to define additional members of this automatically generated
 class, which can then be referenced by @samp{pragma foreign_proc}
 declarations for Java from that module.
 
@@ -8959,7 +8957,7 @@ not unify with each other.
 A non-solver type value will have inst @code{any} if it is constructed using
 one or more inst @code{any} values.
 
-The built-in modes @code{ia} and @code{oa} are equivalent to @code{in(any)}
+The builtin modes @code{ia} and @code{oa} are equivalent to @code{in(any)}
 and @code{out(any)} respectively.
 
 @node Abstract solver type declarations
@@ -9164,7 +9162,7 @@ in one of the other contexts, or indeed in another pred or func expression.
 Mercury checks that any solver variables that are used in the above contexts
 are used in such a way that negation as failure remains sound.
 In the case of negation and if-then-else goals,
-if any non-local solver type variable or higher order variable
+if any non-local solver type variable or higher-order variable
 with inst @code{any} is used in a negated context,
 the goal must be placed inside a @code{promise_pure}, @code{promise_semipure},
 or @code{promise_impure} scope.
@@ -9175,13 +9173,13 @@ the requirements of all impure goals (namely, that it doesn't interfere
 with the semantics of other pure goals).
 
 In the case of pred and func expressions, Mercury allows three possibilities.
-The higher order value may be considered @code{ground}, which means that
+The higher-order value may be considered @code{ground}, which means that
 all non-local variables used in the body of the expression
-(including those with other higher order values) must themselves be ground.
+(including those with other higher-order values) must themselves be ground.
 Higher order values that are ground can be safely called or applied
 in any context, including negated contexts, since none of their (ground)
 non-local variables can become further bound by doing so.
-Alternatively, the higher order value may be considered to have inst
+Alternatively, the higher-order value may be considered to have inst
 @code{any}, which allows non-local variables used in the body of the
 expression to have inst @code{any}.
 Calling or applying these values @emph{may} further bind non-local variables,
@@ -9193,7 +9191,7 @@ Pred and func expressions with inst @code{any} are written using
 @code{any_pred} and @code{any_func} in place of @code{pred} and @code{func},
 respectively.
 
-The third possibility is that the higher order value can be given an
+The third possibility is that the higher-order value can be given an
 impure type (@pxref{Higher-order impurity}).
 
 
@@ -9469,7 +9467,7 @@ low-level C code.
 
 The overhead of polymorphism can in some cases be significant, especially
 where polymorphic predicates make heavy use of class method calls or the
-built-in unification and comparison routines. To avoid this, the programmer
+builtin unification and comparison routines. To avoid this, the programmer
 can suggest to the compiler that a specialized version of a procedure should
 be created for a specific set of argument types.
 
@@ -9524,7 +9522,7 @@ will result in code bloat.
 
 Type specialization of predicates or functions which
 unify or compare polymorphic variables is most effective when
-the specialized types are built-in types such as @samp{int}, @samp{float}
+the specialized types are builtin types such as @samp{int}, @samp{float}
 and @samp{string}, or enumeration types, since their unification and
 comparison procedures are simple and can be inlined.
 
@@ -9587,7 +9585,7 @@ in situations in which the code of a predicate has one determinism,
 but the declared determinism of the procedure must be looser
 due to some outside requirement.
 One such situation is when a set of procedures are all possible values
-of the same higher order variable,
+of the same higher-order variable,
 which requires them to have the same argument types, modes, and determinisms.
 If (say) most of the procedures are det
 but some are erroneous (that is, they always throws an exception),
@@ -10136,7 +10134,7 @@ check the termination of all predicates in the module.
 It is common for the compiler to be unable to prove termination of some
 predicates and functions because they call other predicates which could
 not be proved to terminate or because they use language features (such
-as higher order calls) which cannot be usefully analysed.  
+as higher-order calls) which cannot be usefully analysed.  
 In this case, the compiler only emits a warning for these
 predicates and functions if the @samp{--verbose-check-termination}
 option is enabled.  For every predicate or function that the compiler
