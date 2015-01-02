@@ -475,9 +475,8 @@ bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces, Kind) = Spec :-
     InstanceContext = InstanceDefn ^ instance_context,
     (
         Kind = badly_formed,
-        % We are generating the error message because the type is badly
-        % formed as expanted. The unexpanded version may be correctly
-        % formed.
+        % We are generating the error message because the type is badly formed
+        % as expanded. The unexpanded version may be correctly formed.
         InstanceTypes = InstanceDefn ^ instance_types
     ;
         Kind = abstract_exported_eqv,

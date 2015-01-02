@@ -91,9 +91,9 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
             InstMap0, LambdaInstMap0),
 
-        % Don't attempt to pass structs into lambda_goals,
-        % since that could change the curried non-locals of the
-        % lambda_goal, and that would be difficult to fix up.
+        % Don't attempt to pass structs into lambda_goals, since that
+        % could change the curried non-locals of the lambda_goal, and
+        % that would be difficult to fix up.
         LambdaCommon0 = common_info_init,
 
         % Don't attempt to pass structs out of lambda_goals.

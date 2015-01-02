@@ -74,7 +74,8 @@
 %   OutD2 := OutD1
 %
 % Since the author probably did not mean to write duplicate calls, we also
-% generate a warning for such code.
+% generate a warning for such code, if the option asking for such warnings
+% is set.
 %
 % IMPORTANT: This module does a small subset of the job of compile-time
 % garbage collection, but it does so without paying attention to uniqueness
@@ -82,10 +83,10 @@
 % Once we implement ctgc, the assumptions made by this module
 % will have to be revisited.
 %
-% NOTE: There is another compiler module, cse_detection.m, that
-% looks for unifications involving common structures in *disjoined*,
-% not *conjoined* goals. Its purpose is not optimization, but the
-% generation of more precise determinism information.
+% NOTE: There is another compiler module, cse_detection.m, that looks for
+% unifications involving common structures in *disjoined*, not *conjoined*
+% goals. Its purpose is not optimization, but the generation of more precise
+% determinism information.
 %
 %---------------------------------------------------------------------------%
 
@@ -104,12 +105,12 @@
 
 %---------------------------------------------------------------------------%
 
-    % If we find a deconstruction or a construction we cannot optimize, record
-    % the details of the memory cell in CommonInfo.
-    %
     % If we find a construction that constructs a cell identical to one we
     % have seen before, replace the construction with an assignment from the
     % variable that already holds that cell.
+    %
+    % If we find a deconstruction or a construction we cannot optimize, record
+    % the details of the memory cell in the updated common_info.
     %
 :- pred common_optimise_unification(unification::in, unify_mode::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
@@ -137,8 +138,8 @@
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-    % Succeeds if the two variables are equivalent according to the specified
-    % equivalence class.
+    % Succeeds if the two variables are equivalent according to the
+    % information in the specified common_info.
     %
 :- pred common_vars_are_equivalent(prog_var::in, prog_var::in,
     common_info::in) is semidet.
@@ -254,15 +255,14 @@
     %
     % then we want to reuse the `err(X)' in the first arg rather than
     % constructing a new copy of it for the second arg.
-    % The two occurrences of `err(X)' have types `maybe_err(int)'
-    % and `maybe(float)', but we know that they have the same
-    % representation.
+    % The two occurrences of `err(X)' have types `maybe_err(int)' and
+    % `maybe(float)', but we know that they have the same representation.
     %
-    % XXX the following comment is incorrect.
-    % We put the cons_id first in the pair because there are more cons_ids
-    % than type constructors, and hence comparisons involving cons_ids are
-    % more likely to fail. This should ensure that failed comparisons in map
-    % searches fail as soon as possible.
+    % Instead of a simple map whose keys are <type_ctor, cons_id> pairs,
+    % we use a two-stage map, with the keys being type_ctors in the first stage
+    % and cons_ids in the second. Having two stages makes the comparisons
+    % cheaper, and we put the type_ctors first to avoid mixing together
+    % cons_ids from different type constructors.
 
 :- type struct_map == map(type_ctor, cons_id_map).
 :- type cons_id_map == map(cons_id, structures).
@@ -304,38 +304,30 @@ common_info_clear_structs(!Info) :-
 
 %---------------------------------------------------------------------------%
 
-common_optimise_unification(Unification0, Mode,
-        GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Common, !Info) :-
+common_optimise_unification(Unification0, Mode, !GoalExpr, !GoalInfo,
+        !Common, !Info) :-
     (
         Unification0 = construct(Var, ConsId, ArgVars, _, _, _, SubInfo),
         (
             SubInfo = construct_sub_info(MaybeTakeAddr, _),
             MaybeTakeAddr = yes(_)
         ->
-            GoalExpr = GoalExpr0,
-            GoalInfo = GoalInfo0
+            true
         ;
             common_optimise_construct(Var, ConsId, ArgVars, Mode,
-                GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Common, !Info)
+                !GoalExpr, !GoalInfo, !Common, !Info)
         )
     ;
         Unification0 = deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, _),
         common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail,
-            Mode, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Common, !Info)
+            Mode, !GoalExpr, !GoalInfo, !Common, !Info)
     ;
-        Unification0 = assign(Var1, Var2),
-        record_equivalence(Var1, Var2, !Common),
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0
+        ( Unification0 = assign(Var1, Var2)
+        ; Unification0 = simple_test(Var1, Var2)
+        ),
+        record_equivalence(Var1, Var2, !Common)
     ;
-        Unification0 = simple_test(Var1, Var2),
-        record_equivalence(Var1, Var2, !Common),
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0
-    ;
-        Unification0 = complicated_unify(_, _, _),
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0
+        Unification0 = complicated_unify(_, _, _)
     ).
 
 :- pred common_optimise_construct(prog_var::in, cons_id::in,
@@ -378,7 +370,7 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
             !Common ^ var_eqv := VarEqv,
             (
                 ArgVars = [],
-                % Constants don't use memory, so there's no point in
+                % Constants don't use memory, so there is no point in
                 % optimizing away their construction; in fact, doing so
                 % could cause more stack usage.
                 GoalExpr = GoalExpr0,
@@ -909,19 +901,19 @@ types_match_exactly_list([Type1 | Types1], [Type2 | Types2]) :-
 %---------------------------------------------------------------------------%
 
     % Two existentially quantified type variables may become aliased if two
-    % calls or two deconstructions are merged together.  We detect this
+    % calls or two deconstructions are merged together. We detect this
     % situation here and apply the appropriate tsubst to the vartypes and
-    % rtti_varmaps.  This allows us to avoid an unsafe cast, and also may
+    % rtti_varmaps. This allows us to avoid an unsafe cast, and also may
     % allow more opportunities for simplification.
     %
     % If we do need to apply a type substitution, then we also apply the
-    % substituion ToVar -> FromVar to the RttiVarMaps, then duplicate
-    % FromVar's information for ToVar.  This ensures we always refer to the
+    % substitution ToVar -> FromVar to the RttiVarMaps, then duplicate
+    % FromVar's information for ToVar. This ensures we always refer to the
     % "original" variables, not the copies created by generate_assign.
     %
     % Note that this relies on the assignments for type_infos and
     % typeclass_infos to be generated before other arguments with these
-    % existential types are processed.  In other words, the arguments of
+    % existential types are processed. In other words, the arguments of
     % calls and deconstructions must be processed in left to right order.
     %
 :- pred apply_induced_substitutions(prog_var::in, prog_var::in,
@@ -940,7 +932,7 @@ apply_induced_substitutions(ToVar, FromVar, !Info) :-
         )
     ;
         % Update the rtti_varmaps with new information if only one of the
-        % variables has rtti_var_info recorded.  This can happen if a new
+        % variables has rtti_var_info recorded. This can happen if a new
         % variable has been introduced, eg in quantification, without
         % being recorded in the rtti_varmaps.
         (
@@ -970,7 +962,7 @@ apply_induced_substitutions(ToVar, FromVar, !Info) :-
     ).
 
     % Calculate the induced substitution by unifying the types or constraints,
-    % if they exist.  Fail if given non-matching rtti_var_infos.
+    % if they exist. Fail if given non-matching rtti_var_infos.
     %
 :- pred calculate_induced_tsubst(rtti_var_info::in, rtti_var_info::in,
     tsubst::out) is semidet.

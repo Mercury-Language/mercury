@@ -58,7 +58,7 @@
     % for that predicate; the real types will be inferred by type inference.
     %
 :- pred preds_add_implicit_report_error(module_info::in, module_info::out,
-    module_name::in, sym_name::in, arity::in, pred_or_func::in, 
+    module_name::in, sym_name::in, arity::in, pred_or_func::in,
     import_status::in, bool::in, prog_context::in, pred_origin::in,
     list(format_component)::in, pred_id::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -145,10 +145,6 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
         MaybePredProcId = no
     ).
 
-    % NB. Predicates are also added in lambda.m, which converts
-    % lambda expressions into separate predicates, so any changes may need
-    % to be reflected there too.
-    %
 :- pred add_new_pred(tvarset::in, existq_tvars::in, sym_name::in,
     list(mer_type)::in, purity::in, prog_constraints::in,
     pred_markers::in, prog_context::in, import_status::in,
@@ -159,9 +155,13 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
 add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
         Markers0, Context, ItemStatus, NeedQual, PredOrFunc, !ModuleInfo,
         !Specs) :-
-    % Only preds with opt_imported clauses are tagged as opt_imported, so
-    % that the compiler doesn't look for clauses for other preds read in
-    % from optimization interfaces.
+    % NB. Predicates are also added in lambda.m, which converts
+    % lambda expressions into separate predicates, so any changes may need
+    % to be reflected there too.
+
+    % Only preds with opt_imported clauses are tagged as opt_imported, so that
+    % the compiler doesn't look for clauses for other preds read in from
+    % optimization interfaces.
     ( ItemStatus = status_opt_imported ->
         Status = status_imported(import_locn_interface)
     ;
@@ -518,7 +518,7 @@ preds_add_implicit_for_assertion(!ModuleInfo, ModuleName, PredName,
     term.context_line(Context, LineNum),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     preds_do_add_implicit(!.ModuleInfo, ModuleName, PredName, Arity,
-        PredOrFunc,Status, Context, origin_assertion(FileName, LineNum), 
+        PredOrFunc,Status, Context, origin_assertion(FileName, LineNum),
         ClausesInfo, PredId, PredicateTable0, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo).
 

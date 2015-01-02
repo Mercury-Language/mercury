@@ -512,11 +512,10 @@ report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
 
-    % If two instance declarations are about the same type, then
-    % the declarations must be compatible. This consists of checking
-    % that the constraints are identical.
-    % In other words, the abstract declaration must match the
-    % concrete definition.
+    % If two instance declarations are about the same type, then one must be
+    % the abstract declaration and the other the concrete definition.
+    % The two must be compatible, i.e. their constraints must be identical.
+    % If they are not, then generate an error message.
     %
 :- pred check_instance_compatibility(hlds_instance_defn::in,
     list(hlds_instance_defn)::in, class_id::in,
@@ -588,8 +587,8 @@ same_type_hlds_instance_defn(InstanceDefnA, InstanceDefnB) :-
     type_vars_list(TypesB1, TVarsB),
 
     % If the lengths are different they can't be the same type.
-    list.length(TVarsA, L),
-    list.length(TVarsB, L),
+    list.length(TVarsA, NumTVars),
+    list.length(TVarsB, NumTVars),
 
     map.from_corresponding_lists(TVarsB, TVarsA, Renaming),
     apply_variable_renaming_to_type_list(Renaming, TypesB1, TypesB),
@@ -707,8 +706,8 @@ pred_method_with_no_modes_error(PredInfo, !Specs) :-
 undefined_type_class_error(ClassName, Arity, Context, Description, !Specs) :-
     Pieces = [words("Error:"), words(Description), words("for"),
         sym_name_and_arity(ClassName / Arity),
-        words("without corresponding"), decl("typeclass"), words("declaration."),
-        nl],
+        words("without corresponding"), decl("typeclass"),
+        words("declaration."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].

@@ -250,7 +250,7 @@ report_circular_equiv_error(One, Several, OrigId, Id, Expansions, Context,
     ;
         % We have an inst `OrigId' which is not itself circular,
         % but which is defined in terms of `Id' which is circular.
-        % Don't bother reporting it now -- it have already been
+        % Don't bother reporting it now -- it should have already been
         % reported when we processed the definition of Id.
         true
     ).

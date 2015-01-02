@@ -183,7 +183,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Utility predicates for working with C code
+% Utility predicates for working with C code.
 %
     % Succeeds iff the given string is a valid C identifier.
     %

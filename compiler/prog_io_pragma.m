@@ -141,6 +141,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeItem) :-
 
 parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
         Context, SeqNum, MaybeItem) :-
+    require_switch_arms_det [PragmaName]
     (
         PragmaName = "source_file",
         parse_pragma_source_file(PragmaTerms, ErrorTerm,

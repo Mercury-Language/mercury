@@ -828,7 +828,7 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
         Ctors, Overrides0, Overrides, map.init, NameMap, [], BadCtors),
 
     % Check for any remaining user-specified renamings that didn't match
-    % the constructors of the type and report and error for them.
+    % the constructors of the type and report errors for them.
 
     ( not map.is_empty(Overrides) ->
        InvalidRenamingPieces = [words("user-specified foreign names"),
@@ -923,9 +923,6 @@ check_name_map_for_conflicts(Context, ContextPieces, NameMap,
         !:Specs = [Spec | !.Specs]
     ).
 
-    % add_ctor_to_name_map(ForeignLanguage, Overrides, Prefix, Ctor, !Map,
-    %   !BadCtors):
-    %
 :- pred add_ctor_to_name_map(foreign_language::in,
     string::in, uppercase_export_enum::in, sym_name::in, constructor::in,
     map(sym_name, string)::in, map(sym_name, string)::out,

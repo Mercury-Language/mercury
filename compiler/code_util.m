@@ -252,50 +252,62 @@ max_mentioned_abs_reg_2([Lval | Lvals], !MaxRegR, !MaxRegF) :-
 %-----------------------------------------------------------------------------%
 
 goal_may_alloc_temp_frame(hlds_goal(GoalExpr, _GoalInfo), May) :-
-    goal_may_alloc_temp_frame_2(GoalExpr, May).
+    goal_expr_may_alloc_temp_frame(GoalExpr, May).
 
-:- pred goal_may_alloc_temp_frame_2(hlds_goal_expr::in, bool::out)
-    is det.
+:- pred goal_expr_may_alloc_temp_frame(hlds_goal_expr::in, bool::out) is det.
 
-goal_may_alloc_temp_frame_2(generic_call(_, _, _, _, _), no).
-goal_may_alloc_temp_frame_2(plain_call(_, _, _, _, _, _), no).
-goal_may_alloc_temp_frame_2(unify(_, _, _, _, _), no).
-    % We cannot safely say that a foreign code fragment does not allocate
-    % temporary nondet frames without knowing all the #defined macros
-    % that expand to mktempframe and variants thereof. The performance
-    % impact of being too conservative is probably not too bad.
-goal_may_alloc_temp_frame_2(call_foreign_proc(_, _, _, _, _, _, _), yes).
-goal_may_alloc_temp_frame_2(scope(_, Goal), May) :-
-    Goal = hlds_goal(_, GoalInfo),
-    CodeModel = goal_info_get_code_model(GoalInfo),
+goal_expr_may_alloc_temp_frame(GoalExpr, May) :-
     (
-        CodeModel = model_non,
-        May = yes
-    ;
-        ( CodeModel = model_det
-        ; CodeModel = model_semi
+        ( GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
         ),
-        goal_may_alloc_temp_frame(Goal, May)
-    ).
-goal_may_alloc_temp_frame_2(negation(Goal), May) :-
-    goal_may_alloc_temp_frame(Goal, May).
-goal_may_alloc_temp_frame_2(conj(_ConjType, Goals), May) :-
-    goal_list_may_alloc_temp_frame(Goals, May).
-goal_may_alloc_temp_frame_2(disj(Goals), May) :-
-    goal_list_may_alloc_temp_frame(Goals, May).
-goal_may_alloc_temp_frame_2(switch(_Var, _Det, Cases), May) :-
-    cases_may_alloc_temp_frame(Cases, May).
-goal_may_alloc_temp_frame_2(if_then_else(_Vars, C, T, E), May) :-
-    ( goal_may_alloc_temp_frame(C, yes) ->
-        May = yes
-    ; goal_may_alloc_temp_frame(T, yes) ->
+        May = no
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        % We cannot safely say that a foreign code fragment does not allocate
+        % temporary nondet frames without knowing all the #defined macros
+        % that expand to mktempframe and variants thereof. The performance
+        % impact of being too conservative is probably not too bad.
         May = yes
     ;
-        goal_may_alloc_temp_frame(E, May)
+        GoalExpr = scope(_, SubGoal),
+        SubGoal = hlds_goal(_, SubGoalInfo),
+        SubCodeModel = goal_info_get_code_model(SubGoalInfo),
+        (
+            SubCodeModel = model_non,
+            May = yes
+        ;
+            ( SubCodeModel = model_det
+            ; SubCodeModel = model_semi
+            ),
+            goal_may_alloc_temp_frame(SubGoal, May)
+        )
+    ;
+        GoalExpr = negation(SubGoal),
+        goal_may_alloc_temp_frame(SubGoal, May)
+    ;
+        ( GoalExpr = conj(_ConjType, SubGoals)
+        ; GoalExpr = disj(SubGoals)
+        ),
+        goal_list_may_alloc_temp_frame(SubGoals, May)
+    ;
+        GoalExpr = switch(_Var, _Det, Cases),
+        cases_may_alloc_temp_frame(Cases, May)
+    ;
+        GoalExpr = if_then_else(_Vars, C, T, E),
+        ( goal_may_alloc_temp_frame(C, yes) ->
+            May = yes
+        ; goal_may_alloc_temp_frame(T, yes) ->
+            May = yes
+        ;
+            goal_may_alloc_temp_frame(E, May)
+        )
+    ;
+        GoalExpr = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected($module, $pred, "shorthand")
     ).
-goal_may_alloc_temp_frame_2(shorthand(_), _) :-
-    % These should have been expanded out by now.
-    unexpected($module, $pred, "shorthand").
 
 :- pred goal_list_may_alloc_temp_frame(list(hlds_goal)::in, bool::out) is det.
 
@@ -320,15 +332,15 @@ cases_may_alloc_temp_frame([case(_, _, Goal) | Cases], May) :-
 %-----------------------------------------------------------------------------%
 
 neg_rval(Rval, NegRval) :-
-    ( neg_rval_2(Rval, NegRval0) ->
+    ( natural_neg_rval(Rval, NegRval0) ->
         NegRval = NegRval0
     ;
         NegRval = unop(logical_not, Rval)
     ).
 
-:- pred neg_rval_2(rval::in, rval::out) is semidet.
+:- pred natural_neg_rval(rval::in, rval::out) is semidet.
 
-neg_rval_2(const(Const), const(NegConst)) :-
+natural_neg_rval(const(Const), const(NegConst)) :-
     (
         Const = llconst_true,
         NegConst = llconst_false
@@ -336,8 +348,8 @@ neg_rval_2(const(Const), const(NegConst)) :-
         Const = llconst_false,
         NegConst = llconst_true
     ).
-neg_rval_2(unop(logical_not, Rval), Rval).
-neg_rval_2(binop(Op, X, Y), binop(NegOp, X, Y)) :-
+natural_neg_rval(unop(logical_not, Rval), Rval).
+natural_neg_rval(binop(Op, X, Y), binop(NegOp, X, Y)) :-
     neg_op(Op, NegOp).
 
 :- pred neg_op(binary_op::in, binary_op::out) is semidet.

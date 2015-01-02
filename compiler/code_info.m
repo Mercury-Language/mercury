@@ -495,14 +495,14 @@
 
                 % A counter and table for allocating and maintaining slots
                 % where string IDs will be placed at runtime for threadscope
-                % profiling.  The actual string IDs are allocated at runtime
+                % profiling. The actual string IDs are allocated at runtime
                 % and their IDs are placed in an array slot which can be
                 % referred to statically.
                 cip_ts_string_table_size    :: int,
                 cip_ts_rev_string_table     :: list(string),
 
                 % Code that is part of this procedure, but that can be placed
-                % after the procedure without a cache penalty.  For example,
+                % after the procedure without a cache penalty. For example,
                 % code that is spawned off by loop control is placed here.
                 cip_out_of_line_code        :: llds_code
             ).
@@ -3541,12 +3541,12 @@ pickup_zombies(Zombies, !CI) :-
     code_info::in, code_info::out) is det.
 
     % Should we add trail ops to the code we generate for the goal with the
-    % given goal_info.  This will be 'no' unless we are in a trailing grade.
+    % given goal_info. This will be 'no' unless we are in a trailing grade.
     %
 :- func should_add_trail_ops(code_info, hlds_goal_info) = add_trail_ops.
 
     % Should we add region ops to the code we generate for the goal with the
-    % given goal_info.  This will be 'no' unless we are in a rbmm grade.
+    % given goal_info. This will be 'no' unless we are in a rbmm grade.
     %
 :- func should_add_region_ops(code_info, hlds_goal_info) = add_region_ops.
 
@@ -3738,14 +3738,14 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI) :-
         Code = empty
     ).
 
+should_add_trail_ops(CodeInfo, _GoalInfo) = AddTrailOps :-
     % XXX We will eventually need to make use of GoalInfo here.
     %
-should_add_trail_ops(CodeInfo, _GoalInfo) = AddTrailOps :-
     get_emit_trail_ops(CodeInfo, AddTrailOps).
 
+should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
     % XXX We will eventually need to make use of GoalInfo here.
     %
-should_add_region_ops(CodeInfo, _GoalInfo) = AddRegionOps :-
     get_emit_region_ops(CodeInfo, AddRegionOps).
 
 %---------------------------------------------------------------------------%
@@ -4101,19 +4101,17 @@ acquire_reg_not_in_storemap(StoreMap, RegType, Lval, !CI) :-
 
 record_highest_used_reg(_, AbsLocn, !HighestUsedRegR, !HighestUsedRegF) :-
     (
-        AbsLocn = any_reg
-    ;
         AbsLocn = abs_reg(reg_r, N),
         int.max(N, !HighestUsedRegR)
     ;
         AbsLocn = abs_reg(reg_f, N),
         int.max(N, !HighestUsedRegF)
     ;
-        AbsLocn = abs_stackvar(_, _)
-    ;
-        AbsLocn = abs_parent_stackvar(_, _)
-    ;
-        AbsLocn = abs_framevar(_)
+        ( AbsLocn = any_reg
+        ; AbsLocn = abs_stackvar(_, _)
+        ; AbsLocn = abs_parent_stackvar(_, _)
+        ; AbsLocn = abs_framevar(_)
+        )
     ).
 
 acquire_reg(Type, Lval, !CI) :-

@@ -594,7 +594,7 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0,
             RttiVarMaps, HasForeignClauses)
     ).
 
-    % Args0 has already had !S arguments replaced by a !.S, !:S argument pair.
+    % Args0 has already had !S arguments replaced by !.S, !:S argument pairs.
     %
 :- pred add_clause_transform(prog_var_renaming::in,
     proc_arg_vector(prog_var)::in, list(prog_term)::in, goal::in,

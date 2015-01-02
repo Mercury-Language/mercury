@@ -606,7 +606,7 @@ maybe_closure_analysis(Verbose, Stats, !HLDS, !IO) :-
     (
         ClosureAnalysis = yes,
         maybe_write_string(Verbose, "% Analysing closures...\n", !IO),
-        closure_analysis.process_module(!HLDS, !IO),
+        closure_analyse_module(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

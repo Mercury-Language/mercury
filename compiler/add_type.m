@@ -380,8 +380,8 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
         ;
             TypeCtorSymName = qualified(TypeCtorModuleName, _)
         ),
-        ctors_add(ConsList, TypeCtor, TypeCtorModuleName, TVarSet, Args,
-            KindMap, NeedQual, PQInfo, Context, Status,
+        add_type_defn_ctors(ConsList, TypeCtor, TypeCtorModuleName, TVarSet,
+            Args, KindMap, NeedQual, PQInfo, Status,
             CtorFields0, CtorFields, Ctors0, Ctors, [], CtorAddSpecs),
         module_info_set_cons_table(Ctors, !ModuleInfo),
         module_info_set_ctor_field_table(CtorFields, !ModuleInfo),
@@ -687,17 +687,35 @@ convert_type_defn(parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
         Body = foreign_type_body(no, no, no, no, yes(Data))
     ).
 
-:- pred ctors_add(list(constructor)::in, type_ctor::in, module_name::in,
-    tvarset::in, list(type_param)::in, tvar_kind_map::in, need_qualifier::in,
-    partial_qualifier_info::in, prog_context::in,
-    import_status::in, ctor_field_table::in, ctor_field_table::out,
+:- pred add_type_defn_ctors(list(constructor)::in, type_ctor::in,
+    module_name::in, tvarset::in, list(type_param)::in, tvar_kind_map::in,
+    need_qualifier::in, partial_qualifier_info::in, import_status::in,
+    ctor_field_table::in, ctor_field_table::out,
     cons_table::in, cons_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-ctors_add([], _, _, _, _, _, _, _, _, _, !FieldNameTable, !ConsTable, !Specs).
-ctors_add([Ctor | Ctors], TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
-        KindMap, NeedQual, PQInfo, _Context, ImportStatus, !FieldNameTable,
-        !ConsTable, !Specs) :-
+add_type_defn_ctors([], _, _, _, _, _, _, _, _,
+        !FieldNameTable, !ConsTable, !Specs).
+add_type_defn_ctors([Ctor | Ctors], TypeCtor, TypeCtorModuleName, TVarSet,
+        TypeParams, KindMap, NeedQual, PQInfo, ImportStatus,
+        !FieldNameTable, !ConsTable, !Specs) :-
+    add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
+        TypeParams, KindMap, NeedQual, PQInfo, ImportStatus,
+        !FieldNameTable, !ConsTable, !Specs),
+    add_type_defn_ctors(Ctors, TypeCtor, TypeCtorModuleName, TVarSet,
+        TypeParams, KindMap, NeedQual, PQInfo, ImportStatus,
+        !FieldNameTable, !ConsTable, !Specs).
+
+:- pred add_type_defn_ctor(constructor::in, type_ctor::in,
+    module_name::in, tvarset::in, list(type_param)::in, tvar_kind_map::in,
+    need_qualifier::in, partial_qualifier_info::in, import_status::in,
+    ctor_field_table::in, ctor_field_table::out,
+    cons_table::in, cons_table::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
+        TypeParams, KindMap, NeedQual, PQInfo, ImportStatus,
+        !FieldNameTable, !ConsTable, !Specs) :-
     Ctor = ctor(ExistQVars, Constraints, Name, Args, Context),
     list.length(Args, Arity),
     BaseName = unqualify_name(Name),
@@ -759,11 +777,7 @@ ctors_add([Ctor | Ctors], TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
     FieldNames = list.map(func(C) = C ^ arg_field_name, Args),
     FirstField = 1,
     add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
-        QualifiedConsIdA, ImportStatus, FirstField, !FieldNameTable, !Specs),
-
-    ctors_add(Ctors, TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
-        KindMap, NeedQual, PQInfo, Context, ImportStatus, !FieldNameTable,
-        !ConsTable, !Specs).
+        QualifiedConsIdA, ImportStatus, FirstField, !FieldNameTable, !Specs).
 
 :- pred add_ctor_to_list(type_ctor::in, string::in, int::in, module_name::in,
     list(cons_id)::in, list(cons_id)::out) is det.
@@ -810,14 +824,11 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         FieldName = unqualified(_),
         unexpected($module, $pred, "unqualified field name")
     ),
-    (
-        % Field names must be unique within a module, not just within
-        % a type because the function names for user-defined override functions
-        % for the builtin field access functions must be unique within a
-        % module.
-        %
-        map.search(!.FieldNameTable, FieldName, ConflictingDefns)
-    ->
+    % Field names must be unique within a module, not just within a type,
+    % because the function names for user-defined override functions
+    % for the builtin field access functions must be unique within a
+    % module.
+    ( map.search(!.FieldNameTable, FieldName, ConflictingDefns) ->
         ( ConflictingDefns = [ConflictingDefn] ->
             ConflictingDefn = hlds_ctor_field_defn(OrigContext, _, _, _, _)
         ;

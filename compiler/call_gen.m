@@ -141,9 +141,9 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     % If the call can fail, generate code to check for and handle the failure.
     handle_call_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
-    get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         goal_info_has_feature(GoalInfo, feature_debug_tail_rec_call),
+        get_maybe_trace_info(!.CI, MaybeTraceInfo),
         MaybeTraceInfo = yes(TraceInfo)
     ->
         generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalId, Context,
@@ -190,9 +190,8 @@ generate_generic_call(OuterCodeModel, GenericCall, Args, Modes,
                 % Dummy types don't actually have values, which is
                 % normally harmless. However using the constant zero means
                 % that we don't need to allocate space for an existentially
-                % typed version of a dummy type.  Using the constant zero
-                % also avoids keeping pointers to memory that could be
-                % freed.
+                % typed version of a dummy type. Using the constant zero
+                % also avoids keeping pointers to memory that could be freed.
                 Rval = int_const(0)
             ;
                 Rval = leaf(InputArg)
@@ -253,7 +252,7 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes,
     % Setting up these arguments last results in slightly more efficient code,
     % since we can use their registers when placing the variables.
     generic_call_nonvar_setup(GenericCall, HoCallVariant, InVarsR, InVarsF,
-        OutVarsR, OutVarsF, NonVarCode, !CI),
+        NonVarCode, !CI),
 
     extra_livevals(FirstImmInputR, ExtraLiveVals),
     set.insert_list(ExtraLiveVals, LiveVals0, LiveVals),
@@ -442,11 +441,10 @@ generic_call_info(Globals, GenericCall, NumInputArgsR, NumInputArgsF,
     %
 :- pred generic_call_nonvar_setup(generic_call::in, known_call_variant::in,
     list(prog_var)::in, list(prog_var)::in,
-    list(prog_var)::in, list(prog_var)::in,
     llds_code::out, code_info::in, code_info::out) is det.
 
 generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
-        InVarsR, InVarsF, _OutVarsR, _OutVarsF, Code, !CI) :-
+        InVarsR, InVarsF, Code, !CI) :-
     (
         HoCallVariant = ho_call_known_num,
         Code = empty
@@ -462,7 +460,7 @@ generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
         )
     ).
 generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
-        InVarsR, InVarsF, _OutVarsR, _OutVarsF, Code, !CI) :-
+        InVarsR, InVarsF, Code, !CI) :-
     (
         InVarsF = []
     ;
@@ -490,9 +488,9 @@ generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
                 "Assign number of immediate regular input arguments")
         ])
     ).
-generic_call_nonvar_setup(event_call(_), _, _, _, _, _, _, !CI) :-
+generic_call_nonvar_setup(event_call(_), _, _, _, _, !CI) :-
     unexpected($module, $pred, "event_call").
-generic_call_nonvar_setup(cast(_), _, _, _, _, _, _, !CI) :-
+generic_call_nonvar_setup(cast(_), _, _, _, _, !CI) :-
     unexpected($module, $pred, "cast").
 
 %---------------------------------------------------------------------------%
@@ -502,9 +500,7 @@ generic_call_nonvar_setup(cast(_), _, _, _, _, _, _, !CI) :-
 
 prepare_for_call(CodeModel, GoalInfo, CallModel, TraceCode, !CI) :-
     succip_is_used(!CI),
-    (
-        goal_info_has_feature(GoalInfo, feature_do_not_tailcall)
-    ->
+    ( goal_info_has_feature(GoalInfo, feature_do_not_tailcall) ->
         AllowLCO = do_not_allow_lco
     ;
         AllowLCO = allow_lco
@@ -672,8 +668,8 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
     get_module_info(!.CI, ModuleInfo),
     ModuleName = predicate_module(ModuleInfo, PredId),
     PredName = predicate_name(ModuleInfo, PredId),
-    builtin_ops.translate_builtin(ModuleName, PredName,
-        ProcId, Args, SimpleCode),
+    builtin_ops.translate_builtin(ModuleName, PredName, ProcId, Args,
+        SimpleCode),
     (
         CodeModel = model_det,
         (

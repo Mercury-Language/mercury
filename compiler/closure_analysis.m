@@ -9,9 +9,9 @@
 % File: closure_analysis.m
 % Main author: juliensf
 %
-% Perform local closure analysis on procedures.  This involves tracking
+% Perform local closure analysis on procedures. This involves tracking
 % the possible values that a higher-order variable can take within a
-% procedure.  We attach this information to places where knowing the
+% procedure. We attach this information to places where knowing the
 % possible values of a higher-order call may be useful.
 %
 % This is similar to the analysis done by higher-order specialization, except
@@ -25,7 +25,7 @@
 :- import_module hlds.hlds_module.
 :- import_module io.
 
-:- pred process_module(module_info::in, module_info::out,
+:- pred closure_analyse_module(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
@@ -58,7 +58,7 @@
 
 %----------------------------------------------------------------------------%
 
-process_module(!ModuleInfo, !IO) :-
+closure_analyse_module(!ModuleInfo, !IO) :-
     % XXX At the moment it is not necessary to do this on a per-SCC basis,
     % since the analysis is only procedure-local, but we would eventually
     % like to extend it.
@@ -68,18 +68,18 @@ process_module(!ModuleInfo, !IO) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
-    list.foldl2(process_scc(Debug), SCCs, !ModuleInfo, !IO).
+    list.foldl2(closure_analyse_scc(Debug), SCCs, !ModuleInfo, !IO).
 
 %----------------------------------------------------------------------------%
 %
 % Perform closure analysis on an SCC.
 %
 
-:- pred process_scc(bool::in, list(pred_proc_id)::in,
+:- pred closure_analyse_scc(bool::in, list(pred_proc_id)::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-process_scc(Debug, SCC, !ModuleInfo, !IO) :-
-    list.foldl2(process_proc(Debug), SCC, !ModuleInfo, !IO).
+closure_analyse_scc(Debug, SCC, !ModuleInfo, !IO) :-
+    list.foldl2(closure_analyse_proc(Debug), SCC, !ModuleInfo, !IO).
 
 %----------------------------------------------------------------------------%
 
@@ -88,20 +88,20 @@ process_scc(Debug, SCC, !ModuleInfo, !IO) :-
     %
 :- type closure_values
     --->    unknown
-                % The higher-order variable may be bound to something
-                % but we don't know what it is.
+            % The higher-order variable may be bound to something,
+            % but we don't know what it is.
 
     ;       partial(set(pred_proc_id))
-                % The higher-order variable may be bound to these
-                % values, or it may be bound to something else we don't
-                % know about.  (This is intended to be useful in producing
-                % error messages for the termination analysis; if one
-                % of the higher-order values is definitely non-terminating
-                % we can certainly let the user know about it.)
+            % The higher-order variable may be bound to these values,
+            % or it may be bound to something else we don't know about.
+            % (This is intended to be useful in producing error messages
+            % for the termination analysis; if one of the higher-order values
+            % is definitely non-terminating, we can certainly let the user
+            % know about it.)
 
     ;       exclusive(set(pred_proc_id)).
-                % The higher-order variable will be exclusively bound
-                % to this set of values.
+            % The higher-order variable can be bound only to one of the
+            % procedures identified by this set.
 
     % We attach a closure_info to each goal where it may be of interest;
     % at the moment calls and generic_calls.
@@ -127,7 +127,7 @@ var_has_ho_type(VarTypes, Var) :-
     lookup_var_type(VarTypes, Var, Type),
     type_is_higher_order(Type).
 
-    % Insert the given prog_var into the closure_info and set the
+    % Insert the given prog_var into the closure_info, and set the
     % possible values to unknown.
     %
 :- pred insert_unknown(prog_var::in, closure_info::in, closure_info::out)
@@ -141,10 +141,10 @@ insert_unknown(Var, !ClosureInfo) :-
 % Perform local closure analysis on a procedure.
 %
 
-:- pred process_proc(bool::in, pred_proc_id::in,
+:- pred closure_analyse_proc(bool::in, pred_proc_id::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-process_proc(Debug, PPId, !ModuleInfo, !IO) :-
+closure_analyse_proc(Debug, PPId, !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     proc_info_get_vartypes(ProcInfo0, VarTypes),
@@ -154,7 +154,7 @@ process_proc(Debug, PPId, !ModuleInfo, !IO) :-
     write_proc_progress_message("% Analysing closures in ", PPId, !.ModuleInfo,
         !IO),
     proc_info_get_goal(ProcInfo0, Body0),
-    process_goal(VarTypes, !.ModuleInfo, Body0, Body,
+    closure_analyse_goal(VarTypes, !.ModuleInfo, Body0, Body,
         ClosureInfo0, _ClosureInfo),
     (
         Debug = yes,
@@ -172,15 +172,15 @@ process_proc(Debug, PPId, !ModuleInfo, !IO) :-
 % Track higher-order values through goals.
 %
 
-:- pred process_goal(vartypes::in, module_info::in,
+:- pred closure_analyse_goal(vartypes::in, module_info::in,
     hlds_goal::in, hlds_goal::out, closure_info::in, closure_info::out) is det.
 
-process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
+closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
-        list.map_foldl(process_goal(VarTypes, ModuleInfo), Goals0, Goals,
-            !ClosureInfo),
+        list.map_foldl(closure_analyse_goal(VarTypes, ModuleInfo),
+            Goals0, Goals, !ClosureInfo),
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -262,14 +262,14 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         goal_info_set_ho_values(Values, GoalInfo0, GoalInfo),
 
         % Insert any information about higher-order outputs from this call
-        % into the closure_info
+        % into the closure_info.
         set_of_var.fold(insert_unknown, OutputArgs, !ClosureInfo),
         Goal = hlds_goal(GoalExpr0, GoalInfo)
     ;
         GoalExpr0 = switch(SwitchVar, SwitchCanFail, Cases0),
         ProcessCase = (func(Case0) = Case - CaseInfo :-
             Case0 = case(MainConsId, OtherConsIds, CaseGoal0),
-            process_goal(VarTypes, ModuleInfo, CaseGoal0, CaseGoal,
+            closure_analyse_goal(VarTypes, ModuleInfo, CaseGoal0, CaseGoal,
               !.ClosureInfo, CaseInfo),
             Case = case(MainConsId, OtherConsIds, CaseGoal)
         ),
@@ -295,8 +295,8 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         ;
             Unification = deconstruct(_, _, Args, _, _, _),
 
-            % XXX We don't currently support tracking the values of
-            % closures that are stored in data structures.
+            % XXX We don't currently support tracking the values of closures
+            % that are stored in data structures.
 
             HO_Args = list.filter(var_has_ho_type(VarTypes), Args),
             list.foldl(insert_unknown, HO_Args, !ClosureInfo)
@@ -325,7 +325,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     ;
         GoalExpr0 = disj(Goals0),
         ProcessDisjunct = (func(Disjunct0) = DisjunctResult :-
-            process_goal(VarTypes, ModuleInfo, Disjunct0, Disjunct,
+            closure_analyse_goal(VarTypes, ModuleInfo, Disjunct0, Disjunct,
                 !.ClosureInfo, ClosureInfoForDisjunct),
             DisjunctResult = Disjunct - ClosureInfoForDisjunct
         ),
@@ -337,7 +337,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(NegatedGoal0),
-        process_goal(VarTypes, ModuleInfo, NegatedGoal0, NegatedGoal,
+        closure_analyse_goal(VarTypes, ModuleInfo, NegatedGoal0, NegatedGoal,
             !.ClosureInfo, _),
         GoalExpr = negation(NegatedGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -351,34 +351,31 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         ->
             SubGoal = SubGoal0
         ;
-            process_goal(VarTypes, ModuleInfo, SubGoal0, SubGoal, !ClosureInfo)
+            closure_analyse_goal(VarTypes, ModuleInfo,
+                SubGoal0, SubGoal, !ClosureInfo)
         ),
         GoalExpr = scope(Reason, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(ExistQVars, Cond0, Then0, Else0),
-        process_goal(VarTypes, ModuleInfo, Cond0, Cond,
+        closure_analyse_goal(VarTypes, ModuleInfo, Cond0, Cond,
             !.ClosureInfo, CondInfo),
-        process_goal(VarTypes, ModuleInfo, Then0, Then,
+        closure_analyse_goal(VarTypes, ModuleInfo, Then0, Then,
             CondInfo, CondThenInfo),
-        process_goal(VarTypes, ModuleInfo, Else0, Else,
+        closure_analyse_goal(VarTypes, ModuleInfo, Else0, Else,
             !.ClosureInfo, ElseInfo),
         map.union(merge_closure_values, CondThenInfo, ElseInfo, !:ClosureInfo),
         GoalExpr = if_then_else(ExistQVars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, Args, _ExtraArgs, _, _),
-        % XXX 'ExtraArgs' should probably be ignored here since it is only
-        % used by the tabling transformation.
-        %
         % XXX We may eventually want to annotate foreign_procs with
-        % clousure_infos as well.  It isn't useful at the moment however.
+        % clousure_infos as well. It isn't useful at the moment however.
 
         ForeignHOArgs = (pred(Arg::in, Out::out) is semidet :-
             Arg = foreign_arg(Var, NameMode, Type, _BoxPolicy),
-            %
+
             % A 'no' here means that the foreign argument is unused.
-            %
             NameMode = yes(_ - Mode),
             mode_util.mode_is_output(ModuleInfo, Mode),
             type_is_higher_order(Type),
@@ -440,7 +437,7 @@ merge_closure_values(exclusive(A), exclusive(B), exclusive(A `set.union` B)).
 
 %----------------------------------------------------------------------------%
 %
-% Debugging code (used by '--debug-closure' option)
+% Debugging code, used if the '--debug-closure' option is given.
 %
 
 :- pred dump_closure_info(prog_varset::in, hlds_goal::in,
@@ -481,12 +478,12 @@ dump_closure_info_expr(_, shorthand(_), _, _, _) :-
 
 dump_ho_values(GoalInfo, Varset, !IO) :-
     HO_Values = goal_info_get_ho_values(GoalInfo),
-    ( not map.is_empty(HO_Values) ->
+    ( map.is_empty(HO_Values) ->
+        true
+    ;
         prog_out.write_context(goal_info_get_context(GoalInfo), !IO),
         io.nl(!IO),
         map.foldl(dump_ho_value(Varset), HO_Values, !IO)
-    ;
-        true
     ).
 
 :- pred dump_ho_value(prog_varset::in, prog_var::in, set(pred_proc_id)::in,

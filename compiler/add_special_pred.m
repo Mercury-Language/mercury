@@ -114,9 +114,6 @@
     % We also do not declare index predicates for types with hand defined
     % RTTI, since such types do not have index predicates.
     %
-    % What we do here for uu types does not matter much, since such types
-    % are not yet supported.
-    %
     % Note: this predicate should include index in the list of special
     % predicates to be defined only for the kinds of types which do not
     % lead unify_proc.generate_index_clauses to abort.

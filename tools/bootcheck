@@ -1702,7 +1702,9 @@ then
         fi
 
         case $failing_tests_only in
-            true)   rm -f ${tests_prefix}tests/runtests.$$ ;;
+            true)
+                rm -f ${tests_prefix}tests/runtests.$$
+                ;;
         esac
 
         if test "$type_stats" != ""

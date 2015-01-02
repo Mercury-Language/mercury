@@ -33,7 +33,7 @@
 :- include_module clause_to_proc.
 :- include_module polymorphism.
 
-% Mode analysis
+% Mode analysis.
 %:- module mode_analysis.
    :- include_module delay_info.
    :- include_module delay_partial_inst.

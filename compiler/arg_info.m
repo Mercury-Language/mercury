@@ -15,11 +15,11 @@
 % argument is input/output/unused, and which register it is supposed to
 % go into.
 %
-% The code in this module assumes that none of the modes are undefined.  The
-% predicates for partitioning arguments into input, unused and output should
-% not be used before undefined modes have been detected.  For an example of
-% how this kind of partitioning can be done in the presence of undefined modes,
-% see superhomogeneous.partition_args_and_lambda_vars/8.
+% The code in this module assumes that none of the modes are undefined.
+% The predicates for partitioning arguments into input, unused and output
+% should not be used before undefined modes have been detected. For an example
+% of how this kind of partitioning can be done in the presence of undefined
+% modes, see superhomogeneous.partition_args_and_lambda_vars/8.
 %
 %-----------------------------------------------------------------------------%
 
@@ -39,8 +39,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Annotate every procedure in the module with information about its
-    % argument passing interface.
+    % Annotate every procedure in the module with information
+    % about its argument passing interface.
     %
 :- pred generate_arg_info(module_info::in, module_info::out) is det.
 
@@ -51,9 +51,9 @@
     module_info::in, proc_info::in, proc_info::out) is det.
 
     % Given the list of types and modes of the arguments of a procedure
-    % and its code model, return the standard argument passing interface,
-    % i.e. pass float arguments via float registers if present, and all
-    % other arguments via regular registers.
+    % and its code model, return the standard argument passing interface
+    % for procedure. This will pass float arguments via float registers
+    % if present, while passing all other arguments via regular registers.
     %
 :- pred make_standard_arg_infos(list(mer_type)::in, list(mer_mode)::in,
     code_model::in, module_info::in, list(arg_info)::out) is det.
@@ -231,7 +231,7 @@ reg_type_for_headvar(RegR_HeadVars, HeadVar, Type, RegType) :-
     % This is the useful part of the code ;-).
     %
     % This code is one of the places where we make assumptions about the
-    % calling convention.  This is the only place in the compiler that makes
+    % calling convention. This is the only place in the compiler that makes
     % such assumptions, but there are other places scattered around the
     % runtime and the library that also rely on it.
     %
@@ -304,17 +304,19 @@ make_arg_infos([], [], [], _, _, _, _, _, []).
 make_arg_infos([Mode | Modes], [Type | Types], [RegType | RegTypes],
         !.InRegR, !.InRegF, !.OutRegR, !.OutRegF, ModuleInfo,
         [ArgInfo | ArgInfos]) :-
-    mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-    (
-        ArgMode = top_in,
-        get_arg_loc(RegType, ArgLoc, !InRegR, !InRegF)
-    ;
-        ( ArgMode = top_out
-        ; ArgMode = top_unused
+    require_det (
+        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+        (
+            ArgMode = top_in,
+            get_arg_loc(RegType, ArgLoc, !InRegR, !InRegF)
+        ;
+            ( ArgMode = top_out
+            ; ArgMode = top_unused
+            ),
+            get_arg_loc(RegType, ArgLoc, !OutRegR, !OutRegF)
         ),
-        get_arg_loc(RegType, ArgLoc, !OutRegR, !OutRegF)
+        ArgInfo = arg_info(ArgLoc, ArgMode)
     ),
-    ArgInfo = arg_info(ArgLoc, ArgMode),
     make_arg_infos(Modes, Types, RegTypes, !.InRegR, !.InRegF,
         !.OutRegR, !.OutRegF, ModuleInfo, ArgInfos).
 
@@ -389,15 +391,17 @@ compute_in_and_out_vars_2(ModuleInfo, [Var | Vars], [Mode | Modes],
         [Type | Types], !InVars, !OutVars) :-
     compute_in_and_out_vars_2(ModuleInfo, Vars, Modes, Types,
         !InVars, !OutVars),
-    mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-    (
-        ArgMode = top_in,
-        !:InVars = [Var | !.InVars]
-    ;
-        ( ArgMode = top_out
-        ; ArgMode = top_unused
-        ),
-        !:OutVars = [Var | !.OutVars]
+    require_det (
+        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+        (
+            ArgMode = top_in,
+            !:InVars = [Var | !.InVars]
+        ;
+            ( ArgMode = top_out
+            ; ArgMode = top_unused
+            ),
+            !:OutVars = [Var | !.OutVars]
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -425,26 +429,28 @@ compute_in_and_out_vars_sep_regs_2(ModuleInfo,
         !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF) :-
     compute_in_and_out_vars_sep_regs_2(ModuleInfo, Vars, Modes, Types,
         RegTypes, !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF),
-    mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-    (
-        ArgMode = top_in,
+    require_det (
+        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
         (
-            RegType = reg_r,
-            !:InVarsR = [Var | !.InVarsR]
+            ArgMode = top_in,
+            (
+                RegType = reg_r,
+                !:InVarsR = [Var | !.InVarsR]
+            ;
+                RegType = reg_f,
+                !:InVarsF = [Var | !.InVarsF]
+            )
         ;
-            RegType = reg_f,
-            !:InVarsF = [Var | !.InVarsF]
-        )
-    ;
-        ( ArgMode = top_out
-        ; ArgMode = top_unused
-        ),
-        (
-            RegType = reg_r,
-            !:OutVarsR = [Var | !.OutVarsR]
-        ;
-            RegType = reg_f,
-            !:OutVarsF = [Var | !.OutVarsF]
+            ( ArgMode = top_out
+            ; ArgMode = top_unused
+            ),
+            (
+                RegType = reg_r,
+                !:OutVarsR = [Var | !.OutVarsR]
+            ;
+                RegType = reg_f,
+                !:OutVarsF = [Var | !.OutVarsF]
+            )
         )
     ).
 
@@ -517,16 +523,18 @@ partition_proc_args_2([], [], [], _ModuleInfo,
         !Inputs, !Outputs, !Unuseds).
 partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
         ModuleInfo, !Inputs, !Outputs, !Unuseds) :-
-    mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-    (
-        ArgMode = top_in,
-        set.insert(Var, !Inputs)
-    ;
-        ArgMode = top_out,
-        set.insert(Var, !Outputs)
-    ;
-        ArgMode = top_unused,
-        set.insert(Var, !Unuseds)
+    require_det (
+        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+        (
+            ArgMode = top_in,
+            set.insert(Var, !Inputs)
+        ;
+            ArgMode = top_out,
+            set.insert(Var, !Outputs)
+        ;
+            ArgMode = top_unused,
+            set.insert(Var, !Unuseds)
+        )
     ),
     partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
         !Inputs, !Outputs, !Unuseds).
