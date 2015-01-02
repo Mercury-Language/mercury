@@ -1528,7 +1528,7 @@ a string containing the fully-qualified predicate or function name and arity.
 
 @end table
 
-The Mercury Melbourne implementation additionally supports the following
+The Melbourne Mercury implementation additionally supports the following
 extension:
 
 @table @asis
@@ -2169,7 +2169,7 @@ declarations can include type variables.  For example:
 :- func length(list(T)) = int.
 @end example
 
-A predicate or function can by declared to have a given higher-order
+A predicate or function can be declared to have a given higher-order
 type (@pxref{Higher-order}) by using @code{`with_type`} in the type declaration.
 This is useful where several predicates or functions need to have the
 same type signature, which often occurs for typeclass method implementations
@@ -2340,7 +2340,7 @@ Each field label @samp{@var{field}} in a constructor causes generation
 of a field update function @samp{'@var{field} :='/2}.
 The first argument of this function is a data-term of the same type as the
 constructor. The second argument is a data-term of the same type as the
-labelled field. The return value is a copy of the first argument with
+labelled field. The return value is a copy of the first argument with the
 value of the labelled field replaced by the second argument.
 @samp{'@var{field} :='/2} fails if the top-level constructor of the
 first argument is not the constructor containing the labelled field.
@@ -3072,7 +3072,7 @@ additional constraint that there can only be one reference to the
 corresponding value.  There is also an inst @samp{dead} which means
 that there are no references to the corresponding value, so the compiler
 is free to generate code that reuses that value.
-There are three standard modes for manipulation unique values:
+There are three standard modes for manipulating unique values:
 
 @example
 % unique output
@@ -3709,7 +3709,7 @@ Any goal with no output variables is in a single-solution context.
 If a conjunction is in a single-solution context, then 
 the right-most conjunct is in a single-solution context,
 and if the right-most conjunct cannot fail,
-then rest of the conjunction is also in a single-solution
+then the rest of the conjunction is also in a single-solution
 context. 
 (``Right-most'' here refers to the order @emph{after} mode reordering.)
 
@@ -3918,7 +3918,7 @@ i.e.@: the behaviour of the program is undefined.}.
 @end itemize
 
 Types with user-defined equality can only be used in limited ways.
-Because there multiple representations for the same abstract
+Because there are multiple representations for the same abstract
 value, any attempt to examine the representation of such a value
 is a conceptually non-deterministic operation.  
 In Mercury this is modelled using committed choice nondeterminism.
@@ -4565,7 +4565,7 @@ simple module for managing queues:
 
 :- type queue(T) == list(T).
 
-% Declare the exported predicates.
+% Define the exported predicates.
 
 empty_queue([]).
 
@@ -4964,7 +4964,7 @@ is set with an initial value of 561 and the @samp{baz/2} is invoked.
 
 The effect of a mutable initial value expression terminating with
 an uncaught exception is also the same as though it were a predicate
-specified in a @samp{initialise} directive.
+specified in an @samp{initialise} directive.
 
 @node Type classes
 @chapter Type classes
