@@ -157,11 +157,11 @@ for common programming tasks --- see the Mercury Library Reference Manual.
 @chapter Syntax
 
 @menu
-* Syntax Overview::
-* Character Set::
+* Syntax overview::
+* Character set::
 * Tokens::
 * Terms::
-* Builtin Operators::
+* Builtin operators::
 * Items::
 * Declarations::
 * Facts::
@@ -176,7 +176,7 @@ for common programming tasks --- see the Mercury Library Reference Manual.
 * Elimination of double negation::
 @end menu
 
-@node Syntax Overview
+@node Syntax overview
 @section Syntax overview
 
 Mercury's syntax is similar to the syntax of Prolog, with some
@@ -191,8 +191,8 @@ of tokens, and each token is composed of a sequence of characters.
 Like Prolog, Mercury has the Definite Clause Grammar (DCG) notation
 for clauses.
 
-@node Character Set
-@section Character Set
+@node Character set
+@section Character set
 
 Mercury program source files must be written using the UTF-8 encoding of
 the Unicode character set.
@@ -344,7 +344,7 @@ Syntactically, terms in Mercury are exactly the same as in ISO Prolog,
 except that as extensions we permit higher-order terms and the
 introduction of infix operators by the use of grave accents (backquotes),
 as described below,
-and we support an extended set of builtin operators.  @xref{Builtin Operators}.
+and we support an extended set of builtin operators.  @xref{Builtin operators}.
 Also, the constructor for list terms in Mercury is @code{[|]/2}, not
 @code{./2} as in Prolog.
 
@@ -400,7 +400,7 @@ If @var{fun} is a variable or name,
 then a term of the form @code{@var{X} `@var{fun}` @var{Y}} is equivalent to 
 @code{@var{fun}(@var{X}, @var{Y})}. The operator is left associative
 and binds more tightly than every operator other than @samp{^}
-(@pxref{Builtin Operators}).
+(@pxref{Builtin operators}).
 
 A parenthesized term is just an open parenthesis
 followed by a term and a close parenthesis.
@@ -419,8 +419,8 @@ term; for example, @code{(Term ^ FieldName)(Arg1, Arg2)}
 is a higher-order term, and so it gets parsed as
 if it were @code{''((Term ^ FieldName), Arg1, Arg2)}.
 
-@node Builtin Operators
-@section Builtin Operators
+@node Builtin operators
+@section Builtin operators
 
 The following table lists all of Mercury's builtin operators. 
 Operators with a low ``Priority'' bind more tightly than those
