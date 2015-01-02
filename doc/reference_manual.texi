@@ -6493,7 +6493,7 @@ append_2(NextS1Len, S3Len, S1, S2, S3) :-
         )
     ).
 
-:- pred append_3(int::inb, int::in, string::out, string::out, string::in) is det.
+:- pred append_3(int::in, int::in, string::out, string::out, string::in) is det.
 
 :- pragma foreign_proc("C",
     append_3(S1Len::in, S3Len::in, S1::out, S2::out, S3::in),
@@ -6578,7 +6578,8 @@ This attribute should be attached to foreign procedures that do I/O.  It
 tells the debugger to make calls to the foreign procedure idempotent.
 This allows the debugger to safely retry across such calls and also 
 allows safe declarative debugging of code containing such calls.
-For more information see the I/O tabling section of the Mercury user guide.
+For more information, see the ``I/O tabling'' section of the Mercury User's
+Guide.
 If the foreign procedure contains gotos or static variables then the
 @samp{pragma no_inline} directive should also be given.
 Note that currently I/O tabling will only be done for foreign procedures
