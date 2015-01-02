@@ -6612,8 +6612,8 @@ It is an error to apply this attribute to procedures that have determinism
 erroneous.  This attribute is ignored for code that is declared as not
 making calls back to Mercury via the @samp{will_not_call_mercury} attribute.
 Note: predicates or functions that have polymorphic arguments but
-do not explicitly throw an exception, via a call to exception.throw/1
-or require.error/1, may still throw exceptions because they may be
+do not explicitly throw an exception, via a call to @samp{exception.throw/1}
+or @samp{require.error/1}, may still throw exceptions because they may be
 called with arguments whose types have user-defined equality or
 comparison predicates.  If these user-defined equality or comparison
 predicates throw exceptions then unifications or comparisons involving
@@ -7228,7 +7228,7 @@ states that on the C backends, values of the given type
 can be passed to and from Mercury code without boxing,
 via simple casts, which is faster.
 This requires the type to be either an integer type or a pointer type,
-and requires its size to be the same as or less than the size of Mercury word.
+and requires its size to be the same as or less than the size of @samp{MR_Word}.
 Since deciding whether a C type satisfies this condition
 requires knowledge of the Mercury implementation,
 and violations are very likely to result in
@@ -7423,15 +7423,13 @@ visible in @samp{pragma foreign_code}, @samp{pragma foreign_type},
 @samp{pragma foreign_proc}, and @samp{pragma foreign_enum} declarations
 that specify the same foreign language and occur in the same Mercury module.
 
-By default, the contents of @samp{pragma foreign_decl} declarations
-are also visible in the same kinds of declarations in other modules
-that import the module containing the @samp{pragma foreign_decl} declaration.
-This is because they may be required to make sense of
-types defined using @samp{pragma foreign_type} and/or
-predicates defined using @samp{pragma foreign_code}
-in the containing module,
-and these may be visible in other modules,
-especially in the presence of intermodule optimization,
+By default, the contents of @samp{pragma foreign_decl} declarations are also
+visible in the same kinds of declarations in other modules that import the
+module containing the @samp{pragma foreign_decl} declaration.
+This is because they may be required to make sense of types defined using
+@samp{pragma foreign_type} and/or predicates defined using
+@samp{pragma foreign_proc} in the containing module, and these may be visible
+in other modules, especially in the presence of intermodule optimization,
 
 If you do not want the contents of a @samp{pragma foreign_decl} declaration
 to be visible in foreign language code in other modules,
@@ -8547,7 +8545,7 @@ with the standard library.  Newcomers to Mercury are hence encouraged to
 * Declaring impurity::  	Declaring predicates impure.
 * Impure goals::        	Marking a goal as impure.
 * Promising purity::    	Promising that a predicate is pure.
-* Impurity Example::    	A simple example using impurity.
+* Impurity example::    	A simple example using impurity.
 * Higher-order impurity::    	Using impurity with higher-order code.
 @end menu
 
@@ -8771,7 +8769,7 @@ Note that the @samp{promise_pure}, @samp{promise_semipure}, and
 @samp{promise_impure} scopes described in @ref{Goals} may be used to
 promise purity at the finer level of goals within clauses.
 
-@node Impurity Example
+@node Impurity example
 @section An example using impurity
 
 The following example illustrates how a pure predicate may be
@@ -9076,10 +9074,12 @@ These functions are constructed in-line as part of a source-to-source
 transformation, hence it is an error to define a solver type in the
 interface section of a module.
 
+@c XXX it was also a requirement that if solver_type is exported then
+@c initialisation_pred also be exported -- see comment above.
+
 If @code{solver_type} is exported then it is a requirement that
-@code{representation_type}, @code{initialisation_pred}, and, if
-specified, @code{equality_pred} and @code{comparison_pred} are also
-exported from the same module.
+@code{representation_type},  and, if specified, @code{equality_pred} and
+@code{comparison_pred} are also exported from the same module.
 
 If @code{equality_pred} is not specified then the compiler will
 generate an equality predicate that throws an exception of type
@@ -9284,9 +9284,9 @@ True if the module is compiled with trailing enabled.
 @item @samp{rbmm}
 True if the module is compiled with region based memory management enabled.
 @item @samp{llds}
-True if the module is compiled with --highlevel-code disabled.
+True if the module is compiled with @samp{--highlevel-code} disabled.
 @item @samp{mlds}
-True if the module is compiled with --highlevel-code enabled.
+True if the module is compiled with @samp{--highlevel-code} enabled.
 @item @samp{c}
 True if the target language of the compilation is C.
 @item @samp{il}
