@@ -336,7 +336,7 @@ add_pred_arcs([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
         get_clause_list_any_order(ClausesRep, Clauses),
         Goals = list.map(clause_body, Clauses),
         digraph.lookup_key(!.DepGraph, PredId, Caller),
-        add_dependency_arcs_in_list(Caller, Goals, !DepGraph)
+        add_dependency_arcs_in_goals(Caller, Goals, !DepGraph)
     ),
     add_pred_arcs(PredIds, ModuleInfo, IncludeImported, !DepGraph).
 
@@ -360,7 +360,7 @@ add_dependency_arcs_in_goal(Caller, Goal, !DepGraph) :-
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        add_dependency_arcs_in_list(Caller, Goals, !DepGraph)
+        add_dependency_arcs_in_goals(Caller, Goals, !DepGraph)
     ;
         GoalExpr = switch(_Var, _Det, Cases),
         add_dependency_arcs_in_cases(Caller, Cases, !DepGraph)
@@ -429,26 +429,27 @@ add_dependency_arcs_in_goal(Caller, Goal, !DepGraph) :-
             ShortHand = atomic_goal(_GoalType, _Outer, _Inner, _Vars,
                 MainGoal, OrElseGoals, _OrElseInners),
             add_dependency_arcs_in_goal(Caller, MainGoal, !DepGraph),
-            add_dependency_arcs_in_list(Caller, OrElseGoals, !DepGraph)
+            add_dependency_arcs_in_goals(Caller, OrElseGoals, !DepGraph)
         ;
             ShortHand = try_goal(_, _, SubGoal),
             add_dependency_arcs_in_goal(Caller, SubGoal, !DepGraph)
         ;
             ShortHand = bi_implication(LHS, RHS),
-            add_dependency_arcs_in_list(Caller, [LHS, RHS], !DepGraph)
+            add_dependency_arcs_in_goal(Caller, LHS, !DepGraph),
+            add_dependency_arcs_in_goal(Caller, RHS, !DepGraph)
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_dependency_arcs_in_list(digraph_key(T)::in, list(hlds_goal)::in,
+:- pred add_dependency_arcs_in_goals(digraph_key(T)::in, list(hlds_goal)::in,
     dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
-add_dependency_arcs_in_list(_Caller, [], !DepGraph).
-add_dependency_arcs_in_list(Caller, [Goal | Goals], !DepGraph) :-
+add_dependency_arcs_in_goals(_Caller, [], !DepGraph).
+add_dependency_arcs_in_goals(Caller, [Goal | Goals], !DepGraph) :-
     add_dependency_arcs_in_goal(Caller, Goal, !DepGraph),
-    add_dependency_arcs_in_list(Caller, Goals, !DepGraph).
+    add_dependency_arcs_in_goals(Caller, Goals, !DepGraph).
 
 %-----------------------------------------------------------------------------%
 
@@ -676,13 +677,7 @@ get_called_scc_ids(SCCid, SCCRel, CalledSCCSet) :-
 
 %-----------------------------------------------------------------------------%
 
-    % For each SCC, a list of all preds in SCC, and a list
-    % of entry-points of the SCC.
-:- type scc_pred_map == map(scc_id, pair(list(pred_proc_id))).
-
 :- type scc_id == int.
-
-:- type scc == list(pred_proc_id).
 
     % An SCC cannot be merged into its parents if one of its procedures
     % is called as an aggregate query.

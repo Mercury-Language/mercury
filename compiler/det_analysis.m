@@ -352,8 +352,8 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     ),
 
     % Check to make sure that if this procedure is exported via a pragma
-    % foreign_export declaration then the determinism is not multi or nondet -
-    % pragma exported procs that have been declared to have these determinisms
+    % foreign_export declaration, then the determinism is not multi or nondet.
+    % Pragma exported procs that have been declared to have these determinisms
     % should have been picked up in make_hlds, so this is just to catch those
     % whose determinisms need to be inferred.
     module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcsCord0),
@@ -613,7 +613,7 @@ det_infer_goal_expr(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         (
             ConjType = plain_conj,
             % The determinism of a conjunction is the worst case of the
-            % determinism of the goals of that conjuction.
+            % determinisms of the goals of that conjuction.
             det_infer_conj(Goals0, Goals, InstMap0, SolnContext,
                 RightFailingContexts, MaybePromiseEqvSolutionSets,
                 Detism, [], GoalFailingContexts, !DetInfo)

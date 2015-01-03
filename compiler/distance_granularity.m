@@ -10,19 +10,17 @@
 % Author: tannier.
 %
 % This module contains a program transformation that adds a mechanism that
-% controls the granularity of parallel execution using the distance metric. For
-% more information, see:
-% K. Shen, V. Santos Costa, and A. King.
+% controls the granularity of parallel execution using the distance metric.
+% For more information, see the paper by K. Shen, V. Santos Costa, and A. King:
 % Distance: a New Metric for Controlling Granularity for Parallel Execution.
 % In Proceedings of the Joint International Conference and Symposium on Logic
-% Programming.
-% MIT Press, 1998.
-% http://www.cs.ukc.ac.uk/pubs/1998/588.
-% http://citeseer.ist.psu.edu/shen98distance.html.
+% Programming, MIT Press, 1998.
 %
-% Example of the transformation:
+% NOTE: The module introduce_parallelism.m implements another transformation
+% with the same objective.
 %
-% From the original version of fibonacci:
+% To see how the distance granularity transformation works, consider
+% this parallel version of the double recursive fibonacci predicate:
 %
 % :- pred fibonacci(int::in, int::out) is det.
 %
@@ -48,8 +46,8 @@
 %         )
 %     ).
 %
-% we create a specialized version (we assume that the distance which was
-% given during compilation is 10):
+% Assuming that the distance metric specified during compilation is 10,
+% this module creates this specialized version of the above predicate:
 %
 % :- pred DistanceGranularityFor__pred__fibonacci__10(int::in, int::out,
 %     int::in) is det.
@@ -66,7 +64,7 @@
 %                 K = X - 2,
 %                 ( Distance = 0 ->
 %                     (
-%                         DistanceGranularityFor__pred__fibonacci__10i(J, Jout,
+%                         DistanceGranularityFor__pred__fibonacci__10(J, Jout,
 %                             10)
 %                     &
 %                         DistanceGranularityFor__pred__fibonacci__10(K, Kout,
@@ -120,6 +118,8 @@
 % XXX For the time being, we assume that the int module was imported in the
 % source code of the program for which we apply the distance granularity
 % transformation.
+%
+% XXX To me (zs), the above example code looks wrong.
 %
 %-----------------------------------------------------------------------------%
 
@@ -242,9 +242,8 @@ apply_dg_to_preds([PredId | PredIdList], Distance, !ModuleInfo) :-
             NewCallSymName, PredInfo, PredInfoUpdated, !ModuleInfo),
         module_info_set_pred_info(PredId, PredInfoUpdated, !ModuleInfo)
     ;
-        Specialized = no,
+        Specialized = no
         % The predicate has not been specialized.
-        true
     ),
     apply_dg_to_preds(PredIdList, Distance, !ModuleInfo).
 

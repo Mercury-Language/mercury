@@ -9,9 +9,9 @@
 % File: delay_info.m.
 % Main author: fjh.
 %
-% This module implements part of the mode analysis algorithm.  In the mode
+% This module implements part of the mode analysis algorithm. In the mode
 % analysis, reordering of conjunctions is done by simulating coroutining at
-% compile time.  This module defines an abstract data type `delay_info' that
+% compile time. This module defines an abstract data type `delay_info' that
 % records the information necessary for suspending and waking up goals.
 %
 %-----------------------------------------------------------------------------%
@@ -74,7 +74,12 @@
 
     % Mark all variables as having been bound.
     % This will allow all previously delayed goals to change status
-    % from "delayed" to "pending".
+    % from "delayed" to "pending". They will be woken up the next time
+    % we get back to their conjunction.
+    %
+    % The reason why we need this is that when we hit a goal which cannot
+    % succeed, we need to wake up all the delayed goals, so that we don't get
+    % mode errors in the following unreachable code.
     %
 :- pred delay_info_bind_all_vars(delay_info::in, delay_info::out) is det.
 
@@ -158,25 +163,20 @@
 
 %-----------------------------------------------------------------------------%
 
-delay_info_check_invariant(_).
-    % for debugging purposes
-%%% delay_info_check_invariant(DelayInfo) :-
-%%%     delay_info_check_invariant_x(DelayInfo).
-
-:- pred delay_info_check_invariant_x(delay_info::in) is det.
-
-delay_info_check_invariant_x(DelayInfo) :-
-    DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
-        WaitingGoalsTable, _PendingGoals, NextSeqNums),
-    (
-        stack.depth(DelayedGoalStack, CurrentDepth),
-        stack.depth(NextSeqNums, CurrentDepth),
-        map.keys(WaitingGoalsTable, WaitingVars),
-        waiting_goals_check_invariant(WaitingVars, WaitingGoalsTable)
-    ->
-        true
-    ;
-        unexpected($module, $pred, "invariant violated")
+delay_info_check_invariant(DelayInfo) :-
+    trace [compiletime(flag("check_delay_info_invariant"))] (
+        DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+            WaitingGoalsTable, _PendingGoals, NextSeqNums),
+        (
+            stack.depth(DelayedGoalStack, CurrentDepth),
+            stack.depth(NextSeqNums, CurrentDepth),
+            map.keys(WaitingGoalsTable, WaitingVars),
+            waiting_goals_check_invariant(WaitingVars, WaitingGoalsTable)
+        ->
+            true
+        ;
+            unexpected($module, $pred, "invariant violated")
+        )
     ).
 
     % For every variable which goals are waiting on, check the consistency
@@ -225,9 +225,6 @@ waiting_goal_vars_check_invariant([Var | Vars], GoalNum, GivenVars,
 
 %-----------------------------------------------------------------------------%
 
-    % Initialize the delay info structure in preparation for mode analysis of
-    % a goal.
-    %
 delay_info_init(DelayInfo) :-
     CurrentDepth = 0,
     stack.init(DelayedGoalStack),
@@ -290,9 +287,6 @@ remove_delayed_goals([SeqNum | SeqNums], DelayedGoalsTable, Depth,
 
 %-----------------------------------------------------------------------------%
 
-    % We are going to delay a goal.
-    % Update the delay info structure to record the delayed goal.
-    %
 delay_info_delay_goal(Error, Goal, DelayInfo0, DelayInfo) :-
     delay_info_check_invariant(DelayInfo0),
     Error = mode_error_info(Vars, _, _, _),
@@ -343,12 +337,6 @@ add_waiting_vars([Var | Vars], Goal, AllVars, !WaitingGoalsTable) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Whenever we hit a goal which cannot succeed, we need to wake up all
-    % the delayed goals, so that we don't get mode errors in unreachable code.
-    % We remove all the goals from the waiting goals table and add them
-    % to the pending goals table. They will be woken up next time we get back
-    % to their conjunction.
-    %
 delay_info_bind_all_vars(!DelayInfo) :-
     map.keys(!.DelayInfo ^ delay_waiting, WaitingVars),
     delay_info_bind_var_list(WaitingVars, !DelayInfo).
@@ -358,11 +346,6 @@ delay_info_bind_var_list([Var|Vars], !DelayInfo) :-
     delay_info_bind_var(Var, !DelayInfo),
     delay_info_bind_var_list(Vars, !DelayInfo).
 
-    % Whenever we bind a variable, we also check to see whether we need to wake
-    % up some goals. If so, we remove those goals from the waiting goals table
-    % and add them to the pending goals table. They will be woken up next time
-    % we get back to their conjunction.
-    %
 delay_info_bind_var(Var, !DelayInfo) :-
     delay_info_check_invariant(!.DelayInfo),
     !.DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,

@@ -223,8 +223,10 @@ read_dependencies(Globals, ModuleName, Search, ModuleImportsList, !IO) :-
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ),
     assoc_list.keys(SubModuleList, SubModuleNames),
-    list.map(init_dependencies(FileName, ModuleName, SubModuleNames,
-        [], Errors, Globals), SubModuleList, ModuleImportsList).
+    list.map(
+        init_dependencies(FileName, ModuleName, SubModuleNames,
+            [], Errors, Globals),
+        SubModuleList, ModuleImportsList).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.deps_map.

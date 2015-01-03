@@ -28,11 +28,10 @@
 
 :- type dense_switch_info.
 
-    % Should this switch be implemented as a dense jump table?
-    % If so, we return the starting and ending values for the table,
-    % and whether the switch is not covers all cases or not
-    % (we may convert locally semidet switches into locally det
-    % switches by adding extra cases whose body is just `fail').
+    % Should this switch be implemented as a dense jump table, i.e.
+    % by calling generate_dense_switch below? If so, return some information
+    % we gathered in the process of finding that out that may prove useful
+    % in generate_dense_switch.
     %
 :- pred tagged_case_list_is_dense_switch(code_info::in, mer_type::in,
     list(tagged_case)::in, int::in, int::in, int::in, int::in,
@@ -208,7 +207,7 @@ generate_dense_case(VarName, CodeModel, SwitchGoalInfo, EndLabel,
         llds_instr(label(Label), LabelComment)
     ),
     % We need to save the expression cache, etc.,
-    % and restore them when we've finished.
+    % and restore them when we have finished.
     remember_position(!.CI, BranchStart),
     maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode, !CI),
     code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
