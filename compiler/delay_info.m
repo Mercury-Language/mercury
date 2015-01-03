@@ -33,10 +33,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Sanity-check the delay_info structure.
-    %
-:- pred delay_info_check_invariant(delay_info::in) is det.
-
     % Initialize the delay_info structure.
     %
 :- pred delay_info_init(delay_info::out) is det.
@@ -85,13 +81,12 @@
 
     % delay_info_wakeup_goals(Goals, !DelayInfo):
     %
-    % Check if there are any "pending" goals, and if so,
-    % remove them from the delay_info and return them.
+    % If there are any "pending" goals at the current depth, remove them
+    % from the delay_info and return them. Otherwise, return the empty list.
     %
-    % Goals is the list of pending goal in the order that they should be
-    % woken up, and !:DelayInfo is the new delay_info, updated to reflect
-    % the fact that the Goals have been woken up and is hence are longer
-    % pending.
+    % Goals is the list of those pending goals in the order that they should
+    % be woken up, and !:DelayInfo is the new delay_info, updated to reflect
+    % the fact that Goals have been woken up and hence are longer pending.
     %
 :- pred delay_info_wakeup_goals(list(hlds_goal)::out,
     delay_info::in, delay_info::out) is det.
@@ -104,6 +99,7 @@
 :- import_module check_hlds.mode_errors.
 :- import_module parse_tree.set_of_var.
 
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module require.
@@ -111,6 +107,37 @@
 :- import_module stack.
 
 %-----------------------------------------------------------------------------%
+
+:- type depth_num == int.       % Eeek! Pointers!
+:- type seq_num == int.
+
+:- type delay_goal_num
+    --->    delay_goal_num(
+                depth_num,
+                seq_num
+            ).
+
+    % A delay_goal_stack has one entry for each conjunction depth,
+    % the current depth being at the top. The entry for the conjunction
+    % at each depth maps the seq_num of each conjunct to the delayed_goal
+    % construct of that goal.
+:- type delay_goal_stack == stack(map(seq_num, delayed_goal)).
+
+    % Map each variable to the collection of goals waiting on that variable.
+:- type waiting_goals_table == map(prog_var, waiting_goals).
+
+    % Map each goal to all the variables that it is waiting on.
+    % This SHOULD be all the variables whose entries in the waiting_goals_table
+    % include this goal.
+:- type waiting_goals == map(delay_goal_num, list(prog_var)).
+
+    % We want to preserve the order of the goals pending at each depth.
+    %
+    % Using a cord is actually slightly slower in typical usage than
+    % an ordered list in which each new seq_num is added at the end,
+    % since the list is usually very short. However, using a cord has
+    % *much* better worst case behavior.
+:- type pending_goals_table == map(depth_num, cord(seq_num)).
 
     % The delay_info structure is a tangled web of substructures
     % all of which are pointing at each other - debugging it
@@ -123,45 +150,33 @@
                 % CurrentDepth: the current conjunction depth,
                 % i.e. the number of nested conjunctions which are
                 % currently active.
-                delay_depth     :: depth_num,
+                delay_depth         :: depth_num,
 
                 % DelayedGoalStack: for each nested conjunction,
                 % we store a collection of delayed goals associated with
                 % that conjunction, indexed by sequence number.
-                delay_goals     :: stack(map(seq_num, delayed_goal)),
+                delay_goal_stack    :: delay_goal_stack,
 
                 % WaitingGoalsTable: for each variable, we keep track of
                 % all the goals which are waiting on that variable.
-                delay_waiting   :: waiting_goals_table,
+                delay_waiting       :: waiting_goals_table,
 
                 % PendingGoalsTable: when a variable gets bound, we mark
                 % all the goals which are waiting on that variable as ready
                 % to be reawakened at the next opportunity.
-                delay_pending   :: pending_goals_table,
+                delay_pending       :: pending_goals_table,
 
                 % SeqNumsStack: For each nested conjunction, the next
                 % available sequence number.
-                delay_seqs      :: stack(seq_num)
+                delay_seq_stack     :: stack(seq_num)
             ).
-
-    % Used to store the collection of goals waiting on a variable.
-:- type waiting_goals_table == map(prog_var, waiting_goals).
-
-    % For each goal, we store all the variables that it is waiting on.
-:- type waiting_goals == map(delay_goal_num, list(prog_var)).
-
-:- type pending_goals_table == map(depth_num, list(seq_num)).
-
-:- type delay_goal_num
-    --->    delay_goal_num(
-                depth_num,
-                seq_num
-            ).
-
-:- type depth_num == int.       % Eeek! Pointers!
-:- type seq_num == int.
 
 %-----------------------------------------------------------------------------%
+
+    % Sanity-check the delay_info structure.
+    %
+:- pred delay_info_check_invariant(delay_info::in) is det.
+:- pragma inline(delay_info_check_invariant/1).
 
 delay_info_check_invariant(DelayInfo) :-
     trace [compiletime(flag("check_delay_info_invariant"))] (
@@ -363,7 +378,7 @@ delay_info_bind_var(Var, !DelayInfo) :-
     ).
 
     % Add a collection of goals, identified by depth_num and seq_num
-    % (depth of nested conjunction and sequence number within conjunction),
+    % (depth of nested conjunction and sequence number within conjunction)
     % to the collection of pending goals.
     %
 :- pred add_pending_goals(list(delay_goal_num)::in,
@@ -372,8 +387,9 @@ delay_info_bind_var(Var, !DelayInfo) :-
     waiting_goals_table::in, waiting_goals_table::out) is det.
 
 add_pending_goals([], _WaitingVarsTable, !PendingGoals, !WaitingGoals).
-add_pending_goals([delay_goal_num(Depth, SeqNum) | Rest], WaitingVarsTable,
+add_pending_goals([DelayGoalNum | DelayGoalNums], WaitingVarsTable,
         !PendingGoals, !WaitingGoals) :-
+    DelayGoalNum = delay_goal_num(Depth, SeqNum),
     % Remove any other indexes to the goal from the waiting goals table.
     GoalNum = delay_goal_num(Depth, SeqNum),
     map.lookup(WaitingVarsTable, GoalNum, WaitingVars),
@@ -381,15 +397,16 @@ add_pending_goals([delay_goal_num(Depth, SeqNum) | Rest], WaitingVarsTable,
 
     % Add the goal to the pending goals table.
     ( map.search(!.PendingGoals, Depth, PendingSeqNums0) ->
-        % XXX Should use a queue.
-        list.append(PendingSeqNums0, [SeqNum], PendingSeqNums)
+        PendingSeqNums = cord.snoc(PendingSeqNums0, SeqNum),
+        map.det_update(Depth, PendingSeqNums, !PendingGoals)
     ;
-        PendingSeqNums = [SeqNum]
+        PendingSeqNums = cord.singleton(SeqNum),
+        map.det_insert(Depth, PendingSeqNums, !PendingGoals)
     ),
-    map.set(Depth, PendingSeqNums, !PendingGoals),
 
     % Do the same for the rest of the pending goals.
-    add_pending_goals(Rest, WaitingVarsTable, !PendingGoals, !WaitingGoals).
+    add_pending_goals(DelayGoalNums, WaitingVarsTable,
+        !PendingGoals, !WaitingGoals).
 
 %-----------------------------------------------------------------------------%
 
@@ -405,54 +422,68 @@ delete_waiting_vars([Var | Vars], GoalNum, !WaitingGoalsTable) :-
     ( map.is_empty(WaitingGoals) ->
         map.delete(Var, !WaitingGoalsTable)
     ;
-        map.set(Var, WaitingGoals, !WaitingGoalsTable)
+        map.det_update(Var, WaitingGoals, !WaitingGoalsTable)
     ),
     delete_waiting_vars(Vars, GoalNum, !WaitingGoalsTable).
 
 %-----------------------------------------------------------------------------%
 
 delay_info_wakeup_goals(Goals, !DelayInfo) :-
-    ( delay_info_wakeup_goal(Goal, !DelayInfo) ->
-        Goals = [Goal | Goals1],
-        delay_info_wakeup_goals(Goals1, !DelayInfo)
-    ;
-        Goals = []
-    ).
-
-    % Check if there are any "pending" goals, and if so, select one to wake up,
-    % remove it from the delay_info, and return it. If there are no pending
-    % goals, this predicate will fail.
+    % We used to process the pending goals individually, and gather them
+    % together in a loop. We now process all the pending goals at the current
+    % depth together, but this yields no real speedup.
     %
-    % delay_info_wakeup_goal(Goal, !DelayInfo) is true iff
-    % !.DelayInfo specifies that there is at least one goal which is pending,
-    % Goal is the pending goal which should be reawakened first, and
-    % !:DelayInfo is the new delay_info, updated to reflect the fact that
-    % Goal has been woken up and is hence no longer pending.
-    %
-:- pred delay_info_wakeup_goal(hlds_goal::out,
-    delay_info::in, delay_info::out) is semidet.
+    % During an instrumented bootcheck on 2014 jan 3, almost 91% of the calls
+    % returned zero goals, a bit less than 9% returned one goal, and less than
+    % 1% of all calls returned two or more goals.
 
-delay_info_wakeup_goal(Goal, !DelayInfo) :-
     delay_info_check_invariant(!.DelayInfo),
     !.DelayInfo = delay_info(CurrentDepth, DelayedGoalStack0, WaitingGoals,
         PendingGoalsTable0, NextSeqNums),
 
-    % Is there a goal in the current conjunction which is pending?
-    map.search(PendingGoalsTable0, CurrentDepth, PendingGoals0),
+    % Are there pending goals in the current conjunction?
+    ( map.search(PendingGoalsTable0, CurrentDepth, PendingGoals0) ->
+        % If so, remove them from the pending goals table, and
+        % from the delayed goals stack, and return them.
+        SeqNums = cord.list(PendingGoals0),
+        (
+            SeqNums = [HeadSeqNum | TailSeqNums],
+            map.det_update(CurrentDepth, cord.init,
+                PendingGoalsTable0, PendingGoalsTable),
 
-    % If so, remove it from the pending goals table, remove it from the
-    % delayed goals stack, and return it.
-    PendingGoals0 = [SeqNum | PendingGoals],
-    map.set(CurrentDepth, PendingGoals,
-        PendingGoalsTable0, PendingGoalsTable),
-    stack.det_pop(DelayedGoals0, DelayedGoalStack0, DelayedGoalStack1),
-    map.lookup(DelayedGoals0, SeqNum, DelayedGoal),
-    DelayedGoal = delayed_goal(_Vars, _ErrorReason, Goal),
-    map.delete(SeqNum, DelayedGoals0, DelayedGoals),
-    stack.push(DelayedGoals, DelayedGoalStack1, DelayedGoalStack),
-    !:DelayInfo = delay_info(CurrentDepth, DelayedGoalStack, WaitingGoals,
-        PendingGoalsTable, NextSeqNums),
-    delay_info_check_invariant(!.DelayInfo).
+            stack.det_pop(DelayedGoals0, DelayedGoalStack0, DelayedGoalStack1),
+            lookup_delayed_goal(HeadSeqNum, HeadGoal,
+                DelayedGoals0, DelayedGoals1),
+            lookup_delayed_goals(TailSeqNums, TailGoals,
+                DelayedGoals1, DelayedGoals),
+            stack.push(DelayedGoals, DelayedGoalStack1, DelayedGoalStack),
+            Goals = [HeadGoal | TailGoals],
+
+            !:DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+                WaitingGoals, PendingGoalsTable, NextSeqNums),
+            delay_info_check_invariant(!.DelayInfo)
+        ;
+            SeqNums = [],
+            Goals = []
+        )
+    ;
+        Goals = []
+    ).
+
+:- pred lookup_delayed_goals(list(seq_num)::in, list(hlds_goal)::out,
+    map(seq_num, delayed_goal)::in, map(seq_num, delayed_goal)::out) is det.
+
+lookup_delayed_goals([], [], !DelayedGoalMap).
+lookup_delayed_goals([SeqNum | SeqNums], [Goal | Goals], !DelayedGoalMap) :-
+    lookup_delayed_goal(SeqNum, Goal, !DelayedGoalMap),
+    lookup_delayed_goals(SeqNums, Goals, !DelayedGoalMap).
+
+:- pred lookup_delayed_goal(seq_num::in, hlds_goal::out,
+    map(seq_num, delayed_goal)::in, map(seq_num, delayed_goal)::out) is det.
+
+lookup_delayed_goal(SeqNum, Goal, !DelayedGoalMap) :-
+    map.det_remove(SeqNum, DelayedGoal, !DelayedGoalMap),
+    DelayedGoal = delayed_goal(_Vars, _ErrorReason, Goal).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.delay_info.
