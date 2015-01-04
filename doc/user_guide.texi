@@ -1802,7 +1802,7 @@ and it is usually easy to guess, just from the events within a switch arm,
 just which disjunct the switch arm corresponds to.
 Some cases are more complex;
 for example, it is possible for a single disjunction
-can be transformed into several switches,
+to be transformed into several switches,
 possibly with other, smaller disjunctions inside them.
 In such cases, making sense of goal paths
 may require a look at the internal form of the procedure.
@@ -1996,7 +1996,7 @@ you can specify the option @samp{--trace-optimized},
 which tells the compiler that it does not have to disable those optimizations.
 (A small number of low-level optimizations
 have not yet been enhanced to work properly in the presence of tracing,
-so compiler disables these even if @samp{--trace-optimized} is given.)
+so the compiler disables these even if @samp{--trace-optimized} is given.)
 
 @node Mercury debugger invocation
 @section Mercury debugger invocation
@@ -2152,7 +2152,7 @@ which causes the goal to the printed as if by @samp{print goal};
 it can be the word @samp{*},
 which causes all the variables to the printed as if by @samp{print *};
 or it can be the name or number of a variable,
-possibly followed (without white space) by term path,
+possibly followed (without white space) by a term path,
 which causes the specified variable or part thereof to the printed
 as if the element were given as an argument to the @samp{print} command.
 @sp 1
@@ -2283,7 +2283,7 @@ by prefixing the name of the attribute with an exclamation point.
 Some debugger commands, e.g.@: @samp{break},
 require a parameter that specifies a procedure.
 The procedure may or may not be a compiler-generated
-unify, compare, index or init procedure of a type constructor.
+unify, compare or index procedure of a type constructor.
 If it is, the procedure specification has
 the following components in the following order:
 @itemize @bullet
@@ -2604,15 +2604,7 @@ you will get an error message when you try to run these commands.
 @sp 1
 You may also need to build your program using shared libraries
 for interactive queries to work.
-With Linux on the Intel x86 architecture, the default is for
-executables to be statically linked, which means that dynamic
-linking won't work, and hence interactive queries won't work either
-(the error message is rather obscure: the dynamic linker complains
-about the symbol @samp{__data_start} being undefined).
-To build with shared libraries, you can use
-@samp{MGNUCFLAGS=--pic-reg} and @samp{MLFLAGS=--shared} in your
-Mmakefile.  See the @file{README.Linux} file in the Mercury
-distribution for more details.
+See @ref{Libraries} for details of how to build with shared libraries.
 @end table
 
 @sp 1
@@ -4019,7 +4011,7 @@ if this has been set.
 @item format [-APB] @var{format}
 @kindex format (mdb command)
 Sets the default format of the browser to @var{format},
-which should be one of @samp{flat}, @samp{pretty} and @samp{verbose}.
+which should be one of @samp{flat}, @samp{pretty} or @samp{verbose}.
 @sp 1
 The browser maintains separate configuration parameters
 for the three commands @samp{print *}, @samp{print @var{var}},
@@ -4926,17 +4918,17 @@ Giving the @samp{--xml} or @samp{-x} option causes the term to be displayed
 in an XML browser.
 @sp 1
 @item browse io [--xml] @var{n}
-Browse the @var{n}th IO action.
+Browse the @var{n}'th I/O action.
 @sp 1
 @item print [@var{n}]
-Print the @var{n}th argument of the current question.  If no
+Print the @var{n}'th argument of the current question.  If no
 argument is given then display the current question.
 @sp 1
 @item print io @var{n}
-Print the @var{n}th IO action.
+Print the @var{n}'th I/O action.
 @sp 1
 @item print io @var{n}-@var{m}
-Print the @var{n}th to @var{m}th IO actions (inclusive).
+Print the @var{n}'th to @var{m}'th I/O actions (inclusive).
 @sp 1
 @item print io limits
 Print the values for which @samp{print @var{n}} makes sense.
@@ -4948,7 +4940,7 @@ or at the first available action (if there was not).
 @sp 1
 @item format @var{format}
 Set the default format to @var{format},
-which should be one of @samp{flat}, @samp{verbose} and @samp{pretty}.
+which should be one of @samp{flat}, @samp{verbose} or @samp{pretty}.
 @sp 1
 @item depth @var{num}
 Set the maximum depth to which terms are printed to @var{num}.
