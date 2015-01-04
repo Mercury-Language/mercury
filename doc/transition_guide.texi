@@ -106,7 +106,7 @@ Although there are a few differences,
 by and large if a program is accepted by a Prolog system,
 it will be accepted by Mercury.
 There are however a few extra operators defined by the Mercury term parser
-(see the ``Builtin Operators'' section of the ``Syntax'' chapter of the
+(see the ``Builtin operators'' section of the ``Syntax'' chapter of the
 Mercury Language Reference Manual).
 
 In addition, Mercury implements both existential and universal quantification
@@ -289,7 +289,7 @@ The @samp{set} ADT is useful if the order is not important,
 and if the asserted facts are not key-value pairs.
 If the asserted facts are key-value pairs,
 you can choose among several ADTs,
-including @samp{map}, @samp{bintree}, @samp{rbtree}, and @samp{tree234}.
+including @samp{map}, @samp{rbtree}, and @samp{tree234}.
 We recommend the @samp{map} ADT for generic use.
 Its current implementation is as a 234 tree (using @samp{tree234}),
 but in the future it may change to a hash table, or a trie,
@@ -541,7 +541,7 @@ and in fact that's exactly how the Mercury compiler implements lambda
 expressions.
 
 The current implementation of solutions/2 is a ``zero-copy'' implementation,
-so the cost of solutions/2 is proportional the number of solutions, but
+so the cost of solutions/2 is proportional to the number of solutions, but
 independent of the size of the solutions.  (This may change in
 future implementations.)
 
