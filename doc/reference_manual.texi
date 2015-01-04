@@ -3476,21 +3476,23 @@ both inside the nested disjunction and before the nested disjunction.
 The following example is a switch on X, provided X is bound beforehand.
 
 @example
+@group
 (
         X = f
-	p(Out)
+        p(Out)
 ;
-	Y = X,
+        Y = X,
         (
-		Y = g,
-		Intermediate = 42
-	;
-		Z = Y,
-		Z = h(Arg),
-		q(Arg, Intermediate)
-	),
-	r(Intermediate, Out)
+                Y = g,
+                Intermediate = 42
+        ;
+                Z = Y,
+                Z = h(Arg),
+                q(Arg, Intermediate)
+        ),
+        r(Intermediate, Out)
 )
+@end group
 @end example
 
 @item Disjunctions
@@ -3555,6 +3557,7 @@ because it requires solving the halting problem.
 (For instance, in the following example
 
 @example
+@group
 :- pred p(T, T).
 :- mode p(in, out) is det.
 
@@ -3564,6 +3567,7 @@ p(A, B) :-
         ;
                 B = A
         ).
+@end group
 @end example
 
 @noindent
@@ -4071,10 +4075,12 @@ Similarly, given
 the following three unifications have the same effect:
 
 @example
+@group
 X = (func(Num, List) = NewList :- NewList = scalar_product(Num, List))
 Y = (func(Num::in, List::in) = (NewList::out) is det
         :- NewList = scalar_product(Num, List))
 Z = scalar_product
+@end group
 @end example
 
 In the above example, the type of @samp{X}, @samp{Y}, and @samp{Z} is
@@ -7362,12 +7368,14 @@ of the form:
 @var{CtorValues} is a list of pairs of the form:
 
 @example
+@group
 [
     ctor_0 - "ForeignValue_0",
     ctor_1 - "ForeignValue_1",
     ...
     ctor_N - "ForeignValue_N"
 ]
+@end group
 @end example
 
 The first element of each pair is a constructor of the type @var{MercuryType},
@@ -9694,10 +9702,10 @@ Each mode is indexed on all its input arguments so the compiler can
 produce very efficient code using this technique.
 
 In the current implementation, the table of facts is compiled into a
-separate C file named @samp{@var{FileName}.c}.  The compiler will
+separate C file named @file{@var{FileName}.c}.  The compiler will
 automatically generate the correct dependencies for this file when the
 command @samp{mmake @var{main_module}.depend} is invoked.  This ensures
-that the C file will be compiled to @samp{@var{FileName}.o} and then
+that the C file will be compiled to @file{@var{FileName}.o} and then
 linked with the other object files when @samp{mmake @var{main_module}}
 is invoked.
 
@@ -9994,7 +10002,7 @@ The following declaration calls for this variant of tabling.
 
 @example
 :- pragma memo(@var{Name}(in, in, in, out),
-	[allow_reset, statistics, fast_loose]).
+        [allow_reset, statistics, fast_loose]).
 @end example
 
 The @samp{specified} attribute allows programmers to choose
@@ -10004,7 +10012,7 @@ or whether it should be looked up at all:
 
 @example
 :- pragma memo(@var{Name}(in, in, in, out), [allow_reset, statistics,
-	specified([value, addr, promise_implied, output])]).
+        specified([value, addr, promise_implied, output])]).
 @end example
 
 The @samp{specified} attribute should have an argument which is a list,
@@ -10042,7 +10050,7 @@ then this declaration can also be specified without giving the argument modes:
 
 @example
 :- pragma memo(@var{Name}/@var{Arity}, [allow_reset, statistics,
-	specified([value, addr, promise_implied, output])]).
+        specified([value, addr, promise_implied, output])]).
 @end example
 
 Note that a @samp{pragma minimal_model} declaration
@@ -10528,7 +10536,7 @@ check for floundering in the @samp{MR_commit} and @samp{MR_solve} cases
 of your function.
 The Mercury extras distribution includes an example of this:
 see the @samp{ML_var_untrail_func()} function in the file
-@samp{extras/trailed_update/var.m}.)
+@file{extras/trailed_update/var.m}.)
 If your function does detect floundering, then it should print
 an error message and then abort execution.
 

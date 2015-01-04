@@ -517,7 +517,7 @@ and therefore you must run @samp{mmake @var{program}.depend}
 for each program.  The @samp{Mercury.modules} file is used for
 all programs in the directory.
 
-If there is a file called @samp{Mmake} or @samp{Mmakefile} in the
+If there is a file called @file{Mmake} or @file{Mmakefile} in the
 current directory,
 Mmake will include that file in its automatically generated Makefile.
 The @samp{Mmake} file can override the default values of
@@ -2048,10 +2048,10 @@ since in that case, that usual online documentation will not be available.
 @item
 @cindex mdbrc
 @cindex .mdbrc
-The file named @samp{.mdbrc} in your home directory.
+The file named @file{.mdbrc} in your home directory.
 You can put your usual aliases and settings here.
 @item
-The file named @samp{.mdbrc} in the current working directory.
+The file named @file{.mdbrc} in the current working directory.
 You can put program-specific aliases and settings here.
 @end enumerate
 mdb will ignore any lines starting with the character #
@@ -6138,7 +6138,7 @@ so are safe to leave in the program.
 
 Next, build the program in a @samp{.memprof.gc} grade.
 After the program has finished executing, it will generate a file
-called @samp{Prof.Snapshots} in the current directory.
+called @file{Prof.Snapshots} in the current directory.
 Run @samp{mprof -s} to view the profile.
 You will see the memory cells which were on the heap at each time
 that @samp{report_memory_attribution} was called: the origin of the cells, and
@@ -10944,7 +10944,7 @@ int mercury_terminate(void);
 
 Shut down the Mercury runtime.
 The value returned by this function is Mercury's exit status
-(as set by the predicate io.set_exit_status/3).
+(as set by the predicate @samp{io.set_exit_status/3}).
 This function will also invoke any finalisers contained in the set
 of libraries for which the stand-alone interface was generated.
 @end table
