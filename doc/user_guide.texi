@@ -425,7 +425,7 @@ Once you have created an executable for a Mercury program,
 you can go ahead and execute it.  You may however wish to specify
 certain options to the Mercury runtime system.
 The Mercury runtime accepts
-options via the @samp{MERCURY_OPTIONS} environment variable.
+options via the @env{MERCURY_OPTIONS} environment variable.
 @vindex MERCURY_OPTIONS
 The most useful of these are the options that set the size of the stacks.
 (For the full list of available options, see @ref{Environment}.)
@@ -2035,14 +2035,14 @@ it executes commands from the following three sources, in order:
 @enumerate
 @item
 @vindex MERCURY_DEBUGGER_INIT
-The file named by the @samp{MERCURY_DEBUGGER_INIT} environment variable.
+The file named by the @env{MERCURY_DEBUGGER_INIT} environment variable.
 Usually, @samp{mdb} sets this variable to point to a file
 that provides documentation for all the debugger commands
 and defines a small set of aliases.
-However, if @samp{MERCURY_DEBUGGER_INIT} is already defined
+However, if @env{MERCURY_DEBUGGER_INIT} is already defined
 when @samp{mdb} is invoked, it will leave its value unchanged.
 You can use this override ability to provide alternate documentation.
-If the file named by @samp{MERCURY_DEBUGGER_INIT} cannot be read,
+If the file named by @env{MERCURY_DEBUGGER_INIT} cannot be read,
 @samp{mdb} will print a warning,
 since in that case, that usual online documentation will not be available.
 @item
@@ -3308,7 +3308,8 @@ The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
 @sp 1
 @item open @var{term}
 Save @var{term} to a temporary file and open the file in an editor.
-The environment variable EDITOR is consulted to determine what editor to use.
+The environment variable @env{EDITOR} is consulted to determine what editor to
+use.
 If this environment variable is not set then @samp{vi} is used.
 @var{term} may be any term that can be saved to a file with the
 @samp{save_to_file} command.
@@ -3804,7 +3805,7 @@ Sets the scroll window size to @var{size},
 which tells scroll control to stop and print a @samp{--more--} prompt
 after every @var{size} @minus{} 1 events.
 The default value of @var{size}
-is the value of the @samp{LINES} environment variable,
+is the value of the @env{LINES} environment variable,
 which should correspond to the number of lines available on the terminal.
 @sp 1
 @item scroll
@@ -5351,11 +5352,11 @@ if @samp{mtc} is given the @samp{-c} or @samp{--coverage-test} option.
 @sp 1
 @samp{mtc} also supports two more options intended for coverage testing:
 @samp{-s} or @samp{--summary-file}, and @samp{--summary-count}.
-These each set an option in the @samp{MERCURY_OPTIONS} environment variable,
+These each set an option in the @env{MERCURY_OPTIONS} environment variable,
 @samp{--trace-count-summary-file} and @samp{--trace-count-summary-max}
 respectively.
 For the documentation of these @samp{mtc} options,
-see the documentation of @samp{MERCURY_OPTIONS} environment variable.
+see the documentation of @env{MERCURY_OPTIONS} environment variable.
 
 @sp 1
 
@@ -5626,7 +5627,7 @@ with coverage testing enabled.
 This can be done either by running the program with @samp{mtc --coverage-test},
 or by including one of the corresponding options
 (@samp{--coverage-test} or @samp{--coverage-test-if-exec=@var{programname}})
-in the value of the @samp{MERCURY_OPTIONS} environment variable.
+in the value of the @env{MERCURY_OPTIONS} environment variable.
 These runs generate a set of trace counts files
 that can be given to the Mercury test coverage tool, the @samp{mcov} program.
 As usual, trace count files are named with the prefix
@@ -5845,7 +5846,7 @@ With the @samp{mprof} and @samp{mdprof} profilers,
 you can control whether time profiling measures
 real (elapsed) time, user time plus system time, or user time only,
 by including the options @samp{-Tr}, @samp{-Tp}, or @samp{-Tv} respectively
-in the environment variable MERCURY_OPTIONS
+in the environment variable @env{MERCURY_OPTIONS}
 when you run the program to be profiled.
 @c (See the environment variables section below.)
 Currently, only the @samp{-Tr} option works on Cygwin; on that
@@ -6326,7 +6327,7 @@ and your program is dynamically linked,
 try rebuilding your application statically linked,
 e.g.@: by using @samp{MLFLAGS=--static} in your Mmakefile.
 Another work-around that sometimes works is to set the environment variable
-@samp{LD_BIND_NOW} to a non-null value before running the program.
+@env{LD_BIND_NOW} to a non-null value before running the program.
 
 @c ----------------------------------------------------------------------------
 
@@ -7716,7 +7717,7 @@ small segments: @samp{stseg} (the default is to used fixed size stacks)
 
 The default grade is system-dependent; it is chosen at installation time
 by @samp{configure}, the auto-configuration script, but can be overridden
-with the environment variable @samp{MERCURY_DEFAULT_GRADE} if desired.
+with the environment variable @env{MERCURY_DEFAULT_GRADE} if desired.
 @vindex MERCURY_DEFAULT_GRADE
 Depending on your particular installation, only a subset
 of these possible grades will have been installed.
@@ -9334,7 +9335,7 @@ Specify which C compiler to use.
 @cindex Directories
 Append @var{dir} to the list of directories to be searched for
 C header files.  Note that if you want to override this list, rather than
-append to it, then you can set the @samp{MERCURY_MC_ALL_C_INCL_DIRS}
+append to it, then you can set the @env{MERCURY_MC_ALL_C_INCL_DIRS}
 environment variable to a sequence of @samp{--c-include-directory} options.
 
 @sp 1
@@ -9806,16 +9807,16 @@ With @samp{--make} keep going as far as
 possible even if an error is detected.
 
 @sp 1
-@item -j <n>
-@item --jobs <n>
-@findex -j <n>
+@item -j @var{n}
+@item --jobs @var{n}
+@findex -j
 @findex --jobs
-With @samp{--make}, attempt to perform up to @samp{<n>} jobs
+With @samp{--make}, attempt to perform up to @var{n} jobs
 concurrently for some tasks.
 
 In low-level C grades with parallelism support,
 the number of threads is also limited by
-the @samp{-P} option in the @samp{MERCURY_OPTIONS} environment variable
+the @samp{-P} option in the @env{MERCURY_OPTIONS} environment variable
 (see @ref{Environment}).
 
 @sp 1
@@ -10116,7 +10117,7 @@ the typechecker will not process the predicate or function any further.
 @findex --control-granularity
 Don't try to generate more parallelism than the machine can handle,
 which may be specified at runtime or detected automatically.
-(see the @samp{-P} option in the @samp{MERCURY_OPTIONS} environment variable.)
+(see the @samp{-P} option in the @env{MERCURY_OPTIONS} environment variable.)
 
 @sp 1
 @item --distance-granularity @var{distance_value}
@@ -10197,7 +10198,7 @@ The default grade to use if no @samp{--grade} option is specified.
 The directory containing the installed Mercury standard library.
 @samp{--mercury-stdlib-dir} options passed to the @samp{mmc}, @samp{ml},
 @samp{mgnuc} and @samp{c2init} scripts override the setting of
-the MERCURY_STDLIB_DIR environment variable.
+the @env{MERCURY_STDLIB_DIR} environment variable.
 
 @sp 1
 @item MERCURY_OPTIONS
@@ -10206,14 +10207,14 @@ A list of options for the Mercury runtime system,
 which gets linked into every Mercury program.
 The options given in this environment variable apply to every program;
 the options given in an environment variable
-whose name is of the form @samp{MERCURY_OPTIONS_@var{progname}}
+whose name is of the form @env{MERCURY_OPTIONS_@var{progname}}
 apply only to programs named @var{progname}.
 Options may also be set for a particular executable at compile time
 by passing @samp{--runtime-flags} options
 to the invocations of @samp{ml} and @samp{c2init} which create that executable.
 These options are processed first,
-followed by those in @samp{MERCURY_OPTIONS},
-with the options in @samp{MERCURY_OPTIONS_@var{progname}} being processed last.
+followed by those in @env{MERCURY_OPTIONS},
+with the options in @env{MERCURY_OPTIONS_@var{progname}} being processed last.
 
 The Mercury runtime system accepts the following options.
 
@@ -10230,11 +10231,10 @@ The Mercury runtime system accepts the following options.
 
 @item -C @var{size}
 @findex -C (runtime option)
-Tells the runtime system
-to optimize the locations of the starts of the various data areas
-for a primary data cache of @var{size} kilobytes.
-The optimization consists of arranging the starts of the areas
-to differ as much as possible modulo this size.
+Tells the runtime system to optimize the locations of the starts of the various
+data areas for a primary data cache of @var{size} kilobytes.
+The optimization consists of arranging the starts of the areas to differ as
+much as possible modulo this size.
 
 @c @item -d @var{debugflag}
 @c @findex -d (runtime option)
@@ -10273,8 +10273,8 @@ If it cannot or support is unavailable it defaults to @samp{1}.
 @sp 1
 @item --max-engines @var{num}
 @findex --max-engines (runtime option)
-Tells the runtime system to allow a maximum of @var{num}
-POSIX threads, each with its own Mercury engine.
+Tells the runtime system to allow a maximum of @var{num} POSIX threads, each
+with its own Mercury engine.
 This only affects programs in low-level C parallel grades.
 
 @sp 1
@@ -10321,7 +10321,7 @@ grade.
 
 @sp 1
 @item --thread-pinning
-@findex --thread-pinning
+@findex --thread-pinning (runtime option)
 Request that the runtime system attempts to pin Mercury engines (POSIX threads)
 to CPU cores/hardware threads.
 This only has an effect if the executable was built in a parallel low-level C
@@ -10378,8 +10378,8 @@ Sets the size of the heap to @var{size} kilobytes.
 @sp 1
 @item --heap-size-kwords @var{size}
 @findex --heap-size-kwords (runtime option)
-Sets the size of the heap to @var{size} kilobytes
-multiplied by the word size in bytes.
+Sets the size of the heap to @var{size} kilobytes multiplied by the word size
+in bytes.
 
 @sp 1
 @item --detstack-size @var{size}
@@ -10400,8 +10400,8 @@ Sets the size of the nondet stack to @var{size} kilobytes.
 @sp 1
 @item --nondetstack-size-kwords @var{size}
 @findex --nondetstack-size-kwords (runtime option)
-Sets the size of the nondet stack to @var{size} kilobytes
-multiplied by the word size in bytes.
+Sets the size of the nondet stack to @var{size} kilobytes multiplied by the
+word size in bytes.
 
 @sp 1
 @item --small-detstack-size @var{size}
@@ -10413,9 +10413,8 @@ The regular det stack size must be equal or greater.
 @sp 1
 @item --small-detstack-size-kwords @var{size}
 @findex --small-detstack-size-kwords (runtime option)
-Sets the size of the det stack used for executing parallel conjunctions
-to @var{size} kilobytes
-multiplied by the word size in bytes.
+Sets the size of the det stack used for executing parallel conjunctions to
+@var{size} kilobytes multiplied by the word size in bytes.
 The regular det stack size must be equal or greater.
 
 @sp 1
@@ -10446,14 +10445,14 @@ multiplied by the word size in bytes.
 
 @sp 1
 @item --trail-size @var{size}
-@findex --trail-size
+@findex --trail-size (runtime option)
 @cindex Trail size
 Sets the size of the trail to @var{size} kilobytes.
 This option is ignored in grades that use trail segments.
 
 @sp 1
 @item --trail-size-kwords @var{size}
-@findex --trail-size-kwords
+@findex --trail-size-kwords (runtime option)
 @cindex Trail size
 Sets the size of the trail to @var{size} kilobytes
 multiplied by the word size in bytes.
@@ -10461,57 +10460,57 @@ This option is ignored in grades that use trail segments.
 
 @sp 1
 @item --trail-segment-size @var{size}
-@findex --trail-segment-size
+@findex --trail-segment-size (runtime option)
 @cindex Trail size
 Sets the size of each trail segment to be @var{size} kilobytes.
 This option is ignored in grades that do not use trail segments.
 
 @sp 1
 @item --trail-segment-size-kwords @var{size}
-@findex --trail-segment-size-kwords
+@findex --trail-segment-size-kwords (runtime option)
 @cindex Trail size
-Set the size of each trail segment to be @var{size} kilobytes
-multiplied by the words size in bytes.
+Set the size of each trail segment to be @var{size} kilobytes multiplied by the
+words size in bytes.
 This option is ignored in grades that do not use trail segments.
 
 @sp 1
 @item --genstack-size @var{size}
-@findex --genstack-size
+@findex --genstack-size (runtime option)
 @cindex Generator stack size
 Sets the size of the generator stack to @var{size} kilobytes.
 
 @sp 1
 @item --genstack-size-kwords @var{size}
-@findex --genstack-size-kwords
+@findex --genstack-size-kwords (runtime option)
 @cindex Generator stack size
 Sets the size of the generator stack to @var{size} kilobytes
 multiplied by the word size in bytes.
 
 @sp 1
 @item --cutstack-size @var{size}
-@findex --cutstack-size
+@findex --cutstack-size (runtime option)
 @cindex Cut stack size
 Sets the size of the cut stack to @var{size} kilobytes.
 
 @sp 1
 @item --cutstack-size-kwords @var{size}
-@findex --cutstack-size-kwords
+@findex --cutstack-size-kwords (runtime option)
 @cindex Cut stack size
 Sets the size of the cut stack to @var{size} kilobytes
 multiplied by the word size in bytes.
 
 @sp 1
 @item --pnegstack-size @var{size}
-@findex --pnegstack-size
+@findex --pnegstack-size (runtime option)
 @cindex Pneg stack size
 Sets the size of the pneg stack to @var{size} kilobytes.
 
 @sp 1
 @item --pnegstack-size-kwords @var{size}
-@findex --pnegstack-size-kwords
+@findex --pnegstack-size-kwords (runtime option)
 @cindex Pneg stack size
-Sets the size of the pneg stack to @var{size} kilobytes
-multiplied by the word size in bytes.
+Sets the size of the pneg stack to @var{size} kilobytes multiplied by the word
+size in bytes.
 
 @c @sp 1
 @c @item --heap-redzone-size @var{size}
@@ -10614,14 +10613,14 @@ symbol @samp{MR_DEBUG_THREADS} defined.
 
 @sp 1
 @item --tabling-statistics
-@findex --tabling-statistics
+@findex --tabling-statistics (runtime option)
 Prints statistics about tabling when the program terminates.
 
 @sp 1
 @item --mem-usage-report @var{prefix}
-@findex --mem-usage-report @var{prefix}
-Print a report about the memory usage of the program
-when the program terminates.
+@findex --mem-usage-report (runtime option)
+Print a report about the memory usage of the program when the program
+terminates.
 The report is printed to a new file named @file{.mem_usage_report@var{N}}
 for the lowest value of @var{N} (up to 99)
 which doesn't overwrite an existing file.
@@ -10629,83 +10628,77 @@ Note that this capability is not supported on all operating systems.
 
 @sp 1
 @item --trace-count
-@findex --trace-count
-When the program terminates, generate a trace counts file
-listing all the debugger events the program executed,
-if the program actually executed any debugger events.
-If MERCURY_OPTIONS includes
-the --trace-count-output-file=@var{filename} option,
-then the trace counts are put into the file @var{filename}.
-If MERCURY_OPTIONS includes
-the --trace-count-summary-file=@var{basename} option,
-then the trace counts are put
-either in the file @var{basename} (if it does not exist),
-or in @var{basename.N} for the lowest value of the integer @var{N}
-which doesn't overwrite an existing file.
-(There is a limit on the value of @var{N};
-see the option --trace-count-summary-max below.)
-If neither option is specified,
-then the output will be written to a file
-with the prefix @samp{.mercury_trace_counts} and a unique suffix.
+@findex --trace-count (runtime option)
+When the program terminates, generate a trace counts file listing all the
+debugger events the program executed, if the program actually executed any
+debugger events.
+If @env{MERCURY_OPTIONS} includes the
+@samp{--trace-count-output-file @var{filename}} option, then the trace counts
+are put into the file @var{filename}.
+If @env{MERCURY_OPTIONS} includes
+the @samp{--trace-count-summary-file @var{basename}} option, then the trace
+counts are put either in the file @var{basename} (if it does not exist), or in
+@var{basename.N} for the lowest value of the integer @var{N} which doesn't
+overwrite an existing file.
+(There is a limit on the value of @var{N}; see the option
+@samp{--trace-count-summary-max} below.)
+If neither option is specified, then the output will be written to a file with
+the prefix @samp{.mercury_trace_counts} and a unique suffix.
 Specifying both options is an error.
 
 @sp 1
 @item --coverage-test
-@findex --coverage-test
-Act as the --trace-count option, except
-include @emph{all} debugger events in the output,
-even the ones that were not executed.
+@findex --coverage-test (runtime option)
+Act as the @samp{--trace-count} option, except include @emph{all} debugger
+events in the output, even the ones that were not executed.
 
 @sp 1
-@item --trace-count-if-exec=@var{prog}
-@findex --trace-count-if-exec=@var{prog}
-Act as the --trace-count option,
-but only if the executable is named @var{prog}.
-This is to allow
-the collection of trace count information from only one Mercury program
-even if several Mercury programs
-are executed with the same setting of MERCURY_OPTIONS.
+@item --trace-count-if-exec @var{prog}
+@findex --trace-count-if-exec (runtime option)
+Act as the @samp{--trace-count} option, but only if the executable is named
+@var{prog}.
+This is to allow the collection of trace count information from only one
+Mercury program even if several Mercury programs are executed with the same
+setting of @env{MERCURY_OPTIONS}.
 
 @sp 1
-@item --coverage-test-if-exec=@var{prog}
-@findex --coverage-test-if-exec=@var{prog}
-Act as the --coverage-test option,
-but only if the executable is named @var{prog}.
-This is to allow
-the collection of coverage test information from only one Mercury program
-even if several Mercury programs
-are executed with the same setting of MERCURY_OPTIONS.
+@item --coverage-test-if-exec @var{prog}
+@findex --coverage-test-if-exec (runtime option)
+Act as the @samp{--coverage-test} option, but only if the executable is named
+@var{prog}.
+This is to allow the collection of coverage test information from only one
+Mercury program even if several Mercury programs are executed with the same
+setting of @env{MERCURY_OPTIONS}.
 
 @sp 1
-@item --trace-count-output-file=@var{filename}
-@findex --trace-count-output-file=@var{filename}
-Documented alongside the --trace-count option.
+@item --trace-count-output-file @var{filename}
+@findex --trace-count-output-file (runtime option)
+Documented alongside the @samp{--trace-count} option.
 
 @sp 1
-@item --trace-count-summary-file=@var{basename}
-@findex --trace-count-summary-file=@var{basename}
-Documented alongside the --trace-count option.
+@item --trace-count-summary-file @var{basename}
+@findex --trace-count-summary-file (runtime option)
+Documented alongside the @samp{--trace-count} option.
 
 @sp 1
-@item --trace-count-summary-max=@var{N}
-@findex --trace-count-summary-max=@var{N}
-If MERCURY_OPTIONS includes both
-the --trace-count option (or one of the other options that imply --trace-count)
-and the --trace-count-summary-file=@var{basename} option,
+@item --trace-count-summary-max @var{N}
+@findex --trace-count-summary-max (runtime option)
+If @env{MERCURY_OPTIONS} includes both
+the @samp{--trace-count option} (or one of the other options that imply @samp{--trace-count})
+and the @samp{--trace-count-summary-file @var{basename}} option,
 then the generated program will put the generated trace counts
 either in @var{basename} (if it does not exist),
 or in @var{basename.N} for the lowest value of the integer @var{N}
 which doesn't overwrite an existing file.
-The --trace-count-summary-max option
-specifies the maximum value of this @var{N}.
+The @samp{--trace-count-summary-max} option specifies the maximum value of this
+@var{N}.
 When this maximum is reached,
 the program will invoke the @samp{mtc_union} program
 to summarize @var{basename}, @var{basename.1}, ... @var{basename.N}
 into a single file @var{basename}, and delete the rest.
-By imposing a limit on the total number
-(and hence indirectly on the total size) of these trace count files,
-this mechanism allows the gathering of trace count information
-from a large number of program runs.
+By imposing a limit on the total number (and hence indirectly on the total
+size) of these trace count files, this mechanism allows the gathering of trace
+count information from a large number of program runs.
 The default maximum value of @var{N} is 20.
 
 @c @sp 1
@@ -10739,8 +10732,8 @@ The default maximum value of @var{N} is 20.
 @c testing the code writing out deep profiling data).
 
 @sp 1
-@item --boehm-gc-free-space-divisor=@var{N}
-@findex --boehm-gc-free-space-divisor=@var{N}
+@item --boehm-gc-free-space-divisor @var{N}
+@findex --boehm-gc-free-space-divisor (runtime option)
 This option sets the value of the free space divisor in the Boehm garbage
 collector to @var{N}.
 It is meaningful only when using the Boehm garbage collector.
@@ -10750,7 +10743,7 @@ See the Boehm GC documentation for details.
 
 @sp 1
 @item --boehm-gc-calc-time
-@findex --boehm-gc-calc-time
+@findex --boehm-gc-calc-time (runtime option)
 This option enables code in the Boehm garbage collector to calculate
 the time spent doing garbage collection so far.
 Its only effect is to enable the @samp{report_stats} predicate
@@ -10759,7 +10752,7 @@ to report this information.
 
 @sp 1
 @item --fp-rounding-mode @var{mode}
-@findex --fp-rounding-mode  @var{mode}
+@findex --fp-rounding-mode (runtime option)
 Set the rounding mode for floating point operations to @var{mode}.
 Recognised modes are @samp{downward}, @samp{upward}, @samp{to_nearest}
 and @samp{toward_zero}.  Exactly what modes are available and even
@@ -10813,7 +10806,7 @@ of your PATH.
 You must use a grade beginning with @samp{none}, @samp{hlc} or @samp{hl}
 (e.g.@: @samp{hlc.gc}).
 You can specify the grade in one of three ways: by setting the
-@samp{MERCURY_DEFAULT_GRADE} environment variable, by adding a line
+@env{MERCURY_DEFAULT_GRADE} environment variable, by adding a line
 @vindex MERCURY_DEFAULT_GRADE
 @samp{GRADE=@dots{}} to your @samp{Mmake} file, or by using the
 @samp{--grade} option to @samp{mmc}.  (You will also need to install
@@ -10975,6 +10968,8 @@ For an example of using a stand-alone interface see the
 @samp{samples/c_interface/standalone_c} directory in the Mercury distribution.
 
 @c ----------------------------------------------------------------------------
+
+@page
 
 @node Index
 @unnumbered Index
