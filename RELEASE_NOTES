@@ -25,7 +25,7 @@ The main features of Mercury are:
         return a new state of the world and possibly some other
         results.  The language requires that the input argument
         representing the old state of the world be the last reference
-        to the old state of the world, thus allowing it the state of
+        to the old state of the world, thus allowing the state of
         the world to be updated destructively.  The language also
         requires that I/O take place only in parts of the program where
         backtracking will not be needed.
@@ -152,15 +152,15 @@ and Windows Server 2008 R2.
 In the past Mercury has also been known to run on: Digital Unix,
 OSF1, IRIX 5.x, Ultrix 4.3, BSDI 1.1, AIX, HPUX, Linux (Alpha),
 Compaq Tru64 Unix (Alpha), Solaris 2.7 (SPARC), Solaris (9),
-Mac OS X (PowerPc) and Windows 95, 98, ME, NT and 2000.
+Mac OS X (PowerPC) and Windows 95, 98, ME, NT and 2000.
 
 It should run without too many changes on other Unix variants as well.
-If you do encounter any problems, please report them to via the
+If you do encounter any problems, please report them to us via the
 Mercury bug tracking system at <http://bugs.mercurylang.org>
 (see the BUGS file).
 
 We recommend that you use gcc as the C compiler, preferably gcc version 3.4 or
-later.  Do not use gcc versions 2.96, 3.0 or 4.0; those version have bugs that
+later.  Do not use gcc versions 2.96, 3.0 or 4.0; those versions have bugs that
 cause trouble for Mercury.  If you are using gcc, you will need at least
 version 2.95 or higher, except on Mac OS X where you will need version 3.3 or
 higher.  Visual C++ or clang may also be used as a C compiler.
