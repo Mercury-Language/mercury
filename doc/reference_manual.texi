@@ -8045,7 +8045,7 @@ type @samp{int}.
 @node Using pragma foreign_proc for C#
 @subsubsection Using pragma foreign_proc for C#
 
-The C# code from C# pragma foreign_proc declarations will be placed in
+The C# code from C# @samp{pragma foreign_proc} declarations will be placed in
 the bodies of static member functions of an automatically generated C# class.
 Since such C# code will become part of a static member function,
 it must not refer to the @samp{this} keyword.
@@ -8229,12 +8229,13 @@ the Mercury constructor @samp{foo} would be @code{foo}.
 @node Using pragma foreign_proc for Java
 @subsubsection Using pragma foreign_proc for Java
 
-The Java code from Java pragma foreign_proc declarations will be placed in
-the bodies of static member functions of an automatically generated Java class.
-Since such Java code will become part of a static member function,
-it must not refer to the @samp{this} keyword.
-It may however refer to static member variables or static member
-functions declared with @samp{pragma foreign_code}.
+The Java code from Java @samp{pragma foreign_proc} declarations will be placed
+in the bodies of static member functions of an automatically generated Java
+class.
+Since such Java code will become part of a static member function, it must not
+refer to the @samp{this} keyword.
+It may however refer to static member variables or static member functions
+declared with @samp{pragma foreign_code}.
 
 The input and output variables for a Java @samp{pragma foreign_proc} will
 have Java types corresponding to their Mercury types.  The exact rules

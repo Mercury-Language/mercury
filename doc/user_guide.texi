@@ -6420,7 +6420,7 @@ if it finds any syntax errors in the program.
 @sp 1
 @item --inhibit-accumulator-warnings
 @findex --inhibit-accumulator-warnings
-Don't warn about argument order rearrangement caused by
+Do not warn about argument order rearrangement caused by
 @samp{--introduce-accumulators}.
 
 @sp 1
@@ -6430,7 +6430,7 @@ Don't warn about argument order rearrangement caused by
 @findex --no-warn-singleton-variables
 @findex --warn-singleton-vars
 @findex --warn-singleton-variables
-Don't warn about variables which only occur once.
+Do not warn about variables which only occur once.
 
 @sp 1
 @item --no-warn-missing-det-decls
@@ -6446,21 +6446,21 @@ determinism inference for non-exported predicates.
 @item --no-warn-det-decls-too-lax
 @findex --no-warn-det-decls-too-lax
 @findex --warn-det-decls-too-lax
-Don't warn about determinism declarations
+Do not warn about determinism declarations
 which could have been stricter.
 
 @sp 1
 @item --no-warn-inferred-erroneous
 @findex --no-warn-inferred-erroneous
 @findex --warn-inferred-erroneous
-Don't warn about procedures whose determinism is inferred erroneous
+Do not warn about procedures whose determinism is inferred erroneous
 but whose determinism declarations are laxer.
 
 @sp 1
 @item --no-warn-insts-without-matching-type
 @findex --no-warn-insts-without-matching-type
 @findex --warn-insts-without-matching-type
-Don't warn about insts that are not consistent with any
+Do not warn about insts that are not consistent with any
 types in scope.
 
 @sp 1
@@ -6469,13 +6469,13 @@ types in scope.
 @findex --no-warn-unused-imports
 @findex --warn-unused-imports
 Warn about modules that are imported but not used.
-@c Don't warn about modules that are imported but not used.
+@c Do not warn about modules that are imported but not used.
 
 @sp 1
 @item --no-warn-nothing-exported
 @findex --no-warn-nothing-exported
 @findex --warn-nothing-exported
-Don't warn about modules whose interface sections have no
+Do not warn about modules whose interface sections have no
 exported predicates, functions, insts, modes or types.
 
 @sp 1
@@ -6576,8 +6576,8 @@ target code (e.g. gcc).
 @item --no-warn-up-to-date
 @findex --no-warn-up-to-date
 @findex --warn-up-to-date
-Don't warn if targets specified on the command line
-with @samp{--make} are already up to date.
+Do not warn if targets specified on the command line
+with @samp{--make} are already up-to-date.
 
 @sp 1
 @item --no-warn-stubs
@@ -6745,7 +6745,7 @@ Report the command line arguments.
 @item --report-cmd-line-args-in-doterr
 @findex --report-cmd-line-args-in-doterr
 Report the command line arguments for compilations whose output
-mmake normally redirects to a .err file.
+mmake normally redirects to a @samp{.err} file.
 
 @sp 1
 @item -S
@@ -8272,8 +8272,7 @@ attribute.  The default is @samp{no}.
 Use single precision floats so that, on 32-bit machines
 floating point values don't need to be boxed.  Double
 precision floats are used by default.
-This option is not yet supported for the IL, C# or Java back-ends.
-This option will not be supported for the Erlang back-end.
+This option is not supported for the C#, Java or Erlang back-ends.
 
 @c RBMM is undocumented since it is still experimental.
 @c @sp 1
@@ -8522,7 +8521,7 @@ Assume that @var{n} float temporaries will fit into real machine registers.
 @menu
 * Overall optimization options::
 * High-level (HLDS -> HLDS) optimization options::
-* MLDS backend (MLDS -> MLDS) optimization options::
+* MLDS back-end (MLDS -> MLDS) optimization options::
 * Erlang (HLDS -> ELDS) optimization options::
 * Medium-level (HLDS -> LLDS) optimization options::
 * Low-level (LLDS -> LLDS) optimization options::
@@ -8673,7 +8672,7 @@ Disable the inlining of simple procedures.
 @item --no-inline-builtins
 @findex --no-inline-builtins
 Generate builtins (e.g.@: arithmetic operators) as calls to
-out of line procedures.  This is done by default when debugging,
+out-of-line procedures.  This is done by default when debugging,
 as without this option the execution of builtins is not traced.
 
 @item --no-inline-single-use
@@ -8988,8 +8987,8 @@ This information is used to reduce the overhead of minimal model tabling.
 
 @end table
 
-@node MLDS backend (MLDS -> MLDS) optimization options
-@subsection MLDS backend (MLDS -> MLDS) optimization options
+@node MLDS back-end (MLDS -> MLDS) optimization options
+@subsection MLDS back-end (MLDS -> MLDS) optimization options
 @cindex MLDS
 
 These optimizations are applied to the medium level
@@ -9070,7 +9069,7 @@ will still be created as static constants.
 @item --no-smart-indexing
 @findex --no-smart-indexing
 @findex --smart-indexing
-Generate switches as a simple if-then-else chains;
+Generate switches as simple if-then-else chains;
 disable string hashing and integer table-lookup indexing.
 
 @sp 1
@@ -9292,9 +9291,9 @@ but tends to severely stress the C compiler.
 @sp 1
 @item --no-local-thread-engine-base
 @findex --no-local-thread-engine-base
-Don't copy the thread-local Mercury engine base address
+Do not copy the thread-local Mercury engine base address
 into local variables. This option only affects low-level
-parallel grades not using the global register variables
+parallel grades not using the GNU C global register variables
 extension.
 
 @end table
@@ -9766,7 +9765,7 @@ Append the specified directory to the framework search path.
 Sign the current assembly with the strong name contained in the
 specified key file.
 (This option is only meaningful when generating library assemblies
-with the C# backend.)
+with the C# back-end.)
 
 @sp 1
 @item --cstack-reserve-size @var{size}
@@ -10832,7 +10831,7 @@ code with @samp{--no-static-ground-terms}.
 @node Foreign language interface
 @chapter Foreign language interface
 
-The Mercury foreign language interfaces allows pragma foreign_proc to
+The Mercury foreign language interfaces allows @samp{pragma foreign_proc} to
 specify multiple implementations (in different foreign programming
 languages) for a procedure.
 
@@ -10840,33 +10839,33 @@ If the compiler generates code for a procedure using a back-end for which
 there are multiple applicable foreign languages, it will choose the
 foreign language to use for each procedure according to a builtin ordering.
 
-If the language specified in a foreign_proc is not available for a
-particular backend, it will be ignored.
+If the language specified in a @samp{foreign_proc} is not available for a
+particular back-end, it will be ignored.
 
-If there are no suitable foreign_proc clauses for a particular
+If there are no suitable @samp{foreign_proc} clauses for a particular
 procedure but there are Mercury clauses, they will be used instead.
 
 @table @asis
 
 @item @samp{C}
-This is the default foreign language on all backends which compile to C.
-Only available on backends that compile to C.
+This is the default foreign language on all back-ends which compile to C.
+Only available on back-ends that compile to C.
 
 @item @samp{C#}
-Only available on backends that compile to IL or C#.
+Only available on back-ends that compile to IL or C#.
 This is the second preferred foreign language for IL code generation.
 
 @item @samp{Erlang}
-This is the only foreign language for backends which compile to Erlang.
+This is the only foreign language for back-ends which compile to Erlang.
 
 @item @samp{IL}
 IL is the intermediate language of the .NET Common Language
 Runtime (sometimes also known as CIL or MSIL).
-Only available on backends that compile to IL.
+Only available on back-ends that compile to IL.
 This is the preferred foreign language for IL code generation.
 
 @item @samp{Java}
-This is the only foreign language for backends which compile to Java.
+This is the only foreign language for back-ends which compile to Java.
 
 @end table
 

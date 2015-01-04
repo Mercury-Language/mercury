@@ -499,10 +499,10 @@ factorial(N, F) :-
 @node All-solutions
 @chapter All-solutions predicates.
 
-Prolog's various different all-solutions predicates (findall/3, bagof/3,
-and setof/3) all have semantic problems.
-Mercury has a different set of all-solutions predicates (solutions/2,
-solutions_set/2, and unsorted_solutions/2 --- all defined in the library
+Prolog's various different all-solutions predicates (@samp{findall/3}, @samp{bagof/3},
+and @samp{setof/3}) all have semantic problems.
+Mercury has a different set of all-solutions predicates (@samp{solutions/2},
+@samp{solutions_set/2}, and @samp{unsorted_solutions/2} --- all defined in the library
 module @samp{solutions}) that
 address the problems of the Prolog versions.
 To avoid the variable scoping problems of the Prolog
@@ -540,8 +540,8 @@ member_of_both(List1, List2, X) :-
 and in fact that's exactly how the Mercury compiler implements lambda
 expressions.
 
-The current implementation of solutions/2 is a ``zero-copy'' implementation,
-so the cost of solutions/2 is proportional to the number of solutions, but
+The current implementation of @samp{solutions/2} is a ``zero-copy'' implementation,
+so the cost of @samp{solutions/2} is proportional to the number of solutions, but
 independent of the size of the solutions.  (This may change in
 future implementations.)
 
