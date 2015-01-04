@@ -7221,7 +7221,6 @@ or in Mercury (with @samp{--convert-to-mercury}).
 
 @sp 1
 @item --line-numbers-for-c-headers
-@findex -n-
 @findex --no-line-numbers-for-c-headers
 @findex --line-numbers-for-c-headers
 Put source line numbers in the generated C header files.
