@@ -3504,7 +3504,7 @@ from_sorted_assoc_list(List, Tree) :-
         % efficient.
         Tree = empty
     ;
-        find_level(Len, 0, Level, 0, AllThrees),
+        find_num_234_levels(Len, Level, AllThrees),
         do_from_sorted_assoc_list(Len, List, LeftOver, Level, AllThrees, Tree),
         trace [compiletime(flag("tree234_sanity_checks"))] (
             expect(unify(LeftOver, []), $module, $pred, "leftovers")
@@ -3651,7 +3651,7 @@ from_rev_sorted_assoc_list(List, Tree) :-
         % efficient.
         Tree = empty
     ;
-        find_level(Len, 0, Level, 0, AllThrees),
+        find_num_234_levels(Len, Level, AllThrees),
         do_from_rev_sorted_assoc_list(Len, List, LeftOver, Level, AllThrees,
             Tree),
         trace [compiletime(flag("tree234_sanity_checks"))] (
@@ -3791,16 +3791,21 @@ do_from_rev_sorted_assoc_list(Len, !List, Level0, AllThrees0, Tree) :-
         )
     ).
 
-:- pred find_level(int::in, int::in, int::out,
-    int::in, int::out) is det.
+:- pred find_num_234_levels(int::in, int::out, int::out) is det.
 
-find_level(Len, !Level, !AllThrees) :-
+find_num_234_levels(Len, Level, AllThrees) :-
+    find_num_234_levels_loop(Len, 0, Level, 0, AllThrees).
+
+:- pred find_num_234_levels_loop(int::in,
+    int::in, int::out, int::in, int::out) is det.
+
+find_num_234_levels_loop(Len, !Level, !AllThrees) :-
     ( Len =< !.AllThrees ->
         true
     ;
         !:Level = !.Level + 1,
         !:AllThrees = !.AllThrees * 3 + 2,
-        find_level(Len, !Level, !AllThrees)
+        find_num_234_levels_loop(Len, !Level, !AllThrees)
     ).
 
 %---------------------------------------------------------------------------%

@@ -78,16 +78,24 @@
 :- func from_list(list(T)) = set_tree234(T).
 :- pred from_list(list(T)::in, set_tree234(T)::out) is det.
 
-    % `sorted_list_to_set(List) = Set' is true iff `Set' is the set containing
-    % only the members of `List'. `List' must be sorted.
-    %
-:- func sorted_list_to_set(list(T)) = set_tree234(T).
-:- pred sorted_list_to_set(list(T)::in, set_tree234(T)::out) is det.
-
     % `from_set(Set)' returns a set_tree234 containing only the members of
     % `Set'. Takes O(card(Set)) time and space.
     %
 :- func from_set(set.set(T)) = set_tree234(T).
+
+    % `sorted_list_to_set(List) = Set' is true iff `Set' is the set
+    % containing only the members of `List'. `List' must be sorted
+    % in ascending order.
+    %
+:- func sorted_list_to_set(list(T)) = set_tree234(T).
+:- pred sorted_list_to_set(list(T)::in, set_tree234(T)::out) is det.
+
+    % `rev_sorted_list_to_set(List) = Set' is true iff `Set' is the set
+    % containing only the members of `List'. `List' must be sorted
+    % in descending order.
+    %
+:- func rev_sorted_list_to_set(list(T)) = set_tree234(T).
+:- pred rev_sorted_list_to_set(list(T)::in, set_tree234(T)::out) is det.
 
     % `to_sorted_list(Set) = List' is true iff `List' is the list of all the
     % members of `Set', in sorted order.
@@ -481,9 +489,16 @@
 
 :- import_module int.
 :- import_module require.
+:- import_module string.
 :- import_module term.  % for var/1.
 
 :- pragma type_spec(set_tree234.sorted_list_to_set/1, T = var(_)).
+:- pragma type_spec(set_tree234.sorted_list_to_set/2, T = var(_)).
+:- pragma type_spec(set_tree234.rev_sorted_list_to_set/1, T = var(_)).
+:- pragma type_spec(set_tree234.rev_sorted_list_to_set/2, T = var(_)).
+:- pragma type_spec(set_tree234.do_from_sorted_list/6, E = var(_)).
+:- pragma type_spec(set_tree234.do_from_rev_sorted_list/6, E = var(_)).
+:- pragma type_spec(set_tree234.rev_sorted_list_to_set/1, T = var(_)).
 :- pragma type_spec(set_tree234.contains(in, in), T = var(_)).
 :- pragma type_spec(set_tree234.insert/3, T = var(_)).
 :- pragma type_spec(set_tree234.insert_list/3, T = var(_)).
@@ -697,14 +712,6 @@ set_tree234.from_list(List) = set_tree234.list_to_set(List).
 set_tree234.from_list(List, Tree) :-
     Tree = set_tree234.list_to_set(List).
 
-set_tree234.sorted_list_to_set(List) = Tree :-
-        % XXX We should exploit the sortedness of List.
-    set_tree234.list_to_set_2(List, empty, Tree).
-
-set_tree234.sorted_list_to_set(List, Tree) :-
-        % XXX We should exploit the sortedness of List.
-    set_tree234.list_to_set_2(List, empty, Tree).
-
 :- pred set_tree234.list_to_set_2(list(E)::in, set_tree234(E)::in,
     set_tree234(E)::out) is det.
 
@@ -713,8 +720,318 @@ set_tree234.list_to_set_2([E | Es], !Tree) :-
     set_tree234.insert(E, !Tree),
     set_tree234.list_to_set_2(Es, !Tree).
 
-set_tree234.to_set(Tree) =
-    set.sorted_list_to_set(set_tree234.to_sorted_list(Tree)).
+set_tree234.from_set(Set) =
+    set_tree234.sorted_list_to_set(set.to_sorted_list(Set)).
+
+%---------------------------------------------------------------------------%
+
+sorted_list_to_set(List) = Tree :-
+    set_tree234.sorted_list_to_set(List, Tree).
+
+sorted_list_to_set(List, Tree) :-
+    list.length(List, Len),
+    ( Len = 0 ->
+        % We can handle the Len = 0 case here just once, or we can handle it
+        % lots of times in do_from_sorted_list. The former is more efficient.
+        Tree = empty
+    ;
+        find_num_234_levels(Len, Level, AllThrees),
+        do_from_sorted_list(Len, List, LeftOver, Level, AllThrees, Tree),
+        trace [compiletime(flag("set_tree234_sanity_checks"))] (
+            expect(unify(LeftOver, []), $module, $pred, "leftovers")
+        )
+    ).
+
+:- pred do_from_sorted_list(int::in, list(E)::in, list(E)::out,
+    int::in, int::in, set_tree234(E)::out) is det.
+
+do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
+    ( Level0 = 1 ->
+        ( Len = 1 ->
+            (
+                !.List = [E1 | !:List],
+                Tree = two(E1, empty, empty)
+            ;
+                !.List = [],
+                unexpected($module, $pred, "len 1 nil")
+            )
+        ; Len = 2 ->
+            trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                expect(unify(Level0, 1), $module, $pred,
+                    "Len = 2 but Level != 1")
+            ),
+            (
+                !.List = [E1, E2 | !:List],
+                Tree = three(E1, E2, empty, empty, empty)
+            ;
+                !.List = [_],
+                unexpected($module, $pred, "len 2 one")
+            ;
+                !.List = [],
+                unexpected($module, $pred, "len 2 nil")
+            )
+        ;
+            unexpected($module, $pred, "level 1, but len not 1 or 2")
+        )
+    ;
+        Level = Level0 - 1,
+        AllThrees = (AllThrees0 - 2) / 3,
+        ( Len > 2 * AllThrees ->
+            BaseSubLen = (Len / 3),
+            Diff = Len - (BaseSubLen * 3),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 3:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1,
+                SubLen3 = BaseSubLen - 1
+            ; Diff = 1 ->
+                % Len = BaseSubLen * 3 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen - 1
+            ;
+                trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                    expect(unify(Diff, 2), $module, $pred, "Diff != 2")
+                ),
+                % Len = BaseSubLen * 3 + 2:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
+                io.format("splitting %d into three: %d, %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
+            ),
+
+            do_from_sorted_list(SubLen1, !List, Level, AllThrees, SubTree1),
+            (
+                !.List = [E1 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "tree E1 nil")
+            ),
+            do_from_sorted_list(SubLen2, !List, Level, AllThrees, SubTree2),
+            (
+                !.List = [E2 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "tree E2 nil")
+            ),
+            do_from_sorted_list(SubLen3, !List, Level, AllThrees, SubTree3),
+            Tree = three(E1, E2, SubTree1, SubTree2, SubTree3),
+            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        ;
+            BaseSubLen = (Len) / 2,
+            Diff = Len - (BaseSubLen * 2),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 2:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1
+            ;
+                trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                    expect(unify(Diff, 1), $module, $pred, "Diff != 1")
+                ),
+                % Len = BaseSubLen * 2 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
+                io.format("splitting %d into two: %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
+            ),
+
+            do_from_sorted_list(SubLen1, !List, Level, AllThrees, SubTree1),
+            (
+                !.List = [E1 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "two E1 nil")
+            ),
+            do_from_sorted_list(SubLen2, !List, Level, AllThrees, SubTree2),
+            Tree = two(E1, SubTree1, SubTree2),
+            trace [io(!IO), compile_time(flag("from_sorted_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        )
+    ).
+
+rev_sorted_list_to_set(List) = Tree :-
+    set_tree234.rev_sorted_list_to_set(List, Tree).
+
+rev_sorted_list_to_set(List, Tree) :-
+    list.length(List, Len),
+    ( Len = 0 ->
+        % We can handle the Len = 0 case here just once, or we can handle it
+        % lots of times in do_from_sorted_list. The former is more efficient.
+        Tree = empty
+    ;
+        find_num_234_levels(Len, Level, AllThrees),
+        do_from_rev_sorted_list(Len, List, LeftOver, Level, AllThrees, Tree),
+        trace [compiletime(flag("set_tree234_sanity_checks"))] (
+            expect(unify(LeftOver, []), $module, $pred, "leftovers")
+        )
+    ).
+
+:- pred do_from_rev_sorted_list(int::in, list(E)::in, list(E)::out,
+    int::in, int::in, set_tree234(E)::out) is det.
+
+do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
+    ( Level0 = 1 ->
+        ( Len = 1 ->
+            (
+                !.List = [E1 | !:List],
+                Tree = two(E1, empty, empty)
+            ;
+                !.List = [],
+                unexpected($module, $pred, "len 1 nil")
+            )
+        ; Len = 2 ->
+            trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                expect(unify(Level0, 1), $module, $pred,
+                    "Len = 2 but Level != 1")
+            ),
+            (
+                !.List = [E2, E1 | !:List],
+                Tree = three(E1, E2, empty, empty, empty)
+            ;
+                !.List = [_],
+                unexpected($module, $pred, "len 2 one")
+            ;
+                !.List = [],
+                unexpected($module, $pred, "len 2 nil")
+            )
+        ;
+            unexpected($module, $pred, "level 1, but len not 1 or 2")
+        )
+    ;
+        Level = Level0 - 1,
+        AllThrees = (AllThrees0 - 2) / 3,
+        ( Len > 2 * AllThrees ->
+            BaseSubLen = (Len / 3),
+            Diff = Len - (BaseSubLen * 3),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 3:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1,
+                SubLen3 = BaseSubLen - 1
+            ; Diff = 1 ->
+                % Len = BaseSubLen * 3 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen - 1
+            ;
+                trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                    expect(unify(Diff, 2), $module, $pred, "Diff != 2")
+                ),
+                % Len = BaseSubLen * 3 + 2:
+                % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen,
+                SubLen3 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
+                io.format("splitting %d into three: %d, %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2), i(SubLen3)], !IO)
+            ),
+
+            do_from_rev_sorted_list(SubLen3, !List, Level, AllThrees,
+                SubTree3),
+            (
+                !.List = [E2 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "tree E2 nil")
+            ),
+            do_from_rev_sorted_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            (
+                !.List = [E1 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "tree E1 nil")
+            ),
+            do_from_rev_sorted_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            Tree = three(E1, E2, SubTree1, SubTree2, SubTree3),
+            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        ;
+            BaseSubLen = (Len) / 2,
+            Diff = Len - (BaseSubLen * 2),
+            ( Diff = 0 ->
+                % Len = BaseSubLen * 2:
+                % (BaseSubLen) + 1 + (BaseSubLen - 1)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen - 1
+            ;
+                trace [compiletime(flag("set_tree234_sanity_checks"))] (
+                    expect(unify(Diff, 1), $module, $pred, "Diff != 1")
+                ),
+                % Len = BaseSubLen * 2 + 1:
+                % (BaseSubLen) + 1 + (BaseSubLen)
+                SubLen1 = BaseSubLen,
+                SubLen2 = BaseSubLen
+            ),
+
+            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
+                io.format("splitting %d into two: %d, %d\n",
+                    [i(Len), i(SubLen1), i(SubLen2)], !IO)
+            ),
+
+            do_from_rev_sorted_list(SubLen2, !List, Level, AllThrees,
+                SubTree2),
+            (
+                !.List = [E1 | !:List]
+            ;
+                !.List = [],
+                unexpected($module, $pred, "two E1 nil")
+            ),
+            do_from_rev_sorted_list(SubLen1, !List, Level, AllThrees,
+                SubTree1),
+            Tree = two(E1, SubTree1, SubTree2),
+            trace [io(!IO), compile_time(flag("from_rev_sorted_list"))] (
+                io.format("tree for %d\n", [i(Len)], !IO),
+                io.write(Tree, !IO),
+                io.nl(!IO)
+            )
+        )
+    ).
+
+:- pred find_num_234_levels(int::in, int::out, int::out) is det.
+
+find_num_234_levels(Len, Level, AllThrees) :-
+    find_num_234_levels_loop(Len, 0, Level, 0, AllThrees).
+
+:- pred find_num_234_levels_loop(int::in,
+    int::in, int::out, int::in, int::out) is det.
+
+find_num_234_levels_loop(Len, !Level, !AllThrees) :-
+    ( Len =< !.AllThrees ->
+        true
+    ;
+        !:Level = !.Level + 1,
+        !:AllThrees = !.AllThrees * 3 + 2,
+        find_num_234_levels_loop(Len, !Level, !AllThrees)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -741,8 +1058,8 @@ set_tree234.to_sorted_list_2(four(E0, E1, E2, T0, T1, T2, T3), L0, L) :-
     set_tree234.to_sorted_list_2(T1, [E1 | L2], L3),
     set_tree234.to_sorted_list_2(T0, [E0 | L3], L).
 
-set_tree234.from_set(Set) =
-    set_tree234.sorted_list_to_set(set.to_sorted_list(Set)).
+set_tree234.to_set(Tree) =
+    set.sorted_list_to_set(set_tree234.to_sorted_list(Tree)).
 
 %---------------------------------------------------------------------------%
 
