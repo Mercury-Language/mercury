@@ -36,7 +36,7 @@ main(int argc, char **argv)
     ** We strongly recommend that calling this function is the first thing
     ** that your program does.
     **
-    ** The third argument to mercury_init() is address of the base of the
+    ** The third argument to mercury_init() is the address of the base of the
     ** stack.  In grades that support conservative GC is used tell the
     ** collector where to begin tracing.
     */

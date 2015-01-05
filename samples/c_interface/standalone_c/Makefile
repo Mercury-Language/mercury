@@ -28,7 +28,7 @@
 # To build the application we first compile `mercury_lib'.  For this example
 # we don't bother installing it since that would just lead to the command
 # lines being unwieldy.  We then build the stand-alone interface, which in
-# this example is called mercury_lib_int.  Finally we compile c_main.c and
+# this example is called mercury_lib_int.  Finally, we compile c_main.c and
 # link them all together.  Specific details concerning each step in the build
 # process are discussed below.  See c_main.c for details of how to invoke the
 # stand-alone interface from C or C++ code.
@@ -37,15 +37,15 @@ MMC = mmc
 
 all: c_main
 
-# This variables holds the options required to set the grade.
-# By default this is empty so the example will build in the default grade.
+# This variable holds the options required to set the grade.
+# By default, it is empty so the example will be built in the default grade.
 # To try, for example, a deep profiling grade, set it to:
 #
 #    GRADEOPT=--grade asm_fast.gc.profdeep
 #
 GRADEOPT=
 
-# By default we link our application statically against the Mercury libraries.
+# By default, we link our application statically against the Mercury libraries.
 # If you wish to use the shared versions of the Mercury libraries, comment
 # out the next two lines and uncomment the two following them.
 #
@@ -82,7 +82,7 @@ CC = $(shell $(MMC) --output-cc)
 # about which macros to define for the current grade and what directories to
 # search for header files in.  This finer grained approach is useful if a
 # foreign application is written in, for example, C++ instead of C.  In that
-# case not all of the flags in output of --output-cflags may be valid for the
+# case not all of the flags output by --output-cflags may be valid for the
 # C++ compiler.
 
 # Ask the Mercury compiler what flags to pass to the C compiler in order to

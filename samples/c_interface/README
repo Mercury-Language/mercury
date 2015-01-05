@@ -1,6 +1,6 @@
 
 This directory contains some examples of mixed Mercury/C programs using
-the C interface.
+the foreign language interface.
 
 short_example.m                 A short example of Mercury code calling C.
 
