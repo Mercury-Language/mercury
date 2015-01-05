@@ -61,9 +61,6 @@ gcc 4.8.2 does work, but requires some workarounds:
 
     You would need the same flag when building user programs.
 
-  * Edit the `mgnuc' script to delete instances of `-ansi' to prevent
-    compilation problems.  Pass `--no-ansi-c' when using `mmc --make'.
-
   * gcc generates some spurious warnings about uninitialized variables.
 
 -----------------------------------------------------------------------------

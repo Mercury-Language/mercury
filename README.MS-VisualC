@@ -106,7 +106,7 @@ as normal.
 
 LIMITATIONS
 
-The MSVC port currently has a number of limitation:
+The MSVC port currently has a number of limitations:
 
 * The 'asm_fast' and 'reg' grades do not work with MSVC.
   Both use GNU extensions to C that MSVC does not provide.
@@ -200,8 +200,8 @@ directory
 * In the file lib/mercury/mdb/mdbrc
 
   + The backslash character, `\`, is used as an escape character in mdbrc
-    files.  You need to escape it if it occurs in any paths used in argument
-    of source commands, e.g.
+    files.  You need to escape it if it occurs in any paths used in the
+    argument of source commands, for example
 
         source c:\mercury-11.07\lib\mercury\mdb\mdb_doc
 

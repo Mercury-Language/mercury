@@ -73,9 +73,11 @@ foreign language interface.
 For example:
 
 :- pred to_string(T::in, string::out) is det.
-:- pragma foreign_proc("Java", to_string(T::in, Str::out), [],
+:- pragma foreign_proc("Java",
+    to_string(T::in, Str::out),
+    [promise_pure, will_not_call_mercury],
 "
-        Str = T.toString();
+    Str = T.toString();
 ").
 
 The implementation will include this Java code in the module's .java file, and

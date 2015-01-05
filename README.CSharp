@@ -27,7 +27,7 @@ VERSIONS OF THE .NET FRAMEWORK ON MONO
 
 On Mono, the C# compiler has a number of aliases: gmcs, mcs, dmcs.  The alias
 with which the C# compiler is invoked controls which version of the .NET
-frameworks is used by default.  For Mono 2.8, the defaults are:
+framework is used by default.  For Mono 2.8, the defaults are:
 
     gmcs - .NET version 2.0
     dmcs - .NET version 4.0
@@ -126,9 +126,11 @@ foreign language interface.
 For example:
 
 :- pred to_string(T::in, string::out) is det.
-:- pragma foreign_proc("C#", to_string(T::in, Str::out), [],
+:- pragma foreign_proc("C#",
+    to_string(T::in, Str::out),
+    [promise_pure, will_not_call_mercury],
 "
-        Str = T.ToString();
+    Str = T.ToString();
 ").
 
 The implementation will include this C# code in the module's .cs file, and
