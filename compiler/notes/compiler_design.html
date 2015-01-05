@@ -183,7 +183,7 @@ Option handling is part of the libs.m package.
 <p>
 
 The command-line options are defined in the module options.m.
-mercury_compile.m calls library/getopt.m, passing the predicates
+mercury_compile.m calls library/getopt_io.m, passing the predicates
 defined in options.m as arguments, to parse them.  It then invokes
 handle_options.m to postprocess the option set. The results are
 represented using the type globals, defined in globals.m.
@@ -332,7 +332,7 @@ such as pretty-printing.
 	for manipulating mutable variables,
 	prog_event.m contains utility predicates for working with events,
 	while error_util.m contains predicates
-	for printing nicely formatting error messages.
+	for printing nicely formatted error messages.
 
 <li><p> imports and exports are handled at this point (modules.m)
 
