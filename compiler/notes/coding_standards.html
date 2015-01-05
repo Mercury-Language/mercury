@@ -162,7 +162,7 @@ you should print out additional text explaining in detail
 what the error message means and what the likely causes are.
 The preferred method of printing error messages
 is via the predicates in error_util.m;
-use prog_out__write_context and io__write_strings
+use prog_out.write_context and io.write_strings
 only if there is no way to add the capability you require to error_util.m.
 
 <p>
@@ -289,7 +289,7 @@ like this:
 
 <pre>
 :- pragma foreign_proc("C",
-        int__to_float(IntVal::in, FloatVal::out),
+        int.to_float(IntVal::in, FloatVal::out),
         [will_not_call_mercury, promise_pure],
 "
         FloatVal = IntVal;
