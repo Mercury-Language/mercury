@@ -59,8 +59,8 @@
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
-    % `is_member(Set, X, Result)' returns `Result = yes' iff `X' is a member of
-    % `Set'.
+    % `is_member(Set, X, Result)' returns `Result = yes' iff
+    % `X' is a member of `Set'.
     %
 :- func is_member(set_tree234(T), T) = bool.
 :- pred is_member(set_tree234(T)::in, T::in, bool::out) is det.
@@ -69,8 +69,8 @@
     %
 :- pred contains(set_tree234(T)::in, T::in) is semidet.
 
-    % `list_to_set(List) = Set' is true iff `Set' is the set containing only
-    % the members of `List'.
+    % `list_to_set(List) = Set' is true iff `Set' is the set containing
+    % only the members of `List'.
     %
 :- func list_to_set(list(T)) = set_tree234(T).
 :- pred list_to_set(list(T)::in, set_tree234(T)::out) is det.
@@ -78,8 +78,8 @@
 :- func from_list(list(T)) = set_tree234(T).
 :- pred from_list(list(T)::in, set_tree234(T)::out) is det.
 
-    % `from_set(Set)' returns a set_tree234 containing only the members of
-    % `Set'. Takes O(card(Set)) time and space.
+    % `from_set(Set)' returns a set_tree234 containing only
+    % the members of `Set'. Takes O(card(Set)) time and space.
     %
 :- func from_set(set.set(T)) = set_tree234(T).
 
@@ -482,32 +482,41 @@
 :- pred divide_by_set(set_tree234(T)::in, set_tree234(T)::in,
     set_tree234(T)::out, set_tree234(T)::out) is det.
 
+    % intersection_and_differences(SetA, SetB, InAandB, OnlyInA, OnlyInB):
+    % Given SetA and SetB, return the elements that occur in both sets,
+    % and those that occur only in one or the other.
+    %
+:- pred intersection_and_differences(set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::out, set_tree234(T)::out, set_tree234(T)::out) is det.
+
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module cord.
 :- import_module int.
 :- import_module require.
 :- import_module string.
 :- import_module term.  % for var/1.
 
-:- pragma type_spec(set_tree234.sorted_list_to_set/1, T = var(_)).
-:- pragma type_spec(set_tree234.sorted_list_to_set/2, T = var(_)).
-:- pragma type_spec(set_tree234.rev_sorted_list_to_set/1, T = var(_)).
-:- pragma type_spec(set_tree234.rev_sorted_list_to_set/2, T = var(_)).
-:- pragma type_spec(set_tree234.do_from_sorted_list/6, E = var(_)).
-:- pragma type_spec(set_tree234.do_from_rev_sorted_list/6, E = var(_)).
-:- pragma type_spec(set_tree234.rev_sorted_list_to_set/1, T = var(_)).
-:- pragma type_spec(set_tree234.contains(in, in), T = var(_)).
-:- pragma type_spec(set_tree234.insert/3, T = var(_)).
-:- pragma type_spec(set_tree234.insert_list/3, T = var(_)).
-:- pragma type_spec(set_tree234.union/2, T = var(_)).
-:- pragma type_spec(set_tree234.union/3, T = var(_)).
-:- pragma type_spec(set_tree234.intersect/2, T = var(_)).
-:- pragma type_spec(set_tree234.intersect/3, T = var(_)).
-:- pragma type_spec(set_tree234.difference/2, T = var(_)).
-:- pragma type_spec(set_tree234.difference/3, T = var(_)).
+:- pragma type_spec(sorted_list_to_set/1, T = var(_)).
+:- pragma type_spec(sorted_list_to_set/2, T = var(_)).
+:- pragma type_spec(rev_sorted_list_to_set/1, T = var(_)).
+:- pragma type_spec(rev_sorted_list_to_set/2, T = var(_)).
+:- pragma type_spec(do_from_sorted_list/6, E = var(_)).
+:- pragma type_spec(do_from_rev_sorted_list/6, E = var(_)).
+:- pragma type_spec(rev_sorted_list_to_set/1, T = var(_)).
+:- pragma type_spec(contains(in, in), T = var(_)).
+:- pragma type_spec(insert/3, T = var(_)).
+:- pragma type_spec(insert_list/3, T = var(_)).
+:- pragma type_spec(union/2, T = var(_)).
+:- pragma type_spec(union/3, T = var(_)).
+:- pragma type_spec(intersect/2, T = var(_)).
+:- pragma type_spec(intersect/3, T = var(_)).
+:- pragma type_spec(difference/2, T = var(_)).
+:- pragma type_spec(difference/3, T = var(_)).
 
 :- type set_tree234(T)
     --->    empty
@@ -551,57 +560,57 @@
 
 %---------------------------------------------------------------------------%
 
-set_tree234.init = empty.
+init = empty.
 
-set_tree234.singleton_set(X, two(X, empty, empty)).
+singleton_set(X, two(X, empty, empty)).
 
-set_tree234.make_singleton_set(X) = two(X, empty, empty).
+make_singleton_set(X) = two(X, empty, empty).
 
-set_tree234.is_singleton(two(X, empty, empty), X).
+is_singleton(two(X, empty, empty), X).
 
-set_tree234.empty(empty).
+empty(empty).
 
-set_tree234.is_empty(empty).
+is_empty(empty).
 
-set_tree234.non_empty(two(_, _, _)).
-set_tree234.non_empty(three(_, _, _, _, _)).
-set_tree234.non_empty(four(_, _, _, _, _, _, _)).
+non_empty(two(_, _, _)).
+non_empty(three(_, _, _, _, _)).
+non_empty(four(_, _, _, _, _, _, _)).
 
-set_tree234.is_non_empty(two(_, _, _)).
-set_tree234.is_non_empty(three(_, _, _, _, _)).
-set_tree234.is_non_empty(four(_, _, _, _, _, _, _)).
+is_non_empty(two(_, _, _)).
+is_non_empty(three(_, _, _, _, _)).
+is_non_empty(four(_, _, _, _, _, _, _)).
 
-:- pragma promise_equivalent_clauses(set_tree234.member/2).
+:- pragma promise_equivalent_clauses(member/2).
 
-set_tree234.member(Element::out, Set::in) :-
-    set_tree234.all_members(Set, Element).
-set_tree234.member(Element::in, Set::in) :-
-    set_tree234.is_member(Set, Element) = yes.
+member(Element::out, Set::in) :-
+    all_members(Set, Element).
+member(Element::in, Set::in) :-
+    is_member(Set, Element) = yes.
 
-:- pred set_tree234.all_members(set_tree234(T)::in, T::out) is nondet.
+:- pred all_members(set_tree234(T)::in, T::out) is nondet.
 
-set_tree234.all_members(empty, _) :- fail.
-set_tree234.all_members(two(E0, T0, T1), E) :-
+all_members(empty, _) :- fail.
+all_members(two(E0, T0, T1), E) :-
     (
         E = E0
     ;
-        set_tree234.all_members(T0, E)
+        all_members(T0, E)
     ;
-        set_tree234.all_members(T1, E)
+        all_members(T1, E)
     ).
-set_tree234.all_members(three(E0, E1, T0, T1, T2), E) :-
+all_members(three(E0, E1, T0, T1, T2), E) :-
     (
         E = E0
     ;
         E = E1
     ;
-        set_tree234.all_members(T0, E)
+        all_members(T0, E)
     ;
-        set_tree234.all_members(T1, E)
+        all_members(T1, E)
     ;
-        set_tree234.all_members(T2, E)
+        all_members(T2, E)
     ).
-set_tree234.all_members(four(E0, E1, E2, T0, T1, T2, T3), E) :-
+all_members(four(E0, E1, E2, T0, T1, T2, T3), E) :-
     (
         E = E0
     ;
@@ -609,16 +618,16 @@ set_tree234.all_members(four(E0, E1, E2, T0, T1, T2, T3), E) :-
     ;
         E = E2
     ;
-        set_tree234.all_members(T0, E)
+        all_members(T0, E)
     ;
-        set_tree234.all_members(T1, E)
+        all_members(T1, E)
     ;
-        set_tree234.all_members(T2, E)
+        all_members(T2, E)
     ;
-        set_tree234.all_members(T3, E)
+        all_members(T3, E)
     ).
 
-set_tree234.is_member(T, E, R) :-
+is_member(T, E, R) :-
     (
         T = empty,
         R = no
@@ -627,20 +636,20 @@ set_tree234.is_member(T, E, R) :-
         compare(Result, E, E0),
         (
             Result = (<),
-            set_tree234.is_member(T0, E, R)
+            is_member(T0, E, R)
         ;
             Result = (=),
             R = yes
         ;
             Result = (>),
-            set_tree234.is_member(T1, E, R)
+            is_member(T1, E, R)
         )
     ;
         T = three(E0, E1, T0, T1, T2),
         compare(Result0, E, E0),
         (
             Result0 = (<),
-            set_tree234.is_member(T0, E, R)
+            is_member(T0, E, R)
         ;
             Result0 = (=),
             R = yes
@@ -649,13 +658,13 @@ set_tree234.is_member(T, E, R) :-
             compare(Result1, E, E1),
             (
                 Result1 = (<),
-                set_tree234.is_member(T1, E, R)
+                is_member(T1, E, R)
             ;
                 Result1 = (=),
                 R = yes
             ;
                 Result1 = (>),
-                set_tree234.is_member(T2, E, R)
+                is_member(T2, E, R)
             )
         )
     ;
@@ -666,13 +675,13 @@ set_tree234.is_member(T, E, R) :-
             compare(Result0, E, E0),
             (
                 Result0 = (<),
-                set_tree234.is_member(T0, E, R)
+                is_member(T0, E, R)
             ;
                 Result0 = (=),
                 R = yes
             ;
                 Result0 = (>),
-                set_tree234.is_member(T1, E, R)
+                is_member(T1, E, R)
             )
         ;
             Result1 = (=),
@@ -682,51 +691,51 @@ set_tree234.is_member(T, E, R) :-
             compare(Result2, E, E2),
             (
                 Result2 = (<),
-                set_tree234.is_member(T2, E, R)
+                is_member(T2, E, R)
             ;
                 Result2 = (=),
                 R = yes
             ;
                 Result2 = (>),
-                set_tree234.is_member(T3, E, R)
+                is_member(T3, E, R)
             )
         )
     ).
 
-set_tree234.is_member(T, E) = R :-
-    set_tree234.is_member(T, E, R).
+is_member(T, E) = R :-
+    is_member(T, E, R).
 
-set_tree234.contains(T, E) :-
-    set_tree234.is_member(T, E, yes).
+contains(T, E) :-
+    is_member(T, E, yes).
 
 %---------------------------------------------------------------------------%
 
-set_tree234.list_to_set(List) = Tree :-
-    set_tree234.list_to_set_2(List, empty, Tree).
+list_to_set(List) = Tree :-
+    list_to_set(List, Tree).
 
-set_tree234.list_to_set(List, Tree) :-
-    set_tree234.list_to_set_2(List, empty, Tree).
+list_to_set(List, Tree) :-
+    list_to_set_loop(List, empty, Tree).
 
-set_tree234.from_list(List) = set_tree234.list_to_set(List).
+from_list(List) = list_to_set(List).
 
-set_tree234.from_list(List, Tree) :-
-    Tree = set_tree234.list_to_set(List).
+from_list(List, Tree) :-
+    Tree = list_to_set(List).
 
-:- pred set_tree234.list_to_set_2(list(E)::in, set_tree234(E)::in,
-    set_tree234(E)::out) is det.
+:- pred list_to_set_loop(list(E)::in, set_tree234(E)::in, set_tree234(E)::out)
+    is det.
 
-set_tree234.list_to_set_2([], !Tree).
-set_tree234.list_to_set_2([E | Es], !Tree) :-
-    set_tree234.insert(E, !Tree),
-    set_tree234.list_to_set_2(Es, !Tree).
+list_to_set_loop([], !Tree).
+list_to_set_loop([E | Es], !Tree) :-
+    insert(E, !Tree),
+    list_to_set_loop(Es, !Tree).
 
-set_tree234.from_set(Set) =
-    set_tree234.sorted_list_to_set(set.to_sorted_list(Set)).
+from_set(Set) =
+    sorted_list_to_set(set.to_sorted_list(Set)).
 
 %---------------------------------------------------------------------------%
 
 sorted_list_to_set(List) = Tree :-
-    set_tree234.sorted_list_to_set(List, Tree).
+    sorted_list_to_set(List, Tree).
 
 sorted_list_to_set(List, Tree) :-
     list.length(List, Len),
@@ -869,7 +878,7 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
     ).
 
 rev_sorted_list_to_set(List) = Tree :-
-    set_tree234.rev_sorted_list_to_set(List, Tree).
+    rev_sorted_list_to_set(List, Tree).
 
 rev_sorted_list_to_set(List, Tree) :-
     list.length(List, Len),
@@ -1035,61 +1044,61 @@ find_num_234_levels_loop(Len, !Level, !AllThrees) :-
 
 %---------------------------------------------------------------------------%
 
-set_tree234.to_sorted_list(Tree) = List :-
-    set_tree234.to_sorted_list_2(Tree, [], List).
+to_sorted_list(Tree) = List :-
+    to_sorted_list_2(Tree, [], List).
 
-set_tree234.to_sorted_list(Tree, List) :-
-    set_tree234.to_sorted_list_2(Tree, [], List).
+to_sorted_list(Tree, List) :-
+    to_sorted_list_2(Tree, [], List).
 
-:- pred set_tree234.to_sorted_list_2(set_tree234(T)::in,
+:- pred to_sorted_list_2(set_tree234(T)::in,
     list(T)::in, list(T)::out) is det.
 
-set_tree234.to_sorted_list_2(empty, L, L).
-set_tree234.to_sorted_list_2(two(E0, T0, T1), L0, L) :-
-    set_tree234.to_sorted_list_2(T1, L0, L1),
-    set_tree234.to_sorted_list_2(T0, [E0 | L1], L).
-set_tree234.to_sorted_list_2(three(E0, E1, T0, T1, T2), L0, L) :-
-    set_tree234.to_sorted_list_2(T2, L0, L1),
-    set_tree234.to_sorted_list_2(T1, [E1 | L1], L2),
-    set_tree234.to_sorted_list_2(T0, [E0 | L2], L).
-set_tree234.to_sorted_list_2(four(E0, E1, E2, T0, T1, T2, T3), L0, L) :-
-    set_tree234.to_sorted_list_2(T3, L0, L1),
-    set_tree234.to_sorted_list_2(T2, [E2 | L1], L2),
-    set_tree234.to_sorted_list_2(T1, [E1 | L2], L3),
-    set_tree234.to_sorted_list_2(T0, [E0 | L3], L).
+to_sorted_list_2(empty, L, L).
+to_sorted_list_2(two(E0, T0, T1), L0, L) :-
+    to_sorted_list_2(T1, L0, L1),
+    to_sorted_list_2(T0, [E0 | L1], L).
+to_sorted_list_2(three(E0, E1, T0, T1, T2), L0, L) :-
+    to_sorted_list_2(T2, L0, L1),
+    to_sorted_list_2(T1, [E1 | L1], L2),
+    to_sorted_list_2(T0, [E0 | L2], L).
+to_sorted_list_2(four(E0, E1, E2, T0, T1, T2, T3), L0, L) :-
+    to_sorted_list_2(T3, L0, L1),
+    to_sorted_list_2(T2, [E2 | L1], L2),
+    to_sorted_list_2(T1, [E1 | L2], L3),
+    to_sorted_list_2(T0, [E0 | L3], L).
 
-set_tree234.to_set(Tree) =
-    set.sorted_list_to_set(set_tree234.to_sorted_list(Tree)).
+to_set(Tree) =
+    set.sorted_list_to_set(to_sorted_list(Tree)).
 
 %---------------------------------------------------------------------------%
 
-set_tree234.equal(SetA, SetB) :-
-    set_tree234.to_sorted_list(SetA, ListA),
-    set_tree234.to_sorted_list(SetB, ListB),
+equal(SetA, SetB) :-
+    to_sorted_list(SetA, ListA),
+    to_sorted_list(SetB, ListB),
     ListA = ListB.
 
-set_tree234.subset(empty, _Set).
-set_tree234.subset(two(E, T0, T1), Set) :-
-    set_tree234.subset(T0, Set),
-    set_tree234.contains(Set, E),
-    set_tree234.subset(T1, Set).
-set_tree234.subset(three(E0, E1, T0, T1, T2), Set) :-
-    set_tree234.subset(T0, Set),
-    set_tree234.contains(Set, E0),
-    set_tree234.subset(T1, Set),
-    set_tree234.contains(Set, E1),
-    set_tree234.subset(T2, Set).
-set_tree234.subset(four(E0, E1, E2, T0, T1, T2, T3), Set) :-
-    set_tree234.subset(T0, Set),
-    set_tree234.contains(Set, E0),
-    set_tree234.subset(T1, Set),
-    set_tree234.contains(Set, E1),
-    set_tree234.subset(T2, Set),
-    set_tree234.contains(Set, E2),
-    set_tree234.subset(T3, Set).
+subset(empty, _Set).
+subset(two(E, T0, T1), Set) :-
+    subset(T0, Set),
+    contains(Set, E),
+    subset(T1, Set).
+subset(three(E0, E1, T0, T1, T2), Set) :-
+    subset(T0, Set),
+    contains(Set, E0),
+    subset(T1, Set),
+    contains(Set, E1),
+    subset(T2, Set).
+subset(four(E0, E1, E2, T0, T1, T2, T3), Set) :-
+    subset(T0, Set),
+    contains(Set, E0),
+    subset(T1, Set),
+    contains(Set, E1),
+    subset(T2, Set),
+    contains(Set, E2),
+    subset(T3, Set).
 
-set_tree234.superset(SuperSet, Set) :-
-    set_tree234.subset(Set, SuperSet).
+superset(SuperSet, Set) :-
+    subset(Set, SuperSet).
 
 %---------------------------------------------------------------------------%
 
@@ -1117,19 +1126,19 @@ set_tree234.superset(SuperSet, Set) :-
 
 %---------------------------------------------------------------------------%
 
-set_tree234.insert(E, Tin) = Tout :-
-    set_tree234.insert(E, Tin, Tout).
+insert(E, Tin) = Tout :-
+    insert(E, Tin, Tout).
 
-set_tree234.insert(E, Tin, Tout) :-
+insert(E, Tin, Tout) :-
     (
         Tin = empty,
         Tout = two(E, empty, empty)
     ;
         Tin = two(_, _, _),
-        set_tree234.insert2(E, Tin, Tout)
+        insert2(E, Tin, Tout)
     ;
         Tin = three(_, _, _, _, _),
-        set_tree234.insert3(E, Tin, Tout)
+        insert3(E, Tin, Tout)
     ;
         Tin = four(E0, E1, E2, T0, T1, T2, T3),
         compare(Result1, E, E1),
@@ -1137,7 +1146,7 @@ set_tree234.insert(E, Tin, Tout) :-
             Result1 = (<),
             Sub0 = two(E0, T0, T1),
             Sub1 = two(E2, T2, T3),
-            set_tree234.insert2(E, Sub0, NewSub0),
+            insert2(E, Sub0, NewSub0),
             Tout = two(E1, NewSub0, Sub1)
         ;
             Result1 = (=),
@@ -1146,17 +1155,16 @@ set_tree234.insert(E, Tin, Tout) :-
             Result1 = (>),
             Sub0 = two(E0, T0, T1),
             Sub1 = two(E2, T2, T3),
-            set_tree234.insert2(E, Sub1, NewSub1),
+            insert2(E, Sub1, NewSub1),
             Tout = two(E1, Sub0, NewSub1)
         )
     ).
 
-:- pragma type_spec(set_tree234.insert2(in, in_two, out), T = var(_)).
-
-:- pred set_tree234.insert2(T::in,
+:- pred insert2(T::in,
     set_tree234(T)::in_two, set_tree234(T)::out) is det.
+:- pragma type_spec(insert2(in, in_two, out), T = var(_)).
 
-set_tree234.insert2(E, Tin, Tout) :-
+insert2(E, Tin, Tout) :-
     Tin = two(E0, T0, T1),
     (
         T0 = empty
@@ -1179,11 +1187,11 @@ set_tree234.insert2(E, Tin, Tout) :-
             Result = (<),
             (
                 T0 = four(_, _, _, _, _, _, _),
-                set_tree234.split_four(T0, MT0E, T00, T01),
+                split_four(T0, MT0E, T00, T01),
                 compare(Result1, E, MT0E),
                 (
                     Result1 = (<),
-                    set_tree234.insert2(E, T00, NewT00),
+                    insert2(E, T00, NewT00),
                     Tout = three(MT0E, E0, NewT00, T01, T1)
                 ;
                     Result1 = (=),
@@ -1192,16 +1200,16 @@ set_tree234.insert2(E, Tin, Tout) :-
                     Tout = three(MT0E, E0, T00, T01, T1)
                 ;
                     Result1 = (>),
-                    set_tree234.insert2(E, T01, NewT01),
+                    insert2(E, T01, NewT01),
                     Tout = three(MT0E, E0, T00, NewT01, T1)
                 )
             ;
                 T0 = three(_, _, _, _, _),
-                set_tree234.insert3(E, T0, NewT0),
+                insert3(E, T0, NewT0),
                 Tout = two(E0, NewT0, T1)
             ;
                 T0 = two(_, _, _),
-                set_tree234.insert2(E, T0, NewT0),
+                insert2(E, T0, NewT0),
                 Tout = two(E0, NewT0, T1)
             ;
                 T0 = empty,
@@ -1215,11 +1223,11 @@ set_tree234.insert2(E, Tin, Tout) :-
             Result = (>),
             (
                 T1 = four(_, _, _, _, _, _, _),
-                set_tree234.split_four(T1, MT1E, T10, T11),
+                split_four(T1, MT1E, T10, T11),
                 compare(Result1, E, MT1E),
                 (
                     Result1 = (<),
-                    set_tree234.insert2(E, T10, NewT10),
+                    insert2(E, T10, NewT10),
                     Tout = three(E0, MT1E, T0, NewT10, T11)
                 ;
                     Result1 = (=),
@@ -1228,16 +1236,16 @@ set_tree234.insert2(E, Tin, Tout) :-
                     Tout = three(E0, MT1E, T0, T10, T11)
                 ;
                     Result1 = (>),
-                    set_tree234.insert2(E, T11, NewT11),
+                    insert2(E, T11, NewT11),
                     Tout = three(E0, MT1E, T0, T10, NewT11)
                 )
             ;
                 T1 = three(_, _, _, _, _),
-                set_tree234.insert3(E, T1, NewT1),
+                insert3(E, T1, NewT1),
                 Tout = two(E0, T0, NewT1)
             ;
                 T1 = two(_, _, _),
-                set_tree234.insert2(E, T1, NewT1),
+                insert2(E, T1, NewT1),
                 Tout = two(E0, T0, NewT1)
             ;
                 T1 = empty,
@@ -1247,12 +1255,11 @@ set_tree234.insert2(E, Tin, Tout) :-
         )
     ).
 
-:- pragma type_spec(set_tree234.insert3(in, in_three, out), T = var(_)).
-
-:- pred set_tree234.insert3(T::in,
+:- pred insert3(T::in,
     set_tree234(T)::in_three, set_tree234(T)::out) is det.
+:- pragma type_spec(insert3(in, in_three, out), T = var(_)).
 
-set_tree234.insert3(E, Tin, Tout) :-
+insert3(E, Tin, Tout) :-
     Tin = three(E0, E1, T0, T1, T2),
     (
         T0 = empty
@@ -1286,11 +1293,11 @@ set_tree234.insert3(E, Tin, Tout) :-
             Result0 = (<),
             (
                 T0 = four(_, _, _, _, _, _, _),
-                set_tree234.split_four(T0, MT0E, T00, T01),
+                split_four(T0, MT0E, T00, T01),
                 compare(ResultM, E, MT0E),
                 (
                     ResultM = (<),
-                    set_tree234.insert2(E, T00, NewT00),
+                    insert2(E, T00, NewT00),
                     Tout = four(MT0E, E0, E1, NewT00, T01, T1, T2)
                 ;
                     ResultM = (=),
@@ -1299,16 +1306,16 @@ set_tree234.insert3(E, Tin, Tout) :-
                     Tout = four(MT0E, E0, E1, T00, T01, T1, T2)
                 ;
                     ResultM = (>),
-                    set_tree234.insert2(E, T01, NewT01),
+                    insert2(E, T01, NewT01),
                     Tout = four(MT0E, E0, E1, T00, NewT01, T1, T2)
                 )
             ;
                 T0 = three(_, _, _, _, _),
-                set_tree234.insert3(E, T0, NewT0),
+                insert3(E, T0, NewT0),
                 Tout = three(E0, E1, NewT0, T1, T2)
             ;
                 T0 = two(_, _, _),
-                set_tree234.insert2(E, T0, NewT0),
+                insert2(E, T0, NewT0),
                 Tout = three(E0, E1, NewT0, T1, T2)
             ;
                 T0 = empty,
@@ -1325,11 +1332,11 @@ set_tree234.insert3(E, Tin, Tout) :-
                 Result1 = (<),
                 (
                     T1 = four(_, _, _, _, _, _, _),
-                    set_tree234.split_four(T1, MT1E, T10, T11),
+                    split_four(T1, MT1E, T10, T11),
                     compare(ResultM, E, MT1E),
                     (
                         ResultM = (<),
-                        set_tree234.insert2(E, T10, NewT10),
+                        insert2(E, T10, NewT10),
                         Tout = four(E0, MT1E, E1, T0, NewT10, T11, T2)
                     ;
                         ResultM = (=),
@@ -1338,16 +1345,16 @@ set_tree234.insert3(E, Tin, Tout) :-
                         Tout = four(E0, MT1E, E1, T0, T10, T11, T2)
                     ;
                         ResultM = (>),
-                        set_tree234.insert2(E, T11, NewT11),
+                        insert2(E, T11, NewT11),
                         Tout = four(E0, MT1E, E1, T0, T10, NewT11, T2)
                     )
                 ;
                     T1 = three(_, _, _, _, _),
-                    set_tree234.insert3(E, T1, NewT1),
+                    insert3(E, T1, NewT1),
                     Tout = three(E0, E1, T0, NewT1, T2)
                 ;
                     T1 = two(_, _, _),
-                    set_tree234.insert2(E, T1, NewT1),
+                    insert2(E, T1, NewT1),
                     Tout = three(E0, E1, T0, NewT1, T2)
                 ;
                     T1 = empty,
@@ -1361,11 +1368,11 @@ set_tree234.insert3(E, Tin, Tout) :-
                 Result1 = (>),
                 (
                     T2 = four(_, _, _, _, _, _, _),
-                    set_tree234.split_four(T2, MT2E, T20, T21),
+                    split_four(T2, MT2E, T20, T21),
                     compare(ResultM, E, MT2E),
                     (
                         ResultM = (<),
-                        set_tree234.insert2(E, T20, NewT20),
+                        insert2(E, T20, NewT20),
                         Tout = four(E0, E1, MT2E, T0, T1, NewT20, T21)
                     ;
                         ResultM = (=),
@@ -1374,16 +1381,16 @@ set_tree234.insert3(E, Tin, Tout) :-
                         Tout = four(E0, E1, MT2E, T0, T1, T20, T21)
                     ;
                         ResultM = (>),
-                        set_tree234.insert2(E, T21, NewT21),
+                        insert2(E, T21, NewT21),
                         Tout = four(E0, E1, MT2E, T0, T1, T20, NewT21)
                     )
                 ;
                     T2 = three(_, _, _, _, _),
-                    set_tree234.insert3(E, T2, NewT2),
+                    insert3(E, T2, NewT2),
                     Tout = three(E0, E1, T0, T1, NewT2)
                 ;
                     T2 = two(_, _, _),
-                    set_tree234.insert2(E, T2, NewT2),
+                    insert2(E, T2, NewT2),
                     Tout = three(E0, E1, T0, T1, NewT2)
                 ;
                     T2 = empty,
@@ -1396,16 +1403,16 @@ set_tree234.insert3(E, Tin, Tout) :-
 
 %---------------------------------------------------------------------------%
 
-set_tree234.insert_new(E, Tin, Tout) :-
+insert_new(E, Tin, Tout) :-
     (
         Tin = empty,
         Tout = two(E, empty, empty)
     ;
         Tin = two(_, _, _),
-        set_tree234.insert_new2(E, Tin, Tout)
+        insert_new2(E, Tin, Tout)
     ;
         Tin = three(_, _, _, _, _),
-        set_tree234.insert_new3(E, Tin, Tout)
+        insert_new3(E, Tin, Tout)
     ;
         Tin = four(E0, E1, E2, T0, T1, T2, T3),
         compare(Result1, E, E1),
@@ -1413,7 +1420,7 @@ set_tree234.insert_new(E, Tin, Tout) :-
             Result1 = (<),
             Sub0 = two(E0, T0, T1),
             Sub1 = two(E2, T2, T3),
-            set_tree234.insert_new2(E, Sub0, NewSub0),
+            insert_new2(E, Sub0, NewSub0),
             Tout = two(E1, NewSub0, Sub1)
         ;
             Result1 = (=),
@@ -1422,17 +1429,16 @@ set_tree234.insert_new(E, Tin, Tout) :-
             Result1 = (>),
             Sub0 = two(E0, T0, T1),
             Sub1 = two(E2, T2, T3),
-            set_tree234.insert_new2(E, Sub1, NewSub1),
+            insert_new2(E, Sub1, NewSub1),
             Tout = two(E1, Sub0, NewSub1)
         )
     ).
 
-:- pragma type_spec(set_tree234.insert_new2(in, in_two, out), T = var(_)).
-
-:- pred set_tree234.insert_new2(T::in,
+:- pred insert_new2(T::in,
     set_tree234(T)::in_two, set_tree234(T)::out) is semidet.
+:- pragma type_spec(insert_new2(in, in_two, out), T = var(_)).
 
-set_tree234.insert_new2(E, Tin, Tout) :-
+insert_new2(E, Tin, Tout) :-
     Tin = two(E0, T0, T1),
     (
         T0 = empty
@@ -1455,27 +1461,27 @@ set_tree234.insert_new2(E, Tin, Tout) :-
             Result = (<),
             (
                 T0 = four(_, _, _, _, _, _, _),
-                set_tree234.split_four(T0, MT0E, T00, T01),
+                split_four(T0, MT0E, T00, T01),
                 compare(Result1, E, MT0E),
                 (
                     Result1 = (<),
-                    set_tree234.insert_new2(E, T00, NewT00),
+                    insert_new2(E, T00, NewT00),
                     Tout = three(MT0E, E0, NewT00, T01, T1)
                 ;
                     Result1 = (=),
                     fail
                 ;
                     Result1 = (>),
-                    set_tree234.insert_new2(E, T01, NewT01),
+                    insert_new2(E, T01, NewT01),
                     Tout = three(MT0E, E0, T00, NewT01, T1)
                 )
             ;
                 T0 = three(_, _, _, _, _),
-                set_tree234.insert_new3(E, T0, NewT0),
+                insert_new3(E, T0, NewT0),
                 Tout = two(E0, NewT0, T1)
             ;
                 T0 = two(_, _, _),
-                set_tree234.insert_new2(E, T0, NewT0),
+                insert_new2(E, T0, NewT0),
                 Tout = two(E0, NewT0, T1)
             ;
                 T0 = empty,
@@ -1489,27 +1495,27 @@ set_tree234.insert_new2(E, Tin, Tout) :-
             Result = (>),
             (
                 T1 = four(_, _, _, _, _, _, _),
-                set_tree234.split_four(T1, MT1E, T10, T11),
+                split_four(T1, MT1E, T10, T11),
                 compare(Result1, E, MT1E),
                 (
                     Result1 = (<),
-                    set_tree234.insert_new2(E, T10, NewT10),
+                    insert_new2(E, T10, NewT10),
                     Tout = three(E0, MT1E, T0, NewT10, T11)
                 ;
                     Result1 = (=),
                     fail
                 ;
                     Result1 = (>),
-                    set_tree234.insert_new2(E, T11, NewT11),
+                    insert_new2(E, T11, NewT11),
                     Tout = three(E0, MT1E, T0, T10, NewT11)
                 )
             ;
                 T1 = three(_, _, _, _, _),
-                set_tree234.insert_new3(E, T1, NewT1),
+                insert_new3(E, T1, NewT1),
                 Tout = two(E0, T0, NewT1)
             ;
                 T1 = two(_, _, _),
-                set_tree234.insert_new2(E, T1, NewT1),
+                insert_new2(E, T1, NewT1),
                 Tout = two(E0, T0, NewT1)
             ;
                 T1 = empty,
@@ -1519,12 +1525,11 @@ set_tree234.insert_new2(E, Tin, Tout) :-
         )
     ).
 
-:- pragma type_spec(set_tree234.insert_new3(in, in_three, out), T = var(_)).
-
-:- pred set_tree234.insert_new3(T::in,
+:- pred insert_new3(T::in,
     set_tree234(T)::in_three, set_tree234(T)::out) is semidet.
+:- pragma type_spec(insert_new3(in, in_three, out), T = var(_)).
 
-set_tree234.insert_new3(E, Tin, Tout) :-
+insert_new3(E, Tin, Tout) :-
     Tin = three(E0, E1, T0, T1, T2),
     (
         T0 = empty
@@ -1558,27 +1563,27 @@ set_tree234.insert_new3(E, Tin, Tout) :-
             Result0 = (<),
             (
                 T0 = four(_, _, _, _, _, _, _),
-                set_tree234.split_four(T0, MT0E, T00, T01),
+                split_four(T0, MT0E, T00, T01),
                 compare(ResultM, E, MT0E),
                 (
                     ResultM = (<),
-                    set_tree234.insert_new2(E, T00, NewT00),
+                    insert_new2(E, T00, NewT00),
                     Tout = four(MT0E, E0, E1, NewT00, T01, T1, T2)
                 ;
                     ResultM = (=),
                     fail
                 ;
                     ResultM = (>),
-                    set_tree234.insert_new2(E, T01, NewT01),
+                    insert_new2(E, T01, NewT01),
                     Tout = four(MT0E, E0, E1, T00, NewT01, T1, T2)
                 )
             ;
                 T0 = three(_, _, _, _, _),
-                set_tree234.insert_new3(E, T0, NewT0),
+                insert_new3(E, T0, NewT0),
                 Tout = three(E0, E1, NewT0, T1, T2)
             ;
                 T0 = two(_, _, _),
-                set_tree234.insert_new2(E, T0, NewT0),
+                insert_new2(E, T0, NewT0),
                 Tout = three(E0, E1, NewT0, T1, T2)
             ;
                 T0 = empty,
@@ -1595,27 +1600,27 @@ set_tree234.insert_new3(E, Tin, Tout) :-
                 Result1 = (<),
                 (
                     T1 = four(_, _, _, _, _, _, _),
-                    set_tree234.split_four(T1, MT1E, T10, T11),
+                    split_four(T1, MT1E, T10, T11),
                     compare(ResultM, E, MT1E),
                     (
                         ResultM = (<),
-                        set_tree234.insert_new2(E, T10, NewT10),
+                        insert_new2(E, T10, NewT10),
                         Tout = four(E0, MT1E, E1, T0, NewT10, T11, T2)
                     ;
                         ResultM = (=),
                         fail
                     ;
                         ResultM = (>),
-                        set_tree234.insert_new2(E, T11, NewT11),
+                        insert_new2(E, T11, NewT11),
                         Tout = four(E0, MT1E, E1, T0, T10, NewT11, T2)
                     )
                 ;
                     T1 = three(_, _, _, _, _),
-                    set_tree234.insert_new3(E, T1, NewT1),
+                    insert_new3(E, T1, NewT1),
                     Tout = three(E0, E1, T0, NewT1, T2)
                 ;
                     T1 = two(_, _, _),
-                    set_tree234.insert_new2(E, T1, NewT1),
+                    insert_new2(E, T1, NewT1),
                     Tout = three(E0, E1, T0, NewT1, T2)
                 ;
                     T1 = empty,
@@ -1629,27 +1634,27 @@ set_tree234.insert_new3(E, Tin, Tout) :-
                 Result1 = (>),
                 (
                     T2 = four(_, _, _, _, _, _, _),
-                    set_tree234.split_four(T2, MT2E, T20, T21),
+                    split_four(T2, MT2E, T20, T21),
                     compare(ResultM, E, MT2E),
                     (
                         ResultM = (<),
-                        set_tree234.insert_new2(E, T20, NewT20),
+                        insert_new2(E, T20, NewT20),
                         Tout = four(E0, E1, MT2E, T0, T1, NewT20, T21)
                     ;
                         ResultM = (=),
                         fail
                     ;
                         ResultM = (>),
-                        set_tree234.insert_new2(E, T21, NewT21),
+                        insert_new2(E, T21, NewT21),
                         Tout = four(E0, E1, MT2E, T0, T1, T20, NewT21)
                     )
                 ;
                     T2 = three(_, _, _, _, _),
-                    set_tree234.insert_new3(E, T2, NewT2),
+                    insert_new3(E, T2, NewT2),
                     Tout = three(E0, E1, T0, T1, NewT2)
                 ;
                     T2 = two(_, _, _),
-                    set_tree234.insert_new2(E, T2, NewT2),
+                    insert_new2(E, T2, NewT2),
                     Tout = three(E0, E1, T0, T1, NewT2)
                 ;
                     T2 = empty,
@@ -1662,20 +1667,20 @@ set_tree234.insert_new3(E, Tin, Tout) :-
 
 %---------------------------------------------------------------------------%
 
-set_tree234.insert_list(Es, Set0) = Set :-
-    set_tree234.insert_list(Es, Set0, Set).
+insert_list(Es, Set0) = Set :-
+    insert_list(Es, Set0, Set).
 
-set_tree234.insert_list([], !Set).
-set_tree234.insert_list([E | Es], !Set) :-
-    set_tree234.insert(E, !Set),
-    set_tree234.insert_list(Es, !Set).
+insert_list([], !Set).
+insert_list([E | Es], !Set) :-
+    insert(E, !Set),
+    insert_list(Es, !Set).
 
 %---------------------------------------------------------------------------%
 
-:- pred set_tree234.split_four(set_tree234(E)::in_four, E::out,
+:- pred split_four(set_tree234(E)::in_four, E::out,
     set_tree234(E)::out_two, set_tree234(E)::out_two) is det.
 
-set_tree234.split_four(Tin, MidE, Sub0, Sub1) :-
+split_four(Tin, MidE, Sub0, Sub1) :-
     Tin = four(E0, E1, E2, T0, T1, T2, T3),
     Sub0 = two(E0, T0, T1),
     MidE = E1,
@@ -1683,19 +1688,19 @@ set_tree234.split_four(Tin, MidE, Sub0, Sub1) :-
 
 %---------------------------------------------------------------------------%
 
-set_tree234.delete(E, Tin) = Tout :-
-    set_tree234.delete(E, Tin, Tout).
+delete(E, Tin) = Tout :-
+    delete(E, Tin, Tout).
 
-set_tree234.delete(E, Tin, Tout) :-
-    set_tree234.delete_2(E, Tin, Tout, _).
+delete(E, Tin, Tout) :-
+    delete_2(E, Tin, Tout, _).
 
     % When deleting an item from a tree, the height of the tree may be
     % reduced by one. The last argument says whether this has occurred.
-
-:- pred set_tree234.delete_2(T::in, set_tree234(T)::in, set_tree234(T)::out,
+    %
+:- pred delete_2(T::in, set_tree234(T)::in, set_tree234(T)::out,
     bool::out) is det.
 
-set_tree234.delete_2(E, Tin, Tout, RH) :-
+delete_2(E, Tin, Tout, RH) :-
     (
         Tin = empty,
         Tout = empty,
@@ -1705,7 +1710,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
         compare(Result0, E, E0),
         (
             Result0 = (<),
-            set_tree234.delete_2(E, T0, NewT0, RHT0),
+            delete_2(E, T0, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_2node_t0(E0, NewT0, T1, Tout, RH)
@@ -1716,9 +1721,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            (
-                set_tree234.remove_least_2(T1, ST1E,  NewT1, RHT1)
-            ->
+            ( do_remove_least(T1, ST1E,  NewT1, RHT1) ->
                 (
                     RHT1 = yes,
                     fix_2node_t1(ST1E, T0, NewT1, Tout, RH)
@@ -1734,7 +1737,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
             )
         ;
             Result0 = (>),
-            set_tree234.delete_2(E, T1, NewT1, RHT1),
+            delete_2(E, T1, NewT1, RHT1),
             (
                 RHT1 = yes,
                 fix_2node_t1(E0, T0, NewT1, Tout, RH)
@@ -1749,7 +1752,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
         compare(Result0, E, E0),
         (
             Result0 = (<),
-            set_tree234.delete_2(E, T0, NewT0, RHT0),
+            delete_2(E, T0, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_3node_t0(E0, E1, NewT0, T1, T2, Tout, RH)
@@ -1760,9 +1763,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            (
-                set_tree234.remove_least_2(T1, ST1E, NewT1, RHT1)
-            ->
+            ( do_remove_least(T1, ST1E, NewT1, RHT1) ->
                 (
                     RHT1 = yes,
                     fix_3node_t1(ST1E, E1, T0, NewT1, T2, Tout, RH)
@@ -1781,7 +1782,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
             compare(Result1, E, E1),
             (
                 Result1 = (<),
-                set_tree234.delete_2(E, T1, NewT1, RHT1),
+                delete_2(E, T1, NewT1, RHT1),
                 (
                     RHT1 = yes,
                     fix_3node_t1(E0, E1, T0, NewT1, T2, Tout, RH)
@@ -1792,9 +1793,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result1 = (=),
-                (
-                    set_tree234.remove_least_2(T2, ST2E, NewT2, RHT2)
-                ->
+                ( do_remove_least(T2, ST2E, NewT2, RHT2) ->
                     (
                         RHT2 = yes,
                         fix_3node_t2(E0, ST2E, T0, T1, NewT2, Tout, RH)
@@ -1810,7 +1809,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result1 = (>),
-                set_tree234.delete_2(E, T2, NewT2, RHT2),
+                delete_2(E, T2, NewT2, RHT2),
                 (
                     RHT2 = yes,
                     fix_3node_t2(E0, E1, T0, T1, NewT2, Tout, RH)
@@ -1829,7 +1828,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
             compare(Result0, E, E0),
             (
                 Result0 = (<),
-                set_tree234.delete_2(E, T0, NewT0, RHT0),
+                delete_2(E, T0, NewT0, RHT0),
                 (
                     RHT0 = yes,
                     fix_4node_t0(E0, E1, E2, NewT0, T1, T2, T3, Tout, RH)
@@ -1840,9 +1839,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result0 = (=),
-                (
-                    set_tree234.remove_least_2(T1, ST1E, NewT1, RHT1)
-                ->
+                ( do_remove_least(T1, ST1E, NewT1, RHT1) ->
                     (
                         RHT1 = yes,
                         fix_4node_t1(ST1E, E1, E2, T0, NewT1, T2, T3, Tout, RH)
@@ -1858,7 +1855,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result0 = (>),
-                set_tree234.delete_2(E, T1, NewT1, RHT1),
+                delete_2(E, T1, NewT1, RHT1),
                 (
                     RHT1 = yes,
                     fix_4node_t1(E0, E1, E2, T0, NewT1, T2, T3, Tout, RH)
@@ -1870,9 +1867,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
             )
         ;
             Result1 = (=),
-            (
-                set_tree234.remove_least_2(T2, ST2E, NewT2, RHT2)
-            ->
+            ( do_remove_least(T2, ST2E, NewT2, RHT2) ->
                 (
                     RHT2 = yes,
                     fix_4node_t2(E0, ST2E, E2, T0, T1, NewT2, T3, Tout, RH)
@@ -1891,7 +1886,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
             compare(Result2, E, E2),
             (
                 Result2 = (<),
-                set_tree234.delete_2(E, T2, NewT2, RHT2),
+                delete_2(E, T2, NewT2, RHT2),
                 (
                     RHT2 = yes,
                     fix_4node_t2(E0, E1, E2, T0, T1, NewT2, T3, Tout, RH)
@@ -1902,9 +1897,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result2 = (=),
-                (
-                    set_tree234.remove_least_2(T3, ST3E, NewT3, RHT3)
-                ->
+                ( do_remove_least(T3, ST3E, NewT3, RHT3) ->
                     (
                         RHT3 = yes,
                         fix_4node_t3(E0, E1, ST3E, T0, T1, T2, NewT3, Tout, RH)
@@ -1920,7 +1913,7 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result2 = (>),
-                set_tree234.delete_2(E, T3, NewT3, RHT3),
+                delete_2(E, T3, NewT3, RHT3),
                 (
                     RHT3 = yes,
                     fix_4node_t3(E0, E1, E2, T0, T1, T2, NewT3, Tout, RH)
@@ -1933,25 +1926,24 @@ set_tree234.delete_2(E, Tin, Tout, RH) :-
         )
     ).
 
-set_tree234.delete_list(SetA, SetB) = Set:-
-    set_tree234.delete_list(SetA, SetB, Set).
+delete_list(SetA, SetB) = Set:-
+    delete_list(SetA, SetB, Set).
 
-set_tree234.delete_list([], !Set).
-set_tree234.delete_list([E | Es], !Set) :-
-    set_tree234.delete(E, !Set),
-    set_tree234.delete_list(Es, !Set).
+delete_list([], !Set).
+delete_list([E | Es], !Set) :-
+    delete(E, !Set),
+    delete_list(Es, !Set).
 
 %---------------------------------------------------------------------------%
 
-    % We use the same algorithm as set_tree234.delete.
+remove(E, Tin, Tout) :-
+    % We use the same algorithm as delete.
+    remove_2(E, Tin, Tout, _).
 
-set_tree234.remove(E, Tin, Tout) :-
-    set_tree234.remove_2(E, Tin, Tout, _).
-
-:- pred set_tree234.remove_2(T::in, set_tree234(T)::in, set_tree234(T)::out,
+:- pred remove_2(T::in, set_tree234(T)::in, set_tree234(T)::out,
     bool::out) is semidet.
 
-set_tree234.remove_2(E, Tin, Tout, RH) :-
+remove_2(E, Tin, Tout, RH) :-
     (
         Tin = empty,
         fail
@@ -1960,7 +1952,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
         compare(Result0, E, E0),
         (
             Result0 = (<),
-            set_tree234.remove_2(E, T0, NewT0, RHT0),
+            remove_2(E, T0, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_2node_t0(E0, NewT0, T1, Tout, RH)
@@ -1971,9 +1963,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            (
-                set_tree234.remove_least_2(T1, ST1E, NewT1, RHT1)
-            ->
+            ( do_remove_least(T1, ST1E, NewT1, RHT1) ->
                 (
                     RHT1 = yes,
                     fix_2node_t1(ST1E, T0, NewT1, Tout, RH)
@@ -1989,7 +1979,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
             )
         ;
             Result0 = (>),
-            set_tree234.remove_2(E, T1, NewT1, RHT1),
+            remove_2(E, T1, NewT1, RHT1),
             (
                 RHT1 = yes,
                 fix_2node_t1(E0, T0, NewT1, Tout, RH)
@@ -2004,7 +1994,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
         compare(Result0, E, E0),
         (
             Result0 = (<),
-            set_tree234.remove_2(E, T0, NewT0, RHT0),
+            remove_2(E, T0, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_3node_t0(E0, E1, NewT0, T1, T2, Tout, RH)
@@ -2015,9 +2005,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            (
-                set_tree234.remove_least_2(T1, ST1E, NewT1, RHT1)
-            ->
+            ( do_remove_least(T1, ST1E, NewT1, RHT1) ->
                 (
                     RHT1 = yes,
                     fix_3node_t1(ST1E, E1, T0, NewT1, T2, Tout, RH)
@@ -2036,7 +2024,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
             compare(Result1, E, E1),
             (
                 Result1 = (<),
-                set_tree234.remove_2(E, T1, NewT1, RHT1),
+                remove_2(E, T1, NewT1, RHT1),
                 (
                     RHT1 = yes,
                     fix_3node_t1(E0, E1, T0, NewT1, T2, Tout, RH)
@@ -2047,9 +2035,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result1 = (=),
-                (
-                    set_tree234.remove_least_2(T2, ST2E, NewT2, RHT2)
-                ->
+                ( do_remove_least(T2, ST2E, NewT2, RHT2) ->
                     (
                         RHT2 = yes,
                         fix_3node_t2(E0, ST2E, T0, T1, NewT2, Tout, RH)
@@ -2065,7 +2051,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result1 = (>),
-                set_tree234.remove_2(E, T2, NewT2, RHT2),
+                remove_2(E, T2, NewT2, RHT2),
                 (
                     RHT2 = yes,
                     fix_3node_t2(E0, E1, T0, T1, NewT2, Tout, RH)
@@ -2084,7 +2070,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
             compare(Result0, E, E0),
             (
                 Result0 = (<),
-                set_tree234.remove_2(E, T0, NewT0, RHT0),
+                remove_2(E, T0, NewT0, RHT0),
                 (
                     RHT0 = yes,
                     fix_4node_t0(E0, E1, E2, NewT0, T1, T2, T3, Tout, RH)
@@ -2095,9 +2081,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result0 = (=),
-                (
-                    set_tree234.remove_least_2(T1, ST1E, NewT1, RHT1)
-                ->
+                ( do_remove_least(T1, ST1E, NewT1, RHT1) ->
                     (
                         RHT1 = yes,
                         fix_4node_t1(ST1E, E1, E2, T0, NewT1, T2, T3, Tout, RH)
@@ -2113,7 +2097,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result0 = (>),
-                set_tree234.remove_2(E, T1, NewT1, RHT1),
+                remove_2(E, T1, NewT1, RHT1),
                 (
                     RHT1 = yes,
                     fix_4node_t1(E0, E1, E2, T0, NewT1, T2, T3, Tout, RH)
@@ -2125,9 +2109,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
             )
         ;
             Result1 = (=),
-            (
-                set_tree234.remove_least_2(T2, ST2E, NewT2, RHT2)
-            ->
+            ( do_remove_least(T2, ST2E, NewT2, RHT2) ->
                 (
                     RHT2 = yes,
                     fix_4node_t2(E0, ST2E, E2, T0, T1, NewT2, T3, Tout, RH)
@@ -2146,7 +2128,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
             compare(Result2, E, E2),
             (
                 Result2 = (<),
-                set_tree234.remove_2(E, T2, NewT2, RHT2),
+                remove_2(E, T2, NewT2, RHT2),
                 (
                     RHT2 = yes,
                     fix_4node_t2(E0, E1, E2, T0, T1, NewT2, T3, Tout, RH)
@@ -2157,9 +2139,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result2 = (=),
-                (
-                    set_tree234.remove_least_2(T3, ST3E, NewT3, RHT3)
-                ->
+                ( do_remove_least(T3, ST3E, NewT3, RHT3) ->
                     (
                         RHT3 = yes,
                         fix_4node_t3(E0, E1, ST3E, T0, T1, T2, NewT3, Tout, RH)
@@ -2175,7 +2155,7 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
                 )
             ;
                 Result2 = (>),
-                set_tree234.remove_2(E, T3, NewT3, RHT3),
+                remove_2(E, T3, NewT3, RHT3),
                 (
                     RHT3 = yes,
                     fix_4node_t3(E0, E1, E2, T0, T1, T2, NewT3, Tout, RH)
@@ -2188,36 +2168,33 @@ set_tree234.remove_2(E, Tin, Tout, RH) :-
         )
     ).
 
-set_tree234.remove_list([], !Set).
-set_tree234.remove_list([E | Es], !Set) :-
-    set_tree234.remove(E, !Set),
-    set_tree234.remove_list(Es, !Set).
+remove_list([], !Set).
+remove_list([E | Es], !Set) :-
+    remove(E, !Set),
+    remove_list(Es, !Set).
 
 %---------------------------------------------------------------------------%
 
-    % The algorithm we use similar to set_tree234.delete, except that we
+remove_least(E, Tin, Tout) :-
+    % The algorithm we use similar to delete, except that we
     % always go down the left subtree.
+    do_remove_least(Tin, E, Tout, _).
 
-set_tree234.remove_least(E, Tin, Tout) :-
-    set_tree234.remove_least_2(Tin, E, Tout, _).
-
-:- pred set_tree234.remove_least_2(set_tree234(E)::in, E::out,
+:- pred do_remove_least(set_tree234(E)::in, E::out,
     set_tree234(E)::out, bool::out) is semidet.
 
-set_tree234.remove_least_2(Tin, E, Tout, RH) :-
+do_remove_least(Tin, E, Tout, RH) :-
     (
         Tin = empty,
         fail
     ;
         Tin = two(E0, T0, T1),
-        (
-            T0 = empty
-        ->
+        ( T0 = empty ->
             E = E0,
             Tout = T1,
             RH = yes
         ;
-            set_tree234.remove_least_2(T0, E, NewT0, RHT0),
+            do_remove_least(T0, E, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_2node_t0(E0, NewT0, T1, Tout, RH)
@@ -2229,14 +2206,12 @@ set_tree234.remove_least_2(Tin, E, Tout, RH) :-
         )
     ;
         Tin = three(E0, E1, T0, T1, T2),
-        (
-            T0 = empty
-        ->
+        ( T0 = empty ->
             E = E0,
             Tout = two(E1, T1, T2),
             RH = no
         ;
-            set_tree234.remove_least_2(T0, E, NewT0, RHT0),
+            do_remove_least(T0, E, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_3node_t0(E0, E1, NewT0, T1, T2, Tout, RH)
@@ -2248,14 +2223,12 @@ set_tree234.remove_least_2(Tin, E, Tout, RH) :-
         )
     ;
         Tin = four(E0, E1, E2, T0, T1, T2, T3),
-        (
-            T0 = empty
-        ->
+        ( T0 = empty ->
             E = E0,
             Tout = three(E1, E2, T1, T2, T3),
             RH = no
         ;
-            set_tree234.remove_least_2(T0, E, NewT0, RHT0),
+            do_remove_least(T0, E, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_4node_t0(E0, E1, E2, NewT0, T1, T2, T3, Tout, RH)
@@ -2303,7 +2276,7 @@ fix_2node_t0(E0, T0, T1, Tout, RH) :-
         RH = yes
     ;
         T1 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = two(E0, T0, T1),
         % RH = yes
     ).
@@ -2334,7 +2307,7 @@ fix_2node_t1(E0, T0, T1, Tout, RH) :-
         RH = yes
     ;
         T0 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = two(E0, T0, T1),
         % RH = yes
     ).
@@ -2365,7 +2338,7 @@ fix_3node_t0(E0, E1, T0, T1, T2, Tout, RH) :-
         RH = no
     ;
         T1 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = three(E0, E1, T0, T1, T2),
         % The heights of T1 and T2 are unchanged
         % RH = no
@@ -2397,7 +2370,7 @@ fix_3node_t1(E0, E1, T0, T1, T2, Tout, RH) :-
         RH = no
     ;
         T0 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = three(E0, E1, T0, T1, T2),
         % The heights of T0 and T2 are unchanged
         % RH = no
@@ -2429,7 +2402,7 @@ fix_3node_t2(E0, E1, T0, T1, T2, Tout, RH) :-
         RH = no
     ;
         T1 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = three(E0, E1, T0, T1, T2),
         % The heights of T0 and T1 are unchanged
         % RH = no
@@ -2462,7 +2435,7 @@ fix_4node_t0(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T1 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T1, T2 and T3 are unchanged
         % RH = no
@@ -2495,7 +2468,7 @@ fix_4node_t1(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T2 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T0, T2 and T3 are unchanged
         % RH = no
@@ -2528,7 +2501,7 @@ fix_4node_t2(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T3 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T0, T1 and T3 are unchanged
         % RH = no
@@ -2561,7 +2534,7 @@ fix_4node_t3(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
         RH = no
     ;
         T2 = empty,
-        error("unbalanced 234 tree")
+        unexpected($module, $pred, "unbalanced 234 tree")
         % Tout = four(E0, E1, E2, T0, T1, T2, T3),
         % The heights of T0, T1 and T2 are unchanged
         % RH = no
@@ -2569,232 +2542,228 @@ fix_4node_t3(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
 
 %---------------------------------------------------------------------------%
 
-set_tree234.union(SetA, SetB) = Set :-
-    set_tree234.union(SetA, SetB, Set).
+union(SetA, SetB) = Set :-
+    union(SetA, SetB, Set).
 
-set_tree234.union(SetA, SetB, Set) :-
+union(SetA, SetB, Set) :-
     % The amount of work that do_union has to do is proportional to the
     % number of elements in its first argument. We therefore want to pick
     % the smaller input set to be the first argument.
     %
     % We could count the number of arguments in both sets, but computing the
     % tree height is *much* faster, and almost as precise.
-    set_tree234.height(SetA, HeightA),
-    set_tree234.height(SetB, HeightB),
+    height(SetA, HeightA),
+    height(SetB, HeightB),
     ( HeightA =< HeightB ->
-        set_tree234.do_union(SetA, SetB, Set)
+        do_union(SetA, SetB, Set)
     ;
-        set_tree234.do_union(SetB, SetA, Set)
+        do_union(SetB, SetA, Set)
     ).
 
-:- pred set_tree234.do_union(set_tree234(T)::in, set_tree234(T)::in,
+:- pred do_union(set_tree234(T)::in, set_tree234(T)::in,
     set_tree234(T)::out) is det.
 
-set_tree234.do_union(empty, !Set).
-set_tree234.do_union(two(E0, T0, T1), !Set) :-
-    set_tree234.do_union(T0, !Set),
-    set_tree234.insert(E0, !Set),
-    set_tree234.do_union(T1, !Set).
-set_tree234.do_union(three(E0, E1, T0, T1, T2), !Set) :-
-    set_tree234.do_union(T0, !Set),
-    set_tree234.insert(E0, !Set),
-    set_tree234.do_union(T1, !Set),
-    set_tree234.insert(E1, !Set),
-    set_tree234.do_union(T2, !Set).
-set_tree234.do_union(four(E0, E1, E2, T0, T1, T2, T3), !Set) :-
-    set_tree234.do_union(T0, !Set),
-    set_tree234.insert(E0, !Set),
-    set_tree234.do_union(T1, !Set),
-    set_tree234.insert(E1, !Set),
-    set_tree234.do_union(T2, !Set),
-    set_tree234.insert(E2, !Set),
-    set_tree234.do_union(T3, !Set).
+do_union(empty, !Set).
+do_union(two(E0, T0, T1), !Set) :-
+    do_union(T0, !Set),
+    insert(E0, !Set),
+    do_union(T1, !Set).
+do_union(three(E0, E1, T0, T1, T2), !Set) :-
+    do_union(T0, !Set),
+    insert(E0, !Set),
+    do_union(T1, !Set),
+    insert(E1, !Set),
+    do_union(T2, !Set).
+do_union(four(E0, E1, E2, T0, T1, T2, T3), !Set) :-
+    do_union(T0, !Set),
+    insert(E0, !Set),
+    do_union(T1, !Set),
+    insert(E1, !Set),
+    do_union(T2, !Set),
+    insert(E2, !Set),
+    do_union(T3, !Set).
 
-set_tree234.union_list(Sets) = Union :-
-    set_tree234.union_list(Sets, Union).
+union_list(Sets) = Union :-
+    union_list(Sets, Union).
 
-set_tree234.union_list([], empty).
-set_tree234.union_list([Set | Sets], Union) :-
-    set_tree234.union_list(Sets, Union1),
-    set_tree234.union(Set, Union1, Union).
+union_list([], empty).
+union_list([Set | Sets], Union) :-
+    union_list(Sets, Union1),
+    union(Set, Union1, Union).
 
-set_tree234.power_union(Sets) = Union :-
-    set_tree234.power_union(Sets, Union).
+power_union(Sets) = Union :-
+    power_union(Sets, Union).
 
-set_tree234.power_union(Sets, Union) :-
-    set_tree234.power_union_2(Sets, empty, Union).
+power_union(Sets, Union) :-
+    power_union_2(Sets, empty, Union).
 
-:- pred set_tree234.power_union_2(set_tree234(set_tree234(T))::in,
+:- pred power_union_2(set_tree234(set_tree234(T))::in,
     set_tree234(T)::in, set_tree234(T)::out) is det.
 
-set_tree234.power_union_2(empty, !Union).
-set_tree234.power_union_2(two(E0, T0, T1), !Union) :-
-    set_tree234.power_union_2(T0, !Union),
-    set_tree234.union(E0, !Union),
-    set_tree234.power_union_2(T1, !Union).
-set_tree234.power_union_2(three(E0, E1, T0, T1, T2), !Union) :-
-    set_tree234.power_union_2(T0, !Union),
-    set_tree234.union(E0, !Union),
-    set_tree234.power_union_2(T1, !Union),
-    set_tree234.union(E1, !Union),
-    set_tree234.power_union_2(T2, !Union).
-set_tree234.power_union_2(four(E0, E1, E2, T0, T1, T2, T3), !Union) :-
-    set_tree234.power_union_2(T0, !Union),
-    set_tree234.union(E0, !Union),
-    set_tree234.power_union_2(T1, !Union),
-    set_tree234.union(E1, !Union),
-    set_tree234.power_union_2(T2, !Union),
-    set_tree234.union(E2, !Union),
-    set_tree234.power_union_2(T3, !Union).
+power_union_2(empty, !Union).
+power_union_2(two(E0, T0, T1), !Union) :-
+    power_union_2(T0, !Union),
+    union(E0, !Union),
+    power_union_2(T1, !Union).
+power_union_2(three(E0, E1, T0, T1, T2), !Union) :-
+    power_union_2(T0, !Union),
+    union(E0, !Union),
+    power_union_2(T1, !Union),
+    union(E1, !Union),
+    power_union_2(T2, !Union).
+power_union_2(four(E0, E1, E2, T0, T1, T2, T3), !Union) :-
+    power_union_2(T0, !Union),
+    union(E0, !Union),
+    power_union_2(T1, !Union),
+    union(E1, !Union),
+    power_union_2(T2, !Union),
+    union(E2, !Union),
+    power_union_2(T3, !Union).
 
 %---------------------------------------------------------------------------%
 
-set_tree234.intersect(SetA, SetB) = Set :-
-    set_tree234.intersect(SetA, SetB, Set).
+intersect(SetA, SetB) = Set :-
+    intersect(SetA, SetB, Set).
 
-set_tree234.intersect(SetA, SetB, Intersect) :-
+intersect(SetA, SetB, Intersect) :-
     % The amount of work that do_intersect has to do is proportional to the
     % number of elements in its first argument. We therefore want to pick
     % the smaller input set to be the first argument.
     %
     % We could count the number of arguments in both sets, but computing the
     % tree height is *much* faster, and almost as precise.
-    set_tree234.height(SetA, HeightA),
-    set_tree234.height(SetB, HeightB),
+    height(SetA, HeightA),
+    height(SetB, HeightB),
     ( HeightA =< HeightB ->
-        set_tree234.do_intersect(SetA, SetB, empty, Intersect)
+        do_intersect(SetA, SetB, empty, Intersect)
     ;
-        set_tree234.do_intersect(SetB, SetA, empty, Intersect)
+        do_intersect(SetB, SetA, empty, Intersect)
     ).
 
-:- pred set_tree234.do_intersect(set_tree234(T)::in, set_tree234(T)::in,
+:- pred do_intersect(set_tree234(T)::in, set_tree234(T)::in,
     set_tree234(T)::in, set_tree234(T)::out) is det.
 
-set_tree234.do_intersect(empty, _SetB, !Intersect).
-set_tree234.do_intersect(two(E0, T0, T1), SetB, !Intersect) :-
-    set_tree234.do_intersect(T0, SetB, !Intersect),
-    ( set_tree234.contains(SetB, E0) ->
-        set_tree234.insert(E0, !Intersect)
+do_intersect(empty, _SetB, !Intersect).
+do_intersect(two(E0, T0, T1), SetB, !Intersect) :-
+    do_intersect(T0, SetB, !Intersect),
+    ( contains(SetB, E0) ->
+        insert(E0, !Intersect)
     ;
         true
     ),
-    set_tree234.do_intersect(T1, SetB, !Intersect).
-set_tree234.do_intersect(three(E0, E1, T0, T1, T2), SetB, !Intersect) :-
-    set_tree234.do_intersect(T0, SetB, !Intersect),
-    ( set_tree234.contains(SetB, E0) ->
-        set_tree234.insert(E0, !Intersect)
+    do_intersect(T1, SetB, !Intersect).
+do_intersect(three(E0, E1, T0, T1, T2), SetB, !Intersect) :-
+    do_intersect(T0, SetB, !Intersect),
+    ( contains(SetB, E0) ->
+        insert(E0, !Intersect)
     ;
         true
     ),
-    set_tree234.do_intersect(T1, SetB, !Intersect),
-    ( set_tree234.contains(SetB, E1) ->
-        set_tree234.insert(E1, !Intersect)
+    do_intersect(T1, SetB, !Intersect),
+    ( contains(SetB, E1) ->
+        insert(E1, !Intersect)
     ;
         true
     ),
-    set_tree234.do_intersect(T2, SetB, !Intersect).
-set_tree234.do_intersect(four(E0, E1, E2, T0, T1, T2, T3), SetB, !Intersect) :-
-    set_tree234.do_intersect(T0, SetB, !Intersect),
-    ( set_tree234.contains(SetB, E0) ->
-        set_tree234.insert(E0, !Intersect)
+    do_intersect(T2, SetB, !Intersect).
+do_intersect(four(E0, E1, E2, T0, T1, T2, T3), SetB, !Intersect) :-
+    do_intersect(T0, SetB, !Intersect),
+    ( contains(SetB, E0) ->
+        insert(E0, !Intersect)
     ;
         true
     ),
-    set_tree234.do_intersect(T1, SetB, !Intersect),
-    ( set_tree234.contains(SetB, E1) ->
-        set_tree234.insert(E1, !Intersect)
+    do_intersect(T1, SetB, !Intersect),
+    ( contains(SetB, E1) ->
+        insert(E1, !Intersect)
     ;
         true
     ),
-    set_tree234.do_intersect(T2, SetB, !Intersect),
-    ( set_tree234.contains(SetB, E2) ->
-        set_tree234.insert(E2, !Intersect)
+    do_intersect(T2, SetB, !Intersect),
+    ( contains(SetB, E2) ->
+        insert(E2, !Intersect)
     ;
         true
     ),
-    set_tree234.do_intersect(T3, SetB, !Intersect).
+    do_intersect(T3, SetB, !Intersect).
 
-set_tree234.intersect_list(Sets) = Intersect :-
-    set_tree234.intersect_list(Sets, Intersect).
+intersect_list(Sets) = Intersect :-
+    intersect_list(Sets, Intersect).
 
-set_tree234.intersect_list([], empty).
-set_tree234.intersect_list([Set | Sets], Intersect) :-
-    Intersect = set_tree234.intersect_list_2(Set, Sets).
+intersect_list([], empty).
+intersect_list([Set | Sets], Intersect) :-
+    Intersect = intersect_list_2(Set, Sets).
 
-:- func set_tree234.intersect_list_2(set_tree234(T), list(set_tree234(T)))
+:- func intersect_list_2(set_tree234(T), list(set_tree234(T)))
     = set_tree234(T).
 
-set_tree234.intersect_list_2(Set, []) = Set.
-set_tree234.intersect_list_2(Set, [Head | Tail]) =
+intersect_list_2(Set, []) = Set.
+intersect_list_2(Set, [Head | Tail]) =
     ( Set = empty ->
         empty
     ;
-        set_tree234.intersect_list_2(set_tree234.intersect(Set, Head), Tail)
+        intersect_list_2(intersect(Set, Head), Tail)
     ).
 
-set_tree234.power_intersect(Sets) = Intersect :-
-    set_tree234.power_intersect(Sets, Intersect).
+power_intersect(Sets) = Intersect :-
+    power_intersect(Sets, Intersect).
 
-set_tree234.power_intersect(Sets, Intersect) :-
-    Intersect = set_tree234.intersect_list(set_tree234.to_sorted_list(Sets)).
+power_intersect(Sets, Intersect) :-
+    Intersect = intersect_list(to_sorted_list(Sets)).
 
 %---------------------------------------------------------------------------%
 
-    % `set_tree234.difference(SetA, SetB, Set)' is true iff `Set' is the
-    % set containing all the elements of `SetA' except those that
-    % occur in `SetB'.
+difference(SetA, SetB) = Diff :-
+    difference(SetA, SetB, Diff).
 
-set_tree234.difference(SetA, SetB) = Diff :-
-    set_tree234.difference(SetA, SetB, Diff).
+difference(SetA, SetB, Diff) :-
+    difference_2(SetB, SetA, Diff).
 
-set_tree234.difference(SetA, SetB, Diff) :-
-    set_tree234.difference_2(SetB, SetA, Diff).
-
-:- pred set_tree234.difference_2(set_tree234(T)::in, set_tree234(T)::in,
+:- pred difference_2(set_tree234(T)::in, set_tree234(T)::in,
     set_tree234(T)::out) is det.
 
-set_tree234.difference_2(empty, !Set).
-set_tree234.difference_2(two(E0, T0, T1), !Set) :-
-    set_tree234.difference_2(T0, !Set),
-    set_tree234.delete(E0, !Set),
-    set_tree234.difference_2(T1, !Set).
-set_tree234.difference_2(three(E0, E1, T0, T1, T2), !Set) :-
-    set_tree234.difference_2(T0, !Set),
-    set_tree234.delete(E0, !Set),
-    set_tree234.difference_2(T1, !Set),
-    set_tree234.delete(E1, !Set),
-    set_tree234.difference_2(T2, !Set).
-set_tree234.difference_2(four(E0, E1, E2, T0, T1, T2, T3), !Set) :-
-    set_tree234.difference_2(T0, !Set),
-    set_tree234.delete(E0, !Set),
-    set_tree234.difference_2(T1, !Set),
-    set_tree234.delete(E1, !Set),
-    set_tree234.difference_2(T2, !Set),
-    set_tree234.delete(E2, !Set),
-    set_tree234.difference_2(T3, !Set).
+difference_2(empty, !Set).
+difference_2(two(E0, T0, T1), !Set) :-
+    difference_2(T0, !Set),
+    delete(E0, !Set),
+    difference_2(T1, !Set).
+difference_2(three(E0, E1, T0, T1, T2), !Set) :-
+    difference_2(T0, !Set),
+    delete(E0, !Set),
+    difference_2(T1, !Set),
+    delete(E1, !Set),
+    difference_2(T2, !Set).
+difference_2(four(E0, E1, E2, T0, T1, T2, T3), !Set) :-
+    difference_2(T0, !Set),
+    delete(E0, !Set),
+    difference_2(T1, !Set),
+    delete(E1, !Set),
+    difference_2(T2, !Set),
+    delete(E2, !Set),
+    difference_2(T3, !Set).
 
 %---------------------------------------------------------------------------%
 
-set_tree234.count(empty) = 0.
-set_tree234.count(two(_, T0, T1)) = N :-
-    N0 = set_tree234.count(T0),
-    N1 = set_tree234.count(T1),
+count(empty) = 0.
+count(two(_, T0, T1)) = N :-
+    N0 = count(T0),
+    N1 = count(T1),
     N = 1 + N0 + N1.
-set_tree234.count(three(_, _, T0, T1, T2)) = N :-
-    N0 = set_tree234.count(T0),
-    N1 = set_tree234.count(T1),
-    N2 = set_tree234.count(T2),
+count(three(_, _, T0, T1, T2)) = N :-
+    N0 = count(T0),
+    N1 = count(T1),
+    N2 = count(T2),
     N = 2 + N0 + N1 + N2.
-set_tree234.count(four(_, _, _, T0, T1, T2, T3)) = N :-
-    N0 = set_tree234.count(T0),
-    N1 = set_tree234.count(T1),
-    N2 = set_tree234.count(T2),
-    N3 = set_tree234.count(T3),
+count(four(_, _, _, T0, T1, T2, T3)) = N :-
+    N0 = count(T0),
+    N1 = count(T1),
+    N2 = count(T2),
+    N3 = count(T3),
     N = 3 + N0 + N1 + N2 + N3.
 
-:- pred set_tree234.height(set_tree234(T)::in, int::out) is det.
+:- pred height(set_tree234(T)::in, int::out) is det.
 
-set_tree234.height(Tree, Height) :-
+height(Tree, Height) :-
     (
         Tree = empty,
         Height = 0
@@ -2803,463 +2772,513 @@ set_tree234.height(Tree, Height) :-
         ; Tree = three(_, _, T0, _, _)
         ; Tree = four(_, _, _, T0, _, _, _)
         ),
-        set_tree234.height(T0, T0Height),
+        height(T0, T0Height),
         Height = T0Height + 1
     ).
 
 %---------------------------------------------------------------------------%
 
-set_tree234.fold(Pred, Tree, !A) :-
-    set_tree234.foldl(Pred, Tree, !A).
+fold(Pred, Tree, !A) :-
+    foldl(Pred, Tree, !A).
 
-set_tree234.foldl(_Pred, empty, !A).
-set_tree234.foldl(Pred, two(E, T0, T1), !A) :-
-    set_tree234.foldl(Pred, T0, !A),
+foldl(_Pred, empty, !A).
+foldl(Pred, two(E, T0, T1), !A) :-
+    foldl(Pred, T0, !A),
     Pred(E, !A),
-    set_tree234.foldl(Pred, T1, !A).
-set_tree234.foldl(Pred, three(E0, E1, T0, T1, T2), !A) :-
-    set_tree234.foldl(Pred, T0, !A),
+    foldl(Pred, T1, !A).
+foldl(Pred, three(E0, E1, T0, T1, T2), !A) :-
+    foldl(Pred, T0, !A),
     Pred(E0, !A),
-    set_tree234.foldl(Pred, T1, !A),
+    foldl(Pred, T1, !A),
     Pred(E1, !A),
-    set_tree234.foldl(Pred, T2, !A).
-set_tree234.foldl(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A) :-
-    set_tree234.foldl(Pred, T0, !A),
+    foldl(Pred, T2, !A).
+foldl(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A) :-
+    foldl(Pred, T0, !A),
     Pred(E0, !A),
-    set_tree234.foldl(Pred, T1, !A),
+    foldl(Pred, T1, !A),
     Pred(E1, !A),
-    set_tree234.foldl(Pred, T2, !A),
+    foldl(Pred, T2, !A),
     Pred(E2, !A),
-    set_tree234.foldl(Pred, T3, !A).
+    foldl(Pred, T3, !A).
 
-set_tree234.fold(Func, Tree, A0) =
-    set_tree234.foldl(Func, Tree, A0).
+fold(Func, Tree, A0) =
+    foldl(Func, Tree, A0).
 
-set_tree234.foldl(_Func, empty, A) = A.
-set_tree234.foldl(Func, two(E, T0, T1), !.A) = !:A :-
-    set_tree234.foldl(Func, T0, !.A) = !:A,
+foldl(_Func, empty, A) = A.
+foldl(Func, two(E, T0, T1), !.A) = !:A :-
+    foldl(Func, T0, !.A) = !:A,
     !:A = Func(E, !.A),
-    set_tree234.foldl(Func, T1, !.A) = !:A.
-set_tree234.foldl(Func, three(E0, E1, T0, T1, T2), !.A) = !:A :-
-    set_tree234.foldl(Func, T0, !.A) = !:A,
+    foldl(Func, T1, !.A) = !:A.
+foldl(Func, three(E0, E1, T0, T1, T2), !.A) = !:A :-
+    foldl(Func, T0, !.A) = !:A,
     !:A = Func(E0, !.A),
-    set_tree234.foldl(Func, T1, !.A) = !:A,
+    foldl(Func, T1, !.A) = !:A,
     !:A = Func(E1, !.A),
-    set_tree234.foldl(Func, T2, !.A) = !:A.
-set_tree234.foldl(Func, four(E0, E1, E2, T0, T1, T2, T3), !.A) = !:A :-
-    set_tree234.foldl(Func, T0, !.A) = !:A,
+    foldl(Func, T2, !.A) = !:A.
+foldl(Func, four(E0, E1, E2, T0, T1, T2, T3), !.A) = !:A :-
+    foldl(Func, T0, !.A) = !:A,
     !:A = Func(E0, !.A),
-    set_tree234.foldl(Func, T1, !.A) = !:A,
+    foldl(Func, T1, !.A) = !:A,
     !:A = Func(E1, !.A),
-    set_tree234.foldl(Func, T2, !.A) = !:A,
+    foldl(Func, T2, !.A) = !:A,
     !:A = Func(E2, !.A),
-    set_tree234.foldl(Func, T3, !.A) = !:A.
+    foldl(Func, T3, !.A) = !:A.
 
-set_tree234.fold2(Pred, Tree, !A, !B) :-
-    set_tree234.foldl2(Pred, Tree, !A, !B).
+fold2(Pred, Tree, !A, !B) :-
+    foldl2(Pred, Tree, !A, !B).
 
-set_tree234.foldl2(_Pred, empty, !A, !B).
-set_tree234.foldl2(Pred, two(E, T0, T1), !A, !B) :-
-    set_tree234.foldl2(Pred, T0, !A, !B),
+foldl2(_Pred, empty, !A, !B).
+foldl2(Pred, two(E, T0, T1), !A, !B) :-
+    foldl2(Pred, T0, !A, !B),
     Pred(E, !A, !B),
-    set_tree234.foldl2(Pred, T1, !A, !B).
-set_tree234.foldl2(Pred, three(E0, E1, T0, T1, T2), !A, !B) :-
-    set_tree234.foldl2(Pred, T0, !A, !B),
+    foldl2(Pred, T1, !A, !B).
+foldl2(Pred, three(E0, E1, T0, T1, T2), !A, !B) :-
+    foldl2(Pred, T0, !A, !B),
     Pred(E0, !A, !B),
-    set_tree234.foldl2(Pred, T1, !A, !B),
+    foldl2(Pred, T1, !A, !B),
     Pred(E1, !A, !B),
-    set_tree234.foldl2(Pred, T2, !A, !B).
-set_tree234.foldl2(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B) :-
-    set_tree234.foldl2(Pred, T0, !A, !B),
+    foldl2(Pred, T2, !A, !B).
+foldl2(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B) :-
+    foldl2(Pred, T0, !A, !B),
     Pred(E0, !A, !B),
-    set_tree234.foldl2(Pred, T1, !A, !B),
+    foldl2(Pred, T1, !A, !B),
     Pred(E1, !A, !B),
-    set_tree234.foldl2(Pred, T2, !A, !B),
+    foldl2(Pred, T2, !A, !B),
     Pred(E2, !A, !B),
-    set_tree234.foldl2(Pred, T3, !A, !B).
+    foldl2(Pred, T3, !A, !B).
 
-set_tree234.fold3(Pred, Tree, !A, !B, !C) :-
-    set_tree234.foldl3(Pred, Tree, !A, !B, !C).
+fold3(Pred, Tree, !A, !B, !C) :-
+    foldl3(Pred, Tree, !A, !B, !C).
 
-set_tree234.foldl3(_Pred, empty, !A, !B, !C).
-set_tree234.foldl3(Pred, two(E, T0, T1), !A, !B, !C) :-
-    set_tree234.foldl3(Pred, T0, !A, !B, !C),
+foldl3(_Pred, empty, !A, !B, !C).
+foldl3(Pred, two(E, T0, T1), !A, !B, !C) :-
+    foldl3(Pred, T0, !A, !B, !C),
     Pred(E, !A, !B, !C),
-    set_tree234.foldl3(Pred, T1, !A, !B, !C).
-set_tree234.foldl3(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C) :-
-    set_tree234.foldl3(Pred, T0, !A, !B, !C),
+    foldl3(Pred, T1, !A, !B, !C).
+foldl3(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C) :-
+    foldl3(Pred, T0, !A, !B, !C),
     Pred(E0, !A, !B, !C),
-    set_tree234.foldl3(Pred, T1, !A, !B, !C),
+    foldl3(Pred, T1, !A, !B, !C),
     Pred(E1, !A, !B, !C),
-    set_tree234.foldl3(Pred, T2, !A, !B, !C).
-set_tree234.foldl3(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C) :-
-    set_tree234.foldl3(Pred, T0, !A, !B, !C),
+    foldl3(Pred, T2, !A, !B, !C).
+foldl3(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C) :-
+    foldl3(Pred, T0, !A, !B, !C),
     Pred(E0, !A, !B, !C),
-    set_tree234.foldl3(Pred, T1, !A, !B, !C),
+    foldl3(Pred, T1, !A, !B, !C),
     Pred(E1, !A, !B, !C),
-    set_tree234.foldl3(Pred, T2, !A, !B, !C),
+    foldl3(Pred, T2, !A, !B, !C),
     Pred(E2, !A, !B, !C),
-    set_tree234.foldl3(Pred, T3, !A, !B, !C).
+    foldl3(Pred, T3, !A, !B, !C).
 
-set_tree234.fold4(Pred, Tree, !A, !B, !C, !D) :-
-    set_tree234.foldl4(Pred, Tree, !A, !B, !C, !D).
+fold4(Pred, Tree, !A, !B, !C, !D) :-
+    foldl4(Pred, Tree, !A, !B, !C, !D).
 
-set_tree234.foldl4(_Pred, empty, !A, !B, !C, !D).
-set_tree234.foldl4(Pred, two(E, T0, T1), !A, !B, !C, !D) :-
-    set_tree234.foldl4(Pred, T0, !A, !B, !C, !D),
+foldl4(_Pred, empty, !A, !B, !C, !D).
+foldl4(Pred, two(E, T0, T1), !A, !B, !C, !D) :-
+    foldl4(Pred, T0, !A, !B, !C, !D),
     Pred(E, !A, !B, !C, !D),
-    set_tree234.foldl4(Pred, T1, !A, !B, !C, !D).
-set_tree234.foldl4(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D) :-
-    set_tree234.foldl4(Pred, T0, !A, !B, !C, !D),
+    foldl4(Pred, T1, !A, !B, !C, !D).
+foldl4(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D) :-
+    foldl4(Pred, T0, !A, !B, !C, !D),
     Pred(E0, !A, !B, !C, !D),
-    set_tree234.foldl4(Pred, T1, !A, !B, !C, !D),
+    foldl4(Pred, T1, !A, !B, !C, !D),
     Pred(E1, !A, !B, !C, !D),
-    set_tree234.foldl4(Pred, T2, !A, !B, !C, !D).
-set_tree234.foldl4(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D) :-
-    set_tree234.foldl4(Pred, T0, !A, !B, !C, !D),
+    foldl4(Pred, T2, !A, !B, !C, !D).
+foldl4(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D) :-
+    foldl4(Pred, T0, !A, !B, !C, !D),
     Pred(E0, !A, !B, !C, !D),
-    set_tree234.foldl4(Pred, T1, !A, !B, !C, !D),
+    foldl4(Pred, T1, !A, !B, !C, !D),
     Pred(E1, !A, !B, !C, !D),
-    set_tree234.foldl4(Pred, T2, !A, !B, !C, !D),
+    foldl4(Pred, T2, !A, !B, !C, !D),
     Pred(E2, !A, !B, !C, !D),
-    set_tree234.foldl4(Pred, T3, !A, !B, !C, !D).
+    foldl4(Pred, T3, !A, !B, !C, !D).
 
-set_tree234.fold5(Pred, Tree, !A, !B, !C, !D, !E) :-
-    set_tree234.foldl5(Pred, Tree, !A, !B, !C, !D, !E).
+fold5(Pred, Tree, !A, !B, !C, !D, !E) :-
+    foldl5(Pred, Tree, !A, !B, !C, !D, !E).
 
-set_tree234.foldl5(_Pred, empty, !A, !B, !C, !D, !E).
-set_tree234.foldl5(Pred, two(E, T0, T1), !A, !B, !C, !D, !E) :-
-    set_tree234.foldl5(Pred, T0, !A, !B, !C, !D, !E),
+foldl5(_Pred, empty, !A, !B, !C, !D, !E).
+foldl5(Pred, two(E, T0, T1), !A, !B, !C, !D, !E) :-
+    foldl5(Pred, T0, !A, !B, !C, !D, !E),
     Pred(E, !A, !B, !C, !D, !E),
-    set_tree234.foldl5(Pred, T1, !A, !B, !C, !D, !E).
-set_tree234.foldl5(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D, !E) :-
-    set_tree234.foldl5(Pred, T0, !A, !B, !C, !D, !E),
+    foldl5(Pred, T1, !A, !B, !C, !D, !E).
+foldl5(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D, !E) :-
+    foldl5(Pred, T0, !A, !B, !C, !D, !E),
     Pred(E0, !A, !B, !C, !D, !E),
-    set_tree234.foldl5(Pred, T1, !A, !B, !C, !D, !E),
+    foldl5(Pred, T1, !A, !B, !C, !D, !E),
     Pred(E1, !A, !B, !C, !D, !E),
-    set_tree234.foldl5(Pred, T2, !A, !B, !C, !D, !E).
-set_tree234.foldl5(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D,
-        !E) :-
-    set_tree234.foldl5(Pred, T0, !A, !B, !C, !D, !E),
+    foldl5(Pred, T2, !A, !B, !C, !D, !E).
+foldl5(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D, !E) :-
+    foldl5(Pred, T0, !A, !B, !C, !D, !E),
     Pred(E0, !A, !B, !C, !D, !E),
-    set_tree234.foldl5(Pred, T1, !A, !B, !C, !D, !E),
+    foldl5(Pred, T1, !A, !B, !C, !D, !E),
     Pred(E1, !A, !B, !C, !D, !E),
-    set_tree234.foldl5(Pred, T2, !A, !B, !C, !D, !E),
+    foldl5(Pred, T2, !A, !B, !C, !D, !E),
     Pred(E2, !A, !B, !C, !D, !E),
-    set_tree234.foldl5(Pred, T3, !A, !B, !C, !D, !E).
+    foldl5(Pred, T3, !A, !B, !C, !D, !E).
 
-set_tree234.fold6(Pred, Tree, !A, !B, !C, !D, !E, !F) :-
-    set_tree234.foldl6(Pred, Tree, !A, !B, !C, !D, !E, !F).
+fold6(Pred, Tree, !A, !B, !C, !D, !E, !F) :-
+    foldl6(Pred, Tree, !A, !B, !C, !D, !E, !F).
 
-set_tree234.foldl6(_Pred, empty, !A, !B, !C, !D, !E, !F).
-set_tree234.foldl6(Pred, two(E, T0, T1), !A, !B, !C, !D, !E, !F) :-
-    set_tree234.foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
+foldl6(_Pred, empty, !A, !B, !C, !D, !E, !F).
+foldl6(Pred, two(E, T0, T1), !A, !B, !C, !D, !E, !F) :-
+    foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
     Pred(E, !A, !B, !C, !D, !E, !F),
-    set_tree234.foldl6(Pred, T1, !A, !B, !C, !D, !E, !F).
-set_tree234.foldl6(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D, !E, !F) :-
-    set_tree234.foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
+    foldl6(Pred, T1, !A, !B, !C, !D, !E, !F).
+foldl6(Pred, three(E0, E1, T0, T1, T2), !A, !B, !C, !D, !E, !F) :-
+    foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
     Pred(E0, !A, !B, !C, !D, !E, !F),
-    set_tree234.foldl6(Pred, T1, !A, !B, !C, !D, !E, !F),
+    foldl6(Pred, T1, !A, !B, !C, !D, !E, !F),
     Pred(E1, !A, !B, !C, !D, !E, !F),
-    set_tree234.foldl6(Pred, T2, !A, !B, !C, !D, !E, !F).
-set_tree234.foldl6(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D,
-        !E, !F) :-
-    set_tree234.foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
+    foldl6(Pred, T2, !A, !B, !C, !D, !E, !F).
+foldl6(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A, !B, !C, !D, !E, !F) :-
+    foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
     Pred(E0, !A, !B, !C, !D, !E, !F),
-    set_tree234.foldl6(Pred, T1, !A, !B, !C, !D, !E, !F),
+    foldl6(Pred, T1, !A, !B, !C, !D, !E, !F),
     Pred(E1, !A, !B, !C, !D, !E, !F),
-    set_tree234.foldl6(Pred, T2, !A, !B, !C, !D, !E, !F),
+    foldl6(Pred, T2, !A, !B, !C, !D, !E, !F),
     Pred(E2, !A, !B, !C, !D, !E, !F),
-    set_tree234.foldl6(Pred, T3, !A, !B, !C, !D, !E, !F).
+    foldl6(Pred, T3, !A, !B, !C, !D, !E, !F).
 
 %---------------------------------------------------------------------------%
 
-set_tree234.all_true(Pred, T) :-
+all_true(Pred, T) :-
     (
         T = empty
     ;
         T = two(E0, T0, T1),
-        set_tree234.all_true(Pred, T0),
+        all_true(Pred, T0),
         Pred(E0),
-        set_tree234.all_true(Pred, T1)
+        all_true(Pred, T1)
     ;
         T = three(E0, E1, T0, T1, T2),
-        set_tree234.all_true(Pred, T0),
+        all_true(Pred, T0),
         Pred(E0),
-        set_tree234.all_true(Pred, T1),
+        all_true(Pred, T1),
         Pred(E1),
-        set_tree234.all_true(Pred, T2)
+        all_true(Pred, T2)
     ;
         T = four(E0, E1, E2, T0, T1, T2, T3),
-        set_tree234.all_true(Pred, T0),
+        all_true(Pred, T0),
         Pred(E0),
-        set_tree234.all_true(Pred, T1),
+        all_true(Pred, T1),
         Pred(E1),
-        set_tree234.all_true(Pred, T2),
+        all_true(Pred, T2),
         Pred(E2),
-        set_tree234.all_true(Pred, T3)
+        all_true(Pred, T3)
     ).
 
 %---------------------------------------------------------------------------%
 
-set_tree234.map(Pred, SetA, SetB) :-
-    set_tree234.map_pred(Pred, SetA, [], ListB),
-    SetB = set_tree234.list_to_set(ListB).
+map(Pred, SetA, SetB) :-
+    map_pred(Pred, SetA, [], ListB),
+    SetB = list_to_set(ListB).
 
-:- pred set_tree234.map_pred(pred(T1, T2)::in(pred(in, out) is det),
+:- pred map_pred(pred(T1, T2)::in(pred(in, out) is det),
     set_tree234(T1)::in, list(T2)::in, list(T2)::out) is det.
 
-set_tree234.map_pred(_Pred, empty, !List).
-set_tree234.map_pred(Pred, Tin, !List) :-
+map_pred(_Pred, empty, !List).
+map_pred(Pred, Tin, !List) :-
     Tin = two(E0, T0, T1),
-    set_tree234.map_pred(Pred, T0, !List),
+    map_pred(Pred, T0, !List),
     Pred(E0, N0),
     !:List = [N0 | !.List],
-    set_tree234.map_pred(Pred, T1, !List).
-set_tree234.map_pred(Pred, Tin, !List) :-
+    map_pred(Pred, T1, !List).
+map_pred(Pred, Tin, !List) :-
     Tin = three(E0, E1, T0, T1, T2),
-    set_tree234.map_pred(Pred, T0, !List),
+    map_pred(Pred, T0, !List),
     Pred(E0, N0),
     !:List = [N0 | !.List],
-    set_tree234.map_pred(Pred, T1, !List),
+    map_pred(Pred, T1, !List),
     Pred(E1, N1),
     !:List = [N1 | !.List],
-    set_tree234.map_pred(Pred, T2, !List).
-set_tree234.map_pred(Pred, Tin, !List) :-
+    map_pred(Pred, T2, !List).
+map_pred(Pred, Tin, !List) :-
     Tin = four(E0, E1, E2, T0, T1, T2, T3),
-    set_tree234.map_pred(Pred, T0, !List),
+    map_pred(Pred, T0, !List),
     Pred(E0, N0),
     !:List = [N0 | !.List],
-    set_tree234.map_pred(Pred, T1, !List),
+    map_pred(Pred, T1, !List),
     Pred(E1, N1),
     !:List = [N1 | !.List],
-    set_tree234.map_pred(Pred, T2, !List),
+    map_pred(Pred, T2, !List),
     Pred(E2, N2),
     !:List = [N2 | !.List],
-    set_tree234.map_pred(Pred, T3, !List).
+    map_pred(Pred, T3, !List).
 
-set_tree234.map(Func, SetA) = SetB :-
-    set_tree234.map_func(Func, SetA, [], ListB),
-    SetB = set_tree234.list_to_set(ListB).
+map(Func, SetA) = SetB :-
+    map_func(Func, SetA, [], ListB),
+    SetB = list_to_set(ListB).
 
-:- pred set_tree234.map_func(func(T1) = T2, set_tree234(T1),
+:- pred map_func(func(T1) = T2, set_tree234(T1),
     list(T2), list(T2)).
-:- mode set_tree234.map_func(in(func(in) = out is det), in, in, out) is det.
+:- mode map_func(in(func(in) = out is det), in, in, out) is det.
 
-set_tree234.map_func(_Func, empty, !List).
-set_tree234.map_func(Func, Tin, !List) :-
+map_func(_Func, empty, !List).
+map_func(Func, Tin, !List) :-
     Tin = two(E0, T0, T1),
-    set_tree234.map_func(Func, T0, !List),
+    map_func(Func, T0, !List),
     N0 = Func(E0),
     !:List = [N0 | !.List],
-    set_tree234.map_func(Func, T1, !List).
-set_tree234.map_func(Func, Tin, !List) :-
+    map_func(Func, T1, !List).
+map_func(Func, Tin, !List) :-
     Tin = three(E0, E1, T0, T1, T2),
-    set_tree234.map_func(Func, T0, !List),
+    map_func(Func, T0, !List),
     N0 = Func(E0),
     !:List = [N0 | !.List],
-    set_tree234.map_func(Func, T1, !List),
+    map_func(Func, T1, !List),
     N1 = Func(E1),
     !:List = [N1 | !.List],
-    set_tree234.map_func(Func, T2, !List).
-set_tree234.map_func(Func, Tin, !List) :-
+    map_func(Func, T2, !List).
+map_func(Func, Tin, !List) :-
     Tin = four(E0, E1, E2, T0, T1, T2, T3),
-    set_tree234.map_func(Func, T0, !List),
+    map_func(Func, T0, !List),
     N0 = Func(E0),
     !:List = [N0 | !.List],
-    set_tree234.map_func(Func, T1, !List),
+    map_func(Func, T1, !List),
     N1 = Func(E1),
     !:List = [N1 | !.List],
-    set_tree234.map_func(Func, T2, !List),
+    map_func(Func, T2, !List),
     N2 = Func(E2),
     !:List = [N2 | !.List],
-    set_tree234.map_func(Func, T3, !List).
+    map_func(Func, T3, !List).
 
 %---------------------------------------------------------------------------%
 
-set_tree234.filter_map(Pred, SetA, SetB) :-
-    set_tree234.filter_map_pred(Pred, SetA, [], ListB),
-    SetB = set_tree234.list_to_set(ListB).
+filter_map(Pred, SetA, SetB) :-
+    filter_map_pred(Pred, SetA, [], ListB),
+    SetB = list_to_set(ListB).
 
-:- pred set_tree234.filter_map_pred(
+:- pred filter_map_pred(
     pred(T1, T2)::in(pred(in, out) is semidet), set_tree234(T1)::in,
     list(T2)::in, list(T2)::out) is det.
 
-set_tree234.filter_map_pred(_Pred, empty, !List).
-set_tree234.filter_map_pred(Pred, Tin, !List) :-
+filter_map_pred(_Pred, empty, !List).
+filter_map_pred(Pred, Tin, !List) :-
     Tin = two(E0, T0, T1),
-    set_tree234.filter_map_pred(Pred, T0, !List),
+    filter_map_pred(Pred, T0, !List),
     ( Pred(E0, N0) ->
         !:List = [N0 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_pred(Pred, T1, !List).
-set_tree234.filter_map_pred(Pred, Tin, !List) :-
+    filter_map_pred(Pred, T1, !List).
+filter_map_pred(Pred, Tin, !List) :-
     Tin = three(E0, E1, T0, T1, T2),
-    set_tree234.filter_map_pred(Pred, T0, !List),
+    filter_map_pred(Pred, T0, !List),
     ( Pred(E0, N0) ->
         !:List = [N0 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_pred(Pred, T1, !List),
+    filter_map_pred(Pred, T1, !List),
     ( Pred(E1, N1) ->
         !:List = [N1 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_pred(Pred, T2, !List).
-set_tree234.filter_map_pred(Pred, Tin, !List) :-
+    filter_map_pred(Pred, T2, !List).
+filter_map_pred(Pred, Tin, !List) :-
     Tin = four(E0, E1, E2, T0, T1, T2, T3),
-    set_tree234.filter_map_pred(Pred, T0, !List),
+    filter_map_pred(Pred, T0, !List),
     ( Pred(E0, N0) ->
         !:List = [N0 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_pred(Pred, T1, !List),
+    filter_map_pred(Pred, T1, !List),
     ( Pred(E1, N1) ->
         !:List = [N1 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_pred(Pred, T2, !List),
+    filter_map_pred(Pred, T2, !List),
     ( Pred(E2, N2) ->
         !:List = [N2 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_pred(Pred, T3, !List).
+    filter_map_pred(Pred, T3, !List).
 
-set_tree234.filter_map(Func, SetA) = SetB :-
-    set_tree234.filter_map_func(Func, SetA, [], ListB),
-    SetB = set_tree234.list_to_set(ListB).
+filter_map(Func, SetA) = SetB :-
+    filter_map_func(Func, SetA, [], ListB),
+    SetB = list_to_set(ListB).
 
-:- pred set_tree234.filter_map_func(func(T1) = T2, set_tree234(T1),
-    list(T2), list(T2)).
-:- mode set_tree234.filter_map_func(in(func(in) = out is semidet),
-    in, in, out) is det.
+:- pred filter_map_func(func(T1) = T2, set_tree234(T1), list(T2), list(T2)).
+:- mode filter_map_func(in(func(in) = out is semidet), in, in, out) is det.
 
-set_tree234.filter_map_func(_Func, empty, !List).
-set_tree234.filter_map_func(Func, Tin, !List) :-
+filter_map_func(_Func, empty, !List).
+filter_map_func(Func, Tin, !List) :-
     Tin = two(E0, T0, T1),
-    set_tree234.filter_map_func(Func, T0, !List),
+    filter_map_func(Func, T0, !List),
     ( N0 = Func(E0) ->
         !:List = [N0 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_func(Func, T1, !List).
-set_tree234.filter_map_func(Func, Tin, !List) :-
+    filter_map_func(Func, T1, !List).
+filter_map_func(Func, Tin, !List) :-
     Tin = three(E0, E1, T0, T1, T2),
-    set_tree234.filter_map_func(Func, T0, !List),
+    filter_map_func(Func, T0, !List),
     ( N0 = Func(E0) ->
         !:List = [N0 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_func(Func, T1, !List),
+    filter_map_func(Func, T1, !List),
     ( N1 = Func(E1) ->
         !:List = [N1 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_func(Func, T2, !List).
-set_tree234.filter_map_func(Func, Tin, !List) :-
+    filter_map_func(Func, T2, !List).
+filter_map_func(Func, Tin, !List) :-
     Tin = four(E0, E1, E2, T0, T1, T2, T3),
-    set_tree234.filter_map_func(Func, T0, !List),
+    filter_map_func(Func, T0, !List),
     ( N0 = Func(E0) ->
         !:List = [N0 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_func(Func, T1, !List),
+    filter_map_func(Func, T1, !List),
     ( N1 = Func(E1) ->
         !:List = [N1 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_func(Func, T2, !List),
+    filter_map_func(Func, T2, !List),
     ( N2 = Func(E2) ->
         !:List = [N2 | !.List]
     ;
         true
     ),
-    set_tree234.filter_map_func(Func, T3, !List).
+    filter_map_func(Func, T3, !List).
 
 %---------------------------------------------------------------------------%
 
-set_tree234.filter(Pred, Set) = TrueSet :-
+filter(Pred, Set) = TrueSet :-
+    filter(Pred, Set, TrueSet).
+
+filter(Pred, Set, TrueSet) :-
     % XXX This should be more efficient.
-    set_tree234.divide(Pred, Set, TrueSet, _FalseSet).
+    divide(Pred, Set, TrueSet, _FalseSet).
 
-set_tree234.filter(Pred, Set, TrueSet) :-
-    % XXX This should be more efficient.
-    set_tree234.divide(Pred, Set, TrueSet, _FalseSet).
+filter(Pred, Set, TrueSet, FalseSet) :-
+    divide(Pred, Set, TrueSet, FalseSet).
 
-set_tree234.filter(Pred, Set, TrueSet, FalseSet) :-
-    set_tree234.divide(Pred, Set, TrueSet, FalseSet).
+divide(Pred, Set, TrueSet, FalseSet) :-
+    do_divide(Pred, Set, [], RevTrues, [], RevFalses),
+    TrueSet = rev_sorted_list_to_set(RevTrues),
+    FalseSet = rev_sorted_list_to_set(RevFalses).
 
-set_tree234.divide(Pred, Set, TrueSet, FalseSet) :-
-    set_tree234.divide_2(Pred, Set, empty, TrueSet, empty, FalseSet).
-
-:- pred set_tree234.divide_2(pred(T)::in(pred(in) is semidet),
+:- pred do_divide(pred(T)::in(pred(in) is semidet),
     set_tree234(T)::in,
-    set_tree234(T)::in, set_tree234(T)::out,
-    set_tree234(T)::in, set_tree234(T)::out) is det.
+    list(T)::in, list(T)::out, list(T)::in, list(T)::out) is det.
 
-    % XXX This should be more efficient.
-set_tree234.divide_2(_Pred, empty, !TrueSet, !FalseSet).
-set_tree234.divide_2(Pred, Tin, !TrueSet, !FalseSet) :-
-    Tin = two(E0, T0, T1),
-    set_tree234.divide_2(Pred, T0, !TrueSet, !FalseSet),
-    ( Pred(E0) ->
-        set_tree234.insert(E0, !TrueSet)
+do_divide(Pred, Tin, !RevTrues, !RevFalses) :-
+    (
+        Tin = empty
     ;
-        set_tree234.insert(E0, !FalseSet)
-    ),
-    set_tree234.divide_2(Pred, T1, !TrueSet, !FalseSet).
-set_tree234.divide_2(Pred, Tin, !TrueSet, !FalseSet) :-
-    Tin = three(E0, E1, T0, T1, T2),
-    set_tree234.divide_2(Pred, T0, !TrueSet, !FalseSet),
-    ( Pred(E0) ->
-        set_tree234.insert(E0, !TrueSet)
+        Tin = two(E0, T0, T1),
+        do_divide(Pred, T0, !RevTrues, !RevFalses),
+        ( Pred(E0) ->
+            !:RevTrues = [E0 | !.RevTrues]
+        ;
+            !:RevFalses = [E0 | !.RevFalses]
+        ),
+        do_divide(Pred, T1, !RevTrues, !RevFalses)
     ;
-        set_tree234.insert(E0, !FalseSet)
-    ),
-    set_tree234.divide_2(Pred, T1, !TrueSet, !FalseSet),
-    ( Pred(E1) ->
-        set_tree234.insert(E1, !TrueSet)
+        Tin = three(E0, E1, T0, T1, T2),
+        do_divide(Pred, T0, !RevTrues, !RevFalses),
+        ( Pred(E0) ->
+            !:RevTrues = [E0 | !.RevTrues]
+        ;
+            !:RevFalses = [E0 | !.RevFalses]
+        ),
+        do_divide(Pred, T1, !RevTrues, !RevFalses),
+        ( Pred(E1) ->
+            !:RevTrues = [E1 | !.RevTrues]
+        ;
+            !:RevFalses = [E1 | !.RevFalses]
+        ),
+        do_divide(Pred, T2, !RevTrues, !RevFalses)
     ;
-        set_tree234.insert(E1, !FalseSet)
-    ),
-    set_tree234.divide_2(Pred, T2, !TrueSet, !FalseSet).
-set_tree234.divide_2(Pred, Tin, !TrueSet, !FalseSet) :-
-    Tin = four(E0, E1, E2, T0, T1, T2, T3),
-    set_tree234.divide_2(Pred, T0, !TrueSet, !FalseSet),
-    ( Pred(E0) ->
-        set_tree234.insert(E0, !TrueSet)
-    ;
-        set_tree234.insert(E0, !FalseSet)
-    ),
-    set_tree234.divide_2(Pred, T1, !TrueSet, !FalseSet),
-    ( Pred(E1) ->
-        set_tree234.insert(E1, !TrueSet)
-    ;
-        set_tree234.insert(E1, !FalseSet)
-    ),
-    set_tree234.divide_2(Pred, T2, !TrueSet, !FalseSet),
-    ( Pred(E2) ->
-        set_tree234.insert(E2, !TrueSet)
-    ;
-        set_tree234.insert(E2, !FalseSet)
-    ),
-    set_tree234.divide_2(Pred, T3, !TrueSet, !FalseSet).
+        Tin = four(E0, E1, E2, T0, T1, T2, T3),
+        do_divide(Pred, T0, !RevTrues, !RevFalses),
+        ( Pred(E0) ->
+            !:RevTrues = [E0 | !.RevTrues]
+        ;
+            !:RevFalses = [E0 | !.RevFalses]
+        ),
+        do_divide(Pred, T1, !RevTrues, !RevFalses),
+        ( Pred(E1) ->
+            !:RevTrues = [E1 | !.RevTrues]
+        ;
+            !:RevFalses = [E1 | !.RevFalses]
+        ),
+        do_divide(Pred, T2, !RevTrues, !RevFalses),
+        ( Pred(E2) ->
+            !:RevTrues = [E2 | !.RevTrues]
+        ;
+            !:RevFalses = [E2 | !.RevFalses]
+        ),
+        do_divide(Pred, T3, !RevTrues, !RevFalses)
+    ).
 
-set_tree234.divide_by_set(DivideBySet, Set, TrueSet, FalseSet) :-
+divide_by_set(DivideBySet, Set, TrueSet, FalseSet) :-
     % XXX This should be more efficient.
-    set_tree234.divide(set_tree234.contains(DivideBySet), Set,
-        TrueSet, FalseSet).
+    divide(contains(DivideBySet), Set, TrueSet, FalseSet).
+
+%---------------------------------------------------------------------------%
+
+intersection_and_differences(SetA, SetB, InAandB, OnlyInA, OnlyInB) :-
+    ListA = to_sorted_list(SetA),
+    ListB = to_sorted_list(SetB),
+    intersection_and_differences_loop(ListA, ListB,
+        cord.init, CordInAandB,
+        cord.init, CordOnlyInA,
+        cord.init, CordOnlyInB),
+    InAandB = sorted_list_to_set(cord.list(CordInAandB)),
+    OnlyInA = sorted_list_to_set(cord.list(CordOnlyInA)),
+    OnlyInB = sorted_list_to_set(cord.list(CordOnlyInB)).
+
+:- pred intersection_and_differences_loop(list(T)::in, list(T)::in,
+    cord(T)::in, cord(T)::out,
+    cord(T)::in, cord(T)::out,
+    cord(T)::in, cord(T)::out) is det.
+
+intersection_and_differences_loop(As, Bs, !InAandB, !OnlyInA, !OnlyInB) :-
+    (
+        As = [],
+        Bs = []
+    ;
+        As = [],
+        Bs = [_ | _],
+        !:OnlyInB = !.OnlyInB ++ cord.from_list(Bs)
+    ;
+        As = [_ | _],
+        Bs = [],
+        !:OnlyInA = !.OnlyInA ++ cord.from_list(As)
+    ;
+        As = [HeadA | TailAs],
+        Bs = [HeadB | TailBs],
+        compare(Cmp, HeadA, HeadB),
+        (
+            Cmp = (=),
+            !:InAandB = cord.snoc(!.InAandB, HeadA),
+            intersection_and_differences_loop(TailAs, TailBs,
+                !InAandB, !OnlyInA, !OnlyInB)
+        ;
+            Cmp = (<),
+            !:OnlyInA = cord.snoc(!.OnlyInA, HeadA),
+            intersection_and_differences_loop(TailAs, Bs,
+                !InAandB, !OnlyInA, !OnlyInB)
+        ;
+            Cmp = (>),
+            !:OnlyInB = cord.snoc(!.OnlyInB, HeadB),
+            intersection_and_differences_loop(As, TailBs,
+                !InAandB, !OnlyInA, !OnlyInB)
+        )
+    ).
+
 
 %---------------------------------------------------------------------------%

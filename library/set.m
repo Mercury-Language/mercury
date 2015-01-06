@@ -490,6 +490,13 @@
 :- pred divide_by_set(set(T)::in, set(T)::in, set(T)::out, set(T)::out)
     is det.
 
+    % intersection_and_differences(SetA, SetB, InAandB, OnlyInA, OnlyInB):
+    % Given SetA and SetB, return the elements that occur in both sets,
+    % and those that occur only in one or the other.
+    %
+:- pred intersection_and_differences(set(T)::in, set(T)::in,
+    set(T)::out, set(T)::out, set(T)::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -760,6 +767,10 @@ set.divide(P, Set, TruePart, FalsePart) :-
 
 set.divide_by_set(DivideBySet, Set, TruePart, FalsePart) :-
     set_ordlist.divide_by_set(DivideBySet, Set, TruePart, FalsePart).
+
+intersection_and_differences(SetA, SetB, InAandB, OnlyInA, OnlyInB) :-
+    set_ordlist.intersection_and_differences(SetA, SetB,
+        InAandB, OnlyInA, OnlyInB).
 
 %---------------------------------------------------------------------------%
 :- end_module set.

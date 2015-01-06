@@ -114,6 +114,10 @@ Changes to the Mercury standard library:
    - foldl5/12
    - foldr5/12
 
+* The following predicate has been added to the set modules:
+
+   - intersection_and_differences
+
 * We have a added a new type, maybe_errors, to the maybe module.
 
   The following predicate has been added to the maybe module:
