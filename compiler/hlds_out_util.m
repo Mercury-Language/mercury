@@ -371,8 +371,8 @@ unify_main_context_to_pieces(!First, MainContext, !Pieces) :-
         % implementations defined using the named syntax rather than
         % the clause syntax, and the bodies of such procedures should
         % only contain a single call, so we shouldn't get unifications
-        % nested inside calls.  Hence we can safely initialize the
-        % markers to empty here.  (Anyway the worst possible consequence
+        % nested inside calls. Hence we can safely initialize the
+        % markers to empty here. (Anyway the worst possible consequence
         % is slightly sub-optimal text for an error message.)
         init_markers(Markers),
         ArgIdStr = call_arg_id_to_string(CallId, ArgNum, Markers),

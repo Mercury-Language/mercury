@@ -459,12 +459,11 @@ convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
     %   <major>_<minor>_<u>
     %   <major>_<minor>_<patch>
     %
-    % That is setting the minor version number when the major
-    % one is unknown won't be accepted.  (It wouldn't be useful
-    % in any case.)
+    % That is setting the minor version number when the major one
+    % is unknown won't be accepted. (It wouldn't be useful in any case.)
     %
-    % <major> must be >= 2 (Mercury won't work with anything older
-    % than that and <minor> and <patch> must be non-negative.
+    % <major> must be >= 2 (Mercury won't work with anything older than that)
+    % and <minor> and <patch> must be non-negative.
     %
 :- pred convert_gcc_version(string::in, string::in, string::in,
     c_compiler_type::out) is semidet.
@@ -638,7 +637,6 @@ get_host_env_type(Globals, Globals ^ g_host_env_type).
 get_system_env_type(Globals, Globals ^ g_system_env_type).
 get_target_env_type(Globals, Globals ^ g_target_env_type).
 get_file_install_cmd(Globals, Globals ^ g_file_install_cmd).
-
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
     lookup_accumulating_option(Globals, backend_foreign_languages, LangStrs),

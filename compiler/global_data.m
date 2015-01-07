@@ -134,8 +134,8 @@
     % merge_global_datas(GlobalDataA, GlobalDataB, GlobalData, Remap)
     %
     % Merge two global data structures, where static cell information from
-    % GlobalDataA takes precedence over GlobalDataB.  The type numbers of the
-    % two global_data structures must be distinct.  Remap contains the
+    % GlobalDataA takes precedence over GlobalDataB. The type numbers of the
+    % two global_data structures must be distinct. Remap contains the
     % information necessary for remap_static_cell_references/3.
     %
 :- pred merge_global_datas(global_data::in, global_data::in, global_data::out,
@@ -185,11 +185,11 @@
                 gd_closure_layouts          :: list(closure_proc_id_data),
 
                 % A table for allocating and maintaining slots where string IDs
-                % will be placed at runtime for threadscope profiling.  The
-                % actual string IDs are allocated at runtime and their IDs are
-                % placed in an array slot which can be referred to statically.
-                % The size of the table is maintained for allocating offsets
-                % into it.
+                % will be placed at runtime for threadscope profiling.
+                % The actual string IDs are allocated at runtime and their IDs
+                % are placed in an array slot which can be referred to
+                % statically. The size of the table is maintained for
+                % allocating offsets into it.
                 gd_ts_string_table_size     :: int,
                 gd_ts_rev_string_table      :: list(string),
 
@@ -530,8 +530,8 @@ find_general_llds_types_in_cell(UnboxFloat, [_Type | Types], [Rval | Rvals],
 %-----------------------------------------------------------------------------%
 
 add_vector_static_cell(LLDSTypes, VectorData, DataId, !Info) :-
-    require(list.is_not_empty(LLDSTypes), "add_vector_static_cell: no types"),
-    require(list.is_not_empty(VectorData), "add_vector_static_cell: no data"),
+    expect(list.is_not_empty(LLDSTypes), $module, $pred, "no types"),
+    expect(list.is_not_empty(VectorData), $module, $pred, "no data"),
 
     % We don't to use grouped_args_type, since that would (a) make the code
     % below significantly more complex, and (b) the type declaration can be
@@ -1056,9 +1056,13 @@ remap_instr(GlobalDataRemap, Instr0, Instr) :-
         remap_rval(StaticCellRemap, Rval0, Rval),
         Instr  = if_val(Rval, CodeAddr)
     ;
-        Instr0 = foreign_proc_code(A, Comps0, B, C, D, E, F, G, H, I),
+        Instr0 = foreign_proc_code(Decls, Comps0, MayCallMerc,
+            FixNoLayout, FixLayout, FixOnlyLayout, NoFix,
+            HashDefnLabel, StackSlotRef, MaybeDup),
         list.map(remap_foreign_proc_component(StaticCellRemap), Comps0, Comps),
-        Instr  = foreign_proc_code(A, Comps,  B, C, D, E, F, G, H, I)
+        Instr  = foreign_proc_code(Decls, Comps,  MayCallMerc,
+            FixNoLayout, FixLayout, FixOnlyLayout, NoFix,
+            HashDefnLabel, StackSlotRef, MaybeDup)
     ;
         Instr0 = computed_goto(Rval0, MaybeLabels),
         remap_rval(StaticCellRemap, Rval0, Rval),

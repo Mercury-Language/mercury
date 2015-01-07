@@ -25,7 +25,7 @@
     ;       loc_inside_atomic_goal.
 
     % Convert goals from the prog_data `goal' structure into the HLDS
-    % `hlds_goal' structure.  At the same time,
+    % `hlds_goal' structure. At the same time,
     %
     % - convert it to super-homogeneous form by unravelling all the complex
     %   unifications, and annotate those unifications with a unify_context
@@ -856,7 +856,7 @@ get_rev_conj(LocKind, Goal, Renaming, RevConj0, RevConj,
 
     % get_rev_par_conj(LocKind, Goal, Renaming, RevParConj0, RevParConj, ...):
     %
-    % Goal is a tree of conjuncts.  Flatten it into a list (applying Renaming),
+    % Goal is a tree of conjuncts. Flatten it into a list (applying Renaming),
     % reverse it, append RevParConj0, and return the result in RevParConj.
     %
 :- pred get_rev_par_conj(loc_kind::in, goal::in, prog_var_renaming::in,
@@ -941,8 +941,8 @@ transform_orelse_goals(LocKind, [Goal | Goals], Renaming,
 % Try goals.
 %
 
-    % Transform a try_expr which needs to perform I/O.  The end result looks
-    % like:
+    % Transform a try_expr which needs to perform I/O. The end result looks
+    % like this:
     %
     %   magic_exception_result(TryResult),
     %   (
@@ -958,9 +958,9 @@ transform_orelse_goals(LocKind, [Goal | Goals], Renaming,
     %   )
     %
     % Unlike in the non-I/O case, we have to transform the three pieces Goal,
-    % Then, ExcpHandling separately then stitch them together into HLDS goals.
+    % Then, ExcpHandling separately, then stitch them together into HLDS goals.
     % This is because we need to find out the variable for !.IO at the end of
-    % Goal, before entering Then.  The variable will be used in the later
+    % Goal, before entering Then. The variable will be used in the later
     % post-transformation.
     %
 :- pred transform_try_expr_with_io(loc_kind::in, svar::in, svar::in,

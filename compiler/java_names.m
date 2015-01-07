@@ -98,7 +98,7 @@
 
 mangle_sym_name_for_java(SymName0, QualKind, QualifierOp, JavaSafeName) :-
     % Modules in the Mercury standard library get a `mercury' prefix when
-    % mapped to MLDS module names.  Since we place all Java classes inside a
+    % mapped to MLDS module names. Since we place all Java classes inside a
     % `jmercury' package, the extra prefix is just redundant so we remove it.
     ( strip_outermost_qualifier(SymName0, "mercury", StrippedSymName) ->
         SymName = StrippedSymName
@@ -209,7 +209,7 @@ java_mercury_runtime_package_name =
 
 %-----------------------------------------------------------------------------%
 %
-% C# naming
+% C# naming.
 %
 
 % XXX Reduce code duplication between C# and Java routines.

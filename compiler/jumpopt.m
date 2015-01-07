@@ -272,20 +272,20 @@ jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], SdprocMap,
     % we try to short-circuit the return address.
     %
     % We handle gotos by first trying to eliminate them. If this fails,
-    % we check whether their target label begins a proceed/succeed
-    % sequence; if it does, we replace the label by that sequence.
-    % If this fails as well, we check whether the instruction at the
-    % ultimate target label can fall through. If it cannot (e.g. call),
-    % we replace the goto with this instruction.
+    % we check whether their target label begins a proceed/succeed sequence;
+    % if it does, we replace the label by that sequence. If this fails as well,
+    % we check whether the instruction at the ultimate target label can
+    % fall through. If it cannot (e.g. call), we replace the goto with
+    % this instruction.
     %
-    % We handle computed gotos by attempting to short-circuit all the
-    % labels in the label list.
+    % We handle computed gotos by attempting to short-circuit all the labels
+    % in the label list.
     %
     % We handle if-vals by trying to turn them into the assignment
     % of a boolean value to r1, or by short-circuiting the target label.
-    % We also try to eliminate a goto following an if-val, if we can
-    % do so by negating the condition and possibly also deleting a label
-    % between the if-val and the goto.
+    % We also try to eliminate a goto following an if-val, if we can do so
+    % by negating the condition and possibly also deleting a label between
+    % the if-val and the goto.
     %
     % We build up the generated instruction list in reverse order, because
     % building it in right order would make instr_list not tail recursive,
@@ -320,7 +320,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         Uinstr0 = computed_goto(Index, MaybeTargets0),
         InstrMap = JumpOptInfo ^ joi_instr_map,
         % Short-circuit all the destination labels.
-        short_maybe_labels(InstrMap, MaybeTargets0, MaybeTargets),
+        short_circuit_maybe_labels(InstrMap, MaybeTargets0, MaybeTargets),
         ( MaybeTargets = MaybeTargets0 ->
             NewRemain = usual_case
         ;
@@ -337,7 +337,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         Uinstr0 = assign(Lval, Rval0),
         % Any labels mentioned in Rval0 should be short-circuited.
         InstrMap = JumpOptInfo ^ joi_instr_map,
-        short_labels_rval(InstrMap, Rval0, Rval),
+        short_circuit_labels_rval(InstrMap, Rval0, Rval),
         ( Rval = Rval0 ->
             NewRemain = usual_case
         ;
@@ -349,7 +349,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         Uinstr0 = keep_assign(Lval, Rval0),
         % Any labels mentioned in Rval0 should be short-circuited.
         InstrMap = JumpOptInfo ^ joi_instr_map,
-        short_labels_rval(InstrMap, Rval0, Rval),
+        short_circuit_labels_rval(InstrMap, Rval0, Rval),
         ( Rval = Rval0 ->
             NewRemain = usual_case
         ;
@@ -361,7 +361,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         Uinstr0 = mkframe(FrameInfo, Redoip),
         ( Redoip = yes(code_label(Label0)) ->
             InstrMap = JumpOptInfo ^ joi_instr_map,
-            short_label(InstrMap, Label0, Label),
+            short_circuit_label(InstrMap, Label0, Label),
             ( Label = Label0 ->
                 NewRemain = usual_case
             ;
@@ -386,7 +386,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
     ;
         Uinstr0 = fork_new_child(SyncTerm, Child0),
         InstrMap = JumpOptInfo ^ joi_instr_map,
-        short_label(InstrMap, Child0, Child),
+        short_circuit_label(InstrMap, Child0, Child),
         ( Child = Child0 ->
             NewRemain = usual_case
         ;
@@ -398,7 +398,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
     ;
         Uinstr0 = join_and_continue(SyncTerm, Label0),
         InstrMap = JumpOptInfo ^ joi_instr_map,
-        short_label(InstrMap, Label0, Label),
+        short_circuit_label(InstrMap, Label0, Label),
         ( Label = Label0 ->
             NewRemain = usual_case
         ;
@@ -416,7 +416,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
     ;
         Uinstr0 = lc_spawn_off(LCRval, LCSRval, Child0),
         InstrMap = JumpOptInfo ^ joi_instr_map,
-        short_label(InstrMap, Child0, Child),
+        short_circuit_label(InstrMap, Child0, Child),
         ( Child = Child0 ->
             NewRemain = usual_case
         ;
@@ -753,12 +753,11 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
             %   if (! Cond) L3
             % L2:   ...
             %
-            % The label L1 may be present or not. If it is present,
-            % we are eliminating it, which is possible only because
-            % we short-circuit all jumps to it (make them jump
-            % directly to L3). This may not be possible if L3 is
-            % a non-label code address; e.g. we cannot jump to
-            % non-label code addresses from computed gotos.
+            % The label L1 may be present or not. If it is present, we are
+            % eliminating it, which is possible only because we short-circuit
+            % all jumps to it (make them jump directly to L3). This may not be
+            % possible if L3 is a non-label code address; e.g. we cannot jump
+            % to non-label code addresses from computed gotos.
             opt_util.skip_comments(Instrs0, Instrs1),
             Instrs1 = [Instr1 | Instrs2],
             ( Instr1 = llds_instr(label(ElimLabel), _) ->
@@ -780,12 +779,11 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
             code_util.neg_rval(Cond, NotCond),
             NewInstr = llds_instr(if_val(NotCond, GotoTarget), GotoComment),
             NewInstrs = [],
-            % The transformed code may fit the pattern again,
-            % so make sure that we look for the pattern again
-            % by giving all of the transformed instructions to
-            % the recursive call. We can't go into an infinite
-            % loop because each application of the transformation
-            % strictly reduces the size of the code.
+            % The transformed code may fit the pattern again, so make sure that
+            % we look for the pattern again by giving all of the transformed
+            % instructions to the recursive call. We can't go into an infinite
+            % loop because each application of the transformation strictly
+            % reduces the size of the code.
             RemainInstrs = [NewInstr | AfterGoto],
             NewRemain = specified(NewInstrs, RemainInstrs)
         ;
@@ -805,9 +803,9 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
             %   if (! Cond) L2
             %   goto L1
             %
-            % and get the code processed again starting after the
-            % if_val, to get the recursive call to replace the goto
-            % to L1 with the code at L1.
+            % and get the code processed again starting after the if_val,
+            % to get the recursive call to replace the goto to L1
+            % with the code at L1.
             Fulljumpopt = yes,
             map.search(BlockMap, TargetLabel, _TargetBlock),
             opt_util.skip_comments(Instrs0, Instrs1),
@@ -819,8 +817,7 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
             )
         ->
             code_util.neg_rval(Cond, NotCond),
-            NewIfInstr =
-                llds_instr(if_val(NotCond, GotoAddr), GotoComment),
+            NewIfInstr = llds_instr(if_val(NotCond, GotoAddr), GotoComment),
             NewInstrs = [NewIfInstr],
             NewGotoComment = Comment0 ++ " (switched)",
             NewGotoInstr =
@@ -905,11 +902,11 @@ jump_opt_foreign_proc_code(Uinstr0, Comment0, Instrs0, _PrevInstr,
         MaybeNoFix0, MaybeDefLabel, StackSlotRef, MaybeDup),
     some [!Redirect] (
         InstrMap = JumpOptInfo ^ joi_instr_map,
-        list.map_foldl(short_foreign_proc_component(InstrMap),
+        list.map_foldl(short_circuit_foreign_proc_component(InstrMap),
             Components0, Components, no, !:Redirect),
         (
             MaybeNoFix0 = yes(NoFix),
-            short_label(InstrMap, NoFix, NoFixDest),
+            short_circuit_label(InstrMap, NoFix, NoFixDest),
             MaybeNoFix = yes(NoFixDest),
             !:Redirect = yes
         ;
@@ -923,7 +920,7 @@ jump_opt_foreign_proc_code(Uinstr0, Comment0, Instrs0, _PrevInstr,
 %
 %       (
 %           MaybeFixNoLayout = yes(FixNoLayout),
-%           short_label(InstrMap, FixNoLayout, FixNoLayoutDest),
+%           short_circuit_label(InstrMap, FixNoLayout, FixNoLayoutDest),
 %           FixNoLayoutDest \= FixNoLayout
 %       ->
 %           error("jump_opt_instr_list: foreign_proc_code fix_no_layout")
@@ -932,7 +929,7 @@ jump_opt_foreign_proc_code(Uinstr0, Comment0, Instrs0, _PrevInstr,
 %       ),
 %       (
 %           MaybeFixLayout = yes(FixLayout),
-%           short_label(InstrMap, FixLayout, FixLayoutDest),
+%           short_circuit_label(InstrMap, FixLayout, FixLayoutDest),
 %           FixLayoutDest \= FixLayout
 %       ->
 %           error("jump_opt_instr_list: foreign_proc_code fix_layout")
@@ -941,7 +938,7 @@ jump_opt_foreign_proc_code(Uinstr0, Comment0, Instrs0, _PrevInstr,
 %       ),
 %       (
 %           MaybeFixOnlyLayout = yes(FixOnlyLayout),
-%           short_label(InstrMap, FixOnlyLayout, FixOnlyLayoutDest),
+%           short_circuit_label(InstrMap, FixOnlyLayout, FixOnlyLayoutDest),
 %           FixOnlyLayoutDest \= FixOnlyLayout
 %       ->
 %           error("jump_opt_instr_list: foreign_proc_code fix_only_layout")
@@ -1055,32 +1052,14 @@ adjust_livevals(PrevInstr, Instrs0, Instrs) :-
     % Short-circuit the given label by following any gotos at the
     % labelled instruction or by falling through consecutive labels.
     %
-:- pred short_label(instrmap::in, label::in, label::out) is det.
+:- pred short_circuit_label(instrmap::in, label::in, label::out) is det.
 
-short_label(InstrMap, Label0, Label) :-
+short_circuit_label(InstrMap, Label0, Label) :-
     ( map.search(InstrMap, Label0, Instr0) ->
         final_dest(InstrMap, Label0, Label, Instr0, _Instr)
     ;
         Label = Label0
     ).
-
-:- pred short_maybe_labels(instrmap::in,
-    list(maybe(label))::in, list(maybe(label))::out) is det.
-
-short_maybe_labels(_InstrMap, [], []).
-short_maybe_labels(InstrMap, [MaybeLabel0 | MaybeLabels0],
-        [MaybeLabel | MaybeLabels]) :-
-    (
-        MaybeLabel0 = yes(Label0),
-        short_label(InstrMap, Label0, Label),
-        MaybeLabel = yes(Label)
-    ;
-        MaybeLabel0 = no,
-        MaybeLabel = no
-    ),
-    short_maybe_labels(InstrMap, MaybeLabels0, MaybeLabels).
-
-%-----------------------------------------------------------------------------%
 
     % Find the final destination of a given instruction at a given label.
     % We follow gotos as well as consecutive labels.
@@ -1089,12 +1068,12 @@ short_maybe_labels(InstrMap, [MaybeLabel0 | MaybeLabels0],
     instruction::out) is det.
 
 final_dest(InstrMap, SrcLabel, DestLabel, SrcInstr, DestInstr) :-
-    final_dest_2(InstrMap, [], SrcLabel, DestLabel, SrcInstr, DestInstr).
+    final_dest_loop(InstrMap, [], SrcLabel, DestLabel, SrcInstr, DestInstr).
 
-:- pred final_dest_2(instrmap::in, list(label)::in,
+:- pred final_dest_loop(instrmap::in, list(label)::in,
     label::in, label::out, instruction::in, instruction::out) is det.
 
-final_dest_2(InstrMap, LabelsSofar, SrcLabel, DestLabel,
+final_dest_loop(InstrMap, LabelsSofar, SrcLabel, DestLabel,
         SrcInstr, DestInstr) :-
     (
         SrcInstr = llds_instr(SrcUinstr, _Comment),
@@ -1106,7 +1085,7 @@ final_dest_2(InstrMap, LabelsSofar, SrcLabel, DestLabel,
         map.search(InstrMap, TargetLabel, TargetInstr),
         \+ list.member(SrcLabel, LabelsSofar)
     ->
-        final_dest_2(InstrMap, [SrcLabel | LabelsSofar],
+        final_dest_loop(InstrMap, [SrcLabel | LabelsSofar],
             TargetLabel, DestLabel, TargetInstr, DestInstr)
     ;
         DestLabel = SrcLabel,
@@ -1115,118 +1094,167 @@ final_dest_2(InstrMap, LabelsSofar, SrcLabel, DestLabel,
 
 %-----------------------------------------------------------------------------%
 
-:- pred short_labels_rval(instrmap::in, rval::in, rval::out) is det.
+:- pred short_circuit_maybe_labels(instrmap::in,
+    list(maybe(label))::in, list(maybe(label))::out) is det.
 
-short_labels_rval(InstrMap, lval(Lval0), lval(Lval)) :-
-    short_labels_lval(InstrMap, Lval0, Lval).
-short_labels_rval(_, var(_), _) :-
-    unexpected($module, $pred, "var").
-short_labels_rval(InstrMap, mkword(Tag, Rval0), mkword(Tag, Rval)) :-
-    short_labels_rval(InstrMap, Rval0, Rval).
-short_labels_rval(_, mkword_hole(Tag), mkword_hole(Tag)).
-short_labels_rval(InstrMap, const(Const0), const(Const)) :-
-    short_labels_const(InstrMap, Const0, Const).
-short_labels_rval(InstrMap, unop(Op, Rval0), unop(Op, Rval)) :-
-    short_labels_rval(InstrMap, Rval0, Rval).
-short_labels_rval(InstrMap, binop(Op, LRval0, RRval0),
-        binop(Op, LRval, RRval)) :-
-    short_labels_rval(InstrMap, LRval0, LRval),
-    short_labels_rval(InstrMap, RRval0, RRval).
-short_labels_rval(_, mem_addr(MemRef), mem_addr(MemRef)).
+short_circuit_maybe_labels(_InstrMap, [], []).
+short_circuit_maybe_labels(InstrMap, [MaybeLabel0 | MaybeLabels0],
+        [MaybeLabel | MaybeLabels]) :-
+    (
+        MaybeLabel0 = yes(Label0),
+        short_circuit_label(InstrMap, Label0, Label),
+        MaybeLabel = yes(Label)
+    ;
+        MaybeLabel0 = no,
+        MaybeLabel = no
+    ),
+    short_circuit_maybe_labels(InstrMap, MaybeLabels0, MaybeLabels).
 
-:- pred short_labels_const(instrmap::in,
+%-----------------------------------------------------------------------------%
+
+:- pred short_circuit_labels_rval(instrmap::in, rval::in, rval::out) is det.
+
+short_circuit_labels_rval(InstrMap, Rval0, Rval) :-
+    (
+        Rval0 = lval(Lval0),
+        short_circuit_labels_lval(InstrMap, Lval0, Lval),
+        Rval = lval(Lval)
+    ;
+        Rval0 = var(_),
+        unexpected($module, $pred, "var")
+    ;
+        Rval0 = mkword(Tag, SubRval0),
+        short_circuit_labels_rval(InstrMap, SubRval0, SubRval),
+        Rval = mkword(Tag, SubRval)
+    ;
+        Rval0 = const(Const0),
+        short_circuit_labels_const(InstrMap, Const0, Const),
+        Rval = const(Const)
+    ;
+        Rval0 = unop(Op, SubRval0),
+        short_circuit_labels_rval(InstrMap, SubRval0, SubRval),
+        Rval = unop(Op, SubRval)
+    ;
+        Rval0 = binop(Op, LRval0, RRval0),
+        short_circuit_labels_rval(InstrMap, LRval0, LRval),
+        short_circuit_labels_rval(InstrMap, RRval0, RRval),
+        Rval = binop(Op, LRval, RRval)
+    ;
+        ( Rval0 = mkword_hole(_)
+        ; Rval0 = mem_addr(_)
+        ),
+        Rval = Rval0
+    ).
+
+:- pred short_circuit_labels_const(instrmap::in,
     rval_const::in, rval_const::out) is det.
 
-short_labels_const(_, llconst_true, llconst_true).
-short_labels_const(_, llconst_false, llconst_false).
-short_labels_const(_, llconst_int(I), llconst_int(I)).
-short_labels_const(_, llconst_foreign(V, T), llconst_foreign(V, T)).
-short_labels_const(_, llconst_float(F), llconst_float(F)).
-short_labels_const(_, llconst_string(S), llconst_string(S)).
-short_labels_const(_, llconst_multi_string(S), llconst_multi_string(S)).
-short_labels_const(InstrMap, llconst_code_addr(CodeAddr0),
-        llconst_code_addr(CodeAddr)) :-
-    ( CodeAddr0 = code_label(Label0) ->
-        short_label(InstrMap, Label0, Label),
-        CodeAddr = code_label(Label)
+short_circuit_labels_const(InstrMap, RvalConst0, RvalConst) :-
+    (
+        ( RvalConst0 = llconst_true
+        ; RvalConst0 = llconst_false
+        ; RvalConst0 = llconst_int(_I)
+        ; RvalConst0 = llconst_foreign(_V, _T)
+        ; RvalConst0 = llconst_float(_F)
+        ; RvalConst0 = llconst_string(_S)
+        ; RvalConst0 = llconst_multi_string(_S)
+        ; RvalConst0 = llconst_data_addr(_D, _O)
+        ),
+        RvalConst = RvalConst0
     ;
-        CodeAddr = CodeAddr0
+        RvalConst0 = llconst_code_addr(CodeAddr0),
+        ( CodeAddr0 = code_label(Label0) ->
+            short_circuit_label(InstrMap, Label0, Label),
+            CodeAddr = code_label(Label)
+        ;
+            CodeAddr = CodeAddr0
+        ),
+        RvalConst = llconst_code_addr(CodeAddr)
     ).
-short_labels_const(_, llconst_data_addr(D, O),
-        llconst_data_addr(D, O)).
 
-:- pred short_labels_maybe_rvals(instrmap::in, list(maybe(rval))::in,
+:- pred short_circuit_labels_maybe_rvals(instrmap::in, list(maybe(rval))::in,
     list(maybe(rval))::out) is det.
 
-short_labels_maybe_rvals(_, [], []).
-short_labels_maybe_rvals(InstrMap, [MaybeRval0 | MaybeRvals0],
+short_circuit_labels_maybe_rvals(_, [], []).
+short_circuit_labels_maybe_rvals(InstrMap, [MaybeRval0 | MaybeRvals0],
         [MaybeRval | MaybeRvals]) :-
-    short_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval),
-    short_labels_maybe_rvals(InstrMap, MaybeRvals0, MaybeRvals).
+    short_circuit_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval),
+    short_circuit_labels_maybe_rvals(InstrMap, MaybeRvals0, MaybeRvals).
 
-:- pred short_labels_maybe_rval(instrmap::in,
+:- pred short_circuit_labels_maybe_rval(instrmap::in,
     maybe(rval)::in, maybe(rval)::out) is det.
 
-short_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval) :-
+short_circuit_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval) :-
     (
         MaybeRval0 = no,
         MaybeRval = no
     ;
         MaybeRval0 = yes(Rval0),
-        short_labels_rval(InstrMap, Rval0, Rval),
+        short_circuit_labels_rval(InstrMap, Rval0, Rval),
         MaybeRval = yes(Rval)
     ).
 
-:- pred short_labels_lval(instrmap::in, lval::in, lval::out) is det.
+:- pred short_circuit_labels_lval(instrmap::in, lval::in, lval::out) is det.
 
-short_labels_lval(_, reg(T, N), reg(T, N)).
-short_labels_lval(_, succip, succip).
-short_labels_lval(_, maxfr, maxfr).
-short_labels_lval(_, curfr, curfr).
-short_labels_lval(_, hp, hp).
-short_labels_lval(_, sp, sp).
-short_labels_lval(_, parent_sp, parent_sp).
-short_labels_lval(_, temp(T, N), temp(T, N)).
-short_labels_lval(_, stackvar(N), stackvar(N)).
-short_labels_lval(_, parent_stackvar(N), parent_stackvar(N)).
-short_labels_lval(_, framevar(N), framevar(N)).
-short_labels_lval(_, double_stackvar(Type, N), double_stackvar(Type, N)).
-short_labels_lval(_, global_var_ref(Var), global_var_ref(Var)).
-short_labels_lval(InstrMap, succip_slot(Rval0), succip_slot(Rval)) :-
-    short_labels_rval(InstrMap, Rval0, Rval).
-short_labels_lval(InstrMap, redoip_slot(Rval0), redoip_slot(Rval)) :-
-    short_labels_rval(InstrMap, Rval0, Rval).
-short_labels_lval(InstrMap, redofr_slot(Rval0), redofr_slot(Rval)) :-
-    short_labels_rval(InstrMap, Rval0, Rval).
-short_labels_lval(InstrMap, succfr_slot(Rval0), succfr_slot(Rval)) :-
-    short_labels_rval(InstrMap, Rval0, Rval).
-short_labels_lval(InstrMap, prevfr_slot(Rval0), prevfr_slot(Rval)) :-
-    short_labels_rval(InstrMap, Rval0, Rval).
-short_labels_lval(InstrMap, field(Tag, Rval0, Field0),
-        field(Tag, Rval, Field)) :-
-    short_labels_rval(InstrMap, Rval0, Rval),
-    short_labels_rval(InstrMap, Field0, Field).
-short_labels_lval(InstrMap, mem_ref(Rval0), mem_ref(Rval)) :-
-    short_labels_rval(InstrMap, Rval0, Rval).
-short_labels_lval(_, lvar(_), _) :-
-    unexpected($module, $pred, "lvar").
+short_circuit_labels_lval(InstrMap, Lval0, Lval) :-
+    (
+        ( Lval0 = reg(_T, _N)
+        ; Lval0 = succip
+        ; Lval0 = maxfr
+        ; Lval0 = curfr
+        ; Lval0 = hp
+        ; Lval0 = sp
+        ; Lval0 = parent_sp
+        ; Lval0 = temp(_T, _N)
+        ; Lval0 = stackvar(_N)
+        ; Lval0 = parent_stackvar(_N)
+        ; Lval0 = framevar(_N)
+        ; Lval0 = double_stackvar(_Type, _N)
+        ; Lval0 = global_var_ref(_Var)
+        ),
+        Lval = Lval0
+    ;
+        Lval0 = succip_slot(Rval0),
+        short_circuit_labels_rval(InstrMap, Rval0, Rval),
+        Lval = succip_slot(Rval)
+    ;
+        Lval0 = redoip_slot(Rval0),
+        short_circuit_labels_rval(InstrMap, Rval0, Rval),
+        Lval = redoip_slot(Rval)
+    ;
+        Lval0 = redofr_slot(Rval0),
+        short_circuit_labels_rval(InstrMap, Rval0, Rval),
+        Lval = redofr_slot(Rval)
+    ;
+        Lval0 = succfr_slot(Rval0),
+        short_circuit_labels_rval(InstrMap, Rval0, Rval),
+        Lval = succfr_slot(Rval)
+    ;
+        Lval0 = prevfr_slot(Rval0),
+        short_circuit_labels_rval(InstrMap, Rval0, Rval),
+        Lval = prevfr_slot(Rval)
+    ;
+        Lval0 = field(Tag, Rval0, Field0),
+        short_circuit_labels_rval(InstrMap, Rval0, Rval),
+        short_circuit_labels_rval(InstrMap, Field0, Field),
+        Lval = field(Tag, Rval, Field)
+    ;
+        Lval0 = mem_ref(Rval0),
+        short_circuit_labels_rval(InstrMap, Rval0, Rval),
+        Lval = mem_ref(Rval)
+    ;
+        Lval0 = lvar(_),
+        unexpected($module, $pred, "lvar")
+    ).
 
-:- pred short_foreign_proc_component(instrmap::in,
+:- pred short_circuit_foreign_proc_component(instrmap::in,
     foreign_proc_component::in, foreign_proc_component::out,
     bool::in, bool::out) is det.
 
-short_foreign_proc_component(InstrMap, !Component, !Redirect) :-
+short_circuit_foreign_proc_component(InstrMap, !Component, !Redirect) :-
     (
-        !.Component = foreign_proc_inputs(_)
-    ;
-        !.Component = foreign_proc_outputs(_)
-    ;
-        !.Component = foreign_proc_user_code(_, _, _)
-    ;
-        !.Component = foreign_proc_raw_code(_, _, _, _)
-    ;
         !.Component = foreign_proc_fail_to(Label0),
-        short_label(InstrMap, Label0, Label),
+        short_circuit_label(InstrMap, Label0, Label),
         !:Component = foreign_proc_fail_to(Label),
         ( Label = Label0 ->
             true
@@ -1234,9 +1262,13 @@ short_foreign_proc_component(InstrMap, !Component, !Redirect) :-
             !:Redirect = yes
         )
     ;
-        !.Component = foreign_proc_alloc_id(_)
-    ;
-        !.Component = foreign_proc_noop
+        ( !.Component = foreign_proc_inputs(_)
+        ; !.Component = foreign_proc_outputs(_)
+        ; !.Component = foreign_proc_user_code(_, _, _)
+        ; !.Component = foreign_proc_raw_code(_, _, _, _)
+        ; !.Component = foreign_proc_alloc_id(_)
+        ; !.Component = foreign_proc_noop
+        )
     ).
 
 %-----------------------------------------------------------------------------%

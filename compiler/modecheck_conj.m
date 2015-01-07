@@ -282,16 +282,16 @@ modecheck_delayed_solver_goals(ConjType, Goals, !DelayedGoals,
         Goals1, !ImpurityErrors, !ModeInfo),
     Goals = Goals0 ++ Goals1.
 
-    % We may still have some unscheduled goals.  This may be because some
+    % We may still have some unscheduled goals. This may be because some
     % initialisation calls are needed to turn some solver type vars
-    % from inst free to inst any.  This pass attempts to identify a
+    % from inst free to inst any. This pass attempts to identify a
     % minimal subset of such vars to initialise that will allow the
     % remaining goals to be scheduled in a deterministic fashion.
     %
-    % This works as follows.  If a deterministic schedule exists for
+    % This works as follows. If a deterministic schedule exists for
     % the remaining goals, then each subgoal must also be deterministic.
     % Moreover, no call may employ an implied mode since these mean
-    % introducing a semidet unification.  Therefore we only need to
+    % introducing a semidet unification. Therefore we only need to
     % consider det procs for calls, constructions for var/functor
     % unifications, and assignments for var/var unifications.
     %
@@ -301,7 +301,7 @@ modecheck_delayed_solver_goals(ConjType, Goals, !DelayedGoals,
     % - will be instantiated by a single remaining subgoal;
     % - will not be instantiated by any remaining subgoal.
     % Variables in this last category that are solver type variables
-    % should be initialised.  If all the variables that will remain
+    % should be initialised. If all the variables that will remain
     % uninstantiated are in this last category then, after inserting
     % initialisation call, we should expect another attempt at
     % scheduling the remaining goals to succeed and produce a

@@ -1598,7 +1598,7 @@ init_hlds_constraint(Constraint, HLDSConstraint) :-
 make_head_hlds_constraints(ClassTable, TVarSet, ProgConstraints,
         Constraints) :-
     ProgConstraints = constraints(UnivConstraints, ExistConstraints),
-    GoalId = goal_id(0),
+    GoalId = goal_id_for_head_constraints,
     make_hlds_constraint_list(UnivConstraints, assumed, GoalId,
         AssumedConstraints),
     make_hlds_constraint_list(ExistConstraints, unproven, GoalId,

@@ -9,10 +9,12 @@
 % File: lambda.m.
 % Main author: fjh.
 %
-% This module is a pass over the HLDS to deal with lambda expressions.
+% This module does lambda expansion, which means that it replaces each
+% unification with a lambda expression with the construction of a closure
+% whose code address refers to a new predicate that this module creates
+% from that lambda expression.
 %
-% Lambda expressions are converted into separate predicates, so for
-% example we translate
+% For example, we translate
 %
 %   :- pred p(int::in) is det.
 %   p(X) :-
@@ -23,46 +25,47 @@
 %
 % into
 %
+%   :- pred '__LambdaGoal__1'(int::in, int::out) is nondet.
+%   '__LambdaGoal__1'(X, Y) :- q(Y, X).
+%
 %   p(X) :-
 %       V__1 = '__LambdaGoal__1'(X)
 %       solutions(V__1, List),
 %       ...
 %
-%   :- pred '__LambdaGoal__1'(int::in, int::out) is nondet.
-%   '__LambdaGoal__1'(X, Y) :- q(Y, X).
 %
-%
-% Note that the mode checker requires that a lambda expression
-% not bind any of the non-local variables such as `X' in the above
-% example.
+% Note that the mode checker requires that lambda expressions
+% not bind any of their non-local variables, such as `X' in the above example.
 %
 % Similarly, a lambda expression may not bind any of the type_infos for
-% those variables; that is, none of the non-local variables
-% should be existentially typed (from the perspective of the lambda goal).
-% Now that we run the polymorphism.m pass before mode checking, this is
-% also checked by mode analysis.
+% those variables; that is, none of the non-local variables should be
+% existentially typed (from the perspective of the lambda goal).
+% Now that we run the polymorphism.m pass before mode checking,
+% and that this is also checked by mode analysis.
 %
 % It might be OK to allow the parameters of the lambda goal to be
 % existentially typed, but currently that is not supported.
 % One difficulty is that it's hard to determine here which type variables
-% should be existentially quantified.  The information is readily
+% should be existentially quantified. The information is readily
 % available during type inference, and really type inference should save
 % that information in a field in the lambda_goal struct, but currently it
 % doesn't; it saves the head_type_params field in the pred_info, which
-% tells us which type variables where produced by the body, but for
-% any given lambda goal we don't know whether the type variable was
+% tells us which type variables were produced by the body, but for
+% any given lambda goal, we don't know whether the type variable was
 % produced by something outside the lambda goal or by something inside
 % the lambda goal (only in the latter case should it be existentially
 % quantified).
+%
 % The other difficulty is that taking the address of a predicate with an
-% existential type would require second-order polymorphism:  for a predicate
+% existential type would require second-order polymorphism: for a predicate
 % declared as `:- some [T] pred p(int, T)', the expression `p' must have
 % type `some [T] pred(int, T)', which is quite a different thing to saying
 % that there is some type `T' for which `p' has type `pred(int, T)' --
 % we don't know what `T' is until the predicate is called, and it might
 % be different for each call.
-% Currently we don't support second-order polymorphism, so we
-% don't support existentially typed lambda expressions either.
+%
+% Currently we don't support second-order polymorphism, so we can't support
+% existentially typed lambda expressions either.
 %
 %-----------------------------------------------------------------------------%
 
@@ -89,7 +92,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% The following are exported for float_reg.m
+% The following are exported for float_reg.m.
 
 :- type lambda_info.
 
@@ -168,10 +171,12 @@
                 li_has_parallel_conj    :: has_parallel_conj,
                 li_pred_info            :: pred_info,
                 li_module_info          :: module_info,
-                % True iff we need to recompute the nonlocals.
+
                 li_recompute_nonlocals  :: bool,
-                % True if we expanded some lambda expressions.
+                % True iff we need to recompute the nonlocals.
+
                 li_have_expanded_lambda :: bool
+                % True if we expanded some lambda expressions.
             ).
 
 init_lambda_info(VarSet, VarTypes, TypeVarSet, InstVarSet, RttiVarMaps,
@@ -202,7 +207,7 @@ lambda_info_set_recompute_nonlocals(Recompute, !Info) :-
 
 %-----------------------------------------------------------------------------%
 %
-% This whole section just traverses the module structure
+% This whole section just traverses the module structure.
 %
 
 expand_lambdas_in_module(!ModuleInfo) :-
@@ -409,9 +414,11 @@ expand_lambdas_in_unify_goal(LHS, RHS0, Mode, Unification0, Context, GoalExpr,
         ( RHS0 = rhs_var(_)
         ; RHS0 = rhs_functor(_, _, _)
         ),
-        % Ordinary unifications are left unchanged.
+        % We leave ordinary unifications unchanged.
         GoalExpr = unify(LHS, RHS0, Mode, Unification0, Context)
     ).
+
+%-----------------------------------------------------------------------------%
 
 expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         Vars, Modes, Detism, OrigNonLocals0, LambdaGoal, Unification0,
@@ -693,7 +700,7 @@ uni_modes_to_modes([UniMode | UniModes], [Mode | Modes]) :-
     Mode = (Initial1 -> Initial1),
     uni_modes_to_modes(UniModes, Modes).
 
-    % Make sure the arguments and modes are not misordered.  An obvious
+    % Make sure the arguments and modes are not misordered. An obvious
     % indicator is if a non-higher order argument is paired a higher order
     % inst.
     %

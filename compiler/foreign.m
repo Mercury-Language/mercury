@@ -9,9 +9,9 @@
 % File: foreign.m.
 % Main authors: trd, dgj.
 %
-% This module defines predicates for interfacing with foreign languages.  In
-% particular, this module supports interfacing with languages other than the
-% target of compilation.
+% This module defines predicates for interfacing with foreign languages.
+% In particular, this module supports interfacing with languages
+% other than the target of compilation.
 %
 % Parts of this code were originally written by dgj, and have since been moved
 % here.
@@ -149,9 +149,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.        % needed for type_util, mode_util
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
@@ -218,27 +215,13 @@ extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
     module_info::in, module_info::out,
     pragma_foreign_proc_impl::in, pragma_foreign_proc_impl::out) is det.
 
+extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
+        !ModuleInfo, !Impl) :-
     % This isn't finished yet, and we probably won't implement it for C
     % calling MC++.  For C calling normal C++ we would generate a proxy
     % function in C++ (implemented in a piece of C++ body code) with C
     % linkage, and import that function.  The backend would spit the C++
     % body code into a separate file.
-    % The code would look a little like this:
-
-%   NewName = make_pred_name(ForeignLanguage, PredName),
-%   ( PredOrFunc = predicate ->
-%       ReturnCode = ""
-%   ;
-%       ReturnCode = "ReturnVal = "
-%   ),
-%   C_ExtraCode = "Some Extra Code To Run",
-%   create_pragma_import_c_code(PragmaVars, ModuleInfo0, "", VarString),
-%   module_add_foreign_body_code(cplusplus,
-%       C_ExtraCode, Context, ModuleInfo0, ModuleInfo),
-%   Impl = import(NewName, ReturnCode, VarString, no)
-
-extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
-        !ModuleInfo, !Impl) :-
     (
         TargetLanguage = lang_c,
         (
@@ -349,49 +332,25 @@ create_pragma_vars([_ | _], [], _, _) :-
 create_pragma_vars([], [_ | _], _, _) :-
     unexpected($module, $pred, "length mismatch").
 
-    % create_pragma_import_c_code(PragmaVars, M, !C_Code):
-    %
-    % This predicate creates the C code fragments for each argument in
-    % PragmaVars, and appends them to C_Code0, returning C_Code.
-    %
-:- pred create_pragma_import_c_code(list(pragma_var)::in, module_info::in,
-    string::in, string::out) is det.
-
-create_pragma_import_c_code([], _ModuleInfo, !C_Code).
-create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo, !C_Code) :-
-    PragmaVar = pragma_var(_Var, ArgName, Mode, _BoxPolicy),
-
-    % Construct the C code fragment for passing this argument, and append it
-    % to !.C_Code. Note that C handles output arguments by passing the
-    % variable's address, so if the mode is output, we need to put an `&'
-    % before the variable name.
-
-    ( mode_is_output(ModuleInfo, Mode) ->
-        !:C_Code = !.C_Code ++ "&"
-    ;
-        true
-    ),
-    !:C_Code = !.C_Code ++ ArgName,
-    (
-        PragmaVars = [_ | _],
-        !:C_Code = !.C_Code ++ ", "
-    ;
-        PragmaVars = []
-    ),
-    create_pragma_import_c_code(PragmaVars, ModuleInfo, !C_Code).
-
 %-----------------------------------------------------------------------------%
 
-have_foreign_type_for_backend(target_c, ForeignTypeBody,
-        ( ForeignTypeBody ^ c = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(target_il, ForeignTypeBody,
-        ( ForeignTypeBody ^ il = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(target_java, ForeignTypeBody,
-        ( ForeignTypeBody ^ java = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(target_csharp, ForeignTypeBody,
-        ( ForeignTypeBody ^ csharp = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(target_erlang, ForeignTypeBody,
-        ( ForeignTypeBody ^ erlang = yes(_) -> yes ; no )).
+have_foreign_type_for_backend(Target, ForeignTypeBody, Have) :-
+    (
+        Target = target_c,
+        Have = ( ForeignTypeBody ^ c = yes(_) -> yes ; no )
+    ;
+        Target = target_il,
+        Have = ( ForeignTypeBody ^ il = yes(_) -> yes ; no )
+    ;
+        Target = target_java,
+        Have = ( ForeignTypeBody ^ java = yes(_) -> yes ; no )
+    ;
+        Target = target_csharp,
+        Have = ( ForeignTypeBody ^ csharp = yes(_) -> yes ; no )
+    ;
+        Target = target_erlang,
+        Have = ( ForeignTypeBody ^ erlang = yes(_) -> yes ; no )
+    ).
 
 :- type exported_type
     --->    exported_type_foreign(sym_name, list(foreign_type_assertion))

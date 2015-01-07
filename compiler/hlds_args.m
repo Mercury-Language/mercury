@@ -10,7 +10,7 @@
 % Main authors: juliensf.
 %
 % This module defines the part of the HLDS that deals with procedure and call
-% site arguments.  (See comments at the head of polymorphism.m for further
+% site arguments. (See comments at the head of polymorphism.m for further
 % details.)
 %
 %-----------------------------------------------------------------------------%
@@ -27,15 +27,15 @@
 
 %-----------------------------------------------------------------------------%
 
-	% This type represents the arguments to a predicate symbol, or the
-	% arguments and result of a function symbol.  The arguments may be
-	% variables, types, modes, etc, depending on the context.
-	%
-	% Rather than keep all arguments in a single list, we retain
-	% information about the origin of each argument (such as whether
-	% it was introduced by polymorphism.m to hold a type_info).  This
-	% simplifies the processing in polymorphism.m, and also abstracts
-	% away the specific calling convention that we use.
+    % This type represents the arguments to a predicate symbol, or
+    % the arguments and result of a function symbol. The arguments may be
+    % variables, types, modes, etc, depending on the context.
+    %
+    % Rather than keep all arguments in a single list, we retain information
+    % about the origin of each argument (such as whether it was introduced
+    % by polymorphism.m to hold a type_info). This simplifies the processing
+    % in polymorphism.m, and also abstracts away the specific calling
+    % convention that we use.
     %
 :- type proc_arg_vector(T).
 
@@ -83,13 +83,13 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Utility predicates that operate on proc_arg_vectors
+% Utility predicates that operate on proc_arg_vectors.
 %
 
-    % Return a list of the items in a arg_vector.  The order of the
-    % list corresponds to that required by the calling conventions.
-    % See comments at the head of polymorphism.m. for details.  If the
-    % arg_vector is for a function then the last element in the list
+    % Return a list of the items in a arg_vector. The order of the list
+    % corresponds to that required by the calling conventions.
+    % See comments at the head of polymorphism.m for details.
+    % If the arg_vector is for a function, then the last element in the list
     % will correspond to the function return value.
     %
 :- func proc_arg_vector_to_list(proc_arg_vector(T)) = list(T).
@@ -119,7 +119,7 @@
 :- pred proc_arg_vector_member(proc_arg_vector(T)::in, T::in) is semidet.
 
     % Partition the given arg_vector into a list of arguments and
-    % a function return value.  Throws an exception if the arg_vector does
+    % a function return value. Throws an exception if the arg_vector does
     % not correspond to a function.
     %
 :- pred proc_arg_vector_to_func_args(proc_arg_vector(T)::in,
@@ -127,12 +127,12 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Higher-order operations on proc_arg_vectors
+% Higher-order operations on proc_arg_vectors.
 %
 
 %
-% NOTE: these higher-order operations all work in a similar fashion
-%       to their counterparts in library/list.m.
+% NOTE these higher-order operations all work in a similar fashion
+% to their counterparts in library/list.m.
 
 :- func proc_arg_vector_map(func(T) = U, proc_arg_vector(T)) =
     proc_arg_vector(U).
@@ -179,7 +179,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff related to the polymorphism pass
+% Stuff related to the polymorphism pass.
 %
 
     % This type represents those arguments of a predicate or function
@@ -209,7 +209,7 @@
 
     % Convert a poly_arg_vector into a list.
     % XXX ARGVEC - this is only temporary until the proc_info structure use
-    % proc_arg_vectors.  We should then provide a predicate that merges a
+    % proc_arg_vectors. We should then provide a predicate that merges a
     % poly_arg_vector with a proc_arg_vector.
     %
 :- func poly_arg_vector_to_list(poly_arg_vector(T)) = list(T).
@@ -387,13 +387,12 @@ proc_arg_vector_partition_poly_args(ArgVec, PolyArgs, NonPolyArgs) :-
         UnivTypeInfos, ExistTypeInfos, UnivTypeClassInfos,
         ExistTypeClassInfos], PolyArgs),
     (
-        MaybeRetValue = yes(Value),
-        RetValue = [Value]
+        MaybeRetValue = yes(RetValue),
+        NonPolyArgs = OrigArgs ++ [RetValue]
     ;
         MaybeRetValue = no,
-        RetValue = []
-    ),
-    NonPolyArgs = OrigArgs ++ RetValue.
+        NonPolyArgs = OrigArgs
+    ).
 
 proc_arg_vector_member(Vec, V) :-
     List = proc_arg_vector_to_list(Vec),
@@ -657,15 +656,15 @@ proc_arg_vector_foldl4_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3,
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff related to the polymorphism transformation
+% Stuff related to the polymorphism transformation.
 %
 
     % Internally we represent a poly_arg_vector as a proc_arg_vector.
     % This ensures that poly_arg_vectors obey the same calling convention
     % w.r.t introduced type_info and typeclass_info arguments that
-    % proc_arg_vectors do.  For the proc_arg_vectors that are
-    % used to represent poly_arg_vectors we insist that the the last
-    % two fields are the empty list and `no' respectively.
+    % proc_arg_vectors do. For the proc_arg_vectors that are used to represent
+    % poly_arg_vectors, we insist that the the last two fields are
+    % the empty list and `no' respectively.
     %
 :- type poly_arg_vector(T) == proc_arg_vector(T).
 

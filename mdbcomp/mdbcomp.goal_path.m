@@ -99,6 +99,14 @@
     --->    scope_is_cut
     ;       scope_is_no_cut.
 
+    % Return a goal id on which the typeclass checking code can hang
+    % the constraints that need to be proven for clause heads.
+    %
+    % This goal id will be distinct from all goal_ids that can be hung
+    % on goals in the bodies of clauses.
+    %
+:- func goal_id_for_head_constraints = goal_id.
+
 :- func whole_body_goal_id = goal_id.
 
     % Append a goal path step onto the end of a goal path.
@@ -332,6 +340,11 @@
 
 is_valid_goal_id(goal_id(GoalIdNum)) :-
     GoalIdNum >= 0.
+
+goal_id_for_head_constraints = goal_id(-1).
+    % Note that this is NOT a valid goal_id for a goal. Not being able
+    % to confuse the goal_id on which head constraints are hung with the
+    % goal_id of an actual goal is the POINT of this function.
 
 whole_body_goal_id = goal_id(0).
 

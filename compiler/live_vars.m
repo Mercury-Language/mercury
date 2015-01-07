@@ -163,7 +163,7 @@ build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
     goal_info_get_post_deaths(GoalInfo0, PostDeaths),
     goal_info_get_post_births(GoalInfo0, PostBirths),
 
-    % note: we must be careful to apply deaths before births
+    % NOTE We must be careful to apply deaths before births.
     set_of_var.difference(!.Liveness, PreDeaths, !:Liveness),
     set_of_var.union(!.Liveness, PreBirths, !:Liveness),
 
@@ -198,7 +198,7 @@ build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
             GoalInfo0, GoalInfo1, !StackAlloc)
     ),
 
-    build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo1, GoalInfo,
+    build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo1, GoalInfo,
         ResumeVars1, AllocData, !StackAlloc, !Liveness, !NondetLiveness,
         !ParStackVars),
 
@@ -229,7 +229,7 @@ resume_locs_include_stack(resume_locs_stack_and_orig, yes).
     % interference graph, i.e. the set of sets of variables which need to be
     % on the stack at the same time.
     %
-:- pred build_live_sets_in_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
+:- pred build_live_sets_in_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     set_of_progvar::in, alloc_data::in, T::in, T::out,
     set_of_progvar::in, set_of_progvar::out,
@@ -237,7 +237,7 @@ resume_locs_include_stack(resume_locs_stack_and_orig, yes).
     parallel_stackvars::in, parallel_stackvars::out)
     is det <= stack_alloc_info(T).
 
-build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness,
         !ParStackVars) :-
     (
@@ -385,14 +385,13 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % as well.
         ; Reason = loop_control(LCVar, LCSVar, _) ->
             % We must handle loop control scopes specially, see the comment for
-            % parallel conjunctions above.  Like parallel conjunctions, we need
+            % parallel conjunctions above. Like parallel conjunctions, we need
             % stack slots for the NonLocals, but we also need non-overlapping
             % slots for LC and LCS.
-            %
 
             % XXX: When we use a frame on the child's stack rather than the
             % parent's we may be able to save fewer variables to the stack at
-            % this time.  This is an optimization for later, not doing it now
+            % this time. This is an optimization for later, not doing it now
             % will make it easier to generate the code in the spawned off
             % computation (since it can have the same layout as the parent).
 
@@ -402,12 +401,12 @@ build_live_sets_in_goal_2(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % Include ResumeVars0 because this goal may be backtracked over,
             % (Except that loop control is only applied to deterministic
             % predicates and it would mean entering a recursive call more than
-            % once.  So I think that ResumeVars0 will always be empty.
+            % once. So I think that ResumeVars0 will always be empty.
             % The loop control variables must also be allocated stack slots.
-            % Inclusion of !.Liveness is a conservative approximation.  Values
+            % Inclusion of !.Liveness is a conservative approximation. Values
             % in !.Liveness don't need to have stack slots but if they already
             % have stack slots then those slots most be distinct from others by
-            % the spawn off scope.  So what we want here is the intersection of
+            % the spawn off scope. So what we want here is the intersection of
             % !.Liveness and AlreadyHasStackSlot.
             OuterParStackVars = !.ParStackVars,
             LCStackVars =
@@ -621,7 +620,7 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
     ),
 
     % In a parallel conjunction all the stack slots we need must not be reused
-    % in other parallel conjuncts.  We keep track of which variables have been
+    % in other parallel conjuncts. We keep track of which variables have been
     % allocated stack slots in each conjunct.
     par_stack_vars_accumulate_stack_vars(ForwardVars, !ParStackVars).
 
@@ -827,7 +826,7 @@ record_par_conj(NeedInParConj, AllocData, !GoalInfo, !StackAlloc) :-
     ;       loop_control_scope(
                 % Variables nonlocal to the scope, these all need stack slots.
                 % This field may be unnecessary since it's used to remove items
-                % from sets when adding them to the set below.  And then a
+                % from sets when adding them to the set below. And then a
                 % union of it and the set below is calculated to set
                 % need_in_par_conj.
                 set_of_progvar,
@@ -843,7 +842,7 @@ record_par_conj(NeedInParConj, AllocData, !GoalInfo, !StackAlloc) :-
                 list(set_of_progvar),
 
                 % The set of variables whose death we must delay until after
-                % the recursive call.  they may still be using their slots on
+                % the recursive call. they may still be using their slots on
                 % our stack frame.
                 set_of_progvar,
 
@@ -880,7 +879,7 @@ par_stack_vars_end_parallel_conjunction(LiveSet, OuterParStackVars,
             OuterLocalStackVars, OuterAccStackVars0),
         % All the local variables which needed stack slots in the parallel
         % conjuncts (InnerStackVars) become part of the accumulating set of
-        % variables that have stack slots.  Variables which are not local to
+        % variables that have stack slots. Variables which are not local to
         % but are needed in the parallel conjunctions also become part of the
         % accumulating set.
         OuterAccStackVars = OuterAccStackVars0
@@ -893,7 +892,7 @@ par_stack_vars_end_parallel_conjunction(LiveSet, OuterParStackVars,
         OuterParStackVars = loop_control_scope(OuterNonLocals, StackVars0),
         % The loop control scope must ensure that any stackvars needed by a
         % parallel conjunction are distinct from those already needed by loop
-        % control.  The same is true in the case for
+        % control. The same is true in the case for
         % after_loop_control_scope/2 below.
         StackVars = StackVars0 `set_of_var.union` InnerStackVars
             `set_of_var.union`

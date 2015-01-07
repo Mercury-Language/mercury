@@ -11,9 +11,9 @@
 %
 % This module contains a predicate to build up interval information for a
 % procedure; in particular the start and end points of intervals and the set
-% of variables needed in that interval.  It also contains a procedure to
+% of variables needed in that interval. It also contains a procedure to
 % insert deconstruction unifications into a goal, given a map of insertions
-% to make after particular anchors.  More detailed information is in
+% to make after particular anchors. More detailed information is in
 % stack_opt.m, from where this code was extracted.
 %
 % A description of intervals is in the paper "Using the heap to eliminate
@@ -23,8 +23,8 @@
 %    left-right pair of anchors, satisfying the property that if forward
 %    execution starts at the left anchor and continues without encountering
 %    failure (which would initiate backtracking, i.e. backward execution),
-%    the next anchor it reaches is the right anchor of the pair.  We
-%    consider a call to be part of the atomic goals of the interval only if
+%    the next anchor it reaches is the right anchor of the pair. We consider
+%    a call to be part of the atomic goals of the interval only if
 %    the call site is the right anchor of the interval, not the left anchor.
 %
 %-----------------------------------------------------------------------------%
@@ -186,7 +186,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.        % needed for type_util, mode_util
+:- import_module check_hlds.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.arg_info.

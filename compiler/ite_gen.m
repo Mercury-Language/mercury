@@ -83,21 +83,9 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
         EffCodeModel = CodeModel
     ),
 
-    goal_info_get_resume_point(CondInfo0, Resume),
-    (
-        Resume = resume_point(ResumeVarsPrime, ResumeLocsPrime),
-        ResumeVars = ResumeVarsPrime,
-        ResumeLocs = ResumeLocsPrime,
-        % The pre_goal_update sanity check insists on no_resume_point,
-        % to make sure that all resume points have been handled by
-        % surrounding code.
-        goal_info_set_resume_point(no_resume_point, CondInfo0, CondInfo),
-        CondGoal = hlds_goal(CondExpr, CondInfo)
-    ;
-        Resume = no_resume_point,
-        unexpected($module, $pred,
-            "condition of an if-then-else has no resume point")
-    ),
+    read_and_erase_resume_point("condition of an if-then-else",
+        ResumeVars, ResumeLocs, CondInfo0, CondInfo),
+    CondGoal = hlds_goal(CondExpr, CondInfo),
 
     % Make sure that the variables whose values will be needed on backtracking
     % to the else part are materialized into registers or stack slots.
@@ -106,7 +94,7 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
         FlushCode, !CI),
 
     % Maybe save the heap state current before the condition.
-    % This is after produce_vars since code that flushes the cache
+    % This is after produce_vars, since code that flushes the cache
     % may allocate memory we must not "recover".
     get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
@@ -302,17 +290,9 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
     ),
 
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-    goal_info_get_resume_point(GoalInfo0, Resume),
-    (
-        Resume = resume_point(ResumeVarsPrime, ResumeLocsPrime),
-        ResumeVars = ResumeVarsPrime,
-        ResumeLocs = ResumeLocsPrime,
-        goal_info_set_resume_point(no_resume_point, GoalInfo0, GoalInfo),
-        Goal = hlds_goal(GoalExpr, GoalInfo)
-    ;
-        Resume = no_resume_point,
-        unexpected($module, $pred, "negated goal has no resume point")
-    ),
+    read_and_erase_resume_point("negated goal",
+        ResumeVars, ResumeLocs, GoalInfo0, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
 
     % For a negated simple test, we can generate better code than the general
     % mechanism, because we don't have to flush the cache.
@@ -483,6 +463,27 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
 
 %---------------------------------------------------------------------------%
 
+:- pred read_and_erase_resume_point(string::in,
+    set_of_progvar::out, resume_locs::out,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+
+read_and_erase_resume_point(CondStr, ResumeVars, ResumeLocs,
+        CondInfo0, CondInfo) :-
+    goal_info_get_resume_point(CondInfo0, Resume),
+    (
+        Resume = resume_point(ResumeVars, ResumeLocs),
+        % The pre_goal_update sanity check insists on no_resume_point,
+        % to make sure that all resume points have been handled by
+        % surrounding code.
+        goal_info_set_resume_point(no_resume_point, CondInfo0, CondInfo)
+    ;
+        Resume = no_resume_point,
+        Msg = CondStr ++ " has no resume point",
+        unexpected($module, $pred, Msg)
+    ).
+
+%---------------------------------------------------------------------------%
+
     % If the code in the condition depends on a consumer of a generator
     % that is not complete by the time we finish executing the condition,
     % then failure out of the condition does not necessarily mean that
@@ -606,8 +607,8 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
                 set.is_empty(NeedToBeProtectedRegionVars),
                 set.is_empty(CondAllocRegionVars)
             ->
-                % When no region-related operations occur in the
-                % condition we do not need the backtracking support code.
+                % When no region-related operations occur in the condition,
+                % we do not need the backtracking support code.
                 CondCode = empty,
                 ThenCode = empty,
                 ElseCode = empty,
@@ -617,12 +618,12 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
                 find_regions_removed_at_start_of_goals(ElseGoals, ModuleInfo,
                     set.init, RemovedAtStartOfElse),
 
-                % The UnprotectedRemovedAtStartOfElse is the
-                % intersection of RemovedAtStartOfElse and the set of region
-                % variables whose regions are statically known to be
-                % unprotected at this point in the code. These are actually
-                % carried regions because carried region are statically known
-                % to be not protected by the condition.
+                % The UnprotectedRemovedAtStartOfElse is the intersection of
+                % RemovedAtStartOfElse and the set of region variables
+                % whose regions are statically known to be unprotected
+                % at this point in the code. These are actually carried regions
+                % because carried region are statically known to be
+                % not protected by the condition.
                 UnprotectedRemovedAtStartOfElse = set.intersect(
                     RemovedAtStartOfElse, CondCarriedRegionVars),
 
@@ -729,13 +730,12 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
                         "region enter else")
                 )
 
-                % XXX A model_non condition can succeed more than once, so
-                % the region_ite_then(region_ite_nondet_cond) operation
-                % cannot pop the ite stack frame. We need to pop this
-                % frame when the condition fails *after* succeeding at
-                % least once. This requires modifying the failure
-                % continuation and/or the resume point. This has not yet
-                % been implemented.
+                % XXX A model_non condition can succeed more than once,
+                % so the region_ite_then(region_ite_nondet_cond) operation
+                % cannot pop the ite stack frame. We need to pop this frame
+                % when the condition fails *after* succeeding at least once.
+                % This requires modifying the failure continuation and/or
+                % the resume point. This has not yet been implemented.
             )
         )
     ).

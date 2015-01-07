@@ -9,6 +9,11 @@
 % File: granularity.m.
 % Author: zs.
 %
+% Find every parallel conjunction G1 & G2 & G3 & ... & Gn in the given module,
+% and replace it with a goal that tests at runtime whether there are enough
+% free CPUs to make parallel execution worthwhile, and if not, executes
+% the conjunction sequentially instead.
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.granularity.

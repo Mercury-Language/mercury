@@ -303,8 +303,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         ),
 
         % Generate constraints for each clause of the predicate.
-        fill_goal_id_slots_in_clauses(!.HLDS, ContainingGoalMap,
-            !ClausesInfo),
+        fill_goal_id_slots_in_clauses(!.HLDS, ContainingGoalMap, !ClausesInfo),
         ForwardGoalPathMap =
             create_forward_goal_path_map(ContainingGoalMap),
         clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0, ItemNumbers),

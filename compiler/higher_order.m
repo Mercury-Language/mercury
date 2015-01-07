@@ -530,14 +530,6 @@ ho_traverse_proc_body(MustRecompute, !Info) :-
     % is known, specialize calls, and add specialization requests to the
     % request_info structure.
     %
-    % XXX I (zs) don't know what the second sentence below is talking about,
-    % but the first sentence is false: we also interpret predicates that look
-    % things up in typeclass infos.
-    %
-    % The first time through, the only predicate we can specialize is call/N.
-    % The pred_proc_id is that of the current % procedure, used to find out
-    % which procedures need fixing up later.
-    %
 :- pred ho_traverse_goal(hlds_goal::in, hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
 
@@ -812,14 +804,13 @@ merge_post_branch_info_pass([PostInfo1, PostInfo2 | Rest], !MergedPostInfos) :-
 
     % Merge two post_branch_infos.
     %
-    % If a variable appears in one post_branch_info, but not the
-    % other, it is dropped.  Such a variable is either local to
-    % the branch arm, in which case no subsequent specialization
-    % opportunities exist, or it does not have a unique constant
-    % value in one of the branch arms, so we can't specialize it
-    % outside the branch anyway.  A third possibility is that
-    % the branch without the variable is unreachable.  In that
-    % case we include the variable in the result.
+    % If a variable appears in one post_branch_info, but not the other,
+    % it is dropped. Such a variable is either local to the branch arm,
+    % in which case no subsequent specialization opportunities exist,
+    % or it does not have a unique constant value in one of the branch arms,
+    % so we can't specialize it outside the branch anyway. A third possibility
+    % is that the branch without the variable is unreachable. In that case
+    % we include the variable in the result.
     %
 :- pred merge_post_branch_infos(post_branch_info::in,
     post_branch_info::in, post_branch_info::out) is det.
@@ -1308,7 +1299,6 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
         lookup_var_type(VarTypes0, LVar, LVarType),
         type_is_higher_order_details(LVarType, _, _, _, ArgTypes)
     ->
-        % Create variables to represent
         proc_info_create_vars_from_types(ArgTypes, UncurriedArgs,
             ProcInfo0, ProcInfo1),
         Args1 = Args0 ++ UncurriedArgs,
@@ -1319,7 +1309,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
 
         % We don't create requests for higher-order terms because that would
         % result in duplication of effort if all uses of the constant end up
-        % being specialized.  For parser combinator programs it would also
+        % being specialized. For parser combinator programs it would also
         % result in huge numbers of requests with no easy way to control which
         % ones should be created.
 
@@ -1734,7 +1724,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
 
 compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
     % Work out which type variables don't already have type-infos in the
-    % list of argument types.  The list is in the order which the type
+    % list of argument types. The list is in the order which the type
     % variables occur in the list of argument types so that the extra
     % type-info arguments for calls to imported user-guided type
     % specialization procedures can be matched against the specialized
@@ -3194,7 +3184,7 @@ update_var_types(VarAndType, !VarTypes) :-
     update_var_type(Var, Type, !VarTypes).
 
     % Take an original list of headvars and arg_modes and return these
-    % with curried arguments added.  The old higher-order arguments are
+    % with curried arguments added. The old higher-order arguments are
     % left in. They may be needed in calls which could not be
     % specialised. If not, unused_args.m can clean them up.
     %

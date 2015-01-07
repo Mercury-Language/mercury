@@ -281,9 +281,9 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         % Make dead the variable assigned, but make any variables
         % needed to access it live. Make the variables in the size
         % expression live as well.
-        % The use of the size rval occurs after the assignment
-        % to lval, but the two should never have any variables in
-        % common. This is why doing the deletion first works.
+        % The use of the size rval occurs after the assignment to lval,
+        % but the two should never have any variables in common. This is
+        % why doing the deletion first works.
 
         set.delete(Lval, !Livevals),
         opt_util.lval_access_rvals(Lval, Rvals),

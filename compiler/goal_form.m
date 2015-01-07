@@ -166,9 +166,6 @@
     int::out, int::out) is det.
 
 %-----------------------------------------------------------------------------%
-%
-% Trail usage
-%
 
     % Returns `yes' if the goal does not modify the trail.
     %

@@ -71,10 +71,6 @@
     prog_constraints::in, prog_constraints::out, tvarset::in, tvarset::out,
     equiv_type_info::in, equiv_type_info::out) is det.
 
-:- pred replace_in_prog_constraint(eqv_map::in,
-    prog_constraint::in, prog_constraint::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out) is det.
-
 :- pred replace_in_ctors(eqv_map::in,
     list(constructor)::in, list(constructor)::out, tvarset::in, tvarset::out,
     equiv_type_info::in, equiv_type_info::out) is det.
@@ -612,15 +608,14 @@ replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
             UserSharing0 = get_user_annotated_sharing(Attrs0),
             (
                 UserSharing0 = user_sharing(Sharing0, MaybeTypes0),
-                MaybeTypes0 = yes(user_type_info(Types0, TVarset0))
+                MaybeTypes0 = yes(user_type_info(Types0, TVarSet0))
             ->
                 replace_in_type_list_location(Location,
                     EqvMap, Types0, Types, _AnythingChanged,
-                    TVarset0, TVarset, !EquivTypeInfo, !UsedModules),
-                replace_in_structure_sharing_domain(Location,
-                    EqvMap, Sharing0, Sharing,
-                    TVarset0, !EquivTypeInfo, !UsedModules),
-                MaybeTypes = yes(user_type_info(Types, TVarset)),
+                    TVarSet0, TVarSet, !EquivTypeInfo, !UsedModules),
+                replace_in_structure_sharing_domain(Location, EqvMap, TVarSet0,
+                    Sharing0, Sharing, !EquivTypeInfo, !UsedModules),
+                MaybeTypes = yes(user_type_info(Types, TVarSet)),
                 UserSharing = user_sharing(Sharing, MaybeTypes),
                 set_user_annotated_sharing(UserSharing, Attrs0, Attrs)
             ;
@@ -858,6 +853,10 @@ replace_in_prog_constraint_list(Location, EqvMap, !Cs, !VarSet, !EquivTypeInfo,
     list.map_foldl3(replace_in_prog_constraint_location(Location, EqvMap),
         !Cs, !VarSet, !EquivTypeInfo, !UsedModules).
 
+:- pred replace_in_prog_constraint(eqv_map::in,
+    prog_constraint::in, prog_constraint::out, tvarset::in, tvarset::out,
+    equiv_type_info::in, equiv_type_info::out) is det.
+
 replace_in_prog_constraint(EqvMap, Constraint0, Constraint, !VarSet,
         !EquivTypeInfo) :-
     replace_in_prog_constraint_location(eqv_type_out_of_module, EqvMap,
@@ -941,10 +940,9 @@ replace_in_subst(_Location, _EqvMap, [], [], !VarSet, !EquivTypeInfo,
 replace_in_subst(Location, EqvMap, [Var - Type0 | Subst0],
         [Var - Type | Subst], !VarSet, !EquivTypeInfo, !UsedModules) :-
     replace_in_type_location(Location, EqvMap, Type0, Type, _, !VarSet,
-    !EquivTypeInfo,
-        !UsedModules),
-    replace_in_subst(Location, EqvMap, Subst0, Subst, !VarSet, !EquivTypeInfo,
-        !UsedModules).
+        !EquivTypeInfo, !UsedModules),
+    replace_in_subst(Location, EqvMap, Subst0, Subst, !VarSet,
+        !EquivTypeInfo, !UsedModules).
 
 %-----------------------------------------------------------------------------%
 
@@ -1505,23 +1503,26 @@ replace_in_tm(Location, EqvMap, type_and_mode(Type0, Mode),
         !EquivTypeInfo, !UsedModules).
 
 %-----------------------------------------------------------------------------%
-%
+
 :- pred replace_in_structure_sharing_domain(eqv_type_location::in, eqv_map::in,
-    structure_sharing_domain::in, structure_sharing_domain::out,
-    tvarset::in, equiv_type_info::in, equiv_type_info::out,
+    tvarset::in, structure_sharing_domain::in, structure_sharing_domain::out,
+    equiv_type_info::in, equiv_type_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_structure_sharing_domain(_, _, X @ structure_sharing_bottom,
-    X, _TVarset, !EquivTypeInfo, !UsedModules).
-replace_in_structure_sharing_domain(_, _, X @ structure_sharing_top(_),
-    X, _TVarset, !EquivTypeInfo, !UsedModules).
-replace_in_structure_sharing_domain(Location, EqvMap,
-        structure_sharing_real(SharingPairs0),
-        structure_sharing_real(SharingPairs),
-        TVarset, !EquivTypeInfo, !UsedModules) :-
-    list.map_foldl2(
-        replace_in_structure_sharing_pair(Location, EqvMap, TVarset),
-        SharingPairs0, SharingPairs, !EquivTypeInfo, !UsedModules).
+replace_in_structure_sharing_domain(Location, EqvMap, TVarSet,
+        SharingDomain0, SharingDomain, !EquivTypeInfo, !UsedModules) :-
+    (
+        ( SharingDomain0 = structure_sharing_bottom
+        ; SharingDomain0 = structure_sharing_top(_)
+        ),
+        SharingDomain = SharingDomain0
+    ;
+        SharingDomain0 = structure_sharing_real(SharingPairs0),
+        list.map_foldl2(
+            replace_in_structure_sharing_pair(Location, EqvMap, TVarSet),
+            SharingPairs0, SharingPairs, !EquivTypeInfo, !UsedModules),
+        SharingDomain = structure_sharing_real(SharingPairs)
+    ).
 
 :- pred replace_in_structure_sharing_pair(eqv_type_location::in,
     eqv_map::in, tvarset::in,
@@ -1529,11 +1530,11 @@ replace_in_structure_sharing_domain(Location, EqvMap,
     equiv_type_info::in, equiv_type_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_structure_sharing_pair(Location, EqvMap, TVarset, Data10 - Data20,
-        Data1 - Data2, !EquivTypeInfo, !UsedModules) :-
-    replace_in_datastruct(Location, EqvMap, TVarset, Data10, Data1,
+replace_in_structure_sharing_pair(Location, EqvMap, TVarSet, SSA0 - SSB0,
+        SSA - SSB, !EquivTypeInfo, !UsedModules) :-
+    replace_in_datastruct(Location, EqvMap, TVarSet, SSA0, SSA,
         !EquivTypeInfo, !UsedModules),
-    replace_in_datastruct(Location, EqvMap, TVarset, Data20, Data2,
+    replace_in_datastruct(Location, EqvMap, TVarSet, SSB0, SSB,
         !EquivTypeInfo, !UsedModules).
 
 :- pred replace_in_datastruct(eqv_type_location::in,
@@ -1541,23 +1542,29 @@ replace_in_structure_sharing_pair(Location, EqvMap, TVarset, Data10 - Data20,
     datastruct::out, equiv_type_info::in, equiv_type_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_datastruct(Location, EqvMap, TVarset, Data0, Data, !EquivTypeInfo,
+replace_in_datastruct(Location, EqvMap, TVarSet, DS0, DS, !EquivTypeInfo,
         !UsedModules) :-
-    Sel0 = Data0 ^ sc_selector,
-    list.map_foldl2(replace_in_unit_selector(Location, EqvMap, TVarset),
+    DS0 = selected_cel(Var, Sel0),
+    list.map_foldl2(replace_in_unit_selector(Location, EqvMap, TVarSet),
         Sel0, Sel, !EquivTypeInfo, !UsedModules),
-    Data = Data0 ^ sc_selector := Sel.
+    DS = selected_cel(Var, Sel).
 
 :- pred replace_in_unit_selector(eqv_type_location::in,
     eqv_map::in, tvarset::in, unit_selector::in,
     unit_selector::out, equiv_type_info::in, equiv_type_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_unit_selector(_, _, _, X @ termsel(_, _), X, !EquivTypeInfo, !UMs).
-replace_in_unit_selector(Location, EqvMap, TVarset,
-        typesel(Type0), typesel(Type), !EquivTypeInfo, !UsedModules) :-
-    replace_in_type_location(Location, EqvMap, Type0, Type, _, TVarset, _,
-        !EquivTypeInfo, !UsedModules).
+replace_in_unit_selector(Location, EqvMap, TVarSet, Sel0, Sel,
+        !EquivTypeInfo, !UsedModules) :-
+    (
+        Sel0 = termsel(_, _),
+        Sel = Sel0
+    ;
+        Sel0 = typesel(Type0),
+        replace_in_type_location(Location, EqvMap, Type0, Type, _, TVarSet, _,
+            !EquivTypeInfo, !UsedModules),
+        Sel = typesel(Type)
+    ).
 
 %-----------------------------------------------------------------------------%
 

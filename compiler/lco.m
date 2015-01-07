@@ -219,7 +219,7 @@
 
 :- type variant_arg
     --->    variant_arg(
-                % Position of the output argument.  The first output argument
+                % Position of the output argument. The first output argument
                 % is 1, the second is 2, and so on, without counting input
                 % arguments.
                 va_pos      :: int,
@@ -692,7 +692,7 @@ potentially_transformable_recursive_call(Info, ConstInfo, Goal, OutArgs) :-
 
     % A goal is potentially moveable before a recursive call if it is det, and
     % guaranteed neither to throw an exception nor loop forever (subject to
-    % --no-reorder-conj).  It is actually moveable if it does not depend on the
+    % --no-reorder-conj). It is actually moveable if it does not depend on the
     % output of the recursive call.
     %
     % For now we only move unification goals and goals which construct ground
@@ -891,8 +891,8 @@ transform_call_and_unifies(CallGoal, CallOutArgs, UnifyGoals, UnifyInputVars,
     list(prog_var)::in, list(prog_var)::in, list(prog_var)::out) is det.
 
 update_call_args(_ModuleInfo, _VarTypes, [], [], UpdatedCallOutArgs, []) :-
-    expect(unify(UpdatedCallOutArgs, []), $module,
-        "update_call_args: updating nonexistent arg").
+    expect(unify(UpdatedCallOutArgs, []), $module, $pred,
+        "updating nonexistent arg").
 update_call_args(_ModuleInfo, _VarTypes, [], [_ | _], _, _) :-
     unexpected($module, $pred, "mismatched lists").
 update_call_args(_ModuleInfo, _VarTypes, [_ | _], [], _, _) :-

@@ -280,22 +280,33 @@ replace_in_merge_inst_table(EqvMap, Map0, Map, !Cache) :-
 :- pred replace_in_maybe_inst(eqv_map::in, maybe_inst::in, maybe_inst::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_maybe_inst(_, inst_unknown, inst_unknown, !Cache).
-replace_in_maybe_inst(EqvMap, inst_known(Inst0), inst_known(Inst), !Cache) :-
-    % XXX We don't have a valid tvarset here.
-    varset.init(TVarSet),
-    replace_in_inst(EqvMap, Inst0, Inst, _, TVarSet, _, !Cache).
+replace_in_maybe_inst(EqvMap, MaybeInst0, MaybeInst, !Cache) :-
+    (
+        MaybeInst0 = inst_unknown,
+        MaybeInst = inst_unknown
+    ;
+        MaybeInst0 = inst_known(Inst0),
+        % XXX We don't have a valid tvarset here.
+        varset.init(TVarSet),
+        replace_in_inst(EqvMap, Inst0, Inst, _, TVarSet, _, !Cache),
+        MaybeInst = inst_known(Inst)
+    ).
 
 :- pred replace_in_maybe_inst_det(eqv_map::in,
     maybe_inst_det::in, maybe_inst_det::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_maybe_inst_det(_, inst_det_unknown, inst_det_unknown, !Cache).
-replace_in_maybe_inst_det(EqvMap, inst_det_known(Inst0, Det),
-        inst_det_known(Inst, Det), !Cache) :-
-    % XXX We don't have a valid tvarset here.
-    varset.init(TVarSet),
-    replace_in_inst(EqvMap, Inst0, Inst, _, TVarSet, _, !Cache).
+replace_in_maybe_inst_det(EqvMap, MaybeInstDet0, MaybeInstDet, !Cache) :-
+    (
+        MaybeInstDet0 = inst_det_unknown,
+        MaybeInstDet = inst_det_unknown
+    ;
+        MaybeInstDet0 = inst_det_known(Inst0, Det),
+        % XXX We don't have a valid tvarset here.
+        varset.init(TVarSet),
+        replace_in_inst(EqvMap, Inst0, Inst, _, TVarSet, _, !Cache),
+        MaybeInstDet = inst_det_known(Inst, Det)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -599,8 +610,8 @@ hlds_replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded0, Type0,
 %-----------------------------------------------------------------------------%
 
 % Note that we go out of our way to avoid duplicating unchanged
-% insts and modes.  This means we don't need to hash-cons those
-% insts to avoid losing sharing.
+% insts and modes. This means we don't need to hash-cons those insts
+% to avoid losing sharing.
 
 :- pred replace_in_modes(eqv_map::in, list(mer_mode)::in, list(mer_mode)::out,
     bool::out, tvarset::in, tvarset::out,

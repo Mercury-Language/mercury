@@ -1059,10 +1059,11 @@ get_improved_exists_head_constraints(ConstraintMap,  ExistConstraints,
         ActualExistConstraints) :-
     list.length(ExistConstraints, NumExistConstraints),
     (
-        search_hlds_constraint_list(ConstraintMap, unproven, goal_id(0),
-            NumExistConstraints, ActualExistConstraints0)
+        search_hlds_constraint_list(ConstraintMap, unproven,
+            goal_id_for_head_constraints, NumExistConstraints,
+            ActualExistConstraintsPrime)
     ->
-        ActualExistConstraints = ActualExistConstraints0
+        ActualExistConstraints = ActualExistConstraintsPrime
     ;
         % Some predicates, for example typeclass methods and predicates for
         % which we inferred the type, don't have constraint map entries for

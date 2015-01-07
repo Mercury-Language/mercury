@@ -9,7 +9,7 @@
 % File: exception_analysis.m.
 % Author: juliensf.
 %
-% This module performs an exception tracing analysis.  The aim is to annotate
+% This module performs an exception tracing analysis. The aim is to annotate
 % the HLDS with information about whether each procedure might or will not
 % throw an exception.
 %
@@ -29,12 +29,12 @@
 % (2) means that a call to that procedure might result in an exception
 %     being thrown for at least some inputs.
 %
-%     We distinguish between two kinds of exception.  Those that
+%     We distinguish between two kinds of exception. Those that
 %     are ultimately a result of a call to exception.throw/1, which
 %     we refer to as "user exceptions" and those that result from a
 %     unification or comparison where one of the types involved has
 %     a user-defined equality/comparison predicate that throws
-%     an exception.  We refer to the latter kind, as "type exceptions".
+%     an exception. We refer to the latter kind, as "type exceptions".
 %
 %     This means that for some polymorphic procedures we cannot
 %     say what will happen until we know the values of the type variables.
@@ -42,7 +42,7 @@
 %
 % (3) means that the exception status of the procedure is dependent upon the
 %     values of some higher-order variables, or the values of some type
-%     variables or both.  This means that we cannot say anything definite
+%     variables or both. This means that we cannot say anything definite
 %     about the procedure but for calls to the procedure where have the
 %     necessary information we can say what will happen.
 %
@@ -99,7 +99,7 @@
 :- pred write_pragma_exceptions(module_info::in, exception_info::in,
     pred_id::in, io::di, io::uo) is det.
 
-    % Look the exception status of the given procedure.  This predicate
+    % Look the exception status of the given procedure. This predicate
     % is intended to be used by optimisations that use exception analysis
     % information, *not* for use within the exception analysis itself.
     % This predicate abstracts away differences between
@@ -182,7 +182,7 @@ analyse_exceptions_in_module(!ModuleInfo, !IO) :-
         true
     ),
 
-    % Record results if making the analysis registry.  We do this in a
+    % Record results if making the analysis registry. We do this in a
     % separate pass so that we record results for exported `:- external'
     % procedures, which don't get analysed because we don't have clauses
     % for them.
@@ -221,9 +221,9 @@ analyse_exceptions_in_module(!ModuleInfo, !IO) :-
                 % are arguments of (mutually-)recursive calls.
 
                 maybe_analysis_status :: maybe(analysis_status)
-                % The analysis status used for intermodule-analysis.  This
-                % should be `no' if we are not compiling with
-                % intermodule-analysis enabled.
+                % The analysis status used for intermodule-analysis.
+                % This should be `no' if we are not compiling with
+                % intermodule analysis enabled.
             ).
 
 :- pred check_scc_for_exceptions(scc::in,
@@ -496,8 +496,8 @@ check_goal_for_exceptions_plain_call(SCC, VarTypes, CallPredId, CallProcId,
             )
         )
     ->
-        % For unification/comparison the exception status depends upon the the
-        % types of the arguments.  In particular whether some component of
+        % For unification/comparison the exception status depends upon the
+        % types of the arguments. In particular whether some component of
         % that type has a user-defined equality/comparison predicate that
         % throws an exception.
         module_info_get_globals(!.ModuleInfo, Globals),
@@ -586,7 +586,7 @@ check_goals_for_exceptions(SCC, VarTypes, [Goal | Goals], !Result,
         !ModuleInfo) :-
     check_goal_for_exceptions(SCC, VarTypes, Goal, !Result, !ModuleInfo),
 
-    % We can stop searching if we find a user exception.  However if we find
+    % We can stop searching if we find a user exception. However if we find
     % a type exception then we still need to check that there is not a user
     % exception somewhere in the rest of the SCC.
 
@@ -615,8 +615,8 @@ check_goals_for_exceptions(SCC, VarTypes, [Goal | Goals], !Result,
 
     ;       maybe_will_not_throw(list(pred_proc_id)).
             % None of the procedures throws a user exception, but the ones in
-            % the list are conditional.  Any polymorphic/higher-order
-            % args needed to either be checked at the generic_call site or
+            % the list are conditional. Any polymorphic/higher-order args
+            % needed to either be checked at the generic_call site or
             % the conditional status needs to be propagated up the call-graph
             % to a point where it can be resolved.
 
@@ -800,7 +800,7 @@ check_vars(ModuleInfo, VarTypes, Vars, MaybeAnalysisStatus, !Result) :-
 % none of them may throw an exception (of either sort).
 %
 % In order to determine the status of such a SCC we also need to take the
-% effect of the recursive calls into account.  This is because calls to a
+% effect of the recursive calls into account. This is because calls to a
 % conditional procedure from a procedure that is mutually recursive to it may
 % introduce types that could cause a type_exception to be thrown.
 %
@@ -843,30 +843,29 @@ handle_mixed_conditional_scc(Results) =
 % exception.
 %
 % XXX We don't actually need to examine all the types, just those that are
-% potentially going to be involved in unification/comparisons.  At the moment
+% potentially going to be involved in unification/comparisons. At the moment
 % we don't keep track of that information so the current procedure is as
 % follows:
 %
 % Examine the functor and then recursively examine the arguments.
 % * If everything will not throw then the type will not throw
 % * If at least one of the types may_throw then the type will throw
-% * If at least one of the types is conditional  and none of them throw then
+% * If at least one of the types is conditional and none of them throw then
 %   the type is conditional.
 
 :- type type_status
     --->    type_will_not_throw
             % This type does not have user-defined equality
             % or comparison predicates.
-            % XXX (Or it has ones that are known not to throw
-            %      exceptions).
+            % XXX (Or it has ones that are known not to throw exceptions).
 
     ;       type_may_throw
-            % This type has a user-defined equality or comparison
-            % predicate that is known to throw an exception.
+            % This type has a user-defined equality or comparison predicate
+            % that is known to throw an exception.
 
     ;       type_conditional.
-            % This type is polymorphic.  We cannot say anything about
-            % it until we know the values of the type-variables.
+            % This type is polymorphic. We cannot say anything about it
+            % until we know the values of the type-variables.
 
     % Return the collective type status of a list of types.
     %
@@ -927,11 +926,8 @@ check_type_2(ModuleInfo, Type, CtorCat) = WillThrow :-
         WillThrow = type_conditional
     ;
         CtorCat = ctor_cat_tuple,
-        ( type_to_ctor_and_args(Type, _TypeCtor, Args) ->
-            WillThrow = check_types(ModuleInfo, Args)
-        ;
-            unexpected($module, $pred, "expected tuple type")
-        )
+        type_to_ctor_and_args_det(Type, _TypeCtor, Args),
+        WillThrow = check_types(ModuleInfo, Args)
     ;
         CtorCat = ctor_cat_enum(_),
         ( type_has_user_defined_equality_pred(ModuleInfo, Type, _UC) ->
@@ -1021,7 +1017,7 @@ type_ctor_is_safe_2("varset",        "varset",        1).
 
 %----------------------------------------------------------------------------%
 %
-% Types and instances for the intermodule analysis framework
+% Types and instances for the intermodule analysis framework.
 %
 
 :- type exception_analysis_answer
@@ -1092,7 +1088,7 @@ exception_status_to_string(may_throw(user_exception),
 
 %----------------------------------------------------------------------------%
 %
-% Additional predicates used for intermodule analysis
+% Additional predicates used for intermodule analysis.
 %
 
 :- pred search_analysis_status(pred_proc_id::in,
@@ -1196,11 +1192,10 @@ should_write_exception_info(ModuleInfo, PredId, ProcId, PredInfo,
             module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
             TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
             not set.member(PredId, TypeSpecForcePreds),
-            %
+
             % XXX Writing out pragmas for the automatically generated class
             % instance methods causes the compiler to abort when it reads them
             % back in.
-            %
             pred_info_get_markers(PredInfo, Markers),
             not check_marker(Markers, marker_class_instance_method),
             not check_marker(Markers, marker_named_class_instance_method)
@@ -1221,8 +1216,7 @@ maybe_optimal(yes) = yes(optimal).
 % Stuff for intermodule optimization.
 %
 
-:- pred make_optimization_interface(module_info::in, io::di, io::uo)
-    is det.
+:- pred make_optimization_interface(module_info::in, io::di, io::uo) is det.
 
 make_optimization_interface(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -1291,7 +1285,7 @@ write_pragma_exceptions_2(ModuleInfo, ExceptionMap, PredId, PredInfo, ProcId,
 
 %----------------------------------------------------------------------------%
 %
-% External interface to exception analysis information
+% External interface to exception analysis information.
 %
 
 lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
@@ -1316,9 +1310,7 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
         % will be in the exception_info table.
         UseAnalysisRegistry = no,
         module_info_get_exception_info(!.ModuleInfo, ExceptionInfo),
-        (
-            map.search(ExceptionInfo, PPId, ProcExceptionInfo)
-        ->
+        ( map.search(ExceptionInfo, PPId, ProcExceptionInfo) ->
             ProcExceptionInfo = proc_exception_info(ExceptionStatus, _)
         ;
             ExceptionStatus = may_throw(user_exception)
@@ -1331,8 +1323,8 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
             lookup_best_result(!.AnalysisInfo, ModuleName, FuncId,
                 no_func_info, any_call, MaybeBestResult),
             (
-                MaybeBestResult = yes(analysis_result(_Call, Answer,
-                    AnalysisStatus)),
+                MaybeBestResult = yes(BestResult),
+                BestResult = analysis_result(_Call, Answer, AnalysisStatus),
                 (
                     AnalysisStatus = invalid,
                     unexpected($module, $pred,
