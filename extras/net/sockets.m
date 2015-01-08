@@ -20,6 +20,7 @@
 :- module net.sockets.
 :- interface.
 
+:- import_module bitmap.
 :- import_module io.
 :- import_module maybe.
 
@@ -101,11 +102,32 @@
 :- pred close(socket::in, maybe_error::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- type read_result(T)
+    --->    ok(T)
+    ;       eof
+    ;       error(string).
+
+    % The returned buffer may be smaller than the amount of requested data
+    % if either 1) the end of file/stream was reached or 2) a smaller amount
+    % of data is available.  If the OS has no data then this call will
+    % block.
+    %
+:- pred read(socket::in, int::in, sockets.read_result(bitmap)::out,
+    io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- pred write(socket::in, bitmap::in, maybe_error::out, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module bool.
+:- import_module int.
+:- import_module require.
 
 :- import_module net.errno.
 
@@ -384,6 +406,76 @@ close(Socket, Result, !IO) :-
         Success = MR_YES;
     }
 ").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+read(Socket, Len0, Result, !IO) :-
+    read(Socket, Len0, Bitmap0, BytesRead, Errno, !IO),
+    ( BytesRead > 0 ->
+        Bitmap = shrink_without_copying(Bitmap0, BytesRead*8),
+        Result = ok(Bitmap)
+    ; BytesRead = 0 ->
+        Result = eof
+    ;
+        Result = error(strerror(Errno))
+    ).
+
+:- pred read(socket::in, int::in, bitmap::bitmap_uo, int::out, errno::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    read(Socket::in, Len::in, Bitmap::bitmap_uo, BytesRead::out, Errno::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    "
+        MR_allocate_bitmap_msg(Bitmap, Len*8, MR_ALLOC_ID);
+        BytesRead = read(Socket, Bitmap->elements, Len);
+        if (BytesRead == -1) {
+            Errno = error();
+        }
+    ").
+
+%-----------------------------------------------------------------------------%
+
+write(Socket, Bitmap, Result, !IO) :-
+    write(Socket, Bitmap, 0, Result, !IO).
+
+:- pred write(socket::in, bitmap::in, int::in, maybe_error::out,
+    io::di, io::uo) is det.
+
+write(Socket, Bitmap, Offset, Result, !IO) :-
+    ( LenPrime = num_bytes(Bitmap) - Offset ->
+        Len = LenPrime
+    ;
+        unexpected($file, $pred,
+            "Bitmap must have an integral number of bytes")
+    ),
+    write_c(Socket, Bitmap, Offset, Len, BytesWritten, Errno, !IO),
+    ( BytesWritten = Len ->
+        Result = ok
+    ; BytesWritten = -1 ->
+        Result = error(strerror(Errno))
+    ; BytesWritten < Len ->
+        % Not all the bytes were written.  Try again.
+        write(Socket, Bitmap, Offset + BytesWritten, Result, !IO)
+    ;
+        unexpected($file, $pred, "BytesWritten > Len")
+    ).
+
+:- pred write_c(socket::in, bitmap::in, int::in, int::in, int::out,
+    errno::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    write_c(Socket::in, Bitmap::in, Offset::in, Len::in,
+        BytesWritten::out, Errno::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    "
+        BytesWritten = write(Socket, &Bitmap->elements[Offset], Len);
+        if (BytesWritten == -1) {
+            Errno = error();
+        }
+    ").
 
 %-----------------------------------------------------------------------------%
 :- end_module sockets.

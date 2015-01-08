@@ -6,7 +6,7 @@
 % Public License - see the file COPYING.LIB
 %-----------------------------------------------------------------------------%
 %
-% Module: echo 
+% Module: echo
 % Main Author:  Paul Bone <paul@bone.id.au>
 %
 % A simple echo server.
@@ -31,10 +31,12 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
+:- import_module stream.
 :- import_module string.
 
 :- import_module net.
 :- import_module net.sockets.
+:- import_module net.streams.
 :- import_module net.types.
 
 main(!IO) :-
@@ -75,12 +77,13 @@ run(Socket, !IO) :-
     (
         Result = ok(accept_result(NewSocket, Address)),
         ( ipv4_sockaddr(InAddr, Port, Address) ->
-            io.format("Connection from %s port %d\n",
-                [s(to_string(InAddr)), i(Port)], !IO)
+            AddrStr = format("%s:%d", [s(to_string(InAddr)), i(Port)])
         ;
-            io.format("Connection from unknown peer family: %s\n",
-                [s(string(family(Address)))], !IO)
+            AddrStr = format("Unknown peer (family %s)",
+                [s(string(family(Address)))])
         ),
+        io.format("Connection from %s\n", [s(AddrStr)], !IO),
+        run_connection(stream(NewSocket), AddrStr, !IO),
         close(NewSocket, CloseRes, !IO),
         (
             CloseRes = ok
@@ -93,4 +96,22 @@ run(Socket, !IO) :-
         unexpected($file, $pred, "create socket failed: " ++ Error)
     ),
     run(Socket, !IO).
+
+:- pred run_connection(socket_stream::in, string::in, io::di, io::uo) is det.
+
+run_connection(Stream, AddrStr, !IO) :-
+    get(Stream, MaybeByte, !IO),
+    (
+        MaybeByte = ok(Byte `with_type` streams.byte),
+        put(Stream, Byte, !IO),
+        run_connection(Stream, AddrStr, !IO)
+    ;
+        MaybeByte = eof,
+        write_string(io.stderr_stream, "EOF", !IO)
+    ;
+        MaybeByte = error(Error),
+        io.format(io.stderr_stream, "%s; %s\n",
+            [s(AddrStr), s(error_message(Error))], !IO)
+    ).
+
 

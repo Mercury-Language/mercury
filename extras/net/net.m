@@ -9,6 +9,7 @@
 
 :- include_module netdb.
 :- include_module sockets.
+:- include_module streams.
 :- include_module tcp.
 :- include_module types.
 

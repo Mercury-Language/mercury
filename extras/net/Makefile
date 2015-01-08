@@ -22,3 +22,8 @@ echo : $(MERCURY_FILES)
 
 tags : $(MERCURY_FILES)
 	$(MTAGS) $(MERCURY_FILES)
+
+.PHONY : clean
+clean :
+	rm -rf Mercury *.mh *.err echo libnet.so libnet.a net.init tags
+
