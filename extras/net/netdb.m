@@ -82,7 +82,12 @@
 
 :- pragma foreign_decl("C",
 "
-#include <netdb.h>
+#ifdef MR_WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+#else
+    #include <netdb.h>
+#endif
 ").
 
 :- pragma foreign_decl("C", local,
@@ -159,8 +164,9 @@ c_protocol_to_protocol(CProto, Proto) :-
     c_protocol_get_aliases(Proto::in, List::uo),
     [may_call_mercury, promise_pure, thread_safe],
 "
-    List = MR_list_empty();
     int i = 0;
+
+    List = MR_list_empty();
 
     while (Proto->p_aliases[i] != NULL) {
         MR_String str;

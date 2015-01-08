@@ -94,8 +94,13 @@
 
 :- pragma foreign_decl("C",
 "
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#ifdef MR_WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+#else
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+#endif
 ").
 
 :- pragma foreign_decl("C", local,
@@ -193,12 +198,12 @@ to_string(Addr) = String :-
         struct sockaddr_in  in;
     };
 
-    socklen_t sock_addr_size(union my_sockaddr *addr);
+    size_t sock_addr_size(union my_sockaddr *addr);
 ").
 
 :- pragma foreign_code("C",
 "
-    socklen_t sock_addr_size(union my_sockaddr *addr) {
+    size_t sock_addr_size(union my_sockaddr *addr) {
         switch (addr->raw.sa_family) {
             case AF_INET:
                 return sizeof(struct sockaddr_in);

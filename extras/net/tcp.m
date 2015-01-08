@@ -171,8 +171,8 @@ tcp.shutdown(tcp(_, Handle), !IO) :-
 
 :- pragma foreign_decl("C", "
 #ifdef MR_WIN32
-  #include <windows.h>
-  #include <winsock.h>
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
   #include <sys/types.h>
 
   #define  ML_error()       WSAGetLastError()

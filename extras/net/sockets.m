@@ -134,7 +134,8 @@
 :- pragma foreign_decl("C",
 "
 #ifdef MR_WIN32
-  #include <winsock.h>
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
 #else
   #include <errno.h>
   #include <netdb.h>
@@ -180,7 +181,7 @@
 "
 #ifdef MR_WIN32
   #define  error()      WSAGetLastError()
-
+  #define  SHUT_RDWR    SD_BOTH
 #else /* !MR_WIN32 */
   #define  error()      errno
 
@@ -398,7 +399,7 @@ close(Socket, Result, !IO) :-
 "
     struct linger sockets_linger = { MR_TRUE, 2 };
     setsockopt(Socket, SOL_SOCKET, SO_LINGER,
-        &sockets_linger, sizeof(sockets_linger));
+        (char*)&sockets_linger, sizeof(sockets_linger));
     if (-1 == shutdown(Socket, SHUT_RDWR)) {
         Errno = error();
         Success = MR_NO;
