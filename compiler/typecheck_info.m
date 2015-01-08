@@ -19,7 +19,6 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
@@ -37,88 +36,10 @@
 
 %-----------------------------------------------------------------------------%
 %
-% The typecheck_info data structure.
+% The typecheck_info data structure's initializer and finalizer.
 %
 
-:- type typecheck_sub_info
-    --->    typecheck_sub_info(
-                % The id of the pred we're checking.
-                tc_sub_info_pred_id                 :: pred_id,
-
-                % Import status of the pred being checked.
-                tc_sub_info_pred_import_status      :: import_status,
-
-                % Markers of the pred being checked.
-                tc_sub_info_pred_markers            :: pred_markers,
-
-                % Is the pred we're checking a field access function? If so,
-                % there should only be a field access function application
-                % in the body, not predicate or function calls or constructor
-                % applications.
-                tc_sub_info_is_field_access_function :: bool,
-
-                % Variable names in the predicate being checked.
-                tc_sub_info_varset                  :: prog_varset,
-
-                % The list of errors found so far (if any), with one exception:
-                % any errors about overloading are in the overload_error field.
-                tc_sub_info_non_overload_errors     :: list(error_spec),
-
-                % Have we already generated a warning or error message about
-                % highly ambiguous overloading? If yes, this has the message.
-                tc_sub_info_overload_error          :: maybe(error_spec),
-
-                % The symbols used by the current predicate that have
-                % more than one accessible definition, mapped to the unsorted
-                % list of the locations that refer to them.
-                tc_sub_info_overloaded_symbols      :: overloaded_symbol_map,
-
-                % The value of the option --typecheck-ambiguity-error-limit.
-                tc_sub_info_ambiguity_error_limit   :: int
-            ).
-
-:- type typecheck_info
-    --->    typecheck_info(
-                tc_info_sub_info                    :: typecheck_sub_info,
-
-                tc_info_module_info                 :: module_info,
-
-                % The call_id of the pred being called (if any).
-                tc_info_call_id                     :: call_id,
-
-                % The argument number within that pred call.
-                tc_info_arg_num                     :: int,
-
-                % The context of the goal we're checking.
-                tc_info_context                     :: prog_context,
-
-                % The original source of the unification we're checking.
-                tc_info_unify_context               :: unify_context,
-
-                % This is the main piece of information that we are computing
-                % and which gets updated as we go along.
-                tc_info_type_assign_set             :: type_assign_set,
-
-                % The value of the option --typecheck-ambiguity-warn-limit.
-                tc_info_ambiguity_warn_limit        :: int
-            ).
-
-:- type overloaded_symbol_map == map(overloaded_symbol, list(prog_context)).
-
-:- type overloaded_symbol
-    --->    overloaded_pred(
-                simple_call_id,
-                list(pred_id)
-            )
-    ;       overloaded_func(
-                cons_id,
-                list(cons_type_info_source)
-            ).
-
-%-----------------------------------------------------------------------------%
-%
-% typecheck_info initialisation and finalisation.
-%
+:- type typecheck_info.
 
 :- pred typecheck_info_init(module_info::in, pred_id::in, bool::in,
     tvarset::in, prog_varset::in, vartypes::in, head_type_params::in,
@@ -152,47 +73,84 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Basic access predicates for typecheck_info.
+% Basic access predicates for typecheck_info, and the purpose-specific
+% types that some of them return.
 %
 
-% :- func tc_info_module_info(typecheck_info) = module_info.
-% :- func tc_info_arg_num(typecheck_info) = int.
-% :- func tc_info_context(typecheck_info) = prog_context.
-% :- func tc_info_unify_context(typecheck_info) = unify_context.
-% :- func tc_info_type_assign_set(typecheck_info) = type_assign_set.
+:- type overloaded_symbol_map == map(overloaded_symbol, list(prog_context)).
 
-% :- func 'tc_info_arg_num :='(typecheck_info, int) = typecheck_info.
-% :- func 'tc_info_context :='(typecheck_info, prog_context) = typecheck_info.
-% :- func 'tc_info_unify_context :='(typecheck_info, unify_context)
-%     = typecheck_info.
-% :- func 'tc_info_type_assign_set :='(typecheck_info, type_assign_set)
-%     = typecheck_info.
+:- type overloaded_symbol
+    --->    overloaded_pred(
+                simple_call_id,
+                list(pred_id)
+            )
+    ;       overloaded_func(
+                cons_id,
+                list(cons_type_info_source)
+            ).
 
-:- pred typecheck_info_get_predid(typecheck_info::in, pred_id::out) is det.
-:- pred typecheck_info_get_pred_import_status(typecheck_info::in,
-    import_status::out) is det.
-:- pred typecheck_info_get_pred_markers(typecheck_info::in, pred_markers::out)
-    is det.
-:- pred typecheck_info_get_is_field_access_function(typecheck_info::in,
-    bool::out) is det.
-:- pred typecheck_info_get_called_predid(typecheck_info::in, call_id::out)
-    is det.
+:- type type_error_clause_context
+    --->    type_error_clause_context(
+                % The outermost context for a type error is the clause
+                % that was being typechecked when the error was found.
 
-:- pred typecheck_info_get_varset(typecheck_info::in, prog_varset::out) is det.
-:- pred typecheck_info_get_overload_error(typecheck_info::in,
-    maybe(error_spec)::out) is det.
-:- pred typecheck_info_get_overloaded_symbols(typecheck_info::in,
-    overloaded_symbol_map::out) is det.
-:- pred typecheck_info_get_ambiguity_warn_limit(typecheck_info::in,
-    int::out) is det.
+                % The tecc_pred_id field gives the identity of the predicate,
+                % and the tecc_module_info field allows us to convert that
+                % into the information we actually need about the predicate,
+                % such as its name.
+                tecc_module_info                :: module_info,
+                tecc_pred_id                    :: pred_id,
+
+                % The markers of the pred being checked. The code that
+                % needs to know this to generate good error messages could
+                % get the pred_info using the two fields above and then
+                % look up the pred_markers in there, but we have them anyway
+                % when we construct the typecheck_info, and the space it takes
+                % up is not worth worrying about.
+                tecc_pred_markers               :: pred_markers,
+
+                % Which clause of the predicate are we checking?
+                tecc_clause_num                 :: int,
+
+                % The context of the clause, which will be the context
+                % of its head.
+                tecc_clause_context             :: prog_context,
+
+                % Variable names in the clause being checked.
+                tecc_varset                     :: prog_varset
+            ).
+
+:- pred typecheck_info_get_module_info(typecheck_info::in,
+    module_info::out) is det.
+:- pred typecheck_info_get_error_clause_context(typecheck_info::in,
+    type_error_clause_context::out) is det.
+:- pred typecheck_info_get_type_assign_set(typecheck_info::in,
+    type_assign_set::out) is det.
 :- pred typecheck_info_get_ambiguity_error_limit(typecheck_info::in,
     int::out) is det.
 
-:- pred typecheck_info_set_called_predid(call_id::in,
+:- pred typecheck_info_get_pred_id(typecheck_info::in,
+    pred_id::out) is det.
+:- pred typecheck_info_get_calls_are_fully_qualified(typecheck_info::in,
+    is_fully_qualified::out) is det.
+:- pred typecheck_info_get_is_field_access_function(typecheck_info::in,
+    maybe(import_status)::out) is det.
+:- pred typecheck_info_get_non_overload_errors(typecheck_info::in,
+    list(error_spec)::out) is det.
+:- pred typecheck_info_get_overload_error(typecheck_info::in,
+    maybe(error_spec)::out) is det.
+:- pred typecheck_info_get_overloaded_symbol_map(typecheck_info::in,
+    overloaded_symbol_map::out) is det.
+:- pred typecheck_info_get_ambiguity_warn_limit(typecheck_info::in,
+    int::out) is det.
+
+:- pred typecheck_info_set_type_assign_set(type_assign_set::in,
     typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_overload_error(maybe(error_spec)::in,
     typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_set_overloaded_symbols(overloaded_symbol_map::in,
+:- pred typecheck_info_set_overloaded_symbol_map(overloaded_symbol_map::in,
+    typecheck_info::in, typecheck_info::out) is det.
+:- pred typecheck_info_set_non_overload_errors(list(error_spec)::in,
     typecheck_info::in, typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -216,9 +174,6 @@
 :- pred typecheck_info_get_all_errors(typecheck_info::in,
     list(error_spec)::out) is det.
 
-:- pred typecheck_info_add_pred_marker(marker::in,
-    typecheck_info::in, typecheck_info::out) is det.
-
 %-----------------------------------------------------------------------------%
 %
 % The type_assign and type_assign_set data structures.
@@ -241,7 +196,7 @@
                 ta_class_constraints    :: hlds_constraints,
 
                 % For each constraint found to be redundant, why is it so?
-                ta_constraint_proofs    :: constraint_proof_map,
+                ta_constraint_proof_map :: constraint_proof_map,
 
                 % Maps constraint identifiers to the actual constraints.
                 ta_constraint_map       :: constraint_map
@@ -262,7 +217,7 @@
     tsubst::out) is det.
 :- pred type_assign_get_typeclass_constraints(type_assign::in,
     hlds_constraints::out) is det.
-:- pred type_assign_get_constraint_proofs(type_assign::in,
+:- pred type_assign_get_constraint_proof_map(type_assign::in,
     constraint_proof_map::out) is det.
 :- pred type_assign_get_constraint_map(type_assign::in,
     constraint_map::out) is det.
@@ -277,7 +232,7 @@
     type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_typeclass_constraints(hlds_constraints::in,
     type_assign::in, type_assign::out) is det.
-:- pred type_assign_set_constraint_proofs(constraint_proof_map::in,
+:- pred type_assign_set_constraint_proof_map(constraint_proof_map::in,
     type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_constraint_map(constraint_map::in,
     type_assign::in, type_assign::out) is det.
@@ -394,13 +349,83 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type typecheck_sub_info
+    --->    typecheck_sub_info(
+                % Are calls from the body of the predicate we are checking
+                % guaranteed to be already fully qualified? In some cases,
+                % such as when the body was read in from a .opt file,
+                % they will be.
+                tcsi_calls_are_fully_qualified  :: is_fully_qualified,
+
+                % Is the pred we are checking a field access function? If so,
+                % there should only be a field access function application
+                % in the body, not predicate or function calls or constructor
+                % applications, and we will need to know the predicate's
+                % import status, so we don't generate errors when the function
+                % is opt-imported into other modules.
+                tcsi_is_field_access_function   :: maybe(import_status),
+
+                % The list of errors found so far (if any), with one exception:
+                % any errors about overloading are in the overload_error field.
+                tcsi_non_overload_errors        :: list(error_spec),
+
+                % Have we already generated a warning or error message about
+                % highly ambiguous overloading? If yes, this has the message.
+                tcsi_overload_error             :: maybe(error_spec),
+
+                % The symbols used by the current predicate that have
+                % more than one accessible definition, mapped to the unsorted
+                % list of the locations that refer to them.
+                tcsi_overloaded_symbol_map      :: overloaded_symbol_map,
+
+                % The value of the option --typecheck-ambiguity-error-limit.
+                tcsi_ambiguity_error_limit      :: int
+            ).
+
+:- type typecheck_info
+    --->    typecheck_info(
+                % The four most frequently used parts of the conceptual
+                % typecheck_info are here in this cell. The less frequently
+                % used parts are in the typecheck_sub_info, or (if they are
+                % needed for the generation of type error messages) in the
+                % type_error_clause_context.
+
+                tci_sub_info                    :: typecheck_sub_info,
+
+                % The part of the information needed to generate good error
+                % messages for type errors that remains valid during the
+                % typechecking of an entire clause. As for the Information
+                % needed to generate good error messages that changes as
+                % we traverse the body of a clause, that is passed around
+                % separately in typecheck.m.
+                tci_error_clause_context        :: type_error_clause_context,
+
+                % This is the main piece of information that we are computing
+                % and which gets updated as we go along.
+                %
+                % XXX We could pass the type assign set around *without*
+                % putting it into the typecheck_info. Since it would avoid
+                % most memory allocations for updated typecheck_infos, this
+                % change could lead to a speedup.
+                tci_type_assign_set             :: type_assign_set,
+
+                % The value of the option --typecheck-ambiguity-warn-limit.
+                tci_ambiguity_warn_limit        :: int
+            ).
+
+%-----------------------------------------------------------------------------%
+
 typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
-        TypeVarSet, VarSet, VarTypes, HeadTypeParams, Constraints,
+        TypeVarSet, ClauseVarSet, VarTypes, HeadTypeParams, Constraints,
         Status, PredMarkers, NonOverloadErrors, Info) :-
-    CallPredId =
-        plain_call_id(simple_call_id(pf_predicate, unqualified(""), 0)),
-    ArgNum = 0,
-    term.context_init(Context),
+    CallsAreFullyQualified = calls_are_fully_qualified(PredMarkers),
+    (
+        IsFieldAccessFunction = no,
+        MaybeFieldAccessFunction = no
+    ;
+        IsFieldAccessFunction = yes,
+        MaybeFieldAccessFunction = yes(Status)
+    ),
     map.init(TypeBindings),
     map.init(Proofs),
     map.init(ConstraintMap),
@@ -411,22 +436,20 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
         WarnLimit),
     globals.lookup_int_option(Globals, typecheck_ambiguity_error_limit,
         ErrorLimit),
-    UnifyContext = unify_context(umc_explicit, []),
     TypeAssignSet = [type_assign(VarTypes, TypeVarSet, HeadTypeParams,
         TypeBindings, Constraints, Proofs, ConstraintMap)],
-
-    SubInfo = typecheck_sub_info(PredId, Status,
-        PredMarkers, IsFieldAccessFunction, VarSet,
+    SubInfo = typecheck_sub_info(CallsAreFullyQualified,
+        MaybeFieldAccessFunction,
         NonOverloadErrors, OverloadErrors, OverloadedSymbols, ErrorLimit),
-
-    Info = typecheck_info(SubInfo, ModuleInfo, CallPredId, ArgNum,
-        Context, UnifyContext, TypeAssignSet, WarnLimit).
+    ClauseContext = type_error_clause_context(ModuleInfo, PredId,
+        PredMarkers, 0, term.context_init, ClauseVarSet),
+    Info = typecheck_info(SubInfo, ClauseContext, TypeAssignSet, WarnLimit).
 
 typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         OldExplicitVarTypes, NewTypeVarSet, NewHeadTypeParams,
         NewVarTypes, NewTypeConstraints, NewConstraintProofMap,
         NewConstraintMap, TSubst, ExistTypeRenaming) :-
-    TypeAssignSet = tc_info_type_assign_set(Info),
+    typecheck_info_get_type_assign_set(Info, TypeAssignSet),
     (
         TypeAssignSet = [TypeAssign | _],
         type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
@@ -434,7 +457,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         type_assign_get_var_types(TypeAssign, VarTypes0),
         type_assign_get_type_bindings(TypeAssign, TypeBindings),
         type_assign_get_typeclass_constraints(TypeAssign, HLDSTypeConstraints),
-        type_assign_get_constraint_proofs(TypeAssign, ConstraintProofMap0),
+        type_assign_get_constraint_proof_map(TypeAssign, ConstraintProofMap0),
         type_assign_get_constraint_map(TypeAssign, ConstraintMap0),
 
         ( map.is_empty(TypeBindings) ->
@@ -583,77 +606,107 @@ tvar_maps_to_tvar(TypeBindings, TVar0, TVar) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_info_get_non_overload_errors(typecheck_info::in,
-    list(error_spec)::out) is det.
-:- pred typecheck_info_set_non_overload_errors(list(error_spec)::in,
-    typecheck_info::in, typecheck_info::out) is det.
+typecheck_info_get_error_clause_context(Info, X) :-
+    X = Info ^ tci_error_clause_context.
+typecheck_info_get_type_assign_set(Info, X) :-
+    X = Info ^ tci_type_assign_set.
+typecheck_info_get_ambiguity_warn_limit(Info, X) :-
+    X = Info ^ tci_ambiguity_warn_limit.
 
-% These get and set functions are defined automatically.
+typecheck_info_get_module_info(Info, X) :-
+    X = Info ^ tci_error_clause_context ^ tecc_module_info.
+typecheck_info_get_pred_id(Info, X) :-
+    X = Info ^ tci_error_clause_context ^ tecc_pred_id.
 
-% get_tc_info_module_info(Info) = Info ^ tc_info_module_info.
-% get_tc_info_arg_num(Info) = Info ^ tc_info_arg_num.
-% get_tc_info_context(Info) = Info ^ tc_info_context.
-% get_tc_info_unify_context(Info) = Info ^ unify_context.
-% get_tc_info_type_assign_set(Info) = Info ^ type_assign_set.
+typecheck_info_get_calls_are_fully_qualified(Info, X) :-
+    X = Info ^ tci_sub_info ^ tcsi_calls_are_fully_qualified.
+typecheck_info_get_is_field_access_function(Info, X) :-
+    X = Info ^ tci_sub_info ^ tcsi_is_field_access_function.
+typecheck_info_get_non_overload_errors(Info, X) :-
+    X = Info ^ tci_sub_info ^ tcsi_non_overload_errors.
+typecheck_info_get_overload_error(Info, X) :-
+    X = Info ^ tci_sub_info ^ tcsi_overload_error.
+typecheck_info_get_overloaded_symbol_map(Info, X) :-
+    X = Info ^ tci_sub_info ^ tcsi_overloaded_symbol_map.
+typecheck_info_get_ambiguity_error_limit(Info, X) :-
+    X = Info ^ tci_sub_info ^ tcsi_ambiguity_error_limit.
 
-% set_tc_info_arg_num(ArgNum, Info, Info ^ tc_info_arg_num := ArgNum).
-% set_tc_info_context(Context, Info, Info ^ tc_info_context := Context).
-% set_tc_info_unify_context(UnifyContext, Info,
-%        Info ^ tc_info_unify_context := UnifyContext).
-% set_tc_info_type_assign_set(TypeAssignSet, Info,
-%        Info ^ tc_info_type_assign_set := TypeAssignSet).
+typecheck_info_set_type_assign_set(X, !Info) :-
+    !Info ^ tci_type_assign_set := X.
 
-typecheck_info_get_predid(Info,
-        Info ^ tc_info_sub_info ^ tc_sub_info_pred_id).
-typecheck_info_get_pred_markers(Info,
-        Info ^ tc_info_sub_info ^ tc_sub_info_pred_markers).
-typecheck_info_get_pred_import_status(Info,
-        Info ^ tc_info_sub_info ^ tc_sub_info_pred_import_status).
-typecheck_info_get_is_field_access_function(Info,
-        Info ^ tc_info_sub_info ^ tc_sub_info_is_field_access_function).
-typecheck_info_get_called_predid(Info, Info ^ tc_info_call_id).
-typecheck_info_get_varset(Info, Info ^ tc_info_sub_info ^ tc_sub_info_varset).
-typecheck_info_get_non_overload_errors(Info,
-        Info ^ tc_info_sub_info ^ tc_sub_info_non_overload_errors).
-typecheck_info_get_overload_error(Info,
-        Info ^ tc_info_sub_info ^ tc_sub_info_overload_error).
-typecheck_info_get_overloaded_symbols(Info,
-        Info ^ tc_info_sub_info ^ tc_sub_info_overloaded_symbols).
-typecheck_info_get_ambiguity_error_limit(Info,
-        Info ^ tc_info_sub_info ^ tc_sub_info_ambiguity_error_limit).
-typecheck_info_get_ambiguity_warn_limit(Info,
-        Info ^ tc_info_ambiguity_warn_limit).
+typecheck_info_set_non_overload_errors(X, !Info) :-
+    !Info ^ tci_sub_info ^ tcsi_non_overload_errors := X.
+typecheck_info_set_overload_error(X, !Info) :-
+    !Info ^ tci_sub_info ^ tcsi_overload_error := X.
+typecheck_info_set_overloaded_symbol_map(X, !Info) :-
+    !Info ^ tci_sub_info ^ tcsi_overloaded_symbol_map := X.
 
-typecheck_info_set_called_predid(PredCallId, Info,
-        Info ^ tc_info_call_id := PredCallId).
-typecheck_info_set_non_overload_errors(Specs, Info,
-        Info ^ tc_info_sub_info ^ tc_sub_info_non_overload_errors := Specs).
-typecheck_info_set_overload_error(OverloadSpec, Info,
-        Info ^ tc_info_sub_info ^ tc_sub_info_overload_error := OverloadSpec).
-typecheck_info_set_overloaded_symbols(Symbols, Info,
-        Info ^ tc_info_sub_info ^ tc_sub_info_overloaded_symbols := Symbols).
+% Access statistics from before the change on 2015 jan 9.
+%
+%  i      read      same      diff   same%
+%  0   7325016         0         0              module_info
+%  1        62         0    519838   0.000%     called_pred_id
+%  2        62    878563   3641386  19.437%     arg_num
+%  3    240136    773992   2491358  23.703%     context
+%  4        86        53   1245023   0.004%     unify_context
+%  5   9555205        22   5883791   0.000%     type_assign_set
+%  6   2421093         0         0              ambiguity_warn_limit
+%  7    681078         0         0              pred_id
+%  8       129         0         0              import_status
+%  9   1704110         0         0              pred_markers
+% 10    856891         0         0              is_field_access_function
+% 11        43         0         0              varset
+% 12    401290         0       124   0.000%     non_overload_errors
+% 13    401218         0       164   0.000%     overload_error
+% 14    188296         0    188132   0.000%     overloaded_symbols 
+% 15       204         0         0              ambiguity_error_limit
+
+% Access statistics from during the change on 2015 jan 9.
+% (The final commit changed the set of fields and getters/setters
+% still further.)
+%
+%  i      read      same      diff   same%
+%  0   1046873         0         0          error_clause_stats
+%  1  10228916        23   6337890   0.00%  type_assign_set
+%  2   2550889         0         0          ambiguity_warn_limit
+%  3   7802441         0         0          module_info
+%  4    735390         0         0          pred_id
+%  5   1821662         0         0          pred_markers
+%  6         0         0         0          varset
+%  7       129         0         0          pred_import_status
+%  8    914248         0         0          is_field_access_function
+%  9    431258         0       125   0.00%  non_overload_errors
+% 10    431185         0       164   0.00%  overload_error
+% 11    192779         0    192575   0.00%  overloaded_symbol_map
+% 12       204         0         0          ambiguity_error_limit
 
 %-----------------------------------------------------------------------------%
 
 typecheck_info_get_module_name(Info, Name) :-
-    module_info_get_name(Info ^ tc_info_module_info, Name).
+    typecheck_info_get_module_info(Info, ModuleInfo),
+    module_info_get_name(ModuleInfo, Name).
 typecheck_info_get_preds(Info, Preds) :-
-    module_info_get_predicate_table(Info ^ tc_info_module_info, Preds).
+    typecheck_info_get_module_info(Info, ModuleInfo),
+    module_info_get_predicate_table(ModuleInfo, Preds).
 typecheck_info_get_types(Info, Types) :-
-    module_info_get_type_table(Info ^ tc_info_module_info, Types).
+    typecheck_info_get_module_info(Info, ModuleInfo),
+    module_info_get_type_table(ModuleInfo, Types).
 typecheck_info_get_ctors(Info, Ctors) :-
-    module_info_get_cons_table(Info ^ tc_info_module_info, Ctors).
+    typecheck_info_get_module_info(Info, ModuleInfo),
+    module_info_get_cons_table(ModuleInfo, Ctors).
 
 typecheck_info_add_overloaded_symbol(Symbol, Context, !Info) :-
-    typecheck_info_get_overloaded_symbols(!.Info, SymbolMap0),
-    ( map.search(SymbolMap0, Symbol, OldContexts) ->
+    typecheck_info_get_overloaded_symbol_map(!.Info, OverloadedSymbolMap0),
+    ( map.search(OverloadedSymbolMap0, Symbol, OldContexts) ->
         Contexts = [Context | OldContexts],
-        map.det_update(Symbol, Contexts, SymbolMap0, SymbolMap)
+        map.det_update(Symbol, Contexts,
+            OverloadedSymbolMap0, OverloadedSymbolMap)
     ;
         Contexts = [Context],
-        map.det_insert(Symbol, Contexts, SymbolMap0, SymbolMap)
+        map.det_insert(Symbol, Contexts,
+            OverloadedSymbolMap0, OverloadedSymbolMap)
     ),
-    typecheck_info_set_overloaded_symbols(SymbolMap, !Info).
+    typecheck_info_set_overloaded_symbol_map(OverloadedSymbolMap, !Info).
 
 typecheck_info_add_error(Error, !Info) :-
     typecheck_info_get_non_overload_errors(!.Info, Errors0),
@@ -671,37 +724,39 @@ typecheck_info_get_all_errors(Info, Errors) :-
         Errors = [OverloadError | Errors0]
     ).
 
-typecheck_info_add_pred_marker(Marker, !Info) :-
-    Markers0 = !.Info ^ tc_info_sub_info ^ tc_sub_info_pred_markers,
-    add_marker(Marker, Markers0, Markers),
-    !Info ^ tc_info_sub_info ^ tc_sub_info_pred_markers := Markers.
-
 %-----------------------------------------------------------------------------%
 
-type_assign_get_var_types(TA, TA ^ ta_var_types).
-type_assign_get_typevarset(TA, TA ^ ta_type_varset).
-type_assign_get_head_type_params(TA, TA ^ ta_head_type_params).
-type_assign_get_type_bindings(TA, TA ^ ta_type_bindings).
-type_assign_get_typeclass_constraints(TA, TA ^ ta_class_constraints).
-type_assign_get_constraint_proofs(TA, TA ^ ta_constraint_proofs).
-type_assign_get_constraint_map(TA, TA ^ ta_constraint_map).
+type_assign_get_var_types(TA, X) :-
+    X = TA ^ ta_var_types.
+type_assign_get_typevarset(TA, X) :-
+    X = TA ^ ta_type_varset.
+type_assign_get_head_type_params(TA, X) :-
+    X = TA ^ ta_head_type_params.
+type_assign_get_type_bindings(TA, X) :-
+    X = TA ^ ta_type_bindings.
+type_assign_get_typeclass_constraints(TA, X) :-
+    X = TA ^ ta_class_constraints.
+type_assign_get_constraint_proof_map(TA, X) :-
+    X = TA ^ ta_constraint_proof_map.
+type_assign_get_constraint_map(TA, X) :-
+    X = TA ^ ta_constraint_map.
 
-type_assign_set_var_types(VarTypes, !TA) :-
-    !TA ^ ta_var_types := VarTypes.
-type_assign_set_typevarset(TVarSet, !TA) :-
-    !TA ^ ta_type_varset := TVarSet.
-type_assign_set_head_type_params(HeadTypeParams, !TA) :-
-    !TA ^ ta_head_type_params := HeadTypeParams.
-type_assign_set_type_bindings(TypeBindings, !TA) :-
-    !TA ^ ta_type_bindings := TypeBindings.
-type_assign_set_typeclass_constraints(Constraints, !TA) :-
-    !TA ^ ta_class_constraints := Constraints.
-type_assign_set_constraint_proofs(Proofs, !TA) :-
-    !TA ^ ta_constraint_proofs := Proofs.
-type_assign_set_constraint_map(ConstraintMap, !TA) :-
-    !TA ^ ta_constraint_map := ConstraintMap.
+type_assign_set_var_types(X, !TA) :-
+    !TA ^ ta_var_types := X.
+type_assign_set_typevarset(X, !TA) :-
+    !TA ^ ta_type_varset := X.
+type_assign_set_head_type_params(X, !TA) :-
+    !TA ^ ta_head_type_params := X.
+type_assign_set_type_bindings(X, !TA) :-
+    !TA ^ ta_type_bindings := X.
+type_assign_set_typeclass_constraints(X, !TA) :-
+    !TA ^ ta_class_constraints := X.
+type_assign_set_constraint_proof_map(X, !TA) :-
+    !TA ^ ta_constraint_proof_map := X.
+type_assign_set_constraint_map(X, !TA) :-
+    !TA ^ ta_constraint_map := X.
 
-type_assign_set_reduce_results(Bindings, TVarSet, Constraints, Proofs,
+type_assign_set_reduce_results(Bindings, TVarSet, Constraints, ProofMap,
         ConstraintMap, !TA) :-
     % This should allocate just one new type_assign, whereas separate calls
     % to the predicates above to set each of these fields would allocate
@@ -709,7 +764,7 @@ type_assign_set_reduce_results(Bindings, TVarSet, Constraints, Proofs,
     !TA ^ ta_type_bindings := Bindings,
     !TA ^ ta_type_varset := TVarSet,
     !TA ^ ta_class_constraints := Constraints,
-    !TA ^ ta_constraint_proofs := Proofs,
+    !TA ^ ta_constraint_proof_map := ProofMap,
     !TA ^ ta_constraint_map := ConstraintMap.
 
 %-----------------------------------------------------------------------------%
@@ -1005,7 +1060,7 @@ type_with_bindings_to_string(Type0, TypeVarSet, TypeBindings) = Str :-
 %-----------------------------------------------------------------------------%
 
 type_checkpoint(Msg, Info, !IO) :-
-    ModuleInfo = tc_info_module_info(Info),
+    typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_types, DoCheckPoint),
     (
@@ -1022,12 +1077,12 @@ do_type_checkpoint(Msg, Info, !IO) :-
     io.write_string("At ", !IO),
     io.write_string(Msg, !IO),
     io.write_string(": ", !IO),
-    ModuleInfo = tc_info_module_info(Info),
+    typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     maybe_report_stats(Statistics, !IO),
     io.write_string("\n", !IO),
-    TypeAssignSet = tc_info_type_assign_set(Info),
+    typecheck_info_get_type_assign_set(Info, TypeAssignSet),
     (
         Statistics = yes,
         TypeAssignSet = [TypeAssign | _]
@@ -1039,7 +1094,8 @@ do_type_checkpoint(Msg, Info, !IO) :-
     ;
         true
     ),
-    typecheck_info_get_varset(Info, VarSet),
+    typecheck_info_get_error_clause_context(Info, ClauseContext),
+    VarSet = ClauseContext ^ tecc_varset,
     write_type_assign_set(TypeAssignSet, VarSet, !IO).
 
 :- pred checkpoint_tree_stats(string::in, map(_K, _V)::in, io::di, io::uo)

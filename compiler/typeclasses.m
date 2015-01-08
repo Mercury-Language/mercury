@@ -26,7 +26,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % perform_context_reduction(!Info) is true
+    % perform_context_reduction(..., !Info) is true
     % iff either
     % (a) !:Info is the typecheck_info that results from performing
     % context reduction on the type_assigns in !.Info, or
@@ -66,8 +66,8 @@
     % the constraint has its top level functor bound, but there is no
     % instance declaration for that type.
     %
-:- pred perform_context_reduction(typecheck_info::in, typecheck_info::out)
-    is det.
+:- pred perform_context_reduction(prog_context::in,
+    typecheck_info::in, typecheck_info::out) is det.
 
     % Apply context reduction to the list of class constraints by applying
     % the instance rules or superclass rules, building up proofs for
@@ -100,12 +100,12 @@
 
 %-----------------------------------------------------------------------------%
 
-perform_context_reduction(!Info) :-
+perform_context_reduction(Context, !Info) :-
     trace [compiletime(flag("type_checkpoint")), io(!IO)] (
         type_checkpoint("before context reduction", !.Info, !IO)
     ),
-    TypeAssignSet0 = tc_info_type_assign_set(!.Info),
-    ModuleInfo = tc_info_module_info(!.Info),
+    typecheck_info_get_type_assign_set(!.Info, TypeAssignSet0),
+    typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     list.foldl2(reduce_type_assign_context(ClassTable, InstanceTable),
@@ -116,7 +116,9 @@ perform_context_reduction(!Info) :-
         TypeAssignSet0 = [_ | _],
         TypeAssignSet1 = []
     ->
-        Spec = report_unsatisfiable_constraints(!.Info, UnsatTypeAssignSet),
+        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
+        Spec = report_unsatisfiable_constraints(ClauseContext, Context,
+            UnsatTypeAssignSet),
         typecheck_info_add_error(Spec, !Info),
         DeleteConstraints = (pred(TA0::in, TA::out) is det :-
             % Make a new hlds_constraints structure for the type assign,
@@ -132,7 +134,7 @@ perform_context_reduction(!Info) :-
     ;
         TypeAssignSet = TypeAssignSet1
     ),
-    !Info ^ tc_info_type_assign_set := TypeAssignSet.
+    typecheck_info_set_type_assign_set(TypeAssignSet, !Info).
 
 :- pred reduce_type_assign_context(class_table::in, instance_table::in,
     type_assign::in, list(type_assign)::in, list(type_assign)::out,
@@ -155,17 +157,16 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
         type_assign_get_head_type_params(!.TypeAssign, HeadTypeParams),
         type_assign_get_type_bindings(!.TypeAssign, Bindings0),
         type_assign_get_typevarset(!.TypeAssign, TVarSet0),
-        type_assign_get_constraint_proofs(!.TypeAssign, Proofs0),
+        type_assign_get_constraint_proof_map(!.TypeAssign, ProofMap0),
         type_assign_get_constraint_map(!.TypeAssign, ConstraintMap0),
 
         reduce_context_by_rule_application(ClassTable, InstanceTable,
             HeadTypeParams, Bindings0, Bindings, TVarSet0, TVarSet,
-            Proofs0, Proofs, ConstraintMap0, ConstraintMap,
+            ProofMap0, ProofMap, ConstraintMap0, ConstraintMap,
             Constraints0, Constraints),
 
         type_assign_set_reduce_results(Bindings, TVarSet, Constraints,
-            Proofs, ConstraintMap, !TypeAssign),
-
+            ProofMap, ConstraintMap, !TypeAssign),
 
         Unproven = Constraints ^ hcs_unproven,
         ( all_constraints_are_satisfiable(Unproven, HeadTypeParams) ->
@@ -218,9 +219,9 @@ all_constraints_are_satisfiable([Constraint | Constraints], HeadTypeParams) :-
     all_constraints_are_satisfiable(Constraints, HeadTypeParams).
 
 reduce_context_by_rule_application(ClassTable, InstanceTable, HeadTypeParams,
-        !Bindings, !TVarSet, !Proofs, !ConstraintMap, !Constraints) :-
+        !Bindings, !TVarSet, !ProofMap, !ConstraintMap, !Constraints) :-
     reduce_context_by_rule_application_2(ClassTable, InstanceTable,
-        HeadTypeParams, !Bindings, !TVarSet, !Proofs, !ConstraintMap,
+        HeadTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
         !Constraints, !.Constraints ^ hcs_unproven, _).
 
 :- pred reduce_context_by_rule_application_2(class_table::in,
@@ -232,7 +233,7 @@ reduce_context_by_rule_application(ClassTable, InstanceTable, HeadTypeParams,
     list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
 reduce_context_by_rule_application_2(ClassTable, InstanceTable, HeadTypeParams,
-        !Bindings, !TVarSet, !Proofs, !ConstraintMap, !Constraints, !Seen) :-
+        !Bindings, !TVarSet, !ProofMap, !ConstraintMap, !Constraints, !Seen) :-
     apply_rec_subst_to_constraints(!.Bindings, !Constraints),
     apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams,
         !.Constraints, !TVarSet, !Bindings, AppliedImprovementRule),
@@ -251,9 +252,10 @@ reduce_context_by_rule_application_2(ClassTable, InstanceTable, HeadTypeParams,
 
     eliminate_assumed_constraints(!ConstraintMap, !Constraints,
         EliminatedAssumed),
-    apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !Proofs,
+    apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !ProofMap,
         !ConstraintMap, !Seen, !Constraints, AppliedInstanceRule),
-    apply_class_rules(!Proofs, !ConstraintMap, !Constraints, AppliedClassRule),
+    apply_class_rules(!ProofMap, !ConstraintMap, !Constraints,
+        AppliedClassRule),
     (
         AppliedImprovementRule = no,
         EliminatedAssumed = no,
@@ -264,7 +266,7 @@ reduce_context_by_rule_application_2(ClassTable, InstanceTable, HeadTypeParams,
         sort_and_merge_dups(!Constraints)
     ;
         reduce_context_by_rule_application_2(ClassTable, InstanceTable,
-            HeadTypeParams, !Bindings, !TVarSet, !Proofs, !ConstraintMap,
+            HeadTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
             !Constraints, !Seen)
     ).
 
@@ -595,11 +597,11 @@ eliminate_assumed_constraints_2(AssumedCs, !ConstraintMap, [C | Cs], NewCs,
     list(hlds_constraint)::in, list(hlds_constraint)::out,
     hlds_constraints::in, hlds_constraints::out, bool::out) is det.
 
-apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !Proofs,
+apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !ProofMap,
         !ConstraintMap, !Seen, !Constraints, Changed) :-
     !.Constraints = hlds_constraints(Unproven0, Assumed,
         Redundant0, Ancestors),
-    apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
+    apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !ProofMap,
         !ConstraintMap, Redundant0, Redundant, !Seen,
         Unproven0, Unproven, Changed),
     !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
@@ -612,16 +614,16 @@ apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !Proofs,
     list(hlds_constraint)::in, list(hlds_constraint)::out,
     list(hlds_constraint)::in, list(hlds_constraint)::out, bool::out) is det.
 
-apply_instance_rules_2(_, _, !TVarSet, !Proofs, !ConstraintMap, !Redundant,
+apply_instance_rules_2(_, _, !TVarSet, !ProofMap, !ConstraintMap, !Redundant,
         !Seen, [], [], no).
-apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
+apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !ProofMap,
         !ConstraintMap, !Redundant, !Seen, [C | Cs], Constraints, Changed) :-
     C = hlds_constraint(_Ids, ClassName, ArgTypes),
     list.length(ArgTypes, Arity),
     map.lookup(InstanceTable, class_id(ClassName, Arity), Instances),
     InitialTVarSet = !.TVarSet,
     (
-        find_matching_instance_rule(Instances, C, !TVarSet, !Proofs,
+        find_matching_instance_rule(Instances, C, !TVarSet, !ProofMap,
             NewConstraints0)
     ->
         update_constraint_map(C, !ConstraintMap),
@@ -640,7 +642,7 @@ apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
         !:TVarSet = InitialTVarSet,
         Changed1 = no
     ),
-    apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
+    apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !ProofMap,
         !ConstraintMap, !Redundant, !Seen, Cs, TailConstraints, Changed2),
     bool.or(Changed1, Changed2, Changed),
     list.append(NewConstraints, TailConstraints, Constraints).
@@ -669,11 +671,11 @@ matches_no_constraint(Seen, Constraint) :-
     constraint_proof_map::in, constraint_proof_map::out,
     list(hlds_constraint)::out) is semidet.
 
-find_matching_instance_rule(Instances, Constraint, !TVarSet, !Proofs,
+find_matching_instance_rule(Instances, Constraint, !TVarSet, !ProofMap,
         NewConstraints) :-
     % Start a counter so we remember which instance decl we have used.
     find_matching_instance_rule_2(Instances, 1, Constraint, !TVarSet,
-        !Proofs, NewConstraints).
+        !ProofMap, NewConstraints).
 
 :- pred find_matching_instance_rule_2(list(hlds_instance_defn)::in, int::in,
     hlds_constraint::in, tvarset::in, tvarset::out,
@@ -681,7 +683,7 @@ find_matching_instance_rule(Instances, Constraint, !TVarSet, !Proofs,
     list(hlds_constraint)::out) is semidet.
 
 find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
-        !TVarSet, !Proofs, NewConstraints) :-
+        !TVarSet, !ProofMap, NewConstraints) :-
     Constraint = hlds_constraint(_Ids, _ClassName, ArgTypes),
     ProgConstraints0 = Instance ^ instance_constraints,
     InstanceTypes0 = Instance ^ instance_types,
@@ -699,11 +701,11 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
 
         NewProof = apply_instance(InstanceNum0),
         retrieve_prog_constraint(Constraint, ProgConstraint),
-        map.set(ProgConstraint, NewProof, !Proofs)
+        map.set(ProgConstraint, NewProof, !ProofMap)
     ;
         InstanceNum = InstanceNum0 + 1,
         find_matching_instance_rule_2(Instances, InstanceNum,
-            Constraint, !TVarSet, !Proofs, NewConstraints)
+            Constraint, !TVarSet, !ProofMap, NewConstraints)
     ).
 
     % To reduce a constraint using class declarations, we search the
@@ -714,9 +716,9 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
     constraint_map::in, constraint_map::out,
     hlds_constraints::in, hlds_constraints::out, bool::out) is det.
 
-apply_class_rules(!Proofs, !ConstraintMap, !Constraints, Changed) :-
+apply_class_rules(!ProofMap, !ConstraintMap, !Constraints, Changed) :-
     !.Constraints = hlds_constraints(Unproven0, _, _, Ancestors),
-    apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
+    apply_class_rules_2(Ancestors, !ProofMap, !ConstraintMap,
         Unproven0, Unproven, Changed),
     !Constraints ^ hcs_unproven := Unproven.
 
@@ -725,20 +727,20 @@ apply_class_rules(!Proofs, !ConstraintMap, !Constraints, Changed) :-
     constraint_map::in, constraint_map::out,
     list(hlds_constraint)::in, list(hlds_constraint)::out, bool::out) is det.
 
-apply_class_rules_2(_, !Proofs, !ConstraintMap, [], [], no).
-apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
+apply_class_rules_2(_, !ProofMap, !ConstraintMap, [], [], no).
+apply_class_rules_2(Ancestors, !ProofMap, !ConstraintMap,
         [Constraint0 | Constraints0], Constraints, Changed) :-
     retrieve_prog_constraint(Constraint0, ProgConstraint0),
     (
         map.search(Ancestors, ProgConstraint0, Descendants)
     ->
         update_constraint_map(Constraint0, !ConstraintMap),
-        add_superclass_proofs(ProgConstraint0, Descendants, !Proofs),
-        apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
+        add_superclass_proofs(ProgConstraint0, Descendants, !ProofMap),
+        apply_class_rules_2(Ancestors, !ProofMap, !ConstraintMap,
             Constraints0, Constraints, _),
         Changed = yes
     ;
-        apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
+        apply_class_rules_2(Ancestors, !ProofMap, !ConstraintMap,
             Constraints0, TailConstraints, Changed),
         Constraints = [Constraint0 | TailConstraints]
     ).
@@ -746,10 +748,10 @@ apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
 :- pred add_superclass_proofs(prog_constraint::in, list(prog_constraint)::in,
     constraint_proof_map::in, constraint_proof_map::out) is det.
 
-add_superclass_proofs(_, [], !Proofs).
-add_superclass_proofs(Constraint, [Descendant | Descendants], !Proofs) :-
-    map.set(Constraint, superclass(Descendant), !Proofs),
-    add_superclass_proofs(Descendant, Descendants, !Proofs).
+add_superclass_proofs(_, [], !ProofMap).
+add_superclass_proofs(Constraint, [Descendant | Descendants], !ProofMap) :-
+    map.set(Constraint, superclass(Descendant), !ProofMap),
+    add_superclass_proofs(Descendant, Descendants, !ProofMap).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.typeclasses.

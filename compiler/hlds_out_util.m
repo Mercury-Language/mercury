@@ -115,6 +115,8 @@
 
 :- func call_id_to_string(call_id) = string.
 
+:- func generic_call_id_to_string(generic_call_id) = string.
+
 :- func cast_type_to_string(cast_kind) = string.
 
     % Generate a message of the form "argument %i of call to pred_or_func
@@ -472,8 +474,6 @@ call_id_to_string(plain_call_id(PredCallId)) =
     simple_call_id_to_string(PredCallId).
 call_id_to_string(generic_call_id(GenericCallId)) =
     generic_call_id_to_string(GenericCallId).
-
-:- func generic_call_id_to_string(generic_call_id) = string.
 
 generic_call_id_to_string(gcid_higher_order(Purity, PredOrFunc, _)) =
     purity_prefix_to_string(Purity) ++ "higher-order "

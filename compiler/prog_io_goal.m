@@ -1451,7 +1451,8 @@ parse_else_then_try_term(Term, CatchExprs, MaybeCatchAnyExpr,
 parse_then_try_term(ThenTryTerm, MaybeElse, CatchExprs, MaybeCatchAnyExpr,
         Context, ContextPieces, MaybeGoal, !VarSet) :-
     ThenTryTerm = term.functor(term.atom("then"), [TryTerm, ThenTerm], _),
-    TryTerm = term.functor(term.atom("try"), [ParamsTerm, TryGoalTerm], _),
+    TryTerm = term.functor(term.atom("try"), [ParamsTerm, TryGoalTerm],
+        TryContext),
 
     varset.coerce(!.VarSet, GenericVarSet),
     parse_try_params(GenericVarSet, Context, ParamsTerm, MaybeParams),
@@ -1467,7 +1468,7 @@ parse_then_try_term(ThenTryTerm, MaybeElse, CatchExprs, MaybeCatchAnyExpr,
             MaybeComponents = ok1(MaybeIO),
             GoalExpr = try_expr(MaybeIO, TryGoal, ThenGoal, MaybeElse,
                 CatchExprs, MaybeCatchAnyExpr),
-            MaybeGoal = ok1(GoalExpr - Context)
+            MaybeGoal = ok1(GoalExpr - TryContext)
         ;
             MaybeComponents = error1(Specs),
             MaybeGoal = error1(Specs)

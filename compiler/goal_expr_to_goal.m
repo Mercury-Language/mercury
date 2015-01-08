@@ -565,7 +565,8 @@ transform_goal_expr_to_goal(LocKind, Expr, Context, Renaming, Goal,
                 Call = generic_call(GenericCall, RealHeadVars, Modes,
                     MaybeArgRegs, Det),
 
-                hlds_goal.generic_call_id(GenericCall, CallId)
+                hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
+                CallId = generic_call_id(GenericCallId)
             ;
                 % Initialize some fields to junk.
                 PredId = invalid_pred_id,

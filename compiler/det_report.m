@@ -610,8 +610,8 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
     ;
         GoalExpr = generic_call(GenericCall, _, _, _, _),
         Context = goal_info_get_context(GoalInfo),
-        hlds_goal.generic_call_id(GenericCall, CallId),
-        StartingPieces = [words(call_id_to_string(CallId))],
+        hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
+        StartingPieces = [words(generic_call_id_to_string(GenericCallId))],
         det_diagnose_primitive_goal(Desired, Actual, Context, StartingPieces,
             Msgs)
     ;
@@ -1577,8 +1577,8 @@ failing_context_description(ModuleInfo, VarSet, FailingContext) = Msg :-
         Pieces = [words("Call to"), fixed(Name), words("can fail.")]
     ;
         FailingGoal = generic_call_goal(GenericCall),
-        hlds_goal.generic_call_id(GenericCall, CallId),
-        Pieces = [words(capitalize(call_id_to_string(CallId))),
+        hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
+        Pieces = [words(capitalize(generic_call_id_to_string(GenericCallId))),
             words("can fail.")]
     ;
         FailingGoal = negated_goal,

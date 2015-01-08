@@ -714,7 +714,7 @@
 
     % Get a description of a generic_call goal.
     %
-:- pred generic_call_id(generic_call::in, call_id::out) is det.
+:- pred generic_call_to_id(generic_call::in, generic_call_id::out) is det.
 
     % Determine whether a generic_call is calling
     % a predicate or a function.
@@ -1793,23 +1793,33 @@ make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
 % Predicates dealing with generic_calls
 %
 
-generic_call_id(higher_order(_, Purity, PorF, Arity),
-        generic_call_id(gcid_higher_order(Purity, PorF, Arity))).
-generic_call_id(class_method(_, _, ClassId, MethodId),
-        generic_call_id(gcid_class_method(ClassId, MethodId))).
-generic_call_id(event_call(EventName),
-        generic_call_id(gcid_event_call(EventName))).
-generic_call_id(cast(CastType), generic_call_id(gcid_cast(CastType))).
+generic_call_to_id(GenericCall, GenericCallId) :-
+    (
+        GenericCall = higher_order(_, Purity, PorF, Arity),
+        GenericCallId = gcid_higher_order(Purity, PorF, Arity)
+    ;
+        GenericCall = class_method(_, _, ClassId, MethodId),
+        GenericCallId = gcid_class_method(ClassId, MethodId)
+    ;
+        GenericCall = event_call(EventName),
+        GenericCallId = gcid_event_call(EventName)
+    ;
+        GenericCall = cast(CastType),
+        GenericCallId = gcid_cast(CastType)
+    ).
 
-generic_call_pred_or_func(higher_order(_, _, PredOrFunc, _)) = PredOrFunc.
-generic_call_pred_or_func(class_method(_, _, _, CallId)) =
-    simple_call_id_pred_or_func(CallId).
-generic_call_pred_or_func(event_call(_)) = pf_predicate.
-generic_call_pred_or_func(cast(_)) = pf_predicate.
-
-:- func simple_call_id_pred_or_func(simple_call_id) = pred_or_func.
-
-simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
+generic_call_pred_or_func(GenericCall) = PredOrFunc :-
+    (
+        GenericCall = higher_order(_, _, PredOrFunc, _)
+    ;
+        GenericCall = class_method(_, _, _, SimpleCallId),
+        SimpleCallId = simple_call_id(PredOrFunc, _, _)
+    ;
+        ( GenericCall = event_call(_)
+        ; GenericCall = cast(_)
+        ),
+        PredOrFunc = pf_predicate
+    ).
 
 %-----------------------------------------------------------------------------%
 %

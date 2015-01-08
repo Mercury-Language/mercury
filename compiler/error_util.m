@@ -343,8 +343,17 @@
             % Act as nl, but also add the given integer (which should be a
             % small positive or negative integer) to the current indent level.
 
-    ;       blank_line.
+    ;       blank_line
             % Create a blank line.
+
+    ;       invis_order(int).
+            % Prints nothing. If the compiler generates two different specs
+            % for the same context that we intend to appear in a specific
+            % order, even though it may not be the order that sorting those
+            % specs would normally give, we can add one of these to the
+            % start of each error_spec, with the order of the numbers
+            % inside these invis_orders controlling the final order
+            % of the error_specs.
 
 :- type format_components == list(format_component).
 
@@ -1130,6 +1139,9 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
     ;
         Component = blank_line,
         Str = "\n\n" ++ TailStr
+    ;
+        Component = invis_order(_),
+        Str = TailStr
     ).
 
 :- func nth_fixed_str(int) = string.
@@ -1272,6 +1284,9 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         Strings = rev_words_to_strings(RevWords0),
         !:Paras = snoc(!.Paras, paragraph(Strings, 1, 0)),
         RevWords1 = []
+    ;
+        Component = invis_order(_),
+        RevWords1 = RevWords0
     ),
     convert_components_to_paragraphs_acc(not_first_in_msg, Components,
         RevWords1, !Paras).
