@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = benchmarks
 
@@ -26,7 +28,7 @@ PROGS= \
 
 TESTS=$(PROGS)
 TESTS = $(sort $(PROGS))
-SUBDIRS = 
+SUBDIRS =
 TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 

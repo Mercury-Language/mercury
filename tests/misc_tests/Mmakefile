@@ -1,8 +1,10 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = misc_tests
 
-SUBDIRS = 
+SUBDIRS =
 PROGS =
 TESTS = mdemangle_test-nodepend pretty_print_test-nodepend
 # XXX we do not yet pass mdemangle_test_hl

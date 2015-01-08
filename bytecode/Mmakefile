@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1998-2002, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
@@ -84,7 +86,7 @@ MERCURY_INC	= \
 		 -I$(BOEHM_GC_DIR) \
 		 -I$(BOEHM_GC_DIR)/include \
 		 -I$(TRACE_DIR)
-	
+
 #-----------------------------------------------------------------------------#
 
 CFLAGS		= $(MERCURY_INC) -DMR_BYTECODE_CALLABLE -g
@@ -100,7 +102,7 @@ MLFLAGS		= --trace
 
 HDRS		=
 
-CFILES		= 
+CFILES		=
 
 MFILES		= simple.m
 
@@ -117,6 +119,7 @@ ALL_OBJS	= $(OBJS) $(MB_OBJS)
 ALL_DEPENDS=$(ALL_MFILES:%=%.depend)
 
 #-----------------------------------------------------------------------------#
+
 .PHONY: all
 all: check
 
@@ -126,8 +129,9 @@ MLOBJS		= $(MB_OBJS)
 check: simple
 
 #-----------------------------------------------------------------------------#
+
 # tags actually depends on $(MERCURY_SYSTEM) too but since changes to that
-# hardly ever have an effect, just ignore them
+# hardly ever have an effect, just ignore them.
 tags: $(ALL_CFILES) $(ALL_HDRS) tags2
 	ctags $(CTAGFLAGS) $(ALL_CFILES) $(ALL_HDRS) $(MERCURY_SYSTEM)
 

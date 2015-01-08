@@ -1,3 +1,6 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 # Copyright (C) 2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
@@ -18,7 +21,7 @@ NATIVE_SO	= Native.$(EXT_FOR_SHARED_LIB)
 MAIN_TARGET	= $(NATIVE_SO)
 
 PIC_OBJS	= $(RUNTIME_DIR)/mercury_timing.$(EXT_FOR_PIC_OBJECTS) \
-		  $(NATIVE_PIC)
+		$(NATIVE_PIC)
 
 CFLAGS		= -I$(RUNTIME_DIR)
 

@@ -1,3 +1,6 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 # To use shared libraries under Linux you need this.
 #MGNUCFLAGS    = --pic-reg
@@ -8,7 +11,7 @@ TCLTK_VERSION = 8.0
 EXTRA_MLLIBS = -ltk$(TCLTK_VERSION) -ltcl$(TCLTK_VERSION) -lGLU -lGL \
 		-L/usr/X11R6/lib -lX11 -lXmu -lXext -ldl -lSM -lXi -lXt
 
-# Specify the location of the `mercury_tcltk' `mtogl' and 
+# Specify the location of the `mercury_tcltk' `mtogl' and
 # `mercury_opengl' packages.
 MERCURY_TCLTK_DIR   = ../../mercury_tcltk
 MERCURY_OPENGL_DIR  = ../../mercury_opengl
@@ -31,7 +34,6 @@ C2INITARGS      = $(MERCURY_TCLTK_DIR)/mercury_tcltk.init \
 	# the .mh files are.
 MGNUCFLAGS = -I../../mercury_tcltk
 
-default_target : pent
+default_target: pent
 
-depend : pent.depend
-
+depend: pent.depend

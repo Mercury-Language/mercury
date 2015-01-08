@@ -1,3 +1,7 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+#
 # COMPLEX_NUMBERS_DIR specifies the location of the complex number library,
 # e.g. `/foo/bar/mercury-<version>/extra/complex_numbers'.
 COMPLEX_NUMBERS_DIR = ..
@@ -18,4 +22,3 @@ complex_test.out: complex_test
 
 complex_test.res: complex_test.out complex_test.exp
 	diff -c complex_test.out complex_test.exp > complex_test.res
-

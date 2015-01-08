@@ -92,7 +92,6 @@ parent2
 pragma_c_code
 pragma_import
 pragma_inline
-purity
 qual_adv_test
 qual_basic_test
 qual_is_test

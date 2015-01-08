@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 main_target:	check
 
@@ -23,7 +25,7 @@ MLFLAGS = --trace
 # The following is necessary for shared libraries to work on Linux.
 MGNUCFLAGS-queens =--pic-reg
 MGNUCFLAGS-queens_init =--pic-reg
-MLFLAGS-queens = --shared 
+MLFLAGS-queens = --shared
 
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
@@ -44,10 +46,10 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-queens.out.orig: queens queens.in 
+queens.out.orig: queens queens.in
 	$(MORPHINE) < queens.in > queens.out.orig 2>&1
 
-# Filter out things that might change depending if we use Eclipse3.5.2 
+# Filter out things that might change depending if we use Eclipse3.5.2
 # or Eclipse4.*, unix or inet socket, etc.
 queens.out: queens.out.orig
 	cat queens.out.orig | \

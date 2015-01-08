@@ -1,4 +1,6 @@
-# vim: ts=8 sw=8 noet
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 MCFLAGS=--runtime-flags "--heap-size $$((1*1024*1024))"
 MC=mmc
@@ -129,25 +131,24 @@ asm_fast.gc.par.stseg.threadscope:
 asm_fast.par.threadscope:
 	mkdir asm_fast.par.threadscope
 
-
-%_8.m : $(subst _8,,$@)
+%_8.m: $(subst _8,,$@)
 	sed -e 's/THRESHOLD/8/' < $(subst _8,,$@) > $@
-%_7.m : $(subst _7,,$@)
+%_7.m: $(subst _7,,$@)
 	sed -e 's/THRESHOLD/7/' < $(subst _7,,$@) > $@
-%_6.m : $(subst _6,,$@)
+%_6.m: $(subst _6,,$@)
 	sed -e 's/THRESHOLD/6/' < $(subst _6,,$@) > $@
-%_5.m : $(subst _5,,$@)
+%_5.m: $(subst _5,,$@)
 	sed -e 's/THRESHOLD/5/' < $(subst _5,,$@) > $@
-%_4.m : $(subst _4,,$@)
+%_4.m: $(subst _4,,$@)
 	sed -e 's/THRESHOLD/4/' < $(subst _4,,$@) > $@
-%_3.m : $(subst _3,,$@)
+%_3.m: $(subst _3,,$@)
 	sed -e 's/THRESHOLD/3/' < $(subst _3,,$@) > $@
-%_2.m : $(subst _2,,$@)
+%_2.m: $(subst _2,,$@)
 	sed -e 's/THRESHOLD/2/' < $(subst _2,,$@) > $@
-%_1.m : $(subst _1,,$@)
+%_1.m: $(subst _1,,$@)
 	sed -e 's/THRESHOLD/1/' < $(subst _1,,$@) > $@
 
-clean :
+clean:
 	rm -rf $(TARGETS) Mercury \
 	asm_fast \
 	asm_fast.ctgc \
@@ -160,4 +161,3 @@ clean :
 	asm_fast.gc.threadscope \
 	asm_fast.par \
 	asm_fast.par.stseg
-

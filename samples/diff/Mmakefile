@@ -1,3 +1,7 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+
 # An example of a *short* Mmake file
 # In fact you don't really need any Mmake file at all,
 # just `mmake diff.depend; mmake diff' is enough.

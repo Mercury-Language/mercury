@@ -1,11 +1,13 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = trailing
 
 #-----------------------------------------------------------------------------#
 
 ifeq "$(findstring tr,$(GRADE))" ""
-	TRAIL_PROGS = 
+	TRAIL_PROGS =
 else
 	TRAIL_PROGS =			\
 		func_trail_test		\
@@ -21,7 +23,7 @@ PROGS = $(TRAIL_PROGS)
 #-----------------------------------------------------------------------------#
 
 TESTS = $(sort $(PROGS))
-SUBDIRS = 
+SUBDIRS =
 TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 

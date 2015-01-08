@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2004, 2006-2007, 2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
@@ -46,7 +48,7 @@ MMAKEFLAGS=
 
 #	We need to export MAKEFLAGS="" to avoid passing the `-r' (suppress
 #	builtin rules) supplied by Mmake to the boehm_gc Makefile, which
-#	needs the builtin rules. 
+#	needs the builtin rules.
 #	We don't use `unset', since the Ultrix /bin/sh doesn't have `unset'.
 #
 #	We also need to explicitly pass `-j1' after MMAKEFLAGS,
@@ -89,9 +91,9 @@ clean_local:
 	rm -f libatomic_ops/src/config.h
 	rm -f libatomic_ops/src/atomic_ops/sysdeps/Makefile
 	rm -rf libatomic_ops-install
-else 
+else
 
-submake: Makefile force 
+submake: Makefile force
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	PATH=../util:$$PATH $(MAKE) $(MMAKEFLAGS) -j1 \
 		GRADE=$(GRADE) GC_GRADE=$(GC_GRADE) \
@@ -167,8 +169,8 @@ PRIVATE_HEADERS= \
 
 ifeq ($(USE_DLLS),yes)
 
-LIBGC_DLL_H = libgc_dll.h 
-LIBGC_GLOBALS_H = libgc_globals.h 
+LIBGC_DLL_H = libgc_dll.h
+LIBGC_GLOBALS_H = libgc_globals.h
 
 else
 

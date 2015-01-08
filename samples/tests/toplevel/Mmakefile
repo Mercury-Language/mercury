@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 main_target: check
 
@@ -10,7 +12,7 @@ PROGS=	calculator \
 	hello \
 	interpreter \
 	sort \
-	ultra_sub 
+	ultra_sub
 TESTS=
 
 include Mmake.thisdir

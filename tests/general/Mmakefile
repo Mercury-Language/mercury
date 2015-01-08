@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = general
 
@@ -137,7 +139,7 @@ string_format_test_2.out: string_format_test_2
 		    -e 's/require.m:[0-9]*/require.m:NNNN/g' \
 		    -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
 		| tr -d '\r' > string_format_test_2.out
-		
+
 string_format_test_3.out: string_format_test_3
 	-./string_format_test_3 2>&1 | \
 		sed -e 's/io.m:[0-9]*/io.m:NNNN/g' \

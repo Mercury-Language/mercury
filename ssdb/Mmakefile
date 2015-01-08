@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 2007, 2009-2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
@@ -82,7 +84,7 @@ MCFLAGS      += --flags SSDB_FLAGS $(CONFIG_OVERRIDE)
 # in the .dep files, so it must be passed here, however if a C source
 # distribution is generated on a Darwin system then by default the
 # -install_name option will be passed in the .dep files which will cause it to
-# be passed twice (here and in the .dep files) which is not allowed by the 
+# be passed twice (here and in the .dep files) which is not allowed by the
 # linker, so we disable the mmc option which causes the -install_name option
 # to be passed in the .dep files.
 
@@ -176,13 +178,13 @@ Mercury.modules: SSDB_FLAGS
 .PHONY: check
 check:	$(CHECKS)
 
-.PHONY: all-ints 
+.PHONY: all-ints
 all-ints: ints int3s
 
-.PHONY: ints 
+.PHONY: ints
 ints:	$(INTS_TARGETS)
 
-.PHONY: int3s 
+.PHONY: int3s
 int3s:	$(INT3S_TARGETS)
 
 #-----------------------------------------------------------------------------#
@@ -257,7 +259,7 @@ ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 .PHONY: install_library
 install_library: lib$(SSDB_LIB_NAME).install
 
-else 
+else
 
 .PHONY: install_library
 install_library:				\

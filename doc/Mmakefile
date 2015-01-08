@@ -1,4 +1,5 @@
-# vim: ts=8 sw=8 noet
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -276,7 +277,7 @@ library-chapters.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
 
 library.dvi_log library_toc.html library_1.html mercury_library.info \
 		mercury_library.html mercury_library/index.html \
-		library.dvi : \
+		library.dvi: \
 	library-menu.texi_pp library-chapters.texi_pp
 
 #-----------------------------------------------------------------------------#
@@ -295,9 +296,8 @@ doc.ps.tar.gz: ps
 
 #-----------------------------------------------------------------------------#
 
-	# Currently `mmake all' does not build the PostScript or plain-text
-	# versions of the documentation.  If they are added they should
-	# be installed here.
+# Currently `mmake all' does not build the PostScript or plain-text versions
+# of the documentation. If they are added they should be installed here.
 .PHONY: install
 install: install_info install_html install_dvi install_manpages \
 	install_mdb_doc

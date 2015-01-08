@@ -1,3 +1,6 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 2002-2007 The University of Melbourne
 # Ralph Becket <rafe@cs.mu.oz.au>
 #
@@ -27,4 +30,3 @@ all: test_regex
 check: test_regex
 	./test_regex < test_regex.in > test_regex.res
 	diff -u test_regex.exp test_regex.res && echo "Passed" || echo "Failed"
-

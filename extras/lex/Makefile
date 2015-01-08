@@ -1,3 +1,6 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 # Copyright (C) 2002-2007, 2011 The University of Melbourne
 

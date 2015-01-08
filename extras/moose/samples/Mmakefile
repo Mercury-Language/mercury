@@ -1,9 +1,12 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 .SUFFIXES: .m .moo
 
-default_target : all
+default_target: all
 
-depend : try_alpha.depend try_expr.depend
+depend: try_alpha.depend try_expr.depend
 
 try_alpha.depend: alpha.m
 try_expr.depend: expr.m
@@ -14,5 +17,4 @@ all: try_alpha try_expr cgram.m small.m
 	../moose $<
 
 realclean:
-	rm -f alpha.m expr.m small.m cgram.m 
-
+	rm -f alpha.m expr.m small.m cgram.m

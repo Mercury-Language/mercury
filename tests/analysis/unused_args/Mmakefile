@@ -1,9 +1,11 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = analysis/unused_args
 
 # Delete options which are incompatible with --intermodule-analysis.
-# These are currently set for nightly tests. 
+# These are currently set for nightly tests.
 override EXTRA_MCFLAGS := $(patsubst --intermodule-opt%,,$(EXTRA_MCFLAGS))
 override EXTRA_MCFLAGS := $(patsubst --transitive-%,,$(EXTRA_MCFLAGS))
 

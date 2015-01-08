@@ -1,3 +1,7 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+
 # MCFLAGS =
 MCFLAGS = -O6 --intermodule-optimization
 CFLAGS = -DML_OMIT_MATH_DOMAIN_CHECKS

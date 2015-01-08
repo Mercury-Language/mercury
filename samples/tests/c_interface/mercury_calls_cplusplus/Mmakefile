@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 main_target: check
 
@@ -15,13 +17,12 @@ include $(DEPTH)/Mmake.common.samples
 
 include $(SOURCEDIR)/Mmakefile
 
-# Add a few dependencies so that it copies the source
-# files correctly.
+# Add a few dependencies so that it copies the source files correctly.
 mercury_main.depend: cpp_main_int.m
 
 clean_local: clean_2
 
 clean_2:
-	rm -f *.m 
+	rm -f *.m
 
 #-----------------------------------------------------------------------------#

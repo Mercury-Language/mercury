@@ -1,8 +1,10 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 main_target: check
 
-PROGS=short_example 
+PROGS=short_example
 TESTS=
 
 EXTRA_FILES=

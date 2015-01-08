@@ -1,9 +1,12 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 .SUFFIXES: .m .moo
 
-default_target : all
+default_target: all
 
-depend : array_based.depend
+depend: array_based.depend
 
 array_based.depend: array_based.m
 
@@ -14,4 +17,3 @@ all: array_based.c
 
 realclean:
 	rm -f array_based.m
-

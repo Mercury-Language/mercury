@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: noet
+# vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2005-2007, 2009-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -111,7 +111,7 @@ $(MDBCOMP_MODULES): .mdbcomp_modules
 # (ignored) failure of an action.
 #
 # We could modify the action here to copy only the changed files.
-.mdbcomp_modules : $(MDBCOMP_ORIG_MODULES)
+.mdbcomp_modules: $(MDBCOMP_ORIG_MODULES)
 	-@chmod a+w $(MDBCOMP_MODULES) > /dev/null 2>&1; exit 0
 	cp $(MDBCOMP_ORIG_MODULES) .
 	@chmod a-w $(MDBCOMP_MODULES)
@@ -163,7 +163,7 @@ $(cs_subdir)mtc_diff.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 .PHONY: check
 check:	$(CHECKS)
 
-.PHONY: ints 
+.PHONY: ints
 ints:	$(INTS)
 
 #-----------------------------------------------------------------------------#

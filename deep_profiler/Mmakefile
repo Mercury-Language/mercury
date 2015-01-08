@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: noet
+# vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -45,7 +45,7 @@ ALL_DEEP_MODULES = \
 	mdprof_procrep
 
 # Always compile the deep profiler, even if it is not enabled.
-# 
+#
 MAIN_TARGET=all
 MERCURY_MAIN_MODULES=$(ALL_DEEP_MODULES)
 DEPEND=$(patsubst %,%.depend,$(ALL_DEEP_MODULES))
@@ -141,7 +141,7 @@ $(MDBCOMP_MODULES): .mdbcomp_modules
 # (ignored) failure of an action.
 #
 # We could modify the action here to copy only the changed files.
-.mdbcomp_modules : $(MDBCOMP_ORIG_MODULES)
+.mdbcomp_modules: $(MDBCOMP_ORIG_MODULES)
 	-@chmod a+w $(MDBCOMP_MODULES) > /dev/null 2>&1; exit 0
 	cp $(MDBCOMP_ORIG_MODULES) .
 	@chmod a-w $(MDBCOMP_MODULES)
@@ -181,7 +181,7 @@ $(cs_subdir)mdprof_procrep_init.c:		$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 .PHONY: check
 check:	DEPEND=$(patsubst %,%.check,$(ALL_DEEP_MODULES))
 
-.PHONY: ints 
+.PHONY: ints
 ints:	DEPEND=$(patsubst %,%.ints,$(ALL_DEEP_MODULES))
 
 #-----------------------------------------------------------------------------#

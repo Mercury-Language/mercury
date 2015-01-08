@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 #
 # This directory contains test cases for sub-modules,
 # including both nested modules and separate sub-modules.

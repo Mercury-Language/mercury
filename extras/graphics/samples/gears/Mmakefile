@@ -1,3 +1,7 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+
 MAIN_TARGET = gears
 
 # Specify the location of the `mercury_opengl' and `mercury_glut'
@@ -16,7 +20,7 @@ VPATH = $(MERCURY_OPENGL_DIR):$(MERCURY_GLUT_DIR):$(MMAKE_VPATH)
 MCFLAGS = -I$(MERCURY_OPENGL_DIR) -I$(MERCURY_GLUT_DIR) \
 	$(EXTRA_MCFLAGS)
 MLFLAGS = -R$(MERCURY_OPENGL_DIR) -R$(MERCURY_GLUT_DIR) \
-	-L$(MERCURY_OPENGL_DIR) -L$(MERCURY_GLUT_DIR) $(EXTRA_MLFLAGS) 
+	-L$(MERCURY_OPENGL_DIR) -L$(MERCURY_GLUT_DIR) $(EXTRA_MLFLAGS)
 
 MLLIBS += -lmercury_opengl -lmercury_glut $(EXTRA_MLLIBS)
 

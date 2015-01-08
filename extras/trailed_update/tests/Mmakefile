@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1997-2002, 2006-2007, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -32,7 +34,7 @@ C2INITARGS = ../trailed_update.init
 
 #-----------------------------------------------------------------------------#
 
-PROGS	=	var_test 
+PROGS	=	var_test
 DEPENDS =	$(PROGS:%=%.depend)
 CS	=	$(PROGS:%=%.c)
 RESS	=	$(PROGS:%=%.res)

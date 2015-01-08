@@ -1,10 +1,12 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2003, 2005-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-# Mmake - this is Mmake file for building the Mercury compiler 
+# Mmake - this is Mmake file for building the Mercury compiler
 
 MERCURY_DIR=..
 LINK_STATIC=yes
@@ -101,7 +103,7 @@ MC_PROG = top_level
 .PHONY: depend
 depend:		$(MC_PROG).depend
 
-$(MC_PROG).depend: Mercury.modules COMP_FLAGS 
+$(MC_PROG).depend: Mercury.modules COMP_FLAGS
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
@@ -131,7 +133,7 @@ mercury_compile$(EXT_FOR_EXE): $(MC_PROG)$(EXT_FOR_EXE)
 	rm -f mercury_compile$(EXT_FOR_EXE)
 	$(LN) $(MC_PROG)$(EXT_FOR_EXE) mercury_compile$(EXT_FOR_EXE) || \
 		cp $(MC_PROG)$(EXT_FOR_EXE) mercury_compile$(EXT_FOR_EXE)
-ifeq ($(findstring il,$(GRADE)),il)        
+ifeq ($(findstring il,$(GRADE)),il)
 	# set the stack size to 100M -- the default of 1M is too low
 	-editbin /nologo /stack:100000000 mercury_compile$(EXT_FOR_EXE)
 	cp ../browser/*.dll .
@@ -150,7 +152,7 @@ endif
 # Add some additional dependencies, so that Mmake knows to remake the
 # compiler if one of the libraries changes.
 
-ifeq ($(findstring il,$(GRADE)),il)        
+ifeq ($(findstring il,$(GRADE)),il)
 CSCFLAGS=/lib
 
 # This line works around an Mmake bug: mmake doesn't record
@@ -175,10 +177,10 @@ endif
 .PHONY: check
 check:	$(MC_PROG).check
 
-.PHONY: ints 
+.PHONY: ints
 int3s:	$(MC_PROG).int3s
 
-.PHONY: ints 
+.PHONY: ints
 ints:	$(MC_PROG).ints
 
 #-----------------------------------------------------------------------------#
@@ -254,7 +256,7 @@ install_all: install_mercury
 
 .PHONY: install_mercury
 install_mercury: install_compiler
-	
+
 .PHONY: install_dirs
 install_dirs:
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)

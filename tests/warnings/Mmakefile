@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = warnings
 
@@ -64,7 +66,7 @@ include $(TESTS_DIR)/Mmake.common
 # can be found by `mmc --make'.
 include Mercury.options
 
-# With `mmc --make', the errors should only go to the 
+# With `mmc --make', the errors should only go to the
 # `.err' files, not stderr.
 MCFLAGS += --output-compile-error-lines 0
 

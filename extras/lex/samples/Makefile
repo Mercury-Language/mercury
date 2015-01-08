@@ -1,3 +1,6 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 2001-2007 The University of Melbourne
 # Ralph Becket <rafe@cs.mu.oz.au>
 #
@@ -25,4 +28,3 @@ all: lex_demo regex_demo
 
 %: %.m
 	mmc --make --mld $(EXTRA_LIB_DIR) $(EXTRA_LIBRARIES_FLAGS) $@
-

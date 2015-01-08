@@ -1,8 +1,10 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 main_target: check
 
-PROGS=muz 
+PROGS=muz
 TESTS=
 
 EXTRA_FILES=dict.m example.tex example1.tex higher_order.m muz.m	\
@@ -12,6 +14,5 @@ EXTRA_FILES=dict.m example.tex example1.tex higher_order.m muz.m	\
 include Mmake.thisdir
 include $(DEPTH)/Mmake.common
 include $(DEPTH)/Mmake.common.samples
-
 
 #-----------------------------------------------------------------------------#

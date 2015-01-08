@@ -1,3 +1,4 @@
+#-----------------------------------------------------------------------------#
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1998-2011 The University of Melbourne.
@@ -16,8 +17,8 @@ MAIN_TARGET=all
 # All the headers in $(HDRS) must also be in C (not C++).
 
 # Note that $(LIB_GLOBALS_H) cannot be part of $(HDRS), since it depends on
-# lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A, and $(OBJ) : $(HDRS) would create a
-# circular dependency.  For similar but different reasons,
+# lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A, and $(OBJ): $(HDRS) would create a
+# circular dependency. For similar but different reasons,
 # $(LIB_DLL_H) also cannot be part of $(HDRS).
 
 #		  keep this list in alphabetical order, please
@@ -515,7 +516,7 @@ install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) \
 install_init: $(RT_LIB_NAME).init install_dirs
 	cp `vpath_find $(RT_LIB_NAME).init` $(INSTALL_GRADE_MODULE_DIR)
 
-.PHONY: install_lib 
+.PHONY: install_lib
 install_lib: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
 		install_dirs install_init
 	cp `vpath_find lib$(RT_LIB_NAME).$A \
@@ -528,7 +529,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-mercury_dotnet.cs : mercury_dotnet.cs.in
+mercury_dotnet.cs: mercury_dotnet.cs.in
 	CONFIG_FILES=$@ CONFIG_HEADERS= $(MERCURY_DIR)/config.status
 	# check to ensure there were no misspelt autoconf variable names
 	if grep -n '[^$$]@.*@' $@; then false; else true; fi

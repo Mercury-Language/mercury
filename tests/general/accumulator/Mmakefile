@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = general/accumulator
 
@@ -34,7 +36,6 @@ ifneq "$(findstring java,$(GRADE))" ""
 else
 	PROGS=$(ACCUMULATOR_PROGS)
 endif
-
 
 SUBDIRS=
 TESTS = $(PROGS)

@@ -1,8 +1,10 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 main_target: check
 
-PROGS=diff 
+PROGS=diff
 TESTS=
 
 EXTRA_FILES=diff_out.m difftype.m file.m filter.m globals.m \
@@ -11,6 +13,5 @@ EXTRA_FILES=diff_out.m difftype.m file.m filter.m globals.m \
 include Mmake.thisdir
 include $(DEPTH)/Mmake.common
 include $(DEPTH)/Mmake.common.samples
-
 
 #-----------------------------------------------------------------------------#

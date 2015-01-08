@@ -1,10 +1,12 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+#
 # Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 #
 #   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
 #   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
 #   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
-
-
 
 # To build, do the following:
 #

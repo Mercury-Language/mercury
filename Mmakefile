@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
@@ -775,7 +777,7 @@ uninstall:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY : bindist
+.PHONY: bindist
 bindist: WORK_IN_PROGRESS TODO
 	cd bindist; \
 		PATH="$(INSTALL_PREFIX)/bin:$$PATH" \

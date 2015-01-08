@@ -1,3 +1,7 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+
 include Mmakefile.grade
 include Mmakefile.optlevel
 include Mmakefile.flags
@@ -5,6 +9,6 @@ include Mmakefile.flags
 PROG_MCFLAGS =
 NAME = treetest
 PROG = treetest
-ARGS = 
+ARGS =
 
 include ../Mmakefile.common

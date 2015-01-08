@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: noet
+# vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = invalid
@@ -8,7 +8,7 @@ THIS_DIR = invalid
 # need to be listed separately from single-module tests, since
 # we need to make dependencies only for multimodule tests.
 # However, multi-module tests where the error is detected when
-# building the dependencies (e.g. duplicate_module_test.m) should 
+# building the dependencies (e.g. duplicate_module_test.m) should
 # not be included in this list; we handle those specially (see below).
 
 MULTIMODULE_PROGS= \
@@ -344,7 +344,7 @@ endif
 ifeq "$(findstring profdeep,$(GRADE))" ""
 	NON_PROFDEEP_PROGS = $(NON_PROFDEEP_MODULES)
 else
-	NON_PROFDEEP_PROGS = 
+	NON_PROFDEEP_PROGS =
 endif
 
 TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
@@ -383,7 +383,7 @@ else
 
 % XXX: with `mmake --use-mmc-make' the ".DEFAULT:" rule seems to take
 % 	precedence over "%.err: %.m" rules.
-% XXX: the reason we run the $(MCM) command twice is to avoid 
+% XXX: the reason we run the $(MCM) command twice is to avoid
 %	doubled up error messages, once while making interface files,
 %	then the module proper.  The second time the command is run
 %	only one set of error messages should appear.

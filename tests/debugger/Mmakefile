@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = debugger
 
@@ -148,7 +150,7 @@ endif
 # be traced with `--no-inline-builtins'.
 ifeq "$(findstring debug,$(GRADE))" "debug"
     DEBUG_GRADE_PROGS = no_inline_builtins
-else 
+else
     DEBUG_GRADE_PROGS =
 endif
 
@@ -160,10 +162,10 @@ ENUM_PROGS = uci
 # in their respective grades only.
 ifneq "$(findstring .tsw,$(GRADE))" ""
     TERM_SIZE_PROGS = term_size_words
-else 
+else
     ifneq "$(findstring .tsc,$(GRADE))" ""
 	TERM_SIZE_PROGS = term_size_cells
-    else 
+    else
 	TERM_SIZE_PROGS =
     endif
 endif
@@ -171,7 +173,7 @@ endif
 # The mmos_print test is meant to be used in mmos grades only.
 ifneq "$(findstring mmos,$(GRADE))" ""
     MMOS_PROGS = mmos_print
-else 
+else
     MMOS_PROGS =
 endif
 
@@ -541,7 +543,7 @@ retry.out: retry retry.inp
 	$(MDB_STD) ./retry < retry.inp > retry.out 2>&1
 
 # The values of xml_browser_cmd and xml_tmp_filename will be system specific,
-# so we pipe the output through sed and replace the system specific bit 
+# so we pipe the output through sed and replace the system specific bit
 # with a known character sequence.
 save.out: save save.inp
 	$(MDB) ./save < save.inp 2>&1 | \
@@ -717,4 +719,3 @@ mdb_command_test.out: mdb_command_test mdb_command_test.inp
 		> mdb_command_test.out
 
 #-----------------------------------------------------------------------------#
-

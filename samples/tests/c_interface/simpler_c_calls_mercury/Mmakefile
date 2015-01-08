@@ -1,11 +1,13 @@
 #-----------------------------------------------------------------------------#
-#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+
 main_target: check
 
 PROGS=
 TESTS=c_main
 
-EXTRA_FILES=c_main.c 
+EXTRA_FILES=c_main.c
 
 include Mmake.thisdir
 include $(DEPTH)/Mmake.common
@@ -15,7 +17,7 @@ include $(DEPTH)/Mmake.common.samples
 
 depend_local: mercury_lib.depend
 
-mercury_lib.depend: mercury_lib.m 
+mercury_lib.depend: mercury_lib.m
 
 include $(SOURCEDIR)/Mmakefile
 

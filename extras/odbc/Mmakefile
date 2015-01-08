@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1997-2000, 2003, 2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
@@ -34,7 +36,7 @@ INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 ifeq ($(MODBC_DRIVER),MODBC_MS)
 	ODBC_INCL_DIR=$(ODBC_SDK_DIR)/include
 	MLLIBS=-lodbc32
-else 
+else
 	#ODBC_LIB_DIR=$(IODBC_DIR)/lib
 	#ODBC_INCL_DIR=$(IODBC_DIR)/include
 

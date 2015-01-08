@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = invalid/purity
 
@@ -18,7 +20,7 @@ PROGS= \
 	purity_nonsense2 \
 	purity_type_error
 
-# XXX the pragma_c_and_mercury test is not enabled, 
+# XXX the pragma_c_and_mercury test is not enabled,
 #     since currently we fail it in grades `il' and `java'
 
 TESTS=$(PROGS)

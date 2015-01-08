@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = tabling
 
@@ -37,7 +39,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 	BROKEN_FOR_PROFDEEP_NONLOOP_PROGS = \
 		memo_non
 else
-	BROKEN_FOR_PROFDEEP_NONLOOP_PROGS = 
+	BROKEN_FOR_PROFDEEP_NONLOOP_PROGS =
 endif
 
 NONLOOP_SPECIFIED_PROGS0 = \
@@ -50,7 +52,7 @@ NONLOOP_SPECIFIED_PROGS0 = \
 ifeq "$(findstring hl,$(GRADE))" ""
 	NONLOOP_SPECIFIED_PROGS1 = $(NONLOOP_SPECIFIED_PROGS0)
 else
-	NONLOOP_SPECIFIED_PROGS1 = 
+	NONLOOP_SPECIFIED_PROGS1 =
 endif
 
 # The overhead caused by profiling causes this test to fail in some of the
@@ -67,13 +69,13 @@ endif
 ifeq "$(findstring tsc,$(GRADE))" ""
 	NONLOOP_SPECIFIED_PROGS3 = $(NONLOOP_SPECIFIED_PROGS2)
 else
-	NONLOOP_SPECIFIED_PROGS3 = 
+	NONLOOP_SPECIFIED_PROGS3 =
 endif
 
 ifeq "$(findstring tsw,$(GRADE))" ""
 	NONLOOP_SPECIFIED_PROGS = $(NONLOOP_SPECIFIED_PROGS3)
 else
-	NONLOOP_SPECIFIED_PROGS = 
+	NONLOOP_SPECIFIED_PROGS =
 endif
 
 SIMPLE_LOOP_PROGS = \

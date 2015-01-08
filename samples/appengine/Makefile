@@ -1,3 +1,7 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+
 MMC_DIR=$(shell dirname `which mmc`)
 MMC_JARS_DIR=$(MMC_DIR)/../lib/mercury/lib/java
 WEBINF=war/WEB-INF

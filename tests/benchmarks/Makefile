@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 main_target: check
 
@@ -12,12 +14,12 @@ MC=mmc
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	cqueens crypt deriv deriv2 nrev poly primes qsort queens \
+PROGS =	cqueens crypt deriv deriv2 nrev poly primes qsort queens \
 	tak query
-OUTS=	$(PROGS:%=%.out)
-EXPS=	$(PROGS:%=%.exp)
-RESS=	$(PROGS:%=%.res)
-MODS=	$(PROGS:%=%.mod)
+OUTS =	$(PROGS:%=%.out)
+EXPS =	$(PROGS:%=%.exp)
+RESS =	$(PROGS:%=%.res)
+MODS =	$(PROGS:%=%.mod)
 
 check: $(EXPS) $(OUTS) $(RESS)
 

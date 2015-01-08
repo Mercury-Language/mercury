@@ -1,3 +1,7 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+#
 # COMPLEX_NUMBERS_DIR specifies the location of the complex number library,
 # e.g. `/foo/bar/mercury-<version>/extra/complex_numbers'.
 COMPLEX_NUMBERS_DIR = ..
@@ -10,4 +14,4 @@ MLLIBS = -lcomplex_numbers
 C2INITARGS = $(COMPLEX_NUMBERS_DIR)/complex_numbers.init
 
 MAIN_TARGET = fft
-depend : fft.depend
+depend: fft.depend

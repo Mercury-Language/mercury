@@ -1,4 +1,7 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+#
 # The tests in this directory are always run with `--use-grade-subdirs'.
 
 THIS_DIR = grade_subdirs
@@ -16,7 +19,7 @@ endif
 MMAKE_USE_MMC_MAKE=yes
 
 TESTS = $(sort $(PROGS))
-SUBDIRS = 
+SUBDIRS =
 TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 

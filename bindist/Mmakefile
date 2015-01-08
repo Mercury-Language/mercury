@@ -1,8 +1,10 @@
-#---------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1996-2003, 2005-2006, 2008, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
-#---------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
 
 # This Mmake file is used to build a binary distribution.
 # You need to have already installed the Mercury compiler.

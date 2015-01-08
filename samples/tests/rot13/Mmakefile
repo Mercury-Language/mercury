@@ -1,11 +1,13 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 main_target: check
 
 PROGS=  rot13_concise \
 	rot13_verbose \
 	rot13_gustavo \
-	rot13_juergen 
+	rot13_juergen
 TESTS=
 
 MCFLAGS-rot13_concise=--infer-all

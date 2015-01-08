@@ -610,7 +610,7 @@ CLOSURE_LAYOUT_PROGS = \
 #
 # XXX we fail some of the commented-out tests in write_binary
 
-# XXX minint_bug 
+# XXX minint_bug
 # Since r1.279 of library/string.m we no longer pass this test
 # since the smallest (decimal) integer literal string.int_to_string/2
 # recognises is int.min_int + 1.
@@ -620,7 +620,7 @@ CLOSURE_LAYOUT_PROGS = \
 # The following tests do not work in the the .profdeep grades.
 # All of them, aside from backend_external and backjump_test, don't work
 # because deep profiling cannot yet handle exceptions being caught and
-# these test cases do that.  
+# these test cases do that.
 #
 # backend_external fails because the predicates whose implementation
 # is handwritten in C do not have the necessary proc_statics etc,
@@ -819,7 +819,7 @@ no_fully_strict.out: no_fully_strict
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
 	fi
-		
+
 # final_excp.out is expected to fail (it calls throw/1).
 #
 final_excp.out: final_excp
@@ -915,7 +915,7 @@ tl_backjump_test.out: tl_backjump_test
 	else \
 		grep . $@.tmp; \
 		exit 1; \
-	fi	
+	fi
 
 # weak_ptr's output is extreamly volatile, it depends on Boehm GC's behavour
 # which can vary depending on many different things.  All we can hope to do

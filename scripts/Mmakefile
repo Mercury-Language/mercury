@@ -1,4 +1,5 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1996-2009, 2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -96,10 +97,10 @@ all: $(CONF_FILES) $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS)
 #-----------------------------------------------------------------------------#
 
 parse_ml_options.sh-subr mgnuc canonical_grade: init_grade_options.sh-subr
-parse_ml_options.sh-subr mgnuc canonical_grade: parse_grade_options.sh-subr 
-parse_ml_options.sh-subr mgnuc canonical_grade: final_grade_options.sh-subr 
+parse_ml_options.sh-subr mgnuc canonical_grade: parse_grade_options.sh-subr
+parse_ml_options.sh-subr mgnuc canonical_grade: final_grade_options.sh-subr
 ml c2init: parse_ml_options.sh-subr
-ml c2init canonical_grade: canonical_grade.sh-subr 
+ml c2init canonical_grade: canonical_grade.sh-subr
 mercury_config: ../configure.help
 
 #-----------------------------------------------------------------------------#
@@ -130,7 +131,7 @@ install_scripts: $(SCRIPTS) install_dirs
 	# (just removing it doesn't work very well on win32, which will
 	# deny you permission to write the file while mmake is running).
 	-mv $(INSTALL_BINDIR)/mmake $(INSTALL_BINDIR)/mmake.old
-	cp $(SCRIPTS) $(INSTALL_BINDIR) 
+	cp $(SCRIPTS) $(INSTALL_BINDIR)
 	-for file in $(SCRIPTS); do \
 		chmod u+w $(INSTALL_BINDIR)/$$file ;\
 	done
@@ -150,7 +151,7 @@ install_debugger_scripts: $(DEBUGGER_SCRIPTS) install_dirs
 	# that it gets made writable before we install the
 	# new version.
 	-chmod u+w $(INSTALL_LIBDIR)/mdb/*
-	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR)/mdb 
+	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR)/mdb
 
 .PHONY: install_emacs_scripts
 install_emacs_scripts: $(EMACS_SCRIPTS) install_dirs
@@ -161,7 +162,7 @@ install_emacs_scripts: $(EMACS_SCRIPTS) install_dirs
 .PHONY: uninstall
 uninstall:
 	-rm -r $(INSTALL_LIBDIR)/mmake
-	-cd $(INSTALL_BINDIR) && rm $(SCRIPTS) 
+	-cd $(INSTALL_BINDIR) && rm $(SCRIPTS)
 	-cd $(INSTALL_LIBDIR)/mdb && rm $(DEBUGGER_SCRIPTS)
 	# The reason why we don't uninstall $(EMACS_SCRIPTS) specifically here
 	# is that the uninstall rule in the top-level Mmakefile does an "rm -r"

@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 THIS_DIR = general/structure_reuse
 
@@ -30,12 +32,12 @@ include Mercury.options
 
 ACC_FLAGS = --infer-structure-reuse -d structure_reuse -D sr
 
-	# Optimizations to turn off/on.
+# Optimizations to turn off/on.
 OPT_FLAGS = --no-static-ground-terms
 
-	# Ensure that the accumulator introduction flags are passed
-	# after EXTRA_MCFLAGS, so that we can override things set in
-	# EXTRA_MCFLAGS.
+# Ensure that the accumulator introduction flags are passed
+# after EXTRA_MCFLAGS, so that we can override things set in
+# EXTRA_MCFLAGS.
 #ALL_MCDFLAGS+= $(ACC_FLAGS)
 #ALL_MCGFLAGS+= $(OPT_FLAGS) $(ACC_FLAGS)
 EXTRA_MCFLAGS+= $(OPT_FLAGS) $(ACC_FLAGS)

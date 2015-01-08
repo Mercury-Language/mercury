@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 
 main_target: check
 
@@ -24,7 +26,7 @@ mods: $(MODS)
 
 all:	$(PROGS)
 
-$(MODS) : printlist.int
+$(MODS): printlist.int
 
 string_test: string_test.o string_test_init.o string.o char.o list.o
 	$(ML) -s$(GRADE) $(MLFLAGS) -o $@ $^

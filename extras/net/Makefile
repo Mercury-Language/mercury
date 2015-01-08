@@ -1,4 +1,5 @@
-# vim: noet ts=4 sw=4
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2014 The Mercury Team
 # This file may only be copied under the terms of the GNU Library General
@@ -9,21 +10,19 @@ MMC=mmc
 MTAGS=mtags
 MCFLAGS=-O3 --intermodule-optimization --use-grade-subdirs --grade hlc.gc
 
-
 MERCURY_FILES=$(wildcard *.m)
 
-all : libnet.so echo
+all: libnet.so echo
 
-libnet.so : $(MERCURY_FILES)
+libnet.so: $(MERCURY_FILES)
 	$(MMC) $(MCFLAGS) --make libnet
 
-echo : $(MERCURY_FILES)
+echo: $(MERCURY_FILES)
 	$(MMC) $(MCFLAGS) --make echo
 
-tags : $(MERCURY_FILES)
+tags: $(MERCURY_FILES)
 	$(MTAGS) $(MERCURY_FILES)
 
-.PHONY : clean
-clean :
+.PHONY: clean
+clean:
 	rm -rf Mercury *.mh *.err echo libnet.so libnet.a net.init tags
-

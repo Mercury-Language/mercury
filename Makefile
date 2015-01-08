@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1995-1998, 2000, 2002, 2004-2005, 2010, 2012 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
@@ -15,9 +17,8 @@
 #
 #-----------------------------------------------------------------------------#
 
-
 SHELL=		/bin/sh
-MMAKE=		MMAKE_DIR=`pwd`/scripts scripts/mmake 
+MMAKE=		MMAKE_DIR=`pwd`/scripts scripts/mmake
 MMAKE_SUBDIR=	MMAKE_DIR=`pwd`/../scripts ../scripts/mmake $(PARALLEL)
 
 # PARALLEL=-j2

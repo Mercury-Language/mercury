@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
 # Copyright (C) 2013 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
@@ -83,7 +85,7 @@ $(cs_subdir)mfilterjavac.c:			$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 .PHONY: check
 check:	DEPEND=$(patsubst %,%.check,$(ALL_MODULES))
 
-.PHONY: ints 
+.PHONY: ints
 ints:	DEPEND=$(patsubst %,%.ints,$(ALL_MODULES))
 
 #-----------------------------------------------------------------------------#
@@ -115,7 +117,7 @@ tags_file_exists:
 
 .PHONY: dates
 dates:
-	touch 	$(mfilterjavac.dates)
+	touch $(mfilterjavac.dates)
 
 #-----------------------------------------------------------------------------#
 

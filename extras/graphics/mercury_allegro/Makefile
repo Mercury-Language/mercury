@@ -1,4 +1,7 @@
-# 
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab
+#-----------------------------------------------------------------------------#
+#
 # We don't assume that AllegroGL is installed so the default target doesn't
 # build AllegroGL (or AllegroGL samples, if there were any).
 # Run `make agl' for that.
@@ -41,8 +44,8 @@ realclean:
 	$(MMC_MAKE) mercury_allegro.realclean 2> /dev/null
 	$(MMC_MAKE) mercury_allegrogl.realclean 2> /dev/null
 	# XXX mmc --make --use-grade-subdirs doesn't yet remove .init files
-	$(RM) mercury_allegro.init 
-	$(RM) mercury_allegrogl.init 
+	$(RM) mercury_allegro.init
+	$(RM) mercury_allegrogl.init
 	#
 	(cd examples ; $(MMC_MAKE) exdata.realclean 2> /dev/null )
 	(cd examples ; $(MMC_MAKE) exhello.realclean 2> /dev/null )
