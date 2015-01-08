@@ -19,6 +19,7 @@
 :- import_module int.
 :- import_module io.
 :- import_module stream.
+:- import_module string.
 
 :- import_module net.sockets.
 
@@ -27,6 +28,8 @@
 :- type socket_stream.
 
 :- func stream(socket) = socket_stream.
+
+:- func socket(socket_stream) = socket.
 
 :- type byte
     --->    byte(int).
@@ -45,6 +48,8 @@
     %
 :- instance reader(socket_stream, streams.byte, io, streams.error).
 
+:- instance reader(socket_stream, line, io, streams.error).
+
 %-----------------------------------------------------------------------------%
 
 :- instance output(socket_stream, io).
@@ -53,12 +58,16 @@
     %
 :- instance writer(socket_stream, streams.byte, io).
 
+:- instance writer(socket_stream, string, io).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 :- implementation.
 
+:- import_module char.
 :- import_module exception.
 :- import_module bitmap.
+:- import_module list.
 :- import_module maybe.
 :- import_module require.
 
@@ -69,6 +78,8 @@
     --->    error(string).
 
 stream(Socket) = socket_stream(Socket).
+
+socket(socket_stream(Socket)) = Socket.
 
 %-----------------------------------------------------------------------------%
 
@@ -117,6 +128,57 @@ get_byte(socket_stream(Socket), Result, !IO) :-
         Result = error(error(String))
     ).
 
+:- instance reader(socket_stream, line, io, streams.error) where [
+        pred(get/4) is get_line
+    ].
+
+:- pred get_line(socket_stream::in, result(line, streams.error)::out,
+    io::di, io::uo) is det.
+
+get_line(Stream, Result, !IO) :-
+    get_chars_until_nl(Stream, [], Result0, !IO),
+    (
+        Result0 = ok(RevChars),
+        Result = ok(line(from_rev_char_list(RevChars)))
+    ;
+        Result0 = eof,
+        Result = eof
+    ;
+        Result0 = error(Error),
+        Result = error(Error)
+    ).
+
+:- pred get_chars_until_nl(Stream::in, list(char)::in,
+        result(list(char), Error)::out, State::di, State::uo) is det
+    <= reader(Stream, streams.byte, State, Error).
+
+get_chars_until_nl(Stream, Chars0, Result, !IO) :-
+    get(Stream, ResByte, !IO),
+    (
+        ResByte = ok(byte(Byte)),
+        ( char.from_int(Byte, Char) ->
+            (
+                ( Char = '\n'
+                ; Char = '\r'
+                )
+            ->
+                Result = ok(Chars0)
+            ;
+                Chars1 = [Char | Chars0],
+                get_chars_until_nl(Stream, Chars1, Result, !IO)
+            )
+        ;
+            unexpected($file, $pred, "Encoding error")
+        )
+    ;
+        ResByte = eof,
+        Result = eof
+    ;
+        ResByte = error(Error),
+        Result = error(Error)
+    ).
+
+
 %-----------------------------------------------------------------------------%
 
 :- instance output(socket_stream, io) where [
@@ -145,6 +207,22 @@ put_byte(socket_stream(Socket), byte(Byte), !IO) :-
         Result = error(Error),
         throw(streams.error(Error))
     ).
+
+:- instance writer(socket_stream, string, io) where [
+        pred(put/4) is put_string
+    ].
+
+:- pred put_string(Stream::in, string::in, State::di, State::uo) is det
+    <= writer(Stream, streams.byte, State).
+
+put_string(Stream, String, !State) :-
+    foldl(put_char(Stream), String, !State).
+
+:- pred put_char(Stream::in, char::in, State::di, State::uo) is det
+    <= writer(Stream, streams.byte, State).
+
+put_char(Stream, Char, !State) :-
+    put(Stream, byte(to_int(Char)), !State).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
