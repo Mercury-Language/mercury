@@ -16,6 +16,10 @@ MCFLAGS-ll_backend.llds_out = --inlining
 # code space or execution time to pass these arguments.
 MCFLAGS-hlds.quantification = --optimize-unused-args
 
+# Delete the code that computes information needed only in trace goals
+# in the common case that the trace goals are not enabled.
+MCFLAGS-check_hlds.typecheck = --unneeded-code
+
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
 # which are not available with `--ansi'.
 MGNUCFLAGS-libs.process_util = --no-ansi

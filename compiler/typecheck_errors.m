@@ -16,6 +16,7 @@
 :- module check_hlds.typecheck_errors.
 :- interface.
 
+:- import_module check_hlds.type_assign.
 :- import_module check_hlds.typecheck_info.
 :- import_module hlds.
 :- import_module hlds.hlds_clauses.

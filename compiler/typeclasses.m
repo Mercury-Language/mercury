@@ -17,6 +17,7 @@
 :- module check_hlds.typeclasses.
 :- interface.
 
+:- import_module check_hlds.type_assign.
 :- import_module check_hlds.typecheck_info.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
@@ -67,6 +68,7 @@
     % instance declaration for that type.
     %
 :- pred perform_context_reduction(prog_context::in,
+    type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
     % Apply context reduction to the list of class constraints by applying
@@ -100,12 +102,14 @@
 
 %-----------------------------------------------------------------------------%
 
-perform_context_reduction(Context, !Info) :-
+perform_context_reduction(Context, TypeAssignSet0, TypeAssignSet, !Info) :-
+    typecheck_info_get_error_clause_context(!.Info, ClauseContext),
+    ModuleInfo = ClauseContext ^ tecc_module_info,
     trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-        type_checkpoint("before context reduction", !.Info, !IO)
+        VarSet = ClauseContext ^ tecc_varset,
+        type_checkpoint("before context reduction",
+            ModuleInfo, VarSet, TypeAssignSet0, !IO)
     ),
-    typecheck_info_get_type_assign_set(!.Info, TypeAssignSet0),
-    typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     list.foldl2(reduce_type_assign_context(ClassTable, InstanceTable),
@@ -116,7 +120,6 @@ perform_context_reduction(Context, !Info) :-
         TypeAssignSet0 = [_ | _],
         TypeAssignSet1 = []
     ->
-        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
         Spec = report_unsatisfiable_constraints(ClauseContext, Context,
             UnsatTypeAssignSet),
         typecheck_info_add_error(Spec, !Info),
@@ -133,8 +136,7 @@ perform_context_reduction(Context, !Info) :-
         list.map(DeleteConstraints, TypeAssignSet0, TypeAssignSet)
     ;
         TypeAssignSet = TypeAssignSet1
-    ),
-    typecheck_info_set_type_assign_set(TypeAssignSet, !Info).
+    ).
 
 :- pred reduce_type_assign_context(class_table::in, instance_table::in,
     type_assign::in, list(type_assign)::in, list(type_assign)::out,
@@ -155,8 +157,8 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
         !:TypeAssignSet = !.TypeAssignSet ++ [!.TypeAssign]
     ;
         type_assign_get_head_type_params(!.TypeAssign, HeadTypeParams),
-        type_assign_get_type_bindings(!.TypeAssign, Bindings0),
         type_assign_get_typevarset(!.TypeAssign, TVarSet0),
+        type_assign_get_type_bindings(!.TypeAssign, Bindings0),
         type_assign_get_constraint_proof_map(!.TypeAssign, ProofMap0),
         type_assign_get_constraint_map(!.TypeAssign, ConstraintMap0),
 
@@ -165,7 +167,7 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
             ProofMap0, ProofMap, ConstraintMap0, ConstraintMap,
             Constraints0, Constraints),
 
-        type_assign_set_reduce_results(Bindings, TVarSet, Constraints,
+        type_assign_set_reduce_results(TVarSet, Bindings, Constraints,
             ProofMap, ConstraintMap, !TypeAssign),
 
         Unproven = Constraints ^ hcs_unproven,

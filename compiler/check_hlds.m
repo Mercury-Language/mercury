@@ -19,6 +19,7 @@
     :- include_module post_typecheck.
     :- include_module purity.
     :- include_module type_constraints.
+    :- include_module type_assign.
     :- include_module type_util.
     :- include_module typecheck.
     :- include_module typecheck_errors.
