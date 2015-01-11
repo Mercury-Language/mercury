@@ -18,11 +18,39 @@
 
 :- interface.
 
+:- import_module int.
 :- import_module string.
 
-:- import_module net.sockets.
+%-----------------------------------------------------------------------------%
+
+    % A port number.
+    %
+:- type port == int.
+
+    % Protocol number.
+    %
+    % See getprotobyname/4.
+    %
+:- type protocol_num == int.
 
 %-----------------------------------------------------------------------------%
+
+    % The socket family.  This type is incomplete, support for socket
+    % families such as IPX or appletalk will probably never be added.
+    % However Unix domain sockets may be added in the future.
+    %
+:- type family
+    --->    fam_inet
+    ;       fam_inet6.
+
+    % The socket type.  Informally (for fam_inet and fam_inet6) these
+    % correspond to TCP and UDP respectively.  More precicely these specify
+    % the socket's behavour, the protocol is optionally specified
+    % seperately.
+    %
+:- type socktype
+    --->    sock_stream
+    ;       sock_dgram.
 
 	% An IPv4 Address.
 	%
@@ -57,10 +85,6 @@
 	%
 :- pred to_string(in_addr::in, string::uo) is det.
 :- func to_string(in_addr) = string.
-
-    % A port number.
-    %
-:- type port == int.
 
 %-----------------------------------------------------------------------------%
 
@@ -114,6 +138,34 @@
 ").
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+    % This list of address families is from socket(2) on linux.
+    %
+:- pragma foreign_enum("C", family/0,
+    [fam_inet       - "AF_INET",
+     fam_inet6      - "AF_INET6"]).
+%     fam_unix       - "AF_UNIX",
+%     fam_ipx        - "AF_IPX",
+%     fam_netlink    - "AF_NETLINK",
+%     fam_x25        - "AF_X25",
+%     fam_ax25       - "AF_AX25",
+%     fam_atmpvc     - "AF_ATMPVC",
+%     fam_appletalk  - "AF_APPLETALK",
+%     fam_packet     - "AF_PACKET",
+
+:- pragma foreign_enum("C", socktype/0,
+    [sock_stream    - "SOCK_STREAM",
+     sock_dgram     - "SOCK_DGRAM"]).
+% See socket(2) for the meaning of these values.
+%     sock_seqpacket - "SOCK_SEQPACKET",
+%     sock_raw       - "SOCK_RAW",
+%     sock_rdm       - "SOCK_RDM",
+    % Note: sock_packet is obosolete.
+    % Note: We deleberately do not support the non-portable SOCK_NONBLOCK
+    % and SOCK_CLOEXEC values, this functionality should be accessed via
+    % setsocketopt.
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_type("C",
