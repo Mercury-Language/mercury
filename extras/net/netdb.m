@@ -21,11 +21,12 @@
 
 :- interface.
 
-:- import_module int.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module string.
+
+:- import_module net.types.
 
 %-----------------------------------------------------------------------------%
 
@@ -35,8 +36,6 @@
                 p_aliases       :: list(string),
                 p_num           :: protocol_num
             ).
-
-:- type protocol_num == int.
 
     % Lookup a protocol entry by name.
     %
