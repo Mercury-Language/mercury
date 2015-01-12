@@ -434,21 +434,10 @@ add_pragma_foreign_proc_export(Origin, FPEInfo, Context, !ModuleInfo,
                 [pragma_decl("foreign_export"), words("declaration")],
                 !Specs)
         ;
-            Origin = compiler(Details),
-            (
-                Details = initialise_decl
-            ;
-                Details = mutable_decl
-            ;
-                Details = finalise_decl
-            ;
-                ( Details = solver_type
-                ; Details = foreign_imports
-                ; Details = pragma_memo_attribute
-                ),
-                unexpected($module, $pred,
-                    "Bad introduced foreign_export pragma.")
-            )
+            Origin = compiler(CompilerOrigin),
+            % We do not warn about errors in export pragmas created by
+            % the compiler as part of a source-to-source transformation.
+            require_foreign_exportable_compiler_origin(CompilerOrigin, !Specs)
         )
     ).
 
@@ -514,35 +503,41 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
             % current backend.)
             %
             proc_info_set_has_any_foreign_exports(has_foreign_exports,
-                ProcInfo0, ProcInfo), 
+                ProcInfo0, ProcInfo),
             module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
                 !ModuleInfo)
         )
     ;
-        % We do not warn about errors in export pragmas created by the
-        % compiler as part of a source-to-source transformation.
         (
             Origin = user,
             undefined_mode_error(Name, Arity, Context,
                 [pragma_decl("foreign_export"), words("declaration")],
                 !Specs)
         ;
-            Origin = compiler(Details),
-            (
-                Details = initialise_decl
-            ;
-                Details = mutable_decl
-            ;
-                Details = finalise_decl
-            ;
-                ( Details = solver_type
-                ; Details = foreign_imports
-                ; Details = pragma_memo_attribute
-                ),
-                unexpected($module, $pred,
-                    "Bad introduced foreign_export pragma.")
-            )
+            Origin = compiler(CompilerOrigin),
+            % We do not warn about errors in export pragmas created by
+            % the compiler as part of a source-to-source transformation.
+            require_foreign_exportable_compiler_origin(CompilerOrigin, !Specs)
         )
+    ).
+
+:- pred require_foreign_exportable_compiler_origin(item_compiler_origin::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+require_foreign_exportable_compiler_origin(CompilerOrigin, !Specs) :-
+    % The !Specs arguments are there just to prevent the compiler
+    % from optimizing away calls this predicate.
+    (
+        ( CompilerOrigin = initialise_decl
+        ; CompilerOrigin = mutable_decl
+        ; CompilerOrigin = finalise_decl
+        )
+    ;
+        ( CompilerOrigin = solver_type
+        ; CompilerOrigin = foreign_imports
+        ; CompilerOrigin = pragma_memo_attribute
+        ),
+        unexpected($module, $pred, "bad introduced foreign_export pragma")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -567,10 +562,10 @@ add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                 )
             )
         ->
-            MaybeSeverity = yes(severity_error),
             ErrorPieces = [words("error:"), pragma_decl("reserve_tag"),
                 words("declaration must have"),
-                words("the same visibility as the type definition.")]
+                words("the same visibility as the type definition.")],
+            MaybeError = yes({severity_error, ErrorPieces})
         ;
             (
                 TypeBody0 = hlds_du_type(Body, _CtorTags0, _CheaperTagTest,
@@ -582,13 +577,12 @@ add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                     % with intermodule optimization ...
                     TypeStatus \= status_opt_imported
                 ->
-                    MaybeSeverity = yes(severity_warning),
                     ErrorPieces = [words("warning: multiple"),
                         pragma_decl("reserved_tag"),
-                        words("declarations for the same type."), nl]
+                        words("declarations for the same type."), nl],
+                    MaybeError = yes({severity_warning, ErrorPieces})
                 ;
-                    MaybeSeverity = no,
-                    ErrorPieces = []
+                    MaybeError = no
                 ),
 
                 % We passed all the semantic checks. Mark the type as having
@@ -610,31 +604,25 @@ add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                 ; TypeBody0 = hlds_solver_type(_, _)
                 ; TypeBody0 = hlds_abstract_type(_)
                 ),
-                MaybeSeverity = yes(severity_error),
                 ErrorPieces = [words("error:"),
                     sym_name_and_arity(TypeName / TypeArity),
-                    words("is not a discriminated union type."), nl]
+                    words("is not a discriminated union type."), nl],
+                MaybeError = yes({severity_error, ErrorPieces})
             )
         )
     ;
-        MaybeSeverity = yes(severity_error),
         ErrorPieces = [words("error: undefined type"),
-            sym_name_and_arity(TypeName / TypeArity), suffix("."), nl]
+            sym_name_and_arity(TypeName / TypeArity), suffix("."), nl],
+        MaybeError = yes({severity_error, ErrorPieces})
     ),
     (
-        ErrorPieces = []
+        MaybeError = no
     ;
-        ErrorPieces = [_ | _],
-        (
-            MaybeSeverity = yes(Severity)
-        ;
-            MaybeSeverity = no,
-            unexpected($module, $pred, "no severity")
-        ),
+        MaybeError = yes({Severity, MaybeErrorPieces}),
         ContextPieces = [words("In"), pragma_decl("reserve_tag"),
             words("declaration for"), sym_name_and_arity(TypeName / TypeArity),
             suffix(":"), nl],
-        Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+        Msg = simple_msg(Context, [always(ContextPieces ++ MaybeErrorPieces)]),
         Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
@@ -664,10 +652,10 @@ add_pragma_foreign_export_enum(FEEInfo, _ImportStatus, Context,
         ; TypeName = unqualified("string")
         )
     ->
-        MaybeSeverity = yes(severity_error),
         ErrorPieces = [words("error: "),
             sym_name_and_arity(TypeName / TypeArity),
-            words("is an atomic type"), suffix("."), nl]
+            words("is an atomic type"), suffix("."), nl],
+        MaybeError = yes({severity_error, ErrorPieces})
     ;
         ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) ->
             get_type_defn_body(TypeDefn, TypeBody),
@@ -677,10 +665,10 @@ add_pragma_foreign_export_enum(FEEInfo, _ImportStatus, Context,
                 ; TypeBody = hlds_solver_type(_, _)
                 ; TypeBody = hlds_foreign_type(_)
                 ),
-                MaybeSeverity = yes(severity_error),
                 ErrorPieces = [words("error: "),
                     sym_name_and_arity(TypeName / TypeArity),
-                    words("is not an enumeration type"), suffix("."), nl]
+                    words("is not an enumeration type"), suffix("."), nl],
+                MaybeError = yes({severity_error, ErrorPieces})
             ;
                 % XXX How should we handle IsForeignType here?
                 TypeBody = hlds_du_type(Ctors, _TagValues, _CheaperTagTest,
@@ -722,41 +710,33 @@ add_pragma_foreign_export_enum(FEEInfo, _ImportStatus, Context,
                     ;
                         MaybeOverridesMap = no
                     ),
-                    ErrorPieces = [],
-                    MaybeSeverity = no
+                    MaybeError = no
                 ;
                     ( DuTypeKind = du_type_kind_general
                     ; DuTypeKind = du_type_kind_notag(_, _, _)
                     ),
-                    MaybeSeverity = yes(severity_error),
-                    % XXX Maybe we should add a verbose error message that
-                    % identifies the non-zero arity constructors.
+                    % XXX Maybe we should add a verbose component
+                    % that identifies the non-zero arity constructors.
                     ErrorPieces = [words("error: "),
                         sym_name_and_arity(TypeName / TypeArity),
                         words("is not an enumeration type."),
                         words("It has one or more non-zero arity"),
-                        words("constructors."), nl]
+                        words("constructors."), nl],
+                    MaybeError = yes({severity_error, ErrorPieces})
                 )
             )
         ;
             % This case corresponds to an undefined type. We do not issue
             % an error message for it here since module qualification
             % will have already done so.
-            MaybeSeverity = no,
-            ErrorPieces = []
+            MaybeError = no
         )
     ),
     (
-        ErrorPieces = []
+        MaybeError = no
     ;
-        ErrorPieces = [_ | _],
-        (
-            MaybeSeverity = yes(Severity)
-        ;
-            MaybeSeverity = no,
-            unexpected($module, $pred, "no severity")
-        ),
-        Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+        MaybeError = yes({Severity, MaybeErrorPieces}),
+        Msg = simple_msg(Context, [always(ContextPieces ++ MaybeErrorPieces)]),
         Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
@@ -1003,10 +983,10 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
         ; TypeName = unqualified("string")
         )
     ->
-        MaybeSeverity = yes(severity_error),
         ErrorPieces = [words("error: "),
             sym_name_and_arity(TypeName / TypeArity),
-            words("is an atomic type"), suffix(".")]
+            words("is an atomic type"), suffix(".")],
+        MaybeError = yes({severity_error, ErrorPieces})
     ;
         search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0)
     ->
@@ -1017,10 +997,10 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
             ; TypeBody0 = hlds_solver_type(_, _)
             ; TypeBody0 = hlds_foreign_type(_)
             ),
-            MaybeSeverity = yes(severity_error),
             ErrorPieces = [words("error: "),
                 sym_name_and_arity(TypeName / TypeArity),
-                words("is not an enumeration type"), suffix(".")]
+                words("is not an enumeration type"), suffix(".")],
+            MaybeError = yes({severity_error, ErrorPieces})
         ;
             TypeBody0 = hlds_du_type(Ctors, OldTagValues, CheaperTagTest,
                 DuTypeKind0, MaybeUserEq, MaybeDirectArgCtors,
@@ -1084,20 +1064,18 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
                         % this target language, then don't do anything.
                         true
                     ),
-                    MaybeSeverity = no,
-                    ErrorPieces = []
+                    MaybeError = no
                 ;
                     ImportStatus = status_exported
                 ->
                     add_foreign_enum_pragma_in_interface_error(Context,
                         TypeName, TypeArity, !Specs),
-                    MaybeSeverity = no,
-                    ErrorPieces = []
+                    MaybeError = no
                 ;
-                    MaybeSeverity = yes(severity_error),
                     ErrorPieces = [words("error: "),
                         sym_name_and_arity(TypeName / TypeArity),
-                        words("is not defined in this module.")]
+                        words("is not defined in this module.")],
+                    MaybeError = yes({severity_error, ErrorPieces})
                 )
             ;
                 DuTypeKind0 = du_type_kind_foreign_enum(_),
@@ -1106,42 +1084,34 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
                     ; ImportStatus = status_opt_imported
                     )
                 ->
-                     MaybeSeverity = no,
-                     ErrorPieces = []
+                    MaybeError = no
                 ;
-                     MaybeSeverity = yes(severity_error),
-                     ErrorPieces = [words("error: "),
+                    ErrorPieces = [words("error: "),
                         sym_name_and_arity(TypeName / TypeArity),
-                        words("has multiple foreign_enum pragmas.")]
+                        words("has multiple foreign_enum pragmas.")],
+                    MaybeError = yes({severity_error, ErrorPieces})
                 )
             ;
                 ( DuTypeKind0 = du_type_kind_general
                 ; DuTypeKind0 = du_type_kind_notag(_, _, _)
                 ),
-                MaybeSeverity = yes(severity_error),
                 ErrorPieces = [words("error: "),
                     sym_name_and_arity(TypeName / TypeArity),
-                    words("is not an enumeration type"), suffix(".")]
+                    words("is not an enumeration type"), suffix(".")],
+                MaybeError = yes({severity_error, ErrorPieces})
             )
         )
     ;
         % This else-branch corresponds to an undefined type. We do not
         % issue an error message for it here since module qualification
         % will have already done so.
-        MaybeSeverity = no,
-        ErrorPieces = []
+        MaybeError = no
     ),
     (
-        ErrorPieces = []
+        MaybeError = no
     ;
-        ErrorPieces = [_ | _],
-        (
-            MaybeSeverity = yes(Severity)
-        ;
-            MaybeSeverity = no,
-            unexpected($module, $pred, "no severity")
-        ),
-        Msg = simple_msg(Context, [always(ContextPieces ++ ErrorPieces)]),
+        MaybeError = yes({Severity, MaybeErrorPieces}),
+        Msg = simple_msg(Context, [always(ContextPieces ++ MaybeErrorPieces)]),
         Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
@@ -2702,28 +2672,22 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
     TableBuiltinModule = mercury_table_statistics_module,
     StatsTypeName = qualified(TableBuiltinModule, "proc_table_statistics"),
     StatsType = defined_type(StatsTypeName, [], kind_star),
-    ArgDecl1 = type_and_mode(StatsType, out_mode),
-    ArgDecl2 = type_and_mode(io_state_type, di_mode),
-    ArgDecl3 = type_and_mode(io_state_type, uo_mode),
-    ArgDecls = [ArgDecl1, ArgDecl2, ArgDecl3],
+    TypeAndModeArg1 = type_and_mode(StatsType, out_mode),
+    TypeAndModeArg2 = type_and_mode(io_state_type, di_mode),
+    TypeAndModeArg3 = type_and_mode(io_state_type, uo_mode),
+    TypeAndModeArgs = [TypeAndModeArg1, TypeAndModeArg2, TypeAndModeArg3],
 
-    StatsPredSymName = tabling_stats_pred_name(SimpleCallId, ProcId,
-        SingleProc),
-    varset.init(VarSet0),
+    varset.init(TypeVarSet),
     varset.init(InstVarSet),
     ExistQVars = [],
+    StatsPredSymName = tabling_stats_pred_name(SimpleCallId, ProcId,
+        SingleProc),
     Constraints = constraints([], []),
-    WithType = no,
-    WithInst = no,
-    Condition = cond_true,
-    Origin = compiler(pragma_memo_attribute),
-    StatsPredDecl = item_pred_decl_info(Origin, VarSet0, InstVarSet,
-        ExistQVars, pf_predicate, StatsPredSymName, ArgDecls,
-        WithType, WithInst, yes(detism_det), Condition, purity_pure,
-        Constraints, Context, -1),
-    StatsPredDeclItem = item_pred_decl(StatsPredDecl),
+    init_markers(Markers),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
-    add_item_decl_pass_1(StatsPredDeclItem, _, ItemStatus0, _,
+    module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
+        pf_predicate, StatsPredSymName, TypeAndModeArgs, yes(detism_det),
+        purity_pure, Constraints, Markers, Context, ItemStatus0, _,
         !ModuleInfo, !Specs),
 
     some [!Attrs, !VarSet] (
@@ -2748,14 +2712,10 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         StatsCode = "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
         StatsImpl = fp_impl_ordinary(StatsCode, yes(Context)),
         StatsPragmaFCInfo = pragma_info_foreign_proc(!.Attrs, StatsPredSymName,
-            pf_predicate, [Arg1, Arg2, Arg3], !.VarSet, InstVarSet, StatsImpl),
-        StatsPragma = pragma_foreign_proc(StatsPragmaFCInfo),
-        StatsPragmaInfo = item_pragma_info(compiler(pragma_memo_attribute),
-            StatsPragma, Context, -1),
-        StatsImplItem = item_pragma(StatsPragmaInfo)
+            pf_predicate, [Arg1, Arg2, Arg3], !.VarSet, InstVarSet, StatsImpl)
     ),
-    % XXX Instead of calling add_item_pass_3, we should call what *it* calls.
-    add_item_pass_3(StatsImplItem, !Status, !ModuleInfo, !QualInfo, !Specs).
+    add_pragma_foreign_proc(StatsPragmaFCInfo, !.Status, Context, yes(-1),
+        !ModuleInfo, !Specs).
 
 :- pred create_tabling_reset_pred(proc_id::in, prog_context::in,
     simple_call_id::in, bool::in, proc_table::in, proc_table::out,
@@ -2765,27 +2725,21 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
 
 create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
          !ProcTable, !Status, !ModuleInfo, !QualInfo, !Specs) :-
-    ArgDecl1 = type_and_mode(io_state_type, di_mode),
-    ArgDecl2 = type_and_mode(io_state_type, uo_mode),
-    ArgDecls = [ArgDecl1, ArgDecl2],
+    TypeAndModeArg1 = type_and_mode(io_state_type, di_mode),
+    TypeAndModeArg2 = type_and_mode(io_state_type, uo_mode),
+    TypeAndModeArgs = [TypeAndModeArg1, TypeAndModeArg2],
 
-    ResetPredSymName = tabling_reset_pred_name(SimpleCallId, ProcId,
-        SingleProc),
-    varset.init(VarSet0),
+    varset.init(TypeVarSet),
     varset.init(InstVarSet),
     ExistQVars = [],
+    ResetPredSymName = tabling_reset_pred_name(SimpleCallId, ProcId,
+        SingleProc),
     Constraints = constraints([], []),
-    WithType = no,
-    WithInst = no,
-    Condition = cond_true,
-    Origin = compiler(pragma_memo_attribute),
-    ResetPredDecl = item_pred_decl_info(Origin, VarSet0, InstVarSet,
-        ExistQVars, pf_predicate, ResetPredSymName, ArgDecls,
-        WithType, WithInst, yes(detism_det), Condition, purity_pure,
-        Constraints, Context, -1),
-    ResetPredDeclItem = item_pred_decl(ResetPredDecl),
+    init_markers(Markers),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
-    add_item_decl_pass_1(ResetPredDeclItem, _, ItemStatus0, _,
+    module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
+        pf_predicate, ResetPredSymName, TypeAndModeArgs, yes(detism_det),
+        purity_pure, Constraints, Markers, Context, ItemStatus0, _,
         !ModuleInfo, !Specs),
 
     some [!Attrs, !VarSet] (
@@ -2830,14 +2784,10 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         ),
         ResetImpl = fp_impl_ordinary(ResetCode, yes(Context)),
         ResetPragmaFCInfo = pragma_info_foreign_proc(!.Attrs, ResetPredSymName,
-            pf_predicate, [Arg1, Arg2], !.VarSet, InstVarSet, ResetImpl),
-        ResetPragma = pragma_foreign_proc(ResetPragmaFCInfo),
-        ResetPragmaInfo = item_pragma_info(compiler(pragma_memo_attribute),
-            ResetPragma, Context, -1),
-        ResetImplItem = item_pragma(ResetPragmaInfo)
+            pf_predicate, [Arg1, Arg2], !.VarSet, InstVarSet, ResetImpl)
     ),
-    % XXX Instead of calling add_item_pass_3, we should call what *it* calls.
-    add_item_pass_3(ResetImplItem, !Status, !ModuleInfo, !QualInfo, !Specs).
+    add_pragma_foreign_proc(ResetPragmaFCInfo, !.Status, Context, yes(-1),
+        !ModuleInfo, !Specs).
 
 :- func tabling_stats_pred_name(simple_call_id, proc_id, bool) = sym_name.
 
@@ -3266,10 +3216,11 @@ add_pragma_fact_table(FTInfo, Status, Context, !ModuleInfo, !Specs) :-
         )
     ).
 
-    % Add a `pragma c_code' for each mode of the fact table lookup to the
-    % HLDS.
+    % Add a `pragma foreign_proc' for each mode of the fact table lookup
+    % to the HLDS.
+    %
     % `pragma fact_table's are represented in the HLDS by a
-    % `pragma c_code' for each mode of the predicate.
+    % `pragma foreign_proc' for each mode of the predicate.
     %
 :- pred add_fact_table_procedures(list(proc_id)::in, proc_id::in,
     proc_table::in, sym_name::in, pred_or_func::in, arity::in,
@@ -3333,8 +3284,8 @@ add_fact_table_proc(ProcId, PrimaryProcId, ProcTable, SymName,
         module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
     ),
 
-    % The C code for fact tables includes C labels; we cannot inline this code,
-    % because if we try, the result may be duplicate labels in the generated
+    % The C code for fact tables includes C labels. We cannot inline this code,
+    % because if we did, the result would be duplicate labels in the generated
     % code. So we must disable inlining for fact_table procedures.
     add_pred_marker("fact_table", SymName, Arity, Status, Context,
         marker_user_marked_no_inline, [], !ModuleInfo, !Specs).
