@@ -171,27 +171,28 @@ tcp.shutdown(tcp(_, Handle), !IO) :-
 
 :- pragma foreign_decl("C", "
 #ifdef MR_WIN32
-  #include <winsock2.h>
-  #include <ws2tcpip.h>
-  #include <sys/types.h>
+    #include ""mercury_windows.h""
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #include <sys/types.h>
 
-  #define  ML_error()       WSAGetLastError()
+    #define  ML_error()       WSAGetLastError()
 
 #else /* !MR_WIN32 */
 
-  #include <errno.h>
-  #include <unistd.h>
-  #include <netdb.h>
+    #include <errno.h>
+    #include <unistd.h>
+    #include <netdb.h>
 
-  #include <netinet/in.h>
+    #include <netinet/in.h>
 
-  #include <sys/types.h>
-  #include <sys/socket.h>
+    #include <sys/types.h>
+    #include <sys/socket.h>
 
-  #define  ML_error()       errno
+    #define  ML_error()       errno
 
-  #define  INVALID_SOCKET   -1
-  #define  SOCKET_ERROR     -1
+    #define  INVALID_SOCKET   -1
+    #define  SOCKET_ERROR     -1
 #endif /* !MR_WIN32 */
 
 #define ADDRLEN 16

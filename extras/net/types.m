@@ -95,6 +95,7 @@
 :- pragma foreign_decl("C",
 "
 #ifdef MR_WIN32
+    #include ""mercury_windows.h""
     #include <winsock2.h>
     #include <ws2tcpip.h>
 #else

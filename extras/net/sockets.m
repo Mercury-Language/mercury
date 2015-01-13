@@ -134,14 +134,15 @@
 :- pragma foreign_decl("C",
 "
 #ifdef MR_WIN32
-  #include <winsock2.h>
-  #include <ws2tcpip.h>
+    #include ""mercury_windows.h""
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
 #else
-  #include <errno.h>
-  #include <netdb.h>
-  #include <netinet/in.h>
-  #include <sys/types.h>
-  #include <sys/socket.h>
+    #include <errno.h>
+    #include <netdb.h>
+    #include <netinet/in.h>
+    #include <sys/types.h>
+    #include <sys/socket.h>
 #endif
 ").
 
