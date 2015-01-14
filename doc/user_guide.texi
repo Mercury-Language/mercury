@@ -8729,11 +8729,6 @@ Enable the constraint propagation transformation,
 but only rearrange goals within each procedure.
 Specialized versions of procedures will not be created.
 
-@c @sp 1
-@c @item --prev-code
-@c @findex --prev-code
-@c Migrate into the start of branched goals.
-
 @sp 1
 @item --no-follow-code
 @findex --no-follow-code

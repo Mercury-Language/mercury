@@ -5093,8 +5093,6 @@ options_help_hlds_hlds_optimization -->
         "\tEnable the constraint propagation transformation,",
         "\tbut only rearrange goals within each procedure.",
         "\tSpecialized versions of procedures will not be created.",
-        "--prev-code",
-        "\tMigrate into the start of branched goals.",
         "--no-follow-code",
         "\tDon't migrate into the end of branched goals.",
         "--excess-assign",
