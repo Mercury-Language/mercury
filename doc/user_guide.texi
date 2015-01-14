@@ -2222,7 +2222,7 @@ you can use "^@samp{n}" to refer to the @var{n}th subterm of that term.
 If the term's type has named fields,
 you can use "^@samp{fname}" to refer to
 the subterm of the field named @samp{fname}.
-You can use several of subterm specifications in a row
+You can use several of these subterm specifications in a row
 to refer to subterms deep within the original term.
 For example, when applied to a list,
 "^2" refers to the tail of the list
