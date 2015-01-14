@@ -4859,7 +4859,7 @@ In some circumstances
 the declarative debugger provides a default answer to the question.
 If this is the case, the default answer will be shown in square brackets
 immediately after the question,
-and simply pressing return is equivalent to giving that answer.
+and simply pressing @key{RET} is equivalent to giving that answer.
 
 @node Declarative debugging commands
 @subsection Commands
@@ -4867,11 +4867,11 @@ and simply pressing return is equivalent to giving that answer.
 At the above mentioned prompts, the following commands may be given.
 Most commands can be abbreviated by their first letter.
 
-It is also legal to press return without specifying a command.
+It is also legal to press @key{RET} without specifying a command.
 If there is a default answer (@pxref{Oracle questions}),
-pressing return is equivalent to giving that answer.
+pressing @key{RET} is equivalent to giving that answer.
 If there is no default answer,
-pressing return is equivalent to the skip command.
+pressing @key{RET} is equivalent to the skip command.
 
 @table @code
 @item yes
