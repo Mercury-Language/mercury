@@ -84,7 +84,7 @@
     %   - for arrays, the string <<array>>.
     %   - for c_pointers, the string ptr(0xXXXX) where XXXX is the
     %     hexadecimal representation of the pointer.
-    %   - for bitmaps, the bitmap converted to a a length and a
+    %   - for bitmaps, the bitmap converted to a length and a
     %     hexadecimal string inside angle brackets and quotes of the
     %     form """<[0-9]:[0-9A-F]*>""".
     %
