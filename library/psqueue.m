@@ -250,7 +250,7 @@
 % is to have a tree, the loser_tree, whose structure is identical to the
 % structure of the binary tree representing the matched of the knockout
 % tournament, but to store information about each player in the node
-% that corresponds to the match that the player LOST. Since the chamption
+% that corresponds to the match that the player LOST. Since the champion
 % does not lose any matches, its details cannot be stored in such a tree,
 % which is why they are stored above the tree, in the winner structure.
 % The loser_tree type gets its name from the fact that each node stores
@@ -260,7 +260,8 @@
 % When a psqueue is viewed as a mapping from keys to priorities, the mapping
 % must be a function: a key cannot appear in the psqueue more than once.
 % When a psqueue is viewed as a mapping from priorities to keys, the mapping
-% need not be a function: a prioriy *may* appear in the psqueue more than once.
+% need not be a function: a priority *may* appear in the psqueue more than
+% once.
 
 :- type psqueue(P, K)
     --->    empty_psqueue
