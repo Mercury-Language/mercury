@@ -317,7 +317,7 @@
 :- func replace_all(list(T), T, T) = list(T).
 
     % replace_nth(List0, N, R, List) is true iff List is List0
-    % with Nth element replaced with R.
+    % with N'th element replaced with R.
     % Fails if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %
@@ -325,7 +325,7 @@
     is semidet.
 
     % det_replace_nth(List0, N, R, List) is true iff List is List0
-    % with Nth element replaced with R.
+    % with N'th element replaced with R.
     % Aborts if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %

@@ -107,8 +107,8 @@
 :- pred put_on_front(T::in, queue(T)::in, queue(T)::out) is det.
 
     % `put_list_on_front(Queue0, Elems) = Queue' pushes `Elems'
-    % on to the front of `Queue0', giving `Queue' (the Nth member
-    % of `Elems' becomes the Nth member from the front of `Queue').
+    % on to the front of `Queue0', giving `Queue' (the N'th member
+    % of `Elems' becomes the N'th member from the front of `Queue').
     %
 :- func put_list_on_front(queue(T), list(T)) = queue(T).
 :- pred put_list_on_front(list(T)::in, queue(T)::in, queue(T)::out)

@@ -323,7 +323,7 @@
     ;       requires_numeric_argument(string).
             % The option requires a numeric argument but it occurred on the
             % command line with a non-numeric argument.
-            % The argument gives the contenst of the argument position on the
+            % The argument gives the contents of the argument position on the
             % command line.
 
 :- func option_error_to_string(option_error(OptionType)) = string.

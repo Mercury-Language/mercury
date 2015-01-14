@@ -114,7 +114,7 @@
     %
 :- func from_list(list(T)) = version_array(T).
 
-    % A ^ elem(I) = X iff the Ith member of A is X (the first item has
+    % A ^ elem(I) = X iff the I'th member of A is X (the first item has
     % index 0).
     %
 :- func version_array(T) ^ elem(int) = T.

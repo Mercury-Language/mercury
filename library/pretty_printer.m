@@ -182,7 +182,7 @@
     % format(Stream, FMap, LineWidth, MaxLines, Limit, Doc, !State):
     %
     % Format Doc to fit on lines of LineWidth chars, truncating after
-    % MaxLines lines, fomatting format_univ(_) docs using specialised
+    % MaxLines lines, formatting format_univ(_) docs using specialised
     % formatters Formatters starting with pretty-printer limits Limit.
     %
 :- pred write_doc_to_stream(Stream, noncanon_handling, formatter_map, int, int,

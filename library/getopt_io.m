@@ -329,7 +329,7 @@
     ;       requires_numeric_argument(string)
             % The option requires a numeric argument but it occurred on the
             % command line with a non-numeric argument.
-            % The argument gives the contents of the arugment position on the
+            % The argument gives the contents of the argument position on the
             % command line.
 
     ;       file_special_cannot_open(string, io.error)

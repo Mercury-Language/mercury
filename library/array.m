@@ -198,7 +198,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % lookup returns the Nth element of an array.
+    % lookup returns the N'th element of an array.
     % Throws an exception if the index is out of bounds.
     %
 :- pred lookup(array(T), int, T).
@@ -209,14 +209,14 @@
 %:- mode lookup(array_ui, in) = out is det.
 :- mode lookup(in, in) = out is det.
 
-    % semidet_lookup returns the Nth element of an array.
+    % semidet_lookup returns the N'th element of an array.
     % It fails if the index is out of bounds.
     %
 :- pred semidet_lookup(array(T), int, T).
 %:- mode semidet_lookup(array_ui, in, out) is semidet.
 :- mode semidet_lookup(in, in, out) is semidet.
 
-    % unsafe_lookup returns the Nth element of an array.
+    % unsafe_lookup returns the N'th element of an array.
     % It is an error if the index is out of bounds.
     %
 :- pred unsafe_lookup(array(T), int, T).
