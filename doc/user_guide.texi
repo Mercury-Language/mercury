@@ -326,9 +326,9 @@ You can create the interface files for one or more source files
 using the following commands:
 
 @example
-mmc --make-short-int @var{filename1}.m @var{filename2}.m ...
-mmc --make-priv-int @var{filename1}.m @var{filename2}.m ...
-mmc --make-int @var{filename1}.m @var{filename2}.m ...
+mmc --make-short-int @var{filename1}.m @var{filename2}.m @dots{}
+mmc --make-priv-int @var{filename1}.m @var{filename2}.m @dots{}
+mmc --make-int @var{filename1}.m @var{filename2}.m @dots{}
 @end example
 @findex --make-short-int
 @findex --make-priv-int
@@ -338,7 +338,7 @@ If you are going to compile with @samp{--intermodule-optimization} enabled,
 then you also need to create the optimization interface files.
 
 @example
-mmc --make-opt-int @var{filename1}.m @var{filename2}.m ...
+mmc --make-opt-int @var{filename1}.m @var{filename2}.m @dots{}
 @end example
 @findex --make-opt-int
 
@@ -347,7 +347,7 @@ enabled, then you also need to create the transitive optimization files.
 @findex --transitive-intermodule-optimization
 
 @example
-mmc --make-trans-opt @var{filename1}.m @var{filename2}.m ...
+mmc --make-trans-opt @var{filename1}.m @var{filename2}.m @dots{}
 @end example
 @findex --make-trans-opt
 
@@ -357,7 +357,7 @@ is to compile all the modules at the same time
 using the command
 
 @example
-mmc @var{filename1}.m @var{filename2}.m ...
+mmc @var{filename1}.m @var{filename2}.m @dots{}
 @end example
 
 This will by default put the resulting executable in @file{@var{filename1}},
@@ -377,7 +377,7 @@ containing calls to automatically generated initialization functions
 contained in the C code of the modules of the program:
 
 @example
-c2init @var{module1}.c @var{module2}.c ... > @var{main-module}_init.c,
+c2init @var{module1}.c @var{module2}.c @dots{} > @var{main-module}_init.c,
 mgnuc -c @var{main-module}_init.c
 @end example
 @pindex c2init
@@ -396,7 +396,7 @@ You then link the object code of each module
 with the object code of the initialization file to yield the executable:
 
 @example
-ml -o @var{main-module} @var{module1}.o @var{module2}.o ... @var{main_module}_init.o
+ml -o @var{main-module} @var{module1}.o @var{module2}.o @dots{} @var{main_module}_init.o
 @end example
 @pindex ml
 
@@ -768,7 +768,7 @@ A list of extra Mercury libraries to link into any programs or libraries
 that you are building.
 Libraries should be specified using their base name; that is, without any
 @samp{lib} prefix or extension.
-For example the library including the files @file{libfoo.a} and
+For example, the library including the files @file{libfoo.a} and
 @file{foo.init} would be referred to as just @samp{foo}.
 @xref{Using libraries with Mmake}.
 @xref{Using installed libraries with mmc --make}.
@@ -905,7 +905,7 @@ Options to pass to the Mercury compiler only when using @samp{mmc --make}.
 @end table
 
 The following variables can also appear in options files but are
-@emph{only} supported by @samp{mmc --make}.
+@emph{only} supported by @w{@samp{mmc --make}}.
 
 @table @code
 
@@ -1055,7 +1055,7 @@ Once a library is installed, it can be used by running @samp{mmc} with the
 following options:
 
 @example
-mmc ... --ml mypackage ... --ml myotherlib ... --ml my_yet_another_lib ...
+mmc @dots{} --ml mypackage @dots{} --ml myotherlib @dots{} --ml my_yet_another_lib @dots{}
 @end example
 
 @noindent
@@ -1063,7 +1063,7 @@ If a library was installed in a different place (using @samp{--install-prefix
 <dir>}), you will also need to add this option:
 
 @example
-mmc ... --mld <dir>/lib/mercury ...
+mmc @dots{} --mld <dir>/lib/mercury @dots{}
 @end example
 
 @noindent
@@ -1089,10 +1089,10 @@ installing the library. The source of the library is stored in the directory
 to be added to @samp{mmc}:
 
 @example
-mmc ... --search-lib-files-dir <dir> \
+mmc @dots{} --search-lib-files-dir <dir> \
         --init-file <dir>/mypackage.init \
         --link-object <dir>/libmypackage.a \
-    ...
+    @dots{}
 @end example
 
 @noindent
@@ -1107,12 +1107,12 @@ libmypackage}) and use the @samp{libmypackage.a} that is compatible with your
 main program's grade:
 
 @example
-mmc ... --use-grade-subdirs \
+mmc @dots{} --use-grade-subdirs \
         --grade <grade> \
         --search-lib-files-dir <dir> \
         --init-file <dir>/mypackage.init \
         --link-object <dir>/Mercury/<grade>/*/Mercury/lib/libmypackage.a \
-    ...
+    @dots{}
 @end example
 
 
@@ -1154,8 +1154,8 @@ Mmake will create static (non-shared) object libraries
 and, on most platforms, shared object libraries;
 however, we do not yet support the creation of dynamic link
 libraries (DLLs) on Windows.
-Static libraries are created using the standard tools @samp{ar}
-and @samp{ranlib}.
+Static libraries are created using the standard tools @command{ar} and
+@command{ranlib}.
 Shared libraries are created using the @samp{--make-shared-lib}
 option to @samp{ml}.
 The automatically generated Make rules for @samp{libmypackage}
@@ -1163,23 +1163,23 @@ will look something like this:
 
 @example
 libmypackage: libmypackage.a libmypackage.so \
-		$(mypackage.ints) $(mypackage.int3s) \
-		$(mypackage.opts) $(mypackage.trans_opts) mypackage.init
+                $(mypackage.ints) $(mypackage.int3s) \
+                $(mypackage.opts) $(mypackage.trans_opts) mypackage.init
 
 libmypackage.a: $(mypackage.os)
-	rm -f libmypackage.a
-	$(AR) $(ARFLAGS) libmypackage.a $(mypackage.os) $(MLOBJS)
-	$(RANLIB) $(RANLIBFLAGS) mypackage.a
+        rm -f libmypackage.a
+        $(AR) $(ARFLAGS) libmypackage.a $(mypackage.os) $(MLOBJS)
+        $(RANLIB) $(RANLIBFLAGS) mypackage.a
 
 libmypackage.so: $(mypackage.pic_os)
-	$(ML) $(MLFLAGS) --make-shared-lib -o libmypackage.so \
-		$(mypackage.pic_os) $(MLPICOBJS) $(MLLIBS)
+        $(ML) $(MLFLAGS) --make-shared-lib -o libmypackage.so \
+                $(mypackage.pic_os) $(MLPICOBJS) $(MLLIBS)
 
 libmypackage.init:
-	...
+        @dots{}
 
 clean:
-	rm -f libmypackage.a libmypackage.so
+        rm -f libmypackage.a libmypackage.so
 @end example
 @vindex AR
 @vindex ARFLAGS
@@ -1296,7 +1296,7 @@ The user need only set the following Mmake variables:
 
 @example
 EXTRA_LIB_DIRS = /some/directory/mypackage/lib/mercury \
-		/some/directory/myotherlib/lib/mercury
+                /some/directory/myotherlib/lib/mercury
 EXTRA_LIBRARIES = mypackage myotherlib
 @end example
 @vindex EXTRA_LIBRARIES
@@ -1408,10 +1408,10 @@ command to invoke your program under the debugger:
 
 @pindex mdb
 @example
-bash$ mdb ./hello arg1 arg2 ...
+bash$ mdb ./hello arg1 arg2 @dots{}
 @end example
 
-Any arguments (such as @samp{arg1 arg2 ...} in this example)
+Any arguments (such as @samp{arg1 arg2 @dots{}} in this example)
 that you pass after the program name will be given as arguments
 to the program.
 
@@ -1535,7 +1535,7 @@ and you should type in the name of the program that you want to debug
 and any arguments that you want to pass to it:
 
 @example
-Run mdb (like this): mdb ./hello arg1 arg2 ...
+Run mdb (like this): mdb ./hello arg1 arg2 @dots{}
 @end example
 
 Emacs will then create several ``buffers'': one for the debugger prompt,
@@ -1606,11 +1606,11 @@ and then selecting the ``Print variable'' command from the
 Most of the menu commands also have keyboard short-cuts,
 which are displayed on the menu.
 
-Note that mdb's @samp{context} and @samp{user_event_context} commands
-should not be used if you are using the Emacs interface,
-otherwise the Emacs interface won't be able to parse
-the file names and line numbers that mdb outputs,
-and so it won't be able to highlight the correct location in the source code.
+Note that @samp{mdb}'s @samp{context} and @samp{user_event_context} commands
+should not be used if you are using the Emacs interface, otherwise the Emacs
+interface won't be able to parse the file names and line numbers that
+@samp{mdb} outputs, and so it won't be able to highlight the correct location
+in the source code.
 
 @node Tracing of Mercury programs
 @section Tracing of Mercury programs
@@ -1619,7 +1619,7 @@ and so it won't be able to highlight the correct location in the source code.
 The Mercury debugger is based on a modified version of the box model
 on which the four-port debuggers of most Prolog systems are based.
 Such debuggers abstract the execution of a program into a sequence,
-also called a @emph{trace}, of execution events of various kinds.
+also called a @dfn{trace}, of execution events of various kinds.
 The four kinds of events supported by most Prolog systems (their @emph{ports})
 are
 
@@ -2017,14 +2017,14 @@ but with the command line you want to debug.
 If something goes wrong when you execute the command
 
 @example
-@var{prog} @var{arg1} @var{arg2} ...
+@var{prog} @var{arg1} @var{arg2} @dots{}
 @end example
 
 and you want to find the cause of the problem,
 you must execute the command
 
 @example
-mdb [@var{mdb-options}] @var{prog} @var{arg1} @var{arg2} ...
+mdb [@var{mdb-options}] @var{prog} @var{arg1} @var{arg2} @dots{}
 @end example
 
 because you do not get a chance
@@ -2054,7 +2054,7 @@ You can put your usual aliases and settings here.
 The file named @file{.mdbrc} in the current working directory.
 You can put program-specific aliases and settings here.
 @end enumerate
-mdb will ignore any lines starting with the character #
+mdb will ignore any lines starting with the character @samp{#}
 in any of the above mentioned files.
 
 mdb accepts the following options from the command line.  The options
@@ -2064,13 +2064,16 @@ should be given to mdb before the name of the executable to be debugged.
 @item -t @var{file-name}, --tty @var{file-name}
 @findex --tty (mdb option)
 Redirect all of the I/O for the debugger to the device
-specified by @var{file-name}.  The I/O for the program
-being debugged will not be redirected.
+specified by @var{file-name}.
+The I/O for the program being debugged will not be redirected.
 This option allows the contents of a file to be piped to the program being
-debugged and not to mdb.  For example on Linux the command
-@samp{mdb -t /dev/tty ./myprog < myinput} will cause the contents of myinput
-to be piped to the program myprog, but mdb will read its input from
-the terminal.
+debugged and not to mdb.
+For example, on Linux the command
+@example
+mdb -t /dev/tty ./myprog < myinput
+@end example
+will cause the contents of @file{myinput} to be piped to the program
+@samp{myprog}, but mdb will read its input from the terminal.
 @sp 1
 @item -w, --window, --mdb-in-window
 @findex --mdb-in-window (mdb option)
@@ -2085,7 +2088,7 @@ Run the program in a new window, with the program's I/O
 going to that window, but with mdb's I/O going to the
 current terminal.  Note that input and output redirection
 will not work with the @samp{--program-in-window} option.
-@samp{--program-in-window} will work on most UNIX systems
+@samp{--program-in-window} will work on most Unix systems
 running the X Window System, even those for which
 @samp{--mdb-in-window} is not supported.
 @sp 1
@@ -2354,24 +2357,24 @@ like this:
 
 @c XXX replace with more realistic example
 @example
-	event set queens
+    event set queens
 
-	event nodiag_fail(
-		test_failed:	string,
-		arg_b:		int,
-		arg_d:		int,
-		arg_list_len:   int synthesized by list_len_func(sorted_list),
-		sorted_list:    list(int) synthesized by list_sort_func(arg_list),
-		list_len_func:  function,
-		list_sort_func: function,
-		arg_list:	list(int)
-	)
+    event nodiag_fail(
+        test_failed:    string,
+        arg_b:          int,
+        arg_d:          int,
+        arg_list_len:   int synthesized by list_len_func(sorted_list),
+        sorted_list:    list(int) synthesized by list_sort_func(arg_list),
+        list_len_func:  function,
+        list_sort_func: function,
+        arg_list:       list(int)
+    )
 
-	event safe_test(
-		test_list:	listint
-	)
+    event safe_test(
+        test_list:      listint
+    )
 
-	event noargs
+    event noargs
 @end example
 
 The header consists of the keywords @samp{event set}
@@ -2516,11 +2519,11 @@ The first word is the name of the command,
 while any other words give options and/or parameters to the command.
 
 A word may itself contain semicolons or whitespace if it is
-enclosed in single quotes (').
+enclosed in single quotes (@samp{'}).
 This is useful for commands that have other commands as parameters,
-for example @samp{view -w 'xterm -e'}.
+for example @w{@samp{view -w 'xterm -e'}}.
 Characters that have special meaning to @samp{mdb} will be treated like
-ordinary characters if they are escaped with a backslash (\).
+ordinary characters if they are escaped with a backslash (@samp{\}).
 It is possible to escape single quotes, whitespace, semicolons, newlines
 and the escape character itself.
 
@@ -3319,7 +3322,7 @@ Saves the given term to a temporary file
 and invokes grep on the file using @var{pattern}.
 @var{term} may be any term that can be saved to a file
 with the @samp{save_to_file} command.
-The unix `grep' command must be available from the shell
+The Unix @samp{grep} command must be available from the shell
 for this command to work.
 @c @sp 1
 @c @item dump [-qx] proc_body @var{filename}
@@ -3921,7 +3924,7 @@ printed before and after the target context.
 Prints the number of lines to be printed by the @samp{list} command
 printed before and after the target context.
 @sp 1
-@item list_path @var{dir1} @var{dir2} ...
+@item list_path @var{dir1} @var{dir2} @dots{}
 @kindex list_path (mdb command)
 The @samp{list} command searches a list of directories
 when looking for a source code file.
@@ -3932,7 +3935,7 @@ to the given list of directories.
 When invoked without arguments, the @samp{list_path} command
 prints the search path consulted by the @samp{list} command.
 @sp 1
-@item push_list_dir @var{dir1} @var{dir2} ...
+@item push_list_dir @var{dir1} @var{dir2} @dots{}
 @kindex push_list_dir (mdb command)
 Pushes the given directories
 on to the search path consulted by the @samp{list} command.
@@ -4082,7 +4085,7 @@ unless it specifies one or more of the options
 and @samp{-v} or @samp{--verbose},
 in which case it will set only the selected format's parameter.
 @sp 1
-@item alias @var{name} @var{command} [@var{command-parameter} ...]
+@item alias @var{name} @var{command} [@var{command-parameter} @dots{}]
 @kindex alias (mdb command)
 Introduces @var{name} as an alias
 for the given command with the given parameters.
@@ -4413,7 +4416,7 @@ should be sorted:
 @item @samp{S}: Suspicion descending
 @end itemize
 @sp 1
-For example the string "SF" means sort the table by suspicion, descending, and
+For example, the string "SF" means sort the table by suspicion, descending, and
 if any two suspicions are the same, then by number of executions in the failing
 test case, descending.
 @sp 1
@@ -4572,7 +4575,7 @@ Tells the debugger to expose events that are normally hidden.
 @item unhide_events off
 Tells the debugger to hide events that are normally hidden.
 @sp 1
-@item table @var{proc} [@var{num1} ...]
+@item table @var{proc} [@var{num1} @dots{}]
 @kindex table (mdb command)
 Tells the debugger to print the call table of the named procedure,
 together with the saved answer (if any) for each call.
@@ -4660,7 +4663,7 @@ the list will include the procedures of
 compiler generated unify, compare, index and initialization predicates.
 Normally, the list includes the procedures of only user defined predicates.
 @sp 1
-@item ambiguity [-o @var{filename}] [-ptf] [@var{modulename} ...]
+@item ambiguity [-o @var{filename}] [-ptf] [@var{modulename} @dots{}]
 @kindex ambiguity (mdb command)
 Print ambiguous procedure, type constructor and/or function symbol names.
 A procedure name is ambiguous
@@ -4969,7 +4972,7 @@ Set the number of columns in which terms are to be printed to @var{num}.
 @item width io @var{num}
 Set the number of columns in which I/O actions are to be printed to @var{num}.
 I/O actions are printed using the browser's @samp{print *} command so the
-@samp{width io} command updates the configuration parameters for the
+@w{@samp{width io}} command updates the configuration parameters for the
 browser's @samp{print *} command.
 @sp 1
 @item lines @var{num}
@@ -5197,9 +5200,9 @@ payments for a loan:
 :- pred get_payment(loan::in, int::in, payment::out) is det.
 
 get_payment(Loan, PaymentNo, Payment) :-
-        get_payment_amount(Loan, PaymentNo, Amount),
-        get_payment_date(Loan, PaymentNo, Date),
-        Payment = payment(Date, Amount).
+    get_payment_amount(Loan, PaymentNo, Amount),
+    get_payment_date(Loan, PaymentNo, Date),
+    Payment = payment(Date, Amount).
 @end example
 
 Suppose that @code{get_payment} produces an incorrect result and the
@@ -5212,7 +5215,7 @@ Valid?
 @end example
 
 Then if we know that this is the right payment amount for the given loan,
-but the date is incorrect, we can track the date(...) subterm and the
+but the date is incorrect, we can track the @code{date(...)} subterm and the
 debugger will then ask us about @code{get_payment_date}:
 
 @noindent
@@ -5379,7 +5382,7 @@ many trace count files you wish to analyse with @samp{mslice} or @samp{mdice}.
 @samp{mtc_union} is invoked by issuing a command of the form:
 @sp 1
 @example
-mtc_union [-v] -o output_file file1 file2 ...
+mtc_union [-v] -o output_file file1 file2 @dots{}
 @end example
 @sp 1
 @samp{file1}, @samp{file2}, etc.
@@ -5471,7 +5474,7 @@ Each letter specifies a column and direction to sort on:
 @item @samp{T}: Number of runs descending
 @end itemize
 @sp 1
-For example the option @samp{-s cT} will sort the output table
+For example, the option @samp{-s cT} will sort the output table
 by the Count column in ascending order.
 If the counts for two or more events are the same,
 then those events will be sorted by number of runs in descending order.
@@ -5637,7 +5640,7 @@ given.
 The @samp{mcov} tool is invoked with a command of the form:
 @sp 1
 @example
-mcov [-d] [-v] [-o output_file] tracecountfile1 ...
+mcov [-d] [-v] [-o output_file] tracecountfile1 @dots{}
 @end example
 The arguments consist of one or more trace count files.
 The output will normally be a list of all the procedures in the program
@@ -6126,9 +6129,11 @@ call in the profiling output.
 You may want to call them from within @samp{trace} goals:
 
 @example
+@group
 trace [run_time(env("SNAPSHOTS")), io(!IO)] (
     benchmarking.report_memory_attribution("Phase 2", !IO)
 )
+@end group
 @end example
 
 If a program operates in distinct phases
@@ -6598,7 +6603,7 @@ Warn about procedures which are never called.
 @item --no-warn-table-with-inline
 @findex --no-warn-table-with-inline
 Disable warnings about tabled procedures that also have
-a `pragma inline' declaration.
+a @samp{pragma inline} declaration.
 
 @sp 1
 @item --no-warn-non-term-special-preds
@@ -8786,7 +8791,7 @@ the polymorphic types are known.
 @findex --user-guided-type-specialization
 @cindex Type specialization, user guided
 Enable specialization of polymorphic predicates for which
-there are `:- pragma type_spec' declarations.
+there are @samp{pragma type_spec} declarations.
 See the ``Type specialization'' section in the ``Pragmas''
 chapter of the Mercury Language Reference Manual for more details.
 
@@ -10688,7 +10693,7 @@ The @samp{--trace-count-summary-max} option specifies the maximum value of this
 @var{N}.
 When this maximum is reached,
 the program will invoke the @samp{mtc_union} program
-to summarize @var{basename}, @var{basename.1}, ... @var{basename.N}
+to summarize @var{basename}, @var{basename.1}, @dots{} @var{basename.N}
 into a single file @var{basename}, and delete the rest.
 By imposing a limit on the total number (and hence indirectly on the total
 size) of these trace count files, this mechanism allows the gathering of trace

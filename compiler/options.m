@@ -4475,7 +4475,7 @@ options_help_compilation_model -->
         "--record-term-sizes-as-cells\t\t(grade modifier: `.tsc')",
         "\tAugment each heap cell with its size in cells.",
 
-        "--experimental-complexity <filename>\t\t",
+        "--experimental-complexity <filename>",
         "\tEnable experimental complexity analysis for the predicates",
         "\tlisted in the given file.",
         "\tThis option is supported for the C back-end, with",

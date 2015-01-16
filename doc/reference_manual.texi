@@ -11,7 +11,7 @@
 @c @smallbook
 @c @cropmarks
 @finalout
-@setchapternewpage off
+@setchapternewpage on
 @ifnottex
 This file documents the Mercury programming language, version <VERSION>.
 
@@ -699,12 +699,12 @@ in parallel.
 The order in which parallel conjuncts begin execution is
 not fixed.
 It is an error for @var{Goal1} or @var{Goal2} to have a
-determinism other than @samp{det} or @samp{cc_multi}.  
+determinism other than @code{det} or @code{cc_multi}.
 @xref{Determinism categories}.
 
 @item @code{@var{Goal1} ; @var{Goal2}}
-where @var{Goal1} is not of the form @samp{Goal1a -> Goal1b}:
-a disjunction.
+where @var{Goal1} is not of the form
+@samp{@var{Goal1a} -> @var{Goal1b}}: a disjunction.
 @var{Goal1} and @var{Goal2} must be valid goals.
 
 @item @code{true}
@@ -836,14 +836,14 @@ with respect to the equality theories of the variables in @var{Vars}.
 It is an error for @var{Vars} to include a variable not bound by @var{Goal}
 or for @var{Goal} to bind a non-local variable
 that is not listed in @var{Vars}
-(non-local variables with inst @var{any} are assumed to be further constrained
+(non-local variables with inst @code{any} are assumed to be further constrained
 by @var{Goal} and must also be included in @var{Vars}).
-If @var{Goal} has determinism @samp{multi} or @samp{cc_multi} then
+If @var{Goal} has determinism @code{multi} or @code{cc_multi} then
 @code{promise_equivalent_solutions @var{Vars} @var{Goal}}
-has determinism @samp{det}.
-If @var{Goal} has determinism @samp{nondet} or @samp{cc_nondet} then
+has determinism @code{det}.
+If @var{Goal} has determinism @code{nondet} or @code{cc_nondet} then
 @code{promise_equivalent_solutions @var{Vars} @var{Goal}}
-has determinism @samp{semidet}.
+has determinism @code{semidet}.
 
 @item @code{promise_equivalent_solution_sets @var{Vars} @var{Goal}}
 A determinism cast,
@@ -871,10 +871,10 @@ while different choices of solutions for some of the @var{ArbGoal}s
 may lead to syntactically different solutions for @var{Vars} for @var{Goal},
 all of these solutions are equivalent
 with respect to the equality theories of the variables in @var{Vars}.
-If an @var{ArbGoal} has determinism @samp{multi} or @samp{cc_multi} then
-@code{arbitrary @var{ArbVars} @var{ArbGoal}} has determinism @samp{det}.
-If @var{ArbGoal} has determinism @samp{nondet} or @samp{cc_nondet} then
-@code{arbitrary @var{ArbVars} @var{ArbGoal}} has determinism @samp{semidet}.
+If an @var{ArbGoal} has determinism @code{multi} or @code{cc_multi} then
+@code{arbitrary @var{ArbVars} @var{ArbGoal}} has determinism @code{det}.
+If @var{ArbGoal} has determinism @code{nondet} or @code{cc_nondet} then
+@code{arbitrary @var{ArbVars} @var{ArbGoal}} has determinism @code{semidet}.
 @var{Goal} itself may have any determinism.
 
 There is no requirement that given one of the @var{ArbGoal}s,
@@ -1000,12 +1000,14 @@ A try goal. Exceptions thrown during the execution of @var{Goal}
 may be caught and handled. A summary of the try goal syntax is:
 
 @example
+@group
     try @var{Params} @var{Goal}
     then @var{ThenGoal}
     else @var{ElseGoal}
     catch @var{Term} -> @var{CatchGoal}
-    ...
+    @dots{}
     catch_any @var{CatchAnyVar} -> @var{CatchAnyGoal}
+@end group
 @end example
 
 See @ref{Exception handling} for the full details.
@@ -1034,18 +1036,18 @@ Clauses may use @samp{state variables} as a shorthand for naming
 intermediate values in a sequence.  That is, where in the plain syntax one
 might write
 @example
-	main(IO0, IO) :-
-		io.write_string("The answer is ", IO0, IO1),
-		io.write_int(calculate_answer(@dots{}), IO1, IO2),
-		io.nl(IO3, IO).
+    main(IO0, IO) :-
+        io.write_string("The answer is ", IO0, IO1),
+        io.write_int(calculate_answer(@dots{}), IO1, IO2),
+        io.nl(IO3, IO).
 @end example
 @noindent
 using state variable syntax one could write
 @example
-	main(!IO) :-
-		io.write_string("The answer is ", !IO),
-		io.write_int(calculate_answer(@dots{}), !IO),
-		io.nl(!IO).
+    main(!IO) :-
+        io.write_string("The answer is ", !IO),
+        io.write_int(calculate_answer(@dots{}), !IO),
+        io.nl(!IO).
 @end example
 
 A state variable is written @samp{!.@var{X}} or @samp{!:@var{X}},
@@ -1082,30 +1084,30 @@ by a more local state variable of the same name.)
 
 For instance, the following clause employing a lambda expression
 @example
-        p(@var{A}, @var{B}, !@var{S}) :-
-                F = (pred(@var{C}::in, @var{D}::out) is det :-
-                        q(@var{C}, @var{D}, !@var{S})
-                ),
-                ( F(@var{A}, @var{E}) ->
-                        @var{B} = @var{E}
-                ;
-                        @var{B} = @var{A}
-                ).
+p(@var{A}, @var{B}, !@var{S}) :-
+    F = (pred(@var{C}::in, @var{D}::out) is det :-
+        q(@var{C}, @var{D}, !@var{S})
+    ),
+    ( F(@var{A}, @var{E}) ->
+        @var{B} = @var{E}
+    ;
+        @var{B} = @var{A}
+    ).
 @end example
 @noindent
 is illegal because
 it implicitly refers to @samp{!:@var{S}} inside the lambda expression.
 However
 @example
-        p(@var{A}, @var{B}, !@var{S}) :-
-                F = (pred(@var{C}::in, @var{D}::out, !.@var{S}::in, !:@var{S}::out) is det :-
-                        q(@var{C}, @var{D}, !@var{S})
-                ),
-                ( F(@var{A}, @var{E}, !@var{S}) ->
-                        @var{B} = @var{E}
-                ;
-                        @var{B} = @var{A}
-                ).
+p(@var{A}, @var{B}, !@var{S}) :-
+    F = (pred(@var{C}::in, @var{D}::out, !.@var{S}::in, !:@var{S}::out) is det :-
+        q(@var{C}, @var{D}, !@var{S})
+    ),
+    ( F(@var{A}, @var{E}, !@var{S}) ->
+        @var{B} = @var{E}
+    ;
+        @var{B} = @var{A}
+    ).
 @end example
 @noindent
 is acceptable because the state variable @var{S} accessed
@@ -1228,10 +1230,10 @@ variable syntax.
 @item Threading the I/O state
 @example
 main(!IO) :-
-	io.write_string("The 100th prime is ", !IO),
-	X = prime(100),
-	io.write_int(X, !IO),
-	io.nl(!IO).
+    io.write_string("The 100th prime is ", !IO),
+    X = prime(100),
+    io.write_int(X, !IO),
+    io.nl(!IO).
 @end example
 
 @item Handling accumulators (1)
@@ -1239,19 +1241,19 @@ main(!IO) :-
 foldl2(_, [], !A, !B).
 
 foldl2(P, [X | Xs], !A, !B) :-
-	P(X, !A, !B),
-	foldl2(P, Xs, !A, !B).
+    P(X, !A, !B),
+    foldl2(P, Xs, !A, !B).
 @end example
 
 @item Handling accumulators (2)
 @example
 iterate_while2(P, F, !A, !B) :-
-	( if P(!.A, !.B) then 
-		F(!A, !B),
-		iterate_while2(P, F, !A, !B)
-	  else
-	  	true
-	).
+    ( if P(!.A, !.B) then
+        F(!A, !B),
+        iterate_while2(P, F, !A, !B)
+    else
+        true
+    ).
 @end example
 @end table
 
@@ -1313,8 +1315,8 @@ all Vars transform(V_in, V_out, DCG_goal)
 
 @item @var{DCG-goal1}, @var{DCG-goal2}
 A DCG sequence.
-Intuitively, this means ``parse DCG-goal1 and then parse DCG-goal2''
-or ``do DCG-goal1 and then do DCG-goal2''.
+Intuitively, this means ``parse @var{DCG-goal1} and then parse @var{DCG-goal2}''
+or ``do @var{DCG-goal1} and then do @var{DCG-goal2}''.
 (Note that the only way this construct actually forces the desired sequencing
 is by the modes of the implicit DCG arguments.)
 @var{DCG-goal1} and @var{DCG-goal2} must be valid DCG-goals.
@@ -1628,7 +1630,7 @@ Result = 'field1 :='(Arg1, Term, NewField1)
 A unification expression is an expression of the form
 
 @example
-X @@ Y
+@var{X} @@ @var{Y}
 @end example
 
 @noindent
@@ -1638,9 +1640,9 @@ The meaning of a unification expression is that the arguments are unified,
 and the expression is equivalent to the unified value.
 
 The strict sequential operational semantics (@pxref{Semantics}) of an
-expression @w{@code{X @@ Y}} is that the expression is replaced by a
-fresh variable @var{Z}, and immediately after @var{Z} is evaluated,
-the conjunction @w{@code{Z = X, Z = Y}} is evaluated.
+expression @w{@code{@var{X} @@ @var{Y}}} is that the expression is replaced by a
+fresh variable @code{Z}, and immediately after @code{Z} is evaluated,
+the conjunction @w{@code{Z = @var{X}, Z = @var{Y}}} is evaluated.
 
 For example
 
@@ -1653,9 +1655,9 @@ is equivalent to
 
 @example
 p(H1, H2) :-
-        H1 = X,
-        H1 = f(_, _),
-        H2 = X.
+    H1 = X,
+    H1 = f(_, _),
+    H2 = X.
 @end example
 
 Unification expressions are most useful when writing switches
@@ -1681,7 +1683,7 @@ both data-terms. The semantics of a conditional expression is that
 if @var{Goal} is true, then the expression has the meaning of
 @var{Expression1}, else the expression has the meaning of @var{Expression2}.
 
-If @var{Goal} takes the form @code{some [X, Y, Z] ...} then the scope of
+If @var{Goal} takes the form @code{some [X, Y, Z] @dots{}} then the scope of
 @var{X}, @var{Y}, and @var{Z} includes @var{Expression1}.
 
 @node Lambda expressions
@@ -1698,13 +1700,13 @@ func(Arg1, Arg2, @dots{}) = Result :- Goal
 @end example
 
 @noindent
-where Arg1, Arg2, @dots{} are zero or more data-terms,
-Result is a data-term,
-Mode1, Mode2, @dots{} are zero or more modes (@pxref{Modes}),
-DCGMode0 and DCGMode1 are modes (@pxref{Modes}),
-Det is a determinism (@pxref{Determinism}),
-Goal is a goal (@pxref{Goals}),
-and DCGGoal is a DCG Goal (@pxref{DCG-goals}). 
+where @var{Arg1}, @var{Arg2}, @dots{} are zero or more data-terms,
+@var{Result} is a data-term,
+@var{Mode1}, @var{Mode2}, @dots{} are zero or more modes (@pxref{Modes}),
+@var{DCGMode0} and @var{DCGMode1} are modes (@pxref{Modes}),
+@var{Det} is a determinism (@pxref{Determinism}),
+@var{Goal} is a goal (@pxref{Goals}),
+and @var{DCGGoal} is a DCG Goal (@pxref{DCG-goals}).
 The @samp{:- Goal} part is optional;
 if it is not specified, then @samp{:- true} is assumed.
 A lambda expression denotes a higher-order predicate or function term
@@ -1712,11 +1714,11 @@ whose value is the predicate or function of the specified arguments
 determined by the specified goal.  @xref{Higher-order}.
 
 A lambda expression introduces a new scope: any variables occurring in
-the arguments Arg1, Arg2, @dots{} are locally quantified, i.e.@: 
+the arguments @var{Arg1}, @var{Arg2}, @dots{} are locally quantified, i.e.@:
 any occurrences of variables with that name in the lambda
 expression are considered to name a different variable than any
 variables with the same name that occur outside of the
-lambda expression.  For variables which occur in Result or Goal,
+lambda expression.  For variables which occur in @var{Result} or @var{Goal},
 but not in the arguments, the usual Mercury rules for implicit
 quantification apply (@pxref{Implicit quantification}).
 
@@ -1736,8 +1738,8 @@ pred(Var1::Mode1, Var2::Mode2, @dots{},
 @end example
 
 @noindent
-where DCGVar0 and DCGVar1 are fresh variables,
-and Goal is the result of @samp{DCG-transform(DCGVar0, DCGVar1, DCGGoal)}
+where @var{DCGVar0} and @var{DCGVar1} are fresh variables,
+and @var{Goal} is the result of @samp{DCG-transform(DCGVar0, DCGVar1, DCGGoal)}
 where DCG-transform is the function specified in @ref{DCG-goals}.
 
 @node Higher-order function applications
@@ -2274,8 +2276,8 @@ and ``exactly match'' means to be identical up to renaming of type parameters.)
 
 One type assignment @var{A} is said to be
 @dfn{more general} than another type assignment @var{B}
-if there is a binding of the type parameters in A
-that makes it identical (up to renaming of parameters) to B.
+if there is a binding of the type parameters in @var{A}
+that makes it identical (up to renaming of parameters) to @var{B}.
 If there is more than one valid type assignment,
 the compiler must choose the most general one.
 If there are two valid type assignments which are not identical up to renaming
@@ -2450,18 +2452,17 @@ Using these functions and the syntactic sugar described in
 :- func type1 ^ increment_field3 = type1.
 
 Term0 ^ increment_field3 =
-        Term0 ^ field1 ^ field3 := Term0 ^ field1 ^ field3 + 1.
+    Term0 ^ field1 ^ field3 := Term0 ^ field1 ^ field3 + 1.
 @end example
 
 The compiler expands this into
 
 @example
-incremental_field3(Term0) = Term :-
-        OldField3 = field3(field1(Term0)),
-
-        OldField1 = field1(Term0),
-        NewField1 = 'field3 :='(OldField1, OldField3 + 1),
-        Term = 'field1 :='(Term0, NewField1).
+increment_field3(Term0) = Term :-
+    OldField3 = field3(field1(Term0)),
+    OldField1 = field1(Term0),
+    NewField1 = 'field3 :='(OldField1, OldField3 + 1),
+    Term = 'field1 :='(Term0, NewField1).
 @end example
 
 The field access functions defined in the Mercury standard library
@@ -2469,10 +2470,10 @@ module @samp{map} can be used as follows:
 
 @example
 :- func update_field_in_map(map(int, type1), int, string)
-                = map(int, type1) is semidet.
+    = map(int, type1) is semidet.
 
 update_field_in_map(Map, Index, Value) =
-                Map ^ elem(Index) ^ field2 := Value.
+    Map ^ elem(Index) ^ field2 := Value.
 @end example
 
 @node Modes
@@ -2606,18 +2607,18 @@ structures with ``free'' @emph{holes} in them.
 unsupported due to a lack of alias tracking in the mode system.  For more
 information please see the @file{LIMITATIONS} file distributed with Mercury.)
 
-For example, consider an
-interface to a database that associates data with keys, and provides
-read and write access to the items it stores.  To represent accesses to
-the database over a network, you would need declarations such as
+For example, consider an interface to a database that associates data with
+keys, and provides read and write access to the items it stores.
+To represent accesses to the database over a network, you would need
+declarations such as
 
 @example
 :- type operation
-        --->    lookup(key, data)
-        ;       set(key, data).
+     --->   lookup(key, data)
+     ;      set(key, data).
 :- inst request
-	--->	lookup(ground, free)
-        ;       set(ground, ground).
+    --->    lookup(ground, free)
+    ;       set(ground, ground).
 :- mode create_request == free >> request.
 :- mode satisfy_request == request >> ground.
 @end example
@@ -2631,7 +2632,7 @@ For example, the following declaration
 
 @noindent
 defines the inst @samp{listskel(Inst)} to be a list skeleton
-whose elements have inst @samp{Inst}; you can then use insts
+whose elements have inst @code{Inst}; you can then use insts
 such as @samp{listskel(listskel(free))}, which represents
 the instantiation state of a list of lists of free variables.
 The standard library provides the parametric modes
@@ -2665,10 +2666,8 @@ Each mode of a predicate or function is called a @dfn{procedure}.
 For example, given the mode names defined by
 
 @example
-:- mode out_listskel ==
-        free >> listskel.
-:- mode in_listskel ==
-        listskel >> listskel.
+:- mode out_listskel == free >> listskel.
+:- mode in_listskel == listskel >> listskel.
 @end example
 
 @noindent
@@ -2860,8 +2859,8 @@ same constraint on each occurrence.
 
 For example, in the mode declaration
 @example
-	:- mode append(in(list_skel(I =< ground)), in(list_skel(I =< ground)),
-	        out(list_skel(I =< ground))) is det.
+:- mode append(in(list_skel(I =< ground)), in(list_skel(I =< ground)),
+    out(list_skel(I =< ground))) is det.
 @end example
 @noindent
 @code{I} is an inst parameter which is constrained to be ground.  
@@ -2870,8 +2869,8 @@ If @samp{append} is called with the first two arguments having an inst of, say,
 will have inst @samp{list_skel(bound(f))}.
 If the mode of append had been simply
 @example
-	:- mode append(in(list_skel(ground)), in(list_skel(ground)),
-	        out(list_skel(ground))) is det.
+:- mode append(in(list_skel(ground)), in(list_skel(ground)),
+    out(list_skel(ground))) is det.
 @end example
 @noindent
 then we would only have been able to infer an inst of @samp{list_skel(ground)}
@@ -2886,8 +2885,8 @@ it is possible to list the constraints after the rest of the mode declaration,
 following a @samp{<=}.
 E.g.@: the above example could have been written as
 @example
-	:- (mode append(in(list_skel(I)), in(list_skel(I)),
-                out(list_skel(I))) is det) <= I =< ground.
+:- (mode append(in(list_skel(I)), in(list_skel(I)),
+    out(list_skel(I))) is det) <= I =< ground.
 @end example
 
 Note that in the current Mercury implementation this syntax requires
@@ -2898,10 +2897,9 @@ Also, if the constraint on an inst parameter is @samp{ground} then it
 is not necessary to give the constraint in the declaration.
 The example can be further shortened to
 @example
-	:- mode append(in(list_skel(I)), in(list_skel(I)), out(list_skel(I)))
-                is det.       
+:- mode append(in(list_skel(I)), in(list_skel(I)), out(list_skel(I)))
+    is det.
 @end example
-
 
 Constrained polymorphic modes are particularly useful when passing
 objects with higher-order types to polymorphic predicates
@@ -2920,8 +2918,8 @@ code for different modes.
 For example, the usual code for list append
 
 @example
-	append([], Ys, Ys).
-	append([X|Xs], Ys, [X|Zs]) :- append(Xs, Ys, Zs).
+append([], Ys, Ys).
+append([X|Xs], Ys, [X|Zs]) :- append(Xs, Ys, Zs).
 @end example
 
 @noindent
@@ -2936,15 +2934,15 @@ inference may cause spurious determinism errors later.
 For this mode, it is better to use a completely different algorithm:
 
 @example
-	append(Prefix, Suffix, List) :-
-		list.length(List, ListLength),
-		list.length(Suffix, SuffixLength),
-		PrefixLength = ListLength - SuffixLength,
-		list.split_list(PrefixLength, List, Prefix, Suffix).
+append(Prefix, Suffix, List) :-
+    list.length(List, ListLength),
+    list.length(Suffix, SuffixLength),
+    PrefixLength = ListLength - SuffixLength,
+    list.split_list(PrefixLength, List, Prefix, Suffix).
 @end example
 
 @noindent
-However, that code doesn't work in the other modes of append.
+However, that code doesn't work in the other modes of @samp{append}.
 
 To handle such cases, you can use mode annotations on clauses, which
 indicate that particular clauses should only be used for particular modes.
@@ -2953,45 +2951,48 @@ To specify that a clause only applies to a given mode, each argument
 argument mode @var{Mode}, using the @samp{::} mode qualification operator,
 i.e.@: @samp{@var{Arg} :: @var{Mode}}.
 
-For example, if append was declared as
-
+For example, if @samp{append} was declared as
 @example
-	:- pred append(list(T), list(T), list(T)).
-	:- mode append(in, in, out).
-	:- mode append(out, out, in).
-	:- mode append(in, out, in).
-	:- mode append(out, in, in).
+@group
+:- pred append(list(T), list(T), list(T)).
+:- mode append(in, in, out).
+:- mode append(out, out, in).
+:- mode append(in, out, in).
+:- mode append(out, in, in).
+@end group
 @end example
 
 @noindent
 then you could implement it as
 
 @example
-	append(L1::in,  L2::in,  L3::out) :- usual_append(L1, L2, L3).
-	append(L1::out, L2::out, L3::in)  :- usual_append(L1, L2, L3).
-	append(L1::in,  L2::out, L3::in)  :- usual_append(L1, L2, L3).
-	append(L1::out, L2::in,  L3::in)  :- other_append(L1, L2, L3).
+@group
+append(L1::in,  L2::in,  L3::out) :- usual_append(L1, L2, L3).
+append(L1::out, L2::out, L3::in)  :- usual_append(L1, L2, L3).
+append(L1::in,  L2::out, L3::in)  :- usual_append(L1, L2, L3).
+append(L1::out, L2::in,  L3::in)  :- other_append(L1, L2, L3).
 
-	usual_append([], Ys, Ys).
-	usual_append([X|Xs], Ys, [X|Zs]) :- usual_append(Xs, Ys, Zs).
+usual_append([], Ys, Ys).
+usual_append([X|Xs], Ys, [X|Zs]) :- usual_append(Xs, Ys, Zs).
 
-	other_append(Prefix, Suffix, List) :-
-		list.length(List, ListLength),
-		list.length(Suffix, SuffixLength),
-		PrefixLength = ListLength - SuffixLength,
-		list.split_list(PrefixLength, List, Prefix, Suffix).
+other_append(Prefix, Suffix, List) :-
+    list.length(List, ListLength),
+    list.length(Suffix, SuffixLength),
+    PrefixLength = ListLength - SuffixLength,
+    list.split_list(PrefixLength, List, Prefix, Suffix).
+@end group
 @end example
 
 This language feature can be used to write ``impure'' code that
 doesn't have any consistent declarative semantics.  For example,
 you can easily use it to write something similar to Prolog's (in)famous
-var/1 predicate:
+@samp{var/1} predicate:
 
 @example
-	:- mode var(in).
-	:- mode var(free>>free).
-	var(_::in) :- fail.
-	var(_::free>>free) :- true.
+:- mode var(in).
+:- mode var(free>>free).
+var(_::in) :- fail.
+var(_::free>>free) :- true.
 @end example
 
 @noindent
@@ -3013,20 +3014,19 @@ append do have the same declarative semantics, so we can safely use
 the first approach:
 
 @example
-	:- pragma promise_equivalent_clauses(append/3).
+:- pragma promise_equivalent_clauses(append/3).
 @end example
 
 The pragma
 
 @example
-	:- pragma promise_pure(append/3).
+:- pragma promise_pure(append/3).
 @end example
 
-would also promise that the clauses are equivalent,
-but on top of that would also promise that the code of each clause is pure.
-Sometimes, if some clauses contain impure code,
-that is a promise that the programmer wants to make,
-but this extra promise is unnecessary in this case.
+would also promise that the clauses are equivalent, but on top of that would
+also promise that the code of each clause is pure.
+Sometimes, if some clauses contain impure code, that is a promise that the
+programmer wants to make, but this extra promise is unnecessary in this case.
 
 In the example with @samp{var/1} above, the two clauses have different
 semantics, so the predicate must be declared as impure:
@@ -3064,12 +3064,12 @@ tentative.
 @node Destructive update
 @section Destructive update
 
-In addition to the insts mentioned above (@samp{free}, @samp{ground},
-and @samp{bound(@dots{})}), Mercury also provides ``unique'' insts
-@samp{unique} and @samp{unique(@dots{})} which are like @samp{ground}
-and @samp{bound(@dots{})} respectively, except that they carry the
+In addition to the insts mentioned above (@code{free}, @code{ground},
+and @code{bound(@dots{})}), Mercury also provides ``unique'' insts
+@code{unique} and @code{unique(@dots{})} which are like @code{ground}
+and @code{bound(@dots{})} respectively, except that they carry the
 additional constraint that there can only be one reference to the
-corresponding value.  There is also an inst @samp{dead} which means
+corresponding value.  There is also an inst @code{dead} which means
 that there are no references to the corresponding value, so the compiler
 is free to generate code that reuses that value.
 There are three standard modes for manipulating unique values:
@@ -3085,19 +3085,19 @@ There are three standard modes for manipulating unique values:
 :- mode di == unique >> dead.
 @end example
 
-Mode @samp{uo} is used to create a unique value.
-Mode @samp{ui} is used to inspect a unique value without
+Mode @code{uo} is used to create a unique value.
+Mode @code{ui} is used to inspect a unique value without
 losing its uniqueness.
-Mode @samp{di} is used to deallocate or reuse the memory
+Mode @code{di} is used to deallocate or reuse the memory
 occupied by a value that will not be used.
 
-Note that a value is not considered @samp{unique} if it might be
+Note that a value is not considered @code{unique} if it might be
 needed on backtracking.  This means that unique modes are generally
-only useful for code whose determinism is @samp{det} or @samp{cc_multi}
+only useful for code whose determinism is @code{det} or @code{cc_multi}
 (@pxref{Determinism}).
 
-Unlike @samp{bound} instantiatedness trees, there is no alternative
-syntax for @samp{unique} instantiatedness trees.
+Unlike @code{bound} instantiatedness trees, there is no alternative
+syntax for @code{unique} instantiatedness trees.
 
 @node Backtrackable destructive update
 @section Backtrackable destructive update
@@ -3120,11 +3120,11 @@ To allow for backtrackable destructive updates --- that is, updates
 whose effect is undone on backtracking, perhaps by recording the
 overwritten values on a ``trail'' so that they can be restored
 after backtracking --- Mercury also provides ``mostly unique''
-modes.  The insts @samp{mostly_unique} and @samp{mostly_dead}
-are equivalent to @samp{unique} and @samp{dead},
+modes.  The insts @code{mostly_unique} and @code{mostly_dead}
+are equivalent to @code{unique} and @code{dead},
 except that only references which will be encountered during 
-forward execution are counted --- it is OK for @samp{mostly_unique} or
-@samp{mostly_dead} values to be needed again on backtracking.
+forward execution are counted --- it is OK for @code{mostly_unique} or
+@code{mostly_dead} values to be needed again on backtracking.
 
 Mercury defines some standard modes for manipulating ``mostly unique''
 values, just as it does for unique values:
@@ -3151,7 +3151,7 @@ to get a unique field of a unique data structure.
 It is also not possible to use unique-input modes;
 only destructive-input and unique-output modes work.
 
-The Mercury compiler does not (yet) reuse @samp{dead}
+The Mercury compiler does not (yet) reuse @code{dead}
 values.  The only destructive update in the current implementation occurs
 in library modules, e.g.@: for I/O and arrays.  We do however plan to
 implement structure reuse and compile-time garbage collection
@@ -3222,7 +3222,7 @@ yes             failure         semidet         nondet
 (Note: the ``Can fail?'' column here indicates only whether the procedure
 can fail before producing at least one solution; attempts to find a
 @emph{second} solution to a particular call, e.g.@: for a procedure
-with determinism @samp{multi}, are always allowed to fail.)
+with determinism @code{multi}, are always allowed to fail.)
 
 The determinism of each mode of a predicate or function
 is indicated by an annotation on the mode declaration.
@@ -3240,11 +3240,11 @@ For example:
 :- mode length(in) = in is semidet.
 @end example
 
-An annotation of @samp{det} or @samp{multi} is an assertion that
+An annotation of @code{det} or @code{multi} is an assertion that
 for every value each of the inputs, there exists at least one value
 of the outputs for which the predicate is true, or (in the case
 of functions) for which the function term is equal to the result term.
-Conversely, an annotation of @samp{det} or @samp{semidet} is an assertion
+Conversely, an annotation of @code{det} or @code{semidet} is an assertion
 that for every value each of the inputs, there exists at most one value
 of the outputs for which the predicate is true, or (in the case
 of functions) for which the function term is equal to the result term.
@@ -3278,9 +3278,9 @@ q :- fail.
 @end example
 
 If there is no mode declaration for a function, then the default
-mode for that function is considered to have been declared as @samp{det}.
+mode for that function is considered to have been declared as @code{det}.
 If you want to write a partial function, i.e.@: one whose determinism
-is @samp{semidet}, then you must explicitly declare the mode and determinism.
+is @code{semidet}, then you must explicitly declare the mode and determinism.
 
 In Mercury, a function is supposed to be a true mathematical function
 of its arguments; that is, the value of the function's result should
@@ -3288,7 +3288,7 @@ be determined only by the values of its arguments.  Hence, for
 any mode of a function that specifies that all the arguments are fully
 input (i.e.@: for which the initial inst of all the arguments is a ground inst),
 the determinism of that mode can only be
-@samp{det}, @samp{semidet}, @samp{erroneous}, or @samp{failure}.
+@code{det}, @code{semidet}, @code{erroneous}, or @code{failure}.
 
 The determinism categories form this lattice:
 
@@ -3401,45 +3401,44 @@ A disjunction is a @emph{switch}
 if each disjunct has near its start a unification that
 tests the same bound variable against a different function symbol.
 For example, consider the common pattern
-
 @example
+@group
 (
-        L = [], empty(Out)
+    L = [], empty(Out)
 ;
-        L = [H|T], nonempty(H, T, Out)
+    L = [H|T], nonempty(H, T, Out)
 )
+@end group
 @end example
 
-If L is input to the disjunction, then the disjunction is a switch on L.
+If @code{L} is input to the disjunction, then the disjunction is a switch on
+@code{L}.
 
-If two variables are unified with each other,
-then whatever function symbol one variable is unified with,
-the other variable is considered to be unified with the same function symbol.
-In the following example, since K is unified with L,
-the second disjunct unifies L as well as K with cons,
-and thus the disjunction is recognized as a switch.
-
+If two variables are unified with each other, then whatever function symbol one
+variable is unified with, the other variable is considered to be unified with
+the same function symbol.
+In the following example, since @code{K} is unified with @code{L}, the second
+disjunct unifies @code{L} as well as @code{K} with cons, and thus the
+disjunction is recognized as a switch.
 @example
+@group
 (
-        L = [], empty(Out)
+    L = [], empty(Out)
 ;
-        K = L, K = [H|T], nonempty(H, T, Out)
+    K = L, K = [H|T], nonempty(H, T, Out)
 )
+@end group
 @end example
 
-A switch can fail
-if the various arms of the switch do not cover
-all the function symbols in the type of the switched-on variable,
-or if the code in some arms of the switch can fail,
-bearing in mind that in each arm of the switch,
-the unification that tests the switched-on variable
-against the function symbol of that arm is considered to be deterministic.
-A switch can succeed several times
-if some arms of the switch can succeed several times,
-possibly because there are multiple disjuncts
-that test the switched-on variable against the same function symbol.
-A switch can succeed at most zero times
-only if all arms of the switch can succeed at most zero times.
+A switch can fail if the various arms of the switch do not cover all the
+function symbols in the type of the switched-on variable, or if the code in
+some arms of the switch can fail, bearing in mind that in each arm of the
+switch, the unification that tests the switched-on variable against the
+function symbol of that arm is considered to be deterministic.
+A switch can succeed several times if some arms of the switch can succeed
+several times, possibly because there are multiple disjuncts that test the
+switched-on variable against the same function symbol.  A switch can succeed at
+most zero times only if all arms of the switch can succeed at most zero times.
 
 Only unifications may occur before the test of the switched-on variable
 in each disjunct. Tests of the switched-on variable may occur within
@@ -3449,12 +3448,12 @@ The following example is a switch.
 
 @example
 (
-        Out = 1, L = []
+    Out = 1, L = []
 ;
-        some [H, T] (
-                L = [H|T],
-                nonempty(H, T, Out)
-        )
+    some [H, T] (
+        L = [H|T],
+        nonempty(H, T, Out)
+    )
 )
 @end example
 
@@ -3463,9 +3462,9 @@ disjunct occurs before the test of the switched-on variable.
 
 @example
 (
-        empty(Out), L = []
+    empty(Out), L = []
 ;
-        L = [H|T], nonempty(H, T, Out)
+    L = [H|T], nonempty(H, T, Out)
 )
 @end example
 
@@ -3473,24 +3472,25 @@ The unification of the switched-on variable with a function symbol
 may occur inside a nested disjunction in a given disjunct,
 provided that unification is preceded only by other unifications,
 both inside the nested disjunction and before the nested disjunction.
-The following example is a switch on X, provided X is bound beforehand.
+The following example is a switch on @code{X}, provided @code{X} is bound
+beforehand.
 
 @example
 @group
 (
-        X = f
-        p(Out)
+    X = f
+    p(Out)
 ;
-        Y = X,
-        (
-                Y = g,
-                Intermediate = 42
-        ;
-                Z = Y,
-                Z = h(Arg),
-                q(Arg, Intermediate)
-        ),
-        r(Intermediate, Out)
+    Y = X,
+    (
+        Y = g,
+        Intermediate = 42
+    ;
+        Z = Y,
+        Z = h(Arg),
+        q(Arg, Intermediate)
+    ),
+    r(Intermediate, Out)
 )
 @end group
 @end example
@@ -3562,17 +3562,17 @@ because it requires solving the halting problem.
 :- mode p(in, out) is det.
 
 p(A, B) :-
-        (
-                something_complicated(A, B)
-        ;
-                B = A
-        ).
+    (
+        something_complicated(A, B)
+    ;
+        B = A
+    ).
 @end group
 @end example
 
 @noindent
 @samp{p/2} can have more than one solution
-only if @samp{something_complicated} can succeed.)
+only if @samp{something_complicated/2} can succeed.)
 Sometimes, the rules specified by the Mercury language
 for determinism inference will infer a determinism
 that is not as precise as you would like.
@@ -3589,11 +3589,11 @@ and if it fails, call the library predicate @samp{error/1}.
 :- mode q(in, out) is det.
 
 q(A, B) :-
-        ( goal_that_should_never_fail(A, B0) ->
-                B = B0
-        ;
-                error("goal_that_should_never_fail failed!")
-        ).
+    ( goal_that_should_never_fail(A, B0) ->
+        B = B0
+    ;
+        error("goal_that_should_never_fail failed!")
+    ).
 @end example
 
 @noindent
@@ -3606,8 +3606,8 @@ is paid back in reduced debugging time.)
 Mercury's mode analysis knows that
 computations with determinism erroneous can never succeed,
 which is why it does not require the ``else'' part to generate
-a value for @samp{B}.
-The introduction of the new variable @samp{B0} is necessary
+a value for @code{B}.
+The introduction of the new variable @code{B0} is necessary
 because the condition of an if-then-else is a negated context,
 and can export the values it generates
 only to the ``then'' part of the if-then-else,
@@ -3735,8 +3735,8 @@ The compiler will check that all calls to a committed-choice
 mode of a predicate (or function) do indeed occur in a single-solution context.
 
 You can declare two different modes of a predicate (or function) which differ
-only in ``cc-ness'' (i.e.@: one being @samp{multi} and the other
-@samp{cc_multi}, or one being @samp{nondet} and the other @samp{cc_nondet}).
+only in ``cc-ness'' (i.e.@: one being @code{multi} and the other
+@code{cc_multi}, or one being @code{nondet} and the other @code{cc_nondet}).
 In that case, the compiler will select the appropriate one for each
 call depending on whether the call comes from a single-solution context
 or not.  Calls from single-solution contexts will call the committed
@@ -3747,7 +3747,7 @@ There are several reasons to use committed choice determinism annotations.
 One reason is for efficiency: committed choice annotations allow
 the compiler to generate much more efficient code.
 Another reason is for doing I/O, which is allowed only in @samp{det}
-or @samp{cc_multi} predicates, not in @samp{multi} predicates.
+or @code{cc_multi} predicates, not in @code{multi} predicates.
 Another is for dealing with types that use non-canonical representations
 (@pxref{User-defined equality and comparison}).
 And there are a variety of other applications.
@@ -3838,27 +3838,29 @@ be defined in terms of a @samp{subset} predicate.
 @example
 :- pred set_equals(set(T)::in, set(T)::in) is semidet.
 set_equals(S1, S2) :-
-        subset(S1, S2),
-        subset(S2, S1).
+    subset(S1, S2),
+    subset(S2, S1).
 @end example
 
 A comparison predicate can also be supplied.
 
 @example
 :- type set(T) ---> set(list(T))
-        where equality is set_equals, comparison is set_compare.
+    where equality is set_equals, comparison is set_compare.
 
 :- pred set_compare(builtin.comparison_result::uo,
-                set(T)::in, set(T)::in) is det.
+    set(T)::in, set(T)::in) is det.
+
 set_compare(Result, Set1, Set2) :-
-	promise_equivalent_solutions [Result] (
-		set_compare_2(Set1, Set2, Result)
-	).
+    promise_equivalent_solutions [Result] (
+        set_compare_2(Set1, Set2, Result)
+    ).
 
 :- pred set_compare_2(set(T)::in, set(T)::in,
-                builtin.comparison_result::uo) is cc_multi.
+    builtin.comparison_result::uo) is cc_multi.
+
 set_compare_2(set(List1), set(List2), Result) :-
-        builtin.compare(Result, list.sort(List1), list.sort(List2)).
+    builtin.compare(Result, list.sort(List1), list.sort(List2)).
 @end example
 
 If a comparison predicate is supplied and the unification predicate
@@ -3868,7 +3870,7 @@ the generated predicate would be:
 
 @example
 set_equals(S1, S2) :-
-        set_compare((=), S1, S2).
+    set_compare((=), S1, S2).
 @end example
 
 If a unification predicate is supplied without a comparison predicate,
@@ -3939,18 +3941,18 @@ with mode @samp{(in, in)}, then it is a compile-time error.
 @item
 If the program contains any deconstruction unification or switch
 on a variable of type @var{T} that cannot fail, then that operation
-has determinism @samp{cc_multi}.
+has determinism @code{cc_multi}.
 
 @item
 Any attempts to examine the representation of a variable of type @var{T}
 using facilities of the standard library (e.g.@: @samp{argument}/3
 and @samp{functor/3} in @samp{deconstruct}) that do not have determinism
-@samp{cc_multi} or @samp{cc_nondet} will result in a run-time error.
+@code{cc_multi} or @code{cc_nondet} will result in a run-time error.
 
 @item
 In addition to the usual equality axioms,
 the declarative semantics of the program will contain the axiom
-@samp{@var{X} = @var{Y} <=> @var{equalitypred}(X, Y)} for all
+@samp{@var{X} = @var{Y} <=> @var{equalitypred}(@var{X}, @var{Y})} for all
 @var{X} and @var{Y} of type @samp{T}.
 
 @item
@@ -4253,11 +4255,11 @@ List = scalar_product(2, [1, 2, 3])
 
 @noindent
 and so for a suitable implementation of the function
-@samp{scalar_product/2} this would bind @samp{List} to
+@samp{scalar_product/2} this would bind @code{List} to
 @samp{[2, 4, 6]}.
 
 One extremely useful higher-order predicate in the Mercury standard
-library is @code{solutions/2}, which has the following declaration:
+library is @samp{solutions/2}, which has the following declaration:
 
 @example
 :- pred solutions(pred(T), list(T)).
@@ -4378,7 +4380,7 @@ higher-order terms is undecidable in the general case.
 For example, given the definition of @samp{foo} above, the goal
 
 @example
-        foo((pred(X::out) is det :- X = 6))
+foo((pred(X::out) is det :- X = 6))
 @end example
 
 @noindent
@@ -4387,9 +4389,9 @@ for equivalence, you must program it yourself; for example,
 the above goal could legally be written as
 
 @example
-        P = (pred(X::out) is det :- X = 6),
-        foo(Q),
-        all [X] (call(P, X) <=> call(Q, X)).
+P = (pred(X::out) is det :- X = 6),
+foo(Q),
+all [X] (call(P, X) <=> call(Q, X)).
 @end example
 
 Note that the compiler will only catch direct attempts at higher-order
@@ -4400,7 +4402,7 @@ run-time rather than at compile-time.
 In order to call a higher-order term, the compiler must know its higher-order
 inst.  This can cause problems when higher-order terms are placed into a
 polymorphic collection type and then extracted, since the declared mode for the
-extraction will typically be @samp{out} and the higher-order inst information
+extraction will typically be @code{out} and the higher-order inst information
 will be lost.
 To partially alleviate this problem, and to make higher-order functional
 programming easier, if the term to be called has a function
@@ -4481,7 +4483,7 @@ same as that in the corresponding @samp{module} declaration.
 
 If a module wishes to make use of entities exported by other modules,
 then it must explicitly import those modules using one or more 
-@samp{:- import_module @var{Modules}} or @samp{:- use_module @var{Modules}}
+@samp{:- import_module @var{Modules}} or @w{@samp{:- use_module @var{Modules}}}
 declarations, in order to make those declarations visible.
 In both cases, @var{Modules} is a comma-separated list of
 fully-qualified module names.
@@ -4576,7 +4578,7 @@ simple module for managing queues:
 empty_queue([]).
 
 put(Queue0, Elem, Queue) :-
-         list.append(Queue0, [Elem], Queue).
+    list.append(Queue0, [Elem], Queue).
 
 get([Elem | Queue], Elem, Queue).
 
@@ -4777,28 +4779,30 @@ in their implementation sections.
 An @samp{initialise} directive has the following form:
 
 @example
-:- initialise initpredname/arity.
+:- initialise @var{initpredname}/@var{arity}.
 @end example
 
-where the predicate @samp{initpredname} must be declared with one of the
+where the predicate @var{initpredname} must be declared with one of the
 following signatures:
 
 @example
-:- pred initpredname(io::di, io::uo) is @var{Det}.
-:- impure pred initpredname is @var{Det}.
+:- pred @var{initpredname}(io::di, io::uo) is @var{Det}.
+:- impure pred @var{initpredname} is @var{Det}.
 @end example
 
-@var{Det} must be either @samp{det} or @samp{cc_multi}.
+@var{Det} must be either @code{det} or @code{cc_multi}.
 
 The effect of the @samp{initialise} declaration is to ensure that
-@samp{initpredname/arity} is invoked before the program's @samp{main/2}
-predicate.  Initialisation predicates within a module are executed in the
-order in which they are specified, although no order may be assumed between
-different modules or sub-modules.  Initialisation predicates are only invoked
-after any initialisation required by the Mercury standard library.
+@samp{@var{initpredname}/@var{arity}} is invoked before the program's
+@samp{main/2} predicate.
+Initialisation predicates within a module are executed in the order in which
+they are specified, although no order may be assumed between different modules
+or sub-modules.
+Initialisation predicates are only invoked after any initialisation required by
+the Mercury standard library.
 
-If @samp{initpredname/arity} terminates with an uncaught exception then
-the program will immediately abort execution.  
+If @samp{@var{initpredname}/@var{arity}} terminates with an uncaught exception
+then the program will immediately abort execution.
 In this circumstance those predicates specified by other @samp{initialise}
 directives that have not yet been executed will not be executed,
 @samp{main/2} will not be executed and no predicate specified in a
@@ -4816,28 +4820,28 @@ implementation sections.
 A @samp{finalise} directive has the following form:
 
 @example
-:- finalise finalpredname/arity.
+:- finalise @var{finalpredname}/@var{arity}.
 @end example
 
 where the predicate @samp{finalpredname/arity} must be declared with
 one of the following signature:
 
 @example
-:- pred finalpredname(io::di, io::uo) is @var{Det}.
-:- impure pred finalpredname is @var{Det}
+:- pred @var{finalpredname}(io::di, io::uo) is @var{Det}.
+:- impure pred @var{finalpredname} is @var{Det}
 @end example
 
-@var{Det} must be either @samp{det} or @samp{cc_multi}.
+@var{Det} must be either @code{det} or @code{cc_multi}.
 
 The effect of the @samp{finalise} declaration is to ensure that
-@samp{finalpredname/arity} is invoked after the program's @samp{main}
+@samp{@var{finalpredname}/@var{arity}} is invoked after the program's @samp{main}
 predicate.  Finalisation predicates within a module are executed in
 the order in which they are specified, although no order may be assumed between
 different modules or sub-modules.  Any finalisation required by the Mercury
 standard library will always occur after any finalisation predicates have been
 invoked.
 
-If @samp{finalpredname/arity} terminates with an uncaught exception then
+If @samp{@var{finalpredname}/@var{arity}} terminates with an uncaught exception then
 the program will immediately abort execution.  No predicates specified
 by other @samp{finalise} directives that have not yet been executed will
 be executed.
@@ -4856,39 +4860,39 @@ store for a solver type.
 A mutable variable is declared using the @samp{mutable} directive:
 
 @example
-:- mutable(varname, vartype, initial_value, varinst, [attribute, ...]).
+:- mutable(@var{varname}, @var{vartype}, @var{initial_value}, @var{varinst}, [@var{attribute}, @dots{}]).
 @end example
 
 This constructs a new mutable variable with access predicates that have the
 following signatures:
 
 @example
-:- semipure pred get_varname(vartype::out(varinst)) is det.
-:- impure   pred set_varname(vartype::in(varinst)) is det.
+:- semipure pred get_@var{varname}(@var{vartype}::out(@var{varinst})) is det.
+:- impure   pred set_@var{varname}(@var{vartype}::in(@var{varinst})) is det.
 @end example
 
-The initial value of @samp{varname} is @samp{initial_value}, which is set
+The initial value of @var{varname} is @var{initial_value}, which is set
 before the program's @samp{main/2} predicate is executed.  
 
-The type @samp{vartype} is not allowed to contain any type variables or
+The type @var{vartype} is not allowed to contain any type variables or
 have any type class constraints.
 
-The inst @samp{varinst} is not allowed to contain any inst variables.
+The inst @var{varinst} is not allowed to contain any inst variables.
 It is also not allowed to be equivalent to, or contain components that
-are equivalent to, the builtin insts @samp{free}, @samp{unique},
-@samp{mostly_unique}, @samp{dead} or @samp{mostly_dead}.
+are equivalent to, the builtin insts @code{free}, @code{unique},
+@code{mostly_unique}, @code{dead} or @code{mostly_dead}.
 
-The initial value of a mutable, @samp{initial_value}, may be any Mercury
-expression with type @samp{vartype} and inst @samp{varinst} subject to
+The initial value of a mutable, @var{initial_value}, may be any Mercury
+expression with type @var{vartype} and inst @var{varinst} subject to
 the above restrictions. It may be impure or semipure.
 
-The following @samp{attributes} must be supported:
+The following @var{attributes} must be supported:
 
 @table @asis
 
 @item @samp{trailed}/@samp{untrailed}
 This attribute declares if the implementation should generate code so that
-the effects of @samp{set_varname/1} can be undone on backtracking.
+the effects of @samp{set_@var{varname}/1} can be undone on backtracking.
 The default, in case none is specified, is @samp{trailed}.
 
 @item @samp{attach_to_io_state}
@@ -4896,18 +4900,18 @@ This attribute causes the compiler to also construct access predicates
 that have the following signatures:
 
 @example
-:- pred get_varname(vartype::out(varinst), io::di, io::uo) is det.
-:- pred set_varname(vartype::in(varinst),  io::di, io::uo) is det.
+:- pred get_@var{varname}(@var{vartype}::out(@var{varinst}), io::di, io::uo) is det.
+:- pred set_@var{varname}(@var{vartype}::in(@var{varinst}),  io::di, io::uo) is det.
 @end example
 
 @item @samp{constant}
 This attribute causes the compiler to construct
 only a @samp{get} access predicate, but not a @samp{set} access predicate.
-Since @samp{varname} will always have the initial value given to it,
+Since @var{varname} will always have the initial value given to it,
 the @samp{get} access predicate is pure; its signature will be:
 
 @example
-:- pred get_varname(vartype::out(varinst)) is det.
+:- pred get_@var{varname}(@var{vartype}::out(@var{varinst})) is det.
 @end example
 
 The @samp{constant} attribute cannot be specified together with
@@ -4922,15 +4926,15 @@ The Melbourne Mercury compiler also supports the following attributes:
 
 @table @asis
 
-@item @samp{foreign_name(Lang, Name)}
+@item @samp{foreign_name(@var{Lang}, @var{Name})}
 Allow foreign code to access the mutable variable in some implementation
-dependent manner.  @samp{Lang} must be a valid target language for
-this Mercury implementation.  @samp{Name} must be a valid identifier in
+dependent manner.  @var{Lang} must be a valid target language for
+this Mercury implementation.  @var{Name} must be a valid identifier in
 that language.  It is an error to specify more than one foreign name
 attribute for each language.
 
 For the C backends this attribute allows foreign code to access
-the mutable variable as an external variable called @samp{Name}.
+the mutable variable as an external variable called @var{Name}.
 For the low-level C backend, e.g. the asm_fast grades, the type of this
 variable will be @code{MR_Word}.
 For the high-level C backend, e.g. the hlc grades, the type of this variable
@@ -4958,13 +4962,13 @@ interface section of a module.  The usual visibility rules for sub-modules
 apply to the mutable variable access predicates.
 
 For the purposes of determining when mutables are assigned their initial
-values, the expression @samp{initial_value} behaves as though it were
+values, the expression @var{initial_value} behaves as though it were
 a predicate specified in an @samp{initialise} directive.
 
 @example
-        :- initialise foo/2.
-        :- mutable(bar, int, 561, ground, [untrailed]).
-        :- initialise baz/2.
+:- initialise foo/2.
+:- mutable(bar, int, 561, ground, [untrailed]).
+:- initialise baz/2.
 @end example
 
 In the above example @samp{foo/2} is invoked first, then @samp{bar}
@@ -5043,8 +5047,8 @@ predicate declared in a type class, there must be at least one mode
 declaration, and each mode declaration in a type class must include
 an explicit determinism annotation.  Functions with no explicit mode
 declaration get the usual default mode (@pxref{Modes}): all arguments
-have mode @samp{in}, the result has mode @samp{out}, and the determinism
-is @samp{det}.
+have mode @code{in}, the result has mode @code{out}, and the determinism
+is @code{det}.
 
 The number of parameters to the type class (e.g.@: @code{T}) is not limited. 
 For example, the following is allowed:
@@ -5112,8 +5116,8 @@ func(@var{methodname}/@var{arity}) is @var{funcname}
 @end example
 
 @noindent
-The @var{predname} or @var{funcname} must name a function or
-predicate of the specified arity whose type, modes, determinism, and
+The @var{predname} or @var{funcname} must name a predicate or
+function of the specified arity whose type, modes, determinism, and
 purity are at least as permissive as the declared type, modes,
 determinism, and purity of the class method with the specified
 @var{methodname} and @var{arity}, after the types of the arguments
@@ -5143,31 +5147,33 @@ Here's an example of an instance declaration and the different kinds
 of method definitions that it can contain:
 
 @example
+@group
 :- typeclass foo(T) where [
-	func method1(T, T) = int,
-	func method2(T) = int,
-	pred method3(T::in, int::out) is det,
-	pred method4(T::in, io.state::di, io.state::uo) is det,
-	func method5(bool, T) = T
+    func method1(T, T) = int,
+    func method2(T) = int,
+    pred method3(T::in, int::out) is det,
+    pred method4(T::in, io.state::di, io.state::uo) is det,
+    func method5(bool, T) = T
 ].
 
 :- instance foo(int) where [
-	% method defined by naming the implementation
-	func(method1/2) is (+),
+    % method defined by naming the implementation
+    func(method1/2) is (+),
 
-	% method defined by a fact
-	method2(X) = X + 1,
+    % method defined by a fact
+    method2(X) = X + 1,
 
-	% method defined by a rule
-	(method3(X, Y) :- Y = X + 2),
+    % method defined by a rule
+    (method3(X, Y) :- Y = X + 2),
 
-	% method defined by a DCG rule
-	(method4(X) --> io.print(X), io.nl),
+    % method defined by a DCG rule
+    (method4(X) --> io.print(X), io.nl),
 
-	% method defined by multiple clauses
-	method5(no, _) = 0,
-	(method5(yes, X) = Y :- X + Y = 0)
+    % method defined by multiple clauses
+    method5(no, _) = 0,
+    (method5(yes, X) = Y :- X + Y = 0)
 ].
+@end group
 @end example
 	
 Each @samp{instance} declaration must define an implementation for
@@ -5191,16 +5197,15 @@ Here's an example of some code using an instance declaration:
 
 @example
 :- type coordinate
-        ---> coordinate(
-                float,           % X coordinate
-                float            % Y coordinate
-        ).
+    --->    coordinate(
+                float,  % X coordinate
+                float   % Y coordinate
+            ).
 
 :- instance point(coordinate) where [
-        pred(coords/3) is coordinate_coords,
-        func(translate/3) is coordinate_translate
+    pred(coords/3) is coordinate_coords,
+    func(translate/3) is coordinate_translate
 ].
-
 
 :- pred coordinate_coords(coordinate, float, float).
 :- mode coordinate_coords(in, out, out) is det.
@@ -5219,24 +5224,23 @@ it can also become an instance of the type class:
 
 @example
 :- type rgb
-        ---> rgb(
+    --->    rgb(
                 int,
                 int,
                 int
-        ).
+            ).
 
 :- type coloured_coordinate
-        ---> coloured_coordinate(
+    --->    coloured_coordinate(
                 float,
                 float,
                 rgb
-        ).
+            ).
 
 :- instance point(coloured_coordinate) where [
-        pred(coords/3) is coloured_coordinate_coords,
-        func(translate/3) is coloured_coordinate_translate
+    pred(coords/3) is coloured_coordinate_coords,
+    func(translate/3) is coloured_coordinate_translate
 ].
-
 
 :- pred coloured_coordinate_coords(coloured_coordinate, float, float).
 :- mode coloured_coordinate_coords(in, out, out) is det.
@@ -5244,10 +5248,10 @@ it can also become an instance of the type class:
 coloured_coordinate_coords(coloured_coordinate(X, Y, _), X, Y).
 
 :- func coloured_coordinate_translate(coloured_coordinate, float, float) 
-        = coloured_coordinate.
+    = coloured_coordinate.
 
 coloured_coordinate_translate(coloured_coordinate(X, Y, Colour), Dx, Dy) 
-        = coloured_coordinate(X + Dx, Y + Dy, Colour).
+    = coloured_coordinate(X + Dx, Y + Dy, Colour).
 @end example
 
 If we call @samp{translate/3} with the first argument having type
@@ -5314,8 +5318,8 @@ hash_int(X) = X.
 
 :- func hash_string(string) = int.
 hash_string(S) = H :-
-        % use the standard library predicate string.hash/2
-        string.hash(S, H).
+    % Use the standard library predicate string.hash/2.
+    string.hash(S, H).
 
 :- end_module hashable.
 @end example
@@ -5330,7 +5334,7 @@ by type variables in the signature to belong to particular type classes.
 A type class constraint has the form:
 
 @example
-        <= @var{Typeclass}(@var{Type}, @dots{}), @dots{}
+<= @var{Typeclass}(@var{Type}, @dots{}), @dots{}
 @end example
 
 @noindent
@@ -5352,11 +5356,11 @@ For example
 :- mode distance(in, in, out) is det.
 
 distance(A, B, Distance) :-
-        coords(A, Xa, Ya),
-        coords(B, Xb, Yb),
-        XDist = Xa - Xb,
-        YDist = Ya - Yb,
-        Distance = sqrt(XDist*XDist + YDist*YDist).
+    coords(A, Xa, Ya),
+    coords(B, Xb, Yb),
+    XDist = Xa - Xb,
+    YDist = Ya - Yb,
+    Distance = sqrt(XDist*XDist + YDist*YDist).
 @end example
 
 In the above example, the @code{distance} predicate is able to calculate the
@@ -5381,21 +5385,23 @@ types with a particular set of numerical operations defined:
 
 @example
 :- typeclass ring(T) where [
-        func zero = (T::out) is det,               % '+' identity
-        func one = (T::out) is det,                % '*' identity
-        func plus(T::in, T::in) = (T::out) is det, % '+'/2 (forward mode)
-        func mult(T::in, T::in) = (T::out) is det, % '*'/2 (forward mode)
-        func negative(T::in) = (T::out) is det     % '-'/1 (forward mode)
+    func zero = (T::out) is det,               % '+' identity
+    func one = (T::out) is det,                % '*' identity
+    func plus(T::in, T::in) = (T::out) is det, % '+'/2 (forward mode)
+    func mult(T::in, T::in) = (T::out) is det, % '*'/2 (forward mode)
+    func negative(T::in) = (T::out) is det     % '-'/1 (forward mode)
 ].
 @end example
 
 We can now add the following declaration:
 
 @example
+@group
 :- typeclass euclidean(T) <= ring(T) where [
-        func div(T::in, T::in) = (T::out) is det,
-        func mod(T::in, T::in) = (T::out) is det
+    func div(T::in, T::in) = (T::out) is det,
+    func mod(T::in, T::in) = (T::out) is det
 ].
+@end group
 @end example
 
 This introduces a new type class, @code{euclidean}, of which @code{ring} is a
@@ -5404,14 +5410,14 @@ superclass.  The operations defined by the @code{euclidean} type class are
 type class.  Any type declared to be an instance of @code{euclidean} must also 
 be declared to be an instance of @code{ring}.
 
-Typeclass constraints on type class declarations gives rise to a superclass
+Type class constraints on type class declarations gives rise to a superclass
 relation.  This relation must be acyclic.  That is, it is an error if a type 
 class is its own (direct or indirect) superclass.
 
 @node Type class constraints on instance declarations
 @section Type class constraints on instance declarations
 
-Typeclass constraints may also be placed upon instance declarations.
+Type class constraints may also be placed upon instance declarations.
 The arguments of such constraints must be either type variables or ground
 types.
 Each constraint must contain at least one variable argument and all
@@ -5423,7 +5429,7 @@ may be printed:
 
 @example
 :- typeclass portrayable(T) where [
-        pred portray(T::in, io.state::di, io.state::uo) is det
+    pred portray(T::in, io.state::di, io.state::uo) is det
 ].
 @end example
 
@@ -5431,11 +5437,11 @@ The programmer could declare instances such as
 
 @example
 :- instance portrayable(int) where [
-        pred(portray/3) is io.write_int
+    pred(portray/3) is io.write_int
 ].
 
 :- instance portrayable(char) where [
-        pred(portray/3) is io.write_char
+    pred(portray/3) is io.write_char
 ].
 @end example
 
@@ -5447,7 +5453,7 @@ as in the following example:
 
 @example
 :- instance portrayable(list(T)) <= portrayable(T) where [
-        pred(portray/3) is portray_list
+    pred(portray/3) is portray_list
 ].
 
 :- pred portray_list(list(T), io.state, io.state) <= portrayable(T).
@@ -5455,9 +5461,9 @@ as in the following example:
 
 portray_list([], !IO).
 portray_list([X | Xs], !IO) :-
-	portray(X, !IO),
-	io.write_char(' ', !IO),
-	portray_list(Xs, !IO).
+    portray(X, !IO),
+    io.write_char(' ', !IO),
+    portray_list(Xs, !IO).
 @end example
 
 For abstract instance declarations, the type class constraints on an
@@ -5470,7 +5476,7 @@ defines that instance.
 @section Functional dependencies
 
 Type class constraints may include any number of functional dependencies.
-A functional dependency constraint takes the form
+A @dfn{functional dependency} constraint takes the form
 @code{(@var{Domain} -> @var{Range})}.
 The @var{Domain} and @var{Range} arguments are either single type variables,
 or conjunctions of type variables separated by commas.
@@ -5507,15 +5513,15 @@ then the requirement for each one must be satisfied.
 For example, given the typeclass declaration
 
 @example
-	:- typeclass baz(A, B) <= (A -> B) where @dots{}
+:- typeclass baz(A, B) <= (A -> B) where @dots{}
 @end example
 
 @noindent
 it would be illegal to have both of the instances
 
 @example
-	:- instance baz(int, int) where @dots{}
-	:- instance baz(int, string) where @dots{}
+:- instance baz(int, int) where @dots{}
+:- instance baz(int, string) where @dots{}
 @end example
 
 @noindent
@@ -5524,20 +5530,20 @@ although either one would be acceptable on its own.
 The following instance would also be illegal
 
 @example
-	:- instance baz(string, list(T)) where @dots{}
+:- instance baz(string, list(T)) where @dots{}
 @end example
 
 @noindent
-since the variable @samp{T} may not always be bound to the same type.
+since the variable @code{T} may not always be bound to the same type.
 However, the instance
 
 @example
-	:- instance baz(list(S), list(T)) <= baz(S, T) where @dots{}
+:- instance baz(list(S), list(T)) <= baz(S, T) where @dots{}
 @end example
 
 is legal because the @samp{baz(S, T)} constraint ensures that whatever
-@samp{T} is bound to, it is always uniquely determined from the binding
-of @samp{S}.
+@code{T} is bound to, it is always uniquely determined from the binding
+of @code{S}.
 
 The extra requirements that result from the use of functional dependencies
 allow the bindings of some variables to be determined from the bindings
@@ -5582,7 +5588,7 @@ includes all of the variables in @var{Range}.
 For example, the declaration
 
 @example
-	:- pred p(X, Y) <= baz(map(X, Y), list(Z)).
+:- pred p(X, Y) <= baz(map(X, Y), list(Z)).
 @end example
 
 @noindent
@@ -5602,9 +5608,9 @@ and the closure that we calculate takes these into account.
 For example, in this code
 
 @example
-	:- typeclass quux(P, Q, R) <= baz(R, P) where @dots{}
+:- typeclass quux(P, Q, R) <= baz(R, P) where @dots{}
 
-	:- pred q(Q, R) <= quux(P, Q, R).
+:- pred q(Q, R) <= quux(P, Q, R).
 @end example
 the signature of @code{q/2} is acceptable since the superclass constraint
 on @code{quux/2} induces the dependency @samp{R -> P} on the type variables,
@@ -5615,7 +5621,7 @@ occur during type inference.  This can occur in two ways.
 First, if two constraints of a given class match on all of the domain
 arguments of a functional dependency on that class,
 then it can be inferred that they also match on the range arguments.
-For example, given the constraints @code{baz(A, B1)} and @code{baz(A, B2)},
+For example, given the constraints @w{@code{baz(A, B1)}} and @w{@code{baz(A, B2)}},
 it will be inferred that @code{B1 = B2}.
 
 Similarly, if a constraint of a given class is subsumed by a known instance
@@ -5624,12 +5630,12 @@ unified with the corresponding instance range arguments.
 For example, given the instance:
 
 @example
-	:- instance baz(list(T), string) where @dots{}
+:- instance baz(list(T), string) where @dots{}
 @end example
 
 @noindent
 then the constraint @code{baz(list(int), X)} can be improved with the
-inference that @code{X = string}.
+inference that @w{@code{X = string}}.
 
 @node Existential types
 @chapter Existential types
@@ -5878,16 +5884,16 @@ type class constraints.
 For example:
 
 @example
-% A simple heterogeneous list type
+% A simple heterogeneous list type.
 :- type list_of_any
-	---> nil_any
-	;    some [T] cons_any(T, list_of_any).
+    --->    nil_any
+    ;       some [T] cons_any(T, list_of_any).
 
-% A heterogeneous list type with a type class constraint
+% A heterogeneous list type with a type class constraint.
 :- typeclass showable(T) where [ func show(T) = string ].
 :- type showable_list
-	---> nil
-	;    some [T] (cons(T, showable_list) => showable(T)).
+    --->    nil
+    ;       some [T] (cons(T, showable_list) => showable(T)).
 
 % A different way of doing the same kind of thing, this
 % time using the standard type list(T).
@@ -5895,18 +5901,18 @@ For example:
 :- type list_of_showable == list(showable).
 
 % Here's an arbitrary example involving multiple
-% type variables and multiple constraints
-:- typeclass foo(T1, T2) where [ /* ... */ ].
+% type variables and multiple constraints.
+:- typeclass foo(T1, T2) where [ /* @dots{} */ ].
 :- type bar(T)
-	---> f1
-	;    f2(T)
-	;    some [T]
-	     f4(T)
-	;    some [T1, T2]
-	     (f4(T1, T2, T) => showable(T1), showable(T2))
-	;    some [T1, T2]
-	     (f5(list(T1), T2) => fooable(T1, list(T2)))
-	.
+    ---> f1
+    ;    f2(T)
+    ;    some [T]
+          f4(T)
+    ;    some [T1, T2]
+          (f4(T1, T2, T) => showable(T1), showable(T2))
+    ;    some [T1, T2]
+          (f5(list(T1), T2) => fooable(T1, list(T2)))
+    .
 @end example
 
 Construction and deconstruction of existentially quantified data types
@@ -6004,16 +6010,18 @@ of the following examples are illegal:
 
 @example
 :- some [T] pred bad_example(string, T).
+
 bad_example("foo", 42).
 bad_example("bar", "blah").
-	% type error (cannot unify `int' and `string')
+    % type error (cannot unify `int' and `string')
 
 :- some [T] pred bad_example2(string, T).
+
 bad_example2(Name, Value) :-
-	( Name = "foo", Value = 42
-	; Name = "bar", Value = "blah"
-	).
-	% type error (cannot unify `int' and `string')
+    ( Name = "foo", Value = 42
+    ; Name = "bar", Value = "blah"
+    ).
+    % type error (cannot unify `int' and `string')
 @end example
 
 However, using @samp{univ},
@@ -6022,10 +6030,11 @@ values of different types at each invocation.
 
 @example
 :- some [T] pred good_example(string, T).
+
 good_example(Name, univ_value(Univ)) :-
-	( Name = "foo", Univ = univ(42)
-	; Name = "bar", Univ = univ("blah")
-	).
+    ( Name = "foo", Univ = univ(42)
+    ; Name = "bar", Univ = univ("blah")
+    ).
 @end example
 
 Using @samp{univ} doesn't work if you also want to use type class constraints.  
@@ -6036,11 +6045,12 @@ existentially typed data type, analogous to @samp{univ}, and use that:
 :- type univ_showable ---> some [T] (mkshowable(T) => showable(T)).
 
 :- some [T] pred harder_example(string, T) => showable(T).
+
 harder_example(Name, Showable) :-
-	( Name = "bar", Univ = 'new mkshowable'(42)
-	; Name = "bar", Univ = 'new mkshowable'("blah")
-	),
-	Univ = mkshowable(Showable).
+    ( Name = "bar", Univ = 'new mkshowable'(42)
+    ; Name = "bar", Univ = 'new mkshowable'("blah")
+    ),
+    Univ = mkshowable(Showable).
 @end example
 
 The issue can also arise for mode-specific clauses
@@ -6049,12 +6059,12 @@ For instance, the following example is illegal:
 
 @example
 :- some [T] pred bad_example3(string, T).
-:-          mode bad_example3(in(bound("foo")), out) is det.
+:-         mode bad_example3(in(bound("foo")), out) is det.
 :-          mode bad_example3(in(bound("bar")), out) is det.
 :- pragma promise_pure(bad_example3/2).
 bad_example3("foo"::in(bound("foo")), 42::out).
 bad_example3("bar"::in(bound("bar")), "blah"::out).
-	% type error (cannot unify `int' and `string')
+    % type error (cannot unify `int' and `string')
 @end example
 
 The solution is similar, although in this case an intermediate
@@ -6086,22 +6096,22 @@ or using try goals.
 A @samp{try} goal has the following form:
 
 @example
-        try @var{Params} @var{Goal}
-        then @var{ThenGoal}
-        else @var{ElseGoal}
-        catch @var{Term} -> @var{CatchGoal}
-        ...
-        catch_any @var{CatchAnyVar} -> @var{CatchAnyGoal}
+    try @var{Params} @var{Goal}
+    then @var{ThenGoal}
+    else @var{ElseGoal}
+    catch @var{Term} -> @var{CatchGoal}
+    @dots{}
+    catch_any @var{CatchAnyVar} -> @var{CatchAnyGoal}
 @end example
 
 @var{Goal}, @var{ThenGoal}, @var{ElseGoal}, @var{CatchGoal},
 @var{CatchAnyGoal} must be valid goals.
 
-@var{Goal} must have one of the following determinisms: @samp{det},
-@samp{semidet}, @samp{cc_multi}, or @samp{cc_nondet}.
+@var{Goal} must have one of the following determinisms: @code{det},
+@code{semidet}, @code{cc_multi}, or @w{@code{cc_nondet}}.
 
 The non-local variables of @var{Goal} must not have an inst equivalent to
-@samp{unique} or @samp{mostly_unique} or @samp{any}, unless they have the
+@code{unique} or @code{mostly_unique} or @code{any}, unless they have the
 type @samp{io.state}.
 @c or (later) the store/1.)
 
@@ -6117,12 +6127,12 @@ variable.
 The try parameter @samp{io} takes a single argument, which must be the name
 of a state variable prefixed by @samp{!}; for example, @samp{io(!IO)}.
 The state variable must have the type @samp{io.state}, and be in scope
-of the try goal.  The state variable is threaded through @samp{Goal},
+of the try goal.  The state variable is threaded through @var{Goal},
 so it may perform I/O but cannot fail.
-If no @samp{io} parameter exists, @samp{Goal} may not perform I/O and may
+If no @samp{io} parameter exists, @var{Goal} may not perform I/O and may
 fail.
 
-A try goal has determinism @samp{cc_multi}.
+A try goal has determinism @code{cc_multi}.
 @c Exception: if all of the then/else/catch/catch_any parts only succeed
 @c without binding non-local variables then the determinism is det.
 @c In the implementation we may still infer cc_multi though.
@@ -6152,26 +6162,26 @@ and there is no ``catch_any'' branch, the exception is rethrown.
 The declarative semantics of a try goal is:
 
 @example
-        (try [] Goal
-         then Then
-         else Else
-         catch CP1 -> CG1
-         catch CG2 -> CG2
-         ...
-         catch_any CAV -> CAG
-        )  <=>
-                (
-                        Goal, Then
-                ;
-                        not Goal, Else
-                ;
-                        some [Excp]
-                        ( Excp = CP1 -> CG1
-                        ; Excp = CP2 -> CG2
-                        ; ...
-                        ; Excp = CAV, CAG
-                        )
-                ).
+    (try [] Goal
+     then Then
+     else Else
+     catch CP1 -> CG1
+     catch CG2 -> CG2
+     @dots{}
+     catch_any CAV -> CAG
+    )  <=>
+        ( 
+            Goal, Then
+        ;
+            not Goal, Else
+        ;
+            some [Excp]
+            ( Excp = CP1 -> CG1
+            ; Excp = CP2 -> CG2
+            ; @dots{}
+            ; Excp = CAV, CAG
+            )
+        ).
 @end example
 
 If no @samp{else} branch is present, let @samp{Else = fail}.
@@ -6184,26 +6194,26 @@ An example of a try goal that performs I/O is:
 :- pred p_carefully(io::di, io::uo) is cc_multi.
 
 p_carefully(!IO) :-
-        (try [io(!IO)] (
-                io.write_string("Calling p\n", !IO),
-                p(Output, !IO)
-        )
-        then
-                io.write_string("p returned: ", !IO),
-                io.write(Output, !IO),
-                io.nl(!IO)
-        catch S ->
-                io.write_string("p threw a string: ", !IO),
-                io.write_string(S, !IO),
-                io.nl(!IO)
-        catch 42 ->
-                io.write_string("p threw 42\n", !IO)
-        catch_any Other ->
-                io.write_string("p threw something: ", !IO),
-                io.write(Other, !IO),
-                % Rethrow the value.
-                throw(Other)
-        ).
+    (try [io(!IO)] (
+        io.write_string("Calling p\n", !IO),
+        p(Output, !IO)
+    )
+    then
+        io.write_string("p returned: ", !IO),
+        io.write(Output, !IO),
+        io.nl(!IO)
+    catch S ->
+        io.write_string("p threw a string: ", !IO),
+        io.write_string(S, !IO),
+        io.nl(!IO)
+    catch 42 ->
+        io.write_string("p threw 42\n", !IO)
+    catch_any Other ->
+        io.write_string("p threw something: ", !IO),
+        io.write(Other, !IO),
+        % Rethrow the value.
+        throw(Other)
+    ).
 @end example
 
 @node Semantics
@@ -6395,16 +6405,18 @@ code using @samp{pragma foreign_proc}.
 A declaration of the form
 
 @example
-:- pragma foreign_proc("@var{Lang}", @var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}),
-        @var{Attributes}, @var{Foreign_Code}).
+:- pragma foreign_proc("@var{Lang}",
+    @var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}),
+    @var{Attributes}, @var{Foreign_Code}).
 @end example
 
 @noindent
 or
 
 @example
-:- pragma foreign_proc("@var{Lang}", @var{Func}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}) = (@var{Var}::@var{Mode}),
-        @var{Attributes}, @var{Foreign_Code}).
+:- pragma foreign_proc("@var{Lang}",
+    @var{Func}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}) = (@var{Var}::@var{Mode}),
+    @var{Attributes}, @var{Foreign_Code}).
 @end example
 
 @noindent
@@ -6427,8 +6439,8 @@ implementation specific rules.
 All @samp{foreign_proc} implementations are assumed to be impure.
 If they are actually pure or semipure, they must be explicitly
 promised as such by the user (either by using foreign language
-attributes specified below, or a promise_pure or promise_semipure pragma
-as specified in @ref{Impurity}).
+attributes specified below, or a @samp{promise_pure} or @samp{promise_semipure}
+pragma as specified in @ref{Impurity}).
 
 Additional restrictions on the foreign language interface code
 depend on the foreign language and compilation options.
@@ -6447,10 +6459,15 @@ The following code defines a Mercury function
 @samp{sin/1} which calls the C function @samp{sin()} of the same name.
 
 @example
+@group
 :- func sin(float) = float.
-:- pragma foreign_proc("C", sin(X::in) = (Sin::out),
-        [may_call_mercury],
-        "Sin = sin(X);").
+:- pragma foreign_proc("C",
+    sin(X::in) = (Sin::out),
+    [promise_pure, may_call_mercury],
+"
+    Sin = sin(X);
+").
+@end group
 @end example
 
 If the foreign language code does not recursively invoke Mercury code,
@@ -6470,9 +6487,9 @@ The only thing that is allowed to differ is the efficiency (including the
 possibility of non-termination) and the order of solutions.
 
 It is an error for a procedure with a @samp{pragma foreign_proc} declaration to
-have a determinism of @samp{multi} or @samp{nondet}.
+have a determinism of @code{multi} or @code{nondet}.
 
-Since foreign_procs with the determinism @samp{multi} or @samp{nondet} cannot
+Since foreign_procs with the determinism @code{multi} or @code{nondet} cannot
 be defined directly, procedures with those determinisms that require foreign
 code in their implementation must be defined using a combination of Mercury
 clauses and (semi)deterministic foreign_procs.
@@ -6603,9 +6620,9 @@ If omitted, the termination property of the procedure is determined by the
 value of the @samp{may_call_mercury}/@samp{will_not_call_mercury} attribute.
 See @ref{Termination analysis} for more details.
 
-@item @samp{max_stack_size(Size)}
+@item @samp{max_stack_size(@var{Size})}
 This attribute declares the maximum stack usage of a particular piece of
-code.  The unit that @samp{Size} is measured in depends upon foreign language
+code.  The unit that @var{Size} is measured in depends upon foreign language
 being used.  
 Currently this attribute is only used (and is in fact required) by the 
 @samp{IL} foreign language interface, and is measured in units of stack
@@ -6757,7 +6774,7 @@ A declaration of the form:
 
 @example
 :- pragma foreign_export("@var{Lang}",
-        @var{Pred}(@var{Mode1}, @var{Mode2}, @dots{}), "@var{ForeignName}").
+    @var{Pred}(@var{Mode1}, @var{Mode2}, @dots{}), "@var{ForeignName}").
 @end example
 
 @noindent
@@ -6765,8 +6782,8 @@ or
 
 @example
 :- pragma foreign_export("@var{Lang}",
-        @var{Func}(@var{Mode1}, @var{Mode2}, @dots{}) = @var{Mode},
-        "@var{ForeignName}").
+    @var{Func}(@var{Mode1}, @var{Mode2}, @dots{}) = @var{Mode},
+    "@var{ForeignName}").
 @end example
 
 @noindent
@@ -6805,12 +6822,12 @@ and @code{string}, there is a C typedef for the corresponding type in C:
 @code{MR_Integer}, @code{MR_Float}, @code{MR_Char},
 and @code{MR_String} respectively.
 
-In the current implementation, @samp{MR_Integer} is a typedef for a signed
+In the current implementation, @code{MR_Integer} is a typedef for a signed
 integral type whose size is the same size as a pointer of type @samp{void *};
-@samp{MR_Float} is a typedef for @samp{double} (unless the program and the
+@code{MR_Float} is a typedef for @code{double} (unless the program and the
 Mercury library was compiled with @samp{--single-prec-float}, in which case it
-is a typedef for @samp{float}); @samp{MR_Char} is a typedef for a signed 
-32-bit integral type and @samp{MR_String} is a typedef for @samp{char *}.
+is a typedef for @code{float}); @code{MR_Char} is a typedef for a signed
+32-bit integral type and @code{MR_String} is a typedef for @samp{char *}.
 
 Mercury variables of type @code{int}, @code{float}, @code{char}, or
 @code{string} are passed to and from C as C variables whose type is
@@ -6831,13 +6848,13 @@ Mercury variables of a type for which there is a C @samp{pragma foreign_type}
 declaration (@pxref{Using foreign types from Mercury}) will be passed as
 the corresponding C type.
 
-Mercury tuple types are passed as @samp{MR_Tuple}, which in the current
+Mercury tuple types are passed as @code{MR_Tuple}, which in the current
 implementation is a typedef for a pointer of type @samp{void *} if
-@samp{--high-level-code} is enabled, and a typedef for @samp{MR_Word}
+@samp{--high-level-code} is enabled, and a typedef for @code{MR_Word}
 otherwise.
 
 Mercury variables of any other type
-are passed as a @samp{MR_Word}, which in the current implementation
+are passed as a @code{MR_Word}, which in the current implementation
 is a typedef for an unsigned type whose size is the same size as a pointer.
 (Note: it would in fact be better for each Mercury type to map to a distinct
 abstract type in C, since that would be more type-safe, and thus we may
@@ -6861,10 +6878,10 @@ MR_list_cons(head,tail)    /* construct a list with the given head and tail */
 Note that the use of these macros is subject to some caveats
 (@pxref{Memory management for C}).
 
-The implementation provides the macro @samp{MR_word_to_float} for converting a
-value of type @samp{MR_Word} to one of type @samp{MR_Float}, and the macro
-@samp{MR_float_to_word} for converting a value of type @samp{MR_Float} to one
-of type @samp{MR_Word}.
+The implementation provides the macro @code{MR_word_to_float} for converting a
+value of type @code{MR_Word} to one of type @code{MR_Float}, and the macro
+@code{MR_float_to_word} for converting a value of type @code{MR_Float} to one
+of type @code{MR_Word}.
 These macros must be used to perform these conversions since for some Mercury
 implementations @samp{sizeof(MR_Float)} is greater than @samp{sizeof(MR_Word)}.
 
@@ -6876,7 +6893,7 @@ MR_Float f;
 f = MR_word_to_float(MR_list_head(list));
 @end example
 
-Omitting the call to @samp{MR_word_to_float} in the above example would yield
+Omitting the call to @code{MR_word_to_float} in the above example would yield
 incorrect results for implementations where @samp{sizeof(MR_Float)} is greater
 than @samp{sizeof(MR_Word)}.
 
@@ -6933,10 +6950,10 @@ that follows (some implementation details elided):
 public static class Maybe_1 @{
     public static class Yes_1 : Maybe_1 @{
         public object yes_field;
-        public Yes_1(object x) @{ ... @}
+        public Yes_1(object x) @{ @dots{} @}
     @}
     public static class No_0 : Maybe_1 @{
-        public No_0() @{ ... @}
+        public No_0() @{ @dots{} @}
     @}
 @}
 @end example
@@ -6947,7 +6964,7 @@ concatenating the components with double underscore separators (@samp{__}).
 For example the Mercury type @samp{foo.bar.baz/1} will be passed as the C#
 type @samp{mercury.foo__bar.Baz_1}.
 
-Mercury array types are mapped to @samp{System.Array}.
+Mercury array types are mapped to @code{System.Array}.
 
 Mercury variables whose type is a Mercury equivalence type
 will be passed as the representation of the right hand side of the
@@ -7019,11 +7036,12 @@ can refer to the data constructors of this type, @samp{(<)}, @samp{(=)} and
 @samp{(>)}, as @code{builtin.COMPARE_LESS}, @code{builtin.COMPARE_EQUAL}
 and @code{builtin.COMPARE_GREATER} respectively.
 
-Mercury variables of a type for which there is a Java @samp{pragma
-foreign_type} declaration (@pxref{Using foreign types from Mercury}) will be
+Mercury variables of a type for which there is a Java
+@samp{pragma foreign_type} declaration
+(@pxref{Using foreign types from Mercury}) will be
 passed as the corresponding Java type.
 
-Mercury tuple types are passed as @samp{java.lang.Object[]} where
+Mercury tuple types are passed as @code{java.lang.Object[]} where
 the length of the array is the number of elements in the tuple.
 
 Mercury variables whose types are universally quantified type variables
@@ -7052,10 +7070,10 @@ that follows (some implementation details elided):
 public static class Maybe_1<T> @{
     public static class Yes_1<T> extends Maybe_1 @{
         public T yes_field;
-        public Yes_1(T x) @{ ... @}
+        public Yes_1(T x) @{ @dots{} @}
     @}
     public static class No_0<T> extends Maybe_1 @{
-        public No_0() @{ ... @}
+        public No_0() @{ @dots{} @}
     @}
 @}
 @end example
@@ -7091,12 +7109,12 @@ rather than argument passing.)
 The handling of multiple output arguments is as follows.
 
 If the Mercury procedure is deterministic and has no output arguments,
-then the return type of the Java function is @samp{void}; if it has
+then the return type of the Java function is @code{void}; if it has
 one output argument, then the return value of the function is that
 output argument.
 
 If the Mercury procedure is deterministic and has two or more output
-arguments, then the return type of the Java function is @samp{void}.
+arguments, then the return type of the Java function is @code{void}.
 At the position of each output argument, the Java function takes a
 value of the type @samp{jmercury.runtime.Ref<T>} where @samp{T} is the
 Java type corresponding to the type of the output argument.
@@ -7120,7 +7138,7 @@ List_1<E> list.det_tail(List_1<E> list)     // get the tail of a list
 List_1<E> list.empty_list()                 // create an empty list
 <E, F extends E> List_1<E> list.cons(F head, List_1<E> tail)
                                             // construct a list with
-                                            //  the given head and tail
+                                            // the given head and tail
 @end example
 
 @node Erlang data passing conventions
@@ -7225,7 +7243,8 @@ of the foreign type with the @samp{foreign_type} declaration,
 using the following syntax:
 
 @example
-:- pragma foreign_type(@var{Lang}, @var{MercuryTypeName}, @var{ForeignTypeDescriptor}, [@var{ForeignTypeAssertion}, ...]).
+:- pragma foreign_type(@var{Lang}, @var{MercuryTypeName}, @var{ForeignTypeDescriptor},
+    [@var{ForeignTypeAssertion}, @dots{}]).
 @end example
 
 Currently, two kinds of assertions are supported.
@@ -7275,7 +7294,7 @@ a declaration of the form:
 
 @example
 :- pragma foreign_export_enum("@var{Lang}", @var{MercuryType},
-        @var{Attributes}, @var{Overrides}).
+    @var{Attributes}, @var{Overrides}).
 @end example
 
 This causes the compiler to create a symbolic name in language
@@ -7300,7 +7319,7 @@ symbolic name in the foreign language.
 @var{Overrides} has the following form:
 
 @example
-[cons_I - "symbol_I", ..., cons_J - "symbol_J"]
+[cons_I - "symbol_I", @dots{}, cons_J - "symbol_J"]
 @end example
 
 This can be used to provide either a valid symbolic name where the
@@ -7315,7 +7334,7 @@ The following attributes must be supported by all Mercury implementations.
 
 @table @asis
  
-@item @samp{prefix(Prefix)}
+@item @samp{prefix(@var{Prefix})}
 Prefix each symbolic name, regardless of how it was generated, with
 the string @var{Prefix}.
 At most one @samp{prefix} attribute may be specified for a
@@ -7374,7 +7393,7 @@ of the form:
 [
     ctor_0 - "ForeignValue_0",
     ctor_1 - "ForeignValue_1",
-    ...
+    @dots{}
     ctor_N - "ForeignValue_N"
 ]
 @end group
@@ -7715,11 +7734,11 @@ must form valid C identifiers.
 These identifiers are used as the names of preprocessor macros.
 The body of each of these macros expands to a value that is identical
 to that of the constructor to which the symbolic name corresponds in
-the mapping established by the @samp{pragma foreign_export_enum}
+the mapping established by the @w{@samp{pragma foreign_export_enum}}
 declaration.
 
 As noted in the @ref{C data passing conventions}, the type of these
-values is @samp{MR_Word}.
+values is @code{MR_Word}.
 
 The default mapping used by @samp{pragma foreign_export_enum}
 declarations for C is to use the Mercury constructor name as the
@@ -7732,7 +7751,7 @@ the Mercury constructor @samp{foo} would be @code{foo}.
 @node Using pragma foreign_enum for C
 @subsubsection Using pragma foreign_enum for C
 
-Foreign enumeration values in C must be constants of type @samp{MR_Integer}.
+Foreign enumeration values in C must be constants of type @code{MR_Integer}.
 They may be specified as either integer literals or via preprocessor macros
 that expand to integer literals.
 
@@ -7764,7 +7783,7 @@ function.
 
 C code in a @code{pragma foreign_proc} declaration for any procedure whose
 determinism indicates that it can fail must assign a truth value to the macro
-@samp{SUCCESS_INDICATOR}.
+@code{SUCCESS_INDICATOR}.
 For example:
 
 @example
@@ -7772,9 +7791,11 @@ For example:
 :- mode string.contains_char(in, in) is semidet.
 
 :- pragma foreign_proc("C",
-	string.contains_char(Str::in, Ch::in),
-        [will_not_call_mercury, promise_pure],
-        "SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);").
+    string.contains_char(Str::in, Ch::in),
+    [will_not_call_mercury, promise_pure],
+"
+    SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);
+").
 @end example
 
 @code{SUCCESS_INDICATOR} should not be used other than as the target of
@@ -7984,9 +8005,9 @@ mmc --link-object my_functions.o prog
 
 The command line option @samp{--library} (or @samp{-l} for short)
 can be used to link an existing library into your Mercury code.
-For example, the following will link the library file @samp{libfancy_library.a},
-or perhaps the shared version @samp{libfancy_library.so}, from the directory
-@samp{/usr/local/contrib/lib}, when compiling the program @samp{prog}:
+For example, the following will link the library file @file{libfancy_library.a},
+or perhaps the shared version @file{libfancy_library.so}, from the directory
+@file{/usr/local/contrib/lib}, when compiling the program @samp{prog}:
 
 @example
 mmc -R/usr/local/contrib/lib -L/usr/local/contrib/lib -lfancy_library prog
@@ -8058,7 +8079,7 @@ type @samp{int}.
 The C# code from C# @samp{pragma foreign_proc} declarations will be placed in
 the bodies of static member functions of an automatically generated C# class.
 Since such C# code will become part of a static member function,
-it must not refer to the @samp{this} keyword.
+it must not refer to the @code{this} keyword.
 It may however refer to static member variables or static member
 functions declared with @samp{pragma foreign_code}.
 
@@ -8069,17 +8090,19 @@ for mapping Mercury types to C# types are described in
 
 C# code in a @code{pragma foreign_proc} declaration
 for any procedure whose determinism indicates that it can fail
-must assign a value of type @samp{bool} to the variable
-@samp{SUCCESS_INDICATOR}.  For example:
+must assign a value of type @code{bool} to the variable
+@code{SUCCESS_INDICATOR}.  For example:
 
 @example
 :- pred string.contains_char(string, character).
 :- mode string.contains_char(in, in) is semidet.
 
 :- pragma foreign_proc("C#",
-	string.contains_char(Str::in, Ch::in),
-        [will_not_call_mercury, promise_pure],
-        "SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);").
+    string.contains_char(Str::in, Ch::in),
+    [will_not_call_mercury, promise_pure],
+"
+    SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);
+").
 @end example
 
 @noindent
@@ -8142,11 +8165,11 @@ For example:
 ").
 :- pred hello(io.state::di, io.state::uo) is det.
 :- pragma foreign_proc("C#",
-	hello(_IO0::di, _IO::uo),
-	[will_not_call_mercury],
+     hello(_IO0::di, _IO::uo),
+     [will_not_call_mercury, promise_pure],
 "
-	// here we can refer directly to Console rather than System.Console
-	Console.WriteLine(""hello world"");
+    // here we can refer directly to Console rather than System.Console
+    Console.WriteLine(""hello world"");
 ").
 @end example
 
@@ -8164,18 +8187,23 @@ For example:
 
 @example
 :- pragma foreign_code("C#", "
-	static int counter = 0;
+    static int counter = 0;
 ").
 
 :- impure pred incr_counter is det.
-:- pragma foreign_proc("C#", incr_counter,
-	[will_not_call_mercury], "counter++;").
+:- pragma foreign_proc("C#",
+    incr_counter,
+    [will_not_call_mercury], "
+    counter++;
+").
 
 :- semipure func get_counter = int.
 :- pragma foreign_proc("C#",
-	get_counter = (Result::out),
-	[will_not_call_mercury, promise_semipure],
-	"Result = counter;").
+    get_counter = (Result::out),
+    [will_not_call_mercury, promise_semipure],
+"
+    Result = counter;
+").
 @end example
 
 @c ----------------------------------------------------------------------------
@@ -8223,7 +8251,7 @@ must form valid Java identifiers.
 These identifiers are used as the names of static class members
 which are assigned instances of the enumeration class.
 
-The @samp{equals} method should be used for equality testing of enumeration
+The @code{equals} method should be used for equality testing of enumeration
 values in Java code.
 
 The default mapping used by @samp{pragma foreign_export_enum}
@@ -8243,7 +8271,7 @@ The Java code from Java @samp{pragma foreign_proc} declarations will be placed
 in the bodies of static member functions of an automatically generated Java
 class.
 Since such Java code will become part of a static member function, it must not
-refer to the @samp{this} keyword.
+refer to the @code{this} keyword.
 It may however refer to static member variables or static member functions
 declared with @samp{pragma foreign_code}.
 
@@ -8254,17 +8282,19 @@ for mapping Mercury types to Java types are described in
 
 The Java code in a @code{pragma foreign_proc} declaration
 for a procedure whose determinism indicates that it can fail
-must assign a value of type @samp{boolean} to the variable
-@samp{SUCCESS_INDICATOR}.  For example:
+must assign a value of type @code{boolean} to the variable
+@code{SUCCESS_INDICATOR}.  For example:
 
 @example
 :- pred string.contains_char(string, character).
 :- mode string.contains_char(in, in) is semidet.
 
 :- pragma foreign_proc("Java",
-	string.contains_char(Str::in, Ch::in),
-        [will_not_call_mercury, promise_pure],
-        "SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);").
+    string.contains_char(Str::in, Ch::in),
+    [will_not_call_mercury, promise_pure],
+"
+    SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);
+").
 @end example
 
 @noindent
@@ -8275,7 +8305,7 @@ Arguments whose mode is input will have their values set by the
 Mercury implementation on entry to the Java code.
 With our current implementation, the Java code must set the values
 of all output variables, even if the procedure fails
-(i.e. sets the @samp{SUCCESS_INDICATOR} variable to @code{false}).
+(i.e. sets the @code{SUCCESS_INDICATOR} variable to @code{false}).
 @c If the procedure
 @c succeeds, the Java code must set the values of all output arguments
 @c If the procedure fails, the Java code need only
@@ -8340,11 +8370,11 @@ class MyApplet extends JApplet @{
 ").
 :- pred hello(io.state::di, io.state::uo) is det.
 :- pragma foreign_proc("Java",
-	hello(_IO0::di, _IO::uo),
-	[will_not_call_mercury],
+    hello(_IO0::di, _IO::uo),
+    [will_not_call_mercury],
 "
-	MyApplet app = new MyApplet();
-	// ...
+    MyApplet app = new MyApplet();
+    // @dots{}
 ").
 @end example
 
@@ -8362,18 +8392,24 @@ For example:
 
 @example
 :- pragma foreign_code("Java", "
-	static int counter = 0;
+    static int counter = 0;
 ").
 
 :- impure pred incr_counter is det.
-:- pragma foreign_proc("Java", incr_counter,
-	[will_not_call_mercury], "counter++;").
+:- pragma foreign_proc("Java",
+    incr_counter,
+    [will_not_call_mercury],
+"
+    counter++;
+").
 
 :- semipure func get_counter = int.
 :- pragma foreign_proc("Java",
-	get_counter = (Result::out),
-	[will_not_call_mercury, promise_semipure],
-	"Result = counter;").
+    get_counter = (Result::out),
+    [will_not_call_mercury, promise_semipure],
+"
+    Result = counter;
+").
 @end example
 
 @c ----------------------------------------------------------------------------
@@ -8413,22 +8449,24 @@ will be the Erlang representations as described in
 The Erlang code in a @code{pragma foreign_proc} declaration
 for a procedure whose determinism indicates that it can fail
 must assign either @samp{true} or @samp{false} to the variable
-@samp{SUCCESS_INDICATOR}.  For example:
+@code{SUCCESS_INDICATOR}.  For example:
 
 @example
 :- pred contains_char(list(char)::in, char::in) is semidet.
 
 :- pragma foreign_proc("Erlang",
-	contains_char(Str::in, Ch::in),
-        [will_not_call_mercury, promise_pure, thread_safe],
-        "SUCCESS_INDICATOR = (string:chr(Str, Ch) =/= 0)").
+    contains_char(Str::in, Ch::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (string:chr(Str, Ch) =/= 0)
+").
 @end example
 
 Arguments whose mode is input will have their values set by the
 Mercury implementation on entry to the Erlang code.
 The Erlang code must set the values
 of all output variables, even if the procedure fails
-(i.e. sets the @samp{SUCCESS_INDICATOR} variable to @code{false}).
+(i.e. sets the @code{SUCCESS_INDICATOR} variable to @code{false}).
 
 @node Using pragma foreign_export for Erlang
 @subsubsection Using pragma foreign_export for Erlang
@@ -8480,14 +8518,14 @@ For example:
 
 @example
 :- pragma foreign_decl("Erlang", "
-	-define(FOO, 42).
+    -define(FOO, 42).
 ").
 :- pred hello(io.state::di, io.state::uo) is det.
 :- pragma foreign_proc("Erlang",
-	hello(_IO0::di, _IO::uo),
-	[will_not_call_mercury],
+    hello(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
 "
-	io:format(""FOO = ~w~n"", [?FOO])
+    io:format(""FOO = ~w~n"", [?FOO])
 ").
 @end example
 
@@ -8504,12 +8542,16 @@ For example:
 
 @example
 :- pragma foreign_code("Erlang", "
-	foo() -> io:put_chars(""Foo."").
+    foo() -> io:put_chars(""Foo."").
 ").
 
 :- impure pred say_foo is det.
-:- pragma foreign_proc("Erlang", say_foo,
-	[will_not_call_mercury], "foo()").
+:- pragma foreign_proc("Erlang",
+    say_foo,
+    [will_not_call_mercury],
+"
+    foo()
+").
 @end example
 
 @c ----------------------------------------------------------------------------
@@ -8676,8 +8718,8 @@ That is, a declaration of the form:
 or
 
 @example
-:- impure func @var{Func}(@var{Arguments}@dots{}) = Result.
-:- semipure func @var{Func}(@var{Arguments}@dots{}) = Result.
+:- impure func @var{Func}(@var{Arguments}@dots{}) = @var{Result}.
+:- semipure func @var{Func}(@var{Arguments}@dots{}) = @var{Result}.
 @end example
 
 @noindent
@@ -8698,7 +8740,7 @@ then all calls to @code{p/N} must be annotated with @code{impure}
 (@code{semipure}):
 
 @example
-	impure p(X1, X2, ..., XN)
+impure p(X1, X2, @dots{}, XN)
 @end example
 
 If function @code{f/N} is declared to be @code{impure} (@code{semipure})
@@ -8706,7 +8748,7 @@ then all applications of @code{f/N} must be obtained by unification with a
 variable and the unification goal as a whole be annotated with @code{impure}
 
 @example
-	impure X = f(X1, X2, ..., XN)
+impure X = f(X1, X2, @dots{}, XN)
 @end example
 
 Any call or unification goal containing a non-local variable with inst any that
@@ -8874,7 +8916,7 @@ the corresponding @samp{semipure} or @samp{impure} higher-order type.
 For example, the expression
 
 @example
-	(impure func(X) = Y :- semipure get_max(Y), impure set_max(X))
+(impure func(X) = Y :- semipure get_max(Y), impure set_max(X))
 @end example
 
 @noindent
@@ -8882,9 +8924,9 @@ is an example of an impure function lambda expression with type
 @samp{(impure func(int) = int)}, and the expression
 
 @example
-	(impure pred(X::in, Y::out) is det :-
-		semipure get_max(Y),
-		impure set_max(X))
+(impure pred(X::in, Y::out) is det :-
+    semipure get_max(Y),
+    impure set_max(X))
 @end example
 is an example of an impure predicate lambda expression
 with type @samp{impure pred(int, int)}.
@@ -8898,14 +8940,14 @@ the annotation is indicated by putting @samp{impure} or @samp{semipure}
 before the call.  For example:
 
 @example
-	:- func foo(impure pred(int)) = int.
-	:- mode foo(in(pred(out) is det)) = out is det.
+:- func foo(impure pred(int)) = int.
+:- mode foo(in(pred(out) is det)) = out is det.
 
-	foo(ImpurePred) = X1 + X2 :-
-		% using higher-order syntax
-		impure ImpurePred(X1),
-		% using the call/N syntax
-		impure call(ImpurePred, X2).
+foo(ImpurePred) = X1 + X2 :-
+    % Using higher-order syntax.
+    impure ImpurePred(X1),
+    % Using the call/N syntax.
+    impure call(ImpurePred, X2).
 @end example
 
 For calling impure or semipure higher-order functions, the notation is
@@ -8918,12 +8960,12 @@ or @samp{semipure_apply} rather than using @samp{apply} or higher-order syntax.
 For example:
 
 @example
-	:- func map(impure func(T1) = T2, list(T1)) = list(T2).
+:- func map(impure func(T1) = T2, list(T1)) = list(T2).
 
-	map(_ImpureFunc, []) = [].
-	map(ImpureFunc, [X|Xs]) = [Y|Ys] :-
-		impure Y = impure_apply(ImpureFunc, X),
-		impure Ys = map(ImpureFunc, Ys).
+map(_ImpureFunc, []) = [].
+map(ImpureFunc, [X|Xs]) = [Y|Ys] :-
+    impure Y = impure_apply(ImpureFunc, X),
+    impure Ys = map(ImpureFunc, Ys).
 @end example
 
 @node Solver types
@@ -8938,15 +8980,15 @@ For example:
 @end menu
 
 Solver types are an experimental addition to the language supporting the
-implementation of constraint solvers.  A program may place constraints
-on and between variables of a solver type, limiting the values those
-variables may take on before they are actually bound.  For example, if
-@code{X} and @code{Y} are variables belonging to a constrained integer
-solver type, we might place constraints upon them such that @code{X > 3
-+ Y} and @code{Y =< 7}.  A later attempt to unify @code{Y} with
-@code{10} will fail (it would violate the second constraint); similarly
-an attempt to unify @code{X} with @code{5} and @code{Y} with @code{4}
-would fail (it would violate the first constraint).
+implementation of constraint solvers.
+A program may place constraints on and between variables of a solver type,
+limiting the values those variables may take on before they are actually bound.
+For example, if @code{X} and @code{Y} are variables belonging to a constrained
+integer solver type, we might place constraints upon them such that
+@code{X > 3 + Y} and @code{Y =< 7}.
+A later attempt to unify @code{Y} with @code{10} will fail (it would violate
+the second constraint); similarly an attempt to unify @code{X} with @code{5}
+and @code{Y} with @code{4} would fail (it would violate the first constraint).
 
 @node The any inst
 @section The @samp{any} inst
@@ -8984,7 +9026,7 @@ The type declarations
 @noindent
 declare types @code{t1/0} and @code{t2/2} to be abstract solver types.
 Abstract solver type declarations are identical to ordinary abstract
-type declarations except for the solver keyword.
+type declarations except for the @code{solver} keyword.
 
 @node Solver type definitions
 @section Solver type definitions
@@ -8992,36 +9034,38 @@ type declarations except for the solver keyword.
 A solver type definition takes the following form:
 
 @example
-:- solver type solver_type
-        where   representation   is representation_type,
-                ground           is ground_inst,
-                any              is any_inst,
-                constraint_store is mutable_decls,
-                equality         is equality_pred,
-                comparison       is comparison_pred.
+@group
+:- solver type @var{solver_type}
+    where   representation   is @var{representation_type},
+            ground           is @var{ground_inst},
+            any              is @var{any_inst},
+            constraint_store is @var{mutable_decls},
+            equality         is @var{equality_pred},
+            comparison       is @var{comparison_pred}.
+@end group
 @end example
 
-The @samp{representation} attribute is mandatory
-@samp{ground_inst} and @samp{any_inst} default to @samp{ground},
-@samp{mutable_decls} is either a single mutable declaration
+The @code{representation} attribute is mandatory,
+@var{ground_inst} and @var{any_inst} default to @code{ground},
+@var{mutable_decls} is either a single mutable declaration
 (@pxref{Module-local mutable variables})
 or a comma separated list of mutable declarations in brackets,
-the equality and comparison attributes are optional (although a solver type
-without equality would not be very useful), and attributes must appear in the
-order shown.
+the @code{equality} and @code{comparison} attributes are optional (although a
+solver type without equality would not be very useful), and attributes must
+appear in the order shown.
 
-The @code{representation_type} is the type used to implement the
-@code{solver_type}.  A two-tier scheme of this kind is necessary for a
+The @var{representation_type} is the type used to implement the
+@var{solver_type}.  A two-tier scheme of this kind is necessary for a
 number of reasons, including
 @itemize @bullet
 @item
 a semantic gap is necessary to accommodate the fact that non-ground
-@code{solver_type} values may be represented by ground
-@code{representation_type} values (in the context of the corresponding
+@var{solver_type} values may be represented by ground
+@var{representation_type} values (in the context of the corresponding
 constraint solver state);
 @item
 this approach greatly simplifies the definition of equality and
-comparison predicates for the @code{solver_type}.
+comparison predicates for the @var{solver_type}.
 @end itemize
 
 @c XXX The following paragraph describes the old support for automatic
@@ -9041,38 +9085,38 @@ comparison predicates for the @code{solver_type}.
 @c (The initialisation predicate is responsible for registering the new,
 @c unbound variable with the corresponding constraint solver state.)
 
-The @code{ground_inst} is the inst associated with
-@code{representation_type} values denoting @code{ground}
-@code{solver_type} values.
+The @var{ground_inst} is the inst associated with
+@var{representation_type} values denoting @code{ground}
+@var{solver_type} values.
 
 The @code{any_inst} is the inst associated with
 @code{representation_type} values denoting @code{any} @code{solver_type}
 values.
 
 The compiler constructs four impure functions for converting between
-@code{solver_type} values and @code{representation_type} values
-(@samp{name} is the function symbol used to name @code{solver_type} and
-@samp{arity} is the number of type parameters it takes):
+@var{solver_type} values and @var{representation_type} values
+(@var{name} is the function symbol used to name @var{solver_type} and
+@var{arity} is the number of type parameters it takes):
 
 @example
-:- impure func 'representation of ground name/arity'(solver_type) =
-                        representation_type.
-:-        mode 'representation of ground name/arity'(in) =
-                        out(ground_inst) is det.
+:- impure func 'representation of ground @var{name}/@var{arity}'(@var{solver_type}) =
+                        @var{representation_type}.
+:-        mode 'representation of ground @var{name}/@var{arity}'(in) =
+                        out(@var{ground_inst}) is det.
 
-:- impure func 'representation of any name/arity'(solver_type) =
-                        representation_type.
-:-        mode 'representation of any name/arity'(in(any)) =
-                        out(any_inst) is det.
+:- impure func 'representation of any @var{name}/@var{arity}'(@var{solver_type}) =
+                        @var{representation_type}.
+:-        mode 'representation of any @var{name}/@var{arity}'(in(any)) =
+                        out(@var{any_inst}) is det.
 
-:- impure func 'representation to ground name/arity'(representation_type) =
-                        solver_type.
-:-        mode 'representation to ground name/arity'(in(ground_inst)) =
+:- impure func 'representation to ground @var{name}/@var{arity}'(@var{representation_type}) =
+                        @var{solver_type}.
+:-        mode 'representation to ground @var{name}/@var{arity}'(in(@var{ground_inst})) =
                         out is det.
 
-:- impure func 'representation to any name/arity'(representation_type) =
-                        solver_type.
-:-        mode 'representation to any name/arity'(in(any_inst)) =
+:- impure func 'representation to any @var{name}/@var{arity}'(@var{representation_type}) =
+                        @var{solver_type}.
+:-        mode 'representation to any @var{name}/@var{arity}'(in(@var{any_inst})) =
                         out(any) is det.
 @end example
 
@@ -9086,15 +9130,15 @@ interface section of a module.
 @c XXX it was also a requirement that if solver_type is exported then
 @c initialisation_pred also be exported -- see comment above.
 
-If @code{solver_type} is exported then it is a requirement that
-@code{representation_type},  and, if specified, @code{equality_pred} and
-@code{comparison_pred} are also exported from the same module.
+If @var{solver_type} is exported then it is a requirement that
+@var{representation_type},  and, if specified, @var{equality_pred} and
+@var{comparison_pred} are also exported from the same module.
 
-If @code{equality_pred} is not specified then the compiler will
+If @var{equality_pred} is not specified then the compiler will
 generate an equality predicate that throws an exception of type
 @samp{exception.software_error/0} when called.
 
-Likewise, if @code{comparison_pred} is not specified then the compiler
+Likewise, if @var{comparison_pred} is not specified then the compiler
 will generate a comparison predicate that throws an exception of
 type @samp{exception.software_error/0} when called.
 
@@ -9104,10 +9148,11 @@ with the solver type is for the purposes of documentation.  That is,
 
 @example
 :- solver type t
-	where ... constraint_store is [ mutable(a, int, 42, ground, []),
-					mutable(b, string, "Hi", ground, [])
-		  ],
-	      ...
+    where @dots{},
+          constraint_store is [ mutable(a, int, 42, ground, []),
+                                mutable(b, string, "Hi", ground, [])
+                               ],
+          @dots{}
 @end example
 
 @noindent
@@ -9115,7 +9160,7 @@ is equivalent to
 
 @example
 :- solver type t
-	where ...
+    where @dots{}
 :- mutable(a, int, 42, ground, []).
 :- mutable(b, string, "Hi", ground, []).
 @end example
@@ -9187,7 +9232,7 @@ In the case of pred and func expressions, Mercury allows three possibilities.
 The higher-order value may be considered @code{ground}, which means that
 all non-local variables used in the body of the expression
 (including those with other higher-order values) must themselves be ground.
-Higher order values that are ground can be safely called or applied
+Higher-order values that are ground can be safely called or applied
 in any context, including negated contexts, since none of their (ground)
 non-local variables can become further bound by doing so.
 Alternatively, the higher-order value may be considered to have inst
@@ -9237,23 +9282,23 @@ The following example shows all four of the available kinds of parameters:
 :- pred time_consuming_task(data::in, result::out) is det.
 
 time_consuming_task(In, Out) :-
-        trace [
-                compile_time(flag("do_logging") or grade(debug)),
-                run_time(env("VERBOSE")),
-                io(!IO),
-                state(logging_level, !LoggingLevel)
-        ] (
-                io.write_string("Time_consuming_task start\n", !IO),
-                ( !.LoggingLevel > 1 ->
-                        io.write_string("Input is ", !IO),
-                        io.write(In, !IO),
-                        io.nl(!IO)
-                ;
-                        true
-                )
-        ),
-        ...
-        % perform the actual task
+    trace [
+        compile_time(flag("do_logging") or grade(debug)),
+        run_time(env("VERBOSE")),
+        io(!IO),
+        state(logging_level, !LoggingLevel)
+    ] (
+        io.write_string("Time_consuming_task start\n", !IO),
+        ( !.LoggingLevel > 1 ->
+            io.write_string("Input is ", !IO),
+            io.write(In, !IO),
+            io.nl(!IO)
+        ;
+            true
+        )
+    ),
+    @dots{}
+    % perform the actual task
 @end example
 
 The @samp{compile_time} parameter says under what circumstances
@@ -9533,8 +9578,8 @@ will result in code bloat.
 
 Type specialization of predicates or functions which
 unify or compare polymorphic variables is most effective when
-the specialized types are builtin types such as @samp{int}, @samp{float}
-and @samp{string}, or enumeration types, since their unification and
+the specialized types are builtin types such as @code{int}, @code{float}
+and @code{string}, or enumeration types, since their unification and
 comparison procedures are simple and can be inlined.
 
 Predicates or functions which make use of type class method calls
@@ -9718,7 +9763,7 @@ arguments of types @samp{string}, @samp{int} or @samp{float}.
 
 Another limitation is that the @samp{--high-level-code} back-end does
 not support @samp{pragma fact_table} for procedures with determinism
-@samp{nondet} or @samp{multi}.
+@code{nondet} or @code{multi}.
 
 @c XXX STM
 @c @node Software Transactional Memory
@@ -10280,7 +10325,7 @@ The @samp{require_feature_set} pragma declaration has the following form:
 :- pragma require_feature_set(@var{Features}).
 @end example
 
-where @samp{Features} is a (possibly empty) list of features.
+where @var{Features} is a (possibly empty) list of features.
 
 The supported features are:
 @table @asis
@@ -10603,9 +10648,9 @@ Prototype:
 bool MR_choicepoint_newer(MR_ChoicepointId, MR_ChoicepointId);
 @end example
 
-@code{MR_choicepoint_newer(x, y)} true iff the choicepoint indicated by
-@samp{x} is newer than (i.e.@: was created more recently than) the
-choicepoint indicated by @samp{y}.  The null ChoicepointId is considered
+@code{MR_choicepoint_newer(@var{x}, @var{y})} true iff the choicepoint indicated by
+@var{x} is newer than (i.e.@: was created more recently than) the
+choicepoint indicated by @var{y}.  The null ChoicepointId is considered
 older than any non-null ChoicepointId.  If either of the choice points
 have been backtracked over, the behaviour is undefined.
 
@@ -10784,8 +10829,10 @@ PhD thesis, SUNY at Stony Brook, 1996.  Available from
 
 @node [5]
 @unnumberedsec [5]
-B. Demoen and K. Sagonas, @cite{CAT: the copying approach to tabling},
-submitted for publication,
-Katholieke Universiteit Leuven, 1998.
+B. Demoen and K. Sagonas, @cite{CAT: the Copying Approach to Tabling},
+In C. Palamidessi, H. Glaser and K. Meinke, editors, @cite{Principles of
+Declarative Programming, 10th International Symposium, PLILP'98},
+Lecture Notes in Computer Science, Springer, 1998.
+Available form @uref{http://user.it.uu.se/~kostis/Papers/cat.ps.gz}.
 
 @bye
