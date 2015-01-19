@@ -159,6 +159,7 @@ for common programming tasks --- see the Mercury Library Reference Manual.
 @menu
 * Syntax overview::
 * Character set::
+* Whitespace::
 * Tokens::
 * Terms::
 * Builtin operators::
@@ -196,6 +197,22 @@ for clauses.
 
 Mercury program source files must be written using the UTF-8 encoding of
 the Unicode character set.
+
+@node Whitespace
+@section Whitespace
+
+In Mercury program source files, whitespace is defined to be the following
+characters:
+
+@multitable {CHARACTER_TABULATION} {Unicode_code_point} {Horizontal-tab}
+@headitem  Unicode name @tab Unicode code point @tab Notes
+    @item @sc{space}                @tab U+0020             @tab
+    @item @sc{character tabulation} @tab U+0009             @tab Horizontal-tab
+    @item @sc{line feed}            @tab U+000A             @tab
+    @item @sc{line tabulation}      @tab U+000B             @tab Vertical-tab
+    @item @sc{form feed}            @tab U+000C             @tab
+    @item @sc{carriage return}      @tab U+000D             @tab
+@end multitable
 
 @node Tokens
 @section Tokens
