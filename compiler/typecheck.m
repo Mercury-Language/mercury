@@ -1114,7 +1114,7 @@ typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
 
     % Typecheck the clause - first the head unification, and then the body.
     ArgVectorKind = arg_vector_clause_head,
-    typecheck_var_has_type_list(ArgVectorKind, 1, Context,
+    typecheck_vars_have_types(ArgVectorKind, 1, Context,
         HeadVars, ArgTypes, !TypeAssignSet, !Info),
     typecheck_goal(Body0, Body, Context, !TypeAssignSet, !Info),
     trace [compiletime(flag("type_checkpoint")), io(!IO)] (
@@ -1656,7 +1656,7 @@ typecheck_event_call(Context, EventName, Args, !TypeAssignSet, !Info) :-
         list.length(EventArgTypes, NumEventArgTypes),
         ( NumArgs = NumEventArgTypes ->
             ArgVectorKind = arg_vector_event(EventName),
-            typecheck_var_has_type_list(ArgVectorKind, 1, Context,
+            typecheck_vars_have_types(ArgVectorKind, 1, Context,
                 Args, EventArgTypes, !TypeAssignSet, !Info)
         ;
             Spec = report_event_args_mismatch(Context,
@@ -1698,7 +1698,7 @@ typecheck_call_pred_name(SimpleCallId, Context, GoalId, Args, PredId,
             % (so that we can optimize the case of a non-overloaded,
             % non-polymorphic predicate).
             PredId = HeadPredId,
-            ArgVectorKind = arg_vector_plain_call(SimpleCallId),
+            ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
             typecheck_call_pred_id(ArgVectorKind, Context, GoalId,
                 PredId, Args, !TypeAssignSet, !Info)
         ;
@@ -1747,7 +1747,7 @@ typecheck_call_pred_id(ArgVectorKind, Context, GoalId, PredId, Args,
         varset.is_empty(PredTypeVarSet),
         PredClassContext = constraints([], [])
     ->
-        typecheck_var_has_type_list(ArgVectorKind, 1, Context, Args,
+        typecheck_vars_have_types(ArgVectorKind, 1, Context, Args,
             PredArgTypes, !TypeAssignSet, !Info)
     ;
         module_info_get_class_table(ModuleInfo, ClassTable),
@@ -2004,22 +2004,22 @@ type_assign_var_has_one_of_these_types(TypeAssign0, Var, TypeA, TypeB,
     % Given a list of variables and a list of types, ensure that
     % each variable has the corresponding type.
     %
-:- pred typecheck_var_has_type_list(arg_vector_kind::in, int::in,
+:- pred typecheck_vars_have_types(arg_vector_kind::in, int::in,
     prog_context::in, list(prog_var)::in, list(mer_type)::in,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_var_has_type_list(_, _, _, [], [_ | _], !TypeAssignSet, !Info) :-
+typecheck_vars_have_types(_, _, _, [], [_ | _], !TypeAssignSet, !Info) :-
     unexpected($module, $pred, "length mismatch").
-typecheck_var_has_type_list(_, _, _, [_ | _], [], !TypeAssignSet, !Info) :-
+typecheck_vars_have_types(_, _, _, [_ | _], [], !TypeAssignSet, !Info) :-
     unexpected($module, $pred, "length mismatch").
-typecheck_var_has_type_list(_, _, _, [], [], !TypeAssignSet, !Info).
-typecheck_var_has_type_list(ArgVectorKind, ArgNum, Context,
+typecheck_vars_have_types(_, _, _, [], [], !TypeAssignSet, !Info).
+typecheck_vars_have_types(ArgVectorKind, ArgNum, Context,
         [Var | Vars], [Type | Types], !TypeAssignSet, !Info) :-
     GoalContext = type_error_in_arg_vector(ArgVectorKind, ArgNum),
     typecheck_var_has_type(GoalContext, Context,
         Var, Type, !TypeAssignSet, !Info),
-    typecheck_var_has_type_list(ArgVectorKind, ArgNum + 1, Context,
+    typecheck_vars_have_types(ArgVectorKind, ArgNum + 1, Context,
         Vars, Types, !TypeAssignSet, !Info).
 
 :- pred typecheck_var_has_type(type_error_goal_context::in, prog_context::in,

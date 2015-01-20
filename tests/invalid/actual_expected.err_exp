@@ -1,6 +1,6 @@
 actual_expected.m:106: In clause for predicate `find_compulsory_lvals'/5:
 actual_expected.m:106:   in argument 2 of call to predicate
-actual_expected.m:106:   `find_compulsory_lvals'/5:
+actual_expected.m:106:   `actual_expected.find_compulsory_lvals'/5:
 actual_expected.m:106:   type error: variable `LiveMap' has type
 actual_expected.m:106:   `tree234.tree234(actual_expected.label,
 actual_expected.m:106:   set_ordlist.set_ordlist(actual_expected.lval))',

@@ -12,7 +12,7 @@ errors2.m:009: Inferred :- pred bind_type_param(int).
 errors2.m:023: Error: no clauses for predicate `produce_string'/1.
 errors2.m:025: Error: no clauses for predicate `expect_int'/1.
 errors2.m:031: In clause for predicate `type_error'/0:
-errors2.m:031:   in argument 1 of call to predicate `expect_int'/1:
+errors2.m:031:   in argument 1 of call to predicate `errors2.expect_int'/1:
 errors2.m:031:   type error: variable `X' has type `string',
 errors2.m:031:   expected type was `int'.
 errors2.m:031:   The partial type assignment was:
@@ -26,7 +26,7 @@ errors2.m:037:   The partial type assignment was:
 errors2.m:037:     X_1: string
 errors2.m:037:     Y_2: int
 errors2.m:043: In clause for predicate `type_error_3'/0:
-errors2.m:043:   in argument 1 of call to predicate `expect_int'/1:
+errors2.m:043:   in argument 1 of call to predicate `errors2.expect_int'/1:
 errors2.m:043:   type error: variable `Y' has type `string',
 errors2.m:043:   expected type was `int'.
 errors2.m:043:   The partial type assignment was:
@@ -76,7 +76,7 @@ errors2.m:070:   warning: variable `Y' occurs only once in this scope.
 errors2.m:071: In clause for predicate `errors2.type_error_7'/0:
 errors2.m:071:   warning: variables `A, B, Z' occur only once in this scope.
 errors2.m:072: In clause for predicate `type_error_7'/0:
-errors2.m:072:   in argument 1 of call to predicate `expect_int'/1:
+errors2.m:072:   in argument 1 of call to predicate `errors2.expect_int'/1:
 errors2.m:072:   type error: variable `C' has type `string',
 errors2.m:072:   expected type was `int'.
 errors2.m:072:   The possible partial type assignments were:

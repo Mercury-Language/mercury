@@ -37,6 +37,7 @@
 
 :- type arg_vector_kind
     --->    arg_vector_clause_head
+    ;       arg_vector_plain_call_pred_id(pred_id)
     ;       arg_vector_plain_call(simple_call_id)
     ;       arg_vector_generic_call(generic_call_id)
     ;       arg_vector_foreign_proc_call(pred_id)
@@ -1905,6 +1906,17 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
         ;
             (
                 ArgVectorKind = arg_vector_plain_call(SimpleCallId),
+                CallId = plain_call_id(SimpleCallId)
+            ;
+                ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
+                ModuleInfo = ClauseContext ^ tecc_module_info,
+                module_info_pred_info(ModuleInfo, PredId, PredInfo),
+                pred_info_get_module_name(PredInfo, ModuleName),
+                pred_info_get_name(PredInfo, Name),
+                pred_info_get_orig_arity(PredInfo, Arity),
+                pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+                SimpleCallId = simple_call_id(PredOrFunc,
+                    qualified(ModuleName, Name), Arity),
                 CallId = plain_call_id(SimpleCallId)
             ;
                 ArgVectorKind = arg_vector_generic_call(GenericId),
