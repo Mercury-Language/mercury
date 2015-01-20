@@ -1468,14 +1468,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             % if the GoalType is unknown_atomic_goal_type.
             InnerVars =
                 atomic_interface_list_to_var_list([Inner | OrElseInners]),
-            list.foldl2(
-                (pred(Var::in, TAS0::in, TAS::out, Info0::in, Info::out)
-                        is det :-
-                    GoalContextInner =
-                        type_error_in_arg_vector(arg_vector_atomic_inner, 0),
-                    typecheck_var_has_type(GoalContextInner, Context,
-                        Var, stm_atomic_type, TAS0, TAS, Info0, Info)
-                ),
+            list.foldl2(typecheck_var_has_stm_atomic_type(Context),
                 InnerVars, !TypeAssignSet, !Info),
             expect(unify(GoalType, unknown_atomic_goal_type), $module, $pred,
                 "GoalType != unknown_atomic_goal_type"),
@@ -2021,6 +2014,14 @@ typecheck_vars_have_types(ArgVectorKind, ArgNum, Context,
         Var, Type, !TypeAssignSet, !Info),
     typecheck_vars_have_types(ArgVectorKind, ArgNum + 1, Context,
         Vars, Types, !TypeAssignSet, !Info).
+
+:- pred typecheck_var_has_stm_atomic_type(prog_context::in, prog_var::in,
+    type_assign_set::in, type_assign_set::out,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_var_has_stm_atomic_type(Context, Var, !TypeAssignSet, !Info) :-
+    typecheck_var_has_type(type_error_in_atomic_inner, Context,
+        Var, stm_atomic_type, !TypeAssignSet, !Info).
 
 :- pred typecheck_var_has_type(type_error_goal_context::in, prog_context::in,
     prog_var::in, mer_type::in,

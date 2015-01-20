@@ -48,7 +48,6 @@
     ;       arg_vector_loop_control
     ;       arg_vector_try_io
     ;       arg_vector_atomic_output
-    ;       arg_vector_atomic_inner
     ;       arg_vector_atomic_outer.
 
 :- type type_error_goal_context
@@ -62,7 +61,8 @@
     ;       type_error_in_unify(
                 % The original source of the unification we are checking.
                 teiu_unify_context              :: unify_context
-            ).
+            )
+    ;       type_error_in_atomic_inner.
 
 %-----------------------------------------------------------------------------%
 
@@ -1966,11 +1966,6 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
             Pieces = [words("in the"), invis_order(ArgNum), nth_fixed(ArgNum),
                 words("output variable of atomic goal:"), nl]
         ;
-            ArgVectorKind = arg_vector_atomic_inner,
-            % XXX We ignore ArgNum, since the ArgNum passed by our caller
-            % is not meaningful.
-            Pieces = [words("in inner variable of atomic goal:"), nl]
-        ;
             ArgVectorKind = arg_vector_atomic_outer,
             ( ArgNum = 1 ->
                 Pieces = [invis_order(1), words("in the first outer variable"),
@@ -1985,6 +1980,9 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
     ;
         GoalContext = type_error_in_unify(UnifyContext),
         unify_context_to_pieces(UnifyContext, [], Pieces)
+    ;
+        GoalContext = type_error_in_atomic_inner,
+        Pieces = [words("in inner variable of atomic goal:"), nl]
     ).
 
     % This function generates the preamble (initial part of) all type error
