@@ -41,6 +41,7 @@ SINGLEMODULE= \
 	any_to_ground_in_ite_cond \
 	any_to_ground_in_ite_cond_nomax \
 	anys_in_negated_contexts \
+	arg_permutation \
 	assert_in_interface \
 	bad_end_module \
 	bad_finalise_decl \

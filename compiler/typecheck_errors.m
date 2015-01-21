@@ -32,6 +32,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -41,21 +42,24 @@
     ;       arg_vector_plain_call(simple_call_id)
     ;       arg_vector_generic_call(generic_call_id)
     ;       arg_vector_foreign_proc_call(pred_id)
-    ;       arg_vector_event(string)
-    ;       arg_vector_cond_quant
-    ;       arg_vector_exist_quant
-    ;       arg_vector_promise_solutions
-    ;       arg_vector_loop_control
-    ;       arg_vector_try_io
-    ;       arg_vector_atomic_output
-    ;       arg_vector_atomic_outer.
+    ;       arg_vector_event(string).
+
+:- type var_vector_kind
+    --->    var_vector_args(arg_vector_kind)
+    ;       var_vector_cond_quant
+    ;       var_vector_exist_quant
+    ;       var_vector_promise_solutions
+    ;       var_vector_loop_control
+    ;       var_vector_try_io
+    ;       var_vector_atomic_output
+    ;       var_vector_atomic_outer.
 
 :- type type_error_goal_context
-    --->    type_error_in_arg_vector(
-                % The call_id of the pred being called.
-                teiav_kind                      :: arg_vector_kind,
+    --->    type_error_in_var_vector(
+                % What kind of variable vector is it?
+                teiav_kind                      :: var_vector_kind,
 
-                % The argument number within that argument vector.
+                % The argument number within that vector of variables.
                 teiav_arg_num                   :: int
             )
     ;       type_error_in_unify(
@@ -115,8 +119,41 @@
     list(cons_type_info), cons_id, list(prog_var), args_type_assign_set)
     = error_spec.
 
+:- type spec_and_maybe_actual_expected
+    --->    spec_and_maybe_actual_expected(
+                % A report of the type error.
+                error_spec,
+
+                % The actual and expected types involed in the type error,
+                % if both are unambiguously known.
+                maybe(actual_expected_types)
+            ).
+
+:- type actual_expected_types
+    --->    actual_expected_types(
+                actual_type     :: list(format_component),
+                expected_type   :: list(format_component)
+            ).
+
 :- func report_error_var(type_error_clause_context, type_error_goal_context,
-    prog_context, prog_var, mer_type, type_assign_set) = error_spec.
+    prog_context, prog_var, mer_type, type_assign_set)
+    = spec_and_maybe_actual_expected.
+
+:- type arg_vector_type_error
+    --->    arg_vector_type_error(
+                % The argument number in which the error occurred.
+                int,
+
+                % The variable at that argument position.
+                prog_var,
+
+                % The actual and expected types at that argument position.
+                actual_expected_types
+            ).
+
+:- func report_arg_vector_type_errors(type_error_clause_context,
+    prog_context, arg_vector_kind, type_assign_set,
+    list(arg_vector_type_error)) = error_spec.
 
 :- func report_error_var_either_type(type_error_clause_context,
     type_error_goal_context, prog_context, prog_var, mer_type, mer_type,
@@ -162,7 +199,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -1076,7 +1112,7 @@ report_possible_expected_actual_types(CurrPossNum, [Mismatch | Mismatches])
 %-----------------------------------------------------------------------------%
 
 report_error_var(ClauseContext, GoalContext, Context, Var, Type,
-        TypeAssignSet0) = Spec :-
+        TypeAssignSet0) = SpecAndMaybeActualExpected :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
 
@@ -1088,11 +1124,13 @@ report_error_var(ClauseContext, GoalContext, Context, Var, Type,
     Pieces1 = [words("type error:")],
     VarSet = ClauseContext ^ tecc_varset,
     ( ActualExpectedList = [ActualExpected] ->
+        MaybeActualExpected = yes(ActualExpected),
         ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces),
         Pieces2 = argument_name_to_pieces(VarSet, Var) ++
             [words("has type")] ++ ActualPieces ++ [suffix(","), nl,
             words("expected type was")] ++ ExpectedPieces ++ [suffix("."), nl]
     ;
+        MaybeActualExpected = no,
         Pieces2 = [words("type of")] ++
             argument_name_to_pieces(VarSet, Var) ++
             [words("does not match its expected type;"), nl] ++
@@ -1105,9 +1143,114 @@ report_error_var(ClauseContext, GoalContext, Context, Var, Type,
 
     VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet),
     Msg = simple_msg(Context,
-        [always(InClauseForPieces ++ GoalContextPieces),
+        [always(InClauseForPieces), always(GoalContextPieces),
         always(Pieces1 ++ Pieces2), verbose_only(VerbosePieces)]),
+    Spec = error_spec(severity_error, phase_type_check, [Msg]),
+    SpecAndMaybeActualExpected =
+        spec_and_maybe_actual_expected(Spec, MaybeActualExpected).
+
+%-----------------------------------------------------------------------------%
+
+report_arg_vector_type_errors(ClauseContext, Context, ArgVectorKind,
+        TypeAssignSet0, ArgVectorTypeErrors0) = Spec :-
+    list.sort(ArgVectorTypeErrors0, ArgVectorTypeErrors),
+    InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    ArgVectorKindPieces =
+        arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind),
+    VarSet = ClauseContext ^ tecc_varset,
+    (
+        ArgVectorTypeErrors =
+            [HeadArgVectorTypeErrors | TailArgVectorTypeErrors]
+    ;
+        ArgVectorTypeErrors = [],
+        unexpected($module, $pred, "ArgVectorTypeErrors = []")
+    ),
+    arg_vector_type_errors_to_pieces(VarSet, ArgVectorTypeErrors,
+        HeadArgVectorTypeErrors, TailArgVectorTypeErrors,
+        ArgErrorPieces),
+    VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet),
+    Msg = simple_msg(Context,
+        [always(InClauseForPieces), always(ArgVectorKindPieces),
+        always(ArgErrorPieces), verbose_only(VerbosePieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
+
+:- pred arg_vector_type_errors_to_pieces(prog_varset::in,
+    list(arg_vector_type_error)::in,
+    arg_vector_type_error::in, list(arg_vector_type_error)::in,
+    list(format_component)::out) is det.
+
+arg_vector_type_errors_to_pieces(VarSet, AllErrors, HeadError, TailErrors,
+        Pieces) :-
+    (
+        TailErrors = [],
+        SuffixPiece = suffix("."),
+        TailPieces = []
+    ;
+        TailErrors = [HeadTailError | TailTailErrors],
+        SuffixPiece = suffix(";"),
+        arg_vector_type_errors_to_pieces(VarSet, AllErrors,
+            HeadTailError, TailTailErrors, TailPieces)
+    ),
+    HeadError = arg_vector_type_error(ArgNum, Var, ActualExpected),
+    ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces),
+    find_possible_switched_positions(VarSet, ActualPieces, AllErrors,
+        MismatchPieces),
+    Pieces = [words("in argument"), int_fixed(ArgNum), suffix(":"),
+        nl_indent_delta(1) |
+        argument_name_to_pieces(VarSet, Var)] ++
+        [words("has type")] ++ ActualPieces ++ [suffix(","), nl,
+        words("expected type was")] ++ ExpectedPieces ++ MismatchPieces ++
+        [SuffixPiece, nl_indent_delta(-1) | TailPieces].
+
+:- pred find_possible_switched_positions(prog_varset::in,
+    list(format_component)::in, list(arg_vector_type_error)::in,
+    list(format_component)::out) is det.
+
+find_possible_switched_positions(VarSet, SearchActualPieces, AllErrors,
+        Pieces) :-
+    find_expecteds_matching_actual(VarSet, SearchActualPieces, AllErrors,
+        MismatchPieces),
+    (
+        MismatchPieces = [],
+        Pieces = []
+    ;
+        MismatchPieces = [_ | _],
+        Pieces = [nl, prefix("("),
+            words("the actual type is the same as the expected type of")] ++
+            MismatchPieces ++ [suffix(")")]
+    ).
+
+:- pred find_expecteds_matching_actual(prog_varset::in,
+    list(format_component)::in, list(arg_vector_type_error)::in,
+    list(format_component)::out) is det.
+
+find_expecteds_matching_actual(_VarSet, _SearchActualPieces, [], []).
+find_expecteds_matching_actual(VarSet, SearchActualPieces,
+        [HeadError | TailErrors], MismatchPieces) :-
+    find_expecteds_matching_actual(VarSet, SearchActualPieces, TailErrors,
+        TailMismatchPieces),
+    HeadError = arg_vector_type_error(ArgNum, Var, ActualExpected),
+    ActualExpected = actual_expected_types(_ActualPieces, ExpectedPieces),
+    ( SearchActualPieces = ExpectedPieces ->
+        ( varset.search_name(VarSet, Var, _) ->
+            HeadMismatchPieces = [words("argument"), int_fixed(ArgNum),
+                suffix(","), words("which is variable"),
+                quote(mercury_var_to_string(VarSet, no, Var))]
+        ;
+            HeadMismatchPieces = [words("argument"), int_fixed(ArgNum)]
+        ),
+        (
+            TailMismatchPieces = [],
+            MismatchPieces = HeadMismatchPieces
+        ;
+            TailMismatchPieces = [_ | _],
+            ConnectPieces = [suffix(","), words("and")],
+            MismatchPieces = HeadMismatchPieces ++ ConnectPieces ++
+                TailMismatchPieces
+        )
+    ;
+        MismatchPieces = TailMismatchPieces
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1770,12 +1913,6 @@ args_type_assign_set_msg_to_pieces(ArgTypeAssignSet0, VarSet) = Pieces :-
     Pieces = [words(FirstWords), nl_indent_delta(1) | LaterPieces] ++
         [nl_indent_delta(-1)].
 
-:- type actual_expected_types
-    --->    actual_expected_types(
-                actual_type     :: list(format_component),
-                expected_type   :: list(format_component)
-            ).
-
 :- func type_stuff_to_actual_expected(mer_type, type_stuff)
     = actual_expected_types.
 
@@ -1898,60 +2035,63 @@ report_unimported_parents(UnimportedParents) = Pieces :-
 
 goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
     (
-        GoalContext = type_error_in_arg_vector(ArgVectorKind, ArgNum),
+        GoalContext = type_error_in_var_vector(VarVectorKind, ArgNum),
         (
-            ArgVectorKind = arg_vector_clause_head,
-            Pieces = [words("in argument"), invis_order(ArgNum),
-                int_fixed(ArgNum), words("of the clause head:"), nl]
-        ;
+            VarVectorKind = var_vector_args(ArgVectorKind),
             (
-                ArgVectorKind = arg_vector_plain_call(SimpleCallId),
-                CallId = plain_call_id(SimpleCallId)
+                ArgVectorKind = arg_vector_clause_head,
+                Pieces = [words("in argument"), invis_order(ArgNum),
+                    int_fixed(ArgNum), words("of the clause head:"), nl]
             ;
-                ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
-                ModuleInfo = ClauseContext ^ tecc_module_info,
-                module_info_pred_info(ModuleInfo, PredId, PredInfo),
-                pred_info_get_module_name(PredInfo, ModuleName),
-                pred_info_get_name(PredInfo, Name),
-                pred_info_get_orig_arity(PredInfo, Arity),
-                pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-                SimpleCallId = simple_call_id(PredOrFunc,
-                    qualified(ModuleName, Name), Arity),
-                CallId = plain_call_id(SimpleCallId)
+                (
+                    ArgVectorKind = arg_vector_plain_call(SimpleCallId),
+                    CallId = plain_call_id(SimpleCallId)
+                ;
+                    ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
+                    ModuleInfo = ClauseContext ^ tecc_module_info,
+                    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+                    pred_info_get_module_name(PredInfo, ModuleName),
+                    pred_info_get_name(PredInfo, Name),
+                    pred_info_get_orig_arity(PredInfo, Arity),
+                    pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+                    SimpleCallId = simple_call_id(PredOrFunc,
+                        qualified(ModuleName, Name), Arity),
+                    CallId = plain_call_id(SimpleCallId)
+                ;
+                    ArgVectorKind = arg_vector_generic_call(GenericId),
+                    CallId = generic_call_id(GenericId)
+                ),
+                PredMarkers = ClauseContext ^ tecc_pred_markers,
+                Pieces = [words("in"),
+                    words(call_arg_id_to_string(CallId, ArgNum, PredMarkers)),
+                    suffix(":"), nl]
             ;
-                ArgVectorKind = arg_vector_generic_call(GenericId),
-                CallId = generic_call_id(GenericId)
-            ),
-            PredMarkers = ClauseContext ^ tecc_pred_markers,
-            Pieces = [words("in"),
-                words(call_arg_id_to_string(CallId, ArgNum, PredMarkers)),
-                suffix(":"), nl]
+                ArgVectorKind = arg_vector_foreign_proc_call(_PredId),
+                unexpected($module, $pred, "arg_vector_foreign_proc_call")
+            ;
+                ArgVectorKind = arg_vector_event(EventName),
+                Pieces = [words("in argument"), invis_order(ArgNum),
+                    int_fixed(ArgNum), words("of event"), fixed(EventName),
+                    suffix(":"), nl]
+            )
         ;
-            ArgVectorKind = arg_vector_foreign_proc_call(_PredId),
-            unexpected($module, $pred, "arg_vector_foreign_proc_call")
-        ;
-            ArgVectorKind = arg_vector_event(EventName),
-            Pieces = [words("in argument"), invis_order(ArgNum),
-                int_fixed(ArgNum), words("of event"), fixed(EventName),
-                suffix(":"), nl]
-        ;
-            ArgVectorKind = arg_vector_cond_quant,
+            VarVectorKind = var_vector_cond_quant,
             Pieces = [words("in the"), invis_order(ArgNum), nth_fixed(ArgNum),
                 words("quantified variable in if-then-else condition:"), nl]
         ;
-            ArgVectorKind = arg_vector_exist_quant,
+            VarVectorKind = var_vector_exist_quant,
             Pieces = [words("in the"), invis_order(ArgNum), nth_fixed(ArgNum),
                 words("variable of quantification scope:"), nl]
         ;
-            ArgVectorKind = arg_vector_promise_solutions,
+            VarVectorKind = var_vector_promise_solutions,
             Pieces = [words("in the"), invis_order(ArgNum), nth_fixed(ArgNum),
                 words("variable of promise_solutions scope:"), nl]
         ;
-            ArgVectorKind = arg_vector_loop_control,
+            VarVectorKind = var_vector_loop_control,
             Pieces = [words("in the"), invis_order(ArgNum), nth_fixed(ArgNum),
                 words("variable of loop control scope:"), nl]
         ;
-            ArgVectorKind = arg_vector_try_io,
+            VarVectorKind = var_vector_try_io,
             ( ArgNum = 1 ->
                 Pieces = [invis_order(1),
                     words("in initial I/O state variable of try goal:"), nl]
@@ -1962,11 +2102,11 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                 unexpected($module, $pred, "try io variable not arg 1 or 2")
             )
         ;
-            ArgVectorKind = arg_vector_atomic_output,
+            VarVectorKind = var_vector_atomic_output,
             Pieces = [words("in the"), invis_order(ArgNum), nth_fixed(ArgNum),
                 words("output variable of atomic goal:"), nl]
         ;
-            ArgVectorKind = arg_vector_atomic_outer,
+            VarVectorKind = var_vector_atomic_outer,
             ( ArgNum = 1 ->
                 Pieces = [invis_order(1), words("in the first outer variable"),
                     words("of atomic goal:"), nl]
@@ -1983,6 +2123,45 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
     ;
         GoalContext = type_error_in_atomic_inner,
         Pieces = [words("in inner variable of atomic goal:"), nl]
+    ).
+
+:- func arg_vector_kind_to_pieces(type_error_clause_context, arg_vector_kind)
+    = list(format_component).
+
+arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind) = Pieces :-
+    (
+        ArgVectorKind = arg_vector_clause_head,
+        Pieces = [words("in arguments of the clause head:"), nl]
+    ;
+        (
+            ArgVectorKind = arg_vector_plain_call(SimpleCallId),
+            CallId = plain_call_id(SimpleCallId)
+        ;
+            ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
+            ModuleInfo = ClauseContext ^ tecc_module_info,
+            module_info_pred_info(ModuleInfo, PredId, PredInfo),
+            pred_info_get_module_name(PredInfo, ModuleName),
+            pred_info_get_name(PredInfo, Name),
+            pred_info_get_orig_arity(PredInfo, Arity),
+            pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+            SimpleCallId = simple_call_id(PredOrFunc,
+                qualified(ModuleName, Name), Arity),
+            CallId = plain_call_id(SimpleCallId)
+        ;
+            ArgVectorKind = arg_vector_generic_call(GenericId),
+            CallId = generic_call_id(GenericId)
+        ),
+        PredMarkers = ClauseContext ^ tecc_pred_markers,
+        Pieces = [words("in"),
+            words(call_arg_id_to_string(CallId, -1, PredMarkers)),
+            suffix(":"), nl]
+    ;
+        ArgVectorKind = arg_vector_foreign_proc_call(_PredId),
+        unexpected($module, $pred, "arg_vector_foreign_proc_call")
+    ;
+        ArgVectorKind = arg_vector_event(EventName),
+        Pieces = [words("in arguments of event"), fixed(EventName),
+            suffix(":"), nl]
     ).
 
     % This function generates the preamble (initial part of) all type error

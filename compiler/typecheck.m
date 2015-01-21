@@ -1114,7 +1114,7 @@ typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
 
     % Typecheck the clause - first the head unification, and then the body.
     ArgVectorKind = arg_vector_clause_head,
-    typecheck_vars_have_types(ArgVectorKind, 1, Context,
+    typecheck_vars_have_types(ArgVectorKind, Context,
         HeadVars, ArgTypes, !TypeAssignSet, !Info),
     typecheck_goal(Body0, Body, Context, !TypeAssignSet, !Info),
     trace [compiletime(flag("type_checkpoint")), io(!IO)] (
@@ -1309,7 +1309,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             type_checkpoint("else", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
         ),
         typecheck_goal(Else0, Else, Context, !TypeAssignSet, !Info),
-        ensure_vars_have_a_type(arg_vector_cond_quant, Context, Vars,
+        ensure_vars_have_a_type(var_vector_cond_quant, Context, Vars,
             !TypeAssignSet, !Info),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
@@ -1329,19 +1329,19 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             (
                 (
                     Reason = exist_quant(Vars),
-                    ArgVectorKind = arg_vector_exist_quant
+                    VarVectorKind = var_vector_exist_quant
                 ;
                     Reason = promise_solutions(Vars, _),
-                    ArgVectorKind = arg_vector_promise_solutions
+                    VarVectorKind = var_vector_promise_solutions
                 )
             ;
                 % These variables are introduced by the compiler and may
                 % only have a single, specific type.
                 Reason = loop_control(LCVar, LCSVar, _),
                 Vars = [LCVar, LCSVar],
-                ArgVectorKind = arg_vector_loop_control
+                VarVectorKind = var_vector_loop_control
             ),
-            ensure_vars_have_a_type(ArgVectorKind, Context, Vars,
+            ensure_vars_have_a_type(VarVectorKind, Context, Vars,
                 !TypeAssignSet, !Info)
         ;
             ( Reason = promise_purity(_)
@@ -1443,8 +1443,8 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             ),
             (
                 MaybeOutputVars = yes(OutputVars),
-                ArgVectorKindOutput = arg_vector_atomic_output,
-                ensure_vars_have_a_type(ArgVectorKindOutput, Context,
+                VarVectorKindOutput = var_vector_atomic_output,
+                ensure_vars_have_a_type(VarVectorKindOutput, Context,
                     OutputVars, !TypeAssignSet, !Info)
             ;
                 MaybeOutputVars = no
@@ -1455,9 +1455,9 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             typecheck_goal_list(OrElseGoals0, OrElseGoals, Context,
                 !TypeAssignSet, !Info),
 
-            ArgVectorKindOuter = arg_vector_atomic_outer,
+            VarVectorKindOuter = var_vector_atomic_outer,
             Outer = atomic_interface_vars(OuterDI, OuterUO),
-            ensure_vars_have_a_single_type(ArgVectorKindOuter, Context,
+            ensure_vars_have_a_single_type(VarVectorKindOuter, Context,
                 [OuterDI, OuterUO], !TypeAssignSet, !Info),
 
             % The outer variables must either be both I/O states or STM states.
@@ -1483,13 +1483,13 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             typecheck_goal(SubGoal0, SubGoal, Context, !TypeAssignSet, !Info),
             (
                 MaybeIO = yes(try_io_state_vars(InitialIO, FinalIO)),
-                ArgVectorKind = arg_vector_try_io,
-                ensure_vars_have_a_type(ArgVectorKind, Context,
+                VarVectorKind = var_vector_try_io,
+                ensure_vars_have_a_type(VarVectorKind, Context,
                     [InitialIO, FinalIO], !TypeAssignSet, !Info),
                 InitialGoalContext =
-                    type_error_in_arg_vector(ArgVectorKind, 1),
+                    type_error_in_var_vector(VarVectorKind, 1),
                 FinalGoalContext =
-                    type_error_in_arg_vector(ArgVectorKind, 2),
+                    type_error_in_var_vector(VarVectorKind, 2),
                 typecheck_var_has_type(InitialGoalContext, Context,
                     InitialIO, io_state_type, !TypeAssignSet, !Info),
                 typecheck_var_has_type(FinalGoalContext, Context,
@@ -1525,11 +1525,11 @@ typecheck_goal_list([Goal0 | Goals0], [Goal | Goals], Context,
 
     % Ensure that each variable in Vars has been assigned a type.
     %
-:- pred ensure_vars_have_a_type(arg_vector_kind::in, prog_context::in,
+:- pred ensure_vars_have_a_type(var_vector_kind::in, prog_context::in,
     list(prog_var)::in, type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-ensure_vars_have_a_type(ArgVectorKind, Context, Vars, !TypeAssignSet, !Info) :-
+ensure_vars_have_a_type(VarVectorKind, Context, Vars, !TypeAssignSet, !Info) :-
     (
         Vars = []
     ;
@@ -1542,18 +1542,19 @@ ensure_vars_have_a_type(ArgVectorKind, Context, Vars, !TypeAssignSet, !Info) :-
         varset.new_vars(NumVars, TypeVars, TypeVarSet0, TypeVarSet),
         prog_type.var_list_to_type_list(map.init, TypeVars, Types),
         empty_hlds_constraints(EmptyConstraints),
-        typecheck_var_has_polymorphic_type_list(ArgVectorKind, Context,
+        typecheck_var_has_polymorphic_type_list(VarVectorKind, Context,
             Vars, TypeVarSet, [], Types, EmptyConstraints,
             !TypeAssignSet, !Info)
     ).
 
     % Ensure that each variable in Vars has been assigned a single type.
     %
-:- pred ensure_vars_have_a_single_type(arg_vector_kind::in, prog_context::in,
+:- pred ensure_vars_have_a_single_type(var_vector_kind::in, prog_context::in,
     list(prog_var)::in, type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-ensure_vars_have_a_single_type(CallId, Context, Vars, !TypeAssignSet, !Info) :-
+ensure_vars_have_a_single_type(VarVectorKind, Context, Vars,
+        !TypeAssignSet, !Info) :-
     (
         Vars = []
     ;
@@ -1567,7 +1568,7 @@ ensure_vars_have_a_single_type(CallId, Context, Vars, !TypeAssignSet, !Info) :-
         list.length(Vars, NumVars),
         list.duplicate(NumVars, Type, Types),
         empty_hlds_constraints(EmptyConstraints),
-        typecheck_var_has_polymorphic_type_list(CallId, Context,
+        typecheck_var_has_polymorphic_type_list(VarVectorKind, Context,
             Vars, TypeVarSet, [], Types, EmptyConstraints,
             !TypeAssignSet, !Info)
     ).
@@ -1584,12 +1585,12 @@ typecheck_higher_order_call(GenericCallId, Context, PredVar, Purity, Args,
     list.length(Args, Arity),
     higher_order_pred_type(Purity, Arity, lambda_normal,
         TypeVarSet, PredVarType, ArgTypes),
-    ArgVectorKind = arg_vector_generic_call(GenericCallId),
+    VarVectorKind = var_vector_args(arg_vector_generic_call(GenericCallId)),
     % The class context is empty because higher-order predicates
     % are always monomorphic. Similarly for ExistQVars.
     empty_hlds_constraints(EmptyConstraints),
     ExistQVars = [],
-    typecheck_var_has_polymorphic_type_list(ArgVectorKind, Context,
+    typecheck_var_has_polymorphic_type_list(VarVectorKind, Context,
         [PredVar | Args], TypeVarSet, ExistQVars, [PredVarType | ArgTypes],
         EmptyConstraints, !TypeAssignSet, !Info).
 
@@ -1649,7 +1650,7 @@ typecheck_event_call(Context, EventName, Args, !TypeAssignSet, !Info) :-
         list.length(EventArgTypes, NumEventArgTypes),
         ( NumArgs = NumEventArgTypes ->
             ArgVectorKind = arg_vector_event(EventName),
-            typecheck_vars_have_types(ArgVectorKind, 1, Context,
+            typecheck_vars_have_types(ArgVectorKind, Context,
                 Args, EventArgTypes, !TypeAssignSet, !Info)
         ;
             Spec = report_event_args_mismatch(Context,
@@ -1740,15 +1741,15 @@ typecheck_call_pred_id(ArgVectorKind, Context, GoalId, PredId, Args,
         varset.is_empty(PredTypeVarSet),
         PredClassContext = constraints([], [])
     ->
-        typecheck_vars_have_types(ArgVectorKind, 1, Context, Args,
+        typecheck_vars_have_types(ArgVectorKind, Context, Args,
             PredArgTypes, !TypeAssignSet, !Info)
     ;
         module_info_get_class_table(ModuleInfo, ClassTable),
         make_body_hlds_constraints(ClassTable, PredTypeVarSet,
             GoalId, PredClassContext, PredConstraints),
-        typecheck_var_has_polymorphic_type_list(ArgVectorKind, Context, Args,
-            PredTypeVarSet, PredExistQVars, PredArgTypes, PredConstraints,
-            !TypeAssignSet, !Info)
+        typecheck_var_has_polymorphic_type_list(var_vector_args(ArgVectorKind),
+            Context, Args, PredTypeVarSet, PredExistQVars,
+            PredArgTypes, PredConstraints, !TypeAssignSet, !Info)
     ).
 
 :- pred typecheck_call_overloaded_pred(simple_call_id::in, prog_context::in,
@@ -1773,8 +1774,8 @@ typecheck_call_overloaded_pred(SimpleCallId, Context, GoalId, PredIdList, Args,
 
     % Then unify the types of the call arguments with the
     % called predicates' arg types.
-    ArgVectorKind = arg_vector_plain_call(SimpleCallId),
-    typecheck_var_has_arg_type_list(ArgVectorKind, 1, Context, Args,
+    VarVectorKind = var_vector_args(arg_vector_plain_call(SimpleCallId)),
+    typecheck_var_has_arg_type_list(VarVectorKind, 1, Context, Args,
         ArgsTypeAssignSet, TypeAssignSet, !Info).
 
 :- pred get_overloaded_pred_arg_types(list(pred_id)::in, pred_table::in,
@@ -1807,18 +1808,18 @@ get_overloaded_pred_arg_types([PredId | PredIds], Preds, ClassTable, GoalId,
     % A set of class constraints are also passed in, which must have the
     % types contained within renamed apart.
     %
-:- pred typecheck_var_has_polymorphic_type_list(arg_vector_kind::in,
+:- pred typecheck_var_has_polymorphic_type_list(var_vector_kind::in,
     prog_context::in, list(prog_var)::in, tvarset::in,
     existq_tvars::in, list(mer_type)::in, hlds_constraints::in,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_var_has_polymorphic_type_list(ArgVectorKind, Context, Args,
+typecheck_var_has_polymorphic_type_list(VarVectorKind, Context, Args,
         PredTypeVarSet, PredExistQVars, PredArgTypes, PredConstraints,
         TypeAssignSet0, TypeAssignSet, !Info) :-
     rename_apart(TypeAssignSet0, PredTypeVarSet, PredExistQVars,
         PredArgTypes, PredConstraints, [], ArgsTypeAssignSet),
-    typecheck_var_has_arg_type_list(ArgVectorKind, 1, Context, Args,
+    typecheck_var_has_arg_type_list(VarVectorKind, 1, Context, Args,
         ArgsTypeAssignSet, TypeAssignSet, !Info).
 
 :- pred rename_apart(type_assign_set::in, tvarset::in, existq_tvars::in,
@@ -1864,7 +1865,7 @@ type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_var_has_arg_type_list(arg_vector_kind::in, int::in,
+:- pred typecheck_var_has_arg_type_list(var_vector_kind::in, int::in,
     prog_context::in, list(prog_var)::in,
     args_type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
@@ -1873,12 +1874,12 @@ typecheck_var_has_arg_type_list(_, _, _, [],
         ArgTypeAssignSet, TypeAssignSet, !Info) :-
     TypeAssignSet =
         convert_args_type_assign_set_check_empty_args(ArgTypeAssignSet).
-typecheck_var_has_arg_type_list(ArgVectorKind, ArgNum, Context, [Var | Vars],
+typecheck_var_has_arg_type_list(VarVectorKind, ArgNum, Context, [Var | Vars],
         ArgTypeAssignSet0, TypeAssignSet, !Info) :-
-    GoalContext = type_error_in_arg_vector(ArgVectorKind, ArgNum),
+    GoalContext = type_error_in_var_vector(VarVectorKind, ArgNum),
     typecheck_var_has_arg_type(GoalContext, Context, Var,
         ArgTypeAssignSet0, ArgTypeAssignSet1, !Info),
-    typecheck_var_has_arg_type_list(ArgVectorKind, ArgNum + 1, Context,
+    typecheck_var_has_arg_type_list(VarVectorKind, ArgNum + 1, Context,
         Vars, ArgTypeAssignSet1, TypeAssignSet, !Info).
 
 :- pred typecheck_var_has_arg_type(type_error_goal_context::in,
@@ -1997,23 +1998,97 @@ type_assign_var_has_one_of_these_types(TypeAssign0, Var, TypeA, TypeB,
     % Given a list of variables and a list of types, ensure that
     % each variable has the corresponding type.
     %
-:- pred typecheck_vars_have_types(arg_vector_kind::in, int::in,
+:- pred typecheck_vars_have_types(arg_vector_kind::in,
     prog_context::in, list(prog_var)::in, list(mer_type)::in,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_vars_have_types(_, _, _, [], [_ | _], !TypeAssignSet, !Info) :-
+typecheck_vars_have_types(ArgVectorKind, Context, Vars, Types,
+        !TypeAssignSet, !Info) :-
+    typecheck_vars_have_types_in_arg_vector(!.Info, Context, ArgVectorKind, 1,
+        Vars, Types, !TypeAssignSet, [], Specs, yes([]),
+        MaybeArgVectorTypeErrors),
+    (
+        MaybeArgVectorTypeErrors = yes(ArgVectorTypeErrors),
+        ArgVectorTypeErrors = [_, _ | _]
+    ->
+        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
+        AllArgsSpec = report_arg_vector_type_errors(ClauseContext, Context,
+            ArgVectorKind, !.TypeAssignSet, ArgVectorTypeErrors),
+        typecheck_info_add_error(AllArgsSpec, !Info)
+    ;
+        list.foldl(typecheck_info_add_error, Specs, !Info)
+    ).
+
+:- pred typecheck_vars_have_types_in_arg_vector(typecheck_info::in,
+    prog_context::in, arg_vector_kind::in, int::in,
+    list(prog_var)::in, list(mer_type)::in,
+    type_assign_set::in, type_assign_set::out,
+    list(error_spec)::in, list(error_spec)::out,
+    maybe(list(arg_vector_type_error))::in,
+    maybe(list(arg_vector_type_error))::out) is det.
+
+typecheck_vars_have_types_in_arg_vector(_, _, _, _, [], [],
+        !TypeAssignSet, !Specs, !MaybeArgVectorTypeErrors).
+typecheck_vars_have_types_in_arg_vector(_, _, _, _, [], [_ | _],
+        !TypeAssignSet, !Specs, !MaybeArgVectorTypeErrors) :-
     unexpected($module, $pred, "length mismatch").
-typecheck_vars_have_types(_, _, _, [_ | _], [], !TypeAssignSet, !Info) :-
+typecheck_vars_have_types_in_arg_vector(_, _, _, _, [_ | _], [],
+        !TypeAssignSet, !Specs, !MaybeArgVectorTypeErrors) :-
     unexpected($module, $pred, "length mismatch").
-typecheck_vars_have_types(_, _, _, [], [], !TypeAssignSet, !Info).
-typecheck_vars_have_types(ArgVectorKind, ArgNum, Context,
-        [Var | Vars], [Type | Types], !TypeAssignSet, !Info) :-
-    GoalContext = type_error_in_arg_vector(ArgVectorKind, ArgNum),
-    typecheck_var_has_type(GoalContext, Context,
-        Var, Type, !TypeAssignSet, !Info),
-    typecheck_vars_have_types(ArgVectorKind, ArgNum + 1, Context,
-        Vars, Types, !TypeAssignSet, !Info).
+typecheck_vars_have_types_in_arg_vector(Info, Context, ArgVectorKind, ArgNum,
+        [Var | Vars], [Type | Types], !TypeAssignSet, !Specs,
+        !MaybeArgVectorTypeErrors) :-
+    typecheck_var_has_type_in_arg_vector(Info, Context, ArgVectorKind, ArgNum,
+        Var, Type, !TypeAssignSet, !Specs, !MaybeArgVectorTypeErrors),
+    typecheck_vars_have_types_in_arg_vector(Info, Context,
+        ArgVectorKind, ArgNum + 1, Vars, Types, !TypeAssignSet, !Specs,
+        !MaybeArgVectorTypeErrors).
+
+:- pred typecheck_var_has_type_in_arg_vector(typecheck_info::in,
+    prog_context::in, arg_vector_kind::in, int::in,
+    prog_var::in, mer_type::in, type_assign_set::in, type_assign_set::out,
+    list(error_spec)::in, list(error_spec)::out,
+    maybe(list(arg_vector_type_error))::in,
+    maybe(list(arg_vector_type_error))::out) is det.
+
+typecheck_var_has_type_in_arg_vector(Info, Context, ArgVectorKind, ArgNum,
+        Var, Type, TypeAssignSet0, TypeAssignSet, !Specs,
+        !MaybeArgVectorTypeErrors) :-
+    typecheck_var_has_type_2(TypeAssignSet0, Var, Type, [], TypeAssignSet1),
+    (
+        TypeAssignSet1 = [],
+        TypeAssignSet0 = [_ | _]
+    ->
+        TypeAssignSet = TypeAssignSet0,
+        typecheck_info_get_error_clause_context(Info, ClauseContext),
+        GoalContext =
+            type_error_in_var_vector(var_vector_args(ArgVectorKind), ArgNum),
+        SpecAndMaybeActualExpected = report_error_var(ClauseContext,
+            GoalContext, Context, Var, Type, TypeAssignSet0),
+        SpecAndMaybeActualExpected =
+            spec_and_maybe_actual_expected(Spec, MaybeActualExpected),
+        !:Specs = [Spec | !.Specs],
+        (
+            !.MaybeArgVectorTypeErrors = no
+        ;
+            !.MaybeArgVectorTypeErrors = yes(ArgVectorTypeErrors0),
+            (
+                MaybeActualExpected = no,
+                !:MaybeArgVectorTypeErrors = no
+            ;
+                MaybeActualExpected = yes(ActualExpected),
+                ArgVectorTypeError = arg_vector_type_error(ArgNum, Var,
+                    ActualExpected),
+                ArgVectorTypeErrors =
+                    [ArgVectorTypeError | ArgVectorTypeErrors0],
+                !:MaybeArgVectorTypeErrors = yes(ArgVectorTypeErrors)
+            )
+        )
+    ;
+        TypeAssignSet = TypeAssignSet1
+    ).
+
 
 :- pred typecheck_var_has_stm_atomic_type(prog_context::in, prog_var::in,
     type_assign_set::in, type_assign_set::out,
@@ -2037,8 +2112,9 @@ typecheck_var_has_type(GoalContext, Context, Var, Type,
     ->
         TypeAssignSet = TypeAssignSet0,
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_error_var(ClauseContext, GoalContext, Context,
-            Var, Type, TypeAssignSet0),
+        SpecAndMaybeActualExpected = report_error_var(ClauseContext,
+            GoalContext, Context, Var, Type, TypeAssignSet0),
+        SpecAndMaybeActualExpected = spec_and_maybe_actual_expected(Spec, _),
         typecheck_info_add_error(Spec, !Info)
     ;
         TypeAssignSet = TypeAssignSet1
