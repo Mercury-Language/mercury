@@ -315,7 +315,7 @@ compute_var_use_2(Info, ArgNum, RecursionType, MaybeCurDepth, VarUseType, Cost,
     implicit_par_info_intermodule_var_use(Info, FollowCallsAcrossModules),
     VarUseOptions = var_use_options(Deep, FollowCallsAcrossModules,
         VarUseType),
-    call_site_dynamic_var_use_info(CliquePtr, CSDPtr, ArgNum,
+    get_call_site_dynamic_var_use_info_rec_level(CliquePtr, CSDPtr, ArgNum,
         RecursionType, MaybeCurDepth, Cost, set.init, VarUseOptions, MaybeUse),
     (
         MaybeUse = ok(Use)

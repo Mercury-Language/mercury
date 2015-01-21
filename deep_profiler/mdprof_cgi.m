@@ -450,7 +450,7 @@ handle_query_from_new_server(Cmd, PrefInd, FileName, ToServerPipe,
     (
         StartupResult = ok(Deep),
         Pref = solidify_preference(Deep, PrefInd),
-        try_exec(Cmd, Pref, Deep, HTML, !IO),
+        try_exec(Cmd, Pref, Deep, HTML),
         (
             MaybeStartupStream = yes(StartupStream1),
             io.format(StartupStream1, "query 0 output:\n%s\n", [s(HTML)], !IO),
@@ -625,7 +625,7 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
         MaybeMsg = yes(HTML)
     ;
         MaybeMsg = no,
-        try_exec(Cmd, Pref0, Deep, HTML, !IO)
+        try_exec(Cmd, Pref0, Deep, HTML)
     ),
 
     ResponseFileName = response_file_name(Deep0 ^ data_file_name, QueryNum),

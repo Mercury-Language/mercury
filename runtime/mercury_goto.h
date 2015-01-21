@@ -237,7 +237,9 @@
 */
 
 #if defined(MR_INSERT_INTERNAL_LABEL_NAMES)
-  #define MR_insert_internal(n, a, l)	MR_insert_internal_label(n, a, l)
+  #define MR_insert_internal(n, a, l)   MR_insert_internal_label(\
+                                            (const struct MR_LabelLayout *) n,\
+                                            a, l)
 #else
   #define MR_insert_internal(n, a, l)	MR_insert_internal_label(NULL, a, l)
 #endif
@@ -265,7 +267,9 @@
 ** are frequently needed in debugging, e.g. MR_do_fail.
 */
 
-#define MR_make_label_ai(n, a, l)	MR_insert_internal(n, a, NULL)
+#define MR_make_label_ai(n, a, l)	MR_insert_internal(\
+                                        (const struct MR_LabelLayout *) n,\
+                                        a, NULL)
 #define MR_make_label_an(n, a, l)	MR_insert_internal_label(n, a, NULL)
 #define MR_make_label_sl(n, a, l)	MR_insert_internal(n, a, l)
 

@@ -42,7 +42,7 @@ FB_REPORT = `if [ -e $(FB_REPORT_WS) ]; then \
 	$(FB_REPORT) $< > $@
 
 autopar_%.feedback: %/Deep.data %/Deep.procrep
-	$(FB_CREATE) --implicit-parallelism $< $@
+	$(FB_CREATE) -v 0 --implicit-parallelism $< $@
 
 %.realclean:
 	rm -rf $(@:.realclean=.feedback) \

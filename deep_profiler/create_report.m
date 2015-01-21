@@ -215,8 +215,7 @@ create_report(Cmd, Deep, Report) :-
         Report = report_clique_dump(MaybeCliqueDump)
     ;
         Cmd = deep_cmd_call_site_dynamic_var_use(CSDPtr),
-        create_call_site_dynamic_var_use_report(Deep, CSDPtr,
-            MaybeVarUse),
+        create_call_site_dynamic_var_use_report(Deep, CSDPtr, MaybeVarUse),
         Report = report_call_site_dynamic_var_use(MaybeVarUse)
     ;
         Cmd = deep_cmd_restart,
@@ -1454,7 +1453,7 @@ call_site_dynamic_var_use_arg(Deep, CSDPtr, RecursionType, Cost, VarNameTable,
     var_mode_to_var_use_type(Mode, UseType),
     % XXX: Allow user to configure var use options.
     UseOptions = var_use_options(Deep, follow_any_call, UseType),
-    call_site_dynamic_var_use_info(CSDPtr, !.ArgNum, RecursionType,
+    get_call_site_dynamic_var_use_info(CSDPtr, !.ArgNum, RecursionType,
         Cost, UseOptions, MaybeUse),
     (
         MaybeUse = ok(Use),

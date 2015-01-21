@@ -534,20 +534,20 @@ ifeq "$(filter il% csharp% java% erlang%,$(GRADE))" ""
 		pragma_export \
 		runtime_opt \
 		target_mlobjs \
-        weak_ptr
+        	weak_ptr
 else
 	C_ONLY_PROGS =
 endif
 
 # constant_prop_2 fails in hl*prof* grades, due to a complicated phase
-# ordering problem.  The first simplify pass eliminates a call to
+# ordering problem. The first simplify pass eliminates a call to
 # private_builtin.typed_unify, but does not yet simplify the if-then-else
 # which contains it; then at the end of that pass determinism analysis
-# is rerun, and the condition is inferred to be det.  Then dead proc
+# is rerun, and the condition is inferred to be det. Then dead proc
 # elimination is run, and it does not eliminate link_error, since there
-# is still a call to it.  The second simplify pass notices that the
+# is still a call to it. The second simplify pass notices that the
 # condition is det, and simplifies the if-then-else, deleting the else part,
-# so link_error is now dead.  But dead proc elimination doesn't get run
+# so link_error is now dead. But dead proc elimination doesn't get run
 # again, so we go ahead and emit a declaration for link_error, and in
 # MLDS profiling grades also a reference, which causes the test case to fail.
 
@@ -588,7 +588,7 @@ CLOSURE_LAYOUT_PROGS = \
 # We do not pass the following tests at all:
 #
 # XXX export_test2
-#     Fails in hl* grades.  I think this never passed.
+#     Fails in hl* grades. I think this never passed.
 #
 # XXX float_consistency:
 #     floats in Mercury aren't consistent -- see the comments at the
@@ -600,7 +600,7 @@ CLOSURE_LAYOUT_PROGS = \
 #     optimizing.
 #
 # XXX var_not_found -- mode error in automatically generated unification
-#		predicate.  This test uses partially instantiated modes,
+#		predicate. This test uses partially instantiated modes,
 #		which are not yet fully supported.
 #
 # XXX needs_init doesn't work yet in profiling grades.
@@ -666,7 +666,7 @@ endif
 
 # compare_representation does not work in the MLDS grades (e.g. hlc.gc),
 # because comparison of closures gives "Sorry, not implemented" when
-# MR_HIGHLEVEL_CODE is set.  Likewise for closure_arg_comparison.
+# MR_HIGHLEVEL_CODE is set. Likewise for closure_arg_comparison.
 #
 # factt_non does not work in the MLDS grades because the code for nondet
 # fact tables assumes that we're using the LLDS back-end. Also, fact tables
@@ -892,7 +892,7 @@ intermod_unused_args.c: intermod_unused_args2.c
 
 # The runtime_opt test needs to be run a number of different times with the
 # MERCURY_OPTIONS environment variable set to a different value each time.
-# The options to try are in runtime_opt.inp, one per line.  The .out file
+# The options to try are in runtime_opt.inp, one per line. The .out file
 # is created by concatenating all of the outputs from each run.
 runtime_opt.out: runtime_opt runtime_opt.inp
 	( \
@@ -918,11 +918,11 @@ tl_backjump_test.out: tl_backjump_test
 	fi
 
 # weak_ptr's output is extreamly volatile, it depends on Boehm GC's behavour
-# which can vary depending on many different things.  All we can hope to do
+# which can vary depending on many different things. All we can hope to do
 # is check that it doesn't crash.
 
 weak_ptr.out: weak_ptr
-	./weak_ptr
+	./weak_ptr > weak_ptr.discarded_output
 	echo "Output is not part of test, see Mmakefile" > $@
 
 #-----------------------------------------------------------------------------#
@@ -954,7 +954,7 @@ dst_test.out: dst_test
 
 clean_local:
 	rm -f target_mlobjs_c.o
-	rm -f bitmap_test_output bitmap_test_output2
+	rm -f bitmap_test_output bitmap_test_output2 weak_ptr.discarded_output
 
 realclean_local:
 	rm -f Mercury.modules

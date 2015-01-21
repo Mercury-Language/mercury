@@ -150,8 +150,6 @@ generate_requested_feedback(ProgName, Options, InputFileName, OutputFileName,
                             !IO),
                         io.set_exit_status(1, !IO)
                     ),
-                    lookup_int_option(Options, verbosity, VerbosityLevel),
-                    set_verbosity_level(VerbosityLevel, !IO),
                     write_out_messages(Stderr, Messages, !IO)
                 ;
                     FeedbackReadResult = error(FeedbackReadError),
@@ -496,6 +494,7 @@ post_process_options(ProgName, !Options, !IO) :-
     ;
         true
     ),
+    set_verbosity_level(VerbosityLevel, !IO),
     lookup_bool_option(!.Options, implicit_parallelism, ImplicitParallelism),
     (
         ImplicitParallelism = yes,

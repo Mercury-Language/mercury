@@ -1,14 +1,14 @@
+% vim: ts=4 sw=4 expandtab ft=mercury
 %
 % Test the RTS' weak pointer support.
 %
 % Running this with GC_PRINT_STATS=1 GC_PRINT_VERBOSE_STATS=1 in the
 % environment will show that this support is working.
 %
-
-% The output of this test is extreamly volatile.  It depends on the garbage
-% collector's state (which objects get collected when) which can depend on a
-% lot of other things.  Therefore we don't compare it's output with expected
-% output.  The best we can do is test that it exits cleanly.
+% The output of this test is extreamly volatile. It depends on the garbage
+% collector's state (which objects get collected when) which can depend on
+% a lot of other things. Therefore we don't compare it's output with expected
+% output. The best we can do is test that it exits cleanly.
 
 :- module weak_ptr.
 :- interface.
@@ -133,34 +133,34 @@ drop(int n, list* cur)
 
 :- pred test(io::di, io::uo) is det.
 
-:- pragma foreign_proc("C", test(_IO0::di, _IO::uo),
+:- pragma foreign_proc("C",
+    test(_IO0::di, _IO::uo),
     [will_not_throw_exception, thread_safe, promise_pure],
-    "
-        list*   list_head;
-        list*   list_tail;
+"
+    list*   list_head;
+    list*   list_tail;
 
-        ML_garbage_collect();
+    ML_garbage_collect();
 
-        list_head = build_list();
-        ML_garbage_collect();
+    list_head = build_list();
+    ML_garbage_collect();
 
-        list_tail = get_tail(list_head);
-        traverse_forwards(list_head);
-        ML_garbage_collect();
+    list_tail = get_tail(list_head);
+    traverse_forwards(list_head);
+    ML_garbage_collect();
 
-        traverse_backwards(list_tail);
-        ML_garbage_collect();
+    traverse_backwards(list_tail);
+    ML_garbage_collect();
 
-        list_head = drop(9000, list_head);
-        ML_garbage_collect();
-        traverse_forwards(list_head);
-        traverse_backwards(list_tail);
+    list_head = drop(9000, list_head);
+    ML_garbage_collect();
+    traverse_forwards(list_head);
+    traverse_backwards(list_tail);
 
-    ").
+").
 
 test(!IO) :-
-    % We provide a weak_ptr.exp2 file so that the test passes in non C
-    % grades.  Java and C# provide their own weak pointer code that we do
-    % not need to test as part of the Mercury test suite.
+    % We provide a weak_ptr.exp2 file so that the test passes in non C grades.
+    % Java and C# provide their own weak pointer code that we do not need
+    % to test as part of the Mercury test suite.
     io.write_string("Test not supported in this grade.\n", !IO).
-

@@ -77,10 +77,10 @@
 
 %-----------------------------------------------------------------------------%
 
-    % call_site_dynamic_var_use_info(Deep, CSDPtr, ArgPos, RT, VarUseType,
+    % get_call_site_dynamic_var_use_info(Deep, CSDPtr, ArgNum, RT, VarUseType,
     %   MaybeVarUseInfo):
     %
-    % Lookup when the call site CSDPtr will produce ArgPos. RT is the type of
+    % Lookup when the call site CSDPtr will produce ArgNum. RT is the type of
     % recursion in the call site's parent clique and VarUseType is the type of
     % variable use that is expected, VarUseType is used to produce conservative
     % defaults if a callee cannot be analyzed.
@@ -88,15 +88,16 @@
     % The first mode avoids a check to ensure that this recursion type provides
     % enough information.
     %
-:- pred call_site_dynamic_var_use_info(call_site_dynamic_ptr, int,
+:- pred get_call_site_dynamic_var_use_info(call_site_dynamic_ptr, int,
     recursion_type, float, var_use_options, maybe_error(var_use_info)).
-:- mode call_site_dynamic_var_use_info(in, in,
+:- mode get_call_site_dynamic_var_use_info(in, in,
     in(recursion_type_known_costs), in, in, out) is det.
-:- mode call_site_dynamic_var_use_info(in, in,
+:- mode get_call_site_dynamic_var_use_info(in, in,
     in, in, in, out) is det.
 
-    % call_site_dynamic_var_use_info(Deep, CliquePtr, CSDPtr, ArgPos, RT,
-    %   MaybeCurDepth, Cost, CallStack, VarUseType, MaybeVarUseInfo).
+    % get_call_site_dynamic_var_use_info_rec_level(Deep, CliquePtr, CSDPtr,
+    %   ArgNum, RT, MaybeCurDepth, Cost, CallStack, VarUseType,
+    %   MaybeVarUseInfo).
     %
     % As above. This alternative should be used if searching starts at a
     % different recursion level or from within a current variable use analysis.
@@ -107,13 +108,13 @@
     %
     % Cost is the cost of the call.
     %
-:- pred call_site_dynamic_var_use_info(clique_ptr, call_site_dynamic_ptr,
-    int, recursion_type, maybe(recursion_depth), float, set(proc_dynamic_ptr),
-    var_use_options, maybe_error(var_use_info)).
-:- mode call_site_dynamic_var_use_info(in, in, in,
+:- pred get_call_site_dynamic_var_use_info_rec_level(clique_ptr,
+    call_site_dynamic_ptr, int, recursion_type, maybe(recursion_depth),
+    float, set(proc_dynamic_ptr), var_use_options, maybe_error(var_use_info)).
+:- mode get_call_site_dynamic_var_use_info_rec_level(in, in, in,
     in(recursion_type_known_costs), in(maybe_yes(ground)), in, in, in, out)
     is det.
-:- mode call_site_dynamic_var_use_info(in, in, in,
+:- mode get_call_site_dynamic_var_use_info_rec_level(in, in, in,
     in, in, in, in, in, out) is det.
 
 :- pred clique_var_use_info(clique_ptr::in, int::in,
@@ -220,21 +221,21 @@ pessimistic_var_use_time(VarUseType, ProcCost, CostUntilUse) :-
 
 %-----------------------------------------------------------------------------%
 
+get_call_site_dynamic_var_use_info(CSDPtr, ArgNum, RecursionType, Cost,
+        VarUseOptions, MaybeVarUseInfo) :-
     % XXX If the CSD represents a closure then the argument position will be
     % incorrect. This is not currently important as we assume that the
     % compiler will not push signals and waits into higher order calls.
     % Therefore this should never be called for a higher order call site.
-    %
-call_site_dynamic_var_use_info(CSDPtr, ArgPos, RT, Cost, VarUseOptions,
-        MaybeVarUseInfo) :-
     Deep = VarUseOptions ^ vuo_deep,
     deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
     deep_lookup_clique_index(Deep, CSD ^ csd_caller, ParentCliquePtr),
-    recursion_type_get_maybe_avg_max_depth(RT, MaybeCurDepth),
-    call_site_dynamic_var_use_info(ParentCliquePtr, CSDPtr, ArgPos, RT,
-        MaybeCurDepth, Cost, set.init, VarUseOptions, MaybeVarUseInfo).
+    recursion_type_get_maybe_avg_max_depth(RecursionType, MaybeCurDepth),
+    get_call_site_dynamic_var_use_info_rec_level(ParentCliquePtr, CSDPtr,
+        ArgNum, RecursionType, MaybeCurDepth, Cost, set.init, VarUseOptions,
+        MaybeVarUseInfo).
 
-call_site_dynamic_var_use_info(ParentCliquePtr, CSDPtr, ArgNum,
+get_call_site_dynamic_var_use_info_rec_level(ParentCliquePtr, CSDPtr, ArgNum,
         RecursionType, MaybeDepth, Cost, CallStack0, VarUseOptions,
         MaybeVarUseInfo) :-
     Deep = VarUseOptions ^ vuo_deep,
@@ -243,8 +244,8 @@ call_site_dynamic_var_use_info(ParentCliquePtr, CSDPtr, ArgNum,
         MaybeCalleeCliquePtr = yes(CalleeCliquePtr),
         % This is a non-recursive call site.
 
-        % We don't check if this call crossed a module boundary here, that's
-        % done in clique_var_use_info.
+        % We don't check if this call crossed a module boundary here,
+        % that is done in clique_var_use_info.
         clique_var_use_info(CalleeCliquePtr, ArgNum, VarUseOptions,
             MaybeVarUseInfo)
     ;
@@ -258,7 +259,7 @@ call_site_dynamic_var_use_info(ParentCliquePtr, CSDPtr, ArgNum,
             pessimistic_var_use_info(VarUseOptions ^ vuo_var_use_type, Cost,
                 VarUseInfo),
             MaybeVarUseInfo = ok(VarUseInfo)
-        ; member(CalleePDPtr, CallStack0) ->
+        ; set.member(CalleePDPtr, CallStack0) ->
             % Return a first use time of 1.0. This is used by the formula
             % below.
             MaybeVarUseInfo = ok(var_use_info(1.0, Cost,
@@ -815,51 +816,45 @@ call_var_first_use(AtomicGoal, BoundVars, RevGoalPath, StaticInfo,
             Times = [FirstTime | OtherTimes],
             FoundFirstUse = found_first_use(FirstTime + CostBefore),
             (
-                VarUseType = var_use_production
-            =>
-                OtherTimes = []
+                VarUseType = var_use_production,
+                OtherTimes = [_ | _]
             ->
-                true
-            ;
                 unexpected($module, $pred,
                     "multiple solutions for variable production time")
+            ;
+                true
             )
         ),
 
-        % Assertion
+        % Assertions.
         (
-            VarUseType = var_use_production
-        =>
-            list.member(Var, BoundVars)
+            VarUseType = var_use_production,
+            not list.member(Var, BoundVars)
         ->
-            true
-        ;
             unexpected($module, $pred,
                 "a bound var must be produced by a call if it is an argument.")
+        ;
+            true
         ),
         (
-            VarUseType = var_use_consumption
-        =>
-            not member(Var, BoundVars)
+            VarUseType = var_use_consumption,
+            list.member(Var, BoundVars)
         ->
-            true
-        ;
             unexpected($module, $pred,
                 "a consumed var must not be mentioned in BoundVars")
+        ;
+            true
         ),
         (
-            VarUseType = var_use_production
-        =>
-            not (
-                ( AtomicGoal = higher_order_call_rep(Var, _)
-                ; AtomicGoal = method_call_rep(Var, _, _)
-                )
+            VarUseType = var_use_production,
+            ( AtomicGoal = higher_order_call_rep(Var, _)
+            ; AtomicGoal = method_call_rep(Var, _, _)
             )
         ->
-            true
-        ;
             unexpected($module, $pred,
                 "a HO call site cannot produce its own HO value")
+        ;
+            true
         )
     ;
         FoundFirstUse = have_not_found_first_use
@@ -890,7 +885,7 @@ call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Time) :-
             pessimistic_var_use_time(VarUseType, Cost, Time)
         ; is_singleton(Callees, SingletonCallee) ->
             CSDPtr = SingletonCallee ^ c_csd,
-            call_site_dynamic_var_use_info(CliquePtr, CSDPtr,
+            get_call_site_dynamic_var_use_info_rec_level(CliquePtr, CSDPtr,
                 ArgNum, RecursionType, yes(CurDepth), Cost, CallStack,
                 VarUseOptions, MaybeVarUseInfo),
             (
@@ -933,12 +928,12 @@ atomic_trivial_var_first_use(AtomicGoal, BoundVars, CostSoFar, StaticInfo,
     VarUseType = StaticInfo ^ fui_var_use_opts ^ vuo_var_use_type,
     atomic_goal_get_vars(AtomicGoal, Vars),
     (
-        member(Var, Vars),
+        set.member(Var, Vars),
         (
             VarUseType = var_use_consumption
         ;
             VarUseType = var_use_production,
-            member(Var, BoundVars)
+            list.member(Var, BoundVars)
         ;
             VarUseType = var_use_other
         )
@@ -1613,7 +1608,7 @@ goal_rec_prob(Goal, RecCalls, Info, Prob, !ProbArray) :-
     ( Before = 0 ->
         % Avoid a divide by zero and provide a short-cut.
         Prob = impossible
-        % There is no need to update the array. the default value is already
+        % There is no need to update the array. The default value is already
         % impossible.
     ;
         (

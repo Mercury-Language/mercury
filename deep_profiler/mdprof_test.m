@@ -265,7 +265,7 @@ test_server(Pref, Deep, Options, !IO) :-
 
 test_cliques(Cur, Max, Options, Pref, Deep, !IO) :-
     ( Cur =< Max ->
-        try_exec(deep_cmd_clique(clique_ptr(Cur)), Pref, Deep, HTML, !IO),
+        try_exec(deep_cmd_clique(clique_ptr(Cur)), Pref, Deep, HTML),
         write_test_html(Options, "clique", Cur, HTML, !IO),
         test_cliques(Cur + 1, Max, Options, Pref, Deep, !IO)
     ;
@@ -277,7 +277,7 @@ test_cliques(Cur, Max, Options, Pref, Deep, !IO) :-
 
 test_procs(Cur, Max, Options, Pref, Deep, !IO) :-
     ( Cur =< Max ->
-        try_exec(deep_cmd_proc(proc_static_ptr(Cur)), Pref, Deep, HTML, !IO),
+        try_exec(deep_cmd_proc(proc_static_ptr(Cur)), Pref, Deep, HTML),
         write_test_html(Options, "proc", Cur, HTML, !IO),
         test_procs(Cur + 1, Max, Options, Pref, Deep, !IO)
     ;
@@ -290,7 +290,7 @@ test_procs(Cur, Max, Options, Pref, Deep, !IO) :-
 test_procrep_static_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
     ( Cur =< Max ->
         try_exec(deep_cmd_static_procrep_coverage(proc_static_ptr(Cur)), Pref,
-            Deep, HTML, !IO),
+            Deep, HTML),
         write_test_html(Options, "procrep_dynamic_coverage", Cur, HTML, !IO),
         test_procrep_static_coverages(Cur + 1, Max, Pref, Deep, Options, !IO)
     ;
@@ -303,7 +303,7 @@ test_procrep_static_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
 test_procrep_dynamic_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
     ( Cur =< Max ->
         try_exec(deep_cmd_dynamic_procrep_coverage(proc_dynamic_ptr(Cur)),
-            Pref, Deep, HTML, !IO),
+            Pref, Deep, HTML),
         write_test_html(Options, "procrep_static_coverage", Cur, HTML, !IO),
         test_procrep_dynamic_coverages(Cur + 1, Max, Pref, Deep, Options, !IO)
     ;
@@ -315,7 +315,7 @@ test_procrep_dynamic_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
 
 test_recursion_types_histogram(Pref, Deep, Options, !IO) :-
     promise_equivalent_solutions [!:IO] (
-        try_exec(deep_cmd_recursion_types_frequency, Pref, Deep, HTML, !IO),
+        try_exec(deep_cmd_recursion_types_frequency, Pref, Deep, HTML),
         write_test_html(Options, "recursion_types_histogram", 1, HTML, !IO)
     ).
 

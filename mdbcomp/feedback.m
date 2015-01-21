@@ -293,7 +293,7 @@ add_feedback_candidate_parallel_conjunctions(ProfiledProgramName, Data,
     expect(unify(!.Info ^ fi_profiled_program_name, ProfiledProgramName),
         $pred, "adding candidate parallel conjunctions for wrong program"),
     expect(unify(!.Info ^ fi_maybe_candidate_parallel_conjunctions, no),
-        $pred, "overwriting old _candidate_parallel_conjunctions data"),
+        $pred, "overwriting old candidate_parallel_conjunctions data"),
     !Info ^ fi_maybe_candidate_parallel_conjunctions := yes(Data).
 
 replace_feedback_candidate_parallel_conjunctions(ProfiledProgramName, Data,

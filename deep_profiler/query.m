@@ -31,13 +31,11 @@
 :- import_module profile.
 
 :- import_module bool.
-:- import_module io.
 :- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
-:- pred try_exec(cmd::in, preferences::in, deep::in, string::out,
-    io::di, io::uo) is cc_multi.
+:- pred try_exec(cmd::in, preferences::in, deep::in, string::out) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 %
@@ -374,6 +372,7 @@
 :- import_module char.
 :- import_module exception.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module math.
 :- import_module maybe.
@@ -382,8 +381,8 @@
 
 %-----------------------------------------------------------------------------%
 
-try_exec(Cmd, Pref, Deep, HTML, !IO) :-
-    try_io(exec(Cmd, Pref, Deep), Result, !IO),
+try_exec(Cmd, Pref, Deep, HTML) :-
+    try(exec(Cmd, Pref, Deep), Result),
     (
         Result = succeeded(HTML)
     ;
@@ -412,10 +411,9 @@ try_exec(Cmd, Pref, Deep, HTML, !IO) :-
             [s(Msg)])
     ).
 
-:- pred exec(cmd::in, preferences::in, deep::in,
-    string::out, io::di, io::uo) is det.
+:- pred exec(cmd::in, preferences::in, deep::in, string::out) is det.
 
-exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
+exec(Cmd, Prefs, Deep, HTMLStr) :-
     ( slow_cmd(Cmd) ->
         create_and_memoize_report(Cmd, Deep, Report)
     ;
