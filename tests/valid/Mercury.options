@@ -1,3 +1,4 @@
+# vim: ts=8 sw=8 noexpandtab
 # some regression tests only failed with particular options enabled
 # (please keep these lists sorted)
 
@@ -18,8 +19,8 @@ GRADEFLAGS-agc_ite		= --gc accurate
 GRADEFLAGS-agc_unbound_typevars	= --gc accurate
 GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
 GRADEFLAGS-agc_unused_in	= --gc accurate
-GRADEFLAGS-csharp_hello		=  --grade il
-GRADEFLAGS-foreign_type_spec	=  --grade il
+GRADEFLAGS-csharp_hello		= --grade il
+GRADEFLAGS-foreign_type_spec	= --grade il
 GRADEFLAGS-foreign_type_spec.foreign_type = --grade il
 
 # The bug that this test looks for exists only in MLDS grades without any gc.
@@ -27,9 +28,9 @@ GRADEFLAGS-bug109		= --grade hlc
 
 # The following test cases check for bugs that can only occur in the
 # presence of automatic solver type intialisation.
-MCFLAGS-fz_conf                 = --solver-type-auto-init
-MCFLAGS-solver_type_bug_2       = --solver-type-auto-init
-MCFLAGS-solver_type_mutable_bug = --solver-type-auto-init
+MCFLAGS-fz_conf			= --solver-type-auto-init
+MCFLAGS-solver_type_bug_2	= --solver-type-auto-init
+MCFLAGS-solver_type_mutable_bug	= --solver-type-auto-init
 
 MCFLAGS-ambig_confuse1		= --type-check-constraints
 MCFLAGS-ambig_confuse2		= --type-check-constraints
@@ -37,19 +38,19 @@ MCFLAGS-ambig_confuse3		= --type-check-constraints
 MCFLAGS-ambig_functor		= --type-check-constraints
 MCFLAGS-ambig_high_level	= --type-check-constraints
 MCFLAGS-ambig_pred		= --type-check-constraints
-MCFLAGS-ambig_types		= --type-check-constraints
 MCFLAGS-ambig_stress_test	= --type-check-constraints
+MCFLAGS-ambig_types		= --type-check-constraints
 MCFLAGS-builtin_false		= --intermodule-optimization
 MCFLAGS-bug51			= -O3
 MCFLAGS-bug85			= -O0 --deforestation
-MCFLAGS-bug100                  = --halt-at-warn
-MCFLAGS-bug128                  = -O5 --loop-invariants
-MCFLAGS-bug134                  = --no-static-ground-terms --no-optimize-dead-procs
-MCFLAGS-bug142                  = --optimise-higher-order --inline-single-use
-MCFLAGS-bug159                  = -w
-MCFLAGS-bug180                  = --profile-optimized --allow-stubs --no-warn-stubs
-MCFLAGS-bug271                  = --allow-stubs --no-warn-stubs
-MCFLAGS-bug300                  = --optimize-constructor-last-call
+MCFLAGS-bug100			= --halt-at-warn
+MCFLAGS-bug128			= -O5 --loop-invariants
+MCFLAGS-bug134			= --no-static-ground-terms --no-optimize-dead-procs
+MCFLAGS-bug142			= --optimise-higher-order --inline-single-use
+MCFLAGS-bug159			= -w
+MCFLAGS-bug180			= --profile-optimized --allow-stubs --no-warn-stubs
+MCFLAGS-bug271			= --allow-stubs --no-warn-stubs
+MCFLAGS-bug300			= --optimize-constructor-last-call
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-constraint_prop_bug	= -O0 --common-struct --local-constraint-propagation
 MCFLAGS-csharp_hello		= --no-intermodule-optimization
@@ -62,15 +63,15 @@ MCFLAGS-exists_cast_bug		= --trace rep -O0 --optimize-saved-vars-const
 MCFLAGS-explicit_quant		= --halt-at-warn
 MCFLAGS-func_class		= --no-warn-nothing-exported
 MCFLAGS-foreign_underscore_var	= --halt-at-warn
-MCFLAGS-foreign_type_spec       = --no-intermodule-optimization
+MCFLAGS-foreign_type_spec	= --no-intermodule-optimization
 MCFLAGS-foreign_type_spec.foreign_type = --no-intermodule-optimization
 MCFLAGS-fzn_debug_abort		= --trace rep
 MCFLAGS-higher_order4		= -O3
 MCFLAGS-higher_order_implied_mode = -O-1
-MCFLAGS-ho_and_type_spec_bug = -O4
-MCFLAGS-ho_and_type_spec_bug2 = -O3 --no-inlining
-MCFLAGS-impure_detism           = -O5 --deep-profiling --no-intermodule-optimization
-MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
+MCFLAGS-ho_and_type_spec_bug	= -O4
+MCFLAGS-ho_and_type_spec_bug2	= -O3 --no-inlining
+MCFLAGS-impure_detism		= -O5 --deep-profiling --no-intermodule-optimization
+MCFLAGS-inhibit_warn_test	= --inhibit-warnings --halt-at-warn
 MCFLAGS-instmap_generic_failure	= --local-constraint-propagation
 MCFLAGS-intermod_bug_nested	= --intermodule-optimization
 MCFLAGS-intermod_bug_nested.parser	= --intermodule-optimization
@@ -127,10 +128,11 @@ MCFLAGS-middle_rec_labels	= --middle-rec
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-mpj6			= --infer-all
 MCFLAGS-neg_erroneous		= -O3
-MCFLAGS-no_warn_format_imports = --warn-unused-imports --halt-at-warn
+MCFLAGS-negation_in_dupl_for_switch = --halt-at-warn
+MCFLAGS-no_warn_format_imports	= --warn-unused-imports --halt-at-warn
 MCFLAGS-no_warn_obsolete	= --no-warn-obsolete
-MCFLAGS-no_warn_unresolved_poly = --no-warn-unresolved-polymorphism
-MCFLAGS-opt_det_warn            = --intermodule-optimization --halt-at-warn
+MCFLAGS-no_warn_unresolved_poly	= --no-warn-unresolved-polymorphism
+MCFLAGS-opt_det_warn		= --intermodule-optimization --halt-at-warn
 MCFLAGS-opt_det_warn2		= --intermodule-optimization --halt-at-warn --no-warn-inferred-erroneous
 MCFLAGS-par_dupelim		= --optimize-dups
 MCFLAGS-par_saved_const		= -O3 --optimize-saved-vars-const
@@ -148,10 +150,10 @@ MCFLAGS-solver_type_bug		= --halt-at-warn
 MCFLAGS-solv			= --halt-at-warn
 MCFLAGS-spurious_purity_warning	= --halt-at-warn
 MCFLAGS-stack_opt_simplify	= --optimize-saved-vars
-MCFLAGS-table_no_attr           = --structure-sharing
-MCFLAGS-tci_spec_varmap         = --deforestation --type-specialisation
+MCFLAGS-table_no_attr		= --structure-sharing
+MCFLAGS-tci_spec_varmap		= --deforestation --type-specialisation
 MCFLAGS-time_yaowl		= --allow-stubs
-MCFLAGS-tuple_eqv               = --smart-recompilation
+MCFLAGS-tuple_eqv		= --smart-recompilation
 MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-typeclass_det_warning	= --halt-at-warn
 MCFLAGS-type_inf_ambig_test	= --infer-all

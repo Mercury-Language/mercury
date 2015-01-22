@@ -467,30 +467,40 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     % since non-local variables may not be bound within the negation.
     simplify_goal(SubGoal0, SubGoal1, NestedContext0, InstMap0,
         Common0, _Common1, !Info),
-    SubGoal1 = hlds_goal(_, SubGoalInfo1),
-    Detism = goal_info_get_determinism(SubGoalInfo1),
-    determinism_components(Detism, CanFail, MaxSoln),
+    InsideDuplForSwitch = NestedContext0 ^ snc_inside_dupl_for_switch,
     Context = goal_info_get_context(GoalInfo0),
-    ( CanFail = cannot_fail ->
-        Pieces = [words("Warning: the negated goal cannot fail.")],
-        Msg = simple_msg(Context,
-            [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-        Severity = severity_conditional(warn_simple_code, yes,
-            severity_warning, no),
-        Spec = error_spec(Severity,
-            phase_simplify(report_only_if_in_all_modes), [Msg]),
-        simplify_info_add_simple_code_spec(Spec, !Info)
-    ; MaxSoln = at_most_zero ->
-        Pieces = [words("Warning: the negated goal cannot succeed.")],
-        Msg = simple_msg(Context,
-            [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
-        Severity = severity_conditional(warn_simple_code, yes,
-            severity_warning, no),
-        Spec = error_spec(Severity,
-            phase_simplify(report_only_if_in_all_modes), [Msg]),
-        simplify_info_add_simple_code_spec(Spec, !Info)
+    (
+        InsideDuplForSwitch = no,
+        SubGoal1 = hlds_goal(_, SubGoalInfo1),
+        Detism = goal_info_get_determinism(SubGoalInfo1),
+        determinism_components(Detism, CanFail, MaxSoln),
+        ( CanFail = cannot_fail ->
+            Pieces = [words("Warning: the negated goal cannot fail.")],
+            Msg = simple_msg(Context,
+                [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+            Severity = severity_conditional(warn_simple_code, yes,
+                severity_warning, no),
+            Spec = error_spec(Severity,
+                phase_simplify(report_only_if_in_all_modes), [Msg]),
+            simplify_info_add_simple_code_spec(Spec, !Info)
+        ; MaxSoln = at_most_zero ->
+            Pieces = [words("Warning: the negated goal cannot succeed.")],
+            Msg = simple_msg(Context,
+                [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+            Severity = severity_conditional(warn_simple_code, yes,
+                severity_warning, no),
+            Spec = error_spec(Severity,
+                phase_simplify(report_only_if_in_all_modes), [Msg]),
+            simplify_info_add_simple_code_spec(Spec, !Info)
+        ;
+            true
+        )
     ;
-        true
+        InsideDuplForSwitch = yes
+        % We don't want to generate either of the above warnings for code
+        % that has been duplicated for a switch, since the warned-about
+        % condition may not (and typically does not) exist in the other
+        % copies.
     ),
     (
         % Replace `not true' with `fail'.
