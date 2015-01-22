@@ -346,8 +346,8 @@ message_type_to_string(MessageType) = Cord :-
             [i(PartNum), i(NumCalls)], String)
     ;
         MessageType = notice_candidate_conjunction_not_det(Detism),
-        string.format("There are %d goals amongst goals above the "
-                ++ "parallelisation overhead.",
+        string.format("There are %s goals amongst goals"
+                ++ " above the parallelisation overhead.",
             [s(string(Detism))], String)
     ;
         MessageType = warning_cannot_lookup_proc_defn,

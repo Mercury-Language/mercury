@@ -288,7 +288,7 @@ union(SetA, SetB, Set) :-
 
 union_list(Sets) = tree_bitset.union_list(Sets).                    % MODULE
 union_list(Sets, Set) :-
-    tree_bitset.union_list(Sets, Set).                              % MODULE
+    Set = tree_bitset.union_list(Sets).                             % MODULE
 
 intersect(SetA, SetB) = tree_bitset.intersect(SetA, SetB).          % MODULE
 intersect(SetA, SetB, Set) :-
@@ -296,7 +296,7 @@ intersect(SetA, SetB, Set) :-
 
 intersect_list(Sets) = tree_bitset.intersect_list(Sets).            % MODULE
 intersect_list(Sets, Set) :-
-    tree_bitset.intersect_list(Sets, Set).                          % MODULE
+    Set = tree_bitset.intersect_list(Sets).                         % MODULE
 
 difference(SetA, SetB) = tree_bitset.difference(SetA, SetB).        % MODULE
 difference(SetA, SetB, Set) :-
