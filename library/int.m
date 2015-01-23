@@ -404,11 +404,19 @@
 :- mode fold_down3(pred(in, in, out, in, out, mdi, muo) is nondet,
     in, in, in, out, in, out, mdi, muo) is nondet.
 
-    % nondet_int_in_range(Lo, Hi, I):
+    % nondet_int_in_range(Low, High, I):
     %
-    % On successive successes, set I to every integer from Lo to Hi.
+    % On successive successes, set I to every integer from Low to High.
     %
 :- pred nondet_int_in_range(int::in, int::in, int::out) is nondet.
+
+    % all_true_in_range(P, Low, High):
+    % True iff P is true for every integer in Low to High.
+    %
+    % NOTE: all_true_in_range/3 is undefined if High = max_int.
+    %
+:- pred all_true_in_range(pred(int)::in(pred(in) is semidet),
+    int::in, int::in) is semidet.
 
     % Convert an int to a pretty_printer.doc for formatting.
     %
@@ -928,6 +936,16 @@ nondet_int_in_range(Lo, Hi, I) :-
     ;
         Lo = Hi,
         I = Lo
+    ).
+
+%---------------------------------------------------------------------------%
+
+all_true_in_range(P, Lo, Hi) :-
+    ( if Lo =< Hi then
+        P(Lo),
+        all_true_in_range(P, Lo + 1, Hi)
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%

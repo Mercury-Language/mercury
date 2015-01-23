@@ -172,6 +172,7 @@ ORDINARY_PROGS=	\
 	intermod_pragma_clause \
 	intermod_type_qual \
 	intermod_unused_args \
+	int_range_ops \
 	java_rtti_bug \
 	join_list \
 	lco_double \

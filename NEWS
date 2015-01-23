@@ -124,7 +124,8 @@ Changes to the Mercury standard library:
 
    - fold2_maybe/6
 
-* The following predicates and functions have been added to the calendar module
+* The following predicates and functions have been added to the calendar
+  module:
 
    - int_to_month/2
    - det_int_to_month/1
@@ -137,6 +138,10 @@ Changes to the Mercury standard library:
 + We have added a new module, psqueue, that implements a priority search
   queue ADT.  This is a blend between a priority queue and a map.  This was
   contributed by Matthias Güdemann.
+
+* We have added the following predicate to the int module:
+
+  - all_true_in_range/3
 
 Changes to the Mercury compiler:
 
