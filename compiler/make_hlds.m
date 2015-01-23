@@ -116,6 +116,7 @@
 
 :- include_module add_class.
 :- include_module add_clause.
+:- include_module add_foreign_proc.
 :- include_module add_mode.
 :- include_module add_mutable_aux_preds.
 :- include_module add_pragma.

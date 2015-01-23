@@ -528,6 +528,13 @@ add_class.m
 Handles typeclass and instance declarations.
 
 <dt>
+du_type_layout.m
+<dd>
+Decides how values of discriminated union types are laid out in memory.
+The two main issues it handles are floats (which can be a problem on platforms
+where they don't fit in words) and the packing of enums.
+
+<dt>
 qual_info.m
 <dd>
 Handles the abstract data types used for module qualification.
@@ -544,10 +551,32 @@ make_hlds_error.m
 Error messages used by more than one submodule of make_hlds.m.
 
 <dt>
+add_foreign_proc.m
+<dd>
+Adds foreign procs (Mercury predicates defined using foreign language code)
+to the HLDS.
+
+<dt>
+add_foreign_enum.m
+<dd>
+Adds foreign enums (Mercury enum types linked to foreign language equivalents)
+to the HLDS.
+
+<dt>
+add_pragma_tabling.m
+<dd>
+Adds everything needed to implement tabling pragmas to the HLDS.
+
+<dt>
+add_pragma_type_spec.m
+<dd>
+Adds everything needed to implement type specialization pragmas to the HLDS.
+
+<dt>
 add_pragma.m
 <dd>
-Adds most kinds of pragmas to the HLDS,
-including import/export pragmas, tabling pragmas and foreign code.
+Adds the easiest-to-implement kinds of pragmas to the HLDS,
+i.e. those that don't need their own module.
 
 </dl>
 

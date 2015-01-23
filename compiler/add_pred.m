@@ -67,6 +67,10 @@
     module_name::in, sym_name::in, arity::in, pred_or_func::in, prog_vars::in,
     import_status::in, prog_context::in, pred_id::out) is det.
 
+:- pred maybe_check_field_access_function(module_info::in,
+    sym_name::in, arity::in, import_status::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -490,6 +494,61 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
         DetismDecl, MaybeDet, MContext, address_is_not_taken,
         HasParallelConj, !PredInfo, ProcId).
 
+%-----------------------------------------------------------------------------%
+
+:- pred unspecified_det_for_local(sym_name::in, arity::in, pred_or_func::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !Specs) :-
+    MainPieces = [words("Error: no determinism declaration for local"),
+        simple_call(simple_call_id(PredOrFunc, Name, Arity)), suffix(".")],
+    VerbosePieces = [words("(This is an error because"),
+        words("you specified the"), quote("--no-infer-det"), words("option."),
+        words("Use the"), quote("--infer-det"),
+        words("option if you want the compiler"),
+        words("to automatically infer the determinism"),
+        words("of local predicates.)")],
+    InnerComponents = [always(MainPieces), verbose_only(VerbosePieces)],
+    Msg = simple_msg(Context,
+        [option_is_set(infer_det, no, InnerComponents)]),
+    Severity = severity_conditional(infer_det, no, severity_error, no),
+    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+:- pred unspecified_det_for_method(sym_name::in, arity::in, pred_or_func::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !Specs) :-
+    Pieces = [words("Error: no determinism declaration"),
+        words("for type class method"), p_or_f(PredOrFunc),
+        sym_name_and_arity(Name / Arity), suffix(".")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+:- pred unspecified_det_for_exported(sym_name::in, arity::in, pred_or_func::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !Specs) :-
+    Pieces = [words("Error: no determinism declaration for exported"),
+        p_or_f(PredOrFunc), sym_name_and_arity(Name / Arity), suffix(".")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+:- pred unqualified_pred_error(sym_name::in, int::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+unqualified_pred_error(PredName, Arity, Context, !Specs) :-
+    Pieces = [words("Internal error: the unqualified predicate name"),
+        sym_name_and_arity(PredName / Arity),
+        words("should have been qualified by prog_io.m.")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+%-----------------------------------------------------------------------------%
+
 preds_add_implicit_report_error(!ModuleInfo, ModuleName, PredName, Arity,
         PredOrFunc, Status, IsClassMethod, Context, Origin, DescPieces,
         PredId, !Specs) :-
@@ -563,53 +622,49 @@ preds_do_add_implicit(ModuleInfo, ModuleName, PredName, Arity, PredOrFunc,
 
 %-----------------------------------------------------------------------------%
 
-:- pred unspecified_det_for_local(sym_name::in, arity::in, pred_or_func::in,
+maybe_check_field_access_function(ModuleInfo, FuncName, FuncArity, Status,
+        Context, !Specs) :-
+    (
+        is_field_access_function_name(ModuleInfo, FuncName, FuncArity,
+            AccessType, FieldName)
+    ->
+        check_field_access_function(ModuleInfo, AccessType, FieldName,
+            FuncName, FuncArity, Status, Context, !Specs)
+    ;
+        true
+    ).
+
+:- pred check_field_access_function(module_info::in, field_access_type::in,
+    sym_name::in, sym_name::in, arity::in, import_status::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !Specs) :-
-    MainPieces = [words("Error: no determinism declaration for local"),
-        simple_call(simple_call_id(PredOrFunc, Name, Arity)), suffix(".")],
-    VerbosePieces = [words("(This is an error because"),
-        words("you specified the"), quote("--no-infer-det"), words("option."),
-        words("Use the"), quote("--infer-det"),
-        words("option if you want the compiler"),
-        words("to automatically infer the determinism"),
-        words("of local predicates.)")],
-    InnerComponents = [always(MainPieces), verbose_only(VerbosePieces)],
-    Msg = simple_msg(Context,
-        [option_is_set(infer_det, no, InnerComponents)]),
-    Severity = severity_conditional(infer_det, no, severity_error, no),
-    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-    !:Specs = [Spec | !.Specs].
+check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncName,
+        FuncArity, FuncStatus, Context, !Specs) :-
+    adjust_func_arity(pf_function, FuncArity, PredArity),
+    FuncCallId = simple_call_id(pf_function, FuncName, PredArity),
 
-:- pred unspecified_det_for_method(sym_name::in, arity::in, pred_or_func::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    % Check that a function applied to an exported type is also exported.
+    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
+    (
+        % Abstract types have status `abstract_exported', so errors won't be
+        % reported for local field access functions for them.
+        map.search(CtorFieldTable, FieldName, [FieldDefn]),
+        FieldDefn = hlds_ctor_field_defn(_, DefnStatus, _, _, _),
+        DefnStatus = status_exported,
+        FuncStatus \= status_exported
+    ->
+        report_field_status_mismatch(Context, FuncCallId, !Specs)
+    ;
+        true
+    ).
 
-unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !Specs) :-
-    Pieces = [words("Error: no determinism declaration"),
-        words("for type class method"), p_or_f(PredOrFunc),
-        sym_name_and_arity(Name / Arity), suffix(".")],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
-:- pred unspecified_det_for_exported(sym_name::in, arity::in, pred_or_func::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !Specs) :-
-    Pieces = [words("Error: no determinism declaration for exported"),
-        p_or_f(PredOrFunc), sym_name_and_arity(Name / Arity), suffix(".")],
-    Msg = simple_msg(Context, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
-:- pred unqualified_pred_error(sym_name::in, int::in, prog_context::in,
+:- pred report_field_status_mismatch(prog_context::in, simple_call_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-unqualified_pred_error(PredName, Arity, Context, !Specs) :-
-    Pieces = [words("Internal error: the unqualified predicate name"),
-        sym_name_and_arity(PredName / Arity),
-        words("should have been qualified by prog_io.m.")],
+report_field_status_mismatch(Context, CallId, !Specs) :-
+    Pieces = [words("In declaration of"), simple_call(CallId), suffix(":"), nl,
+        words("error: a field access function for an exported field"),
+        words("must also be exported."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].

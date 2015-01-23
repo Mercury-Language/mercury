@@ -58,7 +58,8 @@
 
 :- implementation.
 
-:- import_module hlds.make_hlds.add_pragma.
+:- import_module hlds.make_hlds.add_foreign_proc.
+:- import_module hlds.make_hlds.add_pragma.         % ZZZ
 :- import_module hlds.make_hlds.add_pred.
 :- import_module libs.globals.
 :- import_module parse_tree.prog_mode.

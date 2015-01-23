@@ -53,6 +53,9 @@
     ;       lang_il
     ;       lang_erlang.
 
+:- func target_lang_to_foreign_export_lang(compilation_target)
+    = foreign_language.
+
     % A string representation of the compilation target suitable
     % for use in human-readable error messages.
     %
@@ -181,14 +184,13 @@
     % debugging tranformation.
 :- type ssdb_trace_level
     --->    none
-            % No tracing of this module
+            % No tracing of this module.
 
     ;       shallow
-            % Shallow trace all procedures in this module
+            % Shallow trace all procedures in this module.
 
-    ;       deep
-            % Deep trace all procedures in this module
-    .
+    ;       deep.
+            % Deep trace all procedures in this module.
 
     % This type specifies the command compiler uses to install files.
     %
@@ -555,9 +557,15 @@ convert_reuse_strategy("same_cons_id", _, same_cons_id).
 convert_reuse_strategy("within_n_cells_difference", NCells,
     within_n_cells_difference(NCells)).
 
-compilation_target_string(target_c)    = "C".
+target_lang_to_foreign_export_lang(target_c) = lang_c.
+target_lang_to_foreign_export_lang(target_erlang) = lang_erlang.
+target_lang_to_foreign_export_lang(target_il) = lang_il.
+target_lang_to_foreign_export_lang(target_csharp) = lang_csharp.
+target_lang_to_foreign_export_lang(target_java) = lang_java.
+
+compilation_target_string(target_c) = "C".
 compilation_target_string(target_csharp) = "C#".
-compilation_target_string(target_il)   = "IL".
+compilation_target_string(target_il) = "IL".
 compilation_target_string(target_java) = "Java".
 compilation_target_string(target_erlang) = "Erlang".
 
@@ -763,10 +771,10 @@ current_grade_supports_tabling(Globals, TablingSupported) :-
         TablingSupported = no
     ).
 
+current_grade_supports_par_conj(Globals, ParConjSupported) :-
     % Parallel conjunctions only supported on lowlevel C parallel grades.
     % They are not (currently) supported if trailing is enabled.
     %
-current_grade_supports_par_conj(Globals, ParConjSupported) :-
     globals.get_target(Globals, Target),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.lookup_bool_option(Globals, parallel, Parallel),
@@ -834,7 +842,7 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
     % attributes in solver type definitions. They are not currently part
     % of the language, so by default if we encounter one it is reported
     % as a syntax error. If the developer-only option `--solver-type-auto-init'
-    % is given then we enable support for them.
+    % is given, then we enable support for them.
     %
     % Since this information is only needed at one place in the parser,
     % we use this mutable in preference to passing an extra argument

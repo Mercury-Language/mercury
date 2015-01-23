@@ -1304,6 +1304,19 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     --->    native_if_possible
     ;       always_boxed.
 
+    % Extract the modes from the list of pragma_vars.
+    %
+:- pred pragma_get_modes(list(pragma_var)::in, list(mer_mode)::out) is det.
+
+    % Extract the vars from the list of pragma_vars.
+    %
+:- pred pragma_get_vars(list(pragma_var)::in, list(prog_var)::out) is det.
+
+    % Extract the names from the list of pragma_vars.
+    %
+:- pred pragma_get_var_infos(list(pragma_var)::in,
+    list(pair(maybe(pair(string, mer_mode)), box_policy))::out) is det.
+
 :- type proc_affects_liveness
     --->    proc_affects_liveness
     ;       proc_does_not_affect_liveness
@@ -1458,6 +1471,22 @@ set_may_duplicate(MayDuplicate, !Attrs) :-
 add_extra_attribute(NewAttribute, !Attrs) :-
     !Attrs ^ attr_extra_attributes :=
         [NewAttribute | !.Attrs ^ attr_extra_attributes].
+
+pragma_get_modes([], []).
+pragma_get_modes([PragmaVar | PragmaVars], [Mode | Modes]) :-
+    PragmaVar = pragma_var(_Var, _Name, Mode, _BoxPolicy),
+    pragma_get_modes(PragmaVars, Modes).
+
+pragma_get_vars([], []).
+pragma_get_vars([PragmaVar | PragmaVars], [Var | Vars]) :-
+    PragmaVar = pragma_var(Var, _Name, _Mode, _BoxPolicy),
+    pragma_get_vars(PragmaVars, Vars).
+
+pragma_get_var_infos([], []).
+pragma_get_var_infos([PragmaVar | PragmaVars], [Info | Infos]) :-
+    PragmaVar = pragma_var(_Var, Name, Mode, BoxPolicy),
+    Info = yes(Name - Mode) - BoxPolicy,
+    pragma_get_var_infos(PragmaVars, Infos).
 
 %-----------------------------------------------------------------------------%
 %
