@@ -1563,7 +1563,7 @@ valid_trace_grade_name(GradeName) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Renaming
+% Renaming.
 %
 % The predicates here are similar to the "apply_variable_renaming" family of
 % predicates in library/term.m, but they allow the caller to specify that all

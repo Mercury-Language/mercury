@@ -21,12 +21,22 @@
 %-----------------------------------------------------------------------------%
 
 :- pred add_pass_2_pragma(item_pragma_info::in,
-    item_status::in, item_status::out, module_info::in, module_info::out,
+    item_status::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pass_3_pragma(item_pragma_info::in,
-    import_status::in, import_status::out, module_info::in, module_info::out,
+    import_status::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_pragma_foreign_proc(pragma_info_foreign_proc::in,
+    import_status::in, prog_context::in, maybe(int)::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_pragma_foreign_proc_export(item_maybe_attrs::in,
+    pragma_info_foreign_proc_export::in, prog_context::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -101,35 +111,35 @@
 
 %-----------------------------------------------------------------------------%
 
-add_pass_2_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
-    ItemPragma = item_pragma_info(Origin, Pragma, Context, _SeqNum),
+add_pass_2_pragma(ItemPragma, Status, !ModuleInfo, !Specs) :-
+    ItemPragma = item_pragma_info(MaybeAttrs, Pragma, Context, _SeqNum),
     % Check for invalid pragmas in the `interface' section.
-    !.Status = item_status(ImportStatus, _),
+    Status = item_status(ImportStatus, _),
     Allowed = pragma_allowed_in_interface(Pragma),
     (
         Allowed = no,
         (
-            Origin = user,
+            MaybeAttrs = item_origin_user,
             error_if_exported(ImportStatus, Context,
                 [decl("pragma"), words("declaration")], !Specs)
         ;
             % We don't report this as an error as it just clutters up
             % the compiler output - the *real* error is whatever caused
             % the compiler to create this pragma.
-            Origin = compiler(_)
+            MaybeAttrs = item_origin_compiler(_)
         )
     ;
         Allowed = yes
     ),
     (
         Pragma = pragma_foreign_decl(FDInfo),
-        FDInfo = pragma_info_foreign_decl(Lang, IsLocal, C_Header),
-        ForeignDeclCode = foreign_decl_code(Lang, IsLocal, C_Header, Context),
+        FDInfo = pragma_info_foreign_decl(Lang, IsLocal, CHeader),
+        ForeignDeclCode = foreign_decl_code(Lang, IsLocal, CHeader, Context),
         module_add_foreign_decl_code(ForeignDeclCode, !ModuleInfo)
     ;
         Pragma = pragma_foreign_code(FCInfo),
-        FCInfo = pragma_info_foreign_code(Lang, Body_Code),
-        ForeignBodyCode = foreign_body_code(Lang, Body_Code, Context),
+        FCInfo = pragma_info_foreign_code(Lang, BodyCode),
+        ForeignBodyCode = foreign_body_code(Lang, BodyCode, Context),
         module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
     ;
         Pragma = pragma_foreign_import_module(FIMInfo),
@@ -300,23 +310,23 @@ add_pass_2_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs) :-
-    ItemPragma = item_pragma_info(Origin, Pragma, Context, SeqNum),
+add_pass_3_pragma(ItemPragma, Status, !ModuleInfo, !QualInfo, !Specs) :-
+    ItemPragma = item_pragma_info(MaybeAttrs, Pragma, Context, SeqNum),
     (
         Pragma = pragma_foreign_proc(FPInfo),
-        add_pragma_foreign_proc(FPInfo, !.Status, Context, yes(SeqNum),
+        add_pragma_foreign_proc(FPInfo, Status, Context, yes(SeqNum),
             !ModuleInfo, !Specs)
     ;
         Pragma = pragma_foreign_proc_export(FEInfo),
-        add_pragma_foreign_proc_export(Origin, FEInfo, Context,
+        add_pragma_foreign_proc_export(MaybeAttrs, FEInfo, Context,
             !ModuleInfo, !Specs)
     ;
         Pragma = pragma_foreign_export_enum(FEEInfo),
-        add_pragma_foreign_export_enum(FEEInfo, !.Status, Context,
+        add_pragma_foreign_export_enum(FEEInfo, Status, Context,
             !ModuleInfo, !Specs)
     ;
         Pragma = pragma_foreign_enum(FEInfo),
-        add_pragma_foreign_enum(FEInfo, !.Status, Context, !ModuleInfo, !Specs)
+        add_pragma_foreign_enum(FEInfo, Status, Context, !ModuleInfo, !Specs)
     ;
         Pragma = pragma_type_spec(TypeSpecInfo),
         add_pragma_type_spec(TypeSpecInfo, Context,
@@ -327,7 +337,7 @@ add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs) :-
         globals.lookup_bool_option(Globals, type_layout, TypeLayout),
         (
             TypeLayout = yes,
-            module_add_pragma_tabled(TabledInfo, Context, !Status,
+            module_add_pragma_tabled(TabledInfo, Context, Status,
                 !ModuleInfo, !QualInfo, !Specs)
         ;
             TypeLayout = no,
@@ -342,14 +352,14 @@ add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs) :-
         )
     ;
         Pragma = pragma_fact_table(FTInfo),
-        add_pragma_fact_table(FTInfo, !.Status, Context, !ModuleInfo, !Specs)
+        add_pragma_fact_table(FTInfo, Status, Context, !ModuleInfo, !Specs)
     ;
         Pragma = pragma_reserve_tag(TypeCtor),
-        add_pragma_reserve_tag(TypeCtor, !.Status, Context,
+        add_pragma_reserve_tag(TypeCtor, Status, Context,
             !ModuleInfo, !Specs)
     ;
         Pragma = pragma_oisu(OISUInfo),
-        add_pragma_oisu(OISUInfo, !.Status, Context, !ModuleInfo, !Specs)
+        add_pragma_oisu(OISUInfo, Status, Context, !ModuleInfo, !Specs)
     ;
         Pragma = pragma_termination_info(TermInfo),
         add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs)
@@ -390,12 +400,7 @@ add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pragma_foreign_proc_export(item_origin::in,
-    pragma_info_foreign_proc_export::in, prog_context::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_pragma_foreign_proc_export(Origin, FPEInfo, Context, !ModuleInfo,
+add_pragma_foreign_proc_export(MaybeAttrs, FPEInfo, Context, !ModuleInfo,
         !Specs) :-
     FPEInfo = pragma_info_foreign_proc_export(Lang, PrednameModesPF,
         ExportedName),
@@ -405,9 +410,30 @@ add_pragma_foreign_proc_export(Origin, FPEInfo, Context, !ModuleInfo,
     predicate_table_lookup_pf_sym_arity(PredTable, may_be_partially_qualified,
         PredOrFunc, Name, Arity, PredIds),
     (
+        PredIds = [],
+        (
+            MaybeAttrs = item_origin_user,
+            undefined_pred_or_func_error(Name, Arity, Context,
+                [pragma_decl("foreign_export"), words("declaration")],
+                !Specs)
+        ;
+            MaybeAttrs = item_origin_compiler(CompilerAttrs),
+            % We do not warn about errors in export pragmas created by
+            % the compiler as part of a source-to-source transformation.
+            CompilerAttrs = item_compiler_attributes(AllowExport, _IsMutable),
+            (
+                AllowExport = do_allow_export
+            ;
+                AllowExport = do_not_allow_export,
+                unexpected($module, $pred,
+                    "bad introduced foreign_export pragma")
+            )
+        )
+    ;
         PredIds = [PredId],
-        add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name,
-            PredId, Modes, ExportedName, Context, !ModuleInfo, !Specs)
+        add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs,
+            Lang, Name, PredId, Modes, ExportedName, Context,
+            !ModuleInfo, !Specs)
     ;
         PredIds = [_, _ | _],
         StartPieces = [words("Error: ambiguous"), p_or_f(PredOrFunc),
@@ -426,29 +452,16 @@ add_pragma_foreign_proc_export(Origin, FPEInfo, Context, !ModuleInfo,
             [always(MainPieces), verbose_only(VerbosePieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
-    ;
-        PredIds = [],
-        (
-            Origin = user,
-            undefined_pred_or_func_error(Name, Arity, Context,
-                [pragma_decl("foreign_export"), words("declaration")],
-                !Specs)
-        ;
-            Origin = compiler(CompilerOrigin),
-            % We do not warn about errors in export pragmas created by
-            % the compiler as part of a source-to-source transformation.
-            require_foreign_exportable_compiler_origin(CompilerOrigin, !Specs)
-        )
     ).
 
-:- pred add_pragma_foreign_export_2(arity::in, predicate_table::in,
-    item_origin::in, foreign_language::in,
+:- pred add_pragma_foreign_proc_export_2(arity::in, predicate_table::in,
+    item_maybe_attrs::in, foreign_language::in,
     sym_name::in, pred_id::in, list(mer_mode)::in, string::in,
     prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
-        Modes, ExportedName, Context, !ModuleInfo, !Specs) :-
+add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang, Name,
+        PredId, Modes, ExportedName, Context, !ModuleInfo, !Specs) :-
     predicate_table_get_preds(PredTable, Preds),
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, Procs),
@@ -496,9 +509,9 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
             ),
 
             % Record that there was a foreign_export pragma for this procedure,
-            % regardless of the specified language.  We do this so that dead
+            % regardless of the specified language. We do this so that dead
             % procedure elimination does not generate incorrect warnings about
-            % dead procedures (e.g.  those that are foreign_exported to
+            % dead procedures (e.g. those that are foreign_exported to
             % languages other than those languages that are supported by the
             % current backend.)
             %
@@ -509,35 +522,23 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
         )
     ;
         (
-            Origin = user,
+            MaybeAttrs = item_origin_user,
             undefined_mode_error(Name, Arity, Context,
                 [pragma_decl("foreign_export"), words("declaration")],
                 !Specs)
         ;
-            Origin = compiler(CompilerOrigin),
+            MaybeAttrs = item_origin_compiler(CompilerAttrs),
             % We do not warn about errors in export pragmas created by
             % the compiler as part of a source-to-source transformation.
-            require_foreign_exportable_compiler_origin(CompilerOrigin, !Specs)
+            CompilerAttrs = item_compiler_attributes(AllowExport, _IsMutable),
+            (
+                AllowExport = do_allow_export
+            ;
+                AllowExport = do_not_allow_export,
+                unexpected($module, $pred,
+                    "bad introduced foreign_export pragma")
+            )
         )
-    ).
-
-:- pred require_foreign_exportable_compiler_origin(item_compiler_origin::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-require_foreign_exportable_compiler_origin(CompilerOrigin, !Specs) :-
-    % The !Specs arguments are there just to prevent the compiler
-    % from optimizing away calls this predicate.
-    (
-        ( CompilerOrigin = initialise_decl
-        ; CompilerOrigin = mutable_decl
-        ; CompilerOrigin = finalise_decl
-        )
-    ;
-        ( CompilerOrigin = solver_type
-        ; CompilerOrigin = foreign_imports
-        ; CompilerOrigin = pragma_memo_attribute
-        ),
-        unexpected($module, $pred, "bad introduced foreign_export pragma")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1266,14 +1267,6 @@ add_pragma_unused_args(UnusedArgsInfo, Context, !ModuleInfo, !Specs) :-
     predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
         PredOrFunc, SymName, Arity, PredIds),
     (
-        PredIds = [PredId],
-        module_info_get_unused_arg_info(!.ModuleInfo, UnusedArgInfo0),
-        % Convert the mode number to a proc_id.
-        proc_id_to_int(ProcId, ModeNum),
-        map.set(proc(PredId, ProcId), UnusedArgs,
-            UnusedArgInfo0, UnusedArgInfo),
-        module_info_set_unused_arg_info(UnusedArgInfo, !ModuleInfo)
-    ;
         PredIds = [],
         Pieces = [words("Internal compiler error:"),
             words("unknown predicate in"), pragma_decl("unused_args"),
@@ -1281,6 +1274,14 @@ add_pragma_unused_args(UnusedArgsInfo, Context, !ModuleInfo, !Specs) :-
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
+    ;
+        PredIds = [PredId],
+        module_info_get_unused_arg_info(!.ModuleInfo, UnusedArgInfo0),
+        % Convert the mode number to a proc_id.
+        proc_id_to_int(ProcId, ModeNum),
+        map.set(proc(PredId, ProcId), UnusedArgs,
+            UnusedArgInfo0, UnusedArgInfo),
+        module_info_set_unused_arg_info(UnusedArgInfo, !ModuleInfo)
     ;
         PredIds = [_, _ | _],
         Pieces = [words("Internal compiler error:"),
@@ -1403,13 +1404,13 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
             SymName, Arity, PredIds)
     ),
     (
-        PredIds = [_ | _],
-        list.foldl3(add_pragma_type_spec_for_pred(TSInfo, Context), PredIds,
-            !ModuleInfo, !QualInfo, !Specs)
-    ;
         PredIds = [],
         undefined_pred_or_func_error(SymName, Arity, Context,
             [pragma_decl("type_spec"), words("declaration")], !Specs)
+    ;
+        PredIds = [_ | _],
+        list.foldl3(add_pragma_type_spec_for_pred(TSInfo, Context), PredIds,
+            !ModuleInfo, !QualInfo, !Specs)
     ).
 
 :- pred add_pragma_type_spec_for_pred(pragma_info_type_spec::in,
@@ -2093,11 +2094,6 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pragma_foreign_proc(pragma_info_foreign_proc::in,
-    import_status::in, prog_context::in, maybe(int)::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
 add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
         !ModuleInfo, !Specs) :-
     FPInfo = pragma_info_foreign_proc(Attributes0, PredName, PredOrFunc,
@@ -2277,11 +2273,11 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_pragma_tabled(pragma_info_tabled::in, prog_context::in,
-    import_status::in, import_status::out, module_info::in, module_info::out,
+    import_status::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_pragma_tabled(TabledInfo, Context, !Status, !ModuleInfo,
+module_add_pragma_tabled(TabledInfo, Context, Status, !ModuleInfo,
         !QualInfo, !Specs) :-
     TabledInfo = pragma_info_tabled(EvalMethod, PredNameArityMPF,
         MaybeModes, MaybeAttributes),
@@ -2298,32 +2294,32 @@ module_add_pragma_tabled(TabledInfo, Context, !Status, !ModuleInfo,
         predicate_table_lookup_pf_sym_arity(PredicateTable0,
             is_fully_qualified, PredOrFunc, PredName, Arity, PredIds0),
         (
-            PredIds0 = [_ | _],
-            PredIds = PredIds0
-        ;
             PredIds0 = [],
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [pragma_decl(EvalMethodStr), words("declaration")],
             preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                PredName, Arity, PredOrFunc, !.Status, no, Context,
+                PredName, Arity, PredOrFunc, Status, no, Context,
                 origin_user(PredName), DescPieces, PredId, !Specs),
             PredIds = [PredId]
+        ;
+            PredIds0 = [_ | _],
+            PredIds = PredIds0
         )
     ;
         MaybePredOrFunc = no,
         predicate_table_lookup_sym_arity(PredicateTable0,
             is_fully_qualified, PredName, Arity, PredIds0),
         (
-            PredIds0 = [_ | _],
-            PredIds = PredIds0
-        ;
             PredIds0 = [],
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [pragma_decl(EvalMethodStr), words("declaration")],
             preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                PredName, Arity, pf_predicate, !.Status, no, Context,
+                PredName, Arity, pf_predicate, Status, no, Context,
                 origin_user(PredName), DescPieces, PredId, !Specs),
             PredIds = [PredId]
+        ;
+            PredIds0 = [_ | _],
+            PredIds = PredIds0
         )
     ),
     (
@@ -2366,21 +2362,21 @@ module_add_pragma_tabled(TabledInfo, Context, !Status, !ModuleInfo,
     ;
         MaybeAttributes = no
     ),
-    list.foldl4(
+    list.foldl3(
         module_add_pragma_tabled_for_pred(EvalMethod, PredName, Arity,
-            MaybePredOrFunc, MaybeModes, MaybeAttributes, Context),
-        PredIds, !Status, !ModuleInfo, !QualInfo, !Specs).
+            MaybePredOrFunc, MaybeModes, MaybeAttributes, Context, Status),
+        PredIds, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred module_add_pragma_tabled_for_pred(eval_method::in,
     sym_name::in, int::in, maybe(pred_or_func)::in, maybe(list(mer_mode))::in,
-    maybe(table_attributes)::in, prog_context::in, pred_id::in,
-    import_status::in, import_status::out, module_info::in, module_info::out,
+    maybe(table_attributes)::in, prog_context::in, import_status::in,
+    pred_id::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
-        MaybePredOrFunc, MaybeModes, MaybeAttributes, Context, PredId,
-        !Status, !ModuleInfo, !QualInfo, !Specs) :-
+        MaybePredOrFunc, MaybeModes, MaybeAttributes, Context, Status, PredId,
+        !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     ( EvalMethod0 = eval_minimal(_) ->
         globals.lookup_bool_option(Globals, use_minimal_model_own_stacks,
@@ -2480,7 +2476,7 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context,
                     SimpleCallId, yes, EvalMethod, MaybeAttributes,
-                    ProcTable0, ProcTable, !Status, !ModuleInfo, !QualInfo,
+                    Status, ProcTable0, ProcTable, !ModuleInfo, !QualInfo,
                     !Specs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
@@ -2517,7 +2513,7 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
                 ),
                 set_eval_method_create_aux_preds_list(ExistingProcs, Context,
                     SimpleCallId, SingleProc, EvalMethod, MaybeAttributes,
-                    ProcTable0, ProcTable, !Status, !ModuleInfo, !QualInfo,
+                    Status, ProcTable0, ProcTable, !ModuleInfo, !QualInfo,
                     !Specs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
@@ -2528,32 +2524,32 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
 :- pred set_eval_method_create_aux_preds_list(
     assoc_list(proc_id, proc_info)::in, prog_context::in, simple_call_id::in,
     bool::in, eval_method::in, maybe(table_attributes)::in,
-    proc_table::in, proc_table::out, import_status::in, import_status::out,
+    import_status::in, proc_table::in, proc_table::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-set_eval_method_create_aux_preds_list([], _, _, _, _, _, !ProcTable,
-        !Status, !ModuleInfo, !QualInfo, !Specs).
+set_eval_method_create_aux_preds_list([], _, _, _, _, _, _,
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs).
 set_eval_method_create_aux_preds_list([ProcId - ProcInfo0 | Rest], Context,
-        SimpleCallId, SingleProc, EvalMethod, MaybeAttributes, !ProcTable,
-        !Status, !ModuleInfo, !QualInfo, !Specs) :-
+        SimpleCallId, SingleProc, EvalMethod, MaybeAttributes, Status,
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
-        SingleProc, EvalMethod, MaybeAttributes, !ProcTable,
-        !Status, !ModuleInfo, !QualInfo, !Specs),
+        SingleProc, EvalMethod, MaybeAttributes, Status,
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs),
     set_eval_method_create_aux_preds_list(Rest, Context, SimpleCallId,
-        SingleProc, EvalMethod, MaybeAttributes, !ProcTable,
-        !Status, !ModuleInfo, !QualInfo, !Specs).
+        SingleProc, EvalMethod, MaybeAttributes, Status,
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred set_eval_method_create_aux_preds(proc_id::in, proc_info::in,
     prog_context::in, simple_call_id::in, bool::in, eval_method::in,
-    maybe(table_attributes)::in, proc_table::in, proc_table::out,
-    import_status::in, import_status::out, module_info::in, module_info::out,
+    maybe(table_attributes)::in, import_status::in,
+    proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
-        SingleProc, EvalMethod, MaybeAttributes, !ProcTable,
-        !Status, !ModuleInfo, !QualInfo, !Specs) :-
+        SingleProc, EvalMethod, MaybeAttributes, Status,
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     proc_info_get_eval_method(ProcInfo0, OldEvalMethod),
     % NOTE: We don't bother detecting multiple tabling pragmas
     % of the same type here.
@@ -2642,8 +2638,8 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                 (
                     Statistics = table_gather_statistics,
                     create_tabling_statistics_pred(ProcId, Context,
-                        SimpleCallId, SingleProc, !ProcTable,
-                        !Status, !ModuleInfo, !QualInfo, !Specs)
+                        SimpleCallId, SingleProc, Status,
+                        !ProcTable, !ModuleInfo, !QualInfo, !Specs)
                 ;
                     Statistics = table_dont_gather_statistics
                 )
@@ -2653,8 +2649,8 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
             (
                 AllowReset = table_allow_reset,
                 create_tabling_reset_pred(ProcId, Context,
-                    SimpleCallId, SingleProc, !ProcTable,
-                    !Status, !ModuleInfo, !QualInfo, !Specs)
+                    SimpleCallId, SingleProc, Status,
+                    !ProcTable, !ModuleInfo, !QualInfo, !Specs)
             ;
                 AllowReset = table_dont_allow_reset
             )
@@ -2662,13 +2658,13 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
     ).
 
 :- pred create_tabling_statistics_pred(proc_id::in, prog_context::in,
-    simple_call_id::in, bool::in, proc_table::in, proc_table::out,
-    import_status::in, import_status::out, module_info::in, module_info::out,
+    simple_call_id::in, bool::in, import_status::in,
+    proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
-        !ProcTable, !Status, !ModuleInfo, !QualInfo, !Specs) :-
+        Status, !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     TableBuiltinModule = mercury_table_statistics_module,
     StatsTypeName = qualified(TableBuiltinModule, "proc_table_statistics"),
     StatsType = defined_type(StatsTypeName, [], kind_star),
@@ -2677,6 +2673,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
     TypeAndModeArg3 = type_and_mode(io_state_type, uo_mode),
     TypeAndModeArgs = [TypeAndModeArg1, TypeAndModeArg2, TypeAndModeArg3],
 
+    Origin = origin_tabling(SimpleCallId, tabling_aux_pred_stats),
     varset.init(TypeVarSet),
     varset.init(InstVarSet),
     ExistQVars = [],
@@ -2684,8 +2681,8 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         SingleProc),
     Constraints = constraints([], []),
     init_markers(Markers),
-    ItemStatus0 = item_status(!.Status, may_be_unqualified),
-    module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
+    ItemStatus0 = item_status(Status, may_be_unqualified),
+    module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
         pf_predicate, StatsPredSymName, TypeAndModeArgs, yes(detism_det),
         purity_pure, Constraints, Markers, Context, ItemStatus0, _,
         !ModuleInfo, !Specs),
@@ -2714,21 +2711,22 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         StatsPragmaFCInfo = pragma_info_foreign_proc(!.Attrs, StatsPredSymName,
             pf_predicate, [Arg1, Arg2, Arg3], !.VarSet, InstVarSet, StatsImpl)
     ),
-    add_pragma_foreign_proc(StatsPragmaFCInfo, !.Status, Context, yes(-1),
+    add_pragma_foreign_proc(StatsPragmaFCInfo, Status, Context, yes(-1),
         !ModuleInfo, !Specs).
 
 :- pred create_tabling_reset_pred(proc_id::in, prog_context::in,
-    simple_call_id::in, bool::in, proc_table::in, proc_table::out,
-    import_status::in, import_status::out, module_info::in, module_info::out,
+    simple_call_id::in, bool::in, import_status::in,
+    proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
-         !ProcTable, !Status, !ModuleInfo, !QualInfo, !Specs) :-
+         Status, !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     TypeAndModeArg1 = type_and_mode(io_state_type, di_mode),
     TypeAndModeArg2 = type_and_mode(io_state_type, uo_mode),
     TypeAndModeArgs = [TypeAndModeArg1, TypeAndModeArg2],
 
+    Origin = origin_tabling(SimpleCallId, tabling_aux_pred_reset),
     varset.init(TypeVarSet),
     varset.init(InstVarSet),
     ExistQVars = [],
@@ -2736,8 +2734,8 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         SingleProc),
     Constraints = constraints([], []),
     init_markers(Markers),
-    ItemStatus0 = item_status(!.Status, may_be_unqualified),
-    module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
+    ItemStatus0 = item_status(Status, may_be_unqualified),
+    module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
         pf_predicate, ResetPredSymName, TypeAndModeArgs, yes(detism_det),
         purity_pure, Constraints, Markers, Context, ItemStatus0, _,
         !ModuleInfo, !Specs),
@@ -2786,7 +2784,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         ResetPragmaFCInfo = pragma_info_foreign_proc(!.Attrs, ResetPredSymName,
             pf_predicate, [Arg1, Arg2], !.VarSet, InstVarSet, ResetImpl)
     ),
-    add_pragma_foreign_proc(ResetPragmaFCInfo, !.Status, Context, yes(-1),
+    add_pragma_foreign_proc(ResetPragmaFCInfo, Status, Context, yes(-1),
         !ModuleInfo, !Specs).
 
 :- func tabling_stats_pred_name(simple_call_id, proc_id, bool) = sym_name.

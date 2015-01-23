@@ -57,7 +57,7 @@
 :- pred ml_gen_unification(unification::in, code_model::in, prog_context::in,
     list(statement)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-    % Convert a cons_id to a cons_tag.
+    % Convert a cons_id for a given type to a cons_tag.
     %
 :- pred ml_cons_id_to_tag(ml_gen_info::in, cons_id::in, cons_tag::out) is det.
 
@@ -572,8 +572,6 @@ ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type) = Rval :-
 
 %-----------------------------------------------------------------------------%
 
-    % Convert a cons_id for a given type to a cons_tag.
-    %
 ml_cons_id_to_tag(Info, ConsId, Tag) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     Tag = cons_id_to_tag(ModuleInfo, ConsId).

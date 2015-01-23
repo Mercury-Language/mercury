@@ -537,7 +537,8 @@ maybe_add_foreign_import_module(ModuleName, Items0, Items) :-
 :- func make_foreign_import(module_name, foreign_language) = item.
 
 make_foreign_import(ModuleName, Lang) = Item :-
-    Origin = compiler(foreign_imports),
+    Attrs = item_compiler_attributes(do_not_allow_export, is_not_mutable),
+    Origin = item_origin_compiler(Attrs),
     Info = pragma_info_foreign_import_module(Lang, ModuleName),
     Pragma = pragma_foreign_import_module(Info),
     ItemPragma = item_pragma_info(Origin, Pragma, term.context_init, -1),

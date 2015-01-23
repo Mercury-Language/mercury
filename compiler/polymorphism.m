@@ -736,6 +736,9 @@ setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
         ; Origin = origin_created(_)
         ; Origin = origin_assertion(_, _)
         ; Origin = origin_lambda(_, _, _)
+        ; Origin = origin_solver_type(_, _, _)
+        ; Origin = origin_tabling(_, _)
+        ; Origin = origin_mutable(_, _, _)
         ; Origin = origin_user(_)
         ),
         pred_info_get_class_context(PredInfo, ClassContext),

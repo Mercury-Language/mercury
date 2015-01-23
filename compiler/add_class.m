@@ -354,18 +354,20 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
     (
         Method = method_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
             PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst,
-            MaybeDet, _Cond, Purity, ClassContext, Context),
+            MaybeDet, _Cond, Purity, Constraints0, Context),
+        % XXX This setting of Origin looks suspicious.
+        Origin = origin_user(PredName),
         % XXX kind inference:
         % We set the kinds to `star' at the moment. This will be different
         % when we have a kind system.
         prog_type.var_list_to_type_list(map.init, Vars, Args),
-        ClassContext = constraints(UnivCnstrs, ExistCnstrs),
-        NewUnivCnstrs = [constraint(Name, Args) | UnivCnstrs],
-        NewClassContext = constraints(NewUnivCnstrs, ExistCnstrs),
+        Constraints0 = constraints(UnivConstraints0, ExistConstraints),
+        UnivConstraints = [constraint(Name, Args) | UnivConstraints0],
+        Constraints = constraints(UnivConstraints, ExistConstraints),
         init_markers(Markers0),
         add_marker(marker_class_method, Markers0, Markers),
-        module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
-            PredName, TypesAndModes, MaybeDet, Purity, NewClassContext,
+        module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
+            PredOrFunc, PredName, TypesAndModes, MaybeDet, Purity, Constraints,
             Markers, Context, Status, MaybePredIdProcId, !ModuleInfo, !Specs)
     ;
         Method = method_pred_or_func_mode(VarSet, MaybePredOrFunc, PredName,

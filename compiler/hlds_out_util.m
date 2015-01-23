@@ -302,13 +302,42 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
                 unexpected($module, $pred, "origin_assertion")
             )
         ;
+            Origin = origin_tabling(BasePredId, TablingAuxPredKind),
+            BasePredIdStr = simple_call_id_to_string(BasePredId),
+            (
+                TablingAuxPredKind = tabling_aux_pred_stats,
+                Str = "table statistics predicate for " ++ BasePredIdStr
+            ;
+                TablingAuxPredKind = tabling_aux_pred_reset,
+                Str = "table reset predicate for " ++ BasePredIdStr
+            )
+        ;
+            Origin = origin_solver_type(TypeCtorSymName, TypeCtorArity,
+                SolverAuxPredKind),
+            TypeStr =
+                sym_name_and_arity_to_string(TypeCtorSymName / TypeCtorArity),
+            (
+                SolverAuxPredKind = solver_type_to_ground_pred,
+                Str = "to ground representation predicate for " ++ TypeStr
+            ;
+                SolverAuxPredKind = solver_type_to_any_pred,
+                Str = "to any representation predicate for " ++ TypeStr
+            ;
+                SolverAuxPredKind = solver_type_from_ground_pred,
+                Str = "from ground representation predicate for " ++ TypeStr
+            ;
+                SolverAuxPredKind = solver_type_from_any_pred,
+                Str = "from any representation predicate for " ++ TypeStr
+            )
+        ;
             ( Origin = origin_transformed(_, _, _)
             ; Origin = origin_created(_)
+            ; Origin = origin_mutable(_, _, _)
             ; Origin = origin_lambda(_, _, _)
             ; Origin = origin_user(_)
             ),
-            Str = simple_call_id_to_string(PredOrFunc,
-                qualified(Module, Name), Arity)
+            SymName = qualified(Module, Name),
+            Str = simple_call_id_to_string(PredOrFunc, SymName, Arity)
         )
     ;
         % The predicate has been deleted, so we print what we can.

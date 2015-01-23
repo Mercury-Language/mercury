@@ -265,9 +265,85 @@ write_pred(Info, Lang, Indent, ModuleInfo, PredId, PredInfo, !IO) :-
             Origin = origin_assertion(_, _),
             io.write_string("% assertion\n", !IO)
         ;
-            Origin = origin_lambda(_, _, _)
+            Origin = origin_solver_type(TypeCtorSymName, TypeCtorArity,
+                SolverAuxPredKind),
+            TypeCtorStr =
+                sym_name_and_arity_to_string(TypeCtorSymName / TypeCtorArity),
+            (
+                SolverAuxPredKind = solver_type_to_ground_pred,
+                SolverAuxPredKindStr = "to ground conversion predicate"
+            ;
+                SolverAuxPredKind = solver_type_to_any_pred,
+                SolverAuxPredKindStr = "to any conversion predicate"
+            ;
+                SolverAuxPredKind = solver_type_from_ground_pred,
+                SolverAuxPredKindStr = "from ground conversion predicate"
+            ;
+                SolverAuxPredKind = solver_type_from_any_pred,
+                SolverAuxPredKindStr = "from any conversion predicate"
+            ),
+            io.format("%% %s for %s\n",
+                [s(SolverAuxPredKindStr), s(TypeCtorStr)], !IO)
         ;
-            Origin = origin_user(_)
+            Origin = origin_tabling(BasePredCallId, TablingAuxPredKind),
+            BasePredStr = simple_call_id_to_string(BasePredCallId),
+            (
+                TablingAuxPredKind = tabling_aux_pred_stats,
+                TablingAuxPredKindStr = "table statistics predicate"
+            ;
+                TablingAuxPredKind = tabling_aux_pred_reset,
+                TablingAuxPredKindStr = "table reset predicate"
+            ),
+            io.format("%% %s for %s\n",
+                [s(TablingAuxPredKindStr), s(BasePredStr)], !IO)
+        ;
+            Origin = origin_mutable(MutableModuleName, MutableName,
+                MutablePredKind),
+            MutableModuleNameStr = sym_name_to_string(MutableModuleName),
+            (
+                MutablePredKind = mutable_pred_std_get,
+                MutablePredKindStr = "std get predicate"
+            ;
+                MutablePredKind = mutable_pred_std_set,
+                MutablePredKindStr = "std set predicate"
+            ;
+                MutablePredKind = mutable_pred_io_get,
+                MutablePredKindStr = "io get predicate"
+            ;
+                MutablePredKind = mutable_pred_io_set,
+                MutablePredKindStr = "io set predicate"
+            ;
+                MutablePredKind = mutable_pred_unsafe_get,
+                MutablePredKindStr = "unsafe get predicate"
+            ;
+                MutablePredKind = mutable_pred_unsafe_set,
+                MutablePredKindStr = "unsafe set predicate"
+            ;
+                MutablePredKind = mutable_pred_constant_get,
+                MutablePredKindStr = "constant get predicate"
+            ;
+                MutablePredKind = mutable_pred_constant_secret_set,
+                MutablePredKindStr = "constant secret set predicate"
+            ;
+                MutablePredKind = mutable_pred_lock,
+                MutablePredKindStr = "lock predicate"
+            ;
+                MutablePredKind = mutable_pred_unlock,
+                MutablePredKindStr = "unlock predicate"
+            ;
+                MutablePredKind = mutable_pred_pre_init,
+                MutablePredKindStr = "preinit predicate"
+            ;
+                MutablePredKind = mutable_pred_init,
+                MutablePredKindStr = "init predicate"
+            ),
+            io.format("%% %s for mutable %s in module %s\n",
+                [s(MutablePredKindStr), s(MutableName),
+                s(MutableModuleNameStr)], !IO)
+        ;
+            ( Origin = origin_lambda(_, _, _)
+            ; Origin = origin_user(_)
+            )
         )
     ;
         true

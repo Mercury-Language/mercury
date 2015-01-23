@@ -60,38 +60,26 @@
 
     % Did an item originate in user code or was it added by the compiler as
     % part of a source-to-source transformation, e.g. the initialise
-    % declarations.
+    % declarations? If the latter, specify the information that the
+    % make_hlds pass may need to we answer questions about the item.
     %
-:- type item_origin
-    --->    user
-    ;       compiler(item_compiler_origin).
+:- type item_maybe_attrs
+    --->    item_origin_user
+    ;       item_origin_compiler(item_compiler_attributes).
 
-    % For items introduced by the compiler, why were they introduced?
-    %
-:- type item_compiler_origin
-    --->    initialise_decl
-            % The item was introduced by the transformation for `:- initialise'
-            % decls. This should only apply to export pragms.
+:- type item_compiler_attributes
+    --->    item_compiler_attributes(
+                maybe_allow_export,
+                maybe_is_mutable
+            ).
 
-    ;       finalise_decl
-            % This item was introduced by the transformation for `:- finalise'
-            % decls. This should only apply to export pragmas.
+:- type maybe_allow_export
+    --->    do_not_allow_export
+    ;       do_allow_export.
 
-    ;       mutable_decl
-            % The item was introduced by the transformation for `:- mutable'
-            % decls. This should only apply to `:- initialise' decls and
-            % export pragmas.
-
-    ;       solver_type
-            % Solver types cause the compiler to create foreign procs for the
-            % init and representation functions.
-
-    ;       pragma_memo_attribute
-            % This item was introduced for an attribute given in a pragma memo.
-
-    ;       foreign_imports.
-            % The compiler sometimes needs to insert additional foreign_import
-            % pragmas. XXX Why?
+:- type maybe_is_mutable
+    --->    is_not_mutable
+    ;       is_mutable.
 
 :- type item
     --->    item_module_start(item_module_start_info)
@@ -135,7 +123,7 @@
 
 :- type item_clause_info
     --->    item_clause_info(
-                cl_origin                       :: item_origin,
+                cl_maybe_attrs                  :: item_maybe_attrs,
                 cl_varset                       :: prog_varset,
                 cl_pred_or_func                 :: pred_or_func,
                 cl_predname                     :: sym_name,
@@ -191,7 +179,8 @@
                 % a predicate or function declaration.
                 % This specifies the type of the predicate or function,
                 % and it may optionally also specify the mode and determinism.
-                pf_origin                       :: item_origin,
+                pf_maybe_attrs                  :: item_maybe_attrs,
+                % ZZZ pf_pred_origin            :: pred_origin_subset
                 pf_tvarset                      :: tvarset,
                 pf_instvarset                   :: inst_varset,
                 pf_existqvars                   :: existq_tvars,
@@ -206,7 +195,7 @@
                 pf_maybe_detism                 :: maybe(determinism),
                 pf_cond                         :: condition,
                 pf_purity                       :: purity,
-                pf_class_context                :: prog_constraints,
+                pf_constraints                  :: prog_constraints,
                 pf_context                      :: prog_context,
                 pf_seq_num                      :: int
             ).
@@ -231,7 +220,7 @@
 
 :- type item_pragma_info
     --->    item_pragma_info(
-                pragma_origin                   :: item_origin,
+                pragma_maybe_attrs              :: item_maybe_attrs,
                 pragma_type                     :: pragma_type,
                 pragma_context                  :: prog_context,
                 pragma_seq_num                  :: int
@@ -278,7 +267,7 @@
 :- type item_initialise_info
     --->    item_initialise_info(
                 % :- initialise pred_name.
-                init_origin                     :: item_origin,
+                init_maybe_attrs                :: item_maybe_attrs,
                 init_name                       :: sym_name,
                 init_arity                      :: arity,
                 init_context                    :: prog_context,
@@ -288,7 +277,7 @@
 :- type item_finalise_info
     --->    item_finalise_info(
                 % :- finalise pred_name.
-                final_origin                    :: item_origin,
+                final_maybe_attrs               :: item_maybe_attrs,
                 final_name                      :: sym_name,
                 final_arity                     :: arity,
                 final_context                   :: prog_context,

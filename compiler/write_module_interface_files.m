@@ -296,28 +296,34 @@ process_item_for_private_interface(ModuleName, Item, !Section,
         ConstantInterface = mutable_var_constant(Attrs),
         (
             ConstantInterface = yes,
-            ConstantGetPredDeclItem = constant_get_pred_decl(ModuleName,
+            ConstantGetPredDecl = constant_get_pred_decl(ModuleName,
                 MutableName, Type, Inst, Context),
-            ConstantSetPredDeclItem = constant_set_pred_decl(ModuleName,
+            ConstantSetPredDecl = constant_set_pred_decl(ModuleName,
                 MutableName, Type, Inst, Context),
+            ConstantGetPredDeclItem = item_pred_decl(ConstantGetPredDecl),
+            ConstantSetPredDeclItem = item_pred_decl(ConstantSetPredDecl),
             ReplacementItems =
                 [ConstantGetPredDeclItem, ConstantSetPredDeclItem]
         ;
             ConstantInterface = no,
-            StdGetPredDeclItem = std_get_pred_decl(ModuleName,
+            StdGetPredDecl = std_get_pred_decl(ModuleName,
                 MutableName, Type, Inst, Context),
-            StdSetPredDeclItem = std_set_pred_decl(ModuleName,
+            StdSetPredDecl = std_set_pred_decl(ModuleName,
                 MutableName, Type, Inst, Context),
+            StdGetPredDeclItem = item_pred_decl(StdGetPredDecl),
+            StdSetPredDeclItem = item_pred_decl(StdSetPredDecl),
             IOStateInterface = mutable_var_attach_to_io_state(Attrs),
             (
                 IOStateInterface = yes,
-                PureGetPredDeclItem = io_get_pred_decl(ModuleName,
+                IOGetPredDecl = io_get_pred_decl(ModuleName,
                     MutableName, Type, Inst, Context),
-                PureSetPredDeclItem = io_set_pred_decl(ModuleName,
+                IOSetPredDecl = io_set_pred_decl(ModuleName,
                     MutableName, Type, Inst, Context),
+                IOGetPredDeclItem = item_pred_decl(IOGetPredDecl),
+                IOSetPredDeclItem = item_pred_decl(IOSetPredDecl),
                 ReplacementItems =
                     [StdGetPredDeclItem, StdSetPredDeclItem,
-                    PureGetPredDeclItem, PureSetPredDeclItem]
+                    IOGetPredDeclItem, IOSetPredDeclItem]
             ;
                 IOStateInterface = no,
                 ReplacementItems =

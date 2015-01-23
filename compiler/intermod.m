@@ -1465,8 +1465,9 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         ReservedTag = Body ^ du_type_reserved_tag,
         ReservedTag = uses_reserved_tag
     ->
-        % The pragma_origin doesn't matter here.
-        ReserveItemPragma = item_pragma_info(user,
+        % The pragma's origin isn't printed, so what origin we pass here
+        % doesn't matter.
+        ReserveItemPragma = item_pragma_info(item_origin_user,
             pragma_reserve_tag(TypeCtor), Context, -1),
         ReserveItem = item_pragma(ReserveItemPragma),
         mercury_output_item(MercInfo, ReserveItem, !IO)
@@ -1481,7 +1482,10 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             ForeignEnumVals),
         FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, ForeignEnumVals),
         ForeignPragma = pragma_foreign_enum(FEInfo),
-        ForeignItemPragma = item_pragma_info(user, ForeignPragma, Context, -1),
+        % The pragma's origin isn't printed, so what origin we pass here
+        % doesn't matter.
+        ForeignItemPragma = item_pragma_info(item_origin_user, ForeignPragma,
+            Context, -1),
         ForeignItem = item_pragma(ForeignItemPragma),
         mercury_output_item(MercInfo, ForeignItem, !IO)
     ;

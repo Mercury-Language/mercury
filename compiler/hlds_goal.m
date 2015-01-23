@@ -1790,7 +1790,7 @@ make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates dealing with generic_calls
+% Predicates dealing with generic_calls.
 %
 
 generic_call_to_id(GenericCall, GenericCallId) :-
@@ -2410,17 +2410,20 @@ goal_info_set_mdprof_inst(IsMDProfInst, !GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_set_context(Context, hlds_goal(GoalExpr, GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo)) :-
-    goal_info_set_context(Context, GoalInfo0, GoalInfo).
+goal_set_context(Context, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
-goal_add_feature(Feature, hlds_goal(GoalExpr, GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo)) :-
-    goal_info_add_feature(Feature, GoalInfo0, GoalInfo).
+goal_add_feature(Feature, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
+    goal_info_add_feature(Feature, GoalInfo0, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
-goal_remove_feature(Feature, hlds_goal(GoalExpr, GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo)) :-
-    goal_info_remove_feature(Feature, GoalInfo0, GoalInfo).
+goal_remove_feature(Feature, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
+    goal_info_remove_feature(Feature, GoalInfo0, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 goal_has_feature(hlds_goal(_GoalExpr, GoalInfo), Feature) :-
     goal_info_has_feature(GoalInfo, Feature).
@@ -2494,15 +2497,9 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             rename_var_list(Must, Subn, Vars0, Vars),
             Reason = exist_quant(Vars)
         ;
-            Reason0 = promise_purity(_),
-            Reason = Reason0
-        ;
             Reason0 = promise_solutions(Vars0, Kind),
             rename_var_list(Must, Subn, Vars0, Vars),
             Reason = promise_solutions(Vars, Kind)
-        ;
-            Reason0 = require_detism(_Detism),
-            Reason = Reason0
         ;
             Reason0 = require_complete_switch(Var0),
             rename_var(Must, Subn, Var0, Var),
@@ -2511,12 +2508,6 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             Reason0 = require_switch_arms_detism(Var0, Detism),
             rename_var(Must, Subn, Var0, Var),
             Reason = require_switch_arms_detism(Var, Detism)
-        ;
-            Reason0 = barrier(_),
-            Reason = Reason0
-        ;
-            Reason0 = commit(_),
-            Reason = Reason0
         ;
             Reason0 = from_ground_term(Var0, Kind),
             rename_var(Must, Subn, Var0, Var),
@@ -2530,6 +2521,13 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             rename_var(Must, Subn, LCVar0, LCVar),
             rename_var(Must, Subn, LCSVar0, LCSVar),
             Reason = loop_control(LCVar, LCSVar, UseParentStack)
+        ;
+            ( Reason0 = promise_purity(_Purity)
+            ; Reason0 = require_detism(_Detism)
+            ; Reason0 = commit(_ForcePruning)
+            ; Reason0 = barrier(_Removable)
+            ),
+            Reason = Reason0
         ),
         rename_vars_in_goal(Must, Subn, Goal0, Goal),
         Expr = scope(Reason, Goal)
@@ -2736,15 +2734,9 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
             rename_var_list(need_not_rename, Subn, Vars0, Vars),
             Reason = exist_quant(Vars)
         ;
-            Reason0 = promise_purity(_),
-            Reason = Reason0
-        ;
             Reason0 = promise_solutions(Vars0, Kind),
             rename_var_list(need_not_rename, Subn, Vars0, Vars),
             Reason = promise_solutions(Vars, Kind)
-        ;
-            Reason0 = require_detism(_Detism),
-            Reason = Reason0
         ;
             Reason0 = require_complete_switch(Var0),
             rename_var(need_not_rename, Subn, Var0, Var),
@@ -2753,12 +2745,6 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
             Reason0 = require_switch_arms_detism(Var0, Detism),
             rename_var(need_not_rename, Subn, Var0, Var),
             Reason = require_switch_arms_detism(Var, Detism)
-        ;
-            Reason0 = barrier(_),
-            Reason = Reason0
-        ;
-            Reason0 = commit(_),
-            Reason = Reason0
         ;
             Reason0 = from_ground_term(Var0, Kind),
             rename_var(need_not_rename, Subn, Var0, Var),
@@ -2772,6 +2758,13 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
             rename_var(need_not_rename, Subn, LCVar0, LCVar),
             rename_var(need_not_rename, Subn, LCSVar0, LCSVar),
             Reason = loop_control(LCVar, LCSVar, UseParentStack)
+        ;
+            ( Reason0 = promise_purity(_Purity)
+            ; Reason0 = require_detism(_Detism)
+            ; Reason0 = commit(_ForcePruning)
+            ; Reason0 = barrier(_Removable)
+            ),
+            Reason = Reason0
         ),
         incremental_rename_vars_in_goal(Subn, SubnUpdates, Goal0, Goal),
         Expr = scope(Reason, Goal)

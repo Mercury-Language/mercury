@@ -461,59 +461,64 @@
 
 :- type pred_transformation
     --->    transform_higher_order_specialization(
-                int % Sequence number among the higher order
-                    % specializations of the original predicate.
+                % Sequence number among the higher order specializations
+                % of the original predicate.
+                int
             )
     ;       transform_higher_order_type_specialization(
-                int % The procedure number of the original procedure.
+                % The procedure number of the original procedure.
+                int
             )
     ;       transform_type_specialization(
+                % The substitution from type variables (represented by
+                % the integers) to types (represented by the terms).
                 assoc_list(int, mer_type)
-                    % The substitution from type variables (represented by
-                    % the integers) to types (represented by the terms).
             )
     ;       transform_unused_argument_elimination(
-                list(int) % The list of eliminated argument numbers.
+                % The list of eliminated argument numbers.
+                list(int)
             )
     ;       transform_accumulator(
+                % The list of the numbers of the variables in the original
+                % predicate interface that have been converted to accumulators.
                 list(int)
-                    % The list of the numbers of the variables in the original
-                    % predicate interface that have been converted to
-                    % accumulators.
             )
     ;       transform_loop_invariant(
-                int % The procedure number of the original procedure.
+                % The procedure number of the original procedure.
+                int
             )
     ;       transform_tuple(
-                int % The procedure number of the original procedure.
+                % The procedure number of the original procedure.
+                int
             )
     ;       transform_untuple(
-                int % The procedure number of the original procedure.
+                % The procedure number of the original procedure.
+                int
             )
     ;       transform_dependent_parallel_conjunction
     ;       transform_parallel_loop_control
     ;       transform_return_via_ptr(
+                % The id of the procedure this predicate is derived from.
                 proc_id,
-                    % The id of the procedure this predicate is derived from.
+                % The arguments in these positions are returned via pointer.
                 list(int)
-                    % The arguments in these positions are returned via
-                    % pointer.
             )
     ;       transform_table_generator
     ;       transform_stm_expansion
     ;       transform_dnf(
-                int % This predicate was originally part of a predicate
-                    % transformed into disjunctive normal form; this integer
-                    % gives the part number.
+                % This predicate was originally part of a predicate
+                % transformed into disjunctive normal form; this integer
+                % gives the part number.
+                int
             )
     ;       transform_structure_reuse
     ;       transform_source_to_source_debug.
 
 :- type pred_creation
     --->    created_by_deforestation
-                % I/O tabling will create a new predicate if the predicate
-                % to be I/O tabled must not be inlined.
     ;       created_by_io_tabling.
+            % I/O tabling will create a new predicate if the predicate
+            % to be I/O tabled must not be inlined.
 
 :- type pred_origin
     --->    origin_special_pred(special_pred)
@@ -544,9 +549,49 @@
             % filename/line number pair, and a sequence number used to
             % distinguish multiple lambdas on the same line.
 
+    ;       origin_solver_type(sym_name, arity, solver_type_pred_kind)
+            % The predicate is a representation change predicate
+            % either to or from either ground or any, as indicated by
+            % the solver_type_pred_kind, for the type constructor given by
+            % the sym_name and arity.
+
+    ;       origin_tabling(simple_call_id, tabling_aux_pred_kind)
+            % The predicate is an auxiliary predicate of the indicated kind
+            % for the tabled predicate identified by the simple_call_id.
+
+    ;       origin_mutable(module_name, string, mutable_pred_kind)
+            % The predicate is a predicate that operates on the mutable
+            % with the given name in the given module. The last argument
+            % says whether the predicate is an init, pre_init, get, set,
+            % lock, or unlock predicate on that mutable.
+
     ;       origin_user(sym_name).
             % The predicate is a normal user-written predicate;
             % the string is its name.
+
+:- type tabling_aux_pred_kind
+    --->    tabling_aux_pred_stats
+    ;       tabling_aux_pred_reset.
+
+:- type solver_type_pred_kind
+    --->    solver_type_to_ground_pred
+    ;       solver_type_to_any_pred
+    ;       solver_type_from_ground_pred
+    ;       solver_type_from_any_pred.
+
+:- type mutable_pred_kind
+    --->    mutable_pred_std_get
+    ;       mutable_pred_std_set
+    ;       mutable_pred_io_get
+    ;       mutable_pred_io_set
+    ;       mutable_pred_unsafe_get
+    ;       mutable_pred_unsafe_set
+    ;       mutable_pred_constant_get
+    ;       mutable_pred_constant_secret_set
+    ;       mutable_pred_lock
+    ;       mutable_pred_unlock
+    ;       mutable_pred_pre_init
+    ;       mutable_pred_init.
 
 :- type need_to_requantify
     --->    need_to_requantify

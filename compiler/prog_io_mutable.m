@@ -69,8 +69,8 @@ parse_initialise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
         ;
             SymNameSpecifier = name_arity(SymName, Arity),
             ( ( Arity = 0 ; Arity = 2 ) ->
-                ItemInitialise = item_initialise_info(user, SymName, Arity,
-                    Context, SeqNum),
+                ItemInitialise = item_initialise_info(item_origin_user,
+                    SymName, Arity, Context, SeqNum),
                 Item = item_initialise(ItemInitialise),
                 MaybeItem = ok1(Item)
             ;
@@ -107,8 +107,8 @@ parse_finalise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
         ;
             SymNameSpecifier = name_arity(SymName, Arity),
             ( ( Arity = 0 ; Arity = 2 ) ->
-                ItemFinalise = item_finalise_info(user, SymName, Arity,
-                    Context, SeqNum),
+                ItemFinalise = item_finalise_info(item_origin_user,
+                    SymName, Arity, Context, SeqNum),
                 Item = item_finalise(ItemFinalise),
                 MaybeItem = ok1(Item)
             ;
