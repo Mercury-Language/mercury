@@ -548,7 +548,7 @@ get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
     string::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 pragma_status_error(Name, Arity, Context, PragmaName, !Specs) :-
-    Pieces = [words("Error: `:- pragma " ++ PragmaName ++ "'"),
+    Pieces = [words("Error:"), pragma_decl(PragmaName),
         words("declaration for exported predicate or function"),
         sym_name_and_arity(Name / Arity),
         words("must also be exported."), nl],
@@ -560,7 +560,7 @@ pragma_status_error(Name, Arity, Context, PragmaName, !Specs) :-
     string::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 pragma_conflict_error(Name, Arity, Context, PragmaName, !Specs) :-
-    Pieces = [words("Error: `:- pragma " ++ PragmaName ++ "'"),
+    Pieces = [words("Error:"), pragma_decl(PragmaName),
         words("declaration conflicts with previous pragma for"),
         sym_name_and_arity(Name / Arity), suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
