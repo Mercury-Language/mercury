@@ -788,43 +788,42 @@ gather_implicit_import_needs_in_clause(ItemClause, !ImplicitImportNeeds) :-
 :- pred gather_implicit_import_needs_in_goal(goal::in,
     implicit_import_needs::in, implicit_import_needs::out) is det.
 
-gather_implicit_import_needs_in_goal(GoalExpr - _Context,
-        !ImplicitImportNeeds) :-
+gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds) :-
     (
-        ( GoalExpr = true_expr
-        ; GoalExpr = fail_expr
+        ( Goal = true_expr(_)
+        ; Goal = fail_expr(_)
         )
         % Cannot contain anything that requires implicit imports.
     ;
-        ( GoalExpr = conj_expr(SubGoalA, SubGoalB)
-        ; GoalExpr = par_conj_expr(SubGoalA, SubGoalB)
-        ; GoalExpr = disj_expr(SubGoalA, SubGoalB)
-        ; GoalExpr = implies_expr(SubGoalA, SubGoalB)
-        ; GoalExpr = equivalent_expr(SubGoalA, SubGoalB)
+        ( Goal = conj_expr(_, SubGoalA, SubGoalB)
+        ; Goal = par_conj_expr(_, SubGoalA, SubGoalB)
+        ; Goal = disj_expr(_, SubGoalA, SubGoalB)
+        ; Goal = implies_expr(_, SubGoalA, SubGoalB)
+        ; Goal = equivalent_expr(_, SubGoalA, SubGoalB)
         ),
         gather_implicit_import_needs_in_goal(SubGoalA, !ImplicitImportNeeds),
         gather_implicit_import_needs_in_goal(SubGoalB, !ImplicitImportNeeds)
     ;
-        ( GoalExpr = not_expr(SubGoal)
-        ; GoalExpr = some_expr(_Vars, SubGoal)
-        ; GoalExpr = all_expr(_Vars, SubGoal)
-        ; GoalExpr = some_state_vars_expr(_Vars, SubGoal)
-        ; GoalExpr = all_state_vars_expr(_Vars, SubGoal)
-        ; GoalExpr = promise_purity_expr(_Purity, SubGoal)
-        ; GoalExpr = promise_equivalent_solutions_expr(_OrdVars,
+        ( Goal = not_expr(_, SubGoal)
+        ; Goal = some_expr(_, _Vars, SubGoal)
+        ; Goal = all_expr(_, _Vars, SubGoal)
+        ; Goal = some_state_vars_expr(_, _Vars, SubGoal)
+        ; Goal = all_state_vars_expr(_, _Vars, SubGoal)
+        ; Goal = promise_purity_expr(_, _Purity, SubGoal)
+        ; Goal = promise_equivalent_solutions_expr(_, _OrdVars,
             _StateVars, _DotVars, _ColonVars, SubGoal)
-        ; GoalExpr = promise_equivalent_solution_sets_expr(_OrdVars,
+        ; Goal = promise_equivalent_solution_sets_expr(_, _OrdVars,
             _StateVars, _DotVars, _ColonVars, SubGoal)
-        ; GoalExpr = promise_equivalent_solution_arbitrary_expr(_OrdVars,
+        ; Goal = promise_equivalent_solution_arbitrary_expr(_, _OrdVars,
             _StateVars, _DotVars, _ColonVars, SubGoal)
-        ; GoalExpr = require_detism_expr(_Detism, SubGoal)
-        ; GoalExpr = require_complete_switch_expr(_SwitchVar, SubGoal)
-        ; GoalExpr = require_switch_arms_detism_expr(_SwitchVar, _Detism,
+        ; Goal = require_detism_expr(_, _Detism, SubGoal)
+        ; Goal = require_complete_switch_expr(_, _SwitchVar, SubGoal)
+        ; Goal = require_switch_arms_detism_expr(_, _SwitchVar, _Detism,
             SubGoal)
         ),
         gather_implicit_import_needs_in_goal(SubGoal, !ImplicitImportNeeds)
     ;
-        GoalExpr = trace_expr(_CompCond, _RunCond, MaybeIO, _Mutables,
+        Goal = trace_expr(_, _CompCond, _RunCond, MaybeIO, _Mutables,
             SubGoal),
         (
             MaybeIO = yes(_),
@@ -834,7 +833,7 @@ gather_implicit_import_needs_in_goal(GoalExpr - _Context,
         ),
         gather_implicit_import_needs_in_goal(SubGoal, !ImplicitImportNeeds)
     ;
-        GoalExpr = try_expr(_MaybeIO, SubGoal, Then, MaybeElse,
+        Goal = try_expr(_, _MaybeIO, SubGoal, Then, MaybeElse,
             Catches, MaybeCatchAny),
         !ImplicitImportNeeds ^ iin_exception := do_need_exception,
         gather_implicit_import_needs_in_goal(SubGoal, !ImplicitImportNeeds),
@@ -846,12 +845,12 @@ gather_implicit_import_needs_in_goal(GoalExpr - _Context,
         gather_implicit_import_needs_in_maybe_catch_any_expr(MaybeCatchAny,
             !ImplicitImportNeeds)
     ;
-        GoalExpr = if_then_else_expr(_Vars, _StateVars, Cond, Then, Else),
+        Goal = if_then_else_expr(_, _Vars, _StateVars, Cond, Then, Else),
         gather_implicit_import_needs_in_goal(Cond, !ImplicitImportNeeds),
         gather_implicit_import_needs_in_goal(Then, !ImplicitImportNeeds),
         gather_implicit_import_needs_in_goal(Else, !ImplicitImportNeeds)
     ;
-        GoalExpr = atomic_expr(_Outer, _Inner, _OutputVars,
+        Goal = atomic_expr(_, _Outer, _Inner, _OutputVars,
             MainGoal, OrElseGoals),
         !ImplicitImportNeeds ^ iin_stm := do_need_stm,
         !ImplicitImportNeeds ^ iin_exception := do_need_exception,
@@ -859,7 +858,7 @@ gather_implicit_import_needs_in_goal(GoalExpr - _Context,
         gather_implicit_import_needs_in_goals(OrElseGoals,
             !ImplicitImportNeeds)
     ;
-        GoalExpr = call_expr(CalleeSymName, Args, _Purity),
+        Goal = call_expr(_, CalleeSymName, Args, _Purity),
         ( if
             CalleeSymName = qualified(ModuleName, "format")
         then
@@ -906,10 +905,10 @@ gather_implicit_import_needs_in_goal(GoalExpr - _Context,
         ),
         gather_implicit_import_needs_in_terms(Args, !ImplicitImportNeeds)
     ;
-        GoalExpr = event_expr(_EventName, EventArgs),
+        Goal = event_expr(_, _EventName, EventArgs),
         gather_implicit_import_needs_in_terms(EventArgs, !ImplicitImportNeeds)
     ;
-        GoalExpr = unify_expr(TermA, TermB, _Purity),
+        Goal = unify_expr(_, TermA, TermB, _Purity),
         gather_implicit_import_needs_in_term(TermA, !ImplicitImportNeeds),
         gather_implicit_import_needs_in_term(TermB, !ImplicitImportNeeds)
     ).

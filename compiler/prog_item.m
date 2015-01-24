@@ -34,7 +34,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 :- import_module term.
 
@@ -376,7 +375,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Mutable variables
+% Mutable variables.
 %
 
     % Indicates if updates to the mutable are trailed or untrailed.
@@ -731,7 +730,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Goals
+% Goals.
 %
 
     % Here's how clauses and goals are represented.
@@ -739,36 +738,35 @@
     % a <= b --> implies(b, a) [just flips the goals around!]
     % a <=> b --> equivalent(a, b)
     %
-:- type goal == pair(goal_expr, prog_context).
-
-:- type goals == list(goal).
-
-:- type goal_expr
+:- type goal
     % conjunctions
-    --->    conj_expr(goal, goal)
+    --->    conj_expr(prog_context, goal, goal)
                             % (non-empty) conjunction
-    ;       true_expr       % empty conjunction
-    ;       par_conj_expr(goal, goal)
+    ;       par_conj_expr(prog_context, goal, goal)
                             % parallel conjunction
+    ;       true_expr(prog_context)
+                            % empty conjunction
 
     % disjunctions
-    ;       disj_expr(goal, goal)
+    ;       disj_expr(prog_context, goal, goal)
                             % (non-empty) disjunction
-    ;       fail_expr       % empty disjunction
+    ;       fail_expr(prog_context)
+                            % empty disjunction
 
     % quantifiers; the list of prog_vars should have no duplicates
-    ;       some_expr(list(prog_var), goal)
+    ;       some_expr(prog_context, list(prog_var), goal)
                             % existential quantification
-    ;       all_expr(list(prog_var), goal)
+    ;       all_expr(prog_context, list(prog_var), goal)
                             % universal quantification
-    ;       some_state_vars_expr(list(prog_var), goal)
-    ;       all_state_vars_expr(list(prog_var), goal)
+    ;       some_state_vars_expr(prog_context, list(prog_var), goal)
+    ;       all_state_vars_expr(prog_context, list(prog_var), goal)
                             % state variables extracted from
                             % some/2 and all/2 quantifiers.
 
     % other scopes
-    ;       promise_purity_expr(purity, goal)
+    ;       promise_purity_expr(prog_context, purity, goal)
     ;       promise_equivalent_solutions_expr(
+                prog_context,
                 list(prog_var),  % OrdinaryVars
                 list(prog_var),  % StateVars (!V)
                 list(prog_var),  % DotStateVars (!.V)
@@ -776,6 +774,7 @@
                 goal
             )
     ;       promise_equivalent_solution_sets_expr(
+                prog_context,
                 list(prog_var),  % OrdinaryVars
                 list(prog_var),  % StateVars (!V)
                 list(prog_var),  % DotStateVars (!.V)
@@ -783,6 +782,7 @@
                 goal
             )
     ;       promise_equivalent_solution_arbitrary_expr(
+                prog_context,
                 list(prog_var),  % OrdinaryVars
                 list(prog_var),  % StateVars (!V)
                 list(prog_var),  % DotStateVars (!.V)
@@ -790,19 +790,23 @@
                 goal
             )
     ;       require_detism_expr(
+                prog_context,
                 determinism,
                 goal
             )
     ;       require_complete_switch_expr(
+                prog_context,
                 prog_var,
                 goal
             )
     ;       require_switch_arms_detism_expr(
+                prog_context,
                 prog_var,
                 determinism,
                 goal
             )
     ;       trace_expr(
+                texpr_context       :: prog_context,
                 texpr_compiletime   :: maybe(trace_expr(trace_compiletime)),
                 texpr_runtime       :: maybe(trace_expr(trace_runtime)),
                 texpr_maybe_io      :: maybe(prog_var),
@@ -820,6 +824,7 @@
                 % the subgoal is stored in "main_goal" whilst the
                 % "orelse_alternatives" list remains empty.
 
+                aexpr_context           :: prog_context,
                 aexpr_outer             :: atomic_component_state,
                 aexpr_inner             :: atomic_component_state,
                 aexpr_output_vars       :: maybe(list(prog_var)),
@@ -827,6 +832,7 @@
                 aexpr_orelse_goals      :: list(goal)
             )
     ;       try_expr(
+                tryexpr_context         :: prog_context,
                 tryexpr_maybe_io        :: maybe(prog_var),
                 tryexpr_goal            :: goal,
                 tryexpr_then            :: goal,
@@ -836,20 +842,26 @@
             )
 
     % implications
-    ;       implies_expr(goal, goal)
+    ;       implies_expr(prog_context, goal, goal)
                             % A => B
-    ;       equivalent_expr(goal, goal)
+    ;       equivalent_expr(prog_context, goal, goal)
                             % A <=> B
 
     % negation and if-then-else
-    ;       not_expr(goal)
-    ;       if_then_else_expr(list(prog_var), list(prog_var), goal, goal, goal)
-                            % if_then_else(SomeVars, StateVars, If, Then, Else)
+    ;       not_expr(prog_context, goal)
+    ;       if_then_else_expr(
+                prog_context,
+                list(prog_var), % SomeVars
+                list(prog_var), % StateVars
+                goal,           % Cond
+                goal,           % Then
+                goal            % Else
+            )
 
     % atomic goals
-    ;       event_expr(string, list(prog_term))
-    ;       call_expr(sym_name, list(prog_term), purity)
-    ;       unify_expr(prog_term, prog_term, purity).
+    ;       event_expr(prog_context, string, list(prog_term))
+    ;       call_expr(prog_context, sym_name, list(prog_term), purity)
+    ;       unify_expr(prog_context, prog_term, prog_term, purity).
 
 :- type catch_expr
     --->    catch_expr(
@@ -862,6 +874,8 @@
                 catch_any_var   :: prog_var,
                 catch_any_goal  :: goal
             ).
+
+:- func goal_get_context(goal) = prog_context.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1112,6 +1126,37 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
 
 %-----------------------------------------------------------------------------%
 
+goal_get_context(Goal) = Context :-
+    ( Goal = conj_expr(Context, _, _)
+    ; Goal = par_conj_expr(Context, _, _)
+    ; Goal = true_expr(Context)
+    ; Goal = disj_expr(Context, _, _)
+    ; Goal = fail_expr(Context)
+    ; Goal = some_expr(Context, _, _)
+    ; Goal = all_expr(Context, _, _)
+    ; Goal = some_state_vars_expr(Context, _, _)
+    ; Goal = all_state_vars_expr(Context, _, _)
+    ; Goal = promise_purity_expr(Context, _, _)
+    ; Goal = promise_equivalent_solutions_expr(Context, _, _, _, _, _)
+    ; Goal = promise_equivalent_solution_sets_expr(Context, _, _, _, _, _)
+    ; Goal = promise_equivalent_solution_arbitrary_expr(Context, _, _, _, _, _)
+    ; Goal = require_detism_expr(Context, _, _)
+    ; Goal = require_complete_switch_expr(Context, _, _)
+    ; Goal = require_switch_arms_detism_expr(Context, _, _, _)
+    ; Goal = trace_expr(Context, _, _, _, _, _)
+    ; Goal = atomic_expr(Context, _, _, _, _, _)
+    ; Goal = try_expr(Context, _, _, _, _, _, _)
+    ; Goal = implies_expr(Context, _, _)
+    ; Goal = equivalent_expr(Context, _, _)
+    ; Goal = not_expr(Context, _)
+    ; Goal = if_then_else_expr(Context, _, _, _, _, _)
+    ; Goal = event_expr(Context, _, _)
+    ; Goal = call_expr(Context, _, _, _)
+    ; Goal = unify_expr(Context, _, _, _)
+    ).
+
+%-----------------------------------------------------------------------------%
+
 :- type module_foreign_info
     --->    module_foreign_info(
                 used_foreign_languages      :: set(foreign_language),
@@ -1135,6 +1180,7 @@ get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
     module_foreign_info::in, module_foreign_info::out) is det.
 
 get_item_foreign_code(Globals, Item, !Info) :-
+    % ZZZ
     ( Item = item_pragma(ItemPragma) ->
         ItemPragma = item_pragma_info(_, Pragma, Context, _),
         do_get_item_foreign_code(Globals, Pragma, Context, !Info)

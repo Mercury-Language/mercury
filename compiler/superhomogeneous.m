@@ -190,15 +190,19 @@ unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
     hlds_goal::out) is det.
 
 expansion_to_goal_wrap_if_fgti(GoalInfo, Expansion, Goal) :-
-    Expansion = expansion(MaybeFGTI, GoalCord),
-    Goals = cord.list(GoalCord),
+    Expansion = expansion(MaybeFGTI, ExpansionGoalCord),
+    ExpansionGoals = cord.list(ExpansionGoalCord),
     (
-        Goals = [],
+        ExpansionGoals = [],
         Goal = hlds_goal(true_goal_expr, GoalInfo)
     ;
-        Goals = [Goal]
+        ExpansionGoals = [ExpansionGoal0],
+        ExpansionGoal0 = hlds_goal(ExpansionGoalExpr, ExpansionGoalInfo0),
+        Context = goal_info_get_context(GoalInfo),
+        goal_info_set_context(Context, ExpansionGoalInfo0, ExpansionGoalInfo),
+        Goal = hlds_goal(ExpansionGoalExpr, ExpansionGoalInfo)
     ;
-        Goals = [_, _ | _],
+        ExpansionGoals = [_, _ | _],
         (
             MaybeFGTI = fgti_var_size(TermVar, Size),
             get_maybe_from_ground_term_threshold = yes(Threshold),
@@ -206,17 +210,15 @@ expansion_to_goal_wrap_if_fgti(GoalInfo, Expansion, Goal) :-
         ->
             goal_info_set_nonlocals(set_of_var.make_singleton(TermVar),
                 GoalInfo, MarkedGoalInfo),
-            mark_nonlocals_in_ground_term_initial(Goals, MarkedGoals),
+            mark_nonlocals_in_ground_term_initial(ExpansionGoals, MarkedGoals),
             ConjGoalExpr = conj(plain_conj, MarkedGoals),
             ConjGoal = hlds_goal(ConjGoalExpr, MarkedGoalInfo),
             Reason = from_ground_term(TermVar, from_ground_term_initial),
-            ScopeGoalExpr = scope(Reason, ConjGoal),
-            ScopeGoal = hlds_goal(ScopeGoalExpr, MarkedGoalInfo),
-            Goal = ScopeGoal
+            GoalExpr = scope(Reason, ConjGoal),
+            Goal = hlds_goal(GoalExpr, MarkedGoalInfo)
         ;
-            ConjGoalExpr = conj(plain_conj, Goals),
-            ConjGoal = hlds_goal(ConjGoalExpr, GoalInfo),
-            Goal = ConjGoal
+            GoalExpr = conj(plain_conj, ExpansionGoals),
+            Goal = hlds_goal(GoalExpr, GoalInfo)
         )
     ).
 
@@ -649,7 +651,8 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
         ;
             MaybeParsedGoal = error1(ParsedGoalSpecs),
             !:Specs = ParsedGoalSpecs ++ !.Specs,
-            Expansion = expansion(not_fgti, cord.singleton(true_goal))
+            Expansion = expansion(not_fgti,
+                cord.singleton(true_goal_with_context(Context)))
         )
     ;
         % Handle the usual case.
@@ -835,7 +838,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgs,
                     BeforeSVarState, BeforeInsideSVarState, !Specs),
                 map.init(EmptySubst),
 
-                transform_goal_expr_context_to_goal(loc_inside_atomic_goal,
+                transform_parse_tree_goal_to_hlds(loc_inside_atomic_goal,
                     CondParseTree, EmptySubst, CondGoal,
                     BeforeInsideSVarState, AfterCondInsideSVarState,
                     !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
@@ -881,7 +884,8 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgs,
             ;
                 MaybeVarsCond = error3(VarsCondSpecs),
                 !:Specs = VarsCondSpecs ++ !.Specs,
-                Expansion = expansion(not_fgti, cord.singleton(true_goal))
+                Expansion = expansion(not_fgti,
+                    cord.singleton(true_goal_with_context(Context)))
             )
         )
     ;
@@ -982,7 +986,8 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgs,
             ;
                 MaybeParsedGoal = error1(ParsedGoalSpecs),
                 !:Specs = ParsedGoalSpecs ++ !.Specs,
-                Expansion = expansion(not_fgti, cord.singleton(true_goal))
+                Expansion = expansion(not_fgti,
+                    cord.singleton(true_goal_with_context(Context)))
             )
         )
     ).
@@ -1064,11 +1069,11 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
 
     ( illegal_state_var_func_result(PredOrFunc, Args0, StateVar) ->
         report_illegal_func_svar_result(Context, !.VarSet, StateVar, !Specs),
-        Goal = true_goal
+        Goal = true_goal_with_context(Context)
     ; lambda_args_contain_bang_state_var(Args0, StateVar) ->
         report_illegal_bang_svar_lambda_arg(Context, !.VarSet, StateVar,
             !Specs),
-        Goal = true_goal
+        Goal = true_goal_with_context(Context)
     ;
         some [!SVarState] (
             svar_prepare_for_lambda_head(Context, Args0, Args, FinalSVarMap,
@@ -1107,20 +1112,20 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
             % Create the unifications that need to come before the body of the
             % lambda expression; those corresponding to args whose mode is
             % input or unused.
-            HeadBefore0 = true_goal,
+            HeadBefore0 = true_goal_with_context(Context),
             insert_arg_unifications(NonOutputLambdaVars, NonOutputArgs,
                 Context, ArgContext, HeadBefore0, HeadBefore,
                 !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
 
-            transform_goal_expr_context_to_goal(loc_whole_goal, ParsedGoal,
+            transform_parse_tree_goal_to_hlds(loc_whole_goal, ParsedGoal,
                 Substitution, Body, !SVarState, !SVarStore,
                 !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
             % Create the unifications that need to come after the body of the
             % lambda expression; those corresponding to args whose mode is
             % output.
-            HeadAfter0 = true_goal,
+            HeadAfter0 = true_goal_with_context(Context),
             insert_arg_unifications(OutputLambdaVars, OutputArgs,
                 Context, ArgContext, HeadAfter0, HeadAfter,
                 !SVarState, !SVarStore, !VarSet,

@@ -264,107 +264,105 @@ split_type_and_mode(type_and_mode(T,M), T, yes(M)).
 
 %-----------------------------------------------------------------------------%
 
-rename_in_goal(OldVar, NewVar, Goal0 - Context, Goal - Context) :-
-    rename_in_goal_expr(OldVar, NewVar, Goal0, Goal).
-
-:- pred rename_in_goal_expr(prog_var::in, prog_var::in,
-    goal_expr::in, goal_expr::out) is det.
-
-rename_in_goal_expr(OldVar, NewVar, Expr0, Expr) :-
+rename_in_goal(OldVar, NewVar, Goal0, Goal) :-
     (
-        ( Expr0 = true_expr
-        ; Expr0 = fail_expr
+        ( Goal0 = true_expr(_Context)
+        ; Goal0 = fail_expr(_Context)
         ),
-        Expr = Expr0
+        Goal = Goal0
     ;
-        Expr0 = conj_expr(GoalA0, GoalB0),
-        rename_in_goal(OldVar, NewVar, GoalA0, GoalA),
-        rename_in_goal(OldVar, NewVar, GoalB0, GoalB),
-        Expr = conj_expr(GoalA, GoalB)
+        Goal0 = conj_expr(Context, SubGoalA0, SubGoalB0),
+        rename_in_goal(OldVar, NewVar, SubGoalA0, SubGoalA),
+        rename_in_goal(OldVar, NewVar, SubGoalB0, SubGoalB),
+        Goal = conj_expr(Context, SubGoalA, SubGoalB)
     ;
-        Expr0 = par_conj_expr(GoalA0, GoalB0),
-        rename_in_goal(OldVar, NewVar, GoalA0, GoalA),
-        rename_in_goal(OldVar, NewVar, GoalB0, GoalB),
-        Expr = par_conj_expr(GoalA, GoalB)
+        Goal0 = par_conj_expr(Context, SubGoalA0, SubGoalB0),
+        rename_in_goal(OldVar, NewVar, SubGoalA0, SubGoalA),
+        rename_in_goal(OldVar, NewVar, SubGoalB0, SubGoalB),
+        Goal = par_conj_expr(Context, SubGoalA, SubGoalB)
     ;
-        Expr0 = disj_expr(GoalA0, GoalB0),
-        rename_in_goal(OldVar, NewVar, GoalA0, GoalA),
-        rename_in_goal(OldVar, NewVar, GoalB0, GoalB),
-        Expr = disj_expr(GoalA, GoalB)
+        Goal0 = disj_expr(Context, SubGoalA0, SubGoalB0),
+        rename_in_goal(OldVar, NewVar, SubGoalA0, SubGoalA),
+        rename_in_goal(OldVar, NewVar, SubGoalB0, SubGoalB),
+        Goal = disj_expr(Context, SubGoalA, SubGoalB)
     ;
-        Expr0 = not_expr(Goal0),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = not_expr(Goal)
+        Goal0 = not_expr(Context, SubGoal0),
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = not_expr(Context, SubGoal)
     ;
-        Expr0 = some_expr(Vars0, Goal0),
+        Goal0 = some_expr(Context, Vars0, SubGoal0),
         rename_in_vars(OldVar, NewVar, Vars0, Vars),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = some_expr(Vars, Goal)
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = some_expr(Context, Vars, SubGoal)
     ;
-        Expr0 = some_state_vars_expr(Vars0, Goal0),
+        Goal0 = some_state_vars_expr(Context, Vars0, SubGoal0),
         rename_in_vars(OldVar, NewVar, Vars0, Vars),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = some_state_vars_expr(Vars, Goal)
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = some_state_vars_expr(Context, Vars, SubGoal)
     ;
-        Expr0 = all_expr(Vars0, Goal0),
+        Goal0 = all_expr(Context, Vars0, SubGoal0),
         rename_in_vars(OldVar, NewVar, Vars0, Vars),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = all_expr(Vars, Goal)
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = all_expr(Context, Vars, SubGoal)
     ;
-        Expr0 = all_state_vars_expr(Vars0, Goal0),
+        Goal0 = all_state_vars_expr(Context, Vars0, SubGoal0),
         rename_in_vars(OldVar, NewVar, Vars0, Vars),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = all_state_vars_expr(Vars, Goal)
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = all_state_vars_expr(Context, Vars, SubGoal)
     ;
-        Expr0 = promise_purity_expr(Purity, Goal0),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = promise_purity_expr(Purity, Goal)
+        Goal0 = promise_purity_expr(Context, Purity, SubGoal0),
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = promise_purity_expr(Context, Purity, SubGoal)
     ;
-        Expr0 = promise_equivalent_solutions_expr(Vars0, StateVars0,
-            DotSVars0, ColonSVars0, Goal0),
-        rename_in_vars(OldVar, NewVar, Vars0, Vars),
-        rename_in_vars(OldVar, NewVar, StateVars0, StateVars),
-        rename_in_vars(OldVar, NewVar, DotSVars0, DotSVars),
-        rename_in_vars(OldVar, NewVar, ColonSVars0, ColonSVars),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = promise_equivalent_solutions_expr(Vars, StateVars,
-            DotSVars, ColonSVars, Goal)
-    ;
-        Expr0 = promise_equivalent_solution_sets_expr(Vars0, StateVars0,
-            DotSVars0, ColonSVars0, Goal0),
+        Goal0 = promise_equivalent_solutions_expr(Context,
+            Vars0, StateVars0, DotSVars0, ColonSVars0, SubGoal0),
         rename_in_vars(OldVar, NewVar, Vars0, Vars),
         rename_in_vars(OldVar, NewVar, StateVars0, StateVars),
         rename_in_vars(OldVar, NewVar, DotSVars0, DotSVars),
         rename_in_vars(OldVar, NewVar, ColonSVars0, ColonSVars),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = promise_equivalent_solution_sets_expr(Vars, StateVars,
-            DotSVars, ColonSVars, Goal)
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = promise_equivalent_solutions_expr(Context,
+            Vars, StateVars, DotSVars, ColonSVars, SubGoal)
     ;
-        Expr0 = promise_equivalent_solution_arbitrary_expr(Vars0, StateVars0,
-            DotSVars0, ColonSVars0, Goal0),
+        Goal0 = promise_equivalent_solution_sets_expr(Context,
+            Vars0, StateVars0, DotSVars0, ColonSVars0, SubGoal0),
         rename_in_vars(OldVar, NewVar, Vars0, Vars),
         rename_in_vars(OldVar, NewVar, StateVars0, StateVars),
         rename_in_vars(OldVar, NewVar, DotSVars0, DotSVars),
         rename_in_vars(OldVar, NewVar, ColonSVars0, ColonSVars),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = promise_equivalent_solution_arbitrary_expr(Vars, StateVars,
-            DotSVars, ColonSVars, Goal)
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = promise_equivalent_solution_sets_expr(Context,
+            Vars, StateVars, DotSVars, ColonSVars, SubGoal)
     ;
-        Expr0 = require_detism_expr(Detism, Goal0),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = require_detism_expr(Detism, Goal)
+        Goal0 = promise_equivalent_solution_arbitrary_expr(Context,
+            Vars0, StateVars0, DotSVars0, ColonSVars0, SubGoal0),
+        rename_in_vars(OldVar, NewVar, Vars0, Vars),
+        rename_in_vars(OldVar, NewVar, StateVars0, StateVars),
+        rename_in_vars(OldVar, NewVar, DotSVars0, DotSVars),
+        rename_in_vars(OldVar, NewVar, ColonSVars0, ColonSVars),
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = promise_equivalent_solution_arbitrary_expr(Context,
+            Vars, StateVars,
+            DotSVars, ColonSVars, SubGoal)
     ;
-        Expr0 = require_complete_switch_expr(Var0, Goal0),
+        Goal0 = require_detism_expr(Context, Detism, SubGoal0),
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = require_detism_expr(Context, Detism, SubGoal)
+    ;
+        Goal0 = require_complete_switch_expr(Context, Var0, SubGoal0),
         rename_in_var(OldVar, NewVar, Var0, Var),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = require_complete_switch_expr(Var, Goal)
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = require_complete_switch_expr(Context, Var, SubGoal)
     ;
-        Expr0 = require_switch_arms_detism_expr(Var0, Detism, Goal0),
+        Goal0 = require_switch_arms_detism_expr(Context,
+            Var0, Detism, SubGoal0),
         rename_in_var(OldVar, NewVar, Var0, Var),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = require_switch_arms_detism_expr(Var, Detism, Goal)
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = require_switch_arms_detism_expr(Context,
+            Var, Detism, SubGoal)
     ;
-        Expr0 = trace_expr(CompileTime, RunTime, MaybeIO0, Mutables0, Goal0),
+        Goal0 = trace_expr(Context, CompileTime, RunTime, MaybeIO0, Mutables0,
+            SubGoal0),
         (
             MaybeIO0 = no,
             MaybeIO = no
@@ -375,11 +373,12 @@ rename_in_goal_expr(OldVar, NewVar, Expr0, Expr) :-
         ),
         list.map(rename_in_trace_mutable_var(OldVar, NewVar),
             Mutables0, Mutables),
-        rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = trace_expr(CompileTime, RunTime, MaybeIO, Mutables, Goal)
+        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
+        Goal = trace_expr(Context, CompileTime, RunTime, MaybeIO, Mutables,
+            SubGoal)
     ;
-        Expr0 = atomic_expr(InVars0, OutVars0, MaybeVars0, MainExpr0,
-            OrElseExpr0),
+        Goal0 = atomic_expr(Context, InVars0, OutVars0, MaybeVars0,
+            MainGoal0, OrElseGoal0),
         rename_in_atomic_varlist(OldVar, NewVar, InVars0, InVars),
         rename_in_atomic_varlist(OldVar, NewVar, OutVars0, OutVars),
         (
@@ -391,12 +390,13 @@ rename_in_goal_expr(OldVar, NewVar, Expr0, Expr) :-
                 TransVars0, TransVars),
             MaybeVars = yes(TransVars)
         ),
-        rename_in_goal(OldVar, NewVar, MainExpr0, MainExpr),
-        list.map(rename_in_goal(OldVar, NewVar), OrElseExpr0, OrElseExpr),
-        Expr = atomic_expr(InVars, OutVars, MaybeVars, MainExpr, OrElseExpr)
+        rename_in_goal(OldVar, NewVar, MainGoal0, MainGoal),
+        list.map(rename_in_goal(OldVar, NewVar), OrElseGoal0, OrElseGoal),
+        Goal = atomic_expr(Context, InVars, OutVars, MaybeVars,
+            MainGoal, OrElseGoal)
     ;
-        Expr0 = try_expr(MaybeIO0, SubGoal0, Then0, MaybeElse0, Catches0,
-            MaybeCatchAny0),
+        Goal0 = try_expr(Context, MaybeIO0, SubGoal0, Then0, MaybeElse0,
+            Catches0, MaybeCatchAny0),
         rename_in_maybe_var(OldVar, NewVar, MaybeIO0, MaybeIO),
         rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
         rename_in_goal(OldVar, NewVar, Then0, Then),
@@ -418,43 +418,41 @@ rename_in_goal_expr(OldVar, NewVar, Expr0, Expr) :-
             MaybeCatchAny0 = no,
             MaybeCatchAny = no
         ),
-        Expr = try_expr(MaybeIO, SubGoal, Then, MaybeElse, Catches,
-            MaybeCatchAny)
+        Goal = try_expr(Context, MaybeIO, SubGoal, Then, MaybeElse,
+            Catches, MaybeCatchAny)
     ;
-        Expr0 = implies_expr(GoalA0, GoalB0),
-        rename_in_goal(OldVar, NewVar, GoalA0, GoalA),
-        rename_in_goal(OldVar, NewVar, GoalB0, GoalB),
-        Expr = implies_expr(GoalA, GoalB)
+        Goal0 = implies_expr(Context, SubGoalA0, SubGoalB0),
+        rename_in_goal(OldVar, NewVar, SubGoalA0, SubGoalA),
+        rename_in_goal(OldVar, NewVar, SubGoalB0, SubGoalB),
+        Goal = implies_expr(Context, SubGoalA, SubGoalB)
     ;
-        Expr0 = equivalent_expr(GoalA0, GoalB0),
-        rename_in_goal(OldVar, NewVar, GoalA0, GoalA),
-        rename_in_goal(OldVar, NewVar, GoalB0, GoalB),
-        Expr = equivalent_expr(GoalA, GoalB)
+        Goal0 = equivalent_expr(Context, SubGoalA0, SubGoalB0),
+        rename_in_goal(OldVar, NewVar, SubGoalA0, SubGoalA),
+        rename_in_goal(OldVar, NewVar, SubGoalB0, SubGoalB),
+        Goal = equivalent_expr(Context, SubGoalA, SubGoalB)
     ;
-        Expr0 = if_then_else_expr(Vars0, StateVars0, Cond0, Then0, Else0),
+        Goal0 = if_then_else_expr(Context, Vars0, StateVars0,
+            Cond0, Then0, Else0),
         rename_in_vars(OldVar, NewVar, Vars0, Vars),
         rename_in_vars(OldVar, NewVar, StateVars0, StateVars),
         rename_in_goal(OldVar, NewVar, Cond0, Cond),
         rename_in_goal(OldVar, NewVar, Then0, Then),
         rename_in_goal(OldVar, NewVar, Else0, Else),
-        Expr = if_then_else_expr(Vars, StateVars, Cond, Then, Else)
+        Goal = if_then_else_expr(Context, Vars, StateVars,
+            Cond, Then, Else)
     ;
-        Expr0 = event_expr(Name, Terms0),
-        term.substitute_list(Terms0, OldVar, variable(NewVar, context_init),
-            Terms),
-        Expr = event_expr(Name, Terms)
+        Goal0 = event_expr(Context, Name, Terms0),
+        term.rename_list(Terms0, OldVar, NewVar, Terms),
+        Goal = event_expr(Context, Name, Terms)
     ;
-        Expr0 = call_expr(SymName, Terms0, Purity),
-        term.substitute_list(Terms0, OldVar, variable(NewVar, context_init),
-            Terms),
-        Expr = call_expr(SymName, Terms, Purity)
+        Goal0 = call_expr(Context, SymName, Terms0, Purity),
+        term.rename_list(Terms0, OldVar, NewVar, Terms),
+        Goal = call_expr(Context, SymName, Terms, Purity)
     ;
-        Expr0 = unify_expr(TermA0, TermB0, Purity),
-        term.substitute(TermA0, OldVar, term.variable(NewVar, context_init),
-            TermA),
-        term.substitute(TermB0, OldVar, term.variable(NewVar, context_init),
-            TermB),
-        Expr = unify_expr(TermA, TermB, Purity)
+        Goal0 = unify_expr(Context, TermA0, TermB0, Purity),
+        term.rename(TermA0, OldVar, NewVar, TermA),
+        term.rename(TermB0, OldVar, NewVar, TermB),
+        Goal = unify_expr(Context, TermA, TermB, Purity)
     ).
 
 :- pred rename_in_atomic_varlist(prog_var::in, prog_var::in,
@@ -779,7 +777,7 @@ sym_name_and_term_to_term(qualified(ModuleNames, ModuleName), Term, Context) =
 
 %-----------------------------------------------------------------------------%
 
-goal_list_to_conj(Context, []) = true_expr - Context.
+goal_list_to_conj(Context, []) = true_expr(Context).
 goal_list_to_conj(Context, [Goal | Goals]) =
     goal_list_to_conj_2(Context, Goal, Goals).
 
@@ -787,7 +785,7 @@ goal_list_to_conj(Context, [Goal | Goals]) =
 
 goal_list_to_conj_2(_, Goal, []) = Goal.
 goal_list_to_conj_2(Context, Goal0, [Goal1 | Goals]) =
-    conj_expr(Goal0, goal_list_to_conj_2(Context, Goal1, Goals)) - Context.
+    conj_expr(Context, Goal0, goal_list_to_conj_2(Context, Goal1, Goals)).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_util.

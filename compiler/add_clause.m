@@ -604,9 +604,10 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
-        Arity, GoalType, Goal, !VarSet, QuantWarnings, StateVarWarnings,
-        StateVarErrors, !ModuleInfo, !QualInfo, !Specs) :-
+add_clause_transform(Renaming, HeadVars, Args0, ParseTreeBodyGoal, Context,
+        PredOrFunc, Arity, GoalType, Goal, !VarSet,
+        QuantWarnings, StateVarWarnings, StateVarErrors,
+        !ModuleInfo, !QualInfo, !Specs) :-
     some [!SInfo, !SVarState, !SVarStore] (
         HeadVarList = proc_arg_vector_to_list(HeadVars),
         rename_vars_in_term_list(need_not_rename, Renaming, Args0, Args1),
@@ -636,7 +637,7 @@ add_clause_transform(Renaming, HeadVars, Args0, ParseBody, Context, PredOrFunc,
             attach_features_to_all_goals([feature_from_head],
                 do_not_attach_in_from_ground_term, HeadGoal1, HeadGoal)
         ),
-        transform_goal_expr_context_to_goal(loc_whole_goal, ParseBody,
+        transform_parse_tree_goal_to_hlds(loc_whole_goal, ParseTreeBodyGoal,
             Renaming, BodyGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
 

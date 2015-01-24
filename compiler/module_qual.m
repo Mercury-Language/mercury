@@ -556,42 +556,41 @@ process_assert(Goal, Symbols, Success) :-
     % the maybe_and predicate to be associative.
     % NB. accumulator introduction doesn't work on this case yet.
     %
-    Goal = GoalExpr - _Context,
     (
-        ( GoalExpr = conj_expr(GA, GB)
-        ; GoalExpr = par_conj_expr(GA, GB)
-        ; GoalExpr = disj_expr(GA, GB)
-        ; GoalExpr = implies_expr(GA, GB)
-        ; GoalExpr = equivalent_expr(GA, GB)
+        ( Goal = conj_expr(_, GA, GB)
+        ; Goal = par_conj_expr(_, GA, GB)
+        ; Goal = disj_expr(_, GA, GB)
+        ; Goal = implies_expr(_, GA, GB)
+        ; Goal = equivalent_expr(_, GA, GB)
         ),
         process_assert(GA, SymbolsA, SuccessA),
         process_assert(GB, SymbolsB, SuccessB),
         Symbols = SymbolsA ++ SymbolsB,
         bool.and(SuccessA, SuccessB, Success)
     ;
-        ( GoalExpr = true_expr
-        ; GoalExpr = fail_expr
+        ( Goal = true_expr(_)
+        ; Goal = fail_expr(_)
         ),
         Symbols = [],
         Success = yes
     ;
-        ( GoalExpr = not_expr(G)
-        ; GoalExpr = some_expr(_, G)
-        ; GoalExpr = some_state_vars_expr(_, G)
-        ; GoalExpr = all_expr(_, G)
-        ; GoalExpr = all_state_vars_expr(_, G)
-        ; GoalExpr = promise_purity_expr(_, G)
-        ; GoalExpr = promise_equivalent_solutions_expr(_, _, _, _, G)
-        ; GoalExpr = promise_equivalent_solution_sets_expr(_, _, _, _, G)
-        ; GoalExpr = promise_equivalent_solution_arbitrary_expr(_, _, _, _, G)
-        ; GoalExpr = require_detism_expr(_, G)
-        ; GoalExpr = require_complete_switch_expr(_, G)
-        ; GoalExpr = require_switch_arms_detism_expr(_, _, G)
-        ; GoalExpr = trace_expr(_, _, _, _, G)
+        ( Goal = not_expr(_, G)
+        ; Goal = some_expr(_, _, G)
+        ; Goal = some_state_vars_expr(_, _, G)
+        ; Goal = all_expr(_, _, G)
+        ; Goal = all_state_vars_expr(_, _, G)
+        ; Goal = promise_purity_expr(_, _, G)
+        ; Goal = promise_equivalent_solutions_expr(_, _, _, _, _, G)
+        ; Goal = promise_equivalent_solution_sets_expr(_, _, _, _, _, G)
+        ; Goal = promise_equivalent_solution_arbitrary_expr(_, _, _, _, _, G)
+        ; Goal = require_detism_expr(_, _, G)
+        ; Goal = require_complete_switch_expr(_, _, G)
+        ; Goal = require_switch_arms_detism_expr(_, _, _, G)
+        ; Goal = trace_expr(_, _, _, _, _, G)
         ),
         process_assert(G, Symbols, Success)
     ;
-        GoalExpr = try_expr(_, SubGoal, Then, MaybeElse, Catches,
+        Goal = try_expr(_, _, SubGoal, Then, MaybeElse, Catches,
             MaybeCatchAny),
         process_assert(SubGoal, SymbolsGoal, SuccessGoal),
         process_assert(Then, SymbolsThen, SuccessThen),
@@ -613,14 +612,14 @@ process_assert(Goal, Symbols, Success) :-
             | SuccessCatches],
         bool.and_list(SuccessLists, Success)
     ;
-        GoalExpr = atomic_expr(_, _, _, MainGoal, OrElseGoals),
+        Goal = atomic_expr(_, _, _, _, MainGoal, OrElseGoals),
         process_assert(MainGoal, SymbolsMainGoal, SuccessMainGoal),
         process_assert_list(OrElseGoals,
             SymbolsOrElseGoals, SuccessOrElseGoals),
         Symbols = SymbolsMainGoal ++ SymbolsOrElseGoals,
         bool.and(SuccessMainGoal, SuccessOrElseGoals, Success)
     ;
-        GoalExpr = if_then_else_expr(_, _, GA, GB, GC),
+        Goal = if_then_else_expr(_, _, _, GA, GB, GC),
         process_assert(GA, SymbolsA, SuccessA),
         process_assert(GB, SymbolsB, SuccessB),
         process_assert(GC, SymbolsC, SuccessC),
@@ -628,7 +627,7 @@ process_assert(Goal, Symbols, Success) :-
         bool.and(SuccessA, SuccessB, Success0),
         bool.and(Success0, SuccessC, Success)
     ;
-        GoalExpr = event_expr(_Name, Args0),
+        Goal = event_expr(_, _Name, Args0),
         list.map(term.coerce, Args0, Args),
         ( term_qualified_symbols_list(Args, SymbolsPrime) ->
             Symbols = SymbolsPrime,
@@ -638,7 +637,7 @@ process_assert(Goal, Symbols, Success) :-
             Success = no
         )
     ;
-        GoalExpr = call_expr(SymName, Args0, _Purity),
+        Goal = call_expr(_, SymName, Args0, _Purity),
         (
             SymName = qualified(_, _),
             list.map(term.coerce, Args0, Args),
@@ -655,7 +654,7 @@ process_assert(Goal, Symbols, Success) :-
             Success = no
         )
     ;
-        GoalExpr = unify_expr(LHS0, RHS0, _Purity),
+        Goal = unify_expr(_, LHS0, RHS0, _Purity),
         term.coerce(LHS0, LHS),
         term.coerce(RHS0, RHS),
         (

@@ -279,6 +279,10 @@
 :- pred report_illegal_bang_svar_lambda_arg(prog_context::in, prog_varset::in,
     svar::in, list(error_spec)::in, list(error_spec)::out) is det.
 
+:- pred report_svar_unify_error(prog_context::in, svar::in,
+    prog_varset::in, prog_varset::out, svar_state::in, svar_state::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -2037,6 +2041,39 @@ report_missing_inits_in_disjunct(Context, NextStateVars, !Specs) :-
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_informational, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
+
+%-----------------------------------------------------------------------------%
+
+report_svar_unify_error(Context, StateVar, !VarSet, !State, !Specs) :-
+    Name = varset.lookup_name(!.VarSet, StateVar),
+    Pieces = [words("Error:"), fixed("!" ++ Name),
+        words("cannot appear as a unification argument."), nl,
+        words("You probably meant"), fixed("!." ++ Name),
+        words("or"), fixed("!:" ++ Name), suffix(".")],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs],
+    !.State = svar_state(StatusMap0),
+    % If StateVar was not known before, then this is the first occurrence
+    % of this state variable, and the user almost certainly intended it
+    % to define its initial value. Any messages from later goals complaining
+    % about the variable not being defined there would only be a distraction.
+    %
+    % Adding this dummy entry to the state, means we cannot generate valid
+    % HLDS goals, but the error reported just above ensures that we will
+    % throw away the HLDS goals we generate, so this is ok.
+    (
+        map.search(StatusMap0, StateVar, OldStatus),
+        OldStatus \= status_unknown
+    ->
+        % The state variable is already known.
+        true
+    ;
+        new_state_var_instance(StateVar, name_initial, Var, !VarSet),
+        Status = status_known(Var),
+        map.set(StateVar, Status, StatusMap0, StatusMap),
+        !:State = svar_state(StatusMap)
+    ).
 
 %-----------------------------------------------------------------------------%
 

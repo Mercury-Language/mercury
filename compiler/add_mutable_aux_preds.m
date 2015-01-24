@@ -1028,16 +1028,16 @@ add_ccsj_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
 
     LockPredName   = mutable_lock_pred_sym_name(ModuleName, MutableName),
     UnlockPredName = mutable_unlock_pred_sym_name(ModuleName, MutableName),
-    CallLockExpr   = call_expr(LockPredName, [], purity_impure) - Context,
-    CallUnlockExpr = call_expr(UnlockPredName, [], purity_impure) - Context,
+    CallLockExpr   = call_expr(Context, LockPredName, [], purity_impure),
+    CallUnlockExpr = call_expr(Context, UnlockPredName, [], purity_impure),
 
     % ZZZ Ctxt
     GetterPredName = mutable_unsafe_get_pred_sym_name(ModuleName, MutableName),
     SetterPredName = mutable_unsafe_set_pred_sym_name(ModuleName, MutableName),
-    CallGetterExpr = call_expr(GetterPredName, [variable(X, Context)],
-        purity_semipure) - Context,
-    CallSetterExpr = call_expr(SetterPredName, [variable(X, context_init)],
-        purity_impure) - Context,
+    CallGetterExpr = call_expr(Context, GetterPredName,
+        [variable(X, Context)], purity_semipure),
+    CallSetterExpr = call_expr(Context, SetterPredName,
+        [variable(X, context_init)], purity_impure),
 
     GetPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
     SetPredName = mutable_set_pred_sym_name(ModuleName, MutableName),
@@ -1062,8 +1062,8 @@ add_ccsj_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
     % Construct the semipure get predicate.
     StdGetPredName = GetPredName,
     StdGetPredArgs = [variable(X, context_init)],
-    StdGetPredExpr = promise_purity_expr(purity_semipure, ImpureGetExpr)
-        - Context,
+    StdGetPredExpr = promise_purity_expr(Context, purity_semipure,
+        ImpureGetExpr),
     module_add_clause(VarSet0, pf_predicate, StdGetPredName, StdGetPredArgs,
         StdGetPredExpr, Status, Context, no, goal_type_none,
         !ModuleInfo, !QualInfo, !Specs),
@@ -1083,16 +1083,16 @@ add_ccsj_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
         varset.new_named_var("IO", IO, VarSet1, VarSet),
         IOPredArgs = [variable(X, Context),
             variable(IO0, Context), variable(IO, Context)],
-        CopyIOExpr = unify_expr(
+        CopyIOExpr = unify_expr(Context,
             variable(IO0, Context),
             variable(IO, Context),
-            purity_impure) - Context,
+            purity_impure),
 
         % Construct the pure get predicate.
         IOGetPredName = GetPredName,
-        IOGetPredExpr = conj_expr(ImpureGetExpr, CopyIOExpr) - Context,
+        IOGetPredExpr = conj_expr(Context, ImpureGetExpr, CopyIOExpr),
         PureIOGetPredExpr =
-            promise_purity_expr(purity_pure, IOGetPredExpr) - Context,
+            promise_purity_expr(Context, purity_pure, IOGetPredExpr),
         module_add_clause(VarSet, pf_predicate, IOGetPredName, IOPredArgs,
             PureIOGetPredExpr, Status, Context, no, goal_type_none,
             !ModuleInfo, !QualInfo, !Specs),
@@ -1104,9 +1104,9 @@ add_ccsj_mutable_user_access_preds(ModuleName, MutableName, MutAttrs,
         % not bind any variables, and since it is promised pure, the compiler
         % would be allowed to delete it.
         IOSetPredName = SetPredName,
-        IOSetPredExpr = conj_expr(ImpureSetExpr, CopyIOExpr) - Context,
+        IOSetPredExpr = conj_expr(Context, ImpureSetExpr, CopyIOExpr),
         PureIOSetPredExpr =
-            promise_purity_expr(purity_pure, IOSetPredExpr) - Context,
+            promise_purity_expr(Context, purity_pure, IOSetPredExpr),
         module_add_clause(VarSet, pf_predicate, IOSetPredName, IOPredArgs,
             PureIOSetPredExpr, Status, Context, no, goal_type_none,
             !ModuleInfo, !QualInfo, !Specs)
@@ -1136,14 +1136,13 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
     % Add the clause for the mutable initialisation predicate.
     varset.new_named_var("X", X, VarSet0, VarSet),
     UnifyExpr =
-        unify_expr(variable(X, Context), InitTerm, purity_impure)
-            - Context,
+        unify_expr(Context, variable(X, Context), InitTerm, purity_impure),
     (
         IsConstant = yes,
         CallExpr =
-            call_expr(InitSetPredName, [variable(X, Context)], purity_impure)
-                - Context,
-        InitPredExpr = conj_expr(UnifyExpr, CallExpr) - Context
+            call_expr(Context, InitSetPredName, [variable(X, Context)],
+                purity_impure),
+        InitPredExpr = conj_expr(Context, UnifyExpr, CallExpr)
     ;
         IsConstant = no,
         (
@@ -1177,10 +1176,10 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
             !ModuleInfo, !Specs),
 
         CallPreInitExpr =
-            call_expr(PreInitPredName, [], purity_impure) - Context,
+            call_expr(Context, PreInitPredName, [], purity_impure),
         CallSetPredExpr =
-            call_expr(InitSetPredName, [variable(X, Context)], purity_impure)
-                - Context,
+            call_expr(Context, InitSetPredName, [variable(X, Context)],
+                purity_impure),
         InitPredExpr = goal_list_to_conj(Context,
             [CallPreInitExpr, UnifyExpr, CallSetPredExpr])
     ),
@@ -1305,7 +1304,7 @@ add_csharp_java_mutable_preds(ItemMutable, Lang, TargetMutableName, Status,
             ModuleName, MercuryMutableName, Attrs, CallPreInitExpr,
             Context, Status, !ModuleInfo, !QualInfo, !Specs)
     ;
-        CallPreInitExpr = true_expr - Context
+        CallPreInitExpr = true_expr(Context)
     ),
     add_csharp_java_mutable_initialisation(ModuleName, MercuryMutableName,
         Varset, CallPreInitExpr, InitSetPredName, InitTerm,
@@ -1337,7 +1336,7 @@ add_csharp_thread_local_mutable_pre_init_pred(TargetMutableName,
         !ModuleInfo, !Specs),
 
     CallPreInitExpr =
-        call_expr(PreInitPredName, [], purity_impure) - Context.
+        call_expr(Context, PreInitPredName, [], purity_impure).
 
     % Add the foreign clauses for the mutable's primitive access and
     % locking predicates.
@@ -1452,11 +1451,10 @@ add_csharp_java_mutable_initialisation(ModuleName, MutableName, VarSet0,
     % Add the clause for the mutable initialisation predicate.
     varset.new_named_var("X", X, VarSet0, VarSet),
     UnifyExpr =
-        unify_expr(variable(X, Context), InitTerm, purity_impure)
-            - Context,
+        unify_expr(Context, variable(X, Context), InitTerm, purity_impure),
     CallSetPredExpr =
-        call_expr(InitSetPredName, [variable(X, Context)], purity_impure)
-            - Context,
+        call_expr(Context, InitSetPredName, [variable(X, Context)],
+            purity_impure),
     InitPredExpr = goal_list_to_conj(Context,
         [CallPreInitExpr, UnifyExpr, CallSetPredExpr]),
 
@@ -1624,10 +1622,10 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         GetPredArgs =
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
         CallSemipureGetExpr =
-            call_expr(GetPredName, [variable(X, Context)], purity_semipure)
-                - Context,
-        GetPredExpr = promise_purity_expr(purity_pure, CallSemipureGetExpr)
-            - Context,
+            call_expr(Context, GetPredName, [variable(X, Context)],
+                purity_semipure),
+        GetPredExpr = promise_purity_expr(Context, purity_pure,
+            CallSemipureGetExpr),
         module_add_clause(VarSet, pf_predicate, GetPredName, GetPredArgs,
             GetPredExpr, Status, Context, no, goal_type_none,
             !ModuleInfo, !QualInfo, !Specs),
@@ -1639,8 +1637,8 @@ add_erlang_mutable_user_access_preds(TargetMutableName,
         SetPredArgs =
             [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
         SetPredExpr =
-            call_expr(SetPredName, [variable(X, Context)], purity_impure)
-                - Context,
+            call_expr(Context, SetPredName, [variable(X, Context)],
+                purity_impure),
         module_add_clause(VarSet, pf_predicate, SetPredName, SetPredArgs,
             SetPredExpr, Status, Context, no, goal_type_none,
             !ModuleInfo, !QualInfo, !Specs)
@@ -1690,13 +1688,12 @@ add_erlang_mutable_initialisation(ModuleName, MutableName,
     % for the reason why we _must_ start with Varset0 here.
     varset.new_named_var("X", X, VarSet0, VarSet),
     UnifyExpr =
-        unify_expr(variable(X, Context), InitTerm, purity_impure)
-            - Context,
+        unify_expr(Context, variable(X, Context), InitTerm, purity_impure),
     CallExpr =
-        call_expr(InitSetPredName, [variable(X, Context)], purity_impure)
-            - Context,
+        call_expr(Context, InitSetPredName, [variable(X, Context)],
+            purity_impure),
     InitPredArgs = [],
-    InitPredExpr = conj_expr(UnifyExpr, CallExpr) - Context,
+    InitPredExpr = conj_expr(Context, UnifyExpr, CallExpr),
     module_add_clause(VarSet, pf_predicate, InitPredName, InitPredArgs,
         InitPredExpr, Status, Context, no, goal_type_none,
         !ModuleInfo, !QualInfo, !Specs).

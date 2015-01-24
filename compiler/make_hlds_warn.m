@@ -804,54 +804,54 @@ check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !Specs) :-
 :- pred check_promise_ex_goal(promise_type::in, goal::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_promise_ex_goal(PromiseType, GoalExpr - Context, !Specs) :-
-    ( GoalExpr = some_expr(_, Goal) ->
-        check_promise_ex_goal(PromiseType, Goal, !Specs)
-    ; GoalExpr = disj_expr(_, _) ->
-        flatten_to_disj_list(GoalExpr - Context, DisjList),
+check_promise_ex_goal(PromiseType, Goal, !Specs) :-
+    ( Goal = some_expr(_, _, SubGoal) ->
+        check_promise_ex_goal(PromiseType, SubGoal, !Specs)
+    ; Goal = disj_expr(_, _, _) ->
+        flatten_to_disj_list(Goal, DisjList),
         list.map(flatten_to_conj_list, DisjList, DisjConjList),
         check_promise_ex_disjunction(PromiseType, DisjConjList, !Specs)
-    ; GoalExpr = all_expr(_UnivVars, Goal) ->
+    ; Goal = all_expr(Context, _UnivVars, SubGoal) ->
         promise_ex_error(PromiseType, Context,
             "universal quantification should come before " ++
             "the declaration name", !Specs),
-        check_promise_ex_goal(PromiseType, Goal, !Specs)
+        check_promise_ex_goal(PromiseType, SubGoal, !Specs)
     ;
-        promise_ex_error(PromiseType, Context,
+        promise_ex_error(PromiseType, goal_get_context(Goal),
             "goal in declaration is not a disjunction", !Specs)
     ).
 
     % Turns the goal of a promise_ex declaration into a list of goals,
     % where each goal is an arm of the disjunction.
     %
-:- pred flatten_to_disj_list(goal::in, goals::out) is det.
+:- pred flatten_to_disj_list(goal::in, list(goal)::out) is det.
 
-flatten_to_disj_list(GoalExpr - Context, GoalList) :-
-    ( GoalExpr = disj_expr(GoalA, GoalB) ->
+flatten_to_disj_list(Goal, GoalList) :-
+    ( Goal = disj_expr(_, GoalA, GoalB) ->
         flatten_to_disj_list(GoalA, GoalListA),
         flatten_to_disj_list(GoalB, GoalListB),
         GoalList = GoalListA ++ GoalListB
     ;
-        GoalList = [GoalExpr - Context]
+        GoalList = [Goal]
     ).
 
     % Takes a goal representing an arm of a disjunction and turns it into
     % a list of conjunct goals.
     %
-:- pred flatten_to_conj_list(goal::in, goals::out) is det.
+:- pred flatten_to_conj_list(goal::in, list(goal)::out) is det.
 
-flatten_to_conj_list(GoalExpr - Context, GoalList) :-
-    ( GoalExpr = conj_expr(GoalA, GoalB) ->
+flatten_to_conj_list(Goal, GoalList) :-
+    ( Goal = conj_expr(_, GoalA, GoalB) ->
         flatten_to_conj_list(GoalA, GoalListA),
         flatten_to_conj_list(GoalB, GoalListB),
         GoalList = GoalListA ++ GoalListB
     ;
-        GoalList = [GoalExpr - Context]
+        GoalList = [Goal]
     ).
 
     % Taking a list of arms of the disjunction, check each arm individually.
     %
-:- pred check_promise_ex_disjunction(promise_type::in, list(goals)::in,
+:- pred check_promise_ex_disjunction(promise_type::in, list(list(goal))::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_promise_ex_disjunction(PromiseType, DisjConjList, !Specs) :-
@@ -866,20 +866,21 @@ check_promise_ex_disjunction(PromiseType, DisjConjList, !Specs) :-
     % Only one goal in an arm is allowed to be a call, the rest must be
     % unifications.
     %
-:- pred check_promise_ex_disj_arm(promise_type::in, goals::in, bool::in,
+:- pred check_promise_ex_disj_arm(promise_type::in, list(goal)::in, bool::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_promise_ex_disj_arm(PromiseType, Goals, CallUsed, !Specs) :-
     (
         Goals = []
     ;
-        Goals = [GoalExpr - Context | Rest],
-        ( GoalExpr = unify_expr(_, _, _) ->
-            check_promise_ex_disj_arm(PromiseType, Rest, CallUsed, !Specs)
-        ; GoalExpr = some_expr(_, Goal) ->
-            check_promise_ex_disj_arm(PromiseType, [Goal | Rest], CallUsed,
-                !Specs)
-        ; GoalExpr = call_expr(_, _, _) ->
+        Goals = [HeadGoal | TailGoals],
+        ( HeadGoal = unify_expr(_, _, _, _) ->
+            check_promise_ex_disj_arm(PromiseType, TailGoals,
+                CallUsed, !Specs)
+        ; HeadGoal = some_expr(_, _, HeadSubGoal) ->
+            check_promise_ex_disj_arm(PromiseType, [HeadSubGoal | TailGoals],
+                CallUsed, !Specs)
+        ; HeadGoal = call_expr(Context, _, _, _) ->
             (
                 CallUsed = no
             ;
@@ -887,11 +888,11 @@ check_promise_ex_disj_arm(PromiseType, Goals, CallUsed, !Specs) :-
                 promise_ex_error(PromiseType, Context,
                     "disjunct contains more than one call", !Specs)
             ),
-            check_promise_ex_disj_arm(PromiseType, Rest, yes, !Specs)
+            check_promise_ex_disj_arm(PromiseType, TailGoals, yes, !Specs)
         ;
-            promise_ex_error(PromiseType, Context,
+            promise_ex_error(PromiseType, goal_get_context(HeadGoal),
                 "disjunct is not a call or unification", !Specs),
-            check_promise_ex_disj_arm(PromiseType, Rest, CallUsed, !Specs)
+            check_promise_ex_disj_arm(PromiseType, TailGoals, CallUsed, !Specs)
         )
     ).
 
