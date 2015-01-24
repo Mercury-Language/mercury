@@ -1180,35 +1180,54 @@ get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
     module_foreign_info::in, module_foreign_info::out) is det.
 
 get_item_foreign_code(Globals, Item, !Info) :-
-    % ZZZ
-    ( Item = item_pragma(ItemPragma) ->
+    (
+        Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, Context, _),
-        do_get_item_foreign_code(Globals, Pragma, Context, !Info)
-    ; Item = item_mutable(_) ->
+        get_pragma_foreign_code(Globals, Pragma, Context, !Info)
+    ;
+        Item = item_mutable(_),
         % Mutables introduce foreign_procs, but mutable declarations
-        % won't have been expanded by the time we get here so we need
+        % won't have been expanded by the time we get here, so we need
         % to handle them separately.
         % XXX mutables are currently only implemented for the C backends
         % but we should handle the Java/IL backends here as well.
         % (See do_get_item_foreign_code for details/5).
-        !Info ^ used_foreign_languages :=
-            set.insert(!.Info ^ used_foreign_languages, lang_c)
-    ; ( Item = item_initialise(_) ; Item = item_finalise(_) ) ->
+        UsedForeignLanguages0 = !.Info ^ used_foreign_languages,
+        set.insert(lang_c, UsedForeignLanguages0, UsedForeignLanguages),
+        !Info ^ used_foreign_languages := UsedForeignLanguages
+    ;
+        ( Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ),
         % Intialise/finalise declarations introduce export pragmas, but
         % again they won't have been expanded by the time we get here.
         % XXX we don't currently support these on non-C backends.
-        !Info ^ used_foreign_languages :=
-            set.insert(!.Info ^ used_foreign_languages, lang_c),
+        UsedForeignLanguages0 = !.Info ^ used_foreign_languages,
+        set.insert(lang_c, UsedForeignLanguages0, UsedForeignLanguages),
+        !Info ^ used_foreign_languages := UsedForeignLanguages,
         !Info ^ module_has_foreign_export := contains_foreign_export
     ;
-        true
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_module_defn(_)
+        ; Item = item_clause(_)
+        ; Item = item_type_defn(_)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_promise(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_instance(_)
+        ; Item = item_nothing(_)
+        )
     ).
 
-:- pred do_get_item_foreign_code(globals::in, pragma_type::in,
+:- pred get_pragma_foreign_code(globals::in, pragma_type::in,
     prog_context::in, module_foreign_info::in, module_foreign_info::out)
     is det.
 
-do_get_item_foreign_code(Globals, Pragma, Context, !Info) :-
+get_pragma_foreign_code(Globals, Pragma, Context, !Info) :-
     globals.get_backend_foreign_languages(Globals, BackendLangs),
     globals.get_target(Globals, Target),
 
