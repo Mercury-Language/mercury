@@ -575,12 +575,12 @@ saved_vars_in_switch([Case0 | Cases0], [Case | Cases], !SlotInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- type slot_info
-    ---> slot_info(
-            prog_varset,
-            vartypes,
-            rtti_varmaps,
-            bool            % TypeInfoLiveness
-        ).
+    --->    slot_info(
+                prog_varset,
+                vartypes,
+                rtti_varmaps,
+                bool            % TypeInfoLiveness
+            ).
 
 :- pred init_slot_info(prog_varset::in, vartypes::in,
     rtti_varmaps::in, bool::in, slot_info::out) is det.
@@ -608,14 +608,13 @@ saved_vars_rename_var(Var, NewVar, Substitution, !SlotInfo) :-
         TypeInfoLiveness).
 
     % Check whether it is ok to duplicate a given variable according
-    % to the information in the slot_info.  If TypeInfoLiveness is set,
-    % it is possible that liveness.m will want to refer to the
-    % rtti_varmaps to calculate which type_infos are live (see the
-    % comments at the top of liveness.m).  If we duplicated any
-    % type_info variables here then this could cause problems because
-    % the rtti_varmaps would not be able to be kept consistent.
-    % Therefore we don't allow type_infos to be duplicated when
-    % TypeInfoLiveness is set.
+    % to the information in the slot_info. If TypeInfoLiveness is set,
+    % it is possible that liveness.m will want to refer to the rtti_varmaps
+    % to calculate which type_infos are live (see the comments at the top
+    % of liveness.m). If we duplicated any type_info variables here,
+    % then this could cause problems because the rtti_varmaps would not
+    % be able to be kept consistent. Therefore we don't allow type_infos
+    % to be duplicated when TypeInfoLiveness is set.
     %
 :- pred slot_info_do_not_duplicate_var(slot_info::in, prog_var::in) is semidet.
 
