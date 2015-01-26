@@ -2188,10 +2188,11 @@ declarations can include type variables.  For example:
 :- func length(list(T)) = int.
 @end example
 
-A predicate or function can be declared to have a given higher-order
-type (@pxref{Higher-order}) by using @code{`with_type`} in the type declaration.
-This is useful where several predicates or functions need to have the
-same type signature, which often occurs for typeclass method implementations
+A predicate or function can be declared to have a given higher-order type
+(@pxref{Higher-order}) by using an explicit type qualification in the type
+declaration.
+This is useful where several predicates or functions need to have the same type
+signature, which often occurs for type class method implementations
 (@pxref{Type classes}), and for predicates to be passed as higher-order terms.
 
 For example,
@@ -2200,8 +2201,8 @@ For example,
 :- type foldl_pred(T, U) == pred(T, U, U).
 :- type foldl_func(T, U) == (func(T, U) = U).
 
-:- pred p(int) `with_type` foldl_pred(T, U).
-:- func f(int) `with_type` foldl_func(T, U).
+:- pred p(int) : foldl_pred(T, U).
+:- func f(int) : foldl_func(T, U).
 @end example
 
 @noindent
@@ -2748,11 +2749,11 @@ declaration can be combined:
 :- pred p `with_type` foldl_pred(T, U) `with_inst` foldl_pred.
 @end example
 
-If there is no mode declaration for a function, the compiler assumes
-a default mode for the function in which all the arguments have mode @samp{in}
-and the result of the function has mode @samp{out}.  (However, there
-is no requirement that a function have such a mode; if there is any
-explicit mode declaration, it overrides the default.)
+If there is no mode declaration for a function, the compiler assumes a default
+mode for the function in which all the arguments have mode @code{in} and the
+result of the function has mode @code{out}.
+(However, there is no requirement that a function have such a mode; if there is
+any explicit mode declaration, it overrides the default.)
 
 A function or predicate mode declaration is an assertion by the programmer
 that for all possible argument terms and (if applicable) result term
@@ -3763,7 +3764,7 @@ will call the backtracking version.
 There are several reasons to use committed choice determinism annotations.
 One reason is for efficiency: committed choice annotations allow
 the compiler to generate much more efficient code.
-Another reason is for doing I/O, which is allowed only in @samp{det}
+Another reason is for doing I/O, which is allowed only in @code{det}
 or @code{cc_multi} predicates, not in @code{multi} predicates.
 Another is for dealing with types that use non-canonical representations
 (@pxref{User-defined equality and comparison}).
@@ -3913,7 +3914,7 @@ the type or the mode's initial insts may be more general
 (e.g.@: the type of the equality predicate could be just the polymorphic
 type @samp{pred(T, T)}) and the mode's final insts or the determinism
 may be more specific (e.g.@: the determinism of the equality predicate
-could be any of @samp{det}, @samp{failure} or @samp{erroneous}).
+could be any of @code{det}, @code{failure} or @code{erroneous}).
 
 @item
 If the type is a discriminated union then its definition cannot be
@@ -4079,9 +4080,9 @@ X = (pred(List::in, Length::out) is det :- sum(List, Length))
 Y = sum
 @end example
 
-In the above example, the type of @samp{X}, and @samp{Y} is
+In the above example, the type of @code{X}, and @code{Y} is
 @samp{pred(list(int), int)}, which means a predicate of two
-arguments of types @samp{list(int)} and @samp{int} respectively.
+arguments of types @code{list(int)} and @code{int} respectively.
 
 Similarly, given
 
@@ -4102,14 +4103,14 @@ Z = scalar_product
 @end group
 @end example
 
-In the above example, the type of @samp{X}, @samp{Y}, and @samp{Z} is
+In the above example, the type of @code{X}, @code{Y}, and @code{Z} is
 @samp{func(int, list(int)) = list(int)}, which means a function of two
-arguments, whose types are @samp{int} and @samp{list(int)},
-with a return type of @samp{int}.
+arguments, whose types are @code{int} and @code{list(int)},
+with a return type of @code{int}.
 As with @samp{:- func} declarations, if the modes and determinism
 of the function are omitted in a higher-order function term, then
-the modes default to @samp{in} for the arguments, @samp{out} for the
-function result, and the determinism defaults to @samp{det}.
+the modes default to @code{in} for the arguments, @code{out} for the
+function result, and the determinism defaults to @code{det}.
 
 The Melbourne Mercury implementation currently requires that you use an
 explicit lambda expression to specify which mode you want, if the predicate
@@ -4127,7 +4128,7 @@ Sum123 = sum([1,2,3])
 @end example
 
 @noindent
-binds @samp{Sum123} to a higher-order predicate term of type @samp{pred(int)}.
+binds @code{Sum123} to a higher-order predicate term of type @samp{pred(int)}.
 Similarly, the unification
 
 @example
@@ -4135,7 +4136,7 @@ Double = scalar_product(2)
 @end example
 
 @noindent
-binds @samp{Double} to a higher-order function term of type
+binds @code{Double} to a higher-order function term of type
 @samp{func(list(int)) = list(int)}.
 
 As a special case, currying of a multi-moded predicate or function is allowed
@@ -4243,7 +4244,7 @@ call(Sum123, Result)
 @end example
 
 @noindent
-would bind @samp{Result} to the sum of @samp{[1, 2, 3]}, i.e.@: to 6.
+would bind @code{Result} to the sum of @samp{[1, 2, 3]}, i.e.@: to 6.
 
 For functions, you use the builtin expression apply/N:
 
@@ -4291,18 +4292,17 @@ of the arguments supplied (a closure).  The declarative semantics of
 
 @example
 solutions(Pred, List) is true iff
-        all [X] (call(Pred, X) <=> list.member(X, List))
-        and List is sorted.
+    all [X] (call(Pred, X) <=> list.member(X, List))
+    and List is sorted.
 @end example
 
 @noindent
-where @samp{call(Pred, X)} invokes the higher-order predicate term
-@samp{Pred} with argument @samp{X},
-and where @samp{list.member/2} is the standard
-library predicate for list membership.  In other words,
-@samp{solutions(Pred, List)} finds all the values of @samp{X}
-for which @samp{call(Pred, X)} is true, collects these solutions
-in a list, sorts the list, and returns that list as its result.
+where @samp{call(Pred, X)} invokes the higher-order predicate term @code{Pred}
+with argument @code{X}, and where @samp{list.member/2} is the standard library
+predicate for list membership.
+In other words, @samp{solutions(Pred, List)} finds all the values of @code{X}
+for which @samp{call(Pred, X)} is true, collects these solutions in a list,
+sorts the list, and returns that list as its result.
 Here's an example: the standard library defines a predicate
 @samp{list.perm(List0, List)}
 
@@ -4357,7 +4357,7 @@ These insts represent the instantiation state of variables bound
 to higher-order predicate and function terms with the appropriate mode
 and determinism.
 For example, @samp{pred(out) is det} represents the instantiation state
-of being bound to a higher-order predicate term which is @samp{det}
+of being bound to a higher-order predicate term which is @code{det}
 and accepts one output argument; the term @samp{sum([1,2,3])} from the
 example above is one such higher-order predicate term which matches
 this instantiation state.
@@ -4430,7 +4430,7 @@ higher-order function inst
 As a consequence of this, it is a mode error to pass a higher-order function
 term that does not match this standard mode to somewhere where its higher-order
 inst information may be lost, such as to a polymorphic predicate where the
-argument mode is @samp{in}.
+argument mode is @code{in}.
 
 Mercury also provides builtin @samp{inst} values for use with solver types:
 
@@ -5763,12 +5763,12 @@ however, the same effect can be achieved in other ways
 (@pxref{Some idioms using existentially quantified types}).
 
 For procedures involving calls to existentially-typed predicates or functions,
-the compiler's mode analysis must take account of the modes for type
-variables in all polymorphic calls.
-Universally quantified type variables have mode @samp{in},
-whereas existentially quantified type variables have mode @samp{out}.
-As usual, the compiler's mode analysis will attempt to reorder the
-elements of conjunctions in order to satisfy the modes.
+the compiler's mode analysis must take account of the modes for type variables
+in all polymorphic calls.
+Universally quantified type variables have mode @code{in}, whereas
+existentially quantified type variables have mode @code{out}.
+As usual, the compiler's mode analysis will attempt to reorder the elements of
+conjunctions in order to satisfy the modes.
 
 @node Examples of correct code using type quantifiers
 @subsection Examples of correct code using type quantifiers
@@ -6128,7 +6128,7 @@ A @samp{try} goal has the following form:
 @code{semidet}, @code{cc_multi}, or @w{@code{cc_nondet}}.
 
 The non-local variables of @var{Goal} must not have an inst equivalent to
-@code{unique} or @code{mostly_unique} or @code{any}, unless they have the
+@code{unique}, @w{@code{mostly_unique}} or @code{any}, unless they have the
 type @samp{io.state}.
 @c or (later) the store/1.)
 
@@ -6179,6 +6179,7 @@ and there is no ``catch_any'' branch, the exception is rethrown.
 The declarative semantics of a try goal is:
 
 @example
+@group
     (try [] Goal
      then Then
      else Else
@@ -6199,6 +6200,7 @@ The declarative semantics of a try goal is:
             ; Excp = CAV, CAG
             )
         ).
+@end group
 @end example
 
 If no @samp{else} branch is present, let @samp{Else = fail}.
@@ -7830,7 +7832,7 @@ If the procedure fails, the C code need only set @code{SUCCESS_INDICATOR} to
 false (zero).
 
 The behaviour of a procedure defined using a @samp{pragma foreign_proc}
-declaration whose body contains a @samp{return} statement is undefined.
+declaration whose body contains a @code{return} statement is undefined.
 
 @node Using pragma foreign_export for C
 @subsubsection Using pragma foreign_export for C
@@ -8088,7 +8090,7 @@ the Mercury constructor @samp{foo} would be @code{foo}.
 
 Foreign enumeration values in C# must be a constant value expression
 which is a valid initializer within an enumeration of underlying
-type @samp{int}.
+type @code{int}.
 
 @node Using pragma foreign_proc for C#
 @subsubsection Using pragma foreign_proc for C#
@@ -8681,7 +8683,7 @@ useless, because the declarative semantics cannot capture the intent of
 the programmer.  Impure predicates are executed for their side-effects,
 which by definition are not part of their declarative semantics.  Thus
 it is the @emph{operational} semantics of impure predicates that Mercury
-must specify, and Mercury compilers must respect.
+must specify, and Mercury implementations must respect.
 
 The operational semantics of a Mercury predicate which invokes
 @emph{impure} code is a modified form of the @emph{strict sequential}
@@ -8702,9 +8704,10 @@ program), their declarative semantics fully captures the intent of the
 programmer.  Thus a semipure goal has a perfectly consistent declarative
 semantics, until an impure goal is reached.  After that, it has another
 (possibly different) declarative semantics, until the next impure goal
-is executed, and so on.  Mercury compilers must respect this contextual
-nature of the semantics of semipure goals; within a single context, a
-compiler may treat a semipure goal as if it were pure.
+is executed, and so on.
+Mercury implementations must respect this contextual nature of the semantics of
+semipure goals; within a single context, an implementation may treat a semipure
+goal as if it were pure.
 
 
 @node Declaring impurity
@@ -8912,7 +8915,7 @@ But for each ordinary higher-order type @var{Foo}, there are two corresponding
 types @samp{semipure @var{Foo}} and @samp{impure @var{Foo}}.  These types
 can be used for higher-order code that needs to manipulate impure or
 semipure procedures.  For example the type @samp{impure func(int) = int}
-represents impure functions from @samp{int} to @samp{int}.
+represents impure functions from @code{int} to @code{int}.
 
 There are no implicit conversions and no subtyping relationship between
 ordinary higher-order types and the corresponding impure or semipure
@@ -9776,7 +9779,7 @@ is invoked.
 The main limitation of the @samp{fact_table} pragma is that
 in the current implementation,
 predicates or functions defined as fact tables can only have
-arguments of types @samp{string}, @samp{int} or @samp{float}.
+arguments of types @code{string}, @code{int} or @code{float}.
 
 Another limitation is that the @samp{--high-level-code} back-end does
 not support @samp{pragma fact_table} for procedures with determinism
@@ -9820,7 +9823,7 @@ not support @samp{pragma fact_table} for procedures with determinism
 @c
 @c The @samp{outer} parameter takes a pair of variables of type @samp{io.io}.
 @c As the atomic scope can be seen as an operation which changes the I/O state,
-@c the modes of these variables must be @samp{di} and @samp{uo} respectively.
+@c the modes of these variables must be @code{di} and @code{uo} respectively.
 @c
 @c The @samp{inner} parameter takes a pair of variables of type @samp{stm}.
 @c When the atomic scope is executed,
@@ -9828,12 +9831,12 @@ not support @samp{pragma fact_table} for procedures with determinism
 @c which can be used by the Software Transactional Memory primitives.
 @c Calling these primitives requires threading the @samp{stm} state
 @c in a way similar to I/O operations and,
-@c as such, the modes of these variables must also be @samp{di} and @samp{uo}.
+@c as such, the modes of these variables must also be @code{di} and @code{uo}.
 @c
 @c The code within the atomic scope is restricted
 @c in the same way as code which takes the I/O state.
 @c The code within the atomic scope
-@c must be either @samp{det} or @samp{cc_multi}.
+@c must be either @code{det} or @code{cc_multi}.
 @c Due to the way Software Transactional Memory provides synchronous behaviour,
 @c it is likely that the goal will be executed more than once.
 @c As it is unknown how many times (if any) the inner goal will be repeated,
