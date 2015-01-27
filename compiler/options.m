@@ -519,8 +519,6 @@
             % e.g. to match the natural order that functors will be compared
             % on the backend.
 
-    ;       mutable_always_boxed
-
     ;       delay_partial_instantiations
 
     % Options for internal use only (setting these options to non-default
@@ -1428,7 +1426,6 @@ option_defaults_2(internal_use_option, [
     pretest_equality_cast_pointers      -   bool(no),
     can_compare_compound_values         -   bool(no),
     lexically_order_constructors        -   bool(no),
-    mutable_always_boxed                -   bool(yes),
     delay_partial_instantiations        -   bool(no),
     allow_defn_of_builtins              -   bool(no),
     special_preds                       -   bool(yes),
@@ -2358,7 +2355,6 @@ long_option("pretest-equality-cast-pointers",   pretest_equality_cast_pointers).
 long_option("can-compare-compound-values",      can_compare_compound_values).
 long_option("lexically-order-constructors",
                                     lexically_order_constructors).
-long_option("mutable-always-boxed", mutable_always_boxed).
 long_option("delay-partial-instantiations", delay_partial_instantiations).
 long_option("allow-defn-of-builtins",           allow_defn_of_builtins).
 long_option("special-preds",        special_preds).

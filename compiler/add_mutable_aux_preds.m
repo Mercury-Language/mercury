@@ -63,7 +63,6 @@
 :- import_module varset.
 :- import_module pair.
 :- import_module require.
-:- import_module solutions.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -201,12 +200,10 @@ add_mutable_aux_pred_decls(ItemMutable, Status, !ModuleInfo, !Specs) :-
             !ModuleInfo, !Specs)
     ).
 
-
 %-----------------------------------------------------------------------------%
 
     % Add predmode declarations for the four primitive operations.
     %
-
 :- pred add_mutable_unsafe_get_pred_decl(module_name::in, string::in,
     mer_type::in, mer_inst::in, item_status::in, prog_context::in,
     module_info::in, module_info::out,
@@ -387,9 +384,8 @@ do_mutable_checks(ItemMutable, Status, !ModuleInfo, !Specs) :-
             MaybeForeignNames = yes(ForeignNames),
             % Report any errors with the foreign_name attributes
             % during this pass.
-            ReportErrors = yes,
-            get_global_name_from_foreign_names(!.ModuleInfo, ReportErrors,
-                Context, ModuleName, Name, ForeignLanguage, ForeignNames,
+            get_global_name_from_foreign_names(!.ModuleInfo, Context,
+                ModuleName, Name, ForeignLanguage, ForeignNames,
                 _TargetMutableName, !Specs)
         ),
 
@@ -420,9 +416,9 @@ do_mutable_checks(ItemMutable, Status, !ModuleInfo, !Specs) :-
 
     % Check that the inst in the mutable declaration is a valid inst for a
     % mutable declaration.
-    ( is_valid_mutable_inst(!.ModuleInfo, Inst) ->
+    ( if is_valid_mutable_inst(!.ModuleInfo, Inst) then
         true
-    ;
+    else
         % It is okay to pass a dummy varset in here since any attempt
         % to use inst variables in a mutable declaration should already
         % been dealt with when the mutable declaration was parsed.
@@ -445,15 +441,15 @@ do_mutable_checks(ItemMutable, Status, !ModuleInfo, !Specs) :-
     % otherwise take the Mercury name for the mutable and mangle it into
     % an appropriate variable name.
     %
- :- pred get_global_name_from_foreign_names(module_info::in, bool::in,
+ :- pred get_global_name_from_foreign_names(module_info::in,
     prog_context::in, module_name::in, string::in, foreign_language::in,
     list(foreign_name)::in, string::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-get_global_name_from_foreign_names(ModuleInfo, ReportErrors, Context,
+get_global_name_from_foreign_names(ModuleInfo, Context,
         ModuleName, MercuryMutableName, ForeignLanguage, ForeignNames,
         TargetMutableName, !Specs) :-
-    solutions(get_matching_foreign_name(ForeignNames, ForeignLanguage),
+    get_matching_foreign_names(ForeignNames, ForeignLanguage,
         TargetMutableNames),
     (
         TargetMutableNames = [],
@@ -465,31 +461,34 @@ get_global_name_from_foreign_names(ModuleInfo, ReportErrors, Context,
         % in the target language here.
     ;
         TargetMutableNames = [_, _ | _],
-        (
-            ReportErrors = yes,
-            module_info_get_globals(ModuleInfo, Globals),
-            globals.get_target(Globals, CompilationTarget),
-            Pieces = [words("Error: multiple foreign_name attributes"),
-                words("specified for the"),
-                fixed(compilation_target_string(CompilationTarget)),
-                words("backend."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-            !:Specs = [Spec | !.Specs]
-        ;
-            ReportErrors = no
-        ),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_target(Globals, CompilationTarget),
+        Pieces = [words("Error: multiple foreign_name attributes"),
+            words("specified for the"),
+            fixed(compilation_target_string(CompilationTarget)),
+            words("backend."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs],
+
         % This works for Erlang as well.
         TargetMutableName = mutable_c_var_name(ModuleName, MercuryMutableName)
     ).
 
-:- pred get_matching_foreign_name(list(foreign_name)::in,
-    foreign_language::in, foreign_name::out) is nondet.
+:- pred get_matching_foreign_names(list(foreign_name)::in,
+    foreign_language::in, list(foreign_name)::out) is det.
 
-get_matching_foreign_name(ForeignNames, ForeignLanguage, ForeignName) :-
-    list.member(ForeignName, ForeignNames),
-    ForeignName = foreign_name(ForeignLanguage, _).
-
+get_matching_foreign_names([], _TargetForeignLanguage, []).
+get_matching_foreign_names([ForeignName | ForeignNames], TargetForeignLanguage,
+        MatchingForeignNames) :-
+    get_matching_foreign_names(ForeignNames, TargetForeignLanguage,
+        TailMatchingForeignNames),
+    ForeignName = foreign_name(ForeignLanguage, _),
+    ( if ForeignLanguage = TargetForeignLanguage then
+        MatchingForeignNames = [ForeignName | TailMatchingForeignNames]
+    else
+        MatchingForeignNames = TailMatchingForeignNames
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -509,15 +508,14 @@ add_mutable_aux_pred_defns(ItemMutable, Status, !ModuleInfo,
         % Work out what name to give the global in the target language.
         decide_mutable_target_var_name(!.ModuleInfo, MutAttrs,
             ModuleName, MercuryMutableName, lang_c, Context,
-            TargetMutableName, !Specs),
+            TargetMutableName),
 
         % Add foreign_decl and foreign_code items that declare/define the
         % global variable used to implement the mutable. If the mutable is
-        % not constant then add a mutex to synchronize access to it as
-        % well.
+        % not constant, then add a mutex to synchronize access to it as well.
         IsThreadLocal = mutable_var_thread_local(MutAttrs),
         add_c_mutable_defn_and_decl(TargetMutableName, Type, IsConstant,
-            IsThreadLocal, Context, !ModuleInfo, !QualInfo, !Specs),
+            IsThreadLocal, Context, !ModuleInfo),
 
         % Add all the predicates related to mutables.
         add_c_mutable_preds(ItemMutable, TargetMutableName,
@@ -534,7 +532,7 @@ add_mutable_aux_pred_defns(ItemMutable, Status, !ModuleInfo,
         % Work out what name to give the global in the target language.
         decide_mutable_target_var_name(!.ModuleInfo, MutAttrs,
             ModuleName, MercuryMutableName, Lang, Context,
-            TargetMutableName, !Specs),
+            TargetMutableName),
 
         % Add foreign_code item that defines the global variable used to
         % implement the mutable.
@@ -551,7 +549,7 @@ add_mutable_aux_pred_defns(ItemMutable, Status, !ModuleInfo,
         % Work out what name to give the global in the target language.
         decide_mutable_target_var_name(!.ModuleInfo, MutAttrs,
             ModuleName, MercuryMutableName, lang_erlang, Context,
-            TargetMutableName, !Specs),
+            TargetMutableName),
 
         % Add all the predicates related to mutables.
         add_erlang_mutable_preds(ItemMutable, TargetMutableName,
@@ -563,15 +561,14 @@ add_mutable_aux_pred_defns(ItemMutable, Status, !ModuleInfo,
 
     % Decide what the name of the underlying global used to implement the
     % mutable should be. If there is a foreign_name attribute then use that
-    % otherwise construct one based on the Mercury name for the mutable
+    % otherwise construct one based on the Mercury name for the mutable.
     %
 :- pred decide_mutable_target_var_name(module_info::in,
     mutable_var_attributes::in, module_name::in, string::in,
-    foreign_language::in, prog_context::in, string::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    foreign_language::in, prog_context::in, string::out) is det.
 
 decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName, Name,
-        ForeignLanguage, Context, TargetMutableName, !Specs) :-
+        ForeignLanguage, Context, TargetMutableName) :-
     mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
     (
         MaybeForeignNames = no,
@@ -579,10 +576,10 @@ decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName, Name,
         TargetMutableName = mutable_c_var_name(ModuleName, Name)
     ;
         MaybeForeignNames = yes(ForeignNames),
-        ReportErrors = no, % We've already reported them during pass 2.
-        get_global_name_from_foreign_names(ModuleInfo, ReportErrors, Context,
+        % We have already any errors during pass 2, so ignore them here.
+        get_global_name_from_foreign_names(ModuleInfo, Context,
             ModuleName, Name, ForeignLanguage, ForeignNames, TargetMutableName,
-            !Specs)
+            [], _Specs)
     ).
 
 :- pred add_pass_3_initialise_for_mutable(sym_name::in, arity::in,
@@ -638,69 +635,69 @@ add_pass_3_initialise_for_mutable(SymName, Arity, Context, _Status,
 %
 
     % Add the foreign_decl and foreign_code items that declare/define
-    % the global variable used to hold the mutable.
+    % the global variable used to hold the mutable. The bool argument says
+    % whether the mutable is a constant mutable or not.
     %
 :- pred add_c_mutable_defn_and_decl(string::in, mer_type::in, bool::in,
     mutable_thread_local::in, prog_context::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    module_info::in, module_info::out) is det.
 
 add_c_mutable_defn_and_decl(TargetMutableName, Type, IsConstant, IsThreadLocal,
-        Context, !ModuleInfo, !QualInfo, !Specs) :-
+        Context, !ModuleInfo) :-
     % We add the foreign code declaration and definition here rather than
     % in pass 2 because the target-language-specific type name depends on
     % whether there are any foreign_type declarations for Type.
-    add_c_mutable_global_foreign_decl(!.ModuleInfo, Type, TargetMutableName,
-        IsConstant, IsThreadLocal, Context, !ModuleInfo),
-    add_c_mutable_global_foreign_defn(!.ModuleInfo, Type, TargetMutableName,
-        IsConstant, IsThreadLocal, Context, !ModuleInfo).
 
-    % Create the C foreign_decl for the mutable.
-    % The bool argument says whether the mutable is a constant mutable or not.
-    %
-:- pred add_c_mutable_global_foreign_decl(module_info::in, mer_type::in,
-    string::in, bool::in, mutable_thread_local::in, prog_context::in,
-    module_info::in, module_info::out) is det.
-
-add_c_mutable_global_foreign_decl(ModuleInfo, Type, TargetMutableName,
-        IsConstant, IsThreadLocal, Context, !ModuleInfo) :-
-    % This declaration will be included in the .mh files. Since these are
-    % grade independent, we need to output both the high- and low-level C
-    % declarations for the global used to implement the mutable and make
-    % the choice conditional on whether MR_HIGHLEVEL_CODE is defined.
-    %
+    % The declaration we construct will be included in the .mh files. Since
+    % these are grade independent, we need to output both the high- and
+    % low-level C declarations for the global used to implement the mutable,
+    % and make the choice conditional on whether MR_HIGHLEVEL_CODE is defined.
     (
         IsThreadLocal = mutable_not_thread_local,
-        % The first argument in the following calls to
-        % global_foreign_type_name says whether the mutable should always be
-        % boxed or not. The only difference between the high- and low-level
-        % C backends is that in the latter mutables are *always* boxed,
-        % whereas in the former they may not be.
-        HighLevelTypeName = global_foreign_type_name(no, lang_c, ModuleInfo,
+        % The only difference between the high- and low-level C backends
+        % is that in the latter, mutables are *always* boxed, whereas
+        % in the former they may not be.
+        HighLevelTypeName = global_foreign_type_name(no, lang_c, !.ModuleInfo,
             Type),
-        LowLevelTypeName = global_foreign_type_name(yes, lang_c, ModuleInfo,
-            Type)
+        LowLevelTypeName = global_foreign_type_name(yes, lang_c, !.ModuleInfo,
+            Type),
+        module_info_get_globals(!.ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+        (
+            HighLevelCode = no,
+            TypeName = LowLevelTypeName
+        ;
+            HighLevelCode = yes,
+            TypeName = HighLevelTypeName
+        )
     ;
         IsThreadLocal = mutable_thread_local,
         % For thread-local mutables, the variable holds an index into an
         % array.
-        HighLevelTypeName = "MR_Unsigned",
-        LowLevelTypeName  = "MR_Unsigned"
+        TypeName = "MR_Unsigned",
+        HighLevelTypeName = TypeName,
+        LowLevelTypeName  = TypeName
     ),
 
-    % Constant mutables do not require mutexes as their values are never
+    % Constant mutables do not require mutexes, as their values are never
     % updated. Thread-local mutables do not require mutexes either.
-    (
+    ( if
         ( IsConstant = yes
         ; IsThreadLocal = mutable_thread_local
         )
-    ->
-        LockDeclStrs = []
-    ;
+    then
+        LockDeclStrs = [],
+        LockDefnStrs = []
+    else
         MutexVarName = mutable_mutex_var_name(TargetMutableName),
         LockDeclStrs = [
             "#ifdef MR_THREAD_SAFE\n",
             "    extern MercuryLock ", MutexVarName, ";\n",
+            "#endif\n"
+        ],
+        LockDefnStrs = [
+            "#ifdef MR_THREAD_SAFE\n",
+            "    MercuryLock ", MutexVarName, ";\n",
             "#endif\n"
         ]
     ),
@@ -713,55 +710,20 @@ add_c_mutable_global_foreign_decl(ModuleInfo, Type, TargetMutableName,
         "#endif\n" | LockDeclStrs]),
     ForeignDeclCode = foreign_decl_code(lang_c, foreign_decl_is_exported,
         literal(DeclBody), Context),
-    module_add_foreign_decl_code(ForeignDeclCode, !ModuleInfo).
-
-    % Create the C foreign_defn for the mutable.
-    % The bool argument says whether the mutable is a constant mutable
-    % or not.
-    %
-:- pred add_c_mutable_global_foreign_defn(module_info::in, mer_type::in,
-    string::in, bool::in, mutable_thread_local::in, prog_context::in,
-    module_info::in, module_info::out) is det.
-
-add_c_mutable_global_foreign_defn(ModuleInfo, Type, TargetMutableName,
-        IsConstant, IsThreadLocal, Context, !ModuleInfo) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
-    (
-        IsThreadLocal = mutable_not_thread_local,
-        TypeName = global_foreign_type_name(AlwaysBoxed, lang_c, ModuleInfo,
-            Type)
-    ;
-        IsThreadLocal = mutable_thread_local,
-        % For thread-local mutables, the variable holds an index into an
-        % array.
-        TypeName = "MR_Unsigned"
-    ),
-
-    % Constant mutables do not require mutexes as their values are never
-    % updated. Thread-local mutables do not require mutexes either.
-    (
-        ( IsConstant = yes
-        ; IsThreadLocal = mutable_thread_local
-        )
-    ->
-        LockDefnStrs = []
-    ;
-        LockDefnStrs = [
-            "#ifdef MR_THREAD_SAFE\n",
-            "    MercuryLock ",
-            mutable_mutex_var_name(TargetMutableName), ";\n",
-            "#endif\n"
-        ]
-    ),
+    module_add_foreign_decl_code(ForeignDeclCode, !ModuleInfo),
 
     DefnBody = string.append_list([
         TypeName, " ", TargetMutableName, ";\n" | LockDefnStrs]),
     ForeignBodyCode = foreign_body_code(lang_c, literal(DefnBody), Context),
     module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo).
 
-:- func global_foreign_type_name(bool, foreign_language, module_info,
-    mer_type) = string.
+    % The first argument of global_foreign_type_name says whether the mutable
+    % should always be boxed or not. The only difference between the high- and
+    % low-level C backends is that in the latter mutables are *always* boxed,
+    % whereas in the former they may not be.
+    %
+:- func global_foreign_type_name(bool, foreign_language, module_info, mer_type)
+    = string.
 
 global_foreign_type_name(yes, _, _, _) = "MR_Word".
 global_foreign_type_name(no, Lang, ModuleInfo, Type) =
@@ -785,11 +747,13 @@ add_c_mutable_preds(ItemMutableInfo, TargetMutableName, Status, !ModuleInfo,
     % Set up the default attributes for the foreign_procs used for the
     % access predicates.
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     (
+        HighLevelCode = no,
         AlwaysBoxed = yes,
         BoxPolicy = always_boxed
     ;
+        HighLevelCode = yes,
         AlwaysBoxed = no,
         BoxPolicy = native_if_possible
     ),
@@ -1211,9 +1175,9 @@ add_csharp_java_mutable_defn(Lang, TargetMutableName, Type, IsThreadLocal,
         Lang = lang_csharp,
         (
             IsThreadLocal = mutable_not_thread_local,
-            ( Type = int_type ->
+            ( if Type = int_type then
                 TypeStr = "int"
-            ;
+            else
                 TypeStr = "object"
             )
         ;
@@ -1228,9 +1192,9 @@ add_csharp_java_mutable_defn(Lang, TargetMutableName, Type, IsThreadLocal,
         % Synchronization is only required for double and long values, which
         % Mercury does not expose. We could also use the volatile keyword.
         % (Java Language Specification, 2nd Ed., 17.4).
-        ( Type = int_type ->
+        ( if Type = int_type then
             TypeStr = "int"
-        ;
+        else
             TypeStr = "java.lang.Object"
         ),
         DefnBody = string.append_list([
@@ -1238,9 +1202,9 @@ add_csharp_java_mutable_defn(Lang, TargetMutableName, Type, IsThreadLocal,
     ;
         Lang = lang_java,
         IsThreadLocal = mutable_thread_local,
-        ( Type = int_type ->
+        ( if Type = int_type then
             TypeStr = "java.lang.Integer"
-        ;
+        else
             TypeStr = "java.lang.Object"
         ),
         DefnBody = string.append_list([
@@ -1268,15 +1232,7 @@ add_csharp_java_mutable_preds(ItemMutable, Lang, TargetMutableName, Status,
     % to `.opt' files. We could add the qualification but it would be better
     % to move the mutable code generation into the backends first.
     set_may_duplicate(yes(proc_may_not_duplicate), Attrs0, Attrs),
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
-    (
-        AlwaysBoxed = yes,
-        BoxPolicy = always_boxed
-    ;
-        AlwaysBoxed = no,
-        BoxPolicy = native_if_possible
-    ),
+    BoxPolicy = native_if_possible,
     (
         IsConstant = yes,
         InitSetPredName = mutable_secret_set_pred_sym_name(ModuleName,
@@ -1296,14 +1252,14 @@ add_csharp_java_mutable_preds(ItemMutable, Lang, TargetMutableName, Status,
     ),
     % The C# thread-local mutable implementation requires array indices to be
     % allocated in pre-init predicates.
-    (
+    ( if
         Lang = lang_csharp,
         mutable_var_thread_local(MutAttrs) = mutable_thread_local
-    ->
+    then
         add_csharp_thread_local_mutable_pre_init_pred(TargetMutableName,
             ModuleName, MercuryMutableName, Attrs, CallPreInitExpr,
             Context, Status, !ModuleInfo, !QualInfo, !Specs)
-    ;
+    else
         CallPreInitExpr = true_expr(Context)
     ),
     add_csharp_java_mutable_initialisation(ModuleName, MercuryMutableName,
@@ -1370,9 +1326,9 @@ add_csharp_java_mutable_primitive_preds(Lang, TargetMutableName, ModuleName,
     ;
         IsThreadLocal = mutable_thread_local,
         Lang = lang_csharp,
-        ( Type = int_type ->
+        ( if Type = int_type then
             Cast = "(int) "
-        ;
+        else
             Cast = ""
         ),
         GetCode = string.append_list([
@@ -1485,7 +1441,7 @@ add_erlang_mutable_preds(ItemMutable, TargetMutableName,
             MutableName),
         add_erlang_constant_mutable_access_preds(TargetMutableName,
             ModuleName, MutableName, Inst,
-            Context, Status, !ModuleInfo, !QualInfo, !Specs)
+            Context, Status, !ModuleInfo, !Specs)
     ;
         IsConstant = no,
         InitSetPredName = mutable_set_pred_sym_name(ModuleName,
@@ -1502,13 +1458,12 @@ add_erlang_mutable_preds(ItemMutable, TargetMutableName,
     %
 :- pred add_erlang_constant_mutable_access_preds(string::in,
     module_name::in, string::in, mer_inst::in, prog_context::in,
-    import_status::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    import_status::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_erlang_constant_mutable_access_preds(TargetMutableName,
         ModuleName, MutableName, Inst, Context, Status,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !Specs) :-
     varset.new_named_var("X", X, varset.init, VarSet),
     InstVarSet = varset.init,
     Attrs = default_attributes(lang_erlang),
