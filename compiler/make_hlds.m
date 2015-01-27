@@ -46,6 +46,14 @@
 
 :- type make_hlds_qual_info.
 
+:- type found_invalid_type
+    --->    did_not_find_invalid_type
+    ;       found_invalid_type.
+
+:- type found_invalid_inst_or_mode
+    --->    did_not_find_invalid_inst_or_mode
+    ;       found_invalid_inst_or_mode.
+
     % parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo, EqvMap,
     %   UsedModules, QualInfo, InvalidTypes, InvalidModes, HLDS, Specs):
     %
@@ -59,7 +67,8 @@
     %
 :- pred parse_tree_to_hlds(globals::in, string::in, compilation_unit::in,
     mq_info::in, eqv_map::in, used_modules::in, make_hlds_qual_info::out,
-    bool::out, bool::out, module_info::out, list(error_spec)::out) is det.
+    found_invalid_type::out, found_invalid_inst_or_mode::out,
+    module_info::out, list(error_spec)::out) is det.
 
 :- pred add_new_proc(inst_varset::in, arity::in, list(mer_mode)::in,
     maybe(list(mer_mode))::in, maybe(list(is_live))::in,
@@ -144,11 +153,11 @@
 :- type make_hlds_qual_info == hlds.make_hlds.qual_info.qual_info.
 
 parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo0, EqvMap,
-        UsedModules, QualInfo, InvalidTypes, InvalidModes, ModuleInfo,
-        Specs) :-
+        UsedModules, QualInfo, FoundInvalidType, FoundInvalidMode,
+        ModuleInfo, Specs) :-
     do_parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo0,
-        EqvMap, UsedModules, QualInfo, InvalidTypes, InvalidModes, ModuleInfo,
-        Specs).
+        EqvMap, UsedModules, QualInfo, FoundInvalidType, FoundInvalidMode,
+        ModuleInfo, Specs).
 
 add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
         MaybeArgLives, DetismDecl, MaybeDet, Context, IsAddressTaken,

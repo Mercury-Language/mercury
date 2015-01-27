@@ -42,7 +42,8 @@
     %
 :- pred do_parse_tree_to_hlds(globals::in, string::in, compilation_unit::in,
     mq_info::in, eqv_map::in, used_modules::in, qual_info::out,
-    bool::out, bool::out, module_info::out, list(error_spec)::out) is det.
+    found_invalid_type::out, found_invalid_inst_or_mode::out,
+    module_info::out, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -86,7 +87,8 @@
 %---------------------------------------------------------------------------%
 
 do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
-        MQInfo0, EqvMap, UsedModules, QualInfo, InvalidTypes, InvalidModes,
+        MQInfo0, EqvMap, UsedModules, QualInfo,
+        FoundInvalidType, FoundInvalidInstOrMode,
         !:ModuleInfo, !:Specs) :-
     mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
     module_info_init(Name, DumpBaseFileName, Items, Globals, PQInfo, no,
@@ -94,8 +96,9 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
     module_info_set_used_modules(UsedModules, !ModuleInfo),
     !:Specs = [],
     add_item_list_decls_pass_1(Items,
-        item_status(status_local, may_be_unqualified), !ModuleInfo,
-        no, InvalidModes0, !Specs),
+        item_status(status_local, may_be_unqualified),
+        did_not_find_invalid_inst_or_mode, FoundInvalidInstOrMode1,
+        !ModuleInfo, !Specs),
     globals.lookup_bool_option(Globals, statistics, Statistics),
     trace [io(!IO)] (
         maybe_write_string(Statistics, "% Processed all items in pass 1\n",
@@ -106,17 +109,9 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
     add_item_list_decls_pass_2(Items,
         item_status(status_local, may_be_unqualified),
         !ModuleInfo, [], Pass2Specs),
+    !:Specs = Pass2Specs ++ !.Specs,
     (
         Pass2Specs = [],
-        InvalidTypes1 = no
-    ;
-        Pass2Specs = [_ | _],
-        InvalidTypes1 = yes
-    ),
-    !:Specs = Pass2Specs ++ !.Specs,
-
-    (
-        InvalidTypes1 = no,
         some [!TypeTable] (
             % Figure out how arguments should be stored into fields
             % before constructors are added to the HLDS.
@@ -130,11 +125,12 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
             % If there were errors in foreign type type declarations, doing
             % this may cause a compiler abort.
             foldl3_over_type_ctor_defns(process_type_defn, !.TypeTable,
-                no, InvalidTypes2, !ModuleInfo, !Specs)
+                did_not_find_invalid_type, FoundInvalidType1,
+                !ModuleInfo, !Specs)
         )
     ;
-        InvalidTypes1 = yes,
-        InvalidTypes2 = yes
+        Pass2Specs = [_ | _],
+        FoundInvalidType1 = found_invalid_type
     ),
 
     % Add the special preds for the builtin types which don't have a
@@ -166,10 +162,24 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
     ),
 
     qual_info_get_mq_info(QualInfo, MQInfo),
-    mq_info_get_type_error_flag(MQInfo, InvalidTypes3),
-    InvalidTypes = InvalidTypes1 `or` InvalidTypes2 `or` InvalidTypes3,
-    mq_info_get_mode_error_flag(MQInfo, InvalidModes1),
-    InvalidModes = InvalidModes0 `or` InvalidModes1.
+    mq_info_get_type_error_flag(MQInfo, MQInvalidType),
+    mq_info_get_mode_error_flag(MQInfo, MQInvalidInstOrMode),
+    (
+        FoundInvalidType1 = did_not_find_invalid_type,
+        MQInvalidType = no
+    ->
+        FoundInvalidType = did_not_find_invalid_type
+    ;
+        FoundInvalidType = found_invalid_type
+    ),
+    (
+        FoundInvalidInstOrMode1 = did_not_find_invalid_inst_or_mode,
+        MQInvalidInstOrMode = no
+    ->
+        FoundInvalidInstOrMode = did_not_find_invalid_inst_or_mode
+    ;
+        FoundInvalidInstOrMode = found_invalid_inst_or_mode
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -208,16 +218,18 @@ add_builtin_type_ctor_special_preds(TypeCtor, !ModuleInfo) :-
     % any cyclic insts or modes.
     %
 :- pred add_item_list_decls_pass_1(list(item)::in, item_status::in,
-    module_info::in, module_info::out, bool::in, bool::out,
+    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_item_list_decls_pass_1([], _, !ModuleInfo, !InvalidModes, !Specs).
-add_item_list_decls_pass_1([Item | Items], !.Status, !ModuleInfo,
-        !InvalidModes, !Specs) :-
-    add_item_decl_pass_1(Item, NewInvalidModes, !Status, !ModuleInfo, !Specs),
-    !:InvalidModes = bool.or(!.InvalidModes, NewInvalidModes),
-    add_item_list_decls_pass_1(Items, !.Status, !ModuleInfo, !InvalidModes,
-        !Specs).
+add_item_list_decls_pass_1([], _, !FoundInvalidInstOrMode,
+        !ModuleInfo, !Specs).
+add_item_list_decls_pass_1([Item | Items], !.Status, !FoundInvalidInstOrMode,
+        !ModuleInfo, !Specs) :-
+    add_item_decl_pass_1(Item, !Status, !FoundInvalidInstOrMode,
+        !ModuleInfo, !Specs),
+    add_item_list_decls_pass_1(Items, !.Status, !FoundInvalidInstOrMode,
+        !ModuleInfo, !Specs).
 
     % pass 2:
     %
@@ -274,58 +286,58 @@ add_item_list_pass_3([Item | Items], !.Status, !ModuleInfo, !QualInfo,
 
     % The bool records whether any cyclic insts or modes were detected.
     %
-:- pred add_item_decl_pass_1(item::in, bool::out,
-    item_status::in, item_status::out, module_info::in, module_info::out,
+:- pred add_item_decl_pass_1(item::in, item_status::in, item_status::out,
+    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_item_decl_pass_1(Item, FoundError, !Status, !ModuleInfo, !Specs) :-
+add_item_decl_pass_1(Item, !Status, !FoundInvalidInstOrMode,
+        !ModuleInfo, !Specs) :-
     (
-        Item = item_module_start(_),
-        FoundError = no
-    ;
-        Item = item_module_end(_),
-        FoundError = no
-    ;
         Item = item_module_defn(ItemModuleDefn),
-        add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs),
-        FoundError = no
+        add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs)
     ;
         Item = item_type_defn(ItemTypeDefnInfo),
-        add_pass_1_type_defn(ItemTypeDefnInfo, !.Status, !ModuleInfo, !Specs),
-        FoundError = no
+        add_pass_1_type_defn(ItemTypeDefnInfo, !.Status, !ModuleInfo, !Specs)
     ;
-        Item = item_inst_defn(ItemInstDefnInfo),
-        module_add_inst_defn(ItemInstDefnInfo, FoundError,
-            !.Status, !ModuleInfo, !Specs)
-    ;
-        Item = item_mode_defn(ItemModeDefnInfo),
-        module_add_mode_defn(ItemModeDefnInfo, FoundError,
-            !.Status, !ModuleInfo, !Specs)
+        (
+            Item = item_inst_defn(ItemInstDefnInfo),
+            module_add_inst_defn(ItemInstDefnInfo, FoundError,
+                !.Status, !ModuleInfo, !Specs)
+        ;
+            Item = item_mode_defn(ItemModeDefnInfo),
+            module_add_mode_defn(ItemModeDefnInfo, FoundError,
+                !.Status, !ModuleInfo, !Specs)
+        ),
+        (
+            FoundError = yes,
+            !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
+        ;
+            FoundError = no
+        )
     ;
         Item = item_pred_decl(ItemPredDecl),
-        add_pass_1_pred_decl(ItemPredDecl, !.Status, !ModuleInfo, !Specs),
-        FoundError = no
+        add_pass_1_pred_decl(ItemPredDecl, !.Status, !ModuleInfo, !Specs)
     ;
         Item = item_mode_decl(ItemModeDecl),
-        add_pass_1_mode_decl(ItemModeDecl, !.Status, !ModuleInfo, !Specs),
-        FoundError = no
+        add_pass_1_mode_decl(ItemModeDecl, !.Status, !ModuleInfo, !Specs)
     ;
         Item = item_typeclass(ItemTypeClass),
-        module_add_class_defn(ItemTypeClass, !.Status, !ModuleInfo, !Specs),
-        FoundError = no
+        module_add_class_defn(ItemTypeClass, !.Status, !ModuleInfo, !Specs)
     ;
         Item = item_mutable(ItemMutable),
-        add_pass_1_mutable(ItemMutable, !.Status, !ModuleInfo, !Specs),
-        FoundError = no
+        add_pass_1_mutable(ItemMutable, !.Status, !ModuleInfo, !Specs)
     ;
-        ( Item = item_clause(_)
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_clause(_)
         ; Item = item_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_instance(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_nothing(_)
-        ),
+        )
         % These will be processed only in later passes.
         %
         % We don't want to add clauses or pragma foreign_procs before we add
@@ -333,7 +345,6 @@ add_item_decl_pass_1(Item, FoundError, !Status, !ModuleInfo, !Specs) :-
         %
         % We don't want to add instance declarations before the typeclass
         % declaration it implements.
-        FoundError = no
     ).
 
 %---------------------------------------------------------------------------%

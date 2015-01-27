@@ -1704,8 +1704,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
-        MaybeTimestamps, UndefTypes, UndefModes, FoundError, !DumpInfo,
-        !Specs, !IO) :-
+        MaybeTimestamps, UndefTypes, UndefModes, FoundSemanticError,
+        !DumpInfo, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, invoked_by_mmc_make, MMCMake),
@@ -1775,11 +1775,27 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
     EventSet = event_set(EventSetName, EventSpecMap),
     make_hlds(Globals, ModuleName, Items, EventSet, MQInfo, EqvMap,
         UsedModules, Verbose, Stats, HLDS0, QualInfo,
-        MakeHLDSUndefTypes, MakeHLDSUndefModes, FoundError, !Specs, !IO),
+        MakeHLDSFoundInvalidType, MakeHLDSFoundInvalidInstOrMode,
+        FoundSemanticError, !Specs, !IO),
 
-    bool.or_list([MQUndefTypes, EventSetErrors, ExpandErrors,
-        MakeHLDSUndefTypes], UndefTypes),
-    bool.or(MQUndefModes, MakeHLDSUndefModes, UndefModes),
+    (
+        MQUndefTypes = no,
+        EventSetErrors = no,
+        ExpandErrors = no,
+        MakeHLDSFoundInvalidType = did_not_find_invalid_type
+    ->
+        UndefTypes = no
+    ;
+        UndefTypes = yes
+    ),
+    (
+        MQUndefModes = no,
+        MakeHLDSFoundInvalidInstOrMode = did_not_find_invalid_inst_or_mode
+    ->
+        UndefModes = no
+    ;
+        UndefModes = yes
+    ),
 
     maybe_dump_hlds(HLDS0, 1, "initial", !DumpInfo, !IO),
 
@@ -1802,7 +1818,7 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
 
     % Only stop on syntax errors in .opt files.
     (
-        ( FoundError = yes
+        ( FoundSemanticError = yes
         ; IntermodError = yes
         )
     ->
@@ -2064,11 +2080,12 @@ expand_equiv_types(Globals, ModuleName, Verbose, Stats, Items0, Items,
 :- pred make_hlds(globals::in, module_name::in, list(item)::in, event_set::in,
     mq_info::in, eqv_map::in, used_modules::in, bool::in, bool::in,
     module_info::out, make_hlds_qual_info::out,
-    bool::out, bool::out, bool::out,
+    found_invalid_type::out, found_invalid_inst_or_mode::out, bool::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 make_hlds(Globals, ModuleName, Items, EventSet, MQInfo, EqvMap, UsedModules,
-        Verbose, Stats, !:HLDS, QualInfo, UndefTypes, UndefModes,
+        Verbose, Stats, !:HLDS, QualInfo,
+        FoundInvalidType, FoundInvalidInstOrMode,
         FoundSemanticError, !Specs, !IO) :-
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
@@ -2076,7 +2093,8 @@ make_hlds(Globals, ModuleName, Items, EventSet, MQInfo, EqvMap, UsedModules,
         do_create_dirs, DumpBaseFileName, !IO),
     ParseTree = unit_module(ModuleName, Items),
     parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo, EqvMap,
-        UsedModules, QualInfo, UndefTypes, UndefModes, !:HLDS, MakeSpecs),
+        UsedModules, QualInfo, FoundInvalidType, FoundInvalidInstOrMode,
+        !:HLDS, MakeSpecs),
     !:Specs = MakeSpecs ++ !.Specs,
     module_info_set_event_set(EventSet, !HLDS),
     io.get_exit_status(Status, !IO),

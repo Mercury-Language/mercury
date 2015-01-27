@@ -23,7 +23,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -41,7 +40,8 @@
     % Add the constructors and special preds for a type to the HLDS.
     %
 :- pred process_type_defn(type_ctor::in, hlds_type_defn::in,
-    bool::in, bool::out, module_info::in, module_info::out,
+    found_invalid_type::in, found_invalid_type::out,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred make_status_abstract(import_status::in, import_status::out) is det.
@@ -67,6 +67,7 @@
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_type.
 
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module multi_map.
@@ -358,7 +359,8 @@ check_foreign_type_visibility(OldStatus, NewDefnStatus) :-
         status_is_exported_to_non_submodules(NewDefnStatus) = no
     ).
 
-process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
+process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
+        !Specs) :-
     get_type_defn_context(TypeDefn, Context),
     get_type_defn_tvarset(TypeDefn, TVarSet),
     get_type_defn_tparams(TypeDefn, Args),
@@ -387,11 +389,10 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
         module_info_set_ctor_field_table(CtorFields, !ModuleInfo),
 
         (
-            CtorAddSpecs = [],
-            NewFoundError = no
+            CtorAddSpecs = []
         ;
             CtorAddSpecs = [_ | _],
-            NewFoundError = yes,
+            !:FoundInvalidType = found_invalid_type,
             !:Specs = CtorAddSpecs ++ !.Specs
         ),
 
@@ -409,21 +410,25 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
             true
         )
     ;
+        Body = hlds_foreign_type(ForeignTypeBody),
+        check_foreign_type(TypeCtor, ForeignTypeBody, Context,
+            FoundInvalidTypeInForeignBody, !ModuleInfo, !Specs),
+        (
+            FoundInvalidTypeInForeignBody = found_invalid_type,
+            !:FoundInvalidType = found_invalid_type
+        ;
+            FoundInvalidTypeInForeignBody = did_not_find_invalid_type
+        )
+    ;
         ( Body = hlds_abstract_type(_)
         ; Body = hlds_solver_type(_, _)
         ; Body = hlds_eqv_type(_)
-        ),
-        NewFoundError = no
-    ;
-        Body = hlds_foreign_type(ForeignTypeBody),
-        check_foreign_type(TypeCtor, ForeignTypeBody, Context,
-            NewFoundError, !ModuleInfo, !Specs)
+        )
     ),
-    !:FoundError = !.FoundError `or` NewFoundError,
     (
-        !.FoundError = yes
+        !.FoundInvalidType = found_invalid_type
     ;
-        !.FoundError = no,
+        !.FoundInvalidType = did_not_find_invalid_type,
         % XXX kind inference:
         % We set the kinds to `star'. This will be different when we have
         % a kind system.
@@ -437,16 +442,17 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
     % backend that the foreign type has a representation on that backend.
     %
 :- pred check_foreign_type(type_ctor::in, foreign_type_body::in,
-    prog_context::in, bool::out, module_info::in, module_info::out,
+    prog_context::in, found_invalid_type::out,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
-        !Specs) :-
+check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundInvalidType,
+        !ModuleInfo, !Specs) :-
     TypeCtor = type_ctor(Name, Arity),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     ( have_foreign_type_for_backend(Target, ForeignTypeBody, yes) ->
-        FoundError = no
+        FoundInvalidType = did_not_find_invalid_type
     ;
         ( Target = target_c, LangStr = "C"
         ; Target = target_il, LangStr = "IL"
@@ -465,7 +471,7 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [Msg]),
         !:Specs = [Spec | !.Specs],
-        FoundError = yes
+        FoundInvalidType = found_invalid_type
     ).
 
     % Ignore Mercury definitions if we've got a foreign type
