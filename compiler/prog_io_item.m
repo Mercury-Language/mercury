@@ -238,9 +238,8 @@ parse_attributed_decl(ModuleName, VarSet, Functor, ArgTerms, Attributes,
         ArgTerms = [SubTerm],
         ( SubTerm = term.functor(term.atom("=="), [HeadTerm, BodyTerm], _) ->
             % This is the definition of a mode.
-            parse_condition_suffix(BodyTerm, BeforeCondTerm, Condition),
-            parse_mode_defn(ModuleName, VarSet, HeadTerm, BeforeCondTerm,
-                Condition, Context, SeqNum, MaybeItem)
+            parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
+                Context, SeqNum, MaybeItem)
         ;
             % This is the declaration of one mode of a predicate or function.
             parse_mode_decl(ModuleName, VarSet, SubTerm, Attributes,
@@ -512,8 +511,7 @@ process_version_numbers(ModuleName, _VarSet, ArgTerms, Attributes, Context,
 
 parse_pred_or_func_decl(PredOrFunc, ModuleName, VarSet, Term, Attributes,
         Context, SeqNum, MaybeItem) :-
-    parse_condition_suffix(Term, BeforeCondTerm, Condition),
-    parse_determinism_suffix(VarSet, BeforeCondTerm, BeforeDetismTerm,
+    parse_determinism_suffix(VarSet, Term, BeforeDetismTerm,
         MaybeMaybeDetism),
     parse_with_inst_suffix(BeforeDetismTerm, BeforeWithInstTerm,
         MaybeWithInst),
@@ -550,11 +548,11 @@ parse_pred_or_func_decl(PredOrFunc, ModuleName, VarSet, Term, Attributes,
                 PredOrFunc = pf_function,
                 WithType = no
             ->
-                parse_func_decl_base(ModuleName, VarSet, BaseTerm, Condition,
+                parse_func_decl_base(ModuleName, VarSet, BaseTerm,
                     MaybeDetism, Attributes, Context, SeqNum, MaybeItem)
             ;
                 parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, BaseTerm,
-                    Condition, WithType, WithInst, MaybeDetism,
+                    WithType, WithInst, MaybeDetism,
                     Attributes, Context, SeqNum, MaybeItem)
             )
         )
@@ -569,11 +567,11 @@ parse_pred_or_func_decl(PredOrFunc, ModuleName, VarSet, Term, Attributes,
     % `:- func f(...) `with_type` t' declaration
     %
 :- pred parse_pred_decl_base(pred_or_func::in, module_name::in, varset::in,
-    term::in, condition::in, maybe(mer_type)::in, maybe(mer_inst)::in,
+    term::in, maybe(mer_type)::in, maybe(mer_inst)::in,
     maybe(determinism)::in, decl_attrs::in, prog_context::in, int::in,
     maybe1(item)::out) is det.
 
-parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm, Condition,
+parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
         WithType, WithInst, MaybeDet, Attributes0, Context, SeqNum,
         MaybeItem) :-
     get_class_context_and_inst_constraints(ModuleName, VarSet,
@@ -628,7 +626,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm, Condition,
                         ItemPredDecl = item_pred_decl_info(Origin,
                             TVarSet, IVarSet, ExistQVars, PredOrFunc,
                             Functor, Args, WithType, WithInst, MaybeDet,
-                            Condition, Purity, Constraints, Context, SeqNum),
+                            Purity, Constraints, Context, SeqNum),
                         Item = item_pred_decl(ItemPredDecl),
                         MaybeItem0 = ok1(Item),
                         check_no_attributes(MaybeItem0, Attributes, MaybeItem)
@@ -670,11 +668,11 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm, Condition,
     % Parse a `:- func p(...)' declaration *without* a with_type clause.
     %
 :- pred parse_func_decl_base(module_name::in, varset::in, term::in,
-    condition::in, maybe(determinism)::in, decl_attrs::in, prog_context::in,
+    maybe(determinism)::in, decl_attrs::in, prog_context::in,
     int::in, maybe1(item)::out) is det.
 
-parse_func_decl_base(ModuleName, VarSet, Term, Condition, MaybeDet,
-        Attributes0, Context, SeqNum, MaybeItem) :-
+parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Attributes0, Context,
+        SeqNum, MaybeItem) :-
     get_class_context_and_inst_constraints(ModuleName, VarSet,
         Attributes0, Attributes, MaybeContext),
     (
@@ -734,7 +732,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, Condition, MaybeDet,
                     % We use an auxiliary predicate because the code is just
                     % too deeply indented here.
                     parse_func_decl_base_2(FuncName, Args, ReturnArg,
-                        FuncTerm, Term, VarSet, MaybeDet, Condition,
+                        FuncTerm, Term, VarSet, MaybeDet,
                         ExistQVars, Constraints, Attributes,
                         Context, SeqNum, MaybeItem)
                 ;
@@ -754,11 +752,11 @@ parse_func_decl_base(ModuleName, VarSet, Term, Condition, MaybeDet,
 
 :- pred parse_func_decl_base_2(sym_name::in, list(type_and_mode)::in,
     type_and_mode::in, term::in, term::in, varset::in, maybe(determinism)::in,
-    condition::in, existq_tvars::in, prog_constraints::in, decl_attrs::in,
+    existq_tvars::in, prog_constraints::in, decl_attrs::in,
     prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
-        VarSet, MaybeDet, Condition, ExistQVars, Constraints, Attributes0,
+        VarSet, MaybeDet, ExistQVars, Constraints, Attributes0,
         Context, SeqNum, MaybeItem) :-
     (
         type_and_mode_list_is_consistent(Args)
@@ -812,7 +810,7 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
             Origin = item_origin_user,
             ItemPredDecl = item_pred_decl_info(Origin, TVarSet, IVarSet,
                 ExistQVars, pf_function, FuncName, AllArgs, no, no,
-                MaybeDet, Condition, Purity, Constraints, Context, SeqNum),
+                MaybeDet, Purity, Constraints, Context, SeqNum),
             Item = item_pred_decl(ItemPredDecl),
             MaybeItem0 = ok1(Item),
             check_no_attributes(MaybeItem0, Attributes, MaybeItem)
@@ -890,9 +888,7 @@ type_and_mode_list_is_consistent_type_and_mode([Head | Tail]) :-
 
 parse_mode_decl(ModuleName, VarSet, Term, Attributes, Context, SeqNum,
         MaybeItem) :-
-    parse_condition_suffix(Term, BeforeCondTerm, Condition),
-    parse_determinism_suffix(VarSet, BeforeCondTerm, BeforeDetismTerm,
-        MaybeMaybeDetism),
+    parse_determinism_suffix(VarSet, Term, BeforeDetismTerm, MaybeMaybeDetism),
     parse_with_inst_suffix(BeforeDetismTerm, BeforeWithInstTerm,
         MaybeWithInst),
     BaseTerm = BeforeWithInstTerm,
@@ -907,12 +903,11 @@ parse_mode_decl(ModuleName, VarSet, Term, Attributes, Context, SeqNum,
             Pieces = [words("Error:"), quote("with_inst"),
                 words("and determinism both specified."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(BeforeCondTerm),
-                    [always(Pieces)])]),
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
             MaybeItem = error1([Spec])
         ;
-            parse_mode_decl_base(ModuleName, VarSet, BaseTerm, Condition,
-                Attributes, WithInst, MaybeDetism, Context, SeqNum, MaybeItem)
+            parse_mode_decl_base(ModuleName, VarSet, BaseTerm, Attributes,
+                WithInst, MaybeDetism, Context, SeqNum, MaybeItem)
         )
     ;
         Specs = get_any_errors1(MaybeMaybeDetism)
@@ -921,10 +916,10 @@ parse_mode_decl(ModuleName, VarSet, Term, Attributes, Context, SeqNum,
     ).
 
 :- pred parse_mode_decl_base(module_name::in, varset::in, term::in,
-    condition::in, decl_attrs::in, maybe(mer_inst)::in, maybe(determinism)::in,
+    decl_attrs::in, maybe(mer_inst)::in, maybe(determinism)::in,
     prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_mode_decl_base(ModuleName, VarSet, Term, Condition, Attributes, WithInst,
+parse_mode_decl_base(ModuleName, VarSet, Term, Attributes, WithInst,
         MaybeDet, Context, SeqNum, MaybeItem) :-
     (
         WithInst = no,
@@ -942,7 +937,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Condition, Attributes, WithInst,
         ;
             MaybeFunctorArgs = ok2(Functor, ArgTerms),
             parse_func_mode_decl(Functor, ArgTerms, ModuleName,
-                FuncTerm, ReturnTypeTerm, Term, VarSet, MaybeDet, Condition,
+                FuncTerm, ReturnTypeTerm, Term, VarSet, MaybeDet,
                 Attributes, Context, SeqNum, MaybeItem)
         )
     ;
@@ -955,19 +950,17 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Condition, Attributes, WithInst,
         ;
             MaybeFunctorArgs = ok2(Functor, ArgTerms),
             parse_pred_mode_decl(Functor, ArgTerms, ModuleName, Term,
-                VarSet, WithInst, MaybeDet, Condition,
+                VarSet, WithInst, MaybeDet,
                 Attributes, Context, SeqNum, MaybeItem)
         )
     ).
 
 :- pred parse_pred_mode_decl(sym_name::in, list(term)::in, module_name::in,
     term::in, varset::in, maybe(mer_inst)::in, maybe(determinism)::in,
-    condition::in, decl_attrs::in, prog_context::in, int::in,
-    maybe1(item)::out) is det.
+    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
-        WithInst, MaybeDet, Condition, Attributes0, Context, SeqNum,
-        MaybeItem) :-
+        WithInst, MaybeDet, Attributes0, Context, SeqNum, MaybeItem) :-
     ( convert_mode_list(allow_constrained_inst_var, ArgTerms, ArgModes0) ->
         get_class_context_and_inst_constraints(ModuleName, VarSet,
             Attributes0, Attributes, MaybeConstraints),
@@ -987,8 +980,7 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
                     PredOrFunc = no
                 ),
                 ItemModeDecl = item_mode_decl_info(ProgVarSet, PredOrFunc,
-                    Functor, ArgModes, WithInst, MaybeDet, Condition, Context,
-                    SeqNum),
+                    Functor, ArgModes, WithInst, MaybeDet, Context, SeqNum),
                 Item = item_mode_decl(ItemModeDecl),
                 MaybeItem0 = ok1(Item),
                 check_no_attributes(MaybeItem0, Attributes, MaybeItem)
@@ -1018,12 +1010,10 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
 
 :- pred parse_func_mode_decl(sym_name::in, list(term)::in, module_name::in,
     term::in, term::in, term::in, varset::in, maybe(determinism)::in,
-    condition::in, decl_attrs::in, prog_context::in, int::in,
-    maybe1(item)::out) is det.
+    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_func_mode_decl(Functor, ArgTerms, ModuleName, FuncMode, RetModeTerm,
-        FullTerm, VarSet, MaybeDet, Condition, Attributes0, Context, SeqNum,
-        MaybeItem) :-
+        FullTerm, VarSet, MaybeDet, Attributes0, Context, SeqNum, MaybeItem) :-
     ( convert_mode_list(allow_constrained_inst_var, ArgTerms, ArgModes0) ->
         get_class_context_and_inst_constraints(ModuleName, VarSet,
             Attributes0, Attributes, MaybeConstraints),
@@ -1044,7 +1034,7 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, FuncMode, RetModeTerm,
                 ->
                     ItemModeDecl = item_mode_decl_info(InstVarSet,
                         yes(pf_function), Functor, ArgReturnModes, no,
-                        MaybeDet, Condition, Context, SeqNum),
+                        MaybeDet, Context, SeqNum),
                     Item = item_mode_decl(ItemModeDecl),
                     MaybeItem0 = ok1(Item),
                     check_no_attributes(MaybeItem0, Attributes, MaybeItem)

@@ -367,7 +367,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         ItemDeclaresMain = (pred(Item::in) is semidet :-
             Item = item_pred_decl(ItemPredDecl),
             ItemPredDecl = item_pred_decl_info(_, _, _, _, pf_predicate, Name,
-                [_, _], WithType, _, _, _, _, _, _, _),
+                [_, _], WithType, _, _, _, _, _, _),
             unqualify_name(Name) = "main",
 
             % XXX We should allow `main/2' to be declared using `with_type`,
@@ -717,7 +717,7 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
     ;
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(_TVarSet, _TypeCtorName,
-            _TypeParams, TypeDefn, _Cond, _Context, _SeqNum),
+            _TypeParams, TypeDefn, _Context, _SeqNum),
         (
             TypeDefn = parse_tree_du_type(_Constructor,
                 _MaybeUnifyComparePredNames, _MaybeDirectArgs)

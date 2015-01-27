@@ -50,11 +50,11 @@ module_add_inst_defn(ItemInstDefnInfo, InvalidMode, ItemStatus, !ModuleInfo,
         !Specs) :-
     ItemStatus = item_status(Status, _NeedQual),
     ItemInstDefnInfo = item_inst_defn_info(VarSet, Name, Params, InstDefn,
-        Cond, Context, _SeqNum),
+        Context, _SeqNum),
     % Add the definition of this inst to the HLDS inst table.
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_user_insts(InstTable0, Insts0),
-    insts_add(VarSet, Name, Params, InstDefn, Cond, Context, Status,
+    insts_add(VarSet, Name, Params, InstDefn, Context, Status,
         Insts0, Insts, !Specs),
     inst_table_set_user_insts(Insts, InstTable0, InstTable),
     module_info_set_inst_table(InstTable, !ModuleInfo),
@@ -67,14 +67,14 @@ module_add_inst_defn(ItemInstDefnInfo, InvalidMode, ItemStatus, !ModuleInfo,
         InvalidMode, !Specs).
 
 :- pred insts_add(inst_varset::in, sym_name::in,
-    list(inst_var)::in, inst_defn::in, condition::in, prog_context::in,
+    list(inst_var)::in, inst_defn::in, prog_context::in,
     import_status::in, user_inst_table::in, user_inst_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-insts_add(_, _, _, abstract_inst, _, _, _, !Insts, !Specs) :-
+insts_add(_, _, _, abstract_inst, _, _, !Insts, !Specs) :-
     % XXX handle abstract insts
     sorry($module, $pred, "abstract insts not implemented").
-insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
+insts_add(VarSet, Name, Args, eqv_inst(Body), Context, Status, !Insts,
         !Specs) :-
     list.length(Args, Arity),
     InstId = inst_id(Name, Arity),
@@ -130,20 +130,20 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
 module_add_mode_defn(ItemModeDefnInfo, InvalidMode, ItemStatus, !ModuleInfo,
         !Specs) :-
     ItemModeDefnInfo = item_mode_defn_info(VarSet, Name, Params, ModeDefn,
-        Cond, Context, _SeqNum),
+        Context, _SeqNum),
     ItemStatus = item_status(Status, _NeedQual),
     module_info_get_mode_table(!.ModuleInfo, Modes0),
-    modes_add(VarSet, Name, Params, ModeDefn, Cond, Context, Status,
-        Modes0, Modes, InvalidMode, !Specs),
+    modes_add(VarSet, Name, Params, ModeDefn, Context, Status, InvalidMode,
+        Modes0, Modes, !Specs),
     module_info_set_mode_table(Modes, !ModuleInfo).
 
 :- pred modes_add(inst_varset::in, sym_name::in, list(inst_var)::in,
-    mode_defn::in, condition::in, prog_context::in, import_status::in,
-    mode_table::in, mode_table::out, bool::out,
+    mode_defn::in, prog_context::in, import_status::in, bool::out,
+    mode_table::in, mode_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-modes_add(VarSet, Name, Args, eqv_mode(Body), _Cond, Context, Status,
-        !Modes, InvalidMode, !Specs) :-
+modes_add(VarSet, Name, Args, eqv_mode(Body), Context, Status, InvalidMode,
+        !Modes, !Specs) :-
     list.length(Args, Arity),
     ModeId = mode_id(Name, Arity),
     I = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Context, Status),

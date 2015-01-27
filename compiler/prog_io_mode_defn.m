@@ -32,7 +32,7 @@
     % Parse a `:- mode <ModeDefn>.' declaration.
     %
 :- pred parse_mode_defn(module_name::in, varset::in, term::in, term::in,
-    condition::in, prog_context::in, int::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
 %-----------------------------------------------------------------------------e
 
@@ -49,26 +49,22 @@ parse_inst_defn(ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
     (
         Term = term.functor(term.atom("=="), [HeadTerm, BodyTerm], _)
     ->
-        parse_condition_suffix(BodyTerm, BeforeCondTerm, Condition),
-        parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BeforeCondTerm,
-            Condition, Context, SeqNum, MaybeItem)
+        parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm,
+            Context, SeqNum, MaybeItem)
     ;
         % XXX This is for `abstract inst' declarations,
         % which are not really supported.
         Term = term.functor(term.atom("is"), Args, _),
         Args = [HeadTerm, term.functor(term.atom("private"), [], _)]
     ->
-        Condition = cond_true,
         parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm,
-            Condition, Context, SeqNum, MaybeItem)
+            Context, SeqNum, MaybeItem)
     ;
         Term = term.functor(term.atom("--->"), [HeadTerm, BodyTerm], _)
     ->
-        parse_condition_suffix(BodyTerm, BeforeCondTerm, Condition),
-        BoundBeforeCondTerm =
-            term.functor(term.atom("bound"), [BeforeCondTerm], Context),
-        parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BoundBeforeCondTerm,
-            Condition, Context, SeqNum, MaybeItem)
+        BoundBodyTerm = term.functor(term.atom("bound"), [BodyTerm], Context),
+        parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BoundBodyTerm,
+            Context, SeqNum, MaybeItem)
     ;
         Pieces = [words("Error:"), quote("=="), words("expected in"),
             decl("inst"), words("definition."), nl],
@@ -78,10 +74,10 @@ parse_inst_defn(ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
     ).
 
 :- pred parse_inst_defn_base(module_name::in, varset::in, term::in, term::in,
-    condition::in, prog_context::in, int::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm, Condition,
-        Context, SeqNum, MaybeItem) :-
+parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
+        MaybeItem) :-
     ContextPieces = [words("In inst definition:")],
     parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
         VarSet, ContextPieces, MaybeNameAndArgs),
@@ -142,7 +138,7 @@ parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm, Condition,
                     list.map(term.coerce_var, Args, InstArgs),
                     InstDefn = eqv_inst(Inst),
                     ItemInstDefn = item_inst_defn_info(InstVarSet, Name,
-                        InstArgs, InstDefn, Condition, Context, SeqNum),
+                        InstArgs, InstDefn, Context, SeqNum),
                     Item = item_inst_defn(ItemInstDefn),
                     MaybeItem = ok1(Item)
                 ;
@@ -166,10 +162,10 @@ parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm, Condition,
     ).
 
 :- pred parse_abstract_inst_defn(module_name::in, varset::in, term::in,
-    condition::in, prog_context::in, int::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Condition, Context,
-        SeqNum, MaybeItem) :-
+parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
+        MaybeItem) :-
     ContextPieces = [words("In inst definition:")],
     parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
         VarSet, ContextPieces, MaybeNameAndArgs),
@@ -199,7 +195,7 @@ parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Condition, Context,
                 list.map(term.coerce_var, Args, InstArgs),
                 InstDefn = abstract_inst,
                 ItemInstDefn = item_inst_defn_info(InstVarSet, Name,
-                    InstArgs, InstDefn, Condition, Context, SeqNum),
+                    InstArgs, InstDefn, Context, SeqNum),
                 Item = item_inst_defn(ItemInstDefn),
                 MaybeItem = ok1(Item)
             )
@@ -222,8 +218,8 @@ parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Condition, Context,
                 mode_defn
             ).
 
-parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Condition, Context,
-        SeqNum, MaybeItem) :-
+parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
+        MaybeItem) :-
     ContextPieces = [words("In mode definition:")],
     parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
         VarSet, ContextPieces, MaybeModeNameAndArgs),
@@ -268,7 +264,7 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Condition, Context,
                     list.map(term.coerce_var, Args, ModeArgs),
                     ModeDefn = eqv_mode(Mode),
                     ItemModeDefn = item_mode_defn_info(InstVarSet, Name,
-                        ModeArgs, ModeDefn, Condition, Context, SeqNum),
+                        ModeArgs, ModeDefn, Context, SeqNum),
                     Item = item_mode_defn(ItemModeDefn),
                     MaybeItem = ok1(Item)
                 ;

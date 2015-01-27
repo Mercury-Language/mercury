@@ -575,7 +575,7 @@ mercury_output_item(Info, Item, !IO) :-
     item_type_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
-    ItemTypeDefn = item_type_defn_info(VarSet, Name0, Args, TypeDefn, _Cond,
+    ItemTypeDefn = item_type_defn_info(VarSet, Name0, Args, TypeDefn,
         Context, _SeqNum),
     maybe_unqualify_sym_name(Info, Name0, Name),
     maybe_output_line_number(Info, Context, !IO),
@@ -585,7 +585,7 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
     item_inst_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
-    ItemInstDefn = item_inst_defn_info(VarSet, Name0, Args, InstDefn, _Cond,
+    ItemInstDefn = item_inst_defn_info(VarSet, Name0, Args, InstDefn,
         Context, _SeqNum),
     maybe_unqualify_sym_name(Info, Name0, Name1),
     % If the unqualified name is a builtin inst, then output the qualified
@@ -603,7 +603,7 @@ mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
     item_mode_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_mode_defn(Info, ItemModeDefn, !IO) :-
-    ItemModeDefn = item_mode_defn_info(VarSet, Name0, Args, ModeDefn, _Cond,
+    ItemModeDefn = item_mode_defn_info(VarSet, Name0, Args, ModeDefn,
         Context, _SeqNum),
     maybe_unqualify_sym_name(Info, Name0, Name),
     maybe_output_line_number(Info, Context, !IO),
@@ -615,7 +615,7 @@ mercury_output_item_mode_defn(Info, ItemModeDefn, !IO) :-
 mercury_output_item_pred_decl(Info, ItemPredDecl, !IO) :-
     ItemPredDecl = item_pred_decl_info(_Origin, TypeVarSet, InstVarSet,
         ExistQVars, PredOrFunc, PredName0, TypesAndModes, WithType, WithInst,
-        Det, _Cond, Purity, ClassContext, Context, _SeqNum),
+        Det, Purity, ClassContext, Context, _SeqNum),
     maybe_unqualify_sym_name(Info, PredName0, PredName),
     maybe_output_line_number(Info, Context, !IO),
     (
@@ -641,7 +641,7 @@ mercury_output_item_pred_decl(Info, ItemPredDecl, !IO) :-
 
 mercury_output_item_mode_decl(Info, ItemModeDecl, !IO) :-
     ItemModeDecl = item_mode_decl_info(VarSet, PredOrFunc, PredName0, Modes,
-        WithInst, MaybeDet, _Cond, Context, _SeqNum),
+        WithInst, MaybeDet, Context, _SeqNum),
     maybe_unqualify_sym_name(Info, PredName0, PredName),
     maybe_output_line_number(Info, Context, !IO),
     (
@@ -988,7 +988,7 @@ output_class_method(Method, !IO) :-
     (
         Method = method_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
             PredOrFunc, SymName, TypesAndModes, WithType, WithInst,
-            Detism, _Condition, Purity, ClassContext, Context),
+            Detism, Purity, ClassContext, Context),
 
         % The module name is implied by the qualifier of the
         % `:- typeclass declaration'.
@@ -1013,7 +1013,7 @@ output_class_method(Method, !IO) :-
         )
     ;
         Method = method_pred_or_func_mode(VarSet, PredOrFunc, SymName, Modes,
-            WithInst, Detism, _Condition, Context),
+            WithInst, Detism, Context),
 
         % The module name is implied by the qualifier of the
         % `:- typeclass declaration'.

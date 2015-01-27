@@ -2217,16 +2217,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     --->    uses_reserved_address
     ;       does_not_use_reserved_address.
 
-    % Types may have arbitrary assertions associated with them
-    % (e.g. you can define a type which represents sorted lists).
-    % Similarly, pred declarations can have assertions attached.
-    % The compiler will ignore these assertions - they are intended
-    % to be used by other tools, such as the debugger.
-    %
-:- type condition
-    --->    cond_true
-    ;       cond_where(term).
-
     % Similar to varset.merge_subst but produces a tvar_renaming
     % instead of a substitution, which is more suitable for types.
     %

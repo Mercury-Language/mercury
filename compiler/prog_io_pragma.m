@@ -398,7 +398,7 @@ parse_pragma_foreign_type(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
                             MercuryTypeSymName, MercuryParams,
                             parse_tree_foreign_type(ForeignType, no,
                                 Assertions),
-                            cond_true, Context, SeqNum),
+                            Context, SeqNum),
                         Item = item_type_defn(ItemTypeDefn),
                         MaybeItem = ok1(Item)
                     ;

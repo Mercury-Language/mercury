@@ -272,7 +272,7 @@ module_add_class_interface(Name, Vars, Methods, Status, PredProcIds,
 :- pred is_class_method_mode_item(class_method::in) is semidet.
 
 is_class_method_mode_item(Method) :-
-    Method = method_pred_or_func_mode(_, _, _, _, _, _, _, _).
+    Method = method_pred_or_func_mode(_, _, _, _, _, _, _).
 
 :- pred add_class_pred_or_func_mode_method(sym_name::in,
     list(tvar)::in, item_status::in, class_method::in,
@@ -284,11 +284,11 @@ is_class_method_mode_item(Method) :-
 add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
         !PredProcIds, !ModuleInfo, !Specs) :-
     (
-        Method = method_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _, _),
+        Method = method_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _),
         unexpected($module, $pred, "pred_or_func method item")
     ;
         Method = method_pred_or_func_mode(_VarSet, MaybePredOrFunc, PredName,
-            Modes, _WithInst, _MaybeDet, _Cond, Context)
+            Modes, _WithInst, _MaybeDet, Context)
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     PredArity = list.length(Modes) : int,
@@ -354,7 +354,7 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
     (
         Method = method_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
             PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst,
-            MaybeDet, _Cond, Purity, Constraints0, Context),
+            MaybeDet, Purity, Constraints0, Context),
         % XXX This setting of Origin looks suspicious.
         Origin = origin_user(PredName),
         % XXX kind inference:
@@ -371,7 +371,7 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
             Markers, Context, Status, MaybePredIdProcId, !ModuleInfo, !Specs)
     ;
         Method = method_pred_or_func_mode(VarSet, MaybePredOrFunc, PredName,
-            Modes, _WithInst, MaybeDet, _Cond, Context),
+            Modes, _WithInst, MaybeDet, Context),
         (
             MaybePredOrFunc = yes(PredOrFunc),
             Status = item_status(ImportStatus, _),
@@ -403,7 +403,7 @@ check_method_modes([], !PredProcIds, !ModuleInfo, !Specs).
 check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
     (
         Method = method_pred_or_func(_, _, _, PorF, QualName, TypesAndModes,
-            _WithType, _WithInst, _, _, _, _, _),
+            _WithType, _WithInst, _, _, _, _),
         (
             QualName = qualified(ModuleName0, Name0),
             ModuleName = ModuleName0,
@@ -444,7 +444,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
             unexpected($module, $pred, "number of preds != 1")
         )
     ;
-        Method = method_pred_or_func_mode(_, _, _, _, _, _, _, _)
+        Method = method_pred_or_func_mode(_, _, _, _, _, _, _)
     ),
     check_method_modes(Methods, !PredProcIds, !ModuleInfo, !Specs).
 

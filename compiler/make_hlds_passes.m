@@ -481,7 +481,7 @@ add_pass_1_type_defn(ItemTypeDefnInfo, Status, !ModuleInfo, !Specs) :-
     % into ordinary constructions/deconstructions, but preserve the
     % corresponding impurity annotations.
     ItemTypeDefnInfo = item_type_defn_info(TypeVarSet, SymName, TypeParams,
-        TypeDefn, _Cond, Context, _SeqNum),
+        TypeDefn, Context, _SeqNum),
     ( TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp) ->
         add_solver_type_aux_pred_decls(TypeVarSet, SymName, TypeParams,
             SolverTypeDetails, Context, Status, !ModuleInfo, !Specs),
@@ -513,7 +513,7 @@ add_pass_1_pred_decl(ItemPredDecl, Status, !ModuleInfo, !Specs) :-
     % XXX Why are we ignoring _WithType and _WithInst?
     ItemPredDecl = item_pred_decl_info(Origin, TypeVarSet, InstVarSet,
         ExistQVars, PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst,
-        MaybeDet, _Cond, Purity, ClassContext, Context, _SeqNum),
+        MaybeDet, Purity, ClassContext, Context, _SeqNum),
 
     % If this predicate was added as a result of the mutable transformation
     % then mark this predicate as a mutable access pred. We do this so that
@@ -547,7 +547,7 @@ add_pass_1_pred_decl(ItemPredDecl, Status, !ModuleInfo, !Specs) :-
 
 add_pass_1_mode_decl(ItemModeDecl, Status, !ModuleInfo, !Specs) :-
     ItemModeDecl = item_mode_decl_info(VarSet, MaybePredOrFunc, PredName,
-        Modes, _WithInst, MaybeDet, _Cond, Context, _SeqNum),
+        Modes, _WithInst, MaybeDet, Context, _SeqNum),
     (
         MaybePredOrFunc = yes(PredOrFunc),
         Status = item_status(ImportStatus, _),
@@ -637,9 +637,9 @@ add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_2_type_defn(ItemTypeDefn, Status, !ModuleInfo, !Specs) :-
-    ItemTypeDefn = item_type_defn_info(VarSet, Name, Args, TypeDefn, Cond,
+    ItemTypeDefn = item_type_defn_info(VarSet, Name, Args, TypeDefn,
         Context, _SeqNum),
-    module_add_type_defn(VarSet, Name, Args, TypeDefn, Cond, Context,
+    module_add_type_defn(VarSet, Name, Args, TypeDefn, Context,
         Status, !ModuleInfo, !Specs),
     ( TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp) ->
         MutableItems = SolverTypeDetails ^ std_mutable_items,
@@ -669,7 +669,7 @@ add_solver_type_mutable_items_pass_2([MutableInfo | MutableInfos], Status,
 add_pass_2_pred_decl(ItemPredDecl, _Status, !ModuleInfo, !Specs) :-
     ItemPredDecl = item_pred_decl_info(_Origin, _TypeVarSet, _InstVarSet,
         _ExistQVars, PredOrFunc, SymName, TypesAndModes, _WithType, _WithInst,
-        _MaybeDet, _Cond, _Purity, _ClassContext, _Context, _SeqNum),
+        _MaybeDet, _Purity, _ClassContext, _Context, _SeqNum),
     % Add default modes for function declarations, if necessary.
     (
         PredOrFunc = pf_predicate
@@ -940,7 +940,7 @@ add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pass_3_type_defn(ItemTypeDefn, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ItemTypeDefn = item_type_defn_info(_TypeVarSet, SymName, TypeParams,
-        TypeDefn, _Cond, Context, _SeqNum),
+        TypeDefn, Context, _SeqNum),
     % If this is a solver type, then we need to also add the clauses for
     % the compiler generated inst cast predicate (the declaration for which
     % was added in pass 1). We should only add the clauses if this is the
@@ -980,7 +980,7 @@ add_solver_type_mutable_items_clauses([MutableInfo | MutableInfos], Status,
 
 add_pass_3_pred_decl(ItemPredDecl, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ItemPredDecl = item_pred_decl_info(_, _, _, _, PredOrFunc, SymName,
-        TypesAndModes, _WithType, _WithInst, _, _, _, _, Context, _SeqNum),
+        TypesAndModes, _WithType, _WithInst, _, _, _, Context, _SeqNum),
     (
         PredOrFunc = pf_predicate
     ;

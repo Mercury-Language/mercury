@@ -33,7 +33,7 @@
     % t which defines t as an abstract_type.
     %
 :- pred module_add_type_defn(tvarset::in, sym_name::in, list(type_param)::in,
-    type_defn::in, condition::in, prog_context::in, item_status::in,
+    type_defn::in, prog_context::in, item_status::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -78,7 +78,7 @@
 
 %-----------------------------------------------------------------------------%
 
-module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
+module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         item_status(Status0, NeedQual), !ModuleInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     list.length(Args, Arity),

@@ -1382,7 +1382,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         TypeBody = parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp)
     ),
     MainItemTypeDefn = item_type_defn_info(VarSet, Name, Args, TypeBody,
-        cond_true, Context, -1),
+        Context, -1),
     MainItem = item_type_defn(MainItemTypeDefn),
     MercInfo = OutInfo ^ hoi_mercury_to_mercury,
     mercury_output_item(MercInfo, MainItem, !IO),
@@ -1400,7 +1400,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             ILItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
                 parse_tree_foreign_type(il(ILForeignType),
                     ILMaybeUserEqComp, AssertionsIL),
-                cond_true, Context, -1),
+                Context, -1),
             ILItem = item_type_defn(ILItemTypeDefn),
             mercury_output_item(MercInfo, ILItem, !IO)
         ;
@@ -1413,7 +1413,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             CItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
                 parse_tree_foreign_type(c(CForeignType),
                     CMaybeUserEqComp, AssertionsC),
-                cond_true, Context, -1),
+                Context, -1),
             CItem = item_type_defn(CItemTypeDefn),
             mercury_output_item(MercInfo, CItem, !IO)
         ;
@@ -1426,7 +1426,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             JavaItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
                 parse_tree_foreign_type(java(JavaForeignType),
                     JavaMaybeUserEqComp, AssertionsJava),
-                cond_true, Context, -1),
+                Context, -1),
             JavaItem = item_type_defn(JavaItemTypeDefn),
             mercury_output_item(MercInfo, JavaItem, !IO)
         ;
@@ -1439,7 +1439,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             CSharpItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
                 parse_tree_foreign_type(csharp(CSharpForeignType),
                     CSharpMaybeUserEqComp, AssertionsCSharp),
-                cond_true, Context, -1),
+                Context, -1),
             CSharpItem = item_type_defn(CSharpItemTypeDefn),
             mercury_output_item(MercInfo, CSharpItem, !IO)
         ;
@@ -1452,7 +1452,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             ErlangItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
                 parse_tree_foreign_type(erlang(ErlangForeignType),
                     ErlangMaybeUserEqComp, AssertionsErlang),
-                cond_true, Context, -1),
+                Context, -1),
             ErlangItem = item_type_defn(ErlangItemTypeDefn),
             mercury_output_item(MercInfo, ErlangItem, !IO)
         ;
@@ -1530,7 +1530,7 @@ intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !IO) :-
         import_status_to_write(ImportStatus)
     ->
         ItemModeDefn = item_mode_defn_info(Varset, SymName, Args,
-            eqv_mode(Mode), cond_true, Context, -1),
+            eqv_mode(Mode), Context, -1),
         Item = item_mode_defn(ItemModeDefn),
         MercInfo = OutInfo ^ hoi_mercury_to_mercury,
         mercury_output_item(MercInfo, Item, !IO)
@@ -1566,7 +1566,7 @@ intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !IO) :-
             InstBody = abstract_inst
         ),
         ItemInstDefn = item_inst_defn_info(Varset, SymName, Args, InstBody,
-            cond_true, Context, -1),
+            Context, -1),
         Item = item_inst_defn(ItemInstDefn),
         MercInfo = OutInfo ^ hoi_mercury_to_mercury,
         mercury_output_item(MercInfo, Item, !IO)

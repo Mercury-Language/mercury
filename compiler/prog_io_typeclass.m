@@ -361,14 +361,14 @@ item_to_class_method(error1(Specs), _, error1(Specs)).
 item_to_class_method(ok1(Item), Term, Result) :-
     ( Item = item_pred_decl(ItemPredDecl) ->
         ItemPredDecl = item_pred_decl_info(_Origin, A, B, C, D, E, F, G, H, I,
-            J, K, L, Context, _SeqNum),
+            J, K, Context, _SeqNum),
         ClassMethod = method_pred_or_func(A, B, C, D, E, F, G, H, I,
-            J, K, L, Context),
+            J, K, Context),
         Result = ok1(ClassMethod)
     ; Item = item_mode_decl(ItemModeDecl) ->
-        ItemModeDecl = item_mode_decl_info(A, B, C, D, E, F, G,
+        ItemModeDecl = item_mode_decl_info(A, B, C, D, E, F,
             Context, _SeqNum),
-        ClassMethod = method_pred_or_func_mode(A, B, C, D, E, F, G,
+        ClassMethod = method_pred_or_func_mode(A, B, C, D, E, F,
             Context),
         Result = ok1(ClassMethod)
     ;

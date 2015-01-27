@@ -231,7 +231,7 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
         Interface = class_interface_concrete(Methods),
         list.member(Method, Methods),
         Method = method_pred_or_func(_, _, _, MethodPredOrFunc, SymName,
-            TypesAndModes, WithType, _, _, _, _, _, _),
+            TypesAndModes, WithType, _, _, _, _, _),
         ( MaybePredOrFunc = yes(MethodPredOrFunc)
         ; MaybePredOrFunc = no
         ),
@@ -285,7 +285,7 @@ gather_items_2(Item, !Section, !Info) :-
     ;
         Item = item_type_defn(ItemTypeDefn)
     ->
-        ItemTypeDefn = item_type_defn_info(VarSet, Name, Args, Body, Cond,
+        ItemTypeDefn = item_type_defn_info(VarSet, Name, Args, Body,
             Context, SeqNum),
         (
             Body = parse_tree_abstract_type(_),
@@ -299,8 +299,7 @@ gather_items_2(Item, !Section, !Info) :-
             % XXX does the abstract_details matter here?
             AbstractDetails = abstract_type_general,
             NameItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
-                parse_tree_abstract_type(AbstractDetails), Cond, Context,
-                SeqNum),
+                parse_tree_abstract_type(AbstractDetails), Context, SeqNum),
             NameItem = item_type_defn(NameItemTypeDefn),
             BodyItem = Item
         ;
@@ -349,7 +348,7 @@ gather_items_2(Item, !Section, !Info) :-
         % pred_or_func and arity, so this will work.
         Item = item_mode_decl(ItemModeDecl),
         ItemModeDecl = item_mode_decl_info(_, MaybePredOrFunc, SymName, Modes,
-            WithInst, _, _, _, _),
+            WithInst, _, _, _),
         MaybePredOrFunc = no,
         WithInst = yes(_)
     ->
@@ -416,7 +415,7 @@ add_gathered_item_2(Item, ItemType, NameArity, Section, MatchingItems0,
         Item = item_pred_decl(ItemPredDecl),
         ItemPredDecl = item_pred_decl_info(Origin, TVarSet, InstVarSet,
             ExistQVars, PredOrFunc, PredName, TypesAndModes,
-            WithType, WithInst, Det, Cond, Purity, ClassContext,
+            WithType, WithInst, Det, Purity, ClassContext,
             Context, SeqNum),
         split_types_and_modes(TypesAndModes, Types, MaybeModes),
         MaybeModes = yes(Modes),
@@ -428,7 +427,7 @@ add_gathered_item_2(Item, ItemType, NameArity, Section, MatchingItems0,
         varset.init(EmptyInstVarSet),
         PredItemPredDecl = item_pred_decl_info(Origin, TVarSet,
             EmptyInstVarSet, ExistQVars, PredOrFunc, PredName,
-            TypesWithoutModes, WithType, no, no, Cond, Purity, ClassContext,
+            TypesWithoutModes, WithType, no, no, Purity, ClassContext,
             Context, SeqNum),
         PredItem = item_pred_decl(PredItemPredDecl),
         (
@@ -442,7 +441,7 @@ add_gathered_item_2(Item, ItemType, NameArity, Section, MatchingItems0,
             MaybePredOrFunc = yes(PredOrFunc)
         ),
         ModeItemModeDecl = item_mode_decl_info(InstVarSet, MaybePredOrFunc,
-            PredName, Modes, WithInst, Det, Cond, Context, SeqNum),
+            PredName, Modes, WithInst, Det, Context, SeqNum),
         ModeItem = item_mode_decl(ModeItemModeDecl),
         MatchingItems = [Section - PredItem, Section - ModeItem
             | MatchingItems0]
@@ -470,7 +469,7 @@ split_class_method_types_and_modes(Method0) = Methods :-
     % Always strip the context from the item -- this is needed
     % so the items can be easily tested for equality.
     Method0 = method_pred_or_func(TVarSet, InstVarSet, ExistQVars, PredOrFunc,
-        SymName, TypesAndModes, WithType, WithInst, MaybeDet, Cond,
+        SymName, TypesAndModes, WithType, WithInst, MaybeDet,
         Purity, ClassContext, _),
     (
         split_types_and_modes(TypesAndModes, Types, MaybeModes),
@@ -491,7 +490,7 @@ split_class_method_types_and_modes(Method0) = Methods :-
             MaybePredOrFunc = yes(PredOrFunc)
         ),
         PredOrFuncModeItem = method_pred_or_func_mode(InstVarSet,
-            MaybePredOrFunc, SymName, Modes, WithInst, MaybeDet, Cond,
+            MaybePredOrFunc, SymName, Modes, WithInst, MaybeDet,
             term.context_init),
         PredOrFuncModeItems = [PredOrFuncModeItem]
     ;
@@ -500,14 +499,14 @@ split_class_method_types_and_modes(Method0) = Methods :-
     ),
     varset.init(EmptyInstVarSet),
     PredOrFuncItem = method_pred_or_func(TVarSet, EmptyInstVarSet, ExistQVars,
-        PredOrFunc, SymName, TypesWithoutModes, WithType, no, no, Cond, Purity,
+        PredOrFunc, SymName, TypesWithoutModes, WithType, no, no, Purity,
         ClassContext, term.context_init),
     Methods = [PredOrFuncItem | PredOrFuncModeItems].
 split_class_method_types_and_modes(Method0) = [Method] :-
     % Always strip the context from the item -- this is needed
     % so the items can be easily tested for equality.
-    Method0 = method_pred_or_func_mode(A, B, C, D, E, F, G, _),
-    Method = method_pred_or_func_mode(A, B, C, D, E, F, G, term.context_init).
+    Method0 = method_pred_or_func_mode(A, B, C, D, E, F, _),
+    Method = method_pred_or_func_mode(A, B, C, D, E, F, term.context_init).
 
 :- pred item_to_item_id(item::in, item_id::out) is semidet.
 
@@ -531,26 +530,26 @@ item_to_item_id_2(Item, MaybeItemId) :-
         MaybeItemId = no
     ;
         Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(_, Name, Params, _, _, _, _),
+        ItemTypeDefn = item_type_defn_info(_, Name, Params, _, _, _),
         list.length(Params, Arity),
         ItemId = item_id(type_abstract_item, item_name(Name, Arity)),
         MaybeItemId = yes(ItemId)
     ;
         Item = item_inst_defn(ItemInstDefn),
-        ItemInstDefn = item_inst_defn_info(_, Name, Params, _, _, _, _),
+        ItemInstDefn = item_inst_defn_info(_, Name, Params, _, _, _),
         list.length(Params, Arity),
         ItemId = item_id(inst_item, item_name(Name, Arity)),
         MaybeItemId = yes(ItemId)
     ;
         Item = item_mode_defn(ItemModeDefn),
-        ItemModeDefn = item_mode_defn_info(_, Name, Params, _, _, _, _),
+        ItemModeDefn = item_mode_defn_info(_, Name, Params, _, _, _),
         list.length(Params, Arity),
         ItemId = item_id(mode_item, item_name(Name, Arity)),
         MaybeItemId = yes(ItemId)
     ;
         Item = item_pred_decl(ItemPredDecl),
         ItemPredDecl = item_pred_decl_info(_, _, _, _, PredOrFunc, SymName,
-            TypesAndModes, WithType, _, _, _, _, _, _, _),
+            TypesAndModes, WithType, _, _, _, _, _, _),
         % For predicates or functions defined using `with_type` annotations
         % the arity here won't be correct, but equiv_type.m will record
         % the dependency on the version number with the `incorrect' arity,
@@ -568,7 +567,7 @@ item_to_item_id_2(Item, MaybeItemId) :-
     ;
         Item = item_mode_decl(ItemModeDecl),
         ItemModeDecl = item_mode_decl_info(_, MaybePredOrFunc, SymName, Modes,
-            _, _, _, _, _),
+            _, _, _, _),
         (
             MaybePredOrFunc = yes(PredOrFunc),
             adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
@@ -788,11 +787,10 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
         )
     ;
         Item1 = item_type_defn(ItemTypeDefn1),
-        ItemTypeDefn1 = item_type_defn_info(_, Name, Args, Defn, Cond, _, _),
+        ItemTypeDefn1 = item_type_defn_info(_, Name, Args, Defn, _, _),
         (
             Item2 = item_type_defn(ItemTypeDefn2),
-            ItemTypeDefn2 =
-                item_type_defn_info(_, Name, Args, Defn, Cond, _, _)
+            ItemTypeDefn2 = item_type_defn_info(_, Name, Args, Defn, _, _)
         ->
             Unchanged = yes
         ;
@@ -800,11 +798,10 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
         )
     ;
         Item1 = item_inst_defn(ItemInstDefn1),
-        ItemInstDefn1 = item_inst_defn_info(_, Name, Args, Defn, Cond, _, _),
+        ItemInstDefn1 = item_inst_defn_info(_, Name, Args, Defn, _, _),
         (
             Item2 = item_inst_defn(ItemInstDefn2),
-            ItemInstDefn2 =
-                item_inst_defn_info(_, Name, Args, Defn, Cond, _, _)
+            ItemInstDefn2 = item_inst_defn_info(_, Name, Args, Defn, _, _)
         ->
             Unchanged = yes
         ;
@@ -812,11 +809,10 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
         )
     ;
         Item1 = item_mode_defn(ItemModeDefn1),
-        ItemModeDefn1 = item_mode_defn_info(_, Name, Args, Defn, Cond, _, _),
+        ItemModeDefn1 = item_mode_defn_info(_, Name, Args, Defn, _, _),
         (
             Item2 = item_mode_defn(ItemModeDefn2),
-            ItemModeDefn2 =
-                item_mode_defn_info(_, Name, Args, Defn, Cond, _, _)
+            ItemModeDefn2 = item_mode_defn_info(_, Name, Args, Defn, _, _)
         ->
             Unchanged = yes
         ;
@@ -826,12 +822,12 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
         Item1 = item_pred_decl(ItemPredDecl1),
         ItemPredDecl1 = item_pred_decl_info(_, TVarSet1, _, ExistQVars1,
             PredOrFunc, Name, TypesAndModes1, WithType1, _,
-            Det1, Cond, Purity, Constraints1, _, _),
+            Det1, Purity, Constraints1, _, _),
         (
             Item2 = item_pred_decl(ItemPredDecl2),
             ItemPredDecl2 = item_pred_decl_info(_, TVarSet2, _, ExistQVars2,
                 PredOrFunc, Name, TypesAndModes2, WithType2,
-                _, Det2, Cond, Purity, Constraints2, _, _),
+                _, Det2, Purity, Constraints2, _, _),
 
             % For predicates, ignore the determinism -- the modes and
             % determinism should have been split into a separate declaration.
@@ -859,11 +855,11 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
     ;
         Item1 = item_mode_decl(ItemModeDecl1),
         ItemModeDecl1 = item_mode_decl_info(InstVarSet1, PredOrFunc, Name,
-            Modes1, WithInst1, Det, Cond, _, _),
+            Modes1, WithInst1, Det, _, _),
         (
             Item2 = item_mode_decl(ItemModeDecl2),
             ItemModeDecl2 = item_mode_decl_info(InstVarSet2, PredOrFunc,
-                Name, Modes2, WithInst2, Det, Cond, _, _),
+                Name, Modes2, WithInst2, Det, _, _),
             pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, WithInst1,
                 InstVarSet2, Modes2, WithInst2)
         ->
@@ -1181,19 +1177,19 @@ class_methods_are_unchanged([Method1 | Methods1], [Method2 | Methods2]) :-
     (
         Method1 = method_pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,
             Name, TypesAndModes1, WithType1, _,
-            Detism, Cond, Purity, Constraints1, _),
+            Detism, Purity, Constraints1, _),
         Method2 = method_pred_or_func(TVarSet2, _, ExistQVars2, PredOrFunc,
             Name, TypesAndModes2, WithType2, _,
-            Detism, Cond, Purity, Constraints2, _),
+            Detism, Purity, Constraints2, _),
         pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1,
             TypesAndModes1, WithType1, Constraints1,
             TVarSet2, ExistQVars2, TypesAndModes2, WithType2,
             Constraints2)
     ;
         Method1 = method_pred_or_func_mode(InstVarSet1, PredOrFunc, Name,
-            Modes1, WithInst1, Det, Cond, _),
+            Modes1, WithInst1, Det, _),
         Method2 = method_pred_or_func_mode(InstVarSet2, PredOrFunc, Name,
-            Modes2, WithInst2, Det, Cond, _),
+            Modes2, WithInst2, Det, _),
         pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, WithInst1,
             InstVarSet2, Modes2, WithInst2)
     ),

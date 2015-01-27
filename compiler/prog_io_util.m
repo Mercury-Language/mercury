@@ -209,26 +209,6 @@
 :- func attribute_description(decl_attribute) = string.
 
 %-----------------------------------------------------------------------------%
-
-    % parse_condition_suffix(Term, BeforeCondTerm, Condition):
-    %
-    % Bind Condition to a representation of the 'where' condition of Term,
-    % if any, and bind BeforeCondTerm to the other part of Term. If Term
-    % does not contain a condition, then set Condition to true.
-    %
-    % NU-Prolog supported type declarations of the form
-    %   :- pred p(T) where p(X) : sorted(X).
-    % or
-    %   :- type sorted_list(T) = list(T) where X : sorted(X).
-    %   :- pred p(sorted_list(T)).
-    % There is some code here to support that sort of thing, but
-    % probably we would now need to use a different syntax, since
-    % Mercury now uses `where' for different purposes (e.g. specifying
-    % user-defined equality predicates, and also for type classes ...)
-    %
-:- pred parse_condition_suffix(term::in, term::out, condition::out) is det.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1234,22 +1214,6 @@ attribute_description(decl_attr_constraints(quant_type_univ, _)) =
 attribute_description(decl_attr_constraints(quant_type_exist, _)) =
     "existentially quantified type class constraint (`=>')".
 attribute_description(decl_attr_solver_type) = "solver type specifier".
-
-%-----------------------------------------------------------------------------%
-
-parse_condition_suffix(Term, Term, cond_true).
-
-% parse_condition_suffix(B, Body, Condition) :-
-%   (
-%       B = term.functor(term.atom("where"), [Body1, Condition1],
-%           _Context)
-%   ->
-%       Body = Body1,
-%       Condition = where(Condition1)
-%   ;
-%       Body = B,
-%       Condition = true
-%   ).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_util.

@@ -80,27 +80,22 @@ parse_type_defn(ModuleName, VarSet, TypeDefnTerm, Attributes, Context,
         ; Name = "where"
         )
     ->
-        parse_condition_suffix(BodyTerm, BeforeCondTerm, Condition),
         (
             Name = "--->",
-            parse_du_type_defn(ModuleName, VarSet,
-                HeadTerm, BeforeCondTerm, Attributes,
-                Condition, Context, SeqNum, MaybeItem)
+            parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
+                Attributes, Context, SeqNum, MaybeItem)
         ;
             Name = "==",
-            parse_eqv_type_defn(ModuleName, VarSet,
-                HeadTerm, BeforeCondTerm, Attributes,
-                Condition, Context, SeqNum, MaybeItem)
+            parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
+                Attributes, Context, SeqNum, MaybeItem)
         ;
             Name = "where",
-            parse_where_block_type_defn(ModuleName, VarSet,
-                HeadTerm, BeforeCondTerm, Attributes,
-                Condition, Context, SeqNum, MaybeItem)
+            parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
+                Attributes, Context, SeqNum, MaybeItem)
         )
     ;
         parse_abstract_type_defn(ModuleName, VarSet, TypeDefnTerm, Attributes,
-            Condition, Context, SeqNum, MaybeItem),
-        Condition = cond_true
+            Context, SeqNum, MaybeItem)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -111,11 +106,10 @@ parse_type_defn(ModuleName, VarSet, TypeDefnTerm, Attributes, Context,
     % parse_du_type_defn parses the definition of a discriminated union type.
     %
 :- pred parse_du_type_defn(module_name::in, varset::in, term::in, term::in,
-    decl_attrs::in, condition::in, prog_context::in, int::in,
-    maybe1(item)::out) is det.
+    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes0,
-        Condition, Context, SeqNum, MaybeItem) :-
+        Context, SeqNum, MaybeItem) :-
     get_is_solver_type(IsSolverType, Attributes0, Attributes),
     (
         IsSolverType = solver_type,
@@ -157,7 +151,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes0,
                 TypeDefn = parse_tree_du_type(Ctors, MaybeUserEqComp,
                     MaybeDirectArgIs),
                 ItemTypeDefn = item_type_defn_info(TypeVarSet, Name,
-                    Params, TypeDefn, Condition, Context, SeqNum),
+                    Params, TypeDefn, Context, SeqNum),
                 Item = item_type_defn(ItemTypeDefn),
                 MaybeItem0 = ok1(Item),
                 check_no_attributes(MaybeItem0, Attributes, MaybeItem)
@@ -537,11 +531,10 @@ find_constructor([H | T], SymName, Arity, Ctor) :-
     % parse_eqv_type_defn parses the definition of an equivalence type.
     %
 :- pred parse_eqv_type_defn(module_name::in, varset::in, term::in, term::in,
-    decl_attrs::in, condition::in, prog_context::in, int::in,
-    maybe1(item)::out) is det.
+    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes,
-        Condition, Context, SeqNum, MaybeItem) :-
+        Context, SeqNum, MaybeItem) :-
     parse_type_defn_head(ModuleName, VarSet, HeadTerm,
         MaybeNameAndParams),
     (
@@ -571,7 +564,7 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes,
                 varset.coerce(VarSet, TypeVarSet),
                 TypeDefn = parse_tree_eqv_type(Type),
                 ItemTypeDefn = item_type_defn_info(TypeVarSet, Name, Params,
-                    TypeDefn, Condition, Context, SeqNum),
+                    TypeDefn, Context, SeqNum),
                 Item = item_type_defn(ItemTypeDefn),
                 MaybeItem0 = ok1(Item),
                 check_no_attributes(MaybeItem0, Attributes, MaybeItem)
@@ -588,16 +581,16 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes,
     % This is either an abstract enumeration type, or a solver type.
     %
 :- pred parse_where_block_type_defn(module_name::in, varset::in, term::in,
-    term::in, decl_attrs::in, condition::in, prog_context::in, int::in,
+    term::in, decl_attrs::in, prog_context::in, int::in,
     maybe1(item)::out) is det.
 
 parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
-        Attributes0, Condition, Context, SeqNum, MaybeItem) :-
+        Attributes0, Context, SeqNum, MaybeItem) :-
     get_is_solver_type(IsSolverType, Attributes0, Attributes),
     (
         IsSolverType = non_solver_type,
         parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm,
-            BodyTerm, Condition, Context, SeqNum, MaybeItem)
+            BodyTerm, Context, SeqNum, MaybeItem)
     ;
         IsSolverType = solver_type,
         MaybeWhere = parse_type_decl_where_term(solver_type, ModuleName,
@@ -621,17 +614,16 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
                 MaybeDirectArgCtors = no,
                 parse_solver_type_base(ModuleName, VarSet, HeadTerm,
                     MaybeSolverTypeDetails, MaybeUserEqComp, Attributes,
-                    Condition, Context, SeqNum, MaybeItem)
+                    Context, SeqNum, MaybeItem)
             )
         )
     ).
 
 :- pred parse_where_type_is_abstract_enum(module_name::in, varset::in,
-    term::in, term::in, condition::in, prog_context::in, int::in,
-    maybe1(item)::out) is det.
+    term::in, term::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm, BodyTerm,
-        Condition, Context, SeqNum, MaybeItem) :-
+        Context, SeqNum, MaybeItem) :-
     parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeNameParams),
     (
         MaybeNameParams = error2(Specs),
@@ -650,7 +642,7 @@ parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm, BodyTerm,
                 TypeDefn = parse_tree_abstract_type(
                     abstract_enum_type(NumBits)),
                 ItemTypeDefn = item_type_defn_info(TypeVarSet, Name, Params,
-                    TypeDefn, Condition, Context, SeqNum),
+                    TypeDefn, Context, SeqNum),
                 Item = item_type_defn(ItemTypeDefn),
                 MaybeItem = ok1(Item)
             ;
@@ -671,11 +663,10 @@ parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm, BodyTerm,
 
 :- pred parse_solver_type_base(module_name::in, varset::in, term::in,
     maybe(solver_type_details)::in, maybe(unify_compare)::in,
-    decl_attrs::in, condition::in, prog_context::in, int::in,
-    maybe1(item)::out) is det.
+    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_solver_type_base(ModuleName, VarSet, HeadTerm,
-        MaybeSolverTypeDetails, MaybeUserEqComp, Attributes, Condition,
+        MaybeSolverTypeDetails, MaybeUserEqComp, Attributes,
         Context, SeqNum, MaybeItem) :-
     (
         MaybeSolverTypeDetails = yes(SolverTypeDetails),
@@ -703,7 +694,7 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
                 TypeDefn = parse_tree_solver_type(SolverTypeDetails,
                     MaybeUserEqComp),
                 ItemTypeDefn = item_type_defn_info(TypeVarSet, Name, Params,
-                    TypeDefn, Condition, Context, SeqNum),
+                    TypeDefn, Context, SeqNum),
                 Item = item_type_defn(ItemTypeDefn),
                 MaybeItem0 = ok1(Item),
                 check_no_attributes(MaybeItem0, Attributes, MaybeItem)
@@ -723,11 +714,10 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
 %
 
 :- pred parse_abstract_type_defn(module_name::in, varset::in, term::in,
-    decl_attrs::in, condition::in, prog_context::in, int::in,
-    maybe1(item)::out) is det.
+    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Attributes0,
-        Condition, Context, SeqNum, MaybeItem) :-
+        Context, SeqNum, MaybeItem) :-
     parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeTypeCtorAndArgs),
     get_is_solver_type(IsSolverType, Attributes0, Attributes),
     (
@@ -744,7 +734,7 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Attributes0,
             TypeDefn = parse_tree_abstract_type(abstract_solver_type)
         ),
         ItemTypeDefn = item_type_defn_info(TypeVarSet, Name, Params, TypeDefn,
-            Condition, Context, SeqNum),
+            Context, SeqNum),
         Item = item_type_defn(ItemTypeDefn),
         MaybeItem0 = ok1(Item),
         check_no_attributes(MaybeItem0, Attributes, MaybeItem)

@@ -758,8 +758,8 @@ insert_module_spec(Context, NewModuleSpec, [Head | Tail], Result) :-
 
 insert_type_defn(New, [], [New]).
 insert_type_defn(New, [Head | Tail], Result) :-
-    New = item_type_defn_info(_, NewSymName, NewParams, _, _, _, _),
-    Head = item_type_defn_info(_, HeadSymName, HeadParams, _, _, _, _),
+    New = item_type_defn_info(_, NewSymName, NewParams, _, _, _),
+    Head = item_type_defn_info(_, HeadSymName, HeadParams, _, _, _),
     compare(CompareSymName, NewSymName, HeadSymName),
     (
         (
@@ -940,7 +940,7 @@ strip_unnecessary_impl_types(NecessaryTypeCtors, !Items) :-
 
 is_not_unnecessary_impl_type(NecessaryTypeCtors, Item) :-
     ( Item = item_type_defn(ItemTypeDefn) ->
-        ItemTypeDefn = item_type_defn_info(_, SymName, Params, _, _, _, _),
+        ItemTypeDefn = item_type_defn_info(_, SymName, Params, _, _, _),
         TypeCtor = type_ctor(SymName, list.length(Params)),
         set.member(TypeCtor, NecessaryTypeCtors)
     ;
@@ -1180,7 +1180,7 @@ gather_type_defns_2(!.InInterface, [Item | Items],
     ;
         Item = item_type_defn(ItemTypeDefn)
     ->
-        ItemTypeDefn = item_type_defn_info(_, Name, Args, Body, _, _, _),
+        ItemTypeDefn = item_type_defn_info(_, Name, Args, Body, _, _),
         TypeCtor = type_ctor(Name, length(Args)),
         (
             !.InInterface = yes,

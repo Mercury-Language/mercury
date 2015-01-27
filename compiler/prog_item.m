@@ -141,7 +141,6 @@
                 td_ctor_name                    :: sym_name,
                 td_ctor_args                    :: list(type_param),
                 td_ctor_defn                    :: type_defn,
-                td_cond                         :: condition,
                 td_context                      :: prog_context,
                 td_seq_num                      :: int
             ).
@@ -154,7 +153,6 @@
                 id_inst_name                    :: sym_name,
                 id_inst_args                    :: list(inst_var),
                 id_inst_defn                    :: inst_defn,
-                id_cond                         :: condition,
                 id_context                      :: prog_context,
                 id_seq_num                      :: int
             ).
@@ -167,7 +165,6 @@
                 md_mode_name                    :: sym_name,
                 md_mode_args                    :: list(inst_var),
                 md_mode_defn                    :: mode_defn,
-                md_cond                         :: condition,
                 md_context                      :: prog_context,
                 md_seq_num                      :: int
             ).
@@ -192,7 +189,6 @@
                 pf_maybe_with_type              :: maybe(mer_type),
                 pf_maybe_with_inst              :: maybe(mer_inst),
                 pf_maybe_detism                 :: maybe(determinism),
-                pf_cond                         :: condition,
                 pf_purity                       :: purity,
                 pf_constraints                  :: prog_constraints,
                 pf_context                      :: prog_context,
@@ -212,7 +208,6 @@
                 % then set the field to `no'.
                 pfm_maybe_with_inst             :: maybe(mer_inst),
                 pfm_maybe_detism                :: maybe(determinism),
-                pfm_cond                        :: condition,
                 pfm_context                     :: prog_context,
                 pfm_seq_num                     :: int
             ).
@@ -345,7 +340,6 @@
                 maybe(mer_type),    % any `with_type` annotation
                 maybe(mer_inst),    % any `with_inst` annotation
                 maybe(determinism), % any determinism declaration
-                condition,          % any attached declaration
                 purity,             % any purity annotation
                 prog_constraints,   % the typeclass constraints on
                                     % the declaration
@@ -367,7 +361,6 @@
                 list(mer_mode),     % the arguments' modes
                 maybe(mer_inst),    % any `with_inst` annotation
                 maybe(determinism), % any determinism declaration
-                condition,          % any attached condition
                 prog_context        % the declaration's context
             ).
 
