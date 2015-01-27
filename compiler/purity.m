@@ -328,9 +328,17 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
         PredSpecs = [Spec | GoalSpecs]
     ;
         PurityCheckResult = unnecessary_promise_pure,
-        Spec = warn_unnecessary_promise_pure(ModuleInfo, !.PredInfo, PredId,
-            PromisedPurity),
-        PredSpecs = [Spec | GoalSpecs]
+        pred_info_get_origin(!.PredInfo, Origin),
+        ( Origin = origin_mutable(_, _, _) ->
+            % Work around a temporary inconsistency; on some backends,
+            % we still generate promise_pure pragmas for some mutable access
+            % predicates even though their bodies are now generated pure.
+            PredSpecs = GoalSpecs
+        ;
+            Spec = warn_unnecessary_promise_pure(ModuleInfo, !.PredInfo,
+                PredId, PromisedPurity),
+            PredSpecs = [Spec | GoalSpecs]
+        )
     ;
         PurityCheckResult = no_worries,
         PredSpecs = GoalSpecs
