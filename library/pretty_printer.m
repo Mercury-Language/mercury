@@ -17,9 +17,9 @@
 % forming groups, indented blocks, and arbitrary values.
 %
 % The key feature of the algorithm is this: newlines in a group are ignored if
-% the group can fit on the remainder of the current line.  [The algorithm is
+% the group can fit on the remainder of the current line. (The algorithm is
 % similar to those of Oppen and Wadler, although it uses neither coroutines or
-% laziness.]
+% laziness.)
 %
 % When a newline is printed, indentation is also output according to the
 % current indentation level.
@@ -30,14 +30,15 @@
 %
 % The pretty printer takes a parameter specifying a collection of user-defined
 % formatting functions for handling certain types rather than using the
-% default built-in mechanism.  This allows one to, say, format maps as
+% default built-in mechanism. This allows one to, say, format maps as
 % sequences of (key -> value) pairs rather than exposing the underlying
 % 234-tree structure.
 %
-% The amount of output produced is controlled via limit parameters.  Three
-% kinds of limits are supported: the output line width, the maximum number of
-% lines to be output, and a limit on the depth for formatting arbitrary terms.
-% Output is replaced with ellipsis ("...") when limits are exceeded.
+% The amount of output produced is controlled via limit parameters.
+% Three kinds of limits are supported: the output line width, the maximum
+% number of lines to be output, and a limit on the depth for formatting
+% arbitrary terms. Output is replaced with ellipsis ("...") when a limit
+% has been exceeded.
 %
 %---------------------------------------------------------------------------%
 
@@ -97,8 +98,8 @@
 
 :- type docs == list(doc).
 
-    % This type is private to the implementation. It cannot be exploited by
-    % user code.
+    % This type is private to the implementation. It cannot be exploited
+    % by user code.
     %
 :- type pp_internal.
 
@@ -145,8 +146,8 @@
     % formatting X2, ..., and triangular(N - n) when formatting Xn.
     % The cost of formatting the term t(X1, ..., Xn) as a whole is just one,
     % so a sequence of terms T1, T2, ... is formatted with limits
-    % triangular(N), triangular(N - 1), ... respectively.  When the
-    % limit is exhausted, terms are output as just "...".
+    % triangular(N), triangular(N - 1), ... respectively. When the limit
+    % is exhausted, terms are output as just "...".
     %
 :- type formatting_limit
     --->    linear(int)                 % Print this many functors.
@@ -160,7 +161,7 @@
     %
 :- type formatter == ( func(univ, list(type_desc)) = doc ).
 
-    % A formatter_map maps types to pps.  Types are identified by module name,
+    % A formatter_map maps types to pps. Types are identified by module name,
     % type name, and type arity.
     %
 :- type formatter_map.
@@ -193,7 +194,7 @@
 :- mode write_doc_to_stream(in, in(include_details_cc), in, in, in, in, in,
     di, uo) is cc_multi.
 
-    % Convenience predicates.  A user-configurable set of type-specific
+    % Convenience predicates. A user-configurable set of type-specific
     % formatters and formatting parameters are attached to the I/O state.
     % The I/O state-specific format predicate below uses this settings.
     %
@@ -290,12 +291,12 @@ set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0) = FMap :-
     ( if FMap0 ^ elem(ModuleName) = FMap0_Type_Arity then
         ( if FMap0_Type_Arity ^ elem(TypeName) = FMap0_Arity then
             FMap_Arity = FMap0_Arity ^ elem(Arity) := Formatter
-          else
+        else
             FMap_Arity = map.init ^ elem(Arity) := Formatter
         ),
         FMap_Type_Arity = FMap0_Type_Arity ^ elem(TypeName) := FMap_Arity,
         FMap = FMap0 ^ elem(ModuleName) := FMap_Type_Arity
-      else
+    else
         FMap_Arity = map.init ^ elem(Arity) := Formatter,
         FMap_Type_Arity = map.init ^ elem(TypeName) := FMap_Arity,
         FMap = FMap0 ^ elem(ModuleName) := FMap_Type_Arity
@@ -376,7 +377,7 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO) :-
     ( if !.RemainingLines =< 0 then
         stream.put(Stream, "...", !IO)
-      else
+    else
         (
             % Output strings directly.
             %
@@ -391,10 +392,10 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
                 F = ( func(S, W) = string.count_codepoints(S) + W ),
                 IndentWidth = list.foldl(F, !.Indents, 0),
                 !.RemainingWidth < LineWidth - IndentWidth
-              then
+            then
                 format_nl(Stream, LineWidth, !.Indents, !:RemainingWidth,
                     !RemainingLines, !IO)
-              else
+            else
                 true
             ),
             Docs = Docs0
@@ -448,7 +449,7 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
             ( if RemainingWidthAfterGroup >= 0 then
                 output_current_group(Stream, LineWidth, !.Indents, OpenGroups,
                     Docs1, Docs, !RemainingWidth, !RemainingLines, !IO)
-              else
+            else
                 Docs = Docs1
             )
         ;
@@ -484,26 +485,26 @@ output_current_group(Stream, LineWidth, Indents, OpenGroups,
         !:RemainingWidth = !.RemainingWidth - string.count_codepoints(String),
         output_current_group(Stream, LineWidth, Indents, OpenGroups,
             Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
-      else if Doc = hard_nl then
+    else if Doc = hard_nl then
         format_nl(Stream, LineWidth, Indents, !:RemainingWidth,
             !RemainingLines, !IO),
         ( if !.RemainingLines =< 0 then
             Docs = Docs0
-          else
+        else
             output_current_group(Stream, LineWidth, Indents, OpenGroups,
                 Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
         )
-      else if Doc = pp_internal(open_group) then
+    else if Doc = pp_internal(open_group) then
         output_current_group(Stream, LineWidth, Indents, OpenGroups + 1,
             Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
-      else if Doc = pp_internal(close_group) then
+    else if Doc = pp_internal(close_group) then
         ( if OpenGroups = 1 then
             Docs = Docs0
-          else
+        else
             output_current_group(Stream, LineWidth, Indents, OpenGroups - 1,
                 Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
         )
-      else
+    else
         output_current_group(Stream, LineWidth, Indents, OpenGroups,
             Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
     ).
@@ -542,9 +543,9 @@ expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
             % We have run out of space on this line: the current open
             % group will not fit.
         )
-      then
+    then
         Docs = [Doc | Docs0]
-      else
+    else
         (
             Doc = str(String),
             !:RemainingWidth = !.RemainingWidth -
@@ -556,7 +557,7 @@ expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
             ( Doc = nl ; Doc = hard_nl ),
             ( if OpenGroups =< 0 then
                 Docs = [Doc | Docs0]
-              else
+            else
                 Docs = [Doc | Docs1],
                 expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
                     !Limit, !Pri, !RemainingWidth)
@@ -659,20 +660,20 @@ output_indentation(Stream, [Indent | Indents], !RemainingWidth, !IO) :-
 expand_pp(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
     ( if
         limit_overrun(!.Limit)
-      then
+    then
         Doc = ellipsis
-      else if
+    else if
         Value = univ_value(Univ),
         type_ctor_and_args(type_of(Value), TypeCtorDesc, ArgTypeDescs),
         ModuleName = type_ctor_module_name(TypeCtorDesc),
         TypeName = type_ctor_name(TypeCtorDesc),
         Arity = list.length(ArgTypeDescs),
         get_formatter(FMap, ModuleName, TypeName, Arity, Formatter)
-      then
+    then
         decrement_limit(!Limit),
         Doc = set_formatting_limit_correctly(!.Limit,
             Formatter(Univ, ArgTypeDescs))
-      else
+    else
         deconstruct(univ_value(Univ), Canonicalize, Name, _Arity, Args),
         expand_format_term(Name, Args, Doc, !Limit, CurrentPri)
     ).
@@ -689,7 +690,7 @@ expand_format_list([], _Sep, docs([]), !Limit).
 expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
     ( if limit_overrun(!.Limit) then
         Doc = ellipsis
-      else
+    else
         (
             Univs = [],
             Doc = format_arg(group([nl, format_univ(Univ)]))
@@ -708,21 +709,20 @@ expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
     % term syntax.
     %
 :- pred expand_format_term(string::in, list(univ)::in, doc::out,
-        formatting_limit::in, formatting_limit::out, ops.priority::in)
-        is det.
+    formatting_limit::in, formatting_limit::out, ops.priority::in) is det.
 
 expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
     ( if Args = [] then
         Doc0 = str(term_io.quoted_atom(Name))
-      else if limit_overrun(!.Limit) then
+    else if limit_overrun(!.Limit) then
         Doc0 = ellipsis
-      else if expand_format_op(Name, Args, CurrentPri, OpDoc) then
+    else if expand_format_op(Name, Args, CurrentPri, OpDoc) then
         Doc0 = OpDoc
-      else if Name = "{}" then
+    else if Name = "{}" then
         Doc0 = docs([
             str("{"), indent([format_list(Args, str(", "))]), str("}")
         ])
-      else
+    else
         Doc0 = group([
             nl,
             str(term_io.quoted_atom(Name)),
@@ -740,7 +740,7 @@ expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
 expand_format_susp(Susp, Doc, !Limit) :-
     ( if limit_overrun(!.Limit) then
         Doc = ellipsis
-      else
+    else
         decrement_limit(!Limit),
         Doc = set_formatting_limit_correctly(!.Limit, apply(Susp))
     ).
@@ -762,7 +762,7 @@ expand_format_op(Op, [Arg], CurrentPri, Docs) :-
                 format_univ(Arg)
             ]),
         Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
-      else
+    else
         ops.lookup_postfix_op(ops.init_mercury_op_table, Op, OpPri, Assoc),
         Doc =
             group([
@@ -772,19 +772,18 @@ expand_format_op(Op, [Arg], CurrentPri, Docs) :-
             ]),
         Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
     ).
-
 expand_format_op(Op, [ArgA, ArgB], CurrentPri, Docs) :-
     ( if
         ops.lookup_infix_op(ops.init_mercury_op_table, Op, OpPri, AssocA,
             AssocB)
-      then
+    then
         Doc =
             group([
                 pp_internal(set_op_priority(adjust_priority(OpPri, AssocA))),
                 format_univ(ArgA),
                 ( if Op = "." then
                     str(Op)
-                  else
+                else
                     docs([str(" "), str(Op), str(" ")])
                 ),
                 indent([
@@ -795,7 +794,7 @@ expand_format_op(Op, [ArgA, ArgB], CurrentPri, Docs) :-
                 ])
             ]),
         Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
-      else
+    else
         ops.lookup_binary_prefix_op(ops.init_mercury_op_table, Op, OpPri,
             AssocA, AssocB),
         Doc =
@@ -833,7 +832,7 @@ set_formatting_limit_correctly(Limit @ triangular(_), Doc0) =
 add_parens_if_needed(OpPriority, EnclosingPriority, Doc) =
     ( if OpPriority > EnclosingPriority then
         docs([str("("), Doc, str(")")])
-      else
+    else
         Doc
     ).
 
@@ -915,33 +914,32 @@ decrement_limit(triangular(N), triangular(N - 1)).
 
 %---------------------------------------------------------------------------%
 
-:- pred pretty_printer_is_initialised(bool::out, io::di, io::uo)
-        is det.
+:- pred pretty_printer_is_initialised(bool::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-        pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe],
+    pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe],
 "
     Okay = ML_pretty_printer_is_initialised;
 ").
 
 :- pragma foreign_proc("C#",
-        pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+    pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     Okay = pretty_printer.isInitialised;
 ").
 
 :- pragma foreign_proc("Java",
-        pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+    pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     Okay = pretty_printer.isInitialised;
 ").
 
 :- pragma foreign_proc("Erlang",
-        pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+    pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     'ML_erlang_global_server' !
         {get_mutable, pretty_printer_is_initialised, self()},
@@ -958,32 +956,32 @@ decrement_limit(triangular(N), triangular(N - 1)).
     % least once.
     %
 :- pred unsafe_get_default_formatter_map(formatter_map::out, io::di, io::uo)
-        is det.
+    is det.
 
 :- pragma foreign_proc("C",
-        unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe],
+    unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe],
 "
     FMap = ML_pretty_printer_default_formatter_map;
 ").
 
 :- pragma foreign_proc("C#",
-        unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+    unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     FMap = pretty_printer.defaultFormatterMap;
 ").
 
 :- pragma foreign_proc("Java",
-        unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+    unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     FMap = pretty_printer.defaultFormatterMap;
 ").
 
 :- pragma foreign_proc("Erlang",
-        unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+    unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     'ML_erlang_global_server' !
         {get_mutable, pretty_printer_default_formatter_map, self()},
@@ -1008,32 +1006,32 @@ get_default_formatter_map(FMap, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-        set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury],
+    set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
 "
     ML_pretty_printer_default_formatter_map = FMap;
     ML_pretty_printer_is_initialised = MR_TRUE;
 ").
 
 :- pragma foreign_proc("C#",
-        set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, may_not_duplicate],
+    set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, may_not_duplicate],
 "
     pretty_printer.isInitialised = mr_bool.YES;
     pretty_printer.defaultFormatterMap = FMap;
 ").
 
 :- pragma foreign_proc("Java",
-        set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, may_not_duplicate],
+    set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, may_not_duplicate],
 "
     pretty_printer.isInitialised = bool.YES;
     pretty_printer.defaultFormatterMap = FMap;
 ").
 
 :- pragma foreign_proc("Erlang",
-        set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+    set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
     'ML_erlang_global_server' !
         {set_mutable, pretty_printer_is_initialised, {yes}},
@@ -1135,9 +1133,9 @@ fmt_array(Univ, ArgDescs) =
         has_type(_Arg : T, ArgDesc),
         Value = univ_value(Univ),
         dynamic_cast(Value, X : array(T))
-      then
+    then
         array_to_doc(X)
-      else
+    else
         str("?array?")
     ).
 
@@ -1151,9 +1149,9 @@ fmt_version_array(Univ, ArgDescs) =
         has_type(_Arg : T, ArgDesc),
         Value = univ_value(Univ),
         dynamic_cast(Value, X : version_array(T))
-      then
+    then
         version_array_to_doc(X)
-      else
+    else
         str("?version_array?")
     ).
 
@@ -1167,9 +1165,9 @@ fmt_list(Univ, ArgDescs) =
         has_type(_Arg : T, ArgDesc),
         Value = univ_value(Univ),
         dynamic_cast(Value, X : list(T))
-      then
+    then
         list_to_doc(X)
-      else
+    else
         str("?list?")
     ).
 
@@ -1184,9 +1182,9 @@ fmt_tree234(Univ, ArgDescs) =
         has_type(_ArgB : V, ArgDescB),
         Value = univ_value(Univ),
         dynamic_cast(Value, X : tree234(K, V))
-      then
+    then
         tree234_to_doc(X)
-      else
+    else
         str("?tree234?")
     ).
 
