@@ -988,19 +988,47 @@ write_arg_tabling_methods(Prefix, [MaybeMethod | MaybeMethods], !IO) :-
 write_preds(Info, Lang, Indent, ModuleInfo, PredTable, !IO) :-
     io.write_string("%-------- Predicates --------\n\n", !IO),
     write_indent(Indent, !IO),
-    map.keys(PredTable, PredIds),
-    list.foldl(maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredTable),
-        PredIds, !IO).
+    map.to_assoc_list(PredTable, PredIdsInfos),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, dump_hlds_pred_name_order,
+        NameOrder),
+    (
+        NameOrder = no,
+        PrintPredIdsInfos = PredIdsInfos
+    ;
+        NameOrder = yes,
+        list.sort(compare_in_name_order, PredIdsInfos, PrintPredIdsInfos)
+    ),
+    list.foldl(maybe_write_pred(Info, Lang, Indent, ModuleInfo),
+        PrintPredIdsInfos, !IO).
+
+:- pred compare_in_name_order(
+    pair(pred_id, pred_info)::in,
+    pair(pred_id, pred_info)::in,
+    comparison_result::out) is det.
+
+compare_in_name_order(PredIdA - PredInfoA, PredIdB - PredInfoB, Result) :-
+    pred_info_get_name(PredInfoA, PredNameA),
+    pred_info_get_name(PredInfoB, PredNameB),
+    compare(NameResult, PredNameA, PredNameB),
+    (
+        ( NameResult = (<)
+        ; NameResult = (>)
+        ),
+        Result = NameResult
+    ;
+        NameResult = (=),
+        compare(Result, PredIdA, PredIdB)
+    ).
 
 :- pred maybe_write_pred(hlds_out_info::in, output_lang::in, int::in,
-    module_info::in, pred_table::in, pred_id::in, io::di, io::uo) is det.
+    module_info::in, pair(pred_id, pred_info)::in, io::di, io::uo) is det.
 
-maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredTable, PredId, !IO) :-
+maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredId - PredInfo, !IO) :-
     DumpOptions = Info ^ hoi_dump_hlds_options,
     DumpPredIdStrs = Info ^ hoi_dump_hlds_pred_ids,
     DumpPredNames = Info ^ hoi_dump_hlds_pred_names,
     pred_id_to_int(PredId, PredIdInt),
-    map.lookup(PredTable, PredId, PredInfo),
     (
         % If the user requested one or more predicates/functions to be dumped,
         % we dump them even if the condition of the nested if-then-else below
