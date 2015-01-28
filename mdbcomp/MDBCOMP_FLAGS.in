@@ -1,5 +1,7 @@
 @BOOTSTRAP_MC_ARGS@
 --no-infer-all
+--warn-known-bad-format-calls
+--warn-unknown-format-calls
 --halt-at-warn
 --no-warn-inferred-erroneous
 --no-mercury-stdlib-dir

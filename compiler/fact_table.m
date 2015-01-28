@@ -2630,7 +2630,7 @@ generate_hash_code([pragma_var(_, Name, Mode, _) | PragmaVars], [Type | Types],
 
 generate_hash_int_code(Name, LabelName, LabelNum, PredName, PragmaVars,
         Types, ModuleInfo, ArgNum, FactTableSize, C_Code) :-
-    generate_hash_lookup_code(Name, LabelName, LabelNum, "%s == %s", 'i',
+    generate_hash_lookup_code(Name, LabelName, LabelNum, plain_equals, 'i',
         yes, PredName, PragmaVars, Types, ModuleInfo, ArgNum,
         FactTableSize, HashLookupCode),
     C_Code_Template = "
@@ -2657,7 +2657,7 @@ generate_hash_int_code(Name, LabelName, LabelNum, PredName, PragmaVars,
 
 generate_hash_float_code(Name, LabelName, LabelNum, PredName, PragmaVars,
         Types, ModuleInfo, ArgNum, FactTableSize, C_Code) :-
-    generate_hash_lookup_code(Name, LabelName, LabelNum, "%s == %s", 'f',
+    generate_hash_lookup_code(Name, LabelName, LabelNum, plain_equals, 'f',
         yes, PredName, PragmaVars, Types, ModuleInfo, ArgNum,
         FactTableSize, HashLookupCode),
     C_Code_Template = "
@@ -2686,7 +2686,7 @@ generate_hash_float_code(Name, LabelName, LabelNum, PredName, PragmaVars,
 generate_hash_string_code(Name, LabelName, LabelNum, PredName, PragmaVars,
         Types, ModuleInfo, ArgNum, FactTableSize, C_Code) :-
     generate_hash_lookup_code(Name, LabelName, LabelNum,
-        "strcmp(%s, %s) == 0", 's', yes, PredName, PragmaVars,
+        string_equals, 's', yes, PredName, PragmaVars,
         Types, ModuleInfo, ArgNum, FactTableSize, HashLookupCode),
     C_Code_Template = "
 
@@ -2710,24 +2710,35 @@ generate_hash_string_code(Name, LabelName, LabelNum, PredName, PragmaVars,
     string.format(C_Code_Template, [s(Name), s(Name), s(HashLookupCode)],
         C_Code).
 
+:- type comparison_kind
+    --->    plain_equals
+    ;       string_equals.
+
     % Generate code to lookup the key in the hash table.
     % KeyType should be 's', 'i' or 'f' for string, int or float,
     % respectively.  CompareTemplate should be a template for testing for
     % equality for the type given, e.g. "%s == %s" for ints,
     % "strcmp(%s, %s) == 0" for strings.
     %
-:- pred generate_hash_lookup_code(string::in, string::in, int::in, string::in,
-    char::in, bool::in, string::in, list(pragma_var)::in,
+:- pred generate_hash_lookup_code(string::in, string::in, int::in,
+    comparison_kind::in, char::in, bool::in, string::in, list(pragma_var)::in,
     list(mer_type)::in, module_info::in, int::in, int::in, string::out) is det.
 
-generate_hash_lookup_code(VarName, LabelName, LabelNum, CompareTemplate,
+generate_hash_lookup_code(VarName, LabelName, LabelNum, ComparisonKind,
         KeyType, CheckKeys, PredName, PragmaVars, Types,
         ModuleInfo, ArgNum, FactTableSize, HashLookupCode) :-
     string.format("((struct MR_fact_table_hash_table_%c *) current_table)"
         ++ "->table[hashval]", [c(KeyType)], HashTableEntry),
     string.append(HashTableEntry, ".key", HashTableKey),
-    string.format(CompareTemplate, [s(HashTableKey), s(VarName)],
-        CompareString),
+    (
+        ComparisonKind = plain_equals,
+        string.format("%s == %s", [s(HashTableKey), s(VarName)],
+            CompareString)
+    ;
+        ComparisonKind = string_equals,
+        string.format("strcmp(%s, %s) == 0", [s(HashTableKey), s(VarName)],
+            CompareString)
+    ),
 
     HashLookupCodeTemplate = "
 
@@ -3101,13 +3112,14 @@ generate_test_condition_code(FactTableName, [PragmaVar | PragmaVars],
     PragmaVar = pragma_var(_, Name, Mode, _),
     ( mode_is_fully_input(ModuleInfo, Mode) ->
         ( Type = builtin_type(builtin_type_string) ->
-            Template =
-                "strcmp(%s[ind/%d][ind%%%d].V_%d, %s) != 0\n"
+            Template = "strcmp(%s[ind/%d][ind%%%d].V_%d, %s) != 0\n",
+            string.format(Template, [s(FactTableName), i(FactTableSize),
+                i(FactTableSize), i(ArgNum), s(Name)], CondCode0)
         ;
-            Template = "%s[ind/%d][ind%%%d].V_%d != %s\n"
+            Template = "%s[ind/%d][ind%%%d].V_%d != %s\n",
+            string.format(Template, [s(FactTableName), i(FactTableSize),
+                i(FactTableSize), i(ArgNum), s(Name)], CondCode0)
         ),
-        string.format(Template, [s(FactTableName), i(FactTableSize),
-            i(FactTableSize), i(ArgNum), s(Name)], CondCode0),
         (
             !.IsFirstInputArg = no,
             CondCode1 = "\t\t|| " ++ CondCode0
@@ -3227,12 +3239,12 @@ void mercury_sys_init_%s_module(void) {
         PredName, 1, FactTableSize, HashCode),
 
     generate_hash_lookup_code("(char *) MR_framevar(4)", LabelName2, 0,
-        "strcmp(%s, %s) == 0", 's', no, "", [], [], ModuleInfo, 0, 0,
+        string_equals, 's', no, "", [], [], ModuleInfo, 0, 0,
         StringHashLookupCode),
-    generate_hash_lookup_code("MR_framevar(4)", LabelName2, 1, "%s == %s",
+    generate_hash_lookup_code("MR_framevar(4)", LabelName2, 1, plain_equals,
         'i', no, "", [], [], ModuleInfo, 0, 0, IntHashLookupCode),
     generate_hash_lookup_code("MR_word_to_float(MR_framevar(4))",
-        LabelName2, 2, "%s == %s", 'f', no, "", [], [], ModuleInfo,
+        LabelName2, 2, plain_equals, 'f', no, "", [], [], ModuleInfo,
         0, 0, FloatHashLookupCode),
     generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, ModuleInfo, 1,
         FactTableSize, FactLookupCode),

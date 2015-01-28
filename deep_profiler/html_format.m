@@ -799,13 +799,15 @@ link_to_html(FormatInfo, Link) = HTML :-
     deep_cmd_to_url(FormatInfo, Cmd, MaybePrefs, URL),
     (
         Class = link_class_control,
-        FormatString = "<a class=\"control\" href=\"%s\">[%s]</a>"
+        FormatString = "<a class=\"control\" href=\"%s\">[%s]</a>",
+        string.format(FormatString,
+            [s(URL), s(escape_break_html_attr_string(Label))], HTMLStr)
     ;
         Class = link_class_link,
-        FormatString = "<a class=\"link\" href=\"%s\">%s</a>"
+        FormatString = "<a class=\"link\" href=\"%s\">%s</a>",
+        string.format(FormatString,
+            [s(URL), s(escape_break_html_attr_string(Label))], HTMLStr)
     ),
-    string.format(FormatString,
-        [s(URL), s(escape_break_html_attr_string(Label))], HTMLStr),
     HTML = str_to_html(HTMLStr).
 
     % Transform a pseudo link into HTML.
@@ -817,13 +819,11 @@ pseudo_link_to_html(_FormatInfo, PseudoLink) = HTML :-
     PseudoLink = pseudo_link(Label, Class),
     (
         Class = link_class_control,
-        FormatString = "[%s]"
+        HTMLStr = "[" ++ escape_break_html_string(Label) ++ "]"
     ;
         Class = link_class_link,
-        FormatString = "%s"
+        HTMLStr = escape_break_html_string(Label)
     ),
-    string.format(FormatString,
-        [s(escape_break_html_string(Label))], HTMLStr),
     HTML = str_to_html(HTMLStr).
 
 %-----------------------------------------------------------------------------%

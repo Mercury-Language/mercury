@@ -54,6 +54,11 @@ MCFLAGS-transform_hlds = --no-warn-unused-imports
 MCFLAGS-transform_hlds.ctgc.structure_reuse = --no-warn-unused-imports
 MCFLAGS-transform_hlds.ctgc.structure_sharing = --no-warn-unused-imports
 
+# These modules provide general-purpose wrappers around string.format
+# in which the format strings are known only by their callers.
+MCFLAGS-transform_hlds.pd_debug = --no-warn-unknown-format-calls
+MCFLAGS-parse_tree.mercury_to_mercury  = --no-warn-unknown-format-calls
+
 # Bug workarounds
 
 # This works around bug 48 in Mantis.

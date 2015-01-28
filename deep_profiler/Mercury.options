@@ -9,6 +9,7 @@
 MCFLAGS-array_util = --trace minimum
 MCFLAGS-cliques = --trace minimum
 MCFLAGS-read_profile = --trace minimum
+MCFLAGS-measurement_units = --no-warn-unknown-format-calls
 
 # Uncomment this to debug the automatic parallelism code.
 #MCFLAGS-branch_and_bound = \

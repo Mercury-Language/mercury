@@ -51,6 +51,7 @@ MGNUCFLAGS-io  += --no-ansi
 # varset.trans_opt includes the relevant part of string.opt.
 MCFLAGS-io     += --no-warn-unknown-format-calls
 MCFLAGS-stream += --no-warn-unknown-format-calls
+MCFLAGS-stream.string_writer += --no-warn-unknown-format-calls
 MCFLAGS-string += --no-warn-unknown-format-calls
 
 MCFLAGS-erlang_builtin += --no-warn-nothing-exported

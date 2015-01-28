@@ -170,7 +170,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Memory
+% Memory.
 %
 
 :- type memory
@@ -337,7 +337,7 @@ decimal_fraction(Format, Measure) = Representation :-
     ->
         add_commas_intstr(WholeString, Representation)
     ;
-        error("decimal_fraction: Didn't split on decimal point properly")
+        unexpected($module, $pred, "didn't split on decimal point properly")
     ).
 
 one_decimal_fraction(Measure) = decimal_fraction("%.1f", Measure).
