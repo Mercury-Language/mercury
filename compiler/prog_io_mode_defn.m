@@ -137,8 +137,8 @@ parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                     varset.coerce(VarSet, InstVarSet),
                     list.map(term.coerce_var, Args, InstArgs),
                     InstDefn = eqv_inst(Inst),
-                    ItemInstDefn = item_inst_defn_info(InstVarSet, Name,
-                        InstArgs, InstDefn, Context, SeqNum),
+                    ItemInstDefn = item_inst_defn_info(Name, InstArgs,
+                        InstDefn, InstVarSet, Context, SeqNum),
                     Item = item_inst_defn(ItemInstDefn),
                     MaybeItem = ok1(Item)
                 ;
@@ -194,8 +194,8 @@ parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
                 varset.coerce(VarSet, InstVarSet),
                 list.map(term.coerce_var, Args, InstArgs),
                 InstDefn = abstract_inst,
-                ItemInstDefn = item_inst_defn_info(InstVarSet, Name,
-                    InstArgs, InstDefn, Context, SeqNum),
+                ItemInstDefn = item_inst_defn_info(Name, InstArgs, InstDefn,
+                    InstVarSet, Context, SeqNum),
                 Item = item_inst_defn(ItemInstDefn),
                 MaybeItem = ok1(Item)
             )
@@ -263,8 +263,8 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                     varset.coerce(VarSet, InstVarSet),
                     list.map(term.coerce_var, Args, ModeArgs),
                     ModeDefn = eqv_mode(Mode),
-                    ItemModeDefn = item_mode_defn_info(InstVarSet, Name,
-                        ModeArgs, ModeDefn, Context, SeqNum),
+                    ItemModeDefn = item_mode_defn_info(Name, ModeArgs,
+                        ModeDefn, InstVarSet, Context, SeqNum),
                     Item = item_mode_defn(ItemModeDefn),
                     MaybeItem = ok1(Item)
                 ;

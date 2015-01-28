@@ -132,9 +132,8 @@ parse_clause(ModuleName, HeadTerm, BodyTerm0, ProgVarSet0, Context,
                 MaybeFunctor = ok2(Name, ArgTerms0),
                 list.map(term.coerce, ArgTerms0 ++ [FuncResultTerm],
                     ProgArgTerms),
-                ItemClause = item_clause_info(item_origin_user, ProgVarSet,
-                    pf_function, Name, ProgArgTerms, BodyGoal,
-                    Context, SeqNum),
+                ItemClause = item_clause_info(Name, pf_function, ProgArgTerms,
+                    item_origin_user, ProgVarSet, BodyGoal, Context, SeqNum),
                 Item = item_clause(ItemClause),
                 MaybeItem = ok1(Item)
             ;
@@ -148,9 +147,8 @@ parse_clause(ModuleName, HeadTerm, BodyTerm0, ProgVarSet0, Context,
             (
                 MaybeFunctor = ok2(Name, ArgTerms),
                 list.map(term.coerce, ArgTerms, ProgArgTerms),
-                ItemClause = item_clause_info(item_origin_user, ProgVarSet,
-                    pf_predicate, Name, ProgArgTerms, BodyGoal,
-                    Context, SeqNum),
+                ItemClause = item_clause_info(Name, pf_predicate, ProgArgTerms,
+                    item_origin_user, ProgVarSet, BodyGoal, Context, SeqNum),
                 Item = item_clause(ItemClause),
                 MaybeItem = ok1(Item)
             ;
@@ -623,9 +621,9 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                         varset.coerce(VarSet, TVarSet),
                         varset.coerce(VarSet, IVarSet),
                         Origin = item_origin_user,
-                        ItemPredDecl = item_pred_decl_info(Origin,
-                            TVarSet, IVarSet, ExistQVars, PredOrFunc,
-                            Functor, Args, WithType, WithInst, MaybeDet,
+                        ItemPredDecl = item_pred_decl_info(Functor, PredOrFunc,
+                            Args, WithType, WithInst, MaybeDet, Origin,
+                            TVarSet, IVarSet, ExistQVars,
                             Purity, Constraints, Context, SeqNum),
                         Item = item_pred_decl(ItemPredDecl),
                         MaybeItem0 = ok1(Item),
@@ -756,7 +754,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Attributes0, Context,
     prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
-        VarSet, MaybeDet, ExistQVars, Constraints, Attributes0,
+        VarSet, MaybeDetism, ExistQVars, Constraints, Attributes0,
         Context, SeqNum, MaybeItem) :-
     (
         type_and_mode_list_is_consistent(Args)
@@ -808,9 +806,9 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
         AllArgs = Args ++ [ReturnArg],
         ( inst_var_constraints_types_modes_self_consistent(AllArgs) ->
             Origin = item_origin_user,
-            ItemPredDecl = item_pred_decl_info(Origin, TVarSet, IVarSet,
-                ExistQVars, pf_function, FuncName, AllArgs, no, no,
-                MaybeDet, Purity, Constraints, Context, SeqNum),
+            ItemPredDecl = item_pred_decl_info(FuncName, pf_function, AllArgs,
+                no, no, MaybeDetism, Origin, TVarSet, IVarSet, ExistQVars,
+                Purity, Constraints, Context, SeqNum),
             Item = item_pred_decl(ItemPredDecl),
             MaybeItem0 = ok1(Item),
             check_no_attributes(MaybeItem0, Attributes, MaybeItem)
@@ -968,19 +966,20 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
             MaybeConstraints = ok3(_, _, InstConstraints),
             list.map(constrain_inst_vars_in_mode_sub(InstConstraints),
                 ArgModes0, ArgModes),
-            varset.coerce(VarSet, ProgVarSet),
+            varset.coerce(VarSet, InstVarSet),
             ( inst_var_constraints_are_self_consistent_in_modes(ArgModes) ->
                 (
                     WithInst = no,
-                    PredOrFunc = yes(pf_predicate)
+                    MaybePredOrFunc = yes(pf_predicate)
                 ;
                     WithInst = yes(_),
                     % We don't know whether it's a predicate or a function
                     % until we expand out the inst.
-                    PredOrFunc = no
+                    MaybePredOrFunc = no
                 ),
-                ItemModeDecl = item_mode_decl_info(ProgVarSet, PredOrFunc,
-                    Functor, ArgModes, WithInst, MaybeDet, Context, SeqNum),
+                ItemModeDecl = item_mode_decl_info(Functor, MaybePredOrFunc,
+                    ArgModes, WithInst, MaybeDet, InstVarSet,
+                    Context, SeqNum),
                 Item = item_mode_decl(ItemModeDecl),
                 MaybeItem0 = ok1(Item),
                 check_no_attributes(MaybeItem0, Attributes, MaybeItem)
@@ -1013,7 +1012,8 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
     decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
 parse_func_mode_decl(Functor, ArgTerms, ModuleName, FuncMode, RetModeTerm,
-        FullTerm, VarSet, MaybeDet, Attributes0, Context, SeqNum, MaybeItem) :-
+        FullTerm, VarSet, MaybeDetism, Attributes0, Context, SeqNum,
+        MaybeItem) :-
     ( convert_mode_list(allow_constrained_inst_var, ArgTerms, ArgModes0) ->
         get_class_context_and_inst_constraints(ModuleName, VarSet,
             Attributes0, Attributes, MaybeConstraints),
@@ -1032,9 +1032,9 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, FuncMode, RetModeTerm,
                     inst_var_constraints_are_self_consistent_in_modes(
                         ArgReturnModes)
                 ->
-                    ItemModeDecl = item_mode_decl_info(InstVarSet,
-                        yes(pf_function), Functor, ArgReturnModes, no,
-                        MaybeDet, Context, SeqNum),
+                    ItemModeDecl = item_mode_decl_info(Functor,
+                        yes(pf_function), ArgReturnModes, no, MaybeDetism,
+                        InstVarSet, Context, SeqNum),
                     Item = item_mode_decl(ItemModeDecl),
                     MaybeItem0 = ok1(Item),
                     check_no_attributes(MaybeItem0, Attributes, MaybeItem)

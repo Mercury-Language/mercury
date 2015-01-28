@@ -76,7 +76,7 @@
 :- import_module varset.
 
 module_add_class_defn(ItemTypeClassInfo, Status, !ModuleInfo, !Specs) :-
-    ItemTypeClassInfo = item_typeclass_info(Constraints, FunDeps, Name, Vars,
+    ItemTypeClassInfo = item_typeclass_info(Name, Vars, Constraints, FunDeps,
         Interface, VarSet, Context, _SeqNum),
     module_info_get_class_table(!.ModuleInfo, Classes0),
     list.length(Vars, ClassArity),
@@ -287,8 +287,8 @@ add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
         Method = method_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _),
         unexpected($module, $pred, "pred_or_func method item")
     ;
-        Method = method_pred_or_func_mode(_VarSet, MaybePredOrFunc, PredName,
-            Modes, _WithInst, _MaybeDet, Context)
+        Method = method_pred_or_func_mode(PredName, MaybePredOrFunc, Modes,
+            _WithInst, _MaybeDetism, _VarSet, Context)
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     PredArity = list.length(Modes) : int,
@@ -352,9 +352,13 @@ add_class_pred_or_func_methods(Name, Vars, [M | Ms], Status, [P | Ps],
 module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
         !ModuleInfo, !Specs) :-
     (
-        Method = method_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
-            PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst,
-            MaybeDet, Purity, Constraints0, Context),
+        Method = method_pred_or_func(PredName, PredOrFunc, TypesAndModes,
+            WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
+            ExistQVars, Purity, Constraints0, Context),
+        % Any WithType and WithInst annotations should have been expanded
+        % and the type and/or inst put into TypesAndModes by equiv_type.m.
+        expect(unify(WithType, no), $module, $pred, "WithType != no"),
+        expect(unify(WithInst, no), $module, $pred, "WithInst != no"),
         % XXX This setting of Origin looks suspicious.
         Origin = origin_user(PredName),
         % XXX kind inference:
@@ -367,11 +371,12 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
         init_markers(Markers0),
         add_marker(marker_class_method, Markers0, Markers),
         module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
-            PredOrFunc, PredName, TypesAndModes, MaybeDet, Purity, Constraints,
-            Markers, Context, Status, MaybePredIdProcId, !ModuleInfo, !Specs)
+            PredOrFunc, PredName, TypesAndModes, MaybeDetism, Purity,
+            Constraints, Markers, Context, Status, MaybePredIdProcId,
+            !ModuleInfo, !Specs)
     ;
-        Method = method_pred_or_func_mode(VarSet, MaybePredOrFunc, PredName,
-            Modes, _WithInst, MaybeDet, Context),
+        Method = method_pred_or_func_mode(PredName, MaybePredOrFunc, Modes,
+            _WithInst, MaybeDet, VarSet, Context),
         (
             MaybePredOrFunc = yes(PredOrFunc),
             Status = item_status(ImportStatus, _),
@@ -402,8 +407,8 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 check_method_modes([], !PredProcIds, !ModuleInfo, !Specs).
 check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
     (
-        Method = method_pred_or_func(_, _, _, PorF, QualName, TypesAndModes,
-            _WithType, _WithInst, _, _, _, _),
+        Method = method_pred_or_func(QualName, PorF, TypesAndModes, _, _, _,
+            _, _, _, _, _, _),
         (
             QualName = qualified(ModuleName0, Name0),
             ModuleName = ModuleName0,
@@ -652,8 +657,8 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
 
 produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
         TVarSet0, TVarSet, !ModuleInfo, !QualInfo, !ClausesInfo, !Specs) :-
-    InstanceClause = item_clause_info(_Origin, CVarSet, ClausePredOrFunc,
-        PredName, HeadTerms0, Body, _ClauseContext, _SeqNum),
+    InstanceClause = item_clause_info(PredName, ClausePredOrFunc, HeadTerms0,
+        _Origin, CVarSet, Body, _ClauseContext, _SeqNum),
     % XXX Can this ever fail? If yes, we should generate an error message
     % instead of aborting.
     expect(unify(PredOrFunc, ClausePredOrFunc), $module, $pred,

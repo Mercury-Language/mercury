@@ -697,10 +697,9 @@ make_mutable_get_pred_decl(ModuleName, Name, Type, Inst, PredKind, Context)
     WithType = no,
     WithInst = no,
     Constraints = constraints([], []),
-    GetPredDecl = item_pred_decl_info(Origin, TypeVarSet, InstVarSet,
-        ExistQVars, pf_predicate, SymName, ArgTypesAndModes,
-        WithType, WithInst, yes(detism_det),
-        Purity, Constraints, Context, -1).
+    GetPredDecl = item_pred_decl_info(SymName, pf_predicate, ArgTypesAndModes,
+        WithType, WithInst, yes(detism_det), Origin, TypeVarSet, InstVarSet,
+        ExistQVars, Purity, Constraints, Context, -1).
 
 :- func make_mutable_set_pred_decl(module_name, string, mer_type, mer_inst,
     get_set_pred_kind, prog_context) = item_pred_decl_info.
@@ -733,10 +732,9 @@ make_mutable_set_pred_decl(ModuleName, Name, Type, Inst, PredKind, Context)
     Constraints = constraints([], []),
     WithType = no,
     WithInst = no,
-    SetPredDecl = item_pred_decl_info(Origin, TypeVarSet, InstVarSet,
-        ExistQVars, pf_predicate, SymName, ArgTypesAndModes,
-        WithType, WithInst, yes(detism_det),
-        Purity, Constraints, Context, -1).
+    SetPredDecl = item_pred_decl_info(SymName, pf_predicate, ArgTypesAndModes,
+        WithType, WithInst, yes(detism_det), Origin, TypeVarSet, InstVarSet,
+        ExistQVars, Purity, Constraints, Context, -1).
 
 :- func io_state_pair = list(type_and_mode).
 

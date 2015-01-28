@@ -890,7 +890,7 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         unexpected($module, $pred, "clause")
     ;
         Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(_, Name, Params, Body, _, _),
+        ItemTypeDefn = item_type_defn_info(Name, Params, Body, _, _, _),
         Arity = list.length(Params),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, type_abstract_item, Name, Arity, NeedsCheck,
@@ -904,17 +904,17 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         )
     ;
         Item = item_inst_defn(ItemInstDefn),
-        ItemInstDefn = item_inst_defn_info(_, Name, Params, _, _, _),
+        ItemInstDefn = item_inst_defn_info(Name, Params, _, _, _, _),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, inst_item, Name, list.length(Params), _, !Info)
     ;
         Item = item_mode_defn(ItemModeDefn),
-        ItemModeDefn = item_mode_defn_info(_, Name, Params, _, _, _),
+        ItemModeDefn = item_mode_defn_info(Name, Params, _, _, _, _),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, mode_item, Name, list.length(Params), _, !Info)
     ;
         Item = item_typeclass(ItemTypeClass),
-        ItemTypeClass = item_typeclass_info(_, _, Name, Params, Interface,
+        ItemTypeClass = item_typeclass_info(Name, Params, _, _, Interface,
             _, _, _),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
             VersionNumbers, typeclass_item, Name, list.length(Params),
@@ -930,8 +930,8 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         )
     ;
         Item = item_pred_decl(ItemPredDecl),
-        ItemPredDecl = item_pred_decl_info(_, _, _, _, PredOrFunc, Name, Args,
-            WithType, _, _, _, _, _, _),
+        ItemPredDecl = item_pred_decl_info(Name, PredOrFunc, Args, WithType,
+            _, _, _, _, _, _, _, _, _, _),
         check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
             VersionNumbers, PredOrFunc, Name, Args, WithType, !Info)
     ;
@@ -956,8 +956,8 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
 check_class_method_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         ClassMethod, !Info) :-
     (
-        ClassMethod = method_pred_or_func(_, _, _, PredOrFunc, MethodName,
-            MethodArgs, MethodWithType, _, _, _, _, _),
+        ClassMethod = method_pred_or_func(MethodName, PredOrFunc, MethodArgs,
+            MethodWithType, _, _, _, _, _, _, _, _),
         check_for_pred_or_func_item_ambiguity(yes, NeedQualifier, OldTimestamp,
             VersionNumbers, PredOrFunc, MethodName, MethodArgs, MethodWithType,
             !Info)
@@ -996,10 +996,7 @@ check_for_simple_item_ambiguity(NeedQualifier, UsedFileTimestamp,
         UsedItems = !.Info ^ rci_used_items,
         UsedItemMap = extract_simple_item_set(UsedItems, ItemType),
         Name = unqualify_name(SymName),
-        (
-            map.search(UsedItemMap, Name - Arity,
-                MatchingQualifiers)
-        ->
+        ( map.search(UsedItemMap, Name - Arity, MatchingQualifiers) ->
             map.foldl(
                 check_for_simple_item_ambiguity_2(ItemType,
                     NeedQualifier, SymName, Arity),

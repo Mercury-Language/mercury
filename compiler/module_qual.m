@@ -327,7 +327,7 @@ collect_mq_info_item(Item, !Info) :-
         process_module_defn(ModuleDefn, !Info)
     ;
         Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(_, SymName, Params, _, _, _),
+        ItemTypeDefn = item_type_defn_info(SymName, Params, _, _, _, _),
         ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
             % This item is not visible in the current module.
             true
@@ -344,7 +344,7 @@ collect_mq_info_item(Item, !Info) :-
         )
     ;
         Item = item_inst_defn(ItemInstDefn),
-        ItemInstDefn = item_inst_defn_info(_, SymName, Params, _, _, _),
+        ItemInstDefn = item_inst_defn_info(SymName, Params, _, _, _, _),
         ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
             % This item is not visible in the current module.
             true
@@ -357,7 +357,7 @@ collect_mq_info_item(Item, !Info) :-
         )
     ;
         Item = item_mode_defn(ItemModeDefn),
-        ItemModeDefn = item_mode_defn_info(_, SymName, Params, _, _, _),
+        ItemModeDefn = item_mode_defn_info(SymName, Params, _, _, _, _),
         ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
             % This item is not visible in the current module.
             true
@@ -386,7 +386,7 @@ collect_mq_info_item(Item, !Info) :-
         )
     ;
         Item = item_typeclass(ItemTypeClass),
-        ItemTypeClass = item_typeclass_info(_, _, SymName, Params, _, _, _, _),
+        ItemTypeClass = item_typeclass_info(SymName, Params, _, _, _, _, _, _),
         ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
             % This item is not visible in the current module.
             true
@@ -785,43 +785,43 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         Item = Item0
     ;
         Item0 = item_type_defn(ItemTypeDefn0),
-        ItemTypeDefn0 = item_type_defn_info(TVarSet, SymName, Params,
-            TypeDefn0, Context, SeqNum),
+        ItemTypeDefn0 = item_type_defn_info(SymName, Params, TypeDefn0,
+            TVarSet, Context, SeqNum),
         list.length(Params, Arity),
         TypeCtor = type_ctor(SymName, Arity),
         qualify_type_defn(TypeDefn0, TypeDefn, Context, TypeCtor,
             !Info, !Specs),
-        ItemTypeDefn = item_type_defn_info(TVarSet, SymName, Params,
-            TypeDefn, Context, SeqNum),
+        ItemTypeDefn = item_type_defn_info(SymName, Params, TypeDefn,
+            TVarSet, Context, SeqNum),
         Item = item_type_defn(ItemTypeDefn),
         Continue = yes
     ;
         Item0 = item_inst_defn(ItemInstDefn0),
-        ItemInstDefn0 = item_inst_defn_info(InstVarSet, SymName, Params,
-            InstDefn0, Context, SeqNum),
+        ItemInstDefn0 = item_inst_defn_info(SymName, Params, InstDefn0,
+            InstVarSet, Context, SeqNum),
         list.length(Params, Arity),
         ErrorContext = mqec_inst(Context, mq_id(SymName, Arity)),
         qualify_inst_defn(InstDefn0, InstDefn, ErrorContext, !Info, !Specs),
-        ItemInstDefn = item_inst_defn_info(InstVarSet, SymName, Params,
-            InstDefn, Context, SeqNum),
+        ItemInstDefn = item_inst_defn_info(SymName, Params, InstDefn,
+            InstVarSet, Context, SeqNum),
         Item = item_inst_defn(ItemInstDefn),
         Continue = yes
     ;
         Item0 = item_mode_defn(ItemModeDefn0),
-        ItemModeDefn0 = item_mode_defn_info(InstVarSet, SymName, Params,
-            ModeDefn0, Context, SeqNum),
+        ItemModeDefn0 = item_mode_defn_info(SymName, Params, ModeDefn0,
+            InstVarSet, Context, SeqNum),
         list.length(Params, Arity),
         ErrorContext = mqec_mode(Context, mq_id(SymName, Arity)),
         qualify_mode_defn(ModeDefn0, ModeDefn, ErrorContext, !Info, !Specs),
-        ItemModeDefn = item_mode_defn_info(InstVarSet, SymName, Params,
-            ModeDefn, Context, SeqNum),
+        ItemModeDefn = item_mode_defn_info(SymName, Params, ModeDefn,
+            InstVarSet, Context, SeqNum),
         Item = item_mode_defn(ItemModeDefn),
         Continue = yes
     ;
         Item0 = item_pred_decl(ItemPredDecl0),
-        ItemPredDecl0 = item_pred_decl_info(Origin, TVarSet, InstVarSet,
-            ExistQVars, PredOrFunc, SymName, TypesAndModes0,
-            MaybeWithType0, MaybeWithInst0, MaybeDetism, Purity,
+        ItemPredDecl0 = item_pred_decl_info(SymName, PredOrFunc,
+            TypesAndModes0, MaybeWithType0, MaybeWithInst0, MaybeDetism,
+            Origin, TypeVarSet, InstVarSet, ExistQVars, Purity,
             Constraints0, Context, SeqNum),
         list.length(TypesAndModes0, Arity),
         ErrorContext = mqec_pred_or_func(Context, PredOrFunc,
@@ -850,16 +850,16 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
             MaybeWithInst0 = no,
             MaybeWithInst = no
         ),
-        ItemPredDecl = item_pred_decl_info(Origin, TVarSet, InstVarSet,
-            ExistQVars, PredOrFunc, SymName, TypesAndModes,
-            MaybeWithType, MaybeWithInst, MaybeDetism, Purity,
+        ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc,
+            TypesAndModes, MaybeWithType, MaybeWithInst, MaybeDetism,
+            Origin, TypeVarSet, InstVarSet, ExistQVars, Purity,
             Constraints, Context, SeqNum),
         Item = item_pred_decl(ItemPredDecl),
         Continue = yes
     ;
         Item0 = item_mode_decl(ItemModeDecl0),
-        ItemModeDecl0 = item_mode_decl_info(InstVarSet, PredOrFunc, SymName,
-            Modes0, MaybeWithInst0, MaybeDetism, Context, SeqNum),
+        ItemModeDecl0 = item_mode_decl_info(SymName, PredOrFunc, Modes0,
+            MaybeWithInst0, MaybeDetism, InstVarSet, Context, SeqNum),
         list.length(Modes0, Arity),
         ErrorContext = mqec_pred_or_func_mode(Context, PredOrFunc,
             mq_id(SymName, Arity)),
@@ -873,21 +873,21 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
             MaybeWithInst0 = no,
             MaybeWithInst = no
         ),
-        ItemModeDecl = item_mode_decl_info(InstVarSet, PredOrFunc, SymName,
-            Modes, MaybeWithInst, MaybeDetism, Context, SeqNum),
+        ItemModeDecl = item_mode_decl_info(SymName, PredOrFunc, Modes,
+            MaybeWithInst, MaybeDetism, InstVarSet, Context, SeqNum),
         Item = item_mode_decl(ItemModeDecl),
         Continue = yes
     ;
         Item0 = item_pragma(ItemPragma0),
-        ItemPragma0 = item_pragma_info(Origin, Pragma0, Context, SeqNum),
+        ItemPragma0 = item_pragma_info(Pragma0, Origin, Context, SeqNum),
         qualify_pragma(Pragma0, Pragma, Context, !Info, !Specs),
-        ItemPragma = item_pragma_info(Origin, Pragma, Context, SeqNum),
+        ItemPragma = item_pragma_info(Pragma, Origin, Context, SeqNum),
         Item = item_pragma(ItemPragma),
         Continue = yes
     ;
         Item0 = item_typeclass(ItemTypeClass0),
-        ItemTypeClass0 = item_typeclass_info(Constraints0, FunDeps,
-            Name, Vars, Interface0, VarSet, Context, SeqNum),
+        ItemTypeClass0 = item_typeclass_info(Name, Vars, Constraints0, FunDeps,
+            Interface0, VarSet, Context, SeqNum),
         list.length(Vars, Arity),
         ConstraintErrorContext = mqcec_class_defn(Context, Name, Arity),
         qualify_prog_constraint_list(Constraints0, Constraints,
@@ -902,14 +902,14 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
                 !Info, !Specs),
             Interface = class_interface_concrete(Methods)
         ),
-        ItemTypeClass = item_typeclass_info(Constraints, FunDeps,
-            Name, Vars, Interface, VarSet, Context, SeqNum),
+        ItemTypeClass = item_typeclass_info(Name, Vars, Constraints, FunDeps,
+            Interface, VarSet, Context, SeqNum),
         Item = item_typeclass(ItemTypeClass),
         Continue = yes
     ;
         Item0 = item_instance(ItemInstance0),
-        ItemInstance0 = item_instance_info(Constraints0, Name0,
-            Types0, OriginalTypes0, Body0, VarSet, ModName, Context, SeqNum),
+        ItemInstance0 = item_instance_info(Name0, Types0, OriginalTypes0,
+            Constraints0, Body0, VarSet, ModName, Context, SeqNum),
         list.length(Types0, Arity),
         Id0 = mq_id(Name0, Arity),
         ErrorContext = mqec_instance(Context, Id0),
@@ -939,8 +939,8 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         qualify_type_list(OriginalTypes0, OriginalTypes, ErrorContext,
             !Info, !.Specs, _),
         qualify_instance_body(Name, Body0, Body),
-        ItemInstance = item_instance_info(Constraints, Name,
-            Types, OriginalTypes, Body, VarSet, ModName, Context, SeqNum),
+        ItemInstance = item_instance_info(Name, Types, OriginalTypes,
+            Constraints, Body, VarSet, ModName, Context, SeqNum),
         Item = item_instance(ItemInstance),
         Continue = yes
     ;
@@ -1771,15 +1771,16 @@ qualify_class_method(Method0, Method, ErrorContext, !Info, !Specs) :-
     % There is no need to qualify the method name, since that is done
     % when the item is parsed.
     (
-        Method0 = method_pred_or_func(TypeVarset, InstVarset, ExistQVars,
-            PredOrFunc, Name, TypesAndModes0, MaybeWithType0, MaybeWithInst0,
-            MaybeDetism, Purity, ClassContext0, Context),
+        Method0 = method_pred_or_func(Name, PredOrFunc, TypesAndModes0,
+            MaybeWithType0, MaybeWithInst0, MaybeDetism,
+            TypeVarset, InstVarset, ExistQVars,
+            Purity, Constraints0, Context),
         % XXX We could pass a more specific error context.
         qualify_types_and_modes(TypesAndModes0, TypesAndModes, ErrorContext,
             !Info, !Specs),
         ConstraintErrorContext = mqcec_class_method(Context, PredOrFunc,
             unqualify_name(Name)),
-        qualify_prog_constraints(ClassContext0, ClassContext,
+        qualify_prog_constraints(Constraints0, Constraints,
             ConstraintErrorContext, !Info, !Specs),
         (
             MaybeWithType0 = yes(WithType0),
@@ -1799,12 +1800,13 @@ qualify_class_method(Method0, Method, ErrorContext, !Info, !Specs) :-
             MaybeWithInst0 = no,
             MaybeWithInst = no
         ),
-        Method = method_pred_or_func(TypeVarset, InstVarset, ExistQVars,
-            PredOrFunc, Name, TypesAndModes, MaybeWithType, MaybeWithInst,
-            MaybeDetism, Purity, ClassContext, Context)
+        Method = method_pred_or_func(Name, PredOrFunc, TypesAndModes,
+            MaybeWithType, MaybeWithInst, MaybeDetism,
+            TypeVarset, InstVarset, ExistQVars,
+            Purity, Constraints, Context)
     ;
-        Method0 = method_pred_or_func_mode(Varset, PredOrFunc, Name, Modes0,
-            MaybeWithInst0, MaybeDetism, Context),
+        Method0 = method_pred_or_func_mode(PredOrFunc, Name, Modes0,
+            MaybeWithInst0, MaybeDetism, Varset, Context),
         qualify_mode_list(Modes0, Modes, ErrorContext, !Info, !Specs),
         (
             MaybeWithInst0 = yes(WithInst0),
@@ -1815,8 +1817,8 @@ qualify_class_method(Method0, Method, ErrorContext, !Info, !Specs) :-
             MaybeWithInst0 = no,
             MaybeWithInst = no
         ),
-        Method = method_pred_or_func_mode(Varset, PredOrFunc, Name, Modes,
-            MaybeWithInst, MaybeDetism, Context)
+        Method = method_pred_or_func_mode(PredOrFunc, Name, Modes,
+            MaybeWithInst, MaybeDetism, Varset, Context)
     ).
 
 :- pred qualify_instance_body(sym_name::in,

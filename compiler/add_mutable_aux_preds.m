@@ -311,9 +311,9 @@ add_mutable_aux_pred_decl(ModuleName, Name, Kind, PredName, ArgTypesAndModes,
 add_pred_decl_info_for_mutable_aux_pred(ItemPredDecl, ModuleName, Name, Kind,
         Status, !ModuleInfo, !Specs) :-
     PredOrigin = origin_mutable(ModuleName, Name, Kind),
-    ItemPredDecl = item_pred_decl_info(_Origin, TypeVarSet, InstVarSet,
-        ExistQVars, PredOrFunc, PredName, TypesAndModes, WithType, WithInst,
-        MaybeDet, Purity, Constraints, Context, _SeqNum),
+    ItemPredDecl = item_pred_decl_info(PredName, PredOrFunc, TypesAndModes,
+        WithType, WithInst, MaybeDetism, _Origin, TypeVarSet, InstVarSet,
+        ExistQVars, Purity, Constraints, Context, _SeqNum),
     expect(unify(TypeVarSet, varset.init), $module, $pred,
         "TypeVarSet != varset.init"),
     expect(unify(InstVarSet, varset.init), $module, $pred,
@@ -323,13 +323,13 @@ add_pred_decl_info_for_mutable_aux_pred(ItemPredDecl, ModuleName, Name, Kind,
         "PredOrFunc != pf_predicate"),
     expect(unify(WithType, no), $module, $pred, "WithType != no"),
     expect(unify(WithInst, no), $module, $pred, "WithInst != no"),
-    expect(unify(MaybeDet, yes(detism_det)), $module, $pred,
+    expect(unify(MaybeDetism, yes(detism_det)), $module, $pred,
         "MaybeDet != yes(detism_det)"),
     expect(unify(Constraints, constraints([], [])), $module, $pred,
         "Constraints != constraints([], [])"),
     marker_list_to_markers([marker_mutable_access_pred], Markers),
     module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
-        PredOrFunc, PredName, TypesAndModes, MaybeDet, Purity, Constraints,
+        PredOrFunc, PredName, TypesAndModes, MaybeDetism, Purity, Constraints,
         Markers, Context, Status, _, !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
@@ -395,9 +395,10 @@ do_mutable_checks(ItemMutable, Status, !ModuleInfo, !Specs) :-
             SetPredNameArity = pred_name_arity(SetPredName, 3),
             IOSetPromisePurePragma = pragma_promise_pure(SetPredNameArity),
             IOSetPromisePureItemPragma = item_pragma_info(
+                IOSetPromisePurePragma,
                 item_origin_compiler(item_compiler_attributes(
                     do_allow_export, is_mutable)),
-                IOSetPromisePurePragma, Context, -1),
+                Context, -1),
             add_pass_2_pragma(IOSetPromisePureItemPragma, Status,
                 !ModuleInfo, !Specs)
         ;

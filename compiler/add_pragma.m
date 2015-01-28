@@ -75,7 +75,7 @@
 %-----------------------------------------------------------------------------%
 
 add_pass_2_pragma(ItemPragma, Status, !ModuleInfo, !Specs) :-
-    ItemPragma = item_pragma_info(MaybeAttrs, Pragma, Context, _SeqNum),
+    ItemPragma = item_pragma_info(Pragma, MaybeAttrs, Context, _SeqNum),
     % Check for invalid pragmas in the `interface' section.
     Status = item_status(ImportStatus, _),
     Allowed = pragma_allowed_in_interface(Pragma),
@@ -731,7 +731,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
 %-----------------------------------------------------------------------------%
 
 add_pass_3_pragma(ItemPragma, Status, !ModuleInfo, !QualInfo, !Specs) :-
-    ItemPragma = item_pragma_info(MaybeAttrs, Pragma, Context, SeqNum),
+    ItemPragma = item_pragma_info(Pragma, MaybeAttrs, Context, SeqNum),
     (
         Pragma = pragma_foreign_proc(FPInfo),
         add_pragma_foreign_proc(FPInfo, Status, Context, yes(SeqNum),

@@ -463,7 +463,7 @@ include_in_int_file_implementation(Item) = Include :-
         )
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
         (
             ( Pragma = pragma_foreign_import_module(_)
             ; Pragma = pragma_foreign_enum(_)
@@ -541,7 +541,7 @@ make_foreign_import(ModuleName, Lang) = Item :-
     Origin = item_origin_compiler(Attrs),
     Info = pragma_info_foreign_import_module(Lang, ModuleName),
     Pragma = pragma_foreign_import_module(Info),
-    ItemPragma = item_pragma_info(Origin, Pragma, term.context_init, -1),
+    ItemPragma = item_pragma_info(Pragma, Origin, term.context_init, -1),
     Item = item_pragma(ItemPragma).
 
 get_foreign_self_imports(Items, Langs) :-
@@ -894,7 +894,7 @@ split_clauses_and_decls([Item | Items], !:ClauseItems, !:InterfaceItems) :-
             Item = item_clause(_)
         ;
             Item = item_pragma(ItemPragma),
-            ItemPragma = item_pragma_info(_, Pragma, _, _),
+            ItemPragma = item_pragma_info(Pragma, _, _, _),
             pragma_allowed_in_interface(Pragma) = no
         ;
             Item = item_initialise(_)

@@ -374,7 +374,7 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         % recursively with the new source file name.
         MaybeFirstItem = read_item_ok(FirstItem),
         FirstItem = item_pragma(FirstItemPragma),
-        FirstItemPragma = item_pragma_info(_, Pragma, _, _),
+        FirstItemPragma = item_pragma_info(Pragma, _, _, _),
         Pragma = pragma_source_file(SFNInfo)
     ->
         SFNInfo = pragma_info_source_file(!:SourceFileName),
@@ -687,7 +687,7 @@ process_one_item_in_loop(Globals, Item, !ModuleName, !SourceFileName,
         )
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
         ( Pragma = pragma_source_file(SFNInfo) ->
             SFNInfo = pragma_info_source_file(!:SourceFileName)
         ;

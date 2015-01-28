@@ -1028,12 +1028,12 @@ find_items_used_by_instance(ClassId, Defn, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_class_method(Method, !Info) :-
-    Method = method_pred_or_func(_, _, _, _, _, ArgTypesAndModes, _, _, _, _,
+    Method = method_pred_or_func(_, _, ArgTypesAndModes, _, _, _, _, _, _, _,
         Constraints, _),
     find_items_used_by_class_context(Constraints, !Info),
     list.foldl(find_items_used_by_type_and_mode, ArgTypesAndModes, !Info).
 find_items_used_by_class_method(Method, !Info) :-
-    Method = method_pred_or_func_mode(_, _, _, Modes, _, _, _),
+    Method = method_pred_or_func_mode(_, _, Modes, _, _, _, _),
     find_items_used_by_modes(Modes, !Info).
 
 :- pred find_items_used_by_type_and_mode(type_and_mode::in,

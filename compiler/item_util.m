@@ -220,7 +220,7 @@ item_needs_foreign_imports(Item) = Langs :-
         )
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
         (
             (
                 Pragma = pragma_foreign_decl(FDInfo),

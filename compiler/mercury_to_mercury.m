@@ -575,7 +575,7 @@ mercury_output_item(Info, Item, !IO) :-
     item_type_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
-    ItemTypeDefn = item_type_defn_info(VarSet, Name0, Args, TypeDefn,
+    ItemTypeDefn = item_type_defn_info(Name0, Args, TypeDefn, VarSet,
         Context, _SeqNum),
     maybe_unqualify_sym_name(Info, Name0, Name),
     maybe_output_line_number(Info, Context, !IO),
@@ -585,7 +585,7 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
     item_inst_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
-    ItemInstDefn = item_inst_defn_info(VarSet, Name0, Args, InstDefn,
+    ItemInstDefn = item_inst_defn_info(Name0, Args, InstDefn, VarSet,
         Context, _SeqNum),
     maybe_unqualify_sym_name(Info, Name0, Name1),
     % If the unqualified name is a builtin inst, then output the qualified
@@ -603,7 +603,7 @@ mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
     item_mode_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_mode_defn(Info, ItemModeDefn, !IO) :-
-    ItemModeDefn = item_mode_defn_info(VarSet, Name0, Args, ModeDefn,
+    ItemModeDefn = item_mode_defn_info(Name0, Args, ModeDefn, VarSet,
         Context, _SeqNum),
     maybe_unqualify_sym_name(Info, Name0, Name),
     maybe_output_line_number(Info, Context, !IO),
@@ -613,9 +613,9 @@ mercury_output_item_mode_defn(Info, ItemModeDefn, !IO) :-
     item_pred_decl_info::in, io::di, io::uo) is det.
 
 mercury_output_item_pred_decl(Info, ItemPredDecl, !IO) :-
-    ItemPredDecl = item_pred_decl_info(_Origin, TypeVarSet, InstVarSet,
-        ExistQVars, PredOrFunc, PredName0, TypesAndModes, WithType, WithInst,
-        Det, Purity, ClassContext, Context, _SeqNum),
+    ItemPredDecl = item_pred_decl_info(PredName0, PredOrFunc, TypesAndModes,
+        WithType, WithInst, MaybeDetism, _Origin, TypeVarSet, InstVarSet,
+        ExistQVars, Purity, Constraints, Context, _SeqNum),
     maybe_unqualify_sym_name(Info, PredName0, PredName),
     maybe_output_line_number(Info, Context, !IO),
     (
@@ -628,20 +628,21 @@ mercury_output_item_pred_decl(Info, ItemPredDecl, !IO) :-
         pred_args_to_func_args(TypesAndModes, FuncTypesAndModes,
             RetTypeAndMode),
         mercury_format_func_decl(TypeVarSet, InstVarSet, ExistQVars, PredName,
-            FuncTypesAndModes, RetTypeAndMode, Det, Purity, ClassContext,
-            Context, ":- ", ".\n", ".\n", !IO)
+            FuncTypesAndModes, RetTypeAndMode, MaybeDetism, Purity,
+            Constraints, Context, ":- ", ".\n", ".\n", !IO)
     ;
         mercury_format_pred_or_func_decl(PredOrFunc, TypeVarSet, InstVarSet,
-            ExistQVars, PredName, TypesAndModes, WithType, WithInst, Det,
-            Purity, ClassContext, Context, ":- ", ".\n", ".\n", !IO)
+            ExistQVars, PredName, TypesAndModes, WithType, WithInst,
+            MaybeDetism, Purity, Constraints, Context,
+            ":- ", ".\n", ".\n", !IO)
     ).
 
 :- pred mercury_output_item_mode_decl(merc_out_info::in,
     item_mode_decl_info::in, io::di, io::uo) is det.
 
 mercury_output_item_mode_decl(Info, ItemModeDecl, !IO) :-
-    ItemModeDecl = item_mode_decl_info(VarSet, PredOrFunc, PredName0, Modes,
-        WithInst, MaybeDet, Context, _SeqNum),
+    ItemModeDecl = item_mode_decl_info(PredName0, PredOrFunc, Modes,
+        WithInst, MaybeDet, VarSet, Context, _SeqNum),
     maybe_unqualify_sym_name(Info, PredName0, PredName),
     maybe_output_line_number(Info, Context, !IO),
     (
@@ -670,7 +671,7 @@ mercury_output_item_module_defn(Info, ItemModuleDefn, !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_item_clause(Info, ItemClause, !IO) :-
-    ItemClause = item_clause_info(_, VarSet, PredOrFunc, PredName0, Args,
+    ItemClause = item_clause_info(PredName0, PredOrFunc, Args, _, VarSet,
         Body, Context, _SeqNum),
     maybe_unqualify_sym_name(Info, PredName0, PredName),
     maybe_output_line_number(Info, Context, !IO),
@@ -689,7 +690,7 @@ mercury_output_item_clause(Info, ItemClause, !IO) :-
     item_pragma_info::in, io::di, io::uo) is det.
 
 mercury_output_item_pragma(Info, ItemPragma, !IO) :-
-    ItemPragma = item_pragma_info(_, Pragma, Context, _SeqNum),
+    ItemPragma = item_pragma_info(Pragma, _, Context, _SeqNum),
     maybe_output_line_number(Info, Context, !IO),
     (
         Pragma = pragma_source_file(SourceFileInfo),
@@ -869,8 +870,8 @@ mercury_output_item_promise(_, ItemPromise, !IO) :-
     item_typeclass_info::in, io::di, io::uo) is det.
 
 mercury_output_item_typeclass(Info, ItemTypeClass, !IO) :-
-    ItemTypeClass = item_typeclass_info(Constraints, FunDeps, ClassName0,
-        Vars, Interface, VarSet, _Context, _SeqNum),
+    ItemTypeClass = item_typeclass_info(ClassName0, Vars, Constraints, FunDeps,
+        Interface, VarSet, _Context, _SeqNum),
     maybe_unqualify_sym_name(Info, ClassName0, ClassName),
     io.write_string(":- typeclass ", !IO),
 
@@ -904,9 +905,8 @@ mercury_output_item_instance(_, ItemInstance, !IO) :-
     % XXX When prettyprinting a Mercury module, we want to print the original
     % types. When generating interface types, we want to print the
     % equiv-type-expanded types. We do the latter.
-    ItemInstance = item_instance_info(Constraints, ClassName,
-        Types, _OriginalTypes, Body, VarSet, _InstanceModuleName,
-        _Context, _SeqNum),
+    ItemInstance = item_instance_info(ClassName,Types, _OriginalTypes, 
+        Constraints, Body, VarSet, _InstanceModuleName, _Context, _SeqNum),
     io.write_string(":- instance ", !IO),
     % We put an extra set of brackets around the class name in case
     % the name is an operator.
@@ -933,7 +933,7 @@ mercury_output_item_instance(_, ItemInstance, !IO) :-
     item_initialise_info::in, io::di, io::uo) is det.
 
 mercury_output_item_initialise(_, ItemInitialise, !IO) :-
-    ItemInitialise = item_initialise_info(_, PredSymName, Arity, _Context,
+    ItemInitialise = item_initialise_info(PredSymName, Arity, _, _Context,
         _SeqNum),
     io.write_string(":- initialise ", !IO),
     mercury_output_sym_name(PredSymName, !IO),
@@ -945,7 +945,7 @@ mercury_output_item_initialise(_, ItemInitialise, !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_item_finalise(_, ItemFinalise, !IO) :-
-    ItemFinalise = item_finalise_info(_, PredSymName, Arity, _Context,
+    ItemFinalise = item_finalise_info(PredSymName, Arity, _, _Context,
         _SeqNum),
     io.write_string(":- finalise ", !IO),
     mercury_output_sym_name(PredSymName, !IO),
@@ -986,9 +986,9 @@ output_class_methods(Methods, !IO) :-
 output_class_method(Method, !IO) :-
     io.write_string("\t", !IO),
     (
-        Method = method_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
-            PredOrFunc, SymName, TypesAndModes, WithType, WithInst,
-            Detism, Purity, ClassContext, Context),
+        Method = method_pred_or_func(SymName, PredOrFunc, TypesAndModes,
+            WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
+            ExistQVars, Purity, ClassContext, Context),
 
         % The module name is implied by the qualifier of the
         % `:- typeclass declaration'.
@@ -1004,16 +1004,17 @@ output_class_method(Method, !IO) :-
                 FuncTypesAndModes, RetTypeAndMode),
             mercury_format_func_decl(TypeVarSet, InstVarSet, ExistQVars,
                 unqualified(Name), FuncTypesAndModes, RetTypeAndMode,
-                Detism, Purity, ClassContext, Context, "", ",\n\t", "", !IO)
+                MaybeDetism, Purity, ClassContext, Context,
+                "", ",\n\t", "", !IO)
         ;
             mercury_format_pred_or_func_decl(PredOrFunc, TypeVarSet,
                 InstVarSet, ExistQVars, unqualified(Name), TypesAndModes,
-                WithType, WithInst, Detism, Purity,
+                WithType, WithInst, MaybeDetism, Purity,
                 ClassContext, Context, "", ",\n\t", "", !IO)
         )
     ;
-        Method = method_pred_or_func_mode(VarSet, PredOrFunc, SymName, Modes,
-            WithInst, Detism, Context),
+        Method = method_pred_or_func_mode(SymName, PredOrFunc, Modes,
+            WithInst, MaybeDetism, VarSet, Context),
 
         % The module name is implied by the qualifier of the
         % `:- typeclass declaration'.
@@ -1026,10 +1027,10 @@ output_class_method(Method, !IO) :-
         ->
             pred_args_to_func_args(Modes, FuncModes, RetMode),
             mercury_format_func_mode_decl_2(VarSet, unqualified(Name),
-                FuncModes, RetMode, Detism, Context, "", "", !IO)
+                FuncModes, RetMode, MaybeDetism, Context, "", "", !IO)
         ;
             mercury_format_pred_or_func_mode_decl_2(VarSet, unqualified(Name),
-                Modes, WithInst, Detism, Context, "", "", !IO)
+                Modes, WithInst, MaybeDetism, Context, "", "", !IO)
         )
     ).
 
@@ -1069,8 +1070,8 @@ output_instance_method(Method, !IO) :-
     io::di, io::uo) is det.
 
 output_instance_method_clause(Name1, ItemClause, !IO) :-
-    ItemClause = item_clause_info(_, VarSet, PredOrFunc, _PredName,
-        HeadTerms, Body, Context, _SeqNum),
+    ItemClause = item_clause_info(_PredName, PredOrFunc, HeadTerms,
+        _, VarSet, Body, Context, _SeqNum),
     (
         PredOrFunc = pf_predicate,
         mercury_output_pred_clause(VarSet, Name1, HeadTerms, Body, Context,

@@ -179,16 +179,16 @@ build_eqv_map([Item | Items], !EqvMap, !EqvInstMap) :-
     ;
         (
             Item = item_type_defn(ItemTypeDefn),
-            ItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
-                parse_tree_eqv_type(Body), _, _SeqNum)
+            ItemTypeDefn = item_type_defn_info(Name, Args,
+                parse_tree_eqv_type(Body), VarSet, _, _SeqNum)
         ->
             list.length(Args, Arity),
             TypeCtor = type_ctor(Name, Arity),
             map.set(TypeCtor, eqv_type_body(VarSet, Args, Body), !EqvMap)
         ;
             Item = item_inst_defn(ItemInstDefn),
-            ItemInstDefn = item_inst_defn_info(VarSet, Name, Args,
-                eqv_inst(Body), _, _SeqNum)
+            ItemInstDefn = item_inst_defn_info(Name, Args,
+                eqv_inst(Body), VarSet, _, _SeqNum)
         ->
             list.length(Args, Arity),
             InstId = inst_id(Name, Arity),
@@ -410,9 +410,9 @@ replace_in_item(ModuleName, Location, EqvMap, EqvInstMap,
 
 replace_in_type_defn_info(ModuleName, Location, EqvMap, EqvInstMap,
         Info0, Info, !RecompInfo, !UsedModules, Specs) :-
-    Info0 = item_type_defn_info(VarSet0, SymName, TArgs, TypeDefn0,
+    Info0 = item_type_defn_info(SymName, ArgTypeVars, TypeDefn0, VarSet0,
         Context, SeqNum),
-    list.length(TArgs, Arity),
+    list.length(ArgTypeVars, Arity),
     maybe_start_recording_expanded_items(ModuleName, SymName, !.RecompInfo,
         UsedTypeCtors0),
     replace_in_type_defn(Location, EqvMap, EqvInstMap,
@@ -422,7 +422,8 @@ replace_in_type_defn_info(ModuleName, Location, EqvMap, EqvInstMap,
         ContainsCirc = yes,
         ( TypeDefn0 = parse_tree_eqv_type(_) ->
             Pieces = [words("Error: circular equivalence type"),
-                sym_name_and_arity(SymName / length(TArgs)), suffix("."), nl],
+                sym_name_and_arity(SymName / length(ArgTypeVars)),
+                suffix("."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_expand_types, [Msg]),
             Specs = [Spec]
@@ -435,7 +436,7 @@ replace_in_type_defn_info(ModuleName, Location, EqvMap, EqvInstMap,
     ),
     ItemId = item_id(type_body_item, item_name(SymName, Arity)),
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo),
-    Info = item_type_defn_info(VarSet, SymName, TArgs, TypeDefn,
+    Info = item_type_defn_info(SymName, ArgTypeVars, TypeDefn, VarSet, 
         Context, SeqNum).
 
 :- pred replace_in_pred_decl_info(module_name::in, eqv_type_location::in,
@@ -446,24 +447,27 @@ replace_in_type_defn_info(ModuleName, Location, EqvMap, EqvInstMap,
 
 replace_in_pred_decl_info(ModuleName, Location, EqvMap, EqvInstMap,
         Info0, Info, !RecompInfo, !UsedModules, Specs) :-
-    Info0 = item_pred_decl_info(Origin, TypeVarSet0, InstVarSet, ExistQVars,
-        PredOrFunc, PredName, TypesAndModes0, MaybeWithType0,
-        MaybeWithInst0, Det0, Purity, ClassContext0, Context, SeqNum),
+    Info0 = item_pred_decl_info(PredName, PredOrFunc, TypesAndModes0,
+        MaybeWithType0, MaybeWithInst0, MaybeDetism0, Origin,
+        TypeVarSet0, InstVarSet, ExistQVars, Purity, ClassContext0,
+        Context, SeqNum),
     maybe_start_recording_expanded_items(ModuleName, PredName, !.RecompInfo,
         ExpandedItems0),
     replace_in_pred_type(Location, PredName, PredOrFunc, Context, EqvMap,
         EqvInstMap, ClassContext0, ClassContext,
         TypesAndModes0, TypesAndModes, TypeVarSet0, TypeVarSet,
         MaybeWithType0, MaybeWithType, MaybeWithInst0, MaybeWithInst,
-        Det0, Det, ExpandedItems0, ExpandedItems, !UsedModules, Specs),
+        MaybeDetism0, MaybeDetism, ExpandedItems0, ExpandedItems,
+        !UsedModules, Specs),
     ItemType = pred_or_func_to_item_type(PredOrFunc),
     list.length(TypesAndModes, Arity),
     adjust_func_arity(PredOrFunc, OrigArity, Arity),
     ItemId = item_id(ItemType, item_name(PredName, OrigArity)),
     finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo),
-    Info = item_pred_decl_info(Origin, TypeVarSet, InstVarSet, ExistQVars,
-        PredOrFunc, PredName, TypesAndModes, MaybeWithType,
-        MaybeWithInst, Det, Purity, ClassContext, Context, SeqNum).
+    Info = item_pred_decl_info(PredName, PredOrFunc, TypesAndModes,
+        MaybeWithType, MaybeWithInst, MaybeDetism, Origin,
+        TypeVarSet, InstVarSet, ExistQVars, Purity, ClassContext,
+        Context, SeqNum).
 
 :- pred replace_in_mode_decl_info(module_name::in, eqv_type_location::in,
     eqv_map::in, eqv_inst_map::in,
@@ -473,13 +477,13 @@ replace_in_pred_decl_info(ModuleName, Location, EqvMap, EqvInstMap,
 
 replace_in_mode_decl_info(ModuleName, Location, _EqvMap, EqvInstMap,
         Info0, Info, !RecompInfo, !UsedModules, Specs) :-
-    Info0 = item_mode_decl_info(InstVarSet, MaybePredOrFunc0, PredName,
-        Modes0, WithInst0, Det0, Context, SeqNum),
+    Info0 = item_mode_decl_info(PredName, MaybePredOrFunc0, Modes0,
+        WithInst0, MaybeDetism0, InstVarSet, Context, SeqNum),
     maybe_start_recording_expanded_items(ModuleName, PredName, !.RecompInfo,
         ExpandedItems0),
     replace_in_pred_mode(Location, PredName, length(Modes0), Context,
         mode_decl, EqvInstMap, ExtraModes, MaybePredOrFunc0, MaybePredOrFunc,
-        WithInst0, WithInst, Det0, Det,
+        WithInst0, WithInst, MaybeDetism0, MaybeDetism,
         ExpandedItems0, ExpandedItems, !UsedModules, Specs),
     (
         ExtraModes = [],
@@ -498,8 +502,8 @@ replace_in_mode_decl_info(ModuleName, Location, _EqvMap, EqvInstMap,
     ;
         MaybePredOrFunc = no
     ),
-    Info = item_mode_decl_info(InstVarSet, MaybePredOrFunc, PredName,
-        Modes, WithInst, Det, Context, SeqNum).
+    Info = item_mode_decl_info(PredName, MaybePredOrFunc, Modes,
+        WithInst, MaybeDetism, InstVarSet, Context, SeqNum).
 
 :- pred replace_in_typeclass_info(module_name::in, eqv_type_location::in,
     eqv_map::in, eqv_inst_map::in,
@@ -509,7 +513,7 @@ replace_in_mode_decl_info(ModuleName, Location, _EqvMap, EqvInstMap,
 
 replace_in_typeclass_info(ModuleName, Location, EqvMap, EqvInstMap,
         Info0, Info, !RecompInfo, !UsedModules, Specs) :-
-    Info0 = item_typeclass_info(Constraints0, FunDeps, ClassName, Vars,
+    Info0 = item_typeclass_info(ClassName, Vars, Constraints0, FunDeps,
         ClassInterface0, VarSet0, Context, SeqNum),
     list.length(Vars, Arity),
     maybe_start_recording_expanded_items(ModuleName, ClassName, !.RecompInfo,
@@ -530,7 +534,7 @@ replace_in_typeclass_info(ModuleName, Location, EqvMap, EqvInstMap,
     ),
     ItemId = item_id(typeclass_item, item_name(ClassName, Arity)),
     finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo),
-    Info = item_typeclass_info(Constraints, FunDeps, ClassName, Vars,
+    Info = item_typeclass_info(ClassName, Vars, Constraints, FunDeps,
         ClassInterface, VarSet, Context, SeqNum).
 
 :- pred replace_in_instance_info(module_name::in, eqv_type_location::in,
@@ -541,7 +545,7 @@ replace_in_typeclass_info(ModuleName, Location, EqvMap, EqvInstMap,
 
 replace_in_instance_info(ModuleName, Location, EqvMap, _EqvInstMap,
         Info0, Info, !RecompInfo, !UsedModules, []) :-
-    Info0 = item_instance_info(Constraints0, ClassName, Types0, OriginalTypes,
+    Info0 = item_instance_info(ClassName, Types0, OriginalTypes, Constraints0,
         InstanceBody, VarSet0, ContainingModuleName, Context, SeqNum),
     (
         ( !.RecompInfo = no
@@ -562,7 +566,7 @@ replace_in_instance_info(ModuleName, Location, EqvMap, _EqvInstMap,
     list.length(Types0, Arity),
     ItemId = item_id(typeclass_item, item_name(ClassName, Arity)),
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo),
-    Info = item_instance_info(Constraints, ClassName, Types, OriginalTypes,
+    Info = item_instance_info(ClassName, Types, OriginalTypes, Constraints,
         InstanceBody, VarSet, ContainingModuleName, Context, SeqNum).
 
 :- pred replace_in_pragma_info(module_name::in, eqv_type_location::in,
@@ -573,7 +577,7 @@ replace_in_instance_info(ModuleName, Location, EqvMap, _EqvInstMap,
 
 replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
         Info0, Info, !RecompInfo, !UsedModules, []) :-
-    Info0 = item_pragma_info(Origin, Pragma0, Context, SeqNum),
+    Info0 = item_pragma_info(Pragma0, Origin, Context, SeqNum),
     (
         Pragma0 = pragma_type_spec(TypeSpecInfo0),
         TypeSpecInfo0 = pragma_info_type_spec(PredName, NewName, Arity,
@@ -664,7 +668,7 @@ replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
         ),
         Pragma = Pragma0
     ),
-    Info = item_pragma_info(Origin, Pragma, Context, SeqNum).
+    Info = item_pragma_info(Pragma, Origin, Context, SeqNum).
 
 :- pred replace_in_mutable_info(module_name::in, eqv_type_location::in,
     eqv_map::in, eqv_inst_map::in,
@@ -897,25 +901,25 @@ replace_in_class_interface(Location, ClassInterface0, EqvMap, EqvInstMap,
 replace_in_class_method(Location, EqvMap, EqvInstMap, Method0, Method,
         !EquivTypeInfo, !UsedModules, !Specs) :-
     (
-        Method0 = method_pred_or_func(TypeVarSet0, InstVarSet, ExistQVars,
-            PredOrFunc, PredName, TypesAndModes0, WithType0, WithInst0,
-            Det0, Purity, ClassContext0, Context),
+        Method0 = method_pred_or_func(PredName, PredOrFunc, TypesAndModes0,
+            WithType0, WithInst0, MaybeDetism0, TypeVarSet0, InstVarSet,
+            ExistQVars, Purity, ClassContext0, Context),
         replace_in_pred_type(Location, PredName, PredOrFunc, Context, EqvMap,
             EqvInstMap, ClassContext0, ClassContext,
             TypesAndModes0, TypesAndModes, TypeVarSet0, TypeVarSet,
-            WithType0, WithType, WithInst0, WithInst, Det0, Det,
-            !EquivTypeInfo, !UsedModules, NewSpecs),
+            WithType0, WithType, WithInst0, WithInst,
+            MaybeDetism0, MaybeDetism, !EquivTypeInfo, !UsedModules, NewSpecs),
         !:Specs = NewSpecs ++ !.Specs,
-        Method = method_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
-            PredOrFunc, PredName, TypesAndModes, WithType, WithInst,
-            Det, Purity, ClassContext, Context)
+        Method = method_pred_or_func(PredName, PredOrFunc, TypesAndModes,
+            WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
+            ExistQVars, Purity, ClassContext, Context)
     ;
-        Method0 = method_pred_or_func_mode(InstVarSet, MaybePredOrFunc0,
-            PredName, Modes0, WithInst0, Det0, Context),
+        Method0 = method_pred_or_func_mode(PredName, MaybePredOrFunc0, Modes0,
+            WithInst0, MaybeDetism0, InstVarSet, Context),
         replace_in_pred_mode(Location, PredName, length(Modes0), Context,
             mode_decl, EqvInstMap, ExtraModes,
             MaybePredOrFunc0, MaybePredOrFunc, WithInst0, WithInst,
-            Det0, Det, !EquivTypeInfo, !UsedModules, NewSpecs),
+            MaybeDetism0, MaybeDetism, !EquivTypeInfo, !UsedModules, NewSpecs),
         (
             ExtraModes = [],
             Modes = Modes0
@@ -924,8 +928,8 @@ replace_in_class_method(Location, EqvMap, EqvInstMap, Method0, Method,
             Modes = Modes0 ++ ExtraModes
         ),
         !:Specs = NewSpecs ++ !.Specs,
-        Method = method_pred_or_func_mode(InstVarSet, MaybePredOrFunc,
-            PredName, Modes, WithInst, Det, Context)
+        Method = method_pred_or_func_mode(PredName, MaybePredOrFunc, Modes,
+            WithInst, MaybeDetism, InstVarSet, Context)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1318,7 +1322,7 @@ replace_in_pred_type(Location, PredName, PredOrFunc, Context,
         EqvMap, EqvInstMap, ClassContext0, ClassContext,
         TypesAndModes0, TypesAndModes, !TypeVarSet,
         MaybeWithType0, MaybeWithType, MaybeWithInst0, MaybeWithInst,
-        !Det, !EquivTypeInfo, !UsedModules, !:Specs) :-
+        !MaybeDetism, !EquivTypeInfo, !UsedModules, !:Specs) :-
     replace_in_prog_constraints_location(Location, EqvMap,
         ClassContext0, ClassContext, !TypeVarSet,
         !EquivTypeInfo, !UsedModules),
@@ -1352,7 +1356,8 @@ replace_in_pred_type(Location, PredName, PredOrFunc, Context,
 
     replace_in_pred_mode(Location, PredName, length(TypesAndModes0),
         Context, type_decl, EqvInstMap, ExtraModes, yes(PredOrFunc), _,
-        MaybeWithInst0, _, !Det, !EquivTypeInfo, !UsedModules, ModeSpecs),
+        MaybeWithInst0, _, !MaybeDetism, !EquivTypeInfo,
+        !UsedModules, ModeSpecs),
     !:Specs = !.Specs ++ ModeSpecs,
 
     (
@@ -1417,8 +1422,8 @@ replace_in_pred_type(Location, PredName, PredOrFunc, Context,
 
 replace_in_pred_mode(Location, PredName, OrigArity, Context, DeclType,
         EqvInstMap, ExtraModes, MaybePredOrFunc0, MaybePredOrFunc,
-        MaybeWithInst0, MaybeWithInst, !MaybeDet, !EquivTypeInfo, !UsedModules,
-        Specs) :-
+        MaybeWithInst0, MaybeWithInst, !MaybeDetism,
+        !EquivTypeInfo, !UsedModules, Specs) :-
     (
         MaybeWithInst0 = yes(WithInst0),
         replace_in_inst(Location, WithInst0, EqvInstMap, WithInst,
@@ -1431,7 +1436,7 @@ replace_in_pred_mode(Location, PredName, OrigArity, Context, DeclType,
             ; MaybePredOrFunc0 = yes(PredOrFunc)
             )
         ->
-            !:MaybeDet = yes(DetPrime),
+            !:MaybeDetism = yes(DetPrime),
             MaybeWithInst = no,
             MaybePredOrFunc = yes(PredOrFunc),
             ExtraModes = ExtraModes0,

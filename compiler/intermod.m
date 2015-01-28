@@ -1381,7 +1381,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         Body = hlds_solver_type(SolverTypeDetails, MaybeUserEqComp),
         TypeBody = parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp)
     ),
-    MainItemTypeDefn = item_type_defn_info(VarSet, Name, Args, TypeBody,
+    MainItemTypeDefn = item_type_defn_info(Name, Args, TypeBody, VarSet,
         Context, -1),
     MainItem = item_type_defn(MainItemTypeDefn),
     MercInfo = OutInfo ^ hoi_mercury_to_mercury,
@@ -1397,10 +1397,10 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             MaybeIL = yes(DataIL),
             DataIL = foreign_type_lang_data(ILForeignType, ILMaybeUserEqComp,
                 AssertionsIL),
-            ILItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
+            ILItemTypeDefn = item_type_defn_info(Name, Args,
                 parse_tree_foreign_type(il(ILForeignType),
                     ILMaybeUserEqComp, AssertionsIL),
-                Context, -1),
+                VarSet, Context, -1),
             ILItem = item_type_defn(ILItemTypeDefn),
             mercury_output_item(MercInfo, ILItem, !IO)
         ;
@@ -1410,10 +1410,10 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             MaybeC = yes(DataC),
             DataC = foreign_type_lang_data(CForeignType,
                 CMaybeUserEqComp, AssertionsC),
-            CItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
+            CItemTypeDefn = item_type_defn_info(Name, Args,
                 parse_tree_foreign_type(c(CForeignType),
                     CMaybeUserEqComp, AssertionsC),
-                Context, -1),
+                VarSet, Context, -1),
             CItem = item_type_defn(CItemTypeDefn),
             mercury_output_item(MercInfo, CItem, !IO)
         ;
@@ -1423,10 +1423,10 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             MaybeJava = yes(DataJava),
             DataJava = foreign_type_lang_data(JavaForeignType,
                 JavaMaybeUserEqComp, AssertionsJava),
-            JavaItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
+            JavaItemTypeDefn = item_type_defn_info(Name, Args,
                 parse_tree_foreign_type(java(JavaForeignType),
                     JavaMaybeUserEqComp, AssertionsJava),
-                Context, -1),
+                VarSet, Context, -1),
             JavaItem = item_type_defn(JavaItemTypeDefn),
             mercury_output_item(MercInfo, JavaItem, !IO)
         ;
@@ -1436,10 +1436,10 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             MaybeCSharp = yes(DataCSharp),
             DataCSharp = foreign_type_lang_data(CSharpForeignType,
                 CSharpMaybeUserEqComp, AssertionsCSharp),
-            CSharpItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
+            CSharpItemTypeDefn = item_type_defn_info(Name, Args,
                 parse_tree_foreign_type(csharp(CSharpForeignType),
                     CSharpMaybeUserEqComp, AssertionsCSharp),
-                Context, -1),
+                VarSet, Context, -1),
             CSharpItem = item_type_defn(CSharpItemTypeDefn),
             mercury_output_item(MercInfo, CSharpItem, !IO)
         ;
@@ -1449,10 +1449,10 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             MaybeErlang = yes(DataErlang),
             DataErlang = foreign_type_lang_data(ErlangForeignType,
                 ErlangMaybeUserEqComp, AssertionsErlang),
-            ErlangItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
+            ErlangItemTypeDefn = item_type_defn_info(Name, Args,
                 parse_tree_foreign_type(erlang(ErlangForeignType),
                     ErlangMaybeUserEqComp, AssertionsErlang),
-                Context, -1),
+                VarSet, Context, -1),
             ErlangItem = item_type_defn(ErlangItemTypeDefn),
             mercury_output_item(MercInfo, ErlangItem, !IO)
         ;
@@ -1467,8 +1467,8 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     ->
         % The pragma's origin isn't printed, so what origin we pass here
         % doesn't matter.
-        ReserveItemPragma = item_pragma_info(item_origin_user,
-            pragma_reserve_tag(TypeCtor), Context, -1),
+        ReserveItemPragma = item_pragma_info(pragma_reserve_tag(TypeCtor),
+            item_origin_user, Context, -1),
         ReserveItem = item_pragma(ReserveItemPragma),
         mercury_output_item(MercInfo, ReserveItem, !IO)
     ;
@@ -1484,7 +1484,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         ForeignPragma = pragma_foreign_enum(FEInfo),
         % The pragma's origin isn't printed, so what origin we pass here
         % doesn't matter.
-        ForeignItemPragma = item_pragma_info(item_origin_user, ForeignPragma,
+        ForeignItemPragma = item_pragma_info(ForeignPragma, item_origin_user,
             Context, -1),
         ForeignItem = item_pragma(ForeignItemPragma),
         mercury_output_item(MercInfo, ForeignItem, !IO)
@@ -1529,8 +1529,8 @@ intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !IO) :-
         SymName = qualified(ModuleName, _),
         import_status_to_write(ImportStatus)
     ->
-        ItemModeDefn = item_mode_defn_info(Varset, SymName, Args,
-            eqv_mode(Mode), Context, -1),
+        ItemModeDefn = item_mode_defn_info(SymName, Args, eqv_mode(Mode),
+            Varset, Context, -1),
         Item = item_mode_defn(ItemModeDefn),
         MercInfo = OutInfo ^ hoi_mercury_to_mercury,
         mercury_output_item(MercInfo, Item, !IO)
@@ -1565,8 +1565,8 @@ intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !IO) :-
             Body = abstract_inst,
             InstBody = abstract_inst
         ),
-        ItemInstDefn = item_inst_defn_info(Varset, SymName, Args, InstBody,
-            Context, -1),
+        ItemInstDefn = item_inst_defn_info(SymName, Args, InstBody,
+            Varset, Context, -1),
         Item = item_inst_defn(ItemInstDefn),
         MercInfo = OutInfo ^ hoi_mercury_to_mercury,
         mercury_output_item(MercInfo, Item, !IO)
@@ -1595,8 +1595,8 @@ intermod_write_class(OutInfo, ModuleName, ClassId, ClassDefn, !IO) :-
         import_status_to_write(ImportStatus)
     ->
         FunDeps = list.map(unmake_hlds_class_fundep(TVars), HLDSFunDeps),
-        ItemTypeClass = item_typeclass_info(Constraints, FunDeps,
-            QualifiedClassName, TVars, Interface, TVarSet, Context, -1),
+        ItemTypeClass = item_typeclass_info(QualifiedClassName, TVars,
+            Constraints, FunDeps, Interface, TVarSet, Context, -1),
         Item = item_typeclass(ItemTypeClass),
         MercInfo = OutInfo ^ hoi_mercury_to_mercury,
         mercury_output_item(MercInfo, Item, !IO)
@@ -1633,8 +1633,8 @@ intermod_write_instance(OutInfo, ClassId - InstanceDefn, !IO) :-
     InstanceDefn = hlds_instance_defn(ModuleName, _, Context, Constraints,
         Types, OriginalTypes, Body, _, TVarSet, _),
     ClassId = class_id(ClassName, _),
-    ItemInstance = item_instance_info(Constraints, ClassName,
-        Types, OriginalTypes, Body, TVarSet, ModuleName, Context, -1),
+    ItemInstance = item_instance_info(ClassName, Types, OriginalTypes,
+        Constraints, Body, TVarSet, ModuleName, Context, -1),
     Item = item_instance(ItemInstance),
     MercInfo = OutInfo ^ hoi_mercury_to_mercury,
     mercury_output_item(MercInfo, Item, !IO).
@@ -2445,7 +2445,7 @@ grab_opt_files(Globals, !Module, FoundError, !IO) :-
             no, UA_SR_Error, !IO),
         KeepPragma = (pred(Item::in) is semidet :-
             Item = item_pragma(ItemPragma),
-            ItemPragma = item_pragma_info(_, Pragma, _, _),
+            ItemPragma = item_pragma_info(Pragma, _, _, _),
             (
                 UnusedArgs = yes,
                 Pragma = pragma_unused_args(_)

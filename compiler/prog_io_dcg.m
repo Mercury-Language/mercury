@@ -678,8 +678,8 @@ process_dcg_clause(MaybeFunctor, VarSet, Var0, Var, Body, Context,
         MaybeFunctor = ok2(Name, Args0),
         list.map(term.coerce, Args0, Args1),
         Args = Args1 ++ [variable(Var0, Context), variable(Var, Context)],
-        ItemClause = item_clause_info(item_origin_user, VarSet, pf_predicate,
-            Name, Args, Body, Context, SeqNum),
+        ItemClause = item_clause_info(Name, pf_predicate, Args,
+            item_origin_user, VarSet, Body, Context, SeqNum),
         Item = item_clause(ItemClause),
         MaybeItem = ok1(Item)
     ;

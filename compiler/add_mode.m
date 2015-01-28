@@ -49,7 +49,7 @@
 module_add_inst_defn(ItemInstDefnInfo, InvalidMode, ItemStatus, !ModuleInfo,
         !Specs) :-
     ItemStatus = item_status(Status, _NeedQual),
-    ItemInstDefnInfo = item_inst_defn_info(VarSet, Name, Params, InstDefn,
+    ItemInstDefnInfo = item_inst_defn_info(Name, Params, InstDefn, VarSet,
         Context, _SeqNum),
     % Add the definition of this inst to the HLDS inst table.
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -129,7 +129,7 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
 
 module_add_mode_defn(ItemModeDefnInfo, InvalidMode, ItemStatus, !ModuleInfo,
         !Specs) :-
-    ItemModeDefnInfo = item_mode_defn_info(VarSet, Name, Params, ModeDefn,
+    ItemModeDefnInfo = item_mode_defn_info(Name, Params, ModeDefn, VarSet,
         Context, _SeqNum),
     ItemStatus = item_status(Status, _NeedQual),
     module_info_get_mode_table(!.ModuleInfo, Modes0),

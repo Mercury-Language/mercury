@@ -460,11 +460,11 @@ expand_bang_states_method(IM0, IM) :-
     is det.
 
 expand_bang_states_clause(ItemClause0, ItemClause) :-
-    ItemClause0 = item_clause_info(Origin, VarSet, PredOrFunc, SymName,
-        Args0, Body, Context, SeqNum),
+    ItemClause0 = item_clause_info(SymName, PredOrFunc, Args0, Origin, VarSet,
+        Body, Context, SeqNum),
     expand_bang_states(Args0, Args),
-    ItemClause = item_clause_info(Origin, VarSet, PredOrFunc, SymName,
-        Args, Body, Context, SeqNum).
+    ItemClause = item_clause_info(SymName, PredOrFunc, Args, Origin, VarSet,
+        Body, Context, SeqNum).
 
 %-----------------------------------------------------------------------------%
 %

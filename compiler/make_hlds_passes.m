@@ -480,8 +480,8 @@ add_pass_1_type_defn(ItemTypeDefnInfo, Status, !ModuleInfo, !Specs) :-
     % Before switch detection, we turn calls to these functions/predicates
     % into ordinary constructions/deconstructions, but preserve the
     % corresponding impurity annotations.
-    ItemTypeDefnInfo = item_type_defn_info(TypeVarSet, SymName, TypeParams,
-        TypeDefn, Context, _SeqNum),
+    ItemTypeDefnInfo = item_type_defn_info(SymName, TypeParams, TypeDefn,
+        TypeVarSet, Context, _SeqNum),
     ( TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp) ->
         add_solver_type_aux_pred_decls(TypeVarSet, SymName, TypeParams,
             SolverTypeDetails, Context, Status, !ModuleInfo, !Specs),
@@ -510,10 +510,13 @@ add_solver_type_mutable_items_pass_1([MutableInfo | MutableInfos], Status,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_1_pred_decl(ItemPredDecl, Status, !ModuleInfo, !Specs) :-
-    % XXX Why are we ignoring _WithType and _WithInst?
-    ItemPredDecl = item_pred_decl_info(Origin, TypeVarSet, InstVarSet,
-        ExistQVars, PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst,
-        MaybeDet, Purity, ClassContext, Context, _SeqNum),
+    ItemPredDecl = item_pred_decl_info(PredName, PredOrFunc, TypesAndModes,
+        WithType, WithInst, MaybeDetism, Origin, TypeVarSet, InstVarSet,
+        ExistQVars, Purity, ClassContext, Context, _SeqNum),
+    % Any WithType and WithInst annotations should have been expanded
+    % and the type and/or inst put into TypesAndModes by equiv_type.m.
+    expect(unify(WithType, no), $module, $pred, "WithType != no"),
+    expect(unify(WithInst, no), $module, $pred, "WithInst != no"),
 
     % If this predicate was added as a result of the mutable transformation
     % then mark this predicate as a mutable access pred. We do this so that
@@ -536,7 +539,7 @@ add_pass_1_pred_decl(ItemPredDecl, Status, !ModuleInfo, !Specs) :-
     % ZZZ
     PredOrigin = origin_user(PredName),
     module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
-        PredOrFunc, PredName, TypesAndModes, MaybeDet, Purity, ClassContext,
+        PredOrFunc, PredName, TypesAndModes, MaybeDetism, Purity, ClassContext,
         Markers, Context, Status, _, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
@@ -546,8 +549,8 @@ add_pass_1_pred_decl(ItemPredDecl, Status, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_1_mode_decl(ItemModeDecl, Status, !ModuleInfo, !Specs) :-
-    ItemModeDecl = item_mode_decl_info(VarSet, MaybePredOrFunc, PredName,
-        Modes, _WithInst, MaybeDet, Context, _SeqNum),
+    ItemModeDecl = item_mode_decl_info(PredName, MaybePredOrFunc, Modes,
+        _WithInst, MaybeDet, VarSet, Context, _SeqNum),
     (
         MaybePredOrFunc = yes(PredOrFunc),
         Status = item_status(ImportStatus, _),
@@ -637,7 +640,7 @@ add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_2_type_defn(ItemTypeDefn, Status, !ModuleInfo, !Specs) :-
-    ItemTypeDefn = item_type_defn_info(VarSet, Name, Args, TypeDefn,
+    ItemTypeDefn = item_type_defn_info(Name, Args, TypeDefn, VarSet,
         Context, _SeqNum),
     module_add_type_defn(VarSet, Name, Args, TypeDefn, Context,
         Status, !ModuleInfo, !Specs),
@@ -667,8 +670,8 @@ add_solver_type_mutable_items_pass_2([MutableInfo | MutableInfos], Status,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_2_pred_decl(ItemPredDecl, _Status, !ModuleInfo, !Specs) :-
-    ItemPredDecl = item_pred_decl_info(_Origin, _TypeVarSet, _InstVarSet,
-        _ExistQVars, PredOrFunc, SymName, TypesAndModes, _WithType, _WithInst,
+    ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc, TypesAndModes,
+        _Origin, _TypeVarSet, _InstVarSet, _ExistQVars, _WithType, _WithInst,
         _MaybeDet, _Purity, _ClassContext, _Context, _SeqNum),
     % Add default modes for function declarations, if necessary.
     (
@@ -699,8 +702,8 @@ add_pass_2_pred_decl(ItemPredDecl, _Status, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_2_instance(ItemInstance, Status, !ModuleInfo, !Specs) :-
-    ItemInstance = item_instance_info(Constraints, Name, Types, OriginalTypes,
-        Body, VarSet, InstanceModuleName, Context, _SeqNum),
+    ItemInstance = item_instance_info(Name, Types, OriginalTypes,
+        Constraints, Body, VarSet, InstanceModuleName, Context, _SeqNum),
     Status = item_status(ImportStatus, _),
     (
         Body = instance_body_abstract,
@@ -722,7 +725,7 @@ add_pass_2_instance(ItemInstance, Status, !ModuleInfo, !Specs) :-
 add_pass_2_initialise(ItemInitialise, Status, !ModuleInfo, !Specs) :-
     % These are processed properly during pass 3, we just do some
     % error checking at this point.
-    ItemInitialise = item_initialise_info(Origin, _, _, Context, _SeqNum),
+    ItemInitialise = item_initialise_info(_, _, Origin, Context, _SeqNum),
     Status = item_status(ImportStatus, _),
     ( ImportStatus = status_exported ->
         (
@@ -755,7 +758,7 @@ add_pass_2_initialise(ItemInitialise, Status, !ModuleInfo, !Specs) :-
 add_pass_2_finalise(ItemFinalise, Status, !ModuleInfo, !Specs) :-
     % There are processed properly during pass 3, we just do some error
     % checking at this point.
-    ItemFinalise = item_finalise_info(Origin, _, _, Context, _SeqNum),
+    ItemFinalise = item_finalise_info(_, _, Origin, Context, _SeqNum),
     Status = item_status(ImportStatus, _),
     ( ImportStatus = status_exported ->
         (
@@ -900,8 +903,8 @@ update_module_version_numbers(ModuleName, ModuleVersionNumbers, !RecompInfo) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs) :-
-    ItemClause = item_clause_info(Origin, VarSet, PredOrFunc,
-        PredName, Args, Body, Context, SeqNum),
+    ItemClause = item_clause_info(PredName, PredOrFunc, Args, Origin, VarSet,
+        Body, Context, SeqNum),
     ( Status = status_exported ->
         (
             Origin = item_origin_user,
@@ -939,8 +942,8 @@ add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_3_type_defn(ItemTypeDefn, Status, !ModuleInfo, !QualInfo, !Specs) :-
-    ItemTypeDefn = item_type_defn_info(_TypeVarSet, SymName, TypeParams,
-        TypeDefn, Context, _SeqNum),
+    ItemTypeDefn = item_type_defn_info(SymName, TypeParams, TypeDefn,
+        _TypeVarSet, Context, _SeqNum),
     % If this is a solver type, then we need to also add the clauses for
     % the compiler generated inst cast predicate (the declaration for which
     % was added in pass 1). We should only add the clauses if this is the
@@ -979,8 +982,8 @@ add_solver_type_mutable_items_clauses([MutableInfo | MutableInfos], Status,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_3_pred_decl(ItemPredDecl, Status, !ModuleInfo, !QualInfo, !Specs) :-
-    ItemPredDecl = item_pred_decl_info(_, _, _, _, PredOrFunc, SymName,
-        TypesAndModes, _WithType, _WithInst, _, _, _, Context, _SeqNum),
+    ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc, TypesAndModes,
+        _, _, _, _, _WithType, _WithInst, _, _, _, Context, _SeqNum),
     (
         PredOrFunc = pf_predicate
     ;
@@ -1058,7 +1061,7 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
 
 add_pass_3_initialise(ItemInitialise, _Status, !ModuleInfo, !QualInfo,
         !Specs) :-
-    ItemInitialise = item_initialise_info(Origin, SymName, Arity, Context,
+    ItemInitialise = item_initialise_info(SymName, Arity, Origin, Context,
         _SeqNum),
     (
         Origin = item_origin_user,
@@ -1203,7 +1206,7 @@ add_pass_3_finalise(ItemFinalise, !ModuleInfo, !Specs) :-
     % For the Erlang backend, we need to have the finalpred recorded in the
     % ModuleInfo. This is implied by the handling for the C backends.
 
-    ItemFinalise = item_finalise_info(Origin, SymName, Arity, Context,
+    ItemFinalise = item_finalise_info(SymName, Arity, Origin, Context,
         _SeqNum),
     (
         Origin = item_origin_compiler(_),

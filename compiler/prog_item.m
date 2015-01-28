@@ -50,6 +50,21 @@
 % is later split apart (e.g. into several items that each import only one
 % module).
 %
+% When we create interface files, we print out selected items in the module.
+% If the sequence of items printed changes, all the other modules depending
+% on that interface file will be recompiled.
+%
+% A nontrivial fraction of changes to a module affect only the *order*
+% of the items included in the interface, not their *content*. To minimize
+% the amount of recompilation we have to do, we sort (most of the kinds of)
+% items in the interface file, so that a change in the item order in the
+% source file does not change the order of the items in the interface file.
+% To make this sorting effective, we put the fields we prefer to use as
+% the sort keys at the start of the item-kind-specific types. These are
+% usually those that define the name of the entity, and if it makes sense
+% to have more than item with that name, the main fields that distinguish
+% items of the same name from each other.
+%
 
 :- type compilation_unit
     --->    unit_module(
@@ -122,11 +137,11 @@
 
 :- type item_clause_info
     --->    item_clause_info(
+                cl_predname                     :: sym_name,
+                cl_pred_or_func                 :: pred_or_func,
+                cl_head_args                    :: list(prog_term),
                 cl_maybe_attrs                  :: item_maybe_attrs,
                 cl_varset                       :: prog_varset,
-                cl_pred_or_func                 :: pred_or_func,
-                cl_predname                     :: sym_name,
-                cl_head_args                    :: list(prog_term),
                 cl_body                         :: goal,
                 cl_context                      :: prog_context,
                 cl_seq_num                      :: int
@@ -136,11 +151,10 @@
     --->    item_type_defn_info(
                 % `:- type ...':
                 % a definition of a type, or a declaration of an abstract type.
-
-                td_tvarset                      :: tvarset,
                 td_ctor_name                    :: sym_name,
                 td_ctor_args                    :: list(type_param),
                 td_ctor_defn                    :: type_defn,
+                td_tvarset                      :: tvarset,
                 td_context                      :: prog_context,
                 td_seq_num                      :: int
             ).
@@ -149,10 +163,10 @@
     --->    item_inst_defn_info(
                 % `:- inst ... = ...':
                 % a definition of an inst.
-                id_varset                       :: inst_varset,
                 id_inst_name                    :: sym_name,
                 id_inst_args                    :: list(inst_var),
                 id_inst_defn                    :: inst_defn,
+                id_varset                       :: inst_varset,
                 id_context                      :: prog_context,
                 id_seq_num                      :: int
             ).
@@ -161,10 +175,10 @@
     --->    item_mode_defn_info(
                 % `:- mode ... = ...':
                 % a definition of a mode.
-                md_varset                       :: inst_varset,
                 md_mode_name                    :: sym_name,
                 md_mode_args                    :: list(inst_var),
                 md_mode_defn                    :: mode_defn,
+                md_varset                       :: inst_varset,
                 md_context                      :: prog_context,
                 md_seq_num                      :: int
             ).
@@ -175,13 +189,8 @@
                 % a predicate or function declaration.
                 % This specifies the type of the predicate or function,
                 % and it may optionally also specify the mode and determinism.
-                pf_maybe_attrs                  :: item_maybe_attrs,
-                % ZZZ pf_pred_origin            :: pred_origin_subset
-                pf_tvarset                      :: tvarset,
-                pf_instvarset                   :: inst_varset,
-                pf_existqvars                   :: existq_tvars,
-                pf_which                        :: pred_or_func,
                 pf_name                         :: sym_name,
+                pf_p_or_f                       :: pred_or_func,
                 pf_arg_decls                    :: list(type_and_mode),
                 % The next two fields hold the `with_type` and `with_inst`
                 % annotations. This syntactic sugar is expanded out by
@@ -189,6 +198,11 @@
                 pf_maybe_with_type              :: maybe(mer_type),
                 pf_maybe_with_inst              :: maybe(mer_inst),
                 pf_maybe_detism                 :: maybe(determinism),
+                pf_maybe_attrs                  :: item_maybe_attrs,
+                % ZZZ pf_pred_origin            :: pred_origin_subset
+                pf_tvarset                      :: tvarset,
+                pf_instvarset                   :: inst_varset,
+                pf_existqvars                   :: existq_tvars,
                 pf_purity                       :: purity,
                 pf_constraints                  :: prog_constraints,
                 pf_context                      :: prog_context,
@@ -199,23 +213,23 @@
     --->    item_mode_decl_info(
                 % `:- mode ...':
                 % a mode declaration for a predicate or function.
-                pfm_instvarset                  :: inst_varset,
-                pfm_which                       :: maybe(pred_or_func),
                 pfm_name                        :: sym_name,
+                pfm_p_or_f                      :: maybe(pred_or_func),
                 pfm_arg_modes                   :: list(mer_mode),
                 % The next field holds the `with_inst` annotation. This
                 % syntactic sugar is expanded by equiv_type.m, which will
                 % then set the field to `no'.
                 pfm_maybe_with_inst             :: maybe(mer_inst),
                 pfm_maybe_detism                :: maybe(determinism),
+                pfm_instvarset                  :: inst_varset,
                 pfm_context                     :: prog_context,
                 pfm_seq_num                     :: int
             ).
 
 :- type item_pragma_info
     --->    item_pragma_info(
-                pragma_maybe_attrs              :: item_maybe_attrs,
                 pragma_type                     :: pragma_type,
+                pragma_maybe_attrs              :: item_maybe_attrs,
                 pragma_context                  :: prog_context,
                 pragma_seq_num                  :: int
             ).
@@ -232,10 +246,10 @@
 
 :- type item_typeclass_info
     --->    item_typeclass_info(
-                tc_constraints                  :: list(prog_constraint),
-                tc_fundeps                      :: list(prog_fundep),
                 tc_class_name                   :: class_name,
                 tc_class_params                 :: list(tvar),
+                tc_constraints                  :: list(prog_constraint),
+                tc_fundeps                      :: list(prog_fundep),
                 tc_class_methods                :: class_interface,
                 tc_varset                       :: tvarset,
                 tc_context                      :: prog_context,
@@ -247,10 +261,10 @@
                 % The original types field preserves the types in the instance
                 % declaration as written by the programmer. The types field
                 % is subject to the expansion of equivalent types.
-                ci_deriving_class               :: list(prog_constraint),
                 ci_class_name                   :: class_name,
                 ci_types                        :: list(mer_type),
                 ci_original_types               :: list(mer_type),
+                ci_deriving_class               :: list(prog_constraint),
                 ci_method_instances             :: instance_body,
                 ci_varset                       :: tvarset,
                 ci_module_containing_instance   :: module_name,
@@ -261,9 +275,9 @@
 :- type item_initialise_info
     --->    item_initialise_info(
                 % :- initialise pred_name.
-                init_maybe_attrs                :: item_maybe_attrs,
                 init_name                       :: sym_name,
                 init_arity                      :: arity,
+                init_maybe_attrs                :: item_maybe_attrs,
                 init_context                    :: prog_context,
                 init_seq_num                    :: int
             ).
@@ -271,9 +285,9 @@
 :- type item_finalise_info
     --->    item_finalise_info(
                 % :- finalise pred_name.
-                final_maybe_attrs               :: item_maybe_attrs,
                 final_name                      :: sym_name,
                 final_arity                     :: arity,
+                final_maybe_attrs               :: item_maybe_attrs,
                 final_context                   :: prog_context,
                 final_seq_num                   :: int
             ).
@@ -330,16 +344,16 @@
                 % specify the type of the predicate or function,
                 % and may optionally also specify the mode and determinism.
 
-                tvarset,            % type variables
-                inst_varset,        % inst variables
-                existq_tvars,       % existentially quantified
-                                    % type variables
-                pred_or_func,
                 sym_name,           % name of the pred or func
+                pred_or_func,
                 list(type_and_mode),% the arguments' types and modes
                 maybe(mer_type),    % any `with_type` annotation
                 maybe(mer_inst),    % any `with_inst` annotation
                 maybe(determinism), % any determinism declaration
+                tvarset,            % type variables
+                inst_varset,        % inst variables
+                existq_tvars,       % existentially quantified
+                                    % type variables
                 purity,             % any purity annotation
                 prog_constraints,   % the typeclass constraints on
                                     % the declaration
@@ -351,16 +365,16 @@
                 % declaration in a type class body. Such a declaration
                 % declares a mode for one of the type class methods.
 
-                inst_varset,        % inst variables
+                sym_name,           % the method name
                 maybe(pred_or_func),% whether the method is a pred
                                     % or a func; for declarations
                                     % using `with_inst`, we don't
                                     % know which until we've
                                     % expanded the inst.
-                sym_name,           % the method name
                 list(mer_mode),     % the arguments' modes
                 maybe(mer_inst),    % any `with_inst` annotation
                 maybe(determinism), % any determinism declaration
+                inst_varset,        % inst variables
                 prog_context        % the declaration's context
             ).
 
@@ -1175,7 +1189,7 @@ get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
 get_item_foreign_code(Globals, Item, !Info) :-
     (
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, Context, _),
+        ItemPragma = item_pragma_info(Pragma, _, Context, _),
         get_pragma_foreign_code(Globals, Pragma, Context, !Info)
     ;
         Item = item_mutable(_),

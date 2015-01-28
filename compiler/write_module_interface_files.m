@@ -279,7 +279,7 @@ process_item_for_private_interface(ModuleName, Item, !Section,
             Item = item_clause(_)
         ;
             Item = item_pragma(ItemPragma),
-            ItemPragma = item_pragma_info(_, Pragma, _, _),
+            ItemPragma = item_pragma_info(Pragma, _, _, _),
             pragma_allowed_in_interface(Pragma) = no
         ;
             Item = item_initialise(_)
@@ -758,8 +758,8 @@ insert_module_spec(Context, NewModuleSpec, [Head | Tail], Result) :-
 
 insert_type_defn(New, [], [New]).
 insert_type_defn(New, [Head | Tail], Result) :-
-    New = item_type_defn_info(_, NewSymName, NewParams, _, _, _),
-    Head = item_type_defn_info(_, HeadSymName, HeadParams, _, _, _),
+    New = item_type_defn_info(NewSymName, NewParams, _, _, _, _),
+    Head = item_type_defn_info(HeadSymName, HeadParams, _, _, _, _),
     compare(CompareSymName, NewSymName, HeadSymName),
     (
         (
@@ -940,7 +940,7 @@ strip_unnecessary_impl_types(NecessaryTypeCtors, !Items) :-
 
 is_not_unnecessary_impl_type(NecessaryTypeCtors, Item) :-
     ( Item = item_type_defn(ItemTypeDefn) ->
-        ItemTypeDefn = item_type_defn_info(_, SymName, Params, _, _, _),
+        ItemTypeDefn = item_type_defn_info(SymName, Params, _, _, _, _),
         TypeCtor = type_ctor(SymName, list.length(Params)),
         set.member(TypeCtor, NecessaryTypeCtors)
     ;
@@ -1180,7 +1180,7 @@ gather_type_defns_2(!.InInterface, [Item | Items],
     ;
         Item = item_type_defn(ItemTypeDefn)
     ->
-        ItemTypeDefn = item_type_defn_info(_, Name, Args, Body, _, _),
+        ItemTypeDefn = item_type_defn_info(Name, Args, Body, _, _, _),
         TypeCtor = type_ctor(Name, length(Args)),
         (
             !.InInterface = yes,
@@ -1319,7 +1319,7 @@ strip_local_foreign_enum_pragmas(IntTypeMap, !ImplItems) :-
 foreign_enum_is_local(TypeDefnMap, Item) :-
     (
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
         Pragma = pragma_foreign_enum(FEInfo),
         FEInfo = pragma_info_foreign_enum(_Lang, TypeCtor, _Values)
     ->
@@ -1356,7 +1356,7 @@ report_and_strip_clauses_in_interface_loop([Item0 | Items0],
         !:Specs = [Spec | !.Specs]
     ;
         Item0 = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, Context, _),
+        ItemPragma = item_pragma_info(Pragma, _, Context, _),
         AllowedInInterface = pragma_allowed_in_interface(Pragma),
         (
             AllowedInInterface = no,
@@ -1524,7 +1524,7 @@ include_in_short_interface(Item) = Include :-
         Include = yes
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
         % XXX This if-then-else should be a switch, or (even better)
         % we should take pragma_foreign_import_modules out of the pragma items
         % and given them their own item type.
@@ -1572,7 +1572,7 @@ maybe_strip_import_decls(!Items) :-
             (pred(ThisItem::in) is semidet :-
                 \+ (
                     ThisItem = item_pragma(ThisItemPragma),
-                    ThisItemPragma = item_pragma_info(_, Pragma, _, _),
+                    ThisItemPragma = item_pragma_info(Pragma, _, _, _),
                     Pragma = pragma_foreign_import_module(_)
                 )
             ),
@@ -1758,7 +1758,7 @@ reorderable_item(Item) = Reorderable :-
         Reorderable = reorderable_module_defn(ModuleDefn)
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
         Reorderable = reorderable_pragma_type(Pragma)
     ;
         ( Item = item_type_defn(_)
@@ -1874,7 +1874,7 @@ chunkable_item(Item) = Chunkable :-
         Chunkable = chunkable_module_defn(ModuleDefn)
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
         Chunkable = chunkable_pragma_type(Pragma)
     ;
         ( Item = item_clause(_)

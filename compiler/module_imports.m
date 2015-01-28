@@ -366,8 +366,8 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         % stack in the asm_fast.gc.debug.stseg grade.
         ItemDeclaresMain = (pred(Item::in) is semidet :-
             Item = item_pred_decl(ItemPredDecl),
-            ItemPredDecl = item_pred_decl_info(_, _, _, _, pf_predicate, Name,
-                [_, _], WithType, _, _, _, _, _, _),
+            ItemPredDecl = item_pred_decl_info(Name, pf_predicate, [_, _],
+                _, WithType, _, _, _, _, _, _, _, _, _),
             unqualify_name(Name) = "main",
 
             % XXX We should allow `main/2' to be declared using `with_type`,
@@ -671,7 +671,7 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
             !ImplicitImportNeeds)
     ;
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_Origin, Pragma, _Context, _SeqNum),
+        ItemPragma = item_pragma_info(Pragma, _Origin, _Context, _SeqNum),
         (
             Pragma = pragma_tabled(TableInfo),
             TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes)
@@ -716,8 +716,8 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
             !ImplicitImportNeeds)
     ;
         Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(_TVarSet, _TypeCtorName,
-            _TypeParams, TypeDefn, _Context, _SeqNum),
+        ItemTypeDefn = item_type_defn_info(_TypeCtorName, _TypeParams,
+            TypeDefn, _TVarSet, _Context, _SeqNum),
         (
             TypeDefn = parse_tree_du_type(_Constructor,
                 _MaybeUnifyComparePredNames, _MaybeDirectArgs)
@@ -780,8 +780,8 @@ gather_implicit_import_needs_in_mutable(ItemMutableInfo,
     implicit_import_needs::in, implicit_import_needs::out) is det.
 
 gather_implicit_import_needs_in_clause(ItemClause, !ImplicitImportNeeds) :-
-    ItemClause = item_clause_info(_Origin, _VarSet, _PredOrFunc,
-        _PredName, HeadTerms, Goal, _Context, _SeqNum),
+    ItemClause = item_clause_info(_PredName,_PredOrFunc, HeadTerms,
+        _Origin, _VarSet, Goal, _Context, _SeqNum),
     gather_implicit_import_needs_in_terms(HeadTerms, !ImplicitImportNeeds),
     gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds).
 
@@ -1026,7 +1026,7 @@ get_fact_table_dependencies_2([], !Deps).
 get_fact_table_dependencies_2([Item | Items], !Deps) :-
     (
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
         Pragma = pragma_fact_table(FTInfo),
         FTInfo = pragma_info_fact_table(_PredNameArity, FileName)
     ->
@@ -1048,7 +1048,7 @@ get_foreign_include_files(Items, IncludeFiles) :-
 get_foreign_include_file(Item, !IncludeFiles) :-
     (
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _, _),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
         (
             Pragma = pragma_foreign_decl(FDInfo),
             FDInfo = pragma_info_foreign_decl(Lang, _IsLocal, LiteralOrInclude)

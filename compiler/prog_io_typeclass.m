@@ -315,7 +315,7 @@ parse_unconstrained_class(ModuleName, NameTerm, TVarSet, Context, SeqNum,
         ->
             % XXX Would this be a better context?
             % Context = get_term_context(NameTerm),
-            TypeClassInfo = item_typeclass_info([], [], ClassName, Vars,
+            TypeClassInfo = item_typeclass_info(ClassName, Vars, [], [],
                 class_interface_abstract, TVarSet, Context, SeqNum),
             MaybeTypeClassInfo = ok1(TypeClassInfo)
         ;
@@ -360,16 +360,18 @@ parse_class_methods(ModuleName, MethodsTerm, VarSet, Result) :-
 item_to_class_method(error1(Specs), _, error1(Specs)).
 item_to_class_method(ok1(Item), Term, Result) :-
     ( Item = item_pred_decl(ItemPredDecl) ->
-        ItemPredDecl = item_pred_decl_info(_Origin, A, B, C, D, E, F, G, H, I,
-            J, K, Context, _SeqNum),
-        ClassMethod = method_pred_or_func(A, B, C, D, E, F, G, H, I,
-            J, K, Context),
+        ItemPredDecl = item_pred_decl_info(Name, PorF, ArgDecls,
+            WithType, WithInst, MaybeDetism, _Origin, TypeVarSet, InstVarSet,
+            ExistQVars, Purity, Constraints, Context, _SeqNum),
+        ClassMethod = method_pred_or_func(Name, PorF, ArgDecls,
+            WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
+            ExistQVars, Purity, Constraints, Context),
         Result = ok1(ClassMethod)
     ; Item = item_mode_decl(ItemModeDecl) ->
-        ItemModeDecl = item_mode_decl_info(A, B, C, D, E, F,
-            Context, _SeqNum),
-        ClassMethod = method_pred_or_func_mode(A, B, C, D, E, F,
-            Context),
+        ItemModeDecl = item_mode_decl_info(Name, MaybePorF, ArgModes,
+            WithInst, MaybeDetism, InstVarSet, Context, _SeqNum),
+        ClassMethod = method_pred_or_func_mode(Name, MaybePorF, ArgModes,
+            WithInst, MaybeDetism, InstVarSet, Context),
         Result = ok1(ClassMethod)
     ;
         Pieces = [words("Error: only pred, func and mode declarations"),
@@ -666,13 +668,13 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet, Context,
             MaybeItemInstance = MaybeItemInstance0
         ;
             MaybeItemInstance0 = ok1(ItemInstance0),
-            ItemInstance0 = item_instance_info(_ConstraintList0, Name,
-                Types, OriginalTypes, Body, InstanceVarSet, ModName,
+            ItemInstance0 = item_instance_info(Name, Types, OriginalTypes,
+                _ConstraintList0, Body, InstanceVarSet, ModName,
                 InstanceContext, ItemSeqNum),
             % XXX Should we keep InstanceContext, or should we replace it
             % with Context? Or will they always be the same?
-            ItemInstance = item_instance_info(ConstraintList, Name,
-                Types, OriginalTypes, Body, InstanceVarSet, ModName,
+            ItemInstance = item_instance_info(Name, Types, OriginalTypes,
+                ConstraintList, Body, InstanceVarSet, ModName,
                 InstanceContext, ItemSeqNum),
             MaybeItemInstance = ok1(ItemInstance)
         )
@@ -708,7 +710,7 @@ parse_underived_instance(ModuleName, NameTerm, TVarSet, Context, SeqNum,
         parse_types(TermTypes, VarSet, TypesContextPieces, MaybeTypes),
         (
             MaybeTypes = ok1(Types),
-            ItemInstance = item_instance_info([], ClassName, Types, Types,
+            ItemInstance = item_instance_info(ClassName, Types, Types, [],
                 instance_body_abstract, TVarSet, ModuleName, Context, SeqNum),
             MaybeItemInstance = ok1(ItemInstance)
         ;
@@ -760,8 +762,8 @@ parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Context,
 check_tvars_in_instance_constraint(error1(Specs), _, error1(Specs)).
 check_tvars_in_instance_constraint(ok1(ItemInstance), InstanceTerm, Result) :-
     % XXX
-    ItemInstance = item_instance_info(Constraints, _Name, Types,
-        _OriginalTypes, _Methods, TVarSet, _ModName, _Context, _SeqNum),
+    ItemInstance = item_instance_info(_Name, Types, _OriginalTypes,
+        Constraints, _Methods, TVarSet, _ModName, _Context, _SeqNum),
     % Check that all of the type variables in the constraints on the instance
     % declaration also occur in the type class argument types in the instance
     % declaration.
@@ -901,8 +903,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
         ;
             MaybeItem0 = ok1(Item),
             ( Item = item_clause(ItemClause) ->
-                ItemClause = item_clause_info(_Origin, _VarNames, PredOrFunc,
-                    ClassMethodName, HeadArgs, _ClauseBody, Context, _SeqNum),
+                ItemClause = item_clause_info(ClassMethodName, PredOrFunc,
+                    HeadArgs, _Origin, _VarSet, _ClauseBody, Context, _SeqNum),
                 adjust_func_arity(PredOrFunc, ArityInt, list.length(HeadArgs)),
                 InstanceMethod = instance_method(PredOrFunc, ClassMethodName,
                     instance_proc_def_clauses([ItemClause]), ArityInt,
