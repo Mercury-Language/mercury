@@ -41,7 +41,8 @@
 @ifnottex
 This file documents the Mercury implementation, version <VERSION>.
 
-Copyright (C) 1995-2014 The University of Melbourne.
+Copyright (C) 1995-2013 The University of Melbourne.
+Copyright (C) 2014-2015 The Mercury team.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -76,7 +77,8 @@ into another language, under the above conditions for modified versions.
 @author Paul Bone
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995--2014 The University of Melbourne.
+Copyright @copyright{} 1995--2013 The University of Melbourne.
+Copyright @copyright{} 2014--2015 The Mercury team.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice

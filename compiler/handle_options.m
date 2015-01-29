@@ -2544,7 +2544,8 @@ display_compiler_version(!IO) :-
     library.version(Version, Fullarch),
     io.write_strings([
         "Mercury Compiler, version ", Version, ", on ", Fullarch, "\n",
-        "Copyright (C) 1993-2014 The University of Melbourne\n"
+        "Copyright (C) 1993-2013 The University of Melbourne\n",
+        "Copyright (C) 2014-2015 The Mercury team\n"
     ], !IO).
 
 :- mutable(already_printed_usage, bool, no, ground,
@@ -2573,8 +2574,10 @@ long_usage(!IO) :-
     library.version(Version, Fullarch),
     io.write_strings(["Name: mmc -- Melbourne Mercury Compiler, version ",
         Version, ", on ", Fullarch, "\n"], !IO),
-    io.write_string("Copyright: Copyright (C) 1993-2014 " ++
+    io.write_string("Copyright: Copyright (C) 1993-2013 " ++
         "The University of Melbourne\n", !IO),
+    io.write_string("           Copyright (C) 2014-2015 " ++
+        "The Mercury team\n", !IO),
     io.write_string("Usage: mmc [<options>] <arguments>\n", !IO),
     io.write_string("Arguments:\n", !IO),
     io.write_string("\tArguments ending in `.m' " ++
