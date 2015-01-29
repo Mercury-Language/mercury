@@ -79,8 +79,9 @@ add_mutable_aux_pred_decls(ItemMutable, Status, !ModuleInfo, !Specs) :-
             PreInit, LockUnlock, UnsafeAccess),
         module_info_get_name(!.ModuleInfo, ModuleName),
 
-        % The logic of this code should match the logic of
-        % define_aux_preds_c_csharp_java.
+        % The logic of this code should match the logic of define_aux_preds.
+        % Parts of this logic are also duplicated (though they shouldn't be)
+        % in the parts of write_module_interface_files.m that handle mutables.
 
         % Create the pre-initialisation predicate,
         % if needed by the initialisation predicate.
@@ -313,7 +314,7 @@ add_pred_decl_info_for_mutable_aux_pred(ItemPredDecl, ModuleName, Name, Kind,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-do_mutable_checks(ItemMutable, Status, !ModuleInfo, !Specs) :-
+do_mutable_checks(ItemMutable, _Status, !ModuleInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ItemMutable = item_mutable_info(Name, _Type, _InitTerm, Inst,
         MutAttrs, _VarSet, Context, _SeqNum),
@@ -323,38 +324,11 @@ do_mutable_checks(ItemMutable, Status, !ModuleInfo, !Specs) :-
     % XXX We don't currently support the foreign_name attribute
     % for all languages.
     (
-        % If we are creating the I/O version of the set predicate, then we
-        % need to add a promise_pure pragma for it. This needs to be done
-        % here (in stage 2) rather than in stage 3 where the rest of the
         % mutable transformation is.
-        (
-            CompilationTarget = target_c,
-            ForeignLanguage = lang_c
-        ;
-            CompilationTarget = target_java,
-            ForeignLanguage = lang_java
-        ;
-            CompilationTarget = target_csharp,
-            ForeignLanguage = lang_csharp
-        ;
-            CompilationTarget = target_erlang,
-            ForeignLanguage = lang_erlang,
-            AttachToIO = mutable_var_attach_to_io_state(MutAttrs),
-            (
-                AttachToIO = mutable_attach_to_io_state,
-                SetPredName = mutable_set_pred_sym_name(ModuleName, Name),
-                SetPredNameArity = pred_name_arity(SetPredName, 3),
-                IOSetPromisePurePragma = pragma_promise_pure(SetPredNameArity),
-                IOSetPromisePureItemPragma = item_pragma_info(
-                    IOSetPromisePurePragma,
-                    item_origin_compiler(item_compiler_attributes(
-                        do_allow_export, is_mutable)),
-                    Context, -1),
-                add_pass_2_pragma(IOSetPromisePureItemPragma, Status,
-                    !ModuleInfo, !Specs)
-            ;
-                AttachToIO = mutable_dont_attach_to_io_state
-            )
+        ( CompilationTarget = target_c,      ForeignLanguage = lang_c
+        ; CompilationTarget = target_java,   ForeignLanguage = lang_java
+        ; CompilationTarget = target_csharp, ForeignLanguage = lang_csharp
+        ; CompilationTarget = target_erlang, ForeignLanguage = lang_erlang
         ),
         mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
         (
@@ -378,11 +352,10 @@ do_mutable_checks(ItemMutable, Status, !ModuleInfo, !Specs) :-
         !:Specs = [Spec | !.Specs]
     ),
 
+    % If the mutable is to be trailed, then we need to be in a trailing grade.
     TrailMutableUpdates = mutable_var_trailed(MutAttrs),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     ( if
-        % If the mutable is to be trailed, then we need to be
-        % in a trailing grade.
         TrailMutableUpdates = mutable_trailed,
         UseTrail = no
     then
@@ -396,8 +369,8 @@ do_mutable_checks(ItemMutable, Status, !ModuleInfo, !Specs) :-
         true
     ),
 
-    % Check that the inst in the mutable declaration is a valid inst for a
-    % mutable declaration.
+    % Check that the inst in the mutable declaration is a valid inst
+    % for a mutable declaration.
     ( if is_valid_mutable_inst(!.ModuleInfo, Inst) then
         true
     else
@@ -440,39 +413,41 @@ add_mutable_aux_pred_defns(ItemMutable, Status, !ModuleInfo,
         decide_mutable_target_var_name(!.ModuleInfo, MutAttrs, ModuleName,
             MutableName, Lang, Context, TargetMutableName),
 
-        % We add the foreign code declaration and definition here rather than
-        % in pass 2 because the target-language-specific type name depends on
-        % whether there are any foreign_type declarations for Type.
-
+        % We define the global storing the mutable here rather than in
+        % pass 2 because the target-language-specific name of the type
+        % of the global depends on whether there are any foreign_type
+        % declarations for Type.
         (
             ImplLang = mutable_lang_c,
-            define_global_var_c(TargetMutableName,
-                Type, IsConstant, IsThreadLocal, Context, !ModuleInfo),
-            define_aux_preds_c_csharp_java(ItemMutable, TargetParams,
-                TargetMutableName, Status, !ModuleInfo, !QualInfo, !Specs)
+            define_global_var_c(TargetMutableName, Type, IsConstant,
+                IsThreadLocal, Context, !ModuleInfo)
         ;
-            ( ImplLang = mutable_lang_java
-            ; ImplLang = mutable_lang_csharp
-            ),
-            define_global_var_csharp_java(ImplLang, Lang,
-                TargetMutableName, Type, IsThreadLocal, Context, !ModuleInfo),
-            define_aux_preds_c_csharp_java(ItemMutable, TargetParams,
-                TargetMutableName, Status, !ModuleInfo, !QualInfo, !Specs)
+            ImplLang = mutable_lang_csharp,
+            define_global_var_csharp(TargetMutableName, Type,
+                IsThreadLocal, Context, !ModuleInfo)
         ;
-            ImplLang = mutable_lang_erlang,
-            % Add all the predicates related to mutables.
-            add_erlang_mutable_preds(ItemMutable, TargetMutableName,
-                Status, !ModuleInfo, !QualInfo, !Specs)
-        )
+            ImplLang = mutable_lang_java,
+            define_global_var_java( TargetMutableName, Type,
+                IsThreadLocal, Context, !ModuleInfo)
+        ;
+            ImplLang = mutable_lang_erlang
+            % For the Erlang backend, we don't define any global variables;
+            % instead, the values of thread-local mutables are stored
+            % in the thread's process dictionary, and the values of
+            % non-thread-local mutables are stored in the
+            % ML_erlang_global_server process.
+        ),
+        define_aux_preds(ItemMutable, TargetParams, TargetMutableName,
+            Status, !ModuleInfo, !QualInfo, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
 %
-% Define the globals holding the mutables.
+% Define the global holding the mutable.
 %
 
-    % Add the foreign_decl and foreign_code items that declare/define
-    % the global variable used to hold the mutable on the C backend.
+    % Define the global variable used to hold the mutable on the C backend,
+    % and if needed, the mutex controlling access to it.
     %
 :- pred define_global_var_c(string::in, mer_type::in,
     mutable_constant::in, mutable_thread_local::in, prog_context::in,
@@ -549,76 +524,75 @@ define_global_var_c(TargetMutableName, Type, IsConstant, IsThreadLocal,
     ForeignBodyCode = foreign_body_code(lang_c, literal(DefnBody), Context),
     module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo).
 
-:- inst mutable_lang_csharp_java
-    --->    mutable_lang_csharp
-    ;       mutable_lang_java.
-
-    % Add foreign_code item that defines the global variable used to hold the
-    % mutable on the C# and Java backends.
+    % Define the global variable used to hold the mutable on the C# backend.
     %
-:- pred define_global_var_csharp_java(
-    mutable_impl_lang::in(mutable_lang_csharp_java), foreign_language::in,
-    string::in, mer_type::in, mutable_thread_local::in, prog_context::in,
+:- pred define_global_var_csharp(string::in, mer_type::in,
+    mutable_thread_local::in, prog_context::in,
     module_info::in, module_info::out) is det.
 
-define_global_var_csharp_java(ImplLang, Lang, TargetMutableName, Type,
-        IsThreadLocal, Context, !ModuleInfo) :-
+define_global_var_csharp(TargetMutableName, Type, IsThreadLocal, Context,
+        !ModuleInfo) :-
     (
-        ImplLang = mutable_lang_csharp,
-        (
-            IsThreadLocal = mutable_not_thread_local,
-            ( if Type = int_type then
-                TypeStr = "int"
-            else
-                TypeStr = "object"
-            )
-        ;
-            IsThreadLocal = mutable_thread_local,
+        IsThreadLocal = mutable_not_thread_local,
+        ( if Type = int_type then
             TypeStr = "int"
+        else
+            TypeStr = "object"
+        )
+    ;
+        IsThreadLocal = mutable_thread_local,
+        TypeStr = "int"
+    ),
+    DefnBody = "static " ++ TypeStr ++ " " ++ TargetMutableName ++ ";\n",
+    DefnForeignBodyCode =
+        foreign_body_code(lang_csharp, literal(DefnBody), Context),
+    module_add_foreign_body_code(DefnForeignBodyCode, !ModuleInfo).
+
+    % Define the global variable used to hold the mutable on the Java backend.
+    %
+:- pred define_global_var_java(string::in, mer_type::in,
+    mutable_thread_local::in, prog_context::in,
+    module_info::in, module_info::out) is det.
+
+define_global_var_java(TargetMutableName, Type, IsThreadLocal, Context,
+        !ModuleInfo) :-
+    (
+        IsThreadLocal = mutable_not_thread_local,
+        % Synchronization is only required for double and long values,
+        % which Mercury does not expose. We could also use the volatile
+        % keyword. (Java Language Specification, 2nd Ed., 17.4).
+        ( if Type = int_type then
+            TypeStr = "int"
+        else
+            TypeStr = "java.lang.Object"
+        ),
+        DefnBody = "static " ++ TypeStr ++ " " ++ TargetMutableName ++ ";\n"
+    ;
+        IsThreadLocal = mutable_thread_local,
+        ( if Type = int_type then
+            TypeStr = "java.lang.Integer"
+        else
+            TypeStr = "java.lang.Object"
         ),
         DefnBody = string.append_list([
-            "static ", TypeStr, " ", TargetMutableName, ";\n"])
-    ;
-        ImplLang = mutable_lang_java,
-        (
-            IsThreadLocal = mutable_not_thread_local,
-            % Synchronization is only required for double and long values,
-            % which Mercury does not expose. We could also use the volatile
-            % keyword. (Java Language Specification, 2nd Ed., 17.4).
-            ( if Type = int_type then
-                TypeStr = "int"
-            else
-                TypeStr = "java.lang.Object"
-            ),
-            DefnBody = string.append_list([
-                "static ", TypeStr, " ", TargetMutableName, ";\n"])
-        ;
-            IsThreadLocal = mutable_thread_local,
-            ( if Type = int_type then
-                TypeStr = "java.lang.Integer"
-            else
-                TypeStr = "java.lang.Object"
-            ),
-            DefnBody = string.append_list([
-                "static java.lang.ThreadLocal<", TypeStr, "> ",
-                TargetMutableName,
-                " = new java.lang.InheritableThreadLocal<", TypeStr, ">();\n"
-            ])
-        )
+            "static java.lang.ThreadLocal<", TypeStr, "> ",
+            TargetMutableName,
+            " = new java.lang.InheritableThreadLocal<", TypeStr, ">();\n"
+        ])
     ),
-    DefnForeignBodyCode = foreign_body_code(Lang, literal(DefnBody), Context),
+    DefnForeignBodyCode =
+        foreign_body_code(lang_java, literal(DefnBody), Context),
     module_add_foreign_body_code(DefnForeignBodyCode, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
-:- pred define_aux_preds_c_csharp_java(item_mutable_info::in,
-    mutable_target_params::in, string::in,
-    import_status::in, module_info::in, module_info::out,
+:- pred define_aux_preds(item_mutable_info::in, mutable_target_params::in,
+    string::in, import_status::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-define_aux_preds_c_csharp_java(ItemMutable, TargetParams, TargetMutableName,
-        Status, !ModuleInfo, !QualInfo, !Specs) :-
+define_aux_preds(ItemMutable, TargetParams, TargetMutableName, Status,
+        !ModuleInfo, !QualInfo, !Specs) :-
     TargetParams = mutable_target_params(ImplLang, Lang, BoxPolicy,
         PreInit, LockUnlock, UnsafeAccess),
 
@@ -640,7 +614,7 @@ define_aux_preds_c_csharp_java(ItemMutable, TargetParams, TargetMutableName,
         set_may_duplicate(yes(proc_may_not_duplicate), Attrs0, Attrs)
     ;
         ImplLang = mutable_lang_erlang,
-        unexpected($module, $pred, "erlang")
+        Attrs = Attrs0
     ),
 
     % The logic of this code should match the logic of
@@ -655,9 +629,8 @@ define_aux_preds_c_csharp_java(ItemMutable, TargetParams, TargetMutableName,
         MaybeCallPreInitExpr = no
     ;
         PreInit = need_pre_init_pred,
-        define_pre_init_pred_c_csharp_java(ItemMutable, TargetParams,
-            TargetMutableName, Attrs, CallPreInitExpr, Status,
-            !ModuleInfo, !QualInfo, !Specs),
+        define_pre_init_pred(ItemMutable, TargetParams, TargetMutableName,
+            Attrs, CallPreInitExpr, Status, !ModuleInfo, !QualInfo, !Specs),
         MaybeCallPreInitExpr = yes(CallPreInitExpr)
     ),
     (
@@ -665,9 +638,8 @@ define_aux_preds_c_csharp_java(ItemMutable, TargetParams, TargetMutableName,
         MaybeLockUnlockExprs = no
     ;
         LockUnlock = need_lock_unlock_preds,
-        define_lock_unlock_preds_c_csharp_java(ItemMutable, TargetParams,
-            TargetMutableName, Attrs, LockUnlockExprs, Status,
-            !ModuleInfo, !QualInfo, !Specs),
+        define_lock_unlock_preds(ItemMutable, TargetParams, TargetMutableName,
+            Attrs, LockUnlockExprs, Status, !ModuleInfo, !QualInfo, !Specs),
         MaybeLockUnlockExprs = yes(LockUnlockExprs)
     ),
     (
@@ -675,37 +647,35 @@ define_aux_preds_c_csharp_java(ItemMutable, TargetParams, TargetMutableName,
         MaybeUnsafeGetSetExprs = no
     ;
         UnsafeAccess = need_unsafe_get_set_preds,
-        define_unsafe_get_set_preds_c_csharp_java(ItemMutable, TargetParams,
+        define_unsafe_get_set_preds(ItemMutable, TargetParams,
             TargetMutableName, Attrs, UnsafeGetSetExprs, Status,
             !ModuleInfo, !QualInfo, !Specs),
         MaybeUnsafeGetSetExprs = yes(UnsafeGetSetExprs)
     ),
 
-    % We do this after creating (a) the lock and unlock predicates and
+    % We do this after defining (a) the lock and unlock predicates and
     % (b) the unsafe get and set predicates, since they give us
     % (a) MaybeLockUnlockExprs and (b) MaybeUnsafeGetSetExprs respectively.
-    define_main_get_set_preds_c_csharp_java(ItemMutable, TargetParams,
-        TargetMutableName, Attrs, MaybeLockUnlockExprs, MaybeUnsafeGetSetExprs,
-        InitSetPredName, Status, !ModuleInfo, !QualInfo, !Specs),
+    define_main_get_set_preds(ItemMutable, TargetParams, TargetMutableName,
+        Attrs, MaybeLockUnlockExprs, MaybeUnsafeGetSetExprs, InitSetPredName,
+        Status, !ModuleInfo, !QualInfo, !Specs),
 
-    % We do this after creating (a) the preinit predicate and (b) the main
+    % We do this after defining (a) the preinit predicate and (b) the main
     % get and set predicates, since they give us (a) MaybeCallPreInitExpr
     % and (b) InitSetPredName respectively.
-    define_init_pred_c_csharp_java(ItemMutable,
-        MaybeCallPreInitExpr, InitSetPredName, Lang, Status,
-        !ModuleInfo, !QualInfo, !Specs).
+    define_init_pred(ItemMutable, MaybeCallPreInitExpr, InitSetPredName,
+        Lang, Status, !ModuleInfo, !QualInfo, !Specs).
 
     % Define the pre_init predicates, if needed by the init predicate.
     %
-:- pred define_pre_init_pred_c_csharp_java(item_mutable_info::in,
-    mutable_target_params::in, string::in,
-    pragma_foreign_proc_attributes::in, goal::out, import_status::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
+:- pred define_pre_init_pred(item_mutable_info::in, mutable_target_params::in,
+    string::in, pragma_foreign_proc_attributes::in, goal::out,
+    import_status::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-define_pre_init_pred_c_csharp_java(ItemMutable, TargetParams,
-        TargetMutableName, Attrs, CallPreInitExpr, Status,
-        !ModuleInfo, !QualInfo, !Specs) :-
+define_pre_init_pred(ItemMutable, TargetParams, TargetMutableName, Attrs,
+        CallPreInitExpr, Status, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ItemMutable = item_mutable_info(MutableName, _Type, _InitTerm,
         _Inst, MutAttrs, _VarSetMutable, Context, _SeqNum),
@@ -760,15 +730,14 @@ define_pre_init_pred_c_csharp_java(ItemMutable, TargetParams,
 
     % Define the lock and unlock predicates, if needed.
     %
-:- pred define_lock_unlock_preds_c_csharp_java(
-    item_mutable_info::in, mutable_target_params::in, string::in,
-    pragma_foreign_proc_attributes::in, {goal, goal}::out, import_status::in,
+:- pred define_lock_unlock_preds(item_mutable_info::in,
+    mutable_target_params::in, string::in, pragma_foreign_proc_attributes::in,
+    {goal, goal}::out, import_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-define_lock_unlock_preds_c_csharp_java(ItemMutable, TargetParams,
-        TargetMutableName, Attrs, LockUnlockExprs, Status,
-        !ModuleInfo, !QualInfo, !Specs) :-
+define_lock_unlock_preds(ItemMutable, TargetParams, TargetMutableName, Attrs,
+        LockUnlockExprs, Status, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ItemMutable = item_mutable_info(MutableName, _Type, _InitTerm,
         _Inst, MutAttrs, _VarSetMutable, Context, _SeqNum),
@@ -847,15 +816,14 @@ define_lock_unlock_preds_c_csharp_java(ItemMutable, TargetParams,
 
     % Define the unsafe get and set predicates, if needed.
     %
-:- pred define_unsafe_get_set_preds_c_csharp_java(
-    item_mutable_info::in, mutable_target_params::in, string::in,
-    pragma_foreign_proc_attributes::in, {goal, goal}::out, import_status::in,
+:- pred define_unsafe_get_set_preds(item_mutable_info::in,
+    mutable_target_params::in, string::in, pragma_foreign_proc_attributes::in,
+    {goal, goal}::out, import_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-define_unsafe_get_set_preds_c_csharp_java(ItemMutable, TargetParams,
-        TargetMutableName, Attrs, UnsafeGetSetExprs, Status,
-        !ModuleInfo, !QualInfo, !Specs) :-
+define_unsafe_get_set_preds(ItemMutable, TargetParams, TargetMutableName,
+        Attrs, UnsafeGetSetExprs, Status, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ItemMutable = item_mutable_info(MutableName, Type, _InitTerm,
         Inst, MutAttrs, _VarSetMutable, Context, _SeqNum),
@@ -983,21 +951,21 @@ define_unsafe_get_set_preds_c_csharp_java(ItemMutable, TargetParams,
     % and the unsafe get and set predicates, since they give us
     % MaybeLockUnlockExprs and MaybeUnsafeGetSetExprs.
     %
-:- pred define_main_get_set_preds_c_csharp_java(
-    item_mutable_info::in, mutable_target_params::in, string::in,
-    pragma_foreign_proc_attributes::in,
+:- pred define_main_get_set_preds(item_mutable_info::in,
+    mutable_target_params::in, string::in, pragma_foreign_proc_attributes::in,
     maybe({goal, goal})::in, maybe({goal, goal})::in,
     sym_name::out, import_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-define_main_get_set_preds_c_csharp_java(ItemMutable, TargetParams,
-        TargetMutableName, Attrs, MaybeLockUnlockExprs, MaybeUnsafeGetSetExprs,
-        InitSetPredName, Status, !ModuleInfo, !QualInfo, !Specs) :-
+define_main_get_set_preds(ItemMutable, TargetParams, TargetMutableName, Attrs,
+        MaybeLockUnlockExprs, MaybeUnsafeGetSetExprs, InitSetPredName,
+        Status, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ItemMutable = item_mutable_info(MutableName, _Type, _InitTerm,
         Inst, MutAttrs, _VarSetMutable, Context, _SeqNum),
     IsConstant = mutable_var_constant(MutAttrs),
+    IsThreadLocal = mutable_var_thread_local(MutAttrs),
     AttachToIO = mutable_var_attach_to_io_state(MutAttrs),
     TargetParams = mutable_target_params(ImplLang, _Lang, BoxPolicy,
         _PreInit, _LockUnlock, _UnsafeAccess),
@@ -1020,37 +988,49 @@ define_main_get_set_preds_c_csharp_java(ItemMutable, TargetParams,
             ; ImplLang = mutable_lang_java
             ),
             ConstantGetCode = "X = " ++ TargetMutableName ++ ";\n",
-            ConstantSetCode = TargetMutableName ++ " = X;\n",
-
-            ConstantGetFCInfo = pragma_info_foreign_proc(ConstantGetAttrs,
-                ConstantGetPredName,
-                pf_predicate,
-                [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
-                VarSetOnlyX,    % ProgVarSet
-                varset.init,    % InstVarSet
-                fp_impl_ordinary(ConstantGetCode, yes(Context))
-            ),
-            % NOTE: we don't need to trail the set action, since it is
-            % executed only once at initialization time.
-            ConstantSetFCInfo = pragma_info_foreign_proc(ConstantSetAttrs,
-                ConstantSecretSetPredName,
-                pf_predicate,
-                [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
-                VarSetOnlyX,    % ProgVarSet
-                varset.init,    % InstVarSet
-                fp_impl_ordinary(ConstantSetCode, yes(Context))
-            ),
-            add_pragma_foreign_proc(ConstantGetFCInfo, Status, Context, no,
-                !ModuleInfo, !Specs),
-            add_pragma_foreign_proc(ConstantSetFCInfo, Status, Context, no,
-                !ModuleInfo, !Specs),
-
-            expect(unify(AttachToIO, mutable_dont_attach_to_io_state),
-                $module, $pred, "AttachToIO = mutable_attach_to_io_state")
+            ConstantSetCode = TargetMutableName ++ " = X;\n"
         ;
             ImplLang = mutable_lang_erlang,
-            unexpected($module, $pred, "constant_get_set for erlang")
-        )
+            % These Erlang fragments duplicate those for non-thread-local
+            % non-constant mutables below.
+            ConstantGetCode =
+                string.append_list([
+                    "'ML_erlang_global_server' ! {get_mutable, ",
+                        TargetMutableName, ", self()},\n",
+                    "receive\n",
+                    "   {get_mutable_ack, Value} ->\n",
+                    "       X = Value\n",
+                    "end\n"
+                ]),
+            ConstantSetCode =
+                "'ML_erlang_global_server' ! {set_mutable, " ++
+                    TargetMutableName ++ ", X}"
+        ),
+        ConstantGetFCInfo = pragma_info_foreign_proc(ConstantGetAttrs,
+            ConstantGetPredName,
+            pf_predicate,
+            [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
+            VarSetOnlyX,    % ProgVarSet
+            varset.init,    % InstVarSet
+            fp_impl_ordinary(ConstantGetCode, yes(Context))
+        ),
+        % NOTE: we don't need to trail the set action, since it is
+        % executed only once at initialization time.
+        ConstantSetFCInfo = pragma_info_foreign_proc(ConstantSetAttrs,
+            ConstantSecretSetPredName,
+            pf_predicate,
+            [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
+            VarSetOnlyX,    % ProgVarSet
+            varset.init,    % InstVarSet
+            fp_impl_ordinary(ConstantSetCode, yes(Context))
+        ),
+        add_pragma_foreign_proc(ConstantGetFCInfo, Status, Context, no,
+            !ModuleInfo, !Specs),
+        add_pragma_foreign_proc(ConstantSetFCInfo, Status, Context, no,
+            !ModuleInfo, !Specs),
+
+        expect(unify(AttachToIO, mutable_dont_attach_to_io_state),
+            $module, $pred, "AttachToIO = mutable_attach_to_io_state")
     ;
         IsConstant = mutable_not_constant,
         StdGetPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
@@ -1090,62 +1070,118 @@ define_main_get_set_preds_c_csharp_java(ItemMutable, TargetParams,
                 goal_type_none, !ModuleInfo, !QualInfo, !Specs),
             module_add_clause(VarSetOnlyX, pf_predicate, StdSetPredName,
                 StdPredArgs, StdSetPredExpr, Status, Context, no,
-                goal_type_none, !ModuleInfo, !QualInfo, !Specs),
-
-            (
-                AttachToIO = mutable_dont_attach_to_io_state
-            ;
-                AttachToIO = mutable_attach_to_io_state,
-                some [!VarSet] (
-                    !:VarSet = VarSetOnlyX,
-                    varset.new_named_var("IO0", IO0, !VarSet),
-                    varset.new_named_var("IO", IO, !VarSet),
-                    VarSetXandIOs = !.VarSet
-                ),
-                IOGetPredName = StdGetPredName,
-                IOSetPredName = StdSetPredName,
-                IOPredArgs = [variable(X, Context),
-                    variable(IO0, Context), variable(IO, Context)],
-
-                % It is important to have CopyIOExpr *inside* the promise_pure
-                % scope for the set predicate. If it were outside, then the
-                % scope would not bind any variables, and since it is promised
-                % pure, the compiler would be allowed to delete it. The problem
-                % does not arise for the get predicate, since ImpureGetExpr
-                % binds X.
-                CopyIOExpr = unify_expr(Context,
-                    variable(IO0, Context), variable(IO, Context),
-                    purity_impure),
-                IOGetPredExpr = conj_expr(Context, ImpureGetExpr, CopyIOExpr),
-                IOSetPredExpr = conj_expr(Context, ImpureSetExpr, CopyIOExpr),
-                PureIOGetPredExpr =
-                    promise_purity_expr(Context, purity_pure, IOGetPredExpr),
-                PureIOSetPredExpr =
-                    promise_purity_expr(Context, purity_pure, IOSetPredExpr),
-
-                module_add_clause(VarSetXandIOs, pf_predicate, IOGetPredName,
-                    IOPredArgs, PureIOGetPredExpr, Status, Context, no,
-                    goal_type_none, !ModuleInfo, !QualInfo, !Specs),
-                module_add_clause(VarSetXandIOs, pf_predicate, IOSetPredName,
-                    IOPredArgs, PureIOSetPredExpr, Status, Context, no,
-                    goal_type_none, !ModuleInfo, !QualInfo, !Specs)
-            )
+                goal_type_none, !ModuleInfo, !QualInfo, !Specs)
         ;
             ImplLang = mutable_lang_erlang,
-            unexpected($module, $pred, "std_tget_set for erlang")
+            % NOTE We don't call the unsafe get/set predicates, since
+            % we don't declare/define them. We don't need them, because
+            % in Erlang we can do their job here directly, since (a)
+            % we don't need explicit locking, as the message passing
+            % system takes care of that, and (b) we don't need to trail
+            % the setting of the mutable, even if the mutable is nominally
+            % trailed, because the Erlang backend does not implement trailing.
+            set_thread_safe(proc_thread_safe, Attrs, ThreadSafeAttrs),
+            set_purity(purity_semipure, ThreadSafeAttrs, ErlangGetAttrs),
+            set_purity(purity_impure, ThreadSafeAttrs, ErlangSetAttrs),
+            (
+                IsThreadLocal = mutable_thread_local,
+                StdGetCode = "X = get({'MR_thread_local_mutable', " ++
+                    TargetMutableName ++ "})",
+                StdSetCode = "put({'MR_thread_local_mutable', " ++
+                    TargetMutableName ++ "}, X)"
+            ;
+                IsThreadLocal = mutable_not_thread_local,
+                % These Erlang fragments duplicate those for
+                % constant mutables above.
+                StdGetCode =
+                    string.append_list([
+                        "'ML_erlang_global_server' ! {get_mutable, ",
+                            TargetMutableName, ", self()},\n",
+                        "receive\n",
+                        "   {get_mutable_ack, Value} ->\n",
+                        "       X = Value\n",
+                        "end\n"
+                    ]),
+                StdSetCode =
+                    "'ML_erlang_global_server' ! {set_mutable, " ++
+                        TargetMutableName ++ ", X}"
+            ),
+            StdGetFCInfo = pragma_info_foreign_proc(ErlangGetAttrs,
+                StdGetPredName,
+                pf_predicate,
+                [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
+                VarSetOnlyX,    % ProgVarSet
+                varset.init,    % InstVarSet
+                fp_impl_ordinary(StdGetCode, yes(Context))
+            ),
+            StdSetFCInfo = pragma_info_foreign_proc(ErlangSetAttrs,
+                StdSetPredName,
+                pf_predicate,
+                [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
+                VarSetOnlyX,    % ProgVarSet
+                varset.init,    % InstVarSet
+                fp_impl_ordinary(StdSetCode, yes(Context))
+            ),
+            add_pragma_foreign_proc(StdGetFCInfo, Status, Context, no,
+                !ModuleInfo, !Specs),
+            add_pragma_foreign_proc(StdSetFCInfo, Status, Context, no,
+                !ModuleInfo, !Specs),
+
+            ImpureGetExpr = call_expr(Context, StdGetPredName,
+                [variable(X, Context)], purity_semipure),
+            ImpureSetExpr = call_expr(Context, StdSetPredName,
+                [variable(X, Context)], purity_impure)
+        ),
+        (
+            AttachToIO = mutable_dont_attach_to_io_state
+        ;
+            AttachToIO = mutable_attach_to_io_state,
+            some [!VarSet] (
+                !:VarSet = VarSetOnlyX,
+                varset.new_named_var("IO0", IO0, !VarSet),
+                varset.new_named_var("IO", IO, !VarSet),
+                VarSetXandIOs = !.VarSet
+            ),
+            IOGetPredName = StdGetPredName,
+            IOSetPredName = StdSetPredName,
+            IOPredArgs = [variable(X, Context),
+                variable(IO0, Context), variable(IO, Context)],
+
+            % It is important to have CopyIOExpr *inside* the promise_pure
+            % scope for the set predicate. If it were outside, then the
+            % scope would not bind any variables, and since it is promised
+            % pure, the compiler would be allowed to delete it. The problem
+            % does not arise for the get predicate, since ImpureGetExpr
+            % binds X.
+            CopyIOExpr = unify_expr(Context,
+                variable(IO0, Context), variable(IO, Context),
+                purity_impure),
+            IOGetPredExpr = conj_expr(Context, ImpureGetExpr, CopyIOExpr),
+            IOSetPredExpr = conj_expr(Context, ImpureSetExpr, CopyIOExpr),
+            PureIOGetPredExpr =
+                promise_purity_expr(Context, purity_pure, IOGetPredExpr),
+            PureIOSetPredExpr =
+                promise_purity_expr(Context, purity_pure, IOSetPredExpr),
+
+            module_add_clause(VarSetXandIOs, pf_predicate, IOGetPredName,
+                IOPredArgs, PureIOGetPredExpr, Status, Context, no,
+                goal_type_none, !ModuleInfo, !QualInfo, !Specs),
+            module_add_clause(VarSetXandIOs, pf_predicate, IOSetPredName,
+                IOPredArgs, PureIOSetPredExpr, Status, Context, no,
+                goal_type_none, !ModuleInfo, !QualInfo, !Specs)
         )
     ).
 
     % Define the init predicate, and arrange for it to be called
     % at initialization time.
     %
-:- pred define_init_pred_c_csharp_java(item_mutable_info::in, maybe(goal)::in,
+:- pred define_init_pred(item_mutable_info::in, maybe(goal)::in,
     sym_name::in, foreign_language::in, import_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-define_init_pred_c_csharp_java(ItemMutable, MaybeCallPreInitExpr,
-        InitSetPredName, Lang, Status, !ModuleInfo, !QualInfo, !Specs) :-
+define_init_pred(ItemMutable, MaybeCallPreInitExpr, InitSetPredName,
+        Lang, Status, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ItemMutable = item_mutable_info(MutableName, _Type, InitTerm,
         _Inst, _MutAttrs, VarSetMutable, Context, _SeqNum),
@@ -1194,248 +1230,6 @@ add_pass_3_initialise_for_mutable(SymName, Arity, Context, Lang, _Status,
     Origin = item_origin_compiler(Attrs),
     add_pragma_foreign_proc_export(Origin, FPEInfo, Context,
         !ModuleInfo, !Specs).
-
-%---------------------------------------------------------------------------%
-%
-% Erlang mutables.
-%
-
-:- pred add_erlang_mutable_preds(item_mutable_info::in, string::in,
-    import_status::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_erlang_mutable_preds(ItemMutable, TargetMutableName,
-        Status, !ModuleInfo, !QualInfo, !Specs) :-
-    module_info_get_name(!.ModuleInfo, ModuleName),
-    ItemMutable = item_mutable_info(MutableName, _Type, InitTerm, Inst,
-        MutAttrs, Varset, Context, _SeqNum),
-    IsConstant = mutable_var_constant(MutAttrs),
-    (
-        IsConstant = mutable_constant,
-        InitSetPredName = mutable_secret_set_pred_sym_name(ModuleName,
-            MutableName),
-        add_erlang_constant_mutable_access_preds(TargetMutableName,
-            ModuleName, MutableName, Inst,
-            Context, Status, !ModuleInfo, !Specs)
-    ;
-        IsConstant = mutable_not_constant,
-        InitSetPredName = mutable_set_pred_sym_name(ModuleName,
-            MutableName),
-        add_erlang_mutable_user_access_preds(TargetMutableName,
-            ModuleName, MutableName, MutAttrs, Inst,
-            Context, Status, !ModuleInfo, !QualInfo, !Specs)
-    ),
-    add_erlang_mutable_initialisation(ModuleName, MutableName,
-        Varset, InitSetPredName, InitTerm,
-        Context, Status, !ModuleInfo, !QualInfo, !Specs).
-
-    % Add the access predicates for constant mutables.
-    %
-:- pred add_erlang_constant_mutable_access_preds(string::in,
-    module_name::in, string::in, mer_inst::in, prog_context::in,
-    import_status::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_erlang_constant_mutable_access_preds(TargetMutableName,
-        ModuleName, MutableName, Inst, Context, Status,
-        !ModuleInfo, !Specs) :-
-    varset.new_named_var("X", X, varset.init, VarSet),
-    InstVarSet = varset.init,
-    Attrs = default_attributes(lang_erlang),
-    set_purity(purity_pure, Attrs, ConstantGetAttrs0),
-    set_thread_safe(proc_thread_safe, ConstantGetAttrs0, ConstantGetAttrs),
-
-    % Getter.
-    GetCode = erlang_mutable_get_code(TargetMutableName),
-    ConstantGetFCInfo = pragma_info_foreign_proc(
-        ConstantGetAttrs,
-        mutable_get_pred_sym_name(ModuleName, MutableName),
-        pf_predicate,
-        [pragma_var(X, "X", out_mode(Inst), native_if_possible)],
-        VarSet,
-        InstVarSet,
-        fp_impl_ordinary(GetCode, yes(Context))
-    ),
-    add_pragma_foreign_proc(ConstantGetFCInfo, Status, Context, no,
-        !ModuleInfo, !Specs),
-
-    % Secret setter.
-    SetCode = erlang_mutable_set_code(TargetMutableName),
-    ConstantSetFCInfo = pragma_info_foreign_proc(Attrs,
-        mutable_secret_set_pred_sym_name(ModuleName, MutableName),
-        pf_predicate,
-        [pragma_var(X, "X", in_mode(Inst), native_if_possible)],
-        VarSet,
-        InstVarSet,
-        fp_impl_ordinary(SetCode, yes(Context))
-    ),
-    add_pragma_foreign_proc(ConstantSetFCInfo, Status, Context, no,
-        !ModuleInfo, !Specs).
-
-    % Add the access predicates for a non-constant mutable.
-    % If the mutable has the `attach_to_io_state' attribute then add the
-    % versions of the access preds that take the I/O state as well.
-    %
-:- pred add_erlang_mutable_user_access_preds(string::in,
-    module_name::in, string::in, mutable_var_attributes::in, mer_inst::in,
-    prog_context::in, import_status::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_erlang_mutable_user_access_preds(TargetMutableName,
-        ModuleName, MutableName, MutAttrs, Inst, Context,
-        Status, !ModuleInfo, !QualInfo, !Specs) :-
-    IsThreadLocal = mutable_var_thread_local(MutAttrs),
-    Attrs = default_attributes(lang_erlang),
-    varset.new_named_var("X", X, varset.init, VarSet0),
-
-    % Construct the semipure get predicate.
-    set_purity(purity_semipure, Attrs, GetAttrs0),
-    set_thread_safe(proc_thread_safe, GetAttrs0, GetAttrs),
-    (
-        IsThreadLocal = mutable_not_thread_local,
-        GetCode = erlang_mutable_get_code(TargetMutableName)
-    ;
-        IsThreadLocal = mutable_thread_local,
-        % XXX this will need to change. `thread_local' mutables are supposed
-        % to be inherited when a child process is spawned, but Erlang process
-        % dictionary values are not automatically inherited. Hence we will
-        % probably need another level of indirection.
-        GetCode = "X = get({'MR_thread_local_mutable', " ++
-            TargetMutableName ++ "})"
-    ),
-    GetPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
-    GetFCInfo = pragma_info_foreign_proc(GetAttrs,
-        GetPredName,
-        pf_predicate,
-        [pragma_var(X, "X", out_mode(Inst), native_if_possible)],
-        VarSet0,
-        varset.init, % Inst varset.
-        fp_impl_ordinary(GetCode, yes(Context))
-    ),
-    add_pragma_foreign_proc(GetFCInfo, Status, Context, no,
-        !ModuleInfo, !Specs),
-
-    % Construct the impure set predicate.
-    set_purity(purity_impure, Attrs, SetAttrs0),
-    set_thread_safe(proc_thread_safe, SetAttrs0, SetAttrs),
-    (
-        IsThreadLocal = mutable_not_thread_local,
-        SetCode = erlang_mutable_set_code(TargetMutableName)
-    ;
-        IsThreadLocal = mutable_thread_local,
-        % XXX this will need to change (see the comment for the getter)
-        SetCode = "put({'MR_thread_local_mutable', " ++
-            TargetMutableName ++ "}, X)"
-    ),
-    SetPredName = mutable_set_pred_sym_name(ModuleName, MutableName),
-    SetFCInfo = pragma_info_foreign_proc(SetAttrs,
-        SetPredName,
-        pf_predicate,
-        [pragma_var(X, "X", in_mode(Inst), native_if_possible)],
-        VarSet0,
-        varset.init, % Inst varset.
-        fp_impl_ordinary(SetCode, yes(Context))
-    ),
-    add_pragma_foreign_proc(SetFCInfo, Status, Context, no,
-        !ModuleInfo, !Specs),
-
-    IOStateInterface = mutable_var_attach_to_io_state(MutAttrs),
-    (
-        IOStateInterface = mutable_attach_to_io_state,
-        varset.new_named_var("IO", IO, VarSet0, VarSet),
-        Ctxt = context_init,
-
-        % Construct the pure get predicate.
-        % This just calls the semipure get predicate with a promise_pure
-        % around it.
-        GetPredArgs =
-            [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
-        CallSemipureGetExpr =
-            call_expr(Context, GetPredName, [variable(X, Context)],
-                purity_semipure),
-        GetPredExpr = promise_purity_expr(Context, purity_pure,
-            CallSemipureGetExpr),
-        module_add_clause(VarSet, pf_predicate, GetPredName, GetPredArgs,
-            GetPredExpr, Status, Context, no, goal_type_none,
-            !ModuleInfo, !QualInfo, !Specs),
-
-        % Construct the pure set predicate.
-        %
-        % We just call the impure version and attach a promise_pure pragma
-        % to the predicate. (The purity pragma was added during pass 2.)
-        SetPredArgs =
-            [variable(X, Ctxt), variable(IO, Ctxt), variable(IO, Ctxt)],
-        SetPredExpr =
-            call_expr(Context, SetPredName, [variable(X, Context)],
-                purity_impure),
-        module_add_clause(VarSet, pf_predicate, SetPredName, SetPredArgs,
-            SetPredExpr, Status, Context, no, goal_type_none,
-            !ModuleInfo, !QualInfo, !Specs)
-    ;
-        IOStateInterface = mutable_dont_attach_to_io_state
-    ).
-
-:- func erlang_mutable_get_code(string) = string.
-
-erlang_mutable_get_code(TargetMutableName) =
-    string.append_list([
-        "'ML_erlang_global_server' ! {get_mutable, ",
-            TargetMutableName, ", self()},\n",
-        "receive\n",
-        "   {get_mutable_ack, Value} ->\n",
-        "       X = Value\n",
-        "end\n"
-    ]).
-
-:- func erlang_mutable_set_code(string) = string.
-
-erlang_mutable_set_code(TargetMutableName) =
-    "'ML_erlang_global_server' ! {set_mutable, " ++
-        TargetMutableName ++ ", X}".
-
-    % Add the code required to initialise a mutable.
-    %
-:- pred add_erlang_mutable_initialisation(module_name::in, string::in,
-    prog_varset::in, sym_name::in, prog_term::in, prog_context::in,
-    import_status::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_erlang_mutable_initialisation(ModuleName, MutableName,
-        VarSet0, InitSetPredName, InitTerm, Context, Status,
-        !ModuleInfo, !QualInfo, !Specs) :-
-    % Add the `:- initialise' declaration for the mutable initialisation
-    % predicate.
-    InitPredName = mutable_init_pred_sym_name(ModuleName, MutableName),
-    InitPredArity = 0,
-    add_pass_3_initialise_for_mutable(InitPredName, InitPredArity, Context,
-        lang_erlang, Status, !ModuleInfo, !Specs),
-
-    % Add the clause for the mutable initialisation predicate.
-    %
-    % See the comments for prog_io_mutable.parse_mutable_decl_info
-    % for the reason why we _must_ start with Varset0 here.
-    varset.new_named_var("X", X, VarSet0, VarSet),
-    UnifyExpr =
-        unify_expr(Context, variable(X, Context), InitTerm, purity_impure),
-    CallExpr =
-        call_expr(Context, InitSetPredName, [variable(X, Context)],
-            purity_impure),
-    InitPredArgs = [],
-    InitPredExpr = conj_expr(Context, UnifyExpr, CallExpr),
-    module_add_clause(VarSet, pf_predicate, InitPredName, InitPredArgs,
-        InitPredExpr, Status, Context, no, goal_type_none,
-        !ModuleInfo, !QualInfo, !Specs).
-
-%---------------------------------------------------------------------------%
-
-:- type mutable_impl_lang
-    --->    mutable_lang_c
-    ;       mutable_lang_csharp
-    ;       mutable_lang_java
-    ;       mutable_lang_erlang.
 
 %---------------------------------------------------------------------------%
 
@@ -1532,6 +1326,12 @@ global_foreign_type_name(native_if_possible, Lang, ModuleInfo, Type) =
 
 %---------------------------------------------------------------------------%
 
+:- type mutable_impl_lang
+    --->    mutable_lang_c
+    ;       mutable_lang_csharp
+    ;       mutable_lang_java
+    ;       mutable_lang_erlang.
+
 :- type need_pre_init_pred
     --->    dont_need_pre_init_pred
     ;       need_pre_init_pred.
@@ -1557,8 +1357,6 @@ global_foreign_type_name(native_if_possible, Lang, ModuleInfo, Type) =
     % This predicate decides which auxiliary predicates we need
     % to implement a mutable. The rest of this module just implements
     % the decisions made here, which are recorded in the mutable_target_params.
-    % XXX The code that provides the Erlang predicate definitions does not
-    % follow these decisions, yet.
     %
 :- pred get_mutable_target_params(module_info::in, mutable_var_attributes::in,
     maybe(mutable_target_params)::out) is det.
