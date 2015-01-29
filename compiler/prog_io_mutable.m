@@ -225,8 +225,8 @@ parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
 :- type collected_mutable_attribute
     --->    mutable_attr_trailed(mutable_trailed)
     ;       mutable_attr_foreign_name(foreign_name)
-    ;       mutable_attr_attach_to_io_state(bool)
-    ;       mutable_attr_constant(bool)
+    ;       mutable_attr_attach_to_io_state(mutable_attach_to_io_state)
+    ;       mutable_attr_constant(mutable_constant)
     ;       mutable_attr_thread_local(mutable_thread_local).
 
 :- pred parse_mutable_attrs(varset::in, term::in,
@@ -239,9 +239,11 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
             mutable_attr_trailed(mutable_untrailed),
         mutable_attr_trailed(mutable_trailed) -
             mutable_attr_thread_local(mutable_thread_local),
-        mutable_attr_constant(yes) - mutable_attr_trailed(mutable_trailed),
-        mutable_attr_constant(yes) - mutable_attr_attach_to_io_state(yes),
-        mutable_attr_constant(yes) -
+        mutable_attr_constant(mutable_constant) -
+            mutable_attr_trailed(mutable_trailed),
+        mutable_attr_constant(mutable_constant) -
+            mutable_attr_attach_to_io_state(mutable_attach_to_io_state),
+        mutable_attr_constant(mutable_constant) -
             mutable_attr_thread_local(mutable_thread_local)
     ],
     (
@@ -296,11 +298,12 @@ process_mutable_attribute(mutable_attr_attach_to_io_state(AttachToIOState),
 process_mutable_attribute(mutable_attr_constant(Constant), !Attributes) :-
     set_mutable_var_constant(Constant, !Attributes),
     (
-        Constant = yes,
+        Constant = mutable_constant,
         set_mutable_var_trailed(mutable_untrailed, !Attributes),
-        set_mutable_var_attach_to_io_state(no, !Attributes)
+        set_mutable_var_attach_to_io_state(mutable_dont_attach_to_io_state,
+            !Attributes)
     ;
-        Constant = no
+        Constant = mutable_not_constant
     ).
 process_mutable_attribute(mutable_attr_thread_local(ThrLocal), !Attributes) :-
     set_mutable_var_thread_local(ThrLocal, !Attributes).
@@ -319,10 +322,11 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
             MutAttr = mutable_attr_trailed(mutable_trailed)
         ;
             String  = "attach_to_io_state",
-            MutAttr = mutable_attr_attach_to_io_state(yes)
+            MutAttr = mutable_attr_attach_to_io_state(
+                mutable_attach_to_io_state)
         ;
             String = "constant",
-            MutAttr = mutable_attr_constant(yes)
+            MutAttr = mutable_attr_constant(mutable_constant)
         ;
             String = "thread_local",
             MutAttr = mutable_attr_thread_local(mutable_thread_local)

@@ -295,7 +295,7 @@ process_item_for_private_interface(ModuleName, Item, !Section,
             _Varset, Context, _SeqNum),
         ConstantInterface = mutable_var_constant(Attrs),
         (
-            ConstantInterface = yes,
+            ConstantInterface = mutable_constant,
             ConstantGetPredDecl = constant_get_pred_decl(ModuleName,
                 MutableName, Type, Inst, Context),
             ConstantSetPredDecl = constant_set_pred_decl(ModuleName,
@@ -305,7 +305,7 @@ process_item_for_private_interface(ModuleName, Item, !Section,
             ReplacementItems =
                 [ConstantGetPredDeclItem, ConstantSetPredDeclItem]
         ;
-            ConstantInterface = no,
+            ConstantInterface = mutable_not_constant,
             StdGetPredDecl = std_get_pred_decl(ModuleName,
                 MutableName, Type, Inst, Context),
             StdSetPredDecl = std_set_pred_decl(ModuleName,
@@ -314,7 +314,7 @@ process_item_for_private_interface(ModuleName, Item, !Section,
             StdSetPredDeclItem = item_pred_decl(StdSetPredDecl),
             IOStateInterface = mutable_var_attach_to_io_state(Attrs),
             (
-                IOStateInterface = yes,
+                IOStateInterface = mutable_attach_to_io_state,
                 IOGetPredDecl = io_get_pred_decl(ModuleName,
                     MutableName, Type, Inst, Context),
                 IOSetPredDecl = io_set_pred_decl(ModuleName,
@@ -325,7 +325,7 @@ process_item_for_private_interface(ModuleName, Item, !Section,
                     [StdGetPredDeclItem, StdSetPredDeclItem,
                     IOGetPredDeclItem, IOSetPredDeclItem]
             ;
-                IOStateInterface = no,
+                IOStateInterface = mutable_dont_attach_to_io_state,
                 ReplacementItems =
                     [StdGetPredDeclItem, StdSetPredDeclItem]
             )

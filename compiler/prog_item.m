@@ -388,14 +388,26 @@
     % Indicates if updates to the mutable are trailed or untrailed.
     %
 :- type mutable_trailed
-    --->    mutable_trailed
-    ;       mutable_untrailed.
+    --->    mutable_untrailed
+    ;       mutable_trailed.
+
+    % Indicates if a mutable is attached to the I/O state or not.
+    %
+:- type mutable_attach_to_io_state
+    --->    mutable_dont_attach_to_io_state
+    ;       mutable_attach_to_io_state.
+
+    % Indicates if a mutable is constant or not.
+    %
+:- type mutable_constant
+    --->    mutable_not_constant
+    ;       mutable_constant.
 
     % Indicates if a mutable is thread-local or not.
     %
 :- type mutable_thread_local
-    --->    mutable_thread_local
-    ;       mutable_not_thread_local.
+    --->    mutable_not_thread_local
+    ;       mutable_thread_local.
 
     % Has the user specified a name for us to use on the target code side
     % of the FLI?
@@ -420,8 +432,9 @@
 :- func mutable_var_trailed(mutable_var_attributes) = mutable_trailed.
 :- func mutable_var_maybe_foreign_names(mutable_var_attributes)
     = maybe(list(foreign_name)).
-:- func mutable_var_constant(mutable_var_attributes) = bool.
-:- func mutable_var_attach_to_io_state(mutable_var_attributes) = bool.
+:- func mutable_var_constant(mutable_var_attributes) = mutable_constant.
+:- func mutable_var_attach_to_io_state(mutable_var_attributes)
+    = mutable_attach_to_io_state.
 :- func mutable_var_thread_local(mutable_var_attributes)
     = mutable_thread_local.
 
@@ -431,10 +444,10 @@
 :- pred set_mutable_add_foreign_name(foreign_name::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
-:- pred set_mutable_var_attach_to_io_state(bool::in,
+:- pred set_mutable_var_attach_to_io_state(mutable_attach_to_io_state::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
-:- pred set_mutable_var_constant(bool::in,
+:- pred set_mutable_var_constant(mutable_constant::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
 :- pred set_mutable_var_thread_local(mutable_thread_local::in,
@@ -442,7 +455,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Pragmas
+% Pragmas.
 %
 
 :- type pragma_type
@@ -1031,7 +1044,7 @@ get_item_context(Item) = Context :-
 
 %-----------------------------------------------------------------------------%
 %
-% Mutable variables
+% Mutable variables.
 %
 
     % Attributes for mutable variables.
@@ -1040,21 +1053,26 @@ get_item_context(Item) = Context :-
     --->    mutable_var_attributes(
                 mutable_trailed             :: mutable_trailed,
                 mutable_foreign_names       :: maybe(list(foreign_name)),
-                mutable_attach_to_io_state  :: bool,
-                mutable_constant            :: bool,
+                mutable_attach_to_io_state  :: mutable_attach_to_io_state,
+                mutable_constant            :: mutable_constant,
                 mutable_thread_local        :: mutable_thread_local
             ).
 
 default_mutable_attributes =
-    mutable_var_attributes(mutable_trailed, no, no, no,
+    mutable_var_attributes(mutable_trailed, no,
+        mutable_dont_attach_to_io_state, mutable_not_constant,
         mutable_not_thread_local).
 
-mutable_var_trailed(MVarAttrs) = MVarAttrs ^ mutable_trailed.
-mutable_var_maybe_foreign_names(MVarAttrs) = MVarAttrs ^ mutable_foreign_names.
-mutable_var_attach_to_io_state(MVarAttrs) =
-    MVarAttrs ^ mutable_attach_to_io_state.
-mutable_var_constant(MVarAttrs) = MVarAttrs ^ mutable_constant.
-mutable_var_thread_local(MVarAttrs) = MVarAttrs ^ mutable_thread_local.
+mutable_var_trailed(MVarAttrs) = X :-
+    X = MVarAttrs ^ mutable_trailed.
+mutable_var_maybe_foreign_names(MVarAttrs) = X :-
+    X = MVarAttrs ^ mutable_foreign_names.
+mutable_var_attach_to_io_state(MVarAttrs) = X :-
+    X = MVarAttrs ^ mutable_attach_to_io_state.
+mutable_var_constant(MVarAttrs) = X :-
+    X = MVarAttrs ^ mutable_constant.
+mutable_var_thread_local(MVarAttrs) = X :-
+    X = MVarAttrs ^ mutable_thread_local.
 
 set_mutable_var_trailed(Trailed, !Attributes) :-
     !Attributes ^ mutable_trailed := Trailed.
@@ -1065,7 +1083,7 @@ set_mutable_add_foreign_name(ForeignName, !Attributes) :-
         MaybeForeignNames  = yes([ForeignName])
     ;
         MaybeForeignNames0 = yes(ForeignNames0),
-        ForeignNames = [ ForeignName | ForeignNames0],
+        ForeignNames = [ForeignName | ForeignNames0],
         MaybeForeignNames   = yes(ForeignNames)
     ),
     !Attributes ^ mutable_foreign_names := MaybeForeignNames.
