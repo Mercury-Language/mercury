@@ -71,12 +71,13 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_trace_level(Globals, TraceLevel),
+    NeedFailVars = eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo,
+        !.ProcInfo, TraceLevel),
     (
-        eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, !.ProcInfo,
-            TraceLevel) = yes
-    ->
+        NeedFailVars = yes,
         trace_fail_vars(ModuleInfo, !.ProcInfo, FailVars)
     ;
+        NeedFailVars = no,
         FailVars = set_of_var.init
     ),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
@@ -122,8 +123,8 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
 
 :- type stack_alloc
     --->    stack_alloc(
-                % The sets of vars that need to be on the stack
-                % at the same time.
+                % Each element of this set is a set of variables
+                % that need to be on the stack at the same time.
                 set(set_of_progvar)
             ).
 

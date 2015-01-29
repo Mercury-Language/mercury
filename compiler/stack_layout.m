@@ -2315,9 +2315,8 @@ represent_lval(global_var_ref(_), _) :-
 represent_lval(lvar(_), _) :-
     unexpected($module, $pred, "continuation live value stored in lvar").
 
-    % Some things in this module are encoded using a low tag.  This is not
-    % done using the normal compiler mkword, but by doing the bit shifting
-    % here.
+    % Some things in this module are encoded using a low tag. This is not done
+    % using the normal compiler mkword, but by doing the bit shifting here.
     %
     % This allows us to use more than the usual 2 or 3 bits, but we have to
     % use low tags and cannot tag pointers this way.

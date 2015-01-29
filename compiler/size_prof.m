@@ -25,14 +25,14 @@
 % calculate the size when the term is being constructed, which requires
 % traversing it anyway. In term profiling grades, we reserve an extra word at
 % the start of every memory cell (with a few exceptions explained below) that
-% stores the size of the whole term the memory cell is the top of.  The size
+% stores the size of the whole term the memory cell is the top of. The size
 % is defined as the memory words in the term or the number of memory cells in
 % the term, depending on the grade.
 %
 % The main job of this module is to annotate every construction unification
 % with the information that the code generator needs to fill in the term size
 % slot. In order to do this, it must be able to find out the sizes of the
-% arguments, which in turn requires knowing the arguments' types.  (Without
+% arguments, which in turn requires knowing the arguments' types. (Without
 % type information, we cannot distinguish a pointer from an integer.) Most of
 % the code in this module is concerned with adding code to the procedure being
 % transformed to find or construct the typeinfos we need in order to find out
@@ -59,7 +59,7 @@
 % need to.
 %
 % We do not associate sizes with the memory cells of a small set of types,
-% including type_infos, type_class_infos, closures and boxed floats.  The two
+% including type_infos, type_class_infos, closures and boxed floats. The two
 % reasons for this are that (1) the sizes of values of these types practically
 % never control the complexity of a procedure, so there is no need for their
 % sizes, and (2) this allows us to create e.g. static type_info structures

@@ -9,30 +9,30 @@
 % Module: transform_hlds.ssdebug.m.
 % Authors: oannet, wangp.
 %
-% The ssdebug module does a source to source tranformation on each procedure
-% which allows the procedure to be debugged.
+% The ssdebug module does a source-to-source tranformation on each procedure
+% that allows the procedure to be debugged.
 %
 % The ssdebug transformation is disabled on standard library predicates,
 % because it would introduce cyclic dependencies between ssdb.m and the
-% standard library.  Disabling the transformation on the standard library is
+% standard library. Disabling the transformation on the standard library is
 % also useful for maintaining decent performance.
 %
-% The tranformation is divided into two passes.
+% The transformation is divided into two passes.
 %
 % The first pass replaces calls to standard library predicates, and closure
 % constructions referring to standard library predicates, by calls to and
-% closures over proxy predicates.  The proxy predicates generate events on
-% behalf of the standard library predicates.  There will be no events for
+% closures over proxy predicates. The proxy predicates generate events on
+% behalf of the standard library predicates. There will be no events for
 % further calls within the standard library, but that is better for
 % performance.
 %
 % The first pass also inserts calls to a context update procedure before every
-% procedure call (first or higher order).  This will update global variables
+% procedure call (first or higher order). This will update global variables
 % with the location of the next call site, which will be used by the CALL event
-% handler.  Context update calls are not required within proxy predicates.
+% handler. Context update calls are not required within proxy predicates.
 %
 % The second pass performs the main ssdebug transformation, adding calls to
-% procedures to handle debugger events.  The transformation depends on the
+% procedures to handle debugger events. The transformation depends on the
 % determinism of the procedure.
 %
 % det/cc_multi:
@@ -174,9 +174,9 @@
 %    :- type ssdb_tracel_level ---> shallow ; deep.
 %
 % Output head variables may appear twice in a variable description list --
-% initially unbound, then overridden by a bound_head_var functor.  Then the
+% initially unbound, then overridden by a bound_head_var functor. Then the
 % ExitVarDescs can add output variable bindings to the CallVarDescs list,
-% instead of building new lists.  The pos fields give the argument numbers
+% instead of building new lists. The pos fields give the argument numbers
 % of head variables.
 %
 % The ProcId is of type ssdb.ssdb_proc_id.
@@ -236,21 +236,20 @@
 ssdebug_transform_module(!ModuleInfo, !IO) :-
     module_info_ssdb_trace_level(!.ModuleInfo, SSTraceLevel),
     (
-        SSTraceLevel = none,
-        true
+        SSTraceLevel = none
     ;
         SSTraceLevel = shallow,
         % In the shallow trace level the parent of the library
         % procedure also be of trace level shallow, thus we
         % don't need to proxy the library methods.
         process_all_nonimported_procs(
-            update_module(ssdebug_process_proc(SSTraceLevel)),
+            update_module(ssdebug_process_proc_if_needed(SSTraceLevel)),
             !ModuleInfo)
     ;
         SSTraceLevel = deep,
         ssdebug_first_pass(!ModuleInfo),
         process_all_nonimported_procs(
-            update_module(ssdebug_process_proc(SSTraceLevel)),
+            update_module(ssdebug_process_proc_if_needed(SSTraceLevel)),
             !ModuleInfo)
     ).
 
@@ -515,33 +514,39 @@ insert_context_update_call(ModuleInfo, Goal0, Goal, !ProcInfo) :-
 % The main transformation.
 %
 
-:- pred ssdebug_process_proc(ssdb_trace_level::in,
+:- pred ssdebug_process_proc_if_needed(ssdb_trace_level::in,
     pred_proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
-ssdebug_process_proc(none, proc(_PredId, _ProcId), !ProcInfo, !ModuleInfo).
-ssdebug_process_proc(shallow, proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
-        % Only transform the procedures in the interface
+ssdebug_process_proc_if_needed(SSTraceLevel, PredProcId,
+        !ProcInfo, !ModuleInfo) :-
+    (
+        SSTraceLevel = none
+    ;
+        SSTraceLevel = shallow,
+        PredProcId = proc(PredId, _ProcId),
+        % Only transform the procedures in the interface.
         % XXX We still need to fix the ssdb so that events generated
         % below the shallow call event aren't seen.
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ( pred_info_is_exported(PredInfo) ->
-        ssdebug_process_proc_2(proc(PredId, ProcId), !ProcInfo, !ModuleInfo)
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+        ( pred_info_is_exported(PredInfo) ->
+            ssdebug_process_proc(PredProcId, !ProcInfo, !ModuleInfo)
+        ;
+            true
+        )
     ;
-        true
-    ).
-ssdebug_process_proc(deep, proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
+        SSTraceLevel = deep,
         % Transfrom all procedures
-    ssdebug_process_proc_2(proc(PredId, ProcId), !ProcInfo, !ModuleInfo).
+        ssdebug_process_proc(PredProcId, !ProcInfo, !ModuleInfo)
+    ).
 
-
-:- pred ssdebug_process_proc_2(
-    pred_proc_id::in, proc_info::in, proc_info::out,
+:- pred ssdebug_process_proc(pred_proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
-ssdebug_process_proc_2(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
+    PredProcId = proc(PredId, ProcId),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
-    ( check_arguments_modes(!.ModuleInfo, ArgModes) ->
+    ( all_args_fully_input_or_output(!.ModuleInfo, ArgModes) ->
         % We have different transformations for procedures of different
         % determinisms.
 
@@ -574,8 +579,8 @@ ssdebug_process_proc_2(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
                 !ModuleInfo)
         )
     ;
-        % In the case of a mode which is not fully input or output, the
-        % procedure is not transformed.
+        % In the case of a mode which is not fully input or output,
+        % we don't transform the procedure, since we don't know how.
         true
     ).
 
@@ -744,7 +749,7 @@ ssdebug_process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         ImpureGoalInfo = impure_goal_info(ProcDetism),
 
         % The condition of the if-then-else is the original body with renamed
-        % output variables.  Introduce a promise_equivalent_solutions scope to
+        % output variables. Introduce a promise_equivalent_solutions scope to
         % put it into a single solution context if the procedure (which we call
         % recursively later) was _declared_ to have more solutions.
         determinism_components(ProcDetism, _CanFail, Solns),
@@ -1202,7 +1207,7 @@ make_handle_event(HandleTypeString, Arguments, HandleEventGoal, !ModuleInfo,
     %   !VarSet, !VarTypes)
     %
     % Returns a set of goals, Goals, which build the ssdb_proc_id structure
-    % for the given pred and proc infos.  The Var returned holds the
+    % for the given pred and proc infos. The Var returned holds the
     % ssdb_proc_id.
     %
 :- pred make_proc_id_construction(module_info::in, pred_info::in,
@@ -1269,10 +1274,10 @@ make_level_construction(ModuleInfo, Goal, LevelVar, !VarSet, !VarTypes) :-
     % XXX Other mode than fully input or output are not handled for the
     % moment. So the code of these procedures will not be generated.
     %
-:- pred check_arguments_modes(module_info::in, list(mer_mode)::in)
+:- pred all_args_fully_input_or_output(module_info::in, list(mer_mode)::in)
     is semidet.
 
-check_arguments_modes(ModuleInfo, HeadModes) :-
+all_args_fully_input_or_output(ModuleInfo, HeadModes) :-
     all [Modes] (
         list.member(Mode, HeadModes)
     =>
