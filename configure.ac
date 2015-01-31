@@ -971,6 +971,7 @@ EOF
 
     rm -f conftest*
 fi
+AC_SUBST(CFLAGS_FOR_ERRMSG_FILTER)
 
 #-----------------------------------------------------------------------------#
 # Make sure we search /usr/local/include and /usr/local/lib for
@@ -5456,6 +5457,7 @@ slice/SLICE_FLAGS
 profiler/PROF_FLAGS
 deep_profiler/DEEP_FLAGS
 tests/TESTS_FLAGS
+tests/DEFNS_FOR_TESTS
 mfilterjavac/MFILTERJAVAC_FLAGS
 '
 

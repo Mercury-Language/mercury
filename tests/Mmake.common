@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
+#-----------------------------------------------------------------------------#
 # Mmake.common - shared Mmake variables and rules for the test directories.
 #
 # The including Mmakefile must set the following variables:
@@ -28,11 +30,9 @@ include $(WORKSPACE)/Mmake.workspace
 
 endif
 
-#
 # Note: Mmake lets you override MCFLAGS for a particular file by setting
 # MCFLAGS-foo.  Similarly, you can override GRADEFLAGS for a particular
 # file by setting both GRADEFLAGS-foo.
-#
 
 ifndef DIFF_OPTS
 DIFF_OPTS=-c
@@ -72,6 +72,7 @@ MDB_STD_NOINIT = MERCURY_OPTIONS="$$MERCURY_OPTIONS -de" $(MDB_NOINIT)
 
 PARAMS_MSG = in grade $(GRADE)
 
+include $(TESTS_DIR)/DEFNS_FOR_TESTS
 -include $(TESTS_DIR)/Mmake.params
 
 MCFLAGS += --flags $(TESTS_DIR)/TESTS_FLAGS

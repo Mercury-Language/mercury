@@ -407,6 +407,7 @@ endif
 foreign_decl_line_number.err: foreign_decl_line_number.m
 	rm -f foreign_decl_line_number.err
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		--cflags "$(CFLAGS_FOR_ERRMSG_FILTER)" \
 		foreign_decl_line_number.m \
 		> foreign_decl_line_number.err.orig 2>&1; \
 	then false; else true; fi
@@ -420,6 +421,7 @@ foreign_decl_line_number.err: foreign_decl_line_number.m
 foreign_type_line_number.err: foreign_type_line_number.m
 	rm -f foreign_type_line_number.err
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		--cflags "$(CFLAGS_FOR_ERRMSG_FILTER)" \
 		foreign_type_line_number.m \
 		> foreign_type_line_number.err.orig 2>&1; \
 	then false; else true; fi
