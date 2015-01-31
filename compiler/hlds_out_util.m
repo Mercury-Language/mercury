@@ -62,13 +62,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_type_ctor(type_ctor::in, io::di, io::uo) is det.
-:- func type_ctor_to_string(type_ctor) = string.
-
-:- pred write_class_id(class_id::in, io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
-
     % write_pred_id/4 writes out a message such as
     %       predicate `foo.bar/3'
     % or    function `foo.myfoo/5'
@@ -160,9 +153,6 @@
 :- func functor_cons_id_to_string(cons_id, list(prog_var), prog_varset,
     module_info, bool) = string.
 
-:- pred write_cons_id_and_arity(cons_id::in, io::di, io::uo) is det.
-:- func cons_id_and_arity_to_string(cons_id) = string.
-
 :- type maybe_qualify_cons_id
     --->    qualify_cons_id
     ;       do_not_qualify_cons_id.
@@ -235,20 +225,6 @@ init_hlds_out_info(Globals) = Info :-
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_name, Names),
     MercInfo = init_merc_out_info_for_hlds_dump(Globals),
     Info = hlds_out_info(DumpOptions, DumpOptions, Ids, Names, MercInfo).
-
-%-----------------------------------------------------------------------------%
-%
-% Write out the ids of types and classes.
-%
-
-write_type_ctor(type_ctor(Name, Arity), !IO) :-
-    prog_out.write_sym_name_and_arity(Name / Arity, !IO).
-
-type_ctor_to_string(type_ctor(Name, Arity)) =
-    prog_out.sym_name_and_arity_to_string(Name / Arity).
-
-write_class_id(class_id(Name, Arity), !IO) :-
-    prog_out.write_sym_name_and_arity(Name / Arity, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -764,97 +740,6 @@ functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums)
         Str = "deep_profiling_proc_layout("
             ++ pred_id_to_string(ModuleInfo, PredId)
             ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
-    ).
-
-write_cons_id_and_arity(ConsId, !IO) :-
-    io.write_string(cons_id_and_arity_to_string(ConsId), !IO).
-
-cons_id_and_arity_to_string(ConsId) = String :-
-    (
-        ConsId = cons(SymName, Arity, _TypeCtor),
-        SymNameString0 = sym_name_to_string(SymName),
-        ( string.contains_char(SymNameString0, '*') ->
-            % We need to protect against the * appearing next to a /
-            Stuff = (pred(Char::in, Str0::in, Str::out) is det :-
-                ( Char = ('*') ->
-                    string.append(Str0, "star", Str)
-                ;
-                    string.char_to_string(Char, CharStr),
-                    string.append(Str0, CharStr, Str)
-                )
-            ),
-            string.foldl(Stuff, SymNameString0, "", SymNameString1)
-        ;
-            SymNameString1 = SymNameString0
-        ),
-        SymNameString = term_io.escaped_string(SymNameString1),
-        string.int_to_string(Arity, ArityString),
-        String = SymNameString ++ "/" ++ ArityString
-    ;
-        ConsId = tuple_cons(Arity),
-        String = "{}/" ++ string.int_to_string(Arity)
-    ;
-        ConsId = int_const(Int),
-        string.int_to_string(Int, String)
-    ;
-        ConsId = float_const(Float),
-        String = float_to_string(Float)
-    ;
-        ConsId = char_const(CharConst),
-        String = term_io.quoted_char(CharConst)
-    ;
-        ConsId = string_const(StringConst),
-        String = term_io.quoted_string(StringConst)
-    ;
-        ConsId = impl_defined_const(Name),
-        String = "$" ++ Name
-    ;
-        ConsId = closure_cons(PredProcId, _),
-        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
-        String =
-            "<pred " ++ int_to_string(PredId) ++
-            " proc " ++ int_to_string(ProcId) ++ ">"
-    ;
-        ConsId = type_ctor_info_const(Module, Ctor, Arity),
-        String =
-            "<type_ctor_info " ++ sym_name_to_string(Module) ++ "." ++
-            Ctor ++ "/" ++ int_to_string(Arity) ++ ">"
-    ;
-        ConsId = base_typeclass_info_const(_, _, _, _),
-        String = "<base_typeclass_info>"
-    ;
-        ConsId = type_info_cell_constructor(_),
-        String = "<type_info_cell_constructor>"
-    ;
-        ConsId = typeclass_info_cell_constructor,
-        String = "<typeclass_info_cell_constructor>"
-    ;
-        ConsId = type_info_const(_),
-        String = "<type_info_const>"
-    ;
-        ConsId = typeclass_info_const(_),
-        String = "<typeclass_info_const>"
-    ;
-        ConsId = ground_term_const(_, _),
-        String = "<ground_term_const>"
-    ;
-        ConsId = tabling_info_const(PredProcId),
-        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
-        String =
-            "<tabling_info " ++ int_to_string(PredId) ++
-            ", " ++ int_to_string(ProcId) ++ ">"
-    ;
-        ConsId = table_io_entry_desc(PredProcId),
-        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
-        String =
-            "<table_io_entry_desc " ++ int_to_string(PredId) ++ ", " ++
-            int_to_string(ProcId) ++ ">"
-    ;
-        ConsId = deep_profiling_proc_layout(PredProcId),
-        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
-        String =
-            "<deep_profiling_proc_layout " ++ int_to_string(PredId) ++ ", " ++
-            int_to_string(ProcId) ++ ">"
     ).
 
 write_cons_id_and_vars_or_arity(Qual, VarSet, ConsId, MaybeArgVars, !IO) :-

@@ -19,31 +19,31 @@ det_errors.m:043:   unification with `21' can fail.
 det_errors.m:024: In `q'(in, out):
 det_errors.m:024:   error: determinism declaration not satisfied.
 det_errors.m:024:   Declared `det', inferred `semidet'.
-det_errors.m:046:   The switch on HeadVar__1 does not cover det_errors.d/0,
-det_errors.m:046:   det_errors.e/0, det_errors.f/0, det_errors.g/0,
-det_errors.m:046:   det_errors.h/1 or det_errors.i/1.
+det_errors.m:046:   The switch on HeadVar__1 does not cover `det_errors.d'/0,
+det_errors.m:046:   `det_errors.e'/0, `det_errors.f'/0, `det_errors.g'/0,
+det_errors.m:046:   `det_errors.h'/1 or `det_errors.i'/1.
 det_errors.m:032: In `r'(in, out):
 det_errors.m:032:   error: determinism declaration not satisfied.
 det_errors.m:032:   Declared `det', inferred `nondet'.
 det_errors.m:052:   Inside the case u3(V_16) of the switch on U:
-det_errors.m:052:   The switch on V_16 does not cover det_errors.d/0,
-det_errors.m:052:   det_errors.e/0, det_errors.f/0, det_errors.g/0,
-det_errors.m:052:   det_errors.h/1 or det_errors.i/1.
+det_errors.m:052:   The switch on V_16 does not cover `det_errors.d'/0,
+det_errors.m:052:   `det_errors.e'/0, `det_errors.f'/0, `det_errors.g'/0,
+det_errors.m:052:   `det_errors.h'/1 or `det_errors.i'/1.
 det_errors.m:052:   Inside the case u4(V_17) of the switch on U:
 det_errors.m:052:   inside the case d/0 of the switch on V_17:
 det_errors.m:052:   disjunction has multiple clauses with solutions.
 det_errors.m:052:   Inside the case u4(V_17) of the switch on U:
-det_errors.m:052:   The switch on V_17 does not cover det_errors.h/1 or
-det_errors.m:052:   det_errors.i/1.
-det_errors.m:052:   The switch on U does not cover det_errors.u2/0.
+det_errors.m:052:   The switch on V_17 does not cover `det_errors.h'/1 or
+det_errors.m:052:   `det_errors.i'/1.
+det_errors.m:052:   The switch on U does not cover `det_errors.u2'/0.
 det_errors.m:033: In `s'(in, out):
 det_errors.m:033:   error: determinism declaration not satisfied.
 det_errors.m:033:   Declared `det', inferred `nondet'.
 det_errors.m:091:   Inside the case u3(V_11) of the switch on U:
-det_errors.m:091:   The switch on V_11 does not cover det_errors.d/0,
-det_errors.m:091:   det_errors.e/0, det_errors.f/0, det_errors.g/0,
-det_errors.m:091:   det_errors.h/1 or det_errors.i/1.
-det_errors.m:091:   The switch on U does not cover det_errors.u2/0.
+det_errors.m:091:   The switch on V_11 does not cover `det_errors.d'/0,
+det_errors.m:091:   `det_errors.e'/0, `det_errors.f'/0, `det_errors.g'/0,
+det_errors.m:091:   `det_errors.h'/1 or `det_errors.i'/1.
+det_errors.m:091:   The switch on U does not cover `det_errors.u2'/0.
 det_errors.m:107:   Inside the case u4(V) of the switch on U:
 det_errors.m:107:   inside the case d/0 of the switch on V:
 det_errors.m:107:   disjunction has multiple clauses with solutions.

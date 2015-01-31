@@ -107,6 +107,7 @@
 :- import_module ll_backend.store_alloc.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
@@ -1097,7 +1098,7 @@ dump_insert(insert_spec(Goal, Vars), !IO) :-
         term.var_to_int(CellVar, CellVarNum),
         io.write_int(CellVarNum, !IO),
         io.write_string(" => ", !IO),
-        write_cons_id_and_arity(ConsId, !IO),
+        io.write_string(cons_id_and_arity_to_string(ConsId), !IO),
         io.write_string("(", !IO),
         list.map(term.var_to_int, ArgVars, ArgVarNums),
         write_int_list(ArgVarNums, !IO),
@@ -1122,7 +1123,7 @@ dump_matching_result(MatchingResult, !IO) :-
         ViaCellVarNums),
     io.write_int(CellVarNum, !IO),
     io.write_string(" => ", !IO),
-    write_cons_id_and_arity(ConsId, !IO),
+    io.write_string(cons_id_and_arity_to_string(ConsId), !IO),
     io.write_string("(", !IO),
     write_int_list(ArgVarNums, !IO),
     io.write_string("): via cell ", !IO),

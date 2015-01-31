@@ -1346,16 +1346,16 @@ compute_covered_cons_ids([Case | Cases], !CoveredConsIds) :-
 
 cons_id_list_to_pieces([], []).
 cons_id_list_to_pieces([ConsId | ConsIds], Pieces) :-
-    ConsIdStr = cons_id_and_arity_to_string(ConsId),
+    ConsIdPiece = cons_id_and_maybe_arity(ConsId),
     (
-        ConsIds = [],
-        PiecesHead = [fixed(ConsIdStr ++ ".")]
+        ConsIds = [_, _ | _],
+        PiecesHead = [ConsIdPiece, suffix(",")]
     ;
         ConsIds = [_],
-        PiecesHead = [fixed(ConsIdStr), fixed("or")]
+        PiecesHead = [ConsIdPiece, words("or")]
     ;
-        ConsIds = [_, _ | _],
-        PiecesHead = [fixed(ConsIdStr ++ ",")]
+        ConsIds = [],
+        PiecesHead = [ConsIdPiece, suffix(".")]
     ),
     cons_id_list_to_pieces(ConsIds, PiecesTail),
     Pieces = PiecesHead ++ PiecesTail.
@@ -1567,9 +1567,8 @@ failing_context_description(ModuleInfo, VarSet, FailingContext) = Msg :-
     ;
         FailingGoal = deconstruct_goal(Var, ConsId),
         VarStr = mercury_var_to_string(VarSet, no, Var),
-        ConsIdStr = cons_id_and_arity_to_string(ConsId),
-        Pieces = [words("Unification of"), fixed(VarStr),
-            words("with"), fixed(ConsIdStr), words("can fail.")]
+        Pieces = [words("Unification of"), fixed(VarStr), words("with"),
+            cons_id_and_maybe_arity(ConsId), words("can fail.")]
     ;
         FailingGoal = call_goal(PredId, _ProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),

@@ -136,8 +136,6 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
-:- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
 :- import_module libs.
@@ -148,6 +146,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
@@ -786,8 +785,7 @@ in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
         DefinedInImpl = status_defined_in_impl_section(TypeStatus),
         (
             DefinedInImpl = yes,
-            ConsIdStr = cons_id_and_arity_to_string(ConsId),
-            IdPieces = [words("constructor"), quote(ConsIdStr)],
+            IdPieces = [words("constructor"), cons_id_and_maybe_arity(ConsId)],
             report_assertion_interface_error(ModuleInfo, Context, IdPieces,
                 !Specs)
         ;

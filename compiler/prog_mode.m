@@ -133,8 +133,6 @@
     % Predicates to make error messages more readable by stripping
     % "builtin." module qualifiers from modes.
     %
-:- pred strip_builtin_qualifier_from_cons_id(cons_id::in, cons_id::out) is det.
-
 :- pred strip_builtin_qualifiers_from_mode_list(list(mer_mode)::in,
     list(mer_mode)::out) is det.
 
@@ -176,6 +174,7 @@
 
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_util.
 
 :- import_module map.
 :- import_module require.
@@ -743,27 +742,6 @@ strip_builtin_qualifiers_from_mode(Mode0, Mode) :-
         strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
         strip_builtin_qualifier_from_sym_name(SymName0, SymName),
         Mode = user_defined_mode(SymName, Insts)
-    ).
-
-strip_builtin_qualifier_from_cons_id(ConsId0, ConsId) :-
-    ( ConsId0 = cons(Name0, Arity, TypeCtor) ->
-        strip_builtin_qualifier_from_sym_name(Name0, Name),
-        ConsId = cons(Name, Arity, TypeCtor)
-    ;
-        ConsId = ConsId0
-    ).
-
-:- pred strip_builtin_qualifier_from_sym_name(sym_name::in, sym_name::out)
-    is det.
-
-strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
-    (
-        SymName0 = qualified(Module, Name),
-        Module = mercury_public_builtin_module
-    ->
-        SymName = unqualified(Name)
-    ;
-        SymName = SymName0
     ).
 
 strip_builtin_qualifiers_from_inst_list(Insts0, Insts) :-

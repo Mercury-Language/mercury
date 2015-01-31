@@ -131,8 +131,6 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_code_util.
-:- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -144,6 +142,7 @@
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 

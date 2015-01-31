@@ -4,5 +4,5 @@ undef_symbol.m:019: In clause for predicate `p'/2:
 undef_symbol.m:019:   error: undefined predicate `string.append'/3
 undef_symbol.m:019:   (the module `string' has not been imported).
 undef_symbol.m:025: In clause for predicate `q'/2:
-undef_symbol.m:025:   error: undefined symbol `term.context/2'
+undef_symbol.m:025:   error: undefined symbol `term.context'/2
 undef_symbol.m:025:   (the module `term' has not been imported).

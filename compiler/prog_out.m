@@ -84,6 +84,14 @@
 :- pred write_module_spec(module_specifier::in, io::di, io::uo) is det.
 :- func module_spec_to_escaped_string(module_specifier) = string.
 
+:- pred write_type_ctor(type_ctor::in, io::di, io::uo) is det.
+:- func type_ctor_to_string(type_ctor) = string.
+
+:- pred write_class_id(class_id::in, io::di, io::uo) is det.
+
+:- func maybe_quoted_cons_id_and_arity_to_string(cons_id) = string.
+:- func cons_id_and_arity_to_string(cons_id) = string.
+
 :- pred write_string_list(list(string)::in, io::di, io::uo) is det.
 
 :- pred write_promise_type(promise_type::in, io::di, io::uo) is det.
@@ -267,6 +275,132 @@ write_module_spec(ModuleSpec, !IO) :-
 
 module_spec_to_escaped_string(ModuleSpec) =
     sym_name_to_escaped_string(ModuleSpec).
+
+%-----------------------------------------------------------------------------%
+
+write_type_ctor(type_ctor(Name, Arity), !IO) :-
+    prog_out.write_sym_name_and_arity(Name / Arity, !IO).
+
+type_ctor_to_string(type_ctor(Name, Arity)) =
+    prog_out.sym_name_and_arity_to_string(Name / Arity).
+
+write_class_id(class_id(Name, Arity), !IO) :-
+    prog_out.write_sym_name_and_arity(Name / Arity, !IO).
+
+%-----------------------------------------------------------------------------%
+
+maybe_quoted_cons_id_and_arity_to_string(ConsId) =
+    cons_id_and_arity_to_string_maybe_quoted(quote_cons, ConsId).
+
+cons_id_and_arity_to_string(ConsId) =
+    cons_id_and_arity_to_string_maybe_quoted(dont_quote_cons, ConsId).
+
+:- type maybe_quote_cons
+    --->    dont_quote_cons
+    ;       quote_cons.
+
+:- func cons_id_and_arity_to_string_maybe_quoted(maybe_quote_cons, cons_id)
+    = string.
+
+cons_id_and_arity_to_string_maybe_quoted(QuoteCons, ConsId) = String :-
+    (
+        ConsId = cons(SymName, Arity, _TypeCtor),
+        SymNameString0 = sym_name_to_string(SymName),
+        ( string.contains_char(SymNameString0, '*') ->
+            % We need to protect against the * appearing next to a /.
+            Stuff = (pred(Char::in, Str0::in, Str::out) is det :-
+                ( Char = ('*') ->
+                    string.append(Str0, "star", Str)
+                ;
+                    string.char_to_string(Char, CharStr),
+                    string.append(Str0, CharStr, Str)
+                )
+            ),
+            string.foldl(Stuff, SymNameString0, "", SymNameString1)
+        ;
+            SymNameString1 = SymNameString0
+        ),
+        SymNameString = term_io.escaped_string(SymNameString1),
+        string.int_to_string(Arity, ArityString),
+        (
+            QuoteCons = dont_quote_cons,
+            String = SymNameString ++ "/" ++ ArityString
+        ;
+            QuoteCons = quote_cons,
+            String = "`" ++ SymNameString ++ "'/" ++ ArityString
+        )
+    ;
+        ConsId = tuple_cons(Arity),
+        String = "{}/" ++ string.int_to_string(Arity)
+    ;
+        ConsId = int_const(Int),
+        string.int_to_string(Int, String)
+    ;
+        ConsId = float_const(Float),
+        String = float_to_string(Float)
+    ;
+        ConsId = char_const(CharConst),
+        String = term_io.quoted_char(CharConst)
+    ;
+        ConsId = string_const(StringConst),
+        String = term_io.quoted_string(StringConst)
+    ;
+        ConsId = impl_defined_const(Name),
+        (
+            QuoteCons = dont_quote_cons,
+            String = "$" ++ Name
+        ;
+            QuoteCons = quote_cons,
+            String = "`$" ++ Name ++ "'"
+        )
+    ;
+        ConsId = closure_cons(PredProcId, _),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<pred " ++ int_to_string(PredId) ++
+            " proc " ++ int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = type_ctor_info_const(Module, Ctor, Arity),
+        String =
+            "<type_ctor_info " ++ sym_name_to_string(Module) ++ "." ++
+            Ctor ++ "/" ++ int_to_string(Arity) ++ ">"
+    ;
+        ConsId = base_typeclass_info_const(_, _, _, _),
+        String = "<base_typeclass_info>"
+    ;
+        ConsId = type_info_cell_constructor(_),
+        String = "<type_info_cell_constructor>"
+    ;
+        ConsId = typeclass_info_cell_constructor,
+        String = "<typeclass_info_cell_constructor>"
+    ;
+        ConsId = type_info_const(_),
+        String = "<type_info_const>"
+    ;
+        ConsId = typeclass_info_const(_),
+        String = "<typeclass_info_const>"
+    ;
+        ConsId = ground_term_const(_, _),
+        String = "<ground_term_const>"
+    ;
+        ConsId = tabling_info_const(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<tabling_info " ++ int_to_string(PredId) ++
+            ", " ++ int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = table_io_entry_desc(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<table_io_entry_desc " ++ int_to_string(PredId) ++ ", " ++
+            int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = deep_profiling_proc_layout(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<deep_profiling_proc_layout " ++ int_to_string(PredId) ++ ", " ++
+            int_to_string(ProcId) ++ ">"
+    ).
 
 %-----------------------------------------------------------------------------%
 

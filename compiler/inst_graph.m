@@ -184,8 +184,7 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_util.
+:- import_module parse_tree.prog_out.
 
 :- import_module require.
 :- import_module set.
@@ -416,7 +415,7 @@ dump_node(VarSet, Var, Node, !IO) :-
 
 dump_functor(VarSet, ConsId, Args, !IO) :-
     io.write_string("%%\t", !IO),
-    write_cons_id_and_arity(ConsId, !IO),
+    io.write_string(cons_id_and_arity_to_string(ConsId), !IO),
     (
         Args = [_ | _],
         io.write_char('(', !IO),

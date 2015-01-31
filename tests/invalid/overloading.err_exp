@@ -3,7 +3,7 @@ overloading.m:050:   in unification of variable `OptInfo'
 overloading.m:050:   and term `opt_info(MustHaveOwnSlot, EverOnStack,
 overloading.m:050:   CurIntervalId, V_22, Counter1, StartMap0, EndMap0,
 overloading.m:050:   VarsMap0, SuccMap0)':
-overloading.m:050:   type error in argument(s) of functor `opt_info/9'.
+overloading.m:050:   type error in argument of functor `opt_info'/9.
 overloading.m:050:   Argument 3 (CurIntervalId) has type
 overloading.m:050:   `overloading.interval_id',
 overloading.m:050:   expected type was `tree234.tree234(term.var(term.generic),

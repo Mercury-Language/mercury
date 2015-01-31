@@ -398,7 +398,7 @@
     pred add_quoted_atom(string::in, U::di, U::uo) is det,
     pred add_quoted_string(string::in, U::di, U::uo) is det,
     pred add_constant(const::in, U::di, U::uo) is det,
-    pred add_class_id(class_id::in, U::di, U::uo) is det,
+    pred add_wrapped_class_id(class_id::in, U::di, U::uo) is det,
     pred add_eval_method(eval_method::in, U::di, U::uo) is det,
     pred add_lambda_eval_method(lambda_eval_method::in, U::di, U::uo) is det,
     pred add_escaped_string(string::in, U::di, U::uo) is det,
@@ -1584,7 +1584,7 @@ mercury_format_cons_id(NeedsBrackets, ConsId, !U) :-
             InstanceString),
         ModuleString = sym_name_to_string(ModuleName),
         add_string("<base_typeclass_info for ", !U),
-        add_class_id(Class, !U),
+        add_wrapped_class_id(Class, !U),
         ( ModuleString \= "some bogus module name" ->
             add_strings([" from module ", ModuleString], !U)
         ;
@@ -4928,7 +4928,7 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_quoted_atom/3) is term_io.quote_atom,
     pred(add_quoted_string/3) is term_io.quote_string,
     pred(add_constant/3) is term_io.write_constant,
-    pred(add_class_id/3) is write_class_id,
+    pred(add_wrapped_class_id/3) is write_wrapped_class_id,
     pred(add_eval_method/3) is write_eval_eval_method,
     pred(add_lambda_eval_method/3) is write_lambda_eval_method,
     pred(add_escaped_string/3) is term_io.write_escaped_string,
@@ -4946,7 +4946,7 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_quoted_atom/3) is output_quoted_atom,
     pred(add_quoted_string/3) is output_quoted_string,
     pred(add_constant/3) is output_constant,
-    pred(add_class_id/3) is output_class_id,
+    pred(add_wrapped_class_id/3) is output_wrapped_class_id,
     pred(add_eval_method/3) is output_eval_eval_method,
     pred(add_lambda_eval_method/3) is output_lambda_eval_method,
     pred(add_escaped_string/3) is output_escaped_string,
@@ -4954,10 +4954,10 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_list/5) is output_list
 ].
 
-:- pred write_class_id(class_id::in, io::di, io::uo) is det.
+:- pred write_wrapped_class_id(class_id::in, io::di, io::uo) is det.
 
-write_class_id(ClassId, !IO) :-
-    output_class_id(ClassId, "", ClassIdStr),
+write_wrapped_class_id(ClassId, !IO) :-
+    output_wrapped_class_id(ClassId, "", ClassIdStr),
     io.write_string(ClassIdStr, !IO).
 
 :- pred write_eval_eval_method(eval_method::in, io::di, io::uo) is det.
@@ -5031,9 +5031,9 @@ output_escaped_string(S, Str0, Str) :-
     ES = term_io.escaped_string(S),
     string.append(Str0, ES, Str).
 
-:- pred output_class_id(class_id::in, string::di, string::uo) is det.
+:- pred output_wrapped_class_id(class_id::in, string::di, string::uo) is det.
 
-output_class_id(class_id(Name, Arity), !Str) :-
+output_wrapped_class_id(class_id(Name, Arity), !Str) :-
     output_string("class_id(", !Str),
     mercury_format_sym_name(Name, !Str),
     output_string(", ", !Str),

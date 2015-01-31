@@ -15,7 +15,7 @@ purity_nonsense.m:012: In clause for predicate `e12'/0:
 purity_nonsense.m:012:   in argument 1 of call to predicate `impure'/1:
 purity_nonsense.m:012:   in argument 1 of functor `\\+/1':
 purity_nonsense.m:012:   in argument 1 of functor `impure/1':
-purity_nonsense.m:012:   error: undefined symbol `imp/0'.
+purity_nonsense.m:012:   error: undefined symbol `imp'/0.
 purity_nonsense.m:013: Error: clause for predicate `purity_nonsense.e13'/0
 purity_nonsense.m:013:   without corresponding `:- pred' declaration.
 purity_nonsense.m:013: In clause for predicate `e13'/0:
@@ -33,7 +33,7 @@ purity_nonsense.m:013: In clause for predicate `e13'/0:
 purity_nonsense.m:013:   in argument 1 of call to predicate `semipure'/1:
 purity_nonsense.m:013:   in argument 1 of functor `\\+/1':
 purity_nonsense.m:013:   in argument 1 of functor `semipure/1':
-purity_nonsense.m:013:   error: undefined symbol `semi/0'.
+purity_nonsense.m:013:   error: undefined symbol `semi'/0.
 purity_nonsense.m:018: In clause for predicate `e14'/1:
 purity_nonsense.m:018:   in argument 1 (i.e. the predicate term) of impure
 purity_nonsense.m:018:   higher-order predicate call:

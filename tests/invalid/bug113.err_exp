@@ -7,13 +7,13 @@ bug113.m:036: Inferred :- func new(T1) = T2.
 bug113.m:038: Error: clause for function `bug113.new'/2
 bug113.m:038:   without corresponding `:- func' declaration.
 bug113.m:040: In clause for function `new'/2:
-bug113.m:040:   error: undefined symbol `throw_bitmap_error/1'.
+bug113.m:040:   error: undefined symbol `throw_bitmap_error'/1.
 bug113.m:042: In clause for function `new'/2:
-bug113.m:042:   error: undefined symbol `initializer/1'.
+bug113.m:042:   error: undefined symbol `initializer'/1.
 bug113.m:043: In clause for function `new'/2:
-bug113.m:043:   error: undefined symbol `initialize_bitmap/3'.
+bug113.m:043:   error: undefined symbol `initialize_bitmap'/3.
 bug113.m:043: In clause for function `new'/2:
 bug113.m:043:   in argument 1 of functor `initialize_bitmap/3':
-bug113.m:043:   error: undefined symbol `allocate_bitmap/1'.
+bug113.m:043:   error: undefined symbol `allocate_bitmap'/1.
 bug113.m:044: In clause for function `new'/2:
-bug113.m:044:   error: undefined symbol `clear_filler_bits/1'.
+bug113.m:044:   error: undefined symbol `clear_filler_bits'/1.

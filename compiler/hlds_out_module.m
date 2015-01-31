@@ -276,11 +276,11 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
                 CheapConsId, CheapConsTag),
             write_indent(Indent, !IO),
             io.write_string("/* cheaper tag test: ", !IO),
-            write_cons_id_and_arity(ExpConsId, !IO),
+            io.write_string(cons_id_and_arity_to_string(ExpConsId), !IO),
             io.write_string(" tag ", !IO),
             io.print(ExpConsTag, !IO),
             io.write_string(" -> ", !IO),
-            write_cons_id_and_arity(CheapConsId, !IO),
+            io.write_string(cons_id_and_arity_to_string(CheapConsId), !IO),
             io.write_string(" tag ", !IO),
             io.print(CheapConsTag, !IO),
             io.write_string(" */\n", !IO)

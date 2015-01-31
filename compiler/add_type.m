@@ -60,11 +60,10 @@
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_tags.
-:- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.

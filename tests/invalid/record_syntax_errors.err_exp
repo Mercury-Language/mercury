@@ -11,18 +11,17 @@ record_syntax_errors.m:031: Error: expected `Field =^ field1 ^ ... ^ fieldN' or
 record_syntax_errors.m:031:   `^ field1 ^ ... ^ fieldN := Field' in DCG field
 record_syntax_errors.m:031:   access goal.
 record_syntax_errors.m:042: In clause for predicate `construct_exist_cons'/1:
-record_syntax_errors.m:042:   error: undefined symbol `field2 :=/2'.
+record_syntax_errors.m:042:   error: undefined symbol `field2 :='/2.
 record_syntax_errors.m:006:   Field `field2' cannot be updated because the
 record_syntax_errors.m:006:   existentially quantified type variable `T' occurs
 record_syntax_errors.m:006:   in the types of field `field2' and some other
 record_syntax_errors.m:006:   field in definition of constructor
-record_syntax_errors.m:006:   `record_syntax_errors.exist_cons/3'.
+record_syntax_errors.m:006:   `record_syntax_errors.exist_cons'/3.
 record_syntax_errors.m:046: In clause for predicate `arg_type_error'/1:
 record_syntax_errors.m:046:   in argument 2 of functor `field6 :=/2':
 record_syntax_errors.m:046:   in unification of argument
 record_syntax_errors.m:046:   and term `'field7 :='(V_10, V_9)':
-record_syntax_errors.m:046:   type error in argument(s) of functor
-record_syntax_errors.m:046:   `field7 :=/2'.
+record_syntax_errors.m:046:   type error in argument of functor `field7 :='/2.
 record_syntax_errors.m:046:   Argument 2 has type `string',
 record_syntax_errors.m:046:   expected type was `int'.
 record_syntax_errors.m:048: Error: clause for predicate
@@ -32,8 +31,7 @@ record_syntax_errors.m:050: In clause for predicate `term_type_error'/1:
 record_syntax_errors.m:050:   in argument 2 of functor `field6 :=/2':
 record_syntax_errors.m:050:   in unification of argument
 record_syntax_errors.m:050:   and term `'field4 :='(V_10, V_9)':
-record_syntax_errors.m:050:   type error in argument(s) of functor
-record_syntax_errors.m:050:   `field4 :=/2'.
+record_syntax_errors.m:050:   type error in argument of functor `field4 :='/2.
 record_syntax_errors.m:050:   Argument 1 has type `record_syntax_errors.cons2',
 record_syntax_errors.m:050:   expected type was `record_syntax_errors.cons'.
 record_syntax_errors.m:054: In declaration of function

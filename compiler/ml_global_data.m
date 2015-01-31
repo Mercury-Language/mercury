@@ -211,9 +211,8 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module ml_backend.ml_type_gen.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.

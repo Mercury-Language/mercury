@@ -133,6 +133,12 @@
 
 %-----------------------------------------------------------------------------%
 
+:- pred strip_builtin_qualifier_from_cons_id(cons_id::in, cons_id::out) is det.
+:- pred strip_builtin_qualifier_from_sym_name(sym_name::in, sym_name::out)
+    is det.
+
+%-----------------------------------------------------------------------------%
+
     % make_n_fresh_vars(Name, N, VarSet0, Vars, VarSet):
     %   `Vars' is a list of `N' fresh variables allocated from
     %   `VarSet0'.  The variables will be named "<Name>1", "<Name>2",
@@ -191,6 +197,8 @@
 
 :- implementation.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_out.
 
@@ -668,6 +676,26 @@ make_functor_cons_id(term.string(String), _) = string_const(String).
 make_functor_cons_id(term.float(Float), _) = float_const(Float).
 make_functor_cons_id(term.implementation_defined(Name), _) =
     impl_defined_const(Name).
+
+%-----------------------------------------------------------------------------%
+
+strip_builtin_qualifier_from_cons_id(ConsId0, ConsId) :-
+    ( ConsId0 = cons(Name0, Arity, TypeCtor) ->
+        strip_builtin_qualifier_from_sym_name(Name0, Name),
+        ConsId = cons(Name, Arity, TypeCtor)
+    ;
+        ConsId = ConsId0
+    ).
+
+strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
+    (
+        SymName0 = qualified(Module, Name),
+        Module = mercury_public_builtin_module
+    ->
+        SymName = unqualified(Name)
+    ;
+        SymName = SymName0
+    ).
 
 %-----------------------------------------------------------------------------%
 

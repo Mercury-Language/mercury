@@ -1207,7 +1207,7 @@ write_unification(Info, Unification, ModuleInfo, ProgVarSet, InstVarSet,
 
 write_functor_and_submodes(Info, ConsId, ArgVars, ArgModes, _ModuleInfo,
         ProgVarSet, InstVarSet, AppendVarNums, Indent, !IO) :-
-    write_cons_id_and_arity(ConsId, !IO),
+    io.write_string(cons_id_and_arity_to_string(ConsId), !IO),
     (
         ArgVars = [],
         io.write_string("\n", !IO)
@@ -1752,7 +1752,7 @@ write_case(Info, Case, Var, ModuleInfo, VarSet, AppendVarNums, Indent,
     io.write_string("% ", !IO),
     mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string(" has functor ", !IO),
-    write_cons_id_and_arity(MainConsId, !IO),
+    io.write_string(cons_id_and_arity_to_string(MainConsId), !IO),
     list.foldl(write_alternative_cons_id, OtherConsIds, !IO),
     io.write_string("\n", !IO),
     % XXX if the output of this is to be used, e.g. in
@@ -1767,7 +1767,7 @@ write_case(Info, Case, Var, ModuleInfo, VarSet, AppendVarNums, Indent,
 
 write_alternative_cons_id(ConsId, !IO) :-
     io.write_string(" or ", !IO),
-    write_cons_id_and_arity(ConsId, !IO).
+    io.write_string(cons_id_and_arity_to_string(ConsId), !IO).
 
 project_cons_name_and_tag(TaggedConsId, ConsName, ConsTag) :-
     TaggedConsId = tagged_cons_id(ConsId, ConsTag),

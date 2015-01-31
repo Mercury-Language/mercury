@@ -73,7 +73,6 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
-:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.globals.
@@ -86,6 +85,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 

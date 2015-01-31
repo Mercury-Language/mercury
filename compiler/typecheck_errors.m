@@ -191,6 +191,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
@@ -607,20 +608,16 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
         ;
             Symbol = overloaded_func(ConsId, Sources0),
             list.sort(Sources0, Sources),
-            ( ConsId = cons(SymName, Arity, _) ->
-                ConsIdPiece = sym_name_and_arity(SymName / Arity)
-            ;
-                ConsIdPiece = fixed(cons_id_and_arity_to_string(ConsId))
-            ),
-            StartPieces = [words("The function symbol"), ConsIdPiece,
-                suffix("."), nl,
+            StartPieces = [words("The function symbol"),
+                cons_id_and_maybe_arity(ConsId), suffix("."), nl,
                 words("The possible matches are:"), nl_indent_delta(1)],
             SourcePiecesList = list.map(
                 describe_cons_type_info_source(ModuleInfo), Sources),
             SourcePieces = component_list_to_line_pieces(SourcePiecesList,
                 [suffix(".")]),
             FirstPieces = StartPieces ++ SourcePieces,
-            LaterPieces = [words("The function symbol"), ConsIdPiece,
+            LaterPieces = [words("The function symbol"),
+                cons_id_and_maybe_arity(ConsId),
                 words("is also overloaded here.")]
         ),
         FirstMsg = simple_msg(FirstContext, [always(FirstPieces)]),
@@ -793,19 +790,13 @@ report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
     strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
     StrippedFunctorStr = functor_cons_id_to_string(StrippedFunctor, Args,
         VarSet, ModuleInfo, no),
-
     list.length(Args, Arity),
-    VarAndTermPieces = [words("in unification of")] ++
-        argument_name_to_pieces(VarSet, Var) ++ [nl, words("and term"),
-        words_quote(StrippedFunctorStr), suffix(":"), nl,
-        words("type error in argument(s) of")] ++
-        functor_name_to_pieces(StrippedFunctor, Arity) ++ [suffix("."), nl],
-
-    ConsArgTypesSet = list.map(get_callee_arg_types, ArgsTypeAssignSet),
 
     % If we have consistent information about the argument types,
     % we prefer to print an error message that mentions only the arguments
     % that may be in error.
+    ConsArgTypesSet = list.map(get_callee_arg_types, ArgsTypeAssignSet),
+
     (
         list.all_same(ConsArgTypesSet),
         ConsArgTypesSet = [ConsArgTypes | _]
@@ -824,11 +815,13 @@ report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
         (
             RevNoSubsumeMismatches = [_ | _],
             list.reverse(RevNoSubsumeMismatches, NoSubsumeMismatches),
+            MaybeNumMismatches = yes(list.length(NoSubsumeMismatches)),
             ErrorPieces = mismatched_args_to_pieces(NoSubsumeMismatches, yes,
                 VarSet, Functor)
         ;
             RevNoSubsumeMismatches = [],
             list.reverse(RevSubsumesMismatches, SubsumesMismatches),
+            MaybeNumMismatches = yes(list.length(SubsumesMismatches)),
             ErrorPieces = mismatched_args_to_pieces(SubsumesMismatches, yes,
                 VarSet, Functor)
         ),
@@ -836,7 +829,7 @@ report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
     ;
         % XXX It should be possible to compute which arguments are
         % definitely OK, and which are suspect.
-
+        MaybeNumMismatches = no,
         TypeAssignSet = convert_args_type_assign_set(ArgsTypeAssignSet),
 
         % For polymorphic data structures, the type of `Var' (the functor's
@@ -862,6 +855,23 @@ report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
         VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
         VerboseComponents = [verbose_only(VerbosePieces)]
     ),
+
+    (
+        MaybeNumMismatches = no,
+        Arguments = "argument(s)"
+    ;
+        MaybeNumMismatches = yes(NumMismatches),
+        ( if NumMismatches = 1 then
+            Arguments = "argument"
+        else
+            Arguments = "arguments"
+        )
+    ),
+    VarAndTermPieces = [words("in unification of")] ++
+        argument_name_to_pieces(VarSet, Var) ++ [nl, words("and term"),
+        words_quote(StrippedFunctorStr), suffix(":"), nl,
+        words("type error in"), words(Arguments), words("of")] ++
+        functor_name_to_pieces(StrippedFunctor, Arity) ++ [suffix("."), nl],
 
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ UnifyContextPieces),
@@ -1376,9 +1386,8 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
         FunctorComps = [always(FunctorPieces)],
         ReportConsErrors = yes
     ;
-        strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
         Pieces1 = [words("error: undefined symbol"),
-            quote(cons_id_and_arity_to_string(StrippedFunctor))],
+            cons_id_and_maybe_arity(Functor)],
         (
             Functor = cons(Constructor, _, _),
             Constructor = qualified(ModQual, _)
@@ -1569,11 +1578,10 @@ report_cons_error(Context, ConsError) = Msgs :-
             TVarsStr = mercury_vars_to_string(TVarSet, no, TVars),
             Pieces2 = [words("variables"), quote(TVarsStr), words("occur")]
         ),
-        ConsIdStr = cons_id_and_arity_to_string(ConsId),
         Pieces3 = [words("in the types of field"), sym_name(FieldName),
             words("and some other field"),
             words("in definition of constructor"),
-            quote(ConsIdStr), suffix(".")],
+            cons_id_and_maybe_arity(ConsId), suffix(".")],
         Pieces = Pieces1 ++ Pieces2 ++ Pieces3,
         Msgs = [simple_msg(DefnContext, [always(Pieces)])]
     ;
@@ -1770,8 +1778,7 @@ functor_name_to_pieces(Functor, Arity) = Pieces :-
         Pieces = [words("higher-order term (with arity"),
             int_fixed(Arity - 1), suffix(")")]
     ;
-        Pieces = [words("functor"),
-            quote(cons_id_and_arity_to_string(StrippedFunctor))]
+        Pieces = [words("functor"), cons_id_and_maybe_arity(Functor)]
     ).
 
 :- func type_of_var_to_pieces(type_assign_set, prog_var)

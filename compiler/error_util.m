@@ -317,7 +317,13 @@
 
     ;       sym_name_and_arity(sym_name_and_arity)
             % The output should contain the string form of the sym_name,
-            % followed by '/' and the arity, all surrounded by `' quotes.
+            % surrounded by `' quotes, followed by '/' and the arity.
+
+    ;       cons_id_and_maybe_arity(cons_id)
+            % If the cons_id is a cons_id for a builtin type, strip the
+            % builtin qualifier from it and output the result. If the cons_id
+            % is for a du type, output its name in quotes, followed by '/'
+            % and its arity.
 
     ;       top_ctor_of_type(mer_type)
             % The top level type constructor of the given type,
@@ -477,6 +483,7 @@
 
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 :- import_module libs.compiler_util.
 
 :- import_module char.
@@ -1105,6 +1112,11 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Word = sym_name_and_arity_to_word(SymNameAndArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
+        Component = cons_id_and_maybe_arity(ConsId0),
+        strip_builtin_qualifier_from_cons_id(ConsId0, ConsId),
+        Word = maybe_quoted_cons_id_and_arity_to_string(ConsId),
+        Str = join_string_and_tail(Word, Components, TailStr)
+    ;
         Component = p_or_f(PredOrFunc),
         Word = pred_or_func_to_string(PredOrFunc),
         Str = join_string_and_tail(Word, Components, TailStr)
@@ -1243,6 +1255,11 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
     ;
         Component = sym_name_and_arity(SymNameAndArity),
         Word = sym_name_and_arity_to_word(SymNameAndArity),
+        RevWords1 = [plain_word(Word) | RevWords0]
+    ;
+        Component = cons_id_and_maybe_arity(ConsId0),
+        strip_builtin_qualifier_from_cons_id(ConsId0, ConsId),
+        Word = maybe_quoted_cons_id_and_arity_to_string(ConsId),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
         Component = top_ctor_of_type(Type),
