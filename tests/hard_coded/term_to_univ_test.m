@@ -1,20 +1,28 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module term_to_univ_test.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- import_module term, term_io, varset, univ.
+:- import_module term.
+:- import_module term_conversion.
+:- import_module term_io.
+:- import_module univ.
+:- import_module varset.
 
 main -->
-	{ X = 4 },
-	{ type_to_univ(X, Univ0) },
-	{ type_to_univ(Univ0, Univ) },
-	{ term__univ_to_term(Univ, Term) },
-	write(Term), nl,
-	{ varset__init(VarSet) },
-	write_term(VarSet, Term), nl.
+    { X = 4 },
+    { type_to_univ(X, Univ0) },
+    { type_to_univ(Univ0, Univ) },
+    { univ_to_term(Univ, Term) },
+    write(Term), nl,
+    { varset__init(VarSet) },
+    write_term(VarSet, Term), nl.

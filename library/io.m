@@ -46,7 +46,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Exported types
+% Exported types.
 %
     % The state of the universe.
     %
@@ -130,7 +130,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Text input predicates
+% Text input predicates.
 %
 
     % Reads a character (code point) from the current input stream.
@@ -430,7 +430,8 @@
 
 :- pred print_line(text_output_stream::in, T::in, io::di, io::uo) is det.
 
-:- pred print_line(text_output_stream, deconstruct.noncanon_handling, T, io, io).
+:- pred print_line(text_output_stream, deconstruct.noncanon_handling,
+    T, io, io).
 :- mode print_line(in, in(do_not_allow), in, di, uo) is det.
 :- mode print_line(in, in(canonicalize), in, di, uo) is det.
 :- mode print_line(in, in(include_details_cc), in, di, uo) is cc_multi.
@@ -588,7 +589,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Input text stream predicates
+% Input text stream predicates.
 %
 
     % see(File, Result, !IO):
@@ -673,7 +674,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Output text stream predicates
+% Output text stream predicates.
 %
 
     % Attempts to open a file for output, and if successful sets the current
@@ -774,7 +775,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Binary input predicates
+% Binary input predicates.
 %
 
     % Reads a binary representation of a term of type T from the current
@@ -984,7 +985,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Binary output predicates
+% Binary output predicates.
 %
 
 % These will all throw an io.error exception if an I/O error occurs.
@@ -1080,7 +1081,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Binary input stream predicates
+% Binary input stream predicates.
 %
 
     % Attempts to open a file for binary input, and if successful sets
@@ -1138,7 +1139,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Binary output stream predicates
+% Binary output stream predicates.
 %
 
     % Attempts to open a file for binary output, and if successful sets
@@ -1202,7 +1203,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Global state predicates
+% Global state predicates.
 %
 
     % progname(DefaultProgname, Progname).
@@ -1279,7 +1280,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% File handling predicates
+% File handling predicates.
 %
 
     % make_temp(Name, !IO) creates an empty file whose name is different
@@ -1412,7 +1413,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Memory management predicates
+% Memory management predicates.
 %
 
     % Write memory/time usage statistics to stderr.
@@ -1443,7 +1444,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Miscellaneous predicates
+% Miscellaneous predicates.
 %
 
     % Invokes the operating system shell with the specified Command.
@@ -1484,7 +1485,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Instances of the stream typeclass
+% Instances of the stream typeclass.
 %
 
 :- instance stream.error(io.error).
@@ -1729,6 +1730,7 @@
 :- import_module require.
 :- import_module stream.string_writer.
 :- import_module term.
+:- import_module term_conversion.
 :- import_module term_io.
 :- import_module type_desc.
 

@@ -73,6 +73,7 @@ string.builder.m
 string.m
 table_statistics.m
 term.m
+term_conversion.m
 term_io.m
 term_to_xml.m
 thread.barrier.m
