@@ -9111,8 +9111,8 @@ The @var{ground_inst} is the inst associated with
 @var{representation_type} values denoting @code{ground}
 @var{solver_type} values.
 
-The @code{any_inst} is the inst associated with
-@code{representation_type} values denoting @code{any} @code{solver_type}
+The @var{any_inst} is the inst associated with
+@var{representation_type} values denoting @code{any} @code{solver_type}
 values.
 
 The compiler constructs four impure functions for converting between
