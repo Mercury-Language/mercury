@@ -93,6 +93,7 @@
 :- import_module parse_tree.error_util.
 
 :- import_module char.
+:- import_module cord.
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module int.
@@ -209,8 +210,9 @@ dump_arguments([Arg | Args], !IO) :-
 :- pred convert_option_table_result_to_globals(maybe_option_table(option)::in,
     list(string)::out, globals::out, io::di, io::uo) is det.
 
-convert_option_table_result_to_globals(error(ErrorMessage), [ErrorMessage],
+convert_option_table_result_to_globals(error(ErrorMessage), Errors,
         Globals, !IO) :-
+    Errors = [ErrorMessage],
     generate_default_globals(Globals, !IO).
 convert_option_table_result_to_globals(ok(OptionTable0), Errors,
         Globals, !IO) :-
@@ -219,21 +221,20 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion,
         MaybeFeedbackInfo, HostEnvType, SystemEnvType, TargetEnvType,
-        [], CheckErrors, !IO),
-    (
-        CheckErrors = [],
+        LimitErrorContextsMap, cord.init, CheckErrorsCord, !IO),
+    ( if cord.is_empty(CheckErrorsCord) then
         convert_options_to_globals(OptionTable, Target, GC_Method,
             TagsMethod, TermNorm, Term2Norm, TraceLevel,
             TraceSuppress, SSTraceLevel, MaybeThreadSafe, C_CompilerType,
             CSharp_CompilerType, ReuseStrategy,
             MaybeILVersion, MaybeFeedbackInfo,
-            HostEnvType, SystemEnvType, TargetEnvType,
-            [], Errors, Globals, !IO)
-    ;
-        CheckErrors = [_ | _],
-        Errors = CheckErrors,
+            HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
+            CheckErrorsCord, ErrorsCord, Globals, !IO)
+    else
+        ErrorsCord = CheckErrorsCord,
         generate_default_globals(Globals, !IO)
-    ).
+    ),
+    Errors = cord.list(ErrorsCord).
 
 :- pred check_option_values(option_table::in, option_table::out,
     compilation_target::out, gc_method::out, tags_method::out,
@@ -242,13 +243,15 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
     c_compiler_type::out, csharp_compiler_type::out,
     reuse_strategy::out, maybe(il_version_number)::out,
     maybe(feedback_info)::out, env_type::out, env_type::out, env_type::out,
-    list(string)::in, list(string)::out, io::di, io::uo) is det.
+    limit_error_contexts_map::out,
+    cord(string)::in, cord(string)::out, io::di, io::uo) is det.
 
 check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
-        HostEnvType, SystemEnvType, TargetEnvType, !Errors, !IO) :-
+        HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
+        !Errors, !IO) :-
     map.lookup(!.OptionTable, target, Target0),
     (
         Target0 = string(TargetStr),
@@ -622,14 +625,36 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             !Errors)
     ;
         true
+    ),
+
+    map.lookup(!.OptionTable, limit_error_contexts, LimitErrorContextsOption),
+    ( LimitErrorContextsOption = accumulating(LimitErrorContextsOptionStrs) ->
+        convert_limit_error_contexts(LimitErrorContextsOptionStrs,
+            BadLimitErrorContextsOptions, LimitErrorContextsMap),
+        (
+            BadLimitErrorContextsOptions = []
+        ;
+            BadLimitErrorContextsOptions = [BadLimitErrorContextsOption],
+            add_error(
+                "invalid --limit-error-contexts option\n" ++
+                BadLimitErrorContextsOption,
+                !Errors)
+        ;
+            BadLimitErrorContextsOptions = [_, _ | _],
+            add_error(
+                "invalid --limit-error-contexts options\n  " ++
+                string.join_list("\n", BadLimitErrorContextsOptions),
+                !Errors)
+        )
+    ;
+        map.init(LimitErrorContextsMap),
+        add_error("unexpected --limit-error-contexts option.", !Errors)
     ).
 
-:- pred add_error(string::in, list(string)::in, list(string)::out) is det.
+:- pred add_error(string::in, cord(string)::in, cord(string)::out) is det.
 
-add_error(Error, Errors0, Errors) :-
-    % We won't be appending enough errors for the quadratic complexity
-    % of repeated appends to be a problem.
-    list.append(Errors0, [Error], Errors).
+add_error(Error, !Errors) :-
+    !:Errors = cord.snoc(!.Errors, Error).
 
     % NOTE: each termination analyser has its own norm setting.
     %
@@ -639,15 +664,15 @@ add_error(Error, Errors0, Errors) :-
     trace_suppress_items::in, ssdb_trace_level::in, may_be_thread_safe::in,
     c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in, maybe(il_version_number)::in, maybe(feedback_info)::in,
-    env_type::in, env_type::in, env_type::in,
-    list(string)::in, list(string)::out,
+    env_type::in, env_type::in, env_type::in, limit_error_contexts_map::in,
+    cord(string)::in, cord(string)::out,
     globals::out, io::di, io::uo) is det.
 
 convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
-        HostEnvType, SystemEnvType, TargetEnvType,
+        HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
         !Errors, !:Globals, !IO) :-
 
     lookup_string_option(OptionTable0, install_command, InstallCmd),
@@ -665,7 +690,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, FileInstallCmd,
-        !:Globals),
+        LimitErrorContextsMap, !:Globals),
 
     globals.lookup_string_option(!.Globals, event_set_file_name,
         EventSetFileName0),
@@ -2476,7 +2501,7 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue,
     % to RequiredOptionValue, then add the given error message to the list.
     %
 :- pred option_requires(option::in, option::in, option_data::in, string::in,
-    globals::in, list(string)::in, list(string)::out) is det.
+    globals::in, cord(string)::in, cord(string)::out) is det.
 
 option_requires(SourceOption, RequiredOption, RequiredOptionValue,
         ErrorMessage, Globals, !Errors) :-
@@ -2602,7 +2627,7 @@ long_usage(!IO) :-
     % no duplicate grade components.
     %
 :- pred postprocess_options_libgrades(globals::in, globals::out,
-    list(string)::in, list(string)::out) is det.
+    cord(string)::in, cord(string)::out) is det.
 
 postprocess_options_libgrades(!Globals, !Errors) :-
     globals.lookup_accumulating_option(!.Globals, libgrades_include_components,
@@ -2635,7 +2660,7 @@ postprocess_options_libgrades(!Globals, !Errors) :-
     %
 :- pred string_to_grade_component(string::in, string::in,
     list(string)::in, list(string)::out,
-    list(string)::in, list(string)::out) is det.
+    cord(string)::in, cord(string)::out) is det.
 
 string_to_grade_component(FilterDesc, Comp, !Comps, !Errors) :-
     ( grade_component_table(Comp, _, _, _, _) ->
@@ -2659,7 +2684,7 @@ string_to_grade_component(FilterDesc, Comp, !Comps, !Errors) :-
 :- pred filter_grade(pred(list(string), list(string))
     ::in(pred(in, in) is semidet), list(string)::in,
     string::in, list(string)::in, list(string)::out,
-    list(string)::in, list(string)::out) is det.
+    cord(string)::in, cord(string)::out) is det.
 
 filter_grade(FilterPred, CondComponents, GradeString, !Grades, !Errors) :-
     grade_string_to_comp_strings(GradeString, MaybeGrade, !Errors),
@@ -2695,9 +2720,8 @@ must_not_contain(OmitComponents, GradeComponents) :-
     % Convert a grade string into a list of component strings.
     % Emit an invalid grade error if the conversion fails.
     %
-:- pred grade_string_to_comp_strings(string::in,
-    maybe(list(string))::out, list(string)::in, list(string)::out)
-    is det.
+:- pred grade_string_to_comp_strings(string::in, maybe(list(string))::out,
+    cord(string)::in, cord(string)::out) is det.
 
 grade_string_to_comp_strings(GradeString, MaybeGrade, !Errors) :-
     (

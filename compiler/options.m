@@ -157,6 +157,7 @@
     ;       statistics
     ;       detailed_statistics
     ;       proc_size_statistics
+    ;       limit_error_contexts
     ;       debug_types
     ;       debug_modes
     ;       debug_modes_statistics
@@ -1161,6 +1162,7 @@ option_defaults_2(verbosity_option, [
     statistics                          -   bool(no),
     detailed_statistics                 -   bool(no),
     proc_size_statistics                -   string(""),
+    limit_error_contexts                -   accumulating([]),
     debug_types                         -   bool(no),
     debug_modes                         -   bool(no),
     debug_modes_statistics              -   bool(no),
@@ -2052,6 +2054,7 @@ long_option("report-cmd-line-args-in-doterr",
 long_option("statistics",               statistics).
 long_option("detailed-statistics",      detailed_statistics).
 long_option("proc-size-statistics",     proc_size_statistics).
+long_option("limit-error-contexts",     limit_error_contexts).
 long_option("debug-types",              debug_types).
 long_option("debug-modes",              debug_modes).
 long_option("debug-modes-statistics",   debug_modes_statistics).
@@ -3702,6 +3705,15 @@ options_help_verbosity -->
         "\tAppend information about the size of each procedure in the",
         "\tmodule in terms of goals and variables to the end of the",
         "\tnamed file.",
+%       "--limit-error-contexts file:minline1-maxline1,minline2-maxline2",
+%       "\tPrint errors and warning for the named file only when their",
+%       "\tline number is in one of the specified ranges.",
+%       "\tEither the minimum or the maximum line number in the range",
+%       "\tmay be missing, in which case the range has no lower or upper",
+%       "\tlimit respectively.",
+%       "\tMultiple --limit-error-context options accumulate.",
+%       "\tIf more than one --limit-error-context option is given for",
+%       "\tthe same file, only the last one will have an effect.",
 % --debug-types works only if the compiler was compiled with
 % "--trace-flag type_checkpoint".
 %       "-T, --debug-types",

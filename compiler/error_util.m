@@ -490,6 +490,7 @@
 :- import_module cord.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -834,9 +835,7 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         !First, !PrintedSome, !IO) :-
     (
         Component = always(ComponentPieces),
-        globals.lookup_maybe_int_option(Globals, max_error_line_width,
-            MaybeMaxWidth),
-        do_write_error_pieces(!.First, MaybeContext, Indent, MaybeMaxWidth,
+        do_write_error_pieces(!.First, MaybeContext, Indent, Globals,
             ComponentPieces, !IO),
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
@@ -854,9 +853,7 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
         (
             VerboseErrors = yes,
-            globals.lookup_maybe_int_option(Globals, max_error_line_width,
-                MaybeMaxWidth),
-            do_write_error_pieces(!.First, MaybeContext, Indent, MaybeMaxWidth,
+            do_write_error_pieces(!.First, MaybeContext, Indent, Globals,
                 ComponentPieces, !IO),
             !:First = do_not_treat_as_first,
             !:PrintedSome = printed_something
@@ -867,15 +864,13 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
     ;
         Component = verbose_and_nonverbose(VerbosePieces, NonVerbosePieces),
         globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
-        globals.lookup_maybe_int_option(Globals, max_error_line_width,
-            MaybeMaxWidth),
         (
             VerboseErrors = yes,
-            do_write_error_pieces(!.First, MaybeContext, Indent, MaybeMaxWidth,
+            do_write_error_pieces(!.First, MaybeContext, Indent, Globals,
                 VerbosePieces, !IO)
         ;
             VerboseErrors = no,
-            do_write_error_pieces(!.First, MaybeContext, Indent, MaybeMaxWidth,
+            do_write_error_pieces(!.First, MaybeContext, Indent, Globals,
                 NonVerbosePieces, !IO),
             globals.io_set_extra_error_info(yes, !IO)
         ),
@@ -919,9 +914,11 @@ list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
 
 list_to_quoted_pieces([]) = [].
 list_to_quoted_pieces([Elem]) = [quote(Elem)].
-list_to_quoted_pieces([Elem1, Elem2]) = [quote(Elem1), words("and"), quote(Elem2)].
+list_to_quoted_pieces([Elem1, Elem2]) =
+    [quote(Elem1), words("and"), quote(Elem2)].
 list_to_quoted_pieces([Elem1, Elem2, Elem3 | Elems]) =
-    [quote(Elem1), suffix(",") | list_to_quoted_pieces([Elem2, Elem3 | Elems])].
+    [quote(Elem1), suffix(",") |
+        list_to_quoted_pieces([Elem2, Elem3 | Elems])].
 
 component_lists_to_pieces([]) = [].
 component_lists_to_pieces([Comps]) = Comps.
@@ -954,36 +951,53 @@ is_or_are([_]) = "is".
 is_or_are([_, _ | _]) = "are".
 
 write_error_pieces_plain(Globals, Components, !IO) :-
-    globals.lookup_maybe_int_option(Globals, max_error_line_width,
-        MaybeMaxWidth),
-    do_write_error_pieces(treat_as_first, no, 0, MaybeMaxWidth,
-        Components, !IO).
+    do_write_error_pieces(treat_as_first, no, 0,
+        Globals, Components, !IO).
 
 write_error_plain_with_progname(ProgName, Msg, !IO) :-
     MaxWidth = 79,
-    Components = [fixed(ProgName ++ ":"), words(Msg)],
-    do_write_error_pieces(treat_as_first, no, 0, yes(MaxWidth),
-        Components, !IO).
+    LinesInMsg = string.split_at_char('\n', Msg),
+    convert_lines_in_msg_to_pieces(LinesInMsg, LinesInMsgPieces),
+    Components = [fixed(ProgName ++ ":") | LinesInMsgPieces],
+    do_write_error_pieces_params(treat_as_first, no, 0,
+        yes(MaxWidth), map.init, Components, !IO).
+
+:- pred convert_lines_in_msg_to_pieces(list(string)::in,
+    list(format_component)::out) is det.
+
+convert_lines_in_msg_to_pieces([], []).
+convert_lines_in_msg_to_pieces([Line | Lines], Pieces) :-
+    convert_lines_in_msg_to_pieces(Lines, TailPieces),
+    Pieces = [words(Line), nl | TailPieces].
 
 write_error_pieces(Globals, Context, Indent, Components, !IO) :-
-    globals.lookup_maybe_int_option(Globals, max_error_line_width,
-        MaybeMaxWidth),
-    do_write_error_pieces(treat_as_first, yes(Context), Indent, MaybeMaxWidth,
-        Components, !IO).
+    do_write_error_pieces(treat_as_first, yes(Context), Indent,
+        Globals, Components, !IO).
 
 write_error_pieces_maybe_with_context(Globals, MaybeContext, Indent,
         Components, !IO) :-
-    globals.lookup_maybe_int_option(Globals, max_error_line_width,
-        MaybeMaxWidth),
-    do_write_error_pieces(treat_as_first, MaybeContext, Indent, MaybeMaxWidth,
-        Components, !IO).
+    do_write_error_pieces(treat_as_first, MaybeContext, Indent,
+        Globals, Components, !IO).
 
 :- pred do_write_error_pieces(maybe_treat_as_first::in,
-    maybe(prog_context)::in, int::in, maybe(int)::in,
+    maybe(prog_context)::in, int::in, globals::in,
     list(format_component)::in, io::di, io::uo) is det.
 
-do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent, MaybeMaxWidth,
+do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent, Globals,
         Components, !IO) :-
+    globals.lookup_maybe_int_option(Globals, max_error_line_width,
+        MaybeMaxWidth),
+    globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
+    do_write_error_pieces_params(TreatAsFirst, MaybeContext, FixedIndent,
+        MaybeMaxWidth, LimitErrorContextsMap, Components, !IO).
+
+:- pred do_write_error_pieces_params(maybe_treat_as_first::in,
+    maybe(prog_context)::in, int::in, maybe(int)::in,
+    limit_error_contexts_map::in,
+    list(format_component)::in, io::di, io::uo) is det.
+
+do_write_error_pieces_params(TreatAsFirst, MaybeContext, FixedIndent,
+        MaybeMaxWidth, LimitErrorContextsMap, Components, !IO) :-
     % The fixed characters at the start of the line are:
     % filename
     % :
@@ -995,32 +1009,70 @@ do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent, MaybeMaxWidth,
         MaybeContext = yes(Context),
         term.context_file(Context, FileName),
         term.context_line(Context, LineNumber),
-        string.count_codepoints(FileName, FileNameLength),
-        string.int_to_string(LineNumber, LineNumberStr),
-        string.count_codepoints(LineNumberStr, LineNumberStrLength0),
-        ( LineNumberStrLength0 < 3 ->
-            LineNumberStrLength = 3
-        ;
-            LineNumberStrLength = LineNumberStrLength0
-        ),
-        ContextLength = FileNameLength + 1 + LineNumberStrLength + 2
+        ( if
+            map.search(LimitErrorContextsMap, FileName, LineNumberRanges),
+            line_number_is_in_a_range(LineNumberRanges, LineNumber) = no
+        then
+            MaybeContextLength = no
+        else
+            string.count_codepoints(FileName, FileNameLength),
+            string.int_to_string(LineNumber, LineNumberStr),
+            string.count_codepoints(LineNumberStr, LineNumberStrLength0),
+            ( LineNumberStrLength0 < 3 ->
+                LineNumberStrLength = 3
+            ;
+                LineNumberStrLength = LineNumberStrLength0
+            ),
+            MaybeContextLength =
+                yes(FileNameLength + 1 + LineNumberStrLength + 2)
+        )
     ;
         MaybeContext = no,
-        ContextLength = 0
+        MaybeContextLength = yes(0)
     ),
-    convert_components_to_paragraphs(Components, Paragraphs),
-    FirstIndent = (TreatAsFirst = treat_as_first -> 0 ; 1),
     (
-        MaybeMaxWidth = yes(MaxWidth),
-        Remain = MaxWidth - (ContextLength + FixedIndent),
-        MaybeRemain = yes(Remain)
+        MaybeContextLength = no
+        % Suppress the printing of the error pieces.
     ;
-        MaybeMaxWidth = no,
-        MaybeRemain = no
-    ),
-    divide_paragraphs_into_lines(TreatAsFirst, FirstIndent, Paragraphs,
-        MaybeRemain, Lines),
-    write_lines(Lines, MaybeContext, FixedIndent, !IO).
+        MaybeContextLength = yes(ContextLength),
+        convert_components_to_paragraphs(Components, Paragraphs),
+        FirstIndent = (TreatAsFirst = treat_as_first -> 0 ; 1),
+        (
+            MaybeMaxWidth = yes(MaxWidth),
+            Remain = MaxWidth - (ContextLength + FixedIndent),
+            MaybeRemain = yes(Remain)
+        ;
+            MaybeMaxWidth = no,
+            MaybeRemain = no
+        ),
+        divide_paragraphs_into_lines(TreatAsFirst, FirstIndent, Paragraphs,
+            MaybeRemain, Lines),
+        write_lines(Lines, MaybeContext, FixedIndent, !IO)
+    ).
+
+:- func line_number_is_in_a_range(list(line_number_range), int) = bool.
+
+line_number_is_in_a_range([], _) = no.
+line_number_is_in_a_range([Range | Ranges], LineNumber) = IsInARange :-
+    Range = line_number_range(MaybeMin, MaybeMax),
+    ( if
+        (
+            MaybeMin = no
+        ;
+            MaybeMin = yes(Min),
+            Min =< LineNumber
+        ),
+        (
+            MaybeMax = no
+        ;
+            MaybeMax = yes(Max),
+            LineNumber =< Max
+        )
+    then
+        IsInARange = yes
+    else
+        IsInARange = line_number_is_in_a_range(Ranges, LineNumber)
+    ).
 
 :- func indent_increment = int.
 

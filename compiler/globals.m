@@ -210,6 +210,17 @@
     %
 :- type source_file_map == map(module_name, string).
 
+:- type line_number_range
+    --->    line_number_range(
+                maybe(int), % The minimum line number, if there is one.
+                maybe(int)  % The maximum line number, if there is one.
+            ).
+
+    % Map file names to the line number ranges for which to report errors.
+    % If a file name has no entry in this map, all its errors should be
+    % reported.
+:- type limit_error_contexts_map == map(string, list(line_number_range)).
+
 :- pred convert_target(string::in, compilation_target::out) is semidet.
 :- pred convert_foreign_language(string::in, foreign_language::out) is semidet.
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
@@ -226,6 +237,8 @@
 :- pred convert_env_type(string::in, env_type::out) is semidet.
 :- pred convert_ssdb_trace_level(string::in, bool::in, ssdb_trace_level::out)
     is semidet.
+:- pred convert_limit_error_contexts(list(string)::in, list(string)::out,
+    limit_error_contexts_map::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -246,7 +259,8 @@
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in,
     maybe(il_version_number)::in, maybe(feedback_info)::in, env_type::in,
-    env_type::in, env_type::in, file_install_cmd::in, globals::out) is det.
+    env_type::in, env_type::in, file_install_cmd::in,
+    limit_error_contexts_map::in, globals::out) is det.
 
 :- pred get_options(globals::in, option_table::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
@@ -271,6 +285,8 @@
 :- pred get_system_env_type(globals::in, env_type::out) is det.
 :- pred get_target_env_type(globals::in, env_type::out) is det.
 :- pred get_file_install_cmd(globals::in, file_install_cmd::out) is det.
+:- pred get_limit_error_contexts_map(globals::in,
+    limit_error_contexts_map::out) is det.
 
 :- pred set_option(option::in, option_data::in, globals::in, globals::out)
     is det.
@@ -553,6 +569,46 @@ convert_ssdb_trace_level("none", _, none).
 convert_ssdb_trace_level("shallow", _, shallow).
 convert_ssdb_trace_level("deep", _, deep).
 
+convert_limit_error_contexts(Options, BadOptions, Map) :-
+    convert_limit_error_contexts_acc(Options, [], RevBadOptions,
+        map.init, Map),
+    list.reverse(RevBadOptions, BadOptions).
+
+:- pred convert_limit_error_contexts_acc(list(string)::in,
+    list(string)::in, list(string)::out,
+    limit_error_contexts_map::in, limit_error_contexts_map::out) is det.
+
+convert_limit_error_contexts_acc([], !RevBadOptions, !Map).
+convert_limit_error_contexts_acc([Option | Options], !RevBadOptions, !Map) :-
+    ( if
+        string.split_at_char(':', Option) = [FileName, AfterFileName],
+        string.split_at_char(',', AfterFileName) = RangeStrs,
+        list.map(convert_line_number_range, RangeStrs, LineNumberRanges)
+    then
+        map.set(FileName, LineNumberRanges, !Map)
+    else
+        !:RevBadOptions = [Option | !.RevBadOptions]
+    ),
+    convert_limit_error_contexts_acc(Options, !RevBadOptions, !Map).
+
+:- pred convert_line_number_range(string::in, line_number_range::out)
+    is semidet.
+
+convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
+    string.split_at_char('-', RangeStr) = [MinStr, MaxStr],
+    ( if MinStr = "" then
+        MaybeMin = no
+    else
+        string.to_int(MinStr, Min),
+        MaybeMin = yes(Min)
+    ),
+    ( if MaxStr = "" then
+        MaybeMax = no
+    else
+        string.to_int(MaxStr, Max),
+        MaybeMax = yes(Max)
+    ).
+
 convert_reuse_strategy("same_cons_id", _, same_cons_id).
 convert_reuse_strategy("within_n_cells_difference", NCells,
     within_n_cells_difference(NCells)).
@@ -610,7 +666,8 @@ gc_is_conservative(gc_automatic) = no.
                 g_host_env_type             :: env_type,
                 g_system_env_type           :: env_type,
                 g_target_env_type           :: env_type,
-                g_file_install_cmd          :: file_install_cmd
+                g_file_install_cmd          :: file_install_cmd,
+                g_limit_error_contexts_map  :: limit_error_contexts_map
             ).
 
 globals_init(Options, Target, GC_Method, TagsMethod,
@@ -618,13 +675,13 @@ globals_init(Options, Target, GC_Method, TagsMethod,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion,
         MaybeFeedback, HostEnvType, SystemEnvType, TargetEnvType,
-        FileInstallCmd, Globals) :-
+        FileInstallCmd, LimitErrorContextsMap, Globals) :-
     Globals = globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeILVersion,
         MaybeFeedback, HostEnvType, SystemEnvType, TargetEnvType,
-        FileInstallCmd).
+        FileInstallCmd, LimitErrorContextsMap).
 
 get_options(Globals, Globals ^ g_options).
 get_target(Globals, Globals ^ g_target).
@@ -645,6 +702,7 @@ get_host_env_type(Globals, Globals ^ g_host_env_type).
 get_system_env_type(Globals, Globals ^ g_system_env_type).
 get_target_env_type(Globals, Globals ^ g_target_env_type).
 get_file_install_cmd(Globals, Globals ^ g_file_install_cmd).
+get_limit_error_contexts_map(Globals, Globals ^ g_limit_error_contexts_map).
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
     lookup_accumulating_option(Globals, backend_foreign_languages, LangStrs),
