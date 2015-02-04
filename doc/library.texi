@@ -14,8 +14,8 @@
 @ifnottex
 This file documents the Mercury standard library, version <VERSION>.
 
-Copyright (C) 1995-1997,1999-2013 The University of Melbourne.
-Copyrigth (C) 2014-2015 The Mercury team.
+Copyright (C) 1995-1997,1999-2012 The University of Melbourne.
+Copyrigth (C) 2013-2015 The Mercury team.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -45,8 +45,8 @@ into another language, under the above conditions for modified versions.
 @c @author Zoltan Somogyi
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995--1997,1999--2013 The University of Melbourne.
-Copyright @copyright{} 2014--2015 The Mercury team.
+Copyright @copyright{} 1995--1997,1999--2012 The University of Melbourne.
+Copyright @copyright{} 2013--2015 The Mercury team.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
