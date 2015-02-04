@@ -536,12 +536,26 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
                 true
             )
         ;
+            % If we suppressed the printing of some errors, then tell the user
+            % about this fact, because the absence of any errors being printed
+            % during a failing compilation would otherwise be likely to be
+            % baffling.
+            globals.io_get_some_errors_were_context_limited(Limited, !IO),
+            (
+                Limited = no
+            ;
+                Limited = yes,
+                io.write_string("Some error messages were suppressed " ++
+                    "by `--limit-error-contexts' options.\n", !IO),
+                io.write_string("You can see the suppressed messages " ++
+                    "if you recompile without these options.\n", !IO)
+            ),
+
             % If we found some errors, but the user didn't enable the `-E'
             % (`--verbose-errors') option, give them a hint about it.
             % Of course, we should only output the hint when we have further
             % information to give the user.
-            globals.lookup_bool_option(Globals, verbose_errors,
-                VerboseErrors),
+            globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
             globals.io_get_extra_error_info(ExtraErrorInfo, !IO),
             (
                 VerboseErrors = no,

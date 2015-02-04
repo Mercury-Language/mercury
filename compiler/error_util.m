@@ -1010,9 +1010,16 @@ do_write_error_pieces_params(TreatAsFirst, MaybeContext, FixedIndent,
         term.context_file(Context, FileName),
         term.context_line(Context, LineNumber),
         ( if
-            map.search(LimitErrorContextsMap, FileName, LineNumberRanges),
-            line_number_is_in_a_range(LineNumberRanges, LineNumber) = no
+            (
+                map.search(LimitErrorContextsMap, FileName, LineNumberRanges),
+                line_number_is_in_a_range(LineNumberRanges, LineNumber) = no
+            ;
+                % The entry for the empty filename applies to all files.
+                map.search(LimitErrorContextsMap, "", LineNumberRanges),
+                line_number_is_in_a_range(LineNumberRanges, LineNumber) = no
+            )
         then
+            io_set_some_errors_were_context_limited(yes, !IO),
             MaybeContextLength = no
         else
             string.count_codepoints(FileName, FileNameLength),

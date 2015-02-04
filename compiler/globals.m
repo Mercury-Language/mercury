@@ -219,6 +219,8 @@
     % Map file names to the line number ranges for which to report errors.
     % If a file name has no entry in this map, all its errors should be
     % reported.
+    %
+    % An entry with the empty string as the key applies to every file.
 :- type limit_error_contexts_map == map(string, list(line_number_range)).
 
 :- pred convert_target(string::in, compilation_target::out) is semidet.
@@ -362,22 +364,23 @@
 :- func get_maybe_from_ground_term_threshold = maybe(int).
 
 :- pred io_get_extra_error_info(bool::out, io::di, io::uo) is det.
-
 :- pred io_set_extra_error_info(bool::in, io::di, io::uo) is det.
 
-:- pred io_get_disable_smart_recompilation(bool::out, io::di, io::uo) is det.
+:- pred io_get_some_errors_were_context_limited(bool::out,
+    io::di, io::uo) is det.
+:- pred io_set_some_errors_were_context_limited(bool::in,
+    io::di, io::uo) is det.
 
+:- pred io_get_disable_smart_recompilation(bool::out, io::di, io::uo) is det.
 :- pred io_set_disable_smart_recompilation(bool::in, io::di, io::uo) is det.
 
 :- pred io_get_disable_generate_item_version_numbers(bool::out,
     io::di, io::uo) is det.
-
 :- pred io_set_disable_generate_item_version_numbers(bool::in,
     io::di, io::uo) is det.
 
 :- pred io_get_maybe_source_file_map(maybe(source_file_map)::out,
     io::di, io::uo) is det.
-
 :- pred io_set_maybe_source_file_map(maybe(source_file_map)::in,
     io::di, io::uo) is det.
 
@@ -386,6 +389,7 @@
 
 :- implementation.
 
+:- import_module char.
 :- import_module int.
 :- import_module require.
 :- import_module string.
@@ -580,16 +584,42 @@ convert_limit_error_contexts(Options, BadOptions, Map) :-
 
 convert_limit_error_contexts_acc([], !RevBadOptions, !Map).
 convert_limit_error_contexts_acc([Option | Options], !RevBadOptions, !Map) :-
+    string.to_char_list(Option, OptionChars),
+    % Break up the option at the last colon.
+    % If there is no colon, the filename will be empty, and the line number
+    % range will apply to all files.
+    % If there is more than one colon, all but the last are will be considered
+    % part of the filename, which can be useful e.g. for drive specifiers
+    % on Windows.
+    list.reverse(OptionChars, RevOptionChars),
+    find_file_name_and_line_range_chars(RevOptionChars, [], LineRangeChars,
+        RevFileNameChars),
+    FileName = string.from_rev_char_list(RevFileNameChars),
+    LineRangeStr = string.from_char_list(LineRangeChars),
     ( if
-        string.split_at_char(':', Option) = [FileName, AfterFileName],
-        string.split_at_char(',', AfterFileName) = RangeStrs,
-        list.map(convert_line_number_range, RangeStrs, LineNumberRanges)
+        string.split_at_char(',', LineRangeStr) = LineRangeStrs,
+        list.map(convert_line_number_range, LineRangeStrs, LineNumberRanges)
     then
         map.set(FileName, LineNumberRanges, !Map)
     else
         !:RevBadOptions = [Option | !.RevBadOptions]
     ),
     convert_limit_error_contexts_acc(Options, !RevBadOptions, !Map).
+
+:- pred find_file_name_and_line_range_chars(list(char)::in,
+    list(char)::in, list(char)::out, list(char)::out) is det.
+
+find_file_name_and_line_range_chars([], !LineRangeChars, []).
+find_file_name_and_line_range_chars([RevChar | RevChars],
+        !LineRangeChars, RevFileNameChars) :-
+    ( if RevChar = (':') then
+        RevFileNameChars = RevChars
+    else
+        % This un-reverses the line range characters.
+        !:LineRangeChars = [RevChar | !.LineRangeChars],
+        find_file_name_and_line_range_chars(RevChars,
+            !LineRangeChars, RevFileNameChars)
+    ).
 
 :- pred convert_line_number_range(string::in, line_number_range::out)
     is semidet.
@@ -918,9 +948,15 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
     [untrailed, attach_to_io_state]).
 
     % Is there extra information about errors available that could be printed
-    % out if `-E' were enabled.
+    % out if `-E' were enabled?
     %
 :- mutable(extra_error_info, bool, no, ground,
+    [untrailed, attach_to_io_state]).
+
+    % Is there extra information about errors available that could be printed
+    % if the values of --limit-error-contexts options allowed it?
+    %
+:- mutable(some_errors_were_context_limited, bool, no, ground,
     [untrailed, attach_to_io_state]).
 
 :- mutable(disable_smart_recompilation, bool, no, ground,
@@ -955,6 +991,12 @@ io_get_extra_error_info(ExtraErrorInfo, !IO) :-
 
 io_set_extra_error_info(ExtraErrorInfo, !IO) :-
     set_extra_error_info(ExtraErrorInfo, !IO).
+
+io_get_some_errors_were_context_limited(SomeErrorsWereContextLimited, !IO) :-
+    get_some_errors_were_context_limited(SomeErrorsWereContextLimited, !IO).
+
+io_set_some_errors_were_context_limited(SomeErrorsWereContextLimited, !IO) :-
+    set_some_errors_were_context_limited(SomeErrorsWereContextLimited, !IO).
 
 io_get_disable_smart_recompilation(DisableSmartRecomp, !IO) :-
     get_disable_smart_recompilation(DisableSmartRecomp, !IO).
