@@ -1747,19 +1747,24 @@ AC_CACHE_VAL(mercury_cv_word_type,
         if (fp == NULL)
             exit(1);
 
+        /*
+        ** Note that we do not output newline characters as these programs
+        ** might write out a CRLF pair and a shell that does not recognize
+        ** this will interpret the CR as part of the type name.
+        */
         if (sizeof(int) == sizeof(void *))
         {
-            fprintf(fp, "int\n");
+            fprintf(fp, "int");
             exit(0);
         }
 
         if (sizeof(long) == sizeof(void *))
         {
-            fprintf(fp, "long\n");
+            fprintf(fp, "long");
             exit(0);
         }
 
-        fprintf(fp, "unknown\n");
+        fprintf(fp, "unknown");
         exit(1);
     }],
     [mercury_cv_word_type=`cat conftest.tags`],
@@ -1779,11 +1784,11 @@ if test "$mercury_cv_word_type" = unknown; then
 
         if (sizeof(long long) == sizeof(void *))
         {
-            fprintf(fp, "long long\n");
+            fprintf(fp, "long long");
             exit(0);
         }
 
-        fprintf(fp, "unknown\n");
+        fprintf(fp, "unknown");
         exit(1);
     }],
     [mercury_cv_word_type=`cat conftest.tags`],
@@ -1821,15 +1826,20 @@ AC_CACHE_VAL(mercury_cv_int_least64_type,
         if (fp == NULL)
             exit(1);
 
+        /*
+        ** Note that we do not output newline characters as these programs
+        ** might write out a CRLF pair and a shell that does not recognize
+        ** this will interpret the CR as part of the type name.
+        */
         if (sizeof(int) * CHAR_BIT >= 64)
         {
-            fprintf(fp, "int\n");
+            fprintf(fp, "int");
             exit(0);
         }
 
         if (sizeof(long) * CHAR_BIT >= 64)
         {
-            fprintf(fp, "long\n");
+            fprintf(fp, "long");
             exit(0);
         }
 
@@ -1837,12 +1847,12 @@ AC_CACHE_VAL(mercury_cv_int_least64_type,
     #ifdef _MSC_VER
         if (sizeof(__int64) * CHAR_BIT >= 64)
         {
-            fprintf(fp, "__int64\n");
+            fprintf(fp, "__int64");
             exit(0);
         }
     #endif
 
-        fprintf(fp, "unknown\n");
+        fprintf(fp, "unknown");
         exit(1);
     }],
     [mercury_cv_int_least64_type=`cat conftest.tags`],
@@ -1863,11 +1873,11 @@ if test "$mercury_cv_int_least64_type" = unknown; then
 
         if (sizeof(long long) * CHAR_BIT >= 64)
         {
-            fprintf(fp, "long long\n");
+            fprintf(fp, "long long");
             exit(0);
         }
 
-        fprintf(fp, "unknown\n");
+        fprintf(fp, "unknown");
         exit(1);
     }],
     [mercury_cv_int_least64_type=`cat conftest.tags`],
@@ -1912,19 +1922,24 @@ AC_CACHE_VAL(mercury_cv_int_least32_type,
         if (fp == NULL)
             exit(1);
 
+        /*
+        ** Note that we do not output newline characters as these programs
+        ** might write out a CRLF pair and a shell that does not recognize
+        ** this will interpret the CR as part of the type name.
+        */
         if (sizeof(int) * CHAR_BIT >= 32)
         {
-            fprintf(fp, "int\n");
+            fprintf(fp, "int");
             exit(0);
         }
 
         if (sizeof(long) * CHAR_BIT >= 32)
         {
-            fprintf(fp, "long\n");
+            fprintf(fp, "long");
             exit(0);
         }
 
-        fprintf(fp, "unknown\n");
+        fprintf(fp, "unknown");
         exit(1);
     }],
     [mercury_cv_int_least32_type=`cat conftest.tags`],
@@ -1980,19 +1995,24 @@ AC_CACHE_VAL(mercury_cv_int_least16_type,
         if (fp == NULL)
             exit(1);
 
+        /*
+        ** Note that we do not output newline characters as these programs
+        ** might write out a CRLF pair and a shell that does not recognize
+        ** this will interpret the CR as part of the type name.
+        */
         if (sizeof(short) * CHAR_BIT >= 16)
         {
-            fprintf(fp, "short\n");
+            fprintf(fp, "short");
             exit(0);
         }
 
         if (sizeof(int) * CHAR_BIT >= 16)
         {
-            fprintf(fp, "int\n");
+            fprintf(fp, "int");
             exit(0);
         }
 
-        fprintf(fp, "unknown\n");
+        fprintf(fp, "unknown");
         exit(1);
     }],
     [mercury_cv_int_least16_type=`cat conftest.tags`],
@@ -2031,22 +2051,27 @@ AC_CACHE_VAL(mercury_cv_low_tag_bits,
         if (fp == NULL)
             exit(1);
 
+        /*
+        ** Note that we do not output newline characters as these programs
+        ** might write out a CRLF pair and a shell that does not recognize
+        ** this will interpret the CR as part of the type name.
+        */
         if (sizeof(void *) == 4)
         {
-            fprintf(fp, "2\n");
+            fprintf(fp, "2");
             exit(0);
         }
         if (sizeof(void *) == 8)
         {
-            fprintf(fp, "3\n");
+            fprintf(fp, "3");
             exit(0);
         }
         if (sizeof(void *) == 16)
         {
-            fprintf(fp, "4\n");
+            fprintf(fp, "4");
             exit(0);
         }
-        fprintf(fp, "0\n");
+        fprintf(fp, "0");
         exit(1);
     }],
     [mercury_cv_low_tag_bits=`cat conftest.tags`],
@@ -2078,7 +2103,7 @@ AC_CACHE_VAL(mercury_cv_bytes_per_word,
         fp = fopen("conftest.wordbytes", "w");
         if (fp == NULL)
             exit(1);
-        fprintf(fp, "%d\n", sizeof(void *));
+        fprintf(fp, "%d", sizeof(void *));
 
         exit(0);
     }],
@@ -2106,7 +2131,7 @@ AC_CACHE_VAL(mercury_cv_bits_per_word,
         fp = fopen("conftest.wordbits", "w");
         if (fp == NULL)
             exit(1);
-        fprintf(fp, "%d\n", CHAR_BIT * sizeof(void *));
+        fprintf(fp, "%d", CHAR_BIT * sizeof(void *));
 
         exit(0);
     }],
