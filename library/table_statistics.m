@@ -137,6 +137,11 @@
 
 :- pred write_table_stats(table_stats::in, io::di, io::uo) is det.
 
+    % In grades that don't support tabling, all calls to get tabling stats
+    % will return these dummy statistics.
+    %
+:- func dummy_proc_table_statistics = proc_table_statistics.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -292,7 +297,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
                 HashKeyComparesNotDupl, HashKeyComparesIsDupl,
                 HashResizes, HashResizeOldEntries, HashResizeNewEntries)
         ;
-            error("get_one_table_step_stat_details: extra counts for hash")
+            unexpected($module, $pred, "extra counts for hash")
         )
     ; KindInt = 1 ->                    % MR_TABLE_STATS_DETAIL_ENUM
         (
@@ -314,7 +319,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
         ->
             Details = step_stats_enum(EnumNodeAllocs, EnumNodeBytes)
         ;
-            error("get_one_table_step_stat_details: extra counts for enum")
+            unexpected($module, $pred, "extra counts for enum")
         )
     ; KindInt = 2 ->                    % MR_TABLE_STATS_DETAIL_START
         (
@@ -336,7 +341,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
         ->
             Details = step_stats_start(StartAllocs, StartBytes)
         ;
-            error("get_one_table_step_stat_details: extra counts for start")
+            unexpected($module, $pred, "extra counts for start")
         )
     ; KindInt = 3 ->                    % MR_TABLE_STATS_DETAIL_DU
         (
@@ -350,7 +355,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
                 HashKeyComparesNotDupl, HashKeyComparesIsDupl,
                 HashResizes, HashResizeOldEntries, HashResizeNewEntries)
         ;
-            error("get_one_table_step_stat_details: extra counts for du")
+            unexpected($module, $pred, "extra counts for du")
         )
     ; KindInt = 4 ->                    % MR_TABLE_STATS_DETAIL_POLY
         (
@@ -364,7 +369,7 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
                 HashKeyComparesNotDupl, HashKeyComparesIsDupl,
                 HashResizes, HashResizeOldEntries, HashResizeNewEntries)
         ;
-            error("get_one_table_step_stat_details: extra counts for poly")
+            unexpected($module, $pred, "extra counts for poly")
         )
     ; KindInt = 5 ->                    % MR_TABLE_STATS_DETAIL_NONE
         (
@@ -387,10 +392,10 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
         ->
             Details = step_stats_none
         ;
-            error("get_one_table_step_stat_details: extra counts for none")
+            unexpected($module, $pred, "extra counts for none")
         )
     ;
-        error("get_one_table_step_stat_details: unexpected detail kind")
+        unexpected($module, $pred, "unexpected detail kind")
     ),
     Stats = table_step_stats(VarName, NumLookups, NumLookupsIsDupl, Details).
 
@@ -545,7 +550,7 @@ table_step_stats_diff([StepA | StepsA], [StepB | StepsB])
     ( table_step_stats_detail_diff(DetailsA, DetailsB, DetailsDiffPrime) ->
         DetailsDiff = DetailsDiffPrime
     ;
-        error("table_step_stats_diff: mismatches in details")
+        unexpected($module, $pred, "mismatches in details")
     ),
 
     StepDiff = table_step_stats(VarNameA, LookupsDiff, LookupsIsDuplDiff,
@@ -896,3 +901,12 @@ write_table_step_stats(Step, StepNum, !IO) :-
 percentage_str(A, B) = PercentageStr :-
     Percentage = float(100) * float(A) / float(B),
     string.format("(%.2f%%)", [f(Percentage)], PercentageStr).
+
+%---------------------------------------------------------------------------%
+
+dummy_proc_table_statistics = ProcTableStatistics :-
+    TableStats = table_stats(0, 0, []),
+    CallTableStats = table_stats_curr_prev(TableStats, TableStats),
+    ProcTableStatistics = proc_table_statistics(CallTableStats, no).
+
+%---------------------------------------------------------------------------%

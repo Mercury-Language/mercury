@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module list.
+:- import_module term.
 
     % The order that the sym_name function symbols appear in can be significant
     % for module dependency ordering.
@@ -175,6 +176,9 @@
 :- pred strip_outermost_qualifier(sym_name::in,
     string::out, sym_name::out) is semidet.
 
+:- pred sym_name_to_term(term.context::in, sym_name::in, list(term(T))::in,
+    term(T)::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -219,12 +223,16 @@ string_to_sym_name_sep(String, ModuleSeparator) = Result :-
 
 string_to_sym_name(String) = string_to_sym_name_sep(String, ".").
 
+%-----------------------------------------------------------------------------%
+
 sym_name_to_string_sep(unqualified(Name), _Separator) = Name.
 sym_name_to_string_sep(qualified(ModuleSym, Name), Separator) = QualName :-
     ModuleName = sym_name_to_string_sep(ModuleSym, Separator),
     string.append_list([ModuleName, Separator, Name], QualName).
 
 sym_name_to_string(SymName) = sym_name_to_string_sep(SymName, ".").
+
+%-----------------------------------------------------------------------------%
 
 sym_name_to_list(unqualified(Name)) = [Name].
 sym_name_to_list(qualified(Module, Name))
@@ -234,6 +242,14 @@ sym_name_to_qualifier_list_and_name(unqualified(Name), [], Name).
 sym_name_to_qualifier_list_and_name(qualified(Module, Name),
         Qualifiers, Name) :-
     Qualifiers = sym_name_to_list(Module).
+
+%-----------------------------------------------------------------------------%
+
+is_submodule(SymName, SymName).
+is_submodule(qualified(SymNameA, _), SymNameB) :-
+    is_submodule(SymNameA, SymNameB).
+
+%-----------------------------------------------------------------------------%
 
 unqualify_name(unqualified(Name)) = Name.
 unqualify_name(qualified(_ModuleName, Name)) = Name.
@@ -257,6 +273,8 @@ sym_name_get_module_name_default_name(SymName, DefaultModuleName, ModuleName,
     ;
         SymName = qualified(ModuleName, Name)
     ).
+
+%-----------------------------------------------------------------------------%
 
 match_sym_name(qualified(Module1, Name), qualified(Module2, Name)) :-
     match_sym_name(Module1, Module2).
@@ -296,6 +314,8 @@ add_sym_name_suffix(SymName0, Suffix, SymName) :-
         SymName = qualified(Module, Name)
     ).
 
+%-----------------------------------------------------------------------------%
+
 transform_sym_base_name(TransformFunc, SymName0) = SymName :-
     (
         SymName0 = unqualified(Name0),
@@ -304,6 +324,8 @@ transform_sym_base_name(TransformFunc, SymName0) = SymName :-
         SymName0 = qualified(Module, Name0),
         SymName = qualified(Module, TransformFunc(Name0))
     ).
+
+%-----------------------------------------------------------------------------%
 
 outermost_qualifier(SymName) = Name :-
     (
@@ -337,9 +359,21 @@ strip_outermost_qualifier(SymName0, OuterModuleName, SymName) :-
 
 %-----------------------------------------------------------------------------%
 
-is_submodule(SymName, SymName).
-is_submodule(qualified(SymNameA, _), SymNameB) :-
-    is_submodule(SymNameA, SymNameB).
+sym_name_to_term(Context, SymName, ArgTerms, Term) :-
+    sym_name_to_qualifier_list_and_name(SymName, Qualifiers, Name),
+    BaseTerm = functor(atom(Name), ArgTerms, Context),
+    % We need to add the innermost qualifiers first.
+    list.reverse(Qualifiers, RevQualifiers),
+    add_qualifiers_to_term(RevQualifiers, Context, BaseTerm, Term).
+
+:- pred add_qualifiers_to_term(list(string)::in, term.context::in,
+    term(T)::in, term(T)::out) is det.
+
+add_qualifiers_to_term([], _Context, Term, Term).
+add_qualifiers_to_term([Qualifier | Qualifiers], Context, Term0, Term) :-
+    QualifierTerm = functor(atom(Qualifier), [], Context),
+    Term1 = functor(atom("."), [QualifierTerm, Term0], Context),
+    add_qualifiers_to_term(Qualifiers, Context, Term1, Term).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.sym_name.

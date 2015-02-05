@@ -18,6 +18,7 @@
 
 :- pred module_add_pragma_tabled(pragma_info_tabled::in, prog_context::in,
     import_status::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -29,6 +30,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
 :- import_module hlds.pred_table.
 :- import_module libs.
@@ -54,9 +56,11 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module term.
 :- import_module varset.
 
-module_add_pragma_tabled(TabledInfo, Context, Status, !ModuleInfo, !Specs) :-
+module_add_pragma_tabled(TabledInfo, Context, Status,
+        !ModuleInfo, !QualInfo, !Specs) :-
     TabledInfo = pragma_info_tabled(EvalMethod, PredNameArityMPF,
         MaybeModes, MaybeAttributes),
     PredNameArityMPF = pred_name_arity_mpf(PredName, Arity, MaybePredOrFunc),
@@ -140,20 +144,21 @@ module_add_pragma_tabled(TabledInfo, Context, Status, !ModuleInfo, !Specs) :-
     ;
         MaybeAttributes = no
     ),
-    list.foldl2(
+    list.foldl3(
         module_add_pragma_tabled_for_pred(EvalMethod, PredName, Arity,
             MaybePredOrFunc, MaybeModes, MaybeAttributes, Context, Status),
-        PredIds, !ModuleInfo, !Specs).
+        PredIds, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred module_add_pragma_tabled_for_pred(eval_method::in,
     sym_name::in, int::in, maybe(pred_or_func)::in, maybe(list(mer_mode))::in,
     maybe(table_attributes)::in, prog_context::in, import_status::in,
     pred_id::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
         MaybePredOrFunc, MaybeModes, MaybeAttributes, Context, Status, PredId,
-        !ModuleInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     ( EvalMethod0 = eval_minimal(_) ->
         globals.lookup_bool_option(Globals, use_minimal_model_own_stacks,
@@ -252,8 +257,8 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
             ->
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context,
-                    SimpleCallId, yes, EvalMethod, MaybeAttributes,
-                    Status, ProcTable0, ProcTable, !ModuleInfo, !Specs),
+                    SimpleCallId, yes, EvalMethod, MaybeAttributes, Status,
+                    ProcTable0, ProcTable, !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             ;
@@ -289,7 +294,8 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
                 ),
                 set_eval_method_create_aux_preds_list(ExistingProcs, Context,
                     SimpleCallId, SingleProc, EvalMethod, MaybeAttributes,
-                    Status, ProcTable0, ProcTable, !ModuleInfo, !Specs),
+                    Status, ProcTable0, ProcTable,
+                    !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             )
@@ -300,30 +306,31 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
     assoc_list(proc_id, proc_info)::in, prog_context::in, simple_call_id::in,
     bool::in, eval_method::in, maybe(table_attributes)::in,
     import_status::in, proc_table::in, proc_table::out,
-    module_info::in, module_info::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 set_eval_method_create_aux_preds_list([], _, _, _, _, _, _,
-        !ProcTable, !ModuleInfo, !Specs).
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs).
 set_eval_method_create_aux_preds_list([ProcId - ProcInfo0 | Rest], Context,
         SimpleCallId, SingleProc, EvalMethod, MaybeAttributes, Status,
-        !ProcTable, !ModuleInfo, !Specs) :-
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
         SingleProc, EvalMethod, MaybeAttributes, Status,
-        !ProcTable, !ModuleInfo, !Specs),
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs),
     set_eval_method_create_aux_preds_list(Rest, Context, SimpleCallId,
         SingleProc, EvalMethod, MaybeAttributes, Status,
-        !ProcTable, !ModuleInfo, !Specs).
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred set_eval_method_create_aux_preds(proc_id::in, proc_info::in,
     prog_context::in, simple_call_id::in, bool::in, eval_method::in,
     maybe(table_attributes)::in, import_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
         SingleProc, EvalMethod, MaybeAttributes, Status,
-        !ProcTable, !ModuleInfo, !Specs) :-
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     proc_info_get_eval_method(ProcInfo0, OldEvalMethod),
     % NOTE: We don't bother detecting multiple tabling pragmas
     % of the same type here.
@@ -404,27 +411,22 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
             % even in the presence of errors above, because if didn't do so,
             % later compiler passes would report errors at the sites where
             % these predicates are called.
-            % XXX Currently, we only create the statistics predicates in C
-            % grades; references to them in non-C grades will cause errors.
-            module_info_get_globals(!.ModuleInfo, Globals),
-            get_backend_foreign_languages(Globals, ForeignLanguages),
-            ( list.member(lang_c, ForeignLanguages) ->
-                (
-                    Statistics = table_gather_statistics,
-                    create_tabling_statistics_pred(ProcId, Context,
-                        SimpleCallId, SingleProc, Status,
-                        !ProcTable, !ModuleInfo, !Specs)
-                ;
-                    Statistics = table_dont_gather_statistics
-                )
+            %
+            % We create the reset and statistics predicates in all grades,
+            % but they will do their intended jobs only in C grades.
+            (
+                Statistics = table_gather_statistics,
+                create_tabling_statistics_pred(ProcId, Context,
+                    SimpleCallId, SingleProc, Status,
+                    !ProcTable, !ModuleInfo, !QualInfo, !Specs)
             ;
-                true
+                Statistics = table_dont_gather_statistics
             ),
             (
                 AllowReset = table_allow_reset,
                 create_tabling_reset_pred(ProcId, Context,
                     SimpleCallId, SingleProc, Status,
-                    !ProcTable, !ModuleInfo, !Specs)
+                    !ProcTable, !ModuleInfo, !QualInfo, !Specs)
             ;
                 AllowReset = table_dont_allow_reset
             )
@@ -434,10 +436,11 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
 :- pred create_tabling_statistics_pred(proc_id::in, prog_context::in,
     simple_call_id::in, bool::in, import_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
-        Status, !ProcTable, !ModuleInfo, !Specs) :-
+        Status, !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     TableBuiltinModule = mercury_table_statistics_module,
     StatsTypeName = qualified(TableBuiltinModule, "proc_table_statistics"),
     StatsType = defined_type(StatsTypeName, [], kind_star),
@@ -461,39 +464,68 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         !ModuleInfo, !Specs),
 
     some [!Attrs, !VarSet] (
-        !:Attrs = default_attributes(lang_c),
-        % It is easier to construct a complex Mercury structure if we are
-        % allowed to use Mercury code to build it out of simple components
-        % of primitive types.
-        set_may_call_mercury(proc_may_call_mercury, !Attrs),
-        set_thread_safe(proc_thread_safe, !Attrs),
-        set_purity(purity_pure, !Attrs),
-        set_may_duplicate(yes(proc_may_not_duplicate), !Attrs),
         varset.init(!:VarSet),
         varset.new_named_var("Stats", Stats, !VarSet),
         varset.new_named_var("IO0", IO0, !VarSet),
         varset.new_named_var("IO", IO, !VarSet),
-        Arg1 = pragma_var(Stats, "Stats", out_mode, always_boxed),
-        Arg2 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
-        Arg3 = pragma_var(IO, "_IO", uo_mode, always_boxed),
 
-        Global = table_info_c_global_var_name(!.ModuleInfo, SimpleCallId,
-            ProcId),
-        StatsCode = "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
-        StatsImpl = fp_impl_ordinary(StatsCode, yes(Context)),
-        StatsPragmaFCInfo = pragma_info_foreign_proc(!.Attrs, StatsPredSymName,
-            pf_predicate, [Arg1, Arg2, Arg3], !.VarSet, InstVarSet, StatsImpl)
-    ),
-    add_pragma_foreign_proc(StatsPragmaFCInfo, Status, Context, yes(-1),
-        !ModuleInfo, !Specs).
+        module_info_get_globals(!.ModuleInfo, Globals),
+        current_grade_supports_tabling(Globals, IsTablingSupported),
+        (
+            IsTablingSupported = yes,
+            Arg1 = pragma_var(Stats, "Stats", out_mode, always_boxed),
+            Arg2 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
+            Arg3 = pragma_var(IO, "_IO", uo_mode, always_boxed),
+
+            % Currently, the only grades that support tabling target C.
+            !:Attrs = default_attributes(lang_c),
+            % It is easier to construct a complex Mercury structure if we are
+            % allowed to use Mercury code to build it out of simple components
+            % of primitive types.
+            set_may_call_mercury(proc_may_call_mercury, !Attrs),
+            set_thread_safe(proc_thread_safe, !Attrs),
+            set_purity(purity_pure, !Attrs),
+            set_may_duplicate(yes(proc_may_not_duplicate), !Attrs),
+
+            Global = table_info_c_global_var_name(!.ModuleInfo, SimpleCallId,
+                ProcId),
+            StatsCode = "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
+            StatsImpl = fp_impl_ordinary(StatsCode, yes(Context)),
+            StatsPragmaFCInfo = pragma_info_foreign_proc(!.Attrs,
+                StatsPredSymName, pf_predicate, [Arg1, Arg2, Arg3],
+                !.VarSet, InstVarSet, StatsImpl),
+            add_pragma_foreign_proc(StatsPragmaFCInfo, Status, Context,
+                yes(-1), !ModuleInfo, !Specs)
+        ;
+            IsTablingSupported = no,
+            DummyStatsFuncSymName = qualified(mercury_table_statistics_module,
+                "dummy_proc_table_statistics"),
+            sym_name_to_term(Context, DummyStatsFuncSymName, [],
+                DummyStatsFuncTerm),
+            Args = [variable(Stats, Context),
+                variable(IO0, Context), variable(IO, Context)],
+            GetStatsExpr = unify_expr(Context,
+                variable(Stats, Context), DummyStatsFuncTerm, purity_pure),
+            UpdateIOExpr = unify_expr(Context,
+                variable(IO0, Context), variable(IO, Context), purity_pure),
+            GetStatsUpdateIOExpr = conj_expr(Context,
+                GetStatsExpr, UpdateIOExpr),
+            BodyExpr = promise_purity_expr(Context, purity_pure,
+                GetStatsUpdateIOExpr),
+            module_add_clause(!.VarSet, pf_predicate, StatsPredSymName, Args,
+                BodyExpr, Status, Context, no, goal_type_none,
+                !ModuleInfo, !QualInfo, !Specs)
+        )
+    ).
 
 :- pred create_tabling_reset_pred(proc_id::in, prog_context::in,
     simple_call_id::in, bool::in, import_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
-         Status, !ProcTable, !ModuleInfo, !Specs) :-
+         Status, !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     TypeAndModeArg1 = type_and_mode(io_state_type, di_mode),
     TypeAndModeArg2 = type_and_mode(io_state_type, uo_mode),
     TypeAndModeArgs = [TypeAndModeArg1, TypeAndModeArg2],
@@ -513,51 +545,43 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         !ModuleInfo, !Specs),
 
     some [!Attrs, !VarSet] (
-        module_info_get_globals(!.ModuleInfo, Globals),
-        get_target(Globals, TargetLang),
-        (
-            TargetLang = target_c,
-            ForeignLang = lang_c
-        ;
-            TargetLang = target_il,
-            ForeignLang = lang_csharp
-        ;
-            TargetLang = target_csharp,
-            ForeignLang = lang_csharp
-        ;
-            TargetLang = target_java,
-            ForeignLang = lang_java
-        ;
-            TargetLang = target_erlang,
-            ForeignLang = lang_erlang
-        ),
-        !:Attrs = default_attributes(ForeignLang),
-        set_may_call_mercury(proc_will_not_call_mercury, !Attrs),
-        set_thread_safe(proc_thread_safe, !Attrs),
-        set_purity(purity_pure, !Attrs),
-        set_may_duplicate(yes(proc_may_not_duplicate), !Attrs),
         varset.init(!:VarSet),
         varset.new_named_var("IO0", IO0, !VarSet),
         varset.new_named_var("IO", IO, !VarSet),
-        Arg1 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
-        Arg2 = pragma_var(IO, "_IO", uo_mode, always_boxed),
 
+        module_info_get_globals(!.ModuleInfo, Globals),
         current_grade_supports_tabling(Globals, IsTablingSupported),
         (
             IsTablingSupported = yes,
-            Global = table_info_c_global_var_name(!.ModuleInfo, SimpleCallId,
-                ProcId),
-            ResetCode = Global ++ ".MR_pt_tablenode.MR_integer = 0;"
+            Arg1 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
+            Arg2 = pragma_var(IO, "_IO", uo_mode, always_boxed),
+
+            % Currently, the only grades that support tabling target C.
+            !:Attrs = default_attributes(lang_c),
+            set_may_call_mercury(proc_will_not_call_mercury, !Attrs),
+            set_thread_safe(proc_thread_safe, !Attrs),
+            set_purity(purity_pure, !Attrs),
+            set_may_duplicate(yes(proc_may_not_duplicate), !Attrs),
+
+            GlobalVarName = table_info_c_global_var_name(!.ModuleInfo,
+                SimpleCallId, ProcId),
+            ResetCode = GlobalVarName ++ ".MR_pt_tablenode.MR_integer = 0;",
+            ResetImpl = fp_impl_ordinary(ResetCode, yes(Context)),
+            ResetPragmaFCInfo = pragma_info_foreign_proc(!.Attrs,
+                ResetPredSymName, pf_predicate, [Arg1, Arg2],
+                !.VarSet, InstVarSet, ResetImpl),
+            add_pragma_foreign_proc(ResetPragmaFCInfo, Status, Context, yes(-1),
+                !ModuleInfo, !Specs)
         ;
             IsTablingSupported = no,
-            ResetCode = ""
-        ),
-        ResetImpl = fp_impl_ordinary(ResetCode, yes(Context)),
-        ResetPragmaFCInfo = pragma_info_foreign_proc(!.Attrs, ResetPredSymName,
-            pf_predicate, [Arg1, Arg2], !.VarSet, InstVarSet, ResetImpl)
-    ),
-    add_pragma_foreign_proc(ResetPragmaFCInfo, Status, Context, yes(-1),
-        !ModuleInfo, !Specs).
+            Args = [variable(IO0, Context), variable(IO, Context)],
+            BodyExpr = unify_expr(Context,
+                variable(IO0, Context), variable(IO, Context), purity_pure),
+            module_add_clause(!.VarSet, pf_predicate, ResetPredSymName, Args,
+                BodyExpr, Status, Context, no, goal_type_none,
+                !ModuleInfo, !QualInfo, !Specs)
+        )
+    ).
 
 :- func tabling_stats_pred_name(simple_call_id, proc_id, bool) = sym_name.
 

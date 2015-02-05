@@ -254,6 +254,7 @@ OTHER_PROGS= \
 	switch_detection_bug \
 	switch_detection_bug2 \
 	switches \
+	table_aux_preds_erlang \
 	tabled_for_io \
 	tabled_io \
 	testxmlreader \

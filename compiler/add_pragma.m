@@ -758,7 +758,7 @@ add_pass_3_pragma(ItemPragma, Status, !ModuleInfo, !QualInfo, !Specs) :-
         (
             TypeLayout = yes,
             module_add_pragma_tabled(TabledInfo, Context, Status,
-                !ModuleInfo, !Specs)
+                !ModuleInfo, !QualInfo, !Specs)
         ;
             TypeLayout = no,
             TabledInfo = pragma_info_tabled(EvalMethod, _, _, _),
