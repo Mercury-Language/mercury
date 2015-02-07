@@ -45,6 +45,7 @@ Prof.MemoryWords
 TESTS_FLAGS
 UNEXPECTED_FAILED_TESTS
 WS_FLAGS
+DEFNS_FOR_TESTS
 jmercury
 mdbrc
 mdbrc.in
