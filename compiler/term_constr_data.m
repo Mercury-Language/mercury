@@ -646,7 +646,7 @@ dump_abstract_proc(ModuleInfo, Indent, Proc, !IO) :-
     io.write_string(" : [", !IO),
     WriteHeadVars = (pred(Var::in, !.IO::di, !:IO::uo) is det :-
         varset.lookup_name(SizeVarSet, Var, VarName),
-        io.format(VarName ++ "[%d]", [i(term.var_id(Var))], !IO)
+        io.format(VarName ++ "[%d]", [i(term.var_to_int(Var))], !IO)
     ),
     io.write_list(HeadVars, ", ", WriteHeadVars, !IO),
     io.write_string(" ] :- \n", !IO),

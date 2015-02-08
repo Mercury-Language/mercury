@@ -326,7 +326,7 @@ varset.new_named_var(Name, Var,
 varset.new_uniquely_named_var(Name, Var,
         varset(!.MaxId, !.Names, Values), varset(!:MaxId, !:Names, Values)) :-
     term.create_var(Var, !MaxId),
-    N = term.var_id(Var),
+    N = term.var_to_int(Var),
     map.set(Var, string.format("%s_%d", [s(Name), i(N)]), !Names).
 
 varset.new_maybe_named_var(MaybeName, Var,
@@ -476,11 +476,11 @@ varset.set_bindings(VarSet, Values, VarSet ^ var_values := Values).
 
 varset.merge(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
     varset.merge_renaming(VarSetA, VarSetB, VarSet, Renaming),
-    term.apply_renaming_to_list(TermList0, Renaming, TermList).
+    term.apply_renaming_in_terms(Renaming, TermList0, TermList).
 
 varset.merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
     varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming),
-    term.apply_renaming_to_list(TermList0, Renaming, TermList).
+    term.apply_renaming_in_terms(Renaming, TermList0, TermList).
 
 %---------------------------------------------------------------------------%
 %

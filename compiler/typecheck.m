@@ -695,8 +695,8 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
                     check_existq_clause(TypeVarSet, ExistQVars0),
                     Clauses, !Info),
 
-                apply_var_renaming_to_var_list(ExistQVars0,
-                    ExistTypeRenaming, ExistQVars1),
+                apply_renaming_in_vars(ExistTypeRenaming,
+                    ExistQVars0, ExistQVars1),
                 apply_variable_renaming_to_type_list(ExistTypeRenaming,
                     ArgTypes0, ArgTypes1),
                 apply_variable_renaming_to_prog_constraints(
@@ -706,8 +706,8 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
             ),
 
             % Rename them all to match the new typevarset.
-            apply_var_renaming_to_var_list(ExistQVars1,
-                TVarRenaming, ExistQVars),
+            apply_renaming_in_vars(TVarRenaming,
+                ExistQVars1, ExistQVars),
             apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes1,
                 RenamedOldArgTypes),
             apply_variable_renaming_to_prog_constraints(TVarRenaming,
@@ -2645,30 +2645,6 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
     merge_hlds_constraints(ConstraintsToAdd, OldConstraints, ClassConstraints),
     type_assign_set_typeclass_constraints(ClassConstraints, TypeAssign2,
         TypeAssign).
-
-:- pred apply_substitution_to_var_list(list(var(T))::in, map(var(T),
-    term(T))::in, list(var(T))::out) is det.
-
-apply_substitution_to_var_list(Vars0, RenameSubst, Vars) :-
-    term.var_list_to_term_list(Vars0, Terms0),
-    term.apply_substitution_to_list(Terms0, RenameSubst, Terms),
-    Vars = term.term_list_to_var_list(Terms).
-
-:- pred apply_var_renaming_to_var_list(list(var(T))::in,
-    map(var(T), var(T))::in, list(var(T))::out) is det.
-
-apply_var_renaming_to_var_list(Vars0, RenameSubst, Vars) :-
-    list.map(apply_var_renaming_to_var(RenameSubst), Vars0, Vars).
-
-:- pred apply_var_renaming_to_var(map(var(T), var(T))::in, var(T)::in,
-    var(T)::out) is det.
-
-apply_var_renaming_to_var(RenameSubst, Var0, Var) :-
-    ( map.search(RenameSubst, Var0, Var1) ->
-        Var = Var1
-    ;
-        Var = Var0
-    ).
 
 %-----------------------------------------------------------------------------%
 

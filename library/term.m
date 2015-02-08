@@ -108,6 +108,7 @@
     % Obsolete; please use var_to_int instead.
     %
 :- func var_id(var(T)) = int.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(var_id/1).
 
 %---------------------------------------------------------------------------%
 
@@ -256,6 +257,8 @@
 :- func relabel_variable(term(T), var(T), var(T)) = term(T).
 :- pred relabel_variable(term(T)::in, var(T)::in, var(T)::in, term(T)::out)
     is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(relabel_variable/3).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(relabel_variable/4).
 
     % relabel_variables(Terms0, Var, ReplacementVar, Terms):
     %
@@ -267,6 +270,8 @@
 :- func relabel_variables(list(term(T)), var(T), var(T)) = list(term(T)).
 :- pred relabel_variables(list(term(T))::in, var(T)::in, var(T)::in,
     list(term(T))::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(relabel_variables/3).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(relabel_variables/4).
 
 %---------------------%
 
@@ -279,6 +284,8 @@
     %
 :- func rename(term(T), var(T), var(T)) = term(T).
 :- pred rename(term(T)::in, var(T)::in, var(T)::in, term(T)::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(rename/3).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(rename/4).
 
     % rename_list(Terms0, Var, ReplacementVar, Terms):
     %
@@ -290,6 +297,8 @@
 :- func rename_list(list(term(T)), var(T), var(T)) = list(term(T)).
 :- pred rename_list(list(term(T))::in, var(T)::in, var(T)::in,
     list(term(T))::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(rename_list/3).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(rename_list/4).
 
 %---------------------%
 
@@ -323,6 +332,8 @@
     %
 :- func apply_renaming(term(T), renaming(T)) = term(T).
 :- pred apply_renaming(term(T)::in, renaming(T)::in, term(T)::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_renaming/2).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_renaming/3).
 
     % As above, except applies to a list of terms rather than a single term.
     %
@@ -331,6 +342,8 @@
 :- func apply_renaming_to_list(list(term(T)), renaming(T)) = list(term(T)).
 :- pred apply_renaming_to_list(list(term(T))::in, renaming(T)::in,
     list(term(T))::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_renaming_to_list/2).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_renaming_to_list/3).
 
 %---------------------%
 
@@ -341,6 +354,8 @@
 :- func apply_variable_renaming_to_var(renaming(T), var(T)) = var(T).
 :- pred apply_variable_renaming_to_var(renaming(T)::in,
     var(T)::in, var(T)::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_variable_renaming_to_var/2).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_variable_renaming_to_var/3).
 
     % Applies apply_variable_renaming to a list of vars.
     %
@@ -350,6 +365,8 @@
     list(var(T))) = list(var(T)).
 :- pred apply_variable_renaming_to_vars(renaming(T)::in,
     list(var(T))::in, list(var(T))::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_variable_renaming_to_vars/2).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_variable_renaming_to_vars/3).
 
     % Same as relabel_variable, except relabels multiple variables.
     % If a variable is not in the map, it is not replaced.
@@ -359,6 +376,8 @@
 :- func apply_variable_renaming(term(T), renaming(T)) = term(T).
 :- pred apply_variable_renaming(term(T)::in, renaming(T)::in,
     term(T)::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_variable_renaming/2).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_variable_renaming/3).
 
     % Applies apply_variable_renaming to a list of terms.
     %
@@ -368,6 +387,8 @@
     list(term(T)).
 :- pred apply_variable_renaming_to_list(list(term(T))::in, renaming(T)::in,
     list(term(T))::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_variable_renaming_to_list/2).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_variable_renaming_to_list/3).
 
 %---------------------%
 
@@ -414,6 +435,8 @@
     %
 :- func substitute(term(T), var(T), term(T)) = term(T).
 :- pred substitute(term(T)::in, var(T)::in, term(T)::in, term(T)::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(substitute/3).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(substitute/4).
 
     % substitute_list(Var, ReplacementTerm, Terms0, Terms):
     %
@@ -425,6 +448,8 @@
 :- func substitute_list(list(term(T)), var(T), term(T)) = list(term(T)).
 :- pred substitute_list(list(term(T))::in, var(T)::in, term(T)::in,
     list(term(T))::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(substitute_list/3).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(substitute_list/4).
 
     % substitute_corresponding(Vars, ReplacementTerms, Term0, Term):
     %
@@ -439,6 +464,8 @@
     term(T)) = term(T).
 :- pred substitute_corresponding(list(var(T))::in, list(term(T))::in,
     term(T)::in, term(T)::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(substitute_corresponding/3).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(substitute_corresponding/4).
 
     % substitute_corresponding_list(Vars, ReplacementTerms, Terms0, Terms):
     %
@@ -453,6 +480,8 @@
     list(term(T))) = list(term(T)).
 :- pred substitute_corresponding_list(list(var(T))::in, list(term(T))::in,
     list(term(T))::in, list(term(T))::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(substitute_corresponding_list/3).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(substitute_corresponding_list/4).
 
 %---------------------%
 
@@ -507,6 +536,8 @@
 :- func apply_substitution(term(T), substitution(T)) = term(T).
 :- pred apply_substitution(term(T)::in, substitution(T)::in,
     term(T)::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_substitution/2).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_substitution/3).
 
     % apply_substitution_to_list(Term0, Substitution, Term):
     %
@@ -518,6 +549,8 @@
     list(term(T)).
 :- pred apply_substitution_to_list(list(term(T))::in, substitution(T)::in,
     list(term(T))::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_substitution_to_list/2).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_substitution_to_list/3).
 
     % apply_rec_substitution(Term0, Substitution, Term):
     %
@@ -529,6 +562,8 @@
 :- func apply_rec_substitution(term(T), substitution(T)) = term(T).
 :- pred apply_rec_substitution(term(T)::in, substitution(T)::in,
     term(T)::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_rec_substitution/2).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_rec_substitution/3).
 
     % apply_rec_substitution_to_list(Terms0, Substitution, Terms):
     %
@@ -541,6 +576,8 @@
     list(term(T)).
 :- pred apply_rec_substitution_to_list(list(term(T))::in, substitution(T)::in,
     list(term(T))::out) is det.
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_rec_substitution_to_list/2).
+% NOTE_TO_IMPLEMENTORS :- pragma obsolete(apply_rec_substitution_to_list/3).
 
 %---------------------%
 
@@ -729,8 +766,8 @@ unify_term(TermX, TermY, !Subst) :-
                 unify_term(TermBoundToX, TermBoundToY, !Subst)
             ;
                 % X is bound, but Y isn't.
-                apply_rec_substitution(TermBoundToX, !.Subst,
-                    SubstTermBoundToX),
+                apply_rec_substitution_in_term(!.Subst,
+                    TermBoundToX, SubstTermBoundToX),
                 ( SubstTermBoundToX = variable(Y, _) ->
                     true
                 ;
@@ -741,8 +778,8 @@ unify_term(TermX, TermY, !Subst) :-
         ;
             ( map.search(!.Subst, Y, TermBoundToY) ->
                 % Y is bound, but X isn't.
-                apply_rec_substitution(TermBoundToY, !.Subst,
-                    SubstTermBoundToY),
+                apply_rec_substitution_in_term(!.Subst,
+                    TermBoundToY, SubstTermBoundToY),
                 ( SubstTermBoundToY = variable(X, _) ->
                     true
                 ;
@@ -807,8 +844,8 @@ unify_term_dont_bind(TermX, TermY, DontBindVars, !Subst) :-
                     !Subst)
             ;
                 % X is bound, but Y isn't.
-                apply_rec_substitution(TermBoundToX, !.Subst,
-                    SubstTermBoundToX),
+                apply_rec_substitution_in_term(!.Subst,
+                    TermBoundToX, SubstTermBoundToX),
                 ( SubstTermBoundToX = variable(Y, _) ->
                     true
                 ;
@@ -819,8 +856,8 @@ unify_term_dont_bind(TermX, TermY, DontBindVars, !Subst) :-
         ;
             ( map.search(!.Subst, Y, TermBoundToY) ->
                 % Y is bound, but X isn't.
-                apply_rec_substitution(TermBoundToY, !.Subst,
-                    SubstTermBoundToY),
+                apply_rec_substitution_in_term(!.Subst,
+                    TermBoundToY, SubstTermBoundToY),
                 ( SubstTermBoundToY = variable(X, _) ->
                     true
                 ;

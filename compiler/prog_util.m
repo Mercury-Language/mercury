@@ -450,16 +450,16 @@ rename_in_goal(OldVar, NewVar, Goal0, Goal) :-
             Cond, Then, Else)
     ;
         Goal0 = event_expr(Context, Name, Terms0),
-        term.rename_list(Terms0, OldVar, NewVar, Terms),
+        term.rename_var_in_terms(OldVar, NewVar, Terms0, Terms),
         Goal = event_expr(Context, Name, Terms)
     ;
         Goal0 = call_expr(Context, SymName, Terms0, Purity),
-        term.rename_list(Terms0, OldVar, NewVar, Terms),
+        term.rename_var_in_terms(OldVar, NewVar, Terms0, Terms),
         Goal = call_expr(Context, SymName, Terms, Purity)
     ;
         Goal0 = unify_expr(Context, TermA0, TermB0, Purity),
-        term.rename(TermA0, OldVar, NewVar, TermA),
-        term.rename(TermB0, OldVar, NewVar, TermB),
+        term.rename_var_in_term(OldVar, NewVar, TermA0, TermA),
+        term.rename_var_in_term(OldVar, NewVar, TermB0, TermB),
         Goal = unify_expr(Context, TermA, TermB, Purity)
     ).
 
@@ -522,7 +522,7 @@ rename_in_maybe_var(OldVar, NewVar, MaybeVar0, MaybeVar) :-
 
 rename_in_catch_expr(OldVar, NewVar, Catch0, Catch) :-
     Catch0 = catch_expr(Term0, Goal0),
-    term.substitute(Term0, OldVar, term.variable(NewVar, context_init), Term),
+    term.rename_var_in_term(OldVar, NewVar, Term0, Term),
     rename_in_goal(OldVar, NewVar, Goal0, Goal),
     Catch = catch_expr(Term, Goal).
 
