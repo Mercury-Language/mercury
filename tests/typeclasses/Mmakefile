@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 
-THIS_DIR = hard_coded/typeclasses
+THIS_DIR = typeclasses
 
 #-----------------------------------------------------------------------------#
 
@@ -112,7 +112,7 @@ endif
 
 TESTS = $(PROGS)
 SUBDIRS=
-TESTS_DIR=../..
+TESTS_DIR=..
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

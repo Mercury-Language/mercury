@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 
-THIS_DIR = invalid/purity
+THIS_DIR = invalid_purity
 
 PROGS= \
 	impure_func_t2 \
@@ -23,14 +23,14 @@ PROGS= \
 # XXX the pragma_c_and_mercury test is not enabled,
 #     since currently we fail it in grades `il' and `java'
 
-TESTS=$(PROGS)
-SUBDIRS=
-TESTS_DIR=../..
+TESTS = $(PROGS)
+SUBDIRS =
+TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 
 # These tests all get spurious failures with intermodule optimization,
 # because the errors get detected when creating the `.opt' file rather
-# than when compiling the main module.  So we disable intermodule optimization
+# than when compiling the main module. So we disable intermodule optimization
 # for these tests.
 override EXTRA_MCFLAGS += \
 	--no-intermodule-optimization

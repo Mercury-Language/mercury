@@ -6,24 +6,42 @@ THIS_DIR=tests
 PROGS=
 TESTS=
 SUBDIRS = \
+	accumulator \
 	analysis \
+	analysis_ctgc \
+	analysis_excp \
+	analysis_external \
+	analysis_sharing \
+	analysis_table \
+	analysis_trail \
+	analysis_unused_args \
 	benchmarks \
 	debugger \
+	declarative_debugger \
 	dppd \
+	exceptions \
 	feedback \
 	general \
 	grade_subdirs \
 	hard_coded \
 	invalid \
+	invalid_purity \
 	misc_tests \
 	mmc_make \
 	par_conj \
+	purity \
 	recompilation \
+	submodules \
+	string_format \
 	tabling \
 	term \
 	trailing \
+	typeclasses \
 	valid \
 	warnings
+
+NOT_YET_READY_SUBDIRS = \
+	stm
 
 TESTS_DIR=.
 include $(TESTS_DIR)/Mmake.common

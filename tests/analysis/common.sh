@@ -1,6 +1,6 @@
 # vim: ft=sh ts=8 sts=4 sw=4 et
 #-----------------------------------------------------------------------------#
-# Common functions shared by the test scripts under this directory.
+# Common functions shared by the test scripts in the analysis_* directories.
 
 MC=${MC:-mmc}
 MMCMAKE="$MC --make"

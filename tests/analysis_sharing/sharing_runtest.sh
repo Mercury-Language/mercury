@@ -3,7 +3,7 @@
 #-----------------------------------------------------------------------------#
 # Test structure sharing analysis with intermodule analysis framework.
 
-. ../common.sh
+. ../analysis/common.sh
 
 set -e
 set -x

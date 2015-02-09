@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 
-THIS_DIR = analysis/ctgc
+THIS_DIR = analysis_ctgc
 
 # Delete options which are incompatible with --intermodule-analysis.
 # These are currently set for nightly tests.
@@ -11,9 +11,14 @@ override EXTRA_MCFLAGS := $(patsubst --transitive-%,,$(EXTRA_MCFLAGS))
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS=
-TESTS=reuse_m1-nodepend
-TESTS_DIR=../..
+ifdef WORKSPACE_HAS_SUBDIRS
+TESTS = reuse_m1-nodepend
+else
+TESTS =
+endif
+
+SUBDIRS =
+TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 
 reuse_m1.runtest:

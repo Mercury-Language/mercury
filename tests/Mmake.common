@@ -28,6 +28,11 @@ ifdef WORKSPACE
 LINK_STATIC = yes
 include $(WORKSPACE)/Mmake.workspace
 
+# Some tests only work if the workspace was compiled with `--use-subdirs'.
+ifneq ($(shell [ -d $(WORKSPACE)/library/Mercury ] || echo no_subdir),no_subdir)
+WORKSPACE_HAS_SUBDIRS = true
+endif
+
 endif
 
 # Note: Mmake lets you override MCFLAGS for a particular file by setting
@@ -87,25 +92,22 @@ $(TESTS_DIR)/Mmake.params: ;
 
 .PRECIOUS: %.res %.err_res %.out %.err
 
-#
 # If there is a `.inp' file, then we pipe that in as the command's input.
-# Then we run the command, with stdout and stderr both redirected to the 
+# Then we run the command, with stdout and stderr both redirected to the
 # `.out' file.  Finally if the command fails (returns non-zero exit status),
 # we print out the contents of the `.out' file.  We use `grep . $@ /dev/null'
 # to print out the contents, because that precedes each line of output with
 # the filename, which is helpful when running a parallel make.
-#
 %.out: %
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null; exit 1; }
 
-#
 # For some test cases, there is more than one valid output.
 # We try matching the output with the `.exp' file, and if that
 # doesn't succeed, and there are `.exp2', `.exp3', `.exp4' or `.exp5'
 # files, then we try matching against those too.  If none succeed,
 # the shortest of the diffs is put into the `.res' file.
-#
+
 %.res: %.exp %.out
 	@echo "Comparing $*.out with $*.exp*,"
 	@echo "	results in $@"
@@ -137,13 +139,12 @@ $(TESTS_DIR)/Mmake.params: ;
 		cat $@; \
 		exit 1; }
 
-#
 # For some test cases, there is more than one valid output.
 # We try matching the output with the `.err_exp' file, and if that doesn't
 # succeed, and there are `.err_exp2', `.err_exp3', `.err_exp4' or `.err_exp5'
 # files, then we try matching against those too.  If none succeed, the
 # shortest of the diffs is put into the `.err_res' file.
-#
+
 %.err_res: %.err %.err_exp
 	@echo "Comparing $*.err with $*.err_exp*,"
 	@echo "	results in $@"
@@ -188,7 +189,7 @@ clean_local: clean_out clean_res clean_zip clean_trace_counts
 	-rm -f mdbrc.in
 
 # XXX what is this target for??
-clean_mc: clean_c clean_o clean_out clean_res 
+clean_mc: clean_c clean_o clean_out clean_res
 
 clean_out:
 	rm -f *.out
@@ -218,8 +219,8 @@ endif
 
 #
 # The `foo' targets make recursively make `foo' in all subdirectories.
-# before making `foo_local' in the current directory 
-# 
+# before making `foo_local' in the current directory
+#
 
 .PHONY: runtests runtests_local runtests_subdirs
 .PHONY: check check_local check_subdirs
@@ -233,10 +234,9 @@ check:		runtests
 check_local:	runtests_local
 check_subdirs:	runtests_subdirs
 
-#
 # We want to run all the tests, even if some fail, so
 # run the tests using `mmake -k'.
-# 
+
 runtests:
 	+@if mmake -k runtests_local runtests_subdirs; then \
 		echo ALL TESTS SUCCEEDED; \
@@ -256,10 +256,9 @@ runtests:
 		exit 1; \
 	fi
 
-#
 # If the variable ERROR_FILE is set, only the tests which failed in
 # the test run which produced the specified error log file will be run.
-#
+
 ifdef ERROR_FILE
 ifndef TESTS_TO_RUN
 TESTS_TO_RUN := $(shell awk '/^FAILED TEST/ { print $$3 }' $(ERROR_FILE))
@@ -322,10 +321,9 @@ start_runtests_local:
 	fi
 	@> FAILED_TESTS
 
-#
 # Run a single test, cleaning up if it succeeds, or producing a log file
 # and gzipping the executable if the test fails.
-#
+
 .PHONY: %.log
 %.log: start_runtests_local
 	+@test_full=$*; \

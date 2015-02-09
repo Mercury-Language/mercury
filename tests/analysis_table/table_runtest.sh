@@ -3,7 +3,7 @@
 #-----------------------------------------------------------------------------#
 # Test --analyse-mm-tabling with the intermodule analysis framework.
 
-. ../common.sh
+. ../analysis/common.sh
 
 set -e
 set -x

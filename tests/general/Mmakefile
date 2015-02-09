@@ -110,7 +110,7 @@ endif
 # unique mode system.
 NOT_WORKING =	dnf state_var_trace
 
-SUBDIRS = accumulator string_format
+SUBDIRS =
 TESTS = $(sort $(PROGS))
 TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common

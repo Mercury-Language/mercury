@@ -1585,37 +1585,37 @@ then
             > ${tests_prefix}tests/.mgnuc_copts
 
         all_test_dirs="
+            accumulator
             analysis
-            analysis/ctgc
-            analysis/excp
-            analysis/ext
-            analysis/sharing
-            analysis/table
-            analysis/trail
-            analysis/unused_args
+            analysis_ctgc
+            analysis_excp
+            analysis_external
+            analysis_sharing
+            analysis_table
+            analysis_trail
+            analysis_unused_args
             benchmarks
             debugger
-            debugger/declarative
+            declarative_debugger
             dppd
+            exceptions
             general
-            general/accumulator
-            general/string_format
-            general/structure_reuse
             grade_subdirs
             hard_coded
-            hard_coded/exceptions
-            hard_coded/purity
-            hard_coded/sub-modules
-            hard_coded/typeclasses
             invalid
-            invalid/purity
+            invalid_purity
             misc_tests
             mmc_make
             par_conj
+            purity
             recompilation
+            string_format
+            structure_reuse
+            submodules
             tabling
             term
             trailing
+            typeclasses
             valid
             warnings"
 

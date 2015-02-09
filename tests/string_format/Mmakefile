@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 
-THIS_DIR = general/string_format
+THIS_DIR = string_format
 
 #-----------------------------------------------------------------------------#
 
@@ -48,7 +48,7 @@ endif
 
 SUBDIRS =
 TESTS=$(PROGS)
-TESTS_DIR=../..
+TESTS_DIR=..
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

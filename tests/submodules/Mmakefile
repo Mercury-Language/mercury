@@ -7,7 +7,7 @@
 #
 #-----------------------------------------------------------------------------#
 
-THIS_DIR = hard_coded/sub-modules
+THIS_DIR = submodules
 
 #-----------------------------------------------------------------------------#
 
@@ -46,7 +46,7 @@ endif
 PROGS=$(SUB_MODULE_PROGS) $(SOLVER_PROGS)
 
 TESTS = $(PROGS)
-TESTS_DIR=../..
+TESTS_DIR=..
 SUBDIRS=
 include $(TESTS_DIR)/Mmake.common
 

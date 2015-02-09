@@ -9,7 +9,7 @@
 # These rules define the main targets: depend, all, check.
 #
 
-THIS_DIR = hard_coded/exceptions
+THIS_DIR = exceptions
 
 #-----------------------------------------------------------------------------#
 
@@ -20,7 +20,6 @@ EXCEPTION_PROGS = \
 	test_uncaught_exception \
 	tricky_try_store
 
-#
 # XXX the following tests are not enabled because we do not pass them yet:
 #	looptest.m
 #		(fails in debugging grades, because debugging breaks
@@ -33,7 +32,6 @@ EXCEPTION_PROGS = \
 # static ground terms even for things with `di' modes;
 # tricky_try_store.m contains a work-around for that,
 # which should be deleted once that bug is fixed.
-#
 
 # Deep profiling grades cannot yet handle catching exceptions, either
 # explicitly or implicitly by the runtime system.
@@ -46,7 +44,7 @@ endif
 
 TESTS = $(PROGS)
 SUBDIRS=
-TESTS_DIR=../..
+TESTS_DIR=..
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

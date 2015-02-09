@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 
-THIS_DIR = analysis/external
+THIS_DIR = analysis_external
 
 # Delete options which are incompatible with --intermodule-analysis.
 # These are currently set for nightly tests.
@@ -11,11 +11,16 @@ override EXTRA_MCFLAGS := $(patsubst --transitive-%,,$(EXTRA_MCFLAGS))
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS=
+ifdef WORKSPACE_HAS_SUBDIRS
 TESTS = \
 	ext-nodepend \
 	ext2-nodepend
-TESTS_DIR=../..
+else
+TESTS = 
+endif
+
+SUBDIRS =
+TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 
 ext.runtest:

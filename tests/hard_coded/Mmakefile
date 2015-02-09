@@ -750,7 +750,7 @@ PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
 #-----------------------------------------------------------------------------#
 
 TESTS = $(sort $(PROGS))
-SUBDIRS = typeclasses sub-modules exceptions purity
+SUBDIRS =
 TESTS_DIR = ..
 include $(TESTS_DIR)/Mmake.common
 

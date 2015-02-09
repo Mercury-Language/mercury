@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 
-THIS_DIR = debugger/declarative
+THIS_DIR = declarative_debugger
 
 #-----------------------------------------------------------------------------#
 
@@ -168,7 +168,7 @@ endif
 
 SUBDIRS=
 TESTS=$(PROGS)
-TESTS_DIR=../..
+TESTS_DIR=..
 include $(TESTS_DIR)/Mmake.common
 
 MCFLAGS += --trace decl
