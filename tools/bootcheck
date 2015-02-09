@@ -1688,17 +1688,20 @@ then
         else
             if test "$testdirs" = ""
             then
+                testdirs="$all_test_dirs"
+            fi
+
+            test_status=0
+            for testdir in $testdirs
+            do
+                cd $root/${tests_prefix}tests/$testdir
                 mmake $target_opt $jfactor $test_grade_opt \
                     $test_log_opt runtests
-            else
-                for testdir in $testdirs
-                do
-                    cd $root/${tests_prefix}tests/$testdir
-                    mmake $target_opt $jfactor $test_grade_opt \
-                        $test_log_opt runtests
-                done
-            fi
-            test_status=$?
+                if test "$?" -ne 0
+                then
+                    test_status=1
+                fi
+            done
         fi
 
         case $failing_tests_only in
@@ -1730,7 +1733,7 @@ fi
 
 #-----------------------------------------------------------------------------#
 
-# Run the tests in the extras/* directories
+# Run the tests in the extras/* directories.
 
 extras_status=0
 if $extras
