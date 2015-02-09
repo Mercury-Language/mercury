@@ -33,6 +33,7 @@ SUBDIRS = \
 	recompilation \
 	submodules \
 	string_format \
+	structure_reuse \
 	tabling \
 	term \
 	trailing \

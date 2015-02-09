@@ -31,7 +31,7 @@ include Mercury.options
 
 #-----------------------------------------------------------------------------#
 
-ACC_FLAGS = --infer-structure-reuse -d structure_reuse -D sr
+ACC_FLAGS = --structure-reuse -d structure_reuse --dump-hlds-options sr
 
 # Optimizations to turn off/on.
 OPT_FLAGS = --no-static-ground-terms
