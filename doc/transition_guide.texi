@@ -142,16 +142,19 @@ Therefore it cannot use Prolog's mechanism for doing
 input and output with side-effects.
 The mechanism that Mercury uses is the threading of an object
 that represents the state of the world through the computation.
-The type of this structure is @samp{io.state}.
+The type of this structure is @code{io.state}, or just @code{io} for short.
+Each operation that affects the state of the world
+has added to it two arguments of this type,
+representing respectively the state of the world before the operation,
+and the state of the world after the operation.
 The modes of the two arguments that are added to calls are
-@samp{di} for ``destructive input'' and @samp{uo} for ``unique output''.
+@code{di} for ``destructive input'' and @code{uo} for ``unique output''.
 The first means that the input variable
 must be the last reference to the original state of the world,
-and that the output variable will be the only reference
-to the state of the world produced by this predicate.
+and that the output variable is then guaranteed to be the
+only reference to the state of the world produced by this predicate.
 
-Predicates that do input or output must have these arguments added.
-For example the Prolog predicate:
+For example, the direct translation of the Prolog predicate
 
 @example
 write_total(Total) :-
@@ -162,11 +165,10 @@ write_total(Total) :-
 @end example
 
 @noindent
-in Mercury becomes
+into Mercury yields this Mercury predicate:
 
 @example
-:- pred write_total(int, io.state, io.state).
-:- mode write_total(in, di, uo) is det.
+:- pred write_total(int::in, io::di, io::uo) is det.
 
 write_total(Total, IO0, IO) :-
     print("The total is ", IO0, IO1),
@@ -175,32 +177,97 @@ write_total(Total, IO0, IO) :-
     nl(IO3, IO).
 @end example
 
-Definite Clause Grammars (DCGs) are convenient syntactic sugar
-to use in such situations.
-The above clause can also be written
+The variables @code{IO0}, @code{IO1} etc each represent
+one version of the state of the world.
+@code{IO0} represents the state before the total is printed,
+@code{IO1} represents the state after just @samp{"The total is"} is printed,
+and so on.
+However, programmers usually don't want to give specific names
+to all these different versions;
+they want to name only the entities
+that all these variables represent different versions of.
+That is why Mercury supports state variable notation.
+This is syntactic sugar
+designed to make it easier to thread a sequence of variables
+holding successive states of an entity through a clause.
+You as the programmer name only the entity,
+and let the compiler name the various versions.
+With state variables, the above clause would be written as
 
 @example
-write_total(Total) -->
-    print("The total is "),
-    print(Total),
-    print('.'),
-    nl.
+write_total(Total, !IO) :-
+    print("The total is ", !IO),
+    print(Total, !IO),
+    print('.', !IO),
+    nl(!IO).
 @end example
 
-In DCGs, any calls (including unifications)
-that do not need the extra DCG arguments
-are escaped in the usual way by surrounding them in curly braces
-(@code{ @{ @} }).
+and the compiler will internally convert this clause
+into code that looks like the previous clause.
 
-Note that in Mercury you normally use strings (@code{"..."})
-rather than atoms (@code{'...'}) for messages like @code{"The total is"}.
-(It is possible to use atoms, but you have to declare each
-such atom before-hand, so it is more convenient to use strings.)
-However, for strings and characters, @samp{write} prints out the quotes;
-to avoid this, you need to use @samp{print} instead of @samp{write}.
+In the head of a clause,
+what looks like an argument that consists of
+a variable name prefixed by an exclamation mark
+actually stands for two arguments which are both variables,
+holding the initial and final state
+of whatever entity the state variable stands for.
+In this case, they stands for the state of the world,
+respectively before and after the line about the total has been printed.
+In calls in the body of a clause,
+what looks like an argument that consists of
+a variable name prefixed by an exclamation mark
+also stands for two arguments which are both variables,
+but these hold respectively, the current and the next state.
 
-Both @samp{write} and @samp{print} are defined in the @samp{io}
-module in the Mercury standard library.
+In Prolog, it is quite normal to give to @code{print}
+an argument that is an atom that is not used anywhere else in the program,
+or at least not in code related to the code that does the printing.
+This is because the term being printed does not have belong to a defined type.
+Since Mercury is strongly typed, the atom being printed
+@emph{would} have to be a data constructor of a defined type.
+A Mercury programmer @emph{could} define a meaningless type
+just to give one of its data constructors to a call to @code{print},
+but it is far better to simply call a predicate specifically designed
+to print the string you want printed:
+
+@example
+write_total(Total, !IO) :-
+    io.write_string("The total is ", !IO),
+    io.print(Total, !IO),
+    io.write_char('.', !IO),
+    io.nl(!IO).
+@end example
+
+The @code{io.} prefix on the predicates called in the body indicates that
+the callees are in the @code{io} module of the Mercury standard library.
+This module contains all of Mercury's primitive I/O operations.
+These @emph{module qualification} are not strictly necessary
+(unless two or more modules define predicates
+with the same names and argument types,
+the Mercury compiler can figure out which modules called predicates are in),
+but Mercury convention is to make write the module qualifier explicitly
+in order to make the intent of the code crystal clear to readers.
+
+The above could also be written more compactly like this:
+@example
+write_total(Total, !IO) :-
+    io.format("The total is %d.\n", [i(Total)], !IO).
+@end example
+
+The first argument of @code{io.format} is a format string
+modelled directly on the format strings supported by @code{printf} in C,
+while the second is a list of the values to be printed,
+which should have one value for each conversion specifier.
+In this case, there is one conversion specifier, @samp{%d},
+which calls for the printing of an integer as a decimal number,
+and the corresponding value is the integer @code{Total}.
+Since Mercury is strongly typed,
+and different arguments may have different types,
+in the argument list
+integers must be wrapped inside @code{i()},
+floats must be wrapped inside @code{f()},
+strings must be wrapped inside @code{s()}, and
+chars must be wrapped inside @code{c()}.
 
 One of the important consequences of our model for input and output
 is that predicates that can fail may not do input or output.
@@ -228,33 +295,34 @@ For example
 @end example
 
 @noindent
-where @samp{solve(Goal)} does some I/O can be transformed into
-valid Mercury in at least two ways. The first is to make
-@samp{solve} deterministic and return a status:
+where @samp{solve(Goal)} does some I/O
+can be transformed into valid Mercury in at least two ways.
+The first is to make @samp{solve} deterministic and return a status:
 
 @example
     ...
-    solve(Goal, Result, IO6, IO7),
-    ( Result = yes ->
+    solve(Goal, Result, !IO),
+    (
+        Result = success(...),
         ...
     ;
+        Result = failure,
         ...
     ),
     ...
 @end example
 
-The other way is to transform @samp{solve} so that all the input
-and output takes place outside it:
+The other way is to transform @samp{solve} so that
+all the input and output takes place outside it:
 
 @example
     ...
-    io.write_string("calling: ", IO6, IO7),
-    solve.write_goal(Goal, IO7, IO8),
+    io.write_string("calling: ", !IO),
+    solve.write_goal(Goal, !IO),
     ( solve(Goal) ->
-        io.write_string("succeeded\n", IO8, IO9),
+        io.write_string("succeeded\n", !IO),
         ...
     ;
-        IO9 = IO8,
         ...
     ),
     ...
@@ -396,10 +464,10 @@ qsort(L0, L) :- qsort_2(L0, L - []).
 
 qsort_2([], R - R).
 qsort_2([X|L], R0 - R) :-
-	partition(L, X, L1, L2),
-	qsort_2(L1, R0 - R1),
-	R1 = [X|R2],
-	qsort_2(L2, R2 - R).
+    partition(L, X, L1, L2),
+    qsort_2(L1, R0 - R1),
+    R1 = [X|R2],
+    qsort_2(L2, R2 - R).
 @end example
 
 Due to an unfortunate limitation of the current Mercury implementation
@@ -515,7 +583,7 @@ as input a single higher-order predicate term.  The Mercury equivalent to
 
 @example
 intersect(List1, List2, Intersection) :-
-	setof(X, (member(X, List1), member(X, List2)), Intersection).
+    setof(X, (member(X, List1), member(X, List2)), Intersection).
 @end example
 
 @noindent
@@ -523,19 +591,19 @@ is
 
 @example
 intersect(List1, List2, Intersection) :-
-	solutions((pred(X::out) is nondet :-
-	    (list.member(X, List1), list.member(X, List2))), Intersection).
+    solutions((pred(X::out) is nondet :-
+        (list.member(X, List1), list.member(X, List2))), Intersection).
 @end example
 
 Alternately, this could also be written as
 
 @example
 intersect(List1, List2, Intersection) :-
-	solutions(member_of_both(List1, List2), Intersection).
+    solutions(member_of_both(List1, List2), Intersection).
 
 :- pred member_of_both(list(T)::in, list(T)::in, T::out) is nondet.
 member_of_both(List1, List2, X) :-
-	list.member(X, List1), list.member(X, List2).
+    list.member(X, List1), list.member(X, List2).
 @end example
 
 @noindent

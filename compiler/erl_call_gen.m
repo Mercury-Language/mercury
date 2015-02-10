@@ -480,6 +480,9 @@ std_unop_to_elds(StdUnOp, EldsUnOp) :-
         ; StdUnOp = hash_string
         ; StdUnOp = hash_string2
         ; StdUnOp = hash_string3
+        ; StdUnOp = hash_string4
+        ; StdUnOp = hash_string5
+        ; StdUnOp = hash_string6
         ),
         fail
     ;

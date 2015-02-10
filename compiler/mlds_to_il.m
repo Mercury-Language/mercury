@@ -2527,6 +2527,12 @@ unaryop_to_il(std_unop(hash_string2), _, _, !Info) :-
     unexpected($module, $pred, "hash_string2").
 unaryop_to_il(std_unop(hash_string3), _, _, !Info) :-
     unexpected($module, $pred, "hash_string3").
+unaryop_to_il(std_unop(hash_string4), _, _, !Info) :-
+    unexpected($module, $pred, "hash_string4").
+unaryop_to_il(std_unop(hash_string5), _, _, !Info) :-
+    unexpected($module, $pred, "hash_string5").
+unaryop_to_il(std_unop(hash_string6), _, _, !Info) :-
+    unexpected($module, $pred, "hash_string6").
 
     % XXX Should detect casts to System.Array from array types
     % and ignore them, as they are not necessary.

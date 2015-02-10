@@ -242,6 +242,48 @@
         hash ^= len;                                                    \
     }
 
+#define MR_keep_30_bits(x)                                              \
+    ((x) & ((1 << 30) - 1))
+
+#define MR_do_hash_string4(hash, s)                                     \
+    {                                                                   \
+        int i;                                                          \
+        MR_CHECK_EXPR_TYPE(hash, int);                                  \
+        MR_CHECK_EXPR_TYPE(s, MR_ConstString);                          \
+        hash = 0;                                                       \
+        for (i = 0; ((const unsigned char *)(s))[i] != 0; i++) {        \
+            hash = MR_keep_30_bits(hash ^ (hash << 5));                 \
+            hash = hash ^ ((const unsigned char *)(s))[i];              \
+        }                                                               \
+        hash ^= i;                                                      \
+    }
+
+#define MR_do_hash_string5(hash, s)                                     \
+    {                                                                   \
+        int i;                                                          \
+        MR_CHECK_EXPR_TYPE(hash, int);                                  \
+        MR_CHECK_EXPR_TYPE(s, MR_ConstString);                          \
+        hash = 0;                                                       \
+        for (i = 0; ((const unsigned char *)(s))[i] != 0; i++) {        \
+            hash = MR_keep_30_bits(hash * 37);                          \
+            hash = MR_keep_30_bits(hash + ((const unsigned char *)(s))[i]); \
+        }                                                               \
+        hash ^= i;                                                      \
+    }
+
+#define MR_do_hash_string6(hash, s)                                     \
+    {                                                                   \
+        int i;                                                          \
+        MR_CHECK_EXPR_TYPE(hash, int);                                  \
+        MR_CHECK_EXPR_TYPE(s, MR_ConstString);                          \
+        hash = 0;                                                       \
+        for (i = 0; ((const unsigned char *)(s))[i] != 0; i++) {        \
+            hash = MR_keep_30_bits(hash * 49);                          \
+            hash = MR_keep_30_bits(hash + ((const unsigned char *)(s))[i]); \
+        }                                                               \
+        hash ^= i;                                                      \
+    }
+
 /*
 ** MR_hash_string{,2,3}(s):
 **      Given a Mercury string `s', return a hash value for that string.
@@ -275,6 +317,30 @@ MR_Integer      MR_hash_string3(MR_ConstString);
         MR_do_hash_string3(hash_string_result, s);                      \
         hash_string_result;                                             \
     })
+
+#define MR_hash_string4(s)                                              \
+    ({                                                                  \
+        MR_Integer hash_string_result;                                  \
+        MR_CHECK_EXPR_TYPE(s, MR_ConstString);                          \
+        MR_do_hash_string4(hash_string_result, s);                      \
+        hash_string_result;                                             \
+    })
+
+#define MR_hash_string5(s)                                              \
+    ({                                                                  \
+        MR_Integer hash_string_result;                                  \
+        MR_CHECK_EXPR_TYPE(s, MR_ConstString);                          \
+        MR_do_hash_string5(hash_string_result, s);                      \
+        hash_string_result;                                             \
+    })
+
+#define MR_hash_string6(s)                                              \
+    ({                                                                  \
+        MR_Integer hash_string_result;                                  \
+        MR_CHECK_EXPR_TYPE(s, MR_ConstString);                          \
+        MR_do_hash_string6(hash_string_result, s);                      \
+        hash_string_result;                                             \
+    })
 #endif
 
 /*
@@ -293,6 +359,18 @@ MR_Integer      MR_hash_string3(MR_ConstString);
 #define MR_HASH_STRING3_FUNC_BODY                                       \
        MR_Integer hash_string_result;                                   \
        MR_do_hash_string3(hash_string_result, s);                       \
+       return hash_string_result;
+#define MR_HASH_STRING4_FUNC_BODY                                       \
+       MR_Integer hash_string_result;                                   \
+       MR_do_hash_string4(hash_string_result, s);                       \
+       return hash_string_result;
+#define MR_HASH_STRING5_FUNC_BODY                                       \
+       MR_Integer hash_string_result;                                   \
+       MR_do_hash_string5(hash_string_result, s);                       \
+       return hash_string_result;
+#define MR_HASH_STRING6_FUNC_BODY                                       \
+       MR_Integer hash_string_result;                                   \
+       MR_do_hash_string6(hash_string_result, s);                       \
        return hash_string_result;
 
 /*

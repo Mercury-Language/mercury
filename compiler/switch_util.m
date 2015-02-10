@@ -486,18 +486,18 @@ tag_cons_id_in_int_switch(ModuleInfo, ConsId, TaggedConsId,
 %-----------------------------------------------------------------------------%
 
 num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms) :-
-    num_cons_ids_in_tagged_cases_2(TaggedCases, 0, NumConsIds, 0, NumArms).
+    num_cons_ids_in_tagged_cases_loop(TaggedCases, 0, NumConsIds, 0, NumArms).
 
-:- pred num_cons_ids_in_tagged_cases_2(list(tagged_case)::in,
+:- pred num_cons_ids_in_tagged_cases_loop(list(tagged_case)::in,
     int::in, int::out, int::in, int::out) is det.
 
-num_cons_ids_in_tagged_cases_2([], !NumConsIds, !NumArms).
-num_cons_ids_in_tagged_cases_2([TaggedCase | TaggedCases],
+num_cons_ids_in_tagged_cases_loop([], !NumConsIds, !NumArms).
+num_cons_ids_in_tagged_cases_loop([TaggedCase | TaggedCases],
         !NumConsIds, !NumArms) :-
     TaggedCase = tagged_case(_MainConsId, OtherCondIds, _, _),
     !:NumConsIds = !.NumConsIds + 1 + list.length(OtherCondIds),
     !:NumArms = !.NumArms + 1,
-    num_cons_ids_in_tagged_cases_2(TaggedCases, !NumConsIds, !NumArms).
+    num_cons_ids_in_tagged_cases_loop(TaggedCases, !NumConsIds, !NumArms).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -716,16 +716,16 @@ filter_out_failing_cases_if_needed(CodeModel, !TaggedCases, !SwitchCanFail) :-
     can_fail::in, can_fail::out) is det.
 
 filter_out_failing_cases(TaggedCases0, TaggedCases, !SwitchCanFail) :-
-    filter_out_failing_cases_2(TaggedCases0, [], RevTaggedCases,
+    filter_out_failing_cases_loop(TaggedCases0, [], RevTaggedCases,
         !SwitchCanFail),
     list.reverse(RevTaggedCases, TaggedCases).
 
-:- pred filter_out_failing_cases_2(list(tagged_case)::in,
+:- pred filter_out_failing_cases_loop(list(tagged_case)::in,
     list(tagged_case)::in, list(tagged_case)::out,
     can_fail::in, can_fail::out) is det.
 
-filter_out_failing_cases_2([], !RevTaggedCases, !SwitchCanFail).
-filter_out_failing_cases_2([TaggedCase | TaggedCases], !RevTaggedCases,
+filter_out_failing_cases_loop([], !RevTaggedCases, !SwitchCanFail).
+filter_out_failing_cases_loop([TaggedCase | TaggedCases], !RevTaggedCases,
         !SwitchCanFail) :-
     TaggedCase = tagged_case(_, _, _, Goal),
     Goal = hlds_goal(GoalExpr, _),
@@ -734,7 +734,8 @@ filter_out_failing_cases_2([TaggedCase | TaggedCases], !RevTaggedCases,
     ;
         !:RevTaggedCases = [TaggedCase | !.RevTaggedCases]
     ),
-    filter_out_failing_cases_2(TaggedCases, !RevTaggedCases, !SwitchCanFail).
+    filter_out_failing_cases_loop(TaggedCases, !RevTaggedCases,
+        !SwitchCanFail).
 
 find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
         LowerLimit, UpperLimit, NumValues, ReqDensity,
@@ -848,25 +849,25 @@ construct_string_hash_cases(StrsDatas, Upgrade, TableSize,
     % between 0.25 and 0.5.
     HashMaskA = TableSizeA - 1,
     string_hash_cases(StrsDatas, HashMaskA,
-        map.init, HashValsMap1A, map.init, HashValsMap2A,
-        map.init, HashValsMap3A,
-        0, NumCollisions1A, 0, NumCollisions2A, 0, NumCollisions3A),
+        map.init, HashValsMap4A, map.init, HashValsMap5A,
+        map.init, HashValsMap6A,
+        0, NumCollisions4A, 0, NumCollisions5A, 0, NumCollisions6A),
     trace [compiletime(flag("hashcollisions")), io(!IO)] (
         io.format("string hash collisions A: %d %d %d\n",
-            [i(NumCollisions1A), i(NumCollisions2A), i(NumCollisions3A)], !IO)
+            [i(NumCollisions4A), i(NumCollisions5A), i(NumCollisions6A)], !IO)
     ),
-    ( NumCollisions1A =< NumCollisions2A, NumCollisions1A =< NumCollisions3A ->
-        HashValsMapA = HashValsMap1A,
-        HashOpA = hash_string,
-        NumCollisionsA = NumCollisions1A
-    ; NumCollisions2A =< NumCollisions3A ->
-        HashValsMapA = HashValsMap2A,
-        HashOpA = hash_string2,
-        NumCollisionsA = NumCollisions2A
+    ( NumCollisions4A =< NumCollisions5A, NumCollisions4A =< NumCollisions6A ->
+        HashValsMapA = HashValsMap4A,
+        HashOpA = hash_string4,
+        NumCollisionsA = NumCollisions4A
+    ; NumCollisions5A =< NumCollisions6A ->
+        HashValsMapA = HashValsMap5A,
+        HashOpA = hash_string5,
+        NumCollisionsA = NumCollisions5A
     ;
-        HashValsMapA = HashValsMap3A,
-        HashOpA = hash_string3,
-        NumCollisionsA = NumCollisions3A
+        HashValsMapA = HashValsMap6A,
+        HashOpA = hash_string6,
+        NumCollisionsA = NumCollisions6A
     ),
 
     (
@@ -884,29 +885,29 @@ construct_string_hash_cases(StrsDatas, Upgrade, TableSize,
         % between 0.125 and 0.25.
         HashMaskB = TableSizeB - 1,
         string_hash_cases(StrsDatas, HashMaskB,
-            map.init, HashValsMap1B, map.init, HashValsMap2B,
-            map.init, HashValsMap3B,
-            0, NumCollisions1B, 0, NumCollisions2B, 0, NumCollisions3B),
+            map.init, HashValsMap4B, map.init, HashValsMap5B,
+            map.init, HashValsMap6B,
+            0, NumCollisions4B, 0, NumCollisions5B, 0, NumCollisions6B),
         trace [compiletime(flag("hashcollisions")), io(!IO)] (
             io.format("string hash collisions B: %d %d %d\n",
-                [i(NumCollisions1B), i(NumCollisions2B), i(NumCollisions3B)],
+                [i(NumCollisions4B), i(NumCollisions5B), i(NumCollisions6B)],
                 !IO)
         ),
-        ( NumCollisions1B = 0 ->
+        ( NumCollisions4B = 0 ->
             TableSize = TableSizeB,
-            HashValsMap = HashValsMap1B,
-            HashOp = hash_string,
-            NumCollisions = NumCollisions1B
-        ; NumCollisions2B = 0 ->
+            HashValsMap = HashValsMap4B,
+            HashOp = hash_string4,
+            NumCollisions = NumCollisions4B
+        ; NumCollisions5B = 0 ->
             TableSize = TableSizeB,
-            HashValsMap = HashValsMap2B,
-            HashOp = hash_string2,
-            NumCollisions = NumCollisions2B
-        ; NumCollisions3B = 0 ->
+            HashValsMap = HashValsMap5B,
+            HashOp = hash_string5,
+            NumCollisions = NumCollisions5B
+        ; NumCollisions6B = 0 ->
             TableSize = TableSizeB,
-            HashValsMap = HashValsMap3B,
-            HashOp = hash_string3,
-            NumCollisions = NumCollisions3B
+            HashValsMap = HashValsMap6B,
+            HashOp = hash_string6,
+            NumCollisions = NumCollisions6B
         ;
             TableSize = TableSizeA,
             HashValsMap = HashValsMapA,
@@ -935,17 +936,17 @@ construct_string_hash_cases(StrsDatas, Upgrade, TableSize,
     map(int, assoc_list(string, CaseRep))::out,
     int::in, int::out, int::in, int::out, int::in, int::out) is det.
 
-string_hash_cases([], _, !HashMap1, !HashMap2, !HashMap3,
-        !NumCollisions1, !NumCollisions2, !NumCollisions3).
+string_hash_cases([], _, !HashMap4, !HashMap5, !HashMap6,
+        !NumCollisions4, !NumCollisions5, !NumCollisions6).
 string_hash_cases([StrData | StrsDatas], HashMask,
-        !HashMap1, !HashMap2, !HashMap3,
-        !NumCollisions1, !NumCollisions2, !NumCollisions3) :-
+        !HashMap4, !HashMap5, !HashMap6,
+        !NumCollisions4, !NumCollisions5, !NumCollisions6) :-
     string_hash_case(StrData, HashMask,
-        !HashMap1, !HashMap2, !HashMap3,
-        !NumCollisions1, !NumCollisions2, !NumCollisions3),
+        !HashMap4, !HashMap5, !HashMap6,
+        !NumCollisions4, !NumCollisions5, !NumCollisions6),
     string_hash_cases(StrsDatas, HashMask,
-        !HashMap1, !HashMap2, !HashMap3,
-        !NumCollisions1, !NumCollisions2, !NumCollisions3).
+        !HashMap4, !HashMap5, !HashMap6,
+        !NumCollisions4, !NumCollisions5, !NumCollisions6).
 
 :- pred string_hash_case(pair(string, CaseRep)::in, int::in,
     map(int, assoc_list(string, CaseRep))::in,
@@ -957,29 +958,29 @@ string_hash_cases([StrData | StrsDatas], HashMask,
     int::in, int::out, int::in, int::out, int::in, int::out) is det.
 
 string_hash_case(StrCaseRep, HashMask,
-        !HashMap1, !HashMap2, !HashMap3,
-        !NumCollisions1, !NumCollisions2, !NumCollisions3) :-
+        !HashMap4, !HashMap5, !HashMap6,
+        !NumCollisions4, !NumCollisions5, !NumCollisions6) :-
     StrCaseRep = String - _CaseRep,
-    HashVal1 = string.hash(String) /\ HashMask,
-    HashVal2 = string.hash2(String) /\ HashMask,
-    HashVal3 = string.hash3(String) /\ HashMask,
-    ( map.search(!.HashMap1, HashVal1, OldEntries1) ->
-        map.det_update(HashVal1, [StrCaseRep | OldEntries1], !HashMap1),
-        !:NumCollisions1 = !.NumCollisions1 + 1
+    HashVal4 = string.hash4(String) /\ HashMask,
+    HashVal5 = string.hash5(String) /\ HashMask,
+    HashVal6 = string.hash6(String) /\ HashMask,
+    ( map.search(!.HashMap4, HashVal4, OldEntries4) ->
+        map.det_update(HashVal4, [StrCaseRep | OldEntries4], !HashMap4),
+        !:NumCollisions4 = !.NumCollisions4 + 1
     ;
-        map.det_insert(HashVal1, [StrCaseRep], !HashMap1)
+        map.det_insert(HashVal4, [StrCaseRep], !HashMap4)
     ),
-    ( map.search(!.HashMap2, HashVal2, OldEntries2) ->
-        map.det_update(HashVal2, [StrCaseRep | OldEntries2], !HashMap2),
-        !:NumCollisions2 = !.NumCollisions2 + 1
+    ( map.search(!.HashMap5, HashVal5, OldEntries5) ->
+        map.det_update(HashVal5, [StrCaseRep | OldEntries5], !HashMap5),
+        !:NumCollisions5 = !.NumCollisions5 + 1
     ;
-        map.det_insert(HashVal2, [StrCaseRep], !HashMap2)
+        map.det_insert(HashVal5, [StrCaseRep], !HashMap5)
     ),
-    ( map.search(!.HashMap3, HashVal3, OldEntries3) ->
-        map.det_update(HashVal3, [StrCaseRep | OldEntries3], !HashMap3),
-        !:NumCollisions3 = !.NumCollisions3 + 1
+    ( map.search(!.HashMap6, HashVal6, OldEntries6) ->
+        map.det_update(HashVal6, [StrCaseRep | OldEntries6], !HashMap6),
+        !:NumCollisions6 = !.NumCollisions6 + 1
     ;
-        map.det_insert(HashVal3, [StrCaseRep], !HashMap3)
+        map.det_insert(HashVal6, [StrCaseRep], !HashMap6)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1158,13 +1159,13 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
         unexpected($module, $pred, "non-du type")
     ),
     map.init(PtagCountMap0),
-    get_ptag_counts_2(TagList, -1, MaxPrimary, PtagCountMap0, PtagCountMap).
+    get_ptag_counts_loop(TagList, -1, MaxPrimary, PtagCountMap0, PtagCountMap).
 
-:- pred get_ptag_counts_2(list(cons_tag)::in, int::in, int::out,
+:- pred get_ptag_counts_loop(list(cons_tag)::in, int::in, int::out,
     ptag_count_map::in, ptag_count_map::out) is det.
 
-get_ptag_counts_2([], !MaxPrimary, !PtagCountMap).
-get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
+get_ptag_counts_loop([], !MaxPrimary, !PtagCountMap).
+get_ptag_counts_loop([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
     (
         (
             Tag = single_functor_tag,
@@ -1243,26 +1244,26 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ),
         unexpected($module, $pred, "non-du tag")
     ),
-    get_ptag_counts_2(Tags, !MaxPrimary, !PtagCountMap).
+    get_ptag_counts_loop(Tags, !MaxPrimary, !PtagCountMap).
 
 %-----------------------------------------------------------------------------%
 
 group_cases_by_ptag(TaggedCases, RepresentCase, !StateA, !StateB, !StateC,
         CaseNumPtagsMap, PtagCaseMap) :-
-    group_cases_by_ptag_2(TaggedCases, RepresentCase,
+    group_cases_by_ptag_loop(TaggedCases, RepresentCase,
         !StateA, !StateB, !StateC,
         map.init, CaseNumPtagsMap, map.init, PtagCaseMap).
 
-:- pred group_cases_by_ptag_2(list(tagged_case)::in,
+:- pred group_cases_by_ptag_loop(list(tagged_case)::in,
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
         ::in(pred(in, out, in, out, in, out, in, out) is det),
     StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
     case_num_ptags_map::in, case_num_ptags_map::out,
     ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
 
-group_cases_by_ptag_2([], _,
+group_cases_by_ptag_loop([], _,
         !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap).
-group_cases_by_ptag_2([TaggedCase | TaggedCases], RepresentCase,
+group_cases_by_ptag_loop([TaggedCase | TaggedCases], RepresentCase,
         !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap) :-
     TaggedCase = tagged_case(MainTaggedConsId, OtherConsIds, CaseNum, _Goal),
     RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
@@ -1270,7 +1271,7 @@ group_cases_by_ptag_2([TaggedCase | TaggedCases], RepresentCase,
         !CaseNumPtagsMap, !PtagCaseMap),
     list.foldl2(group_case_by_ptag(CaseNum, CaseRep), OtherConsIds,
         !CaseNumPtagsMap, !PtagCaseMap),
-    group_cases_by_ptag_2(TaggedCases, RepresentCase,
+    group_cases_by_ptag_loop(TaggedCases, RepresentCase,
         !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap).
 
 :- pred group_case_by_ptag(int::in, CaseRep::in, tagged_cons_id::in,

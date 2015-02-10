@@ -78,6 +78,9 @@ java_unary_prefix_op(tag, "").    % This case is never used.
 java_unary_prefix_op(hash_string,     "mercury.String.hash_1_f_0").
 java_unary_prefix_op(hash_string2,    "mercury.String.hash2_1_f_0").
 java_unary_prefix_op(hash_string3,    "mercury.String.hash3_1_f_0").
+java_unary_prefix_op(hash_string4,    "mercury.String.hash4_1_f_0").
+java_unary_prefix_op(hash_string5,    "mercury.String.hash5_1_f_0").
+java_unary_prefix_op(hash_string6,    "mercury.String.hash6_1_f_0").
 
 java_string_compare_op(str_eq, "==").
 java_string_compare_op(str_ne, "!=").

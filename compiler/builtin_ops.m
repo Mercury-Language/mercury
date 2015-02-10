@@ -39,7 +39,10 @@
     ;       logical_not
     ;       hash_string
     ;       hash_string2
-    ;       hash_string3.
+    ;       hash_string3
+    ;       hash_string4
+    ;       hash_string5
+    ;       hash_string6.
 
 :- type binary_op
     --->    int_add

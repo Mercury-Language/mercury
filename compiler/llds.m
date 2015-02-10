@@ -1680,6 +1680,9 @@ unop_return_type(logical_not, lt_bool).
 unop_return_type(hash_string, lt_integer).
 unop_return_type(hash_string2, lt_integer).
 unop_return_type(hash_string3, lt_integer).
+unop_return_type(hash_string4, lt_integer).
+unop_return_type(hash_string5, lt_integer).
+unop_return_type(hash_string6, lt_integer).
 
 unop_arg_type(mktag, lt_word).
 unop_arg_type(tag, lt_word).
@@ -1692,6 +1695,9 @@ unop_arg_type(logical_not, lt_bool).
 unop_arg_type(hash_string, lt_string).
 unop_arg_type(hash_string2, lt_string).
 unop_arg_type(hash_string3, lt_string).
+unop_arg_type(hash_string4, lt_string).
+unop_arg_type(hash_string5, lt_string).
+unop_arg_type(hash_string6, lt_string).
 
 binop_return_type(int_add, lt_integer).
 binop_return_type(int_sub, lt_integer).

@@ -1134,6 +1134,9 @@ unop_code(logical_not,          7).
 unop_code(hash_string,          8).
 unop_code(hash_string2,         9).
 unop_code(hash_string3,        10).
+unop_code(hash_string4,        11).
+unop_code(hash_string5,        12).
+unop_code(hash_string6,        13).
 
 :- pred unop_debug(unary_op::in, string::out) is det.
 
@@ -1148,6 +1151,9 @@ unop_debug(logical_not,         "not").
 unop_debug(hash_string,         "hash_string").
 unop_debug(hash_string2,        "hash_string2").
 unop_debug(hash_string3,        "hash_string3").
+unop_debug(hash_string4,        "hash_string4").
+unop_debug(hash_string5,        "hash_string5").
+unop_debug(hash_string6,        "hash_string6").
 
 %---------------------------------------------------------------------------%
 

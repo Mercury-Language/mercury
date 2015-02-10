@@ -599,6 +599,9 @@ unary_prefix_op(logical_not,        "!").
 unary_prefix_op(hash_string,        "MR_hash_string").
 unary_prefix_op(hash_string2,       "MR_hash_string2").
 unary_prefix_op(hash_string3,       "MR_hash_string3").
+unary_prefix_op(hash_string4,       "MR_hash_string4").
+unary_prefix_op(hash_string5,       "MR_hash_string5").
+unary_prefix_op(hash_string6,       "MR_hash_string6").
 
 % The operator strings for array_index, compound_lt and compound_eq are
 % dummies; they should never be used.

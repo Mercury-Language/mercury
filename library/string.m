@@ -386,6 +386,12 @@
 :- func hash2(string) = int.
 :- func hash3(string) = int.
 
+    % Cross-compilation-friendly versions of hash, hash2 and hash3
+    % respectively.
+:- func hash4(string) = int.
+:- func hash5(string) = int.
+:- func hash6(string) = int.
+
 %---------------------------------------------------------------------------%
 %
 % Tests on strings.
@@ -2670,6 +2676,65 @@ string.hash3_loop(String, Index, Length, !HashVal) :-
         !:HashVal = !.HashVal * 49,
         !:HashVal= !.HashVal + C,
         string.hash3_loop(String, Index + 1, Length, !HashVal)
+    ;
+        true
+    ).
+
+:- func keep_30_bits(int) = int.
+
+keep_30_bits(N) = N /\ ((1 `unchecked_left_shift` 30) - 1).
+
+string.hash4(String) = HashVal :-
+    string.length(String, Length),
+    string.hash4_loop(String, 0, Length, 0, HashVal1),
+    HashVal = HashVal1 `xor` Length.
+
+:- pred string.hash4_loop(string::in, int::in, int::in, int::in, int::out)
+    is det.
+
+string.hash4_loop(String, Index, Length, !HashVal) :-
+    ( Index < Length ->
+        string.unsafe_index_code_unit(String, Index, C),
+        !:HashVal = keep_30_bits(!.HashVal `xor`
+            (!.HashVal `unchecked_left_shift` 5)),
+        !:HashVal = !.HashVal `xor` C,
+        string.hash_loop(String, Index + 1, Length, !HashVal)
+    ;
+        true
+    ).
+
+string.hash5(String) = HashVal :-
+    string.length(String, Length),
+    string.hash5_loop(String, 0, Length, 0, HashVal1),
+    HashVal = HashVal1 `xor` Length.
+
+:- pred string.hash5_loop(string::in, int::in, int::in, int::in, int::out)
+    is det.
+
+string.hash5_loop(String, Index, Length, !HashVal) :-
+    ( Index < Length ->
+        string.unsafe_index_code_unit(String, Index, C),
+        !:HashVal = keep_30_bits(!.HashVal * 37),
+        !:HashVal= keep_30_bits(!.HashVal + C),
+        string.hash5_loop(String, Index + 1, Length, !HashVal)
+    ;
+        true
+    ).
+
+string.hash6(String) = HashVal :-
+    string.length(String, Length),
+    string.hash6_loop(String, 0, Length, 0, HashVal1),
+    HashVal = HashVal1 `xor` Length.
+
+:- pred string.hash6_loop(string::in, int::in, int::in, int::in, int::out)
+    is det.
+
+string.hash6_loop(String, Index, Length, !HashVal) :-
+    ( Index < Length ->
+        string.unsafe_index_code_unit(String, Index, C),
+        !:HashVal = keep_30_bits(!.HashVal * 49),
+        !:HashVal= keep_30_bits(!.HashVal + C),
+        string.hash6_loop(String, Index + 1, Length, !HashVal)
     ;
         true
     ).

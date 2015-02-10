@@ -660,6 +660,9 @@ dump_unop(bitwise_complement) = "bitwise_complement".
 dump_unop(hash_string) = "hash_string".
 dump_unop(hash_string2) = "hash_string2".
 dump_unop(hash_string3) = "hash_string3".
+dump_unop(hash_string4) = "hash_string4".
+dump_unop(hash_string5) = "hash_string5".
+dump_unop(hash_string6) = "hash_string6".
 
 dump_binop(array_index(_)) = "array_index".
 dump_binop(compound_lt) = "compound<".
