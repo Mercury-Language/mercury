@@ -97,7 +97,7 @@ MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...)
 }
 
 /*
-**  Note that MR_hash_string{,2,3} are actually defined as macros in
+**  Note that MR_hash_string{,2,3,4,5,6} are actually defined as macros in
 **  mercury_string.h, if we're using GNU C.
 **  We define them here whether or not we're using gcc, so that users
 **  can easily switch between gcc and cc without rebuilding the libraries.
@@ -106,6 +106,9 @@ MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...)
 #undef MR_hash_string
 #undef MR_hash_string2
 #undef MR_hash_string3
+#undef MR_hash_string4
+#undef MR_hash_string5
+#undef MR_hash_string6
 
 MR_Integer
 MR_hash_string(MR_ConstString s)
