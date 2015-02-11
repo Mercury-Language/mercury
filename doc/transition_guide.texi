@@ -142,9 +142,9 @@ Therefore it cannot use Prolog's mechanism for doing
 input and output with side-effects.
 The mechanism that Mercury uses is the threading of an object
 that represents the state of the world through the computation.
-The type of this structure is @code{io.state}, or just @code{io} for short.
+The type of this object is @code{io.state}, or just @code{io} for short.
 Each operation that affects the state of the world
-has added to it two arguments of this type,
+must have two arguments of this type,
 representing respectively the state of the world before the operation,
 and the state of the world after the operation.
 The modes of the two arguments that are added to calls are
@@ -180,7 +180,7 @@ write_total(Total, IO0, IO) :-
 The variables @code{IO0}, @code{IO1} etc each represent
 one version of the state of the world.
 @code{IO0} represents the state before the total is printed,
-@code{IO1} represents the state after just @samp{"The total is"} is printed,
+@code{IO1} represents the state after just @code{The total is} is printed,
 and so on.
 However, programmers usually don't want to give specific names
 to all these different versions;
@@ -189,7 +189,7 @@ that all these variables represent different versions of.
 That is why Mercury supports state variable notation.
 This is syntactic sugar
 designed to make it easier to thread a sequence of variables
-holding successive states of an entity through a clause.
+holding the successive states of an entity through a clause.
 You as the programmer name only the entity,
 and let the compiler name the various versions.
 With state variables, the above clause would be written as
@@ -204,6 +204,8 @@ write_total(Total, !IO) :-
 
 and the compiler will internally convert this clause
 into code that looks like the previous clause.
+(The usual convention in Mercury programs
+is to name the state variable reprenting the state of the world @code{!IO}.)
 
 In the head of a clause,
 what looks like an argument that consists of
