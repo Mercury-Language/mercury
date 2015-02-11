@@ -125,6 +125,24 @@ MR_hash_string3(MR_ConstString s)
     MR_HASH_STRING3_FUNC_BODY
 }
 
+MR_Integer
+MR_hash_string4(MR_ConstString s)
+{
+    MR_HASH_STRING4_FUNC_BODY
+}
+
+MR_Integer
+MR_hash_string5(MR_ConstString s)
+{
+    MR_HASH_STRING5_FUNC_BODY
+}
+
+MR_Integer
+MR_hash_string6(MR_ConstString s)
+{
+    MR_HASH_STRING6_FUNC_BODY
+}
+
 MR_bool
 MR_utf8_next(const MR_String s_, MR_Integer *pos)
 {

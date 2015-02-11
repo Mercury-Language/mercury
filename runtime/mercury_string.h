@@ -292,6 +292,9 @@
 MR_Integer      MR_hash_string(MR_ConstString);
 MR_Integer      MR_hash_string2(MR_ConstString);
 MR_Integer      MR_hash_string3(MR_ConstString);
+MR_Integer      MR_hash_string4(MR_ConstString);
+MR_Integer      MR_hash_string5(MR_ConstString);
+MR_Integer      MR_hash_string6(MR_ConstString);
 
 #if defined(MR_GNUC)
 #define MR_hash_string(s)                                               \
