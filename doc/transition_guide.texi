@@ -426,7 +426,7 @@ These predicates take an argument of type @code{univ}, the universal type,
 so that by using @code{type_to_univ} and @code{univ_to_type}
 it is possible to store data of any type in the @code{io.state}.
 
-Alternatively, you set can things up so that
+Alternatively, you can set things up so that
 the getter and setter predicates of a mutable are @emph{not} I/O operations,
 but in that case calls to those predicates are not considered pure Mercury,
 and must instead use Mercury's mechanisms for controlled impurity.
