@@ -2704,8 +2704,20 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
     (
         Target = target_c,
         globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
-        LinkOpt = "-l",
-        LibSuffix = ""
+        globals.get_c_compiler_type(Globals, CCompilerType),
+        (
+            ( CCompilerType = cc_gcc(_, _, _)
+            ; CCompilerType = cc_clang(_)
+            ; CCompilerType = cc_lcc
+            ; CCompilerType = cc_unknown
+            ),
+            LinkOpt = "-l",
+            LibSuffix = ""
+        ;
+            CCompilerType = cc_cl(_),
+            LinkOpt = "",
+            LibSuffix = ".lib"
+        )
     ;
         Target = target_csharp,
         MercuryLinkage = "shared",

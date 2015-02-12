@@ -308,12 +308,13 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
             ( Ext = ""
             ; Ext = ".bat"
             ; Ext = ".exe"
-            ; Ext = ".dll"
 
             % Library files.
             ; Ext = ".a"
             ; Ext = ".$A"
+            ; Ext = ".lib"
             ; Ext = ".so"
+            ; Ext = ".dll"
             ; Ext = ".dylib"
             ; Ext = ".$(EXT_FOR_SHARED_LIB)"
             ; Ext = ".jar"
