@@ -32,7 +32,7 @@ Changes to the Mercury standard library:
 
 * We have added the print_line and write_line family of predicates to the
   io module.  These behave like the print and write predicates, but also
-  write a terminating newline character.
+  write a terminating newline.
 
 * io.print and string_writer.print now print arbitrary precision integers
   in their decimal form instead of printing their underlying representation.
@@ -105,9 +105,10 @@ Changes to the Mercury standard library:
    - error/2
    - func_error/2
 
-* The following predicate has been added to the string module:
+* The following predicates have been added to the string module:
 
    - is_all_alnum/1
+   - is_empty/1
 
 * The following predicates have been added to the map module:
 

@@ -396,6 +396,9 @@
 %
 % Tests on strings.
 %
+    % True if string is the empty string.
+    %
+:- pred is_empty(string::in) is semidet.
 
     % True if string contains only alphabetic characters [A-Za-z].
     %
@@ -2745,6 +2748,8 @@ string.hash6_loop(String, Index, Length, !HashVal) :-
 %
 % For speed, most of these predicates have C versions as well as
 % Mercury versions. XXX why not all?
+
+is_empty("").
 
 :- pragma foreign_proc("C",
     is_all_alpha(S::in),
