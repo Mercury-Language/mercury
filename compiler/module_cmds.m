@@ -588,11 +588,17 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
         )
     ;
         Result = ok(signalled(Signal)),
+        report_error_to_stream(ErrorStream, "system command received signal "
+            ++ int_to_string(Signal) ++ ".", !IO),
+        % Also report the error to standard output, because if we raise the
+        % signal this error may not ever been seen, the process stops and
+        % the user is confused.
+        report_error("system command received signal "
+            ++ int_to_string(Signal) ++ ".", !IO),
+
         % Make sure the current process gets the signal. Some systems (e.g.
         % Linux) ignore SIGINT during a call to system().
         raise_signal(Signal, !IO),
-        report_error_to_stream(ErrorStream, "system command received signal "
-            ++ int_to_string(Signal) ++ ".", !IO),
         CommandSucceeded = no
     ;
         Result = error(Error),

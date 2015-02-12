@@ -1663,7 +1663,7 @@
     % Interpret the child process exit status returned by
     % system() or wait().
     %
-:- func io.handle_system_command_exit_status(int) = io.res(io.system_result).
+:- func decode_system_command_exit_code(int) = io.res(io.system_result).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1822,13 +1822,13 @@
 :- pred io.read_byte_val(io.input_stream::in, int::out,
     io::di, io::uo) is det.
 
-    % io.call_system_code(Command, Status, Message, !IO):
+    % io.call_system_code(Command, Status, Success, Message, !IO):
     %
     % Invokes the operating system shell with the specified Command.
-    % Returns Status = 127 and Message on failure. Otherwise returns
-    % the raw exit status from the system() call.
+    % On success Success = yes and Status is valid. On failure Success = no and
+    % Message will contain the error message.
     %
-:- pred io.call_system_code(string::in, int::out, string::out,
+:- pred io.call_system_code(string::in, int::out, bool::out, string::out,
     io::di, io::uo) is det.
 
     % io.getenv(Var, Value):
@@ -5590,11 +5590,13 @@ io.call_system(Command, Result, !IO) :-
     ).
 
 io.call_system_return_signal(Command, Result, !IO) :-
-    io.call_system_code(Command, Code, Msg, !IO),
-    ( Code = 127 ->
+    io.call_system_code(Command, Code, Success, Msg, !IO),
+    (
+        Success = no,
         Result = error(io_error(Msg))
     ;
-        Result = io.handle_system_command_exit_status(Code)
+        Success = yes,
+        Result = decode_system_command_exit_code(Code)
     ).
 
 :- type io.error
@@ -9656,7 +9658,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    io.call_system_code(Command::in, Status::out, Msg::out,
+    call_system_code(Command::in, Status::out, Success::out, Msg::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, no_sharing],
@@ -9697,7 +9699,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 
     if (err != 0) {
         /* Spawn failed. */
-        Status = 127;
+        Success = MR_NO;
         ML_maybe_make_err_msg(MR_TRUE, errno,
             ""error invoking system command: "",
             MR_ALLOC_ID, Msg);
@@ -9707,13 +9709,13 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
             err = waitpid(pid, &st, 0);
         } while (err == -1 && MR_is_eintr(errno));
         if (err == -1) {
-            Status = 127;
+            Success = MR_NO;
             ML_maybe_make_err_msg(MR_TRUE, errno,
                 ""error invoking system command: "",
                 MR_ALLOC_ID, Msg);
         } else {
             Status = st;
-            Msg = MR_make_string_const("""");
+            Success = MR_YES;
         }
     }
 
@@ -9726,24 +9728,19 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
   #endif
 
     if (Status == -1) {
-        /*
-        ** Return values of 127 or -1 from system() indicate that
-        ** the system call failed. Don't return -1, as -1 indicates
-        ** that the system call was killed by signal number 1.
-        */
-        Status = 127;
+        Success = MR_NO;
         ML_maybe_make_err_msg(MR_TRUE, errno,
             ""error invoking system command: "",
             MR_ALLOC_ID, Msg);
     } else {
-        Msg = MR_make_string_const("""");
+        Success = MR_YES;
     }
 
 #endif  /* !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON */
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.call_system_code(Command::in, Status::out, Msg::out,
+    call_system_code(Command::in, Status::out, Success::out, Msg::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
@@ -9766,9 +9763,11 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     {Status, []} = string:to_integer(Code),
     case Status =:= 0 of
         true ->
-            Msg = <<>>;
+            Msg = <<>>,
+            Success = yes;
         false ->
-            Msg = <<""error invoking system command"">>
+            Msg = <<""error invoking system command"">>,
+            Success = no
     end
 ").
 
@@ -9776,54 +9775,54 @@ io.progname(DefaultProgName::in, ProgName::out, IO::di, IO::uo) :-
     % This is a fall-back for back-ends which don't support the C interface.
     ProgName = DefaultProgName.
 
-io.handle_system_command_exit_status(Code0) = Status :-
-    Code = io.handle_system_command_exit_code(Code0),
-    ( Code = 127 ->
-        Status = error(io_error("unknown result code from system command"))
-    ; Code < 0 ->
-        Status = ok(signalled(-Code))
+decode_system_command_exit_code(Code0) = Status :-
+    decode_system_command_exit_code(Code0, Exited, ExitCode, Signalled, Signal),
+    (
+        Exited = yes,
+        Status = ok(exited(ExitCode))
     ;
-        Status = ok(exited(Code))
+        Exited = no,
+        (
+            Signalled = yes,
+            Status = ok(signalled(Signal))
+        ;
+            Signalled = no,
+            Status = error(io_error("unknown result code from system command"))
+        )
     ).
 
     % Interpret the child process exit status returned by system() or wait():
-    % return negative for `signalled', non-negative for `exited', or 127
-    % for anything else (e.g. an error invoking the command).
     %
-:- func io.handle_system_command_exit_code(int) = int.
+:- pred decode_system_command_exit_code(int::in, bool::out, int::out,
+    bool::out, int::out) is det.
 
-io.handle_system_command_exit_code(Status0::in) = (Status::out) :-
-    % This is a fall-back for back-ends that don't support the C interface.
-    ( (Status0 /\ 0xff) \= 0 ->
-        % The process was killed by a signal.
-        Status = -(Status0 /\ 0xff)
-    ;
-        % The process terminated normally.
-        Status = (Status0 /\ 0xff00) >> 8
-    ).
+% This is a fall-back for back-ends that don't support the C interface.
+decode_system_command_exit_code(Status, yes, Status, no, 0).
 
 :- pragma foreign_proc("C",
-    io.handle_system_command_exit_code(Status0::in) = (Status::out),
+    decode_system_command_exit_code(Status0::in, Exited::out, Status::out,
+        Signalled::out, Signal::out),
     [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness,
         no_sharing],
 "
     #if defined (WIFEXITED) && defined (WEXITSTATUS) && \
             defined (WIFSIGNALED) && defined (WTERMSIG)
         if (WIFEXITED(Status0)) {
+            Exited = MR_YES;
+            Signalled = MR_NO;
             Status = WEXITSTATUS(Status0);
         } else if (WIFSIGNALED(Status0)) {
-            Status = -WTERMSIG(Status0);
+            Exited = MR_NO;
+            Signalled = MR_YES;
+            Signal = -WTERMSIG(Status0);
         } else {
-            Status = 127;
+            Exited = MR_NO;
+            Signalled = MR_NO;
         }
     #else
-        if ((Status0 & 0xff) != 0) {
-            /* the process was killed by a signal */
-            Status = -(Status0 & 0xff);
-        } else {
-            /* the process terminated normally */
-            Status = (Status0 & 0xff00) >> 8;
-        }
+        Exited = MR_YES;
+        Status = Status0;
+        Signalled = MR_NO;
     #endif
 ").
 
@@ -9855,7 +9854,7 @@ io.handle_system_command_exit_code(Status0::in) = (Status::out) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.call_system_code(Command::in, Status::out, Msg::out,
+    io.call_system_code(Command::in, Status::out, Success::out, Msg::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
@@ -9889,13 +9888,15 @@ io.handle_system_command_exit_code(Status0::in) = (Status::out) :-
         process.WaitForExit();
         Status = process.ExitCode;
         Msg = """";
+        Success = mr_bool.YES;
 
         // debugging...
         // System.Console.Out.WriteLine(""[exitcode = "" + Status + ""]"");
 
     }
     catch (System.Exception e) {
-        Status = 127;
+        Success = mr_bool.NO;
+        Status = 1;
         Msg = e.Message;
 
         // debugging...
@@ -9994,7 +9995,7 @@ command_line_argument(_, "") :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.call_system_code(Command::in, Status::out, Msg::out,
+    io.call_system_code(Command::in, Status::out, Success::out, Msg::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
@@ -10034,7 +10035,8 @@ command_line_argument(_, "") :-
         stderr.start();
 
         Status  = process.waitFor();
-        Msg = """";
+        Success = bool.YES;
+        Msg     = null;
 
         // The stdin StreamPipe is killed off after the Process is finished
         // so as not to waste CPU cycles with a pointless thread.
@@ -10054,8 +10056,9 @@ command_line_argument(_, "") :-
             throw stderr.exception;
         }
     } catch (java.lang.Exception e) {
-        Status  = 127;
-        Msg = e.getMessage();
+        Status  = 1;
+        Success = bool.NO;
+        Msg     = e.getMessage();
     }
 ").
 
