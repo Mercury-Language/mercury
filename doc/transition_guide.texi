@@ -74,7 +74,8 @@ translating Prolog programs into Mercury.
 * Introduction::    Introduction.
 * Syntax::          Syntax.
 * IO::              Input and output.
-* FailLoops::       Failure driven loops, @code{assert} and @code{retract}.
+* AssertRetract::   @code{assert} and @code{retract}.
+* FailLoops::       Failure driven loops.
 * Commits::         Cuts.
 * Accumulators::    Accumulators and difference lists.
 * Determinism::     Determinism.
@@ -330,53 +331,176 @@ all the input and output takes place outside it:
     ...
 @end example
 
-@node FailLoops
-@chapter Failure driven loops, assert and retract
+@node AssertRetract
+@chapter Assert and retract
 
-Because Mercury is purely declarative,
-the goal @samp{Goal, fail} is interchangeable with the goal @samp{fail, Goal}.
-Also because it is purely declarative, there are no side effects to goals
-(see also the section on input and output).
-As a consequence of these two facts,
-it is not possible to write failure driven loops in Mercury.
-Neither is it possible to use predicates such as assert or retract.
-This is not the place to argue it, but we believe
-most programs that use failure driven loops, assert and retract
-to be less clear and harder to maintain than those that do not.
+Calls to the builtin predicates @code{assert} and @code{retract}
+can change the set of clauses of the program currently being executed.
+This makes compilation very tricky,
+and different Prolog systems react differently
+when the program alters the definition of a predicate that has active calls.
+It also makes program analysis almost impossible,
+since the program that the compiler should analyze
+is not actually available at compilation time.
+Since Mercury is a compiled language,
+it does not allow the compiled program to be altered in any way.
 
-The use of assert and retract should be replaced with
-a collection data structure threaded through the relevant part of the program.
-Data which is truly global may be stored in the @samp{io.state} using
-the predicates @samp{io.get_globals} and @samp{io.set_globals}.
-These predicates take an argument of type @samp{univ}, the universal
-type, so that by using @samp{type_to_univ} and @samp{univ_to_type} it
-is possible to store data of any type in the @samp{io.state}.
+Most uses of @code{assert} and @code{retract} in Prolog programs
+are not actually intended to alter the program.
+Their purpose is just to maintain a set of facts,
+with semantically separate sets of facts being stored in separate predicates.
+(Most Prolog systems require these predicates
+to be marked as @code{dynamic} predicates.)
+A Mercury programmer who wants to store a set of facts
+would simply store those facts as data (not as code) in a data structure.
 
 The standard library contains
-several abstract data types for storing collections,
-each of which will be useful for different classes of problems.
+several abstract data types (ADTs) for storing collections of items,
+each of which is useful for different classes of problems.
 
-The @samp{list} ADT is useful if the order of the asserted facts is important.
-The @samp{set} ADT is useful if the order is not important,
-and if the asserted facts are not key-value pairs.
-If the asserted facts are key-value pairs,
-you can choose among several ADTs,
-including @samp{map}, @samp{rbtree}, and @samp{tree234}.
-We recommend the @samp{map} ADT for generic use.
-Its current implementation is as a 234 tree (using @samp{tree234}),
-but in the future it may change to a hash table, or a trie,
-or it may become a module that chooses among several implementation methods
-dynamically depending on the size and characteristics of the data.
+If the order of the items in the collection is important,
+consider the @code{list} and @code{cord} ADTs.
+@code{list} has lower constant factors,
+but the @code{cord} ADTs supports concatenation in constant time.
+The @code{stack} and @code{queue} ADTs implement
+lists with specific semantics and operations appropriate to those semantics.
 
-Failure driven loops in Prolog programs
-should be transformed into ordinary tail recursion in Mercury.
-This does have the disadvantage
-that the heap space used by the failing clause
-is not reclaimed immediately but only through garbage collection,
-but we are working on ways to fix this problem.
-In any case, the transformed code is more declarative
-and hence easier to maintain and understand for humans
-and easier for the compiler to optimize.
+If the order of items in the collection is not important,
+and if the items are key-value pairs,
+you can store them in ADTs implementing several different kinds of trees,
+including @code{bintree}, @code{rbtree}, @code{rtree}, and @code{tree234}.
+In the absence of a compelling reason to choose a different implementation,
+we recommend the @code{map} ADT for generic use.
+Maps are implemented using 234 trees,
+which are guaranteed to be balanced and thus have good worst-case behavior,
+but also have good performance in the average case.
+@c but in the future it may change to a hash table, or a trie,
+@c or it may become a module that chooses among several implementation methods
+@c dynamically depending on the size and characteristics of the data.
+@code{bimap} and @code{multi_map} are specialized version of maps.
+
+If the items in the collection are not key-value pairs,
+then consider the @code{set} and @code{bag} ADTs.
+The @code{set} ADT itself has several versions,
+some based on trees and some based on bit vectors,
+each with its own tradeoffs.
+
+The Mercury standard library has some modules
+for more specialized collections as well, such as graphs.
+And of course, if needed, you can always create your own ADT.
+
+If for some reason you cannot thread variables holding some data
+through the parts of your program that need access to that data,
+then you can store that data in a @samp{mutable},
+which is as close as Mercury comes to Prolog's dynamic predicates.
+Each Mercury mutable stores one value,
+though of course this value can be a collection,
+and that collection may be (but doesn't have to be) implemented
+by one of the Mercury standard library modules listed above.
+
+Each mutable has a getter and setter predicate.
+You can set things up so that the getter and setter predicates
+both function as I/O operations,
+destroying the current state of the world
+and returning a new state of the world.
+This effectively considers the mutable to be part of the state of the world
+@emph{outside} the Mercury program.
+The @code{io} module also provides another way to do this,
+by allowing the storage of information in the @code{io.state}
+using the predicates @code{io.get_globals} and @code{io.set_globals}.
+These predicates take an argument of type @code{univ}, the universal type,
+so that by using @code{type_to_univ} and @code{univ_to_type}
+it is possible to store data of any type in the @code{io.state}.
+
+Alternatively, you can things up so that
+the getter and setter predicates of a mutable are @emph{not} I/O operations,
+but in that case calls to those predicates are not considered pure Mercury,
+and must instead use Mercury's mechanisms for controlled impurity.
+These mechanisms require all code that is not pure Mercury
+musy be explicitly marked as such.
+They are intended to allow programmers
+to implement pure interfaces using @emph{small} pieces of impure code,
+for use in circumstances where there is no feasible way
+to implement that same interface using pure code.
+Most Mercury programs do not use impure code at all.
+The ones that do make use of it use it very sparingly,
+with 99.9+% of their code being pure Mercury.
+
+@node FailLoops
+@chapter Failure driven loops
+
+In pure Mercury code,
+the goal @code{Goal, fail} is interchangeable with the goal @code{fail, Goal},
+and @code{Goal} cannot have any side effects.
+As a consequence of these two facts,
+it is not possible to write failure driven loops in pure Mercury code.
+While one could try to use Mercury's mechanisms for controlled impurity
+to implement failure driven loops using impure Mercury code,
+this is not part of the culture of Mercury programming,
+because failure driven loops are
+significantly less clear and harder to maintain
+than other means of iterating through a sequence.
+Since they are inherently imperative and not declarative,
+they are also very hard for compilers to optimize.
+
+If the sequence must be generated through backtracking,
+then a Mercury programmer could just collect all the solutions together
+using the standard Mercury library predicate @code{solutions},
+and iterate through the resulting list of solutions
+using an ordinary tail recursive predicate.
+
+However, most Mercury programmers would prefer to generate
+a list of solutions directly.
+This can be easily done by replacing code that generates
+alternative solutions through backtracking,
+using predicates like this:
+
+@example
+generate_solutions(In1, In2, Soln) :-
+    (
+        % Generate one value of Soln from In1 and In2.
+        generate_one_soln(In1, In2, Soln)
+    ;
+        % Compute a new value for the second input.
+        In2' = ....
+        % Generate more values of Soln from In1 and In2'.
+        generate_solutions(In1, In2', Soln)
+    ).
+@end example
+
+in which the different solutions are produced by different disjuncts,
+with predicates in which
+the different solutions are produced by different conjuncts,
+like this:
+
+@example
+generate_solutions(In1, In2, [Soln| Solns]) :-
+    generate_one_soln(In1, In2, Soln),
+    In2' = ....
+    generate_solutions(In1, In2', Solns).
+@end example
+
+Unlike predicates following the previous pattern,
+predicates following this pattern can exploit Mercury's determinism system
+to ensure that they have considered all the possible combinations
+of the values of the input arguments.
+They are also more efficient,
+since choice point creation is expensive.
+
+They can be made even more efficient
+if the consumption of the solutions can be interleaved
+with their generation.
+For example, if the solutions are intended to be inputs to a fold
+(i.e. each solution is intended to update an accumulator),
+then this interleaving can be done like this:
+
+@example
+generate_and_use_solutions(In1, In2, !Acc) :-
+    generate_one_soln(In1, In2, Soln),
+    use_solution(Soln, !Acc),
+    In2' = ....
+    generate_and_use_solutions(In1, In2', !Acc).
+@end example
 
 @node Commits
 @chapter Cuts and indexing
