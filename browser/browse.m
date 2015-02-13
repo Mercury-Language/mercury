@@ -711,11 +711,13 @@ do_portray(Debugger, CallerType, MaybeMaybeOptionTable, Info, MaybePath,
                     MaybePath, !IO)
             ;
                 FormatResult = error(Msg),
-                write_string_debugger(Debugger, Msg, !IO)
+                write_string_debugger(Debugger, Msg, !IO),
+                write_string_debugger(Debugger, "\n", !IO)
             )
         ;
             MaybeOptionTable = error(Msg),
-            write_string_debugger(Debugger, Msg, !IO)
+            write_string_debugger(Debugger, Msg, !IO),
+            write_string_debugger(Debugger, "\n", !IO)
         )
     ).
 
