@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test the transformation of comparisons of enumerations into
 % integer comparisons.
 %
@@ -5,6 +9,7 @@
 % to link due to references to private_builtin__unsafe_type_cast
 % in the generated code (calls to private_builtin__unsafe_type_cast
 % should be generated inline).
+
 :- module compare_spec.
 
 :- interface.
@@ -18,15 +23,14 @@
 :- import_module bool.
 
 main -->
-	( { compare_bool } ->
-		io__write_string("failed\n")
-	;
-		io__write_string("succeeded\n")
-	).
+    ( { compare_bool } ->
+        io__write_string("failed\n")
+    ;
+        io__write_string("succeeded\n")
+    ).
 
 :- pred compare_bool is semidet.
 
 compare_bool :-
-        compare(Result, yes, no),
-        Result = (=).
-
+    compare(Result, yes, no),
+    Result = (=).

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module io_foldl.
 
 :- interface.
@@ -10,6 +14,6 @@
 
 :- import_module require.
 
-main --> 
-	io__input_stream_foldl_io(io__write_char, Res),
-	{ require(unify(Res, ok), "Error reading file.") }.
+main -->
+    io__input_stream_foldl_io(io__write_char, Res),
+    { require(unify(Res, ok), "Error reading file.") }.

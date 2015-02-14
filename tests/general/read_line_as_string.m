@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module read_line_as_string.
 
 :- interface.
@@ -8,24 +12,27 @@
 :- implementation.
 
 main -->
-	io__open_input("read_line_as_string.exp", Result),
-	( { Result = ok(Stream) } ->
-		io__set_input_stream(Stream, _),
-		io__read_line_as_string(Result2),
-		cat(Result2)
-	;
-		io__write_string("Error opening file!")
-	).
+    io__open_input("read_line_as_string.exp", Result),
+    ( { Result = ok(Stream) } ->
+        io__set_input_stream(Stream, _),
+        io__read_line_as_string(Result2),
+        cat(Result2)
+    ;
+        io__write_string("Error opening file!")
+    ).
 
 :- pred cat(io__result(string)::in, io__state::di, io__state::uo) is det.
 
 cat(Result) -->
-	( { Result = ok(Line) },
-		io__write_string(Line),
-		io__read_line_as_string(NextResult),
-		cat(NextResult)
-	; { Result = eof }
-	; { Result = error(_Error) },
-		io__write_string("Error reading file!")
-	).
+    (
+        { Result = ok(Line) },
+        io__write_string(Line),
+        io__read_line_as_string(NextResult),
+        cat(NextResult)
+    ;
+        { Result = eof }
+    ;
+        { Result = error(_Error) },
+        io__write_string("Error reading file!")
+    ).
 

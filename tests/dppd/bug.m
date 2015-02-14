@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % XXX The Mercury compiler reports a spurious mode error for this code,
 %     due to the lack of support for partially instantiated data
 %     structures.
@@ -16,7 +20,7 @@
 :- import_module list.
 
 map_reduce :-
-	map_reduce_add([[1,2],[1,2,3]],[_L1,_L2]).
+    map_reduce_add([[1, 2], [1, 2, 3]], [_L1, _L2]).
 
 :- pred map_reduce_add(list(list(int))::in, list(int)::out) is det.
 :- external(map_reduce_add/2).

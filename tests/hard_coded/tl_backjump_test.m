@@ -5,7 +5,6 @@
 % Test for thread-local backjumping.
 %
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
 :- module tl_backjump_test.
 :- interface.
@@ -29,7 +28,7 @@ main(!IO) :-
     ;
         io.write_string("spawn/3 not supported in this grade", !IO)
     ).
- 
+
 :- type thread_id == int.
 
 :- pred run_problem(thread_id::in, io::di, io::uo) is cc_multi.
@@ -44,7 +43,7 @@ run_problem(TId0, !IO) :-
     ;
         Sols = [_ | _],
         io.format("(TID: #%d) Solutions:\n", [i(TId)], !IO),
-        WriteSoln = (pred(Sol::in, !.IO::di, !:IO::uo) is det :- 
+        WriteSoln = (pred(Sol::in, !.IO::di, !:IO::uo) is det :-
             io.format("(TID: #%d) ", [i(TId)], !IO),
             io.write(Sol, !IO)
         ),
@@ -105,4 +104,3 @@ is_nogood(2, 1, 2, _, P, _, P).
 is_solution(1, 1, 3).
 is_solution(2, 1, 1).
 is_solution(2, 2, 2).
-

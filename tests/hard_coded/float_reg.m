@@ -1,5 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test:
-% 
+%
 % Test case for creation of float constants.
 %
 % The Mercury compiler of 21 December 1996 failed to compile this on
@@ -8,7 +12,7 @@
 % eg
 % flo.c:22: syntax error before `+'
 % flo.c:23: `mercury_float_const_2pt88e' undeclared (first use this function)
-% 
+%
 % Author: trd
 
 :- module float_reg.
@@ -19,13 +23,14 @@
 
 :- implementation.
 
-:- import_module io, float.
+:- import_module io.
+:- import_module float.
 
 main -->
-	io__write_float(2.88e32),
-	io__write_string("\n"),
-	io__write_float(1.0e32),
-	io__write_string("\n"),
-	io__write_float(1.0e10),
-	io__write_string("\n").
+    io__write_float(2.88e32),
+    io__write_string("\n"),
+    io__write_float(1.0e32),
+    io__write_string("\n"),
+    io__write_float(1.0e10),
+    io__write_string("\n").
 

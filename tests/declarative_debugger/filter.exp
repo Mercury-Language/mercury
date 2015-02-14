@@ -1,13 +1,13 @@
-      E1:     C1 CALL pred filter.main/2-0 (det) filter.m:8
+      E1:     C1 CALL pred filter.main/2-0 (det) filter.m:16
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred filter.p/1-0 (multi)
 mdb> continue
-      E2:     C2 CALL pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E2:     C2 CALL pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> finish
-      E3:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E3:     C2 EXIT pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> dd -d 3 -n 7
 p([1, 2, 9])
 Valid? no
@@ -23,11 +23,11 @@ s2([9])
 my_append([1, 2], [9], [1, 2, 9])
 p([1, 2, 9])
 Is this a bug? yes
-      E3:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E3:     C2 EXIT pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> continue
-      E4:     C2 REDO pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E4:     C2 REDO pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> finish
-      E5:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E5:     C2 EXIT pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> dd -d 3 -n 7
 p([1, 2, 7, 8, 9])
 Valid? no
@@ -41,11 +41,11 @@ s2([7, 8, 9])
 my_append([1, 2], [7, 8, 9], [1, ...])
 p([1, 2, 7, 8, 9])
 Is this a bug? yes
-      E5:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E5:     C2 EXIT pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> continue
-      E6:     C2 REDO pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E6:     C2 REDO pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> finish
-      E7:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E7:     C2 EXIT pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> dd -d 3 -n 7
 p([1, 2, 3, 9])
 Valid? no
@@ -59,11 +59,11 @@ s2([9])
 my_append([1, 2, 3], [9], [1, 2, ...])
 p([1, 2, 3, 9])
 Is this a bug? yes
-      E7:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E7:     C2 EXIT pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> continue
-      E8:     C2 REDO pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E8:     C2 REDO pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> finish
-      E9:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E9:     C2 EXIT pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> dd -d 3 -n 7
 p([1, 2, 3, 7, 8, 9])
 Valid? no
@@ -75,11 +75,11 @@ s2([7, 8, 9])
 my_append([1, 2, 3], [7, 8, 9], [1, ...])
 p([1, 2, 3, 7, 8, 9])
 Is this a bug? yes
-      E9:     C2 EXIT pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+      E9:     C2 EXIT pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> continue
-     E10:     C2 REDO pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+     E10:     C2 REDO pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> finish
-     E11:     C2 FAIL pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+     E11:     C2 FAIL pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> dd -d 3 -n 7
 Call p(_)
 Solutions:
@@ -101,6 +101,6 @@ Complete? yes
 Found partially uncovered atom:
 p(_)
 Is this a bug? yes
-     E11:     C2 FAIL pred filter.p/1-0 (multi) filter.m:20 (filter.m:10)
+     E11:     C2 FAIL pred filter.p/1-0 (multi) filter.m:28 (filter.m:18)
 mdb> continue
 no

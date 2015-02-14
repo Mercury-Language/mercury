@@ -9,6 +9,6 @@ dice -sSF -m dice
 dice -n 3 -s P -m dice
 dice -s Fp -m dice
 dice -sS -n 1 --module dice
-break dice.m:74
+break dice.m:81
 c
 quit -y

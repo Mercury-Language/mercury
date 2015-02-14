@@ -1,9 +1,9 @@
-      E1:     C1 CALL pred user_event_shallow.main/2-0 (cc_multi) user_event_shallow.m:16
+      E1:     C1 CALL pred user_event_shallow.main/2-0 (cc_multi) user_event_shallow.m:20
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> user
-      E2:     C2 USER <safe_test> pred user_event_shallow.queen/2-0 (nondet) c3; user_event_shallow.m:32
+      E2:     C2 USER <safe_test> pred user_event_shallow.queen/2-0 (nondet) c3; user_event_shallow.m:36
 mdb> retry
 Cannot perform retry because information about the input arguments is not available.
 mdb> print *
@@ -29,11 +29,11 @@ User events get no contexts printed.
 mdb> user_event_context full
 User events will get full contexts printed.
 mdb> current
-      E3:     C3 USER <nodiag_fail> pred user_event_shallow.nodiag/3-0 (semidet) s2-2;c4;t;c2; user_event_shallow.m:64
+      E3:     C3 USER <nodiag_fail> pred user_event_shallow.nodiag/3-0 (semidet) s2-2;c4;t;c2; user_event_shallow.m:68
 mdb> user_event_context file
 User events will get only file contexts printed.
 mdb> current
-      E3:     C3 USER <nodiag_fail>  user_event_shallow.m:64
+      E3:     C3 USER <nodiag_fail>  user_event_shallow.m:68
 mdb> vars
         1 test_failed (attr 0)
         2 arg_b (attr 1, B)
@@ -53,7 +53,7 @@ mdb> print *
 mdb> print !arg_b
        arg_b (attr 1, B)      	1
 mdb> user
-      E4:     C2 USER <safe_test>  user_event_shallow.m:32
+      E4:     C2 USER <safe_test>  user_event_shallow.m:36
 mdb> print *
        test_list (attr 0, Out)	[1, 2, 3, 5, 4]
        Data (arg 1)           	[1, 2, 3, 4, 5]

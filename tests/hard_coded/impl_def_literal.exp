@@ -1,5 +1,5 @@
 impl_def_literal.m
-21
+25
 impl_def_literal
 predicate `impl_def_literal.main'/2
 function `impl_def_literal.a_function'/0

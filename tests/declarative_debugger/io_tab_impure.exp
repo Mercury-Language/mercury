@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred io_tab_impure.main/2-0 (det) io_tab_impure.m:11
+      E1:     C1 CALL pred io_tab_impure.main/2-0 (det) io_tab_impure.m:15
 mdb> mdb> echo on
 Command echo enabled.
 mdb> table_io allow
@@ -7,9 +7,9 @@ I/O tabling started.
 mdb> break impure_print_hello
  0: + stop  interface pred io_tab_impure.impure_print_hello/0-0 (det)
 mdb> c
-      E2:     C2 CALL pred io_tab_impure.impure_print_hello/0-0 (det) io_tab_impure.m:24 (io_tab_impure.m:20)
+      E2:     C2 CALL pred io_tab_impure.impure_print_hello/0-0 (det) io_tab_impure.m:28 (io_tab_impure.m:24)
 mdb> f
-hello      E3:     C2 EXIT pred io_tab_impure.impure_print_hello/0-0 (det) io_tab_impure.m:24 (io_tab_impure.m:20)
+hello      E3:     C2 EXIT pred io_tab_impure.impure_print_hello/0-0 (det) io_tab_impure.m:28 (io_tab_impure.m:24)
 mdb> dd -a
 impure_print_hello
 1 tabled IO action:
@@ -30,5 +30,5 @@ print("hello", _, _)
 1 tabled IO action:
 print("hello")
 Is this a bug? y
-      E4:     C3 EXIT pred io_tab_impure.print/3-0 (det) io_tab_impure.m:36 (io_tab_impure.m:31)
+      E4:     C3 EXIT pred io_tab_impure.print/3-0 (det) io_tab_impure.m:40 (io_tab_impure.m:35)
 mdb> quit -y

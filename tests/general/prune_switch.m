@@ -1,4 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test for the switch pruning code in simplify.m.
+
 :- module prune_switch.
 
 :- interface.
@@ -10,27 +15,27 @@
 :- implementation.
 
 :- type t
-	--->	f(int)
-	;	g(int)
-	;	h(int).
+    --->    f(int)
+    ;       g(int)
+    ;       h(int).
 
 main -->
-	{ create_switch_var(SwitchedOn) },
-	(	(
-			{ SwitchedOn = f(Int) }
-		;
-			{ SwitchedOn = h(Int) }
-		)
-	->
-		io__write_int(Int)
-	;
-		io__write_string("Failed")
-	).
+    { create_switch_var(SwitchedOn) },
+    (   (
+            { SwitchedOn = f(Int) }
+        ;
+            { SwitchedOn = h(Int) }
+        )
+    ->
+        io__write_int(Int)
+    ;
+        io__write_string("Failed")
+    ).
 
 :- pred create_switch_var(t::out) is det.
 
 create_switch_var(Var) :-
-	create_switch_var_2(Var).
+    create_switch_var_2(Var).
 
 :- pred create_switch_var_2(t :: (free >> bound(f(ground);g(ground)))) is det.
 :- pragma no_inline(create_switch_var_2/1).

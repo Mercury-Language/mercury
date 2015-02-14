@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module c_write_string.
 
 :- interface.
@@ -13,18 +17,18 @@
 :- pragma foreign_decl("C", "#include <stdio.h>").
 
 :- pragma foreign_proc("C",
-	c_write_string(Str::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+    c_write_string(Str::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure],
 "
-	fputs(Str, stdout);
-	IO = IO0;
+    fputs(Str, stdout);
+    IO = IO0;
 ").
 
 c_write_string(Str) -->
-	io__write_string(Str).
+    io__write_string(Str).
 
 main -->
-	c_write_string("Hello, world\n"),
-	c_write_string("I am 8 today!\n"),
-	c_write_string(X),
-	{ X = "fred\n" }.
+    c_write_string("Hello, world\n"),
+    c_write_string("I am 8 today!\n"),
+    c_write_string(X),
+    { X = "fred\n" }.

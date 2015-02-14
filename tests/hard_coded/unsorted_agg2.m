@@ -1,4 +1,7 @@
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % A simple test of solutions.unsorted_aggregate2/6.
 
 :- module unsorted_agg2.
@@ -25,7 +28,7 @@ main(!IO) :-
 
 collect_q(I, !DoubleQs, !IO) :-
     io.format("Collecting %d ... \n", [i(I)], !IO),
-    !:DoubleQs = [ 2 * I | !.DoubleQs]. 
+    !:DoubleQs = [ 2 * I | !.DoubleQs].
 
 :- pred q(int::out) is multi.
 

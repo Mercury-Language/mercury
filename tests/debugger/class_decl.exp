@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred class_decl.main/2-0 (det) class_decl.m:21
+       1:      1  1 CALL pred class_decl.main/2-0 (det) class_decl.m:25
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet

@@ -1,6 +1,6 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This test case is designed to test the correctness of the program
 % transformation performed by compiler/format_call.m and the associated
@@ -23,11 +23,11 @@
 :- import_module stream.string_writer.
 :- import_module string.
 
-main(!IO) :-	
-	io.write_string(test_string_format_1(42,  'x', "HAL"), !IO),
-	io.write_string(test_string_format_2(142, 'y', "IBM"), !IO),
-	io.write_string(test_string_format_2(242, 'z', "JCN"), !IO),
-	io.write_string(test_string_format_2(342, 'v', "KDO"), !IO),
+main(!IO) :-
+    io.write_string(test_string_format_1(42,  'x', "HAL"), !IO),
+    io.write_string(test_string_format_2(142, 'y', "IBM"), !IO),
+    io.write_string(test_string_format_2(242, 'z', "JCN"), !IO),
+    io.write_string(test_string_format_2(342, 'v', "KDO"), !IO),
     io.nl(!IO),
     test_io_format_1(42,  'a', "WHAL", !IO),
     test_io_format_2(142, 'b', "WIBM", !IO),
@@ -40,7 +40,7 @@ main(!IO) :-
     test_stream_writer_format_2(OutStream, 242, 'g', "XJCN", !IO),
     test_stream_writer_format_2(OutStream, 342, 'h', "XKDO", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func test_string_format_1(int, char, string) = string.
 
@@ -72,7 +72,7 @@ test_string_format_2(Int, Char, Str) = Result :-
             [c(Char), i(IntX) | Tail])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred test_io_format_1(int::in, char::in, string::in, io::di, io::uo) is det.
 
@@ -105,7 +105,7 @@ test_io_format_2(Int, Char, Str, !IO) :-
             [c(Char), i(IntX) | Tail], !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred test_stream_writer_format_1(Stream::in, int::in, char::in, string::in,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).

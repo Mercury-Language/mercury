@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test.
 %
 % The Mercury compiler of 26/10/1999 failed the first part of this test
@@ -19,49 +23,53 @@
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
-:- import_module list, std_util, exception.
+:- import_module list.
+:- import_module std_util.
+:- import_module exception.
 
-:- type foo ---> bar ; baz
-	where equality is foo_equal.
+:- type foo
+    --->    bar
+    ;       baz
+    where equality is foo_equal.
 
 foo_equal(_, _) :-
-	semidet_succeed.
+    semidet_succeed.
 
 main -->
-	( { append([bar], [baz], [baz, bar]) } ->
-		io__write_string("yes\n")
-	;
-		io__write_string("no\n")
-	),
-	perform_comparison_test(comparison_test1),
-	perform_comparison_test(comparison_test2).
+    ( { append([bar], [baz], [baz, bar]) } ->
+        io__write_string("yes\n")
+    ;
+        io__write_string("no\n")
+    ),
+    perform_comparison_test(comparison_test1),
+    perform_comparison_test(comparison_test2).
 
 :- pred perform_comparison_test(pred(T), io__state, io__state).
 :- mode perform_comparison_test(pred(out) is det, di, uo) is cc_multi.
 
 perform_comparison_test(Test) -->
-	{ try(Test, TryResult) },
-	(
-		{ TryResult = failed },
-		io__write_string("failed\n")
-	;
-		{ TryResult = succeeded(Result) },
-		io__write_string("succeeded: "),
-		io__write(Result),
-		io__write_string("\n")
-	;
-		{ TryResult = exception(Exception) },
-		io__write_string("threw exception: "),
-		io__write(Exception),
-		io__write_string("\n")
-	).
+    { try(Test, TryResult) },
+    (
+        { TryResult = failed },
+        io__write_string("failed\n")
+    ;
+        { TryResult = succeeded(Result) },
+        io__write_string("succeeded: "),
+        io__write(Result),
+        io__write_string("\n")
+    ;
+        { TryResult = exception(Exception) },
+        io__write_string("threw exception: "),
+        io__write(Exception),
+        io__write_string("\n")
+    ).
 
 :- pred comparison_test1(comparison_result::out) is det.
 
 comparison_test1(R) :-
-	compare(R, bar, baz).
+    compare(R, bar, baz).
 
 :- pred comparison_test2(comparison_result::out) is det.
 
 comparison_test2(R) :-
-	compare(R, [bar], [baz]).
+    compare(R, [bar], [baz]).

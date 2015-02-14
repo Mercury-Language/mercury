@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % A test of types with floating point fields.
 
 :- module float_field.
@@ -15,9 +19,9 @@
 :- type foo3 ---> foo3(foo2).  % no_tag type containing another notag type
 :- type bar2 ---> bar2(int, float, int). % ordinary d.u. type
 :- type bar_foo2 ---> bar_foo2(int, foo2, int).
-	% notag type inside ordinary d.u. type 
+    % notag type inside ordinary d.u. type
 :- type bar_foo3 ---> bar_foo3(int, foo3, int).
-	% notag type inside notag type inside ordinary d.u. type 
+    % notag type inside notag type inside ordinary d.u. type
 :- type baz2 == float. % equivalence type
 
 :- func foo_val(foo) = float.
@@ -33,7 +37,11 @@
 :- func bar_foo3_val(bar_foo3) = float.
 
 :- implementation.
-:- import_module float, math, string, list.
+
+:- import_module float.
+:- import_module list.
+:- import_module math.
+:- import_module string.
 
 :- type foo ---> foo(float). % no_tag type
 :- type bar ---> bar(int, float, int). % ordinary d.u. type
@@ -52,33 +60,33 @@ bar_foo2_val(bar_foo2(_, foo2(X), _)) = X.
 bar_foo3_val(bar_foo3(_, foo3(foo2(X)), _)) = X.
 
 main -->
-	{ Foo = foo(1.0) },
-	print(Foo), nl,
-	print(foo_val(Foo)), nl,
-	{ Bar = bar(2, 3.0, 4) },
-	print(Bar), nl,
-	print(bar_val(Bar)), nl,
-	{ Baz = 5.0 },
-	print(Baz), nl,
-	print(baz_val(Baz)), nl,
+    { Foo = foo(1.0) },
+    print(Foo), nl,
+    print(foo_val(Foo)), nl,
+    { Bar = bar(2, 3.0, 4) },
+    print(Bar), nl,
+    print(bar_val(Bar)), nl,
+    { Baz = 5.0 },
+    print(Baz), nl,
+    print(baz_val(Baz)), nl,
 
-	{ Foo2 = foo2(1.0) },
-	print(Foo2), nl,
-	print(foo2_val(Foo2)), nl,
-	{ Foo3 = foo3(Foo2) },
-	print(Foo3), nl,
-	print(foo3_val(Foo3)), nl,
-	{ Bar2 = bar2(2, 3.0, 4) },
-	print(Bar2), nl,
-	print(bar2_val(Bar2)), nl,
-	{ Baz2 = 5.0 },
-	print(Baz2), nl,
-	print(baz2_val(Baz2)), nl,
+    { Foo2 = foo2(1.0) },
+    print(Foo2), nl,
+    print(foo2_val(Foo2)), nl,
+    { Foo3 = foo3(Foo2) },
+    print(Foo3), nl,
+    print(foo3_val(Foo3)), nl,
+    { Bar2 = bar2(2, 3.0, 4) },
+    print(Bar2), nl,
+    print(bar2_val(Bar2)), nl,
+    { Baz2 = 5.0 },
+    print(Baz2), nl,
+    print(baz2_val(Baz2)), nl,
 
-	{ BarFoo2 = bar_foo2(6, foo2(7.0), 8) },
-	print(BarFoo2), nl,
-	print(bar_foo2_val(BarFoo2)), nl,
+    { BarFoo2 = bar_foo2(6, foo2(7.0), 8) },
+    print(BarFoo2), nl,
+    print(bar_foo2_val(BarFoo2)), nl,
 
-	{ BarFoo3 = bar_foo3(6, foo3(foo2(7.0)), 8) },
-	print(BarFoo3), nl,
-	print(bar_foo3_val(BarFoo3)), nl.
+    { BarFoo3 = bar_foo3(6, foo3(foo2(7.0)), 8) },
+    print(BarFoo3), nl,
+    print(bar_foo3_val(BarFoo3)), nl.

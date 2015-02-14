@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 
 :- module no_inline.
 
@@ -13,14 +17,14 @@
 
 :- pragma promise_pure(main/2).
 main -->
-	{
-	impure bar(A),
-	impure bar(B),
-	impure bar(C),
-	impure bar(D)
-	},
-	io__write([A, B, C, D]),
-	io__write_string("\n").
+    {
+    impure bar(A),
+    impure bar(B),
+    impure bar(C),
+    impure bar(D)
+    },
+    io__write([A, B, C, D]),
+    io__write_string("\n").
 
 :- pragma no_inline(bar/1).
 :- impure pred bar(int::out) is det.
@@ -30,24 +34,43 @@ main -->
     [will_not_call_mercury],
 "
 {
-	static int counter = 0;
+    static int counter = 0;
 
-	Value = counter++;
+    Value = counter++;
 }
 ").
 
-:- pragma foreign_code("C#", "static int counter = 0;").
-:- pragma foreign_proc("C#", bar(Value::out), [], "Value = counter++;").
+:- pragma foreign_code("C#",
+"
+    static int counter = 0;
+").
+:- pragma foreign_proc("C#",
+    bar(Value::out),
+    [],
+"
+    Value = counter++;
+").
 
-:- pragma foreign_code("Java", "static int counter = 0;").
-:- pragma foreign_proc("Java", bar(Value::out), [], "Value = counter++;").
+:- pragma foreign_code("Java",
+"
+    static int counter = 0;
+").
+:- pragma foreign_proc("Java",
+    bar(Value::out),
+    [],
+"
+    Value = counter++;
+").
 
-:- pragma foreign_proc("Erlang", bar(Value::out), [], "
+:- pragma foreign_proc("Erlang",
+    bar(Value::out),
+    [],
+"
     case get(counter) of
-	undefined ->
-	    Value = 0;
-	C ->
-	    Value = C
+    undefined ->
+        Value = 0;
+    C ->
+        Value = C
     end,
     put(counter, Value + 1)
 ").

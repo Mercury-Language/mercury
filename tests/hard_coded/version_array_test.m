@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 % version_array_test.m
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Fri Oct  8 15:00:25 EST 2004
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module version_array_test.
 
@@ -14,14 +14,19 @@
 
 :- pred main(io :: di, io :: uo) is cc_multi.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module exception, int, list, string, univ, version_array.
+:- import_module exception.
+:- import_module int.
+:- import_module list.
+:- import_module string.
+:- import_module univ.
+:- import_module version_array.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     A0 = version_array.empty,
@@ -127,7 +132,7 @@ main(!IO) :-
     else io.write_string("failed\n", !IO)
     ),
 
-    true. 
+    true.
 
 :- pred test_exception((pred)::in((pred) is semidet),
     io::di, io::uo) is cc_multi.
@@ -140,7 +145,7 @@ test_exception(Pred, !IO) :-
     ;
         Result = failed,
         io.write_string("Error: test failed, expected exception\n", !IO)
-    ;    
+    ;
         Result = exception(Exception),
         io.write_string("Found exception as expected: ", !IO),
         io.write(univ_value(Exception), !IO),
@@ -164,5 +169,4 @@ write_array(Name, Array, !IO) :-
     ArrayStr = string(to_list(Array)),
     io.format("%s: %s (size %d)\n", [s(Name), s(ArrayStr), i(Size)], !IO).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

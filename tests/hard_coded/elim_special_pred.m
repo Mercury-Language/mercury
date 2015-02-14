@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test case for elimination of special predicates in base_type_infos.
 %
 % We can use arg/3 and det_arg/3 to retrieve arguments of types, and
@@ -28,22 +32,22 @@
 :- import_module univ.
 
 :- type enum
-	--->	one
-	;	two
-	;	three.
+    --->    one
+    ;       two
+    ;       three.
 
 :- type fruit
-	--->	banana(enum).
+    --->    banana(enum).
 
 main(!IO) :-
-	X = banana(three),
-	Y = banana(two),
-	det_arg(X, canonicalize, 0, PseudoXArg),
-	type_to_univ(PseudoXArg, XArg),
-	det_arg(Y, canonicalize, 0, PseudoYArg),
-	type_to_univ(PseudoYArg, YArg),
-	( XArg = YArg ->
-		io.write_string("same\n", !IO)
-	;
-		io.write_string("different\n", !IO)
-	).
+    X = banana(three),
+    Y = banana(two),
+    det_arg(X, canonicalize, 0, PseudoXArg),
+    type_to_univ(PseudoXArg, XArg),
+    det_arg(Y, canonicalize, 0, PseudoYArg),
+    type_to_univ(PseudoYArg, YArg),
+    ( XArg = YArg ->
+        io.write_string("same\n", !IO)
+    ;
+        io.write_string("different\n", !IO)
+    ).

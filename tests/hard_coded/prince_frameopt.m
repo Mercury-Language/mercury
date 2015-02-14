@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Versions of the compiler up to April 19, 2006 had a bug that caused this
 % program to crash. The bug was that when frameopt wanted to find out whether
 % a block of instructions referred to stack variables, it did not look past

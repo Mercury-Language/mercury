@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test for a couple of bugs relating to
 % code generation for higher-order code.
 
@@ -5,7 +9,9 @@
 
 :- interface.
 
-:- import_module maybe, pair.
+:- import_module maybe.
+:- import_module pair.
+:- import_module io.
 
 :- type agg_func(T, S) ---> agg(S, func(S, T) = S).
 :- inst agg_mode == bound(agg(ground, func(in, in) = out is det)).
@@ -55,49 +61,48 @@
 :- func sumF_and_minF(func(T) = float) = agg_func(T, pair(float, maybe(float))).
 :- mode sumF_and_minF(func(in) = out is det) = agg_out is det.
 
-:- import_module io.
-
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
 
-:- import_module list, solutions.
+:- import_module float.
+:- import_module int.
+:- import_module list.
+:- import_module solutions.
 
 aggregate(P, agg(S0, F), S) :-
-	A = (pred(Val::in, Acc0::in, Acc::out) is det :- Acc = F(Acc0, Val)),
-	solutions(P, L), list__foldl(A, L, S0, S).
+    A = (pred(Val::in, Acc0::in, Acc::out) is det :- Acc = F(Acc0, Val)),
+    solutions(P, L), list__foldl(A, L, S0, S).
 
 agg_pair(agg(S1, F1), agg(S2, F2)) = agg(S1-S2, F) :-
-	F = (func(Acc1-Acc2, Val) = F1(Acc1, Val)-F2(Acc2, Val)).
-	
-:- import_module int.
+    F = (func(Acc1-Acc2, Val) = F1(Acc1, Val)-F2(Acc2, Val)).
 
 count = agg(0, func(X, _) = X + 1).
 
-count(P) = C :- aggregate(P, count, C).
+count(P) = C :-
+    aggregate(P, count, C).
 
 sum(F) = agg(0, func(X, Y) = X + F(Y)).
 
 sum_agg(P, F) = S :- aggregate(P, sum(F), S).
 
 avg_agg(P, F) = A :-
-	aggregate(P, agg_pair(count, sum(F)), C-S),
-	( C = 0 ->
-		A = no
-    	;	C1 = float__float(C),
-		S1 = float__float(S),
-		A = yes(S1/C1)
-	).
+    aggregate(P, agg_pair(count, sum(F)), C-S),
+    ( C = 0 ->
+        A = no
+        ;   C1 = float__float(C),
+        S1 = float__float(S),
+        A = yes(S1/C1)
+    ).
 
 min(F) = agg(no, func(Acc, Val) = min(Acc, F(Val))).
 
 :- func min(maybe(int), int) = maybe(int).
+
 min(no, Val) = yes(Val).
 min(yes(Acc), Val) = yes(Acc < Val -> Acc ; Val).
 
 sum_and_min(F) = agg_pair(sum(F), min(F)).
-
-:- import_module float.
 
 sumF(F) = agg(0.0, func(X, Y) = X + F(Y)).
 
@@ -106,18 +111,24 @@ wsumF(F) = agg(0.0, (func(X, Y) = X + Y1 * Y2 :- F(Y) = Y1-Y2)).
 minF(F) = agg(no, func(Acc0, Val) = minF(Acc0, F(Val))).
 
 :- func minF(maybe(float), float) = maybe(float).
+
 minF(no, Val) = yes(Val).
 minF(yes(Acc), Val) = yes(Acc < Val -> Acc ; Val).
 
 sumF_and_minF(F) = agg_pair(sumF(F), minF(F)).
 
-:- import_module io.
-
 :- pred iota(int::in, int::in, int::out) is nondet.
-iota(N, M, I) :- N < M, (I = N ; iota(N+1, M, I)).
+
+iota(N, M, I) :-
+    N < M,
+    (
+        I = N
+    ;
+        iota(N+1, M, I)
+    ).
 
 main -->
-	{F = (func(N::in) = (M::out) is det :- M = N*N)},
-	{aggregate(iota(1, 10), agg_pair(count, agg_pair(sum(F), min(F))), A)},
-	io__write(A), io__nl.
-
+    {F = (func(N::in) = (M::out) is det :- M = N*N)},
+    {aggregate(iota(1, 10), agg_pair(count, agg_pair(sum(F), min(F))), A)},
+    io__write(A),
+    io__nl.

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Rotd-2011-11-21 (and a bit before) apply the direct arg functor optimisation
 % to the outer_public/0 type in the daf_bug_sub submodule but not in its
 % parent, daf_bug_parent, module.

@@ -12,10 +12,9 @@
 
 :- implementation.
 
+:- import_module queue.
 :- import_module term.
 :- import_module term_conversion.
-
-:- import_module queue.
 
 main -->
     { queue__init(Q1) },

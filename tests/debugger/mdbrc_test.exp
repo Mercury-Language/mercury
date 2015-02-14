@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred mdbrc_test.main/2-0 (det) mdbrc_test.m:15
+      E1:     C1 CALL pred mdbrc_test.main/2-0 (det) mdbrc_test.m:19
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet

@@ -58,28 +58,28 @@ queen(Data, Out) :-
 :- pred qperm(list(int)::in, list(int)::out) is nondet.
 
 qperm([], []).
-qperm([X|Y], K) :-
-    qdelete(U, [X|Y], Z),
-    K = [U|V],
+qperm([X | Y], K) :-
+    qdelete(U, [X | Y], Z),
+    K = [U | V],
     qperm(Z, V).
 
 :- pred qdelete(int::out, list(int)::in, list(int)::out) is nondet.
 
-qdelete(A, [A|L], L).
-qdelete(X, [A|Z], [A|R]) :-
+qdelete(A, [A | L], L).
+qdelete(X, [A | Z], [A | R]) :-
     qdelete(X, Z, R).
 
 :- pred safe(list(int)::in) is semidet.
 
 safe([]).
-safe([N|L]) :-
+safe([N | L]) :-
     nodiag(N, 1, L),
     safe(L).
 
 :- pred nodiag(int::in, int::in, list(int)::in) is semidet.
 
 nodiag(_, _, []).
-nodiag(B, D, [N|L]) :-
+nodiag(B, D, [N | L]) :-
     NmB is N - B,
     BmN is B - N,
     ( D = NmB ->

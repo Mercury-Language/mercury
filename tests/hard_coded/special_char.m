@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test output of special characters such as \r
 
 :- module special_char.
@@ -9,10 +13,10 @@
 :- implementation.
 
 main -->
-	print("Hello world\r\n"),
-	print("\r\n"),
-	print("\a\b\v\f\t\n"),
-	print("\077\"),
-	print("\0123\"),
-	print("\0321\"),
-	print("\n").
+    print("Hello world\r\n"),
+    print("\r\n"),
+    print("\a\b\v\f\t\n"),
+    print("\077\"),
+    print("\0123\"),
+    print("\0321\"),
+    print("\n").

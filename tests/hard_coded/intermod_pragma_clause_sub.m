@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Ensure that the foreign_decl is placed into the .opt file for procedures
 % which are defined by both a foreign proc and a mercury clause.
 
@@ -11,18 +15,22 @@
 :- implementation.
 
 :- pragma foreign_decl("C", "
-	#define	ML_NUMBER	5
+    #define ML_NUMBER   5
 ").
 
-:- pragma foreign_proc("C", f(X::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
-	X = ML_NUMBER;
-").
 f(5).
+:- pragma foreign_proc("C",
+    f(X::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    X = ML_NUMBER;
+").
 
 g(5).
-:- pragma foreign_proc("C", g(X::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "
-	X = ML_NUMBER;
+:- pragma foreign_proc("C",
+    g(X::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    X = ML_NUMBER;
 ").
 

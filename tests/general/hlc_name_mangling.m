@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test for a bug in the hlc grade where
 % function names were not mangled correctly.
 %
@@ -15,5 +19,5 @@
 :- import_module 'hlc_name_mangling-helper-module'.
 
 main(!IO) :-
-	io.write(foo, !IO),
-	io.nl(!IO).
+    io.write(foo, !IO),
+    io.nl(!IO).

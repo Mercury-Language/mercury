@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module shallow2.
 
 :- interface.
@@ -12,23 +16,23 @@
 :- import_module int.
 
 safe([]).
-safe([N|L]) :-
-	nodiag(N, 1, L),
-	safe(L).
+safe([N | L]) :-
+    nodiag(N, 1, L),
+    safe(L).
 
 :- pred nodiag(int, int, list(int)).
 :- mode nodiag(in, in, in) is semidet.
 
 nodiag(_, _, []).
-nodiag(B, D, [N|L]) :-
-	NmB = N - B,
-	BmN = B - N,
-	( D = NmB ->
-		fail
-	; D = BmN ->
-		fail
-	;
-		true
-	),
-	D1 = D + 1,
-	nodiag(B, D1, L).
+nodiag(B, D, [N | L]) :-
+    NmB = N - B,
+    BmN = B - N,
+    ( D = NmB ->
+        fail
+    ; D = BmN ->
+        fail
+    ;
+        true
+    ),
+    D1 = D + 1,
+    nodiag(B, D1, L).

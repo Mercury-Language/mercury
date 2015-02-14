@@ -1,3 +1,6 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module multi_parameter.
 
@@ -12,20 +15,20 @@
 :- import_module char.
 
 :- typeclass m(A, B) where [
-	pred a(A, B),
-	mode a(in, out) is det
+    pred a(A, B),
+    mode a(in, out) is det
 ].
 
 :- instance m(char, int) where [
-	pred(a/2) is char__to_int
+    pred(a/2) is char__to_int
 ].
 
 main -->
-	{ foo('z', X) },
-	io__write_int(X),
-	io__nl.
+    { foo('z', X) },
+    io__write_int(X),
+    io__nl.
 
-:- pred foo(A, B) <= m(A,B).
+:- pred foo(A, B) <= m(A, B).
 :- mode foo(in, out) is det.
 :- pragma no_inline(foo/2).
 

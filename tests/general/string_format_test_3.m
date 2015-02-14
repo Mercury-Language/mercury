@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module string_format_test_3.
 
 :- interface.
@@ -8,6 +12,8 @@
 
 :- implementation.
 
-:- import_module list, string.
+:- import_module list.
+:- import_module string.
 
-main --> io__format("%s\n", []).
+main -->
+    io__format("%s\n", []).

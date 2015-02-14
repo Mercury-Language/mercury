@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Simple test of io.seek_binary_input.
 
 :- module seek_test.
@@ -29,5 +33,3 @@ main(!IO) :-
         io.write_string(io.error_message(Error), !IO),
         io.nl(!IO)
     ).
-
-% vim: ft=mercury ts=8 sw=4 et wm=0 tw=0

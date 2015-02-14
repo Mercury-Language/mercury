@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module input_term_dep.
 :- interface.
 :- import_module io.
@@ -7,33 +11,31 @@
 :- import_module list.
 
 main -->
-	%
-	% Test cases which track an input subterm.
-	%
-	test1,		% basic det conjunction
-	test2,		% construction unification
-	test3,		% if-then-else
-	test4.		% negation
+    % Test cases which track an input subterm.
+    test1,      % basic det conjunction
+    test2,      % construction unification
+    test3,      % if-then-else
+    test4.      % negation
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred test1(io__state::di, io__state::uo) is det.
 test1 -->
-	{ p(A, B, C) },
-	io__write_int(A),
-	io__nl,
-	io__write_int(B),
-	io__nl,
-	io__write_int(C),
-	io__nl.
+    { p(A, B, C) },
+    io__write_int(A),
+    io__nl,
+    io__write_int(B),
+    io__nl,
+    io__write_int(C),
+    io__nl.
 
 :- pred p(int, int, int).
 :- mode p(out, out, out) is det.
 
 p(A, B, C) :-
-	pa(A),
-	pb(B),
-	pc(A, C).
+    pa(A),
+    pb(B),
+    pc(A, C).
 
 :- pred pa(int).
 :- mode pa(out) is det.
@@ -50,26 +52,27 @@ pb(8).
 
 pc(_, 13).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred test2(io__state::di, io__state::uo) is det.
+
 test2 -->
-	(
-		{ q(X) }
-	->
-		io__write(X),
-		io__nl
-	;
-		io__write_string("no\n")
-	).
+    (
+        { q(X) }
+    ->
+        io__write(X),
+        io__nl
+    ;
+        io__write_string("no\n")
+    ).
 
 :- pred q(list(list(int))).
 :- mode q(out) is semidet.
 
 q(L) :-
-	qa([C, A]),
-	qb(B),
-	qc([A, B, C], L).
+    qa([C, A]),
+    qb(B),
+    qc([A, B, C], L).
 
 :- pred qa(list(list(int))).
 :- mode qa(out) is det.
@@ -86,31 +89,32 @@ qb([]).
 
 qc(L, L).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred test3(io__state::di, io__state::uo) is det.
+
 test3 -->
-	{ r(1, Z) },
-	io__write(Z),
-	io__nl.
+    { r(1, Z) },
+    io__write(Z),
+    io__nl.
 
 :- pred r(int, int).
 :- mode r(in, out) is det.
 
 r(N, P) :-
-	(
-		ra(N, A)
-	->
-		(
-			rb(A)
-		->
-			rc(A, P)
-		;
-			P = 1
-		)
-	;
-		P = 99
-	).
+    (
+        ra(N, A)
+    ->
+        (
+            rb(A)
+        ->
+            rc(A, P)
+        ;
+            P = 1
+        )
+    ;
+        P = 99
+    ).
 
 :- pred ra(int, int).
 :- mode ra(in, out) is semidet.
@@ -127,27 +131,28 @@ rb(3).
 
 rc(_, 33).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred test4(io__state::di, io__state::uo) is det.
+
 test4 -->
-	(
-		{ s(1) }
-	->
-		io__write_string("yes\n")
-	;
-		io__write_string("no\n")
-	).
+    (
+        { s(1) }
+    ->
+        io__write_string("yes\n")
+    ;
+        io__write_string("no\n")
+    ).
 
 :- pred s(int).
 :- mode s(in) is semidet.
 
 s(N) :-
-	\+ (
-		sa(N, A),
-		sb(A),
-		\+ sc(A)
-	).
+    \+ (
+        sa(N, A),
+        sb(A),
+        \+ sc(A)
+    ).
 
 :- pred sa(int, int).
 :- mode sa(in, out) is semidet.
@@ -164,4 +169,4 @@ sb(7).
 
 sc(7).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

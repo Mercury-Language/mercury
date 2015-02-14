@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test:
 % the compiler used to generate code for this in the hlc.gc grade
 % which had undefined behaviour according to ANSI/ISO C,
@@ -15,11 +19,11 @@
 :- import_module std_util.
 
 main -->
-	(if { p(X) } then
-		print("X = "), print(X), nl
-	;
-		print("no")
-	).
+    (if { p(X) } then
+        print("X = "), print(X), nl
+    ;
+        print("no")
+    ).
 
 :- pragma inline(p/1).
 :- pred p(int).

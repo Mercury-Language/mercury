@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module remember_modes.
 
 :- interface.
@@ -8,7 +12,8 @@
 
 :- implementation.
 
-:- import_module list, int.
+:- import_module int.
+:- import_module list.
 
 :- pred p(int, int).
 :- mode p(in, in) is semidet.
@@ -21,19 +26,19 @@ p(1, 2).
 :- pred q(int::in, int::out, int::out, int::out, int::out) is semidet.
 
 q(V, W, X, Y, Z) :-
-	p(V, 2),
-	p(W, 2),
-	p(1, X),
-	p(Y, Z).
+    p(V, 2),
+    p(W, 2),
+    p(1, X),
+    p(Y, Z).
 
-main(!IO) :- 
-	(
-		q(1, W, X, Y, Z) 
-	->
-		write(W, !IO), nl(!IO),
-		write(X, !IO), nl(!IO), 
-		write(Y, !IO), nl(!IO), 
-		write(Z, !IO), nl(!IO)
-	;
-		write_string("failed\n", !IO)
-	).
+main(!IO) :-
+    (
+        q(1, W, X, Y, Z)
+    ->
+        write(W, !IO), nl(!IO),
+        write(X, !IO), nl(!IO),
+        write(Y, !IO), nl(!IO),
+        write(Z, !IO), nl(!IO)
+    ;
+        write_string("failed\n", !IO)
+    ).

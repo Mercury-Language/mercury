@@ -51,7 +51,7 @@ main(!IO) :-
 make_maybe_ground_term(Item, List) :-
     (
         Item = zero(_),
-        List = [zero([1,2]), zero([3,4,5]), zero([6,7,8,9])]
+        List = [zero([1, 2]), zero([3, 4, 5]), zero([6, 7, 8, 9])]
     ;
         Item = one(_),
         List = [Item]
@@ -69,7 +69,7 @@ make_exist_ground_term(List) :-
     % than List for HeadVar__1. This is a bug, but it is not the bug that this
     % test case was created to test for.
 
-    ListA = [zero([1,2]), zero([3,4,5]), zero([6,7,8,9])],
+    ListA = [zero([1, 2]), zero([3, 4, 5]), zero([6, 7, 8, 9])],
     ListB = [one(1)],
     ListC = [two("two")],
     List = ListA ++ ListB ++ ListC.

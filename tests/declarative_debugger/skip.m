@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module skip.
 
 :- interface.
@@ -11,11 +15,11 @@
 :- import_module int.
 
 main(!IO) :-
-	a(1, X),
-	a(2, Y),
-	a(3, Z),
-	write_int(X+Y+Z, !IO),
-	nl(!IO).
+    a(1, X),
+    a(2, Y),
+    a(3, Z),
+    write_int(X+Y+Z, !IO),
+    nl(!IO).
 
 :- pred a(int::in, int::out) is det.
 

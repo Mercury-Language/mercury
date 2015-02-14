@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test for a bug where the compiler would incorrectly specialize
 % the call to P in do_stuff.
 :- module ho_spec_branch_bug.

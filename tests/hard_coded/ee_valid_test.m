@@ -1,4 +1,7 @@
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module ee_valid_test.
 :- interface.
 
@@ -25,10 +28,10 @@ main(!IO) :-
     io.nl(!IO).
 
 :- type fruit
-	--->	apple
-	;	    orange
-	;	    pear
-	;	    lemon.
+    --->    apple
+    ;       orange
+    ;       pear
+    ;       lemon.
 
 :- type foo
     --->    'FOO'
@@ -36,7 +39,7 @@ main(!IO) :-
     ;       'BAZ'.
 
     % Default mapping.
-    % 
+    %
 :- pragma foreign_export_enum("C", fruit/0).
 :- pragma foreign_export_enum("C#", fruit/0).
 :- pragma foreign_export_enum("Java", fruit/0).
@@ -49,12 +52,12 @@ main(!IO) :-
 
     % User-specified mapping.
     % Also checks that module qualifiers on constructor names are handled.
-    % 
+    %
 :- pragma foreign_export_enum("C", fruit/0, [prefix("USER_")],
     [
         ee_valid_test.apple - "APPLE",
-        orange - "ORANGE", 
-        ee_valid_test.pear - "PEAR", 
+        orange - "ORANGE",
+        ee_valid_test.pear - "PEAR",
         ee_valid_test.lemon - "LEMON"
     ]).
 

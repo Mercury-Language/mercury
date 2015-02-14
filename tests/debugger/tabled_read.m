@@ -13,8 +13,8 @@
 
 :- implementation.
 
-:- import_module list.
 :- import_module char.
+:- import_module list.
 :- import_module int.
 
 main(!IO) :-

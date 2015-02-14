@@ -1,4 +1,6 @@
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module calendar_test.
 :- interface.
@@ -10,7 +12,6 @@
 :- implementation.
 
 :- import_module calendar.
-
 :- import_module list.
 :- import_module string.
 
@@ -99,7 +100,6 @@ main(!IO) :-
     test_same_date(Date1, Date3, !IO),
     test_same_date(Date2, Date3, !IO),
     io.nl(!IO).
-    
 
 :- pred test_dur_leq(string::in, string::in, io::di, io::uo) is det.
 
@@ -112,7 +112,7 @@ test_dur_leq(Str1, Str2, !IO) :-
         RelationStr = " =< "
     ; duration_leq(Dur2, Dur1) ->
         RelationStr = " >= "
-    ; 
+    ;
         RelationStr = " <> "
     ),
     io.format("%s %s %s\n", [s(Str1), s(RelationStr), s(Str2)], !IO).

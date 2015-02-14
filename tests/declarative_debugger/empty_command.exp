@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred empty_command.main/2-0 (det) empty_command.m:7
+       1:      1  1 CALL pred empty_command.main/2-0 (det) empty_command.m:13
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred empty_command.p/2-0 (det)
 mdb> continue
-       2:      2  2 CALL pred empty_command.p/2-0 (det) empty_command.m:17 (empty_command.m:8)
+       2:      2  2 CALL pred empty_command.p/2-0 (det) empty_command.m:23 (empty_command.m:14)
 mdb> finish
-       9:      2  2 EXIT pred empty_command.p/2-0 (det) empty_command.m:17 (empty_command.m:8)
+       9:      2  2 EXIT pred empty_command.p/2-0 (det) empty_command.m:23 (empty_command.m:14)
 mdb> dd -d 3 -n 7
 p(53, 53)
 Valid? no
@@ -39,6 +39,6 @@ r(53, 53)
 s(53, 53)
 p(53, 53)
 Is this a bug? yes
-       9:      2  2 EXIT pred empty_command.p/2-0 (det) empty_command.m:17 (empty_command.m:8)
+       9:      2  2 EXIT pred empty_command.p/2-0 (det) empty_command.m:23 (empty_command.m:14)
 mdb> continue
 53

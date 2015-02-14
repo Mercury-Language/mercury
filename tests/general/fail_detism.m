@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % In some versions of the compiler, this results in a compiler abort.
 % The problem is that when q and r are inlined in p, and the switch in r
 % is pushed into the disjunction in q, the alternative for a is rightly noted
@@ -9,24 +13,25 @@
 
 :- module fail_detism.
 :- interface.
-:- import_module io, string.
+:- import_module io.
+:- import_module string.
 
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
 
 main -->
-	{ p(X) },
-	io__write_string(X),
-	io__write_string("\n").
+    { p(X) },
+    io__write_string(X),
+    io__write_string("\n").
 
 :- pred p(string::out) is cc_multi.
 p(X1) :-
-	( q(X), r(X) ->
-		X1 = X
-	;
-		X1 = "none"
-	).
+    ( q(X), r(X) ->
+        X1 = X
+    ;
+        X1 = "none"
+    ).
 
 :- pred q(string::out) is multi.
 q("a").

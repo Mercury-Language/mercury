@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module failure_unify.
 
 :- interface.
@@ -8,16 +12,16 @@
 
 :- implementation.
 
-:- type f ---> f(int).
+:- type f
+    --->    f(int).
 
 main -->
-	(
-		{ X = f(1) },
-		{ Y = f(2) },
-		{ X = Y }
-	->
-		io__write_string("test failed\n")
-	;
-		io__write_string("test succeeded\n")
-	).
-
+    (
+        { X = f(1) },
+        { Y = f(2) },
+        { X = Y }
+    ->
+        io__write_string("test failed\n")
+    ;
+        io__write_string("test succeeded\n")
+    ).

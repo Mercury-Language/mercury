@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Bug 158 and related issues with 8-bit characters due to MR_Char being
 % signed (potentially).
 
@@ -39,5 +43,3 @@ main(!IO) :-
 :- pragma no_inline(aa/0).
 
 aa = char.det_from_int(65).
-
-% vim: ft=mercury ts=8 sts=4 sw=4 et

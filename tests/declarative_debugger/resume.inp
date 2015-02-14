@@ -20,7 +20,7 @@ pd
 print
 c
 retry
-break resume.m:33
+break resume.m:38
 c
 delete *
 break -E3 resume.l
@@ -39,7 +39,7 @@ n
 y
 c
 retry
-break resume.m:34
+break resume.m:39
 c
 delete *
 break -E3 resume.l
@@ -53,7 +53,7 @@ c
 dd -d 3 -n 7 -r
 y
 pd
-break resume.m:35
+break resume.m:40
 c
 delete *
 f
@@ -66,7 +66,7 @@ n
 n
 n
 y
-break resume.m:36
+break resume.m:41
 c
 f
 dd -d 2 -n 7
@@ -82,7 +82,7 @@ n
 n
 n
 y
-break resume.m:37
+break resume.m:42
 c
 f
 dd -d 2 -n 7

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % There was a bug in the inst for static type_infos when --const-struct was
 % enabled: the arity was off by one as it did not count the type_ctor_info
 % argument.
@@ -43,12 +47,9 @@ main(!IO) :-
 
 describe(X, What) :-
     ( dynamic_cast(X, _ : thing(a, a)) ->
-        What = "a,a"
+        What = "a, a"
     ; dynamic_cast(X, _ : thing(a, b)) ->
-        What = "a,b"
+        What = "a, b"
     ;
         unexpected($module, $pred, string(type_of(X)))
     ).
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sts=4 sw=4 et

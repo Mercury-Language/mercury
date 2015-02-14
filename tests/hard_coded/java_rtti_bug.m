@@ -1,6 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test.
 % The Java backend was generating code that didn't initialise an type_ctor_info
-% before another RTTI structure referenced it.  This resulted in a null
+% before another RTTI structure referenced it. This resulted in a null
 % pointer exception when this program is executed.
 
 :- module java_rtti_bug.
@@ -10,8 +14,8 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -28,6 +32,3 @@ main(!IO) :-
 
 :- type baz(T)
     --->    baz(T).
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sts=4 sw=4 et

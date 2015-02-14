@@ -1,4 +1,6 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module oisu_check_main.
 :- interface.
@@ -10,6 +12,7 @@
 :- implementation.
 
 :- import_module oisu_check_db.
+
 :- import_module bool.
 :- import_module pair.
 

@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred revise.main/2-0 (cc_multi) revise.m:8
+       1:      1  1 CALL pred revise.main/2-0 (cc_multi) revise.m:13
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred revise.p/2-0 (multi)
 mdb> continue
-       2:      2  2 CALL pred revise.p/2-0 (multi) revise.m:21 (revise.m:9)
+       2:      2  2 CALL pred revise.p/2-0 (multi) revise.m:26 (revise.m:14)
 mdb> finish
-      14:      2  2 EXIT pred revise.p/2-0 (multi) revise.m:21 (revise.m:9)
+      14:      2  2 EXIT pred revise.p/2-0 (multi) revise.m:26 (revise.m:14)
 mdb> dd -d 3 -n 7
 p("foo", "foo")
 Valid? no
@@ -41,5 +41,5 @@ Valid? [yes] no
 Found incorrect contour:
 q("foo", "foo")
 Is this a bug? yes
-       4:      3  3 EXIT pred revise.q/2-0 (det) revise.m:23 (revise.m:21)
+       4:      3  3 EXIT pred revise.q/2-0 (det) revise.m:28 (revise.m:26)
 mdb> quit -y

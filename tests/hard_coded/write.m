@@ -1,6 +1,6 @@
 % vim: ft=mercury ts=4 sw=4 et
 % Test case for io.write (and io.write_line).
-% 
+%
 % Author: trd
 
 :- module write.
@@ -11,7 +11,12 @@
 
 :- implementation.
 
-:- import_module list, int, term, map, array, univ.
+:- import_module array.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module term.
+:- import_module univ.
 :- import_module version_array.
 
 :- pred test_ops(io::di, io::uo) is det.
@@ -32,14 +37,14 @@
 
 :- type thingie
     --->    foo
-    ;       bar(int) 
+    ;       bar(int)
     ;       bar(int, int)
-    ;       qux(int) 
+    ;       qux(int)
     ;       quux(int)
-    ;       quuux(int, int) 
-    ;       wombat 
-    ;       zoom(int) 
-    ;       zap(int, float) 
+    ;       quuux(int, int)
+    ;       wombat
+    ;       zoom(int)
+    ;       zap(int, float)
     ;       zip(int, int)
     ;       zop(float, float).
 
@@ -68,7 +73,7 @@ main(!IO) :-
     test_ops(!IO),
     test_discriminated(!IO),
     test_polymorphism(!IO),
-    test_builtins(!IO), 
+    test_builtins(!IO),
     test_other(!IO).
 
 test_ops(!IO) :-
@@ -90,7 +95,7 @@ test_discriminated(!IO) :-
     io.write_line(three, !IO),
 
     % Test simple tags.
-    io.write(apple([9,5,1]), !IO), newline(!IO),
+    io.write(apple([9, 5, 1]), !IO), newline(!IO),
     io.write(banana([three, one, two]), !IO), newline(!IO),
 
     % Test complicated tags.
@@ -101,8 +106,8 @@ test_discriminated(!IO) :-
     % Test complicated constant.
     io.write(wombat, !IO), newline(!IO),
     io.write(foo, !IO), newline(!IO),
-    
-    newline(!IO).    
+
+    newline(!IO).
 
 test_polymorphism(!IO) :-
     io.write_string("TESTING POLYMORPHISM\n", !IO),
@@ -135,9 +140,9 @@ test_builtins(!IO) :-
     io.write(4, !IO), newline(!IO),
 
     % Test univ.
-    type_to_univ(["hi! I'm a univ!"], Univ), 
+    type_to_univ(["hi! I'm a univ!"], Univ),
     io.write(Univ, !IO), newline(!IO),
-    
+
     % Test predicates.
     io.write(newline, !IO), newline(!IO),
 
@@ -163,10 +168,10 @@ test_other(!IO) :-
     % A no tag type.
     io.write(qwerty(4), !IO), newline(!IO),
 
-    array.from_list([1,2,3,4], Array),
+    array.from_list([1, 2, 3, 4], Array),
     io.write(Array, !IO), newline(!IO),
 
-    VersionArray = version_array.from_list([1,2,3,4]),
+    VersionArray = version_array.from_list([1, 2, 3, 4]),
     io.write(VersionArray, !IO), newline(!IO),
 
     newline(!IO).

@@ -1,5 +1,9 @@
-% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 % Test converting strings to arbitrary precision integers.
+
 :- module base_string_to_integer.
 :- interface.
 
@@ -14,19 +18,19 @@
 :- import_module string.
 
 main(!IO) :-
-	Base2 = [
-        "0", 
-		"1", 
-		"01",
+    Base2 = [
+        "0",
+        "1",
+        "01",
         "-000001",
         "11",
-		"111",
-		"11111",
-		"101010",
-		"10000000000000000000000000000000",
-		"1000000000000000000000000000000000000000000000000000000000000000",
-		"10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-	],
+        "111",
+        "11111",
+        "101010",
+        "10000000000000000000000000000000",
+        "1000000000000000000000000000000000000000000000000000000000000000",
+        "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    ],
     check_base_valid(2, Base2, !IO),
     Base8 = [
         "0",
@@ -78,11 +82,11 @@ main(!IO) :-
 
 check_base_valid(_, [], !IO).
 check_base_valid(Base, [ String | Strings ], !IO) :-
-	Num = integer.det_from_base_string(Base, String),
-	NumStr = integer.to_string(Num),
-	io.format("%s (base %d) = %s\n", [s(String), i(Base), s(NumStr)],
-		!IO),
-	check_base_valid(Base, Strings, !IO).
+    Num = integer.det_from_base_string(Base, String),
+    NumStr = integer.to_string(Num),
+    io.format("%s (base %d) = %s\n", [s(String), i(Base), s(NumStr)],
+        !IO),
+    check_base_valid(Base, Strings, !IO).
 
 :- pred check_base_invalid(int::in, list(string)::in, io::di, io::uo) is det.
 

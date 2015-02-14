@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module contains_char.
 
 :- interface.
@@ -8,15 +12,16 @@
 
 :- implementation.
 
-:- import_module char, string.
+:- import_module char.
+:- import_module string.
 
 main -->
-	(
-		{ char__to_int(Nul, 0) },
-		{ string__contains_char("", Nul) }
-	->
-		io__write_string("test failed\n")
-	;
-		io__write_string("test succeeded\n")
-	).
+    (
+        { char__to_int(Nul, 0) },
+        { string__contains_char("", Nul) }
+    ->
+        io__write_string("test failed\n")
+    ;
+        io__write_string("test succeeded\n")
+    ).
 

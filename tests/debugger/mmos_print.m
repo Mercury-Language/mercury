@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module mmos_print.
 
 :- interface.
@@ -8,23 +12,24 @@
 
 :- implementation.
 
-:- import_module solutions, list.
+:- import_module list.
+:- import_module solutions.
 
 main(!IO) :-
-	solutions(tc(1), Solns),
-	io.write(Solns, !IO),
-	io.nl(!IO).
+    solutions(tc(1), Solns),
+    io.write(Solns, !IO),
+    io.nl(!IO).
 
 :- pred tc(int::in, int::out) is nondet.
 :- pragma minimal_model(tc/2).
 
 tc(A, B) :-
-	edge(A, C),
-	(
-		B = C
-	;
-		tc(C, B)
-	).
+    edge(A, C),
+    (
+        B = C
+    ;
+        tc(C, B)
+    ).
 
 :- pred edge(int::in, int::out) is nondet.
 

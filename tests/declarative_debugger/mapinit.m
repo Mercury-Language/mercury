@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test. The 17-Nov-2002 version of the compiler got
 % a runtime abort in the declarative debugger for the associated input script.
 % The bug occurred during the conversion to typeinfos of the pseudotypeinfos
@@ -26,17 +30,17 @@
 :- type xmap(K, V) == tree234(K, V).
 
 main -->
-	{ xmap_init(Init) }, 
-	{ xmap_set(Init, 0, "zero", Map) },
-	io__write(Map),
-	io__nl.
+    { xmap_init(Init) },
+    { xmap_set(Init, 0, "zero", Map) },
+    io__write(Map),
+    io__nl.
 
 :- pred xmap_init(xmap(K, V)::out) is det.
 
 xmap_init(Init) :-
-	tree234__init(Init).
+    tree234__init(Init).
 
 :- pred xmap_set(xmap(K, V)::in, K::in, V::in, xmap(K, V)::out) is det.
 
 xmap_set(Map0, Key, Value, Map) :-
-	tree234__set(Key, Value, Map0, Map).
+    tree234__set(Key, Value, Map0, Map).

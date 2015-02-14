@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module rnd.
 
 :- interface.
@@ -9,25 +13,27 @@
 
 :- implementation.
 
-:- import_module float, int, list.
+:- import_module float.
+:- import_module int.
+:- import_module list.
 
 main -->
-	{ rnd.init(17, Rnd) },
-	{ gen_nums(10, Rnd, [], Nums) },
-	foldl((pred(Num::in, di, uo) is det -->
-		print(Num), nl
-	), Nums).
+    { rnd.init(17, Rnd) },
+    { gen_nums(10, Rnd, [], Nums) },
+    foldl((pred(Num::in, di, uo) is det -->
+        print(Num), nl
+    ), Nums).
 
 :- pred gen_nums(int, rnd, list(int), list(int)).
 :- mode gen_nums(in, in, in, out) is det.
 
 gen_nums(N, Rnd0, Acc0, Acc) :-
-	( N =< 0 ->
-		Acc = Acc0
-	;
-		irange(0, 100, Num, Rnd0, Rnd1),
-		gen_nums(N-1, Rnd1, [Num|Acc0], Acc)
-	).
+    ( N =< 0 ->
+        Acc = Acc0
+    ;
+        irange(0, 100, Num, Rnd0, Rnd1),
+        gen_nums(N-1, Rnd1, [Num | Acc0], Acc)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -54,125 +60,125 @@ gen_nums(N, Rnd0, Acc0, Acc) :-
 :- import_module require.
 
 irange(Min, Max, Val, R0, R) :-
-	frange(rfloat(Min), rfloat(Max+1), FVal, R0, R),
-	Val = rint(FVal).
+    frange(rfloat(Min), rfloat(Max+1), FVal, R0, R),
+    Val = rint(FVal).
 
 frange(Min, Max, Val, R0, R) :-
-	rnd(J, R0, R),
-	Val = J*(Max - Min)+Min.
+    rnd(J, R0, R),
+    Val = J*(Max - Min)+Min.
 
 shuffle(Ins, Outs, R0, R) :-
-	list.length(Ins, N),
-	shuffle2(N, Ins, [], T0, R0, R1),
-	shuffle2(N, T0, [], T1, R1, R2),
-	shuffle2(N, T1, [], T2, R2, R3),
-	shuffle2(N, T2, [], T3, R3, R4),
-	shuffle2(N, T3, [], U, R4, R5),
-	shuffle2(N, U, [], Outs, R5, R).
+    list.length(Ins, N),
+    shuffle2(N, Ins, [], T0, R0, R1),
+    shuffle2(N, T0, [], T1, R1, R2),
+    shuffle2(N, T1, [], T2, R2, R3),
+    shuffle2(N, T2, [], T3, R3, R4),
+    shuffle2(N, T3, [], U, R4, R5),
+    shuffle2(N, U, [], Outs, R5, R).
 
 :- pred shuffle2(int, list(T), list(T), list(T), rnd, rnd).
 :- mode shuffle2(in, in, in, out, in, out) is det.
 
 shuffle2(N, Ins, Acc0, Acc, R0, R) :-
-	( N > 0 ->
-		irange(0, N-1, J, R0, R1),
-		delnth(Ins, J, Rest, T),
-		shuffle2(N-1, Rest, [T|Acc0], Acc, R1, R)
-	;
-		Acc = Acc0,
-		R = R0
-	).
+    ( N > 0 ->
+        irange(0, N-1, J, R0, R1),
+        delnth(Ins, J, Rest, T),
+        shuffle2(N-1, Rest, [T | Acc0], Acc, R1, R)
+    ;
+        Acc = Acc0,
+        R = R0
+    ).
 
 :- pred delnth(list(T), int, list(T), T).
 :- mode delnth(in, in, out, out) is det.
 
 delnth([], _, _, _) :-
-	error("delnth: no enough elems!").
-delnth([X|Xs], N, Zs, Z) :-
-	( N =< 0 ->
-		Z = X,
-		Zs = Xs
-	;
-		Zs = [X|Ys],
-		delnth(Xs, N-1, Ys, Z)
-	).
+    error("delnth: no enough elems!").
+delnth([X | Xs], N, Zs, Z) :-
+    ( N =< 0 ->
+        Z = X,
+        Zs = Xs
+    ;
+        Zs = [X | Ys],
+        delnth(Xs, N-1, Ys, Z)
+    ).
 
 oneof(Things, Thing, R0, R) :-
-	list.length(Things, Num),
-	irange(0, Num-1, X, R0, R),
-	list.det_index0(Things, X, Thing).
+    list.length(Things, Num),
+    irange(0, Num-1, X, R0, R),
+    list.det_index0(Things, X, Thing).
 
 %---------------------------------------------------------------------------%
 
 :- type vec
-	---> vec(int, int, int, int, int, int, int, int, int, int).
+    ---> vec(int, int, int, int, int, int, int, int, int, int).
 
 :- type rnd
-	---> rnd(
-		vec,
-		vec,
-		int
-	).
+    ---> rnd(
+        vec,
+        vec,
+        int
+    ).
 
 rnd.init(Seed, rnd(M1, M2, Seed)) :-
-	SN = Seed /\ ((1 << 15) - 1),
-	N  = Seed /\ ((1 << 30) - 1),
-	M1a = vec(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-	M2a = vec(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-	seed1(17, SN, N, M1a, M2a, M1b, M2b),
-	set(M1b, 0, (M1b ** 0) /\ ((1 << 15) - 1), M1),
-	set(M2b, 0, (M2b ** 0) /\ ((1 << 15) - 1), M2).
+    SN = Seed /\ ((1 << 15) - 1),
+    N  = Seed /\ ((1 << 30) - 1),
+    M1a = vec(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    M2a = vec(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    seed1(17, SN, N, M1a, M2a, M1b, M2b),
+    set(M1b, 0, (M1b ** 0) /\ ((1 << 15) - 1), M1),
+    set(M2b, 0, (M2b ** 0) /\ ((1 << 15) - 1), M2).
 
 :- pred seed1(int, int, int, vec, vec, vec, vec).
 :- mode seed1(in, in, in, in, in, out, out) is det.
 
 seed1(N, SNum0, Num0, M1a, M2a, M1, M2) :-
-	(N > 0 ->
-		Num1 = 30903 * SNum0 + (Num0 >> 15),
-		SNum1 = Num1 /\ ((1 << 15) - 1),
-		( N >= 9 ->
-			M2b = M2a,
-			set(M1a, 17 - N, SNum1, M1b)
-		;
-			M1b = M1a,
-			set(M2a, 8 - N, SNum1, M2b)
-		),
-		seed1(N-1, SNum1, Num1, M1b, M2b, M1, M2)
-	;
-		M1 = M1a,
-		M2 = M2a
-	).
+    (N > 0 ->
+        Num1 = 30903 * SNum0 + (Num0 >> 15),
+        SNum1 = Num1 /\ ((1 << 15) - 1),
+        ( N >= 9 ->
+            M2b = M2a,
+            set(M1a, 17 - N, SNum1, M1b)
+        ;
+            M1b = M1a,
+            set(M2a, 8 - N, SNum1, M2b)
+        ),
+        seed1(N-1, SNum1, Num1, M1b, M2b, M1, M2)
+    ;
+        M1 = M1a,
+        M2 = M2a
+    ).
 
 rnd(Res, rnd(M1a, M2a, _Seed0), rnd(M1d, M2d, Seed1)) :-
-	shift(M1a, M1b),
-	shift(M2a, M2b),
-	N1a = (M1b ** 0),
-	N2a = (M2b ** 0),
+    shift(M1a, M1b),
+    shift(M2a, M2b),
+    N1a = (M1b ** 0),
+    N2a = (M2b ** 0),
 
-	N1b = N1a + 1941 * (M1b ** 2) + 1860 * (M1b ** 3) + 1812 * (M1b ** 4)
-		+ 1776 * (M1b ** 5) + 1492 * (M1b ** 6) + 1215 * (M1b ** 7)
-		+ 1066 * (M1b ** 8) + 12013 * (M1b ** 9),
+    N1b = N1a + 1941 * (M1b ** 2) + 1860 * (M1b ** 3) + 1812 * (M1b ** 4)
+        + 1776 * (M1b ** 5) + 1492 * (M1b ** 6) + 1215 * (M1b ** 7)
+        + 1066 * (M1b ** 8) + 12013 * (M1b ** 9),
 
-	N2b = N2a + 1111 * (M2b ** 2) + 2222 * (M2b ** 3) + 3333 * (M2b ** 4)
-		+ 4444 * (M2b ** 5) + 5555 * (M2b ** 6) + 6666 * (M2b ** 7)
-		+ 7777 * (M2b ** 8) + 9272 * (M2b ** 9),
+    N2b = N2a + 1111 * (M2b ** 2) + 2222 * (M2b ** 3) + 3333 * (M2b ** 4)
+        + 4444 * (M2b ** 5) + 5555 * (M2b ** 6) + 6666 * (M2b ** 7)
+        + 7777 * (M2b ** 8) + 9272 * (M2b ** 9),
 
-	set(M1b, 0, (N1b >> 15) /\ ((1 << 15) - 1), M1c),
-	set(M2b, 0, (N2b >> 15) /\ ((1 << 15) - 1), M2c),
+    set(M1b, 0, (N1b >> 15) /\ ((1 << 15) - 1), M1c),
+    set(M2b, 0, (N2b >> 15) /\ ((1 << 15) - 1), M2c),
 
-	set(M1c, 1, N1b /\ ((1 << 15) - 1), M1d),
-	set(M2c, 1, N2b /\ ((1 << 15) - 1), M2d),
+    set(M1c, 1, N1b /\ ((1 << 15) - 1), M1d),
+    set(M2c, 1, N2b /\ ((1 << 15) - 1), M2d),
 
-	Seed1 = ((M1d ** 1) << 15) + (M2d ** 1),
+    Seed1 = ((M1d ** 1) << 15) + (M2d ** 1),
 
-	Res = rfloat(Seed1)/rfloat((1 << 30) - 1).
+    Res = rfloat(Seed1)/rfloat((1 << 30) - 1).
 
 :- pred shift(vec, vec).
 :- mode shift(in, out) is det.
 
 shift(Vec0, Vec1) :-
-	Vec0 = vec(A, B, C, D, E, F, G, H, I, _),
-	Vec1 = vec(A, B, B, C, D, E, F, G, H, I).
+    Vec0 = vec(A, B, C, D, E, F, G, H, I, _),
+    Vec1 = vec(A, B, B, C, D, E, F, G, H, I).
 
 :- func (vec ** int) = int.
 :- mode ((in ** in) = out) is det.
@@ -188,24 +194,24 @@ shift(Vec0, Vec1) :-
 :- mode ((in ** in(bound(9))) = out) is det.
 
 ( Vec ** Ind ) = Res :-
-	Vec = vec(A, B, C, D, E, F, G, H, I, J),
-	(
-		( Ind = 0, Res0 = A
-		; Ind = 1, Res0 = B
-		; Ind = 2, Res0 = C
-		; Ind = 3, Res0 = D
-		; Ind = 4, Res0 = E
-		; Ind = 5, Res0 = F
-		; Ind = 6, Res0 = G
-		; Ind = 7, Res0 = H
-		; Ind = 8, Res0 = I
-		; Ind = 9, Res0 = J
-		)
-	->
-		Res = Res0
-	;
-		error("**: out of range")
-	).
+    Vec = vec(A, B, C, D, E, F, G, H, I, J),
+    (
+        ( Ind = 0, Res0 = A
+        ; Ind = 1, Res0 = B
+        ; Ind = 2, Res0 = C
+        ; Ind = 3, Res0 = D
+        ; Ind = 4, Res0 = E
+        ; Ind = 5, Res0 = F
+        ; Ind = 6, Res0 = G
+        ; Ind = 7, Res0 = H
+        ; Ind = 8, Res0 = I
+        ; Ind = 9, Res0 = J
+        )
+    ->
+        Res = Res0
+    ;
+        error("**: out of range")
+    ).
 
 :- pred set(vec, int, int, vec).
 :- mode set(in, in, in, out) is det.
@@ -221,60 +227,84 @@ shift(Vec0, Vec1) :-
 :- mode set(in, in(bound(9)), in, out) is det.
 
 set(Vec0, Ind, V, Vec) :-
-	Vec0 = vec(A, B, C, D, E, F, G, H, I, J),
-	(
-		( Ind = 0, Vec1 = vec(V, B, C, D, E, F, G, H, I, J)
-		; Ind = 1, Vec1 = vec(A, V, C, D, E, F, G, H, I, J)
-		; Ind = 2, Vec1 = vec(A, B, V, D, E, F, G, H, I, J)
-		; Ind = 3, Vec1 = vec(A, B, C, V, E, F, G, H, I, J)
-		; Ind = 4, Vec1 = vec(A, B, C, D, V, F, G, H, I, J)
-		; Ind = 5, Vec1 = vec(A, B, C, D, E, V, G, H, I, J)
-		; Ind = 6, Vec1 = vec(A, B, C, D, E, F, V, H, I, J)
-		; Ind = 7, Vec1 = vec(A, B, C, D, E, F, G, V, I, J)
-		; Ind = 8, Vec1 = vec(A, B, C, D, E, F, G, H, V, J)
-		; Ind = 9, Vec1 = vec(A, B, C, D, E, F, G, H, I, V)
-		)
-	->
-		Vec = Vec1
-	;
-		error("set: out of range")
-	).
+    Vec0 = vec(A, B, C, D, E, F, G, H, I, J),
+    (
+        ( Ind = 0, Vec1 = vec(V, B, C, D, E, F, G, H, I, J)
+        ; Ind = 1, Vec1 = vec(A, V, C, D, E, F, G, H, I, J)
+        ; Ind = 2, Vec1 = vec(A, B, V, D, E, F, G, H, I, J)
+        ; Ind = 3, Vec1 = vec(A, B, C, V, E, F, G, H, I, J)
+        ; Ind = 4, Vec1 = vec(A, B, C, D, V, F, G, H, I, J)
+        ; Ind = 5, Vec1 = vec(A, B, C, D, E, V, G, H, I, J)
+        ; Ind = 6, Vec1 = vec(A, B, C, D, E, F, V, H, I, J)
+        ; Ind = 7, Vec1 = vec(A, B, C, D, E, F, G, V, I, J)
+        ; Ind = 8, Vec1 = vec(A, B, C, D, E, F, G, H, V, J)
+        ; Ind = 9, Vec1 = vec(A, B, C, D, E, F, G, H, I, V)
+        )
+    ->
+        Vec = Vec1
+    ;
+        error("set: out of range")
+    ).
 
 :- func rfloat(int) = float.
 :- pragma foreign_proc("C",
-	rfloat(I::in) = (F::out), 
-	[will_not_call_mercury, promise_pure],
-"	
-	F = I;
+    rfloat(I::in) = (F::out),
+    [will_not_call_mercury, promise_pure],
+"
+    F = I;
 ").
-:- pragma foreign_proc("C#", rfloat(I::in) = (F::out),
-		[promise_pure], "F = I;").
-:- pragma foreign_proc("Java", rfloat(I::in) = (F::out),
-		[promise_pure], "F = I;").
-:- pragma foreign_proc("Erlang", rfloat(I::in) = (F::out),
-		[promise_pure], "F = float(I)").
+:- pragma foreign_proc("C#",
+    rfloat(I::in) = (F::out),
+    [promise_pure],
+"
+    F = I;
+").
+:- pragma foreign_proc("Java",
+    rfloat(I::in) = (F::out),
+    [promise_pure],
+"
+    F = I;
+").
+:- pragma foreign_proc("Erlang",
+    rfloat(I::in) = (F::out),
+    [promise_pure],
+"
+    F = float(I)
+").
 
 :- func rint(float) = int.
 :- pragma foreign_proc("C",
-	rint(F::in) = (I::out),
-	[will_not_call_mercury, promise_pure],
+    rint(F::in) = (I::out),
+    [will_not_call_mercury, promise_pure],
 "
-	I = F;
+    I = F;
 ").
-:- pragma foreign_proc("C#", rint(F::in) = (I::out),
-		[promise_pure], "I = (int) F;").
-:- pragma foreign_proc("Java", rint(F::in) = (I::out),
-		[promise_pure], "I = (int) F;").
-:- pragma foreign_proc("Erlang", rint(F::in) = (I::out),
-		[promise_pure], "I = trunc(F)").
+:- pragma foreign_proc("C#",
+    rint(F::in) = (I::out),
+    [promise_pure],
+"
+    I = (int) F;"
+).
+:- pragma foreign_proc("Java",
+    rint(F::in) = (I::out),
+    [promise_pure],
+"
+    I = (int) F;"
+).
+:- pragma foreign_proc("Erlang",
+    rint(F::in) = (I::out),
+    [promise_pure],
+"
+    I = trunc(F)"
+).
 
 :- pred for(int, int, pred(int, T, T), T, T).
 :- mode for(in, in, pred(in, in, out) is det, in, out) is det.
 
 for(Min, Max, Pred, Acc0, Acc) :-
-	( Min =< Max ->
-		call(Pred, Min, Acc0, Acc1),
-		for(Min+1, Max, Pred, Acc1, Acc)
-	;
-		Acc = Acc0
-	).
+    ( Min =< Max ->
+        call(Pred, Min, Acc0, Acc1),
+        for(Min+1, Max, Pred, Acc1, Acc)
+    ;
+        Acc = Acc0
+    ).

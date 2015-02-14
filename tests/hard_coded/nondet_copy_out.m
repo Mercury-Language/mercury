@@ -1,6 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test; with `--no-inlining --nondet-copy-out',
-% Mercury 0.10.1 generated code for this which went into an infinite
-% loop.
+% Mercury 0.10.1 generated code for this which went into an infinite loop.
 
 :- module nondet_copy_out.
 
@@ -12,11 +15,11 @@
 :- implementation.
 
 main -->
-	( { p(2) } ->
-		io__write_string("success.\n")
-	;
-		io__write_string("failure.\n")
-	).
+    ( { p(2) } ->
+        io__write_string("success.\n")
+    ;
+        io__write_string("failure.\n")
+    ).
 
 :- pred p(int::out) is multi.
 

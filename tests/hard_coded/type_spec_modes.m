@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module type_spec_modes.
 
 :- interface.
@@ -8,7 +12,8 @@
 
 :- implementation.
 
-:- import_module int, list.
+:- import_module int.
+:- import_module list.
 
 :- pred my_unify(T, T).
 :- mode my_unify(in, in) is semidet.
@@ -24,20 +29,19 @@
 my_unify(X, X).
 
 main -->
-	( { my_unify(1, 1) } ->
-		io__write_string("yes\n")
-	;
-		io__write_string("no\n")
-	),
-	( { my_unify([1, 2, 3], [1, 2, 6]) } ->
-		io__write_string("no\n")
-	;
-		io__write_string("yes\n")
-	),
-	{ my_unify(X, [1, 2, 3]) },
-	( { X = [1, 2, 3] } ->
-		io__write_string("yes\n")
-	;
-		io__write_string("no\n")
-	).
-
+    ( { my_unify(1, 1) } ->
+        io__write_string("yes\n")
+    ;
+        io__write_string("no\n")
+    ),
+    ( { my_unify([1, 2, 3], [1, 2, 6]) } ->
+        io__write_string("no\n")
+    ;
+        io__write_string("yes\n")
+    ),
+    { my_unify(X, [1, 2, 3]) },
+    ( { X = [1, 2, 3] } ->
+        io__write_string("yes\n")
+    ;
+        io__write_string("no\n")
+    ).

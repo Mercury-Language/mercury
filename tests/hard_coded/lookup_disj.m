@@ -1,4 +1,6 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module lookup_disj.
 
@@ -12,8 +14,8 @@
 
 :- import_module int.
 :- import_module list.
-:- import_module solutions.
 :- import_module pair.
+:- import_module solutions.
 :- import_module string.
 
 main(!IO) :-

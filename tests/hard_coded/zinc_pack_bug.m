@@ -1,5 +1,7 @@
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % rotd-2011-07-09 generates code that seg. faults when executed.
 
 :- module zinc_pack_bug.
@@ -15,8 +17,8 @@
     --->    ti_par_bottom
     ;       ti_par_int
     ;       ti_var_int
-    ;       ti_unknown
-    .
+    ;       ti_unknown.
+
 :- type symbol
     --->    sym_variable(
                 type_inst        :: type_inst,

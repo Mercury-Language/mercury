@@ -1,3 +1,6 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module max_length_impl.
 
@@ -10,28 +13,30 @@
 :- implementation.
 
 :- import_module int.
- 
-max_length(Ls,M,Len) :- max(Ls,M), my_length(Ls,Len).
+
+max_length(Ls, M, Len) :-
+    max(Ls, M),
+    my_length(Ls, Len).
 
 :- pred my_length(list(T)::in, int::out) is det.
 
-my_length([],0).
-my_length([_|T],L) :-
-        my_length(T,LT),
-        L is LT + 1.
+my_length([], 0).
+my_length([_ | T], L) :-
+    my_length(T, LT),
+    L is LT + 1.
 
 :- pred max(list(int)::in, int::out) is det.
 
-max(X,M) :- max1(X,0,M).
+max(X, M) :-
+    max1(X, 0, M).
 
 :- pred max1(list(int)::in, int::in, int::out) is det.
 
-max1([],M,M).
-max1([H|T],N,M) :-
-	( H > N ->
-		M1 = H
-	;
-		M1 = N
-	),
-        max1(T,M1,M).
-
+max1([], M, M).
+max1([H | T], N, M) :-
+    ( H > N ->
+        M1 = H
+    ;
+        M1 = N
+    ),
+    max1(T, M1, M).

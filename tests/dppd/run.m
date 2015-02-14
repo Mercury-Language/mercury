@@ -1,4 +1,6 @@
-% vim: ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module run.
 
@@ -19,7 +21,7 @@
 :- import_module int.
 :- import_module pair.
 
-	% The imports which are modules to be benchmarked.
+% The imports which are modules to be benchmarked.
 :- import_module advisor.
 :- import_module applast.
 :- import_module doubleapp.
@@ -48,56 +50,56 @@
 :- import_module rotateprune.
 
 main(!IO) :-
-	io.command_line_arguments(Args, !IO),
-	(
-		Args = ["-n", Arg2],
-		string.to_int(Arg2, Iterations0)
-	->
-		Iterations = Iterations0
-	;
-		Iterations = 1
-	),
-	io.write_string("Iterations: ", !IO),
-	io.write_int(Iterations, !IO),
-	io.nl(!IO),
-	io.nl(!IO),
-	run_benchmark_list(Iterations, benchmark_list, !IO).
+    io.command_line_arguments(Args, !IO),
+    (
+        Args = ["-n", Arg2],
+        string.to_int(Arg2, Iterations0)
+    ->
+        Iterations = Iterations0
+    ;
+        Iterations = 1
+    ),
+    io.write_string("Iterations: ", !IO),
+    io.write_int(Iterations, !IO),
+    io.nl(!IO),
+    io.nl(!IO),
+    run_benchmark_list(Iterations, benchmark_list, !IO).
 
 :- pred run_benchmark_list(int::in, list(benchmark)::in(list_skel(benchmark)),
     io::di, io::uo) is cc_multi.
 
 run_benchmark_list(_, [], !IO).
 run_benchmark_list(Iterations, [Name - Closure | Benchmarks], !IO) :-
-	run_benchmark(Iterations, Name, Closure, !IO),
-	run_benchmark_list(Iterations, Benchmarks, !IO).
+    run_benchmark(Iterations, Name, Closure, !IO),
+    run_benchmark_list(Iterations, Benchmarks, !IO).
 
 :- pred run_benchmark(int, string, pred, io__state, io__state).
 :- mode run_benchmark(in, in, (pred) is semidet, di, uo) is cc_multi.
 
 run_benchmark(Iterations, Name, Closure, !IO) :-
-	% By default, we just run a single iteration and print out
-	% for each test whether the query succeeded or failed;
-	% this is used by the test suite framework.
-	% If the `-n' option is used (see above), we run
-	% multiple iterations, and print out the times for each benchmark.
-	% This can be useful for testing the effect of optimizations.
-	CallClosure =
-		( pred(_Input::in, Output::out) is det :-
-			( call(Closure) ->
-				Output = 1
-			;
-				Output = 0
-			)
-		),
-	benchmark_det(CallClosure, 0, Result, Iterations, Time),
-	( Iterations > 1 ->
-		io.format("%-30s     result %3d        time (ms) %8d\n",
-			[s(Name), i(Result), i(Time)], !IO)
-	;
-		io.format("%-30s     result %3d\n", [s(Name), i(Result)], !IO)
-	),
-	io.flush_output(!IO),
-	garbage_collect(!IO).
+    % By default, we just run a single iteration and print out
+    % for each test whether the query succeeded or failed;
+    % this is used by the test suite framework.
+    % If the `-n' option is used (see above), we run
+    % multiple iterations, and print out the times for each benchmark.
+    % This can be useful for testing the effect of optimizations.
+    CallClosure =
+        ( pred(_Input::in, Output::out) is det :-
+            ( call(Closure) ->
+                Output = 1
+            ;
+                Output = 0
+            )
+        ),
+    benchmark_det(CallClosure, 0, Result, Iterations, Time),
+    ( Iterations > 1 ->
+        io.format("%-30s     result %3d        time (ms) %8d\n",
+            [s(Name), i(Result), i(Time)], !IO)
+    ;
+        io.format("%-30s     result %3d\n", [s(Name), i(Result)], !IO)
+    ),
+    io.flush_output(!IO),
+    garbage_collect(!IO).
 
 :- func benchmark_list = list(benchmark).
 :- mode benchmark_list = list_skel_out(benchmark).

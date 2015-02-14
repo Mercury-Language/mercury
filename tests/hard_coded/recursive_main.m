@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % All this program does is echo the input by recursively calling main to read
 % and then write one char.
 %
@@ -17,14 +21,14 @@
 :- import_module io.
 
 main -->
-	read_char(Result),
-	(
-		{ Result = ok(Char) },
-		write_char(Char),
-		main
-	;
-		{ Result = eof }
-	;
-		{ Result = error(Error) },
-		write_string(error_message(Error))
-	).
+    read_char(Result),
+    (
+        { Result = ok(Char) },
+        write_char(Char),
+        main
+    ;
+        { Result = eof }
+    ;
+        { Result = error(Error) },
+        write_string(error_message(Error))
+    ).

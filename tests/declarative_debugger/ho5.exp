@@ -1,13 +1,13 @@
-      E1:     C1 CALL pred ho5.main/2-0 (cc_multi) ho5.m:8
+      E1:     C1 CALL pred ho5.main/2-0 (cc_multi) ho5.m:14
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred ho5.p/2-0 (det)
 mdb> continue
-      E2:     C2 CALL pred ho5.p/2-0 (det) ho5.m:18
+      E2:     C2 CALL pred ho5.p/2-0 (det) ho5.m:24
 mdb> finish
-      E3:     C2 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18
+      E3:     C2 EXCP pred ho5.p/2-0 (det) c2; ho5.m:24
 mdb> dd -d 3 -n 7
 Call p(1, _)
 Throws zero
@@ -21,15 +21,15 @@ Found unhandled or incorrect exception:
 p(1, _)
 zero
 Is this a bug? yes
-      E3:     C2 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18
+      E3:     C2 EXCP pred ho5.p/2-0 (det) c2; ho5.m:24
 mdb> continue
 mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
 exception(univ_cons('<<function>>'))
-      E4:     C3 CALL pred ho5.p/2-0 (det) ho5.m:18
+      E4:     C3 CALL pred ho5.p/2-0 (det) ho5.m:24
 mdb> finish
-      E5:     C3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18
+      E5:     C3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:24
 mdb> dd -d 3 -n 7
 Call p(2, _)
 Throws zero
@@ -40,7 +40,7 @@ Found unhandled or incorrect exception:
 p(2, _)
 zero
 Is this a bug? yes
-      E5:     C3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18
+      E5:     C3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:24
 mdb> continue
 mdb: warning: reached unknown label
 This may result in some exception events

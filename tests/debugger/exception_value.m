@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module exception_value.
 
 :- interface.
@@ -7,31 +11,33 @@
 
 :- implementation.
 
-:- import_module pair, exception, list.
+:- import_module exception.
+:- import_module list.
+:- import_module pair.
 
 main -->
-	{ test1(Res1) },
-	print(Res1),
-	io__nl,
-	{ test2(Res2) },
-	print(Res2),
-	io__nl.
+    { test1(Res1) },
+    print(Res1),
+    io__nl,
+    { test2(Res2) },
+    print(Res2),
+    io__nl.
 
 :- pred test1(exception_result(int)::out) is cc_multi.
 test1(Res) :-
-	try(p, Res).
+    try(p, Res).
 
 :- pred test2(exception_result(int)::out) is cc_multi.
 test2(Res) :-
-	try(q, Res).
+    try(q, Res).
 
 :- pred p(int::out) is det.
 
 p(_) :-
-	throw("p exception").
+    throw("p exception").
 
 :- pred q(int::out) is det.
 
 q(_) :-
-	throw("q oops" - [1, 2, 3]).
+    throw("q oops" - [1, 2, 3]).
 

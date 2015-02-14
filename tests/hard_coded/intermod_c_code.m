@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module intermod_c_code.
 
 :- interface.
@@ -11,7 +15,6 @@
 :- import_module intermod_c_code2.
 
 main -->
-	{ c_code("Hello, world\n", Y) },
-	io__write(Y),
-	io__nl.
-
+    { c_code("Hello, world\n", Y) },
+    io__write(Y),
+    io__nl.

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test for two bugs.
 %
 % The first bug is that earlier versions of the compiler did not make sure
@@ -22,18 +26,20 @@
 
 :- pred main(io__state::di, io__state::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list.
+
+:- import_module int.
+:- import_module list.
 
 main -->
-	( { test([1, 2], Result) } ->
-		io__write_int(Result),
-		io__write_string("\n")
-	;
-		io__write_string("no solution.\n")
-	).
+    ( { test([1, 2], Result) } ->
+        io__write_int(Result),
+        io__write_string("\n")
+    ;
+        io__write_string("no solution.\n")
+    ).
 
 :- some [U] pred introduce_new_typeinfo(list(T)::in, list(U)::out) is det.
 :- pragma no_inline(introduce_new_typeinfo/2).
@@ -43,19 +49,19 @@ introduce_new_typeinfo(_, ["fortytwo"]).
 :- pred test(list(T)::in, int::out) is semidet.
 
 test(TestList, Result) :-
-	introduce_new_typeinfo(TestList, NewList),
-	(
-		list__length(TestList, Length),
-		Length > 5
-	->
-		Result = 10
-	;
-		% The code here does not need the typeinfo for the
-		% elements of NewList, but typeinfo liveness requires
-		% this typeinfo to be in the resume point established
-		% for the condition, since the debugger may need it to
-		% print the value of NewList at the else event.
+    introduce_new_typeinfo(TestList, NewList),
+    (
+        list__length(TestList, Length),
+        Length > 5
+    ->
+        Result = 10
+    ;
+        % The code here does not need the typeinfo for the
+        % elements of NewList, but typeinfo liveness requires
+        % this typeinfo to be in the resume point established
+        % for the condition, since the debugger may need it to
+        % print the value of NewList at the else event.
 
-		NewList = [],
-		Result = 42
-	).
+        NewList = [],
+        Result = 42
+    ).

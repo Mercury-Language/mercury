@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test for a bug with duplicate call elimination
 % not taking types into account.
 
@@ -11,16 +15,16 @@
 :- import_module string.
 
 main -->
-	{ FileName = "string",
-	  String = "1. ",
-	  string__length(String, Len),
-	  Posn0 = posn(1, 0, 0),
-	  read_from_string(FileName, String, Len, Int, Posn0, _),
-	  read_from_string(FileName, String, Len, Str, Posn0, _) },
-	( { Int = ok(I), Str = ok(S) } ->
-		io__write_int(I),
-		io__write_string(S),
-		io__nl
-	;
-		io__write_string("Syntax error.\n")
-	).
+    { FileName = "string",
+      String = "1. ",
+      string__length(String, Len),
+      Posn0 = posn(1, 0, 0),
+      read_from_string(FileName, String, Len, Int, Posn0, _),
+      read_from_string(FileName, String, Len, Str, Posn0, _) },
+    ( { Int = ok(I), Str = ok(S) } ->
+        io__write_int(I),
+        io__write_string(S),
+        io__nl
+    ;
+        io__write_string("Syntax error.\n")
+    ).

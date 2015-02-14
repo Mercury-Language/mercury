@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test for a code generation bug, fixed
 % on 16 november 1999.
 %
@@ -23,7 +27,8 @@
 
 :- implementation.
 
-:- import_module int, std_util.
+:- import_module int.
+:- import_module std_util.
 
 :- pred foo(int).
 :- mode foo(out) is nondet.
@@ -40,47 +45,50 @@ bar(X) :- X = 1.
 :- mode use(in) is semidet.
 
 :- pragma foreign_proc("C",
-	use(X::in),
-	[will_not_call_mercury, promise_pure],
+    use(X::in),
+    [will_not_call_mercury, promise_pure],
 "
-	/*
-	** To exhibit the bug, this predicate needs only to fail.
-	** However, the symptom of the bug is an infinite loop.
-	** To detect the presence of the bug in finite time,
-	** we abort execution if this code is executed too many times.
-	**
-	** We mention X here to shut up a warning.
-	*/
+    /*
+    ** To exhibit the bug, this predicate needs only to fail.
+    ** However, the symptom of the bug is an infinite loop.
+    ** To detect the presence of the bug in finite time,
+    ** we abort execution if this code is executed too many times.
+    **
+    ** We mention X here to shut up a warning.
+    */
 
-	static int counter = 0;
+    static int counter = 0;
 
-	if (++counter > 100) {
-		MR_fatal_error(""the bug is back"");
-	}
+    if (++counter > 100) {
+        MR_fatal_error(""the bug is back"");
+    }
 
-	SUCCESS_INDICATOR = MR_FALSE;
+    SUCCESS_INDICATOR = MR_FALSE;
 ").
-:- pragma foreign_proc("C#", use(_X::in),
-	[will_not_call_mercury, promise_pure],
+:- pragma foreign_proc("C#",
+    use(_X::in),
+    [will_not_call_mercury, promise_pure],
 "
-	SUCCESS_INDICATOR = false;
+    SUCCESS_INDICATOR = false;
 ").
-:- pragma foreign_proc("Java", use(_X::in),
-	[will_not_call_mercury, promise_pure],
+:- pragma foreign_proc("Java",
+    use(_X::in),
+    [will_not_call_mercury, promise_pure],
 "
-	SUCCESS_INDICATOR = false;
+    SUCCESS_INDICATOR = false;
 ").
-:- pragma foreign_proc("Erlang", use(_X::in),
-	[will_not_call_mercury, promise_pure],
+:- pragma foreign_proc("Erlang",
+    use(_X::in),
+    [will_not_call_mercury, promise_pure],
 "
-	SUCCESS_INDICATOR = false
+    SUCCESS_INDICATOR = false
 ").
 
 main -->
-	( { foo(X), use(X) } ->
-		io__write_string("Succeeded."),
-		nl
-	;
-		io__write_string("Failed."),
-		nl
-	).
+    ( { foo(X), use(X) } ->
+        io__write_string("Succeeded."),
+        nl
+    ;
+        io__write_string("Failed."),
+        nl
+    ).

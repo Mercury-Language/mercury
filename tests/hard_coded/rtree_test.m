@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
 :- module rtree_test.
@@ -7,7 +7,7 @@
 
 :- import_module io.
 
-:- pred main(io::di,io::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -33,9 +33,8 @@ main(!IO) :-
     some [!RTree] (
         !:RTree = rtree.init,
         add_integers(0, 100, !RTree),
-        %
+
         % Find all integers between 33.0 and 66.0.
-        %
         some [!Is] (
             !:Is = rtree.search_intersects(!.RTree, interval(33.0, 66.0)),
             list.sort(!Is),
@@ -44,9 +43,8 @@ main(!IO) :-
             io.nl(!IO),
             io.nl(!IO)
         ),
-        %
-        % Find integer 22.  
-        %
+
+        % Find integer 22.
         some [!Is] (
             !:Is = rtree.search_intersects(!.RTree, interval(22.0, 22.0)),
             io.write_string("Integers from 22 to 22:\n", !IO),
@@ -54,9 +52,8 @@ main(!IO) :-
             io.nl(!IO),
             io.nl(!IO)
         ),
-        %
+
         % Find all prime numbers.
-        %
         some [!Is] (
             !:Is = rtree.search_general(any_is_prime, true1, !.RTree),
             list.sort(!Is),
@@ -65,9 +62,8 @@ main(!IO) :-
             io.nl(!IO),
             io.nl(!IO)
         ),
-        %
+
         % Find the first prime number.
-        %
         io.write_string("First prime from 0 to 100:\n", !IO),
         ( rtree.search_first(any_is_prime, id, !.RTree, 100.0, L, _) ->
             io.write(L, !IO),
@@ -76,9 +72,8 @@ main(!IO) :-
         ;
             io.write_string("search_first FAILED!\n\n", !IO)
         ),
-        %
+
         % Delete all odd numbers.
-        %
         io.write_string("All odds deleted, " ++
             "remaining integers from 33 to 66:\n", !IO),
         some [!Is] (
@@ -94,7 +89,7 @@ main(!IO) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred true1(T::in) is semidet.
 
@@ -103,10 +98,10 @@ true1(_) :-
 
 :- pred id(int::in, float::out) is semidet.
 
-id(I, float(I)) :- 
+id(I, float(I)) :-
     semidet_succeed.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_integers(int::in, int::in, irtree::in, irtree::out) is det.
 
@@ -126,7 +121,7 @@ add_integers(N, M, !RTree) :-
 
 test_range(Cnts, Mn, Mx, RT, Is, P) :-
     K = interval(float(Mn), float(Mx)),
-    ( 
+    (
         Cnts = yes,
         Is0 = search_contains(RT, K)
     ;
@@ -142,7 +137,7 @@ test_range(Cnts, Mn, Mx, RT, Is, P) :-
 
 check_range(N, M, Is) = P :-
     ( N > M ->
-        ( 
+        (
             Is = [] ,
             P = yes
         ;
@@ -182,7 +177,8 @@ any_is_prime(Min, Max, P) :-
     Min =< Max,
     ( is_prime(Min) ->
         P = Min
-    ;   any_is_prime(Min + 1.0, Max, P)
+    ;
+        any_is_prime(Min + 1.0, Max, P)
     ).
 
 %---------------------------------------------------------------------------%
@@ -199,7 +195,7 @@ is_prime(N) :-
 
 :- pred none_divides(int::in, int::in, int::in) is semidet.
 
-none_divides(N,M,I) :-
+none_divides(N, M, I) :-
     ( N > M ->
         true
     ; I mod N = 0 ->
@@ -208,7 +204,7 @@ none_divides(N,M,I) :-
         none_divides(N + 1, M, I)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Assumption: N is odd.
     %

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module string_suffix_bug.
 :- interface.
 :- import_module io.
@@ -9,8 +13,8 @@
 :- import_module string.
 
 main -->
-	( { string__suffix("testing string__suffix", "suffix") } ->
-		io__write_string("yes\n")
-	;
-		io__write_string("no\n")
-	).
+    ( { string__suffix("testing string__suffix", "suffix") } ->
+        io__write_string("yes\n")
+    ;
+        io__write_string("no\n")
+    ).

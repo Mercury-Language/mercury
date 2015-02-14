@@ -1,4 +1,7 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Nested try goals.
 
 :- module try_syntax_6.
@@ -8,14 +11,14 @@
 
 :- pred main(io::di, io::uo) is cc_multi.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module exception.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     io.write_string("test_1:\n", !IO),
@@ -34,11 +37,12 @@ main(!IO) :-
     test_5(!IO).
 
     % Nesting in try goal.
+    %
 :- pred test_1(io::di, io::uo) is cc_multi.
 
 test_1(!IO) :-
-    (try []
-        (try []
+    ( try []
+        ( try []
             throw(3)
         then
             true
@@ -56,14 +60,15 @@ test_1(!IO) :-
     ).
 
     % Nesting in then part.
+    %
 :- pred test_2(io::di, io::uo) is cc_multi.
 
 test_2(!IO) :-
-    (try []
+    ( try []
         (try []
             true
         then
-            (try []
+            ( try []
                 throw(3)
             then
                 true
@@ -86,11 +91,12 @@ test_2(!IO) :-
     ).
 
     % Nesting in else part.
+    %
 :- pred test_3(io::di, io::uo) is cc_multi.
 
 test_3(!IO) :-
-    (try []
-        (try []
+    ( try []
+        ( try []
             fail
         then
             true % unreachable
@@ -116,8 +122,8 @@ test_3(!IO) :-
 :- pred test_4 is det.
 
 test_4 :-
-    (try []
-        (try []
+    ( try []
+        ( try []
             throw(1)
         then
             true
@@ -146,15 +152,16 @@ test_4 :-
     ).
 
     % Nesting in catch_any part.
+    %
 :- pred test_5(io::di, io::uo) is cc_multi.
 
 test_5(!IO) :-
-    (try []
+    ( try []
         throw(1)
     then
         true
     catch_any X ->
-        (try []
+        ( try []
             throw(X)
         then
             true
@@ -162,6 +169,3 @@ test_5(!IO) :-
             io.write_string("caught 1 (RIGHT)\n", !IO)
         )
     ).
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sts=4 sw=4 et

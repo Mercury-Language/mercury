@@ -1,4 +1,6 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module hash_table_delete.
 :- interface.
@@ -7,16 +9,16 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module hash_table.
 :- import_module list.
 :- import_module string.
-:- import_module hash_table.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     some [!HT] (
@@ -28,15 +30,14 @@ main(!IO) :-
         io.nl(!IO)
     ).
 
-
 :- pred myfoldl(pred(T, A, A), list(T), A, A).
 :- mode myfoldl(in(pred(in, hash_table_di, hash_table_uo) is det), in,
-        hash_table_di, hash_table_uo) is det.
+    hash_table_di, hash_table_uo) is det.
 
 myfoldl(_, [], !HT).
 myfoldl(P, [T | Ts], !HT) :-
-        P(T, !HT),
-        myfoldl(P, Ts, !HT).
+    P(T, !HT),
+    myfoldl(P, Ts, !HT).
 
 :- func keys = list(string).
 
@@ -49,6 +50,3 @@ keys =
 
 fill(Key, !HT) :-
     hash_table.det_insert(Key, string.length(Key), !HT).
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sw=4 et wm=0 tw=0

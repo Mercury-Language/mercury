@@ -1,4 +1,6 @@
-% vim: ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module synth_attr.
 
@@ -10,8 +12,8 @@
 
 :- implementation.
 
-:- import_module list.
 :- import_module int.
+:- import_module list.
 :- import_module require.
 
 :- type listint == list(int).
@@ -26,7 +28,7 @@ main(!IO) :-
 
 :- pred data(list(int)::out) is det.
 
-data([1,2,3,4,5]).
+data([1, 2, 3, 4, 5]).
 
 :- pred queen(list(int)::in, list(int)::out) is nondet.
 

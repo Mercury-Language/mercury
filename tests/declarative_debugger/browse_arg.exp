@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred browse_arg.main/2-0 (det) browse_arg.m:7
+       1:      1  1 CALL pred browse_arg.main/2-0 (det) browse_arg.m:13
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred browse_arg.p/2-0 (det)
 mdb> continue
-       2:      2  2 CALL pred browse_arg.p/2-0 (det) browse_arg.m:19 (browse_arg.m:8)
+       2:      2  2 CALL pred browse_arg.p/2-0 (det) browse_arg.m:25 (browse_arg.m:14)
 mdb> finish
-       3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:19 (browse_arg.m:8)
+       3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:25 (browse_arg.m:14)
 mdb> format_param depth 10
 mdb> xml_browser_cmd 'cat ./browse_arg.xml.out'
 mdb> xml_tmp_filename './browse_arg.xml.out'
@@ -69,6 +69,6 @@ dd> no
 Found incorrect contour:
 p(1, baz(1, bar))
 Is this a bug? yes
-       3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:19 (browse_arg.m:8)
+       3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:25 (browse_arg.m:14)
 mdb> continue
 baz(1, bar)

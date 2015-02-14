@@ -1,4 +1,6 @@
-%----------------------------------------------------------------------------
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 % Small test of functions and predicates that have the same name.
 %----------------------------------------------------------------------------
 
@@ -6,7 +8,8 @@
 
 :- interface.
 
-:- import_module list, io.
+:- import_module list.
+:- import_module io.
 
 :- func concat(list(X), list(X)) = list(X).
 :- mode concat(in, in) = out is det.
@@ -21,16 +24,16 @@
 :- import_module string.
 
 concat([], L) = L.
-concat([E|R], L) = [E|concat(R,L)].
+concat([E | R], L) = [E | concat(R, L)].
 
 concat([], L, L).
-concat([E|R], L, [E|Z]) :-
-    concat(R,L,Z).
+concat([E | R], L, [E | Z]) :-
+    concat(R, L, Z).
 
 main -->
-	{ concat(['H','e'],['l','l','o',' '], Hello) },
-	{ World = concat(['w','o'],['r','l','d','!','\n']) },
-	{ string__from_char_list(concat(Hello, World), HelloWorld) },
-	io__write_string(HelloWorld).
+    { concat(['H', 'e'], ['l', 'l', 'o', ' '], Hello) },
+    { World = concat(['w', 'o'], ['r', 'l', 'd', '!', '\n']) },
+    { string__from_char_list(concat(Hello, World), HelloWorld) },
+    io__write_string(HelloWorld).
 
 %-----------------------------

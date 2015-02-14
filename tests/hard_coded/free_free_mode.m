@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module free_free_mode.
 :- interface.
 :- import_module io.
@@ -9,16 +13,16 @@
 
 :- pred main(io__state::di, io__state::uo) is det.
 
-
 :- implementation.
 
 foo(_).
 
-bar(X) :- foo(X).
+bar(X) :-
+    foo(X).
 
 main -->
-	{ bar(X) },
-	{ X = 42 },
-	{ bar(X) },
-	io__write_int(X),
-	io__write_string("\n").
+    { bar(X) },
+    { X = 42 },
+    { bar(X) },
+    io__write_int(X),
+    io__write_string("\n").

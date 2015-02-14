@@ -7,7 +7,6 @@
 % Simulate nogood pruning using the backjump module.
 %
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
 :- module backjump_test.
 :- interface.
@@ -85,4 +84,3 @@ is_nogood(2, 1, 2, _, P, _, P).
 is_solution(1, 1, 3).
 is_solution(2, 1, 1).
 is_solution(2, 2, 2).
-

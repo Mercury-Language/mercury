@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module exception_vars.
 
 :- interface.
@@ -7,15 +11,18 @@
 
 :- implementation.
 
-:- import_module require, int.
+:- import_module require.
+:- import_module int.
 
-main --> { test(42, X) }, print(X).
+main -->
+    { test(42, X) },
+    print(X).
 
 :- pred test(int::in, int::out) is det.
 
 test(X, Y) :-
-	( X > 0 ->
-		error("oops")
-	;
-		Y = X + 1
-	).
+    ( X > 0 ->
+        error("oops")
+    ;
+        Y = X + 1
+    ).

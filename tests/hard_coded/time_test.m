@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module time_test.
 
 :- interface.
@@ -8,19 +12,20 @@
 
 :- implementation.
 
-:- import_module maybe, time, float.
+:- import_module maybe.
+:- import_module time.
+:- import_module float.
 
 main -->
-	time(Time),
-	{ Diff = difftime(Time, mktime(localtime(Time))) },
-	( { (Diff >= 0.0, Diff < 1.0) } ->
-		io__write_string("mktime succeeded\n")
-	;
-		io__write_string("mktime failed\n")
-	),
-	
-	% Sunday 2001-01-07 03:02:01
-	{ TM = tm(101, 0, 7, 3, 2, 1, 6, 0, no) },
-	io__write_string(asctime(TM)),
-	io__nl.
+    time(Time),
+    { Diff = difftime(Time, mktime(localtime(Time))) },
+    ( { (Diff >= 0.0, Diff < 1.0) } ->
+        io__write_string("mktime succeeded\n")
+    ;
+        io__write_string("mktime failed\n")
+    ),
 
+    % Sunday 2001-01-07 03:02:01
+    { TM = tm(101, 0, 7, 3, 2, 1, 6, 0, no) },
+    io__write_string(asctime(TM)),
+    io__nl.

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module term_io_test.
 
 :- interface.
@@ -8,20 +12,22 @@
 
 :- implementation.
 
-:- import_module list, string, term_io.
+:- import_module list.
+:- import_module string.
+:- import_module term_io.
 
 main -->
-	read_term(Res0),
-	(
-		{ Res0 = term(VarSet, Term) },
-		write_term_nl(VarSet, Term),
-		main
-	;
-		{ Res0 = eof }
-	;
-		{ Res0 = error(Msg, Line) },
-		stderr_stream(StdErr),
-		format(StdErr, "%d: %s\n", [i(Line), s(Msg)]),
-		main
-	).
+    read_term(Res0),
+    (
+        { Res0 = term(VarSet, Term) },
+        write_term_nl(VarSet, Term),
+        main
+    ;
+        { Res0 = eof }
+    ;
+        { Res0 = error(Msg, Line) },
+        stderr_stream(StdErr),
+        format(StdErr, "%d: %s\n", [i(Line), s(Msg)]),
+        main
+    ).
 

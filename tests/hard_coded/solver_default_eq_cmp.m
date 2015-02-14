@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
 % Check the generated equality/comparison predicates for solver types
@@ -19,8 +19,8 @@
 
 :- import_module exception.
 :- import_module string.
-:- import_module univ.
 :- import_module unit.
+:- import_module univ.
 
 main(!IO) :-
     io.write_string("Checking equality predicate: ", !IO),
@@ -61,9 +61,9 @@ test_eq(unit, !IO) :-
 :- pred write_solver_type_eq(T::ia, T::ia, io::di, io::uo) is det.
 
 write_solver_type_eq(X, Y, !IO) :-
-    promise_pure ( if   X =  Y
-               then io.write_string("Same\n", !IO)
-               else io.write_string("Different\n", !IO)
+    promise_pure ( if X =  Y
+        then io.write_string("Same\n", !IO)
+        else io.write_string("Different\n", !IO)
     ).
 
 :- pred test_cmp(unit::out, io::di, io::uo) is det.

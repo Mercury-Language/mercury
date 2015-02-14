@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module condition_bug.
 
 :- interface.
@@ -8,36 +12,42 @@
 
 :- implementation.
 
-:- import_module list, int, string, map, term_to_xml, assoc_list,
-	pair.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module pair.
+:- import_module string.
+:- import_module term_to_xml.
 
 main(!IO) :-
-	some [!Map] (
-		map.init(!:Map),
-		map.set("mission", "missie", !Map),
-		map.set("critical", "kritiek", !Map),
-		FinalMap = !.Map
-	),
-	write_xml_doc(io.stdout_stream, translation(FinalMap), !IO),
-	io.nl(!IO).
+    some [!Map] (
+        map.init(!:Map),
+        map.set("mission", "missie", !Map),
+        map.set("critical", "kritiek", !Map),
+        FinalMap = !.Map
+    ),
+    write_xml_doc(io.stdout_stream, translation(FinalMap), !IO),
+    io.nl(!IO).
 
-:- type translation ---> translation(map(string, string)).
+:- type translation
+    --->    translation(map(string, string)).
 
 :- instance xmlable(translation) where [
-	func(to_xml/1) is translation_to_xml
+    func(to_xml/1) is translation_to_xml
 ].
 
 :- func translation_to_xml(translation::in) = (xml::out(xml_doc)).
 
 translation_to_xml(translation(TranslationMap)) =
-	elem("translations", [],
-		translation_pairs_to_xml(map.to_assoc_list(TranslationMap))).
+    elem("translations", [],
+        translation_pairs_to_xml(map.to_assoc_list(TranslationMap))).
 
 :- func translation_pairs_to_xml(assoc_list(string, string)) = list(xml).
 
 translation_pairs_to_xml([]) = [].
-translation_pairs_to_xml([English - Dutch | Rest]) = 
-	[elem("word", [], [
-		elem("english", [], [data(English)]),
-	 	elem("dutch", [], [data(Dutch)])])
-	| translation_pairs_to_xml(Rest)].
+translation_pairs_to_xml([English - Dutch | Rest]) =
+    [elem("word", [], [
+        elem("english", [], [data(English)]),
+        elem("dutch", [], [data(Dutch)])])
+    | translation_pairs_to_xml(Rest)].

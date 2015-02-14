@@ -1,16 +1,24 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module compare_representation.
 :- interface.
 :- import_module io.
+
 :- pred main(io__state::di, io__state::uo) is cc_multi.
+
 :- implementation.
-:- import_module univ, pair.
+
+:- import_module pair.
+:- import_module univ.
 
 main -->
-	test(d1, d1),
-	test(d1, dm),
-	test(dm, dm),
-	test(dm, dt),
-	test(df1, df2).
+    test(d1, d1),
+    test(d1, dm),
+    test(dm, dm),
+    test(dm, dt),
+    test(df1, df2).
 
 :- type val == pair(string, univ).
 
@@ -34,11 +42,11 @@ foo(_, Z) = Z.
 
 :- pred test(val::in, val::in, io__state::di, io__state::uo) is cc_multi.
 test(SA - A, SB - B) -->
-	io__write_string(SA),
-	io__nl,
-	io__write_string(SB),
-	io__nl,
-	{ compare_representation(Res, A, B) },
-	io__write_string("Result = "),
-	io__write(Res),
-	io__write_string(".\n\n").
+    io__write_string(SA),
+    io__nl,
+    io__write_string(SB),
+    io__nl,
+    { compare_representation(Res, A, B) },
+    io__write_string("Result = "),
+    io__write(Res),
+    io__write_string(".\n\n").

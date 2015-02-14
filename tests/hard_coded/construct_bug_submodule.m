@@ -6,7 +6,10 @@
 
 :- interface.
 
-:- import_module string, list, int, assoc_list.
+:- import_module string.
+:- import_module list.
+:- import_module int.
+:- import_module assoc_list.
 
 :- type stat.
 :- type statkey == list(string).
@@ -84,7 +87,7 @@ subs_to_string(Stat) =
 
 plain_to_string(Stat) = Out :-
   Counts = bag.to_assoc_list(Stat),
-  list.sort(comparator(Stat,0), Counts, CountsS),
+  list.sort(comparator(Stat, 0), Counts, CountsS),
   list.map(
     (pred((Name - Count)::in, Line::out) is det :-
       Line = string.int_to_string(Count) ++ "\t" ++ join_list("-", Name)

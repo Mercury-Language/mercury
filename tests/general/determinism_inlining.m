@@ -1,6 +1,10 @@
-% This is a regression test.  The compiler inlined foo/1 without
-% inlining the correct determinism, and the result was a nondet
-% unification.  -- bromage 30/5/1997
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% This is a regression test. The compiler inlined foo/1 without inlining
+% the correct determinism, and the result was a nondet unification.
+% -- bromage 30/5/1997
 
 :- module determinism_inlining.
 :- interface.
@@ -13,11 +17,10 @@
 :- import_module int.
 
 main -->
-	{ foo(X) },
-	io__write_int(X),
-	io__nl.
+    { foo(X) },
+    io__write_int(X),
+    io__nl.
 
 :- pred foo(int :: out) is multi.
 
 foo(42).
-

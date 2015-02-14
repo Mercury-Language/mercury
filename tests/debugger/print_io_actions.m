@@ -1,4 +1,7 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % We define our own I/O primitives, in case the library was compiled without
 % IO tabling.
 
@@ -82,7 +85,7 @@ fake_read_n_chars(Stream, N, Chars, !IO) :-
 
 :- pred fake_io(int::out, io::di, io::uo) is det.
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     fake_io(X::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{

@@ -1,4 +1,9 @@
-	% Test that accumulators are introduced into functions.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Test that accumulators are introduced into functions.
+%
 :- module (func).
 
 :- interface.
@@ -9,15 +14,16 @@
 
 :- implementation.
 
-:- import_module list, int.
+:- import_module list.
+:- import_module int.
 
 main -->
-	io__write_string("sumlist: "),
-	{ Sum = sumlist([5,6,7]) },
-	io__write(Sum),
-	io__nl.
+    io__write_string("sumlist: "),
+    { Sum = sumlist([5, 6, 7]) },
+    io__write(Sum),
+    io__nl.
 
 :- func sumlist(list(int)) = int.
 
 sumlist([]) = 0.
-sumlist([H|T]) = H + sumlist(T).
+sumlist([H | T]) = H + sumlist(T).

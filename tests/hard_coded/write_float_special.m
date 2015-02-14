@@ -1,14 +1,14 @@
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Regression test for problems with io.write_float handling special float
-% values.  In Mercury 14.01 and before ".0" was appended to the string printed
+% values. In Mercury 14.01 and before ".0" was appended to the string printed
 % for special float values, for example:
 %
 % io.write_float(nan, !IO) ==> "nan.0"
 %
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module write_float_special.
 :- interface.

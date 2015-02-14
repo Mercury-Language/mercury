@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module completion.
 
 :- interface.
@@ -11,7 +15,7 @@
 :- implementation.
 
 main -->
-	io__write_string("ok\n").
+    io__write_string("ok\n").
 
 :- func z = int.
 z = 0.

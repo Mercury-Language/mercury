@@ -1,5 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % generated: 7 March 1990
-% option(s): 
+% option(s):
 %
 %   (deriv) times10
 %
@@ -11,19 +15,20 @@
 
 :- interface.
 
-:- import_module int, io.
+:- import_module int.
+:- import_module io.
 
-:- type expr --->	x
-		;	num(int)
-		;	expr + expr
-		;	expr - expr
-		;	expr * expr
-		;	expr / expr
-		;	- expr
-		;	expr ** int
-		;	log(expr)
-		;	exp(expr)
-		.
+:- type expr
+    --->   x
+    ;       num(int)
+    ;       expr + expr
+    ;       expr - expr
+    ;       expr * expr
+    ;       expr / expr
+    ;       - expr
+    ;       expr ** int
+    ;       log(expr)
+    ;       exp(expr).
 
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
@@ -36,18 +41,18 @@
 :- import_module prolog.
 
 main -->
-	( { main4(E1, E2, E3, E4) } ->
-		print_expr(E1),
-		io__write_string("\n\n"),
-		print_expr(E2),
-		io__write_string("\n\n"),
-		print_expr(E3),
-		io__write_string("\n\n"),
-		print_expr(E4),
-		io__write_string("\n")
-	;
-		[]
-	).
+    ( { main4(E1, E2, E3, E4) } ->
+        print_expr(E1),
+        io__write_string("\n\n"),
+        print_expr(E2),
+        io__write_string("\n\n"),
+        print_expr(E3),
+        io__write_string("\n\n"),
+        print_expr(E4),
+        io__write_string("\n")
+    ;
+        []
+    ).
 
 :- pred times10(expr).
 :- mode times10(out) is semidet.
@@ -68,71 +73,71 @@ main -->
 :- mode print_expr(in, di, uo) is det.
 
 print_expr(x) -->
-	io__write_string("x").
+    io__write_string("x").
 print_expr(num(N)) -->
-	io__write_string("num("),
-	io__write_int(N),
-	io__write_string(")").
+    io__write_string("num("),
+    io__write_int(N),
+    io__write_string(")").
 print_expr(log(E)) -->
-	io__write_string("log("),
-	print_expr(E),
-	io__write_string(")").
+    io__write_string("log("),
+    print_expr(E),
+    io__write_string(")").
 print_expr(exp(E)) -->
-	io__write_string("exp("),
-	print_expr(E),
-	io__write_string(")").
+    io__write_string("exp("),
+    print_expr(E),
+    io__write_string(")").
 print_expr(E ** N) -->
-	io__write_string("pow("),
-	print_expr(E),
-	io__write_string(", "),
-	io__write_int(N),
-	io__write_string(")").
+    io__write_string("pow("),
+    print_expr(E),
+    io__write_string(", "),
+    io__write_int(N),
+    io__write_string(")").
 print_expr(E1 + E2) -->
-	io__write_string("plus("),
-	print_expr(E1),
-	io__write_string(", "),
-	print_expr(E2),
-	io__write_string(")").
+    io__write_string("plus("),
+    print_expr(E1),
+    io__write_string(", "),
+    print_expr(E2),
+    io__write_string(")").
 print_expr(E1 - E2) -->
-	io__write_string("minus("),
-	print_expr(E1),
-	io__write_string(", "),
-	print_expr(E2),
-	io__write_string(")").
+    io__write_string("minus("),
+    print_expr(E1),
+    io__write_string(", "),
+    print_expr(E2),
+    io__write_string(")").
 print_expr(E1 * E2) -->
-	io__write_string("times("),
-	print_expr(E1),
-	io__write_string(", "),
-	print_expr(E2),
-	io__write_string(")").
+    io__write_string("times("),
+    print_expr(E1),
+    io__write_string(", "),
+    print_expr(E2),
+    io__write_string(")").
 print_expr(E1 / E2) -->
-	io__write_string("div("),
-	print_expr(E1),
-	io__write_string(", "),
-	print_expr(E2),
-	io__write_string(")").
+    io__write_string("div("),
+    print_expr(E1),
+    io__write_string(", "),
+    print_expr(E2),
+    io__write_string(")").
 print_expr(-E) -->
-	io__write_string("neg("),
-	print_expr(E),
-	io__write_string(")").
+    io__write_string("neg("),
+    print_expr(E),
+    io__write_string(")").
 
 main4(E1, E2, E3, E4) :-
-	ops8(E1),
-	divide10(E2),
-	log10(E3),
-	times10(E4).
+    ops8(E1),
+    divide10(E2),
+    log10(E3),
+    times10(E4).
 
 times10(E) :-
-	d(x * x * x * x * x * x * x * x * x * x * x, x, E).
+    d(x * x * x * x * x * x * x * x * x * x * x, x, E).
 
 log10(E) :-
-	d(log(log(log(log(log(log(log(log(log(log(x)))))))))), x, E).
+    d(log(log(log(log(log(log(log(log(log(log(x)))))))))), x, E).
 
 ops8(E) :-
-	d((x + num(1)) * ((x ** 2 + num(2)) * (x ** 3 + num(3))), x, E).
+    d((x + num(1)) * ((x ** 2 + num(2)) * (x ** 3 + num(3))), x, E).
 
 divide10(E) :-
-	d(x / x / x / x / x / x / x / x / x / x / x, x, E).
+    d(x / x / x / x / x / x / x / x / x / x / x, x, E).
 
 d(U + V, X, DU + DV) :-
     d(U, X, DU),

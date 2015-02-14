@@ -1,6 +1,7 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- module bit_buffer_test.
 
 :- interface.
@@ -27,12 +28,11 @@
 :- import_module univ.
 
 :- type request
-    --->    bits(word, num_bits) 
+    --->    bits(word, num_bits)
     ;       bitmap(bitmap, bit_index, num_bits)
     ;       flush
     ;       pad_to_byte
-    ;       check_buffer_status(stream.result(univ))
-    .
+    ;       check_buffer_status(stream.result(univ)).
 
 :- type read_error
         --->    bits(expected_word :: word, found_word :: word, num_bits)
@@ -48,16 +48,14 @@ main(!IO) :-
     Byte2 = 0b11001100,
     Byte3 = 0b01000110,
     Byte4 = 0b10111001,
-        
+
     % Uncomment this to debug read errors.
     % bit_buffer.read.set_logging_level(1, !IO),
 
     some [!Seq, !ShortSeq, !LongSeq, !ShortBM, !LongBM, !ErrorSeq] (
-        %
         % Test with request sequences that are a minimum of 8 bytes to
         % test overflow even on 64-bit machines (buffers are at least
         % as big as the word size).
-        %
 
         io.write_string("Test reading and writing full bytes.\n", !IO),
         !:Seq = condense(duplicate(4,
@@ -66,19 +64,19 @@ main(!IO) :-
             ++ [check_buffer_status(eof)],
         Seq1 = !.Seq,
         test_sequence(8, !.Seq, !IO),
-            
+
         io.write_string("Test reading and writing partial bytes.\n", !IO),
 
         % This also tests a request split over a flush and handling of
         % a list of requests for which the length is not a multiple of
         % the buffer size.
-        %
+
         !:Seq = condense(duplicate(6,
                     [bits(Byte1, 7), bits(1, 1), bits(Byte2, 6),
                         bits(Byte3, 7), bits(Byte4, 4)])),
         Seq2 = !.Seq,
         test_sequence(8, !.Seq, !IO),
-            
+
         io.write_string(
     "Test flushes when the stream is at a byte boundary and when it is not.\n",
             !IO),
@@ -95,7 +93,7 @@ main(!IO) :-
         % A longer bitmap.
         %
         BM2 = requests_to_bitmap(Seq1 ++ Seq2),
- 
+
         io.write_string("Test simple reading and writing of bitmaps.\n", !IO),
         !:Seq = [bitmap(BM1, 0, num_bits(BM1))],
         test_sequence(8, !.Seq, !IO),
@@ -119,7 +117,7 @@ main(!IO) :-
             !IO),
         !:Seq = [bitmap(BM2, 0, num_bits(BM2))],
         test_sequence(8, !.Seq, !IO),
-        
+
         io.write_string(
     "Test a bitmap starting at a position that isn't on a byte boundary.\n",
             !IO),
@@ -140,7 +138,7 @@ main(!IO) :-
         io.write_string(
             "Test read sequence of bitmaps one byte too long.\n", !IO),
         !:LongBM = shrink_without_copying(copy(BM2), 136),
-        !:ShortBM = shrink_without_copying(copy(BM2), 128), 
+        !:ShortBM = shrink_without_copying(copy(BM2), 128),
         !:ShortSeq = [bitmap(!.ShortBM, 0, num_bits(!.ShortBM))],
         !:LongSeq = [bitmap(!.LongBM, 0, num_bits(!.LongBM))],
         test_error_sequence(io_and_bitmap, 8, !.ShortSeq, !.LongSeq, !IO),
@@ -148,7 +146,7 @@ main(!IO) :-
         io.write_string(
             "Test read sequence of bitmaps one byte too long.\n", !IO),
         !:LongBM = shrink_without_copying(copy(BM2), 136),
-        !:ShortBM = shrink_without_copying(copy(BM2), 128), 
+        !:ShortBM = shrink_without_copying(copy(BM2), 128),
         !:ShortSeq = [bitmap(!.ShortBM, 0, num_bits(!.ShortBM))],
         !:LongSeq = [bitmap(!.LongBM, 0, num_bits(!.LongBM))],
         test_error_sequence(io_and_bitmap, 8, !.ShortSeq, !.LongSeq, !IO),
@@ -186,17 +184,15 @@ main(!IO) :-
     ),
     io.remove_file(bit_buffer_test_tmp_file, _, !IO).
 
-:- pred test_sequence(num_bytes::in, list(request)::in,
-            io::di, io::uo) is det.
+:- pred test_sequence(num_bytes::in, list(request)::in, io::di, io::uo) is det.
 
 test_sequence(BufferSize, Requests0, !IO) :-
-
     % This makes the results for bitmap and I/O buffers consistent.
     Requests = Requests0 ++ [pad_to_byte],
 
-    io.format("Testing with buffer size %d.\n", [i(BufferSize)], !IO), 
+    io.format("Testing with buffer size %d.\n", [i(BufferSize)], !IO),
     TempFile = bit_buffer_test_tmp_file,
-    io.write_string("Testing writes: [", !IO), 
+    io.write_string("Testing writes: [", !IO),
     io.write_list(Requests, ", ", output_request, !IO),
     io.write_string("]\n", !IO),
     io.write_string("Expected result: ", !IO),
@@ -205,7 +201,7 @@ test_sequence(BufferSize, Requests0, !IO) :-
     io.nl(!IO),
     io.flush_output(!IO),
     test_writes(BufferSize, TempFile, Requests, ExpectedBM, !IO),
-    io.write_string("Testing reads:\n", !IO), 
+    io.write_string("Testing reads:\n", !IO),
     test_reads(BufferSize, TempFile, Requests, ExpectedBM, !IO),
     io.write_string("\n", !IO),
     io.flush_output(!IO).
@@ -216,16 +212,14 @@ test_sequence(BufferSize, Requests0, !IO) :-
 :- type error_test_type
     --->    io_and_bitmap
     ;       bitmap_only
-    ;       timebomb(timer)
-    .
+    ;       timebomb(timer).
 
     % SetupRequests will set up a bitmap and the file returned by
     % `bit_buffer_test_tmp_file'.  Requests is a list of requests
     % that will result in a read error when applied to that input.
-    %    
+    %
 :- pred test_error_sequence(error_test_type::in, num_bytes::in,
-        list(request)::in, list(request)::in,
-        io::di, io::uo) is cc_multi.
+    list(request)::in, list(request)::in, io::di, io::uo) is cc_multi.
 
 test_error_sequence(ErrorTestType, BufferSize,
         SetupRequests0, Requests0, !IO) :-
@@ -337,7 +331,7 @@ output_request(check_buffer_status(BufferStatus), !IO) :-
     io.write_string(")", !IO).
 
 :- pred test_writes(num_bytes::in, string::in, list(request)::in,
-        bitmap::in, io::di, io::uo) is det.
+    bitmap::in, io::di, io::uo) is det.
 
 test_writes(BufferSize, FileName, Writes, ExpectedBM, !IO) :-
     io.open_binary_output(FileName, WriteOpenRes, !IO),
@@ -428,12 +422,12 @@ do_write(check_buffer_status(_), !Buffer).
 
     % Create a bitmap directly from the list of requests.
 :- func requests_to_bitmap(list(request)::in) =
-            (bitmap::bitmap_uo) is det.
+    (bitmap::bitmap_uo) is det.
 
 requests_to_bitmap(Requests) = !:BM :-
-        Size = request_list_length(Requests, 0),
-        !:BM = bitmap.init(Size),
-        list.foldl2(request_to_bitmap, Requests, 0, _, !BM).
+    Size = request_list_length(Requests, 0),
+    !:BM = bitmap.init(Size),
+    list.foldl2(request_to_bitmap, Requests, 0, _, !BM).
 
 :- func request_list_length(list(request), int) = int.
 
@@ -466,7 +460,7 @@ request_to_bitmap(flush, !Index, !BM).
 request_to_bitmap(check_buffer_status(_), !Index, !BM).
 
 :- pred test_reads(num_bytes::in, string::in, list(request)::in,
-        bitmap::in, io::di, io::uo) is det.
+    bitmap::in, io::di, io::uo) is det.
 
 test_reads(BufferSize, FileName, Requests, ExpectedBM, !IO) :-
     test_bitmap_reads(Requests, ExpectedBM, !IO),
@@ -521,11 +515,11 @@ test_io_timebomb_reads(BufferSize, Countdown, FileName, Requests, !IO) :-
         ReadOpenRes = ok(ReadStream),
         ErrorState0 = 'new timebomb_state'(ReadStream, !.IO, Countdown),
         !:ErrorBuffer = bit_buffer.read.new(BufferSize,
-                            timebomb_byte_stream,
-                            unsafe_promise_unique(ErrorState0)) :
-                            read_buffer(timebomb_byte_stream,
-                                timebomb_state, timebomb_error),
-        
+            timebomb_byte_stream,
+            unsafe_promise_unique(ErrorState0)) :
+            read_buffer(timebomb_byte_stream,
+                timebomb_state, timebomb_error),
+
         do_reads("timebomb", 1, Requests, !ErrorBuffer),
         finalize(!.ErrorBuffer, _, ErrorState, _, _, ErrorNumFinalBits),
         ( ErrorNumFinalBits = 0 ->
@@ -569,7 +563,7 @@ do_read(Desc, ReqIndex, bits(ExpectedWord0, NumBits), !Buffer) :-
                 true
             ;
                 throw_read_result_error(bits(ExpectedWord, ResultWord, 1),
-                    Desc, ReqIndex) 
+                    Desc, ReqIndex)
             )
         ;
             GetResult = eof,
@@ -588,7 +582,7 @@ do_read(Desc, ReqIndex, bits(ExpectedWord0, NumBits), !Buffer) :-
             ;
                 throw_read_result_error(
                     bits(ExpectedWord, ResultWord, NumBits),
-                    Desc, ReqIndex) 
+                    Desc, ReqIndex)
             )
         ;
             GetResult = error(Err),
@@ -614,7 +608,7 @@ do_read(Desc, ReqIndex, bitmap(SourceBM, Index, NumBits), !Buffer) :-
             ;
                 throw_read_result_error(
                     bitmap(ExpectedBM, !.BM, NumBits, BitsRead),
-                    Desc, ReqIndex) 
+                    Desc, ReqIndex)
             )
         ;
             GetResult = error(Err),
@@ -680,7 +674,7 @@ bit_buffer_test_tmp_file = "bit_buffer_test_tmp".
         timebomb_state(timebombed_stream :: Stream,
             timebombed_state :: State, countdown :: int) =>
         (reader(Stream, byte, State, Error),
-        bulk_reader(Stream, int, bitmap, State, Error)). 
+        bulk_reader(Stream, int, bitmap, State, Error)).
 
 :- type timebomb_error
         --->    bang
@@ -755,7 +749,7 @@ bit_buffer_test_tmp_file = "bit_buffer_test_tmp".
                     Result = error(bang)
                 ;
                     NumBytesRead = NumBytesRead0,
-                    Result = ok    
+                    Result = ok
                 ),
                 Countdown = Countdown0 - NumBytesRead
             ;
@@ -768,4 +762,3 @@ bit_buffer_test_tmp_file = "bit_buffer_test_tmp".
         )
     )
 ].
-

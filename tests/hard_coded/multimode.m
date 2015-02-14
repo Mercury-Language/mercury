@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module multimode.
 :- interface.
 :- import_module io.
@@ -8,34 +12,34 @@
 
 :- pragma promise_pure(main/2).
 main -->
-	{ In = 42 },
-	{ In2 = In },		% this line (and the use of `In2' below,
-				% rather than `In') is needed to avoid
-				% triggering an unrelated bug -- see
-				% tests/valid/mode_selection.m.
+    { In = 42 },
+    { In2 = In },       % this line (and the use of `In2' below,
+                        % rather than `In') is needed to avoid
+                        % triggering an unrelated bug -- see
+                        % tests/valid/mode_selection.m.
 
-	% test pure functions
-	print(func0), nl,
-	print(func1(In)), nl,
-	print(func1(_Out0)), nl,
-	print(func2(In, In2)), nl,
-	print(func2(In, _Out1)), nl,
-	print(func2(_Out2, In)), nl,
-	print(func2(_Out3, _Out4)), nl,
+    % test pure functions
+    print(func0), nl,
+    print(func1(In)), nl,
+    print(func1(_Out0)), nl,
+    print(func2(In, In2)), nl,
+    print(func2(In, _Out1)), nl,
+    print(func2(_Out2, In)), nl,
+    print(func2(_Out3, _Out4)), nl,
 
-	% test impure predicates
-	{ impure test0 },
-	{ impure test1(In) },
-	{ impure test1(_Out10) },
-	{ impure test2(In, In) },
-	{ impure test2(In, _Out11) },
-	{ impure test2(_Out12, In) },
-	{ impure test2(_Out13, _Out14) }.
+    % test impure predicates
+    { impure test0 },
+    { impure test1(In) },
+    { impure test1(_Out10) },
+    { impure test2(In, In) },
+    { impure test2(In, _Out11) },
+    { impure test2(_Out12, In) },
+    { impure test2(_Out13, _Out14) }.
 
 :- func func0 = string.
 :- mode func0 = out is det.
 func0 = ("func0 = out" :: out).
-	
+
 :- pragma promise_pure(func1/1). % XXX technically this is a lie
 :- func func1(int) = string.
 :- mode func1(in) = out is det.
@@ -50,26 +54,26 @@ func1(0::out) = ("func1(out) = out"::out).
 :- mode func2(out, in) = out is det.
 :- mode func2(out, out) = out is det.
 func2(_::in, _::in) = (R::out) :-
-	R = "func2(in, in) = out".
+    R = "func2(in, in) = out".
 func2(_::in, 0::out) = (R::out) :-
-	R = "func2(in, out) = out".
+    R = "func2(in, out) = out".
 func2(0::out, _::in) = (R::out) :-
-	R = "func2(out, in) = out".
+    R = "func2(out, in) = out".
 func2(0::out, 0::out) = (R::out) :-
-	R = "func2(out, out) = out".
+    R = "func2(out, out) = out".
 
 :- impure pred test0.
 :- mode test0 is det.
 test0 :-
-	impure puts("test0").
-	
+    impure puts("test0").
+
 :- impure pred test1(int).
 :- mode test1(in) is det.
 :- mode test1(out) is det.
 test1(_::in) :-
-	impure puts("test1(in)").
+    impure puts("test1(in)").
 test1(0::out) :-
-	impure puts("test1(out)").
+    impure puts("test1(out)").
 
 :- impure pred test2(int, int).
 :- mode test2(in, in) is det.
@@ -77,37 +81,37 @@ test1(0::out) :-
 :- mode test2(out, in) is det.
 :- mode test2(out, out) is det.
 test2(_::in, _::in) :-
-	impure puts("test2(in, in)").
+    impure puts("test2(in, in)").
 test2(_::in, 0::out) :-
-	impure puts("test2(in, out)").
+    impure puts("test2(in, out)").
 test2(0::out, _::in) :-
-	impure puts("test2(out, in)").
+    impure puts("test2(out, in)").
 test2(0::out, 0::out) :-
-	impure puts("test2(out, out)").
+    impure puts("test2(out, out)").
 
 :- impure pred puts(string::in) is det.
 :- pragma foreign_proc("C",
-	puts(S::in),
-	[will_not_call_mercury],
+    puts(S::in),
+    [will_not_call_mercury],
 "
-	puts(S)
+    puts(S)
 ").
 :- pragma foreign_proc("C#",
-        puts(S::in),
-        [will_not_call_mercury],
+    puts(S::in),
+    [will_not_call_mercury],
 "
-        System.Console.WriteLine(S);
+    System.Console.WriteLine(S);
 ").
 :- pragma foreign_proc("Java",
-	puts(S::in),
-	[will_not_call_mercury],
+    puts(S::in),
+    [will_not_call_mercury],
 "
-        System.out.println(S);
+    System.out.println(S);
 ").
 :- pragma foreign_proc("Erlang",
-	puts(S::in),
-	[will_not_call_mercury],
+    puts(S::in),
+    [will_not_call_mercury],
 "
-	io:put_chars(S),
-	io:nl()
+    io:put_chars(S),
+    io:nl()
 ").

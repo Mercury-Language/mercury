@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module unify_expression.
 
 :- interface.
@@ -8,30 +12,31 @@
 
 :- implementation.
 
-:- import_module require, std_util.
+:- import_module require.
+:- import_module std_util.
 
 :- type t
-	--->	f(int, int)
-	;	g(t).
+    --->    f(int, int)
+    ;       g(t).
 
 main -->
-	( { p(g(f(1, 2)), X) } ->
-		io__write(X),
-		io__nl
-	;
-		io__write_string("Error: p failed\n")
-	),
-	( { q(1, 2) } ->
-		print("Error: q succeeded"), nl
-	;
-		print("q failed (as expected)"), nl
-	),
+    ( { p(g(f(1, 2)), X) } ->
+        io__write(X),
+        io__nl
+    ;
+        io__write_string("Error: p failed\n")
+    ),
+    ( { q(1, 2) } ->
+        print("Error: q succeeded"), nl
+    ;
+        print("q failed (as expected)"), nl
+    ),
 
-	( { r(1, 2) } ->
-		print("Error: r succeeded"), nl
-	;
-		print("r failed (as expected)"), nl
-	).
+    ( { r(1, 2) } ->
+        print("Error: r succeeded"), nl
+    ;
+        print("r failed (as expected)"), nl
+    ).
 
 :- pred p(t::in, t::out) is semidet.
 
@@ -48,9 +53,8 @@ r(X, X @ g(1, 2)).
 :- mode g(in, in) = out is semidet.
 :- mode g(out, out) = in is semidet.
 g(1, 2) = X :-
-	( semidet_succeed ->
-		error("g called")
-	;
-		X = 3
-	).
-
+    ( semidet_succeed ->
+        error("g called")
+    ;
+        X = 3
+    ).

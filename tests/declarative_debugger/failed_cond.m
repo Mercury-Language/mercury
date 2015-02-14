@@ -1,4 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test tracking the origin of a sub-term from a failed if-then-else condition.
+
 :- module failed_cond.
 
 :- interface.
@@ -10,9 +15,9 @@
 :- implementation.
 
 main(!IO) :-
-	p(X),
-	write(X, !IO),
-	nl(!IO).
+    p(X),
+    write(X, !IO),
+    nl(!IO).
 
 :- type t ---> a ; b ; c.
 
@@ -23,13 +28,13 @@ p(Y) :- X = c, q(X, Y).
 :- pred q(t::in, t::out) is det.
 
 q(X, Y) :-
-	(
-		r(X)
-	->
-		Y = a
-	;
-		Y = b
-	).
+    (
+        r(X)
+    ->
+        Y = a
+    ;
+        Y = b
+    ).
 
 :- pred r(t::in) is semidet.
 

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module func_test.
 :- interface.
 :- import_module io.
@@ -5,19 +9,20 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module int, std_util.
+:- import_module int.
+:- import_module std_util.
 
-main --> 
-	io__write_int(f(7 * 8) + g(9 * 10)),
-	io__write_string("\n"),
-	io__write_int(test),
-	io__write_string("\n"),
-	io__write_int(g(f(test))),
-	io__write_string("\n"),
-	io__write_int(test2),
-	io__write_string("\n"),
-	io__write_int(g(f(test2))),
-	io__write_string("\n").
+main -->
+    io__write_int(f(7 * 8) + g(9 * 10)),
+    io__write_string("\n"),
+    io__write_int(test),
+    io__write_string("\n"),
+    io__write_int(g(f(test))),
+    io__write_string("\n"),
+    io__write_int(test2),
+    io__write_string("\n"),
+    io__write_int(g(f(test2))),
+    io__write_string("\n").
 
 :- mode test2 == out.
 

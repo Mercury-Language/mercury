@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % In grades using the MLDS this threw the exception
 %
 % Software Error: ml_code_util.m: Unexpected: ml_gen_arg_decls: length mismatch
@@ -12,6 +16,6 @@
 :- import_module intermod_unused_args2.
 
 main(!IO) :-
-    callee(1,2,3,X),
-    io.print(X,!IO),
+    callee(1, 2, 3, X),
+    io.print(X, !IO),
     io.nl(!IO).

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module ignore.
 
 :- interface.
@@ -8,13 +12,15 @@
 
 :- implementation.
 
-:- import_module ignore_1, int, list.
+:- import_module ignore_1.
+:- import_module int.
+:- import_module list.
 
 main(!IO) :-
-	p(X),
-	p(Y),
-	write_int(X+Y, !IO),
-	nl(!IO).
+    p(X),
+    p(Y),
+    write_int(X+Y, !IO),
+    nl(!IO).
 
 :- pred p(int::out) is det.
 

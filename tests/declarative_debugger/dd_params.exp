@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred dd_params.main/2-0 (det) dd_params.m:10
+       1:      1  1 CALL pred dd_params.main/2-0 (det) dd_params.m:17
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred dd_params.p/2-0 (det)
 mdb> continue
-       2:      2  2 CALL pred dd_params.p/2-0 (det) dd_params.m:22 (dd_params.m:11)
+       2:      2  2 CALL pred dd_params.p/2-0 (det) dd_params.m:29 (dd_params.m:18)
 mdb> finish
-       3:      2  2 EXIT pred dd_params.p/2-0 (det) dd_params.m:22 (dd_params.m:11)
+       3:      2  2 EXIT pred dd_params.p/2-0 (det) dd_params.m:29 (dd_params.m:18)
 mdb> dd -d 3 -n 7
 p(1, baz(1, bar))
 Valid? params
@@ -90,6 +90,6 @@ Printall raw_pretty:             10        10        10        10
 Number of I/O actions printed is: 10
 dd> quit
 Diagnosis aborted.
-       3:      2  2 EXIT pred dd_params.p/2-0 (det) dd_params.m:22 (dd_params.m:11)
+       3:      2  2 EXIT pred dd_params.p/2-0 (det) dd_params.m:29 (dd_params.m:18)
 mdb> continue
 baz(1, bar)

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This module defines a bunch of predicates used to test the handling
 % of currying.
 
@@ -20,16 +24,16 @@
 :- implementation.
 
 n(Pred, Pred2) :-
-	Pred2 = (pred(B::in, C::out) is det :- call(Pred, 42, B, C)).
+    Pred2 = (pred(B::in, C::out) is det :- call(Pred, 42, B, C)).
 p(Pred, Pred2) :-
-	Arg = 42,
-	Pred2 = (pred(B::in, C::out) is det :- call(Pred, Arg, B, C)).
+    Arg = 42,
+    Pred2 = (pred(B::in, C::out) is det :- call(Pred, Arg, B, C)).
 q(Pred, Pred2) :- % semidet
-	Arg = 42,
-	Pred2 = (pred(B::in, C::out) is det :- call(Pred, Arg, B, C)).
+    Arg = 42,
+    Pred2 = (pred(B::in, C::out) is det :- call(Pred, Arg, B, C)).
 r(Pred, X, Pred2) :-
-	Pred2 = (pred(B::in, C::out) is det :- call(Pred, X, B, C)).
+    Pred2 = (pred(B::in, C::out) is det :- call(Pred, X, B, C)).
 s(Pred, X, Pred2) :-
-	Pred2 = (pred(B::out, C::in) is det :- call(Pred, X, B, C)).
+    Pred2 = (pred(B::out, C::in) is det :- call(Pred, X, B, C)).
 t(Pred, X, Pred2) :-
-	Pred2 = (pred(B::in, C::out) is det :- call(Pred, X, C, B)).
+    Pred2 = (pred(B::in, C::out) is det :- call(Pred, X, C, B)).

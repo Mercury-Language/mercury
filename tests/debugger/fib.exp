@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred fib.main/2-0 (det) fib.m:13
+      E1:     C1 CALL pred fib.main/2-0 (det) fib.m:19
 mdb> echo on
 Command echo enabled.
 mdb> context none

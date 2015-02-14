@@ -1,10 +1,12 @@
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
-% Compiling this on rotd-2004-12-01 and before in any grade and with inlining 
-% enabled results in the following assertion failure. 
+% Compiling this on rotd-2004-12-01 and before in any grade and with inlining
+% enabled results in the following assertion failure.
 %
-% 	Uncaught Mercury exception:
-% 	Software Error: inappropriate determinism inside a negation
+%   Uncaught Mercury exception:
+%   Software Error: inappropriate determinism inside a negation
 %
 % The problem goes away when inlining is disabled.
 %
@@ -15,7 +17,7 @@
 % predicate that takes two insts and computes the intersections of all the
 % bound insts inside them.
 %
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module puzzle_detism_bug.
 
@@ -27,35 +29,36 @@
 
 :- implementation.
 
-:- import_module list, string.
+:- import_module list.
+:- import_module string.
 
 main(!IO) :-
-	( solve(james, spanner, library) ->
-		Result = "committed"
-	;
-		Result = "did not commit"
-	),
-	io.write_string("James " ++ Result ++
-		" the murder with the spanner in the library.\n", !IO).
+    ( solve(james, spanner, library) ->
+        Result = "committed"
+    ;
+        Result = "did not commit"
+    ),
+    io.write_string("James " ++ Result ++
+        " the murder with the spanner in the library.\n", !IO).
 
 :- type suspect
-	--->	george
-	;	katherine
-	;	james.
+    --->    george
+    ;       katherine
+    ;       james.
 
 :- type weapon
-	--->	knife
-	;	spanner
-	;	candlestick.
+    --->    knife
+    ;       spanner
+    ;       candlestick.
 
 :- type room
-	--->	library
-	;	lounge
-	;	conservatory.
+    --->    library
+    ;       lounge
+    ;       conservatory.
 
 :- pred solve(suspect::in, weapon::in, room::in) is semidet.
 
 solve(Suspect, Weapon, Room) :-
-	( Weapon = spanner => ( Room = library ; Room = lounge )),
-	( Weapon = candlestick => 
-		( Suspect = katherine ; Room = conservatory )).
+    ( Weapon = spanner => ( Room = library ; Room = lounge )),
+    ( Weapon = candlestick =>
+        ( Suspect = katherine ; Room = conservatory )).

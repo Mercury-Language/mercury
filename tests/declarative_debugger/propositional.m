@@ -1,18 +1,24 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module propositional.
 :- interface.
 :- import_module io.
+
 :- pred main(io__state::di, io__state::uo) is det.
+
 :- implementation.
 :- import_module std_util.
 
 main -->
-	(
-		{ a, b }
-	->
-		io__write_string("yes\n")
-	;
-		io__write_string("no\n")
-	).
+    (
+        { a, b }
+    ->
+        io__write_string("yes\n")
+    ;
+        io__write_string("no\n")
+    ).
 
 :- pred a is semidet.
 :- pred b is semidet.
@@ -37,4 +43,3 @@ f :- i.
 g :- semidet_succeed.
 h :- semidet_fail.
 i :- semidet_succeed.
-

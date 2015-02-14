@@ -1,5 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % A construction of a direct argument functor with a free argument was
-% completely ignored.  This test case caused a compiler abort during LLDS
+% completely ignored. This test case caused a compiler abort during LLDS
 % code generation.
 
 :- module direct_arg_partial_inst.
@@ -9,8 +13,8 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -48,6 +52,3 @@ main(!IO) :-
     foo(ListB, ResultB),
     io.write_string(ResultB, !IO),
     io.nl(!IO).
-
-%-----------------------------------------------------------------------------%
-% vim: set sts=4 sw=4 et:

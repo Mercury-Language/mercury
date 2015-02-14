@@ -1,10 +1,10 @@
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 % File: thread_barrier_test.m
 % Main author: Sebastian Godelet <sebastian.godelet+github@gmail.com>
 % Created on: Tue Apr  8 15:54:57 CEST 2014
-% vim: ft=mercury ff=unix ts=4 sw=4 et
-%
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module thread_barrier_test.
 
@@ -14,8 +14,8 @@
 
 :- pred main(io::di, io::uo) is cc_multi.
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -30,7 +30,7 @@
 
 :- import_module thread_test_utils.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func fib(integer) = integer.
 
@@ -44,7 +44,7 @@ fib(N) = Fib :-
 test_spawn_and_wait(ThreadCount, !IO) :-
     init_all_thread_output(AllThreadOutput, !IO),
     init_thread_output(AllThreadOutput, 0, Output, !IO),
-    t_write_string(Output, format("-- testing spawning with %d threads", 
+    t_write_string(Output, format("-- testing spawning with %d threads",
         [i(ThreadCount)]), !IO),
     barrier.init(ThreadCount + 1, Barrier, !IO),
     list.foldl((pred(Thread::in, !.IO::di, !:IO::uo) is cc_multi :-
@@ -153,6 +153,6 @@ main(!IO) :-
         unexpected($file, $pred, $grade ++ " does not support thread spawning")
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % -*- Mode: Mercury; column: 80; indent-tabs-mode: nil; tabs-width: 4 -*-
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

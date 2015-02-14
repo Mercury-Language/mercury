@@ -1,8 +1,14 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test handling of no_tag types without inlining.
+
 :- module test_imported_no_tag.
 :- interface.
 
-:- import_module imported_no_tag, io.
+:- import_module imported_no_tag.
+:- import_module io.
 
 :- pred main(io.state, io.state).
 :- mode main(di, uo) is det.
@@ -14,9 +20,9 @@
 test_int(99).
 
 main -->
- ( { pwrite(class(test_int), 99) } ->
-	io__write_string("ok\n")	
-;
-	io__write_string("uh oh\n")
-).
+    ( { pwrite(class(test_int), 99) } ->
+        io__write_string("ok\n")
+    ;
+        io__write_string("uh oh\n")
+    ).
 

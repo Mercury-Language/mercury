@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test case for use of zero-arity higher-order function terms.
 %
 % Author: fjh
@@ -27,23 +31,23 @@ apply_nullary_func(F) = apply(F).
 apply_func(F) = apply(F).
 
 main -->
-	{ F = ((func) = 42) },
-	{ X = apply(F) },
-	{ G = ((func) = (_ :: out) is semidet :- fail) },
-	{ H = ((func) = (R :: out) is semidet :- semidet_succeed, R = X) },
-	print("X = "), print(X), nl,
-	print("apply(F) = "), print(X), nl,
-	print("apply_func(F) = "), print(X), nl,
-	print("apply_nullary_func(F) = "), print(X), nl,
-	( { Y = apply(G) } ->
-		print("Y = "), print(Y), nl
-	;
-		print("Y = apply(G) failed"), nl
-	),
-	( { Z = apply(H) } ->
-		print("Z = "), print(Z), nl
-	;
-		print("Y = apply(G) failed"), nl
-	),
-	print("type_of(F) = "), print(type_of(F)), nl,
-	print("type_name(type_of(F)) = "), print(type_name(type_of(F))), nl.
+    { F = ((func) = 42) },
+    { X = apply(F) },
+    { G = ((func) = (_ :: out) is semidet :- fail) },
+    { H = ((func) = (R :: out) is semidet :- semidet_succeed, R = X) },
+    print("X = "), print(X), nl,
+    print("apply(F) = "), print(X), nl,
+    print("apply_func(F) = "), print(X), nl,
+    print("apply_nullary_func(F) = "), print(X), nl,
+    ( { Y = apply(G) } ->
+        print("Y = "), print(Y), nl
+    ;
+        print("Y = apply(G) failed"), nl
+    ),
+    ( { Z = apply(H) } ->
+        print("Z = "), print(Z), nl
+    ;
+        print("Y = apply(G) failed"), nl
+    ),
+    print("type_of(F) = "), print(type_of(F)), nl,
+    print("type_name(type_of(F)) = "), print(type_name(type_of(F))), nl.

@@ -1,9 +1,13 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test case for a bug in the MLDS backend in rotd-2007-08-28 and before.
 % The ml code generator was incorrectly inserting assignment statements to
 % do casts even when the types on the lhs and rhs were identical.  This
 % was inhibiting tail call optimisation in code that used arrays.
 % (The code marked XXX below is one such example.).
-%
+
 :- module big_array_from_list.
 :- interface.
 

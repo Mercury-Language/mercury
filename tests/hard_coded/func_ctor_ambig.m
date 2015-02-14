@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Mercury 0.7.3 generated incorrect code for this test case.
 
 :- module func_ctor_ambig.
@@ -15,12 +19,13 @@
 :- implementation.
 
 main -->
-	print("bar = "), print(bar), nl,
-	print("bar2 = "), print(bar2), nl,
-	print("baz = "), print(baz), nl,
-	print("baz2 = "), print(baz2), nl.
+    print("bar = "), print(bar), nl,
+    print("bar2 = "), print(bar2), nl,
+    print("baz = "), print(baz), nl,
+    print("baz2 = "), print(baz2), nl.
 
-:- type t ---> ambig.
+:- type t
+    --->    ambig.
 
 :- func ambig = int.
 ambig = 42.
@@ -32,4 +37,3 @@ baz = ambig.
 bar2 = func_ctor_ambig.ambig.
 
 baz2 = func_ctor_ambig.ambig.
-

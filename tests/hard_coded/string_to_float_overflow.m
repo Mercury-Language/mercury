@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test the overflow behaviour of string.to_float/2.
 
 :- module string_to_float_overflow.

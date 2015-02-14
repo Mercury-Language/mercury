@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 % test_parsing_utils.m
 % Ralph Becket <rafe@csse.unimelb.edu.au>
 % Tue Jan 27 13:44:59 EST 2009
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module test_parsing_utils.
 
@@ -12,12 +12,10 @@
 
 :- import_module io.
 
-
-
 :- pred main(io::di, io::uo) is cc_multi.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -29,7 +27,7 @@
 :- import_module string.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     unsorted_aggregate(run_test, io.write_string, !IO),
@@ -65,7 +63,7 @@ main(!IO) :-
     test_err("1 + 2 /* blah blah ...", expr_top, !IO),
     true.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred run_test(string::out) is multi.
 
@@ -130,14 +128,11 @@ run_test(Result) :-
         ParserName ++ " on \"" ++ TestString ++ "\"\n\t" ++
         Outcome ++ Consumed ++ "\n".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred test_case(
-        string::out,
-        pred(src, string, ps, ps)::out(pred(in, out, in, out) is semidet),
-        string::out,
-        maybe(string)::out)
-        is multi.
+:- pred test_case(string::out,
+    pred(src, string, ps, ps)::out(pred(in, out, in, out) is semidet),
+    string::out, maybe(string)::out) is multi.
 
 test_case("next_char", stringify(next_char),
     "", no).
@@ -404,29 +399,24 @@ test_case("one_or_more(int_with_state)",
     stringify_state(one_or_more(int_with_state)),
     "1 2 3", yes("[3, 2, 1]")).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred int_with_state(src::in, int::out, list(int)::in, list(int)::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
 int_with_state(Src, X, Xs, [X | Xs], !PS) :-
     int_literal(Src, X, !PS).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred stringify(
-        pred(src, T, ps, ps)::in(pred(in, out, in, out) is semidet),
-        src::in,
-        string::out,
-        ps::in,
-        ps::out)
-        is semidet.
+:- pred stringify(pred(src, T, ps, ps)::in(pred(in, out, in, out) is semidet),
+    src::in, string::out, ps::in, ps::out) is semidet.
 
 stringify(P, Src, String, !PS) :-
     P(Src, X, !PS),
     String = string.string(X).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred test_pos(string::in, int::in, io::di, io::uo) is det.
 
@@ -436,22 +426,18 @@ test_pos(Str, OS, !IO) :-
         Pos),
     io.format("Line = %d, Pos = %d\n", [i(Line), i(Pos)], !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred stringify_state(
-        pred(src, T, list(S), list(S), ps, ps)::
-            in(pred(in, out, in, out, in, out) is semidet),
-        src::in,
-        string::out,
-        ps::in,
-        ps::out)
-        is semidet.
+    pred(src, T, list(S), list(S), ps, ps)::
+        in(pred(in, out, in, out, in, out) is semidet),
+    src::in, string::out, ps::in, ps::out) is semidet.
 
 stringify_state(P, Src, String, !PS) :-
     P(Src, _, [], State, !PS),
     String = string.string(State).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred test_err(string::in, parser(expr)::in(parser), io::di, io::uo)
     is cc_multi.
@@ -470,7 +456,7 @@ test_err(Input, Parser, !IO) :-
         (
             MaybeMsg = yes(Msg),
             io.write_string(Msg ++ "\n", !IO)
-        ; 
+        ;
             MaybeMsg = no,
             io.write_string("syntax error\n", !IO)
         ),
@@ -585,4 +571,4 @@ id(Src, Id) -->
 
 id_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

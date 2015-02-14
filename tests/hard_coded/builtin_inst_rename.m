@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module builtin_inst_rename.
 
 :- interface.
@@ -7,8 +11,8 @@
 
 :- pred p(builtin_inst_rename2.my_int, builtin_inst_rename2.my_int).
 :- mode p(builtin_inst_rename2__ground >> builtin_inst_rename2__ground,
-	  builtin_inst_rename2__free   >> builtin_inst_rename2__ground)
-	is det.
+    builtin_inst_rename2__free   >> builtin_inst_rename2__ground)
+    is det.
 
 :- pred main(io::di, io::uo) is det.
 
@@ -17,6 +21,6 @@
 p(X, X).
 
 main -->
-	{ p(42, X) },
-	io__write_int(X),
-	io__nl.
+    { p(42, X) },
+    io__write_int(X),
+    io__nl.

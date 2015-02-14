@@ -1,4 +1,5 @@
 % vim: ft=mercury ts=4 sw=4 et
+%
 % This is a regression test for a bug in construct.get_functor/5,
 % where it was not handling equivalence types properly.
 
@@ -25,14 +26,14 @@ main(!IO) :-
 
     call(
         (pred(!.S::in, !:S::out) is det:-
-        count(["A"], !S),
-        count(["A","A2"], !S),
-        count(["B"], !S),
-        count(["B","B1"], !S),
-        count(["B","B2"], !S),
-        count(["B","B3"], !S),
-        count(["C"], !S),
-        count(["C","C1"], !S)
+            count(["A"], !S),
+            count(["A", "A2"], !S),
+            count(["B"], !S),
+            count(["B", "B1"], !S),
+            count(["B", "B2"], !S),
+            count(["B", "B3"], !S),
+            count(["C"], !S),
+            count(["C", "C1"], !S)
         ), construct_bug_submodule.init, Map),
 
     io.open_output(FileName, Result, !IO),

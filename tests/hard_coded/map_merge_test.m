@@ -1,4 +1,6 @@
-% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % Check that map.merge/3 throws an exception if the sets of keys
 % are not disjoint.

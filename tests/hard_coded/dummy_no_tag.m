@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test. The compiler was not writing some dummy types to the
 % implementation sections of interface files, specifically types with one
 % constructor with one argument which is itself a dummy type.

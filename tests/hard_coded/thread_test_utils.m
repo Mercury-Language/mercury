@@ -1,21 +1,21 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2014 Mission Critical IT.
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: thread_test_utils.m
 % Author: Paul Bone
 %
-% These utilities make it easier to test concurrent code.  In particular a
-% concurrent program's IO actions may occur in a nondeterminsic order.  This
+% These utilities make it easier to test concurrent code. In particular a
+% concurrent program's IO actions may occur in a nondeterminsic order. This
 % module provides alternative IO operations that provide some order so that
 % program output matches test output (when the test passes).
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module thread_test_utils.
 
@@ -24,7 +24,7 @@
 :- import_module io.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This type represents all the output of all the threads in the program.
     %
@@ -58,8 +58,8 @@
     %
 :- pred write_all_thread_output(all_threads_output::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -71,7 +71,7 @@
 :- import_module thread.channel.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type all_threads_output
     --->    all_threads_output(
@@ -84,7 +84,7 @@
                 to_chan             :: channel(message)
             ).
 
-:- type message 
+:- type message
     --->    message_output(
                 om_thread       :: int,
                 om_string       :: string
@@ -96,7 +96,7 @@
                 mc_thread       :: int
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init_all_thread_output(all_threads_output(Chan), !IO) :-
     channel.init(Chan, !IO).
@@ -107,7 +107,7 @@ init_thread_output(AllOutput, Thread, Output, !IO) :-
 
     % Pust a message that will be used later to show that this Output has
     % been opened.
-    put(Chan, message_open(Thread), !IO). 
+    put(Chan, message_open(Thread), !IO).
 
 t_write_string(Output, String, !IO) :-
     put(Output ^ to_chan, message_output(Output ^ to_thread, String), !IO).
@@ -175,4 +175,3 @@ close_thread_output(Output, !IO) :-
 
 write_out_message(String, !IO) :-
     io.format("\t%s\n", [s(String)], !IO).
-

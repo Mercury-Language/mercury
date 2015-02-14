@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % A test of the C# interface.
 
 :- module csharp_test.
@@ -9,22 +13,22 @@
 :- implementation.
 
 main -->
-	csharp_write_string("Hello, world\n").
+    csharp_write_string("Hello, world\n").
 
 :- pragma foreign_decl("C#", "
-	// some C Sharp declarations
+    // some C Sharp declarations
 ").
 
 :- pragma foreign_code("C#", "
-	// some C Sharp code
+    // some C Sharp code
 ").
 
 :- pred csharp_write_string(string::in, io__state::di, io__state::uo) is det.
 
 :- pragma foreign_proc("C#",
-	csharp_write_string(Message::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury, promise_pure],
+    csharp_write_string(Message::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
 "
-	// a C sharp procedure
-	Console.WriteLine(Message);
+    // a C sharp procedure
+    Console.WriteLine(Message);
 ").

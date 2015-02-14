@@ -40,7 +40,7 @@ do_test(Map, !IO) :-
         io.write_string("\nValuesPrime = ", !IO),
         io.write(ValuesPrime, !IO),
         io.nl(!IO)
-      else
+    else
         io.write_string("ERROR: Map = ", !IO),
         io.write(Map, !IO),
         io.nl(!IO)

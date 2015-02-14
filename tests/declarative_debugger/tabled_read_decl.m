@@ -1,4 +1,7 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % We define our own I/O primitives, in case the library was compiled without
 % IO tabling.
 
@@ -12,9 +15,9 @@
 
 :- implementation.
 
-:- import_module list.
 :- import_module char.
 :- import_module int.
+:- import_module list.
 
 main(!IO) :-
     tabled_read_decl.open_input("tabled_read_decl.data", Res, Stream, !IO),
@@ -26,7 +29,7 @@ main(!IO) :-
         io.write_string("could not open tabled_read.data\n", !IO)
     ).
 
-:- pred tabled_read_decl.part_1(c_pointer::in, io::di, io::uo) is det. 
+:- pred tabled_read_decl.part_1(c_pointer::in, io::di, io::uo) is det.
 
 tabled_read_decl.part_1(Stream, !IO) :-
     tabled_read_decl.test(Stream, A, !IO),
@@ -142,7 +145,7 @@ tabled_read_decl.poly_test_2(Stream, Unused, SoFar, N, !IO) :-
 
 :- pred tabled_read_decl.fake_io(int::out, io::di, io::uo) is det.
 
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
     tabled_read_decl.fake_io(X::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{

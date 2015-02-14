@@ -1,4 +1,6 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module tailrec1.
 
@@ -10,8 +12,8 @@
 
 :- implementation.
 
-:- import_module list.
 :- import_module int.
+:- import_module list.
 :- import_module string.
 
 main(!IO) :-

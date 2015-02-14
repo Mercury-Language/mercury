@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This module tests for possible problems that unaligned string literals
 % would cause if tagged.
 
@@ -13,10 +17,10 @@
 :- type t ---> f1(string) ; f2(string) ; f3(string) ; f4(string).
 
 main -->
-	show(f1("foo")),
-	show(f2("foo")),
-	show(f1("oo")),
-	show(f2("oo")).
+    show(f1("foo")),
+    show(f2("foo")),
+    show(f1("oo")),
+    show(f2("oo")).
 
 :- pred show(t::in, io__state::di, io__state::uo) is det.
 

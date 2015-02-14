@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred print_io_actions.main/2-0 (det) print_io_actions.m:20
+      E1:     C1 CALL pred print_io_actions.main/2-0 (det) print_io_actions.m:23
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -8,9 +8,9 @@ I/O tabling started.
 mdb> b fake_read_n_chars
  0: + stop  interface pred print_io_actions.fake_read_n_chars/5-0 (det)
 mdb> c
-      E2:     C2 CALL pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:35 (print_io_actions.m:23)
+      E2:     C2 CALL pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:38 (print_io_actions.m:26)
 mdb> f -n -S
-      E3:     C2 EXIT pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:35 (print_io_actions.m:23)
+      E3:     C2 EXIT pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:38 (print_io_actions.m:26)
 mdb> print io
 action 0: fake_open_input("print_io_actions.data", 0, c_pointer(0xXXXX))
 action 1: fake_read_char_code(c_pointer(0xXXXX), 42)
@@ -57,9 +57,9 @@ action 39: fake_read_char_code(c_pointer(0xXXXX), 115)
 action 40: fake_read_char_code(c_pointer(0xXXXX), 32)
 there are no more actions (yet)
 mdb> s
-      E4:     C3 CALL pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:35 (print_io_actions.m:24)
+      E4:     C3 CALL pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:38 (print_io_actions.m:27)
 mdb> f -n -S
-      E5:     C3 EXIT pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:35 (print_io_actions.m:24)
+      E5:     C3 EXIT pred print_io_actions.fake_read_n_chars/5-0 (det) print_io_actions.m:38 (print_io_actions.m:27)
 mdb> p io 0
 fake_open_input("print_io_actions.data", 0, c_pointer(0xXXXX))
 mdb> p io

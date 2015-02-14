@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred change_search.main/2-0 (det) change_search.m:13
+      E1:     C1 CALL pred change_search.main/2-0 (det) change_search.m:19
 mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.
@@ -13,21 +13,21 @@ mdb> format_param depth 10
 mdb> dd
 mylast([1, 2, 3, 4, ..., ...], no)
 Valid? info
-Context of current question : change_search.m:20 (change_search.m:14)
+Context of current question : change_search.m:26 (change_search.m:20)
 Search mode                 : top down                               
 The current question was chosen because this is the node where the `dd'
 command was issued.
 dd> no
 mylast([2, 3, 4, 5, ..., ...], no)
 Valid? info
-Context of current question : change_search.m:20 (change_search.m:22)
+Context of current question : change_search.m:26 (change_search.m:29)
 Search mode                 : top down                               
 The current question was chosen because this is the next node in the
 top-down search.
 dd> mode dq
 mylast([501, 502, 503, 504, ..., ...], no)
 Valid? info
-Context of current question   : change_search.m:20 (change_search.m:22)
+Context of current question   : change_search.m:26 (change_search.m:29)
 Search mode                   : divide and query                       
 Estimated questions remaining : 12                                     
 Number of suspect events      : 4,000                                  
@@ -36,7 +36,7 @@ area into two regions of 2,000 and 2,000 events each.
 dd> no
 mylast([751, 752, 753, 754, ..., ...], no)
 Valid? info
-Context of current question   : change_search.m:20 (change_search.m:22)
+Context of current question   : change_search.m:26 (change_search.m:29)
 Search mode                   : divide and query                       
 Estimated questions remaining : 11                                     
 Number of suspect events      : 2,000                                  
@@ -57,25 +57,25 @@ Valid? browse 2
 browser> mark
 mylast([1000], no)
 Valid? info
-Context of current question   : change_search.m:20 (change_search.m:22)
+Context of current question   : change_search.m:26 (change_search.m:29)
 Search mode                   : divide and query                       
 Estimated questions remaining : 10                                     
 Number of suspect events      : 1,000                                  
 The current question was chosen because the marked subterm was bound by
 the unification inside the predicate change_search.mylast/2
-(change_search.m:21). The path to the subterm in the atom is 2.
+(change_search.m:27). The path to the subterm in the atom is 2.
 dd> pd
       E5:     C4 EXIT pred change_search.mylast/2-0 (det)
 mdb> dd -r
 mylast([1000], no)
 Valid? info
-Context of current question   : change_search.m:20 (change_search.m:22)
+Context of current question   : change_search.m:26 (change_search.m:29)
 Search mode                   : divide and query                       
 Estimated questions remaining : 10                                     
 Number of suspect events      : 1,000                                  
 The current question was chosen because the marked subterm was bound by
 the unification inside the predicate change_search.mylast/2
-(change_search.m:21). The path to the subterm in the atom is 2.
+(change_search.m:27). The path to the subterm in the atom is 2.
 dd> mode binary
 mylast([875, 876, 877, 878, ..., ...], no)
 Valid? mode top_down

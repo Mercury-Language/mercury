@@ -8,12 +8,12 @@
 % initializers rather than emitting a separate global containing the
 % float constant and taking the address of that global.  (This problem was
 % independent of whether --high-level-data was enabled or not.)
-% The problem did not occur with the LLDS backend because it handles 
+% The problem did not occur with the LLDS backend because it handles
 % static ground terms differently.
 %
 % This module also exercises creating static ground terms with other sorts
 % of no_tag type as well.
-%
+
 :- module static_no_tag.
 :- interface.
 
@@ -41,9 +41,9 @@
 :- implementation.
 
 main(!IO) :-
-	io.write_string("get_no_tag_floats = ", !IO),
-	io.write(get_no_tag_floats, !IO),
-	io.nl(!IO),
+    io.write_string("get_no_tag_floats = ", !IO),
+    io.write(get_no_tag_floats, !IO),
+    io.nl(!IO),
     io.write_string("get_no_tag_ints = ", !IO),
     io.write(get_no_tag_ints, !IO),
     io.nl(!IO),

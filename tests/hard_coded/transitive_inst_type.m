@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module transitive_inst_type.
 :- interface.
 :- import_module io.
@@ -9,7 +13,7 @@
 :- import_module transitive_inst_type2.
 
 main -->
-	{ new_sequence(Seq) },
-	{ sequence_length(Seq, Size) },
-	io__write_int(Size),
-	io__nl.
+    { new_sequence(Seq) },
+    { sequence_length(Seq, Size) },
+    io__write_int(Size),
+    io__nl.

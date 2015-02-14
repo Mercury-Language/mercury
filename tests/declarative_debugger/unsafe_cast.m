@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module unsafe_cast.
 
 :- interface.
@@ -9,12 +13,12 @@
 :- implementation.
 
 main(!IO) :-
-	p(Y),
-	io__write_int(Y, !IO),
-	io__nl(!IO).
+    p(Y),
+    io__write_int(Y, !IO),
+    io__nl(!IO).
 
 :- pred p(int::out) is det.
 
 p(Y) :-
-	X = 42,
-	private_builtin__unsafe_type_cast(X, Y).
+    X = 42,
+    private_builtin__unsafe_type_cast(X, Y).

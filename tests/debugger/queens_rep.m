@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module queens_rep.
 
 :- interface.
@@ -9,14 +13,15 @@
 
 :- implementation.
 
-:- import_module list, int.
+:- import_module int.
+:- import_module list.
 
 main -->
-	( { data(Data), queen(Data, Out) } ->
-		print_list(Out)
-	;
-		io__write_string("No solution\n")
-	).
+    ( { data(Data), queen(Data, Out) } ->
+        print_list(Out)
+    ;
+        io__write_string("No solution\n")
+    ).
 
 :- pred data(list(int)).
 :- mode data(out) is det.
@@ -36,66 +41,66 @@ main -->
 :- pred nodiag(int, int, list(int)).
 :- mode nodiag(in, in, in) is semidet.
 
-data([1,2,3,4,5]).
+data([1, 2, 3, 4, 5]).
 
 queen(Data, Out) :-
-	qperm(Data, Out),
-	safe(Out).
+    qperm(Data, Out),
+    safe(Out).
 
 qperm([], []).
 qperm(L, K) :-
-	L = [_ | _], qdelete(U, L, Z),
-	K = [U|V],
-	qperm(Z, V).
+    L = [_ | _], qdelete(U, L, Z),
+    K = [U | V],
+    qperm(Z, V).
 
-qdelete(A, [A|L], L).
-qdelete(X, [A|Z], [A|R]) :-
-	qdelete(X, Z, R).
+qdelete(A, [A | L], L).
+qdelete(X, [A | Z], [A | R]) :-
+    qdelete(X, Z, R).
 
 safe([]).
-safe([N|L]) :-
-	nodiag(N, 1, L),
-	safe(L).
+safe([N | L]) :-
+    nodiag(N, 1, L),
+    safe(L).
 
 nodiag(_, _, []).
-nodiag(B, D, [N|L]) :-
-	NmB = N - B,
-	BmN = B - N,
-	( D = NmB ->
-		fail
-	; D = BmN ->
-		fail
-	;
-		true
-	),
-	D1 = D + 1,
-	nodiag(B, D1, L).
+nodiag(B, D, [N | L]) :-
+    NmB = N - B,
+    BmN = B - N,
+    ( D = NmB ->
+        fail
+    ; D = BmN ->
+        fail
+    ;
+        true
+    ),
+    D1 = D + 1,
+    nodiag(B, D1, L).
 
 :- pred print_list(list(int), io__state, io__state).
 :- mode print_list(in, di, uo) is det.
 
 print_list(Xs) -->
-	(
-		{ Xs = [] }
-	->
-		io__write_string("[]\n")
-	;
-		io__write_string("["),
-		print_list_2(Xs),
-		io__write_string("]\n")
-	).
+    (
+        { Xs = [] }
+    ->
+        io__write_string("[]\n")
+    ;
+        io__write_string("["),
+        print_list_2(Xs),
+        io__write_string("]\n")
+    ).
 
 :- pred print_list_2(list(int), io__state, io__state).
 :- mode print_list_2(in, di, uo) is det.
 
 print_list_2([]) --> [].
-print_list_2([X|Xs]) --> 
-	io__write_int(X),
-	(
-		{ Xs = [] }
-	->
-		[]
-	;
-		io__write_string(", "),
-		print_list_2(Xs)
-	).
+print_list_2([X | Xs]) -->
+    io__write_int(X),
+    (
+        { Xs = [] }
+    ->
+        []
+    ;
+        io__write_string(", "),
+        print_list_2(Xs)
+    ).

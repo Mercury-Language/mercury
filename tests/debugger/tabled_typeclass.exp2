@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred tabled_typeclass.main/2-0 (det) tabled_typeclass.m:30
+      E1:     C1 CALL pred tabled_typeclass.main/2-0 (det) tabled_typeclass.m:27
 mdb> echo on
 Command echo enabled.
 mdb> context none

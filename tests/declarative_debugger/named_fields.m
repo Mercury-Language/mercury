@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module named_fields.
 
 :- interface.
@@ -9,14 +13,14 @@
 :- implementation.
 
 main(!IO) :-
-	gen_t(T),
-	_ = swap(T).
+    gen_t(T),
+    _ = swap(T).
 
-:- type t --->
-	t(
-		field1 :: int,
-		field2 :: int
-	).
+:- type t
+    --->    t(
+                field1 :: int,
+                field2 :: int
+            ).
 
 :- pred gen_t(t :: out) is det.
 

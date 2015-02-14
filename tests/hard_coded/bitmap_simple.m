@@ -1,11 +1,16 @@
-% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Very inefficient, but simple sbitmap implementation,
 % used for testing bitmap.m.
+
 :- module bitmap_simple.
 
 :- interface.
 
-:- import_module version_array, bool.
+:- import_module bool.
+:- import_module version_array.
 
 :- type sbitmap == version_array(bool).
 
@@ -19,7 +24,7 @@
 :- type sbitmap_error
     ---> sbitmap_error(string).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % new(N, B) creates a sbitmap of size N (indexed 0 .. N-1)
     % setting each bit if B = yes and clearing each bit if B = no.
@@ -73,7 +78,7 @@
 :- mode det_num_bytes(sbitmap_ui) = out is det.
 %:- mode det_num_bytes(in) = out is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Get or set the given bit.
     % The unsafe versions do not check whether the bit is in range.
@@ -92,7 +97,7 @@
 :- func 'unsafe_bit :='(int, sbitmap, bool) = sbitmap.
 :- mode 'unsafe_bit :='(in, sbitmap_di, in) = sbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Bitmap ^ bits(OffSet, NumBits) = Word.
     % The low order bits of Word contain the NumBits bits of BitMap
@@ -113,7 +118,7 @@
 :- func 'unsafe_bits :='(int, int, sbitmap, int) = sbitmap.
 :- mode 'unsafe_bits :='(in, in, sbitmap_di, in) = sbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % BM ^ byte(ByteNumber)
     % Get or set the given numbered byte (multiply ByteNumber by
@@ -137,7 +142,7 @@
 :- func 'unsafe_byte :='(int, sbitmap, int) = sbitmap.
 :- mode 'unsafe_byte :='(in, sbitmap_di, in) = sbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Flip the given bit.
     %
@@ -147,7 +152,7 @@
 :- func unsafe_flip(sbitmap, int) = sbitmap.
 :- mode unsafe_flip(sbitmap_di, in) = sbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Set operations; for binary operations the second argument is altered
     % in all cases.  The input sbitmaps must have the same size.
@@ -172,7 +177,7 @@
 :- mode xor(sbitmap_ui, sbitmap_di) = sbitmap_uo is det.
 %:- mode xor(in, sbitmap_di) = sbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % copy_bits(SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits)
     %
@@ -208,7 +213,7 @@
 :- func copy_bytes_in_bitmap(sbitmap, int, int, int) = sbitmap.
 :- mode copy_bytes_in_bitmap(sbitmap_di, in, in, in) = sbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Variations that might be slightly more efficient by not
     % converting bits to bool.
@@ -271,7 +276,7 @@
 
 :- func to_byte_string(sbitmap) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -283,25 +288,25 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 new(N, B) = BM :-
     ( if N < 0 then
         throw_sbitmap_error("sbitmap.new: negative size") = _ : int
-      else
+    else
         BM  = version_array.init(N, B)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-resize(BM, NewSize, InitializerBit) = 
+resize(BM, NewSize, InitializerBit) =
     ( if NewSize =< 0 then
         bitmap_simple.new(NewSize, InitializerBit)
-      else
+    else
         version_array.resize(BM, NewSize, InitializerBit)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Use the underlying version_array's bounds checking.
 %
@@ -312,12 +317,12 @@ in_range(_, _) :- true.
 %    in_range(BM, I * bits_per_int + bits_per_int - 1).
 byte_in_range(_, _).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 bit(I, BM) =
     ( if in_range(BM, I)
-      then BM ^ unsafe_bit(I)
-      else throw_sbitmap_error("sbitmap.bit: out of range")
+    then BM ^ unsafe_bit(I)
+    else throw_sbitmap_error("sbitmap.bit: out of range")
     ).
 
 unsafe_bit(I, BM) =
@@ -325,25 +330,26 @@ unsafe_bit(I, BM) =
 
 'bit :='(I, BM, B) =
     ( if in_range(BM, I)
-      then BM ^ unsafe_bit(I) := B
-      else throw_sbitmap_error("sbitmap.'bit :=': out of range")
+    then BM ^ unsafe_bit(I) := B
+    else throw_sbitmap_error("sbitmap.'bit :=': out of range")
     ).
 
 'unsafe_bit :='(I, BM, yes) = unsafe_set(BM, I).
 'unsafe_bit :='(I, BM, no) = unsafe_clear(BM, I).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 bits(FirstBit, NumBits, BM) =
     ( if FirstBit >= 0, in_range(BM, FirstBit + NumBits - 1)
-      then BM ^ unsafe_bits(FirstBit, NumBits)
-      else throw_sbitmap_error("sbitmap.bits: out of range")
+    then BM ^ unsafe_bits(FirstBit, NumBits)
+    else throw_sbitmap_error("sbitmap.bits: out of range")
     ).
 
 unsafe_bits(FirstBit, NumBits, BM) = Bits :-
     extract_bits(FirstBit, NumBits, BM, 0, Bits).
 
     % Extract the given number of bits starting at the most significant.
+    %
 :- pred extract_bits(int, int, sbitmap, int, int).
 :- mode extract_bits(in, in, sbitmap_ui, in, out) is det.
 %:- mode extract_bits(in, in, in, in, out) is det.
@@ -359,8 +365,8 @@ extract_bits(FirstBit, NumBits, BM, !Bits) :-
 
 'bits :='(FirstBit, NumBits, BM, Bits) =
     ( if FirstBit >= 0, in_range(BM, FirstBit + NumBits - 1)
-      then BM ^ unsafe_bits(FirstBit, NumBits) := Bits
-      else throw_sbitmap_error("sbitmap.bits: out of range")
+    then BM ^ unsafe_bits(FirstBit, NumBits) := Bits
+    else throw_sbitmap_error("sbitmap.bits: out of range")
     ).
 
 'unsafe_bits :='(FirstBit, NumBits, BM0, Bits) = BM :-
@@ -372,7 +378,7 @@ extract_bits(FirstBit, NumBits, BM, !Bits) :-
 :- mode set_bits(in, in, in, sbitmap_di, sbitmap_uo) is det.
 
 set_bits(LastBit, NumBits, Bits, !BM) :-
-    ( NumBits =< 0 -> 
+    ( NumBits =< 0 ->
         true
     ;
         !:BM = !.BM ^ elem(LastBit) := det_from_int(Bits /\ 1),
@@ -380,24 +386,24 @@ set_bits(LastBit, NumBits, Bits, !BM) :-
             Bits `unchecked_right_shift` 1, !BM)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-set(BM, I) = 
+set(BM, I) =
     ( if in_range(BM, I)
-      then unsafe_set(BM, I)
-      else throw_sbitmap_error("sbitmap.set: out of range")
+    then unsafe_set(BM, I)
+    else throw_sbitmap_error("sbitmap.set: out of range")
     ).
 
 clear(BM, I) =
     ( if in_range(BM, I)
-      then unsafe_clear(BM, I)
-      else throw_sbitmap_error("sbitmap.clear: out of range")
+    then unsafe_clear(BM, I)
+    else throw_sbitmap_error("sbitmap.clear: out of range")
     ).
 
 flip(BM, I) =
     ( if in_range(BM, I)
-      then unsafe_flip(BM, I)
-      else throw_sbitmap_error("sbitmap.flip: out of range")
+    then unsafe_flip(BM, I)
+    else throw_sbitmap_error("sbitmap.flip: out of range")
     ).
 
 set(I, BM, set(BM, I)).
@@ -406,9 +412,9 @@ clear(I, BM, clear(BM, I)).
 
 flip(I, BM, flip(BM, I)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-unsafe_set(BM, I) = 
+unsafe_set(BM, I) =
     BM ^ elem(I) := yes.
 
 unsafe_clear(BM, I) =
@@ -423,7 +429,7 @@ unsafe_clear(I, BM, unsafe_clear(BM, I)).
 
 unsafe_flip(I, BM, unsafe_flip(BM, I)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 is_set(BM, I) :-
     ( if in_range(BM, I)
@@ -437,7 +443,7 @@ is_clear(BM, I) :-
       else throw_sbitmap_error("sbitmap.is_clear: out of range") = _ : int
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 unsafe_is_set(BM, I) :-
     BM ^ elem(I) = yes.
@@ -445,47 +451,47 @@ unsafe_is_set(BM, I) :-
 unsafe_is_clear(BM, I) :-
     BM ^ elem(I) = no.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 complement(BM) = from_list(map(not, to_list(BM))).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 union(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
         zip(or, BMa, BMb)
-      else
+    else
         throw_sbitmap_error("sbitmap.union: sbitmaps not the same size")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 intersect(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
         zip(and, BMa, BMb)
-      else
+    else
         throw_sbitmap_error("sbitmap.intersect: sbitmaps not the same size")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 difference(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
         zip((func(X, Y) = (X `and` not(Y))), BMa, BMb)
-      else
+    else
         throw_sbitmap_error("sbitmap.difference: sbitmaps not the same size")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 xor(BMa, BMb) =
     ( if num_bits(BMa) = num_bits(BMb) then
         zip((func(X, Y) = (X `xor` Y)), BMa, BMb)
-      else
+    else
         throw_sbitmap_error("sbitmap.xor: sbitmaps not the same size")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Applies a function to every corresponding element between +ve I
     % and 1 inclusive, destructively updating the second sbitmap.
@@ -496,8 +502,9 @@ xor(BMa, BMb) =
 %:- mode zip(func(in, in) = out is det, in, sbitmap_di) = sbitmap_uo is det.
 
 zip(Fn, BMa, BMb) =
-    ( if num_bits(BMb) = 0 then BMb
-      else zip2(num_bits(BMb) - 1, Fn, BMa, BMb)
+    ( if num_bits(BMb) = 0
+    then BMb
+    else zip2(num_bits(BMb) - 1, Fn, BMa, BMb)
     ).
 
 :- func zip2(int, func(bool, bool) = bool, sbitmap, sbitmap) = sbitmap.
@@ -510,11 +517,11 @@ zip2(I, Fn, BMa, BMb) =
     ( if I >= 0 then
         zip2(I - 1, Fn, BMa,
             BMb ^ elem(I) := Fn(BMa ^ elem(I), BMb ^ elem(I)))
-      else
+     else
         BMb
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 copy_bits(SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits) =
     copy_bits(no, SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits).
@@ -535,7 +542,7 @@ copy_bits(SameBM, SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits) =
     ->
         unsafe_copy_bits(SameBM, SrcBM, SrcStartBit,
             DestBM, DestStartBit, NumBits)
-    ; 
+    ;
         throw_sbitmap_error(
           "sbitmap.copy_bits: out of range")
     ).
@@ -560,7 +567,7 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, !.DestBM, DestStartBit,
         DestFirstBit = DestStartBit + NumBits - 1
     ),
     !:DestBM = unsafe_do_copy_bits(SrcBM, SrcFirstBit,
-                !.DestBM, DestFirstBit, AddForNextBit, NumBits). 
+                !.DestBM, DestFirstBit, AddForNextBit, NumBits).
 
 :- func unsafe_do_copy_bits(sbitmap, int, sbitmap, int, int, int) = sbitmap.
 :- mode unsafe_do_copy_bits(sbitmap_ui, in,
@@ -569,7 +576,7 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, !.DestBM, DestStartBit,
 %    sbitmap_di, in, in, in) = sbitmap_uo is det.
 
 unsafe_do_copy_bits(SrcBM, SrcFirstBit, DestBM, DestFirstBit,
-        AddForNextBit, NumBits) = 
+        AddForNextBit, NumBits) =
     ( NumBits =< 0 ->
         DestBM
     ;
@@ -588,9 +595,8 @@ copy_bytes_in_bitmap(BM, SrcStartByte, DestStartByte, NumBytes) =
         DestStartByte * bits_per_byte, NumBytes * bits_per_byte).
 
 :- type copy_direction
-        --->    left_to_right
-        ;       right_to_left
-        .
+    --->    left_to_right
+    ;       right_to_left.
 
     % choose_copy_direction(SameBM, SrcStartBit, DestStartBit)
     %
@@ -599,13 +605,12 @@ copy_bytes_in_bitmap(BM, SrcStartByte, DestStartByte, NumBytes) =
 :- func choose_copy_direction(bool, int, int) = copy_direction.
 
 choose_copy_direction(yes, SrcStartBit, DestStartBit) =
-        ( SrcStartBit < DestStartBit -> right_to_left ; left_to_right ).
-
-        % Doesn't matter for correctness, but performance is likely
-        % to be better left_to_right.
+    ( SrcStartBit < DestStartBit -> right_to_left ; left_to_right ).
 choose_copy_direction(no, _, _) = left_to_right.
+    % Doesn't matter for correctness, but performance is likely
+    % to be better left_to_right.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 num_bytes(BM) = Bytes :-
     NumBits = BM ^ num_bits,
@@ -619,13 +624,13 @@ det_num_bytes(BM) = Bytes :-
         throw_sbitmap_error("det_num_bytes: sbitmap has a partial final byte")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 num_bits(BM) = version_array.size(BM).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-byte(N, BM) = 
+byte(N, BM) =
     ( if N >= 0, in_range(BM, N * bits_per_byte + bits_per_byte - 1)
       then BM ^ unsafe_byte(N)
       else throw_sbitmap_error("sbitmap.byte: out of range")
@@ -633,7 +638,7 @@ byte(N, BM) =
 
 unsafe_byte(N, BM) = BM ^ bits(N * bits_per_byte, bits_per_byte).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 'byte :='(N, BM, Byte) =
     ( if N >= 0, in_range(BM, N * bits_per_byte + bits_per_byte - 1)
@@ -644,19 +649,19 @@ unsafe_byte(N, BM) = BM ^ bits(N * bits_per_byte, bits_per_byte).
 'unsafe_byte :='(N, BM, Byte) =
         BM ^ bits(N * bits_per_byte, bits_per_byte) := Byte.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 copy(BM) = version_array.copy(BM).
-    
-%-----------------------------------------------------------------------------%
+
+%---------------------------------------------------------------------------%
 
     % Return the number of bits in a byte (always 8).
     %
 :- func bits_per_byte = int.
- 
+
 bits_per_byte = 8.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func throw_sbitmap_error(string) = _ is erroneous.
 
@@ -667,7 +672,7 @@ throw_sbitmap_error(Msg) = _ :-
 
 throw_sbitmap_error(Msg) :- throw(sbitmap_error(Msg)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 to_byte_string(BM) =
     string.join_list(".", sbitmap_to_byte_strings(BM)).

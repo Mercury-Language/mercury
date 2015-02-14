@@ -1,7 +1,15 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module daf_bug_parent.daf_bug_sub.
 :- interface.
 
-:- type bool_kind ---> geq ; lt ; eq ; neq.
+:- type bool_kind
+    --->    geq
+    ;       lt
+    ;       eq
+    ;       neq.
 
 :- func child_value = list(outer_public).
 

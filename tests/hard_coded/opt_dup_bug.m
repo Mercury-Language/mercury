@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test for a bug reported by Ian on 14 Nov 2006.
 % The bug manifests itself only if all three of --optimize-dups,
 % --optimize-frames and --optimize-peep are turned on, as they are

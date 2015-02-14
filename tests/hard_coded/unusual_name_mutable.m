@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module unusual_name_mutable.
 
 :- interface.
@@ -13,7 +17,7 @@
 :- mutable('123$%^abc 7', int, 42, ground, [untrailed]).
 
 main(!IO) :-
-	promise_pure ( semipure 'get_123$%^abc 7'(X)),
-	io.write_string("'123$%^abc 7' = ", !IO),
-	io.write_int(X, !IO),
-	io.nl(!IO).
+    promise_pure ( semipure 'get_123$%^abc 7'(X)),
+    io.write_string("'123$%^abc 7' = ", !IO),
+    io.write_int(X, !IO),
+    io.nl(!IO).

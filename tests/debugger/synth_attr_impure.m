@@ -35,7 +35,7 @@ main(!IO) :-
 
 :- pred data(list(int)::out) is det.
 
-data([1,2,3,4,5]).
+data([1, 2, 3, 4, 5]).
 
 :- pred queen(list(int)::in, list(int)::out) is nondet.
 

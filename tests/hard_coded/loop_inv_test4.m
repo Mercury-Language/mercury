@@ -1,7 +1,10 @@
-%-----------------------------------------------------------------------------%
-% Regression test.  The variable holding the higher order term being called was
-% not considered a goal input.  Hence the goal may be incorrectly considered
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+% Regression test. The variable holding the higher order term being called was
+% not considered a goal input. Hence the goal may be incorrectly considered
 % loop-invariant.
+%---------------------------------------------------------------------------%
 
 :- module loop_inv_test4.
 :- interface.
@@ -9,15 +12,14 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module list.
 :- import_module int.
+:- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     List = [int.plus, int.times, int.minus],
@@ -33,6 +35,3 @@ use_list([P | Ps], !IO) :-
     io.write_int(X, !IO),
     io.write_string("\n", !IO),
     use_list(Ps, !IO).
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sts=4 sw=4 et

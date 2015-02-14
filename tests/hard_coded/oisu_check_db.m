@@ -1,4 +1,6 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module oisu_check_db.
 :- interface.
@@ -24,21 +26,21 @@
 :- implementation.
 
 :- type db
-	--->	db(bool, int).
+    --->    db(bool, int).
 
 create_db1(DB) :-
-	DB = db(no, 0).
+    DB = db(no, 0).
 
 create_db2(N, DB) :-
-	DB = db(no, N).
+    DB = db(no, N).
 
 mutate_db1(B, !DB) :-
-	!.DB = db(_, N),
-	!:DB = db(B, N).
+    !.DB = db(_, N),
+    !:DB = db(B, N).
 
 mutate_db2(N, !DB) :-
-	!.DB = db(B, _),
-	!:DB = db(B, N).
+    !.DB = db(B, _),
+    !:DB = db(B, N).
 
 destroy_db(DB, B, N) :-
-	DB = db(B, N).
+    DB = db(B, N).

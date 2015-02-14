@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module impossible_unify.
 :- interface.
 
@@ -9,8 +13,8 @@
 :- import_module bool.
 
 main -->
-	\+ { bar(42) },
-	print("ok"), nl.
+    \+ { bar(42) },
+    print("ok"), nl.
 
 :- pred bar(int::in) is failure.
 
@@ -20,4 +24,4 @@ main -->
 foo(_, no).
 
 bar(X) :-
-	foo(X, yes).
+    foo(X, yes).

@@ -1,4 +1,6 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % This program solves the N-queens problem. Given an N-by-N chessboard,
 % this problem asks us to find positions for N queens on the board such
@@ -39,7 +41,7 @@ main(!IO) :-
 % N integers.
 :- pred data(list(int)::out) is det.
 
-data([1,2,3,4,5,6,7,8]).
+data([1, 2, 3, 4, 5, 6, 7, 8]).
 
 :- pred queen(list(int)::in, list(int)::out) is nondet.
 

@@ -1,13 +1,13 @@
-      E1:     C1 CALL pred named_fields.main/2-0 (det) named_fields.m:11
+      E1:     C1 CALL pred named_fields.main/2-0 (det) named_fields.m:15
 mdb> mdb> mdb> I/O tabling started.
 mdb> echo on
 Command echo enabled.
 mdb> break swap
  0: + stop  interface func named_fields.swap/1-0 (det)
 mdb> c
-      E2:     C2 CALL func named_fields.swap/1-0 (det) named_fields.m:27 (named_fields.m:13)
+      E2:     C2 CALL func named_fields.swap/1-0 (det) named_fields.m:31 (named_fields.m:17)
 mdb> f
-      E3:     C2 EXIT func named_fields.swap/1-0 (det) named_fields.m:27 (named_fields.m:13)
+      E3:     C2 EXIT func named_fields.swap/1-0 (det) named_fields.m:31 (named_fields.m:17)
 mdb> dd -a
 swap(t(1, 2)) = t(2, 1)
 Valid? browse
@@ -17,11 +17,11 @@ browser> ls
 browser> track
 gen_t(t(1, 2))
 Valid? info
-Context of current question : named_fields.m:23 (named_fields.m:12)
+Context of current question : named_fields.m:27 (named_fields.m:16)
 Search mode                 : top down                             
 The current question was chosen because the marked subterm was bound by
 the unification inside the predicate named_fields.gen_t/1
-(named_fields.m:23). The path to the subterm in the atom is 1/1.
+(named_fields.m:27). The path to the subterm in the atom is 1/1.
 dd> undo
 swap(t(1, 2)) = t(2, 1)
 Valid? browse 1
@@ -31,11 +31,11 @@ browser> ls
 browser> track
 gen_t(t(1, 2))
 Valid? info
-Context of current question : named_fields.m:23 (named_fields.m:12)
+Context of current question : named_fields.m:27 (named_fields.m:16)
 Search mode                 : top down                             
 The current question was chosen because the marked subterm was bound by
 the unification inside the predicate named_fields.gen_t/1
-(named_fields.m:23). The path to the subterm in the atom is 1/1.
+(named_fields.m:27). The path to the subterm in the atom is 1/1.
 dd> undo
 swap(t(1, 2)) = t(2, 1)
 Valid? browse
@@ -45,11 +45,11 @@ browser> ls
 browser> track
 gen_t(t(1, 2))
 Valid? info
-Context of current question : named_fields.m:23 (named_fields.m:12)
+Context of current question : named_fields.m:27 (named_fields.m:16)
 Search mode                 : top down                             
 The current question was chosen because the marked subterm was bound by
 the unification inside the predicate named_fields.gen_t/1
-(named_fields.m:23). The path to the subterm in the atom is 1/1.
+(named_fields.m:27). The path to the subterm in the atom is 1/1.
 dd> undo
 swap(t(1, 2)) = t(2, 1)
 Valid? browse
@@ -59,11 +59,11 @@ browser> ls
 browser> track
 gen_t(t(1, 2))
 Valid? info
-Context of current question : named_fields.m:23 (named_fields.m:12)
+Context of current question : named_fields.m:27 (named_fields.m:16)
 Search mode                 : top down                             
 The current question was chosen because the marked subterm was bound by
 the unification inside the predicate named_fields.gen_t/1
-(named_fields.m:23). The path to the subterm in the atom is 1/1.
+(named_fields.m:27). The path to the subterm in the atom is 1/1.
 dd> undo
 swap(t(1, 2)) = t(2, 1)
 Valid? browse 2
@@ -73,22 +73,22 @@ browser> ls
 browser> track
 gen_t(t(1, 2))
 Valid? info
-Context of current question : named_fields.m:23 (named_fields.m:12)
+Context of current question : named_fields.m:27 (named_fields.m:16)
 Search mode                 : top down                             
 The current question was chosen because the marked subterm was bound by
 the unification inside the predicate named_fields.gen_t/1
-(named_fields.m:23). The path to the subterm in the atom is 1/1.
+(named_fields.m:27). The path to the subterm in the atom is 1/1.
 dd> undo
 swap(t(1, 2)) = t(2, 1)
 Valid? browse 2
 browser> track field2
 gen_t(t(1, 2))
 Valid? info
-Context of current question : named_fields.m:23 (named_fields.m:12)
+Context of current question : named_fields.m:27 (named_fields.m:16)
 Search mode                 : top down                             
 The current question was chosen because the marked subterm was bound by
 the unification inside the predicate named_fields.gen_t/1
-(named_fields.m:23). The path to the subterm in the atom is 1/1.
+(named_fields.m:27). The path to the subterm in the atom is 1/1.
 dd> undo
 swap(t(1, 2)) = t(2, 1)
 Valid? browse 2
@@ -97,5 +97,5 @@ error: cannot track subterm
 browser> quit
 dd> quit
 Diagnosis aborted.
-      E3:     C2 EXIT func named_fields.swap/1-0 (det) named_fields.m:27 (named_fields.m:13)
+      E3:     C2 EXIT func named_fields.swap/1-0 (det) named_fields.m:31 (named_fields.m:17)
 mdb> quit -y

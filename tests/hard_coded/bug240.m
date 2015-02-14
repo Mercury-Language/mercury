@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test for bug #240 and bug #211.
 % When a structure definition has a MR_Float member the C compiler could lay
 % the structure out differently from that which is expected by the Mercury

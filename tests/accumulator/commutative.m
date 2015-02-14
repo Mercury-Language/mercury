@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Implementation of a commutative predicate which is not associative,
 % it should not have accumulators introduced.
 
@@ -16,23 +20,23 @@
 :- type t ---> a ; b ; c.
 
 main -->
-	io__write_string("p: "),
-	{ p([a,b,c], R) },
-	io__write(R),
-	io__nl.
+    io__write_string("p: "),
+    { p([a, b, c], R) },
+    io__write(R),
+    io__nl.
 
 :- pred p(list(t)::in, t::out) is det.
 
 p([], a).
-p([H|T], R) :-
-	p(T, R0),
-	c(H, R0, R).
+p([H | T], R) :-
+    p(T, R0),
+    c(H, R0, R).
 
-	% We define the operator c which is commutative, but
-	% not associative.
+    % We define the operator c which is commutative, but
+    % not associative.
 :- pred c(t::in, t::in, t::out) is det.
 
-:- promise all [A,B,C] ( c(A, B, C) <=> c(B, A, C) ).
+:- promise all [A, B, C] ( c(A, B, C) <=> c(B, A, C) ).
 
 c(a, a, a).
 c(a, b, a).

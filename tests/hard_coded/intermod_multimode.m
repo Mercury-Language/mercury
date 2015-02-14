@@ -1,9 +1,13 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module intermod_multimode.
 :- interface.
 
 :- func func0 = string.
 :- mode func0 = out is det.
-	
+
 :- func func1(int) = string.
 :- mode func1(in) = out is det.
 :- mode func1(out) = out is det.
@@ -30,14 +34,14 @@
 :- impure pred puts(string::in) is det.
 
 :- type determinism
-	--->	det
-	;	semidet
-	;	cc_multi
-	;	cc_nondet
-	;	multi
-	;	nondet
-	;	erroneous
-	;	failure.
+    --->    det
+    ;       semidet
+    ;       cc_multi
+    ;       cc_nondet
+    ;       multi
+    ;       nondet
+    ;       erroneous
+    ;       failure.
 
 :- pred get_determinism(pred(T), determinism).
 :- mode get_determinism(pred(out) is det,     out(bound(det)))     is det.
@@ -58,57 +62,64 @@ func1(0::out) = ("func1(out) = out"::out).
 :- pragma promise_pure(func2/2). % XXX technically this is a lie
 :- pragma inline(func2/2).
 func2(_::in, _::in) = (R::out) :-
-	R = "func2(in, in) = out".
+    R = "func2(in, in) = out".
 func2(_::in, 0::out) = (R::out) :-
-	R = "func2(in, out) = out".
+    R = "func2(in, out) = out".
 func2(0::out, _::in) = (R::out) :-
-	R = "func2(out, in) = out".
+    R = "func2(out, in) = out".
 func2(0::out, 0::out) = (R::out) :-
-	R = "func2(out, out) = out".
+    R = "func2(out, out) = out".
 
 test0 :-
-	impure puts("test0").
-	
+    impure puts("test0").
+
 test1(_::in) :-
-	impure puts("test1(in)").
+    impure puts("test1(in)").
 test1(0::out) :-
-	impure puts("test1(out)").
+    impure puts("test1(out)").
 
 :- pragma inline(test2/2).
 test2(_::in, _::in) :-
-	impure puts("test2(in, in)").
+    impure puts("test2(in, in)").
 test2(_::in, 0::out) :-
-	impure puts("test2(in, out)").
+    impure puts("test2(in, out)").
 test2(0::out, _::in) :-
-	impure puts("test2(out, in)").
+    impure puts("test2(out, in)").
 test2(0::out, 0::out) :-
-	impure puts("test2(out, out)").
+    impure puts("test2(out, out)").
 
 :- pragma foreign_proc("C",
-	puts(S::in),
-	[will_not_call_mercury],
+    puts(S::in),
+    [will_not_call_mercury],
 "
-	puts(S)
+    puts(S)
 ").
-:- pragma foreign_proc("C#", puts(S::in), [], "System.Console.WriteLine(S);").
+:- pragma foreign_proc("C#",
+    puts(S::in),
+    [],
+"
+    System.Console.WriteLine(S);
+").
 :- pragma foreign_proc("Java",
-	puts(S::in),
-	[will_not_call_mercury],
+    puts(S::in),
+    [will_not_call_mercury],
 "
-        System.out.println(S);
+    System.out.println(S);
 ").
-:- pragma foreign_proc("Erlang", puts(S::in), [],
+:- pragma foreign_proc("Erlang",
+    puts(S::in),
+    [],
 "
-        io:put_chars(S),
-        io:nl()
+    io:put_chars(S),
+    io:nl()
 ").
 
 :- pragma promise_pure(get_determinism/2).
 :- pragma inline(get_determinism/2).
 get_determinism(Pred::(pred(out) is det), Det::out(bound(det))) :-
-	get_determinism_2(Pred, Det).
+    get_determinism_2(Pred, Det).
 get_determinism(Pred::(pred(out) is semidet), Det::out(bound(semidet))) :-
-	get_determinism_2(Pred, Det).
+    get_determinism_2(Pred, Det).
 get_determinism(_Pred::(pred(out) is cc_multi), cc_multi::out(bound(cc_multi))).
 get_determinism(_Pred::(pred(out) is cc_nondet), cc_nondet::out(bound(cc_nondet))).
 get_determinism(_Pred::(pred(out) is multi), multi::out(bound(multi))).
@@ -125,4 +136,4 @@ get_determinism(_Pred::(pred(out) is nondet), nondet::out(bound(nondet))).
 
 get_determinism_2(_Pred::(pred(out) is det), det::out(bound_to_det)).
 get_determinism_2(_Pred::(pred(out) is semidet),
-		semidet::out(bound_to_semidet)).
+        semidet::out(bound_to_semidet)).

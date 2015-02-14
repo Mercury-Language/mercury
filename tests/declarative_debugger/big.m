@@ -1,60 +1,65 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module big.
 :- interface.
 :- import_module io.
+
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
+
 :- implementation.
+
 :- import_module bool.
 :- import_module library_forwarding.
 
 main -->
-	{
-		p(1)
-	->
-		R = yes
-	;
-		R = no
-	},
-	io__write(R),
-	io__write_string(".\n").
-
+    {
+        p(1)
+    ->
+        R = yes
+    ;
+        R = no
+    },
+    io__write(R),
+    io__write_string(".\n").
 
 :- pred p(int::out) is nondet.
 
 p(X) :-
-	a(A),
-	(
-		b(A, B),
-		(
-			c(B, C),
-			\+ (
-				d(C, D),
-				D > 5
-			)
-		->
-			c(C, E)
-		;
-			e(B, E)
-		)
-	;
-		f(A, F),
-		b(F, B),
-		(
-			B = 0,
-			g(1, E)
-		;
-			B = 1,
-			g(10, E)
-		),
-		\+ (
-			f(E, H),
-			c(H, I),
-			g(I, J),
-			J > 0
-		)
-	),
-	f(E, X).
-
+    a(A),
+    (
+        b(A, B),
+        (
+            c(B, C),
+            \+ (
+                d(C, D),
+                D > 5
+            )
+        ->
+            c(C, E)
+        ;
+            e(B, E)
+        )
+    ;
+        f(A, F),
+        b(F, B),
+        (
+            B = 0,
+            g(1, E)
+        ;
+            B = 1,
+            g(10, E)
+        ),
+        \+ (
+            f(E, H),
+            c(H, I),
+            g(I, J),
+            J > 0
+        )
+    ),
+    f(E, X).
 
 :- pred a(int::out) is det.
 :- pred b(int::in, int::out) is multi.
@@ -79,7 +84,7 @@ c(4, 8).
 c(4, 9).
 
 d(X, X*3) :-
-	X mod 2 = 1.
+    X mod 2 = 1.
 
 e(X, X*10).
 e(X, X*11).

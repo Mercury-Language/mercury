@@ -1,6 +1,6 @@
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 % This module tests the loop invariant hoisting optimization.
 % It does so using foreign_procs which abort if called twice:
@@ -18,26 +18,29 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module int, string.
+:- import_module int.
+:- import_module string.
 
 main -->
     io__print("enter two integers, one on each line\n"), io__flush_output,
     io__read_line_as_string(Res1),
     io__read_line_as_string(Res2),
     ( { Res1 = ok(L1), Res2 = ok(L2) } ->
-	    { N1 = string__det_to_int(string__chomp(L1)) },
-	    { N2 = string__det_to_int(string__chomp(L2)) },
-	    { loop1(N1, N2, R1) },
-	    { loop2(N1, N2, R2) },
-	    io__print("R1 = "), io__print(R1), io__nl,
-	    io__print("R2 = "), io__print(R2), io__nl
+        { N1 = string__det_to_int(string__chomp(L1)) },
+        { N2 = string__det_to_int(string__chomp(L2)) },
+        { loop1(N1, N2, R1) },
+        { loop2(N1, N2, R2) },
+        io__print("R1 = "), io__print(R1), io__nl,
+        io__print("R2 = "), io__print(R2), io__nl
     ;
         io__print("input error"), io__nl
     ).
 
-/* Test that we can do ordinary loop hoisting, for a goal with no inputs.
-   p/1 will abort if called twice. */
+    % Test that we can do ordinary loop hoisting, for a goal with no inputs.
+    % p/1 will abort if called twice.
+    %
 :- pred loop1(int::in, int::in, int::out) is det.
+
 loop1(N, Acc0, Acc) :-
     ( N =< 0 ->
         Acc = Acc0
@@ -47,10 +50,12 @@ loop1(N, Acc0, Acc) :-
         loop1(N - 1, Acc1, Acc)
     ).
 
-/* Test that we can do ordinary loop hoisting for a goal with no inputs,
-   in the particular case where the invariant goal is an inline foreign_proc.
-   q/1 will abort if called twice. */
+    % Test that we can do ordinary loop hoisting for a goal with no inputs,
+    % in the particular case where the invariant goal is an inline
+    % foreign_proc. q/1 will abort if called twice.
+    %
 :- pred loop2(int::in, int::in, int::out) is det.
+
 loop2(N, Acc0, Acc) :-
     ( N =< 0 ->
         Acc = Acc0
@@ -64,12 +69,13 @@ loop2(N, Acc0, Acc) :-
 :- pragma no_inline(q/1).
 
 :- pred p(int::out) is det.
-:- pragma foreign_proc("C", p(X::out),
+:- pragma foreign_proc("C",
+    p(X::out),
     [will_not_call_mercury, promise_pure],
 "
     /* Test that p/1 only gets called once. */
     static int num_calls = 0;
-    if (num_calls++) { 
+    if (num_calls++) {
         MR_fatal_error(""p/1 called more than once"");
         abort();
     }
@@ -77,7 +83,8 @@ loop2(N, Acc0, Acc) :-
     X = 42;
 ").
 :- pragma foreign_code("C#", "static int p_num_calls = 0;").
-:- pragma foreign_proc("C#", p(X::out),
+:- pragma foreign_proc("C#",
+    p(X::out),
     [will_not_call_mercury, promise_pure],
 "
     /* Test that p/1 only gets called once. */
@@ -88,21 +95,23 @@ loop2(N, Acc0, Acc) :-
     X = 42;
 ").
 :- pragma foreign_code("Java", "static int p_num_calls = 0;").
-:- pragma foreign_proc("Java", p(X::out),
+:- pragma foreign_proc("Java",
+    p(X::out),
     [will_not_call_mercury, promise_pure],
 "
     /* Test that p/1 only gets called once. */
-    if (p_num_calls++ > 0) { 
+    if (p_num_calls++ > 0) {
         throw new Error(""p/1 called more than once"");
     }
 
     X = 42;
 ").
-:- pragma foreign_proc("Erlang", p(X::out),
+:- pragma foreign_proc("Erlang",
+    p(X::out),
     [will_not_call_mercury, promise_pure],
 "
     % Test that p/1 only gets called once.
-    case get(p_called) of 
+    case get(p_called) of
         undefined ->
             put(p_called, true);
         _ ->
@@ -113,19 +122,21 @@ loop2(N, Acc0, Acc) :-
 ").
 
 :- pred q(int::out) is det.
-:- pragma foreign_proc("C", q(X::out),
+:- pragma foreign_proc("C",
+    q(X::out),
     [will_not_call_mercury, promise_pure],
 "
     /* Test that q/1 only gets called once. */
     static int num_calls = 0;
-    if (num_calls++) { 
+    if (num_calls++) {
         MR_fatal_error(""q/1 called more than once"");
     }
 
     X = 53;
 ").
 :- pragma foreign_code("C#", "static int q_num_calls = 0;").
-:- pragma foreign_proc("C#", q(X::out),
+:- pragma foreign_proc("C#",
+    q(X::out),
     [will_not_call_mercury, promise_pure],
 "
     /* Test that q/1 only gets called once. */
@@ -136,21 +147,23 @@ loop2(N, Acc0, Acc) :-
     X = 53;
 ").
 :- pragma foreign_code("Java", "static int q_num_calls = 0;").
-:- pragma foreign_proc("Java", q(X::out),
+:- pragma foreign_proc("Java",
+    q(X::out),
     [will_not_call_mercury, promise_pure],
 "
     /* Test that q/1 only gets called once. */
-    if (q_num_calls++ > 0) { 
+    if (q_num_calls++ > 0) {
         throw new Error(""q/1 called more than once"");
     }
 
     X = 53;
 ").
-:- pragma foreign_proc("Erlang", q(X::out),
+:- pragma foreign_proc("Erlang",
+    q(X::out),
     [will_not_call_mercury, promise_pure],
 "
     % Test that q/1 only gets called once.
-    case get(q_called) of 
+    case get(q_called) of
         undefined ->
             put(q_called, true);
         _ ->
@@ -160,4 +173,4 @@ loop2(N, Acc0, Acc) :-
     X = 53
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

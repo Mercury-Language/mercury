@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % An example program to illustrate the use of all-solutions predicates
 % in Mercury.  This program just prints out all solutions to the
 % predicate hello/1.
@@ -13,12 +17,11 @@
 :- implementation.
 :- import_module solutions.
 
-main --> 
-	{ solutions(hello, List) },
-	io__write_strings(List).
+main -->
+    { solutions(hello, List) },
+    io__write_strings(List).
 
 :- pred hello(string::out) is multi.
 
 hello("Hello, world\n").
 hello("Hello again, world\n").
-

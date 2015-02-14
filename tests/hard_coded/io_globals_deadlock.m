@@ -1,12 +1,12 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%-----------------------------------------------------------------------------%
-% 
+%---------------------------------------------------------------------------%
+%
 % Test that io.update_globals/3 does not cause a deadlock in .par grades
-% if the update closure throws an exception.  The initial version of
+% if the update closure throws an exception. The initial version of
 % io.update_globals/3 did *not* do this.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module io_globals_deadlock.
 :- interface.
@@ -33,16 +33,15 @@ main(!IO) :-
         Result = exception(_),
         io.write_string("update_pred_1 threw exception.\n", !IO)
     ),
-    % 
+
     % The following call to io.get_globals/3 will block if io.update_globals/3
     % fails to reset the lock after throwing an exception.
-    %
     io.get_globals(Globals, !IO),
     det_univ_to_type(Globals, FinalValue),
     io.format("Final value of Globals = %d\n", [i(FinalValue)], !IO).
 
 :- pred update_pred_1(unit::out, io::di, io::uo) is det.
-    
+
 update_pred_1(unit, !IO) :-
     io.update_globals(update_1, !IO).
 

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module dense_lookup_switch3.
 
 :- interface.
@@ -12,40 +16,40 @@
 :- import_module int.
 
 main(!IO) :-
-	test_all(0, 255, !IO).
+    test_all(0, 255, !IO).
 
 :- pred test_all(int::in, int::in, io::di, io::uo) is det.
 
 test_all(Cur, Max, !IO) :-
-	( Cur < Max ->
-		test(Cur, !IO),
-		test_all(Cur + 1, Max, !IO)
-	;
-		true
-	).
+    ( Cur < Max ->
+        test(Cur, !IO),
+        test_all(Cur + 1, Max, !IO)
+    ;
+        true
+    ).
 
 :- pred test(int::in, io::di, io::uo) is det.
 
 test(N, !IO) :-
-	io.write_int(N, !IO),
-	NC = char.det_from_int(N),
-	io.write_string(": ", !IO),
-	( local_lower_upper(NC, UC) ->
-		io.write_string("upper ", !IO),
-		io.write_char(UC, !IO)
-	;
-		io.write_string("no upper", !IO)
-	),
-	io.write_string(" ", !IO),
-	( local_lower_upper(LC, NC) ->
-		io.write_string("lower ", !IO),
-		io.write_char(LC, !IO)
-	;
-		io.write_string("no lower", !IO)
-	),
-	io.nl(!IO).
+    io.write_int(N, !IO),
+    NC = char.det_from_int(N),
+    io.write_string(": ", !IO),
+    ( local_lower_upper(NC, UC) ->
+        io.write_string("upper ", !IO),
+        io.write_char(UC, !IO)
+    ;
+        io.write_string("no upper", !IO)
+    ),
+    io.write_string(" ", !IO),
+    ( local_lower_upper(LC, NC) ->
+        io.write_string("lower ", !IO),
+        io.write_char(LC, !IO)
+    ;
+        io.write_string("no lower", !IO)
+    ),
+    io.nl(!IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % local_lower_upper(Lower, Upper) is true iff
     % Lower is a lower-case letter and Upper is the corresponding

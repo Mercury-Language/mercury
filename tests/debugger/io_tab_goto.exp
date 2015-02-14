@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred io_tab_goto.main/2-0 (det) io_tab_goto.m:13
+      E1:     C1 CALL pred io_tab_goto.main/2-0 (det) io_tab_goto.m:19
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet

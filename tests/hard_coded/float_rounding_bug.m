@@ -1,7 +1,10 @@
-% This is a regression test; Mercury 0.5 and earlier had
-% a bug in which floating point division expressions involving
-% whole numbers were computed using integer division rather
-% than floating point division.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% This is a regression test; Mercury 0.5 and earlier had a bug in which
+% floating point division expressions involving whole numbers were computed
+% using integer division rather than floating point division.
 
 :- module float_rounding_bug.
 
@@ -15,4 +18,6 @@
 
 :- import_module float.
 
-main --> io__write_float(1.0/2.0), io__write_char('\n').
+main -->
+    io__write_float(1.0/2.0),
+    io__write_char('\n').

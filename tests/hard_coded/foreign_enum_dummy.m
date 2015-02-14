@@ -1,4 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Check that the dummy type optimisation is disabled for foreign enumerations.
+
 :- module foreign_enum_dummy.
 :- interface.
 
@@ -11,32 +16,32 @@
 :- import_module bool.
 
 main(!IO) :-
-	( test(foo) ->
-		io.write_string("Success.\n", !IO)
-	;
-		io.write_string("Failure.\n", !IO)
-	).
+    ( test(foo) ->
+        io.write_string("Success.\n", !IO)
+    ;
+        io.write_string("Failure.\n", !IO)
+    ).
 
 :- pred test(foo::in) is semidet.
-:- pragma foreign_proc("C", 
-	test(FOO::in),
-	[will_not_call_mercury, promise_pure],
+:- pragma foreign_proc("C",
+    test(FOO::in),
+    [will_not_call_mercury, promise_pure],
 "
-	if (FOO == 561) {
-		SUCCESS_INDICATOR = MR_TRUE;
-	} else {
-		SUCCESS_INDICATOR = MR_FALSE;	
-	}
+    if (FOO == 561) {
+        SUCCESS_INDICATOR = MR_TRUE;
+    } else {
+        SUCCESS_INDICATOR = MR_FALSE;
+    }
 ").
 :- pragma foreign_proc("C#",
-	test(FOO::in),
-	[will_not_call_mercury, promise_pure],
+    test(FOO::in),
+    [will_not_call_mercury, promise_pure],
 "
-	if ((int) FOO == 561) {
-		SUCCESS_INDICATOR = true;
-	} else {
-		SUCCESS_INDICATOR = false;
-	}
+    if ((int) FOO == 561) {
+        SUCCESS_INDICATOR = true;
+    } else {
+        SUCCESS_INDICATOR = false;
+    }
 ").
 
 :- type foo ---> foo.

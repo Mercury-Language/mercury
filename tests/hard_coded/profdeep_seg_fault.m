@@ -1,17 +1,20 @@
-% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % The following program used to expose a bug in the runtime's handling
 % of deep profiled code. When compiled in a deep profiling grade at -O2
 % or below it used to abort with a segmentation fault.
 %
-% The problem was caused by the code in builtin.{unify,compare} for du types
+% The problem was caused by the code in builtin.{unify, compare} for du types
 % having inappropriate references to the proc layout structures of the dummy
 % unify and compare predicates for the dummy type builtin.user_by_rtti. If the
-% first call to builtin.{unify,compare} at a given call site had the equality
+% first call to builtin.{unify, compare} at a given call site had the equality
 % pretest of the two arguments succeed, this used to fill in the call site
 % dynamic structure with a pointer to the proc dynamic structure of this dummy
 % predicate, leading later calls through that call site to refer to the wrong
 % data structure.
-%
+
 :- module profdeep_seg_fault.
 :- interface.
 
@@ -21,13 +24,15 @@
 
 :- implementation.
 
-:- type list(T) ---> [] ; [T | list(T)].
+:- type list(T)
+    --->    []
+    ;       [T | list(T)].
 
 :- type t_type
     --->    t_bool
     ;       t_set(t_type)
     ;       t_list(t_type)
-    ;       t_enum(string) 
+    ;       t_enum(string)
     ;       t_typevar(string).
 
 :- type t_sig
@@ -49,7 +54,7 @@ main(!IO) :-
         ti_sig([ti_par_typevar("FOO")], ti_par_bool),
         ti_sig([ti_par_typevar("BAR")], ti_par_bool)
     ],
-    AllBuiltinSigs = [A, B],   
+    AllBuiltinSigs = [A, B],
     add_sigs_to_sym(AllBuiltinSigs, [], S),
     io.write(S, !IO),
     io.nl(!IO).
@@ -112,7 +117,7 @@ insertion_sort([X | Xs], Ys0, Zs) :-
 
 insert(X, [], [X]).
 insert(X, [Y | Ys], Zs) :-
-    (   
+    (
         compare(Res, X, Y),
         Res = (>)
     ->

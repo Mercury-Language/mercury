@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred revise_2.main/2-0 (det) revise_2.m:7
+       1:      1  1 CALL pred revise_2.main/2-0 (det) revise_2.m:13
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred revise_2.p/1-0 (det)
 mdb> continue
-       2:      2  2 CALL pred revise_2.p/1-0 (det) revise_2.m:14 (revise_2.m:8)
+       2:      2  2 CALL pred revise_2.p/1-0 (det) revise_2.m:20 (revise_2.m:14)
 mdb> finish
-       3:      2  2 EXIT pred revise_2.p/1-0 (det) revise_2.m:14 (revise_2.m:8)
+       3:      2  2 EXIT pred revise_2.p/1-0 (det) revise_2.m:20 (revise_2.m:14)
 mdb> dd -d 3 -n 7
 p(41)
 Valid? no
@@ -21,6 +21,6 @@ p(41)
 Is this a bug? no
 p(41)
 Valid? [no] pd
-       3:      2  2 EXIT pred revise_2.p/1-0 (det) revise_2.m:14 (revise_2.m:8)
+       3:      2  2 EXIT pred revise_2.p/1-0 (det) revise_2.m:20 (revise_2.m:14)
 mdb> continue
 41

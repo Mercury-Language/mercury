@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % The 22 March 2000 version of the compiler generated C code that contained
 % strings that were not properly quoted in the RTTI structures of the type
 % below, due to the backslashes in the function names.
@@ -15,13 +19,13 @@
 :- import_module bool.
 
 :- type boolean_constraint
-	--->	const(bool)
-	;	boolean_constraint =:= boolean_constraint
-	;	boolean_constraint /\ boolean_constraint
-	;	boolean_constraint \/ boolean_constraint
-	;	boolean_constraint `implies` boolean_constraint
-	;	not(boolean_constraint).
+    --->    const(bool)
+    ;       boolean_constraint =:= boolean_constraint
+    ;       boolean_constraint /\ boolean_constraint
+    ;       boolean_constraint \/ boolean_constraint
+    ;       boolean_constraint `implies` boolean_constraint
+    ;       not(boolean_constraint).
 
 main -->
-	io__write(const(no) /\ const(yes)),
-	io__write_string("\n").
+    io__write(const(no) /\ const(yes)),
+    io__write_string("\n").

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This tests that the compiler handles deterministic complicated
 % unifications on enums and compound types correctly.
 % (Version 0.4 of the compiler failed this test.)
@@ -14,11 +18,11 @@
 :- type bar ---> bar.
 
 main -->
-	{ p(foo(bar),foo(bar)), q(bar, bar) },
-	io__write_string("worked\n").
+    { p(foo(bar), foo(bar)), q(bar, bar) },
+    io__write_string("worked\n").
 
 :- pred p(foo::in(bound(foo(bound(bar)))), foo::in(bound(foo(bound(bar)))))
-	is det.
+    is det.
 
 p(X, X).
 

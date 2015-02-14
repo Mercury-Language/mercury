@@ -1,4 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test handling of imported no_tag types.
+
 :- module imported_no_tag.
 :- interface.
 
@@ -12,6 +17,5 @@
 :- implementation.
 
 pwrite(C, Data)  :-
- C = class(Test),
- call(Test, Data).
-
+    C = class(Test),
+    call(Test, Data).

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test (extracted from some code in std_util.m).
 % The MLDS back-end in Mercury 0.10.1 generated incorrect code
 % for this test case.  In particular when the float argument is
@@ -9,7 +13,9 @@
 :- module unused_float_box_test.
 :- interface.
 
-:- import_module io, list, univ.
+:- import_module io.
+:- import_module list.
+:- import_module univ.
 
 :- pred main(io__state::di, io__state::uo) is det.
 
@@ -30,18 +36,18 @@
 :- import_module int.
 
 main -->
-	wipe_stack(200),
-	( { my_get_functor_info('new my_univ_cons'(42.0), R) } ->
-		print(R), nl
-	;
-		print("failed"), nl
-	).
+    wipe_stack(200),
+    ( { my_get_functor_info('new my_univ_cons'(42.0), R) } ->
+        print(R), nl
+    ;
+        print("failed"), nl
+    ).
 
 :- pred wipe_stack(int, io__state, io__state).
 wipe_stack(N) -->
-	( if { N =< 0 } then []
-	else wipe_stack(N - 1), wipe_stack(N // 10 - 1)
-	).
+    ( if { N =< 0 } then []
+    else wipe_stack(N - 1), wipe_stack(N // 10 - 1)
+    ).
 
 :- pragma no_inline(my_get_functor_info/2).
 my_get_functor_info(Univ, FunctorInfo) :-
@@ -71,40 +77,40 @@ my_get_functor_info(Univ, FunctorInfo) :-
 
 :- pred get_notag_functor_info(Univ::in, ExpUniv::out) is semidet.
 
-:- pragma foreign_proc("C", 
-	get_notag_functor_info(_Univ::in, _ExpUniv::out),
-	[will_not_call_mercury, promise_pure], "
+:- pragma foreign_proc("C",
+    get_notag_functor_info(_Univ::in, _ExpUniv::out),
+    [will_not_call_mercury, promise_pure], "
 {
-	abort();
+    abort();
 }").
 get_notag_functor_info(_, _) :-
-	semidet_succeed,
-	private_builtin__sorry("local get_notag_functor_info").
+    semidet_succeed,
+    private_builtin__sorry("local get_notag_functor_info").
 
     % from the type stored in the univ.)
 :- pred get_equiv_functor_info(Univ::in, ExpUniv::out) is semidet.
 
 :- pragma foreign_proc("C",
-	get_equiv_functor_info(_Univ::in, _ExpUniv::out),
+    get_equiv_functor_info(_Univ::in, _ExpUniv::out),
     [will_not_call_mercury, promise_pure], "
 {
-	abort();
+    abort();
 }").
 get_equiv_functor_info(_, _) :-
-	semidet_succeed,
-	private_builtin__sorry("local get_equiv_functor_info").
+    semidet_succeed,
+    private_builtin__sorry("local get_equiv_functor_info").
 
 :- pred get_enum_functor_info(Univ::in, Int::out) is semidet.
 
 :- pragma foreign_proc("C",
-	get_enum_functor_info(_Univ::in, _Enum::out),
-	[will_not_call_mercury, promise_pure], "
+    get_enum_functor_info(_Univ::in, _Enum::out),
+    [will_not_call_mercury, promise_pure], "
 {
-	abort();
+    abort();
 }").
 get_enum_functor_info(_, _) :-
-	semidet_succeed,
-	private_builtin__sorry("local get_enum_functor_info").
+    semidet_succeed,
+    private_builtin__sorry("local get_enum_functor_info").
 
 :- pred get_du_functor_info(my_univ::in, int::out, int::out, int::out,
     list(univ)::out) is semidet.
@@ -113,31 +119,32 @@ get_enum_functor_info(_, _) :-
     _Ptag::out, _Sectag::out, _Args::out),
     [will_not_call_mercury, promise_pure], "
 {
-	abort();
+    abort();
 }").
 get_du_functor_info(_, _, _, _, _) :-
-	semidet_succeed,
-	private_builtin__sorry("local get_du_functor_info").
+    semidet_succeed,
+    private_builtin__sorry("local get_du_functor_info").
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- type my_univ --->
-	some [T] my_univ_cons(T).
-
-my_univ_to_type(Univ, X) :- my_type_to_univ(X, Univ).
+:- type my_univ
+    --->    some [T] my_univ_cons(T).
 
 :- pred my_type_to_univ(T, my_univ).
 :- pragma promise_pure(my_type_to_univ/2).
-my_type_to_univ(T, Univ) :-
-	(
-		impure private_builtin__var(T),
-		Univ = my_univ_cons(T0),
-		private_builtin__typed_unify(T0, T)
-	;
-		impure private_builtin__var(Univ),
-		Univ0 = 'new my_univ_cons'(T),
-		unsafe_promise_unique(Univ0, Univ)
-	).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+my_univ_to_type(Univ, X) :-
+    my_type_to_univ(X, Univ).
+
+my_type_to_univ(T, Univ) :-
+    (
+        impure private_builtin__var(T),
+        Univ = my_univ_cons(T0),
+        private_builtin__typed_unify(T0, T)
+    ;
+        impure private_builtin__var(Univ),
+        Univ0 = 'new my_univ_cons'(T),
+        unsafe_promise_unique(Univ0, Univ)
+    ).
+
+%---------------------------------------------------------------------------%

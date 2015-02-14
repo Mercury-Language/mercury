@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a modified copy of hard_coded/any_free_unify.m.
 
 :- module solver_test.
@@ -11,24 +15,26 @@
 % initialization predicate.
 
 :- solver type foo
-	where	representation is int,	
-		initialisation is init_foo,
-		ground         is ground,
-		any            is ground.
+    where   representation is int,
+        initialisation is init_foo,
+        ground         is ground,
+        any            is ground.
 
 :- implementation.
 
-:- import_module std_util, list, bool.
+:- import_module std_util.
+:- import_module list.
+:- import_module bool.
 
 main -->
-	{ test_any_free_unify([], Result1) },
-	io__print(Result1), io__nl.
+    { test_any_free_unify([], Result1) },
+    io__print(Result1), io__nl.
 
 :- pred init_foo(foo::out(any)) is det.
 :- pragma promise_pure(init_foo/1).
 
 init_foo(X) :-
-	impure X = 'representation to any foo/0'(42).
+    impure X = 'representation to any foo/0'(42).
 
 :- pred test_any_free_unify(list(foo), bool).
 :- mode test_any_free_unify(in(list_skel(any)), out) is det.
@@ -42,9 +48,9 @@ init_foo(X) :-
 % unification in the condition.
 
 test_any_free_unify(List, Result) :-
-	promise_pure
-	( List = [_ | _] ->
-		Result = no
-	;
-		Result = yes
-	).
+    promise_pure
+    ( List = [_ | _] ->
+        Result = no
+    ;
+        Result = yes
+    ).

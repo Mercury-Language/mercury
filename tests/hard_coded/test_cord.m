@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 % test_cord.m
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Tue Feb 11 16:05:29 EST 2003
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module test_cord.
 
@@ -12,33 +12,34 @@
 
 :- import_module io.
 
-
-
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module cord, list, string, solutions.
+:- import_module cord.
+:- import_module list.
+:- import_module solutions.
+:- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main -->
-
-  { Z    = empty,
-    A    = cons(a, Z),
-    B    = from_list([b]),
-    AB   = A ++ B,
-    BA   = B ++ A,
-    ABA1 = A ++ BA,
-    ABA2 = AB ++ A,
-    BAB1 = B ++ AB,
-    BAB2 = BA ++ B,
-    ABBA = AB ++ BA,
-    BAAB = BA ++ AB
-  },
+    {
+        Z    = empty,
+        A    = cons(a, Z),
+        B    = from_list([b]),
+        AB   = A ++ B,
+        BA   = B ++ A,
+        ABA1 = A ++ BA,
+        ABA2 = AB ++ A,
+        BAB1 = B ++ AB,
+        BAB2 = BA ++ B,
+        ABBA = AB ++ BA,
+        BAAB = BA ++ AB
+    },
 
     io.format("\ncords:\n", []),
     io.format("Z    = ", []), io.print(Z   ), io.nl,
@@ -53,17 +54,17 @@ main -->
     io.format("ABBA = ", []), io.print(ABBA), io.nl,
     io.format("BAAB = ", []), io.print(BAAB), io.nl,
 
-  { ConstructionResult =
+    { ConstructionResult =
         (      if list(Z) \= []  then "list(Z) \\= []"
           else if list(A) \= [a] then "list(A) \\= [a]"
           else if list(B) \= [b] then "list(B) \\= [b]"
           else                        "ok"
         )
-  },
+    },
 
     io.format("\nconstruction: %s\n", [s(ConstructionResult)]),
 
-  { ConcatenationResult =
+    { ConcatenationResult =
         (      if list(AB)   \= [a, b]       then "list(AB)   \\= [a, b]"
           else if list(BA)   \= [b, a]       then "list(BA)   \\= [b, a]"
           else if list(ABA1) \= [a, b, a]    then "list(ABA1) \\= [a, b, a]"
@@ -74,20 +75,20 @@ main -->
           else if list(BAAB) \= [b, a, a, b] then "list(BAAB) \\= [b, a, a, b]"
           else                                    "ok"
         )
-  },
+    },
 
     io.format("\nconcatenation: %s\n", [s(ConcatenationResult)]),
 
-  { EqualsResult =
+    { EqualsResult =
         (      if not equal(ABA1, ABA2) then "not equal(ABA1, ABA2)"
           else if not equal(BAB1, BAB2) then "not equal(BAB1, BAB2)"
           else                               "ok"
         )
-  },
+    },
 
     io.format("\nequals: %s\n", [s(EqualsResult)]),
 
-  { IdentityResult =
+    { IdentityResult =
         (      if AB   ++ empty \= AB   then "AB   ++ empty \\= AB  "
           else if BA   ++ empty \= BA   then "BA   ++ empty \\= BA  "
           else if ABA1 ++ empty \= ABA1 then "ABA1 ++ empty \\= ABA1"
@@ -108,11 +109,11 @@ main -->
 
           else    "ok"
         )
-  },
+    },
 
     io.format("\nidentity: %s\n", [s(IdentityResult)]),
 
-  { LengthResult =
+    { LengthResult =
         (      if length(Z)    \= 0 then "list(Z)    \\= 0"
           else if length(A)    \= 1 then "list(A)    \\= 1"
           else if length(B)    \= 1 then "list(B)    \\= 1"
@@ -126,29 +127,29 @@ main -->
           else if length(BAAB) \= 4 then "list(BAAB) \\= 4"
           else                           "ok"
         )
-  },
+    },
 
     io.format("\nlength: %s\n", [s(LengthResult)]),
 
-  { MemberResult =
+    { MemberResult =
         ( if   solutions((pred(X::out) is nondet :- member(X, ABBA))) \= [a, b]
           then "members(ABBA) \\= [a, b]"
           else "ok"
         )
-  },
+    },
 
     io.format("\nmembership: %s\n", [s(MemberResult)]),
 
-  { MapResult =
+    { MapResult =
         ( if   list(map(func(X) = ( if X = a then p else q ), AB)) \= [p, q]
-          then "map(|a -> p, b -> q|, AB) \\= [p, q]"
+          then "map( | a -> p, b -> q | , AB) \\= [p, q]"
           else "ok"
         )
-  },
+    },
 
     io.format("\nmap: %s\n", [s(MapResult)]),
 
-  { FoldlResult =
+    { FoldlResult =
         ( if   foldl(func(X, Xs) = [X | Xs], AB, []) \= [b, a]
           then "foldl(cons, AB, []) \\= [b, a]"
           else
@@ -156,11 +157,11 @@ main -->
           then "foldl(cons, from_list([a, b]), []) \\= [b, a]"
           else "ok"
         )
-  },
+    },
 
     io.format("\nfoldl: %s\n", [s(FoldlResult)]),
 
-  { FoldrResult =
+    { FoldrResult =
         ( if   foldr(func(X, Xs) = [X | Xs], AB, []) \= [a, b]
           then "foldr(cons, AB, []) \\= [a, b]"
           else
@@ -168,11 +169,12 @@ main -->
           then "foldr(cons, from_list([a, b]), []) \\= [a, b]"
           else "ok"
         )
-  },
+    },
 
     io.format("\nfoldr: %s\n", [s(FoldrResult)]),
 
-  { CAB   = condense(from_list([A, B])),
+    {
+    CAB   = condense(from_list([A, B])),
     CBA   = condense(from_list([B, A])),
     CABA1 = condense(from_list([A, CBA])),
     CABA2 = condense(from_list([CAB, A])),
@@ -194,11 +196,10 @@ main -->
                 then "list(CBAAB) \\= [b, a, a, b]"
           else                                    "ok"
         )
-  },
+    },
 
     io.format("\ncondense: %s\n", [s(CondenseResult)]),
 
     [].
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

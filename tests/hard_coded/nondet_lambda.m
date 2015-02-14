@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module nondet_lambda.
 :- interface.
 
@@ -12,12 +16,13 @@ main(!IO) :-
     % grade.
     F = (pred(X::out) is nondet :- bar(X)),
     ( F(Y) ->
-	io__write(Y, !IO),
-	io__write_string("\n", !IO)
+        io__write(Y, !IO),
+        io__write_string("\n", !IO)
     ;
-	true
+        true
     ).
 
 :- pred bar(int).
 :- mode bar(out) is det.
+
 bar(42).

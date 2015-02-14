@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
 % Test predicates from the int module that operate over int ranges.
@@ -24,7 +24,6 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-
     % Test nondet_int_in_range/3.
     solutions(nondet_int_in_range(10, 0), EmptyRangeResult),
     io.write_string("solutions(nondet_int_in_range(1, 0)) = ", !IO),
@@ -64,5 +63,4 @@ main(!IO) :-
     else io.print_line("false", !IO)
     ).
 
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

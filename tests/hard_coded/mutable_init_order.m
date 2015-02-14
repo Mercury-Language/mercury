@@ -1,6 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test that mutable initialisation occurs in the correct order
 % relative to initialise declarations.
-%
+
 :- module mutable_init_order.
 :- interface.
 :- import_module io.
@@ -15,10 +19,10 @@
 :- pred foo(io::di, io::uo) is det.
 
 foo(!IO) :-
-	set_global(908, !IO).
+    set_global(908, !IO).
 
 main(!IO) :-
-	get_global(V, !IO),
-	io.write_string("V = ", !IO),
-	io.write_int(V, !IO),
-	io.nl(!IO).
+    get_global(V, !IO),
+    io.write_string("V = ", !IO),
+    io.write_int(V, !IO),
+    io.nl(!IO).

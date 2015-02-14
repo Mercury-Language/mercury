@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module unify_existq_cons.
 
 :- interface.
@@ -8,21 +12,23 @@
 
 :- implementation.
 
-:- import_module enum, char, int.
+:- import_module enum.
+:- import_module char.
+:- import_module int.
 
 :- type tc
-	---> some [T] tc(T) => enum(T). 
+    --->    some [T] tc(T) => enum(T).
 
 main -->
-	(
-		{ p('new tc'('a'))
-		; p('new tc'(2))
-		}
-	->
-		io__write_string("test failed\n")
-	;
-		io__write_string("test succeeded\n")	
-	).
+    (
+        { p('new tc'('a'))
+        ; p('new tc'(2))
+        }
+    ->
+        io__write_string("test failed\n")
+    ;
+        io__write_string("test succeeded\n")
+    ).
 
 :- pred p(tc::in) is semidet.
 
@@ -30,4 +36,3 @@ main -->
 % followed by a var-var unification. If it treats it as a deconstruction
 % the argument unifications will be ill-typed.
 p('new tc'(1)).
-

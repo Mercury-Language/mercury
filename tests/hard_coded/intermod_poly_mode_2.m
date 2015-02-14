@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module intermod_poly_mode_2.
 
 :- interface.
@@ -7,26 +11,26 @@
 :- implementation.
 
 :- pragma foreign_proc("C",
-	new(X::in(I)) = (R::out(I)),
-	[promise_pure, will_not_call_mercury],
+    new(X::in(I)) = (R::out(I)),
+    [promise_pure, will_not_call_mercury],
 "
-	R = X;
+    R = X;
 ").
 :- pragma foreign_proc("C#",
-	new(X::in(I)) = (R::out(I)),
-	[promise_pure, will_not_call_mercury],
+    new(X::in(I)) = (R::out(I)),
+    [promise_pure, will_not_call_mercury],
 "
-	R = X;
+    R = X;
 ").
 :- pragma foreign_proc("Java",
-	new(X::in(I)) = (R::out(I)),
-	[promise_pure, will_not_call_mercury],
+    new(X::in(I)) = (R::out(I)),
+    [promise_pure, will_not_call_mercury],
 "
-	R = X;
+    R = X;
 ").
 :- pragma foreign_proc("Erlang",
-	new(X::in(I)) = (R::out(I)),
-	[promise_pure, will_not_call_mercury],
+    new(X::in(I)) = (R::out(I)),
+    [promise_pure, will_not_call_mercury],
 "
-	R = X
+    R = X
 ").

@@ -1,4 +1,6 @@
-% vim: ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % This is regression test for bug 160 in the Mantis database.
 %
@@ -17,7 +19,9 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module list, require.
+
+:- import_module list.
+:- import_module require.
 
 main(!IO) :-
     bug(R),
@@ -41,7 +45,7 @@ main(!IO) :-
 bug(R) :-
     ( p ->
         R = "RESULT: BAD A"
-    ; 
+    ;
         ( q(R0) ->
             R1 = R0
         ;

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module transitive_inst_type2.
 :- interface.
 
@@ -15,6 +19,6 @@
 :- implementation.
 
 sequence_length(Seq, Len) :-
-	length(Seq, Len).
+    length(Seq, Len).
 
 new_sequence([]).

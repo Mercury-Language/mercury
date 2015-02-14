@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module double_error.
 
 :- interface.
@@ -8,27 +12,28 @@
 
 :- implementation.
 
-:- import_module list, require.
+:- import_module list.
+:- import_module require.
 
 main -->
-	io__command_line_arguments(Args),
-	{ list__length(Args, Num) },
-	(
-		{ p(Num) }
-	->
-		io__write_string("1\n")
-	;
-		{ Arg = "not 1\n" },
-		{ error(Arg) }
-	),
-	(
-		{ q(Num) }
-	->
-		io__write_string("2\n")
-	;
-		{ Arg = "not 2\n" },
-		{ error(Arg) }
-	).
+    io__command_line_arguments(Args),
+    { list__length(Args, Num) },
+    (
+        { p(Num) }
+    ->
+        io__write_string("1\n")
+    ;
+        { Arg = "not 1\n" },
+        { error(Arg) }
+    ),
+    (
+        { q(Num) }
+    ->
+        io__write_string("2\n")
+    ;
+        { Arg = "not 2\n" },
+        { error(Arg) }
+    ).
 
 :- pred p(int::in) is semidet.
 
@@ -43,4 +48,3 @@ q(0).
 q(4).
 q(5).
 q(6).
-

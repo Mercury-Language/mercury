@@ -1,4 +1,7 @@
-	
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module flip_impl.
 
 :- interface.
@@ -7,22 +10,23 @@
 :- mode flipflip(in, out) is det.
 
 :- type tree(T)
-	--->	leaf(T)
-	;	tree(tree(T), T, tree(T)).
+    --->    leaf(T)
+    ;       tree(tree(T), T, tree(T)).
 
 :- type nat
-	--->	zero
-	;	s(nat).
+    --->    zero
+    ;       s(nat).
 
 :- implementation.
 
-flipflip(XT,YT) :- flip(XT,TT), flip(TT,YT).
+flipflip(XT, YT) :-
+    flip(XT, TT),
+    flip(TT, YT).
 
 :- pred flip(tree(T), tree(T)).
 :- mode flip(in, out) is det.
 
-flip(leaf(X),leaf(X)).
-flip(tree(XT,Info,YT),tree(FYT,Info,FXT)) :-
-        flip(XT,FXT),
-        flip(YT,FYT).
-
+flip(leaf(X), leaf(X)).
+flip(tree(XT, Info, YT), tree(FYT, Info, FXT)) :-
+    flip(XT, FXT),
+    flip(YT, FYT).

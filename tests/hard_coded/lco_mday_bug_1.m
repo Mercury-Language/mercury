@@ -1,4 +1,6 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module lco_mday_bug_1.
 
@@ -11,7 +13,8 @@
 
 :- implementation.
 
-:- import_module int, float.
+:- import_module float.
+:- import_module int.
 
 :- type number
     --->    num_int(int)
@@ -40,14 +43,14 @@ main(!IO) :-
     io.write(Res, !IO),
     io.nl(!IO).
 
-%--------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma no_inline(p/1).
 :- pred p(float::out) is det.
 
 p(43.0).
 
-%--------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred call_standard_func(standard_func, number).
 :- mode call_standard_func(in, out) is det.
@@ -58,7 +61,7 @@ call_standard_func(date_parse, Res) :-
     to_integer(num_int(0), T),
     Res = num_float(T).
 
-%--------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred to_integer(number, float).
 :- mode to_integer(in, out) is det.

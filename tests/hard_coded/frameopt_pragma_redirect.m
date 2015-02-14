@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test. Many versions of the compiler prior to
 % nov 11, 1999 generated incorrect code for the check_interval predicate.
 % The bug was that frameopt recognized that check_interval did not need a
@@ -13,12 +17,14 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- import_module pair, list, int, require.
+:- import_module int.
+:- import_module list.
+:- import_module pair.
+:- import_module require.
 
 :- type interval == pair(int).
 
@@ -27,16 +33,16 @@
 
 add_interval_list([], (0 - 0)).
 add_interval_list([I | Is], SumI) :-
-	check_interval(I),
-	add_interval_list(Is, SumI0),
-	add_intervals(I, SumI0, SumI).
+    check_interval(I),
+    add_interval_list(Is, SumI0),
+    add_intervals(I, SumI0, SumI).
 
 :- pred add_intervals(interval, interval, interval).
 :- mode add_intervals(in, in, out) is det.
 
 add_intervals(S1 - E1, S2 - E2, S - E) :-
-	S = S1 + S2,
-	E = E1 + E2.
+    S = S1 + S2,
+    E = E1 + E2.
 
 :- pred check_interval(interval).
 :- mode check_interval(in) is det.
@@ -44,25 +50,28 @@ add_intervals(S1 - E1, S2 - E2, S - E) :-
 :- pragma no_inline(check_interval/1).
 
 check_interval(S - E) :-
-	( is_invalid(S) ->
-		error("Found an invalid interval 1!")
-	; is_invalid(E) ->
-		error("Found an invalid interval 2!")
-	;
-		true
-	).
+    ( is_invalid(S) ->
+        error("Found an invalid interval 1!")
+    ; is_invalid(E) ->
+        error("Found an invalid interval 2!")
+    ;
+        true
+    ).
 
 :- pred is_invalid(int).
 :- mode is_invalid(in) is semidet.
 
 :- pragma inline(is_invalid/1).
 
-:- pragma foreign_proc("C", is_invalid(X :: in),
-	[will_not_call_mercury, thread_safe, promise_pure], 
-	"SUCCESS_INDICATOR = X > 50;").
+:- pragma foreign_proc("C",
+    is_invalid(X :: in),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    SUCCESS_INDICATOR = X > 50;
+").
 is_invalid(X) :- X > 50.
 
 main -->
-	{ add_interval_list([1 - 2, 3 - 4, 5 - 6, 7 - 8, 9 - 10], I) },
-	write(I),
-	nl.
+    { add_interval_list([1 - 2, 3 - 4, 5 - 6, 7 - 8, 9 - 10], I) },
+    write(I),
+    nl.

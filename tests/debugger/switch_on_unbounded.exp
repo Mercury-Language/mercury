@@ -1,15 +1,15 @@
-      E1:     C1 CALL pred switch_on_unbounded.main/2-0 (det) switch_on_unbounded.m:18
+      E1:     C1 CALL pred switch_on_unbounded.main/2-0 (det) switch_on_unbounded.m:21
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break edge
  0: + stop  interface pred switch_on_unbounded.edge/2-0 (semidet)
 mdb> continue
-      E2:     C2 CALL pred switch_on_unbounded.edge/2-0 (semidet) switch_on_unbounded.m:35 (switch_on_unbounded.m:19)
+      E2:     C2 CALL pred switch_on_unbounded.edge/2-0 (semidet) switch_on_unbounded.m:38 (switch_on_unbounded.m:22)
 mdb> print *
        HeadVar__1             	2
 mdb> step
-      E3:     C2 SWTC pred switch_on_unbounded.edge/2-0 (semidet) s2-na; switch_on_unbounded.m:36
+      E3:     C2 SWTC pred switch_on_unbounded.edge/2-0 (semidet) s2-na; switch_on_unbounded.m:39
 mdb> print *
        HeadVar__1             	2
 mdb> delete *
@@ -18,11 +18,11 @@ mdb> break edge_str
  0: + stop  interface pred switch_on_unbounded.edge_str/2-0 (semidet)
 mdb> continue
 1
-      E4:     C3 CALL pred switch_on_unbounded.edge_str/2-0 (semidet) switch_on_unbounded.m:42 (switch_on_unbounded.m:25)
+      E4:     C3 CALL pred switch_on_unbounded.edge_str/2-0 (semidet) switch_on_unbounded.m:45 (switch_on_unbounded.m:28)
 mdb> print *
        HeadVar__1             	"2"
 mdb> step
-      E5:     C3 SWTC pred switch_on_unbounded.edge_str/2-0 (semidet) s2-na; switch_on_unbounded.m:43
+      E5:     C3 SWTC pred switch_on_unbounded.edge_str/2-0 (semidet) s2-na; switch_on_unbounded.m:46
 mdb> print *
        HeadVar__1             	"2"
 mdb> delete *

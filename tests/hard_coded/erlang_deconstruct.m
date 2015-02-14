@@ -1,20 +1,24 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
-% both alternatives of the type t are represented by tuples of size 3 on
+% Both alternatives of the type t are represented by tuples of size 3 on
 % the erlang backend, make sure the compiler distinguishes between
 % them correctly.
-%
+
 :- module erlang_deconstruct.
 :- interface.
 :- import_module io.
+
 :- pred main(io::di, io::uo) is det.
+
 :- implementation.
 
 :- import_module int.
 
 :- type t
     --->    f(int, int)
-    ;       some [T] f(T)
-    .
+    ;       some [T] f(T).
 
 main(!IO) :-
     check_t(create(0), !IO),

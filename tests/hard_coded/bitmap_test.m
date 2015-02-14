@@ -1,6 +1,7 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- module bitmap_test.
 
 :- interface.
@@ -159,8 +160,8 @@ run_test({}, !IO) :-
     io.write_string("Test zero bit copies.\n", !IO),
     test_copy(0, 1, 0, !IO),
     test_copy(0, 167, 0, !IO),
-    
-    test_set_op("union", union, !IO), 
+
+    test_set_op("union", union, !IO),
     test_set_op("intersect", intersect, !IO),
     test_set_op("difference", difference, !IO),
     test_set_op("xor", xor, !IO),
@@ -170,7 +171,7 @@ run_test({}, !IO) :-
 
     test_text_io(!IO),
     test_binary_io(!IO),
-    
+
     some [!BM] (
         !:BM = bitmap.init(64, yes),
         !:BM = !.BM ^ bits(32, 16) := 0b1011011100100101,
@@ -235,7 +236,7 @@ test_exception(Pred, !IO) :-
     ;
         Result = failed,
         io.write_string("Error: test failed, expected exception\n", !IO)
-    ;    
+    ;
         Result = exception(Exception),
         io.write_string("Found exception as expected: ", !IO),
         io.write(univ_value(Exception), !IO),
@@ -290,7 +291,7 @@ test_copy(SrcStart, DestStart, NumBits, !IO) :-
     di, uo) is det.
 
 test_set_op(OpStr, Op, !IO) :-
-    test_binary_op(OpStr, Op, 
+    test_binary_op(OpStr, Op,
             (pred(TBM::in, !.IO::di, !:IO::uo) is det :-
                 io.write_string(to_byte_string(TBM ^ fst), !IO)
             ), !IO).
@@ -313,11 +314,12 @@ test_binary_op(OpStr, Op, !IO) :-
 
 test_binary_op(OpStr, Op, Writer, !IO) :-
     test_binary_op(8, OpStr, Op, Writer, !IO),
-    test_binary_op(64, OpStr, Op, Writer, !IO). 
+    test_binary_op(64, OpStr, Op, Writer, !IO).
 
 :- pred test_binary_op(int, string, (func(tbitmap, tbitmap) = T),
     pred(T, io, io), io, io).
-:- mode test_binary_op(in, in, (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
+:- mode test_binary_op(in, in,
+    (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
     (pred(in, di, uo) is det), di, uo) is det.
 :- mode test_binary_op(in, in, (func(tbitmap_ui, tbitmap_di) = out is det),
     (pred(in, di, uo) is det), di, uo) is det.
@@ -325,7 +327,7 @@ test_binary_op(OpStr, Op, Writer, !IO) :-
 test_binary_op(BMLength, OpStr, Op, Writer, !IO) :-
     ZeroedBM = bitmap_tester.new(BMLength, no),
     OnesBM = bitmap_tester.new(BMLength, yes),
-    
+
     PatternBM0 = bitmap_tester.new(BMLength, no),
     BytePattern = 0b10111001,
     fill_in_alternating_pattern(BytePattern, PatternBM0, PatternBM),
@@ -392,7 +394,7 @@ test_binary_io(!IO) :-
                 BytesReadA = 8,
                 InputBMa = BMa
             ->
-                io.write_string("First read succeeded\n", !IO) 
+                io.write_string("First read succeeded\n", !IO)
             ;
                 io.write_string("First read failed\n", !IO)
             ),
@@ -410,7 +412,7 @@ test_binary_io(!IO) :-
                 BytesReadB2 = 0,
                 BMb ^ bits(16, 24) = InputBMb ^ bits(0, 24)
             ->
-                io.write_string("Second read succeeded\n", !IO) 
+                io.write_string("Second read succeeded\n", !IO)
             ;
                 io.write_string("Second read failed\n", !IO)
             ),
@@ -453,7 +455,7 @@ test_text_io(!IO) :-
             OpenInputRes = ok(IStream),
             io.read(IStream, ReadResA, !IO),
             ( ReadResA = ok(BMa) ->
-                io.write_string("First read succeeded\n", !IO) 
+                io.write_string("First read succeeded\n", !IO)
             ;
                 io.write_string("First read failed\n", !IO),
                 io.close_input(IStream, !IO),
@@ -463,7 +465,7 @@ test_text_io(!IO) :-
             (
                 ReadResB = ok(BMb)
             ->
-                io.write_string("Second read succeeded\n", !IO) 
+                io.write_string("Second read succeeded\n", !IO)
             ;
                 io.write_string("Second read failed\n", !IO),
                 io.close_input(IStream, !IO),
@@ -480,7 +482,6 @@ test_text_io(!IO) :-
         throw(Error)
     ).
 
-    
 :- pred fill_in_alternating_pattern(byte::in,
             tbitmap::tbitmap_di, tbitmap::tbitmap_uo) is det.
 
@@ -504,7 +505,7 @@ fill_in_alternating_pattern(Index, NumBytes, Pattern, !BM) :-
     ;
         ( Index rem 2 = 0 ->
             BytePattern = Pattern
-        ;    
+        ;
             BytePattern = \Pattern
         ),
         !:BM = !.BM ^ byte(Index) := BytePattern,
@@ -521,7 +522,7 @@ write_binary_string(Int, !IO) :-
 binary_string(Int) = string.int_to_base_string(Int, 2).
 
 :- pred write_bitmap_result_error(bitmap_result_error::in,
-            io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 write_bitmap_result_error(query(Op, Input, OtherArgs, Output), !IO) :-
     io.write_string("Error in `", !IO),
@@ -589,4 +590,3 @@ write_bitmap_result_error(two_arguments(Op, Input1, Input2, OtherArgs, Output),
     io.write_string("expected output = ", !IO),
     io.write_string(to_byte_string(Output ^ snd), !IO),
     io.nl(!IO).
-

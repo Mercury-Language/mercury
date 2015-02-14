@@ -33,7 +33,7 @@ sqrt(X):   1.48
 ln(X):  0.788
 log2(X):   1.14
 log10(X):  0.342
-log(2.1,X):   1.06
+log(2.1, X):   1.06
 exp(X):   9.03
 X:    0.5
 sin(X):  0.479
@@ -42,7 +42,7 @@ tan(X):  0.546
 sinh(X):  0.521
 cosh(X):   1.13
 tanh(X):  0.462
-atan2(sin(X),cos(X)):    0.5
+atan2(sin(X), cos(X)):    0.5
 X:    0.6
 asin(X):  0.644
 acos(X):  0.927

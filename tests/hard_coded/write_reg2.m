@@ -1,10 +1,13 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test:
-% 
+%
 % This test ensures that tuple types are written out correctly.
 %
-% The Mercury compiler of 12 Dec 2000 failed to correctly
-% run this test.
-% 
+% The Mercury compiler of 12 Dec 2000 failed to correctly run this test.
+%
 % Author: trd
 
 :- module write_reg2.
@@ -15,10 +18,11 @@
 
 :- implementation.
 
-:- import_module pair, univ.
+:- import_module pair.
+:- import_module univ.
 
 main -->
-	io__write(univ((1 - 2))),
-	io__nl,
-	io__write(univ({1,2,3})),
-	io__nl.
+    io__write(univ((1 - 2))),
+    io__nl,
+    io__write(univ({1, 2, 3})),
+    io__nl.

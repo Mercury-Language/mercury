@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred completion.main/2-0 (det) completion.m:13
+       1:      1  1 CALL pred completion.main/2-0 (det) completion.m:17
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -59,7 +59,7 @@ mdb: there is no such variable.
 mdb> 
 stack                stack_default_limit  stack_regs
 stack --detailed 
-   0       1       1    1 pred completion.main/2-0 (det) (completion.m:13) (empty)
+   0       1       1    1 pred completion.main/2-0 (det) (completion.m:17) (empty)
 mdb> 
 completion            completion.sub2       
 completion.sub1       completion.sub2.sub3  

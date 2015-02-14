@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module duplicate_label.
 :- interface.
 :- import_module io.
@@ -12,6 +16,6 @@
 :- import_module list.
 
 main -->
-	{ X = "foo", Y = [X, X], Z = [Y, Y],
-	list__condense(Z, L) },
-	io__write_strings(L).
+    { X = "foo", Y = [X, X], Z = [Y, Y],
+    list__condense(Z, L) },
+    io__write_strings(L).

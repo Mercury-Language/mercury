@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred confirm_abort.main/2-0 (det) confirm_abort.m:7
+       1:      1  1 CALL pred confirm_abort.main/2-0 (det) confirm_abort.m:13
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred confirm_abort.p/1-0 (det)
 mdb> continue
-       2:      2  2 CALL pred confirm_abort.p/1-0 (det) confirm_abort.m:14 (confirm_abort.m:8)
+       2:      2  2 CALL pred confirm_abort.p/1-0 (det) confirm_abort.m:20 (confirm_abort.m:14)
 mdb> finish
-       5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:14 (confirm_abort.m:8)
+       5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:20 (confirm_abort.m:14)
 mdb> dd -d 3 -n 7
 p(27)
 Valid? no
@@ -43,19 +43,19 @@ Answer one of:
 Found incorrect contour:
 q(27)
 Is this a bug? quit
-       5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:14 (confirm_abort.m:8)
+       5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:20 (confirm_abort.m:14)
 mdb> dd -d 3 -n 7
 p(27)
 Valid? [no] n
 Found incorrect contour:
 q(27)
 Is this a bug? q
-       5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:14 (confirm_abort.m:8)
+       5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:20 (confirm_abort.m:14)
 mdb> dd -d 3 -n 7
 p(27)
 Valid? [no] n
 Found incorrect contour:
 q(27)
 Is this a bug? y
-       4:      3  3 EXIT pred confirm_abort.q/1-0 (det) confirm_abort.m:19 (confirm_abort.m:15)
+       4:      3  3 EXIT pred confirm_abort.q/1-0 (det) confirm_abort.m:25 (confirm_abort.m:21)
 mdb> quit -y

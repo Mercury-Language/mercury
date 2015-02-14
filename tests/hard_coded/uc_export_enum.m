@@ -1,4 +1,7 @@
-% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Check the `uppercase' attribute with foreign_export_enum pragmas.
 
 :- module uc_export_enum.
@@ -7,8 +10,8 @@
 :- import_module io.
 :- pred main(io::di, io::uo) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -98,7 +101,7 @@ main(!IO) :-
     Z = OR_foo_BAZ;
 ").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type foo
     --->    foo
@@ -111,14 +114,15 @@ main(!IO) :-
 :- pragma foreign_export_enum("C#", foo/0, [prefix("UC_foo_"), uppercase]).
 :- pragma foreign_export_enum("Java", foo/0, [prefix("UC_foo_"), uppercase]).
 
-    % Check that uppercase applies only when the uppercase attribute is specified.
+    % Check that uppercase applies only when the uppercase attribute
+    % is specified.
     %
 :- pragma foreign_export_enum("C", foo/0, [prefix("LC_foo_")]).
 :- pragma foreign_export_enum("C#", foo/0, [prefix("LC_foo_")]).
 :- pragma foreign_export_enum("Java", foo/0, [prefix("LC_foo_")]).
 
-    % Check that the uppercase attribute does not apply to user supplied foreign
-    % names.
+    % Check that the uppercase attribute does not apply to user supplied
+    % foreign names.
     %
 :- pragma foreign_export_enum("C", foo/0, [prefix("OR_foo_"), uppercase], [
     foo  - "lowercase_foo",
@@ -133,5 +137,4 @@ main(!IO) :-
     bar  - "mixed1234_bAr"
 ]).
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,6 +1,7 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- module string_builder_test.
 
 :- interface.
@@ -30,8 +31,7 @@ main(!IO) :-
         write_xml_doc_general(Stream, [1, 2, 3],
             simple, no_stylesheet, no_dtd, _, !State),
         put(Stream, "\n", !State),
-        pprint.write(Stream, 0, to_doc([4, 5, 6]),
-            !State),
+        pprint.write(Stream, 0, to_doc([4, 5, 6]), !State),
         put(Stream, "\n", !State),
         string_writer.format(Stream, "%.2f", [f(3.14)], !State),
         put(Stream, "\n", !State),

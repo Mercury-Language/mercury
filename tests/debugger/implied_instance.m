@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module implied_instance.
 
 :- interface.
@@ -8,27 +12,28 @@
 
 :- implementation.
 
-:- import_module int, list.
+:- import_module int.
+:- import_module list.
 
 :- typeclass sumable(A) where [
-	pred p(A::in, int::out) is det
+    pred p(A::in, int::out) is det
 ].
 
 :- instance sumable(int) where [
-	pred(p/2) is copy_int
+    pred(p/2) is copy_int
 ].
 
 :- instance sumable(list(T)) <= sumable(T) where [
-	pred(p/2) is sum_int_list
+    pred(p/2) is sum_int_list
 ].
 
 main -->
-	{ p(2, SumA) },
-	{ p([42, 24, 1, 2, 3], SumB) },
-	io__write_int(SumA),
-	io__write_string("\n"),
-	io__write_int(SumB),
-	io__write_string("\n").
+    { p(2, SumA) },
+    { p([42, 24, 1, 2, 3], SumB) },
+    io__write_int(SumA),
+    io__write_string("\n"),
+    io__write_int(SumB),
+    io__write_string("\n").
 
 :- pred copy_int(int, int).
 :- mode copy_int(in, out) is det.
@@ -39,8 +44,7 @@ copy_int(N, N).
 :- mode sum_int_list(in, out) is det.
 
 sum_int_list([], 0).
-sum_int_list([X|Xs], Sum) :-
-	p(X, SumA),
-	sum_int_list(Xs, SumB),
-	Sum = SumA + SumB.
-
+sum_int_list([X | Xs], Sum) :-
+    p(X, SumA),
+    sum_int_list(Xs, SumB),
+    Sum = SumA + SumB.

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test compilation of a file with MS DOS style newlines.
 %
 
@@ -12,12 +16,12 @@
 :- implementation.
 
 :- type t --->
-	'escaped functor'.
+    'escaped functor'.
 
 main(!IO) :-
         io.write_string("multi
-                line string\n", !IO),
+                line string\n", !IO), 
         io.write_string("should be all on one \
-line\n", !IO),
-	io.write('escaped fu\
+line\n", !IO), 
+    io.write('escaped fu\
 nctor', !IO).

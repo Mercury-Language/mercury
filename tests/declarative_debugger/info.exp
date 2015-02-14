@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred info.main/2-0 (det) info.m:13
+      E1:     C1 CALL pred info.main/2-0 (det) info.m:18
 mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.
@@ -13,7 +13,7 @@ mdb> f
 mdb> dd -d 3 -n 7 -s divide_and_query
 last([1, 2, 3, 4, 5, 6, 7, 8, ...], t/1)
 Valid? info
-Context of current question   : info.m:43 (info.m:15)
+Context of current question   : info.m:48 (info.m:20)
 Search mode                   : divide and query     
 Estimated questions remaining : 5                    
 Number of suspect events      : 30                   
@@ -22,7 +22,7 @@ command was issued.
 dd> n
 last([6, 7, 8, 9, 10], t(10))
 Valid? info
-Context of current question   : info.m:43 (info.m:45)
+Context of current question   : info.m:48 (info.m:50)
 Search mode                   : divide and query     
 Estimated questions remaining : 5                    
 Number of suspect events      : 30                   
@@ -31,7 +31,7 @@ area into two regions of 15 and 15 events each.
 dd> n
 last([9, 10], t(10))
 Valid? info
-Context of current question   : info.m:43 (info.m:45)
+Context of current question   : info.m:48 (info.m:50)
 Search mode                   : divide and query     
 Estimated questions remaining : 4                    
 Number of suspect events      : 15                   
@@ -49,7 +49,7 @@ last([101, 112, 103, 104, 105, 106, 107, 108], t/1)
 Valid? n
 last([112, 103, 104, 105, 106, 107, 108], t(108))
 Valid? info
-Context of current question : info.m:43 (info.m:45)
+Context of current question : info.m:48 (info.m:50)
 Search mode                 : top down             
 The current question was chosen because this is the next node in the
 top-down search.
@@ -57,22 +57,22 @@ dd> b 2
 browser> mark
 last([108], t(108))
 Valid? info
-Context of current question : info.m:43 (info.m:45)
+Context of current question : info.m:48 (info.m:50)
 Search mode                 : top down             
 The current question was chosen because the marked subterm was bound by
-the unification inside the predicate info.last/2 (info.m:43). The path
+the unification inside the predicate info.last/2 (info.m:48). The path
 to the subterm in the atom is 2.
 dd> mode binary
 last([105, 106, 107, 108], t(108))
 Valid? info
-Context of current question : info.m:43 (info.m:45)
+Context of current question : info.m:48 (info.m:50)
 Search mode                 : binary search on path
 The current question was chosen because this node divides a path of
 length 7 into two paths of length 3 and 4.
 dd> n
 last([107, 108], t(108))
 Valid? info
-Context of current question : info.m:43 (info.m:45)
+Context of current question : info.m:48 (info.m:50)
 Search mode                 : binary search on path
 The current question was chosen because this node divides a path of
 length 3 into two paths of length 1 and 2.
@@ -81,7 +81,7 @@ browser> cd 1
 browser> mark
 last([106, 107, 108], t(108))
 Valid? info
-Context of current question : info.m:43 (info.m:45)
+Context of current question : info.m:48 (info.m:50)
 Search mode                 : top down             
 The current question was chosen because tracking of the marked subterm
 was stopped here, because the binding node lies in a portion of the tree
@@ -104,10 +104,10 @@ browser> cd 1/1
 browser> mark
 f(0, "lala") = t(t(t("lala")))
 Valid? info
-Context of current question : info.m:51 (info.m:34)
+Context of current question : info.m:57 (info.m:39)
 Search mode                 : top down             
 The current question was chosen because the marked subterm was bound by
-the unification inside the function info.f/3 (info.m:52). The path to
+the unification inside the function info.f/3 (info.m:58). The path to
 the subterm in the atom is 3/1/1.
 dd> q
 Diagnosis aborted.
@@ -122,10 +122,10 @@ Valid? b 4
 browser> mark
 fproc(1) = 2
 Valid? info
-Context of current question : info.m:57 (info.m:37)
+Context of current question : info.m:63 (info.m:42)
 Search mode                 : top down             
 The current question was chosen because the marked subterm was bound by
-the foreign procedure call inside the function info.fproc/2 (info.m:57).
+the foreign procedure call inside the function info.fproc/2 (info.m:63).
 The path to the subterm in the atom is 2.
 dd> n
 Found incorrect contour:
@@ -133,7 +133,7 @@ fproc(1) = 2
 Is this a bug? n
 fproc(1) = 2
 Valid? [no] info
-Context of current question : info.m:57 (info.m:37)
+Context of current question : info.m:63 (info.m:42)
 Search mode                 : top down             
 The current question was chosen because this question is being
 revisited, because of an unsuccessful previous bug search.

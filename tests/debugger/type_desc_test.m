@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a test of the debugger's handling of the builtin types type_desc and
 % type_ctor_desc.
 %
@@ -16,23 +20,24 @@
 
 :- implementation.
 
-:- import_module type_desc, list.
+:- import_module list.
+:- import_module type_desc.
 
 main -->
-	test([1, 2]),
-	test(["one", "two", "three"]).
+    test([1, 2]),
+    test(["one", "two", "three"]).
 
 :- pred test(T::in, io__state::di, io__state::uo) is det.
 
 test(Val) -->
-	{ TypeDesc = get_type_desc(Val) },
-	io__write_string("type_desc: "),
-	io__write(TypeDesc),
-	io__nl,
-	{ TypeCtorDesc = get_type_ctor_desc(TypeDesc) },
-	io__write_string("type_ctor_desc: "),
-	io__write(TypeCtorDesc),
-	io__nl.
+    { TypeDesc = get_type_desc(Val) },
+    io__write_string("type_desc: "),
+    io__write(TypeDesc),
+    io__nl,
+    { TypeCtorDesc = get_type_ctor_desc(TypeDesc) },
+    io__write_string("type_ctor_desc: "),
+    io__write(TypeCtorDesc),
+    io__nl.
 
 :- func get_type_desc(T) = type_desc.
 

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module copy_pred.
 :- interface.
 :- import_module io.
@@ -6,8 +10,10 @@
 
 :- implementation.
 
-:- import_module list, map.
-:- import_module univ, string.
+:- import_module list.
+:- import_module map.
+:- import_module string.
+:- import_module univ.
 
 :- type phloat == float.
 
@@ -42,4 +48,3 @@ main -->
 
 foo(A, B, C, D, S0, S) :-
     string__format("%d, %g, %d, %g, %s", [i(A), f(B), i(C), f(D), s(S0)], S).
-

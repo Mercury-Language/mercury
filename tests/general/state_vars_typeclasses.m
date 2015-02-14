@@ -1,10 +1,10 @@
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 % state_vars_typeclasses.m
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Fri May 31 14:28:03 EST 2002
-% vim: ft=mercury ff=unix ts=4 sw=4 et wm=0 tw=0
-%
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module state_vars_typeclasses.
 
@@ -12,14 +12,13 @@
 
 :- import_module io.
 
-
 :- pred main(io::di, io::uo) is det.
-
 
 :- implementation.
 
-:- import_module int, string, list.
-
+:- import_module int.
+:- import_module list.
+:- import_module string.
 
 :- typeclass foo(T) where [ func f(T) = T, pred p(T::in, T::out) is det ].
 
@@ -27,7 +26,6 @@
     p(!X),
     f(!.X) = !:X + 1
 ].
-
 
 main(!IO) :-
     p(1, A),

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module closure_arg_comparison.
 
 :- interface.
@@ -11,9 +15,9 @@
 :- import_module int.
 
 main(!IO) :-
-	compare_representation(R, p(q(1)), p(r(1))),
-	write(R, !IO),
-	nl(!IO).
+    compare_representation(R, p(q(1)), p(r(1))),
+    write(R, !IO),
+    nl(!IO).
 
 :- pred p(pred(int), int).
 :- mode p(pred(out) is det, out) is det.

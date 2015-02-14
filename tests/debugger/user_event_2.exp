@@ -1,9 +1,9 @@
-      E1:     C1 CALL pred user_event_2.main/2-0 (det) user_event_2.m:10
+      E1:     C1 CALL pred user_event_2.main/2-0 (det) user_event_2.m:14
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> user
-      E2:     C2 USER <event_with_zero_arity_defined_type> pred user_event_2.do_something/3-0 (det) c1; user_event_2.m:16
+      E2:     C2 USER <event_with_zero_arity_defined_type> pred user_event_2.do_something/3-0 (det) c1; user_event_2.m:20
 mdb> print *
        arg (attr 0, Data)     	foo(43)
 mdb> continue

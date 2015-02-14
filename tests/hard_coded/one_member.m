@@ -1,4 +1,6 @@
-% vim:ts=4 sw=4 expandtab
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module one_member.
 
@@ -20,9 +22,9 @@
 
 :- type set_tree234(T)
     --->    empty
-    ;       two(T, set_tree234(T), set_tree234(T)) 
+    ;       two(T, set_tree234(T), set_tree234(T))
     ;       three(T, T, set_tree234(T), set_tree234(T), set_tree234(T))
-    ;       four(T, T, T, set_tree234(T), set_tree234(T), 
+    ;       four(T, T, T, set_tree234(T), set_tree234(T),
                 set_tree234(T), set_tree234(T)).
 
 main(!IO) :-
@@ -52,9 +54,9 @@ do_one_member(two(E0, T0, T1), E) :-
         do_one_member(T1, E)
     ).
 do_one_member(three(E0, E1, T0, T1, T2), E) :-
-    ( 
+    (
         E = E0
-    ; 
+    ;
         E = E1
     ;
         do_one_member(T0, E)

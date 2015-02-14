@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test, for making sure that tabling inserts meaningful contexts
 % into the goal_infos of the goals it inserts into procedure bodies, for use
 % by the debugger.
@@ -11,11 +15,11 @@
 :- implementation.
 
 main -->
-	{ loop(10) },
-	io__write_string("Hello, world\n").
+    { loop(10) },
+    io__write_string("Hello, world\n").
 
 :- pragma loop_check(loop/1).
 :- pred loop(int::in) is det.
 
 loop(X) :-
-	loop(X).
+    loop(X).

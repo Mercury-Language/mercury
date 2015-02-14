@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred print_goal.main/2-0 (det) print_goal.m:12
+      E1:     C1 CALL pred print_goal.main/2-0 (det) print_goal.m:20
 mdb> echo on
 Command echo enabled.
 mdb> context none

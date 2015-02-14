@@ -1,4 +1,6 @@
-% vim: ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % This test case tests the debugger's formatting of goal paths that include
 % switches on types with an unbounded number of function symbols.
@@ -13,7 +15,8 @@
 
 :- implementation.
 
-:- import_module solutions, list.
+:- import_module solutions.
+:- import_module list.
 
 main(!IO) :-
     ( edge(2, Two) ->

@@ -1,4 +1,6 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % Stress test the handling of temp frames on the nondet stack, looking for
 % bugs that manifest themselves when we add new segments to the nondet stack,

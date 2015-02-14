@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred ignore.main/2-0 (det) ignore.m:13
+      E1:     C1 CALL pred ignore.main/2-0 (det) ignore.m:19
 mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.
@@ -18,8 +18,8 @@ Found incorrect contour:
 q(1, 0) = 1
 Is this a bug? y
       E4:     C3 EXIT func ignore.q/2-0 (det)
-mdb> break 15
- 0: + stop  linenumber ignore.m:15
+mdb> break 21
+ 0: + stop  linenumber ignore.m:21
 mdb> continue
       E5:     C4 CALL pred ignore.p/1-0 (det)
 mdb> finish

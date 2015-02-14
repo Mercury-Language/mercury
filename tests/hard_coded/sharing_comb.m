@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test for bug which showed up when --structure-sharing-widening
 % was used.
 
@@ -8,14 +12,14 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type render_params
     --->    render_params(
@@ -39,7 +43,7 @@
 
 :- type object_id == int.
 
-:- type basic_object    
+:- type basic_object
     --->    sphere(surface).
 
 :- type surface
@@ -63,7 +67,7 @@
     --->    empty
     ;       node(T).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % BUG: with --structure-sharing-widening set to a number < 7, the sharing
 % for find_intersection was inferred to be `bottom' (i.e. no sharing) whereas
@@ -96,7 +100,7 @@ find_scene_intersection(scene(Partition), IntersectionResult) :-
         IntersectionResult = node(Intersection)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     RP0 = render_params(scene(space_tree([leaf(space_tree_object(basic_object(
@@ -125,6 +129,3 @@ main(!IO) :-
     io.write_string("RP = ", !IO),
     io.write(RP, !IO),
     io.nl(!IO).
-
-%-----------------------------------------------------------------------------%
-% vi: ft=mercury ts=4 sts=4 sw=4 et

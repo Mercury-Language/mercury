@@ -1,4 +1,6 @@
-% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 % Some checks of array implementation.
 
@@ -18,13 +20,13 @@
 :- import_module string.
 
 main(!IO) :-
-    test([1,2,3,4,5,6,7,8,9,10], !IO).
+    test([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], !IO).
 
 :- pred test(list(int)::in, io::di, io::uo) is det.
 
 test(Xs, !IO) :-
     Cmp = (pred(X :: in, Y :: in, Res :: out) is det :-
-            compare(Res, X, Y)
+        compare(Res, X, Y)
     ),
     array.from_list(Xs, A0),
     array.to_list(A0, As0),
@@ -83,7 +85,7 @@ test(Xs, !IO) :-
     bt_array.resize(B1, 0, 14, 1000, B2),
     bt_array.to_list(B2, Bs2),
     write_message_int_list("B2: ", Bs2, !IO),
-    bt_array.shrink(B2, 0, 9,B3),
+    bt_array.shrink(B2, 0, 9, B3),
     bt_array.to_list(B3, Bs3),
     write_message_int_list("B3: ", Bs3, !IO),
 
@@ -156,4 +158,3 @@ write_int_list_rest([I | Is], !IO) :-
     io.write_string(", ", !IO),
     io.write_int(I, !IO),
     write_int_list_rest(Is, !IO).
-

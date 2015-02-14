@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module inadmissible.
 
 :- interface.
@@ -8,31 +12,32 @@
 
 :- implementation.
 
-:- import_module int, list.
+:- import_module int.
+:- import_module list.
 
 main(!IO) :-
-	(
-		gtmax(2, [2,3,1])
-	->
-		write_string("max", !IO)
-	;
-		write_string("not max", !IO)
-	),
-	nl(!IO).
+    (
+        gtmax(2, [2, 3, 1])
+    ->
+        write_string("max", !IO)
+    ;
+        write_string("not max", !IO)
+    ),
+    nl(!IO).
 
 :- pred gtmax(int::in, list(int)::in) is semidet.
 
 gtmax(A, As) :-
-	list_to_set(As, SA),
-	oset_max(SA, Max),
-	A > Max.
+    list_to_set(As, SA),
+    oset_max(SA, Max),
+    A > Max.
 
 :- pred ltmax(int::in, list(int)::in) is semidet.
 
 ltmax(A, As) :-
-	list_to_set(As, SA),
-	oset_max(SA, Max),
-	A < Max.
+    list_to_set(As, SA),
+    oset_max(SA, Max),
+    A < Max.
 
 :- pred list_to_set(list(int)::in, list(int)::out) is det.
 

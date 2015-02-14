@@ -1,14 +1,16 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % solver_ite_inits.m
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Fri Mar 18 11:17:41 EST 2005
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %
 % Test that the compiler inserts solver variable initialisation calls
 % at the ends of if-then-else branches if necessary to ensure that solver
 % variables have compatible insts at the end of the if-then-else.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module solver_ite_inits.
 
@@ -16,26 +18,20 @@
 
 :- import_module io.
 
-
-
 :- pred main(io :: di, io :: uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
-
-
 
 :- solver type foo
     where   representation is int,
             initialisation is init,
             ground         is ground,
             any            is ground.
-
-
 
 :- pred init(foo::oa) is det.
 :- pragma promise_pure(init/1).
@@ -52,20 +48,17 @@ write_foo(Foo, !IO) :-
     io.print(X, !IO),
     io.nl(!IO).
 
-
-
 :- type bar ---> a ; b ; c.
 
 :- func f(bar::in) = (foo::oa) is det.
 f(Bar) = Foo :-
     ( if Bar = a then true else Foo = foo(1) ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     write_foo(f(a), !IO),
     write_foo(f(b), !IO),
     write_foo(f(c), !IO).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

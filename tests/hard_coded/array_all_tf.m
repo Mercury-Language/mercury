@@ -1,4 +1,8 @@
-% Test array.all_{true,false}/2.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Test array.all_{true, false}/2.
 
 :- module array_all_tf.
 :- interface.
@@ -30,7 +34,7 @@ main(!IO) :-
     then io.write_string("PASSED\n", !IO)
     else io.write_string("FAILED\n", !IO)
     ),
- 
+
     array.make_empty_array(EmptyArray : array(int)),
     io.write_string("TEST: all_true(even, ", !IO),
     io.write(EmptyArray, !IO),
@@ -39,7 +43,7 @@ main(!IO) :-
     then io.write_string("PASSED\n", !IO)
     else io.write_string("FAILED\n", !IO)
     ),
-    
+
     io.write_string("TEST: all_false(even, ", !IO),
     io.write(EmptyArray, !IO),
     io.write_string("): ", !IO),

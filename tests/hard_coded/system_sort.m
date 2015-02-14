@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This test case is to ensure that stdin/stdout are redirected correctly for
 % system commands.
 
@@ -12,5 +16,4 @@
 :- implementation.
 
 main -->
-	io__call_system("sort", _).
-
+    io__call_system("sort", _).

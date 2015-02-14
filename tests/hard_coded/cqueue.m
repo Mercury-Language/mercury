@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module cqueue.
 
 :- interface.
@@ -24,53 +28,52 @@
 
 :- implementation.
 
-:- import_module list, pair.
+:- import_module list.
+:- import_module pair.
 
-:- type cqueue(T) ==	pair(list(T)).
-
+:- type cqueue(T) == pair(list(T)).
 
 cqueue__cqueue([] - []).
 
-cqueue__insert([Thing|Before] - After, New, [Thing,New|Before] - After).
+cqueue__insert([Thing | Before] - After, New, [Thing, New | Before] - After).
 cqueue__insert([] - After0, New, Before - After) :-
-	list__reverse(After0, Before0),
-	(
-		Before0 = [],
-		Before = [New],
-		After = []
-	;
-		Before0 = [Thing|Before1],
-		Before = [Thing, New|Before1],
-		After = []
-	).
+    list__reverse(After0, Before0),
+    (
+        Before0 = [],
+        Before = [New],
+        After = []
+    ;
+        Before0 = [Thing | Before1],
+        Before = [Thing, New | Before1],
+        After = []
+    ).
 
-cqueue__append(Before - After, New, Before - [New|After]).
+cqueue__append(Before - After, New, Before - [New | After]).
 
-cqueue__this([This|_Before] - _After, This).
+cqueue__this([This | _Before] - _After, This).
 cqueue__this([] - After, This) :-
-	list__reverse(After, [This|_Before]).
+    list__reverse(After, [This | _Before]).
 
-cqueue__next(Before - [Thing|After], [Thing|Before] - After).
+cqueue__next(Before - [Thing | After], [Thing | Before] - After).
 cqueue__next(Before0 - [], Before - After) :-
-	list__reverse(Before0, After0),
-	(
-		After0 = [],
-		Before = [],
-		After = []
-	;
-		After0 = [Thing|After],
-		Before = [Thing]
-	).
+    list__reverse(Before0, After0),
+    (
+        After0 = [],
+        Before = [],
+        After = []
+    ;
+        After0 = [Thing | After],
+        Before = [Thing]
+    ).
 
-cqueue__prev([Thing|Before] - After, Before - [Thing|After]).
+cqueue__prev([Thing | Before] - After, Before - [Thing | After]).
 cqueue__prev([] - After0, Before - After) :-
-	list__reverse(After0, Before0),
-	(
-		Before0 = [],
-		After = [],
-		Before = []
-	;
-		Before0 = [Thing|Before],
-		After = [Thing]
-	).
-
+    list__reverse(After0, Before0),
+    (
+        Before0 = [],
+        After = [],
+        Before = []
+    ;
+        Before0 = [Thing | Before],
+        After = [Thing]
+    ).

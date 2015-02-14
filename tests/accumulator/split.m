@@ -1,7 +1,11 @@
-	%
-	% Test that all the output variables must be related to 
-	% a variable in the recursive call.
-	%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Test that all the output variables must be related to
+% a variable in the recursive call.
+%
+
 :- module split.
 
 :- interface.
@@ -12,19 +16,20 @@
 
 :- implementation.
 
-:- import_module list, int.
+:- import_module list.
+:- import_module int.
 
 main -->
-	{ p([1,7,4], S) },
-	io__write_string("p: "),
-	io__write(S),
-	io__nl.
+    { p([1, 7, 4], S) },
+    io__write_string("p: "),
+    io__write(S),
+    io__nl.
 
 :- pred p(list(int), int).
 :- mode p(in, out) is det.
 
 p([], 0).
-p([H|T], S) :-
+p([H | T], S) :-
     p(T, _),
     Tmp = 0,
     S is H + Tmp.

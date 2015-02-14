@@ -1,4 +1,6 @@
-% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module multi_map_test.
 :- interface.
@@ -75,7 +77,7 @@ main(!IO) :-
         io.write_string("update/4 (test 1): PASSED: ", !IO),
         io.write(UAL1, !IO),
         io.nl(!IO)
-     else 
+     else
         io.write_string("update/4 (test 1): FAILED\n", !IO)
     ),
 
@@ -84,7 +86,7 @@ main(!IO) :-
         io.write_string("update/4 (test 2): FAILED: ", !IO),
         io.write(UAL2, !IO),
         io.nl(!IO)
-     else 
+     else
         io.write_string("update/4 (test 2): PASSED\n", !IO)
     ),
 
@@ -110,10 +112,10 @@ main(!IO) :-
         io.write_string("replace/4 (test 2): FAILED: ", !IO),
         io.write(RAL2, !IO),
         io.nl(!IO)
-      else 
+      else
         io.write_string("replace/4 (test 2): PASSED\n", !IO)
     ),
-    
+
     % Test set
     %
     multi_map.set(1, 12, EmptyMap, SetMap),

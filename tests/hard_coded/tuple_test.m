@@ -26,10 +26,10 @@
 
 main -->
     io__write_string("testing io__write:\n"),
-    { Tuple = {'a', {'b', 1, [1,2,3], {}, {1}}, "string"} },
+    { Tuple = {'a', {'b', 1, [1, 2, 3], {}, {1}}, "string"} },
     io__write(Tuple),
     io__nl,
-    io__write({}('a', {'b', 1, [1,2,3], {}, {1}}, "string")),
+    io__write({}('a', {'b', 1, [1, 2, 3], {}, {1}}, "string")),
     io__nl,
 
     io__write_string("testing type_to_term:\n"),

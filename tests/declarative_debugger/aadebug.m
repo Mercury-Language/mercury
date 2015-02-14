@@ -1,42 +1,50 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module aadebug.
 :- interface.
 :- import_module io.
+
 :- pred main(io__state::di, io__state::uo) is det.
+
 :- implementation.
-:- import_module int, std_util.
+
+:- import_module int.
+:- import_module std_util.
 
 main -->
-	( { p('a', X), test(X) } ->
-		io__write_string("yes\n")
-	;
-		io__write_string("no\n")
-	).
+    ( { p('a', X), test(X) } ->
+        io__write_string("yes\n")
+    ;
+        io__write_string("no\n")
+    ).
 
 :- pred test(int).
 :- mode test(in) is semidet.
 
 test(_) :-
-	semidet_fail.
+    semidet_fail.
 
 :- pred p(character, int).
 :- mode p(in, out) is nondet.
 
 p(A, D) :-
-	q(A, B),
-	(
-		r(B, C)
-	->
-		(
-			s(C, D)
-		;
-			D = 31
-		)
-	;
-		not(
-			q(B, _)
-		),
-		D = 32
-	).
+    q(A, B),
+    (
+        r(B, C)
+    ->
+        (
+            s(C, D)
+        ;
+            D = 31
+        )
+    ;
+        not(
+            q(B, _)
+        ),
+        D = 32
+    ).
 
 :- pred q(character, character).
 :- mode q(in, out) is nondet.

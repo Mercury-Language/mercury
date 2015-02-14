@@ -1,3 +1,6 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module remove2_impl.
 
@@ -9,24 +12,27 @@
 
 :- implementation.
 
-rr(X,Y) :- f(X,T), f(T,Y).
+rr(X, Y) :-
+    f(X, T),
+    f(T, Y).
 
 :- pred f(list(T)::in, list(T)::out) is det.
 
-f([],[]).
-f([A|T],Y) :- h(A,T,Y).
+f([], []).
+f([A | T], Y) :-
+    h(A, T, Y).
 
 :- pred h(T::in, list(T)::in, list(T)::out) is det.
 
-h(A,[],[A]).
-h(A,[B|S],Y) :- g(A,B,[B|S],S,Y).
+h(A, [], [A]).
+h(A, [B | S], Y) :-
+    g(A, B, [B | S], S, Y).
 
 :- pred g(T::in, T::in, list(T)::in, list(T)::in, list(T)::out) is det.
 
-g(A,B,T,S,[A|Y]) :- 
-	( A = B ->
-		f(S,Y)
-	;
-		f(T,Y)
-	).
-
+g(A, B, T, S, [A | Y]) :-
+    ( A = B ->
+        f(S, Y)
+    ;
+        f(T, Y)
+    ).

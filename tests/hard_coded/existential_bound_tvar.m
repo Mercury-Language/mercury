@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module existential_bound_tvar.
 
 :- interface.
@@ -12,22 +16,22 @@
 :- import_module type_desc.
 
 main -->
-	{ blah(101, X) },
-	print("X: value = "), print(X), nl,
-	print("X: type = "), print(type_of(X)), nl,
+    { blah(101, X) },
+    print("X: value = "), print(X), nl,
+    print("X: type = "), print(type_of(X)), nl,
 
-	{ blah2(101, Y) },
-	print("Y: value = "), print(Y), nl,
-	print("Y: type = "), print(type_of(Y)), nl,
+    { blah2(101, Y) },
+    print("Y: value = "), print(Y), nl,
+    print("Y: type = "), print(type_of(Y)), nl,
 
-	(
-		{ blah3([101], Z) }
-	->
-		print("Z: value = "), print(Z), nl,
-		print("Z: type = "), print(type_of(Z)), nl
-	;
-		write("ERROR\n")
-	).
+    (
+        { blah3([101], Z) }
+    ->
+        print("Z: value = "), print(Z), nl,
+        print("Z: type = "), print(type_of(Z)), nl
+    ;
+        write("ERROR\n")
+    ).
 
 :- some [T1] pred blah(T, T1).
 :- mode blah(in, out) is det.

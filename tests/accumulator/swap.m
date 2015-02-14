@@ -1,7 +1,11 @@
-	%
-	% Tests that the compiler recognises append is assocative if we
-	% swap the order of the two input arguments.
-	%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Tests that the compiler recognises append is assocative if we
+% swap the order of the two input arguments.
+%
+
 :- module swap.
 
 :- interface.
@@ -15,15 +19,15 @@
 :- import_module list.
 
 main -->
-	io__write_string("rev: "),
-	{ rev([5,6,7], ListA) },
-	io__write(ListA),
-	io__nl.
+    io__write_string("rev: "),
+    { rev([5, 6, 7], ListA) },
+    io__write(ListA),
+    io__nl.
 
 :- pred rev(list(T), list(T)).
 :- mode rev(in, out) is det.
 
 rev([], []).
-rev([H|T], R) :-
-	rev(T, R0),
-	append(R0, [H], R).
+rev([H | T], R) :-
+    rev(T, R0),
+    append(R0, [H], R).

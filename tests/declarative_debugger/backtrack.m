@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module backtrack.
 :- interface.
 
@@ -11,23 +15,23 @@
 :- import_module library_forwarding.
 
 main(!IO) :-
-	p(1, R),
-	io.write(R, !IO),
-	io.nl(!IO).
+    p(1, R),
+    io.write(R, !IO),
+    io.nl(!IO).
 
 :- pred p(int::in, bool::out) is det.
 
 p(N, R) :-
-	(
-		some [M] (
-			M > 5,
-			q(N, M)
-		)
-	->
-		R = yes
-	;
-		R = no
-	).
+    (
+        some [M] (
+            M > 5,
+            q(N, M)
+        )
+    ->
+        R = yes
+    ;
+        R = no
+    ).
 
 :- pred q(int::in, int::out) is nondet.
 

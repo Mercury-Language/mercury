@@ -1,4 +1,6 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module term_size_cells.
 
@@ -46,7 +48,7 @@ main(!IO) :-
     is det.
 
 static(IntList, StringList, Tree) :-
-    IntList = [1,2,3],
+    IntList = [1, 2, 3],
     StringList = ["a", "bb", "ccc"],
     Tree = node(leaf, "one", 1, node(leaf, "two", 2, leaf)).
 

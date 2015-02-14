@@ -1,7 +1,9 @@
-%-----------------------------------------------------------------------------%
-% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % Test bitmaps by checking the output against a simpler implementation.
+
 :- module bitmap_tester.
 
 :- interface.
@@ -10,7 +12,7 @@
 :- import_module bitmap_simple.
 :- import_module bool.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type mypair(T, U) ---> (fst::T) - (snd::U).
 :- type tbitmap == mypair(bitmap, sbitmap).
@@ -40,7 +42,7 @@
     ;       to_string(string, string)
     .
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % new(N, B) creates a bitmap of size N (indexed 0 .. N-1)
     % setting each bit if B = yes and clearing each bit if B = no.
@@ -64,7 +66,7 @@
 :- func resize(tbitmap, num_bits, bool) = tbitmap.
 :- mode resize(tbitmap_di, in, in) = tbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Get or set the given bit.
     % The unsafe versions do not check whether the bit is in range.
@@ -76,7 +78,7 @@
 :- func 'bit :='(bit_index, tbitmap, bool) = tbitmap.
 :- mode 'bit :='(in, tbitmap_di, in) = tbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Bitmap ^ bits(OffSet, NumBits) = Word.
     % The low order bits of Word contain the NumBits bits of BM
@@ -90,7 +92,7 @@
 :- func 'bits :='(bit_index, num_bits, tbitmap, word) = tbitmap.
 :- mode 'bits :='(in, in, tbitmap_di, in) = tbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func byte(int, tbitmap) = int.
 %:- mode byte(in, tbitmap_ui) = out is det.
@@ -99,14 +101,14 @@
 :- func 'byte :='(int, tbitmap, int) = tbitmap.
 :- mode 'byte :='(in, tbitmap_di, in) = tbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Flip the given bit.
     %
 :- func flip(tbitmap, bit_index) = tbitmap.
 :- mode flip(tbitmap_di, in) = tbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Set operations; for binary operations the second argument is altered
     % in all cases.  The input bitmaps must have the same size.
@@ -131,7 +133,7 @@
 %:- mode xor(tbitmap_ui, tbitmap_di) = tbitmap_uo is det.
 :- mode xor(in, tbitmap_di) = tbitmap_uo is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % copy_bits(SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits)
     %
@@ -179,7 +181,8 @@
 :- func test_unify(tbitmap, tbitmap) = bool.
 :- mode test_unify(tbitmap_ui, tbitmap_ui) = out is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module char.
@@ -191,21 +194,21 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 new(N, B) = bitmap.init(N, B) - new(N, B).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-resize(BM, NewSize, InitializerBit) = 
+resize(BM, NewSize, InitializerBit) =
     check("resize", BM, {NewSize, InitializerBit},
         resize(BM ^ fst, NewSize, InitializerBit)
             - resize(BM ^ snd, NewSize, InitializerBit)).
 
-copy(BM) = 
+copy(BM) =
     check("copy", BM, {}, copy(BM ^ fst) - copy(BM ^ snd)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 bit(I, BM) =
     check_query("bit", BM, I, BM ^ fst ^ bit(I) - BM ^ snd ^ bit(I)).
@@ -215,7 +218,7 @@ bit(I, BM) =
         (BM ^ fst ^ bit(I) := B)
             ^ snd ^ bit(I) := B).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 bits(FirstBit, NumBits, BM) =
     check_query("bits", BM, {FirstBit, NumBits},
@@ -227,7 +230,7 @@ bits(FirstBit, NumBits, BM) =
         (BM ^ fst ^ bits(FirstBit, NumBits) := Bits)
             ^ snd ^ bits(FirstBit, NumBits) := Bits).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 byte(I, BM) =
     check_query("byte", BM, I, BM ^ fst ^ byte(I) - BM ^ snd ^ byte(I)).
@@ -237,63 +240,63 @@ byte(I, BM) =
         (BM ^ fst ^ byte(I) := B)
             ^ snd ^ byte(I) := B).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 flip(BM, I) =
     check("bits :=", BM, I, flip(BM ^ fst, I) - flip(BM ^ snd, I)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 complement(BM) =
     check("complement", BM, {}, complement(BM ^ fst) - complement(BM ^ snd)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 union(BMa, BMb) =
     check2("union", BMa, BMb, {},
         union(BMa ^ fst, BMb ^ fst)
             - union(BMa ^ snd, BMb ^ snd)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 intersect(BMa, BMb) =
     check2("intersect", BMa, BMb, {},
         intersect(BMa ^ fst, BMb ^ fst)
             - intersect(BMa ^ snd, BMb ^ snd)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 difference(BMa, BMb) =
     check2("difference", BMa, BMb, {},
         difference(BMa ^ fst, BMb ^ fst)
             - difference(BMa ^ snd, BMb ^ snd)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 xor(BMa, BMb) =
     check2("xor", BMa, BMb, {},
         xor(BMa ^ fst, BMb ^ fst)
             - xor(BMa ^ snd, BMb ^ snd)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 copy_bits(SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits) =
     check2("copy_bits", SrcBM, DestBM, {SrcStartBit, DestStartBit, NumBits},
         copy_bits(SrcBM ^ fst, SrcStartBit,
-            DestBM ^ fst, DestStartBit, NumBits) - 
+            DestBM ^ fst, DestStartBit, NumBits) -
         copy_bits(SrcBM ^ snd, SrcStartBit,
             DestBM ^ snd, DestStartBit, NumBits)).
 
 copy_bits_in_bitmap(SrcBM, SrcStartBit, DestStartBit, NumBits) =
     check("copy_bits_in_bitmap", SrcBM, {SrcStartBit, DestStartBit, NumBits},
-        copy_bits_in_bitmap(SrcBM ^ fst, SrcStartBit, DestStartBit, NumBits) - 
+        copy_bits_in_bitmap(SrcBM ^ fst, SrcStartBit, DestStartBit, NumBits) -
         copy_bits_in_bitmap(SrcBM ^ snd, SrcStartBit, DestStartBit, NumBits)).
 
 copy_bytes(SrcBM, SrcStartByte, DestBM, DestStartByte, NumBytes) =
     check2("copy_bytes", SrcBM, DestBM,
         {SrcStartByte, DestStartByte, NumBytes},
         copy_bytes(SrcBM ^ fst, SrcStartByte,
-            DestBM ^ fst, DestStartByte, NumBytes) - 
+            DestBM ^ fst, DestStartByte, NumBytes) -
         copy_bytes(SrcBM ^ snd, SrcStartByte,
             DestBM ^ snd, DestStartByte, NumBytes)).
 
@@ -301,11 +304,11 @@ copy_bytes_in_bitmap(SrcBM, SrcStartByte, DestStartByte, NumBytes) =
     check("copy_bytes_in_bitmap", SrcBM,
         {SrcStartByte, DestStartByte, NumBytes},
         copy_bytes_in_bitmap(SrcBM ^ fst, SrcStartByte,
-            DestStartByte, NumBytes) - 
+            DestStartByte, NumBytes) -
         copy_bytes_in_bitmap(SrcBM ^ snd, SrcStartByte,
             DestStartByte, NumBytes)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ordering(BM1, BM2) =
     check_query2("ordering", BM1, BM2, {},
@@ -317,7 +320,7 @@ test_unify(BM1, BM2) =
         pred_to_bool(unify(BM1 ^ fst, BM2 ^ fst)) -
         pred_to_bool(unify(BM1 ^ snd, BM2 ^ snd))).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func check(string, tbitmap, OtherArgs, tbitmap) = tbitmap.
 %:- mode check(in, tbitmap_ui, in, tbitmap_di) = tbitmap_uo is det.
@@ -442,4 +445,3 @@ foreign_hash(BM) = bitmap.hash(BM).
     [will_not_call_mercury, promise_pure],
     "Hash = MR_hash_bitmap(BM);"
 ).
-

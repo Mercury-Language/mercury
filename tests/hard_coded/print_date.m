@@ -1,5 +1,7 @@
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test io.print with dates and durations.
 
 :- module print_date.
