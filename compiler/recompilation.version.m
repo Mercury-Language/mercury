@@ -1147,7 +1147,7 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
         AllModeTerms2 = ModeTerms2
     ),
 
-    term.apply_renaming_to_list(AllModeTerms2, InstRenaming,
+    term.apply_renaming_in_terms(InstRenaming, AllModeTerms2,
         SubstAllModeTerms2),
     term.list_subsumes(AllModeTerms1, SubstAllModeTerms2, _),
     term.list_subsumes(SubstAllModeTerms2, AllModeTerms1, _).
