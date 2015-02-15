@@ -100,6 +100,19 @@ Changes to the Mercury standard library:
 
    - infinity/0
 
+* The following predicates and functions have been added to the integer module:
+
+   - from_string/2
+   - from_base_string/3
+   - to_int/2
+   - det_to_int/1
+
+  The following functions in the integer module have been deprecated:
+
+   - from_string/1
+   - from_base_string/2
+   - int/1
+
 * The following predicates and functions have been added to the require module:
 
    - error/2

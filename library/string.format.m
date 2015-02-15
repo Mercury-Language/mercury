@@ -1084,7 +1084,7 @@ justify_string(Flags, MaybeWidth, Str) = JustifiedStr :-
 %
 % The input is an arbitrary precision integer because if either
 %
-% - the original number is a signed int, and its value is minint, or
+% - the original number is a signed int, and its value is min_int, or
 % - the original number is an unsigned int, and its value has the most
 %   significant bit set,
 %
@@ -1102,8 +1102,8 @@ justify_string(Flags, MaybeWidth, Str) = JustifiedStr :-
 abs_integer_to_octal(Num) = NumStr :-
     ( if Num > integer(0) then
         Integer8 = integer(8),
-        FrontDigitsStr = abs_int_to_octal(int(Num // Integer8)),
-        LastDigitStr = get_octal_digit(int(Num rem Integer8)),
+        FrontDigitsStr = abs_int_to_octal(det_to_int(Num // Integer8)),
+        LastDigitStr = get_octal_digit(det_to_int(Num rem Integer8)),
         NumStr = append(FrontDigitsStr, LastDigitStr)
     else
         NumStr = ""
@@ -1126,8 +1126,8 @@ abs_int_to_octal(Num) = NumStr :-
 abs_integer_to_decimal(Num) = NumStr :-
     ( if Num > integer(0) then
         Integer10 = integer(10),
-        FrontDigitsStr = abs_int_to_decimal(int(Num // Integer10)),
-        LastDigitStr = get_decimal_digit(int(Num rem Integer10)),
+        FrontDigitsStr = abs_int_to_decimal(det_to_int(Num // Integer10)),
+        LastDigitStr = get_decimal_digit(det_to_int(Num rem Integer10)),
         NumStr = append(FrontDigitsStr, LastDigitStr)
     else
         NumStr = ""
@@ -1153,8 +1153,8 @@ abs_int_to_decimal(Num) = NumStr :-
 abs_integer_to_hex_lc(Num) = NumStr :-
     ( if Num > integer(0) then
         Integer16 = integer(16),
-        FrontDigitsStr = abs_int_to_hex_lc(int(Num // Integer16)),
-        LastDigitStr = get_hex_digit_lc(int(Num rem Integer16)),
+        FrontDigitsStr = abs_int_to_hex_lc(det_to_int(Num // Integer16)),
+        LastDigitStr = get_hex_digit_lc(det_to_int(Num rem Integer16)),
         NumStr = append(FrontDigitsStr, LastDigitStr)
     else
         NumStr = ""
@@ -1163,8 +1163,8 @@ abs_integer_to_hex_lc(Num) = NumStr :-
 abs_integer_to_hex_uc(Num) = NumStr :-
     ( if Num > integer(0) then
         Integer16 = integer(16),
-        FrontDigitsStr = abs_int_to_hex_uc(int(Num // Integer16)),
-        LastDigitStr = get_hex_digit_uc(int(Num rem Integer16)),
+        FrontDigitsStr = abs_int_to_hex_uc(det_to_int(Num // Integer16)),
+        LastDigitStr = get_hex_digit_uc(det_to_int(Num rem Integer16)),
         NumStr = append(FrontDigitsStr, LastDigitStr)
     else
         NumStr = ""

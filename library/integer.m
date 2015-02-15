@@ -38,7 +38,10 @@
 
 :- func to_string(integer) = string.
 
+:- pred from_string(string::in, integer::out) is semidet.
+
 :- func from_string(string::in) = (integer::out) is semidet.
+:- pragma obsolete(from_string/1).
 
 :- func det_from_string(string) = integer.
 
@@ -46,9 +49,12 @@
     % The string must contain one or more digits in the specified base,
     % optionally preceded by a plus or minus sign.  For bases > 10, digits
     % 10 to 35 are represented by the letters A-Z or a-z.  If the string
-    % does not match this syntax then the function fails.
+    % does not match this syntax then the predicate fails.
     %
+:- pred from_base_string(int::in, string::in, integer::out) is semidet.
+
 :- func from_base_string(int, string) = integer is semidet.
+:- pragma obsolete(from_base_string/2).
 
     % As above but throws an exception rather than failing.
     %
@@ -95,7 +101,18 @@
 :- func pow(integer, integer) = integer.
 
 :- func float(integer) = float.
+
+    % Convert an integer to an int.
+    % Fails if the integer is not in the range [min_int, max_int].
+    %
+:- pred to_int(integer::in, int::out) is semidet.
+
+    % As above but throws an exception rather than failing.
+    %
+:- func det_to_int(integer) = int.
+
 :- func int(integer) = int.
+:- pragma obsolete(int/1).
 
 :- func zero = integer.
 
@@ -1038,16 +1055,20 @@ float_list(_, Accum, []) = Accum.
 float_list(FBase, Accum, [H | T]) =
     float_list(FBase, Accum * FBase + float.float(H), T).
 
-integer.int(Integer) = Int :-
-    (
-        Integer >= integer(int.min_int),
-        Integer =< integer(int.max_int)
-    ->
-        Integer = i(_Sign, Digits),
-        Int = int_list(Digits, 0)
+integer.to_int(Integer, Int) :-
+    Integer >= integer(int.min_int),
+    Integer =< integer(int.max_int),
+    Integer = i(_Sign, Digits),
+    Int = int_list(Digits, 0).
+
+integer.det_to_int(Integer) = Int :-
+    ( integer.to_int(Integer, IntPrime) ->
+        Int = IntPrime
     ;
-        error("integer.int: domain error (conversion would overflow)")
+        error("integer.det_to_int: domain error (conversion would overflow)")
     ).
+
+integer.int(Integer) = integer.det_to_int(Integer).
 
 :- func int_list(list(int), int) = int.
 
@@ -1064,11 +1085,14 @@ integer.one = i(1, [1]).
 %
 
 integer.from_string(S) = Big :-
+    integer.from_string(S, Big).
+
+integer.from_string(S, Big) :-
     string.to_char_list(S, Cs),
     string_to_integer(Cs) = Big.
 
 integer.det_from_string(S) =
-    ( I = integer.from_string(S) ->
+    ( integer.from_string(S, I) ->
         I
     ;
         func_error(
@@ -1264,6 +1288,9 @@ printbase_pos_mul_list([X|Xs], Carry, Y) =
 %---------------------------------------------------------------------------%
 
 integer.from_base_string(Base, String) = Integer :-
+    integer.from_base_string(Base, String, Integer).
+
+integer.from_base_string(Base, String, Integer) :-
     string.index(String, 0, Char),
     Len = string.length(String),
     ( Char = ('-') ->
@@ -1291,7 +1318,7 @@ accumulate_integer(Base, Char, !N) :-
     !:N = (integer(Base) * !.N) + Digit.
 
 integer.det_from_base_string(Base, String) = Integer :-
-    ( Integer0 = integer.from_base_string(Base, String) ->
+    ( integer.from_base_string(Base, String, Integer0) ->
         Integer = Integer0
     ;
         error("integer.det_from_base_string")
