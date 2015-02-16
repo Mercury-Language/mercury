@@ -50,6 +50,15 @@
     %
 :- func to_string(integer) = string.
 
+    % to_base_string(Integer, Base) = String:
+    %
+    % Convert an integer to a string in a given Base.
+    %
+    % Base must be between 2 and 36, both inclusive; if it is not,
+    % the predicate will throw an exception.
+    %
+:- func to_base_string(integer, int) = string.
+
     % Convert a string to an integer. The string must contain only digits
     % [0-9], optionally preceded by a plus or minus sign. If the string does
     % not match this syntax then the predicate fails.
@@ -1237,158 +1246,170 @@ string_to_integer_acc([C | Cs], Acc) = Result :-
 % Converting integers to strings.
 %
 
-integer.to_string(i(Sign, Digits)) = SignStr ++ digits_to_string(AbsDigits) :-
-    ( Sign < 0 ->
-        SignStr = "-",
-        neg_list(Digits, AbsDigits)
+to_string(Integer) = to_base_string(Integer, 10).
+
+to_base_string(Integer, Base) = String :-
+    ( 2 =< Base, Base =< 36 ->
+        true
     ;
-        SignStr = "",
-        Digits = AbsDigits
+        error("integer.to_base_string: invalid base")
+    ),
+    PrintBase = printbase(pow(Base, printbase_exponent)),
+    Integer = i(Sign, Digits),
+    ( Sign < 0 ->
+        neg_list(Digits, AbsDigits),
+        String = "-" ++ digits_to_string(Base, PrintBase, AbsDigits)
+    ;
+        String = digits_to_string(Base, PrintBase, Digits)
     ).
 
-:- func digits_to_string(list(digit)) = string.
+:- func digits_to_string(int, printbase, list(digit)) = string.
 
-digits_to_string([]) = "0".
-digits_to_string(Digits) = Str :-
+digits_to_string(_Base, _PrintBase, []) = "0".
+digits_to_string(Base, PrintBase, Digits) = Str :-
     Digits = [_ | _],
-    printbase_rep(printbase_pos_int_to_digits(base),
+    printbase_rep(PrintBase, printbase_pos_int_to_digits(PrintBase, base),
         Digits, i(_, DigitsInPrintBase)),
     (
         DigitsInPrintBase = [Head | Tail],
-        string.int_to_string(Head, SHead),
-        digits_to_strings(Tail, Ss, []),
+        string.int_to_base_string(Head, Base, SHead),
+        digits_to_strings(Base, Tail, Ss, []),
         string.append_list([SHead | Ss], Str)
     ;
         DigitsInPrintBase = [],
         unexpected($module, $pred, "empty list")
     ).
 
-:- pred digits_to_strings(list(digit)::in, list(string)::out,
+:- pred printbase_rep(printbase::in, integer::in, list(digit)::in,
+    integer::out) is det.
+
+printbase_rep(PrintBase, Base, Digits, Result) :-
+    Result = printbase_rep_1(PrintBase, Digits, Base, integer.zero).
+
+:- func printbase_rep_1(printbase, list(digit), integer, integer) = integer.
+
+printbase_rep_1(_PrintBase, [], _Base, Carry) = Carry.
+printbase_rep_1(PrintBase, [X | Xs], Base, Carry) =
+    printbase_rep_1(PrintBase, Xs, Base,
+        printbase_pos_plus(PrintBase,
+            printbase_pos_mul(PrintBase, Base, Carry),
+            printbase_pos_int_to_digits(PrintBase, X))).
+
+:- pred digits_to_strings(int::in, list(digit)::in, list(string)::out,
     list(string)::in) is det.
 
-digits_to_strings([]) --> [].
-digits_to_strings([H | T]) -->
-    { digit_to_string(H, S) },
+digits_to_strings(_Base, []) --> [].
+digits_to_strings(Base, [H | T]) -->
+    { digit_to_string(Base, H, S) },
     [ S ],
-    digits_to_strings(T).
+    digits_to_strings(Base, T).
 
-:- pred printbase_rep(integer::in, list(digit)::in, integer::out) is det.
+:- pred digit_to_string(int::in, digit::in, string::out) is det.
 
-printbase_rep(Base, Digits, printbase_rep_1(Digits, Base, integer.zero)).
-
-:- func printbase_rep_1(list(digit), integer, integer) = integer.
-
-printbase_rep_1([], _Base, Carry) = Carry.
-printbase_rep_1([X|Xs], Base, Carry) =
-    printbase_rep_1(Xs, Base,
-        printbase_pos_plus(printbase_pos_mul(Base, Carry),
-        printbase_pos_int_to_digits(X))).
-
-:- pred digit_to_string(digit::in, string::out) is det.
-
-digit_to_string(D, S) :-
-    string.int_to_string(D, S1),
-    string.pad_left(S1, '0', log10printbase, S).
+digit_to_string(Base, D, S) :-
+    string.int_to_base_string(D, Base, S1),
+    string.pad_left(S1, '0', printbase_exponent, S).
 
 %---------------------------------------------------------------------------%
 %
 % Essentially duplicated code to work in base `printbase' follows
 %
 
-:- func printbase = int.
+:- type printbase
+    --->    printbase(int). % base^printbase_exponent
 
-printbase = 10000.
+:- func printbase_exponent = int.
 
-:- func log10printbase = int.
+printbase_exponent = 3.
 
-log10printbase = 4.
+:- func printbase_pos_int_to_digits(printbase, int) = integer.
 
-:- func printbase_pos_int_to_digits(int) = integer.
+printbase_pos_int_to_digits(Base, D) =
+    printbase_pos_int_to_digits_2(Base, D, integer.zero).
 
-printbase_pos_int_to_digits(D) =
-    printbase_pos_int_to_digits_2(D, integer.zero).
+:- func printbase_pos_int_to_digits_2(printbase, int, integer) = integer.
 
-:- func printbase_pos_int_to_digits_2(int, integer) = integer.
-
-printbase_pos_int_to_digits_2(D, Tail) = Result :-
+printbase_pos_int_to_digits_2(Base, D, Tail) = Result :-
     ( D = 0 ->
         Result = Tail
     ;
         Tail = i(Length, Digits),
-        printbase_chop(D, Div, Mod),
-        Result = printbase_pos_int_to_digits_2(Div,
+        printbase_chop(Base, D, Div, Mod),
+        Result = printbase_pos_int_to_digits_2(Base, Div,
             i(Length + 1, [Mod | Digits]))
     ).
 
-:- pred printbase_chop(int::in, digit::out, digit::out) is det.
+:- pred printbase_chop(printbase::in, int::in, digit::out, digit::out) is det.
 
-printbase_chop(N, Div, Mod) :-
-    Mod = N mod printbase,
-    Div = N div printbase.
+printbase_chop(printbase(Base), N, Div, Mod) :-
+    Mod = N mod Base,
+    Div = N div Base.
 
-:- func printbase_mul_by_digit(digit, integer) = integer.
+:- func printbase_mul_by_digit(printbase, digit, integer) = integer.
 
-printbase_mul_by_digit(D, i(Len, Ds)) = Out :-
-    printbase_mul_by_digit_2(D, Div, Ds, DsOut),
+printbase_mul_by_digit(Base, D, i(Len, Ds)) = Out :-
+    printbase_mul_by_digit_2(Base, D, Div, Ds, DsOut),
     Out = ( Div = 0 -> i(Len, DsOut) ; i(Len + 1, [Div | DsOut]) ).
 
-:- pred printbase_mul_by_digit_2(digit::in, digit::out,
+:- pred printbase_mul_by_digit_2(printbase::in, digit::in, digit::out,
     list(digit)::in, list(digit)::out) is det.
 
-printbase_mul_by_digit_2(_, 0, [], []).
-printbase_mul_by_digit_2(D, Div, [X | Xs], [Mod | NewXs]) :-
-    printbase_mul_by_digit_2(D, DivXs, Xs, NewXs),
-    printbase_chop(D * X + DivXs, Div, Mod).
+printbase_mul_by_digit_2(_Base, _, 0, [], []).
+printbase_mul_by_digit_2(Base, D, Div, [X | Xs], [Mod | NewXs]) :-
+    printbase_mul_by_digit_2(Base, D, DivXs, Xs, NewXs),
+    printbase_chop(Base, D * X + DivXs, Div, Mod).
 
-:- func printbase_pos_plus(integer, integer) = integer.
+:- func printbase_pos_plus(printbase, integer, integer) = integer.
 
-printbase_pos_plus(i(L1, D1), i(L2, D2)) = Out :-
-    printbase_add_pairs(Div, i(L1, D1), i(L2, D2), Ds),
+printbase_pos_plus(Base, i(L1, D1), i(L2, D2)) = Out :-
+    printbase_add_pairs(Base, Div, i(L1, D1), i(L2, D2), Ds),
     Len = ( L1 > L2 -> L1 ; L2 ),
     Out = ( Div = 0 -> i(Len, Ds) ; i(Len + 1, [Div | Ds]) ).
 
-:- pred printbase_add_pairs(digit::out, integer::in, integer::in,
-    list(digit)::out) is det.
+:- pred printbase_add_pairs(printbase::in, digit::out, integer::in,
+    integer::in, list(digit)::out) is det.
 
-printbase_add_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
+printbase_add_pairs(Base, Div, i(L1, D1), i(L2, D2), Ds) :-
     ( L1 = L2 ->
-        printbase_add_pairs_equal(Div, D1, D2, Ds)
+        printbase_add_pairs_equal(Base, Div, D1, D2, Ds)
     ; L1 < L2, D2 = [H2 | T2] ->
-        printbase_add_pairs(Div1, i(L1, D1), i(L2 - 1, T2), Ds1),
-        printbase_chop(H2 + Div1, Div, Mod),
+        printbase_add_pairs(Base, Div1, i(L1, D1), i(L2 - 1, T2), Ds1),
+        printbase_chop(Base, H2 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
     ; L1 > L2, D1 = [H1 | T1] ->
-        printbase_add_pairs(Div1, i(L1 - 1, T1), i(L2, D2), Ds1),
-        printbase_chop(H1 + Div1, Div, Mod),
+        printbase_add_pairs(Base, Div1, i(L1 - 1, T1), i(L2, D2), Ds1),
+        printbase_chop(Base, H1 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
     ;
         unexpected($module, $pred, "integer.printbase_add_pairs")
     ).
 
-:- pred printbase_add_pairs_equal(digit::out, list(digit)::in, list(digit)::in,
-    list(digit)::out) is det.
+:- pred printbase_add_pairs_equal(printbase::in, digit::out, list(digit)::in,
+    list(digit)::in, list(digit)::out) is det.
 
-printbase_add_pairs_equal(0, [], _, []).
-printbase_add_pairs_equal(0, [_ | _], [], []).
-printbase_add_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
-    printbase_add_pairs_equal(DivTail, Xs, Ys, TailDs),
-    printbase_chop(X + Y + DivTail, Div, Mod).
+printbase_add_pairs_equal(_, 0, [], _, []).
+printbase_add_pairs_equal(_, 0, [_ | _], [], []).
+printbase_add_pairs_equal(Base, Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
+    printbase_add_pairs_equal(Base, DivTail, Xs, Ys, TailDs),
+    printbase_chop(Base, X + Y + DivTail, Div, Mod).
 
-:- func printbase_pos_mul(integer, integer) = integer.
+:- func printbase_pos_mul(printbase, integer, integer) = integer.
 
-printbase_pos_mul(i(L1, Ds1), i(L2, Ds2)) =
+printbase_pos_mul(Base, i(L1, Ds1), i(L2, Ds2)) =
     ( L1 < L2 ->
-        printbase_pos_mul_list(Ds1, integer.zero, i(L2, Ds2))
+        printbase_pos_mul_list(Base, Ds1, integer.zero, i(L2, Ds2))
     ;
-        printbase_pos_mul_list(Ds2, integer.zero, i(L1, Ds1))
+        printbase_pos_mul_list(Base, Ds2, integer.zero, i(L1, Ds1))
     ).
 
-:- func printbase_pos_mul_list(list(digit), integer, integer) = integer.
+:- func printbase_pos_mul_list(printbase, list(digit), integer, integer)
+    = integer.
 
-printbase_pos_mul_list([], Carry, _Y) = Carry.
-printbase_pos_mul_list([X|Xs], Carry, Y) =
-    printbase_pos_mul_list(Xs, printbase_pos_plus(mul_base(Carry),
-        printbase_mul_by_digit(X, Y)), Y).
+printbase_pos_mul_list(_Base, [], Carry, _Y) = Carry.
+printbase_pos_mul_list(Base, [X | Xs], Carry, Y) =
+    printbase_pos_mul_list(Base, Xs,
+        printbase_pos_plus(Base, mul_base(Carry),
+            printbase_mul_by_digit(Base, X, Y)), Y).
 
 %---------------------------------------------------------------------------%
 

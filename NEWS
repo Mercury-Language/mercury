@@ -106,6 +106,7 @@ Changes to the Mercury standard library:
    - from_base_string/3
    - to_int/2
    - det_to_int/1
+   - to_base_string/2
 
   The following functions in the integer module have been deprecated:
 

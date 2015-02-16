@@ -1,43 +1,171 @@
 0 (base 2) = 0
+to_base_string produces "0"
+
 1 (base 2) = 1
+to_base_string produces "1"
+
 01 (base 2) = 1
+to_base_string produces "1"
+
 -000001 (base 2) = -1
+to_base_string produces "-1"
+
 11 (base 2) = 3
+to_base_string produces "11"
+
 111 (base 2) = 7
+to_base_string produces "111"
+
 11111 (base 2) = 31
+to_base_string produces "11111"
+
 101010 (base 2) = 42
+to_base_string produces "101010"
+
 10000000000000000000000000000000 (base 2) = 2147483648
+to_base_string produces "10000000000000000000000000000000"
+
 1000000000000000000000000000000000000000000000000000000000000000 (base 2) = 9223372036854775808
+to_base_string produces "1000000000000000000000000000000000000000000000000000000000000000"
+
 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 (base 2) = 170141183460469231731687303715884105728
+to_base_string produces "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+
 0 (base 8) = 0
+to_base_string produces "0"
+
 1 (base 8) = 1
+to_base_string produces "1"
+
 -1 (base 8) = -1
+to_base_string produces "-1"
+
 10 (base 8) = 8
+to_base_string produces "10"
+
 -10 (base 8) = -8
+to_base_string produces "-10"
+
 76543210 (base 8) = 16434824
+to_base_string produces "76543210"
+
 -76543210 (base 8) = -16434824
+to_base_string produces "-76543210"
+
 7777777777777777777777777 (base 8) = 37778931862957161709567
+to_base_string produces "7777777777777777777777777"
+
 0 (base 10) = 0
+to_base_string produces "0"
+
 1 (base 10) = 1
+to_base_string produces "1"
+
 10 (base 10) = 10
+to_base_string produces "10"
+
 11 (base 10) = 11
+to_base_string produces "11"
+
 1234567890 (base 10) = 1234567890
+to_base_string produces "1234567890"
+
 -1 (base 10) = -1
+to_base_string produces "-1"
+
 -10 (base 10) = -10
+to_base_string produces "-10"
+
 -1234567890 (base 10) = -1234567890
+to_base_string produces "-1234567890"
+
 1234567891234567891234567890 (base 10) = 1234567891234567891234567890
+to_base_string produces "1234567891234567891234567890"
+
 -1234567891234567891234567890 (base 10) = -1234567891234567891234567890
+to_base_string produces "-1234567891234567891234567890"
+
 0 (base 16) = 0
+to_base_string produces "0"
+
 1 (base 16) = 1
+to_base_string produces "1"
+
 -1 (base 16) = -1
+to_base_string produces "-1"
+
 10 (base 16) = 16
+to_base_string produces "10"
+
 A (base 16) = 10
+to_base_string produces "A"
+
 -A (base 16) = -10
+to_base_string produces "-A"
+
 a (base 16) = 10
+to_base_string produces "A"
+
 -a (base 16) = -10
+to_base_string produces "-A"
+
 F (base 16) = 15
+to_base_string produces "F"
+
 -F (base 16) = -15
+to_base_string produces "-F"
+
 fedcba0987654321 (base 16) = 18364757930599072545
+to_base_string produces "FEDCBA0987654321"
+
 -fedcba0987654321 (base 16) = -18364757930599072545
+to_base_string produces "-FEDCBA0987654321"
+
 fffffffffffffffffffffffffffffffffff (base 16) = 1393796574908163946345982392040522594123775
+to_base_string produces "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+
 -fffffffffffffffffffffffffffffffffff (base 16) = -1393796574908163946345982392040522594123775
+to_base_string produces "-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+
+0 (base 36) = 0
+to_base_string produces "0"
+
+1 (base 36) = 1
+to_base_string produces "1"
+
+-1 (base 36) = -1
+to_base_string produces "-1"
+
+10 (base 36) = 36
+to_base_string produces "10"
+
+A (base 36) = 10
+to_base_string produces "A"
+
+-A (base 36) = -10
+to_base_string produces "-A"
+
+a (base 36) = 10
+to_base_string produces "A"
+
+-a (base 36) = -10
+to_base_string produces "-A"
+
+Z (base 36) = 35
+to_base_string produces "Z"
+
+-Z (base 36) = -35
+to_base_string produces "-Z"
+
+zyxwvutsrqponmlkjihgfedcba0987654321 (base 36) = 106300512100105327644605138221229898724868848283284886905
+to_base_string produces "ZYXWVUTSRQPONMLKJIHGFEDCBA0987654321"
+
+-zyxwvutsrqponmlkjihgfedcba0987654321 (base 36) = -106300512100105327644605138221229898724868848283284886905
+to_base_string produces "-ZYXWVUTSRQPONMLKJIHGFEDCBA0987654321"
+
+zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz (base 36) = 2955204414547681244658707659790455381671329323051646975
+to_base_string produces "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+
+-zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz (base 36) = -2955204414547681244658707659790455381671329323051646975
+to_base_string produces "-ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+
