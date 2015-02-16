@@ -176,133 +176,13 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
         module_info_get_globals(ModuleInfo, Globals),
         (
             SwitchCategory = atomic_switch,
-            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
-            (
-                ml_gen_info_get_high_level_data(!.Info, no),
-                MaybeIntSwitchInfo = int_switch(LowerLimit, UpperLimit,
-                    NumValues),
-                globals.lookup_bool_option(Globals, static_ground_cells, yes),
-                globals.lookup_int_option(Globals, lookup_switch_size,
-                    LookupSize),
-                NumConsIds >= LookupSize,
-                NumArms > 1,
-                globals.lookup_int_option(Globals, lookup_switch_req_density,
-                    ReqDensity),
-                filter_out_failing_cases_if_needed(CodeModel,
-                    TaggedCases, FilteredTaggedCases,
-                    CanFail, FilteredCanFail),
-                find_int_lookup_switch_params(ModuleInfo, SwitchVarType,
-                    FilteredCanFail, LowerLimit, UpperLimit, NumValues,
-                    ReqDensity, NeedBitVecCheck, NeedRangeCheck,
-                    FirstVal, LastVal),
-                NonLocals = goal_info_get_nonlocals(GoalInfo),
-                ml_is_lookup_switch(get_int_tag, SwitchVar,
-                    FilteredTaggedCases, NonLocals, CodeModel,
-                    LookupSwitchInfo, !Info)
-            ->
-                ml_gen_lookup_switch(SwitchVar, LookupSwitchInfo,
-                    CodeModel, Context, FirstVal, LastVal,
-                    NeedBitVecCheck, NeedRangeCheck, LookupStatement, !Info),
-                Statements = [LookupStatement]
-            ;
-                globals_target_supports_int_switch(Globals) = yes
-            ->
-                ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
-                    CodeModel, CanFail, Context, Statements, !Info)
-            ;
-                ml_switch_generate_if_then_else_chain(TaggedCases,
-                    SwitchVar, CodeModel, CanFail, Context, Statements, !Info)
-            ),
-            Decls = []
+            ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail,
+                TaggedCases, MaybeIntSwitchInfo, CodeModel, Context, GoalInfo,
+                Decls, Statements, !Info)
         ;
             SwitchCategory = string_switch,
-            filter_out_failing_cases_if_needed(CodeModel,
-                TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
-            num_cons_ids_in_tagged_cases(FilteredTaggedCases,
-                NumConsIds, NumArms),
-            ( NumArms > 1 ->
-                globals.lookup_int_option(Globals, string_hash_switch_size,
-                    StringHashSwitchSize),
-                globals.lookup_int_option(Globals, string_binary_switch_size,
-                    StringBinarySwitchSize),
-                globals.lookup_bool_option(Globals, prefer_switch,
-                    PreferSwitch),
-                (
-                    globals_target_supports_string_switch(Globals) = yes,
-                    % Even if we could use a hash or binary switch,
-                    % we may prefer to do a direct-mapped string switch.
-                    PreferSwitch = yes
-                ->
-                    ml_switch_generate_mlds_switch(FilteredTaggedCases,
-                        SwitchVar, CodeModel, FilteredCanFail, Context,
-                        Statements, !Info),
-                    Decls = []
-                ;
-                    NumConsIds >= StringHashSwitchSize,
-                    % We can implement string hash switches using either
-                    % computed gotos or int switches.
-                    (
-                        globals_target_supports_computed_goto(Globals) = yes
-                    ;
-                        globals_target_supports_int_switch(Globals) = yes
-                    )
-                ->
-                    (
-                        ml_gen_info_get_high_level_data(!.Info, no),
-                        globals.lookup_bool_option(Globals,
-                            static_ground_cells, yes),
-                        NonLocals = goal_info_get_nonlocals(GoalInfo),
-                        ml_is_lookup_switch(get_string_tag, SwitchVar,
-                            FilteredTaggedCases, NonLocals, CodeModel,
-                            LookupSwitchInfo, !Info)
-                    ->
-                        ml_generate_string_hash_lookup_switch(SwitchVar,
-                            LookupSwitchInfo, CodeModel, FilteredCanFail,
-                            Context, Decls, Statements, !Info)
-                    ;
-                        ml_generate_string_hash_jump_switch(
-                            FilteredTaggedCases, SwitchVar, CodeModel,
-                            FilteredCanFail, Context, Decls, Statements, !Info)
-                    )
-                ;
-                    NumConsIds >= StringBinarySwitchSize,
-                    % We can implement string binary switches using either
-                    % computed gotos or int switches.
-                    (
-                        globals_target_supports_computed_goto(Globals) = yes
-                    ;
-                        globals_target_supports_int_switch(Globals) = yes
-                    )
-                ->
-                    (
-                        ml_gen_info_get_high_level_data(!.Info, no),
-                        globals.lookup_bool_option(Globals,
-                            static_ground_cells, yes),
-                        NonLocals = goal_info_get_nonlocals(GoalInfo),
-                        ml_is_lookup_switch(get_string_tag, SwitchVar,
-                            FilteredTaggedCases, NonLocals, CodeModel,
-                            LookupSwitchInfo, !Info)
-                    ->
-                        ml_generate_string_binary_lookup_switch(SwitchVar,
-                            LookupSwitchInfo, CodeModel, FilteredCanFail,
-                            Context, Decls, Statements, !Info)
-                    ;
-                        ml_generate_string_binary_jump_switch(
-                            FilteredTaggedCases, SwitchVar, CodeModel,
-                            FilteredCanFail, Context, Decls, Statements, !Info)
-                    )
-                ;
-                    ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
-                        SwitchVar, CodeModel, FilteredCanFail, Context,
-                        Statements, !Info),
-                    Decls = []
-                )
-            ;
-                ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
-                    SwitchVar, CodeModel, FilteredCanFail, Context,
-                    Statements, !Info),
-                Decls = []
-            )
+            ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases,
+                CodeModel, Context, GoalInfo, Decls, Statements, !Info)
         ;
             SwitchCategory = tag_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
@@ -325,6 +205,141 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                 SwitchVar, CodeModel, CanFail, Context, Statements, !Info),
             Decls = []
         )
+    ).
+
+:- pred ml_gen_smart_atomic_switch(prog_var::in, mer_type::in,
+    can_fail::in, list(tagged_case)::in, maybe_int_switch_info::in,
+    code_model::in, prog_context::in, hlds_goal_info::in,
+    list(mlds_defn)::out, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail,
+        TaggedCases, MaybeIntSwitchInfo, CodeModel, Context, GoalInfo,
+        Decls, Statements, !Info) :-
+    num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    (
+        ml_gen_info_get_high_level_data(!.Info, no),
+        MaybeIntSwitchInfo = int_switch(LowerLimit, UpperLimit, NumValues),
+        globals.lookup_bool_option(Globals, static_ground_cells, yes),
+        globals.lookup_int_option(Globals, lookup_switch_size, LookupSize),
+        NumConsIds >= LookupSize,
+        NumArms > 1,
+        globals.lookup_int_option(Globals, lookup_switch_req_density,
+            ReqDensity),
+        filter_out_failing_cases_if_needed(CodeModel,
+            TaggedCases, FilteredTaggedCases,
+            CanFail, FilteredCanFail),
+        find_int_lookup_switch_params(ModuleInfo, SwitchVarType,
+            FilteredCanFail, LowerLimit, UpperLimit, NumValues,
+            ReqDensity, NeedBitVecCheck, NeedRangeCheck,
+            FirstVal, LastVal),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        ml_is_lookup_switch(get_int_tag, SwitchVar, FilteredTaggedCases,
+            NonLocals, CodeModel, LookupSwitchInfo, !Info)
+    ->
+        ml_gen_lookup_switch(SwitchVar, LookupSwitchInfo, CodeModel, Context,
+            FirstVal, LastVal, NeedBitVecCheck, NeedRangeCheck,
+            LookupStatement, !Info),
+        Statements = [LookupStatement]
+    ;
+        globals_target_supports_int_switch(Globals) = yes
+    ->
+        ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
+            CodeModel, CanFail, Context, Statements, !Info)
+    ;
+        ml_switch_generate_if_then_else_chain(TaggedCases,
+            SwitchVar, CodeModel, CanFail, Context, Statements, !Info)
+    ),
+    Decls = [].
+
+:- pred ml_gen_smart_string_switch(prog_var::in, can_fail::in,
+    list(tagged_case)::in, code_model::in, prog_context::in,
+    hlds_goal_info::in, list(mlds_defn)::out, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,
+        GoalInfo, Decls, Statements, !Info) :-
+    filter_out_failing_cases_if_needed(CodeModel,
+        TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
+    num_cons_ids_in_tagged_cases(FilteredTaggedCases, NumConsIds, NumArms),
+    ( NumArms > 1 ->
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_int_option(Globals, string_hash_switch_size,
+            StringHashSwitchSize),
+        globals.lookup_int_option(Globals, string_binary_switch_size,
+            StringBinarySwitchSize),
+        globals.lookup_bool_option(Globals, prefer_switch, PreferSwitch),
+        (
+            globals_target_supports_string_switch(Globals) = yes,
+            % Even if we could use a hash or binary switch,
+            % we may prefer to do a direct-mapped string switch.
+            PreferSwitch = yes
+        ->
+            ml_switch_generate_mlds_switch(FilteredTaggedCases, SwitchVar,
+                CodeModel, FilteredCanFail, Context, Statements, !Info),
+            Decls = []
+        ;
+            NumConsIds >= StringHashSwitchSize,
+            % We can implement string hash switches using either
+            % computed gotos or int switches.
+            ( globals_target_supports_computed_goto(Globals) = yes
+            ; globals_target_supports_int_switch(Globals) = yes
+            )
+        ->
+            (
+                ml_gen_info_get_high_level_data(!.Info, no),
+                globals.lookup_bool_option(Globals, static_ground_cells, yes),
+                NonLocals = goal_info_get_nonlocals(GoalInfo),
+                ml_is_lookup_switch(get_string_tag, SwitchVar,
+                    FilteredTaggedCases, NonLocals, CodeModel,
+                    LookupSwitchInfo, !Info)
+            ->
+                ml_generate_string_hash_lookup_switch(SwitchVar,
+                    LookupSwitchInfo, CodeModel, FilteredCanFail,
+                    Context, Decls, Statements, !Info)
+            ;
+                ml_generate_string_hash_jump_switch(
+                    FilteredTaggedCases, SwitchVar, CodeModel,
+                    FilteredCanFail, Context, Decls, Statements, !Info)
+            )
+        ;
+            NumConsIds >= StringBinarySwitchSize,
+            % We can implement string binary switches using either
+            % computed gotos or int switches.
+            ( globals_target_supports_computed_goto(Globals) = yes
+            ; globals_target_supports_int_switch(Globals) = yes
+            )
+        ->
+            (
+                ml_gen_info_get_high_level_data(!.Info, no),
+                globals.lookup_bool_option(Globals, static_ground_cells, yes),
+                NonLocals = goal_info_get_nonlocals(GoalInfo),
+                ml_is_lookup_switch(get_string_tag, SwitchVar,
+                    FilteredTaggedCases, NonLocals, CodeModel,
+                    LookupSwitchInfo, !Info)
+            ->
+                ml_generate_string_binary_lookup_switch(SwitchVar,
+                    LookupSwitchInfo, CodeModel, FilteredCanFail,
+                    Context, Decls, Statements, !Info)
+            ;
+                ml_generate_string_binary_jump_switch(
+                    FilteredTaggedCases, SwitchVar, CodeModel,
+                    FilteredCanFail, Context, Decls, Statements, !Info)
+            )
+        ;
+            ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
+                SwitchVar, CodeModel, FilteredCanFail, Context,
+                Statements, !Info),
+            Decls = []
+        )
+    ;
+        ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
+            SwitchVar, CodeModel, FilteredCanFail, Context,
+            Statements, !Info),
+        Decls = []
     ).
 
 %-----------------------------------------------------------------------------%
