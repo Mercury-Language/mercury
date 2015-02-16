@@ -1,0 +1,6 @@
+invalid_int.m:020: Error: integer literal is too big
+invalid_int.m:020:   `0b10000000000000000000000000000000000000000000000000000000000000000'.
+invalid_int.m:025: Error: integer literal is too big
+invalid_int.m:025:   `0o2000000000000000000000'.
+invalid_int.m:031: Error: integer literal is too big `0x10000000000000000'.
+invalid_int.m:036: Error: integer literal is too big `9223372036854775808'.

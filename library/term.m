@@ -21,6 +21,7 @@
 :- interface.
 
 :- import_module enum.
+:- import_module integer.
 :- import_module list.
 :- import_module map.
 
@@ -51,9 +52,17 @@
 :- type const
     --->    atom(string)
     ;       integer(int)
+    ;       big_integer(integer_base, integer)
+            % An integer that is too big for `int'.
     ;       string(string)
     ;       float(float)
     ;       implementation_defined(string).
+
+:- type integer_base
+    --->    base_2
+    ;       base_8
+    ;       base_10
+    ;       base_16.
 
 :- type generic
     --->    generic.

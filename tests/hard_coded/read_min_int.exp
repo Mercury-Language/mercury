@@ -1,13 +1,13 @@
 foo(-2147483648)
 foo(2147483647)
-Syntax error at big integer `2147483648': unexpected token at start of (sub)term
-Syntax error at big integer `9223372036854775808': unexpected token at start of (sub)term
-Syntax error at big integer `9223372036854775807': unexpected token at start of (sub)term
-Syntax error at big integer `9223372036854775808': unexpected token at start of (sub)term
+io.read: the term read did not have the right type
+io.read: the term read did not have the right type
+io.read: the term read did not have the right type
+io.read: the term read did not have the right type
 
 foo(-2147483648)
 foo(2147483647)
-Syntax error at big integer `2147483648': unexpected token at start of (sub)term
-Syntax error at big integer `9223372036854775808': unexpected token at start of (sub)term
-Syntax error at big integer `9223372036854775807': unexpected token at start of (sub)term
-Syntax error at big integer `9223372036854775808': unexpected token at start of (sub)term
+io.read: the term read did not have the right type
+io.read: the term read did not have the right type
+io.read: the term read did not have the right type
+io.read: the term read did not have the right type

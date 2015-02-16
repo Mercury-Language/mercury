@@ -2017,10 +2017,6 @@ mix(H0, X) = H :-
     H1 = H0 `xor` (H0 `unchecked_left_shift` 5),
     H = H1 `xor` X.
 
-:- func concoct_second_hash(int) = int.
-
-concoct_second_hash(H) = mix(H, 0xfe3dbe7f).    % whatever
-
 %-----------------------------------------------------------------------------%
 :- end_module make.util.
 %-----------------------------------------------------------------------------%

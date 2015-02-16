@@ -121,12 +121,15 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
+:- import_module integer.
 :- import_module io.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module term.
+:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -599,9 +602,10 @@ classify_unravel_var_unification(XVar, YTerm, Context, MainContext, SubContext,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
+unravel_var_functor_unification(XVar, YFunctor0, YArgTerms0, YFunctorContext,
         Context, MainContext, SubContext, Purity, Order, Expansion,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+    convert_big_integer_functor(YFunctor0, YFunctor, YFunctorContext, !Specs),
     substitute_state_var_mappings(YArgTerms0, YArgTerms, !VarSet,
         !SVarState, !Specs),
     (
@@ -684,7 +688,7 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
             % float, int or string constant
             %   - any errors will be caught by typechecking
             list.length(YArgTerms, Arity),
-            ConsId = make_functor_cons_id(YFunctor, Arity),
+            det_make_functor_cons_id(YFunctor, Arity, ConsId),
             MaybeQualifiedYArgTerms = YArgTerms
         ),
         % At this point, we have done state variable name expansion
@@ -740,6 +744,27 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
                 Expansion = expansion(not_fgti, cord.singleton(Goal))
             )
         )
+    ).
+
+:- pred convert_big_integer_functor(term.const::in, term.const::out,
+    term.context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+convert_big_integer_functor(Functor0, Functor, Context, !Specs) :-
+    ( Functor0 = big_integer(Base, Integer) ->
+        ( source_integer_to_int(Base, Integer, Int) ->
+            Functor = term.integer(Int)
+        ;
+            BasePrefix = integer_base_prefix(Base),
+            IntString = integer.to_base_string(Integer, integer_base_int(Base)),
+            Pieces = [words("Error: integer literal is too big"),
+                quote(BasePrefix ++ IntString), suffix(".")],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs],
+            Functor = term.integer(0) % dummy
+        )
+    ;
+        Functor = Functor0
     ).
 
     % See whether Atom indicates a term with special syntax.

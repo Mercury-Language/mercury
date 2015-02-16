@@ -830,6 +830,7 @@ convert_bound_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 
 convert_bound_inst(AllowConstrainedInstVar, InstTerm, BoundInst) :-
     InstTerm = term.functor(Functor, Args0, _),
+    require_complete_switch [Functor]
     (
         Functor = term.atom(_),
         try_parse_sym_name_and_args_from_f_args(Functor, Args0,
@@ -843,12 +844,13 @@ convert_bound_inst(AllowConstrainedInstVar, InstTerm, BoundInst) :-
         fail
     ;
         ( Functor = term.integer(_)
+        ; Functor = term.big_integer(_, _)
         ; Functor = term.float(_)
         ; Functor = term.string(_)
         ),
         Args1 = Args0,
         list.length(Args1, Arity),
-        ConsId = make_functor_cons_id(Functor, Arity)
+        make_functor_cons_id(Functor, Arity, ConsId)
     ),
     convert_inst_list(AllowConstrainedInstVar, Args1, Args),
     BoundInst = bound_functor(ConsId, Args).

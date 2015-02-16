@@ -132,6 +132,7 @@ SINGLEMODULE= \
 	instance_bug \
 	instance_no_type \
 	instance_var_bug \
+	invalid_int \
 	invalid_event \
 	invalid_export_detism \
 	invalid_instance_declarations \

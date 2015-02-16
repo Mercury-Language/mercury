@@ -23,6 +23,7 @@
 
 :- import_module char.
 :- import_module io.
+:- import_module integer.
 
 %---------------------------------------------------------------------------%
 
@@ -30,7 +31,8 @@
     --->    name(string)
     ;       variable(string)
     ;       integer(int)
-    ;       big_integer(string) % does not fit in int
+    ;       big_integer(integer_base, integer)
+                                % An integer that is too big for `int'.
     ;       float(float)
     ;       string(string)      % "...."
     ;       implementation_defined(string) % $name
@@ -56,6 +58,12 @@
                                 % But the lexer will convert
                                 % integer_dot/1 tokens to integer/1
                                 % tokens before returning them.
+
+:- type integer_base
+    --->    base_2
+    ;       base_8
+    ;       base_10
+    ;       base_16.
 
     % For every token, we record the line number of the line on
     % which the token occurred.
@@ -154,45 +162,98 @@
 
 %---------------------------------------------------------------------------%
 
-token_to_string(name(Name), String) :-
-    string.append_list(["token '", Name, "'"], String).
-token_to_string(variable(Var), String) :-
-    string.append_list(["variable `", Var, "'"], String).
-token_to_string(integer(Int), String) :-
-    string.int_to_string(Int, IntString),
-    string.append_list(["integer `", IntString, "'"], String).
-token_to_string(big_integer(BigInt), String) :-
-    string.append_list(["big integer `", BigInt, "'"], String).
-token_to_string(float(Float), String) :-
-    string.float_to_string(Float, FloatString),
-    string.append_list(["float `", FloatString, "'"], String).
-token_to_string(string(Token), String) :-
-    string.append_list(["string """, Token, """"], String).
-token_to_string(implementation_defined(Name), String) :-
-    string.append_list(["implementation-defined `$", Name, "'"], String).
-token_to_string(open, "token ` ('").
-token_to_string(open_ct, "token `('").
-token_to_string(close, "token `)'").
-token_to_string(open_list, "token `['").
-token_to_string(close_list, "token `]'").
-token_to_string(open_curly, "token `{'").
-token_to_string(close_curly, "token `}'").
-token_to_string(ht_sep, "token `|'").
-token_to_string(comma, "token `,'").
-token_to_string(end, "token `. '").
-token_to_string(eof, "end-of-file").
-token_to_string(junk(JunkChar), String) :-
-    char.to_int(JunkChar, Code),
-    string.int_to_base_string(Code, 16, Hex),
-    string.append_list(["illegal character <<0x", Hex, ">>"], String).
-token_to_string(io_error(IO_Error), String) :-
-    io.error_message(IO_Error, IO_ErrorMessage),
-    string.append("I/O error: ", IO_ErrorMessage, String).
-token_to_string(error(Message), String) :-
-    string.append_list(["illegal token (", Message, ")"], String).
-token_to_string(integer_dot(Int), String) :-
-    string.int_to_string(Int, IntString),
-    string.append_list(["integer `", IntString, "'."], String).
+token_to_string(Token, String) :-
+    (
+        Token = name(Name),
+        string.append_list(["token '", Name, "'"], String)
+    ;
+        Token = variable(Var),
+        string.append_list(["variable `", Var, "'"], String)
+    ;
+        Token = integer(Int),
+        string.int_to_string(Int, IntString),
+        string.append_list(["integer `", IntString, "'"], String)
+    ;
+        Token = big_integer(Base, Integer),
+        (
+            Base = base_2,
+            BaseInt = 2,
+            Prefix = "0b"
+        ;
+            Base = base_8,
+            BaseInt = 8,
+            Prefix = "0o"
+        ;
+            Base = base_10,
+            BaseInt = 10,
+            Prefix = ""
+        ;
+            Base = base_16,
+            BaseInt = 16,
+            Prefix = "0x"
+        ),
+        IntString = integer.to_base_string(Integer, BaseInt),
+        string.append_list(["integer `", Prefix, IntString, "'"], String)
+    ;
+        Token = float(Float),
+        string.float_to_string(Float, FloatString),
+        string.append_list(["float `", FloatString, "'"], String)
+    ;
+        Token = string(TokenString),
+        string.append_list(["string """, TokenString, """"], String)
+    ;
+        Token = implementation_defined(Name),
+        string.append_list(["implementation-defined `$", Name, "'"], String)
+    ;
+        Token = open,
+        String = "token ` ('"
+    ;
+        Token = open_ct,
+        String = "token `('"
+    ;
+        Token = close,
+        String = "token `)'"
+    ;
+        Token = open_list,
+        String = "token `['"
+    ;
+        Token = close_list,
+        String = "token `]'"
+    ;
+        Token = open_curly,
+        String = "token `{'"
+    ;
+        Token = close_curly,
+        String = "token `}'"
+    ;
+        Token = ht_sep,
+        String = "token `|'"
+    ;
+        Token = comma,
+        String = "token `,'"
+    ;
+        Token = end,
+        String = "token `. '"
+    ;
+        Token = eof,
+        String = "end-of-file"
+    ;
+        Token = junk(JunkChar),
+        char.to_int(JunkChar, Code),
+        string.int_to_base_string(Code, 16, Hex),
+        string.append_list(["illegal character <<0x", Hex, ">>"], String)
+    ;
+        Token = io_error(IO_Error),
+        io.error_message(IO_Error, IO_ErrorMessage),
+        string.append("I/O error: ", IO_ErrorMessage, String)
+    ;
+        Token = error(Message),
+        string.append_list(["illegal token (", Message, ")"], String)
+    ;
+        Token = integer_dot(Int),
+        string.int_to_string(Int, IntString),
+        string.append_list(["integer `", IntString, "'."], String)
+    ).
 
     % We build the tokens up as lists of characters in reverse order.
     % When we get to the end of each token, we call
@@ -233,7 +294,7 @@ get_token_list_2(Stream, Token0, Context0, Tokens, !IO) :-
         ; Token0 = string(_)
         ; Token0 = variable(_)
         ; Token0 = integer(_)
-        ; Token0 = big_integer(_)
+        ; Token0 = big_integer(_, _)
         ; Token0 = implementation_defined(_)
         ; Token0 = junk(_)
         ; Token0 = name(_)
@@ -272,7 +333,7 @@ string_get_token_list_max(String, Len, Tokens, !Posn) :-
         ; Token = string(_)
         ; Token = variable(_)
         ; Token = integer(_)
-        ; Token = big_integer(_)
+        ; Token = big_integer(_, _)
         ; Token = integer_dot(_)
         ; Token = implementation_defined(_)
         ; Token = junk(_)
@@ -1952,14 +2013,14 @@ get_binary_2(Stream, Chars, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(Chars, 2, Token)
+        rev_char_list_to_int(Chars, base_2, Token)
     ;
         Result = ok,
         ( char.is_binary_digit(Char) ->
             get_binary_2(Stream, [Char | Chars], Token, !IO)
         ;
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(Chars, 2, Token)
+            rev_char_list_to_int(Chars, base_2, Token)
         )
     ).
 
@@ -1973,12 +2034,12 @@ string_get_binary_2(String, Len, Posn1, Token, Context, !Posn) :-
         ;
             string_ungetchar(String, !Posn),
             grab_string(String, Posn1, BinaryString, !Posn),
-            conv_string_to_int(BinaryString, 2, Token),
+            conv_string_to_int(BinaryString, base_2, Token),
             string_get_context(Posn1, Context, !Posn)
         )
     ;
         grab_string(String, Posn1, BinaryString, !Posn),
-        conv_string_to_int(BinaryString, 2, Token),
+        conv_string_to_int(BinaryString, base_2, Token),
         string_get_context(Posn1, Context, !Posn)
     ).
 
@@ -2031,14 +2092,14 @@ get_octal_2(Stream, Chars, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(Chars, 8, Token)
+        rev_char_list_to_int(Chars, base_8, Token)
     ;
         Result = ok,
         ( char.is_octal_digit(Char) ->
             get_octal_2(Stream, [Char | Chars], Token, !IO)
         ;
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(Chars, 8, Token)
+            rev_char_list_to_int(Chars, base_8, Token)
         )
     ).
 
@@ -2052,12 +2113,12 @@ string_get_octal_2(String, Len, Posn1, Token, Context, !Posn) :-
         ;
             string_ungetchar(String, !Posn),
             grab_string(String, Posn1, BinaryString, !Posn),
-            conv_string_to_int(BinaryString, 8, Token),
+            conv_string_to_int(BinaryString, base_8, Token),
             string_get_context(Posn1, Context, !Posn)
         )
     ;
         grab_string(String, Posn1, BinaryString, !Posn),
-        conv_string_to_int(BinaryString, 8, Token),
+        conv_string_to_int(BinaryString, base_8, Token),
         string_get_context(Posn1, Context, !Posn)
     ).
 
@@ -2110,14 +2171,14 @@ get_hex_2(Stream, Chars, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(Chars, 16, Token)
+        rev_char_list_to_int(Chars, base_16, Token)
     ;
         Result = ok,
         ( char.is_hex_digit(Char) ->
             get_hex_2(Stream, [Char | Chars], Token, !IO)
         ;
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(Chars, 16, Token)
+            rev_char_list_to_int(Chars, base_16, Token)
         )
     ).
 
@@ -2131,12 +2192,12 @@ string_get_hex_2(String, Len, Posn1, Token, Context, !Posn) :-
         ;
             string_ungetchar(String, !Posn),
             grab_string(String, Posn1, BinaryString, !Posn),
-            conv_string_to_int(BinaryString, 16, Token),
+            conv_string_to_int(BinaryString, base_16, Token),
             string_get_context(Posn1, Context, !Posn)
         )
     ;
         grab_string(String, Posn1, BinaryString, !Posn),
-        conv_string_to_int(BinaryString, 16, Token),
+        conv_string_to_int(BinaryString, base_16, Token),
         string_get_context(Posn1, Context, !Posn)
     ).
 
@@ -2150,7 +2211,7 @@ get_number(Stream, Chars, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(Chars, 10, Token)
+        rev_char_list_to_int(Chars, base_10, Token)
     ;
         Result = ok,
         ( char.is_digit(Char) ->
@@ -2161,7 +2222,7 @@ get_number(Stream, Chars, Token, !IO) :-
             get_float_exponent(Stream, [Char | Chars], Token, !IO)
         ;
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(Chars, 10, Token)
+            rev_char_list_to_int(Chars, base_10, Token)
         )
     ).
 
@@ -2180,12 +2241,12 @@ string_get_number(String, Len, Posn0, Token, Context, !Posn) :-
         ;
             string_ungetchar(String, !Posn),
             grab_string(String, Posn0, NumberString, !Posn),
-            conv_string_to_int(NumberString, 10, Token),
+            conv_string_to_int(NumberString, base_10, Token),
             string_get_context(Posn0, Context, !Posn)
         )
     ;
         grab_string(String, Posn0, NumberString, !Posn),
-        conv_string_to_int(NumberString, 10, Token),
+        conv_string_to_int(NumberString, base_10, Token),
         string_get_context(Posn0, Context, !Posn)
     ).
 
@@ -2201,7 +2262,7 @@ get_int_dot(Stream, Chars, Token, !IO) :-
     ;
         Result = eof,
         io.putback_char(Stream, '.', !IO),
-        rev_char_list_to_int(Chars, 10, Token)
+        rev_char_list_to_int(Chars, base_10, Token)
     ;
         Result = ok,
         ( char.is_digit(Char) ->
@@ -2212,7 +2273,7 @@ get_int_dot(Stream, Chars, Token, !IO) :-
             % guarantees one character of pushback. So instead, we return
             % an `integer_dot' token; the main loop of get_token_list_2 will
             % handle this appropriately.
-            rev_char_list_to_int(Chars, 10, Token0),
+            rev_char_list_to_int(Chars, base_10, Token0),
             ( Token0 = integer(Int) ->
                 Token = integer_dot(Int)
             ;
@@ -2233,13 +2294,13 @@ string_get_int_dot(String, Len, Posn0, Token, Context, !Posn) :-
             string_ungetchar(String, !Posn),
             string_ungetchar(String, !Posn),
             grab_string(String, Posn0, NumberString, !Posn),
-            conv_string_to_int(NumberString, 10, Token),
+            conv_string_to_int(NumberString, base_10, Token),
             string_get_context(Posn0, Context, !Posn)
         )
     ;
         string_ungetchar(String, !Posn),
         grab_string(String, Posn0, NumberString, !Posn),
-        conv_string_to_int(NumberString, 10, Token),
+        conv_string_to_int(NumberString, base_10, Token),
         string_get_context(Posn0, Context, !Posn)
     ).
 
@@ -2431,7 +2492,8 @@ string_get_float_exponent_3(String, Len, Posn0, Token, Context, !Posn) :-
 %
 % Utility routines.
 
-:- pred rev_char_list_to_int(list(char)::in, int::in, token::out) is det.
+:- pred rev_char_list_to_int(list(char)::in, integer_base::in, token::out)
+    is det.
 
 rev_char_list_to_int(RevChars, Base, Token) :-
     ( rev_char_list_to_string(RevChars, String) ->
@@ -2440,16 +2502,24 @@ rev_char_list_to_int(RevChars, Base, Token) :-
         Token = error("invalid character in int")
     ).
 
-:- pred conv_string_to_int(string::in, int::in, token::out) is det.
+:- pred conv_string_to_int(string::in, integer_base::in, token::out) is det.
 
 conv_string_to_int(String, Base, Token) :-
-    ( string.base_string_to_int(Base, String, Int) ->
+    BaseInt = integer_base_int(Base),
+    ( string.base_string_to_int(BaseInt, String, Int) ->
         Token = integer(Int)
-    ; Base = 10 ->
-        Token = big_integer(String)
+    ; integer.from_base_string(BaseInt, String, Integer) ->
+        Token = big_integer(Base, Integer)
     ;
-        Token = error("invalid integer token")
+        Token = error("invalid character in int")
     ).
+
+:- func integer_base_int(integer_base) = int.
+
+integer_base_int(base_2) = 2.
+integer_base_int(base_8) = 8.
+integer_base_int(base_10) = 10.
+integer_base_int(base_16) = 16.
 
 :- pred rev_char_list_to_float(list(char)::in, token::out) is det.
 

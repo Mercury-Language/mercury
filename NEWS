@@ -89,6 +89,9 @@ Changes to the Mercury standard library:
 * Float special values, NaNs and Infinities, are now converted to strings in
   a way that is backend and grade-independent.  (Bug #348)
 
+* string.base_digit_to_int/3 and string.det_base_digit_to_int/2 now check
+  for overflow and underflow in all bases, not only base 10.
+
 * The following classification predicates have been added to the float module:
 
    - is_finite/1
@@ -150,13 +153,20 @@ Changes to the Mercury standard library:
    - month_to_int0/1
    - same_date/1
 
-+ We have added a new module, psqueue, that implements a priority search
+* We have added a new module, psqueue, that implements a priority search
   queue ADT.  This is a blend between a priority queue and a map.  This was
   contributed by Matthias Güdemann.
 
 * We have added the following predicate to the int module:
 
   - all_true_in_range/3
+
+* The lexer module now returns integer literals that are too large for ints
+  as arbitrary-precision integers, and the base of that literal.
+
+* We have added a constructor big_integer/2 to the term.const type.
+
+* The parser module passes through big_integer tokens as big_integer terms.
 
 Changes to the Mercury compiler:
 
@@ -177,6 +187,9 @@ Changes to the Mercury compiler:
 * The asm_fast* and reg* grades now work on 64-bit Intel OS X systems when
   using GCC as the C compiler.
   See README.MacOS for further details.
+
+* The compiler now reports an error for binary/octal/hexadecimal integer
+  literals that cannot be represented in the compiler's native int type.
 
 Changes to the extras distribution:
 

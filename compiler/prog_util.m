@@ -22,6 +22,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
+:- import_module integer.
 :- import_module list.
 :- import_module maybe.
 :- import_module term.
@@ -129,7 +130,19 @@
     % The reverse conversion - make a cons_id for a functor.
     % Given a const and an arity for the functor, create a cons_id.
     %
-:- func make_functor_cons_id(const, arity) = cons_id.
+:- pred make_functor_cons_id(const::in, arity::in, cons_id::out) is semidet.
+:- pred det_make_functor_cons_id(const::in, arity::in, cons_id::out) is det.
+
+    % source_integer_to_int(Base, Integer, Int):
+    %
+    % Convert an arbitrary precision integer to a native int. For base 10, this
+    % predicate succeeds iff the value of String does not exceed int.max_int.
+    % For other bases, this predicate succeeds iff the value of String can be
+    % represented by an unsigned integer of the same width as `int', and `Int'
+    % is the signed integer with the same bit pattern as that unsigned value.
+    %
+:- pred source_integer_to_int(integer_base::in, integer::in, int::out)
+    is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -203,6 +216,7 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
+:- import_module char.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
@@ -669,13 +683,54 @@ cons_id_maybe_arity(tabling_info_const(_)) = no.
 cons_id_maybe_arity(deep_profiling_proc_layout(_)) = no.
 cons_id_maybe_arity(table_io_entry_desc(_)) = no.
 
-make_functor_cons_id(term.atom(Name), Arity) =
-    cons(unqualified(Name), Arity, cons_id_dummy_type_ctor).
-make_functor_cons_id(term.integer(Int), _) = int_const(Int).
-make_functor_cons_id(term.string(String), _) = string_const(String).
-make_functor_cons_id(term.float(Float), _) = float_const(Float).
-make_functor_cons_id(term.implementation_defined(Name), _) =
-    impl_defined_const(Name).
+make_functor_cons_id(Functor, Arity, ConsId) :-
+    require_complete_switch [Functor]
+    (
+        Functor = term.atom(Name),
+        ConsId = cons(unqualified(Name), Arity, cons_id_dummy_type_ctor)
+    ;
+        Functor = term.integer(Int),
+        ConsId = int_const(Int)
+    ;
+        Functor = term.big_integer(Base, Integer),
+        source_integer_to_int(Base, Integer, Int),
+        ConsId = int_const(Int)
+    ;
+        Functor = term.string(String),
+        ConsId = string_const(String)
+    ;
+        Functor = term.float(Float),
+        ConsId = float_const(Float)
+    ;
+        Functor = term.implementation_defined(Name),
+        ConsId = impl_defined_const(Name)
+    ).
+
+det_make_functor_cons_id(Functor, Arity, ConsId) :-
+    ( make_functor_cons_id(Functor, Arity, ConsIdPrime) ->
+        ConsId = ConsIdPrime
+    ;
+        unexpected($module, $pred, "make_functor_cons_id failed")
+    ).
+
+source_integer_to_int(Base, Integer, Int) :-
+    require_complete_switch [Base]
+    (
+        Base = base_10,
+        integer.to_int(Integer, Int)
+    ;
+        ( Base = base_2
+        ; Base = base_8
+        ; Base = base_16
+        ),
+        ( Integer > integer(max_int) ->
+            NegInteger = Integer + integer(min_int) + integer(min_int),
+            integer.to_int(NegInteger, Int),
+            Int < 0
+        ;
+            integer.to_int(Integer, Int)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -179,6 +179,14 @@
 
 :- interface.
 
+    % Convert `integer_base' constant to its numeric value.
+    %
+:- func integer_base_int(integer_base) = int.
+
+    % Return the prefix for integer literals of the given base.
+    %
+:- func integer_base_prefix(integer_base) = string.
+
     % Convert a character to the corresponding octal escape code.
     %
     % We use ISO-Prolog style octal escapes, which are of the form '\nnn\';
@@ -244,9 +252,11 @@
 :- import_module bool.
 :- import_module char.
 :- import_module int.
+:- import_module integer.
 :- import_module lexer.
 :- import_module list.
 :- import_module parser.
+:- import_module require.
 :- import_module string.
 :- import_module stream.string_writer.
 
@@ -543,6 +553,11 @@ term_io.write_constant(Const, !IO) :-
 
 term_io.write_constant(term.integer(I), _, !IO) :-
     io.write_int(I, !IO).
+term_io.write_constant(term.big_integer(Base, I), _, !IO) :-
+    Prefix = integer_base_prefix(Base),
+    IntString = integer.to_base_string(I, integer_base_int(Base)),
+    io.write_string(Prefix, !IO),
+    io.write_string(IntString, !IO).
 term_io.write_constant(term.float(F), _, !IO) :-
     io.write_float(F, !IO).
 term_io.write_constant(term.atom(A), NextToGraphicToken, !IO) :-
@@ -560,6 +575,8 @@ term_io.format_constant(Const) =
 
 term_io.format_constant_agt(term.integer(I), _) =
     string.int_to_string(I).
+term_io.format_constant_agt(term.big_integer(Base, I), _) =
+    integer_base_prefix(Base) ++ to_base_string(I, integer_base_int(Base)).
 term_io.format_constant_agt(term.float(F), _) =
     string.float_to_string(F).
 term_io.format_constant_agt(term.atom(A), NextToGraphicToken) =
@@ -568,6 +585,16 @@ term_io.format_constant_agt(term.string(S), _) =
     term_io.quoted_string(S).
 term_io.format_constant_agt(term.implementation_defined(N), _) =
     "$" ++ N.
+
+integer_base_int(base_2) = 2.
+integer_base_int(base_8) = 8.
+integer_base_int(base_10) = 10.
+integer_base_int(base_16) = 16.
+
+integer_base_prefix(base_2) = "0b".
+integer_base_prefix(base_8) = "0o".
+integer_base_prefix(base_10) = "".
+integer_base_prefix(base_16) = "0x".
 
 %---------------------------------------------------------------------------%
 

@@ -115,6 +115,7 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -510,6 +511,9 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
             RequiredType = yes(builtin_type_string)
         ;
             Functor = term.integer(_),
+            RequiredType = yes(builtin_type_int)
+        ;
+            Functor = term.big_integer(_, _),
             RequiredType = yes(builtin_type_int)
         ;
             Functor = term.float(_),
@@ -1073,6 +1077,13 @@ make_key_part(term.atom(_)) = _ :-
 make_key_part(term.integer(I)) =
     % convert int to base 36 to reduce the size of the I/O.
     string.int_to_base_string(I, 36).
+make_key_part(term.big_integer(Base, Integer)) = String :-
+    ( source_integer_to_int(Base, Integer, I) ->
+        % convert int to base 36 to reduce the size of the I/O.
+        String = string.int_to_base_string(I, 36)
+    ;
+        unexpected($module, $pred, "integer too big")
+    ).
 make_key_part(term.float(F)) =
     string.float_to_string(F).
 make_key_part(term.string(S)) = K :-
@@ -1315,6 +1326,14 @@ write_fact_args([Arg | Args], OutputStream, !IO) :-
         Arg = term.integer(Int),
         io.write_int(OutputStream, Int, !IO),
         io.write_string(OutputStream, ", ", !IO)
+    ;
+        Arg = term.big_integer(Base, Integer),
+        ( source_integer_to_int(Base, Integer, Int) ->
+            io.write_int(OutputStream, Int, !IO),
+            io.write_string(OutputStream, ", ", !IO)
+        ;
+            unexpected($module, $pred, "integer too big")
+        )
     ;
         Arg = term.float(Float),
         io.write_float(OutputStream, Float, !IO),

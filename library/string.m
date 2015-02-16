@@ -1095,15 +1095,15 @@
     % must contain one or more digits in the specified base, optionally
     % preceded by a plus or minus sign. For bases > 10, digits 10 to 35
     % are represented by the letters A-Z or a-z. If the string does not match
-    % this syntax or the base is 10 and the number is not in the range
-    % [min_int, max_int], the predicate fails.
+    % this syntax or the number is not in the range [min_int, max_int],
+    % the predicate fails.
     %
 :- pred base_string_to_int(int::in, string::in, int::out) is semidet.
 
     % Convert a signed base N string to an int. Throws an exception
     % if the string argument is not precisely an optional sign followed by
-    % a non-empty string of base N digits and, if the base is 10, the number
-    % is in the range [min_int, max_int].
+    % a non-empty string of base N digits and the number is in the range
+    % [min_int, max_int].
     %
 :- func det_base_string_to_int(int, string) = int.
 
@@ -1150,7 +1150,7 @@
     %
     % Convert an integer to a string in a given Base.
     %
-    % Base must be between 2 and 36, both inclusive; if it isn't,
+    % Base must be between 2 and 36, both inclusive; if it is not,
     % the predicate will throw an exception.
     %
 :- func int_to_base_string(int::in, int::in) = (string::uo) is det.
@@ -1167,7 +1167,7 @@
     % If GroupLength is less than one, no separators will appear
     % in the output. Useful for formatting numbers like "1,300,000".
     %
-    % Base must be between 2 and 36, both inclusive; if it isn't,
+    % Base must be between 2 and 36, both inclusive; if it is not,
     % the predicate will throw an exception.
     %
 :- func int_to_base_string_group(int, int, int, string) = string.
@@ -4981,7 +4981,9 @@ string.det_base_string_to_int(Base, S) = N :-
 accumulate_int(Base, Char, N0, N) :-
     char.base_digit_to_int(Base, Char, M),
     N = (Base * N0) + M,
-    ( N0 =< N ; Base \= 10 ).       % Fail on overflow for base 10 numbers.
+    % Fail on overflow.
+    % XXX depends on undefined behaviour
+    N0 =< N.
 
 :- pred accumulate_negative_int(int::in, char::in,
     int::in, int::out) is semidet.
@@ -4989,7 +4991,9 @@ accumulate_int(Base, Char, N0, N) :-
 accumulate_negative_int(Base, Char, N0, N) :-
     char.base_digit_to_int(Base, Char, M),
     N = (Base * N0) - M,
-    ( N =< N0 ; Base \= 10 ).       % Fail on underflow for base 10 numbers.
+    % Fail on overflow.
+    % XXX depends on undefined behaviour
+    N =< N0.
 
 %---------------------%
 

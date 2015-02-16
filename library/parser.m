@@ -129,6 +129,7 @@
 :- import_module char.
 :- import_module float.
 :- import_module int.
+:- import_module integer.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -274,7 +275,7 @@ check_for_bad_token(token_cons(Token, LineNum0, Tokens), Message, LineNum) :-
         ( Token = name(_)
         ; Token = variable(_)
         ; Token = integer(_)
-        ; Token = big_integer(_)
+        ; Token = big_integer(_, _)
         ; Token = float(_)
         ; Token = string(_)
         ; Token = implementation_defined(_)
@@ -373,8 +374,8 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
                 IntToken = integer(X),
                 NegX = 0 - X
             ;
-                IntToken = big_integer(BigString),
-                max_int_plus_1(int.bits_per_int, BigString),
+                IntToken = big_integer(_, X),
+                -X = integer(min_int),
                 NegX = int.min_int
             )
         ->
@@ -661,9 +662,22 @@ parse_simple_term_2(integer(Int), Context, _, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),
     Term = ok(term.functor(term.integer(Int), [], TermContext)).
 
-parse_simple_term_2(big_integer(_), _Context, _, _Term, !PS) :-
-    % The term type does not yet support big integers.
-    fail.
+parse_simple_term_2(big_integer(Base0, String), Context, _, Term, !PS) :-
+    get_term_context(!.PS, Context, TermContext),
+    (
+        Base0 = base_2,
+        Base = base_2
+    ;
+        Base0 = base_8,
+        Base = base_8
+    ;
+        Base0 = base_10,
+        Base = base_10
+    ;
+        Base0 = base_16,
+        Base = base_16
+    ),
+    Term = ok(term.functor(term.big_integer(Base, String), [], TermContext)).
 
 parse_simple_term_2(float(Float), Context, _, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),
@@ -993,7 +1007,7 @@ make_error(ParserState, Message) = error(Message, Tokens) :-
 could_start_term(name(_), yes).
 could_start_term(variable(_), yes).
 could_start_term(integer(_), yes).
-could_start_term(big_integer(_), yes).
+could_start_term(big_integer(_, _), yes).
 could_start_term(float(_), yes).
 could_start_term(string(_), yes).
 could_start_term(implementation_defined(_), yes).
@@ -1012,13 +1026,6 @@ could_start_term(error(_), no).
 could_start_term(io_error(_), no).
 could_start_term(eof, no).
 could_start_term(integer_dot(_), no).
-
-%---------------------------------------------------------------------------%
-
-:- pred max_int_plus_1(int::in, string::in) is semidet.
-
-max_int_plus_1(32, "2147483648").
-max_int_plus_1(64, "9223372036854775808").
 
 %---------------------------------------------------------------------------%
 
