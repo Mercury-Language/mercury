@@ -1,2 +1,2 @@
-unterminated_octal_escape.m:009: Error: no clauses for predicate `main'/2.
-unterminated_octal_escape.m:014: Syntax error: unterminated octal escape.
+unterminated_octal_escape.m:013: Error: no clauses for predicate `main'/2.
+unterminated_octal_escape.m:018: Syntax error: unterminated octal escape.

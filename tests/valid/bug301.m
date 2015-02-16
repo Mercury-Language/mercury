@@ -1,7 +1,12 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % The compiler aborted in the float_reg.m pass due to mishandling of
 % deconstruction unifications.
 %
-% Software Error: hlds.instmap: predicate `hlds.instmap.merge_instmapping_delta_2'/9:
+% Software Error: hlds.instmap:
+%   predicate `hlds.instmap.merge_instmapping_delta_2'/9:
 % Unexpected: merge_instmapping_delta_2: error merging var 5
 
 :- module bug301.
@@ -26,6 +31,3 @@ mk(E, F) :-
     ;
         F = f(_, _, -3)
     ).
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sts=4 sw=4 et

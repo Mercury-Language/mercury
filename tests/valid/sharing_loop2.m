@@ -1,4 +1,8 @@
-% Regression test.  The structure sharing analysis wasn't able to reach a
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Regression test. The structure sharing analysis wasn't able to reach a
 % fixpoint analysing this module with --structure-sharing-widening set to
 % certain values.
 
@@ -22,14 +26,14 @@
     --->    scalar_common_ref(type_num)
     ;       vector_common_ref(type_num, int).
 
-:- type type_num ---> type_num(int).
+:- type type_num
+    --->    type_num(int).
 
 :- type static_cell_remap_info.
 
 :- func remap_lval(static_cell_remap_info, lval) = lval.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -42,7 +46,7 @@
 :- type cell_type_num_remap
     --->    cell_type_num_remap(type_num, type_num).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 remap_lval(Remap, Lval0) = Lval :-
     (
@@ -64,7 +68,7 @@ remap_rval(Remap, Rval0) = Rval :-
         Rval = lval(Lval)
     ;
         Rval0 = const(DataName0),
-	DataName = remap_data_name(Remap, DataName0),
+    DataName = remap_data_name(Remap, DataName0),
         Rval = const(DataName)
     ;
         Rval0 = binop(A0, B0),
@@ -103,6 +107,3 @@ remap_mem_ref(Remap, MemRef0) = MemRef :-
     MemRef0 = heap_ref(Ptr0, FieldNum),
     Ptr = remap_rval(Remap, Ptr0),
     MemRef = heap_ref(Ptr, FieldNum).
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sts=4 sw=4 et

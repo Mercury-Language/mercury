@@ -1,4 +1,7 @@
-
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test. The propagation solver approach to constraints
 % based mode analysis was failing to consider implied modes and therefore
 % failing, because the `in' mode of foo implied X wouldn't be produced,
@@ -23,4 +26,3 @@ bar(1, 1).
 bar(2, 2).
 bar(3, 3).
 bar(4, 4).
-

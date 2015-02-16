@@ -1,13 +1,14 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % This is a test of the mode syntax.
 %
 % The only syntax is:
 %
-% 	:- mode foo == bar >> baz.
+%   :- mode foo == bar >> baz.
 %
 % You can also use `bar >> baz' inline after a mode qualifier.
-%
-
 
 :- module mode_syntax.
 :- interface.
@@ -27,17 +28,20 @@
 :- pred q(list(T)::list_skel >> list_skel /* my_input_list_skel */).
 :- pred r(list(T)::my_output_list_skel).
 
-q(_X) :- q([]).
-r(X) :- r(X).
+q(_X) :-
+    q([]).
+r(X) :-
+    r(X).
 
 p :-
-	r(X),
-	q(X).
+    r(X),
+    q(X).
 
 p2(X) :-
-	r(X),
-	q(X)
-	;
-	r(X),
-	q(X).
-
+    (
+        r(X),
+        q(X)
+    ;
+        r(X),
+        q(X)
+    ).

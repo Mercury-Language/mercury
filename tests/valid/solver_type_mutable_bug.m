@@ -1,4 +1,8 @@
-% Since rotd-2007-11-22 we have been unable to successfully compile this 
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Since rotd-2007-11-22 we have been unable to successfully compile this
 % test case due to the conjunction of (a) the removal of automatic solver
 % type initialisation and (b) the change to inst matching in r1.82 of
 % compiler/inst_match.m.  Consequently, this test case is now disabled.
@@ -32,4 +36,3 @@
 ").
 
 :- mutable(global, sat_literal, _, any,    [untrailed]).
-

@@ -1,11 +1,14 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module unbound_inst_var.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state,io__state).
-:- mode main(di,uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -22,15 +25,15 @@
 
 test(X, X).
 
-%:- pred main(io__state,io__state).
-%:- mode main(di,uo) is det.
+% :- pred main(io__state, io__state).
+% :- mode main(di, uo) is det.
 
-main(IO,IO) :-
-	true.
+main(IO, IO) :-
+    true.
 
 try_test :-
-  ( C = a ; C = b ; C = c),
-  test(a(C), a(D)),
-  ( D = a ; D = b ; D = c).
+    ( C = a ; C = b ; C = c),
+    test(a(C), a(D)),
+    ( D = a ; D = b ; D = c).
 
 :- end_module unbound_inst_var.

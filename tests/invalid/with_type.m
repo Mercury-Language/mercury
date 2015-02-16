@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module with_type.
 
 :- interface.
@@ -19,15 +23,15 @@
 :- mode with_type_2(in, in) `with_inst` map_func.
 
 :- pred with_type_3(T::in, list(_)::in) `with_type` map_pred(string, string)
-				`with_inst` foldl_pred.
+    `with_inst` foldl_pred.
 
 :- pred with_type_4(T::in, list(_)::in) `with_type` map_pred(string, string)
-				`with_inst` foldl_pred is det.
+    `with_inst` foldl_pred is det.
 
 :- pred with_type_5(T::in, list(_)::in) `with_inst` foldl_pred.
 
 :- pred with_type_6(T::in, list(_)::in) `with_type` map_pred(string, string)
-				`with_inst` (pred(in, in, out) is foo).
+    `with_inst` (pred(in, in, out) is foo).
 
 :- pred with_type_7(T, list(_)) `with_type` map_pred(string, string)
-				`with_inst` foldl_pred.
+    `with_inst` foldl_pred.

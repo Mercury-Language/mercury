@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module import_in_parent.
 
 :- interface.
@@ -8,18 +12,20 @@
 
 :- implementation.
 
-	:- type foo ---> foo.
+    :- type foo
+        --->    foo.
 
-	:- module import_in_parent__sub.
+    :- module import_in_parent__sub.
 
-	:- interface.
+    :- interface.
 
-	:- pred foo(bool::in) is semidet.
+    :- pred foo(bool::in) is semidet.
 
-	:- implementation.
+    :- implementation.
 
-	foo(X) :- bool__foo(X).
+    foo(X) :-
+        bool__foo(X).
 
-	:- end_module import_in_parent__sub.
+    :- end_module import_in_parent__sub.
 
 :- end_module import_in_parent.

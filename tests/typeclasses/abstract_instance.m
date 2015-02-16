@@ -1,9 +1,14 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module abstract_instance.
 :- interface.
-:- import_module io, list.
+:- import_module io.
+:- import_module list.
 
 :- typeclass runnable(T) where [
-	pred run(T::in, io__state::di, io__state::uo) is det
+    pred run(T::in, io__state::di, io__state::uo) is det
 ].
 
 :- instance runnable(int).
@@ -19,4 +24,4 @@
 run_int(I) --> io__write_int(I), io__nl.
 run_string(S) --> io__write_string(S), io__nl.
 run_list([]) --> [].
-run_list([X|Xs]) --> run(X), run(Xs).
+run_list([X | Xs]) --> run(X), run(Xs).

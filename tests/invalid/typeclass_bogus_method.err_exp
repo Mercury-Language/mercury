@@ -1,20 +1,20 @@
-typeclass_bogus_method.m:021: In instance declaration for
-typeclass_bogus_method.m:021:   `typeclass_bogus_method.tc1'/1: incorrect
-typeclass_bogus_method.m:021:   method name(s): function
-typeclass_bogus_method.m:021:   `typeclass_bogus_method.bar'/3.
 typeclass_bogus_method.m:025: In instance declaration for
-typeclass_bogus_method.m:025:   `typeclass_bogus_method.tc2'/1: incorrect
+typeclass_bogus_method.m:025:   `typeclass_bogus_method.tc1'/1: incorrect
 typeclass_bogus_method.m:025:   method name(s): function
-typeclass_bogus_method.m:025:   `typeclass_bogus_method.baz'/2.
+typeclass_bogus_method.m:025:   `typeclass_bogus_method.bar'/3.
 typeclass_bogus_method.m:029: In instance declaration for
-typeclass_bogus_method.m:029:   `typeclass_bogus_method.tc3(int)': no
-typeclass_bogus_method.m:029:   implementation for type class function method
-typeclass_bogus_method.m:029:   `typeclass_bogus_method.foo3'/1.
-typeclass_bogus_method.m:029: In instance declaration for
-typeclass_bogus_method.m:029:   `typeclass_bogus_method.tc3'/1: incorrect
+typeclass_bogus_method.m:029:   `typeclass_bogus_method.tc2'/1: incorrect
 typeclass_bogus_method.m:029:   method name(s): function
-typeclass_bogus_method.m:029:   `typeclass_bogus_method.foo5'/2.
-typeclass_bogus_method.m:032: In instance declaration for
-typeclass_bogus_method.m:032:   `typeclass_bogus_method.tc4'/1: incorrect
-typeclass_bogus_method.m:032:   method name(s): function
-typeclass_bogus_method.m:032:   `typeclass_bogus_method.foo5'/2.
+typeclass_bogus_method.m:029:   `typeclass_bogus_method.baz'/2.
+typeclass_bogus_method.m:033: In instance declaration for
+typeclass_bogus_method.m:033:   `typeclass_bogus_method.tc3(int)': no
+typeclass_bogus_method.m:033:   implementation for type class function method
+typeclass_bogus_method.m:033:   `typeclass_bogus_method.foo3'/1.
+typeclass_bogus_method.m:033: In instance declaration for
+typeclass_bogus_method.m:033:   `typeclass_bogus_method.tc3'/1: incorrect
+typeclass_bogus_method.m:033:   method name(s): function
+typeclass_bogus_method.m:033:   `typeclass_bogus_method.foo5'/2.
+typeclass_bogus_method.m:036: In instance declaration for
+typeclass_bogus_method.m:036:   `typeclass_bogus_method.tc4'/1: incorrect
+typeclass_bogus_method.m:036:   method name(s): function
+typeclass_bogus_method.m:036:   `typeclass_bogus_method.foo5'/2.

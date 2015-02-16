@@ -1,9 +1,9 @@
-any_to_ground_in_ite_cond.m:036: In clause for `main(di, uo)':
-any_to_ground_in_ite_cond.m:036:   in argument 1 of call to predicate
-any_to_ground_in_ite_cond.m:036:   `any_to_ground_in_ite_cond.p'/1:
-any_to_ground_in_ite_cond.m:036:   scope error: attempt to bind a non-local
-any_to_ground_in_ite_cond.m:036:   variable inside the condition of an
-any_to_ground_in_ite_cond.m:036:   if-then-else.
-any_to_ground_in_ite_cond.m:036:   Variable `X' has instantiatedness `any',
-any_to_ground_in_ite_cond.m:036:   expected instantiatedness was `ground'.
+any_to_ground_in_ite_cond.m:031: In clause for `main(di, uo)':
+any_to_ground_in_ite_cond.m:031:   in argument 1 of call to predicate
+any_to_ground_in_ite_cond.m:031:   `any_to_ground_in_ite_cond.p'/1:
+any_to_ground_in_ite_cond.m:031:   scope error: attempt to bind a non-local
+any_to_ground_in_ite_cond.m:031:   variable inside the condition of an
+any_to_ground_in_ite_cond.m:031:   if-then-else.
+any_to_ground_in_ite_cond.m:031:   Variable `X' has instantiatedness `any',
+any_to_ground_in_ite_cond.m:031:   expected instantiatedness was `ground'.
 For more information, recompile with `-E'.

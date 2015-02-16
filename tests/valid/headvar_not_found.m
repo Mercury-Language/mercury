@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module headvar_not_found.
 
 :- interface.
@@ -12,23 +16,25 @@
 :- implementation.
 
 % we need dummy definitions of these types
-:- type (mode) ---> mode(int, int).
-:- type module_info ---> module_info(int, int).
+:- type (mode)
+    --->    mode(int, int).
+:- type module_info
+    --->    module_info(int, int).
 
 :- pred mode_is_input(module_info::in, (mode)::in) is semidet.
 
 mode_is_input(_, _) :-
-        semidet_true.
+    semidet_true.
 
 % succeed iff all the inputs in the list of modes precede the outputs
 
 inputs_precede_outputs([], _).
 inputs_precede_outputs([Mode | Modes], ModuleInfo) :-
-	( mode_is_input(ModuleInfo, Mode) ->
-		inputs_precede_outputs(Modes, ModuleInfo)
-	;
-		\+ (
-			list__member(OtherMode, Modes),
-			mode_is_input(ModuleInfo, OtherMode)
-		)
-	).
+    ( mode_is_input(ModuleInfo, Mode) ->
+        inputs_precede_outputs(Modes, ModuleInfo)
+    ;
+        \+ (
+            list__member(OtherMode, Modes),
+            mode_is_input(ModuleInfo, OtherMode)
+        )
+    ).

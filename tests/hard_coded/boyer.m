@@ -18,7 +18,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -40,13 +40,13 @@ b(X) -->
         {true}
     ).
 
-:- pred boyer(io__state::di, io__state::uo) is det.
+:- pred boyer(io::di, io::uo) is det.
 
 boyer -->
     { wff(Wff) },
-    io__write_string("rewriting...") ,
+    io__write_string("rewriting..."),
     { rewrite(Wff, NewWff) },
-    io__write_string("proving...") ,
+    io__write_string("proving..."),
     ( { tautology(NewWff, [], []) } ->
         io__write_string("done...\n")
     ;

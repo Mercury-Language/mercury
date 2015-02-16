@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % disjunction  (wait after a resume point)
 
 :- module dep_par_6b.
@@ -9,22 +13,22 @@
 
 main(!IO) :-
     (
-	X = one
+        X = one
     &
-	(
-	    Y = 0,
-	    Y = one
-	;
-	    % wait(X)
-	    X = 2,
-	    Y = 2
-	;
-	    % wait(X)
-	    X = 1,
-	    Y = 3
-	;
-	    Y = 0
-	)
+        (
+            Y = 0,
+            Y = one
+        ;
+            % wait(X)
+            X = 2,
+            Y = 2
+        ;
+            % wait(X)
+            X = 1,
+            Y = 3
+        ;
+            Y = 0
+        )
     ),
     io.write_int(Y, !IO),
     io.nl(!IO).

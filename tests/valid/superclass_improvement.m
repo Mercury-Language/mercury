@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module superclass_improvement.
 :- interface.
 
@@ -16,7 +20,6 @@
 :- instance y(int, int) where [ (g(_) = 1) ].
 
 p(N) :-
-	% The FD on z/2 is required in order to prove that these two
-	% function calls have the same return type.
-	f(N) = g(N).
-
+    % The FD on z/2 is required in order to prove that these two
+    % function calls have the same return type.
+    f(N) = g(N).

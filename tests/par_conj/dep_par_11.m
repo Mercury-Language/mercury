@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % conjunction inside parallel conjunction
 
 :- module dep_par_11.
@@ -10,12 +14,12 @@
 
 main(!IO) :-
     (
-	X = A + B + C,
-	A = B + C,
-	B = 1,
-	C = 2
+        X = A + B + C,
+        A = B + C,
+        B = 1,
+        C = 2
     &
-	U = X + A
+        U = X + A
     ),
-    io.print({X,U,C}, !IO),
+    io.print({X, U, C}, !IO),
     io.nl(!IO).

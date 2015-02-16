@@ -17,7 +17,8 @@
 
 :- implementation.
 
-:- import_module list, int.
+:- import_module int.
+:- import_module list.
 :- import_module require.
 :- import_module string.
 
@@ -83,7 +84,7 @@ mmultiply(L0, V1, L) :-
     (
         L0 = [],
         L = []
-    ; 
+    ;
         L0 = [_ | Rest],
         (
             (
@@ -95,7 +96,7 @@ mmultiply(L0, V1, L) :-
         ),
         L = [Result | Others]
     ).
-            
+
 :- pred multiply(matrix::in, list(int)::in, list(int)::out) is det.
 
 multiply([], _, []).

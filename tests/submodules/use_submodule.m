@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test that we can use both nested and separate sub-modules.
 
 :- module use_submodule.
@@ -18,14 +22,14 @@
 :- use_module include_parent__separate2__nested.
 
 main -->
-	include_parent__hello,
-	include_parent__nested__hello,
-	nested__hello,
-	include_parent__separate__hello,
-	separate__hello,
-	include_parent__separate__hello2,
-	separate__hello2,
-	hello2,
-	hello3,
-	include_parent__separate2__hello,
-	include_parent__separate2__nested__hello.
+    include_parent__hello,
+    include_parent__nested__hello,
+    nested__hello,
+    include_parent__separate__hello,
+    separate__hello,
+    include_parent__separate__hello2,
+    separate__hello2,
+    hello2,
+    hello3,
+    include_parent__separate2__hello,
+    include_parent__separate2__nested__hello.

@@ -1,10 +1,10 @@
-typeclass_test_1.m:001: Error: module must start with a `:- module'
-typeclass_test_1.m:001:   declaration.
-typeclass_test_1.m:007: In clause for predicate `main'/2:
-typeclass_test_1.m:007:   unsatisfiable typeclass constraint:
-typeclass_test_1.m:007:   `typeclass_test_1.numbered_type(int)'.
-typeclass_test_1.m:014: Error: expected
-typeclass_test_1.m:014:   `pred(<Name> / <Arity>) is <InstanceName>' or
-typeclass_test_1.m:014:   `func(<Name> / <Arity>) is <InstanceName>', not
-typeclass_test_1.m:014:   (type_num is foo_type_num).
-typeclass_test_1.m:017: Syntax error at variable `_': operator or `.' expected.
+typeclass_test_1.m:005: Error: module must start with a `:- module'
+typeclass_test_1.m:005:   declaration.
+typeclass_test_1.m:012: In clause for predicate `main'/2:
+typeclass_test_1.m:012:   unsatisfiable typeclass constraint:
+typeclass_test_1.m:012:   `typeclass_test_1.numbered_type(int)'.
+typeclass_test_1.m:019: Error: expected
+typeclass_test_1.m:019:   `pred(<Name> / <Arity>) is <InstanceName>' or
+typeclass_test_1.m:019:   `func(<Name> / <Arity>) is <InstanceName>', not
+typeclass_test_1.m:019:   (type_num is foo_type_num).
+typeclass_test_1.m:022: Syntax error at variable `_': operator or `.' expected.

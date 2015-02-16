@@ -1,5 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module combine.
-	
+
 :- interface.
 
 :- import_module io.
@@ -8,14 +12,15 @@
 
 :- implementation.
 
-:- import_module int, solutions.
+:- import_module int.
+:- import_module solutions.
 
 :- pragma require_feature_set([memo]).
 
 main(!IO) :-
-	solutions(a, Solns),
-	io__write(Solns, !IO),
-	io__nl(!IO).
+    solutions(a, Solns),
+    io__write(Solns, !IO),
+    io__nl(!IO).
 
 :- pred a(int::out) is nondet.
 :- pred b(int::out) is multi.
@@ -27,15 +32,15 @@ main(!IO) :-
 :- pragma minimal_model(e/1).
 
 a(A) :-
-	d(B),
-	e(C),
-	A = B * 10 + C.
+    d(B),
+    e(C),
+    A = B * 10 + C.
 
 d(A) :-
-	b(A).
+    b(A).
 
 e(A) :-
-	c(A).
+    c(A).
 
 b(3).
 b(4).

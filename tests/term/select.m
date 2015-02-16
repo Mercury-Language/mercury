@@ -1,8 +1,14 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module select.
 
 :- interface.
 
-:- type list(T)	--->	[] ; [T | list(T)].
+:- type list(T)
+    --->    []
+    ;       [T | list(T)].
 
 :- pred select(T::out, list(T)::in, list(T)::out) is nondet.
 
@@ -10,4 +16,4 @@
 
 select(X, [X | Xs], Xs).
 select(X, [Y | Xs], [Y | Zs]) :-
-	select(X, Xs, Zs).
+    select(X, Xs, Zs).

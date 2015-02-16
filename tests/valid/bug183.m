@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test for bug #183.
 %
 % When compiled with --warn-dead-procs and one of the C backends (or indeed the
@@ -23,4 +27,4 @@
     "SSDB_handle_event_excp").
 
 handle_event_excp(_, _, _) :-
-	impure impure_true.
+    impure impure_true.

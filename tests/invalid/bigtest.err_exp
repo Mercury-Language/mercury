@@ -1,6 +1,4 @@
 bigtest.m:001: Error: module must start with a `:- module' declaration.
-bigtest.m:001: Error: unrecognized declaration:
-bigtest.m:001:   export_sym(((list / 1) , ((append / 3) , member))).
 bigtest.m:001: Warning: interface for module `bigtest' does not export
 bigtest.m:001:   anything.
 bigtest.m:001:   To be useful, a module should export something. A file should
@@ -8,18 +6,20 @@ bigtest.m:001:   contain at least one declaration other than `:- import_module'
 bigtest.m:001:   in its interface section(s). This would normally be a
 bigtest.m:001:   `:- pred', `:- func', `:- type', `:- inst' or `:- mode'
 bigtest.m:001:   declaration.
-bigtest.m:002: Error: unrecognized declaration:
-bigtest.m:002:   export_pred(((append / 3) , member)).
-bigtest.m:003: Error: unrecognized declaration:
-bigtest.m:003:   export_type(((list / 1) , bag)).
-bigtest.m:005: Error: clause for predicate `bigtest.fact'/0
-bigtest.m:005:   without corresponding `:- pred' declaration.
-bigtest.m:005: Error: no mode declaration for predicate `fact'/0.
-bigtest.m:005:   (Use `--infer-modes' to enable mode inference.)
-bigtest.m:005: Inferred :- pred fact.
-bigtest.m:006: Syntax error at token ':-': operator precedence error.
-bigtest.m:008: Error: unrecognized declaration:
-bigtest.m:008:   incorrect_declaration.
-bigtest.m:010: Error: no mode declaration for predicate `p'/1.
-bigtest.m:010:   (Use `--infer-modes' to enable mode inference.)
-bigtest.m:016: Error: type parameters must be variables: (t3 = (t1 + t2)).
+bigtest.m:005: Error: unrecognized declaration:
+bigtest.m:005:   export_sym(((list / 1) , ((append / 3) , member))).
+bigtest.m:006: Error: unrecognized declaration:
+bigtest.m:006:   export_pred(((append / 3) , member)).
+bigtest.m:007: Error: unrecognized declaration:
+bigtest.m:007:   export_type(((list / 1) , bag)).
+bigtest.m:009: Error: clause for predicate `bigtest.fact'/0
+bigtest.m:009:   without corresponding `:- pred' declaration.
+bigtest.m:009: Error: no mode declaration for predicate `fact'/0.
+bigtest.m:009:   (Use `--infer-modes' to enable mode inference.)
+bigtest.m:009: Inferred :- pred fact.
+bigtest.m:010: Syntax error at token ':-': operator precedence error.
+bigtest.m:012: Error: unrecognized declaration:
+bigtest.m:012:   incorrect_declaration.
+bigtest.m:014: Error: no mode declaration for predicate `p'/1.
+bigtest.m:014:   (Use `--infer-modes' to enable mode inference.)
+bigtest.m:020: Error: type parameters must be variables: (t3 = (t1 + t2)).

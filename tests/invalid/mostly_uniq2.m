@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module mostly_uniq2.
 :- interface.
 :- import_module io.
@@ -6,8 +10,10 @@
 
 :- implementation.
 
-% This should be a unique mode error, since the I/O state
-% is only mostly_unique, since we didn't declare foo as cc_multi.
+% This should be a unique mode error, since the I/O state is only
+% mostly_unique, since we didn't declare foo as cc_multi.
 
-foo --> io__write_int(1).
-foo --> io__write_int(2).
+foo -->
+    io__write_int(1).
+foo -->
+    io__write_int(2).

@@ -1,5 +1,5 @@
-bug150.m:012: In `car'(in) = out:
-bug150.m:012:   error: implicit determinism declaration not satisfied.
-bug150.m:012:   Declared `det', inferred `semidet'.
-bug150.m:016:   In argument 1 of clause head:
-bug150.m:016:   unification of `HeadVar__1' and `list.[H | _T]' can fail.
+bug150.m:014: In `car'(in) = out:
+bug150.m:014:   error: implicit determinism declaration not satisfied.
+bug150.m:014:   Declared `det', inferred `semidet'.
+bug150.m:018:   In argument 1 of clause head:
+bug150.m:018:   unification of `HeadVar__1' and `list.[H | _T]' can fail.

@@ -1,7 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % This is to test that `:- finalise' declarations are not
 % written out to private interfaces.
-%
+
 :- module finalise_parent.
 
 :- interface.
@@ -19,7 +22,7 @@
 :- pred parent_final(io::di, io::uo) is det.
 
 main(!IO) :-
-	io.write_string("This is main/2...\n", !IO).
+    io.write_string("This is main/2...\n", !IO).
 
 parent_final(!IO) :-
-	io.write_string("This is parent_final/2...\n", !IO).
+    io.write_string("This is parent_final/2...\n", !IO).

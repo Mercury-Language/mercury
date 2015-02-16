@@ -1,6 +1,6 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This is a regression test. In versions of the compiler before 7 Aug 2007,
 % it used to cause this compiler abort:
@@ -15,7 +15,7 @@
 % and from there the determinism of the entire procedure body, to nondet.
 % Since java_identifier is supposed to be semidet, this causes the abort above.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Mon Feb 21 09:42:40 EST 2005
 %
@@ -37,7 +37,7 @@
 % pragma memo lines except those for literal/2, qualified_identifier/2, and
 % punct/2.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mercury_java_parser_follow_code_bug.
 
@@ -47,8 +47,8 @@
 
 :- pred main(io :: di, io :: uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -67,7 +67,7 @@
     %
 :- type ps == int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
@@ -86,15 +86,13 @@ parse_file(Filename, !IO) :-
           then io.print(" parsed successfully\n", !IO)
           else io.print(" failed to parse\n", !IO)
         )
-      else
+    else
         throw(Result)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Low-level predicates.
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
 
@@ -102,8 +100,6 @@ parse_file(Filename, !IO) :-
     MR_Word input_length = (MR_Word)0;
 
 ").
-
-%-----------------------------------------------------------------------------%
 
 :- impure pred set_input_string(string::in) is det.
 
@@ -116,8 +112,6 @@ parse_file(Filename, !IO) :-
 
 ").
 
-%-----------------------------------------------------------------------------%
-
 :- semipure pred input_string_and_length(string::out, int::out) is det.
 
 :- pragma foreign_proc("C",
@@ -129,13 +123,9 @@ parse_file(Filename, !IO) :-
 
 ").
 
-%-----------------------------------------------------------------------------%
-
 :- pred current_offset(int::out, int::in, int::out) is det.
 
 current_offset(Offset, Offset, Offset).
-
-%-----------------------------------------------------------------------------%
 
 :- pred eof(int::in, int::out) is semidet.
 :- pragma promise_pure(eof/2).
@@ -143,8 +133,6 @@ current_offset(Offset, Offset, Offset).
 eof(Offset, Offset) :-
     semipure input_string_and_length(_Str, Length),
     Offset = Length.
-
-%-----------------------------------------------------------------------------%
 
     % XXX These are really semipure, but I'm being naughty and promising them
     % to be pure because I don't want to pollute my code with impurity
@@ -160,8 +148,6 @@ char(Char, Offset, Offset + 1) :-
     Offset < Length,
     Char = Str ^ unsafe_elem(Offset).
 
-%-----------------------------------------------------------------------------%
-
 :- pred input_substring(int::in, int::in, string::out,
         int::in, int::out) is semidet.
 :- pragma promise_pure(input_substring/5).
@@ -170,8 +156,6 @@ input_substring(Start, End, Substring, Offset, Offset) :-
     semipure input_string_and_length(Str, Length),
     End =< Length,
     Substring = unsafe_substring(Str, Start, End - Start).
-
-%-----------------------------------------------------------------------------%
 
 :- pred match_string(string::in, int::in, int::out) is semidet.
 :- pragma promise_pure(match_string/3).
@@ -189,23 +173,19 @@ match_string_2(I, N, MatchStr, Offset, Str) :-
     ( if I < N then
         MatchStr ^ unsafe_elem(I) = Str ^ unsafe_elem(Offset + I),
         match_string_2(I + 1, N, MatchStr, Offset, Str)
-      else
+    else
         true
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Utility predicates.
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred optional(pred(ps, ps)::in(pred(in, out) is semidet),
-            ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
 optional(P) -->
     ( if P then [] else { semidet_succeed } ).
-
-%-----------------------------------------------------------------------------%
 
 :- pred zero_or_more(pred(ps, ps)::in(pred(in, out) is semidet),
             ps::in, ps::out) is semidet.
@@ -213,26 +193,22 @@ optional(P) -->
 zero_or_more(P) -->
     ( if P then zero_or_more(P) else { semidet_succeed } ).
 
-%-----------------------------------------------------------------------------%
-
 :- pred one_or_more(pred(ps, ps)::in(pred(in, out) is semidet),
-            ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
 one_or_more(P) -->
     P,
     zero_or_more(P).
 
-%-----------------------------------------------------------------------------%
-
 :- pred brackets(string::in, pred(ps, ps)::in(pred(in, out) is semidet),
-            string::in, ps::in, ps::out) is semidet.
+    string::in, ps::in, ps::out) is semidet.
 
 brackets(L, P, R) -->
     punct(L),
     P,
     punct(R).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ++(pred(ps, ps)::in(pred(in, out) is semidet),
            pred(ps, ps)::in(pred(in, out) is semidet),
@@ -244,28 +220,28 @@ P ++ Q -->
     P,
     Q.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred comma_separated_list(pred(ps, ps)::in(pred(in, out) is semidet),
-            ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
 comma_separated_list(P) -->
-    P, zero_or_more(punct(",") ++ P).
+    P, zero_or_more(punct(", ") ++ P).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred whitespace(ps::in, ps::out) is semidet.
 
 whitespace -->
     ( if char(C1), { char.is_whitespace(C1) } then
         whitespace
-      else if char('/'), char('/') then
+    else if char('/'), char('/') then
         skip_to_eol,
         whitespace
-      else if char('/'), char('*') then
+    else if char('/'), char('*') then
         skip_to_end_of_trad_comment,
         whitespace
-      else
+    else
         []
     ).
 
@@ -280,12 +256,12 @@ skip_to_eol -->
 skip_to_end_of_trad_comment -->
     ( if char('*'), char('/') then
         []
-      else
+    else
         char(_),
         skip_to_end_of_trad_comment
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred punct(string::in, ps::in, ps::out) is semidet.
 
@@ -294,7 +270,7 @@ punct(Punct) -->
     match_string(Punct),
     whitespace.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred keyword(string::in, ps::in, ps::out) is semidet.
 
@@ -304,10 +280,10 @@ keyword(Keyword) -->
     not(java_identifier_part),
     whitespace.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred keyword(string::in, pred(ps, ps)::in(pred(in, out) is semidet),
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
 keyword(Keyword, P) -->
     match_string(Keyword),
@@ -315,11 +291,11 @@ keyword(Keyword, P) -->
     whitespace,
     P.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma memo(java_identifier/2, [allow_reset, fast_loose]).
 
-:- pred java_identifier(/*string::out,*/ ps::in, ps::out) is semidet.
+:- pred java_identifier(/*string::out, */ ps::in, ps::out) is semidet.
 
 % :- pragma memo(java_identifier/2).
 java_identifier/*(Identifier)*/ -->
@@ -342,7 +318,7 @@ java_identifier_part -->
     char(C),
     { char.is_alnum_or_underscore(C) ; C = ('$') }.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred floating_point_literal(ps::in, ps::out) is semidet.
 
@@ -350,7 +326,7 @@ floating_point_literal -->
     ( if optional(digits(10)), char('.'), digits(10) then
         optional(exponent_part),
         optional(float_type_suffix)
-      else
+    else
         digits(10),
         ( if exponent_part then optional(float_type_suffix)
                            else float_type_suffix
@@ -374,20 +350,16 @@ sign -->
 float_type_suffix -->
     char(C), { C = ('F') ; C = ('f') ; C = ('D') ; C = ('d') }.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred integer_literal(ps::in, ps::out) is semidet.
 
 integer_literal -->
-    ( if
-        hex_literal
-      then
+    ( if hex_literal then
         []
-      else if
-        oct_literal
-      then
+    else if oct_literal then
         []
-      else
+    else
         dec_literal
     ).
 
@@ -427,7 +399,7 @@ digits(Base) -->
 digit(Base) -->
     char(C), { char.digit_to_int(C, D), D < Base }.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred character_literal(ps::in, ps::out) is semidet.
 
@@ -451,11 +423,11 @@ possibly_escaped_char -->
             { member(C2, [('b'), ('t'), ('n'), ('f'), ('r'), ('\"'), ('\''),
                     ('\\')]) }
         )
-      else
+    else
         []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred string_literal(ps::in, ps::out) is semidet.
 
@@ -470,28 +442,26 @@ string_char -->
     not(char('"')),
     possibly_escaped_char.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred boolean_literal(ps::in, ps::out) is semidet.
 
 boolean_literal -->
-    ( if
-        keyword("true")
-      then
+    ( if keyword("true") then
         []
-      else
+    else
         keyword("false")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred null_literal(ps::in, ps::out) is semidet.
 
 null_literal -->
     keyword("null").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Taken from
 % http://java.sun.com/docs/books/jls/second_edition/html/syntax.doc.html
 
@@ -504,7 +474,6 @@ null_literal -->
 %    Please send any comments or corrections to the [10]JLS team
 
 %                                     Syntax
-%      _________________________________________________________________
 %
 %    This chapter presents a grammar for the Java programming language.
 %
@@ -552,25 +521,25 @@ dot_java_identifier -->
 literal -->
     ( if
         floating_point_literal
-      then
+    then
         []
-      else if
+    else if
         integer_literal
-      then
+    then
         []
-      else if
+    else if
         character_literal
-      then
+    then
         []
-      else if
+    else if
         string_literal
-      then
+    then
         []
-      else if
+    else if
         boolean_literal
-      then
+    then
         []
-      else
+    else
         null_literal
     ),
     whitespace.
@@ -598,7 +567,7 @@ assignment_operator_expression1 -->
 %         *=
 %         /=
 %         &=
-%         |=
+%         | =
 %         ^=
 %         %=
 %         <<=
@@ -611,49 +580,49 @@ assignment_operator_expression1 -->
 assignment_operator -->
     ( if
         punct("=")
-      then
+    then
         []
-      else if
+    else if
         punct("+=")
-      then
+    then
         []
-      else if
+    else if
         punct("-=")
-      then
+    then
         []
-      else if
+    else if
         punct("*=")
-      then
+    then
         []
-      else if
+    else if
         punct("/=")
-      then
+    then
         []
-      else if
+    else if
         punct("&=")
-      then
+    then
         []
-      else if
-        punct("|=")
-      then
+    else if
+        punct(" | =")
+    then
         []
-      else if
+    else if
         punct("^=")
-      then
+    then
         []
-      else if
+    else if
         punct("%=")
-      then
+    then
         []
-      else if
+    else if
         punct("<<=")
-      then
+    then
         []
-      else if
+    else if
         punct(">>=")
-      then
+    then
         []
-      else
+    else
         punct(">>>=")
     ).
 
@@ -667,9 +636,9 @@ assignment_operator -->
 java_type -->
     ( if
         qualified_identifier, brackets_opt
-      then
+    then
         []
-      else
+    else
         basic_type
     ).
 
@@ -728,9 +697,9 @@ expression2 -->
 expression2_rest -->
     ( if
         keyword("instanceof"), java_type, optional(expression2_rest)
-      then
+    then
         []
-      else
+    else
         zero_or_more(infix_op_expression3)
     ).
 
@@ -740,7 +709,7 @@ infix_op_expression3 -->
     infix_op, expression3.
 
 % Infixop:
-%         ||
+%         | |
 %         &&
 %         |
 %         ^
@@ -765,78 +734,78 @@ infix_op_expression3 -->
 % :- pragma memo(infix_op/2).
 infix_op -->
     ( if
-        punct("||")
-      then
+        punct(" | |")
+    then
         []
-      else if
+    else if
         punct("&&")
-      then
+    then
         []
-      else if
-        punct("|")
-      then
+    else if
+        punct(" | ")
+    then
         []
-      else if
+    else if
         punct("^")
-      then
+    then
         []
-      else if
+    else if
         punct("&")
-      then
+    then
         []
-      else if
+    else if
         punct("==")
-      then
+    then
         []
-      else if
+    else if
         punct("!=")
-      then
+    then
         []
-      else if
+    else if
         punct("<=")
-      then
+    then
         []
-      else if
+    else if
         punct(">=")
-      then
+    then
         []
-      else if
+    else if
         punct("<<")
-      then
+    then
         []
-      else if
+    else if
         punct(">>>")
-      then
+    then
         []
-      else if
+    else if
         punct(">>")
-      then
+    then
         []
-      else if
+    else if
         punct("<")
-      then
+    then
         []
-      else if
+    else if
         punct(">")
-      then
+    then
         []
-      else if
+    else if
         punct("+")
-      then
+    then
         []
-      else if
+    else if
         punct("-")
-      then
+    then
         []
-      else if
+    else if
         punct("*")
-      then
+    then
         []
-      else if
+    else if
         punct("/")
-      then
+    then
         []
-      else
+    else
         punct("%")
     ).
 
@@ -850,13 +819,13 @@ infix_op -->
 expression3 -->
     ( if
         prefix_op, expression3
-      then
+    then
         []
-      else if
+    else if
         brackets("(", expression_or_java_type, ")"), expression3
-      then
+    then
         []
-      else
+    else
         primary, zero_or_more(selector), zero_or_more(postfix_op)
     ).
 
@@ -866,9 +835,9 @@ expression3 -->
 expression_or_java_type -->
     ( if
         java_type
-      then
+    then
         []
-      else
+    else
         expression
     ).
 
@@ -888,33 +857,33 @@ expression_or_java_type -->
 primary -->
     ( if
         brackets("(", expression, ")")
-      then
+    then
         []
-      else if
+    else if
         keyword("this"), optional(arguments)
-      then
+    then
         []
-      else if
+    else if
         keyword("super"), super_suffix
-      then
+    then
         []
-      else if
+    else if
         keyword("new"), creator
-      then
+    then
         []
-      else if
+    else if
         keyword("void"), punct("."), keyword("class")
-      then
+    then
         []
-      else if
+    else if
         basic_type, brackets_opt, punct("."), keyword("class")
-      then
+    then
         []
-      else if
+    else if
         literal
-      then
+    then
         []
-      else
+    else
         qualified_identifier, optional(identifier_suffix)
     ).
 
@@ -938,13 +907,13 @@ identifier_suffix -->
           else
             expression
         )
-      then
+    then
         []
-      else if
+    else if
         arguments
-      then
+    then
         []
-      else
+    else
         punct("."),
         ( if
             keyword("class")
@@ -977,25 +946,25 @@ identifier_suffix -->
 prefix_op -->
     ( if
         punct("++")
-      then
+    then
         []
-      else if
+    else if
         punct("--")
-      then
+    then
         []
-      else if
+    else if
         punct("!")
-      then
+    then
         []
-      else if
+    else if
         punct("~")
-      then
+    then
         []
-      else if
+    else if
         punct("+")
-      then
+    then
         []
-      else
+    else
         punct("-")
     ).
 
@@ -1009,9 +978,9 @@ prefix_op -->
 postfix_op -->
     ( if
         punct("++")
-      then
+    then
         []
-      else
+    else
         punct("--")
     ).
 
@@ -1028,9 +997,9 @@ postfix_op -->
 selector -->
     ( if
         brackets("[", expression, "]")
-      then
+    then
         []
-      else
+    else
         punct("."),
         ( if
             keyword("this")
@@ -1059,9 +1028,9 @@ selector -->
 super_suffix -->
     ( if
         arguments
-      then
+    then
         []
-      else
+    else
         punct("."), java_identifier, optional(arguments)
     ).
 
@@ -1081,33 +1050,33 @@ super_suffix -->
 basic_type -->
     ( if
         punct("byte")
-      then
+    then
         []
-      else if
+    else if
         punct("short")
-      then
+    then
         []
-      else if
+    else if
         punct("char")
-      then
+    then
         []
-      else if
+    else if
         punct("int")
-      then
+    then
         []
-      else if
+    else if
         punct("long")
-      then
+    then
         []
-      else if
+    else if
         punct("float")
-      then
+    then
         []
-      else if
+    else if
         punct("double")
-      then
+    then
         []
-      else
+    else
         punct("boolean")
     ).
 
@@ -1150,9 +1119,9 @@ creator -->
 creator_rest -->
     ( if
         array_creator_rest
-      then
+    then
         []
-      else
+    else
         class_creator_rest
     ).
 
@@ -1187,7 +1156,7 @@ class_creator_rest -->
     arguments, optional(class_body).
 
 % ArrayInitializer:
-%         { [VariableInitializer {, VariableInitializer} [,]] }
+%         { [VariableInitializer {, VariableInitializer} [, ]] }
 
 :- pred array_initializer(ps::in, ps::out) is semidet.
 
@@ -1199,7 +1168,7 @@ array_initializer -->
 
 % :- pragma memo(array_initializer_body/2).
 array_initializer_body -->
-    comma_separated_list(variable_initializer), optional(punct(",")).
+    comma_separated_list(variable_initializer), optional(punct(", ")).
 
 % VariableInitializer:
 %         ArrayInitializer
@@ -1211,9 +1180,9 @@ array_initializer_body -->
 variable_initializer -->
     ( if
         array_initializer
-      then
+    then
         []
-      else
+    else
         expression
     ).
 
@@ -1255,13 +1224,13 @@ block_statements -->
 block_statement -->
     ( if
         local_variable_declaration_statement
-      then
+    then
         []
-      else if
+    else if
         class_or_interface_declaration
-      then
+    then
         []
-      else
+    else
         optional(label), statement
     ).
 
@@ -1307,14 +1276,14 @@ local_variable_declaration_statement -->
 statement -->
     ( if
         block
-      then
+    then
         []
-      else if
+    else if
         keyword("if"), par_expression, statement,
             optional(else_statement)
-      then
+    then
         []
-      else if
+    else if
         keyword("for"),
         punct("("),
         optional(for_init),
@@ -1324,55 +1293,55 @@ statement -->
         optional(for_update),
         punct(")"),
         statement
-      then
+    then
         []
-      else if
+    else if
         keyword("while"), par_expression, statement
-      then
+    then
         []
-      else if
+    else if
         keyword("do"), statement,
             keyword("while"), par_expression, punct(";")
-      then
+    then
         []
-      else if
+    else if
         keyword("try"), block, catches_finally
-      then
+    then
         []
-      else if
+    else if
         keyword("switch"), par_expression,
             brackets("{", switch_block_statement_groups, "}")
-      then
+    then
         []
-      else if
+    else if
         keyword("synchronized"), par_expression, block
-      then
+    then
         []
-      else if
+    else if
         keyword("return"), optional(expression), punct(";")
-      then
+    then
         []
-      else if
+    else if
         keyword("throw"), expression, punct(";")
-      then
+    then
         []
-      else if
+    else if
         keyword("break"), optional(java_identifier), punct(";")
-      then
+    then
         []
-      else if
+    else if
         keyword("continue"), optional(java_identifier), punct(";")
-      then
+    then
         []
-      else if
+    else if
         punct(";")
-      then
+    then
         []
-      else if
+    else if
         expression, punct(";")
-      then
+    then
         []
-      else
+    else
         java_identifier, punct(":"), statement
     ).
 
@@ -1388,9 +1357,9 @@ else_statement -->
 catches_finally -->
     ( if
         catches, optional(finally_block)
-      then
+    then
         []
-      else
+    else
         finally_block
     ).
 
@@ -1446,9 +1415,9 @@ switch_block_statement_group -->
 switch_label -->
     ( if
         keyword("case"), constant_expression, punct(":")
-      then
+    then
         []
-      else
+    else
         keyword("default"), punct(":")
     ).
 
@@ -1465,9 +1434,9 @@ switch_label -->
 for_init -->
     ( if
         comma_separated_list(for_init_statement_expression)
-      then
+    then
         []
-      else
+    else
         optional(keyword("final")), java_type, variable_declarators
     ).
 
@@ -1477,9 +1446,9 @@ for_init -->
 for_init_statement_expression -->
     ( if
         java_type, java_identifier, equals_variable_initializer
-      then
+    then
         []
-      else
+    else
         statement_expression
     ).
 
@@ -1520,45 +1489,45 @@ modifiers_opt -->
 modifier -->
     ( if
         keyword("public")
-      then
+    then
         []
-      else if
+    else if
         keyword("protected")
-      then
+    then
         []
-      else if
+    else if
         keyword("private")
-      then
+    then
         []
-      else if
+    else if
         keyword("static")
-      then
+    then
         []
-      else if
+    else if
         keyword("abstract")
-      then
+    then
         []
-      else if
+    else if
         keyword("final")
-      then
+    then
         []
-      else if
+    else if
         keyword("native")
-      then
+    then
         []
-      else if
+    else if
         keyword("synchronized")
-      then
+    then
         []
-      else if
+    else if
         keyword("transient")
-      then
+    then
         []
-      else if
+    else if
         keyword("volatile")
-      then
+    then
         []
-      else
+    else
         keyword("strictfp")
     ).
 
@@ -1688,9 +1657,9 @@ class_or_interface_declaration -->
     modifiers_opt,
     ( if
         class_declaration
-      then
+    then
         []
-      else
+    else
         interface_declaration
     ).
 
@@ -1757,13 +1726,13 @@ interface_body -->
 class_body_declaration -->
     ( if
         punct(";")
-      then
+    then
         []
-      else if
+    else if
         optional(keyword("static")), block
-      then
+    then
         []
-      else
+    else
         modifiers_opt, member_decl
     ).
 
@@ -1779,17 +1748,17 @@ class_body_declaration -->
 member_decl -->
     ( if
         class_or_interface_declaration
-      then
+    then
         []
-      else if
+    else if
         method_or_field_decl
-      then
+    then
         []
-      else if
+    else if
         keyword("void"), java_identifier, method_declarator_rest
-      then
+    then
         []
-      else
+    else
         java_identifier, constructor_declarator_rest
     ).
 
@@ -1806,7 +1775,7 @@ method_or_field_decl -->
 %         VariableDeclaratorRest
 %         MethodDeclaratorRest
 %         XXX First should be
-%           VariableDeclaratorRest [',' VariableDeclarators]
+%           VariableDeclaratorRest [', ' VariableDeclarators]
 
 :- pred method_or_field_rest(ps::in, ps::out) is semidet.
 
@@ -1814,11 +1783,11 @@ method_or_field_decl -->
 method_or_field_rest -->
     ( if
         method_declarator_rest
-      then
+    then
         []
-      else
+    else
         variable_declarator_rest,
-        ( if punct(",") then
+        ( if punct(", ") then
             variable_declarators
           else
             []
@@ -1835,9 +1804,9 @@ method_or_field_rest -->
 interface_body_declaration -->
     ( if
         punct(";")
-      then
+    then
         []
-      else
+    else
         modifiers_opt, interface_member_decl
     ).
 
@@ -1852,13 +1821,13 @@ interface_body_declaration -->
 interface_member_decl -->
     ( if
         interface_method_or_field_decl
-      then
+    then
         []
-      else if
+    else if
         keyword("void"), java_identifier, void_interface_method_declarator_rest
-      then
+    then
         []
-      else
+    else
         class_or_interface_declaration
     ).
 
@@ -1881,9 +1850,9 @@ interface_method_or_field_decl -->
 interface_method_or_field_rest -->
     ( if
         constant_declarator_rest
-      then
+    then
         []
-      else
+    else
         interface_method_declarator_rest
     ).
 
@@ -1905,9 +1874,9 @@ method_declarator_rest -->
 method_body_or_semicolon -->
     ( if
         method_body
-      then
+    then
         []
-      else
+    else
         punct(";")
     ).
 
@@ -1994,5 +1963,5 @@ formal_parameter -->
 method_body -->
     block.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -10,7 +10,7 @@
 % q's clauses properly. q's foreign_proc overrode the second existing Mercury
 % clause for q, but not the first. The resulting two-clause q then had a
 % disjunction, and as result it had a determinism error.
-% 
+%
 % The match against the exact text of the output of the compiler
 % guards against the reappearance of this bug.
 

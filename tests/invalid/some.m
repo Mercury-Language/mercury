@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module (some).
 
 :- interface.
@@ -9,5 +13,7 @@
 :- implementation.
 :- import_module int.
 
-p1(X) :- some junk p3(X).
-p3(X) :- ( some junk X > 0 -> X = 42 ; X = -42 ).
+p1(X) :-
+    some junk p3(X).
+p3(X) :-
+    ( some junk X > 0 -> X = 42 ; X = -42 ).

@@ -1,5 +1,5 @@
-invalid_new.m:020: In clause for function `nc'/1:
-invalid_new.m:020:   in function result term of clause head:
-invalid_new.m:020:   error: undefined symbol `new c'/1.
-invalid_new.m:020:   Invalid use of `new' on a constructor of type
-invalid_new.m:020:   `invalid_new.c'/1 which is not existentially typed.
+invalid_new.m:024: In clause for function `nc'/1:
+invalid_new.m:024:   in function result term of clause head:
+invalid_new.m:024:   error: undefined symbol `new c'/1.
+invalid_new.m:024:   Invalid use of `new' on a constructor of type
+invalid_new.m:024:   `invalid_new.c'/1 which is not existentially typed.

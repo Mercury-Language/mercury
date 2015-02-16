@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Used by use_submodule.m
 
 :- module include_parent__separate.
@@ -18,13 +22,13 @@
 :- implementation.
 
 hello -->
-	io__write_string("include_parent__separate: hello\n").
+    io__write_string("include_parent__separate: hello\n").
 
 hello2 -->
-	io__write_string("include_parent__separate: hello2\n").
+    io__write_string("include_parent__separate: hello2\n").
 
   :- module include_parent__separate__nested.
   :- implementation.
   hello3 -->
-	io__write_string("include_parent__separate__nested: hello\n").
+    io__write_string("include_parent__separate__nested: hello\n").
   :- end_module include_parent__separate__nested.

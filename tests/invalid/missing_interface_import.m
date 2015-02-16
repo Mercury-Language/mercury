@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test: the Mercury compiler of Mon Mar 2, 1998
 % failed to report an error for this test case.
 
@@ -13,7 +17,8 @@
 
 % These import_module and use_module declarations should be in the
 % interface section.
-:- import_module list, map.
+:- import_module list.
+:- import_module map.
 :- use_module univ.
 
 p(_).

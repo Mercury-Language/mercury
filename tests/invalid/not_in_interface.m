@@ -1,7 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % Tests that we write out error messages for things
 % that shoudn't occur in module interfaces.
-%
+
 :- module not_in_interface.
 
 :- interface.

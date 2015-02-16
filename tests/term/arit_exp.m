@@ -1,8 +1,16 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module arit_exp.
 
 :- interface.
 
-:- type expr	--->	expr + expr ; expr * expr ; - expr ; int(int).
+:- type expr
+    --->    expr + expr
+    ;       expr * expr
+    ;       - expr
+    ;       int(int).
 
 :- pred e(expr).
 :- mode e(in) is semidet.
@@ -10,23 +18,23 @@
 :- implementation.
 
 e(X+Y) :-
-	f(X),
-	e(Y).
+    f(X),
+    e(Y).
 e(X) :-
-	f(X).
+    f(X).
 
 :- pred f(expr).
 :- mode f(in) is semidet.
 
 f(X*Y) :-
-	g(X),
-	f(Y).
+    g(X),
+    f(Y).
 f(X) :-
-	g(X).
+    g(X).
 
 :- pred g(expr).
 :- mode g(in) is semidet.
 
 g(-(X)) :-
-	e(X).
+    e(X).
 g(int(_X)).

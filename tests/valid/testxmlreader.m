@@ -11,7 +11,11 @@
 
 :- implementation.
 
-:- import_module list, maybe, require, string, int.
+:- import_module int.
+:- import_module list.
+:- import_module maybe.
+:- import_module require.
+:- import_module string.
 :- import_module xmlreader.
 
 main(!IO) :-

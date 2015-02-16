@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % In low-level parallel grades, running with many threads could cause
 % the program to deadlock.
 
@@ -26,7 +30,7 @@ main(!IO) :-
 :- pred fib(int::in, int::out) is det.
 
 fib(N, F) :-
-    (if N < 2 then
+    ( if N < 2 then
         F = 1
     else
         ( fib(N-1, F1)
@@ -51,10 +55,10 @@ fib(N, F) :-
     [will_not_call_mercury, thread_safe],
 "
     F = fun() ->
-	receive
-	after Seconds * 1000 ->
-	    throw(alarm)
-	end
+    receive
+    after Seconds * 1000 ->
+        throw(alarm)
+    end
     end,
     spawn_link(F)
 ").

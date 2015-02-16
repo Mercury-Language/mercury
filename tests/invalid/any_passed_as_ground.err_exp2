@@ -1,13 +1,13 @@
-any_passed_as_ground.m:036: In clause for `main(di, uo)':
-any_passed_as_ground.m:036:   in call to predicate `list.member'/2:
-any_passed_as_ground.m:036:   mode error: arguments `TypeInfo_12, V_10, Xs'
-any_passed_as_ground.m:036:   have the following insts:
-any_passed_as_ground.m:036:     bound(private_builtin.type_info(bound(<type_ctor_info
-any_passed_as_ground.m:036:     for pair.pair/2>), bound(<type_ctor_info for
-any_passed_as_ground.m:036:     .int/0>), bound(<type_ctor_info for
-any_passed_as_ground.m:036:     any_passed_as_ground.st/0>))),
-any_passed_as_ground.m:036:     free,
-any_passed_as_ground.m:036:     any
-any_passed_as_ground.m:036:   which does not match any of the modes for
-any_passed_as_ground.m:036:   predicate `list.member'/2.
+any_passed_as_ground.m:030: In clause for `main(di, uo)':
+any_passed_as_ground.m:030:   in call to predicate `list.member'/2:
+any_passed_as_ground.m:030:   mode error: arguments `TypeInfo_12, V_10, Xs'
+any_passed_as_ground.m:030:   have the following insts:
+any_passed_as_ground.m:030:     bound(private_builtin.type_info(bound(<type_ctor_info
+any_passed_as_ground.m:030:     for pair.pair/2>), bound(<type_ctor_info for
+any_passed_as_ground.m:030:     .int/0>), bound(<type_ctor_info for
+any_passed_as_ground.m:030:     any_passed_as_ground.st/0>))),
+any_passed_as_ground.m:030:     free,
+any_passed_as_ground.m:030:     any
+any_passed_as_ground.m:030:   which does not match any of the modes for
+any_passed_as_ground.m:030:   predicate `list.member'/2.
 For more information, recompile with `-E'.

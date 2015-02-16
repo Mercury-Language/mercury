@@ -1,6 +1,13 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module abstract_typeclass.
 :- interface.
-:- import_module io, list, string.
+
+:- import_module io.
+:- import_module list.
+:- import_module string.
 
 :- typeclass foo(T).
 
@@ -12,37 +19,36 @@
 :- mode p(in, di, uo) is det.
 
 :- some [T] pred q(T) => foo(T).
-:- 	    mode q(out) is det.
+:-          mode q(out) is det.
 
 :- implementation.
 
 :- typeclass foo(T) where [
-	func bar(T) = string
+    func bar(T) = string
 ].
 
 :- instance foo(int) where [
-	(bar(_) = "an integer")
+    (bar(_) = "an integer")
 ].
 
 :- instance foo(string) where [
-	(bar(_) = "a string")
+    (bar(_) = "a string")
 ].
 
 :- instance foo(list(T)) <= foo(T) where [
-	(bar([]) = "an empty list"),
-	(bar([H | _]) = string__append("a list, and its head is ", bar(H)))
+    (bar([]) = "an empty list"),
+    (bar([H | _]) = string__append("a list, and its head is ", bar(H)))
 ].
 
 p(T) -->
-	io__write(T),
-	io__write_strings([" is ", bar(T), ".\n"]).
+    io__write(T),
+    io__write_strings([" is ", bar(T), ".\n"]).
 
 :- type quux
-	--->	tchok.
+    --->    tchok.
 
 :- instance foo(quux) where [
-	(bar(_) = "a quux")
+    (bar(_) = "a quux")
 ].
 
 q(tchok).
-

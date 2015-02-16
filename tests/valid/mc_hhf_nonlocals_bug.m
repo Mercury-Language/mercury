@@ -1,4 +1,7 @@
-
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test. The transformation HHF was leaving inaccurate
 % nonlocals sets for some conjuncts in the insert_edge predicate, which
 % lead to the propagation solver approach to constraints based mode analysis
@@ -12,19 +15,16 @@
 :- import_module unit.
 
 :- type graph(N, A).
-
 :- type node(N).
-
 :- type arc(A).
 
-:- type graph(N)    == graph(N, unit).
-
-:- type arc     == arc(unit).
+:- type graph(N) == graph(N, unit).
+:- type arc == arc(unit).
 
 :- pred mc_hhf_nonlocals_bug__insert_edge(graph(N, A)::in, node(N)::in,
     node(N)::in, A::in, arc(A)::out, graph(N, A)::out) is semidet.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -58,4 +58,3 @@ mc_hhf_nonlocals_bug__insert_edge(!.G, Start, End, Info, Arc, !:G) :-
     Arcs0 = !.G ^ arc_map,
     map__insert(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
     !:G = !.G ^ arc_map := Arcs.
-

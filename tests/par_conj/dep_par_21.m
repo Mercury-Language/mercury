@@ -1,9 +1,12 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % from primes.m
 %
 % Uncaught Mercury exception:
 % Software Error: instmap.m: Unexpected: merge_instmapping_delta_2: error
 % merging var 9
-%
 
 :- module dep_par_21.
 :- interface.
@@ -25,9 +28,9 @@ remove(_P, [], []).
 remove(P, [I | Is], Result) :-
     M is I mod P &
     ( M = 0 ->
-	Result = Nis &
-	remove(P, Is, Nis)
+        Result = Nis &
+        remove(P, Is, Nis)
     ;
-	Result = [I | Nis] &
-	remove(P, Is, Nis)
+        Result = [I | Nis] &
+        remove(P, Is, Nis)
     ).

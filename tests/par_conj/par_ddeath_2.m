@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % With --trace deep --parallel
 % The incorrect deadness analysis of the parallel conjunction caused Result to
 % be added to the pre-death set of the else branch of the if-then-else.
@@ -5,7 +9,8 @@
 % following exception:
 %
 % Uncaught Mercury exception:
-% Software Error: liveness.m: Unexpected: branches of if-then-else disagree on liveness
+% Software Error: liveness.m:
+%   Unexpected: branches of if-then-else disagree on liveness
 % First: Low High Result
 % Rest:  Low High
 
@@ -15,7 +20,9 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module int, list.
+
+:- import_module int.
+:- import_module list.
 
 main(!IO) :-
     integers(0, 5, R),
@@ -24,10 +31,10 @@ main(!IO) :-
 
 :- pred integers(int::in, int::in, list(int)::out) is det.
 
-integers(Low, High, Result) :- 
+integers(Low, High, Result) :-
     ( Low =< High ->
-	integers(Low+1, High, Rest) &
-	Result = [Low | Rest]
+        integers(Low+1, High, Rest) &
+        Result = [Low | Rest]
     ;
-	Result = []
+        Result = []
     ).

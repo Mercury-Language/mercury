@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 
 :- module pathological_right_recursion.
 
@@ -45,7 +49,7 @@ count_up(N0, Max, List) :-
         )
     ).
 
-:- pred loop(int::in, int::in, int::out) is det. 
+:- pred loop(int::in, int::in, int::out) is det.
 
 loop(N, Max, Result) :-
     ( N < Max ->
@@ -53,4 +57,3 @@ loop(N, Max, Result) :-
     ;
         Result = N
     ).
-

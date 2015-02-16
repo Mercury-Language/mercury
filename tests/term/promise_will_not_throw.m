@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module promise_will_not_throw.
 
 :- interface.
@@ -13,29 +17,29 @@
 :- implementation.
 
 :- pragma foreign_proc("C",
-	foo(X::in, Y::out),
-	[may_call_mercury, promise_pure, will_not_throw_exception],
+    foo(X::in, Y::out),
+    [may_call_mercury, promise_pure, will_not_throw_exception],
 "
-	X = Y;
+    X = Y;
 ").
 
 :- pragma foreign_proc("C",
-	bar(X::in, Y::out),
-	[may_call_mercury, promise_pure],
+    bar(X::in, Y::out),
+    [may_call_mercury, promise_pure],
 "
-	X = Y;
+    X = Y;
 ").
 
 :- pragma foreign_proc("C",
-	baz(X::in, Y::out),
-	[will_not_call_mercury, promise_pure, will_not_throw_exception],
+    baz(X::in, Y::out),
+    [will_not_call_mercury, promise_pure, will_not_throw_exception],
 "
-	X = Y;
+    X = Y;
 ").
 
 :- pragma foreign_proc("C",
-	quux(X::in, Y::out),
-	[will_not_call_mercury, promise_pure],
+    quux(X::in, Y::out),
+    [will_not_call_mercury, promise_pure],
 "
-	X = Y;
+    X = Y;
 ").

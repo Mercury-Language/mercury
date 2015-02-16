@@ -1,20 +1,20 @@
-typeclass_test_8.m:004: In predicate `main'/2:
-typeclass_test_8.m:004:   warning: unresolved polymorphism.
-typeclass_test_8.m:004:   The variable with an unbound type was:
-typeclass_test_8.m:004:     X: T
-typeclass_test_8.m:004:   The unbound type variable will be implicitly bound to
-typeclass_test_8.m:004:   the builtin type `void'.
-typeclass_test_8.m:004:   The body of the clause contains a call to a
-typeclass_test_8.m:004:   polymorphic predicate, but I can't determine which
-typeclass_test_8.m:004:   version should be called, because the type variables
-typeclass_test_8.m:004:   listed above didn't get bound. (I ought to tell you
-typeclass_test_8.m:004:   which call caused the problem, but I'm afraid you'll
-typeclass_test_8.m:004:   have to work it out yourself. My apologies.)
-typeclass_test_8.m:004: In predicate `main'/2:
-typeclass_test_8.m:004:   type error: unsatisfied typeclass constraint:
-typeclass_test_8.m:004:     `typeclass_test_8.fooable(T)'
-typeclass_test_8.m:004:   The constraint is due to:
-typeclass_test_8.m:013:     the call to type class predicate method
-typeclass_test_8.m:013:     `typeclass_test_8.foo'/1, and
-typeclass_test_8.m:014:     the call to type class predicate method
-typeclass_test_8.m:014:     `typeclass_test_8.bar'/1.
+typeclass_test_8.m:009: In predicate `main'/2:
+typeclass_test_8.m:009:   warning: unresolved polymorphism.
+typeclass_test_8.m:009:   The variable with an unbound type was:
+typeclass_test_8.m:009:     X: T
+typeclass_test_8.m:009:   The unbound type variable will be implicitly bound to
+typeclass_test_8.m:009:   the builtin type `void'.
+typeclass_test_8.m:009:   The body of the clause contains a call to a
+typeclass_test_8.m:009:   polymorphic predicate, but I can't determine which
+typeclass_test_8.m:009:   version should be called, because the type variables
+typeclass_test_8.m:009:   listed above didn't get bound. (I ought to tell you
+typeclass_test_8.m:009:   which call caused the problem, but I'm afraid you'll
+typeclass_test_8.m:009:   have to work it out yourself. My apologies.)
+typeclass_test_8.m:009: In predicate `main'/2:
+typeclass_test_8.m:009:   type error: unsatisfied typeclass constraint:
+typeclass_test_8.m:009:     `typeclass_test_8.fooable(T)'
+typeclass_test_8.m:009:   The constraint is due to:
+typeclass_test_8.m:019:     the call to type class predicate method
+typeclass_test_8.m:019:     `typeclass_test_8.foo'/1, and
+typeclass_test_8.m:020:     the call to type class predicate method
+typeclass_test_8.m:020:     `typeclass_test_8.bar'/1.

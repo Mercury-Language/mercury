@@ -21,7 +21,7 @@ main(!IO) :-
 :- pred loop(channel(unit)::in, int::in, io::di, io::uo) is cc_multi.
 
 loop(Channel, N, !IO) :-
-    (if N > 0 then
+    ( if N > 0 then
         io.write_string("loop\n", !IO),
         thread.spawn(loop(Channel, N-1), !IO),
         % Give the current thread something to do.

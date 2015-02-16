@@ -1,12 +1,16 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module exists_fundeps_3.
 :- interface.
 
 :- import_module list.
 
 :- typeclass solver_var(V) where [
-        some [P, W] func var_propagators(V::ia) = (list(P)::oa) is det
-            => propagator_info(P, W)
-    ].
+    some [P, W] func var_propagators(V::ia) = (list(P)::oa) is det
+        => propagator_info(P, W)
+].
 
 :- typeclass propagator_info(P, V) <= ((P -> V), solver_var(V)) where [].
 
@@ -18,6 +22,5 @@
 :- implementation.
 
 :- instance solver_var(gen_solver_var) where [
-        (var_propagators(gen_solver_var(V)) = var_propagators(V))
-    ].
-
+    (var_propagators(gen_solver_var(V)) = var_propagators(V))
+].

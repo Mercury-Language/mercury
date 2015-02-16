@@ -1,4 +1,6 @@
-% Test case for bug #133.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module try_detism.
 :- interface.
@@ -11,7 +13,7 @@
 
 p(Res, !IO) :-
     q(X, !IO),
-    (try [io(!IO)] (
+    ( try [io(!IO)] (
         q(X, !IO)
     )
     then
@@ -23,5 +25,3 @@ p(Res, !IO) :-
 :- pred q(int::out, io::di, io::uo) is det.
 
 q(2, !IO).
-
-% vim: set sts=4 sw=4 et:

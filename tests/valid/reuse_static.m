@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test.  The compiler aborted if trying the structure reuse pass
 % tried to reuse a cell which later is known, at compile time, to be static
 % data.
@@ -13,7 +17,7 @@
 :- import_module list.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type foo_code_addr
     --->    code_addr_internal(string, foo_func_signature).
@@ -34,7 +38,7 @@
 :- type foo_argument
     --->    foo_argument(foo_entity_name, foo_type).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 gen_gc_trace_func(FuncName, GCTraceFuncAddr, FuncParams, FuncParams) :-
     Argument = foo_argument(entity_data, foo_generic_type),
@@ -59,4 +63,4 @@ foo_map([H0 | T0]) = [H | T] :-
     H0 = foo_argument(_, H),
     foo_map(T0) = T.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

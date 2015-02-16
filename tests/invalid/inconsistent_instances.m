@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module inconsistent_instances.
 :- interface.
 
@@ -6,8 +10,7 @@
 :- implementation.
 :- import_module list.
 
-	% Inconsistent.
+    % Inconsistent.
 
 :- instance foo(list(T), int) where [].
 :- instance foo(list(X), string) where [].
-

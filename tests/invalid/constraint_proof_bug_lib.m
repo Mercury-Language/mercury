@@ -1,4 +1,6 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module constraint_proof_bug_lib.
 
@@ -14,8 +16,8 @@
 :- type dep_op == string.
 
 :- typeclass constrainable(T) where [
-      pred apply_op(T::in, dep_op::in, T::in) is semidet
-  ].
+    pred apply_op(T::in, dep_op::in, T::in) is semidet
+].
 
 :- instance constrainable(date).
 :- instance constrainable(code).

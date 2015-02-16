@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test for circular equivalence modes.
 % This is the same as circ_mode.m,
 % except that we also have a predicate which makes use of the modes.
@@ -16,4 +20,5 @@
 :- mode p(circ, circ, circ1, circ2) is det.
 
 :- implementation.
+
 p(X, X, Y, Y).

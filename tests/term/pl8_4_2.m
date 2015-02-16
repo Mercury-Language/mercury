@@ -1,10 +1,23 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module pl8_4_2.
 
 :- interface.
 
-:- type list(T)	--->	[] ; [T | list(T)].
+:- type list(T)
+    --->    []
+    ;       [T | list(T)].
 
-:- type token	--->	a ; b ; c ; plus ; times ; lparen ; rparen.
+:- type token
+    --->    a
+    ;       b
+    ;       c
+    ;       plus
+    ;       times
+    ;       lparen
+    ;       rparen.
 
 :- pred e(list(token)::in, list(token)::out) is nondet.
 
@@ -23,9 +36,9 @@ t(L, T) :- n(L, [times | C]), t(C, T).
 :- mode n(in, out).
 
 n([L | T], T) :-
-	z(L).
+    z(L).
 n([lparen | A], B) :-
-	e(A, [rparen | B]).
+    e(A, [rparen | B]).
 
 :- pred z(token).
 :- mode z(in).

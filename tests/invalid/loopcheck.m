@@ -1,5 +1,7 @@
-% Regression test.
-
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % rotd-1999-10-29 got a software error when compiling this test.
 
 :- module loopcheck.
@@ -10,8 +12,11 @@
 
 :- implementation.
 
-main --> { loop(10) }, io__write_string("Hello, world\n").
+main -->
+    { loop(10) },
+    io__write_string("Hello, world\n").
 
 :- pragma loop_check(loop/1).
 :- pred loop(int::in) is erroneous.
-loop(X) :- loop(X).
+loop(X) :-
+    loop(X).

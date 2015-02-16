@@ -7,6 +7,6 @@ typeclass_missing_det_3.m:001:   declaration other than `:- import_module' in
 typeclass_missing_det_3.m:001:   its interface section(s). This would normally
 typeclass_missing_det_3.m:001:   be a `:- pred', `:- func', `:- type',
 typeclass_missing_det_3.m:001:   `:- inst' or `:- mode' declaration.
-typeclass_missing_det_3.m:013: Error: no determinism declaration for type class
-typeclass_missing_det_3.m:013:   method predicate
-typeclass_missing_det_3.m:013:   `typeclass_missing_det_3.write'/3.
+typeclass_missing_det_3.m:017: Error: no determinism declaration for type class
+typeclass_missing_det_3.m:017:   method predicate
+typeclass_missing_det_3.m:017:   `typeclass_missing_det_3.write'/3.

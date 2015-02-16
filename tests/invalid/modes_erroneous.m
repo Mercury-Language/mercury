@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module modes_erroneous.
 
 :- interface.
@@ -6,12 +10,12 @@
 
 :- implementation.
 
-:- type foo ---> foo.
+:- type foo
+    --->    foo.
 
 :- pred p(foo, foo).
 :- mode p(ground >> ground, free >> ground).
 
 p(_, X) :-
-	p(_, X).
+    p(_, X).
 p(_, _).
-

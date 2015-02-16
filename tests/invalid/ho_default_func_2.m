@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Compiling this module should generate an error message since
 % it tries to cast a non-standard func inst to ground.
 
@@ -14,11 +18,12 @@
 :- import_module ho_default_func_2__sub.
 :- import_module ho_default_func_2__id.
 
-:- import_module int, std_util.
+:- import_module int.
+:- import_module std_util.
 
 main -->
-	{ baz(IdF), eq(getval(IdF), F) },
-	do_io(F).
+    { baz(IdF), eq(getval(IdF), F) },
+    do_io(F).
 
 :- func foo(int) = int.
 foo(X) = X + 1.

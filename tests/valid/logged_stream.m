@@ -1,8 +1,13 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % $ mmc -e logged_stream.m
 % logged_stream.m:041: Inconsistent instance declaration for typeclass
 % logged_stream.m:041:   `stream.input'/3 with functional dependency
 % logged_stream.m:041:   `(Stream -> Error)'.
 % logged_stream.m:027: Here is the conflicting instance.
+
 :- module logged_stream.
 
 :- interface.
@@ -17,8 +22,7 @@
             ).
 
 :- type logged_error(E)
-    --->    error(E)
-    .
+    --->    error(E).
 
 :- instance stream(logged_stream(S, L), io) <= (stream(S, io), stream(L, io)).
 :- instance error(logged_error(E)) <= error(E).
@@ -28,7 +32,8 @@
 
 :- implementation.
 
-:- instance stream(logged_stream(S, L), io) <= (stream(S, io), stream(L, io)) where [
+:- instance stream(logged_stream(S, L), io) <= (stream(S, io), stream(L, io))
+where [
     (name(logged_stream(S, _), Name, !State) :-
         name(S, Name, !State)
     )
@@ -38,4 +43,5 @@
     error_message(error(E)) = error_message(E)
 ].
 
-:- instance input(logged_stream(S, L), io) <= (input(S, io), output(L, io)) where [].
+:- instance input(logged_stream(S, L), io) <= (input(S, io), output(L, io))
+where [].

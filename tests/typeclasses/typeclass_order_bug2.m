@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This module tests class methods with unconstrained type
 % variables.
 %
@@ -7,48 +11,47 @@
 % after polymorphism are (TypeInfo_for_U, TypeclassInfo_for_class, ...),
 % but do_call_class_method is passing in
 % (TypeclassInfo_for_class, TypeInfo_for_U, ...).
-%
+
 :- module typeclass_order_bug2.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- import_module int, list.
+:- import_module int.
+:- import_module list.
 
 :- typeclass class(T) where [
-        pred p(U::in, T::in, io__state::di, io__state::uo) is det
+    pred p(U::in, T::in, io__state::di, io__state::uo) is det
 ].
 
 :- instance class(list(T)) <= class(T) where [
-        pred(p/4) is p_list
+    pred(p/4) is p_list
 ].
 
 :- instance class(int) where [
-        pred(p/4) is p_int
+    pred(p/4) is p_int
 ].
 
 main -->
-        p("string", [1,2,3]).
+    p("string", [1, 2, 3]).
 
-
-:- pred p_list(U::in, list(T)::in, io__state::di,
-                io__state::uo) is det <= class(T).
+:- pred p_list(U::in, list(T)::in, io__state::di, io__state::uo) is det
+    <= class(T).
 
 p_list(U, List) -->
-        list__foldl(p(U), List),
-        io__write(U),
-        io__nl.
+    list__foldl(p(U), List),
+    io__write(U),
+    io__nl.
 
 :- pred p_int(U::in, int::in, io__state::di, io__state::uo) is det.
 
 p_int(U, Int) -->
-        io__write_int(Int + 1),
-        io__nl,
-        io__write(U),
-        io__nl.
-
+    io__write_int(Int + 1),
+    io__nl,
+    io__write(U),
+    io__nl.

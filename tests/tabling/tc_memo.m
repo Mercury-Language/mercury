@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module tc_memo.
 
 :- interface.
@@ -8,25 +12,26 @@
 
 :- implementation.
 
-:- import_module solutions, list.
+:- import_module list.
+:- import_module solutions.
 
 :- pragma require_feature_set([memo]).
 
 main(!IO) :-
-	solutions(tc(1), Solns),
-	io__write(Solns, !IO),
-	io__write_string("\n", !IO).
+    solutions(tc(1), Solns),
+    io__write(Solns, !IO),
+    io__write_string("\n", !IO).
 
 :- pred tc(int::in, int::out) is nondet.
 :- pragma memo(tc/2).
 
 tc(A, B) :-
-	edge(A, C),
-	(
-		B = C
-	;
-		tc(C, B)
-	).
+    edge(A, C),
+    (
+        B = C
+    ;
+        tc(C, B)
+    ).
 
 :- pred edge(int::in, int::out) is nondet.
 

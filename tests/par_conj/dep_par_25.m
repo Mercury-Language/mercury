@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % A program to test that calls to par_builtin.wait are being delayed
 % as long as possible properly.
 
@@ -13,26 +17,26 @@
 
 main(!IO) :-
     ite_cond_dep(Y1),
-%     Y1 = 1,
+%   Y1 = 1,
     ite_cond_free(Y2),
-%     Y2 = 1,
+%   Y2 = 1,
     switch_on_var(Y3),
-%     Y3 = 1,
+%   Y3 = 1,
     switch_not_on_var(Y4),
-%     Y4 = 1,
+%   Y4 = 1,
     disj(Y5),
-%     Y5 = 1,
+%   Y5 = 1,
     conj(Y6),
-%     Y6 = 1,
+%   Y6 = 1,
     par_conj(Y7),
-%     Y7 = 7,
+%   Y7 = 7,
     neg(Y8),
-%     Y8 = 1,
+%   Y8 = 1,
     scope(Y9),
-%     Y9 = 1,
+%   Y9 = 1,
     do_call(Y10),
-%     Y10 = 1,
-    io.print({Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10}, !IO), 
+%   Y10 = 1,
+    io.print({Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10}, !IO),
     io.nl(!IO).
 
 :- func one = int.
@@ -40,7 +44,9 @@ main(!IO) :-
 
 one = 1.
 
-:- type t ---> t1 ; t2.
+:- type t
+    --->    t1
+    ;       t2.
 
 :- func some_t = t.
 :- pragma no_inline(some_t/0).
@@ -54,7 +60,7 @@ ite_cond_dep(Y) :-
     (
         X = one
     &
-        (if int.even(X) then
+        ( if int.even(X) then
             Y = X+1
         else
             Y = X+2
@@ -68,7 +74,7 @@ ite_cond_free(Y) :-
     (
         X = one
     &
-        (if semidet_succeed then
+        ( if semidet_succeed then
             Y = X+1
         else
             Y = X+2
@@ -161,7 +167,7 @@ neg(Y) :-
     (
         X = one
     &
-        ( 
+        (
             not odd(X),
             Y = 2
         ;
@@ -180,7 +186,7 @@ scope(Y) :-
         X = one
     &
         promise_equivalent_solutions [Y]
-	( Y = X
+        ( Y = X
         ; Y = 1
         )
     ).
@@ -190,7 +196,7 @@ scope(Y) :-
 
 do_call(Y) :-
     (
-        X = [1,2,3]
+        X = [1, 2, 3]
     &
         list.length(X, Y)
     ).

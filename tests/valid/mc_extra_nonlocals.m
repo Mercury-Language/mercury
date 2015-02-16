@@ -1,4 +1,7 @@
-
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test. Some nonlocals sets in the compare predicate
 % generated for the polymorphic type below contained variables that
 % didn't appear in the goal. Constraints based mode analysis using the
@@ -14,6 +17,5 @@
 :- interface.
 
 :- type polymorphic(K)
-       --->    empty
-       ;       node(polymorphic(K)).
-
+   --->    empty
+   ;       node(polymorphic(K)).

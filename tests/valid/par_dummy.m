@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Was trying to copy dummy outputs back to stack of parent thread.
 %
 % Uncaught Mercury exception:

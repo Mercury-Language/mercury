@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module mostly_uniq1.
 :- interface.
 :- import_module io.
@@ -11,8 +15,9 @@
 p(1).
 p(2).
 
-% This should be a unique mode error, since the io-state is
-% only mostly_unique, because p/1 has multiple solutions
-% and we didn't declare main as cc_multi.
+% This should be a unique mode error, since the io-state is only mostly_unique,
+% because p/1 has multiple solutions and we didn't declare main as cc_multi.
 
-my_main --> { p(X) }, io__write_int(X).
+my_main -->
+    { p(X) },
+    io__write_int(X).

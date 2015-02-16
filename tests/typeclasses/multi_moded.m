@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module multi_moded.
 
 :- interface.
@@ -11,14 +15,14 @@
 :- import_module solutions.
 
 :- typeclass thisclass(T) where [
-	pred c(T, T),
-	mode c(in, in) is semidet,
-	mode c(out, in) is semidet,
-	mode c(in, out) is nondet
+    pred c(T, T),
+    mode c(in, in) is semidet,
+    mode c(out, in) is semidet,
+    mode c(in, out) is nondet
 ].
 
 :- instance thisclass(int) where [
-	pred(c/2) is p
+    pred(c/2) is p
 ].
 
 :- pred p(int, int).
@@ -32,9 +36,11 @@ p(2, 4).
 
 :- pred mypred(T, T) <= thisclass(T).
 :- mode mypred(in, out) is nondet.
-mypred(A, B) :- c(A, B).
+
+mypred(A, B) :-
+    c(A, B).
 
 main -->
-	{ solutions(mypred(1), X) },
-	io__write(X),
-	nl.
+    { solutions(mypred(1), X) },
+    io__write(X),
+    nl.

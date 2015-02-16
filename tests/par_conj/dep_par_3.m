@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % function call
 
 :- module dep_par_3.
@@ -10,13 +14,14 @@
 
 main(!IO) :-
     (
-	X = 1
+        X = 1
     &
-	Y = f(X)
+        Y = f(X)
     ),
     io.write_int(X*Y, !IO),
     io.nl(!IO).
 
 :- func f(int) = int.
 :- pragma no_inline(f/1).
+
 f(X) = (if X = 1 then 2 else 0).

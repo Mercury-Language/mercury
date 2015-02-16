@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module typeclass_test_9.
 :- interface.
 :- typeclass foo(T) where [pred p is semidet].
@@ -13,15 +17,15 @@
 :- import_module std_util.
 
 :- instance foo(int) where [
-	pred(p/0) is semidet_succeed
+    pred(p/0) is semidet_succeed
 ].
 :- instance foo(int) where [
-	pred(p/0) is semidet_fail
+    pred(p/0) is semidet_fail
 ].
 :- instance bar(int) where [
-	pred(p/0) is semidet_fail
+    pred(p/0) is semidet_fail
 ].
 :- instance baz(int) where [
-	pred(r/0) is semidet_fail,
-	pred(q/0) is semidet_fail
+    pred(r/0) is semidet_fail,
+    pred(q/0) is semidet_fail
 ].

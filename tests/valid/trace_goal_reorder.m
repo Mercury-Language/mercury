@@ -1,7 +1,12 @@
-% The removal of automatic initialisation for solver types in 
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% The removal of automatic initialisation for solver types in
 % rotd-2007-10-31 inadvertently weakened the scheduling of
 % delayed goals such as the trace goal below.
-:- module trace_goal_reorder. 
+
+:- module trace_goal_reorder.
 :- interface.
 
 :- import_module io.

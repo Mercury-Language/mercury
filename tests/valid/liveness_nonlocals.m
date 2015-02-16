@@ -1,8 +1,12 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test. Some versions of the compiler abort on this code.
-
+%
 % The bug that this test case tests for is described by this comment from
 % liveness.m:
-
+%
 % If a variable is not live on entry to a goal, but the goal gives it a value,
 % the code of this module assumes that
 %
@@ -32,20 +36,22 @@
 
 :- implementation.
 
-:- import_module list, require, string.
+:- import_module list.
+:- import_module require.
+:- import_module string.
 
 foo(Foo, IsFoo) :-
-	foo_int(Foo, Int),
-	int_to_bool(Int, IsFoo).
+    foo_int(Foo, Int),
+    int_to_bool(Int, IsFoo).
 
 :- pred foo_int(T, int).
 :- mode foo_int(in, out(bound(0))) is det.
 
 :- pragma foreign_proc("C",
-	foo_int(_V2::in, Res::out(bound(0))),
-	[promise_pure, will_not_call_mercury],
+    foo_int(_V2::in, Res::out(bound(0))),
+    [promise_pure, will_not_call_mercury],
 "
-	Res = 0;
+    Res = 0;
 ").
 foo_int(_, 0).
 

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % if-then-else expression
 
 :- module dep_par_3b.
@@ -10,13 +14,14 @@
 
 main(!IO) :-
     (
-	X = 1
+        X = 1
     &
-	Y = (if f(X) then 2 else 0)
+        Y = (if f(X) then 2 else 0)
     ),
     io.write_int(Y, !IO),
     io.nl(!IO).
 
 :- pred f(int::in) is semidet.
 :- pragma no_inline(f/1).
+
 f(1).

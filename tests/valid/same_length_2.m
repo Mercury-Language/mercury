@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module same_length_2.
 :- interface.
 :- import_module list.
@@ -15,17 +19,21 @@
 :- pred q(list(T)::my_input_list_skel).
 :- pred r(list(T)::my_output_list_skel).
 
-q(_X) :- q([]).
-r(X) :- r(X).
+q(_X) :-
+    q([]).
+
+r(X) :-
+    r(X).
 
 p :-
-	r(X),
-	q(X).
+    r(X),
+    q(X).
 
 p2(X) :-
-	r(X),
-	q(X)
-	;
-	r(X),
-	q(X).
-
+    (
+        r(X),
+        q(X)
+    ;
+        r(X),
+        q(X)
+    ).

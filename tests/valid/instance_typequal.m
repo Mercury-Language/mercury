@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Explicit type qualification didn't work with methods defined directly in the
 % instance declaration. Bug #123.
 
@@ -6,7 +10,6 @@
 :- interface.
 
 :- type e(E) ---> e(E).
-
 :- type y(A) ---> y(A).
 
 :- typeclass tc(S, T) where [

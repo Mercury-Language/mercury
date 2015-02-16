@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test. Some versions of the compiler loop on this
 % until they run out stack space.
 
@@ -15,4 +19,5 @@
 
 :- type foo == map(int, foo).   % ps, this looks a bit suspect.
 
-main --> io__write_string("Hi").
+main -->
+    io__write_string("Hi").

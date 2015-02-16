@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module impure_method_impl.
 :- interface.
 
@@ -6,11 +10,12 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- typeclass c(T) where [
-	pred m1(T::in, int::out) is det,
-	semipure pred m2(T::in, int::out) is det
+    pred m1(T::in, int::out) is det,
+    semipure pred m2(T::in, int::out) is det
 ].
 
-:- type foo ---> foo.
+:- type foo
+    --->    foo.
 
 :- semipure pred foo_m1(foo::in, int::out) is det.
 :- impure pred foo_m2(foo::in, int::out) is det.
@@ -18,27 +23,27 @@
 :- implementation.
 
 :- instance c(foo) where [
-	pred(m1/2) is foo_m1,
-	pred(m2/2) is foo_m2
+    pred(m1/2) is foo_m1,
+    pred(m2/2) is foo_m2
 ].
 
 main -->
-	[].
+    [].
 
 :- pragma foreign_decl("C", "extern int foo_counter;").
 :- pragma foreign_code("C", "int foo_counter = 0;").
 
 :- pragma foreign_proc("C",
-	foo_m1(_F::in, Val::out),
-	[will_not_call_mercury, promise_semipure],
+    foo_m1(_F::in, Val::out),
+    [will_not_call_mercury, promise_semipure],
 "
-	Val = foo_counter;
+    Val = foo_counter;
 ").
 :- pragma foreign_proc("C",
-	foo_m2(_F::in, Val::out),
-	[will_not_call_mercury],
+    foo_m2(_F::in, Val::out),
+    [will_not_call_mercury],
 "
-	Val = foo_counter++;"
+    Val = foo_counter++;"
 ).
 foo_m1(_, 0).
 foo_m2(_, 0).

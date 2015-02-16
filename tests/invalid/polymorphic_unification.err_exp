@@ -1,14 +1,14 @@
-polymorphic_unification.m:019: In clause for `p(in, ((list.list_skel) >>
-polymorphic_unification.m:019:   dead))':
-polymorphic_unification.m:019:   in polymorphically-typed unification:
-polymorphic_unification.m:019:   mode error: variable `X' has instantiatedness
-polymorphic_unification.m:019:   `bound([] ; '[|]'(free,
-polymorphic_unification.m:019:   list.list_skel(free)))',
-polymorphic_unification.m:019:   expected instantiatedness was `ground' or
-polymorphic_unification.m:019:   `any'.
-polymorphic_unification.m:019:   When unifying two variables whose type will
-polymorphic_unification.m:019:   not be known until runtime, the variables must
-polymorphic_unification.m:019:   both be ground (or have inst `any').
-polymorphic_unification.m:019:   Unifications of polymorphically-typed
-polymorphic_unification.m:019:   variables with partially instantiated modes
-polymorphic_unification.m:019:   are not allowed.
+polymorphic_unification.m:023: In clause for `p(in, ((list.list_skel) >>
+polymorphic_unification.m:023:   dead))':
+polymorphic_unification.m:023:   in polymorphically-typed unification:
+polymorphic_unification.m:023:   mode error: variable `X' has instantiatedness
+polymorphic_unification.m:023:   `bound([] ; '[|]'(free,
+polymorphic_unification.m:023:   list.list_skel(free)))',
+polymorphic_unification.m:023:   expected instantiatedness was `ground' or
+polymorphic_unification.m:023:   `any'.
+polymorphic_unification.m:023:   When unifying two variables whose type will
+polymorphic_unification.m:023:   not be known until runtime, the variables must
+polymorphic_unification.m:023:   both be ground (or have inst `any').
+polymorphic_unification.m:023:   Unifications of polymorphically-typed
+polymorphic_unification.m:023:   variables with partially instantiated modes
+polymorphic_unification.m:023:   are not allowed.

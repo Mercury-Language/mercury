@@ -1,6 +1,11 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Check that compiler/module_qual.m does not add a spurious
-% "(the module `builtin' has not been imported)" to the
-% end of the undefined type error message.
+% "(the module `builtin' has not been imported)" to the end of the
+% undefined type error message.
+
 :- module builtin_int.
 
 :- interface.

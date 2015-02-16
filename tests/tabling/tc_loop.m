@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module tc_loop.
 
 :- interface.
@@ -8,29 +12,30 @@
 
 :- implementation.
 
-:- import_module solutions, list.
+:- import_module list.
+:- import_module solutions.
 
 :- pragma require_feature_set([memo]).
 
 main(!IO) :-
-	solutions(tc(1), Solns),
-	( Solns = [] ->
-		io__write_string("loopcheck failed, tc has no solutions\n",
-			!IO)
-	;
-		io__write_string("loopcheck failed, tc has solutions\n", !IO)
-	).
+    solutions(tc(1), Solns),
+    ( Solns = [] ->
+        io__write_string("loopcheck failed, tc has no solutions\n",
+            !IO)
+    ;
+        io__write_string("loopcheck failed, tc has solutions\n", !IO)
+    ).
 
 :- pred tc(int::in, int::out) is nondet.
 :- pragma loop_check(tc/2).
 
 tc(A, B) :-
-	(
-		edge(A, B)
-	;
-		edge(A, C),
-		tc(C, B)
-	).
+    (
+        edge(A, B)
+    ;
+        edge(A, C),
+        tc(C, B)
+    ).
 
 :- pred edge(int::in, int::out) is nondet.
 

@@ -1,14 +1,22 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Compile with '--infer-all'
 
 :- module mpj6.
 :- interface.
 
 :- typeclass coll(E, C) <= (C -> E) where [
-	func i(E, C) = C
+    func i(E, C) = C
 ].
 
-:- type intlist ---> [] ; [int | intlist].
-:- type stringlist ---> [] ; [string | stringlist].
+:- type intlist
+    --->    []
+    ;       [int | intlist].
+:- type stringlist
+    --->    []
+    ;       [string | stringlist].
 
 :- func g(intlist) = intlist.
 
@@ -24,4 +32,3 @@ g(L) = h(f, 1, 2, L).
 h(F, A1, A2, L) = F(A1, A2, L).
 
 f(A, B, C) = i(A, i(B, C)).
-

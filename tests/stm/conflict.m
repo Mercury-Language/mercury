@@ -1,4 +1,4 @@
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %
 % Contains a predicate that reads an STM var then holds the transaction open
@@ -6,7 +6,7 @@
 % then writes to an STM var. Used to ensure that a transaction reads an STM var,
 % then a parallel transaction writes to the same var and commits before the read
 % transaction can commit.
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module conflict.
 
@@ -16,8 +16,8 @@
 
 :- pred main(io::di, io::uo) is cc_multi.
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -27,14 +27,14 @@
 :- import_module int.
 :- import_module string.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     new_stm_var(0, TVar, !IO),
     thread.spawn(read_and_wait(TVar, 2), !IO),
     thread.spawn(wait_and_write(TVar, 1, 28), !IO).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred read_and_wait(stm_var(int)::in, int::in, io::di, io::uo) is cc_multi.
 
@@ -51,7 +51,6 @@ read_and_wait(TVar, Delay, IO0, IO) :-
         impure sleep(Delay)
     ),
     format("read transaction committed: X=%d\n", [i(X)], IO1, IO).
-
 
 :- pred wait_and_write(stm_var(int)::in, int::in, int::in, io::di, io::uo)
     is cc_multi.
@@ -70,7 +69,7 @@ wait_and_write(TVar, Delay, X, IO0, IO) :-
     ),
     print("write transaction committed\n", IO1, IO).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C",
 "

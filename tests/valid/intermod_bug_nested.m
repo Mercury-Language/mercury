@@ -1,6 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test case for spurious errors if there are predicates
 % module1.p and module2.module1.p.
-%
+
 :- module intermod_bug_nested.
 
 :- interface.
@@ -11,26 +15,25 @@
 
 :- implementation.
 
-:- import_module list.
 :- import_module intermod_bug_nested.parser.
+:- import_module list.
 
-main --> 
-	{ parse_tokens("foo", [1,2], List) },
-	io__write(List),
-	io__nl.
+main -->
+    { parse_tokens("foo", [1, 2], List) },
+    io__write(List),
+    io__nl.
 
-	:- module intermod_bug_nested.parser.
+    :- module intermod_bug_nested.parser.
 
-	:- interface.
+    :- interface.
 
-	:- pred parse_tokens(string::in, list(int)::in,
-		list(int)::out) is det.
+    :- pred parse_tokens(string::in, list(int)::in,
+        list(int)::out) is det.
 
-	:- implementation.
+    :- implementation.
 
-	:- import_module term_io.
+    :- import_module term_io.
 
-	parse_tokens(_, X, X).
+    parse_tokens(_, X, X).
 
-	:- end_module intermod_bug_nested.parser.
-
+    :- end_module intermod_bug_nested.parser.

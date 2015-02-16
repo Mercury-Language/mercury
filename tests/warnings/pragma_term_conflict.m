@@ -1,6 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 
-	% Check termination pragmas do not conflict with each other when
-	% analysing mutually recursive predicates.
+    % Check termination pragmas do not conflict with each other when
+    % analysing mutually recursive predicates.
 :- module pragma_term_conflict.
 
 :- interface.

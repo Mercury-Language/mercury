@@ -1,6 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module cyclic_typeclass_2.
 
-% This test is a cut down version of cyclic_typeclass.  This one doesn't
+% This test is a cut down version of cyclic_typeclass. This one doesn't
 % cause the compiler to go into an infinite loop, but it still contains
 % an error that goes unreported, and may cause an infinite loop when
 % compiling other modules that import it.
@@ -8,10 +12,9 @@
 :- interface.
 
 :- typeclass foo(A) <= bar(A) where [
-	func foo(A) = int
+    func foo(A) = int
 ].
 
 :- typeclass bar(A) <= foo(A) where [
-	func bar(A) = int
+    func bar(A) = int
 ].
-

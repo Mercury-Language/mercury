@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test for circular equivalence insts.
 % This is the same as circ_inst.m,
 % except that we also have a predicate which makes use of the insts.
@@ -16,4 +20,5 @@
 :- mode p(in(circ), out(circ), in(circ1), out(circ2)) is det.
 
 :- implementation.
+
 p(X, X, Y, Y).

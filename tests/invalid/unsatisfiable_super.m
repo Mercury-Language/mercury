@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module unsatisfiable_super.
 :- interface.
 :- import_module io.
@@ -12,5 +16,4 @@
 :- instance foo(int, int) where [ (f(N) = N) ].
 
 test(X, !IO) :-
-	write_int(f(X), !IO).
-
+    write_int(f(X), !IO).

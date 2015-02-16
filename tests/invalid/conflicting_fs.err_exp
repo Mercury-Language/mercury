@@ -1,4 +1,4 @@
-conflicting_fs.m:008: Error: conflicting features in feature set:
-conflicting_fs.m:008:   [single_prec_float, double_prec_float].
-conflicting_fs.m:009: Error: conflicting features in feature set:
-conflicting_fs.m:009:   [trailing, parallel_conj].
+conflicting_fs.m:013: Error: conflicting features in feature set:
+conflicting_fs.m:013:   [single_prec_float, double_prec_float].
+conflicting_fs.m:014: Error: conflicting features in feature set:
+conflicting_fs.m:014:   [trailing, parallel_conj].

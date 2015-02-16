@@ -1,6 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Check that we get an error if a repeated type variable in an instance head
 % is bound to different types.
-%
+
 :- module repeated_instance_vars_unsat.
 :- interface.
 

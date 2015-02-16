@@ -1,26 +1,26 @@
-type_vars.m:006: In declaration for type `type_vars.t1'/0:
-type_vars.m:006:   error in type class constraints: type variable `T2' occurs
-type_vars.m:006:   in the constraints, but is not determined by the
-type_vars.m:006:   constructor's argument types.
-type_vars.m:006:   All types occurring in typeclass constraints must be fully
-type_vars.m:006:   determined. A type is fully determined if one of the
-type_vars.m:006:   following holds:
-type_vars.m:006:   1) All type variables occurring in the type are determined.
-type_vars.m:006:   2) The type occurs in a constraint argument, that argument
-type_vars.m:006:   is in the range of some functional dependency for that
-type_vars.m:006:   class, and the types in all of the domain arguments for that
-type_vars.m:006:   functional dependency are fully determined.
-type_vars.m:006:   A type variable is determined if one of the following holds:
-type_vars.m:006:   1) The type variable occurs in the argument types of the
-type_vars.m:006:   predicate, function, or constructor which is constrained.
-type_vars.m:006:   2) The type variable occurs in a type which is fully
-type_vars.m:006:   determined.
-type_vars.m:006:   See the "Functional dependencies" section of the reference
-type_vars.m:006:   manual for details.
-type_vars.m:007: Error: type variable T2 in existential quantifier does not
-type_vars.m:007:   occur in arguments or constraints of constructor.
-type_vars.m:008: Error: type variable `T1' has overlapping scopes (explicit
-type_vars.m:008:   type quantifier shadows argument type).
-type_vars.m:009: Error: type variable T2 in class constraints, which was
-type_vars.m:009:   introduced with `=>' must be explicitly existentially
-type_vars.m:009:   quantified using `some'.
+type_vars.m:010: In declaration for type `type_vars.t1'/0:
+type_vars.m:010:   error in type class constraints: type variable `T2' occurs
+type_vars.m:010:   in the constraints, but is not determined by the
+type_vars.m:010:   constructor's argument types.
+type_vars.m:010:   All types occurring in typeclass constraints must be fully
+type_vars.m:010:   determined. A type is fully determined if one of the
+type_vars.m:010:   following holds:
+type_vars.m:010:   1) All type variables occurring in the type are determined.
+type_vars.m:010:   2) The type occurs in a constraint argument, that argument
+type_vars.m:010:   is in the range of some functional dependency for that
+type_vars.m:010:   class, and the types in all of the domain arguments for that
+type_vars.m:010:   functional dependency are fully determined.
+type_vars.m:010:   A type variable is determined if one of the following holds:
+type_vars.m:010:   1) The type variable occurs in the argument types of the
+type_vars.m:010:   predicate, function, or constructor which is constrained.
+type_vars.m:010:   2) The type variable occurs in a type which is fully
+type_vars.m:010:   determined.
+type_vars.m:010:   See the "Functional dependencies" section of the reference
+type_vars.m:010:   manual for details.
+type_vars.m:012: Error: type variable T2 in existential quantifier does not
+type_vars.m:012:   occur in arguments or constraints of constructor.
+type_vars.m:013: Error: type variable `T1' has overlapping scopes (explicit
+type_vars.m:013:   type quantifier shadows argument type).
+type_vars.m:014: Error: type variable T2 in class constraints, which was
+type_vars.m:014:   introduced with `=>' must be explicitly existentially
+type_vars.m:014:   quantified using `some'.

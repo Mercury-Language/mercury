@@ -1,22 +1,22 @@
 occurs.m:001: Warning: interface for module `occurs' does not export anything.
-occurs.m:008: In clause for `p':
-occurs.m:008:   mode error in unification of `X' and `occurs.f(X)'.
-occurs.m:008:   Variable `X' has instantiatedness `free',
-occurs.m:008:   term `occurs.f(X)' has instantiatedness `occurs.f(
-occurs.m:008:     free
-occurs.m:008:   )'.
-occurs.m:008: In clause for predicate `occurs.p'/0:
-occurs.m:008:   warning: variable `X' occurs only once in this scope.
-occurs.m:010: In `p2':
-occurs.m:010:   warning: determinism declaration could be tighter.
-occurs.m:010:   Declared `semidet', inferred `failure'.
-occurs.m:013: In clause for `p2':
-occurs.m:013:   warning: unification of `X' and occurs.f cannot succeed,
-occurs.m:013:   because `X' cannot be equal to a term containing itself.
-occurs.m:018: In clause for `p3':
-occurs.m:018:   mode error in unification of `X' and `occurs.f(X)'.
-occurs.m:018:   Variable `X' has instantiatedness `unique(occurs.f(free))',
-occurs.m:018:   term `occurs.f(X)' has instantiatedness `occurs.f(
-occurs.m:018:     unique(occurs.f(free))
-occurs.m:018:   )'.
+occurs.m:014: In clause for `p':
+occurs.m:014:   mode error in unification of `X' and `occurs.f(X)'.
+occurs.m:014:   Variable `X' has instantiatedness `free',
+occurs.m:014:   term `occurs.f(X)' has instantiatedness `occurs.f(
+occurs.m:014:     free
+occurs.m:014:   )'.
+occurs.m:014: In clause for predicate `occurs.p'/0:
+occurs.m:014:   warning: variable `X' occurs only once in this scope.
+occurs.m:016: In `p2':
+occurs.m:016:   warning: determinism declaration could be tighter.
+occurs.m:016:   Declared `semidet', inferred `failure'.
+occurs.m:019: In clause for `p2':
+occurs.m:019:   warning: unification of `X' and occurs.f cannot succeed,
+occurs.m:019:   because `X' cannot be equal to a term containing itself.
+occurs.m:024: In clause for `p3':
+occurs.m:024:   mode error in unification of `X' and `occurs.f(X)'.
+occurs.m:024:   Variable `X' has instantiatedness `unique(occurs.f(free))',
+occurs.m:024:   term `occurs.f(X)' has instantiatedness `occurs.f(
+occurs.m:024:     unique(occurs.f(free))
+occurs.m:024:   )'.
 For more information, recompile with `-E'.

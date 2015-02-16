@@ -1,15 +1,21 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % A regression test, adapted from a bug report by Ralph Becket.
-% Mercury 0.8.1 and earlier reported a spurious mode error
-% for this code.
+% Mercury 0.8.1 and earlier reported a spurious mode error for this code.
 
 :- module mostly_uniq_neg.
 :- interface.
-:- import_module list, store.
+
+:- import_module list.
+:- import_module store.
 
 :- type term(S) == store_mutvar(term_type(S), S).
 :- type var(S) == term(S).
-:- type term_type(S) ---> free ; functor(string, int, list(term(S))).
-
+:- type term_type(S)
+    --->    free
+    ;       functor(string, int, list(term(S))).
 
 :- pred unify(term(S), term_type(S), term(S), term_type(S), store(S), store(S)).
 :- mode unify(in, in, in, in, mdi, muo) is semidet.
@@ -21,7 +27,7 @@
 :- pragma no_inline(occurs/4).
 
 occurs(_, _, !S) :-
-        semidet_true.
+    semidet_true.
 
 :- pred tr_store_set_mutvar(store_mutvar(T, S), T, store(S), store(S)).
 :- mode tr_store_set_mutvar(in, in, mdi, muo) is det.
@@ -30,6 +36,5 @@ occurs(_, _, !S) :-
 tr_store_set_mutvar(_, _, S, S).
 
 unify(T1, free, _T2, functor(Name2, Arity2, Args2)) -->
-        \+ occurs(T1, Args2),
-        tr_store_set_mutvar(T1, functor(Name2, Arity2, Args2)).
-
+    \+ occurs(T1, Args2),
+    tr_store_set_mutvar(T1, functor(Name2, Arity2, Args2)).

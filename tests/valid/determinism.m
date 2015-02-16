@@ -1,10 +1,16 @@
-:- module determinism.
-
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This module has a couple of test cases for determinism analysis
 % of complicated unifications.
 
+:- module determinism.
+
 :- interface.
-:- import_module list, std_util.
+
+:- import_module list.
+:- import_module std_util.
 
 :- inst fg = bound(free - ground).
 :- inst gf = bound(ground - free).
@@ -23,19 +29,19 @@
 :- implementation.
 
 p :-
-	q(X),
-	r(Y),
-	X = Y.
+    q(X),
+    r(Y),
+    X = Y.
 
 p2 :-
-	q(X),
-	q(Y),
-	X = Y.
+    q(X),
+    q(Y),
+    X = Y.
 
 p3 :-
-	r(X),
-	r(Y),
-	X = Y.
+    r(X),
+    r(Y),
+    X = Y.
 
 :- external(q/1).
 :- external(r/1).

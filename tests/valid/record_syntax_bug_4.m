@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module record_syntax_bug_4.
 
 :- interface.
@@ -11,16 +15,15 @@
 :- import_module list.
 
 :- type info
-	---> info(
-		field :: int
-	).
-		
+    --->    info(
+                field :: int
+            ).
+
 main -->
-	{ List = list__map(field(info(1)), [1, 2, 3]) },
-	io__write(List),
-	io__nl.
+    { List = list__map(field(info(1)), [1, 2, 3]) },
+    io__write(List),
+    io__nl.
 
 :- func field(info, int) = int.
 
 field(_Info, Int) = Int.
-

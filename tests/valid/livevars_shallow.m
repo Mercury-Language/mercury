@@ -1,11 +1,14 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test.
 % The compiler aborted on this module with --trace shallow.
 %
 % Software Error: continuation_info.m: Unexpected: find_typeinfos_for_tvars:
 % can't find rval for type_info var TypeInfo_for_AtomicTask
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module livevars_shallow.
 :- interface.
@@ -14,8 +17,7 @@
 
 :- type node(A)
     --->    place
-    ;       task
-    .
+    ;       task.
 
 :- type task_type(A)
     --->    atomick
@@ -23,8 +25,7 @@
 
 :- pred cancellation_set_updates(list(node(A))::in, list(string)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -54,6 +55,3 @@ classify_nodes([Node | Nodes], L) :-
 :- func get_task_type(node(A)) = task_type(A).
 
 get_task_type(_) = composite.
-
-%-----------------------------------------------------------------------------%
-% vim: set sts=4 sw=4 et:

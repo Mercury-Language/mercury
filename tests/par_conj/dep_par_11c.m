@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % conjunction with nested parallel conjunction (2)
 
 :- module dep_par_11c.
@@ -14,15 +18,16 @@ main(IO0, IO) :-
     io.nl(IO1, IO).
 
 :- pred p({int, int, int}::out) is det.
-p({X,U,C}) :-
+
+p({X, U, C}) :-
     (
-	X = A + B + C,
-	(
-	    A = B + C 
-	&
-	    B = 1
-	),
-	C = 2
+        X = A + B + C,
+        (
+            A = B + C
+        &
+            B = 1
+        ),
+        C = 2
     &
-	U = X + A
+        U = X + A
     ).

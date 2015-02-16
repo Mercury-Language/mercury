@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test.
 % The compiler aborted when making a .opt file if the module had a
 % typeclass instance which implements a method with existentially typed
@@ -15,15 +19,15 @@
     some [Q] pred generate_block(T::in, U::in, Q::out) is det
 ].
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type simple_dynamic_block
     --->    simple_dynamic_block.
@@ -35,6 +39,3 @@
 :- pred do_generate_block(simple_dynamic_block::in, U::in, string::out) is det.
 
 do_generate_block(simple_dynamic_block, _, "qqq").
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sts=4 sw=4 et

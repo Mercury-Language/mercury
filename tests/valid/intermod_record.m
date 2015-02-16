@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test for a bug in inter-module optimization of
 % field access functions which resulted in the following error message:
 %
@@ -11,7 +15,7 @@
 % introduced for field access functions to only contain a call to the field
 % access function which will later be expanded into unifications, The
 % clauses written to `.opt' files are already expanded.
-%
+
 :- module intermod_record.
 
 :- interface.
@@ -23,4 +27,3 @@
 :- implementation.
 
 use_field(R) = field(R).
-

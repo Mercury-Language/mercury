@@ -1,20 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003-2005 The University of Melbourne.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
 %
-% file: mc_bag.m
-%   An implementation of multisets. This is a copy of the standard library
-%   module bag, and provides a reasonably large test case for the
-%   propagation solver approach to constraints based mode analysis to be
-%   run on.
-% main author: conway, crs.
-% stability: medium
+% An implementation of multisets. This is a copy of the standard library
+% module bag, and provides a reasonably large test case for the
+% propagation solver approach to constraints based mode analysis to be
+% run on.
 %
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module mc_bag.
@@ -249,7 +241,7 @@ mc_bag__insert(Bag0, Item, Bag) :-
 %---------------------------------------------------------------------------%
 
 mc_bag__insert_list(Bag, [], Bag).
-mc_bag__insert_list(Bag0, [Item|Items], Bag) :-
+mc_bag__insert_list(Bag0, [Item | Items], Bag) :-
     mc_bag__insert(Bag0, Item, Bag1),
     mc_bag__insert_list(Bag1, Items, Bag).
 
@@ -397,8 +389,8 @@ mc_bag__intersect(A, B, Out) :-
     mc_bag__init(Out0),
     mc_bag__intersect_2(A, B, Out0, Out).
 
-:- pred mc_bag__intersect_2(mc_bag(T)::in, mc_bag(T)::in, mc_bag(T)::in, mc_bag(T)::out)
-    is det.
+:- pred mc_bag__intersect_2(mc_bag(T)::in, mc_bag(T)::in,
+    mc_bag(T)::in, mc_bag(T)::out) is det.
 
 mc_bag__intersect_2(A, B, Out0, Out) :-
     ( map__remove_smallest(Key, AVal, A, A0) ->
@@ -494,8 +486,8 @@ mc_bag__subset_compare(Res, A, B) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 %   Function forms added.
 

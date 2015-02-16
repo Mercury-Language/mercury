@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % "Hello World" in Mercury, using nested modules.
 
 :- module nested.
@@ -8,39 +12,45 @@
 
 :- implementation.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module nested.child.
 :- interface.
 :- import_module io.
 
-:- type foo ---> bar ; baz(int).
+:- type foo
+    --->    bar
+    ;       baz(int).
 
 :- pred hello(io__state::di, io__state::uo) is det.
 
 :- implementation.
 
-hello --> io__write_string("nested.child.hello\n").
+hello -->
+    io__write_string("nested.child.hello\n").
 
 :- end_module nested.child.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module nested.child2.
 :- interface.
 :- import_module io.
 
-:- type foo ---> bar ; baz(int).
+:- type foo
+    --->    bar
+    ;       baz(int).
 
 :- pred hello(io__state::di, io__state::uo) is det.
 
 :- implementation.
 
-hello --> io__write_string("nested.child2.hello\n").
+hello -->
+    io__write_string("nested.child2.hello\n").
 
 :- end_module nested.child2.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % now we're back in the parent module.
 
@@ -57,25 +67,25 @@ hello --> io__write_string("nested.child2.hello\n").
 :- type t5 == child2.foo.
 
 main -->
-	nested.child.hello,
-	child.hello,
-	hello,
-	nested.child2.hello,
-	child2.hello,
+    nested.child.hello,
+    child.hello,
+    hello,
+    nested.child2.hello,
+    child2.hello,
 
-	print("t1 = "), print(type_of(has_type_t1)), nl,
-	print("t2 = "), print(type_of(has_type_t2)), nl,
-	print("t3 = "), print(type_of(has_type_t3)), nl,
-	print("t4 = "), print(type_of(has_type_t4)), nl,
-	print("t5 = "), print(type_of(has_type_t5)), nl,
+    print("t1 = "), print(type_of(has_type_t1)), nl,
+    print("t2 = "), print(type_of(has_type_t2)), nl,
+    print("t3 = "), print(type_of(has_type_t3)), nl,
+    print("t4 = "), print(type_of(has_type_t4)), nl,
+    print("t5 = "), print(type_of(has_type_t5)), nl,
 
-	print("has_type_t1 = "), print(has_type_t1), nl,
-	print("has_type_t2 = "), print(has_type_t2), nl,
-	print("has_type_t3 = "), print(has_type_t3), nl,
-	print("has_type_t4 = "), print(has_type_t4), nl,
-	print("has_type_t5 = "), print(has_type_t5), nl,
+    print("has_type_t1 = "), print(has_type_t1), nl,
+    print("has_type_t2 = "), print(has_type_t2), nl,
+    print("has_type_t3 = "), print(has_type_t3), nl,
+    print("has_type_t4 = "), print(has_type_t4), nl,
+    print("has_type_t5 = "), print(has_type_t5), nl,
 
-	{ true }.
+    { true }.
 
 :- func has_type_t1 = t1.
 :- func has_type_t2 = t2.

@@ -1,8 +1,13 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module finalise_parent.finalise_child.
 
 :- interface.
 
-:- type foo ---> foo.
+:- type foo
+    --->    foo.
 
 :- implementation.
 
@@ -10,4 +15,5 @@
 
 :- pred child_final(io::di, io::uo) is det.
 
-child_final(!IO) :- io.write_string("This is child_final/2...\n", !IO).
+child_final(!IO) :-
+    io.write_string("This is child_final/2...\n", !IO).

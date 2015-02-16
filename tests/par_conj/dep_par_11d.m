@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % see comments in code for explanation
 %
 % Uncaught Mercury exception:
@@ -28,17 +32,17 @@ par_conj(Y) :-
     (
         X = one
     &
-        U = 2,	 % prevent flattening of par conj
+        U = 2,   % prevent flattening of par conj
         (
-	    % wait(X)
+            % wait(X)
             V = X + U
         &
-	    % wait(X)
-	    % This second wait would be optimised away (leading to a compiler
-	    % abort).  The trick is that we need to rename the occurrences of X
-	    % in different parallel conjuncts separately.
+            % wait(X)
+            % This second wait would be optimised away (leading to a compiler
+            % abort). The trick is that we need to rename the occurrences of X
+            % in different parallel conjuncts separately.
 
-	    % wait(V)
+            % wait(V)
             Y = V + X
         )
     ).

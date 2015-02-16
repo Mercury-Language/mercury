@@ -1,5 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % rotd-2006-09-27 and before didn't complain if we pass a binary_input_stream
 % where a binary_output_stream was expected.
+
 :- module mixed_up_streams.
 :- interface.
 
@@ -10,5 +15,5 @@
 :- implementation.
 
 main(!IO) :-
-	io.binary_input_stream(BinaryInput, !IO),
-	io.write_byte(BinaryInput, 0x1, !IO).
+    io.binary_input_stream(BinaryInput, !IO),
+    io.write_byte(BinaryInput, 0x1, !IO).

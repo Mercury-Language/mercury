@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Uncaught Mercury exception:
 % Software Error: map.lookup: key not found
 %        Key Type: term.var(parse_tree.prog_data.prog_var_type)
@@ -11,7 +15,8 @@
 
 :- implementation.
 
-:- type t ---> t.
+:- type t
+    --->    t.
 
 main(!IO) :-
     ( T = t

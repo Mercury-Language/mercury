@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module lambda_syntax_error.
 :- interface.
 
@@ -9,7 +13,7 @@
 :- implementation.
 :- import_module int.
 
-baz(X) = (pred(Y) :- X > Y).	% modes & determinism not specified
-baz2(X) = (pred(Y::in) :- X > Y).	% determinism not specified
+baz(X) = (pred(Y) :- X > Y).    % modes & determinism not specified
+baz2(X) = (pred(Y::in) :- X > Y).   % determinism not specified
 baz3(X) = (pred(Y) is semidet :- X > Y). % mode not specified
-baz4(X) = (pred(A) = B :- X = A + B).	% mixing `func' and `pred' notation
+baz4(X) = (pred(A) = B :- X = A + B).   % mixing `func' and `pred' notation

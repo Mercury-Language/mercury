@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % We disallow impure parallel conjuncts as they can introduce concurrency
 % issues.
 
@@ -25,16 +29,16 @@ main(!IO) :-
     & true
     ),
     (
-	% This would be okay if the mutable was `thread_local' (which it isn't,
-	% as they're not implemented yet) or if you are absolutely certain that
-	% this mutable is only used by one thread (as in this case).
-	promise_pure
-	(
-	    semipure get_mut(X),
-	    impure set_mut(X + 1)
-	)
+    % This would be okay if the mutable was `thread_local' (which it isn't,
+    % as they're not implemented yet) or if you are absolutely certain that
+    % this mutable is only used by one thread (as in this case).
+    promise_pure
+    (
+        semipure get_mut(X),
+        impure set_mut(X + 1)
+    )
     &
-	true
+    true
     ).
 
 :- mutable(mut, int, 0, ground, [untrailed]).

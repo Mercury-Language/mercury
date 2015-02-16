@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Compile with: --debug -O0 --optimize-saved-vars-const
 
 :- module exists_cast_bug.
@@ -16,5 +20,5 @@
 :- type unit ---> unit.
 
 new = Result :-
-	Result = version_store(VA) `with_type` version_store(unit),
-	VA = version_array.init(256, unit).
+    Result = version_store(VA) `with_type` version_store(unit),
+    VA = version_array.init(256, unit).

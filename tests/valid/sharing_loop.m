@@ -1,4 +1,8 @@
-% Regression test.  The structure sharing analysis wasn't able to reach a
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Regression test. The structure sharing analysis wasn't able to reach a
 % fixpoint analysing this module with --structure-sharing-widening set to
 % certain values.
 
@@ -12,7 +16,7 @@
     ;       elds_try(elds_catch).
 
 :- type elds_catch
-    --->    elds_catch(var, elds_expr). 
+    --->    elds_catch(var, elds_expr).
 
 :- type var
     --->    var(int).
@@ -24,8 +28,7 @@
 :- pred erl_rename_vars_in_expr(renaming::in,
     elds_expr::in, elds_expr::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -60,6 +63,3 @@ erl_rename_vars_in_catch(Subn, Catch0, Catch) :-
     Catch0 = elds_catch(Pattern, Expr0),
     erl_rename_vars_in_expr(Subn, Expr0, Expr),
     Catch = elds_catch(Pattern, Expr).
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sts=4 sw=4 et

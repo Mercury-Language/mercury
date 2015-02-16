@@ -1,29 +1,29 @@
-ho_any_inst.m:049: In clause for `cond0(in, out)':
-ho_any_inst.m:049:   in higher-order predicate call:
-ho_any_inst.m:049:   scope error: attempt to bind a non-local variable inside
-ho_any_inst.m:049:   the condition of an if-then-else.
-ho_any_inst.m:049:   Variable `P' has instantiatedness `(any_pred is semidet)',
-ho_any_inst.m:049:   expected instantiatedness was `((pred) is semidet)'.
-ho_any_inst.m:057: In clause for `neg0(in)':
-ho_any_inst.m:057:   in higher-order predicate call:
-ho_any_inst.m:057:   scope error: attempt to bind a non-local variable inside a
-ho_any_inst.m:057:   negation.
-ho_any_inst.m:057:   Variable `P' has instantiatedness `(any_pred is semidet)',
-ho_any_inst.m:057:   expected instantiatedness was `((pred) is semidet)'.
-ho_any_inst.m:061: In clause for `cond1(in, out)':
-ho_any_inst.m:061:   in higher-order predicate call:
-ho_any_inst.m:061:   scope error: attempt to bind a non-local variable inside
-ho_any_inst.m:061:   the condition of an if-then-else.
-ho_any_inst.m:061:   Variable `P' has instantiatedness `(any_pred((any >> any))
-ho_any_inst.m:061:   is semidet)',
-ho_any_inst.m:061:   expected instantiatedness was `(pred((any >> any)) is
-ho_any_inst.m:061:   semidet)'.
-ho_any_inst.m:069: In clause for `neg1(in)':
-ho_any_inst.m:069:   in higher-order predicate call:
-ho_any_inst.m:069:   scope error: attempt to bind a non-local variable inside a
-ho_any_inst.m:069:   negation.
-ho_any_inst.m:069:   Variable `P' has instantiatedness `(any_pred((any >> any))
-ho_any_inst.m:069:   is semidet)',
-ho_any_inst.m:069:   expected instantiatedness was `(pred((any >> any)) is
-ho_any_inst.m:069:   semidet)'.
+ho_any_inst.m:052: In clause for `cond0(in, out)':
+ho_any_inst.m:052:   in higher-order predicate call:
+ho_any_inst.m:052:   scope error: attempt to bind a non-local variable inside
+ho_any_inst.m:052:   the condition of an if-then-else.
+ho_any_inst.m:052:   Variable `P' has instantiatedness `(any_pred is semidet)',
+ho_any_inst.m:052:   expected instantiatedness was `((pred) is semidet)'.
+ho_any_inst.m:060: In clause for `neg0(in)':
+ho_any_inst.m:060:   in higher-order predicate call:
+ho_any_inst.m:060:   scope error: attempt to bind a non-local variable inside a
+ho_any_inst.m:060:   negation.
+ho_any_inst.m:060:   Variable `P' has instantiatedness `(any_pred is semidet)',
+ho_any_inst.m:060:   expected instantiatedness was `((pred) is semidet)'.
+ho_any_inst.m:064: In clause for `cond1(in, out)':
+ho_any_inst.m:064:   in higher-order predicate call:
+ho_any_inst.m:064:   scope error: attempt to bind a non-local variable inside
+ho_any_inst.m:064:   the condition of an if-then-else.
+ho_any_inst.m:064:   Variable `P' has instantiatedness `(any_pred((any >> any))
+ho_any_inst.m:064:   is semidet)',
+ho_any_inst.m:064:   expected instantiatedness was `(pred((any >> any)) is
+ho_any_inst.m:064:   semidet)'.
+ho_any_inst.m:072: In clause for `neg1(in)':
+ho_any_inst.m:072:   in higher-order predicate call:
+ho_any_inst.m:072:   scope error: attempt to bind a non-local variable inside a
+ho_any_inst.m:072:   negation.
+ho_any_inst.m:072:   Variable `P' has instantiatedness `(any_pred((any >> any))
+ho_any_inst.m:072:   is semidet)',
+ho_any_inst.m:072:   expected instantiatedness was `(pred((any >> any)) is
+ho_any_inst.m:072:   semidet)'.
 For more information, recompile with `-E'.

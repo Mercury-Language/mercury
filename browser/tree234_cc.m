@@ -59,7 +59,9 @@
 
 :- implementation.
 
-:- import_module int, require, bool.
+:- import_module bool.
+:- import_module int.
+:- import_module require.
 
 :- type tree234_cc(K, V)
     --->    empty

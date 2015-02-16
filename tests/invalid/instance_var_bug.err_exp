@@ -1,4 +1,4 @@
-instance_var_bug.m:014: In instance declaration for `instance_var_bug.tc(V)':
-instance_var_bug.m:014:   the first argument is a type variable.
-instance_var_bug.m:014:   (Types in instance declarations must be functors with
-instance_var_bug.m:014:   variables as arguments.)
+instance_var_bug.m:018: In instance declaration for `instance_var_bug.tc(V)':
+instance_var_bug.m:018:   the first argument is a type variable.
+instance_var_bug.m:018:   (Types in instance declarations must be functors with
+instance_var_bug.m:018:   variables as arguments.)

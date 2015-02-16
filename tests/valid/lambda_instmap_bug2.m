@@ -1,12 +1,16 @@
-% Regression test.  When lambdas are turned into separate predicates, the
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Regression test. When lambdas are turned into separate predicates, the
 % non-local sets in the procedure may change, which in turn requires that
 % instmaps be updated.  We didn't do that, and the compiler aborted with:
 %
 % Uncaught Mercury exception:
 % Software Error: map.lookup: key not found
-%         Key Type: term.var(parse_tree.prog_data.prog_var_type)
-%         Key Value: var(23)
-%         Value Type: ll_backend.var_locn.var_state
+%     Key Type: term.var(parse_tree.prog_data.prog_var_type)
+%     Key Value: var(23)
+%     Value Type: ll_backend.var_locn.var_state
 
 :- module lambda_instmap_bug2.
 :- interface.
@@ -15,8 +19,8 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -48,6 +52,3 @@ mkthing(thing).
 
 docall(P, R, !T) :-
     P(R, !T).
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sts=4 sw=4 et

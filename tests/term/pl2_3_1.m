@@ -1,16 +1,23 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module pl2_3_1.
 
 :- interface.
 
-:- type node	--->	a ; b ; c.
+:- type node
+    --->    a
+    ;       b
+    ;       c.
 
 :- pred p(node::in, node::out) is multi.
 
 :- implementation.
 
 p(X, Z) :-
-	q(X, Y),
-	p(Y, Z).
+    q(X, Y),
+    p(Y, Z).
 p(X, X).
 
 :- pred q(node, node).

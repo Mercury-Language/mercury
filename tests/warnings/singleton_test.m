@@ -1,6 +1,11 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module singleton_test.
 :- interface.
-:- import_module list, io.
+:- import_module io.
+:- import_module list.
 
 :- pred my_append(list(int), list(int), list(int)).
 :- mode my_append(in, in, out) is det.
@@ -17,74 +22,74 @@
 :- pred c_hello_world(string::in, io__state::di, io__state::uo) is det.
 
 :- pred test_head(int::in, int::in, int::in, int::in, int::out, int::out)
-	is det.
+    is det.
 
 :- implementation.
 :- import_module int.
 
 my_append([], L, L) :-
-	L = L2.
+    L = L2.
 my_append([H | T], L, [H | NT]) :-
-	my_append(T, L, NT).
+    my_append(T, L, NT).
 
 my_append_func([], L) = L :- L1 = L2.
 my_append_func([H | T], L) = [H | my_append_func(L, L)].
 
 :- pragma foreign_proc("C", my_c_pred(X::in, Y::in, Z::out),
-	[promise_pure, will_not_call_mercury], "
-	Z = 2 * X;
+    [promise_pure, will_not_call_mercury], "
+    Z = 2 * X;
 ").
 :- pragma foreign_proc("C#", my_c_pred(X::in, Y::in, Z::out),
-	[promise_pure, will_not_call_mercury], "
-	Z = 2 * X;
+    [promise_pure, will_not_call_mercury], "
+    Z = 2 * X;
 ").
 :- pragma foreign_proc("Java", my_c_pred(X::in, Y::in, Z::out),
-	[promise_pure, will_not_call_mercury], "
-	Z = 2 * X;
+    [promise_pure, will_not_call_mercury], "
+    Z = 2 * X;
 ").
 :- pragma foreign_proc("Erlang", my_c_pred(X::in, Y::in, Z::out),
-	[promise_pure, will_not_call_mercury], "
-	Z = 2 * X
+    [promise_pure, will_not_call_mercury], "
+    Z = 2 * X
 ").
 
 :- pragma foreign_proc("C", my_c_func(X::in, Y::in) = (Z::out),
-	[promise_pure, will_not_call_mercury], "
-	Z = 2 * Y;
+    [promise_pure, will_not_call_mercury], "
+    Z = 2 * Y;
 ").
 :- pragma foreign_proc("C#", my_c_func(X::in, Y::in) = (Z::out),
-	[promise_pure, will_not_call_mercury], "
-	Z = 2 * Y;
+    [promise_pure, will_not_call_mercury], "
+    Z = 2 * Y;
 ").
 :- pragma foreign_proc("Java", my_c_func(X::in, Y::in) = (Z::out),
-	[promise_pure, will_not_call_mercury], "
-	Z = 2 * Y;
+    [promise_pure, will_not_call_mercury], "
+    Z = 2 * Y;
 ").
 :- pragma foreign_proc("Erlang", my_c_func(X::in, Y::in) = (Z::out),
-	[promise_pure, will_not_call_mercury], "
-	Z = 2 * Y
+    [promise_pure, will_not_call_mercury], "
+    Z = 2 * Y
 ").
 
 :- pragma foreign_decl("C", "#include <stdio.h>").
 
 :- pragma foreign_proc("C", c_hello_world(Msg::in, IO0::di, IO::uo),
-		[promise_pure, will_not_call_mercury], "
-	printf(""Hello, world"");
-	IO = IO0;
+        [promise_pure, will_not_call_mercury], "
+    printf(""Hello, world"");
+    IO = IO0;
 ").
 :- pragma foreign_proc("C#", c_hello_world(Msg::in, IO0::di, IO::uo),
-		[promise_pure, will_not_call_mercury], "
-	System.Console.WriteLine(""Hello, world"");
-	IO = IO0;
+        [promise_pure, will_not_call_mercury], "
+    System.Console.WriteLine(""Hello, world"");
+    IO = IO0;
 ").
 :- pragma foreign_proc("Java", c_hello_world(Msg::in, IO0::di, IO::uo),
-		[promise_pure, will_not_call_mercury], "
-	System.out.println(""Hello, world"");
-	IO = IO0;
+        [promise_pure, will_not_call_mercury], "
+    System.out.println(""Hello, world"");
+    IO = IO0;
 ").
 :- pragma foreign_proc("Erlang", c_hello_world(Msg::in, IO0::di, IO::uo),
-		[promise_pure, will_not_call_mercury], "
-	io:format(""Hello, world""),
-	IO = IO0
+        [promise_pure, will_not_call_mercury], "
+    io:format(""Hello, world""),
+    IO = IO0
 ").
 
 test_head(A, B, C, _D, C, _D).

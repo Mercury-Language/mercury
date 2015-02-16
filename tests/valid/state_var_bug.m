@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test for a bug with the state variable transformation.
 % It was not correctly handling the case where the condition of an if-then-else
 % referred to a state variable, but the "then" part didn't.
@@ -11,13 +15,13 @@
 :- implementation.
 
 foo(!X) :-
-	( copy(!X) ->
-		true
-	;
-		true
-	),
-	(
-		fail
-	;
-		copy(!X)
-	).
+    ( copy(!X) ->
+        true
+    ;
+        true
+    ),
+    (
+        fail
+    ;
+        copy(!X)
+    ).

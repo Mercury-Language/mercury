@@ -1,7 +1,10 @@
-% A development version of the Mercury compiler generated
-% invalid C code for this example, because it didn't properly
-% escape special characters such as \ in some of the C strings
-% that it generated.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% A development version of the Mercury compiler generated invalid C code
+% for this example, because it didn't properly escape special characters
+% such as \ in some of the C strings that it generated.
 
 :- module int64.
 

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module any_matches_bound.
 
 :- interface.
@@ -12,31 +16,36 @@
 :- pred test_any_tuple({enum, int}::in(any), {enum, int}::out) is det.
 :- pred test_any_du(du(enum)::in(any), du(enum)::out) is det.
 
-:- type enum ---> foo ; bar ; baz.
+:- type enum
+    --->    foo
+    ;       bar
+    ;       baz.
 
-:- type du(T) ---> nil ; cons(T, du(T)).
+:- type du(T)
+    --->    nil
+    ;       cons(T, du(T)).
 
 :- implementation.
 
 p(X, X).
 
 test_any_string(X, Y) :-
-	p(X, Y).
+    p(X, Y).
 
 test_any_int(X, Y) :-
-	p(X, Y).
+    p(X, Y).
 
 test_any_float(X, Y) :-
-	p(X, Y).
+    p(X, Y).
 
 test_any_char(X, Y) :-
-	p(X, Y).
+    p(X, Y).
 
 test_any_enum(X, Y) :-
-	p(X, Y).
+    p(X, Y).
 
 test_any_tuple(X, Y) :-
-	p(X, Y).
+    p(X, Y).
 
 test_any_du(X, Y) :-
-	p(X, Y).
+    p(X, Y).

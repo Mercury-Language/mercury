@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module fundeps_poly_instance.
 :- interface.
 
@@ -9,18 +13,18 @@
 
 :- implementation.
 
-:- type t(T) ---> t(T).
+:- type t(T)
+    --->    t(T).
 
-	% B is in the range of the functional dependency we must satisfy,
-	% but it is determined from A by the functional dependencies on the
-	% constraint.
-	%
+    % B is in the range of the functional dependency we must satisfy,
+    % but it is determined from A by the functional dependencies on the
+    % constraint.
+    %
 :- instance foo(t(A), t(B)) <= foo(A, B) where [].
 
 :- instance bar(t(A), t(B), t(C)) <= foo(A, B) where [].
 
-	% B and C are in the range of the functional dependency we must
-	% satisfy.  B is determined from the foo/2 constraint, and C is
-	% determined by an ancestor of the bar/3 constraint.
+    % B and C are in the range of the functional dependency we must
+    % satisfy.  B is determined from the foo/2 constraint, and C is
+    % determined by an ancestor of the bar/3 constraint.
 :- instance baz(t(A), t(B), t(C)) <= (foo(A, B), bar(B, C, A)) where [].
-

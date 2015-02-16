@@ -1,8 +1,12 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module mode_selection.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module require.
@@ -11,15 +15,15 @@
 % because the compiler's expression flattening puts
 % the sub-goals in top-down order, rather than
 % (as the language reference manual requires)
-% ordering them bottom-up.  This means that the call to
+% ordering them bottom-up. This means that the call to
 % func2 gets flattened as
-%	{ V_1 = func2(In, V_2) },
-%	{ V_2 = In },
-%	{ print(V_1) }
+%   { V_1 = func2(In, V_2) },
+%   { V_2 = In },
+%   { print(V_1) }
 % rather than as
-%	{ V_1 = func2(In, V_2) },
-%	{ V_2 = In },
-%	{ print(V_1) }
+%   { V_1 = func2(In, V_2) },
+%   { V_2 = In },
+%   { print(V_1) }
 % which causes mode analysis to select the wrong mode in the
 % call to func2, which in turn causes a determinism error.
 %
@@ -33,13 +37,14 @@
 % will then pass.
 
 main -->
-	{ In = 42 },
-	print(func2(In, In)), nl.
+    { In = 42 },
+    print(func2(In, In)), nl.
 
 :- func func2(int, int) = string.
 :- mode func2(in, in) = out is det.
 :- mode func2(in, out) = out is det.
 :- mode func2(out, in) = out is det.
 :- mode func2(out, out) = out is det.
+
 func2(_, _) = _ :-
-	error("called func2/2").
+    error("called func2/2").

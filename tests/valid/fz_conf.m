@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This program causes the following error in rotd-2007-10-22:
 % (The code is derived from the G12 FlatZinc interpreter.)
 %
@@ -10,7 +14,7 @@
 % fz_conf.m:020:   expected type was `(fz_conf.msat_literal)'.
 %
 % Compile with `mmc -C fz_conf.m' to reproduce.
-%
+
 :- module fz_conf.
 :- interface.
 
@@ -27,6 +31,6 @@
             initialisation  is new_msat_literal.
 
 new_msat_literal(A) :-
-	promise_pure (
-		impure A = 'representation to any msat_literal/0'(1)
-	).
+    promise_pure (
+        impure A = 'representation to any msat_literal/0'(1)
+    ).

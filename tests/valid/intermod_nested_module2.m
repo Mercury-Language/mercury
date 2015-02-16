@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module intermod_nested_module2.
 
 :- interface.
@@ -17,14 +21,14 @@
 
 :- implementation.
 
-:- type foo ---> foo(int).
+:- type foo
+    --->    foo(int).
 
 :- module sub_module.
 
 :- implementation.
 
 bar(X, foo(Y)) :-
-        Y = X + 1.
+    Y = X + 1.
 
 :- end_module sub_module.
-

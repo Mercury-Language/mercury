@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module indep_par_nested.
 :- interface.
 :- import_module io.
@@ -35,5 +39,5 @@ main(!IO) :-
             L = I + 3
         )
     ),
-    io.print({A,B,C,D,E,F,G,H,I,J,K,L}, !IO),
+    io.print({A, B, C, D, E, F, G, H, I, J, K, L}, !IO),
     io.nl(!IO).

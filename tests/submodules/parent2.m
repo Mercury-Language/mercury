@@ -1,5 +1,8 @@
-% "Hello World" in Mercury,
-% using nested modules.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% "Hello World" in Mercury, using nested modules.
 
 :- module parent2.
 :- interface.
@@ -9,8 +12,11 @@
 
 :- implementation.
 
-:- type foo ---> bar ; baz(int).
+:- type foo
+    --->    bar
+    ;       baz(int).
 
 :- pred hello(io__state::di, io__state::uo) is det.
 
-hello --> print("parent2.hello\n").
+hello -->
+    print("parent2.hello\n").

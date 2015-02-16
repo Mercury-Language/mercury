@@ -1,4 +1,4 @@
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %
 % rotd-2007-11-27 emits the following error message for this program:
 %
@@ -15,14 +15,13 @@
 % Since only variables that become further bound/constrained should be listed
 % in the scope head this means that determinism analysis reruns after
 % inlining reported extra variables in the scope head.
-% 
+
 :- module equiv_solns_ia.
 :- interface.
 
 :- import_module list.
 
 :- typeclass flatzinc_solver(Solver, Var) <= (Solver -> Var) where [
-
     pred solve_for_vars(Solver::in, solve_spec(Var)::ia,
         solver_annotations(Var)::ia, list(Var)::ia) is nondet
 ].
@@ -58,8 +57,8 @@ interpret_2(Solver, SolveSpec, SolverAnns, AllVars) :-
         promise_equivalent_solutions [SolveSpec, SolverAnns, AllVars] (
             solve_for_vars(Solver, SolveSpec, SolverAnns, AllVars)
         )
-      then
+    then
         true
-      else
+    else
         throw("")
     ).

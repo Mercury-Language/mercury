@@ -25,10 +25,10 @@ main(!IO) :-
 
 mf([], !Acc).
 mf([X | Xs], !Acc) :-
-	(
-		Y = X + 1,
-		!:Acc = !.Acc + Y
-	&
-		mf(Xs, !Acc)
-	).
+    (
+        Y = X + 1,
+        !:Acc = !.Acc + Y
+    &
+        mf(Xs, !Acc)
+    ).
 

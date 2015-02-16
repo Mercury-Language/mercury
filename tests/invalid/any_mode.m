@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module any_mode.
 
 :- implementation.
@@ -9,10 +13,10 @@ p(X) :- q(X).
 q(foo(123)).
 
 :- solver type foo
-	where representation is int,
-	      ground         is ground,
-	      any            is ground,
-	      equality       is eq_foo.
+    where representation is int,
+          ground         is ground,
+          any            is ground,
+          equality       is eq_foo.
 
 :- pred init_foo(foo::out(any)) is det.
 init_foo(foo(42)).
@@ -20,12 +24,11 @@ init_foo(foo(42)).
 :- func foo(int::in) = (foo::out(any)) is det.
 :- pragma promise_pure(foo/1).
 foo(N) = X :-
-	impure X = 'representation to any foo/0'(N).
+    impure X = 'representation to any foo/0'(N).
 
 :- pred eq_foo(foo::in(any), foo::in(any)) is semidet.
 :- pragma promise_pure(eq_foo/2).
 eq_foo(X, Y) :-
-	impure RX = 'representation of any foo/0'(X),
-	impure RY = 'representation of any foo/0'(Y),
-	RX = RY.
-
+    impure RX = 'representation of any foo/0'(X),
+    impure RY = 'representation of any foo/0'(Y),
+    RX = RY.

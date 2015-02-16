@@ -1,5 +1,9 @@
-% Type error where inferred type is ambiguous.  The error message used to
-% contain the same expected type multiple times.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Type error where inferred type is ambiguous. The error message
+% used to contain the same expected type multiple times.
 
 :- module type_error_ambiguous.
 :- interface.
@@ -8,15 +12,15 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type t1
     --->    f
@@ -34,6 +38,3 @@ main(!IO) :-
     X = f,
     io.write_int(X, !IO),
     io.nl(!IO).
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sts=4 sw=4 et

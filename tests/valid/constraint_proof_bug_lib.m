@@ -14,8 +14,8 @@
 :- type dep_op == string.
 
 :- typeclass constrainable(T) where [
-      pred apply_op(T::in, dep_op::in, T::in) is semidet
-  ].
+    pred apply_op(T::in, dep_op::in, T::in) is semidet
+].
 
 :- instance constrainable(date).
 :- instance constrainable(code).
@@ -30,7 +30,8 @@
 :- type date
     --->    d(int).
 
-get_date_date(Y, M, D, _Date) :- Y=1999, M=6, D=25.
+get_date_date(Y, M, D, _Date) :-
+    Y=1999, M=6, D=25.
 
 :- instance constrainable(date) where [
     pred(apply_op/3) is apply_op_dates
@@ -48,7 +49,8 @@ apply_op_dates(D1, "=", D2) :-
 
 :- pred apply_op_codes(code::in, dep_op::in, code::in) is semidet.
 
-apply_op_codes(D1, "=", D2) :- compare((=), D1, D2).
+apply_op_codes(D1, "=", D2) :-
+    compare((=), D1, D2).
 
 :- instance constrainable(field(T, T2)) <=
     (constrainable(T), constrainable(T2))

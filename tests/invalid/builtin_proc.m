@@ -1,6 +1,11 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Check that compiler/typecheck.m does not add a spurious
 % "(the module `builtin' has not been imported)" to the
 % end of the undefined pred error message.
+
 :- module builtin_proc.
 
 :- interface.
@@ -10,5 +15,8 @@
 
 :- implementation.
 
-foo(X, Y) :- builtin__no_such_pred(X, Y).
-bar(X, Y) :- builtin__copy(X, Y).
+foo(X, Y) :-
+    builtin__no_such_pred(X, Y).
+
+bar(X, Y) :-
+    builtin__copy(X, Y).

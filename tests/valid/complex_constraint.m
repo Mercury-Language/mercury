@@ -1,6 +1,13 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module complex_constraint.
 :- interface.
-:- import_module map, list, pair.
+
+:- import_module list.
+:- import_module map.
+:- import_module pair.
 
 :- typeclass foo(A, B, C) <= (A -> B) where [].
 :- typeclass bar(B, C) <= (B -> C) where [].
@@ -15,4 +22,3 @@
 
 t(_) :- semidet_succeed.
 u(_) :- semidet_succeed.
-

@@ -1,26 +1,33 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module fail_ite.
 :- interface.
 :- import_module io.
-:- pred p(io__state::di, io__state::uo) is erroneous.
-:- implementation.
-:- import_module require.
-p --> 
-	( { \+ fail_pred } ->
-		[]
-	;
-		[]
-	),
-	( { \+ det_pred } ->
-		[]
-	;	
-		[]
-	),	
-	( { error("blah") } ->
-		[]
-	;
-		[]
-	).
 
+:- pred p(io__state::di, io__state::uo) is erroneous.
+
+:- implementation.
+
+:- import_module require.
+
+p -->
+    ( { \+ fail_pred } ->
+        []
+    ;
+        []
+    ),
+    ( { \+ det_pred } ->
+        []
+    ;
+        []
+    ),
+    ( { error("blah") } ->
+        []
+    ;
+        []
+    ).
 
 :- pred det_pred is det.
 

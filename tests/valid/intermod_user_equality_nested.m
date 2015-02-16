@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module intermod_user_equality_nested.
 
 :- interface.
@@ -7,5 +11,5 @@
 
 :- implementation.
 
-check_foo(Foo, Bar) :- Foo = Bar.
-
+check_foo(Foo, Bar) :-
+    Foo = Bar.

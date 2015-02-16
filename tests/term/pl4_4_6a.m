@@ -1,8 +1,14 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module pl4_4_6a.
 
 :- interface.
 
-:- type list(T)	--->	[] ; [T | list(T)].
+:- type list(T)
+    --->    []
+    ;       [T | list(T)].
 
 :- pred perm(list(T)::in, list(T)::out) is nondet.
 
@@ -10,8 +16,8 @@
 
 perm([], []).
 perm([X | L], Z) :-
-	perm(L, Y),
-	insert(X, Y, Z).
+    perm(L, Y),
+    insert(X, Y, Z).
 
 :- pred insert(T, list(T), list(T)).
 :- mode insert(in, in, out).
@@ -19,4 +25,4 @@ perm([X | L], Z) :-
 insert(X, [], [X]).
 insert(X, L, [X | L]).
 insert(X, [H | L1], [H | L2]) :-
-	insert(X, L1, L2).
+    insert(X, L1, L2).

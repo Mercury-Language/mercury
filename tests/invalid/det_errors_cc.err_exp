@@ -1,57 +1,57 @@
-det_errors_cc.m:013: Error: call to predicate `det_errors_cc.p1'/2 with
-det_errors_cc.m:013:   determinism `cc_nondet' occurs in a context which
-det_errors_cc.m:013:   requires all solutions.
-det_errors_cc.m:014:   Call to p2 can fail.
-det_errors_cc.m:015:   Call to p3 can fail.
-det_errors_cc.m:016:   Call to p4 can fail.
-det_errors_cc.m:017:   Call to p5 can fail.
-det_errors_cc.m:018:   Call to p6 can fail.
-det_errors_cc.m:014: Error: call to predicate `det_errors_cc.p2'/2 with
-det_errors_cc.m:014:   determinism `cc_nondet' occurs in a context which
-det_errors_cc.m:014:   requires all solutions.
-det_errors_cc.m:015:   Call to p3 can fail.
-det_errors_cc.m:016:   Call to p4 can fail.
-det_errors_cc.m:017:   Call to p5 can fail.
-det_errors_cc.m:018:   Call to p6 can fail.
-det_errors_cc.m:015: Error: call to predicate `det_errors_cc.p3'/2 with
-det_errors_cc.m:015:   determinism `cc_nondet' occurs in a context which
-det_errors_cc.m:015:   requires all solutions.
-det_errors_cc.m:016:   Call to p4 can fail.
-det_errors_cc.m:017:   Call to p5 can fail.
-det_errors_cc.m:018:   Call to p6 can fail.
-det_errors_cc.m:016: Error: call to predicate `det_errors_cc.p4'/2 with
-det_errors_cc.m:016:   determinism `cc_nondet' occurs in a context which
-det_errors_cc.m:016:   requires all solutions.
-det_errors_cc.m:017:   Call to p5 can fail.
-det_errors_cc.m:018:   Call to p6 can fail.
-det_errors_cc.m:017: Error: call to predicate `det_errors_cc.p5'/2 with
-det_errors_cc.m:017:   determinism `cc_nondet' occurs in a context which
-det_errors_cc.m:017:   requires all solutions.
-det_errors_cc.m:018:   Call to p6 can fail.
+det_errors_cc.m:021: Error: call to predicate `det_errors_cc.p1'/2 with
+det_errors_cc.m:021:   determinism `cc_nondet' occurs in a context which
+det_errors_cc.m:021:   requires all solutions.
+det_errors_cc.m:022:   Call to p2 can fail.
+det_errors_cc.m:023:   Call to p3 can fail.
+det_errors_cc.m:024:   Call to p4 can fail.
+det_errors_cc.m:025:   Call to p5 can fail.
+det_errors_cc.m:026:   Call to p6 can fail.
+det_errors_cc.m:022: Error: call to predicate `det_errors_cc.p2'/2 with
+det_errors_cc.m:022:   determinism `cc_nondet' occurs in a context which
+det_errors_cc.m:022:   requires all solutions.
+det_errors_cc.m:023:   Call to p3 can fail.
+det_errors_cc.m:024:   Call to p4 can fail.
+det_errors_cc.m:025:   Call to p5 can fail.
+det_errors_cc.m:026:   Call to p6 can fail.
 det_errors_cc.m:023: Error: call to predicate `det_errors_cc.p3'/2 with
 det_errors_cc.m:023:   determinism `cc_nondet' occurs in a context which
 det_errors_cc.m:023:   requires all solutions.
 det_errors_cc.m:024:   Call to p4 can fail.
-det_errors_cc.m:025:   Unification of C with 10 can fail.
-det_errors_cc.m:026:   Unification of B and C can fail.
+det_errors_cc.m:025:   Call to p5 can fail.
+det_errors_cc.m:026:   Call to p6 can fail.
 det_errors_cc.m:024: Error: call to predicate `det_errors_cc.p4'/2 with
 det_errors_cc.m:024:   determinism `cc_nondet' occurs in a context which
 det_errors_cc.m:024:   requires all solutions.
-det_errors_cc.m:025:   Unification of C with 10 can fail.
-det_errors_cc.m:026:   Unification of B and C can fail.
-det_errors_cc.m:032: Error: call to predicate `det_errors_cc.p3'/2 with
+det_errors_cc.m:025:   Call to p5 can fail.
+det_errors_cc.m:026:   Call to p6 can fail.
+det_errors_cc.m:025: Error: call to predicate `det_errors_cc.p5'/2 with
+det_errors_cc.m:025:   determinism `cc_nondet' occurs in a context which
+det_errors_cc.m:025:   requires all solutions.
+det_errors_cc.m:026:   Call to p6 can fail.
+det_errors_cc.m:031: Error: call to predicate `det_errors_cc.p3'/2 with
+det_errors_cc.m:031:   determinism `cc_nondet' occurs in a context which
+det_errors_cc.m:031:   requires all solutions.
+det_errors_cc.m:032:   Call to p4 can fail.
+det_errors_cc.m:033:   Unification of C with 10 can fail.
+det_errors_cc.m:034:   Unification of B and C can fail.
+det_errors_cc.m:032: Error: call to predicate `det_errors_cc.p4'/2 with
 det_errors_cc.m:032:   determinism `cc_nondet' occurs in a context which
 det_errors_cc.m:032:   requires all solutions.
-det_errors_cc.m:034:   Fail goal can fail.
-det_errors_cc.m:042: Error: call to predicate `det_errors_cc.p2'/2 with
-det_errors_cc.m:042:   determinism `cc_nondet' occurs in a context which
-det_errors_cc.m:042:   requires all solutions.
-det_errors_cc.m:043:   Negated goal can fail.
-det_errors_cc.m:048: Error: call to predicate `det_errors_cc.p3'/2 with
-det_errors_cc.m:048:   determinism `cc_nondet' occurs in a context which
-det_errors_cc.m:048:   requires all solutions.
-det_errors_cc.m:050:   Higher-order predicate call can fail.
-det_errors_cc.m:055: Error: call to predicate `det_errors_cc.p1'/2 with
-det_errors_cc.m:055:   determinism `cc_nondet' occurs in a context which
-det_errors_cc.m:055:   requires all solutions.
-det_errors_cc.m:066:   Switch on C is incomplete.
+det_errors_cc.m:033:   Unification of C with 10 can fail.
+det_errors_cc.m:034:   Unification of B and C can fail.
+det_errors_cc.m:040: Error: call to predicate `det_errors_cc.p3'/2 with
+det_errors_cc.m:040:   determinism `cc_nondet' occurs in a context which
+det_errors_cc.m:040:   requires all solutions.
+det_errors_cc.m:042:   Fail goal can fail.
+det_errors_cc.m:050: Error: call to predicate `det_errors_cc.p2'/2 with
+det_errors_cc.m:050:   determinism `cc_nondet' occurs in a context which
+det_errors_cc.m:050:   requires all solutions.
+det_errors_cc.m:051:   Negated goal can fail.
+det_errors_cc.m:056: Error: call to predicate `det_errors_cc.p3'/2 with
+det_errors_cc.m:056:   determinism `cc_nondet' occurs in a context which
+det_errors_cc.m:056:   requires all solutions.
+det_errors_cc.m:058:   Higher-order predicate call can fail.
+det_errors_cc.m:063: Error: call to predicate `det_errors_cc.p1'/2 with
+det_errors_cc.m:063:   determinism `cc_nondet' occurs in a context which
+det_errors_cc.m:063:   requires all solutions.
+det_errors_cc.m:074:   Switch on C is incomplete.

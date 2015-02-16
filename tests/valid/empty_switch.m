@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test. The compiler should eliminate both arms
 % of the second switch, since they can't succeed, which means that
 % X (or HeadVar__1) is not used in the second switch, which leads
@@ -16,13 +20,13 @@
 :- implementation.
 
 s(X) :-
-	(
-		X = 1
-	;
-		X = 2
-	),
-	(
-		X = 3
-	;
-		X = 4
-	).
+    (
+        X = 1
+    ;
+        X = 2
+    ),
+    (
+        X = 3
+    ;
+        X = 4
+    ).

@@ -1,24 +1,32 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module purity.
 :- interface.
+
 %----------------------------------------------------------------
 %  Needed for later tests.
-:- type foo ---> a ; b.
+:- type foo
+    --->    a
+    ;       b.
+
 :- implementation.
 
 :- impure pred imp is det.
 :- pragma foreign_proc("C",
-	imp,
-	[will_not_call_mercury],
+    imp,
+    [will_not_call_mercury],
 "
-	;
+    ;
 ").
 
 :- semipure pred semi is semidet.
 :- pragma foreign_proc("C",
-	semi,
-	[promise_semipure, will_not_call_mercury],
+    semi,
+    [promise_semipure, will_not_call_mercury],
 "
-	SUCCESS_INDICATOR = 0;
+    SUCCESS_INDICATOR = 0;
 ").
 
 :- pred in(foo).
@@ -27,25 +35,24 @@ in(a).
 
 :- semipure pred semi(foo::in) is semidet.
 :- pragma foreign_proc("C",
-	semi(X::in), 
-	[will_not_call_mercury, promise_semipure],
+    semi(X::in),
+    [will_not_call_mercury, promise_semipure],
 "
-	/* X */
-	SUCCESS_INDICATOR = 0;
+    /* X */
+    SUCCESS_INDICATOR = 0;
 ").
 
 :- impure pred imp1(foo).
 :- mode imp1(in) is semidet.
 :- pragma foreign_proc("C",
-	imp1(_X::in),
-	[will_not_call_mercury],
+    imp1(_X::in),
+    [will_not_call_mercury],
 "
-	SUCCESS_INDICATOR = 0;
+    SUCCESS_INDICATOR = 0;
 ").
 
 %----------------------------------------------------------------
-%  Warnings
-
+%  Warnings.
 
 :- impure pred w1 is det.
 
@@ -74,14 +81,12 @@ w5 :- impure imp.
 
 w6 :- semipure semi.
 
-
 %----------------------------------------------------------------
-%  Errors
+%  Errors.
 
 :- pred e1 is det.
 
 e1 :- impure imp.
-
 
 :- pred e2 is semidet.
 
@@ -102,15 +107,15 @@ e5 :- semi.
 :- impure pred e6 is semidet.
 
 e6 :-
-	in(X),
-	impure imp,
-	X = a.
+    in(X),
+    impure imp,
+    X = a.
 
 :- impure pred e7 is semidet.
 
 e7 :-
-	impure imp1(X),
-	X = a.
+    impure imp1(X),
+    X = a.
 
 :- type e8 ---> e8(foo) where equality is imp2.
 
@@ -118,10 +123,10 @@ e7 :-
 :- mode imp2(in, in) is semidet.
 
 :- pragma foreign_proc("C",
-	imp2(_X::in, _Y::in),
-	[will_not_call_mercury],
+    imp2(_X::in, _Y::in),
+    [will_not_call_mercury],
 "
-	SUCCESS_INDICATOR = 0;
+    SUCCESS_INDICATOR = 0;
 ").
 
 :- type e9 ---> e9(foo) where equality is semi2.
@@ -130,23 +135,23 @@ e7 :-
 :- mode semi2(in, in) is semidet.
 
 :- pragma foreign_proc("C",
-	semi2(_X::in, _Y::in),
-	[promise_semipure, will_not_call_mercury],
+    semi2(_X::in, _Y::in),
+    [promise_semipure, will_not_call_mercury],
 "
-	SUCCESS_INDICATOR = 0;
+    SUCCESS_INDICATOR = 0;
 ").
 
 :- pred e10 is semidet.
 
 e10 :-
-	Goal1 = (pred(X::in) is semidet :- imp1(X)),
-	call(Goal1, b).
+    Goal1 = (pred(X::in) is semidet :- imp1(X)),
+    call(Goal1, b).
 
 :- pred e11 is semidet.
 
 e11 :-
-	Goal2 = (pred(X::in) is semidet :- semi(X)),
-	call(Goal2, b).
+    Goal2 = (pred(X::in) is semidet :- semi(X)),
+    call(Goal2, b).
 
 imp.
 semi :- semidet_fail.

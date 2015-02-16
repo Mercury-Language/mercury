@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test.
 % Previous versions of the Mercury compiler would
 % incorrectly infer the determinism of p2 as semidet,
@@ -12,7 +16,8 @@
 :- pragma foreign_type("Java", foo1, "int").
 :- pragma foreign_type("Erlang", foo1, "").
 
-:- type foo2 ---> foo2(foo1).
+:- type foo2
+    --->    foo2(foo1).
 
 :- pred p1(foo1).
 :- mode p1(in(any)) is nondet.
@@ -22,9 +27,11 @@
 
 :- implementation.
 
-p1(X) :- q1(X).
+p1(X) :-
+    q1(X).
 
-p2(X) :- q2(X).
+p2(X) :-
+    q2(X).
 
 :- pred q1(foo1).
 :- mode q1(in(any)) is nondet.

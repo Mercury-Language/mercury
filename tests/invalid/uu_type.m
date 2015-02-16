@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This test case checks the handling of a situation in which a user uses
 % = instead of == in a type equivalence, and thus unwittingly triggers code
 % inside the compiler that considers this to be the introduction of an

@@ -22,12 +22,12 @@
 
 :- implementation.
 
-:- mutable(gv1,float,0.0,ground,[untrailed]).
-:- mutable(gv2,float,2.3,ground,[untrailed]).
-:- mutable(gv3,string,"",ground,[untrailed]).
-:- mutable(gv4,string,"def",ground,[untrailed]).
-:- mutable(gv5,coord,new_coord(0, 0),ground,[untrailed]).
-:- mutable(gv6,coord,new_coord(2, 3),ground,[untrailed]).
+:- mutable(gv1, float, 0.0, ground, [untrailed]).
+:- mutable(gv2, float, 2.3, ground, [untrailed]).
+:- mutable(gv3, string, "", ground, [untrailed]).
+:- mutable(gv4, string, "def", ground, [untrailed]).
+:- mutable(gv5, coord, new_coord(0, 0), ground, [untrailed]).
+:- mutable(gv6, coord, new_coord(2, 3), ground, [untrailed]).
 
 :- pragma inline(exported_set_gv1/1).
 :- pragma inline(exported_get_gv1/1).

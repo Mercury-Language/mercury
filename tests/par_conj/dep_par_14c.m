@@ -1,5 +1,8 @@
-% This is the same as dep_par_14 but uses a switch instead
-% of if-then-else.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% This is the same as dep_par_14 but uses a switch instead of if-then-else.
 
 :- module dep_par_14c.
 :- interface.
@@ -19,15 +22,15 @@ main(!IO) :-
 :- pred p(list(int)::in, int::in, int::out) is cc_multi.
 
 p([], A, A).
-p([H|T], A0, A) :-
+p([H | T], A0, A) :-
     eq(H, A0, Eq),
     (
-	Eq = yes,
+        Eq = yes,
         ( p(T, A0, A1)
         & p(T, A1, A)
         )
     ;
-	Eq = no,
+        Eq = no,
         A = A0
     ).
 

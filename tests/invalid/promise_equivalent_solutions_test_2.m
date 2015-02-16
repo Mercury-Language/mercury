@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module promise_equivalent_solutions_test_2.
 :- interface.
 
@@ -9,20 +13,20 @@
 
 :- implementation.
 
-	% This should pass.
+    % This should pass.
 p1(X) :-
     promise_equivalent_solutions [X] (
         q(X)
     ).
 
-	% Compiler should complain about Y being possibly constrained.
+    % Compiler should complain about Y being possibly constrained.
 p2(X, Y) :-
     promise_equivalent_solutions [X] (
         q(X),
         q(Y)
     ).
 
-	% Compiler should complain about Y being bound.
+    % Compiler should complain about Y being bound.
 p3(X, Y) :-
     promise_equivalent_solutions [X] (
         q(X),

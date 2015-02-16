@@ -1,12 +1,24 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module ambig_functor.
 
 :- interface.
 
 :- import_module io.
 
-:- type a ---> foo(int, string) ; bar.
-:- type b ---> foo(string, int) ; bar.
-:- type c(T) ---> foo(T, T) ; bar.
+:- type a
+    --->    foo(int, string)
+    ;       bar.
+
+:- type b
+    --->    foo(string, int)
+    ;       bar.
+
+:- type c(T)
+    --->    foo(T, T)
+    ;       bar.
 
 :- pred main(io::di, io::uo) is det.
 :- pred ambig(T).
@@ -26,4 +38,3 @@ ambig(A1) :-
     A1 = foo(_, "string").
 
 :- end_module ambig_functor.
-

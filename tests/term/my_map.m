@@ -1,12 +1,21 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module my_map.
 
 :- interface.
 
-:- type list(T)	--->	[] ; [T | list(T)].
+:- type list(T)
+    --->    []
+    ;       [T | list(T)].
 
 :- pred map(list(x)::in, list(x)::out) is semidet.
 
-:- type x	--->	val_i ; val_j ; val_k.
+:- type x
+    --->    val_i
+    ;       val_j
+    ;       val_k.
 
 :- implementation.
 
@@ -16,6 +25,6 @@
 p(val_i, val_j).
 
 map([X | Xs], [Y | Ys]) :-
-	p(X, Y),
-	map(Xs, Ys).
+    p(X, Y),
+    map(Xs, Ys).
 map([], []).

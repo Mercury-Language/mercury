@@ -1,10 +1,10 @@
-ho_unique_error.m:007: In `call_ho'(di, uo):
-ho_unique_error.m:007:   error: invalid determinism for a predicate with I/O
-ho_unique_error.m:007:   state arguments.
-ho_unique_error.m:012: In clause for `call_ho(di, uo)':
-ho_unique_error.m:012:   in argument 3 (i.e. argument 2 of the called
-ho_unique_error.m:012:   predicate) of higher-order predicate call:
-ho_unique_error.m:012:   mode error: variable `DCG_0' has instantiatedness
-ho_unique_error.m:012:   `mostly_unique',
-ho_unique_error.m:012:   expected instantiatedness was `unique'.
+ho_unique_error.m:011: In `call_ho'(di, uo):
+ho_unique_error.m:011:   error: invalid determinism for a predicate with I/O
+ho_unique_error.m:011:   state arguments.
+ho_unique_error.m:016: In clause for `call_ho(di, uo)':
+ho_unique_error.m:016:   in argument 3 (i.e. argument 2 of the called
+ho_unique_error.m:016:   predicate) of higher-order predicate call:
+ho_unique_error.m:016:   mode error: variable `DCG_0' has instantiatedness
+ho_unique_error.m:016:   `mostly_unique',
+ho_unique_error.m:016:   expected instantiatedness was `unique'.
 For more information, recompile with `-E'.

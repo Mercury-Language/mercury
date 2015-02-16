@@ -1,12 +1,19 @@
-% The compiler of 3/5/2000 aborted on this test case because it
-% didn't properly handle overloading of field access functions
-% and constructors.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% The compiler of 3/5/2000 aborted on this test case because it didn't
+% properly handle overloading of field access functions and constructors.
+
 :- module record_syntax_bug.
 :- interface.
 
-:- type foo ---> debug(string).
-:- type foo2 ---> some [T] debug(T).
-:- type bar ---> bar( debug :: int ).
+:- type foo
+    --->    debug(string).
+:- type foo2
+    --->    some [T] debug(T).
+:- type bar
+    --->    bar(debug :: int).
 
 :- func dest(foo) = int.
 

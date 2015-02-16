@@ -1,11 +1,15 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % The missing constraint at the spot marked XXX causes the following
 % assertion failure in rotd-2007-08-19 and before:
 %
 % Software Error: map.lookup: key not found
-%	Key Type: term.var(parse_tree.prog_data.prog_var_type)
-%	Key Value: var(4)
-%	Value Type: parse_tree.prog_data.mer_type
-%
+%   Key Type: term.var(parse_tree.prog_data.prog_var_type)
+%   Key Value: var(4)
+%   Value Type: parse_tree.prog_data.mer_type
+
 :- module typeclass_test_13.
 :- interface.
 
@@ -25,7 +29,7 @@
 
 mercury_format_pragma_foreign_export_enum_overrides(Overrides, !U) :-
     add_list(Overrides, mercury_format_pragma_foreign_export_enum_override,
-    	!U).
+        !U).
 
 :- pred mercury_format_pragma_foreign_export_enum_override(
     string::in, U::di, U::uo) is det. % XXX <= output(U).

@@ -63,11 +63,11 @@ foo(void *value, MR_untrail_reason reason)
         (long) value);
 
     switch (reason) {
-    
+
         case MR_commit:
             printf(\"commit\\n\");
             break;
-                
+
         case MR_gc:
             printf(\"gc\\n\");
             break;

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module intermod_user_equality_nested2.
 
 :- interface.
@@ -5,31 +9,31 @@
 :- type foo.
 
 :- typeclass class(T) where [
-	pred p(T::in, T::in) is semidet
+    pred p(T::in, T::in) is semidet
 ].
 
 :- instance class(foo).
 
 :- pred foo_field1(foo::in, int::out) is cc_nondet.
 
-	:- module intermod_user_equality_nested2__sub.
+    :- module intermod_user_equality_nested2__sub.
 
-	:- interface.
+    :- interface.
 
-	:- type bar
-		---> bar(foo).
+    :- type bar
+        --->    bar(foo).
 
-	:- end_module intermod_user_equality_nested2__sub.
+    :- end_module intermod_user_equality_nested2__sub.
 
 :- implementation.
 
 :- type foo
-	--->	ctor1(int, int)
-	;	ctor2(int, int)
-	where equality is foo_unify.
+    --->    ctor1(int, int)
+    ;       ctor2(int, int)
+    where equality is foo_unify.
 
 :- instance class(foo) where [
-	pred(p/2) is foo_unify
+    pred(p/2) is foo_unify
 ].
 
 :- pred foo_unify(foo::in, foo::in) is semidet.

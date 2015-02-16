@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This test case was contributed by Michael Day.
 %
 % With the current typechecker, this module generates roughly 35 million type

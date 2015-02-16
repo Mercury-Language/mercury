@@ -1,8 +1,14 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module ack.
 
 :- interface.
 
-:- type nat	--->	zero ; s(nat).
+:- type nat
+    --->    zero
+    ;       s(nat).
 
 :- pred ack(nat, nat, nat).
 :- mode ack(in, in, out) is det.
@@ -14,7 +20,7 @@
 
 ack(zero, N, s(N)). % :- int(N).
 ack(s(M), zero, A) :-
-	ack(M, s(zero), A).
+    ack(M, s(zero), A).
 ack(s(M), s(N), A) :-
-	ack(s(M), N, A1),
-	ack(M, A1, A).
+    ack(s(M), N, A1),
+    ack(M, A1, A).

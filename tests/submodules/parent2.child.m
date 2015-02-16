@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Some test cases to test nested modules.
 
 :- module parent2.child.
@@ -28,16 +32,15 @@ has_type_t3 = baz(42).
 has_type_t4 = parent2.baz(42).
 
 main -->
-	parent2.hello,
-	hello,
+    parent2.hello,
+    hello,
 
-	print("t1 = "), print(type_of(has_type_t1)), nl,
-	print("t2 = "), print(type_of(has_type_t2)), nl,
-	print("t3 = "), print(type_of(has_type_t3)), nl,
-	print("t4 = "), print(type_of(has_type_t4)), nl,
+    print("t1 = "), print(type_of(has_type_t1)), nl,
+    print("t2 = "), print(type_of(has_type_t2)), nl,
+    print("t3 = "), print(type_of(has_type_t3)), nl,
+    print("t4 = "), print(type_of(has_type_t4)), nl,
 
-	print("has_type_t1 = "), print(has_type_t1), nl,
-	print("has_type_t2 = "), print(has_type_t2), nl,
-	print("has_type_t3 = "), print(has_type_t3), nl,
-	print("has_type_t4 = "), print(has_type_t4), nl.
-
+    print("has_type_t1 = "), print(has_type_t1), nl,
+    print("has_type_t2 = "), print(has_type_t2), nl,
+    print("has_type_t3 = "), print(has_type_t3), nl,
+    print("has_type_t4 = "), print(has_type_t4), nl.

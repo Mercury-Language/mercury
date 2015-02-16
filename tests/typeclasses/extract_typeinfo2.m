@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test for extracting type_infos from typeclass infos with
 % extra instance arguments.
 
@@ -17,7 +21,8 @@
 :- type xvar(T)
     --->    xvar(int).
 
-:- type dummy ---> dummy.
+:- type dummy
+    --->    dummy.
 
 :- instance enum(xvar(_)).
 

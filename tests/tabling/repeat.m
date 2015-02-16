@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This test case checks that we correctly handle the trivial case of the same
 % subgoal being called twice, without recursion.
 
@@ -10,18 +14,19 @@
 
 :- implementation.
 
-:- import_module int, list.
+:- import_module int.
+:- import_module list.
 :- import_module solutions.
 
 :- pragma require_feature_set([memo]).
 
 main(!IO) :-
-	solutions(p, Solns1),
-	io__write(Solns1, !IO),
-	io__write_string("\n", !IO),
-	solutions(p, Solns2),
-	io__write(Solns2, !IO),
-	io__write_string("\n", !IO).
+    solutions(p, Solns1),
+    io__write(Solns1, !IO),
+    io__write_string("\n", !IO),
+    solutions(p, Solns2),
+    io__write(Solns2, !IO),
+    io__write_string("\n", !IO).
 
 :- pragma minimal_model(p/1).
 :- pred p(int).

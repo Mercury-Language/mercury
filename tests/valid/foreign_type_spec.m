@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module foreign_type_spec.
 
 :- interface.
@@ -5,7 +9,7 @@
 :- import_module foreign_type_spec__foreign_type.
 
 :- type ft2
-	--->	f(foreign).
+    --->    f(foreign).
 
 :- module foreign_type_spec__foreign_type.
 

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module ambig_pred.
 
 :- interface.
@@ -15,7 +19,9 @@
 
 :- implementation.
 
-:- import_module ambig_confuse1, ambig_confuse2, ambig_confuse3.
+:- import_module ambig_confuse1.
+:- import_module ambig_confuse2.
+:- import_module ambig_confuse3.
 :- import_module ambig_types.
 
 main(!IO) :-
@@ -38,4 +44,3 @@ ambig(foo, foo, foo) :-
 constrain(A, A).
 
 :- end_module ambig_pred.
-

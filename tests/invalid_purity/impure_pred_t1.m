@@ -1,6 +1,9 @@
-
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Subverting the Mercury purity system.
-
+%
 % This should not be possible.
 
 :- module impure_pred_t1.
@@ -12,26 +15,30 @@
 :- pred main(state::di, state::uo) is det.
 
 :- implementation.
-:- import_module int, require, list.
 
-:- type foo ---> foo(pred(int,int)).
+:- import_module int.
+:- import_module list.
+:- import_module require.
+
+:- type foo
+    --->    foo(pred(int, int)).
 
 main -->
-	{ Y = foo(get_counter) },
-	{ Y = foo(X) },
-	{ X(4, Z) },
-	print("X = "), 
-	print(Z), 
-	nl.
+    { Y = foo(get_counter) },
+    { Y = foo(X) },
+    { X(4, Z) },
+    print("X = "),
+    print(Z),
+    nl.
 
 :- impure pred get_counter(int::in, int::out) is det.
 
 :- pragma foreign_decl("C", "extern MR_Integer counter;").
 :- pragma foreign_code("C", "MR_Integer counter = 0;").
 :- pragma foreign_proc("C",
-	get_counter(Y::in, X::out),
-	[will_not_call_mercury],
+    get_counter(Y::in, X::out),
+    [will_not_call_mercury],
 "
-	X = counter + Y;
+    X = counter + Y;
 ").
 get_counter(X, X).

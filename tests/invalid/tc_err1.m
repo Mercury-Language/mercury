@@ -1,6 +1,8 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
-% The following module gave a software error
-% with the compiler of May 2nd 2000.
+% The following module gave a software error with the compiler of May 2nd 2000.
 %
 % tc_err1.m:015: Error: no determinism declaration for exported
 % tc_err1.m:015:   predicate `tc_err1:handle_typedefs/3'.
@@ -12,17 +14,17 @@
 % Uncaught exception:
 % Software Error: missing determinism decl. How did we get this far?
 % Stack dump not available in this grade.
-%
 
 :- module tc_err1.
 
 :- interface.
 
-:- type pstate ---> pstate.
+:- type pstate
+    --->    pstate.
 
 :- typeclass actions(A) where [
-        pred handle_typedefs(int, A, A) is det,
-	mode handle_typedefs(in, in, out) 
+    pred handle_typedefs(int, A, A) is det,
+    mode handle_typedefs(in, in, out)
 ].
 
 :- instance actions(pstate).
@@ -30,6 +32,5 @@
 :- implementation.
 
 :- instance actions(pstate) where [
-        pred(handle_typedefs/2) is pstate_handle_typedefs
+    pred(handle_typedefs/2) is pstate_handle_typedefs
 ].
-

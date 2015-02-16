@@ -129,22 +129,22 @@
 
 :- type boundary
     --->    torus
-	;       closed.
+    ;       closed.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 main(!IO) :-
-	X = 2,
-	Y = 3,
-	solutions.solutions(lattice_good(X, Y), SG),
-	io.print(SG, !IO), io.nl(!IO),
-	solutions.solutions(lattice_bad(X, Y), SB),
-	io.print(SB, !IO), io.nl(!IO),
-	solutions.solutions(lattice_bad_fixed(X, Y), SBF),
-	io.print(SBF, !IO), io.nl(!IO),
+    X = 2,
+    Y = 3,
+    solutions.solutions(lattice_good(X, Y), SG),
+    io.print(SG, !IO), io.nl(!IO),
+    solutions.solutions(lattice_bad(X, Y), SB),
+    io.print(SB, !IO), io.nl(!IO),
+    solutions.solutions(lattice_bad_fixed(X, Y), SBF),
+    io.print(SBF, !IO), io.nl(!IO),
 
-	solutions.solutions(lattice_bad_3(X, Y), SB3),
-	io.print(SB3, !IO), io.nl(!IO).
+    solutions.solutions(lattice_bad_3(X, Y), SB3),
+    io.print(SB3, !IO), io.nl(!IO).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -156,33 +156,33 @@ lattice_good(X, Y, lattice(X, Y, closed)).
 :- pred lattice_bad(int::in, int::in, geometry::out) is multi.
 
 lattice_bad(X, Y, G) :-
-	G ^ xsize = X,
-	G ^ ysize = Y,
-	(
-		G ^ boundary = torus
+    G ^ xsize = X,
+    G ^ ysize = Y,
+    (
+        G ^ boundary = torus
     ;
-		G ^ boundary = closed
-	).
+        G ^ boundary = closed
+    ).
 
 :- pred lattice_bad_3(int::in, int::in, {geometry, geometry, geometry}::out)
     is multi.
 
 lattice_bad_3(X, Y, Tuple) :-
-	G1 ^ xsize = X,
-	G1 ^ ysize = Y,
-	G2 ^ xsize = X,
-	G2 ^ ysize = Y,
-	G3 ^ xsize = X,
-	G3 ^ ysize = Y,
-	(
-		G1 ^ boundary = torus,
-		G2 ^ boundary = torus,
-		G3 ^ boundary = torus
+    G1 ^ xsize = X,
+    G1 ^ ysize = Y,
+    G2 ^ xsize = X,
+    G2 ^ ysize = Y,
+    G3 ^ xsize = X,
+    G3 ^ ysize = Y,
+    (
+        G1 ^ boundary = torus,
+        G2 ^ boundary = torus,
+        G3 ^ boundary = torus
     ;
-		G1 ^ boundary = closed,
-		G2 ^ boundary = closed,
-		G3 ^ boundary = closed
-	),
+        G1 ^ boundary = closed,
+        G2 ^ boundary = closed,
+        G3 ^ boundary = closed
+    ),
     Tuple = {G1, G2, G3}.
 
 :- pred lattice_bad_lambda(int::in, int::in, geometry::out) is multi.
@@ -202,9 +202,9 @@ lattice_bad_lambda(X, Y, G) :-
 :- pred lattice_bad_fixed(int::in, int::in, geometry::out) is multi.
 
 lattice_bad_fixed(X, Y, G) :-
-	(
-		B = torus
+    (
+        B = torus
     ;
-		B = closed
-	),
+        B = closed
+    ),
     G = lattice(X, Y, B).

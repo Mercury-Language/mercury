@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module bug361.
 :- interface.
 :- import_module io.
@@ -5,9 +9,11 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module int, list.
 
-main(!IO) :- 
+:- import_module int.
+:- import_module list.
+
+main(!IO) :-
     print_line(get_n_happy_numbers(8, 1), !IO).
 
 :- func get_n_happy_numbers(int, int) = list(int).
@@ -22,8 +28,8 @@ get_n_happy_numbers(NumToFind, N) =
        []
     ).
 
-:- pragma loop_check(is_happy/1).
 :- pred is_happy(int::in) is nondet.
+:- pragma loop_check(is_happy/1).
 
 is_happy(1).
 is_happy(N) :- is_happy(sum_sqr_digits(N)).

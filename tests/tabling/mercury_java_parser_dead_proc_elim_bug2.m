@@ -1,6 +1,6 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This is a regression test. In versions of the compiler before 9 Aug 2007,
 % it used to cause a compiler abort.
@@ -12,7 +12,7 @@
 % procedure that wasn't referred to from anywhere else, that procedure
 % would be removed, leaving a dangling reference.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % mercury_java_parser_memoed.m
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Mon Feb 21 09:42:40 EST 2005
@@ -35,7 +35,7 @@
 % pragma memo lines except those for literal/2, qualified_identifier/2, and
 % punct/2.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mercury_java_parser_dead_proc_elim_bug2.
 
@@ -45,8 +45,8 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -70,7 +70,7 @@
     %
 :- type ps == int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
@@ -96,21 +96,16 @@ parse_file(Filename, !IO) :-
         throw(Result)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Low-level predicates.
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-
     MR_String   input_string = NULL;
     MR_Word     input_length = (MR_Word) 0;
-
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- impure pred set_input_string(string::in) is det.
 
@@ -122,8 +117,6 @@ parse_file(Filename, !IO) :-
     input_length = strlen(Str);
 ").
 
-%-----------------------------------------------------------------------------%
-
 :- semipure pred input_string_and_length(string::out, int::out) is det.
 
 :- pragma foreign_proc("C",
@@ -134,23 +127,17 @@ parse_file(Filename, !IO) :-
     Length = input_length;
 ").
 
-
-%-----------------------------------------------------------------------------%
-
 :- pred current_offset(int::out, int::in, int::out) is det.
 
 current_offset(Offset, Offset, Offset).
 
-%-----------------------------------------------------------------------------%
-
 :- pred eof(ps::in, ps::out) is semidet.
 
 eof(Offset, Offset) :-
-    promise_pure (                    semipure input_string_and_length(_Str, Length),
-    Offset = Length
+    promise_pure (
+        semipure input_string_and_length(_Str, Length),
+        Offset = Length
     ).
-
-%-----------------------------------------------------------------------------%
 
     % XXX These are really semipure, but I'm being naughty and promising them
     % to be pure because I don't want to pollute my code with impurity
@@ -161,31 +148,34 @@ eof(Offset, Offset) :-
 :- pred char(char::out, ps::in, ps::out) is semidet.
 
 char(Char, Offset, Offset + 1) :-
-    promise_pure (                    semipure input_string_and_length(Str, Length),
-    Offset < Length,
-    Char = Str ^ unsafe_elem(Offset)
+    promise_pure (
+        semipure input_string_and_length(Str, Length),
+        Offset < Length,
+        Char = Str ^ unsafe_elem(Offset)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred input_substring(int::in, int::in, string::out,
     ps::in, ps::out) is semidet.
 
 input_substring(Start, End, Substring, Offset, Offset) :-
-    promise_pure (                    semipure input_string_and_length(Str, Length),
-    End =< Length,
-    Substring = unsafe_substring(Str, Start, End - Start)
+    promise_pure (
+        semipure input_string_and_length(Str, Length),
+        End =< Length,
+        Substring = unsafe_substring(Str, Start, End - Start)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred match_string(string::in, int::in, int::out) is semidet.
 
 match_string(MatchStr, Offset, Offset + N) :-
-    promise_pure (                    semipure input_string_and_length(Str, Length),
-    N = length(MatchStr),
-    Offset + N =< Length,
-    match_string_2(0, N, MatchStr, Offset, Str)
+    promise_pure (
+        semipure input_string_and_length(Str, Length),
+        N = length(MatchStr),
+        Offset + N =< Length,
+        match_string_2(0, N, MatchStr, Offset, Str)
     ).
 
 :- pred match_string_2(int::in, int::in, string::in, int::in, string::in)
@@ -199,11 +189,9 @@ match_string_2(I, N, MatchStr, Offset, Str) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Utility predicates.
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred optional(
     pred(ps, ps):: in(pred(in, out) is semidet),
@@ -216,8 +204,6 @@ optional(P) -->
         { semidet_succeed }
     ).
 
-%-----------------------------------------------------------------------------%
-
 :- pred zero_or_more(
     pred(ps, ps)::in(pred(in, out) is semidet),
     ps::in, ps::out) is semidet.
@@ -229,8 +215,6 @@ zero_or_more(P) -->
         { semidet_succeed }
     ).
 
-%-----------------------------------------------------------------------------%
-
 :- pred one_or_more(
     pred(ps, ps)::in(pred(in, out) is semidet),
     ps::in, ps::out) is semidet.
@@ -238,8 +222,6 @@ zero_or_more(P) -->
 one_or_more(P) -->
     P,
     zero_or_more(P).
-
-%-----------------------------------------------------------------------------%
 
 :- pred brackets(string::in,
     pred(ps, ps)::in(pred(in, out) is semidet),
@@ -249,8 +231,6 @@ brackets(L, P, R) -->
     punct(L),
     P,
     punct(R).
-
-%-----------------------------------------------------------------------------%
 
 :- pred seq(
     pred(ps, ps)::in(pred(in, out) is semidet),
@@ -263,17 +243,13 @@ seq(P, Q) -->
     P,
     Q.
 
-%-----------------------------------------------------------------------------%
-
 :- pred comma_separated_list(
     pred(ps, ps)::in(pred(in, out) is semidet),
     ps::in, ps::out) is semidet.
 
 comma_separated_list(P) -->
     P,
-    zero_or_more(seq(punct(","), P)).
-
-%-----------------------------------------------------------------------------%
+    zero_or_more(seq(punct(", "), P)).
 
 :- pred whitespace(ps::in, ps::out) is semidet.
 
@@ -310,7 +286,7 @@ skip_to_end_of_trad_comment -->
         skip_to_end_of_trad_comment
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred punct(string::in, ps::in, ps::out) is semidet.
 
@@ -318,16 +294,12 @@ punct(Punct) -->
     match_string(Punct),
     whitespace.
 
-%-----------------------------------------------------------------------------%
-
 :- pred keyword(string::in, ps::in, ps::out) is semidet.
 
 keyword(Keyword) -->
     match_string(Keyword),
     not(java_identifier_part),
     whitespace.
-
-%-----------------------------------------------------------------------------%
 
 :- pred keyword(string::in,
     pred(ps, ps)::in(pred(in, out) is semidet),
@@ -339,11 +311,10 @@ keyword(Keyword, P) -->
     whitespace,
     P.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred java_identifier( /*string::out,*/ ps::in, ps::out)
+:- pred java_identifier( /*string::out, */ ps::in, ps::out)
     is semidet.
-
 
 java_identifier/*(Identifier)*/ -->
 %   current_offset(Start),
@@ -365,7 +336,7 @@ java_identifier_part -->
     char(C),
     { char.is_alnum_or_underscore(C) ; C = ('$') }.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred floating_point_literal(ps::in, ps::out) is semidet.
 
@@ -406,7 +377,7 @@ float_type_suffix -->
     char(C),
     { C = ('F') ; C = ('f') ; C = ('D') ; C = ('d') }.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred integer_literal(ps::in, ps::out) is semidet.
 
@@ -465,7 +436,7 @@ digit(Base) -->
     char(C),
     { char.digit_to_int(C, D), D < Base }.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred character_literal(ps::in, ps::out) is semidet.
 
@@ -499,7 +470,7 @@ possibly_escaped_char -->
         []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred string_literal(ps::in, ps::out) is semidet.
 
@@ -514,7 +485,7 @@ string_char -->
     not(char('"')),
     possibly_escaped_char.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred boolean_literal(ps::in, ps::out) is semidet.
 
@@ -527,28 +498,24 @@ boolean_literal -->
         keyword("false")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred null_literal(ps::in, ps::out) is semidet.
 
 null_literal -->
     keyword("null").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Taken from
 % http://java.sun.com/docs/books/jls/second_edition/html/syntax.doc.html
-
-%      _________________________________________________________________
 %
 %    [5]Contents | [6]Prev | [7]Next | [8]Index Java Language Specification
 %    Second Edition
 %
 %    [9]Copyright 2000 Sun Microsystems, Inc. All rights reserved
 %    Please send any comments or corrections to the [10]JLS team
-
 %                                     Syntax
-%      _________________________________________________________________
 %
 %    This chapter presents a grammar for the Java programming language.
 %
@@ -562,7 +529,7 @@ null_literal -->
 %      * [x] denotes zero or one occurrences of x.
 %      * {x} denotes zero or more occurrences of x.
 %      * x | y means one of either x or y.
-
+%
 % Identifier:
 %         IDENTIFIER
 %
@@ -642,7 +609,7 @@ assignment_operator_expression1 -->
 %         *=
 %         /=
 %         &=
-%         |=
+%         | =
 %         ^=
 %         %=
 %         <<=
@@ -677,7 +644,7 @@ assignment_operator -->
     then
         []
     else if
-        punct("|=")
+        punct(" | =")
     then
         []
     else if
@@ -787,7 +754,7 @@ infix_op_expression3 -->
     expression3.
 
 % Infixop:
-%         ||
+%         | |
 %         &&
 %         |
 %         ^
@@ -811,7 +778,7 @@ infix_op_expression3 -->
 
 infix_op -->
     ( if
-        punct("||")
+        punct(" | |")
     then
         []
     else if
@@ -819,7 +786,7 @@ infix_op -->
     then
         []
     else if
-        punct("|")
+        punct(" | ")
     then
         []
     else if
@@ -1258,7 +1225,7 @@ class_creator_rest -->
     optional(class_body).
 
 % ArrayInitializer:
-%         { [VariableInitializer {, VariableInitializer} [,]] }
+%         { [VariableInitializer {, VariableInitializer} [, ]] }
 
 :- pred array_initializer(ps::in, ps::out) is semidet.
 
@@ -1272,7 +1239,7 @@ array_initializer -->
 
 array_initializer_body -->
     comma_separated_list(variable_initializer),
-    optional(punct(",")).
+    optional(punct(", ")).
 
 % VariableInitializer:
 %         ArrayInitializer
@@ -1913,7 +1880,7 @@ method_or_field_decl -->
 %         VariableDeclaratorRest
 %         MethodDeclaratorRest
 %         XXX First should be
-%           VariableDeclaratorRest [',' VariableDeclarators]
+%           VariableDeclaratorRest [', ' VariableDeclarators]
 
 :- pred method_or_field_rest(ps::in, ps::out) is semidet.
 
@@ -1924,7 +1891,7 @@ method_or_field_rest -->
         []
     else
         variable_declarator_rest,
-        ( if punct(",") then
+        ( if punct(", ") then
             variable_declarators
         else
             []
@@ -2106,8 +2073,8 @@ formal_parameter -->
 method_body -->
     block.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred global_table_reset(io::di, io::uo) is det.
 

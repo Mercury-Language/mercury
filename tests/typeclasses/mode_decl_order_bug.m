@@ -1,41 +1,27 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module mode_decl_order_bug.
 
-% +++++++++++
 :- interface.
-% +++++++++++
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
-% ----------
 :- type term
-% ----------
+    --->    parameter(parameter)
+    ;       value(value).
 
---->	parameter(parameter)
-;	value(value).
-
-
-% -----------
 :- type bidon
-% -----------
+    --->    bidon(term).
 
---->	bidon(term).
-
-
-% -----------
 :- type value
-% -----------
+    --->    value(float, float).
 
---->	value(float,float).
-
-% ---------------
 :- type parameter
-% ---------------
-
---->	parameter(string).
-
+    --->    parameter(string).
 
 % We declare a typeclass for the constants used in the expressions.
 % The user has to provide a null element for the mult operator
@@ -44,119 +30,93 @@
 % or not.
 % Finally, the user has to provide a way of turning a minus operator
 % to a plus. Typically, this is done by doing :
-% A - B -> A + ( B * -1 )
+% A - B -> A + (B * -1)
 % where the constant -1 is up to the user to define...
-:- typeclass constant( C)
-where	[
-	func null_for_mult = C,
 
-	pred is_null_for_mult( C),
-	mode is_null_for_mult( in) is semidet,
+:- typeclass constant(C) where [
+    func null_for_mult = C,
 
-	func null_for_plus = C,
-	mode null_for_plus = out is det,
+    pred is_null_for_mult(C),
+    mode is_null_for_mult(in) is semidet,
 
-	func minus_one = C,
-	mode minus_one = out is det,
+    func null_for_plus = C,
+    mode null_for_plus = out is det,
 
-	mode null_for_mult = out is det,
+    func minus_one = C,
+    mode minus_one = out is det,
 
-	pred is_null_for_plus( C),
-	mode is_null_for_plus( in) is semidet
-	].
+    mode null_for_mult = out is det,
 
-% ++++++++++++++++
+    pred is_null_for_plus(C),
+    mode is_null_for_plus(in) is semidet
+].
+
+%---------------------------------------------------------------------------%
+
 :- implementation.
-% ++++++++++++++++
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Declares the predicates needed to handle the constants in
 % the expressions.
+:- instance constant(term) where [
+    func(null_for_mult/0) is my_null_for_mult,
 
-:- instance constant( term)
-where	[
-	func( null_for_mult/0) is my_null_for_mult,
+    pred(is_null_for_mult/1) is my_is_null_for_mult,
 
-	pred( is_null_for_mult/1) is my_is_null_for_mult,
+    func(null_for_plus/0) is my_null_for_plus,
 
-	func( null_for_plus/0) is my_null_for_plus,
+    pred(is_null_for_plus/1) is my_is_null_for_plus,
 
-	pred( is_null_for_plus/1) is my_is_null_for_plus,
+    func(minus_one/0) is my_minus_one
+].
 
-	func( minus_one/0) is my_minus_one
-	].
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% This function generates a null element for the multiplication.
-
+    % This function generates a null element for the multiplication.
+    %
 :- func my_null_for_mult = term.
 :- mode my_null_for_mult = out is det.
 
-my_null_for_mult = value( definition_value( 1.0)).
+my_null_for_mult = value(definition_value(1.0)).
 
+    % This predicate succeeds if the argument is the 1.0 value.
+    %
+:- pred my_is_null_for_mult(term).
+:- mode my_is_null_for_mult(in) is semidet.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+my_is_null_for_mult(value(definition_value(1.0))).
 
-% This predicate succeeds if the argument is the 1.0 value.
-
-:- pred my_is_null_for_mult( term).
-:- mode my_is_null_for_mult( in) is semidet.
-
-my_is_null_for_mult( value( definition_value( 1.0))).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% This function generates a null element for the addition.
-
+    % This function generates a null element for the addition.
+    %
 :- func my_null_for_plus = term.
 :- mode my_null_for_plus = out is det.
 
-my_null_for_plus = value( definition_value( 0.0)).
+my_null_for_plus = value(definition_value(0.0)).
 
+    % This predicate succeeds if the argument is the 0.0 value.
+    %
+:- pred my_is_null_for_plus(term).
+:- mode my_is_null_for_plus(in) is semidet.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+my_is_null_for_plus(value(definition_value(0.0))).
 
-% This predicate succeeds if the argument is the 0.0 value.
-
-:- pred my_is_null_for_plus( term).
-:- mode my_is_null_for_plus( in) is semidet.
-
-my_is_null_for_plus( value( definition_value( 0.0))).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% This function generates a null element for the addition.
-
+    % This function generates a null element for the addition.
+    %
 :- func my_minus_one = term.
 :- mode my_minus_one = out is det.
 
-my_minus_one = value( definition_value( -1.0)).
+my_minus_one = value(definition_value(-1.0)).
 
+    % This predicate is used to turn a float or a pair of floats
+    % into the type value.
+    %
+:- func definition_value(float) = value.
+:- mode definition_value(in) = out is det.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+definition_value(X) = value(X, X).
 
-% This predicate is used to turn a float or a pair of floats
-% into the type value.
-:- func definition_value( float) = value.
-:- mode definition_value( in) = out is det.
+:- func definition_value(float, float) = value.
+:- mode definition_value(in, in) = out is det.
 
-definition_value(X) = value( X, X).
+definition_value(X, Y) = value(X, Y).
 
-:- func definition_value( float, float) = value.
-:- mode definition_value( in, in) = out is det.
-
-definition_value( X, Y) = value( X, Y).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%:- pred main(io__state, io__state).
-%:- mode main(di, uo) is det.
-
-main( In, Out) :-
-	io__write( bidon( minus_one), In, Int3),
-	io__nl( Int3, Out).
+main(In, Out) :-
+    io__write(bidon(minus_one), In, Int3),
+    io__nl(Int3, Out).

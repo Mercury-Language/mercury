@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module intermod_pragma_import.
 
 :- interface.
@@ -9,5 +13,4 @@
 :- import_module intermod_pragma_import2.
 
 q(A, B) :-
-        implemented_as_pragma_import(A, B).
-
+    implemented_as_pragma_import(A, B).

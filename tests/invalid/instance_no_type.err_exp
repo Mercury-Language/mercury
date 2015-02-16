@@ -1,12 +1,12 @@
-instance_no_type.m:019: Error: abstract instance declaration for type class
-instance_no_type.m:019:   `instance_no_type.tc'/1 contains the type
-instance_no_type.m:019:   `instance_no_type.no_such_type'/0 but that type is
-instance_no_type.m:019:   not visible in the module interface.
-instance_no_type.m:024: Error: abstract instance declaration for type class
-instance_no_type.m:024:   `instance_no_type.tc2'/2 contains the type
-instance_no_type.m:024:   `instance_no_type.no_such_type'/0 but that type is
-instance_no_type.m:024:   not visible in the module interface.
-instance_no_type.m:024: Error: abstract instance declaration for type class
-instance_no_type.m:024:   `instance_no_type.tc2'/2 contains the type
-instance_no_type.m:024:   `instance_no_type.no_such_type2'/0 but that type is
-instance_no_type.m:024:   not visible in the module interface.
+instance_no_type.m:025: Error: abstract instance declaration for type class
+instance_no_type.m:025:   `instance_no_type.tc'/1 contains the type
+instance_no_type.m:025:   `instance_no_type.no_such_type'/0 but that type is
+instance_no_type.m:025:   not visible in the module interface.
+instance_no_type.m:030: Error: abstract instance declaration for type class
+instance_no_type.m:030:   `instance_no_type.tc2'/2 contains the type
+instance_no_type.m:030:   `instance_no_type.no_such_type'/0 but that type is
+instance_no_type.m:030:   not visible in the module interface.
+instance_no_type.m:030: Error: abstract instance declaration for type class
+instance_no_type.m:030:   `instance_no_type.tc2'/2 contains the type
+instance_no_type.m:030:   `instance_no_type.no_such_type2'/0 but that type is
+instance_no_type.m:030:   not visible in the module interface.

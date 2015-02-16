@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This code is a cut down version of merge_key_ranges_2 in rl_key.m.
 % It is a regression test; the 21 June 2004 version of the compiler got
 % a compiler abort when compiling this code with deep profiling enabled.
@@ -29,36 +33,37 @@
 
 :- interface.
 
-:- import_module bool, list.
+:- import_module bool.
+:- import_module list.
 
 :- type bounding_tuple
-	--->	infinity
-	;	bound(list(int)).
+    --->    infinity
+    ;       bound(list(int)).
 
 :- pred merge_key_ranges_2(bounding_tuple::in,
-	bounding_tuple::in, bool::out) is det.
+    bounding_tuple::in, bool::out) is det.
 
 :- implementation.
 
 :- import_module std_util.
 
 :- type upper_lower
-	--->	upper
-	;	lower.
+    --->    upper
+    ;       lower.
 
 merge_key_ranges_2(Lower1, Upper2, IsNeeded) :-
-	( less_or_equal(Lower1, upper, Upper2) ->
-		IsNeeded = no
-	;
-		IsNeeded = yes
-	).
+    ( less_or_equal(Lower1, upper, Upper2) ->
+        IsNeeded = no
+    ;
+        IsNeeded = yes
+    ).
 
 :- pragma inline(less_or_equal/3).
 
 :- pred less_or_equal(bounding_tuple::in,
-	upper_lower::in, bounding_tuple::in) is semidet.
+    upper_lower::in, bounding_tuple::in) is semidet.
 
 less_or_equal(infinity, _, _).
 less_or_equal(_, upper, infinity).
 less_or_equal(bound(_), _, bound(_)) :-
-	semidet_succeed.
+    semidet_succeed.

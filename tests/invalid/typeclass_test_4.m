@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module typeclass_test_4.
 :- interface.
 :- import_module io.
@@ -5,16 +9,17 @@
 
 :- implementation.
 
-main --> io__write_int(type_num(43)).
+main -->
+    io__write_int(type_num(43)).
 
 :- typeclass numbered_type(T) where [
-	func type_num(T::in) = (int::out) is det
+    func type_num(T::in) = (int::out) is det
 ].
 
 :- instance numbered_type(int) where [
-	func(type_num/0) is foo_type_num
+    func(type_num/0) is foo_type_num
 ].
 
 :- func foo_type_num(T::in) = (int::out) is det.
-foo_type_num(_) = 42.
 
+foo_type_num(_) = 42.

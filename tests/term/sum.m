@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module sum.
 
 :- interface.
@@ -6,10 +10,12 @@
 % :- mode sum(out, in, out) is nondet. SECOND CLAUSE NOT WELL MODED
 :- mode sum(out, out, in) is multi.
 
-:- type nat	--->	zero ; s(nat).
+:- type nat
+    --->    zero
+    ;       s(nat).
 
 :- implementation.
 
 sum(X, s(Y), s(Z)) :-
-	sum(X, Y, Z).
+    sum(X, Y, Z).
 sum(X, zero, X).

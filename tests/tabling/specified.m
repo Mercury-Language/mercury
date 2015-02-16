@@ -1,6 +1,6 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This test case is designed to test the functionality of tabling pragmas
 % that explicitly specify how each input argument should be looked up in the
@@ -105,7 +105,7 @@ trial(TrialType, ListN, IntN, Time, MTime, !IO) :-
     ),
     require(unify(Res, MRes), "tabling produces wrong answer").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ap_lp_fib_test(pair(list(int), T)::in, list(int)::out) is det.
 
@@ -137,7 +137,7 @@ vp_ll_fib_test(N - CopyN, F) :-
 vv_ll_fib_test(N - CopyN, F) :-
     vv_ll_fib(N, CopyN, F).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred ap_lp_fib(list(int)::in, T::in, list(int)::out) is det.
 :- pragma memo(ap_lp_fib(in, in, out),
@@ -251,7 +251,7 @@ vv_ll_fib(N, CopyN, F) :-
         F = add_digits(F1, F2)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func add_digits(list(int), list(int)) = list(int).
 

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module duplicate_instance_3.
 :- interface.
 :- import_module io.
@@ -9,8 +13,8 @@
 
 % This instance definition conflicts with the one in library/int.m.
 :- instance enum(int) where [
-        to_int(_) = 0,
-	from_int(X) = X
+    to_int(_) = 0,
+    from_int(X) = X
 ].
 
 main --> [].

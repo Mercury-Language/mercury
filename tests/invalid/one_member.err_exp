@@ -1,26 +1,26 @@
-one_member.m:044: Error: this `arbitrary' scope is not nested inside a
-one_member.m:044:   `promise_equivalent_solution_sets' scope.
-one_member.m:047: In `one_member2'(in, out):
-one_member.m:047:   warning: determinism declaration could be tighter.
-one_member.m:047:   Declared `nondet', inferred `semidet'.
-one_member.m:051: Error: the `arbitrary' goal lists an extra variable: Tree.
-one_member.m:051: Error: this `arbitrary' scope and the
-one_member.m:051:   `promise_equivalent_solution_sets' scope it is nested
-one_member.m:051:   inside overlap on the variable Item.
-one_member.m:050:   This is the outer `promise_equivalent_solution_sets' scope.
-one_member.m:052: Error: unification for non-canonical type
-one_member.m:052:   `one_member.set_ctree234'/1 occurs in a context which
-one_member.m:052:   requires all solutions.
-one_member.m:052:   Since the type has a user-defined equality predicate, I
-one_member.m:052:   must presume that there is more than one possible concrete
-one_member.m:052:   representation for each abstract value of this type. The
-one_member.m:052:   results of this unification might depend on the choice of
-one_member.m:052:   concrete representation. Finding all possible solutions to
-one_member.m:052:   this unification would require backtracking over all
-one_member.m:052:   possible representations, but I'm not going to do that
-one_member.m:052:   implicitly. (If that's really what you want, you must do it
-one_member.m:052:   explicitly.)
-one_member.m:053:   Call to do_one_member can fail.
-one_member.m:061: Error: `promise_equivalent_solution_sets' scope is nested
-one_member.m:061:   inside another.
-one_member.m:060:   This is the outer `promise_equivalent_solution_sets' scope.
+one_member.m:046: Error: this `arbitrary' scope is not nested inside a
+one_member.m:046:   `promise_equivalent_solution_sets' scope.
+one_member.m:049: In `one_member2'(in, out):
+one_member.m:049:   warning: determinism declaration could be tighter.
+one_member.m:049:   Declared `nondet', inferred `semidet'.
+one_member.m:053: Error: the `arbitrary' goal lists an extra variable: Tree.
+one_member.m:053: Error: this `arbitrary' scope and the
+one_member.m:053:   `promise_equivalent_solution_sets' scope it is nested
+one_member.m:053:   inside overlap on the variable Item.
+one_member.m:052:   This is the outer `promise_equivalent_solution_sets' scope.
+one_member.m:054: Error: unification for non-canonical type
+one_member.m:054:   `one_member.set_ctree234'/1 occurs in a context which
+one_member.m:054:   requires all solutions.
+one_member.m:054:   Since the type has a user-defined equality predicate, I
+one_member.m:054:   must presume that there is more than one possible concrete
+one_member.m:054:   representation for each abstract value of this type. The
+one_member.m:054:   results of this unification might depend on the choice of
+one_member.m:054:   concrete representation. Finding all possible solutions to
+one_member.m:054:   this unification would require backtracking over all
+one_member.m:054:   possible representations, but I'm not going to do that
+one_member.m:054:   implicitly. (If that's really what you want, you must do it
+one_member.m:054:   explicitly.)
+one_member.m:055:   Call to do_one_member can fail.
+one_member.m:063: Error: `promise_equivalent_solution_sets' scope is nested
+one_member.m:063:   inside another.
+one_member.m:062:   This is the outer `promise_equivalent_solution_sets' scope.

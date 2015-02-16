@@ -1,15 +1,15 @@
-hawkins_mm_fail_reset.m:020: In `entry'(out):
-hawkins_mm_fail_reset.m:020:   warning: determinism declaration could be
-hawkins_mm_fail_reset.m:020:   tighter.
-hawkins_mm_fail_reset.m:020:   Declared `nondet', inferred `failure'.
-hawkins_mm_fail_reset.m:027: Error: `:- pragma minimal_model' declaration not
-hawkins_mm_fail_reset.m:027:   allowed for procedure with determinism
-hawkins_mm_fail_reset.m:027:   `failure'.
-hawkins_mm_fail_reset.m:030: Warning: this disjunct will never have any
-hawkins_mm_fail_reset.m:030:   solutions.
-hawkins_mm_fail_reset.m:033: Warning: this disjunct will never have any
-hawkins_mm_fail_reset.m:033:   solutions.
-hawkins_mm_fail_reset.m:036: Error: `:- pragma minimal_model' declaration not
-hawkins_mm_fail_reset.m:036:   allowed for procedure with determinism
-hawkins_mm_fail_reset.m:036:   `failure'.
+hawkins_mm_fail_reset.m:024: In `entry'(out):
+hawkins_mm_fail_reset.m:024:   warning: determinism declaration could be
+hawkins_mm_fail_reset.m:024:   tighter.
+hawkins_mm_fail_reset.m:024:   Declared `nondet', inferred `failure'.
+hawkins_mm_fail_reset.m:032: Error: `:- pragma minimal_model' declaration not
+hawkins_mm_fail_reset.m:032:   allowed for procedure with determinism
+hawkins_mm_fail_reset.m:032:   `failure'.
+hawkins_mm_fail_reset.m:035: Warning: this disjunct will never have any
+hawkins_mm_fail_reset.m:035:   solutions.
+hawkins_mm_fail_reset.m:038: Warning: this disjunct will never have any
+hawkins_mm_fail_reset.m:038:   solutions.
+hawkins_mm_fail_reset.m:041: Error: `:- pragma minimal_model' declaration not
+hawkins_mm_fail_reset.m:041:   allowed for procedure with determinism
+hawkins_mm_fail_reset.m:041:   `failure'.
 For more information, recompile with `-E'.

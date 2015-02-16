@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % A regression test.
 % Mercury 0.9.1 and earlier reported a spurious mode error
 % for this code.
@@ -9,11 +13,17 @@
 
 :- implementation.
 
-:- type foo ---> f(int).
+:- type foo
+    --->    f(int).
 
 :- pred p(foo::mostly_unique >> dead) is det.
-:- pred q(foo::unique(f(unique(42))) >> dead) is det.
 
 p(_).
-q(X) :- p(X).
-test :- q(f(42)).
+
+:- pred q(foo::unique(f(unique(42))) >> dead) is det.
+
+q(X) :-
+    p(X).
+
+test :-
+    q(f(42)).

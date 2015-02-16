@@ -1,5 +1,5 @@
-unsatisfiable_constraint_msg.m:016: In clause for predicate `main'/2:
-unsatisfiable_constraint_msg.m:016:   unsatisfiable typeclass constraints:
-unsatisfiable_constraint_msg.m:016:   `unsatisfiable_constraint_msg.tcb(unsatisfiable_constraint_msg.tb(string))'
-unsatisfiable_constraint_msg.m:016:   and
-unsatisfiable_constraint_msg.m:016:   `unsatisfiable_constraint_msg.tcc(string)'.
+unsatisfiable_constraint_msg.m:020: In clause for predicate `main'/2:
+unsatisfiable_constraint_msg.m:020:   unsatisfiable typeclass constraints:
+unsatisfiable_constraint_msg.m:020:   `unsatisfiable_constraint_msg.tcb(unsatisfiable_constraint_msg.tb(string))'
+unsatisfiable_constraint_msg.m:020:   and
+unsatisfiable_constraint_msg.m:020:   `unsatisfiable_constraint_msg.tcc(string)'.

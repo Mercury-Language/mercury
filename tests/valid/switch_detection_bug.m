@@ -1,8 +1,12 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test for a bug in switch detection
 % where it was preferring incomplete switches to complete
 % one-case switches, and hence inferring the wrong determinism.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module switch_detection_bug.
 
@@ -11,17 +15,14 @@
 :- type note ---> note(rank, modifier, octave).
 
 :- type rank ---> c ; d ; e ; f ; g ; a ; b .
-
 :- type modifier ---> natural ; sharp ; flat .
-
 :- type octave == int.
-
 :- type qualifier ---> maj ; min .
 
 :- pred next_topnote(note, qualifier, note).
 :- mode next_topnote(in, in, out) is multi.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -42,6 +43,5 @@ next_topnote(note(a, _, Oct), maj, note(b, natural, Oct)).
 next_topnote(note(b, _, Oct), maj, note(a, natural, Oct)).
 next_topnote(note(b, _, Oct), min, note(a, flat, Oct)).
 
-%------------------------------------------------------------------------------%
-
+%---------------------------------------------------------------------------%
 

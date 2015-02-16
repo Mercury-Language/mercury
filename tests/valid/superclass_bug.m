@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module superclass_bug.
 :- interface.
 
@@ -5,9 +9,8 @@
 :- type e ---> e.
 :- type c ---> c.
 
-:- typeclass my_stream(Stream, State) <= (Stream -> State) where
-[
-         pred name(Stream::in, string::out, State::di, State::uo) is det
+:- typeclass my_stream(Stream, State) <= (Stream -> State) where [
+     pred name(Stream::in, string::out, State::di, State::uo) is det
 ].
 
 :- typeclass my_god(Stream, State, Error)
@@ -26,13 +29,12 @@
 :- type tab_expander(S)
      --->    tab_expander(int, S).
 
-:- instance my_stream(tab_expander(S), s)
-     <= my_input(S, c, s, e) where 
-[
-    pred(name/4) is foo 
+:- instance my_stream(tab_expander(S), s) <= my_input(S, c, s, e) where [
+    pred(name/4) is foo
 ].
 
 :- pred foo(tab_expander(S)::in, string::out, s::di, s::uo) is det
- 	<= my_input(S, c, s, e).
+    <= my_input(S, c, s, e).
+
 foo(tab_expander(_, Stream), Name, !S) :-
- 	name(Stream, Name, !S).
+    name(Stream, Name, !S).

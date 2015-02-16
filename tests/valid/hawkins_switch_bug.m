@@ -1,4 +1,8 @@
-% The predicate foo caused the following assertion failure in 
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% The predicate foo caused the following assertion failure in
 % rotd-2006-08-03:
 %
 % Uncaught Mercury exception:
@@ -12,7 +16,7 @@
 % sure that when quantification might introduce new variables, the RTTI
 % varmaps are updated.
 %
-% The following test case was supplied by Peter Hawkins.
+% The test case was supplied by Peter Hawkins.
 
 :- module hawkins_switch_bug.
 :- interface.

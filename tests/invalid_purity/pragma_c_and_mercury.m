@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % A test that we report an error for procedures defined with both
 % c_code and Mercury clauses, but without `pragma promise_pure'.
 
@@ -8,7 +12,6 @@
 :- interface.
 
 :- pred c_int_unify(int, int).
-
 
 :- implementation.
 

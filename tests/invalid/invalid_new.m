@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module invalid_new.
 :- interface.
 
@@ -16,6 +20,5 @@
 na(T) = 'new a'(T).
 nb(T) = 'new b'(T).
 
-	% Error: using 'new' where not required.
+    % Error: using 'new' where not required.
 nc(T) = 'new c'(T).
-

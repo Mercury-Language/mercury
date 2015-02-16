@@ -1,5 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module mday.
-	
+
 :- interface.
 
 :- import_module io.
@@ -11,11 +15,11 @@
 :- pragma require_feature_set([memo]).
 
 main(!IO) :-
-	( x(_) ->
-		write_string("yes\n", !IO)
-	;
-		write_string("no\n", !IO)
-	).
+    ( x(_) ->
+        write_string("yes\n", !IO)
+    ;
+        write_string("no\n", !IO)
+    ).
 
 :- pred x(int::out) is nondet.
 :- pred y(int::out) is nondet.

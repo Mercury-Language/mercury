@@ -1,48 +1,48 @@
-oisu_check_semantic_errors.m:026: The first argument of predicate
-oisu_check_semantic_errors.m:026:   `create_foo2'/1 should be a creator of its
-oisu_check_semantic_errors.m:026:   OISU type, but its mode is not output.
-oisu_check_semantic_errors.m:027: The second argument of predicate
-oisu_check_semantic_errors.m:027:   `create_foo3'/2 handles a previous handled
-oisu_check_semantic_errors.m:027:   OISU type.
-oisu_check_semantic_errors.m:029: Since the first argument of predicate
-oisu_check_semantic_errors.m:029:   `mutate_foo1'/3 is a mutator of its OISU
-oisu_check_semantic_errors.m:029:   type, it should be followed by another
-oisu_check_semantic_errors.m:029:   argument of the same type.
-oisu_check_semantic_errors.m:029: The third argument of predicate
-oisu_check_semantic_errors.m:029:   `mutate_foo1'/3 handles a previous handled
-oisu_check_semantic_errors.m:029:   OISU type.
+oisu_check_semantic_errors.m:029: The first argument of predicate
+oisu_check_semantic_errors.m:029:   `create_foo2'/1 should be a creator of its
+oisu_check_semantic_errors.m:029:   OISU type, but its mode is not output.
 oisu_check_semantic_errors.m:030: The second argument of predicate
-oisu_check_semantic_errors.m:030:   `mutate_foo2'/3 should be the input of the
-oisu_check_semantic_errors.m:030:   mutator of its OISU type, but its mode is
-oisu_check_semantic_errors.m:030:   not input.
-oisu_check_semantic_errors.m:030: The third argument of predicate
-oisu_check_semantic_errors.m:030:   `mutate_foo2'/3 should be the output of the
-oisu_check_semantic_errors.m:030:   mutator of its OISU type, but its mode is
-oisu_check_semantic_errors.m:030:   not output.
-oisu_check_semantic_errors.m:032: predicate `destroy_foo1'/3 is declared to
-oisu_check_semantic_errors.m:032:   handle the following OISU types, but it
-oisu_check_semantic_errors.m:032:   does not:
-oisu_check_semantic_errors.m:032:     `oisu_check_semantic_errors.bar'/0
-oisu_check_semantic_errors.m:032:     (as destructor).
-oisu_check_semantic_errors.m:033: The first argument of predicate
-oisu_check_semantic_errors.m:033:   `destroy_foo2'/3 should be a destructor of
-oisu_check_semantic_errors.m:033:   its OISU type, but its mode is not input.
-oisu_check_semantic_errors.m:034: The second argument of predicate
-oisu_check_semantic_errors.m:034:   `destroy_foo3'/4 handles a previous handled
-oisu_check_semantic_errors.m:034:   OISU type.
-oisu_check_semantic_errors.m:035: predicate `destroy_foo4'/3 is mentioned in a
-oisu_check_semantic_errors.m:035:   `:- pragma oisu' declaration, so it should
-oisu_check_semantic_errors.m:035:   have exactly one procedure.
-oisu_check_semantic_errors.m:039: predicate `create_bar1'/2 is declared to
-oisu_check_semantic_errors.m:039:   handle the following OISU types, but it
-oisu_check_semantic_errors.m:039:   does not:
-oisu_check_semantic_errors.m:039:     `oisu_check_semantic_errors.foo'/0
-oisu_check_semantic_errors.m:039:     (as mutator).
-oisu_check_semantic_errors.m:043: predicate `destroy_bar1'/3 is declared to
-oisu_check_semantic_errors.m:043:   handle the following OISU types, but it
-oisu_check_semantic_errors.m:043:   does not:
-oisu_check_semantic_errors.m:043:     `oisu_check_semantic_errors.foo'/0
-oisu_check_semantic_errors.m:043:     (as destructor).
-oisu_check_semantic_errors.m:045: The second argument of predicate
-oisu_check_semantic_errors.m:045:   `create_foobar1'/3 is an OISU type but it
-oisu_check_semantic_errors.m:045:   is not listed in that type's OISU pragma.
+oisu_check_semantic_errors.m:030:   `create_foo3'/2 handles a previous handled
+oisu_check_semantic_errors.m:030:   OISU type.
+oisu_check_semantic_errors.m:032: Since the first argument of predicate
+oisu_check_semantic_errors.m:032:   `mutate_foo1'/3 is a mutator of its OISU
+oisu_check_semantic_errors.m:032:   type, it should be followed by another
+oisu_check_semantic_errors.m:032:   argument of the same type.
+oisu_check_semantic_errors.m:032: The third argument of predicate
+oisu_check_semantic_errors.m:032:   `mutate_foo1'/3 handles a previous handled
+oisu_check_semantic_errors.m:032:   OISU type.
+oisu_check_semantic_errors.m:033: The second argument of predicate
+oisu_check_semantic_errors.m:033:   `mutate_foo2'/3 should be the input of the
+oisu_check_semantic_errors.m:033:   mutator of its OISU type, but its mode is
+oisu_check_semantic_errors.m:033:   not input.
+oisu_check_semantic_errors.m:033: The third argument of predicate
+oisu_check_semantic_errors.m:033:   `mutate_foo2'/3 should be the output of the
+oisu_check_semantic_errors.m:033:   mutator of its OISU type, but its mode is
+oisu_check_semantic_errors.m:033:   not output.
+oisu_check_semantic_errors.m:035: predicate `destroy_foo1'/3 is declared to
+oisu_check_semantic_errors.m:035:   handle the following OISU types, but it
+oisu_check_semantic_errors.m:035:   does not:
+oisu_check_semantic_errors.m:035:     `oisu_check_semantic_errors.bar'/0
+oisu_check_semantic_errors.m:035:     (as destructor).
+oisu_check_semantic_errors.m:036: The first argument of predicate
+oisu_check_semantic_errors.m:036:   `destroy_foo2'/3 should be a destructor of
+oisu_check_semantic_errors.m:036:   its OISU type, but its mode is not input.
+oisu_check_semantic_errors.m:037: The second argument of predicate
+oisu_check_semantic_errors.m:037:   `destroy_foo3'/4 handles a previous handled
+oisu_check_semantic_errors.m:037:   OISU type.
+oisu_check_semantic_errors.m:038: predicate `destroy_foo4'/3 is mentioned in a
+oisu_check_semantic_errors.m:038:   `:- pragma oisu' declaration, so it should
+oisu_check_semantic_errors.m:038:   have exactly one procedure.
+oisu_check_semantic_errors.m:042: predicate `create_bar1'/2 is declared to
+oisu_check_semantic_errors.m:042:   handle the following OISU types, but it
+oisu_check_semantic_errors.m:042:   does not:
+oisu_check_semantic_errors.m:042:     `oisu_check_semantic_errors.foo'/0
+oisu_check_semantic_errors.m:042:     (as mutator).
+oisu_check_semantic_errors.m:046: predicate `destroy_bar1'/3 is declared to
+oisu_check_semantic_errors.m:046:   handle the following OISU types, but it
+oisu_check_semantic_errors.m:046:   does not:
+oisu_check_semantic_errors.m:046:     `oisu_check_semantic_errors.foo'/0
+oisu_check_semantic_errors.m:046:     (as destructor).
+oisu_check_semantic_errors.m:048: The second argument of predicate
+oisu_check_semantic_errors.m:048:   `create_foobar1'/3 is an OISU type but it
+oisu_check_semantic_errors.m:048:   is not listed in that type's OISU pragma.

@@ -9,9 +9,9 @@
 % yields:
 %
 %    Software Error: map.lookup: key not found
-%	    Key Type: term.var(parse_tree.prog_data.prog_var_type)
-%	    Key Value: var(2)
-%	    Value Type: ml_backend.ml_gen_info.ml_ground_term
+%       Key Type: term.var(parse_tree.prog_data.prog_var_type)
+%       Key Value: var(2)
+%       Value Type: ml_backend.ml_gen_info.ml_ground_term
 %    Stack dump not available in this grade.
 %
 % (This test is derived from cut down version of browser/parse.m.)
@@ -26,8 +26,6 @@
 :- import_module list.
 :- import_module maybe.
 
-%---------------------------------------------------------------------------%
-
 :- type command ---> cmd_unknown.
 :- type path ---> path.
 :- type dir ---> dir.
@@ -40,7 +38,6 @@
 
 :- pred parse(list(string)::in, command::out) is semidet.
 
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -104,7 +101,7 @@ parse_cmd(_CmdToken, _ArgTokens, cmd_unknown) :-
 
 :- pred format_option_defaults(format_option::out, option_data::out) is multi.
 
-format_option_defaults(flat,        bool(no)).
-format_option_defaults(pretty,      bool(no)).
+format_option_defaults(flat,   bool(no)).
+format_option_defaults(pretty, bool(no)).
 
 %---------------------------------------------------------------------------%

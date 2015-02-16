@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module dep_par_29.
 
 :- interface.
@@ -18,7 +22,7 @@ main(!IO) :-
     &
         q(X, Z)
     ),
-    io.print({X,Y,Z}, !IO),
+    io.print({X, Y, Z}, !IO),
     io.nl(!IO).
 
 :- pred p(int::out) is det.
@@ -27,4 +31,4 @@ p(1).
 
 :- pred q(int::in, int::out) is det.
 :- pragma no_inline(q/2).
-q(X,X+10).
+q(X, X+10).

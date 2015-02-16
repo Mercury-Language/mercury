@@ -67,7 +67,8 @@
 
 % Uncomment these and the unsafe_perform_ios below to debug match_with_cterm
 % and its callers in the trace directory.
-% :- import_module io, unsafe.
+% :- import_module io.
+% :- import_module unsafe.
 % :- pragma promise_pure(match_with_cterm/3).
 
 match_with_cterm(Term, CTerm, Match) :-

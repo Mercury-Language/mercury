@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This test case tests the combination of existential types and
 % type classes, i.e. existential type class constraints.
 
@@ -8,27 +12,31 @@
 :- pred main(io__state::di, state::uo) is det.
 
 :- implementation.
-:- import_module std_util, int, string.
+
+:- import_module int.
+:- import_module std_util.
+:- import_module string.
 
 :- typeclass fooable(T) where [
-	pred foo(T::in, int::out) is det
+    pred foo(T::in, int::out) is det
 ].
 :- typeclass barable(T) where [
-	pred bar(T::in, int::out) is det
+    pred bar(T::in, int::out) is det
 ].
 
 :- instance fooable(int) where [
-	pred(foo/2) is int_foo
+    pred(foo/2) is int_foo
 ].
 
 :- instance fooable(string) where [
-	pred(foo/2) is string_foo
+    pred(foo/2) is string_foo
 ].
 
-	% my_univ_value(Univ):
-	%	returns the value of the object stored in Univ.
+    % my_univ_value(Univ):
+    %   returns the value of the object stored in Univ.
 
-:- type my_univ ---> some [T] make_my_univ(T) => fooable(T).
+:- type my_univ
+    --->    some [T] make_my_univ(T) => fooable(T).
 
 :- some [T] func my_univ_value(my_univ) = T => fooable(T).
 
@@ -47,17 +55,17 @@ int_foo(X, 2*X).
 string_foo(S, N) :- string__length(S, N).
 
 main -->
-	do_foo(42),
-	do_foo("blah"),
-	do_foo(my_exist_t),
-	do_foo(call_my_exist_t),
-	do_foo(my_univ_value(my_univ(45))),
-	do_foo(call_my_univ_value(my_univ("something"))).
+    do_foo(42),
+    do_foo("blah"),
+    do_foo(my_exist_t),
+    do_foo(call_my_exist_t),
+    do_foo(my_univ_value(my_univ(45))),
+    do_foo(call_my_univ_value(my_univ("something"))).
 
 :- pred do_foo(T::in, io__state::di, state::uo) is det <= fooable(T).
 do_foo(X) -->
-	{ foo(X, N) },
-	write(N), nl.
+    { foo(X, N) },
+    write(N), nl.
 
 call_my_exist_t = my_exist_t.
 

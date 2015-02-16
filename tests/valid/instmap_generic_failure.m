@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test.  The compiler incorrectly computed the instmap delta of
 % generic calls with no solutions.
 
@@ -5,8 +9,9 @@
 %
 % mmc -C --local-constraint-propagation instmap_generic_failure.m
 % Uncaught Mercury exception:
-% Software Error: instmap.m: Unexpected: merge_instmapping_delta_2: error merging var 8
-% 
+% Software Error: instmap.m: Unexpected:
+%   merge_instmapping_delta_2: error merging var 8
+%
 % The instmap for the then branch (below) is something like
 % `reachable([var(New)])' and the instmap for the else branch was
 % `reachable([])', so it couldn't merge them.  After the fix, the instmap for

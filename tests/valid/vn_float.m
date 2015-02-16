@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This is a regression test. Some versions of the compiler reported
 % an internal error when compiling with value numbering.
 
@@ -7,18 +11,25 @@
 
 :- interface.
 
-:- import_module list, array.
+:- import_module array.
+:- import_module list.
 
-:- type vec3	--->	vec(float, float, float).
+:- type vec3
+    --->    vec(float, float, float).
 
 :- pred get_planar_coords(list(int), array(vec3), list(vec3), vec3).
 :- mode get_planar_coords(in, in, out, out) is det.
 
 :- implementation.
 
-:- import_module require, math, float, int, std_util.
+:- import_module float.
+:- import_module int.
+:- import_module math.
+:- import_module require.
+:- import_module std_util.
 
-:- type mat3    --->    mat(vec3, vec3, vec3).
+:- type mat3
+    --->    mat(vec3, vec3, vec3).
 
 get_planar_coords(IndList, VertArr, PlaneList, Norm) :-
     (
@@ -36,8 +47,10 @@ get_planar_coords(IndList, VertArr, PlaneList, Norm) :-
         SinZ = math__sin(-Theta),
         CosY = math__cos(-Phi),
         SinY = math__sin(-Phi),
-        MZ = mat(vec(CosZ,-SinZ,0.0), vec(SinZ,CosZ,0.0), vec(0.0,0.0,1.0)),
-        MY = mat(vec(CosY,0.0,SinY), vec(0.0,1.0,0.0), vec(-SinY,0.0,CosY)),
+        MZ = mat(vec(CosZ, -SinZ, 0.0), vec(SinZ, CosZ, 0.0),
+            vec(0.0, 0.0, 1.0)),
+        MY = mat(vec(CosY, 0.0, SinY), vec(0.0, 1.0, 0.0),
+            vec(-SinY, 0.0, CosY)),
         M =  matmult(MZ, MY),
         move_vertices_to_plane(IndList, VertArr, -V1, M, PlaneList)
     ;

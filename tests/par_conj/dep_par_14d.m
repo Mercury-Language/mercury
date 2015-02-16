@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % dep_par_14 with the deforestation already done
 
 :- module dep_par_14d.
@@ -10,7 +14,7 @@
 
 main(!IO) :-
     R = [1, 5, 3, 4, 7, 8, 6, 9, 2, 0],
-    R = [_|T],
+    R = [_ | T],
     ( p(T, 1, A1)
     & p(T, A1, S)
     ),
@@ -20,8 +24,8 @@ main(!IO) :-
 :- pred p(list(int)::in, int::in, int::out) is det.
 
 p([], A, A).
-p([H|T], A0, A) :-
-    (if H = A0 then
+p([H | T], A0, A) :-
+    ( if H = A0 then
         ( p(T, A0, A1)
         & p(T, A1, A)
         )

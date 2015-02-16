@@ -1,14 +1,20 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % rotd-2007-10-19 and before would not emit an error if you used a type
 % that was only visible in the implementation section of a module in
 % an abstract instance declaration in the interface of the module.
-%-----------------------------------------------------------------------------%
+%
+%---------------------------------------------------------------------------%
 
 :- module instance_no_type.
 :- interface.
 
 :- import_module list.
 
-:- type foo ---> foo.
+:- type foo
+        --->    foo.
 
 :- typeclass tc(T) where [].
 :- typeclass tc2(A, B) where [].
@@ -23,8 +29,8 @@
 
 :- instance tc2(no_such_type, no_such_type2).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -37,6 +43,3 @@
 :- instance tc(no_such_type) where [].
 
 :- instance tc2(no_such_type, no_such_type2) where [].
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sw=4 et wm=0 tw=0

@@ -1,8 +1,13 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module initialise_parent.initialise_child.
 
 :- interface.
 
-:- type foo ---> foo.
+:- type foo
+    --->    foo.
 
 :- implementation.
 
@@ -10,4 +15,5 @@
 
 :- pred child_init(io::di, io::uo) is det.
 
-child_init(!IO) :- io.write_string("This is child_init/2...\n", !IO).
+child_init(!IO) :-
+    io.write_string("This is child_init/2...\n", !IO).

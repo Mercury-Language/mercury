@@ -1,6 +1,11 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This module should be compiled with `--no-user-guided-type-specialization'
 % to check that the declared specializations are still created, to avoid
 % link errors if importing modules are compiled with type specialization.
+
 :- module type_spec_2.
 
 :- interface.

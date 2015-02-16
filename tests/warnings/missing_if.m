@@ -1,6 +1,10 @@
-:- module missing_if.  
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+:- module missing_if.
 
-:- interface.  
+:- interface.
 
 :- pred bar(int, int).
 :- mode bar(in, out) is det.
@@ -10,12 +14,12 @@
 :- import_module require.
 
 bar(X, Y) :-
-	( 
-		X = 4 
-	->
-		Y = 3
-	;
-		Y = 9
-	;
-		error("This is fun.")
-	).
+    (
+        X = 4
+    ->
+        Y = 3
+    ;
+        Y = 9
+    ;
+        error("This is fun.")
+    ).

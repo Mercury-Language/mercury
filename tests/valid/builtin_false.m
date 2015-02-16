@@ -1,6 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % rotd-02-17 emitted a warning about the call to false never succeeding if
 % compiling with --intermodule-optimization and --no-fully-strict.
-%
+
 :- module builtin_false.
 
 :- interface.
@@ -10,8 +14,8 @@
 :- implementation.
 
 foo(X, Y) :-
-	( X = 3 ->
-		Y = 4
-	;
-		false
-	).
+    ( X = 3 ->
+        Y = 4
+    ;
+        false
+    ).

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module nondet_live.
 :- interface.
 
@@ -9,51 +13,50 @@
 :- import_module int.
 
 a1(X, _, Y) :-
-	A = 42,
-	(
-		b(X, X),
-		V = 10
-	;
-		b(A, A),
-		V = 20
-	),
-	some [W] (
-		c(V, W),
-		d(W, Y)
-	).
+    A = 42,
+    (
+        b(X, X),
+        V = 10
+    ;
+        b(A, A),
+        V = 20
+    ),
+    some [W] (
+        c(V, W),
+        d(W, Y)
+    ).
 
 a2(X, _, Y) :-
-	A = 42,
-	(
-		X = 45,
-		b(X, X),
-		V = 10
-	;
-		X = 47,
-		b(A, A),
-		V = 20
-	),
-	some [W] (
-		c(V, W),
-		d(W, Y)
-	).
-
+    A = 42,
+    (
+        X = 45,
+        b(X, X),
+        V = 10
+    ;
+        X = 47,
+        b(A, A),
+        V = 20
+    ),
+    some [W] (
+        c(V, W),
+        d(W, Y)
+    ).
 
 a3(X, _, Y) :-
-	A = 42,
-	(
-		X = 45
-	->
-		b(X, X),
-		V = 10
-	;
-		b(A, A),
-		V = 20
-	),
-	some [W] (
-		c(V, W),
-		d(W, Y)
-	).
+    A = 42,
+    (
+        X = 45
+    ->
+        b(X, X),
+        V = 10
+    ;
+        b(A, A),
+        V = 20
+    ),
+    some [W] (
+        c(V, W),
+        d(W, Y)
+    ).
 
 :- pred b(int::in, int::out) is nondet.
 :- pred c(int::in, int::out) is nondet.

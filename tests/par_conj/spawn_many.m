@@ -1,4 +1,5 @@
 % vim: ft=mercury ts=4 sw=4 et
+%
 % This program spawns many threads very quickly.  In an old implementation of
 % thread.spawn, each new Mercury thread would push a large C stack frame on the
 % executing Mercury engine's C stack.  When the engine hit a blocking call
@@ -46,7 +47,7 @@ loop(Channel, N, !IO) :-
 :- pred wait(channel(unit)::in, int::in, io::di, io::uo) is det.
 
 wait(Channel, Num, !IO) :-
-    (if Num = 0 then
+    ( if Num = 0 then
         true
     else
         channel.take(Channel, _Unit, !IO),

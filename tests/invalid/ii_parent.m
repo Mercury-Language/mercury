@@ -1,9 +1,13 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % rotd-2009-04-03 and before failed to detect the overlapping
 % instance in the child module unless --intermodule-optimization
 % was enabled, despite the fact that the necessary information
 % for doing is contained in the parent module's private
 % interface.
-%
+
 :- module ii_parent.
 :- interface.
 

@@ -1,19 +1,20 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Author: Ralph Becket <rafe@cs.mu.oz.au>
 %
 % This is a regression test for a bug involving the interaction of the mode
 % system and quantification, triggered by the state variable transformation.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module state_var_mode_bug.
 
 :- interface.
 
-:- import_module bool, int.
+:- import_module bool.
+:- import_module int.
 
 :- pred p(bool::in, bool::in, int::in, int::out) is semidet.
 

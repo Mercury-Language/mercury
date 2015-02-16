@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module typeclass_bogus_method.
 :- interface.
 
@@ -19,17 +23,17 @@
 incr(X) = X + 1.
 
 :- instance tc1(int) where [
-	func(foo1/1) is incr,
-	func(bar/2) is incr
+    func(foo1/1) is incr,
+    func(bar/2) is incr
 ].
 :- instance tc2(int) where [
-	func(foo2/1) is incr,
-	baz(X) = X + 1
+    func(foo2/1) is incr,
+    baz(X) = X + 1
 ].
 :- instance tc3(int) where [
-	func(foo5/1) is incr
+    func(foo5/1) is incr
 ].
 :- instance tc4(int) where [
-	func(foo4/1) is incr,
-	func(foo5/1) is incr
+    func(foo4/1) is incr,
+    func(foo5/1) is incr
 ].

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module stack_alloc.
 
 :- pred in(int::in) is semidet.
@@ -9,17 +13,16 @@
 :- pred p is semidet.
 
 p :-
-	(
-		out(X),
-		out(Y),
-		p,
-		in(X),
-		in(Y)
-	;
-		out(A),
-		out(B),
-		p,
-		in(A),
-		in(B)
-	).
-
+    (
+        out(X),
+        out(Y),
+        p,
+        in(X),
+        in(Y)
+    ;
+        out(A),
+        out(B),
+        p,
+        in(A),
+        in(B)
+    ).

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % The compiler of 2009-06-11 aborted on this test case.
 
 :- module implied_mode_no_tag.
@@ -7,7 +11,8 @@
 
 :- implementation.
 
-:- type nt ---> nt(string).
+:- type nt
+    --->    nt(string).
 
 p(S) :-
     q(S, nt(_)).

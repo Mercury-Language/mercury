@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module quant_constraint_2.
 :- interface.
 :- import_module io.
@@ -6,9 +10,9 @@
 
 :- typeclass c1(T1) where [].
 
-	% Error: T is existentially quantified, but appears in a universal
-	% constraint.
-	%
+    % Error: T is existentially quantified, but appears in a universal
+    % constraint.
+    %
 :- some [T] (func q = T <= c1(T)).
 
 :- implementation.
@@ -18,7 +22,6 @@
 q = 1.
 
 main(!IO) :-
-	X = q,
-	write(X, !IO),
-	nl(!IO).
-
+    X = q,
+    write(X, !IO),
+    nl(!IO).

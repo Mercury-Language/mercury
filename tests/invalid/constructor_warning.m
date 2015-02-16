@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module constructor_warning.
 
 :- interface.
@@ -8,10 +12,10 @@
 
 :- implementation.
 
-:- type foo --->	foo_baz(int)
-		;	foo_baz(int, int)
-		;	fanta_fanta_fanta.
-
+:- type foo
+    --->    foo_baz(int)
+    ;       foo_baz(int, int)
+    ;       fanta_fanta_fanta.
 
 bar(foo_baz).
 bar(fanta_fanta_fanta(1)).

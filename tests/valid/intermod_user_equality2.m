@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module intermod_user_equality2.
 
 :- interface.
@@ -9,9 +13,9 @@
 :- implementation.
 
 :- type foo
-	--->	ctor1(int, int)
-	;	ctor2(int, int)
-	where equality is foo_unify.
+    --->    ctor1(int, int)
+    ;       ctor2(int, int)
+    where equality is foo_unify.
 
 :- pred foo_unify(foo::in, foo::in) is semidet.
 foo_unify(X, X).

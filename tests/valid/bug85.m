@@ -1,14 +1,14 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
-% 
+%---------------------------------------------------------------------------%
+%
 % The following program causes an abort in rotd-2008-09-19.
 % Compile with:  mmc -O0 --deforestation -C bug85.m
 %
 % This testcase is derived from compiler/deep_profiling.m (+ a few other
 % modules.)
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module bug85.
 :- interface.
@@ -17,7 +17,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type coverage_after_known
     --->    coverage_after_known
@@ -89,12 +89,13 @@
     --->    port_counts_give_coverage_after
     ;       no_port_counts_give_coverage_after.
 
-:- pred coverage_prof_second_pass_goal(dp_goal_info::in, hlds_goal::in, hlds_goal::out,
+:- pred coverage_prof_second_pass_goal(dp_goal_info::in,
+    hlds_goal::in, hlds_goal::out,
     coverage_after_known::in, coverage_after_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -119,10 +120,10 @@ coverage_prof_second_pass_goal(DPInfo, Goal0, Goal,
         CoverageAfterKnown1 = coverage_after_known
     ;
         GoalPortCountsCoverageAfter = no_port_counts_give_coverage_after,
-        CoverageAfterKnown1 = CoverageAfterKnown0 
+        CoverageAfterKnown1 = CoverageAfterKnown0
     ),
     (
-        (   
+        (
             IsMDProfInst = goal_is_mdprof_inst
         ;
             CoverageAfterKnown1 = coverage_after_known
@@ -171,7 +172,7 @@ coverage_prof_second_pass_goal(DPInfo, Goal0, Goal,
         GoalExpr1 = conj(ConjType, Goals)
     ;
         GoalExpr0 = negation(NegGoal0),
-        coverage_prof_second_pass_goal(DPInfo, NegGoal0, NegGoal, 
+        coverage_prof_second_pass_goal(DPInfo, NegGoal0, NegGoal,
             coverage_after_unknown, NextCoverageAfterKnown, !Info,
             AddedImpurityInner),
         GoalExpr1 = negation(NegGoal)
@@ -190,4 +191,4 @@ coverage_prof_second_pass_conj(_, !Goal, !CK, !PCI, yes).
 
 goal_info_get_determinism(_) = detism_det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,15 +1,18 @@
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This test case is a cut down version of magicbox.m:
 %
-%	Gillian Tee		: pptee@cs.mu.oz.au
-%	Leslie Gondor	: leslieg@cs.mu.oz.au
+%   Gillian Tee     : pptee@cs.mu.oz.au
+%   Leslie Gondor   : leslieg@cs.mu.oz.au
 %
-%	433-481 - Agent Programming Languages - Project 1
-%	Department of Computer Science and Software Engineering
-%	The University of Melbourne
-%	March/April, 2004
-%	
-%------------------------------------------------------------------------------%
+%   433-481 - Agent Programming Languages - Project 1
+%   Department of Computer Science and Software Engineering
+%   The University of Melbourne
+%   March/April, 2004
+%
+%---------------------------------------------------------------------------%
 %
 % The problem this test case tests for is an overstrong sanity check in
 % determinism analysis. The problem scenario is as follows:
@@ -32,40 +35,31 @@
 
 :- import_module io.
 
-:- pred arguments_handler( io.state, io.state, int ).
-:- mode arguments_handler( di,       uo      , out   ) is cc_multi.
+:- pred arguments_handler(io.state, io.state, int).
+:- mode arguments_handler(di, uo, out) is cc_multi.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module list.
 :- import_module string.
 
-arguments_handler( !IO, Length ) :-
-	% Check for correct command-line arguments:
-	io.command_line_arguments( Arguments, !IO ),
-	
-	( 
-		(	% Valid arguments - Scenario 1
-			list.member( "-1", Arguments, ArgsSubS1 ),
-			list.index0( ArgsSubS1, 1, LengthStr )
-		) ->
-		(
-			string.to_int( LengthStr, Length )
-		);
-		(	% Valid arguments - Scenario 2
-			list.member( "-2", Arguments, ArgsSubS2 ),
-			list.index0( ArgsSubS2, 2, LengthStr )
-		) ->
-		(
-			string.to_int( LengthStr, Length )
-		);
-		(
-			Length = 0
-		)
-	).
-
-%------------------------------------------------------------------------------%
-% EOF
-%------------------------------------------------------------------------------%
+arguments_handler(!IO, Length) :-
+    % Check for correct command-line arguments:
+    io.command_line_arguments(Arguments, !IO),
+    (
+        % Valid arguments - Scenario 1
+        list.member("-1", Arguments, ArgsSubS1),
+        list.index0(ArgsSubS1, 1, LengthStr)
+    ->
+        string.to_int(LengthStr, Length)
+    ;
+        % Valid arguments - Scenario 2
+        list.member("-2", Arguments, ArgsSubS2),
+        list.index0(ArgsSubS2, 2, LengthStr)
+    ->
+        string.to_int(LengthStr, Length)
+    ;
+        Length = 0
+    ).

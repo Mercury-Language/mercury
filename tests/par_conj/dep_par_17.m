@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % multiple clauses
 
 :- module dep_par_17.
@@ -13,7 +17,9 @@ main(!IO) :-
     io.write_int(X, !IO),
     io.nl(!IO).
 
-:- type t ---> t1 ; t2.
+:- type t
+    --->    t1
+    ;       t2.
 
 :- pred p(t::in, int::out) is det.
 :- pragma no_inline(p/2).

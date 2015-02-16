@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module qual_basic_test2.
 
 % A test to ensure a qualified predicate is parsed correctly.
@@ -11,5 +15,5 @@
 
 :- implementation.
 
-qual_basic_test2.main --> io.io__write_string("Gotcha!\n").
-
+qual_basic_test2.main -->
+    io.io__write_string("Gotcha!\n").

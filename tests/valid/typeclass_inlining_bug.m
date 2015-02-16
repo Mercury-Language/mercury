@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module typeclass_inlining_bug.
 
 :- interface.
@@ -5,12 +9,11 @@
 :- import_module list.
 
 :- type analysis
-	--->	some [Call, Answer] analysis(Call, Answer)
-			=> analysis(Call, Answer).
+    --->    some [Call, Answer] analysis(Call, Answer)
+            => analysis(Call, Answer).
 
 :- typeclass analysis(Call, Answer) <=
-		(call_pattern(Call), answer_pattern(Answer))
-			where
+    (call_pattern(Call), answer_pattern(Answer)) where
 [].
 
 :- type analysis_name == string.
@@ -20,19 +23,20 @@
 :- typeclass answer_pattern(Answer) where [].
 
 :- pred lookup_call_pattern(Call::in, list(analysis)::in,
-	list(Answer)::out) is det <= analysis(Call, Answer).
+    list(Answer)::out) is det <= analysis(Call, Answer).
 
 :- implementation.
 
-:- import_module map, require, set, univ. 
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module univ.
 
 lookup_call_pattern(CallPattern, Results, AnswerPatterns) :-
-	AnswerPatterns = list__filter_map(filter_results(CallPattern),
-			Results).
+    AnswerPatterns = list__filter_map(filter_results(CallPattern), Results).
 
 :- func filter_results(Call, analysis) = Answer is semidet
-		<= (call_pattern(Call), answer_pattern(Answer)).
+    <= (call_pattern(Call), answer_pattern(Answer)).
 
 filter_results(_, analysis(_, Answer0)) = Answer :-
-	univ(Answer0) = univ(Answer).
-
+    univ(Answer0) = univ(Answer).

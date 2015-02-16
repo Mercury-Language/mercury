@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module instance_unconstrained_tvar.
 
 :- interface.
@@ -17,10 +21,11 @@
 :- instance c1(list(T)) where [].
 :- instance c2(list(T)) where [].
 
-	% The bug that this test case is checking for is at the creation of
-	% the typeclass info for this call, when creating the type-info the
-	% the int (1), the type bindings were not being applied properly.
-p :- q([1]).
+p :-
+    % The bug that this test case is checking for is at the creation of
+    % the typeclass info for this call, when creating the type-info the
+    % the int (1), the type bindings were not being applied properly.
+    q([1]).
 
 :- pred q(T) <= c2(T).
 :- mode q(in) is det.

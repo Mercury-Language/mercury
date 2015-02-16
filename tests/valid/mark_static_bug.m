@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % A term with an argument produced in a from_ground_term_construct scope was
 % not itself being marked to be constructed statically.  A side-effect was an
 % exception being thrown while generating a lookup switch in high-level C
@@ -35,5 +39,3 @@ mkfoo(X, Foo) :-
         X = 4,
         Foo = foo(4, none)
     ).
-
-% vim: ft=mercury ts=4 sts=4 sw=4 et

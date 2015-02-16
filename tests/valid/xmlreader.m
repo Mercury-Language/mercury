@@ -1,9 +1,13 @@
 % vim: ts=4 sw=4 et ft=mercury
-:- module xmlreader.
 % Binding to xmlReader by Daniel Veillard
+
+:- module xmlreader.
 :- interface.
+
+:- import_module bool.
 :- import_module io.
-:- import_module maybe, string, bool.
+:- import_module maybe.
+:- import_module string.
 
 :- type xmlreader.
 

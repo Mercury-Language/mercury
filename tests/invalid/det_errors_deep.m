@@ -1,11 +1,21 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module det_errors_deep.
 
 :- interface.
 
 :- import_module std_util.
 
-:- type t ---> a ; b ; c ; d.
-:- type tree ---> leaf ; node(tree, pair(t, int), tree).
+:- type t
+    --->    a
+    ;       b
+    ;       c
+    ;       d.
+:- type tree
+    --->    leaf
+    ;       node(tree, pair(t, int), tree).
 
 :- pred p1(tree::in, t::in, int::out) is det.
 :- pred p2(t::in, tree::in, int::out) is det.

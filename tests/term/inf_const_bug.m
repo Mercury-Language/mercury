@@ -1,23 +1,33 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test - rotd 2003-12-14 and before caused a software error
 % in term_pass2.m.
-% 
-% Symptom: 
-% 	Uncaught Mercury exception:
-% 	Software Error: can_loop detected in pass2 but not pass1
+%
+% Symptom:
+%   Uncaught Mercury exception:
+%   Software Error: can_loop detected in pass2 but not pass1
 
 :- module inf_const_bug.
 
 :- interface.
 
-:- type list(T) ---> [] ; [T | list(T)].
+:- type list(T)
+    --->    []
+    ;       [T | list(T)].
 
-:- type pair(T1, T2) ---> (T1 - T2).
+:- type pair(T1, T2)
+    --->    (T1 - T2).
 
 :- type a == pair(b, nat).
 
-:- type nat ---> zero ; s(nat). 
+:- type nat
+    --->    zero
+    ;       s(nat).
 
-:- type b ---> b(list(a)).
+:- type b
+    --->    b(list(a)).
 
 :- func foo(a) = a.
 
@@ -25,15 +35,15 @@
 
 foo(B - N) = bar(B) - square(N).
 
-	% We need to ensure that pass 1 also considers this function 
-	% otherwise we will miss the fact that the SCC is nonterminating.
+    % We need to ensure that pass 1 also considers this function
+    % otherwise we will miss the fact that the SCC is nonterminating.
 :- func bar(b) = b.
 
 bar(b(As)) = b(map(foo, As)).
 
 :- func square(nat) = nat.
 
-square(A) = multiply(A, A). 
+square(A) = multiply(A, A).
 
 :- func multiply(nat, nat) = nat.
 

@@ -1,54 +1,54 @@
-multimode_dcg.m:027: In clause for predicate `multimode_dcg.test1'/3:
-multimode_dcg.m:027:   syntax error: some but not all arguments have mode
-multimode_dcg.m:027:   annotations.
-multimode_dcg.m:029: In clause for predicate `multimode_dcg.test1'/3:
-multimode_dcg.m:029:   syntax error: some but not all arguments have mode
-multimode_dcg.m:029:   annotations.
-multimode_dcg.m:029: In clause for `test1(out, di, uo)':
-multimode_dcg.m:029:   mode mismatch in disjunction.
-multimode_dcg.m:029:   The variable `HeadVar__1' has these instantiation
-multimode_dcg.m:029:   states:
-multimode_dcg.m:029:     line 27: free
-multimode_dcg.m:029:     line 29: unique(0)
-multimode_dcg.m:037: In clause for predicate `multimode_dcg.test2'/4:
-multimode_dcg.m:037:   syntax error: some but not all arguments have mode
-multimode_dcg.m:037:   annotations.
-multimode_dcg.m:039: In clause for predicate `multimode_dcg.test2'/4:
-multimode_dcg.m:039:   syntax error: some but not all arguments have mode
-multimode_dcg.m:039:   annotations.
+multimode_dcg.m:031: In clause for predicate `multimode_dcg.test1'/3:
+multimode_dcg.m:031:   syntax error: some but not all arguments have mode
+multimode_dcg.m:031:   annotations.
+multimode_dcg.m:033: In clause for predicate `multimode_dcg.test1'/3:
+multimode_dcg.m:033:   syntax error: some but not all arguments have mode
+multimode_dcg.m:033:   annotations.
+multimode_dcg.m:033: In clause for `test1(out, di, uo)':
+multimode_dcg.m:033:   mode mismatch in disjunction.
+multimode_dcg.m:033:   The variable `HeadVar__1' has these instantiation
+multimode_dcg.m:033:   states:
+multimode_dcg.m:033:     line 31: free
+multimode_dcg.m:033:     line 33: unique(0)
 multimode_dcg.m:041: In clause for predicate `multimode_dcg.test2'/4:
 multimode_dcg.m:041:   syntax error: some but not all arguments have mode
 multimode_dcg.m:041:   annotations.
 multimode_dcg.m:043: In clause for predicate `multimode_dcg.test2'/4:
 multimode_dcg.m:043:   syntax error: some but not all arguments have mode
 multimode_dcg.m:043:   annotations.
-multimode_dcg.m:043: In clause for `test2(in, out, di, uo)':
-multimode_dcg.m:043:   mode mismatch in disjunction.
-multimode_dcg.m:043:   The variable `HeadVar__2' has these instantiation
-multimode_dcg.m:043:   states:
-multimode_dcg.m:043:     line 37: free
-multimode_dcg.m:043:     line 39: unique(0)
-multimode_dcg.m:043:     line 41: free
-multimode_dcg.m:043:     line 43: unique(0)
-multimode_dcg.m:043: In clause for `test2(out, in, di, uo)':
-multimode_dcg.m:043:   mode mismatch in disjunction.
-multimode_dcg.m:043:   The variable `HeadVar__1' has these instantiation
-multimode_dcg.m:043:   states:
-multimode_dcg.m:043:     line 37: free
-multimode_dcg.m:043:     line 39: free
-multimode_dcg.m:043:     line 41: unique(0)
-multimode_dcg.m:043:     line 43: unique(0)
-multimode_dcg.m:043: In clause for `test2(out, out, di, uo)':
-multimode_dcg.m:043:   mode mismatch in disjunction.
-multimode_dcg.m:043:   The variable `HeadVar__1' has these instantiation
-multimode_dcg.m:043:   states:
-multimode_dcg.m:043:     line 37: free
-multimode_dcg.m:043:     line 39: free
-multimode_dcg.m:043:     line 41: unique(0)
-multimode_dcg.m:043:     line 43: unique(0)
-multimode_dcg.m:043:   The variable `HeadVar__2' has these instantiation
-multimode_dcg.m:043:   states:
-multimode_dcg.m:043:     line 37: free
-multimode_dcg.m:043:     line 39: unique(0)
-multimode_dcg.m:043:     line 41: free
-multimode_dcg.m:043:     line 43: unique(0)
+multimode_dcg.m:045: In clause for predicate `multimode_dcg.test2'/4:
+multimode_dcg.m:045:   syntax error: some but not all arguments have mode
+multimode_dcg.m:045:   annotations.
+multimode_dcg.m:047: In clause for predicate `multimode_dcg.test2'/4:
+multimode_dcg.m:047:   syntax error: some but not all arguments have mode
+multimode_dcg.m:047:   annotations.
+multimode_dcg.m:047: In clause for `test2(in, out, di, uo)':
+multimode_dcg.m:047:   mode mismatch in disjunction.
+multimode_dcg.m:047:   The variable `HeadVar__2' has these instantiation
+multimode_dcg.m:047:   states:
+multimode_dcg.m:047:     line 41: free
+multimode_dcg.m:047:     line 43: unique(0)
+multimode_dcg.m:047:     line 45: free
+multimode_dcg.m:047:     line 47: unique(0)
+multimode_dcg.m:047: In clause for `test2(out, in, di, uo)':
+multimode_dcg.m:047:   mode mismatch in disjunction.
+multimode_dcg.m:047:   The variable `HeadVar__1' has these instantiation
+multimode_dcg.m:047:   states:
+multimode_dcg.m:047:     line 41: free
+multimode_dcg.m:047:     line 43: free
+multimode_dcg.m:047:     line 45: unique(0)
+multimode_dcg.m:047:     line 47: unique(0)
+multimode_dcg.m:047: In clause for `test2(out, out, di, uo)':
+multimode_dcg.m:047:   mode mismatch in disjunction.
+multimode_dcg.m:047:   The variable `HeadVar__1' has these instantiation
+multimode_dcg.m:047:   states:
+multimode_dcg.m:047:     line 41: free
+multimode_dcg.m:047:     line 43: free
+multimode_dcg.m:047:     line 45: unique(0)
+multimode_dcg.m:047:     line 47: unique(0)
+multimode_dcg.m:047:   The variable `HeadVar__2' has these instantiation
+multimode_dcg.m:047:   states:
+multimode_dcg.m:047:     line 41: free
+multimode_dcg.m:047:     line 43: unique(0)
+multimode_dcg.m:047:     line 45: free
+multimode_dcg.m:047:     line 47: unique(0)

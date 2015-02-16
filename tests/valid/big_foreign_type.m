@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test the use of foreign types,
 % e.g. those that don't fit exactly into a single word.
 
@@ -41,16 +45,16 @@
 :- implementation.
 
 :- pragma foreign_decl("C", "
-	struct Foo {
-		int x, y, z;
-	};
+    struct Foo {
+        int x, y, z;
+    };
 
-	enum e { e0, e1, e2, e42 = 42 };
+    enum e { e0, e1, e2, e42 = 42 };
 ").
 
 :- pragma foreign_decl("C#", "
 public class Foo {
-	int x, y, z;
+    int x, y, z;
 }
 
 public enum e { e0, e1, e2, e42=42 };
@@ -58,47 +62,47 @@ public enum e { e0, e1, e2, e42=42 };
 
 :- pragma foreign_decl("Java", "
 class Foo {
-	int x, y, z;
+    int x, y, z;
 }
 
 enum e { e0, e1, e2 };
 ").
 
 :- pragma foreign_proc(c, bar(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X;").
+    [will_not_call_mercury, promise_pure], "Y = X;").
 :- pragma foreign_proc(c, bar2(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X;").
+    [will_not_call_mercury, promise_pure], "Y = X;").
 :- pragma foreign_proc(c, bar3(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = 2.0 * X;").
+    [will_not_call_mercury, promise_pure], "Y = 2.0 * X;").
 :- pragma foreign_proc(c, bar4(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X;").
+    [will_not_call_mercury, promise_pure], "Y = X;").
 
 :- pragma foreign_proc("C#", bar(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X;").
+    [will_not_call_mercury, promise_pure], "Y = X;").
 :- pragma foreign_proc("C#", bar2(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X;").
+    [will_not_call_mercury, promise_pure], "Y = X;").
 :- pragma foreign_proc("C#", bar3(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = 2.0 * X;").
+    [will_not_call_mercury, promise_pure], "Y = 2.0 * X;").
 :- pragma foreign_proc("C#", bar4(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X;").
+    [will_not_call_mercury, promise_pure], "Y = X;").
 
 :- pragma foreign_proc("Java", bar(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X;").
+    [will_not_call_mercury, promise_pure], "Y = X;").
 :- pragma foreign_proc("Java", bar2(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X;").
+    [will_not_call_mercury, promise_pure], "Y = X;").
 :- pragma foreign_proc("Java", bar3(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = 2.0 * X;").
+    [will_not_call_mercury, promise_pure], "Y = 2.0 * X;").
 :- pragma foreign_proc("Java", bar4(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X;").
+    [will_not_call_mercury, promise_pure], "Y = X;").
 
 :- pragma foreign_proc("Erlang", bar(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X").
+    [will_not_call_mercury, promise_pure], "Y = X").
 :- pragma foreign_proc("Erlang", bar2(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X").
+    [will_not_call_mercury, promise_pure], "Y = X").
 :- pragma foreign_proc("Erlang", bar3(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = 2.0 * X").
+    [will_not_call_mercury, promise_pure], "Y = 2.0 * X").
 :- pragma foreign_proc("Erlang", bar4(X::in) = (Y::out),
-	[will_not_call_mercury, promise_pure], "Y = X").
+    [will_not_call_mercury, promise_pure], "Y = X").
 
 baz(X) = X.
 baz2(X) = X.

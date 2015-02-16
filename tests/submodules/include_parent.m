@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Used by use_submodule.m
 
 :- module include_parent.
@@ -17,16 +21,16 @@
 :- implementation.
 
 hello -->
-	io__write_string("include_parent: hello\n").
+    io__write_string("include_parent: hello\n").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module include_parent__nested.
 :- implementation.
 
 hello -->
-	io__write_string("include_parent__nested: hello\n").
+    io__write_string("include_parent__nested: hello\n").
 
 :- end_module include_parent__nested.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

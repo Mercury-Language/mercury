@@ -10,7 +10,9 @@
 
 :- implementation.
 
-:- import_module benchmarking, require, int.
+:- import_module benchmarking.
+:- import_module int.
+:- import_module require.
 
 :- pragma require_feature_set([memo]).
 

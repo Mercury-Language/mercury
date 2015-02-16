@@ -1,10 +1,10 @@
-invalid_instance_declarations.m:013: In instance declaration for
-invalid_instance_declarations.m:013:   `invalid_instance_declarations.tc(((func)
-invalid_instance_declarations.m:013:   = T))':
-invalid_instance_declarations.m:013:   the first argument is a higher order
-invalid_instance_declarations.m:013:   type.
-invalid_instance_declarations.m:014: In instance declaration for
-invalid_instance_declarations.m:014:   `invalid_instance_declarations.tc(invalid_instance_declarations.t(int))':
-invalid_instance_declarations.m:014:   the first argument is a type whose first
-invalid_instance_declarations.m:014:   argument is not a variable.
+invalid_instance_declarations.m:017: In instance declaration for
+invalid_instance_declarations.m:017:   `invalid_instance_declarations.tc(((func)
+invalid_instance_declarations.m:017:   = T))':
+invalid_instance_declarations.m:017:   the first argument is a higher order
+invalid_instance_declarations.m:017:   type.
+invalid_instance_declarations.m:018: In instance declaration for
+invalid_instance_declarations.m:018:   `invalid_instance_declarations.tc(invalid_instance_declarations.t(int))':
+invalid_instance_declarations.m:018:   the first argument is a type whose first
+invalid_instance_declarations.m:018:   argument is not a variable.
 For more information, recompile with `-E'.

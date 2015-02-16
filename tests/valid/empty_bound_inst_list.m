@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module empty_bound_inst_list.
 
 :- interface.
@@ -7,11 +11,13 @@
 :- implementation.
 :- import_module maybe.
 
-:- type some_functors ---> foo ; bar ; baz.
+:- type some_functors
+    --->    foo
+    ;       bar
+    ;       baz.
 
 p :-
-	( Y = yes(bar), Z = foo
-	; Y = yes(baz), Z = foo
-	),
-	Y = yes(Z).
-
+    ( Y = yes(bar), Z = foo
+    ; Y = yes(baz), Z = foo
+    ),
+    Y = yes(Z).

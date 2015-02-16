@@ -1,3 +1,3 @@
-bug257.m:015: Warning: variable `Gee' is the subject of a
-bug257.m:015:   require_complete_switch scope but it does not occur in the
-bug257.m:015:   sub-goal.
+bug257.m:019: Warning: variable `Gee' is the subject of a
+bug257.m:019:   require_complete_switch scope but it does not occur in the
+bug257.m:019:   sub-goal.

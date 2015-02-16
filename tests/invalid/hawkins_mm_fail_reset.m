@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % $ mmc --make foo --grade reg.mmsc.gc --no-warn-singleton-variables
 % Making Mercury/int3s/foo.int3
 % Making Mercury/cs/foo.c
@@ -22,19 +26,20 @@
 :- implementation.
 :- import_module int.
 
-entry(0) :- pred1(_).
+entry(0) :-
+    pred1(_).
 
 :- pred pred1(int::out).
 :- pragma minimal_model(pred1/1, [allow_reset]).
 
 pred1(2) :-
-	pred2(_P).
+    pred2(_P).
 
 pred1(1) :-
-	pred2(_P).
+    pred2(_P).
 
 :- pred pred2(int::out).
 :- pragma minimal_model(pred2/1, [allow_reset]).
 
 pred2(_) :-
-	fail.
+    fail.

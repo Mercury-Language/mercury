@@ -1,11 +1,15 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % The saved_vars pass was not pushing unifications that assign
 % constants to variables into parallel conjunctions.
 %
 % Uncaught Mercury exception:
 % Software Error: map.lookup: key not found
-%         Key Type: term.var(parse_tree.prog_data.prog_var_type)
-%         Key Value: var(4)
-%         Value Type: ll_backend.var_locn.var_state
+%     Key Type: term.var(parse_tree.prog_data.prog_var_type)
+%     Key Value: var(4)
+%     Value Type: ll_backend.var_locn.var_state
 
 :- module par_saved_const.
 :- interface.
@@ -17,9 +21,11 @@
 :- implementation.
 
 p(M) :-
-    L = [1,2],
-    L = [H|_],
-    ( X = H
-    & true
+    L = [1, 2],
+    L = [H | _],
+    (
+        X = H
+    &
+        true
     ),
-    M = [X|L].
+    M = [X | L].

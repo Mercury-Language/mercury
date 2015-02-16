@@ -1,14 +1,18 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module intermod_nested2.
 
 :- interface.
 
-	:- module intermod_nested2__bar.
+    :- module intermod_nested2__bar.
 
-	:- interface.
+    :- interface.
 
-	:- type bar ---> bar.
+    :- type bar ---> bar.
 
-	:- end_module intermod_nested2__bar.
+    :- end_module intermod_nested2__bar.
 
 :- implementation.
 
@@ -19,4 +23,3 @@
 :- func foo = int.
 
 foo = 1.
-

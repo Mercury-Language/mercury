@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % A program to test that calls to par_builtin.signal are being called
 % as early as possible.
 
@@ -19,7 +23,7 @@ main(!IO) :-
     par_conj(Y7),
     scope(Y9),
     do_call(Y10),
-    io.print({Y1, Y3, Y5, Y6, Y7, Y9, Y10}, !IO), 
+    io.print({Y1, Y3, Y5, Y6, Y7, Y9, Y10}, !IO),
     io.nl(!IO).
 
 :- func one = int.
@@ -30,7 +34,9 @@ one = 1.
 :- pragma no_inline(two/0).
 two = 2.
 
-:- type t ---> t1 ; t2.
+:- type t
+    --->    t1
+    ;       t2.
 
 :- func some_t = t.
 :- pragma no_inline(some_t/0).
@@ -41,7 +47,7 @@ some_t = t1.
 
 ite(Y) :-
     (
-        (if int.even(one) then
+        ( if int.even(one) then
             X = one
             % signal X
         else
@@ -122,13 +128,15 @@ par_conj(Y) :-
 scope(Y) :-
     (
         promise_equivalent_solutions [X]
-	( X = one
+        (
+            X = one
             % signal X
-        ; X = 1
+        ;
+            X = 1
             % signal X
         )
     &
-	Y = X
+        Y = X
     ).
 
 :- pred do_call(int::out) is det.
@@ -136,7 +144,7 @@ scope(Y) :-
 
 do_call(Y) :-
     (
-        X = [1,2,3]
+        X = [1, 2, 3]
     &
         mylength(X, Z)
         % should produce parallel version
@@ -161,4 +169,3 @@ mylength_2([], N, N).
 mylength_2([_ | L1], N0, N) :-
     N1 = N0 + 1,
     mylength_2(L1, N1, N).
-

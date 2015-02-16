@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module imported_mode.
 :- interface.
 :- import_module io.
@@ -7,5 +11,9 @@
 :- implementation.
 :- import_module exported_mode.
 
-main --> ( { p(41, 42) } -> print("yes"), nl ; print("no"), nl ).
-
+main -->
+    ( { p(41, 42) } ->
+        print("yes"), nl
+    ;
+        print("no"), nl
+    ).

@@ -1,6 +1,6 @@
-fp_dup_bug.m:017: Error: multiple clauses for predicate `fp_dup_bug.foo'/2 in
-fp_dup_bug.m:017:   language C.
-fp_dup_bug.m:010: The first occurrence was here.
-fp_dup_bug.m:024: Error: multiple clauses for predicate `fp_dup_bug.foo'/2 in
-fp_dup_bug.m:024:   language C.
-fp_dup_bug.m:010: The first occurrence was here.
+fp_dup_bug.m:022: Error: multiple clauses for predicate `fp_dup_bug.foo'/2 in
+fp_dup_bug.m:022:   language C.
+fp_dup_bug.m:015: The first occurrence was here.
+fp_dup_bug.m:029: Error: multiple clauses for predicate `fp_dup_bug.foo'/2 in
+fp_dup_bug.m:029:   language C.
+fp_dup_bug.m:015: The first occurrence was here.

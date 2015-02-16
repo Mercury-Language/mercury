@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % This test case shows up an obscure bug in the compiler.
 % The compiler reports spurious mode errors in the compiler-generated
 % unification/compare/index predicates.
@@ -8,7 +12,10 @@
 % for the moment, I'll file the bug report and forget it.
 
 :- module nasty_func_test.
-:- type foo ---> f(int) ; g.
+:- type foo
+    --->    f(int)
+    ;       g.
 
 :- func f(int) = foo.
+
 f(_) = g.

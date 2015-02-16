@@ -1,5 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % The instmap delta of a negated erroneous goal should also be `unreachable'.
-% Software Error: instmap.m: Unexpected: merge_instmapping_delta_2: error merging var 2
+% Software Error: instmap.m:
+% Unexpected: merge_instmapping_delta_2: error merging var 2
 
 :- module neg_erroneous.
 :- interface.

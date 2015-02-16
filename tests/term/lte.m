@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module lte.
 
 :- interface.
@@ -6,22 +10,24 @@
 
 :- implementation.
 
-:- type nat	--->	zero ; s(nat).
+:- type nat
+    --->    zero
+    ;       s(nat).
 
 goal :-
-	lte(X, s(s(s(s(zero))))),
-	even(X).
+    lte(X, s(s(s(s(zero))))),
+    even(X).
 
 :- pred lte(nat, nat).
 :- mode lte(out, in).
 
 lte(s(X), s(Y)) :-
-	lte(X, Y).
+    lte(X, Y).
 lte(zero, _Y).
 
 :- pred even(nat).
 :- mode even(in).
 
 even(s(s(X))) :-
-	even(X).
+    even(X).
 even(zero).

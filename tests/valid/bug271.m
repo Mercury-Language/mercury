@@ -1,3 +1,6 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module bug271.
 
@@ -40,15 +43,19 @@ main(!IO) :-
     func to_string(X) = string
 ].
 
-:- some [Y] (pred obj_to_num(object(X)::in, Y::out) is det => num(Y)) <= literal(X).
+:- some [Y] (pred obj_to_num(object(X)::in, Y::out) is det
+    => num(Y)) <= literal(X).
 
 % We need a clause so that Y gets a type assignment.
 obj_to_num(_, 15).
 
-:- type object(L) --->
-    object(L).
-:- type literal ---> literal.
-:- type literal_type ---> literal_type.
+:- type object(L)
+    --->    object(L).
+:- type literal
+    --->    literal.
+:- type literal_type
+    --->    literal_type.
+
 :- func obj = object(literal).
 
 :- instance literal(literal) where [
@@ -58,4 +65,3 @@ obj_to_num(_, 15).
 :- instance num(int) where [
     (to_string(X) = string(X))
 ].
-

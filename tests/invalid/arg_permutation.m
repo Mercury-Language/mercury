@@ -1,4 +1,6 @@
-% vim: ts=4 sw=4 expandtab ft=mercury
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module arg_permutation.
 :- interface.
@@ -7,6 +9,7 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
+
 :- import_module float.
 :- import_module int.
 :- import_module string.

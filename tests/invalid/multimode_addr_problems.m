@@ -1,5 +1,9 @@
-% Test error messages with problems that arise trying to taking the
-% address of multi-moded predicates.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Test error messages with problems that arise trying to taking the address
+% of multi-moded predicates.
 
 :- module multimode_addr_problems.
 :- interface.
@@ -8,15 +12,15 @@
 
 :- pred main(io::di, io::uo) is cc_multi.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     % The compiler can't choose which mode of absolute to use.
@@ -55,6 +59,3 @@ my_foldl(F, L, A0) = A :-
 
 f2p(F, L, A0, A) :-
     F(L, A0) = A.
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sw=4 et wm=0 tw=0

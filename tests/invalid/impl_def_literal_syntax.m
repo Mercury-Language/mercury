@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module impl_def_literal_syntax.
 :- interface.
 
@@ -44,5 +48,3 @@ q($123).                        % bad
 
 :- pred r(character, character).
 r($, ($)).                      % ok
-
-% vi:ft=mercury:ts=8:sts=4:sw=4:et

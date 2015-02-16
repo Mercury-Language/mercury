@@ -1,52 +1,52 @@
-purity.m:050: In predicate `w1'/0:
-purity.m:050:   warning: declared impure but actually pure.
-purity.m:054: In predicate `w2'/0:
-purity.m:054:   warning: declared semipure but actually pure.
-purity.m:058: In predicate `w3'/0:
-purity.m:058:   warning: declared impure but actually semipure.
-purity.m:062: In predicate `w4'/0:
-purity.m:062:   warning: unnecessary `promise_pure' pragma.
-purity.m:067: In predicate `w5'/0:
-purity.m:067:   error: declared impure but promised pure.
-purity.m:072: In predicate `w6'/0:
-purity.m:072:   error: declared semipure but promised pure.
-purity.m:081: In predicate `e1'/0:
-purity.m:081:   purity error: predicate is impure.
-purity.m:081:   It must be declared `impure' or promised pure.
-purity.m:086: In predicate `e2'/0:
-purity.m:086:   purity error: predicate is semipure.
-purity.m:086:   It must be declared `semipure' or promised pure.
-purity.m:090: In predicate `e3'/0:
-purity.m:090:   purity error: predicate is impure.
-purity.m:090:   It must be declared `impure' or promised semipure.
-purity.m:096: In call to impure predicate `purity.imp'/0:
-purity.m:096:   purity error: call must be preceded by `impure' indicator.
-purity.m:100: In call to semipure predicate `purity.semi'/0:
-purity.m:100:   purity error: call must be preceded by `semipure' indicator.
-purity.m:105: In clause for `e6':
-purity.m:105:   in argument 1 of call to predicate `purity.in'/1:
-purity.m:105:   mode error: variable `X' has instantiatedness `free',
-purity.m:105:   expected instantiatedness was `ground'.
-purity.m:105:   The goal could not be reordered, because it was followed by an
-purity.m:105:   impure goal.
-purity.m:106:   This is the location of the impure goal.
-purity.m:112: In clause for `e7':
-purity.m:112:   in argument 1 of call to predicate `purity.imp1'/1:
-purity.m:112:   mode error: variable `X' has instantiatedness `free',
-purity.m:112:   expected instantiatedness was `ground'.
-purity.m:112:   The goal could not be reordered, because it was impure.
-purity.m:115: In unification predicate for type `e8':
-purity.m:115:   purity error: predicate is impure.
-purity.m:115:   It must be pure.
-purity.m:127: In unification predicate for type `e9':
-purity.m:127:   purity error: predicate is semipure.
-purity.m:127:   It must be pure.
-purity.m:142: In call to impure predicate `purity.imp1'/1:
-purity.m:142:   purity error: call must be preceded by `impure' indicator.
-purity.m:142: Purity error in closure: closure body is impure, but closure was
-purity.m:142:   not declared impure.
-purity.m:148: In call to semipure predicate `purity.semi'/1:
-purity.m:148:   purity error: call must be preceded by `semipure' indicator.
-purity.m:148: Purity error in closure: closure body is semipure, but closure
-purity.m:148:   was not declared semipure.
+purity.m:057: In predicate `w1'/0:
+purity.m:057:   warning: declared impure but actually pure.
+purity.m:061: In predicate `w2'/0:
+purity.m:061:   warning: declared semipure but actually pure.
+purity.m:065: In predicate `w3'/0:
+purity.m:065:   warning: declared impure but actually semipure.
+purity.m:069: In predicate `w4'/0:
+purity.m:069:   warning: unnecessary `promise_pure' pragma.
+purity.m:074: In predicate `w5'/0:
+purity.m:074:   error: declared impure but promised pure.
+purity.m:079: In predicate `w6'/0:
+purity.m:079:   error: declared semipure but promised pure.
+purity.m:087: In predicate `e1'/0:
+purity.m:087:   purity error: predicate is impure.
+purity.m:087:   It must be declared `impure' or promised pure.
+purity.m:091: In predicate `e2'/0:
+purity.m:091:   purity error: predicate is semipure.
+purity.m:091:   It must be declared `semipure' or promised pure.
+purity.m:095: In predicate `e3'/0:
+purity.m:095:   purity error: predicate is impure.
+purity.m:095:   It must be declared `impure' or promised semipure.
+purity.m:101: In call to impure predicate `purity.imp'/0:
+purity.m:101:   purity error: call must be preceded by `impure' indicator.
+purity.m:105: In call to semipure predicate `purity.semi'/0:
+purity.m:105:   purity error: call must be preceded by `semipure' indicator.
+purity.m:110: In clause for `e6':
+purity.m:110:   in argument 1 of call to predicate `purity.in'/1:
+purity.m:110:   mode error: variable `X' has instantiatedness `free',
+purity.m:110:   expected instantiatedness was `ground'.
+purity.m:110:   The goal could not be reordered, because it was followed by an
+purity.m:110:   impure goal.
+purity.m:111:   This is the location of the impure goal.
+purity.m:117: In clause for `e7':
+purity.m:117:   in argument 1 of call to predicate `purity.imp1'/1:
+purity.m:117:   mode error: variable `X' has instantiatedness `free',
+purity.m:117:   expected instantiatedness was `ground'.
+purity.m:117:   The goal could not be reordered, because it was impure.
+purity.m:120: In unification predicate for type `e8':
+purity.m:120:   purity error: predicate is impure.
+purity.m:120:   It must be pure.
+purity.m:132: In unification predicate for type `e9':
+purity.m:132:   purity error: predicate is semipure.
+purity.m:132:   It must be pure.
+purity.m:147: In call to impure predicate `purity.imp1'/1:
+purity.m:147:   purity error: call must be preceded by `impure' indicator.
+purity.m:147: Purity error in closure: closure body is impure, but closure was
+purity.m:147:   not declared impure.
+purity.m:153: In call to semipure predicate `purity.semi'/1:
+purity.m:153:   purity error: call must be preceded by `semipure' indicator.
+purity.m:153: Purity error in closure: closure body is semipure, but closure
+purity.m:153:   was not declared semipure.
 For more information, recompile with `-E'.

@@ -1,10 +1,6 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003, 2005 The University of Melbourne.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
-%------------------------------------------------------------------------------%
 %
 % File: mc_graph.m.
 % Main author: conway.
@@ -17,8 +13,8 @@
 % a reasonably large test case for the propagation solver approach to
 % constraints based mode analysis to be run on.
 %
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mc_graph.
 
@@ -168,7 +164,7 @@
 :- mode mc_graph__path(in, in, in, out) is nondet.
 :- mode mc_graph__path(in, in, out, out) is nondet.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -197,7 +193,7 @@
 :- type arc_info(N, A)
     --->    arc_info(node(N), node(N), A).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mc_graph__init(Graph) :-
     Graph = mc_graph(counter__init(0), counter__init(0), Nodes, Arcs, Edges),
@@ -205,7 +201,7 @@ mc_graph__init(Graph) :-
     map__init(Arcs),
     map__init(Edges).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mc_graph__set_node(!.G, NInfo, node(N), !:G) :-
     NS0 = !.G ^ node_supply,
@@ -245,13 +241,13 @@ mc_graph__insert_node(!.G, NInfo, node(N), !:G) :-
     map__set(node(N), EdgeSet, Edges0, Edges),
     !:G = !.G ^ edge_map := Edges.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mc_graph__search_node(Graph, NodeInfo, Node) :-
     NodeTable = Graph ^ node_map,
     map__member(NodeTable, Node, NodeInfo).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mc_graph__find_matching_nodes(Graph, NodeInfo, NodeSet) :-
     NodeTable = Graph ^ node_map,
@@ -278,30 +274,31 @@ filter_node_info(NodeTable, NodeInfo, [Node | Nodes], FilteredNodes) :-
         FilteredNodes = FilteredNodes0
     ).
 
-:- pred mc_graph__select_node(map(node(N), N)::in, N::in, node(N)::out) is nondet.
+:- pred mc_graph__select_node(map(node(N), N)::in, N::in, node(N)::out)
+    is nondet.
 
 mc_graph__select_node(NodeTable, NodeInfo, Node) :-
     map__member(NodeTable, Node, NodeInfo).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mc_graph__node_contents(G, N, I) :-
     map__lookup(G ^ node_map, N, I).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mc_graph__successors(G, N, Ss) :-
     map__lookup(G ^ edge_map, N, E),
     map__values(E, SsList),
     set__list_to_set(SsList, Ss).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mc_graph__nodes(G, Ns) :-
     map__keys(G ^ node_map, Ns1),
     set__list_to_set(Ns1, Ns).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mc_graph__set_edge(!.G, Start, End, Info, Arc, !:G) :-
     AS0 = !.G ^ arc_supply,
@@ -319,7 +316,7 @@ mc_graph__set_edge(!.G, Start, End, Info, Arc, !:G) :-
     map__set(Start, EdgeMap, Es0, Es),
     !:G = !.G ^ edge_map := Es.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mc_graph__det_insert_edge(!.G, Start, End, Info, Arc, !:G) :-
     ( mc_graph__insert_edge(!.G, Start, End, Info, ArcPrime, !:G) ->
@@ -344,13 +341,13 @@ mc_graph__insert_edge(!.G, Start, End, Info, Arc, !:G) :-
     map__set(Start, EdgeMap, Es0, Es),
     !:G = !.G ^ edge_map := Es.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mc_graph__arc_contents(G, N, S, E, A) :-
     map__lookup(G ^ arc_map, N, I),
     I = arc_info(S, E, A).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mc_graph__path(G, S, E, Path) :-
     mc_graph__path_2(G, S, E, [], Path).
@@ -374,8 +371,8 @@ mc_graph__path_2(G, S, E, Nodes0, Path) :-
         Path = [A | Path0]
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 %       Functional forms added.
 
@@ -392,4 +389,4 @@ mc_graph__successors(G, N) = S :-
     mc_graph__successors(G, N, S).
 
 mc_graph__nodes(G) = S :-
-    mc_graph__nodes(G,S).
+    mc_graph__nodes(G, S).

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module uniq_unify.
 :- interface.
 :- import_module io.
@@ -36,16 +40,16 @@ r2(!FG).
 % inferred `F0 -> unique(f(ground))' rather than `F0 -> unique(f(unique))'.
 
 p(F0, F) :-
-	F0 = f(_),
-	q(F0, F).
+    F0 = f(_),
+    q(F0, F).
 
 % This is also a regression test: a previous version of the compiler
 % reported a spurious unique mode error, because it thought that F0
 % had to be made mostly_unique for the condition of the if-then-else.
 
 p2(F0, F) :-
-	( F0 = g ->
-		q2(F0, F)
-	;
-		r2(F0, F)
-	).
+    ( F0 = g ->
+        q2(F0, F)
+    ;
+        r2(F0, F)
+    ).

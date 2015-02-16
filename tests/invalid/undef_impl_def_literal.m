@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module undef_impl_def_literal.
 :- interface.
 
@@ -9,5 +13,3 @@
 
 main(!IO) :-
     io.write($nosuchthing, !IO).
-
-% vi:ft=mercury:ts=8:sts=4:sw=4:et

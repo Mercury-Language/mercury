@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module test_nested.
 :- interface.
 
@@ -12,12 +16,11 @@
 
 :- use_module parent2.child.
 
-:- type foo --->
-	foo(
-		parent.public_child.foo,
-		parent.private_child.foo,
-		parent.undeclared_child.foo,
-		parent.nonexistent_child.foo,
-		parent2.child.foo
-	).
-
+:- type foo
+    --->    foo(
+                parent.public_child.foo,
+                parent.private_child.foo,
+                parent.undeclared_child.foo,
+                parent.nonexistent_child.foo,
+                parent2.child.foo
+            ).

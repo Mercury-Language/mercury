@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module ho_unique_error.
 
 :- interface.
@@ -9,6 +13,6 @@
 :- implementation.
 
 call_ho -->
-	( call(io__write_string, "First\n")
-	; call(io__write_string, "Second\n")
-	).
+    ( call(io__write_string, "First\n")
+    ; call(io__write_string, "Second\n")
+    ).

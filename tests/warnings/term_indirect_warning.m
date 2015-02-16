@@ -1,8 +1,12 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Tests that the termination analyser gives a reason for reporting
 % non-termination when `--check-termination' is enabled rather than
-% just reporting that it couldn't prove termination for unknown reasons. 
+% just reporting that it couldn't prove termination for unknown reasons.
 
-:- module term_indirect_warning. 
+:- module term_indirect_warning.
 
 :- interface.
 
@@ -15,4 +19,4 @@
 
 foo(P, X, s(s(X))) :- P(X).
 
-:- end_module term_indirect_warning. 
+:- end_module term_indirect_warning.

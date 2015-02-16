@@ -1,11 +1,11 @@
-multimode_addr_problems.m:023: In clause for `main(di, uo)':
-multimode_addr_problems.m:023:   In unification of `Abs' and higher-order term.
-multimode_addr_problems.m:023:   Could not determine the mode of predicate
-multimode_addr_problems.m:023:   `multimode_addr_problems.absolute'/2 by the
-multimode_addr_problems.m:023:   insts of the higher-order arguments only.
-multimode_addr_problems.m:048: In clause for `my_foldl(in((func(in, in) = out
-multimode_addr_problems.m:048:   is det)), in, in) = out':
-multimode_addr_problems.m:048:   mode error in unification of `P' and
-multimode_addr_problems.m:048:   higher-order term based on multi-moded
-multimode_addr_problems.m:048:   predicate `multimode_addr_problems.f2p'/4.
+multimode_addr_problems.m:027: In clause for `main(di, uo)':
+multimode_addr_problems.m:027:   In unification of `Abs' and higher-order term.
+multimode_addr_problems.m:027:   Could not determine the mode of predicate
+multimode_addr_problems.m:027:   `multimode_addr_problems.absolute'/2 by the
+multimode_addr_problems.m:027:   insts of the higher-order arguments only.
+multimode_addr_problems.m:052: In clause for `my_foldl(in((func(in, in) = out
+multimode_addr_problems.m:052:   is det)), in, in) = out':
+multimode_addr_problems.m:052:   mode error in unification of `P' and
+multimode_addr_problems.m:052:   higher-order term based on multi-moded
+multimode_addr_problems.m:052:   predicate `multimode_addr_problems.f2p'/4.
 For more information, recompile with `-E'.

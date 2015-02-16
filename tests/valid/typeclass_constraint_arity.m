@@ -1,6 +1,10 @@
-% Check that we support type class constraints for type classes with arity up
-% to 10.  Low-level C grades can support higher arities but high-level C grades
-% are currently limited.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Check that we support type class constraints for type classes
+% with arity up to 10. Low-level C grades can support higher arities
+% but high-level C grades are currently limited.
 
 :- module typeclass_constraint_arity.
 :- interface.
@@ -26,12 +30,8 @@
 :- typeclass tc10(A, B, C, D, E, F, G, H, I, J) where [].
 % :- typeclass tc11(A, B, C, D, E, F, G, H, I, J, K) where [].
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 main(!IO).
-
-%-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=8 sts=4 sw=4 et

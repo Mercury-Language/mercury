@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module polymorphic_unification.
 
 :- interface.
@@ -9,7 +13,7 @@
 :- implementation.
 
 main -->
-	[].
+    [].
 
 :- import_module list.
 
@@ -17,4 +21,3 @@ main -->
 :- mode p(in, list_skel >> dead).
 
 p(X, X).
-

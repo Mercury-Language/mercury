@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module undef_symbol.
 
 :- interface.
@@ -9,21 +13,20 @@
 :- implementation.
 
 main -->
-	p,
-	q,
-	undef_symbol__r.
+    p,
+    q,
+    undef_symbol__r.
 
 :- pred p(io__state::di, io__state::uo) is det.
 
 p -->
-	{ string__append("hello ", "world.\n", Str) },
-	io__write_string(Str).
+    { string__append("hello ", "world.\n", Str) },
+    io__write_string(Str).
 
 :- pred q(io__state::di, io__state::uo) is det.
 
 q -->
-	{ Context = term__context("random", 17) },
-	write(Context), nl.
+    { Context = term__context("random", 17) },
+    write(Context), nl.
 
 % :- pred r(io__state::di, io__state::uo) is det.
-

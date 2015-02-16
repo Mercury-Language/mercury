@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Abother test for circular equivalence types.
 % This test is similar to circ_type.m but tests some more
 % complicated cases involving parametric types.
@@ -5,7 +9,8 @@
 :- module circ_type2.
 
 :- interface.
-:- import_module list, set.
+:- import_module list.
+:- import_module set.
 
 :- type circ1(T) == circ1(T).
 :- type circ2(T) == circ2(circ2(T)).

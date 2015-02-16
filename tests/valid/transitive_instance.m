@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module transitive_instance.
 
 :- interface.
@@ -8,35 +12,35 @@
 
 :- import_module transitive_instance__sub2.
 
-:- type t ---> some [T] c(T) => c2(T).
+:- type t
+    --->    some [T] c(T) => c2(T).
 
 :- module transitive_instance__sub1.
 
-	:- interface.
+    :- interface.
 
-	:- typeclass c1(T) where []. 
-	
-	:- instance c1(int).
+    :- typeclass c1(T) where [].
 
-	:- implementation.
+    :- instance c1(int).
 
-	:- instance c1(int) where [].
+    :- implementation.
+
+    :- instance c1(int) where [].
 
 :- end_module transitive_instance__sub1.
 
-
 :- module transitive_instance__sub2.
-	
-	:- interface.
 
-	:- import_module transitive_instance__sub1.
+    :- interface.
 
-	:- typeclass c2(T) <= c1(T) where [].
+    :- import_module transitive_instance__sub1.
 
-	:- instance c2(int).
+    :- typeclass c2(T) <= c1(T) where [].
 
-	:- implementation.
+    :- instance c2(int).
 
-	:- instance c2(int) where [].
+    :- implementation.
+
+    :- instance c2(int) where [].
 
 :- end_module transitive_instance__sub2.

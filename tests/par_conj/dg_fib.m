@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module dg_fib.
 :- interface.
 :- import_module io.
@@ -25,9 +29,9 @@ fibonacci(X, Y) :-
         ;
             ( X > 1 ->
                 J = X - 1,
-                K = X - 2,  
-                ( 
-                    fibonacci(J, Jout) 
+                K = X - 2,
+                (
+                    fibonacci(J, Jout)
                 &
                     fibonacci(K, Kout)
                 ),

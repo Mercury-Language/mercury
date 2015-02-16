@@ -1,16 +1,11 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2007, 2010 The University of Melbourne.
-% This file may only be copied under the terms of the GNU Library General
-% Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
 %
 % This tests for a bug that was noticed with --deep-profiling and
 % --profile-for-implicit-parallelism when compiling ssdb/ssdb.m
 %
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module bug180.
 :- interface.
@@ -18,8 +13,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module string.
-
-%-----------------------------------------------------------------------------%
 
 :- type ssdb_proc_id
     --->    ssdb_proc_id(
@@ -47,15 +40,12 @@
 
 :- impure pred handle_event_call(ssdb_proc_id::in, list_var_value::in) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module bool.
 :- import_module io.
-
-%-----------------------------------------------------------------------------%
 
     % Note: debugger_off must be first because io.init_state/2 is called
     % before the `do_nothing' mutable is initialised.  At that time `do_nothing'
@@ -89,7 +79,7 @@
                 sf_list_var_value   :: list(var_value)
             ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type what_next
     --->    wn_step
@@ -104,17 +94,15 @@
     ;       ssdb_call_nondet.
 
 :- type search_path == list(path_name).
-:- type path_name  == string.
+:- type path_name == string.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- mutable(cur_ssdb_event_number, int, 0, ground,
     [untrailed, attach_to_io_state]).
 
 :- mutable(nondet_shadow_stack, list(stack_frame), [], ground,
     [untrailed, attach_to_io_state]).
-
-%-----------------------------------------------------------------------------%
 
     % This is thread-local to allow debugging of the initial thread in
     % multi-threaded programs.  As thread-local mutables inherit their values
@@ -124,7 +112,7 @@
 :- mutable(debugger_state, debugger_state, debugger_off, ground,
     [untrailed, thread_local, attach_to_io_state]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 handle_event_call(ProcId, ListVarValue) :-
     some [!IO] (
@@ -141,7 +129,6 @@ handle_event_call(ProcId, ListVarValue) :-
 
 :- pred handle_event_call_2(ssdb_event_type::in(either_call), ssdb_proc_id::in,
     list(var_value)::in, io::di, io::uo) is det.
-
 :- pragma inline(handle_event_call_2/5).
 
 handle_event_call_2(Event, ProcId, ListVarValue, !IO) :-
@@ -169,18 +156,14 @@ handle_event_call_2(Event, ProcId, ListVarValue, !IO) :-
         Stop = no
     ).
 
-:- pragma no_inline(should_stop_at_this_event/8).
 :- pred should_stop_at_this_event(ssdb_event_type::in, int::in, int::in,
     ssdb_proc_id::in, bool::out, ssdb_retry::out, io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
+:- pragma no_inline(should_stop_at_this_event/8).
 
     % Print the current information at this event point.
     %
-:- pragma no_inline(print_event_info/4).
 :- pred print_event_info(ssdb_event_type::in, int::in, io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
+:- pragma no_inline(print_event_info/4).
 
 :- pragma inline(invent_io/1).
 :- impure pred invent_io(io::uo) is det.
@@ -190,10 +173,10 @@ invent_io(IO) :-
     unsafe_promise_unique(IO0, IO),
     impure impure_true.
 
-:- pragma inline(consume_io/1).
 :- impure pred consume_io(io::di) is det.
+:- pragma inline(consume_io/1).
 
 consume_io(_) :-
     impure impure_true.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

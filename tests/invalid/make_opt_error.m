@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module make_opt_error.
 
 :- interface.
@@ -9,7 +13,8 @@
 
 :- implementation.
 
-:- type coord ---> coord(x :: int, y :: int).
+:- type coord
+    --->    coord(x :: int, y :: int).
 
 x(C) = C ^ x.
 y(C) = C ^ y.

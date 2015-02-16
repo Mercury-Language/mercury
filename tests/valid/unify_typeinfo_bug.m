@@ -1,11 +1,16 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module unify_typeinfo_bug.
 
 :- interface.
 
-:- import_module list, map.
+:- import_module list.
+:- import_module map.
 
 :- type t
-	---> t(map(int, string), list(int)).
+    ---> t(map(int, string), list(int)).
 
 :- pred unify_t(t, t).
 :- mode unify_t(in, in) is semidet.
@@ -15,13 +20,11 @@
 :- import_module univ.
 
 unify_t(t(A1, B1), t(A2, B2)) :-
-	unify_map(A1, A2),
-	B1 = B2.
+    unify_map(A1, A2),
+    B1 = B2.
 
 :- pred unify_map(map(int, string), map(int, string)).
 :- mode unify_map(in, in) is semidet.
 
 unify_map(A, B) :-
-	univ(A) = univ(B).
-
-
+    univ(A) = univ(B).

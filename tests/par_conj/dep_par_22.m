@@ -1,6 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 %
 % The switch was not detected.
-% 
+%
 % par22.m:001: Warning: interface for module `par22' does not export anything.
 % par22.m:018: Error: parallel conjunct may fail. The current implementation
 % par22.m:018:   supports only single-solution non-failing parallel conjunctions.
@@ -23,7 +27,7 @@ main(!IO) :-
 
 :- type t
     --->    up
-    ;	    down.
+    ;       down.
 
 :- pred p(t::in, t::out) is det.
 

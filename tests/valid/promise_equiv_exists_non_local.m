@@ -9,7 +9,7 @@
 % The problem was that the check that was generating this message
 % should not have been considering introduced type-info related
 % variables.
-%
+
 :- module promise_equiv_exists_non_local.
 :- interface.
 
@@ -25,7 +25,8 @@ test(I, S) :-
         Foo = foo(S)
     ).
 
-:- type foo ---> some [S] foo(S).
+:- type foo
+    --->    some [S] foo(S).
 
 :- pred make_foo(list(int)::in, foo::out) is nondet.
 
@@ -36,4 +37,3 @@ make_foo(Xs, Foo) :-
 :- pred make_foo_2(int::in, foo::out) is det.
 
 make_foo_2(X, 'new foo'(X)).
-

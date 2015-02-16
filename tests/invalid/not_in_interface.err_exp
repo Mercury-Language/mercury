@@ -1,6 +1,6 @@
-not_in_interface.m:011: Error: `:- initialise' declaration in module interface.
-not_in_interface.m:013: Error: `:- mutable' declaration in module interface.
-not_in_interface.m:015: Error: `:- initialise' declaration in module interface.
-not_in_interface.m:019: Error: `:- pragma' declaration in module interface.
-not_in_interface.m:022: Error: clause for predicate `foo'/2 in module
-not_in_interface.m:022:   interface.
+not_in_interface.m:014: Error: `:- initialise' declaration in module interface.
+not_in_interface.m:016: Error: `:- mutable' declaration in module interface.
+not_in_interface.m:018: Error: `:- initialise' declaration in module interface.
+not_in_interface.m:022: Error: `:- pragma' declaration in module interface.
+not_in_interface.m:025: Error: clause for predicate `foo'/2 in module
+not_in_interface.m:025:   interface.

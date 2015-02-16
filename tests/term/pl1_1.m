@@ -1,8 +1,14 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module pl1_1.
 
 :- interface.
 
-:- type list(T)	--->	[] ; [T | list(T)].
+:- type list(T)
+    --->    []
+    ;       [T | list(T)].
 
 :- pred append(list(T), list(T), list(T)).
 :- mode append(in, in, out) is det.
@@ -13,5 +19,4 @@
 
 append([], L, L).
 append([H | L1], L2, [H | L3]) :-
-	append(L1, L2, L3).
-
+    append(L1, L2, L3).

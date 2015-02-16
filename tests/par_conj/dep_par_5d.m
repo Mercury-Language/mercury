@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % IO, uniqueness
 
 :- module dep_par_5d.
@@ -10,8 +14,8 @@
 
 main(IO0, IO) :-
     (
-	io.write_int(1, IO0, IO1)
+        io.write_int(1, IO0, IO1)
     ,
-	io.write_int(2, IO1, IO2),
-	io.nl(IO2, IO)
+        io.write_int(2, IO1, IO2),
+        io.nl(IO2, IO)
     ).

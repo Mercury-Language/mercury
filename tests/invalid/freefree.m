@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module freefree.
 :- interface.
 :- import_module io.
@@ -6,14 +10,14 @@
 
 :- implementation.
 
-main --> 
-	( { p } ->
-		io__write_string("yes\n")
-	;
-		io__write_string("no\n")
-	).
+main -->
+    ( { p } ->
+        io__write_string("yes\n")
+    ;
+        io__write_string("no\n")
+    ).
 
 :- pred p is semidet.
 
 p :-
-	some [X, Y] X \= Y.
+    some [X, Y] X \= Y.

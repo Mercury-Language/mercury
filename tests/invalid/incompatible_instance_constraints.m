@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module incompatible_instance_constraints.
 :- interface.
 
@@ -29,4 +33,3 @@
 
     % Compatible abstract definitions
 :- instance tc2(t4(T, U)) <= (tc1(T), tc1(U)) where [].
-

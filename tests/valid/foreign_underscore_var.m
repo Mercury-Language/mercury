@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module foreign_underscore_var.
 
 :- interface.
@@ -9,16 +13,17 @@
 :- implementation.
 
 main -->
-       f(X),
-       io__write_int(X),
-       io__nl.
+   f(X),
+   io__write_int(X),
+   io__nl.
 
 :- pred f(int::out, io::di, io::uo) is det.
 
-:- pragma foreign_proc("C", f(X::out, _IO0::di, _IO::uo),
-        [will_not_call_mercury, promise_pure], "
+:- pragma foreign_proc("C",
+    f(X::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
     X = 5;
 ").
 
 f(5) --> [].
-

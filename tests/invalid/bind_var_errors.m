@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module bind_var_errors.
 :- interface.
 
@@ -30,33 +34,32 @@ destroy(_).
 share(_).
 
 bind_var_in_negation :-
-	\+ (X = 42),
-	consume(X).
+    \+ (X = 42),
+    consume(X).
 
 bind_var_in_ite_cond(X) :-
-	(
-		X = 42,
-		Y = 42
-	->
-		true
-	;
-		true
-	),
-	consume(Y).
+    (
+        X = 42,
+        Y = 42
+    ->
+        true
+    ;
+        true
+    ),
+    consume(Y).
 
 bind_var_in_lambda :-
-	call((pred) is det :- Y = 42),
-	consume(Y).
+    call((pred) is det :- Y = 42),
+    consume(Y).
 
 share_var_in_lambda(X) :-
-	call((pred) is det :- share(X)),
-	destroy(X).
+    call((pred) is det :- share(X)),
+    destroy(X).
 
-	% This one is OK since X is dead after the lambda.
+    % This one is OK since X is dead after the lambda.
 share_dead_var_in_lambda(X) :-
-	call((pred) is det :- share(X)).
+    call((pred) is det :- share(X)).
 
 clobber_var_in_lambda(X) :-
-	call((pred) is det :- destroy(X)),
-	destroy(X).
-
+    call((pred) is det :- destroy(X)),
+    destroy(X).

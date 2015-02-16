@@ -1,4 +1,6 @@
-% vim: sw=4 ts=4 et
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % This test case checks the correctness of the code that saves and restores
 % answers of different types, including both builtin and user-defined types.
@@ -13,7 +15,10 @@
 
 :- implementation.
 
-:- import_module solutions, int, list, set.
+:- import_module int.
+:- import_module list.
+:- import_module set.
+:- import_module solutions.
 
 :- pragma require_feature_set([memo]).
 

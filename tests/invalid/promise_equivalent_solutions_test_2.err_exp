@@ -1,8 +1,8 @@
-promise_equivalent_solutions_test_2.m:020: Error: the
-promise_equivalent_solutions_test_2.m:020:   `promise_equivalent_solutions'
-promise_equivalent_solutions_test_2.m:020:   goal may constrain a variable that
-promise_equivalent_solutions_test_2.m:020:   is not listed: Y.
-promise_equivalent_solutions_test_2.m:027: Error: the
-promise_equivalent_solutions_test_2.m:027:   `promise_equivalent_solutions'
-promise_equivalent_solutions_test_2.m:027:   goal binds a variable that is not
-promise_equivalent_solutions_test_2.m:027:   listed: Y.
+promise_equivalent_solutions_test_2.m:024: Error: the
+promise_equivalent_solutions_test_2.m:024:   `promise_equivalent_solutions'
+promise_equivalent_solutions_test_2.m:024:   goal may constrain a variable that
+promise_equivalent_solutions_test_2.m:024:   is not listed: Y.
+promise_equivalent_solutions_test_2.m:031: Error: the
+promise_equivalent_solutions_test_2.m:031:   `promise_equivalent_solutions'
+promise_equivalent_solutions_test_2.m:031:   goal binds a variable that is not
+promise_equivalent_solutions_test_2.m:031:   listed: Y.

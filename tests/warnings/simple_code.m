@@ -1,47 +1,51 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 :- module simple_code.
 :- interface.
 :- pred p(int::in, int::out) is erroneous.
 :- implementation.
 
 :- import_module require.
-p --> 
-	(
-		[]
-	;
-		{ error("foo") }
-	),
-	( { true } ->
-		{ Z = 2 }	
-	;
-		{ Z = 3 }
-	),
-	( { X = 3, X = 2, Z = 2 } ->
-		[]
-	;
-		[]
-	),
-	( { \+ true } ->
-		[]
-	;
-		[]
-	),
-	( { \+ det_pred } ->
-		[]
-	;	
-		[]
-	),
-	( { \+ fail_pred } ->
-		[]
-	;
-		[]
-	),
-	{ \+ fail },
-	{ obsolete },
-	( { error("blah") } ->
-		[]
-	;
-		[]
-	).
+p -->
+    (
+        []
+    ;
+        { error("foo") }
+    ),
+    ( { true } ->
+        { Z = 2 }
+    ;
+        { Z = 3 }
+    ),
+    ( { X = 3, X = 2, Z = 2 } ->
+        []
+    ;
+        []
+    ),
+    ( { \+ true } ->
+        []
+    ;
+        []
+    ),
+    ( { \+ det_pred } ->
+        []
+    ;
+        []
+    ),
+    ( { \+ fail_pred } ->
+        []
+    ;
+        []
+    ),
+    { \+ fail },
+    { obsolete },
+    ( { error("blah") } ->
+        []
+    ;
+        []
+    ).
 
 :- pred det_pred is det.
 
@@ -91,8 +95,8 @@ node(c).
 :- mode anc(in, out).
 :- mode anc(out, in).
 anc(X, X) :-
-	node(X).
+    node(X).
 anc(X, Z) :-
-	parent(X, Y),
-	anc(Y, Z).
+    parent(X, Y),
+    anc(Y, Z).
 

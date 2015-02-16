@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module impure_methods.
 :- interface.
 
@@ -6,12 +10,11 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- typeclass c(T) where [
-	impure pred m1(T::in) is det,
-	semipure pred m2(T::in, int::out) is det
+    impure pred m1(T::in) is det,
+    semipure pred m2(T::in, int::out) is det
 ].
 
 :- type foo ---> foo.
-
 :- type goo ---> goo.
 
 :- impure pred foo_m1(foo::in) is det.
@@ -21,85 +24,105 @@
 :- pred goo_m2(goo::in, int::out) is det.
 
 :- implementation.
-	
+
 % impure implementations of impure methods
 :- instance c(foo) where [
-	pred(m1/1) is foo_m1,
-	pred(m2/2) is foo_m2
+    pred(m1/1) is foo_m1,
+    pred(m2/2) is foo_m2
 ].
-	
+
 % pure implementations of impure methods
 :- instance c(goo) where [
-	pred(m1/1) is goo_m1,
-	pred(m2/2) is goo_m2
+    pred(m1/1) is goo_m1,
+    pred(m2/2) is goo_m2
 ].
 
-:- pragma promise_pure(main/2). 
+:- pragma promise_pure(main/2).
 
 main -->
-	{ impure m1(foo) },
-	{ impure m1(foo) },
-	{ impure m1(foo) },
-	{ impure m1(foo) },
-	{ semipure m2(foo, X) },
-	io__write_int(X),
-	io__nl,
+    { impure m1(foo) },
+    { impure m1(foo) },
+    { impure m1(foo) },
+    { impure m1(foo) },
+    { semipure m2(foo, X) },
+    io__write_int(X),
+    io__nl,
 
-	{ impure m1(goo) },
-	{ impure m1(goo) },
-	{ impure m1(goo) },
-	{ impure m1(goo) },
-	{ semipure m2(goo, Y) },
-	io__write_int(Y),
-	io__nl.
+    { impure m1(goo) },
+    { impure m1(goo) },
+    { impure m1(goo) },
+    { impure m1(goo) },
+    { semipure m2(goo, Y) },
+    io__write_int(Y),
+    io__nl.
 
 :- pragma foreign_decl("C", "extern int foo_counter;").
 :- pragma foreign_code("C", "int foo_counter = 0;").
 :- pragma foreign_proc("C",
-	foo_m1(_F::in),
-	[will_not_call_mercury],
+    foo_m1(_F::in),
+    [will_not_call_mercury],
 "
-	foo_counter++;
+    foo_counter++;
 ").
 :- pragma foreign_proc("C",
-	foo_m2(_F::in, Val::out),
-	[will_not_call_mercury, promise_semipure],
+    foo_m2(_F::in, Val::out),
+    [will_not_call_mercury, promise_semipure],
 "
-	Val = foo_counter;
+    Val = foo_counter;
 ").
 
-:- pragma foreign_code("C#", "static int foo_counter = 0;").
+:- pragma foreign_code("C#",
+"
+    static int foo_counter = 0;
+").
 
-:- pragma foreign_proc("C#", foo_m1(_F::in),
-		[], "foo_counter++;").
-:- pragma foreign_proc("C#", foo_m2(_F::in, Val::out),
-		[promise_semipure], "Val = foo_counter;").
+:- pragma foreign_proc("C#",
+    foo_m1(_F::in),
+    [],
+"
+    foo_counter++;
+").
+:- pragma foreign_proc("C#",
+    foo_m2(_F::in, Val::out),
+    [promise_semipure],
+"
+    Val = foo_counter;
+").
 
-:- pragma foreign_code("Java", "static int foo_counter = 0;").
+:- pragma foreign_code("Java",
+"
+    static int foo_counter = 0;
+").
 
-:- pragma foreign_proc("Java", foo_m1(_F::in),
-		[], "foo_counter++;").
-:- pragma foreign_proc("Java", foo_m2(_F::in, Val::out),
-		[promise_semipure], "Val = foo_counter;").
+:- pragma foreign_proc("Java",
+    foo_m1(_F::in),
+    [],
+"
+    foo_counter++;
+").
+:- pragma foreign_proc("Java",
+    foo_m2(_F::in, Val::out),
+    [promise_semipure],
+"
+    Val = foo_counter;
+").
 
 :- pragma foreign_proc("Erlang",
-	foo_m1(_F::in),
-	[will_not_call_mercury],
+    foo_m1(_F::in),
+    [will_not_call_mercury],
 "
     put(foo_counter,
-	case get(foo_counter) of
-	    undefined -> 1;
-	    N -> N + 1
-	end)
+    case get(foo_counter) of
+        undefined -> 1;
+        N -> N + 1
+    end)
 ").
 :- pragma foreign_proc("Erlang",
-	foo_m2(_F::in, Val::out),
-	[will_not_call_mercury, promise_semipure],
+    foo_m2(_F::in, Val::out),
+    [will_not_call_mercury, promise_semipure],
 "
-	Val = get(foo_counter)
+    Val = get(foo_counter)
 ").
 
 goo_m1(_).
 goo_m2(_, 42).
-
-

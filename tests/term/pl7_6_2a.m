@@ -1,18 +1,24 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module pl7_6_2a.
 
 :- interface.
 
-:- type list(T)	--->	[] ; [T | list(T)].
+:- type list(T)
+    --->    []
+    ;       [T | list(T)].
 
 :- pred reach(T::in, T::in, list(list(T))::in) is semidet.
 
 :- implementation.
 
 reach(X, Y, Edges) :-
-	member([X, Y], Edges).
+    member([X, Y], Edges).
 reach(X, Z, Edges) :-
-	member([X, Y], Edges),
-	reach(Y, Z, Edges).
+    member([X, Y], Edges),
+    reach(Y, Z, Edges).
 
 :- pred member(T, list(T)).
 :- mode member(in, in).
@@ -20,4 +26,4 @@ reach(X, Z, Edges) :-
 
 member(H, [H | _L]).
 member(X, [_H | L]) :-
-	member(X, L).
+    member(X, L).

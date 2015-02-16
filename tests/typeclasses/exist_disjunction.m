@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module exist_disjunction.
 
 :- interface.
@@ -9,19 +13,18 @@
 :- implementation.
 
 :- type t
-	--->	a(int)
-	;	b(int)
-	.
+    --->    a(int)
+    ;       b(int).
 
 :- type u
-	--->	some [T] (u(T) => v(T))
-	%--->	some [T] u(T)
-	;	f.
+    --->    some [T] (u(T) => v(T))
+    %--->   some [T] u(T)
+    ;       f.
 
 :- typeclass v(T) where [].
 
 :- type w
-	--->	f(int).
+    --->    f(int).
 
 :- instance v(w) where [].
 
@@ -30,14 +33,13 @@
 
 p(T, V) :-
     (
-    	T = a(C),
-	V = 'new u'(f(C))
+        T = a(C),
+        V = 'new u'(f(C))
     ;
-    	T = b(C),
-	V = 'new u'(f(C))
+        T = b(C),
+        V = 'new u'(f(C))
     ).
 
 main -->
-	{ p(a(42), X) },
-	write(X), nl.
-
+    { p(a(42), X) },
+    write(X), nl.

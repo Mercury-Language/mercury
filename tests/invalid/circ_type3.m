@@ -1,6 +1,11 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test for circular equivalence types.
-% This is the same as circ_type.m, except that we also have 
-% a predicate that uses the types.
+% This is the same as circ_type.m, except that we also have a predicate
+% that uses the types.
+
 :- module circ_type3.
 
 :- interface.
@@ -15,4 +20,5 @@
 :- mode p(in, in, out) is det.
 
 :- implementation.
+
 p(_, X, X).

@@ -1,7 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % Ideally we ought to issue a warning for this module,
 % e.g. `nothing exported' or `main/2 unused'.
-%
+
 :- module no_exports.
 
 % :- interface.
@@ -13,4 +16,4 @@
 :- implementation.
 
 main -->
-	io__write_string("hello\n").
+    io__write_string("hello\n").

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module method_impl.
 :- interface.
 
@@ -6,7 +10,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- typeclass c(T) where [
-	pred m1(T::in, int::out) is det
+    pred m1(T::in, int::out) is det
 ].
 
 :- type foo ---> foo.
@@ -19,19 +23,17 @@
 :- implementation.
 
 :- instance c(foo) where [
-	pred(m1/2) is foo_m1
+    pred(m1/2) is foo_m1
 ].
 :- instance c(bar) where [
-	pred(m1/2) is bar_m1
+    pred(m1/2) is bar_m1
 ].
 
 main -->
-	[].
+    [].
 
 :- pragma foreign_code("C", "int foo_counter = 0;").
 
 foo_m1(_, "forty two").
 
 foo_m2(_, _).
-
-

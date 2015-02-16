@@ -1,8 +1,15 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module exported_unify2.
 
 :- interface.
 
-:- type foo ---> foo1 ; foo2 where equality is unify_foo.
+:- type foo
+    --->    foo1
+    ;       foo2
+    where equality is unify_foo.
 
 :- implementation.
 
@@ -10,5 +17,5 @@
 
 :- pred unify_foo(foo::in, foo::in) is semidet.
 
-unify_foo(_, _) :- semidet_fail.
-
+unify_foo(_, _) :-
+    semidet_fail.

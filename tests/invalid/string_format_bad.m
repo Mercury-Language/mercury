@@ -14,7 +14,8 @@
 :- import_module float.
 :- import_module int.
 :- import_module list.
-:- import_module stream, stream.string_writer.
+:- import_module stream.
+:- import_module stream.string_writer.
 :- import_module string.
 
 main(!IO) :-

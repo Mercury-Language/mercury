@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module foreign_type_visibility.
 
 :- implementation.
@@ -13,11 +17,10 @@
 :- pragma foreign_type(il, foreign2, "class [mscorlib]System.Object").
 
 :- type foreign3
-	---> foreign3(c_pointer).
+    --->    foreign3(c_pointer).
 
 :- implementation.
 
 :- pragma foreign_type(c, foreign2, "void *").
 
 :- pragma foreign_type(c, foreign3, "void *").
-

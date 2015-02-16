@@ -1,9 +1,13 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % There was a problem with this file when --trace deep was used,
 % due to a bug in the --delay-death pass.
 % I'd made the delay death pass treat parallel conjunctions in
 % the same way as plain conjunctions, but that is all wrong
 % and causes this exception in the code generator.
-% 
+%
 % Uncaught Mercury exception:
 % Software Error: map.lookup: key not found
 %         Key Type: term.var(parse_tree.prog_data.prog_var_type)
@@ -24,7 +28,7 @@ main(IO0, IO) :-
         (
             C = A
         &
-	    true
+            true
         )
     &
         true

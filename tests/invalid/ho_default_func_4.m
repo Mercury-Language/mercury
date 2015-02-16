@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Compiling this module should generate an error message since
 % it tries to cast a non-standard func inst to ground.
 
@@ -11,13 +15,14 @@
 
 :- implementation.
 
-:- import_module int, std_util.
+:- import_module int.
+:- import_module std_util.
 
 :- inst one == bound(1).
 
 main -->
-	{ baz(foo, F) },
-	io__write_int(F(42)), nl.
+    { baz(foo, F) },
+    io__write_int(F(42)), nl.
 
 :- func foo(int) = int.
 foo(X) = X + 1.
@@ -28,9 +33,8 @@ bar(X) = X.
 
 :- pred baz(T::in, T::out) is det.
 baz(X, Y) :-
-	( univ_to_type(univ(bar), Y0) ->
-		Y = Y0
-	;
-		Y = X
-	).
-
+    ( univ_to_type(univ(bar), Y0) ->
+        Y = Y0
+    ;
+        Y = X
+    ).

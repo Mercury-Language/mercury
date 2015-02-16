@@ -1,4 +1,8 @@
-% Regression test.  `stack_opt_cell' used to call `detect_liveness_proc'
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
+% Regression test. `stack_opt_cell' used to call `detect_liveness_proc'
 % without doing a simplification on the procedure beforehand:
 %
 % % mmc --optimize-saved-vars -C stack_opt_simplify.m
@@ -15,8 +19,15 @@
 :- implementation.
 :- import_module require.
 
-foo :- ( bar -> true ; true ).
+foo :-
+    ( bar ->
+        true
+    ;
+        true
+    ).
 
-% If declared as `is erroneous' then the abort doesn't occur.
+    % If declared as `is erroneous' then the abort doesn't occur.
 :- pred bar is semidet.
-bar :- error("bar").
+
+bar :-
+    error("bar").

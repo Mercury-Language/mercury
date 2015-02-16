@@ -1,10 +1,6 @@
-%-----------------------------------------------------------------------------%
-% anys_in_negated_contexts.m
-% Ralph Becket <rafe@cs.mu.OZ.AU>
-% Wed Oct 19 18:29:50 EST 2005
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module anys_in_negated_contexts.
 
@@ -14,8 +10,7 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -25,28 +20,44 @@
 
 good_if_then_else(X, Y) :-
     promise_pure
-    ( if   ia(X), ig(3)
-      then Y = 1
-      else Y = 2
+    ( if
+        ia(X),
+        ig(3)
+    then
+        Y = 1
+    else
+        Y = 2
     ).
 
 :- pred bad_if_then_else1(T::ia, int::out) is det.
 
 bad_if_then_else1(X, Y) :-
-    ( if   ia(X), ig(3)
-      then Y = 1
-      else Y = 2
+    ( if
+        ia(X),
+        ig(3)
+    then
+        Y = 1
+    else
+        Y = 2
     ).
 
 :- pred good_negation(T::ia) is semidet.
 
 good_negation(X) :-
-    promise_pure not (ia(X), ig(3)).
+    promise_pure (
+        not (
+            ia(X),
+            ig(3)
+        )
+    ).
 
 :- pred bad_negation1(T::ia) is semidet.
 
 bad_negation1(X) :-
-    not (ia(X), ig(3)).
+    not (
+        ia(X),
+        ig(3)
+    ).
 
 :- pred pure_pred_mode_specific_clauses(int).
 :- mode pure_pred_mode_specific_clauses(in) is semidet.
@@ -87,5 +98,4 @@ oa(42).
 main(!IO) :-
     io.print("Hello, World!\n", !IO).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

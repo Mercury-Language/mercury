@@ -1,11 +1,13 @@
-%------------------------------------------------------------------------------
-%	Benchmark Program - Counting occurrences in lists
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
-%	Author: B. Ramkumar and L. V. Kale
-%	Date: 
+% Benchmark Program - Counting occurrences in lists
 %
-%	To test: run o/1.  
-%------------------------------------------------------------------------------
+% Author: B. Ramkumar and L. V. Kale
+%
+% To test: run o/1.
+%
 % Benchmark is o(31), runs with -A1 -E256 -C128
 
 :- module uniq_mode_inf_bug.
@@ -21,30 +23,30 @@
 :- import_module int.
 
 occurall([], _X, []).
-occurall([X|Y],Z, [[X,W]|V]) :-
-	occur(X,Z,W),
-	occurall(Y,Z,V).
+occurall([X | Y], Z, [[X, W] | V]) :-
+    occur(X, Z, W),
+    occurall(Y, Z, V).
 
-occur(_X,[],0).
-occur(X,[Y|Z],W) :-
-	(
-		count(X,Y,A),
-		occur(X,Z,B)
-	->
-		W = A + B
-	;
-		fail
-	).
+occur(_X, [], 0).
+occur(X, [Y | Z], W) :-
+    (
+        count(X, Y, A),
+        occur(X, Z, B)
+    ->
+        W = A + B
+    ;
+        fail
+    ).
 
-count(_X,[],0).
-count(X,[Y|Z],W) :-
-	( count(X,Z,W1) ->
-		addx(X,Y,W1,W)
-	;
-		fail
-	).
+count(_X, [], 0).
+count(X, [Y | Z], W) :-
+    ( count(X, Z, W1) ->
+        addx(X, Y, W1, W)
+    ;
+        fail
+    ).
 
-addx(X,X,W1,W) :-
-	W = W1 + 1.
-addx(X,Y,W1,W1) :-
-	X \= Y.
+addx(X, X, W1, W) :-
+    W = W1 + 1.
+addx(X, Y, W1, W1) :-
+    X \= Y.

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module multi_constraint_diff_tvar.
 
 :- interface.
@@ -9,19 +13,20 @@
 :- implementation.
 
 :- typeclass c(T) where [
-	pred p(T::in, io__state::di, io__state::uo) is det
+    pred p(T::in, io__state::di, io__state::uo) is det
 ].
 
 :- instance c(int) where [
-	pred(p/3) is io__write_int
+    pred(p/3) is io__write_int
 ].
 
 :- pred foo(T1, T2, io__state, io__state) <= (c(T1), c(T2)).
 :- mode foo(in, in, di, uo) is det.
 
 foo(X, Y) -->
-	p(X),
-	p(Y),
-	io__nl.
+    p(X),
+    p(Y),
+    io__nl.
 
-main --> foo(42, 24).
+main -->
+    foo(42, 24).

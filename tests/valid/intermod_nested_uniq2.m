@@ -1,4 +1,6 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 :- module intermod_nested_uniq2.
 
 :- interface.
@@ -16,30 +18,32 @@
 :- pred init(int, int, f_matrix).
 :- mode init(in, in, f_matrix_uo) is det.
 
+    % Lookup element (I, J) in the f_matrix.
+    % If (I, J) is not a valid index to the matrix, the behaviour is undefined.
+    %
 :- pred lookup(int, int, f_matrix, float).
 :- mode lookup(in, in, f_matrix_ui, out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module array, float, int.
+:- import_module array.
+:- import_module float.
+:- import_module int.
 
-:- type f_matrix --->
-	f_matrix(
-		 int,		% M
-		 int,		% N
-		 array(float)	% the elements of the matrix
-		).
+:- type f_matrix
+    --->    f_matrix(
+                int,            % M
+                int,            % N
+                array(float)    % the elements of the matrix
+            ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init(M, N, Matrix) :-
-	array__init(M * N, 0.0, Array),
-	Matrix = f_matrix(M, N, Array).
+    array__init(M * N, 0.0, Array),
+    Matrix = f_matrix(M, N, Array).
 
-% Lookup element (I, J) in the f_matrix.
-% If (I, J) is not a valid index to the matrix, the behaviour is undefined
 lookup(I, J, f_matrix(_M, N, Array), Elem) :-
-	array__lookup(Array, (I * N) + J, Elem).
-
+    array__lookup(Array, (I * N) + J, Elem).

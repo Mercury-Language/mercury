@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module unsatisfiable_constraint_msg.
 
 :- interface.
@@ -8,8 +12,8 @@
 
 :- implementation.
 
-:- import_module string.
 :- import_module int.
+:- import_module string.
 
 main(!IO) :-
     io.write_string("typeclass_test", !IO),
@@ -19,37 +23,30 @@ main(!IO) :-
         io.write_string("fail", !IO)
     ).
 
-
 :- pred test(A::in, B::in) is semidet <= (tca(A), tcb(B)).
 
 test(A, B) :-
     pa(A),
     pb(B).
 
-
-
-:- typeclass tca(A) where
-[
+:- typeclass tca(A) where [
     pred pa(A::in) is semidet
 ].
 
-:- typeclass tcb(B) where
-[
+:- typeclass tcb(B) where [
     pred pb(B::in) is semidet
 ].
 
-:- typeclass tcc(C) where
-[
+:- typeclass tcc(C) where [
     pred pc(C::in) is semidet
 ].
 
-:- type ta(A) ---> ta(A).
-:- type tb(B) ---> tb(B).
+:- type ta(A)
+    --->    ta(A).
+:- type tb(B)
+    --->    tb(B).
 
-
-:- instance tca(ta(A)) <= (tca(A), tcc(A))
-where
-[
+:- instance tca(ta(A)) <= (tca(A), tcc(A)) where [
     (pa(ta(A)) :-
         pa(A),
         pc(A)
@@ -67,18 +64,13 @@ where
 ].
 */
 
-
-:- instance tca(string)
-where
-[
+:- instance tca(string) where [
     (pa(String) :-
         length(String) > 0
     )
 ].
 
-:- instance tcb(string)
-where
-[
+:- instance tcb(string) where [
     (pb(String) :-
         length(String) > 0
     )

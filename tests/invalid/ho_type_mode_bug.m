@@ -1,3 +1,6 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % ho_type_mode_bug.m:
 %
@@ -21,6 +24,6 @@
 :- implementation.
 
 my_foldl2(_, [], FirstAcc, FirstAcc, SecAcc, SecAcc).
-my_foldl2(P, [H|T], FirstAcc0, FirstAcc, SecAcc0, SecAcc) :-
-	call(P, H, FirstAcc0, FirstAcc1, SecAcc0, SecAcc1),
-	my_foldl2(P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc).
+my_foldl2(P, [H | T], FirstAcc0, FirstAcc, SecAcc0, SecAcc) :-
+    call(P, H, FirstAcc0, FirstAcc1, SecAcc0, SecAcc1),
+    my_foldl2(P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc).

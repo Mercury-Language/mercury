@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Compile with '--infer-all'
 
 :- module no_fundep_infer.
@@ -9,15 +13,19 @@
 :- implementation.
 
 main(!IO) :-
-	io.write(g([]), !IO),
-	io.nl(!IO).
+    io.write(g([]), !IO),
+    io.nl(!IO).
 
 :- typeclass coll(E, C) where [
-	func i(E, C) = C
+    func i(E, C) = C
 ].
 
-:- type intlist ---> [] ; [int | intlist].
-:- type stringlist ---> [] ; [string | stringlist].
+:- type intlist
+    --->    []
+    ;       [int | intlist].
+:- type stringlist
+    --->    []
+    ;       [string | stringlist].
 
 :- instance coll(string, intlist) where [ (i(_S, L) = [1 | L]) ].
 :- instance coll(int, intlist) where [ (i(N, L) = [N | L]) ].
@@ -28,4 +36,3 @@ main(!IO) :-
 g(L) = f("foo", 2, L).
 
 f(A, B, C) = i(A, i(B, C)).
-

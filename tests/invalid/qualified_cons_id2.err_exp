@@ -1,17 +1,17 @@
-qualified_cons_id2.m:015: In `test'(in(bound(qualified_cons_id2.yes(ground))),
-qualified_cons_id2.m:015:   out):
-qualified_cons_id2.m:015:   error: determinism declaration not satisfied.
-qualified_cons_id2.m:015:   Declared `det', inferred `failure'.
-qualified_cons_id2.m:015: In mode declarations for predicate
-qualified_cons_id2.m:015:   `qualified_cons_id2.test'/2:
-qualified_cons_id2.m:015:   error: duplicate mode declaration.
-qualified_cons_id2.m:016:   Here is the conflicting mode declaration.
-qualified_cons_id2.m:020: In clause for
-qualified_cons_id2.m:020:   `test(in(bound(qualified_cons_id2.yes(ground))),
-qualified_cons_id2.m:020:   out)':
-qualified_cons_id2.m:020:   in argument 1 of clause head:
-qualified_cons_id2.m:020:   warning: unification of `HeadVar__1' and maybe.yes
-qualified_cons_id2.m:020:   cannot succeed.
-qualified_cons_id2.m:020:   `HeadVar__1' has instantiatedness
-qualified_cons_id2.m:020:   `bound(qualified_cons_id2.yes(ground))'.
+qualified_cons_id2.m:020: In `test'(in(bound(qualified_cons_id2.yes(ground))),
+qualified_cons_id2.m:020:   out):
+qualified_cons_id2.m:020:   error: determinism declaration not satisfied.
+qualified_cons_id2.m:020:   Declared `det', inferred `failure'.
+qualified_cons_id2.m:020: In mode declarations for predicate
+qualified_cons_id2.m:020:   `qualified_cons_id2.test'/2:
+qualified_cons_id2.m:020:   error: duplicate mode declaration.
+qualified_cons_id2.m:021:   Here is the conflicting mode declaration.
+qualified_cons_id2.m:025: In clause for
+qualified_cons_id2.m:025:   `test(in(bound(qualified_cons_id2.yes(ground))),
+qualified_cons_id2.m:025:   out)':
+qualified_cons_id2.m:025:   in argument 1 of clause head:
+qualified_cons_id2.m:025:   warning: unification of `HeadVar__1' and maybe.yes
+qualified_cons_id2.m:025:   cannot succeed.
+qualified_cons_id2.m:025:   `HeadVar__1' has instantiatedness
+qualified_cons_id2.m:025:   `bound(qualified_cons_id2.yes(ground))'.
 For more information, recompile with `-E'.

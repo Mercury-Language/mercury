@@ -9,7 +9,7 @@
 
 :- import_module io.
 
-:- pred main(io::di,io::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -18,7 +18,8 @@
 :- import_module non_word_mutable.child.
 :- import_module float.
 
-:- type c ---> c(int, int).
+:- type c
+    --->    c(int, int).
 
 :- type coord.
 :- pragma foreign_type(c, coord, "coord *").
@@ -138,70 +139,69 @@ class coord {
     {_, Y} = C
 ").
 
-
 :- pragma promise_pure(main/2).
 main(!IO) :-
     % Check whether we get back the same value as we set.
     GV1Init = 1.2,
-    write(GV1Init,!IO),
+    write(GV1Init, !IO),
     nl(!IO),
     impure exported_set_gv1(GV1Init),
     semipure exported_get_gv1(GV1Final),
-    write(GV1Final,!IO),
+    write(GV1Final, !IO),
     nl(!IO),
     ( GV1Init = GV1Final ->
         true
     ;
-        write_string("GV1 NOT SAME!\n",!IO)
+        write_string("GV1 NOT SAME!\n", !IO)
     ),
 
     % Check whether we get back the same value as the initialization.
     GV2Init = 2.3,
-    write(GV2Init,!IO),
+    write(GV2Init, !IO),
     nl(!IO),
     semipure exported_get_gv2(GV2Final),
-    write(GV2Final,!IO),
+    write(GV2Final, !IO),
     nl(!IO),
     ( GV2Init = GV2Final ->
         true
     ;
-        write_string("GV2 NOT SAME!\n",!IO)
+        write_string("GV2 NOT SAME!\n", !IO)
     ),
 
     % Check whether we get back the same value as we set.
     GV3Init = "abc",
-    write(GV3Init,!IO),
+    write(GV3Init, !IO),
     nl(!IO),
     impure exported_set_gv3(GV3Init),
     semipure exported_get_gv3(GV3Final),
-    write(GV3Final,!IO),
+    write(GV3Final, !IO),
     nl(!IO),
     ( GV3Init = GV3Final ->
         true
     ;
-        write_string("GV3 NOT SAME!\n",!IO)
+        write_string("GV3 NOT SAME!\n", !IO)
     ),
 
     % Check whether we get back the same value as the initialization.
     GV4Init = "def",
-    write(GV4Init,!IO),
+    write(GV4Init, !IO),
     nl(!IO),
     semipure exported_get_gv4(GV4Final),
-    write(GV4Final,!IO),
+    write(GV4Final, !IO),
     nl(!IO),
     ( GV4Init = GV4Final ->
         true
     ;
-        write_string("GV4 NOT SAME!\n",!IO)
+        write_string("GV4 NOT SAME!\n", !IO)
     ),
 
     % Check whether we get back the same value as we set.
     GV5Init = new_coord(1, 2),
-    write(c(x(GV5Init), y(GV5Init)),!IO),
+    write(c(x(GV5Init), y(GV5Init)), !IO),
     nl(!IO),
     impure exported_set_gv5(GV5Init),
     semipure exported_get_gv5(GV5Final),
-    write(c(x(GV5Final), y(GV5Final)),!IO),
+    write(c(x(GV5Final), y(GV5Final)), !IO),
     nl(!IO),
     (
         x(GV5Init) = x(GV5Final),
@@ -209,15 +209,15 @@ main(!IO) :-
     ->
         true
     ;
-        write_string("GV5 NOT SAME!\n",!IO)
+        write_string("GV5 NOT SAME!\n", !IO)
     ),
 
     % Check whether we get back the same value as the initialization.
     GV6Init = new_coord(2, 3),
-    write(c(x(GV6Init), y(GV6Init)),!IO),
+    write(c(x(GV6Init), y(GV6Init)), !IO),
     nl(!IO),
     semipure exported_get_gv6(GV6Final),
-    write(c(x(GV6Final), y(GV6Final)),!IO),
+    write(c(x(GV6Final), y(GV6Final)), !IO),
     nl(!IO),
     (
         x(GV6Init) = x(GV6Final),
@@ -225,5 +225,5 @@ main(!IO) :-
     ->
         true
     ;
-        write_string("GV6 NOT SAME!\n",!IO)
+        write_string("GV6 NOT SAME!\n", !IO)
     ).

@@ -1,5 +1,9 @@
-% Test case for the --no-warn-obsolete option.
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
+% Test case for the --no-warn-obsolete option.
+
 :- module no_warn_obsolete.
 :- interface.
 
@@ -12,4 +16,5 @@
 
 foo(1).
 
-bar(X) :- foo(X).
+bar(X) :-
+    foo(X).

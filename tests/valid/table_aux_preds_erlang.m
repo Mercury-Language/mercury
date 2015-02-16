@@ -1,5 +1,5 @@
-% vim: ts=4 sw=4 expandtab ft=mercury 
-
+% vim: ts=4 sw=4 expandtab ft=mercury
+%
 % This program used to get compiler errors, because the table statistics
 % and reset predicates that the pragma memo asks for were not generated
 % in Erlang grades. This was Mantis bug #368.

@@ -1,3 +1,6 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module typeclass_test_5.
 
@@ -8,8 +11,8 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- typeclass c1(T) where [].
-:- typeclass c2(T) <= c1(T) where [ 
-	pred p(T), mode p(out) is det
+:- typeclass c2(T) <= c1(T) where [
+    pred p(T), mode p(out) is det
 ].
 
 :- pred get_int(int::out) is det.
@@ -18,8 +21,8 @@
 :- implementation.
 
 :- instance c2(int) where [
-	pred(p/1) is get_int,
-	pred(p/1) is get_int2
+    pred(p/1) is get_int,
+    pred(p/1) is get_int2
 ].
 
 main --> [].

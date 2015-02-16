@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % There were problems with this and deforestation and
 % --optimise-saved-vars-const.
 
@@ -18,8 +22,8 @@ main(!IO) :-
 :- pred p(list(int)::in, int::in, int::out) is det.
 
 p([], A, A).
-p([H|T], A0, A) :-
-    (if H = A0 then
+p([H | T], A0, A) :-
+    ( if H = A0 then
         ( p(T, A0, A1)
         & p(T, A1, A)
         )

@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module constrained_poly_insts.
 :- interface.
 
@@ -10,8 +14,12 @@
 :- func call_search(tree(K, V), K) = V.
 :- mode call_search(in(tree(k, v)), in(k)) = out(v) is semidet.
 
-:- type tree(K, V) ---> empty ; node(tree(K, V), K, V, tree(K, V)).
-:- inst tree(K, V) ---> empty ; node(tree(K, V), K, V, tree(K, V)).
+:- type tree(K, V)
+    --->    empty
+    ;       node(tree(K, V), K, V, tree(K, V)).
+:- inst tree(K, V)
+    --->    empty
+    ;       node(tree(K, V), K, V, tree(K, V)).
 
 :- inst b == bound(42 ; 43 ; 44).
 
@@ -22,18 +30,18 @@
 call_search(T, K) = V :- search(T, K, V).
 
 search(node(L, K0, V0, R), K, V) :-
-	compare(Res, K0, K),
-	(
-		Res = (<),
-		search(R, K, V)
-	;
-		Res = (=),
-		V = V0
-	;
-		Res = (>),
-		search(L, K, V)
-	).
+    compare(Res, K0, K),
+    (
+        Res = (<),
+        search(R, K, V)
+    ;
+        Res = (=),
+        V = V0
+    ;
+        Res = (>),
+        search(L, K, V)
+    ).
 
 p(X, Y) :-
-	X = 42,
-	Y = X.
+    X = 42,
+    Y = X.

@@ -1,7 +1,10 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
-% rotd-2006-06-15 printed out a badly formed error message for
-% det_calls_nondet/2.
-%
+% rotd-2006-06-15 printed out a badly formed error message
+% for det_calls_nondet/2.
+
 :- module det_atomic_goal_msgs.
 :- interface.
 

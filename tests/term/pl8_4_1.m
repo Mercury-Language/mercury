@@ -1,8 +1,14 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+
 :- module pl8_4_1.
 
 :- interface.
 
-:- type nat	--->	zero ; s(nat).
+:- type nat
+    --->    zero
+    ;       s(nat).
 
 :- pred even(nat::in) is semidet.
 :- pred odd(nat::in) is semidet.
@@ -11,7 +17,7 @@
 
 even(zero).
 even(s(X)) :-
-	odd(X).
+    odd(X).
 
 odd(s(X)) :-
-	even(X).
+    even(X).

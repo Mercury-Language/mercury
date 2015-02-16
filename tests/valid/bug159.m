@@ -1,4 +1,5 @@
 % vim: ts=4 sw=4 et ft=mercury
+%
 % This is a test case for Mantis bug 159. The bug was that mode checking and
 % unique mode checking did not eliminate a from_ground_term scope that
 % constructed a variable which was unused except for its type (variable L
@@ -29,7 +30,7 @@ pickles = !:P :-
     !:P = pickles(0),
     % The size of this term should be (and currently is) above the
     % from_ground_term threshold.
-    L = [1,2,3],
+    L = [1, 2, 3],
     register_pickle(type_ctor(type_of(L)), pickle_list_as_array, !P).
 
 :- type byte_buffer == int.
