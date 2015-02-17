@@ -77,7 +77,7 @@ DEFAULT_MCFLAGS=\
 		--c-flag-to-name-object-file "@OBJFILE_OPT@" \
 		--java-classpath "$(INSTALL_JAVA_LIBRARY_DIR)/$(RT_LIB_NAME).jar" \
 		--java-classpath "$(INSTALL_JAVA_LIBRARY_DIR)/$(STD_LIB_NAME).jar" \
-		--java-flags "@JAVAC_FLAGS_FOR_HEAP_SIZE@" \
+		--java-flags "@JAVAC_FLAGS_FOR_HEAP_SIZE_CONFIG@" \
 		--object-file-extension ".@OBJ_SUFFIX@" \
 		--pic-object-file-extension ".@EXT_FOR_PIC_OBJECTS@" \
 		--link-with-pic-object-file-extension ".@EXT_FOR_LINK_WITH_PIC_OBJECTS@" \

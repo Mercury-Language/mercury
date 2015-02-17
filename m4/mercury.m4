@@ -560,12 +560,18 @@ AC_CACHE_VAL([mercury_cv_javac_flags_for_heap_size], [
 if test "$mercury_cv_java" = "yes"
 then
 	AC_MSG_CHECKING([if the Java compiler accepts the max heap size option])
-	# There are two versions of this.  The _test version is the one we test
-	# here.  The second one, with the escaped quotes, is the one that gets
-	# included in the output files.  The quotes are necessary in order for
-	# --restricted-command-line to work with the Java backend.
+	# There are three versions of this.  The '_test' version is the one we
+	# test here; the '_mmake' version is the one that gets included in
+	# in the Mmake.vars file and the '_config' verison is the version that
+	# gets in included in the Mercury.config file.
+	# The difference between the three versions is how much we need to
+	# escape the double quotes; in particular we need to ensure that they
+	# are *not* escaped in Mmake.vars and *are* escaped in Mercury.config.
+	# The latter is necessary in order for --restricted-command-line to
+	# work.
 	mercury_cv_javac_flags_for_heap_size_test="-J-Xmx256m"
-	mercury_cv_javac_flags_for_heap_size="-J\"-Xmx1024m\""
+	mercury_cv_javac_flags_for_heap_size_mmake="-J\"-Xmx1024m\""
+	mercury_cv_javac_flags_for_heap_size_config="-J\\\"-Xmx1024m\\\""
 	if "$JAVAC" "$mercury_cv_javac_flags_for_heap_size_test" -version \
                 2> /dev/null
         then

@@ -1234,13 +1234,16 @@ AC_ARG_ENABLE(javac-flags-for-heap-size,
 case "$enable_javac_flags_for_heap_size" in
     yes)
         MERCURY_CHECK_JAVAC_HEAP_SIZE
-        JAVAC_FLAGS_FOR_HEAP_SIZE=$mercury_cv_javac_flags_for_heap_size
+        JAVAC_FLAGS_FOR_HEAP_SIZE_MMAKE=$mercury_cv_javac_flags_for_heap_size_mmake
+        JAVAC_FLAGS_FOR_HEAP_SIZE_CONFIG=$mercury_cv_javac_flags_for_heap_size_config
         ;;
     no)
-        JAVAC_FLAGS_FOR_HEAP_SIZE=
+        JAVAC_FLAGS_FOR_HEAP_SIZE_MMAKE=
+        JAVAC_FLAGS_FOR_HEAP_SIZE_CONFIG=
         ;;
 esac
-AC_SUBST(JAVAC_FLAGS_FOR_HEAP_SIZE)
+AC_SUBST(JAVAC_FLAGS_FOR_HEAP_SIZE_MMAKE)
+AC_SUBST(JAVAC_FLAGS_FOR_HEAP_SIZE_CONFIG)
 
 #-----------------------------------------------------------------------------#
 # Erlang configuration
