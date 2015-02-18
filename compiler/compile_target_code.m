@@ -2708,7 +2708,6 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
         (
             ( CCompilerType = cc_gcc(_, _, _)
             ; CCompilerType = cc_clang(_)
-            ; CCompilerType = cc_lcc
             ; CCompilerType = cc_unknown
             ),
             LinkOpt = "-l",
