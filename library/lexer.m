@@ -10,10 +10,10 @@
 % Main author: fjh.
 % Stability: high.
 %
-% Lexical analysis.  This module defines the representation of tokens
+% Lexical analysis. This module defines the representation of tokens
 % and exports predicates for reading in tokens from an input stream.
 %
-% See ISO Prolog 6.4.  Also see the comments at the top of parser.m.
+% See ISO Prolog 6.4. Also see the comments at the top of parser.m.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -133,32 +133,29 @@
 :- import_module string.
 
 % Note that there are two implementations of most predicates here:
-% one which deals with strings, the other that deals with io.states.
-% We can't write the io.state version in terms of the string
-% version because we don't know how much string to slurp up
-% until after we've lexically analysed it.  Some interactive
-% applications require the old Prolog behaviour of stopping
-% after an end token (i.e. `.' plus whitespace) rather than
-% reading in whole lines.
-% Conversely, we can't write the string version using the io.state
-% version, since that would require either cheating with the io.state
-% or ruining the string interface.
+% one that deals with strings, and another that deals with io.states.
+% We can't write the io.state version in terms of the string version
+% because we don't know how much string to slurp up until after we have
+% lexically analysed it. Some interactive applications require the old
+% Prolog behaviour of stopping after an end token (i.e. `.' plus whitespace)
+% rather than reading in whole lines. Conversely, we can't write the string
+% version using the io.state version, since that would require either
+% cheating with the io.state or ruining the string interface.
 %
-% An alternative would be to write both versions in terms
-% of a generic "char_stream" typeclass, with instances
-% for io.states and for strings.
-% However, for this to be acceptably efficient it would
-% require the compiler to specialize the code, which
-% currently (13 May 98) it is not capable of doing.
+% An alternative would be to write both versions in terms of a generic
+% "char_stream" typeclass, with instances for io.states and for strings.
+% However, for this to be acceptably efficient it would require the compiler
+% to specialize the code, which currently (13 May 98) it is not capable
+% of doing.
 %
-% In fact, the string version is still not as efficient as I would
-% like.  The compiler ought to (but currently doesn't) unfold all
-% the instances of the `posn' type.  We could do this type unfolding
-% by hand, but it would be very tedious and it would make the code
-% less readable.  If/when there is compiler support for this, we
-% should also think about moving the `String' and `Len' arguments
-% into the posn (or making a new `lexer_state' struct which contains
-% both the posn and the String and Len arguments).
+% In fact, the string version is still not as efficient as I would like.
+% The compiler ought to (but currently doesn't) unfold all the instances
+% of the `posn' type.  We could do this type unfolding by hand, but
+% it would be very tedious and it would make the code less readable.
+% If and when there is compiler support for this, we should also think about
+% moving the `String' and `Len' arguments into the posn (or making a new
+% `lexer_state' struct which contains both the posn and the String and Len
+% arguments).
 
 %---------------------------------------------------------------------------%
 
@@ -255,17 +252,15 @@ token_to_string(Token, String) :-
         string.append_list(["integer `", IntString, "'."], String)
     ).
 
+get_token_list(Tokens, !IO) :-
     % We build the tokens up as lists of characters in reverse order.
-    % When we get to the end of each token, we call
-    % `rev_char_list_to_string/2' to convert that representation
-    % into a string.
-
+    % When we get to the end of each token, we call `rev_char_list_to_string/2'
+    % to convert that representation into a string.
+    %
     % Comments of the form
     %   foo --> bar . baz
-    % mean that we are parsing a `foo', and we've already scanned
-    % past the `bar', so now we need to match with a `baz'.
-
-get_token_list(Tokens, !IO) :-
+    % mean that we are parsing a `foo', and we've already scanned past
+    % the `bar', so now we need to match with a `baz'.
     io.input_stream(Stream, !IO),
     get_token(Stream, Token, Context, !IO),
     get_token_list_2(Stream, Token, Context, Tokens, !IO).
@@ -370,8 +365,7 @@ get_context(Stream, Context, !IO) :-
 string_get_context(StartPosn, Context, !Posn) :-
     StartPosn = posn(StartLineNum, _, _),
     Context = StartLineNum.
-    % In future, we might want to modify this code to read something
-    % like this:
+    % In future, we might want to modify this code to read something like this:
     %
     % posn_to_line_and_column(StartPosn, StartLineNum, StartColumn),
     % posn_to_line_and_column(!.Posn, EndLineNum, EndColumn),
@@ -654,10 +648,10 @@ lookup_token_action(Char, Action) :-
     % it should be treated. Note that inlining this predicate does not
     % significantly affect performance.
     %
-% :- pragma inline(execute_get_token_action/8).
 :- pred execute_get_token_action(io.input_stream::in, char::in,
     get_token_action::in, scanned_past_whitespace::in, token::out,
     token_context::out, io::di, io::uo) is det.
+% :- pragma inline(execute_get_token_action/8).
 
 execute_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
         Token, Context, !IO) :-
@@ -717,10 +711,10 @@ execute_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
 
     % The string version of execute_get_token_action.
     %
-% :- pragma inline(execute_string_get_token_action/10).
 :- pred execute_string_get_token_action(string::in, int::in, posn::in,
     char::in, get_token_action::in, scanned_past_whitespace::in, token::out,
     token_context::out, posn::in, posn::out) is det.
+% :- pragma inline(execute_string_get_token_action/10).
 
 execute_string_get_token_action(String, Len, Posn0, Char, Action,
         ScannedPastWhiteSpace, Token, Context, !Posn) :-
@@ -781,9 +775,9 @@ execute_string_get_token_action(String, Len, Posn0, Char, Action,
     % the compiler should be able to eliminate the switch on
     % ScannedPastWhiteSpace.
     %
-:- pragma inline(handle_special_token/3).
 :- pred handle_special_token(char::in, scanned_past_whitespace::in, token::out)
     is det.
+:- pragma inline(handle_special_token/3).
 
 handle_special_token(Char, ScannedPastWhiteSpace, Token) :-
     ( special_token(Char, SpecialToken) ->
@@ -1360,11 +1354,11 @@ string_get_unicode_escape(NumHexChars, String, Len, QuoteChar, Chars,
         )
     ).
 
-:- pred allowed_unicode_char_code(int::in) is semidet.
-
     % Succeeds if the give code point is a legal Unicode code point
     % (regardless of whether it is reserved for private use or not).
     %
+:- pred allowed_unicode_char_code(int::in) is semidet.
+
 allowed_unicode_char_code(Code) :-
     Code >= 0,
     Code =< 0x10FFFF,
@@ -1681,10 +1675,9 @@ string_get_implementation_defined_literal_rest(String, Len, Posn0,
 
     % A line number directive token is `#' followed by an integer
     % (specifying the line number) followed by a newline.
-    % Such a token sets the source line number for the next
-    % line, but it is otherwise ignored.  This means that line number
-    % directives may appear anywhere that a token may appear, including
-    % in the middle of terms.
+    % Such a token sets the source line number for the next line, but it is
+    % otherwise ignored. This means that line number directives may appear
+    % anywhere that a token may appear, including in the middle of terms.
     % (The source file name can be set with a `:- pragma source_file'
     % declaration.)
     %
@@ -2304,11 +2297,11 @@ string_get_int_dot(String, Len, Posn0, Token, Context, !Posn) :-
         string_get_context(Posn0, Context, !Posn)
     ).
 
+    % We have read past the decimal point, so now get the decimals.
+    %
 :- pred get_float_decimals(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-    % We've read past the decimal point, so now get the decimals.
-    %
 get_float_decimals(Stream, Chars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
@@ -2397,7 +2390,7 @@ string_get_float_exponent(String, Len, Posn0, Token, Context, !Posn) :-
         string_get_context(Posn0, Context, !Posn)
     ).
 
-    % We've read past the E signalling the start of the exponent -
+    % We have read past the E signalling the start of the exponent -
     % make sure that there's at least one digit following,
     % and then get the remaining digits.
     %
@@ -2422,7 +2415,7 @@ get_float_exponent_2(Stream, Chars, Token, !IO) :-
         )
     ).
 
-    % We've read past the E signalling the start of the exponent -
+    % We have read past the E signalling the start of the exponent -
     % make sure that there's at least one digit following,
     % and then get the remaining digits.
     %
@@ -2444,7 +2437,7 @@ string_get_float_exponent_2(String, Len, Posn0, Token, Context, !Posn) :-
         string_get_context(Posn0, Context, !Posn)
     ).
 
-    % We've read past the first digit of the exponent -
+    % We have read past the first digit of the exponent -
     % now get the remaining digits.
     %
 :- pred get_float_exponent_3(io.input_stream::in, list(char)::in, token::out,
