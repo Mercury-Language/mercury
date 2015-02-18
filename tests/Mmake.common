@@ -338,15 +338,20 @@ start_runtests_local:
 	export tests_dir; \
 	$(TESTS_DIR)/run_one_test
 
-# XXX The tests cannot be run in parallel because where several test
-# cases depend on the same target, the different invocations of mmake
-# above may all attempt to create the target at the same time.
-# Also, `mmake $$test.realclean' would be run before all users
-# of the target are finished with it.
+# XXX In some test directories, several test cases depend on the same target,
+# so the tests cannot be run in parallel, for two reasons, First, because
+# the different invocations of mmake for different tests above may all attempt
+# to create the target at the same time, and second, the invocation of
+# `mmake $$test.realclean' after a test could be run before other users
+# of the shared target are finished with it.
+#
+# Test directories which have such shared targets should set MAYBE_J1 to -j1.
+# Other test directories should set it to the empty string.
+
 TEST_LOGS = $(THIS_DIR_TESTS_TO_RUN:%=%.log)
 runtests_local:
 	@ \
-	mmake -k -j1 $(TEST_LOGS); \
+	mmake -k $(MAYBE_J1) $(TEST_LOGS); \
 	touch DUMMY.log; \
 	cat *.log > $(ERROR_OUTPUT_FILE); \
 	rm -f DUMMY.log; \

@@ -11,12 +11,7 @@ THIS_DIR = submodules
 
 #-----------------------------------------------------------------------------#
 
-#
-# Note: currently these test cases do not reliabily pass
-# if you use parallel make.
-#
-
-SUB_MODULE_PROGS= \
+SUB_MODULE_PROGS = \
 	accessibility \
 	accessibility2 \
 	class \
@@ -47,7 +42,11 @@ PROGS=$(SUB_MODULE_PROGS) $(SOLVER_PROGS)
 
 TESTS = $(PROGS)
 TESTS_DIR=..
-SUBDIRS=
+SUBDIRS =
+# Note: currently these test cases do not reliably pass
+# if you use parallel make.
+# XXX should try again
+MAYBE_J1 = -j1
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

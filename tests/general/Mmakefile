@@ -8,79 +8,79 @@ THIS_DIR = general
 
 # Any program added here should also be added to the `.cvsignore' file.
 
-ORDINARY_PROGS=	\
-		arithmetic \
-		array_binsearch \
-		array_test \
-		base_string_to_int_test \
-		base_string_to_integer \
-		commit_bug \
-		commit_bug_2 \
-		complex_failure \
-		det_complicated_unify \
-		determinism_inlining \
-		disj_disj \
-		do_while \
-		double_error \
-		double_error2 \
-		duplicate_label \
-		environment \
-		fail_detism \
-		float_roundtrip \
-		float_test \
-		frameopt_mkframe_bug \
-		hello_again \
-		higher_order \
-		hlc_name_mangling \
-		ho_spec_branch_bug \
-		intermod_type \
-		interpreter \
-		io_foldl \
-		io_regression \
-		liveness \
-		liveness2 \
-		map_equal \
-		mode_inf \
-		mode_inf_bug \
-		mode_inference_reorder \
-		mu \
-		nasty_nondet \
-		nondet_disj \
-		nondet_ite \
-		nondet_ite_2 \
-		nondet_ite_3 \
-		nondet_ite_4 \
-		nondetlive \
-		parse_list \
-		partition \
-		petdr1 \
-		prune_switch \
-		semi_fail_in_non_ite \
-		semidet_lambda \
-		read_line_as_string \
-		semidet_map \
-		set_test \
-		state_vars_tests \
-		state_vars_typeclasses \
-		string_foldl_substring \
-		string_foldr_substring \
-		string_format_special_floats \
-		string_format_test \
-		string_format_test_2 \
-		string_format_test_3 \
-		string_replace \
-		string_test \
-		string_test_2 \
-		string_to_float \
-		test_parsing_utils \
-		test_string_to_int_overflow \
-		test_univ \
-		unreachable \
-		unsafe_uniqueness
+ORDINARY_PROGS = \
+	arithmetic			\
+	array_binsearch			\
+	array_test			\
+	base_string_to_int_test		\
+	base_string_to_integer		\
+	commit_bug			\
+	commit_bug_2			\
+	complex_failure			\
+	det_complicated_unify		\
+	determinism_inlining		\
+	disj_disj			\
+	do_while			\
+	double_error			\
+	double_error2			\
+	duplicate_label			\
+	environment			\
+	fail_detism			\
+	float_roundtrip			\
+	float_test			\
+	frameopt_mkframe_bug		\
+	hello_again			\
+	higher_order			\
+	hlc_name_mangling		\
+	ho_spec_branch_bug		\
+	intermod_type			\
+	interpreter			\
+	io_foldl			\
+	io_regression			\
+	liveness			\
+	liveness2			\
+	map_equal			\
+	mode_inf			\
+	mode_inf_bug			\
+	mode_inference_reorder		\
+	mu				\
+	nasty_nondet			\
+	nondet_disj			\
+	nondet_ite			\
+	nondet_ite_2			\
+	nondet_ite_3			\
+	nondet_ite_4			\
+	nondetlive			\
+	parse_list			\
+	partition			\
+	petdr1				\
+	prune_switch			\
+	read_line_as_string		\
+	semi_fail_in_non_ite		\
+	semidet_lambda			\
+	semidet_map			\
+	set_test			\
+	state_vars_tests		\
+	state_vars_typeclasses		\
+	string_foldl_substring		\
+	string_foldr_substring		\
+	string_format_special_floats	\
+	string_format_test		\
+	string_format_test_2		\
+	string_format_test_3		\
+	string_replace			\
+	string_test			\
+	string_test_2			\
+	string_to_float			\
+	test_parsing_utils		\
+	test_string_to_int_overflow	\
+	test_univ			\
+	unreachable			\
+	unsafe_uniqueness
 
 EXCEPTION_PROGS = \
-		map_corresponding \
-		unused_arg_determinism
+	map_corresponding 		\
+	unused_arg_determinism
 
 # XXX Java testing is disabled for this directory since most tests
 #     currently fail.  The reason for this is that they depend too
@@ -113,6 +113,7 @@ NOT_WORKING =	dnf state_var_trace
 SUBDIRS =
 TESTS = $(sort $(PROGS))
 TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

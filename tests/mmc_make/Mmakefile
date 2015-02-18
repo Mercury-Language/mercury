@@ -11,12 +11,12 @@ THIS_DIR = mmc_make
 MMAKE_USE_MMC_MAKE=yes
 
 PROGS =	\
-		complex_test \
-		hello \
-		include_file \
-		include_file2 \
-		linkage_test \
-		rebuild
+	complex_test \
+	hello \
+	include_file \
+	include_file2 \
+	linkage_test \
+	rebuild
 
 # These tests only work if the workspace was compiled with `--use-subdirs'.
 ifneq ($(origin WORKSPACE),undefined)
@@ -28,6 +28,7 @@ endif
 SUBDIRS =
 TESTS = $(sort $(PROGS))
 TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 %.runtest: %.res ;

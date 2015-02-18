@@ -8,31 +8,31 @@ THIS_DIR = string_format
 
 # Any program added here should also be added to the `.cvsignore' file.
 
-STRING_FORMAT_PROGS=	\
-		string_format_c \
-		string_format_d \
-		string_format_e \
-		string_format_f \
-		string_format_g \
-		string_format_o \
-		string_format_s \
-		string_format_u \
-		string_format_x
+STRING_FORMAT_PROGS = \
+	string_format_c \
+	string_format_d \
+	string_format_e \
+	string_format_f \
+	string_format_g \
+	string_format_o \
+	string_format_s \
+	string_format_u \
+	string_format_x
 
-	# The tests don't work in the *.agc grades, because I think they
-	# take too long to finsih and the CPU time limit is breached.
+# The tests don't work in the *.agc grades, because I think they
+# take too long to finish and the CPU time limit is breached.
 ifneq "$(findstring .agc,$(GRADE))" ""
 	PROGS0=
 else
 	PROGS0=$(STRING_FORMAT_PROGS)
 endif
 
-	# On solaris 5.{7,8} string_format_o fails because of a buggy
-	# sprintf implementation.
+# On solaris 5.{7,8} string_format_o fails because of a buggy
+# sprintf implementation.
 SOLARIS_FAILURES=string_format_o
 
-	# On Dec OSF 5.1 the floating point tests fail because
-	# the denormal floats aren't being printed correctly.
+# On Dec OSF 5.1 the floating point tests fail because
+# the denormal floats aren't being printed correctly.
 OSF1_FAILURES=string_format_e string_format_f string_format_g
 
 UNAME:=$(shell uname -r -s)
@@ -49,6 +49,7 @@ endif
 SUBDIRS =
 TESTS=$(PROGS)
 TESTS_DIR=..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

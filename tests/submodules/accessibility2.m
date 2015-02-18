@@ -12,8 +12,8 @@
 
 :- implementation.
 
-:- import_module sub_a.sub1.
-:- import_module sub_a.
+:- import_module sub2_a.sub1.
+:- import_module sub2_a.
 
 main -->
     io__write_string("Hello.\n").

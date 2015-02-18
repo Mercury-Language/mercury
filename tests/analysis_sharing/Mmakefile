@@ -19,6 +19,7 @@ endif
 
 SUBDIRS =
 TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 sharing_m1.runtest:

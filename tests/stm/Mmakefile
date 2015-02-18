@@ -7,22 +7,21 @@ THIS_DIR = stm
 #-----------------------------------------------------------------------------#
 
 # please keep these lists sorted
-VALID_PROGS = 			\
+VALID_PROGS = \
 	basic				\
 	basic2				\
-	exception_propogate	\
+	exception_propogate		\
 	nested				\
-	nested_or_else		\
-	atomic_or_else		\
-	atomic_or_else2		\
+	nested_or_else			\
+	atomic_or_else			\
+	atomic_or_else2			\
 	atomic_conj			\
 	atomic_ite			\
 	atomic_mvar			\
-	atomic_scope		\
-	#demo				\
-	par-asm_test7		\
-	par-asm_test8		\
-	par-asm_test9		\
+	atomic_scope			\
+	par-asm_test7			\
+	par-asm_test8			\
+	par-asm_test9			\
 	par_test10			\
 	par_test8			\
 	par_test9			\
@@ -83,6 +82,7 @@ OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \
 TESTS = $(sort $(PROGS))
 SUBDIRS =
 TESTS_DIR = ..
+MAYBE_J1 = -j1
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they
@@ -104,7 +104,7 @@ ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 else
 
 % XXX: with `mmake --use-mmc-make' the ".DEFAULT:" rule seems to take
-% 	precedence over "%.err: %.m" rules.
+%	precedence over "%.err: %.m" rules.
 % XXX: the reason we run the $(MCM) command twice is to avoid
 %	doubled up error messages, once while making interface files,
 %	then the module proper.  The second time the command is run

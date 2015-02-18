@@ -11,9 +11,10 @@ override EXTRA_MCFLAGS := $(patsubst --transitive-%,,$(EXTRA_MCFLAGS))
 
 #-----------------------------------------------------------------------------#
 
-TESTS=
+TESTS =
 SUBDIRS =
-TESTS_DIR=..
+TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#

@@ -6,7 +6,7 @@ THIS_DIR = warnings
 
 #-----------------------------------------------------------------------------#
 
-COMPILE_PROGS=	\
+COMPILE_PROGS = \
 	arg_order_rearrangment \
 	foreign_term_invalid \
 	non_term_user_special \
@@ -14,10 +14,10 @@ COMPILE_PROGS=	\
 	term_indirect_warning \
 	warn_dead_procs
 
-ERRORCHECK_PROGS= \
+ERRORCHECK_PROGS = \
 	ambiguous_overloading \
 	bug257 \
-    bug311 \
+	bug311 \
 	det_infer_warning \
 	double_underscore \
 	duplicate_call \
@@ -60,6 +60,7 @@ PROGS=$(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date
 TESTS = $(sort $(PROGS))
 SUBDIRS =
 TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they
@@ -93,24 +94,24 @@ up_to_date.runtest:
 %.res_error:	%.exp %.err
 	-rm -f $@
 	diff $(DIFF_OPTS) $*.exp $*.err > $@ || \
-                { [ -f $*.exp2 ] && \
-                  diff $(DIFF_OPTS) $*.exp2 $*.err > $@; } || \
-                { [ -f $*.exp3 ] && \
-                  diff $(DIFF_OPTS) $*.exp3 $*.err > $@; } || \
-                { [ -f $*.exp4 ] && \
-                  diff $(DIFF_OPTS) $*.exp4 $*.err > $@; } || \
-                { cat $*.err; cat $@; exit 1; }
+		{ [ -f $*.exp2 ] && \
+		  diff $(DIFF_OPTS) $*.exp2 $*.err > $@; } || \
+		{ [ -f $*.exp3 ] && \
+		  diff $(DIFF_OPTS) $*.exp3 $*.err > $@; } || \
+		{ [ -f $*.exp4 ] && \
+		  diff $(DIFF_OPTS) $*.exp4 $*.err > $@; } || \
+		{ cat $*.err; cat $@; exit 1; }
 
 %.res_compile:	%.exp %.c
 	-rm -f $@
 	diff $(DIFF_OPTS) $*.exp $*.err > $@ || \
-                { [ -f $*.exp2 ] && \
-                  diff $(DIFF_OPTS) $*.exp2 $*.err > $@; } || \
-                { [ -f $*.exp3 ] && \
-                  diff $(DIFF_OPTS) $*.exp3 $*.err > $@; } || \
-                { [ -f $*.exp4 ] && \
-                  diff $(DIFF_OPTS) $*.exp4 $*.err > $@; } || \
-                { cat $*.err; cat $@; exit 1; }
+		{ [ -f $*.exp2 ] && \
+		  diff $(DIFF_OPTS) $*.exp2 $*.err > $@; } || \
+		{ [ -f $*.exp3 ] && \
+		  diff $(DIFF_OPTS) $*.exp3 $*.err > $@; } || \
+		{ [ -f $*.exp4 ] && \
+		  diff $(DIFF_OPTS) $*.exp4 $*.err > $@; } || \
+		{ cat $*.err; cat $@; exit 1; }
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 %.c: %.m

@@ -8,9 +8,9 @@ THIS_DIR = term
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 # `mmc --make' doesn't know how to create `.trans_opt' files.
-TERM_PROGS=
+TERM_PROGS =
 else
-TERM_PROGS= \
+TERM_PROGS = \
 	ack \
 	append \
 	arit_exp \
@@ -82,13 +82,14 @@ endif	# $(MMAKE_USE_MMC_MAKE) == no
 # can be found by `mmc --make'.
 include Mercury.options
 
-PROGS=$(TERM_PROGS)
+PROGS = $(TERM_PROGS)
 
 #-----------------------------------------------------------------------------#
 
 TESTS = $(sort $(PROGS))
 SUBDIRS =
 TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 %.runtest: %.trans_opt_res ;
@@ -100,11 +101,10 @@ MCOPTFLAGS  = --no-inlining --no-optimize-unused-args --no-deforestation \
 	      --no-optimize-higher-order
 MCTRANSOPTFLAGS = $(MCTERMFLAGS) $(MCOPTFLAGS)
 
-	# if EXTRA_MCFLAGS=-O5 then --no-inlining must occur after the
-	# -O5 to turn inlining off.
-	# The following ensures that MCTRANSOPTFLAGS overrides any
-	# thing set by EXTRA_MCFLAGS, by placing them later in the
-	# argument list.
+# if EXTRA_MCFLAGS=-O5 then --no-inlining must occur after the -O5
+# to turn inlining off.
+# The following ensures that MCTRANSOPTFLAGS overrides anything
+# set by EXTRA_MCFLAGS, by placing them later in the argument list.
 ALL_MCTOIFLAGS+=$(MCTRANSOPTFLAGS)
 
 %.trans_opt_res: %.trans_opt_exp $(trans_opts_subdir)%.trans_opt

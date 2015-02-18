@@ -19,6 +19,7 @@ endif
 
 SUBDIRS =
 TESTS_DIR = ..
+MAYBE_J1 = -j1
 include $(TESTS_DIR)/Mmake.common
 
 excp_m1.runtest:

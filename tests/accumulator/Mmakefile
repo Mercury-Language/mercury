@@ -8,38 +8,39 @@ THIS_DIR = accumulator
 
 # Any program added here should also be added to the `.cvsignore' file.
 
-ACCUMULATOR_PROGS= \
-		base		\
-		call_in_base	\
-		chain		\
-		commutative	\
-		construct_test	\
-		deconstruct_test\
-		dcg		\
-		disj		\
-		func		\
-		highorder	\
-		heuristic	\
-		identity	\
-		inter		\
-		ite		\
-		nonrec		\
-		out_to_in	\
-		qsort		\
-		simple		\
-		split		\
-		swap
+ACCUMULATOR_PROGS = \
+	base			\
+	call_in_base		\
+	chain			\
+	commutative		\
+	construct_test		\
+	deconstruct_test	\
+	dcg			\
+	disj			\
+	func			\
+	highorder		\
+	heuristic		\
+	identity		\
+	inter			\
+	ite			\
+	nonrec			\
+	out_to_in		\
+	qsort			\
+	simple			\
+	split			\
+	swap
 
 # We currently don't do any testing in grade java on this directory.
 ifneq "$(findstring java,$(GRADE))" ""
-	PROGS=
+	PROGS =
 else
-	PROGS=$(ACCUMULATOR_PROGS)
+	PROGS = $(ACCUMULATOR_PROGS)
 endif
 
-SUBDIRS=
+SUBDIRS =
 TESTS = $(PROGS)
-TESTS_DIR=..
+TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

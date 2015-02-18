@@ -14,7 +14,7 @@
 
 % :- import_module ambig_confuse1.
 % :- import_module ambig_confuse2.
-:- import_module ambig_types.
+:- import_module ambig_types_high_level.
 
 main(!IO) :-
     X = foo,

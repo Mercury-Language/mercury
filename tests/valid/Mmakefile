@@ -490,6 +490,7 @@ OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \
 TESTS = $(sort $(PROGS))
 SUBDIRS =
 TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # When compiling using the installed libraries, setting GRADEFLAGS

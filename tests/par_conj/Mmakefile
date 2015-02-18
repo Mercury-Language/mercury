@@ -7,7 +7,7 @@ THIS_DIR = par_conj
 #-----------------------------------------------------------------------------#
 
 # please keep these lists sorted
-DEP_PAR_CONJ_PROGS= \
+DEP_PAR_CONJ_PROGS = \
 	bug_130_unreachable \
 	bug_130_should_push_signal \
 	consume_in_some_branches \
@@ -125,6 +125,7 @@ OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \
 TESTS = $(sort $(PROGS))
 SUBDIRS =
 TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

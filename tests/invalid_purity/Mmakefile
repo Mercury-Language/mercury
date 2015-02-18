@@ -26,6 +26,7 @@ PROGS= \
 TESTS = $(PROGS)
 SUBDIRS =
 TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # These tests all get spurious failures with intermodule optimization,

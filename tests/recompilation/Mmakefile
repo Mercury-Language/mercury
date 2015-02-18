@@ -44,12 +44,13 @@ TESTS_SHOULD_FAIL = \
 	type_qual_re \
 	with_type_re
 
-PROGS= $(TESTS_SHOULD_SUCCEED) $(NO_PARALLEL_MAKE_TESTS) \
+PROGS = $(TESTS_SHOULD_SUCCEED) $(NO_PARALLEL_MAKE_TESTS) \
 	$(TESTS_SHOULD_FAIL)
 
-TESTS= $(sort $(PROGS:%=%-nodepend))
+TESTS = $(sort $(PROGS:%=%-nodepend))
 SUBDIRS =
 TESTS_DIR = ..
+MAYBE_J1 = -j1
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

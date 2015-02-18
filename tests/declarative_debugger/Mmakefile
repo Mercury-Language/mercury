@@ -6,7 +6,7 @@ THIS_DIR = declarative_debugger
 
 #-----------------------------------------------------------------------------#
 
-DECLARATIVE_PROGS=		\
+DECLARATIVE_PROGS =		\
 	aadebug			\
 	all_trusted		\
 	app			\
@@ -169,6 +169,10 @@ endif
 SUBDIRS=
 TESTS=$(PROGS)
 TESTS_DIR=..
+# Most test cases share library_forwarding.m. We could allow the tests
+# to be done in parallel if we made a separate copy of that module
+# for each test case that needs it.
+MAYBE_J1 = -j1
 include $(TESTS_DIR)/Mmake.common
 
 MCFLAGS += --trace decl

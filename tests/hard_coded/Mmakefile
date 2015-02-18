@@ -6,7 +6,7 @@ THIS_DIR = hard_coded
 
 #-----------------------------------------------------------------------------#
 
-ORDINARY_PROGS=	\
+ORDINARY_PROGS =	\
 	abstract_eqv \
 	address_of_builtins \
 	agg \
@@ -375,7 +375,7 @@ endif
 
 # JAVA_PASS_PROGS lists those tests which will succeed in grade Java.
 
-JAVA_PASS_PROGS= \
+JAVA_PASS_PROGS = \
 	address_of_builtins \
 	brace \
 	c_write_string \
@@ -752,6 +752,7 @@ PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
 TESTS = $(sort $(PROGS))
 SUBDIRS =
 TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

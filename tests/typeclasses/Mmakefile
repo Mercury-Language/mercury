@@ -6,7 +6,7 @@ THIS_DIR = typeclasses
 
 #-----------------------------------------------------------------------------#
 
-TYPECLASSES_PROGS= \
+TYPECLASSES_PROGS = \
 	arbitrary_constraint_class \
 	arbitrary_constraint_pred_2 \
 	arbitrary_constraint_pred_1 \
@@ -80,7 +80,7 @@ TYPECLASSES_PROGS= \
 
 # XXX We currently do only limited testing in grade java on this directory.
 
-JAVA_TYPECLASSES_PROGS= \
+JAVA_TYPECLASSES_PROGS = \
 	ground_constraint \
 	implied_instance \
 	implied_instance_poly \
@@ -105,14 +105,15 @@ JAVA_TYPECLASSES_PROGS= \
 #	instance_unconstrained_tvar_dup
 
 ifneq "$(findstring java,$(GRADE))" ""
-	PROGS=$(JAVA_TYPECLASSES_PROGS)
+	PROGS = $(JAVA_TYPECLASSES_PROGS)
 else
-	PROGS=$(TYPECLASSES_PROGS)
+	PROGS = $(TYPECLASSES_PROGS)
 endif
 
 TESTS = $(PROGS)
-SUBDIRS=
-TESTS_DIR=..
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

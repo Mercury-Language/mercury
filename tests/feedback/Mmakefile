@@ -14,7 +14,8 @@ REPORTS=$(patsubst %,autopar_%,$(AUTOPAR_REPORTS))
 
 TESTS = $(patsubst %,%-nodepend,$(sort $(REPORTS)))
 TESTS_DIR = ..
-SUBDIRS=
+SUBDIRS =
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Try to use the feedback tools in this workspace if available;

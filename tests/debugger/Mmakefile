@@ -228,6 +228,7 @@ endif
 SUBDIRS =
 TESTS = $(sort $(PROGS))
 TESTS_DIR = ..
+MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # The minimum trace level in .decldebug grades is --trace decl.
