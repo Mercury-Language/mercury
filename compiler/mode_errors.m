@@ -429,7 +429,7 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
             ),
             % MoreMsg is there to indicate that --verbose-errors would yield
             % more information.
-            MoreMsg = simple_msg(Context, [verbose_only([])]),
+            MoreMsg = simple_msg(Context, [verbose_only(verbose_always, [])]),
             Msgs1 = ConjMsgs ++ [MoreMsg]
         ;
             VerboseErrors = yes,
@@ -694,7 +694,8 @@ mode_error_bind_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst) = Spec :-
     ),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
-            [always(Preamble ++ MainPieces), verbose_only(VerbosePieces)])]).
+            [always(Preamble ++ MainPieces),
+            verbose_only(verbose_always, VerbosePieces)])]).
 
 %-----------------------------------------------------------------------------%
 
@@ -852,7 +853,8 @@ mode_error_poly_unify_to_spec(ModeInfo, Var, VarInst) = Spec :-
         words("partially instantiated modes are not allowed.")],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
-            [always(Preamble ++ MainPieces), verbose_only(VerbosePieces)])]).
+            [always(Preamble ++ MainPieces),
+            verbose_only(verbose_once, VerbosePieces)])]).
 
 :- func mode_error_var_is_live_to_spec(mode_info, prog_var) = error_spec.
 
@@ -956,7 +958,8 @@ mode_error_unify_pred_to_spec(ModeInfo, X, RHS, Type, PredOrFunc) = Spec :-
         words("instead of"), quote("P = Q"), suffix(".")],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
-            [always(Preamble ++ MainPieces), verbose_only(VerbosePieces)])]).
+            [always(Preamble ++ MainPieces),
+            verbose_only(verbose_once, VerbosePieces)])]).
 
 %-----------------------------------------------------------------------------%
 
@@ -1275,7 +1278,7 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, Vars) = Spec :-
         words(mercury_vars_to_string(VarSet, no, Vars)), suffix("."), nl
     ],
     Always = always(Preamble ++ Pieces),
-    VerboseOnly = verbose_only([
+    VerboseOnly = verbose_only(verbose_once, [
         words("Predicate expressions with inst"), quote("any"),
         words("can be written"), quote("any_pred(Args) is det :- ..."),
         suffix("."),
@@ -1321,7 +1324,8 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
             Spec = error_spec(severity_error,
                 phase_mode_check(report_in_any_mode),
                 [simple_msg(Context,
-                    [always(MainPieces), verbose_only(VerbosePieces)])]),
+                    [always(MainPieces),
+                    verbose_only(verbose_once, VerbosePieces)])]),
             Specs = [Spec]
         )
     ;
@@ -1478,7 +1482,7 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
     OldPieces = [words("Here is the conflicting mode declaration.")],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(NewContext,
-            [always(MainPieces), verbose_only(VerbosePieces)]),
+            [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
         simple_msg(OldContext, [always(OldPieces)])]).
 
 %-----------------------------------------------------------------------------%

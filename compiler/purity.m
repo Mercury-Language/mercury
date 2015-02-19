@@ -1393,7 +1393,7 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
         words("should be promised pure and should have"),
         words("no impurity declaration.")],
     Msg = simple_msg(Context,
-        [always(MainPieces), verbose_only(VerbosePieces)]),
+        [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_purity_check, [Msg]).
 
 :- func warn_exaggerated_impurity_decl(module_info, pred_info, pred_id,
@@ -1439,7 +1439,7 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity)
         nl],
     Msg = simple_msg(Context,
         [always(PredContextPieces), always(MainPieces),
-            verbose_only(VerbosePieces)]),
+            verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_warning, phase_purity_check, [Msg]).
 
 :- func error_inferred_impure(module_info, pred_info, pred_id, purity)

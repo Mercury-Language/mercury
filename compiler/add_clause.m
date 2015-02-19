@@ -237,7 +237,8 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args,
                     words("to a field update, give the field"),
                     words("of the constructor a different name.")],
                 Msg = simple_msg(Context,
-                    [always(MainPieces), verbose_only(VerbosePieces)]),
+                    [always(MainPieces),
+                    verbose_only(verbose_always, VerbosePieces)]),
                 Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
                     [Msg]),
                 !:Specs = [Spec | !.Specs]
@@ -436,7 +437,7 @@ undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo, Context,
         )
     ),
     Msg = simple_msg(Context,
-        [always(MainPieces), verbose_only(VerbosePieces)]),
+        [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 

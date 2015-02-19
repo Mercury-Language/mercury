@@ -1040,10 +1040,11 @@ generate_stratify_error(ModuleInfo, PPId, Context, Message, ErrorOrWarning)
     VerbosePieces =
         [words("A non-stratified loop is a loop in the call graph"),
         words("of the given predicate/function that allows it to call"),
-        words("itself negatively. This can cause problems for"),
+        words("itself in a negated context. This can cause problems for"),
         words("bottom-up evaluation of the predicate/function."), nl],
     Msg = simple_msg(Context,
-        [always(Preamble ++ MainPieces), verbose_only(VerbosePieces)]),
+        [always(Preamble ++ MainPieces),
+        verbose_only(verbose_once, VerbosePieces)]),
     Spec = error_spec(Severity, phase_code_gen, [Msg]).
 
 %-----------------------------------------------------------------------------%

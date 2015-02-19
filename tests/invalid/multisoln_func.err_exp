@@ -10,44 +10,12 @@ multisoln_func.m:020:   likely, this procedure should be a predicate, not a
 multisoln_func.m:020:   function.
 multisoln_func.m:026: Error: invalid determinism for `test' = out:
 multisoln_func.m:026:   the primary mode of a function cannot be `cc_multi'.
-multisoln_func.m:026:   In Mercury, a function is supposed to be a true
-multisoln_func.m:026:   mathematical function of its arguments; that is, the
-multisoln_func.m:026:   value of the function's result should be determined
-multisoln_func.m:026:   only by the values of its arguments. (Allowing
-multisoln_func.m:026:   functions to have more than one result for the same
-multisoln_func.m:026:   arguments would break referential transparency.) Most
-multisoln_func.m:026:   likely, this procedure should be a predicate, not a
-multisoln_func.m:026:   function.
 multisoln_func.m:033: Error: invalid determinism for `test2' = out:
 multisoln_func.m:033:   the primary mode of a function cannot be `multi'.
-multisoln_func.m:033:   In Mercury, a function is supposed to be a true
-multisoln_func.m:033:   mathematical function of its arguments; that is, the
-multisoln_func.m:033:   value of the function's result should be determined
-multisoln_func.m:033:   only by the values of its arguments. (Allowing
-multisoln_func.m:033:   functions to have more than one result for the same
-multisoln_func.m:033:   arguments would break referential transparency.) Most
-multisoln_func.m:033:   likely, this procedure should be a predicate, not a
-multisoln_func.m:033:   function.
 multisoln_func.m:033: Inferred :- func test2 = int.
 multisoln_func.m:037: Error: invalid determinism for `test3'(in) = out:
 multisoln_func.m:037:   the primary mode of a function cannot be `nondet'.
-multisoln_func.m:037:   In Mercury, a function is supposed to be a true
-multisoln_func.m:037:   mathematical function of its arguments; that is, the
-multisoln_func.m:037:   value of the function's result should be determined
-multisoln_func.m:037:   only by the values of its arguments. (Allowing
-multisoln_func.m:037:   functions to have more than one result for the same
-multisoln_func.m:037:   arguments would break referential transparency.) Most
-multisoln_func.m:037:   likely, this procedure should be a predicate, not a
-multisoln_func.m:037:   function.
 multisoln_func.m:037: Inferred :- func test3(int) = int.
 multisoln_func.m:041: Error: invalid determinism for `test3b'(in) = out:
 multisoln_func.m:041:   the primary mode of a function cannot be `cc_nondet'.
-multisoln_func.m:041:   In Mercury, a function is supposed to be a true
-multisoln_func.m:041:   mathematical function of its arguments; that is, the
-multisoln_func.m:041:   value of the function's result should be determined
-multisoln_func.m:041:   only by the values of its arguments. (Allowing
-multisoln_func.m:041:   functions to have more than one result for the same
-multisoln_func.m:041:   arguments would break referential transparency.) Most
-multisoln_func.m:041:   likely, this procedure should be a predicate, not a
-multisoln_func.m:041:   function.
 multisoln_func.m:041: Inferred :- func test3b(int) = int.

@@ -159,7 +159,7 @@ undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo, Context)
             [nl_indent_delta(-1)]
     ),
     Msg = simple_msg(Context,
-        [always(MainPieces), verbose_only(VerbosePieces)]),
+        [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]).
 
 :- func mode_decl_for_pred_info_to_pieces(pred_info, proc_id)

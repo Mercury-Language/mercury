@@ -1503,7 +1503,7 @@ report_eval_method_requires_ground_args(ProcInfo) = Spec :-
         words("with partially instantiated modes"),
         words("is not currently implemented."), nl],
     Msg = simple_msg(Context,
-        [always(MainPieces), verbose_only(VerbosePieces)]),
+        [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [Msg]).
 
@@ -1523,7 +1523,7 @@ report_eval_method_destroys_uniqueness(ProcInfo) = Spec :-
         words("of the unique arguments which would result"),
         words("in them no longer being unique."), nl],
     Msg = simple_msg(Context,
-        [always(MainPieces), verbose_only(VerbosePieces)]),
+        [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [Msg]).
 

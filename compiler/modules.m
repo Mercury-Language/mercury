@@ -605,7 +605,7 @@ generate_no_exports_warning(Globals, ModuleName, Spec, !IO) :-
     Component = option_is_set(warn_nothing_exported, yes,
         [always([words("Warning: interface for module"),
             sym_name(ModuleName), words("does not export anything.")]),
-        verbose_only(
+        verbose_only(verbose_always,
             [words("To be useful, a module should export something."),
             words("A file should contain at least one declaration"),
             words("other than"), decl("import_module"),
@@ -958,7 +958,8 @@ warn_imported_ancestor(ModuleName, FileName, AncestorName, !Specs) :-
         words("There is no need to explicitly import them.")],
     Msg = simple_msg(Context,
         [option_is_set(warn_simple_code, yes,
-            [always(MainPieces), verbose_only(VerbosePieces)])]),
+            [always(MainPieces),
+            verbose_only(verbose_always, VerbosePieces)])]),
     Severity = severity_conditional(warn_simple_code, yes,
         severity_warning, no),
     Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
@@ -1380,7 +1381,7 @@ report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
             quote("include_module"), words("declaration for module"),
             quote(SubModule), suffix("."), nl],
     Msg = simple_msg(Context,
-        [always(MainPieces), verbose_only(VerbosePieces)]),
+        [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 

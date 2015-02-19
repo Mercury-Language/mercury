@@ -301,7 +301,8 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
             DetismPieces] ++ [suffix("."), nl],
         ValidSpec = error_spec(severity_error, phase_detism_check,
             [simple_msg(Context,
-                [always(MainPieces), verbose_only(VerbosePieces)])]),
+                [always(MainPieces),
+                verbose_only(verbose_always, VerbosePieces)])]),
         !:Specs = [ValidSpec | !.Specs]
     ).
 
@@ -434,7 +435,8 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo, ModuleInfo,
         VerbosePieces = func_primary_mode_det_msg,
         Spec = error_spec(severity_error, phase_detism_check,
             [simple_msg(FuncContext,
-                [always(MainPieces), verbose_only(VerbosePieces)])]),
+                [always(MainPieces),
+                verbose_only(verbose_once, VerbosePieces)])]),
         !:Specs = [Spec | !.Specs]
     ;
         true

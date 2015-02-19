@@ -536,7 +536,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarSet, Errs,
         words("My apologies.)")],
     Msg = simple_msg(Context,
         [option_is_set(warn_unresolved_polymorphism, yes,
-            [always(MainPieces), verbose_only(VerbosePieces)])]),
+            [always(MainPieces), verbose_only(verbose_once, VerbosePieces)])]),
     Severity = severity_conditional(warn_unresolved_polymorphism, yes,
         severity_warning, no),
     Spec = error_spec(Severity, phase_type_check, [Msg]),
@@ -822,7 +822,7 @@ report_assertion_interface_error(ModuleInfo, Context, IdPieces, !Specs) :-
     VerbosePieces =
         [words("Either move the promise into the implementation section"),
         words("or move the definition into the interface."), nl],
-    Msgs = [always(MainPieces), verbose_only(VerbosePieces)],
+    Msgs = [always(MainPieces), verbose_only(verbose_always, VerbosePieces)],
     Spec = error_spec(severity_error, phase_type_check,
         [simple_msg(Context, Msgs)]),
     !:Specs = [Spec | !.Specs].

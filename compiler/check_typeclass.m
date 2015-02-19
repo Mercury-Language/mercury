@@ -502,7 +502,7 @@ bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces, Kind) = Spec :-
                 "with variables as arguments.)"), nl],
         HeadingMsg = simple_msg(InstanceContext,
             [always(HeaderPieces), always(ArgNumPieces),
-            verbose_only(VerbosePieces)])
+            verbose_only(verbose_once, VerbosePieces)])
     ),
     Spec = error_spec(severity_error, phase_type_check, [HeadingMsg]).
 
@@ -1840,7 +1840,8 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
         Pieces = Pieces0 ++ [words("function's argument or result types."), nl]
     ),
     Msg = simple_msg(Context,
-        [always(Pieces), verbose_only(report_unbound_tvars_explanation)]),
+        [always(Pieces),
+        verbose_only(verbose_once, report_unbound_tvars_explanation)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 :- func report_unbound_tvars_in_ctor_context(list(tvar), type_ctor,
@@ -1864,7 +1865,7 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn) = Spec :-
         words("not determined by the constructor's argument types."), nl],
     Msg = simple_msg(Context,
         [always(Pieces),
-        verbose_only(report_unbound_tvars_explanation)]),
+        verbose_only(verbose_once, report_unbound_tvars_explanation)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 :- func report_unbound_tvars_explanation = list(format_component).

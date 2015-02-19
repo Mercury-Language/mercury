@@ -303,7 +303,7 @@ report_error_undef_pred(ClauseContext, Context, SimpleCallId) = Msg :-
         VerbosePieces =
             [words("Note: the else part is not optional."), nl,
             words("Every if-then must have an else."), nl],
-        VerboseComponent = verbose_only(VerbosePieces),
+        VerboseComponent = verbose_only(verbose_once, VerbosePieces),
         Components = [MainComponent, VerboseComponent]
     ;
         PredName = unqualified("else"),
@@ -329,7 +329,7 @@ report_error_undef_pred(ClauseContext, Context, SimpleCallId) = Msg :-
             [words("Note: the"), quote("else"), words("part is not optional."),
             nl, words("Every if-then must have an"),
             quote("else"), suffix("."), nl],
-        VerboseComponent = verbose_only(VerbosePieces),
+        VerboseComponent = verbose_only(verbose_once, VerbosePieces),
         Components = [MainComponent, VerboseComponent]
     ;
         PredName = unqualified("apply"),
@@ -346,7 +346,7 @@ report_error_undef_pred(ClauseContext, Context, SimpleCallId) = Msg :-
         MainComponent = always(MainPieces),
         VerbosePieces =
             [words("Such markers only belong before predicate calls."), nl],
-        VerboseComponent = verbose_only(VerbosePieces),
+        VerboseComponent = verbose_only(verbose_once, VerbosePieces),
         Components = [MainComponent, VerboseComponent]
     ;
         PredName = unqualified("some"),
@@ -389,7 +389,7 @@ report_apply_instead_of_pred = Components :-
         words("where"), quote("my_apply"), words("is defined"),
         words("with the appropriate arity, e.g."),
         quote("my_apply(Func, X, Y) :- apply(Func, X, Y).")],
-    VerboseComponent = verbose_only(VerbosePieces),
+    VerboseComponent = verbose_only(verbose_always, VerbosePieces),
     Components = [MainComponent, VerboseComponent].
 
 %-----------------------------------------------------------------------------%
@@ -530,7 +530,7 @@ too_much_overloading_to_msgs(ClauseContext, Context, OverloadedSymbolMap,
         VerbosePieces =
             [words("This may cause type-checking to be very slow."),
             words("It may also make your code difficult to understand."), nl],
-        VerboseComponent = verbose_only(VerbosePieces)
+        VerboseComponent = verbose_only(verbose_always, VerbosePieces)
     ;
         IsError = yes,
         InitPieces = InClauseForPieces ++
@@ -540,7 +540,7 @@ too_much_overloading_to_msgs(ClauseContext, Context, OverloadedSymbolMap,
         VerbosePieces =
             [words("This caused the type checker to exceed its limits."),
             words("It may also make your code difficult to understand."), nl],
-        VerboseComponent = verbose_only(VerbosePieces)
+        VerboseComponent = verbose_only(verbose_always, VerbosePieces)
     ),
 
     FirstMsg = simple_msg(Context, [InitComponent, VerboseComponent]),
@@ -681,7 +681,7 @@ report_error_unif_var_var(ClauseContext, UnifyContext, Context,
     VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(UnifyContextPieces),
-        always(MainPieces), verbose_only(VerbosePieces)]),
+        always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
@@ -747,7 +747,7 @@ report_error_lambda_var(ClauseContext, UnifyContext, Context,
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ UnifyContextPieces),
         always(Pieces1 ++ Pieces2 ++ Pieces3 ++ Pieces4),
-        verbose_only(VerbosePieces)]),
+        verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
@@ -775,7 +775,7 @@ report_error_functor_type(ClauseContext, UnifyContext, Context,
 
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ UnifyContextPieces),
-        always(MainPieces), verbose_only(VerbosePieces)]),
+        always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
@@ -853,7 +853,7 @@ report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
         ErrorPieces = ResultTypePieces ++ AllTypesPieces,
 
         VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
-        VerboseComponents = [verbose_only(VerbosePieces)]
+        VerboseComponents = [verbose_only(verbose_always, VerbosePieces)]
     ),
 
     (
@@ -1154,7 +1154,8 @@ report_error_var(ClauseContext, GoalContext, Context, Var, Type,
     VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(GoalContextPieces),
-        always(Pieces1 ++ Pieces2), verbose_only(VerbosePieces)]),
+        always(Pieces1 ++ Pieces2),
+        verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]),
     SpecAndMaybeActualExpected =
         spec_and_maybe_actual_expected(Spec, MaybeActualExpected).
@@ -1181,7 +1182,7 @@ report_arg_vector_type_errors(ClauseContext, Context, ArgVectorKind,
     VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(ArgVectorKindPieces),
-        always(ArgErrorPieces), verbose_only(VerbosePieces)]),
+        always(ArgErrorPieces), verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 :- pred arg_vector_type_errors_to_pieces(prog_varset::in,
@@ -1305,7 +1306,8 @@ report_error_var_either_type(ClauseContext, GoalContext, Context,
     VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ GoalContextPieces),
-        always(Pieces1 ++ Pieces2), verbose_only(VerbosePieces)]),
+        always(Pieces1 ++ Pieces2),
+        verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
@@ -1343,7 +1345,7 @@ report_error_arg_var(ClauseContext, GoalContext, Context, Var,
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ GoalContextPieces),
         always(Pieces1 ++ Pieces2),
-        verbose_only(VerbosePieces)]),
+        verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
 %-----------------------------------------------------------------------------%
@@ -1449,7 +1451,8 @@ language_builtin_functor_components(Name, Arity, Components) :-
         VerboseCallPieces = []
     ),
     Components = [always(MainPieces),
-        verbose_only(VerbosePieces ++ VerboseCallPieces)].
+        verbose_only(verbose_always, VerbosePieces),
+        verbose_only(verbose_once, VerboseCallPieces)].
 
     % language_builtin_functor(Name, Arity) is true iff Name/Arity is the name
     % of a builtin language construct that should be used as a goal,
@@ -1488,25 +1491,25 @@ syntax_functor_components("then", 2, Components) :-
     Pieces2 = [words("Note: the"), quote("else"),
         words("part is not optional."),
         words("Every if-then must have an"), quote("else"), suffix("."), nl],
-    Components = [always(Pieces1), verbose_only(Pieces2)].
+    Components = [always(Pieces1), verbose_only(verbose_once, Pieces2)].
 syntax_functor_components("->", 2, Components) :-
     Pieces1 = [words("error:"), quote("->"), words("without"),
         quote(";"), suffix("."), nl],
     Pieces2 = [words("Note: the else part is not optional."),
         words("Every if-then must have an else."), nl],
-    Components = [always(Pieces1), verbose_only(Pieces2)].
+    Components = [always(Pieces1), verbose_only(verbose_once, Pieces2)].
 syntax_functor_components("^", 2, Components) :-
     Pieces1 = [words("error: invalid use of field selection operator"),
         prefix("("), quote("^"), suffix(")."), nl],
     Pieces2 = [words("This is probably some kind of syntax error."),
         words("The field name must be an atom,"),
         words("not a variable or other term."), nl],
-    Components = [always(Pieces1), verbose_only(Pieces2)].
+    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
 syntax_functor_components(":=", 2, Components) :-
     Pieces1 = [words("error: invalid use of field update operator"),
         prefix("("), quote(":="), suffix(")."), nl],
     Pieces2 = [words("This is probably some kind of syntax error."), nl],
-    Components = [always(Pieces1), verbose_only(Pieces2)].
+    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
 syntax_functor_components(":-", 2, Components) :-
     Pieces = [words("syntax error in lambda expression"),
          prefix("("), quote(":-"), suffix(")."), nl],
@@ -1526,7 +1529,7 @@ syntax_functor_components("!", 1, Components) :-
         words("state variable operator."), nl],
     Pieces2 = [words("You probably meant to use"), quote("!."),
         words("or"), quote("!:"), suffix("."), nl],
-    Components = [always(Pieces1), verbose_only(Pieces2)].
+    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
 
 :- func wrong_arity_constructor_to_pieces(sym_name, arity, list(int))
     = list(format_component).
@@ -1616,7 +1619,8 @@ report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
         AmbiguityPieces = [_ | _],
         Pieces2 = [words("Possible type assignments include:"), nl
             | AmbiguityPieces],
-        VerboseComponents = [verbose_only(add_qualifiers_reminder)],
+        VerboseComponents =
+            [verbose_only(verbose_once, add_qualifiers_reminder)],
         WarningMsgs = []
     ),
 

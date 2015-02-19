@@ -345,7 +345,8 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
             words("det, cc_multi and erroneous.")],
         IOStateSpec = error_spec(severity_error, phase_detism_check,
             [simple_msg(ProcContext,
-                [always(IOStatePieces), verbose_only(IOStateVerbosePieces)])]),
+                [always(IOStatePieces),
+                verbose_only(verbose_always, IOStateVerbosePieces)])]),
         !:Specs = [IOStateSpec | !.Specs]
     ;
         true
@@ -1932,7 +1933,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
             Spec = error_spec(severity_error, phase_detism_check,
                 [simple_msg(Context,
                     [always(Pieces0 ++ Pieces1),
-                    verbose_only(VerbosePieces)])]),
+                    verbose_only(verbose_once, VerbosePieces)])]),
             det_info_add_error_spec(Spec, !DetInfo)
         ;
             CanFail = cannot_fail,
@@ -1980,7 +1981,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 Spec = error_spec(severity_error, phase_detism_check,
                     [simple_msg(Context,
                         [always(Pieces0 ++ Pieces1),
-                        verbose_only(VerbosePieces)])]
+                        verbose_only(verbose_once, VerbosePieces)])]
                     ++ ContextMsgs),
                 det_info_add_error_spec(Spec, !DetInfo)
             ;

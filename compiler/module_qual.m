@@ -2193,7 +2193,7 @@ report_ambiguous_match(ErrorContext, Id, IdType, Modules, !Specs) :-
     VerbosePieces = [words("An explicit module qualifier"),
         words("may be necessary."), nl],
     Msg = simple_msg(Context,
-        [always(MainPieces), verbose_only(VerbosePieces)]),
+        [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 

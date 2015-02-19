@@ -29,94 +29,18 @@ unbound_type_vars.m:028: In declaration for predicate `unbound_type_vars.p2'/2:
 unbound_type_vars.m:028:   error in type class constraints: type variable `T3'
 unbound_type_vars.m:028:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:028:   the predicate's argument types.
-unbound_type_vars.m:028:   All types occurring in typeclass constraints must be
-unbound_type_vars.m:028:   fully determined. A type is fully determined if one
-unbound_type_vars.m:028:   of the following holds:
-unbound_type_vars.m:028:   1) All type variables occurring in the type are
-unbound_type_vars.m:028:   determined.
-unbound_type_vars.m:028:   2) The type occurs in a constraint argument, that
-unbound_type_vars.m:028:   argument is in the range of some functional
-unbound_type_vars.m:028:   dependency for that class, and the types in all of
-unbound_type_vars.m:028:   the domain arguments for that functional dependency
-unbound_type_vars.m:028:   are fully determined.
-unbound_type_vars.m:028:   A type variable is determined if one of the
-unbound_type_vars.m:028:   following holds:
-unbound_type_vars.m:028:   1) The type variable occurs in the argument types of
-unbound_type_vars.m:028:   the predicate, function, or constructor which is
-unbound_type_vars.m:028:   constrained.
-unbound_type_vars.m:028:   2) The type variable occurs in a type which is fully
-unbound_type_vars.m:028:   determined.
-unbound_type_vars.m:028:   See the "Functional dependencies" section of the
-unbound_type_vars.m:028:   reference manual for details.
 unbound_type_vars.m:032: In declaration for predicate `unbound_type_vars.p3'/1:
 unbound_type_vars.m:032:   error in type class constraints: type variable `T2'
 unbound_type_vars.m:032:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:032:   the predicate's argument types.
-unbound_type_vars.m:032:   All types occurring in typeclass constraints must be
-unbound_type_vars.m:032:   fully determined. A type is fully determined if one
-unbound_type_vars.m:032:   of the following holds:
-unbound_type_vars.m:032:   1) All type variables occurring in the type are
-unbound_type_vars.m:032:   determined.
-unbound_type_vars.m:032:   2) The type occurs in a constraint argument, that
-unbound_type_vars.m:032:   argument is in the range of some functional
-unbound_type_vars.m:032:   dependency for that class, and the types in all of
-unbound_type_vars.m:032:   the domain arguments for that functional dependency
-unbound_type_vars.m:032:   are fully determined.
-unbound_type_vars.m:032:   A type variable is determined if one of the
-unbound_type_vars.m:032:   following holds:
-unbound_type_vars.m:032:   1) The type variable occurs in the argument types of
-unbound_type_vars.m:032:   the predicate, function, or constructor which is
-unbound_type_vars.m:032:   constrained.
-unbound_type_vars.m:032:   2) The type variable occurs in a type which is fully
-unbound_type_vars.m:032:   determined.
-unbound_type_vars.m:032:   See the "Functional dependencies" section of the
-unbound_type_vars.m:032:   reference manual for details.
 unbound_type_vars.m:035: In declaration for predicate `unbound_type_vars.p4'/1:
 unbound_type_vars.m:035:   error in type class constraints: type variable `T2'
 unbound_type_vars.m:035:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:035:   the predicate's argument types.
-unbound_type_vars.m:035:   All types occurring in typeclass constraints must be
-unbound_type_vars.m:035:   fully determined. A type is fully determined if one
-unbound_type_vars.m:035:   of the following holds:
-unbound_type_vars.m:035:   1) All type variables occurring in the type are
-unbound_type_vars.m:035:   determined.
-unbound_type_vars.m:035:   2) The type occurs in a constraint argument, that
-unbound_type_vars.m:035:   argument is in the range of some functional
-unbound_type_vars.m:035:   dependency for that class, and the types in all of
-unbound_type_vars.m:035:   the domain arguments for that functional dependency
-unbound_type_vars.m:035:   are fully determined.
-unbound_type_vars.m:035:   A type variable is determined if one of the
-unbound_type_vars.m:035:   following holds:
-unbound_type_vars.m:035:   1) The type variable occurs in the argument types of
-unbound_type_vars.m:035:   the predicate, function, or constructor which is
-unbound_type_vars.m:035:   constrained.
-unbound_type_vars.m:035:   2) The type variable occurs in a type which is fully
-unbound_type_vars.m:035:   determined.
-unbound_type_vars.m:035:   See the "Functional dependencies" section of the
-unbound_type_vars.m:035:   reference manual for details.
 unbound_type_vars.m:038: In declaration for predicate `unbound_type_vars.p5'/1:
 unbound_type_vars.m:038:   error in type class constraints: type variable `T2'
 unbound_type_vars.m:038:   occurs in the constraints, but is not determined by
 unbound_type_vars.m:038:   the predicate's argument types.
-unbound_type_vars.m:038:   All types occurring in typeclass constraints must be
-unbound_type_vars.m:038:   fully determined. A type is fully determined if one
-unbound_type_vars.m:038:   of the following holds:
-unbound_type_vars.m:038:   1) All type variables occurring in the type are
-unbound_type_vars.m:038:   determined.
-unbound_type_vars.m:038:   2) The type occurs in a constraint argument, that
-unbound_type_vars.m:038:   argument is in the range of some functional
-unbound_type_vars.m:038:   dependency for that class, and the types in all of
-unbound_type_vars.m:038:   the domain arguments for that functional dependency
-unbound_type_vars.m:038:   are fully determined.
-unbound_type_vars.m:038:   A type variable is determined if one of the
-unbound_type_vars.m:038:   following holds:
-unbound_type_vars.m:038:   1) The type variable occurs in the argument types of
-unbound_type_vars.m:038:   the predicate, function, or constructor which is
-unbound_type_vars.m:038:   constrained.
-unbound_type_vars.m:038:   2) The type variable occurs in a type which is fully
-unbound_type_vars.m:038:   determined.
-unbound_type_vars.m:038:   See the "Functional dependencies" section of the
-unbound_type_vars.m:038:   reference manual for details.
 unbound_type_vars.m:038: In declaration of predicate `unbound_type_vars.p5'/1:
 unbound_type_vars.m:038:   type variable `T2' is universally constrained, but
 unbound_type_vars.m:038:   is existentially quantified.

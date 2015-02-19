@@ -1423,19 +1423,14 @@ report_missing_higher_order_inst(PredInfo, VarSet, Var, Context) = Spec :-
     PredPieces = describe_one_pred_info_name(should_module_qualify, PredInfo),
     varset.lookup_name(VarSet, Var, VarName),
     InPieces = [words("In") | PredPieces] ++ [suffix(":"), nl],
-    ErrorPieces = [
-        words("error: missing higher-order inst for variable"), quote(VarName),
-        suffix("."), nl
-    ],
+    ErrorPieces = [words("error: missing higher-order inst for variable"),
+        quote(VarName), suffix("."), nl],
     VerbosePieces = [
         words("Please provide the higher-order inst to ensure correctness"),
         words("of the generated code in this grade.")
     ],
-    Msg = simple_msg(Context, [
-        always(InPieces),
-        always(ErrorPieces),
-        verbose_only(VerbosePieces)
-    ]),
+    Msg = simple_msg(Context, [always(InPieces), always(ErrorPieces),
+        verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_code_gen, [Msg]).
 
 %-----------------------------------------------------------------------------%

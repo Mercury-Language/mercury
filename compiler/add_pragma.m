@@ -617,7 +617,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 words("contain the grade modifier"),
                 quote("spf"), suffix("."), nl],
             Msg = simple_msg(Context,
-                [always(Pieces), verbose_only(VerbosePieces)]),
+                [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
@@ -635,7 +635,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 words("do not contain the grade modifier"),
                 quote("spf"), suffix("."), nl],
             Msg = simple_msg(Context,
-                [always(Pieces), verbose_only(VerbosePieces)]),
+                [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
@@ -678,7 +678,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 words("the grade modifiers"), quote("tr"),
                 words("or"), quote("trseg"), suffix("."), nl],
             Msg = simple_msg(Context,
-                [always(Pieces), verbose_only(VerbosePieces)]),
+                [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
