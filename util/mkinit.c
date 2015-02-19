@@ -318,8 +318,15 @@ static const char header1[] =
     "**\n"
     ;
 
+/*
+** NOTE: _DEFAULT_SOURCE is defined in order to suppress a warning
+** about _BSD_SOURCE being deprecated in glibc 2.20.  We keep the
+** definition of the deprecated macro about for compatibility with
+** older versions of glibc.
+*/
 static const char header2[] =
     "*/\n"
+    "#define _DEFAULT_SOURCE\n"
     "#define _BSD_SOURCE\n"
     "#include <stddef.h>\n"
     "#ifdef MR_PROFILE_SBRK\n"
