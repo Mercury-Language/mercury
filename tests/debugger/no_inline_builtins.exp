@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred no_inline_builtins.main/2-0 (det) no_inline_builtins.m:11
+       1:      1  1 CALL pred no_inline_builtins.main/2-0 (det) no_inline_builtins.m:15
 mdb> echo on
 Command echo enabled.
 mdb> context none

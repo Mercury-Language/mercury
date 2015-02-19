@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred io_stream_test.main/2-0 (det) io_stream_test.m:16
+      E1:     C1 CALL pred io_stream_test.main/2-0 (det) io_stream_test.m:22
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet

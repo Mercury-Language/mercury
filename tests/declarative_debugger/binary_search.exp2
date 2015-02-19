@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred binary_search.main/2-0 (det) binary_search.m:15
+      E1:     C1 CALL pred binary_search.main/2-0 (det) binary_search.m:22
 mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.
