@@ -155,7 +155,7 @@
 "
     Addr = MR_GC_NEW(struct in_addr);
 
-    SUCCESS_INDICATOR = inet_aton(String, Addr);
+    SUCCESS_INDICATOR = inet_pton(AF_INET, String, Addr);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -211,6 +211,7 @@ to_string(Addr) = String :-
             default:
                 fprintf(stderr, ""Unhandled family\\n"");
                 abort();
+                return -1; /* MSVC doesn't understand abort(); */
         }
     }
 ").

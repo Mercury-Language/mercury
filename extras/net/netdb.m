@@ -95,6 +95,10 @@
 "
 #ifdef MR_WIN32
   #define  error()      WSAGetLastError()
+
+#ifdef MR_THREAD_SAFE
+  static MercuryLock    lookup_lock = MR_MUTEX_ATTR;
+#endif
 #else
   #define  error()      errno
 #endif
@@ -129,6 +133,8 @@ getprotobyname(Name, MaybeProtocol, !IO) :-
         Found::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
+#ifndef MR_WIN32
+
     int result;
     struct protoent *temp = MR_GC_NEW(struct protoent);
     char *buffer = MR_GC_malloc_atomic(BufferSize);
@@ -136,6 +142,38 @@ getprotobyname(Name, MaybeProtocol, !IO) :-
     result = getprotobyname_r(Name, temp, buffer, BufferSize, &Protocol);
     Success = result == 0 ? MR_YES : MR_NO;
     Found = Protocol != NULL ? MR_YES : MR_NO;
+
+#else
+    struct protoent *temp;
+    int             num_aliases;
+    int             i;
+
+#ifdef MR_THREAD_SAFE
+    MR_LOCK(lookup_lock, ""getprotobyname_r"");
+#endif
+
+    temp = getprotobyname(Name);
+    if (temp != NULL) {
+        Protocol = MR_GC_NEW(struct protoent);
+        MR_make_aligned_string_copy(Protocol->p_name, temp->p_name);
+        for (num_aliases = 0; temp->p_aliases[num_aliases]; num_aliases++);
+        Protocol->p_aliases = MR_GC_NEW_ARRAY(char*, num_aliases);
+        for (i = 0; i < num_aliases; i++) {
+            MR_make_aligned_string_copy(Protocol->p_aliases[i],
+                temp->p_aliases[i]);
+        }
+        Protocol->p_proto = temp->p_proto;
+        Found = MR_YES;
+    } else {
+        Found = MR_NO;
+    }
+    Success = MR_YES;
+
+#ifdef MR_THREAD_SAFE
+    MR_UNLOCK(lookup_lock, ""getprotobyname_r"");
+#endif
+
+#endif /* RM_WIN32 */
 ").
 
 %-----------------------------------------------------------------------------%

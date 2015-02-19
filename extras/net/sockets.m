@@ -432,7 +432,7 @@ read(Socket, Len0, Result, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
     "
         MR_allocate_bitmap_msg(Bitmap, Len*8, MR_ALLOC_ID);
-        BytesRead = read(Socket, Bitmap->elements, Len);
+        BytesRead = recv(Socket, Bitmap->elements, Len, 0);
         if (BytesRead == -1) {
             Errno = error();
         }
@@ -473,7 +473,7 @@ write(Socket, Bitmap, Offset, Result, !IO) :-
         BytesWritten::out, Errno::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
     "
-        BytesWritten = write(Socket, &Bitmap->elements[Offset], Len);
+        BytesWritten = send(Socket, &Bitmap->elements[Offset], Len, 0);
         if (BytesWritten == -1) {
             Errno = error();
         }
