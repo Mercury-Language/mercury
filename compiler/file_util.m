@@ -398,6 +398,7 @@ report_error(ErrorMessage, !IO) :-
     io.write_string("Error: ", !IO),
     io.write_string(ErrorMessage, !IO),
     io.write_string("\n", !IO),
+    io.flush_output(!IO),
     io.set_exit_status(1, !IO).
 
 report_error_to_stream(Stream, ErrorMessage, !IO) :-

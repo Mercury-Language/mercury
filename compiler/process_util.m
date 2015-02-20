@@ -333,7 +333,7 @@ call_in_forked_process_with_backup(P, AltP, Success, !IO) :-
         (
             MaybePid = yes(Pid),
             do_wait(Pid, _, CallStatus, !IO),
-            Status = io.handle_system_command_exit_status(CallStatus),
+            Status = decode_system_command_exit_code(CallStatus),
             Success = (Status = ok(exited(0)) -> yes ; no)
         ;
             MaybePid = no,
@@ -504,11 +504,11 @@ do_wait(_, _, _, _, _) :-
 
 wait_pid(Pid, Status, !IO) :-
     do_wait(Pid, _Pid, Status0, !IO),
-    Status = io.handle_system_command_exit_status(Status0).
+    Status = decode_system_command_exit_code(Status0).
 
 wait_any(Pid, Status, !IO) :-
     do_wait(-1, Pid, Status0, !IO),
-    Status = io.handle_system_command_exit_status(Status0).
+    Status = decode_system_command_exit_code(Status0).
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.process_util.
