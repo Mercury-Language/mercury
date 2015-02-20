@@ -16,7 +16,7 @@
 :- implementation.
 
 :- import_module int.
-:- import_module std_util.
+:- import_module univ.
 
 :- inst one == bound(1).
 

@@ -120,6 +120,7 @@ SINGLEMODULE= \
 	ho_any_inst \
 	ho_default_func_1 \
 	ho_default_func_3 \
+	ho_default_func_4 \
 	ho_type_mode_bug \
 	ho_unique_error \
 	illtyped_compare \
@@ -129,6 +130,7 @@ SINGLEMODULE= \
 	inconsistent_instances \
 	inline_conflict \
 	inst_list_dup \
+	inst_matches_final_bug \
 	instance_bug \
 	instance_no_type \
 	instance_var_bug \
@@ -312,9 +314,6 @@ NON_PROFDEEP_MODULES = \
 #		normal static linking; the error goes undetected
 #		when doing dynamic linking)
 #	parent.undeclared_child (just not yet implemented)
-#	ho_default_func_4 (due to a bug in the mode-checker ---
-#			see XXX comment in inst_match:inst_matches_final_3)
-#	inst_matches_final_bug (due to same bug as ho_default_func_4)
 #	bad_detism (error check not yet implemented)
 #	typeclass_dup_method_mode (error check NYI - just calls error)
 
