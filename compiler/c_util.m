@@ -146,14 +146,17 @@
 
 :- type binop_category
     --->    array_index_binop
+    ;       string_index_binop
     ;       pointer_compare_binop
     ;       compound_compare_binop
+    ;       offset_string_compare_binop(int)
+    ;       general_string_compare_binop
     ;       string_compare_binop
     ;       unsigned_compare_binop
     ;       float_compare_binop
     ;       float_arith_binop
     ;       int_or_bool_binary_infix_binop
-    ;       macro_binop
+    ;       int_macro_binop
     ;       float_macro_binop.
 
 :- pred binop_category_string(binary_op::in, binop_category::out, string::out)
@@ -607,6 +610,8 @@ unary_prefix_op(hash_string6,       "MR_hash_string6").
 % dummies; they should never be used.
 
 binop_category_string(array_index(_), array_index_binop, "ARRAY_INDEX").
+binop_category_string(string_unsafe_index_code_unit, string_index_binop,
+    "STRING_UNSAFE_INDEX_CODE_UNIT").
 
 binop_category_string(pointer_equal_conservative, pointer_compare_binop, "==").
 
@@ -655,8 +660,10 @@ binop_category_string(int_gt, int_or_bool_binary_infix_binop, ">").
 binop_category_string(int_le, int_or_bool_binary_infix_binop, "<=").
 binop_category_string(int_ge, int_or_bool_binary_infix_binop, ">=").
 
-binop_category_string(str_cmp, macro_binop, "MR_strcmp").
-binop_category_string(body, macro_binop, "MR_body").
+binop_category_string(str_cmp, general_string_compare_binop, "MR_strcmp").
+binop_category_string(offset_str_eq(N), offset_string_compare_binop(N),
+    "MR_offset_streq").
+binop_category_string(body, int_macro_binop, "MR_body").
 
 binop_category_string(float_word_bits, float_macro_binop,
     "MR_float_word_bits").

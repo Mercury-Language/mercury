@@ -574,6 +574,7 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = logical_or
         ; Op = eq
         ; Op = ne
+        ; Op = offset_str_eq(_)
         ; Op = str_eq
         ; Op = str_ne
         ; Op = str_lt
@@ -595,6 +596,7 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = float_word_bits
         ; Op = body
         ; Op = array_index(_)   % should not be an initializer anyway
+        ; Op = string_unsafe_index_code_unit
         ; Op = compound_eq
         ; Op = compound_lt
         ; Op = pointer_equal_conservative

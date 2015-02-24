@@ -225,13 +225,15 @@ generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
     LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutTypes,
         Liveness),
     (
-        CaseConsts = all_one_soln(CaseValues),
+        CaseConsts = all_one_soln(CaseValueMap),
+        map.to_assoc_list(CaseValueMap, CaseValues),
         generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
             OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
             !MaybeEnd, Code, !CI)
     ;
-        CaseConsts = some_several_solns(CaseSolns,
+        CaseConsts = some_several_solns(CaseSolnMap,
             case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
+        map.to_assoc_list(CaseSolnMap, CaseSolns),
         generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
             ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
             CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI)
@@ -765,13 +767,15 @@ generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
     LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutTypes,
         Liveness),
     (
-        CaseConsts = all_one_soln(CaseValues),
+        CaseConsts = all_one_soln(CaseValueMap),
+        map.to_assoc_list(CaseValueMap, CaseValues),
         generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
             OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
             !MaybeEnd, Code, !CI)
     ;
-        CaseConsts = some_several_solns(CaseSolns,
+        CaseConsts = some_several_solns(CaseSolnMap,
             case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
+        map.to_assoc_list(CaseSolnMap, CaseSolns),
         generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
             ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
             CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI)

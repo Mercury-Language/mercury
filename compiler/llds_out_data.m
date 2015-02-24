@@ -860,30 +860,42 @@ output_rval(Info, Rval, !IO) :-
         io.write_string(")", !IO)
     ;
         Rval = binop(Op, SubRvalA, SubRvalB),
-        binop_category_string(Op, Category, OpStr),
         (
-            Category = array_index_binop,
+            Op = array_index(_),
             io.write_string("(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_data_ptr, !IO),
             io.write_string(")[", !IO),
             output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
             io.write_string("]", !IO)
         ;
-            Category = pointer_compare_binop,
+            Op = string_unsafe_index_code_unit,
+            io.write_string("MR_nth_code_unit(", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_data_ptr, !IO),
+            io.write_string(", ", !IO),
+            output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
+            io.write_string(")", !IO)
+        ;
+            Op = pointer_equal_conservative,
             io.write_string("(((MR_Word) ", !IO),
             output_rval(Info, SubRvalA, !IO),
-            io.write_string(") ", !IO),
-            io.write_string(OpStr, !IO),
-            io.write_string(" ((MR_Word) ", !IO),
+            io.write_string(") == ((MR_Word) ", !IO),
             output_rval(Info, SubRvalB, !IO),
             io.write_string("))", !IO)
         ;
-            Category = compound_compare_binop,
+            ( Op = compound_lt
+            ; Op = compound_eq
+            ),
             % These operators are intended to be generated only when using
             % the Erlang backend.
             unexpected($file, $pred, "compound_compare_binop")
         ;
-            Category = string_compare_binop,
+            ( Op = str_eq, OpStr = "=="
+            ; Op = str_ne, OpStr = "!="
+            ; Op = str_le, OpStr = "<="
+            ; Op = str_ge, OpStr = ">="
+            ; Op = str_lt, OpStr = "<"
+            ; Op = str_gt, OpStr = ">"
+            ),
             io.write_string("(strcmp(", !IO),
             ( SubRvalA = const(llconst_string(SubRvalAConst)) ->
                 output_rval_const(Info, llconst_string(SubRvalAConst), !IO)
@@ -904,8 +916,16 @@ output_rval(Info, Rval, !IO) :-
             io.write_string(" ", !IO),
             io.write_string("0)", !IO)
         ;
-            ( Category = float_compare_binop
-            ; Category = float_arith_binop
+            ( Op = float_eq, OpStr = "=="
+            ; Op = float_ne, OpStr = "!="
+            ; Op = float_le, OpStr = "<="
+            ; Op = float_ge, OpStr = ">="
+            ; Op = float_lt, OpStr = "<"
+            ; Op = float_gt, OpStr = ">"
+            ; Op = float_plus, OpStr = "+"
+            ; Op = float_minus, OpStr = "-"
+            ; Op = float_times, OpStr = "*"
+            ; Op = float_divide, OpStr = "/"
             ),
             io.write_string("(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_float, !IO),
@@ -915,19 +935,35 @@ output_rval(Info, Rval, !IO) :-
             output_rval_as_type(Info, SubRvalB, lt_float, !IO),
             io.write_string(")", !IO)
         ;
-            Category = unsigned_compare_binop,
+            Op = unsigned_le,
             io.write_string("(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_unsigned, !IO),
-            io.write_string(" ", !IO),
-            io.write_string(OpStr, !IO),
-            io.write_string(" ", !IO),
+            io.write_string(" <= ", !IO),
             output_rval_as_type(Info, SubRvalB, lt_unsigned, !IO),
             io.write_string(")", !IO)
         ;
-            Category = int_or_bool_binary_infix_binop,
+            ( Op = int_add, OpStr = "+"
+            ; Op = int_sub, OpStr = "-"
+            ; Op = int_mul, OpStr = "*"
+            ; Op = int_div, OpStr = "/"
+            ; Op = int_mod, OpStr = "%"
+            ; Op = eq, OpStr = "=="
+            ; Op = ne, OpStr = "!="
+            ; Op = int_lt, OpStr = "<"
+            ; Op = int_gt, OpStr = ">"
+            ; Op = int_le, OpStr = "<="
+            ; Op = int_ge, OpStr = ">="
+            ; Op = unchecked_left_shift, OpStr = "<<"
+            ; Op = unchecked_right_shift, OpStr = ">>"
+            ; Op = bitwise_and, OpStr = "&"
+            ; Op = bitwise_or, OpStr = "|"
+            ; Op = bitwise_xor, OpStr = "^"
+            ; Op = logical_and, OpStr = "&&"
+            ; Op = logical_or, OpStr = "||"
+            ),
             (
                 % Special-case equality ops to avoid some unnecessary casts --
-                % there's no difference between signed and unsigned equality,
+                % there is no difference between signed and unsigned equality,
                 % so if both args are unsigned, we don't need to cast them to
                 % MR_Integer.
                 ( Op = eq ; Op = ne ),
@@ -970,41 +1006,47 @@ output_rval(Info, Rval, !IO) :-
                 io.write_string(")", !IO)
             )
         ;
-            Category = macro_binop,
-            io.write_string(OpStr, !IO),
-            io.write_string("(", !IO),
+            Op = str_cmp,
+            io.write_string("MR_strcmp(", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_data_ptr, !IO),
+            io.write_string(", ", !IO),
+            output_rval_as_type(Info, SubRvalB, lt_data_ptr, !IO),
+            io.write_string(")", !IO)
+        ;
+            Op = offset_str_eq(N),
+            io.write_string("MR_offset_streq(", !IO),
+            io.write_int(N, !IO),
+            io.write_string(", ", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_data_ptr, !IO),
+            io.write_string(", ", !IO),
+            output_rval_as_type(Info, SubRvalB, lt_data_ptr, !IO),
+            io.write_string(")", !IO)
+        ;
+            Op = body,
+            io.write_string("MR_body(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_integer, !IO),
             io.write_string(", ", !IO),
             output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
             io.write_string(")", !IO)
         ;
-            Category = float_macro_binop,
-            (
-                Op = float_word_bits
-            ->
-                io.write_string(OpStr, !IO),
-                io.write_string("(", !IO),
-                output_rval_as_type(Info, SubRvalA, lt_float, !IO),
+            Op = float_word_bits,
+            io.write_string("MR_float_word_bits(", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_float, !IO),
+            io.write_string(", ", !IO),
+            output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
+            io.write_string(")", !IO)
+        ;
+            Op = float_from_dword,
+            ( is_aligned_dword_ptr(SubRvalA, SubRvalB, MemRef) ->
+                io.write_string("MR_float_from_dword_ptr(MR_dword_ptr(", !IO),
+                output_rval(Info, mem_addr(MemRef), !IO),
+                io.write_string("))", !IO)
+            ;
+                io.write_string("MR_float_from_dword(", !IO),
+                output_rval(Info, SubRvalA, !IO),
                 io.write_string(", ", !IO),
-                output_rval_as_type(Info, SubRvalB, lt_integer, !IO),
+                output_rval(Info, SubRvalB, !IO),
                 io.write_string(")", !IO)
-            ;
-                Op = float_from_dword
-            ->
-                ( is_aligned_dword_ptr(SubRvalA, SubRvalB, MemRef) ->
-                    io.write_string("MR_float_from_dword_ptr(MR_dword_ptr(",
-                        !IO),
-                    output_rval(Info, mem_addr(MemRef), !IO),
-                    io.write_string("))", !IO)
-                ;
-                    io.write_string("MR_float_from_dword(", !IO),
-                    output_rval(Info, SubRvalA, !IO),
-                    io.write_string(", ", !IO),
-                    output_rval(Info, SubRvalB, !IO),
-                    io.write_string(")", !IO)
-                )
-            ;
-                sorry($file, $pred, "unknown float_macro_binop")
             )
         )
     ;

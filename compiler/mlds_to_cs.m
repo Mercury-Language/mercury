@@ -626,46 +626,56 @@ method_ptrs_in_rvals([Rval | Rvals], !CodeAddrs) :-
 :- pred method_ptrs_in_rval(mlds_rval::in,
     code_addr_map::in, code_addr_map::out) is det.
 
-method_ptrs_in_rval(ml_lval(Lval), !CodeAddrs) :-
-    method_ptrs_in_lval(Lval, !CodeAddrs).
-method_ptrs_in_rval(ml_mkword(_Tag, Rval), !CodeAddrs) :-
-    method_ptrs_in_rval(Rval, !CodeAddrs).
-method_ptrs_in_rval(ml_const(RvalConst), !CodeAddrs) :-
+method_ptrs_in_rval(Rval, !CodeAddrs) :-
     (
-        RvalConst = mlconst_code_addr(CodeAddr),
-        !.CodeAddrs = code_addr_map(Counter, Map0),
-        ( map.contains(Map0, CodeAddr) ->
-            true
+        Rval = ml_lval(Lval),
+        method_ptrs_in_lval(Lval, !CodeAddrs)
+    ;
+        Rval = ml_mkword(_Tag, SubRval),
+        method_ptrs_in_rval(SubRval, !CodeAddrs)
+    ;
+        Rval = ml_const(RvalConst),
+        (
+            RvalConst = mlconst_code_addr(CodeAddr),
+            !.CodeAddrs = code_addr_map(Counter, Map0),
+            ( map.contains(Map0, CodeAddr) ->
+                true
+            ;
+                Name = "MR_method_ptr_" ++ string.from_int(Counter),
+                map.det_insert(CodeAddr, Name, Map0, Map),
+                !:CodeAddrs = code_addr_map(Counter + 1, Map)
+            )
         ;
-            Name = "MR_method_ptr_" ++ string.from_int(Counter),
-            map.det_insert(CodeAddr, Name, Map0, Map),
-            !:CodeAddrs = code_addr_map(Counter + 1, Map)
+            ( RvalConst = mlconst_true
+            ; RvalConst = mlconst_false
+            ; RvalConst = mlconst_int(_)
+            ; RvalConst = mlconst_char(_)
+            ; RvalConst = mlconst_enum(_, _)
+            ; RvalConst = mlconst_foreign(_, _, _)
+            ; RvalConst = mlconst_float(_)
+            ; RvalConst = mlconst_string(_)
+            ; RvalConst = mlconst_multi_string(_)
+            ; RvalConst = mlconst_named_const(_)
+            ; RvalConst = mlconst_data_addr(_)
+            ; RvalConst = mlconst_null(_)
+            )
         )
     ;
-        ( RvalConst = mlconst_true
-        ; RvalConst = mlconst_false
-        ; RvalConst = mlconst_int(_)
-        ; RvalConst = mlconst_char(_)
-        ; RvalConst = mlconst_enum(_, _)
-        ; RvalConst = mlconst_foreign(_, _, _)
-        ; RvalConst = mlconst_float(_)
-        ; RvalConst = mlconst_string(_)
-        ; RvalConst = mlconst_multi_string(_)
-        ; RvalConst = mlconst_named_const(_)
-        ; RvalConst = mlconst_data_addr(_)
-        ; RvalConst = mlconst_null(_)
+        Rval = ml_unop(_UnaryOp, SubRval),
+        method_ptrs_in_rval(SubRval, !CodeAddrs)
+    ;
+        Rval = ml_binop(_BinaryOp, SubRvalA, SubRvalB),
+        method_ptrs_in_rval(SubRvalA, !CodeAddrs),
+        method_ptrs_in_rval(SubRvalB, !CodeAddrs)
+    ;
+        Rval = ml_vector_common_row(_, RowRval),
+        method_ptrs_in_rval(RowRval, !CodeAddrs)
+    ;
+        ( Rval = ml_scalar_common(_)
+        ; Rval = ml_mem_addr(_Address)
+        ; Rval = ml_self(_Type)
         )
     ).
-method_ptrs_in_rval(ml_unop(_UnaryOp, Rval), !CodeAddrs) :-
-    method_ptrs_in_rval(Rval, !CodeAddrs).
-method_ptrs_in_rval(ml_binop(_BinaryOp, RvalA, RvalB), !CodeAddrs) :-
-    method_ptrs_in_rval(RvalA, !CodeAddrs),
-    method_ptrs_in_rval(RvalB, !CodeAddrs).
-method_ptrs_in_rval(ml_scalar_common(_), !CodeAddrs).
-method_ptrs_in_rval(ml_vector_common_row(_, RowRval), !CodeAddrs) :-
-    method_ptrs_in_rval(RowRval, !CodeAddrs).
-method_ptrs_in_rval(ml_mem_addr(_Address), !CodeAddrs).
-method_ptrs_in_rval(ml_self(_Type), !CodeAddrs).
 
 :- pred method_ptrs_in_lval(mlds_lval::in,
     code_addr_map::in, code_addr_map::out) is det.
@@ -1348,15 +1358,15 @@ add_scalar_deps(FromScalar, Initializer, !Graph) :-
 
 add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
     (
-        ( Rval = ml_mkword(_, RvalA)
-        ; Rval = ml_unop(_, RvalA)
-        ; Rval = ml_vector_common_row(_, RvalA)
+        ( Rval = ml_mkword(_, SubRvalA)
+        ; Rval = ml_unop(_, SubRvalA)
+        ; Rval = ml_vector_common_row(_, SubRvalA)
         ),
-        add_scalar_deps_rval(FromScalar, RvalA, !Graph)
+        add_scalar_deps_rval(FromScalar, SubRvalA, !Graph)
     ;
-        Rval = ml_binop(_, RvalA, RvalB),
-        add_scalar_deps_rval(FromScalar, RvalA, !Graph),
-        add_scalar_deps_rval(FromScalar, RvalB, !Graph)
+        Rval = ml_binop(_, SubRvalA, SubRvalB),
+        add_scalar_deps_rval(FromScalar, SubRvalA, !Graph),
+        add_scalar_deps_rval(FromScalar, SubRvalB, !Graph)
     ;
         Rval = ml_const(RvalConst),
         add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph)

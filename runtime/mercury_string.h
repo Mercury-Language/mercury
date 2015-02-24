@@ -384,6 +384,21 @@ MR_Integer      MR_hash_string6(MR_ConstString);
 #define MR_strcmp(s, t)         strcmp((const char *)(s), (const char *)(t))
 
 /*
+** Assuming that the first n code units of s and t are equal,
+** are the rest of s and t equal?
+*/
+
+#define MR_offset_streq(n, s, t) \
+    (strcmp((const char *)((s)+(n)), (const char *)((t)+(n))) == 0)
+
+/*
+** Return the kth code unit in a string.
+*/
+
+#define MR_nth_code_unit(s, k) \
+    ((unsigned) (((const unsigned char *) (s))[(k)]))
+
+/*
 ** Return an MR_String which has been created using the format string, fmt,
 ** passed to sprintf. If memory profiling is turned on, record the allocation
 ** as coming from proclabel. The MR_String returned has been allocated

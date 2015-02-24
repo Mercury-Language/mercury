@@ -502,7 +502,8 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ; StdBinOp = float_from_dword
         ; StdBinOp = float_word_bits
         ; StdBinOp = str_cmp
-        ; StdBinOp = pointer_equal_conservative % handled in our caller
+        ; StdBinOp = pointer_equal_conservative     % handled in our caller
+        ; StdBinOp = string_unsafe_index_code_unit  % we *could* implement this
         ),
         fail
     ;
@@ -520,6 +521,7 @@ std_binop_to_elds(StdBinOp, EldsBinOp) :-
         ; StdBinOp = logical_or,            EldsBinOp = elds.orelse
         ; StdBinOp = eq,                    EldsBinOp = elds.(=:=)
         ; StdBinOp = ne,                    EldsBinOp = elds.(=/=)
+        ; StdBinOp = offset_str_eq(_),      EldsBinOp = elds.(=:=)
         ; StdBinOp = str_eq,                EldsBinOp = elds.(=:=)
         ; StdBinOp = str_ne,                EldsBinOp = elds.(=/=)
         ; StdBinOp = str_lt,                EldsBinOp = elds.(<)

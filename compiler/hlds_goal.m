@@ -1067,6 +1067,9 @@
                 case_goal                   :: hlds_goal
             ).
 
+:- type case_id
+    --->    case_id(int).
+
 :- type tagged_case
     --->    tagged_case(
                 % The list of functors, and their tags, for which
@@ -1075,7 +1078,7 @@
                 tagged_case_later_functors  :: list(tagged_cons_id),
 
                 % An identifier of the switch arm.
-                tagged_case_id              :: int,
+                tagged_case_id              :: case_id,
 
                 % The code of the switch arm.
                 tagged_case_goal            :: hlds_goal

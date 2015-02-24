@@ -665,8 +665,10 @@ dump_unop(hash_string5) = "hash_string5".
 dump_unop(hash_string6) = "hash_string6".
 
 dump_binop(array_index(_)) = "array_index".
+dump_binop(string_unsafe_index_code_unit) = "string_unsafe_index_code_unit".
 dump_binop(compound_lt) = "compound<".
 dump_binop(compound_eq) = "compound=".
+dump_binop(offset_str_eq(N)) = "offset("++string.int_to_string(N)++")str==".
 dump_binop(str_eq) = "str==".
 dump_binop(str_ne) = "str!=".
 dump_binop(str_le) = "str<=".

@@ -935,39 +935,49 @@ method_ptrs_in_rvals([Rval | Rvals], !CodeAddrs) :-
 :- pred method_ptrs_in_rval(mlds_rval::in, list(mlds_code_addr)::in,
     list(mlds_code_addr)::out) is det.
 
-method_ptrs_in_rval(ml_lval(Lval), !CodeAddrs) :-
-    method_ptrs_in_lval(Lval, !CodeAddrs).
-method_ptrs_in_rval(ml_mkword(_Tag, Rval), !CodeAddrs) :-
-    method_ptrs_in_rval(Rval, !CodeAddrs).
-method_ptrs_in_rval(ml_const(RvalConst), !CodeAddrs) :-
+method_ptrs_in_rval(Rval, !CodeAddrs) :-
     (
-        RvalConst = mlconst_code_addr(CodeAddr),
-        !:CodeAddrs = [CodeAddr | !.CodeAddrs]
+        Rval = ml_lval(Lval),
+        method_ptrs_in_lval(Lval, !CodeAddrs)
     ;
-        ( RvalConst = mlconst_true
-        ; RvalConst = mlconst_false
-        ; RvalConst = mlconst_int(_)
-        ; RvalConst = mlconst_char(_)
-        ; RvalConst = mlconst_enum(_, _)
-        ; RvalConst = mlconst_foreign(_, _, _)
-        ; RvalConst = mlconst_float(_)
-        ; RvalConst = mlconst_string(_)
-        ; RvalConst = mlconst_multi_string(_)
-        ; RvalConst = mlconst_named_const(_)
-        ; RvalConst = mlconst_data_addr(_)
-        ; RvalConst = mlconst_null(_)
+        Rval = ml_mkword(_Tag, SubRval),
+        method_ptrs_in_rval(SubRval, !CodeAddrs)
+    ;
+        Rval = ml_const(RvalConst),
+        (
+            RvalConst = mlconst_code_addr(CodeAddr),
+            !:CodeAddrs = [CodeAddr | !.CodeAddrs]
+        ;
+            ( RvalConst = mlconst_true
+            ; RvalConst = mlconst_false
+            ; RvalConst = mlconst_int(_)
+            ; RvalConst = mlconst_char(_)
+            ; RvalConst = mlconst_enum(_, _)
+            ; RvalConst = mlconst_foreign(_, _, _)
+            ; RvalConst = mlconst_float(_)
+            ; RvalConst = mlconst_string(_)
+            ; RvalConst = mlconst_multi_string(_)
+            ; RvalConst = mlconst_named_const(_)
+            ; RvalConst = mlconst_data_addr(_)
+            ; RvalConst = mlconst_null(_)
+            )
+        )
+    ;
+        Rval = ml_unop(_UnaryOp, RvalA),
+        method_ptrs_in_rval(RvalA, !CodeAddrs)
+    ;
+        Rval = ml_binop(_BinaryOp, RvalA, RvalB),
+        method_ptrs_in_rval(RvalA, !CodeAddrs),
+        method_ptrs_in_rval(RvalB, !CodeAddrs)
+    ;
+        Rval = ml_vector_common_row(_, RowRval),
+        method_ptrs_in_rval(RowRval, !CodeAddrs)
+    ;
+        ( Rval = ml_scalar_common(_)
+        ; Rval = ml_mem_addr(_Address)
+        ; Rval = ml_self(_Type)
         )
     ).
-method_ptrs_in_rval(ml_unop(_UnaryOp, Rval), !CodeAddrs) :-
-    method_ptrs_in_rval(Rval, !CodeAddrs).
-method_ptrs_in_rval(ml_binop(_BinaryOp, RvalA, RvalB), !CodeAddrs) :-
-    method_ptrs_in_rval(RvalA, !CodeAddrs),
-    method_ptrs_in_rval(RvalB, !CodeAddrs).
-method_ptrs_in_rval(ml_scalar_common(_), !CodeAddrs).
-method_ptrs_in_rval(ml_vector_common_row(_, RowRval), !CodeAddrs) :-
-    method_ptrs_in_rval(RowRval, !CodeAddrs).
-method_ptrs_in_rval(ml_mem_addr(_Address), !CodeAddrs).
-method_ptrs_in_rval(ml_self(_Type), !CodeAddrs).
 
 :- pred method_ptrs_in_lval(mlds_lval::in, list(mlds_code_addr)::in,
     list(mlds_code_addr)::out) is det.
@@ -4750,11 +4760,11 @@ output_rval(Info, Rval, !IO) :-
         Rval = ml_const(Const),
         output_rval_const(Info, Const, !IO)
     ;
-        Rval = ml_unop(Op, RvalA),
-        output_unop(Info, Op, RvalA, !IO)
+        Rval = ml_unop(UnOp, RvalA),
+        output_unop(Info, UnOp, RvalA, !IO)
     ;
-        Rval = ml_binop(Op, RvalA, RvalB),
-        output_binop(Info, Op, RvalA, RvalB, !IO)
+        Rval = ml_binop(BinOp, RvalA, RvalB),
+        output_binop(Info, BinOp, RvalA, RvalB, !IO)
     ;
         Rval = ml_mem_addr(_Lval),
         unexpected($module, $pred, "mem_addr(_) not supported")

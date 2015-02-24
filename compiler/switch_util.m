@@ -127,10 +127,10 @@
 
 :- type case_consts(Key, Rval, SeveralInfo)
     --->    all_one_soln(
-                assoc_list(Key, list(Rval))
+                map(Key, list(Rval))
             )
     ;       some_several_solns(
-                assoc_list(Key, soln_consts(Rval)),
+                map(Key, soln_consts(Rval)),
                 SeveralInfo
             ).
 
@@ -167,8 +167,8 @@
     need_bit_vec_check::out, need_range_check::out, int::out, int::out)
     is semidet.
 
-:- pred project_all_to_one_solution(assoc_list(T, soln_consts(Rval))::in,
-    assoc_list(T, list(Rval))::out) is semidet.
+:- pred project_all_to_one_solution(map(Key, soln_consts(Rval))::in,
+    map(Key, list(Rval))::out) is semidet.
 
 :- pred project_solns_to_rval_lists(assoc_list(T, soln_consts(Rval))::in,
     list(list(Rval))::in, list(list(Rval))::out) is det.
@@ -309,10 +309,10 @@
     %
 :- type ptag_count_map  ==  map(tag_bits, pair(sectag_locn, int)).
 
-    % Map case numbers to the set of primary tags used in the cons_ids
+    % Map case ids to the set of primary tags used in the cons_ids
     % of that case.
     %
-:- type case_num_ptags_map == map(int, set(int)).
+:- type case_id_ptags_map == map(case_id, set(int)).
 
     % Group together all the cases that depend on the given variable
     % having the same primary tag value.
@@ -321,7 +321,7 @@
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
         ::in(pred(in, out, in, out, in, out, in, out) is det),
     StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
-    case_num_ptags_map::out, ptag_case_map(CaseRep)::out) is det.
+    case_id_ptags_map::out, ptag_case_map(CaseRep)::out) is det.
 
     % Group together any primary tags with the same cases.
     % Order the groups based on the number of secondary tags associated
@@ -404,7 +404,7 @@ tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
             IntTag, LowerLimit1, IntTag, UpperLimit1,
             1, NumValues1, is_int_switch, IsIntSwitch1),
         TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
-            0, Goal),
+            case_id(0), Goal),
         tag_cases_in_int_switch(ModuleInfo, SwitchVarType, 1,
             Cases, TaggedCases,
             LowerLimit1, LowerLimit, UpperLimit1, UpperLimit,
@@ -420,7 +420,7 @@ tag_cases(ModuleInfo, SwitchVarType, [Case | Cases],
     ;
         list.map(tag_cons_id(ModuleInfo), OtherConsIds, TaggedOtherConsIds),
         TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
-            0, Goal),
+            case_id(0), Goal),
         tag_cases_plain(ModuleInfo, SwitchVarType, 1, Cases, TaggedCases),
         MaybeIntSwitchLimits = not_int_switch
     ).
@@ -435,7 +435,7 @@ tag_cases_plain(ModuleInfo, SwitchVarType, CaseNum, [Case | Cases],
     tag_cons_id(ModuleInfo, MainConsId, TaggedMainConsId),
     list.map(tag_cons_id(ModuleInfo), OtherConsIds, TaggedOtherConsIds),
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
-        CaseNum, Goal),
+        case_id(CaseNum), Goal),
     tag_cases_plain(ModuleInfo, SwitchVarType, CaseNum + 1, Cases,
         TaggedCases).
 
@@ -455,7 +455,7 @@ tag_cases_in_int_switch(ModuleInfo, SwitchVarType, CaseNum, [Case | Cases],
         OtherConsIds, TaggedOtherConsIds, !LowerLimit, !UpperLimit,
         !NumValues, !IsIntSwitch),
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds,
-        CaseNum, Goal),
+        case_id(CaseNum), Goal),
     tag_cases_in_int_switch(ModuleInfo, SwitchVarType, CaseNum + 1,
         Cases, TaggedCases, !LowerLimit, !UpperLimit,
         !NumValues, !IsIntSwitch).
@@ -788,18 +788,13 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
     ).
 
 project_all_to_one_solution(CaseSolns, CaseValuePairs) :-
-    do_project_all_to_one_solution(CaseSolns, [], RevCaseValuePairs),
-    list.reverse(RevCaseValuePairs, CaseValuePairs).
+    map.map_values(project_soln_consts_to_one_soln, CaseSolns, CaseValuePairs).
 
-:- pred do_project_all_to_one_solution(assoc_list(T, soln_consts(Rval))::in,
-    assoc_list(T, list(Rval))::in, assoc_list(T, list(Rval))::out) is semidet.
+:- pred project_soln_consts_to_one_soln(Key::in,
+    soln_consts(Rval)::in, list(Rval)::out) is semidet.
 
-do_project_all_to_one_solution([], !RevCaseValuePairs).
-do_project_all_to_one_solution([Case - Solns | CaseSolns],
-        !RevCaseValuePairs) :-
-    Solns = one_soln(Values),
-    !:RevCaseValuePairs = [Case - Values | !.RevCaseValuePairs],
-    do_project_all_to_one_solution(CaseSolns, !RevCaseValuePairs).
+project_soln_consts_to_one_soln(_Key, Solns, Values) :-
+    Solns = one_soln(Values).
 
 project_solns_to_rval_lists([], !RvalsList).
 project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
@@ -1258,28 +1253,28 @@ group_cases_by_ptag(TaggedCases, RepresentCase, !StateA, !StateB, !StateC,
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
         ::in(pred(in, out, in, out, in, out, in, out) is det),
     StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
-    case_num_ptags_map::in, case_num_ptags_map::out,
+    case_id_ptags_map::in, case_id_ptags_map::out,
     ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
 
 group_cases_by_ptag_loop([], _,
         !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap).
 group_cases_by_ptag_loop([TaggedCase | TaggedCases], RepresentCase,
         !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap) :-
-    TaggedCase = tagged_case(MainTaggedConsId, OtherConsIds, CaseNum, _Goal),
+    TaggedCase = tagged_case(MainTaggedConsId, OtherConsIds, CaseId, _Goal),
     RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
-    group_case_by_ptag(CaseNum, CaseRep, MainTaggedConsId,
+    group_case_by_ptag(CaseId, CaseRep, MainTaggedConsId,
         !CaseNumPtagsMap, !PtagCaseMap),
-    list.foldl2(group_case_by_ptag(CaseNum, CaseRep), OtherConsIds,
+    list.foldl2(group_case_by_ptag(CaseId, CaseRep), OtherConsIds,
         !CaseNumPtagsMap, !PtagCaseMap),
     group_cases_by_ptag_loop(TaggedCases, RepresentCase,
         !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap).
 
-:- pred group_case_by_ptag(int::in, CaseRep::in, tagged_cons_id::in,
-    map(int, set(int))::in, map(int, set(int))::out,
+:- pred group_case_by_ptag(case_id::in, CaseRep::in, tagged_cons_id::in,
+    map(case_id, set(int))::in, map(case_id, set(int))::out,
     ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
 
-group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
-        !CaseNumPtagsMap, !PtagCaseMap) :-
+group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
+        !CaseIdPtagsMap, !PtagCaseMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, Tag),
     (
         (
@@ -1348,12 +1343,12 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
         ),
         unexpected($module, $pred, "non-du tag")
     ),
-    ( map.search(!.CaseNumPtagsMap, CaseNum, Ptags0) ->
+    ( map.search(!.CaseIdPtagsMap, CaseId, Ptags0) ->
         set.insert(Primary, Ptags0, Ptags),
-        map.det_update(CaseNum, Ptags, !CaseNumPtagsMap)
+        map.det_update(CaseId, Ptags, !CaseIdPtagsMap)
     ;
         Ptags = set.make_singleton_set(Primary),
-        map.det_insert(CaseNum, Ptags, !CaseNumPtagsMap)
+        map.det_insert(CaseId, Ptags, !CaseIdPtagsMap)
     ).
 
 %-----------------------------------------------------------------------------%

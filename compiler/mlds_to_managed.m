@@ -433,17 +433,17 @@ write_rval(DataRep, Rval, !IO) :-
         Rval = ml_const(RvalConst),
         write_rval_const(RvalConst, !IO)
     ;
-        Rval = ml_unop(Unop, RvalA),
+        Rval = ml_unop(UnOp, RvalA),
         (
-            Unop = std_unop(StdUnop),
-            c_util.unary_prefix_op(StdUnop, UnopStr)
+            UnOp = std_unop(StdUnOp),
+            c_util.unary_prefix_op(StdUnOp, UnOpStr)
         ->
-            io.write_string(UnopStr, !IO),
+            io.write_string(UnOpStr, !IO),
             io.write_string("(", !IO),
             write_rval(DataRep, RvalA, !IO),
             io.write_string(")", !IO)
         ;
-            Unop = cast(Type)
+            UnOp = cast(Type)
         ->
             io.write_string("(", !IO),
             write_parameter_type(DataRep, Type, !IO),
@@ -453,13 +453,13 @@ write_rval(DataRep, Rval, !IO) :-
             sorry($module, $pred, "box or unbox unop")
         )
     ;
-        Rval = ml_binop(Binop, RvalA, RvalB),
-        c_util.binop_category_string(Binop, Category, BinopStr),
+        Rval = ml_binop(BinOp, RvalA, RvalB),
+        c_util.binop_category_string(BinOp, Category, BinOpStr),
         ( Category = int_or_bool_binary_infix_binop ->
             io.write_string("(", !IO),
             write_rval(DataRep, RvalA, !IO),
             io.write_string(") ", !IO),
-            io.write_string(BinopStr, !IO),
+            io.write_string(BinOpStr, !IO),
             io.write_string(" (", !IO),
             write_rval(DataRep, RvalB, !IO),
             io.write_string(")", !IO)

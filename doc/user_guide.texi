@@ -9101,6 +9101,12 @@ in which all the outputs are constant terms
 must have at least this many entries (default: 4).
 
 @sp 1
+@item --string-trie-switch-size @var{size}
+@findex --string-switch-size
+The trie generated for a string switch
+must have at least this many entries (default: 16).
+
+@sp 1
 @item --string-hash-switch-size @var{size}
 @findex --string-switch-size
 The hash table generated for a string switch

@@ -2748,8 +2748,14 @@ binaryop_to_il(array_index(ElemType), singleton(I), !Info) :-
     ILSimpleType = mlds_type_to_ilds_simple_type(DataRep, MLDS_Type),
     I = ldelem(ILSimpleType).
 
+binaryop_to_il(string_unsafe_index_code_unit, _, !Info) :-
+    unexpected($module, $pred, "string_unsafe_index_code_unit").
+
     % String operations.
 binaryop_to_il(str_eq, from_list([
+        call(il_string_equals)
+    ]), !Info).
+binaryop_to_il(offset_str_eq(_), from_list([
         call(il_string_equals)
     ]), !Info).
 binaryop_to_il(str_ne, from_list([

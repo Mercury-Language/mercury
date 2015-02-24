@@ -57,7 +57,7 @@
 :- import_module set.
 :- import_module unit.
 
-:- type code_map == map(int, maybe_code).
+:- type code_map == map(case_id, maybe_code).
 
 :- type maybe_code
     --->    immediate(statement)
@@ -80,7 +80,7 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
     ml_variable_type(!.Info, Var, Type),
     get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap),
     group_cases_by_ptag(TaggedCases, gen_tagged_case_code(CodeModel),
-        map.init, CodeMap, unit, _, !Info, _CaseNumPtagsMap, PtagCaseMap),
+        map.init, CodeMap, unit, _, !Info, _CaseIdPtagsMap, PtagCaseMap),
     order_ptags_by_count(PtagCountMap, PtagCaseMap, PtagCaseList),
     % The code generation scheme that we use below can duplicate the code of a
     % case if the representations of the cons_ids of that case use more than
@@ -97,7 +97,7 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
     % switch on index using the direct mapped scheme
     %
     % For such targets, you would want to employ this code generation scheme,
-    % which is not (yet) implemented, if any value in CaseNumPtagsMap is a set
+    % which is not (yet) implemented, if any value in CaseIdPtagsMap is a set
     % with more than one element.
 
     % Generate the switch on the primary tag.
@@ -114,14 +114,14 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
     ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement, !Info),
     Statements = [SwitchStatement].
 
-:- pred gen_tagged_case_code(code_model::in, tagged_case::in, int::out,
-    code_map::in, code_map::out, unit::in, unit::out,
+:- pred gen_tagged_case_code(code_model::in, tagged_case::in,
+    case_id::out, code_map::in, code_map::out, unit::in, unit::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_tagged_case_code(CodeModel, TaggedCase, CaseNum, !CodeMap, !Unit,
+gen_tagged_case_code(CodeModel, TaggedCase, CaseId, !CodeMap, !Unit,
         Info0, Info) :-
     TaggedCase = tagged_case(_MainTaggedConsId, OtherTaggedConsIds,
-        CaseNum, Goal),
+        CaseId, Goal),
     ml_gen_goal_as_branch_block(CodeModel, Goal, Statement, Info0, Info1),
     % Do not allow the generated code to be literally duplicated if it contains
     % labels. Rather, we will regenerate the code at every point it is required
@@ -136,7 +136,7 @@ gen_tagged_case_code(CodeModel, TaggedCase, CaseNum, !CodeMap, !Unit,
         MaybeCode = immediate(Statement),
         Info = Info1
     ),
-    map.det_insert(CaseNum, MaybeCode, !CodeMap).
+    map.det_insert(CaseId, MaybeCode, !CodeMap).
 
 :- pred statement_contains_label(statement::in) is semidet.
 
@@ -144,11 +144,11 @@ statement_contains_label(Statement) :-
     statement_contains_statement(Statement, Label),
     Label = statement(ml_stmt_label(_), _).
 
-:- pred lookup_code_map(code_map::in, int::in, code_model::in, statement::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred lookup_code_map(code_map::in, case_id::in, code_model::in,
+    statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-lookup_code_map(CodeMap, CaseNum, CodeModel, Statement, !Info) :-
-    map.lookup(CodeMap, CaseNum, MaybeCode),
+lookup_code_map(CodeMap, CaseId, CodeModel, Statement, !Info) :-
+    map.lookup(CodeMap, CaseId, MaybeCode),
     (
         MaybeCode = immediate(Statement)
     ;
@@ -160,18 +160,18 @@ lookup_code_map(CodeMap, CaseNum, CodeModel, Statement, !Info) :-
     --->    no_case_is_split_between_ptags
     ;       some_case_is_split_between_ptags.
 
-:- pred find_any_split_cases(case_num_ptags_map::in,
+:- pred find_any_split_cases(case_id_ptags_map::in,
     is_a_case_split_between_ptags::out) is det.
 
-find_any_split_cases(CaseNumPtagsMap, IsAnyCaseSplit) :-
-    map.foldl(find_any_split_cases_2, CaseNumPtagsMap,
+find_any_split_cases(CaseIdPtagsMap, IsAnyCaseSplit) :-
+    map.foldl(find_any_split_cases_2, CaseIdPtagsMap,
         no_case_is_split_between_ptags, IsAnyCaseSplit).
 
-:- pred find_any_split_cases_2(int::in, set(int)::in,
+:- pred find_any_split_cases_2(case_id::in, set(int)::in,
     is_a_case_split_between_ptags::in, is_a_case_split_between_ptags::out)
     is det.
 
-find_any_split_cases_2(_CaseNum, Ptags, !IsAnyCaseSplit) :-
+find_any_split_cases_2(_CaseId, Ptags, !IsAnyCaseSplit) :-
     ( set.is_singleton(Ptags, _OnlyPtag) ->
         true
     ;
@@ -180,7 +180,7 @@ find_any_split_cases_2(_CaseNum, Ptags, !IsAnyCaseSplit) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_ptag_cases(ptag_case_group_list(int)::in, code_map::in,
+:- pred gen_ptag_cases(ptag_case_group_list(case_id)::in, code_map::in,
     prog_var::in, can_fail::in, code_model::in, ptag_count_map::in,
     prog_context::in, list(mlds_switch_case)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -193,7 +193,7 @@ gen_ptag_cases([Ptag | Ptags], CodeMap, Var, CanFail, CodeModel,
     gen_ptag_cases(Ptags, CodeMap, Var, CanFail, CodeModel,
         PtagCountMap, Context, MLDS_Cases, !Info).
 
-:- pred gen_ptag_case(ptag_case_group_entry(int)::in, code_map::in,
+:- pred gen_ptag_case(ptag_case_group_entry(case_id)::in, code_map::in,
     prog_var::in, can_fail::in, code_model::in, ptag_count_map::in,
     prog_context::in, mlds_switch_case::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -216,8 +216,8 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
             GoalList = [],
             unexpected($module, $pred, "no goal for non-shared tag")
         ;
-            GoalList = [_Stag - CaseNum],
-            lookup_code_map(CodeMap, CaseNum, CodeModel, Statement, !Info)
+            GoalList = [_Stag - CaseId],
+            lookup_code_map(CodeMap, CaseId, CodeModel, Statement, !Info)
         ;
             GoalList = [_, _ | _],
             unexpected($module, $pred, "more than one goal for non-shared tag")
@@ -245,14 +245,14 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
         ),
         group_stag_cases(GoalList, GroupedGoalList),
         (
-            GroupedGoalList = [CaseNum - _Stags],
+            GroupedGoalList = [CaseId - _Stags],
             CaseCanFail = cannot_fail
         ->
             % There is only one possible matching goal, so we don't need
             % to switch on it. This can happen if the other functor symbols
             % that share this primary tag are ruled out by the initial inst
             % of the switched-on variable.
-            lookup_code_map(CodeMap, CaseNum, CodeModel, Statement, !Info)
+            lookup_code_map(CodeMap, CaseId, CodeModel, Statement, !Info)
         ;
             gen_stag_switch(GroupedGoalList, CodeMap, MainPtag, SecTagLocn,
                 Var, CodeModel, CaseCanFail, Context, Statement, !Info)
@@ -277,34 +277,34 @@ make_ptag_match(Ptag) = match_value(ml_const(mlconst_int(Ptag))).
     % Maps case numbers (each of which identifies the code of one switch arm)
     % to the secondary tags that share that code.
     %
-:- type stag_rev_map == map(int, stags).
+:- type stag_rev_map == map(case_id, stags).
 
-:- pred group_stag_cases(stag_goal_list(int)::in,
-    assoc_list(int, stags)::out) is det.
+:- pred group_stag_cases(stag_goal_list(case_id)::in,
+    assoc_list(case_id, stags)::out) is det.
 
 group_stag_cases(Goals, GroupedGoals) :-
     build_stag_rev_map(Goals, map.init, RevMap),
     map.to_assoc_list(RevMap, GroupedGoals).
 
-:- pred build_stag_rev_map(stag_goal_list(int)::in,
+:- pred build_stag_rev_map(stag_goal_list(case_id)::in,
     stag_rev_map::in, stag_rev_map::out) is det.
 
 build_stag_rev_map([], !RevMap).
 build_stag_rev_map([Entry | Entries], !RevMap) :-
-    Entry = Stag - CaseNum,
-    ( map.search(!.RevMap, CaseNum, OldEntry) ->
+    Entry = Stag - CaseId,
+    ( map.search(!.RevMap, CaseId, OldEntry) ->
         OldEntry = stags(OldFirstStag, OldLaterStags),
         NewEntry = stags(OldFirstStag, [Stag | OldLaterStags]),
-        map.det_update(CaseNum, NewEntry, !RevMap)
+        map.det_update(CaseId, NewEntry, !RevMap)
     ;
         NewEntry = stags(Stag, []),
-        map.det_insert(CaseNum, NewEntry, !RevMap)
+        map.det_insert(CaseId, NewEntry, !RevMap)
     ),
     build_stag_rev_map(Entries, !RevMap).
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_stag_switch(assoc_list(int, stags)::in,
+:- pred gen_stag_switch(assoc_list(case_id, stags)::in,
     code_map::in, int::in, sectag_locn::in, prog_var::in,
     code_model::in, can_fail::in, prog_context::in, statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -344,25 +344,26 @@ gen_stag_switch(Cases, CodeMap, PrimaryTag, StagLocn, Var, CodeModel,
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_stag_cases(assoc_list(int, stags)::in,
-    code_map::in, code_model::in,
-    list(mlds_switch_case)::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred gen_stag_cases(assoc_list(case_id, stags)::in,
+    code_map::in, code_model::in, list(mlds_switch_case)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_stag_cases([], _, _, [], !Info).
 gen_stag_cases([Group | Groups], CodeMap, CodeModel, [Case | Cases], !Info) :-
     gen_stag_case(Group, CodeMap, CodeModel, Case, !Info),
     gen_stag_cases(Groups, CodeMap, CodeModel, Cases, !Info).
 
-:- pred gen_stag_case(pair(int, stags)::in, code_map::in, code_model::in,
-    mlds_switch_case::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred gen_stag_case(pair(case_id, stags)::in,
+    code_map::in, code_model::in, mlds_switch_case::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_stag_case(Group, CodeMap, CodeModel, MLDS_Case, !Info) :-
-    Group = CaseNum - Stags,
+    Group = CaseId - Stags,
     Stags = stags(FirstStag, RevLaterStags),
     list.reverse(RevLaterStags, LaterStags),
     FirstMatch = make_match_value(FirstStag),
     LaterMatches = list.map(make_match_value, LaterStags),
-    lookup_code_map(CodeMap, CaseNum, CodeModel, Statement, !Info),
+    lookup_code_map(CodeMap, CaseId, CodeModel, Statement, !Info),
     MLDS_Case = mlds_switch_case(FirstMatch, LaterMatches, Statement).
 
 :- func make_match_value(int) = mlds_case_match_cond.

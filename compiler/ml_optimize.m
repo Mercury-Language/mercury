@@ -1273,10 +1273,10 @@ eliminate_var_in_rval(Rval0, Rval, !VarElimInfo) :-
         eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
         Rval = ml_unop(Op, ArgRval)
     ;
-        Rval0 = ml_binop(Op, Arg1Rval0, Arg2Rval0),
-        eliminate_var_in_rval(Arg1Rval0, Arg1Rval, !VarElimInfo),
-        eliminate_var_in_rval(Arg2Rval0, Arg2Rval, !VarElimInfo),
-        Rval = ml_binop(Op, Arg1Rval, Arg2Rval)
+        Rval0 = ml_binop(Op, ArgRvalA0, ArgRvalB0),
+        eliminate_var_in_rval(ArgRvalA0, ArgRvalA, !VarElimInfo),
+        eliminate_var_in_rval(ArgRvalB0, ArgRvalB, !VarElimInfo),
+        Rval = ml_binop(Op, ArgRvalA, ArgRvalB)
     ;
         Rval0 = ml_mem_addr(Lval0),
         eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),

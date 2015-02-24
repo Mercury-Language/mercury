@@ -2167,7 +2167,7 @@ string.index_check(Index, Length) :-
     string.unsafe_index_code_unit(Str::in, Index::in, Code::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    const unsigned char *s = (const unsigned char *)Str;
+    const unsigned char *s = (const unsigned char *) Str;
     Code = s[Index];
 ").
 :- pragma foreign_proc("C#",

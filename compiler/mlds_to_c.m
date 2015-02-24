@@ -1736,7 +1736,12 @@ mlds_output_cell(Opts, Indent, Initializer, !RowNum, !IO) :-
     mlds_indent(Indent, !IO),
     io.write_string("/* row ", !IO),
     io.write_int(!.RowNum, !IO),
-    io.write_string(" */\n", !IO),
+    io.write_string(" */", !IO),
+    ( if Initializer = init_struct(_, [_]) then
+        io.write_char(' ', !IO)
+    else
+        io.nl(!IO)
+    ),
     !:RowNum = !.RowNum + 1,
     mlds_output_initializer_body(Opts, Indent, Initializer, !IO),
     io.write_string(",\n", !IO).
@@ -2221,16 +2226,29 @@ mlds_output_initializer_body(Opts, Indent, Initializer, !IO) :-
         mlds_output_rval(Opts, Rval, !IO)
     ;
         Initializer = init_struct(_Type, FieldInitializers),
-        % Note that standard ANSI/ISO C does not allow empty structs. But it is
-        % the responsibility of the MLDS code generator to not generate any.
-        % So we don't need to handle empty initializers specially here.
-        mlds_indent(Indent, !IO),
-        io.write_string("{\n", !IO),
-        io.write_list(FieldInitializers, ",\n",
-            mlds_output_initializer_body(Opts, Indent + 1), !IO),
-        io.write_string("\n", !IO),
-        mlds_indent(Indent, !IO),
-        io.write_string("}", !IO)
+        % Note that standard ANSI/ISO C does not allow empty structs, and
+        % it is the responsibility of the MLDS code generator to not generate
+        % any such structs.
+        (
+            FieldInitializers = [],
+            unexpected($module, $pred, "FieldInitializers = []")
+        ;
+            FieldInitializers = [FieldInitializer],
+            mlds_indent(Indent, !IO),
+            io.write_string("{ ", !IO),
+            mlds_output_initializer_body(Opts, Indent + 1,
+                FieldInitializer, !IO),
+            io.write_string(" }", !IO)
+        ;
+            FieldInitializers = [_, _ | _],
+            mlds_indent(Indent, !IO),
+            io.write_string("{\n", !IO),
+            io.write_list(FieldInitializers, ",\n",
+                mlds_output_initializer_body(Opts, Indent + 1), !IO),
+            io.write_string("\n", !IO),
+            mlds_indent(Indent, !IO),
+            io.write_string("}", !IO)
+        )
     ;
         Initializer = init_array(ElementInitializers),
         % Standard ANSI/ISO C does not allow empty arrays. But the MLDS does.
@@ -3299,7 +3317,17 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
             output_context_opts(Opts, Context, !IO),
             mlds_indent(Indent, !IO),
             io.write_string("else\n", !IO),
-            mlds_output_statement(Opts, Indent + 1, FuncInfo, Else, !IO)
+            ( 
+                Else = statement(ElseStmt, _),
+                ElseStmt = ml_stmt_if_then_else(_, _, _)
+            ->
+                % Indent each if-then-else in a if-then-else chain
+                % to the same depth.
+                ElseIndent = Indent
+            ;
+                ElseIndent = Indent + 1
+            ),
+            mlds_output_statement(Opts, ElseIndent, FuncInfo, Else, !IO)
         ;
             MaybeElse = no
         )
@@ -4471,29 +4499,45 @@ mlds_output_std_unop(Opts, UnaryOp, Expr, !IO) :-
     mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
 
 mlds_output_binop(Opts, Op, X, Y, !IO) :-
-    binop_category_string(Op, Category, OpStr),
     (
-        Category = array_index_binop,
+        Op = array_index(_),
         mlds_output_bracketed_rval(Opts, X, !IO),
         io.write_string("[", !IO),
         mlds_output_rval(Opts, Y, !IO),
         io.write_string("]", !IO)
     ;
-        Category = compound_compare_binop,
+        Op = string_unsafe_index_code_unit,
+        io.write_string("MR_nth_code_unit(", !IO),
+        mlds_output_bracketed_rval(Opts, X, !IO),
+        io.write_string(", ", !IO),
+        ( if Y = ml_const(mlconst_int(YN)) then
+            io.write_int(YN, !IO)
+        else
+            mlds_output_rval(Opts, Y, !IO)
+        ),
+        io.write_string(")", !IO)
+    ;
+        ( Op = compound_lt
+        ; Op = compound_eq
+        ),
         % These operators are intended to be generated only when using
         % the Erlang backend.
         unexpected($module, $pred, "compound_compare_binop")
     ;
-        Category = pointer_compare_binop,
+        Op = pointer_equal_conservative,
         io.write_string("(((MR_Word) ", !IO),
         mlds_output_rval(Opts, X, !IO),
-        io.write_string(") ", !IO),
-        io.write_string(OpStr, !IO),
-        io.write_string(" ((MR_Word) ", !IO),
+        io.write_string(") == ((MR_Word) ", !IO),
         mlds_output_rval(Opts, Y, !IO),
         io.write_string("))", !IO)
     ;
-        Category = string_compare_binop,
+        ( Op = str_eq, OpStr = "=="
+        ; Op = str_ne, OpStr = "!="
+        ; Op = str_le, OpStr = "<="
+        ; Op = str_ge, OpStr = ">="
+        ; Op = str_lt, OpStr = "<"
+        ; Op = str_gt, OpStr = ">"
+        ),
         io.write_string("(strcmp(", !IO),
         mlds_output_rval(Opts, X, !IO),
         io.write_string(", ", !IO),
@@ -4504,8 +4548,16 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         io.write_string(" ", !IO),
         io.write_string("0)", !IO)
     ;
-        ( Category = float_compare_binop
-        ; Category = float_arith_binop
+        ( Op = float_eq, OpStr = "=="
+        ; Op = float_ne, OpStr = "!="
+        ; Op = float_le, OpStr = "<="
+        ; Op = float_ge, OpStr = ">="
+        ; Op = float_lt, OpStr = "<"
+        ; Op = float_gt, OpStr = ">"
+        ; Op = float_plus, OpStr = "+"
+        ; Op = float_minus, OpStr = "-"
+        ; Op = float_times, OpStr = "*"
+        ; Op = float_divide, OpStr = "/"
         ),
         io.write_string("(", !IO),
         mlds_output_bracketed_rval(Opts, X, !IO),
@@ -4515,18 +4567,34 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         mlds_output_bracketed_rval(Opts, Y, !IO),
         io.write_string(")", !IO)
     ;
-        Category = unsigned_compare_binop,
+        Op = unsigned_le,
         io.write_string("(((MR_Unsigned) ", !IO),
         mlds_output_rval(Opts, X, !IO),
-        io.write_string(") ", !IO),
-        io.write_string(OpStr, !IO),
-        io.write_string(" ((MR_Unsigned) ", !IO),
+        io.write_string(") <= ((MR_Unsigned) ", !IO),
         mlds_output_rval(Opts, Y, !IO),
         io.write_string("))", !IO)
     ;
-        Category = int_or_bool_binary_infix_binop,
+        ( Op = int_add, OpStr = "+"
+        ; Op = int_sub, OpStr = "-"
+        ; Op = int_mul, OpStr = "*"
+        ; Op = int_div, OpStr = "/"
+        ; Op = int_mod, OpStr = "%"
+        ; Op = eq, OpStr = "=="
+        ; Op = ne, OpStr = "!="
+        ; Op = int_lt, OpStr = "<"
+        ; Op = int_gt, OpStr = ">"
+        ; Op = int_le, OpStr = "<="
+        ; Op = int_ge, OpStr = ">="
+        ; Op = unchecked_left_shift, OpStr = "<<"
+        ; Op = unchecked_right_shift, OpStr = ">>"
+        ; Op = bitwise_and, OpStr = "&"
+        ; Op = bitwise_or, OpStr = "|"
+        ; Op = bitwise_xor, OpStr = "^"
+        ; Op = logical_and, OpStr = "&&"
+        ; Op = logical_or, OpStr = "||"
+        ),
         % We could treat X + (-const) specially, but we don't.
-        % The reason is documented in the equivalent code in llds_out.m.
+        % The reason is documented in the equivalent code in llds_out_data.m.
         io.write_string("(", !IO),
         mlds_output_rval_as_op_arg(Opts, X, !IO),
         io.write_string(" ", !IO),
@@ -4535,26 +4603,44 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         mlds_output_rval_as_op_arg(Opts, Y, !IO),
         io.write_string(")", !IO)
     ;
-        Category = macro_binop,
-        io.write_string(OpStr, !IO),
-        io.write_string("(", !IO),
+        Op = str_cmp,
+        io.write_string("MR_strcmp(", !IO),
         mlds_output_rval_as_op_arg(Opts, X, !IO),
         io.write_string(", ", !IO),
         mlds_output_rval_as_op_arg(Opts, Y, !IO),
         io.write_string(")", !IO)
     ;
-        Category = float_macro_binop,
-        (
-            Op = float_from_dword,
-            is_aligned_dword_field(X, Y, PtrRval)
-        ->
+        Op = offset_str_eq(N),
+        io.write_string("MR_offset_streq(", !IO),
+        io.write_int(N, !IO),
+        io.write_string(", ", !IO),
+        mlds_output_rval_as_op_arg(Opts, X, !IO),
+        io.write_string(", ", !IO),
+        mlds_output_rval_as_op_arg(Opts, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        Op = body,
+        io.write_string("MR_body(", !IO),
+        mlds_output_rval_as_op_arg(Opts, X, !IO),
+        io.write_string(", ", !IO),
+        mlds_output_rval_as_op_arg(Opts, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        Op = float_word_bits,
+        io.write_string("MR_float_word_bits(", !IO),
+        mlds_output_rval_as_op_arg(Opts, X, !IO),
+        io.write_string(", ", !IO),
+        mlds_output_rval_as_op_arg(Opts, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        Op = float_from_dword,
+        ( is_aligned_dword_field(X, Y, PtrRval) ->
             % gcc produces faster code in this case.
             io.write_string("MR_float_from_dword_ptr(MR_dword_ptr(", !IO),
             mlds_output_rval(Opts, PtrRval, !IO),
             io.write_string("))", !IO)
         ;
-            io.write_string(OpStr, !IO),
-            io.write_string("(", !IO),
+            io.write_string("MR_float_from_dword(", !IO),
             mlds_output_rval_as_op_arg(Opts, X, !IO),
             io.write_string(", ", !IO),
             mlds_output_rval_as_op_arg(Opts, Y, !IO),

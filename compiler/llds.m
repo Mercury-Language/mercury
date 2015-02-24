@@ -1714,6 +1714,8 @@ binop_return_type(logical_or, lt_bool).
 binop_return_type(eq, lt_bool).
 binop_return_type(ne, lt_bool).
 binop_return_type(array_index(_Type), lt_word).
+binop_return_type(string_unsafe_index_code_unit, lt_integer).
+binop_return_type(offset_str_eq(_), lt_bool).
 binop_return_type(str_eq, lt_bool).
 binop_return_type(str_ne, lt_bool).
 binop_return_type(str_lt, lt_bool).

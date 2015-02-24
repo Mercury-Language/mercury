@@ -1074,6 +1074,8 @@ binop_code(str_cmp,                 39).
 binop_code(float_word_bits,         40).
 binop_code(float_from_dword,        41).
 binop_code(pointer_equal_conservative, 42).
+binop_code(offset_str_eq(_),        43).
+binop_code(string_unsafe_index_code_unit, 44).
 
 :- pred binop_debug(binary_op::in, string::out) is det.
 
@@ -1120,6 +1122,8 @@ binop_debug(str_cmp,                "strcmp").
 binop_debug(float_word_bits,        "float_word_bits").
 binop_debug(float_from_dword,       "float_from_dword").
 binop_debug(pointer_equal_conservative, "pointer_equal_conservative").
+binop_debug(offset_str_eq(_),       "offset_str_eq").
+binop_debug(string_unsafe_index_code_unit, "string_unsafe_index_code_unit").
 
 :- pred unop_code(unary_op::in, int::out) is det.
 

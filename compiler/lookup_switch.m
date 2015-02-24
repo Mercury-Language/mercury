@@ -62,6 +62,11 @@
     --->    lookup_switch_info(
                 % The map from the switched-on value to the values of the
                 % variables in each solution.
+                %
+                % XXX In the MLDS backend, the equivalent type maps case_ids
+                % to the values of the variables in each solution. This is
+                % to support tries, which the LLDS backend does not support
+                % (yet).
                 lsi_cases               ::  case_consts(Key, rval,
                                                 case_consts_several_llds),
 
@@ -189,23 +194,21 @@ is_lookup_switch(GetTag, TaggedCases, GoalInfo, StoreMap, !MaybeEnd,
     generate_constants_for_lookup_switch(GetTag, TaggedCases,
         OutVars, ArmNonLocals, StoreMap, Liveness, map.init, CaseSolnMap,
         !MaybeEnd, set_of_var.init, ResumeVars, no, GoalsMayModifyTrail, !CI),
-    map.to_assoc_list(CaseSolnMap, CaseSolns),
     reset_to_position(CurPos, !CI),
     VarTypes = get_var_types(!.CI),
     lookup_var_types(VarTypes, OutVars, OutTypes),
-    ( project_all_to_one_solution(CaseSolns, CaseValuePairs) ->
-        CaseConsts = all_one_soln(CaseValuePairs),
-        assoc_list.values(CaseValuePairs, CaseValues)
+    ( project_all_to_one_solution(CaseSolnMap, CaseValuePairsMap) ->
+        CaseConsts = all_one_soln(CaseValuePairsMap)
     ;
-        CaseConsts = some_several_solns(CaseSolns,
-            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
-        % This generates CaseValues in reverse order of index, but given that
-        % we only use CaseValues to find out the right OutLLDSTypes,
-        % this is OK.
-        project_solns_to_rval_lists(CaseSolns, [], CaseValues)
+        CaseConsts = some_several_solns(CaseSolnMap,
+            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail))
     ),
     get_exprn_opts(!.CI, ExprnOpts),
     UnboxFloats = get_unboxed_floats(ExprnOpts),
+    map.to_assoc_list(CaseSolnMap, CaseSolns),
+    % This generates CaseValues in reverse order of index, but given that
+    % we only use CaseValues to find out the right OutLLDSTypes, this is OK.
+    project_solns_to_rval_lists(CaseSolns, [], CaseValues),
     find_general_llds_types(UnboxFloats, OutTypes, CaseValues, OutLLDSTypes),
     LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutLLDSTypes,
         Liveness).
@@ -341,15 +344,16 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
     ),
 
     (
-        CaseConsts = all_one_soln(CaseValues),
+        CaseConsts = all_one_soln(CaseValuesMap),
         Comment = singleton(
             llds_instr(comment("simple lookup switch"), "")
         ),
+        map.to_assoc_list(CaseValuesMap, CaseValues),
         generate_simple_int_lookup_switch(IndexRval, StoreMap,
             StartVal, EndVal, CaseValues, OutVars, OutTypes,
             NeedBitVecCheck, Liveness, RestCode, !CI)
     ;
-        CaseConsts = some_several_solns(CaseSolns,
+        CaseConsts = some_several_solns(CaseSolnMap,
             case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
         (
             GoalsMayModifyTrail = yes,
@@ -362,6 +366,7 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
         Comment = singleton(
             llds_instr(comment("several soln lookup switch"), "")
         ),
+        map.to_assoc_list(CaseSolnMap, CaseSolns),
         generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
             StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
             OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, RestCode, !CI)

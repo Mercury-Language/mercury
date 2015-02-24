@@ -467,14 +467,6 @@
 :- pred ml_gen_goal_as_block(code_model::in, hlds_goal::in, statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % Generate MLDS code for the specified goal in the specified code model.
-    % Return the result as two lists, one containing the necessary declarations
-    % and the other containing the generated statements.
-    %
-:- pred ml_gen_goal(code_model::in, hlds_goal::in,
-    list(mlds_defn)::out, list(statement)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
     % Generate code for a goal that is one branch of a branched control
     % structure. At the end of the branch, we need to forget what we learned
     % during the branch about which variables are bound to constants,
@@ -487,6 +479,14 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_goal_as_branch_block(code_model::in, hlds_goal::in,
     statement::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+    % Generate MLDS code for the specified goal in the specified code model.
+    % Return the result as two lists, one containing the necessary declarations
+    % and the other containing the generated statements.
+    %
+:- pred ml_gen_goal(code_model::in, hlds_goal::in,
+    list(mlds_defn)::out, list(statement)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel,
     %   Context, Statements0, Statements, !Info):
@@ -537,25 +537,23 @@
 % Generate code for goals.
 %
 
-ml_gen_goal_as_branch(CodeModel, Goal, Decls, Statements, !Info) :-
-    ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
-    ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info),
-    ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
-
-    % Generate MLDS code for the specified goal in the specified code model.
-    % Return the result as a single statement (which may be a block statement
-    % containing nested declarations).
-    %
 ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info) :-
     ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info),
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     Statement = ml_gen_block(Decls, Statements, Context).
 
+ml_gen_goal_as_branch(CodeModel, Goal, Decls, Statements, !Info) :-
+    ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
+    ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info),
+    ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
+
 ml_gen_goal_as_branch_block(CodeModel, Goal, Statement, !Info) :-
     ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
     ml_gen_goal_as_block(CodeModel, Goal, Statement, !Info),
     ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
+
+%-----------------------------------------------------------------------------%
 
     % Generate MLDS code for the specified goal in the specified code model.
     % Return the result as two lists, one containing the necessary declarations
@@ -845,111 +843,6 @@ cases_find_subgoal_nonlocals([Case | Cases], !SubGoalNonLocals) :-
     cases_find_subgoal_nonlocals(Cases, !SubGoalNonLocals).
 
 %-----------------------------------------------------------------------------%
-
-ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
-        !Statements, !Info) :-
-    (
-        % If the inner and outer code models are equal, we don't need to do
-        % anything.
-        %
-        (
-            OuterCodeModel = model_det,
-            InnerCodeModel = model_det
-        ;
-            OuterCodeModel = model_semi,
-            InnerCodeModel = model_semi
-        ;
-            OuterCodeModel = model_non,
-            InnerCodeModel = model_non
-        )
-    ;
-        % If the inner code model is less precise than the outer code model,
-        % then that is either a determinism error, or a situation in which
-        % simplify.m is supposed to wrap the goal inside a `some' to indicate
-        % that a commit is needed.
-        (
-            OuterCodeModel = model_det,
-            InnerCodeModel = model_semi,
-            unexpected($module, $pred, "semi in det")
-        ;
-            OuterCodeModel = model_det,
-            InnerCodeModel = model_non,
-            unexpected($module, $pred, "nondet in det")
-        ;
-            OuterCodeModel = model_semi,
-            InnerCodeModel = model_non,
-            unexpected($module, $pred, "nondet in semi")
-        )
-    ;
-        % If the inner code model is more precise than the outer code model,
-        % then we need to append some statements to convert the calling
-        % convention for the inner code model to that of the outer code model.
-        (
-            OuterCodeModel = model_semi,
-            InnerCodeModel = model_det,
-
-            % det goal in semidet context:
-            %   <succeeded = Goal>
-            % ===>
-            %   <do Goal>
-            %   succeeded = MR_TRUE
-
-            ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
-                SetSuccessTrue),
-            !:Statements = !.Statements ++ [SetSuccessTrue]
-        ;
-            OuterCodeModel = model_non,
-            InnerCodeModel = model_det,
-
-            % det goal in nondet context:
-            %   <Goal && SUCCEED()>
-            % ===>
-            %   <do Goal>
-            %   SUCCEED()
-
-            ml_gen_call_current_success_cont(Context, CallCont, !Info),
-            !:Statements = !.Statements ++ [CallCont]
-        ;
-            OuterCodeModel = model_non,
-            InnerCodeModel = model_semi,
-
-            % semi goal in nondet context:
-            %   <Goal && SUCCEED()>
-            % ===>
-            %   MR_bool succeeded;
-            %
-            %   <succeeded = Goal>
-            %   if (succeeded) SUCCEED()
-
-            ml_gen_test_success(!.Info, Succeeded),
-            ml_gen_call_current_success_cont(Context, CallCont, !Info),
-            IfStmt = ml_stmt_if_then_else(Succeeded, CallCont, no),
-            IfStatement = statement(IfStmt, mlds_make_context(Context)),
-            !:Statements = !.Statements ++ [IfStatement]
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
-
-ml_gen_local_var_decls(_VarSet, _VarTypes, _Context, [], [], !Info).
-ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var | Vars], Defns,
-        !Info) :-
-    lookup_var_type(VarTypes, Var, Type),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    IsDummy = check_dummy_type(ModuleInfo, Type),
-    (
-        IsDummy = is_dummy_type,
-        % No declaration needed for this variable.
-        ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars, Defns, !Info)
-    ;
-        IsDummy = is_not_dummy_type,
-        VarName = ml_gen_var_name(VarSet, Var),
-        ml_gen_var_decl(VarName, Type, Context, Defn, !Info),
-        ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars, Defns0, !Info),
-        Defns = [Defn | Defns0]
-    ).
-
-%-----------------------------------------------------------------------------%
 %
 % Code for if-then-else.
 %
@@ -1168,6 +1061,110 @@ ml_gen_conj(Conjuncts, CodeModel, Context, Decls, Statements, !Info) :-
             ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
                 Decls, Statements, !Info)
         )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
+        !Statements, !Info) :-
+    (
+        % If the inner and outer code models are equal, we don't need to do
+        % anything.
+        (
+            OuterCodeModel = model_det,
+            InnerCodeModel = model_det
+        ;
+            OuterCodeModel = model_semi,
+            InnerCodeModel = model_semi
+        ;
+            OuterCodeModel = model_non,
+            InnerCodeModel = model_non
+        )
+    ;
+        % If the inner code model is less precise than the outer code model,
+        % then that is either a determinism error, or a situation in which
+        % simplify.m is supposed to wrap the goal inside a `some' to indicate
+        % that a commit is needed.
+        (
+            OuterCodeModel = model_det,
+            InnerCodeModel = model_semi,
+            unexpected($module, $pred, "semi in det")
+        ;
+            OuterCodeModel = model_det,
+            InnerCodeModel = model_non,
+            unexpected($module, $pred, "nondet in det")
+        ;
+            OuterCodeModel = model_semi,
+            InnerCodeModel = model_non,
+            unexpected($module, $pred, "nondet in semi")
+        )
+    ;
+        % If the inner code model is more precise than the outer code model,
+        % then we need to append some statements to convert the calling
+        % convention for the inner code model to that of the outer code model.
+        (
+            OuterCodeModel = model_semi,
+            InnerCodeModel = model_det,
+
+            % det goal in semidet context:
+            %   <succeeded = Goal>
+            % ===>
+            %   <do Goal>
+            %   succeeded = MR_TRUE
+
+            ml_gen_set_success(!.Info, ml_const(mlconst_true), Context,
+                SetSuccessTrue),
+            !:Statements = !.Statements ++ [SetSuccessTrue]
+        ;
+            OuterCodeModel = model_non,
+            InnerCodeModel = model_det,
+
+            % det goal in nondet context:
+            %   <Goal && SUCCEED()>
+            % ===>
+            %   <do Goal>
+            %   SUCCEED()
+
+            ml_gen_call_current_success_cont(Context, CallCont, !Info),
+            !:Statements = !.Statements ++ [CallCont]
+        ;
+            OuterCodeModel = model_non,
+            InnerCodeModel = model_semi,
+
+            % semi goal in nondet context:
+            %   <Goal && SUCCEED()>
+            % ===>
+            %   MR_bool succeeded;
+            %
+            %   <succeeded = Goal>
+            %   if (succeeded) SUCCEED()
+
+            ml_gen_test_success(!.Info, Succeeded),
+            ml_gen_call_current_success_cont(Context, CallCont, !Info),
+            IfStmt = ml_stmt_if_then_else(Succeeded, CallCont, no),
+            IfStatement = statement(IfStmt, mlds_make_context(Context)),
+            !:Statements = !.Statements ++ [IfStatement]
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+ml_gen_local_var_decls(_VarSet, _VarTypes, _Context, [], [], !Info).
+ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var | Vars], Defns,
+        !Info) :-
+    lookup_var_type(VarTypes, Var, Type),
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    IsDummy = check_dummy_type(ModuleInfo, Type),
+    (
+        IsDummy = is_dummy_type,
+        % No declaration needed for this variable.
+        ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars, Defns, !Info)
+    ;
+        IsDummy = is_not_dummy_type,
+        VarName = ml_gen_var_name(VarSet, Var),
+        ml_gen_var_decl(VarName, Type, Context, Defn, !Info),
+        ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars, Defns0, !Info),
+        Defns = [Defn | Defns0]
     ).
 
 %-----------------------------------------------------------------------------%
