@@ -160,15 +160,34 @@
     %
 :- pred semidet_from_rev_char_list(list(char)::in, string::uo) is semidet.
 
-    % Convert a string into a list of code units.
+    % Convert a string into a list of code units of the string encoding used
+    % by the current process.
     %
 :- pred to_code_unit_list(string::in, list(int)::out) is det.
+
+    % Convert a string into a list of UTF-8 code units.
+    %
+:- pred to_utf8_code_unit_list(string::in, list(int)::out) is det.
+
+    % Convert a string into a list of UTF-16 code units.
+    %
+:- pred to_utf16_code_unit_list(string::in, list(int)::out) is det.
 
     % Convert a list of code units to a string.
     % Fails if the list does not contain a valid encoding of a string,
     % in the encoding expected by the current process.
     %
 :- pred from_code_unit_list(list(int)::in, string::uo) is semidet.
+
+    % Convert a list of UTF-8 code units to a string.
+    % Fails if the list does not contain a valid encoding of a string.
+    %
+:- pred from_utf8_code_unit_list(list(int)::in, string::uo) is semidet.
+
+    % Convert a list of UTF-8 code units to a string.
+    % Fails if the list does not contain a valid encoding of a string.
+    %
+:- pred from_utf16_code_unit_list(list(int)::in, string::uo) is semidet.
 
     % duplicate_char(Char, Count, String):
     %
@@ -1351,6 +1370,41 @@
 
 %---------------------------------------------------------------------------%
 %
+% String encoding.
+%
+
+    % Succeed if the internal string encoding is UTF-8, fail if it is UTF-16.
+    % No other encodings are supported.
+    %
+:- pred internal_encoding_is_utf8 is semidet.
+
+:- pragma foreign_proc("C",
+    internal_encoding_is_utf8,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = MR_TRUE;
+").
+:- pragma foreign_proc("C#",
+    internal_encoding_is_utf8,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = false;
+").
+:- pragma foreign_proc("Java",
+    internal_encoding_is_utf8,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = false;
+").
+:- pragma foreign_proc("Erlang",
+    internal_encoding_is_utf8,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = true
+").
+
+%---------------------------------------------------------------------------%
+%
 % Conversions between strings and lists of characters.
 %
 
@@ -1707,6 +1761,42 @@ string.to_code_unit_list_loop(String, Index, End, List) :-
 
 %---------------------%
 
+string.to_utf8_code_unit_list(String, CodeList) :-
+    ( internal_encoding_is_utf8 ->
+        string.to_code_unit_list(String, CodeList)
+    ;
+        string.foldr(encode_utf8, String, [], CodeList)
+    ).
+
+:- pred encode_utf8(char::in, list(int)::in, list(int)::out) is det.
+
+encode_utf8(Char, CodeList0, CodeList) :-
+    ( char.to_utf8(Char, CharCodes) ->
+        CodeList = CharCodes ++ CodeList0
+    ;
+        unexpected($module, $pred, "char.to_utf8 failed")
+    ).
+
+%---------------------%
+
+string.to_utf16_code_unit_list(String, CodeList) :-
+    ( internal_encoding_is_utf8 ->
+        string.foldr(encode_utf16, String, [], CodeList)
+    ;
+        string.to_code_unit_list(String, CodeList)
+    ).
+
+:- pred encode_utf16(char::in, list(int)::in, list(int)::out) is det.
+
+encode_utf16(Char, CodeList0, CodeList) :-
+    ( char.to_utf16(Char, CharCodes) ->
+        CodeList = CharCodes ++ CodeList0
+    ;
+        unexpected($module, $pred, "char.to_utf16 failed")
+    ).
+
+%---------------------%
+
 :- pragma foreign_proc("C",
     string.from_code_unit_list(CodeList::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -1829,6 +1919,96 @@ string.to_code_unit_list_loop(String, Index, End, List) :-
     % XXX validate the string
     SUCCESS_INDICATOR = true
 ").
+
+%---------------------%
+
+string.from_utf8_code_unit_list(CodeList, String) :-
+    ( internal_encoding_is_utf8 ->
+        string.from_code_unit_list(CodeList, String)
+    ;
+        decode_utf8(CodeList, [], RevChars),
+        string.from_rev_char_list(RevChars, String)
+    ).
+
+:- pred decode_utf8(list(int)::in, list(char)::in, list(char)::out) is semidet.
+
+decode_utf8([], RevChars, RevChars).
+decode_utf8([A | FollowA], RevChars0, RevChars) :-
+    ( A < 0 ->
+        fail
+    ; A =< 0x7f ->  % 1-byte sequence
+        CharInt = A,
+        Rest = FollowA
+    ; A =< 0xc1 ->
+        fail
+    ; A =< 0xdf ->  % 2-byte sequence
+        FollowA = [B | Rest],
+        utf8_is_trail_byte(B),
+        CharInt = (A /\ 0x1f) << 6
+               \/ (B /\ 0x3f),
+        CharInt >= 0x80
+    ; A =< 0xef ->  % 3-byte sequence
+        FollowA = [B, C | Rest],
+        utf8_is_trail_byte(B),
+        utf8_is_trail_byte(C),
+        CharInt = (A /\ 0x0f) << 12
+               \/ (B /\ 0x3f) << 6
+               \/ (C /\ 0x3f),
+        CharInt >= 0x800
+    ; A =< 0xf4 ->  % 4-byte sequence
+        FollowA = [B, C, D | Rest],
+        utf8_is_trail_byte(B),
+        utf8_is_trail_byte(C),
+        utf8_is_trail_byte(D),
+        CharInt = (A /\ 0x07) << 18
+               \/ (B /\ 0x3f) << 12
+               \/ (C /\ 0x3f) << 6
+               \/ (D /\ 0x3f),
+        CharInt >= 0x10000
+    ;
+        fail
+    ),
+    char.from_int(CharInt, Char),
+    decode_utf8(Rest, [Char | RevChars0], RevChars).
+
+:- pred utf8_is_trail_byte(int::in) is semidet.
+
+utf8_is_trail_byte(C) :-
+    (C /\ 0xc0) = 0x80.
+
+%---------------------%
+
+string.from_utf16_code_unit_list(CodeList, String) :-
+    ( internal_encoding_is_utf8 ->
+        decode_utf16(CodeList, [], RevChars),
+        string.from_rev_char_list(RevChars, String)
+    ;
+        string.from_code_unit_list(CodeList, String)
+    ).
+
+:- pred decode_utf16(list(int)::in, list(char)::in, list(char)::out)
+    is semidet.
+
+decode_utf16([], RevChars, RevChars).
+decode_utf16([A | FollowA], RevChars0, RevChars) :-
+    ( A < 0 ->
+        fail
+    ; A < 0xd800 ->
+        CharInt = A,
+        Rest = FollowA
+    ; A < 0xdc00 ->
+        FollowA = [B | Rest],
+        B >= 0xdc00,
+        B =< 0xdfff,
+        CharInt = (A << 10) + B - 0x35fdc00
+    ; A =< 0xffff ->
+        CharInt = A,
+        Rest = FollowA
+    ;
+        fail
+    ),
+    char.from_int(CharInt, Char),
+    decode_utf16(Rest, [Char | RevChars0], RevChars).
 
 %---------------------%
 

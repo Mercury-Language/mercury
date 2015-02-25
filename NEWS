@@ -126,6 +126,10 @@ Changes to the Mercury standard library:
 
    - is_all_alnum/1
    - is_empty/1
+   - to_utf8_code_unit_list/2
+   - to_utf16_code_unit_list/2
+   - from_utf8_code_unit_list/2
+   - from_utf16_code_unit_list/2
 
 * The following predicates have been added to the map module:
 
