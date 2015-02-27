@@ -387,11 +387,15 @@ then
                 Global = 561
             ->
                 trace [[io(!S)]] (
-                    io.print("Hello, world\n", !S)
+                    io.print("Hello, ", !S)
+                ),
+                promise_pure (
+                    semipure io.unsafe_get_io_state(UIO0),
+                    io.print("world\n", UIO0, UIO),
+                    impure io.unsafe_set_io_state(UIO)
                 )
             ;
-                Words = string.words_separator(char.is_alpha,
-                    "xx yy"),
+                Words = string.words_separator(char.is_alpha, "xx yy"),
                 io.write(Words, !IO)
             ).
 
@@ -434,7 +438,7 @@ then
 
         :- type c_enum
             --->    c_enum_1
-            ;   c_enum_2.
+            ;       c_enum_2.
 
         :- pragma foreign_enum("C", c_enum/0, [[
             c_enum_1 - "enum1",
@@ -460,9 +464,9 @@ then
 
         :- type tp
             --->    f(int)
-            ;   g(int, int)
-            ;   h(float)
-            ;   i(string).
+            ;       g(int, int)
+            ;       h(float)
+            ;       i(string).
 
         :- pred p(tp::in, string::out) is det.
 
