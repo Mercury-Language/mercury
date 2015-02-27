@@ -12,7 +12,9 @@
 
 :- interface.
 
-:- type two ---> true;false.
+:- type two
+    --->    true
+    ;       false.
 
 :- pred test is semidet.
 :- pred test2 is semidet.

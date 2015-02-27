@@ -38,7 +38,7 @@
 % We could fix the problem in several ways.
 %
 % The quickest fix would be to make solutions deep copy all answers. Due to
-% the portentially horrendous runtime cost, I don't think we should do this.
+% the potentially horrendous runtime cost, I don't think we should do this.
 %
 % We could generate an error message for disjunctions that have variables
 % that are bound but not ground at the start of the disjunction and become

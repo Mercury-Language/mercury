@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module inst_with_no_type_2.
 
 :- interface.
@@ -14,7 +14,9 @@
 
 :- implementation.
 
-:- type t ---> ft.
+:- type t
+    --->    ft.
 
 :- pragma inline(p/3).
-p(T, !IO) :- write(T, !IO).
+p(T, !IO) :-
+    write(T, !IO).

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module up_to_date.
 :- interface.
 :- import_module io.
@@ -10,4 +10,5 @@
 
 :- implementation.
 
-main --> io__write_string("Hello, world\n").
+main -->
+    io__write_string("Hello, world\n").

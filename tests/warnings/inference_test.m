@@ -16,13 +16,15 @@
 :- import_module int.
 :- import_module list.
 
-main --> print(len_func([42])), nl.
+main -->
+    print(len_func([42])), nl.
 
 len_func(List) = Len :-
     len(List, Len).
 
 len([], zero).
-len([_ | Xs], N) :- len(Xs, N - 1).
+len([_ | Xs], N) :-
+    len(Xs, N - 1).
 
 :- typeclass null(T) where [
     func zero = T
@@ -36,4 +38,3 @@ int_zero = 0.
 
 unused_pred([X], [_]) :-
     X = zero.
-

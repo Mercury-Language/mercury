@@ -25,12 +25,12 @@
 
 :- type set_param
     --->    set_print
-    ;   set_browse
-    ;   set_print_all
-    ;   set_flat
-    ;   set_raw_pretty
-    ;   set_verbose
-    ;   set_pretty.
+    ;       set_browse
+    ;       set_print_all
+    ;       set_flat
+    ;       set_raw_pretty
+    ;       set_verbose
+    ;       set_pretty.
 
 :- pred set_browser_param_from_option_table(option_table(set_param)::in,
     io::di, io::uo) is det.

@@ -17,5 +17,5 @@ inst_with_no_type.m:080: Warning: inst `inst_with_no_type.unique_no_match'/0
 inst_with_no_type.m:080:   does not match any of the types in scope.
 inst_with_no_type.m:083: Warning: inst `inst_with_no_type.citrus'/0 does not
 inst_with_no_type.m:083:   match any of the types in scope.
-inst_with_no_type.m:096: Warning: inst `inst_with_no_type.t_no_match'/0 does
-inst_with_no_type.m:096:   not match any of the types in scope.
+inst_with_no_type.m:095: Warning: inst `inst_with_no_type.t_no_match'/0 does
+inst_with_no_type.m:095:   not match any of the types in scope.

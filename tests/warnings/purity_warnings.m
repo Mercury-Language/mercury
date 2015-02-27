@@ -4,6 +4,7 @@
 %
 % Various checks that impurity declarations are treated properly.
 % XXX We miss a couple of things that we should warn about: see the XXXs below.
+
 :- module purity_warnings.
 :- interface.
 :- import_module io.

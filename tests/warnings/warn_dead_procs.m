@@ -1,13 +1,15 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module warn_dead_procs.
 :- interface.
-:- type expr ---> div(expr, expr).
+:- type expr
+    --->    div(expr, expr).
 :- implementation.
 
-:- type expr2 ---> div2(expr2, expr2).
+:- type expr2
+    --->    div2(expr2, expr2).
 
 :- pred foo is det.
 foo.
