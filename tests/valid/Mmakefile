@@ -86,6 +86,7 @@ OTHER_PROGS= \
 	bug300 \
 	bug301 \
 	bug361 \
+	bug380 \
 	builtin_false \
 	call_failure \
 	common_struct_bug \
