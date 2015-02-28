@@ -273,7 +273,7 @@ parse_constructor_2(ModuleName, VarSet, ExistQVars, Term) = MaybeConstructor :-
             ;
                 MaybeConstructorArgs = ok1(ConstructorArgs),
                 Ctor = ctor(ExistQVars, Constraints, Functor, ConstructorArgs,
-                    get_term_context(MainTerm)),
+                    list.length(ConstructorArgs), get_term_context(MainTerm)),
                 MaybeConstructor = ok1(Ctor)
             )
         )
@@ -364,7 +364,8 @@ convert_constructor_arg_list_2(ModuleName, VarSet, MaybeCtorFieldName,
 
 process_du_ctors(_Params, _, _, [], !Specs).
 process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
-    Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs, _Context),
+    Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs, _Arity,
+        _Context),
     (
         % Check that all type variables in the ctor are either explicitly
         % existentially quantified or occur in the head of the type.
@@ -483,7 +484,8 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
         !Specs) :-
     DirectArgCtor = SymName / Arity,
     ( find_constructor(Ctors, SymName, Arity, Ctor) ->
-        Ctor = ctor(ExistQVars, _Constraints, _SymName, _Args, _Context),
+        Ctor = ctor(ExistQVars, _Constraints, _SymName, _Args, _Arity,
+            _Context),
         ( Arity \= 1 ->
             Pieces = [words("Error: the"), quote("direct_arg"),
                 words("attribute contains a function symbol whose arity"),
@@ -517,10 +519,7 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
     constructor::out) is semidet.
 
 find_constructor([H | T], SymName, Arity, Ctor) :-
-    (
-        H = ctor(_, _, SymName, Args, _),
-        list.length(Args, Arity)
-    ->
+    ( H = ctor(_, _, SymName, _Args, Arity, _) ->
         Ctor = H
     ;
         find_constructor(T, SymName, Arity, Ctor)

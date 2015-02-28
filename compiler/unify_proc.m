@@ -402,7 +402,7 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
 
         CtorSymName = unqualified("{}"),
         Ctor = ctor(ExistQVars, ClassConstraints, CtorSymName, CtorArgs,
-            Context),
+            TupleArity, Context),
 
         ConsId = tuple_cons(TupleArity),
         map.from_assoc_list([ConsId - single_functor_tag], ConsTagValues),
@@ -1220,8 +1220,8 @@ generate_du_unify_proc_body(TypeCtor, Ctors, X, Y, Context, Clause, !Info) :-
 
 generate_du_unify_case(TypeCtor, X, Y, Context, CanCompareAsInt, Ctor, Goal,
         !Info) :-
-    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes, _Ctxt),
-    list.length(ArgTypes, FunctorArity),
+    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes,
+        FunctorArity, _Ctxt),
     ( TypeCtor = type_ctor(unqualified("{}"), _) ->
         FunctorConsId = tuple_cons(FunctorArity)
     ;
@@ -1310,8 +1310,8 @@ generate_du_index_proc_body(TypeCtor, Ctors, X, Index, Context, Clause,
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_du_index_case(TypeCtor, X, Index, Context, Ctor, Goal, !N, !Info) :-
-    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes, _Ctxt),
-    list.length(ArgTypes, FunctorArity),
+    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes,
+        FunctorArity, _Ctxt),
     FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
     make_fresh_vars(ArgTypes, ExistQTVars, ArgVars, !Info),
     create_pure_atomic_complicated_unification(X,
@@ -1623,8 +1623,8 @@ generate_compare_cases(TypeCtor, [Ctor | Ctors], R, X, Y, Context,
     hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_case(TypeCtor, Ctor, R, X, Y, Context, Kind, Case, !Info) :-
-    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes, _Ctxt),
-    list.length(ArgTypes, FunctorArity),
+    Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes,
+        FunctorArity, _Ctxt),
     FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
     (
         ArgTypes = [],
@@ -1669,8 +1669,10 @@ generate_compare_case(TypeCtor, Ctor, R, X, Y, Context, Kind, Case, !Info) :-
 
 generate_asymmetric_compare_case(TypeCtor, Ctor1, Ctor2, CompareOp, R, X, Y,
         Context, Case, !Info) :-
-    Ctor1 = ctor(ExistQTVars1, _Constraints1, FunctorName1, ArgTypes1, _Ctxt1),
-    Ctor2 = ctor(ExistQTVars2, _Constraints2, FunctorName2, ArgTypes2, _Ctxt2),
+    Ctor1 = ctor(ExistQTVars1, _Constraints1, FunctorName1, ArgTypes1,
+        _Arity1, _Ctxt1),
+    Ctor2 = ctor(ExistQTVars2, _Constraints2, FunctorName2, ArgTypes2,
+        _Arity2, _Ctxt2),
     list.length(ArgTypes1, FunctorArity1),
     list.length(ArgTypes2, FunctorArity2),
     FunctorConsId1 = cons(FunctorName1, FunctorArity1, TypeCtor),

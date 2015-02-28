@@ -77,6 +77,7 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.implementation_defined_literals.
 :- import_module check_hlds.inst_check.
+:- import_module check_hlds.inst_user.
 :- import_module check_hlds.mode_constraints.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.oisu_check.
@@ -213,7 +214,7 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose,
             "% Checking that insts have matching types... ", !IO),
-        check_insts_have_matching_types(!.HLDS, !Specs),
+        check_insts_have_matching_types(!HLDS, !Specs),
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "done.\n", !IO),
         maybe_dump_hlds(!.HLDS, 12, "warn_insts_without_matching_type",
@@ -671,6 +672,7 @@ maybe_mode_constraints(Verbose, Stats, !HLDS, !IO) :-
 
 modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue,
         !Specs, !IO) :-
+    pretest_user_inst_table(!HLDS),
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
     globals.lookup_bool_option(Globals, benchmark_modes, BenchmarkModes),

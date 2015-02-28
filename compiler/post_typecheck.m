@@ -1547,9 +1547,8 @@ get_constructor_containing_field_2(_, [], _, _, _) :-
     unexpected($module, $pred, "can't find field").
 get_constructor_containing_field_2(TypeCtor, [Ctor | Ctors], UnqualFieldName,
         ConsId, FieldNumber) :-
-    Ctor = ctor(_, _, SymName, CtorArgs, _Ctxt),
+    Ctor = ctor(_, _, SymName, CtorArgs, Arity, _Ctxt),
     ( search_for_named_field(CtorArgs, UnqualFieldName, 1, FieldNumberPrime) ->
-        list.length(CtorArgs, Arity),
         ConsId = cons(SymName, Arity, TypeCtor),
         FieldNumber = FieldNumberPrime
     ;

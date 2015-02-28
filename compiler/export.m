@@ -945,8 +945,7 @@ output_exported_enum_constname_tag(_, ConstName - Tag, !IO) :-
 
 foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
         !NamesAndTags) :-
-    Ctor = ctor(_, _, QualifiedCtorName, Args, _),
-    list.length(Args, Arity),
+    Ctor = ctor(_, _, QualifiedCtorName, _Args, Arity, _),
     ConsId = cons(QualifiedCtorName, Arity, TypeCtor),
     map.lookup(TagValues, ConsId, TagVal),
     (

@@ -34,6 +34,9 @@
 :- include_module clause_to_proc.
 :- include_module polymorphism.
 
+% Preprocessing user insts in the inst table for mode analysis.
+:- include_module inst_user.
+
 % Mode analysis.
 %:- module mode_analysis.
    :- include_module delay_info.

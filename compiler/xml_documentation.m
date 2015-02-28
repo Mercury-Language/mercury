@@ -399,9 +399,9 @@ type_body_to_xml(_, _, hlds_abstract_type(_)) = [nyi("hlds_abstract_type")].
 
 :- func constructor_to_xml(comments, tvarset, constructor) = xml.
 
-constructor_to_xml(C, TVarset,
-        ctor(Exists, Constraints, Name, Args, Context)) = Xml :-
-    Id = attr("id", sym_name_and_arity_to_id("ctor", Name, length(Args))),
+constructor_to_xml(C, TVarset, Ctor) = Xml :-
+    Ctor = ctor(Exists, Constraints, Name, Args, Arity, Context),
+    Id = attr("id", sym_name_and_arity_to_id("ctor", Name, Arity)),
     XmlName = name_to_xml(Name),
     XmlContext = prog_context_to_xml(Context),
     XmlArgs = xml_list("ctor_args", constructor_arg_to_xml(C, TVarset), Args),

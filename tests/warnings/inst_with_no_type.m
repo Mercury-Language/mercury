@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module inst_with_no_type.
 
 :- interface.
@@ -80,7 +80,9 @@
 :- inst unique_no_match == unique(apple ; banana).
 
 :- type fruit.
-:- inst citrus ---> lemon ; orange.
+:- inst citrus
+    --->    lemon
+    ;       orange.
 
 :- implementation.
 

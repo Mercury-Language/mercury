@@ -1544,16 +1544,16 @@ intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !IO) :-
 intermod_write_insts(OutInfo, ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_inst_table(ModuleInfo, Insts),
-    inst_table_get_user_insts(Insts, UserInsts),
-    user_inst_table_get_inst_defns(UserInsts, InstDefns),
-    map.foldl(intermod_write_inst(OutInfo, ModuleName), InstDefns, !IO).
+    inst_table_get_user_insts(Insts, UserInstTable),
+    map.foldl(intermod_write_inst(OutInfo, ModuleName), UserInstTable, !IO).
 
 :- pred intermod_write_inst(hlds_out_info::in, module_name::in, inst_id::in,
     hlds_inst_defn::in, io::di, io::uo) is det.
 
 intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !IO) :-
     InstId = inst_id(SymName, _Arity),
-    InstDefn = hlds_inst_defn(Varset, Args, Body, Context, ImportStatus),
+    InstDefn = hlds_inst_defn(Varset, Args, Body, _MaybeMatchingTypeCtors,
+        Context, ImportStatus),
     (
         SymName = qualified(ModuleName, _),
         import_status_to_write(ImportStatus)

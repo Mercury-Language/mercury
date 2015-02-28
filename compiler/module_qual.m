@@ -1108,7 +1108,7 @@ qualify_constructors([Ctor0 | Ctors0], [Ctor | Ctors], ContainingTypeCtor,
 
 qualify_constructor(Ctor0, Ctor, ContainingTypeCtor, !Info, !Specs) :-
     Ctor0 = ctor(ExistQVars, Constraints0, FunctionSymbolSymName, Args0,
-        Context),
+        Arity, Context),
     FunctionSymbolName = unqualify_name(FunctionSymbolSymName),
     ConstraintErrorContext = mqcec_type_defn_constructor(Context,
         ContainingTypeCtor, FunctionSymbolName),
@@ -1117,7 +1117,7 @@ qualify_constructor(Ctor0, Ctor, ContainingTypeCtor, !Info, !Specs) :-
     qualify_constructor_args(Args0, Args, ContainingTypeCtor,
         FunctionSymbolName, 0, !Info, !Specs),
     Ctor = ctor(ExistQVars, Constraints, FunctionSymbolSymName, Args,
-        Context).
+        Arity, Context).
 
 :- pred qualify_constructor_args(
     list(constructor_arg)::in, list(constructor_arg)::out,

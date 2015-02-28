@@ -175,8 +175,7 @@ find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
 % of counted arguments.
 
 find_weights_for_cons(TypeCtor, Params, Ctor, !Weights) :-
-    Ctor = ctor(_ExistQVars, _Constraints, SymName, Args, _),
-    list.length(Args, Arity),
+    Ctor = ctor(_ExistQVars, _Constraints, SymName, Args, Arity, _),
     ( Arity > 0 ->
         find_and_count_nonrec_args(Args, TypeCtor, Params,
             NumNonRec, ArgInfos0),

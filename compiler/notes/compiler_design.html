@@ -753,9 +753,17 @@ so that the compiler does the right thing for options such as
 	symbols for at least one type in scope).
 
 	<p>
-	A warning is issued if it finds any user defined bound insts not
-	consistent with any types in scope.
+	The compiler generates a warning if it finds any user defined bound insts
+    that are not consistent with any types in scope.
 	<p>
+
+<dt> pretest user defined insts
+	<dd>
+	inst_user.m performs on user defined bound insts
+    the tests whose results the compiler needs,
+    and records the results in the insts themselves.
+    This is faster than having the compiler perform those tests repeatedly
+    each time it needs the results of those tests.
 
 <dt> improving the names of head variables
 	<dd>

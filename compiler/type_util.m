@@ -554,7 +554,7 @@ type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type,
 
 ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
     % There must not be any existentially quantified type variables.
-    Ctor = ctor([], _, _, Args, _),
+    Ctor = ctor([], _, _, Args, _, _),
     % The data constructor argument types must not have user-defined equality
     % or comparison predicates.
     ArgTypes = list.map((func(A) = A ^ arg_type), Args),
@@ -925,7 +925,7 @@ type_constructors(ModuleInfo, Type, Constructors) :-
             (func(ArgType) = ctor_arg(no, ArgType, full_word, Context)),
             TypeArgs),
         Constructors = [ctor(ExistQVars, ClassConstraints, unqualified("{}"),
-            CtorArgs, Context)]
+            CtorArgs, list.length(CtorArgs), Context)]
     else
         module_info_get_type_table(ModuleInfo, TypeTable),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
@@ -961,10 +961,10 @@ substitute_type_args_2(Subst, [Ctor0 | Ctors0], [Ctor | Ctors]) :-
     % constraints can only contain existentially quantified variables,
     % so there's no need to worry about applying the substitution to ExistQVars
     % or Constraints.
-    Ctor0 = ctor(ExistQVars, Constraints, Name, Args0, Ctxt),
+    Ctor0 = ctor(ExistQVars, Constraints, Name, Args0, Arity, Ctxt),
     substitute_type_args_3(Subst, Args0, Args),
     substitute_type_args_2(Subst, Ctors0, Ctors),
-    Ctor = ctor(ExistQVars, Constraints, Name, Args, Ctxt).
+    Ctor = ctor(ExistQVars, Constraints, Name, Args, Arity, Ctxt).
 
 :- pred substitute_type_args_3(tsubst::in, list(constructor_arg)::in,
     list(constructor_arg)::out) is det.

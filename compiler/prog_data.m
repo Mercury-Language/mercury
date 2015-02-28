@@ -1966,6 +1966,11 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 cons_name           :: sym_name,
 
                 cons_args           :: list(constructor_arg),
+
+                % We precompute the number of arguments once, to save having
+                % to recompute it many times later.
+                cons_num_args       :: int,
+
                 cons_context        :: prog_context
             ).
 

@@ -303,8 +303,7 @@ ml_gen_enum_value_member(Context) =
 ml_gen_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
         = Defn :-
     % Figure out the value of this enumeration constant.
-    Ctor = ctor(_ExistQTVars, _Constraints, Name, Args, _Ctxt),
-    list.length(Args, Arity),
+    Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args, Arity, _Ctxt),
     map.lookup(ConsTagValues, cons(Name, Arity, TypeCtor), TagVal),
     (
         TagVal = int_tag(Int),
@@ -555,7 +554,7 @@ ml_gen_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
         % we don't do the same thing for primary tags, so this is most useful
         % in the `--tags none' case, where there will be no primary tags.
 
-        Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args, _Ctxt),
+        Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args, _Arity, _Ctxt),
         UnqualifiedName = unqualify_name(Name),
         ConstValue = ml_const(mlconst_int(SecondaryTag)),
         Defn = mlds_defn(
@@ -603,8 +602,7 @@ tagval_is_reserved_addr(shared_with_reserved_addresses_tag(_, TagVal), RA) :-
 :- func get_tagval(type_ctor, cons_tag_values, constructor) = cons_tag.
 
 get_tagval(TypeCtor, ConsTagValues, Ctor) = TagVal :-
-    Ctor = ctor(_ExistQTVars, _Constraints, Name, Args, _Ctxt),
-    list.length(Args, Arity),
+    Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args, Arity, _Ctxt),
     map.lookup(ConsTagValues, cons(Name, Arity, TypeCtor), TagVal).
 
     % Generate a definition for the class used for the secondary tag type.
@@ -667,7 +665,7 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId,
 ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
         SecondaryTagClassId, TypeCtor, TypeDefn, ConsTagValues, Ctor,
         MLDS_Members0, MLDS_Members, MLDS_CtorMethods0, MLDS_CtorMethods) :-
-    Ctor = ctor(ExistQTVars, Constraints, CtorName, Args, _Ctxt),
+    Ctor = ctor(ExistQTVars, Constraints, CtorName, Args, CtorArity, _Ctxt),
 
     % XXX We should keep a context for the constructor,
     % but we don't, so we just use the context from the type.
@@ -675,7 +673,6 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
     MLDS_Context = mlds_make_context(Context),
 
     % Generate the class name for this constructor.
-    list.length(Args, CtorArity),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     UnqualCtorName = ml_gen_du_ctor_name(Target, TypeCtor,
@@ -1227,8 +1224,7 @@ ml_gen_exported_enum(_ModuleInfo, TypeTable, ExportedEnumInfo,
 
 generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
         !ExportConstants) :-
-    Ctor = ctor(_, _, QualName, Args, _),
-    list.length(Args, Arity),
+    Ctor = ctor(_, _, QualName, _Args, Arity, _),
     map.lookup(TagValues, cons(QualName, Arity, TypeCtor), TagVal),
     (
         TagVal = int_tag(Int),

@@ -219,8 +219,8 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
 
 assign_enum_constants(_, [], _, !CtorTags).
 assign_enum_constants(TypeCtor, [Ctor | Ctors], Val, !CtorTags) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-    ConsId = cons(Name, list.length(Args), TypeCtor),
+    Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
+    ConsId = cons(Name, Arity, TypeCtor),
     Tag = int_tag(Val),
     % We call set instead of det_insert because we don't want types
     % that erroneously contain more than one copy of a cons_id to crash
@@ -243,8 +243,8 @@ assign_reserved_numeric_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
     ( Address >= NumReservedAddresses ->
         LeftOverConstants = [Ctor | Ctors]
     ;
-        Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-        ConsId = cons(Name, list.length(Args), TypeCtor),
+        Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
+        ConsId = cons(Name, Arity, TypeCtor),
         ( Address = 0 ->
             Tag = reserved_address_tag(null_pointer)
         ;
@@ -273,8 +273,7 @@ assign_reserved_symbolic_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
     ( Num >= Max ->
         LeftOverConstants = [Ctor | Ctors]
     ;
-        Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-        Arity = list.length(Args),
+        Ctor = ctor(_ExistQVars, _Constraints, Name, Args, Arity, _Ctxt),
         Tag = reserved_address_tag(reserved_object(TypeCtor, Name, Arity)),
         ConsId = cons(Name, list.length(Args), TypeCtor),
         % We call set instead of det_insert because we don't want types
@@ -314,8 +313,8 @@ assign_constant_tags(TypeCtor, Constants, InitTag, NextTag, !CtorTags) :-
 assign_unshared_tags(_, [], _, _, _, !CtorTags).
 assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         !CtorTags) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-    ConsId = cons(Name, list.length(Args), TypeCtor),
+    Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
+    ConsId = cons(Name, Arity, TypeCtor),
     % If there's only one functor, give it the "single_functor" (untagged)
     % representation, rather than giving it unshared_tag(0).
     (
@@ -358,8 +357,8 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
 assign_shared_remote_tags(_, [], _, _, _, !CtorTags).
 assign_shared_remote_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
         ReservedAddresses, !CtorTags) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-    ConsId = cons(Name, list.length(Args), TypeCtor),
+    Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
+    ConsId = cons(Name, Arity, TypeCtor),
     Tag = maybe_add_reserved_addresses(ReservedAddresses,
         shared_remote_tag(PrimaryVal, SecondaryVal)),
     % We call set instead of det_insert because we don't want types
@@ -376,8 +375,8 @@ assign_shared_remote_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
 assign_shared_local_tags(_, [], _, _, !CtorTags).
 assign_shared_local_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
         !CtorTags) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-    ConsId = cons(Name, list.length(Args), TypeCtor),
+    Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
+    ConsId = cons(Name, Arity, TypeCtor),
     Tag = shared_local_tag(PrimaryVal, SecondaryVal),
     % We call set instead of det_insert because we don't want types
     % that erroneously contain more than one copy of a cons_id to crash
@@ -579,12 +578,12 @@ convert_direct_arg_functors_if_suitable(ModuleName, DebugTypeRep, MaxTag,
 
 is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
         AssertedDirectArgCtors, Ctor) :-
-    Ctor = ctor(ExistQTVars, ExistConstraints, ConsName, ConsArgs,
+    Ctor = ctor(ExistQTVars, ExistConstraints, ConsName, ConsArgs, Arity,
         _CtorContext),
     ExistQTVars = [],
     ExistConstraints = [],
     ConsArgs = [ConsArg],
-    Arity = 1,
+    expect(unify(Arity, 1), $module, $pred, "Arity != 1"),
     ConsArg = ctor_arg(_MaybeFieldName, ArgType, _ArgWidth, _ArgContext),
     type_to_ctor_and_args(ArgType, ArgTypeCtor, ArgTypeCtorArgTypes),
 
@@ -748,8 +747,8 @@ check_direct_arg_cond(TypeStatus, ArgCond) :-
 assign_direct_arg_tags(_, [], !Val, _, [], !CtorTags).
 assign_direct_arg_tags(TypeCtor, [Ctor | Ctors], !Val, MaxTag, LeftOverCtors,
         !CtorTags) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
-    ConsId = cons(Name, list.length(Args), TypeCtor),
+    Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
+    ConsId = cons(Name, Arity, TypeCtor),
     (
         % If we are about to run out of unshared tags, stop, and return
         % the leftovers.
@@ -775,8 +774,7 @@ check_incorrect_direct_arg_assertions(_AssertedDirectArgCtors, [], !Specs).
 check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors],
         !Specs) :-
     (
-        Ctor = ctor(_, _, SymName, Args, Context),
-        list.length(Args, Arity),
+        Ctor = ctor(_, _, SymName, _Args, Arity, Context),
         list.contains(AssertedDirectArgCtors, SymName / Arity)
     ->
         Pieces = [words("Error:"), sym_name_and_arity(SymName / Arity),
@@ -793,8 +791,8 @@ check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors],
 
 :- func constructor_to_sym_name_and_arity(constructor) = sym_name_and_arity.
 
-constructor_to_sym_name_and_arity(ctor(_, _, Name, Args, _)) =
-    Name / list.length(Args).
+constructor_to_sym_name_and_arity(ctor(_, _, Name, _Args, Arity, _)) =
+    Name / Arity.
 
 :- pred output_direct_arg_functor_summary(module_name::in, type_ctor::in,
     list(sym_name_and_arity)::in, io::di, io::uo) is det.
@@ -822,7 +820,7 @@ max_num_tags(NumTagBits) = MaxTags :-
 
 ctors_are_all_constants([]).
 ctors_are_all_constants([Ctor | Rest]) :-
-    Ctor = ctor(_ExistQVars, _Constraints, _Name, Args, _Ctxt),
+    Ctor = ctor(_ExistQVars, _Constraints, _Name, Args, _, _Ctxt),
     Args = [],
     ctors_are_all_constants(Rest).
 

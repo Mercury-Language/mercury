@@ -990,7 +990,7 @@ type_constructors_are_type_info(Ctors) :-
 type_is_single_ctor_single_arg(Ctors, Ctor, ArgType, MaybeArgName) :-
     Ctors = [SingleCtor],
     SingleCtor = ctor(ExistQVars, _Constraints, Ctor,
-        [ctor_arg(MaybeArgName, ArgType, _, _)], _Ctxt),
+        [ctor_arg(MaybeArgName, ArgType, _, _)], 1, _Ctxt),
     ExistQVars = [].
 
 :- pred ctor_is_type_info(sym_name::in) is semidet.
@@ -1024,7 +1024,8 @@ du_type_is_enum(Ctors, NumBits) :-
     all [Ctor] (
         list.member(Ctor, Ctors)
     => (
-        Ctor = ctor(ExistQTVars, ExistConstraints, _Name, Args, _Context),
+        Ctor = ctor(ExistQTVars, ExistConstraints, _Name, Args, _Arity,
+            _Context),
         ExistQTVars = [],
         ExistConstraints = [],
         Args = []

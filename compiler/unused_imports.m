@@ -170,8 +170,7 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
 
     module_info_get_inst_table(ModuleInfo, InstTable),
     inst_table_get_user_insts(InstTable, UserInstTable),
-    user_inst_table_get_inst_defns(UserInstTable, UserInsts),
-    map.foldl(user_inst_used_modules, UserInsts, !UsedModules),
+    map.foldl(user_inst_used_modules, UserInstTable, !UsedModules),
 
     module_info_get_mode_table(ModuleInfo, ModeTable),
     mode_table_get_mode_defns(ModeTable, ModeDefns),
@@ -220,7 +219,7 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 ctor_used_modules(Visibility, Ctor, !UsedModules) :-
-    Ctor = ctor(_, Constraints, _, Args, _),
+    Ctor = ctor(_, Constraints, _, Args, _, _),
     list.foldl(prog_constraint_used_module(Visibility), Constraints,
         !UsedModules),
     list.foldl(

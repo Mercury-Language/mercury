@@ -72,13 +72,12 @@
     %
 :- pred mode_is_undefined(module_info::in, mer_mode::in) is semidet.
 
-    % mode_to_arg_mode converts a mode (and corresponding type) to
-    % an arg_mode.  A mode is a high-level notion, the normal
-    % Mercury language mode.  An `arg_mode' is a low-level notion
-    % used for code generation, which indicates the argument
-    % passing convention (top_in, top_out, or top_unused) that
-    % corresponds to that mode.  We need to know the type, not just
-    % the mode, because the argument passing convention can depend
+    % mode_to_arg_mode converts a mode (and corresponding type) to an arg_mode.
+    % A mode is a high-level notion, the normal Mercury language mode.
+    % An `arg_mode' is a low-level notion used for code generation, which
+    % indicates the argument passing convention (top_in, top_out, or
+    % top_unused) that corresponds to that mode. We need to know the type,
+    % not just the mode, because the argument passing convention can depend
     % on the type's representation.
     %
 :- pred mode_to_arg_mode(module_info::in, mer_mode::in, mer_type::in,
@@ -120,10 +119,10 @@
     % Use the instmap deltas for all the atomic sub-goals to recompute
     % the instmap deltas for all the non-atomic sub-goals of a goal.
     % Used to ensure that the instmap deltas remain valid after code has
-    % been re-arranged, e.g. by followcode.  This also takes the
-    % module_info as input and output since it may need to insert new
-    % merge_insts into the merge_inst table.  The first argument says
-    % whether the instmap_deltas for calls and deconstruction unifications
+    % been re-arranged, e.g. by followcode. This also takes the module_info
+    % as input and output since it may need to insert new merge_insts
+    % into the merge_inst table. The first argument says whether the
+    % instmap_deltas for calls and deconstruction unifications
     % should also recomputed.
     %
 :- pred recompute_instmap_delta_proc(recompute_atomic_instmap_deltas::in,
@@ -548,10 +547,10 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         InstName = user_inst(Name, Args),
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_user_insts(InstTable, UserInstTable),
-        user_inst_table_get_inst_defns(UserInstTable, InstDefns),
         list.length(Args, Arity),
-        ( map.search(InstDefns, inst_id(Name, Arity), InstDefn) ->
-            InstDefn = hlds_inst_defn(_VarSet, Params, InstBody, _C, _),
+        ( map.search(UserInstTable, inst_id(Name, Arity), InstDefn) ->
+            InstDefn = hlds_inst_defn(_VarSet, Params, InstBody, _MMTC,
+                _Context, _Status),
             inst_lookup_subst_args(InstBody, Params, Name, Args, Inst)
         ;
             Inst = abstract_inst(Name, Args)
@@ -614,24 +613,22 @@ propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode) :-
     % provided by the type.
     %
     % There are three sorts of information added:
-    %   1.  Module qualifiers.
-    %   2.  The set of constructors in the type.
-    %   3.  For higher-order function types
-    %       (but not higher-order predicate types),
-    %       the higher-order inst, i.e. the argument modes
-    %       and the determinism.
+    % 1 Module qualifiers.
+    % 2 The set of constructors in the type.
+    % 3 For higher-order function types (but not higher-order predicate
+    %   types), the higher-order inst, i.e. the argument modes and
+    %   the determinism.
     %
     % Currently #2 is not yet implemented, due to unsolved
-    % efficiency problems.  (See the XXX's below.)
+    % efficiency problems. (See the XXX's below.)
     %
-    % There are two versions, an "eager" one and a "lazy" one.  In
-    % general eager expansion is to be preferred, because the expansion
-    % is done just once, whereas with lazy expansion the work will be
-    % done N times.
+    % There are two versions, an "eager" one and a "lazy" one. In general,
+    % eager expansion is to be preferred, because the expansion is done
+    % just once, whereas with lazy expansion the work will be done N times.
     % However, for recursive insts we must use lazy expansion (otherwise
-    % we would get infinite regress).  Also, usually many of the
-    % imported procedures will not be called, so for the insts in
-    % imported mode declarations N is often zero.
+    % we would get infinite regress). Also, usually many of the imported
+    % procedures will not be called, so for the insts in imported mode
+    % declarations N is often zero.
     %
 :- pred propagate_type_into_inst(module_info::in, tsubst::in, mer_type::in,
     mer_inst::in, mer_inst::out) is det.
@@ -640,7 +637,7 @@ propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode) :-
     mer_type::in, mer_inst::in, mer_inst::out) is det.
 
 %   % XXX We ought to expand things eagerly here, using the commented
-%   % out code below.  However, that causes efficiency problems,
+%   % out code below. However, that causes efficiency problems,
 %   % so for the moment it is disabled.
 % propagate_type_into_inst(Type, Subst, ModuleInfo, Inst0, Inst) :-
 %   apply_type_subst(Type0, Subst, Type),
@@ -721,7 +718,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
             propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
         ;
             % The inst is not a valid inst for the type, so leave it alone.
-            % This can only happen if the user has made a mistake.  A mode
+            % This can only happen if the user has made a mistake. A mode
             % error should hopefully be reported if anything tries to match
             % with the inst.
             Modes = Modes0
@@ -738,7 +735,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
             propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
         ;
             % The inst is not a valid inst for the type, so leave it alone.
-            % This can only happen if the user has made a mistake.  A mode
+            % This can only happen if the user has made a mistake. A mode
             % error should hopefully be reported if anything tries to match
             % with the inst.
             Modes = Modes0
@@ -933,7 +930,7 @@ constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor, Constructors,
 constructors_to_bound_insts_2(_, _, _, [], _, []).
 constructors_to_bound_insts_2(ModuleInfo, Uniq, TypeCtor, [Ctor | Ctors],
         ArgInst, [BoundInst | BoundInsts]) :-
-    Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Ctxt),
+    Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Arity, _Ctxt),
     ctor_arg_list_to_inst_list(Args, ArgInst, Insts),
     list.length(Insts, Arity),
     BoundInst = bound_functor(cons(Name, Arity, TypeCtor), Insts),
@@ -1013,17 +1010,12 @@ propagate_ctor_info_3(ModuleInfo, Subst, TypeCtor, TypeModule, Constructors,
     ),
     (
         ConsId = cons(ConsName, Arity, _),
-        GetCons = (pred(Ctor::in) is semidet :-
-                Ctor = ctor(_, _, ConsName, CtorArgs, _),
-                list.length(CtorArgs, Arity)
-            ),
-        list.filter(GetCons, Constructors, [Constructor])
+        find_first_matching_constructor(ConsName, Arity, Constructors,
+            MatchingConstructor)
     ->
-        Constructor = ctor(_ExistQVars, _Constraints, _Name, Args, _Ctxt),
-        GetArgTypes = (pred(CtorArg::in, ArgType::out) is det :-
-                ArgType = CtorArg ^ arg_type
-            ),
-        list.map(GetArgTypes, Args, ArgTypes),
+        MatchingConstructor = ctor(_ExistQVars, _Constraints, _Name, Args,
+            _Arity, _Ctxt),
+        get_constructor_arg_types(Args, ArgTypes),
         propagate_types_into_inst_list(ModuleInfo, Subst, ArgTypes,
             ArgInsts0, ArgInsts),
         BoundInst = bound_functor(ConsId, ArgInsts)
@@ -1036,6 +1028,32 @@ propagate_ctor_info_3(ModuleInfo, Subst, TypeCtor, TypeModule, Constructors,
     ),
     propagate_ctor_info_3(ModuleInfo, Subst, TypeCtor, TypeModule,
         Constructors, BoundInsts0, BoundInsts).
+
+    % Find the first constructor in the egiven list of constructors
+    % that match the given functor name and arity. Since the constructors
+    % should all come from the same type definition, there should be
+    % at most one matching constructor in the list anyway.
+    %
+:- pred find_first_matching_constructor(sym_name::in, arity::in,
+    list(constructor)::in, constructor::out) is semidet.
+
+find_first_matching_constructor(_ConsName, _Arity, [], _MatchingCtor) :-
+    fail.
+find_first_matching_constructor(ConsName, Arity, [Ctor | Ctors],
+        MatchingCtor) :-
+    ( if Ctor = ctor(_, _, ConsName, _, Arity, _) then
+        MatchingCtor = Ctor
+    else
+        find_first_matching_constructor(ConsName, Arity, Ctors, MatchingCtor)
+    ).
+
+:- pred get_constructor_arg_types(list(constructor_arg)::in,
+    list(mer_type)::out) is det.
+
+get_constructor_arg_types([], []).
+get_constructor_arg_types([Arg | Args], [ArgType | ArgTypes]) :-
+    ArgType = Arg ^ arg_type,
+    get_constructor_arg_types(Args, ArgTypes).
 
 :- pred apply_type_subst(mer_type::in, tsubst::in, mer_type::out) is det.
 
@@ -1073,14 +1091,14 @@ mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args),
     list.length(Args, Arity),
     module_info_get_mode_table(ModuleInfo, Modes),
     mode_table_get_mode_defns(Modes, ModeDefns),
-    % Try looking up Name as-is.  If that fails and Name is unqualified,
+    % Try looking up Name as-is. If that fails and Name is unqualified,
     % try looking it up with the builtin qualifier.
     % XXX This is a makeshift fix for a problem that requires more
     % investigation (without this fix the compiler occasionally
     % throws an exception in mode_get_insts/4).
     ( if map.search(ModeDefns, mode_id(Name, Arity), HLDS_Mode0) then
         HLDS_Mode = HLDS_Mode0
-      else
+    else
         Name = unqualified(String),
         BuiltinName = qualified(mercury_public_builtin_module, String),
         map.search(ModeDefns, mode_id(BuiltinName, Arity), HLDS_Mode)

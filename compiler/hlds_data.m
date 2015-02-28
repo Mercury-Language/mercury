@@ -1021,8 +1021,7 @@ set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
     %
 :- type inst_table.
 
-:- type user_inst_table.
-:- type user_inst_defns ==          map(inst_id, hlds_inst_defn).
+:- type user_inst_table ==          map(inst_id, hlds_inst_defn).
 :- type unify_inst_table ==         map(inst_name, maybe_inst_det).
 :- type merge_inst_table ==         map(pair(mer_inst), maybe_inst).
 :- type ground_inst_table ==        map(inst_name, maybe_inst_det).
@@ -1060,6 +1059,11 @@ set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
 
                 % The definition of this inst.
                 inst_body       :: hlds_inst_body,
+
+                % If the inst_body is a bound(..., BoundInsts) inst, then
+                % this field lists the type constructors that BoundInsts
+                % matches.
+                inst_maybe_matching_type_ctors :: maybe(list(type_ctor)),
 
                 % The location in the source code of this inst definition.
                 inst_context    :: prog_context,
@@ -1109,18 +1113,6 @@ set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
 :- pred inst_table_set_mostly_uniq_insts(mostly_uniq_inst_table::in,
     inst_table::in, inst_table::out) is det.
 
-:- pred user_inst_table_get_inst_defns(user_inst_table::in,
-    user_inst_defns::out) is det.
-
-:- pred user_inst_table_insert(inst_id::in, hlds_inst_defn::in,
-    user_inst_table::in, user_inst_table::out) is semidet.
-
-    % Optimize the user_inst_table for lookups. This just sorts
-    % the cached list of inst_ids.
-    %
-:- pred user_inst_table_optimize(user_inst_table::in, user_inst_table::out)
-    is det.
-
 :- implementation.
 
 :- type inst_table
@@ -1134,8 +1126,6 @@ set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
                 inst_table_mostly_uniq  :: mostly_uniq_inst_table
             ).
 
-:- type user_inst_table == user_inst_defns.
-
 inst_table_init(InstTable) :-
     map.init(UserInsts),
     map.init(UnifyInsts),
@@ -1147,37 +1137,35 @@ inst_table_init(InstTable) :-
     InstTable = inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
         AnyInsts, SharedInsts, NondetLiveInsts).
 
-inst_table_get_user_insts(InstTable, InstTable ^ inst_table_user).
-inst_table_get_unify_insts(InstTable, InstTable ^ inst_table_unify).
-inst_table_get_merge_insts(InstTable, InstTable ^ inst_table_merge).
-inst_table_get_ground_insts(InstTable, InstTable ^ inst_table_ground).
-inst_table_get_any_insts(InstTable, InstTable ^ inst_table_any).
-inst_table_get_shared_insts(InstTable, InstTable ^ inst_table_shared).
-inst_table_get_mostly_uniq_insts(InstTable,
-    InstTable ^ inst_table_mostly_uniq).
+inst_table_get_user_insts(InstTable, X) :-
+    X = InstTable ^ inst_table_user.
+inst_table_get_unify_insts(InstTable, X) :-
+    X = InstTable ^ inst_table_unify.
+inst_table_get_merge_insts(InstTable, X) :-
+    X = InstTable ^ inst_table_merge.
+inst_table_get_ground_insts(InstTable, X) :-
+    X = InstTable ^ inst_table_ground.
+inst_table_get_any_insts(InstTable, X) :-
+    X = InstTable ^ inst_table_any.
+inst_table_get_shared_insts(InstTable, X) :-
+    X = InstTable ^ inst_table_shared.
+inst_table_get_mostly_uniq_insts(InstTable, X) :-
+    X = InstTable ^ inst_table_mostly_uniq.
 
-inst_table_set_user_insts(UserInsts, !InstTable) :-
-    !InstTable ^ inst_table_user := UserInsts.
-inst_table_set_unify_insts(UnifyInsts, !InstTable) :-
-    !InstTable ^ inst_table_unify := UnifyInsts.
-inst_table_set_merge_insts(MergeInsts, !InstTable) :-
-    !InstTable ^ inst_table_merge := MergeInsts.
-inst_table_set_ground_insts(GroundInsts, !InstTable) :-
-    !InstTable ^ inst_table_ground := GroundInsts.
-inst_table_set_any_insts(AnyInsts, !InstTable) :-
-    !InstTable ^ inst_table_any := AnyInsts.
-inst_table_set_shared_insts(SharedInsts, !InstTable) :-
-    !InstTable ^ inst_table_shared := SharedInsts.
-inst_table_set_mostly_uniq_insts(MostlyUniqInsts, !InstTable) :-
-    !InstTable ^ inst_table_mostly_uniq := MostlyUniqInsts.
-
-user_inst_table_get_inst_defns(UserInstDefns, UserInstDefns).
-
-user_inst_table_insert(InstId, InstDefn, !UserInstDefns) :-
-    map.insert(InstId, InstDefn, !UserInstDefns).
-
-user_inst_table_optimize(!UserInstDefns) :-
-    map.optimize(!UserInstDefns).
+inst_table_set_user_insts(X, !InstTable) :-
+    !InstTable ^ inst_table_user := X.
+inst_table_set_unify_insts(X, !InstTable) :-
+    !InstTable ^ inst_table_unify := X.
+inst_table_set_merge_insts(X, !InstTable) :-
+    !InstTable ^ inst_table_merge := X.
+inst_table_set_ground_insts(X, !InstTable) :-
+    !InstTable ^ inst_table_ground := X.
+inst_table_set_any_insts(X, !InstTable) :-
+    !InstTable ^ inst_table_any := X.
+inst_table_set_shared_insts(X, !InstTable) :-
+    !InstTable ^ inst_table_shared := X.
+inst_table_set_mostly_uniq_insts(X, !InstTable) :-
+    !InstTable ^ inst_table_mostly_uniq := X.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

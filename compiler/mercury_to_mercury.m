@@ -1984,7 +1984,7 @@ mercury_output_ctors([Ctor | Ctors], VarSet, !IO) :-
     mercury_output_ctors(Ctors, VarSet, !IO).
 
 mercury_output_ctor(Ctor, VarSet, !IO) :-
-    Ctor = ctor(ExistQVars, Constraints, SymName, Args, _Ctxt),
+    Ctor = ctor(ExistQVars, Constraints, SymName, Args, Arity, _Ctxt),
 
         % We'll have attached the module name to the type definition,
         % so there's no point adding it to the constructor as well.
@@ -1999,8 +1999,7 @@ mercury_output_ctor(Ctor, VarSet, !IO) :-
         ParenWrap = yes,
         io.write_string("(", !IO)
     ),
-    % we need to quote ';'/2, '{}'/2, '=>'/2, and 'some'/2
-    list.length(Args, Arity),
+    % We need to quote ';'/2, '{}'/2, '=>'/2, and 'some'/2.
     (
         Arity = 2,
         ( Name = ";"

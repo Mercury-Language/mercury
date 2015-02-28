@@ -408,8 +408,8 @@ write_constructors_loop(TypeCtor, Indent, TVarSet, [Ctor | Ctors], TagValues,
 
 write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO) :-
     mercury_output_ctor(Ctor, TVarSet, !IO),
-    Ctor = ctor(_, _, Name, Args, _),
-    ConsId = cons(Name, list.length(Args), TypeCtor),
+    Ctor = ctor(_, _, Name, _Args, Arity, _),
+    ConsId = cons(Name, Arity, TypeCtor),
     ( map.search(TagValues, ConsId, TagValue) ->
         io.write_string("\t% tag: ", !IO),
         io.print(TagValue, !IO)
@@ -624,8 +624,7 @@ write_inst_table(Lang, Indent, Limit, InstTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- User defined insts --------\n", !IO),
     inst_table_get_user_insts(InstTable, UserInstTable),
-    user_inst_table_get_inst_defns(UserInstTable, UserInstMap),
-    map.foldl(write_user_inst(Indent), UserInstMap, !IO),
+    map.foldl(write_user_inst(Indent), UserInstTable, !IO),
 
     io.write_string("%-------- Unify insts --------\n", !IO),
     inst_table_get_unify_insts(InstTable, UnifyInstMap),
@@ -674,7 +673,7 @@ write_user_inst(Indent, InstId, InstDefn, !IO) :-
     write_indent(Indent, !IO),
     io.format("\n:- inst %s", [s(sym_name_to_string(InstName))], !IO),
     InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
-        _Context, _Status),
+        _MaybeMatchingTypeCtors, _Context, _Status),
     (
         InstParams = []
     ;

@@ -117,6 +117,13 @@
 :- pred set(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
+    % Update (add) value if the key is already present, otherwise
+    % insert the new key and value.
+    %
+:- func reverse_set(multi_map(K, V), V, K) = multi_map(K, V).
+:- pred reverse_set(V::in, K::in,
+    multi_map(K, V)::in, multi_map(K, V)::out) is det.
+
 :- func add(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred add(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
@@ -269,11 +276,16 @@
 
 %---------------------------------------------------------------------------%
 
+multi_map.init = M :-
+    multi_map.init(M).
+
 multi_map.init(M) :-
     map.init(M).
 
 multi_map.is_empty(M) :-
     map.is_empty(M).
+
+%---------------------------------------------------------------------------%
 
 multi_map.contains(MultiMap, Key) :-
     map.search(MultiMap, Key, _).
@@ -289,6 +301,9 @@ multi_map.nondet_search(MultiMap, Key, Value) :-
     map.search(MultiMap, Key, Values),
     list.member(Value, Values).
 
+multi_map.lookup(MultiMap, Key) = Value :-
+    multi_map.lookup(MultiMap, Key, Value).
+
 multi_map.lookup(MultiMap, Key, Values) :-
     map.lookup(MultiMap, Key, Values).
 
@@ -296,8 +311,13 @@ multi_map.nondet_lookup(MultiMap, Key, Value) :-
     map.search(MultiMap, Key, Values),
     list.member(Value, Values).
 
+%---------------------------------------------------------------------------%
+
 multi_map.insert(Key, Value, !MultiMap) :-
     map.insert(Key, [Value], !MultiMap).
+
+multi_map.det_insert(!.MultiMap, Key, Value) = !:MultiMap :-
+    multi_map.det_insert(Key, Value, !MultiMap).
 
 multi_map.det_insert(Key, Value, !MultiMap) :-
     map.det_insert(Key, [Value], !MultiMap).
@@ -306,6 +326,9 @@ multi_map.update(Key, Value, !MultiMap) :-
     map.search(!.MultiMap, Key, Values0),
     Values = [Value | Values0],
     map.update(Key, Values, !MultiMap).
+
+multi_map.det_update(!.MultiMap, Key, Value) = !:MultiMap :-
+    multi_map.det_update(Key, Value, !MultiMap).
 
 multi_map.det_update(Key, Value, !MultiMap) :-
     ( if multi_map.update(Key, Value, !MultiMap) then
@@ -317,8 +340,14 @@ multi_map.det_update(Key, Value, !MultiMap) :-
 multi_map.replace(Key, Value, !MultiMap) :-
     map.update(Key, Value, !MultiMap).
 
-multi_map.det_replace(Key, Value, !MultiMap) :-
-    map.det_update(Key, Value, !MultiMap).
+multi_map.det_replace(!.MultiMap, Key, Values) = !:MultiMap :-
+    multi_map.det_replace(Key, Values, !MultiMap).
+
+multi_map.det_replace(Key, Values, !MultiMap) :-
+    map.det_update(Key, Values, !MultiMap).
+
+multi_map.set(!.MultiMap, Key, Value) = !:MultiMap :-
+    multi_map.set(Key, Value, !MultiMap).
 
 multi_map.set(Key, Value, !MultiMap) :-
     ( map.search(!.MultiMap, Key, Values0) ->
@@ -328,22 +357,37 @@ multi_map.set(Key, Value, !MultiMap) :-
         map.det_insert(Key, [Value], !MultiMap)
     ).
 
+multi_map.reverse_set(!.MultiMap, Value, Key) = !:MultiMap :-
+    multi_map.reverse_set(Value, Key, !MultiMap).
+
+multi_map.reverse_set(Value, Key, !MultiMap) :-
+    multi_map.set(Key, Value, !MultiMap).
+
+multi_map.add(!.MultiMap, Key, Value) = !:MultiMap :-
+    multi_map.set(Key, Value, !MultiMap).
+
 multi_map.add(MultiMap0, Key, Value, MultiMap) :-
     multi_map.set(MultiMap0, Key, Value, MultiMap).
 
+%---------------------------------------------------------------------------%
+
+multi_map.keys(MultiMap) = Keys :-
+    multi_map.keys(MultiMap, Keys).
+
 multi_map.keys(MultiMap, KeyList) :-
     map.keys(MultiMap, KeyList).
+
+multi_map.values(MultiMap) = Valyes :-
+    multi_map.values(MultiMap, Valyes).
 
 multi_map.values(MultiMap, KeyList) :-
     map.values(MultiMap, KeyList0),
     list.condense(KeyList0, KeyList).
 
-multi_map.from_flat_assoc_list(AList, MultiMap) :-
-    MultiMap = list.foldl(
-        (func(Key - Value, Map0) = Map  :-
-            multi_map.set(Key, Value, Map0, Map)
-        ),
-        AList, map.init).
+%---------------------------------------------------------------------------%
+
+multi_map.to_flat_assoc_list(MultiMap) = AssocList :-
+    multi_map.to_flat_assoc_list(MultiMap, AssocList).
 
 multi_map.to_flat_assoc_list(MultiMap, AList) :-
     AList = list.reverse(map.foldl(
@@ -354,17 +398,44 @@ multi_map.to_flat_assoc_list(MultiMap, AList) :-
         ),
         MultiMap, [])).
 
-multi_map.from_assoc_list(AList, MultiMap) :-
-    map.from_assoc_list(AList, MultiMap).
+multi_map.from_flat_assoc_list(AssocList) = MultiMap :-
+    multi_map.from_flat_assoc_list(AssocList, MultiMap).
 
-multi_map.from_sorted_assoc_list(AList, MultiMap) :-
-    map.from_sorted_assoc_list(AList, MultiMap).
+multi_map.from_flat_assoc_list(AList, MultiMap) :-
+    MultiMap = list.foldl(
+        (func(Key - Value, Map0) = Map  :-
+            multi_map.set(Key, Value, Map0, Map)
+        ),
+        AList, map.init).
+
+multi_map.to_assoc_list(MultiMap) = AssocList :-
+    multi_map.to_assoc_list(MultiMap, AssocList).
 
 multi_map.to_assoc_list(MultiMap, AList) :-
     map.to_assoc_list(MultiMap, AList).
 
+multi_map.from_assoc_list(AssocList) = MultiMap :-
+    multi_map.from_assoc_list(AssocList, MultiMap).
+
+multi_map.from_assoc_list(AList, MultiMap) :-
+    map.from_assoc_list(AList, MultiMap).
+
+multi_map.from_sorted_assoc_list(AssocList) = MultiMap :-
+    multi_map.from_sorted_assoc_list(AssocList, MultiMap).
+
+multi_map.from_sorted_assoc_list(AList, MultiMap) :-
+    map.from_sorted_assoc_list(AList, MultiMap).
+
+%---------------------------------------------------------------------------%
+
+multi_map.delete(!.MultiMap, Key) = !:MultiMap :-
+    multi_map.delete(Key, !MultiMap).
+
 multi_map.delete(Key, !MultiMap) :-
     map.delete(Key, !MultiMap).
+
+multi_map.delete(!.MultiMap, Key, Value) = !:MultiMap :-
+    multi_map.delete(Key, Value, !MultiMap).
 
 multi_map.delete(Key, Value, !MultiMap) :-
     (
@@ -388,8 +459,16 @@ multi_map.remove(MultiMap0, Key, Values, MultiMap) :-
 multi_map.det_remove(MultiMap0, Key, Values, MultiMap) :-
     map.det_remove(MultiMap0, Key, Values, MultiMap).
 
+%---------------------------------------------------------------------------%
+
+multi_map.count(MultiMap0) = Count :-
+    multi_map.count(MultiMap0, Count).
+
 multi_map.count(MultiMap, Count) :-
     map.count(MultiMap, Count).
+
+multi_map.all_count(MultiMap0) = Count :-
+    multi_map.all_count(MultiMap0, Count).
 
 multi_map.all_count(MultiMap, Count) :-
     multi_map.values(MultiMap, List),
@@ -412,6 +491,9 @@ multi_map.inverse_search(MultiMap, Value, Key) :-
 
 %---------------------------------------------------------------------------%
 
+multi_map.from_corresponding_lists(Keys, Values) = MultiMap :-
+    multi_map.from_corresponding_lists(Keys, Values, MultiMap).
+
 multi_map.from_corresponding_lists(Keys, Values, MultiMap) :-
     multi_map.init(MultiMap0),
     (
@@ -420,21 +502,28 @@ multi_map.from_corresponding_lists(Keys, Values, MultiMap) :-
     ->
         MultiMap = MultiMap1
     ;
-        error("multi_map.from_corresponding_lists: list length mismatch")
+        unexpected($module, $pred, "list length mismatch")
     ).
 
 :- pred multi_map.from_corresponding_lists_2(list(K)::in, list(V)::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is semidet.
 
 multi_map.from_corresponding_lists_2([], [], !MultiMap).
-multi_map.from_corresponding_lists_2([Key | Keys], [Value | Values], !MultiMap) :-
+multi_map.from_corresponding_lists_2([Key | Keys], [Value | Values],
+        !MultiMap) :-
     multi_map.set(Key, Value, !MultiMap),
     multi_map.from_corresponding_lists_2(Keys, Values, !MultiMap).
+
+multi_map.from_corresponding_list_lists(Keys, Values) = MultiMap :-
+    multi_map.from_corresponding_list_lists(Keys, Values, MultiMap).
 
 multi_map.from_corresponding_list_lists(Keys, Values, MultiMap) :-
     map.from_corresponding_lists(Keys, Values, MultiMap).
 
 %---------------------------------------------------------------------------%
+
+multi_map.merge(MultiMapA, MultiMapB) = MultiMap :-
+    multi_map.merge(MultiMapA, MultiMapB, MultiMap).
 
 multi_map.merge(M0, M1, M) :-
     multi_map.to_assoc_list(M0, ML0),
@@ -469,15 +558,24 @@ multi_map.assoc_list_merge([(KeyA - DataA) | ListA], [(KeyB - DataB) | ListB],
 
 %---------------------------------------------------------------------------%
 
+multi_map.optimize(MultiMap0) = MultiMap :-
+    multi_map.optimize(MultiMap0, MultiMap).
+
 multi_map.optimize(MultiMap0, MultiMap) :-
     map.optimize(MultiMap0, MultiMap).
 
 %---------------------------------------------------------------------------%
 
+multi_map.select(MultiMap, KeySet) = NewMultiMap :-
+    multi_map.select(MultiMap, KeySet, NewMultiMap).
+
 multi_map.select(Original, KeySet, NewMultiMap) :-
     map.select(Original, KeySet, NewMultiMap).
 
 %---------------------------------------------------------------------------%
+
+multi_map.apply_to_list(Keys, MultiMap) = Values :-
+    multi_map.apply_to_list(Keys, MultiMap, Values).
 
 multi_map.apply_to_list([], _, []).
 multi_map.apply_to_list([K | Keys], MultiMap, Values) :-
@@ -488,82 +586,6 @@ multi_map.apply_to_list([K | Keys], MultiMap, Values) :-
 
 multi_map.remove_smallest(MultiMap0, Key, Values, MultiMap) :-
     map.remove_smallest(MultiMap0, Key, Values, MultiMap).
-
-%---------------------------------------------------------------------------%
-
-% Functional versions.
-
-multi_map.init = M :-
-    multi_map.init(M).
-
-multi_map.lookup(MultiMap, Key) = Value :-
-    multi_map.lookup(MultiMap, Key, Value).
-
-multi_map.det_insert(!.MultiMap, Key, Value) = !:MultiMap :-
-    multi_map.det_insert(Key, Value, !MultiMap).
-
-multi_map.det_update(!.MultiMap, Key, Value) = !:MultiMap :-
-    multi_map.det_update(Key, Value, !MultiMap).
-
-multi_map.det_replace(!.MultiMap, Key, Value) = !:MultiMap :-
-    multi_map.det_replace(Key, Value, !MultiMap).
-
-multi_map.set(!.MultiMap, Key, Value) = !:MultiMap :-
-    multi_map.set(Key, Value, !MultiMap).
-
-multi_map.add(!.MultiMap, Key, Value) = !:MultiMap :-
-    multi_map.set(Key, Value, !MultiMap).
-
-multi_map.keys(MultiMap) = Keys :-
-    multi_map.keys(MultiMap, Keys).
-
-multi_map.values(MultiMap) = Valyes :-
-    multi_map.values(MultiMap, Valyes).
-
-multi_map.to_flat_assoc_list(MultiMap) = AssocList :-
-    multi_map.to_flat_assoc_list(MultiMap, AssocList).
-
-multi_map.from_flat_assoc_list(AssocList) = MultiMap :-
-    multi_map.from_flat_assoc_list(AssocList, MultiMap).
-
-multi_map.to_assoc_list(MultiMap) = AssocList :-
-    multi_map.to_assoc_list(MultiMap, AssocList).
-
-multi_map.from_assoc_list(AssocList) = MultiMap :-
-    multi_map.from_assoc_list(AssocList, MultiMap).
-
-multi_map.from_sorted_assoc_list(AssocList) = MultiMap :-
-    multi_map.from_sorted_assoc_list(AssocList, MultiMap).
-
-multi_map.delete(!.MultiMap, Key) = !:MultiMap :-
-    multi_map.delete(Key, !MultiMap).
-
-multi_map.delete(!.MultiMap, Key, Value) = !:MultiMap :-
-    multi_map.delete(Key, Value, !MultiMap).
-
-multi_map.count(MultiMap0) = Count :-
-    multi_map.count(MultiMap0, Count).
-
-multi_map.all_count(MultiMap0) = Count :-
-    multi_map.all_count(MultiMap0, Count).
-
-multi_map.from_corresponding_lists(Keys, Values) = MultiMap :-
-    multi_map.from_corresponding_lists(Keys, Values, MultiMap).
-
-multi_map.from_corresponding_list_lists(Keys, Values) = MultiMap :-
-    multi_map.from_corresponding_list_lists(Keys, Values, MultiMap).
-
-multi_map.merge(MultiMapA, MultiMapB) = MultiMap :-
-    multi_map.merge(MultiMapA, MultiMapB, MultiMap).
-
-multi_map.select(MultiMap, KeySet) = NewMultiMap :-
-    multi_map.select(MultiMap, KeySet, NewMultiMap).
-
-multi_map.apply_to_list(Keys, MultiMap) = Values :-
-    multi_map.apply_to_list(Keys, MultiMap, Values).
-
-multi_map.optimize(MultiMap0) = MultiMap :-
-    multi_map.optimize(MultiMap0, MultiMap).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

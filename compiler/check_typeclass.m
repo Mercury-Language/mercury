@@ -1772,7 +1772,7 @@ check_ctor_constraints(ModuleInfo, TypeCtor - TypeDefn, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn, Ctor, !Specs) :-
-    Ctor = ctor(ExistQVars, Constraints, _, CtorArgs, _),
+    Ctor = ctor(ExistQVars, Constraints, _, CtorArgs, _, _),
     ArgTypes = list.map(func(ctor_arg(_, T, _, _)) = T, CtorArgs),
     type_vars_list(ArgTypes, ArgTVars),
     list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),

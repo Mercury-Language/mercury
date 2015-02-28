@@ -1180,10 +1180,9 @@ check_type_defn_ambiguity_with_functor(NeedQualifier, TypeCtor, TypeDefn,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_functor_ambiguities(NeedQualifier, TypeCtor, Ctor, !Info) :-
-    Ctor = ctor(_, _, Name, Args, _),
+    Ctor = ctor(_, _, Name, Args, Arity, _),
     TypeCtorItem = type_ctor_to_item_name(TypeCtor),
     ResolvedCtor = resolved_functor_constructor(TypeCtorItem),
-    Arity = list.length(Args),
     check_functor_ambiguities_by_name(NeedQualifier, Name,
         match_arity_exact(Arity), ResolvedCtor, !Info),
     list.foldl(

@@ -941,10 +941,9 @@ find_items_used_by_item(mode_item, ModeIdItem, !Info):-
 find_items_used_by_item(inst_item, InstIdItem, !Info):-
     ModuleInfo = !.Info ^ module_info,
     module_info_get_inst_table(ModuleInfo, Insts),
-    inst_table_get_user_insts(Insts, UserInsts),
-    user_inst_table_get_inst_defns(UserInsts, UserInstDefns),
+    inst_table_get_user_insts(Insts, UserInstTable),
     InstId = item_name_to_inst_id(InstIdItem),
-    map.lookup(UserInstDefns, InstId, InstDefn),
+    map.lookup(UserInstTable, InstId, InstDefn),
     find_items_used_by_inst_defn(InstDefn, !Info).
 find_items_used_by_item(typeclass_item, ClassItemId, !Info) :-
     ClassItemId = item_name(ClassName, ClassArity),
@@ -1065,7 +1064,7 @@ find_items_used_by_type_body(hlds_solver_type(_, _), !Info).
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_ctor(Ctor, !Info) :-
-    Ctor = ctor(_, Constraints, _, CtorArgs, _),
+    Ctor = ctor(_, Constraints, _, CtorArgs, _, _),
     find_items_used_by_class_constraints(Constraints, !Info),
     list.foldl(find_items_used_by_ctor_arg, CtorArgs, !Info).
 
@@ -1087,12 +1086,19 @@ find_items_used_by_mode_defn(Defn, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_inst_defn(Defn, !Info) :-
-    Defn = hlds_inst_defn(_, _, InstBody, _, _),
+    Defn = hlds_inst_defn(_, _, InstBody, MaybeMatchingTypeCtors, _, _),
     (
         InstBody = eqv_inst(Inst),
         find_items_used_by_inst(Inst, !Info)
     ;
         InstBody = abstract_inst
+    ),
+    (
+        MaybeMatchingTypeCtors = no
+    ;
+        MaybeMatchingTypeCtors = yes(MatchingTypeCtors),
+        list.foldl(find_items_used_by_type_ctor, MatchingTypeCtors,
+            !Info)
     ).
 
 :- pred find_items_used_by_preds(pred_or_func::in, pred_or_func_set::in,
@@ -1272,18 +1278,23 @@ find_items_used_by_types(Types, !Info) :-
 
 find_items_used_by_type(Type, !Info) :-
     ( type_to_ctor_and_args(Type, TypeCtor, TypeArgs) ->
-        (
-            % Unqualified type constructor names are builtins.
-            TypeCtor = type_ctor(qualified(_, _), _),
-            \+ type_ctor_is_higher_order(TypeCtor, _, _, _)
-        ->
-            TypeCtorItem = type_ctor_to_item_name(TypeCtor),
-            maybe_record_item_to_process(type_abstract_item, TypeCtorItem,
-                !Info)
-        ;
-            true
-        ),
+        find_items_used_by_type_ctor(TypeCtor, !Info),
         find_items_used_by_types(TypeArgs, !Info)
+    ;
+        true
+    ).
+
+:- pred find_items_used_by_type_ctor(type_ctor::in,
+    recompilation_usage_info::in, recompilation_usage_info::out) is det.
+
+find_items_used_by_type_ctor(TypeCtor, !Info) :-
+    (
+        % Unqualified type constructor names are builtins.
+        TypeCtor = type_ctor(qualified(_, _), _),
+        \+ type_ctor_is_higher_order(TypeCtor, _, _, _)
+    ->
+        TypeCtorItem = type_ctor_to_item_name(TypeCtor),
+        maybe_record_item_to_process(type_abstract_item, TypeCtorItem, !Info)
     ;
         true
     ).

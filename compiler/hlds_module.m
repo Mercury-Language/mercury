@@ -917,9 +917,9 @@ module_info_optimize(!ModuleInfo) :-
     module_info_set_predicate_table(Preds, !ModuleInfo),
 
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
-    inst_table_get_user_insts(InstTable0, Insts0),
-    user_inst_table_optimize(Insts0, Insts),
-    inst_table_set_user_insts(Insts, InstTable0, InstTable),
+    inst_table_get_user_insts(InstTable0, UserInstTable0),
+    map.optimize(UserInstTable0, UserInstTable),
+    inst_table_set_user_insts(UserInstTable, InstTable0, InstTable),
     module_info_set_inst_table(InstTable, !ModuleInfo),
 
     module_info_get_mode_table(!.ModuleInfo, Modes0),

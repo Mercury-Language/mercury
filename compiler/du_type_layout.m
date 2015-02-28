@@ -55,7 +55,7 @@ decide_du_type_layout(ModuleInfo, TypeCtor, TypeDefn, !TypeTable) :-
     constructor::in, constructor::out) is det.
 
 layout_du_ctor_args(ModuleInfo, DuKind, Ctor0, Ctor) :-
-    Ctor0 = ctor(ExistTVars, Constraints, Name, Args0, Context),
+    Ctor0 = ctor(ExistTVars, Constraints, Name, Args0, Arity, Context),
     module_info_get_globals(ModuleInfo, Globals),
     (
         ( DuKind = du_type_kind_mercury_enum
@@ -68,9 +68,12 @@ layout_du_ctor_args(ModuleInfo, DuKind, Ctor0, Ctor) :-
         DuKind = du_type_kind_general,
         % A functor with a single float argument can have a double-width word
         % if it is not a no-tag functor. An example is `poly_type.f(float)'.
-        ( use_double_word_floats(Globals, yes) ->
+        use_double_word_floats(Globals, UseDoubleWordFloats),
+        (
+            UseDoubleWordFloats = yes,
             set_double_word_floats(ModuleInfo, Args0, Args1)
         ;
+            UseDoubleWordFloats = no,
             Args1 = Args0
         )
     ),
@@ -88,7 +91,9 @@ layout_du_ctor_args(ModuleInfo, DuKind, Ctor0, Ctor) :-
     ;
         Args = Args1
     ),
-    Ctor = ctor(ExistTVars, Constraints, Name, Args, Context).
+    % The individual args may have changed, but the number of args
+    % can't change.
+    Ctor = ctor(ExistTVars, Constraints, Name, Args, Arity, Context).
 
 :- pred use_double_word_floats(globals::in, bool::out) is det.
 

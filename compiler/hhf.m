@@ -425,9 +425,9 @@ complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
 
 maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor, TypeCtorModuleName,
         Ctor, !HI) :-
-    Ctor = ctor(_, _, Name, Args, _),
+    Ctor = ctor(_, _, Name, Args, Arity, _),
     SymName = qualified(TypeCtorModuleName, unqualify_name(Name)),
-    ConsId = cons(SymName, list.length(Args), TypeCtor),
+    ConsId = cons(SymName, Arity, TypeCtor),
     map.lookup(!.HI ^ hhfi_inst_graph, Var, node(Functors0, MaybeParent)),
     ( map.contains(Functors0, ConsId) ->
         true

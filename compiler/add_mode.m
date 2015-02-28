@@ -71,25 +71,23 @@ module_add_inst_defn(ItemInstDefnInfo, InvalidMode, ItemStatus, !ModuleInfo,
     import_status::in, user_inst_table::in, user_inst_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-insts_add(_, _, _, abstract_inst, _, _, !Insts, !Specs) :-
+insts_add(_, _, _, abstract_inst, _, _, !UserInstTable, !Specs) :-
     % XXX handle abstract insts
     sorry($module, $pred, "abstract insts not implemented").
-insts_add(VarSet, Name, Args, eqv_inst(Body), Context, Status, !Insts,
+insts_add(VarSet, Name, Args, eqv_inst(Body), Context, Status, !UserInstTable,
         !Specs) :-
     list.length(Args, Arity),
     InstId = inst_id(Name, Arity),
-    I = hlds_inst_defn(VarSet, Args, eqv_inst(Body), Context, Status),
-    ( user_inst_table_insert(InstId, I, !Insts) ->
+    InstDefn = hlds_inst_defn(VarSet, Args, eqv_inst(Body), no,
+        Context, Status),
+    ( map.insert(InstId, InstDefn, !UserInstTable) ->
         true
     ;
         % If abstract insts are implemented, this will need to change
         % to update the hlds_inst_defn to the non-abstract inst.
 
-        % XXX we should record each error using
-        %    module_info_incr_errors
-        user_inst_table_get_inst_defns(!.Insts, InstDefns),
-        map.lookup(InstDefns, InstId, OrigI),
-        OrigI = hlds_inst_defn(_, _, _, OrigContext, _),
+        map.lookup(!.UserInstTable, InstId, OrigInstDefn),
+        OrigContext = OrigInstDefn ^ inst_context,
         multiple_def_error(Status, Name, Arity, "inst", Context, OrigContext,
             [], !Specs)
     ).
@@ -107,10 +105,9 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
             Context, !Specs),
         InvalidMode = yes
     ;
-        user_inst_table_get_inst_defns(UserInstTable, InstDefns),
         (
-            map.search(InstDefns, InstId0, InstDefn),
-            InstDefn = hlds_inst_defn(_, Params, Body, _, _),
+            map.search(UserInstTable, InstId0, InstDefn),
+            InstDefn = hlds_inst_defn(_, Params, Body, _, _, _),
             Body = eqv_inst(EqvInst0),
             inst_substitute_arg_list(Params, Args0, EqvInst0, EqvInst),
             EqvInst = defined_inst(user_inst(Name, Args))

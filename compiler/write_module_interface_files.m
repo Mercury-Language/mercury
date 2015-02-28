@@ -832,7 +832,7 @@ constructor_list_represents_dummy_argument_type(TypeDefnMap,
 
 constructor_list_represents_dummy_argument_type_2(TypeDefnMap, [Ctor], no, no,
         CoveredTypes) :-
-    Ctor = ctor(ExistQTVars, Constraints, _Name, Args, _Context),
+    Ctor = ctor(ExistQTVars, Constraints, _Name, Args, _Arity, _Context),
     ExistQTVars = [],
     Constraints = [],
     (
@@ -1129,7 +1129,7 @@ type_to_type_ctor_set(Type, !TypeCtors) :-
 
 ctors_to_type_ctor_set([], !TypeCtors).
 ctors_to_type_ctor_set([Ctor | Ctors], !TypeCtors) :-
-    Ctor = ctor(_, _, _, ConsArgs, _),
+    Ctor = ctor(_, _, _, ConsArgs, _, _),
     cons_args_to_type_ctor_set(ConsArgs, !TypeCtors),
     ctors_to_type_ctor_set(Ctors, !TypeCtors).
 

@@ -969,14 +969,14 @@ replace_in_ctors_location(Location, EqvMap, !Ctors, !VarSet, !EquivTypeInfo,
     equiv_type_info::in, equiv_type_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_ctor(Location, EqvMap,
-        ctor(ExistQVars, Constraints0, TName, Targs0, Ctxt),
-        ctor(ExistQVars, Constraints, TName, Targs, Ctxt),
+replace_in_ctor(Location, EqvMap, Ctor0, Ctor,
         !VarSet, !EquivTypeInfo, !UsedModules) :-
+    Ctor0 = ctor(ExistQVars, Constraints0, CtorName, CtorArgs0, Arity, Ctxt),
     replace_in_ctor_arg_list(Location,
-        EqvMap, Targs0, Targs, _, !VarSet, !EquivTypeInfo, !UsedModules),
+        EqvMap, CtorArgs0, CtorArgs, _, !VarSet, !EquivTypeInfo, !UsedModules),
     replace_in_prog_constraint_list(Location, EqvMap,
-        Constraints0, Constraints, !VarSet, !EquivTypeInfo, !UsedModules).
+        Constraints0, Constraints, !VarSet, !EquivTypeInfo, !UsedModules),
+    Ctor = ctor(ExistQVars, Constraints, CtorName, CtorArgs, Arity, Ctxt).
 
 %-----------------------------------------------------------------------------%
 
