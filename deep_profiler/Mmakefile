@@ -139,11 +139,19 @@ $(MDBCOMP_MODULES): .mdbcomp_modules
 # in case some exist, but we need to ignore errors in case some don't exist.
 # The exit 0 is to prevent make itself from printing a message about the
 # (ignored) failure of an action.
-#
-# We could modify the action here to copy only the changed files.
 .mdbcomp_modules: $(MDBCOMP_ORIG_MODULES)
 	-@chmod a+w $(MDBCOMP_MODULES) > /dev/null 2>&1; exit 0
-	cp $(MDBCOMP_ORIG_MODULES) .
+	for f in $(MDBCOMP_MODULES) ; do \
+		if test -s "$$f" ; then \
+			if cmp "$$f" "$(MDBCOMP_DIR)/$$f" ; then \
+				true ; \
+			else \
+				cp "$(MDBCOMP_DIR)/$$f" . ; \
+			fi \
+		else \
+			cp "$(MDBCOMP_DIR)/$$f" . ; \
+		fi \
+	done
 	@chmod a-w $(MDBCOMP_MODULES)
 	touch $@
 
