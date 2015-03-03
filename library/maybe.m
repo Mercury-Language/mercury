@@ -80,7 +80,7 @@
 :- func map_maybe(func(T) = U, maybe(T)) = maybe(U).
 
     % fold_maybe(_, no, Acc) = Acc.
-    % fold_maybe(F, yes(Value), Acc0) = F(Acc0).
+    % fold_maybe(F, yes(Value), Acc0) = F(Value, Acc0).
     %
 :- func fold_maybe(func(T, U) = U, maybe(T), U) = U.
 
