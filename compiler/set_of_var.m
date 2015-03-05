@@ -163,7 +163,7 @@
 
 :- implementation.
 
-% We want to define set_of_var as tree_bitset for performance.
+% We want to define set_of_var as sparse_bitset for performance.
 % However, until we have user-specified pretty printing in the debugger,
 % debugging will be much easier if set_of_var is just a plain set.
 % The definition of the type is hidden here to make it relatively easy
@@ -172,47 +172,47 @@
 % If you want to debug a new set representation, then
 %
 % - make the test_bitset.m module use the new representation instead of
-%   tree_bitset.m (all the operations will be run both on the new
+%   sparse_bitset.m (all the operations will be run both on the new
 %   representation and on set_ordlist, aborting on any discrepancy),
 %
-% - change every occurrence of tree_bitset in this file that is on a line
+% - change every occurrence of sparse_bitset in this file that is on a line
 %   containing MODULE to test_bitset.
 %
 % Once the representation has been proven, you can change all those occurrences
 % of test_bitset to the name of the module implementing the new representation.
 
-:- import_module tree_bitset.                                       % MODULE
+:- import_module sparse_bitset.                                       % MODULE
 :- import_module require.
 
-:- type set_of_var(T) ==  tree_bitset(var(T)).                      % MODULE
+:- type set_of_var(T) ==  sparse_bitset(var(T)).                      % MODULE
 
 %-----------------------------------------------------------------------------%
 
-init = tree_bitset.init.                                            % MODULE
+init = sparse_bitset.init.                                            % MODULE
 init(Set) :-
     Set = set_of_var.init.
 
-make_singleton(Elem) = tree_bitset.make_singleton_set(Elem).        % MODULE
+make_singleton(Elem) = sparse_bitset.make_singleton_set(Elem).        % MODULE
 make_singleton(Elem, Set) :-
     Set = set_of_var.make_singleton(Elem).
 
 count(Set) = Count :-
-    Count = tree_bitset.count(Set).                                 % MODULE
+    Count = sparse_bitset.count(Set).                                 % MODULE
 
 %---------------
 % Tests.
 
 is_empty(Set) :-
-    tree_bitset.is_empty(Set).                                      % MODULE
+    sparse_bitset.is_empty(Set).                                      % MODULE
 
 is_non_empty(Set) :-
-    tree_bitset.is_non_empty(Set).                                  % MODULE
+    sparse_bitset.is_non_empty(Set).                                  % MODULE
 
 is_singleton(Set, Elem) :-
-    tree_bitset.is_singleton(Set, Elem).                            % MODULE
+    sparse_bitset.is_singleton(Set, Elem).                            % MODULE
 
 member(Set, Elem) :-
-    tree_bitset.member(Elem, Set).                                  % MODULE
+    sparse_bitset.member(Elem, Set).                                  % MODULE
 
 is_member(Set, Elem, IsMember) :-
     ( set_of_var.contains(Set, Elem) ->
@@ -222,19 +222,19 @@ is_member(Set, Elem, IsMember) :-
     ).
 
 contains(Set, Elem) :-
-    tree_bitset.contains(Set, Elem).                                % MODULE
+    sparse_bitset.contains(Set, Elem).                                % MODULE
 
 equal(SetA, SetB) :-
-    tree_bitset.equal(SetA, SetB).                                  % MODULE
+    sparse_bitset.equal(SetA, SetB).                                  % MODULE
 
 %---------------
 % Conversions.
 
-list_to_set(List) = tree_bitset.list_to_set(List).                  % MODULE
+list_to_set(List) = sparse_bitset.list_to_set(List).                  % MODULE
 
-sorted_list_to_set(List) = tree_bitset.sorted_list_to_set(List).    % MODULE
+sorted_list_to_set(List) = sparse_bitset.sorted_list_to_set(List).    % MODULE
 
-to_sorted_list(Set) = tree_bitset.to_sorted_list(Set).              % MODULE
+to_sorted_list(Set) = sparse_bitset.to_sorted_list(Set).              % MODULE
 
 list_to_set(List, Set) :-
     Set = set_of_var.list_to_set(List).
@@ -248,68 +248,68 @@ to_sorted_list(Set, List) :-
 set_to_bitset(OrdSet) = BitSet :-
     % We don't use from_set, since set.m itself doesn't have that.
     set.to_sorted_list(OrdSet, List),
-    tree_bitset.sorted_list_to_set(List, BitSet).                   % MODULE
+    sparse_bitset.sorted_list_to_set(List, BitSet).                   % MODULE
 
 bitset_to_set(BitSet) = OrdSet :-
     % We don't use to_set, since set.m itself doesn't have that.
-    tree_bitset.to_sorted_list(BitSet, List),                       % MODULE
+    sparse_bitset.to_sorted_list(BitSet, List),                       % MODULE
     set.sorted_list_to_set(List, OrdSet).
 
 %---------------
 % Updates.
 
 insert(Elem, !Set) :-
-    tree_bitset.insert(Elem, !Set).                                 % MODULE
+    sparse_bitset.insert(Elem, !Set).                                 % MODULE
 
 insert_list(Elems, !Set) :-
-    tree_bitset.insert_list(Elems, !Set).                           % MODULE
+    sparse_bitset.insert_list(Elems, !Set).                           % MODULE
 
 delete(Elem, !Set) :-
-    tree_bitset.delete(Elem, !Set).                                 % MODULE
+    sparse_bitset.delete(Elem, !Set).                                 % MODULE
 
 delete_list(Elems, !Set) :-
-    tree_bitset.delete_list(Elems, !Set).                           % MODULE
+    sparse_bitset.delete_list(Elems, !Set).                           % MODULE
 
 remove(Elem, !Set) :-
-    tree_bitset.remove(Elem, !Set).                                 % MODULE
+    sparse_bitset.remove(Elem, !Set).                                 % MODULE
 
 remove_list(Elems, !Set) :-
-    tree_bitset.remove_list(Elems, !Set).                           % MODULE
+    sparse_bitset.remove_list(Elems, !Set).                           % MODULE
 
 remove_least(LeastElem, !Set) :-
-    tree_bitset.remove_least(LeastElem, !Set).                      % MODULE
+    sparse_bitset.remove_least(LeastElem, !Set).                      % MODULE
 
 %---------------
 % Set operations.
 
-union(SetA, SetB) = tree_bitset.union(SetA, SetB).                  % MODULE
+union(SetA, SetB) = sparse_bitset.union(SetA, SetB).                  % MODULE
 union(SetA, SetB, Set) :-
-    tree_bitset.union(SetA, SetB, Set).                             % MODULE
+    sparse_bitset.union(SetA, SetB, Set).                             % MODULE
 
-union_list(Sets) = tree_bitset.union_list(Sets).                    % MODULE
+union_list(Sets) = sparse_bitset.union_list(Sets).                    % MODULE
 union_list(Sets, Set) :-
-    Set = tree_bitset.union_list(Sets).                             % MODULE
+    Set = sparse_bitset.union_list(Sets).                             % MODULE
 
-intersect(SetA, SetB) = tree_bitset.intersect(SetA, SetB).          % MODULE
+intersect(SetA, SetB) = sparse_bitset.intersect(SetA, SetB).          % MODULE
 intersect(SetA, SetB, Set) :-
-    tree_bitset.intersect(SetA, SetB, Set).                         % MODULE
+    sparse_bitset.intersect(SetA, SetB, Set).                         % MODULE
 
-intersect_list(Sets) = tree_bitset.intersect_list(Sets).            % MODULE
+intersect_list(Sets) = sparse_bitset.intersect_list(Sets).            % MODULE
 intersect_list(Sets, Set) :-
-    Set = tree_bitset.intersect_list(Sets).                         % MODULE
+    Set = sparse_bitset.intersect_list(Sets).                         % MODULE
 
-difference(SetA, SetB) = tree_bitset.difference(SetA, SetB).        % MODULE
+difference(SetA, SetB) = sparse_bitset.difference(SetA, SetB).        % MODULE
 difference(SetA, SetB, Set) :-
-    tree_bitset.difference(SetA, SetB, Set).                        % MODULE
+    sparse_bitset.difference(SetA, SetB, Set).                        % MODULE
 
 divide(Pred, Set, InPart, OutPart) :-
-    tree_bitset.divide(Pred, Set, InPart, OutPart).                 % MODULE
+    sparse_bitset.divide(Pred, Set, InPart, OutPart).                 % MODULE
 
 divide_by_set(DivideBySet, Set, InPart, OutPart) :-
-    tree_bitset.divide_by_set(DivideBySet, Set, InPart, OutPart).   % MODULE
+    sparse_bitset.divide_by_set(DivideBySet, Set, InPart, OutPart).   % MODULE
 
 cartesian_product(A, B, Product) :-
-    tree_bitset.foldl(cartesian_product2(A), B, [], Product).       % MODULE
+    sparse_bitset.foldl(cartesian_product2(A), B, [], Product).       % MODULE
 
 :- pred cartesian_product2(set_of_var(T)::in, var(T)::in,
     list(set_of_var(T))::in, list(set_of_var(T))::out) is det.
@@ -336,21 +336,21 @@ cartesian_product_list2(A, B, SetsAcc, Product ++ SetsAcc) :-
 % Traversals.
 
 fold(P, Set, !Acc) :-
-    tree_bitset.foldl(P, Set, !Acc).                                % MODULE
+    sparse_bitset.foldl(P, Set, !Acc).                                % MODULE
 
 fold_func(P, Set, !Acc) :-
-    !:Acc = tree_bitset.foldl(P, Set, !.Acc).                       % MODULE
+    !:Acc = sparse_bitset.foldl(P, Set, !.Acc).                       % MODULE
 
-filter(P, Set) = tree_bitset.filter(P, Set).                        % MODULE
+filter(P, Set) = sparse_bitset.filter(P, Set).                        % MODULE
 
 filter(P, Set, Trues) :-
-    Trues = tree_bitset.filter(P, Set).                             % MODULE
+    Trues = sparse_bitset.filter(P, Set).                             % MODULE
 
 filter(P, Set, Trues, Falses) :-
-     tree_bitset.filter(P, Set, Trues, Falses).                     % MODULE
+     sparse_bitset.filter(P, Set, Trues, Falses).                     % MODULE
 
 all_true(P, Set) :-
-     tree_bitset.all_true(P, Set).                                  % MODULE
+     sparse_bitset.all_true(P, Set).                                  % MODULE
 
 %---------------
 % Graph colouring.

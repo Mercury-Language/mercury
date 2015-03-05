@@ -394,9 +394,19 @@ proc_arg_vector_partition_poly_args(ArgVec, PolyArgs, NonPolyArgs) :-
         NonPolyArgs = OrigArgs
     ).
 
-proc_arg_vector_member(Vec, V) :-
-    List = proc_arg_vector_to_list(Vec),
-    list.member(V, List).
+proc_arg_vector_member(ArgVec, Var) :-
+    ArgVec = proc_arg_vector(InstanceTypeInfos, InstanceTypeClassInfos,
+        UnivTypeInfos, ExistTypeInfos, UnivTypeClassInfos,
+        ExistTypeClassInfos, OrigArgs, MaybeRetValue),
+    ( list.member(Var, OrigArgs)
+    ; MaybeRetValue = yes(Var)
+    ; list.member(Var, InstanceTypeInfos)
+    ; list.member(Var, InstanceTypeClassInfos)
+    ; list.member(Var, UnivTypeInfos)
+    ; list.member(Var, ExistTypeInfos)
+    ; list.member(Var, UnivTypeClassInfos)
+    ; list.member(Var, ExistTypeClassInfos)
+    ).
 
 proc_arg_vector_to_func_args(Vector, FuncArgs, FuncRetVal) :-
     Vector = proc_arg_vector(InstanceTypeInfos, InstanceTypeClassInfos,

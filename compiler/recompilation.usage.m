@@ -1381,11 +1381,11 @@ find_items_used_by_inst_name(InstName, !Info) :-
         maybe_record_item_to_process(inst_item, item_name(Name, Arity), !Info),
         find_items_used_by_insts(ArgInsts, !Info)
     ;
-        ( InstName = merge_inst(Inst1, Inst2)
-        ; InstName = unify_inst(_, Inst1, Inst2, _)
+        ( InstName = merge_inst(InstA, InstB)
+        ; InstName = unify_inst(_, _, InstA, InstB)
         ),
-        find_items_used_by_inst(Inst1, !Info),
-        find_items_used_by_inst(Inst2, !Info)
+        find_items_used_by_inst(InstA, !Info),
+        find_items_used_by_inst(InstB, !Info)
     ;
         ( InstName = ground_inst(SubInstName, _, _, _)
         ; InstName = any_inst(SubInstName, _, _, _)

@@ -18,8 +18,8 @@ constrained_poly_insts2.m:049: In clause for `p((pred(in((I =< ground))) is
 constrained_poly_insts2.m:049:   det), in)':
 constrained_poly_insts2.m:049:   in argument 2 (i.e. argument 1 of the called
 constrained_poly_insts2.m:049:   predicate) of higher-order predicate call:
-constrained_poly_insts2.m:049:   mode error: arguments `X' have the following
-constrained_poly_insts2.m:049:   insts:
+constrained_poly_insts2.m:049:   mode error: argument `X' has the following
+constrained_poly_insts2.m:049:   inst:
 constrained_poly_insts2.m:049:     ground
 constrained_poly_insts2.m:049:   which does not match any of the modes for
 constrained_poly_insts2.m:049:   higher-order predicate call.
@@ -28,9 +28,10 @@ constrained_poly_insts2.m:054:   det), in((J =<
 constrained_poly_insts2.m:054:   (constrained_poly_insts2.apple))))':
 constrained_poly_insts2.m:054:   in argument 2 (i.e. argument 1 of the called
 constrained_poly_insts2.m:054:   predicate) of higher-order predicate call:
-constrained_poly_insts2.m:054:   mode error: arguments `X' have the following
-constrained_poly_insts2.m:054:   insts:
-constrained_poly_insts2.m:054:     (J =< bound(apple))
+constrained_poly_insts2.m:054:   mode error: argument `X' has the following
+constrained_poly_insts2.m:054:   inst:
+constrained_poly_insts2.m:054:     (J =<
+constrained_poly_insts2.m:054:     bound((constrained_poly_insts2.apple)))
 constrained_poly_insts2.m:054:   which does not match any of the modes for
 constrained_poly_insts2.m:054:   higher-order predicate call.
 constrained_poly_insts2.m:059: In clause for `p3((pred(in((I =<
@@ -39,17 +40,18 @@ constrained_poly_insts2.m:059:   in((constrained_poly_insts2.orange)))':
 constrained_poly_insts2.m:059:   in argument 2 (i.e. argument 1 of the called
 constrained_poly_insts2.m:059:   predicate) of higher-order predicate call:
 constrained_poly_insts2.m:059:   mode error: variable `X' has instantiatedness
-constrained_poly_insts2.m:059:   `bound(orange)',
+constrained_poly_insts2.m:059:   `bound((constrained_poly_insts2.orange))',
 constrained_poly_insts2.m:059:   expected instantiatedness was `(I =<
-constrained_poly_insts2.m:059:   bound(apple))'.
+constrained_poly_insts2.m:059:   bound((constrained_poly_insts2.apple)))'.
 constrained_poly_insts2.m:064: In clause for `p4((pred(in((I =<
 constrained_poly_insts2.m:064:   (constrained_poly_insts2.apple)))) is det),
 constrained_poly_insts2.m:064:   in((J =< (constrained_poly_insts2.apple))))':
 constrained_poly_insts2.m:064:   in argument 2 (i.e. argument 1 of the called
 constrained_poly_insts2.m:064:   predicate) of higher-order predicate call:
-constrained_poly_insts2.m:064:   mode error: arguments `X' have the following
-constrained_poly_insts2.m:064:   insts:
-constrained_poly_insts2.m:064:     (J =< bound(apple))
+constrained_poly_insts2.m:064:   mode error: argument `X' has the following
+constrained_poly_insts2.m:064:   inst:
+constrained_poly_insts2.m:064:     (J =<
+constrained_poly_insts2.m:064:     bound((constrained_poly_insts2.apple)))
 constrained_poly_insts2.m:064:   which does not match any of the modes for
 constrained_poly_insts2.m:064:   higher-order predicate call.
 constrained_poly_insts2.m:069: In clause for `p5((pred(in((I =<
@@ -57,8 +59,8 @@ constrained_poly_insts2.m:069:   (constrained_poly_insts2.apple)))) is det),
 constrained_poly_insts2.m:069:   in((constrained_poly_insts2.apple)))':
 constrained_poly_insts2.m:069:   in argument 2 (i.e. argument 1 of the called
 constrained_poly_insts2.m:069:   predicate) of higher-order predicate call:
-constrained_poly_insts2.m:069:   mode error: arguments `X' have the following
-constrained_poly_insts2.m:069:   insts:
-constrained_poly_insts2.m:069:     bound(apple)
+constrained_poly_insts2.m:069:   mode error: argument `X' has the following
+constrained_poly_insts2.m:069:   inst:
+constrained_poly_insts2.m:069:     bound((constrained_poly_insts2.apple))
 constrained_poly_insts2.m:069:   which does not match any of the modes for
 constrained_poly_insts2.m:069:   higher-order predicate call.

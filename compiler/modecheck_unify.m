@@ -1426,7 +1426,6 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
 categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
         X, NewConsId, ArgVars, VarTypes, UnifyContext,
         Unification0, Unification, !ModeInfo) :-
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     lookup_var_type(VarTypes, X, TypeOfX),
     % If we are re-doing mode analysis, preserve the existing cons_id.
     (
@@ -1451,6 +1450,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
         SubInfo = no_construct_sub_info,
         ConsId = NewConsId
     ),
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     modes_to_uni_modes(ModuleInfo, ModeOfXArgs, ArgModes0, ArgModes),
     ( mode_is_output(ModuleInfo, ModeOfX) ->
         % It is a construction.

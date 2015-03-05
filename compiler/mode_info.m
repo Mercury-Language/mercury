@@ -236,10 +236,6 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_in_promise_purity_scope(in_promise_purity_scope::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_add_live_vars(set_of_progvar::in,
-    mode_info::in, mode_info::out) is det.
-:- pred mode_info_remove_live_vars(set_of_progvar::in,
-    mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_varset(prog_varset::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_var_types(vartypes::in,
@@ -271,6 +267,21 @@
 :- pred mode_info_set_make_ground_terms_unique(make_ground_terms_unique::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_in_dupl_for_switch(in_dupl_for_switch::in,
+    mode_info::in, mode_info::out) is det.
+
+    % We keep track of the live variables and the nondet-live variables
+    % as two bags. This allows us to easily add and remove sets of variables.
+    % It is probably not maximally efficient.
+    %
+    % mode_info_add_live_vars adds the given set of vars
+    % to the bag of live vars and the bag of nondet-live vars.
+    %
+    % mode_info_remove_live_vars removes the given set of vars
+    % from the bag of live vars and the bag of nondet-live vars.
+    %
+:- pred mode_info_add_live_vars(set_of_progvar::in,
+    mode_info::in, mode_info::out) is det.
+:- pred mode_info_remove_live_vars(set_of_progvar::in,
     mode_info::in, mode_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -875,13 +886,6 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
 
 %-----------------------------------------------------------------------------%
 
-    % We keep track of the live variables and the nondet-live variables
-    % as two bags. This allows us to easily add and remove sets of variables.
-    % It is probably not maximally efficient.
-
-    % Add a set of vars to the bag of live vars and the bag of
-    % nondet-live vars.
-
 mode_info_add_live_vars(NewLiveVars, !MI) :-
     set_of_var.to_sorted_list(NewLiveVars, NewLiveVarsList),
     mode_info_get_live_vars(!.MI, LiveVars0),
@@ -890,9 +894,6 @@ mode_info_add_live_vars(NewLiveVars, !MI) :-
     bag.insert_list(NewLiveVarsList, NondetLiveVars0, NondetLiveVars),
     mode_info_set_live_vars(LiveVars, !MI),
     mode_info_set_nondet_live_vars(NondetLiveVars, !MI).
-
-    % Remove a set of vars from the bag of live vars and
-    % the bag of nondet-live vars.
 
 mode_info_remove_live_vars(OldLiveVars, !MI) :-
     set_of_var.to_sorted_list(OldLiveVars, OldLiveVarsList),
@@ -913,8 +914,6 @@ mode_info_var_list_is_live(_, [], []).
 mode_info_var_list_is_live(ModeInfo, [Var | Vars], [Live | Lives]) :-
     mode_info_var_is_live(ModeInfo, Var, Live),
     mode_info_var_list_is_live(ModeInfo, Vars, Lives).
-
-    % Check whether a variable is live or not
 
 mode_info_var_is_live(ModeInfo, Var, Result) :-
     mode_info_get_live_vars(ModeInfo, LiveVars0),

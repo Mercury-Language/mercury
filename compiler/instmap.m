@@ -1128,22 +1128,34 @@ merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, Deltas,
 
 %-----------------------------------------------------------------------------%
 
-compute_instmap_delta(unreachable, _, _, unreachable).
-compute_instmap_delta(reachable(_), unreachable, _, unreachable).
-compute_instmap_delta(reachable(InstMapA), reachable(InstMapB), NonLocals,
-        reachable(DeltaInstMap)) :-
-    set_of_var.to_sorted_list(NonLocals, NonLocalsList),
-    compute_instmap_delta_2(NonLocalsList, InstMapA, InstMapB, AssocList),
-    map.from_sorted_assoc_list(AssocList, DeltaInstMap).
+compute_instmap_delta(InstMapA, InstMapB, NonLocals, InstMap) :-
+    (
+        InstMapA = unreachable,
+        InstMap = unreachable
+    ;
+        InstMapA = reachable(_),
+        InstMapB = unreachable,
+        InstMap = unreachable
+    ;
+        InstMapA = reachable(InstMappingA),
+        InstMapB = reachable(InstMappingB),
+        set_of_var.to_sorted_list(NonLocals, NonLocalsList),
+        compute_instmap_delta_for_vars(NonLocalsList,
+            InstMappingA, InstMappingB, AssocList),
+        map.from_sorted_assoc_list(AssocList, DeltaInstMap),
+        InstMap = reachable(DeltaInstMap)
+    ).
 
-:- pred compute_instmap_delta_2(list(prog_var)::in, instmapping::in,
+:- pred compute_instmap_delta_for_vars(list(prog_var)::in, instmapping::in,
     instmapping::in, assoc_list(prog_var, mer_inst)::out) is det.
 
-compute_instmap_delta_2([], _, _, []).
-compute_instmap_delta_2([Var | Vars], InstMapA, InstMapB, AssocList) :-
-    compute_instmap_delta_2(Vars, InstMapA, InstMapB, AssocListTail),
-    instmapping_lookup_var(InstMapA, Var, InstA),
-    instmapping_lookup_var(InstMapB, Var, InstB),
+compute_instmap_delta_for_vars([], _, _, []).
+compute_instmap_delta_for_vars([Var | Vars], InstMappingA, InstMappingB,
+        AssocList) :-
+    compute_instmap_delta_for_vars(Vars, InstMappingA, InstMappingB,
+        AssocListTail),
+    instmapping_lookup_var(InstMappingA, Var, InstA),
+    instmapping_lookup_var(InstMappingB, Var, InstB),
     ( InstA = InstB ->
         AssocList = AssocListTail
     ;

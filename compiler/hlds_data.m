@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: hlds_data.m.
 % Main authors: fjh, conway.
@@ -12,7 +12,7 @@
 % This module defines the part of the HLDS that deals with issues related
 % to data and its representation: function symbols, types, insts, modes.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.hlds_data.
 :- interface.
@@ -28,7 +28,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 
 :- implementation.
@@ -37,14 +36,16 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
+:- import_module cord.
 :- import_module int.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module require.
 :- import_module solutions.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -119,7 +120,7 @@
 
     % Maps the raw, unqualified name of a functor to information about
     % all the functors with that name.
-:- type cons_table  ==  map(string, inner_cons_table).
+:- type cons_table == map(string, inner_cons_table).
 
     % Every visible constructor will have exactly one entry in the list,
     % and this entry lists all the cons_ids by which that constructor
@@ -340,7 +341,7 @@ replace_cons_defns_in_inner_cons_entry(Replace, !Entry) :-
 cons_table_optimize(!ConsTable) :-
     map.optimize(!ConsTable).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -377,8 +378,8 @@ cons_table_optimize(!ConsTable) :-
     --->    get
     ;       set.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -427,7 +428,7 @@ cons_table_optimize(!ConsTable) :-
         in(pred(in, in, out, in, out) is det),
     type_table::in, type_table::out, T::in, T::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This is how type, modes and constructors are represented. The parts that
     % are not defined here (i.e. type_param, constructor, type, inst and mode)
@@ -730,6 +731,13 @@ cons_table_optimize(!ConsTable) :-
                 mer_type              % Argument type.
             ).
 
+    % A type_ctor essentially contains three components. The raw name
+    % of the type constructor, its module qualification, and its arity.
+    % I (zs) tried replacing this table with a two-stage map (from raw name
+    % to a subtable that itself mapped the full type_ctor to no_tag_type,
+    % in an attempt to make the main part of the looked use cheaper
+    % comparisons, on just raw strings. However, this change effectively led
+    % to no change in performance.
 :- type no_tag_type_table == map(type_ctor, no_tag_type).
 
 :- func get_maybe_cheaper_tag_test(hlds_type_body) = maybe_cheaper_tag_test.
@@ -837,7 +845,7 @@ get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
         CheaperTagTest = no_cheaper_tag_test
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type type_table == map(string, type_ctor_table).
 
@@ -945,7 +953,7 @@ map_foldl_over_type_ctor_defns(Pred, !TypeTable, !Acc) :-
 map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
     map.map_foldl(Pred, !TypeCtorTable, !Acc).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type hlds_type_defn
     --->    hlds_type_defn(
@@ -1012,38 +1020,10 @@ set_type_defn_status(Status, !Defn) :-
 set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
     !Defn ^ type_defn_in_exported_eqv := InExportedEqv.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
-
-    % The symbol table for insts.
-    %
-:- type inst_table.
-
-:- type user_inst_table ==          map(inst_id, hlds_inst_defn).
-:- type unify_inst_table ==         map(inst_name, maybe_inst_det).
-:- type merge_inst_table ==         map(pair(mer_inst), maybe_inst).
-:- type ground_inst_table ==        map(inst_name, maybe_inst_det).
-:- type any_inst_table ==           map(inst_name, maybe_inst_det).
-:- type shared_inst_table ==        map(inst_name, maybe_inst).
-:- type mostly_uniq_inst_table ==   map(inst_name, maybe_inst).
-
-:- type unify_inst_pair
-    --->    unify_inst_pair(
-                is_live,
-                mer_inst,
-                mer_inst,
-                unify_is_real
-            ).
-
-:- type maybe_inst
-    --->    inst_unknown
-    ;       inst_known(mer_inst).
-
-:- type maybe_inst_det
-    --->    inst_det_unknown
-    ;       inst_det_known(mer_inst, determinism).
 
     % An `hlds_inst_defn' holds the information we need to store
     % about inst definitions such as
@@ -1081,7 +1061,105 @@ set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
             % will be filled in later.
             % (XXX Abstract insts are not really supported.)
 
-%-----------------------------------------------------------------------------%
+:- type user_inst_table ==          map(inst_id, hlds_inst_defn).
+
+:- type maybe_inst
+    --->    inst_unknown
+    ;       inst_known(mer_inst).
+
+:- type maybe_inst_det
+    --->    inst_det_unknown
+    ;       inst_det_known(mer_inst, determinism).
+
+:- type unify_inst_table.
+:- type merge_inst_table.
+:- type ground_inst_table.
+:- type any_inst_table.
+:- type shared_inst_table.
+:- type mostly_uniq_inst_table.
+
+:- pred lookup_unify_inst(unify_inst_table::in,
+    unify_inst_info::in, maybe_inst_det::out) is det.
+:- pred lookup_merge_inst(merge_inst_table::in,
+    merge_inst_info::in, maybe_inst::out) is det.
+:- pred lookup_ground_inst(ground_inst_table::in,
+    ground_inst_info::in, maybe_inst_det::out) is det.
+:- pred lookup_any_inst(any_inst_table::in,
+    any_inst_info::in, maybe_inst_det::out) is det.
+:- pred lookup_shared_inst(shared_inst_table::in,
+    inst_name::in, maybe_inst::out) is det.
+:- pred lookup_mostly_uniq_inst(mostly_uniq_inst_table::in,
+    inst_name::in, maybe_inst::out) is det.
+
+:- pred search_insert_unify_inst(
+    unify_inst_info::in, maybe(maybe_inst_det)::out,
+    unify_inst_table::in, unify_inst_table::out) is det.
+:- pred search_insert_merge_inst(
+    merge_inst_info::in, maybe(maybe_inst)::out,
+    merge_inst_table::in, merge_inst_table::out) is det.
+:- pred search_insert_ground_inst(
+    ground_inst_info::in, maybe(maybe_inst_det)::out,
+    ground_inst_table::in, ground_inst_table::out) is det.
+:- pred search_insert_any_inst(
+    any_inst_info::in, maybe(maybe_inst_det)::out,
+    any_inst_table::in, any_inst_table::out) is det.
+:- pred search_insert_shared_inst(
+    inst_name::in, maybe(maybe_inst)::out,
+    shared_inst_table::in, shared_inst_table::out) is det.
+:- pred search_insert_mostly_uniq_inst(
+    inst_name::in, maybe(maybe_inst)::out,
+    mostly_uniq_inst_table::in, mostly_uniq_inst_table::out) is det.
+
+:- pred det_update_unify_inst(unify_inst_info::in, maybe_inst_det::in,
+    unify_inst_table::in, unify_inst_table::out) is det.
+:- pred det_update_merge_inst(merge_inst_info::in, maybe_inst::in,
+    merge_inst_table::in, merge_inst_table::out) is det.
+:- pred det_update_ground_inst(ground_inst_info::in, maybe_inst_det::in,
+    ground_inst_table::in, ground_inst_table::out) is det.
+:- pred det_update_any_inst(any_inst_info::in, maybe_inst_det::in,
+    any_inst_table::in, any_inst_table::out) is det.
+:- pred det_update_shared_inst(inst_name::in, maybe_inst::in,
+    shared_inst_table::in, shared_inst_table::out) is det.
+:- pred det_update_mostly_uniq_inst(inst_name::in, maybe_inst::in,
+    mostly_uniq_inst_table::in, mostly_uniq_inst_table::out) is det.
+
+:- pred unify_insts_to_sorted_pairs(unify_inst_table::in,
+    assoc_list(unify_inst_info, maybe_inst_det)::out) is det.
+:- pred merge_insts_to_sorted_pairs(merge_inst_table::in,
+    assoc_list(merge_inst_info, maybe_inst)::out) is det.
+:- pred ground_insts_to_sorted_pairs(ground_inst_table::in,
+    assoc_list(ground_inst_info, maybe_inst_det)::out) is det.
+:- pred any_insts_to_sorted_pairs(any_inst_table::in,
+    assoc_list(any_inst_info, maybe_inst_det)::out) is det.
+:- pred shared_insts_to_sorted_pairs(shared_inst_table::in,
+    assoc_list(inst_name, maybe_inst)::out) is det.
+:- pred mostly_uniq_insts_to_sorted_pairs(mostly_uniq_inst_table::in,
+    assoc_list(inst_name, maybe_inst)::out) is det.
+
+:- pred unify_insts_from_sorted_pairs(
+    assoc_list(unify_inst_info, maybe_inst_det)::in,
+    unify_inst_table::out) is det.
+:- pred merge_insts_from_sorted_pairs(
+    assoc_list(merge_inst_info, maybe_inst)::in,
+    merge_inst_table::out) is det.
+:- pred ground_insts_from_sorted_pairs(
+    assoc_list(ground_inst_info, maybe_inst_det)::in,
+    ground_inst_table::out) is det.
+:- pred any_insts_from_sorted_pairs(
+    assoc_list(any_inst_info, maybe_inst_det)::in,
+    any_inst_table::out) is det.
+:- pred shared_insts_from_sorted_pairs(
+    assoc_list(inst_name, maybe_inst)::in,
+    shared_inst_table::out) is det.
+:- pred mostly_uniq_insts_from_sorted_pairs(
+    assoc_list(inst_name, maybe_inst)::in,
+    mostly_uniq_inst_table::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % The symbol table for insts.
+    %
+:- type inst_table.
 
 :- pred inst_table_init(inst_table::out) is det.
 
@@ -1115,6 +1193,291 @@ set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
 
 :- implementation.
 
+%---------------------------------------------------------------------------%
+%
+% I (zs) have tried making the merge_inst_table a two-stage table,
+% i.e. being map(mer_inst, map(mer_inst, maybe_inst)), in the hope
+% of making lookups faster, but it led to a slowdown, not a speedup.
+% The main reason was the extra cost of insertions. While you can always
+% use a search_insert operation on the inner map, you can do it on
+% the outer map only if the first inst does not occur in the outer map.
+% If it does, then you are *modifying* an existing entry, not inserting
+% a new one, and you can't modify it without knowing what it is. Therefore
+% in the common case, a search_insert on the whole merge_inst_table
+% requires first a search_insert on the outer table, and when the search
+% part of that succeeds, a search_insert on the inner table and then
+% a straight *update* on the outer map. The main performance problem is
+% the need for this update.
+%
+% I expect (though I have not tested it) that the same problem would arise
+% if we turned the subtables of the unify_inst_table into two-stage maps.
+
+:- type inst_pair
+    --->    inst_pair(mer_inst, mer_inst).
+
+:- type unify_inst_table
+    --->    unify_inst_table(
+                uit_live_real   ::  map(inst_pair, maybe_inst_det),
+                uit_live_fake   ::  map(inst_pair, maybe_inst_det),
+                uit_dead_real   ::  map(inst_pair, maybe_inst_det),
+                uit_dead_fake   ::  map(inst_pair, maybe_inst_det)
+            ).
+
+:- type merge_inst_table ==         map(merge_inst_info, maybe_inst).
+:- type ground_inst_table ==        map(ground_inst_info, maybe_inst_det).
+:- type any_inst_table ==           map(any_inst_info, maybe_inst_det).
+:- type shared_inst_table ==        map(inst_name, maybe_inst).
+:- type mostly_uniq_inst_table ==   map(inst_name, maybe_inst).
+
+%---------------------------------------------------------------------------%
+
+lookup_unify_inst(UnifyInstTable, UnifyInstInfo, MaybeInstDet) :-
+    UnifyInstInfo = unify_inst_info(IsLive, IsReal, InstA, InstB),
+    InstPair = inst_pair(InstA, InstB),
+    (
+        IsLive = is_live, IsReal = real_unify,
+        LiveRealTable = UnifyInstTable ^ uit_live_real,
+        map.lookup(LiveRealTable, InstPair, MaybeInstDet)
+    ;
+        IsLive = is_live, IsReal = fake_unify,
+        LiveFakeTable = UnifyInstTable ^ uit_live_fake,
+        map.lookup(LiveFakeTable, InstPair, MaybeInstDet)
+    ;
+        IsLive = is_dead, IsReal = real_unify,
+        DeadRealTable = UnifyInstTable ^ uit_dead_real,
+        map.lookup(DeadRealTable, InstPair, MaybeInstDet)
+    ;
+        IsLive = is_dead, IsReal = fake_unify,
+        DeadFakeTable = UnifyInstTable ^ uit_dead_fake,
+        map.lookup(DeadFakeTable, InstPair, MaybeInstDet)
+    ).
+
+lookup_merge_inst(MergeInstTable, MergeInstInfo, MaybeInst) :-
+    map.lookup(MergeInstTable, MergeInstInfo, MaybeInst).
+
+lookup_ground_inst(GroundInstTable, GroundInstInfo, MaybeInstDet) :-
+    map.lookup(GroundInstTable, GroundInstInfo, MaybeInstDet).
+
+lookup_any_inst(AnyInstTable, AnyInstInfo, MaybeInstDet) :-
+    map.lookup(AnyInstTable, AnyInstInfo, MaybeInstDet).
+
+lookup_shared_inst(SharedInstTable, InstName, MaybeInst) :-
+    map.lookup(SharedInstTable, InstName, MaybeInst).
+
+lookup_mostly_uniq_inst(MostlyUniqInstTable, InstName, MaybeInst) :-
+    map.lookup(MostlyUniqInstTable, InstName, MaybeInst).
+
+%---------------------------------------------------------------------------%
+
+search_insert_unify_inst(UnifyInstInfo, MaybeMaybeInstDet, !UnifyInstTable) :-
+    UnifyInstInfo = unify_inst_info(IsLive, IsReal, InstA, InstB),
+    InstPair = inst_pair(InstA, InstB),
+    (
+        IsLive = is_live, IsReal = real_unify,
+        LiveRealTable0 = !.UnifyInstTable ^ uit_live_real,
+        map.search_insert(InstPair, inst_det_unknown, MaybeMaybeInstDet,
+            LiveRealTable0, LiveRealTable),
+        !UnifyInstTable ^ uit_live_real := LiveRealTable
+    ;
+        IsLive = is_live, IsReal = fake_unify,
+        LiveFakeTable0 = !.UnifyInstTable ^ uit_live_fake,
+        map.search_insert(InstPair, inst_det_unknown, MaybeMaybeInstDet,
+            LiveFakeTable0, LiveFakeTable),
+        !UnifyInstTable ^ uit_live_fake := LiveFakeTable
+    ;
+        IsLive = is_dead, IsReal = real_unify,
+        DeadRealTable0 = !.UnifyInstTable ^ uit_dead_real,
+        map.search_insert(InstPair, inst_det_unknown, MaybeMaybeInstDet,
+            DeadRealTable0, DeadRealTable),
+        !UnifyInstTable ^ uit_dead_real := DeadRealTable
+    ;
+        IsLive = is_dead, IsReal = fake_unify,
+        DeadFakeTable0 = !.UnifyInstTable ^ uit_dead_fake,
+        map.search_insert(InstPair, inst_det_unknown, MaybeMaybeInstDet,
+            DeadFakeTable0, DeadFakeTable),
+        !UnifyInstTable ^ uit_dead_fake := DeadFakeTable
+    ).
+
+search_insert_merge_inst(MergeInstInfo, MaybeMaybeInst, !MergeInstTable) :-
+    map.search_insert(MergeInstInfo, inst_unknown, MaybeMaybeInst,
+        !MergeInstTable).
+
+search_insert_ground_inst(GroundInstInfo, MaybeMaybeInstDet,
+        !GroundInstTable) :-
+    map.search_insert(GroundInstInfo, inst_det_unknown, MaybeMaybeInstDet,
+        !GroundInstTable).
+
+search_insert_any_inst(AnyInstInfo, MaybeMaybeInstDet, !AnyInstTable) :-
+    map.search_insert(AnyInstInfo, inst_det_unknown, MaybeMaybeInstDet,
+        !AnyInstTable).
+
+search_insert_shared_inst(InstName, MaybeMaybeInst, !SharedInstTable) :-
+    map.search_insert(InstName, inst_unknown, MaybeMaybeInst,
+        !SharedInstTable).
+
+search_insert_mostly_uniq_inst(InstName, MaybeMaybeInst,
+        !MostlyUniqInstTable) :-
+    map.search_insert(InstName, inst_unknown, MaybeMaybeInst,
+        !MostlyUniqInstTable).
+
+%---------------------------------------------------------------------------%
+
+det_update_unify_inst(UnifyInstInfo, MaybeInstDet, !UnifyInstTable) :-
+    UnifyInstInfo = unify_inst_info(IsLive, IsReal, InstA, InstB),
+    InstPair = inst_pair(InstA, InstB),
+    (
+        IsLive = is_live, IsReal = real_unify,
+        LiveRealTable0 = !.UnifyInstTable ^ uit_live_real,
+        map.det_update(InstPair, MaybeInstDet, LiveRealTable0, LiveRealTable),
+        !UnifyInstTable ^ uit_live_real := LiveRealTable
+    ;
+        IsLive = is_live, IsReal = fake_unify,
+        LiveFakeTable0 = !.UnifyInstTable ^ uit_live_fake,
+        map.det_update(InstPair, MaybeInstDet, LiveFakeTable0, LiveFakeTable),
+        !UnifyInstTable ^ uit_live_fake := LiveFakeTable
+    ;
+        IsLive = is_dead, IsReal = real_unify,
+        DeadRealTable0 = !.UnifyInstTable ^ uit_dead_real,
+        map.det_update(InstPair, MaybeInstDet, DeadRealTable0, DeadRealTable),
+        !UnifyInstTable ^ uit_dead_real := DeadRealTable
+    ;
+        IsLive = is_dead, IsReal = fake_unify,
+        DeadFakeTable0 = !.UnifyInstTable ^ uit_dead_fake,
+        map.det_update(InstPair, MaybeInstDet, DeadFakeTable0, DeadFakeTable),
+        !UnifyInstTable ^ uit_dead_fake := DeadFakeTable
+    ).
+
+det_update_merge_inst(MergeInstInfo, MaybeInst, !MergeInstTable) :-
+    map.det_update(MergeInstInfo, MaybeInst, !MergeInstTable).
+
+det_update_ground_inst(GroundInstInfo, MaybeInstDet, !GroundInstTable) :-
+    map.det_update(GroundInstInfo, MaybeInstDet, !GroundInstTable).
+
+det_update_any_inst(AnyInstInfo, MaybeInstDet, !AnyInstTable) :-
+    map.det_update(AnyInstInfo, MaybeInstDet, !AnyInstTable).
+
+det_update_shared_inst(InstName, MaybeInst, !SharedInstTable) :-
+    map.det_update(InstName, MaybeInst, !SharedInstTable).
+
+det_update_mostly_uniq_inst(InstName, MaybeInst, !MostlyUniqInstTable) :-
+    map.det_update(InstName, MaybeInst, !MostlyUniqInstTable).
+
+%---------------------------------------------------------------------------%
+
+unify_insts_to_sorted_pairs(UnifyInstTable, AssocList) :-
+    UnifyInstTable = unify_inst_table(LiveRealTable, LiveFakeTable,
+        DeadRealTable, DeadFakeTable),
+    map.to_assoc_list(LiveRealTable, LiveRealPairInsts),
+    map.to_assoc_list(LiveFakeTable, LiveFakePairInsts),
+    map.to_assoc_list(DeadRealTable, DeadRealPairInsts),
+    map.to_assoc_list(DeadFakeTable, DeadFakePairInsts),
+    some [!RevAssocList] (
+        % The order in which we generate the four sublists corresponds to
+        % the order in which we take them in unify_insts_from_sorted_pairs.
+        !:RevAssocList = [],
+        accumulate_unify_insts(is_live, real_unify, LiveRealPairInsts,
+            !RevAssocList),
+        accumulate_unify_insts(is_live, fake_unify, LiveFakePairInsts,
+            !RevAssocList),
+        accumulate_unify_insts(is_dead, real_unify, DeadRealPairInsts,
+            !RevAssocList),
+        accumulate_unify_insts(is_dead, fake_unify, DeadFakePairInsts,
+            !RevAssocList),
+        list.reverse(!.RevAssocList, AssocList)
+    ).
+
+:- pred accumulate_unify_insts(is_live::in, unify_is_real::in,
+    assoc_list(inst_pair, maybe_inst_det)::in,
+    assoc_list(unify_inst_info, maybe_inst_det)::in,
+    assoc_list(unify_inst_info, maybe_inst_det)::out) is det.
+
+accumulate_unify_insts(_IsLive, _IsReal, [], !RevAssocList).
+accumulate_unify_insts(IsLive, IsReal, [PairMaybeInst | PairMaybeInsts],
+        !RevAssocList) :-
+    PairMaybeInst = inst_pair(InstA, InstB) - MaybeInst,
+    UnifyInstInfo = unify_inst_info(IsLive, IsReal, InstA, InstB),
+    !:RevAssocList = [UnifyInstInfo - MaybeInst | !.RevAssocList],
+    accumulate_unify_insts(IsLive, IsReal, PairMaybeInsts, !RevAssocList).
+
+%---------------------%
+
+merge_insts_to_sorted_pairs(MergeInstTable, AssocList) :-
+    map.to_sorted_assoc_list(MergeInstTable, AssocList).
+
+ground_insts_to_sorted_pairs(GroundInstTable, AssocList) :-
+    map.to_sorted_assoc_list(GroundInstTable, AssocList).
+
+any_insts_to_sorted_pairs(AnyInstTable, AssocList) :-
+    map.to_sorted_assoc_list(AnyInstTable, AssocList).
+
+shared_insts_to_sorted_pairs(SharedInstTable, AssocList) :-
+    map.to_sorted_assoc_list(SharedInstTable, AssocList).
+
+mostly_uniq_insts_to_sorted_pairs(MostlyUniqInstTable, AssocList) :-
+    map.to_sorted_assoc_list(MostlyUniqInstTable, AssocList).
+
+%---------------------------------------------------------------------------%
+
+unify_insts_from_sorted_pairs(AssocList0, UnifyInstTable) :-
+    % The order in which we take the four sublists corresponds to
+    % the order in which we generate them in unify_insts_to_sorted_pairs.
+    unify_inst_subtable_from_sorted_pairs(is_live, real_unify,
+        AssocList0, AssocList1, [], RevLiveRealAssocList),
+    unify_inst_subtable_from_sorted_pairs(is_live, fake_unify,
+        AssocList1, AssocList2, [], RevLiveFakeAssocList),
+    unify_inst_subtable_from_sorted_pairs(is_dead, real_unify,
+        AssocList2, AssocList3, [], RevDeadRealAssocList),
+    unify_inst_subtable_from_sorted_pairs(is_dead, fake_unify,
+        AssocList3, AssocList4, [], RevDeadFakeAssocList),
+    expect(unify(AssocList4, []), $module, $pred, "AssocList4 != []"),
+    map.from_rev_sorted_assoc_list(RevLiveRealAssocList, LiveRealTable),
+    map.from_rev_sorted_assoc_list(RevLiveFakeAssocList, LiveFakeTable),
+    map.from_rev_sorted_assoc_list(RevDeadRealAssocList, DeadRealTable),
+    map.from_rev_sorted_assoc_list(RevDeadFakeAssocList, DeadFakeTable),
+    UnifyInstTable = unify_inst_table(LiveRealTable, LiveFakeTable,
+        DeadRealTable, DeadFakeTable).
+
+:- pred unify_inst_subtable_from_sorted_pairs(is_live::in, unify_is_real::in,
+    assoc_list(unify_inst_info, maybe_inst_det)::in,
+    assoc_list(unify_inst_info, maybe_inst_det)::out,
+    assoc_list(inst_pair, maybe_inst_det)::in,
+    assoc_list(inst_pair, maybe_inst_det)::out) is det.
+
+unify_inst_subtable_from_sorted_pairs(_ExpLive, _ExpReal,
+        [], [], !RevSubTablePairs).
+unify_inst_subtable_from_sorted_pairs(ExpLive, ExpReal,
+        [Pair | Pairs], LeftOverPairs, !RevSubTablePairs) :-
+    Pair = UnifyInstInfo - MaybeInstDet,
+    UnifyInstInfo = unify_inst_info(Live, Real, InstA, InstB),
+    ( if Live = ExpLive, Real = ExpReal then
+        InstPair = inst_pair(InstA, InstB),
+        !:RevSubTablePairs = [InstPair - MaybeInstDet | !.RevSubTablePairs],
+        unify_inst_subtable_from_sorted_pairs(ExpLive, ExpReal,
+            Pairs, LeftOverPairs, !RevSubTablePairs)
+    else
+        LeftOverPairs = [Pair | Pairs]
+    ).
+
+%---------------------%
+
+merge_insts_from_sorted_pairs(AssocList, MergeInstTable) :-
+    map.from_sorted_assoc_list(AssocList, MergeInstTable).
+
+ground_insts_from_sorted_pairs(AssocList, GroundInstTable) :-
+    map.from_sorted_assoc_list(AssocList, GroundInstTable).
+
+any_insts_from_sorted_pairs(AssocList, AnyInstTable) :-
+    map.from_sorted_assoc_list(AssocList, AnyInstTable).
+
+shared_insts_from_sorted_pairs(AssocList, SharedInstTable) :-
+    map.from_sorted_assoc_list(AssocList, SharedInstTable).
+
+mostly_uniq_insts_from_sorted_pairs(AssocList, MostlyUniqInstTable) :-
+    map.from_sorted_assoc_list(AssocList, MostlyUniqInstTable).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- type inst_table
     --->    inst_table(
                 inst_table_user         :: user_inst_table,
@@ -1128,7 +1491,7 @@ set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
 
 inst_table_init(InstTable) :-
     map.init(UserInsts),
-    map.init(UnifyInsts),
+    UnifyInsts = unify_inst_table(map.init, map.init, map.init, map.init),
     map.init(MergeInsts),
     map.init(GroundInsts),
     map.init(SharedInsts),
@@ -1167,8 +1530,8 @@ inst_table_set_shared_insts(X, !InstTable) :-
 inst_table_set_mostly_uniq_insts(X, !InstTable) :-
     !InstTable ^ inst_table_mostly_uniq := X.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -1239,8 +1602,8 @@ mode_table_init(map.init).
 mode_table_optimize(!ModeDefns) :-
     map.optimize(!ModeDefns).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -1359,7 +1722,7 @@ mode_table_optimize(!ModeDefns) :-
     %
 :- pred num_extra_instance_args(hlds_instance_defn::in, int::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -1392,7 +1755,7 @@ num_extra_instance_args(InstanceDefn, NumExtra) :-
     list.length(Unconstrained, NumUnconstrained),
     NumExtra = NumConstraints + NumUnconstrained.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -1567,7 +1930,7 @@ num_extra_instance_args(InstanceDefn, NumExtra) :-
 :- pred search_hlds_constraint_list(constraint_map::in, constraint_type::in,
     goal_id::in, int::in, list(prog_constraint)::out) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -1783,7 +2146,7 @@ search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalId, Count,
             GoalId, Count - 1, !Constraints)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Search the superclasses of the given constraint for a potential proof,
     % and add it to the map if no better proof exists already.
@@ -1845,8 +2208,8 @@ update_ancestor_constraints_3(ClassTable, TVarSet, Descendants, Constraint,
             Constraint, !Ancestors)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -1894,8 +2257,8 @@ assertion_table_lookup(AssertionTable, Id, Assertion) :-
 assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
     map.values(AssertionMap, PredIds).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -1949,7 +2312,7 @@ assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
 :- pred exclusive_table_add(pred_id::in, exclusive_id::in,
     exclusive_table::in, exclusive_table::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -1970,6 +2333,6 @@ exclusive_table_optimize(!ExclusiveTable) :-
 exclusive_table_add(ExclusiveId, PredId, !ExclusiveTable) :-
     multi_map.set(PredId, ExclusiveId, !ExclusiveTable).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.hlds_data.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1272,7 +1272,7 @@ qualify_inst(Inst0, Inst, ErrorContext, !Info, !Specs) :-
             ; InstResults0 = inst_test_no_results
             )
         ;
-            InstResults0 = inst_test_results(_, _, _, _),
+            InstResults0 = inst_test_results(_, _, _, _, _, _),
             unexpected($module, $pred, "compiler generated inst not expected")
         ),
         % XXX We could pass a more specific error context.
@@ -1344,8 +1344,8 @@ qualify_inst_name(InstName0, InstName, ErrorContext, !Info, !Specs) :-
         ),
         InstName = user_inst(SymName, Insts)
     ;
-        ( InstName0 = merge_inst(_, _)
-        ; InstName0 = unify_inst(_, _, _, _)
+        ( InstName0 = unify_inst(_, _, _, _)
+        ; InstName0 = merge_inst(_, _)
         ; InstName0 = ground_inst(_, _, _, _)
         ; InstName0 = any_inst(_, _, _, _)
         ; InstName0 = shared_inst(_)

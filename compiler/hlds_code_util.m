@@ -11,7 +11,6 @@
 % Various utilities routines for use during HLDS generation.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_code_util.
 :- interface.
@@ -491,8 +490,8 @@ match_inst_names_with_renaming(ModuleInfo, InstNameA, InstNameB, Renaming) :-
     ;
         % XXX The rest of these are introduced by the compiler, it doesn't
         % look like they need any special treatment.
-        ( InstNameA = merge_inst(_, _)
-        ; InstNameA = unify_inst(_, _, _, _)
+        ( InstNameA = unify_inst(_, _, _, _)
+        ; InstNameA = merge_inst(_, _)
         ; InstNameA = ground_inst(_, _, _, _)
         ; InstNameA = any_inst(_, _, _, _)
         ; InstNameA = shared_inst(_)
@@ -512,7 +511,6 @@ merge_inst_var_renamings(RenamingA, RenamingB, Result) :-
     is semidet.
 
 merge_common_inst_vars(A, A, A).
-
 
 %----------------------------------------------------------------------------%
 :- end_module hlds.hlds_code_util.

@@ -252,6 +252,12 @@
 :- pred inst_list_is_ground_or_any(list(mer_inst)::in, module_info::in)
     is semidet.
 
+:- pred inst_results_bound_inst_list_is_ground(inst_test_results::in,
+    list(bound_inst)::in, module_info::in) is semidet.
+
+:- pred inst_results_bound_inst_list_is_ground_or_any(inst_test_results::in,
+    list(bound_inst)::in, module_info::in) is semidet.
+
 :- pred inst_list_is_unique(list(mer_inst)::in, module_info::in) is semidet.
 
 :- pred inst_list_is_mostly_unique(list(mer_inst)::in, module_info::in)
@@ -262,12 +268,6 @@
 
 :- pred inst_list_is_not_fully_unique(list(mer_inst)::in, module_info::in)
     is semidet.
-
-:- pred bound_inst_list_is_ground(list(bound_inst)::in, module_info::in)
-    is semidet.
-
-:- pred bound_inst_list_is_ground_or_any(list(bound_inst)::in,
-    module_info::in) is semidet.
 
 :- pred bound_inst_list_is_unique(list(bound_inst)::in, module_info::in)
     is semidet.
@@ -308,7 +308,7 @@
     % Succeed iff the specified inst contains (directly or indirectly) the
     % specified inst_name.
     %
-:- pred inst_contains_instname(mer_inst::in, module_info::in, inst_name::in)
+:- pred inst_contains_inst_name(mer_inst::in, module_info::in, inst_name::in)
     is semidet.
 
     % Nondeterministically produce all the inst_vars contained in the
@@ -1607,7 +1607,6 @@ inst_is_bound_to_functors(ModuleInfo, Inst, Functors) :-
 inst_is_ground(ModuleInfo, Inst) :-
     % inst_is_ground succeeds iff the inst passed is `ground' or the
     % equivalent. Abstract insts are not considered ground.
-    %
     promise_pure (
         semipure lookup_inst_is_ground(Inst, Found, OldIsGround),
         (
@@ -1885,7 +1884,7 @@ inst_is_unique_2(ModuleInfo, Inst, !Expansions) :-
             fail
         ;
             ( InstResults = inst_test_no_results
-            ; InstResults = inst_test_results(_, _, _, _)
+            ; InstResults = inst_test_results(_, _, _, _, _, _)
             ),
             bound_inst_list_is_unique_2(BoundInsts, ModuleInfo, !Expansions)
         )
@@ -1933,7 +1932,7 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
             fail
         ;
             ( InstResults = inst_test_no_results
-            ; InstResults = inst_test_results(_, _, _, _)
+            ; InstResults = inst_test_results(_, _, _, _, _, _)
             ),
             bound_inst_list_is_mostly_unique_2(BoundInsts, ModuleInfo,
                 !Expansions)
@@ -1988,7 +1987,7 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
             InstResult = inst_test_results_fgtc
         ;
             ( InstResult = inst_test_no_results
-            ; InstResult = inst_test_results(_, _, _, _)
+            ; InstResult = inst_test_results(_, _, _, _, _, _)
             ),
             bound_inst_list_is_not_partly_unique_2(BoundInsts, ModuleInfo,
                 !Expansions)
@@ -2049,7 +2048,7 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
             InstResult = inst_test_results_fgtc
         ;
             ( InstResult = inst_test_no_results
-            ; InstResult = inst_test_results(_, _, _, _)
+            ; InstResult = inst_test_results(_, _, _, _, _, _)
             ),
             bound_inst_list_is_not_fully_unique_2(BoundInsts, ModuleInfo,
                 !Expansions)
@@ -2078,8 +2077,26 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
 
 %-----------------------------------------------------------------------------%
 
-bound_inst_list_is_ground(BoundInsts, ModuleInfo) :-
-    bound_inst_list_is_ground_mt(BoundInsts, no, ModuleInfo).
+inst_results_bound_inst_list_is_ground(InstResults, BoundInsts, ModuleInfo) :-
+    require_complete_switch [InstResults]
+    (
+        InstResults = inst_test_results_fgtc
+    ;
+        InstResults = inst_test_results(GroundnessResult, _, _, _, _, _),
+        require_complete_switch [GroundnessResult]
+        (
+            GroundnessResult = inst_result_is_ground
+        ;
+            GroundnessResult = inst_result_is_not_ground,
+            fail
+        ;
+            GroundnessResult = inst_result_groundness_unknown,
+            bound_inst_list_is_ground_mt(BoundInsts, no, ModuleInfo)
+        )
+    ;
+        InstResults = inst_test_no_results,
+        bound_inst_list_is_ground_mt(BoundInsts, no, ModuleInfo)
+    ).
 
 :- pred inst_results_bound_inst_list_is_ground_mt(inst_test_results::in,
     list(bound_inst)::in, maybe(mer_type)::in, module_info::in) is semidet.
@@ -2090,7 +2107,7 @@ inst_results_bound_inst_list_is_ground_mt(InstResults, BoundInsts,
     (
         InstResults = inst_test_results_fgtc
     ;
-        InstResults = inst_test_results(GroundnessResult, _, _, _),
+        InstResults = inst_test_results(GroundnessResult, _, _, _, _, _),
         require_complete_switch [GroundnessResult]
         (
             GroundnessResult = inst_result_is_ground
@@ -2118,30 +2135,29 @@ bound_inst_list_is_ground_mt([BoundInst | BoundInsts], MaybeType,
     inst_list_is_ground_mt(Args, MaybeTypes, ModuleInfo),
     bound_inst_list_is_ground_mt(BoundInsts, MaybeType, ModuleInfo).
 
-:- pred inst_results_bound_inst_list_is_ground_or_any(inst_test_results::in,
-    list(bound_inst)::in, module_info::in) is semidet.
-
 inst_results_bound_inst_list_is_ground_or_any(InstResults, BoundInsts,
         ModuleInfo) :-
     require_complete_switch [InstResults]
     (
         InstResults = inst_test_results_fgtc
     ;
-        InstResults = inst_test_results(GroundnessResult, _, _, _),
+        InstResults = inst_test_results(GroundnessResult, _, _, _, _, _),
         require_complete_switch [GroundnessResult]
         (
             GroundnessResult = inst_result_is_ground
         ;
-            GroundnessResult = inst_result_is_not_ground,
-            fail
-        ;
-            GroundnessResult = inst_result_groundness_unknown,
+            ( GroundnessResult = inst_result_is_not_ground
+            ; GroundnessResult = inst_result_groundness_unknown
+            ),
             bound_inst_list_is_ground_or_any(BoundInsts, ModuleInfo)
         )
     ;
         InstResults = inst_test_no_results,
         bound_inst_list_is_ground_or_any(BoundInsts, ModuleInfo)
     ).
+
+:- pred bound_inst_list_is_ground_or_any(list(bound_inst)::in, module_info::in)
+    is semidet.
 
 bound_inst_list_is_ground_or_any([], _).
 bound_inst_list_is_ground_or_any([BoundInst | BoundInsts], ModuleInfo) :-
@@ -2185,7 +2201,7 @@ inst_results_bound_inst_list_is_ground_mt_2(InstResults, BoundInsts,
     (
         InstResults = inst_test_results_fgtc
     ;
-        InstResults = inst_test_results(GroundnessResult, _, _, _),
+        InstResults = inst_test_results(GroundnessResult, _, _, _, _, _),
         require_complete_switch [GroundnessResult]
         (
             GroundnessResult = inst_result_is_ground
@@ -2227,7 +2243,7 @@ inst_results_bound_inst_list_is_ground_or_any_2(InstResults, BoundInsts,
     (
         InstResults = inst_test_results_fgtc
     ;
-        InstResults = inst_test_results(GroundnessResult, _, _, _),
+        InstResults = inst_test_results(GroundnessResult, _, _, _, _, _),
         require_complete_switch [GroundnessResult]
         (
             GroundnessResult = inst_result_is_ground
@@ -2431,17 +2447,17 @@ inst_list_is_ground_or_any_or_dead([Inst | Insts], [Live | Lives],
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-inst_contains_instname(Inst, ModuleInfo, InstName) :-
+inst_contains_inst_name(Inst, ModuleInfo, InstName) :-
     set.init(Expansions0),
-    inst_contains_instname_2(Inst, ModuleInfo, InstName, yes,
+    inst_contains_inst_name_2(Inst, ModuleInfo, InstName, yes,
         Expansions0, _Expansions).
 
 :- type inst_names == set(inst_name).
 
-:- pred inst_contains_instname_2(mer_inst::in, module_info::in, inst_name::in,
+:- pred inst_contains_inst_name_2(mer_inst::in, module_info::in, inst_name::in,
     bool::out, inst_names::in, inst_names::out) is det.
 
-inst_contains_instname_2(Inst, ModuleInfo, InstName, Contains, !Expansions) :-
+inst_contains_inst_name_2(Inst, ModuleInfo, InstName, Contains, !Expansions) :-
     (
         ( Inst = abstract_inst(_, _)
         ; Inst = any(_, _)
@@ -2454,7 +2470,7 @@ inst_contains_instname_2(Inst, ModuleInfo, InstName, Contains, !Expansions) :-
         Contains = no
     ;
         Inst = constrained_inst_vars(_, SubInst),
-        inst_contains_instname_2(SubInst, ModuleInfo, InstName, Contains,
+        inst_contains_inst_name_2(SubInst, ModuleInfo, InstName, Contains,
             !Expansions)
     ;
         Inst = defined_inst(ThisInstName),
@@ -2464,7 +2480,7 @@ inst_contains_instname_2(Inst, ModuleInfo, InstName, Contains, !Expansions) :-
             ( set.insert_new(ThisInstName, !Expansions) ->
                 inst_lookup(ModuleInfo, ThisInstName, ThisInst),
                 set.insert(ThisInstName, !Expansions),
-                inst_contains_instname_2(ThisInst, ModuleInfo, InstName,
+                inst_contains_inst_name_2(ThisInst, ModuleInfo, InstName,
                     Contains, !Expansions)
             ;
                 Contains = no
@@ -2477,79 +2493,75 @@ inst_contains_instname_2(Inst, ModuleInfo, InstName, Contains, !Expansions) :-
         % The problem is that e.g. in a list of length N, you will have N
         % variables for the skeletons whose insts contain an average of N/2
         % occurences of `bound' each, so the complexity of running
-        % inst_contains_instname_2 on all their insts is quadratic in N.
+        % inst_contains_inst_name_2 on all their insts is quadratic in N.
         %
-        % One solution to this would be to add an extra argument to bound/2
-        % that gives the set of included inst_names, or simply asserts that
-        % this set is empty. This field can be set at the time of the
-        % construction of the inst, avoiding quadratic behavior in
-        % inst_contains_instname_2. The complexity of constructing may be
-        % quadratic in N, of course.
+        % The inst_test result argument of bound/3 is an attempt at solving
+        % this problem.
         %
-        % We could try to solve this performance problem with a cache
-        % of the results of recent invocations of inst_contains_instname.
-
+        % We could also try to solve this performance problem with a cache
+        % of the results of recent invocations of inst_contains_inst_name.
         (
             InstResults = inst_test_results_fgtc,
             Contains = no
         ;
-            InstResults = inst_test_results(_, _, InstNamesResult, _),
+            InstResults = inst_test_results(_, _, InstNamesResult, _, _, _),
             (
                 InstNamesResult =
-                    inst_result_contains_instnames_known(InstNameSet),
+                    inst_result_contains_inst_names_known(InstNameSet),
                 ( set.contains(InstNameSet, InstName) ->
                     % The Inst may contain InstName, and probably does,
                     % but verify it.
-                    bound_inst_list_contains_instname(ArgInsts, ModuleInfo,
+                    bound_inst_list_contains_inst_name(ArgInsts, ModuleInfo,
                         InstName, Contains, !Expansions)
                 ;
                     Contains = no
                 )
             ;
-                InstNamesResult = inst_result_contains_instnames_unknown,
-                bound_inst_list_contains_instname(ArgInsts, ModuleInfo,
+                InstNamesResult = inst_result_contains_inst_names_unknown,
+                bound_inst_list_contains_inst_name(ArgInsts, ModuleInfo,
                     InstName, Contains, !Expansions)
             )
         ;
             InstResults = inst_test_no_results,
-            bound_inst_list_contains_instname(ArgInsts, ModuleInfo,
+            bound_inst_list_contains_inst_name(ArgInsts, ModuleInfo,
                 InstName, Contains, !Expansions)
         )
     ).
 
-:- pred bound_inst_list_contains_instname(list(bound_inst)::in,
+:- pred bound_inst_list_contains_inst_name(list(bound_inst)::in,
     module_info::in, inst_name::in, bool::out,
     inst_names::in, inst_names::out) is det.
 
-bound_inst_list_contains_instname([], _ModuleInfo, _InstName, no, !Expansions).
-bound_inst_list_contains_instname([BoundInst | BoundInsts], ModuleInfo,
+bound_inst_list_contains_inst_name([], _ModuleInfo,
+        _InstName, no, !Expansions).
+bound_inst_list_contains_inst_name([BoundInst | BoundInsts], ModuleInfo,
         InstName, Contains, !Expansions) :-
     BoundInst = bound_functor(_Functor, ArgInsts),
-    inst_list_contains_instname(ArgInsts, ModuleInfo, InstName, Contains1,
+    inst_list_contains_inst_name(ArgInsts, ModuleInfo, InstName, Contains1,
         !Expansions),
     (
         Contains1 = yes,
         Contains = yes
     ;
         Contains1 = no,
-        bound_inst_list_contains_instname(BoundInsts, ModuleInfo,
+        bound_inst_list_contains_inst_name(BoundInsts, ModuleInfo,
             InstName, Contains, !Expansions)
     ).
 
-:- pred inst_list_contains_instname(list(mer_inst)::in, module_info::in,
+:- pred inst_list_contains_inst_name(list(mer_inst)::in, module_info::in,
     inst_name::in, bool::out, inst_names::in, inst_names::out) is det.
 
-inst_list_contains_instname([], _ModuleInfo, _InstName, no, !Expansions).
-inst_list_contains_instname([Inst | Insts], ModuleInfo, InstName, Contains,
+inst_list_contains_inst_name([], _ModuleInfo, _InstName, no, !Expansions).
+inst_list_contains_inst_name([Inst | Insts], ModuleInfo, InstName, Contains,
         !Expansions) :-
-    inst_contains_instname_2(Inst, ModuleInfo, InstName, Contains1,
+    inst_contains_inst_name_2(Inst, ModuleInfo, InstName, Contains1,
         !Expansions),
     (
         Contains1 = yes,
         Contains = yes
     ;
         Contains1 = no,
-        inst_list_contains_instname(Insts, ModuleInfo, InstName, Contains,
+        inst_list_contains_inst_name(Insts, ModuleInfo, InstName, Contains,
             !Expansions)
     ).
 
@@ -2568,7 +2580,7 @@ inst_name_contains_inst_var(InstName, InstVar) :-
         ; inst_contains_inst_var(InstB, InstVar)
         )
     ;
-        InstName = unify_inst(_Live, InstA, InstB, _Real),
+        InstName = unify_inst(_Live, _Real, InstA, InstB),
         ( inst_contains_inst_var(InstA, InstVar)
         ; inst_contains_inst_var(InstB, InstVar)
         )
@@ -2606,9 +2618,20 @@ inst_contains_inst_var(Inst, InstVar) :-
             InstResults = inst_test_results_fgtc,
             fail
         ;
-            ( InstResults = inst_test_no_results
-            ; InstResults = inst_test_results(_, _, _, _)
-            ),
+            InstResults = inst_test_results(_, _, _, InstVarResult, _, _),
+            (
+                InstVarResult = inst_result_contains_inst_vars_known(InstVars),
+                set.member(InstVar, InstVars),
+                % Membership in InstVars means that BoundInsts *may* contain
+                % InstVar, not that it *does*, so we have to check whether
+                % it actually does.
+                bound_inst_list_contains_inst_var(BoundInsts, InstVar)
+            ;
+                InstVarResult = inst_result_contains_inst_vars_unknown,
+                bound_inst_list_contains_inst_var(BoundInsts, InstVar)
+            )
+        ;
+            InstResults = inst_test_no_results,
             bound_inst_list_contains_inst_var(BoundInsts, InstVar)
         )
     ;
@@ -2692,8 +2715,10 @@ maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, none, Inst) :-
         InstResult = inst_test_results(
             inst_result_groundness_unknown,
             inst_result_contains_any_unknown,
-            inst_result_contains_instnames_known(set.init),
-            inst_result_contains_types_known(set.init)
+            inst_result_contains_inst_names_known(set.init),
+            inst_result_contains_inst_vars_known(set.init),
+            inst_result_contains_types_known(set.init),
+            inst_result_type_ctor_propagated(TypeCtor)
         ),
         Inst = bound(Uniq, InstResult, BoundInsts)
     ; type_may_contain_solver_type(ModuleInfo, Type) ->

@@ -376,12 +376,12 @@ detect_liveness_in_goal(Goal0, Goal, Liveness0, FinalLiveness, LiveInfo) :-
     get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0,
         BaseNonLocals, CompletedNonLocals),
     set_of_var.difference(CompletedNonLocals, Liveness0, NewVarsSet),
-    NewVarsList = set_of_var.to_sorted_list(NewVarsSet),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
     Empty = set_of_var.init,
     ( instmap_delta_is_unreachable(InstMapDelta) ->
         Births = Empty
     ;
+        NewVarsList = set_of_var.to_sorted_list(NewVarsSet),
         Births0 = set_of_var.init,
         find_value_giving_occurrences(NewVarsList, LiveInfo,
             InstMapDelta, Births0, Births1),

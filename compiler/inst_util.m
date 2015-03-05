@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: inst_util.m.
 % Author: fjh.
@@ -35,7 +35,7 @@
 % That works fine for the CLP(R) interface but might not be ideal
 % in the general case.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.inst_util.
 :- interface.
@@ -50,7 +50,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Mode checking is like abstract interpretation. The predicates below
     % define the abstract unification operation which unifies two
@@ -73,7 +73,7 @@
     mer_type::in, mer_inst::out, determinism::out,
     module_info::in, module_info::out) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given an inst, return a new inst which is the same as the original inst
     % but with all occurrences of `unique' replaced with `mostly_unique'.
@@ -89,7 +89,7 @@
 :- pred make_shared_inst_list(list(mer_inst)::in, list(mer_inst)::out,
     module_info::in, module_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % inst_merge(InstA, InstB, MaybeType, InstC, !ModuleInfo):
     %
@@ -101,7 +101,7 @@
 :- pred inst_merge(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
     mer_inst::out, module_info::in, module_info::out) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % inst_contains_nonstandard_func_mode(Inst, ModuleInfo) succeeds iff the
     % inst contains a higher-order function inst that does not match the
@@ -143,8 +143,8 @@
     %
 :- func inst_may_restrict_cons_ids(module_info, mer_inst) = bool.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -164,66 +164,80 @@
 :- import_module require.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 abstractly_unify_inst(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
     % Check whether this pair of insts is already in the unify_insts table.
-    ThisInstPair = unify_inst(Live, InstA, InstB, Real),
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
-    inst_table_get_unify_insts(InstTable0, UnifyInsts0),
+    inst_table_get_unify_insts(InstTable0, UnifyInstTable0),
     % XXX For code that uses large facts, the deeply nested insts we unify
     % here means that searching UnifyInsts0 here, and updating it (twice)
     % in the else case below are *extremely* expensive. In one version of
     % Doug Auclair's training_cars example, the map search, insert and update
     % account for 116 out the 120 clock ticks spent in this predicate,
     % i.e. they account for almost 97% of its runtime.
-    ( map.search(UnifyInsts0, ThisInstPair, Result) ->
-        ( Result = inst_det_known(UnifyInst, UnifyDetism) ->
-            Inst0 = UnifyInst,
-            Detism = UnifyDetism
+    %
+    % We now combine the lookup with one of the updates.
+    %
+    % If either inst is free, then just unifying the two insts is likely
+    % to be faster (and maybe *much* faster) than looking them up
+    % in the unify_inst_table. The other purpose of the unify_inst_table,
+    % avoiding nontermination, is also moot in such cases.
+    %
+    % We could also avoid using the unify_inst_table if both insts are
+    % bound/3 insts, as inst_merge below does, but even in stress test cases,
+    % abstractly_unify_inst is (almost) never invoked on such inst pairs.
+    ( if
+        ( InstA = free
+        ; InstB = free
+        )
+    then
+        abstractly_unify_inst_2(Live, InstA, InstB, Real, Inst, Detism,
+            !ModuleInfo)
+    else
+        UnifyInstInfo = unify_inst_info(Live, Real, InstA, InstB),
+        UnifyInstName = unify_inst(Live, Real, InstA, InstB),
+        search_insert_unify_inst(UnifyInstInfo, MaybeMaybeInst,
+            UnifyInstTable0, UnifyInstTable1),
+        (
+            MaybeMaybeInst = yes(MaybeInst),
+            (
+                MaybeInst = inst_det_known(Inst0, Detism)
+            ;
+                MaybeInst = inst_det_unknown,
+                Inst0 = defined_inst(UnifyInstName),
+                % It is ok to assume that the unification is deterministic
+                % here, because the only time that this will happen is when
+                % we get to the recursive case for a recursively defined inst.
+                % If the unification as a whole is semidet, then this must be
+                % because it is semidet somewhere else too.
+                Detism = detism_det
+            )
         ;
-            Inst0 = defined_inst(ThisInstPair),
-            % It is ok to assume that the unification is deterministic here,
-            % because the only time that this will happen is when we get to the
-            % recursive case for a recursively defined inst. If the unification
-            % as a whole is semidet, then this must be because it is semidet
-            % somewhere else too.
-            Detism = detism_det
-        ),
-        Inst1 = Inst0
-    ;
-        % Insert ThisInstPair into the table with value `unknown'.
-        map.det_insert(ThisInstPair, inst_det_unknown,
-            UnifyInsts0, UnifyInsts1),
-        inst_table_set_unify_insts(UnifyInsts1, InstTable0, InstTable1),
-        module_info_set_inst_table(InstTable1, !ModuleInfo),
-        % Unify the insts.
-        inst_expand(!.ModuleInfo, InstA, ExpandedInstA),
-        inst_expand(!.ModuleInfo, InstB, ExpandedInstB),
-        abstractly_unify_inst_2(Live, ExpandedInstA, ExpandedInstB, Real,
-            Inst0, Detism, !ModuleInfo),
+            MaybeMaybeInst = no,
+            % We have inserted UnifyInst into the table with value
+            % `inst_unknown'.
+            inst_table_set_unify_insts(UnifyInstTable1,
+                InstTable0, InstTable1),
+            module_info_set_inst_table(InstTable1, !ModuleInfo),
+            % Unify the insts.
+            abstractly_unify_inst_2(Live, InstA, InstB, Real, Inst0, Detism,
+                !ModuleInfo),
 
-        % If this unification cannot possibly succeed, the correct inst
-        % is not_reached.
-        ( determinism_components(Detism, _, at_most_zero) ->
-            Inst1 = not_reached
+            % Now update the value associated with ThisInstPair.
+            module_info_get_inst_table(!.ModuleInfo, InstTable2),
+            inst_table_get_unify_insts(InstTable2, UnifyInstTable2),
+            det_update_unify_inst(UnifyInstInfo, inst_det_known(Inst0, Detism),
+                UnifyInstTable2, UnifyInstTable),
+            inst_table_set_unify_insts(UnifyInstTable, InstTable2, InstTable),
+            module_info_set_inst_table(InstTable, !ModuleInfo)
+        ),
+        % Avoid expanding recursive insts.
+        ( inst_contains_inst_name(Inst0, !.ModuleInfo, UnifyInstName) ->
+            Inst = defined_inst(UnifyInstName)
         ;
-            Inst1 = Inst0
-        ),
-
-        % Now update the value associated with ThisInstPair.
-        module_info_get_inst_table(!.ModuleInfo, InstTable2),
-        inst_table_get_unify_insts(InstTable2, UnifyInsts2),
-        map.det_update(ThisInstPair, inst_det_known(Inst1, Detism),
-            UnifyInsts2, UnifyInsts),
-        inst_table_set_unify_insts(UnifyInsts, InstTable2, InstTable),
-        module_info_set_inst_table(InstTable, !ModuleInfo)
-    ),
-    % Avoid expanding recursive insts.
-    ( inst_contains_instname(Inst1, !.ModuleInfo, ThisInstPair) ->
-        Inst = defined_inst(ThisInstPair)
-    ;
-        Inst = Inst1
+            Inst = Inst0
+        )
     ).
 
 :- pred abstractly_unify_inst_2(is_live::in, mer_inst::in, mer_inst::in,
@@ -232,8 +246,17 @@ abstractly_unify_inst(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
 
 abstractly_unify_inst_2(Live, InstA, InstB, Real, Inst, Detism,
         !ModuleInfo) :-
-    abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst,
-        Detism, !ModuleInfo).
+    inst_expand(!.ModuleInfo, InstA, ExpandedInstA),
+    inst_expand(!.ModuleInfo, InstB, ExpandedInstB),
+    abstractly_unify_inst_3(Live, ExpandedInstA, ExpandedInstB, Real, Inst0,
+        Detism, !ModuleInfo),
+    % If this unification cannot possibly succeed, the correct inst
+    % is not_reached.
+    ( determinism_components(Detism, _, at_most_zero) ->
+        Inst = not_reached
+    ;
+        Inst = Inst0
+    ).
 
     % Abstractly unify two expanded insts.
     % The is_live parameter is `is_live' iff *both* insts are live.
@@ -268,7 +291,8 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 InstB = bound(UniqB, InstResultsB, BoundInstsB),
                 unify_uniq(is_live, Real, detism_det, unique, UniqB, Uniq),
                 % Since both are live, we must disallow free-free unifications.
-                bound_inst_list_is_ground_or_any(BoundInstsB, !.ModuleInfo),
+                inst_results_bound_inst_list_is_ground_or_any(InstResultsB,
+                    BoundInstsB, !.ModuleInfo),
                 % Since both are live, we must make the result shared
                 % (unless it was already shared).
                 ( ( UniqB = unique ; UniqB = mostly_unique ) ->
@@ -327,7 +351,8 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 Live = is_live,
                 unify_uniq(Live, Real, detism_det, unique, UniqA, Uniq),
                 % Since both are live, we must disallow free-free unifications.
-                bound_inst_list_is_ground_or_any(BoundInstsA, !.ModuleInfo),
+                inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
+                    BoundInstsA, !.ModuleInfo),
                 make_shared_bound_inst_list(BoundInstsA, BoundInsts,
                     !ModuleInfo)
             ;
@@ -353,7 +378,8 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 Inst = InstA,
                 Detism1 = detism_semi
             ;
-                InstResultsA = inst_test_results(GroundnessResultA, _, _, _),
+                InstResultsA = inst_test_results(GroundnessResultA, _, _, _,
+                    _, _),
                 (
                     GroundnessResultA = inst_result_is_ground,
                     Inst = InstA,
@@ -652,7 +678,7 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
 %         true
 %     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Abstractly unify two inst lists.
     %
@@ -669,7 +695,7 @@ abstractly_unify_inst_list([InstA | InstsA], [InstB | InstsB], Live, Real,
         Detism2, !ModuleInfo),
     det_par_conjunction_detism(Detism1, Detism2, Detism).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 abstractly_unify_inst_functor(Live, InstA0, ConsIdB, ArgInstsB, ArgLives,
         Real, Type, Inst, Detism, !ModuleInfo) :-
@@ -788,21 +814,19 @@ abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
         fail
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This code performs abstract unification of two bound(...) insts.
-    % The lists of bound_inst are guaranteed to be sorted.
-    % Abstract unification of two bound(...) insts proceeds
-    % like a sorted merge operation. If two elements have the
-    % same functor name, they are inserted in the output list,
-    % assuming their argument inst list can be abstractly unified.
-    % (If it can't, the whole thing fails). If a functor name
-    % occurs in only one of the two input lists, it is not inserted
-    % in the output list.
+    % The lists of bound_inst are guaranteed to be sorted. The algorithm
+    % for abstractly unifying two lists of bound_insts is basically a sorted
+    % merge operation. If the head elements of both lists specify the same
+    % function symbol, we try to unify their argument insts. If all those
+    % unifications succeed, we put the resulting bound_inst in the output;
+    % if one doesn't, the whole thing fails. If a function symbol occurs
+    % in only one of the two input lists, it is *not* added to the output list.
     %
-    % One way of looking at this code is that it simulates mode
-    % and determinism checking of the goal for the unification
-    % predicate for the type.
+    % One way of looking at this code is that it simulates mode and determinism
+    % checking of the goal for the unification predicate for the type.
     %
 :- pred abstractly_unify_bound_inst_list(is_live::in,
     list(bound_inst)::in, list(bound_inst)::in, unify_is_real::in,
@@ -915,7 +939,7 @@ abstractly_unify_inst_list_lives([InstA | InstsA], [InstB | InstsB],
         Detism2, !ModuleInfo),
     det_par_conjunction_detism(Detism1, Detism2, Detism).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred abstractly_unify_constrained_inst_vars(is_live::in, set(inst_var)::in,
     mer_inst::in, mer_inst::in, unify_is_real::in, mer_inst::out,
@@ -937,8 +961,8 @@ abstractly_unify_constrained_inst_vars(Live, InstVarsA, SubInstA, InstB,
         Inst = constrained_inst_vars(InstVarsA, Inst0)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Unifying shared with either shared or unique gives shared.
     % Unifying unique with unique gives shared if live, unique if dead.
@@ -1079,7 +1103,7 @@ allow_unify_with_clobbered(is_live, _, _) :-
 allow_unify_with_clobbered(is_dead, fake_unify, _).
 allow_unify_with_clobbered(is_dead, _, detism_det).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_ground_inst_list_lives(list(mer_inst)::in, is_live::in,
     list(is_live)::in, uniqueness::in, unify_is_real::in,
@@ -1166,25 +1190,29 @@ make_ground_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
         Inst0 = defined_inst(InstName),
         % Check whether the inst name is already in the ground_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
-        inst_table_get_ground_insts(InstTable0, GroundInsts0),
-        GroundInstKey = ground_inst(InstName, Live, Uniq1, Real),
-        ( map.search(GroundInsts0, GroundInstKey, Result) ->
-            ( Result = inst_det_known(GroundInst0, Detism0) ->
-                GroundInst = GroundInst0,
-                Detism = Detism0
+        inst_table_get_ground_insts(InstTable0, GroundInstTable0),
+        GroundInstInfo = ground_inst_info(InstName, Uniq1, Live, Real),
+        GroundInstName = ground_inst(InstName, Uniq1, Live, Real),
+        search_insert_ground_inst(GroundInstInfo, MaybeMaybeInst,
+            GroundInstTable0, GroundInstTable1),
+        (
+            MaybeMaybeInst = yes(MaybeInst),
+            (
+                MaybeInst = inst_det_known(GroundInst, Detism)
             ;
-                GroundInst = defined_inst(GroundInstKey),
+                MaybeInst = inst_det_unknown,
+                GroundInst = defined_inst(GroundInstName),
                 Detism = detism_det
                 % We can safely assume this is det, since if it were semidet,
                 % we would have noticed this in the process of unfolding the
                 % definition.
             )
         ;
-            % Insert the inst name in the ground_inst table, with value
-            % `unknown' for the moment.
-            map.det_insert(GroundInstKey, inst_det_unknown,
-                GroundInsts0, GroundInsts1),
-            inst_table_set_ground_insts(GroundInsts1, InstTable0, InstTable1),
+            MaybeMaybeInst = no,
+            % We have inserted GroundInstInfo into the table with value
+            % `inst_unknown'.
+            inst_table_set_ground_insts(GroundInstTable1,
+                InstTable0, InstTable1),
             module_info_set_inst_table(InstTable1, !ModuleInfo),
 
             % Expand the inst name, and invoke ourself recursively on its
@@ -1198,15 +1226,17 @@ make_ground_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
             % appropriate value `known(GroundInst, Detism)' in the ground_inst
             % table.
             module_info_get_inst_table(!.ModuleInfo, InstTable2),
-            inst_table_get_ground_insts(InstTable2, GroundInsts2),
-            map.det_update(GroundInstKey, inst_det_known(GroundInst, Detism),
-                GroundInsts2, GroundInsts),
-            inst_table_set_ground_insts(GroundInsts, InstTable2, InstTable),
+            inst_table_get_ground_insts(InstTable2, GroundInstTable2),
+            det_update_ground_inst(GroundInstInfo,
+                inst_det_known(GroundInst, Detism),
+                GroundInstTable2, GroundInstTable),
+            inst_table_set_ground_insts(GroundInstTable,
+                InstTable2, InstTable),
             module_info_set_inst_table(InstTable, !ModuleInfo)
         ),
         % Avoid expanding recursive insts.
-        ( inst_contains_instname(GroundInst, !.ModuleInfo, GroundInstKey) ->
-            Inst = defined_inst(GroundInstKey)
+        ( inst_contains_inst_name(GroundInst, !.ModuleInfo, GroundInstName) ->
+            Inst = defined_inst(GroundInstName)
         ;
             Inst = GroundInst
         )
@@ -1228,7 +1258,7 @@ make_ground_bound_inst_list([BoundInst0 | BoundInsts0], Live, Uniq, Real,
         Detism2, !ModuleInfo),
     det_par_conjunction_detism(Detism1, Detism2, Detism).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Abstractly unify an inst with `any' and calculate the new inst
     % and the determinism of the unification.
@@ -1259,7 +1289,7 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
         %   unify_uniq(Live, Real, detism_det, unique, Uniq0, Uniq),
         %   Any = typed_any(Uniq, T).
         % without the need for a `typed_any' inst.
-        Any = typed_inst(T, unify_inst(Live, free, any(Uniq1, none), Real)),
+        Any = typed_inst(T, unify_inst(Live, Real, free, any(Uniq1, none))),
         Inst = defined_inst(Any),
         Detism = detism_det
     ;
@@ -1292,24 +1322,28 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
         Inst0 = defined_inst(InstName),
         % Check whether the inst name is already in the any_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
-        inst_table_get_any_insts(InstTable0, AnyInsts0),
-        AnyInstKey = any_inst(InstName, Live, Uniq1, Real),
-        ( map.search(AnyInsts0, AnyInstKey, Result) ->
-            ( Result = inst_det_known(AnyInst0, Detism0) ->
-                AnyInst = AnyInst0,
-                Detism = Detism0
+        inst_table_get_any_insts(InstTable0, AnyInstTable0),
+        AnyInstInfo = any_inst_info(InstName, Uniq1, Live, Real),
+        AnyInstName = any_inst(InstName, Uniq1, Live, Real),
+        search_insert_any_inst(AnyInstInfo, MaybeMaybeInst,
+            AnyInstTable0, AnyInstTable1),
+        (
+            MaybeMaybeInst = yes(MaybeInst),
+            (
+                MaybeInst = inst_det_known(AnyInst, Detism)
             ;
-                AnyInst = defined_inst(AnyInstKey),
+                MaybeInst = inst_det_unknown,
+                AnyInst = defined_inst(AnyInstName),
                 Detism = detism_det
                 % We can safely assume this is det, since if it were semidet,
                 % we would have noticed this in the process of unfolding the
                 % definition.
             )
         ;
-            % Insert the inst name in the any_inst table, with value `unknown'
-            % for the moment.
-            map.det_insert(AnyInstKey, inst_det_unknown, AnyInsts0, AnyInsts1),
-            inst_table_set_any_insts(AnyInsts1, InstTable0, InstTable1),
+            MaybeMaybeInst = no,
+            % We have inserted AnyInstKey into the table with value
+            % `inst_unknown'.
+            inst_table_set_any_insts(AnyInstTable1, InstTable0, InstTable1),
             module_info_set_inst_table(InstTable1, !ModuleInfo),
 
             % Expand the inst name, and invoke ourself recursively on its
@@ -1322,15 +1356,15 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
             % Now that we have determined the resulting Inst, store the
             % appropriate value `known(AnyInst, Detism)' in the any_inst table.
             module_info_get_inst_table(!.ModuleInfo, InstTable2),
-            inst_table_get_any_insts(InstTable2, AnyInsts2),
-            map.det_update(AnyInstKey, inst_det_known(AnyInst, Detism),
-                AnyInsts2, AnyInsts),
-            inst_table_set_any_insts(AnyInsts, InstTable2, InstTable),
+            inst_table_get_any_insts(InstTable2, AnyInstTable2),
+            det_update_any_inst(AnyInstInfo, inst_det_known(AnyInst, Detism),
+                AnyInstTable2, AnyInstTable),
+            inst_table_set_any_insts(AnyInstTable, InstTable2, InstTable),
             module_info_set_inst_table(InstTable, !ModuleInfo)
         ),
         % Avoid expanding recursive insts.
-        ( inst_contains_instname(AnyInst, !.ModuleInfo, AnyInstKey) ->
-            Inst = defined_inst(AnyInstKey)
+        ( inst_contains_inst_name(AnyInst, !.ModuleInfo, AnyInstName) ->
+            Inst = defined_inst(AnyInstName)
         ;
             Inst = AnyInst
         )
@@ -1381,7 +1415,7 @@ make_any_inst_list_lives([Inst0 | Insts0], Live, [ArgLive | ArgLives],
         Insts, Detism2, !ModuleInfo),
     det_par_conjunction_detism(Detism1, Detism2, Detism).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_make_shared_inst_list(list(mer_inst)::in, list(is_live)::in,
     list(mer_inst)::out, module_info::in, module_info::out) is det.
@@ -1480,18 +1514,23 @@ make_shared_inst(Inst0, Inst, !ModuleInfo) :-
         Inst0 = defined_inst(InstName),
         % Check whether the inst name is already in the shared_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
-        inst_table_get_shared_insts(InstTable0, SharedInsts0),
-        ( map.search(SharedInsts0, InstName, Result) ->
-            ( Result = inst_known(SharedInst0) ->
-                SharedInst = SharedInst0
+        inst_table_get_shared_insts(InstTable0, SharedInstTable0),
+        search_insert_shared_inst(InstName, MaybeMaybeInst,
+            SharedInstTable0, SharedInstTable1),
+        (
+            MaybeMaybeInst = yes(MaybeInst),
+            (
+                MaybeInst = inst_known(SharedInst)
             ;
-                SharedInst = defined_inst(InstName)
+                MaybeInst = inst_unknown,
+                SharedInst = Inst0
             )
         ;
-            % Insert the inst name in the shared_inst table, with value
-            % `unknown' for the moment.
-            map.det_insert(InstName, inst_unknown, SharedInsts0, SharedInsts1),
-            inst_table_set_shared_insts(SharedInsts1, InstTable0, InstTable1),
+            MaybeMaybeInst = no,
+            % We have inserted SharedInstKey into the table with value
+            % `inst_unknown'.
+            inst_table_set_shared_insts(SharedInstTable1,
+                InstTable0, InstTable1),
             module_info_set_inst_table(InstTable1, !ModuleInfo),
 
             % Expand the inst name, and invoke ourself recursively on its
@@ -1503,14 +1542,15 @@ make_shared_inst(Inst0, Inst, !ModuleInfo) :-
             % Now that we have determined the resulting Inst, store the
             % appropriate value `known(SharedInst)' in the shared_inst table.
             module_info_get_inst_table(!.ModuleInfo, InstTable2),
-            inst_table_get_shared_insts(InstTable2, SharedInsts2),
-            map.det_update(InstName, inst_known(SharedInst),
-                SharedInsts2, SharedInsts),
-            inst_table_set_shared_insts(SharedInsts, InstTable2, InstTable),
+            inst_table_get_shared_insts(InstTable2, SharedInstTable2),
+            det_update_shared_inst(InstName, inst_known(SharedInst),
+                SharedInstTable2, SharedInstTable),
+            inst_table_set_shared_insts(SharedInstTable,
+                InstTable2, InstTable),
             module_info_set_inst_table(InstTable, !ModuleInfo)
         ),
         % Avoid expanding recursive insts.
-        ( inst_contains_instname(SharedInst, !.ModuleInfo, InstName) ->
+        ( inst_contains_inst_name(SharedInst, !.ModuleInfo, InstName) ->
             Inst = defined_inst(InstName)
         ;
             Inst = SharedInst
@@ -1536,7 +1576,7 @@ make_shared_bound_inst_list([Bound0 | Bounds0], [Bound | Bounds],
     Bound = bound_functor(ConsId, ArgInsts),
     make_shared_bound_inst_list(Bounds0, Bounds, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
     (
@@ -1578,19 +1618,22 @@ make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
         Inst0 = defined_inst(InstName),
         % Check whether the inst name is already in the mostly_uniq_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
-        inst_table_get_mostly_uniq_insts(InstTable0, NondetLiveInsts0),
-        ( map.search(NondetLiveInsts0, InstName, Result) ->
-            ( Result = inst_known(NondetLiveInst0) ->
-                NondetLiveInst = NondetLiveInst0
+        inst_table_get_mostly_uniq_insts(InstTable0, MostlyUniqInstTable0),
+        search_insert_mostly_uniq_inst(InstName, MaybeMaybeInst,
+            MostlyUniqInstTable0, MostlyUniqInstTable1),
+        (
+            MaybeMaybeInst = yes(MaybeInst),
+            (
+                MaybeInst = inst_known(MostlyUniqInst)
             ;
-                NondetLiveInst = defined_inst(InstName)
+                MaybeInst = inst_unknown,
+                MostlyUniqInst = defined_inst(InstName)
             )
         ;
-            % Insert the inst name in the mostly_uniq_inst table,
-            % with value `unknown' for the moment.
-            map.det_insert(InstName, inst_unknown,
-                NondetLiveInsts0, NondetLiveInsts1),
-            inst_table_set_mostly_uniq_insts(NondetLiveInsts1,
+            MaybeMaybeInst = no,
+            % We have inserted InstName into the table with value
+            % `inst_unknown'.
+            inst_table_set_mostly_uniq_insts(MostlyUniqInstTable1,
                 InstTable0, InstTable1),
             module_info_set_inst_table(InstTable1, !ModuleInfo),
 
@@ -1598,24 +1641,24 @@ make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
             % expansion.
             inst_lookup(!.ModuleInfo, InstName, SubInst0),
             inst_expand(!.ModuleInfo, SubInst0, SubInst1),
-            make_mostly_uniq_inst(SubInst1, NondetLiveInst, !ModuleInfo),
+            make_mostly_uniq_inst(SubInst1, MostlyUniqInst, !ModuleInfo),
 
             % Now that we have determined the resulting Inst, store the
-            % appropriate value `known(NondetLiveInst)' in the
+            % appropriate value `known(MostlyUniqInst)' in the
             % mostly_uniq_inst table.
             module_info_get_inst_table(!.ModuleInfo, InstTable2),
-            inst_table_get_mostly_uniq_insts(InstTable2, NondetLiveInsts2),
-            map.det_update(InstName, inst_known(NondetLiveInst),
-                NondetLiveInsts2, NondetLiveInsts),
-            inst_table_set_mostly_uniq_insts(NondetLiveInsts,
+            inst_table_get_mostly_uniq_insts(InstTable2, MostlyUniqInstTable2),
+            det_update_mostly_uniq_inst(InstName, inst_known(MostlyUniqInst),
+                MostlyUniqInstTable2, MostlyUniqInstTable),
+            inst_table_set_mostly_uniq_insts(MostlyUniqInstTable,
                 InstTable2, InstTable),
             module_info_set_inst_table(InstTable, !ModuleInfo)
         ),
         % Avoid expanding recursive insts.
-        ( inst_contains_instname(NondetLiveInst, !.ModuleInfo, InstName) ->
+        ( inst_contains_inst_name(MostlyUniqInst, !.ModuleInfo, InstName) ->
             Inst = defined_inst(InstName)
         ;
-            Inst = NondetLiveInst
+            Inst = MostlyUniqInst
         )
     ).
 
@@ -1646,7 +1689,7 @@ make_mostly_uniq_inst_list([Inst0 | Insts0], [Inst | Insts], !ModuleInfo) :-
     make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo),
     make_mostly_uniq_inst_list(Insts0, Insts, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Should we allow unifications between bound (or ground) insts
     % and `any' insts?
@@ -1658,49 +1701,75 @@ make_mostly_uniq_inst_list([Inst0 | Insts0], [Inst | Insts], !ModuleInfo) :-
 allow_unify_bound_any(_) :-
     true.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
-    % Check whether this pair of insts is already in the merge_insts table.
-    module_info_get_inst_table(!.ModuleInfo, InstTable0),
-    inst_table_get_merge_insts(InstTable0, MergeInstTable0),
-    ThisInstPair = InstA - InstB,
-    ( map.search(MergeInstTable0, ThisInstPair, Result) ->
-        ( Result = inst_known(MergedInst) ->
-            Inst0 = MergedInst
-        ;
-            Inst0 = defined_inst(merge_inst(InstA, InstB))
-        )
-    ;
-        % Insert ThisInstPair into the table with value `unknown'.
-        map.det_insert(ThisInstPair, inst_unknown,
+    % The merge_inst_table has two functions. One is to act as a cache,
+    % in the expectation that just looking up Inst would be quicker than
+    % computing it. The other is to ensure termination for situations
+    % in which one or both of InstA and InstB are recursive.
+    %
+    % In cases where both InstA and InstB are bound/3, the merge_inst_table
+    % does not work as a cache: actually doing merging the insts is likely
+    % to be faster (and maybe *much* faster) than looking them up
+    % in the merge_inst_table. And in such cases, the table is not needed
+    % for termination either. Since the skeleton of the bound_inst list
+    % does not contain any inst_names, any recursion has to be in the list
+    % elements, and will be caught and handled there.
+    ( if
+        InstA = bound(_, _, _),
+        InstB = bound(_, _, _)
+    then
+        inst_merge_2(InstA, InstB, MaybeType, Inst, !ModuleInfo)
+    else
+        % Check whether this pair of insts is already in the merge_insts table.
+        module_info_get_inst_table(!.ModuleInfo, InstTable0),
+        inst_table_get_merge_insts(InstTable0, MergeInstTable0),
+        MergeInstInfo = merge_inst_info(InstA, InstB),
+        MergeInstName = merge_inst(InstA, InstB),
+        search_insert_merge_inst(MergeInstInfo, MaybeMaybeMergedInst,
             MergeInstTable0, MergeInstTable1),
-        inst_table_set_merge_insts(MergeInstTable1, InstTable0, InstTable1),
-        module_info_set_inst_table(InstTable1, !ModuleInfo),
+        (
+            MaybeMaybeMergedInst = yes(MaybeMergedInst),
+            (
+                MaybeMergedInst = inst_known(Inst0)
+            ;
+                MaybeMergedInst = inst_unknown,
+                Inst0 = defined_inst(MergeInstName)
+            )
+        ;
+            MaybeMaybeMergedInst = no,
+            % We have inserted MergeInst into the table with value
+            % `inst_unknown'.
+            inst_table_set_merge_insts(MergeInstTable1,
+                InstTable0, InstTable1),
+            module_info_set_inst_table(InstTable1, !ModuleInfo),
 
-        % Merge the insts.
-        inst_merge_2(InstA, InstB, MaybeType, Inst0, !ModuleInfo),
+            % Merge the insts.
+            inst_merge_2(InstA, InstB, MaybeType, Inst0, !ModuleInfo),
 
-        % Now update the value associated with ThisInstPair.
-        module_info_get_inst_table(!.ModuleInfo, InstTable2),
-        inst_table_get_merge_insts(InstTable2, MergeInstTable2),
-        map.det_update(ThisInstPair, inst_known(Inst0),
-            MergeInstTable2, MergeInstTable3),
-        inst_table_set_merge_insts(MergeInstTable3, InstTable2, InstTable3),
-        module_info_set_inst_table(InstTable3, !ModuleInfo)
-    ),
-    % Avoid expanding recursive insts.
-    ( inst_contains_instname(Inst0, !.ModuleInfo, merge_inst(InstA, InstB)) ->
-        Inst = defined_inst(merge_inst(InstA, InstB))
-    ;
-        Inst = Inst0
+            % Now update the value associated with ThisInstPair.
+            module_info_get_inst_table(!.ModuleInfo, InstTable2),
+            inst_table_get_merge_insts(InstTable2, MergeInstTable2),
+            det_update_merge_inst(MergeInstInfo, inst_known(Inst0),
+                MergeInstTable2, MergeInstTable3),
+            inst_table_set_merge_insts(MergeInstTable3,
+                InstTable2, InstTable3),
+            module_info_set_inst_table(InstTable3, !ModuleInfo)
+        ),
+        % Avoid expanding recursive insts.
+        ( inst_contains_inst_name(Inst0, !.ModuleInfo, MergeInstName) ->
+            Inst = defined_inst(MergeInstName)
+        ;
+            Inst = Inst0
+        )
     ).
 
 :- pred inst_merge_2(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
     mer_inst::out, module_info::in, module_info::out) is semidet.
 
 inst_merge_2(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
-%   % XXX Would this test improve efficiency?s
+%   % XXX Would this test improve efficiency?
 %   % What if we compared the addresses?
 %   ( InstA = InstB ->
 %       Inst = InstA,
@@ -1773,14 +1842,15 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         Inst = any(Uniq, HOInstInfo)
     ;
         InstA = any(UniqA, _),
-        InstB = bound(UniqB, _InstResultsB, BoundInstsB),
+        InstB = bound(UniqB, InstResultsB, BoundInstsB),
         merge_uniq_bound(UniqA, UniqB, BoundInstsB, !.ModuleInfo, Uniq),
         % We do not yet allow merge of any with free, except for
         % clobbered anys.
         ( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
             true
         ;
-            bound_inst_list_is_ground_or_any(BoundInstsB, !.ModuleInfo)
+            inst_results_bound_inst_list_is_ground_or_any(InstResultsB,
+                BoundInstsB, !.ModuleInfo)
         ),
         Inst = any(Uniq, none)
     ;
@@ -1805,7 +1875,7 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         ( Uniq = clobbered ; Uniq = mostly_clobbered ),
         Inst = any(Uniq, HOInstInfo)
     ;
-        InstA = bound(UniqA, _InstResultsA, BoundInstsA),
+        InstA = bound(UniqA, InstResultsA, BoundInstsA),
         InstB = any(UniqB, _),
         merge_uniq_bound(UniqB, UniqA, BoundInstsA, !.ModuleInfo, Uniq),
         % We do not yet allow merge of any with free, except
@@ -1813,7 +1883,8 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         ( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
             true
         ;
-            bound_inst_list_is_ground_or_any(BoundInstsA, !.ModuleInfo)
+            inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
+                BoundInstsA, !.ModuleInfo)
         ),
         Inst = any(Uniq, none)
     ;
@@ -1980,7 +2051,7 @@ merge_inst_uniq(InstA, UniqB, ModuleInfo, !Expansions, Uniq) :-
         merge_inst_uniq(SubInstA, UniqB, ModuleInfo, !Expansions, Uniq)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred inst_merge_bound_ground(uniqueness::in, inst_test_results::in,
     list(bound_inst)::in, uniqueness::in, maybe(mer_type)::in, mer_inst::out,
@@ -1988,11 +2059,15 @@ merge_inst_uniq(InstA, UniqB, ModuleInfo, !Expansions, Uniq) :-
 
 inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
         MaybeType, Result, !ModuleInfo) :-
-    ( bound_inst_list_is_ground(BoundInstsA, !.ModuleInfo) ->
+    (
+        inst_results_bound_inst_list_is_ground(InstResultsA, BoundInstsA,
+            !.ModuleInfo)
+    ->
         merge_uniq_bound(UniqB, UniqA, BoundInstsA, !.ModuleInfo, Uniq),
         Result = ground(Uniq, none)
     ;
-        bound_inst_list_is_ground_or_any(BoundInstsA, !.ModuleInfo),
+        inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
+            BoundInstsA, !.ModuleInfo),
         % If we know the type, we can give a more accurate result than
         % just "any".
         (
@@ -2005,8 +2080,10 @@ inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
             InstResultsB = inst_test_results(
                 inst_result_is_ground,
                 inst_result_does_not_contain_any,
-                inst_result_contains_instnames_known(set.init),
-                inst_result_contains_types_known(set.init)
+                inst_result_contains_inst_names_known(set.init),
+                inst_result_contains_inst_vars_known(set.init),
+                inst_result_contains_types_known(set.init),
+                inst_result_type_ctor_propagated(TypeCtor)
             ),
             InstA = bound(UniqA, InstResultsA, BoundInstsA),
             InstB = bound(UniqB, InstResultsB, BoundInstsB),
@@ -2018,7 +2095,7 @@ inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred inst_list_merge(list(mer_inst)::in, list(mer_inst)::in,
     list(maybe(mer_type))::in, list(mer_inst)::out,
@@ -2074,8 +2151,8 @@ bound_inst_list_merge(BoundInstsA, BoundInstsB, MaybeType, BoundInsts,
         )
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 inst_contains_nonstandard_func_mode(ModuleInfo, Inst) :-
     set.init(Expansions0),
@@ -2099,7 +2176,7 @@ inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, !.Expansions)
             InstResults = inst_test_results_fgtc,
             ContainsNonstd = no
         ;
-            ( InstResults = inst_test_results(_, _, _, _)
+            ( InstResults = inst_test_results(_, _, _, _, _, _)
             ; InstResults = inst_test_no_results
             ),
             ContainsNonstd = bound_inst_list_contains_nonstandard_func_mode(
@@ -2120,7 +2197,6 @@ inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, !.Expansions)
         )
     ;
         Inst = constrained_inst_vars(_, SubInst),
-        % ZZZ We used to fail for this case (the equivalent of returning `no').
         ContainsNonstd = inst_contains_nonstandard_func_mode_2(ModuleInfo,
             SubInst, !.Expansions)
     ;
@@ -2174,7 +2250,7 @@ bound_inst_list_contains_nonstandard_func_mode(ModuleInfo,
             ModuleInfo, BoundInsts, Expansions)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pred_inst_info_is_nonstandard_func_mode(ModuleInfo, PredInstInfo) :-
     PredInstInfo = pred_inst_info(pf_function, ArgModes, _, _),
@@ -2193,7 +2269,7 @@ pred_inst_info_standard_func_mode(Arity) = PredInstInfo :-
     PredInstInfo = pred_inst_info(pf_function, ArgModes, arg_reg_types_unset,
         detism_det).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 inst_contains_any(ModuleInfo, Inst) :-
     set.init(Expansions),
@@ -2211,7 +2287,7 @@ inst_contains_any_2(ModuleInfo, Inst, !.Expansions) = ContainsAny :-
             InstResults = inst_test_results_fgtc,
             ContainsAny = no
         ;
-            InstResults = inst_test_results(_, AnyResults, _, _),
+            InstResults = inst_test_results(_, AnyResults, _, _, _, _),
             (
                 AnyResults = inst_result_does_not_contain_any,
                 ContainsAny = no
@@ -2243,7 +2319,6 @@ inst_contains_any_2(ModuleInfo, Inst, !.Expansions) = ContainsAny :-
         )
     ;
         Inst = constrained_inst_vars(_, SubInst),
-        % ZZZ We used to fail for this case (the equivalent of returning `no').
         ContainsAny = inst_contains_any_2(ModuleInfo, SubInst, !.Expansions)
     ;
         ( Inst = free
@@ -2287,13 +2362,13 @@ bound_inst_list_contains_any(ModuleInfo, [BoundInst | BoundInsts],
             Expansions)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 var_inst_contains_any(ModuleInfo, Instmap, Var) :-
     instmap_lookup_var(Instmap, Var, Inst),
     inst_contains_any(ModuleInfo, Inst).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
     (
@@ -2317,6 +2392,6 @@ inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
         MayRestrict = inst_may_restrict_cons_ids(ModuleInfo, NewInst)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.inst_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

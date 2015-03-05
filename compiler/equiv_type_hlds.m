@@ -226,17 +226,38 @@ replace_in_inst_table(EqvMap, !InstTable, !Cache) :-
     inst_table_get_shared_insts(!.InstTable, SharedInsts0),
     inst_table_get_mostly_uniq_insts(!.InstTable, MostlyUniqInsts0),
 
-    replace_in_one_inst_table(replace_in_maybe_inst_det(EqvMap),
-        EqvMap, UnifyInsts0, UnifyInsts, !Cache),
-    replace_in_merge_inst_table(EqvMap, MergeInsts0, MergeInsts, !Cache),
-    replace_in_one_inst_table(replace_in_maybe_inst_det(EqvMap),
-        EqvMap, GroundInsts0, GroundInsts, !Cache),
-    replace_in_one_inst_table(replace_in_maybe_inst_det(EqvMap),
-        EqvMap, AnyInsts0, AnyInsts, !Cache),
-    replace_in_one_inst_table(replace_in_maybe_inst(EqvMap),
-        EqvMap, SharedInsts0, SharedInsts, !Cache),
-    replace_in_one_inst_table(replace_in_maybe_inst(EqvMap),
-        EqvMap, MostlyUniqInsts0, MostlyUniqInsts, !.Cache, _),
+    unify_insts_to_sorted_pairs(UnifyInsts0, UnifyInstPairs0),
+    merge_insts_to_sorted_pairs(MergeInsts0, MergeInstPairs0),
+    ground_insts_to_sorted_pairs(GroundInsts0, GroundInstPairs0),
+    any_insts_to_sorted_pairs(AnyInsts0, AnyInstPairs0),
+    shared_insts_to_sorted_pairs(SharedInsts0, SharedInstPairs0),
+    mostly_uniq_insts_to_sorted_pairs(MostlyUniqInsts0, MostlyUniqInstPairs0),
+
+    replace_in_one_inst_table(
+        replace_in_unify_inst_info, replace_in_maybe_inst_det,
+        EqvMap, UnifyInstPairs0, UnifyInstPairs, !Cache),
+    replace_in_one_inst_table(
+        replace_in_merge_inst_info, replace_in_maybe_inst,
+        EqvMap, MergeInstPairs0, MergeInstPairs, !Cache),
+    replace_in_one_inst_table(
+        replace_in_ground_inst_info, replace_in_maybe_inst_det,
+        EqvMap, GroundInstPairs0, GroundInstPairs, !Cache),
+    replace_in_one_inst_table(
+        replace_in_any_inst_info, replace_in_maybe_inst_det,
+        EqvMap, AnyInstPairs0, AnyInstPairs, !Cache),
+    replace_in_one_inst_table(
+        replace_in_inst_name_no_tvarset, replace_in_maybe_inst,
+        EqvMap, SharedInstPairs0, SharedInstPairs, !Cache),
+    replace_in_one_inst_table(
+        replace_in_inst_name_no_tvarset, replace_in_maybe_inst,
+        EqvMap, MostlyUniqInstPairs0, MostlyUniqInstPairs, !.Cache, _),
+
+    unify_insts_from_sorted_pairs(UnifyInstPairs, UnifyInsts),
+    merge_insts_from_sorted_pairs(MergeInstPairs, MergeInsts),
+    ground_insts_from_sorted_pairs(GroundInstPairs, GroundInsts),
+    any_insts_from_sorted_pairs(AnyInstPairs, AnyInsts),
+    shared_insts_from_sorted_pairs(SharedInstPairs, SharedInsts),
+    mostly_uniq_insts_from_sorted_pairs(MostlyUniqInstPairs, MostlyUniqInsts),
 
     inst_table_set_unify_insts(UnifyInsts, !InstTable),
     inst_table_set_merge_insts(MergeInsts, !InstTable),
@@ -264,122 +285,128 @@ replace_in_inst_table(EqvMap, !InstTable, !Cache) :-
 %
 
 :- pred replace_in_one_inst_table(
-    pred(T, T, bool, inst_cache, inst_cache)::
-        (pred(in, out, out, in, out) is det),
-    eqv_map::in, map(inst_name, T)::in, map(inst_name, T)::out,
+    pred(eqv_map, K, K, bool, inst_cache, inst_cache)::
+        (pred(in, in, out, out, in, out) is det),
+    pred(eqv_map, V, V, bool, inst_cache, inst_cache)::
+        (pred(in, in, out, out, in, out) is det),
+    eqv_map::in, assoc_list(K, V)::in, assoc_list(K, V)::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_one_inst_table(P, EqvMap, Map0, Map, !Cache) :-
-    map.to_sorted_assoc_list(Map0, SortedElements0),
-    replace_in_one_inst_table_elements(P, EqvMap, SortedElements0,
-        [], RevSortedElements1, [], UnSortedElements, !Cache),
+replace_in_one_inst_table(ReplaceKey, ReplaceValue, EqvMap,
+        SortedElements0, SortedElements, !Cache) :-
+    replace_in_one_inst_table_elements(ReplaceKey, ReplaceValue, EqvMap,
+        SortedElements0, [], RevSortedElements1, [], UnSortedElements, !Cache),
     (
         UnSortedElements = [],
-        map.from_rev_sorted_assoc_list(RevSortedElements1, Map)
+        list.reverse(RevSortedElements1, SortedElements)
     ;
         UnSortedElements = [_ | _],
         list.reverse(RevSortedElements1, SortedElements1),
         list.sort_and_remove_dups(UnSortedElements, NowSortedElements),
         list.merge_and_remove_dups(SortedElements1, NowSortedElements,
-            SortedElements),
-        map.from_sorted_assoc_list(SortedElements, Map)
+            SortedElements)
     ).
 
 :- pred replace_in_one_inst_table_elements(
-    pred(T, T, bool, inst_cache, inst_cache)::
-        (pred(in, out, out, in, out) is det),
-    eqv_map::in, assoc_list(inst_name, T)::in,
-    assoc_list(inst_name, T)::in, assoc_list(inst_name, T)::out,
-    assoc_list(inst_name, T)::in, assoc_list(inst_name, T)::out,
+    pred(eqv_map, K, K, bool, inst_cache, inst_cache)::
+        (pred(in, in, out, out, in, out) is det),
+    pred(eqv_map, V, V, bool, inst_cache, inst_cache)::
+        (pred(in, in, out, out, in, out) is det),
+    eqv_map::in, assoc_list(K, V)::in,
+    assoc_list(K, V)::in, assoc_list(K, V)::out,
+    assoc_list(K, V)::in, assoc_list(K, V)::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_one_inst_table_elements(_P, _EqvMap, [],
+replace_in_one_inst_table_elements(_ReplaceKey, _ReplaceValue, _EqvMap, [],
         !RevSortedElements, !UnSortedElements, !Cache).
-replace_in_one_inst_table_elements(P, EqvMap, [Element0 | Elements0],
+replace_in_one_inst_table_elements(ReplaceKey, ReplaceValue, EqvMap,
+        [Element0 | Elements0],
         !RevSortedElements, !UnSortedElements, !Cache) :-
-    Element0 = Name0 - T0,
-    % XXX We don't have a valid tvarset here.
-    varset.init(TVarSet),
-    replace_in_inst_name(EqvMap, Name0, Name, NameChanged, TVarSet, _, !Cache),
-    P(T0, T, TChanged, !Cache),
+    Element0 = Key0 - Value0,
+    ReplaceKey(EqvMap, Key0, Key, KeyChanged, !Cache),
+    ReplaceValue(EqvMap, Value0, Value, ValueChanged, !Cache),
     (
-        NameChanged = no,
+        KeyChanged = no,
         (
-            TChanged = no,
+            ValueChanged = no,
             Element = Element0
         ;
-            TChanged = yes,
-            Element = Name0 - T
+            ValueChanged = yes,
+            Element = Key0 - Value
         ),
         !:RevSortedElements = [Element | !.RevSortedElements]
     ;
-        NameChanged = yes,
-        Element = Name - T,
+        KeyChanged = yes,
+        Element = Key - Value,
         !:UnSortedElements = [Element | !.UnSortedElements]
     ),
-    replace_in_one_inst_table_elements(P, EqvMap, Elements0,
-        !RevSortedElements, !UnSortedElements, !Cache).
+    replace_in_one_inst_table_elements(ReplaceKey, ReplaceValue, EqvMap,
+        Elements0, !RevSortedElements, !UnSortedElements, !Cache).
 
-:- pred replace_in_merge_inst_table(eqv_map::in, merge_inst_table::in,
-    merge_inst_table::out, inst_cache::in, inst_cache::out) is det.
+:- pred replace_in_unify_inst_info(eqv_map::in,
+    unify_inst_info::in, unify_inst_info::out, bool::out,
+    inst_cache::in, inst_cache::out) is det.
 
-replace_in_merge_inst_table(EqvMap, Map0, Map, !Cache) :-
-    map.to_sorted_assoc_list(Map0, SortedElements0),
-    replace_in_merge_inst_table_elements(EqvMap, SortedElements0,
-        [], RevSortedElements1, [], UnSortedElements, !Cache),
-    (
-        UnSortedElements = [],
-        map.from_rev_sorted_assoc_list(RevSortedElements1, Map)
-    ;
-        UnSortedElements = [_ | _],
-        list.reverse(RevSortedElements1, SortedElements1),
-        list.sort_and_remove_dups(UnSortedElements, NowSortedElements),
-        list.merge_and_remove_dups(SortedElements1, NowSortedElements,
-            SortedElements),
-        map.from_sorted_assoc_list(SortedElements, Map)
+replace_in_unify_inst_info(EqvMap, UnifyInstInfo0, UnifyInstInfo, Changed,
+        !Cache) :-
+    UnifyInstInfo0 = unify_inst_info(Live, Real, InstA0, InstB0),
+    % XXX We don't have a valid tvarset here.
+    varset.init(TVarSet0),
+    replace_in_inst(EqvMap, InstA0, InstA, ChangedA, TVarSet0, TVarSet1,
+        !Cache),
+    replace_in_inst(EqvMap, InstB0, InstB, ChangedB, TVarSet1, _TVarSet,
+        !Cache),
+    Changed = ChangedA `or` ChangedB,
+    ( Changed = yes, UnifyInstInfo = unify_inst_info(Live, Real, InstA, InstB)
+    ; Changed = no, UnifyInstInfo = UnifyInstInfo0
     ).
 
-:- pred replace_in_merge_inst_table_elements(eqv_map::in,
-    assoc_list(pair(mer_inst), maybe_inst)::in,
-    assoc_list(pair(mer_inst), maybe_inst)::in,
-    assoc_list(pair(mer_inst), maybe_inst)::out,
-    assoc_list(pair(mer_inst), maybe_inst)::in,
-    assoc_list(pair(mer_inst), maybe_inst)::out,
+:- pred replace_in_merge_inst_info(eqv_map::in,
+    merge_inst_info::in, merge_inst_info::out, bool::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_merge_inst_table_elements(_EqvMap, [],
-        !RevSortedElements, !UnSortedElements, !Cache).
-replace_in_merge_inst_table_elements(EqvMap, [Element0 | Elements0],
-        !RevSortedElements, !UnSortedElements, !Cache) :-
-    Element0 = Pair0 - MaybeInst0,
-    Pair0 = InstA0 - InstB0,
-    some [!TVarSet] (
-        % XXX We don't have a valid tvarset here.
-        !:TVarSet = varset.init,
-        replace_in_inst(EqvMap, InstA0, InstA, ChangedInstA, !TVarSet, !Cache),
-        replace_in_inst(EqvMap, InstB0, InstB, ChangedInstB, !.TVarSet, _,
-            !Cache),
-        replace_in_maybe_inst(EqvMap, MaybeInst0, MaybeInst, MaybeInstChanged,
-            !Cache)
-    ),
-    ( if
-        ChangedInstA = no,
-        ChangedInstB = no
-    then
-        (
-            MaybeInstChanged = no,
-            Element = Element0
-        ;
-            MaybeInstChanged = yes,
-            Element = Pair0 - MaybeInst
-        ),
-        !:RevSortedElements = [Element | !.RevSortedElements]
-    else
-        Element = (InstA - InstB) - MaybeInst,
-        !:UnSortedElements = [Element | !.UnSortedElements]
-    ),
-    replace_in_merge_inst_table_elements(EqvMap, Elements0,
-        !RevSortedElements, !UnSortedElements, !Cache).
+replace_in_merge_inst_info(EqvMap, MergeInstInfo0, MergeInstInfo, Changed,
+        !Cache) :-
+    MergeInstInfo0 = merge_inst_info(InstA0, InstB0),
+    % XXX We don't have a valid tvarset here.
+    varset.init(TVarSet0),
+    replace_in_inst(EqvMap, InstA0, InstA, ChangedA, TVarSet0, TVarSet1,
+        !Cache),
+    replace_in_inst(EqvMap, InstB0, InstB, ChangedB, TVarSet1, _TVarSet,
+        !Cache),
+    Changed = ChangedA `or` ChangedB,
+    ( Changed = yes, MergeInstInfo = merge_inst_info(InstA, InstB)
+    ; Changed = no, MergeInstInfo = MergeInstInfo0
+    ).
+
+:- pred replace_in_ground_inst_info(eqv_map::in,
+    ground_inst_info::in, ground_inst_info::out, bool::out,
+    inst_cache::in, inst_cache::out) is det.
+
+replace_in_ground_inst_info(EqvMap, GroundInstInfo0, GroundInstInfo, Changed,
+        !Cache) :-
+    GroundInstInfo0 = ground_inst_info(InstName0, Uniq, Live, Real),
+    replace_in_inst_name_no_tvarset(EqvMap, InstName0, InstName, Changed,
+        !Cache),
+    (
+        Changed = yes,
+        GroundInstInfo = ground_inst_info(InstName, Uniq, Live, Real)
+    ;
+        Changed = no,
+        GroundInstInfo = GroundInstInfo0
+    ).
+
+:- pred replace_in_any_inst_info(eqv_map::in,
+    any_inst_info::in, any_inst_info::out, bool::out,
+    inst_cache::in, inst_cache::out) is det.
+
+replace_in_any_inst_info(EqvMap, AnyInstInfo0, AnyInstInfo, Changed, !Cache) :-
+    AnyInstInfo0 = any_inst_info(InstName0, Uniq, Live, Real),
+    replace_in_inst_name_no_tvarset(EqvMap, InstName0, InstName, Changed,
+        !Cache),
+    ( Changed = yes, AnyInstInfo = any_inst_info(InstName, Uniq, Live, Real)
+    ; Changed = no, AnyInstInfo = AnyInstInfo0
+    ).
 
 :- pred replace_in_maybe_inst(eqv_map::in, maybe_inst::in, maybe_inst::out,
     bool::out, inst_cache::in, inst_cache::out) is det.
@@ -837,7 +864,7 @@ type_may_occur_in_inst(Inst) = MayOccur :-
             MayOccur = no
         ;
             (
-                InstResults = inst_test_results(_, _, _, TypeResult)
+                InstResults = inst_test_results(_, _, _, _, TypeResult, _)
             ;
                 InstResults = inst_test_no_results,
                 TypeResult = inst_result_contains_types_unknown
@@ -1037,7 +1064,7 @@ replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
         Inst0 = bound(Uniq, InstResults0, BoundInsts0),
         (
             InstResults0 = inst_test_results(GroundnessResult, AnyResult,
-                InstNamesResult, TypeResult),
+                InstNamesResult, InstVarsResult, TypeResult, PropagatedResult),
             (
                 TypeResult = inst_result_contains_types_unknown,
                 NeedReplace = yes(InstResults0)
@@ -1050,8 +1077,8 @@ replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
                     NeedReplace = no
                 ;
                     NeedReplace = yes(inst_test_results(GroundnessResult,
-                        AnyResult, InstNamesResult,
-                        inst_result_contains_types_unknown))
+                        AnyResult, InstNamesResult, InstVarsResult,
+                        inst_result_contains_types_unknown, PropagatedResult))
                 )
             )
         ;
@@ -1109,6 +1136,16 @@ replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
         )
     ).
 
+:- pred replace_in_inst_name_no_tvarset(eqv_map::in,
+    inst_name::in, inst_name::out, bool::out,
+    inst_cache::in, inst_cache::out) is det.
+
+replace_in_inst_name_no_tvarset(EqvMap, InstName0, InstName, Changed,
+        !Cache) :-
+    varset.init(TVarSet0),
+    replace_in_inst_name(EqvMap, InstName0, InstName, Changed,
+        TVarSet0, _TVarSet, !Cache).
+
 :- pred replace_in_inst_name(eqv_map::in, inst_name::in, inst_name::out,
     bool::out, tvarset::in, tvarset::out,
     inst_cache::in, inst_cache::out) is det.
@@ -1121,19 +1158,19 @@ replace_in_inst_name(EqvMap, InstName0, InstName, Changed, !TVarSet, !Cache) :-
         ; Changed = no, InstName = InstName0
         )
     ;
+        InstName0 = unify_inst(Live, Real, InstA0, InstB0),
+        replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
+        replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
+        Changed = ChangedA `or` ChangedB,
+        ( Changed = yes, InstName = unify_inst(Live, Real, InstA, InstB)
+        ; Changed = no, InstName = InstName0
+        )
+    ;
         InstName0 = merge_inst(InstA0, InstB0),
         replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
         replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
         Changed = ChangedA `or` ChangedB,
         ( Changed = yes, InstName = merge_inst(InstA, InstB)
-        ; Changed = no, InstName = InstName0
-        )
-    ;
-        InstName0 = unify_inst(Live, InstA0, InstB0, Real),
-        replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
-        replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
-        Changed = ChangedA `or` ChangedB,
-        ( Changed = yes, InstName = unify_inst(Live, InstA, InstB, Real)
         ; Changed = no, InstName = InstName0
         )
     ;

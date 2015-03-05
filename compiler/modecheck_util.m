@@ -467,9 +467,6 @@ modecheck_var_is_live_exact_match(VarId, ExpectedIsLive, !ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Given a list of variables and a list of initial insts, ensure that
-    % the inst of each variable matches the corresponding initial inst.
-    %
 modecheck_var_has_inst_list_exact_match(Vars, Insts, ArgNum, Subst,
         !ModeInfo) :-
     modecheck_var_has_inst_list_exact_match_2(Vars, Insts, ArgNum,
@@ -603,9 +600,19 @@ modecheck_head_inst_vars(Vars, InstVarSub, !ModeInfo) :-
 
 modecheck_head_inst_var(HeadInstVars, InstVar, Subst, !Acc) :-
     ( map.search(HeadInstVars, InstVar, Inst) ->
-        % Subst should not change the constraint.
-        Subst = constrained_inst_vars(InstVars, Inst),
-        set.member(InstVar, InstVars)
+        % Subst should not change the constraint. However, the two insts
+        % may have different information about inst test results.
+        Subst = constrained_inst_vars(SubstInstVars, SubstInst),
+        set.member(InstVar, SubstInstVars),
+        (
+            Inst = bound(Uniq, _, BoundInsts),
+            SubstInst = bound(SubstUniq, _, SubstBoundInsts)
+        ->
+            Uniq = SubstUniq,
+            BoundInsts = SubstBoundInsts
+        ;
+            Inst = SubstInst
+        )
     ;
         true
     ).
@@ -1089,9 +1096,26 @@ get_constrained_insts_in_inst(ModuleInfo, Inst, !Map, !Expansions) :-
         ; Inst = not_reached
         )
     ;
-        Inst = bound(_, _, BoundInsts),
-        list.foldl2(get_constrained_insts_in_bound_inst(ModuleInfo),
-            BoundInsts, !Map, !Expansions)
+        Inst = bound(_, InstResults, BoundInsts),
+        (
+            InstResults = inst_test_results_fgtc
+        ;
+            InstResults = inst_test_results(_, _, _, InstVarsResult, _, _),
+            ( if
+                InstVarsResult =
+                    inst_result_contains_inst_vars_known(InstVars),
+                set.is_empty(InstVars)
+            then
+                true
+            else
+                list.foldl2(get_constrained_insts_in_bound_inst(ModuleInfo),
+                    BoundInsts, !Map, !Expansions)
+            )
+        ;
+            InstResults = inst_test_no_results,
+            list.foldl2(get_constrained_insts_in_bound_inst(ModuleInfo),
+                BoundInsts, !Map, !Expansions)
+        )
     ;
         ( Inst = any(_, HOInstInfo)
         ; Inst = ground(_, HOInstInfo)
