@@ -162,6 +162,17 @@
 :- pred constructors_to_bound_any_insts(module_info::in, uniqueness::in,
     type_ctor::in, list(constructor)::in, list(bound_inst)::out) is det.
 
+    % A bound(_, _, BoundInsts) inst contains a cons_id in each of the
+    % BoundInsts. This predicate records, for each of those cons_ids,
+    % that the cons_id belongs to the given type, *if* in fact that cons_id
+    % is one of the function symbols of the give type.
+    %
+    % NOTE: If insts were required to belong to just one explicitly specified
+    % type, as they should be, this predicate would not be necessary.
+    %
+:- pred propagate_ctor_info_into_bound_inst(module_info::in, mer_type::in,
+    mer_inst::in(mer_inst_is_bound), mer_inst::out) is det.
+
     % Given the mode of a predicate, work out which arguments are live
     % (might be used again by the caller of that predicate) and which are dead.
     %
@@ -210,6 +221,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
 
+:- import_module bool.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
@@ -483,64 +495,74 @@ modes_to_uni_modes(ModuleInfo, [X | Xs], [Y | Ys], [A | As]) :-
 
 inst_lookup(ModuleInfo, InstName, Inst) :-
     (
-        InstName = unify_inst(_, _, _, _),
+        InstName = unify_inst(Live, Real, InstA, InstB),
+        UnifyInstInfo = unify_inst_info(Live, Real, InstA, InstB),
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_unify_insts(InstTable, UnifyInstTable),
-        map.lookup(UnifyInstTable, InstName, MaybeInst),
-        ( MaybeInst = inst_det_known(Inst0, _) ->
-            Inst = Inst0
+        lookup_unify_inst(UnifyInstTable, UnifyInstInfo, MaybeInstDet),
+        (
+            MaybeInstDet = inst_det_known(Inst, _)
         ;
+            MaybeInstDet = inst_det_unknown,
             Inst = defined_inst(InstName)
         )
     ;
-        InstName = merge_inst(A, B),
+        InstName = merge_inst(InstA, InstB),
+        MergeInstInfo = merge_inst_info(InstA, InstB),
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_merge_insts(InstTable, MergeInstTable),
-        map.lookup(MergeInstTable, A - B, MaybeInst),
-        ( MaybeInst = inst_known(Inst0) ->
-            Inst = Inst0
+        lookup_merge_inst(MergeInstTable, MergeInstInfo, MaybeInst),
+        (
+            MaybeInst = inst_known(Inst)
         ;
+            MaybeInst = inst_unknown,
             Inst = defined_inst(InstName)
         )
     ;
-        InstName = ground_inst(_, _, _, _),
+        InstName = ground_inst(SubInstName, Uniq, Live, Real),
+        GroundInstInfo = ground_inst_info(SubInstName, Uniq, Live, Real),
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_ground_insts(InstTable, GroundInstTable),
-        map.lookup(GroundInstTable, InstName, MaybeInst),
-        ( MaybeInst = inst_det_known(Inst0, _) ->
-            Inst = Inst0
+        lookup_ground_inst(GroundInstTable, GroundInstInfo, MaybeInstDet),
+        (
+            MaybeInstDet = inst_det_known(Inst, _)
         ;
+            MaybeInstDet = inst_det_unknown,
             Inst = defined_inst(InstName)
         )
     ;
-        InstName = any_inst(_, _, _, _),
+        InstName = any_inst(SubInstName, Uniq, Live, Real),
+        AnyInstInfo = any_inst_info(SubInstName, Uniq, Live, Real),
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_any_insts(InstTable, AnyInstTable),
-        map.lookup(AnyInstTable, InstName, MaybeInst),
-        ( MaybeInst = inst_det_known(Inst0, _) ->
-            Inst = Inst0
+        lookup_any_inst(AnyInstTable, AnyInstInfo, MaybeInstDet),
+        (
+            MaybeInstDet = inst_det_known(Inst, _)
         ;
+            MaybeInstDet = inst_det_unknown,
             Inst = defined_inst(InstName)
         )
     ;
         InstName = shared_inst(SharedInstName),
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_shared_insts(InstTable, SharedInstTable),
-        map.lookup(SharedInstTable, SharedInstName, MaybeInst),
-        ( MaybeInst = inst_known(Inst0) ->
-            Inst = Inst0
+        lookup_shared_inst(SharedInstTable, SharedInstName, MaybeInst),
+        (
+            MaybeInst = inst_known(Inst)
         ;
+            MaybeInst = inst_unknown,
             Inst = defined_inst(InstName)
         )
     ;
         InstName = mostly_uniq_inst(NondetLiveInstName),
         module_info_get_inst_table(ModuleInfo, InstTable),
-        inst_table_get_mostly_uniq_insts(InstTable,
-            NondetLiveInstTable),
-        map.lookup(NondetLiveInstTable, NondetLiveInstName, MaybeInst),
-        ( MaybeInst = inst_known(Inst0) ->
-            Inst = Inst0
+        inst_table_get_mostly_uniq_insts(InstTable, MostlyUniqInstTable),
+        lookup_mostly_uniq_inst(MostlyUniqInstTable, NondetLiveInstName,
+            MaybeInst),
+        (
+            MaybeInst = inst_known(Inst)
         ;
+            MaybeInst = inst_unknown,
             Inst = defined_inst(InstName)
         )
     ;
@@ -682,8 +704,10 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
             InstResults = inst_test_results(
                 inst_result_is_ground,
                 inst_result_does_not_contain_any,
-                inst_result_contains_instnames_known(set.init),
-                inst_result_contains_types_known(set.init)
+                inst_result_contains_inst_names_known(set.init),
+                inst_result_contains_inst_vars_known(set.init),
+                inst_result_contains_types_known(set.init),
+                inst_result_type_ctor_propagated(TypeCtor)
             ),
             Inst = bound(Uniq, InstResults, BoundInsts)
         )
@@ -703,8 +727,10 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
             InstResults = inst_test_results(
                 inst_result_groundness_unknown,
                 inst_result_contains_any_unknown,
-                inst_result_contains_instnames_known(set.init),
-                inst_result_contains_types_known(set.init)
+                inst_result_contains_inst_names_known(set.init),
+                inst_result_contains_inst_vars_known(set.init),
+                inst_result_contains_types_known(set.init),
+                inst_result_type_ctor_propagated(TypeCtor)
             ),
             Inst = bound(Uniq, InstResults, BoundInsts)
         )
@@ -743,19 +769,8 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
         Inst = any(Uniq, higher_order(PredInstInfo))
     ;
-        Inst0 = bound(Uniq, _InstResult, BoundInsts0),
-        propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts),
-        (
-            BoundInsts = [],
-            Inst = not_reached
-        ;
-            BoundInsts = [_ | _],
-            % XXX do we need to sort the BoundInsts?
-            % XXX I (zs) don't understand propagate_ctor_info_2 well enough
-            % to figure out under what circumstances we could keep (part of)
-            % _InstResult.
-            Inst = bound(Uniq, inst_test_no_results, BoundInsts)
-        )
+        Inst0 = bound(_Uniq, _InstResult, _BoundInsts0),
+        propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst)
     ;
         Inst0 = not_reached,
         Inst = Inst0
@@ -845,20 +860,9 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         PredInstInfo = pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det),
         Inst = any(Uniq, higher_order(PredInstInfo))
     ;
-        Inst0 = bound(Uniq, _InstResult, BoundInsts0),
+        Inst0 = bound(_Uniq, _InstResult, _BoundInsts0),
         apply_type_subst(Type0, Subst, Type),
-        propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts),
-        (
-            BoundInsts = [],
-            Inst = not_reached
-        ;
-            BoundInsts = [_ | _],
-            % XXX Do we need to sort the BoundInsts?
-            % XXX I (zs) don't understand propagate_ctor_info_2 well enough
-            % to figure out under what circumstances we could keep (part of)
-            % _InstResult.
-            Inst = bound(Uniq, inst_test_no_results, BoundInsts)
-        )
+        propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst)
     ;
         Inst0 = not_reached,
         Inst = Inst0
@@ -944,16 +948,17 @@ ctor_arg_list_to_inst_list([], _, []).
 ctor_arg_list_to_inst_list([_ | Args], Inst, [Inst | Insts]) :-
     ctor_arg_list_to_inst_list(Args, Inst, Insts).
 
-:- pred propagate_ctor_info_2(module_info::in, mer_type::in,
-    list(bound_inst)::in, list(bound_inst)::out) is det.
-
-propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
-    (
+propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
+    Inst0 = bound(Uniq, InstResults0, BoundInsts0),
+    ( if
         type_is_tuple(Type, TupleArgTypes)
-    ->
+    then
         list.map(propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes),
-            BoundInsts0, BoundInsts)
-    ;
+            BoundInsts0, BoundInsts),
+        % Tuples don't have a *conventional* type_ctor.
+        PropagatedResult = inst_result_no_type_ctor_propagated,
+        ConstructNewInst = yes
+    else if
         type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
         TypeCtor = type_ctor(qualified(TypeModule, _), _),
         module_info_get_type_table(ModuleInfo, TypeTable),
@@ -961,14 +966,76 @@ propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         Constructors = TypeBody ^ du_type_ctors
-    ->
-        map.from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),
-        propagate_ctor_info_3(ModuleInfo, ArgSubst, TypeCtor, TypeModule,
-            Constructors, BoundInsts0, BoundInsts1),
-        list.sort(BoundInsts1, BoundInsts)
-    ;
+    then
+        ( if
+            InstResults0 = inst_test_results(_, _, _, _, _, PropagatedResult0),
+            PropagatedResult0 =
+                inst_result_type_ctor_propagated(PropagatedTypeCtor),
+            PropagatedTypeCtor = TypeCtor,
+            TypeParams = []
+        then
+            BoundInsts = BoundInsts0,
+            PropagatedResult = PropagatedResult0,
+            ConstructNewInst = no
+        else
+            map.from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),
+            propagate_ctor_info_into_bound_functors(ModuleInfo, ArgSubst,
+                TypeCtor, TypeModule, Constructors, BoundInsts0, BoundInsts1),
+            list.sort(BoundInsts1, BoundInsts),
+            PropagatedResult = inst_result_type_ctor_propagated(TypeCtor),
+            ConstructNewInst = yes
+        )
+    else
         % Builtin types don't need processing.
-        BoundInsts = BoundInsts0
+        BoundInsts = BoundInsts0,                                   % dummy
+        PropagatedResult = inst_result_no_type_ctor_propagated,     % dummy
+        ConstructNewInst = no
+    ),
+    % The code here would be slightly cleaner if ConstructNewInst's type
+    % was maybe(list(bound_inst)), since we wouldn't have to set BoundInsts
+    % and PropagatedResult if ConstructNewInst = no, but this predicate
+    % is a performance bottleneck, so we want to minimize our memory
+    % allocations.
+    (
+        ConstructNewInst = no,
+        Inst = Inst0
+    ;
+        ConstructNewInst = yes,
+        (
+            BoundInsts = [],
+            Inst = not_reached
+        ;
+            BoundInsts = [_ | _],
+            (
+                InstResults0 = inst_test_results_fgtc,
+                InstResults = InstResults0
+            ;
+                InstResults0 = inst_test_no_results,
+                InstResults = inst_test_results(inst_result_groundness_unknown,
+                    inst_result_contains_any_unknown,
+                    inst_result_contains_inst_names_unknown,
+                    inst_result_contains_inst_vars_unknown,
+                    inst_result_contains_types_unknown, PropagatedResult)
+            ;
+                InstResults0 = inst_test_results(GroundNessResult0,
+                    ContainsAnyResult, _, _, _, _),
+                % XXX I (zs) don't understand the predicate
+                % propagate_ctor_info_into_bound_functors 
+                % well enough to figure out under what circumstances we could
+                % keep the parts of InstResult0 we are clobbering here.
+                InstResults = inst_test_results(GroundNessResult0,
+                    ContainsAnyResult, inst_result_contains_inst_names_unknown,
+                    inst_result_contains_inst_vars_unknown,
+                    inst_result_contains_types_unknown, PropagatedResult)
+            ),
+            % We shouldn't need to sort BoundInsts. The cons_ids in the
+            % bound_insts in the list should have been either all typed
+            % or all non-typed. If they were all typed, then pushing the
+            % type_ctor into them should not have modified them. If they
+            % were all non-typed, then pushing the same type_ctor into them all
+            % should not have changed their order.
+            Inst = bound(Uniq, InstResults, BoundInsts)
+        )
     ).
 
 :- pred propagate_ctor_info_tuple(module_info::in, list(mer_type)::in,
@@ -994,12 +1061,13 @@ propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes, BoundInst0, BoundInst) :-
     ),
     BoundInst = bound_functor(Functor, ArgInsts).
 
-:- pred propagate_ctor_info_3(module_info::in, tsubst::in,
+:- pred propagate_ctor_info_into_bound_functors(module_info::in, tsubst::in,
     type_ctor::in, module_name::in, list(constructor)::in,
     list(bound_inst)::in, list(bound_inst)::out) is det.
 
-propagate_ctor_info_3(_, _, _, _, _, [], []).
-propagate_ctor_info_3(ModuleInfo, Subst, TypeCtor, TypeModule, Constructors,
+propagate_ctor_info_into_bound_functors(_, _, _, _, _, [], []).
+propagate_ctor_info_into_bound_functors(ModuleInfo, Subst,
+        TypeCtor, TypeModule, Constructors,
         [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts]) :-
     BoundInst0 = bound_functor(ConsId0, ArgInsts0),
     ( ConsId0 = cons(unqualified(Name), ConsArity, _ConsTypeCtor) ->
@@ -1026,8 +1094,8 @@ propagate_ctor_info_3(ModuleInfo, Subst, TypeCtor, TypeModule, Constructors,
         % tries to match with the inst.
         BoundInst = bound_functor(ConsId, ArgInsts0)
     ),
-    propagate_ctor_info_3(ModuleInfo, Subst, TypeCtor, TypeModule,
-        Constructors, BoundInsts0, BoundInsts).
+    propagate_ctor_info_into_bound_functors(ModuleInfo, Subst,
+        TypeCtor, TypeModule, Constructors, BoundInsts0, BoundInsts).
 
     % Find the first constructor in the egiven list of constructors
     % that match the given functor name and arity. Since the constructors
@@ -1715,11 +1783,10 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
 
 %-----------------------------------------------------------------------------%
 
-    % Arguments with final inst `clobbered' are dead, any
-    % others are assumed to be live.
-    %
 get_arg_lives(_, [], []).
 get_arg_lives(ModuleInfo, [Mode | Modes], [IsLive | IsLives]) :-
+    % Arguments with final inst `clobbered' are dead, any others
+    % are assumed to be live.
     mode_get_insts(ModuleInfo, Mode, _InitialInst, FinalInst),
     ( inst_is_clobbered(ModuleInfo, FinalInst) ->
         IsLive = is_dead

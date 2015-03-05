@@ -621,54 +621,64 @@ write_inst_table(Lang, Indent, Limit, InstTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Insts --------\n", !IO),
 
+    inst_table_get_user_insts(InstTable, UserInstTable),
+    inst_table_get_unify_insts(InstTable, UnifyInstTable),
+    inst_table_get_merge_insts(InstTable, MergeInstTable),
+    inst_table_get_ground_insts(InstTable, GroundInstTable),
+    inst_table_get_any_insts(InstTable, AnyInstTable),
+    inst_table_get_shared_insts(InstTable, SharedInstTable),
+    inst_table_get_mostly_uniq_insts(InstTable, MostlyUniqInstTable),
+
+    map.to_sorted_assoc_list(UserInstTable, UserInstPairs),
+    unify_insts_to_sorted_pairs(UnifyInstTable, UnifyInstPairs),
+    merge_insts_to_sorted_pairs(MergeInstTable, MergeInstPairs),
+    ground_insts_to_sorted_pairs(GroundInstTable, GroundInstPairs),
+    any_insts_to_sorted_pairs(AnyInstTable, AnyInstPairs),
+    shared_insts_to_sorted_pairs(SharedInstTable, SharedInstPairs),
+    mostly_uniq_insts_to_sorted_pairs(MostlyUniqInstTable,
+        MostlyUniqInstPairs),
+
     write_indent(Indent, !IO),
     io.write_string("%-------- User defined insts --------\n", !IO),
-    inst_table_get_user_insts(InstTable, UserInstTable),
-    map.foldl(write_user_inst(Indent), UserInstTable, !IO),
+    list.foldl(write_user_inst(Indent), UserInstPairs, !IO),
 
     io.write_string("%-------- Unify insts --------\n", !IO),
-    inst_table_get_unify_insts(InstTable, UnifyInstMap),
-    map.foldl2(write_inst_name_maybe_inst_det(Lang, Limit), UnifyInstMap,
-        0, NumUnifyInsts, !IO),
+    list.foldl2(write_key_maybe_inst_det(Lang, Limit, write_key_unify_inst),
+        UnifyInstPairs, 0, NumUnifyInsts, !IO),
     io.format("Total number of unify insts: %d\n", [i(NumUnifyInsts)], !IO),
 
     io.write_string("%-------- Merge insts --------\n", !IO),
-    inst_table_get_merge_insts(InstTable, MergeInstMap),
-    map.foldl2(write_inst_pair_maybe_inst(Lang, Limit), MergeInstMap,
-        0, NumMergeInsts, !IO),
+    list.foldl2(write_key_maybe_inst(Lang, Limit, write_key_merge_inst),
+        MergeInstPairs, 0, NumMergeInsts, !IO),
     io.format("Total number of merge insts: %d\n", [i(NumMergeInsts)], !IO),
 
     io.write_string("%-------- Ground insts --------\n", !IO),
-    inst_table_get_unify_insts(InstTable, GroundInstMap),
-    map.foldl2(write_inst_name_maybe_inst_det(Lang, Limit), GroundInstMap,
-        0, NumGroundInsts, !IO),
+    list.foldl2(write_key_maybe_inst_det(Lang, Limit, write_key_ground_inst),
+        GroundInstPairs, 0, NumGroundInsts, !IO),
     io.format("Total number of ground insts: %d\n", [i(NumGroundInsts)], !IO),
 
     io.write_string("%-------- Any insts --------\n", !IO),
-    inst_table_get_any_insts(InstTable, AnyInstMap),
-    map.foldl2(write_inst_name_maybe_inst_det(Lang, Limit), AnyInstMap,
-        0, NumAnyInsts, !IO),
+    list.foldl2(write_key_maybe_inst_det(Lang, Limit, write_key_any_inst),
+        AnyInstPairs, 0, NumAnyInsts, !IO),
     io.format("Total number of any insts: %d\n", [i(NumAnyInsts)], !IO),
 
     io.write_string("%-------- Shared insts --------\n", !IO),
-    inst_table_get_shared_insts(InstTable, SharedInstMap),
-    map.foldl2(write_inst_name_maybe_inst(Lang, Limit), SharedInstMap,
-        0, NumSharedInsts, !IO),
+    list.foldl2(write_key_maybe_inst(Lang, Limit, write_inst_name),
+        SharedInstPairs, 0, NumSharedInsts, !IO),
     io.format("Total number of shared insts: %d\n", [i(NumSharedInsts)], !IO),
 
     io.write_string("%-------- MostlyUniq insts --------\n", !IO),
-    inst_table_get_mostly_uniq_insts(InstTable, MostlyUniqInstMap),
-    map.foldl2(write_inst_name_maybe_inst(Lang, Limit), MostlyUniqInstMap,
-        0, NumMostlyUniqInsts, !IO),
+    list.foldl2(write_key_maybe_inst(Lang, Limit, write_inst_name),
+        MostlyUniqInstPairs, 0, NumMostlyUniqInsts, !IO),
     io.format("Total number of mostly uniq insts: %d\n",
         [i(NumMostlyUniqInsts)], !IO),
 
     io.nl(!IO).
 
-:- pred write_user_inst(int::in, inst_id::in, hlds_inst_defn::in,
+:- pred write_user_inst(int::in, pair(inst_id, hlds_inst_defn)::in,
     io::di, io::uo) is det.
 
-write_user_inst(Indent, InstId, InstDefn, !IO) :-
+write_user_inst(Indent, InstId - InstDefn, !IO) :-
     InstId = inst_id(InstName, _InstArity),
     write_indent(Indent, !IO),
     io.format("\n:- inst %s", [s(sym_name_to_string(InstName))], !IO),
@@ -707,16 +717,16 @@ write_inst_params(InstVar, InstVars, InstVarSet, !IO) :-
         write_inst_params(HeadInstVar, TailInstVars, InstVarSet, !IO)
     ).
 
-:- pred write_inst_name_maybe_inst(output_lang::in, int::in,
-    inst_name::in, maybe_inst::in, int::in, int::out, io::di, io::uo) is det.
+:- pred write_key_maybe_inst(output_lang::in, int::in,
+    pred(output_lang, Key, io, io)::in(pred(in, in, di, uo) is det),
+    pair(Key, maybe_inst)::in, int::in, int::out, io::di, io::uo) is det.
 
-write_inst_name_maybe_inst(Lang, Limit, InstName, MaybeInst, !N, !IO) :-
+write_key_maybe_inst(Lang, Limit, WriteKey, Key - MaybeInst, !N, !IO) :-
     !:N = !.N + 1,
     ( !.N =< Limit ->
         io.nl(!IO),
         io.format("Entry %d key\n", [i(!.N)], !IO),
-        write_inst_name(Lang, InstName, !IO),
-        io.nl(!IO),
+        WriteKey(Lang, Key, !IO),
         (
             MaybeInst = inst_unknown,
             io.format("Entry %d value UNKNOWN\n", [i(!.N)], !IO)
@@ -730,17 +740,17 @@ write_inst_name_maybe_inst(Lang, Limit, InstName, MaybeInst, !N, !IO) :-
         true
     ).
 
-:- pred write_inst_name_maybe_inst_det(output_lang::in, int::in,
-    inst_name::in, maybe_inst_det::in, int::in, int::out,
+:- pred write_key_maybe_inst_det(output_lang::in, int::in,
+    pred(output_lang, Key, io, io)::in(pred(in, in, di, uo) is det),
+    pair(Key, maybe_inst_det)::in, int::in, int::out,
     io::di, io::uo) is det.
 
-write_inst_name_maybe_inst_det(Lang, Limit, InstName, MaybeInstDet, !N, !IO) :-
+write_key_maybe_inst_det(Lang, Limit, WriteKey, Key - MaybeInstDet, !N, !IO) :-
     !:N = !.N + 1,
     ( !.N =< Limit ->
         io.nl(!IO),
         io.format("Entry %d key\n", [i(!.N)], !IO),
-        write_inst_name(Lang, InstName, !IO),
-        io.nl(!IO),
+        WriteKey(Lang, Key, !IO),
         (
             MaybeInstDet = inst_det_unknown,
             io.format("Entry %d value UNKNOWN\n", [i(!.N)], !IO)
@@ -755,31 +765,92 @@ write_inst_name_maybe_inst_det(Lang, Limit, InstName, MaybeInstDet, !N, !IO) :-
         true
     ).
 
-:- pred write_inst_pair_maybe_inst(output_lang::in, int::in,
-    pair(mer_inst)::in, maybe_inst::in, int::in, int::out,
+:- pred write_key_unify_inst(output_lang::in, unify_inst_info::in,
     io::di, io::uo) is det.
 
-write_inst_pair_maybe_inst(Lang, Limit, InstA - InstB, MaybeInst, !N, !IO) :-
-    !:N = !.N + 1,
-    ( !.N =< Limit ->
-        io.nl(!IO),
-        io.format("Entry %d left key\n", [i(!.N)], !IO),
-        write_inst(Lang, InstA, !IO),
-        io.nl(!IO),
-        io.format("Entry %d right key\n", [i(!.N)], !IO),
-        write_inst(Lang, InstB, !IO),
-        io.nl(!IO),
-        (
-            MaybeInst = inst_unknown,
-            io.format("Entry %d value UNKNOWN\n", [i(!.N)], !IO)
-        ;
-            MaybeInst = inst_known(Inst),
-            io.format("Entry %d value:\n", [i(!.N)], !IO),
-            write_inst(Lang, Inst, !IO),
-            io.nl(!IO)
-        )
+write_key_unify_inst(Lang, unify_inst_info(Live, Real, InstA, InstB), !IO) :-
+    (
+        Live = is_live,
+        io.write_string("live ", !IO)
     ;
-        true
+        Live = is_dead,
+        io.write_string("dead ", !IO)
+    ),
+    (
+        Real = real_unify,
+        io.write_string("real unify\n", !IO)
+    ;
+        Real = fake_unify,
+        io.write_string("fake unify\n", !IO)
+    ),
+    io.write_string("InstA: ", !IO),
+    write_inst(Lang, InstA, !IO),
+    io.nl(!IO),
+    io.write_string("InstB: ", !IO),
+    write_inst(Lang, InstB, !IO),
+    io.nl(!IO).
+
+:- pred write_key_merge_inst(output_lang::in, merge_inst_info::in,
+    io::di, io::uo) is det.
+
+write_key_merge_inst(Lang, merge_inst_info(InstA, InstB), !IO) :-
+    io.write_string("InstA: ", !IO),
+    write_inst(Lang, InstA, !IO),
+    io.nl(!IO),
+    io.write_string("InstB: ", !IO),
+    write_inst(Lang, InstB, !IO),
+    io.nl(!IO).
+
+:- pred write_key_ground_inst(output_lang::in, ground_inst_info::in,
+    io::di, io::uo) is det.
+
+write_key_ground_inst(Lang, ground_inst_info(InstName, Uniq, Live, Real),
+        !IO) :-
+    write_uniq_live_real(Uniq, Live, Real, !IO),
+    write_inst_name(Lang, InstName, !IO),
+    io.nl(!IO).
+
+:- pred write_key_any_inst(output_lang::in, any_inst_info::in,
+    io::di, io::uo) is det.
+
+write_key_any_inst(Lang, any_inst_info(InstName, Uniq, Live, Real), !IO) :-
+    write_uniq_live_real(Uniq, Live, Real, !IO),
+    write_inst_name(Lang, InstName, !IO),
+    io.nl(!IO).
+
+:- pred write_uniq_live_real(uniqueness::in, is_live::in, unify_is_real::in,
+    io::di, io::uo) is det.
+
+write_uniq_live_real(Uniq, Live, Real, !IO) :-
+    (
+        Uniq = shared,
+        io.write_string("shared ", !IO)
+    ;
+        Uniq = unique,
+        io.write_string("unique ", !IO)
+    ;
+        Uniq = mostly_unique,
+        io.write_string("mostly_unique ", !IO)
+    ;
+        Uniq = clobbered,
+        io.write_string("clobbered", !IO)
+    ;
+        Uniq = mostly_clobbered,
+        io.write_string("mostly_clobbered", !IO)
+    ),
+    (
+        Live = is_live,
+        io.write_string("live ", !IO)
+    ;
+        Live = is_dead,
+        io.write_string("dead ", !IO)
+    ),
+    (
+        Real = real_unify,
+        io.write_string("real unify\n", !IO)
+    ;
+        Real = fake_unify,
+        io.write_string("fake unify\n", !IO)
     ).
 
 :- pred write_inst_name(output_lang::in, inst_name::in, io::di, io::uo) is det.

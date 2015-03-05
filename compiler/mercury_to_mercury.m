@@ -1424,9 +1424,34 @@ mercury_format_inst_name(InstName, InstInfo, !U) :-
             add_string(")", !U)
         )
     ;
+        InstName = unify_inst(IsLive, Real, InstA, InstB),
+        add_string("$unify(", !U),
+        mercury_format_is_live_comma(IsLive, !U),
+        mercury_format_comma_real(Real, !U),
+        mercury_format_inst_list([InstA, InstB], InstInfo, !U),
+        add_string(")", !U)
+    ;
         InstName = merge_inst(InstA, InstB),
         add_string("$merge_inst(", !U),
         mercury_format_inst_list([InstA, InstB], InstInfo, !U),
+        add_string(")", !U)
+    ;
+        InstName = ground_inst(SubInstName, Uniq, IsLive, Real),
+        add_string("$ground(", !U),
+        mercury_format_inst_name(SubInstName, InstInfo, !U),
+        add_string(", ", !U),
+        mercury_format_is_live_comma(IsLive, !U),
+        mercury_format_uniqueness(Uniq, "shared", !U),
+        mercury_format_comma_real(Real, !U),
+        add_string(")", !U)
+    ;
+        InstName = any_inst(SubInstName, Uniq, IsLive, Real),
+        add_string("$any(", !U),
+        mercury_format_inst_name(SubInstName, InstInfo, !U),
+        add_string(", ", !U),
+        mercury_format_is_live_comma(IsLive, !U),
+        mercury_format_uniqueness(Uniq, "shared", !U),
+        mercury_format_comma_real(Real, !U),
         add_string(")", !U)
     ;
         InstName = shared_inst(SubInstName),
@@ -1437,31 +1462,6 @@ mercury_format_inst_name(InstName, InstInfo, !U) :-
         InstName = mostly_uniq_inst(SubInstName),
         add_string("$mostly_uniq_inst(", !U),
         mercury_format_inst_name(SubInstName, InstInfo, !U),
-        add_string(")", !U)
-    ;
-        InstName = unify_inst(IsLive, InstA, InstB, Real),
-        add_string("$unify(", !U),
-        mercury_format_is_live_comma(IsLive, !U),
-        mercury_format_comma_real(Real, !U),
-        mercury_format_inst_list([InstA, InstB], InstInfo, !U),
-        add_string(")", !U)
-    ;
-        InstName = ground_inst(SubInstName, IsLive, Uniq, Real),
-        add_string("$ground(", !U),
-        mercury_format_inst_name(SubInstName, InstInfo, !U),
-        add_string(", ", !U),
-        mercury_format_is_live_comma(IsLive, !U),
-        mercury_format_uniqueness(Uniq, "shared", !U),
-        mercury_format_comma_real(Real, !U),
-        add_string(")", !U)
-    ;
-        InstName = any_inst(SubInstName, IsLive, Uniq, Real),
-        add_string("$any(", !U),
-        mercury_format_inst_name(SubInstName, InstInfo, !U),
-        add_string(", ", !U),
-        mercury_format_is_live_comma(IsLive, !U),
-        mercury_format_uniqueness(Uniq, "shared", !U),
-        mercury_format_comma_real(Real, !U),
         add_string(")", !U)
     ;
         InstName = typed_ground(Uniqueness, Type),

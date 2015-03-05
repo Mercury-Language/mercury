@@ -2079,7 +2079,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     %
 :- type type_param  ==  tvar.
 
-    % Use type_util.type_to_ctor_and_args to convert a type to a qualified
+    % Use prog_type.type_to_ctor_and_args to convert a type to a qualified
     % type_ctor and a list of arguments. Use prog_type.construct_type to
     % construct a type from a type_ctor and a list of arguments.
     %
@@ -2423,6 +2423,9 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
                 % An abstract inst is a defined inst which has been declared
                 % but not actually been defined (yet).
 
+:- inst mer_inst_is_bound
+    --->        bound(ground, ground, ground).
+
     % Values of this type give the outcome of various tests on an inst,
     % if that information is available when the inst is constructed.
     % The purpose is to allow those tests to work in constant time,
@@ -2437,13 +2440,6 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     % whose results we can consider adding, together with the names of the
     % predicates that could use them.
     %
-    % Does the inst contain any_instvars?
-    %   inst_apply_substitution
-    %   inst_contains_unconstrained_var
-    %   constrain_inst_vars_in_inst
-    %   inst_var_constraints_are_consistent_in_inst
-    %   inst_contains_inst_var
-    %
     % Does the inst contain a nonstandard func mode?
     %   inst_contains_nonstandard_func_mode
     %
@@ -2454,22 +2450,28 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     --->    inst_test_results(
                 inst_result_groundness,
                 inst_result_contains_any,
-                inst_result_contains_instnames,
-                inst_result_contains_types
+                inst_result_contains_inst_names,
+                inst_result_contains_inst_vars,
+                inst_result_contains_types,
+                inst_result_type_ctor_propagated
             )
     ;       inst_test_no_results
             % Implies
             %   inst_result_groundness_unknown
             %   inst_result_contains_any_unknown
-            %   inst_result_contains_instnames_unknown
+            %   inst_result_contains_inst_names_unknown
+            %   inst_result_contains_inst_vars_unknown
             %   inst_result_contains_types_unknown
+            %   inst_result_no_type_ctor_propagated
     ;       inst_test_results_fgtc.
             % Implies
             %   inst_result_is_ground
             %   inst_result_does_not_contain_any
-            %   inst_result_contains_instnames_known(set.init)
+            %   inst_result_contains_inst_names_known(set.init)
+            %   inst_result_contains_inst_vars_known(set.init)
             %   inst_result_contains_types_known(set.init)
-            % It also implies that the inst does not contain any inst_vars,
+            %   inst_result_no_type_ctor_propagated
+            % It also implies that the inst does not contain any
             % typed insts, constrained insts or higher order type insts,
             % and that no part of it is unique or mostly_unique.
 
@@ -2485,20 +2487,42 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     ;       inst_result_does_contain_any
     ;       inst_result_contains_any_unknown.
 
-:- type inst_result_contains_instnames
-    --->    inst_result_contains_instnames_known(set(inst_name))
+:- type inst_result_contains_inst_names
+    --->    inst_result_contains_inst_names_known(set(inst_name))
             % All the inst_names inside the inst are given in the set.
             % This is not guarantee that all the inst_names in the set
             % appear in the inst, but it is a guarantee that an inst_name
             % that appears in the inst will appear in the set.
-    ;       inst_result_contains_instnames_unknown.
+    ;       inst_result_contains_inst_names_unknown.
+
+:- type inst_result_contains_inst_vars
+    --->    inst_result_contains_inst_vars_known(set(inst_var))
+            % All the inst_vars inside the inst are given in the set.
+            % This is not guarantee that all the inst_vars in the set
+            % appear in the inst, but it is a guarantee that an inst_var
+            % that appears in the inst will appear in the set.
+    ;       inst_result_contains_inst_vars_unknown.
 
 :- type inst_result_contains_types
     --->    inst_result_contains_types_known(set(type_ctor))
             % All the type_ctors inside typed_inst nodes of the the inst
-            % are given in the set. This gives a guarantee analogous to
-            % inst_result_contains_instnames_known.
+            % are given in the set. This is not guarantee that all the
+            % type_ctors in the set appear in the inst, but it is a guarantee
+            % that a type_ctor that appears in the inst will appear in the set.
     ;       inst_result_contains_types_unknown.
+
+:- type inst_result_type_ctor_propagated
+    --->    inst_result_no_type_ctor_propagated
+            % The inst is not known to have had a type_ctor propagated
+            % into it.
+    ;       inst_result_type_ctor_propagated(type_ctor).
+            % The inst has had the given type_ctor propagated into it.
+            % The type_ctor must have arity 0, since otherwise the propagation
+            % code wouldn't know what type to propagate into the arguments.
+            % (We could record a full type being propagated into the inst,
+            % complete with type_ctor arguments, but that couldn't be
+            % pre-propagated in inst_user.m in vast majority of cases
+            % in which the argument types are not available.)
 
 :- type uniqueness
     --->        shared              % There might be other references.
@@ -2611,14 +2635,23 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     %
 :- type inst_name
     --->    user_inst(sym_name, list(mer_inst))
+    ;       unify_inst(is_live, unify_is_real, mer_inst, mer_inst)
     ;       merge_inst(mer_inst, mer_inst)
-    ;       unify_inst(is_live, mer_inst, mer_inst, unify_is_real)
-    ;       ground_inst(inst_name, is_live, uniqueness, unify_is_real)
-    ;       any_inst(inst_name, is_live, uniqueness, unify_is_real)
+    ;       ground_inst(inst_name, uniqueness, is_live, unify_is_real)
+    ;       any_inst(inst_name, uniqueness, is_live, unify_is_real)
     ;       shared_inst(inst_name)
     ;       mostly_uniq_inst(inst_name)
     ;       typed_ground(uniqueness, mer_type)
     ;       typed_inst(mer_type, inst_name).
+
+:- type unify_inst_info
+    --->    unify_inst_info(is_live, unify_is_real, mer_inst, mer_inst).
+:- type merge_inst_info
+    --->    merge_inst_info(mer_inst, mer_inst).
+:- type ground_inst_info
+    --->    ground_inst_info(inst_name, uniqueness, is_live, unify_is_real).
+:- type any_inst_info
+    --->    any_inst_info(inst_name, uniqueness, is_live, unify_is_real).
 
     % NOTE: `is_live' records liveness in the sense used by mode analysis.
     % This is not the same thing as the notion of liveness used by code

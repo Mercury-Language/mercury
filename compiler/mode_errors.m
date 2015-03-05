@@ -727,10 +727,21 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_context(!.ModeInfo, Context),
     mode_info_get_varset(!.ModeInfo, VarSet),
-    MainPieces = [words("mode error: arguments"),
-        quote(mercury_vars_to_string(VarSet, no, Vars)),
-        words("have the following insts:"), nl_indent_delta(1)] ++
-        inst_list_to_sep_lines(!.ModeInfo, Insts) ++
+    (
+        Vars = [],
+        unexpected($module, $pred, "Vars = []")
+    ;
+        Vars = [Var],
+        MainPieces = [words("mode error: argument"),
+            quote(mercury_var_to_string(VarSet, no, Var)),
+            words("has the following inst:"), nl_indent_delta(1)]
+    ;
+        Vars = [_, _ | _],
+        MainPieces = [words("mode error: arguments"),
+            quote(mercury_vars_to_string(VarSet, no, Vars)),
+            words("have the following insts:"), nl_indent_delta(1)]
+    ),
+    NoMatchPieces = inst_list_to_sep_lines(!.ModeInfo, Insts) ++
         [words("which does not match any of the valid modes for")],
 
     CalleePredIdPieces = describe_one_pred_name(ModuleInfo,
@@ -738,10 +749,10 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
     VerboseCalleePieces = [words("the callee"), prefix("(")] ++
         CalleePredIdPieces ++
         [suffix(")"), nl, words("because of the following error."), nl],
-    VerbosePieces = MainPieces ++ VerboseCalleePieces,
+    VerbosePieces = MainPieces ++ NoMatchPieces ++ VerboseCalleePieces,
     NonVerboseCalleePieces =
         [words("the callee, because of the following error."), nl],
-    NonVerbosePieces = MainPieces ++ NonVerboseCalleePieces,
+    NonVerbosePieces = MainPieces ++ NoMatchPieces ++ NonVerboseCalleePieces,
 
     InitMsg = simple_msg(Context,
         [always(Preamble),
@@ -798,14 +809,26 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts) = Spec :-
         ),
         unexpected($module, $pred, "invalid context")
     ),
-    Pieces = [words("mode error: arguments"),
-        quote(mercury_vars_to_string(VarSet, no, Vars)),
-        words("have the following insts:"), nl_indent_delta(1)] ++
-        inst_list_to_sep_lines(ModeInfo, Insts) ++
+    (
+        Vars = [],
+        unexpected($module, $pred, "Vars = []")
+    ;
+        Vars = [Var],
+        MainPieces = [words("mode error: argument"),
+            quote(mercury_var_to_string(VarSet, no, Var)),
+            words("has the following inst:"), nl_indent_delta(1)]
+    ;
+        Vars = [_, _ | _],
+        MainPieces = [words("mode error: arguments"),
+            quote(mercury_vars_to_string(VarSet, no, Vars)),
+            words("have the following insts:"), nl_indent_delta(1)]
+    ),
+    NoMatchPieces = inst_list_to_sep_lines(ModeInfo, Insts) ++
         [words("which does not match any of the modes for"),
         words(CallIdStr), suffix("."), nl],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [simple_msg(Context, [always(Preamble ++ Pieces)])]).
+        [simple_msg(Context,
+            [always(Preamble ++ MainPieces ++ NoMatchPieces)])]).
 
 :- func mode_error_higher_order_pred_var_to_spec(mode_info, pred_or_func,
     prog_var, mer_inst, arity) = error_spec.

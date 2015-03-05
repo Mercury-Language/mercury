@@ -626,7 +626,7 @@ inst_name_used_modules(Visibility, InstName, !UsedModules) :-
         list.foldl(mer_inst_used_modules(Visibility), Insts, !UsedModules)
     ;
         ( InstName = merge_inst(InstA, InstB)
-        ; InstName = unify_inst(_, InstA, InstB, _)
+        ; InstName = unify_inst(_, _, InstA, InstB)
         ),
         mer_inst_used_modules(Visibility, InstA, !UsedModules),
         mer_inst_used_modules(Visibility, InstB, !UsedModules)

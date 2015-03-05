@@ -276,6 +276,7 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
         !:Specs = !.Specs ++ MissingTypeDefnSpecs,
         SomeMissingTypeDefns = contains_errors(Globals, MissingTypeDefnSpecs),
 
+        pretest_user_inst_table(!HLDS),
         post_typecheck_finish_preds(!HLDS, NumPostTypeCheckErrors,
             PostTypeCheckAlwaysSpecs, PostTypeCheckNoTypeErrorSpecs),
         % If the main part of typecheck detected some errors, then some of
@@ -672,7 +673,6 @@ maybe_mode_constraints(Verbose, Stats, !HLDS, !IO) :-
 
 modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue,
         !Specs, !IO) :-
-    pretest_user_inst_table(!HLDS),
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
     globals.lookup_bool_option(Globals, benchmark_modes, BenchmarkModes),

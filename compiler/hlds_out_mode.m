@@ -259,14 +259,19 @@ inst_to_term_with_context(Lang, Context, Inst) = Term :-
 inst_test_results_to_term(Context, InstResults) = Term :-
     (
         InstResults = inst_test_results(GroundnessResult, AnyResult,
-            InstNameResult, TypeResult),
+            InstNamesResult, InstVarsResult, TypeResult, PropagatedResult),
         SubTerm1 = inst_result_groundness_to_term(Context, GroundnessResult),
         SubTerm2 = inst_result_contains_any_to_term(Context, AnyResult),
-        SubTerm3 = inst_result_contains_instnames_to_term(Context,
-            InstNameResult),
-        SubTerm4 = inst_result_contains_types_to_term(Context, TypeResult),
+        SubTerm3 = inst_result_contains_inst_names_to_term(Context,
+            InstNamesResult),
+        SubTerm4 = inst_result_contains_inst_vars_to_term(Context,
+            InstVarsResult),
+        SubTerm5 = inst_result_contains_types_to_term(Context, TypeResult),
+        SubTerm6 = inst_result_type_ctor_propagated_to_term(Context,
+            PropagatedResult),
         Term = term.functor(term.atom("results"),
-            [SubTerm1, SubTerm2, SubTerm3, SubTerm4], Context)
+            [SubTerm1, SubTerm2, SubTerm3, SubTerm4, SubTerm5, SubTerm6],
+            Context)
     ;
         InstResults = inst_test_no_results,
         Term = term.functor(term.atom("no_results"), [], Context)
@@ -305,23 +310,46 @@ inst_result_contains_any_to_term(Context, ContainsAny) = Term :-
         Term = term.functor(term.atom("contains_any_unknown"), [], Context)
     ).
 
-:- func inst_result_contains_instnames_to_term(prog_context,
-    inst_result_contains_instnames) = prog_term.
+:- func inst_result_contains_inst_names_to_term(prog_context,
+    inst_result_contains_inst_names) = prog_term.
 
-inst_result_contains_instnames_to_term(Context, ContainsInstNames) = Term :-
+inst_result_contains_inst_names_to_term(Context, ContainsInstNames) = Term :-
     (
-        ContainsInstNames = inst_result_contains_instnames_unknown,
-        Term = term.functor(term.atom("contains_instnames_unknown"),
+        ContainsInstNames = inst_result_contains_inst_names_unknown,
+        Term = term.functor(term.atom("contains_inst_names_unknown"),
             [], Context)
     ;
-        ContainsInstNames = inst_result_contains_instnames_known(InstNameSet),
-        set.count(InstNameSet, NumInstNames),
+        ContainsInstNames = inst_result_contains_inst_names_known(InstNameSet),
         % Inst names can be pretty big, so we print only a count.
         % If necessary, we can later modify this code to actually print them.
+        set.count(InstNameSet, NumInstNames),
         CountTerm = term.functor(term.integer(NumInstNames), [], Context),
-        Term = term.functor(term.atom("contains_types_known"),
+        Term = term.functor(term.atom("contains_inst_names_known"),
             [CountTerm], Context)
     ).
+
+:- func inst_result_contains_inst_vars_to_term(prog_context,
+    inst_result_contains_inst_vars) = prog_term.
+
+inst_result_contains_inst_vars_to_term(Context, ContainsInstVars) = Term :-
+    (
+        ContainsInstVars = inst_result_contains_inst_vars_unknown,
+        Term = term.functor(term.atom("contains_inst_vars_unknown"),
+            [], Context)
+    ;
+        ContainsInstVars = inst_result_contains_inst_vars_known(InstVarSet),
+        set.to_sorted_list(InstVarSet, InstVars),
+        InstVarTerms = list.map(inst_var_to_term(Context), InstVars),
+        Term = term.functor(term.atom("contains_inst_vars_known"),
+            InstVarTerms, Context)
+    ).
+
+:- func inst_var_to_term(prog_context, inst_var) = prog_term.
+
+inst_var_to_term(Context, InstVar) = Term :-
+    InstVarNum = term.var_to_int(InstVar),
+    InstVarNumStr = string.int_to_string(InstVarNum),
+    Term = term.functor(string("inst_var_" ++ InstVarNumStr), [], Context).
 
 :- func inst_result_contains_types_to_term(prog_context,
     inst_result_contains_types) = prog_term.
@@ -336,6 +364,19 @@ inst_result_contains_types_to_term(Context, ContainsTypes) = Term :-
         TypeCtorTerms = list.map(type_ctor_to_term(Context), TypeCtors),
         Term = term.functor(term.atom("contains_types_known"),
             TypeCtorTerms, Context)
+    ).
+
+:- func inst_result_type_ctor_propagated_to_term(prog_context,
+    inst_result_type_ctor_propagated) = prog_term.
+
+inst_result_type_ctor_propagated_to_term(Context, PropagatedResult) = Term :-
+    (
+        PropagatedResult = inst_result_no_type_ctor_propagated,
+        Term = term.functor(term.atom("no_type_ctor_propagated"), [], Context)
+    ;
+        PropagatedResult = inst_result_type_ctor_propagated(TypeCtor),
+        Term = term.functor(term.atom("type_ctor_propagated"),
+            [type_ctor_to_term(Context, TypeCtor)], Context)
     ).
 
 :- func type_ctor_to_term(prog_context, type_ctor) = prog_term.
@@ -407,9 +448,33 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
             list.map(inst_to_term_with_context(Lang, Context), Args),
             Context, Term)
     ;
+        InstName = unify_inst(Liveness, Real, InstA, InstB),
+        construct_qualified_term_with_context(unqualified("$unify"),
+            [make_atom(Context, is_live_to_str(Liveness)),
+            make_atom(Context, unify_is_real_to_str(Real)),
+            inst_to_term_with_context(Lang, Context, InstA),
+            inst_to_term_with_context(Lang, Context, InstB)],
+            Context, Term)
+    ;
         InstName = merge_inst(InstA, InstB),
         construct_qualified_term_with_context(unqualified("$merge_inst"),
             list.map(inst_to_term_with_context(Lang, Context), [InstA, InstB]),
+            Context, Term)
+    ;
+        InstName = ground_inst(SubInstName, Uniq, IsLive, Real),
+        construct_qualified_term_with_context(unqualified("$ground"),
+            [inst_name_to_term_with_context(Lang, Context, SubInstName),
+            make_atom(Context, inst_uniqueness(Uniq, "shared")),
+            make_atom(Context, is_live_to_str(IsLive)),
+            make_atom(Context, unify_is_real_to_str(Real))],
+            Context, Term)
+    ;
+        InstName = any_inst(SubInstName, Uniq, IsLive, Real),
+        construct_qualified_term_with_context(unqualified("$any"),
+            [inst_name_to_term_with_context(Lang, Context, SubInstName),
+            make_atom(Context, inst_uniqueness(Uniq, "shared")),
+            make_atom(Context, is_live_to_str(IsLive)),
+            make_atom(Context, unify_is_real_to_str(Real))],
             Context, Term)
     ;
         InstName = shared_inst(SubInstName),
@@ -420,30 +485,6 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
         InstName = mostly_uniq_inst(SubInstName),
         construct_qualified_term_with_context(unqualified("$mostly_uniq_inst"),
             [inst_name_to_term_with_context(Lang, Context, SubInstName)],
-            Context, Term)
-    ;
-        InstName = unify_inst(Liveness, InstA, InstB, Real),
-        construct_qualified_term_with_context(unqualified("$unify"),
-            [make_atom(Context, is_live_to_str(Liveness))] ++
-            list.map(inst_to_term_with_context(Lang, Context),
-                [InstA, InstB]) ++
-            [make_atom(Context, unify_is_real_to_str(Real))],
-            Context, Term)
-    ;
-        InstName = ground_inst(SubInstName, IsLive, Uniq, Real),
-        construct_qualified_term_with_context(unqualified("$ground"),
-            [inst_name_to_term_with_context(Lang, Context, SubInstName),
-            make_atom(Context, is_live_to_str(IsLive)),
-            make_atom(Context, inst_uniqueness(Uniq, "shared")),
-            make_atom(Context, unify_is_real_to_str(Real))],
-            Context, Term)
-    ;
-        InstName = any_inst(SubInstName, IsLive, Uniq, Real),
-        construct_qualified_term_with_context(unqualified("$any"),
-            [inst_name_to_term_with_context(Lang, Context, SubInstName),
-            make_atom(Context, is_live_to_str(IsLive)),
-            make_atom(Context, inst_uniqueness(Uniq, "shared")),
-            make_atom(Context, unify_is_real_to_str(Real))],
             Context, Term)
     ;
         InstName = typed_ground(Uniq, Type),
@@ -937,9 +978,41 @@ mercury_format_structured_inst_name(InstName, FirstIndentPrinted, Indent,
             add_string(")\n", !U)
         )
     ;
+        InstName = unify_inst(IsLive, Real, InstA, InstB),
+        add_string("$unify(", !U),
+        mercury_format_is_live_comma(IsLive, !U),
+        mercury_format_real_comma(Real, !U),
+        add_string("\n", !U),
+        mercury_format_structured_inst_list([InstA, InstB], Indent + 1,
+            Lang, InclAddr, InstVarSet, !U),
+        mercury_format_tabs(Indent, !U),
+        add_string(")\n", !U)
+    ;
         InstName = merge_inst(InstA, InstB),
         add_string("$merge_inst(\n", !U),
         mercury_format_structured_inst_list([InstA, InstB], Indent + 1,
+            Lang, InclAddr, InstVarSet, !U),
+        mercury_format_tabs(Indent, !U),
+        add_string(")\n", !U)
+    ;
+        InstName = ground_inst(SubInstName, Uniq, IsLive, Real),
+        add_string("$ground(", !U),
+        mercury_format_is_live_comma(IsLive, !U),
+        mercury_format_real_comma(Real, !U),
+        mercury_format_uniqueness(Uniq, "shared", !U),
+        add_string(",\n", !U),
+        mercury_format_structured_inst_name(SubInstName, no, Indent + 1,
+            Lang, InclAddr, InstVarSet, !U),
+        mercury_format_tabs(Indent, !U),
+        add_string(")\n", !U)
+    ;
+        InstName = any_inst(SubInstName, Uniq, IsLive, Real),
+        add_string("$any(", !U),
+        mercury_format_is_live_comma(IsLive, !U),
+        mercury_format_real_comma(Real, !U),
+        mercury_format_uniqueness(Uniq, "shared", !U),
+        add_string(",\n", !U),
+        mercury_format_structured_inst_name(SubInstName, no, Indent + 1,
             Lang, InclAddr, InstVarSet, !U),
         mercury_format_tabs(Indent, !U),
         add_string(")\n", !U)
@@ -953,38 +1026,6 @@ mercury_format_structured_inst_name(InstName, FirstIndentPrinted, Indent,
     ;
         InstName = mostly_uniq_inst(SubInstName),
         add_string("$mostly_uniq_inst(\n", !U),
-        mercury_format_structured_inst_name(SubInstName, no, Indent + 1,
-            Lang, InclAddr, InstVarSet, !U),
-        mercury_format_tabs(Indent, !U),
-        add_string(")\n", !U)
-    ;
-        InstName = unify_inst(IsLive, InstA, InstB, Real),
-        add_string("$unify(", !U),
-        mercury_format_is_live_comma(IsLive, !U),
-        mercury_format_real_comma(Real, !U),
-        add_string("\n", !U),
-        mercury_format_structured_inst_list([InstA, InstB], Indent + 1,
-            Lang, InclAddr, InstVarSet, !U),
-        mercury_format_tabs(Indent, !U),
-        add_string(")\n", !U)
-    ;
-        InstName = ground_inst(SubInstName, IsLive, Uniq, Real),
-        add_string("$ground(", !U),
-        mercury_format_is_live_comma(IsLive, !U),
-        mercury_format_real_comma(Real, !U),
-        mercury_format_uniqueness(Uniq, "shared", !U),
-        add_string(",\n", !U),
-        mercury_format_structured_inst_name(SubInstName, no, Indent + 1,
-            Lang, InclAddr, InstVarSet, !U),
-        mercury_format_tabs(Indent, !U),
-        add_string(")\n", !U)
-    ;
-        InstName = any_inst(SubInstName, IsLive, Uniq, Real),
-        add_string("$any(", !U),
-        mercury_format_is_live_comma(IsLive, !U),
-        mercury_format_real_comma(Real, !U),
-        mercury_format_uniqueness(Uniq, "shared", !U),
-        add_string(",\n", !U),
         mercury_format_structured_inst_name(SubInstName, no, Indent + 1,
             Lang, InclAddr, InstVarSet, !U),
         mercury_format_tabs(Indent, !U),
