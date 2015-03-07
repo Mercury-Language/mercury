@@ -2877,10 +2877,10 @@ CC="$save_CC"
 
 #-----------------------------------------------------------------------------#
 
-AC_MSG_CHECKING(whether we can support profiling on this system)
+AC_MSG_CHECKING(whether we can support time profiling on this system)
 AC_CACHE_VAL(mercury_cv_profiling,
 AC_TRY_CPP([
-/* The following code comes from runtime/prof.c */
+/* The following code comes from runtime/mercury_prof.c */
 #include    <unistd.h>
 #include    <errno.h>
 #include    <string.h>
@@ -2895,7 +2895,7 @@ AC_TRY_CPP([
 #endif
 
 /*
-** if HZ is not defined, we may be able to use sysconf(_SC_CLK_TCK) instead
+** If HZ is not defined, we may be able to use sysconf(_SC_CLK_TCK) instead.
 */
 #if !defined(HZ) && defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
 #define HZ ((int)sysconf(_SC_CLK_TCK))
