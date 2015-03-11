@@ -796,7 +796,7 @@ det_diagnose_disj([Goal | Goals], InstMap0, Desired, Actual, SwitchContexts,
     ;
         % Otherwise, either the disjunction is allowed to fail, or there is
         % at least one disjunct that we inferred won't fail, so we don't want
-        % any error messages for the disjuncts that might fail
+        % any error messages for the disjuncts that might fail.
         ClauseCanFail = can_fail
     ),
     determinism_components(ClauseDesired, ClauseCanFail, DesiredSolns),
@@ -1045,7 +1045,7 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
     (
         Reason = require_detism(RequiredDetism),
         reqscope_check_goal_detism(RequiredDetism, SubGoal,
-            check_require_detism(ScopeGoalInfo), !DetInfo)
+            check_require_detism(ScopeGoalInfo), InstMap0, !DetInfo)
     ;
         Reason = require_complete_switch(RequiredVar),
         % We must test the version of the subgoal that has not yet been
@@ -1094,8 +1094,11 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
             SubGoalExpr = switch(SwitchVar, _CanFail, Cases),
             SwitchVar = RequiredVar
         ->
-            reqscope_check_goal_detism_for_cases(RequiredDetism, Cases,
-                check_require_switch_arms_detism, !DetInfo)
+            det_info_get_vartypes(!.DetInfo, VarTypes),
+            lookup_var_type(VarTypes, SwitchVar, SwitchVarType),
+            reqscope_check_goal_detism_for_cases(RequiredDetism,
+                SwitchVar, SwitchVarType, Cases,
+                check_require_switch_arms_detism, InstMap0, !DetInfo)
         ;
             generate_warning_for_switch_var_if_missing(RequiredVar, SubGoal,
                 ScopeGoalInfo, !DetInfo)
@@ -1118,9 +1121,9 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
             % conjunctions work.
             ; Detism = detism_erroneous
             ),
-            % Since loop control structures are generated only by the
-            % compiler it is reasonable to abort here rather than present the
-            % user with an error.
+            % Since loop control structures are generated only by the compiler,
+            % it is reasonable to abort here, and it we don't want to present
+            % the user with what would be a very confusing error message.
             unexpected($module, $pred,
                 "Loop control scope with strange determinism")
         )
@@ -1143,9 +1146,10 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
     ;       check_require_switch_arms_detism.
 
 :- pred reqscope_check_goal_detism(determinism::in, hlds_goal::in,
-    detism_check_kind::in, det_info::in, det_info::out) is det.
+    detism_check_kind::in, instmap::in, det_info::in, det_info::out) is det.
 
-reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, !DetInfo) :-
+reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
+        !DetInfo) :-
     Goal = hlds_goal(_, GoalInfo),
     ActualDetism = goal_info_get_determinism(GoalInfo),
     compare_determinisms(ActualDetism, RequiredDetism, CompareResult),
@@ -1178,31 +1182,40 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, !DetInfo) :-
             % For require_switch_arms_detism scopes, the context of the
             % require_switch_arms_detism keyword won't work, since it
             % won't tell the user *which* arm's determinism isn't right.
-            % We have to use the switch arm goal's own scope.
+            % We have to use the context of the switch arm itself.
             Context = goal_info_get_context(GoalInfo)
         ),
         RequiredDetismStr = determinism_to_string(RequiredDetism),
         ActualDetismStr = determinism_to_string(ActualDetism),
+        det_diagnose_goal(Goal, InstMap0, RequiredDetism, [], !DetInfo,
+            SubMsgs),
         Pieces = [words("Error: required determinism is"),
             quote(RequiredDetismStr), suffix(","),
             words("but actual determinism is"),
             quote(ActualDetismStr), suffix("."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_detism_check, [Msg]),
+        Spec = error_spec(severity_error, phase_detism_check, [Msg | SubMsgs]),
         det_info_add_error_spec(Spec, !DetInfo)
     ).
 
-:- pred reqscope_check_goal_detism_for_cases(determinism::in, list(case)::in,
-    detism_check_kind::in, det_info::in, det_info::out) is det.
+:- pred reqscope_check_goal_detism_for_cases(determinism::in,
+    prog_var::in, mer_type::in, list(case)::in,
+    detism_check_kind::in, instmap::in, det_info::in, det_info::out) is det.
 
-reqscope_check_goal_detism_for_cases(_RequiredDetism, [], _CheckKind,
-        !DetInfo).
-reqscope_check_goal_detism_for_cases(RequiredDetism, [Case | Cases], CheckKind,
-        !DetInfo) :-
-    Case = case(_MainConsId, _OtherConsIds, Goal),
-    reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, !DetInfo),
-    reqscope_check_goal_detism_for_cases(RequiredDetism, Cases, CheckKind,
-        !DetInfo).
+reqscope_check_goal_detism_for_cases(_RequiredDetism, _Var, _VarType,
+        [], _CheckKind, _InstMap0, !DetInfo).
+reqscope_check_goal_detism_for_cases(RequiredDetism, Var, VarType,
+        [Case | Cases], CheckKind, InstMap0, !DetInfo) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    det_info_get_module_info(!.DetInfo, ModuleInfo0),
+    bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
+        InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
+    det_info_set_module_info(ModuleInfo, !DetInfo),
+
+    reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap1,
+        !DetInfo),
+    reqscope_check_goal_detism_for_cases(RequiredDetism, Var, VarType,
+        Cases, CheckKind, InstMap0, !DetInfo).
 
     % Emit a warning if the variable in the head of a require_complete_switch
     % or require_switch_arms_detism scope does not occur somewhere in the goal
@@ -1469,7 +1482,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         PredPieces = describe_one_pred_name_mode(ModuleInfo,
             should_module_qualify, PredId, InstVarSet, ArgModes),
-        StartingPieces = [words("call to") | PredPieces]
+        StartingPieces = [words("Call to") | PredPieces]
     ).
 
 %-----------------------------------------------------------------------------%
