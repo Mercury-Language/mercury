@@ -227,7 +227,7 @@ builtin_type_defn = TypeDefn :-
     NeedQualifier = may_be_unqualified,
     term.context_init(Context),
     hlds_data.set_type_defn(TVarSet, Params, Kinds, Body, ImportStatus, no,
-        NeedQualifier, Context, TypeDefn).
+        NeedQualifier, type_defn_no_prev_errors, Context, TypeDefn).
 
 :- pred gen_type_ctor_gen_info( module_info::in, type_ctor::in,
     module_name::in, string::in, int::in, hlds_type_defn::in,

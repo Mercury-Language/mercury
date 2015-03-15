@@ -27,10 +27,11 @@
 
 %-----------------------------------------------------------------------------%
 
-    % We allow more than one "definition" for a given type so
-    % long all of them except one are actually just declarations,
-    % e.g. `:- type t.', which is parsed as an type definition for
-    % t which defines t as an abstract_type.
+    % We allow more than one "definition" for a given type, as long as
+    % only one of them is actually a definition for the current back end.
+    % The others may be declarations, which just declare the type name,
+    % such as the abstract type "definition" `:- type t.', or they may be
+    % definitions for other backends.
     %
 :- pred module_add_type_defn(tvarset::in, sym_name::in, list(type_param)::in,
     type_defn::in, prog_context::in, item_status::in,
@@ -92,6 +93,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
             % If the type definition comes from a .int2 file then we must
             % treat it as abstract. The constructors may only be used
             % by the mode system for comparing `bound' insts to `ground'.
+            % XXX This is NOT a robust record of the source; the context
+            % could be lost for any number of reasons.
         )
     ->
         make_status_abstract(Status0, Status1)
@@ -158,11 +161,11 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         Body = Body0
     ),
     % XXX kind inference:
-    % We set the kinds to `star'.  This will be different when we have a
+    % We set the kinds to `star'. This will be different when we have a
     % kind system.
     map.init(KindMap),
-    hlds_data.set_type_defn(TVarSet, Args, KindMap, Body, Status, no,
-        NeedQual, Context, TypeDefn1),
+    hlds_data.set_type_defn(TVarSet, Args, KindMap, Body, Status,
+        no, NeedQual, type_defn_no_prev_errors, Context, TypeDefn1),
     (
         MaybeOldDefn = no,
         Body = hlds_foreign_type(_)
@@ -189,19 +192,26 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         ForeignVisMsg = simple_msg(Context, [always(ForeignVisPieces)]),
         ForeignVisSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [ForeignVisMsg]),
-        !:Specs = [ForeignVisSpec | !.Specs]
+        !:Specs = [ForeignVisSpec | !.Specs],
+        % We don't want check_for_missing_type_defns to later report
+        % that this type has no non-abstract definition.
+        set_type_defn_prev_errors(type_defn_prev_errors,
+            TypeDefn1, ErrTypeDefn),
+        replace_type_ctor_defn(TypeCtor, ErrTypeDefn,
+            TypeTable0, TypeTable),
+        module_info_set_type_table(TypeTable, !ModuleInfo)
     ;
         % If there was an existing non-abstract definition for the type, ...
         MaybeOldDefn = yes(OldDefn2),
-        hlds_data.get_type_defn_tvarset(OldDefn2, TVarSet_2),
-        hlds_data.get_type_defn_tparams(OldDefn2, Params_2),
-        hlds_data.get_type_defn_kind_map(OldDefn2, KindMap_2),
-        hlds_data.get_type_defn_body(OldDefn2, Body_2),
+        hlds_data.get_type_defn_tvarset(OldDefn2, TVarSet2),
+        hlds_data.get_type_defn_tparams(OldDefn2, Params2),
+        hlds_data.get_type_defn_kind_map(OldDefn2, KindMap2),
+        hlds_data.get_type_defn_body(OldDefn2, Body2),
         hlds_data.get_type_defn_context(OldDefn2, OrigContext),
         hlds_data.get_type_defn_status(OldDefn2, OrigStatus),
         hlds_data.get_type_defn_in_exported_eqv(OldDefn2, OrigInExportedEqv),
         hlds_data.get_type_defn_need_qualifier(OldDefn2, OrigNeedQual),
-        Body_2 \= hlds_abstract_type(_)
+        Body2 \= hlds_abstract_type(_)
     ->
         globals.get_target(Globals, Target),
         globals.lookup_bool_option(Globals, make_optimization_interface,
@@ -217,21 +227,21 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
             ( Status = OrigStatus ->
                 true
             ;
-                hlds_data.set_type_defn(TVarSet_2, Params_2, KindMap_2,
-                    Body_2, Status, OrigInExportedEqv, OrigNeedQual,
-                    OrigContext, TypeDefn3),
+                hlds_data.set_type_defn(TVarSet2, Params2, KindMap2,
+                    Body2, Status, OrigInExportedEqv, OrigNeedQual,
+                    type_defn_no_prev_errors, OrigContext, TypeDefn3),
                 replace_type_ctor_defn(TypeCtor, TypeDefn3,
                     TypeTable0, TypeTable),
                 module_info_set_type_table(TypeTable, !ModuleInfo)
             )
         ;
-            merge_foreign_type_bodies(Target, MakeOptInt, Body, Body_2,
+            merge_foreign_type_bodies(Target, MakeOptInt, Body, Body2,
                 NewBody)
         ->
             ( check_foreign_type_visibility(OrigStatus, Status1) ->
-                hlds_data.set_type_defn(TVarSet_2, Params_2, KindMap_2,
-                    NewBody, Status, OrigInExportedEqv, NeedQual, Context,
-                    TypeDefn3),
+                hlds_data.set_type_defn(TVarSet2, Params2, KindMap2, NewBody,
+                    Status, OrigInExportedEqv, NeedQual,
+                    type_defn_no_prev_errors, Context, TypeDefn3),
                 replace_type_ctor_defn(TypeCtor, TypeDefn3,
                     TypeTable0, TypeTable),
                 module_info_set_type_table(TypeTable, !ModuleInfo)
@@ -240,11 +250,16 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
                 DiffVisPieces = [words("In definition of type"),
                     sym_name_and_arity(Name / Arity), suffix(":"), nl,
                     words("error: all definitions of a type"),
-                    words("must have the same visibility")],
+                    words("must have the same visibility."), nl],
                 DiffVisMsg = simple_msg(Context, [always(DiffVisPieces)]),
                 DiffVisSpec = error_spec(severity_error,
                     phase_parse_tree_to_hlds, [DiffVisMsg]),
-                !:Specs = [DiffVisSpec | !.Specs]
+                !:Specs = [DiffVisSpec | !.Specs],
+                set_type_defn_prev_errors(type_defn_prev_errors,
+                    TypeDefn1, ErrTypeDefn),
+                replace_type_ctor_defn(TypeCtor, ErrTypeDefn,
+                    TypeTable0, TypeTable),
+                module_info_set_type_table(TypeTable, !ModuleInfo)
             )
         ;
             % ..., otherwise issue an error message if the second
@@ -341,16 +356,16 @@ maybe_get_body_is_solver_type(hlds_abstract_type(Details), IsSolverType) :-
 
     % check_foreign_type_visibility(OldStatus, NewDefnStatus).
     %
-    % Check that the visibility of the new definition for
-    % a foreign type matches that of previous definitions.
+    % Check that the visibility of the new definition for a foreign type
+    % matches that of previous definitions.
     %
 :- pred check_foreign_type_visibility(import_status::in, import_status::in)
     is semidet.
 
 check_foreign_type_visibility(OldStatus, NewDefnStatus) :-
     ( OldStatus = status_abstract_exported  ->
-        % If OldStatus is abstract_exported, the previous
-        % definitions were local.
+        % If OldStatus is abstract_exported, the previous definitions
+        % were local.
         status_is_exported_to_non_submodules(NewDefnStatus) = no
     ; OldStatus = status_exported ->
         NewDefnStatus = status_exported
@@ -396,8 +411,8 @@ process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
             !:Specs = CtorAddSpecs ++ !.Specs
         ),
 
-        % XXX Why is this being done now, rather than *after* all the types
-        % have been added into the HLDS?
+        % Note that process_type_defn is invoked only *after* all the types
+        % have been added into the HLDS.
         (
             type_ctor_should_be_notag(Globals, TypeCtor,
                 ReservedTag, ConsList, UserEqCmp, CtorName, CtorArgType, _)
@@ -411,7 +426,8 @@ process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
         )
     ;
         Body = hlds_foreign_type(ForeignTypeBody),
-        check_foreign_type(TypeCtor, ForeignTypeBody, Context,
+        get_type_defn_prev_errors(TypeDefn, PrevErrors),
+        check_foreign_type(TypeCtor, ForeignTypeBody, PrevErrors, Context,
             FoundInvalidTypeInForeignBody, !ModuleInfo, !Specs),
         (
             FoundInvalidTypeInForeignBody = found_invalid_type,
@@ -442,17 +458,22 @@ process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
     % backend that the foreign type has a representation on that backend.
     %
 :- pred check_foreign_type(type_ctor::in, foreign_type_body::in,
-    prog_context::in, found_invalid_type::out,
+    type_defn_prev_errors::in, prog_context::in, found_invalid_type::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundInvalidType,
-        !ModuleInfo, !Specs) :-
+check_foreign_type(TypeCtor, ForeignTypeBody, PrevErrors, Context,
+        FoundInvalidType, !ModuleInfo, !Specs) :-
     TypeCtor = type_ctor(Name, Arity),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     ( have_foreign_type_for_backend(Target, ForeignTypeBody, yes) ->
         FoundInvalidType = did_not_find_invalid_type
+    ; PrevErrors = type_defn_prev_errors ->
+        % The error message being generated below may be misleading,
+        % since the relevant foreign language definition of this type
+        % may have been present, but in error.
+        FoundInvalidType = found_invalid_type
     ;
         ( Target = target_c, LangStr = "C"
         ; Target = target_il, LangStr = "IL"
@@ -462,12 +483,11 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundInvalidType,
         ),
         MainPieces = [words("Error: no"), fixed(LangStr),
             pragma_decl("foreign_type"), words("declaration for"),
-            sym_name_and_arity(Name/Arity), nl],
+            sym_name_and_arity(Name/Arity), suffix("."), nl],
         VerbosePieces = [words("There are representations for this type"),
             words("on other back-ends, but none for this back-end."), nl],
         Msg = simple_msg(Context,
-            [always(MainPieces),
-            option_is_set(very_verbose, yes, [always(VerbosePieces)])]),
+            [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [Msg]),
         !:Specs = [Spec | !.Specs],
