@@ -18,5 +18,6 @@
 :- implementation.
 
 :- include_module errno.
+:- include_module getaddrinfo.
 
 version("DEV").
