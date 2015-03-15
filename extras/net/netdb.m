@@ -22,6 +22,7 @@
 :- interface.
 
 :- import_module io.
+:- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module string.
@@ -44,9 +45,26 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type addrinfo.
+:- type service
+    --->    numeric_service(int)
+    ;       string_service(string).
 
 %-----------------------------------------------------------------------------%
+
+:- type lookup_result
+    --->    lookup_result(
+                hasr_family     :: family,
+                hasr_socktype   :: socktype,
+                hasr_protocol   :: protocol_num,
+                hasr_sockaddr   :: sockaddr
+            ).
+
+:- pred lookup_host_and_service(string::in, service::in, maybe(family)::in,
+    maybe(socktype)::in, maybe_error(list(lookup_result))::out)
+    is det.
+
+:- pred lookup_local_socket(service::in, maybe(family)::in,
+    maybe(socktype)::in, maybe_error(list(lookup_result))::out) is det.
 
 %:- pred gethostbyname(string::in, res(hostent)::out,
 %    io::di, io::uo) is det.
@@ -77,6 +95,7 @@
 :- import_module bool.
 :- import_module require.
 
+:- import_module net.getaddrinfo.
 :- import_module net.errno.
 
 :- pragma foreign_decl("C",
@@ -223,15 +242,50 @@ c_protocol_to_protocol(CProto, Proto) :-
 
 %-----------------------------------------------------------------------------%
 
-%
-% We box the pointer to addrinfo since these structures are allocated using
-% malloc, we use an extra layer of indirection to use a Boehm GC pointer
-% with a finalizer to free the underlying malloc object.
-%
-:- pragma foreign_type("C",
-    addrinfo,
-    "struct addrinfo**",
-    [can_pass_as_mercury_type]).
+lookup_host_and_service(Host, Service, MaybeFamily, MaybeSocktype,
+        MaybeResults) :-
+    getaddrinfo(node_and_service(Host, Service), gai_flag_addrconfig,
+        MaybeFamily, MaybeSocktype, no, MaybeResults0),
+    (
+        MaybeResults0 = ok(Results0),
+        map(make_host_and_service_result, Results0, Results),
+        MaybeResults = ok(Results)
+    ;
+        MaybeResults0 = error(Error),
+        MaybeResults = error(Error)
+    ).
+
+lookup_local_socket(Service, MaybeFamily, MaybeSocktype, MaybeResults) :-
+    getaddrinfo(service_only(Service),
+        gai_flag_addrconfig \/ gai_flag_passive, MaybeFamily, MaybeSocktype,
+        no, MaybeResults0),
+    map_maybe_error(map(make_host_and_service_result),
+        MaybeResults0, MaybeResults).
+
+:- pred make_host_and_service_result(addrinfo::in,
+    lookup_result::out) is det.
+
+make_host_and_service_result(AI, lookup_result(Family, SockType,
+        ProtocolNum, Sockaddr)) :-
+    Family = AI ^ ai_family,
+    MaybeSockType = AI ^ ai_socktype,
+    (
+        MaybeSockType = yes(SockType)
+    ;
+        MaybeSockType = no,
+        unexpected($file, $pred, "No socktype")
+    ),
+    ProtocolNum = AI ^ ai_protocol,
+    Sockaddr = AI ^ ai_sockaddr.
+
+%-----------------------------------------------------------------------------%
+
+:- pred map_maybe_error(pred(T, U), maybe_error(T, E), maybe_error(U, E)).
+:- mode map_maybe_error(pred(in, out) is det, in, out) is det.
+
+map_maybe_error(P, ok(X), ok(Y)) :-
+    P(X, Y).
+map_maybe_error(_, error(E), error(E)).
 
 %-----------------------------------------------------------------------------%
 

@@ -43,6 +43,16 @@
     --->    fam_inet
     ;       fam_inet6.
 
+    % Convert to and from the integer representation of a family.  This is
+    % sometimes required, for example when '0' indicates unspecified in the
+    % underlying foreign code.
+    %
+:- pred family_int(family, int).
+:- mode family_int(in, out) is det.
+:- mode family_int(out, in) is semidet.
+
+%-----------------------------------------------------------------------------%
+
     % The socket type.  Informally (for fam_inet and fam_inet6) these
     % correspond to TCP and UDP respectively.  More precicely these specify
     % the socket's behavour, the protocol is optionally specified
@@ -51,6 +61,14 @@
 :- type socktype
     --->    sock_stream
     ;       sock_dgram.
+
+    % Convert socktypes to and from integers.
+    %
+:- pred socktype_int(socktype, int).
+:- mode socktype_int(in, out) is det.
+:- mode socktype_int(out, in) is semidet.
+
+%-----------------------------------------------------------------------------%
 
 	% An IPv4 Address.
 	%
@@ -154,6 +172,31 @@
 %     fam_appletalk  - "AF_APPLETALK",
 %     fam_packet     - "AF_PACKET",
 
+:- pragma foreign_proc("C",
+    family_int(Family::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe,
+     will_not_throw_exception],
+"
+    Int = Family;
+").
+
+:- pragma foreign_proc("C",
+    family_int(Family::out, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe,
+     will_not_throw_exception],
+"
+    Family = Int;
+    switch (Family) {
+        case AF_INET:
+        case AF_INET6:
+            SUCCESS_INDICATOR = MR_YES;
+            break;
+        default:
+            SUCCESS_INDICATOR = MR_NO;
+            break;
+    }
+").
+
 :- pragma foreign_enum("C", socktype/0,
     [sock_stream    - "SOCK_STREAM",
      sock_dgram     - "SOCK_DGRAM"]).
@@ -165,6 +208,31 @@
     % Note: We deleberately do not support the non-portable SOCK_NONBLOCK
     % and SOCK_CLOEXEC values, this functionality should be accessed via
     % setsocketopt.
+
+:- pragma foreign_proc("C",
+    socktype_int(Socktype::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe,
+     will_not_throw_exception],
+"
+    Int = Socktype;
+").
+
+:- pragma foreign_proc("C",
+    socktype_int(Socktype::out, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe,
+     will_not_throw_exception],
+"
+    Socktype = Int;
+    switch (Socktype) {
+        case SOCK_STREAM:
+        case SOCK_DGRAM:
+            SUCCESS_INDICATOR = MR_YES;
+            break;
+        default:
+            SUCCESS_INDICATOR = MR_NO;
+            break;
+    }
+").
 
 %-----------------------------------------------------------------------------%
 
