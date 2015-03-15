@@ -27,9 +27,9 @@
 %     corresponding definition somewhere in the module.
 %
 % These actions cannot be done until after type inference is complete,
-% so they need to be a separate "post-typecheck pass".  For efficiency
-% reasons, this is in fact done at the same time as purity analysis --
-% the routines here are called from purity.m rather than mercury_compile.m.
+% so they need to be a separate "post-typecheck pass". For efficiency reasons,
+% this is in fact done at the same time as purity analysis -- the routines here
+% are called from purity.m rather than mercury_compile.m.
 
 %-----------------------------------------------------------------------------%
 
@@ -1592,7 +1592,7 @@ create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
 
     % Use the goal id from the original goal, so that the constraint_ids
-    % will be as expected.  (See the XXX comment near the definition of
+    % will be as expected. (See the XXX comment near the definition of
     % constraint_id in hlds_data.m for more info.)
     goal_info_set_goal_id(GoalId, GoalInfo1, GoalInfo),
     Goal = hlds_goal(GoalExpr0, GoalInfo).
@@ -1630,14 +1630,14 @@ check_for_missing_type_defns_2(TypeCtor, TypeDefn, !Specs) :-
         TypeBody = hlds_abstract_type(_)
     ->
         % We expect the builtin types character, float, int and string to have
-        % abstract declarations with no definitions.  The following types from
+        % abstract declarations with no definitions. The following types from
         % the type_desc module also only have abstract declarations:
         %
         %   - type_desc/0
         %   - pseudo_type_desc/0
         %   - type_ctor_desc/0
         %
-        % We do not emit an error for these types.  In addition, we also don't
+        % We do not emit an error for these types. In addition, we also don't
         % bother checking for corresponding definitions in any of the builtin
         % modules in the standard library.
 
@@ -1647,10 +1647,14 @@ check_for_missing_type_defns_2(TypeCtor, TypeDefn, !Specs) :-
             sym_name_get_module_name(SymName, ModuleName),
             not any_mercury_builtin_module(ModuleName),
 
-            % Several of the type defined in type_desc do not
-            % have Mercury definitions.
+            % Several of the type defineds in type_desc do not have
+            % Mercury definitions.
             not ModuleName = unqualified("type_desc"),
-            not list.member(TypeCtor, BuiltinTypeCtors)
+            not list.member(TypeCtor, BuiltinTypeCtors),
+
+            % If we have previously reported an error for this type,
+            % then the definition may have been present, though erroneous.
+            get_type_defn_prev_errors(TypeDefn, type_defn_no_prev_errors)
         ->
             get_type_defn_context(TypeDefn, TypeContext),
             Pieces = [words("Error: abstract declaration for type"),

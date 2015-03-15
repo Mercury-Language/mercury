@@ -94,11 +94,10 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
     module_info_init(Name, DumpBaseFileName, Items, Globals, PQInfo, no,
         !:ModuleInfo),
     module_info_set_used_modules(UsedModules, !ModuleInfo),
-    !:Specs = [],
     add_item_list_decls_pass_1(Items,
         item_status(status_local, may_be_unqualified),
         did_not_find_invalid_inst_or_mode, FoundInvalidInstOrMode1,
-        !ModuleInfo, !Specs),
+        !ModuleInfo, [], Pass1Specs),
     globals.lookup_bool_option(Globals, statistics, Statistics),
     trace [io(!IO)] (
         maybe_write_string(Statistics, "% Processed all items in pass 1\n",
@@ -109,7 +108,15 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
     add_item_list_decls_pass_2(Items,
         item_status(status_local, may_be_unqualified),
         !ModuleInfo, [], Pass2Specs),
-    !:Specs = Pass2Specs ++ !.Specs,
+    !:Specs = Pass1Specs ++ Pass2Specs,
+    % XXX Using Pass2Specs = [_ | _] as the test for found_invalid_type
+    % is both too tight and too loose. Too tight because some pass 2 errors
+    % are not type errors, and too loose because invalid types are now found
+    % in pass 1. We avoid the second problem by recording the presence of
+    % an error in a type definition in the type definition itself, and then
+    % reporting that error in pass 2, but a more direct solution (allowing
+    % the processing of every relevant item during either pass 1 or pass 2
+    % to just set the found_invalid_type flag) would be better.
     (
         Pass2Specs = [],
         some [!TypeTable] (
@@ -490,7 +497,9 @@ add_pass_1_type_defn(ItemTypeDefnInfo, Status, !ModuleInfo, !Specs) :-
             !ModuleInfo, !Specs)
     ;
         true
-    ).
+    ),
+    module_add_type_defn(TypeVarSet, SymName, TypeParams, TypeDefn, Context,
+        Status, !ModuleInfo, !Specs).
 
 :- pred add_solver_type_mutable_items_pass_1(list(item_mutable_info)::in,
     item_status::in, module_info::in, module_info::out,
@@ -639,11 +648,9 @@ add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs) :-
     item_status::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pass_2_type_defn(ItemTypeDefn, Status, !ModuleInfo, !Specs) :-
-    ItemTypeDefn = item_type_defn_info(Name, Args, TypeDefn, VarSet,
-        Context, _SeqNum),
-    module_add_type_defn(VarSet, Name, Args, TypeDefn, Context,
-        Status, !ModuleInfo, !Specs),
+add_pass_2_type_defn(ItemTypeDefnInfo, Status, !ModuleInfo, !Specs) :-
+    ItemTypeDefnInfo = item_type_defn_info(_SymName, _TypeParams, TypeDefn,
+        _TypeVarSet, _Context, _SeqNum),
     ( TypeDefn = parse_tree_solver_type(SolverTypeDetails, _MaybeUserEqComp) ->
         MutableItems = SolverTypeDetails ^ std_mutable_items,
         add_solver_type_mutable_items_pass_2(MutableItems, Status,

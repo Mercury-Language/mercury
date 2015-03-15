@@ -1,0 +1,5 @@
+getaddrinfo for www.google.com:
+Family: fam_inet,  Socktype: sock_stream, Protocol: 89
+Family: fam_inet,  Socktype: sock_dgram,  Protocol: 80
+Family: fam_inet6, Socktype: sock_stream, Protocol: 80
+Family: fam_inet6, Socktype: sock_dgram,  Protocol: 80

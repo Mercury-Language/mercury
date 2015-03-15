@@ -237,6 +237,14 @@ add_pass_2_pragma(ItemPragma, Status, !ModuleInfo, !Specs) :-
         check_required_feature_set(FeatureSet, ImportStatus, Context,
             !ModuleInfo, !Specs)
     ;
+        Pragma = pragma_foreign_export_enum(FEEInfo),
+        add_pragma_foreign_export_enum(FEEInfo, ImportStatus, Context,
+            !ModuleInfo, !Specs)
+    ;
+        Pragma = pragma_foreign_enum(FEInfo),
+        add_pragma_foreign_enum(FEInfo, ImportStatus, Context,
+            !ModuleInfo, !Specs)
+    ;
         % Ignore `pragma source_file' declarations in pass 2;
         % they have already been handled while reading in the items.
         Pragma = pragma_source_file(_)
@@ -251,9 +259,7 @@ add_pass_2_pragma(ItemPragma, Status, !ModuleInfo, !Specs) :-
     ;
         % Ignore these pragmas in pass 2; we will handle them in pass 3,
         % after we have added all the types.
-        ( Pragma = pragma_foreign_export_enum(_)
-        ; Pragma = pragma_foreign_enum(_)
-        ; Pragma = pragma_reserve_tag(_)
+        ( Pragma = pragma_reserve_tag(_)
         ; Pragma = pragma_oisu(_)
         )
     ;
@@ -741,13 +747,6 @@ add_pass_3_pragma(ItemPragma, Status, !ModuleInfo, !QualInfo, !Specs) :-
         add_pragma_foreign_proc_export(MaybeAttrs, FEInfo, Context,
             !ModuleInfo, !Specs)
     ;
-        Pragma = pragma_foreign_export_enum(FEEInfo),
-        add_pragma_foreign_export_enum(FEEInfo, Status, Context,
-            !ModuleInfo, !Specs)
-    ;
-        Pragma = pragma_foreign_enum(FEInfo),
-        add_pragma_foreign_enum(FEInfo, Status, Context, !ModuleInfo, !Specs)
-    ;
         Pragma = pragma_type_spec(TypeSpecInfo),
         add_pragma_type_spec(TypeSpecInfo, Context,
             !ModuleInfo, !QualInfo, !Specs)
@@ -797,6 +796,8 @@ add_pass_3_pragma(ItemPragma, Status, !ModuleInfo, !QualInfo, !Specs) :-
         ( Pragma = pragma_foreign_decl(_)
         ; Pragma = pragma_foreign_code(_)
         ; Pragma = pragma_foreign_import_module(_)
+        ; Pragma = pragma_foreign_export_enum(_)
+        ; Pragma = pragma_foreign_enum(_)
         ; Pragma = pragma_inline(_)
         ; Pragma = pragma_no_inline(_)
         ; Pragma = pragma_unused_args(_)

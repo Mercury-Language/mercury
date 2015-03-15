@@ -430,6 +430,11 @@ cons_table_optimize(!ConsTable) :-
 
 %---------------------------------------------------------------------------%
 
+    % Have we reported an error for this type definition yet?
+:- type type_defn_prev_errors
+    --->    type_defn_no_prev_errors
+    ;       type_defn_prev_errors.
+
     % This is how type, modes and constructors are represented. The parts that
     % are not defined here (i.e. type_param, constructor, type, inst and mode)
     % are represented in the same way as in prog_io.m, and are defined there.
@@ -439,7 +444,8 @@ cons_table_optimize(!ConsTable) :-
 
 :- pred set_type_defn(tvarset::in, list(type_param)::in,
     tvar_kind_map::in, hlds_type_body::in, import_status::in, bool::in,
-    need_qualifier::in, prog_context::in, hlds_type_defn::out) is det.
+    need_qualifier::in, type_defn_prev_errors::in, prog_context::in,
+    hlds_type_defn::out) is det.
 
 :- pred get_type_defn_tvarset(hlds_type_defn::in, tvarset::out) is det.
 :- pred get_type_defn_tparams(hlds_type_defn::in, list(type_param)::out)
@@ -450,6 +456,8 @@ cons_table_optimize(!ConsTable) :-
 :- pred get_type_defn_in_exported_eqv(hlds_type_defn::in, bool::out) is det.
 :- pred get_type_defn_need_qualifier(hlds_type_defn::in, need_qualifier::out)
     is det.
+:- pred get_type_defn_prev_errors(hlds_type_defn::in,
+    type_defn_prev_errors::out) is det.
 :- pred get_type_defn_context(hlds_type_defn::in, prog_context::out) is det.
 
 :- pred set_type_defn_body(hlds_type_body::in,
@@ -459,6 +467,8 @@ cons_table_optimize(!ConsTable) :-
 :- pred set_type_defn_status(import_status::in,
     hlds_type_defn::in, hlds_type_defn::out) is det.
 :- pred set_type_defn_in_exported_eqv(bool::in,
+    hlds_type_defn::in, hlds_type_defn::out) is det.
+:- pred set_type_defn_prev_errors(type_defn_prev_errors::in,
     hlds_type_defn::in, hlds_type_defn::out) is det.
 
     % An `hlds_type_body' holds the body of a type definition:
@@ -967,7 +977,7 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 % Formal type parameters.
                 type_defn_params            :: list(type_param),
 
-                % Kinds of the formal parameters.
+                % The kinds of the formal parameters.
                 type_defn_kinds             :: tvar_kind_map,
 
                 % The definition of the type.
@@ -992,33 +1002,51 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 % qualified.
                 type_defn_need_qualifier    :: need_qualifier,
 
+                % Have we reported an error for this type definition yet?
+                % If yes, then don't emit any more errors for it, since they
+                % are very likely to be due to the compiler's incomplete
+                % recovery from the previous error.
+                type_defn_prev_errors       :: type_defn_prev_errors,
+
                 % The location of this type definition in the original
                 % source code.
                 type_defn_context           :: prog_context
             ).
 
 set_type_defn(Tvarset, Params, Kinds, Body, Status, InExportedEqv,
-        NeedQual, Context, Defn) :-
+        NeedQual, PrevErrors, Context, Defn) :-
     Defn = hlds_type_defn(Tvarset, Params, Kinds, Body, Status,
-        InExportedEqv, NeedQual, Context).
+        InExportedEqv, NeedQual, PrevErrors, Context).
 
-get_type_defn_tvarset(Defn, Defn ^ type_defn_tvarset).
-get_type_defn_tparams(Defn, Defn ^ type_defn_params).
-get_type_defn_kind_map(Defn, Defn ^ type_defn_kinds).
-get_type_defn_body(Defn, Defn ^ type_defn_body).
-get_type_defn_status(Defn, Defn ^ type_defn_import_status).
-get_type_defn_in_exported_eqv(Defn, Defn ^ type_defn_in_exported_eqv).
-get_type_defn_need_qualifier(Defn, Defn ^ type_defn_need_qualifier).
-get_type_defn_context(Defn, Defn ^ type_defn_context).
+get_type_defn_tvarset(Defn, X) :-
+    X = Defn ^ type_defn_tvarset.
+get_type_defn_tparams(Defn, X) :-
+    X = Defn ^ type_defn_params.
+get_type_defn_kind_map(Defn, X) :-
+    X = Defn ^ type_defn_kinds.
+get_type_defn_body(Defn, X) :-
+    X = Defn ^ type_defn_body.
+get_type_defn_status(Defn, X) :-
+    X = Defn ^ type_defn_import_status.
+get_type_defn_in_exported_eqv(Defn, X) :-
+    X = Defn ^ type_defn_in_exported_eqv.
+get_type_defn_need_qualifier(Defn, X) :-
+    X = Defn ^ type_defn_need_qualifier.
+get_type_defn_prev_errors(Defn, X) :-
+    X = Defn ^ type_defn_prev_errors.
+get_type_defn_context(Defn, X) :-
+    X = Defn ^ type_defn_context.
 
-set_type_defn_body(Body, !Defn) :-
-    !Defn ^ type_defn_body := Body.
-set_type_defn_tvarset(TVarSet, !Defn) :-
-    !Defn ^ type_defn_tvarset := TVarSet.
-set_type_defn_status(Status, !Defn) :-
-    !Defn ^ type_defn_import_status := Status.
-set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
-    !Defn ^ type_defn_in_exported_eqv := InExportedEqv.
+set_type_defn_body(X, !Defn) :-
+    !Defn ^ type_defn_body := X.
+set_type_defn_tvarset(X, !Defn) :-
+    !Defn ^ type_defn_tvarset := X.
+set_type_defn_status(X, !Defn) :-
+    !Defn ^ type_defn_import_status := X.
+set_type_defn_in_exported_eqv(X, !Defn) :-
+    !Defn ^ type_defn_in_exported_eqv := X.
+set_type_defn_prev_errors(X, !Defn) :-
+    !Defn ^ type_defn_prev_errors := X.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
