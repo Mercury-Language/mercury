@@ -64,6 +64,7 @@
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.int_emu.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -670,20 +671,20 @@ simplify_improve_int_call(InstMap0, PredName, _ModeNum, Args, ImprovedGoalExpr,
         !GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, cross_compiling, no),
+    target_bits_per_int(Globals, bits_per_int(TargetBitsPerInt)),
     (
         PredName = "quot_bits_per_int",
         Args = [X, Y],
         % There is no point in checking whether bits_per_int is 0;
         % it isn't.
         Op = "unchecked_quotient",
-        simplify_make_int_ico_op(Op, X, int.bits_per_int, Y, ImprovedGoalExpr,
+        simplify_make_int_ico_op(Op, X, TargetBitsPerInt, Y, ImprovedGoalExpr,
             !.GoalInfo, !Info)
     ;
         PredName = "times_bits_per_int",
         Args = [X, Y],
         Op = "*",
-        simplify_make_int_ico_op(Op, X, int.bits_per_int, Y, ImprovedGoalExpr,
+        simplify_make_int_ico_op(Op, X, TargetBitsPerInt, Y, ImprovedGoalExpr,
             !.GoalInfo, !Info)
     ;
         PredName = "rem_bits_per_int",
@@ -691,7 +692,7 @@ simplify_improve_int_call(InstMap0, PredName, _ModeNum, Args, ImprovedGoalExpr,
         % There is no point in checking whether bits_per_int is 0;
         % it isn't.
         Op = "unchecked_rem",
-        simplify_make_int_ico_op(Op, X, int.bits_per_int, Y, ImprovedGoalExpr,
+        simplify_make_int_ico_op(Op, X, TargetBitsPerInt, Y, ImprovedGoalExpr,
             !.GoalInfo, !Info)
     ;
         ( PredName = "/"
@@ -719,7 +720,7 @@ simplify_improve_int_call(InstMap0, PredName, _ModeNum, Args, ImprovedGoalExpr,
         instmap_lookup_var(InstMap0, Y, InstY),
         InstY = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal >= 0,
-        YVal < int.bits_per_int,
+        YVal < TargetBitsPerInt,
         Op = "unchecked_left_shift",
         simplify_make_int_binary_op_goal_expr(!.Info, Op, inline_builtin,
             X, Y, Z, ImprovedGoalExpr)
@@ -729,7 +730,7 @@ simplify_improve_int_call(InstMap0, PredName, _ModeNum, Args, ImprovedGoalExpr,
         instmap_lookup_var(InstMap0, Y, InstY),
         InstY = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal >= 0,
-        YVal < int.bits_per_int,
+        YVal < TargetBitsPerInt,
         Op = "unchecked_right_shift",
         simplify_make_int_binary_op_goal_expr(!.Info, Op, inline_builtin,
             X, Y, Z, ImprovedGoalExpr)

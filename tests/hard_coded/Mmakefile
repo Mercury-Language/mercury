@@ -384,6 +384,7 @@ JAVA_PASS_PROGS = \
 	calendar_test \
 	compare_spec \
 	constant_prop_2 \
+	constant_prop_int \
 	contains_char \
 	contains_char_2 \
 	constraint \
