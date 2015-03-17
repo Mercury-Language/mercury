@@ -329,8 +329,7 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,
             globals.lookup_int_option(Globals, string_trie_switch_size,
                 StringTrieSwitchSize),
             NumConsIds >= StringTrieSwitchSize,
-            globals.get_target(Globals, target_c),
-            globals.lookup_bool_option(Globals, cross_compiling, no)
+            globals.get_target(Globals, target_c)
         ->
             (
                 MaybeLookupSwitchInfo = yes(LookupSwitchInfo),

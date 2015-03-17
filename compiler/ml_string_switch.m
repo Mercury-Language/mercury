@@ -86,6 +86,7 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.string_encoding.
 :- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
@@ -435,7 +436,7 @@ ml_gen_string_trie_several_soln_lookup_slots(
 
                 leaf_unmatched      :: list(int),
                 % The not-yet matched code units, in forward order.
-                % Invariant: applying string.from_code_unit_list to
+                % Invariant: applying from_code_unit_list to
                 % list.reverse(leaf_matched) ++ leaf_unmatched
                 % should yield the original string.
 
@@ -462,17 +463,20 @@ ml_gen_string_trie_several_soln_lookup_slots(
 create_nested_switch_trie(TaggedCases, MLDS_Context, VarRval, MaxCaseNum,
         CaseNumVarLval, CaseNumVarDefn,
         InitCaseNumVarStatement, GetCaseNumSwitchStatement, !Info) :-
-    create_trie(TaggedCases, MaxCaseNum, TopTrieNode),
+    ml_gen_info_get_target(!.Info, Target),
+    Encoding = target_string_encoding(Target),
+    create_trie(Encoding, TaggedCases, MaxCaseNum, TopTrieNode),
     ml_gen_trie_case_num_var_and_init(MLDS_Context, CaseNumVarLval,
         CaseNumVarDefn, InitCaseNumVarStatement, !Info),
-    convert_trie_to_nested_switches(VarRval, CaseNumVarLval, MLDS_Context, 0,
-        TopTrieNode, GetCaseNumSwitchStatement).
+    convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
+        MLDS_Context, 0, TopTrieNode, GetCaseNumSwitchStatement).
 
 %-----------------------------------------------------------------------------%
 
-:- pred create_trie(list(tagged_case)::in, int::out, trie_node::out) is det.
+:- pred create_trie(string_encoding::in, list(tagged_case)::in, int::out,
+    trie_node::out) is det.
 
-create_trie(TaggedCases, MaxCaseNum, TopTrieNode) :-
+create_trie(Encoding, TaggedCases, MaxCaseNum, TopTrieNode) :-
     build_str_case_id_assoc_list(TaggedCases, -1, MaxCaseNum, [], StrsCaseIds),
     % The order of StrsCaseIds does not matter; we will build the same trie
     % regardless of the order.
@@ -482,20 +486,21 @@ create_trie(TaggedCases, MaxCaseNum, TopTrieNode) :-
     ;
         StrsCaseIds = [HeadStrCaseId | TailStrCaseIds],
         HeadStrCaseId = HeadStr - HeadCaseId,
-        string.to_code_unit_list(HeadStr, HeadStrCodeUnits),
+        to_code_unit_list(Encoding, HeadStr, HeadStrCodeUnits),
         TopTrieNode1 = trie_leaf([], HeadStrCodeUnits, HeadCaseId),
-        insert_cases_into_trie(TailStrCaseIds, TopTrieNode1, TopTrieNode)
+        insert_cases_into_trie(Encoding, TailStrCaseIds, TopTrieNode1,
+            TopTrieNode)
     ).
 
-:- pred insert_cases_into_trie(assoc_list(string, case_id)::in,
-    trie_node::in, trie_node::out) is det.
+:- pred insert_cases_into_trie(string_encoding::in,
+    assoc_list(string, case_id)::in, trie_node::in, trie_node::out) is det.
 
-insert_cases_into_trie([], !TrieNode).
-insert_cases_into_trie([Case | Cases], !TrieNode) :-
+insert_cases_into_trie(_Encoding, [], !TrieNode).
+insert_cases_into_trie(Encoding, [Case | Cases], !TrieNode) :-
     Case = Str - CaseId,
-    string.to_code_unit_list(Str, StrCodeUnits),
+    to_code_unit_list(Encoding, Str, StrCodeUnits),
     insert_case_into_trie_node([], StrCodeUnits, CaseId, !TrieNode),
-    insert_cases_into_trie(Cases, !TrieNode).
+    insert_cases_into_trie(Encoding, Cases, !TrieNode).
 
 :- pred insert_case_into_trie_node(list(int)::in, list(int)::in, case_id::in,
     trie_node::in, trie_node::out) is det.
@@ -582,11 +587,12 @@ ml_gen_trie_case_num_var_and_init(MLDS_Context, CaseNumVarLval, CaseNumVarDefn,
 
 %-----------------------------------------------------------------------------%
 
-:- pred convert_trie_to_nested_switches(mlds_rval::in, mlds_lval::in,
-    mlds_context::in, int::in, trie_node::in, statement::out) is det.
+:- pred convert_trie_to_nested_switches(string_encoding::in, mlds_rval::in,
+    mlds_lval::in, mlds_context::in, int::in, trie_node::in, statement::out)
+    is det.
 
-convert_trie_to_nested_switches(VarRval, CaseNumVarLval, Context, NumMatched,
-        TrieNode, Statement) :-
+convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
+        NumMatched, TrieNode, Statement) :-
     (
         TrieNode = trie_leaf(RevMatchedCodeUnits, NotYetMatchedCodeUnits,
             CaseId),
@@ -602,7 +608,7 @@ convert_trie_to_nested_switches(VarRval, CaseNumVarLval, Context, NumMatched,
         list.length(RevMatchedCodeUnits, NumRevMatchedCodeUnits),
         expect(unify(NumRevMatchedCodeUnits, NumMatched), $module, $pred,
             "NumRevMatchedCodeUnits != NumMatched"),
-        ( if string.from_code_unit_list(AllCodeUnits, String) then
+        ( if from_code_unit_list(Encoding, AllCodeUnits, String) then
             StringRval = ml_const(mlconst_string(String))
         else
             unexpected($module, $pred,
@@ -622,13 +628,13 @@ convert_trie_to_nested_switches(VarRval, CaseNumVarLval, Context, NumMatched,
             OneChoicePair = OneCodeUnit - OneSubTrieNode,
             OneCodeUnitConst = ml_const(mlconst_int(OneCodeUnit)),
             FirstCond = ml_binop(eq, CurCodeUnitRval, OneCodeUnitConst),
-            chase_one_cond_trie_nodes(VarRval, CaseNumVarLval, Context,
-                NumMatched + 1, OneSubTrieNode, FirstCond, AllCond,
+            chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval,
+                Context, NumMatched + 1, OneSubTrieNode, FirstCond, AllCond,
                 ThenStatement),
             Stmt = ml_stmt_if_then_else(AllCond, ThenStatement, no)
         else
-            convert_trie_choices_to_nested_switches(VarRval, CaseNumVarLval,
-                Context, NumMatched + 1, ChoicePairs,
+            convert_trie_choices_to_nested_switches(Encoding, VarRval,
+                CaseNumVarLval, Context, NumMatched + 1, ChoicePairs,
                 cord.init, SwitchArmsCord0),
             SwitchArms0 = cord.list(SwitchArmsCord0),
             (
@@ -663,21 +669,22 @@ convert_trie_to_nested_switches(VarRval, CaseNumVarLval, Context, NumMatched,
     ),
     Statement = statement(Stmt, Context).
 
-:- pred convert_trie_choices_to_nested_switches(mlds_rval::in, mlds_lval::in,
-    mlds_context::in, int::in, assoc_list(int, trie_node)::in,
+:- pred convert_trie_choices_to_nested_switches(string_encoding::in,
+    mlds_rval::in, mlds_lval::in, mlds_context::in, int::in,
+    assoc_list(int, trie_node)::in,
     cord(mlds_switch_case)::in, cord(mlds_switch_case)::out) is det.
 
-convert_trie_choices_to_nested_switches(_, _, _, _, [], !SwitchArmsCord).
-convert_trie_choices_to_nested_switches(VarRval, CaseNumVarLval, Context,
-        NumMatched, [ChoicePair | ChoicePairs], !SwitchArmsCord) :-
+convert_trie_choices_to_nested_switches(_, _, _, _, _, [], !SwitchArmsCord).
+convert_trie_choices_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
+        Context, NumMatched, [ChoicePair | ChoicePairs], !SwitchArmsCord) :-
     ChoicePair = CodeUnit - SubTrieNode,
-    convert_trie_to_nested_switches(VarRval, CaseNumVarLval, Context,
+    convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
         NumMatched, SubTrieNode, SwitchArmStatement),
     MatchCond = match_value(ml_const(mlconst_int(CodeUnit))),
     SwitchArm = mlds_switch_case(MatchCond, [], SwitchArmStatement),
     !:SwitchArmsCord = cord.snoc(!.SwitchArmsCord, SwitchArm),
-    convert_trie_choices_to_nested_switches(VarRval, CaseNumVarLval, Context,
-        NumMatched, ChoicePairs, !SwitchArmsCord).
+    convert_trie_choices_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
+        Context, NumMatched, ChoicePairs, !SwitchArmsCord).
 
 :- pred generate_trie_arms(assoc_list(case_id, statement)::in,
     list(mlds_switch_case)::in, list(mlds_switch_case)::out) is det.
@@ -691,12 +698,12 @@ generate_trie_arms([CasePair | CasePairs], !RevSwitchCases) :-
     !:RevSwitchCases = [Case | !.RevSwitchCases],
     generate_trie_arms(CasePairs, !RevSwitchCases).
 
-:- pred chase_one_cond_trie_nodes(mlds_rval::in, mlds_lval::in,
-    mlds_context::in, int::in, trie_node::in, mlds_rval::in, mlds_rval::out,
-    statement::out) is det.
+:- pred chase_one_cond_trie_nodes(string_encoding::in, mlds_rval::in,
+    mlds_lval::in, mlds_context::in, int::in, trie_node::in,
+    mlds_rval::in, mlds_rval::out, statement::out) is det.
 
-chase_one_cond_trie_nodes(VarRval, CaseNumVarLval, Context, NumMatched,
-        TrieNode, RevCond0, RevCond, ThenStatement) :-
+chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
+        NumMatched, TrieNode, RevCond0, RevCond, ThenStatement) :-
     ( if
         TrieNode = trie_choice(RevMatchedCodeUnits, ChoiceMap, MaybeEnd),
         map.to_assoc_list(ChoiceMap, ChoicePairs),
@@ -711,12 +718,12 @@ chase_one_cond_trie_nodes(VarRval, CaseNumVarLval, Context, NumMatched,
         OneCodeUnitConst = ml_const(mlconst_int(OneCodeUnit)),
         CurCond = ml_binop(eq, CurCodeUnitRval, OneCodeUnitConst),
         RevCond1 = ml_binop(logical_and, RevCond0, CurCond),
-        chase_one_cond_trie_nodes(VarRval, CaseNumVarLval, Context,
+        chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
             NumMatched + 1, OneSubTrieNode, RevCond1, RevCond, ThenStatement)
     else
         RevCond = RevCond0,
-        convert_trie_to_nested_switches(VarRval, CaseNumVarLval, Context,
-            NumMatched, TrieNode, ThenStatement)
+        convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
+            Context, NumMatched, TrieNode, ThenStatement)
     ).
 
 %-----------------------------------------------------------------------------%
