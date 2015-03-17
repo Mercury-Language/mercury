@@ -13,11 +13,6 @@
 % routines at compile time, transforming them to simpler goals such as
 % construction unifications.
 %
-% XXX We should check for overflow.  This is particularly important when
-% cross-compiling, since the overflow behaviour of the host machine might not
-% be the same as that of the target machine, e.g. if they have different word
-% sizes.
-%
 %---------------------------------------------------------------------------%
 
 :- module transform_hlds.const_prop.
@@ -55,6 +50,7 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.instmap.
 :- import_module libs.globals.
+:- import_module libs.int_emu.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data.
 
@@ -199,9 +195,8 @@ evaluate_det_call_int_1(Globals, ProcName, ModeNum, X,
     (
         ProcName = "bits_per_int",
         ModeNum = 0,
-        globals.lookup_bool_option(Globals, cross_compiling, no),
         OutputArg = X,
-        OutputArgVal = int.bits_per_int
+        target_bits_per_int(Globals, bits_per_int(OutputArgVal))
     ).
 
 :- pred evaluate_det_call_int_2(globals::in, string::in, int::in,
@@ -221,7 +216,8 @@ evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
-        OutputArgVal = -XVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.minus(BitsPerInt, 0, XVal, OutputArgVal)
     ;
         ProcName = "\\",
         ModeNum = 0,
@@ -231,31 +227,32 @@ evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
     ;
         ProcName = "floor_to_multiple_of_bits_per_int",
         ModeNum = 0,
-        globals.lookup_bool_option(Globals, cross_compiling, no),
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
-        OutputArgVal = int.floor_to_multiple_of_bits_per_int(XVal)
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.floor_to_multiple_of_bits_per_int(XVal, BitsPerInt,
+            OutputArgVal)
     ;
         ProcName = "quot_bits_per_int",
         ModeNum = 0,
-        globals.lookup_bool_option(Globals, cross_compiling, no),
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
-        OutputArgVal = int.quot_bits_per_int(XVal)
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.quot_bits_per_int(XVal, BitsPerInt, OutputArgVal)
     ;
         ProcName = "times_bits_per_int",
         ModeNum = 0,
-        globals.lookup_bool_option(Globals, cross_compiling, no),
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
-        OutputArgVal = int.times_bits_per_int(XVal)
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.times_bits_per_int(XVal, BitsPerInt, OutputArgVal)
     ;
         ProcName = "rem_bits_per_int",
         ModeNum = 0,
-        globals.lookup_bool_option(Globals, cross_compiling, no),
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         OutputArg = Y,
-        OutputArgVal = int.rem_bits_per_int(XVal)
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.rem_bits_per_int(XVal, BitsPerInt, OutputArgVal)
     ).
 
 :- pred evaluate_det_call_float_2(globals::in, string::in, int::in,
@@ -295,7 +292,7 @@ evaluate_det_call_string_2(_Globals, ProcName, ModeNum, X, Y,
     arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
     arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call_int_3(_Globals, ProcName, ModeNum, X, Y, Z,
+evaluate_det_call_int_3(Globals, ProcName, ModeNum, X, Y, Z,
         OutputArg, int_const(OutputArgVal)) :-
     (
         ProcName = "plus",
@@ -303,70 +300,80 @@ evaluate_det_call_int_3(_Globals, ProcName, ModeNum, X, Y, Z,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
-        OutputArgVal = XVal + YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.plus(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "+",
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
-        OutputArgVal = XVal + YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.plus(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "+",
         ModeNum = 1,
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
         OutputArg = X,
-        OutputArgVal = ZVal - YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.minus(BitsPerInt, ZVal, YVal, OutputArgVal)
     ;
         ProcName = "+",
         ModeNum = 2,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
         OutputArg = Y,
-        OutputArgVal = ZVal - XVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.minus(BitsPerInt, ZVal, XVal, OutputArgVal)
     ;
         ProcName = "minus",
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
-        OutputArgVal = XVal - YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.minus(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "-",
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
-        OutputArgVal = XVal - YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.minus(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "-",
         ModeNum = 1,
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
         OutputArg = X,
-        OutputArgVal = YVal + ZVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.plus(BitsPerInt, YVal, ZVal, OutputArgVal)
     ;
         ProcName = "-",
         ModeNum = 2,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
         OutputArg = Y,
-        OutputArgVal = XVal - ZVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.minus(BitsPerInt, XVal, ZVal, OutputArgVal)
     ;
         ProcName = "times",
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
-        OutputArgVal = XVal * YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.times(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "*",
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
-        OutputArgVal = XVal * YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.times(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "unchecked_quotient",
         ModeNum = 0,
@@ -374,7 +381,8 @@ evaluate_det_call_int_3(_Globals, ProcName, ModeNum, X, Y, Z,
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal \= 0,
         OutputArg = Z,
-        OutputArgVal = unchecked_quotient(XVal, YVal)
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.unchecked_quotient(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "//",
         ModeNum = 0,
@@ -382,7 +390,8 @@ evaluate_det_call_int_3(_Globals, ProcName, ModeNum, X, Y, Z,
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal \= 0,
         OutputArg = Z,
-        OutputArgVal = XVal // YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.quotient(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "mod",
         ModeNum = 0,
@@ -390,7 +399,8 @@ evaluate_det_call_int_3(_Globals, ProcName, ModeNum, X, Y, Z,
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal \= 0,
         OutputArg = Z,
-        OutputArgVal = XVal mod YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.mod(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "rem",
         ModeNum = 0,
@@ -398,7 +408,8 @@ evaluate_det_call_int_3(_Globals, ProcName, ModeNum, X, Y, Z,
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal \= 0,
         OutputArg = Z,
-        OutputArgVal = XVal rem YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.rem(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "unchecked_rem",
         ModeNum = 0,
@@ -406,35 +417,40 @@ evaluate_det_call_int_3(_Globals, ProcName, ModeNum, X, Y, Z,
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         YVal \= 0,
         OutputArg = Z,
-        OutputArgVal = unchecked_rem(XVal, YVal)
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.unchecked_rem(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "unchecked_left_shift",
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
-        OutputArgVal = unchecked_left_shift(XVal, YVal)
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.unchecked_left_shift(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "<<",
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
-        OutputArgVal = XVal << YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.left_shift(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "unchecked_right_shift",
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
-        OutputArgVal = unchecked_right_shift(XVal, YVal)
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.unchecked_right_shift(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = ">>",
         ModeNum = 0,
         X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
         OutputArg = Z,
-        OutputArgVal = XVal >> YVal
+        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        int_emu.right_shift(BitsPerInt, XVal, YVal, OutputArgVal)
     ;
         ProcName = "/\\",
         ModeNum = 0,

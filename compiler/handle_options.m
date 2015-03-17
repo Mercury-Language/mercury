@@ -885,9 +885,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %             So we should investigate re-enabling static ground terms.
     %         Currently mlds_to_il.m doesn't support them yet?
     %   - no library grade installation check with `mmc --make'.
-    %   - cross compiling
-    %     Because we use 32-bit integers which may be different to that of
-    %     the host compiler.
 
     (
         Target = target_il,
@@ -907,7 +904,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         % globals.set_option(num_reserved_addresses, int(1), !Globals)
         globals.set_option(static_ground_cells, bool(no), !Globals),
         globals.set_option(libgrade_install_check, bool(no), !Globals),
-        globals.set_option(cross_compiling, bool(yes), !Globals),
 
         % On the .NET backend we will be using a language independent
         % debugger not mdb.  Thus --debug has to imply --target-debug.
@@ -969,9 +965,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %         Because Java has no way of allocating structs on the stack.
     %   - pretest-equality-cast-pointers
     %   - no library grade installation check with `mmc --make'.
-    %   - cross compiling
-    %     Because ints in Java are 32-bits wide which may be different to
-    %     that of the host compiler.
     %
     % C# should be the same as Java, except that:
     %   - C# supports pass-by-reference, but for reasons explained in
@@ -999,7 +992,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(pretest_equality_cast_pointers, bool(yes),
             !Globals),
         globals.set_option(libgrade_install_check, bool(no), !Globals),
-        globals.set_option(cross_compiling, bool(yes), !Globals),
         (
             Target = target_csharp,
             globals.set_option(executable_file_extension, string(".exe"),
@@ -1024,9 +1016,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %   - can-compare-compound-values
     %   - lexically-compare-constructors
     %   - no library grade installation check with `mmc --make'
-    %   - cross compiling
-    %     Because Erlang has arbitrary precision integers which may
-    %     different to that of the host compiler.
 
     (
         Target = target_erlang,
@@ -1046,7 +1035,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(lexically_order_constructors, bool(yes),
             !Globals),
         globals.set_option(libgrade_install_check, bool(no), !Globals),
-        globals.set_option(cross_compiling, bool(yes), !Globals),
 
         % The following options do not directly affect the Erlang backend,
         % however we need to ensure they are set to values that are consistent
