@@ -65,15 +65,11 @@ directory, e.g.
 
 Now you can run the 'mmc' script from the cross-compiled installation:
 
-    % /usr/local/mercury-mingw/bin/mmc -m hello --cross-compiling
+    % /usr/local/mercury-mingw/bin/mmc -m hello
     Making Mercury/int3s/hello.int3
     Making Mercury/ints/hello.int
     Making Mercury/cs/hello.c
     Making Mercury/os/hello.o
     Making hello.exe
-
-You should definitely pass `--cross-compiling' if mercury_compile was
-compiled for 64-bit Linux.  You can add it to the Mercury.config file for the
-Windows Mercury installation so you don't forget.
 
 -----------------------------------------------------------------------------

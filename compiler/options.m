@@ -5975,17 +5975,18 @@ options_help_misc -->
         % `Mercury.config' file.  The `--fullarch' option is a deprecated
         % synonym for this.
 
-        "--cross-compiling",
-        "\tDo not assume that the code being generated is for the",
-        "\tplatform the compiler is running on.",
+% This option has no effect now.
+%       "--cross-compiling",
+%       "\tDo not assume that the code being generated is for the",
+%       "\tplatform the compiler is running on.",
 
         % The `--local-module-id' option is used by `mmc --make'.
         % The `--analysis-file-cache-dir' option is used by `mmc --make'.
 
-%        "--ignore-parallel-conjunctions",
-%        "\tReplace parallel conjunctions with plain ones, this is useful",
-%        "\tfor benchmarking.  Note that it does not affect implicit",
-%        "\tparallelism",
+%       "--ignore-parallel-conjunctions",
+%       "\tReplace parallel conjunctions with plain ones, this is useful",
+%       "\tfor benchmarking.  Note that it does not affect implicit",
+%       "\tparallelism",
 
         "--control-granularity",
         "\tDon't try to generate more parallelism than the machine can",
