@@ -53,21 +53,6 @@ By default, 32-bit versions of the executables and libraries are installed on
 x86-64 machines running Mac OS X 10.5.  To build and install 64-bit Mercury on
 such a system you must pass the "-m64" option to the C compiler.
 
-Note that if you are building Mercury from scratch using an existing installed
-Mercury compiler, i.e. you are not installing using the pre-generated C files in
-the source distribution, and you are using a 32-bit Mercury compiler to
-bootstrap a 64-bit installation (or vice versa) then you must compile with
---cross-compiling enabled.  Not enabling it will result in library installation
-aborting with an error message like the following:
-
-    Uncaught Mercury exception:
-    Software Error: pred_table.m: Unexpected: can't locate compare/3
-
-You can enable cross-compilation by putting the following line in a file named
-Mmake.params at the top-level of the source tree:
-
-    MCFLAGS = --cross-compiling
-
 Mercury cannot be compiled with llvm-gcc on Mac OS X.
 
 If, after installing Mercury, you encounter errors about missing .mih files,
