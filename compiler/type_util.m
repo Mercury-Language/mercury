@@ -364,6 +364,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
+:- import_module backend_libs.string_encoding.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -980,11 +981,9 @@ substitute_type_args_3(Subst, [Arg0 | Args0], [Arg | Args]) :-
 switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
     type_to_ctor(Type, TypeCtor),
     ( if TypeCtor = type_ctor(unqualified("character"), 0) then
-        % XXX The following code uses the source machine's character size,
-        % not the target's, so it won't work if cross-compiling to a machine
-        % with a different size character.
-        char.max_char_value(MaxChar),
-        char.min_char_value(MinChar),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_target(Globals, Target),
+        target_char_range(Target, MinChar, MaxChar),
         NumFunctors = MaxChar - MinChar + 1
     else if type_ctor_is_tuple(TypeCtor) then
         NumFunctors = 1

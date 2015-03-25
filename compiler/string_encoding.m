@@ -18,6 +18,9 @@
     --->    utf8
     ;       utf16.
 
+:- pred target_char_range(compilation_target, int, int).
+:- mode target_char_range(in, out, out) is det.
+
 :- func target_string_encoding(compilation_target) = string_encoding.
 
 :- pred to_code_unit_list(string_encoding::in, string::in, list(int)::out)
@@ -32,6 +35,11 @@
 :- implementation.
 
 :- import_module string.
+
+target_char_range(_Target, Min, Max) :-
+    % The range of `char' is the same for all existing targets.
+    Min = 0,
+    Max = 0x10ffff.
 
 target_string_encoding(Target) = Encoding :-
     (

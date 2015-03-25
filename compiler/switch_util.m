@@ -367,6 +367,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.string_encoding.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
@@ -664,13 +665,11 @@ is_smart_indexing_allowed_for_category(Globals, SwitchCategory) = Allowed :-
 type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
     (
         TypeCtorCat = ctor_cat_builtin(cat_builtin_char),
-        % XXX The following code uses the host's character size, not the
-        % target's, so it won't work if cross-compiling to a machine with
-        % a different character size. Note also that some code in both
-        % dense_switch.m and in lookup_switch.m assumes that
-        % char.min_char_value is 0.
-        char.min_char_value(Min),
-        char.max_char_value(Max)
+        % Note also that some code in both dense_switch.m and in
+        % lookup_switch.m assumes that min_char_value is 0.
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_target(Globals, Target),
+        target_char_range(Target, Min, Max)
     ;
         TypeCtorCat = ctor_cat_enum(cat_enum_mercury),
         Min = 0,
