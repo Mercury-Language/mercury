@@ -133,7 +133,21 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
         !Info),
     (
         FailStatements = [],
-        CaseNumDefault = default_is_unreachable
+        (
+            CodeModel = model_det,
+            % For model_det switches, the default must be unreachable.
+            CaseNumDefault = default_is_unreachable
+        ;
+            CodeModel = model_semi,
+            % For model_semi switches, the default should contain at least
+            % an assignment of FALSE to the "succeeded" flag.
+            unexpected($module, $pred, "failure does not assign to succeeded")
+        ;
+            CodeModel = model_non,
+            FailStmt = ml_stmt_block([], []),
+            FailStatement = statement(FailStmt, MLDS_Context),
+            CaseNumDefault = default_case(FailStatement)
+        )
     ;
         (
             FailStatements = [FailStatement]
