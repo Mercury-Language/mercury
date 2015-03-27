@@ -264,7 +264,7 @@ MR_trace_source_open_server(MR_TraceSourceServer *server,
     name = MR_malloc(base_len + 10);
     do {
         i++;
-        sprintf(name, "%s.%d", MR_SOURCE_SERVER_BASENAME, i);
+        sprintf(name, "%s.%lu", MR_SOURCE_SERVER_BASENAME, (unsigned long)i);
         /*
         ** This should fail if there is no server with this
         ** name.
