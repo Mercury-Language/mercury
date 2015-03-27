@@ -786,7 +786,7 @@ bindist: WORK_IN_PROGRESS TODO
 
 #-----------------------------------------------------------------------------#
 
-clean: clean_subdirs clean_tests
+clean: clean_tests clean_subdirs
 
 .PHONY: clean_subdirs
 clean_subdirs:
@@ -801,7 +801,7 @@ clean_tests:
 		(cd tests; $(MMAKE) clean) \
 	fi
 
-realclean: realclean_subdirs realclean_local realclean_tests
+realclean: realclean_tests realclean_subdirs realclean_local
 
 .PHONY: realclean_local
 realclean_local: realclean_config realclean_docs

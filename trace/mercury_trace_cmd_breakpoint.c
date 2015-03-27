@@ -466,7 +466,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_TraceCmdInfo *cmd,
             }
 
             sprintf(buf, "\nWhich do you want to put "
-                "a breakpoint on (0-%d or *)? ",
+                "a breakpoint on (0-%" MR_INTEGER_LENGTH_MODIFIER "u or *)? ",
                 matching_port_count - 1);
             line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
             if (line2 == NULL) {
