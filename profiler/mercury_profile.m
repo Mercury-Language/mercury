@@ -123,7 +123,7 @@ long_usage(!IO) :-
         "Mercury Profiler, version ", Version, ", on ", Fullarch, ".\n",
         "Copyright (C) 1995-2012 The University of Melbourne\n",
         "Copyright (C) 2013-2015 The Mercury team\n\n",
-            "Usage: ", ProgName, "[<options>] [<files>]\n",
+            "Usage: ", ProgName, " [<options>] [<files>]\n",
         "\n",
         "Description:\n",
         "\t`mprof' produces execution profiles for Mercury programs.\n",

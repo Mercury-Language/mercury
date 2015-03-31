@@ -214,7 +214,7 @@ options_help -->
     io.write_string("\nVerbosity Options:\n"),
     io.write_string("\t-v, --verbose\n"),
     io.write_string("\t\tOutput progress messages at each stage.\n"),
-    io.write_string("\t-V, --very_verbose\n"),
+    io.write_string("\t-V, --very-verbose\n"),
     io.write_string("\t\tOutput very verbose progress messages.\n").
 
 %-----------------------------------------------------------------------------%
