@@ -5778,10 +5778,10 @@ Enabling @samp{mprof} or @samp{mdprof} profiling has several effects.
 First, it causes the compiler to generate slightly modified code,
 which counts the number of times each predicate or function is called,
 and for every call, records the caller and callee.
-With deep profiling, there are other modifications as well,
-the most important impact of which is the loss of tail-recursion
-for groups of mutually tail-recursive predicates
-(self-tail-recursive predicates stay tail-recursive).
+With deep profiling, there are other modifications as well, the most important
+impact of which is the loss of tail-recursion.
+(By default, the deep profiling versions of the library and runtime are built
+with @samp{--stack-segments} in order to minimize this impact.)
 Second, your program will be linked with versions of the library and runtime
 that were compiled with the same kind of profiling enabled.
 Third, if you enable graph profiling,

@@ -377,10 +377,12 @@
     ;       use_zeroing_for_ho_cycles
     ;       use_lots_of_ho_specialization
 
-            % We should always handle tail recursion specially in deep
-            % profiling; the option is only for benchmarks for the paper,
-            % except that this is currently broken, and not supported with
-            % coverage profiling.
+            % We do not currently enable (or publicly document) this option
+            % because its use results in significant overheads.  Also, it is
+            % not compatible with coverage profiling, which is enabled by
+            % default.  By default, all deep profiling grades are also built
+            % with --stack-segments in order to avoid problems caused by the
+            % lack of tail recursion.
     ;       deep_profile_tail_recursion
     ;       record_term_sizes_as_words
     ;       record_term_sizes_as_cells
