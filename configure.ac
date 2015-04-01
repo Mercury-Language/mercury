@@ -3761,10 +3761,10 @@ if test "$enable_prof_grades" = yes; then
         LIBGRADES="$LIBGRADES $DEFAULT_BASE_GRADE.gc.memprof"
     fi
 
-    # Add a `.profdeep' (--deep-profiling) grade,
-    # if deep profiling is enabled.
+    # Add a `.profdeep' (--deep-profiling) grade, if deep profiling is enabled.
+    # By default, we also use stack segments with deep profiling.
     if test $mercury_cv_enable_deep_profiler = yes; then
-        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.profdeep"
+        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.profdeep.stseg"
     fi
 fi
 
@@ -3858,11 +3858,6 @@ then
     if test "$enable_trail_grades" = "yes"
     then
         LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.trseg.stseg"
-    fi
-
-    if test "$mercury_cv_enable_deep_profiler" = "yes"
-    then
-        LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.profdeep.stseg"
     fi
 fi
 
