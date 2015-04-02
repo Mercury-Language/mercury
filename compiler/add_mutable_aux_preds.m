@@ -54,6 +54,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
@@ -378,8 +379,8 @@ do_mutable_checks(ItemMutable, _Status, !ModuleInfo, !Specs) :-
         % to use inst variables in a mutable declaration should already
         % been dealt with when the mutable declaration was parsed.
         DummyInstVarset = varset.init,
-        InstStr = mercury_expanded_inst_to_string(Inst, DummyInstVarset,
-            !.ModuleInfo),
+        InstStr = mercury_expanded_inst_to_string(output_debug, !.ModuleInfo,
+            DummyInstVarset, Inst),
         InvalidInstPieces = [words("Error: the inst"), quote(InstStr),
             words("is not a valid inst for a"),
             decl("mutable"), words("declaration.")],

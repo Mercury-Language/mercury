@@ -136,7 +136,7 @@ undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo, Context)
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Name = pred_info_name(PredInfo),
     MaybeDet = no,
-    SubDeclStr = mercury_mode_subdecl_to_string(PredOrFunc,
+    SubDeclStr = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
         varset.coerce(VarSet), unqualified(Name), StrippedModeList,
         MaybeDet, Context),
 

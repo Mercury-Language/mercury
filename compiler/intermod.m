@@ -1299,7 +1299,7 @@ write_intermod_info_body(IntermodInfo, !IO) :-
     ),
 
     module_info_get_globals(ModuleInfo, Globals),
-    OutInfo0 = init_hlds_out_info(Globals),
+    OutInfo0 = init_hlds_out_info(Globals, output_mercury),
 
     % We don't want to output line numbers in the .opt files,
     % since that causes spurious changes to the .opt files
@@ -1730,12 +1730,12 @@ intermod_write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds],
     (
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgModes, FuncArgModes, FuncRetMode),
-        mercury_output_func_mode_decl(Varset, SymName,
+        mercury_output_func_mode_decl(output_mercury, Varset, SymName,
             FuncArgModes, FuncRetMode, yes(Detism), Context, !IO)
     ;
         PredOrFunc = pf_predicate,
-        mercury_output_pred_mode_decl(Varset, SymName, ArgModes,
-            yes(Detism), Context, !IO)
+        mercury_output_pred_mode_decl(output_mercury, Varset, SymName,
+            ArgModes, yes(Detism), Context, !IO)
     ),
     intermod_write_pred_modes(Procs, SymName, PredOrFunc, ProcIds, !IO).
 
@@ -1861,7 +1861,7 @@ intermod_write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
         proc_info_get_inst_varset(ProcInfo, InstVarset),
         FPInfo = pragma_info_foreign_proc(Attributes, SymName,
             PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl),
-        mercury_output_pragma_foreign_proc(FPInfo, !IO)
+        mercury_output_pragma_foreign_proc(output_mercury, FPInfo, !IO)
     ;
         MaybeArgModes = no,
         unexpected($module, $pred, "no mode declaration")
@@ -1995,7 +1995,8 @@ intermod_write_type_spec_pragmas(ModuleInfo, PredId, !IO) :-
     PragmaMap = TypeSpecInfo ^ pragma_map,
     ( multi_map.search(PragmaMap, PredId, TypeSpecPragmas) ->
         AppendVarnums = yes,
-        list.foldl(mercury_output_pragma_type_spec(AppendVarnums),
+        list.foldl(
+            mercury_output_pragma_type_spec(AppendVarnums, output_mercury),
             TypeSpecPragmas, !IO)
     ;
         true

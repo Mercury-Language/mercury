@@ -503,7 +503,8 @@ report_pred_name_mode(pf_predicate, PredName, ArgModes, !IO) :-
         varset.init(InstVarSet),   % XXX inst var names
         io.write_string("(", !IO),
         strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes),
-        mercury_output_mode_list(StrippedArgModes, InstVarSet, !IO),
+        mercury_output_mode_list(output_debug, InstVarSet, StrippedArgModes,
+            !IO),
         io.write_string(")", !IO)
     ;
         ArgModes = []
@@ -517,13 +518,13 @@ report_pred_name_mode(pf_function, FuncName, ArgModes, !IO) :-
     (
         FuncArgModes = [_ | _],
         io.write_string("(", !IO),
-        mercury_output_mode_list(FuncArgModes, InstVarSet, !IO),
+        mercury_output_mode_list(output_debug, InstVarSet, FuncArgModes, !IO),
         io.write_string(")", !IO)
     ;
         FuncArgModes = []
     ),
     io.write_string(" = ", !IO),
-    mercury_output_mode(FuncRetMode, InstVarSet, !IO).
+    mercury_output_mode(output_debug, InstVarSet, FuncRetMode, !IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -161,6 +161,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -381,7 +382,7 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
 
     module_info_get_globals(ModuleInfo, Globals0),
     globals.set_option(dump_hlds_options, string("vxP"), Globals0, Globals),
-    OutInfo = init_hlds_out_info(Globals),
+    OutInfo = init_hlds_out_info(Globals, output_debug),
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
         io.write_string("\n\nBEFORE TRANSFORM:\n", !IO),
         write_goal(OutInfo, Goal1, ModuleInfo, !.VarSet, yes, 0, "\n", !IO)

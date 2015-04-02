@@ -156,6 +156,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
@@ -314,16 +315,16 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
                     DebugDepParConjWord = PredIdStr
                 )
             ->
-                OutInfo = init_hlds_out_info(Globals),
-                format("Pred/Proc: %s/%s before dep-par-conj:\n",
+                OutInfo = init_hlds_out_info(Globals, output_debug),
+                io.format("Pred/Proc: %s/%s before dep-par-conj:\n",
                     [s(string(PredId)), s(string(ProcId))], !IO),
                 write_goal(OutInfo, GoalBeforeDepParConj, !.ModuleInfo,
                     !.VarSet, yes, 0, "", !IO),
-                nl(!IO),
-                write_string("After dep-par-conj:\n", !IO),
+                io.nl(!IO),
+                io.write_string("After dep-par-conj:\n", !IO),
                 write_goal(OutInfo, !.Goal, !.ModuleInfo, !.VarSet,
                     yes, 0, "", !IO),
-                nl(!IO)
+                io.nl(!IO)
             ;
                 true
             )
@@ -1580,7 +1581,7 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
                     DebugDepParConjWord = PredIdStr
                 )
             ->
-                OutInfo = init_hlds_out_info(Globals),
+                OutInfo = init_hlds_out_info(Globals, output_debug),
                 proc_info_get_varset(!.ProcInfo, VarSet),
                 format("About to search %d/%d for dependant par conjs:\n",
                     [i(PredIdInt), i(proc_id_to_int(ProcId))], !IO),

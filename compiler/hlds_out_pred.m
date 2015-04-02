@@ -19,6 +19,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -81,7 +82,6 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
@@ -1023,14 +1023,15 @@ write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         varset.init(ModeVarSet),
         (
             PredOrFunc = pf_predicate,
-            mercury_output_pred_mode_decl(ModeVarSet, unqualified(PredName),
-                HeadModes, DeclaredDeterminism, ModeContext, !IO)
+            mercury_output_pred_mode_decl(output_debug, ModeVarSet,
+                unqualified(PredName), HeadModes,
+                DeclaredDeterminism, ModeContext, !IO)
         ;
             PredOrFunc = pf_function,
             pred_args_to_func_args(HeadModes, FuncHeadModes, RetHeadMode),
-            mercury_output_func_mode_decl(ModeVarSet, unqualified(PredName),
-                FuncHeadModes, RetHeadMode, DeclaredDeterminism, ModeContext,
-                !IO)
+            mercury_output_func_mode_decl(output_debug, ModeVarSet,
+                unqualified(PredName), FuncHeadModes, RetHeadMode,
+                DeclaredDeterminism, ModeContext, !IO)
         ),
 
         (

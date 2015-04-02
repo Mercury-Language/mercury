@@ -106,6 +106,7 @@
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.store_alloc.
 :- import_module mdbcomp.goal_path.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -1052,7 +1053,7 @@ maybe_write_progress_message(Message, DebugStackOpt, PredIdInt, ProcInfo,
         proc_info_get_goal(ProcInfo, Goal),
         proc_info_get_varset(ProcInfo, VarSet),
         module_info_get_globals(ModuleInfo, Globals),
-        OutInfo = init_hlds_out_info(Globals),
+        OutInfo = init_hlds_out_info(Globals, output_debug),
         write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 0, "\n", !IO),
         io.write_string("\n", !IO)
     ;

@@ -226,7 +226,7 @@ mode_constraint_var(RepVar0, RobddVar, !MCI) :-
 mode_constraint_var(PredId, RepVar0, RobddVar, !MCI) :-
     (
         RepVar0 = ProgVar `at` _,
-        !.MCI ^ mci_input_nodes `contains` ProgVar
+        set_of_var.contains(!.MCI ^ mci_input_nodes, ProgVar)
     ->
         % This RepVar must be false since the corresponding input var
         % is true.  We can just return the zero var.
@@ -318,13 +318,14 @@ set_input_nodes(Constraint0, Constraint, !MCI) :-
     PredId = !.MCI ^ mci_pred_id,
     bimap.ordinates(VarMap, Keys),
     Constraint1 = ensure_normalised(Constraint0),
-    solutions.solutions((pred(ProgVar::out) is nondet :-
+    solutions.solutions(
+        (pred(ProgVar::out) is nondet :-
             list.member(Key, Keys),
             Key = key(in(ProgVar), PredId, LambdaPath),
             bimap.lookup(VarMap, Key, RobddVar),
             var_entailed(Constraint1, RobddVar)
         ), InputNodes),
-    !MCI ^ mci_input_nodes := sorted_list_to_set(InputNodes),
+    !MCI ^ mci_input_nodes := set_of_var.sorted_list_to_set(InputNodes),
     Constraint = Constraint0 ^ not_var(!.MCI ^ mci_zero_var).
 
 set_simple_mode_constraints(!MCI) :-
@@ -420,13 +421,14 @@ atomic_prodvars_map(Constraint, MCI) = ProdVarsMap :-
                         set_of_var.insert(ProgVar, Vs0, Vs),
                         map.det_update(LambdaId, Vs, PVM0, PVM)
                     ;
-                        Vs = set_of_var.make_singleton(ProgVar),
+                        set_of_var.make_singleton(ProgVar, Vs),
                         map.det_insert(LambdaId, Vs, PVM0, PVM)
                     )
                 ;
                     PVM = PVM0
                 )
-            ), to_sorted_list(VarsEntailed), map.init, ProdVarsMap)
+            ), sparse_bitset.to_sorted_list(VarsEntailed),
+            map.init, ProdVarsMap)
     ;
         unexpected($module, $pred, "zero constraint")
     ).

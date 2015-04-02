@@ -49,6 +49,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
@@ -96,7 +97,7 @@ saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
         Goal2, Goal, VarTypes, InstVarSet, InstMap0, !ModuleInfo),
 
     trace [io(!IO), compile_time(flag("debug_saved_vars"))] (
-        OutInfo = hlds_out_util.init_hlds_out_info(Globals),
+        OutInfo = hlds_out_util.init_hlds_out_info(Globals, output_debug),
         io.write_string("initial version:\n", !IO),
         hlds_out_goal.write_goal(OutInfo, Goal0, !.ModuleInfo, Varset0,
             yes, 0, "\n", !IO),

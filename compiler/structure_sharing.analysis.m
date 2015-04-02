@@ -994,8 +994,8 @@ write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
             PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
             SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
                 HeadVars, HeadVarTypes, yes(Sharing)),
-            write_pragma_structure_sharing_info(SharingInfo,
-                yes(VarSet), yes(TypeVarSet), Context, !IO)
+            write_pragma_structure_sharing_info(output_debug,
+                yes(VarSet), yes(TypeVarSet), Context, SharingInfo, !IO)
         ;
             MaybeSharingStatus = no
         )

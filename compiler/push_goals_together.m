@@ -61,6 +61,7 @@
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module mdbcomp.goal_path.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -87,7 +88,7 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     PushInfo = push_info(RttiVarMaps0),
     module_info_get_globals(!.ModuleInfo, Globals),
-    OutInfo = init_hlds_out_info(Globals),
+    OutInfo = init_hlds_out_info(Globals, output_debug),
     trace [compiletime(flag("debug_push_goals")), io(!IO)] (
         io.write_string("Goal before pushes:\n", !IO),
         write_goal(OutInfo, Goal0, !.ModuleInfo, VarSet0, yes, 0, "", !IO),

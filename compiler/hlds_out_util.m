@@ -42,7 +42,7 @@
                 hoi_mercury_to_mercury          :: merc_out_info
             ).
 
-:- func init_hlds_out_info(globals) = hlds_out_info.
+:- func init_hlds_out_info(globals, output_lang) = hlds_out_info.
 
 %-----------------------------------------------------------------------------%
 
@@ -53,12 +53,6 @@
 :- type is_last
     --->    is_last
     ;       is_not_last.
-
-%-----------------------------------------------------------------------------%
-
-:- type output_lang
-    --->    output_mercury
-    ;       output_debug.
 
 %-----------------------------------------------------------------------------%
 
@@ -219,11 +213,11 @@
 
 %-----------------------------------------------------------------------------%
 
-init_hlds_out_info(Globals) = Info :-
+init_hlds_out_info(Globals, Lang) = Info :-
     globals.lookup_string_option(Globals, dump_hlds_options, DumpOptions),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_id, Ids),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_name, Names),
-    MercInfo = init_merc_out_info_for_hlds_dump(Globals),
+    MercInfo = init_merc_out_info(Globals, unqualified_item_names, Lang),
     Info = hlds_out_info(DumpOptions, DumpOptions, Ids, Names, MercInfo).
 
 %-----------------------------------------------------------------------------%
@@ -921,7 +915,7 @@ write_var_mode(VarSet, InstVarSet, AppendVarNums, Var - Mode, !IO) :-
 
 var_mode_to_string(VarSet, InstVarSet, AppendVarNums, Var - Mode) =
     mercury_var_to_string(VarSet, AppendVarNums, Var)
-        ++ "::" ++ mercury_mode_to_string(Mode, InstVarSet).
+        ++ "::" ++ mercury_mode_to_string(output_debug, InstVarSet, Mode).
 
 %-----------------------------------------------------------------------------%
 %

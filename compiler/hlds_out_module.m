@@ -77,7 +77,7 @@ write_hlds(Indent, ModuleInfo, !IO) :-
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_name,
         DumpPredNames),
     write_header(Indent, ModuleInfo, !IO),
-    Info = init_hlds_out_info(Globals),
+    Info = init_hlds_out_info(Globals, output_debug),
     Lang = output_debug,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     (
@@ -699,7 +699,7 @@ write_user_inst(Indent, InstId - InstDefn, !IO) :-
         InstBody = eqv_inst(EqvInst),
         io.write_string(":\n", !IO),
         write_indent(Indent, !IO),
-        mercury_output_inst(EqvInst, InstVarSet, !IO),
+        mercury_output_inst(output_debug, InstVarSet, EqvInst, !IO),
         io.write_string("\n", !IO)
     ).
 

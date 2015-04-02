@@ -16,8 +16,8 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -96,10 +96,10 @@
     % parts printed out as elipses ("...").
     % (These routines are used for outputting insts in mode errors.)
     %
-:- pred mercury_output_expanded_inst(mer_inst::in, inst_varset::in,
-    module_info::in, io::di, io::uo) is det.
-:- func mercury_expanded_inst_to_string(mer_inst, inst_varset, module_info)
-    = string.
+:- pred mercury_output_expanded_inst(output_lang::in, module_info::in,
+    inst_varset::in, mer_inst::in, io::di, io::uo) is det.
+:- func mercury_expanded_inst_to_string(output_lang, module_info, inst_varset,
+    mer_inst) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -110,7 +110,6 @@
 :- import_module hlds.instmap.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_util.
 
@@ -145,7 +144,7 @@ write_var_inst_list([Var - Inst | Rest], VarSet, AppendVarNums, Indent, !IO) :-
     mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string(" -> ", !IO),
     varset.init(InstVarSet),
-    mercury_output_inst(Inst, InstVarSet, !IO),
+    mercury_output_inst(output_debug, InstVarSet, Inst, !IO),
     (
         Rest = []
     ;
@@ -449,57 +448,111 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
             Context, Term)
     ;
         InstName = unify_inst(Liveness, Real, InstA, InstB),
-        construct_qualified_term_with_context(unqualified("$unify"),
-            [make_atom(Context, is_live_to_str(Liveness)),
-            make_atom(Context, unify_is_real_to_str(Real)),
-            inst_to_term_with_context(Lang, Context, InstA),
-            inst_to_term_with_context(Lang, Context, InstB)],
-            Context, Term)
+        (
+            Lang = output_mercury,
+            unexpected($module, $pred, "unify_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(unqualified("$unify"),
+                [make_atom(Context, is_live_to_str(Liveness)),
+                make_atom(Context, unify_is_real_to_str(Real)),
+                inst_to_term_with_context(Lang, Context, InstA),
+                inst_to_term_with_context(Lang, Context, InstB)],
+                Context, Term)
+        )
     ;
         InstName = merge_inst(InstA, InstB),
-        construct_qualified_term_with_context(unqualified("$merge_inst"),
-            list.map(inst_to_term_with_context(Lang, Context), [InstA, InstB]),
-            Context, Term)
+        (
+            Lang = output_mercury,
+            unexpected($module, $pred, "merge_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(unqualified("$merge_inst"),
+                list.map(inst_to_term_with_context(Lang, Context),
+                [InstA, InstB]),
+                Context, Term)
+        )
     ;
         InstName = ground_inst(SubInstName, Uniq, IsLive, Real),
-        construct_qualified_term_with_context(unqualified("$ground"),
-            [inst_name_to_term_with_context(Lang, Context, SubInstName),
-            make_atom(Context, inst_uniqueness(Uniq, "shared")),
-            make_atom(Context, is_live_to_str(IsLive)),
-            make_atom(Context, unify_is_real_to_str(Real))],
-            Context, Term)
+        (
+            Lang = output_mercury,
+            unexpected($module, $pred, "ground_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(unqualified("$ground"),
+                [inst_name_to_term_with_context(Lang, Context, SubInstName),
+                make_atom(Context, inst_uniqueness(Uniq, "shared")),
+                make_atom(Context, is_live_to_str(IsLive)),
+                make_atom(Context, unify_is_real_to_str(Real))],
+                Context, Term)
+        )
     ;
         InstName = any_inst(SubInstName, Uniq, IsLive, Real),
-        construct_qualified_term_with_context(unqualified("$any"),
-            [inst_name_to_term_with_context(Lang, Context, SubInstName),
-            make_atom(Context, inst_uniqueness(Uniq, "shared")),
-            make_atom(Context, is_live_to_str(IsLive)),
-            make_atom(Context, unify_is_real_to_str(Real))],
-            Context, Term)
+        (
+            Lang = output_mercury,
+            unexpected($module, $pred, "any_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(unqualified("$any"),
+                [inst_name_to_term_with_context(Lang, Context, SubInstName),
+                make_atom(Context, inst_uniqueness(Uniq, "shared")),
+                make_atom(Context, is_live_to_str(IsLive)),
+                make_atom(Context, unify_is_real_to_str(Real))],
+                Context, Term)
+        )
     ;
         InstName = shared_inst(SubInstName),
-        construct_qualified_term_with_context(unqualified("$shared_inst"),
-            [inst_name_to_term_with_context(Lang, Context, SubInstName)],
-            Context, Term)
+        (
+            Lang = output_mercury,
+            unexpected($module, $pred, "shared_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(unqualified("$shared_inst"),
+                [inst_name_to_term_with_context(Lang, Context, SubInstName)],
+                Context, Term)
+        )
     ;
         InstName = mostly_uniq_inst(SubInstName),
-        construct_qualified_term_with_context(unqualified("$mostly_uniq_inst"),
-            [inst_name_to_term_with_context(Lang, Context, SubInstName)],
-            Context, Term)
+        (
+            Lang = output_mercury,
+            unexpected($module, $pred, "mostly_uniq_inst")
+        ;
+            Lang = output_debug,
+            construct_qualified_term_with_context(
+                unqualified("$mostly_uniq_inst"),
+                [inst_name_to_term_with_context(Lang, Context, SubInstName)],
+                Context, Term)
+        )
     ;
         InstName = typed_ground(Uniq, Type),
-        unparse_type(Type, Term0),
-        construct_qualified_term_with_context(unqualified("$typed_ground"),
-            [make_atom(Context, inst_uniqueness(Uniq, "shared")),
-            term.coerce(Term0)],
-            Context, Term)
+        (
+            Lang = output_mercury,
+            unexpected($module, $pred, "typed_ground")
+        ;
+            Lang = output_debug,
+            unparse_type(Type, Term0),
+            construct_qualified_term_with_context(unqualified("$typed_ground"),
+                [make_atom(Context, inst_uniqueness(Uniq, "shared")),
+                term.coerce(Term0)],
+                Context, Term)
+        )
     ;
         InstName = typed_inst(Type, SubInstName),
-        unparse_type(Type, Term0),
-        construct_qualified_term_with_context(unqualified("$typed_inst"),
-            [term.coerce(Term0),
-            inst_name_to_term_with_context(Lang, Context, SubInstName)],
-            Context, Term)
+        (
+            Lang = output_mercury,
+            % Inst names in the inst tables can (and often do) have the types
+            % they apply pushed into them by inst_user.m. However, the typed
+            % nature of such inst names cannot (yet) be expressed in Mercury
+            % source code.
+            Term = inst_name_to_term_with_context(Lang, Context, SubInstName)
+        ;
+            Lang = output_debug,
+            unparse_type(Type, Term0),
+            construct_qualified_term_with_context(unqualified("$typed_inst"),
+                [term.coerce(Term0),
+                inst_name_to_term_with_context(Lang, Context, SubInstName)],
+                Context, Term)
+        )
     ).
 
 :- func is_live_to_str(is_live) = string.
@@ -822,8 +875,8 @@ mercury_format_structured_inst(Inst, Indent, Lang, InclAddr, InstVarSet, !U) :-
         Inst = any(Uniq, HOInstInfo),
         (
             HOInstInfo = higher_order(PredInstInfo),
-            mercury_format_any_pred_inst_info(Uniq, PredInstInfo,
-                InstVarSet, !U)
+            mercury_format_any_pred_inst_info(output_debug, InstVarSet,
+                Uniq, PredInstInfo, !U)
         ;
             HOInstInfo = none,
             mercury_format_any_uniqueness(Uniq, !U)
@@ -873,8 +926,8 @@ mercury_format_structured_inst(Inst, Indent, Lang, InclAddr, InstVarSet, !U) :-
         Inst = ground(Uniq, HOInstInfo),
         (
             HOInstInfo = higher_order(PredInstInfo),
-            mercury_format_ground_pred_inst_info(Uniq, PredInstInfo,
-                InstVarSet, !U)
+            mercury_format_ground_pred_inst_info(output_debug, InstVarSet,
+                Uniq, PredInstInfo, !U)
         ;
             HOInstInfo = none,
             mercury_format_uniqueness(Uniq, "ground", !U)
@@ -886,8 +939,8 @@ mercury_format_structured_inst(Inst, Indent, Lang, InclAddr, InstVarSet, !U) :-
         add_string("\n", !U)
     ;
         Inst = constrained_inst_vars(Vars, ConstrainedInst),
-        mercury_format_constrained_inst_vars(Vars, ConstrainedInst,
-            simple_inst_info(InstVarSet), !U),
+        mercury_format_constrained_inst_vars(output_debug,
+            simple_inst_info(InstVarSet), Vars, ConstrainedInst, !U),
         add_string("\n", !U)
     ;
         Inst = abstract_inst(Name, Args),
@@ -1084,45 +1137,47 @@ mercury_uni_mode_to_string(UniMode, InstVarSet) = String :-
 
 mercury_format_uni_mode(UniMode, InstVarSet, !IO) :-
     UniMode = (InstA1 - InstB1 -> InstA2 - InstB2),
-    mercury_format_mode((InstA1 -> InstA2), simple_inst_info(InstVarSet), !IO),
+    InstInfo = simple_inst_info(InstVarSet), 
+    mercury_format_mode(output_debug, InstInfo, (InstA1 -> InstA2), !IO),
     add_string(" = ", !IO),
-    mercury_format_mode((InstB1 -> InstB2), simple_inst_info(InstVarSet), !IO).
+    mercury_format_mode(output_debug, InstInfo, (InstB1 -> InstB2), !IO).
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_expanded_inst(Inst, InstVarSet, ModuleInfo, !IO) :-
+mercury_output_expanded_inst(Lang, ModuleInfo, InstVarSet, Inst, !IO) :-
     set.init(Expansions),
-    mercury_format_inst(Inst,
-        expanded_inst_info(InstVarSet, ModuleInfo, Expansions), !IO).
+    ExpandedInstInfo = expanded_inst_info(InstVarSet, ModuleInfo, Expansions),
+    mercury_format_inst(Lang, ExpandedInstInfo, Inst, !IO).
 
-mercury_expanded_inst_to_string(Inst, InstVarSet, ModuleInfo) = String :-
+mercury_expanded_inst_to_string(Lang, ModuleInfo, InstVarSet, Inst) = String :-
     set.init(Expansions),
-    mercury_format_inst(Inst,
-        expanded_inst_info(InstVarSet, ModuleInfo, Expansions), "", String).
+    ExpandedInstInfo = expanded_inst_info(InstVarSet, ModuleInfo, Expansions),
+    mercury_format_inst(Lang, ExpandedInstInfo, Inst, "", String).
 
-:- pred mercury_format_expanded_defined_inst(inst_name::in,
-    expanded_inst_info::in, U::di, U::uo) is det <= output(U).
+:- pred mercury_format_expanded_defined_inst(output_lang::in,
+    expanded_inst_info::in, inst_name::in, U::di, U::uo) is det <= output(U).
 
-mercury_format_expanded_defined_inst(InstName, ExpandedInstInfo, !S) :-
-    ( set.member(InstName, ExpandedInstInfo ^ eii_expansions) ->
+mercury_format_expanded_defined_inst(Lang, ExpandedInstInfo0, InstName, !S) :-
+    ( set.member(InstName, ExpandedInstInfo0 ^ eii_expansions) ->
         add_string("...", !S)
     ; InstName = user_inst(_, _) ->
         % Don't expand user-defined insts, just output them as is
         % (we do expand any compiler-defined insts that occur
         % in the arguments of the user-defined inst, however).
-        mercury_format_inst_name(InstName, ExpandedInstInfo, !S)
+        mercury_format_inst_name(Lang, ExpandedInstInfo0, InstName, !S)
     ;
-        inst_lookup(ExpandedInstInfo ^ eii_module_info, InstName, Inst),
-        set.insert(InstName, ExpandedInstInfo ^ eii_expansions, Expansions),
-        mercury_format_inst(Inst,
-            ExpandedInstInfo ^ eii_expansions := Expansions, !S)
+        inst_lookup(ExpandedInstInfo0 ^ eii_module_info, InstName, Inst),
+        Expansions0 = ExpandedInstInfo0 ^ eii_expansions,
+        set.insert(InstName, Expansions0, Expansions),
+        ExpandedInstInfo = ExpandedInstInfo0 ^ eii_expansions := Expansions,
+        mercury_format_inst(Lang, ExpandedInstInfo, Inst, !S)
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- instance inst_info(expanded_inst_info) where [
     func(instvarset/1) is eii_varset,
-    pred(format_defined_inst/4) is mercury_format_expanded_defined_inst
+    pred(format_defined_inst/5) is mercury_format_expanded_defined_inst
 ].
 
 :- type expanded_inst_info

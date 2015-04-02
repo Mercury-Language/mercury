@@ -304,7 +304,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         trace [compiletime(flag("atomic_scope_syntax")), io(!IO)] (
             io.write_string("atomic:\n", !IO),
             module_info_get_globals(!.ModuleInfo, Globals),
-            OutInfo = init_hlds_out_info(Globals),
+            OutInfo = init_hlds_out_info(Globals, output_debug),
             write_goal(OutInfo, HLDSGoal, !.ModuleInfo, !.VarSet, yes, 0, "\n",
                 !IO),
             io.nl(!IO)
