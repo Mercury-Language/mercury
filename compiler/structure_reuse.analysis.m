@@ -840,8 +840,8 @@ write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
             PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
             ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
                 HeadVars, HeadVarTypes, MaybeReuse),
-            write_pragma_structure_reuse_info(ReuseInfo,
-                yes(VarSet), yes(TypeVarSet), Context, !IO)
+            write_pragma_structure_reuse_info(output_debug,
+                yes(VarSet), yes(TypeVarSet), Context, ReuseInfo,!IO)
         ;
             MaybeStructureReuseDomain = no
         )

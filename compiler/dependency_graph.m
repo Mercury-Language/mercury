@@ -533,8 +533,8 @@ write_clique([proc(PredId, ProcId) | Rest], ModuleInfo, !IO) :-
     varset.init(ModeVarSet),
 
     io.write_string("% ", !IO),
-    mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(Name),
-        Modes, Det, Context, !IO),
+    mercury_output_pred_mode_subdecl(output_mercury,ModeVarSet,
+        unqualified(Name), Modes, Det, Context, !IO),
     io.write_string("\n", !IO),
     write_clique(Rest, ModuleInfo, !IO).
 
@@ -588,11 +588,11 @@ write_dep_graph_link(ModuleInfo, Parent, Child, !IO) :-
     proc_info_get_argmodes(CProcInfo, CModes),
     proc_info_get_context(CProcInfo, CContext),
     varset.init(ModeVarSet),
-    mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(PName),
-        PModes, PDet, PContext, !IO),
+    mercury_output_pred_mode_subdecl(output_mercury, ModeVarSet,
+        unqualified(PName), PModes, PDet, PContext, !IO),
     io.write_string(" -> ", !IO),
-    mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(CName),
-        CModes, CDet, CContext, !IO),
+    mercury_output_pred_mode_subdecl(output_mercury, ModeVarSet,
+        unqualified(CName), CModes, CDet, CContext, !IO),
     io.write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%

@@ -87,6 +87,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.goal_path.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
@@ -346,7 +347,7 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
                     io.format("%% Starting unneededed code pass %d\n",
                         [i(Pass)], !IO),
                     AppendVarNums = yes,
-                    OutInfo = init_hlds_out_info(Globals),
+                    OutInfo = init_hlds_out_info(Globals, output_debug),
                     write_goal(OutInfo, Goal0, !.ModuleInfo, VarSet0,
                         AppendVarNums, 0, ".\n", !IO)
                 ;

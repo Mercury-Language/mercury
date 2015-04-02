@@ -147,7 +147,7 @@
 
 dump_goal(ModuleInfo, VarSet, Goal, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
-    Info = init_hlds_out_info(Globals),
+    Info = init_hlds_out_info(Globals, output_debug),
     AppendVarNums = yes,
     Indent = 0,
     Follow = "",
@@ -1435,7 +1435,7 @@ write_goal_generic_call(Info, GoalExpr, _ModuleInfo, VarSet,
             write_indent(Indent, !IO),
             io.write_string("% modes: ", !IO),
             varset.init(InstVarSet),
-            mercury_output_mode_list(Modes, InstVarSet, !IO),
+            mercury_output_mode_list(output_debug, InstVarSet, Modes, !IO),
             io.nl(!IO)
         ;
             true

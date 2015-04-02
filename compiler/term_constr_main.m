@@ -566,22 +566,22 @@ make_opt_int_procs(PredId, [ProcId | ProcIds], ProcTable,
 %
 % Predicates for writing 'termination2_info' pragmas.
 %
-
-% NOTE: if these predicates are changed then prog_io_pragma.m must
-%       also be changed so that it can parse the resulting pragma
-%       termination2_info declarations.
+% NOTE: If these predicates are changed, then prog_io_pragma.m must also
+% be changed, so that it can parse the resulting pragma termination2_info
+% declarations.
+%
 
 output_pragma_termination2_info(PredOrFunc, SymName, ModeList, Context,
         MaybeSuccess, MaybeFailure, MaybeTermination, HeadVars, !IO) :-
     io.write_string(":- pragma termination2_info(", !IO),
     (
         PredOrFunc = pf_predicate,
-        mercury_output_pred_mode_subdecl(varset.init, SymName,
+        mercury_output_pred_mode_subdecl(output_mercury, varset.init, SymName,
             ModeList, no, Context, !IO)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ModeList, FuncModeList, RetMode),
-        mercury_output_func_mode_subdecl(varset.init, SymName,
+        mercury_output_func_mode_subdecl(output_mercury, varset.init, SymName,
             FuncModeList, RetMode, no, Context, !IO)
     ),
 

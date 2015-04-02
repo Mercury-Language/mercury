@@ -955,8 +955,8 @@ write_proc_termination_info(PredId, [ProcId | ProcIds], ProcTable,
     proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize),
     proc_info_get_maybe_termination_info(ProcInfo, Termination),
     proc_info_declared_argmodes(ProcInfo, ModeList),
-    write_pragma_termination_info_components(PredOrFunc, SymName, ModeList,
-        ArgSize, Termination, Context, !IO),
+    write_pragma_termination_info_components(output_mercury, PredOrFunc,
+        SymName, ModeList, ArgSize, Termination, Context, !IO),
     write_proc_termination_info(PredId, ProcIds, ProcTable, PredOrFunc,
         SymName, Context, !IO).
 

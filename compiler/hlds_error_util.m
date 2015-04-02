@@ -203,8 +203,8 @@ describe_one_pred_name_mode(ModuleInfo, ShouldModuleQualify, PredId,
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(StrippedArgModes, FuncArgModes, FuncRetMode),
-        ArgModesPart = arg_modes_to_string(InstVarSet, FuncArgModes)
-            ++ " = " ++ mercury_mode_to_string(FuncRetMode, InstVarSet)
+        ArgModesPart = arg_modes_to_string(InstVarSet, FuncArgModes) ++ " = "
+            ++ mercury_mode_to_string(output_debug, InstVarSet, FuncRetMode)
     ),
     string.append_list([
         "`",
@@ -278,7 +278,8 @@ arg_modes_to_string(InstVarSet, ArgModes) = Str :-
         Str = ""
     ;
         ArgModes = [_ | _],
-        ArgsStr = mercury_mode_list_to_string(ArgModes, InstVarSet),
+        ArgsStr = mercury_mode_list_to_string(output_debug, InstVarSet,
+            ArgModes),
         Str = "(" ++ ArgsStr ++ ")"
     ).
 

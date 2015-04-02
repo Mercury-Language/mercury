@@ -524,7 +524,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     ( print_anything(write_indented_goal(ModuleInfo, VarSet, Goal), !IO) :-
         io.write_string("\t\t", !IO),
         module_info_get_globals(ModuleInfo, Globals),
-        OutInfo = init_hlds_out_info(Globals),
+        OutInfo = init_hlds_out_info(Globals, output_debug),
         write_goal(OutInfo, Goal, ModuleInfo, VarSet, no, 2, ".\n", !IO)
     )
 ].
@@ -1192,8 +1192,8 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
     mode_info_get_instvarset(ModeInfo, InstVarSet),
     MaybeDet = no,
 
-    ModeSubDeclStr = mercury_mode_subdecl_to_string(PredOrFunc, InstVarSet,
-        Name, Modes, MaybeDet, Context),
+    ModeSubDeclStr = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
+        InstVarSet, Name, Modes, MaybeDet, Context),
     Pieces1 = [words("In clause for"), words_quote(ModeSubDeclStr),
         suffix(":"), nl],
     mode_info_get_mode_context(ModeInfo, ModeContext),
@@ -1467,13 +1467,13 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
         strip_builtin_qualifiers_from_mode_list(!ArgModes),
         (
             PredOrFunc = pf_predicate,
-            Detail = mercury_pred_mode_decl_to_string(VarSet, Name,
-                !.ArgModes, !.MaybeDet, Context)
+            Detail = mercury_pred_mode_decl_to_string(output_debug, VarSet,
+                Name, !.ArgModes, !.MaybeDet, Context)
         ;
             PredOrFunc = pf_function,
             pred_args_to_func_args(!.ArgModes, FuncArgModes, RetMode),
-            Detail = mercury_func_mode_decl_to_string(VarSet, Name,
-                FuncArgModes, RetMode, !.MaybeDet, Context)
+            Detail = mercury_func_mode_decl_to_string(output_debug, VarSet,
+                Name, FuncArgModes, RetMode, !.MaybeDet, Context)
         ),
         Pieces = [words(Verb), words(Detail), nl],
         Msg = simple_msg(Context,
@@ -1521,8 +1521,8 @@ mode_decl_to_string(ProcId, PredInfo) = String :-
     proc_info_get_context(ProcInfo, Context),
     varset.init(InstVarSet),
     strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
-    String = mercury_mode_subdecl_to_string(PredOrFunc, InstVarSet, Name,
-        Modes, MaybeDet, Context).
+    String = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
+        InstVarSet, Name, Modes, MaybeDet, Context).
 
 :- func inst_to_string(mode_info, mer_inst) = string.
 
@@ -1530,7 +1530,8 @@ inst_to_string(ModeInfo, Inst0) = Str :-
     strip_builtin_qualifiers_from_inst(Inst0, Inst),
     mode_info_get_instvarset(ModeInfo, InstVarSet),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    Str = mercury_expanded_inst_to_string(Inst, InstVarSet, ModuleInfo).
+    Str = mercury_expanded_inst_to_string(output_debug, ModuleInfo,
+        InstVarSet, Inst).
 
 :- func inst_list_to_string(mode_info, list(mer_inst)) = string.
 
