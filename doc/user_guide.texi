@@ -7061,7 +7061,7 @@ be installed should be built to the standard output.
 @sp 1
 @item --output-cc
 @findex --output-cc
-Print the command used to invoke C compiler to the standard output.
+Print the command used to invoke the C compiler to the standard output.
 
 @sp 1
 @item --output-cc-type
@@ -7075,6 +7075,11 @@ Print the C compiler type to the standard output.
 @findex --output-cflags
 Print the flags with which the C compiler will be invoked
 to the standard output.
+
+@sp 1
+@item --output-csharp-compiler
+@findex --output-csharp-compiler
+Print the command used to invoke the C# compiler to the standard output.
 
 @sp 1
 @item --output-csharp-compiler-type
