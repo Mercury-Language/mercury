@@ -372,6 +372,7 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
     globals.lookup_bool_option(Globals, output_cc, OutputCC),
     globals.lookup_bool_option(Globals, output_c_compiler_type, OutputCCType),
     globals.lookup_bool_option(Globals, output_cflags, OutputCFlags),
+    globals.lookup_bool_option(Globals, output_csharp_compiler, OutputCSC),
     globals.lookup_bool_option(Globals, output_csharp_compiler_type,
         OutputCSCType),
     globals.lookup_bool_option(Globals, output_library_link_flags,
@@ -442,6 +443,10 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
         io.stdout_stream(StdOut, !IO),
         output_c_compiler_flags(Globals, StdOut, !IO),
         io.nl(StdOut, !IO)
+    ; OutputCSC = yes ->
+        globals.lookup_string_option(Globals, csharp_compiler, CSC),
+        io.stdout_stream(StdOut, !IO),
+        io.write_string(StdOut, CSC ++ "\n", !IO)
     ; OutputCSCType = yes ->
         globals.lookup_string_option(Globals, csharp_compiler_type, CSC_Type),
         io.stdout_stream(StdOut, !IO),

@@ -209,6 +209,7 @@
     ;       output_libgrades
     ;       output_cc
     ;       output_c_compiler_type
+    ;       output_csharp_compiler
     ;       output_csharp_compiler_type
     ;       output_cflags
     ;       output_library_link_flags
@@ -1216,6 +1217,7 @@ option_defaults_2(output_option, [
     output_libgrades                    -   bool(no),
     output_cc                           -   bool(no),
     output_c_compiler_type              -   bool(no),
+    output_csharp_compiler              -   bool(no),
     output_csharp_compiler_type         -   bool(no),
     output_cflags                       -   bool(no),
     output_library_link_flags           -   bool(no),
@@ -2127,6 +2129,7 @@ long_option("output-libgrades",         output_libgrades).
 long_option("output-cc",                output_cc).
 long_option("output-cc-type",           output_c_compiler_type).
 long_option("output-c-compiler-type",   output_c_compiler_type).
+long_option("output-csharp-compiler",   output_csharp_compiler).
 long_option("output-csharp-compiler-type", output_csharp_compiler_type).
 long_option("output-cflags",            output_cflags).
 long_option("output-library-link-flags",    output_library_link_flags).
@@ -3887,6 +3890,9 @@ options_help_output -->
         "--output-cflags",
         "\tPrint the flags with which the C compiler will be invoked",
         "\tto the standard output.",
+        "--output-csharp-compiler",
+        "\tPrint the command used to invoke the C# compiler to the",
+        "\tstandard output.",
         "--output-csharp-compiler-type",
         "\tPrint the C# compiler type to the standard output.",
         "--output-library-link-flags",
