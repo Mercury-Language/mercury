@@ -1,0 +1,149 @@
+*Mercury.txt*       Mercury Language Support
+                    LastChange: 2015-04-07
+                    Author: Sebastian Godelet <sebastian.godelet@outlook.com>
+
+1. Overview                                         |mercury-overview|
+2. Installation                                     |mercury-installation|
+3. Filetype plugin                                  |mercury-ftplugin|
+4. Mercury commands plugin                          |mercury-commands|
+5. Syntax highlighting                              |mercury-syntax|
+
+=============================================================================
+1. Overview                                            *mercury-overview*
+
+Mercury Syntax Highlighting Under Vim 6.0+
+For using the conceal feature, please use Vim 7.3+ with the conceal feature
+enabled.
+
+=============================================================================
+2. Installation                                         *mercury-install*
+
+2.1. Create a directory `~/.vim' if not done so far: >
+
+    $ mkdir ~/.vim
+<
+2.2. There are two ways to install the support files:
+
+2.2.1 Manual: Copy everything recursively from this directory into `~/.vim' >
+
+    $ cp -r . ~/.vim
+<
+2.2.2 Using a Vimball: In this directory, invoke: >
+
+    $ make
+    $ make install
+
+3. Ensure you have the following lines in your `~/.vimrc' file: >
+
+    filetype on
+    filetype plugin on
+    syntax enable
+<
+4. It is advisable to have the following file encoding detection lines
+in your ~/.vimrc: >
+
+    if has("multi_byte")
+      set encoding=utf-8
+      setglobal fileencoding=utf-8
+      if &termencoding == ""
+        let &termencoding = &encoding
+      endif
+    endif
+<
+5. Optionally enable |modeline| detection.  This configures vim to use the
+% vim: lines at the beginning of some source files to configure settings
+local to that file. >
+
+    set modeline
+<
+6. If you wish to change the colour scheme used by Vim's |syntax-highlighting|,
+we suggest you put the necessary commands in `~/.vim/colors/mycolours.vim'
+and append the following to the above list of commands in your `~/.vimrc': >
+
+    colors mycolours
+<
+7. If you want to use Vim's |spell-checking| feature, please insert the
+following directive after the |encoding| setting from 4. >
+
+    " Spelling (comes after encoding, to reduce load time, see :help spell)
+    :setlocal spell spelllang=en_gb
+>
+=============================================================================
+3. Filetype plugin                                      *mercury-ftplugin*
+
+=============================================================================
+4. Mercury commands plugin                              *mercury-commands*
+
+mercury_commands |plugin| provides additional functionality via Vim commands:
+                                                                    *:Mmc*
+:Mmc [arg1]...      Invoke compiler (mmc), using current file when no
+                    arguments passed.
+                                                                    *:Merr*
+:Merr               Show last output from :Mmc.
+
+=============================================================================
+5. Syntax highlighting                                      *mercury-syntax*
+
+The |syntax-highlighting| for mercury can be customised in several ways,
+in your ~/.vimrc file, you can specify following options:
+
+The default highlighting for  Mercury comments is to only highlight the
+initial `%' and subsequent `line' punctuation characters, likewise
+the /* and */ from C-style comments.
+To highlight everything including the comment text, add: >
+
+    let mercury_highlight_full_comment = 1
+<
+By default, parts of lines that extend over 78 characters will be
+highlighted.  To avoid this behaviour, add: >
+
+    let mercury_no_highlight_overlong = 1
+<
+If folding is supported by the running Vim version, the setting of the
+preferred folding mode for Mercury (currently indent, as it is the fastest)
+can be disabled by >
+
+    let mercury_no_folding = 1
+<
+If you want to force the folding setting to indent (despite a different
+setting in the vimrc file), you can enforce it: >
+
+    let mercury_folding_force = 1
+<
+To facilitate better git patch management,
+spurious whitespace is marked as a warning, to suppress these, use: >
+
+    let mercury_no_highlight_trailing_whitespace = 1
+<
+For the same reasons, tabs are marked as a warning,
+if you want to disable this, please use: >
+
+    let mercury_no_highlight_tabs = 1
+<
+Highlighting of C, Java, C# and Erlang code is supported by default,
+disable (if you think loading huge files is slow) with: >
+
+    let mercury_no_highlight_foreign = 1
+<
+Enable highlighting of Tex specific directives used in comments,
+such as `' or ``'': >
+
+    let mercury_highlight_comment_special = 1
+<
+If you use Vim 7.3+ with conceal enabled but do not want any concealing
+of operators, use: >
+
+    let mercury_no_coneal = 1
+<
+To enable concealing for characters which require a good Unicode font
+and might be "too much" for some users, define: >
+
+    let mercury_conceal_extra = 1
+<
+If concealing of extra characters is enabled, one can additionally
+enable concealing for logical operators, such as <=> => <= some all
+by setting: >
+
+    let mercury_conceal_logical = 1
+<
+vim:tw=78:ts=4:ft=help:norl:et:
