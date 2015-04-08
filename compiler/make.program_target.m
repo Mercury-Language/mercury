@@ -69,7 +69,7 @@ make_linked_target(Globals, LinkedTargetFile, LinkedTargetSucceeded,
         ; FileType = static_library
         ; FileType = csharp_executable
         ; FileType = csharp_library
-        ; FileType = java_launcher
+        ; FileType = java_executable
         ; FileType = java_archive
         ; FileType = erlang_launcher
         ; FileType = erlang_archive
@@ -465,7 +465,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         ; FileType = shared_library
         ; FileType = csharp_executable
         ; FileType = csharp_library
-        ; FileType = java_launcher
+        ; FileType = java_executable
         ; FileType = java_archive
         ; FileType = erlang_archive
         ),
@@ -672,7 +672,7 @@ linked_target_cleanup(Globals, MainModuleName, FileType, OutputFileName,
         ; FileType = shared_library
         ; FileType = csharp_executable
         ; FileType = csharp_library
-        ; FileType = java_launcher
+        ; FileType = java_executable
         ; FileType = java_archive
         ; FileType = erlang_launcher
         ; FileType = erlang_archive
@@ -1927,7 +1927,7 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
         shared_library,
         csharp_executable,
         csharp_library,
-        java_launcher,
+        java_executable,
         java_archive,
         erlang_launcher,
         erlang_archive

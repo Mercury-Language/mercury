@@ -586,7 +586,7 @@ get_executable_type(Globals) = ExecutableType :-
         ExecutableType = csharp_executable
     ;
         CompilationTarget = target_java,
-        ExecutableType = java_launcher
+        ExecutableType = java_executable
     ;
         CompilationTarget = target_erlang,
         ExecutableType = erlang_launcher

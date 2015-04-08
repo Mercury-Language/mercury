@@ -116,7 +116,7 @@
     ;       shared_library
     ;       csharp_executable
     ;       csharp_library
-    ;       java_launcher
+    ;       java_executable
     ;       java_archive
     ;       erlang_launcher
     ;       erlang_archive.
@@ -248,6 +248,7 @@
 :- import_module libs.trace_params.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.java_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.write_deps_file.
 :- import_module parse_tree.prog_foreign.
@@ -1751,8 +1752,9 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Globals, Succeeded,
         create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType,
             ModuleName, OutputFileName, ObjectsList, LinkSucceeded, !IO)
     ;
-        LinkTargetType = java_launcher,
-        create_java_shell_script(Globals, ModuleName, LinkSucceeded, !IO)
+        LinkTargetType = java_executable,
+        create_java_executable(Globals, ErrorStream, ModuleName,
+            OutputFileName, ObjectsList, LinkSucceeded, !IO)
     ;
         LinkTargetType = java_archive,
         create_java_archive(Globals, ErrorStream, OutputFileName, ObjectsList,
@@ -1806,9 +1808,7 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
         module_name_to_file_name(Globals, ModuleName, Ext,
             do_create_dirs, OutputFileName, !IO)
     ;
-        ( LinkTargetType = java_launcher
-        ; LinkTargetType = erlang_launcher
-        ),
+        LinkTargetType = erlang_launcher,
         % These may be shell scripts or batch files.
         globals.get_target_env_type(Globals, TargetEnvType),
         (
@@ -1824,6 +1824,11 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
             ),
             Ext = ""
         ),
+        module_name_to_file_name(Globals, ModuleName, Ext,
+            do_create_dirs, OutputFileName, !IO)
+    ;
+        LinkTargetType = java_executable,
+        Ext = ".jar",
         module_name_to_file_name(Globals, ModuleName, Ext,
             do_create_dirs, OutputFileName, !IO)
     ;
@@ -2147,7 +2152,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             LibExt = ".dll",
             MercuryLinkage = "csharp"
         ;
-            ( TargetType = java_launcher
+            ( TargetType = java_executable
             ; TargetType = java_archive
             ; TargetType = erlang_launcher
             ; TargetType = erlang_archive
@@ -2305,7 +2310,7 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt, Name,
         ),
         LibPrefix = ""
     ;
-        ( TargetType = java_launcher
+        ( TargetType = java_executable
         ; TargetType = java_archive
         ; TargetType = erlang_launcher
         ; TargetType = erlang_archive
@@ -2367,7 +2372,7 @@ make_link_lib(Globals, TargetType, LibName, LinkOpt) :-
         LinkOpt = quote_arg(LinkLibOpt ++ LibName ++ Suffix)
     ;
         ( TargetType = static_library
-        ; TargetType = java_launcher
+        ; TargetType = java_executable
         ; TargetType = java_archive
         ; TargetType = erlang_launcher
         ; TargetType = erlang_archive
@@ -2452,7 +2457,7 @@ get_system_libs(Globals, TargetType, SystemLibs) :-
         ( TargetType = static_library
         ; TargetType = csharp_executable
         ; TargetType = csharp_library
-        ; TargetType = java_launcher
+        ; TargetType = java_executable
         ; TargetType = java_archive
         ; TargetType = erlang_launcher
         ; TargetType = erlang_archive
@@ -2511,7 +2516,7 @@ get_restricted_command_line_link_opts(Globals, LinkTargetType,
             ; LinkTargetType = shared_library
             ; LinkTargetType = csharp_executable
             ; LinkTargetType = csharp_library
-            ; LinkTargetType = java_launcher
+            ; LinkTargetType = java_executable
             ; LinkTargetType = java_archive
             ; LinkTargetType = erlang_launcher
             ; LinkTargetType = erlang_archive
@@ -2566,7 +2571,7 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
             ( LinkTargetType = executable
             ; LinkTargetType = csharp_executable
             ; LinkTargetType = csharp_library
-            ; LinkTargetType = java_launcher
+            ; LinkTargetType = java_executable
             ; LinkTargetType = java_archive
             ; LinkTargetType = erlang_launcher
             ),
@@ -2902,7 +2907,7 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         ( LinkTargetType = executable
         ; LinkTargetType = static_library
         ; LinkTargetType = shared_library
-        ; LinkTargetType = java_launcher
+        ; LinkTargetType = java_executable
         ; LinkTargetType = java_archive
         ; LinkTargetType = erlang_launcher
         ; LinkTargetType = erlang_archive
@@ -3025,6 +3030,27 @@ write_cli_shell_script(Globals, ExeFileName, Stream, !IO) :-
         "exec \"$CLI_INTERPRETER\" \"$DIR/", ExeFileName, "\" \"$@\"\n"
     ], !IO).
 
+%-----------------------------------------------------------------------------%
+%
+% Create Java "executables" or archives.
+%
+
+:- pred create_java_executable(globals::in, io.text_output_stream::in,
+    module_name::in, file_name::in, list(file_name)::in, bool::out,
+    io::di, io::uo) is det.
+
+create_java_executable(Globals, ErrorStream, MainModuleName, JarFileName,
+        ObjectList, Succeeded, !IO) :-
+    create_java_archive(Globals, ErrorStream, JarFileName, ObjectList,
+        CreateJarSucceeded, !IO),
+    (
+        CreateJarSucceeded = yes,
+        create_java_shell_script(Globals, MainModuleName, Succeeded, !IO)
+    ;
+        CreateJarSucceeded = no,
+        Succeeded = no
+    ).
+
 :- pred create_java_archive(globals::in, io.output_stream::in, file_name::in,
     list(file_name)::in, bool::out, io::di, io::uo) is det.
 
@@ -3072,11 +3098,9 @@ create_java_archive(Globals, ErrorStream, JarFileName, ObjectList, Succeeded,
         )
     ;
         OpenResult = error(Error),
-        io.write_string(ErrorStream, "Error creating `", !IO),
-        io.write_string(ErrorStream, TempFileName, !IO),
-        io.write_string(ErrorStream, "': ", !IO),
-        io.write_string(ErrorStream, io.error_message(Error), !IO),
-        io.nl(ErrorStream, !IO),
+        io.error_message(Error, ErrorMsg),
+        io.format(ErrorStream, "Error creating `%s': %s\n",
+            [s(TempFileName), s(ErrorMsg)], !IO),
         Succeeded = no
     ).
 
@@ -3160,7 +3184,7 @@ get_object_code_type(Globals, FileType, ObjectCodeType) :-
         ( FileType = static_library
         ; FileType = csharp_executable
         ; FileType = csharp_library
-        ; FileType = java_launcher
+        ; FileType = java_executable
         ; FileType = java_archive
         ; FileType = erlang_launcher
         ; FileType = erlang_archive

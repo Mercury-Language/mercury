@@ -1514,7 +1514,7 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
         module_name_to_file_name(Globals, ModuleName, ".dll",
             do_not_create_dirs, FileName, !IO)
     ;
-        ( TargetType = java_launcher
+        ( TargetType = java_executable
         ; TargetType = erlang_launcher
         ),
         % These are shell scripts.

@@ -47,7 +47,8 @@ Now you can run hello
 
 Note that hello is a simple shell script that invokes the program using the
 Java interpreter.  The actual class files are stored in the Mercury
-subdirectory in `classs'.
+subdirectory in `classs'.  These class files will be packaged up into Java
+archive (JAR) named `hello.jar'.
 
 If you are using the Windows command-line interpreter, i.e. cmd.exe, then
 setting the value of the option --target-env-type to "windows" will cause the

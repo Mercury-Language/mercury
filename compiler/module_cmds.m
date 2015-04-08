@@ -750,6 +750,9 @@ use_win32 :-
 %
 
 create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
+    Ext = ".jar",
+    module_name_to_file_name(Globals, MainModuleName, Ext, do_not_create_dirs,
+        JarFileName, !IO),
     get_target_env_type(Globals, TargetEnvType),
     (
         ( TargetEnvType = env_type_posix
@@ -757,7 +760,7 @@ create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
         ; TargetEnvType = env_type_msys
         ),
         create_launcher_shell_script(Globals, MainModuleName,
-            write_java_shell_script(Globals, MainModuleName),
+            write_java_shell_script(Globals, MainModuleName, JarFileName),
             Succeeded, !IO)
     ;
         % XXX should create a .ps1 file on PowerShell.
@@ -765,23 +768,19 @@ create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
         ; TargetEnvType = env_type_powershell
         ),
         create_launcher_batch_file(Globals, MainModuleName,
-            write_java_batch_file(Globals, MainModuleName),
+            write_java_batch_file(Globals, MainModuleName, JarFileName),
             Succeeded, !IO)
     ).
 
 :- pred write_java_shell_script(globals::in, module_name::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+    file_name::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-write_java_shell_script(Globals, MainModuleName, Stream, !IO) :-
-    % In shell scripts always use / separators, even on Windows.
-    get_class_dir_name(Globals, ClassDirName),
-    string.replace_all(ClassDirName, "\\", "/", ClassDirNameUnix),
-
+write_java_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
     get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
     globals.lookup_accumulating_option(Globals, java_classpath,
         UserClasspath),
     % We prepend the .class files' directory and the current CLASSPATH.
-    Java_Incl_Dirs = ["\"$DIR/" ++ ClassDirNameUnix ++ "\""] ++
+    Java_Incl_Dirs = ["\"$DIR/" ++ JarFileName ++ "\""] ++
         MercuryStdLibs ++ ["$CLASSPATH" | UserClasspath],
     ClassPath = string.join_list("${SEP}", Java_Incl_Dirs),
 
@@ -802,17 +801,15 @@ write_java_shell_script(Globals, MainModuleName, Stream, !IO) :-
         "exec \"$JAVA\" jmercury.", ClassName, " \"$@\"\n"
     ], !IO).
 
-:- pred write_java_batch_file(globals::in, module_name::in,
+:- pred write_java_batch_file(globals::in, module_name::in, file_name::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
-write_java_batch_file(Globals, MainModuleName, Stream, !IO) :-
-    get_class_dir_name(Globals, ClassDirName),
-
+write_java_batch_file(Globals, MainModuleName, JarFileName, Stream, !IO) :-
     get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
     globals.lookup_accumulating_option(Globals, java_classpath,
         UserClasspath),
     % We prepend the .class files' directory and the current CLASSPATH.
-    Java_Incl_Dirs = ["%DIR%\\" ++ ClassDirName] ++ MercuryStdLibs ++
+    Java_Incl_Dirs = ["%DIR%\\" ++ JarFileName] ++ MercuryStdLibs ++
         ["%CLASSPATH%" | UserClasspath],
     ClassPath = string.join_list(";", Java_Incl_Dirs),
 
