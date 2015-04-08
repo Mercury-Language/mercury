@@ -42,7 +42,7 @@
     % socket(Domain, Type, Result, !IO),
     %
     % Create a new socket, use this variant to have the sockets library
-    % detect the correct protocal (usually the only protocol).
+    % detect the correct protocol (usually the only protocol).
     %
 :- pred socket(family::in, socktype::in,
     maybe_error(socket)::out, io::di, io::uo) is det.

@@ -61,7 +61,7 @@
     %
 :- func gai_flag_addrconfig = int.
 
-    % Return addresses suitable for use with the bind() call.  WIthout this
+    % Return addresses suitable for use with the bind() call.  Without this
     % flag returned addresses are suitable for use with the connect() call.
     %
 :- func gai_flag_passive = int.

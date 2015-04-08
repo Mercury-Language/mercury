@@ -138,7 +138,7 @@ getprotobyname(Name, MaybeProtocol, !IO) :-
         )
     ;
         Success = no,
-        % A buffer size of 1024 bytes was insufficent for a protocol name,
+        % A buffer size of 1024 bytes was insufficient for a protocol name,
         % protocols are usually 3 letters long like "tcp".
         unexpected($file, $pred, "Buffer too small")
     ).
