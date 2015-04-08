@@ -54,9 +54,9 @@
 %-----------------------------------------------------------------------------%
 
     % The socket type.  Informally (for fam_inet and fam_inet6) these
-    % correspond to TCP and UDP respectively.  More precicely these specify
-    % the socket's behavour, the protocol is optionally specified
-    % seperately.
+    % correspond to TCP and UDP respectively.  More precisely these specify
+    % the socket's behaviour, the protocol is optionally specified
+    % separately.
     %
 :- type socktype
     --->    sock_stream
@@ -89,17 +89,17 @@
     % structure.
     %
     % The numbers-and-dots format is general and allows up to four numbers
-    % seperated by dots, the numbers may be decimal, octal or hexadecimal, 
+    % separated by dots, the numbers may be decimal, octal or hexadecimal, 
     % See inet_aton(3).
 	%
 :- pred from_string(string::in, in_addr::uo) is semidet.
 
     % Convert an in_addr into a dotted-decimal format.  This predicate and
-    % inet_aton are not reciprical, therefore this should not be a reverse
+    % inet_aton are not reciprocal, therefore this should not be a reverse
     % mode of the above.
     %
     % The dotted-decimal format is the typical format with four decimal
-    % numbers seperated by dots.
+    % numbers separated by dots.
 	%
 :- pred to_string(in_addr::in, string::uo) is det.
 :- func to_string(in_addr) = string.
@@ -204,8 +204,8 @@
 %     sock_seqpacket - "SOCK_SEQPACKET",
 %     sock_raw       - "SOCK_RAW",
 %     sock_rdm       - "SOCK_RDM",
-    % Note: sock_packet is obosolete.
-    % Note: We deleberately do not support the non-portable SOCK_NONBLOCK
+    % Note: sock_packet is obsolete.
+    % Note: We deliberately do not support the non-portable SOCK_NONBLOCK
     % and SOCK_CLOEXEC values, this functionality should be accessed via
     % setsocketopt.
 
