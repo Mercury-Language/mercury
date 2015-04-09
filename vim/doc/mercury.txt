@@ -133,7 +133,7 @@ such as `' or ``'': >
 If you use Vim 7.3+ with conceal enabled but do not want any concealing
 of operators, use: >
 
-    let mercury_no_coneal = 1
+    let mercury_no_conceal = 1
 <
 To enable concealing for characters which require a good Unicode font
 and might be "too much" for some users, define: >

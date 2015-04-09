@@ -128,7 +128,7 @@
     set_ordlist(T)::in, set_ordlist(T)::out) is det.
 :- func insert_list(set_ordlist(T), list(T)) = set_ordlist(T).
 
-    % `delete(Set0, X, Set)' is true iff `Set' is the
+    % `delete(X, Set0, Set)' is true iff `Set' is the
     % relative complement of `Set0' and the set containing only `X', i.e.
     % if `Set' is the set which contains all the elements of `Set0'
     % except `X'.
