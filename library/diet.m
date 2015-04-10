@@ -1128,7 +1128,7 @@ split(X, Set, Lesser, IsPresent, Greater) :-
             split(X, L, Lesser, IsPresent, RL),
             Greater = join({A, B}, RL, R)
         ; B < X ->
-			split(X, R, LR, IsPresent, Greater),
+            split(X, R, LR, IsPresent, Greater),
             Lesser = join({A, B}, L, LR)
         ;
             IsPresent = yes,
