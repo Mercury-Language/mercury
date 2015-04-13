@@ -22,8 +22,17 @@ main(!IO) :-
     getprotobyname(TCPS, TCP, !IO),
     io.format("get_proto_by_name(""%s"", %s, !IO).\n",
         [s(TCPS), s(string(TCP))], !IO),
+
+    io.format("in_addr_any: %s\n", [s(to_string(in_addr_any))], !IO),
+    io.format("in_addr_loopback: %s\n", [s(to_string(in_addr_loopback))], !IO),
+    io.format("in_addr_broadcast: %s\n", [s(to_string(in_addr_broadcast))],
+        !IO),
+    io.format("in6_addr_any: %s\n", [s(to_string(in6_addr_any))], !IO),
+    io.format("in6_addr_loopback: %s\n", [s(to_string(in6_addr_loopback))],
+        !IO),
+
     lookup_host_and_service("www.google.com", string_service("http"),
-        yes(fam_inet), no, GAIResultHostService),
+        no, no, GAIResultHostService),
     (
         GAIResultHostService = ok(HostServiceResults),
         io.write_string("www.google.com:\n", !IO),
@@ -53,8 +62,8 @@ write_lookup_result(lookup_result(Family, Socktype, ProtoNum, SockAddr),
             s(SockStr)],
         !IO),
     ProtoName = string(ProtoNum),
-    ( ipv4_sockaddr(InAddr, Port, SockAddr) ->
-        SockStr = format("%s:%d", [s(to_string(InAddr)), i(Port)])
+    ( sockaddr_get_addr_port(SockAddr, Addr, Port) ->
+        SockStr = format("%s:%d", [s(to_string(Addr)), i(Port)])
     ;
         SockStr = "unknown"
     ).
