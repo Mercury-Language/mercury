@@ -241,7 +241,7 @@ if has("conceal") && (!exists("mercury_no_conceal") || !mercury_no_conceal)
     syn match mercuryOperator  "`x`"       conceal cchar=×
     syn match mercuryOperator  "//"        conceal cchar=÷
 
-       " unforunately, Vim does not allow different conceal colours,
+       " unfortunately, Vim does not allow different conceal colours,
        " so these are not concealed by default
     if exists("mercury_conceal_logical") && mercury_conceal_logical
       syn match mercuryImplication "=>"   conceal cchar=⇒
@@ -279,7 +279,7 @@ syn region  mercuryForeignModList matchgroup=mercuryBracket start='\[' end=']'
       \ mercuryDelimiter,@mercuryComments,@mercuryFormatting,
       \ mercuryString,mercuryOperator,mercuryBlock
 
-syn match mercuryClauseHead /\v^[a-zA-Z_]+[(]@=/
+syn match mercuryClauseHead /\v^[a-z][a-zA-Z0-9_]*[(]@=/
 
 if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
     " Basic syntax highlighting for foreign code
