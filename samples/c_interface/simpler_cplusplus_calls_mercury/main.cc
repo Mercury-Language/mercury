@@ -94,16 +94,16 @@ int main(int argc, char **argv) {
 }
 
 static void print_list(MercuryList list) {
-        if (MR_list_is_empty(list)) {
-                printf("[]");
-        } else {
-                printf("[");
-                printf("%ld", (long) MR_list_head(list));
-                list = MR_list_tail(list);
-                while (!MR_list_is_empty(list)) {
-                        printf(", %ld", (long) MR_list_head(list));
-                        list = MR_list_tail(list);
-                }
-                printf("]");
-        }
+	if (MR_list_is_empty(list)) {
+		printf("[]");
+	} else {
+		printf("[");
+		printf("%ld", (long) MR_list_head(list));
+		list = MR_list_tail(list);
+		while (!MR_list_is_empty(list)) {
+			printf(", %ld", (long) MR_list_head(list));
+			list = MR_list_tail(list);
+		}
+		printf("]");
+	}
 }
