@@ -4343,7 +4343,7 @@ options_help_compilation_model -->
         %"--target c\t\t\t(grades: none, reg, jump, fast,",
         %"\t\t\t\t\tasm_jump, asm_fast, hl, hlc)",
         %"--target il\t\t\t(grades: il)",
-        "--target c\t\t\t(grades: none, reg, asm_fast)",
+        "--target c\t\t\t(grades: none, reg, asm_fast, hlc)",
         "--target csharp\t\t\t(grades: csharp)",
         "--target java\t\t\t(grades: java)",
         "--target erlang\t\t\t(grades: erlang)",
@@ -4508,10 +4508,11 @@ options_help_compilation_model -->
         "\t--profile-for-implicit-parallelism is a deprecated synonym for",
         "\tthis option",
 
-        "--record-term-sizes-as-words\t\t(grade modifier: `.tsw')",
-        "\tAugment each heap cell with its size in words.",
-        "--record-term-sizes-as-cells\t\t(grade modifier: `.tsc')",
-        "\tAugment each heap cell with its size in cells.",
+        % These are commented out as this feature is still experimental.
+        %"--record-term-sizes-as-words\t\t(grade modifier: `.tsw')",
+        %"\tAugment each heap cell with its size in words.",
+        %"--record-term-sizes-as-cells\t\t(grade modifier: `.tsc')",
+        %"\tAugment each heap cell with its size in cells.",
 
         "--experimental-complexity <filename>",
         "\tEnable experimental complexity analysis for the predicates",

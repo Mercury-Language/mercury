@@ -7841,11 +7841,11 @@ and grade modifier; they are followed by descriptions of those options.
 @item @samp{.trseg}
 @code{--use-trail --trail-segments}.
 
-@item @samp{.tsw}
-@code{--record-term-sizes-as-words}.
+@c @item @samp{.tsw}
+@c @code{--record-term-sizes-as-words}.
 
-@item @samp{.tsc}
-@code{--record-term-sizes-as-cells}.
+@c @item @samp{.tsc}
+@c @code{--record-term-sizes-as-cells}.
 
 @item @samp{.spf}
 @code{--single-prec-float}
@@ -8184,7 +8184,6 @@ is that the former method can give slightly more accurate timing results.
 because with the latter method the code inserted to record call counts
 has a small effect on the execution speed.
 
-@end ignore
 
 @sp 1
 @item @code{--record-term-sizes-as-words} (grades: any grade containing @samp{.tsw})
@@ -8195,6 +8194,8 @@ Record the sizes of terms, using one word as the unit of memory.
 @item @code{--record-term-sizes-as-cells} (grades: any grade containing @samp{.tsc})
 @findex --record-term-sizes-as-cells
 Record the sizes of terms, using one cell as the unit of memory.
+
+@end ignore
 
 @sp 1
 @item @code{--experimental-complexity @var{filename}}
