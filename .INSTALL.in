@@ -126,9 +126,6 @@ make install
 #          The option --disable-nogc-grades prevents the installation
 #          of grades without garbage collection.
 #
-#          The option --enable-agc-grades causes the installation
-#          of grades that support type-accurate garbage collection.
-#
 #          The option --disable-prof-grades prevents the installation
 #          of grades that support profiling.
 #

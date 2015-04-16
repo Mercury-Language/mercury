@@ -3863,7 +3863,7 @@ options_help_output -->
         "\tCheck the module for errors, but do not generate any code.",
         "-C, --target-code-only",
         "\tGenerate target code (i.e. C code in `<module>.c',",
-        "\tIL code in `<module>.il', or Java code in",
+        "\tC# code in `<module>.cs', or Java code in",
         "\t`<module>.java'), but not object code.",
         "-c, --compile-only",
         "\tGenerate C code in `<module>.c' and object code in `<module>.o'",
@@ -4311,16 +4311,27 @@ options_help_compilation_model -->
         "",
         "-s <grade>, --grade <grade>",
         "\tSelect the compilation model. The <grade> should be one of",
-        "\tthe base grades `none', `reg', `jump', `asm_jump', `fast', ",
-        "\t`asm_fast', `hl', `hlc', `il', `java', `csharp' or `erlang'",
-% The hl, hl_nest, and hlc_nest are not yet documented, because
-% the --high-level-data option is not yet supported for C,
-% and the --gcc-nested-functions option is not yet documented.
-% The ilc grade is not documented because it is not useful;
-% it has been superceded by the il grade.
+        "\tthe base grades `none', `reg', `asm_fast', `hlc', `java',",
+        "\t`csharp' or `erlang'",
+
+% The following base grade components are not publicly documented:
+%
+%  asm_jump
+%  fast
+%  jump        These three are not tested as much as the other
+%              three LLDS base grades and have proved to be a bit
+%              delicate in any case.
+%
+%  hlc_nest
+%  hl_nest     These two rely on GCC nested functions extension.
+%
+%  hl          Not useful.
+%  il          Currently broken.
+%  ilc         Deprecated.
+%
         "\tor one of those with one or more of the grade modifiers",
         "\t`.gc', `.prof', `.memprof', `.profdeep', `.tr',",
-        "\t`.spf', `.stseg', `.debug', `.par' and/or `.pic_reg' appended.",
+        "\t`.spf', `.stseg', `.debug', and/or `.par' appended.",
         "\tDepending on your particular installation, only a subset",
         "\tof these possible grades will have been installed.",
         "\tAttempting to use a grade which has not been installed",
@@ -4329,16 +4340,15 @@ options_help_compilation_model -->
 
     io.write_string("\n    Target selection compilation model options:\n"),
     write_tabbed_lines([
-        "--target c\t\t\t(grades: none, reg, jump, fast,",
-        "\t\t\t\t\tasm_jump, asm_fast, hl, hlc)",
-        "--target il\t\t\t(grades: il)",
+        %"--target c\t\t\t(grades: none, reg, jump, fast,",
+        %"\t\t\t\t\tasm_jump, asm_fast, hl, hlc)",
+        %"--target il\t\t\t(grades: il)",
+        "--target c\t\t\t(grades: none, reg, asm_fast)",
         "--target csharp\t\t\t(grades: csharp)",
         "--target java\t\t\t(grades: java)",
         "--target erlang\t\t\t(grades: erlang)",
-        "\tSpecify the target language: C, IL, C#, Java or Erlang.",
-        "\tThe default is C.  ""IL"" (also known as ""CIL"" or ""MSIL"")",
-        "\tis the Intermediate Language for the .NET Common Language",
-        "\tRuntime.",
+        "\tSpecify the target language: C, C#, Java or Erlang.",
+        "\tThe default is C.",
         "\tTargets other than C imply `--high-level-code' (see below).",
 
 % IL options are commented out to reduce confusion.
@@ -4417,13 +4427,13 @@ options_help_compilation_model -->
         "\tgenerated code, and also output some profiling",
         "\tinformation (the static call graph) to the file",
         "\t`<module>.prof'.",
-        "\tThis option is not supported for the IL, C# or Java back-ends.",
+        "\tThis option is not supported for the C#, Erlang or Java back-ends.",
         "--memory-profiling\t\t(grade modifier: `.memprof')",
         "\tEnable memory and call profiling.",
-        "\tThis option is not supported for the IL, C# or Java back-ends.",
+        "\tThis option is not supported for the C#, Erlang or Java back-ends.",
         "--deep-profiling\t\t(grade modifier: `.profdeep')",
         "\tEnable deep profiling.",
-        "\tThis option is not supported for the high-level C, IL, C#",
+        "\tThis option is not supported for the high-level C, C#, Erlang",
         "\tor Java back-ends.",
 
 % This option is not documented, it is intended for use by developers only.
@@ -4531,14 +4541,14 @@ options_help_compilation_model -->
         "\t`accurate' is our own type-accurate copying GC;",
         "\tit requires `--high-level-code'.",
         "\t`automatic' means the target language provides it.",
-        "\tThis is the case for the IL, C#, Java and Erlang back-ends,",
+        "\tThis is the case for the C#, Java and Erlang back-ends,",
         "\twhich always use the garbage collector of the underlying",
         "\timplementation.",
         "--use-trail\t\t\t(grade modifier: `.tr')",
         "\tEnable use of a trail.",
         "\tThis is necessary for interfacing with constraint solvers,",
         "\tor for backtrackable destructive update.",
-        "\tThis option is not yet supported for the IL, C#, Java",
+        "\tThis option is not yet supported for the C#, Java",
         "\tor Erlang back-ends.",
         "--trail-segments\t\t\t(grade modifier: `.trseg')",
         "\tAs above, but use a dynamically sized trail that is composed",
@@ -4575,30 +4585,37 @@ options_help_compilation_model -->
     io.write_string("\n    LLDS back-end compilation model options:\n"),
     write_tabbed_lines([
 
-        "--gcc-global-registers\t\t(grades: reg, fast, asm_fast)",
-        "--no-gcc-global-registers\t(grades: none, jump, asm_jump)",
+        %"--gcc-global-registers\t\t(grades: reg, fast, asm_fast)",
+        %"--no-gcc-global-registers\t(grades: none, jump, asm_jump)",
+        "--gcc-global-registers\t\t(grades: reg, asm_fast)",
+        "--no-gcc-global-registers\t(grades: none)",
         "\tSpecify whether or not to use GNU C's",
         "\tglobal register variables extension.",
         "\tThis option is ignored if the `--high-level-code' option is",
         "\tenabled.",
-        "--gcc-non-local-gotos\t\t(grades: jump, fast, asm_jump, asm_fast)",
+        %"--gcc-non-local-gotos\t\t(grades: jump, fast, asm_jump, asm_fast)",
+        %"--no-gcc-non-local-gotos\t(grades: none, reg)",
+        "--gcc-non-local-gotos\t\t(grades: asm_fast)",
         "--no-gcc-non-local-gotos\t(grades: none, reg)",
         "\tSpecify whether or not to use GNU C's",
         "\t""labels as values"" extension.",
         "\tThis option is ignored if the `--high-level-code' option is",
         "\tenabled.",
-        "--asm-labels\t\t\t(grades: asm_jump, asm_fast)",
-        "--no-asm-labels\t\t\t(grades: none, reg, jump, fast)",
+        %"--asm-labels\t\t\t(grades: asm_jump, asm_fast)",
+        %"--no-asm-labels\t\t\t(grades: none, reg, jump, fast)",
+        "--asm-labels\t\t\t(grades: asm_fast)",
+        "--no-asm-labels\t\t\t(grades: none, reg)",
         "\tSpecify whether or not to use GNU C's",
         "\tasm extensions for inline assembler labels.",
         "\tThis option is ignored if the `--high-level-code' option is",
         "\tenabled.",
-        "--pic-reg\t\t\t(grade modifier: `.pic_reg')",
-        "[For Unix with intel x86 architecture only]",
-        "\tSelect a register usage convention that is compatible,",
-        "\twith position-independent code (gcc's `-fpic' option).",
-        "\tThis is necessary when using shared libraries on Intel x86",
-        "\tsystems running Unix.  On other systems it has no effect.",
+        % This option is a developer only option.
+        %"--pic-reg\t\t\t(grade modifier: `.pic_reg')",
+        %"[For Unix with intel x86 architecture only]",
+        %"\tSelect a register usage convention that is compatible,",
+        %"\twith position-independent code (gcc's `-fpic' option).",
+        %"\tThis is necessary when using shared libraries on Intel x86",
+        %"\tsystems running Unix.  On other systems it has no effect.",
         "--stack-segments\t\t(grade modifier: `.stseg')",
         "\tSpecify whether to use dynamically sized stacks that are",
         "\tcomposed of small segments.  This can help to avoid stack",
@@ -4618,7 +4635,8 @@ options_help_compilation_model -->
 %       "-H, --high-level-code\t\t\t(grades: hl_nest, hlc_nest)",
 % The ilc grade is not documented because it is not useful;
 % it has been superceded by the il grade.
-        "-H, --high-level-code\t\t\t(grades: hl, hlc, il, csharp, java)",
+        %"-H, --high-level-code\t\t\t(grades: hl, hlc, il, csharp, java)",
+        "-H, --high-level-code\t\t\t(grades: hlc, csharp, java)",
         "\tUse an alternative back-end that generates high-level code",
         "\trather than the very low-level code that is generated by our",
         "\toriginal back-end.",
@@ -4626,10 +4644,10 @@ options_help_compilation_model -->
 % because the --gcc-nested-functions option is not yet documented.
 % because it is not yet supported
 %       "--high-level-data\t\t\t(grades: hl, hl_nest, il, csharp, java)",
-        "--high-level-data\t\t\t(grades: hl, il, csharp, java)",
+        "--high-level-data\t\t\t(grades: csharp, java)",
         "\tUse an alternative higher-level data representation.",
 %       "--high-level\t\t\t(grades: hl, hl_nest, il, csharp, java)",
-        "--high-level\t\t\t(grades: hl, il, csharp, java)",
+        "--high-level\t\t\t(grades: csharp, java)",
         "\tAn abbreviation for `--high-level-code --high-level-data'."
 % The --gcc-nested-functions option is not yet documented,
 % because it doesn't pass our test suite, and it is
@@ -5507,8 +5525,8 @@ options_help_target_code_compilation -->
         "\tEnable debugging of the generated target code.",
         "\tIf the target language is C, this has the same effect as",
         "\t`--c-debug' (see below).",
-        "\tIf the target language is IL or C#, this causes the compiler to",
-        "\tpass `/debug' to the IL assembler or C# compiler.)",
+        "\tIf the target language is C#, this causes the compiler to",
+        "\tpass `/debug' to the C# compiler.)",
 
         "--cc <compiler-name>",
         "\tSpecify which C compiler to use.",

@@ -3287,15 +3287,15 @@ AC_SUBST([SYMPREFIX])
 # BEST_LLDS_BASE_GRADE is the most efficient of the LLDS->C base grades
 # that can be supported.  If the user explicitly chooses a base grade
 # using --with-llds-base-grade then we use that instead.
+#
+# NOTE: the base grade can also be one of asm_jump, fast and jump.
+# However, we do not publicly document those grades or encourage their
+# use by non-developers.
 
 AC_ARG_WITH([llds-base-grade],
    AC_HELP_STRING([--with-llds-base-grade=<base_grade>],
           [Force the use of <base_grade> as the base LLDS grade.
-                   This is mainly useful for forcing the source distribution to
-                   compile in a grade other than the one which is chosen
-           automatically.
-                   <base_grade> must be one of asm_fast, asm_jump, fast, jump,
-                   reg or none]),
+          <base_grade> must be one of asm_fast, reg or none]),
    [user_llds_base_grade="$withval";mercury_cv_user_base_grade=yes],
    [mercury_cv_user_base_grade=no]
 )
@@ -3323,24 +3323,14 @@ case "$mercury_cv_user_base_grade" in
             esac
             ;;
     no)
-        if test $mercury_cv_asm_labels = yes; then
-            if test $mercury_cv_gcc_model_fast = yes; then
-                BEST_LLDS_BASE_GRADE=asm_fast
-            else
-                BEST_LLDS_BASE_GRADE=asm_jump
-            fi
-        elif test $mercury_cv_gcc_labels = yes; then
-            if test $mercury_cv_gcc_model_fast = yes; then
-                BEST_LLDS_BASE_GRADE=fast
-            else
-                BEST_LLDS_BASE_GRADE=jump
-            fi
+        if test $mercury_cv_asm_labels = yes -a \
+                $mercury_cv_gcc_model_fast = yes
+        then
+            BEST_LLDS_BASE_GRADE=asm_fast
+        elif test $mercury_cv_gcc_model_reg = yes; then
+            BEST_LLDS_BASE_GRADE=reg
         else
-            if test $mercury_cv_gcc_model_reg = yes; then
-                BEST_LLDS_BASE_GRADE=reg
-            else
-                BEST_LLDS_BASE_GRADE=none
-            fi
+            BEST_LLDS_BASE_GRADE=none
         fi
 
         # We used to force the use of the none base grade if the C compiler
@@ -3512,9 +3502,10 @@ AC_ARG_ENABLE(nogc-grades,
                    [install no-gc versions of the library]),
     enable_nogc_grades="$enableval",enable_nogc_grades=no)
 
-AC_ARG_ENABLE(agc-grades,
-    AC_HELP_STRING([--enable-agc-grades],
-                   [install accurate GC versions of the library]),
+# Not publicly documented since the agc grades are currently broken.
+#
+#  --enable-agc-grades     install accurate GC versions of the library
+AC_ARG_ENABLE(agc-grades, [],
     enable_agc_grades="$enableval",enable_agc_grades=no)
 
 AC_ARG_ENABLE(debug-grades,

@@ -2,9 +2,9 @@ This file documents the port of Mercury to Windows using either the MinGW
 or MinGW64 ports of GCC, i.e. the i686-pc-mingw32 or x86_64-w64-mingw32
 configurations.
 
-NOTE: There are problems with 64-bit executables in some low-level C grades,
-namely the 'asm_fast*' and 'asm_jump*' grades. The 'none*' and 'reg*' grades
-do appear to work correctly in our limited testing.
+NOTE: There are currently problems with 64-bit executalbes in the 'asm_fast*'
+grade.  The 'none*' and 'reg*' grades do appear to work correctly in our
+limited testing.
 
 -----------------------------------------------------------------------------
 
