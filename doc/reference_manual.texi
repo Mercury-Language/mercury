@@ -9964,8 +9964,8 @@ These differ from the @samp{memo} pragma in that
 the detection of what appears to be an infinite recursive loop is not fatal.
 The implementation will consider the apparently infinitely recursive calls
 to fail if the call concerned has no way of computing any solutions
-it hasn't already computed and recorded,
-and it does have such a way, then it switches the execution to explore
+it has not already computed and recorded,
+and if it does have such a way, then it switches the execution to explore
 those ways before coming back to the apparently infinitely recursive call.
 
 Minimal model evaluation is applicable
