@@ -193,6 +193,10 @@
     %
 :- func one = integer.
 
+    % Equivalent to integer(2).
+    %
+:- func two = integer.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -1118,38 +1122,31 @@ big_pow(A, N) =
         integer.one
     ; A = integer.zero ->
         integer.zero
-    ; N = i(_, [Head | Tail]) ->
-        bits_pow_list(Tail, A, bits_pow_head(Head, A))
+    ; N = i(_, [_ | _]) ->
+        big_pow_sqmul(A, N)
     ;
         integer.zero
     ).
 
-:- func bits_pow_head(int, integer) = integer.
+:- func big_pow_sqmul(integer, integer) = integer.
 
-bits_pow_head(H, A) =
-    ( H = 0 ->
-        integer.one
-    ; H /\ lowbitmask = 1 ->
-        A * bits_pow_head(H /\ evenmask, A)
+big_pow_sqmul(A, N) = Res :-
+    ( N = integer.zero ->
+        Res = integer.one
     ;
-        big_sqr(bits_pow_head(H >> 1, A))
-    ).
-
-:- func bits_pow_list(list(int), integer, integer) = integer.
-
-bits_pow_list([], _, Accum) = Accum.
-bits_pow_list([H | T], A, Accum) =
-    bits_pow_list(T, A, bits_pow(log2base, H, A, Accum)).
-
-:- func bits_pow(int, int, integer, integer) = integer.
-
-bits_pow(Shifts, H, A, Accum) =
-    ( Shifts =< 0 ->
-        Accum
-    ; H /\ lowbitmask = 1 ->
-        A * bits_pow(Shifts, H /\ evenmask, A, Accum)
-    ;
-        big_sqr(bits_pow(Shifts - 1, H >> 1, A, Accum))
+        ( N = integer.one ->
+            Res = A
+        ;
+            % if exponent N is even -> Res = A^(N//2) * A^(N//2)
+            ( (N mod integer.two) = integer.zero ->
+                TRes = big_pow_sqmul(A, N // integer.two),
+                Res = TRes * TRes
+            ;
+            % if odd, then Res = A * A^(N - 1)
+                TRes = big_pow_sqmul(A, N - integer.one),
+                Res = A * TRes
+            )
+        )
     ).
 
 :- func big_sqr(integer) = integer.
@@ -1188,6 +1185,8 @@ int_list([H | T], Accum) = int_list(T, Accum * base + H).
 integer.zero = i(0, []).
 
 integer.one = i(1, [1]).
+
+integer.two = i(1, [2]).
 
 %---------------------------------------------------------------------------%
 %
