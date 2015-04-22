@@ -50,6 +50,57 @@ case $extend_stacks,$stack_segments in true,true)
 esac
 
 #
+# stack segments not compatible with high-level code
+#
+case $highlevel_code,$stack_segments in true,true)
+	echo "--high-level-code and --stack-segments are not compatible" 1>&2
+	exit 1 ;;
+esac
+
+#
+# .debug grades are not compatible with high-level code
+#
+case $highlevel_code,$debug in true,true)
+	echo "--high-level-code and --debug are not compatible" 1>&2
+	exit 1 ;;
+esac
+
+#
+# .decldebug grades are not compatible with high-level code
+#
+case $highlevel_code,$decl_debug in true,true)
+	echo "--high-level-code and --decl-debug are not compatible" 1>&2
+	exit 1 ;;
+esac
+
+#
+# .profdeep grades are not compatible with high-level code
+#
+case $highlevel_code,$profile_deep in true,true)
+	echo "--high-level-code and --deep-profiling are not compatible" 1>&2
+	exit 1 ;;
+esac
+
+#
+# The none-C backends do not support single-precision floats, time profiling or
+# memory profiling.
+#
+case $target in il|csharp|java|erlang)
+	case $single_prec_float in true)
+		echo "--single-prec-float and --target $target are not compatible" 1>&2
+		exit 1 ;;
+	esac
+	case $profile_time in true)
+		echo "--profile-time and --target $target are not compatible" 1>&2
+		exit 1 ;;
+	esac
+	case $profile_memory in true)
+		echo "--profile-memory and --target $target are not compatible" 1>&2
+		exit 1 ;;
+	esac
+esac
+
+#
 # --decl-debug implies --debug
 #
 case $decl_debug in true)
@@ -71,10 +122,15 @@ case $target in il|csharp|java|erlang)
 esac
 
 #
-# --target IL, C#, Java, Erlang implies --gc automatic
+# --target IL, C#, Java, Erlang implies --gc automatic.
+# NOTE: the .par grade component is meaningless for the non-C backends,
+# so we set it to false if they are being used.  This avoids having to
+# deal with grades like "java.par".
 #
 case $target in il|csharp|java|erlang)
-	gc_method=automatic ;;
+	gc_method=automatic
+	thread_safe=false
+	;;
 esac
 
 #
