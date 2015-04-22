@@ -4518,7 +4518,7 @@ options_help_compilation_model -->
         "\tEnable experimental complexity analysis for the predicates",
         "\tlisted in the given file.",
         "\tThis option is supported for the C back-end, with",
-        "\t--no-highlevel-code.",
+        "\t`--no-highlevel-code'.",
 
         "--threadscope\t\t(grade modifier: `.threadscope')",
         "\tEnable support for profiling parallel execution.",
@@ -4621,8 +4621,8 @@ options_help_compilation_model -->
         "\tSpecify whether to use dynamically sized stacks that are",
         "\tcomposed of small segments.  This can help to avoid stack",
         "\texhaustion at the cost of increased execution time.",
-        "\tThis option is ignored if the `--high-level-code' option is",
-        "\tenabled."
+        "\tThis option is not supported by the `--high-level-code'",
+        "\tback-ends."
         % This is a developer only option.
 %       "--use-float-registers",
 %       "(This option is not for general use.)",

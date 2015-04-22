@@ -8006,7 +8006,7 @@ Specify whether use dynamically sized stacks that are composed of small
 segments.
 This can help to avoid stack exhaustion at the cost of increased
 execution time.
-This option is ignored if the @samp{--high-level-code} option is enabled.
+This option is not supported by the @samp{--high-level-code} back-ends.
 @end table
 
 @node MLDS back-end compilation model options
