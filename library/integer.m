@@ -185,6 +185,19 @@
 :- func int(integer) = int.
 :- pragma obsolete(int/1).
 
+    % True if the argument is equal to integer.zero.
+    %
+:- pred is_zero(integer::in) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Constants.
+%
+
+    % Equivalent to integer(-1).
+    %
+:- func negative_one = integer.
+
     % Equivalent to integer(0).
     %
 :- func zero = integer.
@@ -196,6 +209,10 @@
     % Equivalent to integer(2).
     %
 :- func two = integer.
+
+    % Equivalent to integer(10).
+    %
+:- func ten = integer.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -416,10 +433,6 @@ neg_list([H | T], [-H | NT]) :-
 
 big_isnegative(i(Sign, _)) :- Sign < 0.
 
-:- pred big_iszero(integer::in) is semidet.
-
-big_iszero(i(0, [])).
-
 :- func big_neg(integer) = integer.
 
 big_neg(i(S, Digits0)) = i(-S, Digits) :-
@@ -468,7 +481,7 @@ big_mod(X, Y) = Mod :-
 :- func big_right_shift(integer, int) = integer.
 
 big_right_shift(X, I) =
-    ( big_iszero(X) ->
+    ( is_zero(X) ->
         X
     ; big_isnegative(X) ->
         \ pos_right_shift(\ X, I)
@@ -505,7 +518,7 @@ rightshift(Mod, InvMod, i(Len, [H | T]), Carry) = Integer :-
 :- func big_left_shift(integer, int) = integer.
 
 big_left_shift(X, I) =
-    ( big_iszero(X) ->
+    ( is_zero(X) ->
         X
     ; big_isnegative(X) ->
         big_neg(pos_left_shift(big_neg(X), I))
@@ -672,9 +685,9 @@ pos_cmp(X, Y) = Result :-
 :- func big_plus(integer, integer) = integer.
 
 big_plus(X, Y) = Sum :-
-    ( X = integer.zero ->
+    ( is_zero(X) ->
         Sum = Y
-    ; Y = integer.zero ->
+    ; is_zero(Y) ->
         Sum = X
     ;
         AbsX = big_abs(X),
@@ -923,9 +936,9 @@ pos_mul_list([X | Xs], Carry, Y) =
     integer::out) is det.
 
 big_quot_rem(X, Y, Quot, Rem) :-
-    ( big_iszero(Y) ->
+    ( is_zero(Y) ->
         throw(math.domain_error("integer.big_quot_rem: division by zero"))
-    ; big_iszero(X) ->
+    ; is_zero(X) ->
         Quot = integer.zero,
         Rem  = integer.zero
     ;
@@ -1182,11 +1195,24 @@ integer.int(Integer) = integer.det_to_int(Integer).
 int_list([], Accum) = Accum.
 int_list([H | T], Accum) = int_list(T, Accum * base + H).
 
-integer.zero = i(0, []).
+%---------------------------------------------------------------------------%
 
-integer.one = i(1, [1]).
+is_zero(i(0, [])).
 
-integer.two = i(1, [2]).
+%---------------------------------------------------------------------------%
+%
+% Constants.
+%
+
+negative_one = i(-1, [-1]).
+
+zero = i(0, []).
+
+one = i(1, [1]).
+
+two = i(1, [2]).
+
+ten = i(1, [10]).
 
 %---------------------------------------------------------------------------%
 %
