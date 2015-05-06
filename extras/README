@@ -59,6 +59,9 @@ mopenssl	A Mercury binding to the openssl library.
 
 morphine	A trace analysis system for Mercury.
 
+mp_int		A multi-precision integer type based on a binding to the
+		library libtommath.
+
 net		A network library which uses the standard library stream
 		interface.
 
