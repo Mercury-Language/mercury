@@ -2,7 +2,9 @@
 " Language:     Mercury
 " Maintainer:   Sebastian Godelet <sebastian.godelet@outlook.com>
 " Extensions:   *.m *.moo
-" Last Change:  2015-04-07
+" Last Change:  2015-04-16
+
+" for documentation, please use :help mercury-syntax
 
 if exists("b:current_syntax")
   finish
@@ -11,9 +13,10 @@ let b:current_syntax = "mercury"
 
   " Mercury is case sensitive.
 syn case match
-set synmaxcol=100
 
-if has("folding") && (!exists("mercury_no_folding") || !mercury_no_folding)
+set synmaxcol=250
+
+if has("folding") && exists("mercury_folding") && mercury_folding
     " folding is only changed (if not forced) if the Vim default (manual) is active,
     " this avoids conflicts with existing user settings
   if (&fdm == "manual") || (exists("mercury_folding_force") && mercury_folding_force)
@@ -29,7 +32,7 @@ endif
 syn match mercurySingleton      "\v<_([A-Z][a-z_A-Z0-9]*)?>"
 syn keyword mercuryKeyword      any_func
 syn keyword mercuryKeyword      any_pred
-syn keyword mercuryKeyword      atomic
+syn keyword mercuryLogical      atomic
 syn keyword mercuryKeyword      cc_multi
 syn keyword mercuryKeyword      cc_nondet
 syn keyword mercuryKeyword      det
@@ -52,30 +55,30 @@ syn keyword mercuryKeyword      module
 syn keyword mercuryKeyword      multi
 syn keyword mercuryKeyword      mutable
 syn keyword mercuryKeyword      nondet
-syn keyword mercuryKeyword      or_else
+syn keyword mercuryLogical      or_else
 syn keyword mercuryKeyword      pragma
 syn keyword mercuryKeyword      pred
 syn keyword mercuryKeyword      promise
-syn keyword mercuryKeyword      require_cc_multi
-syn keyword mercuryKeyword      require_cc_nondet
-syn keyword mercuryKeyword      require_complete_switch
-syn keyword mercuryKeyword      require_det
-syn keyword mercuryKeyword      require_erroneous
-syn keyword mercuryKeyword      require_failure
-syn keyword mercuryKeyword      require_multi
-syn keyword mercuryKeyword      require_nondet
-syn keyword mercuryKeyword      require_semidet
-syn keyword mercuryKeyword      require_switch_arms_cc_multi
-syn keyword mercuryKeyword      require_switch_arms_cc_nondet
-syn keyword mercuryKeyword      require_switch_arms_det
-syn keyword mercuryKeyword      require_switch_arms_erroneous
-syn keyword mercuryKeyword      require_switch_arms_failure
-syn keyword mercuryKeyword      require_switch_arms_multi
-syn keyword mercuryKeyword      require_switch_arms_nondet
-syn keyword mercuryKeyword      require_switch_arms_semidet
+syn keyword mercuryPragma       require_cc_multi
+syn keyword mercuryPragma       require_cc_nondet
+syn keyword mercuryPragma       require_complete_switch
+syn keyword mercuryPragma       require_det
+syn keyword mercuryPragma       require_erroneous
+syn keyword mercuryPragma       require_failure
+syn keyword mercuryPragma       require_multi
+syn keyword mercuryPragma       require_nondet
+syn keyword mercuryPragma       require_semidet
+syn keyword mercuryPragma       require_switch_arms_cc_multi
+syn keyword mercuryPragma       require_switch_arms_cc_nondet
+syn keyword mercuryPragma       require_switch_arms_det
+syn keyword mercuryPragma       require_switch_arms_erroneous
+syn keyword mercuryPragma       require_switch_arms_failure
+syn keyword mercuryPragma       require_switch_arms_multi
+syn keyword mercuryPragma       require_switch_arms_nondet
+syn keyword mercuryPragma       require_switch_arms_semidet
 syn keyword mercuryKeyword      semidet
 syn keyword mercuryKeyword      solver
-syn keyword mercuryKeyword      trace
+syn keyword mercuryPurity       trace
 syn keyword mercuryKeyword      type
 syn keyword mercuryKeyword      typeclass
 syn keyword mercuryKeyword      use_module
@@ -141,7 +144,7 @@ syn match   mercuryOperator     "//"          " (integer) divide
 syn match   mercuryDelimiter    ","           " list seperator or conjunction
 syn match   mercuryOperator     "-"           " substraction operator or unary minus
 syn match   mercuryOperator     "="           " unification
-syn match   mercuryOperator     "|"           " cons
+syn match   mercuryDelimiter    "|"           " cons
 syn match   mercuryImplication  "->"          " 'then' arrow
 syn match   mercuryOperator     "-->"         " DCG clause
 syn match   mercuryOperator     "--->"        " 'typedef'
@@ -169,16 +172,16 @@ syn match   mercuryOperator     "\~="
 syn match   mercuryOperator     ":="         " field update
 syn match   mercuryOperator     ":-"         " reverse implication
 syn match   mercuryOperator     "=:="        " Structural equality (for Prolog)
-syn match   mercuryOperator     "![:.]\?"    " State variable accessors
+syn match   mercuryPurity       "![:.]\?"    " State variable accessors
 syn match   mercuryImplication  ";"          " Disjunction
 syn match   mercuryOperator     "+"          " addition operator or unary plus
 syn match   mercuryOperator     "++"         " concatenation
 syn match   mercuryOperator     ":"
-syn match   mercuryOperator     "::"         " Type/Mode specifier
+syn match   mercuryDelimiter    "::"         " Type/Mode specifier
 syn match   mercuryOperator     "&"          " Parallel conjuction
 syn match   mercuryOperator     "?-"         " Prolog compatability
 syn match   mercuryOperator     "*"          " multiply
-syn match   mercuryOperator     "\^"         " field access
+syn match   mercuryDelimiter    "\^"         " field access
 syn match   mercuryOperator     /\v`[^`']+`/ " inlined operator
 syn match   mercuryImplication  "<=>\|<=\|=>"
 syn match   mercuryNumCode /\v<(0'.|0b[01]+|0o[0-7]+|0x\x+|[0-9]+)/
@@ -202,14 +205,13 @@ syn match   mercuryStringEsc    /\v\\x\x+\\/           contained
 syn match   mercuryStringEsc    /\v\\[0-7][0-7]+\\/    contained
 syn match   mercuryStringEsc    /\v""/ contained
   " matching unbalanced brackets (before "mercuryTerm", "mercuryBlock", ...)
-  " TODO: Verify if contained is required
-syn match mercuryErrInAny       "(\|\[{\|}\|\]\|)"  " contained
+syn match mercuryErrInAny       "(\|\[{\|}\|\]\|)"
 syn match mercuryTerminator     "\v\.(\s+|$)@=" " after mercuryErrInAny
 syn match mercuryOperator       "\.\."          " after mercuryTerminator
 
   " see "https://github.com/Twinside/vim-haskellConceal"
   " see "http://rapidtables.com/math/symbols/Basic_Math_Symbols.htm"
-if has("conceal") && (!exists("mercury_no_conceal") || !mercury_no_conceal)
+if has("conceal") && exists("mercury_conceal") && mercury_conceal
   hi clear Conceal
   hi def link Conceal mercuryOperator
   setlocal conceallevel=2
@@ -279,7 +281,7 @@ syn region  mercuryForeignModList matchgroup=mercuryBracket start='\[' end=']'
       \ mercuryDelimiter,@mercuryComments,@mercuryFormatting,
       \ mercuryString,mercuryOperator,mercuryBlock
 
-syn match mercuryClauseHead /\v^[a-z][a-zA-Z0-9_]*[(]@=/
+syn match mercuryClauseHead /\v^[a-zA-Z][a-zA-Z0-9_.]*[( =]@=/
 
 if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
     " Basic syntax highlighting for foreign code
@@ -311,8 +313,9 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
 
     " C-Style syntax as a basis for C, C# and Java
   syn keyword mercuryCLikeKeyword contained if else goto switch case for while
-  syn keyword mercuryCLikeKeyword contained do break continue return volatile
-  syn keyword mercuryCLikeKeyword contained extern typedef static default
+  syn keyword mercuryCLikeKeyword contained do break continue return
+  syn keyword mercuryCLikeType contained const static volatile extern typedef
+  syn keyword mercuryCLikeKeyword contained default
   syn keyword mercuryCLikeType contained void int char long byte unsigned signed
   syn keyword mercuryCLikeType contained struct float double enum
   syn match mercuryCLikeDelimiter ";\|," contained
@@ -332,7 +335,7 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   syn cluster mercuryCLike add=@mercuryFormatting
 
     " C-Language formatting with Mercury types MR_*
-  syn keyword mercuryCType contained const size_t pid_t offset_t union
+  syn keyword mercuryCType contained size_t pid_t offset_t union
   syn keyword mercuryCType contained MR_bool MR_Bool
   syn keyword mercuryCType contained MR_Word MR_Integer MR_Unsigned
   syn keyword mercuryCType contained MR_ArrayPtr MR_Float MR_file MercuryFile[Ptr]
@@ -340,7 +343,7 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   syn match mercuryCType "\v<MR_((Pseudo)?TypeInfo|Construct_Info|TypeCtor(Desc|Info)|AllocSiteInfoPtr)|MercuryLock>" contained
   syn match mercuryCType "\v<(MR_)?[u]?int(_least|_fast)?(8|16|32|64)_t>" contained
   syn match mercuryForeignIface "\v<(MR_)?[U]?INT(_LEAST|_FAST)?(8|16|32|64)_(TYPE|LENGTH_MODIFIER)>" contained
-  syn keyword mercuryCKeyword contained typedef sizeof typeof offsetof
+  syn keyword mercuryCKeyword contained sizeof typeof offsetof
   syn keyword mercuryCConst contained NULL EOF
   syn keyword mercuryCConst contained CHAR_BIT CHAR_MAX CHAR_MIN
   syn keyword mercuryCConst contained SCHAR_BIT SCHAR_MAX SCHAR_MIN
@@ -365,6 +368,7 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   syn keyword mercuryCppLikeKeyword contained class new delete try catch finally
         \ instanceof abstract throw[s] extends this super base synchronize[d]
         \ override foreach in using import ref implements
+    " sg - match true and false in foreign (Java/C#) code as boolean types
   syn keyword mercuryCppLikeBool contained true false
   syn keyword mercuryCppLikeConst contained null[ptr]
   syn match mercuryCppLikeOperator "@" contained
@@ -410,7 +414,7 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
     " Declaration for Erlang
   syn keyword mercuryErlangKeyword contained after and andalso band begin bnot bor bsl bsr bxor case
         \ catch cond end fun if let not of orelse query receive throw try when xor
-  syn keyword mercuryErlangBool true false
+  " syn keyword mercuryErlangBool true false
   syn match mercuryErlangExtNumLiteral "\v([2-9]|[12][0-9]|3[0-6])#[A-Za-z0-9]+" contained
   syn match mercuryErlangOperator "\v[?]" contained
   syn match mercuryErlangLogical "\v[,;.]" contained
@@ -457,59 +461,25 @@ if !exists("mercury_no_highlight_tabs") || !mercury_no_highlight_tabs
   syn cluster mercuryFormatting add=mercuryWhitespace
 endif
 
-  " Comment handling
-syn match mercuryCommentFirstSpace contained "\v[%*]@<=[ ]{1}([\t ]*[\n])@!"
-      \ nextgroup=@mercuryCommentSpecialLines
-syn match mercuryCommentInfo contained "\v(Main |Original )?[Aa]uthor[s]?[^\n:]*[:]@="
-      \ nextgroup=mercuryCommentOp
-syn match mercuryCommentInfo contained "\v(File|Created on|Date|Source|Stability)[:]@="
-      \ nextgroup=mercuryCommentOp
-
-syn keyword mercuryToDo contained XXX TODO NOTE[_TO_IMPLEMENTORS] MISSING HACK
-      \ nextgroup=mercuryCommentOp
-syn keyword mercuryToDo contained HINT WARNING IMPORTANT
-      \ nextgroup=mercuryCommentOp
-
-  " End of special file markers
-syn match mercuryCommentOp contained ": " nextgroup=@mercuryStability
-
-syn match mercuryCopyrightYear "\v (19|20)[0-9][0-9]([, -]+(19|20)[0-9][0-9])*" contained
-if has("conceal") && (!exists("mercury_no_conceal") || !mercury_no_conceal)
-  syn match mercuryCopyrightSymbol "\v\([cC]\)|©" conceal cchar=© contained nextgroup=mercuryCopyrightYear
-else
-  syn match mercuryCopyrightSymbol "\v\([cC]\)|©" contained nextgroup=mercuryCopyrightYear
-endif
-syn match mercuryCommentInfo "\vCopyright " contained nextgroup=mercuryCopyrightSymbol
-
-  " Matching Vim modeline
-syn match mercuryModelineParam contained "\v<(sw|ts|tw|wm|ff|ft|et|expandtab)>"
-syn match mercuryModelineValue contained "\v<(mercury|unix)>"
-syn region mercuryModeline contained matchgroup=mercuryCommentToken start="vim:" end="\v[\n]@="
-      \ oneline contains=mercuryModelineParam,mercuryModelineValue,mercuryNumCode,
-      \ mercuryOperator
-
-  " Highlights the output of the Mercury error command (in extras)
-syn match mercuryCommentErr "\v(\* )@<=###[ ]@=" contained
-
-  " Indicates stability of the module with colours (red, yellow, green)
-syn keyword mercuryStabilityLow    contained low    nextgroup=mercuryStabilityTo
-syn keyword mercuryStabilityMedium contained medium nextgroup=mercuryStabilityTo
-syn keyword mercuryStabilityHigh   contained high
-syn match mercuryStabilityTo "\v-| to " contained nextgroup=@mercuryStability
-
-  " Matches file names, email, file and http addresses (on a best effort basis).
-  " This avoids spell checking on those,
-  " and could also be used for plug-in development to open a browser, etc.
-syn match mercuryCommentUri contained "\v<[-0-9a-zA-Z.+_]+[@][-0-9a-zA-Z.+_]+\.[a-zA-Z]{2,10}>"
-syn match mercuryCommentUri contained "\v<(http[s]?|file)://[^ ><]+>"
-syn match mercuryCommentUri contained "\v<([a-z][a-z0-9._]+[/])*[a-z][a-z0-9._]+[.]m>"
-
-syn cluster mercuryStability contains=mercuryStabilityLow,mercuryStabilityMedium,mercuryStabilityHigh
-syn cluster mercuryCommentSpecialLines contains=mercuryCommentInfo,mercuryModeLine
-syn cluster mercuryCommentDirectives contains=@Spell,mercuryToDo,mercuryCommentFirstSpace
-syn cluster mercuryCommentDirectives add=mercuryCommentUri
-
 if exists("mercury_highlight_comment_special") && mercury_highlight_comment_special
+  syn keyword mercuryToDo contained XXX TODO NOTE[_TO_IMPLEMENTORS] MISSING HACK
+        \ nextgroup=mercuryCommentOp
+  syn keyword mercuryToDo contained HINT WARNING IMPORTANT
+        \ nextgroup=mercuryCommentOp
+  syn match mercuryCommentOp contained ": "
+
+  syn cluster mercuryCommentDirectives contains=@Spell,mercuryToDo,mercuryCommentUri
+
+    " Highlights the output of the Mercury error command (in extras)
+  syn match mercuryCommentErr "\v(\* )@<=###[ ]@=" contained
+
+    " Matches file names, email, file and http addresses (on a best effort basis).
+    " This avoids spell checking on those,
+    " and could also be used for plug-in development to open a browser, etc.
+  syn match mercuryCommentUri contained "\v<[-0-9a-zA-Z.+_]+[@][-0-9a-zA-Z.+_]+\.[a-zA-Z]{2,10}>"
+  syn match mercuryCommentUri contained "\v<(http[s]?|file)://[^ ><]+>"
+  syn match mercuryCommentUri contained "\v<([a-z][a-z0-9._]+[/])*[a-z][a-z0-9._]+[.]m>"
+
   syn match mercuryCommentSlash "/" contained nextgroup=mercuryCommentArity
   syn match mercuryCommentArity "\v\d+" contained
   syn match mercuryCommentSingleQuote /\v'[A-Za-z._0-9()]+'/ contained nextgroup=mercuryCommentSlash
@@ -538,10 +508,12 @@ if exists("mercury_highlight_comment_special") && mercury_highlight_comment_spec
         \ start="\v`[^`]@=" end="\v'" nextgroup=mercuryCommentSlash
   syn region mercuryCommentTexDblQuote start="``" end="''" oneline contained
         \ contains=@Spell
+  syn region mercuryCommentVimLine contained start="\vvim[:]" end="\v[\n]@="
 
-  syn cluster mercuryCommentSpecialLines add=mercuryCommentHeader
+  syn cluster mercuryCommentDirectives add=mercuryCommentHeader
   syn cluster mercuryCommentDirectives add=mercuryCommentSingleQuote
   syn cluster mercuryCommentDirectives add=@mercuryCommentTex
+  syn cluster mercuryCommentDirectives add=mercuryCommentVimLine
   syn cluster mercuryCommentTex contains=mercuryCommentTexDblQuote
   syn cluster mercuryCommentTex contains=mercuryCommentTexSingleQuote
 endif
@@ -568,7 +540,7 @@ else
   hi def link mercuryCppLikeComment Normal
   hi def link mercuryLeadTrailStar  Comment
 
-  syn match mercuryLeadTrailStar contained "^\v[ \t]*[*]+|[*]+$" nextgroup=mercuryCommentFirstSpace
+  syn match mercuryLeadTrailStar contained "^\v[ \t]*[*]+|[*]+$"
   syn region mercuryComment matchgroup=mercuryCommentToken start=/%[-=%*_]*/ end=/\v[\n]@=/ oneline
         \ contains=@mercuryCommentDirectives,@mercuryFormatting
   syn region mercuryCComment matchgroup=mercuryCommentToken start="\v/\*" end="\v[*]+/" keepend fold
@@ -595,10 +567,8 @@ syn sync clear
 syn sync match mercurySync grouphere NONE "\v^[%]------"
 
 hi def link mercuryAccess           Identifier
-hi def link mercurySingleton        Identifier
 hi def link mercuryAtom             Constant
 hi def link mercuryBracket          Delimiter
-hi def link mercuryBool             Special
 hi def link mercuryClauseHead       Statement
 hi def link mercuryCommentErr       ErrorMsg
 hi def link mercuryCommentToken     Comment
@@ -610,10 +580,9 @@ if exists("mercury_highlight_comment_special") && mercury_highlight_comment_spec
   hi def link mercuryCommentSingleQuote  String
   hi def link mercuryCommentTexDblQuote  String
   hi def link mercuryCommentTexSingleQuote  String
+  hi def link mercuryCommentVimLine mercuryComment
 endif
 hi def link mercuryCommentOp        Operator
-hi def link mercuryCopyrightSymbol  Operator
-hi def link mercuryCopyrightYear    Constant
 hi def link mercuryCInterface       mercuryPragma
 if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   hi def link mercuryForeignId        Identifier
@@ -631,7 +600,7 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   hi def link mercuryCFunc            Identifier
   hi def link mercuryCKeyword         Keyword
   hi def link mercuryCStringFmt       mercuryStringFmt
-  hi def link mercuryCType            Type
+  hi def link mercuryCType            mercuryForeignType
   hi def link mercuryCPreProc         mercuryPragma
   hi def link mercuryCppLikeBool      mercuryBool
   hi def link mercuryCppLikeConst     Constant
@@ -643,42 +612,37 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   hi def link mercuryCSharpString     String
   hi def link mercuryCSharpStringFmt  mercuryStringFmt
   hi def link mercuryCSharpStringFmtEsc mercuryStringEsc
-  hi def link mercuryCSharpType       Type
+  hi def link mercuryCSharpType       mercuryForeignType
   hi def link mercuryJavaBool         mercuryBool
-  hi def link mercuryJavaType         Type
-  hi def link mercuryILType           Type
+  hi def link mercuryJavaType         mercuryForeignType
+  hi def link mercuryILType           mercuryForeignType
   hi def link mercuryErlangKeyword    Keyword
   hi def link mercuryErlangOperator   Operator
   hi def link mercuryErlangBool       mercuryBool
   hi def link mercuryErlangExtNumLiteral Number
   hi def link mercuryErlangString     String
   hi def link mercuryErlangLogical    mercuryLogical
+  if exists("mercury_highlight_extra") && mercury_highlight_extra
+    hi def link mercuryForeignType  Type
+  else
+    hi def link mercuryForeignType  Normal
+  endif
 endif
 hi def link mercuryDelimiter        Delimiter
 hi def link mercuryPurity           Special
 hi def link mercuryImplKeyword      Identifier
 hi def link mercuryKeyword          Keyword
-hi def link mercuryModelineParam    Identifier
-hi def link mercuryModelineValue    Constant
 hi def link mercuryNumCode          Number
 hi def link mercuryFloat            Float
 hi def link mercuryPragma           PreProc
 hi def link mercuryForeignMod       mercuryForeignIface
 hi def link mercuryForeignOperator  Operator
-hi def link mercuryForeignIface     Identifier
+hi def link mercuryForeignIface     PreProc
 hi def link mercuryImplication      Special
 hi def link mercuryLogical          Special
 hi def link mercuryEscErr           ErrorMsg
 hi def link mercuryErrInAny         ErrorMsg
-hi def link mercuryOperator         Operator
 hi def link mercuryInlined          Operator
-hi def mercuryStabilityLow     ctermfg=red        guifg=red        term=bold
-      \ cterm=bold gui=bold
-hi def mercuryStabilityMedium  ctermfg=darkyellow guifg=darkyellow term=bold
-      \ cterm=bold gui=bold
-hi def mercuryStabilityHigh    ctermfg=darkgreen  guifg=darkgreen  term=bold
-      \ cterm=bold gui=bold
-hi def link mercuryStabilityTo      Delimiter
 hi def link mercuryString           String
 hi def link mercuryStringEsc        Identifier
 hi def link mercuryStringFmt        Special
@@ -687,3 +651,8 @@ hi def link mercuryTooLong          ErrorMsg
 hi def link mercuryWhitespace       mercuryTodo
 hi def link mercuryTerminator       Delimiter
 hi def link mercuryType             Type
+if exists("mercury_highlight_extra") && mercury_highlight_extra
+  hi def link mercuryOperator   Operator
+else
+  hi def link mercuryOperator   Normal
+endif
