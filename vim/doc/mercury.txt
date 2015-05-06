@@ -22,25 +22,28 @@ enabled.
 
     $ mkdir ~/.vim
 <
-2.2. There are two ways to install the support files:
+2.2. For installing the Mercury language support, please change into the `vim'
+directory of your Mercury source distribution (or git clone).
 
-2.2.1 Manual: Copy everything recursively from this directory into `~/.vim' >
+There are two ways to install the support files:
+
+2.2.1 Manual: Copy everything recursively from that directory into `~/.vim' >
 
     $ cp -r . ~/.vim
 <
-2.2.2 Using a Vimball: In this directory, invoke: >
+2.2.2 Using a Vimball: In the aforementioned directory, invoke: >
 
     $ make
     $ make install
 
-3. Ensure you have the following lines in your `~/.vimrc' file: >
+2.3. Ensure you have the following lines in your `~/.vimrc' file: >
 
     filetype on
     filetype plugin on
     syntax enable
 <
-4. It is advisable to have the following file encoding detection lines
-in your ~/.vimrc: >
+2.4. It is advisable to have the following file encoding detection lines
+in your `~/.vimrc': >
 
     if has("multi_byte")
       set encoding=utf-8
@@ -50,29 +53,43 @@ in your ~/.vimrc: >
       endif
     endif
 <
-5. Optionally enable |modeline| detection.  This configures vim to use the
+2.5. Optionally enable |modeline| detection.  This configures Vim to use the
 % vim: lines at the beginning of some source files to configure settings
 local to that file. >
 
     set modeline
 <
-6. If you wish to change the colour scheme used by Vim's |syntax-highlighting|,
+The following |modeline| is recommended:>
+
+    % vim: ft=mercury ff=unix ts=4 sw=4 et
+<
+
+2.6. If you wish to change the colour scheme used by Vim's |syntax-highlighting|,
 we suggest you put the necessary commands in `~/.vim/colors/mycolours.vim'
 and append the following to the above list of commands in your `~/.vimrc': >
 
     colors mycolours
 <
-7. If you want to use Vim's |spell-checking| feature, please insert the
-following directive after the |encoding| setting from 4. >
+2.7. If you want to use Vim's |spell-checking| feature, please insert the
+following directive after the |encoding| setting from 2.4. >
 
     " Spelling (comes after encoding, to reduce load time, see :help spell)
     :setlocal spell spelllang=en_gb
->
+<
 =============================================================================
 3. Filetype plugin                                      *mercury-ftplugin*
 
+If the mercury_highlight_extra option from |mercury-syntax| is enabled,
+following keybindings are active: >
+
+    <C-K>r  for renaming variables, starting with the current name
+    <C-K>R  for renaming variables, starting with an empty name
+    <C-K>m  visually marks the current predicate (for copy & pasting)
+<
 =============================================================================
 4. Mercury commands plugin                              *mercury-commands*
+
+TODO: This is work in progess.
 
 mercury_commands |plugin| provides additional functionality via Vim commands:
                                                                     *:Mmc*
@@ -85,7 +102,7 @@ mercury_commands |plugin| provides additional functionality via Vim commands:
 5. Syntax highlighting                                      *mercury-syntax*
 
 The |syntax-highlighting| for mercury can be customised in several ways,
-in your ~/.vimrc file, you can specify following options:
+in your `~/.vimrc' file, you can specify following options:
 
 The default highlighting for  Mercury comments is to only highlight the
 initial `%' and subsequent `line' punctuation characters, likewise
@@ -99,14 +116,13 @@ highlighted.  To avoid this behaviour, add: >
 
     let mercury_no_highlight_overlong = 1
 <
-If folding is supported by the running Vim version, the setting of the
-preferred folding mode for Mercury (currently indent, as it is the fastest)
-can be disabled by >
+If folding is supported by the running Vim version and you want to
+enable folding for Mercury, you can enable folding by: >
 
-    let mercury_no_folding = 1
+    let mercury_folding = 1
 <
 If you want to force the folding setting to indent (despite a different
-setting in the vimrc file), you can enforce it: >
+setting in the `~/.vimrc' file), you can enforce it: >
 
     let mercury_folding_force = 1
 <
@@ -130,10 +146,10 @@ such as `' or ``'': >
 
     let mercury_highlight_comment_special = 1
 <
-If you use Vim 7.3+ with conceal enabled but do not want any concealing
-of operators, use: >
+If you use Vim 7.3+ with conceal enabled and you want to make use
+of that, declare: >
 
-    let mercury_no_conceal = 1
+    let mercury_conceal = 1
 <
 To enable concealing for characters which require a good Unicode font
 and might be "too much" for some users, define: >
@@ -145,5 +161,15 @@ enable concealing for logical operators, such as <=> => <= some all
 by setting: >
 
     let mercury_conceal_logical = 1
+<
+If you want to enforce 78 wide columns with automatic wrapping in
+comments, you can define: >
+
+    let mercury_coding_standard = 1
+<
+If you prefer highlighting of operators, variables and standard foreign types,
+you can enable this with: >
+
+    let mercury_highlight_extra = 1
 <
 vim:tw=78:ts=4:ft=help:norl:et:

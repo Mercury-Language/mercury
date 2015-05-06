@@ -1,8 +1,10 @@
 " Vim syntax file
 " Language:     Mercury
 " Maintainer:   Sebastian Godelet <sebastian.godelet@outlook.com>
-" Last Change:  2015-04-06
+" Last Change:  2015-04-16
 " vim: ts=2 sw=2 et
+
+" for documentation, please use :help mercury-ftplugin
 
 if exists("b:did_mercury_ftplugin")
   finish
@@ -18,7 +20,7 @@ setlocal tags+=$HOME/mercury/tags.library,$HOME/mercury/tags.compiler
 
   " Handy if you use `:make'.
   "
-setlocal makeprg="mmc -m"
+setlocal makeprg=mmc\ --make
 
   " Don't wrap over-long lines.
   "
@@ -33,70 +35,86 @@ if exists("mercury_coding_standard") && mercury_coding_standard
   setlocal textwidth=78
   if v:version >= 703
     setlocal colorcolumn=+1
-    " Controls how autoindenting works.  See the Vim help pages for details.
-    set fo-=t " do not automatically wrap text
-    set fo+=c " auto wrap comments, using comment leader
-    set fo+=r " automatically insert the comment leader after <CR>
-    set fo+=q " enable tq feature
+      " Controls how auto-indenting works.  See the Vim help pages for details.
+    setlocal fo-=t " do not automatically wrap text
+    setlocal fo+=c " auto wrap comments, using comment leader
+    setlocal fo+=r " automatically insert the comment leader after <CR>
+    setlocal fo+=q " enable tq feature
   endif
   setlocal tabstop=4
   setlocal shiftwidth=4
   setlocal expandtab
 endif
 
-  " It is a good idea to have a modeline comment at the top
-  " of your Mercury source files containing
-  " ` vim: ft=mercury ff=unix ts=4 sw=4 et '
+  " key bindings
 
   " <C-X>l inserts a comment line.
   "
-nnoremap <C-X>l o0<C-D>%--------------------------------------------------------------------------%<CR><ESC>x
-inoremap <C-X>l ----------------------------------------------------------------------------<ESC>78<BAR>C%<CR>
+nnoremap <buffer> <silent> <C-X>l o0<C-D>%---------------------------------------------------------------------------%<CR><ESC>x
 
-  " <F6> attempts to wrap a call up with { } braces for DCG escapes.
-  "
-nnoremap <F6> I{ <ESC>%a }<ESC>j
+if exists("mercury_highlight_extra") && mercury_highlight_extra
+  inoremap <buffer> <silent> <C-K>r <ESC> :call <SID>RenameCurrentVariable(1)<CR>
+  nnoremap <buffer> <silent> <C-K>r :call <SID>RenameCurrentVariable(1)<CR>
 
-  " <F7> and <F8> comment and uncomment lines out respectively.
-  "
-nnoremap <F7> 0i% <ESC>j
-nnoremap <F8> :s/% //e<CR>j
+  inoremap <buffer> <silent> <C-K>R <ESC> :call <SID>RenameCurrentVariable(0)<CR>
+  nnoremap <buffer> <silent> <C-K>R :call <SID>RenameCurrentVariable(0)<CR>
 
-  " <F9> visually selects the current code block (e.g. predicate defintion,
-  " declaration, pragma, bascially everything from (:-|^atom) to terminal .
-  "
-inoremap <F9> <ESC>:call <SID>MarkCurrentPred()<CR>
-nnoremap <F9> :call <SID>MarkCurrentPred()<CR>
+  inoremap <buffer> <silent> <C-K>m <ESC> :call <SID>MarkCurrentPred()<CR>
+  nnoremap <buffer> <silent> <C-K>m :call <SID>MarkCurrentPred()<CR>
 
-  " <C-K>r is for renaming variables, and filling out the current name
-  " <C-K>R is for renaming variables, starting with an empty name
-  "
-inoremap <C-K>r <ESC> :call <SID>RenameCurrentVariable(1)<CR>
-nnoremap <C-K>r :call <SID>RenameCurrentVariable(1)<CR>
-
-inoremap <C-K>R <ESC> :call <SID>RenameCurrentVariable(0)<CR>
-nnoremap <C-K>R :call <SID>RenameCurrentVariable(0)<CR>
+    " Match all the occurrences of the variable under the cursor
+    "
+  augroup mercuryMatchVar
+    autocmd! CursorMoved,CursorMovedI,WinEnter <buffer> call s:HighlightMatchingVariables()
+  augroup END
+endif
 
   " <C-X>h runs `$HOME/.vim/ftplugin/mercuryhdr.sh' which inserts all the
   " usual boilerplate for a new Mercury module.
   "
 if has("win32")
-  nnoremap <C-X>h !!sh "\%userprofile\%\\.vim\\ftplugin\\mercuryhdr.sh" %<CR>:set ft=mercury ff=unix ts=4 sw=4 et<CR>
+  nnoremap <buffer> <silent> <C-X>h !!sh "\%userprofile\%\\.vim\\ftplugin\\mercuryhdr.sh" %<CR>:set ft=mercury ff=unix ts=4 sw=4 et<CR>
 else
-  nnoremap <C-X>h !!$HOME/.vim/ftplugin/mercuryhdr.sh %<CR>:set ft=mercury ff=unix ts=4 sw=4 et<CR>
+  nnoremap <buffer> <silent> <C-X>h !!$HOME/.vim/ftplugin/mercuryhdr.sh %<CR>:set ft=mercury ff=unix ts=4 sw=4 et<CR>
 endif
 
   " Go to the bottom window and rerun the last mmake command.
   " Reload any .err buffers that have changed.
   "
-nnoremap ,m <C-W>b:!make<UP><CR>
+nnoremap <buffer> ,m <C-W>b:!make<UP><CR>
 autocmd! FileChangedShell *.err vi!
 
-  " Match all the occurances of the variable under the cursor
+nnoremap <buffer> <silent> ,p <ESC>O:- pred<space>
+nnoremap <buffer> <silent> ,f <ESC>O:- func<space>
+nnoremap <buffer> <silent> ,t <ESC>O:- type<space>
+nnoremap <buffer> <silent> ,i <ESC>O:- import_module<space>
+nnoremap <buffer> <silent> ,P <ESC>O:- pragma foreign_proc("C",<CR><TAB>(_IO0::di, _IO::uo),<CR>[will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],<CR><BS>"<CR><CR><BS>").<ESC>kkkei
+nnoremap <buffer> <silent> ,M <ESC>O:- mutable(VAR, TYPE, VALUE, ground, [untrailed, attach_to_io_state]).<ESC>2FVcw
+nnoremap <buffer> <silent> ,T <ESC>Otrace [io(!IO)] (<CR>),<ESC>^O<TAB>
+
+nnoremap <buffer> <silent> <C-X>i m':1/^:- interface<CR>jj
+nnoremap <buffer> <silent> <C-X>I m':1/^:- implementation<CR>jj
+
+inoremap <buffer> <silent> <F3> ::in,<space>
+inoremap <buffer> <silent> <F4> ::out,<space>
+inoremap <buffer> <silent> <F5> io::di, io::uo)<space>
+inoremap <buffer> <silent> <F6> is det.
+
+  " In a previous version of the ftplugin, there where these keybindings
+  " defined which are presumably not used that often.
+
+  " <F6> attempts to wrap a call up with { } braces for DCG escapes.
   "
-augroup mercuryMatchVar
-  autocmd! CursorMoved,CursorMovedI,WinEnter <buffer> call s:HighlightMatchingVariables()
-augroup END
+" nnoremap <F6> I{ <ESC>%a }<ESC>j
+
+  " <F7> and <F8> comment and uncomment lines out respectively.
+  "
+  " It might be better to use (and adjust) a common script for this task
+  " http://www.vim.org/scripts/script.php?script_id=2844
+  " TODO: Provide a copy and optionally bundle within vim/Makefile
+  "
+" nnoremap <F7> 0i% <ESC>j
+" nnoremap <F8> :s/% //e<CR>j
 
 fu! s:HighlightMatchingVariables()
     " Avoid that we remove the popup menu.
@@ -126,7 +144,7 @@ fu! s:HighlightMatchingVariables()
         \ l:lineL1PredEnd   == w:lineL1PredEnd
     return
   elseif exists('w:variable_hl_on') && w:variable_hl_on
-    " Remove any previous match.
+      " Remove any previous match.
     2match none
     let w:variable_hl_on = 0
   endif
@@ -156,7 +174,7 @@ endfu
 fu! s:CurrentSynIsRegion(pos)
   if a:pos[0] == 0|return 0|endif
   let l:id = synID(a:pos[0], a:pos[1], 0)
-  " TODO: Also check for mercuryString
+    " TODO: Also check for mercuryString
   return l:id == synIDtrans(l:id) ? 1 : 0
 endfu
 
@@ -193,6 +211,10 @@ fu! s:RenameCurrentVariable(keepName)
   endif
 endfu
 
+  " One can use the following function to visually select the current
+  " code block (e.g. predicate definition, declaration, pragma, etc.), which
+  " might be helpful for refactoring.
+  "
 fu! s:MarkCurrentPred()
   call setpos('.', [0, w:lineL1PredStart, 1])
   normal! v
