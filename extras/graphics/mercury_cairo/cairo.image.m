@@ -68,53 +68,33 @@
 % Image surface creation
 %
 
-:- type maybe_image_surface
-    --->    image_surface_ok(image_surface)
-    ;       image_surface_error(cairo.status).
-
-:- pragma foreign_export("C", make_image_surface_ok(in) = out,
-    "MCAIRO_image_surface_ok").
-:- func make_image_surface_ok(image_surface) = maybe_image_surface.
-
-make_image_surface_ok(Surface) = image_surface_ok(Surface).
-
-:- pragma foreign_export("C", make_image_surface_error(in) = out,
-    "MCAIRO_image_surface_error").
-:- func make_image_surface_error(cairo.status) = maybe_image_surface.
-
-make_image_surface_error(Status) = image_surface_error(Status).
-
 create_surface(Format, Height, Width, Surface, !IO) :-
-    create_surface_2(Format, Height, Width, MaybeSurface, !IO),
-    (
-        MaybeSurface = image_surface_ok(Surface)
+    create_surface_2(Format, Height, Width, Status, Surface, !IO),
+    ( Status = status_success ->
+        true
     ;
-        MaybeSurface = image_surface_error(ErrorStatus),
-        throw(cairo.error("image.create_surface/6", ErrorStatus))
+        throw(cairo.error("image.create_surface/6", Status))
     ).
 
-:- pred create_surface_2(format::in, int::in, int::in,
-    maybe_image_surface::out, io::di, io::uo) is det.
+:- pred create_surface_2(format::in, int::in, int::in, cairo.status::out,
+    image_surface::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    create_surface_2(Fmt::in, H::in, W::in, MaybeSurface::out,
+    create_surface_2(Fmt::in, H::in, W::in, Status::out, Surface::out,
         _IO0::di, _IO::uo), 
     [promise_pure, will_not_call_mercury],
 "
-    MCAIRO_surface      *surface;
     cairo_surface_t		*raw_surface;
-    cairo_status_t      status;
 
     raw_surface = cairo_image_surface_create((cairo_format_t)Fmt,
 		(int)H, (int)W);
-    status = cairo_surface_status(raw_surface);
+    Status = cairo_surface_status(raw_surface);
 
-    switch (status) {
+    switch (Status) {
         case CAIRO_STATUS_SUCCESS:
-            surface = MR_GC_NEW(MCAIRO_surface);
-            surface->mcairo_raw_surface = raw_surface;
-            MR_GC_register_finalizer(surface, MCAIRO_finalize_surface, 0);
-            MaybeSurface = MCAIRO_image_surface_ok(surface);
+            Surface = MR_GC_NEW(MCAIRO_surface);
+            Surface->mcairo_raw_surface = raw_surface;
+            MR_GC_register_finalizer(Surface, MCAIRO_finalize_surface, 0);
             break;
         
         case CAIRO_STATUS_NULL_POINTER:
@@ -123,7 +103,7 @@ create_surface(Format, Height, Width, Surface, !IO) :-
         case CAIRO_STATUS_INVALID_CONTENT:
         case CAIRO_STATUS_INVALID_FORMAT:
         case CAIRO_STATUS_INVALID_VISUAL:
-            MaybeSurface = MCAIRO_image_surface_error(status);
+            Surface = NULL;
             break;
         
         default:

@@ -128,64 +128,41 @@
 % PostScript surface creation
 %
 
-:- type maybe_ps_surface
-    --->    ps_surface_ok(ps_surface)
-    ;       ps_surface_error(cairo.status)
-    ;       ps_surface_unsupported.
-
-:- pragma foreign_export("C", make_ps_surface_ok(in) = out,
-    "MCAIRO_ps_surface_ok").
-:- func make_ps_surface_ok(ps_surface) = maybe_ps_surface.
-
-make_ps_surface_ok(Surface) = ps_surface_ok(Surface).
-
-:- pragma foreign_export("C", make_ps_surface_error(in) = out,
-    "MCAIRO_ps_surface_error").
-:- func make_ps_surface_error(cairo.status) = maybe_ps_surface.
-
-make_ps_surface_error(Status) = ps_surface_error(Status).
-
-:- pragma foreign_export("C", make_ps_surface_unsupported = out,
-    "MCAIRO_ps_surface_unsupported").
-:- func make_ps_surface_unsupported = maybe_ps_surface.
-
-make_ps_surface_unsupported = ps_surface_unsupported.
-
 create_surface(FileName, Height, Width, Surface, !IO) :-
-    create_surface_2(FileName, Height, Width, MaybeSurface, !IO),
+    create_surface_2(FileName, Height, Width, Supported, Status, Surface, !IO),
     (
-        MaybeSurface = ps_surface_ok(Surface)
+        Supported = yes,
+        ( Status = status_success ->
+            true
+        ;
+            throw(cairo.error("svg.create_surface/6", Status))
+        )
     ;
-        MaybeSurface = ps_surface_error(ErrorStatus),
-        throw(cairo.error("ps.create_surface/6", ErrorStatus))
-    ;
-        MaybeSurface = ps_surface_unsupported,
+        Supported = no,
         throw(cairo.unsupported_surface_error("PostScript"))
     ).
 
-:- pred create_surface_2(string::in,
-    float::in, float::in, maybe_ps_surface::out, io::di, io::uo) is det.
+:- pred create_surface_2(string::in, float::in, float::in,
+    bool::out, cairo.status::out, ps_surface::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	create_surface_2(FileName::in, H::in, W::in, MaybeSurface::out,
-		_IO0::di, _IO::uo),
+	create_surface_2(FileName::in, H::in, W::in,
+        Supported::out, Status::out, Surface::out, _IO0::di, _IO::uo),
 	[promise_pure, will_not_call_mercury, tabled_for_io],
 "
 #if defined(CAIRO_HAS_PS_SURFACE)
 
-    MCAIRO_surface      *surface;
     cairo_surface_t		*raw_surface;
-    cairo_status_t      status;
 
+    Supported = MR_YES;
     raw_surface = cairo_ps_surface_create(FileName, H, W);
-    status = cairo_surface_status(raw_surface);
+    Status = cairo_surface_status(raw_surface);
     
-    switch (status) {
+    switch (Status) {
         case CAIRO_STATUS_SUCCESS:
-            surface = MR_GC_NEW(MCAIRO_surface);
-            surface->mcairo_raw_surface = raw_surface;
-            MR_GC_register_finalizer(surface, MCAIRO_finalize_surface, 0);
-            MaybeSurface = MCAIRO_ps_surface_ok(surface);
+            Surface = MR_GC_NEW(MCAIRO_surface);
+            Surface->mcairo_raw_surface = raw_surface;
+            MR_GC_register_finalizer(Surface, MCAIRO_finalize_surface, 0);
             break;
 
         case CAIRO_STATUS_NULL_POINTER:
@@ -194,7 +171,7 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
         case CAIRO_STATUS_INVALID_CONTENT:
         case CAIRO_STATUS_INVALID_FORMAT:
         case CAIRO_STATUS_INVALID_VISUAL:
-            MaybeSurface = MCAIRO_ps_surface_error(status);
+            Surface = NULL;
             break;
 
         default:
@@ -203,7 +180,9 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
     }
 
 #else
-    MaybeSurface = MCAIRO_ps_surface_unsupported();
+    Supported = MR_NO;
+    Status = CAIRO_STATUS_SUCCESS;
+    Surface = NULL;
 #endif
 
 ").
