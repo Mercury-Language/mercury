@@ -24,7 +24,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % image.create_surface(Format, Height, Width, Surface, !IO):
+    % image.create_surface(Format, Width, Height, Surface, !IO):
     % Surface is a new image surface.
     % Throws a cairo.error/0 exception if the surface cannot be created.
     %
@@ -68,8 +68,8 @@
 % Image surface creation
 %
 
-create_surface(Format, Height, Width, Surface, !IO) :-
-    create_surface_2(Format, Height, Width, Status, Surface, !IO),
+create_surface(Format, Width, Height, Surface, !IO) :-
+    create_surface_2(Format, Width, Height, Status, Surface, !IO),
     ( Status = status_success ->
         true
     ;
@@ -80,14 +80,14 @@ create_surface(Format, Height, Width, Surface, !IO) :-
     image_surface::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    create_surface_2(Fmt::in, H::in, W::in, Status::out, Surface::out,
+    create_surface_2(Fmt::in, W::in, H::in, Status::out, Surface::out,
         _IO0::di, _IO::uo), 
     [promise_pure, will_not_call_mercury],
 "
     cairo_surface_t		*raw_surface;
 
     raw_surface = cairo_image_surface_create((cairo_format_t)Fmt,
-		(int)H, (int)W);
+		(int)W, (int)H);
     Status = cairo_surface_status(raw_surface);
 
     switch (Status) {

@@ -28,8 +28,8 @@
     %
 :- pred have_pdf_surface is semidet.
 
-    % pdf.create_surface(FileName, Height, Width, Surface, !IO):
-    % Surface is a PDF surface of the specified Height and Width in points
+    % pdf.create_surface(FileName, Width, Height, Surface, !IO):
+    % Surface is a PDF surface of the specified Width and Height in points
     % to be written to FileName. 
     % Throws an unsupported_surface_error/0 exception if PDF surfaces are
     % not supported by this implementation.  Throws a cairo.error/0 exception
@@ -38,10 +38,10 @@
 :- pred create_surface(string::in, float::in, float::in, pdf_surface::out,
 	io::di, io::uo) is det.
 
-    % pdf.set_size(Surface, Height, Width, !IO):
+    % pdf.set_size(Surface, Width, Height, !IO):
     % Change the size of a PDF surface for the current (and subsequent) pages.
     %
-:- pred set_size(pdf_surface::in, float/*height*/::in, float/*width*/::in,
+:- pred set_size(pdf_surface::in, float::in, float::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -82,8 +82,8 @@
 % PDF surface creation
 %
 
-create_surface(FileName, Height, Width, Surface, !IO) :-
-    create_surface_2(FileName, Height, Width, Supported, Status, Surface, !IO),
+create_surface(FileName, Width, Height, Surface, !IO) :-
+    create_surface_2(FileName, Width, Height, Supported, Status, Surface, !IO),
     (
         Supported = yes,
         ( Status = status_success ->
@@ -100,7 +100,7 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
     bool::out, cairo.status::out, pdf_surface::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	create_surface_2(FileName::in, H::in, W::in,
+	create_surface_2(FileName::in, W::in, H::in,
         Supported::out, Status::out, Surface::out, _IO0::di, _IO::uo),
 	[promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -109,7 +109,7 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
     cairo_surface_t		*raw_surface;
 
     Supported = MR_YES;
-    raw_surface = cairo_pdf_surface_create(FileName, H, W);
+    raw_surface = cairo_pdf_surface_create(FileName, W, H);
     Status = cairo_surface_status(raw_surface);
 
     switch (Status) {
@@ -140,12 +140,12 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    set_size(Surface::in, Height::in, Width::in, _IO0::di, _IO::uo),
+    set_size(Surface::in, Width::in, Height::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
 #if defined(CAIRO_HAS_PDF_SURFACE)
     cairo_pdf_surface_set_size(Surface->mcairo_raw_surface,
-        Height, Width);
+        Width, Height);
 #else
     MR_external_fatal_error(\"Mercury cairo\",
         \"PDF surfaces not supported by this installation\");

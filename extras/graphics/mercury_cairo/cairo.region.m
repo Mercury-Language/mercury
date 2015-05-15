@@ -228,8 +228,8 @@ get_extents(Region, Rectangle, !IO) :-
 ").
 
 get_rectangle(Region, N, Rectangle, !IO) :-
-    get_rectangle_2(Region, N, X, Y, Height, Width, !IO),
-    Rectangle = rectangle(X, Y, Height, Width).
+    get_rectangle_2(Region, N, X, Y, Width, Height, !IO),
+    Rectangle = rectangle(X, Y, Width, Height).
 
 :- pred get_rectangle_2(region::in, int::in, int::out, int::out,
     int::out, int::out, io::di, io::uo) is det.

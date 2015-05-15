@@ -39,8 +39,8 @@
     %
 :- pred have_ps_surface is semidet.
 
-    % ps.create_surface(FileName, Height, Width, Surface, !IO):
-    % Surface is a PostScript surface of the specified Height and Width in
+    % ps.create_surface(FileName, Width, Height, Surface, !IO):
+    % Surface is a PostScript surface of the specified Width and Height in
     % in points to be written to FileName.
     % Throw an unsupported_surface_error/0 exception if PostScript surfaces
     % are not supported by this implementation.  Throws a cairo.error/0
@@ -128,8 +128,8 @@
 % PostScript surface creation
 %
 
-create_surface(FileName, Height, Width, Surface, !IO) :-
-    create_surface_2(FileName, Height, Width, Supported, Status, Surface, !IO),
+create_surface(FileName, Width, Height, Surface, !IO) :-
+    create_surface_2(FileName, Width, Height, Supported, Status, Surface, !IO),
     (
         Supported = yes,
         ( Status = status_success ->
@@ -146,7 +146,7 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
     bool::out, cairo.status::out, ps_surface::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-	create_surface_2(FileName::in, H::in, W::in,
+	create_surface_2(FileName::in, W::in, H::in,
         Supported::out, Status::out, Surface::out, _IO0::di, _IO::uo),
 	[promise_pure, will_not_call_mercury, tabled_for_io],
 "
@@ -155,7 +155,7 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
     cairo_surface_t		*raw_surface;
 
     Supported = MR_YES;
-    raw_surface = cairo_ps_surface_create(FileName, H, W);
+    raw_surface = cairo_ps_surface_create(FileName, W, H);
     Status = cairo_surface_status(raw_surface);
     
     switch (Status) {
