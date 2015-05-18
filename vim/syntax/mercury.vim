@@ -123,6 +123,7 @@ syn keyword mercuryForeignMod   will_not_throw_exception
 syn keyword mercuryForeignMod   terminates
 
 syn keyword mercuryPurity       impure
+syn keyword mercuryPurity       promise_impure
 syn keyword mercuryPurity       promise_pure
 syn keyword mercuryPurity       promise_semipure
 syn keyword mercuryPurity       semipure
@@ -134,6 +135,8 @@ syn keyword mercuryLogical      semidet_fail semidet_false
 syn keyword mercuryLogical      semidet_succeed semidet_true
 syn keyword mercuryLogical      some all not
 syn keyword mercuryLogical      try catch catch_any
+syn keyword mercuryLogical      promise_equivalent_solutions
+syn keyword mercuryLogical      promise_equivalent_solution_sets arbitrary
 
 syn keyword mercuryBool         yes no
 syn keyword mercuryOperator     div rem mod
