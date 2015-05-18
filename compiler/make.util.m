@@ -571,11 +571,13 @@ typedef struct MC_JobCtl MC_JobCtl;
 
 #ifdef MAP_ANONYMOUS
   /*
-  ** Darwin 5.x doesn't implement unnamed POSIX semaphores nor process-shared
-  ** POSIX mutexes; the functions fail when you try to create them.
-  ** System V semaphores do work however.
+  ** Darwin 5.x and FreeBSD do not implement process-shared POSIX mutexes.
+  ** Use System V semaphores instead. As System V semaphores seem to be more
+  ** widely supported we may consider using them exclusively or in preference
+  ** to POSIX mutexes in the future.
   */
-  #if !defined(__APPLE__) && defined(MR_HAVE_PTHREAD_H) && \
+  #if !defined(__APPLE__) && !defined(__FreeBSD__) && \
+        defined(MR_HAVE_PTHREAD_H) && \
         defined(MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED)
     #include <pthread.h>
 

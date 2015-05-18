@@ -3210,6 +3210,14 @@ case "$host" in
         ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
+    *freebsd*)
+        CFLAGS_FOR_THREADS="-DGC_FREEBSD_THREADS"
+        THREAD_LIBS="-lpthread"
+        ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+        avoid_sbrk=yes
+        ;;
+
 ### # The threads stuff on Digital Unix (OSF) is not yet enabled because
 ### # the Boehm garbage collector doesn't support threads on that platform
 ### # XXX probably we should enable it but report an error if you try to
