@@ -2,6 +2,16 @@
 Mercury on FreeBSD
 ==================
 
+FreeBSD 10 / clang
+------------------
+
+We have seen problems with clang 3.3 on FreeBSD 10 x86 and x86_64:
+the Mercury compiler crashes with "Illegal instruction" on some files.
+The problem does not occur when gcc 4.8 is used as the C compiler:
+
+    CC=gcc48 ./configure <your normal configure arguments>
+
+
 GCC 4.2.1 Compatibility
 -----------------------
 
