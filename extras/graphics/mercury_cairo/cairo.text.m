@@ -32,6 +32,13 @@
 
 :- type font_family == string.
 
+:- type glyph
+    --->    glyph(
+                glyph_index :: int,
+                glyph_x     :: float,
+                glyph_y     :: float
+            ).
+
     % The extents of a text string in user-space.
     %
 :- type text_extents
@@ -104,6 +111,10 @@
     % text.show_text(Context, Text, !IO):
     %
 :- pred show_text(context(S)::in, string::in, io::di, io::uo) is det.
+
+    % text.show_glyphs(Context, Glyphs, !IO):
+    %
+:- pred show_glyphs(context(S)::in, list(glyph)::in, io::di, io::uo) is det.
 
 :- pred font_extents(context(S)::in, font_extents::out, io::di, io::uo)
     is det.
@@ -183,7 +194,21 @@ select_font_face(Context, Family, Slant, Weight, !IO) :-
 "
     cairo_show_text(Ctxt->mcairo_raw_context, Text);
 ").
-    
+
+show_glyphs(Ctxt, Glyphs, !IO) :-
+    make_glyph_array(Glyphs, Array, NumGlyphs, !IO),
+    show_glyphs_array(Ctxt, Array, NumGlyphs, !IO).
+
+:- pred show_glyphs_array(context(T)::in, glyph_array::in, int::in,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    show_glyphs_array(Ctxt::in, Array::in, NumGlyphs::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    cairo_show_glyphs(Ctxt->mcairo_raw_context, Array, NumGlyphs);
+").
+
 :- pragma foreign_proc("C",
     set_font_options(Ctxt::in, FntOpts::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],

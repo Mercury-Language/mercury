@@ -119,10 +119,15 @@
 :- pred rectangle(context(T)::in, float::in, float::in, float::in, float::in,
 	io::di, io::uo) is det.
 
-    % path.text_path(Context, Text. !IO):
+    % path.text_path(Context, Text, !IO):
     % Adds closed paths for Text to the current path.
     %
 :- pred text_path(context(T)::in, string::in, io::di, io::uo) is det.
+
+    % path.glyph_path(Context, Glyphs, !IO)
+    % Adds closed paths for the glyphs to the current path.
+    %
+:- pred glyph_path(context(T)::in, list(glyph)::in, io::di, io::uo) is det.
 
     % path.rel_curve_to(Context, Dx1, Dy1, Dx2, Dy2, Dx3, Dy3, !IO):
     % Relative-coordinate version of path.curve_to/9.
@@ -288,6 +293,20 @@
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
    cairo_text_path(Ctxt->mcairo_raw_context, Str);
+").
+
+glyph_path(Ctxt, Glyphs, !IO) :-
+    make_glyph_array(Glyphs, Array, NumGlyphs, !IO),
+    glyph_array_path(Ctxt, Array, NumGlyphs, !IO).
+
+:- pred glyph_array_path(context(T)::in, glyph_array::in, int::in,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    glyph_array_path(Ctxt::in, Array::in, NumGlyphs::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    cairo_glyph_path(Ctxt->mcairo_raw_context, Array, NumGlyphs);
 ").
 
 rel_curve_to(Ctxt, Dx1, Dy1, Dx2, Dy2, Dx3, Dy3, !IO) :-

@@ -586,6 +586,7 @@
 :- implementation.
 
 :- import_module exception.
+:- import_module int.
 :- import_module cairo.text.
 
 :- pragma require_feature_set([conservative_gc, double_prec_float]).
@@ -1336,6 +1337,60 @@ set_dash(Context, Dashes, OffSet, !IO) :-
 
    desc = cairo_status_to_string(Status);
    MR_make_aligned_string_copy(Str, desc);
+").
+
+%---------------------------------------------------------------------------%
+%
+% Glyph array
+%
+
+:- type glyph_array.
+
+:- pragma foreign_type("C", glyph_array, "cairo_glyph_t *",
+    [can_pass_as_mercury_type]).
+
+:- pred make_glyph_array(list(glyph)::in, glyph_array::uo, int::out,
+    io::di, io::uo) is det.
+
+make_glyph_array(Glyphs, Array, NumGlyphs, !IO) :-
+    list.length(Glyphs, NumGlyphs),
+    alloc_glyph_array(NumGlyphs, Array0),
+    fill_glyph_array(Glyphs, 0, Array0, Array).
+
+:- pred alloc_glyph_array(int::in, glyph_array::uo) is det.
+
+:- pragma foreign_proc("C",
+    alloc_glyph_array(Size::in, Array::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    MR_Word ptr;
+
+    MR_incr_hp_atomic_msg(ptr, MR_bytes_to_words(Size * sizeof(cairo_glyph_t)),
+        MR_ALLOC_ID, ""cairo.glyph_array/0"");
+    Array = (cairo_glyph_t *) ptr;
+").
+
+:- pred fill_glyph_array(list(glyph)::in, int::in,
+    glyph_array::di, glyph_array::uo) is det.
+
+fill_glyph_array([], _Slot, !Array).
+fill_glyph_array([G | Gs], Slot, !Array) :-
+    G = glyph(Index, X, Y),
+    set_glyph_array_slot(Slot, Index, X, Y, !Array),
+    fill_glyph_array(Gs, Slot + 1, !Array).
+
+:- pred set_glyph_array_slot(int::in, int::in, float::in, float::in,
+    glyph_array::di, glyph_array::uo) is det.
+
+:- pragma foreign_proc("C",
+    set_glyph_array_slot(Slot::in, Index::in, X::in, Y::in,
+        Array0::di, Array::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = Array0;
+    Array[Slot].index = Index;
+    Array[Slot].x = X;
+    Array[Slot].y = Y;
 ").
 
 %---------------------------------------------------------------------------%
