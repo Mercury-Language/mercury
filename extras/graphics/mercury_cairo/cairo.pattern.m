@@ -98,7 +98,7 @@
 
 % TODO: NYI.
 % :- pred get_color_stop_count
-% :- pred get_colourt_stop_rgba
+% :- pred get_color_stop_rgba
 
     % pattern.create_rgb(Red, Green, Blue, Pattern, !IO):
     % Pattern is a new pattern corresponding to an opaque color.

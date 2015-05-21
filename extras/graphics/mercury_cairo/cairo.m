@@ -507,7 +507,7 @@
 :- pred paint_with_alpha(context(S)::in, float::in, io::di, io::uo) is det.
 
     % cairo.stroke(Context, !IO):
-    % Stork the current path according to the current line width, line join,
+    % Stroke the current path according to the current line width, line join,
     % line cap, and dash settings for Context.
     % The current path will be cleared.
     %
