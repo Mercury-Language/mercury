@@ -76,6 +76,12 @@
     %
 :- pred invert(matrix::in, io::di, io::uo) is det.
 
+    % matrix.invert(Matrix, HasInverse, !IO):
+    % If Matrix has an inverse then HasInverse = yes and update Matrix to its
+    % inverse. Otherwise HasInverse = no.
+    %
+:- pred invert(matrix::in, bool::out, io::di, io::uo) is det.
+
     % matrix.multiply(Result, A, B, !IO):
     % Update Result to be the product of the affine transformations in A and B.
     %
@@ -97,8 +103,6 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -180,7 +184,7 @@
 ").
 
 invert(Matrix, !IO) :-
-    invert_2(Matrix, IsValid, !IO),
+    invert(Matrix, IsValid, !IO),
     (
         IsValid = yes
     ; 
@@ -188,10 +192,8 @@ invert(Matrix, !IO) :-
         throw(cairo.error("invert/3", status_invalid_matrix))
     ).
 
-:- pred invert_2(matrix::in, bool::out, io::di, io::uo) is det.
-
 :- pragma foreign_proc("C",
-   invert_2(Matrix::in, IsValid::out, _IO0::di, _IO::uo),
+   invert(Matrix::in, IsValid::out, _IO0::di, _IO::uo),
    [promise_pure, will_not_call_mercury],
 "
    if (cairo_matrix_invert(Matrix) == CAIRO_STATUS_SUCCESS) {
