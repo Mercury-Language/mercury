@@ -1,0 +1,41 @@
+# mercury_gmp_int
+
+Multi-precision integers for Mercury based on GMP
+
+This provides a binding to a subset of the functions from the `mpz` data-type of
+[GMP](http://gmplib.org).
+
+## Usage
+
+To use, you'll need a compiled version of GMP, both shared and static libraries
+should work.
+
+Compile your program and link to the library:
+
+```
+$ mmc -l gmp $OPTIONS $PROGRAM_NAME
+```
+
+or as follows if you want to use static linking (slightly faster):
+
+```
+$ mmc --link-object $FULL_PATH_TO_STATIC_GMP_LIB $OPTIONS $PROGRAM_NAME
+```
+
+## Benchmark
+
+For heavy number crunching code on bignums, first benchmarks show that
+Mercury-GMP is 2.15 -- 2.4x faster than SWI and 1.2 -- 1.3x faster than YAP
+(both using GMP) and around 1.35x -- 1.15x slower than Haskell (depeding on
+dynamic or static linking).
+
+For a Miller-Rabin test, Mercury-GMP was more than two orders of magnitude
+faster than using `integer.m` from the standard library. It is between 2 to 6
+times faster than Mercury-MP which is based on [libtommath](http://libtom.net).
+
+## Remarks
+
+This only works in the C grades (hlc / asm_fast) with conservative garbage
+collection.
+
+Currently, there is basically no error checking.
