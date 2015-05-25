@@ -7350,7 +7350,7 @@ This argument may be omitted if @var{Overrides} is empty.
 
 The argument @var{Attributes} is a list of optional attributes.
 If empty, it may be omitted from the @samp{pragma foreign_export_enum}
-declaration.
+declaration if the @var{Overrides} argument is also omitted.
 The following attributes must be supported by all Mercury implementations.
 
 @table @asis
