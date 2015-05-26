@@ -102,6 +102,11 @@
 :- pred set_font_face(context(S)::in, F::in, io::di, io::uo) is det
     <= font_face(F).
 
+    % text.set_default_font_face(Context, !IO):
+    % Replace the current font face for Context with the default font face.
+    %
+:- pred set_default_font_face(context(S)::in, io::di, io::uo) is det.
+
     % text.get_font_face(Context, FontFace, !IO):
     % FontFace is the current font face for Context.
     %
@@ -244,6 +249,11 @@ set_font_face(Context, FF, !IO) :-
         ((MCAIRO_font_face *)FF)->mcairo_raw_font_face);
     Ctxt->mcairo_cached_font_face = CachedFF;
 ").
+
+set_default_font_face(Context, !IO) :-
+    cairo.text.toy_font_face_create("",
+        slant_normal, weight_normal, ToyFF, !IO),
+    cairo.text.set_font_face(Context, ToyFF, !IO).
 
 get_font_face(Context, FF, !IO) :-
     get_cached_font_face(Context, CachedFF, !IO),

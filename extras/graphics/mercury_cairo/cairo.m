@@ -820,9 +820,7 @@ create_context(Surface, Context, !IO) :-
     % Make sure that the cached font face object is set to
     % a meaningful value.  (See the comments in the implementation
     % of {get,set}_font_face for details.)
-    cairo.text.toy_font_face_create("",
-        slant_normal, weight_normal, ToyFF, !IO),
-    cairo.text.set_font_face(Context, ToyFF, !IO).
+    cairo.text.set_default_font_face(Context, !IO).
 
 :- pred create_context_2(S::in, context(S)::out,
     io::di, io::uo) is det <= surface(S).
