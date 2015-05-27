@@ -87,6 +87,12 @@
     %
 :- pred multiply(matrix::in, matrix::in, matrix::in, io::di, io::uo) is det.
 
+    % matrix.unpack(Matrix, XX, YX, XY, YY, X0, Y0, !IO):
+    % Return the six components of Matrix.
+    %
+:- pred unpack(matrix::in, float::out, float::out, float::out, float::out,
+    float::out, float::out, io::di, io::uo) is det.
+
     % matrix.transform_distance(Matrix, Dx0, Dy0, Dx, Dy, !IO):
     % Transforms the distance vector (Dx0, Dy0) by Matrix.
     %
@@ -208,6 +214,19 @@ invert(Matrix, !IO) :-
    [promise_pure, will_not_call_mercury],
 "
     cairo_matrix_multiply(Result, A, B);
+").
+
+:- pragma foreign_proc("C",
+    unpack(Matrix::in, Xx::out, Yx::out, Xy::out, Yy::out, X0::out, Y0::out,
+        _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
+"
+    Xx = Matrix->xx;
+    Yx = Matrix->yx;
+    Xy = Matrix->xy;
+    Yy = Matrix->yy;
+    X0 = Matrix->x0;
+    Y0 = Matrix->y0;
 ").
 
 :- pragma foreign_proc("C",
