@@ -3188,6 +3188,14 @@ case "$host" in
         ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
+    *freebsd*)
+        CFLAGS_FOR_THREADS="-DGC_FREEBSD_THREADS"
+        THREAD_LIBS="-lpthread"
+        ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
+        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+        avoid_sbrk=yes
+        ;;
+
 ### # The threads stuff on HPUX is not yet enabled because
 ### # we don't have an HPUX box to test it on.
 ### *hpux*)
