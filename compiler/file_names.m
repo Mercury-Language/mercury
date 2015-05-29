@@ -524,6 +524,8 @@ file_is_arch_or_grade_dependent(Globals, Ext0) :-
     % The `.used' file isn't grade dependent itself, but it contains
     % information collected while compiling a grade-dependent `.c', `il',
     % etc file.
+file_is_arch_or_grade_dependent_2("").
+file_is_arch_or_grade_dependent_2(".bat").
 file_is_arch_or_grade_dependent_2(".used").
 file_is_arch_or_grade_dependent_2(".opt").
 file_is_arch_or_grade_dependent_2(".optdate").
@@ -549,6 +551,7 @@ file_is_arch_or_grade_dependent_2(".cs").
 file_is_arch_or_grade_dependent_2(".cs_date").
 file_is_arch_or_grade_dependent_2(".java").
 file_is_arch_or_grade_dependent_2(".java_date").
+file_is_arch_or_grade_dependent_2(".jar").
 file_is_arch_or_grade_dependent_2(".class").
 file_is_arch_or_grade_dependent_2(".erl").
 file_is_arch_or_grade_dependent_2(".erl_date").

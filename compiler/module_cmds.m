@@ -426,13 +426,30 @@ maybe_make_symlink(Globals, LinkTarget, LinkName, Result, !IO) :-
 make_symlink_or_copy_file(Globals, SourceFileName, DestinationFileName,
         Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
+    globals.lookup_bool_option(Globals, verbose_commands, PrintCommand),
     (
         UseSymLinks = yes,
         LinkOrCopy = "linking",
+        (
+            PrintCommand = yes,
+            io.format("%% Linking file `%s' -> `%s'\n",
+                [s(SourceFileName), s(DestinationFileName)], !IO),
+            io.flush_output(!IO)
+        ;
+            PrintCommand = no
+        ),
         io.make_symlink(SourceFileName, DestinationFileName, Result, !IO)
     ;
         UseSymLinks = no,
         LinkOrCopy = "copying",
+        (
+            PrintCommand = yes,
+            io.format("%% Copying file `%s' -> `%s'\n",
+                [s(SourceFileName), s(DestinationFileName)], !IO),
+            io.flush_output(!IO)
+        ;
+            PrintCommand = no
+        ),
         copy_file(Globals, SourceFileName, DestinationFileName, Result, !IO)
     ),
     (
@@ -442,16 +459,10 @@ make_symlink_or_copy_file(Globals, SourceFileName, DestinationFileName,
         Result = error(Error),
         Succeeded = no,
         io.progname_base("mercury_compile", ProgName, !IO),
-        io.write_string(ProgName, !IO),
-        io.write_string(": error ", !IO),
-        io.write_string(LinkOrCopy, !IO),
-        io.write_string(" `", !IO),
-        io.write_string(SourceFileName, !IO),
-        io.write_string("' to `", !IO),
-        io.write_string(DestinationFileName, !IO),
-        io.write_string("': ", !IO),
-        io.write_string(io.error_message(Error), !IO),
-        io.nl(!IO),
+        io.error_message(Error, ErrorMsg),
+        io.format("%s: error %s `%s' to `%s', %s\n",
+            [s(ProgName), s(LinkOrCopy), s(SourceFileName),
+             s(DestinationFileName), s(ErrorMsg)], !IO),
         io.flush_output(!IO)
     ).
 
@@ -1142,7 +1153,7 @@ pa_option(BreakLines, Quote, Dir0) = Option :-
 create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
     Extension = "",
     module_name_to_file_name(Globals, MainModuleName, Extension,
-        do_not_create_dirs, FileName, !IO),
+        do_create_dirs, FileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Generating shell script `" ++
@@ -1181,7 +1192,7 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
 create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
     Extension = ".bat",
     module_name_to_file_name(Globals, MainModuleName, Extension,
-        do_not_create_dirs, FileName, !IO),
+        do_create_dirs, FileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Generating batch file `" ++

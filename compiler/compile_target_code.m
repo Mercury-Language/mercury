@@ -1752,13 +1752,11 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Globals, Succeeded,
         create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType,
             ModuleName, OutputFileName, ObjectsList, LinkSucceeded, !IO)
     ;
-        LinkTargetType = java_executable,
-        create_java_executable(Globals, ErrorStream, ModuleName,
-            OutputFileName, ObjectsList, LinkSucceeded, !IO)
-    ;
-        LinkTargetType = java_archive,
-        create_java_archive(Globals, ErrorStream, OutputFileName, ObjectsList,
-            LinkSucceeded, !IO)
+        ( LinkTargetType = java_executable
+        ; LinkTargetType = java_archive
+        ),
+        create_java_exe_or_lib(Globals, ErrorStream, LinkTargetType,
+            ModuleName, OutputFileName, ObjectsList, LinkSucceeded, !IO)
     ;
         LinkTargetType = erlang_launcher,
         create_erlang_shell_script(Globals, ModuleName, LinkSucceeded, !IO)
@@ -1809,21 +1807,7 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
             do_create_dirs, OutputFileName, !IO)
     ;
         LinkTargetType = erlang_launcher,
-        % These may be shell scripts or batch files.
-        globals.get_target_env_type(Globals, TargetEnvType),
-        (
-            % XXX we should actually generate a .ps1 file for PowerShell.
-            ( TargetEnvType = env_type_win_cmd
-            ; TargetEnvType = env_type_powershell
-            ),
-            Ext = ".bat"
-        ;
-            ( TargetEnvType = env_type_posix
-            ; TargetEnvType = env_type_cygwin
-            ; TargetEnvType = env_type_msys
-            ),
-            Ext = ""
-        ),
+        Ext = get_launcher_script_extension(Globals),
         module_name_to_file_name(Globals, ModuleName, Ext,
             do_create_dirs, OutputFileName, !IO)
     ;
@@ -1841,6 +1825,24 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
         Ext = ".beams",
         module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
             do_create_dirs, OutputFileName, !IO)
+    ).
+
+:- func get_launcher_script_extension(globals) = string.
+
+get_launcher_script_extension(Globals) = Ext :-
+    globals.get_target_env_type(Globals, TargetEnvType),
+    (
+        % XXX we should actually generate a .ps1 file for PowerShell.
+        ( TargetEnvType = env_type_win_cmd
+        ; TargetEnvType = env_type_powershell
+        ),
+        Ext = ".bat"
+    ;
+        ( TargetEnvType = env_type_posix
+        ; TargetEnvType = env_type_cygwin
+        ; TargetEnvType = env_type_msys
+        ),
+        Ext = ""
     ).
 
 :- pred link_exe_or_shared_lib(globals::in, io.output_stream::in,
@@ -2589,7 +2591,7 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
         same_timestamp(OutputFileName, UserDirFileName, SameTimestamp, !IO),
         (
             SameTimestamp = yes,
-            Succeeded = yes,
+            Succeeded0 = yes,
             MadeSymlinkOrCopy = no
         ;
             SameTimestamp = no,
@@ -2602,13 +2604,54 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
             % (on systems on which symbolic links are not available).
             ( if LinkTargetType = erlang_archive then
                 make_symlink_or_copy_dir(Globals, OutputFileName,
-                    UserDirFileName, Succeeded, !IO)
-              else
+                    UserDirFileName, Succeeded0, !IO)
+            else
                 make_symlink_or_copy_file(Globals, OutputFileName,
-                    UserDirFileName, Succeeded, !IO)
+                    UserDirFileName, Succeeded0, !IO)
             ),
             io.set_output_stream(OutputStream, _, !IO),
             MadeSymlinkOrCopy = yes
+        ),
+
+        % For the Java and C# grades we also need to symlink or copy the
+        % launcher scripts or batch files.
+        ( if
+            Succeeded0 = yes,
+            (
+                LinkTargetType = csharp_executable,
+                % NOTE: we don't generate a launcher script for C# executables
+                % on Windows -- it isn't necessary since they can be executed
+                % directly.
+                globals.get_target_env_type(Globals, TargetEnvType),
+                TargetEnvType = env_type_posix
+            ;
+                LinkTargetType = java_executable
+            )
+        then
+            ScriptExt = get_launcher_script_extension(Globals),
+            module_name_to_file_name(Globals, ModuleName, "",
+                do_not_create_dirs, OutputScriptName0, !IO),
+            OutputScriptName = OutputScriptName0 ++ ScriptExt,
+            module_name_to_file_name(NoSubdirGlobals, ModuleName, "",
+                do_not_create_dirs, UserDirScriptName0, !IO),
+            UserDirScriptName = UserDirScriptName0 ++ ScriptExt,
+
+            same_timestamp(OutputScriptName, UserDirScriptName,
+                ScriptSameTimestamp, !IO),
+            (
+                ScriptSameTimestamp = yes,
+                Succeeded = yes
+            ;
+                ScriptSameTimestamp = no,
+                io.set_output_stream(ErrorStream, ScriptOutputStream, !IO),
+                % Remove the target of the symlink/copy in case it already exists.
+                io.remove_file_recursively(UserDirScriptName, _, !IO),
+                make_symlink_or_copy_file(Globals, OutputScriptName,
+                    UserDirScriptName, Succeeded, !IO),
+                io.set_output_stream(ScriptOutputStream, _, !IO)
+            )
+        else
+            Succeeded = Succeeded0
         )
     ;
         UseGradeSubdirs = no,
@@ -3035,27 +3078,13 @@ write_cli_shell_script(Globals, ExeFileName, Stream, !IO) :-
 % Create Java "executables" or archives.
 %
 
-:- pred create_java_executable(globals::in, io.text_output_stream::in,
+:- pred create_java_exe_or_lib(globals::in, io.text_output_stream::in,
+    linked_target_type::in,
     module_name::in, file_name::in, list(file_name)::in, bool::out,
     io::di, io::uo) is det.
 
-create_java_executable(Globals, ErrorStream, MainModuleName, JarFileName,
-        ObjectList, Succeeded, !IO) :-
-    create_java_archive(Globals, ErrorStream, JarFileName, ObjectList,
-        CreateJarSucceeded, !IO),
-    (
-        CreateJarSucceeded = yes,
-        create_java_shell_script(Globals, MainModuleName, Succeeded, !IO)
-    ;
-        CreateJarSucceeded = no,
-        Succeeded = no
-    ).
-
-:- pred create_java_archive(globals::in, io.output_stream::in, file_name::in,
-    list(file_name)::in, bool::out, io::di, io::uo) is det.
-
-create_java_archive(Globals, ErrorStream, JarFileName, ObjectList, Succeeded,
-        !IO) :-
+create_java_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
+        JarFileName, ObjectList, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, java_archive_command, Jar),
 
     list_class_files_for_jar(Globals, ObjectList, ClassSubDir, ListClassFiles,
@@ -3083,17 +3112,17 @@ create_java_archive(Globals, ErrorStream, JarFileName, ObjectList, Succeeded,
         Cmd = string.append_list(
             [Jar, " cf ", JarFileName, " @", TempFileName]),
         invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Cmd,
-            Succeeded, !IO),
+            Succeeded0, !IO),
         io.remove_file(TempFileName, _, !IO),
 
         (
-            Succeeded = yes,
+            Succeeded0 = yes,
             % Add an index, which is supposed to speed up class loading.
             IndexCmd = string.append_list([Jar, " i ", JarFileName]),
             invoke_system_command(Globals, ErrorStream, cmd_verbose_commands,
                 IndexCmd, _, !IO)
         ;
-            Succeeded = no,
+            Succeeded0 = no,
             io.remove_file(JarFileName, _, !IO)
         )
     ;
@@ -3101,7 +3130,16 @@ create_java_archive(Globals, ErrorStream, JarFileName, ObjectList, Succeeded,
         io.error_message(Error, ErrorMsg),
         io.format(ErrorStream, "Error creating `%s': %s\n",
             [s(TempFileName), s(ErrorMsg)], !IO),
-        Succeeded = no
+        Succeeded0 = no
+    ),
+    ( if
+        Succeeded0 = yes,
+        LinkTargetType = java_executable
+    then
+        create_java_shell_script(Globals, MainModuleName,
+            Succeeded, !IO)
+    else
+        Succeeded = Succeeded0
     ).
 
 :- pred write_jar_class_argument(io.output_stream::in, string::in, string::in,

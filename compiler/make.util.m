@@ -1516,14 +1516,16 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
         module_name_to_file_name(Globals, ModuleName, ".dll",
             do_not_create_dirs, FileName, !IO)
     ;
-        ( TargetType = java_executable
-        ; TargetType = erlang_launcher
-        ),
+        TargetType = erlang_launcher,
         % These are shell scripts.
+        % XXX Shouldn't the extension be ".bat" when --target-env-type
+        % is windows?
         module_name_to_file_name(Globals, ModuleName, "",
             do_not_create_dirs, FileName, !IO)
     ;
-        TargetType = java_archive,
+        ( TargetType = java_archive
+        ; TargetType = java_executable
+        ),
         module_name_to_file_name(Globals, ModuleName, ".jar",
             do_not_create_dirs, FileName, !IO)
     ;
