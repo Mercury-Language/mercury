@@ -291,7 +291,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             ": term of unknown representation");
     }
 
-    switch(MR_type_ctor_rep(type_ctor_info)) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
 
         case MR_TYPECTOR_REP_ENUM_USEREQ:
             if (noncanon == MR_NONCANON_ABORT) {
@@ -1481,12 +1481,38 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             return;
 
         case MR_TYPECTOR_REP_FOREIGN:
-            handle_functor_name("<<foreign>>");
+            {
+                char        buf[256];   /* should be big enough */
+                const char  *name = type_ctor_info->MR_type_ctor_name;
+
+#ifdef  MR_HAVE_SNPRINTF
+                snprintf(buf, 256, "<<foreign(%s, %p)>>",
+                    name, (void *) *data_word_ptr);
+#else
+                sprintf(buf, "<<foreign(%s, %p)>>",
+                    name, (void *) *data_word_ptr);
+#endif
+
+                handle_functor_name(buf);
+            }
             handle_zero_arity_args();
             return;
 
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
-            handle_functor_name("<<stable_foreign>>");
+            {
+                char        buf[256];   /* should be big enough */
+                const char  *name = type_ctor_info->MR_type_ctor_name;
+
+#ifdef  MR_HAVE_SNPRINTF
+                snprintf(buf, 256, "<<stable_foreign(%s, %p)>>",
+                    name, (void *) *data_word_ptr);
+#else
+                sprintf(buf, "<<stable_foreign(%s, %p)>>",
+                    name, (void *) *data_word_ptr);
+#endif
+
+                handle_functor_name(buf);
+            }
             handle_zero_arity_args();
             return;
 

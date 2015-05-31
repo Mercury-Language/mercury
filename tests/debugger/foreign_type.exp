@@ -5,15 +5,15 @@ mdb> register --quiet
 mdb> b copy_coord
  0: + stop  interface pred foreign_type.copy_coord/2-0 (det)
 mdb> continue
-'<<foreign>>'
+'<<foreign(coord, 0xXXXX)>>'
       E2:     C2 CALL pred foreign_type.copy_coord/2-0 (det) foreign_type.m:36 (foreign_type.m:26)
 mdb> print *
-       A (arg 1)              	'<<foreign>>'
+       A (arg 1)              	'<<foreign(coord, 0xXXXX)>>'
 mdb> finish
       E3:     C2 EXIT pred foreign_type.copy_coord/2-0 (det) foreign_type.m:36 (foreign_type.m:26)
 mdb> print *
-       A (arg 1)              	'<<foreign>>'
-       B (arg 2)              	'<<foreign>>'
+       A (arg 1)              	'<<foreign(coord, 0xXXXX)>>'
+       B (arg 2)              	'<<foreign(coord, 0xXXXX)>>'
 mdb> continue
 X:4
 Y:5

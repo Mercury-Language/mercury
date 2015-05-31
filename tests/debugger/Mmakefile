@@ -411,7 +411,9 @@ field_names.out: field_names field_names.inp
 	$(MDB) ./field_names < field_names.inp > field_names.out 2>&1
 
 foreign_type.out: foreign_type foreign_type.inp
-	$(MDB_STD) ./foreign_type < foreign_type.inp > foreign_type.out 2>&1
+	$(MDB_STD) ./foreign_type < foreign_type.inp | \
+		sed 's/0x[-0-9A-Fa-f]*/0xXXXX/g' \
+		> foreign_type.out 2>&1
 
 higher_order.out: higher_order higher_order.inp
 	$(MDB_STD) ./higher_order < higher_order.inp > higher_order.out 2>&1
@@ -477,10 +479,6 @@ multi_parameter.out: multi_parameter multi_parameter.inp
 no_inline_builtins.out: no_inline_builtins no_inline_builtins.inp
 	$(MDB) ./no_inline_builtins < no_inline_builtins.inp \
 		> no_inline_builtins.out 2>&1
-
-mmos_print.out: mmos_print mmos_print.inp
-	$(MDB) ./mmos_print < mmos_print.inp \
-		> mmos_print.out 2>&1
 
 mmos_print.out: mmos_print mmos_print.inp
 	$(MDB) ./mmos_print < mmos_print.inp \
