@@ -849,7 +849,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
         Arguments::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
-#define EXPAND_INFO_TYPE        MR_Expand_Functor_Args_Info
+#define EXPAND_INFO_TYPE        MR_ExpandFunctorArgsInfo
 #define EXPAND_INFO_CALL        MR_expand_functor_args
 #define TYPEINFO_ARG            TypeInfo_for_T
 #define TERM_ARG                Term
@@ -875,7 +875,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
     deconstruct_can(Term::in, Functor::out, Arity::out, Arguments::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
-#define EXPAND_INFO_TYPE        MR_Expand_Functor_Args_Info
+#define EXPAND_INFO_TYPE        MR_ExpandFunctorArgsInfo
 #define EXPAND_INFO_CALL        MR_expand_functor_args
 #define TYPEINFO_ARG            TypeInfo_for_T
 #define TERM_ARG                Term
@@ -901,7 +901,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
         Arity::out, Arguments::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
-#define EXPAND_INFO_TYPE        MR_Expand_Functor_Args_Info
+#define EXPAND_INFO_TYPE        MR_ExpandFunctorArgsInfo
 #define EXPAND_INFO_CALL        MR_expand_functor_args
 #define TYPEINFO_ARG            TypeInfo_for_T
 #define TERM_ARG                Term
@@ -928,7 +928,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
         Functor::out, Arity::out, Arguments::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
-#define EXPAND_INFO_TYPE        MR_Expand_Functor_Args_Limit_Info
+#define EXPAND_INFO_TYPE        MR_ExpandFunctorArgsLimitInfo
 #define EXPAND_INFO_CALL        MR_expand_functor_args_limit
 #define TYPEINFO_ARG            TypeInfo_for_T
 #define TERM_ARG                Term
@@ -957,7 +957,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
         Functor::out, Arity::out, Arguments::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
-#define EXPAND_INFO_TYPE        MR_Expand_Functor_Args_Limit_Info
+#define EXPAND_INFO_TYPE        MR_ExpandFunctorArgsLimitInfo
 #define EXPAND_INFO_CALL        MR_expand_functor_args_limit
 #define TYPEINFO_ARG            TypeInfo_for_T
 #define TERM_ARG                Term
@@ -986,7 +986,7 @@ univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
         Arity::out, Arguments::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
-    #define EXPAND_INFO_TYPE    MR_Expand_Functor_Args_Limit_Info
+    #define EXPAND_INFO_TYPE    MR_ExpandFunctorArgsLimitInfo
     #define EXPAND_INFO_CALL    MR_expand_functor_args_limit
     #define TYPEINFO_ARG        TypeInfo_for_T
     #define TERM_ARG            Term

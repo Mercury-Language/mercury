@@ -36,7 +36,7 @@
 */
 
     MR_TypeInfo                 type_info;
-    MR_Expand_Functor_Only_Info expand_info;
+    MR_ExpandFunctorOnlyInfo    expand_info;
     MR_ConstString              conststring_functor;
 
     type_info = (MR_TypeInfo) TYPEINFO_ARG;

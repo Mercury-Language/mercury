@@ -1,0 +1,8 @@
+echo on
+register --quiet
+b copy_coord
+continue
+print *
+finish
+print *
+continue

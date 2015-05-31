@@ -23,7 +23,7 @@
 static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 
 #define EXPAND_FUNCTION_NAME        MR_expand_functor_args
-#define EXPAND_TYPE_NAME            MR_Expand_Functor_Args_Info
+#define EXPAND_TYPE_NAME            MR_ExpandFunctorArgsInfo
 #define EXPAND_FUNCTOR_FIELD        functor
 #define EXPAND_ARGS_FIELD           args
 #include "mercury_ml_expand_body.h"
@@ -33,7 +33,7 @@ static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 #undef  EXPAND_ARGS_FIELD
 
 #define EXPAND_FUNCTION_NAME        MR_expand_functor_args_limit
-#define EXPAND_TYPE_NAME            MR_Expand_Functor_Args_Limit_Info
+#define EXPAND_TYPE_NAME            MR_ExpandFunctorArgsLimitInfo
 #define EXPAND_FUNCTOR_FIELD        functor
 #define EXPAND_ARGS_FIELD           args
 #define EXPAND_APPLY_LIMIT
@@ -45,7 +45,7 @@ static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 #undef  EXPAND_APPLY_LIMIT
 
 #define EXPAND_FUNCTION_NAME        MR_expand_functor_only
-#define EXPAND_TYPE_NAME            MR_Expand_Functor_Only_Info
+#define EXPAND_TYPE_NAME            MR_ExpandFunctorOnlyInfo
 #define EXPAND_FUNCTOR_FIELD        functor_only
 #include "mercury_ml_expand_body.h"
 #undef  EXPAND_FUNCTION_NAME
@@ -53,7 +53,7 @@ static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 #undef  EXPAND_FUNCTOR_FIELD
 
 #define EXPAND_FUNCTION_NAME        MR_expand_args_only
-#define EXPAND_TYPE_NAME            MR_Expand_Args_Only_Info
+#define EXPAND_TYPE_NAME            MR_ExpandArgsOnlyInfo
 #define EXPAND_ARGS_FIELD           args_only
 #include "mercury_ml_expand_body.h"
 #undef  EXPAND_FUNCTION_NAME
@@ -61,7 +61,7 @@ static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 #undef  EXPAND_ARGS_FIELD
 
 #define EXPAND_FUNCTION_NAME        MR_expand_chosen_arg_only
-#define EXPAND_TYPE_NAME            MR_Expand_Chosen_Arg_Only_Info
+#define EXPAND_TYPE_NAME            MR_ExpandChosenArgOnlyInfo
 #define EXPAND_CHOSEN_ARG
 #include "mercury_ml_expand_body.h"
 #undef  EXPAND_FUNCTION_NAME
@@ -69,7 +69,7 @@ static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 #undef  EXPAND_CHOSEN_ARG
 
 #define EXPAND_FUNCTION_NAME        MR_expand_named_arg_only
-#define EXPAND_TYPE_NAME            MR_Expand_Chosen_Arg_Only_Info
+#define EXPAND_TYPE_NAME            MR_ExpandChosenArgOnlyInfo
 #define EXPAND_NAMED_ARG
 #include "mercury_ml_expand_body.h"
 #undef  EXPAND_FUNCTION_NAME
@@ -85,13 +85,12 @@ static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 MR_bool
 MR_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr,
-    const MR_DuArgLocn **arg_locn_ptr,
-    MR_noncanon_handling noncanon)
+    const MR_DuArgLocn **arg_locn_ptr, MR_noncanon_handling noncanon)
 {
-    MR_Expand_Chosen_Arg_Only_Info  expand_info;
+    MR_ExpandChosenArgOnlyInfo  expand_info;
 
     MR_expand_chosen_arg_only(type_info, term_ptr, noncanon, arg_index,
-            &expand_info);
+        &expand_info);
 
     /* Check range. */
     if (expand_info.chosen_index_exists) {
@@ -107,13 +106,12 @@ MR_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
 MR_bool
 MR_named_arg(MR_TypeInfo type_info, MR_Word *term_ptr, MR_ConstString arg_name,
     MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr,
-    const MR_DuArgLocn **arg_locn_ptr,
-    MR_noncanon_handling noncanon)
+    const MR_DuArgLocn **arg_locn_ptr, MR_noncanon_handling noncanon)
 {
-    MR_Expand_Chosen_Arg_Only_Info  expand_info;
+    MR_ExpandChosenArgOnlyInfo  expand_info;
 
     MR_expand_named_arg_only(type_info, term_ptr, noncanon, arg_name,
-            &expand_info);
+        &expand_info);
 
     /* Check range. */
     if (expand_info.chosen_index_exists) {
@@ -197,8 +195,8 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 
         /*
         ** This label handles both the DU case and the second half of the
-        ** RESERVED_ADDR case.  `du_type_layout' and `data' must both be
-        ** set before this code is entered.
+        ** RESERVED_ADDR case. `du_type_layout' and `data' must both be set
+        ** before this code is entered.
         */
         du_type:
             ptag = MR_tag(data);
@@ -230,7 +228,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
             for (i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
                 if (functor_desc->MR_du_functor_arg_names[i] != NULL
                 && MR_streq(arg_name,
-                        functor_desc->MR_du_functor_arg_names[i]))
+                    functor_desc->MR_du_functor_arg_names[i]))
                 {
                     *arg_num_ptr = i;
                     return MR_TRUE;
@@ -261,7 +259,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 
             if (notag_functor_desc->MR_notag_functor_arg_name != NULL
             && MR_streq(arg_name,
-                    notag_functor_desc->MR_notag_functor_arg_name))
+                notag_functor_desc->MR_notag_functor_arg_name))
             {
                 *arg_num_ptr = 0;
                 return MR_TRUE;

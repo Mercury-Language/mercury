@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -26,35 +26,38 @@
 :- func x(coord) = int.
 :- func y(coord) = int.
 
-main -->
-    { C = new(4, 5) },
-    io__write_string("X:"),
-    io__write_int(x(C)),
-    io__nl,
-    io__write_string("Y:"),
-    io__write_int(y(C)),
-    io__nl,
-    { newpred(42, 52, D) },
-    io__write_string("X:"),
-    io__write_int(x(D)),
-    io__nl,
-    io__write_string("Y:"),
-    io__write_int(y(D)),
-    io__nl,
-    { E = export_new(420, 520) },
-    io__write_string("X:"),
-    io__write_int(x(E)),
-    io__nl,
-    io__write_string("Y:"),
-    io__write_int(y(E)),
-    io__nl,
-    { export_newpred(4201, 5201, F) },
-    io__write_string("X:"),
-    io__write_int(x(F)),
-    io__nl,
-    io__write_string("Y:"),
-    io__write_int(y(F)),
-    io__nl.
+main(!IO) :-
+    C = new(4, 5),
+    io.write_string("X:", !IO),
+    io.write_int(x(C), !IO),
+    io.nl(!IO),
+    io.write_string("Y:", !IO),
+    io.write_int(y(C), !IO),
+    io.nl(!IO),
+
+    newpred(42, 52, D),
+    io.write_string("X:", !IO),
+    io.write_int(x(D), !IO),
+    io.nl(!IO),
+    io.write_string("Y:", !IO),
+    io.write_int(y(D), !IO),
+    io.nl(!IO),
+
+    E = export_new(420, 520),
+    io.write_string("X:", !IO),
+    io.write_int(x(E), !IO),
+    io.nl(!IO),
+    io.write_string("Y:", !IO),
+    io.write_int(y(E), !IO),
+    io.nl(!IO),
+
+    export_newpred(4201, 5201, F),
+    io.write_string("X:", !IO),
+    io.write_int(x(F), !IO),
+    io.nl(!IO),
+    io.write_string("Y:", !IO),
+    io.write_int(y(F), !IO),
+    io.nl(!IO).
 
 %---------------------------------------------------------------------------%
 

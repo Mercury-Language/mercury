@@ -27,7 +27,7 @@
 % compiler/rtti.m here, and to interpret them, instead of relying on access
 % to C level data structures.
 %
-% At least, that may have been the plan at some point.  Currently this module
+% At least, that may have been the plan at some point. Currently this module
 % is used for the Java and IL backends only.
 %
 %---------------------------------------------------------------------------%
@@ -310,7 +310,7 @@ type_info_num_functors(TypeInfo, NumFunctors) :-
         fail
     ;
         TypeCtorRep = tcr_unknown,
-        error("num_functors: unknown type_ctor_rep")
+        unexpected($module, $pred, "unknown type_ctor_rep")
     ).
 
 type_info_get_functor(TypeInfo, FunctorNumber, FunctorName, Arity,
@@ -405,7 +405,7 @@ get_functor_impl(TypeInfo, FunctorNumber,
         fail
     ;
         TypeCtorRep = tcr_unknown,
-        error("get_functor: unknown type_ctor_rep")
+        unexpected($module, $pred, "unknown type_ctor_rep")
     ).
 
 :- pred get_functor_du(type_ctor_rep::in(du), type_info::in,
@@ -452,7 +452,7 @@ create_pseudo_type_info(TypeInfo, PseudoTypeInfo) = ArgPseudoTypeInfo :-
         NewTypeInfo = make_type_info(TypeCtorInfo, list.length(Args), Args),
         private_builtin.unsafe_type_cast(NewTypeInfo, ArgPseudoTypeInfo)
     ;
-        error("create_pseudo_type_info")
+        unexpected($module, $pred, "create_pseudo_type_info")
     ).
 
 :- func make_type_info(type_ctor_info, int, list(pseudo_type_info)) =
@@ -680,7 +680,7 @@ generic_compare(Res, X, Y) :-
     ;
         ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
     ->
-        error("rtti_implementation.m: unimplemented: higher order comparisons")
+        unexpected($module, $pred, "unimplemented: higher order comparisons")
     ;
         Arity = TypeCtorInfo ^ type_ctor_arity,
         ComparePred = TypeCtorInfo ^ type_ctor_compare_pred,
@@ -731,7 +731,7 @@ generic_unify(X, Y) :-
     ;
         ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
     ->
-        error("rtti_implementation.m: unimplemented: higher order unification")
+        unexpected($module, $pred, "unimplemented: higher order unification")
     ;
         Arity = TypeCtorInfo ^ type_ctor_arity,
         UnifyPred = TypeCtorInfo ^ type_ctor_unify_pred,
@@ -1353,7 +1353,7 @@ compare_pseudo_type_infos(Res, PTI1, PTI2) :-
                     )
                 )
             ;
-                error("compare_pseudo_type_infos")
+                unexpected($module, $pred, "impossible pseudo_type_infos")
             )
         )
     ).
@@ -1383,11 +1383,11 @@ compare_pseudo_type_info_args(Res, Args1, Args2) :-
     ;
         Args1 = [_ | _],
         Args2 = [],
-        error("compare_pseudo_type_info_args: argument list mismatch")
+        unexpected($module, $pred, "argument list mismatch")
     ;
         Args1 = [],
         Args2 = [_ | _],
-        error("compare_pseudo_type_info_args: argument list mismatch")
+        unexpected($module, $pred, "argument list mismatch")
     ).
 
 %---------------------------------------------------------------------------%
@@ -2478,14 +2478,13 @@ functor_number_cc(Term, FunctorNumber, Arity) :-
     out) is cc_multi.
 :- mode deconstruct_2(in, in, in, in, in, out, out, out, out) is cc_multi.
 
+deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
+        Functor, Ordinal, Arity, Arguments) :-
     % Code to perform deconstructions (XXX not yet complete).
     %
     % There are many cases to implement here, only the ones that were
     % immediately useful (e.g. called by io.write) have been implemented
     % so far.
-    %
-deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
-        Functor, Ordinal, Arity, Arguments) :-
     (
         TypeCtorRep = tcr_enum_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
@@ -2672,7 +2671,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         % There is no way to create values of type `void', so this
         % should never happen.
         TypeCtorRep = tcr_void,
-        error("rtti_implementation.m: cannot deconstruct void types")
+        unexpected($module, $pred, "cannot deconstruct void types")
     ;
         TypeCtorRep = tcr_c_pointer,
         det_dynamic_cast(Term, CPtr),
@@ -2688,20 +2687,6 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arity = 0,
         Arguments = []
     ;
-        % XXX noncanonical term
-        TypeCtorRep = tcr_typeinfo,
-        Functor = "some_typeinfo",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        % XXX noncanonical term
-        TypeCtorRep = tcr_typeclassinfo,
-        Functor = "<<typeclassinfo>>",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
         TypeCtorRep = tcr_array,
 
         % Constrain the T in array(T) to the correct element type.
@@ -2710,7 +2695,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             has_type(Elem, ElemType),
             same_array_elem_type(Array, Elem)
         ;
-            error("An array which doesn't have a type_ctor arg")
+            unexpected($module, $pred, "array without a type_ctor arg")
         ),
 
         det_dynamic_cast(Term, Array),
@@ -2722,50 +2707,31 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             (func(Elem, List) = [univ(Elem) | List]),
             Array, [])
     ;
-        TypeCtorRep = tcr_succip,
-        Functor = "<<succip>>",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        TypeCtorRep = tcr_hp,
-        Functor = "<<hp>>",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        TypeCtorRep = tcr_curfr,
-        Functor = "<<curfr>>",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        TypeCtorRep = tcr_maxfr,
-        Functor = "<<maxfr>>",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        TypeCtorRep = tcr_redofr,
-        Functor = "<<redofr>>",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        TypeCtorRep = tcr_redoip,
-        Functor = "<<redoip>>",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        TypeCtorRep = tcr_trail_ptr,
-        Functor = "<<trail_ptr>>",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        TypeCtorRep = tcr_ticket,
-        Functor = "<<ticket>>",
+        (
+            TypeCtorRep = tcr_succip,
+            Functor = "<<succip>>"
+        ;
+            TypeCtorRep = tcr_hp,
+            Functor = "<<hp>>"
+        ;
+            TypeCtorRep = tcr_curfr,
+            Functor = "<<curfr>>"
+        ;
+            TypeCtorRep = tcr_maxfr,
+            Functor = "<<maxfr>>"
+        ;
+            TypeCtorRep = tcr_redofr,
+            Functor = "<<redofr>>"
+        ;
+            TypeCtorRep = tcr_redoip,
+            Functor = "<<redoip>>"
+        ;
+            TypeCtorRep = tcr_trail_ptr,
+            Functor = "<<trail_ptr>>"
+        ;
+            TypeCtorRep = tcr_ticket,
+            Functor = "<<ticket>>"
+        ),
         Ordinal = -1,
         Arity = 0,
         Arguments = []
@@ -2781,49 +2747,47 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Functor, Ordinal, Arity, Arguments)
     ;
-        % XXX noncanonical term
-        TypeCtorRep = tcr_type_ctor_info,
-        Functor = "some_typectorinfo",
+        % XXX inconsistent: <<xxx>> vs some_xxx
+        (
+            % XXX noncanonical term
+            TypeCtorRep = tcr_typeinfo,
+            Functor = "some_typeinfo"
+        ;
+            % XXX noncanonical term
+            TypeCtorRep = tcr_typeclassinfo,
+            Functor = "<<typeclassinfo>>"
+        ;
+            % XXX noncanonical term
+            TypeCtorRep = tcr_type_ctor_info,
+            Functor = "some_typectorinfo"
+        ;
+            % XXX noncanonical term
+            TypeCtorRep = tcr_base_typeclass_info,
+            Functor = "<<basetypeclassinfo>>"
+        ;
+            % XXX noncanonical term
+            TypeCtorRep = tcr_type_desc,
+            Functor = "some_type_desc"
+        ;
+            % XXX noncanonical term
+            TypeCtorRep = tcr_pseudo_type_desc,
+            Functor = "some_pseudo_type_desc"
+        ;
+            % XXX noncanonical term
+            TypeCtorRep = tcr_type_ctor_desc,
+            Functor = "some_type_ctor_desc"
+        ),
         Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
-        % XXX noncanonical term
-        TypeCtorRep = tcr_base_typeclass_info,
-        Functor = "<<basetypeclassinfo>>",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        % XXX noncanonical term
-        TypeCtorRep = tcr_type_desc,
-        Functor = "some_type_desc",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        % XXX noncanonical term
-        TypeCtorRep = tcr_pseudo_type_desc,
-        Functor = "some_pseudo_type_desc",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        % XXX noncanonical term
-        TypeCtorRep = tcr_type_ctor_desc,
-        Functor = "some_type_ctor_desc",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        TypeCtorRep = tcr_foreign,
-        Functor = "<<foreign>>",
-        Ordinal = -1,
-        Arity = 0,
-        Arguments = []
-    ;
-        TypeCtorRep = tcr_stable_foreign,
-        Functor = "<<stable_foreign>>",
+        (
+            TypeCtorRep = tcr_foreign,
+            Functor = "<<foreignxx>>"
+        ;
+            TypeCtorRep = tcr_stable_foreign,
+            Functor = "<<stable_foreign>>"
+        ),
         Ordinal = -1,
         Arity = 0,
         Arguments = []
@@ -2836,7 +2800,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Arguments = []
     ;
         TypeCtorRep = tcr_unknown,
-        error("rtti_implementation: unknown type_ctor rep in deconstruct")
+        unexpected($module, $pred, "unknown type_ctor rep")
     ).
 
 univ_named_arg(Term, NonCanon, Name, Argument) :-
@@ -2860,7 +2824,8 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
         TypeCtorRep = tcr_du_usereq,
         (
             NonCanon = do_not_allow,
-            error("attempt to deconstruct noncanonical term")
+            unexpected($module, $pred,
+                "attempt to deconstruct noncanonical term")
         ;
             NonCanon = canonicalize,
             MaybeArgument = no
@@ -2953,10 +2918,10 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
         MaybeArgument = no
     ;
         TypeCtorRep = tcr_void,
-        error("rtti_implementation.m: cannot deconstruct void types")
+        unexpected($module, $pred, "cannot deconstruct void types")
     ;
         TypeCtorRep = tcr_unknown,
-        error("rtti_implementation: unknown type_ctor rep in deconstruct")
+        unexpected($module, $pred, "unknown type_ctor rep")
     ).
 
 :- pred det_dynamic_cast(T::in, U::out) is det.
@@ -2992,7 +2957,7 @@ handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Functor, Ordinal, Arity, Arguments) :-
     (
         NonCanon = do_not_allow,
-        error("attempt to deconstruct noncanonical term")
+        unexpected($module, $pred, "attempt to deconstruct noncanonical term")
     ;
         NonCanon = canonicalize,
         Functor = expand_type_name(TypeCtorInfo, yes),
@@ -3258,7 +3223,7 @@ get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
         ( get_du_functor_exist_info(FunctorDesc, ExistInfo0) ->
             ExistInfo = ExistInfo0
         ;
-            error("get_type_info_for_var no exist_info")
+            unexpected($module, $pred, "no exist_info")
         ),
 
         % We count variables from one so we need to add 1.
@@ -4190,7 +4155,7 @@ set_type_info_index(_, _, _, !TypeInfo) :-
 
 semidet_unimplemented(S) :-
     ( semidet_succeed ->
-        error("rtti_implementation: unimplemented: " ++ S)
+        sorry($module, S)
     ;
         semidet_succeed
     ).
@@ -4199,7 +4164,7 @@ semidet_unimplemented(S) :-
 
 det_unimplemented(S) :-
     ( semidet_succeed ->
-        error("rtti_implementation: unimplemented: " ++ S)
+        sorry($module, S)
     ;
         true
     ).
@@ -4936,7 +4901,7 @@ enum_functor_ordinal(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(1).
 :- mode foreign_enum_functor_desc(in(foreign_enum), in, in) = out is det.
 
 foreign_enum_functor_desc(_, _, _) = _ :-
-    error("foreign_enum_functor_desc").
+    unexpected($module, $pred, "foreign_enum_functor_desc").
 
 :- pragma foreign_proc("C#",
     foreign_enum_functor_desc(_TypeCtorRep::in(foreign_enum), X::in,

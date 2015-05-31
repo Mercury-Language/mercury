@@ -27,33 +27,33 @@ typedef struct {
     const MR_DuArgLocn      *arg_locns;
     MR_TypeInfo             *arg_type_infos;
     MR_bool                 can_free_arg_type_infos;
-} MR_Expand_Args_Fields;
+} MR_ExpandArgsFields;
 
 typedef struct {
     int                     arity;
     int                     functor_number;
     MR_ConstString          functor;
-    MR_Expand_Args_Fields   args;
-} MR_Expand_Functor_Args_Info;
+    MR_ExpandArgsFields     args;
+} MR_ExpandFunctorArgsInfo;
 
 typedef struct {
     int                     arity;
     int                     functor_number;
     MR_ConstString          functor;
-    MR_Expand_Args_Fields   args;
+    MR_ExpandArgsFields     args;
     MR_bool                 limit_reached;
-} MR_Expand_Functor_Args_Limit_Info;
+} MR_ExpandFunctorArgsLimitInfo;
 
 typedef struct {
     int                     arity;
     int                     functor_number;
     MR_ConstString          functor_only;
-} MR_Expand_Functor_Only_Info;
+} MR_ExpandFunctorOnlyInfo;
 
 typedef struct {
     int                     arity;
-    MR_Expand_Args_Fields   args_only;
-} MR_Expand_Args_Only_Info;
+    MR_ExpandArgsFields     args_only;
+} MR_ExpandArgsOnlyInfo;
 
 typedef struct {
     int                     arity;
@@ -61,7 +61,7 @@ typedef struct {
     MR_Word                 *chosen_value_ptr;
     const MR_DuArgLocn      *chosen_arg_locn;
     MR_TypeInfo             chosen_type_info;
-} MR_Expand_Chosen_Arg_Only_Info;
+} MR_ExpandChosenArgOnlyInfo;
 
 /*
 ** MR_NONCANON_ABORT asks that deconstructions of noncanonical types should
@@ -84,29 +84,29 @@ typedef enum {
 
 extern  void    MR_expand_functor_args(MR_TypeInfo type_info,
                     MR_Word *data_word_ptr, MR_noncanon_handling noncanon,
-                    MR_Expand_Functor_Args_Info *expand_info);
+                    MR_ExpandFunctorArgsInfo *expand_info);
 
 extern  void    MR_expand_functor_args_limit(MR_TypeInfo type_info,
                     MR_Word *data_word_ptr, MR_noncanon_handling noncanon,
                     int max_arity,
-                    MR_Expand_Functor_Args_Limit_Info *expand_info);
+                    MR_ExpandFunctorArgsLimitInfo *expand_info);
 
 extern  void    MR_expand_functor_only(MR_TypeInfo type_info,
                     MR_Word *data_word_ptr, MR_noncanon_handling noncanon,
-                    MR_Expand_Functor_Only_Info *expand_info);
+                    MR_ExpandFunctorOnlyInfo *expand_info);
 
 extern  void    MR_expand_args_only(MR_TypeInfo type_info,
                     MR_Word *data_word_ptr, MR_noncanon_handling noncanon,
-                    MR_Expand_Args_Only_Info *expand_info);
+                    MR_ExpandArgsOnlyInfo *expand_info);
 
 extern  void    MR_expand_chosen_arg_only(MR_TypeInfo type_info,
                     MR_Word *data_word_ptr, MR_noncanon_handling noncanon,
-                    int chosen, MR_Expand_Chosen_Arg_Only_Info *expand_info);
+                    int chosen, MR_ExpandChosenArgOnlyInfo *expand_info);
 
 extern  void    MR_expand_named_arg_only(MR_TypeInfo type_info,
                     MR_Word *data_word_ptr, MR_noncanon_handling noncanon,
                     MR_ConstString chosen_name,
-                    MR_Expand_Chosen_Arg_Only_Info *expand_info);
+                    MR_ExpandChosenArgOnlyInfo *expand_info);
 
 /*
 ** MR_arg() takes the address of a term, its type, and an
