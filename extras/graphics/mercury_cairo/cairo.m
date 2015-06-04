@@ -253,8 +253,8 @@
     % for Context.  (X, Y) is the user-space coordinate at which the surface
     % origin should appear.
     %
-:- pred set_source_surface(context(S)::in, S::in, float::in, float::in,
-    io::di, io::uo) is det <= surface(S).
+:- pred set_source_surface(context(S)::in, T::in, float::in, float::in,
+    io::di, io::uo) is det <= surface(T).
 
     % cairo.get_source(Context, Pattern, !IO):
     % Pattern is the current source pattern for Context.
