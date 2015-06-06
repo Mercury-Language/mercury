@@ -134,7 +134,7 @@
     % Convert mp_int to a string in given base.
     %
     % Base must be between 2 and 64, inclusive; if it is not, the predicate will
-    % throw and exception.
+    % throw an exception.
     %
 :- func to_base_string(mp_int, int) = string.
 
@@ -261,12 +261,10 @@
 
 :- implementation.
 
-:- import_module bool.
 :- import_module exception.
 :- import_module int.
 :- import_module math.
 :- import_module require.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 % foreign declarations
@@ -567,18 +565,15 @@ divide_with_rem(A, B, Quot, Rem) :-
                                   Quot::out, Rem::out),
                       [will_not_call_mercury, promise_pure, thread_safe],
 "
-  int initResult1, initResult2, opResult;
-  Quot        = MR_GC_NEW_ATTRIB(mp_int, MR_ALLOC_ID);
-  Rem         = MR_GC_NEW_ATTRIB(mp_int, MR_ALLOC_ID);
-  initResult1 = mp_init(Quot);
-  initResult2 = mp_init(Rem);
-  if (initResult1 == MP_OKAY && initResult2 == MP_OKAY)
-    {
-      opResult = mp_div(A, B, Quot, Rem);
-      Result   = opResult;
+  Quot = MR_GC_NEW_ATTRIB(mp_int, MR_ALLOC_ID);
+  Rem = MR_GC_NEW_ATTRIB(mp_int, MR_ALLOC_ID);
+  Result = mp_init(Quot);
+  if (Result == MP_OKAY) {
+    Result = mp_init(Rem);
+    if (Result == MP_OKAY) {
+      Result = mp_div(A, B, Quot, Rem);
     }
-  else
-    Result     = initResult1 != MP_OKAY ? initResult1 : initResult2;
+  }
 ").
 
 rem(A, B) = Res :-
