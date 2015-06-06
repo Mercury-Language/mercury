@@ -308,24 +308,33 @@
 :- initialise mp_initialize/0.
 :- impure pred mp_initialize is det.
 
-:- pragma foreign_decl("C", local,
+:- pragma foreign_decl("C",
 "
-static mp_int constant_negative_one;
-static mp_int constant_zero;
-static mp_int constant_one;
-static mp_int constant_two;
-static mp_int constant_ten;
+  extern mp_int MP_INT_constant_negative_one;
+  extern mp_int MP_INT_constant_zero;
+  extern mp_int MP_INT_constant_one;
+  extern mp_int MP_INT_constant_two;
+  extern mp_int MP_INT_constant_ten;
+").
+
+:- pragma foreign_code("C",
+"
+  mp_int MP_INT_constant_negative_one;
+  mp_int MP_INT_constant_zero;
+  mp_int MP_INT_constant_one;
+  mp_int MP_INT_constant_two;
+  mp_int MP_INT_constant_ten;
 ").
 
 :- pragma foreign_proc("C",
                       mp_initialize,
                       [will_not_call_mercury, thread_safe],
 "
-  mp_init_set(&constant_negative_one, -1);
-  mp_init_set(&constant_zero, 0);
-  mp_init_set(&constant_one, 1);
-  mp_init_set(&constant_two, 2);
-  mp_init_set(&constant_ten, 10);
+  mp_init_set(&MP_INT_constant_negative_one, -1);
+  mp_init_set(&MP_INT_constant_zero, 0);
+  mp_init_set(&MP_INT_constant_one, 1);
+  mp_init_set(&MP_INT_constant_two, 2);
+  mp_init_set(&MP_INT_constant_ten, 10);
 ").
 
 %---------------------------------------------------------------------------%
@@ -1204,7 +1213,7 @@ A `xor` B = C :-
     negative_one = (Res::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-  Res = &constant_negative_one;
+  Res = &MP_INT_constant_negative_one;
 "
 ).
 
@@ -1212,7 +1221,7 @@ A `xor` B = C :-
     zero = (Res::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-  Res = &constant_zero;
+  Res = &MP_INT_constant_zero;
 "
 ).
 
@@ -1220,7 +1229,7 @@ A `xor` B = C :-
     one = (Res::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-  Res = &constant_one;
+  Res = &MP_INT_constant_one;
 "
 ).
 
@@ -1228,7 +1237,7 @@ A `xor` B = C :-
     two = (Res::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-  Res = &constant_two;
+  Res = &MP_INT_constant_two;
 "
 ).
 
@@ -1236,7 +1245,7 @@ A `xor` B = C :-
     ten = (Res::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-  Res = &constant_ten;
+  Res = &MP_INT_constant_ten;
 "
 ).
 
