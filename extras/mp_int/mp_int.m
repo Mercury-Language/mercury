@@ -149,11 +149,10 @@
     % Base must be between 2 and 64, inclusive; fails if unsuccessful.
     %
 :- pred from_base_string(string::in, int::in, mp_int::out) is semidet.
-:- func from_base_string(string, int) = mp_int is semidet.
 
     % Convert string in base 10 to mp_int. Fails if unsuccesful.
     %
-:- func from_string(string) = mp_int is semidet.
+:- pred from_string(string::in, mp_int::out) is semidet.
 
     % As above, throws exception instead of failing if unsuccessful.
     %
@@ -740,9 +739,7 @@ from_base_string(S, Radix, A) :-
     Result = mp_read_radix(A, S, Radix);
 ").
 
-from_base_string(S, R) = Res :- from_base_string(S, R, Res).
-
-from_string(S) = Res :- from_base_string(S, 10, Res).
+from_string(S, Res) :- from_base_string(S, 10, Res).
 
 det_from_string(S) = Res :-
     ( from_base_string(S, 10, Res0) ->
