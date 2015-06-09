@@ -14,13 +14,13 @@
 
 :- type box
     --->    box(
-            xmin :: float,
-            ymin :: float,
-            zmin :: float,
-            xmax :: float,
-            ymax :: float,
-            zmax :: float
-        ).
+                xmin :: float,
+                ymin :: float,
+                zmin :: float,
+                xmax :: float,
+                ymax :: float,
+                zmax :: float
+            ).
 
 :- type shape == pred(float, float, float).
 :- inst shape == (pred(in, in, in) is semidet).
