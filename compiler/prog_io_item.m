@@ -67,6 +67,7 @@
 :- import_module recompilation.version.
 
 :- import_module bool.
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -590,7 +591,13 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
         ;
             MaybePredNameAndArgs = ok2(Functor, ArgTerms),
             ( parse_type_and_mode_list(InstConstraints, ArgTerms, Args) ->
-                ( type_and_mode_list_is_consistent(Args) ->
+                check_type_and_mode_list_is_consistent(Args, PredTypeTerm,
+                    MaybeInconsistentArgsSpec),
+                (
+                    MaybeInconsistentArgsSpec = yes(InconsistentArgsSpec),
+                    MaybeItem = error1([InconsistentArgsSpec])
+                ;
+                    MaybeInconsistentArgsSpec = no,
                     (
                         WithInst = yes(_),
                         Args = [type_only(_) | _]
@@ -642,13 +649,6 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                                 [always(Pieces)])]),
                         MaybeItem = error1([Spec])
                     )
-                ;
-                    Pieces = [words("Error: some but not all arguments"),
-                        words("have modes."), nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(PredTypeTerm),
-                            [always(Pieces)])]),
-                    MaybeItem = error1([Spec])
                 )
             ;
                 PredTypeTermStr = describe_error_term(VarSet, PredTypeTerm),
@@ -756,17 +756,14 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Attributes0, Context,
 parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
         VarSet, MaybeDetism, ExistQVars, Constraints, Attributes0,
         Context, SeqNum, MaybeItem) :-
+    check_type_and_mode_list_is_consistent(Args, FuncTerm,
+        MaybeInconsistentArgsSpec),
     (
-        type_and_mode_list_is_consistent(Args)
-    ->
-        ConsistentArgsSpecs = []
+        MaybeInconsistentArgsSpec = no,
+        InconsistentArgsSpecs = []
     ;
-        ConsistentPieces =
-            [words("Error: some but not all arguments have modes."), nl],
-        ConsistentSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(FuncTerm),
-                [always(ConsistentPieces)])]),
-        ConsistentArgsSpecs = [ConsistentSpec]
+        MaybeInconsistentArgsSpec = yes(InconsistentArgsSpec),
+        InconsistentArgsSpecs = [InconsistentArgsSpec]
     ),
     (
         Args = [type_and_mode(_, _) | _],
@@ -794,7 +791,8 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
     ;
         ReturnOnlySpecs = []
     ),
-    ConsistencySpecs = ConsistentArgsSpecs ++ ArgsOnlySpecs ++ ReturnOnlySpecs,
+    ConsistencySpecs =
+        InconsistentArgsSpecs ++ ArgsOnlySpecs ++ ReturnOnlySpecs,
     (
         ConsistencySpecs = [_ | _],
         MaybeItem = error1(ConsistencySpecs)
@@ -846,35 +844,77 @@ parse_type_and_mode(InstConstraints, Term, MaybeTypeAndMode) :-
     ).
 
     % Verify that among the arguments of a :- pred or :- func declaration,
-    % either all arguments specify a mode or none of them do.
+    % either all arguments specify a mode or none of them do. If some do
+    % and some don't, return an error message that identifies the argument
+    % positions that are missing modes. (If some argument positions have
+    % modes, then the programmer probably intended for all of them to have
+    % modes.)
     %
-:- pred type_and_mode_list_is_consistent(list(type_and_mode)::in) is semidet.
+:- pred check_type_and_mode_list_is_consistent( list(type_and_mode)::in,
+    term::in, maybe(error_spec)::out) is det.
 
-type_and_mode_list_is_consistent([]).
-type_and_mode_list_is_consistent([Head | Tail]) :-
+check_type_and_mode_list_is_consistent(TypesAndModes, ErrorTerm, MaybeSpec) :-
+    classify_type_and_mode_list(1, TypesAndModes, 
+        WithModeArgNums, WithoutModeArgNums),
     (
-        Head = type_only(_),
-        type_and_mode_list_is_consistent_type_only(Tail)
+        WithModeArgNums = [],
+        WithoutModeArgNums = [],
+        % No arguments; no possibility of inconsistency.
+        MaybeSpec = no
     ;
-        Head = type_and_mode(_, _),
-        type_and_mode_list_is_consistent_type_and_mode(Tail)
+        WithModeArgNums = [],
+        WithoutModeArgNums = [_ | _],
+        % No arguments have modes; no inconsistency.
+        MaybeSpec = no
+    ;
+        WithModeArgNums = [_ | _],
+        WithoutModeArgNums = [],
+        % All arguments have modes; no inconsistency.
+        MaybeSpec = no
+    ;
+        WithModeArgNums = [_ | _],
+        WithoutModeArgNums = [FirstWithout | RestWithout],
+        % Some arguments have modes and some don't, which is inconsistent.
+        (
+            RestWithout = [],
+            IdPieces = [words("The argument without a mode is the"),
+                nth_fixed(FirstWithout), suffix("."), nl]
+        ;
+            RestWithout = [_ | _],
+            list.map(wrap_nth, WithoutModeArgNums, WithoutArgNumPieces),
+            WithoutArgNumsPieces =
+                component_list_to_pieces(WithoutArgNumPieces),
+            IdPieces = [words("The arguments without modes are the") |
+                WithoutArgNumsPieces] ++ [suffix("."), nl]
+        ),
+        Pieces = [words("Error: some but not all arguments have modes."), nl
+            | IdPieces],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
+        MaybeSpec = yes(Spec)
     ).
 
-:- pred type_and_mode_list_is_consistent_type_only(list(type_and_mode)::in)
-    is semidet.
+:- pred classify_type_and_mode_list(int::in, list(type_and_mode)::in,
+    list(int)::out, list(int)::out) is det.
 
-type_and_mode_list_is_consistent_type_only([]).
-type_and_mode_list_is_consistent_type_only([Head | Tail]) :-
-    Head = type_only(_),
-    type_and_mode_list_is_consistent_type_only(Tail).
+classify_type_and_mode_list(_, [], [], []).
+classify_type_and_mode_list(ArgNum, [Head | Tail],
+        WithModeArgNums, WithoutModeArgNums) :-
+    classify_type_and_mode_list(ArgNum + 1, Tail,
+        WithModeArgNums0, WithoutModeArgNums0),
+    (
+        Head = type_only(_),
+        WithModeArgNums = WithModeArgNums0,
+        WithoutModeArgNums = [ArgNum | WithoutModeArgNums0]
+    ;
+        Head = type_and_mode(_, _),
+        WithModeArgNums = [ArgNum | WithModeArgNums0],
+        WithoutModeArgNums = WithoutModeArgNums0
+    ).
 
-:- pred type_and_mode_list_is_consistent_type_and_mode(list(type_and_mode)::in)
-    is semidet.
+:- pred wrap_nth(int::in, format_component::out) is det.
 
-type_and_mode_list_is_consistent_type_and_mode([]).
-type_and_mode_list_is_consistent_type_and_mode([Head | Tail]) :-
-    Head = type_and_mode(_, _),
-    type_and_mode_list_is_consistent_type_and_mode(Tail).
+wrap_nth(N, nth_fixed(N)).
 
 %-----------------------------------------------------------------------------%
 %

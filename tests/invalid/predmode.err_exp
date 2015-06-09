@@ -6,3 +6,4 @@ predmode.m:001:   `:- import_module' in its interface section(s). This would
 predmode.m:001:   normally be a `:- pred', `:- func', `:- type', `:- inst' or
 predmode.m:001:   `:- mode' declaration.
 predmode.m:009: Error: some but not all arguments have modes.
+predmode.m:009:   The argument without a mode is the second.

@@ -17,7 +17,7 @@
 
 :- pred p(int, int) is semidet.
 :- mode p(in, in) is semidet.
-:- pred q(int::in, int) is semidet.
+:- pred q(int::in, int, int) is semidet.
 
 :- implementation.
 
@@ -28,7 +28,7 @@
 
 p(X, Y) :-
     X > Y.
-% q(X, Y) :-
+% q(X, Y, _) :-
 %   X > Y.
 
 ok(X, Y) = X + Y :-
