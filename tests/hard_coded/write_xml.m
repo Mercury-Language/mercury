@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module write_xml.
 
 :- interface.
@@ -135,39 +135,40 @@ p1(_, _, "X", []).
 main(!IO) :-
     StdOut = io.stdout_stream,
     some [!M] (
-    map.init(!:M),
-    map.set(1, "hello", !M),
-    map.set(2, "hello1", !M),
-    map.set(3, "hello2", !M),
-    map.set(4, "hello3", !M),
-    map.set(5, "hello4", !M),
-    map.set(6, "hello5", !M),
-    map.set(7, "hello6", !M),
-    map.set(8, "hello7", !M),
-    make_ftype(F),
-    make_pointer(P),
-    X = [
-        'Tag-'(44),
-        'String'("a string"),
-        hello("this \n\nis a <string>&", -123, '<', 1.123, yes),
-        a_tuple({"some more stuf", 123456,
-            {a, 123.55322522e-99}}),
-        'List'([listPart(1),
-            listPart(2),
-            nothing,
-            listPart(4),
-            nothing,
-            listPart(6),
-            listPart(7),
-            listPart(8),
-            nothing]),
-        a_map(!.M), 'a <!@#$%^&*()> functor name!!!'(999),
-        a_pred(p(1, 2, hello("a string", 1, 'c', -0.00001e-10, yes))),
-        t(type_of(!.M)),
-        ctor(type_ctor(type_of(!.M))),
-        foreign(F),
-        pointer(P)],
-    Map = !.M
+        map.init(!:M),
+        map.set(1, "hello", !M),
+        map.set(2, "hello1", !M),
+        map.set(3, "hello2", !M),
+        map.set(4, "hello3", !M),
+        map.set(5, "hello4", !M),
+        map.set(6, "hello5", !M),
+        map.set(7, "hello6", !M),
+        map.set(8, "hello7", !M),
+        make_ftype(F),
+        make_pointer(P),
+        X = [
+            'Tag-'(44),
+            'String'("a string"),
+            hello("this \n\nis a <string>&", -123, '<', 1.123, yes),
+            a_tuple({"some more stuf", 123456, {a, 123.55322522e-99}}),
+            'List'([listPart(1),
+                listPart(2),
+                nothing,
+                listPart(4),
+                nothing,
+                listPart(6),
+                listPart(7),
+                listPart(8),
+                nothing]),
+            a_map(!.M),
+            'a <!@#$%^&*()> functor name!!!'(999),
+            a_pred(p(1, 2, hello("a string", 1, 'c', -0.00001e-10, yes))),
+            t(type_of(!.M)),
+            ctor(type_ctor(type_of(!.M))),
+            foreign(F),
+            pointer(P)
+        ],
+        Map = !.M
     ),
     array.from_list(X, A),
     write_xml_doc_general_cc(StdOut, A, unique, with_stylesheet("text/css",

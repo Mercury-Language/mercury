@@ -154,6 +154,13 @@
 
 /* set up macro for setting field names without #ifdefs */
 #ifdef  EXPAND_FUNCTOR_FIELD
+  #define copy_and_handle_functor_name(name)                            \
+            do {                                                        \
+                MR_restore_transient_hp();                              \
+                MR_make_aligned_string_copy(expand_info->EXPAND_FUNCTOR_FIELD,\
+                    name);                                              \
+                MR_save_transient_hp();                                 \
+            } while (0)
   #define handle_functor_name(name)                                     \
             do {                                                        \
                 MR_restore_transient_hp();                              \
@@ -191,6 +198,8 @@
                     (tci)->MR_type_ctor_functor_number_map[ordinal];    \
             } while (0)
 #else   /* EXPAND_FUNCTOR_FIELD */
+  #define copy_and_handle_functor_name(name)                            \
+            ((void) 0)
   #define handle_functor_name(name)                                     \
             ((void) 0)
   #define handle_noncanonical_name(tci)                                 \
@@ -1481,38 +1490,32 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             return;
 
         case MR_TYPECTOR_REP_FOREIGN:
-            {
-                char        buf[256];   /* should be big enough */
-                const char  *name = type_ctor_info->MR_type_ctor_name;
-
 #ifdef  MR_HAVE_SNPRINTF
-                snprintf(buf, 256, "<<foreign(%s, %p)>>",
-                    name, (void *) *data_word_ptr);
+            snprintf(MR_foreign_functor_name_buf, MR_FOREIGN_NAME_BUF_SIZE,
+                "<<foreign(%s, %p)>>",
+                type_ctor_info->MR_type_ctor_name, (void *) *data_word_ptr);
 #else
-                sprintf(buf, "<<foreign(%s, %p)>>",
-                    name, (void *) *data_word_ptr);
+            sprintf(MR_foreign_functor_name_buf,
+                "<<foreign(%s, %p)>>",
+                type_ctor_info->MR_type_ctor_name, (void *) *data_word_ptr);
 #endif
-
-                handle_functor_name(buf);
-            }
+            /* The contents of the buffer may change later. */
+            copy_and_handle_functor_name(MR_foreign_functor_name_buf);
             handle_zero_arity_args();
             return;
 
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
-            {
-                char        buf[256];   /* should be big enough */
-                const char  *name = type_ctor_info->MR_type_ctor_name;
-
 #ifdef  MR_HAVE_SNPRINTF
-                snprintf(buf, 256, "<<stable_foreign(%s, %p)>>",
-                    name, (void *) *data_word_ptr);
+            snprintf(MR_foreign_functor_name_buf, MR_FOREIGN_NAME_BUF_SIZE,
+                "<<stable_foreign(%s, %p)>>",
+                type_ctor_info->MR_type_ctor_name, (void *) *data_word_ptr);
 #else
-                sprintf(buf, "<<stable_foreign(%s, %p)>>",
-                    name, (void *) *data_word_ptr);
+            sprintf(MR_foreign_functor_name_buf,
+                "<<stable_foreign(%s, %p)>>",
+                type_ctor_info->MR_type_ctor_name, (void *) *data_word_ptr);
 #endif
-
-                handle_functor_name(buf);
-            }
+            /* The contents of the buffer may change later. */
+            copy_and_handle_functor_name(MR_foreign_functor_name_buf);
             handle_zero_arity_args();
             return;
 
@@ -1542,6 +1545,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #undef  EXTRA_ARG3
 #undef  EXTRA_ARGS
 #undef  EXPAND_ONE_ARG
+#undef  copy_and_handle_functor_name
 #undef  handle_functor_name
 #undef  handle_functor_number
 #undef  handle_type_functor_number

@@ -134,7 +134,7 @@ is a &lt;string&gt;&amp;</String>
 		<type_desc-46type_ctor_desc functor="tree234.tree234/2" type="type_desc.type_ctor_desc" arity="0" />
 	</ctor--1--write_xml-46mytype>
 	<foreign--1--write_xml-46mytype functor="foreign" type="write_xml.mytype" arity="1">
-		<write_xml-46ftype functor="&lt;&lt;foreign&gt;&gt;" type="write_xml.ftype" arity="0" />
+		<write_xml-46ftype functor="&lt;&lt;foreign(ftype, 0x1)&gt;&gt;" type="write_xml.ftype" arity="0" />
 	</foreign--1--write_xml-46mytype>
 	<pointer--1--write_xml-46mytype functor="pointer" type="write_xml.mytype" arity="1">
 		<c_pointer functor="c_pointer(0x0)" type="c_pointer" arity="0" />
@@ -520,7 +520,7 @@ is a &lt;string&gt;&amp;</String>
 										</ctor>
 										<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
 											<foreign functor="foreign" type="write_xml.mytype" arity="1">
-												<Unknown functor="&lt;&lt;foreign&gt;&gt;" type="write_xml.ftype" arity="0" />
+												<Unknown functor="&lt;&lt;foreign(ftype, 0x1)&gt;&gt;" type="write_xml.ftype" arity="0" />
 											</foreign>
 											<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
 												<pointer functor="pointer" type="write_xml.mytype" arity="1">

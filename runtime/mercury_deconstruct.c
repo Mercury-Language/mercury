@@ -20,6 +20,15 @@
 #include "mercury_type_desc.h"
 #include "mercury_minimal_model.h"
 
+/*
+** We reserve a static buffer to hold the names we dynamically generate
+** for "functors" of foreign types. This should eliminate the possibility
+** that the space we used to reserve on the stack for this may clobber
+** other information there.
+*/
+#define MR_FOREIGN_NAME_BUF_SIZE    256
+static  char            MR_foreign_functor_name_buf[MR_FOREIGN_NAME_BUF_SIZE];
+
 static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 
 #define EXPAND_FUNCTION_NAME        MR_expand_functor_args
