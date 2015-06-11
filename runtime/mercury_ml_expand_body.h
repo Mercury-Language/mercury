@@ -1490,33 +1490,43 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             return;
 
         case MR_TYPECTOR_REP_FOREIGN:
+            {
+                char buf[MR_FOREIGN_NAME_BUF_SIZE];
 #ifdef  MR_HAVE_SNPRINTF
-            snprintf(MR_foreign_functor_name_buf, MR_FOREIGN_NAME_BUF_SIZE,
-                "<<foreign(%s, %p)>>",
-                type_ctor_info->MR_type_ctor_name, (void *) *data_word_ptr);
+                snprintf(buf, MR_FOREIGN_NAME_BUF_SIZE,
+                    "<<foreign(%s, %p)>>",
+                    type_ctor_info->MR_type_ctor_name,
+                    (void *) *data_word_ptr);
 #else
-            sprintf(MR_foreign_functor_name_buf,
-                "<<foreign(%s, %p)>>",
-                type_ctor_info->MR_type_ctor_name, (void *) *data_word_ptr);
+                sprintf(buf,
+                    "<<foreign(%s, %p)>>",
+                    type_ctor_info->MR_type_ctor_name,
+                    (void *) *data_word_ptr);
 #endif
-            /* The contents of the buffer may change later. */
-            copy_and_handle_functor_name(MR_foreign_functor_name_buf);
-            handle_zero_arity_args();
+                /* The contents of the memory occupied by buf may change. */
+                copy_and_handle_functor_name(buf);
+                handle_zero_arity_args();
+            }
             return;
 
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
+            {
+                char buf[MR_FOREIGN_NAME_BUF_SIZE];
 #ifdef  MR_HAVE_SNPRINTF
-            snprintf(MR_foreign_functor_name_buf, MR_FOREIGN_NAME_BUF_SIZE,
-                "<<stable_foreign(%s, %p)>>",
-                type_ctor_info->MR_type_ctor_name, (void *) *data_word_ptr);
+                snprintf(buf, MR_FOREIGN_NAME_BUF_SIZE,
+                    "<<stable_foreign(%s, %p)>>",
+                    type_ctor_info->MR_type_ctor_name,
+                    (void *) *data_word_ptr);
 #else
-            sprintf(MR_foreign_functor_name_buf,
-                "<<stable_foreign(%s, %p)>>",
-                type_ctor_info->MR_type_ctor_name, (void *) *data_word_ptr);
+                sprintf(buf,
+                    "<<stable_foreign(%s, %p)>>",
+                    type_ctor_info->MR_type_ctor_name,
+                    (void *) *data_word_ptr);
 #endif
-            /* The contents of the buffer may change later. */
-            copy_and_handle_functor_name(MR_foreign_functor_name_buf);
-            handle_zero_arity_args();
+                /* The contents of the memory occupied by buf may change. */
+                copy_and_handle_functor_name(buf);
+                handle_zero_arity_args();
+            }
             return;
 
         case MR_TYPECTOR_REP_REFERENCE:
