@@ -579,7 +579,7 @@ gotos(%s, NT, NS) :-
     gotos%s(NT, NS).
 
 :- pred gotos%s(nonterminal, int).
-:- mode gotos%s(in, out) is semidet.
+:- mode gotos%s(in, out(state_no)) is semidet.
 
 ",
             [s(SS), s(SS), s(SS), s(SS)], !IO),
