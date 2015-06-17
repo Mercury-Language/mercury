@@ -30,6 +30,9 @@ dynamic_linking
 fixed		An implementation of fixed-point arithmetic with
 		the COBOL semantics.
 
+gmp_int         A Mercury binding to GNU multi-precision library,
+                providing integers with arbitrary precision.
+
 graphics	Some packages for doing graphics programming 
                 and GUIs in Mercury: 
 			- a binding to Tcl/Tk
