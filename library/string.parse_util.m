@@ -240,7 +240,8 @@ string_format_error_to_msg(Error) = Msg :-
             Msg = Msg0 ++ " but there is an " ++ Extra ++ "input."
         else
             Msg = Msg0 ++ " but there are " ++
-                string.int_to_string(NumExtraPolyTypes) ++ Extra ++ "inputs."
+                string.int_to_string(NumExtraPolyTypes) ++
+                " " ++ Extra ++ "inputs."
         )
     ).
 
