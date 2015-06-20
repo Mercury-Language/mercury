@@ -20,8 +20,6 @@
 
 :- interface.
 
-:- import_module int.
-
 :- type gmp_int.
 
     % Convert an int to an gmp_int.
@@ -52,7 +50,8 @@
     % Quotient and Remainder.
     % divide_with_rem(A, B, Quot, Rem) if A // B = Quot, A rem B = Rem
     %
-:- pred divide_with_rem(gmp_int::in, gmp_int::in, gmp_int::out, gmp_int::out) is det.
+:- pred divide_with_rem(gmp_int::in, gmp_int::in, gmp_int::out, gmp_int::out)
+    is det.
 
     % Flooring integer division.
     %
@@ -66,7 +65,8 @@
     % Divisor and Modulo.
     % divide_with_mod(A, B, Div, Mod) if A div B = Div, A mod B = Mod
     %
-:- pred divide_with_mod(gmp_int::in, gmp_int::in, gmp_int::out, gmp_int::out) is det.
+:- pred divide_with_mod(gmp_int::in, gmp_int::in, gmp_int::out, gmp_int::out)
+    is det.
 
     % Shift Left.
     %
@@ -146,7 +146,8 @@
     %
     % Extended greatest common divisor.
     %
-:- pred gcdext(gmp_int::in, gmp_int::in, gmp_int::out, gmp_int::out, gmp_int::out) is det.
+:- pred gcdext(gmp_int::in, gmp_int::in, gmp_int::out, gmp_int::out,
+    gmp_int::out) is det.
 
     % Least common multiple.
     %
@@ -176,7 +177,7 @@
 
     % Computes Legendre symbol (see jacobi), fails if P is not prime.
     %
-:- func legendre(gmp_int, gmp_int) = int is semidet.
+:- pred legendre(gmp_int::in, gmp_int::in, int::out) is semidet.
 
     % jacobi(A, N) = C:
     %
@@ -234,9 +235,9 @@
     %
 :- func det_to_int(gmp_int) = int.
 
-    % Convert string in base 10 to gmp_int. Fails if unsuccesful.
+    % Convert string in base 10 to gmp_int. Fails if unsuccessful.
     %
-:- func from_string(string) = gmp_int is semidet.
+:- pred from_string(string::in, gmp_int::out) is semidet.
 
     % As above, throws exception instead of failing if unsuccessful.
     %
@@ -248,7 +249,7 @@
     %
     % Base must be 10 or 16, fails if unsuccessful.
     %
-:- func from_base_string(string, int) = gmp_int is semidet.
+:- pred from_base_string(string::in, int::in, gmp_int::out) is semidet.
 
     % As above, throws exception instead of failing if unsuccessful.
     %
@@ -262,8 +263,8 @@
     %
     % Convert gmp_int to a string in given base.
     %
-    % Base must be between 2 and 62, inclusive; if it is not, the predicate will
-    % throw an exception.
+    % Base must be between 2 and 62, inclusive; if it is not, the predicate
+    % will throw an exception.
     %
 :- func to_base_string(gmp_int, int) = string.
 
@@ -287,9 +288,15 @@
     %
 :- func ten = gmp_int.
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module exception, math, require.
+:- import_module exception.
+:- import_module int.
+:- import_module math.
+:- import_module require.
 
 %---------------------------------------------------------------------------%
 % foreign declarations
@@ -297,17 +304,22 @@
 
     % Type declaration for foreign type gmp_int*.
     %
-    % We assume unsigned long long to be at least as big as MR_Integer.
-    % This is currently required for the to_int predicates.
+    % Converting a gmp_int to MR_Integer with mpz_get_si requires that
+    %   sizeof(MR_Integer) >= sizeof(long int)
+    % Converting an MR_Integer to gmp_int with mpz_init_set_si requires that
+    %   sizeof(long int) >= sizeof(MR_Integer)
+    % Therefore we require that the two types have the same width.
+    % On some 64-bit platforms, MR_Integer is 64-bits but long is 32-bits.
+    % This module will need require changes to work on those platforms.
     %
 :- pragma foreign_type("C", gmp_int, "mpz_t *", [can_pass_as_mercury_type])
     where equality is equal, comparison is cmp.
 :- pragma foreign_decl("C",
-"\
-#include <stdio.h>\n\
-#include <gmp.h>\n\
-MR_STATIC_ASSERT(gmp_int, sizeof(unsigned long long) >= sizeof(MR_Integer));\n\
-#define MILLER_RABIN_ROUNDS 25\n\
+"
+#include <gmp.h>
+
+MR_STATIC_ASSERT(gmp_int, sizeof(MR_Integer) == sizeof(long int));
+#define MILLER_RABIN_ROUNDS 25
 ").
 
 %---------------------------------------------------------------------------%
@@ -318,34 +330,27 @@ MR_STATIC_ASSERT(gmp_int, sizeof(unsigned long long) >= sizeof(MR_Integer));\n\
 :- initialise gmp_initialize/0.
 :- impure pred gmp_initialize is det.
 
-:- pragma foreign_code("C",
+:- pragma foreign_decl("C", local,
 "
 #include <stdlib.h>
 
-void *
+static void *
 gmp_int_alloc_function(size_t size)
 {
   return MR_GC_malloc(size);
 }
 
-void *
+static void *
 gmp_int_realloc_function(void* ptr, size_t size, size_t new_size)
 {
   return MR_GC_realloc(ptr, new_size);
 }
 
-void
+static void
 gmp_int_free_function(void* ptr, size_t size)
 {
   GC_free(ptr);
 }
-").
-
-:- pragma foreign_decl("C",
-"
-void* gmp_int_alloc_function(size_t);
-void* gmp_int_realloc_function(void*, size_t, size_t);
-void  gmp_int_free_function(void*, size_t);
 ").
 
 :- pragma foreign_decl("C",
@@ -368,7 +373,7 @@ mpz_t GMP_INT_constant_ten;
 
 :- pragma foreign_proc("C",
                       gmp_initialize,
-                      [will_not_call_mercury, thread_safe],
+                      [will_not_call_mercury, thread_safe, may_not_duplicate],
 "
   mp_set_memory_functions(&gmp_int_alloc_function,
                           &gmp_int_realloc_function,
@@ -561,11 +566,12 @@ to_base_string(A, R) = S :-
   S = mpz_get_str(NULL, R, *A);
 ").
 
-from_string(S) = from_base_string(S, 10).
+from_string(S, Res) :-
+    from_base_string(S, 10, Res).
 
 det_from_string(Value) = det_from_base_string(Value, 10).
 
-from_base_string(Value, Base) = Res :-
+from_base_string(Value, Base, Res) :-
     (
       Base = 10
     ;
@@ -815,7 +821,7 @@ det_nthroot(A, N) = Res :-
   mpz_root(*C, *A, N);
 ").
 
-legendre(A, B) = Res :-
+legendre(A, B, Res) :-
     is_probab_prime(B),
     Res = jacobi(A, B).
 
