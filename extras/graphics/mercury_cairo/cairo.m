@@ -868,14 +868,14 @@ create_context(Surface, Context, !IO) :-
     
     raw_surface = cairo_get_target(Ctxt->mcairo_raw_context);
     /* 
-    ** The object returned by cairo_get_target() is owned by cairo,
-    ** since we are keeping a reference to it we need to increment
+    ** The object returned by cairo_get_target() is owned by cairo.
+    ** Since we are keeping a reference to it we need to increment
     ** its reference count.
     */
     raw_surface = cairo_surface_reference(raw_surface);
     wrapped_surface = MR_GC_NEW(MCAIRO_surface);
     wrapped_surface->mcairo_raw_surface = raw_surface;
-        MR_GC_register_finalizer(wrapped_surface, MCAIRO_finalize_surface, 0);
+    MR_GC_register_finalizer(wrapped_surface, MCAIRO_finalize_surface, 0);
     Target = (MR_Word) wrapped_surface;
 ").
 
@@ -920,9 +920,15 @@ create_context(Surface, Context, !IO) :-
     MCAIRO_surface      *wrapped_surface;
     
     raw_surface = cairo_get_group_target(Ctxt->mcairo_raw_context);
+    /*
+    ** The object returned by cairo_get_group_target() is owned by cairo.
+    ** Since we are keeping a reference to it we need to increment
+    ** its reference count.
+    */
+    raw_surface = cairo_surface_reference(raw_surface);
     wrapped_surface = MR_GC_NEW(MCAIRO_surface);
     wrapped_surface->mcairo_raw_surface = raw_surface;
-        MR_GC_register_finalizer(wrapped_surface, MCAIRO_finalize_surface, 0);
+    MR_GC_register_finalizer(wrapped_surface, MCAIRO_finalize_surface, 0);
     Target = (MR_Word) wrapped_surface;
 ").
 
