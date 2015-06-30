@@ -671,6 +671,7 @@ simplify_improve_int_call(InstMap0, PredName, _ModeNum, Args, ImprovedGoalExpr,
         !GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, pregenerated_dist, no),
     target_bits_per_int(Globals, bits_per_int(TargetBitsPerInt)),
     (
         PredName = "quot_bits_per_int",
