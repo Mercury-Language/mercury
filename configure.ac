@@ -2552,7 +2552,7 @@ case "$ac_cv_prog_gcc" in yes)
             # too.
             #
             case "$C_COMPILER_TYPE" in
-                gcc_4_8_*|gcc_4_9_*)
+                gcc_4_8_*|gcc_4_9_*|gcc_5_*)
                   CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fno-tree-dominator-opts"
                 ;;
             esac
