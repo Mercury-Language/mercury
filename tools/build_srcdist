@@ -100,7 +100,7 @@ mercury_cv_low_tag_bits=$NUM_TAG_BITS \
 mercury_cv_bits_per_word=$BITS_PER_WORD \
 mercury_cv_bytes_per_word=$BYTES_PER_WORD \
 mercury_cv_unboxed_floats=$UNBOXED_FLOATS \
-sh configure --with-llds-base-grade=none --with-cc="$CC" &&
-mmake GRADE=hlc.gc.pregen MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling --no-smart-indexing' -j$PARALLEL" tar
+sh configure --with-cc="$CC" &&
+mmake GRADE=hlc.gc.pregen MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space' -j$PARALLEL" tar
 
 
