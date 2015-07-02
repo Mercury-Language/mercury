@@ -31,6 +31,7 @@
 :- include_module pdf.
 :- include_module png.
 :- include_module ps.
+:- include_module recording.
 :- include_module region.
 :- include_module surface.
 :- include_module svg.
@@ -112,6 +113,14 @@
                 rect_y :: int,      % Y coordinate of the top.
                 rect_width  :: int, % Width.
                 rect_height :: int  % Height
+            ).
+
+:- type rectangle_f
+    --->    rectangle_f(
+                rectf_x :: float,
+                rectf_y :: float,
+                rectf_width :: float,
+                rectf_height :: float
             ).
 
 %---------------------------------------------------------------------------%

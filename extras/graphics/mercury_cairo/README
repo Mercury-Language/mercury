@@ -92,18 +92,19 @@ For example:
 Backends Submodules
 ===================
 
-The Mercury binding has submodules that provide image, PDF, PostScript, and SVG
-surfaces.  Each surface is represented by a type that is an instance of the
-cairo.surface/1 type class.  For example, the interface to image surfaces is in
-the submodule "cairo.image".
+The Mercury binding has submodules that provide image, PDF, PostScript, SVG and
+recording surfaces.  Each surface is represented by a type that is an instance
+of the cairo.surface/1 type class.  For example, the interface to image
+surfaces is in the submodule "cairo.image".
 
-Image surfaces are always supported.  PDF, PostScript, and SVG surfaces are
-optional.  The following predicates may be used to test whether they are are
-supported by an installation:
+Image surfaces are always supported.  PDF, PostScript, SVG and recording
+surfaces are optional.  The following predicates may be used to test whether
+they are are supported by an installation:
     
     cairo.pdf.have_pdf_surface/0
     cairo.ps.have_ps_surface/0
     cairo.svg.have_svg_surface/0
+    cairo.recording.have_recording_surface/0
 
 (The predicate cairo.png.png_is_supported/0 performs the same function for
 determining whether the PNG reading and writing capabilities in the submodule
