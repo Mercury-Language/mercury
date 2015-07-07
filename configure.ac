@@ -2607,15 +2607,6 @@ case "$ac_cv_prog_gcc" in yes)
             mercury_cv_asm_labels=no
             mercury_cv_gcc_labels=no
             ;;
-        sparc*)
-            case "`$CC --version < /dev/null`" in
-                2.8*)
-                    AC_MSG_WARN(
-[Mercury might not work with gcc 2.8 on sparc!
-****    We advise using gcc 2.95.x.])
-                    ;;
-            esac
-            ;;
     esac
     ;;
 esac
@@ -2908,19 +2899,6 @@ AC_TRY_CPP([
 AC_MSG_RESULT($mercury_cv_profiling)
 
 #-----------------------------------------------------------------------------#
-
-AC_MSG_CHECKING(if C compiler is egcs)
-case "`$CC --version < /dev/null 2>&1`" in
-    egcs-*)
-        mercury_cv_egcs=yes
-        ;;
-    *)
-        mercury_cv_egcs=no
-        ;;
-esac
-AC_MSG_RESULT($mercury_cv_egcs)
-
-#-----------------------------------------------------------------------------#
 #
 # Add an option that disables the deep profiler
 #
@@ -2950,20 +2928,6 @@ then
 else
     mercury_cv_can_enable_deep_profiler=no
 fi
-
-# On x86, gcc version egcs-1.1.2 has a bug which causes it to get
-# an internal compiler error when compiling library/random.c
-# (when that file was build with mmc --intermodule-optimization -O4)
-# So if we're using an egcs version of gcc, disable deep profiling.
-case "$host" in
-    i*86-*-*)
-        case "$mercury_cv_egcs" in
-            yes)
-            mercury_cv_can_enable_deep_profiler=no
-            ;;
-        esac
-        ;;
-esac
 
 case "$host" in
     *apple*darwin*)

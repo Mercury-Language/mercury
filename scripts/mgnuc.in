@@ -533,48 +533,10 @@ case "$FULLARCH" in
         ;;
 esac
 
-# Kludge for gcc-2.6.3 bug on mips: if you use gcc global registers and -O2,
-# gcc 2.6.3 gets an internal error compiling library/int.c and
-# compiler/bytecode.c.  As a work-around, we compile those file with -O1.
-# Similarly library/bag.c needs to be compiled with -O0.
-# Similarly for gcc-2.6.3 on alpha with compiler/modules.c.
-# Similarly for gcc-2.7.0 on i386 with compiler/call_gen.c.
-# Similarly for egcs-1.1 on sparc with library/lexer.c, library/string.c,
-# and compiler/{deforest,dupelim,mercury_to_mercury,modules}.c.
-# Similarly for egcs-1.1.2 on i386 with library/table_builtin.c.
-
 case $COMPILER in gcc)
     case "$FULLARCH" in
-        mips*)
-            case "$*" in
-            *" int.c "*|*" int.dir/int_"*".c "*)
-                case "`$CC --version 2>/dev/null`" in 2.6.*)
-                    ARCH_OPTS="$ARCH_OPTS -O1" ;;
-                esac;;
-            *" bytecode.c "*|*" bytecode.dir/bytecode_"*".c "*)
-                case "`$CC --version 2>/dev/null`" in 2.6.*)
-                    ARCH_OPTS="$ARCH_OPTS -O1" ;;
-                esac;;
-            *" bag.c "*)
-                case "`$CC --version 2>/dev/null`" in 2.6.*)
-                    ARCH_OPTS="$ARCH_OPTS -O0" ;;
-                esac;;
-            esac ;;
-        alpha*)
-            case "$*" in
-            *" modules.c "*|*" modules.dir/modules_"*".c "*)
-                case "`$CC --version 2>/dev/null`" in 2.6.*)
-                    ARCH_OPTS="$ARCH_OPTS -O1" ;;
-                esac
-            esac ;;
         i*86*)
             case "$*" in
-            *" call_gen.c "*|*" modules.dir/call_gen"*".c "*)
-                ARCH_OPTS="$ARCH_OPTS -O0" ;;
-            *" table_builtin.c "*|*" modules.dir/table_builtin"*".c "*)
-                ARCH_OPTS="$ARCH_OPTS -O0" ;;
-            *" random.c "*|*" random.dir/random"*".c "*)
-                ARCH_OPTS="$ARCH_OPTS -O0" ;;
             # Workarounds for internal problems with GCC in asm_fast.gc
             # on i*86.  Reported against gcc 4.4.5 and 4.6.0.
             *" ml_backend.ml_closure_gen.c "*)
@@ -593,23 +555,6 @@ case $COMPILER in gcc)
                 esac
                 ;;
             esac ;;
-        sparc*)
-            case "$*" in
-            *" lexer.c "*|*" modules.dir/lexer"*".c "*)
-                ARCH_OPTS="$ARCH_OPTS -O1" ;;
-            *" string.c "*|*" modules.dir/string"*".c "*)
-                ARCH_OPTS="$ARCH_OPTS -O1" ;;
-            *" deforest.c "*|*" modules.dir/deforest"*".c "*)
-                ARCH_OPTS="$ARCH_OPTS -O1" ;;
-            *" dupelim.c "*|*" modules.dir/dupelim"*".c "*)
-                ARCH_OPTS="$ARCH_OPTS -O1" ;;
-            *" dl.c "*|*" modules.dir/dl"*".c "*)
-                ARCH_OPTS="$ARCH_OPTS -O1" ;;
-            *" mercury_to_mercury.c "*|*" modules.dir/mercury_to_mercury"*".c "*)
-                ARCH_OPTS="$ARCH_OPTS -O1" ;;
-            *" modules.c "*|*" modules.dir/modules"*".c "*)
-                ARCH_OPTS="$ARCH_OPTS -O1" ;;
-            esac
     esac ;;
 esac
 
