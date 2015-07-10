@@ -1888,12 +1888,14 @@ then
     then
         echo expected test case failures:
         cat $tests_dir/EXPECTED_FAILED_TESTS
+        wc -l $tests_dir/EXPECTED_FAILED_TESTS
     fi
 
     if test -s $tests_dir/UNEXPECTED_FAILED_TESTS
     then
         echo unexpected test case failures:
         cat $tests_dir/UNEXPECTED_FAILED_TESTS
+        wc -l $tests_dir/UNEXPECTED_FAILED_TESTS
     fi
 fi
 
