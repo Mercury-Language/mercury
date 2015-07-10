@@ -1221,6 +1221,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % without the extra information from the `.opt' files
     % is done when making the `.opt' file. With `--use-opt-files',
     % that doesn't happen.
+    % XXX Should that be "with `--no-use-opt-files'"?
     globals.set_option(use_opt_files, bool(no), !Globals),
 
     option_implies(smart_recompilation, generate_item_version_numbers,
