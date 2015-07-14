@@ -1058,7 +1058,23 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
 
     globals.lookup_string_option(Globals, java_compiler, JavaCompiler),
     globals.lookup_accumulating_option(Globals, java_flags, JavaFlagsList),
-    join_string_list(JavaFlagsList, "", "", " ", JAVAFLAGS),
+    globals.lookup_bool_option(Globals, restricted_command_line,
+        RestrictedCommandLine),
+    (
+        RestrictedCommandLine = yes,
+        % NOTE: the '-J' flag must not occur inside @files, so we need
+        % to ensure that it is always passed on the command line.
+        list.filter(is_minus_j_flag, JavaFlagsList,
+            JRT_JavaFlagsList, NonJRT_JavaFlagsList),
+        join_string_list(JRT_JavaFlagsList, "", "", " ",
+            NonAtFileJAVAFLAGS),
+        join_string_list(NonJRT_JavaFlagsList, "", "", " ",
+            JAVAFLAGS)
+    ;
+        RestrictedCommandLine = no,
+        join_string_list(JavaFlagsList, "", "", " ", JAVAFLAGS),
+        NonAtFileJAVAFLAGS = ""
+    ),
 
     get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
     globals.lookup_accumulating_option(Globals, java_classpath, UserClasspath),
@@ -1123,13 +1139,15 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
         MaybeMFilterJavac = yes(MFilterJavac)
     ),
 
+    NonAtFileCommandArgs = NonAtFileJAVAFLAGS,
     % Be careful with the order here!  Some options may override others.
     % Also be careful that each option is separated by spaces.
     JoinedJavaFiles = string.join_list(" ", JavaFiles),
     string.append_list([InclOpt, DirOpts,
         Target_DebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], CommandArgs),
     invoke_long_system_command_maybe_filter_output(Globals, ErrorStream,
-        cmd_verbose_commands, JavaCompiler, CommandArgs, MaybeMFilterJavac,
+        cmd_verbose_commands, JavaCompiler, NonAtFileCommandArgs,
+        CommandArgs, MaybeMFilterJavac,
         Succeeded, !IO).
 
 :- func java_classpath_separator = string.
@@ -1144,6 +1162,11 @@ java_classpath_separator = PathSeparator :-
     ;
         PathSeparator = ":"
     ).
+
+:- pred is_minus_j_flag(string::in) is semidet.
+
+is_minus_j_flag(FlagStr) :-
+    string.prefix(FlagStr, "-J").
 
 %-----------------------------------------------------------------------------%
 
@@ -3550,14 +3573,14 @@ make_standalone_int_body(Globals, Basename, !IO) :-
 invoke_long_system_command(Globals, ErrorStream, Verbosity, Cmd, Args,
         Succeeded, !IO) :-
     invoke_long_system_command_maybe_filter_output(Globals, ErrorStream,
-        Verbosity, Cmd, Args, no, Succeeded, !IO).
+        Verbosity, Cmd, "", Args, no, Succeeded, !IO).
 
 :- pred invoke_long_system_command_maybe_filter_output(globals::in,
     io.output_stream::in, command_verbosity::in, string::in, string::in,
-    maybe(string)::in, bool::out, io::di, io::uo) is det.
+    string::in, maybe(string)::in, bool::out, io::di, io::uo) is det.
 
 invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
-        Cmd, Args, MaybeProcessOutput, Succeeded, !IO) :-
+        Cmd, NonAtArgs, Args, MaybeProcessOutput, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, restricted_command_line,
         RestrictedCommandLine),
     (
@@ -3577,18 +3600,22 @@ invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
             io.close_output(TmpStream, !IO),
 
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+            AtFileName = at_file_name(Globals, TmpFile),
             (
                 VeryVerbose = yes,
-                io.write_string("% Args placed in ", !IO),
-                io.write_string(at_file_name(Globals, TmpFile) ++ ": `", !IO),
-                io.write_string(TmpFileArgs, !IO),
-                io.write_string("'\n", !IO),
+                io.format("%% Args placed in %s: `%s'\n",
+                    [s(AtFileName), s(TmpFileArgs)], !IO),
                 io.flush_output(!IO)
             ;
                 VeryVerbose = no
             ),
 
-            FullCmd = Cmd ++ " " ++ at_file_name(Globals, TmpFile),
+            ( NonAtArgs = "" ->
+                FullCmd = Cmd ++ " " ++ AtFileName
+            ;
+                string.append_list([Cmd, " ", NonAtArgs, " ", AtFileName],
+                    FullCmd)
+            ),
             invoke_system_command_maybe_filter_output(Globals, ErrorStream,
                 Verbosity, FullCmd, MaybeProcessOutput, Succeeded0, !IO),
 
@@ -3604,10 +3631,13 @@ invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
             OpenResult = error(_),
             Succeeded = no
         )
-
     ;
         RestrictedCommandLine = no,
-        FullCmd = Cmd ++ " " ++ Args,
+        ( NonAtArgs = "" ->
+            FullCmd = Cmd ++ " " ++ Args
+        ;
+            string.append_list([Cmd, " ", NonAtArgs, " ", Args], FullCmd)
+        ),
         invoke_system_command_maybe_filter_output(Globals, ErrorStream,
             Verbosity, FullCmd, MaybeProcessOutput, Succeeded, !IO)
     ).
