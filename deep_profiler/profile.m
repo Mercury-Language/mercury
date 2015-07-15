@@ -638,178 +638,178 @@ valid_call_site_static_ptr_raw(CallSiteStatics, call_site_static_ptr(CSSI)) :-
 
 lookup_call_site_dynamics(CallSiteDynamics, CSDPtr, CSD) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array.in_bounds(CallSiteDynamics, CSDI) ->
+    ( if CSDI > 0, array.in_bounds(CallSiteDynamics, CSDI) then
         array.lookup(CallSiteDynamics, CSDI, CSD)
-    ;
-        error("lookup_call_site_dynamics: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_call_site_statics(CallSiteStatics, CSSPtr, CSS) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    ( CSSI > 0, array.in_bounds(CallSiteStatics, CSSI) ->
+    ( if CSSI > 0, array.in_bounds(CallSiteStatics, CSSI) then
         array.lookup(CallSiteStatics, CSSI, CSS)
-    ;
-        error("lookup_call_site_statics: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_proc_dynamics(ProcDynamics, PDPtr, PD) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    ( PDI > 0, array.in_bounds(ProcDynamics, PDI) ->
+    ( if PDI > 0, array.in_bounds(ProcDynamics, PDI) then
         array.lookup(ProcDynamics, PDI, PD)
-    ;
-        error("lookup_proc_dynamics: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_proc_statics(ProcStatics, PSPtr, PS) :-
     PSPtr = proc_static_ptr(PSI),
-    ( PSI > 0, array.in_bounds(ProcStatics, PSI) ->
+    ( if PSI > 0, array.in_bounds(ProcStatics, PSI) then
         array.lookup(ProcStatics, PSI, PS)
-    ;
-        error("lookup_proc_statics: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_clique_index(CliqueIndex, PDPtr, CliquePtr) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    ( PDI > 0, array.in_bounds(CliqueIndex, PDI) ->
+    ( if PDI > 0, array.in_bounds(CliqueIndex, PDI) then
         array.lookup(CliqueIndex, PDI, CliquePtr)
-    ;
-        error("lookup_clique_index: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_clique_members(CliqueMembers, CliquePtr, PDPtrs) :-
     CliquePtr = clique_ptr(CI),
-    ( array.in_bounds(CliqueMembers, CI) ->
+    ( if array.in_bounds(CliqueMembers, CI) then
         array.lookup(CliqueMembers, CI, PDPtrs)
-    ;
-        error("lookup_clique_members: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_clique_parents(CliqueParents, CliquePtr, CSDPtr) :-
     CliquePtr = clique_ptr(CI),
-    ( array.in_bounds(CliqueParents, CI) ->
+    ( if array.in_bounds(CliqueParents, CI) then
         array.lookup(CliqueParents, CI, CSDPtr)
-    ;
-        error("lookup_clique_parents: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_clique_maybe_child(CliqueMaybeChild, CSDPtr, MaybeCliquePtr) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array.in_bounds(CliqueMaybeChild, CSDI) ->
+    ( if CSDI > 0, array.in_bounds(CliqueMaybeChild, CSDI) then
         array.lookup(CliqueMaybeChild, CSDI, MaybeCliquePtr)
-    ;
-        error("lookup_clique_maybe_child: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_proc_callers(ProcCallers, PSPtr, Callers) :-
     PSPtr = proc_static_ptr(PSI),
-    ( PSI > 0, array.in_bounds(ProcCallers, PSI) ->
+    ( if PSI > 0, array.in_bounds(ProcCallers, PSI) then
         array.lookup(ProcCallers, PSI, Callers)
-    ;
-        error("lookup_proc_callers: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_call_site_static_map(CallSiteStaticMap, CSDPtr, CSSPtr) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array.in_bounds(CallSiteStaticMap, CSDI) ->
+    ( if CSDI > 0, array.in_bounds(CallSiteStaticMap, CSDI) then
         array.lookup(CallSiteStaticMap, CSDI, CSSPtr)
-    ;
-        error("lookup_call_site_static_map: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_call_site_calls(CallSiteCalls, CSSPtr, Calls) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    ( CSSI > 0, array.in_bounds(CallSiteCalls, CSSI) ->
+    ( if CSSI > 0, array.in_bounds(CallSiteCalls, CSSI) then
         array.lookup(CallSiteCalls, CSSI, Calls)
-    ;
-        error("lookup_call_site_static_map: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_pd_own(PDOwns, PDPtr, PDOwn) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    ( PDI > 0, array.in_bounds(PDOwns, PDI) ->
+    ( if PDI > 0, array.in_bounds(PDOwns, PDI) then
         array.lookup(PDOwns, PDI, PDOwn)
-    ;
-        error("lookup_pd_own: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_pd_desc(PDDescs, PDPtr, PDDesc) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    ( PDI > 0, array.in_bounds(PDDescs, PDI) ->
+    ( if PDI > 0, array.in_bounds(PDDescs, PDI) then
         array.lookup(PDDescs, PDI, PDDesc)
-    ;
-        error("lookup_pd_desc: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_csd_own(CSDOwns, CSDPtr, CSDOwn) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array.in_bounds(CSDOwns, CSDI) ->
+    ( if CSDI > 0, array.in_bounds(CSDOwns, CSDI) then
         array.lookup(CSDOwns, CSDI, CSDOwn)
-    ;
-        error("lookup_csd_own: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_csd_desc(CSDDescs, CSDPtr, CSDDesc) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array.in_bounds(CSDDescs, CSDI) ->
+    ( if CSDI > 0, array.in_bounds(CSDDescs, CSDI) then
         array.lookup(CSDDescs, CSDI, CSDDesc)
-    ;
-        error("lookup_csd_desc: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_ps_own(PSOwns, PSPtr, PSOwn) :-
     PSPtr = proc_static_ptr(PSI),
-    ( PSI > 0, array.in_bounds(PSOwns, PSI) ->
+    ( if PSI > 0, array.in_bounds(PSOwns, PSI) then
         array.lookup(PSOwns, PSI, PSOwn)
-    ;
-        error("lookup_ps_own: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_ps_desc(PSDescs, PSPtr, PSDesc) :-
     PSPtr = proc_static_ptr(PSI),
-    ( PSI > 0, array.in_bounds(PSDescs, PSI) ->
+    ( if PSI > 0, array.in_bounds(PSDescs, PSI) then
         array.lookup(PSDescs, PSI, PSDesc)
-    ;
-        error("lookup_ps_desc: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_css_own(CSSOwns, CSSPtr, CSSOwn) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    ( CSSI > 0, array.in_bounds(CSSOwns, CSSI) ->
+    ( if CSSI > 0, array.in_bounds(CSSOwns, CSSI) then
         array.lookup(CSSOwns, CSSI, CSSOwn)
-    ;
-        error("lookup_css_own: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_css_desc(CSSDescs, CSSPtr, CSSDesc) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    ( CSSI > 0, array.in_bounds(CSSDescs, CSSI) ->
+    ( if CSSI > 0, array.in_bounds(CSSDescs, CSSI) then
         array.lookup(CSSDescs, CSSI, CSSDesc)
-    ;
-        error("lookup_css_desc: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_pd_comp_table(PDCompTables, PDPtr, CompTable) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    ( PDI > 0, array.in_bounds(PDCompTables, PDI) ->
+    ( if PDI > 0, array.in_bounds(PDCompTables, PDI) then
         array.lookup(PDCompTables, PDI, CompTable)
-    ;
-        error("lookup_pd_comp_table: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_csd_comp_table(CSDCompTables, CSDPtr, CompTable) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array.in_bounds(CSDCompTables, CSDI) ->
+    ( if CSDI > 0, array.in_bounds(CSDCompTables, CSDI) then
         array.lookup(CSDCompTables, CSDI, CompTable)
-    ;
-        error("lookup_csd_comp_table: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 lookup_ps_coverage(PSCoverageArrays, PSPtr, PSCoverageArray) :-
     PSPtr = proc_static_ptr(PSI),
-    ( PSI > 0, array.in_bounds(PSCoverageArrays, PSI) ->
+    ( if PSI > 0, array.in_bounds(PSCoverageArrays, PSI) then
         array.lookup(PSCoverageArrays, PSI, PSCoverageArray)
-    ;
-        error("lookup_ps_coverage: bounds error")
+    else
+        unexpected($module, $pred, "bounds error")
     ).
 
 %-----------------------------------------------------------------------------%

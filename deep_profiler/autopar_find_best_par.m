@@ -102,9 +102,9 @@ choose_algorithm(Info, ConjunctionSize, Algorithm) :-
         Algorithm = affbps_complete(MaybeBranchesLimit)
     ;
         Algorithm0 = affbp_complete_size(SizeLimit),
-        ( SizeLimit < ConjunctionSize ->
+        ( if SizeLimit < ConjunctionSize then
             Algorithm = affbps_greedy
-        ;
+        else
             Algorithm = affbps_complete(no)
         )
     ;
@@ -150,15 +150,15 @@ gg_get_details(gg_multiple(Index, Num, P), Index, Num, P).
     %  + place_with_next is just gpe_place_in_new_conj with the next goal
     %    having place_with_previous.
     %
-%:- type goal_placement_enum
-%    --->    gpe_place_before_par_conj
-%    ;       gpe_place_after_par_conj
-%    ;       gpe_place_with_previous
-%    ;       gpe_place_in_new_conj.
+% :- type goal_placement_enum
+%     --->    gpe_place_before_par_conj
+%     ;       gpe_place_after_par_conj
+%     ;       gpe_place_with_previous
+%     ;       gpe_place_in_new_conj.
 %
-%:- type can_split_group
-%    --->    can_split_group
-%    ;       cannot_split_group.
+% :- type can_split_group
+%     --->    can_split_group
+%     ;       cannot_split_group.
 
 %-----------------------------------------------------------------------------%
 
@@ -209,13 +209,13 @@ preprocess_conjunction(Goals, MaybeGoalsForParallelisation, Location,
 
     % Phase 2: Find the costly calls.
     identify_costly_goals(Goals, 0, CostlyGoalsIndexes),
-    (
+    ( if
         CostlyGoalsIndexes = [FirstCostlyGoalIndexPrime | OtherIndexes],
         list.last(OtherIndexes, LastCostlyGoalIndexPrime)
-    ->
+    then
         FirstCostlyGoalIndex = FirstCostlyGoalIndexPrime,
         LastCostlyGoalIndex = LastCostlyGoalIndexPrime
-    ;
+    else
         unexpected($module, $pred, "too few costly goals")
     ),
 
@@ -279,11 +279,11 @@ build_dependency_graph([PG | PGs], ConjNum, !VarDepMap, !Graph) :-
     RefedVars = InstMapInfo ^ im_consumed_vars,
     digraph.add_vertex(ConjNum, ThisConjKey, !Graph),
     MaybeAddEdge = ( pred(RefedVar::in, GraphI0::in, GraphI::out) is det :-
-        ( map.search(!.VarDepMap, RefedVar, DepConj) ->
+        ( if map.search(!.VarDepMap, RefedVar, DepConj) then
             % DepConj should already be in the graph.
             digraph.lookup_key(GraphI0, DepConj, DepConjKey),
             digraph.add_edge(DepConjKey, ThisConjKey, GraphI0, GraphI)
-        ;
+        else
             GraphI = GraphI0
         )
     ),
@@ -343,14 +343,14 @@ goal_accumulate_detism(_, Goal, !Detism) :-
         GoalCommittedChoice = not_committed_choice,
         CommittedChoice = not_committed_choice
     ),
-    (
+    ( if
         promise_equivalent_solutions [FinalDetism] (
             detism_components(FinalDetism, Solutions, CanFail),
             detism_committed_choice(FinalDetism, CommittedChoice)
         )
-    ->
+    then
         !:Detism = FinalDetism
-    ;
+    else
         unexpected($module, $pred, "cannot compute detism from components.")
     ).
 
@@ -508,12 +508,12 @@ generate_parallelisations(Info, Algorithm, GoalsForParallelisation,
             !.IncompleteParallelisation, !MaybeBestSolns, !Profile),
 
 % XXX
-%       ( semipure should_expand_search(BNBState, Algorithm) ->
+%       ( if if semipure should_expand_search(BNBState, Algorithm) then
 %           % Try to push goals into the first and last parallel conjuncts
 %           % from outside the parallel conjunction.
 %           semipure add_goals_into_first_par_conj(BNBState, !Parallelisation),
 %           semipure add_goals_into_last_par_conj(BNBState, !Parallelisation)
-%       ;
+%       else
 %           true
 %       ),
 
@@ -537,10 +537,10 @@ generate_parallelisations(Info, Algorithm, GoalsForParallelisation,
 generate_parallelisations_loop(_, _, [],
         !.IncompleteParallelisation, !MaybeBestSolns, !Profile) :-
     % Verify that we have generated at least two parallel conjuncts.
-    ( ip_get_num_parallel_conjuncts(!.IncompleteParallelisation) >= 2 ->
+    ( if ip_get_num_parallel_conjuncts(!.IncompleteParallelisation) >= 2 then
         maybe_update_best_complete_parallelisation(!.IncompleteParallelisation,
             !MaybeBestSolns, !Profile)
-    ;
+    else
         % This is not a solution, so do not try to update !MaybeBestSolns.
         !Profile ^ bnbp_complete_non_solution :=
             !.Profile ^ bnbp_complete_non_solution + 1
@@ -575,11 +575,11 @@ generate_parallelisations_loop(Info, Algorithm, [GoalGroup | GoalGroups],
             MaybeAddToLastCost = yes(AddToLastCost),
             (
                 MaybeAddToNewCost = yes(AddToNewCost),
-                ( AddToNewCost > AddToLastCost ->
+                ( if AddToNewCost > AddToLastCost then
                     % Adding to the last parallel conjunct is better.
                     Best0 = !.AddToLastParallelisation,
                     MaybeNextBest0 = yes(!.AddToNewParallelisation)
-                ;
+                else
                     % Adding to a new parallel conjunct is better.
                     Best0 = !.AddToNewParallelisation,
                     MaybeNextBest0 = yes(!.AddToLastParallelisation)
@@ -600,12 +600,12 @@ generate_parallelisations_loop(Info, Algorithm, [GoalGroup | GoalGroups],
 
     % XXX: This ite could be simpler, and the algorithm would be closer to the
     % one in the paper.
-    (
+    ( if
         % Can we create an alternative branch here?
         MaybeNextBest0 = yes(NextBest0),
         % Should we create an alternative branch here?
         should_expand_search(Algorithm, !.Profile)
-    ->
+    then
         % Create a branch.
         incomplete_parallelisation_is_good_enough(Info, !.MaybeBestSolns,
             Best0, Best, !Profile, BestGoodEnough),
@@ -626,7 +626,7 @@ generate_parallelisations_loop(Info, Algorithm, [GoalGroup | GoalGroups],
         ;
             NextBestGoodEnough = is_not_good_enough
         )
-    ;
+    else
         incomplete_parallelisation_is_good_enough(Info, !.MaybeBestSolns,
             Best0, Best, !Profile, BestGoodEnough),
         (
@@ -711,16 +711,16 @@ maybe_update_best_complete_parallelisation(CurSoln,
             !.Profile ^ bnbp_complete_best_solution + 1
     ;
         MaybeBestSolns0 = best_solutions(BestSolns0, BestCost0),
-        ( CurSolnCost < BestCost0 ->
+        ( if CurSolnCost < BestCost0 then
             MaybeBestSolns = best_solutions([CurSoln], CurSolnCost),
             !Profile ^ bnbp_complete_best_solution :=
                 !.Profile ^ bnbp_complete_best_solution + 1
-        ; CurSolnCost = BestCost0 ->
+        else if CurSolnCost = BestCost0 then
             BestSolns = [CurSoln | BestSolns0],
             MaybeBestSolns = best_solutions(BestSolns, BestCost0),
             !Profile ^ bnbp_complete_equal_solution :=
                 !.Profile ^ bnbp_complete_equal_solution + 1
-        ;
+        else
             % Do not update !MaybeBestSolns.
             MaybeBestSolns = MaybeBestSolns0,
             !Profile ^ bnbp_complete_worse_solution :=
@@ -744,7 +744,7 @@ maybe_update_best_complete_parallelisation(CurSoln,
 incomplete_parallelisation_is_good_enough(Info, MaybeBestSolns,
         !IncompleteParallelisation, !Profile, GoodEnough) :-
     calculate_parallel_cost(Info, !IncompleteParallelisation, CostData),
-    ( test_dependence(Info, CostData) ->
+    ( if test_dependence(Info, CostData) then
         (
             MaybeBestSolns = no_best_solutions,
             !Profile ^ bnbp_incomplete_good_enough :=
@@ -754,17 +754,17 @@ incomplete_parallelisation_is_good_enough(Info, MaybeBestSolns,
             MaybeBestSolns = best_solutions(_, BestSolnCost),
             CurIncompleteCost =
                 incomplete_parallelisation_cost(!.IncompleteParallelisation),
-            ( CurIncompleteCost > BestSolnCost ->
+            ( if CurIncompleteCost > BestSolnCost then
                 !Profile ^ bnbp_incomplete_not_good_enough :=
                     !.Profile ^ bnbp_incomplete_not_good_enough + 1,
                 GoodEnough = is_not_good_enough
-            ;
+            else
                 !Profile ^ bnbp_incomplete_good_enough :=
                     !.Profile ^ bnbp_incomplete_good_enough + 1,
                 GoodEnough = is_good_enough
             )
         )
-    ;
+    else
         !Profile ^ bnbp_incomplete_not_good_enough :=
             !.Profile ^ bnbp_incomplete_not_good_enough + 1,
         GoodEnough = is_not_good_enough
@@ -799,9 +799,9 @@ par_conj_overlap_is_dependent(peo_conjunction(Left, _, VarSet0),
         IsDependent = conjuncts_are_dependent(VarSet)
     ;
         IsDependent0 = conjuncts_are_independent,
-        ( set.is_empty(VarSet0) ->
+        ( if set.is_empty(VarSet0) then
             IsDependent = conjuncts_are_independent
-        ;
+        else
             IsDependent = conjuncts_are_dependent(VarSet0)
         )
     ).
@@ -815,10 +815,10 @@ par_conj_overlap_is_dependent(peo_conjunction(Left, _, VarSet0),
 update_incomplete_parallelisation_cost(Info, !IncompleteParallelisation,
         MaybeCost) :-
     calculate_parallel_cost(Info, !IncompleteParallelisation, CostData),
-    ( test_dependence(Info, CostData) ->
+    ( if test_dependence(Info, CostData) then
         Cost = incomplete_parallelisation_cost(!.IncompleteParallelisation),
         MaybeCost = yes(Cost)
-    ;
+    else
         MaybeCost = no
     ).
 
@@ -935,11 +935,11 @@ add_one_goal_into_last_par_conj(!Parallelisation) :-
     in, in, in, in, out) is det.
 
 foldl_sub_array(Pred, Array, Index, Last, !Acc) :-
-    ( Index =< Last ->
+    ( if Index =< Last then
         array.lookup(Array, Index, X),
         Pred(Index, X, !Acc),
         foldl_sub_array(Pred, Array, Index + 1, Last, !Acc)
-    ;
+    else
         true
     ).
 

@@ -45,11 +45,11 @@ split(Str0, SplitChar, Strs) :-
 :- pred split_2(list(char)::in, char::in, list(string)::out) is det.
 
 split_2(Chars, SplitChar, PieceStrs) :-
-    ( find_split_char(Chars, SplitChar, Before, After) ->
+    ( if find_split_char(Chars, SplitChar, Before, After) then
         string.from_char_list(Before, BeforeStr),
         split_2(After, SplitChar, TailStrs),
         PieceStrs = [BeforeStr | TailStrs]
-    ;
+    else
         string.from_char_list(Chars, PieceStr),
         PieceStrs = [PieceStr]
     ).
@@ -72,9 +72,9 @@ find_split_char(Chars, SplitChar, Before, After) :-
     list(char)::out, list(char)::out) is semidet.
 
 find_split_char_2([Char | Chars], SplitChar, !BeforeRev, After) :-
-    ( Char = SplitChar ->
+    ( if Char = SplitChar then
         After = Chars
-    ;
+    else
         !:BeforeRev = [Char | !.BeforeRev],
         find_split_char_2(Chars, SplitChar, !BeforeRev, After)
     ).

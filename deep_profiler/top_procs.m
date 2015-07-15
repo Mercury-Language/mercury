@@ -87,10 +87,10 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
         list.sort(SortPred, PSIs, DescendingPSIs),
         (
             Limit = rank_range(First, Last),
-            ( list.drop(First - 1, DescendingPSIs, RemainingPSIs) ->
+            ( if list.drop(First - 1, DescendingPSIs, RemainingPSIs) then
                 list.take_upto(Last - First + 1, RemainingPSIs, TopPSIs),
                 MaybeTopPSIs = ok(TopPSIs)
-            ;
+            else
                 MaybeTopPSIs = ok([])
             )
         ;
@@ -1062,14 +1062,14 @@ compare_line_groups_by_time_self_percall(Group1, Group2) = Result :-
     Calls2 = calls(Group2 ^ group_own),
     Quanta1 = quanta(Group1 ^ group_own),
     Quanta2 = quanta(Group2 ^ group_own),
-    ( Calls1 = 0 ->
+    ( if Calls1 = 0 then
         QuantaPerCall1 = 0.0
-    ;
+    else
         QuantaPerCall1 = float(Quanta1) / float(Calls1)
     ),
-    ( Calls2 = 0 ->
+    ( if Calls2 = 0 then
         QuantaPerCall2 = 0.0
-    ;
+    else
         QuantaPerCall2 = float(Quanta2) / float(Calls2)
     ),
     compare(Result, QuantaPerCall2, QuantaPerCall1).
@@ -1090,14 +1090,14 @@ compare_line_groups_by_time_total_percall(Group1, Group2) = Result :-
     Calls2 = calls(Group2 ^ group_own),
     Quanta1 = quanta(Group1 ^ group_own) + inherit_quanta(Group1 ^ group_desc),
     Quanta2 = quanta(Group2 ^ group_own) + inherit_quanta(Group2 ^ group_desc),
-    ( Calls1 = 0 ->
+    ( if Calls1 = 0 then
         QuantaPerCall1 = 0.0
-    ;
+    else
         QuantaPerCall1 = float(Quanta1) / float(Calls1)
     ),
-    ( Calls2 = 0 ->
+    ( if Calls2 = 0 then
         QuantaPerCall2 = 0.0
-    ;
+    else
         QuantaPerCall2 = float(Quanta2) / float(Calls2)
     ),
     compare(Result, QuantaPerCall2, QuantaPerCall1).
@@ -1118,14 +1118,14 @@ compare_line_groups_by_callseqs_self_percall(Group1, Group2) = Result :-
     Calls2 = calls(Group2 ^ group_own),
     CallSeqs1 = callseqs(Group1 ^ group_own),
     CallSeqs2 = callseqs(Group2 ^ group_own),
-    ( Calls1 = 0 ->
+    ( if Calls1 = 0 then
         CallSeqsPerCall1 = 0.0
-    ;
+    else
         CallSeqsPerCall1 = float(CallSeqs1) / float(Calls1)
     ),
-    ( Calls2 = 0 ->
+    ( if Calls2 = 0 then
         CallSeqsPerCall2 = 0.0
-    ;
+    else
         CallSeqsPerCall2 = float(CallSeqs2) / float(Calls2)
     ),
     compare(Result, CallSeqsPerCall2, CallSeqsPerCall1).
@@ -1150,14 +1150,14 @@ compare_line_groups_by_callseqs_total_percall(Group1, Group2) = Result :-
         inherit_callseqs(Group1 ^ group_desc),
     CallSeqs2 = callseqs(Group2 ^ group_own) +
         inherit_callseqs(Group2 ^ group_desc),
-    ( Calls1 = 0 ->
+    ( if Calls1 = 0 then
         CallSeqsPerCall1 = 0.0
-    ;
+    else
         CallSeqsPerCall1 = float(CallSeqs1) / float(Calls1)
     ),
-    ( Calls2 = 0 ->
+    ( if Calls2 = 0 then
         CallSeqsPerCall2 = 0.0
-    ;
+    else
         CallSeqsPerCall2 = float(CallSeqs2) / float(Calls2)
     ),
     compare(Result, CallSeqsPerCall2, CallSeqsPerCall1).
@@ -1178,14 +1178,14 @@ compare_line_groups_by_allocs_self_percall(Group1, Group2) = Result :-
     Calls2 = calls(Group2 ^ group_own),
     Alloc1 = allocs(Group1 ^ group_own),
     Alloc2 = allocs(Group2 ^ group_own),
-    ( Calls1 = 0 ->
+    ( if Calls1 = 0 then
         AllocPerCall1 = 0.0
-    ;
+    else
         AllocPerCall1 = float(Alloc1) / float(Calls1)
     ),
-    ( Calls2 = 0 ->
+    ( if Calls2 = 0 then
         AllocPerCall2 = 0.0
-    ;
+    else
         AllocPerCall2 = float(Alloc2) / float(Calls2)
     ),
     compare(Result, AllocPerCall2, AllocPerCall1).
@@ -1206,14 +1206,14 @@ compare_line_groups_by_allocs_total_percall(Group1, Group2) = Result :-
     Calls2 = calls(Group2 ^ group_own),
     Alloc1 = allocs(Group1 ^ group_own) + inherit_allocs(Group1 ^ group_desc),
     Alloc2 = allocs(Group2 ^ group_own) + inherit_allocs(Group2 ^ group_desc),
-    ( Calls1 = 0 ->
+    ( if Calls1 = 0 then
         AllocPerCall1 = 0.0
-    ;
+    else
         AllocPerCall1 = float(Alloc1) / float(Calls1)
     ),
-    ( Calls2 = 0 ->
+    ( if Calls2 = 0 then
         AllocPerCall2 = 0.0
-    ;
+    else
         AllocPerCall2 = float(Alloc2) / float(Calls2)
     ),
     compare(Result, AllocPerCall2, AllocPerCall1).
@@ -1234,14 +1234,14 @@ compare_line_groups_by_words_self_percall(Group1, Group2) = Result :-
     Calls2 = calls(Group2 ^ group_own),
     Words1 = words(Group1 ^ group_own),
     Words2 = words(Group2 ^ group_own),
-    ( Calls1 = 0 ->
+    ( if Calls1 = 0 then
         WordsPerCall1 = 0.0
-    ;
+    else
         WordsPerCall1 = float(Words1) / float(Calls1)
     ),
-    ( Calls2 = 0 ->
+    ( if Calls2 = 0 then
         WordsPerCall2 = 0.0
-    ;
+    else
         WordsPerCall2 = float(Words2) / float(Calls2)
     ),
     compare(Result, WordsPerCall2, WordsPerCall1).
@@ -1262,14 +1262,14 @@ compare_line_groups_by_words_total_percall(Group1, Group2) = Result :-
     Calls2 = calls(Group2 ^ group_own),
     Words1 = words(Group1 ^ group_own) + inherit_words(Group1 ^ group_desc),
     Words2 = words(Group2 ^ group_own) + inherit_words(Group2 ^ group_desc),
-    ( Calls1 = 0 ->
+    ( if Calls1 = 0 then
         WordsPerCall1 = 0.0
-    ;
+    else
         WordsPerCall1 = float(Words1) / float(Calls1)
     ),
-    ( Calls2 = 0 ->
+    ( if Calls2 = 0 then
         WordsPerCall2 = 0.0
-    ;
+    else
         WordsPerCall2 = float(Words2) / float(Calls2)
     ),
     compare(Result, WordsPerCall2, WordsPerCall1).

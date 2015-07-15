@@ -256,13 +256,13 @@ find_start_of_action(Deep, Percent, CurrentReport, SelectedReport) :-
     CurrentReport = clique_report(_, _, CliqueProcs),
     list.foldl(find_start_of_action_clique_proc(Percent), CliqueProcs,
         [], ActionCliquePtrs),
-    (
+    ( if
         ActionCliquePtrs = [ActionCliquePtr],
         create_clique_report(Deep, ActionCliquePtr, MaybeActionCliqueReport),
         MaybeActionCliqueReport = ok(ActionCliqueReport)
-    ->
+    then
         find_start_of_action(Deep, Percent, ActionCliqueReport, SelectedReport)
-    ;
+    else
         SelectedReport = CurrentReport
     ).
 
@@ -306,11 +306,11 @@ find_start_of_action_callee(Percent, RowData, !ActionCliquePtrs) :-
     ;
         MaybeTotalPerf = yes(TotalPerf),
         CallSeqsPercent = TotalPerf ^ perf_row_callseqs_percent,
-        ( percent_at_or_above_threshold(Percent, CallSeqsPercent) ->
+        ( if percent_at_or_above_threshold(Percent, CallSeqsPercent) then
             CliqueDesc = RowData ^ perf_row_subject,
             CliquePtr = CliqueDesc ^ cdesc_clique_ptr,
             !:ActionCliquePtrs = [CliquePtr | !.ActionCliquePtrs]
-        ;
+        else
             true
         )
     ).
@@ -328,13 +328,13 @@ create_clique_report(Deep, CliquePtr, MaybeCliqueReport) :-
         map.init, PStoPDsMap),
     map.to_assoc_list(PStoPDsMap, PStoPDsList0),
     deep_lookup_clique_parents(Deep, CliquePtr, EntryCSDPtr),
-    ( valid_call_site_dynamic_ptr(Deep, EntryCSDPtr) ->
+    ( if valid_call_site_dynamic_ptr(Deep, EntryCSDPtr) then
         deep_lookup_call_site_dynamics(Deep, EntryCSDPtr, EntryCSD),
         EntryPDPtr = EntryCSD ^ csd_callee,
         list.filter(proc_group_contains(EntryPDPtr), PStoPDsList0,
             EntryGroup, RestGroup),
         PStoPDsList = EntryGroup ++ RestGroup
-    ;
+    else
         PStoPDsList = PStoPDsList0
     ),
     list.map(create_clique_proc_report(Deep, CliquePtr),
@@ -348,14 +348,14 @@ create_clique_report(Deep, CliquePtr, MaybeCliqueReport) :-
 
 find_clique_ancestors(Deep, CliquePtr) = Ancestors :-
     deep_lookup_clique_parents(Deep, CliquePtr, EntryCSDPtr),
-    ( valid_call_site_dynamic_ptr(Deep, EntryCSDPtr) ->
+    ( if valid_call_site_dynamic_ptr(Deep, EntryCSDPtr) then
         deep_lookup_call_site_dynamics(Deep, EntryCSDPtr, EntryCSD),
         EntryPDPtr = EntryCSD ^ csd_caller,
-        ( EntryPDPtr = Deep ^ root ->
+        ( if EntryPDPtr = Deep ^ root then
             % We could return the true root node, which is the Mercury runtime
             % system, but that is of no interest to either users or programs.
             Ancestors = []
-        ;
+        else
             deep_lookup_clique_index(Deep, EntryPDPtr, EntryCliquePtr),
             CalleePDPtr = EntryCSD ^ csd_callee,
             deep_lookup_proc_dynamics(Deep, CalleePDPtr, CalleePD),
@@ -372,7 +372,7 @@ find_clique_ancestors(Deep, CliquePtr) = Ancestors :-
             MoreAncestors = find_clique_ancestors(Deep, EntryCliquePtr),
             Ancestors = [Parent | MoreAncestors]
         )
-    ;
+    else
         Ancestors = []
     ).
 
@@ -385,10 +385,10 @@ group_proc_dynamics_by_proc_static(Deep, PDPtr, !PStoPDsMap) :-
         "group_proc_dynamics_by_proc_static: invalid PDPtr"),
     deep_lookup_proc_dynamics(Deep, PDPtr, PD),
     PSPtr = PD ^ pd_proc_static,
-    ( map.search(!.PStoPDsMap, PSPtr, PSPDs0) ->
+    ( if map.search(!.PStoPDsMap, PSPtr, PSPDs0) then
         PSPDs = [PDPtr | PSPDs0],
         map.det_update(PSPtr, PSPDs, !PStoPDsMap)
-    ;
+    else
         map.det_insert(PSPtr, [PDPtr], !PStoPDsMap)
     ).
 
@@ -428,7 +428,7 @@ create_clique_proc_report(Deep, CliquePtr, PSPtr - PDPtrs, CliqueProcReport) :-
 
 create_clique_proc_dynamic_report(Deep, _CliquePtr, ProcDesc, PDPtr,
         Own, Desc, CliquePDReport) :-
-    ( valid_proc_dynamic_ptr(Deep, PDPtr) ->
+    ( if valid_proc_dynamic_ptr(Deep, PDPtr) then
         deep_lookup_pd_own(Deep, PDPtr, Own),
         deep_lookup_pd_desc(Deep, PDPtr, Desc),
         own_and_inherit_to_perf_row_data(Deep, ProcDesc, Own, Desc,
@@ -440,7 +440,7 @@ create_clique_proc_dynamic_report(Deep, _CliquePtr, ProcDesc, PDPtr,
         create_child_call_site_reports(Deep, PDPtr, CliqueCallSiteReports),
         CliquePDReport = clique_proc_dynamic_report(PDRowData,
             CliqueCallSiteReports)
-    ;
+    else
         unexpected($module, $pred, "invalid proc_dynamic index")
     ).
 
@@ -471,11 +471,11 @@ create_child_call_site_report(Deep, Pair, CliqueCallSiteReport) :-
             CallSiteArraySlot = slot_multi(_, _),
             unexpected($module, $pred, "normal_call is multi")
         ),
-        ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
+        ( if valid_call_site_dynamic_ptr(Deep, CSDPtr) then
             create_callee_clique_perf_row_data(Deep, CSDPtr, Own, Desc,
                 CalleeCliqueRowData),
             CalleeCliqueRowDatas = [CalleeCliqueRowData]
-        ;
+        else
             Own = zero_own_prof_info,
             Desc = zero_inherit_prof_info,
             CalleeCliqueRowDatas = []
@@ -580,22 +580,22 @@ module_pair_to_row_data(Deep, ModuleName - ModuleData) = ModuleRowData :-
     maybe_error(module_report)::out) is det.
 
 create_module_report(Deep, ModuleName, MaybeModuleReport) :-
-    ( map.search(Deep ^ module_data, ModuleName, ModuleData) ->
+    ( if map.search(Deep ^ module_data, ModuleName, ModuleData) then
         deep_get_maybe_progrep(Deep, MaybeProgRep),
-        (
+        ( if
             MaybeProgRep = ok(ProgRep),
             ProgRep = prog_rep(ModuleMap),
             map.search(ModuleMap, ModuleName, _)
-        ->
+        then
             HaveModuleRep = have_module_rep
-        ;
+        else
             HaveModuleRep = do_not_have_module_rep
         ),
         PSPtrs = ModuleData ^ module_procs,
         ProcRowDatas = list.map(proc_to_active_row_data(Deep), PSPtrs),
         ModuleReport = module_report(ModuleName, HaveModuleRep, ProcRowDatas),
         MaybeModuleReport = ok(ModuleReport)
-    ;
+    else
         Msg = string.format("There is no module named `%s'.\n",
             [s(ModuleName)]),
         MaybeModuleReport = error(Msg)
@@ -643,7 +643,7 @@ proc_to_active_row_data(Deep, PSPtr) = ProcRowData :-
 
 create_module_getter_setter_report(Deep, ModuleName,
         MaybeModuleGetterSettersReport) :-
-    ( map.search(Deep ^ module_data, ModuleName, ModuleData) ->
+    ( if map.search(Deep ^ module_data, ModuleName, ModuleData) then
         PSPtrs = ModuleData ^ module_procs,
         list.foldl(gather_getters_setters(Deep), PSPtrs,
             map.init, GetterSetterDataMap),
@@ -652,7 +652,7 @@ create_module_getter_setter_report(Deep, ModuleName,
         ModuleGetterSettersReport = module_getter_setters_report(ModuleName,
             GetterSetterInfoMap),
         MaybeModuleGetterSettersReport = ok(ModuleGetterSettersReport)
-    ;
+    else
         Msg = string.format("There is no module named `%s'.\n",
             [s(ModuleName)]),
         MaybeModuleGetterSettersReport = error(Msg)
@@ -699,20 +699,22 @@ getter_setter_raw_data_to_info(Deep, _FieldName, RawData, Data) :-
     raw_gs_ds_map::in, raw_gs_ds_map::out) is det.
 
 gather_getters_setters(Deep, PSPtr, !GSDSRawMap) :-
-    ( valid_proc_static_ptr(Deep, PSPtr) ->
+    ( if valid_proc_static_ptr(Deep, PSPtr) then
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         Id = PS ^ ps_id,
-        ( is_getter_or_setter(Id, GetterSetter, DataStructName, FieldName) ->
+        ( if
+            is_getter_or_setter(Id, GetterSetter, DataStructName, FieldName)
+        then
             deep_lookup_ps_own(Deep, PSPtr, Own),
             deep_lookup_ps_desc(Deep, PSPtr, Desc),
             ProcDesc = describe_proc(Deep, PSPtr),
             RawData = gs_field_raw_data(ProcDesc, Own, Desc),
-            ( map.search(!.GSDSRawMap, DataStructName, FieldMap0Prime) ->
+            ( if map.search(!.GSDSRawMap, DataStructName, FieldMap0Prime) then
                 FieldMap0 = FieldMap0Prime
-            ;
+            else
                 map.init(FieldMap0)
             ),
-            ( map.search(FieldMap0, FieldName, FieldData0) ->
+            ( if map.search(FieldMap0, FieldName, FieldData0) then
                 (
                     GetterSetter = getter,
                     (
@@ -737,7 +739,7 @@ gather_getters_setters(Deep, PSPtr, !GSDSRawMap) :-
                     )
                 ),
                 map.det_update(FieldName, FieldData, FieldMap0, FieldMap)
-            ;
+            else
                 (
                     GetterSetter = getter,
                     FieldData = gs_field_getter(RawData)
@@ -748,10 +750,10 @@ gather_getters_setters(Deep, PSPtr, !GSDSRawMap) :-
                 map.det_insert(FieldName, FieldData, FieldMap0, FieldMap)
             ),
             map.set(DataStructName, FieldMap, !GSDSRawMap)
-        ;
+        else
             true
         )
-    ;
+    else
         true
     ).
 
@@ -783,15 +785,15 @@ is_getter_or_setter(StringProcLabel, GetterSetter, DataStructName,
 
 is_getter_or_setter_2(NameChars, GetterSetter, DataStructNameChars,
         FieldNameChars) :-
-    ( NameChars = ['_', 'g', 'e', 't', '_' | FieldNameCharsPrime] ->
+    ( if NameChars = ['_', 'g', 'e', 't', '_' | FieldNameCharsPrime] then
         GetterSetter = getter,
         DataStructNameChars = [],
         FieldNameChars = FieldNameCharsPrime
-    ; NameChars = ['_', 's', 'e', 't', '_' | FieldNameCharsPrime] ->
+    else if NameChars = ['_', 's', 'e', 't', '_' | FieldNameCharsPrime] then
         GetterSetter = setter,
         DataStructNameChars = [],
         FieldNameChars = FieldNameCharsPrime
-    ;
+    else
         NameChars = [FirstNameChar | LaterNameChars],
         is_getter_or_setter_2(LaterNameChars, GetterSetter,
             LaterDataStructNameChars, FieldNameChars),
@@ -817,12 +819,12 @@ create_module_rep_report(Deep, ModuleName, MaybeModuleRepReport) :-
         (
             MaybeErrorProgRep = ok(ProgRep),
             ProgRep = prog_rep(ModuleRepMap),
-            ( map.search(ModuleRepMap, ModuleName, ModuleRep) ->
+            ( if map.search(ModuleRepMap, ModuleName, ModuleRep) then
                 print_module_to_strings(ModuleRep, CordStrs),
                 Str = string.append_list(cord.list(CordStrs)),
                 ModuleRepReport = module_rep_report(ModuleName, Str),
                 MaybeModuleRepReport = ok(ModuleRepReport)
-            ;
+            else
                 Msg = string.format("There is no module named %s.\n",
                     [s(ModuleName)]),
                 MaybeModuleRepReport = error(Msg)
@@ -878,7 +880,7 @@ create_top_procs_report(Deep, Limit, CostKind, InclDesc0, Scope0,
 %
 
 create_proc_report(Deep, PSPtr, MaybeProcReport) :-
-    ( valid_proc_static_ptr(Deep, PSPtr) ->
+    ( if valid_proc_static_ptr(Deep, PSPtr) then
         ProcDesc = describe_proc(Deep, PSPtr),
         deep_lookup_ps_own(Deep, PSPtr, Own),
         deep_lookup_ps_desc(Deep, PSPtr, Desc),
@@ -903,7 +905,7 @@ create_proc_report(Deep, PSPtr, MaybeProcReport) :-
         ProcReport = proc_report(CallersSummaryRowData, ProcSummaryRowData,
             ProcCallSiteSummaryRowDatas),
         MaybeProcReport = ok(ProcReport)
-    ;
+    else
         MaybeProcReport = error("invalid proc_static index")
     ).
 
@@ -1001,10 +1003,10 @@ summarize_callers(Deep, CallerCSDPtrs0, CalleePSPtr, !PSSeen, !NumDynamic,
         CallerPDPtr = CSD ^ csd_caller,
         deep_lookup_proc_dynamics(Deep, CallerPDPtr, CallerPD),
         CallerPSPtr = CallerPD ^ pd_proc_static,
-        ( CallerPSPtr = CalleePSPtr ->
+        ( if CallerPSPtr = CalleePSPtr then
             % Exclude recursive calls.
             true
-        ;
+        else
             !:NumDynamic = !.NumDynamic + 1,
             set.insert(CallerPSPtr, !PSSeen),
             CSDOwn = CSD ^ csd_own_prof,
@@ -1028,9 +1030,9 @@ accumulate_csd_prof_info(Deep, CallerPSPtr, CSDPtr, !Own, !Desc) :-
     !:Own = add_own_to_own(!.Own, CSDOwn),
     !:Desc = add_inherit_to_inherit(!.Desc, CSDDesc),
     deep_lookup_csd_comp_table(Deep, CSDPtr, CompTableArray),
-    ( map.search(CompTableArray, CallerPSPtr, InnerTotal) ->
+    ( if map.search(CompTableArray, CallerPSPtr, InnerTotal) then
         !:Desc = subtract_inherit_from_inherit(InnerTotal, !.Desc)
-    ;
+    else
         true
     ).
 
@@ -1058,7 +1060,7 @@ accumulate_call_site_callees(Deep, CalleePerf, RowData, !Own, !Desc) :-
 
 create_proc_callers_report(Deep, PSPtr, CallerGroups, BunchNum,
         CallersPerBunch, Contour, MaybeProcCallersReport) :-
-    ( valid_proc_static_ptr(Deep, PSPtr) ->
+    ( if valid_proc_static_ptr(Deep, PSPtr) then
         ProcDesc = describe_proc(Deep, PSPtr),
 
         deep_lookup_proc_callers(Deep, PSPtr, CallerCSDPtrs0),
@@ -1144,7 +1146,7 @@ create_proc_callers_report(Deep, PSPtr, CallerGroups, BunchNum,
                 BunchNum, CallersPerBunch, Contour, MaybeWarnMessage),
             MaybeProcCallersReport = ok(ProcCallersReport)
         )
-    ;
+    else
         MaybeProcCallersReport = error("invalid proc_static index")
     ).
 
@@ -1197,7 +1199,7 @@ create_proc_caller_cliques(Deep, CalleePSPtr, CliquePtr - CSDPtrs) =
 %
 
 create_static_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
-    ( valid_proc_static_ptr(Deep, PSPtr) ->
+    ( if valid_proc_static_ptr(Deep, PSPtr) then
         deep_lookup_ps_coverage(Deep, PSPtr, StaticCoverage),
         MaybeCoveragePoints =
             static_coverage_maybe_get_coverage_points(StaticCoverage),
@@ -1213,14 +1215,14 @@ create_static_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
 
         maybe_create_procrep_coverage_report(Deep, PSPtr, Own,
             MaybeCoveragePoints, CallSitesMap, MaybeReport)
-    ;
+    else
         PSPtr = proc_static_ptr(PSId),
         MaybeReport = error(
             string.format("Proc static pointer is invalid %d", [i(PSId)]))
     ).
 
 create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeReport) :-
-    ( valid_proc_dynamic_ptr(Deep, PDPtr) ->
+    ( if valid_proc_dynamic_ptr(Deep, PDPtr) then
         deep_lookup_proc_dynamics(Deep, PDPtr, PD),
         PSPtr = PD ^ pd_proc_static,
         MaybeCoveragePoints = PD ^ pd_maybe_coverage_points,
@@ -1235,7 +1237,7 @@ create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeReport) :-
 
         maybe_create_procrep_coverage_report(Deep, PSPtr, Own,
             MaybeCoveragePoints, CallSitesMap, MaybeReport)
-    ;
+    else
         PDPtr = proc_dynamic_ptr(PDId),
         MaybeReport = error(
             string.format("Proc dynamic pointer is invalid %d", [i(PDId)]))
@@ -1281,7 +1283,7 @@ maybe_create_procrep_coverage_report(Deep, PSPtr, Own,
     maybe_error(proc_static_dump_info)::out) is det.
 
 create_proc_static_dump_report(Deep, PSPtr, MaybeProcStaticDumpInfo) :-
-    ( valid_proc_static_ptr(Deep, PSPtr) ->
+    ( if valid_proc_static_ptr(Deep, PSPtr) then
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         % Should we dump some other fields?
         PS = proc_static(_ProcId, _DeclModule,
@@ -1296,7 +1298,7 @@ create_proc_static_dump_report(Deep, PSPtr, MaybeProcStaticDumpInfo) :-
             UnQualRefinedName, QualRefinedName,
             FileName, LineNumber, NumCallSites, NumCoveragePoints),
         MaybeProcStaticDumpInfo = ok(ProcStaticDumpInfo)
-    ;
+    else
         MaybeProcStaticDumpInfo = error("invalid proc_static index")
     ).
 
@@ -1304,7 +1306,7 @@ create_proc_static_dump_report(Deep, PSPtr, MaybeProcStaticDumpInfo) :-
     maybe_error(proc_dynamic_dump_info)::out) is det.
 
 create_proc_dynamic_dump_report(Deep, PDPtr, MaybeProcDynamicDumpInfo) :-
-    ( valid_proc_dynamic_ptr(Deep, PDPtr) ->
+    ( if valid_proc_dynamic_ptr(Deep, PDPtr) then
         deep_lookup_proc_dynamics(Deep, PDPtr, PD),
         PD = proc_dynamic(PSPtr, CallSiteArray, MaybeCPCounts),
         deep_lookup_proc_statics(Deep, PSPtr, PS),
@@ -1326,7 +1328,7 @@ create_proc_dynamic_dump_report(Deep, PDPtr, MaybeProcDynamicDumpInfo) :-
             RawName, ModuleName, UnQualRefinedName, QualRefinedName,
             CallSites, MaybeCPs),
         MaybeProcDynamicDumpInfo = ok(ProcDynamicDumpInfo)
-    ;
+    else
         MaybeProcDynamicDumpInfo = error("invalid proc_dynamic index")
     ).
 
@@ -1335,14 +1337,14 @@ create_proc_dynamic_dump_report(Deep, PDPtr, MaybeProcDynamicDumpInfo) :-
 
 create_call_site_static_dump_report(Deep, CSSPtr,
         MaybeCallSiteStaticDumpInfo) :-
-    ( valid_call_site_static_ptr(Deep, CSSPtr) ->
+    ( if valid_call_site_static_ptr(Deep, CSSPtr) then
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
         CSS = call_site_static(ContainingPSPtr, SlotNumber, CallSiteKind,
             LineNumber, GoalPath),
         CallSiteStaticDumpInfo = call_site_static_dump_info(CSSPtr,
             ContainingPSPtr, SlotNumber, LineNumber, GoalPath, CallSiteKind),
         MaybeCallSiteStaticDumpInfo = ok(CallSiteStaticDumpInfo)
-    ;
+    else
         MaybeCallSiteStaticDumpInfo = error("invalid call_site_static index")
     ).
 
@@ -1352,7 +1354,7 @@ create_call_site_static_dump_report(Deep, CSSPtr,
 
 create_call_site_dynamic_dump_report(Deep, CSDPtr,
         MaybeCallSiteDynamicDumpInfo) :-
-    ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
+    ( if valid_call_site_dynamic_ptr(Deep, CSDPtr) then
         deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
         CSD = call_site_dynamic(CallerPSPtr, CalleePSDPtr, Own),
         Desc = zero_inherit_prof_info,
@@ -1363,7 +1365,7 @@ create_call_site_dynamic_dump_report(Deep, CSDPtr,
         CallSiteDynamicDumpInfo = call_site_dynamic_dump_info(CSDPtr,
             CallerPSPtr, CalleePSDPtr, PerfRowData),
         MaybeCallSiteDynamicDumpInfo = ok(CallSiteDynamicDumpInfo)
-    ;
+    else
         MaybeCallSiteDynamicDumpInfo = error("invalid call_site_dynamic index")
     ).
 
@@ -1371,19 +1373,19 @@ create_call_site_dynamic_dump_report(Deep, CSDPtr,
     maybe_error(clique_dump_info)::out) is det.
 
 create_clique_dump_report(Deep, CliquePtr, MaybeCliqueDumpInfo) :-
-    ( valid_clique_ptr(Deep, CliquePtr) ->
+    ( if valid_clique_ptr(Deep, CliquePtr) then
         CliqueDesc = describe_clique(Deep, CliquePtr, no),
         deep_lookup_clique_parents(Deep, CliquePtr, ParentCSDPtr),
         deep_lookup_clique_members(Deep, CliquePtr, MemberPDPtrs),
         CliqueDumpInfo = clique_dump_info(CliqueDesc, ParentCSDPtr,
             MemberPDPtrs),
         MaybeCliqueDumpInfo = ok(CliqueDumpInfo)
-    ;
+    else
         MaybeCliqueDumpInfo = error("invalid clique_ptr")
     ).
 
 create_call_site_dynamic_var_use_report(Deep, CSDPtr, MaybeVarUseInfo) :-
-    ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
+    ( if valid_call_site_dynamic_ptr(Deep, CSDPtr) then
         deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
         CalleePDPtr = CSD ^ csd_callee,
         CallerPDPtr = CSD ^ csd_caller,
@@ -1401,10 +1403,10 @@ create_call_site_dynamic_var_use_report(Deep, CSDPtr, MaybeVarUseInfo) :-
             (
                 MaybeRecursiveCostsReport = ok(RecursiveCostsReport),
                 RecursionType = RecursiveCostsReport ^ crr_recursion_type,
-                ( ParentCliquePtr = CalleeCliquePtr ->
+                ( if ParentCliquePtr = CalleeCliquePtr then
                     get_recursive_csd_cost(Deep, CSDPtr, RecursionType,
                         MaybeCost)
-                ;
+                else
                     deep_lookup_csd_desc(Deep, CSDPtr, Desc),
                     deep_lookup_csd_own(Deep, CSDPtr, Own),
                     Cost0 = callseqs(Own) + inherit_callseqs(Desc),
@@ -1437,7 +1439,7 @@ create_call_site_dynamic_var_use_report(Deep, CSDPtr, MaybeVarUseInfo) :-
             MaybeProcrep = error(Error),
             MaybeVarUseInfo = error(Error)
         )
-    ;
+    else
         CSDPtr = call_site_dynamic_ptr(CSDNum),
         MaybeVarUseInfo = error(
             string.format("Invalid call site dynamic %d", [i(CSDNum)]))
@@ -1622,9 +1624,9 @@ own_and_maybe_inherit_to_perf_row_data(Deep, Subject, Own, MaybeDesc,
 :- func int_per_call(int, int) = float.
 
 int_per_call(Num, Calls) =
-    ( Calls = 0 ->
+    ( if Calls = 0 then
         0.0
-    ;
+    else
         float(Num) / float(Calls)
     ).
 
@@ -1633,23 +1635,23 @@ int_per_call(Num, Calls) =
 :- func percent_from_ints(int, int) = percent.
 
 percent_from_ints(Nom, Denom) = Percent :-
-    ( Denom = 0 ->
+    ( if Denom = 0 then
         Percent = percent(0.0)
-    ;
+    else
         Percent = percent(float(Nom) / float(Denom))
     ).
 
 %-----------------------------------------------------------------------------%
 
 describe_proc(Deep, PSPtr) = ProcDesc :-
-    ( valid_proc_static_ptr(Deep, PSPtr) ->
+    ( if valid_proc_static_ptr(Deep, PSPtr) then
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         FileName = PS ^ ps_file_name,
         LineNumber = PS ^ ps_line_number,
         ModuleName = PS ^ ps_decl_module,
         UnQualRefinedName = PS ^ ps_uq_refined_id,
         QualRefinedName = PS ^ ps_q_refined_id
-    ;
+    else
         FileName = "",
         LineNumber = 0,
         ModuleName = "",
@@ -1664,7 +1666,7 @@ describe_proc(Deep, PSPtr) = ProcDesc :-
 :- func describe_call_site(deep, call_site_static_ptr) = call_site_desc.
 
 describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
-    ( valid_call_site_static_ptr(Deep, CSSPtr) ->
+    ( if valid_call_site_static_ptr(Deep, CSSPtr) then
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
         CSS = call_site_static(ContainingPSPtr, SlotNumber, Kind, LineNumber,
             RevGoalPath),
@@ -1685,7 +1687,7 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
             ),
             MaybeCalleeDesc = no
         )
-    ;
+    else
         ContainingPSPtr = dummy_proc_static_ptr,
         FileName = "",
         LineNumber = 0,
@@ -1711,7 +1713,7 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
     clique_desc.
 
 describe_clique(Deep, CliquePtr, MaybeEntryPDPtr) = CliqueDesc :-
-    ( valid_clique_ptr(Deep, CliquePtr) ->
+    ( if valid_clique_ptr(Deep, CliquePtr) then
         deep_lookup_clique_members(Deep, CliquePtr, MemberPDPtrs),
         deep_lookup_clique_parents(Deep, CliquePtr, ParentCSDPtr),
         deep_lookup_call_site_dynamics(Deep, ParentCSDPtr, ParentCSD),
@@ -1721,15 +1723,15 @@ describe_clique(Deep, CliquePtr, MaybeEntryPDPtr) = CliqueDesc :-
             MaybeEntryPDPtr = no,
             EntryPDPtr = ParentCSD ^ csd_callee
         ),
-        ( list.delete_first(MemberPDPtrs, EntryPDPtr, OtherPDPtrs) ->
+        ( if list.delete_first(MemberPDPtrs, EntryPDPtr, OtherPDPtrs) then
             EntryProcDesc = describe_clique_member(Deep, EntryPDPtr),
             OtherProcDescs =
                 list.map(describe_clique_member(Deep), OtherPDPtrs),
             CliqueDesc = clique_desc(CliquePtr, EntryProcDesc, OtherProcDescs)
-        ;
+        else
             unexpected($module, $pred, "entry pdptr not a member")
         )
-    ;
+    else
         unexpected($module, $pred, "invalid clique_ptr")
     ).
 

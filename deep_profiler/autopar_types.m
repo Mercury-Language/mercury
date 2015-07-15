@@ -294,12 +294,12 @@ pard_goal_detail_annon_to_pard_goal_annon(SharedVarsSet, PGD, PG) :-
 
     Coverage = PGD ^ pgd_coverage,
     get_coverage_before_det(Coverage, Calls),
-    ( Calls > 0 ->
+    ( if Calls > 0 then
         list.foldl(build_var_use_list(PGD ^ pgd_var_production_map),
             SharedVars, [], Productions),
         list.foldl(build_var_use_list(PGD ^ pgd_var_consumption_map),
             SharedVars, [], Consumptions)
-    ;
+    else
         Productions = [],
         Consumptions = []
     ),
@@ -311,13 +311,13 @@ pard_goal_detail_annon_to_pard_goal_annon(SharedVarsSet, PGD, PG) :-
 
 build_var_use_list(Map, Var, !List) :-
     promise_pure (
-        (
+        ( if
             map.search(Map, Var, LazyUse),
             impure read_if_val(LazyUse, Use)
-        ->
+        then
             UseTime = Use ^ vui_cost_until_use,
             !:List = [Var - UseTime | !.List]
-        ;
+        else
             true
         )
     ).

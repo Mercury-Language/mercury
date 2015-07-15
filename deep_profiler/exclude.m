@@ -136,12 +136,12 @@ read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
     io.read_line_as_string(InputStream, Res0, !IO),
     (
         Res0 = ok(Line0),
-        ( string.remove_suffix(Line0, "\n", LinePrime) ->
+        ( if string.remove_suffix(Line0, "\n", LinePrime) then
             Line = LinePrime
-        ;
+        else
             Line = Line0
         ),
-        (
+        ( if
             Words = string.words_separator(char.is_whitespace, Line),
             Words = [Scope, ModuleName],
             (
@@ -151,11 +151,11 @@ read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
                 Scope = "internal",
                 ExclType = exclude_internal_procedures
             )
-        ->
+        then
             Spec = exclude_spec(ModuleName, ExclType),
             RevSpecs1 = [Spec | RevSpecs0],
             read_exclude_lines(FileName, InputStream, RevSpecs1, Res, !IO)
-        ;
+        else
             Msg = string.format("file %s contains badly formatted line: %s",
                 [s(FileName), s(Line)]),
             Res = error(Msg)
@@ -219,14 +219,14 @@ spec_to_module_name(exclude_spec(ModuleName, _)) = ModuleName.
 %-----------------------------------------------------------------------------%
 
 apply_contour_exclusion(Deep, ExcludedSpecs, CSDPtr0) = CSDPtr :-
-    ( valid_call_site_dynamic_ptr(Deep, CSDPtr0) ->
+    ( if valid_call_site_dynamic_ptr(Deep, CSDPtr0) then
         deep_lookup_call_site_dynamics(Deep, CSDPtr0, CSD),
         PDPtr = CSD ^ csd_caller,
         deep_lookup_proc_dynamics(Deep, PDPtr, PD),
         PSPtr = PD ^ pd_proc_static,
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         ModuleName = PS ^ ps_decl_module,
-        (
+        ( if
             set.member(ExclSpec, ExcludedSpecs),
             ExclSpec = exclude_spec(ModuleName, ExclType),
             (
@@ -235,14 +235,14 @@ apply_contour_exclusion(Deep, ExcludedSpecs, CSDPtr0) = CSDPtr :-
                 ExclType = exclude_internal_procedures,
                 PS ^ ps_in_interface = no
             )
-        ->
+        then
             deep_lookup_clique_index(Deep, PDPtr, CliquePtr),
             deep_lookup_clique_parents(Deep, CliquePtr, EntryCSDPtr),
             CSDPtr = apply_contour_exclusion(Deep, ExcludedSpecs, EntryCSDPtr)
-        ;
+        else
             CSDPtr = CSDPtr0
         )
-    ;
+    else
         CSDPtr = CSDPtr0
     ).
 

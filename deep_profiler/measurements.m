@@ -495,25 +495,25 @@ sum_inherit_infos(Inherits) =
 
 compress_profile(Exits, Fails, Redos, Excps, Quanta, CallSeqs, Allocs, Words)
         = PI :-
-    (
+    ( if
         Redos = 0,
         Excps = 0,
         Quanta = 0,
         Allocs = 0,
         Words = 0
-    ->
+    then
         PI = own_prof_fast_nomem_semi(Exits, Fails, CallSeqs)
-    ;
+    else if
         Fails = 0,
         Redos = 0,
         Excps = 0
-    ->
-        ( Quanta = 0 ->
+    then
+        ( if Quanta = 0 then
             PI = own_prof_fast_det(Exits, CallSeqs, Allocs, Words)
-        ;
+        else
             PI = own_prof_det(Exits, Quanta, CallSeqs, Allocs, Words)
         )
-    ;
+    else
         PI = own_prof_all(Exits, Fails, Redos, Excps, Quanta, CallSeqs,
             Allocs, Words)
     ).
@@ -522,41 +522,41 @@ compress_profile(PI0) = PI :-
     (
         PI0 = own_prof_all(Exits, Fails, Redos, Excps, Quanta, CallSeqs,
             Allocs, Words),
-        (
+        ( if
             Redos = 0,
             Excps = 0,
             Quanta = 0,
             Allocs = 0,
             Words = 0
-        ->
+        then
             PI = own_prof_fast_nomem_semi(Exits, Fails, CallSeqs)
-        ;
+        else if
             Fails = 0,
             Redos = 0,
             Excps = 0
-        ->
-            ( Quanta = 0 ->
+        then
+            ( if Quanta = 0 then
                 PI = own_prof_fast_det(Exits, CallSeqs, Allocs, Words)
-            ;
+            else
                 PI = own_prof_det(Exits, Quanta, CallSeqs, Allocs, Words)
             )
-        ;
+        else
             PI = PI0
         )
     ;
         PI0 = own_prof_det(Exits, Quanta, CallSeqs, Allocs, Words),
-        ( Allocs = 0, Words = 0 ->
+        ( if Allocs = 0, Words = 0 then
             PI = own_prof_fast_nomem_semi(Exits, 0, CallSeqs)
-        ; Quanta = 0 ->
+        else if Quanta = 0 then
             PI = own_prof_fast_det(Exits, CallSeqs, Allocs, Words)
-        ;
+        else
             PI = PI0
         )
     ;
         PI0 = own_prof_fast_det(Exits, CallSeqs, Allocs, Words),
-        ( Allocs = 0, Words = 0 ->
+        ( if Allocs = 0, Words = 0 then
             PI = own_prof_fast_nomem_semi(Exits, 0, CallSeqs)
-        ;
+        else
             PI = PI0
         )
     ;
@@ -630,15 +630,15 @@ own_to_string(own_prof_fast_nomem_semi(Exits, Fails, CallSeqs)) =
     ")".
 
 compute_is_active(Own) = IsActive :-
-    (
+    ( if
         ( Own = own_prof_all(0, 0, 0, 0, _, _, _, _)
         ; Own = own_prof_det(0, _, _, _, _)
         ; Own = own_prof_fast_det(0, _, _, _)
         ; Own = own_prof_fast_nomem_semi(0, 0, _)
         )
-    ->
+    then
         IsActive = is_not_active
-    ;
+    else
         IsActive = is_active
     ).
 
@@ -764,19 +764,19 @@ add_goal_costs_seq(non_trivial_goal(CostA, CallsA),
     CostTotal = cost_get_total(float(CallsA), CostA) +
         cost_get_total(float(CallsB), CostB),
     Cost = cost_total(CostTotal),
-    (
+    ( if
         Calls = 0,
         CostTotal \= 0.0
-    ->
+    then
         unexpected($module, $pred, "Calls = 0, Cost \\= 0")
-    ;
+    else
         true
     ).
 
 add_goal_costs_branch(TotalCalls, A, B) = R :-
-    ( TotalCalls = 0 ->
+    ( if TotalCalls = 0 then
         R = dead_goal
-    ;
+    else
         (
             A = dead_goal,
             CallsA = 0,
@@ -825,18 +825,18 @@ add_goal_costs_branch(TotalCalls, A, B) = R :-
 
 check_total_calls(CallsA, CallsB, TotalCalls) :-
     Calls = CallsA + CallsB,
-    ( unify(Calls, TotalCalls) ->
+    ( if unify(Calls, TotalCalls) then
         true
-    ;
+    else
         unexpected($module, $pred, "TotalCalls \\= CallsA + CallsB")
     ).
 
 goal_cost_get_percall(dead_goal) = 0.0.
 goal_cost_get_percall(trivial_goal(_)) = 0.0.
 goal_cost_get_percall(non_trivial_goal(Cost, Calls)) =
-    ( Calls = 0 ->
+    ( if Calls = 0 then
         0.0
-    ;
+    else
         cost_get_percall(float(Calls), Cost)
     ).
 
@@ -907,9 +907,9 @@ recursion_depth_to_int(D) =
     round_to_int(recursion_depth_to_float(D)).
 
 recursion_depth_descend(recursion_depth(D), recursion_depth(D - 1.0)) :-
-    ( D >= 0.5 ->
+    ( if D >= 0.5 then
         true
-    ;
+    else
         unexpected($module, $pred,
             format("Recursion depth will be less than zero: %f", [f(D - 1.0)]))
     ).
@@ -926,17 +926,17 @@ zero_static_coverage = no.
 
 add_coverage_arrays(Array, no, yes(Array)).
 add_coverage_arrays(NewArray, yes(!.Array), yes(!:Array)) :-
-    (
+    ( if
         array.bounds(NewArray, Min, Max),
         array.bounds(!.Array, Min, Max)
-    ->
+    then
         !:Array = copy(!.Array),
         array_foldl_from_0(
             (pred(Index::in, E::in, A0::array_di, A::array_uo) is det :-
                 array.lookup(A0, Index, Value),
                 array.set(Index, Value + E, A0, A)
             ), NewArray, !Array)
-    ;
+    else
         unexpected($module, $pred, "arrays' bounds do not match")
     ).
 
@@ -970,10 +970,10 @@ static_coverage_maybe_get_coverage_points(MaybeCoverage) = MaybeCoverage.
 no_parallelism = parallelism_amount(1.0).
 
 some_parallelism(Num) = parallelism_amount(Num) :-
-    ( Num < 1.0 ->
+    ( if Num < 1.0 then
         unexpected($module, $pred,
             "Parallelism amount cannot ever be less than 1.0")
-    ;
+    else
         true
     ).
 
@@ -1063,12 +1063,12 @@ init_parallel_exec_metrics_incomplete(Metrics0, TimeSignals, TimeWaits,
     ;
         MaybeInternal0 = no,
         Internal = pem_left_most(TimeBSeq, TimeBPar, TimeSignals),
-        (
+        ( if
             TimeBDead = 0.0,
             TimeWaits = 0.0
-        ->
+        then
             true
-        ;
+        else
             unexpected($module, $pred, "TimeWaits != 0 or TimeBDead != 0")
         )
     ),
@@ -1094,9 +1094,9 @@ finalise_parallel_exec_metrics(IncompleteMetrics) = Metrics :-
     NumConjuncts = parallel_exec_metrics_internal_get_num_conjs(Internal),
     InnerParTime = parallel_exec_metrics_internal_get_par_time(Internal,
         SparkDelay, NumConjuncts),
-    ( FirstConjDeadTime > 0.0 ->
+    ( if FirstConjDeadTime > 0.0 then
         FirstConjWakeupPenalty = ContextWakeupDelay
-    ;
+    else
         FirstConjWakeupPenalty = 0.0
     ),
     ParTime = InnerParTime + BeforeAndAfterTime + FirstConjWakeupPenalty,
@@ -1217,9 +1217,9 @@ pem_get_wait_costs(pem_additional(Left, _, WaitsR, _, _, _)) = Waits :-
 weighted_average(Weights, Values, Average) :-
     list.foldl2_corresponding(update_weighted_sum,
         Weights, Values, 0.0, WeightedSum, 0.0, TotalWeight),
-    ( abs(TotalWeight) < epsilon ->
+    ( if abs(TotalWeight) < epsilon then
         Average = 0.0
-    ;
+    else
         Average = WeightedSum / TotalWeight
     ).
 

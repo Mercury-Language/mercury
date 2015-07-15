@@ -183,9 +183,9 @@ memory_words(WordsI, BytesPerWord) = memory(WordsF, BytesPerWord) :-
     WordsF = float(WordsI).
 
 memory(Nom, BPW) / Denom =
-    ( Denom = 0 ->
+    ( if Denom = 0 then
         memory(0.0, BPW)
-    ;
+    else
         memory(Nom / float(Denom), BPW)
     ).
 
@@ -233,9 +233,9 @@ ticks_to_time(Ticks, TicksPerSec) = Time :-
     Time = time_sec(float(Ticks) * SecPerTick).
 
 time_percall(time_sec(Time), Calls) = time_sec(TimePerCall) :-
-    ( Calls = 0 ->
+    ( if Calls = 0 then
         TimePerCall = 0.0
-    ;
+    else
         TimePerCall = Time / float(Calls)
     ).
 
@@ -260,19 +260,19 @@ pico = 0.000000000001.
 % should be used rather than the latin letter u.
 
 format_time(time_sec(F)) = String :-
-    ( F < nano ->
+    ( if F < nano then
         % Print in ps.
         string.format("%.1fps", [f(F / pico)], String)
-    ; F < micro ->
+    else if F < micro then
         % Print in ns.
         string.format("%.1fns", [f(F / nano)], String)
-    ; F < milli ->
+    else if F < milli then
         % Print in us.
         string.format("%.1fus", [f(F / micro)], String)
-    ; F < 1.0 ->
+    else if F < 1.0 then
         % Print in ms.
         string.format("%.1fms", [f(F / milli)], String)
-    ;
+    else
         % Print in seconds.
         string.format("%.1fs", [f(F)], String)
     ).
@@ -289,12 +289,12 @@ certain = 1.0.
 impossible = 0.0.
 
 probable(Prob) = Prob :-
-    (
+    ( if
         Prob =< 1.0,
         Prob >= 0.0
-    ->
+    then
         true
-    ;
+    else
         error(format("Probability %f out of range 0.0 to 1.0 inclusive",
             [f(Prob)]))
     ).
@@ -325,18 +325,18 @@ commas(Num) = Str :-
 decimal_fraction(Format, Measure) = Representation :-
     string.format(Format, [f(Measure)], Str0),
     string.split_at_char('.', Str0) = SubStrings,
-    (
+    ( if
         SubStrings = [WholeString0, FractionString]
-    ->
+    then
         add_commas_intstr(WholeString0, WholeString),
         Representation = WholeString ++ "." ++ FractionString
-    ;
+    else if
         % If there are no decimal symbols in the number, try to work with it
         % as an integer.
         SubStrings = [WholeString]
-    ->
+    then
         add_commas_intstr(WholeString, Representation)
-    ;
+    else
         unexpected($module, $pred, "didn't split on decimal point properly")
     ).
 

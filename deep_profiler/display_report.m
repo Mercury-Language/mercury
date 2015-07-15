@@ -21,7 +21,7 @@
 :- import_module profile.
 :- import_module report.
 
-% XXX: This include should be removed or replaced.  Some data structures
+% XXX: This include should be removed or replaced. Some data structures
 % such as preferences are currently defined in query; they should be moved
 % into a different module so that this module doesn't need to include
 % the whole of query.
@@ -454,15 +454,15 @@ display_report_clique(Prefs, CliqueReport, Display) :-
 
     list.length(InnerToOuterAncestorCallSites0, NumAncestors),
     MaybeAncestorLimit = Prefs ^ pref_anc,
-    (
+    ( if
         MaybeAncestorLimit = yes(AncestorLimit),
         NumAncestors > AncestorLimit
-    ->
+    then
         AncestorTitle = string.format("The %d closest ancestor call sites:",
             [i(AncestorLimit)]),
         list.take_upto(AncestorLimit,
             InnerToOuterAncestorCallSites0, InnerToOuterAncestorCallSites)
-    ;
+    else
         AncestorTitle = "Ancestor call sites:",
         InnerToOuterAncestorCallSites = InnerToOuterAncestorCallSites0
     ),
@@ -470,12 +470,12 @@ display_report_clique(Prefs, CliqueReport, Display) :-
     list.reverse(InnerToOuterAncestorCallSites, AncestorCallSites),
     ModuleQual = Prefs ^ pref_module_qual,
     CliqueModuleNames = list.map(clique_proc_report_module_name, CliqueProcs0),
-    (
+    ( if
         CliqueModuleNames = [FirstModuleName | _],
         list.all_same(CliqueModuleNames)
-    ->
+    then
         MaybeCurModuleName = yes(FirstModuleName)
-    ;
+    else
         MaybeCurModuleName = no
     ),
     AncestorDataRows = list.map(
@@ -486,9 +486,9 @@ display_report_clique(Prefs, CliqueReport, Display) :-
         AncestorDataRows,
 
     list.length(CliqueProcs0, NumCliqueprocs),
-    ( NumCliqueprocs > 1 ->
+    ( if NumCliqueprocs > 1 then
         ProcsTitle = "Procedures of the clique:"
-    ;
+    else
         ProcsTitle = "The clique has one procedure:"
     ),
     CliqueProcsHeaderRow = table_section_header(td_s(ProcsTitle)),
@@ -1110,9 +1110,9 @@ active_module(ModuleRowData) :-
 :- func avoid_sort_self_and_desc(preferences) = preferences.
 
 avoid_sort_self_and_desc(Prefs) = SortPrefs :-
-    ( Prefs ^ pref_criteria = by_cost(CostKind, self_and_desc, Scope) ->
+    ( if Prefs ^ pref_criteria = by_cost(CostKind, self_and_desc, Scope) then
         SortPrefs = Prefs ^ pref_criteria := by_cost(CostKind, self, Scope)
-    ;
+    else
         SortPrefs = Prefs
     ).
 
@@ -1568,9 +1568,9 @@ report_proc_call_site(MaybeCurModuleName, ModuleQual, Prefs, CallSitePerf)
         NormalCalleeId = normal_callee_id(CalleeDesc, TypeSubstStr),
         CalleeRefinedName = proc_desc_get_refined_id(MaybeCurModuleName,
             ModuleQual, CalleeDesc),
-        ( TypeSubstStr = "" ->
+        ( if TypeSubstStr = "" then
             CallSiteStr = CalleeRefinedName
-        ;
+        else
             CallSiteStr = string.format("%s [%s]",
                 [s(CalleeRefinedName), s(TypeSubstStr)])
         ),
@@ -1789,39 +1789,39 @@ display_report_proc_callers(Deep, Prefs0, ProcCallersReport, Display) :-
         require((DisplayedBunchNum =< LastBunchNum),
             "display_report_proc_callers: display bunch number mismatch"),
 
-        ( FirstBunchNum = LastBunchNum ->
+        ( if FirstBunchNum = LastBunchNum then
             Message = string.format("There are %d:",
                 [i(TotalNumRows)]),
             BunchControls = []
-        ;
+        else
             Message = string.format("There are %d, showing %d to %d:",
                 [i(TotalNumRows), i(FirstRowNum), i(LastRowNum)]),
-            ( BunchNum > FirstBunchNum ->
+            ( if BunchNum > FirstBunchNum then
                 BunchControlsFirst = [make_proc_callers_link(Prefs,
                     "First group", PSPtr, CallerGroups, FirstBunchNum,
                     BunchSize, ContourExcl)]
-            ;
+            else
                 BunchControlsFirst = []
             ),
-            ( BunchNum - 1 > FirstBunchNum ->
+            ( if BunchNum - 1 > FirstBunchNum then
                 BunchControlsPrev = [make_proc_callers_link(Prefs,
                     "Previous group", PSPtr, CallerGroups, BunchNum - 1,
                     BunchSize, ContourExcl)]
-            ;
+            else
                 BunchControlsPrev = []
             ),
-            ( BunchNum + 1 < LastBunchNum ->
+            ( if BunchNum + 1 < LastBunchNum then
                 BunchControlsNext = [make_proc_callers_link(Prefs,
                     "Next group", PSPtr, CallerGroups, BunchNum + 1,
                     BunchSize, ContourExcl)]
-            ;
+            else
                 BunchControlsNext = []
             ),
-            ( BunchNum < LastBunchNum ->
+            ( if BunchNum < LastBunchNum then
                 BunchControlsLast = [make_proc_callers_link(Prefs,
                     "Last group", PSPtr, CallerGroups, LastBunchNum,
                     BunchSize, ContourExcl)]
-            ;
+            else
                 BunchControlsLast = []
             ),
             BunchControlList = BunchControlsFirst ++ BunchControlsPrev ++
@@ -1831,77 +1831,77 @@ display_report_proc_callers(Deep, Prefs0, ProcCallersReport, Display) :-
                     yes("Show other groups:"), BunchControlList)]
         ),
 
-        (
+        ( if
             BunchSize > 5,
             HalfBunchSize = BunchSize / 2,
             HalfBunchSize \= 10,
             HalfBunchSize \= 20,
             HalfBunchSize \= 50,
             HalfBunchSize \= 100
-        ->
+        then
             BunchSizeControlPairsHalf = [(BunchSize / 2) -
                 make_proc_callers_link(Prefs,
                     "Halve group size", PSPtr, CallerGroups, BunchNum * 2,
                     BunchSize / 2, ContourExcl)]
-        ;
+        else
             BunchSizeControlPairsHalf = []
         ),
-        (
+        ( if
             DoubleBunchSize = BunchSize * 2,
             DoubleBunchSize \= 10,
             DoubleBunchSize \= 20,
             DoubleBunchSize \= 50,
             DoubleBunchSize \= 100
-        ->
+        then
             BunchSizeControlPairsDouble = [(BunchSize * 2) -
                 make_proc_callers_link(Prefs,
                     "Double group size", PSPtr, CallerGroups, BunchNum / 2,
                     BunchSize * 2, ContourExcl)]
-        ;
+        else
             BunchSizeControlPairsDouble = []
         ),
-        (
+        ( if
             TotalNumRows > 10,
             BunchSize \= 10
-        ->
+        then
             BunchSizeControlPairs10 = [10 -
                 make_proc_callers_link(Prefs,
                     "Set group size to 10", PSPtr, CallerGroups,
                     (BunchNum * BunchSize) / 10, 10, ContourExcl)]
-        ;
+        else
             BunchSizeControlPairs10 = []
         ),
-        (
+        ( if
             TotalNumRows > 20,
             BunchSize \= 20
-        ->
+        then
             BunchSizeControlPairs20 = [20 -
                 make_proc_callers_link(Prefs,
                     "Set group size to 20", PSPtr, CallerGroups,
                     (BunchNum * BunchSize) / 20, 20, ContourExcl)]
-        ;
+        else
             BunchSizeControlPairs20 = []
         ),
-        (
+        ( if
             TotalNumRows > 50,
             BunchSize \= 50
-        ->
+        then
             BunchSizeControlPairs50 = [50 -
                 make_proc_callers_link(Prefs,
                     "Set group size to 50", PSPtr, CallerGroups,
                     (BunchNum * BunchSize) / 50, 50, ContourExcl)]
-        ;
+        else
             BunchSizeControlPairs50 = []
         ),
-        (
+        ( if
             TotalNumRows > 100,
             BunchSize \= 100
-        ->
+        then
             BunchSizeControlPairs100 = [100 -
                 make_proc_callers_link(Prefs,
                     "Set group size to 100", PSPtr, CallerGroups,
                     (BunchNum * BunchSize) / 100, 100, ContourExcl)]
-        ;
+        else
             BunchSizeControlPairs100 = []
         ),
         BunchSizeControlPairs =
@@ -1947,32 +1947,32 @@ select_displayed_rows(RowDatas, BunchNum, BunchSize, DisplayRowDatas,
         DisplayedBunchNum, MaybeFirstAndLastBunchNum) :-
     list.length(RowDatas, TotalNumRows),
     NumRowsToDelete = (BunchNum - 1) * BunchSize,
-    (
+    ( if
         list.drop(NumRowsToDelete, RowDatas, RemainingRowDatasPrime),
         RemainingRowDatasPrime = [_ | _]
-    ->
+    then
         DisplayedBunchNum = BunchNum,
         % We start counting rows at 1, not 0.
         FirstRowNum = NumRowsToDelete + 1,
         RemainingRowDatas = RemainingRowDatasPrime,
         NumRemainingRows = TotalNumRows - NumRowsToDelete
-    ;
+    else
         DisplayedBunchNum = 1,
         FirstRowNum = 1,
         RemainingRowDatas = RowDatas,
         NumRemainingRows = TotalNumRows
     ),
-    ( NumRemainingRows > BunchSize ->
+    ( if NumRemainingRows > BunchSize then
         list.take_upto(BunchSize, RemainingRowDatas, DisplayRowDatas)
-    ;
+    else
         DisplayRowDatas = RemainingRowDatas
     ),
     LastRowNum = FirstRowNum - 1 + list.length(DisplayRowDatas),
-    ( TotalNumRows > 0 ->
+    ( if TotalNumRows > 0 then
         FirstBunchNum = 1,
         LastBunchNum = (TotalNumRows + BunchSize - 1) / BunchSize,
         MaybeFirstAndLastBunchNum = yes({FirstBunchNum, LastBunchNum})
-    ;
+    else
         MaybeFirstAndLastBunchNum = no
     ).
 
@@ -2307,9 +2307,9 @@ display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
         CallSiteKind = normal_call_and_callee(CalleePSPtr, TypeSpecDesc),
         CalleePSPtr = proc_static_ptr(CalleePSI),
         CalleeDesc0 = "normal, callee " ++ string.int_to_string(CalleePSI),
-        ( TypeSpecDesc = "" ->
+        ( if TypeSpecDesc = "" then
             CalleeDesc = CalleeDesc0
-        ;
+        else
             CalleeDesc = CalleeDesc0 ++ " typespec " ++ TypeSpecDesc
         ),
         CalleeProcStaticLink = deep_link(
@@ -2488,13 +2488,13 @@ override_order_criteria_header_data(Cmd, Prefs0, Criteria, Label)
         = TableData :-
     Criteria0 = Prefs0 ^ pref_criteria,
     Prefs = Prefs0 ^ pref_criteria := Criteria,
-    ( Criteria = Criteria0 ->
+    ( if Criteria = Criteria0 then
         % Should we display a simple string to indicate that this link
         % leads back to the same page, or would that be confusing?
         Link = deep_link(Cmd, yes(Prefs), attr_str([], Label),
             link_class_link),
         TableData = td_l(Link)
-    ;
+    else
         Link = deep_link(Cmd, yes(Prefs), attr_str([], Label),
             link_class_link),
         TableData = td_l(Link)
@@ -3350,14 +3350,14 @@ make_top_procs_cmd_item(Prefs0, SetPrefs, DisplayLimit, CostKind, InclDesc,
         Scope, Label - CmdMaker, Items) :-
     Cmd0 = deep_cmd_top_procs(DisplayLimit, CostKind, InclDesc, Scope),
     CmdMaker(DisplayLimit, CostKind, InclDesc, Scope, Cmd),
-    ( Cmd = Cmd0 ->
+    ( if Cmd = Cmd0 then
         Items = []
         % We could use this code instead.
         % CurLabel = Label ++ " (current setting)",
         % PseudoLink = pseudo_link(CurLabel, link_class_control),
         % Item = display_pseudo_link(PseudoLink),
         % Items = [Item]
-    ;
+    else
         (
             SetPrefs = no,
             Prefs = Prefs0
@@ -3366,13 +3366,13 @@ make_top_procs_cmd_item(Prefs0, SetPrefs, DisplayLimit, CostKind, InclDesc,
             % By default, sort the top procedures by the same criteria
             % by which they were selected. Users can override this choice
             % later if they wish.
-            (
+            ( if
                 Cmd = deep_cmd_top_procs(_, CmdCostKind, CmdInclDesc,
                     CmdScope)
-            ->
+            then
                 Prefs = Prefs0 ^ pref_criteria :=
                     by_cost(CmdCostKind, CmdInclDesc, CmdScope)
-            ;
+            else
                 Prefs = Prefs0
             )
         ),
@@ -3411,14 +3411,14 @@ make_first_proc_callers_cmd_item(Prefs, Cmd0, PSPtr, CallerGroups, BunchSize,
     % When we just to a different kind of grouping or toggle contour exclusion,
     % we always go to the first bunch of the resulting rows.
     CmdMaker(PSPtr, CallerGroups, BunchSize, ContourExcl, Cmd),
-    ( Cmd = Cmd0 ->
+    ( if Cmd = Cmd0 then
         Items = []
         % We could use this code instead.
         % CurLabel = Label ++ " (current setting)",
         % PseudoLink = pseudo_link(CurLabel, link_class_control),
         % Item = display_pseudo_link(PseudoLink),
         % Items = [Item]
-    ;
+    else
         Link = deep_link(Cmd, yes(Prefs), attr_str([], Label),
             link_class_control),
         Item = display_link(Link),
@@ -3443,14 +3443,14 @@ make_prefs_controls_item(Prefs0, Cmd, MaybeLabel, LabelsPrefMakers, Item) :-
 
 make_prefs_control_item(Prefs0, Cmd, Label - PrefMaker, Items) :-
     PrefMaker(Prefs0, Prefs),
-    ( Prefs = Prefs0 ->
+    ( if Prefs = Prefs0 then
         Items = []
         % We could use this code instead.
         % CurLabel = Label ++ " (current setting)",
         % PseudoLink = pseudo_link(CurLabel, link_class_control),
         % Item = display_pseudo_link(PseudoLink),
         % Items = [Item]
-    ;
+    else
         Link = deep_link(Cmd, yes(Prefs), attr_str([], Label),
             link_class_control),
         Item = display_link(Link),
@@ -3595,7 +3595,7 @@ proc_callers_group_controls(Deep, Prefs, Cmd, PSPtr, CallerGroups,
     make_first_proc_callers_cmds_item(Prefs, Cmd, PSPtr, CallerGroups,
         BunchSize, ContourExcl, no, proc_callers_group_toggles, GroupControls),
     ExcludeFile = Deep ^ exclude_contour_file,
-    ( Cmd = deep_cmd_proc_callers(_, _, _, _, _) ->
+    ( if Cmd = deep_cmd_proc_callers(_, _, _, _, _) then
         ExcludeFile = exclude_file(ExcludeFileName, ExcludeContents),
         (
             ExcludeContents = no_exclude_file,
@@ -3613,7 +3613,7 @@ proc_callers_group_controls(Deep, Prefs, Cmd, PSPtr, CallerGroups,
                 ContourExclControls),
             List = [GroupControls, ContourExclControls]
         )
-    ;
+    else
         List = [GroupControls]
     ),
     ControlsItem = display_list(list_class_vertical_no_bullets,
@@ -4380,9 +4380,9 @@ clique_desc_to_non_self_link_proc_name_cell(MaybeCurModuleName, ModuleQual,
     CliqueDesc = clique_desc(CliquePtr, EntryProcDesc, _OtherProcDescs),
     EntryProcName = proc_desc_get_refined_id(MaybeCurModuleName, ModuleQual,
         EntryProcDesc),
-    ( CliquePtr = SelfCliquePtr ->
+    ( if CliquePtr = SelfCliquePtr then
         Cell = table_cell(td_s(EntryProcName))
-    ;
+    else
         Cmd = deep_cmd_clique(CliquePtr),
         Link = deep_link(Cmd, yes(Prefs), attr_str([], EntryProcName),
             link_class_link),
@@ -5172,10 +5172,10 @@ compare_perf_row_datas_by_time(InclDesc, Scope, PerfA, PerfB, Result) :-
         InclDesc = self_and_desc,
         MaybeTotalA = PerfA ^ perf_row_maybe_total,
         MaybeTotalB = PerfB ^ perf_row_maybe_total,
-        (
+        ( if
             MaybeTotalA = yes(TotalA),
             MaybeTotalB = yes(TotalB)
-        ->
+        then
             (
                 Scope = overall,
                 TimeA = TotalA ^ perf_row_time,
@@ -5187,7 +5187,7 @@ compare_perf_row_datas_by_time(InclDesc, Scope, PerfA, PerfB, Result) :-
                 TimeB = TotalB ^ perf_row_time_percall,
                 compare(Result, TimeA, TimeB)
             )
-        ;
+        else
             unexpected($module, $pred, "self_and_desc")
         )
     ).
@@ -5216,10 +5216,10 @@ compare_perf_row_datas_by_callseqs(InclDesc, Scope, PerfA, PerfB, Result) :-
         InclDesc = self_and_desc,
         MaybeTotalA = PerfA ^ perf_row_maybe_total,
         MaybeTotalB = PerfB ^ perf_row_maybe_total,
-        (
+        ( if
             MaybeTotalA = yes(TotalA),
             MaybeTotalB = yes(TotalB)
-        ->
+        then
             (
                 Scope = overall,
                 CallSeqsA = TotalA ^ perf_row_callseqs,
@@ -5231,7 +5231,7 @@ compare_perf_row_datas_by_callseqs(InclDesc, Scope, PerfA, PerfB, Result) :-
                 CallSeqsB = TotalB ^ perf_row_callseqs_percall,
                 compare(Result, CallSeqsA, CallSeqsB)
             )
-        ;
+        else
             unexpected($module, $pred, "self_and_desc")
         )
     ).
@@ -5260,10 +5260,10 @@ compare_perf_row_datas_by_allocs(InclDesc, Scope, PerfA, PerfB, Result) :-
         InclDesc = self_and_desc,
         MaybeTotalA = PerfA ^ perf_row_maybe_total,
         MaybeTotalB = PerfB ^ perf_row_maybe_total,
-        (
+        ( if
             MaybeTotalA = yes(TotalA),
             MaybeTotalB = yes(TotalB)
-        ->
+        then
             (
                 Scope = overall,
                 AllocsA = TotalA ^ perf_row_allocs,
@@ -5275,8 +5275,8 @@ compare_perf_row_datas_by_allocs(InclDesc, Scope, PerfA, PerfB, Result) :-
                 AllocsB = TotalB ^ perf_row_allocs_percall,
                 compare(Result, AllocsA, AllocsB)
             )
-        ;
-            unexpected($module, $pred, "self_and_desc")
+        else
+            unexpected($module, $pred, "missing total")
         )
     ).
 
@@ -5304,10 +5304,10 @@ compare_perf_row_datas_by_words(InclDesc, Scope, PerfA, PerfB, Result) :-
         InclDesc = self_and_desc,
         MaybeTotalA = PerfA ^ perf_row_maybe_total,
         MaybeTotalB = PerfB ^ perf_row_maybe_total,
-        (
+        ( if
             MaybeTotalA = yes(TotalA),
             MaybeTotalB = yes(TotalB)
-        ->
+        then
             (
                 Scope = overall,
                 MemoryA = TotalA ^ perf_row_mem,
@@ -5319,8 +5319,8 @@ compare_perf_row_datas_by_words(InclDesc, Scope, PerfA, PerfB, Result) :-
                 MemoryB = TotalB ^ perf_row_mem_percall,
                 compare_memory(MemoryA, MemoryB, Result)
             )
-        ;
-            unexpected($module, $pred, "self_and_desc")
+        else
+            unexpected($module, $pred, "missing total")
         )
     ).
 
@@ -5341,9 +5341,9 @@ proc_desc_get_refined_id(MaybeCurModuleName, ModuleQual, ProcDesc) = Name :-
         ;
             MaybeCurModuleName = yes(CurModuleName),
             ModuleName = ProcDesc ^ pdesc_module_name,
-            ( ModuleName = CurModuleName ->
+            ( if ModuleName = CurModuleName then
                 Name = ProcDesc ^ pdesc_uq_refined_name
-            ;
+            else
                 Name = ProcDesc ^ pdesc_q_refined_name
             )
         )
@@ -5368,9 +5368,9 @@ call_site_desc_get_caller_refined_id(MaybeCurModuleName, ModuleQual,
         ;
             MaybeCurModuleName = yes(CurModuleName),
             ModuleName = CallSiteDesc ^ csdesc_caller_module_name,
-            ( ModuleName = CurModuleName ->
+            ( if ModuleName = CurModuleName then
                 Name = CallSiteDesc ^ csdesc_caller_uq_refined_name
-            ;
+            else
                 Name = CallSiteDesc ^ csdesc_caller_q_refined_name
             )
         )

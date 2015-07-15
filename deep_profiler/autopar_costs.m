@@ -120,10 +120,10 @@ disj_calc_cost_semidet([], Calls, simple_goal_cost(Calls)).
 disj_calc_cost_semidet([Disjunct | Disjuncts], _, Cost) :-
     Coverage = Disjunct ^ goal_annotation ^ pgd_coverage,
     get_coverage_before_and_after_det(Coverage, Before, After),
-    ( Before = 0 ->
+    ( if Before = 0 then
         % Avoid a divide by zero.
         Cost = dead_goal_cost
-    ;
+    else
         _Successes = After,
         Failures = Before - After,
         disj_calc_cost_semidet(Disjuncts, Failures, FailureCost),
@@ -140,10 +140,10 @@ disj_calc_cost_nondet([], Calls, simple_goal_cost(Calls)).
 disj_calc_cost_nondet([Disjunct | Disjuncts], Calls, Cost) :-
     Coverage = Disjunct ^ goal_annotation ^ pgd_coverage,
     get_coverage_before_det(Coverage, Before),
-    ( Before = 0 ->
+    ( if Before = 0 then
         % Avoid a divide by zero.
         Cost = dead_goal_cost
-    ;
+    else
         % TODO: This is very approximate, it calculates the percall cost.
         % For nondet code we probably want the per-call and per-redo cost.
         disj_calc_cost_nondet(Disjuncts, Calls, DisjunctsCost),
@@ -153,10 +153,10 @@ disj_calc_cost_nondet([Disjunct | Disjuncts], Calls, Cost) :-
 
 switch_calc_cost([], Calls, simple_goal_cost(Calls)).
 switch_calc_cost([Case | Cases], TotalCalls, Cost) :-
-    ( TotalCalls = 0 ->
+    ( if TotalCalls = 0 then
         % Avoid a divide by zero.
         Cost = dead_goal_cost
-    ;
+    else
         Coverage = Case ^ cr_case_goal ^ goal_annotation ^ pgd_coverage,
         get_coverage_before_det(Coverage, CaseCalls),
         switch_calc_cost(Cases, TotalCalls - CaseCalls, CasesCost),
@@ -176,9 +176,9 @@ ite_calc_cost(Cond, Then, Else, Cost) :-
 :- func simple_goal_cost(int) = goal_cost_csq.
 
 simple_goal_cost(Calls) = Cost :-
-    ( Calls = 0 ->
+    ( if Calls = 0 then
         Cost = dead_goal_cost
-    ;
+    else
         Cost = atomic_goal_cost(Calls)
     ).
 
@@ -213,12 +213,12 @@ atomic_goal_build_use_map(AtomicGoal, RevGoalPath, Info, VarUseType, Var,
 compute_var_use_lazy(Info, RevGoalPath, Var, Args, VarUseType) = Use :-
     CliquePtr = Info ^ ipi_clique,
     map.lookup(Info ^ ipi_call_sites, RevGoalPath, CostAndCallee),
-    (
+    ( if
         cost_and_callees_is_recursive(CliquePtr, CostAndCallee),
         map.search(Info ^ ipi_rec_call_sites, RevGoalPath, RecCost)
-    ->
+    then
         Cost = RecCost
-    ;
+    else
         Cost = CostAndCallee ^ cac_cost
     ),
 
@@ -245,13 +245,13 @@ compute_var_use_lazy(Info, RevGoalPath, Var, Args, VarUseType) = Use :-
 :- pred earliest_use(var_use_info::in, var_use_info::in, var_use_info::out)
     is det.
 
-earliest_use(A, B, Ealiest) :-
+earliest_use(A, B, Earliest) :-
     TimeA = A ^ vui_cost_until_use,
     TimeB = B ^ vui_cost_until_use,
-    ( TimeA < TimeB ->
-        Ealiest = A
-    ;
-        Ealiest = B
+    ( if TimeA < TimeB then
+        Earliest = A
+    else
+        Earliest = B
     ).
 
 :- pred compute_var_use_lazy_arg(implicit_parallelism_info::in, var_rep::in,
@@ -260,9 +260,9 @@ earliest_use(A, B, Ealiest) :-
 
 compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee, Cost, VarUseType,
         Use) :-
-    ( 0.0 < cs_cost_get_calls(Cost) ->
+    ( if 0.0 < cs_cost_get_calls(Cost) then
         CostPercall = cs_cost_get_percall(Cost),
-        ( list.member_index0(Var, Args, ArgNum) ->
+        ( if list.member_index0(Var, Args, ArgNum) then
             HigherOrder = CostAndCallee ^ cac_call_site_is_ho,
             (
                 HigherOrder = higher_order_call,
@@ -270,9 +270,11 @@ compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee, Cost, VarUseType,
                 pessimistic_var_use_info(VarUseType, CostPercall, Use)
             ;
                 HigherOrder = first_order_call,
-                ( is_singleton(CostAndCallee ^ cac_callees, CalleePrime) ->
+                ( if
+                    is_singleton(CostAndCallee ^ cac_callees, CalleePrime)
+                then
                     Callee = CalleePrime
-                ;
+                else
                     unexpected($module, $pred,
                         "first-order call site has wrong number of CSDs")
                 ),
@@ -287,17 +289,17 @@ compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee, Cost, VarUseType,
                     write_out_messages(Stderr, Messages, !IO)
                 )
             )
-        ;
+        else
             Use = var_use_info(0.0, CostPercall, VarUseType),
-            ( VarUseType = var_use_consumption ->
+            ( if VarUseType = var_use_consumption then
                 true
-            ;
+            else
                 unexpected($module, $pred,
                     "Var use type most be consumption if " ++
                     "\\+ member(Var, Args)")
             )
         )
-    ;
+    else
         % This call site is never called.
         pessimistic_var_use_info(VarUseType, 0.0, Use)
     ).

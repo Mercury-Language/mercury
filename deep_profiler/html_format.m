@@ -179,7 +179,7 @@ item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap, Item, HTML) :-
     ;
         Item = display_list(Class, MaybeTitle, Items),
         DeveloperMode = FormatInfo ^ fi_pref_developer,
-        (
+        ( if
             % If developer only items are invisible and all the items in the
             % list are developer items, then don't display the list at all.
             DeveloperMode = developer_options_invisible,
@@ -189,9 +189,9 @@ item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap, Item, HTML) :-
                     not ListItem = display_developer(_)
                 )
             )
-        ->
+        then
             HTML = empty
-        ;
+        else
             list_to_html(FormatInfo, !StyleControlMap, Class, MaybeTitle,
                 Items, TableHTML),
             HTML = wrap_tags(StartTag, EndTag, TableHTML)
@@ -418,20 +418,20 @@ update_style_control_map(ColumnClassStr, !HeaderGroupNumber,
         !ColouredClassStrs, !StyleControlMap) :-
     StyleControl = style_control("td." ++ ColumnClassStr),
     StyleElement = style_element("background"),
-    ( !.HeaderGroupNumber /\ 1 = 0 ->
+    ( if !.HeaderGroupNumber /\ 1 = 0 then
         Colour = "LightGrey"
-    ;
+    else
         Colour = "White"
     ),
-    ( set.member(ColumnClassStr, !.ColouredClassStrs) ->
+    ( if set.member(ColumnClassStr, !.ColouredClassStrs) then
         unexpected($module, $pred, "repeated table_column_class")
-    ;
+    else
         set.insert(ColumnClassStr, !ColouredClassStrs)
     ),
-    ( map.search(!.StyleControlMap, StyleControl, StyleElementMap0) ->
+    ( if map.search(!.StyleControlMap, StyleControl, StyleElementMap0) then
         map.set(StyleElement, Colour, StyleElementMap0, StyleElementMap),
         map.det_update(StyleControl, StyleElementMap, !StyleControlMap)
-    ;
+    else
         StyleElementMap = map.singleton(StyleElement, Colour),
         map.det_insert(StyleControl, StyleElementMap, !StyleControlMap)
     ),
@@ -497,9 +497,9 @@ table_cell_to_html(FormatInfo, MaybeClassMap, !StyleControlMap, !ColumnNum,
         ),
         (
             MaybeClassMap = yes(ClassMap),
-            ( map.search(ClassMap, !.ColumnNum, ColumnClassStrPrime) ->
+            ( if map.search(ClassMap, !.ColumnNum, ColumnClassStrPrime) then
                 ColumnClassStr = ColumnClassStrPrime
-            ;
+            else
                 Msg = string.format(
                     "Class map had no class for col %d, check table structure",
                     [i(!.ColumnNum)]),
@@ -507,17 +507,17 @@ table_cell_to_html(FormatInfo, MaybeClassMap, !StyleControlMap, !ColumnNum,
             )
         ;
             MaybeClassMap = no,
-            ( table_data_class(CellData, ColumnClassPrime) ->
+            ( if table_data_class(CellData, ColumnClassPrime) then
                 ColumnClass = ColumnClassPrime
-            ;
+            else
                 ColumnClass = default_table_column_class
             ),
             ColumnClassStr = table_column_class_to_string(ColumnClass)
         ),
         CellHTML = table_data_to_html(FormatInfo, CellData),
-        ( Span = 1 ->
+        ( if Span = 1 then
             SpanStr = ""
-        ;
+        else
             SpanStr = string.format("colspan=%d ", [i(Span)])
         ),
         !:ColumnNum = !.ColumnNum + Span,
@@ -1023,10 +1023,10 @@ replace_special_chars(SpecialCharTable, String0) = String :-
     char::in, list(char)::in, list(char)::out) is det.
 
 replace_special_char_2(SpecialCharTable, Char, !Acc) :-
-    ( SpecialCharTable(Char, String) ->
+    ( if SpecialCharTable(Char, String) then
         string.to_char_list(String, Chars),
         list.append(Chars, !Acc)
-    ;
+    else
         list.cons(Char, !Acc)
     ).
 

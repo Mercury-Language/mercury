@@ -58,11 +58,11 @@ main(!IO) :-
         post_process_options(ProgName, Options0, Options, !IO),
         lookup_bool_option(Options, help, Help),
         lookup_bool_option(Options, version, Version),
-        ( Version = yes ->
+        ( if Version = yes then
             write_version_message(ProgName, !IO)
-        ; Help = yes ->
+        else if Help = yes then
             write_help_message(ProgName, !IO)
-        ;
+        else
             (
                 Args = [FeedbackFileName],
                 feedback.read_feedback_file(FeedbackFileName, no,
@@ -169,17 +169,17 @@ defaults(version,   bool(no)).
 post_process_options(ProgName, !Options, !IO) :-
     lookup_int_option(!.Options, verbosity, VerbosityLevel),
     io.stderr_stream(Stderr, !IO),
-    ( VerbosityLevel < 0 ->
+    ( if VerbosityLevel < 0 then
         io.format(Stderr,
             "%s: warning: verbosity level should not be negative.\n",
             [s(ProgName)], !IO),
         set_option(verbosity, int(0), !Options)
-    ; VerbosityLevel > 4 ->
+    else if VerbosityLevel > 4 then
         io.format(Stderr,
             "%s: warning: verbosity level should not exceed 4.\n",
             [s(ProgName)], !IO),
         set_option(verbosity, int(4), !Options)
-    ;
+    else
         true
     ).
 

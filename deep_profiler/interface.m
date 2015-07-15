@@ -178,9 +178,9 @@ send_term(ToPipeName, Debug, Data, !IO) :-
     ;
         ToPipeRes = error(ToPipeError),
         io.error_message(ToPipeError, ToPipeErrorMsg),
-        string.format("send_term: couldn't open pipe %s: %s",
+        string.format("couldn't open pipe %s: %s",
             [s(ToPipeName), s(ToPipeErrorMsg)], ToPipeMsg),
-        error(ToPipeMsg)
+        unexpected($module, $pred, ToPipeMsg)
     ),
     (
         Debug = yes,
@@ -194,9 +194,9 @@ send_term(ToPipeName, Debug, Data, !IO) :-
         ;
             DebugRes = error(DebugError),
             io.error_message(DebugError, DebugErrorMsg),
-            string.format("send_term: couldn't open debug file %s: %s",
+            string.format("couldn't open debug file %s: %s",
                 [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
-            error(DebugMsg)
+            unexpected($module, $pred, DebugMsg)
         )
     ;
         Debug = no
@@ -211,9 +211,9 @@ send_string(ToPipeName, Debug, Data, !IO) :-
     ;
         ToPipeRes = error(ToPipeError),
         io.error_message(ToPipeError, ToPipeErrorMsg),
-        string.format("send_term: couldn't open pipe %s: %s",
+        string.format("couldn't open pipe %s: %s",
             [s(ToPipeName), s(ToPipeErrorMsg)], ToPipeMsg),
-        error(ToPipeMsg)
+        unexpected($module, $pred, ToPipeMsg)
     ),
     (
         Debug = yes,
@@ -226,9 +226,9 @@ send_string(ToPipeName, Debug, Data, !IO) :-
         ;
             DebugRes = error(DebugError),
             io.error_message(DebugError, DebugErrorMsg),
-            string.format("send_term: couldn't open debug file %s: %s",
+            string.format("couldn't open debug file %s: %s",
                 [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
-            error(DebugMsg)
+            unexpected($module, $pred, DebugMsg)
         )
     ;
         Debug = no
@@ -243,12 +243,12 @@ recv_term(FromPipeName, Debug, Resp, !IO) :-
             ReadRes = ok(Resp)
         ;
             ReadRes = eof,
-            error("recv_term: read failed: premature eof")
+            unexpected($module, $pred, "read failed: premature eof")
         ;
             ReadRes = error(ReadErrorMsg, ReadErrorLineNumber),
-            string.format("recv_term: read failed at line %d: %s",
+            string.format("read failed at line %d: %s",
                 [i(ReadErrorLineNumber), s(ReadErrorMsg)], ReadMsg),
-            error(ReadMsg)
+            unexpected($module, $pred, ReadMsg)
         ),
         io.close_input(FromStream, !IO),
         (
@@ -263,9 +263,9 @@ recv_term(FromPipeName, Debug, Resp, !IO) :-
             ;
                 DebugRes = error(DebugError),
                 io.error_message(DebugError, DebugErrorMsg),
-                string.format("recv_term: couldn't open debug file %s: %s",
+                string.format("couldn't open debug file %s: %s",
                     [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
-                error(DebugMsg)
+                unexpected($module, $pred, DebugMsg)
             )
         ;
             Debug = no
@@ -273,9 +273,9 @@ recv_term(FromPipeName, Debug, Resp, !IO) :-
     ;
         FromPipeRes = error(FromPipeError),
         io.error_message(FromPipeError, FromPipeErrorMsg),
-        string.format("recv_term: couldn't open pipe %s: %s",
+        string.format("couldn't open pipe %s: %s",
             [s(FromPipeName), s(FromPipeErrorMsg)], FromPipeMsg),
-        error(FromPipeMsg)
+        unexpected($module, $pred, FromPipeMsg)
     ).
 
 recv_string(FromPipeName, Debug, Resp, !IO) :-
@@ -288,9 +288,9 @@ recv_string(FromPipeName, Debug, Resp, !IO) :-
         ;
             ReadRes = error(_, ReadError),
             io.error_message(ReadError, ReadErrorMsg),
-            string.format("recv_string: read failed: %s",
+            string.format("read failed: %s",
                 [s(ReadErrorMsg)], ReadMsg),
-            error(ReadMsg)
+            unexpected($module, $pred, ReadMsg)
         ),
         io.close_input(FromStream, !IO),
         (
@@ -305,9 +305,9 @@ recv_string(FromPipeName, Debug, Resp, !IO) :-
             ;
                 DebugRes = error(DebugError),
                 io.error_message(DebugError, DebugErrorMsg),
-                string.format("recv_string: couldn't open debug file %s: %s",
+                string.format("couldn't open debug file %s: %s",
                     [s(DebugFileName), s(DebugErrorMsg)], DebugMsg),
-                error(DebugMsg)
+                unexpected($module, $pred, DebugMsg)
             )
         ;
             Debug = no
@@ -315,9 +315,9 @@ recv_string(FromPipeName, Debug, Resp, !IO) :-
     ;
         FromPipeRes = error(FromPipeError),
         io.error_message(FromPipeError, FromPipeErrorMsg),
-        string.format("recv_string: couldn't open pipe %s: %s",
+        string.format("couldn't open pipe %s: %s",
             [s(FromPipeName), s(FromPipeErrorMsg)], FromPipeMsg),
-        error(FromPipeMsg)
+        unexpected($module, $pred, FromPipeMsg)
     ).
 
 %-----------------------------------------------------------------------------%

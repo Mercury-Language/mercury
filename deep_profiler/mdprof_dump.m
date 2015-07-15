@@ -116,9 +116,9 @@ make_dump_options(Options, MaybeDumpOptions) :-
         Restrict = show_complete_dump
     ),
     DumpOptions0 = default_dump_options ^ do_restricted := Restrict,
-    ( dump_array_options(ArrayOptionStrs, ArrayOptions) ->
+    ( if dump_array_options(ArrayOptionStrs, ArrayOptions) then
         MaybeDumpOptions = yes(DumpOptions0 ^ do_arrays := ArrayOptions)
-    ;
+    else
         MaybeDumpOptions = no
     ).
 

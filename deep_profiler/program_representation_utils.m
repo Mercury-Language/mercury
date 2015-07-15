@@ -223,9 +223,9 @@ print_module_to_strings(ModuleRep, Strings) :-
         cord.empty, OISUStrs),
     map.foldl(accumulate_print_type_table_entries_to_strings, TypeTableMap,
         cord.empty, TypeTableStrs0),
-    ( cord.is_empty(TypeTableStrs0) ->
+    ( if cord.is_empty(TypeTableStrs0) then
         TypeTableStrs = TypeTableStrs0
-    ;
+    else
         TypeTableStrs = cord.singleton("\nType table:\n") ++
             TypeTableStrs0 ++ nl
     ),
@@ -424,12 +424,12 @@ print_proc_to_strings_2(Lookup, ProcRep, Strings) :-
 accumulate_var_type_table_entry_strings(VarNameTable, VarNum, TypeRep,
         !Strings) :-
     string.int_to_string(VarNum, VarNumStr),
-    (
+    ( if
         search_var_name(VarNameTable, VarNum, VarName),
         not VarName = ""
-    ->
+    then
         VarIdStrs = cord.from_list([VarName, " ", VarNumStr, " -> "])
-    ;
+    else
         VarIdStrs = cord.from_list(["unnamed_var ", VarNumStr, " -> "])
     ),
     type_rep_to_strings(TypeRep, TypeRepStrs),
@@ -527,10 +527,10 @@ print_goal_to_strings(Info, Indent, RevGoalPath, GoalRep, Strings) :-
         ExprString = indent(Indent) ++ ExprString0
     ),
 
-    ( GoalExprRep = conj_rep(_) ->
+    ( if GoalExprRep = conj_rep(_) then
         LinePrefix = indent(Indent) ++ singleton("% conjunction: "),
         ExtraLineForConjunctions = nl
-    ;
+    else
         LinePrefix = indent(Indent) ++ singleton("% "),
         ExtraLineForConjunctions = empty
     ),
@@ -540,18 +540,18 @@ print_goal_to_strings(Info, Indent, RevGoalPath, GoalRep, Strings) :-
     GoalAnnotation = LookupAnnotation(AnnotationKey),
     print_goal_annotation_to_strings(VarTable, GoalAnnotation,
         GoalAnnotationLines0),
-    ( is_empty(GoalAnnotationLines0) ->
+    ( if is_empty(GoalAnnotationLines0) then
         GoalAnnotationLines = empty
-    ;
+    else
         GoalAnnotationLines1 = map((func(Line) = LinePrefix ++ Line ++ nl),
             GoalAnnotationLines0),
         GoalAnnotationLines = foldr(++, GoalAnnotationLines1, empty)
     ),
 
     GoalPathString0 = rev_goal_path_to_string(RevGoalPath),
-    ( GoalPathString0 = "" ->
+    ( if GoalPathString0 = "" then
         GoalPathString = "root goal"
-    ;
+    else
         GoalPathString = GoalPathString0
     ),
     GoalPathLine = LinePrefix ++ cord.singleton(GoalPathString) ++ nl,
@@ -808,9 +808,9 @@ inst_rep_to_string(ir_other_rep, "other").
 :- func indent(int) = cord(string).
 
 indent(N) =
-    ( N =< 0 ->
+    ( if N =< 0 then
         cord.empty
-    ;
+    else
         cord.singleton("  ") ++ indent(N - 1)
     ).
 
@@ -884,8 +884,8 @@ progrep_search_proc(ProgRep, ProcLabel, ProcRep) :-
     is semidet.
 
 progrep_search_module(ProgRep, ModuleName, ModuleRep) :-
-   ProgRep = prog_rep(ModuleReps),
-   map.search(ModuleReps, ModuleName, ModuleRep).
+    ProgRep = prog_rep(ModuleReps),
+    map.search(ModuleReps, ModuleName, ModuleRep).
 
     % Search for a procedure within a module representation.
     %
@@ -1069,9 +1069,9 @@ inst_map_ground_vars(Vars, DepVars, !InstMap, SeenDuplicateInstantiation) :-
 inst_map_ground_var(DepVars0, Var, InstMap0, InstMap,
         !SeenDuplicateInstantiation) :-
     InstMap0 = inst_map(VarToInst0, VarToDepVars0),
-    ( map.search(VarToInst0, Var, InstPrime) ->
+    ( if map.search(VarToInst0, Var, InstPrime) then
         Inst = InstPrime
-    ;
+    else
         Inst = ir_free_rep
     ),
     (
@@ -1092,10 +1092,10 @@ inst_map_ground_var(DepVars0, Var, InstMap0, InstMap,
     InstMap = inst_map(VarToInst, VarToDepVars).
 
 inst_map_get(inst_map(VarToInst, VarToDepVars), Var, Inst, DepVars) :-
-    ( map.search(VarToInst, Var, InstPrime) ->
+    ( if map.search(VarToInst, Var, InstPrime) then
         Inst = InstPrime,
         map.lookup(VarToDepVars, Var, DepVars)
-    ;
+    else
         Inst = ir_free_rep,
         DepVars = set.init
     ).
@@ -1107,16 +1107,16 @@ inst_map_get_var_deps(inst_map(_, VarToDepVars), VarRep, DepVars) :-
     set(var_rep)::in, set(var_rep)::out) is det.
 
 inst_map_get_var_deps_2(VarToDepVars, VarRep, !Set) :-
-    ( set.contains(!.Set, VarRep) ->
+    ( if set.contains(!.Set, VarRep) then
         true
-        % This variable has already been visited, this prevents following any
-        % (impossible) cycles in the graph, or following the same path twice
-        % when there are diamonds in the graph.
-    ;
-        ( map.search(VarToDepVars, VarRep, DepVars) ->
+        % This variable has already been visited. Stopping here prevents
+        % following any cycles in the graph (which should be impossible anyway)
+        % or following the same path twice if there are diamonds in the graph.
+    else
+        ( if map.search(VarToDepVars, VarRep, DepVars) then
             !:Set = set.union(!.Set, DepVars),
             set.fold(inst_map_get_var_deps_2(VarToDepVars), DepVars, !Set)
-        ;
+        else
             true
         )
     ).
@@ -1134,10 +1134,11 @@ empty_inst_map_delta = InstMap :-
     empty_inst_map_delta(InstMap).
 
 calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
-    map.foldl((pred(Var::in, Inst::in, Set0::in, Set::out) is det :-
-            (
+    map.foldl(
+        (pred(Var::in, Inst::in, Set0::in, Set::out) is det :-
+            ( if
                 map.search(Before ^ im_inst_map, Var, BeforeInst)
-            ->
+            then
                 (
                     BeforeInst = ir_free_rep,
                     (
@@ -1154,8 +1155,8 @@ calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
                     BeforeInst = ir_ground_rep,
                     (
                         Inst = ir_free_rep,
-                        error("calc_inst_map_delta: " ++
-                            "Variables cannot become less instantiated.")
+                        unexpected($module, $pred,
+                            "variable should become less instantiated")
                     ;
                         ( Inst = ir_ground_rep
                         ; Inst = ir_other_rep
@@ -1166,8 +1167,8 @@ calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
                     BeforeInst = ir_other_rep,
                     (
                         Inst = ir_free_rep,
-                        error("calc_inst_map_delta: " ++
-                            "Variables cannot become less instantiated.")
+                        unexpected($module, $pred,
+                            "variable should become less instantiated")
                     ;
                         ( Inst = ir_ground_rep
                         ; Inst = ir_other_rep
@@ -1175,8 +1176,8 @@ calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
                     ),
                     Set = Set0
                 )
-            ;
-                % If we couldn't find the variable then it was free, It may
+            else
+                % If we couldn't find the variable then it was free; it may
                 % have been in the head of the procedure.
                 (
                     Inst = ir_free_rep,
@@ -1206,14 +1207,16 @@ atomic_goal_get_vars(AtomicGoal, Vars) :-
         ( AtomicGoal = partial_construct_rep(Var, _, MaybeVars)
         ; AtomicGoal = partial_deconstruct_rep(Var, _, MaybeVars)
         ),
-        list.foldl((pred(MaybeVar::in, Set0::in, Set::out) is det :-
+        list.foldl(
+            (pred(MaybeVar::in, Set0::in, Set::out) is det :-
                 (
                     MaybeVar = yes(VarI),
                     set.insert(VarI, Set0, Set)
                 ;
                     MaybeVar = no,
                     Set = Set0
-                )), MaybeVars, set.init, Vars0),
+                )
+            ), MaybeVars, set.init, Vars0),
         set.insert(Var, Vars0, Vars)
     ;
         ( AtomicGoal = unify_assign_rep(VarA, VarB)
@@ -1231,12 +1234,12 @@ atomic_goal_get_vars(AtomicGoal, Vars) :-
     ).
 
 merge_seen_duplicate_instantiation(A, B) = R :-
-    (
+    ( if
         A = have_not_seen_duplicate_instantiation,
         B = have_not_seen_duplicate_instantiation
-    ->
+    then
         R = have_not_seen_duplicate_instantiation
-    ;
+    else
         R = seen_duplicate_instantiation
     ).
 

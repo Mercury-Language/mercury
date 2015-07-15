@@ -121,24 +121,24 @@ process_command_line(!IO) :-
         ;
             Version = no
         ),
-        (
+        ( if
             Decode = no,
             DecodeCmd = no,
             DecodePrefs = no
-        ->
+        then
             true
-        ;
+        else
             decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO)
         ),
-        (
+        ( if
             Help = no,
             Version = no,
             Decode = no,
             DecodeCmd = no,
             DecodePrefs = no
-        ->
+        then
             process_args(ProgName, Args, Options, !IO)
-        ;
+        else
             true
         )
     ;
@@ -247,12 +247,12 @@ write_help_message(ProgName, !IO) :-
     io::di, io::uo) is cc_multi.
 
 process_args(ProgName, Args, Options, !IO) :-
-    ( Args = [DeepFileName] ->
+    ( if Args = [DeepFileName] then
         % Although this mode of usage is not intended for production use,
         % allowing the filename and a limited range of commands to be supplied
         % on the command line makes debugging very much easier.
         process_query(default_cmd(Options), DeepFileName, no, Options, !IO)
-    ;
+    else
         io.set_exit_status(1, !IO),
         write_help_message(ProgName, !IO),
         trace [compiletime(flag("debug-args")), io(!DIO)] (
@@ -287,7 +287,7 @@ html_header_text = "Content-type: text/html\n\n".
     option_table::in, io::di, io::uo) is cc_multi.
 
 process_query(Cmd0, DeepFileName0, MaybePref, Options0, !IO) :-
-    ( Cmd0 = deep_cmd_restart ->
+    ( if Cmd0 = deep_cmd_restart then
         % This process got started because there was no server, and this
         % process will become the new server, so the user just got the freshly
         % started server they asked for. There is no point in starting it
@@ -295,7 +295,7 @@ process_query(Cmd0, DeepFileName0, MaybePref, Options0, !IO) :-
         % deep_cmd_restart, expecting it to be filtered out by its usual caller
         % server_loop. To avoid the exception, we have to filter it out too.
         Cmd = deep_cmd_menu
-    ;
+    else
         Cmd = Cmd0
     ),
     (
@@ -305,14 +305,16 @@ process_query(Cmd0, DeepFileName0, MaybePref, Options0, !IO) :-
         MaybePref = no,
         PrefInd = default_pref
     ),
-    ( string.remove_suffix(DeepFileName0, ".localhost", DeepFileNamePrime) ->
+    ( if
+        string.remove_suffix(DeepFileName0, ".localhost", DeepFileNamePrime)
+    then
         DeepFileName = DeepFileNamePrime,
         map.det_update(localhost, bool(yes), Options0, Options)
-    ;
+    else
         DeepFileName = DeepFileName0,
         Options = Options0
     ),
-    ( remove_suffix(DeepFileName, ".data", _BaseFileName) ->
+    ( if string.remove_suffix(DeepFileName, ".data", _BaseFileName) then
         ToServerPipe = to_server_pipe_name(DeepFileName),
         FromServerPipe = from_server_pipe_name(DeepFileName),
         StartupFile = server_startup_name(DeepFileName),
@@ -330,21 +332,21 @@ process_query(Cmd0, DeepFileName0, MaybePref, Options0, !IO) :-
             setup_signals(MutexFile, want_dir, want_prefix, !IO)
         ),
         check_for_existing_fifos(ToServerPipe, FromServerPipe, FifoCount, !IO),
-        ( FifoCount = 0 ->
+        ( if FifoCount = 0 then
             handle_query_from_new_server(Cmd, PrefInd, DeepFileName,
                 ToServerPipe, FromServerPipe, StartupFile, MutexFile, WantFile,
                 Options, !IO)
-        ; FifoCount = 2 ->
+        else if FifoCount = 2 then
             handle_query_from_existing_server(Cmd, PrefInd,
                 ToServerPipe, FromServerPipe, MutexFile, WantFile, Options,
                 !IO)
-        ;
+        else
             release_lock(Debug, MutexFile, !IO),
             remove_want_file(WantFile, !IO),
             io.set_exit_status(1, !IO),
             io.write_string("mdprof internal error: bad fifo count", !IO)
         )
-    ;
+    else
         io.set_exit_status(1, !IO),
         io.format("<h3> Invalid file name %s.<h3>\n\n",
             [s(DeepFileName)], !IO),
@@ -601,7 +603,7 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
     ),
     CmdPref0 = cmd_pref(Cmd0, PrefInd0),
 
-    ( Cmd0 = deep_cmd_restart ->
+    ( if Cmd0 = deep_cmd_restart then
         read_and_startup_default_deep_options(Deep0 ^ server_name_port,
             Deep0 ^ script_name, Deep0 ^ data_file_name, Canonical,
             MaybeStartupStream, [], MaybeDeep, !IO),
@@ -615,7 +617,7 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
             Deep = Deep0,
             Cmd = deep_cmd_quit
         )
-    ;
+    else
         Deep = Deep0,
         MaybeMsg = no,
         Cmd = Cmd0
@@ -650,16 +652,16 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
         MaybeStartupStream = no
     ),
 
-    ( Cmd = deep_cmd_quit ->
+    ( if Cmd = deep_cmd_quit then
         % The lack of a recursive call here shuts down the server.
         %
         % This deletes all the files created by the process, including
         % WantFile and MutexFile, with MutexFile being deleted last.
         delete_cleanup_files(!IO)
-    ; Cmd = deep_cmd_timeout(TimeOut) ->
+    else if Cmd = deep_cmd_timeout(TimeOut) then
         server_loop(ToServerPipe, FromServerPipe, TimeOut, MaybeStartupStream,
             Debug, Canonical, QueryNum, Deep, !IO)
-    ;
+    else
         server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
             Debug, Canonical, QueryNum, Deep, !IO)
     ).
@@ -675,14 +677,14 @@ make_pipes(FileName, Success, !IO) :-
     MakeFromServerPipeCmd = make_pipe_cmd(FromServerPipe),
     io.call_system(MakeToServerPipeCmd, ToServerRes, !IO),
     io.call_system(MakeFromServerPipeCmd, FromServerRes, !IO),
-    (
+    ( if
         ToServerRes = ok(0),
         FromServerRes = ok(0)
-    ->
+    then
         register_file_for_cleanup(ToServerPipe, !IO),
         register_file_for_cleanup(FromServerPipe, !IO),
         Success = yes
-    ;
+    else
         % In case one of the pipes *was* created. We ignore the return values
         % because at least one of these calls *will* fail (since we did not
         % create both pipes), and if we can't remove a named pipe we did
@@ -746,11 +748,11 @@ make_pipes(FileName, Success, !IO) :-
 
 detach_process(Result, !IO) :-
     raw_detach_process(ResCode, !IO),
-    ( ResCode < 0 ->
+    ( if ResCode < 0 then
         Result = fork_failed
-    ; ResCode > 0 ->
+    else if ResCode > 0 then
         Result = in_parent
-    ;
+    else
         Result = in_child(child_has_parent)
     ).
 
@@ -891,17 +893,17 @@ default_cmd(Options) = Cmd :-
     lookup_bool_option(Options, modules, Modules),
     lookup_int_option(Options, clique, CliqueNum),
     lookup_int_option(Options, proc, ProcProcNum),
-    ( Root = yes ->
+    ( if Root = yes then
         Cmd = deep_cmd_root(no)
-    ; Modules = yes ->
+    else if Modules = yes then
         Cmd = deep_cmd_program_modules
-    ; CliqueNum > 0 ->
+    else if CliqueNum > 0 then
         Cmd = deep_cmd_clique(clique_ptr(CliqueNum))
-    ; ProcProcNum > 0 ->
+    else if ProcProcNum > 0 then
         Cmd = deep_cmd_proc(proc_static_ptr(ProcProcNum))
-    ; Quit = yes ->
+    else if Quit = yes then
         Cmd = deep_cmd_quit
-    ;
+    else
         Cmd = deep_cmd_menu
     ).
 

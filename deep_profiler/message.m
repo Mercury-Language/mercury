@@ -382,11 +382,11 @@ message_type_to_string(MessageType) = Cord :-
 %-----------------------------------------------------------------------------%
 
 indent(N) = Indent :-
-    ( N < 0 ->
+    ( if N < 0 then
         error("automatic_parallelism: Negative indent")
-    ; N = 0 ->
+    else if N = 0 then
         Indent = empty
-    ;
+    else
         Indent = snoc(indent(N - 1), "  ")
     ).
 
@@ -410,11 +410,11 @@ write_out_messages(Stream, Messages, !IO) :-
 write_out_message(Stream, Message, !IO) :-
     Level = message_get_level(Message),
     get_verbosity_level_mut(VerbosityLevel, !IO),
-    ( message_level_to_int(Level) =< VerbosityLevel ->
+    ( if message_level_to_int(Level) =< VerbosityLevel then
         message_to_string(Message, MessageStr),
         io.write_string(Stream, MessageStr, !IO),
         io.nl(Stream, !IO)
-    ;
+    else
         true
     ).
 

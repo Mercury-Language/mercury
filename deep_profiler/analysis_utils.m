@@ -127,12 +127,12 @@ find_clique_first_and_other_procs(Deep, CliquePtr, MaybeFirstPDPtr,
         OtherPDPtrs) :-
     deep_lookup_clique_members(Deep, CliquePtr, PDPtrs),
     deep_lookup_clique_parents(Deep, CliquePtr, EntryCSDPtr),
-    ( valid_call_site_dynamic_ptr(Deep, EntryCSDPtr) ->
+    ( if valid_call_site_dynamic_ptr(Deep, EntryCSDPtr) then
         deep_lookup_call_site_dynamics(Deep, EntryCSDPtr, EntryCSD),
         FirstPDPtr = EntryCSD ^ csd_callee,
         MaybeFirstPDPtr = yes(FirstPDPtr),
         list.negated_filter(unify(FirstPDPtr), PDPtrs, OtherPDPtrs)
-    ;
+    else
         MaybeFirstPDPtr = no,
         OtherPDPtrs = PDPtrs
     ).
@@ -145,9 +145,9 @@ deep_get_maybe_procrep(Deep, PSPtr, MaybeProcRep) :-
         MaybeProgRep = ok(ProgRep),
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         ProcLabel = PS ^ ps_id,
-        ( progrep_search_proc(ProgRep, ProcLabel, ProcRep) ->
+        ( if progrep_search_proc(ProgRep, ProcLabel, ProcRep) then
             MaybeProcRep = ok(ProcRep)
-        ;
+        else
             MaybeProcRep = error("Cannot find procedure representation")
         )
     ;
@@ -161,14 +161,14 @@ build_dynamic_call_site_cost_and_callee_map(Deep, CSSPtr - Slot,
         !CallSitesMap) :-
     (
         Slot = slot_normal(CSDPtr),
-        ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
+        ( if valid_call_site_dynamic_ptr(Deep, CSDPtr) then
             call_site_dynamic_get_callee_and_costs(Deep, CSDPtr, Callee,
                 Own, Inherit),
             CostCsq = build_cs_cost_csq(calls(Own),
                 float(callseqs(Own) + inherit_callseqs(Inherit))),
             Callees = [Callee],
             Exits = exits(Own)
-        ;
+        else
             CostCsq = build_cs_cost_csq(0, 0.0),
             Callees = [],
             Exits = 0
@@ -263,9 +263,9 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
         RecursionType = rt_single(_, _, MaxDepth, _AvgRecCost, CostFn),
         (
             MaybeDepth = yes(Depth0),
-            ( recursion_depth_is_base_case(Depth0) ->
+            ( if recursion_depth_is_base_case(Depth0) then
                 MaybeRecursiveCallSiteCostMap = ok(map.init)
-            ;
+            else
                 % Descend once to move to the depth of the recursive callees.
                 get_recursive_calls_and_counts(Deep, CliquePtr, PDPtr,
                     CallCountsMap),
@@ -332,15 +332,15 @@ build_recursive_call_site_counts_map(Deep, CliquePtr, CSSPtr - CSDSlot,
         !Map) :-
     (
         CSDSlot = slot_normal(CSDPtr),
-        ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
+        ( if valid_call_site_dynamic_ptr(Deep, CSDPtr) then
             call_site_dynamic_get_count_and_callee(Deep, CSDPtr, Count,
                 MaybeCallee),
-            ( maybe_equals_or_is_no(CliquePtr, MaybeCallee) ->
+            ( if maybe_equals_or_is_no(CliquePtr, MaybeCallee) then
                 Recursive = yes
-            ;
+            else
                 Recursive = no
             )
-        ;
+        else
             Recursive = no,
             Count = 0
         )
@@ -349,12 +349,12 @@ build_recursive_call_site_counts_map(Deep, CliquePtr, CSSPtr - CSDSlot,
         map2(call_site_dynamic_get_count_and_callee(Deep), to_list(CSDPtrs),
             Counts, MaybeCallees),
         Count = foldl(plus, Counts, 0),
-        (
+        ( if
             member(MaybeCallee, MaybeCallees),
             maybe_equals_or_is_no(CliquePtr, MaybeCallee)
-        ->
+        then
             Recursive = yes
-        ;
+        else
             Recursive = no
         )
     ),
@@ -376,11 +376,11 @@ maybe_equals_or_is_no(X, yes(X)).
     call_site_dynamic_ptr::in, int::out, maybe(clique_ptr)::out) is det.
 
 call_site_dynamic_get_count_and_callee(Deep, CSDPtr, Count, MaybeCallee) :-
-    ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
+    ( if valid_call_site_dynamic_ptr(Deep, CSDPtr) then
         deep_lookup_csd_own(Deep, CSDPtr, Own),
         Count = calls(Own),
         deep_lookup_clique_maybe_child(Deep, CSDPtr, MaybeCallee)
-    ;
+    else
         Count = 0,
         MaybeCallee = no
     ).

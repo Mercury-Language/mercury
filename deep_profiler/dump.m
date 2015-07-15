@@ -147,21 +147,21 @@ default_dump_options = DumpOptions :-
         show_stats, dump_cliques, dump_rev_links, dump_prop_measurements).
 
 det_dump_array_options(Strings, DumpArrayOptions) :-
-    (
+    ( if
         dump_array_options_special(Strings, DumpArrayOptionsSpecial)
-    ->
+    then
         DumpArrayOptions = DumpArrayOptionsSpecial
-    ;
+    else
         string_list_to_sym_set(det_string_to_dumpable_array, Strings,
             DumpArrayOptions)
     ).
 
 dump_array_options(Strings, DumpArrayOptions) :-
-    (
+    ( if
         dump_array_options_special(Strings, DumpArrayOptionsSpecial)
-    ->
+    then
         DumpArrayOptions = DumpArrayOptionsSpecial
-    ;
+    else
         string_list_to_sym_set(string_to_dumpable_array, Strings,
             DumpArrayOptions)
     ).
@@ -189,10 +189,11 @@ string_list_to_sym_set(StrToSym, StrList, Set) :-
 :- pred det_string_to_dumpable_array(string::in, dumpable_array::out) is det.
 
 det_string_to_dumpable_array(String, Array) :-
-    ( string_to_dumpable_array(String, ArrayP) ->
+    ( if string_to_dumpable_array(String, ArrayP) then
         Array = ArrayP
-    ;
-        error("Invalid array name in dump options: " ++ String)
+    else
+        unexpected($module, $pred,
+            "Invalid array name in dump options: " ++ String)
     ).
 
 :- pred string_to_dumpable_array(string::in, dumpable_array::out) is semidet.
@@ -231,24 +232,24 @@ dump_initial_deep(InitialDeep, DumpOptions, !IO) :-
     ;
         ShowStats = do_not_show_stats
     ),
-    ( should_dump(DumpOptions, csd) ->
+    ( if should_dump(DumpOptions, csd) then
         dump_init_call_site_dynamics(CSDs, !IO)
-    ;
+    else
         true
     ),
-    ( should_dump(DumpOptions, pd) ->
+    ( if should_dump(DumpOptions, pd) then
         dump_init_proc_dynamics(PDs, PSs, !IO)
-    ;
+    else
         true
     ),
-    ( should_dump(DumpOptions, css) ->
+    ( if should_dump(DumpOptions, css) then
         dump_init_call_site_statics(Restriction, CSSs, !IO)
-    ;
+    else
         true
     ),
-    ( should_dump(DumpOptions, ps) ->
+    ( if should_dump(DumpOptions, ps) then
         dump_init_proc_statics(Restriction, PSs, !IO)
-    ;
+    else
         true
     ).
 
@@ -356,49 +357,49 @@ dump_call_site_dynamic(Index, CallSiteDynamic, !IO) :-
 dump_own_prof_info(Own, !IO) :-
     decompress_profile(Own, Calls, Exits, Fails, Redos, Excps,
         Quanta, CallSeqs, Allocs, Words),
-    ( Calls = 0 ->
+    ( if Calls = 0 then
         true
-    ;
+    else
         io.format("\tcalls:\t\t%d\n", [i(Calls)], !IO)
     ),
-    ( Exits = 0 ->
+    ( if Exits = 0 then
         true
-    ;
+    else
         io.format("\texits:\t\t%d\n", [i(Exits)], !IO)
     ),
-    ( Fails = 0 ->
+    ( if Fails = 0 then
         true
-    ;
+    else
         io.format("\tfails:\t\t%d\n", [i(Fails)], !IO)
     ),
-    ( Redos = 0 ->
+    ( if Redos = 0 then
         true
-    ;
+    else
         io.format("\tredos:\t\t%d\n", [i(Redos)], !IO)
     ),
-    ( Excps = 0 ->
+    ( if Excps = 0 then
         true
-    ;
+    else
         io.format("\texcps:\t\t%d\n", [i(Excps)], !IO)
     ),
-    ( Quanta = 0 ->
+    ( if Quanta = 0 then
         true
-    ;
+    else
         io.format("\tquanta:\t\t%d\n", [i(Quanta)], !IO)
     ),
-    ( CallSeqs = 0 ->
+    ( if CallSeqs = 0 then
         true
-    ;
+    else
         io.format("\tcallseqs:\t%d\n", [i(CallSeqs)], !IO)
     ),
-    ( Allocs = 0 ->
+    ( if Allocs = 0 then
         true
-    ;
+    else
         io.format("\tallocs:\t\t%d\n", [i(Allocs)], !IO)
     ),
-    ( Words = 0 ->
+    ( if Words = 0 then
         true
-    ;
+    else
         io.format("\twords:\t\t%d\n", [i(Words)], !IO)
     ).
 
@@ -409,24 +410,24 @@ dump_inherit_prof_info(Inherit, !IO) :-
     CallSeqs = inherit_callseqs(Inherit),
     Allocs = inherit_allocs(Inherit),
     Words = inherit_words(Inherit),
-    ( Quanta = 0 ->
+    ( if Quanta = 0 then
         true
-    ;
+    else
         io.format("\tquanta:\t\t%d\n", [i(Quanta)], !IO)
     ),
-    ( CallSeqs = 0 ->
+    ( if CallSeqs = 0 then
         true
-    ;
+    else
         io.format("\tcallseqs:\t%d\n", [i(CallSeqs)], !IO)
     ),
-    ( Allocs = 0 ->
+    ( if Allocs = 0 then
         true
-    ;
+    else
         io.format("\tallocs:\t\t%d\n", [i(Allocs)], !IO)
     ),
-    ( Words = 0 ->
+    ( if Words = 0 then
         true
-    ;
+    else
         io.format("\twords:\t\t%d\n", [i(Words)], !IO)
     ).
 
@@ -446,9 +447,9 @@ dump_proc_dynamic(ProcStatics, Index, ProcDynamic, !IO) :-
     ProcDynamic = proc_dynamic(PSPtr, Sites, MaybeCPs),
     PSPtr = proc_static_ptr(PSI),
     lookup_proc_statics(ProcStatics, PSPtr, PS),
-    ( PS ^ ps_q_refined_id = "" ->
+    ( if PS ^ ps_q_refined_id = "" then
         QualRefinedPSId = "UNKNOWN_PS"
-    ;
+    else
         QualRefinedPSId = PS ^ ps_q_refined_id
     ),
     io.format("pd%d:\n", [i(Index)], !IO),
@@ -492,14 +493,14 @@ dump_init_call_site_statics(Restriction, CallStatics, !IO) :-
     io::di, io::uo) is det.
 
 dump_call_site_static(Restriction, Index, CallSiteStatic, !IO) :-
-    (
+    ( if
         (
             Restriction = none
         ;
             Restriction = these(_, UsedCallSiteStatics),
             set.member(call_site_static_ptr(Index), UsedCallSiteStatics)
         )
-    ->
+    then
         CallSiteStatic = call_site_static(ContainerPSPtr, SlotNum,
             Kind, LineNum, GoalPath),
         ContainerPSPtr = proc_static_ptr(ContainerPSI),
@@ -513,7 +514,7 @@ dump_call_site_static(Restriction, Index, CallSiteStatic, !IO) :-
         dump_call_site_kind_and_callee(Kind, !IO),
         io.nl(!IO),
         io.nl(!IO)
-    ;
+    else
         true
     ).
 
@@ -531,14 +532,14 @@ dump_init_proc_statics(Restriction, ProcStatics, !IO) :-
     io::di, io::uo) is det.
 
 dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
-    (
+    ( if
         (
             Restriction = none
         ;
             Restriction = these(UsedProcStatics, _),
             set.member(proc_static_ptr(Index), UsedProcStatics)
         )
-    ->
+    then
         ProcStatic = proc_static(Id, DeclModule,
             _UnQualRefinedId, QualRefinedId, RawId, FileName, LineNumber,
             InInterface, Sites, CoveragePointInfos, MaybeCoveragePoints,
@@ -548,18 +549,18 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
         io.format("\tps_id\t\t= %s", [s(IdStr)], !IO),
         io.nl(!IO),
         io.format("\tps_decl_module\t= %s\n", [s(DeclModule)], !IO),
-        ( QualRefinedId = DeclModule ++ "." ++ IdStr ->
+        ( if QualRefinedId = DeclModule ++ "." ++ IdStr then
             % The output is too big already; don't include
             % redundant information.
             true
-        ;
+        else
             io.format("\tps_q_refined_id\t= %s\n", [s(QualRefinedId)], !IO)
         ),
-        ( QualRefinedId \= RawId ->
+        ( if QualRefinedId \= RawId then
             % The output is too big already; don't include
             % redundant information.
             true
-        ;
+        else
             io.format("\tps_raw_id\t= %s\n", [s(RawId)], !IO)
         ),
         io.format("\tlocation\t= %s:%d\n", [s(FileName), i(LineNumber)], !IO),
@@ -591,7 +592,7 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
                 !IO)
         ),
         io.nl(!IO)
-    ;
+    else
         true
     ).
 
@@ -879,12 +880,12 @@ dump_deep_prop_measurements(Deep, !IO) :-
     io::di, io::uo) is det.
 
 dump_pd_measurements(Cur, Max, PDOwn, PDDesc, !IO) :-
-    ( Cur =< Max ->
+    ( if Cur =< Max then
         array.lookup(PDOwn, Cur, Own),
         array.lookup(PDDesc, Cur, Desc),
         dump_own_and_desc("pd", Cur, Own, Desc, !IO),
         dump_pd_measurements(Cur + 1, Max, PDOwn, PDDesc, !IO)
-    ;
+    else
         true
     ).
 
@@ -893,13 +894,13 @@ dump_pd_measurements(Cur, Max, PDOwn, PDDesc, !IO) :-
     io::di, io::uo) is det.
 
 dump_csd_measurements(Cur, Max, CSDs, CSDDesc, !IO) :-
-    ( Cur =< Max ->
+    ( if Cur =< Max then
         array.lookup(CSDs, Cur, CSD),
         Own = CSD ^ csd_own_prof,
         array.lookup(CSDDesc, Cur, Desc),
         dump_own_and_desc("csd", Cur, Own, Desc, !IO),
         dump_csd_measurements(Cur + 1, Max, CSDs, CSDDesc, !IO)
-    ;
+    else
         true
     ).
 
@@ -908,12 +909,12 @@ dump_csd_measurements(Cur, Max, CSDs, CSDDesc, !IO) :-
     io::di, io::uo) is det.
 
 dump_ps_measurements(Cur, Max, PSOwn, PSDesc, !IO) :-
-    ( Cur =< Max ->
+    ( if Cur =< Max then
         array.lookup(PSOwn, Cur, Own),
         array.lookup(PSDesc, Cur, Desc),
         dump_own_and_desc("ps", Cur, Own, Desc, !IO),
         dump_ps_measurements(Cur + 1, Max, PSOwn, PSDesc, !IO)
-    ;
+    else
         true
     ).
 
@@ -922,12 +923,12 @@ dump_ps_measurements(Cur, Max, PSOwn, PSDesc, !IO) :-
     io::di, io::uo) is det.
 
 dump_css_measurements(Cur, Max, CSSOwn, CSSDesc, !IO) :-
-    ( Cur =< Max ->
+    ( if Cur =< Max then
         array.lookup(CSSOwn, Cur, Own),
         array.lookup(CSSDesc, Cur, Desc),
         dump_own_and_desc("css", Cur, Own, Desc, !IO),
         dump_css_measurements(Cur + 1, Max, CSSOwn, CSSDesc, !IO)
-    ;
+    else
         true
     ).
 
@@ -935,27 +936,27 @@ dump_css_measurements(Cur, Max, CSSOwn, CSSDesc, !IO) :-
     own_prof_info::in, inherit_prof_info::in, io::di, io::uo) is det.
 
 dump_own_and_desc(Prefix, Cur, Own, Desc, !IO) :-
-    ( is_zero_own_prof_info(Own) ->
+    ( if is_zero_own_prof_info(Own) then
         PrintedOwn = no
-    ;
+    else
         io.format("%s%d own:\n", [s(Prefix), i(Cur)], !IO),
         dump_own_prof_info(Own, !IO),
         PrintedOwn = yes
     ),
-    ( is_zero_inherit_prof_info(Desc) ->
+    ( if is_zero_inherit_prof_info(Desc) then
         PrintedDesc = no
-    ;
+    else
         io.format("%s%d inherit:\n", [s(Prefix), i(Cur)], !IO),
         dump_inherit_prof_info(Desc, !IO),
         PrintedDesc = yes
     ),
-    (
+    ( if
         ( PrintedOwn = yes
         ; PrintedDesc = yes
         )
-    ->
+    then
         io.nl(!IO)
-    ;
+    else
         true
     ).
 

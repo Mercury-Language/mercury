@@ -274,9 +274,9 @@ create_candidate_parallel_conj_report(VarNameTable, CandidateParConjunction,
         Header2Str),
     Header3 = cord.singleton(Header2Str),
 
-    ( rev_goal_path_from_string(GoalPathString, RevGoalPathPrime) ->
+    ( if rev_goal_path_from_string(GoalPathString, RevGoalPathPrime) then
         RevGoalPath = RevGoalPathPrime
-    ;
+    else
         unexpected($module, $pred, "couldn't parse goal path")
     ),
     some [!ConjNum] (
@@ -349,7 +349,7 @@ format_parallel_conjuncts(VarNameTable, Indent, RevGoalPath, ConjNum0,
         Conjs = []
     ;
         Conjs = [_ | _],
-        !:Report = snoc(!.Report ++ indent(Indent), "&\n")
+        !:Report = cord.snoc(!.Report ++ indent(Indent), "&\n")
     ),
     ConjNum = ConjNum0 + 1,
     format_parallel_conjuncts(VarNameTable, Indent, RevGoalPath, ConjNum,
@@ -362,7 +362,7 @@ format_parallel_conjuncts(VarNameTable, Indent, RevGoalPath, ConjNum0,
 format_sequential_conjunction(VarNameTable, Indent, RevGoalPath, Goals, Cost,
         FirstConjNum, !:Report) :-
     !:Report = empty,
-    ( FirstConjNum = 1 ->
+    ( if FirstConjNum = 1 then
         !:Report = !.Report ++
             indent(Indent) ++
             singleton(format("%% conjunction: %s",
@@ -371,7 +371,7 @@ format_sequential_conjunction(VarNameTable, Indent, RevGoalPath, Goals, Cost,
             singleton(format("%% Cost: %s",
                 [s(two_decimal_fraction(Cost))])) ++
             nl ++ nl
-    ;
+    else
         true
     ),
     format_sequential_conjuncts(VarNameTable, Indent, RevGoalPath, Goals,
@@ -447,7 +447,8 @@ format_var_use_report(VarNameTable, Label, List, Report) :-
     cord(string)::out) is det.
 
 format_var_use_line(VarNameTable, Var - Use, singleton(String)) :-
-    format("    %s: %s", [s(VarName), s(two_decimal_fraction(Use))], String),
+    string.format("    %s: %s", [s(VarName), s(two_decimal_fraction(Use))],
+        String),
     lookup_var_name(VarNameTable, Var, VarName).
 
 %-----------------------------------------------------------------------------%

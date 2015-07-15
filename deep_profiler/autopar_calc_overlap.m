@@ -121,9 +121,9 @@ calculate_parallel_cost_step(Info, NumMiddleGoals, Conjunct, !ConjNum,
     !.CostData = parallelisation_cost_data(SharedVars, Overlap0, Metrics0,
         PM0),
     !:NumGoals = !.NumGoals + length(Conjuncts),
-    ( !.NumGoals = NumMiddleGoals ->
+    ( if !.NumGoals = NumMiddleGoals then
         IsLastConjunct = is_last_par_conjunct
-    ;
+    else
         IsLastConjunct = not_last_par_conjunct
     ),
     Conjunct = seq_conj(Conjuncts),
@@ -314,19 +314,19 @@ calculate_dependent_parallel_cost_consumption(Info, ProductionsMap,
     ParConsTime0 = max(ParConsTimeBlocked, ParConsTimeNotBlocked) +
         float(Info ^ ipi_opts ^ cpcp_future_wait_cost),
 
-    (
+    ( if
         % True if Q had to suspend waiting for P. Note that we don't include
         % FutureSyncTime here. This is true if Q has to block at all even if
         % it can be made runnable before the context switch is complete.
         ProdTime > ParConsTimeNotBlocked
-    ->
+    then
         % Include the time that it may take to resume this thread.
         ParConsTime = ParConsTime0 +
             float(Info ^ ipi_opts ^ cpcp_context_wakeup_delay),
         !:RevExecution =
             [(!.ResumeTime - ParConsTimeNotBlocked) | !.RevExecution],
         !:ResumeTime = ParConsTime
-    ;
+    else
         ParConsTime = ParConsTime0
     ),
 
@@ -390,21 +390,21 @@ adjust_time_for_waits(!Time, !Executions) :-
     (
         !.Executions = [Execution | NextExecution],
         ( Start - End ) = Execution,
-        ( (!.Time + adjust_time_for_waits_epsilon) < Start ->
-            error("adjust_time_for_waits: " ++
+        ( if (!.Time + adjust_time_for_waits_epsilon) < Start then
+            unexpected($module, $pred,
                 "Time occurs before the current execution")
-        ; !.Time =< (End + adjust_time_for_waits_epsilon) ->
+        else if !.Time =< (End + adjust_time_for_waits_epsilon) then
             % The production is within the current execution, no adjustment is
             % necessary.
             true
-        ;
+        else
             % The time is after this execution.
             !:Executions = NextExecution,
             adjust_time_for_waits_2(End, !Time, !Executions)
         )
     ;
         !.Executions = [],
-        error("adjust_time_for_waits: Time occurs after all executions")
+        unexpected($module, $pred, "Time occurs after all executions")
     ).
 
 :- pred adjust_time_for_waits_2(float::in, float::in, float::out,
@@ -418,14 +418,15 @@ adjust_time_for_waits_2(LastEnd, !Time, !Executions) :-
         % Do the adjustment.
         !:Time = !.Time + (Start - LastEnd),
 
-        ( (!.Time + adjust_time_for_waits_epsilon) < Start ->
-            error(format("adjust_time_for_waits: Adjustment didn't work, " ++
+        ( if (!.Time + adjust_time_for_waits_epsilon) < Start then
+            unexpected($module, $pred,
+                string.format("Adjustment didn't work, " ++
                 "time occurs before the current execution. " ++
                 "Time: %f, Start: %f.", [f(!.Time), f(Start)]))
-        ; !.Time =< (End + adjust_time_for_waits_epsilon) ->
+        else if !.Time =< (End + adjust_time_for_waits_epsilon) then
             % The adjustment worked.
             true
-        ;
+        else
             % Further adjustment is needed.
             !:Executions = NextExecution,
             adjust_time_for_waits_2(End, !Time, !Executions)
@@ -539,11 +540,11 @@ merge_consumptions_and_productions([Var - Time | Cons0], [],
     merge_consumptions_and_productions(Cons0, [], Cons).
 merge_consumptions_and_productions(Cons@[ConsVar - ConsTime | Cons0],
         Prods@[ProdVar - ProdTime | Prods0], [ProdOrCons | ProdsAndCons]) :-
-    ( ProdTime < ConsTime ->
+    ( if ProdTime < ConsTime then
         % Order earlier events first,
         ProdOrCons = ProdVar - production(ProdTime),
         merge_consumptions_and_productions(Cons, Prods0, ProdsAndCons)
-    ;
+    else
         % In this branch either the consumption occurs first or the events
         % occur at the same time in which case we order consumptions first.
         ProdOrCons = ConsVar - consumption(ConsTime),

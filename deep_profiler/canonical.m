@@ -156,12 +156,12 @@ complete_clique_pass(InitDeep, _Redirect, Clique, !ProcMap, !AddedPD) :-
     bool::in, bool::out) is det.
 
 complete_clique_ps(InitDeep, Clique, PSPtr - PDPtrs, !ProcMap, !AddedPD) :-
-    ( PDPtrs = [_, _ | _] ->
+    ( if PDPtrs = [_, _ | _] then
         lookup_proc_statics(InitDeep ^ init_proc_statics, PSPtr, PS),
         list.map(lookup_pd_site(InitDeep), PDPtrs, PDSites),
         complete_clique_slots(array.max(PS ^ ps_sites), InitDeep,
             Clique, PS ^ ps_sites, PDSites, !ProcMap, !AddedPD)
-    ;
+    else
         true
     ).
 
@@ -181,13 +181,13 @@ lookup_pd_site(InitDeep, PDPtr, Sites) :-
 
 complete_clique_slots(SlotNum, InitDeep, Clique, PSSites, PDSites,
         !ProcMap, !AddedPD) :-
-    ( SlotNum >= 0 ->
+    ( if SlotNum >= 0 then
         array.lookup(PSSites, SlotNum, CSSPtr),
         lookup_call_site_statics(InitDeep ^ init_call_site_statics,
             CSSPtr, CSS),
-        ( CSS ^ css_kind = normal_call_and_callee(_, _) ->
+        ( if CSS ^ css_kind = normal_call_and_callee(_, _) then
             lookup_normal_sites(PDSites, SlotNum, CSDPtrs)
-        ;
+        else
             lookup_multi_sites(PDSites, SlotNum, CSDPtrLists),
             list.condense(CSDPtrLists, CSDPtrs)
         ),
@@ -197,13 +197,13 @@ complete_clique_slots(SlotNum, InitDeep, Clique, PSSites, PDSites,
         list.map(extract_csdptr_callee(InitDeep), ValidCSDPtrs, CalleePDPtrs),
         CalleePDPtrSet = set.list_to_set(CalleePDPtrs),
         set.intersect(CalleePDPtrSet, Clique, Common),
-        ( set.is_empty(Common) ->
+        ( if set.is_empty(Common) then
             true
-        ;
+        else
             set.difference(CalleePDPtrSet, Clique, NewMembers),
-            ( set.is_empty(NewMembers) ->
+            ( if set.is_empty(NewMembers) then
                 !:AddedPD = no
-            ;
+            else
                 set.to_sorted_list(NewMembers, NewMemberList),
                 list.foldl(cluster_pds_by_ps(InitDeep), NewMemberList,
                     !ProcMap),
@@ -212,7 +212,7 @@ complete_clique_slots(SlotNum, InitDeep, Clique, PSSites, PDSites,
         ),
         complete_clique_slots(SlotNum - 1, InitDeep, Clique,
             PSSites, PDSites, !ProcMap, !AddedPD)
-    ;
+    else
         true
     ).
 
@@ -274,7 +274,7 @@ merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
 merge_proc_dynamic_slots(MergeInfo, SlotNum, Clique, PrimePDPtr,
         !.PrimeSiteArray, RestSiteArrays, !:PrimeSiteArray,
         !InitDeep, !Redirect) :-
-    ( SlotNum >= 0 ->
+    ( if SlotNum >= 0 then
         array.lookup(!.PrimeSiteArray, SlotNum, PrimeSite0),
         (
             PrimeSite0 = slot_normal(PrimeCSDPtr0),
@@ -298,7 +298,7 @@ merge_proc_dynamic_slots(MergeInfo, SlotNum, Clique, PrimePDPtr,
         merge_proc_dynamic_slots(MergeInfo, SlotNum - 1, Clique,
             PrimePDPtr, !.PrimeSiteArray, RestSiteArrays,
             !:PrimeSiteArray, !InitDeep, !Redirect)
-    ;
+    else
         true
     ).
 
@@ -409,12 +409,12 @@ merge_call_site_dynamics_2(MergeInfo, Clique, PrimeCSDPtr, RestCSDPtrs,
     % XXX design error: should take union of cliques
     % i.e. if call is within clique in *any* caller, it should be within
     % clique in the final configuration
-    ( callee_in_clique(InitDeep0, Clique, PrimeCSDPtr) ->
+    ( if callee_in_clique(InitDeep0, Clique, PrimeCSDPtr) then
         require(unify(NotInClique, []),
             "merge_proc_dynamic_normal_slot: prime in clique, " ++
                 "others not in clique"),
         MergeChildren = no
-    ;
+    else
         require(unify(InClique, []),
             "merge_proc_dynamic_normal_slot: prime not in clique, " ++
                 "others in clique"),
@@ -472,11 +472,11 @@ merge_call_site_dynamics_descendants(MergeInfo, PrimeCSDPtr, RestCSDPtrs,
     set(proc_dynamic_ptr)::in, set(proc_dynamic_ptr)::out) is det.
 
 union_cliques(MergeInfo, PDPtr, !CliqueUnion) :-
-    ( PDPtr = proc_dynamic_ptr(0) ->
+    ( if PDPtr = proc_dynamic_ptr(0) then
         % This can happen with calls to the unify/compare preds of builtin
         % types.
         true
-    ;
+    else
         lookup_clique_index(MergeInfo ^ merge_clique_index, PDPtr, CliquePtr),
         lookup_clique_members(MergeInfo ^ merge_clique_members, CliquePtr,
             Members),
@@ -525,9 +525,9 @@ record_pd_redirect(RestPDPtrs, PrimePDPtr, !Redirect) :-
     ),
 
     lookup_pd_redirect(!.Redirect ^ pd_redirect, PrimePDPtr, OldRedirect),
-    ( OldRedirect = proc_dynamic_ptr(0) ->
+    ( if OldRedirect = proc_dynamic_ptr(0) then
         record_pd_redirect_2(RestPDPtrs, PrimePDPtr, !Redirect)
-    ;
+    else
         unexpected($module, $pred, "prime is redirected")
     ).
 
@@ -538,10 +538,10 @@ record_pd_redirect_2([], _, !Redirect).
 record_pd_redirect_2([RestPDPtr | RestPDPtrs], PrimePDPtr, !Redirect) :-
     ProcRedirect0 = !.Redirect ^ pd_redirect,
     lookup_pd_redirect(ProcRedirect0, RestPDPtr, OldRedirect),
-    ( OldRedirect = proc_dynamic_ptr(0) ->
+    ( if OldRedirect = proc_dynamic_ptr(0) then
         set_pd_redirect(u(ProcRedirect0), RestPDPtr, PrimePDPtr,
             ProcRedirect)
-    ;
+    else
         unexpected($module, $pred, "already redirected")
     ),
     !Redirect ^ pd_redirect := ProcRedirect,
@@ -560,9 +560,9 @@ record_csd_redirect(RestCSDPtrs, PrimeCSDPtr, !Redirect) :-
     ),
 
     lookup_csd_redirect(!.Redirect ^ csd_redirect, PrimeCSDPtr, OldRedirect),
-    ( OldRedirect = call_site_dynamic_ptr(0) ->
+    ( if OldRedirect = call_site_dynamic_ptr(0) then
         record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr, !Redirect)
-    ;
+    else
         unexpected($module, $pred, "prime is redirected")
     ).
 
@@ -573,10 +573,10 @@ record_csd_redirect_2([], _, !Redirect).
 record_csd_redirect_2([RestCSDPtr | RestCSDPtrs], PrimeCSDPtr, !Redirect) :-
     CallSiteRedirect0 = !.Redirect ^ csd_redirect,
     lookup_csd_redirect(CallSiteRedirect0, RestCSDPtr, OldRedirect),
-    ( OldRedirect = call_site_dynamic_ptr(0) ->
+    ( if OldRedirect = call_site_dynamic_ptr(0) then
         set_csd_redirect(u(CallSiteRedirect0), RestCSDPtr, PrimeCSDPtr,
             CallSiteRedirect)
-    ;
+    else
         unexpected($module, $pred, "already redirected")
     ),
     !Redirect ^ csd_redirect := CallSiteRedirect,
@@ -592,15 +592,15 @@ two_or_more([_, _ | _]).
 
 cluster_pds_by_ps(InitDeep, PDPtr, !ProcMap) :-
     ProcDynamics = InitDeep ^ init_proc_dynamics,
-    ( valid_proc_dynamic_ptr_raw(ProcDynamics, PDPtr) ->
+    ( if valid_proc_dynamic_ptr_raw(ProcDynamics, PDPtr) then
         lookup_proc_dynamics(ProcDynamics, PDPtr, PD),
         PSPtr = PD ^ pd_proc_static,
-        ( map.search(!.ProcMap, PSPtr, PDPtrs0) ->
+        ( if map.search(!.ProcMap, PSPtr, PDPtrs0) then
             map.det_update(PSPtr, [PDPtr | PDPtrs0], !ProcMap)
-        ;
+        else
             map.det_insert(PSPtr, [PDPtr], !ProcMap)
         )
-    ;
+    else
         true
     ).
 
@@ -610,22 +610,22 @@ cluster_pds_by_ps(InitDeep, PDPtr, !ProcMap) :-
 
 cluster_csds_by_ps(InitDeep, CSDPtr, !ProcMap) :-
     CallSiteDynamics = InitDeep ^ init_call_site_dynamics,
-    ( valid_call_site_dynamic_ptr_raw(CallSiteDynamics, CSDPtr) ->
+    ( if valid_call_site_dynamic_ptr_raw(CallSiteDynamics, CSDPtr) then
         lookup_call_site_dynamics(CallSiteDynamics, CSDPtr, CSD),
         PDPtr = CSD ^ csd_callee,
         ProcDynamics = InitDeep ^ init_proc_dynamics,
-        ( valid_proc_dynamic_ptr_raw(ProcDynamics, PDPtr) ->
+        ( if valid_proc_dynamic_ptr_raw(ProcDynamics, PDPtr) then
             lookup_proc_dynamics(ProcDynamics, PDPtr, PD),
             PSPtr = PD ^ pd_proc_static
-        ;
+        else
             PSPtr = proc_static_ptr(0)
         ),
-        ( map.search(!.ProcMap, PSPtr, CSDPtrs0) ->
+        ( if map.search(!.ProcMap, PSPtr, CSDPtrs0) then
             map.det_update(PSPtr, [CSDPtr | CSDPtrs0], !ProcMap)
-        ;
+        else
             map.det_insert(PSPtr, [CSDPtr], !ProcMap)
         )
-    ;
+    else
         true
     ).
 
@@ -667,9 +667,9 @@ set_csd_redirect(CallSiteRedirect0, CSDPtr, NewRedirect, CallSiteRedirect) :-
 deref_call_site_dynamic(Redirect, !CSDPtr) :-
     lookup_csd_redirect(Redirect ^ csd_redirect, !.CSDPtr, RedirectCSDPtr),
     RedirectCSDPtr = call_site_dynamic_ptr(RedirectCSDI),
-    ( RedirectCSDI > 0 ->
+    ( if RedirectCSDI > 0 then
         deref_call_site_dynamic(Redirect, RedirectCSDPtr, !:CSDPtr)
-    ;
+    else
         true
     ).
 
@@ -679,9 +679,9 @@ deref_call_site_dynamic(Redirect, !CSDPtr) :-
 deref_proc_dynamic(Redirect, !PDPtr) :-
     lookup_pd_redirect(Redirect ^ pd_redirect, !.PDPtr, RedirectPDPtr),
     RedirectPDPtr = proc_dynamic_ptr(RedirectPDI),
-    ( RedirectPDI > 0 ->
+    ( if RedirectPDI > 0 then
         deref_proc_dynamic(Redirect, RedirectPDPtr, !:PDPtr)
-    ;
+    else
         true
     ).
 
@@ -712,15 +712,15 @@ compact_dynamics(Redirect0, MaxCSD0, MaxPD0, !InitDeep) :-
     array(call_site_dynamic_ptr)::array_uo) is det.
 
 compact_csd_redirect(CurOld, CurNew, MaxOld, NumNew, !CSDredirect) :-
-    ( CurOld > MaxOld ->
+    ( if CurOld > MaxOld then
         NumNew = CurNew
-    ;
+    else
         array.lookup(!.CSDredirect, CurOld, Redirect0),
-        ( Redirect0 = call_site_dynamic_ptr(0) ->
+        ( if Redirect0 = call_site_dynamic_ptr(0) then
             array.set(CurOld, call_site_dynamic_ptr(CurNew), !CSDredirect),
             compact_csd_redirect(CurOld + 1, CurNew + 1, MaxOld, NumNew,
                 !CSDredirect)
-        ;
+        else
             % Since this CSD is being redirected, its slot is available for
             % another (non-redirected) CSD.
             compact_csd_redirect(CurOld + 1, CurNew, MaxOld, NumNew,
@@ -733,15 +733,15 @@ compact_csd_redirect(CurOld, CurNew, MaxOld, NumNew, !CSDredirect) :-
     array(proc_dynamic_ptr)::array_uo) is det.
 
 compact_pd_redirect(CurOld, CurNew, MaxOld, NumNew, !PDredirect) :-
-    ( CurOld > MaxOld ->
+    ( if CurOld > MaxOld then
         NumNew = CurNew
-    ;
+    else
         array.lookup(!.PDredirect, CurOld, Redirect0),
-        ( Redirect0 = proc_dynamic_ptr(0) ->
+        ( if Redirect0 = proc_dynamic_ptr(0) then
             array.set(CurOld, proc_dynamic_ptr(CurNew), !PDredirect),
             compact_pd_redirect(CurOld + 1, CurNew + 1, MaxOld, NumNew,
                 !PDredirect)
-        ;
+        else
             % Since this PD is being redirected, its slot is
             % available for another (non-redirected) PD.
             compact_pd_redirect(CurOld + 1, CurNew, MaxOld, NumNew,
@@ -784,10 +784,10 @@ subst_in_slot(Redirect, slot_multi(IsZeroed, CSDPtrs0),
 merge_profiles(InitDeeps, MaybeMergedInitDeep) :-
     (
         InitDeeps = [FirstInitDeep | LaterInitDeeps],
-        ( all_compatible(FirstInitDeep, LaterInitDeeps) ->
+        ( if all_compatible(FirstInitDeep, LaterInitDeeps) then
             do_merge_profiles(FirstInitDeep, LaterInitDeeps, MergedInitDeep),
             MaybeMergedInitDeep = ok(MergedInitDeep)
-        ;
+        else
             MaybeMergedInitDeep =
                 error("profiles are not from the same executable")
         )
@@ -905,7 +905,7 @@ concatenate_profile(InitDeep, PrevMaxCSD, PrevMaxPD, NextMaxCSD, NextMaxPD,
 
 concatenate_profile_csds(Cur, Max, PrevMaxCSD, PrevMaxPD, CallSiteDynamics,
         !ConcatCallSiteDynamics) :-
-    ( Cur =< Max ->
+    ( if Cur =< Max then
         array.lookup(CallSiteDynamics, Cur, CSD0),
         CSD0 = call_site_dynamic(CallerPDPtr0, CalleePDPtr0, Own),
         concat_proc_dynamic_ptr(PrevMaxPD, CallerPDPtr0, CallerPDPtr),
@@ -914,7 +914,7 @@ concatenate_profile_csds(Cur, Max, PrevMaxCSD, PrevMaxPD, CallSiteDynamics,
         array.set(PrevMaxCSD + Cur, CSD, !ConcatCallSiteDynamics),
         concatenate_profile_csds(Cur + 1, Max, PrevMaxCSD, PrevMaxPD,
             CallSiteDynamics, !ConcatCallSiteDynamics)
-    ;
+    else
         true
     ).
 
@@ -924,7 +924,7 @@ concatenate_profile_csds(Cur, Max, PrevMaxCSD, PrevMaxPD, CallSiteDynamics,
 
 concatenate_profile_pds(Cur, Max, PrevMaxCSD, PrevMaxPD, ProcDynamics,
         !ConcatProcDynamics) :-
-    ( Cur =< Max ->
+    ( if Cur =< Max then
         array.lookup(ProcDynamics, Cur, PD0),
         PD0 = proc_dynamic(PSPtr, Sites0, MaybeCPs),
         array.max(Sites0, MaxSite),
@@ -934,7 +934,7 @@ concatenate_profile_pds(Cur, Max, PrevMaxCSD, PrevMaxPD, ProcDynamics,
         array.set(PrevMaxPD + Cur, PD, !ConcatProcDynamics),
         concatenate_profile_pds(Cur + 1, Max, PrevMaxCSD, PrevMaxPD,
             ProcDynamics, !ConcatProcDynamics)
-    ;
+    else
         true
     ).
 
@@ -943,7 +943,7 @@ concatenate_profile_pds(Cur, Max, PrevMaxCSD, PrevMaxPD, ProcDynamics,
     array(call_site_array_slot)::array_uo) is det.
 
 concatenate_profile_slots(Cur, Max, PrevMaxCSD, PrevMaxPD, !Sites) :-
-    ( Cur =< Max ->
+    ( if Cur =< Max then
         array.lookup(!.Sites, Cur, Slot0),
         (
             Slot0 = slot_normal(CSDPtr0),
@@ -957,7 +957,7 @@ concatenate_profile_slots(Cur, Max, PrevMaxCSD, PrevMaxPD, !Sites) :-
         ),
         array.set(Cur, Slot, !Sites),
         concatenate_profile_slots(Cur + 1, Max, PrevMaxCSD, PrevMaxPD, !Sites)
-    ;
+    else
         true
     ).
 
@@ -966,9 +966,9 @@ concatenate_profile_slots(Cur, Max, PrevMaxCSD, PrevMaxPD, !Sites) :-
 
 concat_call_site_dynamic_ptr(PrevMaxCSD, !CSDPtr) :-
     !.CSDPtr = call_site_dynamic_ptr(CSDI0),
-    ( CSDI0 = 0 ->
+    ( if CSDI0 = 0 then
         true
-    ;
+    else
         !:CSDPtr = call_site_dynamic_ptr(CSDI0 + PrevMaxCSD)
     ).
 
@@ -977,9 +977,9 @@ concat_call_site_dynamic_ptr(PrevMaxCSD, !CSDPtr) :-
 
 concat_proc_dynamic_ptr(PrevMaxPD, !PDPtr) :-
     !.PDPtr = proc_dynamic_ptr(PDI0),
-    ( PDI0 = 0 ->
+    ( if PDI0 = 0 then
         true
-    ;
+    else
         !:PDPtr = proc_dynamic_ptr(PDI0 + PrevMaxPD)
     ).
 
@@ -994,11 +994,11 @@ concat_proc_dynamic_ptr(PrevMaxPD, !PDPtr) :-
     list(array(T))::in) is semidet.
 
 array_match_elements(N, Max, BaseArray, OtherArrays) :-
-    ( N =< Max ->
+    ( if N =< Max then
         array.lookup(BaseArray, N, BaseElement),
         match_element(BaseElement, N, OtherArrays),
         array_match_elements(N + 1, Max, BaseArray, OtherArrays)
-    ;
+    else
         true
     ).
 

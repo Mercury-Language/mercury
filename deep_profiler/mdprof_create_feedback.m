@@ -70,11 +70,11 @@ main(!IO) :-
         post_process_options(ProgName, Options0, Options, !IO),
         lookup_bool_option(Options, help, Help),
         lookup_bool_option(Options, version, Version),
-        ( Version = yes ->
+        ( if Version = yes then
             write_version_message(ProgName, !IO)
-        ; Help = yes ->
+        else if Help = yes then
             write_help_message(ProgName, !IO)
-        ;
+        else
             (
                 Args = [InputFileName, OutputFileName],
                 get_feedback_requests(ProgName, Options, FoundError,
@@ -481,17 +481,17 @@ construct_measure("median", stat_median).
 post_process_options(ProgName, !Options, !IO) :-
     lookup_int_option(!.Options, verbosity, VerbosityLevel),
     io.stderr_stream(Stderr, !IO),
-    ( VerbosityLevel < 0 ->
+    ( if VerbosityLevel < 0 then
         io.format(Stderr,
             "%s: warning: verbosity level should not be negative.\n",
             [s(ProgName)], !IO),
         set_option(verbosity, int(0), !Options)
-    ; VerbosityLevel > 4 ->
+    else if VerbosityLevel > 4 then
         io.format(Stderr,
             "%s: warning: verbosity level should not exceed 4.\n",
             [s(ProgName)], !IO),
         set_option(verbosity, int(4), !Options)
-    ;
+    else
         true
     ),
     set_verbosity_level(VerbosityLevel, !IO),
@@ -534,17 +534,19 @@ get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
         CandidateParallelConjunctions = yes,
         lookup_string_option(Options, desired_parallelism,
             DesiredParallelismStr),
-        ( string.to_float(DesiredParallelismStr, DesiredParallelismPrime) ->
+        ( if
+            string.to_float(DesiredParallelismStr, DesiredParallelismPrime)
+        then
             DesiredParallelism = DesiredParallelismPrime,
-            ( DesiredParallelism > 1.0 ->
+            ( if DesiredParallelism > 1.0 then
                 true
-            ;
+            else
                 io.format(Stderr,
                     "%s: error: desired parallelism level should be > 1.\n",
                     [s(ProgName)], !IO),
                 !:Error = found_error
             )
-        ;
+        else
             io.format(Stderr,
                 "%s: error: desired parallelism level should be a number.\n",
                 [s(ProgName)], !IO),
@@ -553,17 +555,17 @@ get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
         ),
         lookup_string_option(Options, ipar_speedup_threshold,
             SpeedupThresholdStr),
-        ( string.to_float(SpeedupThresholdStr, SpeedupThresholdPrime) ->
+        ( if string.to_float(SpeedupThresholdStr, SpeedupThresholdPrime) then
             SpeedupThreshold = SpeedupThresholdPrime,
-            ( SpeedupThreshold >= 1.0 ->
+            ( if SpeedupThreshold >= 1.0 then
                 true
-            ;
+            else
                 io.format(Stderr,
                     "%s: error: speedup threshold should be >= 1.\n",
                     [s(ProgName)], !IO),
                 !:Error = found_error
             )
-        ;
+        else
             io.format(Stderr,
                 "%s: error: speedup threshold should be a number.\n",
                 [s(ProgName)], !IO),
@@ -585,12 +587,12 @@ get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
             CPCCallSiteThreshold),
         lookup_bool_option(Options, ipar_dep_conjs, AllowDepConjs),
         lookup_string_option(Options, ipar_speedup_alg, SpeedupAlgString),
-        (
+        ( if
             parse_parallelise_dep_conjs_string(AllowDepConjs,
                 SpeedupAlgString, SpeedupAlgPrime)
-        ->
+        then
             SpeedupAlg = SpeedupAlgPrime
-        ;
+        else
             io.format(Stderr,
                 "%s: error: %s is not a speedup estimate algorithm.\n",
                 [s(ProgName), s(SpeedupAlgString)], !IO),
@@ -655,23 +657,23 @@ parse_best_par_algorithm(String, Result) :-
 
 parse_alg_for_finding_best_par(Src, Algorithm, !PS) :-
     whitespace(Src, _, !PS),
-    (
+    ( if
         keyword(idchars, "greedy", Src, _, !PS)
-    ->
+    then
         Algorithm = affbp_greedy
-    ;
+    else if
         keyword(idchars, "complete-branches", Src, _, !PS),
         brackets("(", ")", int_literal, Src, N, !PS),
         N >= 0
-    ->
+    then
         Algorithm = affbp_complete_branches(N)
-    ;
+    else if
         keyword(idchars, "complete-size", Src, _, !PS),
         brackets("(", ")", int_literal, Src, N, !PS),
         N >= 0
-    ->
+    then
         Algorithm = affbp_complete_size(N)
-    ;
+    else
         keyword(idchars, "complete", Src, _, !PS),
         Algorithm = affbp_complete
     ),
@@ -696,9 +698,9 @@ parse_parallelise_dep_conjs_string(yes, "overlap",
     option_table(option)::in, option_table(option)::out) is det.
 
 option_implies(Option, ImpliedOption, ImpliedValue, !Options) :-
-    ( lookup_bool_option(!.Options, Option, yes) ->
+    ( if lookup_bool_option(!.Options, Option, yes) then
         set_option(ImpliedOption, bool(ImpliedValue), !Options)
-    ;
+    else
         true
     ).
 

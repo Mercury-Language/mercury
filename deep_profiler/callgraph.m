@@ -75,7 +75,7 @@ foldl(P, !.L, !A) :-
     list(X)::in, list(X)::out, A::in, A::out) is det.
 
 foldl_2(Depth, P, !Xs, !A) :-
-    ( Depth > 0 ->
+    ( if Depth > 0 then
         (
             !.Xs = []
         ;
@@ -83,7 +83,7 @@ foldl_2(Depth, P, !Xs, !A) :-
             P(X, !A),
             foldl_2(Depth - 1, P, !Xs, !A)
         )
-    ;
+    else
         true
     ).
 
@@ -141,7 +141,7 @@ add_call_site_arcs(InitDeep, FromPDI, CallSiteSlot, !Graph) :-
 
 add_csd_arcs(InitDeep, FromPDI, CSDPtr, !Graph) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0 ->
+    ( if CSDI > 0 then
         array.lookup(InitDeep ^ init_call_site_dynamics, CSDI, CSD),
         ToPDPtr = CSD ^ csd_callee,
         ToPDPtr = proc_dynamic_ptr(ToPDI),
@@ -149,7 +149,7 @@ add_csd_arcs(InitDeep, FromPDI, CSDPtr, !Graph) :-
             write_arc(FromPDI, ToPDI, CSDI, !IO)
         ),
         add_arc(!.Graph, FromPDI, ToPDI, !:Graph)
-    ;
+    else
         true
     ).
 

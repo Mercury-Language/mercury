@@ -70,13 +70,13 @@ init(graph(1, Array)) :-
     array.init(16, set.init, Array).
 
 add_arc(graph(Size0, Array0), From, To, Graph) :-
-    ( array.in_bounds(Array0, From) ->
+    ( if array.in_bounds(Array0, From) then
         array.lookup(Array0, From, Tos0),
         set.insert(To, Tos0, Tos),
         array.set(From, Tos, u(Array0), Array),
         Size = int.max(int.max(From, To), Size0),
         Graph = graph(Size, Array)
-    ;
+    else
         array.size(Array0, Size),
         array.resize(Size * 2, init, u(Array0), Array1),
         add_arc(graph(Size0, Array1), From, To, Graph)
@@ -85,18 +85,18 @@ add_arc(graph(Size0, Array0), From, To, Graph) :-
 :- pred successors(graph::in, int::in, set(int)::out) is det.
 
 successors(graph(_Size, Array), From, Tos) :-
-    ( array.in_bounds(Array, From) ->
+    ( if array.in_bounds(Array, From) then
         array.lookup(Array, From, Tos)
-    ;
+    else
         Tos = set.init
     ).
 
 :- pred mklist(int::in, list(int)::in, list(int)::out) is det.
 
 mklist(N, Acc0, Acc) :-
-    ( N < 0 ->
+    ( if N < 0 then
         Acc = Acc0
-    ;
+    else
         Acc1 = [N | Acc0],
         mklist(N - 1, Acc1, Acc)
     ).
@@ -160,13 +160,13 @@ tsort([Node | Nodes], InvGraph, !.Visited, !Cliques) :-
         io.nl(!IO)
     ),
 
-    ( dense_bitset.member(Node, !.Visited) ->
+    ( if dense_bitset.member(Node, !.Visited) then
         trace [compiletime(flag("tsort_old")), io(!IO)] (
             io.write_string("tsort old ", !IO),
             io.write_int(Node, !IO),
             io.nl(!IO)
         )
-    ;
+    else
         trace [compiletime(flag("tsort_new")), io(!IO)] (
             io.write_string("tsort new ", !IO),
             io.write_int(Node, !IO),
@@ -222,7 +222,7 @@ dfs_graph_2([Node | Nodes], Graph, Visit0, Dfs0, Dfs) :-
 
 dfs([], _Graph, Visit, Dfs, Visit, Dfs).
 dfs([Node | Nodes], Graph, Visit0, Dfs0, Visit, Dfs) :-
-    ( dense_bitset.member(Node, Visit0) ->
+    ( if dense_bitset.member(Node, Visit0) then
         trace [compiletime(flag("dfs_old")), io(!IO)] (
             io.write_string("dfs old ", !IO),
             io.write_int(Node, !IO),
@@ -230,7 +230,7 @@ dfs([Node | Nodes], Graph, Visit0, Dfs0, Visit, Dfs) :-
         ),
 
         dfs(Nodes, Graph, Visit0, Dfs0, Visit, Dfs)
-    ;
+    else
         trace [compiletime(flag("dfs_new")), io(!IO)] (
             io.write_string("dfs new ", !IO),
             io.write_int(Node, !IO),
@@ -255,12 +255,12 @@ inverse(Graph, InvGraph) :-
 :- pred inverse_2(int::in, graph::in, graph::in, graph::out) is det.
 
 inverse_2(To, Graph, InvGraph0, InvGraph) :-
-    ( To >= 0 ->
+    ( if To >= 0 then
         successors(Graph, To, Froms),
         set.to_sorted_list(Froms, FromList),
         add_arcs_to(FromList, To, InvGraph0, InvGraph1),
         inverse_2(To - 1, Graph, InvGraph1, InvGraph)
-    ;
+    else
         InvGraph = InvGraph0
     ).
 
@@ -286,14 +286,14 @@ write_graph(Graph, !IO) :-
     io::di, io::uo) is det.
 
 write_graph_nodes(Cur, Max, Array, !IO) :-
-    ( Cur =< Max ->
+    ( if Cur =< Max then
         io.format("%d -> ", [i(Cur)], !IO),
         array.lookup(Array, Cur, SuccSet),
         set.to_sorted_list(SuccSet, Succs),
         io.write_list(Succs, ", ", io.write_int, !IO),
         io.nl(!IO),
         write_graph_nodes(Cur + 1, Max, Array, !IO)
-    ;
+    else
         true
     ).
 

@@ -140,24 +140,24 @@ get_coverage_after(coverage_known_same(After), After).
 get_coverage_after(coverage_known_after(After), After).
 
 get_coverage_before_det(Coverage, Before) :-
-    ( get_coverage_before(Coverage, BeforePrime) ->
+    ( if get_coverage_before(Coverage, BeforePrime) then
         Before = BeforePrime
-    ;
+    else
         complete_coverage_error
     ).
 
 get_coverage_before_and_after_det(Coverage, Before, After) :-
-    ( get_coverage_before_and_after(Coverage, BeforePrime, AfterPrime) ->
+    ( if get_coverage_before_and_after(Coverage, BeforePrime, AfterPrime) then
         Before = BeforePrime,
         After = AfterPrime
-    ;
+    else
         complete_coverage_error
     ).
 
 get_coverage_after_det(Coverage, After) :-
-    ( get_coverage_after(Coverage, AfterPrime) ->
+    ( if get_coverage_after(Coverage, AfterPrime) then
         After = AfterPrime
-    ;
+    else
         complete_coverage_error
     ).
 
@@ -170,9 +170,9 @@ complete_coverage_error :-
 
 coverage_point_arrays_to_list(StaticArray, DynamicArray, CoveragePoints) :-
     array.bounds(StaticArray, Min, Max),
-    ( array.bounds(DynamicArray, Min, Max) ->
+    ( if array.bounds(DynamicArray, Min, Max) then
         true
-    ;
+    else
         unexpected($module, $pred, "bounds do not match")
     ),
     coverage_point_arrays_to_list_2(Min, Max, StaticArray, DynamicArray,
@@ -184,14 +184,14 @@ coverage_point_arrays_to_list(StaticArray, DynamicArray, CoveragePoints) :-
 
 coverage_point_arrays_to_list_2(Num, Max, StaticArray, DynamicArray,
         !CoveragePoints) :-
-    ( Num =< Max ->
+    ( if Num =< Max then
         array.lookup(StaticArray, Num, coverage_point_info(GoalPath, CPType)),
         array.lookup(DynamicArray, Num, Count),
         CP = coverage_point(Count, GoalPath, CPType),
         !:CoveragePoints = [CP | !.CoveragePoints],
         coverage_point_arrays_to_list_2(Num + 1, Max,
             StaticArray, DynamicArray, !CoveragePoints)
-    ;
+    else
         true
     ).
 
@@ -322,9 +322,9 @@ goal_annotate_coverage(Goal, Info, Before, After, !Array) :-
             ; AtomicGoal = higher_order_call_rep(_, _)
             ; AtomicGoal = method_call_rep(_, _, _)
             ),
-            (
+            ( if
                 map.search(Info ^ cri_call_sites, RevGoalPath, Cost)
-            ->
+            then
                 % Entry due to redo is not counted at the point before the
                 % goal, it is represented when the number of exists is greater
                 % than the number of calls. XXX This won't work with nondet
@@ -334,7 +334,7 @@ goal_annotate_coverage(Goal, Info, Before, After, !Array) :-
                 require(unify(Before, before_coverage(Calls)),
                   "Coverage before call doesn't match calls port on call site"),
                 After0 = after_coverage(Exits)
-            ;
+            else
                 unexpected($module, $pred,
                     "Couldn't look up call site for port counts GP: " ++
                     rev_goal_path_to_string(RevGoalPath))
@@ -359,14 +359,14 @@ goal_annotate_coverage(Goal, Info, Before, After, !Array) :-
     % even when the coverage has been calculated from inner goals, since this
     % is used to perform an assertion that these two sources agree about the
     % coverage after this goal.
-    (
+    ( if
         map.search(Info ^ cri_solns_coverage_points, RevGoalPath,
             CoveragePoint)
-    ->
+    then
         CoveragePoint = coverage_point(CoverageAfterCount, _, _),
         after_count_from_either_source(after_coverage(CoverageAfterCount),
             After0, After)
-    ;
+    else
         After0 = After
     ),
     GoalCoverage = construct_before_after_coverage(Before, After),
@@ -380,9 +380,9 @@ goal_annotate_coverage(Goal, Info, Before, After, !Array) :-
              s(string(GoalCoverage))], !IO)
     ),
     trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
-        ( check_coverage_complete(GoalCoverage, GoalExpr) ->
+        ( if check_coverage_complete(GoalCoverage, GoalExpr) then
             true
-        ;
+        else
             unexpected($module, $pred,
                 string.format("check_coverage_complete failed\n" ++
                     "\tCoverage: %s\n\tGoalPath: %s\n\tProc: %s\n",
@@ -390,9 +390,9 @@ goal_annotate_coverage(Goal, Info, Before, After, !Array) :-
                      s(rev_goal_path_to_string(RevGoalPath)),
                      s(string(Info ^ cri_proc))]))
         ),
-        ( check_coverage_regarding_detism(GoalCoverage, Detism) ->
+        ( if check_coverage_regarding_detism(GoalCoverage, Detism) then
             true
-        ;
+        else
             unexpected($module, $pred,
                 string.format("check_coverage_regarding_detism failed: %s %s",
                     [s(string(GoalCoverage)), s(string(Detism))]))
@@ -434,9 +434,9 @@ construct_before_after_coverage(Before, After) = Coverage :-
             Coverage = coverage_known_before(BeforeExecCount)
         ;
             After = after_known(AfterExecCount),
-            ( BeforeExecCount = AfterExecCount ->
+            ( if BeforeExecCount = AfterExecCount then
                 Coverage = coverage_known_same(BeforeExecCount)
-            ;
+            else
                 Coverage = coverage_known(BeforeExecCount, AfterExecCount)
             )
         ;
@@ -535,10 +535,12 @@ switch_annotate_coverage(Cases, Info, CanFail, Before, After, !Array) :-
             Result = yes
         ;
             Result = no,
-            error(string.format("check_switch_coverage failed\n\t" ++
-                "CanFail: %s\n\tCases: %s\n\tBefore: %s, After: %s\n",
-                [s(string(CanFail)), s(string(Cases)),
-                s(string(Before)), s(string(After))]))
+            unexpected($module, $pred,
+                string.format(
+                    "check_switch_coverage failed\n\t" ++
+                    "CanFail: %s\n\tCases: %s\n\tBefore: %s, After: %s\n",
+                    [s(string(CanFail)), s(string(Cases)),
+                    s(string(Before)), s(string(After))]))
         )
     ).
 
@@ -572,7 +574,7 @@ switch_annotate_coverage_2([Case | Cases], Info, CanFail, SwitchBefore,
     %
     % If we cannot calculate this case's coverage information, then try to
     % retrieve the information from a coverage point associated with the case.
-    (
+    ( if
         Cases = [],
         CanFail = switch_can_not_fail_rep,
         (
@@ -587,10 +589,10 @@ switch_annotate_coverage_2([Case | Cases], Info, CanFail, SwitchBefore,
             !.SumBefore = sum_before_zero,
             SumBeforeExecCount = 0
         )
-    ->
+    then
         BeforeCase =
             before_coverage(SwitchBeforeExecCount - SumBeforeExecCount)
-    ;
+    else
         % Search for a coverage point for this case.
         RevCaseGoalPath = map.lookup(Info ^ cri_goal_path_map,
             Goal ^ goal_annotation),
@@ -724,21 +726,23 @@ ite_annotate_coverage(Cond, Then, Else, Info, RevGoalPath, Before, After,
     ),
 
     trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
-        (
+        ( if
             check_ite_coverage(Before, After, Before, AfterCond,
                 BeforeThen, AfterThen, BeforeElse, AfterElse, CondDetism)
-        ->
+        then
             true
-        ;
-            error(string.format("check_ite_coverage/4 failed\n" ++
-                "\tWhole: %s %s\n" ++
-                "\tCond: %s %s\n\tThen: %s %s\n\tElse: %s %s\n" ++
-                "\tGoalPath: %s\n",
-                [s(string(Before)), s(string(After)),
-                s(string(Before)), s(string(AfterCond)),
-                s(string(BeforeThen)), s(string(AfterThen)),
-                s(string(BeforeElse)), s(string(AfterElse)),
-                s(rev_goal_path_to_string(RevGoalPath))]))
+        else
+            unexpected($module, $pred,
+                string.format(
+                    "check_ite_coverage/4 failed\n" ++
+                    "\tWhole: %s %s\n" ++
+                    "\tCond: %s %s\n\tThen: %s %s\n\tElse: %s %s\n" ++
+                    "\tGoalPath: %s\n",
+                    [s(string(Before)), s(string(After)),
+                    s(string(Before)), s(string(AfterCond)),
+                    s(string(BeforeThen)), s(string(AfterThen)),
+                    s(string(BeforeElse)), s(string(AfterElse)),
+                    s(rev_goal_path_to_string(RevGoalPath))]))
         )
     ).
 
@@ -749,10 +753,10 @@ ite_annotate_coverage(Cond, Then, Else, Info, RevGoalPath, Before, After,
     reverse_goal_path::in, coverage_before::out) is det.
 
 get_branch_start_coverage(Info, RevGoalPath, Before) :-
-    ( map.search(Info ^ cri_branch_coverage_points, RevGoalPath, CP) ->
+    ( if map.search(Info ^ cri_branch_coverage_points, RevGoalPath, CP) then
         CP = coverage_point(ExecCount, _, _),
         Before = before_coverage(ExecCount)
-    ;
+    else
         Before = before_unknown
     ).
 
@@ -819,9 +823,9 @@ detism_coverage_ok(Coverage, Detism) = OK :-
             % Execution may leave via the Excp port rather than the exit port.
             % so the exit port count may be smaller than or equal to the entry
             % port count.
-            ( Entry >= Exit ->
+            ( if Entry >= Exit then
                 OK = yes
-            ;
+            else
                 OK = no
             )
         ;
@@ -846,9 +850,9 @@ detism_coverage_ok(Coverage, Detism) = OK :-
             OK = yes
         ;
             Coverage = coverage_known(Entry, Exit),
-            ( Entry >= Exit ->
+            ( if Entry >= Exit then
                 OK = yes
-            ;
+            else
                 OK = no
             )
         )
@@ -881,9 +885,9 @@ detism_coverage_ok(Coverage, Detism) = OK :-
             ; Coverage = coverage_known_same(Exit)
             ; Coverage = coverage_known_after(Exit)
             ),
-            ( Exit = 0 ->
+            ( if Exit = 0 then
                 OK = yes
-            ;
+            else
                 OK = no
             )
         ;
@@ -923,9 +927,9 @@ check_switch_coverage(CanFail, Cases, Before, Array, Result) :-
                         Before = before_zero,
                         SumB = 0
                     ),
-                    ( SumA = SumB ->
+                    ( if SumA = SumB then
                         Result = yes
-                    ;
+                    else
                         Result = no
                     )
                 )
@@ -972,36 +976,36 @@ sum_switch_case_coverage(Array, case_rep(_, _, Goal), !Acc) :-
 
 check_ite_coverage(Before, After, BeforeCond, AfterCond,
         BeforeThen, AfterThen, _BeforeElse, AfterElse, CondDetism) :-
-    (
+    ( if
         Before = before_known(BeforeExecCount),
         BeforeCond = before_known(BeforeCondExecCount)
-    ->
+    then
         BeforeExecCount = BeforeCondExecCount
-    ;
+    else
         true
     ),
-    (
+    ( if
         After = after_known(AfterExecCount),
         AfterThen = after_known(AfterThenExecCount),
         AfterElse = after_known(AfterElseExecCount)
-    ->
+    then
         AfterExecCount = AfterThenExecCount + AfterElseExecCount
-    ;
+    else
         true
     ),
-    (
+    ( if
         AfterCond = after_known(AfterCondExecCount),
         BeforeThen = before_known(BeforeKnownExecCount)
-    ->
+    then
         AfterCondExecCount = BeforeKnownExecCount
-    ;
+    else
         true
     ),
     % Since the condition may throw exceptions and exception count information
     % is not propagated checking the coverage before the else goal based on the
     % coverage before and after the condition goal cannot be done.
 
-    ( AfterCond = after_known(AfterCondExecCount2) ->
+    ( if AfterCond = after_known(AfterCondExecCount2) then
         NumSolutions = detism_get_solutions(CondDetism),
         (
             NumSolutions = at_most_zero_rep,
@@ -1011,7 +1015,7 @@ check_ite_coverage(Before, After, BeforeCond, AfterCond,
             ; NumSolutions = at_most_many_rep
             )
         )
-    ;
+    else
         true
     ).
 
@@ -1288,18 +1292,18 @@ before_count_sum_before_count(sum_before_zero, before_zero).
 :- func after_coverage(int) = coverage_after.
 
 after_coverage(Count) =
-    ( Count = 0 ->
+    ( if Count = 0 then
         after_zero
-    ;
+    else
         after_known(Count)
     ).
 
 :- func before_coverage(int) = coverage_before.
 
 before_coverage(Count) =
-    ( Count = 0 ->
+    ( if Count = 0 then
         before_zero
-    ;
+    else
         before_known(Count)
     ).
 

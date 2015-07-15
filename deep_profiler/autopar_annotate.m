@@ -216,13 +216,13 @@ ite_annotate_with_instmap(Cond, Then, Else, SeenDuplicateInstantiation,
     goal_annotate_with_instmap(Else, SeenDuplicateInstantiationElse,
         ConsumedVarsElse, BoundVarsElse, InstMap0, InstMapAfterElse,
         !InstMapArray),
-    (
+    ( if
         SeenDuplicateInstantiationCond = have_not_seen_duplicate_instantiation,
         SeenDuplicateInstantiationThen = have_not_seen_duplicate_instantiation,
         SeenDuplicateInstantiationElse = have_not_seen_duplicate_instantiation
-    ->
+    then
         SeenDuplicateInstantiation = have_not_seen_duplicate_instantiation
-    ;
+    else
         SeenDuplicateInstantiation = seen_duplicate_instantiation
     ),
     set.union(ConsumedVarsCond, ConsumedVarsThen, ConsumedVarsCondThen),

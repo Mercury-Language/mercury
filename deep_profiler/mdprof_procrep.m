@@ -115,10 +115,10 @@ print_selected_modules(ModuleReps, MaybeModules, !IO) :-
     ;
         MaybeModules = yes(Modules),
         list.foldl(
-            (pred(ModuleName::in, IO0::di, IO::uo) is det :-
-                ( map.search(ModuleReps, ModuleName, ModuleRep) ->
+            ( pred(ModuleName::in, IO0::di, IO::uo) is det :-
+                ( if map.search(ModuleReps, ModuleName, ModuleRep) then
                     print_module(ModuleRep, IO0, IO)
-                ;
+                else
                     IO = IO0
                 )
             ), Modules, !IO)

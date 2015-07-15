@@ -51,9 +51,9 @@
 
 make_pipe_cmd(PipeName) = Cmd :-
     mkfifo_cmd(CmdName),
-    ( CmdName = "" ->
+    ( if CmdName = "" then
         unexpected($module, $pred, "do not know what command to use")
-    ;
+    else
         string.format("%s %s", [s(CmdName), s(PipeName)], Cmd)
     ).
 
@@ -89,19 +89,19 @@ server_name_2(ServerName, !IO) :-
     io.call_system(ServerRedirectCmd, Res1, !IO),
     (
         Res1 = ok(ResCode),
-        ( ResCode = 0 ->
+        ( if ResCode = 0 then
             io.open_input(TmpFile, TmpRes, !IO),
             (
                 TmpRes = ok(TmpStream),
                 io.read_file_as_string(TmpStream, TmpReadRes, !IO),
                 (
                     TmpReadRes = ok(ServerNameNl),
-                    (
+                    ( if
                         string.remove_suffix(ServerNameNl, "\n",
                             ServerNamePrime)
-                    ->
+                    then
                         ServerName = ServerNamePrime
-                    ;
+                    else
                         unexpected($module, $pred, "malformed server name")
                     )
                 ;
@@ -115,7 +115,7 @@ server_name_2(ServerName, !IO) :-
                     "cannot open file to find the server's name")
             ),
             io.remove_file(TmpFile, _, !IO)
-        ;
+        else
             unexpected($module, $pred,
                 "cannot execute cmd to find the server's name")
         )
