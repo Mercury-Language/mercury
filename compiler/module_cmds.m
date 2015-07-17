@@ -768,10 +768,14 @@ create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     (
         ( TargetEnvType = env_type_posix
         ; TargetEnvType = env_type_cygwin
-        ; TargetEnvType = env_type_msys
         ),
         create_launcher_shell_script(Globals, MainModuleName,
             write_java_shell_script(Globals, MainModuleName, JarFileName),
+            Succeeded, !IO)
+    ;
+        TargetEnvType = env_type_msys,
+        create_launcher_shell_script(Globals, MainModuleName,
+            write_java_msys_shell_script(Globals, MainModuleName, JarFileName),
             Succeeded, !IO)
     ;
         % XXX should create a .ps1 file on PowerShell.
@@ -806,6 +810,48 @@ write_java_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
         "   '') SEP=':' ;;\n",
         "   *)  SEP=';' ;;\n",
         "esac\n",
+        "CLASSPATH=", ClassPath, "\n",
+        "export CLASSPATH\n",
+        "JAVA=${JAVA:-", Java, "}\n",
+        "exec \"$JAVA\" jmercury.", ClassName, " \"$@\"\n"
+    ], !IO).
+
+    % For the MSYS version of the Java launcher script, there are a few
+    % differences:
+    %
+    % 1. The value of the CLASSPATH environment variable we construct for the
+    % Java interpreter must contain Windows style paths.
+    %
+    % 2. We use forward slashes as directory separators rather than back
+    % slashes since the latter require escaping inside the shell script.
+    %
+    % 3. The path separator character, ';', in the value of CLASSPATH must be
+    % escaped because it is a statement separator in sh.
+    %
+    % 4. The path of the Java interpreter must be a Unix style path as it will
+    % be invoked directly from the MSYS shell.
+    %
+:- pred write_java_msys_shell_script(globals::in, module_name::in,
+    file_name::in, io.text_output_stream::in, io::di, io::uo) is det.
+
+write_java_msys_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
+    get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
+    globals.lookup_accumulating_option(Globals, java_classpath,
+        UserClasspath),
+    % We prepend the .class files' directory and the current CLASSPATH.
+    Java_Incl_Dirs0 = ["\"$DIR/" ++ JarFileName ++ "\""] ++
+        MercuryStdLibs ++ ["$CLASSPATH" | UserClasspath],
+    Java_Incl_Dirs = list.map(func(S) = string.replace_all(S, "\\", "/"),
+        Java_Incl_Dirs0),
+    ClassPath = string.join_list("\\;", Java_Incl_Dirs),
+
+    globals.lookup_string_option(Globals, java_interpreter, Java),
+    mangle_sym_name_for_java(MainModuleName, module_qual, ".", ClassName),
+
+    io.write_strings(Stream, [
+        "#!/bin/sh\n",
+        "DIR=${0%/*}\n",
+        "DIR=$( cd \"${DIR}\" && pwd -W )\n",
         "CLASSPATH=", ClassPath, "\n",
         "export CLASSPATH\n",
         "JAVA=${JAVA:-", Java, "}\n",
@@ -1052,7 +1098,7 @@ write_erlang_shell_script(Globals, MainModuleName, Stream, !IO) :-
     io.text_output_stream::in, io::di, io::uo) is det.
 
 write_erlang_batch_file(Globals, MainModuleName, Stream, !IO) :-
-    % XXX It should be possibe to avoid some of the code duplication with
+    % XXX It should be possible to avoid some of the code duplication with
     % the Unix version above.
     globals.lookup_string_option(Globals, erlang_object_file_extension,
         BeamExt),
