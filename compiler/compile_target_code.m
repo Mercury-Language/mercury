@@ -2652,12 +2652,10 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
             )
         then
             ScriptExt = get_launcher_script_extension(Globals),
-            module_name_to_file_name(Globals, ModuleName, "",
-                do_not_create_dirs, OutputScriptName0, !IO),
-            OutputScriptName = OutputScriptName0 ++ ScriptExt,
-            module_name_to_file_name(NoSubdirGlobals, ModuleName, "",
-                do_not_create_dirs, UserDirScriptName0, !IO),
-            UserDirScriptName = UserDirScriptName0 ++ ScriptExt,
+            module_name_to_file_name(Globals, ModuleName, ScriptExt,
+                do_not_create_dirs, OutputScriptName, !IO),
+            module_name_to_file_name(NoSubdirGlobals, ModuleName, ScriptExt,
+                do_not_create_dirs, UserDirScriptName, !IO),
 
             same_timestamp(OutputScriptName, UserDirScriptName,
                 ScriptSameTimestamp, !IO),
