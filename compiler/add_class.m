@@ -380,10 +380,9 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
         (
             MaybePredOrFunc = yes(PredOrFunc),
             Status = item_status(ImportStatus, _),
-            IsClassMethod = yes,
             module_add_mode(VarSet, PredName, Modes, MaybeDet, ImportStatus,
-                Context, PredOrFunc, IsClassMethod, PredIdProcId, !ModuleInfo,
-                !Specs),
+                Context, PredOrFunc, is_a_class_method, PredIdProcId,
+                !ModuleInfo, !Specs),
             MaybePredIdProcId = yes(PredIdProcId)
         ;
             MaybePredOrFunc = no,

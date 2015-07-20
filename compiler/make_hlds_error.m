@@ -18,12 +18,10 @@
 :- module hlds.make_hlds.make_hlds_error.
 :- interface.
 
-:- import_module libs.globals.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -44,9 +42,9 @@
     list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred maybe_undefined_pred_error(globals::in, sym_name::in, int::in,
-    pred_or_func::in, import_status::in, bool::in, prog_context::in,
-    list(format_component)::in,
+:- pred maybe_undefined_pred_error(module_info::in, sym_name::in, int::in,
+    pred_or_func::in, import_status::in, maybe_class_method::in,
+    prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Emit an error if something is exported. (Used to check for
@@ -68,11 +66,17 @@
 
 :- import_module check_hlds.mode_errors.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_module.
+:- import_module hlds.pred_table.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
+:- import_module bool.
+:- import_module set.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -168,7 +172,9 @@ mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
     [words(":- mode"), words(mode_decl_to_string(ProcId, PredInfo)),
     suffix(".")].
 
-maybe_undefined_pred_error(Globals, Name, Arity, PredOrFunc, Status,
+%----------------------------------------------------------------------------%
+
+maybe_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
         IsClassMethod, Context, DescPieces, !Specs) :-
     % This is not considered an unconditional error anymore:
     % if there is no `:- pred' or `:- func' declaration,
@@ -179,23 +185,88 @@ maybe_undefined_pred_error(Globals, Name, Arity, PredOrFunc, Status,
 
     DefinedInThisModule = status_defined_in_this_module(Status),
     IsExported = status_is_exported(Status),
+    module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, infer_types, InferTypes),
     (
         DefinedInThisModule = yes,
         IsExported = no,
-        IsClassMethod = no,
+        IsClassMethod = is_not_a_class_method,
         InferTypes = yes
     ->
         true
     ;
-        Pieces = [words("Error:") | DescPieces] ++ [words("for"),
+        PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
+        MainPieces = [words("Error:") | DescPieces] ++ [words("for"),
             simple_call(simple_call_id(PredOrFunc, Name, Arity)), nl,
             words("without corresponding"),
-            decl(pred_or_func_to_str(PredOrFunc)), words("declaration."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            decl(PredOrFuncStr), words("declaration."), nl],
+        MainMsg = simple_msg(Context, [always(MainPieces)]),
+
+        module_info_get_predicate_table(ModuleInfo, PredicateTable),
+        predicate_table_lookup_pf_sym(PredicateTable,
+            is_fully_qualified, PredOrFunc, Name, AllArityPredIds),
+        gather_porf_arities(ModuleInfo, AllArityPredIds, PredOrFunc,
+            PorFArities),
+        set.delete(Arity, PorFArities, OtherArities),
+        % The sorting is to make the error message easier to read.
+        % There should not be any duplicates among OtherArities, but better
+        % safe than sorry ...
+        set.to_sorted_list(OtherArities, OtherAritiesList),
+        FullPredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
+        (
+            OtherAritiesList = [],
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [MainMsg])
+        ;
+            (
+                OtherAritiesList = [OtherArity],
+                OtherAritiesPieces = [words("However, a"),
+                    words(FullPredOrFuncStr), words("of that name"),
+                    words("does exist with arity"), int_fixed(OtherArity),
+                    suffix("."), nl]
+            ;
+                OtherAritiesList = [_, _ | _],
+                OtherAritiesPieces = [words("However,"),
+                    words(FullPredOrFuncStr), suffix("s"),
+                    words("of that name do exist with arities") |
+                    component_list_to_pieces(
+                        list.map(wrap_int_fixed, OtherAritiesList))] ++
+                    [suffix("."), nl]
+            ),
+            OtherAritiesMsg = simple_msg(Context,
+                [always(OtherAritiesPieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                [MainMsg, OtherAritiesMsg])
+        ),
         !:Specs = [Spec | !.Specs]
     ).
+
+    % Given a list of pred ids, find out which of them represent
+    % procedures which have the right pred_or_func field (WantedPorF),
+    % and return their original arities.
+    %
+:- pred gather_porf_arities(module_info::in, list(pred_id)::in,
+    pred_or_func::in, set(int)::out) is det.
+
+gather_porf_arities(_ModuleInfo, [], _WantedPorF, set.init).
+gather_porf_arities(ModuleInfo, [PredId | PredIds], WantedPorF,
+        !:PorFArities) :-
+    gather_porf_arities(ModuleInfo, PredIds, WantedPorF, !:PorFArities),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    PorF = pred_info_is_pred_or_func(PredInfo),
+    ( if PorF = WantedPorF then
+        pred_info_get_orig_arity(PredInfo, OrigArity),
+        adjust_func_arity(PorF, OrigArity, Arity),
+        set.insert(Arity, !PorFArities)
+    else
+        true
+    ).
+
+:- func wrap_int_fixed(int) = format_component.
+
+wrap_int_fixed(N) = int_fixed(N).
+
+%----------------------------------------------------------------------------%
 
 error_is_exported(Context, ItemPieces, !Specs) :-
     Pieces = [words("Error:")] ++ ItemPieces ++

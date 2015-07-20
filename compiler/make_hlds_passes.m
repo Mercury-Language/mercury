@@ -605,9 +605,8 @@ add_pass_1_mode_decl(ItemModeDecl, Status, !ModuleInfo, !Specs) :-
     (
         MaybePredOrFunc = yes(PredOrFunc),
         Status = item_status(ImportStatus, _),
-        IsClassMethod = no,
         module_add_mode(VarSet, PredName, Modes, MaybeDet, ImportStatus,
-            Context, PredOrFunc, IsClassMethod, _, !ModuleInfo, !Specs)
+            Context, PredOrFunc, is_not_a_class_method, _, !ModuleInfo, !Specs)
     ;
         MaybePredOrFunc = no,
         % equiv_type.m should have either set the pred_or_func

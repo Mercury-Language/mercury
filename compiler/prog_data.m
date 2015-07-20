@@ -1119,7 +1119,7 @@ default_export_enum_attributes =
 
 :- type class_interface
     --->    class_interface_abstract
-    ;       class_interface_concrete(class_methods).
+    ;       class_interface_concrete(list(class_method)).
 
 :- type instance_method
     --->    instance_method(
@@ -1150,6 +1150,10 @@ default_export_enum_attributes =
 
 :- func prog_constraint_get_class(prog_constraint) = class_name.
 :- func prog_constraint_get_arg_types(prog_constraint) = list(mer_type).
+
+:- type maybe_class_method
+    --->    is_not_a_class_method
+    ;       is_a_class_method.
 
 :- implementation.
 

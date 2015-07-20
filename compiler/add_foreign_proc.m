@@ -258,8 +258,8 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
     (
         PredIds = [],
         preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-            PredName, Arity, PredOrFunc, Status, no, Context,
-            origin_user(PredName),
+            PredName, Arity, PredOrFunc, Status, is_not_a_class_method,
+            Context, origin_user(PredName),
             [pragma_decl("foreign_proc"), words("declaration")],
             PredId, !Specs)
     ;

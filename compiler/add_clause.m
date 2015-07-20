@@ -136,9 +136,9 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                     NewPredId)
             ;
                 preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                    PredName, Arity, PredOrFunc, Status, no, Context,
-                    origin_user(PredName), [words("clause")], NewPredId,
-                    !Specs)
+                    PredName, Arity, PredOrFunc, Status, is_not_a_class_method,
+                    Context, origin_user(PredName), [words("clause")],
+                    NewPredId, !Specs)
             ),
             MaybePredId = yes(NewPredId)
         ),

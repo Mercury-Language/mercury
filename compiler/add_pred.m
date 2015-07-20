@@ -23,7 +23,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.status.
 
-:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -48,7 +47,7 @@
     %
 :- pred module_add_mode(inst_varset::in, sym_name::in, list(mer_mode)::in,
     maybe(determinism)::in, import_status::in, prog_context::in,
-    pred_or_func::in, bool::in, pair(pred_id, proc_id)::out,
+    pred_or_func::in, maybe_class_method::in, pair(pred_id, proc_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -59,8 +58,8 @@
     %
 :- pred preds_add_implicit_report_error(module_info::in, module_info::out,
     module_name::in, sym_name::in, arity::in, pred_or_func::in,
-    import_status::in, bool::in, prog_context::in, pred_origin::in,
-    list(format_component)::in, pred_id::out,
+    import_status::in, maybe_class_method::in, prog_context::in,
+    pred_origin::in, list(format_component)::in, pred_id::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred preds_add_implicit_for_assertion(module_info::in, module_info::out,
@@ -138,9 +137,9 @@ module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
     (
         MaybeModes = yes(Modes),
         ( check_marker(Markers, marker_class_method) ->
-            IsClassMethod = yes
+            IsClassMethod = is_a_class_method
         ;
-            IsClassMethod = no
+            IsClassMethod = is_not_a_class_method
         ),
         module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, Context,
             PredOrFunc, IsClassMethod, PredProcId, !ModuleInfo, !Specs),
@@ -450,7 +449,7 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
     PredProcId = PredId - ProcId.
 
 :- pred module_do_add_mode(inst_varset::in, arity::in, list(mer_mode)::in,
-    maybe(determinism)::in, bool::in, prog_context::in,
+    maybe(determinism)::in, maybe_class_method::in, prog_context::in,
     pred_info::in, pred_info::out, proc_id::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -466,11 +465,11 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
         PredName = pred_info_name(!.PredInfo),
         PredSymName = qualified(PredModule, PredName),
         (
-            IsClassMethod = yes,
+            IsClassMethod = is_a_class_method,
             unspecified_det_for_method(PredSymName, Arity, PredOrFunc,
                 MContext, !Specs)
         ;
-            IsClassMethod = no,
+            IsClassMethod = is_not_a_class_method,
             IsExported = status_is_exported(ImportStatus),
             (
                 IsExported = yes,
@@ -554,8 +553,7 @@ preds_add_implicit_report_error(!ModuleInfo, ModuleName, PredName, Arity,
         PredOrFunc, Status, IsClassMethod, Context, Origin, DescPieces,
         PredId, !Specs) :-
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    module_info_get_globals(!.ModuleInfo, Globals),
-    maybe_undefined_pred_error(Globals, PredName, Arity, PredOrFunc,
+    maybe_undefined_pred_error(!.ModuleInfo, PredName, Arity, PredOrFunc,
         Status, IsClassMethod, Context, DescPieces, !Specs),
     (
         PredOrFunc = pf_function,

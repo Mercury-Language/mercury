@@ -79,8 +79,8 @@ module_add_pragma_tabled(TabledInfo, Context, Status,
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [pragma_decl(EvalMethodStr), words("declaration")],
             preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                PredName, Arity, PredOrFunc, Status, no, Context,
-                origin_user(PredName), DescPieces, PredId, !Specs),
+                PredName, Arity, PredOrFunc, Status, is_not_a_class_method,
+                Context, origin_user(PredName), DescPieces, PredId, !Specs),
             PredIds = [PredId]
         ;
             PredIds0 = [_ | _],
@@ -95,8 +95,8 @@ module_add_pragma_tabled(TabledInfo, Context, Status,
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [pragma_decl(EvalMethodStr), words("declaration")],
             preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                PredName, Arity, pf_predicate, Status, no, Context,
-                origin_user(PredName), DescPieces, PredId, !Specs),
+                PredName, Arity, pf_predicate, Status, is_not_a_class_method,
+                Context, origin_user(PredName), DescPieces, PredId, !Specs),
             PredIds = [PredId]
         ;
             PredIds0 = [_ | _],
