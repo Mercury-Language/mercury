@@ -157,6 +157,13 @@
 :- mode member_index0(in, in, out) is nondet.
 :- mode member_index0(out, in, out) is nondet.
 
+    % member_indexes0(Elem, List, Indexes).
+    %
+    % True iff `List' contains `Elem' at the zero-based indexes `Indexes'.
+    % `Indexes' will be sorted.
+    %
+:- pred member_indexes0(T::in, list(T)::in, list(int)::out) is det.
+
     % contains(List, Elem) iff member(Elem, List).
     % Sometimes you need the arguments in this order, because you want to
     % construct a closure with only the list.
@@ -2034,6 +2041,21 @@ list.member(Element, List, SubList) :-
 list.member_index0(X, [X | _], 0).
 list.member_index0(X, [_ | Xs], Index + 1) :-
     list.member_index0(X, Xs, Index).
+
+list.member_indexes0(X, List, Indexes) :-
+    list.member_indexes0_loop(X, 0, List, Indexes).
+
+:- pred member_indexes0_loop(T::in, int::in, list(T)::in,
+    list(int)::out) is det.
+
+list.member_indexes0_loop(_X, _I, [], []).
+list.member_indexes0_loop(X, I, [H | T], Indexes) :-
+    list.member_indexes0_loop(X, I + 1, T, IndexesTail),
+    ( if X = H then
+        Indexes = [I | IndexesTail]
+    else
+        Indexes = IndexesTail
+    ).
 
 list.contains(List, Elem) :-
     list.member(Elem, List).

@@ -152,7 +152,6 @@
 :- import_module io.
 :- import_module pair.
 :- import_module require.
-:- import_module solutions.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -802,32 +801,36 @@ call_var_first_use(AtomicGoal, BoundVars, RevGoalPath, StaticInfo,
         Vars = [HOVar | Args]
     ),
     ( if list.member(Var, Vars) then
-        solutions(
-            (pred(TimeI::out) is nondet :-
-                (
-                    consume_ho_arg(AtomicGoal, Var, TimeI)
-                ;
-                    call_args_first_use(Args, Cost, StaticInfo,
-                        CostAndCallees, TimeI)
-                )
-            ), Times),
         (
-            Times = [],
-            unexpected($module, $pred,
-                "no solutions for variable first use time")
+            ( AtomicGoal = higher_order_call_rep(_, _)
+            ; AtomicGoal = method_call_rep(_, _, _)
+            ),
+            % Conservative assumption, but we *could* do better, since we
+            % can find out what procedures are actually called at this call
+            % site.
+            FirstTime = 0.0
         ;
-            Times = [FirstTime | OtherTimes],
-            FoundFirstUse = found_first_use(FirstTime + CostBefore),
-            ( if
-                VarUseType = var_use_production,
-                OtherTimes = [_ | _]
-            then
+            AtomicGoal = plain_call_rep(_, _, _),
+            call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Times),
+            (
+                Times = [],
                 unexpected($module, $pred,
-                    "multiple solutions for variable production time")
-            else
-                true
+                    "no solutions for variable first use time")
+            ;
+                Times = [FirstTime | LaterTimes],
+                ( if
+                    VarUseType = var_use_production,
+                    LaterTimes = [_ | _]
+                then
+                    unexpected($module, $pred,
+                        "multiple solutions for variable production time")
+                else
+                    true
+                )
             )
         ),
+
+        FoundFirstUse = found_first_use(CostBefore + FirstTime),
 
         % Assertions.
         ( if
@@ -871,33 +874,29 @@ consume_ho_arg(method_call_rep(Var, _, _), Var, 0.0).
 
 :- pred call_args_first_use(list(var_rep)::in, float::in,
     var_first_use_static_info::in(var_first_use_static_info),
-    cost_and_callees::in, float::out) is nondet.
+    cost_and_callees::in, list(float)::out) is det.
 
-call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Time) :-
+call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Times) :-
     StaticInfo = var_first_use_static_info(CliquePtr, _CostMap,
         _RecCostMap, _ContainingGoalMap, _CoverageArray, Var, VarUseOptions,
         CallStack, RecursionType, CurDepth, _RecInfo),
     VarUseType = VarUseOptions ^ vuo_var_use_type,
     HigherOrder = CostAndCallees ^ cac_call_site_is_ho,
-    Callees = CostAndCallees ^ cac_callees,
-    member_index0(Var, Args, ArgNum),
     (
         HigherOrder = first_order_call,
+        Callees = CostAndCallees ^ cac_callees,
+        list.member_indexes0(Var, Args, ArgNums),
         ( if set.empty(Callees) then
-            % There are no callees, this code is never called.
-            pessimistic_var_use_time(VarUseType, Cost, Time)
+            % There are no callees; this code is never called.
+            pessimistic_var_use_time(VarUseType, Cost, Time),
+            Times = [Time]
         else if set.is_singleton(Callees, SingletonCallee) then
             CSDPtr = SingletonCallee ^ c_csd,
-            get_call_site_dynamic_var_use_info_rec_level(CliquePtr, CSDPtr,
-                ArgNum, RecursionType, yes(CurDepth), Cost, CallStack,
-                VarUseOptions, MaybeVarUseInfo),
-            (
-                MaybeVarUseInfo = ok(VarUseInfo),
-                VarUseInfo = var_use_info(Time, _, _)
-            ;
-                MaybeVarUseInfo = error(_),
-                pessimistic_var_use_time(VarUseType, Cost, Time)
-            )
+            list.map(
+                get_call_site_dynamic_var_use_time(CliquePtr, CSDPtr,
+                    RecursionType, CurDepth, Cost, CallStack, VarUseOptions),
+                ArgNums, Times0),
+            list.sort_and_remove_dups(Times0, Times)
         else
             unexpected($module, $pred,
                 "wrong number of callees for normal call site")
@@ -906,6 +905,27 @@ call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Time) :-
         HigherOrder = higher_order_call,
         % The compiler cannot push signals or waits into higher order calls.
         % Therefore we assume a pessimistic default here.
+        pessimistic_var_use_time(VarUseType, Cost, Time),
+        Times = [Time]
+    ).
+
+:- pred get_call_site_dynamic_var_use_time(clique_ptr::in,
+    call_site_dynamic_ptr::in, recursion_type::in,
+    recursion_depth::in, float::in, set(proc_dynamic_ptr)::in,
+    var_use_options::in, int::in, float::out) is det.
+
+get_call_site_dynamic_var_use_time(CliquePtr, CSDPtr,
+        RecursionType, CurDepth, Cost, CallStack,
+        VarUseOptions, ArgNum, Time) :-
+    get_call_site_dynamic_var_use_info_rec_level(CliquePtr, CSDPtr,
+        ArgNum, RecursionType, yes(CurDepth), Cost, CallStack,
+        VarUseOptions, MaybeVarUseInfo),
+    (
+        MaybeVarUseInfo = ok(VarUseInfo),
+        VarUseInfo = var_use_info(Time, _, _)
+    ;
+        MaybeVarUseInfo = error(_),
+        VarUseType = VarUseOptions ^ vuo_var_use_type,
         pessimistic_var_use_time(VarUseType, Cost, Time)
     ).
 

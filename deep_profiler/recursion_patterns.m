@@ -65,7 +65,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 :- import_module string.
 :- import_module unit.
 
@@ -834,7 +833,7 @@ rec_types_freq_build_histogram(Deep, _, CliquePtr, !Histogram) :-
     (
         MaybeCliqueRecursionReport = ok(CliqueRecursionReport),
         Type = CliqueRecursionReport ^ crr_recursion_type,
-        solutions(recursion_type_to_simple_type(Type), SimpleTypes)
+        recursion_type_to_simple_type(Type, SimpleTypes)
     ;
         MaybeCliqueRecursionReport = error(Error),
         SimpleTypes = [rts_error(Error), rts_total_error_instances]
@@ -959,20 +958,21 @@ update_procs_map(FirstProcInfo, !Map) :-
     map.set(PsPtr, ProcFreqData, !Map).
 
 :- pred recursion_type_to_simple_type(recursion_type::in,
-    recursion_type_simple::out) is multi.
+    list(recursion_type_simple)::out) is det.
 
-recursion_type_to_simple_type(rt_not_recursive, rts_not_recursive).
-recursion_type_to_simple_type(rt_single(_, _, _, _, _), rts_single).
+recursion_type_to_simple_type(rt_not_recursive, [rts_not_recursive]).
+recursion_type_to_simple_type(rt_single(_, _, _, _, _), [rts_single]).
 recursion_type_to_simple_type(rt_divide_and_conquer(_, _),
-    rts_divide_and_conquer).
+    [rts_divide_and_conquer]).
 recursion_type_to_simple_type(rt_mutual_recursion(NumProcs),
-    rts_mutual_recursion(NumProcs)).
-recursion_type_to_simple_type(rt_other(Levels), rts_other(SimpleLevels)) :-
+    [rts_mutual_recursion(NumProcs)]).
+recursion_type_to_simple_type(rt_other(Levels), [rts_other(SimpleLevels)]) :-
     SimpleLevels = set.from_list(
         map((func(Level) = Level ^ rlr_level), Levels)).
-recursion_type_to_simple_type(rt_errors(Errors), rts_error(Error)) :-
-    member(Error, Errors).
-recursion_type_to_simple_type(rt_errors(_), rts_total_error_instances).
+recursion_type_to_simple_type(rt_errors(Errors), SimpleTypes) :-
+    SimpleTypes =
+        list.map((func(E) = rts_error(E)), Errors)
+        ++ [rts_total_error_instances].
 
 :- pred finalize_histogram(deep::in, int::in,
     map(recursion_type_simple, recursion_type_raw_freq_data)::in,

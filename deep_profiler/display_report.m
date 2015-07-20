@@ -57,7 +57,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 :- import_module string.
 :- import_module unit.
 
@@ -3882,52 +3881,50 @@ set_box_tables(Box, !Prefs) :-
     = display_item.
 
 proc_reports_controls(Prefs, Proc, NotCmd) = ControlsItem :-
-    solutions((pred(Control::out) is nondet :-
-            (
-                Cmd = deep_cmd_proc(Proc),
-                Label = "Procedure",
-                Developer = no
-            ;
-                Cmd = deep_cmd_static_procrep_coverage(Proc),
-                Label = "Coverage annotated procedure representation",
-                % XXX: Should this option be considered a developer-only
-                % option?
-                Developer = no
-            ;
-                Cmd = deep_cmd_dump_proc_static(Proc),
-                Label = "Unprocessed proc static data",
-                Developer = yes
-            ),
-            Cmd \= NotCmd,
-            make_control(yes(Prefs), Cmd, Label, Developer, Control)
-        ), ProcReportControls),
+    Makers = [
+        control_maker(deep_cmd_proc(Proc),
+            "Procedure", no),
+        % XXX: Should procrep_coverage be a developer-only option?
+        control_maker(deep_cmd_static_procrep_coverage(Proc),
+            "Coverage annotated procedure representation", no),
+        control_maker(deep_cmd_dump_proc_static(Proc),
+            "Unprocessed proc static data", yes)
+    ],
+    make_controls(Prefs, NotCmd, Makers, ProcReportControls),
     ControlsItem = display_list(list_class_vertical_no_bullets,
         yes("Related procedure reports:"), ProcReportControls).
 
 :- func clique_reports_controls(preferences, clique_ptr, cmd) = display_item.
 
-clique_reports_controls(Perfs, CliquePtr, NotCmd) = ControlsItem :-
-    MakeControls =
-        ( pred(Control::out) is nondet :-
-            (
-                Cmd = deep_cmd_clique(CliquePtr),
-                Label = "Clique",
-                Developer = no
-            ;
-                Cmd = deep_cmd_clique_recursive_costs(CliquePtr),
-                Label = "Clique's recursion information",
-                Developer = yes
-            ;
-                Cmd = deep_cmd_dump_clique(CliquePtr),
-                Label = "Unprocessed clique data",
-                Developer = yes
-            ),
-            Cmd \= NotCmd,
-            make_control(yes(Perfs), Cmd, Label, Developer, Control)
-        ),
-    solutions(MakeControls, CliqueReportControls),
+clique_reports_controls(Prefs, CliquePtr, NotCmd) = ControlsItem :-
+    Makers = [
+        control_maker(deep_cmd_clique(CliquePtr),
+            "Clique", no),
+        control_maker(deep_cmd_clique_recursive_costs(CliquePtr),
+            "Clique's recursion information", yes),
+        control_maker(deep_cmd_dump_clique(CliquePtr),
+            "Unprocessed clique data", yes)
+    ],
+    make_controls(Prefs, NotCmd, Makers, CliqueReportControls),
     ControlsItem = display_list(list_class_vertical_no_bullets,
         yes("Related clique reports:"), CliqueReportControls).
+
+:- type control_maker
+    --->    control_maker(cmd, string, bool).
+
+:- pred make_controls(preferences::in, cmd::in, list(control_maker)::in,
+    list(display_item)::out) is det.
+
+make_controls(_Prefs, _NotCmd, [], []).
+make_controls(Prefs, NotCmd, [Maker | Makers], Items) :-
+    make_controls(Prefs, NotCmd, Makers, TailItems),
+    Maker = control_maker(Cmd, Label, Developer),
+    ( if Cmd = NotCmd then
+        Items = TailItems
+    else
+        make_control(yes(Prefs), Cmd, Label, Developer, Control),
+        Items = [Control | TailItems]
+    ).
 
 %-----------------------------------------------------------------------------%
 %

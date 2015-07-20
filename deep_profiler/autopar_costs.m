@@ -86,7 +86,6 @@
 :- import_module io.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 :- import_module string.
 
 %----------------------------------------------------------------------------%
@@ -210,7 +209,7 @@ atomic_goal_build_use_map(AtomicGoal, RevGoalPath, Info, VarUseType, Var,
 :- func compute_var_use_lazy(implicit_parallelism_info, reverse_goal_path,
     var_rep, list(var_rep), var_use_type) = var_use_info.
 
-compute_var_use_lazy(Info, RevGoalPath, Var, Args, VarUseType) = Use :-
+compute_var_use_lazy(Info, RevGoalPath, Var, Args, VarUseType) = EarliestUse :-
     CliquePtr = Info ^ ipi_clique,
     map.lookup(Info ^ ipi_call_sites, RevGoalPath, CostAndCallee),
     ( if
@@ -222,52 +221,63 @@ compute_var_use_lazy(Info, RevGoalPath, Var, Args, VarUseType) = Use :-
         Cost = CostAndCallee ^ cac_cost
     ),
 
-    solutions(
-        compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee,
-            Cost, VarUseType),
-        Uses),
+    compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee,
+        Cost, VarUseType, Uses),
     (
         VarUseType = var_use_consumption,
-        Uses = [FirstUse | OtherUses],
-        list.foldl(earliest_use, OtherUses, FirstUse, Use)
+        (
+            Uses = [],
+            unexpected($module, $pred, "No uses")
+        ;
+            Uses = [FirstUse | OtherUses],
+            find_earliest_use(FirstUse, OtherUses, EarliestUse)
+        )
     ;
         ( VarUseType = var_use_production
         ; VarUseType = var_use_other
         ),
         (
-            Uses = [Use]
+            Uses = [],
+            unexpected($module, $pred, "No uses")
+        ;
+            Uses = [EarliestUse]
         ;
             Uses = [_, _ | _],
-            unexpected($module, $pred, "Too many solutions ")
+            unexpected($module, $pred, "Too many uses")
         )
     ).
 
-:- pred earliest_use(var_use_info::in, var_use_info::in, var_use_info::out)
-    is det.
+:- pred find_earliest_use(var_use_info::in, list(var_use_info)::in,
+    var_use_info::out) is det.
 
-earliest_use(A, B, Earliest) :-
-    TimeA = A ^ vui_cost_until_use,
-    TimeB = B ^ vui_cost_until_use,
-    ( if TimeA < TimeB then
-        Earliest = A
+find_earliest_use(CurEarliest, [], CurEarliest).
+find_earliest_use(CurEarliest, [HeadVarUse | TailVarUses], Earliest) :-
+    TimeCur = CurEarliest ^ vui_cost_until_use,
+    TimeHead = HeadVarUse ^ vui_cost_until_use,
+    ( if TimeCur < TimeHead then
+        NextEarliest = CurEarliest
     else
-        Earliest = B
-    ).
+        NextEarliest = HeadVarUse
+    ),
+    find_earliest_use(NextEarliest, TailVarUses, Earliest).
 
 :- pred compute_var_use_lazy_arg(implicit_parallelism_info::in, var_rep::in,
     list(var_rep)::in, cost_and_callees::in, cs_cost_csq::in, var_use_type::in,
-    var_use_info::out) is multi.
+    list(var_use_info)::out) is det.
 
 compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee, Cost, VarUseType,
-        Use) :-
+        Uses) :-
     ( if 0.0 < cs_cost_get_calls(Cost) then
         CostPercall = cs_cost_get_percall(Cost),
-        ( if list.member_index0(Var, Args, ArgNum) then
+        list.member_indexes0(Var, Args, ArgNums),
+        (
+            ArgNums = [_ | _],
             HigherOrder = CostAndCallee ^ cac_call_site_is_ho,
             (
                 HigherOrder = higher_order_call,
                 % We cannot push signals or waits into higher order calls.
-                pessimistic_var_use_info(VarUseType, CostPercall, Use)
+                pessimistic_var_use_info(VarUseType, CostPercall, Use),
+                Uses = [Use]
             ;
                 HigherOrder = first_order_call,
                 ( if
@@ -282,17 +292,16 @@ compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee, Cost, VarUseType,
                 RecursionType = Info ^ ipi_recursion_type,
                 recursion_type_get_interesting_parallelisation_depth(
                     RecursionType, MaybeCurDepth),
-                compute_var_use_2(Info, ArgNum, RecursionType, MaybeCurDepth,
-                    VarUseType, CostPercall, CSDPtr, Use, Messages),
-                trace [io(!IO)] (
-                    stderr_stream(Stderr, !IO),
-                    write_out_messages(Stderr, Messages, !IO)
-                )
+                list.map(
+                    compute_var_use_2(Info, RecursionType,
+                        MaybeCurDepth, VarUseType, CostPercall, CSDPtr),
+                    ArgNums, Uses0),
+                list.sort_and_remove_dups(Uses0, Uses)
             )
-        else
-            Use = var_use_info(0.0, CostPercall, VarUseType),
+        ;
+            ArgNums = [],
             ( if VarUseType = var_use_consumption then
-                true
+                Uses = [var_use_info(0.0, CostPercall, VarUseType)]
             else
                 unexpected($module, $pred,
                     "Var use type most be consumption if " ++
@@ -301,17 +310,16 @@ compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee, Cost, VarUseType,
         )
     else
         % This call site is never called.
-        pessimistic_var_use_info(VarUseType, 0.0, Use)
+        pessimistic_var_use_info(VarUseType, 0.0, Use),
+        Uses = [Use]
     ).
 
-:- pred compute_var_use_2(implicit_parallelism_info::in, int::in,
+:- pred compute_var_use_2(implicit_parallelism_info::in,
     recursion_type::in, maybe(recursion_depth)::in, var_use_type::in,
-    float::in, call_site_dynamic_ptr::in, var_use_info::out,
-    cord(message)::out) is det.
+    float::in, call_site_dynamic_ptr::in, int::in, var_use_info::out) is det.
 
-compute_var_use_2(Info, ArgNum, RecursionType, MaybeCurDepth, VarUseType, Cost,
-        CSDPtr, Use, !:Messages) :-
-    !:Messages = empty,
+compute_var_use_2(Info, RecursionType, MaybeCurDepth, VarUseType, Cost,
+        CSDPtr, ArgNum, Use) :-
     Deep = Info ^ ipi_deep,
     CliquePtr = Info ^ ipi_clique,
     implicit_par_info_intermodule_var_use(Info, FollowCallsAcrossModules),
@@ -326,7 +334,11 @@ compute_var_use_2(Info, ArgNum, RecursionType, MaybeCurDepth, VarUseType, Cost,
         pessimistic_var_use_info(VarUseType, Cost, Use),
         append_message(pl_csd(CSDPtr),
             warning_cannot_compute_first_use_time(Error),
-            !Messages)
+            cord.empty, Messages),
+        trace [io(!IO)] (
+            stderr_stream(Stderr, !IO),
+            write_out_messages(Stderr, Messages, !IO)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
