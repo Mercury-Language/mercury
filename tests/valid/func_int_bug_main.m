@@ -3,4 +3,5 @@
 %---------------------------------------------------------------------------%
 
 :- module func_int_bug_main.
+:- implementation.
 :- import_module func_int_bug.

@@ -4,7 +4,11 @@
 
 :- module implied_mode.
 
+:- interface.
+
 :- pred p(int::out, int::out) is det.
+
+:- implementation.
 
 p(5, 6).
 

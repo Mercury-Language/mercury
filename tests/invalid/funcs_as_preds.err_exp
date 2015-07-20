@@ -1,5 +1,10 @@
-funcs_as_preds.m:001: Warning: interface for module `funcs_as_preds' does not
-funcs_as_preds.m:001:   export anything.
+funcs_as_preds.m:012: Warning: interface for module `funcs_as_preds' does not
+funcs_as_preds.m:012:   export anything.
+funcs_as_preds.m:014: Error: module `funcs_as_preds' should start with either
+funcs_as_preds.m:014:   an `:- interface' or an `:- implementation'
+funcs_as_preds.m:014:   declaration.
+funcs_as_preds.m:014:   The following assumes that the missing declaration is
+funcs_as_preds.m:014:   an `:- implementation' declaration.
 funcs_as_preds.m:018: Error: clause for function `funcs_as_preds.null'/1
 funcs_as_preds.m:018:   without corresponding `:- func' declaration.
 funcs_as_preds.m:018: In clause for function `null'/1:

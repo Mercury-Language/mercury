@@ -18,7 +18,6 @@
 :- module hlds.make_hlds.make_hlds_error.
 :- interface.
 
-:- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.

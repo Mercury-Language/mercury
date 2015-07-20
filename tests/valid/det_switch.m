@@ -4,12 +4,19 @@
 %
 :- module det_switch.
 
-:- type enum ---> a ; b ; c.
+:- interface.
+
+:- type enum
+    --->    a
+    ;       b
+    ;       c.
 
 :- pred p(enum, int) is det.
 :- mode p(in, out) is det.
 :- mode p(out, in) is semidet.
 :- mode p(out, out) is multi.
+
+:- implementation.
 
 p(a, 1).
 p(b, 2).

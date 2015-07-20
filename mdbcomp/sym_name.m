@@ -99,6 +99,13 @@
     %
 :- pred sym_name_get_module_name(sym_name::in, module_name::out) is semidet.
 
+    % det_sym_name_get_module_name(SymName) = ModName:
+    %
+    % Given a symbol name, return the module qualifiers(s).
+    % Aborts if the symbol is unqualified.
+    %
+:- pred det_sym_name_get_module_name(sym_name::in, module_name::out) is det.
+
     % sym_name_get_module_name_default(SymName, DefaultModName, ModName):
     %
     % Given a symbol name, return the module qualifier(s).
@@ -116,12 +123,12 @@
 :- pred sym_name_get_module_name_default_name(sym_name::in, module_name::in,
     module_name::out, string::out) is det.
 
-    % match_sym_name(PartialSymName, CompleteSymName):
+    % partial_sym_name_matches_full(PartialSymName, CompleteSymName):
     %
     % Succeeds iff there is some sequence of module qualifiers
     % which when prefixed to PartialSymName gives CompleteSymName.
     %
-:- pred match_sym_name(sym_name::in, sym_name::in) is semidet.
+:- pred partial_sym_name_matches_full(sym_name::in, sym_name::in) is semidet.
 
     % remove_sym_name_prefix(SymName0, Prefix, SymName)
     % succeeds iff
@@ -187,6 +194,7 @@
 :- import_module int.
 :- import_module library.
 :- import_module list.
+:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -257,6 +265,10 @@ unqualify_name(qualified(_ModuleName, Name)) = Name.
 sym_name_get_module_name(unqualified(_), _) :- fail.
 sym_name_get_module_name(qualified(ModuleName, _), ModuleName).
 
+det_sym_name_get_module_name(unqualified(_), _) :-
+    unexpected($module, $pred, "unqualified sym_name").
+det_sym_name_get_module_name(qualified(ModuleName, _), ModuleName).
+
 sym_name_get_module_name_default(SymName, DefaultModuleName, ModuleName) :-
     (
         SymName = unqualified(_),
@@ -276,10 +288,19 @@ sym_name_get_module_name_default_name(SymName, DefaultModuleName, ModuleName,
 
 %-----------------------------------------------------------------------------%
 
-match_sym_name(qualified(Module1, Name), qualified(Module2, Name)) :-
-    match_sym_name(Module1, Module2).
-match_sym_name(unqualified(Name), unqualified(Name)).
-match_sym_name(unqualified(Name), qualified(_, Name)).
+partial_sym_name_matches_full(Partial, Full) :-
+    (
+        Partial = qualified(PartialModule, Name),
+        Full = qualified(FullModule, Name),
+        partial_sym_name_matches_full(PartialModule, FullModule)
+    ;
+        Partial = unqualified(Name),
+        (
+            Full = unqualified(Name)
+        ;
+            Full = qualified(_, Name)
+        )
+    ).
 
 remove_sym_name_prefix(SymName0, Prefix, SymName) :-
     (

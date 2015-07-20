@@ -3,7 +3,6 @@
 %---------------------------------------------------------------------------%
 
 :- module higher_order_syntax.
-:- import_module int.
 
 :- interface.
 :- import_module io.
@@ -23,6 +22,7 @@
 :- mode map_p(pred(in, out) is nondet, in, out) is nondet.
 
 :- implementation.
+:- import_module int.
 
 map_f(_, []) = [].
 map_f(F, [H0 | T0]) = [F(H0) | map_f(F, T0)].

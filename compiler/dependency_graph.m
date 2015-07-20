@@ -120,6 +120,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.status.
 
 :- import_module bool.
 :- import_module digraph.

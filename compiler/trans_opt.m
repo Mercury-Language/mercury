@@ -95,6 +95,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_error.
+:- import_module parse_tree.status.
 :- import_module transform_hlds.ctgc.
 :- import_module transform_hlds.ctgc.structure_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.
@@ -110,6 +111,7 @@
 :- import_module cord.
 :- import_module list.
 :- import_module set.
+:- import_module term.      % for term.context_init
 
 %-----------------------------------------------------------------------------%
 
@@ -198,10 +200,10 @@ grab_trans_opt_files(Globals, TransOptDeps, !Module, FoundError, !IO) :-
     maybe_flush_output(Verbose, !IO),
 
     read_trans_opt_files(Globals, TransOptDeps,
-        cord.empty, OptItems, [], OptSpecs, no, FoundError, !IO),
+        cord.empty, OptItemBlocksCord, [], OptSpecs, no, FoundError, !IO),
 
-    append_pseudo_decl(md_opt_imported, !Module),
-    module_and_imports_add_items(OptItems, !Module),
+    OptItemBlocks = cord.list(OptItemBlocksCord),
+    module_and_imports_add_item_blocks(OptItemBlocks, !Module),
     module_and_imports_add_specs(OptSpecs, !Module),
     % XXX why ignore any existing errors?
     module_and_imports_set_errors(set.init, !Module),
@@ -209,13 +211,13 @@ grab_trans_opt_files(Globals, TransOptDeps, !Module, FoundError, !IO) :-
     maybe_write_string(Verbose, "% Done.\n", !IO).
 
 :- pred read_trans_opt_files(globals::in, list(module_name)::in,
-    cord(item)::in, cord(item)::out,
+    cord(aug_item_block)::in, cord(aug_item_block)::out,
     list(error_spec)::in, list(error_spec)::out,
     bool::in, bool::out, io::di, io::uo) is det.
 
-read_trans_opt_files(_, [], !Items, !Specs, !Error, !IO).
-read_trans_opt_files(Globals, [Import | Imports], !Items, !Specs, !Error,
-        !IO) :-
+read_trans_opt_files(_, [], !OptItemBlocks, !Specs, !Error, !IO).
+read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
+        !Specs, !Error, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
     maybe_write_string(VeryVerbose,
@@ -228,15 +230,21 @@ read_trans_opt_files(Globals, [Import | Imports], !Items, !Specs, !Error,
 
     module_name_to_search_file_name(Globals, Import, ".trans_opt", FileName,
         !IO),
-    actually_read_opt_file(Globals, FileName, Import, NewItems, NewSpecs,
-        NewError, !IO),
+    actually_read_module_opt(ofk_trans_opt, Globals, FileName, Import,
+        ParseTreeOpt, OptSpecs, OptError, !IO),
     maybe_write_string(VeryVerbose, " done.\n", !IO),
-    !:Specs = NewSpecs ++ !.Specs,
+    !:Specs = OptSpecs ++ !.Specs,
     intermod.update_error_status(Globals, trans_opt_file, FileName,
-        NewSpecs, !Specs, NewError, !Error),
+        OptSpecs, !Specs, OptError, !Error),
     maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
-    !:Items = !.Items ++ cord.from_list(NewItems),
-    read_trans_opt_files(Globals, Imports, !Items, !Specs, !Error, !IO).
+
+    ParseTreeOpt = parse_tree_opt(OptModuleName, _OptFileKind, OptContext,
+        OptItems),
+    OptItemBlock = item_block(ams_opt_imported(OptModuleName),
+        OptContext, OptItems),
+    !:OptItemBlocks = cord.snoc(!.OptItemBlocks, OptItemBlock),
+    read_trans_opt_files(Globals, Imports, !OptItemBlocks,
+        !Specs, !Error, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.trans_opt.

@@ -86,16 +86,19 @@
 :- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.modules.        % for split_into_submodules;
-                                            % undesirable dependencies
+:- import_module parse_tree.modules.
+    % for split_into_compilation_units_perform_checks; undesirable dependency
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_error.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
+:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module cord.
 :- import_module list.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -203,30 +206,40 @@ insert_into_deps_map(ModuleImports, !DepsMap) :-
 :- pred read_dependencies(globals::in, module_name::in, maybe_search::in,
     list(module_and_imports)::out, io::di, io::uo) is det.
 
-read_dependencies(Globals, ModuleName, Search, ModuleImportsList, !IO) :-
-    read_module_ignore_errors(Globals, ModuleName, ".m",
-        "Getting dependencies for module", Search, do_not_return_timestamp,
-        Items0, Errors, FileName0, _, !IO),
+read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
+    % XXX If _SrcSpecs contains error messages, the parse tree may not be
+    % complete, and the rest of this predicate may work on incorrect data.
+    read_module_src(Globals, "Getting dependencies for module",
+        ignore_errors, Search, ModuleName, FileName0,
+        always_read_module(dont_return_timestamp), _,
+        ParseTreeSrc0, _SrcSpecs, Errors, !IO),
+    ParseTreeSrc0 = parse_tree_src(_, _, ModuleComponentCord0),
     (
-        Items0 = [],
+        cord.is_empty(ModuleComponentCord0),
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
         set.is_non_empty(FatalErrors)
     ->
-        read_module_ignore_errors(Globals, ModuleName, ".int",
-            "Getting dependencies for module interface", Search,
-            do_not_return_timestamp, Items, _Errors, FileName, _, !IO),
-        SubModuleList = [ModuleName - Items]
+        read_module_int(Globals, "Getting dependencies for module interface",
+            ignore_errors, Search, ModuleName, ifk_int, FileName,
+            always_read_module(dont_return_timestamp), _,
+            ParseTreeInt, _IntSpecs, _Errors, !IO),
+        ParseTreeInt = parse_tree_int(_, _, ModuleContext,
+            IntItems, ImplItems),
+        int_impl_items_to_raw_item_blocks(ModuleContext, IntItems, ImplItems,
+            RawItemBlocks),
+        RawCompUnits =
+            [compilation_unit(ModuleName, ModuleContext, RawItemBlocks)]
     ;
         FileName = FileName0,
-        Items = Items0,
-        split_into_submodules(ModuleName, Items, SubModuleList, [], Specs),
+        split_into_compilation_units_perform_checks(ParseTreeSrc0,
+            RawCompUnits, [], Specs),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ),
-    assoc_list.keys(SubModuleList, SubModuleNames),
+    NestedModuleNames = list.map(compilation_unit_project_name, RawCompUnits),
     list.map(
-        init_dependencies(FileName, ModuleName, SubModuleNames,
-            [], Errors, Globals),
-        SubModuleList, ModuleImportsList).
+        init_module_and_imports(Globals, FileName, ModuleName,
+            NestedModuleNames, [], Errors),
+        RawCompUnits, ModuleAndImportsList).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.deps_map.

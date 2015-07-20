@@ -211,6 +211,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.status.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.term_constr_build.
 :- import_module transform_hlds.term_constr_data.

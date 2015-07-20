@@ -32,7 +32,7 @@
 %
 % 3. The .int0 file is similar to the .int file except that it also
 % includes declarations (but not clauses) from the implementation section.
-% It is used when compiling sub-modules. The datestamp on the .date0
+% It is used when compiling submodules. The datestamp on the .date0
 % file gives the last time the .int0 file was checked.
 %
 %-----------------------------------------------------------------------------%
@@ -47,19 +47,18 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module io.
-:- import_module list.
 :- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
     % write_private_interface_file(Globals, SourceFileName,
-    %   SourceFileModuleName, ModuleName, MaybeTimestamp, Items, !IO):
+    %   SourceFileModuleName, CompUnit, MaybeTimestamp, !IO):
     %
-    % Given a source file name and module name, the timestamp of the source
-    % file, and the list of items in that module, output the private (`.int0')
+    % Given a source file name, the timestamp of the source file, and the
+    % representation of a module in that file, output the private (`.int0')
     % interface file for the module. (The private interface contains all the
     % declarations in the module, including those in the `implementation'
-    % section; it is used when compiling sub-modules.)
+    % section; it is used when compiling submodules.)
     %
     % XXX The comment on the predicate definition used to read:
     % Read in the .int3 files that the current module depends on, and use
@@ -67,14 +66,14 @@
     % out the .int0 file.
     %
 :- pred write_private_interface_file(globals::in, file_name::in,
-    module_name::in, module_name::in, maybe(timestamp)::in, list(item)::in,
+    module_name::in, raw_compilation_unit::in, maybe(timestamp)::in,
     io::di, io::uo) is det.
 
     % write_interface_file(Globals, SourceFileName,
-    %   SourceFileModuleName, ModuleName, MaybeTimestamp, Items, !IO):
+    %   SourceFileModuleName, CompUnit, MaybeTimestamp, !IO):
     %
-    % Given a source file name and module name, the timestamp of the source
-    % file, and the list of items in that module, output the long (`.int')
+    % Given a source file name, the timestamp of the source file, and the
+    % representation of a module in that file, output the long (`.int')
     % and short (`.int2') interface files for the module.
     %
     % XXX The comment on the predicate definition used to read:
@@ -83,20 +82,13 @@
     % the .int and .int2 files.
     %
 :- pred write_interface_file(globals::in, file_name::in,
-    module_name::in, module_name::in, maybe(timestamp)::in, list(item)::in,
+    module_name::in, raw_compilation_unit::in, maybe(timestamp)::in,
     io::di, io::uo) is det.
 
     % Output the unqualified short interface file to <module>.int3.
     %
 :- pred write_short_interface_file(globals::in, file_name::in,
-    module_name::in, list(item)::in, io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
-
-    % Remove all the imported items the list.
-    % This internal utility predicate is exported for make.module_dep_file.m.
-    %
-:- pred strip_imported_items(list(item)::in, list(item)::out) is det.
+    raw_compilation_unit::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -117,11 +109,14 @@
 :- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.read_modules.
+:- import_module parse_tree.status.
 :- import_module recompilation.
 :- import_module recompilation.version.
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
+:- import_module list.
 :- import_module getopt_io.
 :- import_module int.
 :- import_module map.
@@ -139,12 +134,14 @@
 %
 
 write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
-        ModuleName, MaybeTimestamp, Items0, !IO) :-
+        RawCompUnit0, MaybeTimestamp, !IO) :-
+    RawCompUnit0 = compilation_unit(ModuleName, ModuleNameContext, _),
     grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
-        ModuleName, Items0, Module, !IO),
+        RawCompUnit0, ModuleAndImports, !IO),
 
     % Check whether we succeeded.
-    module_and_imports_get_results(Module, Items1, Specs0, Errors),
+    module_and_imports_get_results(ModuleAndImports, AugItemBlocks1,
+        Specs0, Errors),
     ( if set.is_non_empty(Errors) then
         module_name_to_file_name(Globals, ModuleName, ".int0",
             do_not_create_dirs, FileName, !IO),
@@ -155,12 +152,13 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
             "`", FileName, "' not written.\n"], !IO)
     else
         % Module-qualify all items.
-        module_name_to_file_name(Globals, ModuleName, ".m",
-            do_not_create_dirs, FileName, !IO),
-        module_qualify_items(Items1, Items2, map.init, _, Globals, ModuleName,
-            yes(FileName), "", _, _, _, Specs0, Specs),
+        module_qualify_aug_item_blocks(Globals, ModuleName,
+            AugItemBlocks1, AugItemBlocks2, map.init, _EventSpecMap,
+            yes(ModuleNameContext), "", _, _, _, Specs0, Specs),
         (
             Specs = [_ | _],
+            module_name_to_file_name(Globals, ModuleName, ".m",
+                do_not_create_dirs, FileName, !IO),
             % XXX _NumErrors
             write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
@@ -170,24 +168,15 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
 
             % Write out the `.int0' file.
 
-            strip_imported_items(Items2, Items3),
-            process_items_for_private_interface(ModuleName, Items3,
-                section_interface, [], RevIntItems0, [], RevImplItems0),
-            list.reverse(RevIntItems0, IntItems0),
-            list.reverse(RevImplItems0, ImplItems0),
-            order_items(IntItems0, IntItems),
-            order_items(ImplItems0, ImplItems),
-            Items4 = [make_pseudo_decl(md_interface) | IntItems],
-            (
-                ImplItems = [],
-                Items = Items4
-            ;
-                ImplItems = [_ | _],
-                Items = Items4 ++
-                    [make_pseudo_decl(md_implementation) | ImplItems]
-            ),
-            actually_write_interface_file(Globals, SourceFileName, ModuleName,
-                ".int0", MaybeTimestamp, Items, !IO),
+            process_item_blocks_for_private_interface(ModuleName,
+                AugItemBlocks2,
+                cord.init, IntItemsCord, cord.init, ImpItemsCord),
+            IntItems = cord.list(IntItemsCord),
+            ImpItems = cord.list(ImpItemsCord),
+            ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int0,
+                ModuleNameContext, IntItems, ImpItems),
+            actually_write_interface_file(Globals, SourceFileName,
+                ParseTreeInt0, MaybeTimestamp, !IO),
             touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
         )
     ).
@@ -196,7 +185,7 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
     % list of a module, as part of the process of creating .int0 files.
     %
     % The `.int0' file contains items which are available to any module in the
-    % interface section, and items which are only available to sub-modules in
+    % interface section, and items which are only available to submodules in
     % the implementation section. The term "private interface" is ambiguous:
     % sometimes it refers to the `.int0' file which, as just explained,
     % contains the public interface as well. The term "private interface
@@ -224,73 +213,134 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
     %   that appear in the interface section and in the implementation section
     %   respectively.
     %
-    % The original input list must be in the original order, since this
-    % predicate assumes that order in its tracking of the current section.
-    % However, the two lists it returns are in the reverse of the original
-    % order, and the naming scheme of the variables here reflects that fact.
-    %
-:- pred process_items_for_private_interface(module_name::in, list(item)::in,
-    section::in,
-    list(item)::in, list(item)::out, list(item)::in, list(item)::out) is det.
+:- pred process_item_blocks_for_private_interface(module_name::in,
+    list(aug_item_block)::in,
+    cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
 
-process_items_for_private_interface(_ModuleName, [], _Section,
-        !RevIntItems, !RevImplItems).
-process_items_for_private_interface(ModuleName, [Item | Items], !.Section,
-        !RevIntItems, !RevImplItems) :-
-    process_item_for_private_interface(ModuleName, Item, !Section,
-        !RevIntItems, !RevImplItems),
-    process_items_for_private_interface(ModuleName, Items, !.Section,
-        !RevIntItems, !RevImplItems).
+process_item_blocks_for_private_interface(_ModuleName, [],
+        !IntItemsCord, !ImpItemsCord).
+process_item_blocks_for_private_interface(ModuleName, [ItemBlock | ItemBlocks],
+        !IntItemsCord, !ImpItemsCord) :-
+    ItemBlock = item_block(AugSection, _, Items),
+    (
+        ( AugSection = ams_interface, Section = ms_interface
+        ; AugSection = ams_implementation, Section = ms_implementation
+        ),
+        process_items_for_private_interface(ModuleName, Section, Items,
+            !IntItemsCord, !ImpItemsCord)
+    ;
+        % XXX ITEM_LIST Is this the right thing to do for ams_impl_but_...?
+        ( AugSection = ams_impl_but_exported_to_submodules
+        ; AugSection = ams_abstract_imported
+        ; AugSection = ams_imported(_)
+        ; AugSection = ams_used(_)
+        )
+        % Do nothing.
+    ;
+        AugSection = ams_opt_imported(_),
+        unexpected($module, $pred, "ams_opt_imported")
+    ;
+        AugSection = ams_transitively_imported,
+        unexpected($module, $pred, "ams_transitively_imported")
+    ),
+    process_item_blocks_for_private_interface(ModuleName, ItemBlocks,
+        !IntItemsCord, !ImpItemsCord).
 
-:- pred process_item_for_private_interface(module_name::in, item::in,
-    section::in, section::out,
-    list(item)::in, list(item)::out, list(item)::in, list(item)::out) is det.
+:- pred process_items_for_private_interface(module_name::in,
+    module_section::in, list(item)::in,
+    cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
 
-process_item_for_private_interface(ModuleName, Item, !Section,
-        !RevIntItems, !RevImplItems) :-
+process_items_for_private_interface(_ModuleName, _Section, [],
+        !IntItemsCord, !ImpItemsCord).
+process_items_for_private_interface(ModuleName, Section, [Item | Items],
+        !IntItemsCord, !ImpItemsCord) :-
+    process_item_for_private_interface(ModuleName, Section, Item,
+        !IntItemsCord, !ImpItemsCord),
+    process_items_for_private_interface(ModuleName, Section, Items,
+        !IntItemsCord, !ImpItemsCord).
+
+:- pred process_item_for_private_interface(module_name::in,
+    module_section::in, item::in,
+    cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
+
+process_item_for_private_interface(ModuleName, Section, Item,
+        !IntItemsCord, !ImpItemsCord) :-
     (
         Item = item_module_defn(ItemModuleDefn),
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
-            ModuleDefn = md_interface,
-            !:Section = section_interface
-        ;
-            ModuleDefn = md_implementation,
-            !:Section = section_implementation
-        ;
             ModuleDefn = md_import(_),
             % Only imports listed in the implementation section will be
-            % directly imported by sub-modules. Import declarations in the
+            % directly imported by submodules. Import declarations in the
             % interface section must be duplicated into the implementation
             % section of the `.int0' file.
             (
-                !.Section = section_interface,
-                !:RevIntItems = [Item | !.RevIntItems],
-                !:RevImplItems = [Item | !.RevImplItems]
+                Section = ms_interface,
+                !:IntItemsCord = cord.snoc(!.IntItemsCord, Item),
+                !:ImpItemsCord = cord.snoc(!.ImpItemsCord, Item)
             ;
-                !.Section = section_implementation,
-                !:RevImplItems = [Item | !.RevImplItems]
+                Section = ms_implementation,
+                !:ImpItemsCord = cord.snoc(!.ImpItemsCord, Item)
             )
+        ;
+            ModuleDefn = md_use(_),
+            % XXX ITEM_LIST Should'nt this be treated as md_import?
+            add_item_to_section_items(Section, Item,
+                !IntItemsCord, !ImpItemsCord)
+        ;
+            % XXX ITEM_LIST The action here follows what this predicate used
+            % to do before the item list change. I (zs) don't think that
+            % it does the right thing for md_external and for
+            % md_version_numbers, but then again I don't think that such
+            % items actually reach here ...
+            ( ModuleDefn = md_include_module(_)
+            ; ModuleDefn = md_external(_, _)
+            ; ModuleDefn = md_version_numbers(_, _)
+            ),
+            add_item_to_section_items(Section, Item,
+                !IntItemsCord, !ImpItemsCord)
         )
-    ->
-        true
     ;
+        ( Item = item_clause(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        )
+        % Don't include in either section of the private interface.
+    ;
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        AllowedInInterface = pragma_allowed_in_interface(Pragma),
         (
-            Item = item_clause(_)
+            AllowedInInterface = no
         ;
-            Item = item_pragma(ItemPragma),
-            ItemPragma = item_pragma_info(Pragma, _, _, _),
-            pragma_allowed_in_interface(Pragma) = no
-        ;
-            Item = item_initialise(_)
-        ;
-            Item = item_finalise(_)
+            AllowedInInterface = yes,
+            add_item_to_section_items(Section, Item,
+                !IntItemsCord, !ImpItemsCord)
         )
-     ->
-        true
     ;
-        Item = item_mutable(ItemMutable)
-    ->
+        % XXX ITEM_LIST The action here follows what this predicate used
+        % to do before the item list change. I (zs) don't think that
+        % it does the right thing for item_nothing, but then again
+        % I don't think that such items actually reach here ...
+        ( Item = item_type_defn(_)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_promise(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_nothing(_)
+        ),
+        add_item_to_section_items(Section, Item,
+            !IntItemsCord, !ImpItemsCord)
+    ;
+        Item = item_instance(InstanceInfo),
+        AbstractInstanceInfo = make_instance_abstract(InstanceInfo),
+        AbstractItem = item_instance(AbstractInstanceInfo),
+        add_item_to_section_items(Section, AbstractItem,
+            !IntItemsCord, !ImpItemsCord)
+    ;
+        Item = item_mutable(ItemMutable),
         ItemMutable = item_mutable_info(MutableName, Type, _Value, Inst, Attrs,
             _Varset, Context, _SeqNum),
         ConstantInterface = mutable_var_constant(Attrs),
@@ -302,8 +352,10 @@ process_item_for_private_interface(ModuleName, Item, !Section,
                 MutableName, Type, Inst, Context),
             ConstantGetPredDeclItem = item_pred_decl(ConstantGetPredDecl),
             ConstantSetPredDeclItem = item_pred_decl(ConstantSetPredDecl),
-            ReplacementItems =
-                [ConstantGetPredDeclItem, ConstantSetPredDeclItem]
+            add_item_to_section_items(Section, ConstantGetPredDeclItem,
+                !IntItemsCord, !ImpItemsCord),
+            add_item_to_section_items(Section, ConstantSetPredDeclItem,
+                !IntItemsCord, !ImpItemsCord)
         ;
             ConstantInterface = mutable_not_constant,
             StdGetPredDecl = std_get_pred_decl(ModuleName,
@@ -312,6 +364,11 @@ process_item_for_private_interface(ModuleName, Item, !Section,
                 MutableName, Type, Inst, Context),
             StdGetPredDeclItem = item_pred_decl(StdGetPredDecl),
             StdSetPredDeclItem = item_pred_decl(StdSetPredDecl),
+            add_item_to_section_items(Section, StdGetPredDeclItem,
+                !IntItemsCord, !ImpItemsCord),
+            add_item_to_section_items(Section, StdSetPredDeclItem,
+                !IntItemsCord, !ImpItemsCord),
+
             IOStateInterface = mutable_var_attach_to_io_state(Attrs),
             (
                 IOStateInterface = mutable_attach_to_io_state,
@@ -321,36 +378,27 @@ process_item_for_private_interface(ModuleName, Item, !Section,
                     MutableName, Type, Inst, Context),
                 IOGetPredDeclItem = item_pred_decl(IOGetPredDecl),
                 IOSetPredDeclItem = item_pred_decl(IOSetPredDecl),
-                ReplacementItems =
-                    [StdGetPredDeclItem, StdSetPredDeclItem,
-                    IOGetPredDeclItem, IOSetPredDeclItem]
+                add_item_to_section_items(Section, IOGetPredDeclItem,
+                    !IntItemsCord, !ImpItemsCord),
+                add_item_to_section_items(Section, IOSetPredDeclItem,
+                    !IntItemsCord, !ImpItemsCord)
             ;
-                IOStateInterface = mutable_dont_attach_to_io_state,
-                ReplacementItems =
-                    [StdGetPredDeclItem, StdSetPredDeclItem]
+                IOStateInterface = mutable_dont_attach_to_io_state
             )
-        ),
-        (
-            !.Section = section_interface,
-            !:RevIntItems = ReplacementItems ++ !.RevIntItems
-        ;
-            !.Section = section_implementation,
-            !:RevImplItems = ReplacementItems ++ !.RevImplItems
         )
+    ).
+
+:- pred add_item_to_section_items(module_section::in, item::in,
+    cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
+:- pragma inline(add_item_to_section_items/6).
+
+add_item_to_section_items(Section, Item, !IntItemsCord, !ImpItemsCord) :-
+    (
+        Section = ms_interface,
+        !:IntItemsCord = cord.snoc(!.IntItemsCord, Item)
     ;
-        ( Item = item_instance(InstanceInfo0) ->
-            InstanceInfo = make_instance_abstract(InstanceInfo0),
-            InsertedItem = item_instance(InstanceInfo)
-        ;
-            InsertedItem = Item
-        ),
-        (
-            !.Section = section_interface,
-            !:RevIntItems = [InsertedItem | !.RevIntItems]
-        ;
-            !.Section = section_implementation,
-            !:RevImplItems = [InsertedItem | !.RevImplItems]
-        )
+        Section = ms_implementation,
+        !:ImpItemsCord = cord.snoc(!.ImpItemsCord, Item)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -358,21 +406,25 @@ process_item_for_private_interface(ModuleName, Item, !Section,
 % Write out .int and .int2 files.
 %
 
-write_interface_file(Globals, SourceFileName, SourceFileModuleName, ModuleName,
-        MaybeTimestamp, Items0, !IO) :-
-    some [!InterfaceItems] (
-        get_interface(ModuleName, yes, Items0, !:InterfaceItems),
+write_interface_file(Globals, SourceFileName, SourceFileModuleName,
+        RawCompUnit0, MaybeTimestamp, !IO) :-
+    RawCompUnit0 = compilation_unit(ModuleName, ModuleNameContext,
+        _RawItemBlocks0),
+    get_interface(include_impl_types, RawCompUnit0, IntRawItemBlocks),
+    RawCompUnit1 = compilation_unit(ModuleName, ModuleNameContext,
+        IntRawItemBlocks),
 
-        % Get the .int3 files for imported modules.
-        grab_unqual_imported_modules(Globals, SourceFileName,
-            SourceFileModuleName, ModuleName, !.InterfaceItems, Module0, !IO),
+    % Get the .int3 files for imported modules.
+    grab_unqual_imported_modules(Globals, SourceFileName,
+        SourceFileModuleName, RawCompUnit1, ModuleAndImports2, !IO),
 
+    some [!AugItemBlocks, !IntItems, !ImpItems, !Specs] (
         % Check whether we succeeded.
-        module_and_imports_get_results(Module0, !:InterfaceItems,
-            Specs0, Errors),
+        module_and_imports_get_results(ModuleAndImports2, !:AugItemBlocks,
+            !:Specs, Errors),
         ( if set.is_non_empty(Errors) then
             % XXX _NumErrors
-            write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
+            write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
             module_name_to_file_name(Globals, ModuleName, ".int",
                 do_not_create_dirs, IntFileName, !IO),
@@ -383,16 +435,14 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName, ModuleName,
                 "`", Int2FileName, "' not written.\n"], !IO)
         else
             % Module-qualify all items.
-            module_name_to_file_name(Globals, ModuleName, ".m",
-                do_not_create_dirs, FileName, !IO),
-            module_qualify_items(!InterfaceItems, map.init, _, Globals,
-                ModuleName, yes(FileName), "", _, _, _, Specs0, Specs),
+            module_qualify_aug_item_blocks(Globals, ModuleName, !AugItemBlocks,
+                map.init, _, yes(ModuleNameContext), "", _, _, _, !Specs),
 
             % We want to finish writing the interface file (and keep
             % the exit status at zero) if we found some warnings.
             globals.set_option(halt_at_warn, bool(no),
                 Globals, NoHaltAtWarnGlobals),
-            write_error_specs(Specs, NoHaltAtWarnGlobals,
+            write_error_specs(!.Specs, NoHaltAtWarnGlobals,
                 0, _NumWarnings, 0, NumErrors, !IO),
             ( if NumErrors > 0 then
                 module_name_to_file_name(Globals, ModuleName, ".int",
@@ -400,28 +450,41 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName, ModuleName,
                 io.write_strings(["`", IntFileName, "' ", "not written.\n"],
                     !IO)
             else
-                % Strip out the imported interfaces, assertions are also
-                % stripped since they should only be written to .opt files,
-                % check for some warnings, and then write out the `.int'
+                % Strip out the imported interfaces. Assertions are also
+                % stripped since they should only be written to .opt files.
+                % Check for some warnings, and then write out the `.int'
                 % and `int2' files and touch the `.date' file.
 
-                strip_imported_items_and_assertions(!InterfaceItems),
-                strip_unnecessary_impl_defns(!InterfaceItems),
-                report_and_strip_clauses_in_interface(!InterfaceItems, [],
-                    InterfaceSpecs0),
-                check_int_for_no_exports(Globals, !.InterfaceItems, ModuleName,
-                    InterfaceSpecs0, InterfaceSpecs, !IO),
+                aug_item_blocks_to_int_imp_items(!.AugItemBlocks,
+                    do_strip_assertions, !:IntItems, !:ImpItems),
+                strip_unnecessary_impl_defns(!IntItems, !ImpItems),
+                report_and_strip_clauses_in_items(!IntItems,
+                    [], InterfaceSpecs0),
+                report_and_strip_clauses_in_items(!ImpItems,
+                    InterfaceSpecs0, InterfaceSpecs1),
+                ToCheckIntItemBlock = item_block(ms_interface,
+                    ModuleNameContext, !.IntItems),
+                ToCheckIntCompUnit = compilation_unit(ModuleName,
+                    ModuleNameContext, [ToCheckIntItemBlock]),
+                check_int_for_no_exports(Globals, ToCheckIntCompUnit,
+                    InterfaceSpecs1, InterfaceSpecs, !IO),
                 write_error_specs(InterfaceSpecs, Globals,
                     0, _NumWarnings2, 0, _NumErrors2, !IO),
                 % XXX _NumErrors
-                order_items(!InterfaceItems),
+                ParseTreeInt1 = parse_tree_int(ModuleName, ifk_int,
+                    ModuleNameContext, !.IntItems, !.ImpItems),
                 actually_write_interface_file(Globals, SourceFileName,
-                    ModuleName, ".int", MaybeTimestamp, !.InterfaceItems, !IO),
-                get_short_interface(!.InterfaceItems, int2,
-                    ShortInterfaceItems),
+                    ParseTreeInt1, MaybeTimestamp, !IO),
+                % XXX ITEM_LIST Couldn't we get ShortIntItems and
+                % ShortImpItems without constructing BothRawItemBlocks?
+                int_impl_items_to_raw_item_blocks(ModuleNameContext,
+                    !.IntItems, !.ImpItems, BothRawItemBlocks),
+                get_short_interface_from_raw_item_blocks(sifk_int2,
+                    BothRawItemBlocks, ShortIntItems, ShortImpItems),
+                ParseTreeInt2 = parse_tree_int(ModuleName, ifk_int2,
+                    ModuleNameContext, ShortIntItems, ShortImpItems),
                 actually_write_interface_file(Globals, SourceFileName,
-                    ModuleName, ".int2", MaybeTimestamp, ShortInterfaceItems,
-                    !IO),
+                    ParseTreeInt2, MaybeTimestamp, !IO),
                 touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
             )
         )
@@ -432,110 +495,124 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName, ModuleName,
 % Write out .int3 files.
 %
 
-write_short_interface_file(Globals, SourceFileName, ModuleName, Items0, !IO) :-
+write_short_interface_file(Globals, SourceFileName, RawCompUnit, !IO) :-
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
 
+    RawCompUnit = compilation_unit(ModuleName, ModuleNameContext, _),
     some [!Specs] (
         !:Specs = [],
-        get_interface(ModuleName, no, Items0, InterfaceItems0),
+        get_interface(dont_include_impl_types, RawCompUnit,
+            IFileRawItemBlocks0),
         % Assertions are also stripped since they should only be written
         % to .opt files.
-        strip_assertions(InterfaceItems0, InterfaceItems1),
-        report_and_strip_clauses_in_interface(InterfaceItems1, InterfaceItems,
-            !Specs),
-        get_short_interface(InterfaceItems, int3, ShortInterfaceItems0),
-        module_qualify_items(ShortInterfaceItems0, ShortInterfaceItems,
-            map.init, _, Globals, ModuleName, no, "", _, _, _, !Specs),
+        strip_assertions_in_item_blocks(IFileRawItemBlocks0,
+            IFileRawItemBlocks1),
+        report_and_strip_clauses_in_item_blocks(IFileRawItemBlocks1,
+            IFileRawItemBlocks, !Specs),
+        get_short_interface_from_raw_item_blocks(sifk_int3, IFileRawItemBlocks,
+            IntItems0, ImpItems0),
+        module_qualify_items(Globals, ModuleName, ams_interface,
+            IntItems0, IntItems, map.init, _, no, "", _, _, _, !Specs),
+        module_qualify_items(Globals, ModuleName, ams_implementation,
+            ImpItems0, ImpItems, map.init, _, no, "", _, _, _, !Specs),
         % XXX _NumErrors
         write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
             !IO),
         % XXX why do we do this even if there are some errors?
+        ParseTreeInt3 = parse_tree_int(ModuleName, ifk_int3,
+            ModuleNameContext, IntItems, ImpItems),
         actually_write_interface_file(Globals, SourceFileName,
-            ModuleName, ".int3", no, ShortInterfaceItems, !IO),
+            ParseTreeInt3, no, !IO),
         touch_interface_datestamp(Globals, ModuleName, ".date3", !IO)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred strip_imported_items_and_assertions(list(item)::in,
-    list(item)::out) is det.
+:- type maybe_strip_assertions
+    --->    dont_strip_assertions
+    ;       do_strip_assertions.
 
-strip_imported_items_and_assertions(Items0, Items) :-
-    % The imported items loop has to process the items in their original order,
-    % but the loop that removes assertions does not care about the order.
-    strip_imported_items_loop(Items0, [], RevItems),
-    strip_assertions_loop(RevItems, [], Items).
+:- pred aug_item_blocks_to_int_imp_items(list(aug_item_block)::in,
+    maybe_strip_assertions::in, list(item)::out, list(item)::out) is det.
 
-strip_imported_items(Items0, Items) :-
-    strip_imported_items_loop(Items0, [], RevItems),
-    list.reverse(RevItems, Items).
+aug_item_blocks_to_int_imp_items(AugItemBlocks, MaybeStripAssertions,
+        IntItems, ImpItems) :-
+    aug_item_blocks_to_int_imp_items_loop(AugItemBlocks, MaybeStripAssertions,
+        cord.init, IntItemsCord, cord.init, ImpItemsCord),
+    IntItems = cord.list(IntItemsCord),
+    ImpItems = cord.list(ImpItemsCord).
 
-:- pred strip_imported_items_loop(list(item)::in,
-    list(item)::in, list(item)::out) is det.
+:- pred aug_item_blocks_to_int_imp_items_loop(list(aug_item_block)::in,
+    maybe_strip_assertions::in,
+    cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
 
-strip_imported_items_loop([], !RevItems).
-strip_imported_items_loop([Item | Items], !RevItems) :-
+aug_item_blocks_to_int_imp_items_loop([], _, !IntItemsCord, !ImpItemsCord).
+aug_item_blocks_to_int_imp_items_loop([AugItemBlock | AugItemBlocks],
+        MaybeStripAssertions, !IntItemsCord, !ImpItemsCord) :-
+    AugItemBlock = item_block(AugSection, _Context, Items),
     (
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
+        AugSection = ams_interface,
         (
-            ( ModuleDefn = md_imported(_)
-            ; ModuleDefn = md_used(_)
-            ; ModuleDefn = md_abstract_imported
-            )
-            % The lack of a recursive call here effectively deletes both
-            % Item and everything in Items from the list.
+            MaybeStripAssertions = dont_strip_assertions,
+            !:IntItemsCord = !.IntItemsCord ++ cord.from_list(Items)
         ;
-            % XXX Some of these should probably cause an error message.
-            ( ModuleDefn = md_interface
-            ; ModuleDefn = md_implementation
-            ; ModuleDefn = md_implementation_but_exported_to_submodules
-            ; ModuleDefn = md_opt_imported
-            ; ModuleDefn = md_transitively_imported
-            ; ModuleDefn = md_external(_, _)
-            ; ModuleDefn = md_export(_)
-            ; ModuleDefn = md_import(_)
-            ; ModuleDefn = md_use(_)
-            ; ModuleDefn = md_include_module(_)
-            ; ModuleDefn = md_version_numbers(_, _)
-            ),
-            !:RevItems = [Item | !.RevItems],
-            strip_imported_items_loop(Items, !RevItems)
+            MaybeStripAssertions = do_strip_assertions,
+            strip_assertions_in_items(Items, StrippedItems),
+            !:IntItemsCord = !.IntItemsCord ++ cord.from_list(StrippedItems)
         )
     ;
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_clause(_)
-        ; Item = item_type_defn(_)
-        ; Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_pragma(_)
-        ; Item = item_promise(_)
-        ; Item = item_typeclass(_)
-        ; Item = item_instance(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_mutable(_)
-        ; Item = item_nothing(_)
+        ( AugSection = ams_implementation
+        ; AugSection = ams_impl_but_exported_to_submodules
         ),
-        !:RevItems = [Item | !.RevItems],
-        strip_imported_items_loop(Items, !RevItems)
-    ).
+        (
+            MaybeStripAssertions = dont_strip_assertions,
+            !:ImpItemsCord = !.ImpItemsCord ++ cord.from_list(Items)
+        ;
+            MaybeStripAssertions = do_strip_assertions,
+            strip_assertions_in_items(Items, StrippedItems),
+            !:ImpItemsCord = !.ImpItemsCord ++ cord.from_list(StrippedItems)
+        )
+    ;
+        ( AugSection = ams_imported(_)
+        ; AugSection = ams_used(_)
+        ; AugSection = ams_abstract_imported
+        )
+        % Do nothing.
+    ;
+        AugSection = ams_opt_imported(_),
+        unexpected($module, $pred, "ams_opt_imported")
+    ;
+        AugSection = ams_transitively_imported,
+        unexpected($module, $pred, "ams_transitively_imported")
+    ),
+    aug_item_blocks_to_int_imp_items_loop(AugItemBlocks,
+        MaybeStripAssertions, !IntItemsCord, !ImpItemsCord).
 
-:- pred strip_assertions(list(item)::in, list(item)::out) is det.
+%-----------------------------------------------------------------------------%
 
-strip_assertions(Items0, Items) :-
-    strip_assertions_loop(Items0, [], RevItems),
+:- pred strip_assertions_in_item_blocks(list(item_block(MS))::in,
+    list(item_block(MS))::out) is det.
+
+strip_assertions_in_item_blocks([], []).
+strip_assertions_in_item_blocks([ItemBlock0 | ItemBlocks0],
+        [ItemBlock | ItemBlocks]) :-
+    ItemBlock0 = item_block(Section, Context, Items0),
+    strip_assertions_in_items(Items0, Items),
+    ItemBlock = item_block(Section, Context, Items),
+    strip_assertions_in_item_blocks(ItemBlocks0, ItemBlocks).
+
+:- pred strip_assertions_in_items(list(item)::in, list(item)::out) is det.
+
+strip_assertions_in_items(Items0, Items) :-
+    strip_assertions_in_items_acc(Items0, [], RevItems),
     list.reverse(RevItems, Items).
 
-:- pred strip_assertions_loop(list(item)::in,
+:- pred strip_assertions_in_items_acc(list(item)::in,
     list(item)::in, list(item)::out) is det.
 
-strip_assertions_loop([], !RevItems).
-strip_assertions_loop([Item | Items], !RevItems) :-
+strip_assertions_in_items_acc([], !RevItems).
+strip_assertions_in_items_acc([Item | Items], !RevItems) :-
     % If this code ever changes to care about the order of the items,
     % you will need to modify strip_imported_items_and_assertions.
     (
@@ -546,16 +623,21 @@ strip_assertions_loop([Item | Items], !RevItems) :-
     ;
         !:RevItems = [Item | !.RevItems]
     ),
-    strip_assertions_loop(Items, !RevItems).
+    strip_assertions_in_items_acc(Items, !RevItems).
 
 %-----------------------------------------------------------------------------%
 
-:- pred strip_unnecessary_impl_defns(list(item)::in, list(item)::out) is det.
+:- pred strip_unnecessary_impl_defns(list(item)::in, list(item)::out,
+    list(item)::in, list(item)::out) is det.
 
-strip_unnecessary_impl_defns(Items0, Items) :-
-    some [!IntTypesMap, !ImplTypesMap, !ImplItems] (
-        gather_type_defns(Items0, IntItems0, !:ImplItems,
-            !:IntTypesMap, !:ImplTypesMap),
+strip_unnecessary_impl_defns(!IntItems, !ImpItems) :-
+    some [!IntTypesMap, !ImplTypesMap] (
+        map.init(!:IntTypesMap),
+        map.init(!:ImplTypesMap),
+        gather_type_defns_in_section(ms_interface,
+            !IntItems, !IntTypesMap),
+        gather_type_defns_in_section(ms_implementation,
+            !ImpItems, !ImplTypesMap),
         BothTypesMap = multi_map.merge(!.IntTypesMap, !.ImplTypesMap),
 
         % Work out which module imports in the implementation section of
@@ -564,16 +646,18 @@ strip_unnecessary_impl_defns(Items0, Items) :-
         get_requirements_of_impl_exported_types(!.IntTypesMap, !.ImplTypesMap,
             BothTypesMap, NecessaryDummyTypeCtors,
             NecessaryAbsImplExpTypeCtors, NecessaryTypeImplImports),
+        set.union(NecessaryDummyTypeCtors, NecessaryAbsImplExpTypeCtors,
+            AllNecessaryTypeCtors),
 
         % Work out which module imports in the implementation section of
-        % the interface are required by the definitions of typeclasses
-        % in the implementation. Specifically, we require that ones
+        % the interface file are required by the definitions of typeclasses
+        % in the implementation. Specifically, we require the ones
         % that are needed by any constraints on the typeclasses.
-        get_requirements_of_impl_typeclasses(!.ImplItems,
+        get_requirements_of_impl_typeclasses_in_items(!.ImpItems,
             NecessaryTypeclassImplImports),
 
-        NecessaryImplImports = NecessaryTypeImplImports `set.union`
-            NecessaryTypeclassImplImports,
+        NecessaryImplImports = set.union(NecessaryTypeImplImports,
+            NecessaryTypeclassImplImports),
 
         % If a type in the implementation section isn't dummy and doesn't have
         % foreign type alternatives, make it abstract.
@@ -595,6 +679,7 @@ strip_unnecessary_impl_defns(Items0, Items) :-
                 )),
                 multi_map.contains(!.IntTypesMap, TypeCtor)
             ),
+        % XXX ITEM_LIST Do this without calling `solutions' on nondet code.
         solutions(FindRemovableAbsExpTypes, RemovableAbstractExportedTypes),
         RemoveFromImplTypesMap =
             (pred(TypeCtor::in, !.ImplTypesMap::in, !:ImplTypesMap::out)
@@ -604,126 +689,88 @@ strip_unnecessary_impl_defns(Items0, Items) :-
         list.foldl(RemoveFromImplTypesMap, RemovableAbstractExportedTypes,
             !ImplTypesMap),
 
+        % XXX ITEM_LIST Do this without two nested lambdas.
         AddProjectedItem =
-            (pred((_ - ItemTypeDefn)::in, !.ImplItems::in, !:ImplItems::out)
+            (pred((_ - ItemTypeDefn)::in, !.ImpItems::in, !:ImpItems::out)
                     is det :-
                 Item = item_type_defn(ItemTypeDefn),
-                !:ImplItems = [Item | !.ImplItems]
+                !:ImpItems = [Item | !.ImpItems]
             ),
         AddProjectedItems =
-            (pred(_::in, Defns::in, !.ImplItems::in, !:ImplItems::out)
+            (pred(_::in, Defns::in, !.ImpItems::in, !:ImpItems::out)
                     is det :-
-                list.foldl(AddProjectedItem, Defns, !ImplItems)
+                list.foldl(AddProjectedItem, Defns, !ImpItems)
             ),
-        map.foldl(AddProjectedItems, !.ImplTypesMap, !ImplItems),
+        map.foldl(AddProjectedItems, !.ImplTypesMap, !ImpItems),
 
-        IntItems = [make_pseudo_decl(md_interface) | IntItems0],
-
-        maybe_strip_import_decls(!ImplItems),
-
-        strip_unnecessary_impl_imports(NecessaryImplImports, !ImplItems),
-        set.union(NecessaryDummyTypeCtors, NecessaryAbsImplExpTypeCtors,
-            AllNecessaryTypeCtors),
-        strip_unnecessary_impl_types(AllNecessaryTypeCtors, !ImplItems),
-        strip_local_foreign_enum_pragmas(!.IntTypesMap, !ImplItems),
+        % XXX ITEM_LIST Merge these traversals.
+        maybe_strip_import_decls(!ImpItems),
+        strip_unnecessary_impl_imports(NecessaryImplImports, !ImpItems),
+        strip_unnecessary_impl_types(AllNecessaryTypeCtors, !ImpItems),
+        strip_local_foreign_enum_pragmas(!.IntTypesMap, !ImpItems),
         (
-            !.ImplItems = [],
-            Items = IntItems
+            !.ImpItems = []
         ;
-            !.ImplItems = [_ | _],
-            standardize_impl_items(!.ImplItems, StdImplItems),
-            ImplSectionItem = make_pseudo_decl(md_implementation),
-            list.condense([IntItems, [ImplSectionItem], StdImplItems], Items)
+            !.ImpItems = [_ | _],
+            standardize_impl_items(!ImpItems)
         )
     ).
-
-:- type module_specifier_in_defn
-    --->    module_specifier_in_defn(
-                prog_context,
-                module_specifier
-            ).
 
 :- pred standardize_impl_items(list(item)::in, list(item)::out) is det.
 
 standardize_impl_items(Items0, Items) :-
-    do_standardize_impl_items(Items0, no, Unexpected, [], RevRemainderItems,
-        [], ImportModuleSpecs, [], UseModuleSpecs, [], TypeDefnInfos),
-    (
-        Unexpected = yes,
-        unexpected($module, $pred, "unexpected items")
-        % XXX If the above exception is thrown and you need a workaround,
-        % you can replace the call to unexpected with this code:
-        % Items = Items0
-    ;
-        Unexpected = no,
-        list.reverse(RevRemainderItems, RemainderItems),
-        ImportItems = list.map(wrap_import_module_spec, ImportModuleSpecs),
-        UseItems = list.map(wrap_use_module_spec, UseModuleSpecs),
-        TypeDefnItems = list.map(wrap_type_defn_item, TypeDefnInfos),
-        list.condense([ImportItems, UseItems, TypeDefnItems, RemainderItems],
-            Items)
-    ).
+    do_standardize_impl_items(Items0, [], RevRemainderItems,
+        map.init, ImportModuleMap, map.init, UseModuleMap, [], TypeDefnInfos),
+    list.reverse(RevRemainderItems, RemainderItems),
+    map.to_assoc_list(ImportModuleMap, ImportModuleAssocList),
+    map.to_assoc_list(UseModuleMap, UseModuleAssocList),
+    ImportItems = list.map(wrap_import_module_item, ImportModuleAssocList),
+    UseItems = list.map(wrap_use_module_item, UseModuleAssocList),
+    TypeDefnItems = list.map(wrap_type_defn_item, TypeDefnInfos),
+    list.condense([ImportItems, UseItems, TypeDefnItems, RemainderItems],
+        Items).
+
+:- func wrap_import_module_item(pair(module_name, prog_context)) = item.
+
+wrap_import_module_item(ModuleName - Context) = Item :-
+    ModuleDefn = md_import(ModuleName),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, -1),
+    Item = item_module_defn(ItemModuleDefn).
+
+:- func wrap_use_module_item(pair(module_name, prog_context)) = item.
+
+wrap_use_module_item(ModuleName - Context) = Item :-
+    ModuleDefn = md_use(ModuleName),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, -1),
+    Item = item_module_defn(ItemModuleDefn).
 
 :- func wrap_type_defn_item(item_type_defn_info) = item.
 
 wrap_type_defn_item(ItemTypeDefn) = item_type_defn(ItemTypeDefn).
 
-:- func wrap_import_module_spec(module_specifier_in_defn) = item.
-
-wrap_import_module_spec(ModuleSpecInDefn) = Item :-
-    ModuleSpecInDefn = module_specifier_in_defn(Context, ModuleSpec),
-    ModuleDefn = md_import([ModuleSpec]),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, -1),
-    Item = item_module_defn(ItemModuleDefn).
-
-:- func wrap_use_module_spec(module_specifier_in_defn) = item.
-
-wrap_use_module_spec(ModuleSpecInDefn) = Item :-
-    ModuleSpecInDefn = module_specifier_in_defn(Context, ModuleSpec),
-    ModuleDefn = md_use([ModuleSpec]),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, -1),
-    Item = item_module_defn(ItemModuleDefn).
-
-:- pred do_standardize_impl_items(list(item)::in, bool::in, bool::out,
+:- pred do_standardize_impl_items(list(item)::in,
     list(item)::in, list(item)::out,
-    list(module_specifier_in_defn)::in, list(module_specifier_in_defn)::out,
-    list(module_specifier_in_defn)::in, list(module_specifier_in_defn)::out,
+    map(module_name, prog_context)::in, map(module_name, prog_context)::out,
+    map(module_name, prog_context)::in, map(module_name, prog_context)::out,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out) is det.
 
-do_standardize_impl_items([], !Unexpected, !RevRemainderItems,
-        !ImportSpecs, !UseSpecs, !TypeDefns).
-do_standardize_impl_items([Item | Items], !Unexpected,
-        !RevRemainderItems, !ImportSpecs, !UseSpecs, !TypeDefns) :-
+do_standardize_impl_items([], !RevRemainderItems,
+        !ImportModuleMap, !UseModuleMap, !TypeDefns).
+do_standardize_impl_items([Item | Items], !RevRemainderItems,
+        !ImportModuleMap, !UseModuleMap, !TypeDefns) :-
     ( Item = item_module_defn(ItemModuleDefn) ->
         ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _),
         (
-            ModuleDefn = md_import(ImportModules),
-            ( ImportModules = [ModuleSpec] ->
-                insert_module_spec(Context, ModuleSpec, !ImportSpecs)
-            ;
-                unexpected($module, $pred, "non-singleton-module import")
-            )
+            ModuleDefn = md_import(ImportedModuleName),
+            map.set(ImportedModuleName, Context, !ImportModuleMap)
         ;
-            ModuleDefn = md_use(UseModules),
-            ( UseModules = [ModuleSpec] ->
-                insert_module_spec(Context, ModuleSpec, !UseSpecs)
-            ;
-                unexpected($module, $pred, "non-singleton-module use")
-            )
+            ModuleDefn = md_use(UsedModuleName),
+            map.set(UsedModuleName, Context, !UseModuleMap)
         ;
-            ( ModuleDefn = md_imported(_)
-            ; ModuleDefn = md_used(_)
-            ; ModuleDefn = md_abstract_imported
-            ; ModuleDefn = md_opt_imported
-            ; ModuleDefn = md_transitively_imported
-            ; ModuleDefn = md_external(_, _)
-            ; ModuleDefn = md_export(_)
-            ; ModuleDefn = md_interface
-            ; ModuleDefn = md_implementation
-            ; ModuleDefn = md_implementation_but_exported_to_submodules
+            ( ModuleDefn = md_external(_, _)
             ; ModuleDefn = md_version_numbers(_, _)
             ),
-            !:Unexpected = yes
+            unexpected($module, $pred, "unexpected item")
         ;
             ModuleDefn = md_include_module(_),
             !:RevRemainderItems = [Item | !.RevRemainderItems]
@@ -733,25 +780,8 @@ do_standardize_impl_items([Item | Items], !Unexpected,
     ;
         !:RevRemainderItems = [Item | !.RevRemainderItems]
     ),
-    do_standardize_impl_items(Items, !Unexpected,
-        !RevRemainderItems, !ImportSpecs, !UseSpecs, !TypeDefns).
-
-:- pred insert_module_spec(prog_context::in, module_specifier::in,
-    list(module_specifier_in_defn)::in, list(module_specifier_in_defn)::out)
-    is det.
-
-insert_module_spec(Context, NewModuleSpec, [], [New]) :-
-    New = module_specifier_in_defn(Context, NewModuleSpec).
-insert_module_spec(Context, NewModuleSpec, [Head | Tail], Result) :-
-    Head = module_specifier_in_defn(_, HeadModuleSpec),
-    compare(CompareSymName, NewModuleSpec, HeadModuleSpec),
-    ( CompareSymName = (<) ->
-        New = module_specifier_in_defn(Context, NewModuleSpec),
-        Result = [New, Head | Tail]
-    ;
-        insert_module_spec(Context, NewModuleSpec, Tail, NewTail),
-        Result = [Head | NewTail]
-    ).
+    do_standardize_impl_items(Items, !RevRemainderItems,
+        !ImportModuleMap, !UseModuleMap, !TypeDefns).
 
 :- pred insert_type_defn(item_type_defn_info::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out) is det.
@@ -889,12 +919,11 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
 
     % strip_unnecessary_impl_imports(NecessaryModules, !Items):
     %
-    % Remove all import_module and use_module declarations for
-    % modules that are not in `NecessaryModules',
+    % Remove all import_module and use_module declarations for modules
+    % that are not in NecessaryModules.
     %
-    % NOTE: This will only work if each item corresponding
-    % to an import_module or use_module declaration only imports
-    % a single module. (This should be the case, see prog_io.m.)
+    % XXX ITEM_LIST Avoid using filter, here and below;
+    % use reversed lists instead.
     %
 :- pred strip_unnecessary_impl_imports(set(module_name)::in, list(item)::in,
     list(item)::out) is det.
@@ -909,15 +938,11 @@ is_not_unnecessary_impl_import(NecessaryImports, Item) :-
     ( Item = item_module_defn(ItemModuleDefn) ->
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
-            ( ModuleDefn = md_use(Modules)
-            ; ModuleDefn = md_import(Modules)
+            ( ModuleDefn = md_use(ModuleName)
+            ; ModuleDefn = md_import(ModuleName)
             )
         ->
-            ( Modules = [ModuleName] ->
-                set.member(ModuleName, NecessaryImports)
-            ;
-                unexpected($module, $pred, "non-singleton import or use decl")
-            )
+            set.member(ModuleName, NecessaryImports)
         ;
             true
         )
@@ -1142,67 +1167,47 @@ cons_args_to_type_ctor_set([Arg | Args], !TypeCtors) :-
     type_to_type_ctor_set(Type, !TypeCtors),
     cons_args_to_type_ctor_set(Args, !TypeCtors).
 
+%-----------------------------------------------------------------------------%
+
 :- type type_defn_map ==
     multi_map(type_ctor, pair(type_defn, item_type_defn_info)).
 :- type type_defn_pair ==
     pair(type_ctor, pair(type_defn, item_type_defn_info)).
 
-:- pred gather_type_defns(list(item)::in, list(item)::out, list(item)::out,
-    type_defn_map::out, type_defn_map::out) is det.
-
-gather_type_defns(Items0, IntItems, ImplItems, IntTypesMap, ImplTypesMap) :-
-    gather_type_defns_2(no, Items0, [], RevIntItems, [], RevImplItems,
-        map.init, IntTypesMap, map.init, ImplTypesMap),
-    list.reverse(RevIntItems, IntItems),
-    list.reverse(RevImplItems, ImplItems).
-
-:- pred gather_type_defns_2(bool::in, list(item)::in,
-    list(item)::in, list(item)::out, list(item)::in, list(item)::out,
-    type_defn_map::in, type_defn_map::out,
+:- pred gather_type_defns_in_section(module_section::in,
+    list(item)::in, list(item)::out,
     type_defn_map::in, type_defn_map::out) is det.
 
-gather_type_defns_2(_, [], !RevIntItems, !RevImplItems,
-        !IntTypesMap, !ImplTypesMap).
-gather_type_defns_2(!.InInterface, [Item | Items],
-        !RevIntItems, !RevImplItems, !IntTypesMap, !ImplTypesMap) :-
-    (
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-        (
-            ModuleDefn = md_interface,
-            NewInInterface = yes
-        ;
-            ModuleDefn = md_implementation,
-            NewInInterface = no
-        )
-    ->
-        !:InInterface = NewInInterface
-    ;
-        Item = item_type_defn(ItemTypeDefn)
-    ->
+gather_type_defns_in_section(Section, Items0, Items, !TypesMap) :-
+    gather_type_defns_in_section_loop(Section, Items0, cord.init, ItemsCord,
+        !TypesMap),
+    Items = cord.list(ItemsCord).
+
+:- pred gather_type_defns_in_section_loop(module_section::in, list(item)::in,
+    cord(item)::in, cord(item)::out,
+    type_defn_map::in, type_defn_map::out) is det.
+
+gather_type_defns_in_section_loop(_, [], !ItemsCord, !TypesMap).
+gather_type_defns_in_section_loop(Section, [Item | Items],
+        !ItemsCord, !TypesMap) :-
+    ( Item = item_type_defn(ItemTypeDefn) ->
         ItemTypeDefn = item_type_defn_info(Name, Args, Body, _, _, _),
         TypeCtor = type_ctor(Name, length(Args)),
         (
-            !.InInterface = yes,
-            !:RevIntItems = [Item | !.RevIntItems],
-            gather_type_defn(TypeCtor, Body, ItemTypeDefn, !IntTypesMap)
+            Section = ms_interface,
+            !:ItemsCord = cord.snoc(!.ItemsCord, Item),
+            gather_type_defn(TypeCtor, Body, ItemTypeDefn, !TypesMap)
         ;
-            !.InInterface = no,
-            % We don't add this to !RevImplItems yet -- we may be removing
-            % this item.
-            gather_type_defn(TypeCtor, Body, ItemTypeDefn, !ImplTypesMap)
+            Section = ms_implementation,
+            % We don't add this to !ItemsCord yet -- we may be removing it.
+            gather_type_defn(TypeCtor, Body, ItemTypeDefn, !TypesMap)
         )
     ;
-        (
-            !.InInterface = yes,
-            !:RevIntItems = [Item | !.RevIntItems]
-        ;
-            !.InInterface = no,
-            !:RevImplItems = [Item | !.RevImplItems]
-        )
+        !:ItemsCord = cord.snoc(!.ItemsCord, Item)
     ),
-    gather_type_defns_2(!.InInterface, Items, !RevIntItems, !RevImplItems,
-        !IntTypesMap, !ImplTypesMap).
+    gather_type_defns_in_section_loop(Section, Items, !ItemsCord, !TypesMap).
+
+%-----------------------------------------------------------------------------%
 
 :- pred gather_type_defn(type_ctor::in, type_defn::in, item_type_defn_info::in,
     type_defn_map::in, type_defn_map::out) is det.
@@ -1210,26 +1215,24 @@ gather_type_defns_2(!.InInterface, [Item | Items],
 gather_type_defn(TypeCtor, Body, ItemTypeDefn, !DefnMap) :-
     multi_map.set(TypeCtor, Body - ItemTypeDefn, !DefnMap).
 
-:- pred get_requirements_of_impl_typeclasses(list(item)::in,
+:- pred get_requirements_of_impl_typeclasses_in_items(list(item)::in,
     set(module_name)::out) is det.
 
-get_requirements_of_impl_typeclasses(ImplItems, Modules) :-
-    list.foldl(get_requirements_of_impl_typeclass,
-        ImplItems, set.init, Modules).
+get_requirements_of_impl_typeclasses_in_items(ImpItems, Modules) :-
+    list.foldl(accumulate_requirements_of_impl_typeclass_in_item,
+        ImpItems, set.init, Modules).
 
-:- pred get_requirements_of_impl_typeclass(item::in,
+:- pred accumulate_requirements_of_impl_typeclass_in_item(item::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-get_requirements_of_impl_typeclass(Item, !Modules) :-
+accumulate_requirements_of_impl_typeclass_in_item(Item, !Modules) :-
     (
         Item = item_typeclass(ItemTypeClass),
         Constraints = ItemTypeClass ^ tc_constraints,
-        list.foldl(get_requirements_of_impl_from_constraint, Constraints,
-            !Modules)
+        list.foldl(accumulate_requirements_of_impl_from_constraint,
+            Constraints, !Modules)
     ;
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_module_defn(_)
+        ( Item = item_module_defn(_)
         ; Item = item_clause(_)
         ; Item = item_type_defn(_)
         ; Item = item_inst_defn(_)
@@ -1246,10 +1249,10 @@ get_requirements_of_impl_typeclass(Item, !Modules) :-
         )
     ).
 
-:- pred get_requirements_of_impl_from_constraint(prog_constraint::in,
+:- pred accumulate_requirements_of_impl_from_constraint(prog_constraint::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-get_requirements_of_impl_from_constraint(Constraint, !Modules) :-
+accumulate_requirements_of_impl_from_constraint(Constraint, !Modules) :-
     Constraint = constraint(ClassName, ArgTypes),
     % NOTE: This assumes that everything has been module qualified.
     (
@@ -1259,18 +1262,19 @@ get_requirements_of_impl_from_constraint(Constraint, !Modules) :-
         ClassName = unqualified(_),
         unexpected($module, $pred, "unknown typeclass in constraint")
     ),
-    get_modules_from_constraint_arg_types(ArgTypes, !Modules).
+    accumulate_modules_from_constraint_arg_types(ArgTypes, !Modules).
 
-:- pred get_modules_from_constraint_arg_types(list(mer_type)::in,
+:- pred accumulate_modules_from_constraint_arg_types(list(mer_type)::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-get_modules_from_constraint_arg_types(ArgTypes, !Modules) :-
-    list.foldl(get_modules_from_constraint_arg_type, ArgTypes, !Modules).
+accumulate_modules_from_constraint_arg_types(ArgTypes, !Modules) :-
+    list.foldl(accumulate_modules_from_constraint_arg_type, ArgTypes,
+        !Modules).
 
-:- pred get_modules_from_constraint_arg_type(mer_type::in,
+:- pred accumulate_modules_from_constraint_arg_type(mer_type::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-get_modules_from_constraint_arg_type(ArgType, !Modules) :-
+accumulate_modules_from_constraint_arg_type(ArgType, !Modules) :-
     (
         % Do nothing for these types - they cannot affect the set of
         % implementation imports in an interface file.
@@ -1279,12 +1283,9 @@ get_modules_from_constraint_arg_type(ArgType, !Modules) :-
         )
     ;
         ArgType = defined_type(TypeName, Args, _),
-        ( sym_name_get_module_name(TypeName, ModuleName) ->
-            set.insert(ModuleName, !Modules)
-        ;
-            unexpected($module, $pred, "unknown type encountered")
-        ),
-        get_modules_from_constraint_arg_types(Args, !Modules)
+        det_sym_name_get_module_name(TypeName, ModuleName),
+        set.insert(ModuleName, !Modules),
+        accumulate_modules_from_constraint_arg_types(Args, !Modules)
     ;
         (
             ArgType = tuple_type(Args, _)
@@ -1302,7 +1303,7 @@ get_modules_from_constraint_arg_type(ArgType, !Modules) :-
                 Args = Args0
             )
         ),
-        get_modules_from_constraint_arg_types(Args, !Modules)
+        accumulate_modules_from_constraint_arg_types(Args, !Modules)
     ).
 
     % Retain only those foreign_enum pragmas that correspond to types
@@ -1311,8 +1312,8 @@ get_modules_from_constraint_arg_type(ArgType, !Modules) :-
 :- pred strip_local_foreign_enum_pragmas(type_defn_map::in,
     list(item)::in, list(item)::out) is det.
 
-strip_local_foreign_enum_pragmas(IntTypeMap, !ImplItems) :-
-    list.filter(foreign_enum_is_local(IntTypeMap), !ImplItems).
+strip_local_foreign_enum_pragmas(IntTypeMap, !ImpItems) :-
+    list.filter(foreign_enum_is_local(IntTypeMap), !ImpItems).
 
 :- pred foreign_enum_is_local(type_defn_map::in, item::in) is semidet.
 
@@ -1334,19 +1335,33 @@ foreign_enum_is_local(TypeDefnMap, Item) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_and_strip_clauses_in_interface(list(item)::in, list(item)::out,
+    % XXX ITEM_LIST Integrate this traversal with other traversals.
+    %
+:- pred report_and_strip_clauses_in_item_blocks(
+    list(item_block(MS))::in, list(item_block(MS))::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_and_strip_clauses_in_interface(Items0, Items, !Specs) :-
-    report_and_strip_clauses_in_interface_loop(Items0, [], RevItems, !Specs),
+report_and_strip_clauses_in_item_blocks([], [], !Specs).
+report_and_strip_clauses_in_item_blocks([ItemBlock0 | ItemBlocks0],
+        [ItemBlock | ItemBlocks], !Specs) :-
+    ItemBlock0 = item_block(Section, Context, Items0),
+    report_and_strip_clauses_in_items(Items0, Items, !Specs),
+    ItemBlock = item_block(Section, Context, Items),
+    report_and_strip_clauses_in_item_blocks(ItemBlocks0, ItemBlocks, !Specs).
+
+:- pred report_and_strip_clauses_in_items(list(item)::in, list(item)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_and_strip_clauses_in_items(Items0, Items, !Specs) :-
+    report_and_strip_clauses_in_items_loop(Items0, [], RevItems, !Specs),
     list.reverse(RevItems, Items).
 
-:- pred report_and_strip_clauses_in_interface_loop(list(item)::in,
+:- pred report_and_strip_clauses_in_items_loop(list(item)::in,
     list(item)::in, list(item)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_and_strip_clauses_in_interface_loop([], !RevItems, !Specs).
-report_and_strip_clauses_in_interface_loop([Item0 | Items0],
+report_and_strip_clauses_in_items_loop([], !RevItems, !Specs).
+report_and_strip_clauses_in_items_loop([Item0 | Items0],
         !RevItems, !Specs) :-
     % We either add Item0 to !RevItems, or a new spec to !Specs.
     (
@@ -1367,9 +1382,7 @@ report_and_strip_clauses_in_interface_loop([Item0 | Items0],
             !:RevItems = [Item0 | !.RevItems]
         )
     ;
-        ( Item0 = item_module_start(_)
-        ; Item0 = item_module_end(_)
-        ; Item0 = item_module_defn(_)
+        ( Item0 = item_module_defn(_)
         ; Item0 = item_type_defn(_)
         ; Item0 = item_inst_defn(_)
         ; Item0 = item_mode_defn(_)
@@ -1385,7 +1398,7 @@ report_and_strip_clauses_in_interface_loop([Item0 | Items0],
         ),
         !:RevItems = [Item0 | !.RevItems]
     ),
-    report_and_strip_clauses_in_interface_loop(Items0, !RevItems, !Specs).
+    report_and_strip_clauses_in_items_loop(Items0, !RevItems, !Specs).
 
 :- func clause_in_interface_warning(string, prog_context) = error_spec.
 
@@ -1398,13 +1411,20 @@ clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
 %-----------------------------------------------------------------------------%
 
 :- pred actually_write_interface_file(globals::in, file_name::in,
-    module_name::in, string::in, maybe(timestamp)::in, list(item)::in,
-    io::di, io::uo) is det.
+    parse_tree_int::in, maybe(timestamp)::in, io::di, io::uo) is det.
 
-actually_write_interface_file(Globals, _SourceFileName, ModuleName, Suffix,
-        MaybeTimestamp, InterfaceItems0, !IO) :-
+actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
+        MaybeTimestamp, !IO) :-
+    ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        IntItems0, ImpItems0),
+    order_items(IntItems0, IntItems1),
+    order_items(ImpItems0, ImpItems),
+    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        IntItems1, ImpItems),
+
     % Create (e.g.) `foo.int.tmp'.
-    string.append(Suffix, ".tmp", TmpSuffix),
+    Suffix = int_file_kind_to_extension(IntFileKind),
+    TmpSuffix = Suffix ++ ".tmp",
     module_name_to_file_name(Globals, ModuleName, Suffix,
         do_create_dirs, OutputFileName, !IO),
     module_name_to_file_name(Globals, ModuleName, TmpSuffix,
@@ -1417,111 +1437,128 @@ actually_write_interface_file(Globals, _SourceFileName, ModuleName, Suffix,
     ( if
         GenerateVersionNumbers = yes,
         DisableVersionNumbers = no
+        % XXX ITEM_LIST We do this for .int2 files as well as .int files.
+        % Should we?
     then
         % Find the timestamp of the current module.
         (
-            MaybeTimestamp = yes(Timestamp),
-
-            % Read in the previous version of the file.
-            read_module_ignore_errors(NoLineNumGlobals, ModuleName, Suffix,
-                "Reading old interface for module",
-                do_search, do_not_return_timestamp, OldItems, OldErrors,
-                _OldIntFileName, _OldTimestamp, !IO),
-            ( if set.is_empty(OldErrors) then
-                MaybeOldItems = yes(OldItems)
-            else
-                % If we can't read in the old file, the timestamps will
-                % all be set to the modification time of the source file.
-                MaybeOldItems = no
-            ),
-            recompilation.version.compute_version_numbers(Timestamp,
-                InterfaceItems0, MaybeOldItems, VersionNumbers),
-            VersionNumberItemModuleDefn = item_module_defn_info(
-                md_version_numbers(ModuleName, VersionNumbers),
-                term.context_init, -1),
-            VersionNumberItem = item_module_defn(VersionNumberItemModuleDefn),
-            ( if
-                InterfaceItems0 = [FirstItem | InterfaceItems1],
-                FirstItem = item_module_defn(FirstItemModuleDefn),
-                FirstItemModuleDefn =
-                    item_module_defn_info(FirstModuleDefn, _, _),
-                FirstModuleDefn = md_interface
-            then
-                InterfaceItems = [FirstItem, VersionNumberItem
-                    | InterfaceItems1]
-            else
-                InterfaceItems = [make_pseudo_decl(md_interface),
-                    VersionNumberItem | InterfaceItems0]
-            )
-        ;
             MaybeTimestamp = no,
             unexpected($module, $pred,
                 "with `--smart-recompilation', timestamp not read")
-        )
+        ;
+            MaybeTimestamp = yes(Timestamp)
+        ),
+
+        % Read in the previous version of the file.
+        read_module_int(NoLineNumGlobals,
+            "Reading old interface for module", ignore_errors, do_search,
+            ModuleName, IntFileKind, _OldIntFileName,
+            always_read_module(dont_return_timestamp), _OldTimestamp,
+            OldParseTreeInt, _OldSpecs, OldErrors, !IO),
+        ( if set.is_empty(OldErrors) then
+            MaybeOldParseTreeInt = yes(OldParseTreeInt)
+        else
+            % If we can't read in the old file, the timestamps will
+            % all be set to the modification time of the source file.
+            MaybeOldParseTreeInt = no
+        ),
+        recompilation.version.compute_version_numbers(Timestamp,
+            ParseTreeInt, MaybeOldParseTreeInt, VersionNumbers),
+        VersionNumberItemModuleDefn = item_module_defn_info(
+            md_version_numbers(ModuleName, VersionNumbers),
+            term.context_init, -1),
+        VersionNumberItem = item_module_defn(VersionNumberItemModuleDefn),
+        IntItems = [VersionNumberItem | IntItems1]
     else
-        InterfaceItems = InterfaceItems0
+        IntItems = IntItems1
     ),
-    convert_to_mercury(NoLineNumGlobals, ModuleName, TmpOutputFileName,
-        InterfaceItems, !IO),
+    ParseTree = parse_tree_int(ModuleName, IntFileKind, term.context_init,
+        IntItems, ImpItems),
+    convert_to_mercury_int(NoLineNumGlobals, TmpOutputFileName,
+        ParseTree, !IO),
     % Start using the original globals again.
     update_interface(Globals, OutputFileName, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % Given a module interface (well, a list of items), extract the
-    % short interface part of that module, i.e. the exported
-    % type/typeclass/inst/mode declarations, but not the exported pred or
-    % constructor declarations. If the module interface imports other modules,
-    % then the short interface needs to include those import_module
-    % declarations only if the short interface contains some equivalence types
-    % or some mode or inst definitions that might use declarations in the
-    % imported modules. If the short interface is empty, or only contains
-    % abstract type declarations, then it doesn't need any import_module
-    % declarations.
+    % Given a module interface (the contents of its .int file), extract
+    % the short interface part of that module (the contents of its .int2 file),
+    % This should be the exported type/typeclass/inst/mode declarations,
+    % but not the exported pred or constructor declarations. If the module
+    % interface imports other modules, then the short interface needs to
+    % include those import_module declarations only if the short interface
+    % contains some equivalence types or some mode or inst definitions
+    % that might use declarations in the imported modules. If the short
+    % interface is empty, or only contains abstract type declarations,
+    % then it doesn't need any import_module declarations.
     %
-:- pred get_short_interface(list(item)::in, short_interface_kind::in,
-    list(item)::out) is det.
+:- pred get_short_interface_from_raw_item_blocks(short_int_file_kind::in,
+    list(raw_item_block)::in, list(item)::out, list(item)::out) is det.
 
-get_short_interface(Items0, Kind, Items) :-
-    get_short_interface_acc(Items0, Kind, [], RevItems),
-    list.reverse(RevItems, Items1),
-    maybe_strip_import_decls(Items1, Items2),
-    order_items(Items2, Items).
-
-:- pred get_short_interface_acc(list(item)::in, short_interface_kind::in,
-    list(item)::in, list(item)::out) is det.
-
-get_short_interface_acc([], _Kind, !RevItems).
-get_short_interface_acc([Item | Items], Kind, !RevItems) :-
-    ( make_abstract_defn(Item, Kind, AbstractItem) ->
-        !:RevItems = [AbstractItem | !.RevItems]
-    ; make_abstract_unify_compare(Item, Kind, AbstractItem) ->
-        !:RevItems = [AbstractItem | !.RevItems]
+get_short_interface_from_raw_item_blocks(_Kind, [], [], []).
+get_short_interface_from_raw_item_blocks(Kind, [RawItemBlock | RawItemBlocks],
+        IntItems, ImpItems) :-
+    get_short_interface_from_raw_item_blocks(Kind, RawItemBlocks,
+        IntItemsTail, ImpItemsTail),
+    RawItemBlock = item_block(Section, _Context, Items0),
+    get_short_interface_from_items_acc(Kind, Items0, cord.init, ItemsCord),
+    Items1 = cord.list(ItemsCord),
+    % XXX ITEM_LIST Integrate maybe_strip_import_decls into
+    % get_short_interface_from_items_acc.
+    maybe_strip_import_decls(Items1, Items),
+    (
+        Items = [],
+        IntItems = IntItemsTail,
+        ImpItems = ImpItemsTail
     ;
-        Include = include_in_short_interface(Item),
+        Items = [_ | _],
         (
-            Include = yes,
-            !:RevItems = [Item | !.RevItems]
+            Section = ms_interface,
+            IntItems = Items ++ IntItemsTail,
+            ImpItems = ImpItemsTail
         ;
-            Include = no
+            Section = ms_implementation,
+            IntItems = IntItemsTail,
+            ImpItems = Items ++ ImpItemsTail
+        )
+    ).
+
+:- pred get_short_interface_from_items_acc(short_int_file_kind::in,
+    list(item)::in, cord(item)::in, cord(item)::out) is det.
+
+get_short_interface_from_items_acc(_Kind, [], !ItemsCord).
+get_short_interface_from_items_acc(Kind, [Item | Items], !ItemsCord) :-
+    % XXX ITEM_LIST Try to do this with one switch on Item, not three.
+    % Expand include_in_short_interface to take Kind, and return
+    % one of three possibilities: include as is, include abstract, and
+    % do not include.
+    ( make_abstract_defn(Item, Kind, AbstractItem) ->
+        !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
+    ; make_abstract_unify_compare(Item, Kind, AbstractItem) ->
+        !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
+    ;
+        ShouldInclude = include_in_short_interface(Item),
+        (
+            ShouldInclude = yes,
+            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+        ;
+            ShouldInclude = no
         )
     ),
-    get_short_interface_acc(Items, Kind, !RevItems).
+    get_short_interface_from_items_acc(Kind, Items, !ItemsCord).
 
 :- func include_in_short_interface(item) = bool.
 
-include_in_short_interface(Item) = Include :-
+include_in_short_interface(Item) = ShouldInclude :-
     (
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_module_defn(_)
+        ( Item = item_module_defn(_)
         ; Item = item_type_defn(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_instance(_)
         ),
-        Include = yes
+        ShouldInclude = yes
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
@@ -1529,9 +1566,9 @@ include_in_short_interface(Item) = Include :-
         % we should take pragma_foreign_import_modules out of the pragma items
         % and given them their own item type.
         ( Pragma = pragma_foreign_import_module(_) ->
-            Include = yes
+            ShouldInclude = yes
         ;
-            Include = no
+            ShouldInclude = no
         )
     ;
         ( Item = item_clause(_)
@@ -1544,40 +1581,109 @@ include_in_short_interface(Item) = Include :-
         ; Item = item_mutable(_)
         ; Item = item_nothing(_)
         ),
-        Include = no
+        ShouldInclude = no
     ).
+
+:- type maybe_need_imports
+    --->    dont_need_imports
+    ;       need_imports.
+
+:- type maybe_need_foreign_imports
+    --->    dont_need_foreign_imports
+    ;       need_foreign_imports.
 
 :- pred maybe_strip_import_decls(list(item)::in, list(item)::out) is det.
 
-maybe_strip_import_decls(!Items) :-
+maybe_strip_import_decls(Items0, Items) :-
+    find_need_imports(Items0,
+        dont_need_imports, NeedImports,
+        dont_need_foreign_imports, NeedForeignImports),
+    filter_items_for_import_needs(Items0, NeedImports, NeedForeignImports,
+        cord.init, ItemsCord),
+    Items = cord.list(ItemsCord).
+
+:- pred find_need_imports(list(item)::in,
+    maybe_need_imports::in, maybe_need_imports::out,
+    maybe_need_foreign_imports::in, maybe_need_foreign_imports::out) is det.
+
+find_need_imports([], !NeedImports, !NeedForeignImports).
+find_need_imports([Item | Items], !NeedImports, !NeedForeignImports) :-
+    % XXX ITEM_LIST Should do with one call and one switch.
+    ItemNeedsImports = item_needs_imports(Item),
+    ItemNeedsForeignImports = item_needs_foreign_imports(Item),
     (
-        some [Item] (
-            list.member(Item, !.Items),
-            item_needs_imports(Item) = yes
-        )
-    ->
-        true
+        ItemNeedsImports = yes,
+        !:NeedImports = need_imports
     ;
-        list.filter(not_import_or_use_item, !Items)
+        ItemNeedsImports = no
     ),
     (
-        some [Item] (
-            list.member(Item, !.Items),
-            item_needs_foreign_imports(Item) = [_ | _]
-        )
-    ->
-        true
+        ItemNeedsForeignImports = [_ | _],
+        !:NeedForeignImports = need_foreign_imports
     ;
-        NotPragmaForeignImport =
-            (pred(ThisItem::in) is semidet :-
-                \+ (
-                    ThisItem = item_pragma(ThisItemPragma),
-                    ThisItemPragma = item_pragma_info(Pragma, _, _, _),
-                    Pragma = pragma_foreign_import_module(_)
-                )
+        ItemNeedsForeignImports = []
+    ),
+    find_need_imports(Items, !NeedImports, !NeedForeignImports).
+
+:- pred filter_items_for_import_needs(list(item)::in,
+    maybe_need_imports::in, maybe_need_foreign_imports::in,
+    cord(item)::in, cord(item)::out) is det.
+
+filter_items_for_import_needs([], _, _, !ItemsCord).
+filter_items_for_import_needs([Item | Items], NeedImports, NeedForeignImports,
+        !ItemsCord) :-
+    (
+        Item = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
+        (
+            ( ModuleDefn = md_import(_)
+            ; ModuleDefn = md_use(_)
             ),
-        list.filter(NotPragmaForeignImport, !Items)
-    ).
+            (
+                NeedImports = need_imports,
+                !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+            ;
+                NeedImports = dont_need_imports
+            )
+        ;
+            ( ModuleDefn = md_include_module(_)
+            ; ModuleDefn = md_external(_, _)
+            ; ModuleDefn = md_version_numbers(_, _)
+            ),
+            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+        )
+    ;
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        ( if Pragma = pragma_foreign_import_module(_) then
+            (
+                NeedForeignImports = need_foreign_imports,
+                !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+            ;
+                NeedForeignImports = dont_need_foreign_imports
+            )
+        else
+            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+        )
+    ;
+        ( Item = item_clause(_)
+        ; Item = item_type_defn(_)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_instance(_)
+        ; Item = item_promise(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ; Item = item_nothing(_)
+        ),
+        !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+    ),
+    filter_items_for_import_needs(Items, NeedImports, NeedForeignImports,
+        !ItemsCord).
 
 %-----------------------------------------------------------------------------%
 
@@ -1585,9 +1691,11 @@ maybe_strip_import_decls(!Items) :-
     % that just reordering the contents of e.g. an interface section without
     % changing the set of exported entities should not cause a change in the
     % interface files. The "sort of" is because we are not doing as good a job
-    % as we could. Unfortunately, doing significantly better is quite hard
+    % as we could. Unfortunately, doing significantly better was quite hard
     % with the current representation of the module, which is just a list of
     % items without further structure.
+    % XXX ITEM_LIST Since we have a more structured representation than a plain
+    % item list, it should be possible to do better.
     %
     % This predicate requires items in the original order. One reason is that
     % if does not change the order of pred or mode declarations. If it were
@@ -1595,27 +1703,45 @@ maybe_strip_import_decls(!Items) :-
     % declarations it refers to, the reader would create an implicit pred
     % declaration when it saw the mode declaration, and it would be confused
     % by the later appearance of the actual pred declaration.
+    % XXX ITEM_LIST We should order pred, func, mode, predmode and funcmode
+    % declarations with respect to each other on name/arity FIRST, and THEN
+    % on declaration type, putting the mode declarations last.
+    %
+    % This predicate works by finding a chunk of items which should in most
+    % cases (but unfortunately not all cases) be all the exported items,
+    % and put them in a standard order, with import_module and use_module items
+    % first in lexical order, then type, inst and mode definitions, again
+    % in lexical order, then pred and predmode declarations, in lexical order
+    % by sym_name, and finally all other items in the chunk. The chunk consists
+    % of the initial prefix of items for which this reordering is safe.
+    % The chunk will then be followed by the ordered versions of later chunks,
+    % if any.
     %
 :- pred order_items(list(item)::in, list(item)::out) is det.
 
-order_items(Items0, Items) :-
-    filter_unnecessary_flips(Items0, other, Items1),
-    do_order_items(Items1, Items2),
-    % Delete any redundant :- interface and :- implementation markers at the
-    % end, to make Items as insensitive as we can to the number of interface
-    % sections in the source file. If some of the implementation sections
-    % are not empty, we won't be fully successful.
-    list.reverse(Items2, RevItems2),
-    list.takewhile(interface_or_import_marker, RevItems2, _, RevItems),
-    list.reverse(RevItems, Items).
-
-:- pred interface_or_import_marker(item::in) is semidet.
-
-interface_or_import_marker(Item) :-
-    Item = item_module_defn(ItemModuleDefn),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-    ( ModuleDefn = md_interface
-    ; ModuleDefn = md_implementation
+order_items([], []).
+order_items([Item0 | Items0], OrderedItems) :-
+    Chunkable0 = chunkable_item(Item0),
+    (
+        Chunkable0 = yes,
+        list.takewhile(is_chunkable, Items0, FrontItems, RemainItems),
+        list.filter(is_reorderable, [Item0 | FrontItems],
+            ReorderableItems, NonReorderableItems),
+        list.filter(import_or_use_item, ReorderableItems,
+            ImportReorderableItems, NonImportReorderableItems),
+        list.filter(symname_orderable, NonReorderableItems,
+            SymNameItems, NonSymNameItems),
+        % We rely on the sort being stable to keep the items with the same
+        % sym_names in their original order.
+        list.sort(compare_by_symname, SymNameItems, OrderedSymNameItems),
+        order_items(RemainItems, OrderedRemainItems),
+        OrderedItems = list.sort(ImportReorderableItems) ++
+            list.sort(NonImportReorderableItems) ++
+            OrderedSymNameItems ++ NonSymNameItems ++ OrderedRemainItems
+    ;
+        Chunkable0 = no,
+        order_items(Items0, OrderedItemsTail),
+        OrderedItems = [Item0 | OrderedItemsTail]
     ).
 
 :- pred not_import_or_use_item(item::in) is semidet.
@@ -1627,107 +1753,6 @@ not_import_or_use_item(Item) :-
 
 import_or_use_item(Item) :-
     Item = item_module_defn(ItemModuleDefn),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-    ( ModuleDefn = md_import(_)
-    ; ModuleDefn = md_use(_)
-    ).
-
-    % Which section of the module we are in. The "other" alternative
-    % reflects my ignorance (based on the lack of documentation) of
-    % the invariants that govern the items involved in the representation
-    % of nested modules. -zs
-
-:- type cur_pos
-    --->    in_interface
-    ;       in_implementation
-    ;       other.
-
-:- pred filter_unnecessary_flips(list(item)::in, cur_pos::in, list(item)::out)
-    is det.
-
-filter_unnecessary_flips([], _, []).
-filter_unnecessary_flips([Item], _, [Item]).
-filter_unnecessary_flips([Item1, Item2 | Items0], CurPos, Items) :-
-    (
-        CurPos = in_interface,
-        Item1 = item_module_defn(ItemModuleDefn1),
-        ItemModuleDefn1 = item_module_defn_info(md_implementation, _, _),
-        Item2 = item_module_defn(ItemModuleDefn2),
-        ItemModuleDefn2 = item_module_defn_info(md_interface, _, _)
-    ->
-        filter_unnecessary_flips(Items0, CurPos, Items)
-    ;
-        CurPos = in_implementation,
-        Item1 = item_module_defn(ItemModuleDefn1),
-        ItemModuleDefn1 = item_module_defn_info(md_interface, _, _),
-        Item2 = item_module_defn(ItemModuleDefn2),
-        ItemModuleDefn2 = item_module_defn_info(md_implementation, _, _)
-    ->
-        filter_unnecessary_flips(Items0, CurPos, Items)
-    ;
-        (
-            Item1 = item_module_defn(ItemModuleDefn1),
-            ItemModuleDefn1 = item_module_defn_info(md_implementation, _, _)
-        ->
-            NextPos = in_implementation
-        ;
-            Item1 = item_module_defn(ItemModuleDefn1),
-            ItemModuleDefn1 = item_module_defn_info(md_interface, _, _)
-        ->
-            NextPos = in_interface
-        ;
-            Chunkable1 = chunkable_item(Item1),
-            (
-                Chunkable1 = yes,
-                NextPos = CurPos
-            ;
-                Chunkable1 = no,
-                NextPos = other
-            )
-        ),
-        filter_unnecessary_flips([Item2 | Items0], NextPos, ItemsTail),
-        Items = [Item1 | ItemsTail]
-    ).
-
-    % Find a chunk of items which should in most cases (but unfortunately
-    % not all cases) be all the exported items, and put them in a standard
-    % order, with import_module and use_module items first in lexical order,
-    % then type, inst and mode definitions, again in lexical order, then
-    % pred and predmode declarations, in lexical order by sym_name, and
-    % finally all other items in the chunk. The chunk consists of the initial
-    % prefix of items for which this reordering is safe. The chunk will then
-    % be followed by the ordered versions of later chunks, if any.
-    %
-:- pred do_order_items(list(item)::in, list(item)::out) is det.
-
-do_order_items([], []).
-do_order_items([Item0 | Items0], OrderedItems) :-
-    Chunkable0 = chunkable_item(Item0),
-    (
-        Chunkable0 = yes,
-        list.takewhile(is_chunkable, Items0, FrontItems, RemainItems),
-        list.filter(is_reorderable, [Item0 | FrontItems],
-            ReorderableItems, NonReorderableItems),
-        list.filter(import_or_use, ReorderableItems,
-            ImportReorderableItems, NonImportReorderableItems),
-        list.filter(symname_orderable, NonReorderableItems,
-            SymNameItems, NonSymNameItems),
-        % We rely on the sort being stable to keep the items with the same
-        % sym_names in their original order.
-        list.sort(compare_by_symname, SymNameItems, OrderedSymNameItems),
-        do_order_items(RemainItems, OrderedRemainItems),
-        OrderedItems = list.sort(ImportReorderableItems) ++
-            list.sort(NonImportReorderableItems) ++
-            OrderedSymNameItems ++ NonSymNameItems ++ OrderedRemainItems
-    ;
-        Chunkable0 = no,
-        do_order_items(Items0, OrderedItemsTail),
-        OrderedItems = [Item0 | OrderedItemsTail]
-    ).
-
-:- pred import_or_use(item::in) is semidet.
-
-import_or_use(item_module_defn(ItemModuleDefn)) :-
     ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
     ( ModuleDefn = md_import(_)
     ; ModuleDefn = md_use(_)
@@ -1770,9 +1795,7 @@ reorderable_item(Item) = Reorderable :-
         ),
         Reorderable = yes
     ;
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_clause(_)
+        ( Item = item_clause(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
         ; Item = item_initialise(_)
@@ -1788,21 +1811,12 @@ reorderable_item(Item) = Reorderable :-
 reorderable_module_defn(ModuleDefn) = Reorderable :-
     (
         ( ModuleDefn = md_import(_)
-        ; ModuleDefn = md_export(_)
         ; ModuleDefn = md_external(_, _)
         ; ModuleDefn = md_use(_)
         ),
         Reorderable = yes
     ;
-        ( ModuleDefn = md_abstract_imported
-        ; ModuleDefn = md_implementation
-        ; ModuleDefn = md_imported(_)
-        ; ModuleDefn = md_include_module(_)
-        ; ModuleDefn = md_interface
-        ; ModuleDefn = md_implementation_but_exported_to_submodules
-        ; ModuleDefn = md_opt_imported
-        ; ModuleDefn = md_transitively_imported
-        ; ModuleDefn = md_used(_)
+        ( ModuleDefn = md_include_module(_)
         ; ModuleDefn = md_version_numbers(_, _)
         ),
         Reorderable = no
@@ -1845,7 +1859,6 @@ reorderable_pragma_type(Pragma) = Reorderable :-
         ; Pragma = pragma_foreign_decl(_)
         ; Pragma = pragma_foreign_import_module(_)
         ; Pragma = pragma_foreign_proc(_)
-        ; Pragma = pragma_source_file(_)
         ; Pragma = pragma_termination2_info(_)
         ; Pragma = pragma_fact_table(_)
         ),
@@ -1892,10 +1905,7 @@ chunkable_item(Item) = Chunkable :-
         ),
         Chunkable = yes
     ;
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_mutable(_)
-        ),
+        Item = item_mutable(_),
         Chunkable = no
     ).
 
@@ -1903,22 +1913,13 @@ chunkable_item(Item) = Chunkable :-
 
 chunkable_module_defn(ModuleDefn) = Reorderable :-
     (
-        ( ModuleDefn = md_export(_)
-        ; ModuleDefn = md_external(_, _)
+        ( ModuleDefn = md_external(_, _)
         ; ModuleDefn = md_import(_)
         ; ModuleDefn = md_use(_)
         ),
         Reorderable = yes
     ;
-        ( ModuleDefn = md_abstract_imported
-        ; ModuleDefn = md_implementation
-        ; ModuleDefn = md_imported(_)
-        ; ModuleDefn = md_include_module(_)
-        ; ModuleDefn = md_interface
-        ; ModuleDefn = md_implementation_but_exported_to_submodules
-        ; ModuleDefn = md_opt_imported
-        ; ModuleDefn = md_transitively_imported
-        ; ModuleDefn = md_used(_)
+        ( ModuleDefn = md_include_module(_)
         ; ModuleDefn = md_version_numbers(_, _)
         ),
         Reorderable = no
@@ -1962,7 +1963,6 @@ chunkable_pragma_type(Pragma) = Chunkable :-
         ; Pragma = pragma_foreign_decl(_)
         ; Pragma = pragma_foreign_import_module(_)
         ; Pragma = pragma_foreign_proc(_)
-        ; Pragma = pragma_source_file(_)
         ; Pragma = pragma_termination2_info(_)
         ),
         Chunkable = no

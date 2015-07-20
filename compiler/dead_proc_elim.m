@@ -93,6 +93,7 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module bool.

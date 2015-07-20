@@ -329,7 +329,7 @@ is_format_call_kind_and_vars(ModuleName, Name, Args, GoalInfo,
         Kind, FormatStringVar, FormattedValuesVar) :-
     % If you modify this code to recognize any previously unrecognized
     % predicates, then you also need to update the call tree of
-    % get_implicit_dependencies in module_imports.m. That code tests whether
+    % get_implicit_dependencies_* in module_imports.m. That code tests whether
     % a list of items calls one of these predicates, so that it can record
     % the need to implicitly import the modules that contain the predicates
     % that implement their optimized versions.

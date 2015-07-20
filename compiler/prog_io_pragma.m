@@ -70,6 +70,9 @@
 parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeItem) :-
     (
         PragmaTerms = [SinglePragmaTerm0],
+        % XXX ITEM_LIST We should do this ONLY if the top level functor
+        % of SinglePragmaTerm0, (PragmaName below) says that this is
+        % the kind of pragma for which a "where part" may LEGALLY be present.
         parse_type_decl_where_part_if_present(non_solver_type, ModuleName,
             VarSet, SinglePragmaTerm0, SinglePragmaTerm, MaybeWherePart),
         SinglePragmaTerm = term.functor(term.atom(PragmaName), PragmaArgs,
@@ -143,10 +146,6 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
         Context, SeqNum, MaybeItem) :-
     require_switch_arms_det [PragmaName]
     (
-        PragmaName = "source_file",
-        parse_pragma_source_file(PragmaTerms, ErrorTerm,
-            Context, SeqNum, MaybeItem)
-    ;
         PragmaName = "foreign_type",
         parse_pragma_foreign_type(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             Context, SeqNum, MaybeItem)
@@ -331,35 +330,6 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
 % into groups of related predicates, grouping both parse_pragma_xxx predicates
 % together with their helper predicates, and grouping parse_pragma_xxx
 % predicates for related xxxs together.
-
-:- pred parse_pragma_source_file(list(term)::in, term::in, prog_context::in,
-    int::in, maybe1(item)::out) is det.
-
-parse_pragma_source_file(PragmaTerms, ErrorTerm, Context, SeqNum, MaybeItem) :-
-    ( PragmaTerms = [SourceFileTerm] ->
-        ( SourceFileTerm = term.functor(term.string(SourceFile), [], _) ->
-            PSFInfo = pragma_info_source_file(SourceFile),
-            Pragma = pragma_source_file(PSFInfo),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                Context, SeqNum),
-            Item = item_pragma(ItemPragma),
-            MaybeItem = ok1(Item)
-        ;
-            Pieces = [words("Error: the argument of a"),
-                pragma_decl("source_file"),
-                words("declaration should be a string."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(SourceFileTerm),
-                    [always(Pieces)])]),
-            MaybeItem = error1([Spec])
-        )
-    ;
-        Pieces = [words("Error: wrong number of arguments in"),
-            pragma_decl("source_file"), words("declaration."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        MaybeItem = error1([Spec])
-    ).
 
 :- pred parse_pragma_foreign_type(module_name::in, list(term)::in, term::in,
     varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
@@ -883,11 +853,11 @@ parse_pragma_type_spec(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
             MaybeArityOrModes = ok1(ArityOrModes),
             ArityOrModes = arity_or_modes(PredName, Arity, MaybePredOrFunc,
                 MaybeModes),
-            conjunction_to_list(TypeSubnTerm, TypeSubnList),
+            conjunction_to_list(TypeSubnTerm, TypeSubnTerms),
 
             % The varset is actually a tvarset.
             varset.coerce(VarSet, TVarSet),
-            ( list.map(convert_type_spec_pair, TypeSubnList, TypeSubn) ->
+            ( list.map(convert_type_spec_pair, TypeSubnTerms, TypeSubns) ->
                 (
                     MaybeName = yes(SpecializedName0),
                     SpecializedName = SpecializedName0
@@ -895,11 +865,11 @@ parse_pragma_type_spec(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
                     MaybeName = no,
                     UnqualName = unqualify_name(PredName),
                     make_pred_name(ModuleName, "TypeSpecOf", MaybePredOrFunc,
-                        UnqualName, newpred_type_subst(TVarSet, TypeSubn),
+                        UnqualName, newpred_type_subst(TVarSet, TypeSubns),
                         SpecializedName)
                 ),
                 TypeSpecInfo = pragma_info_type_spec(PredName, SpecializedName,
-                    Arity, MaybePredOrFunc, MaybeModes, TypeSubn, TVarSet,
+                    Arity, MaybePredOrFunc, MaybeModes, TypeSubns, TVarSet,
                     set.init),
                 Pragma = pragma_type_spec(TypeSpecInfo),
                 ItemPragma = item_pragma_info(Pragma, item_origin_user,

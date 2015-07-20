@@ -16,8 +16,8 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_item.
 
 :- import_module bool.
 :- import_module list.

@@ -2,20 +2,20 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% This test case shows up an obscure bug in the compiler.
-% The compiler reports spurious mode errors in the compiler-generated
-% unification/compare/index predicates.
-% It's not clear whether or not this code is legal, but at very
-% least the compiler ought to issue a better error message.
-% If you write obfuscated code like this, you really deserve
-% what you get, but I guess we should fix the bug someday anyway...
-% for the moment, I'll file the bug report and forget it.
+% This test case used to show up an obscure bug in the compiler.
+% The compiler reported spurious mode errors in the compiler-generated
+% unification/compare/index predicates, due to the name f being held
+% by both a data constructor and a function.
 
 :- module nasty_func_test.
+:- interface.
+
 :- type foo
     --->    f(int)
     ;       g.
 
 :- func f(int) = foo.
+
+:- implementation.
 
 f(_) = g.

@@ -969,10 +969,5 @@ find_relative_paths(GoalPath, [HeadStr | TailStrs],
 maybe_steps_after(Step, fgp_cons(Step, Tail), Tail).
 
 %-----------------------------------------------------------------------------%
-
-:- type one_or_more(T)
-    --->    one_or_more(T, list(T)).
-
-%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.implicit_parallelism.push_goals_together.
 %-----------------------------------------------------------------------------%

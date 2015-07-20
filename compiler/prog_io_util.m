@@ -69,9 +69,8 @@
     % ok(SymName, Args - MaybeFuncRetArg) ; error(Msg, Term).
 :- type maybe_pred_or_func(T) == maybe2(sym_name, pair(list(T), maybe(T))).
 
-:- type var2tvar    ==  map(var, tvar).
-
-:- type var2pvar    ==  map(var, prog_var).
+:- type var2tvar == map(var, tvar).
+:- type var2pvar == map(var, prog_var).
 
 :- type parser(T) == pred(term, maybe1(T)).
 :- mode parser == (pred(in, out) is det).
@@ -155,26 +154,37 @@
 
     % Convert a "disjunction" (bunch of terms separated by ';'s) to a list.
     %
+:- pred disjunction_to_one_or_more(term(T)::in, one_or_more(term(T))::out)
+    is det.
 :- pred disjunction_to_list(term(T)::in, list(term(T))::out) is det.
 
     % Convert a "conjunction" (bunch of terms separated by ','s) to a list.
     %
+:- pred conjunction_to_one_or_more(term(T)::in, one_or_more(term(T))::out)
+    is det.
 :- pred conjunction_to_list(term(T)::in, list(term(T))::out) is det.
 
-    % list_to_conjunction(Context, First, Rest, Term):
-    % Convert a list to a "conjunction" (bunch of terms separated by ','s).
+    % one_or_more_to_conjunction(Context, List, Term):
     %
-:- pred list_to_conjunction(prog_context::in, term(T)::in, list(term(T))::in,
+    % Convert a nonempty list to a "conjunction", i.e. a bunch of terms
+    % separated by commas.
+    %
+:- pred one_or_more_to_conjunction(prog_context::in, one_or_more(term(T))::in,
     term(T)::out) is det.
 
-    % Convert a "sum" (bunch of terms separated by '+' operators) to a list.
+    % Convert a "sum", i.e. a bunch of terms separated by '+' operators
+    % to a nonempty list.
     %
+:- pred sum_to_one_or_more(term(T)::in, one_or_more(term(T))::out) is det.
 :- pred sum_to_list(term(T)::in, list(term(T))::out) is det.
 
     % Parse a comma-separated list (misleading described as a "conjunction")
     % of things.
     %
-:- pred parse_list(parser(T)::parser, term::in, maybe1(list(T))::out) is det.
+:- pred parse_one_or_more(parser(T)::parser, term::in,
+    maybe1(one_or_more(T))::out) is det.
+:- pred parse_list(parser(T)::parser, term::in,
+    maybe1(list(T))::out) is det.
 
 :- pred map_parser(parser(T)::parser, list(term)::in, maybe1(list(T))::out)
     is det.
@@ -805,8 +815,8 @@ standard_det("failure",   detism_failure).
     uniqueness::in, mer_inst::out) is semidet.
 
 parse_bound_inst_list(AllowConstrainedInstVar, Disj, Uniqueness, Inst) :-
-    disjunction_to_list(Disj, List),
-    convert_bound_inst_list(AllowConstrainedInstVar, List, Functors0),
+    disjunction_to_list(Disj, Disjuncts),
+    convert_bound_inst_list(AllowConstrainedInstVar, Disjuncts, Functors0),
     list.sort(Functors0, Functors),
     % Check that the list doesn't specify the same functor twice.
     \+ (
@@ -855,59 +865,119 @@ convert_bound_inst(AllowConstrainedInstVar, InstTerm, BoundInst) :-
     convert_inst_list(AllowConstrainedInstVar, Args1, Args),
     BoundInst = bound_functor(ConsId, Args).
 
+disjunction_to_one_or_more(Term, OneOrMore) :-
+    binop_term_to_one_or_more(";", Term, OneOrMore).
+
 disjunction_to_list(Term, List) :-
-    binop_term_to_list(";", Term, List).
+    binop_term_to_one_or_more(";", Term, one_or_more(Head, Tail)),
+    List = [Head | Tail].
+
+conjunction_to_one_or_more(Term, OneOrMore) :-
+    binop_term_to_one_or_more(",", Term, OneOrMore).
 
 conjunction_to_list(Term, List) :-
-    binop_term_to_list(",", Term, List).
+    binop_term_to_one_or_more(",", Term, one_or_more(Head, Tail)),
+    List = [Head | Tail].
 
-list_to_conjunction(_, Term, [], Term).
-list_to_conjunction(Context, First, [Second | Rest], Term) :-
-    list_to_conjunction(Context, Second, Rest, Tail),
+one_or_more_to_conjunction(_, one_or_more(Term, []), Term).
+one_or_more_to_conjunction(Context, one_or_more(First, [Second | Rest]),
+        Term) :-
+    one_or_more_to_conjunction(Context, one_or_more(Second, Rest), Tail),
     Term = term.functor(term.atom(","), [First, Tail], Context).
 
+sum_to_one_or_more(Term, OneOrMore) :-
+    binop_term_to_one_or_more("+", Term, OneOrMore).
+
 sum_to_list(Term, List) :-
-    binop_term_to_list("+", Term, List).
+    binop_term_to_one_or_more("+", Term, one_or_more(Head, Tail)),
+    List = [Head | Tail].
 
     % General predicate to convert terms separated by any specified operator
     % into a list.
     %
-:- pred binop_term_to_list(string::in, term(T)::in, list(term(T))::out) is det.
+:- pred binop_term_to_one_or_more(string::in, term(T)::in,
+    one_or_more(term(T))::out) is det.
 
-binop_term_to_list(Op, Term, List) :-
-    binop_term_to_list_2(Op, Term, [], List).
+binop_term_to_one_or_more(Op, Term, OneOrMore) :-
+    binop_term_to_one_or_more_loop(Op, Term, [], OneOrMore).
 
-:- pred binop_term_to_list_2(string::in, term(T)::in,
-    list(term(T))::in, list(term(T))::out) is det.
+:- pred binop_term_to_one_or_more_loop(string::in, term(T)::in,
+    list(term(T))::in, one_or_more(term(T))::out) is det.
 
-binop_term_to_list_2(Op, Term, !List) :-
+binop_term_to_one_or_more_loop(Op, Term, List0, OneOrMore) :-
     ( Term = term.functor(term.atom(Op), [L, R], _Context) ->
-        binop_term_to_list_2(Op, R, !List),
-        binop_term_to_list_2(Op, L, !List)
+        binop_term_to_one_or_more_loop(Op, R, List0,
+            one_or_more(RHead, RTail)),
+        binop_term_to_one_or_more_loop(Op, L, [RHead | RTail], OneOrMore)
     ;
-        !:List = [Term | !.List]
+        OneOrMore = one_or_more(Term, List0)
     ).
+
+parse_one_or_more(Parser, Term, Result) :-
+    conjunction_to_one_or_more(Term, one_or_more(Head, Tail)),
+    map_parser_one_or_more(Parser, Head, Tail, Result).
 
 parse_list(Parser, Term, Result) :-
     conjunction_to_list(Term, List),
     map_parser(Parser, List, Result).
 
+:- pred map_parser_one_or_more(parser(T)::parser, term::in, list(term)::in,
+    maybe1(one_or_more(T))::out) is det.
+
+map_parser_one_or_more(Parser, Head, Tail, Result) :-
+    call(Parser, Head, HeadResult),
+    (
+        Tail = [],
+        (
+            HeadResult = error1(Specs),
+            Result = error1(Specs)
+        ;
+            HeadResult = ok1(Item),
+            Result = ok1(one_or_more(Item, []))
+        )
+    ;
+        Tail = [HeadTail | TailTail], 
+        map_parser_one_or_more(Parser, HeadTail, TailTail, TailResult),
+        (
+            HeadResult = error1(HeadSpecs),
+            TailResult = error1(TailSpecs),
+            Result = error1(HeadSpecs ++ TailSpecs)
+        ;
+            HeadResult = error1(Specs),
+            TailResult = ok1(_),
+            Result = error1(Specs)
+        ;
+            HeadResult = ok1(_),
+            TailResult = error1(Specs),
+            Result = error1(Specs)
+        ;
+            HeadResult = ok1(HeadItem),
+            TailResult = ok1(TailItems),
+            Result = ok1(one_or_more_cons(HeadItem, TailItems))
+        )
+    ).
+
 map_parser(_, [], ok1([])).
-map_parser(Parser, [X | Xs], Result) :-
-    call(Parser, X, X_Result),
-    map_parser(Parser, Xs, Xs_Result),
-    combine_list_results(X_Result, Xs_Result, Result).
-
-    % If several items in a list contain errors, then we report them all.
-    %
-:- pred combine_list_results(maybe1(T)::in, maybe1(list(T))::in,
-    maybe1(list(T))::out) is det.
-
-combine_list_results(error1(HeadSpecs), error1(TailSpecs),
-    error1(HeadSpecs ++ TailSpecs)).
-combine_list_results(error1(Specs), ok1(_), error1(Specs)).
-combine_list_results(ok1(_), error1(Specs), error1(Specs)).
-combine_list_results(ok1(X), ok1(Xs), ok1([X | Xs])).
+map_parser(Parser, [Head | Tail], Result) :-
+    call(Parser, Head, HeadResult),
+    map_parser(Parser, Tail, TailResult),
+    (
+        HeadResult = error1(HeadSpecs),
+        TailResult = error1(TailSpecs),
+        Result = error1(HeadSpecs ++ TailSpecs)
+    ;
+        HeadResult = error1(Specs),
+        TailResult = ok1(_),
+        Result = error1(Specs)
+    ;
+        HeadResult = ok1(_),
+        TailResult = error1(Specs),
+        Result = error1(Specs)
+    ;
+        HeadResult = ok1(HeadItem),
+        TailResult = ok1(TailItems),
+        Result = ok1([HeadItem | TailItems])
+    ).
 
 %-----------------------------------------------------------------------------%
 

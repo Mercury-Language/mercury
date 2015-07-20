@@ -10,7 +10,6 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 
@@ -567,7 +566,7 @@ fixup_foreign_tag_val_qualification(TypeModuleName, !NamesAndTags,
         CtorSymName = qualified(TypeModuleName, Name)
     ;
         CtorSymName0 = qualified(CtorModuleName, Name),
-        ( match_sym_name(CtorModuleName, TypeModuleName) ->
+        ( partial_sym_name_matches_full(CtorModuleName, TypeModuleName) ->
             CtorSymName = qualified(TypeModuleName, Name)
         ;
             !:BadCtors = [CtorSymName0 | !.BadCtors],

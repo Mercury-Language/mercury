@@ -1,0 +1,220 @@
+This twin proposal was originally made and discussed on and after 3 nov 2008.
+The concensus was that the second is the better one.
+
+%-----------------------------------------------------------------------------%
+
+The following contains two proposals for the representation of statuses.
+The second one will require a third group of types for things that aren't
+predicates, functions or types (e.g. insts and modes), but I think it is the
+better approach.
+
+I intend to implement the chosen proposal by
+
+- first replacing each existing instance of import_status in the compiler
+  with a pair such as &lt;old import_status type, new type import status type>,
+- performing all operations on both fields of the pair in sync,
+- checking the equivalence of the outcomes,
+- deleting the first element of each pair only when all tests pass in several
+  grades without any equivalence tests failing.
+
+Note that getting there may require refining the existing set of operations
+on import_statuses; this change is needed precisely BECAUSE that set of
+operations wasn't properly designed either.
+
+Zoltan.
+
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+% PROPOSAL 1
+
+:- type gen_status
+    --->    gen_status(
+                gen_mercury_status,
+                gen_target_status
+            ).
+
+:- type gen_target_status
+    --->    gen_target_defined_in_this_module
+    ;       gen_target_defined_in_other_module
+    ;       gen_target_defined_external.
+
+:- type gen_mercury_status
+    --->    gen_mercury_defined_in_this_module(
+                gen_mercury_export_status
+            )
+    ;       gen_mercury_defined_in_other_module(
+                gen_mercury_import_status
+            ).
+
+:- type gen_mercury_export_status
+    --->    gen_mercury_no_export
+            % Not exported to anyone.
+
+    ;       gen_mercury_export_to_all
+            % Export to every module.
+
+    ;       gen_mercury_export_to_submodules
+            % Export only to submodules.
+
+    ;       gen_mercury_pseudo_export_to_all
+            % For unify predicates: export only proc 0.
+
+    ;       gen_mercury_opt_export_to_all.
+            % Export the predicate only for optimization.
+
+:- type gen_mercury_import_status
+    --->    gen_mercury_imported(import_locn)
+            % Imported the interface.
+
+    ;       gen_mercury_pseudo_imported
+            % For unify predicates: import only proc 0
+
+    ;       gen_mercury_opt_imported.
+            % Imported the predicate only for optimization.
+
+%-----------------------------------------------------------------------------%
+
+:- type type_status
+    --->    type_defined_in_this_module(
+                type_export_status
+            )
+    ;       type_defined_in_other_module(
+                type_import_status
+            )
+    ;       type_target_builtin.
+
+:- type type_export_status
+    --->    type_no_export
+            % Not exported to anyone.
+
+    ;       type_export_to_all
+            % Export the whole type definition to all modules.
+
+    ;       type_export_to_submodules
+            % Export the whole type definition, but only to submodules.
+
+    ;       type_abstract_export_to_all
+            % Export only the type constructor to all modules.
+
+    ;       type_opt_export_to_all.
+            % Export the type only for optimization.
+            % XXX: What about types whose declaration is the interface section
+            % and whose definition is in the implementation section, but whose
+            % definition we want to opt_export anyway?
+
+:- type type_import_status
+    --->    type_imported(import_locn)
+            % Imported the whole type definition.
+
+    ;       type_abstract_imported
+            % Imported only the type constructor.
+
+    ;       type_opt_imported.
+            % Imported the type only for optimization.
+            % XXX: What about types whose declaration is the interface section
+            % of another module and whose definition is in the implementation
+            % section of that other module, but whose definition we want
+            % to opt_import anyway?
+
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+% PROPOSAL 2
+
+:- type code_status
+    --->    code_status(
+                code_mercury_status,
+                code_target_status
+            ).
+
+:- type code_target_status
+    --->    code_target_defined_in_this_module
+    ;       code_target_defined_in_other_module
+    ;       code_target_defined_external.
+
+:- type code_mercury_status
+    --->    code_mercury_defined_in_this_module(
+                code_is_pseudo_export       :: code_is_pseudo_export,
+                % If this field says code_is_pseudo_export, then the other
+                % three fields apply only to procedure 0; all other procedures
+                % of this predicate are not exported to anyone.
+
+                code_export_to_submodules   :: code_export_to_submodules,
+                % Will be set to code_no_export_to_submodules if we do not yet
+                % know whether the module HAS submodules.
+
+                code_export_plain           :: code_export,
+                code_export_opt             :: maybe(code_opt_export)
+            )
+    ;       code_mercury_defined_in_other_module(
+                code_is_pseudo_import       :: code_is_pseudo_import,
+                % If this field says code_is_pseudo_import, then the other
+                % two fields apply only to procedure 0; we don't import
+                % any other procedures of this predicate.
+
+                code_import_plain           :: import_locn,
+                % Plain imports always import only predicates' declarations,
+                % never their definitions.
+                code_import_opt             :: maybe(code_opt_import)
+            ).
+
+:- type code_export_to_submodules
+    --->    code_export_to_submodules
+    ;       code_no_export_to_submodules.
+
+:- type code_is_pseudo_export
+    --->    code_is_pseudo_export
+    ;       code_is_not_pseudo_export.
+
+:- type code_is_pseudo_impport
+    --->    code_is_pseudo_impport
+    ;       code_is_not_pseudo_impport.
+
+:- type code_export
+    --->    code_export_decl
+    ;       code_do_not_export_decl.
+
+:- type code_opt_export
+    --->    code_opt_export_decl_only
+    ;       code_opt_export_decl_and_defn.
+
+:- type code_opt_import
+    --->    code_opt_import_decl_only
+    ;       code_opt_import_decl_and_defn.
+
+%-----------------------------------------------------------------------------%
+
+:- type type_status
+    --->    type_defined_in_this_module(
+                type_export_to_submodules   :: type_export_to_submodules,
+                % Will be set to type_no_export_to_submodules if we do not yet
+                % know whether the module HAS submodules.
+
+                type_export_plain           :: type_export,
+                type_export_opt             :: maybe(type_export)
+                % The opt field, if present, cannot export less than the plain
+                % field.
+            )
+    ;       type_defined_in_other_module(
+                type_import_plain           :: type_import(import_locn),
+                type_import_opt             :: maybe(type_import(unit))
+                % The opt field, if present, cannot import less than
+                % the plain field.
+            )
+    ;       type_builtin.
+
+:- type type_export_to_submodules
+    --->    type_export_to_submodules
+    ;       type_no_export_to_submodules.
+
+:- type type_export
+    ;       type_export_whole_defn
+            % Export the whole type definition.
+    ;       type_export_ctor_only
+            % Export only the type constructor.
+    ;       type_export_nothing.
+
+:- type type_import(T)
+    ;       type_import_whole_defn(T)
+            % Import the whole type definition.
+    ;       type_import_ctor_only(T).
+            % Import only the type constructor.

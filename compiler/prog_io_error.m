@@ -26,6 +26,18 @@
     ;       rme_no_module_decl_at_start
             % The file does not start with a module declaration at all.
 
+    ;       rme_no_section_decl_at_start
+            % The module does not start with either an interface or an
+            % implementation section marker.
+
+    ;       rme_end_module_not_at_end_of_src
+            % The source code of a module has at least one term
+            % after the end_module marker for the main module.
+
+    ;       rme_unexpected_term_in_int_or_opt
+            % The interface or optimization file of a module has at least one
+            % term that is not expected in such a file.
+
     ;       rme_could_not_read_term
     ;       rme_could_not_parse_item
             % When we attempted to read an item from the file, we got a failure

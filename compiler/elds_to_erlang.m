@@ -59,6 +59,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.status.
 
 :- import_module char.
 :- import_module int.

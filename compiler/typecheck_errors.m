@@ -1990,7 +1990,7 @@ maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier)
     ModuleInfo = ClauseContext ^ tecc_module_info,
     module_info_get_visible_modules(ModuleInfo, VisibleModules),
 
-    set.filter(match_sym_name(ModuleQualifier),
+    set.filter(partial_sym_name_matches_full(ModuleQualifier),
         VisibleModules, MatchingVisibleModules),
     ( set.is_empty(MatchingVisibleModules) ->
         % The module qualifier does not match any of the visible modules,
@@ -2051,7 +2051,8 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
             VarVectorKind = var_vector_args(ArgVectorKind),
             (
                 ArgVectorKind = arg_vector_clause_head,
-                Pieces = [words("in argument"), invis_order(ArgNum),
+                Pieces = [words("in argument"),
+                    invis_order_default_end(ArgNum),
                     int_fixed(ArgNum), words("of the clause head:"), nl]
             ;
                 (
@@ -2081,48 +2082,55 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                 unexpected($module, $pred, "arg_vector_foreign_proc_call")
             ;
                 ArgVectorKind = arg_vector_event(EventName),
-                Pieces = [words("in argument"), invis_order(ArgNum),
-                    int_fixed(ArgNum), words("of event"), fixed(EventName),
-                    suffix(":"), nl]
+                Pieces = [words("in argument"),
+                    invis_order_default_end(ArgNum), int_fixed(ArgNum),
+                    words("of event"), fixed(EventName), suffix(":"), nl]
             )
         ;
             VarVectorKind = var_vector_cond_quant,
-            Pieces = [words("in the"), invis_order(ArgNum), nth_fixed(ArgNum),
+            Pieces = [words("in the"), invis_order_default_end(ArgNum),
+                nth_fixed(ArgNum),
                 words("quantified variable in if-then-else condition:"), nl]
         ;
             VarVectorKind = var_vector_exist_quant,
-            Pieces = [words("in the"), invis_order(ArgNum), nth_fixed(ArgNum),
+            Pieces = [words("in the"), invis_order_default_end(ArgNum),
+                nth_fixed(ArgNum),
                 words("variable of quantification scope:"), nl]
         ;
             VarVectorKind = var_vector_promise_solutions,
-            Pieces = [words("in the"), invis_order(ArgNum), nth_fixed(ArgNum),
+            Pieces = [words("in the"), invis_order_default_end(ArgNum),
+                nth_fixed(ArgNum),
                 words("variable of promise_solutions scope:"), nl]
         ;
             VarVectorKind = var_vector_loop_control,
-            Pieces = [words("in the"), invis_order(ArgNum), nth_fixed(ArgNum),
+            Pieces = [words("in the"), invis_order_default_end(ArgNum),
+                nth_fixed(ArgNum),
                 words("variable of loop control scope:"), nl]
         ;
             VarVectorKind = var_vector_try_io,
             ( ArgNum = 1 ->
-                Pieces = [invis_order(1),
+                Pieces = [invis_order_default_end(1),
                     words("in initial I/O state variable of try goal:"), nl]
             ; ArgNum = 2 ->
-                Pieces = [invis_order(2),
+                Pieces = [invis_order_default_end(2),
                     words("in final I/O state variable of try goal:"), nl]
             ;
                 unexpected($module, $pred, "try io variable not arg 1 or 2")
             )
         ;
             VarVectorKind = var_vector_atomic_output,
-            Pieces = [words("in the"), invis_order(ArgNum), nth_fixed(ArgNum),
-                words("output variable of atomic goal:"), nl]
+            Pieces = [words("in the"), invis_order_default_end(ArgNum),
+                nth_fixed(ArgNum), words("output variable of atomic goal:"),
+                nl]
         ;
             VarVectorKind = var_vector_atomic_outer,
             ( ArgNum = 1 ->
-                Pieces = [invis_order(1), words("in the first outer variable"),
+                Pieces = [invis_order_default_end(1),
+                    words("in the first outer variable"),
                     words("of atomic goal:"), nl]
             ; ArgNum = 2 ->
-                Pieces = [invis_order(2), words("in the second outer variable"),
+                Pieces = [invis_order_default_end(2),
+                    words("in the second outer variable"),
                     words("of atomic goal:"), nl]
             ;
                 unexpected($module, $pred, "outer variable not arg 1 or 2")

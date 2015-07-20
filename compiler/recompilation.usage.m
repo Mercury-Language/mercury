@@ -73,7 +73,7 @@
             ).
 
 :- pred write_usage_file(module_info::in, list(module_name)::in,
-    maybe(module_timestamps)::in, io::di, io::uo) is det.
+    maybe(module_timestamp_map)::in, io::di, io::uo) is det.
 
     % Changes which modify the format of the `.used' files will increment
     % this number. recompilation_check.m should recompile if the version number
@@ -101,6 +101,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.status.
 :- import_module recompilation.version.
 
 :- import_module assoc_list.
@@ -111,11 +112,11 @@
 :- import_module solutions.
 :- import_module string.
 
-write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestamps, !IO) :-
+write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-
     module_info_get_maybe_recompilation_info(ModuleInfo, MaybeRecompInfo),
     (
         MaybeRecompInfo = yes(RecompInfo),
-        MaybeTimestamps = yes(Timestamps)
+        MaybeTimestampMap = yes(TimestampMap)
     ->
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -131,7 +132,7 @@ write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestamps, !IO) :-
             FileResult = ok(Stream0),
             io.set_output_stream(Stream0, OldStream, !IO),
             write_usage_file_2(ModuleInfo,
-                NestedSubModules, RecompInfo, Timestamps, !IO),
+                NestedSubModules, RecompInfo, TimestampMap, !IO),
             io.set_output_stream(OldStream, Stream, !IO),
             io.close_output(Stream, !IO)
         ;
@@ -150,9 +151,9 @@ write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestamps, !IO) :-
 
 :- pred write_usage_file_2(module_info::in,
     list(module_name)::in, recompilation_info::in,
-    module_timestamps::in, io::di, io::uo) is det.
+    module_timestamp_map::in, io::di, io::uo) is det.
 
-write_usage_file_2(ModuleInfo, NestedSubModules, RecompInfo, Timestamps,
+write_usage_file_2(ModuleInfo, NestedSubModules, RecompInfo, TimestampMap,
         !IO) :-
     io.write_int(usage_file_version_number, !IO),
     io.write_string(",", !IO),
@@ -160,7 +161,7 @@ write_usage_file_2(ModuleInfo, NestedSubModules, RecompInfo, Timestamps,
     io.write_string(".\n\n", !IO),
 
     module_info_get_name(ModuleInfo, ThisModuleName),
-    map.lookup(Timestamps, ThisModuleName,
+    map.lookup(TimestampMap, ThisModuleName,
         module_timestamp(_, ThisModuleTimestamp, _)),
     io.write_string("(", !IO),
     mercury_output_bracketed_sym_name(ThisModuleName, !IO),
@@ -179,9 +180,9 @@ write_usage_file_2(ModuleInfo, NestedSubModules, RecompInfo, Timestamps,
         io.write_string(").\n\n", !IO)
     ),
 
-    UsedItems = RecompInfo ^ used_items,
+    UsedItems = RecompInfo ^ recomp_used_items,
     find_all_used_imported_items(ModuleInfo,
-        UsedItems, RecompInfo ^ dependencies, ResolvedUsedItems,
+        UsedItems, RecompInfo ^ recomp_dependencies, ResolvedUsedItems,
         UsedClasses, ImportedItems, ModuleInstances),
 
     ( UsedItems = init_used_items ->
@@ -220,7 +221,7 @@ write_usage_file_2(ModuleInfo, NestedSubModules, RecompInfo, Timestamps,
         io.write_string(").\n", !IO)
     ),
 
-    map.foldl(write_module_name_and_used_items(RecompInfo, Timestamps,
+    map.foldl(write_module_name_and_used_items(RecompInfo, TimestampMap,
         ModuleInstances), ImportedItems, !IO),
     % recompilation_check.m checks for this item when reading in the `.used'
     % file to make sure the earlier compilation wasn't interrupted in the
@@ -229,19 +230,19 @@ write_usage_file_2(ModuleInfo, NestedSubModules, RecompInfo, Timestamps,
     io.write_string("done.\n", !IO).
 
 :- pred write_module_name_and_used_items(recompilation_info::in,
-    module_timestamps::in, map(module_name, set(item_name))::in,
+    module_timestamp_map::in, map(module_name, set(item_name))::in,
     module_name::in, item_id_set(set(pair(string, arity)))::in,
     io::di, io::uo) is det.
 
-write_module_name_and_used_items(RecompInfo, Timestamps, ModuleInstances,
+write_module_name_and_used_items(RecompInfo, TimestampMap, ModuleInstances,
         ModuleName, ModuleUsedItems, !IO) :-
     io.nl(!IO),
     io.write_string("(", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(", """, !IO),
-    map.lookup(Timestamps, ModuleName,
-        module_timestamp(Suffix, ModuleTimestamp, NeedQualifier)),
-    io.write_string(Suffix, !IO),
+    map.lookup(TimestampMap, ModuleName,
+        module_timestamp(FileKind, ModuleTimestamp, NeedQualifier)),
+    io.write_string(file_kind_to_extension(FileKind), !IO),
     io.write_string(""", ", !IO),
     write_version_number(ModuleTimestamp, !IO),
     (
@@ -255,7 +256,8 @@ write_module_name_and_used_items(RecompInfo, Timestamps, ModuleInstances,
         % XXX We don't yet record all uses of items from these modules
         % in polymorphism.m, etc.
         \+ any_mercury_builtin_module(ModuleName),
-        map.search(RecompInfo ^ version_numbers, ModuleName, ModuleVersions)
+        map.search(RecompInfo ^ recomp_version_numbers, ModuleName,
+            ModuleVersions)
     ->
         % Select out from the version numbers of all items in the imported
         % module the ones which are used.
@@ -652,7 +654,7 @@ record_used_pred_or_func(PredOrFunc, Id, !Info) :-
     record_resolved_item(SymName, Arity,
         do_record_used_pred_or_func(PredOrFunc),
         IdSet0, IdSet, !Info),
-    ItemSet = update_pred_or_func_set(ItemSet0, ItemType, IdSet),
+    update_pred_or_func_set(ItemType, IdSet, ItemSet0, ItemSet),
     !Info ^ used_items := ItemSet.
 
 :- pred do_record_used_pred_or_func(pred_or_func::in,
@@ -1490,7 +1492,7 @@ record_imported_item(ItemType, ItemName, !Info) :-
     ),
     ModuleItemIds0 = extract_ids(ModuleItems1, ItemType),
     set.insert(Name - Arity, ModuleItemIds0, ModuleItemIds),
-    ModuleItems = update_ids(ModuleItems1, ItemType, ModuleItemIds),
+    update_ids(ItemType, ModuleItemIds, ModuleItems1, ModuleItems),
     map.set(Module, ModuleItems, ImportedItems0, ImportedItems),
     !Info ^ imported_items := ImportedItems.
 

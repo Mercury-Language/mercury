@@ -1730,6 +1730,11 @@
 
 :- interface.
 
+:- type one_or_more(T)
+    --->    one_or_more(T, list(T)).
+
+:- func one_or_more_cons(T, one_or_more(T)) = one_or_more(T).
+
     % Some declarations for complicated modes using lists.
     %
     % See our comment above regarding incomplete  support for partial
@@ -1750,7 +1755,6 @@
     %
 :- mode list_skel_in(I)  == list_skel(I) >> list_skel(I).
 :- mode list_skel_out(I) == free >> list_skel(I).
-
 
     % This is the same as the usual forward mode of append, but preserves
     % any extra information available in the input arguments.
@@ -3236,6 +3240,11 @@ list_to_doc_2([X | Xs]) = Doc :-
             format_susp((func) = list_to_doc_2(Xs))
         ])
     ).
+
+%---------------------------------------------------------------------------%
+
+one_or_more_cons(Head, one_or_more(HeadTail, TailTail)) =
+    one_or_more(Head, [HeadTail | TailTail]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

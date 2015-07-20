@@ -16,21 +16,61 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.status.
 
+:- import_module list.
 :- import_module term.
 :- import_module varset.
 
-    % parse_item(ModuleName, VarSet, Term, SeqNum, MaybeItem):
+    % This type represents the result of parsing one term.
+:- type item_or_marker
+    --->    iom_item(item)
+            % The term contains an item. Almost all items are returned like
+            % this.
+    ;       iom_items(one_or_more(item))
+            % The term contains one or more items. This is returned for
+            % `:- import_module', `:- use_module' and `:- include_module'
+            % declarations, which we return as a separate item for each
+            % imported, used or included module name.
+    ;       iom_marker_src_file(string)
+            % The term was a pragma specifying the new filename.
+    ;       iom_marker_module_start(module_name, prog_context, int)
+            % The term was a `:- module' declaration. The arguments give
+            % the module's name, and the context and sequence number of the
+            % declaration. The module name is exactly what was in the
+            % declaration; it is NOT implicitly module qualified by the
+            % enclosing module.
+    ;       iom_marker_module_end(module_name, prog_context, int)
+            % The term was a `:- end_module' declaration. The arguments give
+            % the module's name, and the context and sequence number of the
+            % declaration. Again, the module name as is, and not implicitly
+            % module qualified.
+    ;       iom_marker_section(module_section, prog_context, int).
+            % The term was a `:- interface' or `:- implementation' declaration.
+            % The arguments give the section's kind, and the context
+            % and sequence number of the declaration.
+
+    % parse_item_or_marker(ModuleName, VarSet, Term, SeqNum,
+    %   MaybeItemOrMarker):
     %
-    % Parse Term. If successful, bind MaybeItem to the parsed item,
-    % otherwise bind it to an appropriate error message. Qualify
-    % appropriate parts of the item, with ModuleName as the module name.
-    % Use SeqNum as the item's sequence number.
+    % Parse Term as either an item or sequence of items, or as a marker for
+    % the start or end of a module, the start of a module section,
+    % or a new source file.
     %
-:- pred parse_item(module_name::in, varset::in, term::in, int::in,
-    maybe1(item)::out) is det.
+    % If Term represents an item (or more than one), bind MaybeItemOrMarker
+    % to the parsed item(s), having qualified the appropriate parts of the item
+    % with ModuleName as the module name. If Term represents a marker, include
+    % its details in MaybeItemOrMarker. Include SeqNum as the sequence number
+    % in both cases.
+    %
+    % If the parsing attempt is unsuccessful, bind MaybeItemOrMarker
+    % to an appropriate error message.
+    %
+:- pred parse_item_or_marker(module_name::in, varset::in, term::in, int::in,
+    maybe1(item_or_marker)::out) is det.
 
     % parse_decl(ModuleName, VarSet, Term, SeqNum, MaybeItem):
     %
@@ -38,6 +78,9 @@
     % parsed item, otherwise it is bound to an appropriate error message.
     % Qualify appropriate parts of the item, with ModuleName as the module
     % name. Use SeqNum as the item's sequence number.
+    %
+    % Exported for use by prog_io_typeclass.m, for parsing type class method
+    % declarations.
     %
 :- pred parse_decl(module_name::in, varset::in, term::in, int::in,
     maybe1(item)::out) is det.
@@ -51,7 +94,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_dcg.
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_io_mode_defn.
@@ -68,7 +110,6 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -76,30 +117,61 @@
 
 %-----------------------------------------------------------------------------%
 
-parse_item(ModuleName, VarSet, Term, SeqNum, Result) :-
-    (
+parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
+    ( if
         Term = term.functor(term.atom(":-"), [DeclTerm], _DeclContext)
-    ->
-        % Term is a declaration.
-        parse_decl(ModuleName, VarSet, DeclTerm, SeqNum, Result)
-    ;
-        Term = term.functor(term.atom("-->"), [DCG_H_Term, DCG_B_Term],
-            DCG_Context)
-    ->
+    then
+        ( if
+            DeclTerm = term.functor(term.atom(Functor), ArgTerms, Context)
+        then
+            ( if
+                parse_module_marker(Functor, ArgTerms, Context, SeqNum, Marker)
+            then
+                MaybeIOM = ok1(Marker)
+            else if
+                parse_items_shorthand(ModuleName, VarSet, Functor, ArgTerms,
+                    Context, SeqNum, MaybeIOMPrime)
+            then
+                MaybeIOM = MaybeIOMPrime
+            else if
+                DeclTerm = term.functor(term.atom(Functor), ArgTerms, _Context),
+                parse_source_file_marker(Functor, ArgTerms, MaybeIOMPrime)
+            then
+                MaybeIOM = MaybeIOMPrime
+            else
+                % Term is a declaration.
+                % XXX ITEM_LIST We already know DeclTerm's Functor, ArgTems,
+                % and Context; pass it to parse_decl.
+                parse_decl(ModuleName, VarSet, DeclTerm, SeqNum, MaybeItem),
+                maybe_item_to_item_or_marker(MaybeItem, MaybeIOM)
+            )
+        else
+            Context = get_term_context(Term),
+            Pieces = [words("Error: atom expected after"), quote(":-"),
+                suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            MaybeIOM = error1([Spec])
+        )
+    else if
+        Term = term.functor(term.atom("-->"), [DCGHeadTerm, DCGBodyTerm],
+            DCGContext)
+    then
         % Term is a DCG clause.
-        parse_dcg_clause(ModuleName, VarSet, DCG_H_Term, DCG_B_Term,
-            DCG_Context, SeqNum, Result)
-    ;
+        parse_dcg_clause(ModuleName, VarSet, DCGHeadTerm, DCGBodyTerm,
+            DCGContext, SeqNum, MaybeItem),
+        maybe_item_to_item_or_marker(MaybeItem, MaybeIOM)
+    else
         % Term is a clause; either a fact or a rule.
-        (
+        ( if
             Term = term.functor(term.atom(":-"),
                 [HeadTermPrime, BodyTermPrime], TermContext)
-        ->
+        then
             % Term is a rule.
             HeadTerm = HeadTermPrime,
             BodyTerm = BodyTermPrime,
             ClauseContext = TermContext
-        ;
+        else
             % Term is a fact.
             HeadTerm = Term,
             ClauseContext = get_term_context(HeadTerm),
@@ -107,8 +179,145 @@ parse_item(ModuleName, VarSet, Term, SeqNum, Result) :-
         ),
         varset.coerce(VarSet, ProgVarSet),
         parse_clause(ModuleName, HeadTerm, BodyTerm, ProgVarSet,
-            ClauseContext, SeqNum, Result)
+            ClauseContext, SeqNum, MaybeItem),
+        maybe_item_to_item_or_marker(MaybeItem, MaybeIOM)
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred parse_module_marker(string::in, list(term)::in,
+    prog_context::in, int::in, item_or_marker::out) is semidet.
+
+parse_module_marker(Functor, ArgTerms, Context, SeqNum, Marker) :-
+    ( if
+        Functor = "module",
+        ArgTerms = [ModuleNameTerm],
+        try_parse_symbol_name(ModuleNameTerm, ModuleName)
+    then
+        Marker = iom_marker_module_start(ModuleName, Context, SeqNum)
+    else if
+        Functor = "end_module",
+        ArgTerms = [ModuleNameTerm],
+        try_parse_symbol_name(ModuleNameTerm, ModuleName)
+    then
+        Marker = iom_marker_module_end(ModuleName, Context, SeqNum)
+    else if
+        (
+            Functor = "interface",
+            Section = ms_interface
+        ;
+            Functor = "implementation",
+            Section = ms_implementation
+        ),
+        ArgTerms = []
+    then
+        Marker = iom_marker_section(Section, Context, SeqNum)
+    else
+        fail
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred parse_items_shorthand(module_name::in, varset::in,
+    string::in, list(term)::in, term.context::in, int::in,
+    maybe1(item_or_marker)::out) is semidet.
+
+parse_items_shorthand(ModuleName, VarSet, Functor, ArgTerms, Context, SeqNum,
+        MaybeIOM) :-
+    (
+        Functor = "import_module",
+        Parser = parse_module_specifier(VarSet),
+        Maker = make_import_item(Context, SeqNum)
+    ;
+        Functor = "use_module",
+        Parser = parse_module_specifier(VarSet),
+        Maker = make_use_item(Context, SeqNum)
+    ;
+        Functor = "include_module",
+        Parser = parse_module_name(ModuleName, VarSet),
+        Maker = make_include_item(Context, SeqNum)
+    ),
+    ArgTerms = [ModuleNamesTerm],
+    parse_one_or_more(Parser, ModuleNamesTerm, MaybeModuleNames),
+    (
+        MaybeModuleNames = ok1(one_or_more(HeadModuleName, TailModuleNames)),
+        Maker(HeadModuleName, HeadItem),
+        list.map(Maker, TailModuleNames, TailItems),
+        MaybeIOM = ok1(iom_items(one_or_more(HeadItem, TailItems)))
+    ;
+        MaybeModuleNames = error1(Specs),
+        MaybeIOM = error1(Specs)
+    ).
+
+:- pred make_import_item(term.context::in, int::in, module_name::in,
+    item::out) is det.
+
+make_import_item(Context, SeqNum, ModuleName, Item) :-
+    ModuleDefn = md_import(ModuleName),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
+    Item = item_module_defn(ItemModuleDefn).
+
+:- pred make_use_item(term.context::in, int::in, module_name::in,
+    item::out) is det.
+
+make_use_item(Context, SeqNum, ModuleName, Item) :-
+    ModuleDefn = md_use(ModuleName),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
+    Item = item_module_defn(ItemModuleDefn).
+
+:- pred make_include_item(term.context::in, int::in, module_name::in,
+    item::out) is det.
+
+make_include_item(Context, SeqNum, ModuleName, Item) :-
+    ModuleDefn = md_include_module(ModuleName),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
+    Item = item_module_defn(ItemModuleDefn).
+
+%-----------------------------------------------------------------------------%
+
+:- pred parse_source_file_marker(string::in, list(term)::in,
+    maybe1(item_or_marker)::out) is semidet.
+
+parse_source_file_marker(Functor, ArgTerms, MaybeIOM) :-
+    Functor = "pragma",
+    ArgTerms = [PragmaTerm],
+    PragmaTerm = term.functor(term.atom("source_file"), PragmaArgTerms,
+        PragmaContext),
+    ( PragmaArgTerms = [SourceFileTerm] ->
+        ( SourceFileTerm = term.functor(term.string(SourceFile), [], _) ->
+            Marker = iom_marker_src_file(SourceFile),
+            MaybeIOM = ok1(Marker)
+        ;
+            Pieces = [words("Error: the argument of a"),
+                pragma_decl("source_file"),
+                words("declaration should be a string."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(PragmaContext, [always(Pieces)])]),
+            MaybeIOM = error1([Spec])
+        )
+    ;
+        Pieces = [words("Error: wrong number of arguments in"),
+            pragma_decl("source_file"), words("declaration."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(PragmaContext, [always(Pieces)])]),
+        MaybeIOM = error1([Spec])
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred maybe_item_to_item_or_marker(maybe1(item)::in,
+    maybe1(item_or_marker)::out) is det.
+
+maybe_item_to_item_or_marker(MaybeItem, MaybeItemOrMarker) :-
+    (
+        MaybeItem = ok1(Item),
+        MaybeItemOrMarker = ok1(iom_item(Item))
+    ;
+        MaybeItem = error1(Specs),
+        MaybeItemOrMarker = error1(Specs)
+    ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred parse_clause(module_name::in, term::in, term::in,
     prog_varset::in, term.context::in, int::in, maybe1(item)::out) is det.
@@ -165,6 +374,9 @@ parse_clause(ModuleName, HeadTerm, BodyTerm0, ProgVarSet0, Context,
 %-----------------------------------------------------------------------------%
 
 parse_decl(ModuleName, VarSet, Term, SeqNum, MaybeItem) :-
+    % XXX ITEM_LIST If Term's functor indicates that it is a declaration
+    % of a kind that does not have attributes, then don't even TRY
+    % to parse attributes.
     parse_attrs_and_decl(ModuleName, VarSet, Term, [], SeqNum, MaybeItem).
 
     % parse_attrs_and_decl(ModuleName, VarSet, Term, Attributes, SeqNum,
@@ -256,33 +468,6 @@ parse_attributed_decl(ModuleName, VarSet, Functor, ArgTerms, Attributes,
         parse_pred_or_func_decl(PredOrFunc, ModuleName, VarSet, DeclTerm,
             Attributes, Context, SeqNum, MaybeItem)
     ;
-        (
-            Functor = "import_module",
-            Maker = make_import
-        ;
-            Functor = "use_module",
-            Maker = make_use
-        ;
-            Functor = "export_module",
-            Maker = make_export
-        ),
-        ArgTerms = [ModuleSpecTerm],
-        parse_symlist_decl(parse_module_specifier(VarSet), Maker,
-            ModuleSpecTerm, Attributes, Context, SeqNum, MaybeItem)
-    ;
-        (
-            Functor = "interface",
-            ModuleDefn = md_interface
-        ;
-            Functor = "implementation",
-            ModuleDefn = md_implementation
-        ),
-        ArgTerms = [],
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
-        Item = item_module_defn(ItemModuleDefn),
-        MaybeItem0 = ok1(Item),
-        check_no_attributes(MaybeItem0, Attributes, MaybeItem)
-    ;
         Functor = "external",
         (
             ArgTerms = [PredSpecTerm],
@@ -303,61 +488,6 @@ parse_attributed_decl(ModuleName, VarSet, Functor, ArgTerms, Attributes,
             PredSpecTerm, MaybeSymSpec),
         process_maybe1(make_external(MaybeBackEnd, Context, SeqNum),
             MaybeSymSpec, MaybeItem0),
-        check_no_attributes(MaybeItem0, Attributes, MaybeItem)
-    ;
-        Functor = "module",
-        ArgTerms = [ModuleNameTerm],
-        parse_module_name(ModuleName, VarSet, ModuleNameTerm,
-            MaybeModuleNameSym),
-        (
-            MaybeModuleNameSym = ok1(ModuleNameSym),
-            ItemModuleStart =
-                item_module_start_info(ModuleNameSym, Context, SeqNum),
-            Item = item_module_start(ItemModuleStart),
-            MaybeItem0 = ok1(Item)
-        ;
-            MaybeModuleNameSym = error1(Specs),
-            MaybeItem0 = error1(Specs)
-        ),
-        check_no_attributes(MaybeItem0, Attributes, MaybeItem)
-    ;
-        Functor = "end_module",
-        ArgTerms = [ModuleNameTerm],
-        % The name in an `end_module' declaration is NOT inside the scope
-        % of the module being ended, so the default module name here
-        % (ModuleName) is the PARENT of the previous default module name.
-
-        sym_name_get_module_name_default(ModuleName, root_module_name,
-            ParentOfModuleName),
-        parse_module_name(ParentOfModuleName, VarSet, ModuleNameTerm,
-            MaybeModuleNameSym),
-        (
-            MaybeModuleNameSym = ok1(ModuleNameSym),
-            ItemModuleEnd =
-                item_module_end_info(ModuleNameSym, Context, SeqNum),
-            Item = item_module_end(ItemModuleEnd),
-            MaybeItem0 = ok1(Item)
-        ;
-            MaybeModuleNameSym = error1(Specs),
-            MaybeItem0 = error1(Specs)
-        ),
-        check_no_attributes(MaybeItem0, Attributes, MaybeItem)
-    ;
-        Functor = "include_module",
-        ArgTerms = [ModuleNamesTerm],
-        parse_list(parse_module_name(ModuleName, VarSet), ModuleNamesTerm,
-            MaybeModuleNameSyms),
-        (
-            MaybeModuleNameSyms = ok1(ModuleNameSyms),
-            ModuleDefn = md_include_module(ModuleNameSyms),
-            ItemModuleDefn =
-                item_module_defn_info(ModuleDefn, Context, SeqNum),
-            Item = item_module_defn(ItemModuleDefn),
-            MaybeItem0 = ok1(Item)
-        ;
-            MaybeModuleNameSyms = error1(Specs),
-            MaybeItem0 = error1(Specs)
-        ),
         check_no_attributes(MaybeItem0, Attributes, MaybeItem)
     ;
         Functor = "pragma",
@@ -428,26 +558,16 @@ parse_attributed_decl(ModuleName, VarSet, Functor, ArgTerms, Attributes,
         check_no_attributes(MaybeItem0, Attributes, MaybeItem)
     ;
         Functor = "version_numbers",
-        process_version_numbers(ModuleName, VarSet, ArgTerms, Attributes,
-            Context, SeqNum, MaybeItem)
+        process_version_numbers(ModuleName, VarSet, ArgTerms,
+            Context, SeqNum, MaybeItem0),
+        check_no_attributes(MaybeItem0, Attributes, MaybeItem)
     ).
 
-:- pred parse_symlist_decl(parser(module_specifier)::parser,
-    maker(list(module_specifier), module_defn)::maker, term::in,
-    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
-
-parse_symlist_decl(ParserPred, MakeModuleDefnPred, Term, Attributes, Context,
-        SeqNum, MaybeItem) :-
-    parse_list(ParserPred, Term, MaybeModuleSpecs),
-    process_maybe1(make_module_defn(MakeModuleDefnPred, Context, SeqNum),
-        MaybeModuleSpecs, MaybeItem0),
-    check_no_attributes(MaybeItem0, Attributes, MaybeItem).
-
 :- pred process_version_numbers(module_name::in, varset::in, list(term)::in,
-    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is semidet.
+    prog_context::in, int::in, maybe1(item)::out) is semidet.
 
-process_version_numbers(ModuleName, _VarSet, ArgTerms, Attributes, Context,
-        SeqNum, MaybeItem) :-
+process_version_numbers(ModuleName, _VarSet, ArgTerms, Context, SeqNum,
+        MaybeItem) :-
     ArgTerms = [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm],
     (
         VersionNumberTerm = term.functor(term.integer(VersionNumber), [], _),
@@ -462,8 +582,7 @@ process_version_numbers(ModuleName, _VarSet, ArgTerms, Attributes, Context,
                 ItemModuleDefn = item_module_defn_info(ModuleDefn, Context,
                     SeqNum),
                 Item = item_module_defn(ItemModuleDefn),
-                MaybeItem1 = ok1(Item),
-                check_no_attributes(MaybeItem1, Attributes, MaybeItem)
+                MaybeItem = ok1(Item)
             ;
                 MaybeItem0 = error1(Specs),
                 MaybeItem = error1(Specs)
@@ -854,7 +973,7 @@ parse_type_and_mode(InstConstraints, Term, MaybeTypeAndMode) :-
     term::in, maybe(error_spec)::out) is det.
 
 check_type_and_mode_list_is_consistent(TypesAndModes, ErrorTerm, MaybeSpec) :-
-    classify_type_and_mode_list(1, TypesAndModes, 
+    classify_type_and_mode_list(1, TypesAndModes,
         WithModeArgNums, WithoutModeArgNums),
     (
         WithModeArgNums = [],
@@ -1482,28 +1601,6 @@ process_maybe1_to_t(_, error1(Specs), error1(Specs)).
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_use(list(module_specifier)::in, module_defn::out) is det.
-
-make_use(Syms, md_use(Syms)).
-
-:- pred make_import(list(module_specifier)::in, module_defn::out) is det.
-
-make_import(Syms, md_import(Syms)).
-
-:- pred make_export(list(module_specifier)::in, module_defn::out) is det.
-
-make_export(Syms, md_export(Syms)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred make_module_defn(maker(list(module_specifier), module_defn)::maker,
-    prog_context::in, int::in, list(module_specifier)::in, item::out) is det.
-
-make_module_defn(MakeModuleDefnPred, Context, SeqNum, ModuleSpecs, Item) :-
-    call(MakeModuleDefnPred, ModuleSpecs, ModuleDefn),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
-    Item = item_module_defn(ItemModuleDefn).
-
 :- pred make_external(maybe(backend)::in, prog_context::in, int::in,
     sym_name_specifier::in, item::out) is det.
 
@@ -1515,9 +1612,9 @@ make_external(MaybeBackend, Context, SeqNum, SymSpec, Item) :-
 %-----------------------------------------------------------------------------%
 
     % Create a dummy term with the specified context.
-    % Used for error messages that are associated with some specific
-    % context, but for which we don't want to print out the term
-    % (or for which the term isn't available to be printed out).
+    % Used for error messages that are associated with some specific context,
+    % but for which we don't want to print out the term, or for which the term
+    % isn't available to be printed out.
     %
 :- pred dummy_term_with_context(term.context::in, term::out) is det.
 

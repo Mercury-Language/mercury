@@ -29,9 +29,11 @@
 :- import_module mdbcomp.sym_name.
 :- import_module recompilation.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module list.
 :- import_module maybe.
 :- import_module set.
@@ -39,16 +41,164 @@
 
 %-----------------------------------------------------------------------------%
 %
-% This is how programs (and parse errors) are represented.
+% The different kinds of files the Mercury compiler deals with:
+%
+% - source files,
+% - automatically generated interface files, and
+% - automatically generated optimization files.
+%
+
+:- type file_kind
+    --->    fk_src
+    ;       fk_int(int_file_kind)
+    ;       fk_opt(opt_file_kind).
+
+:- type src_file_kind
+    --->    sfk_src.
+
+:- type int_file_kind
+    --->    ifk_int0
+    ;       ifk_int3
+    ;       ifk_int2
+    ;       ifk_int.
+
+:- type opt_file_kind
+    --->    ofk_opt
+    ;       ofk_trans_opt.
+
+:- func file_kind_to_extension(file_kind) = string.
+:- func int_file_kind_to_extension(int_file_kind) = string.
+:- func opt_file_kind_to_extension(opt_file_kind) = string.
+
+:- pred extension_to_file_kind(string::in, file_kind::out) is semidet.
+
+%-----------------------------------------------------------------------------%
+%
+% The parse_tree_{src,int,opt} types define the ASTs we use for source files,
+% interface files and optimization files respectively.
+%
+% Nested submodules may appear in source files, but not in interface files
+% or optimization files.
+%
+% We use cords of items instead of lists of items where we may need to add
+% items to an already-existing partial parse tree.
+%
+% The contexts of module and section declarations below may be
+% term.context_init if the actual context isn't known, but if the recorded
+% context is not term.context_init, then it is valid.
+
+:- type parse_tree_src
+    --->    parse_tree_src(
+                module_name,
+                prog_context,               % the context of the `:- module'
+                cord(module_component)
+            ).
+
+:- type module_component
+    --->    mc_section(
+                module_section,
+                prog_context,               % the context of the `:- interface'
+                                            % or `:- implementation'
+                cord(item)
+            )
+    ;       mc_nested_submodule(
+                module_section,             % what section is the submodule in
+                prog_context,               % the section's context
+                parse_tree_src
+            ).
+
+:- type parse_tree_int
+    --->    parse_tree_int(
+                module_name,
+                int_file_kind,
+                prog_context,               % the context of the `:- module'
+                list(item),                 % items in the interface section
+                list(item)                  % items in the impl section
+            ).
+
+:- type parse_tree_opt
+    --->    parse_tree_opt(
+                module_name,
+                opt_file_kind,
+                prog_context,               % the context of the `:- module'
+                list(item)
+            ).
+
+%-----------------------------------------------------------------------------%
+%
+% A raw compilation unit is one module to be compiled. A parse_tree_src
+% that contains N nested submodules corresponds to 1 + N raw_compilation_units,
+% one for the top level module and one for each (possibly deeply) nested
+% submodule.
+%
+% A raw compilation unit consists of some raw item blocks, with each raw
+% item block containing the items in an interface or implementation section
+% of its module.
+%
+% Before we convert a raw compilation unit into the HLDS, we augment it
+% with the contents of the interface files of the modules it imports
+% (directly or indirectly), and if requested, with the contents of the
+% optimization files of those modules as well. The augmented compilation unit
+% will consist of the item blocks of the original raw compilation unit,
+% followed by item blocks read from these other files. Each of those item
+% blocks will have a aug_section_kind that indicates where it came from.
+%
+% As with the parse tree types above, the contexts in these types
+% may be term.context_init if the actual context isn't known, but if the
+% recorded context is not term.context_init, then it is valid.
+
+:- type raw_compilation_unit == compilation_unit(module_section).
+:- type aug_compilation_unit == compilation_unit(aug_module_section).
+
+:- type raw_item_block == item_block(module_section).
+:- type aug_item_block == item_block(aug_module_section).
+
+:- type compilation_unit(MS)
+    --->    compilation_unit(
+                module_name,
+                prog_context, % The context of the `:- module' declaration.
+                list(item_block(MS))
+            ).
+
+:- type item_block(MS)
+    --->    item_block(
+                MS,
+                prog_context,   % The context of the section marker.
+                list(item)
+            ).
+
+%-----------------------------------------------------------------------------%
+
+:- func compilation_unit_project_name(compilation_unit(MS)) = module_name.
+
+:- pred cast_module_components_to_raw_item_blocks(list(module_component)::in,
+    list(raw_item_block)::out) is det.
+
+:- pred augment_block(raw_item_block::in, aug_item_block::out) is det.
+
+:- pred separate_int_impl_items(list(raw_item_block)::in,
+    list(item)::in, list(item)::out, list(item)::in, list(item)::out) is det.
+
+:- pred int_impl_items_to_raw_item_blocks(prog_context::in,
+    list(item)::in, list(item)::in, list(raw_item_block)::out) is det.
+
+:- pred int_impl_items_to_specified_item_blocks(prog_context::in,
+    MS::in, list(item)::in, MS::in, list(item)::in, list(item_block(MS))::out)
+    is det.
+
+%-----------------------------------------------------------------------------%
+%
+% The main parts of parse trees are items. There are many kinds of items,
+% and most of those kinds have their own item-kind-specific type that stores
+% all the information the parse tree has about an item of that kind.
 %
 % The sequence number fields in the item-kind-specific types are intended to
 % allow the recreation of the original item sequence after we have processed
 % it into more complex data structures. Negative sequence numbers represent
 % items that were not in the original read-in sequence, but which were added
 % by the compiler. It is possible for two items to have the same sequence
-% number if one original item (e.g. one that imports two or more modules)
-% is later split apart (e.g. into several items that each import only one
-% module).
+% number if one original term (e.g. one that imports two or more modules)
+% is split apart (e.g. into several items that each import only one module).
 %
 % When we create interface files, we print out selected items in the module.
 % If the sequence of items printed changes, all the other modules depending
@@ -66,16 +216,10 @@
 % items of the same name from each other.
 %
 
-:- type compilation_unit
-    --->    unit_module(
-                module_name,
-                list(item)
-            ).
-
     % Did an item originate in user code or was it added by the compiler as
     % part of a source-to-source transformation, e.g. the initialise
     % declarations? If the latter, specify the information that the
-    % make_hlds pass may need to we answer questions about the item.
+    % make_hlds pass may need to answer questions about the item.
     %
 :- type item_maybe_attrs
     --->    item_origin_user
@@ -96,9 +240,7 @@
     ;       is_mutable.
 
 :- type item
-    --->    item_module_start(item_module_start_info)
-    ;       item_module_end(item_module_end_info)
-    ;       item_module_defn(item_module_defn_info)
+    --->    item_module_defn(item_module_defn_info)
     ;       item_clause(item_clause_info)
     ;       item_type_defn(item_type_defn_info)
     ;       item_inst_defn(item_inst_defn_info)
@@ -113,20 +255,6 @@
     ;       item_finalise(item_finalise_info)
     ;       item_mutable(item_mutable_info)
     ;       item_nothing(item_nothing_info).
-
-:- type item_module_start_info
-    --->    item_module_start_info(
-                module_start_module_name        :: module_name,
-                module_start_context            :: prog_context,
-                module_start_seq_num            :: int
-            ).
-
-:- type item_module_end_info
-    --->    item_module_end_info(
-                module_end_module_name          :: module_name,
-                module_end_context              :: prog_context,
-                module_end_seq_num              :: int
-            ).
 
 :- type item_module_defn_info
     --->    item_module_defn_info(
@@ -328,7 +456,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Type classes
+% Type classes.
 %
 
     % The name class_method is a slight misnomer; this type actually represents
@@ -459,7 +587,6 @@
 %
 
 :- type pragma_type
-    % Foreign language interfacing pragmas.
     --->    pragma_foreign_decl(pragma_info_foreign_decl)
     ;       pragma_foreign_code(pragma_info_foreign_code)
     ;       pragma_foreign_proc(pragma_info_foreign_proc)
@@ -476,7 +603,6 @@
     ;       pragma_mm_tabling_info(pragma_info_mm_tabling_info)
     ;       pragma_obsolete(pred_name_arity)
     ;       pragma_no_detism_warning(pred_name_arity)
-    ;       pragma_source_file(pragma_info_source_file)
     ;       pragma_tabled(pragma_info_tabled)
     ;       pragma_fact_table(pragma_info_fact_table)
     ;       pragma_reserve_tag(type_ctor)
@@ -498,6 +624,8 @@
     % in the interface section of a module.
     %
 :- func pragma_allowed_in_interface(pragma_type) = bool.
+
+    % Foreign language interfacing pragmas.
 
 :- type pragma_info_foreign_decl
     --->    pragma_info_foreign_decl(
@@ -534,8 +662,8 @@
     --->    pragma_info_foreign_import_module(
                 % Equivalent to
                 % `:- pragma foreign_decl(Lang, "#include <module>.h").'
-                % except that the name of the header file is not
-                % hard-coded, and mmake can use the dependency information.
+                % except that the name of the header file is not hard-coded,
+                % and mmake can use the dependency information.
                 imp_lang                :: foreign_language,
                 imp_module              :: module_name
             ).
@@ -612,14 +740,6 @@
                 % Should on appear in `.opt' or `.trans_opt' files.
                 mm_tabling_info_proc_id :: pred_name_arity_pf_mn,
                 mm_tabling_info_status  :: mm_tabling_status
-            ).
-
-    % Diagnostics pragmas (pragmas related to compiler warnings/errors).
-
-:- type pragma_info_source_file
-    --->    pragma_info_source_file(
-                % Source file name.
-                pragma_source_file      :: string
             ).
 
     % Evaluation method pragmas.
@@ -713,6 +833,8 @@
                 rfs_feature_set         :: set(required_feature)
             ).
 
+    % These types identify procedures in pragmas.
+
 :- type pred_name_arity
     --->    pred_name_arity(
                 pna_pred_name           :: sym_name,
@@ -753,7 +875,7 @@
 % Goals.
 %
 
-    % Here's how clauses and goals are represented.
+    % Here is how clauses and goals are represented.
     % a => b --> implies(a, b)
     % a <= b --> implies(b, a) [just flips the goals around!]
     % a <=> b --> equivalent(a, b)
@@ -902,64 +1024,41 @@
 % Module system.
 %
 
-    % This is how most module-system declarations (such as imports and exports,
-    % but not including the starts and ends of modules) are represented.
+    % This type used to record most module-system declarations, such as
+    % section markers and imports. It is now a grab-bag of leftovers,
+    % but that should be fixed soon. XXX ITEM_LIST
     %
 :- type module_defn
-    --->    md_interface
-    ;       md_implementation
-
-    ;       md_implementation_but_exported_to_submodules
-            % This is used internally by the compiler, to identify items
-            % which originally came from an implementation section for a
-            % module that contains sub-modules; such items need to be exported
-            % to the sub-modules.
-
-    ;       md_imported(import_locn)
-            % This is used internally by the compiler, to identify declarations
-            % which originally came from some other module imported with a
-            % `:- import_module' declaration, and which section the module
-            % was imported.
-
-    ;       md_used(import_locn)
-            % This is used internally by the compiler, to identify declarations
-            % which originally came from some other module and for which all
-            % uses must be module qualified. This applies to items from modules
-            % imported using `:- use_module', and items from `.opt' and `.int2'
-            % files. It also records from which section the module was
-            % imported.
-
-    ;       md_abstract_imported
-            % This is used internally by the compiler, to identify items which
-            % originally came from the implementation section of an interface
-            % file; usually type declarations (especially equivalence types)
-            % which should be used in code generation but not in type checking.
-
-    ;       md_opt_imported
-            % This is used internally by the compiler, to identify items which
-            % originally came from a .opt file.
-
-    ;       md_transitively_imported
-            % This is used internally by the compiler, to identify items which
-            % originally came from a `.opt' or `.int2' file. These should not
-            % be allowed to match items in the current module. Note that unlike
-            % `:- interface', `:- implementation' and the other
-            % pseudo-declarations `:- imported(interface)', etc., a
-            % `:- transitively_imported' declaration applies to all of the
-            % following items in the list, not just up to the next
-            % pseudo-declaration.
+    --->    md_include_module(module_name)
+            % The named module is a submodule of the current module.
+            % XXX ITEM_LIST This should be a separate kind of item.
 
     ;       md_external(maybe(backend), sym_name_specifier)
+            % The specified symbol is implemented outside of Mercury code,
+            % for the named backend if there is one, or, if there isn't
+            % a named backend, then for all backends.
+            % XXX ITEM_LIST This should be a pragma, at least inside
+            % the compiler, and maybe outside as well.
 
-    ;       md_export(list(module_specifier))
-    ;       md_import(list(module_specifier))
-    ;       md_use(list(module_specifier))
-
-    ;       md_include_module(list(module_name))
-
-    ;       md_version_numbers(module_name, recompilation.version_numbers).
+    ;       md_version_numbers(module_name, recompilation.version_numbers)
             % This is used to represent the version numbers of items in an
             % interface file for use in smart recompilation.
+            % XXX ITEM_LIST This should not be an item at all. It should be
+            % parsed as a marker in prog_io.m, and recorded directly as a
+            % new field in the parse_tree_int (and NOT in parse_tree_opt
+            % or parse_tree_src).
+
+    ;       md_import(module_name)
+    ;       md_use(module_name).
+            % Import the entities listed in the interface of the named module
+            % into the current module. With md_use, references to these
+            % entities must be module qualified; with md_import, they don't
+            % have to be.
+            % XXX ITEM_LIST Make this a single function symbol, with two
+            % arguments: a module name and an import_or_use flag.
+            % XXX ITEM_LIST Once the other function symbols of this type have
+            % been removed, the type could be renamed, together with the item
+            % kind that contains it.
 
 %-----------------------------------------------------------------------------%
 
@@ -972,7 +1071,8 @@
     --->    contains_foreign_export
     ;       contains_no_foreign_export.
 
-:- pred get_item_list_foreign_code(globals::in, list(item)::in,
+:- pred get_foreign_code_indicators_from_item_blocks(globals::in,
+    list(item_block(MS))::in,
     set(foreign_language)::out, foreign_import_module_infos::out,
     foreign_include_file_infos::out, contains_foreign_export::out) is det.
 
@@ -985,17 +1085,130 @@
 
 :- import_module cord.
 :- import_module map.
+:- import_module require.
+
+%-----------------------------------------------------------------------------%
+
+file_kind_to_extension(fk_src) = ".m".
+file_kind_to_extension(fk_int(IntFileKind)) =
+    int_file_kind_to_extension(IntFileKind).
+file_kind_to_extension(fk_opt(OptFileKind)) =
+    opt_file_kind_to_extension(OptFileKind).
+
+int_file_kind_to_extension(ifk_int0) = ".int0".
+int_file_kind_to_extension(ifk_int2) = ".int2".
+int_file_kind_to_extension(ifk_int3) = ".int3".
+int_file_kind_to_extension(ifk_int) = ".int".
+
+opt_file_kind_to_extension(ofk_opt) = ".opt".
+opt_file_kind_to_extension(ofk_trans_opt) = ".trans_opt".
+
+extension_to_file_kind(Extension, FileKind) :-
+    (
+        Extension = ".m",
+        FileKind = fk_src
+    ;
+        Extension = ".int0",
+        FileKind = fk_int(ifk_int0)
+    ;
+        Extension = ".int3",
+        FileKind = fk_int(ifk_int3)
+    ;
+        Extension = ".int2",
+        FileKind = fk_int(ifk_int2)
+    ;
+        Extension = ".int",
+        FileKind = fk_int(ifk_int)
+    ;
+        Extension = ".opt",
+        FileKind = fk_opt(ofk_opt)
+    ;
+        Extension = ".trans_opt",
+        FileKind = fk_opt(ofk_trans_opt)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+compilation_unit_project_name(compilation_unit(ModuleName, _, _)) = ModuleName.
+
+cast_module_components_to_raw_item_blocks([], []).
+cast_module_components_to_raw_item_blocks([Component | Components],
+        [RawItemBlock | RawItemBlocks]) :-
+    (
+        Component = mc_section(Section, Context, ItemCord),
+        Items = cord.list(ItemCord),
+        RawItemBlock = item_block(Section, Context, Items)
+    ;
+        Component = mc_nested_submodule(_, _, _),
+        unexpected($module, $pred, "unexpected nested submodule")
+    ),
+    cast_module_components_to_raw_item_blocks(Components, RawItemBlocks).
+
+augment_block(ItemBlock, AugItemBlock) :-
+    ItemBlock = item_block(Section, Context, Items),
+    (
+        Section = ms_interface,
+        AugSection = ams_interface
+    ;
+        Section = ms_implementation,
+        AugSection = ams_implementation
+    ),
+    AugItemBlock = item_block(AugSection, Context, Items).
+
+separate_int_impl_items([], !IntItems, !ImplItems).
+separate_int_impl_items([ItemBlock | ItemBlocks], !IntItems, !ImplItems) :-
+    separate_int_impl_items(ItemBlocks, !IntItems, !ImplItems),
+    ItemBlock = item_block(Section, _Context, Items),
+    (
+        Section = ms_interface,
+        !:IntItems = Items ++ !.IntItems
+    ;
+        Section = ms_implementation,
+        !:ImplItems = Items ++ !.ImplItems
+    ).
+
+int_impl_items_to_raw_item_blocks(Context, IntItems, ImplItems,
+        RawItemBlocks) :-
+    (
+        ImplItems = [],
+        RawItemBlocks0 = []
+    ;
+        ImplItems = [_ | _],
+        RawImplBlock = item_block(ms_implementation, Context, ImplItems),
+        RawItemBlocks0 = [RawImplBlock]
+    ),
+    (
+        IntItems = [],
+        RawItemBlocks = RawItemBlocks0
+    ;
+        IntItems = [_ | _],
+        RawIntBlock = item_block(ms_interface, Context, IntItems),
+        RawItemBlocks = [RawIntBlock | RawItemBlocks0]
+    ).
+
+int_impl_items_to_specified_item_blocks(Context, IntSection, IntItems,
+        ImplSection, ImplItems, ItemBlocks) :-
+    (
+        ImplItems = [],
+        ItemBlocks0 = []
+    ;
+        ImplItems = [_ | _],
+        ImplBlock = item_block(ImplSection, Context, ImplItems),
+        ItemBlocks0 = [ImplBlock]
+    ),
+    (
+        IntItems = [],
+        ItemBlocks = ItemBlocks0
+    ;
+        IntItems = [_ | _],
+        IntBlock = item_block(IntSection, Context, IntItems),
+        ItemBlocks = [IntBlock | ItemBlocks0]
+    ).
 
 %-----------------------------------------------------------------------------%
 
 get_item_context(Item) = Context :-
     (
-        Item = item_module_start(ItemModuleStart),
-        Context = ItemModuleStart ^ module_start_context
-    ;
-        Item = item_module_end(ItemModuleEnd),
-        Context = ItemModuleEnd ^ module_end_context
-    ;
         Item = item_module_defn(ItemModuleDefn),
         Context = ItemModuleDefn ^ module_defn_context
     ;
@@ -1133,7 +1346,6 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ( Pragma = pragma_foreign_enum(_)
         ; Pragma = pragma_foreign_import_module(_)
         ; Pragma = pragma_obsolete(_)
-        ; Pragma = pragma_source_file(_)
         ; Pragma = pragma_reserve_tag(_)
         ; Pragma = pragma_type_spec(_)
         ; Pragma = pragma_termination_info(_)
@@ -1191,20 +1403,29 @@ goal_get_context(Goal) = Context :-
                 module_has_foreign_export   :: contains_foreign_export
             ).
 
-get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
-        ForeignIncludeFiles, ContainsForeignExport) :-
+get_foreign_code_indicators_from_item_blocks(Globals, ItemBlocks,
+        LangSet, ForeignImports, ForeignIncludeFiles, ContainsForeignExport) :-
     Info0 = module_foreign_info(set.init, map.init, cord.init, cord.init,
         contains_no_foreign_export),
-    list.foldl(get_item_foreign_code(Globals), Items, Info0, Info),
+    list.foldl(get_foreign_code_indicators_from_item_block(Globals),
+        ItemBlocks, Info0, Info),
     Info = module_foreign_info(LangSet0, LangMap, ForeignImports,
         ForeignIncludeFiles, ContainsForeignExport),
     ForeignProcLangs = map.values(LangMap),
     LangSet = set.insert_list(LangSet0, ForeignProcLangs).
 
-:- pred get_item_foreign_code(globals::in, item::in,
+:- pred get_foreign_code_indicators_from_item_block(globals::in,
+    item_block(MS)::in,
     module_foreign_info::in, module_foreign_info::out) is det.
 
-get_item_foreign_code(Globals, Item, !Info) :-
+get_foreign_code_indicators_from_item_block(Globals, ItemBlock, !Info) :-
+    ItemBlock = item_block(_, _, Items),
+    list.foldl(get_foreign_code_indicators_from_item(Globals), Items, !Info).
+
+:- pred get_foreign_code_indicators_from_item(globals::in, item::in,
+    module_foreign_info::in, module_foreign_info::out) is det.
+
+get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
     (
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, Context, _),
@@ -1232,9 +1453,7 @@ get_item_foreign_code(Globals, Item, !Info) :-
         !Info ^ used_foreign_languages := UsedForeignLanguages,
         !Info ^ module_has_foreign_export := contains_foreign_export
     ;
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_module_defn(_)
+        ( Item = item_module_defn(_)
         ; Item = item_clause(_)
         ; Item = item_type_defn(_)
         ; Item = item_inst_defn(_)
@@ -1364,7 +1583,6 @@ get_pragma_foreign_code(Globals, Pragma, Context, !Info) :-
         ; Pragma = pragma_promise_semipure(_)
         ; Pragma = pragma_require_feature_set(_)
         ; Pragma = pragma_reserve_tag(_)
-        ; Pragma = pragma_source_file(_)
         ; Pragma = pragma_structure_reuse(_)
         ; Pragma = pragma_structure_sharing(_)
         ; Pragma = pragma_oisu(_)

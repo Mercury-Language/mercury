@@ -5,6 +5,55 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
+% We create the initial HLDS from the parse tree in three passes.
+% Here are the tasks of the passes, and some of the ordering constraints
+% between their activities.
+%
+% pass 1:
+%
+%   Add the declarations one by one to the module, except for pragmas.
+%
+% pass 2:
+%
+%   Add pragmas one by one to the module, and add default modes
+%   for functions with no mode declaration.
+%
+%   Adding type definitions needs to come after we have added the pred
+%   declarations, since we need to have the pred_id for `index/2' and
+%   `compare/3' when we add compiler-generated clauses for `compare/3'.
+%   (And similarly for other compiler-generated predicates like that.)
+%
+%   Adding pragmas needs to come after we have added the
+%   pred declarations, in order to allow the pragma declarations
+%   for a predicate to syntactically precede the pred declaration.
+%
+%   Adding default modes for functions needs to come after we have
+%   processed all the mode declarations, since otherwise we can't be sure
+%   that there isn't a mode declaration for the function.
+%
+% pass 3:
+%
+%   Add the clauses and clause-like-pragmas one by one to the module.
+%
+%   Check that the declarations for field extraction and update functions
+%   are sensible.
+%
+%   Check that predicates listed in `:- initialise' and `:- finalise'
+%   declarations exist and have the correct signature, introduce
+%   pragma foreign_export declarations for them and record their exported
+%   names in the module_info, so that we can generate code to call them
+%   at initialisation/finalisation time.
+%
+% XXX It would be nice to document all the other constraints as well.
+% I (zs) am sure there are others.
+% When all the relevant constrainst are documented, it should be possible
+% to move away from the pass model overall. Instead of traversing all the
+% items in each pass, the first traversal of the items could, besides doing
+% what the first pass does now, could also build separate lists of items
+% for each subsequent traversal.
+%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.make_hlds_passes.
 :- interface.
@@ -22,27 +71,21 @@
 
 %---------------------------------------------------------------------------%
 
-    % When adding an item to the HLDS, we need to know both its import_status
-    % and whether uses of it must be module qualified.
-    %
-:- type item_status
-    --->    item_status(import_status, need_qualifier).
-
-    % do_parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo,
-    %   EqvMap, UsedModules, QualInfo, InvalidTypes, InvalidModes, HLDS,
+    % do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo,
+    %   TypeEqvMapMap, UsedModules, QualInfo, InvalidTypes, InvalidModes, HLDS,
     %   Specs):
     %
-    % Given MQInfo (returned by module_qual.m) and EqvMap and UsedModules
-    % (both returned by equiv_type.m), converts ParseTree to HLDS.
-    % Any errors found are returned in Specs.
-    % Returns InvalidTypes = yes if undefined types found.
-    % Returns InvalidModes = yes if undefined or cyclic insts or modes found.
+    % Given MQInfo (returned by module_qual.m) and TypeEqvMapMap and
+    % UsedModules (both returned by equiv_type.m), convert AugCompUnit
+    % to HLDS. Return any errors found in Specs.
+    % Return InvalidTypes = yes if we found undefined types.
+    % Return InvalidModes = yes if we found undefined or cyclic insts or modes.
     % QualInfo is an abstract type that is then passed back to
     % produce_instance_method_clauses (see below).
     %
-:- pred do_parse_tree_to_hlds(globals::in, string::in, compilation_unit::in,
-    mq_info::in, eqv_map::in, used_modules::in, qual_info::out,
-    found_invalid_type::out, found_invalid_inst_or_mode::out,
+:- pred do_parse_tree_to_hlds(aug_compilation_unit::in, globals::in,
+    string::in, mq_info::in, type_eqv_map::in, used_modules::in,
+    qual_info::out, found_invalid_type::out, found_invalid_inst_or_mode::out,
     module_info::out, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -86,16 +129,15 @@
 
 %---------------------------------------------------------------------------%
 
-do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
-        MQInfo0, EqvMap, UsedModules, QualInfo,
-        FoundInvalidType, FoundInvalidInstOrMode,
-        !:ModuleInfo, !:Specs) :-
+do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
+        TypeEqvMapMap, UsedModules, QualInfo,
+        FoundInvalidType, FoundInvalidInstOrMode, !:ModuleInfo, !:Specs) :-
     mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
-    module_info_init(Name, DumpBaseFileName, Items, Globals, PQInfo, no,
+    module_info_init(AugCompUnit, DumpBaseFileName, Globals, PQInfo, no,
         !:ModuleInfo),
     module_info_set_used_modules(UsedModules, !ModuleInfo),
-    add_item_list_decls_pass_1(Items,
-        item_status(status_local, may_be_unqualified),
+    AugCompUnit = compilation_unit(Name, _, AugItemBlocks),
+    add_block_decls_pass_1(AugItemBlocks,
         did_not_find_invalid_inst_or_mode, FoundInvalidInstOrMode1,
         !ModuleInfo, [], Pass1Specs),
     globals.lookup_bool_option(Globals, statistics, Statistics),
@@ -105,9 +147,7 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
         maybe_report_stats(Statistics, !IO)
     ),
 
-    add_item_list_decls_pass_2(Items,
-        item_status(status_local, may_be_unqualified),
-        !ModuleInfo, [], Pass2Specs),
+    add_block_decls_pass_2(AugItemBlocks, !ModuleInfo, [], Pass2Specs),
     !:Specs = Pass1Specs ++ Pass2Specs,
     % XXX Using Pass2Specs = [_ | _] as the test for found_invalid_type
     % is both too tight and too loose. Too tight because some pass 2 errors
@@ -160,9 +200,9 @@ do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
         maybe_report_stats(Statistics, !IO)
     ),
 
-    init_qual_info(MQInfo0, EqvMap, QualInfo0),
-    add_item_list_pass_3(Items, status_local, !ModuleInfo, QualInfo0, QualInfo,
-        !Specs),
+    init_qual_info(MQInfo0, TypeEqvMapMap, QualInfo0),
+    add_blocks_pass_3(AugItemBlocks,
+        !ModuleInfo, QualInfo0, QualInfo, !Specs),
     trace [io(!IO)] (
         maybe_write_string(Statistics, "% Processed all items in pass 3\n",
             !IO)
@@ -216,105 +256,133 @@ add_builtin_type_ctor_special_preds(TypeCtor, !ModuleInfo) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % pass 1:
-    %
-    % Add the declarations one by one to the module,
-    % except for type definitions and pragmas.
-    %
-    % The `InvalidModes' bool records whether we detected
-    % any cyclic insts or modes.
-    %
-:- pred add_item_list_decls_pass_1(list(item)::in, item_status::in,
+:- pred add_block_decls_pass_1(list(aug_item_block)::in,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_item_list_decls_pass_1([], _, !FoundInvalidInstOrMode,
-        !ModuleInfo, !Specs).
-add_item_list_decls_pass_1([Item | Items], !.Status, !FoundInvalidInstOrMode,
-        !ModuleInfo, !Specs) :-
-    add_item_decl_pass_1(Item, !Status, !FoundInvalidInstOrMode,
-        !ModuleInfo, !Specs),
-    add_item_list_decls_pass_1(Items, !.Status, !FoundInvalidInstOrMode,
-        !ModuleInfo, !Specs).
+add_block_decls_pass_1([],
+        !FoundInvalidInstOrMode, !ModuleInfo, !Specs).
+add_block_decls_pass_1([AugItemBlock | AugItemBlocks],
+        !FoundInvalidInstOrMode, !ModuleInfo, !Specs) :-
+    AugItemBlock = item_block(Section, _, Items),
+    aug_module_section_status(Section, MaybeStatus),
+    (
+        MaybeStatus = yes(Status),
+        add_item_decls_pass_1(Status, Items,
+            !FoundInvalidInstOrMode, !ModuleInfo, !Specs)
+    ;
+        MaybeStatus = no,
+        expect(unify(Items, []), $module, $pred,
+            "MaybeStatus = no but Items != []")
+    ),
+    add_block_decls_pass_1(AugItemBlocks,
+        !FoundInvalidInstOrMode, !ModuleInfo, !Specs).
 
-    % pass 2:
-    %
-    % Add the type definitions and pragmas one by one to the module,
-    % and add default modes for functions with no mode declaration.
-    %
-    % Adding type definitions needs to come after we have added the pred
-    % declarations, since we need to have the pred_id for `index/2' and
-    % `compare/3' when we add compiler-generated clauses for `compare/3'.
-    % (And similarly for other compiler-generated predicates like that.)
-    %
-    % Adding pragmas needs to come after we have added the
-    % pred declarations, in order to allow the pragma declarations
-    % for a predicate to syntactically precede the pred declaration.
-    %
-    % Adding default modes for functions needs to come after we have
-    % processed all the mode declarations, since otherwise we can't be
-    % sure that there isn't a mode declaration for the function.
-    %
-:- pred add_item_list_decls_pass_2(list(item)::in, item_status::in,
+:- pred add_item_decls_pass_1(item_status::in, list(item)::in,
+    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_item_list_decls_pass_2([], _, !ModuleInfo, !Specs).
-add_item_list_decls_pass_2([Item | Items], !.Status, !ModuleInfo, !Specs) :-
-    add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs),
-    add_item_list_decls_pass_2(Items, !.Status, !ModuleInfo, !Specs).
+add_item_decls_pass_1(_, [],
+        !FoundInvalidInstOrMode, !ModuleInfo, !Specs).
+add_item_decls_pass_1(Status, [Item | Items],
+        !FoundInvalidInstOrMode, !ModuleInfo, !Specs) :-
+    add_item_decl_pass_1(Status, Item,
+        !FoundInvalidInstOrMode, !ModuleInfo, !Specs),
+    add_item_decls_pass_1(Status, Items,
+        !FoundInvalidInstOrMode, !ModuleInfo, !Specs).
 
-    % pass 3:
-    %
-    % Add the clauses one by one to the module.
-    %
-    % Check that the declarations for field extraction and update functions
-    % are sensible.
-    %
-    % Check that predicates listed in `:- initialise' and `:- finalise'
-    % declarations exist and have the correct signature, introduce
-    % pragma foreign_export declarations for them and record their exported
-    % names in the module_info so that we can generate code to call them
-    % at initialisation/finalisation time.
-    %
-:- pred add_item_list_pass_3(list(item)::in, import_status::in,
+%---------------------%
+
+:- pred add_block_decls_pass_2(list(aug_item_block)::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_block_decls_pass_2([], !ModuleInfo, !Specs).
+add_block_decls_pass_2([AugItemBlock | AugItemBlocks], !ModuleInfo, !Specs) :-
+    AugItemBlock = item_block(Section, _, Items),
+    aug_module_section_status(Section, MaybeStatus),
+    (
+        MaybeStatus = yes(Status),
+        add_item_decls_pass_2(Status, Items, !ModuleInfo, !Specs)
+    ;
+        MaybeStatus = no,
+        expect(unify(Items, []), $module, $pred,
+            "MaybeStatus = no but Items != []")
+    ),
+    add_block_decls_pass_2(AugItemBlocks, !ModuleInfo, !Specs).
+
+:- pred add_item_decls_pass_2(item_status::in, list(item)::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_item_decls_pass_2(_, [], !ModuleInfo, !Specs).
+add_item_decls_pass_2(Status, [Item | Items], !ModuleInfo, !Specs) :-
+    add_item_decl_pass_2(Status, Item, !ModuleInfo, !Specs),
+    add_item_decls_pass_2(Status, Items, !ModuleInfo, !Specs).
+
+%---------------------%
+
+:- pred add_blocks_pass_3(list(aug_item_block)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_item_list_pass_3([], _Status, !ModuleInfo, !QualInfo, !Specs).
-add_item_list_pass_3([Item | Items], !.Status, !ModuleInfo, !QualInfo,
-        !Specs) :-
-    add_item_pass_3(Item, !Status, !ModuleInfo, !QualInfo, !Specs),
-    add_item_list_pass_3(Items, !.Status, !ModuleInfo, !QualInfo, !Specs).
+add_blocks_pass_3([], !ModuleInfo, !QualInfo, !Specs).
+add_blocks_pass_3([AugItemBlock | AugItemBlocks], !ModuleInfo,
+        !QualInfo, !Specs) :-
+    AugItemBlock = item_block(Section, _, Items),
+    aug_module_section_status(Section, MaybeStatus),
+    (
+        MaybeStatus = yes(Status),
+        Status = item_status(ImportStatus, NeedQualifier),
+        qual_info_get_mq_info(!.QualInfo, MQInfo0),
+        mq_info_set_need_qual_flag(NeedQualifier, MQInfo0, MQInfo),
+        qual_info_set_mq_info(MQInfo, !QualInfo),
+        add_items_pass_3(ImportStatus, Items, !ModuleInfo, !QualInfo, !Specs)
+    ;
+        MaybeStatus = no,
+        expect(unify(Items, []), $module, $pred,
+            "MaybeStatus = no but Items != []")
+    ),
+    add_blocks_pass_3(AugItemBlocks, !ModuleInfo, !QualInfo, !Specs).
+
+:- pred add_items_pass_3(import_status::in, list(item)::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_items_pass_3(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_items_pass_3(Status, [Item | Items], !ModuleInfo, !QualInfo, !Specs) :-
+    add_item_pass_3(Status, Item, !ModuleInfo, !QualInfo, !Specs),
+    add_items_pass_3(Status, Items, !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
     % The bool records whether any cyclic insts or modes were detected.
     %
-:- pred add_item_decl_pass_1(item::in, item_status::in, item_status::out,
+:- pred add_item_decl_pass_1(item_status::in, item::in,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_item_decl_pass_1(Item, !Status, !FoundInvalidInstOrMode,
-        !ModuleInfo, !Specs) :-
+add_item_decl_pass_1(Status, Item,
+        !FoundInvalidInstOrMode, !ModuleInfo, !Specs) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs)
+        add_pass_1_module_defn(ItemModuleDefn, Status, !ModuleInfo, !Specs)
     ;
         Item = item_type_defn(ItemTypeDefnInfo),
-        add_pass_1_type_defn(ItemTypeDefnInfo, !.Status, !ModuleInfo, !Specs)
+        add_pass_1_type_defn(ItemTypeDefnInfo, Status, !ModuleInfo, !Specs)
     ;
         (
             Item = item_inst_defn(ItemInstDefnInfo),
             module_add_inst_defn(ItemInstDefnInfo, FoundError,
-                !.Status, !ModuleInfo, !Specs)
+                Status, !ModuleInfo, !Specs)
         ;
             Item = item_mode_defn(ItemModeDefnInfo),
             module_add_mode_defn(ItemModeDefnInfo, FoundError,
-                !.Status, !ModuleInfo, !Specs)
+                Status, !ModuleInfo, !Specs)
         ),
         (
             FoundError = yes,
@@ -324,20 +392,18 @@ add_item_decl_pass_1(Item, !Status, !FoundInvalidInstOrMode,
         )
     ;
         Item = item_pred_decl(ItemPredDecl),
-        add_pass_1_pred_decl(ItemPredDecl, !.Status, !ModuleInfo, !Specs)
+        add_pass_1_pred_decl(ItemPredDecl, Status, !ModuleInfo, !Specs)
     ;
         Item = item_mode_decl(ItemModeDecl),
-        add_pass_1_mode_decl(ItemModeDecl, !.Status, !ModuleInfo, !Specs)
+        add_pass_1_mode_decl(ItemModeDecl, Status, !ModuleInfo, !Specs)
     ;
         Item = item_typeclass(ItemTypeClass),
-        module_add_class_defn(ItemTypeClass, !.Status, !ModuleInfo, !Specs)
+        module_add_class_defn(ItemTypeClass, Status, !ModuleInfo, !Specs)
     ;
         Item = item_mutable(ItemMutable),
-        add_pass_1_mutable(ItemMutable, !.Status, !ModuleInfo, !Specs)
+        add_pass_1_mutable(ItemMutable, Status, !ModuleInfo, !Specs)
     ;
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_clause(_)
+        ( Item = item_clause(_)
         ; Item = item_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_instance(_)
@@ -357,86 +423,62 @@ add_item_decl_pass_1(Item, !Status, !FoundInvalidInstOrMode,
 %---------------------------------------------------------------------------%
 
 :- pred add_pass_1_module_defn(item_module_defn_info::in,
-    item_status::in, item_status::out, module_info::in, module_info::out,
+    item_status::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs) :-
+add_pass_1_module_defn(ItemModuleDefn, Status, !ModuleInfo, !Specs) :-
     ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _SeqNum),
-    ( module_defn_update_import_status(ModuleDefn, StatusPrime) ->
-        !:Status = StatusPrime
+    (
+        ( ModuleDefn = md_import(ModuleSpecifier)
+        ; ModuleDefn = md_use(ModuleSpecifier)
+        ),
+        Status = item_status(ImportStatus, _),
+        add_module_specifier(ModuleSpecifier, ImportStatus, !ModuleInfo)
     ;
-        (
-            ( ModuleDefn = md_import(ModuleSpecifiers)
-            ; ModuleDefn = md_use(ModuleSpecifiers)
-            ),
-            !.Status = item_status(IStat, _),
-            add_module_specifiers(ModuleSpecifiers, IStat, !ModuleInfo)
-        ;
-            ModuleDefn = md_external(MaybeBackend, External),
-            ( External = name_arity(Name, Arity) ->
-                module_info_get_globals(!.ModuleInfo, Globals),
-                CurrentBackend = lookup_current_backend(Globals),
+        ModuleDefn = md_external(MaybeBackend, External),
+        ( External = name_arity(Name, Arity) ->
+            module_info_get_globals(!.ModuleInfo, Globals),
+            CurrentBackend = lookup_current_backend(Globals),
+            (
                 (
-                    (
-                        MaybeBackend = no
-                    ;
-                        MaybeBackend = yes(Backend),
-                        Backend = CurrentBackend
-                    )
-                ->
-                    module_mark_as_external(Name, Arity, Context, !ModuleInfo,
-                        !Specs)
+                    MaybeBackend = no
                 ;
-                    true
+                    MaybeBackend = yes(Backend),
+                    Backend = CurrentBackend
                 )
+            ->
+                module_mark_as_external(Name, Arity, Context, !ModuleInfo,
+                    !Specs)
             ;
-                Pieces = [words("Warning:"), quote("external"),
-                    words("declaration requires arity."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg]),
-                !:Specs = [Spec | !.Specs]
+                true
             )
         ;
-            ( ModuleDefn = md_include_module(_)
-            ; ModuleDefn = md_version_numbers(_, _)
-            ; ModuleDefn = md_transitively_imported
-            )
-        ;
-            ( ModuleDefn = md_interface
-            ; ModuleDefn = md_implementation
-            ; ModuleDefn = md_implementation_but_exported_to_submodules
-            ; ModuleDefn = md_imported(_)
-            ; ModuleDefn = md_used(_)
-            ; ModuleDefn = md_opt_imported
-            ; ModuleDefn = md_abstract_imported
-            ),
-            unexpected($module, $pred,
-                "module_defn_update_import_status missed something")
-        ;
-            ModuleDefn = md_export(_),
-            Pieces = [words("Warning: declaration not yet implemented."), nl],
+            Pieces = [words("Warning:"), quote("external"),
+                words("declaration requires arity."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_warning, phase_parse_tree_to_hlds,
-                [Msg]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
+        )
+    ;
+        ( ModuleDefn = md_include_module(_)
+        ; ModuleDefn = md_version_numbers(_, _)
         )
     ).
 
-:- pred add_module_specifiers(list(module_specifier)::in, import_status::in,
+:- pred add_module_specifier(module_specifier::in, import_status::in,
     module_info::in, module_info::out) is det.
 
-add_module_specifiers(Specifiers, IStat, !ModuleInfo) :-
+add_module_specifier(Specifier, IStat, !ModuleInfo) :-
     ( status_defined_in_this_module(IStat) = yes ->
-        module_add_imported_module_specifiers(IStat, Specifiers, !ModuleInfo)
+        module_add_imported_module_specifier(IStat, Specifier, !ModuleInfo)
     ; IStat = status_imported(import_locn_ancestor_private_interface_proper) ->
-        module_add_imported_module_specifiers(IStat, Specifiers, !ModuleInfo),
+        module_add_imported_module_specifier(IStat, Specifier, !ModuleInfo),
 
         % Any import_module which comes from a private interface
         % must by definition be a module used by the parent module.
-        module_info_add_parents_to_used_modules(Specifiers, !ModuleInfo)
+        module_info_add_parent_to_used_modules(Specifier, !ModuleInfo)
     ;
-        module_add_indirectly_imported_module_specifiers(Specifiers,
+        module_add_indirectly_imported_module_specifier(Specifier,
             !ModuleInfo)
     ).
 
@@ -545,7 +587,7 @@ add_pass_1_pred_decl(ItemPredDecl, Status, !ModuleInfo, !Specs) :-
         Origin = item_origin_user,
         Markers = Markers0
     ),
-    % ZZZ
+    % XXX ITEM_LIST Fix this lie.
     PredOrigin = origin_user(PredName),
     module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
         PredOrFunc, PredName, TypesAndModes, MaybeDetism, Purity, ClassContext,
@@ -594,44 +636,36 @@ add_pass_1_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred add_item_decl_pass_2(item::in,
-    item_status::in, item_status::out, module_info::in, module_info::out,
+:- pred add_item_decl_pass_2(item_status::in, item::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs) :-
+add_item_decl_pass_2(Status, Item, !ModuleInfo, !Specs) :-
     (
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _SeqNum),
-        ( module_defn_update_import_status(ModuleDefn, NewStatus) ->
-            !:Status = NewStatus
-        ;
-            true
-        )
+        Item = item_module_defn(_ItemModuleDefn)
     ;
         Item = item_type_defn(ItemTypeDefn),
-        add_pass_2_type_defn(ItemTypeDefn, !.Status, !ModuleInfo, !Specs)
+        add_pass_2_type_defn(ItemTypeDefn, Status, !ModuleInfo, !Specs)
     ;
         Item = item_pred_decl(ItemPredDecl),
-        add_pass_2_pred_decl(ItemPredDecl, !.Status, !ModuleInfo, !Specs)
+        add_pass_2_pred_decl(ItemPredDecl, Status, !ModuleInfo, !Specs)
     ;
         Item = item_pragma(ItemPragma),
-        add_pass_2_pragma(ItemPragma, !.Status, !ModuleInfo, !Specs)
+        add_pass_2_pragma(ItemPragma, Status, !ModuleInfo, !Specs)
     ;
         Item = item_instance(ItemInstance),
-        add_pass_2_instance(ItemInstance, !.Status, !ModuleInfo, !Specs)
+        add_pass_2_instance(ItemInstance, Status, !ModuleInfo, !Specs)
     ;
         Item = item_initialise(ItemInitialise),
-        add_pass_2_initialise(ItemInitialise, !.Status, !ModuleInfo, !Specs)
+        add_pass_2_initialise(ItemInitialise, Status, !ModuleInfo, !Specs)
     ;
         Item = item_finalise(ItemFinalise),
-        add_pass_2_finalise(ItemFinalise, !.Status, !ModuleInfo, !Specs)
+        add_pass_2_finalise(ItemFinalise, Status, !ModuleInfo, !Specs)
     ;
         Item = item_mutable(ItemMutable),
-        add_pass_2_mutable(ItemMutable, !.Status, !ModuleInfo, !Specs)
+        add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs)
     ;
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_clause(_)
+        ( Item = item_clause(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_mode_decl(_)
@@ -816,48 +850,43 @@ add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred add_item_pass_3(item::in, import_status::in, import_status::out,
+:- pred add_item_pass_3(import_status::in, item::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_item_pass_3(Item, !Status, !ModuleInfo, !QualInfo, !Specs) :-
+add_item_pass_3(Status, Item, !ModuleInfo, !QualInfo, !Specs) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        add_pass_3_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !QualInfo,
-            !Specs)
+        add_pass_3_module_defn(ItemModuleDefn, !QualInfo)
     ;
         Item = item_clause(ItemClause),
-        add_pass_3_clause(ItemClause, !.Status, !ModuleInfo, !QualInfo, !Specs)
+        add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs)
     ;
         Item = item_type_defn(ItemTypeDefn),
-        add_pass_3_type_defn(ItemTypeDefn, !.Status, !ModuleInfo, !QualInfo,
+        add_pass_3_type_defn(ItemTypeDefn, Status, !ModuleInfo, !QualInfo,
             !Specs)
     ;
         Item = item_pred_decl(ItemPredDecl),
-        add_pass_3_pred_decl(ItemPredDecl, !.Status, !ModuleInfo, !QualInfo,
+        add_pass_3_pred_decl(ItemPredDecl, Status, !ModuleInfo, !QualInfo,
             !Specs)
     ;
         Item = item_pragma(ItemPragma),
-        add_pass_3_pragma(ItemPragma, !.Status, !ModuleInfo, !QualInfo, !Specs)
+        add_pass_3_pragma(ItemPragma, Status, !ModuleInfo, !QualInfo, !Specs)
     ;
         Item = item_promise(ItemPromise),
-        add_pass_3_promise(ItemPromise, !.Status, !ModuleInfo, !QualInfo,
-            !Specs)
+        add_pass_3_promise(ItemPromise, Status, !ModuleInfo, !QualInfo, !Specs)
     ;
         Item = item_initialise(ItemInitialise),
-        add_pass_3_initialise(ItemInitialise, !.Status, !ModuleInfo, !QualInfo,
+        add_pass_3_initialise(ItemInitialise, Status, !ModuleInfo, !QualInfo,
             !Specs)
     ;
         Item = item_finalise(ItemFinalise),
         add_pass_3_finalise(ItemFinalise, !ModuleInfo, !Specs)
     ;
         Item = item_mutable(ItemMutable),
-        add_pass_3_mutable(ItemMutable, !.Status, !ModuleInfo, !QualInfo,
-            !Specs)
+        add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs)
     ;
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_inst_defn(_)
+        ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_mode_decl(_)
         ; Item = item_typeclass(_)
@@ -870,12 +899,9 @@ add_item_pass_3(Item, !Status, !ModuleInfo, !QualInfo, !Specs) :-
 %---------------------------------------------------------------------------%
 
 :- pred add_pass_3_module_defn(item_module_defn_info::in,
-    import_status::in, import_status::out, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    qual_info::in, qual_info::out) is det.
 
-add_pass_3_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !QualInfo,
-        !Specs) :-
+add_pass_3_module_defn(ItemModuleDefn, !QualInfo) :-
     ItemModuleDefn = item_module_defn_info(ModuleDefn, _Context, _SeqNum),
     ( ModuleDefn = md_version_numbers(ModuleName, ModuleVersionNumbers) ->
         % Record the version numbers for each imported module
@@ -883,11 +909,6 @@ add_pass_3_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !QualInfo,
         apply_to_recompilation_info(
             update_module_version_numbers(ModuleName, ModuleVersionNumbers),
             !QualInfo)
-    ; module_defn_update_import_status(ModuleDefn, ItemStatus1) ->
-        ItemStatus1 = item_status(!:Status, NeedQual),
-        qual_info_get_mq_info(!.QualInfo, MQInfo0),
-        mq_info_set_need_qual_flag(NeedQual, MQInfo0, MQInfo),
-        qual_info_set_mq_info(MQInfo, !QualInfo)
     ;
         true
     ).
@@ -897,10 +918,10 @@ add_pass_3_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !QualInfo,
     recompilation_info::in, recompilation_info::out) is det.
 
 update_module_version_numbers(ModuleName, ModuleVersionNumbers, !RecompInfo) :-
-    VersionNumbersMap0 = !.RecompInfo ^ version_numbers,
+    VersionNumbersMap0 = !.RecompInfo ^ recomp_version_numbers,
     map.set(ModuleName, ModuleVersionNumbers,
         VersionNumbersMap0, VersionNumbersMap),
-    !RecompInfo ^ version_numbers := VersionNumbersMap.
+    !RecompInfo ^ recomp_version_numbers := VersionNumbersMap.
 
 %---------------------------------------------------------------------------%
 
@@ -1336,40 +1357,6 @@ add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
             !QualInfo, !Specs)
     ;
         DefinedThisModule = no
-    ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-    % If a module_defn updates the import_status, return the new status
-    % and whether uses of the following items must be module qualified,
-    % otherwise fail.
-    %
-:- pred module_defn_update_import_status(module_defn::in, item_status::out)
-    is semidet.
-
-module_defn_update_import_status(ModuleDefn, Status) :-
-    (
-        ModuleDefn = md_interface,
-        Status = item_status(status_exported, may_be_unqualified)
-    ;
-        ModuleDefn = md_implementation,
-        Status = item_status(status_local, may_be_unqualified)
-    ;
-        ModuleDefn = md_implementation_but_exported_to_submodules,
-        Status = item_status(status_exported_to_submodules, may_be_unqualified)
-    ;
-        ModuleDefn = md_imported(Section),
-        Status = item_status(status_imported(Section), may_be_unqualified)
-    ;
-        ModuleDefn = md_used(Section),
-        Status = item_status(status_imported(Section), must_be_qualified)
-    ;
-        ModuleDefn = md_opt_imported,
-        Status = item_status(status_opt_imported, must_be_qualified)
-    ;
-        ModuleDefn = md_abstract_imported,
-        Status = item_status(status_abstract_imported, must_be_qualified)
     ).
 
 %---------------------------------------------------------------------------%

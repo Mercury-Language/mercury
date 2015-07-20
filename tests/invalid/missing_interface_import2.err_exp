@@ -1,3 +1,9 @@
+missing_interface_import2.m:007: Error: module `missing_interface_import2'
+missing_interface_import2.m:007:   should start with either an `:- interface'
+missing_interface_import2.m:007:   or an `:- implementation' declaration.
+missing_interface_import2.m:007:   The following assumes that the missing
+missing_interface_import2.m:007:   declaration is an `:- implementation'
+missing_interface_import2.m:007:   declaration.
 missing_interface_import2.m:013: In declaration of predicate
 missing_interface_import2.m:013:   `missing_interface_import2.write_key'/3:
 missing_interface_import2.m:013:   error: undefined type `partition_id'/0.

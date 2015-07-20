@@ -4,6 +4,8 @@
 
 :- module indexing.
 
+:- interface.
+
 :- type t5
     --->    a
     ;       b
@@ -46,6 +48,11 @@
     ;       c31.
 
 :- pred fully_dense(t5::in, int::out) is det.
+:- pred semi_dense(t5::in, int::out) is semidet.
+:- pred sparse(t32::in, int::out) is semidet.
+:- pred semi_dense_int(int::in, int::out) is semidet.
+
+:- implementation.
 
 fully_dense(a, 1).
 fully_dense(b, 2).
@@ -53,18 +60,12 @@ fully_dense(c, 3).
 fully_dense(d, 4).
 fully_dense(e, 5).
 
-:- pred semi_dense(t5::in, int::out) is semidet.
-
 semi_dense(a, 1).
 semi_dense(c, 3).
 semi_dense(d, 4).
 
-:- pred sparse(t32::in, int::out) is semidet.
-
 sparse(c0, 0).
 sparse(c1, 1).
-
-:- pred semi_dense_int(int::in, int::out) is semidet.
 
 semi_dense_int(2, 1).
 semi_dense_int(4, 3).

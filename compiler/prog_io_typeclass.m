@@ -258,7 +258,8 @@ tvars_in_fundep(fundep(Domain, Range)) = Domain ++ Range.
 parse_superclass_constraints(_ModuleName, VarSet, ConstraintsTerm, Result) :-
     parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result0),
     (
-        Result0 = ok1(ArbitraryConstraints),
+        Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
+        ArbitraryConstraints = [HeadArbConstraint | TailArbConstraints],
         (
             collect_simple_and_fundep_constraints(ArbitraryConstraints,
                 Constraints, FunDeps)
@@ -430,12 +431,15 @@ parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm, Pieces,
         Result) :-
     parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result0),
     (
-        Result0 = ok1(ArbitraryConstraints),
+        Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
         (
             % Fail if any of the constraints aren't simple.
-            list.map(get_simple_constraint, ArbitraryConstraints, Constraints)
+            get_simple_constraint(HeadArbConstraint, HeadConstraint),
+            list.map(get_simple_constraint, TailArbConstraints, TailConstraints)
         ->
-            Result = ok1(Constraints)
+            % XXX ITEM_LIST Loosens representation; switching from one_or_more
+            % to list allows an empty list.
+            Result = ok1([HeadConstraint | TailConstraints])
         ;
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(ConstraintsTerm),
@@ -456,7 +460,8 @@ parse_class_and_inst_constraints(_ModuleName, VarSet, ConstraintsTerm,
         Result) :-
     parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result0),
     (
-        Result0 = ok1(ArbitraryConstraints),
+        Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
+        ArbitraryConstraints = [HeadArbConstraint | TailArbConstraints],
         (
             collect_class_and_inst_constraints(ArbitraryConstraints,
                 ProgConstraints, InstVarSub)
@@ -514,33 +519,45 @@ collect_class_and_inst_constraints([Constraint | Constraints],
             % A functional dependency (that is, one whose head is '->'/2)
             % and whose arguments are comma-separated variables.
 
-:- type arbitrary_constraints == list(arbitrary_constraint).
+:- type arbitrary_constraints == one_or_more(arbitrary_constraint).
 
 :- pred parse_arbitrary_constraints(varset::in, term::in,
     maybe1(arbitrary_constraints)::out) is det.
 
 parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result) :-
-    conjunction_to_list(ConstraintsTerm, ConstraintList),
-    parse_arbitrary_constraint_list(VarSet, ConstraintList, Result).
+    conjunction_to_one_or_more(ConstraintsTerm,
+        one_or_more(HeadConstraintTerm, TailConstraintTerms)),
+    parse_arbitrary_constraint_list(VarSet,
+        HeadConstraintTerm, TailConstraintTerms, Result).
 
-:- pred parse_arbitrary_constraint_list(varset::in, list(term)::in,
+:- pred parse_arbitrary_constraint_list(varset::in, term::in, list(term)::in,
     maybe1(arbitrary_constraints)::out) is det.
 
-parse_arbitrary_constraint_list(_, [], ok1([])).
-parse_arbitrary_constraint_list(VarSet, [Term | Terms], Result) :-
-    parse_arbitrary_constraint(VarSet, Term, Result0),
-    parse_arbitrary_constraint_list(VarSet, Terms, Result1),
-    Result = combine_parse_results(Result0, Result1).
-
-:- func combine_parse_results(maybe1(arbitrary_constraint),
-    maybe1(arbitrary_constraints)) = maybe1(arbitrary_constraints).
-
-combine_parse_results(error1(HeadSpecs), error1(TailSpecs)) =
-    error1(HeadSpecs ++ TailSpecs).
-combine_parse_results(error1(Specs), ok1(_)) = error1(Specs).
-combine_parse_results(ok1(_), error1(Specs)) = error1(Specs).
-combine_parse_results(ok1(Constraint), ok1(Constraints)) =
-    ok1([Constraint | Constraints]).
+parse_arbitrary_constraint_list(VarSet, HeadTerm, TailTerms, Result) :-
+    parse_arbitrary_constraint(VarSet, HeadTerm, HeadResult),
+    (
+        TailTerms = [],
+        (
+            HeadResult = ok1(HeadConstraint),
+            Result = ok1(one_or_more(HeadConstraint, []))
+        ;
+            HeadResult = error1(Specs),
+            Result = error1(Specs)
+        )
+    ;
+        TailTerms = [HeadTailTerm | TailTailTerms],
+        parse_arbitrary_constraint_list(VarSet, HeadTailTerm, TailTailTerms,
+            TailResult),
+        (
+            HeadResult = ok1(HeadConstraint),
+            TailResult = ok1(TailConstraints)
+        ->
+            Result = ok1(one_or_more_cons(HeadConstraint, TailConstraints))
+        ;
+            Result = error1(get_any_errors1(HeadResult) ++
+                get_any_errors1(TailResult))
+        )
+    ).
 
 :- pred parse_arbitrary_constraint(varset::in, term::in,
     maybe1(arbitrary_constraint)::out) is det.
@@ -557,7 +574,8 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
     ;
         try_parse_sym_name_and_args(ConstraintTerm, ClassName, Args0)
     ->
-        % XXX ArgsResultContextPieces = [words("In typeclass constraint:")]
+        % XXX ITEM_LIST Should we use
+        % ArgsResultContextPieces = [words("In typeclass constraint:")]
         ArgsResultContextPieces = [],
         parse_types(Args0, VarSet, ArgsResultContextPieces, ArgsResult),
         (
@@ -607,12 +625,14 @@ parse_fundep(Term, Result) :-
         Result = error1([Spec])
     ).
 
+    % XXX ITEM_LIST Should return one_or_more(tvar).
+    %
 :- pred parse_fundep_2(term::in, list(tvar)::out) is semidet.
 
-parse_fundep_2(Term, TVars) :-
-    TypeTerm = term.coerce(Term),
-    conjunction_to_list(TypeTerm, List),
-    term.term_list_to_var_list(List, TVars).
+parse_fundep_2(TypesTerm0, TypeVars) :-
+    TypesTerm = term.coerce(TypesTerm0),
+    conjunction_to_list(TypesTerm, TypeTerms),
+    term.term_list_to_var_list(TypeTerms, TypeVars).
 
 :- pred constraint_is_not_simple(prog_constraint::in) is semidet.
 
@@ -896,13 +916,17 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
         % we will pick that up later, in check_typeclass.m.)
 
         DefaultModuleName = unqualified(""),
-        parse_item(DefaultModuleName, VarSet, MethodTerm, -1, MaybeItem0),
+        parse_item_or_marker(DefaultModuleName, VarSet, MethodTerm, -1,
+            MaybeIOM),
         (
-            MaybeItem0 = error1(Specs),
+            MaybeIOM = error1(Specs),
             MaybeInstanceMethod = error1(Specs)
         ;
-            MaybeItem0 = ok1(Item),
-            ( Item = item_clause(ItemClause) ->
+            MaybeIOM = ok1(IOM),
+            (
+                IOM = iom_item(Item),
+                Item = item_clause(ItemClause)
+            ->
                 ItemClause = item_clause_info(ClassMethodName, PredOrFunc,
                     HeadArgs, _Origin, _VarSet, _ClauseBody, Context, _SeqNum),
                 adjust_func_arity(PredOrFunc, ArityInt, list.length(HeadArgs)),

@@ -22,6 +22,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module bool.

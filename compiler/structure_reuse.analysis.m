@@ -116,6 +116,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.status.
 :- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.

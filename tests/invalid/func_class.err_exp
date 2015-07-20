@@ -1,0 +1,18 @@
+func_class.m:009: Error: nested submodule `func_class.func_class1' should be
+func_class.m:009:   preceded by either an `:- interface' or an
+func_class.m:009:   `:- implementation' declaration.
+func_class.m:009:   The following assumes that the missing declaration is an
+func_class.m:009:   `:- interface' declaration.
+func_class.m:015: This implementation section for module
+func_class.m:015:   `func_class.func_class1' occurs in the interface section of
+func_class.m:015:   parent module `func_class'.
+func_class.m:021: Error: nested submodule `func_class.func_class2' should be
+func_class.m:021:   preceded by either an `:- interface' or an
+func_class.m:021:   `:- implementation' declaration.
+func_class.m:021:   The following assumes that the missing declaration is an
+func_class.m:021:   `:- interface' declaration.
+func_class.m:021: Submodule `func_class.func_class2' is missing its interface
+func_class.m:021:   section.
+func_class.m:022: This implementation section for module
+func_class.m:022:   `func_class.func_class2' occurs in the interface section of
+func_class.m:022:   parent module `func_class'.

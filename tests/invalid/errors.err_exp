@@ -1,7 +1,11 @@
-errors.m:001: Warning: interface for module `errors' does not export anything.
-errors.m:001: Warning: module `int' is imported using both `:- import_module'
-errors.m:001:   and `:- use_module' declarations.
 errors.m:012: Error: module must start with a `:- module' declaration.
+errors.m:012: Error: module `errors' should start with either an `:- interface'
+errors.m:012:   or an `:- implementation' declaration.
+errors.m:012:   The following assumes that the missing declaration is an
+errors.m:012:   `:- implementation' declaration.
+errors.m:012: Warning: interface for module `errors' does not export anything.
+errors.m:012: Warning: module `int' is imported using both `:- import_module'
+errors.m:012:   and `:- use_module' declarations.
 errors.m:030: Error: `:- mode' declaration for predicate
 errors.m:030:   `errors.mode_declaration_without_pred_declaration'/0
 errors.m:030:   without corresponding `:- pred' declaration.

@@ -16,7 +16,6 @@
 :- interface.
 
 :- import_module libs.globals.
-:- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_item.
 
 :- import_module bool.
@@ -24,18 +23,20 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type short_interface_kind
-    --->    int2    % the qualified short interface, for the .int2 file
-    ;       int3.   % the unqualified short interface, for the .int3 file
+    % This is effectively a subtype of int_file_kind, which is defined in
+    % prog_item.m.
+:- type short_int_file_kind
+    --->    sifk_int2   % the qualified short interface, for the .int2 file
+    ;       sifk_int3.  % the unqualified short interface, for the .int3 file
 
     % XXX make_abstract_defn should be merged with make_abstract_unify_compare
     % and made det, returning the unchanged item if it does not need to be made
     % abstract (so we can use det switches instead semidet tests in the code).
     %
-:- pred make_abstract_defn(item::in, short_interface_kind::in, item::out)
+:- pred make_abstract_defn(item::in, short_int_file_kind::in, item::out)
     is semidet.
 
-:- pred make_abstract_unify_compare(item::in, short_interface_kind::in,
+:- pred make_abstract_unify_compare(item::in, short_int_file_kind::in,
     item::out) is semidet.
 
     % All instance declarations must be written to `.int' files as
@@ -54,22 +55,6 @@
 :- func item_needs_foreign_imports(item) = list(foreign_language).
 
 %-----------------------------------------------------------------------------%
-
-    % Make an item for a module declaration or pseudo-declaration
-    % such as `:- imported' (which is inserted by the compiler, but can't be
-    % used in user code).
-    %
-:- func make_pseudo_decl(module_defn) = item.
-
-    % append_pseudo_decl(PseudoDecl, Module0, Module):
-    %
-    % Append the specified module declaration to the list of items in Module0
-    % to give Module.
-    %
-:- pred append_pseudo_decl(module_defn::in,
-    module_and_imports::in, module_and_imports::out) is det.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -85,7 +70,7 @@
 
 %-----------------------------------------------------------------------------%
 
-make_abstract_defn(Item, ShortInterfaceKind, AbstractItem) :-
+make_abstract_defn(Item, ShortIntFileKind, AbstractItem) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         TypeDefn = ItemTypeDefn ^ td_ctor_defn,
@@ -100,7 +85,7 @@ make_abstract_defn(Item, ShortInterfaceKind, AbstractItem) :-
             % discriminated union types. Even if the functors for a type
             % are not used within a module, we may need to know them for
             % comparing insts, e.g. for comparing `ground' and `bound(...)'.
-            ShortInterfaceKind = int3
+            ShortIntFileKind = sifk_int3
         ;
             TypeDefn = parse_tree_abstract_type(AbstractDetails)
         ;
@@ -119,9 +104,9 @@ make_abstract_defn(Item, ShortInterfaceKind, AbstractItem) :-
             % before code generation, even in modules that only indirectly
             % import the definition of the equivalence type.
             % But the full definitions are not needed for the `.int3'
-            % files. So we convert equivalence types into abstract
-            % types only for the `.int3' files.
-            ShortInterfaceKind = int3
+            % files. So we convert equivalence types into abstract types
+            % only for the `.int3' files.
+            ShortIntFileKind = sifk_int3
         ;
             TypeDefn = parse_tree_foreign_type(_, _, _),
             % We always need the definitions of foreign types
@@ -134,7 +119,7 @@ make_abstract_defn(Item, ShortInterfaceKind, AbstractItem) :-
         AbstractItem = item_type_defn(AbstractItemTypeDefn)
     ;
         Item = item_instance(ItemInstance),
-        ShortInterfaceKind = int2,
+        ShortIntFileKind = sifk_int2,
         AbstractItemInstance = make_instance_abstract(ItemInstance),
         AbstractItem = item_instance(AbstractItemInstance)
     ;
@@ -144,14 +129,14 @@ make_abstract_defn(Item, ShortInterfaceKind, AbstractItem) :-
         AbstractItem = item_typeclass(AbstractItemTypeClass)
     ).
 
-make_abstract_unify_compare(Item, int2, AbstractItem) :-
+make_abstract_unify_compare(Item, sifk_int2, AbstractItem) :-
     Item = item_type_defn(ItemTypeDefn),
     TypeDefn = ItemTypeDefn ^ td_ctor_defn,
     (
-        TypeDefn = parse_tree_du_type(Constructors, yes(_UserEqComp),
-            MaybeDirectArgCtors),
-        MaybeUserEqComp = yes(abstract_noncanonical_type(non_solver_type)),
-        AbstractTypeDefn = parse_tree_du_type(Constructors, MaybeUserEqComp,
+        TypeDefn = parse_tree_du_type(Constructors,
+            yes(_UserEqComp), MaybeDirectArgCtors),
+        AbstractTypeDefn = parse_tree_du_type(Constructors,
+            yes(abstract_noncanonical_type(non_solver_type)),
             MaybeDirectArgCtors)
     ;
         TypeDefn = parse_tree_foreign_type(ForeignType,
@@ -159,7 +144,8 @@ make_abstract_unify_compare(Item, int2, AbstractItem) :-
         AbstractTypeDefn = parse_tree_foreign_type(ForeignType,
             yes(abstract_noncanonical_type(non_solver_type)), Assertions)
     ;
-        TypeDefn = parse_tree_solver_type(SolverTypeDetails, yes(_UserEqComp)),
+        TypeDefn = parse_tree_solver_type(SolverTypeDetails,
+            yes(_UserEqComp)),
         AbstractTypeDefn = parse_tree_solver_type(SolverTypeDetails,
             yes(abstract_noncanonical_type(solver_type)))
     ),
@@ -195,9 +181,7 @@ item_needs_imports(Item) = NeedsImports :-
         ),
         NeedsImports = yes
     ;
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_module_defn(_)
+        ( Item = item_module_defn(_)
         ; Item = item_nothing(_)
         ),
         NeedsImports = no
@@ -252,7 +236,6 @@ item_needs_foreign_imports(Item) = Langs :-
             ; Pragma = pragma_mm_tabling_info(_)
             ; Pragma = pragma_obsolete(_)
             ; Pragma = pragma_no_detism_warning(_)
-            ; Pragma = pragma_source_file(_)
             ; Pragma = pragma_oisu(_)
             ; Pragma = pragma_tabled(_)
             ; Pragma = pragma_fact_table(_)
@@ -273,9 +256,7 @@ item_needs_foreign_imports(Item) = Langs :-
             Langs = []
         )
     ;
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_module_defn(_)
+        ( Item = item_module_defn(_)
         ; Item = item_clause(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
@@ -290,16 +271,6 @@ item_needs_foreign_imports(Item) = Langs :-
         ),
         Langs = []
     ).
-
-%-----------------------------------------------------------------------------%
-
-append_pseudo_decl(PseudoDecl, !Module) :-
-    module_and_imports_add_items(cord.singleton(make_pseudo_decl(PseudoDecl)),
-        !Module).
-
-make_pseudo_decl(PseudoDecl) = Item :-
-    ItemModuleDefn = item_module_defn_info(PseudoDecl, term.context_init, -1),
-    Item = item_module_defn(ItemModuleDefn).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.item_util.

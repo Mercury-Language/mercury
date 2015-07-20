@@ -101,6 +101,7 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module bool.

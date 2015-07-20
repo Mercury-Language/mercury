@@ -284,7 +284,23 @@
 %-----------------------------------------------------------------------------%
 
 :- type format_component
-    --->    fixed(string)
+    --->    invis_order_default_start(int)
+            % Prints nothing. If the compiler generates two different specs
+            % for the same context that we intend to appear in a specific
+            % order, even though it may not be the order that sorting those
+            % specs would normally give, we can add one of these to the
+            % start of each error_spec, with the order of the numbers
+            % inside these invis orders controlling the final order
+            % of the error_specs.
+            %
+            % This component sorts before other components that do not
+            % specify such an ordinal number. The invis_order_default_end
+            % component sorts after them. By choosing to use one or the other,
+            % users of this type can control sorting with respect to
+            % error messages generated in places in the code they do not
+            % control.
+
+    ;       fixed(string)
             % This string should appear in the output in one piece, as it is.
 
     ;       quote(string)
@@ -363,14 +379,8 @@
     ;       blank_line
             % Create a blank line.
 
-    ;       invis_order(int).
-            % Prints nothing. If the compiler generates two different specs
-            % for the same context that we intend to appear in a specific
-            % order, even though it may not be the order that sorting those
-            % specs would normally give, we can add one of these to the
-            % start of each error_spec, with the order of the numbers
-            % inside these invis_orders controlling the final order
-            % of the error_specs.
+    ;       invis_order_default_end(int).
+            % See the documentation of invis_order_default_start above.
 
 :- type format_components == list(format_component).
 
@@ -738,7 +748,7 @@ compare_error_specs(SpecA, SpecB, Result) :-
 
 maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO) :-
     % maybe_write_out_errors in hlds_error_util.m is a HLDS version
-    % of this predicate. The documentstion is in that file.
+    % of this predicate. The documentation is in that file.
     (
         Verbose = no
     ;
@@ -1260,7 +1270,9 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Component = blank_line,
         Str = "\n\n" ++ TailStr
     ;
-        Component = invis_order(_),
+        ( Component = invis_order_default_start(_)
+        ; Component = invis_order_default_end(_)
+        ),
         Str = TailStr
     ).
 
@@ -1410,7 +1422,9 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         !:Paras = snoc(!.Paras, paragraph(Strings, 1, 0)),
         RevWords1 = []
     ;
-        Component = invis_order(_),
+        ( Component = invis_order_default_start(_)
+        ; Component = invis_order_default_end(_)
+        ),
         RevWords1 = RevWords0
     ),
     convert_components_to_paragraphs_acc(not_first_in_msg, Components,

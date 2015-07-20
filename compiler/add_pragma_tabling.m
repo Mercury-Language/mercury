@@ -10,7 +10,6 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 

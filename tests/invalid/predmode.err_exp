@@ -1,9 +1,9 @@
-predmode.m:001: Warning: interface for module `predmode' does not export
-predmode.m:001:   anything.
-predmode.m:001:   To be useful, a module should export something. A file should
-predmode.m:001:   contain at least one declaration other than
-predmode.m:001:   `:- import_module' in its interface section(s). This would
-predmode.m:001:   normally be a `:- pred', `:- func', `:- type', `:- inst' or
-predmode.m:001:   `:- mode' declaration.
+predmode.m:005: Warning: interface for module `predmode' does not export
+predmode.m:005:   anything.
+predmode.m:005:   To be useful, a module should export something. A file should
+predmode.m:005:   contain at least one declaration other than
+predmode.m:005:   `:- import_module' in its interface section(s). This would
+predmode.m:005:   normally be a `:- pred', `:- func', `:- type', `:- inst' or
+predmode.m:005:   `:- mode' declaration.
 predmode.m:009: Error: some but not all arguments have modes.
 predmode.m:009:   The argument without a mode is the second.

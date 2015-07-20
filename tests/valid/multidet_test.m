@@ -4,11 +4,13 @@
 
 :- module multidet_test.
 
-:- import_module std_util.
+:- interface.
+
+:- pred test_pred is det.
 
 :- implementation.
 
-:- pred test_pred is det.
+:- import_module std_util.
 
 test_pred :-
     test_pred_2.

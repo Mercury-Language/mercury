@@ -394,7 +394,7 @@ single_construction(Goal, ConsId) :-
     % and would thus match even if the two functors are NOT of the same type.
     % Note that by insisting on cons, we effectively disallow assertions
     % about tuples.
-    match_sym_name(UnqualifiedSymName, QualifiedSymName).
+    partial_sym_name_matches_full(UnqualifiedSymName, QualifiedSymName).
 
     % The side containing the predicate call must be a single call
     % to the predicate with 0 or more construction unifications

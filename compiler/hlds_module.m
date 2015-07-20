@@ -37,6 +37,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.status.
 :- import_module recompilation.
 
 :- import_module cord.
@@ -215,12 +216,13 @@
 % and its raw getter and setter predicates.
 %
 
-    % Create an empty module_info for a given module name (and the
-    % global options). The item list is passed so that we can call
-    % get_implicit_dependencies to figure out whether to import
-    % `table_builtin', but the items are not inserted into the module_info.
+    % Create an empty module_info for the module named in the given
+    % compilation unit. We also pass the compilation unit to
+    % get_implicit_dependencies_* to figure out whether to import
+    % implicitly imported modules such as `table_builtin', but its contents
+    % are not inserted into the module_info.
     %
-:- pred module_info_init(module_name::in, string::in, list(item)::in,
+:- pred module_info_init(aug_compilation_unit::in, string::in,
     globals::in, partial_qualifier_info::in, maybe(recompilation_info)::in,
     module_info::out) is det.
 
@@ -540,11 +542,11 @@
 
 %---------------------%
 
-:- pred module_add_imported_module_specifiers(import_status::in,
-    list(module_specifier)::in, module_info::in, module_info::out) is det.
+:- pred module_add_imported_module_specifier(import_status::in,
+    module_specifier::in, module_info::in, module_info::out) is det.
 
-:- pred module_add_indirectly_imported_module_specifiers(
-    list(module_specifier)::in, module_info::in, module_info::out) is det.
+:- pred module_add_indirectly_imported_module_specifier(
+    module_specifier::in, module_info::in, module_info::out) is det.
 
     % Return the set of the visible modules. These are
     %
@@ -566,7 +568,7 @@
 :- pred module_info_get_all_deps(module_info::in,
     set(module_name)::out) is det.
 
-:- pred module_info_add_parents_to_used_modules(list(module_name)::in,
+:- pred module_info_add_parent_to_used_modules(module_name::in,
     module_info::in, module_info::out) is det.
 
 %---------------------%
@@ -816,8 +818,10 @@
                 mri_ts_rev_string_table         :: list(string)
             ).
 
-module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
+module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         MaybeRecompInfo, ModuleInfo) :-
+    AugCompUnit = compilation_unit(Name, _, AugItemBlocks),
+
     map.init(SpecialPredMap),
     map.init(InstanceTable),
 
@@ -856,7 +860,15 @@ module_info_init(Name, DumpBaseFileName, Items, Globals, QualifierInfo,
     map.init(LambdasPerContext),
     map.init(AtomicsPerContext),
 
-    get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
+    % XXX ITEM_LIST Should a tabled predicate declared in a .int* or .*opt
+    % file generate an implicit dependency?
+    get_implicit_dependencies_in_item_blocks(Globals, AugItemBlocks,
+        ImportDeps, UseDeps),
+    % XXX ITEM_LIST We should record ImportDeps and UseDeps separately.
+    % XXX ITEM_LIST Should we record implicitly and explicitly imported
+    % separately, or at least record for each import (and use) whether
+    % it was explicit or implicit, and one (or more) context where either
+    % the explicit imported was requested, or the implicit import was required.
     set.list_to_set(ImportDeps ++ UseDeps, ImportedModules),
     set.init(IndirectlyImportedModules),
     set.init(InterfaceModuleSpecs),
@@ -1444,10 +1456,9 @@ module_info_next_atomic_count(Context, Count, !MI) :-
 
 %---------------------%
 
-module_add_imported_module_specifiers(IStat, AddedModuleSpecifiers, !MI) :-
+module_add_imported_module_specifier(IStat, AddedModuleSpecifier, !MI) :-
     ImportSpecifiers0 = !.MI ^ mi_rare_info ^ mri_imported_module_specifiers,
-    set.insert_list(AddedModuleSpecifiers, ImportSpecifiers0,
-        ImportSpecifiers),
+    set.insert(AddedModuleSpecifier, ImportSpecifiers0, ImportSpecifiers),
     !MI ^ mi_rare_info ^ mri_imported_module_specifiers := ImportSpecifiers,
 
     Exported = status_is_exported_to_non_submodules(IStat),
@@ -1455,17 +1466,17 @@ module_add_imported_module_specifiers(IStat, AddedModuleSpecifiers, !MI) :-
         Exported = yes,
         InterfaceSpecifiers0 =
             !.MI ^ mi_rare_info ^ mri_interface_module_specifiers,
-        set.insert_list(AddedModuleSpecifiers, InterfaceSpecifiers0,
-            InterfaceSpecifiers),
+        set.insert(AddedModuleSpecifier,
+            InterfaceSpecifiers0, InterfaceSpecifiers),
         !MI ^ mi_rare_info ^ mri_interface_module_specifiers :=
             InterfaceSpecifiers
     ;
         Exported = no
     ).
 
-module_add_indirectly_imported_module_specifiers(AddedModules, !MI) :-
+module_add_indirectly_imported_module_specifier(AddedModuleSpecifier, !MI) :-
     Modules0 = !.MI ^ mi_rare_info ^ mri_indirectly_imported_module_specifiers,
-    set.insert_list(AddedModules, Modules0, Modules),
+    set.insert(AddedModuleSpecifier, Modules0, Modules),
     !MI ^ mi_rare_info ^ mri_indirectly_imported_module_specifiers := Modules.
 
 module_info_get_visible_modules(ModuleInfo, !:VisibleModules) :-
@@ -1485,10 +1496,10 @@ module_info_get_all_deps(ModuleInfo, AllImports) :-
     AllImports = set.union_list([IndirectImports, DirectImports,
         set.list_to_set(Parents)]).
 
-module_info_add_parents_to_used_modules(Modules, !MI) :-
+module_info_add_parent_to_used_modules(ModuleSpecifier, !MI) :-
     module_info_get_used_modules(!.MI, UsedModules0),
-    list.foldl(record_module_and_ancestors_as_used(visibility_public),
-        Modules, UsedModules0, UsedModules),
+    record_module_and_ancestors_as_used(visibility_public, ModuleSpecifier,
+        UsedModules0, UsedModules),
     module_info_set_used_modules(UsedModules, !MI).
 
 %---------------------%

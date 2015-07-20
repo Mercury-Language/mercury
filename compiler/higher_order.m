@@ -75,6 +75,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.status.
 :- import_module transform_hlds.inlining.
 
 :- import_module assoc_list.

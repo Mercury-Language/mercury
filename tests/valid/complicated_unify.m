@@ -4,9 +4,13 @@
 
 :- module complicated_unify.
 
+:- interface.
+
 :- type t
     --->    f(int).
 
 :- pred p(t::in, t::in) is semidet.
+
+:- implementation.
 
 p(X, X).

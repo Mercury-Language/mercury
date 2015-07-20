@@ -105,6 +105,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -31,7 +31,7 @@
 
 :- type qual_info.
 
-:- pred init_qual_info(mq_info::in, eqv_map::in, qual_info::out) is det.
+:- pred init_qual_info(mq_info::in, type_eqv_map::in, qual_info::out) is det.
 
     % Update the qual_info when processing a new clause.
     %
@@ -112,7 +112,7 @@
 :- type qual_info
     --->    qual_info(
                 % Used to expand equivalence types.
-                qual_eqv_map            :: eqv_map,
+                qual_type_eqv_map       :: type_eqv_map,
 
                 % All type variables for predicate.
                 qual_tvarset            :: tvarset,
@@ -136,22 +136,22 @@
                 qual_found_syntax_error :: bool
             ).
 
-init_qual_info(MQInfo0, EqvMap, QualInfo) :-
+init_qual_info(MQInfo0, TypeEqvMap, QualInfo) :-
     mq_info_set_need_qual_flag(may_be_unqualified, MQInfo0, MQInfo),
     varset.init(TVarSet),
     map.init(Renaming),
     map.init(Index),
     init_vartypes(VarTypes),
     FoundSyntaxError = no,
-    QualInfo = qual_info(EqvMap, TVarSet, Renaming, Index, VarTypes,
+    QualInfo = qual_info(TypeEqvMap, TVarSet, Renaming, Index, VarTypes,
         MQInfo, status_local, FoundSyntaxError).
 
 update_qual_info(TVarNameMap, TVarSet, VarTypes, Status, !QualInfo) :-
-    !.QualInfo = qual_info(EqvMap, _TVarSet0, _Renaming0, _TVarNameMap0,
+    !.QualInfo = qual_info(TypeEqvMap, _TVarSet0, _Renaming0, _TVarNameMap0,
         _VarTypes0, MQInfo, _Status, _FoundError),
     % The renaming for one clause is useless in the others.
     map.init(Renaming),
-    !:QualInfo = qual_info(EqvMap, TVarSet, Renaming, TVarNameMap,
+    !:QualInfo = qual_info(TypeEqvMap, TVarSet, Renaming, TVarNameMap,
         VarTypes, MQInfo, Status, no).
 
 qual_info_get_tvarset(Info, Info ^ qual_tvarset).
@@ -185,7 +185,7 @@ set_module_recompilation_info(QualInfo, !ModuleInfo) :-
 
 process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
         !QualInfo, !Specs) :-
-    !.QualInfo = qual_info(EqvMap, TVarSet0, TVarRenaming0,
+    !.QualInfo = qual_info(TypeEqvMap, TVarSet0, TVarRenaming0,
         TVarNameMap0, VarTypes0, MQInfo0, Status, FoundError),
     ( Status = status_opt_imported ->
         % Types in `.opt' files should already be fully module qualified.
@@ -211,10 +211,10 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
     % because at the moment no recompilation.item_id can depend on a
     % clause item.
     RecordExpanded = no,
-    equiv_type.replace_in_type(EqvMap, Type2, Type, _, TVarSet1, TVarSet,
+    equiv_type.replace_in_type(TypeEqvMap, Type2, Type, _, TVarSet1, TVarSet,
         RecordExpanded, _),
     update_var_types(Var, Type, Context, VarTypes0, VarTypes, !Specs),
-    !:QualInfo = qual_info(EqvMap, TVarSet, TVarRenaming,
+    !:QualInfo = qual_info(TypeEqvMap, TVarSet, TVarRenaming,
         TVarNameMap, VarTypes, MQInfo, Status, FoundError).
 
 :- pred update_var_types(prog_var::in, mer_type::in, prog_context::in,

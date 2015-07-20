@@ -220,6 +220,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.status.
 
 :- import_module int.
 :- import_module io.

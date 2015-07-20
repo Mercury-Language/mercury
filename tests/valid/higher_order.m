@@ -4,11 +4,15 @@
 
 :- module higher_order.
 
+:- interface.
+
 :- import_module list.
 :- import_module int.
 
 :- pred map_list(pred(T1, T2), list(T1), list(T2)).
 :- mode map_list(pred(in, out) is det, in, out) is det.
+
+:- implementation.
 
 map_list(_P, [], []).
 map_list(P, [X | Xs], [Y | Ys]) :-

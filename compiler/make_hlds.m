@@ -36,6 +36,7 @@
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.status.
 
 :- import_module bool.
 :- import_module list.
@@ -54,19 +55,21 @@
     --->    did_not_find_invalid_inst_or_mode
     ;       found_invalid_inst_or_mode.
 
-    % parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo, EqvMap,
-    %   UsedModules, QualInfo, InvalidTypes, InvalidModes, HLDS, Specs):
+    % parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName,
+    %   MQInfo, TypeEqvMap, UsedModules, QualInfo, InvalidTypes, InvalidModes,
+    %   HLDS, Specs):
     %
-    % Given MQInfo (returned by module_qual.m) and EqvMap and UsedModules
-    % (both returned by equiv_type.m), converts ParseTree to HLDS.
-    % Any errors found are returned in Specs.
-    % Returns InvalidTypes = yes if undefined types found.
-    % Returns InvalidModes = yes if undefined or cyclic insts or modes found.
+    % Given MQInfo (returned by module_qual.m) and TypeEqvMap and UsedModules
+    % (both returned by equiv_type.m), converts AugCompUnit to HLDS.
+    % It returns messages for any errors it finds in Specs.
+    % Returns InvalidTypes = yes if it finds any undefined types.
+    % Returns InvalidModes = yes if it finds any undefined or cyclic
+    % insts or modes.
     % QualInfo is an abstract type that is then passed back to
     % produce_instance_method_clauses (see below).
     %
-:- pred parse_tree_to_hlds(globals::in, string::in, compilation_unit::in,
-    mq_info::in, eqv_map::in, used_modules::in, make_hlds_qual_info::out,
+:- pred parse_tree_to_hlds(aug_compilation_unit::in, globals::in, string::in,
+    mq_info::in, type_eqv_map::in, used_modules::in, make_hlds_qual_info::out,
     found_invalid_type::out, found_invalid_inst_or_mode::out,
     module_info::out, list(error_spec)::out) is det.
 
@@ -152,12 +155,12 @@
 
 :- type make_hlds_qual_info == hlds.make_hlds.qual_info.qual_info.
 
-parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo0, EqvMap,
-        UsedModules, QualInfo, FoundInvalidType, FoundInvalidMode,
-        ModuleInfo, Specs) :-
-    do_parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo0,
-        EqvMap, UsedModules, QualInfo, FoundInvalidType, FoundInvalidMode,
-        ModuleInfo, Specs).
+parse_tree_to_hlds(AugCompilationUnit, Globals, DumpBaseFileName,
+        MQInfo0, TypeEqvMap, UsedModules, QualInfo,
+        FoundInvalidType, FoundInvalidMode, ModuleInfo, Specs) :-
+    do_parse_tree_to_hlds(AugCompilationUnit, Globals, DumpBaseFileName,
+        MQInfo0, TypeEqvMap, UsedModules, QualInfo,
+        FoundInvalidType, FoundInvalidMode, ModuleInfo, Specs).
 
 add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
         MaybeArgLives, DetismDecl, MaybeDet, Context, IsAddressTaken,

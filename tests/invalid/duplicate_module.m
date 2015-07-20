@@ -15,9 +15,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- include_module duplicate_module:child.
+:- include_module duplicate_module.child.
 
-:- module duplicate_module:child.
+:- module duplicate_module.child.
 :- interface.
 :- import_module io.
 
@@ -30,15 +30,15 @@
 :- implementation.
 
 hello -->
-    io__write_string("duplicate_module:child:hello\n").
+    io__write_string("duplicate_module.child.hello\n").
 
-:- end_module duplicate_module:child.
+:- end_module duplicate_module.child.
 
 %---------------------------------------------------------------------------%
 
 :- include_module child2.
 
-:- module duplicate_module:child2.
+:- module duplicate_module.child2.
 :- interface.
 :- import_module io.
 
@@ -51,13 +51,13 @@ hello -->
 :- implementation.
 
 hello -->
-    io__write_string("duplicate_module:child2:hello\n").
+    io__write_string("duplicate_module.child2.hello\n").
 
-:- end_module duplicate_module:child2.
+:- end_module duplicate_module.child2.
 
 %---------------------------------------------------------------------------%
 
-:- include_module duplicate_module:child3.
+:- include_module duplicate_module.child3.
 
 :- module child3.
 :- interface.
@@ -72,9 +72,31 @@ hello -->
 :- implementation.
 
 hello -->
-    io__write_string("duplicate_module:child2:hello\n").
+    io__write_string("duplicate_module.child3.hello\n").
 
 :- end_module child3.
+
+%---------------------------------------------------------------------------%
+
+:- module child4.
+:- interface.
+:- import_module io.
+
+:- pred hello(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+hello -->
+    io__write_string("duplicate_module.child4.hello\n").
+
+:- end_module duplicate_module.child4.
+
+:- include_module duplicate_module.child4.
+
+%---------------------------------------------------------------------------%
+
+:- include_module duplicate_module.child5.
+:- include_module duplicate_module.child5.
 
 %---------------------------------------------------------------------------%
 

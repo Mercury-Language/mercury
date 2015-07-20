@@ -3,7 +3,6 @@
 %---------------------------------------------------------------------------%
 %
 :- module higher_order_func_test.
-:- import_module int.
 
 :- interface.
 :- import_module io.
@@ -17,6 +16,7 @@
 :- mode my_map(func(in) = out is semidet, in) = out is semidet.
 
 :- implementation.
+:- import_module int.
 
 my_map(_, []) = [].
 my_map(F, [H0 | T0]) = [apply(F, H0) | my_map(F, T0)].

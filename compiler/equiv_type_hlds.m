@@ -45,6 +45,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.status.
 :- import_module recompilation.
 
 :- import_module assoc_list.
@@ -64,35 +65,37 @@
 replace_in_hlds(!ModuleInfo) :-
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     foldl2_over_type_ctor_defns(add_type_to_eqv_map, TypeTable0,
-        map.init, EqvMap, set.init, EqvExportTypes),
+        map.init, TypeEqvMap, set.init, EqvExportTypes),
     set.fold(mark_eqv_exported_types, EqvExportTypes, TypeTable0, TypeTable1),
 
     module_info_get_maybe_recompilation_info(!.ModuleInfo, MaybeRecompInfo0),
     module_info_get_name(!.ModuleInfo, ModuleName),
-    map_foldl_over_type_ctor_defns(replace_in_type_defn(ModuleName, EqvMap),
+    map_foldl_over_type_ctor_defns(
+        replace_in_type_defn(ModuleName, TypeEqvMap),
         TypeTable1, TypeTable, MaybeRecompInfo0, MaybeRecompInfo),
     module_info_set_type_table(TypeTable, !ModuleInfo),
     module_info_set_maybe_recompilation_info(MaybeRecompInfo, !ModuleInfo),
 
     module_info_get_inst_table(!.ModuleInfo, Insts0),
     InstCache0 = map.init,
-    replace_in_inst_table(EqvMap, Insts0, Insts, InstCache0, InstCache),
+    replace_in_inst_table(TypeEqvMap, Insts0, Insts, InstCache0, InstCache),
     module_info_set_inst_table(Insts, !ModuleInfo),
 
     module_info_get_cons_table(!.ModuleInfo, ConsTable0),
-    replace_in_cons_table(EqvMap, ConsTable0, ConsTable),
+    replace_in_cons_table(TypeEqvMap, ConsTable0, ConsTable),
     module_info_set_cons_table(ConsTable, !ModuleInfo),
 
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    list.foldl2(replace_in_pred(EqvMap), PredIds, !ModuleInfo, InstCache, _).
+    list.foldl2(replace_in_pred(TypeEqvMap), PredIds, !ModuleInfo,
+        InstCache, _).
 
 %-----------------------------------------------------------------------------%
 
 :- pred add_type_to_eqv_map(type_ctor::in, hlds_type_defn::in,
-    eqv_map::in, eqv_map::out, set(type_ctor)::in, set(type_ctor)::out)
-    is det.
+    type_eqv_map::in, type_eqv_map::out,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
 
-add_type_to_eqv_map(TypeCtor, Defn, !EqvMap, !EqvExportTypes) :-
+add_type_to_eqv_map(TypeCtor, Defn, !TypeEqvMap, !EqvExportTypes) :-
     hlds_data.get_type_defn_body(Defn, Body),
     (
         Body = hlds_eqv_type(EqvType),
@@ -100,7 +103,7 @@ add_type_to_eqv_map(TypeCtor, Defn, !EqvMap, !EqvExportTypes) :-
         hlds_data.get_type_defn_tparams(Defn, Params),
         hlds_data.get_type_defn_status(Defn, Status),
         map.det_insert(TypeCtor, eqv_type_body(TVarSet, Params, EqvType),
-            !EqvMap),
+            !TypeEqvMap),
         IsExported = status_is_exported(Status),
         (
             IsExported = yes,
@@ -145,11 +148,12 @@ mark_eqv_exported_types(TypeCtor, !TypeTable) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred replace_in_type_defn(module_name::in, eqv_map::in, type_ctor::in,
+:- pred replace_in_type_defn(module_name::in, type_eqv_map::in, type_ctor::in,
     hlds_type_defn::in, hlds_type_defn::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out) is det.
 
-replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
+replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
+        !MaybeRecompInfo) :-
     hlds_data.get_type_defn_tvarset(!.Defn, TVarSet0),
     hlds_data.get_type_defn_body(!.Defn, Body0),
     TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
@@ -158,12 +162,12 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
         Body0 = hlds_du_type(Ctors0, _, _, _, _, _, _, _, _),
-        equiv_type.replace_in_ctors(EqvMap, Ctors0, Ctors,
+        equiv_type.replace_in_ctors(TypeEqvMap, Ctors0, Ctors,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
         Body = Body0 ^ du_type_ctors := Ctors
     ;
         Body0 = hlds_eqv_type(Type0),
-        equiv_type.replace_in_type(EqvMap, Type0, Type, _,
+        equiv_type.replace_in_type(TypeEqvMap, Type0, Type, _,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
         Body = hlds_eqv_type(Type)
     ;
@@ -175,7 +179,7 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
         Body0 = hlds_solver_type(SolverTypeDetails0, UserEq),
         SolverTypeDetails0 = solver_type_details(RepnType0, InitPred,
             GroundInst, AnyInst, MutableItems),
-        equiv_type.replace_in_type(EqvMap, RepnType0, RepnType, _,
+        equiv_type.replace_in_type(TypeEqvMap, RepnType0, RepnType, _,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
         SolverTypeDetails = solver_type_details(RepnType, InitPred,
             GroundInst, AnyInst, MutableItems),
@@ -194,10 +198,10 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred replace_in_inst_table(eqv_map::in,
+:- pred replace_in_inst_table(type_eqv_map::in,
     inst_table::in, inst_table::out, inst_cache::in, inst_cache::out) is det.
 
-replace_in_inst_table(EqvMap, !InstTable, !Cache) :-
+replace_in_inst_table(TypeEqvMap, !InstTable, !Cache) :-
 % We currently have no syntax for typed user-defined insts,
 % so this is unnecessary.
 %
@@ -212,7 +216,7 @@ replace_in_inst_table(EqvMap, !InstTable, !Cache) :-
 %               Body0 = eqv_inst(Inst0),
 %               % XXX We don't have a valid tvarset here.
 %               TVarSet0 = varset.init.
-%               replace_in_inst(EqvMap, Inst0, Inst, TVarSet0, _)
+%               replace_in_inst(TypeEqvMap, Inst0, Inst, TVarSet0, _)
 %               ...
 %           ),
 %           ...
@@ -235,22 +239,22 @@ replace_in_inst_table(EqvMap, !InstTable, !Cache) :-
 
     replace_in_one_inst_table(
         replace_in_unify_inst_info, replace_in_maybe_inst_det,
-        EqvMap, UnifyInstPairs0, UnifyInstPairs, !Cache),
+        TypeEqvMap, UnifyInstPairs0, UnifyInstPairs, !Cache),
     replace_in_one_inst_table(
         replace_in_merge_inst_info, replace_in_maybe_inst,
-        EqvMap, MergeInstPairs0, MergeInstPairs, !Cache),
+        TypeEqvMap, MergeInstPairs0, MergeInstPairs, !Cache),
     replace_in_one_inst_table(
         replace_in_ground_inst_info, replace_in_maybe_inst_det,
-        EqvMap, GroundInstPairs0, GroundInstPairs, !Cache),
+        TypeEqvMap, GroundInstPairs0, GroundInstPairs, !Cache),
     replace_in_one_inst_table(
         replace_in_any_inst_info, replace_in_maybe_inst_det,
-        EqvMap, AnyInstPairs0, AnyInstPairs, !Cache),
+        TypeEqvMap, AnyInstPairs0, AnyInstPairs, !Cache),
     replace_in_one_inst_table(
         replace_in_inst_name_no_tvarset, replace_in_maybe_inst,
-        EqvMap, SharedInstPairs0, SharedInstPairs, !Cache),
+        TypeEqvMap, SharedInstPairs0, SharedInstPairs, !Cache),
     replace_in_one_inst_table(
         replace_in_inst_name_no_tvarset, replace_in_maybe_inst,
-        EqvMap, MostlyUniqInstPairs0, MostlyUniqInstPairs, !.Cache, _),
+        TypeEqvMap, MostlyUniqInstPairs0, MostlyUniqInstPairs, !.Cache, _),
 
     unify_insts_from_sorted_pairs(UnifyInstPairs, UnifyInsts),
     merge_insts_from_sorted_pairs(MergeInstPairs, MergeInsts),
@@ -285,16 +289,16 @@ replace_in_inst_table(EqvMap, !InstTable, !Cache) :-
 %
 
 :- pred replace_in_one_inst_table(
-    pred(eqv_map, K, K, bool, inst_cache, inst_cache)::
+    pred(type_eqv_map, K, K, bool, inst_cache, inst_cache)::
         (pred(in, in, out, out, in, out) is det),
-    pred(eqv_map, V, V, bool, inst_cache, inst_cache)::
+    pred(type_eqv_map, V, V, bool, inst_cache, inst_cache)::
         (pred(in, in, out, out, in, out) is det),
-    eqv_map::in, assoc_list(K, V)::in, assoc_list(K, V)::out,
+    type_eqv_map::in, assoc_list(K, V)::in, assoc_list(K, V)::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_one_inst_table(ReplaceKey, ReplaceValue, EqvMap,
+replace_in_one_inst_table(ReplaceKey, ReplaceValue, TypeEqvMap,
         SortedElements0, SortedElements, !Cache) :-
-    replace_in_one_inst_table_elements(ReplaceKey, ReplaceValue, EqvMap,
+    replace_in_one_inst_table_elements(ReplaceKey, ReplaceValue, TypeEqvMap,
         SortedElements0, [], RevSortedElements1, [], UnSortedElements, !Cache),
     (
         UnSortedElements = [],
@@ -308,23 +312,23 @@ replace_in_one_inst_table(ReplaceKey, ReplaceValue, EqvMap,
     ).
 
 :- pred replace_in_one_inst_table_elements(
-    pred(eqv_map, K, K, bool, inst_cache, inst_cache)::
+    pred(type_eqv_map, K, K, bool, inst_cache, inst_cache)::
         (pred(in, in, out, out, in, out) is det),
-    pred(eqv_map, V, V, bool, inst_cache, inst_cache)::
+    pred(type_eqv_map, V, V, bool, inst_cache, inst_cache)::
         (pred(in, in, out, out, in, out) is det),
-    eqv_map::in, assoc_list(K, V)::in,
+    type_eqv_map::in, assoc_list(K, V)::in,
     assoc_list(K, V)::in, assoc_list(K, V)::out,
     assoc_list(K, V)::in, assoc_list(K, V)::out,
     inst_cache::in, inst_cache::out) is det.
 
 replace_in_one_inst_table_elements(_ReplaceKey, _ReplaceValue, _EqvMap, [],
         !RevSortedElements, !UnSortedElements, !Cache).
-replace_in_one_inst_table_elements(ReplaceKey, ReplaceValue, EqvMap,
+replace_in_one_inst_table_elements(ReplaceKey, ReplaceValue, TypeEqvMap,
         [Element0 | Elements0],
         !RevSortedElements, !UnSortedElements, !Cache) :-
     Element0 = Key0 - Value0,
-    ReplaceKey(EqvMap, Key0, Key, KeyChanged, !Cache),
-    ReplaceValue(EqvMap, Value0, Value, ValueChanged, !Cache),
+    ReplaceKey(TypeEqvMap, Key0, Key, KeyChanged, !Cache),
+    ReplaceValue(TypeEqvMap, Value0, Value, ValueChanged, !Cache),
     (
         KeyChanged = no,
         (
@@ -340,53 +344,53 @@ replace_in_one_inst_table_elements(ReplaceKey, ReplaceValue, EqvMap,
         Element = Key - Value,
         !:UnSortedElements = [Element | !.UnSortedElements]
     ),
-    replace_in_one_inst_table_elements(ReplaceKey, ReplaceValue, EqvMap,
+    replace_in_one_inst_table_elements(ReplaceKey, ReplaceValue, TypeEqvMap,
         Elements0, !RevSortedElements, !UnSortedElements, !Cache).
 
-:- pred replace_in_unify_inst_info(eqv_map::in,
+:- pred replace_in_unify_inst_info(type_eqv_map::in,
     unify_inst_info::in, unify_inst_info::out, bool::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_unify_inst_info(EqvMap, UnifyInstInfo0, UnifyInstInfo, Changed,
+replace_in_unify_inst_info(TypeEqvMap, UnifyInstInfo0, UnifyInstInfo, Changed,
         !Cache) :-
     UnifyInstInfo0 = unify_inst_info(Live, Real, InstA0, InstB0),
     % XXX We don't have a valid tvarset here.
     varset.init(TVarSet0),
-    replace_in_inst(EqvMap, InstA0, InstA, ChangedA, TVarSet0, TVarSet1,
+    replace_in_inst(TypeEqvMap, InstA0, InstA, ChangedA, TVarSet0, TVarSet1,
         !Cache),
-    replace_in_inst(EqvMap, InstB0, InstB, ChangedB, TVarSet1, _TVarSet,
+    replace_in_inst(TypeEqvMap, InstB0, InstB, ChangedB, TVarSet1, _TVarSet,
         !Cache),
     Changed = ChangedA `or` ChangedB,
     ( Changed = yes, UnifyInstInfo = unify_inst_info(Live, Real, InstA, InstB)
     ; Changed = no, UnifyInstInfo = UnifyInstInfo0
     ).
 
-:- pred replace_in_merge_inst_info(eqv_map::in,
+:- pred replace_in_merge_inst_info(type_eqv_map::in,
     merge_inst_info::in, merge_inst_info::out, bool::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_merge_inst_info(EqvMap, MergeInstInfo0, MergeInstInfo, Changed,
+replace_in_merge_inst_info(TypeEqvMap, MergeInstInfo0, MergeInstInfo, Changed,
         !Cache) :-
     MergeInstInfo0 = merge_inst_info(InstA0, InstB0),
     % XXX We don't have a valid tvarset here.
     varset.init(TVarSet0),
-    replace_in_inst(EqvMap, InstA0, InstA, ChangedA, TVarSet0, TVarSet1,
+    replace_in_inst(TypeEqvMap, InstA0, InstA, ChangedA, TVarSet0, TVarSet1,
         !Cache),
-    replace_in_inst(EqvMap, InstB0, InstB, ChangedB, TVarSet1, _TVarSet,
+    replace_in_inst(TypeEqvMap, InstB0, InstB, ChangedB, TVarSet1, _TVarSet,
         !Cache),
     Changed = ChangedA `or` ChangedB,
     ( Changed = yes, MergeInstInfo = merge_inst_info(InstA, InstB)
     ; Changed = no, MergeInstInfo = MergeInstInfo0
     ).
 
-:- pred replace_in_ground_inst_info(eqv_map::in,
+:- pred replace_in_ground_inst_info(type_eqv_map::in,
     ground_inst_info::in, ground_inst_info::out, bool::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_ground_inst_info(EqvMap, GroundInstInfo0, GroundInstInfo, Changed,
-        !Cache) :-
+replace_in_ground_inst_info(TypeEqvMap, GroundInstInfo0, GroundInstInfo,
+        Changed, !Cache) :-
     GroundInstInfo0 = ground_inst_info(InstName0, Uniq, Live, Real),
-    replace_in_inst_name_no_tvarset(EqvMap, InstName0, InstName, Changed,
+    replace_in_inst_name_no_tvarset(TypeEqvMap, InstName0, InstName, Changed,
         !Cache),
     (
         Changed = yes,
@@ -396,22 +400,24 @@ replace_in_ground_inst_info(EqvMap, GroundInstInfo0, GroundInstInfo, Changed,
         GroundInstInfo = GroundInstInfo0
     ).
 
-:- pred replace_in_any_inst_info(eqv_map::in,
+:- pred replace_in_any_inst_info(type_eqv_map::in,
     any_inst_info::in, any_inst_info::out, bool::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_any_inst_info(EqvMap, AnyInstInfo0, AnyInstInfo, Changed, !Cache) :-
+replace_in_any_inst_info(TypeEqvMap, AnyInstInfo0, AnyInstInfo,
+        Changed, !Cache) :-
     AnyInstInfo0 = any_inst_info(InstName0, Uniq, Live, Real),
-    replace_in_inst_name_no_tvarset(EqvMap, InstName0, InstName, Changed,
+    replace_in_inst_name_no_tvarset(TypeEqvMap, InstName0, InstName, Changed,
         !Cache),
     ( Changed = yes, AnyInstInfo = any_inst_info(InstName, Uniq, Live, Real)
     ; Changed = no, AnyInstInfo = AnyInstInfo0
     ).
 
-:- pred replace_in_maybe_inst(eqv_map::in, maybe_inst::in, maybe_inst::out,
-    bool::out, inst_cache::in, inst_cache::out) is det.
+:- pred replace_in_maybe_inst(type_eqv_map::in,
+    maybe_inst::in, maybe_inst::out, bool::out,
+    inst_cache::in, inst_cache::out) is det.
 
-replace_in_maybe_inst(EqvMap, MaybeInst0, MaybeInst, Changed, !Cache) :-
+replace_in_maybe_inst(TypeEqvMap, MaybeInst0, MaybeInst, Changed, !Cache) :-
     (
         MaybeInst0 = inst_unknown,
         MaybeInst = inst_unknown,
@@ -420,7 +426,7 @@ replace_in_maybe_inst(EqvMap, MaybeInst0, MaybeInst, Changed, !Cache) :-
         MaybeInst0 = inst_known(Inst0),
         % XXX We don't have a valid tvarset here.
         varset.init(TVarSet),
-        replace_in_inst(EqvMap, Inst0, Inst, Changed, TVarSet, _, !Cache),
+        replace_in_inst(TypeEqvMap, Inst0, Inst, Changed, TVarSet, _, !Cache),
         (
             Changed = no,
             MaybeInst = MaybeInst0
@@ -430,11 +436,11 @@ replace_in_maybe_inst(EqvMap, MaybeInst0, MaybeInst, Changed, !Cache) :-
         )
     ).
 
-:- pred replace_in_maybe_inst_det(eqv_map::in,
+:- pred replace_in_maybe_inst_det(type_eqv_map::in,
     maybe_inst_det::in, maybe_inst_det::out, bool::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_maybe_inst_det(EqvMap, MaybeInstDet0, MaybeInstDet, Changed,
+replace_in_maybe_inst_det(TypeEqvMap, MaybeInstDet0, MaybeInstDet, Changed,
         !Cache) :-
     (
         MaybeInstDet0 = inst_det_unknown,
@@ -444,7 +450,7 @@ replace_in_maybe_inst_det(EqvMap, MaybeInstDet0, MaybeInstDet, Changed,
         MaybeInstDet0 = inst_det_known(Inst0, Det),
         % XXX We don't have a valid tvarset here.
         varset.init(TVarSet),
-        replace_in_inst(EqvMap, Inst0, Inst, Changed, TVarSet, _, !Cache),
+        replace_in_inst(TypeEqvMap, Inst0, Inst, Changed, TVarSet, _, !Cache),
         (
             Changed = no,
             MaybeInstDet = MaybeInstDet0
@@ -456,31 +462,31 @@ replace_in_maybe_inst_det(EqvMap, MaybeInstDet0, MaybeInstDet, Changed,
 
 %-----------------------------------------------------------------------------%
 
-:- pred replace_in_cons_table(eqv_map::in, cons_table::in, cons_table::out)
-    is det.
+:- pred replace_in_cons_table(type_eqv_map::in,
+    cons_table::in, cons_table::out) is det.
 
-replace_in_cons_table(EqvMap, !ConsTable) :-
-    replace_cons_defns_in_cons_table(replace_in_cons_defn(EqvMap),
+replace_in_cons_table(TypeEqvMap, !ConsTable) :-
+    replace_cons_defns_in_cons_table(replace_in_cons_defn(TypeEqvMap),
         !ConsTable).
 
-:- pred replace_in_cons_defn(eqv_map::in,
+:- pred replace_in_cons_defn(type_eqv_map::in,
     hlds_cons_defn::in, hlds_cons_defn::out) is det.
 
-replace_in_cons_defn(EqvMap, ConsDefn0, ConsDefn) :-
+replace_in_cons_defn(TypeEqvMap, ConsDefn0, ConsDefn) :-
     ConsDefn0 = hlds_cons_defn(TypeCtor, TVarSet0, TypeParams, KindMap,
         ExistQTVars, ProgConstraints, ConstructorArgs0, Context),
-    list.map_foldl(replace_in_constructor_arg(EqvMap),
+    list.map_foldl(replace_in_constructor_arg(TypeEqvMap),
         ConstructorArgs0, ConstructorArgs, TVarSet0, TVarSet),
     ConsDefn = hlds_cons_defn(TypeCtor, TVarSet, TypeParams, KindMap,
         ExistQTVars, ProgConstraints, ConstructorArgs, Context).
 
-:- pred replace_in_constructor_arg(eqv_map::in,
+:- pred replace_in_constructor_arg(type_eqv_map::in,
     constructor_arg::in, constructor_arg::out,
     tvarset::in, tvarset::out) is det.
 
-replace_in_constructor_arg(EqvMap, CtorArg0, CtorArg, !TVarSet) :-
+replace_in_constructor_arg(TypeEqvMap, CtorArg0, CtorArg, !TVarSet) :-
     CtorArg0 = ctor_arg(MaybeFieldName, Type0, Width, Context),
-    replace_in_type(EqvMap, Type0, Type, Changed, !TVarSet, no, _),
+    replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet, no, _),
     (
         Changed = yes,
         (
@@ -501,11 +507,11 @@ replace_in_constructor_arg(EqvMap, CtorArg0, CtorArg, !TVarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred replace_in_pred(eqv_map::in, pred_id::in,
+:- pred replace_in_pred(type_eqv_map::in, pred_id::in,
     module_info::in, module_info::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
+replace_in_pred(TypeEqvMap, PredId, !ModuleInfo, !Cache) :-
     some [!PredInfo, !EquivTypeInfo] (
         module_info_get_name(!.ModuleInfo, ModuleName),
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
@@ -519,13 +525,13 @@ replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
 
         pred_info_get_arg_types(!.PredInfo, ArgTVarSet0, ExistQVars,
             ArgTypes0),
-        equiv_type.replace_in_type_list(EqvMap, ArgTypes0, ArgTypes,
+        equiv_type.replace_in_type_list(TypeEqvMap, ArgTypes0, ArgTypes,
             _, ArgTVarSet0, ArgTVarSet1, !EquivTypeInfo),
 
         % The constraint_proofs aren't used after polymorphism,
         % so they don't need to be processed.
         pred_info_get_class_context(!.PredInfo, ClassContext0),
-        equiv_type.replace_in_prog_constraints(EqvMap, ClassContext0,
+        equiv_type.replace_in_prog_constraints(TypeEqvMap, ClassContext0,
             ClassContext, ArgTVarSet1, ArgTVarSet, !EquivTypeInfo),
         pred_info_set_class_context(ClassContext, !PredInfo),
         pred_info_set_arg_types(ArgTVarSet, ExistQVars, ArgTypes, !PredInfo),
@@ -539,28 +545,28 @@ replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
         module_info_set_maybe_recompilation_info(MaybeRecompInfo, !ModuleInfo),
 
         pred_info_get_proc_table(!.PredInfo, ProcMap0),
-        map.map_values_foldl3(replace_in_proc(EqvMap), ProcMap0, ProcMap,
+        map.map_values_foldl3(replace_in_proc(TypeEqvMap), ProcMap0, ProcMap,
             !ModuleInfo, !PredInfo, !Cache),
         pred_info_set_proc_table(ProcMap, !PredInfo),
         module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
     ).
 
-:- pred replace_in_proc(eqv_map::in, proc_info::in, proc_info::out,
+:- pred replace_in_proc(type_eqv_map::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out, pred_info::in, pred_info::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_proc(EqvMap, !ProcInfo, !ModuleInfo, !PredInfo, !Cache) :-
+replace_in_proc(TypeEqvMap, !ProcInfo, !ModuleInfo, !PredInfo, !Cache) :-
     some [!TVarSet] (
         pred_info_get_typevarset(!.PredInfo, !:TVarSet),
 
         proc_info_get_argmodes(!.ProcInfo, ArgModes0),
-        replace_in_modes(EqvMap, ArgModes0, ArgModes, _, !TVarSet, !Cache),
+        replace_in_modes(TypeEqvMap, ArgModes0, ArgModes, _, !TVarSet, !Cache),
         proc_info_set_argmodes(ArgModes, !ProcInfo),
 
         proc_info_get_maybe_declared_argmodes(!.ProcInfo, MaybeDeclModes0),
         (
             MaybeDeclModes0 = yes(DeclModes0),
-            replace_in_modes(EqvMap, DeclModes0, DeclModes, _, !TVarSet,
+            replace_in_modes(TypeEqvMap, DeclModes0, DeclModes, _, !TVarSet,
                 !Cache),
             proc_info_set_maybe_declared_argmodes(yes(DeclModes), !ProcInfo)
         ;
@@ -568,7 +574,7 @@ replace_in_proc(EqvMap, !ProcInfo, !ModuleInfo, !PredInfo, !Cache) :-
         ),
 
         proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-        transform_foldl_var_types(hlds_replace_in_type(EqvMap),
+        transform_foldl_var_types(hlds_replace_in_type(TypeEqvMap),
             VarTypes0, VarTypes, !TVarSet),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
 
@@ -577,7 +583,7 @@ replace_in_proc(EqvMap, !ProcInfo, !ModuleInfo, !PredInfo, !Cache) :-
         list.foldl2(
             (pred(OldType::in, !.TMap::in, !:TMap::out,
                     !.TVarSet::in, !:TVarSet::out) is det :-
-                hlds_replace_in_type(EqvMap, OldType, NewType, !TVarSet),
+                hlds_replace_in_type(TypeEqvMap, OldType, NewType, !TVarSet),
                 map.set(OldType, NewType, !TMap)
             ), AllTypes, map.init, TypeMap, !TVarSet),
         rtti_varmaps_transform_types(map.lookup(TypeMap),
@@ -587,7 +593,7 @@ replace_in_proc(EqvMap, !ProcInfo, !ModuleInfo, !PredInfo, !Cache) :-
         proc_info_get_goal(!.ProcInfo, Goal0),
         ReplaceInfo0 = replace_info(!.ModuleInfo, !.PredInfo, !.ProcInfo,
             !.TVarSet, !.Cache, no),
-        replace_in_goal(EqvMap, Goal0, Goal, Changed,
+        replace_in_goal(TypeEqvMap, Goal0, Goal, Changed,
             ReplaceInfo0, ReplaceInfo),
         ReplaceInfo = replace_info(!:ModuleInfo, !:PredInfo, !:ProcInfo,
             !:TVarSet, _XXX, Recompute),
@@ -612,17 +618,17 @@ replace_in_proc(EqvMap, !ProcInfo, !ModuleInfo, !PredInfo, !Cache) :-
 
     % Replace equivalence types in a given type.
     %
-:- pred hlds_replace_in_type(eqv_map::in, mer_type::in, mer_type::out,
+:- pred hlds_replace_in_type(type_eqv_map::in, mer_type::in, mer_type::out,
     tvarset::in, tvarset::out) is det.
 
-hlds_replace_in_type(EqvMap, Type0, Type, !VarSet) :-
-    hlds_replace_in_type_2(EqvMap, [], Type0, Type, _Changed, !VarSet).
+hlds_replace_in_type(TypeEqvMap, Type0, Type, !VarSet) :-
+    hlds_replace_in_type_2(TypeEqvMap, [], Type0, Type, _Changed, !VarSet).
 
-:- pred hlds_replace_in_type_2(eqv_map::in, list(type_ctor)::in,
+:- pred hlds_replace_in_type_2(type_eqv_map::in, list(type_ctor)::in,
     mer_type::in, mer_type::out, bool::out,
     tvarset::in, tvarset::out) is det.
 
-hlds_replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
+hlds_replace_in_type_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
         Type0, Type, Changed, !VarSet) :-
     (
         ( Type0 = type_variable(_, _)
@@ -632,18 +638,18 @@ hlds_replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
         Changed = no
     ;
         Type0 = defined_type(SymName, TypeArgs0, Kind),
-        hlds_replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
+        hlds_replace_in_type_list_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
             TypeArgs0, TypeArgs, no, ArgsChanged, !VarSet),
         Arity = list.length(TypeArgs),
         TypeCtor = type_ctor(SymName, Arity),
-        hlds_replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded, Type0,
+        hlds_replace_type_ctor(TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
             TypeCtor, TypeArgs, Kind, Type, ArgsChanged, Changed, !VarSet)
     ;
         Type0 = higher_order_type(ArgTypes0, MaybeRetType0, Purity,
             EvalMethod),
         (
             MaybeRetType0 = yes(RetType0),
-            hlds_replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
+            hlds_replace_in_type_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
                 RetType0, RetType, RetChanged, !VarSet),
             MaybeRetType = yes(RetType)
         ;
@@ -651,7 +657,7 @@ hlds_replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
             MaybeRetType = no,
             RetChanged = no
         ),
-        hlds_replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
+        hlds_replace_in_type_list_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
             ArgTypes0, ArgTypes, RetChanged, Changed, !VarSet),
         (
             Changed = yes,
@@ -663,7 +669,7 @@ hlds_replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
         )
     ;
         Type0 = tuple_type(Args0, Kind),
-        hlds_replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
+        hlds_replace_in_type_list_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
             Args0, Args, no, Changed, !VarSet),
         (
             Changed = yes,
@@ -674,7 +680,7 @@ hlds_replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
         )
     ;
         Type0 = apply_n_type(Var, Args0, Kind),
-        hlds_replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
+        hlds_replace_in_type_list_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
             Args0, Args, no, Changed, !VarSet),
         (
             Changed = yes,
@@ -685,7 +691,7 @@ hlds_replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
         )
     ;
         Type0 = kinded_type(RawType0, Kind),
-        hlds_replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
+        hlds_replace_in_type_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
             RawType0, RawType, Changed, !VarSet),
         (
             Changed = yes,
@@ -696,23 +702,24 @@ hlds_replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
         )
     ).
 
-:- pred hlds_replace_in_type_list_2(eqv_map::in, list(type_ctor)::in,
+:- pred hlds_replace_in_type_list_2(type_eqv_map::in, list(type_ctor)::in,
     list(mer_type)::in, list(mer_type)::out, bool::in, bool::out,
     tvarset::in, tvarset::out) is det.
 
 hlds_replace_in_type_list_2(_EqvMap, _Seen, [], [], !Changed, !VarSet).
-hlds_replace_in_type_list_2(EqvMap, Seen, [Type0 | Types0], [Type | Types],
+hlds_replace_in_type_list_2(TypeEqvMap, Seen, [Type0 | Types0], [Type | Types],
         !Changed, !VarSet) :-
-    hlds_replace_in_type_2(EqvMap, Seen, Type0, Type, TypeChanged, !VarSet),
+    hlds_replace_in_type_2(TypeEqvMap, Seen, Type0, Type, TypeChanged,
+        !VarSet),
     bool.or(!.Changed, TypeChanged, !:Changed),
-    hlds_replace_in_type_list_2(EqvMap, Seen, Types0, Types,
+    hlds_replace_in_type_list_2(TypeEqvMap, Seen, Types0, Types,
         !Changed, !VarSet).
 
-:- pred hlds_replace_type_ctor(eqv_map::in, list(type_ctor)::in, mer_type::in,
-    type_ctor::in, list(mer_type)::in, kind::in, mer_type::out,
+:- pred hlds_replace_type_ctor(type_eqv_map::in, list(type_ctor)::in,
+    mer_type::in, type_ctor::in, list(mer_type)::in, kind::in, mer_type::out,
     bool::in, bool::out, tvarset::in, tvarset::out) is det.
 
-hlds_replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded0, Type0,
+hlds_replace_type_ctor(TypeEqvMap, TypeCtorsAlreadyExpanded0, Type0,
         TypeCtor, ArgTypes, Kind, Type, !Changed, !VarSet) :-
     ( list.member(TypeCtor, TypeCtorsAlreadyExpanded0) ->
         AlreadyExpanded = yes
@@ -720,7 +727,8 @@ hlds_replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded0, Type0,
         AlreadyExpanded = no
     ),
     (
-        map.search(EqvMap, TypeCtor, eqv_type_body(EqvVarSet, Params0, Body0)),
+        map.search(TypeEqvMap, TypeCtor, EqvTypeBody),
+        EqvTypeBody = eqv_type_body(EqvVarSet, Params0, Body0),
 
         % Don't merge in the variable names from the type declaration to avoid
         % creating multiple variables with the same name so that
@@ -739,7 +747,7 @@ hlds_replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded0, Type0,
         map.from_corresponding_lists(Params, ArgTypes, Subst),
         apply_subst_to_type(Subst, Body1, Body),
         TypeCtorsAlreadyExpanded = [TypeCtor | TypeCtorsAlreadyExpanded0],
-        hlds_replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
+        hlds_replace_in_type_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
             Body, Type, _BodyChanged, !VarSet),
         !:Changed = yes
     ;
@@ -759,45 +767,46 @@ hlds_replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded0, Type0,
 % insts and modes. This means we don't need to hash-cons those insts
 % to avoid losing sharing.
 
-:- pred replace_in_modes(eqv_map::in, list(mer_mode)::in, list(mer_mode)::out,
-    bool::out, tvarset::in, tvarset::out,
-    inst_cache::in, inst_cache::out) is det.
+:- pred replace_in_modes(type_eqv_map::in,
+    list(mer_mode)::in, list(mer_mode)::out, bool::out,
+    tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
 
 replace_in_modes(_EqvMap, [], [], no, !TVarSet, !Cache).
-replace_in_modes(EqvMap, List0 @ [Mode0 | Modes0], List, Changed,
+replace_in_modes(TypeEqvMap, List0 @ [Mode0 | Modes0], List, Changed,
         !TVarSet, !Cache) :-
-    replace_in_mode(EqvMap, Mode0, Mode, Changed0, !TVarSet, !Cache),
-    replace_in_modes(EqvMap, Modes0, Modes, Changed1, !TVarSet, !Cache),
+    replace_in_mode(TypeEqvMap, Mode0, Mode, Changed0, !TVarSet, !Cache),
+    replace_in_modes(TypeEqvMap, Modes0, Modes, Changed1, !TVarSet, !Cache),
     Changed = Changed0 `or` Changed1,
     ( Changed = yes, List = [Mode | Modes]
     ; Changed = no, List = List0
     ).
 
-:- pred replace_in_mode(eqv_map::in, mer_mode::in, mer_mode::out, bool::out,
+:- pred replace_in_mode(type_eqv_map::in,
+    mer_mode::in, mer_mode::out, bool::out,
     tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
 
-replace_in_mode(EqvMap, Mode0, Mode, Changed, !TVarSet, !Cache) :-
+replace_in_mode(TypeEqvMap, Mode0, Mode, Changed, !TVarSet, !Cache) :-
     (
         Mode0 = (InstA0 -> InstB0),
-        replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
-        replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
         Changed = ChangedA `or` ChangedB,
         ( Changed = yes, Mode = (InstA -> InstB)
         ; Changed = no, Mode = Mode0
         )
     ;
         Mode0 = user_defined_mode(Name, Insts0),
-        replace_in_insts(EqvMap, Insts0, Insts, Changed, !TVarSet, !Cache),
+        replace_in_insts(TypeEqvMap, Insts0, Insts, Changed, !TVarSet, !Cache),
         ( Changed = yes, Mode = user_defined_mode(Name, Insts)
         ; Changed = no, Mode = Mode0
         )
     ).
 
-:- pred replace_in_inst(eqv_map::in, mer_inst::in, mer_inst::out,
+:- pred replace_in_inst(type_eqv_map::in, mer_inst::in, mer_inst::out,
     bool::out, tvarset::in, tvarset::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_inst(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
+replace_in_inst(TypeEqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
     % The call to replace_in_inst_2 can allocate a *lot* of cells if the
     % inst is complex, as it will be for an inst describing a large term.
     % The fact that we traverse the inst twice if ContainsType = yes
@@ -807,7 +816,7 @@ replace_in_inst(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
     ContainsType = type_may_occur_in_inst(Inst0),
     (
         ContainsType = yes,
-        replace_in_inst_2(EqvMap, Inst0, Inst1, Changed, !TVarSet, !Cache),
+        replace_in_inst_2(TypeEqvMap, Inst0, Inst1, Changed, !TVarSet, !Cache),
         (
             Changed = yes,
             % Doing this when the inst has not changed is too slow,
@@ -1028,10 +1037,11 @@ record_inst_may_occur(_, _) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred replace_in_inst_2(eqv_map::in, mer_inst::in, mer_inst::out, bool::out,
+:- pred replace_in_inst_2(type_eqv_map::in,
+    mer_inst::in, mer_inst::out, bool::out,
     tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
 
-replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
+replace_in_inst_2(TypeEqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
     (
         ( Inst0 = free
         ; Inst0 = ground(_, none)
@@ -1044,7 +1054,7 @@ replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
     ;
         Inst0 = any(Uniq, higher_order(PredInstInfo0)),
         PredInstInfo0 = pred_inst_info(PorF, Modes0, MaybeArgRegs, Det),
-        replace_in_modes(EqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
+        replace_in_modes(TypeEqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
         (
             Changed = yes,
             PredInstInfo = pred_inst_info(PorF, Modes, MaybeArgRegs, Det),
@@ -1055,7 +1065,7 @@ replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
         )
     ;
         Inst0 = free(Type0),
-        equiv_type.replace_in_type(EqvMap, Type0, Type, Changed, !TVarSet,
+        equiv_type.replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet,
             no, _),
         ( Changed = yes, Inst = free(Type)
         ; Changed = no, Inst = Inst0
@@ -1071,7 +1081,7 @@ replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
             ;
                 TypeResult = inst_result_contains_types_known(TypeCtors),
                 % XXX We could test the intersection of TypeCtors with
-                % the key set of EqvMap. That test would be more expensive,
+                % the key set of TypeEqvMap. That test would be more expensive,
                 % but could possibly avoid a costly traversal of BoundInsts0.
                 ( set.is_empty(TypeCtors) ->
                     NeedReplace = no
@@ -1094,8 +1104,8 @@ replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
             Inst = Inst0
         ;
             NeedReplace = yes(InstResults),
-            replace_in_bound_insts(EqvMap, BoundInsts0, BoundInsts, Changed,
-                !TVarSet, !Cache),
+            replace_in_bound_insts(TypeEqvMap, BoundInsts0, BoundInsts,
+                Changed, !TVarSet, !Cache),
             % We could try to figure out the set of type_ctors in BoundInsts,
             % but that info may never be needed again.
             ( Changed = yes, Inst = bound(Uniq, InstResults, BoundInsts)
@@ -1105,7 +1115,7 @@ replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
     ;
         Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
         PredInstInfo0 = pred_inst_info(PorF, Modes0, MaybeArgRegs, Det),
-        replace_in_modes(EqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
+        replace_in_modes(TypeEqvMap, Modes0, Modes, Changed, !TVarSet, !Cache),
         (
             Changed = yes,
             PredInstInfo = pred_inst_info(PorF, Modes, MaybeArgRegs, Det),
@@ -1116,128 +1126,135 @@ replace_in_inst_2(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
         )
     ;
         Inst0 = constrained_inst_vars(Vars, CInst0),
-        replace_in_inst(EqvMap, CInst0, CInst, Changed, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, CInst0, CInst, Changed, !TVarSet, !Cache),
         ( Changed = yes, Inst = constrained_inst_vars(Vars, CInst)
         ; Changed = no, Inst = Inst0
         )
     ;
         Inst0 = defined_inst(InstName0),
-        replace_in_inst_name(EqvMap, InstName0, InstName, Changed,
+        replace_in_inst_name(TypeEqvMap, InstName0, InstName, Changed,
             !TVarSet, !Cache),
         ( Changed = yes, Inst = defined_inst(InstName)
         ; Changed = no, Inst = Inst0
         )
     ;
         Inst0 = abstract_inst(Name, ArgInsts0),
-        replace_in_insts(EqvMap, ArgInsts0, ArgInsts, Changed,
+        replace_in_insts(TypeEqvMap, ArgInsts0, ArgInsts, Changed,
             !TVarSet, !Cache),
         ( Changed = yes, Inst = abstract_inst(Name, ArgInsts)
         ; Changed = no, Inst = Inst0
         )
     ).
 
-:- pred replace_in_inst_name_no_tvarset(eqv_map::in,
+:- pred replace_in_inst_name_no_tvarset(type_eqv_map::in,
     inst_name::in, inst_name::out, bool::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_inst_name_no_tvarset(EqvMap, InstName0, InstName, Changed,
+replace_in_inst_name_no_tvarset(TypeEqvMap, InstName0, InstName, Changed,
         !Cache) :-
     varset.init(TVarSet0),
-    replace_in_inst_name(EqvMap, InstName0, InstName, Changed,
+    replace_in_inst_name(TypeEqvMap, InstName0, InstName, Changed,
         TVarSet0, _TVarSet, !Cache).
 
-:- pred replace_in_inst_name(eqv_map::in, inst_name::in, inst_name::out,
+:- pred replace_in_inst_name(type_eqv_map::in, inst_name::in, inst_name::out,
     bool::out, tvarset::in, tvarset::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_inst_name(EqvMap, InstName0, InstName, Changed, !TVarSet, !Cache) :-
+replace_in_inst_name(TypeEqvMap, InstName0, InstName, Changed,
+        !TVarSet, !Cache) :-
     (
         InstName0 = user_inst(Name, Insts0),
-        replace_in_insts(EqvMap, Insts0, Insts, Changed, !TVarSet, !Cache),
+        replace_in_insts(TypeEqvMap, Insts0, Insts, Changed, !TVarSet, !Cache),
         ( Changed = yes, InstName = user_inst(Name, Insts)
         ; Changed = no, InstName = InstName0
         )
     ;
         InstName0 = unify_inst(Live, Real, InstA0, InstB0),
-        replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
-        replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
         Changed = ChangedA `or` ChangedB,
         ( Changed = yes, InstName = unify_inst(Live, Real, InstA, InstB)
         ; Changed = no, InstName = InstName0
         )
     ;
         InstName0 = merge_inst(InstA0, InstB0),
-        replace_in_inst(EqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
-        replace_in_inst(EqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, InstA0, InstA, ChangedA, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, InstB0, InstB, ChangedB, !TVarSet, !Cache),
         Changed = ChangedA `or` ChangedB,
         ( Changed = yes, InstName = merge_inst(InstA, InstB)
         ; Changed = no, InstName = InstName0
         )
     ;
         InstName0 = ground_inst(Name0, Live, Uniq, Real),
-        replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
+        replace_in_inst_name(TypeEqvMap, Name0, Name, Changed,
+            !TVarSet, !Cache),
         ( Changed = yes, InstName = ground_inst(Name, Live, Uniq, Real)
         ; Changed = no, InstName = InstName0
         )
     ;
         InstName0 = any_inst(Name0, Live, Uniq, Real),
-        replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
+        replace_in_inst_name(TypeEqvMap, Name0, Name, Changed,
+            !TVarSet, !Cache),
         ( Changed = yes, InstName = any_inst(Name, Live, Uniq, Real)
         ; Changed = no, InstName = InstName0
         )
     ;
         InstName0 = shared_inst(Name0),
-        replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
+        replace_in_inst_name(TypeEqvMap, Name0, Name, Changed,
+            !TVarSet, !Cache),
         ( Changed = yes, InstName = shared_inst(Name)
         ; Changed = no, InstName = InstName0
         )
     ;
         InstName0 = mostly_uniq_inst(Name0),
-        replace_in_inst_name(EqvMap, Name0, Name, Changed, !TVarSet, !Cache),
+        replace_in_inst_name(TypeEqvMap, Name0, Name, Changed,
+            !TVarSet, !Cache),
         ( Changed = yes, InstName = mostly_uniq_inst(Name)
         ; Changed = no, InstName = InstName0
         )
     ;
         InstName0 = typed_ground(Uniq, Type0),
-        replace_in_type(EqvMap, Type0, Type, Changed, !TVarSet, no, _),
+        replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet, no, _),
         ( Changed = yes, InstName = typed_ground(Uniq, Type)
         ; Changed = no, InstName = InstName0
         )
     ;
         InstName0 = typed_inst(Type0, Name0),
-        replace_in_type(EqvMap, Type0, Type, TypeChanged, !TVarSet, no, _),
-        replace_in_inst_name(EqvMap, Name0, Name, Changed0, !TVarSet, !Cache),
+        replace_in_type(TypeEqvMap, Type0, Type, TypeChanged, !TVarSet, no, _),
+        replace_in_inst_name(TypeEqvMap, Name0, Name, Changed0,
+            !TVarSet, !Cache),
         Changed = TypeChanged `or` Changed0,
         ( Changed = yes, InstName = typed_inst(Type, Name)
         ; Changed = no, InstName = InstName0
         )
     ).
 
-:- pred replace_in_bound_insts(eqv_map::in, list(bound_inst)::in,
+:- pred replace_in_bound_insts(type_eqv_map::in, list(bound_inst)::in,
     list(bound_inst)::out, bool::out, tvarset::in, tvarset::out,
     inst_cache::in, inst_cache::out) is det.
 
 replace_in_bound_insts(_EqvMap, [], [], no, !TVarSet, !Cache).
-replace_in_bound_insts(EqvMap,
+replace_in_bound_insts(TypeEqvMap,
         List0 @ [bound_functor(ConsId, Insts0) | BoundInsts0],
         List, Changed, !TVarSet, !Cache) :-
-    replace_in_insts(EqvMap, Insts0, Insts, InstsChanged, !TVarSet, !Cache),
-    replace_in_bound_insts(EqvMap, BoundInsts0, BoundInsts,
+    replace_in_insts(TypeEqvMap, Insts0, Insts, InstsChanged,
+        !TVarSet, !Cache),
+    replace_in_bound_insts(TypeEqvMap, BoundInsts0, BoundInsts,
         BoundInstsChanged, !TVarSet, !Cache),
     Changed = InstsChanged `or` BoundInstsChanged,
     ( Changed = yes, List = [bound_functor(ConsId, Insts) | BoundInsts]
     ; Changed = no, List = List0
     ).
 
-:- pred replace_in_insts(eqv_map::in, list(mer_inst)::in, list(mer_inst)::out,
-    bool::out, tvarset::in, tvarset::out,
-    inst_cache::in, inst_cache::out) is det.
+:- pred replace_in_insts(type_eqv_map::in,
+    list(mer_inst)::in, list(mer_inst)::out, bool::out,
+    tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
 
 replace_in_insts(_EqvMap, [], [], no, !TVarSet, !Cache).
-replace_in_insts(EqvMap, List0 @ [Inst0 | Insts0], List, Changed,
+replace_in_insts(TypeEqvMap, List0 @ [Inst0 | Insts0], List, Changed,
         !TVarSet, !Cache) :-
-    replace_in_inst(EqvMap, Inst0, Inst, Changed0, !TVarSet, !Cache),
-    replace_in_insts(EqvMap, Insts0, Insts, Changed1, !TVarSet, !Cache),
+    replace_in_inst(TypeEqvMap, Inst0, Inst, Changed0, !TVarSet, !Cache),
+    replace_in_insts(TypeEqvMap, Insts0, Insts, Changed1, !TVarSet, !Cache),
     Changed = Changed0 `or` Changed1,
     ( Changed = yes, List = [Inst | Insts]
     ; Changed = no, List = List0
@@ -1271,12 +1288,13 @@ hash_cons_inst(Inst0, Inst, !Cache) :-
                 ethri_recompute     :: bool
             ).
 
-:- pred replace_in_goal(eqv_map::in, hlds_goal::in, hlds_goal::out, bool::out,
+:- pred replace_in_goal(type_eqv_map::in,
+    hlds_goal::in, hlds_goal::out, bool::out,
     replace_info::in, replace_info::out) is det.
 
-replace_in_goal(EqvMap, Goal0, Goal, Changed, !Info) :-
+replace_in_goal(TypeEqvMap, Goal0, Goal, Changed, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed0, !Info),
+    replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed0, !Info),
 
     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
     TVarSet0 = !.Info ^ ethri_tvarset,
@@ -1285,7 +1303,7 @@ replace_in_goal(EqvMap, Goal0, Goal, Changed, !Info) :-
         (pred(_::in, Inst0::in, Inst::out,
                 {Changed1, TVarSet1, Cache1}::in,
                 {Changed1 `or` InstChanged, TVarSet2, Cache2}::out) is det :-
-            replace_in_inst(EqvMap, Inst0, Inst, InstChanged,
+            replace_in_inst(TypeEqvMap, Inst0, Inst, InstChanged,
                 TVarSet1, TVarSet2, Cache1, Cache2)
         ), InstMapDelta0, InstMapDelta,
         {Changed0, TVarSet0, Cache0}, {Changed, TVarSet, Cache}),
@@ -1300,45 +1318,45 @@ replace_in_goal(EqvMap, Goal0, Goal, Changed, !Info) :-
         Goal = Goal0
     ).
 
-:- pred replace_in_goals(eqv_map::in,
+:- pred replace_in_goals(type_eqv_map::in,
     list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
     replace_info::in, replace_info::out) is det.
 
 replace_in_goals(_EqvMap, [], [], no, !Acc).
-replace_in_goals(EqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
-    replace_in_goals(EqvMap, T0, T, Changed0, !Acc),
-    replace_in_goal(EqvMap, H0, H, Changed1, !Acc),
+replace_in_goals(TypeEqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
+    replace_in_goals(TypeEqvMap, T0, T, Changed0, !Acc),
+    replace_in_goal(TypeEqvMap, H0, H, Changed1, !Acc),
     Changed = Changed0 `or` Changed1,
     ( Changed = yes, List = [H | T]
     ; Changed = no, List = List0
     ).
 
-:- pred replace_in_goal_expr(eqv_map::in,
+:- pred replace_in_goal_expr(type_eqv_map::in,
     hlds_goal_expr::in, hlds_goal_expr::out, bool::out,
     replace_info::in, replace_info::out) is det.
 
-replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
+replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
     (
         GoalExpr0 = conj(ConjType, Goals0),
-        replace_in_goals(EqvMap, Goals0, Goals, Changed, !Info),
+        replace_in_goals(TypeEqvMap, Goals0, Goals, Changed, !Info),
         ( Changed = yes, GoalExpr = conj(ConjType, Goals)
         ; Changed = no, GoalExpr = GoalExpr0
         )
     ;
         GoalExpr0 = disj(Goals0),
-        replace_in_goals(EqvMap, Goals0, Goals, Changed, !Info),
+        replace_in_goals(TypeEqvMap, Goals0, Goals, Changed, !Info),
         ( Changed = yes, GoalExpr = disj(Goals)
         ; Changed = no, GoalExpr = GoalExpr0
         )
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        replace_in_cases(EqvMap, Cases0, Cases, Changed, !Info),
+        replace_in_cases(TypeEqvMap, Cases0, Cases, Changed, !Info),
         ( Changed = yes, GoalExpr = switch(Var, CanFail, Cases)
         ; Changed = no, GoalExpr = GoalExpr0
         )
     ;
         GoalExpr0 = negation(NegGoal0),
-        replace_in_goal(EqvMap, NegGoal0, NegGoal, Changed, !Info),
+        replace_in_goal(TypeEqvMap, NegGoal0, NegGoal, Changed, !Info),
         ( Changed = yes, GoalExpr = negation(NegGoal)
         ; Changed = no, GoalExpr = GoalExpr0
         )
@@ -1350,16 +1368,16 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             GoalExpr = GoalExpr0,
             Changed = no
         ;
-            replace_in_goal(EqvMap, SomeGoal0, SomeGoal, Changed, !Info),
+            replace_in_goal(TypeEqvMap, SomeGoal0, SomeGoal, Changed, !Info),
             ( Changed = yes, GoalExpr = scope(Reason, SomeGoal)
             ; Changed = no, GoalExpr = GoalExpr0
             )
         )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        replace_in_goal(EqvMap, Cond0, Cond, Changed1, !Info),
-        replace_in_goal(EqvMap, Then0, Then, Changed2, !Info),
-        replace_in_goal(EqvMap, Else0, Else, Changed3, !Info),
+        replace_in_goal(TypeEqvMap, Cond0, Cond, Changed1, !Info),
+        replace_in_goal(TypeEqvMap, Then0, Then, Changed2, !Info),
+        replace_in_goal(TypeEqvMap, Else0, Else, Changed3, !Info),
         Changed = Changed1 `or` Changed2 `or` Changed3,
         ( Changed = yes, GoalExpr = if_then_else(Vars, Cond, Then, Else)
         ; Changed = no, GoalExpr = GoalExpr0
@@ -1371,9 +1389,9 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         TVarSet0 = !.Info ^ ethri_tvarset,
-        replace_in_foreign_arg_list(EqvMap, GoalExpr0 ^ foreign_args,
+        replace_in_foreign_arg_list(TypeEqvMap, GoalExpr0 ^ foreign_args,
             Args, ChangedArgs, TVarSet0, TVarSet1, no, _),
-        replace_in_foreign_arg_list(EqvMap, GoalExpr0 ^ foreign_extra_args,
+        replace_in_foreign_arg_list(TypeEqvMap, GoalExpr0 ^ foreign_extra_args,
             ExtraArgs, ChangedExtraArgs, TVarSet1, TVarSet, no, _),
         Changed = ChangedArgs `or` ChangedExtraArgs,
         (
@@ -1389,7 +1407,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         GoalExpr0 = generic_call(Details, Args, Modes0, MaybeArgRegs, Detism),
         TVarSet0 = !.Info ^ ethri_tvarset,
         Cache0 = !.Info ^ ethri_inst_cache,
-        replace_in_modes(EqvMap, Modes0, Modes, Changed, TVarSet0, TVarSet,
+        replace_in_modes(TypeEqvMap, Modes0, Modes, Changed, TVarSet0, TVarSet,
             Cache0, Cache),
         (
             Changed = yes,
@@ -1473,14 +1491,14 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             GoalExpr0 ^ unify_mode = LMode0 - RMode0,
             TVarSet0 = !.Info ^ ethri_tvarset,
             Cache0 = !.Info ^ ethri_inst_cache,
-            replace_in_mode(EqvMap, LMode0, LMode, Changed1,
+            replace_in_mode(TypeEqvMap, LMode0, LMode, Changed1,
                 TVarSet0, TVarSet1, Cache0, Cache1),
-            replace_in_mode(EqvMap, RMode0, RMode, Changed2,
+            replace_in_mode(TypeEqvMap, RMode0, RMode, Changed2,
                 TVarSet1, TVarSet, Cache1, Cache),
             !Info ^ ethri_tvarset := TVarSet,
             !Info ^ ethri_inst_cache := Cache,
-            replace_in_unification(EqvMap, GoalExpr0 ^ unify_kind, Unification,
-                Changed3, !Info),
+            replace_in_unification(TypeEqvMap,
+                GoalExpr0 ^ unify_kind, Unification, Changed3, !Info),
             Changed = Changed1 `or` Changed2 `or` Changed3,
             (
                 Changed = yes,
@@ -1496,8 +1514,8 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner,
                 MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners),
-            replace_in_goal(EqvMap, MainGoal0, MainGoal, Changed1, !Info),
-            replace_in_goals(EqvMap, OrElseGoals0, OrElseGoals, Changed2,
+            replace_in_goal(TypeEqvMap, MainGoal0, MainGoal, Changed1, !Info),
+            replace_in_goals(TypeEqvMap, OrElseGoals0, OrElseGoals, Changed2,
                 !Info),
             Changed = Changed1 `or` Changed2,
             (
@@ -1511,7 +1529,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             )
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
-            replace_in_goal(EqvMap, SubGoal0, SubGoal, Changed, !Info),
+            replace_in_goal(TypeEqvMap, SubGoal0, SubGoal, Changed, !Info),
             (
                 Changed = yes,
                 ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
@@ -1526,32 +1544,33 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         )
     ).
 
-:- pred replace_in_case(eqv_map::in, case::in, case::out, bool::out,
+:- pred replace_in_case(type_eqv_map::in, case::in, case::out, bool::out,
     replace_info::in, replace_info::out) is det.
 
-replace_in_case(EqvMap, Case0, Case, Changed, !Info) :-
+replace_in_case(TypeEqvMap, Case0, Case, Changed, !Info) :-
     Case0 = case(MainConsId, OtherConsIds, CaseGoal0),
-    replace_in_goal(EqvMap, CaseGoal0, CaseGoal, Changed, !Info),
+    replace_in_goal(TypeEqvMap, CaseGoal0, CaseGoal, Changed, !Info),
     ( Changed = yes, Case = case(MainConsId, OtherConsIds, CaseGoal)
     ; Changed = no, Case = Case0
     ).
 
-:- pred replace_in_cases(eqv_map::in, list(case)::in, list(case)::out,
+:- pred replace_in_cases(type_eqv_map::in, list(case)::in, list(case)::out,
     bool::out, replace_info::in, replace_info::out) is det.
 
 replace_in_cases(_EqvMap, [], [], no, !Acc).
-replace_in_cases(EqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
-    replace_in_cases(EqvMap, T0, T, Changed0, !Acc),
-    replace_in_case(EqvMap, H0, H, Changed1, !Acc),
+replace_in_cases(TypeEqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
+    replace_in_cases(TypeEqvMap, T0, T, Changed0, !Acc),
+    replace_in_case(TypeEqvMap, H0, H, Changed1, !Acc),
     Changed = Changed0 `or` Changed1,
     ( Changed = yes, List = [H | T]
     ; Changed = no, List = List0
     ).
 
-:- pred replace_in_unification(eqv_map::in, unification::in, unification::out,
-    bool::out, replace_info::in, replace_info::out) is det.
+:- pred replace_in_unification(type_eqv_map::in,
+    unification::in, unification::out, bool::out,
+    replace_info::in, replace_info::out) is det.
 
-replace_in_unification(EqvMap, Uni0, Uni, Changed, !Info) :-
+replace_in_unification(TypeEqvMap, Uni0, Uni, Changed, !Info) :-
     (
         ( Uni0 = assign(_, _)
         ; Uni0 = simple_test(_, _)
@@ -1560,38 +1579,38 @@ replace_in_unification(EqvMap, Uni0, Uni, Changed, !Info) :-
         Changed = no
     ;
         Uni0 = complicated_unify(UniMode0, B, C),
-        replace_in_uni_mode(EqvMap, UniMode0, UniMode, Changed, !Info),
+        replace_in_uni_mode(TypeEqvMap, UniMode0, UniMode, Changed, !Info),
         ( Changed = yes, Uni = complicated_unify(UniMode, B, C)
         ; Changed = no, Uni = Uni0
         )
     ;
         Uni0 = construct(_, _, _, _, _, _, _),
         UniModes0 = Uni0 ^ construct_arg_modes,
-        replace_in_uni_modes(EqvMap, UniModes0, UniModes, Changed, !Info),
+        replace_in_uni_modes(TypeEqvMap, UniModes0, UniModes, Changed, !Info),
         ( Changed = yes, Uni = Uni0 ^ construct_arg_modes := UniModes
         ; Changed = no, Uni = Uni0
         )
     ;
         Uni0 = deconstruct(_, _, _, _, _, _),
         UniModes0 = Uni0 ^ deconstruct_arg_modes,
-        replace_in_uni_modes(EqvMap, UniModes0, UniModes, Changed, !Info),
+        replace_in_uni_modes(TypeEqvMap, UniModes0, UniModes, Changed, !Info),
         ( Changed = yes, Uni = Uni0 ^ deconstruct_arg_modes := UniModes
         ; Changed = no, Uni = Uni0
         )
     ).
 
-:- pred replace_in_uni_mode(eqv_map::in, uni_mode::in, uni_mode::out,
+:- pred replace_in_uni_mode(type_eqv_map::in, uni_mode::in, uni_mode::out,
     bool::out, replace_info::in, replace_info::out) is det.
 
-replace_in_uni_mode(EqvMap, ((InstA0 - InstB0) -> (InstC0 - InstD0)),
+replace_in_uni_mode(TypeEqvMap, ((InstA0 - InstB0) -> (InstC0 - InstD0)),
         ((InstA - InstB) -> (InstC - InstD)), Changed, !Info) :-
     some [!TVarSet, !Cache] (
         !:TVarSet = !.Info ^ ethri_tvarset,
         !:Cache = !.Info ^ ethri_inst_cache,
-        replace_in_inst(EqvMap, InstA0, InstA, Changed1, !TVarSet, !Cache),
-        replace_in_inst(EqvMap, InstB0, InstB, Changed2, !TVarSet, !Cache),
-        replace_in_inst(EqvMap, InstC0, InstC, Changed3, !TVarSet, !Cache),
-        replace_in_inst(EqvMap, InstD0, InstD, Changed4, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, InstA0, InstA, Changed1, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, InstB0, InstB, Changed2, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, InstC0, InstC, Changed3, !TVarSet, !Cache),
+        replace_in_inst(TypeEqvMap, InstD0, InstD, Changed4, !TVarSet, !Cache),
         Changed = Changed1 `or` Changed2 `or` Changed3 `or` Changed4,
         (
             Changed = yes,
@@ -1602,14 +1621,14 @@ replace_in_uni_mode(EqvMap, ((InstA0 - InstB0) -> (InstC0 - InstD0)),
         )
     ).
 
-:- pred replace_in_uni_modes(eqv_map::in,
+:- pred replace_in_uni_modes(type_eqv_map::in,
     list(uni_mode)::in, list(uni_mode)::out, bool::out,
     replace_info::in, replace_info::out) is det.
 
 replace_in_uni_modes(_EqvMap, [], [], no, !Acc).
-replace_in_uni_modes(EqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
-    replace_in_uni_modes(EqvMap, T0, T, Changed0, !Acc),
-    replace_in_uni_mode(EqvMap, H0, H, Changed1, !Acc),
+replace_in_uni_modes(TypeEqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
+    replace_in_uni_modes(TypeEqvMap, T0, T, Changed0, !Acc),
+    replace_in_uni_mode(TypeEqvMap, H0, H, Changed1, !Acc),
     Changed = Changed0 `or` Changed1,
     ( Changed = yes, List = [H | T]
     ; Changed = no, List = List0
@@ -1620,27 +1639,27 @@ replace_in_uni_modes(EqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
     % Replace equivalence types in a given type.
     % The bool output is `yes' if anything changed.
     %
-:- pred replace_in_foreign_arg(eqv_map::in, foreign_arg::in, foreign_arg::out,
-    bool::out, tvarset::in, tvarset::out,
+:- pred replace_in_foreign_arg(type_eqv_map::in,
+    foreign_arg::in, foreign_arg::out, bool::out, tvarset::in, tvarset::out,
     equiv_type_info::in, equiv_type_info::out) is det.
 
-replace_in_foreign_arg(EqvMap, Arg0, Arg, Changed, !VarSet, !Info) :-
+replace_in_foreign_arg(TypeEqvMap, Arg0, Arg, Changed, !VarSet, !Info) :-
     Arg0 = foreign_arg(Var, NameMode, Type0, BoxPolicy),
-    replace_in_type(EqvMap, Type0, Type, Changed, !VarSet, !Info),
+    replace_in_type(TypeEqvMap, Type0, Type, Changed, !VarSet, !Info),
     ( Changed = yes, Arg = foreign_arg(Var, NameMode, Type, BoxPolicy)
     ; Changed = no, Arg = Arg0
     ).
 
-:- pred replace_in_foreign_arg_list(eqv_map::in,
+:- pred replace_in_foreign_arg_list(type_eqv_map::in,
     list(foreign_arg)::in, list(foreign_arg)::out, bool::out,
     tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out)
     is det.
 
 replace_in_foreign_arg_list(_EqvMap, [], [], no, !VarSet, !Info).
-replace_in_foreign_arg_list(EqvMap, List0 @ [A0 | As0], List,
+replace_in_foreign_arg_list(TypeEqvMap, List0 @ [A0 | As0], List,
         Changed, !VarSet, !Info) :-
-    replace_in_foreign_arg(EqvMap, A0, A, Changed0, !VarSet, !Info),
-    replace_in_foreign_arg_list(EqvMap, As0, As, Changed1, !VarSet, !Info),
+    replace_in_foreign_arg(TypeEqvMap, A0, A, Changed0, !VarSet, !Info),
+    replace_in_foreign_arg_list(TypeEqvMap, As0, As, Changed1, !VarSet, !Info),
     Changed = Changed0 `or` Changed1,
     ( Changed = yes, List = [A | As]
     ; Changed = no, List = List0

@@ -29,6 +29,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.status.
 :- import_module recompilation.
 
 :- import_module bool.
@@ -37,22 +38,29 @@
 
 %-----------------------------------------------------------------------------%
 
-    % module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap,
-    %   Globals, ModuleName, MaybeFileName, EventSpecFileName, MQ_Info,
-    %   UndefTypes, UndefModes, !Specs, !IO):
+    % module_qualify_aug_item_blocks(Globals, ModuleName,
+    %   AugItemBlocks0, AugItemBlocks, EventSpecMap0, EventSpecMap,
+    %   MaybeContext, EventSpecFileName, MQ_Info,
+    %   UndefTypes, UndefModes, !Specs):
     %
-    % Items is Items0 with all items module qualified as much as possible;
-    % likewise for EventSpecMap0 and EventSpecMap.
+    % AugItemBlocks is AugItemBlocks0 with all items module qualified
+    % as much as possible; likewise for EventSpecMap0 and EventSpecMap.
     %
-    % If MaybeFileName is `yes(FileName)', then report undefined types, insts
-    % and modes in Items0. MaybeFileName should be `no' when module qualifying
-    % the short interface.
+    % If MaybeContext is `yes(Context)', then report undefined types, insts
+    % and modes in AugItemBlocks0. MaybeContext should be `no' when module
+    % qualifying the short interface.
     %
     % Errors in EventSpecMap0 will be reported as being for EventSpecFileName.
     %
-:- pred module_qualify_items(list(item)::in, list(item)::out,
-    event_spec_map::in, event_spec_map::out, globals::in,
-    module_name::in, maybe(string)::in, string::in, mq_info::out,
+:- pred module_qualify_aug_item_blocks(globals::in, module_name::in,
+    list(aug_item_block)::in, list(aug_item_block)::out,
+    event_spec_map::in, event_spec_map::out,
+    maybe(prog_context)::in, string::in, mq_info::out,
+    bool::out, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred module_qualify_items(globals::in, module_name::in,
+    aug_module_section::in, list(item)::in, list(item)::out,
+    event_spec_map::in, event_spec_map::out,
+    maybe(prog_context)::in, string::in, mq_info::out,
     bool::out, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
 
     % This is called from make_hlds to qualify the mode of a lambda expression.
@@ -145,19 +153,71 @@
 
 %-----------------------------------------------------------------------------%
 
-module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap, Globals,
-        ModuleName, MaybeFileName, EventSpecFileName, !:Info, UndefTypes,
-        UndefModes, !Specs) :-
+module_qualify_aug_item_blocks(Globals, ModuleName,
+        AugItemBlocks0, AugItemBlocks, EventSpecMap0, EventSpecMap,
+        MaybeContext, EventSpecFileName,
+        !:Info, UndefTypes, UndefModes, !Specs) :-
+    module_qualify_items_or_item_blocks(Globals, ModuleName,
+        return_aug_block, module_qualify_items_in_blocks,
+        AugItemBlocks0, AugItemBlocks, EventSpecMap0, EventSpecMap,
+        MaybeContext, EventSpecFileName,
+        !:Info, UndefTypes, UndefModes, !Specs).
+
+module_qualify_items(Globals, ModuleName, Section, Items0, Items,
+        EventSpecMap0, EventSpecMap, MaybeContext, EventSpecFileName,
+        !:Info, UndefTypes, UndefModes, !Specs) :-
+    module_qualify_items_or_item_blocks(Globals, ModuleName,
+        wrap_items_in_aug_block(Section), module_qualify_items_loop,
+        Items0, Items, EventSpecMap0, EventSpecMap,
+        MaybeContext, EventSpecFileName,
+        !:Info, UndefTypes, UndefModes, !Specs).
+
+%-----------------------------------------------------------------------------%
+
+:- type make_block_pred(I) == pred(list(I), list(aug_item_block)).
+:- inst make_block_pred == (pred(in, out) is det).
+
+:- type module_qual_pred(I) == pred(list(I), list(I),
+    mq_info, mq_info, list(error_spec), list(error_spec)).
+:- inst module_qual_pred ==
+    (pred(in, out, in, out, in, out) is det).
+
+:- pred return_aug_block(list(aug_item_block)::in, list(aug_item_block)::out)
+    is det.
+
+return_aug_block(AugItemBlocks, AugItemBlocks).
+
+:- pred wrap_items_in_aug_block(aug_module_section::in,
+    list(item)::in, list(aug_item_block)::out) is det.
+
+wrap_items_in_aug_block(AugSection, Items, AugItemBlocks) :-
+    AugItemBlocks = [item_block(AugSection, term.context_init, Items)].
+
+%-----------------------------------------------------------------------------%
+
+:- pred module_qualify_items_or_item_blocks(globals::in, module_name::in,
+    make_block_pred(I)::in(make_block_pred),
+    module_qual_pred(I)::in(module_qual_pred),
+    list(I)::in, list(I)::out, event_spec_map::in, event_spec_map::out,
+    maybe(prog_context)::in, string::in, mq_info::out,
+    bool::out, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+
+module_qualify_items_or_item_blocks(Globals, ModuleName,
+        MakeBlock, ModuleQual, ItemsOrBlocks0, ItemsOrBlocks,
+        EventSpecMap0, EventSpecMap, MaybeContext, EventSpecFileName,
+        !:Info, UndefTypes, UndefModes, !Specs) :-
     (
-        MaybeFileName = yes(_),
+        MaybeContext = yes(_),
         ReportErrors = yes
     ;
-        MaybeFileName = no,
+        MaybeContext = no,
         ReportErrors = no
     ),
-    init_mq_info(Items0, Globals, ReportErrors, ModuleName, !:Info),
-    collect_mq_info(Items0, !Info),
-    do_module_qualify_items(Items0, Items, !Info, !Specs),
+    MakeBlock(ItemsOrBlocks0, AugInitItemBlocks0),
+    init_mq_info(Globals, ModuleName, AugInitItemBlocks0, ReportErrors,
+        !:Info),
+    collect_mq_info_in_aug_item_blocks(AugInitItemBlocks0, !Info),
+    ModuleQual(ItemsOrBlocks0, ItemsOrBlocks, !Info, !Specs),
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
     do_module_qualify_event_specs(EventSpecFileName,
         EventSpecList0, EventSpecList, !Info, !Specs),
@@ -185,12 +245,12 @@ module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap, Globals,
         % in this module.)
         %
         % In order to prevent the import of the module bar being erroneously
-        % reported as unused we make the conservative assumption that any
+        % reported as unused, we make the conservative assumption that any
         % imported module that exports a type class instance is used in
         % the interface of the importing module, except if the importing
         % module itself exports _no_ type class instances.
         %
-        MaybeFileName = yes(FileName),
+        MaybeContext = yes(Context),
         mq_info_get_unused_interface_modules(!.Info, UnusedImports0),
         mq_info_get_exported_instances_flag(!.Info, ModuleExportsInstances),
         (
@@ -202,10 +262,14 @@ module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap, Globals,
             UnusedImports1 = UnusedImports0
         ),
         set.to_sorted_list(UnusedImports1, UnusedImports),
-        maybe_warn_unused_interface_imports(ModuleName, FileName,
+        % XXX ITEM_LIST Currently we report all modules whose imports
+        % are unnecessarily in the interface using Context, which is the
+        % context of the `:- module' declaration of the module. We should use
+        % the contexts of the actual imports themselves.
+        maybe_warn_unused_interface_imports(ModuleName, Context,
             UnusedImports, !Specs)
     ;
-        MaybeFileName = no
+        MaybeContext = no
     ).
 
 qualify_lambda_mode_list(Modes0, Modes, Context, !Info, !Specs) :-
@@ -291,40 +355,85 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
     ;       mq_status_imported(import_locn)
     ;       mq_status_abstract_imported.
 
+    % Pass over the item_block list collecting all defined module, type, mode
+    % and inst ids, all module synonym definitions, and the names of all
+    % modules imported in the interface.
+    %
+:- pred collect_mq_info_in_aug_item_blocks(list(aug_item_block)::in,
+    mq_info::in, mq_info::out) is det.
+
+collect_mq_info_in_aug_item_blocks([], !Info).
+collect_mq_info_in_aug_item_blocks([AugItemBlock | AugItemBlocks], !Info) :-
+    AugItemBlock = item_block(AugSection, _Context, Items),
+    (
+        AugSection = ams_transitively_imported
+        % Don't process the transitively imported items (from `.int2' files).
+        % They can't be used in the current module.
+    ;
+        % XXX ITEM_LIST Check whether this code could be folded together
+        % with status.m's aug_module_section_status, and/or its callers.
+        (
+            AugSection = ams_interface,
+            mq_info_set_import_status(mq_status_exported, !Info)
+        ;
+            AugSection = ams_impl_but_exported_to_submodules,
+            mq_info_set_import_status(mq_status_local, !Info)
+        ;
+            AugSection = ams_implementation,
+            mq_info_set_import_status(mq_status_local, !Info)
+        ;
+            AugSection = ams_imported(Locn),
+            mq_info_set_import_status(mq_status_imported(Locn), !Info),
+            mq_info_set_need_qual_flag(may_be_unqualified, !Info)
+        ;
+            AugSection = ams_used(Locn),
+            mq_info_set_import_status(mq_status_imported(Locn), !Info),
+            mq_info_set_need_qual_flag(must_be_qualified, !Info)
+        ;
+            AugSection = ams_opt_imported(_),
+            mq_info_set_import_status(
+                mq_status_imported(import_locn_implementation), !Info),
+            mq_info_set_need_qual_flag(must_be_qualified, !Info)
+        ;
+            AugSection = ams_abstract_imported,
+            mq_info_set_import_status(mq_status_abstract_imported, !Info),
+            mq_info_set_need_qual_flag(must_be_qualified, !Info)
+        ),
+        collect_mq_info_in_items(Items, !Info),
+        collect_mq_info_in_aug_item_blocks(AugItemBlocks, !Info)
+    ).
+
     % Pass over the item list collecting all defined module, type, mode and
     % inst ids, all module synonym definitions, and the names of all
     % modules imported in the interface.
     %
-:- pred collect_mq_info(list(item)::in, mq_info::in, mq_info::out) is det.
+:- pred collect_mq_info_in_items(list(item)::in,
+    mq_info::in, mq_info::out) is det.
 
-collect_mq_info([], !Info).
-collect_mq_info([Item | Items], !Info) :-
+collect_mq_info_in_items([], !Info).
+collect_mq_info_in_items([Item | Items], !Info) :-
+    collect_mq_info_in_item(Item, !Info),
+    collect_mq_info_in_items(Items, !Info).
+
+:- pred collect_mq_info_in_item(item::in, mq_info::in, mq_info::out) is det.
+
+collect_mq_info_in_item(Item, !Info) :-
     (
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _SeqNum),
-        ModuleDefn = md_transitively_imported
-    ->
-        % Don't process the transitively imported items (from `.int2' files).
-        % They can't be used in the current module.
-        true
-    ;
-        collect_mq_info_item(Item, !Info),
-        collect_mq_info(Items, !Info)
-    ).
-
-:- pred collect_mq_info_item(item::in, mq_info::in, mq_info::out) is det.
-
-collect_mq_info_item(Item, !Info) :-
-    (
-        Item = item_module_start(ItemModuleStart),
-        ItemModuleStart = item_module_start_info(ModuleName, _, _),
-        add_module_defn(ModuleName, !Info)
-    ;
-        Item = item_module_end(_)
-    ;
         Item = item_module_defn(ItemModuleDefn),
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-        process_module_defn(ModuleDefn, !Info)
+        (
+            ModuleDefn = md_include_module(IncludedModuleName),
+            add_module_defn(IncludedModuleName, !Info)
+        ;
+            ( ModuleDefn = md_import(ImportedModuleName)
+            ; ModuleDefn = md_use(ImportedModuleName)
+            ),
+            maybe_add_import(ImportedModuleName, !Info)
+        ;
+            ( ModuleDefn = md_external(_, _)
+            ; ModuleDefn = md_version_numbers(_, _)
+            )
+        )
     ;
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(SymName, Params, _, _, _, _),
@@ -436,52 +545,19 @@ collect_mq_info_qualified_symname(SymName, !Info) :-
         unexpected($module, $pred, "unqualified")
     ).
 
-    % process_module_defn:
+    % For submodule definitions (whether nested or separate,
+    % i.e. either `:- module foo.' or `:- include_module foo.'),
+    % add the module id to the module_id_set.
     %
-    % - Update the import status.
+    % We don't actually handle nested submodules here. Nested submodules
+    % were separated out and replaced with the internal representation of
+    % the `:- include_module' declaration that would correspond to it
+    % by the code that created the module's raw_compilation_unit, which
+    % was later transformed into the aug_compilation_unit whose items
+    % we process here.
     %
-    % - For sub-module definitions (whether nested or separate,
-    %   i.e. either `:- module foo.' or `:- include_module foo.'),
-    %   add the module id to the module_id_set.
-    %
-    % - For import declarations (`:- import_module' or `:- use_module'),
-    %   if we're currently in the interface section, then add the
-    %   imported modules to the unused_interface_modules list.
-    %
-:- pred process_module_defn(module_defn::in, mq_info::in, mq_info::out) is det.
-
-process_module_defn(md_include_module(ModuleNameList), !Info) :-
-    list.foldl(add_module_defn, ModuleNameList, !Info).
-process_module_defn(md_interface, !Info) :-
-    mq_info_set_import_status(mq_status_exported, !Info).
-process_module_defn(md_implementation_but_exported_to_submodules, !Info) :-
-    mq_info_set_import_status(mq_status_local, !Info).
-process_module_defn(md_implementation, !Info) :-
-    mq_info_set_import_status(mq_status_local, !Info).
-process_module_defn(md_imported(Locn), !Info) :-
-    mq_info_set_import_status(mq_status_imported(Locn), !Info),
-    mq_info_set_need_qual_flag(may_be_unqualified, !Info).
-process_module_defn(md_used(Locn), !Info) :-
-    mq_info_set_import_status(mq_status_imported(Locn), !Info),
-    mq_info_set_need_qual_flag(must_be_qualified, !Info).
-process_module_defn(md_opt_imported, !Info) :-
-    mq_info_set_import_status(mq_status_imported(import_locn_implementation),
-        !Info),
-    mq_info_set_need_qual_flag(must_be_qualified, !Info).
-process_module_defn(md_abstract_imported, !Info) :-
-    mq_info_set_import_status(mq_status_abstract_imported, !Info),
-    mq_info_set_need_qual_flag(must_be_qualified, !Info).
-process_module_defn(md_transitively_imported, !Info) :-
-    unexpected($module, $pred, "transitively_imported item").
-process_module_defn(md_external(_, _), !Info).
-process_module_defn(md_export(_), !Info).
-process_module_defn(md_import(Imports), !Info) :-
-    add_imports(Imports, !Info).
-process_module_defn(md_use(Imports), !Info) :-
-    add_imports(Imports, !Info).
-process_module_defn(md_version_numbers(_, _), !Info).
-
-:- pred add_module_defn(module_name::in, mq_info::in, mq_info::out) is det.
+:- pred add_module_defn(module_name::in,
+    mq_info::in, mq_info::out) is det.
 
 add_module_defn(ModuleName, !Info) :-
     mq_info_get_modules(!.Info, Modules0),
@@ -490,12 +566,18 @@ add_module_defn(ModuleName, !Info) :-
     id_set_insert(NeedQualifier, mq_id(ModuleName, Arity), Modules0, Modules),
     mq_info_set_modules(Modules, !Info).
 
-:- pred add_imports(list(module_specifier)::in, mq_info::in, mq_info::out)
+    % For import declarations (`:- import_module' or `:- use_module'),
+    % if we are currently in the interface section, then add the
+    % imported modules to the unused_interface_modules list.
+    %
+    % XXX ITEM_LIST Why do we base this decision on the status we get
+    % from the mq_info, instead of the current section's section kind?
+    %
+:- pred maybe_add_import(module_name::in, mq_info::in, mq_info::out)
     is det.
 
-add_imports(Imports, !Info) :-
+maybe_add_import(ImportedModuleName, !Info) :-
     mq_info_get_import_status(!.Info, Status),
-
     % Modules imported from the the proper private interface of ancestors of
     % the current module are treated as if they were directly imported
     % by the current module.
@@ -507,7 +589,7 @@ add_imports(Imports, !Info) :-
         )
     ->
         mq_info_get_imported_modules(!.Info, Modules0),
-        set.insert_list(Imports, Modules0, Modules),
+        set.insert(ImportedModuleName, Modules0, Modules),
         mq_info_set_imported_modules(Modules, !Info)
     ;
         true
@@ -515,11 +597,9 @@ add_imports(Imports, !Info) :-
 
     % We check that all modules imported in the interface are
     % used in the interface.
-    (
-        Status = mq_status_exported
-    ->
+    ( Status = mq_status_exported ->
         mq_info_get_unused_interface_modules(!.Info, UnusedIntModules0),
-        set.insert_list(Imports, UnusedIntModules0, UnusedIntModules),
+        set.insert(ImportedModuleName, UnusedIntModules0, UnusedIntModules),
         mq_info_set_unused_interface_modules(UnusedIntModules, !Info)
     ;
         true
@@ -534,7 +614,7 @@ add_imports(Imports, !Info) :-
         )
     ->
         mq_info_get_interface_visible_modules(!.Info, IntModules0),
-        set.insert_list(Imports, IntModules0, IntModules),
+        set.insert(ImportedModuleName, IntModules0, IntModules),
         mq_info_set_interface_visible_modules(IntModules, !Info)
     ;
         true
@@ -731,7 +811,6 @@ term_qualified_symbols(Term, Symbols) :-
 :- pred term_qualified_symbols_list(list(term)::in, list(sym_name)::out)
     is semidet.
 
-    % Yeah one more place where accumulators will be introduced!
 term_qualified_symbols_list([], []).
 term_qualified_symbols_list([Term | Terms], Symbols) :-
     term_qualified_symbols(Term, TermSymbols),
@@ -740,48 +819,93 @@ term_qualified_symbols_list([Term | Terms], Symbols) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Iterate over the item list module qualifying all declarations.
-    % Stop when the :- imported or :- opt_imported pseudo-declaration
-    % is reached, since imported declarations should already be
-    % module qualified.
+    % Iterate over the items in the given blocks, module qualifying
+    % all declarations. Stop when we reach a section that is imported,
+    % since imported declarations should already be module qualified.
+    % (An imported block should never be followed by an unimported block.)
     %
-:- pred do_module_qualify_items(list(item)::in, list(item)::out,
+:- pred module_qualify_items_in_blocks(
+    list(aug_item_block)::in, list(aug_item_block)::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-do_module_qualify_items([], [], !Info, !Specs).
-do_module_qualify_items([Item0 | Items0], [Item | Items], !Info, !Specs) :-
-    module_qualify_item(Item0, Item, Continue, !Info, !Specs),
+module_qualify_items_in_blocks([], [], !Info, !Specs).
+module_qualify_items_in_blocks([AugItemBlock0 | AugItemBlocks0],
+        [AugItemBlock | AugItemBlocks], !Info, !Specs) :-
+    AugItemBlock0 = item_block(AugSection, Context, Items0),
     (
-        Continue = yes,
-        do_module_qualify_items(Items0, Items, !Info, !Specs)
+        ( AugSection = ams_imported(_)
+        ; AugSection = ams_used(_)
+        ; AugSection = ams_opt_imported(_)
+        ; AugSection = ams_transitively_imported
+        ),
+        % Don't recurse; don't module qualify this block or following blocks.
+        AugItemBlock = AugItemBlock0,
+        AugItemBlocks = AugItemBlocks0
     ;
-        Continue = no,
-        Items = Items0
+        (
+            AugSection = ams_interface,
+            mq_info_set_import_status(mq_status_exported, !Info)
+        ;
+            AugSection = ams_implementation,
+            mq_info_set_import_status(mq_status_local, !Info)
+        ;
+            AugSection = ams_impl_but_exported_to_submodules,
+            mq_info_set_import_status(mq_status_local, !Info)
+        ;
+            AugSection = ams_abstract_imported,
+            mq_info_set_import_status(mq_status_abstract_imported, !Info)
+        ),
+        module_qualify_items_loop(Items0, Items, !Info, !Specs),
+        AugItemBlock = item_block(AugSection, Context, Items),
+        module_qualify_items_in_blocks(AugItemBlocks0, AugItemBlocks,
+            !Info, !Specs)
     ).
+
+:- pred module_qualify_items_loop(list(item)::in, list(item)::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+module_qualify_items_loop([], [], !Info, !Specs).
+module_qualify_items_loop([Item0 | Items0], [Item | Items], !Info, !Specs) :-
+    module_qualify_item(Item0, Item, !Info, !Specs),
+    module_qualify_items_loop(Items0, Items, !Info, !Specs).
 
     % Call predicates to qualify a single item.
     %
-:- pred module_qualify_item(item::in, item::out, bool::out,
-    mq_info::in, mq_info::out, list(error_spec)::in, list(error_spec)::out)
-    is det.
+:- pred module_qualify_item(item::in, item::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
+module_qualify_item(Item0, Item, !Info, !Specs) :-
     (
-        ( Item0 = item_module_start(_)
-        ; Item0 = item_module_end(_)
-        ; Item0 = item_clause(_)
+        ( Item0 = item_clause(_)
         ; Item0 = item_initialise(_)
         ; Item0 = item_finalise(_)
         ; Item0 = item_promise(_)
         ; Item0 = item_nothing(_)
         ),
-        Item = Item0,
-        Continue = yes
+        Item = Item0
     ;
         Item0 = item_module_defn(ItemModuleDefn),
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-        update_import_status(ModuleDefn, !Info, Continue),
+        (
+            ( ModuleDefn = md_external(_, _)
+            ; ModuleDefn = md_import(_)
+            ; ModuleDefn = md_use(_)
+            ; ModuleDefn = md_version_numbers(_, _)
+            )
+        ;
+            ModuleDefn = md_include_module(_),
+            % The submodule might make use of *any* of the imported modules.
+            % There is no way for us to tell which ones.
+            % So we conservatively assume that it uses all of them.
+            % XXX ITEM_LIST Fix this too-conservative behavior.
+            % If a submodule needs a module that the parent doesn't,
+            % it should import it for itself. Anything else may lead to
+            % unnecessary recompilations.
+            set.init(UnusedInterfaceModules),
+            mq_info_set_unused_interface_modules(UnusedInterfaceModules, !Info)
+        ),
         Item = Item0
     ;
         Item0 = item_type_defn(ItemTypeDefn0),
@@ -793,8 +917,7 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
             !Info, !Specs),
         ItemTypeDefn = item_type_defn_info(SymName, Params, TypeDefn,
             TVarSet, Context, SeqNum),
-        Item = item_type_defn(ItemTypeDefn),
-        Continue = yes
+        Item = item_type_defn(ItemTypeDefn)
     ;
         Item0 = item_inst_defn(ItemInstDefn0),
         ItemInstDefn0 = item_inst_defn_info(SymName, Params, InstDefn0,
@@ -804,8 +927,7 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         qualify_inst_defn(InstDefn0, InstDefn, ErrorContext, !Info, !Specs),
         ItemInstDefn = item_inst_defn_info(SymName, Params, InstDefn,
             InstVarSet, Context, SeqNum),
-        Item = item_inst_defn(ItemInstDefn),
-        Continue = yes
+        Item = item_inst_defn(ItemInstDefn)
     ;
         Item0 = item_mode_defn(ItemModeDefn0),
         ItemModeDefn0 = item_mode_defn_info(SymName, Params, ModeDefn0,
@@ -815,8 +937,7 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         qualify_mode_defn(ModeDefn0, ModeDefn, ErrorContext, !Info, !Specs),
         ItemModeDefn = item_mode_defn_info(SymName, Params, ModeDefn,
             InstVarSet, Context, SeqNum),
-        Item = item_mode_defn(ItemModeDefn),
-        Continue = yes
+        Item = item_mode_defn(ItemModeDefn)
     ;
         Item0 = item_pred_decl(ItemPredDecl0),
         ItemPredDecl0 = item_pred_decl_info(SymName, PredOrFunc,
@@ -854,8 +975,7 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
             TypesAndModes, MaybeWithType, MaybeWithInst, MaybeDetism,
             Origin, TypeVarSet, InstVarSet, ExistQVars, Purity,
             Constraints, Context, SeqNum),
-        Item = item_pred_decl(ItemPredDecl),
-        Continue = yes
+        Item = item_pred_decl(ItemPredDecl)
     ;
         Item0 = item_mode_decl(ItemModeDecl0),
         ItemModeDecl0 = item_mode_decl_info(SymName, PredOrFunc, Modes0,
@@ -875,15 +995,13 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         ),
         ItemModeDecl = item_mode_decl_info(SymName, PredOrFunc, Modes,
             MaybeWithInst, MaybeDetism, InstVarSet, Context, SeqNum),
-        Item = item_mode_decl(ItemModeDecl),
-        Continue = yes
+        Item = item_mode_decl(ItemModeDecl)
     ;
         Item0 = item_pragma(ItemPragma0),
         ItemPragma0 = item_pragma_info(Pragma0, Origin, Context, SeqNum),
         qualify_pragma(Pragma0, Pragma, Context, !Info, !Specs),
         ItemPragma = item_pragma_info(Pragma, Origin, Context, SeqNum),
-        Item = item_pragma(ItemPragma),
-        Continue = yes
+        Item = item_pragma(ItemPragma)
     ;
         Item0 = item_typeclass(ItemTypeClass0),
         ItemTypeClass0 = item_typeclass_info(Name, Vars, Constraints0, FunDeps,
@@ -904,8 +1022,7 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         ),
         ItemTypeClass = item_typeclass_info(Name, Vars, Constraints, FunDeps,
             Interface, VarSet, Context, SeqNum),
-        Item = item_typeclass(ItemTypeClass),
-        Continue = yes
+        Item = item_typeclass(ItemTypeClass)
     ;
         Item0 = item_instance(ItemInstance0),
         ItemInstance0 = item_instance_info(Name0, Types0, OriginalTypes0,
@@ -941,42 +1058,12 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         qualify_instance_body(Name, Body0, Body),
         ItemInstance = item_instance_info(Name, Types, OriginalTypes,
             Constraints, Body, VarSet, ModName, Context, SeqNum),
-        Item = item_instance(ItemInstance),
-        Continue = yes
+        Item = item_instance(ItemInstance)
     ;
         Item0 = item_mutable(ItemMutable0),
         do_module_qualify_mutable(ItemMutable0, ItemMutable, !Info, !Specs),
-        Item = item_mutable(ItemMutable),
-        Continue = yes
+        Item = item_mutable(ItemMutable)
     ).
-
-:- pred update_import_status(module_defn::in, mq_info::in, mq_info::out,
-    bool::out) is det.
-
-update_import_status(md_opt_imported, !Info, no).
-update_import_status(md_abstract_imported, !Info, yes) :-
-    mq_info_set_import_status(mq_status_abstract_imported, !Info).
-update_import_status(md_transitively_imported, !Info, no).
-update_import_status(md_interface, !Info, yes) :-
-    mq_info_set_import_status(mq_status_exported, !Info).
-update_import_status(md_implementation, !Info, yes) :-
-    mq_info_set_import_status(mq_status_local, !Info).
-update_import_status(md_implementation_but_exported_to_submodules, !Info, yes)
-        :-
-    mq_info_set_import_status(mq_status_local, !Info).
-update_import_status(md_imported(_), !Info, no).
-update_import_status(md_used(_), !Info, no).
-update_import_status(md_external(_, _), !Info, yes).
-update_import_status(md_export(_), !Info, yes).
-update_import_status(md_import(_), !Info, yes).
-update_import_status(md_use(_), !Info, yes).
-update_import_status(md_version_numbers(_, _), !Info, yes).
-update_import_status(md_include_module(_), !Info, yes) :-
-    % The sub-module might make use of *any* of the imported modules.
-    % There is no way for us to tell which ones.
-    % So we conservatively assume that it uses all of them.
-    set.init(UnusedInterfaceModules),
-    mq_info_set_unused_interface_modules(UnusedInterfaceModules, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -1509,8 +1596,7 @@ qualify_type_ctor(TypeCtor0, TypeCtor, ErrorContext, !Info, !Specs) :-
 
 qualify_pragma(Pragma0, Pragma, Context, !Info, !Specs) :-
     (
-        ( Pragma0 = pragma_source_file(_)
-        ; Pragma0 = pragma_foreign_decl(_)
+        ( Pragma0 = pragma_foreign_decl(_)
         ; Pragma0 = pragma_foreign_code(_)
         ; Pragma0 = pragma_foreign_import_module(_)
         ; Pragma0 = pragma_inline(_)
@@ -1859,7 +1945,7 @@ add_module_qualifier(DefaultModule, SymName0, SymName) :-
         SymName = qualified(DefaultModule, Name)
     ;
         SymName0 = qualified(SymModule, SubSymName),
-        ( match_sym_name(SymModule, DefaultModule) ->
+        ( partial_sym_name_matches_full(SymModule, DefaultModule) ->
             SymName = qualified(DefaultModule, SubSymName)
         ;
             % This case is an error. The user must have written something like
@@ -2356,9 +2442,6 @@ mq_error_context_to_pieces(ErrorContext, Context,Pieces) :-
             Pragma = pragma_no_detism_warning(_),
             PragmaName = "no_detism_warning"
         ;
-            Pragma = pragma_source_file(_),
-            PragmaName = "source_file"
-        ;
             Pragma = pragma_tabled(_),
             PragmaName = "tabled"
         ;
@@ -2435,16 +2518,15 @@ id_type_to_string(class_id, "typeclass").
 
     % Warn about modules imported in the interface when they do not need to be.
     %
-:- pred maybe_warn_unused_interface_imports(module_name::in, string::in,
+:- pred maybe_warn_unused_interface_imports(module_name::in, prog_context::in,
     list(module_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_warn_unused_interface_imports(ModuleName, FileName, UnusedImports,
+maybe_warn_unused_interface_imports(ModuleName, Context, UnusedImports,
         !Specs) :-
     (
         UnusedImports = []
     ;
         UnusedImports = [_ | _],
-        term.context_init(FileName, 1, Context),
         UnusedSymNames = list.map(wrap_module_name, UnusedImports),
         Pieces = [words("In module"), sym_name(ModuleName), suffix(":"), nl,
             words("warning:"),
@@ -2506,15 +2588,16 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
 % Access and initialisation predicates.
 %
 
-:- pred init_mq_info(list(item)::in, globals::in, bool::in, module_name::in,
-    mq_info::out) is det.
+:- pred init_mq_info(globals::in, module_name::in, list(aug_item_block)::in,
+    bool::in, mq_info::out) is det.
 
-init_mq_info(Items, Globals, ReportErrors, ModuleName, Info) :-
+init_mq_info(Globals, ModuleName, AugItemBlocks, ReportErrors, Info) :-
     set.init(InterfaceModules0),
     set.init(InstanceModules),
     ExportedInstancesFlag = no,
-    get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
-    set.list_to_set(ImportDeps `list.append` UseDeps, ImportedModules),
+    get_implicit_dependencies_in_item_blocks(Globals, AugItemBlocks,
+        ImportDeps, UseDeps),
+    set.list_to_set(ImportDeps ++ UseDeps, ImportedModules),
 
     % Ancestor modules are visible without being explicitly imported.
     set.insert_list([ModuleName | get_ancestors(ModuleName)],

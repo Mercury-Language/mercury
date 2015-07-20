@@ -129,13 +129,14 @@
 
 %-----------------------------------------------------------------------------%
 
-write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
-    Module = module_and_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, ParentDeps, IntDeps, ImplDeps, IndirectDeps,
-        _Children, InclDeps, NestedDeps, FactDeps0,
+write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
+        MaybeTransOptDeps, !IO) :-
+    ModuleAndImports = module_and_imports(SourceFileName, SourceFileModuleName,
+        ModuleName, _ModuleNameContext, ParentDeps, IntDeps, ImplDeps,
+        IndirectDeps, _Children, InclDeps, NestedDeps, FactDeps0,
         ForeignImportsCord0, ForeignIncludeFilesCord,
         ContainsForeignCode, _ContainsForeignExport,
-        Items, _Specs, _Error, _Timestamps, _HasMain, _Dir),
+        ItemBlocksCord, _Specs, _Error, _Timestamps, _HasMain, _Dir),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     module_name_to_make_var_name(ModuleName, MakeVarName),
@@ -552,8 +553,8 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             ForeignImportsCord = ForeignImportsCord0
         ;
             ContainsForeignCode = contains_foreign_code_unknown,
-            get_item_list_foreign_code(Globals, cord.list(Items), LangSet,
-                ForeignImportsCord1, _, _),
+            get_foreign_code_indicators_from_item_blocks(Globals,
+                cord.list(ItemBlocksCord), LangSet, ForeignImportsCord1, _, _),
             % If we are generating the `.dep' file, ForeignImports0
             % will contain a conservative approximation to the set of
             % foreign imports needed which will include imports

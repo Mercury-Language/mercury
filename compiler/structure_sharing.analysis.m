@@ -87,6 +87,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.status.
 :- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.

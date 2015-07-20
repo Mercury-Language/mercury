@@ -50,6 +50,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.status.
 
 :- import_module bool.
 :- import_module list.

@@ -874,15 +874,15 @@ file_or_module_to_module_name(fm_file(FileName)) = ModuleName :-
 file_or_module_to_module_name(fm_module(ModuleName)) = ModuleName.
 
 :- pred read_module_or_file(globals::in, globals::out, file_or_module::in,
-    maybe_return_timestamp::in, module_name::out, file_name::out,
-    maybe(timestamp)::out, list(item)::out,
-    list(error_spec)::out, read_module_errors::out,
-    have_read_module_map::in, have_read_module_map::out,
+    module_name::out, file_name::out,
+    maybe_return_timestamp::in, maybe(timestamp)::out,
+    parse_tree_src::out, list(error_spec)::out, read_module_errors::out,
+    have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
-        ModuleName, SourceFileName, MaybeTimestamp, Items, Specs, Errors,
-        !HaveReadModuleMap, !IO) :-
+read_module_or_file(Globals0, Globals, FileOrModuleName,
+        ModuleName, SourceFileName, ReturnTimestamp, MaybeTimestamp,
+        ParseTreeSrc, Specs, Errors, !HaveReadModuleMaps, !IO) :-
     (
         FileOrModuleName = fm_module(ModuleName),
         globals.lookup_bool_option(Globals0, verbose, Verbose),
@@ -893,26 +893,31 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
         (
             % Avoid rereading the module if it was already read
             % by recompilation_version.m.
-            find_read_module(!.HaveReadModuleMap, ModuleName, ".m",
-                ReturnTimestamp, ItemsPrime, SpecsPrime, ErrorsPrime,
-                SourceFileNamePrime, MaybeTimestampPrime)
+            find_read_module_src(!.HaveReadModuleMaps ^ hrmm_src, ModuleName,
+                ReturnTimestamp, SourceFileNamePrime, MaybeTimestampPrime,
+                ParseTreeSrcPrime, SpecsPrime, ErrorsPrime)
         ->
+            Globals = Globals0,
             % XXX When we have read the module before, it *could* have had
             % problems that should cause smart recompilation to be disabled.
-            Globals = Globals0,
-            map.delete(ModuleName - ".m", !HaveReadModuleMap),
-            Items = ItemsPrime,
-            Specs = SpecsPrime,
-            Errors = ErrorsPrime,
+            HaveReadModuleMapSrc0 = !.HaveReadModuleMaps ^ hrmm_src,
+            map.delete(have_read_module_key(ModuleName, sfk_src),
+                HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
+            !HaveReadModuleMaps ^ hrmm_src := HaveReadModuleMapSrc,
             SourceFileName = SourceFileNamePrime,
-            MaybeTimestamp = MaybeTimestampPrime
+            MaybeTimestamp = MaybeTimestampPrime,
+            ParseTreeSrc = ParseTreeSrcPrime,
+            Specs = SpecsPrime,
+            Errors = ErrorsPrime
         ;
             % We don't search `--search-directories' for source files
             % because that can result in the generated interface files
             % being created in the wrong directory.
-            read_module(Globals0, ModuleName, ".m", "Reading module",
-                do_not_search, ReturnTimestamp, Items, Specs, Errors,
-                SourceFileName, MaybeTimestamp, !IO),
+            read_module_src(Globals0, "Reading module",
+                do_not_ignore_errors, do_not_search,
+                ModuleName, SourceFileName,
+                always_read_module(ReturnTimestamp), MaybeTimestamp,
+                ParseTreeSrc, Specs, Errors, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
                 DisableSmart = yes,
@@ -936,26 +941,30 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
         (
             % Avoid rereading the module if it was already read
             % by recompilation_version.m.
-            find_read_module(!.HaveReadModuleMap, DefaultModuleName, ".m",
-                ReturnTimestamp, ItemsPrime, SpecsPrime, ErrorsPrime,
-                _, MaybeTimestampPrime)
+            find_read_module_src(!.HaveReadModuleMaps ^ hrmm_src,
+                DefaultModuleName, ReturnTimestamp, _, MaybeTimestampPrime,
+                ParseTreeSrcPrime, SpecsPrime, ErrorsPrime)
         ->
+            Globals = Globals0,
             % XXX When we have read the module before, it *could* have had
             % problems that should cause smart recompilation to be disabled.
-            Globals = Globals0,
-            map.delete(ModuleName - ".m", !HaveReadModuleMap),
+            HaveReadModuleMapSrc0 = !.HaveReadModuleMaps ^ hrmm_src,
+            map.delete(have_read_module_key(ModuleName, sfk_src),
+                HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
+            !HaveReadModuleMaps ^ hrmm_src := HaveReadModuleMapSrc,
             ModuleName = DefaultModuleName,
-            Items = ItemsPrime,
+            MaybeTimestamp = MaybeTimestampPrime,
+            ParseTreeSrc = ParseTreeSrcPrime,
             Specs = SpecsPrime,
-            Errors = ErrorsPrime,
-            MaybeTimestamp = MaybeTimestampPrime
+            Errors = ErrorsPrime
         ;
             % We don't search `--search-directories' for source files
             % because that can result in the generated interface files
             % being created in the wrong directory.
-            read_module_from_file(Globals0, FileName, ".m", "Reading file",
-                do_not_search, ReturnTimestamp, Items, Specs, Errors,
-                ModuleName, MaybeTimestamp, !IO),
+            read_module_src_from_file(Globals0, FileName, "Reading file",
+                do_not_search,
+                always_read_module(ReturnTimestamp), MaybeTimestamp,
+                ParseTreeSrc, Specs, Errors, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
                 DisableSmart = yes,
@@ -973,6 +982,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
             % the compiler.
 
             globals.lookup_bool_option(Globals, smart_recompilation, Smart),
+            ParseTreeSrc = parse_tree_src(ModuleName, _, _),
             (
                 Smart = yes,
                 ModuleName \= DefaultModuleName
@@ -1008,7 +1018,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
 
 :- func version_numbers_return_timestamp(bool) = maybe_return_timestamp.
 
-version_numbers_return_timestamp(no) = do_not_return_timestamp.
+version_numbers_return_timestamp(no) = dont_return_timestamp.
 version_numbers_return_timestamp(yes) = do_return_timestamp.
 
 :- pred process_module(globals::in, list(string)::in, file_or_module::in,
@@ -1033,7 +1043,7 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
                 version_numbers_return_timestamp(GenerateVersionNumbers)
         ; MakeShortInterface = yes ->
             ProcessModule = call_make_short_interface(Globals0),
-            ReturnTimestamp = do_not_return_timestamp
+            ReturnTimestamp = dont_return_timestamp
         ; MakePrivateInterface = yes ->
             ProcessModule = call_make_private_interface(Globals0),
             ReturnTimestamp =
@@ -1042,30 +1052,35 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
             fail
         )
     ->
-        read_module_or_file(Globals0, Globals, FileOrModule, ReturnTimestamp,
-            ModuleName, FileName, MaybeTimestamp, Items, Specs0, Errors,
-            map.init, _, !IO),
+        HaveReadModuleMaps0 =
+            have_read_module_maps(map.init, map.init, map.init),
+        read_module_or_file(Globals0, Globals, FileOrModule,
+            ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
+            ParseTreeSrc, Specs0, Errors,
+            HaveReadModuleMaps0, _HaveReadModuleMaps, !IO),
         ( halt_at_module_error(HaltSyntax, Errors) ->
             true
         ;
-            split_into_submodules(ModuleName, Items, SubModuleList,
-                Specs0, Specs),
+            split_into_compilation_units_perform_checks(ParseTreeSrc,
+                RawCompUnits, Specs0, Specs),
             % XXX _NumErrors
             write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
             list.foldl(
                 apply_process_module(ProcessModule, FileName, ModuleName,
                     MaybeTimestamp),
-                SubModuleList, !IO)
+                RawCompUnits, !IO)
         ),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
         ConvertToMercury = yes
     ->
-        read_module_or_file(Globals0, Globals, FileOrModule,
-            do_not_return_timestamp, ModuleName, _, _, Items, Specs, Errors,
-            map.init, _, !IO),
+        HaveReadModuleMaps0 =
+            have_read_module_maps(map.init, map.init, map.init),
+        read_module_or_file(Globals0, Globals, FileOrModule, ModuleName, _,
+            dont_return_timestamp, _, ParseTreeSrc, Specs, Errors,
+            HaveReadModuleMaps0, _HaveReadModuleMaps, !IO),
         % XXX _NumErrors
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
         ( halt_at_module_error(HaltSyntax, Errors) ->
@@ -1073,7 +1088,7 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
         ;
             module_name_to_file_name(Globals, ModuleName, ".ugly",
                 do_create_dirs, OutputFileName, !IO),
-            convert_to_mercury(Globals, ModuleName, OutputFileName, Items, !IO)
+            convert_to_mercury_src(Globals, OutputFileName, ParseTreeSrc, !IO)
         ),
         ModulesToLink = [],
         ExtraObjFiles = []
@@ -1108,10 +1123,11 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
             find_timestamp_files(Globals, FindTimestampFiles),
             recompilation.check.should_recompile(Globals, ModuleName,
                 FindTargetFiles, FindTimestampFiles, ModulesToRecompile,
-                HaveReadModuleMap, !IO)
+                HaveReadModuleMaps, !IO)
         ;
             Smart = no,
-            map.init(HaveReadModuleMap),
+            HaveReadModuleMaps =
+                have_read_module_maps(map.init, map.init, map.init),
             ModulesToRecompile = all_modules
         ),
         ( ModulesToRecompile = some_modules([]) ->
@@ -1122,24 +1138,23 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
             ExtraObjFiles = []
         ;
             process_module_2(Globals, OptionArgs, FileOrModule,
-                ModulesToRecompile, HaveReadModuleMap, ModulesToLink,
+                ModulesToRecompile, HaveReadModuleMaps, ModulesToLink,
                 ExtraObjFiles, !IO)
         )
     ).
 
 :- pred apply_process_module(
-    pred(file_name, module_name, maybe(timestamp),
-        pair(module_name, list(item)), io, io)::
-        in(pred(in, in, in, in, di, uo) is det),
+    pred(file_name, module_name, maybe(timestamp), raw_compilation_unit,
+        io, io)::in(pred(in, in, in, in, di, uo) is det),
     file_name::in, module_name::in, maybe(timestamp)::in,
-    pair(module_name, list(item))::in, io::di, io::uo) is det.
+    raw_compilation_unit::in, io::di, io::uo) is det.
 
 apply_process_module(ProcessModule, FileName, ModuleName, MaybeTimestamp,
-        SubModule, !IO) :-
-    ProcessModule(FileName, ModuleName, MaybeTimestamp, SubModule, !IO).
+        RawCompUnit, !IO) :-
+    ProcessModule(FileName, ModuleName, MaybeTimestamp, RawCompUnit, !IO).
 
 :- pred process_module_2_callback(list(string)::in, file_or_module::in,
-    modules_to_recompile::in, have_read_module_map::in, globals::in,
+    modules_to_recompile::in, have_read_module_maps::in, globals::in,
     {list(string), list(string)}::out, io::di, io::uo) is det.
 
 process_module_2_callback(OptionArgs, FileOrModule, MaybeModulesToRecompile,
@@ -1150,7 +1165,7 @@ process_module_2_callback(OptionArgs, FileOrModule, MaybeModulesToRecompile,
     Result = {ModulesToLink, ExtraObjFiles}.
 
 :- pred process_module_2(globals::in, list(string)::in, file_or_module::in,
-    modules_to_recompile::in, have_read_module_map::in,
+    modules_to_recompile::in, have_read_module_maps::in,
     list(string)::out, list(string)::out, io::di, io::uo) is det.
 
 process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
@@ -1178,9 +1193,10 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
         maybe_report_cmd_line(ReportCmdLineArgsDotErr, OptionArgs, [], !IO)
     ),
 
-    read_module_or_file(Globals0, Globals, FileOrModule, do_return_timestamp,
-        ModuleName, FileName, MaybeTimestamp, Items, Specs0, Errors,
-        HaveReadModuleMap0, HaveReadModuleMap, !IO),
+    read_module_or_file(Globals0, Globals, FileOrModule, ModuleName, FileName,
+        do_return_timestamp, MaybeTimestamp, ParseTreeSrc, Specs0, Errors,
+        HaveReadModuleMap0, HaveReadModuleMaps, !IO),
+
     globals.lookup_bool_option(Globals, halt_at_syntax_errors, HaltSyntax),
     ( halt_at_module_error(HaltSyntax, Errors) ->
         % XXX _NumErrors
@@ -1189,20 +1205,22 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
-        split_into_submodules(ModuleName, Items, SubModuleList0,
-            Specs0, Specs1),
+        split_into_compilation_units_perform_checks(ParseTreeSrc,
+            RawCompUnits0, Specs0, Specs1),
         (
             MaybeModulesToRecompile = some_modules(ModulesToRecompile),
-            ToRecompile = (pred((SubModule - _)::in) is semidet :-
-                list.member(SubModule, ModulesToRecompile)
+            ToRecompile = (pred(RawCompUnit::in) is semidet :-
+                RawCompUnit = compilation_unit(RawCompUnitModuleName, _, _),
+                list.member(RawCompUnitModuleName, ModulesToRecompile)
             ),
-            list.filter(ToRecompile, SubModuleList0, SubModuleListToCompile)
+            list.filter(ToRecompile, RawCompUnits0, RawCompUnitsToCompile)
         ;
             MaybeModulesToRecompile = all_modules,
-            SubModuleListToCompile = SubModuleList0
+            RawCompUnitsToCompile = RawCompUnits0
         ),
-        assoc_list.keys(SubModuleList0, NestedSubModules0),
-        list.delete_all(NestedSubModules0, ModuleName, NestedSubModules),
+        RawCompUnitNames =
+            list.map(compilation_unit_project_name, RawCompUnits0),
+        list.delete_all(RawCompUnitNames, ModuleName, NestedCompUnitNames),
 
         find_timestamp_files(Globals, FindTimestampFiles),
 
@@ -1229,8 +1247,8 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
             GlobalsToUse = Globals
         ),
         compile_all_submodules(GlobalsToUse, FileName, ModuleName,
-            NestedSubModules, MaybeTimestamp, HaveReadModuleMap,
-            FindTimestampFiles, SubModuleListToCompile, Specs1,
+            MaybeTimestamp, NestedCompUnitNames, HaveReadModuleMaps,
+            FindTimestampFiles, RawCompUnitsToCompile, Specs1,
             ModulesToLink, ExtraObjFiles, !IO)
     ).
 
@@ -1246,50 +1264,46 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
     % i.e. compile nested modules to a single C file.
 
 :- pred compile_all_submodules(globals::in, string::in, module_name::in,
-    list(module_name)::in, maybe(timestamp)::in, have_read_module_map::in,
+    maybe(timestamp)::in, list(module_name)::in, have_read_module_maps::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    list(pair(module_name, list(item)))::in, list(error_spec)::in,
+    list(raw_compilation_unit)::in, list(error_spec)::in,
     list(string)::out, list(string)::out, io::di, io::uo) is det.
 
 compile_all_submodules(Globals, FileName, SourceFileModuleName,
-        NestedSubModules, MaybeTimestamp, HaveReadModuleMap,
-        FindTimestampFiles, SubModuleList, !.Specs,
+        MaybeTimestamp, NestedSubModules, HaveReadModuleMaps,
+        FindTimestampFiles, RawCompUnits, !.Specs,
         ModulesToLink, ExtraObjFiles, !IO) :-
     list.map_foldl2(
-        compile(Globals, FileName, SourceFileModuleName, NestedSubModules,
-            MaybeTimestamp, HaveReadModuleMap, FindTimestampFiles),
-        SubModuleList, ExtraObjFileLists, !Specs, !IO),
+        compile(Globals, FileName, SourceFileModuleName, MaybeTimestamp,
+            NestedSubModules, HaveReadModuleMaps, FindTimestampFiles),
+        RawCompUnits, ExtraObjFileLists, !Specs, !IO),
     % XXX _NumErrors
     write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
-    list.map(module_to_link, SubModuleList, ModulesToLink),
+    list.map(module_to_link, RawCompUnits, ModulesToLink),
     list.condense(ExtraObjFileLists, ExtraObjFiles).
 
 :- pred call_make_interface(globals::in, file_name::in, module_name::in,
-    maybe(timestamp)::in, pair(module_name, list(item))::in, io::di, io::uo)
-    is det.
+    maybe(timestamp)::in, raw_compilation_unit::in, io::di, io::uo) is det.
 
 call_make_interface(Globals, SourceFileName, SourceFileModuleName,
-        MaybeTimestamp, ModuleName - Items, !IO) :-
+        MaybeTimestamp, RawCompUnit, !IO) :-
     write_interface_file(Globals, SourceFileName, SourceFileModuleName,
-        ModuleName, MaybeTimestamp, Items, !IO).
+        RawCompUnit, MaybeTimestamp, !IO).
 
 :- pred call_make_short_interface(globals::in, file_name::in, module_name::in,
-    maybe(timestamp)::in, pair(module_name, list(item))::in,
-    io::di, io::uo) is det.
+    maybe(timestamp)::in, raw_compilation_unit::in, io::di, io::uo) is det.
 
-call_make_short_interface(Globals, SourceFileName, _, _, ModuleName - Items,
-        !IO) :-
-    write_short_interface_file(Globals, SourceFileName, ModuleName,
-        Items, !IO).
+call_make_short_interface(Globals, SourceFileName, _, _, RawCompUnit, !IO) :-
+    write_short_interface_file(Globals, SourceFileName, RawCompUnit, !IO).
 
 :- pred call_make_private_interface(globals::in, file_name::in,
-    module_name::in, maybe(timestamp)::in, pair(module_name, list(item))::in,
+    module_name::in, maybe(timestamp)::in, raw_compilation_unit::in,
     io::di, io::uo) is det.
 
 call_make_private_interface(Globals, SourceFileName, SourceFileModuleName,
-        MaybeTimestamp, ModuleName - Items, !IO) :-
+        MaybeTimestamp, RawCompUnit, !IO) :-
     write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
-        ModuleName, MaybeTimestamp, Items, !IO).
+        RawCompUnit, MaybeTimestamp, !IO).
 
 :- pred halt_at_module_error(bool::in, read_module_errors::in) is semidet.
 
@@ -1302,9 +1316,9 @@ halt_at_module_error(HaltSyntax, Errors) :-
         HaltSyntax = yes
     ).
 
-:- pred module_to_link(pair(module_name, list(item))::in, string::out) is det.
+:- pred module_to_link(raw_compilation_unit::in, string::out) is det.
 
-module_to_link(ModuleName - _Items, ModuleToLink) :-
+module_to_link(compilation_unit(ModuleName, _, _), ModuleToLink) :-
     module_name_to_file_name_stem(ModuleName, ModuleToLink).
 
 :- type compile == pred(globals, bool, io, io).
@@ -1416,30 +1430,31 @@ find_timestamp_files_2(Globals, TimestampSuffix, ModuleName, TimestampFiles,
     % so that new stages can be slotted in without too much trouble.
 
 :- pred compile(globals::in, file_name::in, module_name::in,
-    list(module_name)::in, maybe(timestamp)::in, have_read_module_map::in,
+    maybe(timestamp)::in, list(module_name)::in, have_read_module_maps::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    pair(module_name, list(item))::in, list(string)::out,
+    raw_compilation_unit::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-compile(Globals, SourceFileName, SourceFileModuleName, NestedSubModules0,
-        MaybeTimestamp, HaveReadModuleMap, FindTimestampFiles,
-        ModuleName - Items, ExtraObjFiles, !Specs, !IO) :-
-    check_for_no_exports(Globals, Items, ModuleName, !Specs, !IO),
+compile(Globals, SourceFileName, SourceFileModuleName, MaybeTimestamp,
+        NestedSubModules0, HaveReadModuleMaps, FindTimestampFiles,
+        RawCompUnit, ExtraObjFiles, !Specs, !IO) :-
+    check_for_no_exports(Globals, RawCompUnit, !Specs, !IO),
+    RawCompUnit = compilation_unit(ModuleName, _, _),
     ( ModuleName = SourceFileModuleName ->
         NestedSubModules = NestedSubModules0
     ;
         NestedSubModules = []
     ),
     grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
-        ModuleName, NestedSubModules, HaveReadModuleMap, MaybeTimestamp,
-        Items, Module, !IO),
-    module_and_imports_get_results(Module, _, ImportedSpecs, Errors),
+        MaybeTimestamp, NestedSubModules, RawCompUnit, HaveReadModuleMaps,
+        ModuleAndImports, !IO),
+    module_and_imports_get_results(ModuleAndImports, _, ImportedSpecs, Errors),
     !:Specs = ImportedSpecs ++ !.Specs,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
-        mercury_compile(Globals, Module, NestedSubModules, FindTimestampFiles,
-            ExtraObjFiles, no_prev_dump, _, !Specs, !IO)
+        mercury_compile(Globals, ModuleAndImports, NestedSubModules,
+            FindTimestampFiles, ExtraObjFiles, no_prev_dump, _, !Specs, !IO)
     else
         ExtraObjFiles = []
     ).
@@ -1459,7 +1474,7 @@ mercury_compile(Globals, ModuleAndImports, NestedSubModules,
     globals.lookup_bool_option(Globals, errorcheck_only, ErrorCheckOnly),
     bool.or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile),
     pre_hlds_pass(Globals, ModuleAndImports, DontWriteDFile, HLDS1, QualInfo,
-        MaybeTimestamps, UndefTypes, UndefModes, Errors1, !DumpInfo,
+        MaybeTimestampMap, UndefTypes, UndefModes, Errors1, !DumpInfo,
         !Specs, !IO),
     frontend_pass(QualInfo, UndefTypes, UndefModes, Errors1, Errors2,
         HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
@@ -1514,7 +1529,7 @@ mercury_compile(Globals, ModuleAndImports, NestedSubModules,
             maybe_prepare_for_intermodule_analysis(Globals, Verbose, Stats,
                 HLDS21, HLDS22, !IO),
             mercury_compile_after_front_end(NestedSubModules,
-                FindTimestampFiles, MaybeTimestamps, ModuleName, HLDS22,
+                FindTimestampFiles, MaybeTimestampMap, ModuleName, HLDS22,
                 !.Specs, ExtraObjFiles, !DumpInfo, !IO)
         )
     ;
@@ -1570,12 +1585,12 @@ prepare_for_intermodule_analysis(Globals, Verbose, Stats, !HLDS, !IO) :-
 
 :- pred mercury_compile_after_front_end(list(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    maybe(module_timestamps)::in, module_name::in, module_info::in,
+    maybe(module_timestamp_map)::in, module_name::in, module_info::in,
     list(error_spec)::in, list(string)::out, dump_info::in, dump_info::out,
     io::di, io::uo) is det.
 
 mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
-        MaybeTimestamps, ModuleName, !.HLDS, Specs, ExtraObjFiles,
+        MaybeTimestampMap, ModuleName, !.HLDS, Specs, ExtraObjFiles,
         !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -1695,7 +1710,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         (
             Succeeded = yes,
             recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
-                MaybeTimestamps, !IO),
+                MaybeTimestampMap, !IO),
             FindTimestampFiles(ModuleName, TimestampFiles, !IO),
             list.foldl(touch_datestamp(Globals), TimestampFiles, !IO)
         ;
@@ -1718,12 +1733,13 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 %-----------------------------------------------------------------------------%
 
 :- pred pre_hlds_pass(globals::in, module_and_imports::in, bool::in,
-    module_info::out, make_hlds_qual_info::out, maybe(module_timestamps)::out,
-    bool::out, bool::out, bool::out, dump_info::in, dump_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    module_info::out, make_hlds_qual_info::out,
+    maybe(module_timestamp_map)::out, bool::out, bool::out, bool::out,
+    dump_info::in, dump_info::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
-        MaybeTimestamps, UndefTypes, UndefModes, FoundSemanticError,
+        MaybeTimestampMap, UndefTypes, UndefModes, FoundSemanticError,
         !DumpInfo, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -1754,10 +1770,12 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
         ModuleAndImports1, IntermodError, !IO),
 
     % We pay attention to IntermodError instead of _Error. XXX Is this right?
-    module_and_imports_get_results(ModuleAndImports1, Items1,
+    module_and_imports_get_module_name_context(ModuleAndImports1,
+        ModuleNameContext),
+    module_and_imports_get_results(ModuleAndImports1, AugItemBlocks1,
         ItemSpecs, _Error),
     !:Specs = ItemSpecs ++ !.Specs,
-    MaybeTimestamps = ModuleAndImports1 ^ mai_maybe_timestamps,
+    MaybeTimestampMap = ModuleAndImports1 ^ mai_maybe_timestamp_map,
 
     globals.lookup_string_option(Globals, event_set_file_name,
         EventSetFileName),
@@ -1781,19 +1799,22 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
         )
     ),
 
-    invoke_module_qualify_items(Globals, Items1, Items2,
-        EventSpecMap1, EventSpecMap2, ModuleName, EventSetFileName,
-        Verbose, Stats, MQInfo0, MQUndefTypes, MQUndefModes, !Specs, !IO),
+    invoke_module_qualify_items(Globals, Verbose, Stats, ModuleName,
+        ModuleNameContext, AugItemBlocks1, AugItemBlocks2,
+        EventSpecMap1, EventSpecMap2, EventSetFileName,
+        MQInfo0, MQUndefTypes, MQUndefModes, !Specs, !IO),
 
     mq_info_get_recompilation_info(MQInfo0, RecompInfo0),
-    expand_equiv_types(Globals, ModuleName, Verbose, Stats, Items2, Items,
-        EventSpecMap2, EventSpecMap, EqvMap, UsedModules,
-        RecompInfo0, RecompInfo, ExpandErrors, !Specs, !IO),
+    expand_equiv_types_and_insts(Globals, Verbose, Stats, ModuleName,
+        AugItemBlocks2, AugItemBlocks, EventSpecMap2, EventSpecMap, TypeEqvMap,
+        UsedModules, RecompInfo0, RecompInfo, ExpandErrors, !Specs, !IO),
     mq_info_set_recompilation_info(RecompInfo, MQInfo0, MQInfo),
 
     EventSet = event_set(EventSetName, EventSpecMap),
-    make_hlds(Globals, ModuleName, Items, EventSet, MQInfo, EqvMap,
-        UsedModules, Verbose, Stats, HLDS0, QualInfo,
+    AugCompUnit =
+        compilation_unit(ModuleName, ModuleNameContext, AugItemBlocks),
+    make_hlds(Globals, AugCompUnit, EventSet, MQInfo, TypeEqvMap, UsedModules,
+        Verbose, Stats, HLDS0, QualInfo,
         MakeHLDSFoundInvalidType, MakeHLDSFoundInvalidInstOrMode,
         FoundSemanticError, !Specs, !IO),
 
@@ -1848,23 +1869,24 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred invoke_module_qualify_items(globals::in,
-    list(item)::in, list(item)::out, event_spec_map::in, event_spec_map::out,
-    module_name::in, string::in, bool::in, bool::in, mq_info::out,
+:- pred invoke_module_qualify_items(globals::in, bool::in, bool::in,
+    module_name::in, prog_context::in,
+    list(aug_item_block)::in, list(aug_item_block)::out,
+    event_spec_map::in, event_spec_map::out, string::in, mq_info::out,
     bool::out, bool::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-invoke_module_qualify_items(Globals, Items0, Items,
-        EventSpecMap0, EventSpecMap, ModuleName, EventSpecFileName,
-        Verbose, Stats, MQInfo, UndefTypes, UndefModes, !Specs, !IO) :-
+invoke_module_qualify_items(Globals, Verbose, Stats, ModuleName,
+        ModuleNameContext, AugItemBlocks0, AugItemBlocks,
+        EventSpecMap0, EventSpecMap, EventSpecFileName,
+        MQInfo, UndefTypes, UndefModes, !Specs, !IO) :-
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Module qualifying items...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".m",
-        do_not_create_dirs, FileName, !IO),
-    module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap,
-        Globals, ModuleName, yes(FileName), EventSpecFileName, MQInfo,
-        UndefTypes, UndefModes, [], QualifySpecs),
+    module_qualify_aug_item_blocks(Globals, ModuleName,
+        AugItemBlocks0, AugItemBlocks, EventSpecMap0, EventSpecMap,
+        yes(ModuleNameContext), EventSpecFileName,
+        MQInfo, UndefTypes, UndefModes, [], QualifySpecs),
     !:Specs = QualifySpecs ++ !.Specs,
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
@@ -2073,20 +2095,23 @@ maybe_grab_optfiles(Globals, Imports0, Verbose, MaybeTransOptDeps,
 
 %-----------------------------------------------------------------------------%
 
-:- pred expand_equiv_types(globals::in, module_name::in, bool::in, bool::in,
-    list(item)::in, list(item)::out, event_spec_map::in, event_spec_map::out,
-    eqv_map::out, used_modules::out,
+:- pred expand_equiv_types_and_insts(globals::in, bool::in, bool::in,
+    module_name::in, list(aug_item_block)::in, list(aug_item_block)::out,
+    event_spec_map::in, event_spec_map::out,
+    type_eqv_map::out, used_modules::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out, bool::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-expand_equiv_types(Globals, ModuleName, Verbose, Stats, Items0, Items,
-        EventSpecMap0, EventSpecMap, EqvMap, UsedModules,
-        RecompInfo0, RecompInfo, FoundError, !Specs, !IO) :-
+expand_equiv_types_and_insts(Globals, Verbose, Stats, ModuleName,
+        ItemBlocks0, ItemBlocks, EventSpecMap0, EventSpecMap,
+        TypeEqvMap, UsedModules, RecompInfo0, RecompInfo,
+        FoundError, !Specs, !IO) :-
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
-    maybe_write_string(Verbose, "% Expanding equivalence types...\n", !IO),
+    maybe_write_string(Verbose,
+        "% Expanding equivalence types and insts...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    equiv_type.expand_eqv_types(ModuleName, Items0, Items,
-        EventSpecMap0, EventSpecMap, EqvMap, UsedModules,
+    expand_eqv_types_insts(ModuleName, ItemBlocks0, ItemBlocks,
+        EventSpecMap0, EventSpecMap, TypeEqvMap, UsedModules,
         RecompInfo0, RecompInfo, ExpandSpecs),
     FoundError = contains_errors(Globals, ExpandSpecs),
     !:Specs = ExpandSpecs ++ !.Specs,
@@ -2096,24 +2121,24 @@ expand_equiv_types(Globals, ModuleName, Verbose, Stats, Items0, Items,
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_hlds(globals::in, module_name::in, list(item)::in, event_set::in,
-    mq_info::in, eqv_map::in, used_modules::in, bool::in, bool::in,
-    module_info::out, make_hlds_qual_info::out,
+:- pred make_hlds(globals::in, aug_compilation_unit::in,
+    event_set::in, mq_info::in, type_eqv_map::in, used_modules::in,
+    bool::in, bool::in, module_info::out, make_hlds_qual_info::out,
     found_invalid_type::out, found_invalid_inst_or_mode::out, bool::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-make_hlds(Globals, ModuleName, Items, EventSet, MQInfo, EqvMap, UsedModules,
+make_hlds(Globals, AugCompUnit, EventSet, MQInfo, TypeEqvMap, UsedModules,
         Verbose, Stats, !:HLDS, QualInfo,
         FoundInvalidType, FoundInvalidInstOrMode,
         FoundSemanticError, !Specs, !IO) :-
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
+    AugCompUnit = compilation_unit(ModuleName, _, _),
     module_name_to_file_name(Globals, ModuleName, ".hlds_dump",
         do_create_dirs, DumpBaseFileName, !IO),
-    ParseTree = unit_module(ModuleName, Items),
-    parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo, EqvMap,
-        UsedModules, QualInfo, FoundInvalidType, FoundInvalidInstOrMode,
-        !:HLDS, MakeSpecs),
+    parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo,
+        TypeEqvMap, UsedModules, QualInfo,
+        FoundInvalidType, FoundInvalidInstOrMode, !:HLDS, MakeSpecs),
     !:Specs = MakeSpecs ++ !.Specs,
     module_info_set_event_set(EventSet, !HLDS),
     io.get_exit_status(Status, !IO),
@@ -2225,14 +2250,14 @@ detect_libgrades(Globals, MaybeConfigMerStdLibDir, GradeOpts, !IO) :-
         Detect = yes,
         globals.lookup_bool_option(Globals, verbose, Verbose),
         trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
-            maybe_write_string(Verbose, "% Detecting library grades ...\n", !TIO)
+            maybe_write_string(Verbose, "% Detecting library grades ...\n",
+                !TIO)
         ),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         % NOTE: a standard library directory specified on the command line
         % overrides one set using the MERCURY_STDLIB_DIR variable.
         ( if
             % Was the standard library directory set on the command line?
-            %
             globals.lookup_maybe_string_option(Globals,
                 mercury_standard_library_directory, MaybeStdLibDir),
             MaybeStdLibDir = yes(MerStdLibDir)

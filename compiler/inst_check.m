@@ -72,6 +72,15 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.status.
+
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module map.
+:- import_module maybe.
+:- import_module multi_map.
+:- import_module pair.
+:- import_module string.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -120,7 +129,7 @@ index_visible_types_by_unqualified_functors([], !FunctorsToTypesMap).
 index_visible_types_by_unqualified_functors([TypeCtorDefn | TypeCtorDefns],
         !FunctorsToTypesMap) :-
     TypeCtorDefn = TypeCtor - TypeDefn,
-    ( if type_is_user_visible(section_implementation, TypeDefn) then
+    ( if type_is_user_visible(ms_implementation, TypeDefn) then
         TypeCtorAndDefn = type_ctor_and_defn(TypeCtor, TypeDefn),
         get_du_functors_for_type_def(TypeDefn, Functors),
         list.foldl(multi_map.reverse_set(TypeCtorAndDefn), Functors,
@@ -133,7 +142,8 @@ index_visible_types_by_unqualified_functors([TypeCtorDefn | TypeCtorDefns],
 
 %---------------------%
 
-:- pred type_is_user_visible(section::in, hlds_type_defn::in) is semidet.
+:- pred type_is_user_visible(module_section::in, hlds_type_defn::in)
+    is semidet.
 
 type_is_user_visible(Section, TypeDefn) :-
     get_type_defn_status(TypeDefn, ImportStatus),
@@ -142,8 +152,8 @@ type_is_user_visible(Section, TypeDefn) :-
     % Returns yes if a type definition with the given import status
     % is user visible in a section of the current module.
     %
-:- func status_implies_type_defn_is_user_visible(section, import_status)
-    = bool.
+:- func status_implies_type_defn_is_user_visible(module_section,
+    import_status) = bool.
 
 status_implies_type_defn_is_user_visible(Section, Status) = Visible :-
     (
@@ -166,10 +176,10 @@ status_implies_type_defn_is_user_visible(Section, Status) = Visible :-
         ; Status = status_local
         ),
         (
-            Section = section_interface,
+            Section = ms_interface,
             Visible = no
         ;
-            Section = section_implementation,
+            Section = ms_implementation,
             Visible = yes
         )
     ).
@@ -415,7 +425,10 @@ find_matching_user_types(FunctorSymName,
         MatchingUserTypes = [type_user(TypeCtorAndDefn) | MatchingUserTypes0]
     ;
         FunctorSymName = qualified(FunctorModuleName, _),
-        ( if match_sym_name(FunctorModuleName, TypeCtorModuleName) then
+        ( if
+            partial_sym_name_matches_full(FunctorModuleName,
+                TypeCtorModuleName)
+        then
             MatchingUserTypes = [type_user(TypeCtorAndDefn) |
                 MatchingUserTypes0]
         else
@@ -475,7 +488,7 @@ maybe_issue_inst_check_warning(InstId, InstDefn, BoundInsts, PossibleTypes,
                         (
                             Type = type_user(TypeCtorAndDefn),
                             TypeCtorAndDefn = type_ctor_and_defn(_, TypeDefn),
-                            type_is_user_visible(section_interface, TypeDefn)
+                            type_is_user_visible(ms_interface, TypeDefn)
                         ;
                             Type = type_builtin(_)
                         ;

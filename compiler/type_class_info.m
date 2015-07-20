@@ -51,6 +51,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.status.
 
 :- import_module map.
 :- import_module maybe.

@@ -1,10 +1,15 @@
-duplicate_modes.m:001: Warning: interface for module `duplicate_modes' does not
-duplicate_modes.m:001:   export anything.
-duplicate_modes.m:001:   To be useful, a module should export something. A file
-duplicate_modes.m:001:   should contain at least one declaration other than
-duplicate_modes.m:001:   `:- import_module' in its interface section(s). This
-duplicate_modes.m:001:   would normally be a `:- pred', `:- func', `:- type',
-duplicate_modes.m:001:   `:- inst' or `:- mode' declaration.
+duplicate_modes.m:005: Warning: interface for module `duplicate_modes' does not
+duplicate_modes.m:005:   export anything.
+duplicate_modes.m:005:   To be useful, a module should export something. A file
+duplicate_modes.m:005:   should contain at least one declaration other than
+duplicate_modes.m:005:   `:- import_module' in its interface section(s). This
+duplicate_modes.m:005:   would normally be a `:- pred', `:- func', `:- type',
+duplicate_modes.m:005:   `:- inst' or `:- mode' declaration.
+duplicate_modes.m:007: Error: module `duplicate_modes' should start with either
+duplicate_modes.m:007:   an `:- interface' or an `:- implementation'
+duplicate_modes.m:007:   declaration.
+duplicate_modes.m:007:   The following assumes that the missing declaration is
+duplicate_modes.m:007:   an `:- implementation' declaration.
 duplicate_modes.m:012: In mode declarations for predicate
 duplicate_modes.m:012:   `duplicate_modes.q'/2:
 duplicate_modes.m:012:   error: duplicate mode declaration.

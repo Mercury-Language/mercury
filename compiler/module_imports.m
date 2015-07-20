@@ -25,24 +25,24 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_error.
+:- import_module parse_tree.status.
 
 :- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
     % When doing smart recompilation record for each module the suffix of
     % the file that was read and the modification time of the file.
     %
-:- type module_timestamps == map(module_name, module_timestamp).
+:- type module_timestamp_map == map(module_name, module_timestamp).
 :- type module_timestamp
     --->    module_timestamp(
-                suffix          :: string,
-                timestamp       :: timestamp,
-                need_qualifier  :: need_qualifier
+                mts_file_kind       :: file_kind,
+                mts_timestamp       :: timestamp,
+                mts_need_qualifier  :: need_qualifier
             ).
 
     % The `module_and_imports' structure holds information about
@@ -73,6 +73,9 @@
 
                 % The module (or sub-module) that we are compiling.
                 mai_module_name                 :: module_name,
+
+                % The context of the module declaration of mai_module_name.
+                mai_module_name_context         :: prog_context,
 
                 % The list of ancestor modules it inherits.
                 mai_parent_deps                 :: list(module_name),
@@ -117,7 +120,7 @@
                 mai_contains_foreign_export     :: contains_foreign_export,
 
                 % The contents of the module and its imports.
-                mai_items_cord                  :: cord(item),
+                mai_blocks_cord                 :: cord(aug_item_block),
 
                 % Whether an error has been encountered when reading in
                 % this module.
@@ -126,7 +129,7 @@
 
                 % If we are doing smart recompilation, we need to keep
                 % the timestamps of the modules read in.
-                mai_maybe_timestamps            :: maybe(module_timestamps),
+                mai_maybe_timestamp_map         :: maybe(module_timestamp_map),
 
                 % Does this module contain main/2?
                 mai_has_main                    :: has_main,
@@ -139,6 +142,8 @@
     file_name::out) is det.
 :- pred module_and_imports_get_module_name(module_and_imports::in,
     module_name::out) is det.
+:- pred module_and_imports_get_module_name_context(module_and_imports::in,
+    prog_context::out) is det.
 :- pred module_and_imports_get_impl_deps(module_and_imports::in,
     list(module_name)::out) is det.
 
@@ -168,7 +173,17 @@
 
     % Add items to the end of the list.
     %
-:- pred module_and_imports_add_items(cord(item)::in,
+:- pred module_and_imports_add_item_blocks(list(aug_item_block)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+
+    % Do the job of
+    %   module_and_imports_add_item_blocks
+    %   module_and_imports_add_specs
+    %   module_and_imports_add_interface_error
+    % all at once.
+    %
+:- pred module_and_imports_add_item_blocks_specs_errors(
+    list(aug_item_block)::in, list(error_spec)::in, read_module_errors::in,
     module_and_imports::in, module_and_imports::out) is det.
 
     % Return the results recorded in the module_and_imports structure.
@@ -178,21 +193,21 @@
     % specifications.
     %
 :- pred module_and_imports_get_results(module_and_imports::in,
-    list(item)::out, list(error_spec)::out, read_module_errors::out) is det.
+    list(aug_item_block)::out, list(error_spec)::out, read_module_errors::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 
-    % init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
-    %   Specs, Errors, Globals, ModuleName - Items, ModuleImports).
+    % init_module_and_imports(Globals, FileName, SourceFileModuleName,
+    %   NestedModuleNames, Specs, Errors, CompilationUnit, ModuleImports).
     %
-:- pred init_dependencies(file_name::in, module_name::in,
+:- pred init_module_and_imports(globals::in, file_name::in, module_name::in,
     list(module_name)::in, list(error_spec)::in, read_module_errors::in,
-    globals::in, pair(module_name, list(item))::in,
-    module_and_imports::out) is det.
+    raw_compilation_unit::in, module_and_imports::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % get_dependencies(Items, ImportDeps, UseDeps):
+    % get_dependencies_in_{items,item_blocks}(Items, ImportDeps, UseDeps):
     %
     % Get the list of modules that a list of items (explicitly) depends on.
     % ImportDeps is the list of modules imported using `:- import_module',
@@ -203,11 +218,13 @@
     % (see get_children/2). You may also need to consider indirect
     % dependencies.
     %
-:- pred get_dependencies(list(item)::in, list(module_name)::out,
-    list(module_name)::out) is det.
+:- pred get_dependencies_in_items(list(item)::in,
+    list(module_name)::out, list(module_name)::out) is det.
+:- pred get_dependencies_in_item_blocks(list(item_block(MS))::in,
+    list(module_name)::out, list(module_name)::out) is det.
 
-    % get_dependencies_int_imp(Items, IntImportDeps, IntUseDeps,
-    %   ImpImportDeps, ImpUseDeps):
+    % get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocs,
+    %   IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps):
     %
     % Get the list of modules that a list of items (explicitly) depends on.
     %
@@ -223,34 +240,36 @@
     % (see get_children/2). You may also need to consider indirect
     % dependencies.
     %
-    % N.B This predicate assumes that any declarations between the `:- module'
-    % and the first `:- interface' or `:- implementation' are in the
-    % implementation.
-    %
-:- pred get_dependencies_int_imp(list(item)::in,
+:- pred get_dependencies_int_imp_in_raw_item_blocks(list(raw_item_block)::in,
     list(module_name)::out, list(module_name)::out,
     list(module_name)::out, list(module_name)::out) is det.
 
-    % get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps):
+    % get_implicit_dependencies_in_*(Globals, Items/ItemBlocks,
+    %   ImportDeps, UseDeps):
     %
     % Get the list of builtin modules (e.g. "public_builtin",
-    % "private_builtin") that a list of items may implicitly depend on.
+    % "private_builtin" etc) that the given items may implicitly depend on.
     % ImportDeps is the list of modules which should be automatically
     % implicitly imported as if via `:- import_module', and UseDeps is
     % the list which should be automatically implicitly imported as if via
     % `:- use_module'.
     %
-:- pred get_implicit_dependencies(list(item)::in, globals::in,
+:- pred get_implicit_dependencies_in_item_blocks(globals::in,
+    list(item_block(MS))::in,
+    list(module_name)::out, list(module_name)::out) is det.
+:- pred get_implicit_dependencies_in_items(globals::in,
+    list(item)::in,
     list(module_name)::out, list(module_name)::out) is det.
 
-    % Get the fact table dependencies for a module.
+    % Get the fact table dependencies for the given list of items.
     %
-:- pred get_fact_table_dependencies(list(item)::in, list(string)::out) is det.
+:- pred get_fact_table_dependencies_in_item_blocks(list(item_block(MS))::in,
+    list(string)::out) is det.
 
     % Get foreign include_file dependencies for a module.
     % This replicates part of get_item_list_foreign_code.
     %
-:- pred get_foreign_include_files(list(item)::in,
+:- pred get_foreign_include_files_in_item_blocks(list(item_block(MS))::in,
     foreign_include_file_infos::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -271,9 +290,14 @@
 
 %-----------------------------------------------------------------------------%
 
-module_and_imports_get_source_file_name(Module, Module ^ mai_source_file_name).
-module_and_imports_get_module_name(Module, Module ^ mai_module_name).
-module_and_imports_get_impl_deps(Module, Module ^ mai_impl_deps).
+module_and_imports_get_source_file_name(Module, X) :-
+    X = Module ^ mai_source_file_name.
+module_and_imports_get_module_name(Module, X) :-
+    X = Module ^ mai_module_name.
+module_and_imports_get_module_name_context(Module, X) :-
+    X = Module ^ mai_module_name_context.
+module_and_imports_get_impl_deps(Module, X) :-
+    X = Module ^ mai_impl_deps.
 
 module_and_imports_set_int_deps(IntDeps, !Module) :-
     !Module ^ mai_int_deps := IntDeps.
@@ -289,38 +313,54 @@ module_and_imports_add_specs(NewSpecs, !Module) :-
     Specs = NewSpecs ++ Specs0,
     !Module ^ mai_specs := Specs.
 
-module_and_imports_add_items(NewItems, !Module) :-
-    Items0 = !.Module ^ mai_items_cord,
-    Items = Items0 ++ NewItems,
-    !Module ^ mai_items_cord := Items.
-
 module_and_imports_add_interface_error(InterfaceErrors, !Module) :-
     Errors0 = !.Module ^ mai_errors,
     set.union(Errors0, InterfaceErrors, Errors),
     !Module ^ mai_errors := Errors.
 
-module_and_imports_get_results(Module, Items, Specs, Errors) :-
-    Items = cord.list(Module ^ mai_items_cord),
+module_and_imports_add_item_blocks(NewItemBlocks, !Module) :-
+    ItemBlocks0 = !.Module ^ mai_blocks_cord,
+    ItemBlocks = ItemBlocks0 ++ cord.from_list(NewItemBlocks),
+    !Module ^ mai_blocks_cord := ItemBlocks.
+
+module_and_imports_add_item_blocks_specs_errors(NewItemBlocks,
+        NewSpecs, InterfaceErrors, !Module) :-
+    ItemBlocks0 = !.Module ^ mai_blocks_cord,
+    Specs0 = !.Module ^ mai_specs,
+    Errors0 = !.Module ^ mai_errors,
+    ItemBlocks = ItemBlocks0 ++ cord.from_list(NewItemBlocks),
+    Specs = NewSpecs ++ Specs0,
+    set.union(Errors0, InterfaceErrors, Errors),
+    !Module ^ mai_blocks_cord := ItemBlocks,
+    !Module ^ mai_specs := Specs,
+    !Module ^ mai_errors := Errors.
+
+module_and_imports_get_results(Module, ItemBlocks, Specs, Errors) :-
+    ItemBlocks = cord.list(Module ^ mai_blocks_cord),
     Specs = Module ^ mai_specs,
     Errors = Module ^ mai_errors.
 
 %-----------------------------------------------------------------------------%
 
-init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
-        Specs, Errors, Globals, ModuleName - Items, ModuleImports) :-
+init_module_and_imports(Globals, FileName, SourceFileModuleName,
+        NestedModuleNames, Specs, Errors, RawCompilationUnit, ModuleImports) :-
+    RawCompilationUnit = compilation_unit(ModuleName, ModuleNameContext,
+        RawItemBlocks),
     ParentDeps = get_ancestors(ModuleName),
 
-    get_dependencies(Items, ImplImportDeps0, ImplUseDeps0),
-    get_implicit_dependencies(Items, Globals,
+    get_dependencies_in_item_blocks(RawItemBlocks,
+        ImplImportDeps0, ImplUseDeps0),
+    get_implicit_dependencies_in_item_blocks(Globals, RawItemBlocks,
         ImplicitImplImportDeps, ImplicitImplUseDeps),
     ImplImportDeps = ImplicitImplImportDeps ++ ImplImportDeps0,
     ImplUseDeps = ImplicitImplUseDeps ++ ImplUseDeps0,
     ImplementationDeps = ImplImportDeps ++ ImplUseDeps,
 
-    get_interface(ModuleName, no, Items, InterfaceItems),
-    get_dependencies(InterfaceItems,
+    get_interface(dont_include_impl_types, RawCompilationUnit,
+        InterfaceItemBlocks),
+    get_dependencies_in_item_blocks(InterfaceItemBlocks,
         InterfaceImportDeps0, InterfaceUseDeps0),
-    get_implicit_dependencies(InterfaceItems, Globals,
+    get_implicit_dependencies_in_item_blocks(Globals, InterfaceItemBlocks,
         ImplicitInterfaceImportDeps, ImplicitInterfaceUseDeps),
     InterfaceImportDeps = ImplicitInterfaceImportDeps ++ InterfaceImportDeps0,
     InterfaceUseDeps = ImplicitInterfaceUseDeps ++ InterfaceUseDeps0,
@@ -329,20 +369,22 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
     % We don't fill in the indirect dependencies yet.
     IndirectDeps = [],
 
-    get_children(Items, IncludeDeps),
-    get_children(InterfaceItems, InterfaceIncludeDeps),
+    get_included_modules_in_item_blocks(RawItemBlocks, IncludeDeps),
+    get_included_modules_in_item_blocks(InterfaceItemBlocks,
+        InterfaceIncludeDeps),
 
+    % XXX ITEM_LIST Document why we do this.
     ( ModuleName = SourceFileModuleName ->
         list.delete_all(NestedModuleNames, ModuleName, NestedDeps)
     ;
         NestedDeps = []
     ),
 
-    get_fact_table_dependencies(Items, FactTableDeps),
+    get_fact_table_dependencies_in_item_blocks(RawItemBlocks, FactTableDeps),
 
     % Figure out whether the items contain foreign code.
-    get_item_list_foreign_code(Globals, Items, LangSet,
-        ForeignImports0, ForeignIncludeFiles, ContainsForeignExport),
+    get_foreign_code_indicators_from_item_blocks(Globals, RawItemBlocks,
+        LangSet, ForeignImports0, ForeignIncludeFiles, ContainsForeignExport),
     ( set.is_empty(LangSet) ->
         ContainsForeignCode = contains_no_foreign_code
     ;
@@ -350,9 +392,9 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
     ),
 
     % If this module contains `:- pragma foreign_export' or
-    % `:- pragma foreign_type' declarations, importing modules
-    % may need to import its `.mh' file.
-    get_foreign_self_imports(Items, SelfImportLangs),
+    % `:- pragma foreign_type' declarations, importing modules may need
+    % to import its `.mh' file.
+    get_foreign_self_imports_from_item_blocks(RawItemBlocks, SelfImportLangs),
     ForeignSelfImports = list.map(
         (func(Lang) = foreign_import_module_info(Lang, ModuleName,
             term.context_init)),
@@ -360,52 +402,84 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
     ForeignImports = cord.from_list(ForeignSelfImports) ++ ForeignImports0,
 
     % Work out whether the items contain main/2.
-    (
-        % We use find_first_match, even though we are not interested in the
-        % match, because doing a nondet generate-and-test runs us out of nondet
-        % stack in the asm_fast.gc.debug.stseg grade.
-        ItemDeclaresMain = (pred(Item::in) is semidet :-
-            Item = item_pred_decl(ItemPredDecl),
-            ItemPredDecl = item_pred_decl_info(Name, pf_predicate, [_, _],
-                _, WithType, _, _, _, _, _, _, _, _, _),
-            unqualify_name(Name) = "main",
-
-            % XXX We should allow `main/2' to be declared using `with_type`,
-            % but equivalences haven't been expanded at this point.
-            % The `has_main' field is only used for some special case handling
-            % of the module containing main for the IL backend (we generate
-            % a `.exe' file rather than a `.dll' file). This would arguably
-            % be better done by generating a `.dll' file as normal, and a
-            % separate `.exe' file containing initialization code and a call
-            % to `main/2', as we do with the `_init.c' file in the C backend.
-            WithType = no
-        ),
-        list.find_first_match(ItemDeclaresMain, Items, _FirstItemDeclaringMain)
-    ->
-        HasMain = has_main
-    ;
-        HasMain = no_main
-    ),
-
+    look_for_main_pred_in_item_blocks(RawItemBlocks, no_main, HasMain),
+    % XXX ITEM_LIST ItemBlocks is NOT stored here, per the documentation above.
+    % Maybe it should be.
     ModuleImports = module_and_imports(FileName, SourceFileModuleName,
-        ModuleName, ParentDeps, InterfaceDeps,
+        ModuleName, ModuleNameContext, ParentDeps, InterfaceDeps,
         ImplementationDeps, IndirectDeps, IncludeDeps,
         InterfaceIncludeDeps, NestedDeps, FactTableDeps,
         ForeignImports, ForeignIncludeFiles,
         ContainsForeignCode, ContainsForeignExport,
         cord.empty, Specs, Errors, no, HasMain, dir.this_directory).
 
+:- pred look_for_main_pred_in_item_blocks(list(item_block(MS))::in,
+    has_main::in, has_main::out) is det.
+
+look_for_main_pred_in_item_blocks([], !HasMain).
+look_for_main_pred_in_item_blocks([ItemBlock | ItemBlocks], !HasMain) :-
+    % XXX ITEM_LIST Warn if Section isn't ms_interface or ams_interface.
+    ItemBlock = item_block(_Section, _Context, Items),
+    look_for_main_pred_in_items(Items, !HasMain),
+    look_for_main_pred_in_item_blocks(ItemBlocks, !HasMain).
+
+:- pred look_for_main_pred_in_items(list(item)::in,
+    has_main::in, has_main::out) is det.
+
+look_for_main_pred_in_items([], !HasMain).
+look_for_main_pred_in_items([Item | Items], !HasMain) :-
+    ( if
+        Item = item_pred_decl(ItemPredDecl),
+        ItemPredDecl = item_pred_decl_info(Name, pf_predicate, ArgTypes,
+            _, WithType, _, _, _, _, _, _, _, _, _),
+        unqualify_name(Name) = "main",
+        % XXX We should allow `main/2' to be declared using `with_type`,
+        % but equivalences haven't been expanded at this point.
+        % The `has_main' field is only used for some special case handling
+        % of the module containing main for the IL backend (we generate
+        % a `.exe' file rather than a `.dll' file). This would arguably
+        % be better done by generating a `.dll' file as normal, and a
+        % separate `.exe' file containing initialization code and a call
+        % to `main/2', as we do with the `_init.c' file in the C backend.
+        ArgTypes = [_, _],
+        WithType = no
+    then
+        % XXX ITEM_LIST Should we warn if !.HasMain = has_main?
+        % If not, then we should stop recursing right here.
+        !:HasMain = has_main
+    else
+        true
+    ),
+    look_for_main_pred_in_items(Items, !HasMain).
+
 %-----------------------------------------------------------------------------%
 
-get_dependencies(Items, ImportDeps, UseDeps) :-
-    get_dependencies_int_imp(Items, IntImportDeps, IntUseDeps,
-        ImpImportDeps, ImpUseDeps),
-    ImportDeps = IntImportDeps ++ ImpImportDeps,
-    UseDeps = IntUseDeps ++ ImpUseDeps.
+% XXX ITEM_LIST: consider reordering these predicates.
 
-get_dependencies_int_imp(Items, IntImportDeps, IntUseDeps,
+get_dependencies_in_item_blocks(ItemBlocks, ImportDeps, UseDeps) :-
+    get_dependencies_in_item_blocks_acc(ItemBlocks,
+        set.init, ImportDepsSet, set.init, UseDepsSet),
+    ImportDeps = set.to_sorted_list(ImportDepsSet),
+    UseDeps = set.to_sorted_list(UseDepsSet).
+
+:- pred get_dependencies_in_item_blocks_acc(list(item_block(MS))::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+get_dependencies_in_item_blocks_acc([], !ImportDeps, !UseDeps).
+get_dependencies_in_item_blocks_acc([ItemBlock | ItemBlocks],
+        !ImportDeps, !UseDeps) :-
+    ItemBlock = item_block(_Section, _Context, Items),
+    get_dependencies_in_items_acc(Items, !ImportDeps, !UseDeps),
+    get_dependencies_in_item_blocks_acc(ItemBlocks,
+        !ImportDeps, !UseDeps).
+
+%-----------------------------------------------------------------------------%
+
+get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
+        IntImportDeps, IntUseDeps,
         ImpImportDeps, ImpUseDeps) :-
-    get_dependencies_implementation(Items,
+    get_dependencies_in_int_imp_in_raw_item_blocks_acc(RawItemBlocks,
         set.init, IntImportDepsSet, set.init, IntUseDepsSet,
         set.init, ImpImportDepsSet, set.init, ImpUseDepsSet),
     IntImportDeps = set.to_sorted_list(IntImportDepsSet),
@@ -413,79 +487,101 @@ get_dependencies_int_imp(Items, IntImportDeps, IntUseDeps,
     IntUseDeps = set.to_sorted_list(IntUseDepsSet),
     ImpUseDeps = set.to_sorted_list(ImpUseDepsSet).
 
-:- pred get_dependencies_implementation(list(item)::in,
+:- pred get_dependencies_in_int_imp_in_raw_item_blocks_acc(
+    list(raw_item_block)::in,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-get_dependencies_implementation([],
+get_dependencies_in_int_imp_in_raw_item_blocks_acc([],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
-get_dependencies_implementation([Item | Items],
+get_dependencies_in_int_imp_in_raw_item_blocks_acc(
+        [RawItemBlock | RawItemBlocks],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
-    ( Item = item_module_defn(ItemModuleDefn) ->
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-        ( ModuleDefn = md_interface ->
-            get_dependencies_interface(Items,
-                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-        ;
-            ( ModuleDefn = md_import(Modules) ->
-                set.insert_list(Modules, !ImpImportDeps)
-            ; ModuleDefn = md_use(Modules) ->
-                set.insert_list(Modules, !ImpUseDeps)
-            ;
-                true
-            ),
-            get_dependencies_implementation(Items,
-                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-        )
+    RawItemBlock = item_block(Section, _Context, Items),
+    (
+        Section = ms_interface,
+        get_dependencies_in_items_acc(Items, !IntImportDeps, !IntUseDeps)
     ;
-        get_dependencies_implementation(Items,
-            !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-    ).
-
-:- pred get_dependencies_interface(list(item)::in,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-get_dependencies_interface([],
+        Section = ms_implementation,
+        get_dependencies_in_items_acc(Items, !ImpImportDeps, !ImpUseDeps)
+    ),
+    get_dependencies_in_int_imp_in_raw_item_blocks_acc(RawItemBlocks,
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
-get_dependencies_interface([Item | Items],
-        !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
-    ( Item = item_module_defn(ItemModuleDefn) ->
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-        ( ModuleDefn = md_implementation ->
-            get_dependencies_implementation(Items,
-                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-        ;
-            ( ModuleDefn = md_import(Modules) ->
-                set.insert_list(Modules, !IntImportDeps)
-            ; ModuleDefn = md_use(Modules) ->
-                set.insert_list(Modules, !IntUseDeps)
-            ;
-                true
-            ),
-            get_dependencies_interface(Items,
-                !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-        )
-    ;
-        get_dependencies_interface(Items,
-            !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
-    ).
 
 %-----------------------------------------------------------------------------%
 
-get_implicit_dependencies(Items, Globals, !:ImportDeps, !:UseDeps) :-
-    !:ImportDeps = [mercury_public_builtin_module],
-    !:UseDeps = [mercury_private_builtin_module],
-    ImplicitImportNeeds0 = implicit_import_needs(
-        dont_need_tabling, dont_need_tabling_statistics,
-        dont_need_stm, dont_need_exception,
-        dont_need_string_format, dont_need_stream_format, dont_need_io),
+get_dependencies_in_items(Items, ImportDeps, UseDeps) :-
+    get_dependencies_in_items_acc(Items,
+        set.init, ImportDepsSet, set.init, UseDepSet),
+    ImportDeps = set.to_sorted_list(ImportDepsSet),
+    UseDeps = set.to_sorted_list(UseDepSet).
+
+:- pred get_dependencies_in_items_acc(list(item)::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+get_dependencies_in_items_acc([], !ImportDeps, !UseDeps).
+get_dependencies_in_items_acc([Item | Items], !ImportDeps, !UseDeps) :-
+    (
+        Item = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
+        (
+            ModuleDefn = md_import(ImportedModuleName),
+            set.insert(ImportedModuleName, !ImportDeps)
+        ;
+            ModuleDefn = md_use(UsedModuleName),
+            set.insert(UsedModuleName, !UseDeps)
+        ;
+            ( ModuleDefn = md_include_module(_)
+            ; ModuleDefn = md_external(_, _)
+            ; ModuleDefn = md_version_numbers(_, _)
+            )
+        )
+    ;
+        ( Item = item_clause(_)
+        ; Item = item_type_defn(_)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_pragma(_)
+        ; Item = item_promise(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_instance(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ; Item = item_nothing(_)
+        )
+    ),
+    get_dependencies_in_items_acc(Items, !ImportDeps, !UseDeps).
+
+%-----------------------------------------------------------------------------%
+
+get_implicit_dependencies_in_items(Globals, Items, ImportDeps, UseDeps) :-
+    ImplicitImportNeeds0 = init_implicit_import_needs,
     gather_implicit_import_needs_in_items(Items,
         ImplicitImportNeeds0, ImplicitImportNeeds),
+    compute_implicit_import_needs(Globals, ImplicitImportNeeds,
+        ImportDeps, UseDeps).
+
+get_implicit_dependencies_in_item_blocks(Globals, ItemBlocks,
+        ImportDeps, UseDeps) :-
+    ImplicitImportNeeds0 = init_implicit_import_needs,
+    gather_implicit_import_needs_in_item_blocks(ItemBlocks,
+        ImplicitImportNeeds0, ImplicitImportNeeds),
+    compute_implicit_import_needs(Globals, ImplicitImportNeeds,
+        ImportDeps, UseDeps).
+
+:- pred compute_implicit_import_needs(globals::in, implicit_import_needs::in,
+    list(module_name)::out, list(module_name)::out) is det.
+
+compute_implicit_import_needs(Globals, ImplicitImportNeeds,
+        !:ImportDeps, !:UseDeps) :-
+    !:ImportDeps = [mercury_public_builtin_module],
+    !:UseDeps = [mercury_private_builtin_module],
     ImplicitImportNeeds = implicit_import_needs(
         ItemsNeedTabling, ItemsNeedTablingStatistics,
         ItemsNeedSTM, ItemsNeedException,
@@ -660,6 +756,26 @@ get_implicit_dependencies(Items, Globals, !:ImportDeps, !:UseDeps) :-
                 iin_io                  :: maybe_need_io
             ).
 
+:- func init_implicit_import_needs = implicit_import_needs.
+
+init_implicit_import_needs = ImplicitImportNeeds :-
+    ImplicitImportNeeds = implicit_import_needs(
+        dont_need_tabling, dont_need_tabling_statistics,
+        dont_need_stm, dont_need_exception,
+        dont_need_string_format, dont_need_stream_format, dont_need_io).
+
+:- pred gather_implicit_import_needs_in_item_blocks(list(item_block(MS))::in,
+    implicit_import_needs::in, implicit_import_needs::out) is det.
+
+gather_implicit_import_needs_in_item_blocks([], !ImplicitImportNeeds).
+gather_implicit_import_needs_in_item_blocks([ItemBlock | ItemBlocks],
+        !ImplicitImportNeeds) :-
+    ItemBlock = item_block(_Section, _Context, Items),
+    gather_implicit_import_needs_in_items(Items,
+        !ImplicitImportNeeds),
+    gather_implicit_import_needs_in_item_blocks(ItemBlocks,
+        !ImplicitImportNeeds).
+
 :- pred gather_implicit_import_needs_in_items(list(item)::in,
     implicit_import_needs::in, implicit_import_needs::out) is det.
 
@@ -674,8 +790,7 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
         ItemPragma = item_pragma_info(Pragma, _Origin, _Context, _SeqNum),
         (
             Pragma = pragma_tabled(TableInfo),
-            TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes)
-        ->
+            TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes),
             !ImplicitImportNeeds ^ iin_tabling := do_need_tabling,
             (
                 MaybeAttributes = no
@@ -691,7 +806,38 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
                 )
             )
         ;
-            true
+            ( Pragma = pragma_foreign_decl(_)
+            ; Pragma = pragma_foreign_code(_)
+            ; Pragma = pragma_foreign_proc(_)
+            ; Pragma = pragma_foreign_import_module(_)
+            ; Pragma = pragma_foreign_proc_export(_)
+            ; Pragma = pragma_foreign_export_enum(_)
+            ; Pragma = pragma_foreign_enum(_)
+            ; Pragma = pragma_type_spec(_)
+            ; Pragma = pragma_inline(_)
+            ; Pragma = pragma_no_inline(_)
+            ; Pragma = pragma_unused_args(_)
+            ; Pragma = pragma_exceptions(_)
+            ; Pragma = pragma_trailing_info(_)
+            ; Pragma = pragma_mm_tabling_info(_)
+            ; Pragma = pragma_obsolete(_)
+            ; Pragma = pragma_no_detism_warning(_)
+            ; Pragma = pragma_fact_table(_)
+            ; Pragma = pragma_reserve_tag(_)
+            ; Pragma = pragma_oisu(_)
+            ; Pragma = pragma_promise_eqv_clauses(_)
+            ; Pragma = pragma_promise_pure(_)
+            ; Pragma = pragma_promise_semipure(_)
+            ; Pragma = pragma_termination_info(_)
+            ; Pragma = pragma_termination2_info(_)
+            ; Pragma = pragma_terminates(_)
+            ; Pragma = pragma_does_not_terminate(_)
+            ; Pragma = pragma_check_termination(_)
+            ; Pragma = pragma_mode_check_clauses(_)
+            ; Pragma = pragma_structure_sharing(_)
+            ; Pragma = pragma_structure_reuse(_)
+            ; Pragma = pragma_require_feature_set(_)
+            )
         )
     ;
         Item = item_promise(ItemPromise),
@@ -737,9 +883,7 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
                 _MaybeUnifyComparePredNames, _ForeignAssertions)
         )
     ;
-        ( Item = item_module_start(_)
-        ; Item = item_module_end(_)
-        ; Item = item_module_defn(_)
+        ( Item = item_module_defn(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_pred_decl(_)
@@ -1017,36 +1161,60 @@ gather_implicit_import_needs_in_terms([Term | Terms], !ImplicitImportNeeds) :-
 
 %-----------------------------------------------------------------------------%
 
-get_fact_table_dependencies(Items, Deps) :-
-    get_fact_table_dependencies_2(Items, [], Deps).
+get_fact_table_dependencies_in_item_blocks(ItemBlocks, FactTableFileNames) :-
+    gather_fact_table_dependencies_in_blocks(ItemBlocks,
+        [], RevFactTableFileNames),
+    list.reverse(RevFactTableFileNames, FactTableFileNames).
 
-:- pred get_fact_table_dependencies_2(list(item)::in, list(string)::in,
-    list(string)::out) is det.
+:- pred gather_fact_table_dependencies_in_blocks(list(item_block(MS))::in,
+    list(string)::in, list(string)::out) is det.
 
-get_fact_table_dependencies_2([], !Deps).
-get_fact_table_dependencies_2([Item | Items], !Deps) :-
+gather_fact_table_dependencies_in_blocks([], !RevFactTableFileNames).
+gather_fact_table_dependencies_in_blocks([ItemBlock | ItemBlocks],
+        !RevFactTableFileNames) :-
+    ItemBlock = item_block(_, _, Items),
+    gather_fact_table_dependencies_in_items(Items, !RevFactTableFileNames),
+    gather_fact_table_dependencies_in_blocks(ItemBlocks,
+        !RevFactTableFileNames).
+
+:- pred gather_fact_table_dependencies_in_items(list(item)::in,
+    list(string)::in, list(string)::out) is det.
+
+gather_fact_table_dependencies_in_items([], !RevFactTableFileNames).
+gather_fact_table_dependencies_in_items([Item | Items],
+        !RevFactTableFileNames) :-
     (
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         Pragma = pragma_fact_table(FTInfo),
         FTInfo = pragma_info_fact_table(_PredNameArity, FileName)
     ->
-        !:Deps = [FileName | !.Deps]
+        !:RevFactTableFileNames = [FileName | !.RevFactTableFileNames]
     ;
         true
     ),
-    get_fact_table_dependencies_2(Items, !Deps).
+    gather_fact_table_dependencies_in_items(Items, !RevFactTableFileNames).
 
 %-----------------------------------------------------------------------------%
 
-get_foreign_include_files(Items, IncludeFiles) :-
-    list.foldl(get_foreign_include_file, Items, cord.init, IncludeFiles).
+get_foreign_include_files_in_item_blocks(ItemBlocks, IncludeFiles) :-
+    list.foldl(gather_foreign_include_files_in_item_blocks_acc, ItemBlocks,
+        cord.init, IncludeFiles).
 
-:- pred get_foreign_include_file(item::in,
-    foreign_include_file_infos::in, foreign_include_file_infos::out)
+:- pred gather_foreign_include_files_in_item_blocks_acc(item_block(_)::in,
+    cord(foreign_include_file_info)::in, cord(foreign_include_file_info)::out)
     is det.
 
-get_foreign_include_file(Item, !IncludeFiles) :-
+gather_foreign_include_files_in_item_blocks_acc(ItemBlock, !IncludeFiles) :-
+    ItemBlock = item_block(_, _, Items),
+    gather_foreign_include_files_in_items_acc(Items, !IncludeFiles).
+
+:- pred gather_foreign_include_files_in_items_acc(list(item)::in,
+    cord(foreign_include_file_info)::in, cord(foreign_include_file_info)::out)
+    is det.
+
+gather_foreign_include_files_in_items_acc([], !IncludeFiles).
+gather_foreign_include_files_in_items_acc([Item | Items], !IncludeFiles) :-
     (
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
@@ -1067,7 +1235,8 @@ get_foreign_include_file(Item, !IncludeFiles) :-
         )
     ;
         true
-    ).
+    ),
+    gather_foreign_include_files_in_items_acc(Items, !IncludeFiles).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.module_imports.

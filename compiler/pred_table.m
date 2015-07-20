@@ -25,28 +25,12 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.status.
 
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module set_tree234.
-
-:- implementation.
-
-:- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_type.
-
-:- import_module bool.
-:- import_module int.
-:- import_module multi_map.
-:- import_module pair.
-:- import_module require.
-:- import_module string.
-
-%-----------------------------------------------------------------------------%
-
-:- interface.
 
 :- type predicate_table.
 
@@ -310,6 +294,17 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
+
+:- import_module bool.
+:- import_module int.
+:- import_module multi_map.
+:- import_module pair.
+:- import_module require.
+:- import_module string.
 
 :- type predicate_table
     --->    predicate_table(

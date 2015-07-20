@@ -72,6 +72,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.status.
 
 :- import_module bool.
 :- import_module map.

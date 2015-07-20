@@ -1105,6 +1105,8 @@ default_export_enum_attributes =
     % of this class, the binding of the range variables can be uniquely
     % determined from the binding of the domain variables.
     %
+    % XXX Both lists should be one_or_more(tvar).
+    %
 :- type prog_fundep
     --->    fundep(
                 domain          :: list(tvar),
@@ -2703,26 +2705,6 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     --->    high_level_backend
     ;       low_level_backend.
 
-:- type section
-    --->    section_implementation
-    ;       section_interface.
-
-    % An import_locn is used to describe the place where an item was
-    % imported from.
-:- type import_locn
-    --->    import_locn_implementation
-            % The item is from a module imported in the implementation.
-
-    ;       import_locn_interface
-            % The item is from a module imported in the interface.
-
-    ;       import_locn_ancestor
-            % The item is from a module imported by an ancestor.
-
-    ;       import_locn_ancestor_private_interface_proper.
-            % The item is from the _actual_ private interface of an ancestor
-            % module, i.e. the implementation section of a `.int0' file.
-
 :- type sym_name_specifier
     --->    name(sym_name)
     ;       name_arity(sym_name, arity).
@@ -2733,15 +2715,11 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 :- type simple_call_id
     --->    simple_call_id(pred_or_func, sym_name, arity).
 
+% XXX ITEM_LIST We should delete the module_specifier type, and use
+% just plain module_name instead.
 :- type module_specifier == sym_name.
-:- type arity == int.
 
-    % Describes whether an item can be used without an explicit module
-    % qualifier.
-    %
-:- type need_qualifier
-    --->    must_be_qualified
-    ;       may_be_unqualified.
+:- type arity == int.
 
     % Does a module contain the predicate main/2?
     %

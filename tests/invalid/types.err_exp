@@ -1,8 +1,12 @@
-types.m:001: Warning: interface for module `types' does not export anything.
-types.m:001:   To be useful, a module should export something. A file should
-types.m:001:   contain at least one declaration other than `:- import_module'
-types.m:001:   in its interface section(s). This would normally be a `:- pred',
-types.m:001:   `:- func', `:- type', `:- inst' or `:- mode' declaration.
+types.m:005: Warning: interface for module `types' does not export anything.
+types.m:005:   To be useful, a module should export something. A file should
+types.m:005:   contain at least one declaration other than `:- import_module'
+types.m:005:   in its interface section(s). This would normally be a `:- pred',
+types.m:005:   `:- func', `:- type', `:- inst' or `:- mode' declaration.
+types.m:007: Error: module `types' should start with either an `:- interface'
+types.m:007:   or an `:- implementation' declaration.
+types.m:007:   The following assumes that the missing declaration is an
+types.m:007:   `:- implementation' declaration.
 types.m:009: Error: constructor `types.a/0' for type `types.t/0' multiply
 types.m:009:   defined.
 types.m:011: Error: constructor `types.f/1' for type `types.t/0' multiply

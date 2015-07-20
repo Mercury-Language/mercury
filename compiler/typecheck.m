@@ -134,6 +134,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module int.

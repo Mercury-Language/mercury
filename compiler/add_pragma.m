@@ -245,10 +245,6 @@ add_pass_2_pragma(ItemPragma, Status, !ModuleInfo, !Specs) :-
         add_pragma_foreign_enum(FEInfo, ImportStatus, Context,
             !ModuleInfo, !Specs)
     ;
-        % Ignore `pragma source_file' declarations in pass 2;
-        % they have already been handled while reading in the items.
-        Pragma = pragma_source_file(_)
-    ;
         % Ignore these pragmas in pass 2; we will handle them in pass 3,
         % when we process clauses.
         ( Pragma = pragma_foreign_proc(_)
@@ -806,7 +802,6 @@ add_pass_3_pragma(ItemPragma, Status, !ModuleInfo, !QualInfo, !Specs) :-
         ; Pragma = pragma_mm_tabling_info(_)
         ; Pragma = pragma_obsolete(_)
         ; Pragma = pragma_no_detism_warning(_)
-        ; Pragma = pragma_source_file(_)
         ; Pragma = pragma_promise_eqv_clauses(_)
         ; Pragma = pragma_promise_pure(_)
         ; Pragma = pragma_promise_semipure(_)

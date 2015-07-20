@@ -1,4 +1,8 @@
-occurs.m:001: Warning: interface for module `occurs' does not export anything.
+occurs.m:005: Warning: interface for module `occurs' does not export anything.
+occurs.m:007: Error: module `occurs' should start with either an `:- interface'
+occurs.m:007:   or an `:- implementation' declaration.
+occurs.m:007:   The following assumes that the missing declaration is an
+occurs.m:007:   `:- implementation' declaration.
 occurs.m:014: In clause for `p':
 occurs.m:014:   mode error in unification of `X' and `occurs.f(X)'.
 occurs.m:014:   Variable `X' has instantiatedness `free',

@@ -56,6 +56,7 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.status.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- import_module transform_hlds.ctgc.util.

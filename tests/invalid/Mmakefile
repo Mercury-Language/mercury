@@ -111,6 +111,7 @@ SINGLEMODULE= \
 	foreign_type_visibility \
 	fp_dup_bug \
 	freefree \
+	func_class \
 	func_errors \
 	funcs_as_preds \
 	fundeps_coverage \
@@ -443,7 +444,7 @@ duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m
 
 # For these test cases, the bug is caught when generating dependencies,
 # so it is easiest just to do that step.
-nested_impl_in_int.err duplicate_module_test.err: %.err: %.m
+nested_impl_in_int.err duplicate_module_test.err func_class.err: %.err: %.m
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 			--generate-dependencies $* > $*.err 2>&1; \
 	then false; \

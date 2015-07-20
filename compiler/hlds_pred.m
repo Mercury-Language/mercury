@@ -38,6 +38,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.status.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.term_util.
 
@@ -209,98 +210,6 @@
 
 :- type arg_loc
     --->    reg(reg_type, int).
-
-    % The type `import_status' describes whether an entity (a predicate,
-    % type, inst, or mode) is local to the current module, exported from
-    % the current module, or imported from some other module.
-    % Only predicates can have status pseudo_exported or pseudo_imported.
-    % Only types can have status abstract_exported or abstract_imported.
-    %
-:- type import_status
-    --->    status_external(import_status)
-                % Declared `:- external'. This means that the implementation
-                % for this procedure will be provided by some external source,
-                % rather than via Mercury clauses (including `pragma
-                % foreign_code' clauses). It can be through the use of another
-                % language, or it could be through some other method we haven't
-                % thought of yet.
-                %
-                % From the point of view of code generation, an external
-                % procedure usually acts like an imported procedure, as its
-                % definition is not visible. But in some cases, e.g. writing
-                % out declarations for procedures defined in a module, it may
-                % need to be treated like an exported procedure (depending on
-                % its inner import_status).
-                %
-    ;       status_imported(import_locn)
-                % Defined in the interface of some other module.
-    ;       status_opt_imported
-                % Defined in the optimization interface of another module.
-    ;       status_abstract_imported
-                % Describes a type with only an abstract declaration imported,
-                % maybe with the body of the type imported from a .opt file.
-    ;       status_pseudo_imported
-                % This is used for entities that are defined in the interface
-                % of some other module but for which we may generate some code
-                % in this module - in particular, this is used for unification
-                % predicates (see comments in unify_proc.m).
-    ;       status_exported
-                % Defined in the interface of this module.
-    ;       status_opt_exported
-                % A local item for which the import-status has been changed
-                % due to its presence in the .opt files
-                % (intermod.adjust_pred_import_status).
-    ;       status_abstract_exported
-                % Describes a type with only an abstract declaration exported
-                % to non-sub-modules. The definition of the type is exported to
-                % sub-modules.
-    ;       status_pseudo_exported
-                % The converse of pseudo_imported; this means that only the
-                % (in, in) mode of a unification is exported.
-    ;       status_exported_to_submodules
-                % Defined in the implementation of this module, and thus in
-                % a sense local, but the module contains sub-modules, so the
-                % entity needs to be exported to those sub-modules.
-    ;       status_local.
-                % Defined in the implementation of this module, and the module
-                % does not contain any sub-modules.
-
-    % Returns yes if the status indicates that the item was in any way exported
-    % -- that is, if it could be used by any other module, or by sub-modules
-    % of this module.
-    %
-    % NOTE: this returns `no' for :- external procedures.
-    %
-    % See also `procedure_is_exported'.
-    %
-:- func status_is_exported(import_status) = bool.
-
-    % Returns yes if the status indicates that the item was exported
-    % to importing modules (not just to sub-modules).
-    %
-    % NOTE: this returns `no' for :- external procedures.
-    %
-:- func status_is_exported_to_non_submodules(import_status) = bool.
-
-    % Returns yes if the status indicates that the item was in any way imported
-    % -- that is, if it was defined in some other module, or in a sub-module
-    % of this module. This is the opposite of status_defined_in_this_module.
-    %
-    % NOTE: this returns `yes' for :- external procedures.
-    %
-:- func status_is_imported(import_status) = bool.
-
-    % Returns yes if the status indicates that the item was defined in this
-    % module. This is the opposite of status_is_imported.
-    %
-    % NOTE: this returns `no' for :- external procedures.
-    %
-:- func status_defined_in_this_module(import_status) = bool.
-
-    % Returns yes if the import_status indicates the item came from
-    % the implementation section.
-    %
-:- func status_defined_in_impl_section(import_status) = bool.
 
     % Are calls from a predicate with the given import_status always fully
     % qualified. For calls occurring in `.opt' files this will return
@@ -989,64 +898,6 @@ next_mode_id(Procs, ModeId) :-
     map.to_assoc_list(Procs, List),
     list.length(List, ModeInt),
     proc_id_to_int(ModeId, ModeInt).
-
-status_is_exported(status_imported(_)) =             no.
-status_is_exported(status_external(_)) =             no.
-status_is_exported(status_abstract_imported) =       no.
-status_is_exported(status_pseudo_imported) =         no.
-status_is_exported(status_opt_imported) =            no.
-status_is_exported(status_exported) =                yes.
-status_is_exported(status_opt_exported) =            yes.
-status_is_exported(status_abstract_exported) =       yes.
-status_is_exported(status_pseudo_exported) =         yes.
-status_is_exported(status_exported_to_submodules) =  yes.
-status_is_exported(status_local) =                   no.
-
-status_is_exported_to_non_submodules(Status) =
-    (
-        status_is_exported(Status) = yes,
-        Status \= status_exported_to_submodules
-    ->
-        yes
-    ;
-        no
-    ).
-
-status_is_imported(Status) = bool.not(status_defined_in_this_module(Status)).
-
-status_defined_in_this_module(status_imported(_)) =             no.
-status_defined_in_this_module(status_external(_)) =             no.
-status_defined_in_this_module(status_abstract_imported) =       no.
-status_defined_in_this_module(status_pseudo_imported) =         no.
-status_defined_in_this_module(status_opt_imported) =            no.
-status_defined_in_this_module(status_exported) =                yes.
-status_defined_in_this_module(status_opt_exported) =            yes.
-status_defined_in_this_module(status_abstract_exported) =       yes.
-status_defined_in_this_module(status_pseudo_exported) =         yes.
-status_defined_in_this_module(status_exported_to_submodules) =  yes.
-status_defined_in_this_module(status_local) =                   yes.
-
-status_defined_in_impl_section(status_abstract_exported) =      yes.
-status_defined_in_impl_section(status_exported_to_submodules) = yes.
-status_defined_in_impl_section(status_local) =                  yes.
-status_defined_in_impl_section(status_opt_imported) =           no.
-status_defined_in_impl_section(status_abstract_imported) =      no.
-status_defined_in_impl_section(status_pseudo_imported) =        no.
-status_defined_in_impl_section(status_exported) =               no.
-status_defined_in_impl_section(status_opt_exported) =           yes.
-status_defined_in_impl_section(status_pseudo_exported) =        no.
-status_defined_in_impl_section(status_external(Status)) =
-    status_defined_in_impl_section(Status).
-status_defined_in_impl_section(status_imported(ImportLocn)) =
-    import_locn_defined_in_impl_section(ImportLocn).
-
-:- func import_locn_defined_in_impl_section(import_locn) = bool.
-
-import_locn_defined_in_impl_section(import_locn_implementation) = yes.
-import_locn_defined_in_impl_section(import_locn_interface) = yes.
-import_locn_defined_in_impl_section(import_locn_ancestor) = yes.
-import_locn_defined_in_impl_section(
-    import_locn_ancestor_private_interface_proper) = yes.
 
 calls_are_fully_qualified(Markers) =
     ( check_marker(Markers, marker_calls_are_fully_qualified) ->

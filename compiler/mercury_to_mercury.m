@@ -81,14 +81,51 @@
 
 :- type merc_out_info.
 
+:- func init_debug_merc_out_info = merc_out_info.
 :- func init_merc_out_info(globals, maybe_qualified_item_names, output_lang)
     = merc_out_info.
 :- func merc_out_info_disable_line_numbers(merc_out_info) = merc_out_info.
 
-    % Convert_to_mercury(ModuleName, OutputFileName, Items).
+%-----------------------------------------------------------------------------%
+
+    % convert_to_mercury_*(Globals, OutputFileName, ParseTree, !IO).
     %
-:- pred convert_to_mercury(globals::in, module_name::in, string::in,
-    list(item)::in, io::di, io::uo) is det.
+:- pred convert_to_mercury_src(globals::in, string::in, parse_tree_src::in,
+    io::di, io::uo) is det.
+:- pred convert_to_mercury_int(globals::in, string::in, parse_tree_int::in,
+    io::di, io::uo) is det.
+:- pred convert_to_mercury_opt(globals::in, string::in, parse_tree_opt::in,
+    io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_output_parse_tree_src(merc_out_info::in,
+    parse_tree_src::in, io::di, io::uo) is det.
+
+:- pred mercury_output_parse_tree_int(merc_out_info::in,
+    parse_tree_int::in, io::di, io::uo) is det.
+
+:- pred mercury_output_parse_tree_opt(merc_out_info::in,
+    parse_tree_opt::in, io::di, io::uo) is det.
+
+:- pred mercury_output_raw_compilation_unit(merc_out_info::in,
+    raw_compilation_unit::in, io::di, io::uo) is det.
+
+:- pred mercury_output_aug_compilation_unit(merc_out_info::in,
+    aug_compilation_unit::in, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_output_raw_item_blocks(merc_out_info::in,
+    list(raw_item_block)::in, io::di, io::uo) is det.
+:- pred mercury_output_raw_item_block(merc_out_info::in,
+    raw_item_block::in, io::di, io::uo) is det.
+:- pred mercury_output_aug_item_blocks(merc_out_info::in,
+    list(aug_item_block)::in, io::di, io::uo) is det.
+:- pred mercury_output_aug_item_block(merc_out_info::in,
+    aug_item_block::in, io::di, io::uo) is det.
+:- pred mercury_output_items(merc_out_info::in, list(item)::in,
+    io::di, io::uo) is det.
 
     % Output the specified item, followed by ".\n".
     %
@@ -452,11 +489,13 @@
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.status.
 :- import_module recompilation.
 :- import_module recompilation.version.
 
 :- import_module assoc_list.
 :- import_module int.
+:- import_module cord.
 :- import_module lexer.
 :- import_module map.
 :- import_module pair.
@@ -469,7 +508,26 @@
 
 %-----------------------------------------------------------------------------%
 
-convert_to_mercury(Globals, ModuleName, OutputFileName, Items, !IO) :-
+convert_to_mercury_src(Globals, OutputFileName, ParseTreeSrc, !IO) :-
+    convert_to_mercury(Globals, OutputFileName, mercury_output_parse_tree_src,
+        ParseTreeSrc, !IO).
+
+convert_to_mercury_int(Globals, OutputFileName, ParseTreeInt, !IO) :-
+    convert_to_mercury(Globals, OutputFileName, mercury_output_parse_tree_int,
+        ParseTreeInt, !IO).
+
+convert_to_mercury_opt(Globals, OutputFileName, ParseTreeOpt, !IO) :-
+    convert_to_mercury(Globals, OutputFileName, mercury_output_parse_tree_opt,
+        ParseTreeOpt, !IO).
+
+:- type output_parse_tree(PT) == pred(merc_out_info, PT, io, io).
+:- inst output_parse_tree == (pred(in, in, di, uo) is det).
+
+:- pred convert_to_mercury(globals::in, string::in,
+    output_parse_tree(PT)::in(output_parse_tree), PT::in,
+    io::di, io::uo) is det.
+
+convert_to_mercury(Globals, OutputFileName, OutputParseTree, ParseTree, !IO) :-
     io.open_output(OutputFileName, Res, !IO),
     (
         Res = ok(FileStream),
@@ -483,17 +541,13 @@ convert_to_mercury(Globals, ModuleName, OutputFileName, Items, !IO) :-
         ;
             Verbose = no
         ),
-
         io.set_output_stream(FileStream, OutputStream, !IO),
-        io.write_string(":- module ", !IO),
-        mercury_output_bracketed_sym_name(ModuleName, !IO),
-        io.write_string(".\n", !IO),
 
         % Module qualifiers on items are redundant after the
         % declaration above.
         Info = init_merc_out_info(Globals, unqualified_item_names,
             output_mercury),
-        mercury_output_item_list(Info, Items, !IO),
+        OutputParseTree(Info, ParseTree, !IO),
         io.set_output_stream(OutputStream, _, !IO),
         io.close_output(FileStream, !IO),
         (
@@ -511,32 +565,179 @@ convert_to_mercury(Globals, ModuleName, OutputFileName, Items, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Output the declarations one by one.
-    %
-:- pred mercury_output_item_list(merc_out_info::in, list(item)::in,
-    io::di, io::uo) is det.
+mercury_output_parse_tree_src(Info, ParseTree, !IO) :-
+    ParseTree = parse_tree_src(ModuleName, _Context, ModuleComponentsCord),
+    io.write_string(":- module ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, !IO),
+    io.write_string(".\n", !IO),
+    ModuleComponents = cord.list(ModuleComponentsCord),
+    mercury_output_module_components(Info, no, ModuleComponents, !IO),
+    io.write_string(":- end_module ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, !IO),
+    io.write_string(".\n", !IO).
 
-mercury_output_item_list(_, [], !IO).
-mercury_output_item_list(Info, [Item | Items], !IO) :-
-    mercury_output_item(Info, Item, !IO),
-    mercury_output_item_list(Info, Items, !IO).
+mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
+    ParseTree = parse_tree_int(ModuleName, _IntFileKind, ModuleContext,
+        IntItems, ImplItems),
+    io.write_string(":- module ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, !IO),
+    io.write_string(".\n", !IO),
+    (
+        IntItems = []
+    ;
+        IntItems = [_ | _],
+        IntItemBlock = item_block(ms_interface, ModuleContext, IntItems),
+        mercury_output_raw_item_block(Info, IntItemBlock, !IO)
+    ),
+    (
+        ImplItems = []
+    ;
+        ImplItems = [_ | _],
+        ImplItemBlock =
+            item_block(ms_implementation, ModuleContext, ImplItems),
+        mercury_output_raw_item_block(Info, ImplItemBlock, !IO)
+    ).
+
+mercury_output_parse_tree_opt(Info, ParseTree, !IO) :-
+    ParseTree = parse_tree_opt(ModuleName, _OptFileKind, _Context, Items),
+    io.write_string(":- module ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, !IO),
+    io.write_string(".\n", !IO),
+    mercury_output_items(Info, Items, !IO).
+
+mercury_output_raw_compilation_unit(Info, CompUnit, !IO) :-
+    CompUnit = compilation_unit(ModuleName, _Context, ItemBlocks),
+    io.write_string(":- module ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, !IO),
+    io.write_string(".\n", !IO),
+    mercury_output_raw_item_blocks(Info, ItemBlocks, !IO).
+
+mercury_output_aug_compilation_unit(Info, AugCompUnit, !IO) :-
+    AugCompUnit = compilation_unit(ModuleName, _Context, AugItemBlocks),
+    io.write_string(":- module ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, !IO),
+    io.write_string(".\n", !IO),
+    mercury_output_aug_item_blocks(Info, AugItemBlocks, !IO).
 
 %-----------------------------------------------------------------------------%
 
+:- pred mercury_output_module_components(merc_out_info::in,
+    maybe(module_section)::in, list(module_component)::in,
+    io::di, io::uo) is det.
+
+mercury_output_module_components(_, _, [], !IO).
+mercury_output_module_components(Info, MaybePrevSectionKind,
+        [Component | Components], !IO) :-
+    (
+        Component = mc_section(SectionKind, _Context, ItemsCord),
+        mercury_output_section_marker(SectionKind, !IO),
+        Items = cord.list(ItemsCord),
+        mercury_output_items(Info, Items, !IO),
+        MaybeCurSectionKind = yes(SectionKind)
+    ;
+        Component = mc_nested_submodule(SectionKind, _SectionContext,
+            SubParseTree),
+        Lang = Info ^ moi_output_lang,
+        (
+            Lang = output_mercury,
+            (
+                MaybePrevSectionKind = no,
+                mercury_output_section_marker(SectionKind, !IO)
+            ;
+                MaybePrevSectionKind = yes(PrevSectionKind),
+                ( if PrevSectionKind = SectionKind then
+                    true
+                else
+                    mercury_output_section_marker(SectionKind, !IO)
+                )
+            )
+        ;
+            Lang = output_debug,
+            (
+                SectionKind = ms_interface,
+                io.write_string("% nested submodule in interface\n", !IO)
+            ;
+                SectionKind = ms_implementation,
+                io.write_string("% nested submodule in implementation\n", !IO)
+            )
+        ),
+        mercury_output_parse_tree_src(Info, SubParseTree, !IO),
+        MaybeCurSectionKind = MaybePrevSectionKind
+    ),
+    mercury_output_module_components(Info, MaybeCurSectionKind,
+        Components, !IO).
+
+%-----------------------------------------------------------------------------%
+
+mercury_output_raw_item_blocks(_, [], !IO).
+mercury_output_raw_item_blocks(Info, [RawItemBlock | RawItemBlocks], !IO) :-
+    mercury_output_raw_item_block(Info, RawItemBlock, !IO),
+    mercury_output_raw_item_blocks(Info, RawItemBlocks, !IO).
+
+mercury_output_raw_item_block(Info, RawItemBlock, !IO) :-
+    RawItemBlock = item_block(SectionKind, _Context, Items),
+    mercury_output_section_marker(SectionKind, !IO),
+    mercury_output_items(Info, Items, !IO).
+
+mercury_output_aug_item_blocks(_, [], !IO).
+mercury_output_aug_item_blocks(Info, [AugItemBlock | AugItemBlocks], !IO) :-
+    mercury_output_aug_item_block(Info, AugItemBlock, !IO),
+    mercury_output_aug_item_blocks(Info, AugItemBlocks, !IO).
+
+mercury_output_aug_item_block(Info, AugItemBlock, !IO) :-
+    AugItemBlock = item_block(AugSectionKind, _Context, Items),
+    (
+        AugSectionKind = ams_interface,
+        io.write_string(":- interface.\n", !IO)
+    ;
+        AugSectionKind = ams_implementation,
+        io.write_string(":- implementation.\n", !IO)
+    ;
+        AugSectionKind = ams_impl_but_exported_to_submodules,
+        io.write_string(":- ams_impl_but_exported_to_submodules.\n", !IO)
+    ;
+        AugSectionKind = ams_abstract_imported,
+        io.write_string(":- ams_abstract_imported.\n", !IO)
+    ;
+        AugSectionKind = ams_imported(ImportLocn),
+        io.write_string(":- ams_imported(", !IO),
+        io.write(ImportLocn, !IO),
+        io.write_string(").\n", !IO)
+    ;
+        AugSectionKind = ams_used(ImportLocn),
+        io.write_string(":- ams_used(", !IO),
+        io.write(ImportLocn, !IO),
+        io.write_string(").\n", !IO)
+    ;
+        AugSectionKind = ams_opt_imported(ModuleName),
+        io.write_string(":- ams_opt_imported(", !IO),
+        io.write_string(sym_name_to_string(ModuleName), !IO),
+        io.write_string(").\n", !IO)
+    ;
+        AugSectionKind = ams_transitively_imported,
+        io.write_string(":- ams_transitively_imported.\n", !IO)
+    ),
+    list.foldl(mercury_output_item(Info), Items, !IO).
+
+:- pred mercury_output_section_marker(module_section::in, io::di, io::uo)
+    is det.
+
+mercury_output_section_marker(SectionKind, !IO) :-
+    (
+        SectionKind = ms_interface,
+        io.write_string(":- interface.\n", !IO)
+    ;
+        SectionKind = ms_implementation,
+        io.write_string(":- implementation.\n", !IO)
+    ).
+
+mercury_output_items(_, [], !IO).
+mercury_output_items(Info, [Item | Items], !IO) :-
+    mercury_output_item(Info, Item, !IO),
+    mercury_output_items(Info, Items, !IO).
+
 mercury_output_item(Info, Item, !IO) :-
     (
-        Item = item_module_start(ItemModuleStart),
-        ItemModuleStart = item_module_start_info(ModuleName, _, _),
-        io.write_string(":- module ", !IO),
-        mercury_output_bracketed_sym_name(ModuleName, !IO),
-        io.write_string(".\n", !IO)
-    ;
-        Item = item_module_end(ItemModuleEnd),
-        ItemModuleEnd = item_module_end_info(ModuleName, _, _),
-        io.write_string(":- end_module ", !IO),
-        mercury_output_bracketed_sym_name(ModuleName, !IO),
-        io.write_string(".\n", !IO)
-    ;
         Item = item_module_defn(ItemModuleDefn),
         mercury_output_item_module_defn(Info, ItemModuleDefn, !IO)
     ;
@@ -707,9 +908,6 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
     ItemPragma = item_pragma_info(Pragma, _, Context, _SeqNum),
     maybe_output_line_number(Info, Context, !IO),
     (
-        Pragma = pragma_source_file(SourceFileInfo),
-        mercury_output_pragma_source_file(SourceFileInfo, !IO)
-    ;
         Pragma = pragma_foreign_decl(FDInfo),
         mercury_output_pragma_foreign_decl(FDInfo, !IO)
     ;
@@ -1113,25 +1311,19 @@ output_instance_method_clause(Name1, ItemClause, !IO) :-
 
 mercury_output_module_defn(ModuleDefn, _Context, !IO) :-
     (
-        ModuleDefn = md_import(ImportedModules),
+        ModuleDefn = md_import(ModuleName),
         io.write_string(":- import_module ", !IO),
-        mercury_write_module_spec_list(ImportedModules, !IO),
+        mercury_output_bracketed_sym_name(ModuleName, !IO),
         io.write_string(".\n", !IO)
     ;
-        ModuleDefn = md_use(UsedModules),
+        ModuleDefn = md_use(ModuleName),
         io.write_string(":- use_module ", !IO),
-        mercury_write_module_spec_list(UsedModules, !IO),
+        mercury_output_bracketed_sym_name(ModuleName, !IO),
         io.write_string(".\n", !IO)
     ;
-        ModuleDefn = md_interface,
-        io.write_string(":- interface.\n", !IO)
-    ;
-        ModuleDefn = md_implementation,
-        io.write_string(":- implementation.\n", !IO)
-    ;
-        ModuleDefn = md_include_module(IncludedModules),
+        ModuleDefn = md_include_module(ModuleName),
         io.write_string(":- include_module ", !IO),
-        mercury_write_module_spec_list(IncludedModules, !IO),
+        mercury_output_bracketed_sym_name(ModuleName, !IO),
         io.write_string(".\n", !IO)
     ;
         ModuleDefn = md_version_numbers(ModuleName, VersionNumbers),
@@ -1143,16 +1335,8 @@ mercury_output_module_defn(ModuleDefn, _Context, !IO) :-
         recompilation.version.write_version_numbers(VersionNumbers, !IO),
         io.write_string(").\n", !IO)
     ;
-        ( ModuleDefn = md_abstract_imported
-        ; ModuleDefn = md_export(_)
-        ; ModuleDefn = md_external(_, _)
-        ; ModuleDefn = md_implementation_but_exported_to_submodules
-        ; ModuleDefn = md_imported(_)
-        ; ModuleDefn = md_opt_imported
-        ; ModuleDefn = md_transitively_imported
-        ; ModuleDefn = md_used(_)
-        ),
-        io.write_string("% unimplemented module declaration ", !IO),
+        ModuleDefn = md_external(_, _),
+        io.write_string("% unimplemented module declaration: external ", !IO),
         io.write(ModuleDefn, !IO),
         io.nl(!IO)
     ).
@@ -1550,7 +1734,6 @@ mercury_format_inst_name(Lang, InstInfo, InstName, !U) :-
         InstName = typed_inst(Type, SubInstName),
         (
             Lang = output_mercury,
-            % ZZZ
             mercury_format_inst_name(Lang, InstInfo, SubInstName, !U)
         ;
             Lang = output_debug,
@@ -1838,8 +2021,7 @@ mercury_output_type_defn(Info, TVarSet, Name, TParams, TypeDefn, Context,
         Args = list.map((func(V) = term.variable(V, Context)), TParams),
         construct_qualified_term_with_context(Name, Args, Context, TypeTerm),
         mercury_output_term(TVarSet, no, TypeTerm, !IO),
-        io.write_string("\n\t--->\t", !IO),
-        mercury_output_ctors(Ctors, TVarSet, !IO),
+        mercury_output_ctors(Ctors, yes, TVarSet, !IO),
         mercury_output_where_attributes(Info, TVarSet, no, MaybeUserEqComp,
             MaybeDirectArgs, !IO),
         io.write_string(".\n", !IO)
@@ -2056,25 +2238,26 @@ mercury_output_where_abstract_enum_type(NumBits, !IO) :-
     io.write_int(NumBits, !IO),
     io.write_string(")", !IO).
 
-:- pred mercury_output_ctors(list(constructor)::in, tvarset::in,
+:- pred mercury_output_ctors(list(constructor)::in, bool::in, tvarset::in,
     io::di, io::uo) is det.
 
-mercury_output_ctors([], _, !IO).
-mercury_output_ctors([Ctor | Ctors], VarSet, !IO) :-
-    mercury_output_ctor(Ctor, VarSet, !IO),
+mercury_output_ctors([], _, _, !IO).
+mercury_output_ctors([Ctor | Ctors], First, VarSet, !IO) :-
     (
-        Ctors = []
+        First = yes,
+        io.write_string("\n    --->    ", !IO)
     ;
-        Ctors = [_ | _],
-        io.write_string("\n\t;\t", !IO)
+        First = no,
+        io.write_string("\n    ;       ", !IO)
     ),
-    mercury_output_ctors(Ctors, VarSet, !IO).
+    mercury_output_ctor(Ctor, VarSet, !IO),
+    mercury_output_ctors(Ctors, no, VarSet, !IO).
 
 mercury_output_ctor(Ctor, VarSet, !IO) :-
     Ctor = ctor(ExistQVars, Constraints, SymName, Args, Arity, _Ctxt),
 
-        % We'll have attached the module name to the type definition,
-        % so there's no point adding it to the constructor as well.
+    % We will have attached the module name to the type definition,
+    % so there is no point adding it to the constructor as well.
     Name = unqualify_name(SymName),
     AppendVarnums = no,
     mercury_output_quantifier(VarSet, AppendVarnums, ExistQVars, !IO),
@@ -2087,6 +2270,7 @@ mercury_output_ctor(Ctor, VarSet, !IO) :-
         io.write_string("(", !IO)
     ),
     % We need to quote ';'/2, '{}'/2, '=>'/2, and 'some'/2.
+    % XXX I (zs) think that we should not allow these as constructor names.
     (
         Arity = 2,
         ( Name = ";"
@@ -2110,9 +2294,9 @@ mercury_output_ctor(Ctor, VarSet, !IO) :-
     ;
         Args = [],
         mercury_output_bracketed_sym_name(unqualified(Name), !IO),
-            % This space prevents a terminating full stop
-            % from being confused as part of the sym_name if
-            % the sym_name contains graphical characters.
+        % This space prevents a terminating full stop from being confused
+        % as part of the sym_name if the sym_name contains graphical
+        % characters.
         io.write_string(" ", !IO)
     ),
     (
@@ -3563,19 +3747,6 @@ escape_special_char('\b', 'b').
 
 %-----------------------------------------------------------------------------%
 
-    % Output the given pragma source_file declaration.
-    %
-:- pred mercury_output_pragma_source_file(pragma_info_source_file::in,
-    io::di, io::uo) is det.
-
-mercury_output_pragma_source_file(SourceFileInfo, !IO) :-
-    SourceFileInfo = pragma_info_source_file(SourceFileName),
-    io.write_string(":- pragma source_file(", !IO),
-    term_io.quote_string(SourceFileName, !IO),
-    io.write_string(").\n", !IO).
-
-%-----------------------------------------------------------------------------%
-
     % Output the given foreign_body_code declaration.
     %
 :- pred mercury_output_pragma_foreign_body_code(pragma_info_foreign_code::in,
@@ -4977,14 +5148,14 @@ strip_trailing_primes(Name0, Name, Num) :-
     io::di, io::uo) is det.
 
 maybe_output_line_number(OutInfo, Context, !IO) :-
-    LineNumbers = OutInfo ^ moi_line_numbers,
+    OutLineNumbers = OutInfo ^ moi_out_line_numbers,
     (
-        LineNumbers = yes,
+        OutLineNumbers = do_out_line_numbers,
         io.write_string("\t% ", !IO),
         prog_out.write_context(Context, !IO),
         io.write_string("\n", !IO)
     ;
-        LineNumbers = no
+        OutLineNumbers = dont_out_line_numbers
     ).
 
 %-----------------------------------------------------------------------------%
@@ -5482,19 +5653,30 @@ max_term_string_size_in_syntax_error = 80.
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_out_line_numbers
+    --->    dont_out_line_numbers
+    ;       do_out_line_numbers.
+
 :- type merc_out_info
     --->    merc_out_info(
                 moi_item_names              :: maybe_qualified_item_names,
-                moi_line_numbers            :: bool,
+                moi_out_line_numbers        :: maybe_out_line_numbers,
                 moi_output_lang             :: output_lang
             ).
 
+init_debug_merc_out_info = Info :-
+    Info = merc_out_info(qualified_item_names, dont_out_line_numbers,
+        output_debug).
+
 init_merc_out_info(Globals, MaybeQualifiedItemNames, Lang) = Info :-
-    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
+    globals.lookup_bool_option(Globals, line_numbers, LineNumbersOpt),
+    ( LineNumbersOpt = no, LineNumbers = dont_out_line_numbers
+    ; LineNumbersOpt = yes, LineNumbers = do_out_line_numbers
+    ),
     Info = merc_out_info(MaybeQualifiedItemNames, LineNumbers, Lang).
 
 merc_out_info_disable_line_numbers(Info0) = Info :-
-    Info = Info0 ^ moi_line_numbers := no.
+    Info = Info0 ^ moi_out_line_numbers := dont_out_line_numbers.
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.mercury_to_mercury.

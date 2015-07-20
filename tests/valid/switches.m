@@ -4,6 +4,8 @@
 
 :- module switches.
 
+:- interface.
+
 :- type t
     --->    a
     ;       b
@@ -11,23 +13,28 @@
 :- type f
     --->    f(t).
 
-    % Basic first-argument indexing.
+:- implementation.
 
+    % Test basic first-argument indexing.
+    %
 :- pred first_arg(t::in, int::out) is det.
+
 first_arg(a, 1).
 first_arg(b, 2).
 first_arg(c, 3).
 
-    % Second-argument indexing.
-
+    % Test second-argument indexing.
+    %
 :- pred second_arg(int::out, t::in) is det.
+
 second_arg(1, a).
 second_arg(2, b).
 second_arg(3, c).
 
-    % Indexing of explicit disjunctions.
-
+    % Test indexing of explicit disjunctions.
+    %
 :- pred explict_disj(t::in, int::out) is det.
+
 explict_disj(X, Y) :-
     (
         X = a, Y = 1
@@ -37,8 +44,8 @@ explict_disj(X, Y) :-
         X = c, Y = 3
     ).
 
-    % Chained indexing.
-
+    % Test chained indexing.
+    %
 :- pred chained(t::in, int::out) is det.
 
 chained(X, Y) :-
@@ -48,8 +55,8 @@ chained(X, Y) :-
 chained(X, Y) :-
     X = X3, X3 = c, Y = 3.
 
-    % Multi-level indexing.
-
+    % Test multi-level indexing.
+    %
 :- pred multi_level(f::in, int::out) is det.
 
 multi_level(f(a), 1).

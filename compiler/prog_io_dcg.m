@@ -176,12 +176,12 @@ parse_dcg_goal(Term, ContextPieces, MaybeGoal, !VarSet, !Counter, !Var) :-
     prog_var::in, prog_var::out) is semidet.
 
     % XXX We should update ContextPieces as we recurse.
-parse_dcg_goal_2("{}", [G0 | Gs], Context, ContextPieces, MaybeGoal,
+parse_dcg_goal_2("{}", [HeadG | TailGs], Context, ContextPieces, MaybeGoal,
         !VarSet, !Counter, !Var) :-
     % Ordinary goal inside { curly braces }.
     % The parser treats '{}/N' terms as tuples, so we need
     % to undo the parsing of the argument conjunction here.
-    list_to_conjunction(Context, G0, Gs, G),
+    one_or_more_to_conjunction(Context, one_or_more(HeadG, TailGs), G),
     parse_goal(G, ContextPieces, MaybeGoal, !VarSet).
 parse_dcg_goal_2("impure", [G], _, ContextPieces, MaybeGoal,
         !VarSet, !Counter, !Var) :-

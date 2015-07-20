@@ -89,7 +89,8 @@ search_for_module_source(Globals, Dirs, InterfaceDirs, ModuleName,
                     SourceFileBaseName2),
                 file_name_to_module_name(SourceFileBaseName2,
                     SourceFileModuleName2),
-                match_sym_name(SourceFileModuleName, SourceFileModuleName2)
+                partial_sym_name_matches_full(SourceFileModuleName,
+                    SourceFileModuleName2)
             ->
                 io.close_input(SourceStream, !IO),
                 MaybeFileName = error(find_source_error(ModuleName,

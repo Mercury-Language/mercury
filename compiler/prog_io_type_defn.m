@@ -123,7 +123,8 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes0,
         parse_type_defn_head(ModuleName, VarSet, HeadTerm,
             MaybeTypeCtorAndArgs),
         du_type_rhs_ctors_and_where_terms(BodyTerm, CtorsTerm, MaybeWhereTerm),
-        MaybeCtors = parse_constructors(ModuleName, VarSet, CtorsTerm),
+        MaybeOneOrMoreCtors =
+            parse_constructors(ModuleName, VarSet, CtorsTerm),
         MaybeWhere = parse_type_decl_where_term(non_solver_type,
             ModuleName, VarSet, MaybeWhereTerm),
         % The code to process `where' attributes will return an error
@@ -132,10 +133,12 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes0,
         % then _NoSolverTypeDetails is guaranteed to be `no'.
         (
             MaybeTypeCtorAndArgs = ok2(Name, Params),
-            MaybeCtors = ok1(Ctors),
+            MaybeOneOrMoreCtors = ok1(OneOrMoreCtors),
             MaybeWhere = ok3(_NoSolverTypeDetails, MaybeUserEqComp,
                 MaybeDirectArgIs)
         ->
+            OneOrMoreCtors = one_or_more(HeadCtor, TailCtors),
+            Ctors = [HeadCtor | TailCtors],
             process_du_ctors(Params, VarSet, BodyTerm, Ctors, [], CtorsSpecs),
             (
                 MaybeDirectArgIs = yes(DirectArgCtors),
@@ -161,7 +164,8 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes0,
             )
         ;
             Specs = get_any_errors2(MaybeTypeCtorAndArgs) ++
-                get_any_errors1(MaybeCtors) ++ get_any_errors3(MaybeWhere),
+                get_any_errors1(MaybeOneOrMoreCtors) ++
+                get_any_errors3(MaybeWhere),
             MaybeItem = error1(Specs)
         )
     ).
@@ -186,31 +190,44 @@ du_type_rhs_ctors_and_where_terms(Term, CtorsTerm, MaybeWhereTerm) :-
     % into a list of constructors.
     %
 :- func parse_constructors(module_name, varset, term) =
-    maybe1(list(constructor)).
+    maybe1(one_or_more(constructor)).
 
 parse_constructors(ModuleName, VarSet, Term) = MaybeConstructors :-
-    disjunction_to_list(Term, BodyTermList),
-    MaybeConstructors = parse_constructors_2(ModuleName, VarSet, BodyTermList).
+    disjunction_to_one_or_more(Term, one_or_more(HeadBodyTerm, TailBodyTerms)),
+    parse_constructors_loop(ModuleName, VarSet, HeadBodyTerm, TailBodyTerms,
+        MaybeConstructors).
 
     % True if the term is a valid list of constructors.
     %
-:- func parse_constructors_2(module_name, varset, list(term)) =
-    maybe1(list(constructor)).
+:- pred parse_constructors_loop(module_name::in, varset::in,
+    term::in, list(term)::in, maybe1(one_or_more(constructor))::out) is det.
 
-parse_constructors_2(_ModuleName, _, []) = ok1([]).
-parse_constructors_2(ModuleName, VarSet, [Head | Tail]) = MaybeConstructors :-
+parse_constructors_loop(ModuleName, VarSet, Head, Tail, MaybeConstructors) :-
     MaybeHeadConstructor = parse_constructor(ModuleName, VarSet, Head),
-    MaybeTailConstructors = parse_constructors_2(ModuleName, VarSet, Tail),
     (
-        MaybeHeadConstructor = ok1(HeadConstructor),
-        MaybeTailConstructors = ok1(TailConstructors)
-    ->
-        Constructors = [HeadConstructor | TailConstructors],
-        MaybeConstructors = ok1(Constructors)
+        Tail = [],
+        (
+            MaybeHeadConstructor = ok1(HeadConstructor),
+            MaybeConstructors = ok1(one_or_more(HeadConstructor, []))
+        ;
+            MaybeHeadConstructor = error1(Specs),
+            MaybeConstructors = error1(Specs)
+        )
     ;
-        Specs = get_any_errors1(MaybeHeadConstructor) ++
-            get_any_errors1(MaybeTailConstructors),
-        MaybeConstructors = error1(Specs)
+        Tail = [HeadTail | TailTail],
+        parse_constructors_loop(ModuleName, VarSet, HeadTail, TailTail,
+            MaybeTailConstructors),
+        (
+            MaybeHeadConstructor = ok1(HeadConstructor),
+            MaybeTailConstructors = ok1(TailConstructors)
+        ->
+            MaybeConstructors =
+                ok1(one_or_more_cons(HeadConstructor, TailConstructors))
+        ;
+            Specs = get_any_errors1(MaybeHeadConstructor) ++
+                get_any_errors1(MaybeTailConstructors),
+            MaybeConstructors = error1(Specs)
+        )
     ).
 
 :- func parse_constructor(module_name, varset, term) = maybe1(constructor).

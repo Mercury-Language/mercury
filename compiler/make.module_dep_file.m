@@ -54,6 +54,7 @@
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.status.
 :- import_module parse_tree.write_module_interface_files.
 
 :- import_module assoc_list.
@@ -82,19 +83,20 @@ version_number(module_dep_file_v2, 2).
 
 %-----------------------------------------------------------------------------%
 
-get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO) :-
+get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        !Info, !IO) :-
     RebuildModuleDeps = !.Info ^ rebuild_module_deps,
     (
         ModuleName = unqualified(_),
         maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-            MaybeImports, !Info, !IO)
+            MaybeModuleAndImports, !Info, !IO)
     ;
         ModuleName = qualified(_, _),
         (
             map.search(!.Info ^ module_dependencies, ModuleName,
-                MaybeImportsPrime)
+                MaybeModuleAndImportsPrime)
         ->
-            MaybeImports = MaybeImportsPrime
+            MaybeModuleAndImports = MaybeModuleAndImportsPrime
         ;
             % For sub-modules, we need to generate the dependencies
             % for the parent modules first (make_module_dependencies
@@ -109,15 +111,16 @@ get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO) :-
                 Ancestors, no, Error, !Info, !IO),
             (
                 Error = yes,
-                MaybeImports = no,
+                MaybeModuleAndImports = no,
                 ModuleDepMap0 = !.Info ^ module_dependencies,
                 % XXX Could this be map.det_update or map.det_insert?
-                map.set(ModuleName, MaybeImports, ModuleDepMap0, ModuleDepMap),
+                map.set(ModuleName, MaybeModuleAndImports,
+                    ModuleDepMap0, ModuleDepMap),
                 !Info ^ module_dependencies := ModuleDepMap
             ;
                 Error = no,
                 maybe_get_module_dependencies(Globals, RebuildModuleDeps,
-                    ModuleName, MaybeImports, !Info, !IO)
+                    ModuleName, MaybeModuleAndImports, !Info, !IO)
             )
         )
     ).
@@ -131,12 +134,12 @@ generate_ancestor_dependencies(_, _, ModuleName, yes, yes, Info,
 generate_ancestor_dependencies(Globals, RebuildModuleDeps, ModuleName,
         no, Error, !Info, !IO) :-
     maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-        MaybeImports, !Info, !IO),
+        MaybeModuleAndImports, !Info, !IO),
     (
-        MaybeImports = yes(_),
+        MaybeModuleAndImports = yes(_),
         Error = no
     ;
-        MaybeImports = no,
+        MaybeModuleAndImports = no,
         Error = yes
     ).
 
@@ -145,12 +148,15 @@ generate_ancestor_dependencies(Globals, RebuildModuleDeps, ModuleName,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-        MaybeImports, !Info, !IO) :-
-    ( map.search(!.Info ^ module_dependencies, ModuleName, MaybeImports0) ->
-        MaybeImports = MaybeImports0
+        MaybeModuleAndImports, !Info, !IO) :-
+    (
+        map.search(!.Info ^ module_dependencies, ModuleName,
+            MaybeModuleAndImportsPrime)
+    ->
+        MaybeModuleAndImports = MaybeModuleAndImportsPrime
     ;
         do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-            MaybeImports, !Info, !IO)
+            MaybeModuleAndImports, !Info, !IO)
     ).
 
 :- pred do_get_module_dependencies(globals::in, rebuild_module_deps::in,
@@ -158,7 +164,7 @@ maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-        !:MaybeImports, !Info, !IO) :-
+        !:MaybeModuleAndImports, !Info, !IO) :-
     % We can't just use
     %   `get_target_timestamp(ModuleName - source, ..)'
     % because that could recursively call get_module_dependencies,
@@ -203,12 +209,13 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         % the correct source file name from the module dependency file,
         % then check whether the module dependency file is up to date.
 
-        map.lookup(!.Info ^ module_dependencies, ModuleName, !:MaybeImports),
+        map.lookup(!.Info ^ module_dependencies, ModuleName,
+            !:MaybeModuleAndImports),
         (
-            !.MaybeImports = yes(Imports0),
-            Imports0 ^ mai_module_dir = dir.this_directory
+            !.MaybeModuleAndImports = yes(ModuleAndImports0),
+            ModuleAndImports0 ^ mai_module_dir = dir.this_directory
         ->
-            SourceFileName1 = Imports0 ^ mai_source_file_name,
+            SourceFileName1 = ModuleAndImports0 ^ mai_source_file_name,
             get_file_timestamp([dir.this_directory], SourceFileName1,
                 MaybeSourceFileTimestamp1, !Info, !IO),
             (
@@ -254,40 +261,84 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         )
     ),
     ModuleDepMap2 = !.Info ^ module_dependencies,
-    ( map.search(ModuleDepMap2, ModuleName, MaybeImportsPrime) ->
-        !:MaybeImports = MaybeImportsPrime
+    ( map.search(ModuleDepMap2, ModuleName, MaybeModuleAndImportsPrime) ->
+        !:MaybeModuleAndImports = MaybeModuleAndImportsPrime
     ;
-        !:MaybeImports = no,
+        !:MaybeModuleAndImports = no,
         map.det_insert(ModuleName, no, ModuleDepMap2, ModuleDepMap),
         !Info ^ module_dependencies := ModuleDepMap
     ).
 
 %-----------------------------------------------------------------------------%
 
-write_module_dep_file(Globals, Imports0, !IO) :-
+write_module_dep_file(Globals, ModuleAndImports0, !IO) :-
     % Make sure all the required fields are filled in.
-    module_and_imports_get_results(Imports0, Items0, _Specs, _Errors),
-    strip_imported_items(Items0, Items),
-    init_dependencies(Imports0 ^ mai_source_file_name,
-        Imports0 ^ mai_source_file_module_name,
-        Imports0 ^ mai_nested_children,
-        Imports0 ^ mai_specs, set.init, Globals,
-        Imports0 ^ mai_module_name - Items, Imports),
-    do_write_module_dep_file(Globals, Imports, !IO).
+    module_and_imports_get_results(ModuleAndImports0, AugItemBlocks,
+        Specs, _Errors),
+    module_and_imports_get_module_name(ModuleAndImports0,
+        ModuleName),
+    module_and_imports_get_module_name_context(ModuleAndImports0,
+        ModuleNameContext),
+    % XXX ITEM_LIST Should be an operation of module_imports.m.
+    strip_imported_items(AugItemBlocks, RawItemBlocks),
+    RawCompUnit = compilation_unit(ModuleName, ModuleNameContext,
+        RawItemBlocks),
+    init_module_and_imports(Globals, ModuleAndImports0 ^ mai_source_file_name,
+        ModuleAndImports0 ^ mai_source_file_module_name,
+        ModuleAndImports0 ^ mai_nested_children,
+        Specs, set.init, RawCompUnit, ModuleAndImports),
+    do_write_module_dep_file(Globals, ModuleAndImports, !IO).
+
+:- pred strip_imported_items(list(aug_item_block)::in,
+    list(raw_item_block)::out) is det.
+
+strip_imported_items([], []).
+strip_imported_items([HeadAugItemBlock | TailAugItemBlocks], RawItemBlocks) :-
+    HeadAugItemBlock =
+        item_block(HeadAugSection, HeadSectionContext, HeadItems),
+    (
+        (
+            HeadAugSection = ams_interface,
+            HeadSection = ms_interface
+        ;
+            HeadAugSection = ams_implementation,
+            HeadSection = ms_implementation
+        ;
+            HeadAugSection = ams_impl_but_exported_to_submodules,
+            HeadSection = ms_implementation
+        ),
+        HeadRawItemBlock =
+            item_block(HeadSection, HeadSectionContext, HeadItems),
+        strip_imported_items(TailAugItemBlocks, TailRawItemBlocks),
+        RawItemBlocks = [HeadRawItemBlock | TailRawItemBlocks]
+    ;
+        ( HeadAugSection = ams_imported(_)
+        ; HeadAugSection = ams_used(_)
+        ; HeadAugSection = ams_abstract_imported
+        ),
+        % Delete this block and all later blocks.
+        RawItemBlocks = []
+    ;
+        HeadAugSection = ams_opt_imported(_),
+        unexpected($module, $pred, "ams_opt_imported")
+    ;
+        HeadAugSection = ams_transitively_imported,
+        unexpected($module, $pred, "ams_transitively_imported")
+    ).
 
 :- pred do_write_module_dep_file(globals::in, module_and_imports::in,
     io::di, io::uo) is det.
 
-do_write_module_dep_file(Globals, Imports, !IO) :-
-    ModuleName = Imports ^ mai_module_name,
+do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
+    ModuleName = ModuleAndImports ^ mai_module_name,
     module_name_to_file_name(Globals, ModuleName,
         make_module_dep_file_extension, do_create_dirs, ProgDepFile, !IO),
     io.open_output(ProgDepFile, ProgDepResult, !IO),
     (
         ProgDepResult = ok(ProgDepStream),
         io.set_output_stream(ProgDepStream, OldOutputStream, !IO),
-        choose_module_dep_file_version(Imports, Version),
-        do_write_module_dep_file_2(Imports, Version, !IO),
+        choose_module_dep_file_version(ModuleAndImports, Version),
+        do_write_module_dep_file_2(ModuleAndImports, Version, !IO),
         io.set_output_stream(OldOutputStream, _, !IO),
         io.close_output(ProgDepStream, !IO)
     ;
@@ -301,8 +352,8 @@ do_write_module_dep_file(Globals, Imports, !IO) :-
 :- pred choose_module_dep_file_version(module_and_imports::in,
     module_dep_file_version::out) is det.
 
-choose_module_dep_file_version(Imports, Version) :-
-    ForeignIncludeFilesCord = Imports ^ mai_foreign_include_files,
+choose_module_dep_file_version(ModuleAndImports, Version) :-
+    ForeignIncludeFilesCord = ModuleAndImports ^ mai_foreign_include_files,
     ( cord.is_empty(ForeignIncludeFilesCord) ->
         Version = module_dep_file_v1
     ;
@@ -312,35 +363,38 @@ choose_module_dep_file_version(Imports, Version) :-
 :- pred do_write_module_dep_file_2(module_and_imports::in,
     module_dep_file_version::in, io::di, io::uo) is det.
 
-do_write_module_dep_file_2(Imports, Version, !IO) :-
+do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
     io.write_string("module(", !IO),
     version_number(Version, VersionNumber),
     io.write_int(VersionNumber, !IO),
     io.write_string(", """, !IO),
-    io.write_string(Imports ^ mai_source_file_name, !IO),
+    io.write_string(ModuleAndImports ^ mai_source_file_name, !IO),
     io.write_string(""",\n\t", !IO),
     mercury_output_bracketed_sym_name(
-        Imports ^ mai_source_file_module_name, !IO),
+        ModuleAndImports ^ mai_source_file_module_name, !IO),
     io.write_string(",\n\t{", !IO),
-    io.write_list(Imports ^ mai_parent_deps,
+    io.write_list(ModuleAndImports ^ mai_parent_deps,
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(Imports ^ mai_int_deps,
+    io.write_list(ModuleAndImports ^ mai_int_deps,
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(Imports ^ mai_impl_deps,
+    io.write_list(ModuleAndImports ^ mai_impl_deps,
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(Imports ^ mai_children,
+    io.write_list(ModuleAndImports ^ mai_children,
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(Imports ^ mai_nested_children,
+    io.write_list(ModuleAndImports ^ mai_nested_children,
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(Imports ^ mai_fact_table_deps,
+    io.write_list(ModuleAndImports ^ mai_fact_table_deps,
         ", ", io.write, !IO),
     io.write_string("},\n\t{", !IO),
-    ( Imports ^ mai_has_foreign_code = contains_foreign_code(LangList) ->
+    (
+        ModuleAndImports ^ mai_has_foreign_code =
+            contains_foreign_code(LangList)
+    ->
         ForeignLanguages = set.to_sorted_list(LangList)
     ;
         ForeignLanguages = []
@@ -348,21 +402,22 @@ do_write_module_dep_file_2(Imports, Version, !IO) :-
     io.write_list(ForeignLanguages,
         ", ", mercury_output_foreign_language_string, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(cord.list(Imports ^ mai_foreign_import_modules),
+    io.write_list(cord.list(ModuleAndImports ^ mai_foreign_import_modules),
         ", ", write_foreign_import_module_info, !IO),
     io.write_string("},\n\t", !IO),
-    contains_foreign_export_to_string(Imports ^ mai_contains_foreign_export,
+    contains_foreign_export_to_string(
+        ModuleAndImports ^ mai_contains_foreign_export,
         ContainsForeignExportStr),
     io.write_string(ContainsForeignExportStr, !IO),
     io.write_string(",\n\t", !IO),
-    has_main_to_string(Imports ^ mai_has_main, HasMainStr),
+    has_main_to_string(ModuleAndImports ^ mai_has_main, HasMainStr),
     io.write_string(HasMainStr, !IO),
     (
         Version = module_dep_file_v1
     ;
         Version = module_dep_file_v2,
         io.write_string(",\n\t{", !IO),
-        io.write_list(cord.list(Imports ^ mai_foreign_include_files),
+        io.write_list(cord.list(ModuleAndImports ^ mai_foreign_include_files),
             ", ", write_foreign_include_file_info, !IO),
         io.write_string("}", !IO)
     ),
@@ -483,7 +538,7 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
 
 read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         ModuleDepFile, Term, Result, !Info, !IO) :-
-    (
+    ( if
         atom_term(Term, "module", ModuleArgs),
         ModuleArgs = [
             VersionNumberTerm,
@@ -533,7 +588,8 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             braces_term(foreign_include_term, ForeignIncludesTerm,
                 ForeignIncludes)
         )
-    ->
+    then
+        ModuleNameContext = term.context_init,
         ContainsForeignCode = contains_foreign_code(ForeignLanguages),
         IndirectDeps = [],
         PublicChildren = [],
@@ -541,8 +597,9 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         Specs = [],
         set.init(Errors),
         MaybeTimestamps = no,
-        Imports = module_and_imports(SourceFileName, SourceFileModuleName,
-            ModuleName, Parents, IntDeps, ImplDeps, IndirectDeps,
+        ModuleAndImports = module_and_imports(SourceFileName,
+            SourceFileModuleName, ModuleName, ModuleNameContext,
+            Parents, IntDeps, ImplDeps, IndirectDeps,
             Children, PublicChildren, NestedChildren, FactDeps,
             cord.from_list(ForeignImports), cord.from_list(ForeignIncludes),
             ContainsForeignCode, ContainsForeignExport,
@@ -550,7 +607,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
 
         % Discard the module dependencies if the module is a local module
         % but the source file no longer exists.
-        ( ModuleDir = dir.this_directory ->
+        ( if ModuleDir = dir.this_directory then
             check_regular_file_exists(SourceFileName, SourceFileExists, !IO),
             (
                 SourceFileExists = ok
@@ -558,14 +615,15 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
                 SourceFileExists = error(_),
                 io.remove_file(ModuleDepFile, _, !IO)
             )
-        ;
+        else
             SourceFileExists = ok
         ),
         (
             SourceFileExists = ok,
             ModuleDepMap0 = !.Info ^ module_dependencies,
             % XXX Could this be map.det_insert?
-            map.set(ModuleName, yes(Imports), ModuleDepMap0, ModuleDepMap),
+            map.set(ModuleName, yes(ModuleAndImports),
+                ModuleDepMap0, ModuleDepMap),
             !Info ^ module_dependencies := ModuleDepMap,
 
             % Read the dependencies for the nested children. If something
@@ -577,16 +635,16 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
                 read_module_dependencies_2(Globals, do_not_rebuild_module_deps,
                     SearchDirs),
                 NestedChildren, !Info, !IO),
-            ( some_bad_module_dependency(!.Info, NestedChildren) ->
+            ( if some_bad_module_dependency(!.Info, NestedChildren) then
                 Result = error("error in nested sub-modules")
-            ;
+            else
                 Result = ok
             )
         ;
             SourceFileExists = error(Error),
             Result = error(Error)
         )
-    ;
+    else
         Result = error("failed to parse term")
     ).
 
@@ -752,10 +810,10 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         MaybeErrorStream = yes(ErrorStream),
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
         % XXX Why ask for the timestamp if we then ignore it?
-        read_module(Globals, ModuleName, ".m",
-            "Getting dependencies for module",
-            do_not_search, do_return_timestamp, Items, Specs0, Errors,
-            SourceFileName, _, !IO),
+        read_module_src(Globals, "Getting dependencies for module",
+            do_not_ignore_errors, do_not_search, ModuleName, SourceFileName,
+            always_read_module(do_return_timestamp), _,
+            ParseTreeSrc, Specs0, Errors, !IO),
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
         ( if set.is_non_empty(FatalErrors) then
             io.set_output_stream(ErrorStream, _, !IO),
@@ -784,23 +842,25 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             !Info ^ module_dependencies := ModuleDepMap
         else
             io.set_output_stream(ErrorStream, _, !IO),
-            split_into_submodules(ModuleName, Items, SubModuleList,
-                Specs0, Specs),
+            split_into_compilation_units_perform_checks(ParseTreeSrc,
+                RawCompUnits, Specs0, Specs),
             io.set_exit_status(0, !IO),
             write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
 
-            assoc_list.keys(SubModuleList, SubModuleNames),
-            list.map(init_dependencies(SourceFileName, ModuleName,
-                SubModuleNames, [], Errors, Globals),
-                SubModuleList, ModuleImportList),
+            SubModuleNames =
+                list.map(compilation_unit_project_name, RawCompUnits),
+            list.map(
+                init_module_and_imports(Globals, SourceFileName,
+                    ModuleName, SubModuleNames, [], Errors),
+                RawCompUnits, ModuleAndImportList),
             list.foldl(
-                (pred(ModuleImports::in, Info0::in, Info::out) is det :-
-                    SubModuleName = ModuleImports ^ mai_module_name,
+                (pred(ModuleAndImports::in, Info0::in, Info::out) is det :-
+                    SubModuleName = ModuleAndImports ^ mai_module_name,
                     Info = Info0 ^ module_dependencies ^ elem(SubModuleName)
-                        := yes(ModuleImports)
-                ), ModuleImportList, !Info),
+                        := yes(ModuleAndImports)
+                ), ModuleAndImportList, !Info),
 
             % If there were no errors, write out the `.int3' file
             % while we have the contents of the module. The `int3' file
@@ -815,7 +875,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                     build_with_module_options(Globals, ModuleName,
                         ["--make-short-interface"],
                         make_short_interfaces(ErrorStream,
-                            SourceFileName, SubModuleList)
+                            SourceFileName, RawCompUnits)
                     ),
                     cleanup_short_interfaces(Globals, SubModuleNames),
                     Succeeded, !Info, !IO)
@@ -826,7 +886,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             build_with_check_for_interrupt(VeryVerbose,
                 (pred(yes::out, MakeInfo::in, MakeInfo::out, di, uo) is det -->
                     list.foldl(do_write_module_dep_file(Globals),
-                        ModuleImportList)
+                        ModuleAndImportList)
                 ),
                 cleanup_module_dep_files(Globals, SubModuleNames), _,
                 !Info, !IO),
@@ -843,18 +903,14 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
     ).
 
 :- pred make_short_interfaces(io.output_stream::in, file_name::in,
-    assoc_list(module_name, list(item))::in, globals::in, list(string)::in,
+    list(raw_compilation_unit)::in, globals::in, list(string)::in,
     bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_short_interfaces(ErrorStream, SourceFileName, SubModuleList, Globals,
+make_short_interfaces(ErrorStream, SourceFileName, RawCompUnits, Globals,
         _, Succeeded, !Info, !IO) :-
     io.set_output_stream(ErrorStream, OutputStream, !IO),
-    list.foldl(
-        (pred(SubModule::in, !.IO::di, !:IO::uo) is det :-
-            SubModule = SubModuleName - SubModuleItems,
-            write_short_interface_file(Globals, SourceFileName, SubModuleName,
-                SubModuleItems, !IO)
-        ), SubModuleList, !IO),
+    list.foldl(write_short_interface_file(Globals, SourceFileName),
+        RawCompUnits, !IO),
     io.set_output_stream(OutputStream, _, !IO),
     io.get_exit_status(ExitStatus, !IO),
     Succeeded = ( ExitStatus = 0 -> yes ; no ).

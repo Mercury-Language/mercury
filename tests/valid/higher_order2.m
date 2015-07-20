@@ -6,14 +6,18 @@
 
 :- module higher_order2.
 
+:- interface.
+
 :- import_module list.
 
 :- pred ppp(pred(int, int), list(int)).
 :- mode ppp(pred(in, out) is det, in) is det.
 
+:- implementation.
+
 ppp(_, []).
 ppp(P, [H0 | T0]) :-
-    call(P, H0, H),
+    call(P, H0, _H),
     ppp(P, T0).
 
 :- pred qqq(list(int), pred(int, int)).

@@ -5,12 +5,12 @@
 :- mode main(di, uo) is det.
 :- implementation.
 :- type foobar
-	--->	foo 
-	;	bar(int)
-	;	baz(int, int).
+    --->    foo 
+    ;       bar(int)
+    ;       baz(int, int).
 :- type cont(T)
-	--->	foo 
-	;	cont(T, cont(T)).
+    --->    foo 
+    ;       cont(T, cont(T)).
 :- type eq(T1, T2) == foobar.
 main(DCG_0, DCG_2) :-
 	io.write_int(type_num(42), DCG_0, DCG_1),
@@ -36,3 +36,4 @@ foo_type_num(V_1) = 42.
 :- mode foo_type_num_p(in, out) is det.
 :- mode foo_type_num_p(out, in) is det.
 foo_type_num_p(V_1, 42).
+:- end_module pretty_print_test.

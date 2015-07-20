@@ -71,6 +71,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.status.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.post_term_analysis.
 :- import_module transform_hlds.term_errors.
