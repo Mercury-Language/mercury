@@ -917,9 +917,8 @@ read_parse_tree_src_components(Globals, CurModuleName, ContainingModules,
                     StartModuleName = qualified(CurModuleName, RawBaseName)
                 )
             ),
-            read_parse_tree_src_submodule(Globals, CurModuleName,
-                ContainingModules, MaybePrevSection,
-                StartModuleName, StartContext,
+            read_parse_tree_src_submodule(Globals, ContainingModules,
+                MaybePrevSection, StartModuleName, StartContext,
                 no_lookahead, SubModuleFinalLookAhead, !ModuleComponents,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO),
             % We have read in one component; recurse to read in others.
@@ -1030,7 +1029,7 @@ generate_missing_start_section_warning_src(CurModuleName,
         % Do not generate duplicate warnings.
     ).
 
-:- pred read_parse_tree_src_submodule(globals::in, module_name::in,
+:- pred read_parse_tree_src_submodule(globals::in,
     list(module_name)::in, maybe(pair(module_section, prog_context))::in,
     module_name::in, prog_context::in,
     maybe_lookahead::in, maybe_lookahead::out,
@@ -1039,11 +1038,10 @@ generate_missing_start_section_warning_src(CurModuleName,
     counter::in, counter::out, list(error_spec)::in, list(error_spec)::out,
     read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
 
-read_parse_tree_src_submodule(Globals, _CurModuleName, ContainingModules,
+read_parse_tree_src_submodule(Globals, ContainingModules,
         MaybePrevSection, StartModuleName, StartContext,
         InitLookAhead, FinalLookAhead, !ModuleComponents,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO) :-
-    % XXX ITEM_LIST Don't pass _CurModuleName.
     (
         MaybePrevSection = yes(SectionKind - SectionContext)
     ;
@@ -1334,15 +1332,20 @@ read_item_sequence_inner(Globals, ModuleName, !NumItemsLeft,
                 (
                     IOM = iom_marker_src_file(!:SourceFileName)
                 ;
-                    IOM = iom_item(Item),
-                    process_one_item_in_loop(Globals, Item, !ItemsCord,
-                        !Specs, !Errors, !IO)
+                    IOM = iom_item(Item0),
+                    ( if Item0 = item_nothing(ItemNothingInfo) then
+                        process_item_nothing_warning(Globals,
+                            ItemNothingInfo, Item, !Specs, !Errors)
+                    else
+                        Item = Item0
+                    ),
+                    !:ItemsCord = cord.snoc(!.ItemsCord, Item)
                 ;
                     IOM = iom_items(one_or_more(HeadItem, TailItems)),
-                    process_one_item_in_loop(Globals, HeadItem,
-                        !ItemsCord, !Specs, !Errors, !IO),
-                    list.foldl4(process_one_item_in_loop(Globals), TailItems,
-                        !ItemsCord, !Specs, !Errors, !IO)
+                    % Neither HeadItem nor any of the TailItems can be
+                    % an item_nothing.
+                    !:ItemsCord = !.ItemsCord ++
+                        cord.from_list([HeadItem | TailItems])
                 ),
                 read_item_sequence_inner(Globals, ModuleName, !NumItemsLeft,
                     no_lookahead, FinalLookAhead, !ItemsCord,
@@ -1351,68 +1354,57 @@ read_item_sequence_inner(Globals, ModuleName, !NumItemsLeft,
         )
     ).
 
-    % XXX ITEM_LIST Rename, and move its job up to caller.
+    % process_item_nothing_warning(Globals, ItemNothingInfo, !ItemsCord,
+    %     !Specs, !Errors):
     %
-:- pred process_one_item_in_loop(globals::in, item::in,
-    cord(item)::in, cord(item)::out,
+    % If the given item_nothing_info has a (possibly conditional) warning
+    % embedded inside it, and if the condition (if present) is true,
+    % then put that warning into !Specs and (if asked for) into !Errors.
+    %
+    % In any case, return the item_nothing, stripped of any warnings,
+    % in NoWarnItem.
+    %
+:- pred process_item_nothing_warning(globals::in,
+    item_nothing_info::in, item::out,
     list(error_spec)::in, list(error_spec)::out,
-    read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
+    read_module_errors::in, read_module_errors::out) is det.
 
-process_one_item_in_loop(Globals, Item, !ItemsCord, !Specs, !Errors, !IO) :-
+process_item_nothing_warning(Globals, ItemNothingInfo, NoWarnItem,
+        !Specs, !Errors) :-
+    ItemNothingInfo = item_nothing_info(MaybeWarning, Context, NothingSeqNum),
     (
-        ( Item = item_module_defn(_)
-        ; Item = item_clause(_)
-        ; Item = item_type_defn(_)
-        ; Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_pragma(_)
-        ; Item = item_promise(_)
-        ; Item = item_typeclass(_)
-        ; Item = item_instance(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_mutable(_)
-        ),
-        !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+        MaybeWarning = no,
+        % There is no warning to strip away.
+        NoWarnItem = item_nothing(ItemNothingInfo)
     ;
-        Item = item_nothing(ItemNothing),
-        ItemNothing = item_nothing_info(MaybeWarning, Context, NothingSeqNum),
+        MaybeWarning = yes(Warning),
+        Warning = item_warning(MaybeOption, Msg, Term),
         (
-            MaybeWarning = no,
-            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+            MaybeOption = yes(Option),
+            globals.lookup_bool_option(Globals, Option, Warn)
         ;
-            MaybeWarning = yes(Warning),
-            Warning = item_warning(MaybeOption, Msg, Term),
-            (
-                MaybeOption = yes(Option),
-                globals.lookup_bool_option(Globals, Option, Warn)
-            ;
-                MaybeOption = no,
-                Warn = yes
-            ),
-            (
-                Warn = yes,
-                Pieces = [words("Warning: "), words(Msg), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
-                !:Specs = [Spec | !.Specs],
+            MaybeOption = no,
+            Warn = yes
+        ),
+        (
+            Warn = yes,
+            Pieces = [words("Warning: "), words(Msg), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            !:Specs = [Spec | !.Specs],
 
-                globals.lookup_bool_option(Globals, halt_at_warn, Halt),
-                (
-                    Halt = yes,
-                    set.insert(rme_warn_item_nothing, !Errors)
-                ;
-                    Halt = no
-                )
+            globals.lookup_bool_option(Globals, halt_at_warn, Halt),
+            (
+                Halt = yes,
+                set.insert(rme_warn_item_nothing, !Errors)
             ;
-                Warn = no
-            ),
-            NoWarnItemNothing = item_nothing_info(no, Context, NothingSeqNum),
-            NoWarnItem = item_nothing(NoWarnItemNothing),
-            !:ItemsCord = cord.snoc(!.ItemsCord, NoWarnItem)
-        )
+                Halt = no
+            )
+        ;
+            Warn = no
+        ),
+        NoWarnItemNothingInfo = item_nothing_info(no, Context, NothingSeqNum),
+        NoWarnItem = item_nothing(NoWarnItemNothingInfo)
     ).
 
 %---------------------------------------------------------------------------%
