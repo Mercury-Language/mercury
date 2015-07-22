@@ -838,25 +838,22 @@ sym_name_and_args_to_term(qualified(ModuleNames, Name), Xs, Context) =
     sym_name_and_term_to_term(ModuleNames,
         term.functor(term.atom(Name), Xs, Context), Context).
 
-:- func sym_name_and_term_to_term(module_specifier, term(T), prog_context) =
+:- func sym_name_and_term_to_term(module_name, term(T), prog_context) =
     term(T).
 
-sym_name_and_term_to_term(unqualified(ModuleName), Term, Context) =
-    term.functor(
-        term.atom("."),
-        [term.functor(term.atom(ModuleName), [], Context), Term],
-        Context
-    ).
-sym_name_and_term_to_term(qualified(ModuleNames, ModuleName), Term, Context) =
-    term.functor(
-        term.atom("."),
-        [sym_name_and_term_to_term(
-            ModuleNames,
-            term.functor(term.atom(ModuleName), [], Context),
-            Context),
-        Term],
-        Context
-    ).
+sym_name_and_term_to_term(Qualifier, InnerTerm, Context) = Term :-
+    (
+        Qualifier = unqualified(InnerQualifier),
+        QualifierTerm =
+            term.functor(term.atom(InnerQualifier), [], Context)
+    ;
+        Qualifier = qualified(OuterQualifier, InnerQualifier),
+        InnerQualifierTerm =
+            term.functor(term.atom(InnerQualifier), [], Context),
+        QualifierTerm = sym_name_and_term_to_term(OuterQualifier,
+            InnerQualifierTerm, Context)
+    ),
+    Term = term.functor(term.atom("."), [QualifierTerm, InnerTerm], Context).
 
 %-----------------------------------------------------------------------------%
 

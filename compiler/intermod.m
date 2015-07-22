@@ -1288,7 +1288,7 @@ write_intermod_info_body(IntermodInfo, !IO) :-
     set.to_sorted_list(Preds0, Preds),
     set.to_sorted_list(PredDecls0, PredDecls),
 
-    module_info_get_imported_module_specifiers(ModuleInfo, Modules0),
+    module_info_get_imported_module_names(ModuleInfo, Modules0),
     set.to_sorted_list(Modules0, Modules),
     (
         Modules = [_ | _],

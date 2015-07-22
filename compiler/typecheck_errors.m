@@ -1982,7 +1982,7 @@ bound_type_to_pieces(Type0, TypeVarSet, TypeBindings, HeadTypeParams)
 %-----------------------------------------------------------------------------%
 
 :- func maybe_report_missing_import_addendum(type_error_clause_context,
-    module_specifier) = list(format_component).
+    module_name) = list(format_component).
 
 maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier)
         = Pieces :-

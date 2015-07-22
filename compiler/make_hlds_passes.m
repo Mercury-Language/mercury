@@ -429,32 +429,38 @@ add_item_decl_pass_1(Status, Item,
 add_pass_1_module_defn(ItemModuleDefn, Status, !ModuleInfo, !Specs) :-
     ItemModuleDefn = item_module_defn_info(ModuleDefn, _Context, _SeqNum),
     (
-        ( ModuleDefn = md_import(ModuleSpecifier)
-        ; ModuleDefn = md_use(ModuleSpecifier)
+        ( ModuleDefn = md_import(ModuleName)
+        ; ModuleDefn = md_use(ModuleName)
         ),
         Status = item_status(ImportStatus, _),
-        add_module_specifier(ModuleSpecifier, ImportStatus, !ModuleInfo)
+        add_imported_module_name(ModuleName, ImportStatus, !ModuleInfo)
     ;
         ( ModuleDefn = md_include_module(_)
         ; ModuleDefn = md_version_numbers(_, _)
         )
     ).
 
-:- pred add_module_specifier(module_specifier::in, import_status::in,
+:- pred add_imported_module_name(module_name::in, import_status::in,
     module_info::in, module_info::out) is det.
 
-add_module_specifier(Specifier, IStat, !ModuleInfo) :-
-    ( status_defined_in_this_module(IStat) = yes ->
-        module_add_imported_module_specifier(IStat, Specifier, !ModuleInfo)
-    ; IStat = status_imported(import_locn_ancestor_private_interface_proper) ->
-        module_add_imported_module_specifier(IStat, Specifier, !ModuleInfo),
-
-        % Any import_module which comes from a private interface
-        % must by definition be a module used by the parent module.
-        module_info_add_parent_to_used_modules(Specifier, !ModuleInfo)
+add_imported_module_name(ModuleName, IStat, !ModuleInfo) :-
+    DefinedInThisModule = status_defined_in_this_module(IStat),
+    (
+        DefinedInThisModule = yes,
+        module_add_imported_module_name(IStat, ModuleName, !ModuleInfo)
     ;
-        module_add_indirectly_imported_module_specifier(Specifier,
-            !ModuleInfo)
+        DefinedInThisModule = no,
+        ( if
+            IStat =
+                status_imported(import_locn_ancestor_private_interface_proper)
+        then
+            module_add_imported_module_name(IStat, ModuleName, !ModuleInfo),
+            % Any import_module which comes from a private interface
+            % must by definition be a module used by the parent module.
+            module_info_add_parent_to_used_modules(ModuleName, !ModuleInfo)
+        else
+            module_add_indirectly_imported_module_name(ModuleName, !ModuleInfo)
+        )
     ).
 
 %---------------------------------------------------------------------------%

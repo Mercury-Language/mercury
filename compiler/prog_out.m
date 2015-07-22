@@ -79,10 +79,10 @@
 :- pred simple_call_id_to_sym_name_and_arity(simple_call_id::in,
     sym_name_and_arity::out) is det.
 
-    % Write out a module specifier.
+    % Write out a module name.
     %
-:- pred write_module_spec(module_specifier::in, io::di, io::uo) is det.
-:- func module_spec_to_escaped_string(module_specifier) = string.
+:- pred write_module_name(module_name::in, io::di, io::uo) is det.
+:- func module_name_to_escaped_string(module_name) = string.
 
 :- pred write_type_ctor(type_ctor::in, io::di, io::uo) is det.
 :- func type_ctor_to_string(type_ctor) = string.
@@ -189,14 +189,14 @@ context_to_string(Context, ContextMessage) :-
 %-----------------------------------------------------------------------------%
 
 write_sym_name(qualified(ModuleSpec, Name), !IO) :-
-    write_module_spec(ModuleSpec, !IO),
+    write_module_name(ModuleSpec, !IO),
     io.write_string(".", !IO),
     term_io.write_escaped_string(Name, !IO).
 write_sym_name(unqualified(Name), !IO) :-
     term_io.write_escaped_string(Name, !IO).
 
 sym_name_to_escaped_string(qualified(ModuleSpec, Name)) =
-    module_spec_to_escaped_string(ModuleSpec)
+    module_name_to_escaped_string(ModuleSpec)
     ++ "."
     ++ term_io.escaped_string(Name).
 sym_name_to_escaped_string(unqualified(Name)) =
@@ -270,11 +270,11 @@ simple_call_id_to_sym_name_and_arity(SimpleCallId, SymName / OrigArity) :-
     SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
     adjust_func_arity(PredOrFunc, OrigArity, Arity).
 
-write_module_spec(ModuleSpec, !IO) :-
-    write_sym_name(ModuleSpec, !IO).
+write_module_name(ModuleName, !IO) :-
+    write_sym_name(ModuleName, !IO).
 
-module_spec_to_escaped_string(ModuleSpec) =
-    sym_name_to_escaped_string(ModuleSpec).
+module_name_to_escaped_string(ModuleName) =
+    sym_name_to_escaped_string(ModuleName).
 
 %-----------------------------------------------------------------------------%
 

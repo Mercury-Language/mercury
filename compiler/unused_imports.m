@@ -78,7 +78,7 @@ warn_about_unused_imports(ModuleInfo, !:Specs, !IO) :-
 
     % The unused imports is simply the set of all imports minus all the
     % used modules.
-    module_info_get_imported_module_specifiers(ModuleInfo, ImportedModules),
+    module_info_get_imported_module_names(ModuleInfo, ImportedModules),
     UsedInImplementation = UsedModules ^ impl_used_modules,
     UnusedImports = ImportedModules `set.difference`
         (UsedInInterface `set.union` UsedInImplementation),
@@ -93,7 +93,7 @@ warn_about_unused_imports(ModuleInfo, !:Specs, !IO) :-
 
     % Determine the modules imported in the interface but not used in
     % the interface.
-    module_info_get_interface_module_specifiers(ModuleInfo, InterfaceImports),
+    module_info_get_interface_module_names(ModuleInfo, InterfaceImports),
     UsedInInterface = UsedModules ^ int_used_modules,
     UnusedInterfaceImports = (InterfaceImports
         `set.difference` UsedInInterface) `set.difference` UnusedImports,

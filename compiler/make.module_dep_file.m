@@ -47,7 +47,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
-% :- import_module parse_tree.modules.
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_error.

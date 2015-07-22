@@ -226,15 +226,15 @@ parse_items_shorthand(ModuleName, VarSet, Functor, ArgTerms, Context, SeqNum,
         MaybeIOM) :-
     (
         Functor = "import_module",
-        Parser = parse_module_specifier(VarSet),
+        Parser = parse_module_name(VarSet),
         Maker = make_import_item(Context, SeqNum)
     ;
         Functor = "use_module",
-        Parser = parse_module_specifier(VarSet),
+        Parser = parse_module_name(VarSet),
         Maker = make_use_item(Context, SeqNum)
     ;
         Functor = "include_module",
-        Parser = parse_module_name(ModuleName, VarSet),
+        Parser = parse_implicitly_qualified_module_name(ModuleName, VarSet),
         Maker = make_include_item(Context, SeqNum)
     ),
     ArgTerms = [ModuleNamesTerm],
@@ -1552,23 +1552,24 @@ desugar_field_access(Term) = DesugaredTerm :-
 
 %-----------------------------------------------------------------------------%
 
-    % A ModuleSpecifier is just an sym_name.
+    % A ModuleName is just an sym_name.
     %
-:- pred parse_module_specifier(varset::in, term::in,
-    maybe1(module_specifier)::out) is det.
+:- pred parse_module_name(varset::in, term::in,
+    maybe1(module_name)::out) is det.
 
-parse_module_specifier(VarSet, Term, MaybeModuleSpecifier) :-
-    parse_symbol_name(VarSet, Term, MaybeModuleSpecifier).
+parse_module_name(VarSet, Term, MaybeModuleName) :-
+    parse_symbol_name(VarSet, Term, MaybeModuleName).
 
     % A ModuleName is an implicitly-quantified sym_name.
     %
     % We check for module names starting with capital letters as a special
     % case, so that we can report a better error message for that case.
     %
-:- pred parse_module_name(module_name::in, varset::in, term::in,
-    maybe1(module_name)::out) is det.
+:- pred parse_implicitly_qualified_module_name(module_name::in,
+    varset::in, term::in, maybe1(module_name)::out) is det.
 
-parse_module_name(DefaultModuleName, VarSet, Term, MaybeModule) :-
+parse_implicitly_qualified_module_name(DefaultModuleName, VarSet, Term,
+        MaybeModule) :-
     (
         Term = term.variable(_, Context),
         Pieces = [words("Error: module names starting with capital letters"),

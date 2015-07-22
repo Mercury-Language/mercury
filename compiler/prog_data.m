@@ -2719,10 +2719,6 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 :- type simple_call_id
     --->    simple_call_id(pred_or_func, sym_name, arity).
 
-% XXX ITEM_LIST We should delete the module_specifier type, and use
-% just plain module_name instead.
-:- type module_specifier == sym_name.
-
 :- type arity == int.
 
     % Does a module contain the predicate main/2?

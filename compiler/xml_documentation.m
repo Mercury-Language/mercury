@@ -290,9 +290,9 @@ get_comment_backwards(Comments, Line) = Comment :-
     (to_xml(module_info_xml_doc(Comments, ModuleComment, ModuleInfo)) = Xml :-
         CommentXml = elem("comment", [], [data(ModuleComment)]),
 
-        module_info_get_interface_module_specifiers(ModuleInfo,
+        module_info_get_interface_module_names(ModuleInfo,
             InterfaceImports),
-        module_info_get_imported_module_specifiers(ModuleInfo,
+        module_info_get_imported_module_names(ModuleInfo,
             ImportedModules0),
         ImportedModules =
             ImportedModules0 `difference` set(all_builtin_modules),
@@ -324,7 +324,7 @@ get_comment_backwards(Comments, Line) = Comment :-
 
     % Output the documentation for one import
     %
-:- pred import_documentation(set(module_specifier)::in, module_specifier::in,
+:- pred import_documentation(set(module_name)::in, module_name::in,
     list(xml)::in, list(xml)::out) is det.
 
 import_documentation(InterfaceImportedModules, ImportedModule, !Xmls) :-

@@ -91,8 +91,9 @@ write_hlds(Indent, ModuleInfo, !IO) :-
         true
     ;
         ( string.contains_char(DumpOptions, 'I') ->
-            module_info_get_imported_module_specifiers(ModuleInfo, Imports),
-            write_imports(Indent, Imports, !IO)
+            module_info_get_imported_module_names(ModuleInfo,
+                ImportedModuleNames),
+            write_imports(Indent, ImportedModuleNames, !IO)
         ;
             true
         ),
@@ -164,7 +165,7 @@ write_footer(Indent, Module, !IO) :-
 % Write out the imports.
 %
 
-:- pred write_imports(int::in, set(module_specifier)::in, io::di, io::uo)
+:- pred write_imports(int::in, set(module_name)::in, io::di, io::uo)
     is det.
 
 write_imports(Indent, ImportSet, !IO) :-

@@ -250,7 +250,7 @@ expand_try_goals_in_module(!ModuleInfo, !Specs) :-
     % The exception module is implicitly imported if any try goals were seen,
     % so if the exception module is not imported then we know there are no try
     % goals to be expanded.
-    module_info_get_imported_module_specifiers(!.ModuleInfo, ImportedModules),
+    module_info_get_imported_module_names(!.ModuleInfo, ImportedModules),
     ( set.contains(ImportedModules, mercury_exception_module) ->
         some [!Globals] (
             module_info_get_globals(!.ModuleInfo, !:Globals),

@@ -1339,20 +1339,6 @@ mercury_output_module_defn(ModuleDefn, _Context, !IO) :-
         io.write_string(").\n", !IO)
     ).
 
-:- pred mercury_write_module_spec_list(list(module_specifier)::in,
-    io::di, io::uo) is det.
-
-mercury_write_module_spec_list([], !IO).
-mercury_write_module_spec_list([ModuleName | ModuleNames], !IO) :-
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    (
-        ModuleNames = []
-    ;
-        ModuleNames = [_ | _],
-        io.write_string(", ", !IO),
-        mercury_write_module_spec_list(ModuleNames, !IO)
-    ).
-
 :- pred mercury_output_inst_defn(output_lang::in, inst_varset::in,
     sym_name::in, list(inst_var)::in, inst_defn::in, prog_context::in,
     io::di, io::uo) is det.

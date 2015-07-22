@@ -309,11 +309,11 @@
     table_struct_map::out) is det.
 :- pred module_info_get_mm_tabling_info(module_info::in,
     mm_tabling_info::out) is det.
-:- pred module_info_get_imported_module_specifiers(module_info::in,
-    set(module_specifier)::out) is det.
-:- pred module_info_get_indirectly_imported_module_specifiers(module_info::in,
-    set(module_specifier)::out) is det.
-:- pred module_info_get_interface_module_specifiers(module_info::in,
+:- pred module_info_get_imported_module_names(module_info::in,
+    set(module_name)::out) is det.
+:- pred module_info_get_indirectly_imported_module_names(module_info::in,
+    set(module_name)::out) is det.
+:- pred module_info_get_interface_module_names(module_info::in,
     set(module_name)::out) is det.
 :- pred module_info_get_used_modules(module_info::in,
     used_modules::out) is det.
@@ -542,11 +542,11 @@
 
 %---------------------%
 
-:- pred module_add_imported_module_specifier(import_status::in,
-    module_specifier::in, module_info::in, module_info::out) is det.
+:- pred module_add_imported_module_name(import_status::in,
+    module_name::in, module_info::in, module_info::out) is det.
 
-:- pred module_add_indirectly_imported_module_specifier(
-    module_specifier::in, module_info::in, module_info::out) is det.
+:- pred module_add_indirectly_imported_module_name(
+    module_name::in, module_info::in, module_info::out) is det.
 
     % Return the set of the visible modules. These are
     %
@@ -748,18 +748,18 @@
                 % the same file.
                 mri_atomics_per_context          :: map(prog_context, counter),
 
-                % All the directly imported module specifiers (used during type
-                % checking, and by the MLDS back-end).
-                mri_imported_module_specifiers  :: set(module_specifier),
+                % The names of all the directly imported modules
+                % (used during type checking, and by the MLDS back-end).
+                mri_imported_module_names       :: set(module_name),
 
-                % All the indirectly imported modules (used by the MLDS
-                % back-end).
-                mri_indirectly_imported_module_specifiers
-                                                :: set(module_specifier),
+                % The names of all the indirectly imported modules
+                % (used by the MLDS back-end).
+                mri_indirectly_imported_module_names
+                                                :: set(module_name),
 
-                % All the directly imported module specifiers in the interface.
-                % (Used by unused_imports analysis).
-                mri_interface_module_specifiers :: set(module_specifier),
+                % The names of all the modules imported directly
+                % in the interface. (Used by unused_imports analysis).
+                mri_interface_module_names      :: set(module_name),
 
                 % The modules which have already been calculated as being used.
                 % Currently this is the module imports inherited from the
@@ -1055,12 +1055,12 @@ module_info_get_lambdas_per_context(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_lambdas_per_context.
 module_info_get_atomics_per_context(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_atomics_per_context.
-module_info_get_imported_module_specifiers(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_imported_module_specifiers.
-module_info_get_indirectly_imported_module_specifiers(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_indirectly_imported_module_specifiers.
-module_info_get_interface_module_specifiers(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_interface_module_specifiers.
+module_info_get_imported_module_names(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_imported_module_names.
+module_info_get_indirectly_imported_module_names(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_indirectly_imported_module_names.
+module_info_get_interface_module_names(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_interface_module_names.
 module_info_get_used_modules(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_used_modules.
 module_info_get_maybe_complexity_proc_map(MI, X) :-
@@ -1256,9 +1256,9 @@ module_info_set_ts_rev_string_table(X, Y, !MI) :-
 % 33       296         0         0          mm_tabling_info
 % 34      4019         0      4019   0.00%  lambdas_per_context
 % 35         0         0         0          atomics_per_context
-% 36      7053         0         0          imported_module_specifiers
+% 36      7053         0         0          imported_module_names
 % 37      3135         0         0          indirectly_imported_mod_specs
-% 38         1         0         0          interface_module_specifiers
+% 38         1         0         0          interface_module_names
 % 39      6568         0      3767   0.00%  used_modules
 % 40   1656135         0    126058   0.00%  type_spec_info
 % 41  22588003         0     87106   0.00%  no_tag_types
@@ -1456,32 +1456,32 @@ module_info_next_atomic_count(Context, Count, !MI) :-
 
 %---------------------%
 
-module_add_imported_module_specifier(IStat, AddedModuleSpecifier, !MI) :-
-    ImportSpecifiers0 = !.MI ^ mi_rare_info ^ mri_imported_module_specifiers,
+module_add_imported_module_name(IStat, AddedModuleSpecifier, !MI) :-
+    ImportSpecifiers0 = !.MI ^ mi_rare_info ^ mri_imported_module_names,
     set.insert(AddedModuleSpecifier, ImportSpecifiers0, ImportSpecifiers),
-    !MI ^ mi_rare_info ^ mri_imported_module_specifiers := ImportSpecifiers,
+    !MI ^ mi_rare_info ^ mri_imported_module_names := ImportSpecifiers,
 
     Exported = status_is_exported_to_non_submodules(IStat),
     (
         Exported = yes,
         InterfaceSpecifiers0 =
-            !.MI ^ mi_rare_info ^ mri_interface_module_specifiers,
+            !.MI ^ mi_rare_info ^ mri_interface_module_names,
         set.insert(AddedModuleSpecifier,
             InterfaceSpecifiers0, InterfaceSpecifiers),
-        !MI ^ mi_rare_info ^ mri_interface_module_specifiers :=
+        !MI ^ mi_rare_info ^ mri_interface_module_names :=
             InterfaceSpecifiers
     ;
         Exported = no
     ).
 
-module_add_indirectly_imported_module_specifier(AddedModuleSpecifier, !MI) :-
-    Modules0 = !.MI ^ mi_rare_info ^ mri_indirectly_imported_module_specifiers,
+module_add_indirectly_imported_module_name(AddedModuleSpecifier, !MI) :-
+    Modules0 = !.MI ^ mi_rare_info ^ mri_indirectly_imported_module_names,
     set.insert(AddedModuleSpecifier, Modules0, Modules),
-    !MI ^ mi_rare_info ^ mri_indirectly_imported_module_specifiers := Modules.
+    !MI ^ mi_rare_info ^ mri_indirectly_imported_module_names := Modules.
 
 module_info_get_visible_modules(ModuleInfo, !:VisibleModules) :-
     module_info_get_name(ModuleInfo, ThisModule),
-    module_info_get_imported_module_specifiers(ModuleInfo, ImportedModules),
+    module_info_get_imported_module_names(ModuleInfo, ImportedModules),
 
     !:VisibleModules = ImportedModules,
     set.insert(ThisModule, !VisibleModules),
@@ -1490,8 +1490,8 @@ module_info_get_visible_modules(ModuleInfo, !:VisibleModules) :-
 module_info_get_all_deps(ModuleInfo, AllImports) :-
     module_info_get_name(ModuleInfo, ModuleName),
     Parents = get_ancestors(ModuleName),
-    module_info_get_imported_module_specifiers(ModuleInfo, DirectImports),
-    module_info_get_indirectly_imported_module_specifiers(ModuleInfo,
+    module_info_get_imported_module_names(ModuleInfo, DirectImports),
+    module_info_get_indirectly_imported_module_names(ModuleInfo,
         IndirectImports),
     AllImports = set.union_list([IndirectImports, DirectImports,
         set.list_to_set(Parents)]).

@@ -772,7 +772,7 @@ write_request_entry(Compiler, AnalysisName, FuncId, Request, !IO) :-
         unexpected($module, $pred, "unknown analysis type")
     ),
 
-    write_module_name(CallerModule, !IO),
+    write_quoted_module_name(CallerModule, !IO),
     io.write_string(" -> ", !IO),
     io.write_string(AnalysisName, !IO),
     io.write_string("(", !IO),
@@ -804,7 +804,7 @@ write_imdg_arc(Compiler, AnalysisName, FuncId, Arc, !IO) :-
         unexpected($module, $pred, "unknown analysis type")
     ),
 
-    write_module_name(DependentModule, !IO),
+    write_quoted_module_name(DependentModule, !IO),
     io.write_string(" -> ", !IO),
     io.write_string(AnalysisName, !IO),
     io.write_char('(', !IO),
@@ -834,9 +834,9 @@ write_func_id(func_id(PredOrFunc, Name, Arity, ProcId), !IO) :-
     io.write_int(proc_id_to_int(ProcId), !IO),
     io.write_char(')', !IO).
 
-:- pred write_module_name(module_name::in, io::di, io::uo) is det.
+:- pred write_quoted_module_name(module_name::in, io::di, io::uo) is det.
 
-write_module_name(ModuleName, !IO) :-
+write_quoted_module_name(ModuleName, !IO) :-
     write_quoted_sym_name(ModuleName, !IO).
 
 %-----------------------------------------------------------------------------%
