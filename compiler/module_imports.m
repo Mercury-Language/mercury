@@ -535,7 +535,6 @@ get_dependencies_in_items_acc([Item | Items], !ImportDeps, !UseDeps) :-
             set.insert(UsedModuleName, !UseDeps)
         ;
             ( ModuleDefn = md_include_module(_)
-            ; ModuleDefn = md_external(_, _)
             ; ModuleDefn = md_version_numbers(_, _)
             )
         )
@@ -813,6 +812,7 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
             ; Pragma = pragma_foreign_proc_export(_)
             ; Pragma = pragma_foreign_export_enum(_)
             ; Pragma = pragma_foreign_enum(_)
+            ; Pragma = pragma_external_proc(_)
             ; Pragma = pragma_type_spec(_)
             ; Pragma = pragma_inline(_)
             ; Pragma = pragma_no_inline(_)

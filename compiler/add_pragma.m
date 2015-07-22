@@ -83,8 +83,9 @@ add_pass_2_pragma(ItemPragma, Status, !ModuleInfo, !Specs) :-
         Allowed = no,
         (
             MaybeAttrs = item_origin_user,
-            error_if_exported(ImportStatus, Context,
-                [decl("pragma"), words("declaration")], !Specs)
+            ContextPieces = pragma_context_pieces(Pragma),
+            error_if_exported(ImportStatus, Context, ContextPieces,
+                !Specs)
         ;
             % We don't report this as an error as it just clutters up
             % the compiler output - the *real* error is whatever caused
@@ -110,6 +111,50 @@ add_pass_2_pragma(ItemPragma, Status, !ModuleInfo, !Specs) :-
         ForeignImportModule =
             foreign_import_module_info(Lang, Import, Context),
         module_add_foreign_import_module(ForeignImportModule, !ModuleInfo)
+    ;
+        Pragma = pragma_external_proc(ExternalInfo),
+        ExternalInfo = pragma_info_external_proc(PredName, Arity, MaybePorF,
+            MaybeBackend),
+        module_info_get_globals(!.ModuleInfo, Globals),
+        CurrentBackend = lookup_current_backend(Globals),
+        ( if
+            (
+                MaybeBackend = no
+            ;
+                MaybeBackend = yes(Backend),
+                Backend = CurrentBackend
+            )
+        then
+            % `external' declarations can only apply to things defined
+            % in this module, since everything else is already external.
+            module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
+            (
+                MaybePorF = no,
+                predicate_table_lookup_sym_arity(PredicateTable0,
+                    is_fully_qualified, PredName, Arity, PredIds),
+                MissingPieces = [decl("external"), words("declaration")]
+            ;
+                MaybePorF = yes(pf_predicate),
+                predicate_table_lookup_pred_sym_arity(PredicateTable0,
+                    is_fully_qualified, PredName, Arity, PredIds),
+                MissingPieces = [decl("external_pred"), words("pragma")]
+            ;
+                MaybePorF = yes(pf_function),
+                predicate_table_lookup_func_sym_arity(PredicateTable0,
+                    is_fully_qualified, PredName, Arity, PredIds),
+                MissingPieces = [decl("external_func"), words("pragma")]
+            ),
+            (
+                PredIds = [_ | _],
+                list.foldl(mark_pred_as_external, PredIds, !ModuleInfo)
+            ;
+                PredIds = [],
+                undefined_pred_or_func_error(PredName, Arity, Context,
+                    MissingPieces, !Specs)
+            )
+        else
+            true
+        )
     ;
         Pragma = pragma_inline(PredNameArity),
         PredNameArity = pred_name_arity(Name, Arity),
@@ -272,6 +317,18 @@ add_pass_2_pragma(ItemPragma, Status, !ModuleInfo, !Specs) :-
         ; Pragma = pragma_structure_reuse(_)
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mark_pred_as_external(pred_id::in,
+    module_info::in, module_info::out) is det.
+
+mark_pred_as_external(PredId, !ModuleInfo) :-
+    module_info_get_preds(!.ModuleInfo, Preds0),
+    map.lookup(Preds0, PredId, PredInfo0),
+    pred_info_mark_as_external(PredInfo0, PredInfo),
+    map.det_update(PredId, PredInfo, Preds0, Preds),
+    module_info_set_preds(Preds, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -794,6 +851,7 @@ add_pass_3_pragma(ItemPragma, Status, !ModuleInfo, !QualInfo, !Specs) :-
         ; Pragma = pragma_foreign_import_module(_)
         ; Pragma = pragma_foreign_export_enum(_)
         ; Pragma = pragma_foreign_enum(_)
+        ; Pragma = pragma_external_proc(_)
         ; Pragma = pragma_inline(_)
         ; Pragma = pragma_no_inline(_)
         ; Pragma = pragma_unused_args(_)

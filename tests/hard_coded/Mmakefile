@@ -639,6 +639,8 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 	NON_PROFDEEP_PROGS = \
 		allow_stubs \
 		backend_external \
+		backend_external_func \
+		backend_external_pred \
 		backjump_test \
 		bitmap_empty \
 		bitmap_test \

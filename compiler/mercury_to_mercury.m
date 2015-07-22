@@ -930,6 +930,9 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
         Pragma = pragma_foreign_enum(FEInfo),
         mercury_format_pragma_foreign_enum(FEInfo, !IO)
     ;
+        Pragma = pragma_external_proc(ExternalInfo),
+        mercury_format_pragma_external_proc(ExternalInfo, !IO)
+    ;
         Pragma = pragma_obsolete(PredNameArity),
         PredNameArity = pred_name_arity(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, pf_predicate,
@@ -1334,11 +1337,6 @@ mercury_output_module_defn(ModuleDefn, _Context, !IO) :-
         io.write_string(",\n", !IO),
         recompilation.version.write_version_numbers(VersionNumbers, !IO),
         io.write_string(").\n", !IO)
-    ;
-        ModuleDefn = md_external(_, _),
-        io.write_string("% unimplemented module declaration: external ", !IO),
-        io.write(ModuleDefn, !IO),
-        io.nl(!IO)
     ).
 
 :- pred mercury_write_module_spec_list(list(module_specifier)::in,
@@ -4188,6 +4186,61 @@ mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, !U) :-
     add_string(", ", !U),
     add_string(ExportName, !U),
     add_string(").\n", !U).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_format_pragma_external_proc(pragma_info_external_proc::in,
+    U::di, U::uo) is det <= output(U).
+
+mercury_format_pragma_external_proc(ExternalInfo, !U) :-
+    ExternalInfo = pragma_info_external_proc(PredName, Arity, MaybePorF,
+        MaybeBackend),
+    % The old `:- external' syntax CANNOT specify pred vs func, while the new
+    % `:- pragma external_{pred,func}' syntax MUST specify pred vs func.
+    (
+        MaybePorF = no,
+        add_string(":- external(", !U),
+        (
+            MaybeBackend = no
+        ;
+            MaybeBackend = yes(Backend),
+            add_string(backend_to_string(Backend), !U),
+            add_string(", ", !U)
+        ),
+        mercury_format_sym_name(PredName, !U),
+        add_string("/", !U),
+        add_int(Arity, !U),
+        add_string(").\n", !U)
+    ;
+        MaybePorF = yes(PorF),
+        PorFStr = pred_or_func_to_str(PorF),
+        add_string(":- pragma external_", !U),
+        add_string(PorFStr, !U),
+        add_string("(", !U),
+        mercury_format_sym_name(PredName, !U),
+        add_string("/", !U),
+        add_int(Arity, !U),
+        (
+            MaybeBackend = no
+        ;
+            MaybeBackend = yes(Backend),
+            add_string(", [", !U),
+            add_string(backend_to_string(Backend), !U),
+            add_string("]", !U)
+        ),
+        add_string(").\n", !U)
+    ).
+
+:- func backend_to_string(backend) = string.
+
+backend_to_string(Backend) = Str :-
+    (
+        Backend = low_level_backend,
+        Str = "low_level_backend"
+    ;
+        Backend = high_level_backend,
+        Str = "high_level_backend"
+    ).
 
 %-----------------------------------------------------------------------------%
 

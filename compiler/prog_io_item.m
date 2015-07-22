@@ -486,8 +486,31 @@ parse_attributed_decl(ModuleName, VarSet, Functor, ArgTerms, Attributes,
         ),
         parse_implicitly_qualified_symbol_name_specifier(ModuleName, VarSet,
             PredSpecTerm, MaybeSymSpec),
-        process_maybe1(make_external(MaybeBackEnd, Context, SeqNum),
-            MaybeSymSpec, MaybeItem0),
+        (
+            MaybeSymSpec = error1(Specs),
+            MaybeItem0 = error1(Specs)
+        ;
+            MaybeSymSpec = ok1(SymSpec),
+            (
+                SymSpec = name(_Name),
+                Pieces = [words("Error:"), quote("external"),
+                    words("declaration requires arity."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [Msg]),
+                MaybeItem0 = error1([Spec])
+            ;
+                SymSpec = name_arity(Name, Arity),
+                MaybePorF = no,
+                ExternalInfo = pragma_info_external_proc(Name, Arity,
+                    MaybePorF, MaybeBackEnd),
+                Pragma = pragma_external_proc(ExternalInfo),
+                ItemPragma = item_pragma_info(Pragma, item_origin_user,
+                    Context, SeqNum),
+                Item = item_pragma(ItemPragma),
+                MaybeItem0 = ok1(Item)
+            )
+        ),
         check_no_attributes(MaybeItem0, Attributes, MaybeItem)
     ;
         Functor = "pragma",
@@ -1598,16 +1621,6 @@ process_maybe1(_, error1(Specs), error1(Specs)).
 process_maybe1_to_t(Maker, ok1(X), Y) :-
     call(Maker, X, Y).
 process_maybe1_to_t(_, error1(Specs), error1(Specs)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred make_external(maybe(backend)::in, prog_context::in, int::in,
-    sym_name_specifier::in, item::out) is det.
-
-make_external(MaybeBackend, Context, SeqNum, SymSpec, Item) :-
-    ModuleDefn = md_external(MaybeBackend, SymSpec),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
-    Item = item_module_defn(ItemModuleDefn).
 
 %-----------------------------------------------------------------------------%
 

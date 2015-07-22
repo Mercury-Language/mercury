@@ -427,38 +427,13 @@ add_item_decl_pass_1(Status, Item,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_1_module_defn(ItemModuleDefn, Status, !ModuleInfo, !Specs) :-
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _SeqNum),
+    ItemModuleDefn = item_module_defn_info(ModuleDefn, _Context, _SeqNum),
     (
         ( ModuleDefn = md_import(ModuleSpecifier)
         ; ModuleDefn = md_use(ModuleSpecifier)
         ),
         Status = item_status(ImportStatus, _),
         add_module_specifier(ModuleSpecifier, ImportStatus, !ModuleInfo)
-    ;
-        ModuleDefn = md_external(MaybeBackend, External),
-        ( External = name_arity(Name, Arity) ->
-            module_info_get_globals(!.ModuleInfo, Globals),
-            CurrentBackend = lookup_current_backend(Globals),
-            (
-                (
-                    MaybeBackend = no
-                ;
-                    MaybeBackend = yes(Backend),
-                    Backend = CurrentBackend
-                )
-            ->
-                module_mark_as_external(Name, Arity, Context, !ModuleInfo,
-                    !Specs)
-            ;
-                true
-            )
-        ;
-            Pieces = [words("Warning:"), quote("external"),
-                words("declaration requires arity."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-            !:Specs = [Spec | !.Specs]
-        )
     ;
         ( ModuleDefn = md_include_module(_)
         ; ModuleDefn = md_version_numbers(_, _)
@@ -481,37 +456,6 @@ add_module_specifier(Specifier, IStat, !ModuleInfo) :-
         module_add_indirectly_imported_module_specifier(Specifier,
             !ModuleInfo)
     ).
-
-:- pred module_mark_as_external(sym_name::in, int::in, prog_context::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-module_mark_as_external(PredName, Arity, Context, !ModuleInfo, !Specs) :-
-    % `external' declarations can only apply to things defined in this module,
-    % since everything else is already external.
-    module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    predicate_table_lookup_sym_arity(PredicateTable0, is_fully_qualified,
-        PredName, Arity, PredIds),
-    (
-        PredIds = [_ | _],
-        module_mark_preds_as_external(PredIds, !ModuleInfo)
-    ;
-        PredIds = [],
-        undefined_pred_or_func_error(PredName, Arity, Context,
-            [decl("external"), words("declaration")], !Specs)
-    ).
-
-:- pred module_mark_preds_as_external(list(pred_id)::in,
-    module_info::in, module_info::out) is det.
-
-module_mark_preds_as_external([], !ModuleInfo).
-module_mark_preds_as_external([PredId | PredIds], !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, Preds0),
-    map.lookup(Preds0, PredId, PredInfo0),
-    pred_info_mark_as_external(PredInfo0, PredInfo),
-    map.det_update(PredId, PredInfo, Preds0, Preds),
-    module_info_set_preds(Preds, !ModuleInfo),
-    module_mark_preds_as_external(PredIds, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 

@@ -592,6 +592,7 @@ replace_in_pragma_info(ModuleName, Location, TypeEqvMap, _InstEqvMap,
         ( Pragma0 = pragma_check_termination(_)
         ; Pragma0 = pragma_does_not_terminate(_)
         ; Pragma0 = pragma_exceptions(_)
+        ; Pragma0 = pragma_external_proc(_)
         ; Pragma0 = pragma_fact_table(_)
         ; Pragma0 = pragma_foreign_code(_)
         ; Pragma0 = pragma_foreign_decl(_)
@@ -618,7 +619,7 @@ replace_in_pragma_info(ModuleName, Location, TypeEqvMap, _InstEqvMap,
         ; Pragma0 = pragma_termination2_info(_)
         ; Pragma0 = pragma_termination_info(_)
         ; Pragma0 = pragma_trailing_info(_)
-        ; Pragma0 = prog_item.pragma_unused_args(_)
+        ; Pragma0 = pragma_unused_args(_)
         ),
         Pragma = Pragma0
     ),

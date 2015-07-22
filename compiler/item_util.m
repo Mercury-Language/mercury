@@ -227,6 +227,7 @@ item_needs_foreign_imports(Item) = Langs :-
         ;
             ( Pragma = pragma_foreign_import_module(_)
             ; Pragma = pragma_foreign_export_enum(_)
+            ; Pragma = pragma_external_proc(_)
             ; Pragma = pragma_type_spec(_)
             ; Pragma = pragma_inline(_)
             ; Pragma = pragma_no_inline(_)

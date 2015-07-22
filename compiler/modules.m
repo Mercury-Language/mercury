@@ -517,9 +517,6 @@ include_in_int_file_implementation(Item) = Include :-
             ; ModuleDefn = md_version_numbers(_, _)
             ),
             Include = yes
-        ;
-            ModuleDefn = md_external(_, _),
-            Include = no
         )
     ;
         Item = item_pragma(ItemPragma),
@@ -537,6 +534,7 @@ include_in_int_file_implementation(Item) = Include :-
             ; Pragma = pragma_foreign_proc(_)
             ; Pragma = pragma_foreign_proc_export(_)
             ; Pragma = pragma_foreign_export_enum(_)
+            ; Pragma = pragma_external_proc(_)
             ; Pragma = pragma_type_spec(_)
             ; Pragma = pragma_inline(_)
             ; Pragma = pragma_no_inline(_)
@@ -1609,9 +1607,7 @@ record_includes_imports_uses_in_items_acc(Visible, [Item | Items],
                 map.det_insert(ModuleName, OneOrMore, !ImportUseMap)
             )
         ;
-            ( ModuleDefn = md_external(_, _)
-            ; ModuleDefn = md_version_numbers(_, _)
-            )
+            ModuleDefn = md_version_numbers(_, _)
         )
     ;
         ( Item = item_clause(_)

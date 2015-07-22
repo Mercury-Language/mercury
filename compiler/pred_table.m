@@ -90,57 +90,55 @@
 :- pred predicate_table_remove_predicate(pred_id::in,
     predicate_table::in, predicate_table::out) is det.
 
-    % Search the table for (a) predicates or functions (b) predicates only
-    % or (c) functions only matching this (possibly module-qualified) sym_name.
+    % Search the table for (sym) predicates or functions (pred) predicates only
+    % or (func) functions only matching this (possibly module-qualified)
+    % sym_name. When searching for functions, the arity used is the arity of
+    % the function itself, not the arity N+1 predicate that it gets
+    % converted to.
     %
 :- pred predicate_table_lookup_sym(predicate_table::in, is_fully_qualified::in,
     sym_name::in, list(pred_id)::out) is det.
-
 :- pred predicate_table_lookup_pred_sym(predicate_table::in,
     is_fully_qualified::in, sym_name::in, list(pred_id)::out) is det.
-
 :- pred predicate_table_lookup_func_sym(predicate_table::in,
     is_fully_qualified::in, sym_name::in, list(pred_id)::out) is det.
 
-    % Search the table for (a) predicates or functions (b) predicates only
-    % or (c) functions only matching this (possibly module-qualified)
-    % sym_name & arity.
+    % Search the table for (sym) predicates or functions (pred) predicates only
+    % or (func) functions only matching this (possibly module-qualified)
+    % sym_name & arity. When searching for functions, the arity used is the
+    % arity of the function itself, not the arity N+1 predicate that it gets
+    % converted to.
     %
 :- pred predicate_table_lookup_sym_arity(predicate_table::in,
     is_fully_qualified::in, sym_name::in, arity::in, list(pred_id)::out)
     is det.
-
 :- pred predicate_table_lookup_pred_sym_arity(predicate_table::in,
     is_fully_qualified::in, sym_name::in, arity::in, list(pred_id)::out)
     is det.
-
 :- pred predicate_table_lookup_func_sym_arity(predicate_table::in,
     is_fully_qualified::in, sym_name::in, arity::in, list(pred_id)::out)
     is det.
 
-    % Search the table for (a) predicates or functions
-    % (b) predicates only or (c) functions only matching this name.
+    % Search the table for (name) predicates or functions
+    % (pred_name) predicates only or (func_name) functions only
+    % matching this name.
     %
 :- pred predicate_table_lookup_name(predicate_table::in, string::in,
     list(pred_id)::out) is det.
-
 :- pred predicate_table_lookup_pred_name(predicate_table::in, string::in,
     list(pred_id)::out) is det.
-
 :- pred predicate_table_lookup_func_name(predicate_table::in, string::in,
     list(pred_id)::out) is det.
 
-    % Search the table for (a) predicates or functions (b) predicates only
-    % or (c) functions only matching this name & arity. When searching for
-    % functions, the arity used is the arity of the function, not the arity
-    % N+1 predicate that it gets converted to.
+    % Search the table for (name) predicates or functions (pred_name)
+    % predicates only or (func_name) functions only matching this name & arity.
+    % When searching for functions, the arity used is the arity of the
+    % function itself, not the arity N+1 predicate that it gets converted to.
     %
 :- pred predicate_table_lookup_name_arity(predicate_table::in, string::in,
     arity::in, list(pred_id)::out) is det.
-
 :- pred predicate_table_lookup_pred_name_arity(predicate_table::in, string::in,
     arity::in, list(pred_id)::out) is det.
-
 :- pred predicate_table_lookup_func_name_arity(predicate_table::in, string::in,
     arity::in, list(pred_id)::out) is det.
 
@@ -150,29 +148,26 @@
     --->    is_fully_qualified
     ;       may_be_partially_qualified.
 
-    % Search the table for (a) predicates or functions (b) predicates only
-    % or (c) functions only matching this module, name & arity. When searching
-    % for functions, the arity used is the arity of the function, not the arity
-    % N+1 predicate that it gets converted to.
+    % Search the table for (mna) predicates or functions (pred_mna) predicates
+    % only or (func_mna) functions only matching this module, name & arity.
+    % When searching for functions, the arity used is the arity of the
+    % function itself, not the arity N+1 predicate that it gets converted to.
+    % (`m_n_a' here is short for "module, name, arity".)
     %
-    % Note that in cases (b) and (c) it was previously the case that there
-    % could only be one matching pred_id, since each predicate or function
-    % could be uniquely identified by its module, name, arity, and category
-    % (function/predicate). However this is no longer true, due to nested
-    % modules. (For example, `pred foo.bar/2' might match both
+    % Note that in cases (pred_mna) and (func_mna), it was once true that
+    % there could only be one matching pred_id, since each predicate or
+    % function could be uniquely identified by its module, name, arity,
+    % and category (function/predicate). However this is no longer true,
+    % due to nested modules. (For example, `pred foo.bar/2' might match both
     % `pred mod1.foo.bar/2' and `pred mod2.foo.bar/2'). I hope it doesn't
     % break anything too badly...
-    %
-    % (`m_n_a' here is short for "module, name, arity".)
     %
 :- pred predicate_table_lookup_m_n_a(predicate_table::in,
     is_fully_qualified::in, module_name::in, string::in, arity::in,
     list(pred_id)::out) is det.
-
 :- pred predicate_table_lookup_pred_m_n_a(predicate_table::in,
     is_fully_qualified::in, module_name::in, string::in, arity::in,
     list(pred_id)::out) is det.
-
 :- pred predicate_table_lookup_func_m_n_a(predicate_table::in,
     is_fully_qualified::in, module_name::in, string::in, arity::in,
     list(pred_id)::out) is det.

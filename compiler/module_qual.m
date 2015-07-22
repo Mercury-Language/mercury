@@ -430,9 +430,7 @@ collect_mq_info_in_item(Item, !Info) :-
             ),
             maybe_add_import(ImportedModuleName, !Info)
         ;
-            ( ModuleDefn = md_external(_, _)
-            ; ModuleDefn = md_version_numbers(_, _)
-            )
+            ModuleDefn = md_version_numbers(_, _)
         )
     ;
         Item = item_type_defn(ItemTypeDefn),
@@ -889,8 +887,7 @@ module_qualify_item(Item0, Item, !Info, !Specs) :-
         Item0 = item_module_defn(ItemModuleDefn),
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
-            ( ModuleDefn = md_external(_, _)
-            ; ModuleDefn = md_import(_)
+            ( ModuleDefn = md_import(_)
             ; ModuleDefn = md_use(_)
             ; ModuleDefn = md_version_numbers(_, _)
             )
@@ -1599,6 +1596,9 @@ qualify_pragma(Pragma0, Pragma, Context, !Info, !Specs) :-
         ( Pragma0 = pragma_foreign_decl(_)
         ; Pragma0 = pragma_foreign_code(_)
         ; Pragma0 = pragma_foreign_import_module(_)
+        ; Pragma0 = pragma_external_proc(_)
+          % The predicate name in the pragma_external_proc is constructed
+          % already qualified.
         ; Pragma0 = pragma_inline(_)
         ; Pragma0 = pragma_no_inline(_)
         ; Pragma0 = pragma_obsolete(_)
@@ -2414,6 +2414,9 @@ mq_error_context_to_pieces(ErrorContext, Context,Pieces) :-
         ;
             Pragma = pragma_foreign_enum(_),
             PragmaName = "foreign_enum"
+        ;
+            Pragma = pragma_external_proc(_),
+            PragmaName = "external_proc"
         ;
             Pragma = pragma_type_spec(_),
             PragmaName = "type_spec"

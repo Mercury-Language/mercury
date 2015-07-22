@@ -275,9 +275,9 @@ error_is_exported(Context, ItemPieces, !Specs) :-
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-error_if_exported(Status, Context, Item, !Specs) :-
+error_if_exported(Status, Context, ItemPieces, !Specs) :-
     ( Status = status_exported ->
-        error_is_exported(Context, Item, !Specs)
+        error_is_exported(Context, ItemPieces, !Specs)
     ;
         true
     ).

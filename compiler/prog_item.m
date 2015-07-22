@@ -28,6 +28,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module recompilation.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.status.
 
@@ -594,6 +595,7 @@
     ;       pragma_foreign_proc_export(pragma_info_foreign_proc_export)
     ;       pragma_foreign_export_enum(pragma_info_foreign_export_enum)
     ;       pragma_foreign_enum(pragma_info_foreign_enum)
+    ;       pragma_external_proc(pragma_info_external_proc)
     ;       pragma_type_spec(pragma_info_type_spec)
     ;       pragma_inline(pred_name_arity)
     ;       pragma_no_inline(pred_name_arity)
@@ -624,6 +626,8 @@
     % in the interface section of a module.
     %
 :- func pragma_allowed_in_interface(pragma_type) = bool.
+
+:- func pragma_context_pieces(pragma_type) = list(format_component).
 
     % Foreign language interfacing pragmas.
 
@@ -689,6 +693,17 @@
                 foreign_enum_language   :: foreign_language,
                 foreign_enum_type_ctor  :: type_ctor,
                 foreign_enum_values     :: assoc_list(sym_name, string)
+            ).
+
+:- type pragma_info_external_proc
+    --->    pragma_info_external_proc(
+                % The specified procedure(s) is/are implemented outside
+                % of Mercury code, for the named backend if there is one,
+                % or if there isn't a named backend, then for all backends.
+                external_pred_name      :: sym_name,
+                external_pred_arity     :: arity,
+                external_p_or_f         :: maybe(pred_or_func),
+                external_maybe_backend  :: maybe(backend)
             ).
 
     % Optimization pragmas.
@@ -1033,13 +1048,6 @@
             % The named module is a submodule of the current module.
             % XXX ITEM_LIST This should be a separate kind of item.
 
-    ;       md_external(maybe(backend), sym_name_specifier)
-            % The specified symbol is implemented outside of Mercury code,
-            % for the named backend if there is one, or, if there isn't
-            % a named backend, then for all backends.
-            % XXX ITEM_LIST This should be a pragma, at least inside
-            % the compiler, and maybe outside as well.
-
     ;       md_version_numbers(module_name, recompilation.version_numbers)
             % This is used to represent the version numbers of items in an
             % interface file for use in smart recompilation.
@@ -1323,9 +1331,10 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ; Pragma = pragma_foreign_proc_export(_)
         ; Pragma = pragma_foreign_export_enum(_)
         ; Pragma = pragma_foreign_proc(_)
+        ; Pragma = pragma_external_proc(_)
         ; Pragma = pragma_inline(_)
-        ; Pragma = pragma_no_detism_warning(_)
         ; Pragma = pragma_no_inline(_)
+        ; Pragma = pragma_no_detism_warning(_)
         ; Pragma = pragma_fact_table(_)
         ; Pragma = pragma_tabled(_)
         ; Pragma = pragma_promise_pure(_)
@@ -1339,9 +1348,8 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ),
         Allowed = no
     ;
-        % Note that the parser will strip out `source_file' pragmas anyway,
-        % and that `reserve_tag' and `direct_arg' must be in the interface iff
-        % the corresponding type definition is in the interface. This is
+        % Note that `reserve_tag' and `direct_arg' must be in the interface
+        % iff the corresponding type definition is in the interface. This is
         % checked in make_hlds.
         ( Pragma = pragma_foreign_enum(_)
         ; Pragma = pragma_foreign_import_module(_)
@@ -1359,6 +1367,148 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ; Pragma = pragma_oisu(_)
         ),
         Allowed = yes
+    ).
+
+pragma_context_pieces(Pragma) = ContextPieces :-
+    (
+        Pragma = pragma_foreign_code(_),
+        ContextPieces = [pragma_decl("foreign_code"), words("declaration")]
+    ;
+        Pragma = pragma_foreign_decl(_),
+        ContextPieces = [pragma_decl("foreign_decl"), words("declaration")]
+    ;
+        Pragma = pragma_foreign_proc_export(_),
+        ContextPieces = [pragma_decl("foreign_export"), words("declaration")]
+    ;
+        Pragma = pragma_foreign_export_enum(_),
+        ContextPieces = [pragma_decl("foreign_export_enum"),
+            words("declaration")]
+    ;
+        Pragma = pragma_foreign_proc(_),
+        ContextPieces = [pragma_decl("foreign_proc"), words("declaration")]
+    ;
+        Pragma = pragma_external_proc(External),
+        External = pragma_info_external_proc(_, _, MaybePorF, _),
+        (
+            MaybePorF = no,
+            ContextPieces = [decl("external"), words("declaration")]
+        ;
+            MaybePorF = yes(pf_predicate),
+            ContextPieces = [pragma_decl("external_pred"),
+                words("declaration")]
+        ;
+            MaybePorF = yes(pf_function),
+            ContextPieces = [pragma_decl("external_func"),
+                words("declaration")]
+        )
+    ;
+        Pragma = pragma_inline(_),
+        ContextPieces = [pragma_decl("inline"), words("declaration")]
+    ;
+        Pragma = pragma_no_inline(_),
+        ContextPieces = [pragma_decl("no_inline"), words("declaration")]
+    ;
+        Pragma = pragma_no_detism_warning(_),
+        ContextPieces = [pragma_decl("no_determinism_warning"),
+            words("declaration")]
+    ;
+        Pragma = pragma_fact_table(_),
+        ContextPieces = [pragma_decl("fact_table"), words("declaration")]
+    ;
+        Pragma = pragma_tabled(Tabled),
+        Tabled = pragma_info_tabled(EvalMethod, _, _, _),
+        (
+            EvalMethod = eval_memo,
+            ContextPieces = [pragma_decl("memo"), words("declaration")]
+        ;
+            EvalMethod = eval_loop_check,
+            ContextPieces = [pragma_decl("loop_check"), words("declaration")]
+        ;
+            EvalMethod = eval_minimal(_),
+            ContextPieces = [pragma_decl("minimal_model"),
+                words("declaration")]
+        ;
+            EvalMethod = eval_table_io(_, _),
+            unexpected($module, $pred, "eval_table_io")
+        ;
+            EvalMethod = eval_normal,
+            unexpected($module, $pred, "eval_normal")
+        )
+    ;
+        Pragma = pragma_promise_pure(_),
+        ContextPieces = [pragma_decl("promise_pure"), words("declaration")]
+    ;
+        Pragma = pragma_promise_semipure(_),
+        ContextPieces = [pragma_decl("promise_semipure"), words("declaration")]
+    ;
+        Pragma = pragma_promise_eqv_clauses(_),
+        ContextPieces = [pragma_decl("promise_equivalent_clauses"),
+            words("declaration")]
+    ;
+        Pragma = pragma_unused_args(_),
+        ContextPieces = [pragma_decl("unused_args"), words("declaration")]
+    ;
+        Pragma = pragma_exceptions(_),
+        ContextPieces = [pragma_decl("exceptions"), words("declaration")]
+    ;
+        Pragma = pragma_trailing_info(_),
+        ContextPieces = [pragma_decl("trailing_info"), words("declaration")]
+    ;
+        Pragma = pragma_mm_tabling_info(_),
+        ContextPieces = [pragma_decl("tabling_info"), words("declaration")]
+    ;
+        Pragma = pragma_require_feature_set(_),
+        ContextPieces = [pragma_decl("require_feature_set"),
+            words("declaration")]
+    ;
+        Pragma = pragma_foreign_enum(_),
+        ContextPieces = [pragma_decl("foreign_enum"), words("declaration")]
+    ;
+        Pragma = pragma_foreign_import_module(_),
+        ContextPieces = [pragma_decl("foreign_import_module"),
+            words("declaration")]
+    ;
+        Pragma = pragma_obsolete(_),
+        ContextPieces = [pragma_decl("obsolete"), words("declaration")]
+    ;
+        Pragma = pragma_reserve_tag(_),
+        ContextPieces = [pragma_decl("reserve_tag"), words("declaration")]
+    ;
+        Pragma = pragma_type_spec(_),
+        ContextPieces = [pragma_decl("type_spec"), words("declaration")]
+    ;
+        Pragma = pragma_termination_info(_),
+        ContextPieces = [pragma_decl("termination_info"),
+            words("declaration")]
+    ;
+        Pragma = pragma_termination2_info(_),
+        ContextPieces = [pragma_decl("termination2_info"),
+            words("declaration")]
+    ;
+        Pragma = pragma_terminates(_),
+        ContextPieces = [pragma_decl("terminates"), words("declaration")]
+    ;
+        Pragma = pragma_does_not_terminate(_),
+        ContextPieces = [pragma_decl("does_not_terminate"),
+            words("declaration")]
+    ;
+        Pragma = pragma_check_termination(_),
+        ContextPieces = [pragma_decl("check_termination"),
+            words("declaration")]
+    ;
+        Pragma = pragma_structure_sharing(_),
+        ContextPieces = [pragma_decl("structure_sharing"),
+            words("declaration")]
+    ;
+        Pragma = pragma_structure_reuse(_),
+        ContextPieces = [pragma_decl("structure_reuse"), words("declaration")]
+    ;
+        Pragma = pragma_mode_check_clauses(_),
+        ContextPieces = [pragma_decl("mode_check_clauses"),
+            words("declaration")]
+    ;
+        Pragma = pragma_oisu(_),
+        ContextPieces = [pragma_decl("oisu"), words("declaration")]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1467,9 +1617,8 @@ get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
         )
     ).
 
-:- pred get_pragma_foreign_code(globals::in, pragma_type::in,
-    prog_context::in, module_foreign_info::in, module_foreign_info::out)
-    is det.
+:- pred get_pragma_foreign_code(globals::in, pragma_type::in, prog_context::in,
+    module_foreign_info::in, module_foreign_info::out) is det.
 
 get_pragma_foreign_code(Globals, Pragma, Context, !Info) :-
     globals.get_backend_foreign_languages(Globals, BackendLangs),
@@ -1572,6 +1721,7 @@ get_pragma_foreign_code(Globals, Pragma, Context, !Info) :-
         ( Pragma = pragma_check_termination(_)
         ; Pragma = pragma_does_not_terminate(_)
         ; Pragma = pragma_exceptions(_)
+        ; Pragma = pragma_external_proc(_)
         ; Pragma = pragma_inline(_)
         ; Pragma = pragma_mm_tabling_info(_)
         ; Pragma = pragma_mode_check_clauses(_)

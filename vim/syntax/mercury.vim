@@ -38,7 +38,7 @@ syn keyword mercuryKeyword      cc_nondet
 syn keyword mercuryKeyword      det
 syn keyword mercuryKeyword      end_module
 syn keyword mercuryKeyword      erroneous
-syn keyword mercuryKeyword      external
+syn keyword mercuryKeyword      external external_pred external_func
 syn keyword mercuryKeyword      failure
 syn keyword mercuryKeyword      finalize finalise
 syn keyword mercuryKeyword      func

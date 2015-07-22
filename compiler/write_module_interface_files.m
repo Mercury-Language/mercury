@@ -290,11 +290,9 @@ process_item_for_private_interface(ModuleName, Section, Item,
         ;
             % XXX ITEM_LIST The action here follows what this predicate used
             % to do before the item list change. I (zs) don't think that
-            % it does the right thing for md_external and for
-            % md_version_numbers, but then again I don't think that such
-            % items actually reach here ...
+            % it does the right thing for md_version_numbers, but then again
+            % I don't think that such items actually reach here ...
             ( ModuleDefn = md_include_module(_)
-            ; ModuleDefn = md_external(_, _)
             ; ModuleDefn = md_version_numbers(_, _)
             ),
             add_item_to_section_items(Section, Item,
@@ -767,9 +765,7 @@ do_standardize_impl_items([Item | Items], !RevRemainderItems,
             ModuleDefn = md_use(UsedModuleName),
             map.set(UsedModuleName, Context, !UseModuleMap)
         ;
-            ( ModuleDefn = md_external(_, _)
-            ; ModuleDefn = md_version_numbers(_, _)
-            ),
+            ModuleDefn = md_version_numbers(_, _),
             unexpected($module, $pred, "unexpected item")
         ;
             ModuleDefn = md_include_module(_),
@@ -1647,7 +1643,6 @@ filter_items_for_import_needs([Item | Items], NeedImports, NeedForeignImports,
             )
         ;
             ( ModuleDefn = md_include_module(_)
-            ; ModuleDefn = md_external(_, _)
             ; ModuleDefn = md_version_numbers(_, _)
             ),
             !:ItemsCord = cord.snoc(!.ItemsCord, Item)
@@ -1811,7 +1806,6 @@ reorderable_item(Item) = Reorderable :-
 reorderable_module_defn(ModuleDefn) = Reorderable :-
     (
         ( ModuleDefn = md_import(_)
-        ; ModuleDefn = md_external(_, _)
         ; ModuleDefn = md_use(_)
         ),
         Reorderable = yes
@@ -1829,6 +1823,7 @@ reorderable_pragma_type(Pragma) = Reorderable :-
         ( Pragma = pragma_check_termination( _)
         ; Pragma = pragma_does_not_terminate( _)
         ; Pragma = pragma_exceptions(_)
+        ; Pragma = pragma_external_proc(_)
         ; Pragma = pragma_trailing_info(_)
         ; Pragma = pragma_mm_tabling_info(_)
         ; Pragma = pragma_foreign_proc_export(_)
@@ -1913,8 +1908,7 @@ chunkable_item(Item) = Chunkable :-
 
 chunkable_module_defn(ModuleDefn) = Reorderable :-
     (
-        ( ModuleDefn = md_external(_, _)
-        ; ModuleDefn = md_import(_)
+        ( ModuleDefn = md_import(_)
         ; ModuleDefn = md_use(_)
         ),
         Reorderable = yes
@@ -1934,6 +1928,7 @@ chunkable_pragma_type(Pragma) = Chunkable :-
         ; Pragma = pragma_foreign_proc_export(_)
         ; Pragma = pragma_foreign_export_enum(_)
         ; Pragma = pragma_foreign_enum(_)
+        ; Pragma = pragma_external_proc(_)
         ; Pragma = pragma_inline(_)
         ; Pragma = pragma_mode_check_clauses(_)
         ; Pragma = pragma_no_inline(_)
