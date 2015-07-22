@@ -86,8 +86,7 @@
 :- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.modules.
-    % for split_into_compilation_units_perform_checks; undesirable dependency
+:- import_module parse_tree.split_parse_tree_src. % undesirable dependency
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.prog_item.
