@@ -124,7 +124,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 :- import_module string.
 :- import_module term.
 
@@ -629,22 +628,22 @@ strip_assertions_in_items_acc([Item | Items], !RevItems) :-
     list(item)::in, list(item)::out) is det.
 
 strip_unnecessary_impl_defns(!IntItems, !ImpItems) :-
-    some [!IntTypesMap, !ImplTypesMap] (
+    some [!IntTypesMap, !ImpTypesMap] (
         map.init(!:IntTypesMap),
-        map.init(!:ImplTypesMap),
+        map.init(!:ImpTypesMap),
         gather_type_defns_in_section(ms_interface,
             !IntItems, !IntTypesMap),
         gather_type_defns_in_section(ms_implementation,
-            !ImpItems, !ImplTypesMap),
-        BothTypesMap = multi_map.merge(!.IntTypesMap, !.ImplTypesMap),
+            !ImpItems, !ImpTypesMap),
+        BothTypesMap = multi_map.merge(!.IntTypesMap, !.ImpTypesMap),
 
         % Work out which module imports in the implementation section of
         % the interface are required by the definitions of equivalence
         % types and dummy types in the implementation.
-        get_requirements_of_impl_exported_types(!.IntTypesMap, !.ImplTypesMap,
+        get_requirements_of_impl_exported_types(!.IntTypesMap, !.ImpTypesMap,
             BothTypesMap, NecessaryDummyTypeCtors,
-            NecessaryAbsImplExpTypeCtors, NecessaryTypeImplImports),
-        set.union(NecessaryDummyTypeCtors, NecessaryAbsImplExpTypeCtors,
+            NecessaryAbsImpExpTypeCtors, NecessaryTypeImpImports),
+        set.union(NecessaryDummyTypeCtors, NecessaryAbsImpExpTypeCtors,
             AllNecessaryTypeCtors),
 
         % Work out which module imports in the implementation section of
@@ -652,58 +651,32 @@ strip_unnecessary_impl_defns(!IntItems, !ImpItems) :-
         % in the implementation. Specifically, we require the ones
         % that are needed by any constraints on the typeclasses.
         get_requirements_of_impl_typeclasses_in_items(!.ImpItems,
-            NecessaryTypeclassImplImports),
+            NecessaryTypeclassImpImports),
 
-        NecessaryImplImports = set.union(NecessaryTypeImplImports,
-            NecessaryTypeclassImplImports),
+        NecessaryImpImports = set.union(NecessaryTypeImpImports,
+            NecessaryTypeclassImpImports),
 
         % If a type in the implementation section isn't dummy and doesn't have
         % foreign type alternatives, make it abstract.
         map.map_values_only(make_impl_type_abstract(BothTypesMap),
-            !ImplTypesMap),
+            !ImpTypesMap),
 
         % If there is an exported type declaration for a type with an abstract
         % declaration in the implementation (usually it will originally
         % have been a d.u. type), remove the declaration in the implementation.
         % Don't remove `type_is_abstract_enum' declarations, though.
-        FindRemovableAbsExpTypes =
-            (pred(TypeCtor::out) is nondet :-
-                map.member(!.ImplTypesMap, TypeCtor, Defns),
-                all [Defn] (
-                    list.member(Defn - _, Defns)
-                => (
-                    Defn = parse_tree_abstract_type(Details),
-                    Details \= abstract_enum_type(_)
-                )),
-                multi_map.contains(!.IntTypesMap, TypeCtor)
-            ),
-        % XXX ITEM_LIST Do this without calling `solutions' on nondet code.
-        solutions(FindRemovableAbsExpTypes, RemovableAbstractExportedTypes),
-        RemoveFromImplTypesMap =
-            (pred(TypeCtor::in, !.ImplTypesMap::in, !:ImplTypesMap::out)
-                    is det :-
-                multi_map.delete(TypeCtor, !ImplTypesMap)
-            ),
-        list.foldl(RemoveFromImplTypesMap, RemovableAbstractExportedTypes,
-            !ImplTypesMap),
+        %
+        % XXX This comment doesn't match the code.
+        map.foldl(find_removable_abstract_exported_types(!.IntTypesMap),
+            !.ImpTypesMap, set.init, RemovableAbstractExportedTypes),
+        set.foldl(multi_map.delete, RemovableAbstractExportedTypes,
+            !ImpTypesMap),
 
-        % XXX ITEM_LIST Do this without two nested lambdas.
-        AddProjectedItem =
-            (pred((_ - ItemTypeDefn)::in, !.ImpItems::in, !:ImpItems::out)
-                    is det :-
-                Item = item_type_defn(ItemTypeDefn),
-                !:ImpItems = [Item | !.ImpItems]
-            ),
-        AddProjectedItems =
-            (pred(_::in, Defns::in, !.ImpItems::in, !:ImpItems::out)
-                    is det :-
-                list.foldl(AddProjectedItem, Defns, !ImpItems)
-            ),
-        map.foldl(AddProjectedItems, !.ImplTypesMap, !ImpItems),
+        map.foldl(add_type_defn_items_from_map, !.ImpTypesMap, !ImpItems),
 
         % XXX ITEM_LIST Merge these traversals.
         maybe_strip_import_decls(!ImpItems),
-        strip_unnecessary_impl_imports(NecessaryImplImports, !ImpItems),
+        strip_unnecessary_impl_imports(NecessaryImpImports, !ImpItems),
         strip_unnecessary_impl_types(AllNecessaryTypeCtors, !ImpItems),
         strip_local_foreign_enum_pragmas(!.IntTypesMap, !ImpItems),
         (
@@ -713,6 +686,46 @@ strip_unnecessary_impl_defns(!IntItems, !ImpItems) :-
             standardize_impl_items(!ImpItems)
         )
     ).
+
+    % See the comment on the one call above.
+    %
+:- pred find_removable_abstract_exported_types(type_defn_map::in,
+    type_ctor::in, assoc_list(type_defn, item_type_defn_info)::in,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
+
+find_removable_abstract_exported_types(IntTypesMap,
+        ImpTypeCtor, ImpTypeDefnPairs, !AbstractExportedTypes) :-
+    ( if
+        all [Defn] (
+            list.member(Defn - _, ImpTypeDefnPairs)
+        => (
+            Defn = parse_tree_abstract_type(Details),
+            Details \= abstract_enum_type(_)
+        )),
+        multi_map.contains(IntTypesMap, ImpTypeCtor)
+    then
+        set.insert(ImpTypeCtor, !AbstractExportedTypes)
+    else
+        true
+    ).
+
+:- pred add_type_defn_items_from_map(
+    type_ctor::in, list(pair(type_defn, item_type_defn_info))::in,
+    list(item)::in, list(item)::out) is det.
+
+add_type_defn_items_from_map(_TypeCtor, TypeDefnPairs, !ImpItems) :-
+    add_type_defn_items(TypeDefnPairs, !ImpItems).
+
+:- pred add_type_defn_items(assoc_list(type_defn, item_type_defn_info)::in,
+    list(item)::in, list(item)::out) is det.
+
+add_type_defn_items([], !ImpItems).
+add_type_defn_items([TypeDefnPair | TypeDefnPairs], !ImpItems) :-
+    TypeDefnPair = _TypeDefn - ItemTypeDefn, 
+    !:ImpItems = [item_type_defn(ItemTypeDefn) | !.ImpItems],
+    add_type_defn_items(TypeDefnPairs, !ImpItems).
+
+%-----------------------------------------------------------------------------%
 
 :- pred standardize_impl_items(list(item)::in, list(item)::out) is det.
 
