@@ -6,7 +6,7 @@
 usage="Usage: speedtest [-dsmtz] [-l | -1] [-e dir] [-g grade] [-c cmd] [-o option]* [-nN] [-ON] [-fFILE] batchname"
 
 single_modulelist="typecheck.m"
-# As of 22 nov 2014, these are the ten largest modules of the compiler.
+# As of 23 jul 2015, these are the ten largest modules of the compiler.
 short_modulelist="
     options.m
     polymorphism.m
@@ -16,21 +16,21 @@ short_modulelist="
     mlds_to_c.m
     table_gen.m
     mlds_to_il.m
-    add_pragma.m
     dep_par_conj.m
+    typecheck.m
 "
-# As of 22 nov 2014, these are the ten next largest modules of the compiler.
+# As of 23 jul 2015, these are the ten next largest modules of the compiler.
 long_modulelist="$short_modulelist
     hlds_pred.m
     higher_order.m
-    typecheck.m
+    prog_io_pragma.m
     mlds_to_cs.m
     ml_unify_gen.m
-    make_hlds_passes.m
-    prog_io_pragma.m
+    handle_options.m
+    compile_target_code.m
     hlds_goal.m
     layout_out.m
-    compile_target_code.m
+    fact_table.m
 "
 cmd=""
 debug=false
