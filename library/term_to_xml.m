@@ -25,26 +25,25 @@
 % --------
 % The second method is less flexible than the first, but it allows for the
 % automatic generation of a DTD.
-% Each functor in a term is given a corresponding well-formed element name in
-% the XML document according to a mapping. Some predefined mappings are
+% Each functor in a term is given a corresponding well-formed element name
+% in the XML document according to a mapping. Some predefined mappings are
 % provided, but user defined mappings may also be used.
 %
 % Method 1 vs. Method 2
 % ---------------------
 %
+% Method 2 can automatically generate DTDs, while method 1 cannot.
+%
 % Method 1 allows values of a specific type to be mapped to arbitrary XML
 % elements with arbitrary children and arbitrary attributes.
-% In method 2 each functor in a term can be mapped to only one XML element.
+% With method 2, each functor in a term can be mapped to only one XML element.
 % Method 2 also only allows a selected set of attributes.
-% In method 2 a DTD can be automatically generated. In method 1 DTDs cannot
-% be automatically generated.
 %
-% Method 1 is useful for mapping a specific type to XML,
-% for example mapping terms which represent mathematical expressions to
-% MathML.
-% Method 2 is useful for mapping arbitrary terms of any type to XML.
+% Method 1 is useful for mapping a specific type to XML, for example
+% mapping terms which represent mathematical expressions to MathML.
+% Method 2 is useful for mapping terms of *any* type to XML.
 %
-% In both methods the XML document can be annotated with a stylesheet
+% In both methods, the XML document can be annotated with a stylesheet
 % reference.
 %
 %---------------------------------------------------------------------------%
@@ -61,7 +60,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Method 1 interface
+% Method 1 interface.
 %
 
     % Instances of this typeclass can be converted to XML.
@@ -70,8 +69,8 @@
     func to_xml(T::in) = (xml::out(xml_doc)) is det
 ].
 
-    % Values of this type represent an XML document or a portion of
-    % an XML document.
+    % Values of this type represent either a full XML document
+    % or a portion of one.
     %
 :- type xml
     --->    elem(
@@ -89,24 +88,23 @@
 
     ;       cdata(string)
             % Data to be enclosed in `<![CDATA[' and `]]>' tags.
-            % The string may not contain the substring "]]>".
-            % If it does then invalid XML will be generated.
+            % The string may not contain "]]>" as a substring.
+            % If it does, then the generated XML will be invalid.
 
     ;       comment(string)
-            % An XML comment. The comment should not
-            % include the `<!--' and `-->'. Any occurrences of
-            % the substring "--" will be replaced by " - ",
-            % since "--" is not allowed in XML comments.
+            % An XML comment. The comment should not include
+            % the `<!--' and `-->'. Any occurrences of the substring "--"
+            % will be replaced by " - ", since "--" is not allowed
+            % in XML comments.
 
     ;       entity(string)
-            % An entity reference. The string will
-            % have `&' prepended and `;' appended before being
-            % output.
+            % An entity reference. The string will have `&' prepended
+            % and `;' appended before being output.
 
     ;       raw(string).
             % Raw XML data. The data will be written out verbatim.
 
-    % An XML document must have an element at the top-level.
+    % An XML document must have an element at the top level.
     % The following inst is used to enforce this restriction.
     %
 :- inst xml_doc
@@ -130,7 +128,7 @@
     ;       system(string).                 % URL
 
     % Values of this type specify whether a DTD should be included in
-    % a generated XML document and if so how.
+    % a generated XML document, and if so, how.
     %
 :- type maybe_dtd
     --->    embed_dtd
@@ -165,8 +163,7 @@
 :- pred write_xml_doc(Stream::in, T::in, State::di, State::uo)
     is det <= (xmlable(T), stream.writer(Stream, string, State)).
 
-    % write_xml_doc_style_dtd(Stream, Term, MaybeStyleSheet, MaybeDTD,
-    %   !State):
+    % write_xml_doc_style_dtd(Stream, Term, MaybeStyleSheet, MaybeDTD, !State):
     %
     % Write Term to the given stream as an XML document.
     % MaybeStyleSheet and MaybeDTD specify whether or not a stylesheet
@@ -175,9 +172,8 @@
     % a DTD cannot be automatically generated and embedded
     % (that feature is available only for method 2 -- see below).
     %
-:- pred write_xml_doc_style_dtd(Stream::in, T::in,
-    maybe_stylesheet::in, maybe_dtd::in(non_embedded_dtd),
-    State::di, State::uo) is det
+:- pred write_xml_doc_style_dtd(Stream::in, T::in, maybe_stylesheet::in,
+    maybe_dtd::in(non_embedded_dtd), State::di, State::uo) is det
     <= (xmlable(T), stream.writer(Stream, string, State)).
 
     % write_xml_element(Stream, Indent, Term, !State):
@@ -203,7 +199,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Method 2 interface
+% Method 2 interface.
 %
 
     % Values of this type specify which mapping from functors to elements
@@ -214,34 +210,30 @@
     %
     % We provide two predefined mappings:
     %
-    %   1. simple: The functors `[]', `[|]' and `{}' are mapped to the
-    %   elements `List', `Nil' and `Tuple' respectively. Arrays are
-    %   assigned the `Array' element. The builtin types are assigned
-    %   the elements `Int', `String', `Float' and `Char'. All other
-    %   functors are assigned elements with the same name as the
-    %   functor provided the functor name is well formed and does
-    %   not start with a capital letter. Otherwise a mangled
-    %   version of the functor name is used.
+    %   1. simple: The functors `[]', `[|]' and `{}' are mapped to the elements
+    %   `List', `Nil' and `Tuple' respectively. Arrays are assigned the
+    %   `Array' element. The builtin types are assigned the elements `Int',
+    %   `String', `Float' and `Char'. All other functors are assigned elements
+    %   with the same name as the functor provided the functor name is
+    %   well formed and does not start with a capital letter. Otherwise,
+    %   a mangled version of the functor name is used.
     %
-    %   All elements except `Int', `String', `Float' and `Char'
-    %   will have their `functor', `arity', `type' and `field' (if
-    %   there is a field name) attributes set. `Int', `String',
-    %   `Float' and `Char' elements will just have their `type' and
-    %   possibly their `field' attributes set.
+    %   All elements except `Int', `String', `Float' and `Char' will have
+    %   their `functor', `arity', `type' and `field' (if there is a field name)
+    %   attributes set. `Int', `String', `Float' and `Char' elements will
+    %   just have their `type' and possibly their `field' attributes set.
     %
-    %   The `simple' mapping is designed to be easy to read and use,
-    %   but may result in the same element being assigned to different
-    %   functors.
+    %   The `simple' mapping is designed to be easy to read and use, but
+    %   may result in the same element being assigned to different functors.
     %
-    %   2. unique: Here we use the same mapping as `simple' except
-    %   we append the functor arity for discriminated unions and
-    %   a mangled version of the type name for every element. The same
-    %   attributes as the `simple' scheme are provided. The advantage
-    %   of this scheme is that it maps each functor to a unique
-    %   element. This means that it will always be possible to
-    %   generate a DTD using this mapping so long as there is only
-    %   one top level functor and no unsupported types can appear in
-    %   terms of the type.
+    %   2. unique: Here we use the same mapping as `simple' except we append
+    %   the functor arity for discriminated unions and a mangled version
+    %   of the type name for every element. The same attributes as the
+    %   `simple' scheme are provided. The advantage of this scheme is that
+    %   it maps each functor to a unique element. This means that it will
+    %   always be possible to generate a DTD using this mapping so long as
+    %   there is only one top level functor and no unsupported types
+    %   can appear in terms of the type.
     %
     % A custom mapping can be provided using the `custom' functor. See the
     % documentation for the element_pred type below for more information.
@@ -258,22 +250,21 @@
 
     % Deterministic procedures with the following signature can be used as
     % custom functor to element mappings. The inputs to the procedure are
-    % a type and some information about a functor for that type
-    % if the type is a discriminated union. The output should be a well
-    % formed XML element name and a list of attributes that should be set
-    % for that element. See the types `maybe_functor_info' and
-    % `attr_from_source' below.
+    % a type and some information about a functor for that type if the type
+    % is a discriminated union. The output should be a well formed XML element
+    % name and a list of attributes that should be set for that element.
+    % See the types `maybe_functor_info' and `attr_from_source' below.
     %
 :- type element_pred == (pred(type_desc, maybe_functor_info, string,
     list(attr_from_source))).
 
 :- inst element_pred == (pred(in, in, out, out) is det).
 
-    % Values of this type are passed to custom functor-to-element
-    % mapping predicates to tell the predicate which functor to generate
-    % an element name for if the type is a discriminated union. If the
-    % type is not a discriminated union, then non_du is passed to
-    % the predicate when requesting an element for the type.
+    % Values of this type are passed to custom functor-to-element mapping
+    % predicates to tell the predicate which functor to generate
+    % an element name for if the type is a discriminated union.
+    % If the type is not a discriminated union, then non_du is passed
+    % to the predicate when requesting an element for the type.
     %
 :- type maybe_functor_info
     --->    du_functor(
@@ -304,9 +295,8 @@
             % deconstruct.deconstruct/5.
 
     ;       field_name
-            % The field name if the functor appears in a
-            % named field (If the field is not named then this
-            % attribute is omitted).
+            % The field name, if the functor appears in a named field.
+            % (If the field is not named, this attribute is omitted.)
 
     ;       type_name
             % The fully qualified type name the functor is for.
@@ -320,22 +310,21 @@
     % generated. A DTD for a given type and functor-to-element mapping may
     % be generated provided the following conditions hold:
     %
-    %   1. If the type is a discriminated union then there must be only
-    %   one top-level functor for the type. This is because the top
-    %   level functor will be used to generate the document type name.
+    %   1. If the type is a discriminated union, then there must be only one
+    %   top-level functor for the type. This is because the top level functor
+    %   will be used to generate the document type name.
     %
-    %   2. The functor to element mapping must map each functor to a
+    %   2. The functor-to-element mapping must map each functor to a
     %   unique element name for every functor that could appear in
     %   terms of the type.
     %
     %   3. Only types whose terms consist of discriminated unions,
     %   arrays and the builtin types `int', `string', `character' and
     %   `float' can be used to automatically generate DTDs.
-    %   Existential types are also not supported.
+    %   Existential types are not supported either.
     %
     % The generated DTD is also a good reference when creating a stylesheet
-    % as it contains comments describing the mapping from functors to
-    % elements.
+    % as it contains comments describing the mapping from functors to elements.
     %
     % Values of the following type indicate whether a DTD was successfully
     % generated or not.
@@ -344,14 +333,13 @@
     --->    ok
 
     ;       multiple_functors_for_root
-            % The root type is a discriminated union with
-            % multiple functors.
+            % The root type is a discriminated union with multiple functors.
 
     ;       duplicate_elements(
-                % The functor-to-element mapping maps different
-                % functors to the same element. The duplicate element
-                % and a list of types whose functors map to that
-                % element is given.
+                % The functor-to-element mapping maps different functors
+                % to the same element. The arguments identify the duplicate
+                % element and a list of the types whose functors map
+                % to that element.
                 duplicate_element   :: string,
                 duplicate_types     :: list(type_desc)
             )
@@ -359,30 +347,29 @@
     ;       unsupported_dtd_type(type_desc)
             % At the moment we only support generation of DTDs for types
             % made up of discriminated unions, arrays, strings, ints,
-            % characters and floats. If a type is not supported, then it is
-            % returned as the argument of this functor.
+            % characters and floats. If a component type is not supported,
+            % then it is returned as the argument of this functor.
 
     ;       type_not_ground(pseudo_type_desc).
             % If one of the arguments of a functor is existentially typed,
             % then the pseudo_type_desc for the existentially quantified
             % argument is returned as the argument of this functor.
             % Since the values of existentially typed arguments can be of
-            % any type (provided any typeclass constraints are satisfied)
+            % any type (provided any typeclass constraints are satisfied),
             % it is not generally possible to generate DTD rules for functors
             % with existentially typed arguments.
 
     % write_xml_doc_general(Stream, Term, ElementMapping,
     %   MaybeStyleSheet, MaybeDTD, DTDResult, !State):
     %
-    % Write Term to the given stream as an XML document using
-    % ElementMapping as the scheme to map functors to elements.
-    % MaybeStyleSheet and MaybeDTD specify whether or not a stylesheet
-    % reference and/or a DTD should be included. Any non-canonical terms
-    % will be canonicalized. If an embedded DTD is requested, but it is
-    % not possible to generate a DTD for Term using ElementMapping, then a
-    % value other than `ok' is returned in DTDResult and nothing is written
-    % out. See the dtd_generation_result type for a list of the other
-    % possible values of DTDResult and their meanings.
+    % Write Term to the given stream as an XML document using ElementMapping
+    % as the scheme to map functors to elements. MaybeStyleSheet and MaybeDTD
+    % specify whether or not a stylesheet reference and/or a DTD should be
+    % included. Any non-canonical terms will be canonicalized. If an embedded
+    % DTD is requested, but it is not possible to generate a DTD for Term
+    % using ElementMapping, then a value other than `ok' is returned in
+    % DTDResult and nothing is written out. See the dtd_generation_result type
+    % for a list of the other possible values of DTDResult and their meanings.
     %
 :- pred write_xml_doc_general(Stream::in, T::in,
     element_mapping::in(element_mapping), maybe_stylesheet::in,
@@ -421,11 +408,10 @@
     % write_dtd(Stream, Term, ElementMapping, DTDResult, !State):
     %
     % Write a DTD for the given term to the current file output stream using
-    % ElementMapping to map functors to elements. If a DTD
-    % cannot be generated for Term using ElementMapping then a value
-    % other than `ok' is returned in DTDResult and nothing is written.
-    % See the dtd_generation_result type for a list of the other
-    % possible values of DTDResult and their meanings.
+    % ElementMapping to map functors to elements. If a DTD cannot be generated
+    % for Term using ElementMapping, then a value other than `ok' is returned
+    % in DTDResult and nothing is written. See the dtd_generation_result type
+    % for a list of the other possible values of DTDResult and their meanings.
     %
 :- pred write_dtd(Stream::in, T::unused,
     element_mapping::in(element_mapping), dtd_generation_result::out,
@@ -434,11 +420,11 @@
 
     % write_dtd_for_type(Stream, Type, ElementMapping, DTDResult, !State):
     %
-    % Write a DTD for the given type to the given stream. If a
-    % DTD cannot be generated for Type using ElementMapping then a value
-    % other than `ok' is returned in DTDResult and nothing is written.
-    % See the dtd_generation_result type for a list of the other
-    % possible values of DTDResult and their meanings.
+    % Write a DTD for the given type to the given stream. If a DTD cannot
+    % be generated for Type using ElementMapping then a value other than `ok'
+    % is returned in DTDResult and nothing is written. See the
+    % dtd_generation_result type for a list of the other possible values
+    % of DTDResult and their meanings.
     %
 :- pred write_dtd_from_type(Stream::in, type_desc::in,
     element_mapping::in(element_mapping), dtd_generation_result::out,
@@ -447,13 +433,13 @@
     % write_xml_element_general(Stream, NonCanon, MakeElement, IndentLevel,
     %   Term, !State):
     %
-    % Write XML elements for the given term and all its descendents,
-    % using IndentLevel as the initial indentation level (each
-    % indentation level is one tab character) and using the MakeElement
-    % predicate to map functors to elements. No <?xml ... ?>
-    % header will be written. Non-canonical terms will be handled
-    % according to the value of NonCanon. See the deconstruct
-    % module in the standard library for more information on this argument.
+    % Write XML elements for the given term and all its descendents, using
+    % IndentLevel as the initial indentation level (each indentation level
+    % is one tab character) and using the MakeElement predicate to map
+    % functors to elements. No <?xml ... ?> header will be written.
+    % Non-canonical terms will be handled according to the value of NonCanon.
+    % See the deconstruct module in the standard library for more information
+    % on this argument.
     %
 :- pred write_xml_element_general(Stream, deconstruct.noncanon_handling,
     element_mapping, int, T, State, State)
@@ -478,6 +464,7 @@
 :- import_module exception.
 :- import_module int.
 :- import_module map.
+:- import_module require.
 :- import_module string.
 :- import_module unit.
 :- import_module univ.
@@ -579,13 +566,17 @@ write_xml_header(Stream, MaybeEncoding, !State) :-
 :- pred write_stylesheet_ref(Stream::in, maybe_stylesheet::in,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_stylesheet_ref(_, no_stylesheet, !State).
-write_stylesheet_ref(Stream, with_stylesheet(Type, Href), !State) :-
-    put(Stream, "<?xml-stylesheet type=""", !State),
-    put(Stream, Type, !State),
-    put(Stream, """ href=""", !State),
-    put(Stream, Href, !State),
-    put(Stream, """?>\n", !State).
+write_stylesheet_ref(Stream, MaybeStyleSheet, !State) :-
+    (
+        MaybeStyleSheet = no_stylesheet
+    ;
+        MaybeStyleSheet = with_stylesheet(Type, Href),
+        put(Stream, "<?xml-stylesheet type=""", !State),
+        put(Stream, Type, !State),
+        put(Stream, """ href=""", !State),
+        put(Stream, Href, !State),
+        put(Stream, """?>\n", !State)
+    ).
 
 :- pred write_doctype(Stream, deconstruct.noncanon_handling, T,
     element_mapping, maybe_dtd, dtd_generation_result, State, State)
@@ -599,21 +590,29 @@ write_stylesheet_ref(Stream, with_stylesheet(Type, Href), !State) :-
 :- mode write_doctype(in, in, in, in(element_mapping), in, out,
     di, uo) is cc_multi.
 
-write_doctype(_, _, _, _, no_dtd, ok, !State).
-write_doctype(Stream, _, T, ElementMapping, embed_dtd, DTDResult, !State) :-
-    write_dtd(Stream, T, ElementMapping, DTDResult, !State),
-    put(Stream, "\n", !State).
-write_doctype(Stream, NonCanon, T, ElementMapping, external_dtd(DocType), ok,
+write_doctype(Stream, NonCanon, Term, ElementMapping, MaybeDTD, DTDResult,
         !State) :-
-    get_element_pred(ElementMapping, MakeElement),
-    deconstruct.deconstruct(T, NonCanon, Functor, Arity, _),
-    ( is_discriminated_union(type_of(T), _) ->
-        Request = du_functor(Functor, Arity)
+    (
+        MaybeDTD = no_dtd,
+        DTDResult = ok
     ;
-        Request = non_du
-    ),
-    MakeElement(type_of(T), Request, Root, _),
-    write_external_doctype(Stream, Root, DocType, !State).
+        MaybeDTD = embed_dtd,
+        write_dtd(Stream, Term, ElementMapping, DTDResult, !State),
+        put(Stream, "\n", !State)
+    ;
+        MaybeDTD = external_dtd(DocType),
+        get_element_pred(ElementMapping, MakeElement),
+        deconstruct.deconstruct(Term, NonCanon, Functor, Arity, _),
+        TypeOfTerm = type_of(Term),
+        ( if is_discriminated_union(TypeOfTerm, _) then
+            Request = du_functor(Functor, Arity)
+        else
+            Request = non_du
+        ),
+        MakeElement(TypeOfTerm, Request, Root, _),
+        write_external_doctype(Stream, Root, DocType, !State),
+        DTDResult = ok
+    ).
 
 :- pred write_external_doctype(Stream::in, string::in, doctype::in,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
@@ -643,27 +642,27 @@ write_external_doctype(Stream, Root, DocType, !State) :-
 :- pred make_unique_element(type_desc::in, maybe_functor_info::in,
     string::out, list(attr_from_source)::out) is det.
 
-make_unique_element(TypeDesc, du_functor(Functor, Arity), Element,
-        all_attr_sources) :-
-    ( common_mercury_functor(Functor, ReservedElement) ->
-        MangledElement = ReservedElement
-    ;
-        MangledElement = mangle(Functor)
-    ),
-    Element = MangledElement ++ "--" ++ string.int_to_string(Arity) ++
-        "--" ++ mangle(type_name(TypeDesc)).
-make_unique_element(TypeDesc, non_du, Element, AttrFromSources) :-
-    ( is_primitive_type(TypeDesc, PrimitiveElement) ->
-        Element = PrimitiveElement,
-        AttrFromSources = [attr_from_source("type", type_name),
-            attr_from_source("field", field_name)]
-    ; is_array(TypeDesc, _) ->
-        Element = array_element ++ "--" ++
-            mangle(type_name(TypeDesc)),
+make_unique_element(TypeDesc, MaybeFunctorInfo, Element, AttrFromSources) :-
+    (
+        MaybeFunctorInfo = du_functor(Functor, Arity),
+        MangledElement = maybe_mangle_uncommon_functor(Functor),
+        Element = MangledElement ++ "--" ++ string.int_to_string(Arity) ++
+            "--" ++ mangle(type_name(TypeDesc)),
         AttrFromSources = all_attr_sources
     ;
-        Element = mangle(type_name(TypeDesc)),
-        AttrFromSources = all_attr_sources
+        MaybeFunctorInfo = non_du,
+        ( if is_primitive_type(TypeDesc, PrimitiveElement) then
+            Element = PrimitiveElement,
+            AttrFromSources = [attr_from_source("type", type_name),
+                attr_from_source("field", field_name)]
+        else if is_array(TypeDesc, _) then
+            Element = array_element ++ "--" ++
+                mangle(type_name(TypeDesc)),
+            AttrFromSources = all_attr_sources
+        else
+            Element = mangle(type_name(TypeDesc)),
+            AttrFromSources = all_attr_sources
+        )
     ).
 
     % Implementation of the `simple' mapping scheme.
@@ -671,28 +670,30 @@ make_unique_element(TypeDesc, non_du, Element, AttrFromSources) :-
 :- pred make_simple_element(type_desc::in, maybe_functor_info::in,
     string::out, list(attr_from_source)::out) is det.
 
-make_simple_element(_, du_functor(Functor, _), Element, all_attr_sources) :-
-    ( common_mercury_functor(Functor, ReservedElement) ->
-        Element = ReservedElement
-    ;
-        Element = mangle(Functor)
-    ).
-make_simple_element(TypeDesc, non_du, Element, AttrFromSources) :-
-    ( is_primitive_type(TypeDesc, PrimitiveElement) ->
-        Element = PrimitiveElement,
-        AttrFromSources = [attr_from_source("type", type_name),
-            attr_from_source("field", field_name)]
-    ; is_array(TypeDesc, _) ->
-        Element = array_element,
+make_simple_element(TypeDesc, MaybeFunctorInfo, Element, AttrFromSources) :-
+    (
+        MaybeFunctorInfo = du_functor(Functor, _),
+        Element = maybe_mangle_uncommon_functor(Functor),
         AttrFromSources = all_attr_sources
     ;
-        Element = "Unknown",
-        AttrFromSources = all_attr_sources
+        MaybeFunctorInfo = non_du,
+        ( if is_primitive_type(TypeDesc, PrimitiveElement) then
+            Element = PrimitiveElement,
+            AttrFromSources = [attr_from_source("type", type_name),
+                attr_from_source("field", field_name)]
+        else if is_array(TypeDesc, _) then
+            Element = array_element,
+            AttrFromSources = all_attr_sources
+        else
+            Element = "Unknown",
+            AttrFromSources = all_attr_sources
+        )
     ).
 
 :- func all_attr_sources = list(attr_from_source).
 
-all_attr_sources = [
+all_attr_sources =
+    [
         attr_from_source("functor", functor),
         attr_from_source("field", field_name),
         attr_from_source("type", type_name),
@@ -713,8 +714,7 @@ get_element_pred(custom(P), P).
 % mangled element name.
 %
 
-    % A prefix for functors that start with a capital letter or
-    % a non-letter.
+    % A prefix for functors that start with a capital letter or a non-letter.
     %
 :- func reserved_prefix = string.
 
@@ -722,12 +722,21 @@ reserved_prefix = "Tag_".
 
 :- pred common_mercury_functor(string::in, string::out) is semidet.
 
-    % These should all start with a capital letter so as not to
-    % conflict with a mangled name.
+    % These should all start with a capital letter so as not to conflict
+    % with a mangled name.
     %
 common_mercury_functor("[|]", "List").
 common_mercury_functor("[]", "Nil").
 common_mercury_functor("{}", "Tuple").
+
+:- func maybe_mangle_uncommon_functor(string) = string.
+
+maybe_mangle_uncommon_functor(Functor) = Element :-
+    ( if common_mercury_functor(Functor, ReservedElement) then
+        Element = ReservedElement
+    else
+        Element = mangle(Functor)
+    ).
 
 :- func array_element = string.
 
@@ -736,15 +745,16 @@ array_element = "Array".
 :- pred is_primitive_type(type_desc::in, string::out) is semidet.
 
 is_primitive_type(TypeDesc, Element) :-
-    ( type_of("") = TypeDesc ->
+    ( if TypeDesc = type_of("") then
         Element = "String"
-    ; type_of('c') = TypeDesc ->
+    else if TypeDesc = type_of('c') then
         Element = "Char"
-    ; type_of(1) = TypeDesc ->
+    else if TypeDesc = type_of(1) then
         Element = "Int"
-    ;
-        type_of(1.0) = TypeDesc,
+    else if TypeDesc = type_of(1.0) then
         Element = "Float"
+    else
+        fail
     ).
 
 %---------------------------------------------------------------------------%
@@ -757,7 +767,7 @@ is_primitive_type(TypeDesc, Element) :-
 %
 % If the string to be mangled begins with a capital letter then we prefix it
 % with another string reserved for this purpose. Then we replace all
-% characters which aren't alpha numeric or underscores with '-' followed by
+% characters which aren't alphanumeric or underscores with '-' followed by
 % the character code.
 %
 % For example "my-functor!" would become "my-45functor-33".
@@ -769,13 +779,13 @@ is_primitive_type(TypeDesc, Element) :-
 
 mangle(Functor) = Element :-
     string.split(Functor, 1, Head, Tail),
-    (
+    ( if
         string.is_all_alpha(Head),
         string.to_lower(Head) = Head
-    ->
+    then
         First = Head,
         Rest = Tail
-    ;
+    else
         First = reserved_prefix,
         Rest = Head ++ Tail
     ),
@@ -786,21 +796,19 @@ mangle(Functor) = Element :-
 
 mangle_char(Chr, PrevChrs, list.append(PrevChrs, Chrs)) :-
     % XXX This is system dependent since char.to_int is system dependent.
-    (
-        char.is_alnum_or_underscore(Chr)
-    ->
+    ( if char.is_alnum_or_underscore(Chr) then
         Chrs = [Chr]
-    ;
-        Chrs = ['-' | string.to_char_list(string.int_to_string(
-            char.to_int(Chr)))]
+    else
+        Chrs = ['-' |
+            string.to_char_list(string.int_to_string(char.to_int(Chr)))]
     ).
 
 %---------------------------------------------------------------------------%
 
-    % Return a list of elements, functors and arities
-    % (if the type is a discriminated union), argument types and
-    % attributes for all the functors for the type. Only one element
-    % will be in each list if the type is not a discriminated union.
+    % Return a list of elements, functors and arities (if the type is
+    % a discriminated union), argument types and attributes for
+    % all the functors for the type. Only one element will be in each list
+    % if the type is not a discriminated union.
     %
 :- pred get_elements_and_args(element_pred::in(element_pred),
     type_desc::in, list(string)::out, list(maybe(string))::out,
@@ -809,12 +817,12 @@ mangle_char(Chr, PrevChrs, list.append(PrevChrs, Chrs)) :-
 
 get_elements_and_args(MakeElement, TypeDesc, Elements, MaybeFunctors,
         MaybeArities, ArgTypeLists, AttributeLists) :-
-    ( is_discriminated_union(TypeDesc, NumFunctors) ->
+    ( if is_discriminated_union(TypeDesc, NumFunctors) then
         FunctorNums = 0 .. (NumFunctors - 1),
-        (
+        ( if
             list.map3(construct.get_functor(TypeDesc), FunctorNums,
                 Functors, Arities, ArgTypeLists0)
-        ->
+        then
             MaybeFunctors = list.map((func(X) = yes(X)), Functors),
             MaybeArities = list.map((func(X) = yes(X)), Arities),
             ArgTypeLists = ArgTypeLists0,
@@ -823,22 +831,19 @@ get_elements_and_args(MakeElement, TypeDesc, Elements, MaybeFunctors,
             P = (pred(A::in, B::out, C::out) is det :-
                 MakeElement(TypeDesc, A, B, C)),
             list.map2(P, Requests, Elements, AttributeLists)
-        ;
-            throw(software_error(
-                "term_to_xml.get_elements_and_args: " ++
-                "get_functor failed for discriminated union"))
+        else
+            unexpected($module, $pred,
+                "get_functor failed for discriminated union")
         )
-    ;
+    else
         MakeElement(TypeDesc, non_du, Element, AttrFromSources),
         Elements = [Element],
         AttributeLists = [AttrFromSources],
         MaybeFunctors = [no],
         MaybeArities = [no],
-        (
-            is_array(TypeDesc, ArgType)
-        ->
+        ( if is_array(TypeDesc, ArgType) then
             ArgTypeLists = [[ArgType]]
-        ;
+        else
             ArgTypeLists = [[]]
         )
     ).
@@ -850,13 +855,13 @@ make_du_functor(Functor, Arity) = du_functor(Functor, Arity).
 :- pred primitive_value(univ::in, string::out) is semidet.
 
 primitive_value(Univ, PrimValue) :-
-    ( univ_to_type(Univ, String) ->
+    ( if univ_to_type(Univ, String) then
         PrimValue = String`with_type`string
-    ; univ_to_type(Univ, Char) ->
+    else if univ_to_type(Univ, Char) then
         PrimValue = char_to_string(Char)
-    ; univ_to_type(Univ, Int) ->
+    else if univ_to_type(Univ, Int) then
         PrimValue = int_to_string(Int)
-    ;
+    else
         univ_to_type(Univ, Float),
         PrimValue = float_to_string(Float)
     ).
@@ -875,53 +880,60 @@ primitive_value(Univ, PrimValue) :-
     --->    format
     ;       no_format.
 
-:- pred write_xml_element_format(Stream::in, maybe_format::in, int::in, xml::in,
-    State::di, State::uo) is det <= stream.writer(Stream, string, State).
+:- pred write_xml_element_format(Stream::in, maybe_format::in, int::in,
+    xml::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-write_xml_element_format(Stream, Format, IndentLevel,
-        elem(Name, Attrs, Children), !State) :-
-    maybe_indent(Stream, Format, IndentLevel, !State),
+write_xml_element_format(Stream, Format, IndentLevel, XML, !State) :-
     (
-        Children = [],
-        write_empty_element(Stream, Name, Attrs, !State),
+        XML = elem(Name, Attrs, Children),
+        maybe_indent(Stream, Format, IndentLevel, !State),
+        (
+            Children = [],
+            write_empty_element(Stream, Name, Attrs, !State),
+            maybe_nl(Stream, Format, !State)
+        ;
+            Children = [_ | _],
+            write_element_start(Stream, Name, Attrs, !State),
+            ( if contains_noformat_xml(Children) then
+                ChildrenFormat = no_format
+            else
+                ChildrenFormat = format,
+                put(Stream, "\n", !State)
+            ),
+            list.foldl(write_xml_element_format(Stream, ChildrenFormat,
+                IndentLevel + 1), Children, !State),
+            maybe_indent(Stream, ChildrenFormat, IndentLevel, !State),
+            write_element_end(Stream, Name, !State),
+            maybe_nl(Stream, Format, !State)
+        )
+    ;
+        XML = data(Data),
+        write_xml_escaped_string(Stream, Data, !State)
+    ;
+        XML = cdata(CData),
+        maybe_indent(Stream, Format, IndentLevel, !State),
+        put(Stream, "<![CDATA[", !State),
+        put(Stream, CData, !State),
+        put(Stream, "]]>", !State),
         maybe_nl(Stream, Format, !State)
     ;
-        Children = [_ | _],
-        write_element_start(Stream, Name, Attrs, !State),
-        ( if contains_noformat_xml(Children) then
-            ChildrenFormat = no_format
-        else
-            ChildrenFormat = format,
-            put(Stream, "\n", !State)
-        ),
-        list.foldl(write_xml_element_format(Stream, ChildrenFormat,
-            IndentLevel + 1), Children, !State),
-        maybe_indent(Stream, ChildrenFormat, IndentLevel, !State),
-        write_element_end(Stream, Name, !State),
+        XML = comment(Comment),
+        maybe_indent(Stream, Format, IndentLevel, !State),
+        put(Stream, "<!-- ", !State),
+        % Comments may not contain "--", so replace with " - ".
+        string.replace_all(Comment, "--", " - ", EscapedComment),
+        put(Stream, EscapedComment, !State),
+        put(Stream, " -->", !State),
         maybe_nl(Stream, Format, !State)
+    ;
+        XML = entity(EntityName),
+        put(Stream, "&", !State),
+        put(Stream, EntityName ++ ";", !State)
+    ;
+        XML = raw(RawString),
+        put(Stream, RawString, !State)
     ).
-write_xml_element_format(Stream, _, _, data(Data), !State) :-
-    write_xml_escaped_string(Stream, Data, !State).
-write_xml_element_format(Stream, Format, IndentLevel, cdata(CData), !State) :-
-    maybe_indent(Stream, Format, IndentLevel, !State),
-    put(Stream, "<![CDATA[", !State),
-    put(Stream, CData, !State),
-    put(Stream, "]]>", !State),
-    maybe_nl(Stream, Format, !State).
-write_xml_element_format(Stream, Format, IndentLevel, comment(Comment),
-        !State) :-
-    maybe_indent(Stream, Format, IndentLevel, !State),
-    put(Stream, "<!-- ", !State),
-    % Comments may not contain "--", so replace with " - ".
-    string.replace_all(Comment, "--", " - ", EscapedComment),
-    put(Stream, EscapedComment, !State),
-    put(Stream, " -->", !State),
-    maybe_nl(Stream, Format, !State).
-write_xml_element_format(Stream, _, _, entity(EntityName), !State) :-
-    put(Stream, "&", !State),
-    put(Stream, EntityName ++ ";", !State).
-write_xml_element_format(Stream, _, _, raw(RawString), !State) :-
-    put(Stream, RawString, !State).
 
 :- func can_format_siblings(xml) = bool.
 
@@ -945,7 +957,8 @@ contains_noformat_xml([XML | Rest]) :-
     <= stream.writer(Stream, string, State).
 
 maybe_nl(_Stream, no_format, !State).
-maybe_nl(Stream, format, !State) :- put(Stream, "\n", !State).
+maybe_nl(Stream, format, !State) :-
+    put(Stream, "\n", !State).
 
 :- pred maybe_indent(Stream::in, maybe_format::in, int::in,
     State::di, State::uo) is det
@@ -961,6 +974,14 @@ maybe_indent(Stream, Format, Indent, !State) :-
 
 %---------------------------------------------------------------------------%
 
+    % write_xml_element_univ(Stream, NonCanon, MakeElement, IndentLevel, Univ,
+    %   MaybeFieldNames, RemainingMaybeFieldNames, !State):
+    %
+    % Write an element and all its descendents to the current output stream.
+    % If MaybeFields isn't empty, then its head is used for the `field'
+    % attribute and the Tail is returned in RemainingMaybeFieldNames.
+    % This is so it can be called using foldl2.
+    %
 :- pred write_xml_element_univ(Stream, deconstruct.noncanon_handling,
     element_pred, int, univ, list(maybe(string)),
     list(maybe(string)), State, State) <= stream.writer(Stream, string, State).
@@ -973,11 +994,6 @@ maybe_indent(Stream, Format, Indent, !State) :-
 :- mode write_xml_element_univ(in, in, in(element_pred), in, in, in, out, di,
     uo) is cc_multi.
 
-    % Write an element and all its descendents to the current output stream.
-    % If MaybeFields isn't empty then its head is used for the `field'
-    % attribute and the Tail is returned in RemainingMaybeFieldNames.
-    % This is so it can be called using foldl2.
-    %
 write_xml_element_univ(Stream, NonCanon, MakeElement, IndentLevel, Univ,
         MaybeFieldNames, RemainingMaybeFieldNames, !State) :-
     (
@@ -990,17 +1006,17 @@ write_xml_element_univ(Stream, NonCanon, MakeElement, IndentLevel, Univ,
     deconstruct.deconstruct(Term, NonCanon, Functor, Arity, Args),
     Term = univ_value(Univ),
     TypeDesc = type_of(Term),
-    ( is_discriminated_union(TypeDesc, _) ->
+    ( if is_discriminated_union(TypeDesc, _) then
         Request = du_functor(Functor, Arity)
-    ;
+    else
         Request = non_du
     ),
     MakeElement(TypeDesc, Request, Element, AttrFromSources),
-    ( primitive_value(Univ, PrimValue) ->
+    ( if primitive_value(Univ, PrimValue) then
         indent(Stream, IndentLevel, !State),
         write_primitive_element_with_attr_from_source(Stream, Element,
             AttrFromSources, PrimValue, MaybeFieldName, TypeDesc, !State)
-    ;
+    else
         (
             Args = [],
             indent(Stream, IndentLevel, !State),
@@ -1040,17 +1056,17 @@ is_array(TypeDesc, ArgPseudoType) :-
 :- func get_field_names(type_desc, string, int) = list(maybe(string)).
 
 get_field_names(TypeDesc, Functor, Arity) = MaybeFields :-
-    ( is_discriminated_union(TypeDesc, NumFunctors) ->
+    ( if is_discriminated_union(TypeDesc, NumFunctors) then
         FunctorNums = 0 .. (NumFunctors - 1),
-        (
+        ( if
             find_field_names(TypeDesc, FunctorNums, Functor, Arity,
                 FoundMaybeFields)
-        ->
+        then
             MaybeFields = FoundMaybeFields
-        ;
+        else
             MaybeFields = []
         )
-    ;
+    else
         MaybeFields = []
     ).
 
@@ -1059,12 +1075,12 @@ get_field_names(TypeDesc, Functor, Arity) = MaybeFields :-
 
 find_field_names(TypeDesc, [FunctorNum | FunctorNums], Functor, Arity,
         MaybeFieldNames) :-
-    (
+    ( if
         construct.get_functor_with_names(TypeDesc, FunctorNum,
             Functor, Arity, _, FoundFieldNames)
-    ->
+    then
         MaybeFieldNames = FoundFieldNames
-    ;
+    else
         find_field_names(TypeDesc, FunctorNums, Functor, Arity,
             MaybeFieldNames)
     ).
@@ -1085,9 +1101,9 @@ find_field_names(TypeDesc, [FunctorNum | FunctorNums], Functor, Arity,
 
 write_child_xml_elements(Stream, NonCanon, MakeElement, IndentLevel, Args,
         MaybeFieldNames, !State) :-
-    % The switch is needed because we can't pass write_xml_element_univ
-    % to foldl, since higher order terms with more than one mode can't be
-    % passed as arguments.
+    % Higher order terms with more than one mode can't be passed as arguments,
+    % so we can't pass write_xml_element_univ to foldl2. Hence we need
+    % this switch.
     (
         NonCanon = do_not_allow,
         list.foldl2(
@@ -1147,10 +1163,10 @@ write_xml_element_univ_include_details_cc(Stream, MakeElement, IndentLevel,
     <= stream.writer(Stream, string, State).
 
 indent(Stream, IndentLevel, !State) :-
-    ( IndentLevel > 0 ->
+    ( if IndentLevel > 0 then
         put(Stream, "\t", !State),
         indent(Stream, IndentLevel - 1, !State)
-    ;
+    else
         true
     ).
 
@@ -1294,9 +1310,9 @@ write_xml_escaped_string(Stream, Str, !State) :-
     is det <= stream.writer(Stream, string, State).
 
 write_xml_escaped_char(Stream, Chr, !State) :-
-    ( xml_predefined_entity(Chr, Str) ->
+    ( if xml_predefined_entity(Chr, Str) then
         put(Stream, Str, !State)
-    ;
+    else
         put(Stream, string.from_char(Chr), !State)
     ).
 
@@ -1318,10 +1334,10 @@ write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State) :-
     (
         DTDResult = ok,
         get_element_pred(ElementMapping, MakeElement),
-        (
+        ( if
             get_elements_and_args(MakeElement, TypeDesc,
                 [RootElement], [_], [_], [PseudoArgTypes], _)
-        ->
+        then
             ArgTypes = list.map(det_ground_pseudo_type_desc_to_type_desc,
                 PseudoArgTypes),
             put(Stream, "<!DOCTYPE ", !State),
@@ -1331,9 +1347,8 @@ write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State) :-
                 map.init, !State),
             put(Stream, "\n]>", !State),
             DTDResult = ok
-        ;
-            throw(software_error("term_to_xml.write_dtd_from_type"
-                ++ ": not ok to generate DTD"))
+        else
+            unexpected($module, $pred, "not ok to generate DTD")
         )
     ;
         ( DTDResult = multiple_functors_for_root
@@ -1345,11 +1360,13 @@ write_dtd_from_type(Stream, TypeDesc, ElementMapping, DTDResult, !State) :-
 
 can_generate_dtd(ElementMapping, TypeDesc) =  Result :-
     get_element_pred(ElementMapping, MakeElement),
-    ( get_elements_and_args(MakeElement, TypeDesc, [_], [_], [_], [_], [_]) ->
+    ( if
+        get_elements_and_args(MakeElement, TypeDesc, [_], [_], [_], [_], [_])
+    then
         PseudoTypeDesc = type_desc_to_pseudo_type_desc(TypeDesc),
         Result = can_generate_dtd_for_types(MakeElement, [PseudoTypeDesc],
             map.init, map.init)
-    ;
+    else
         Result = multiple_functors_for_root
     ).
 
@@ -1364,9 +1381,8 @@ can_generate_dtd_2(embed_dtd, ElementMapping, TypeDesc)
     % Check that we can reliably generate a DTD for the types in the list.
     % At the moment this means each type (and all the types of the
     % arguments of functors of the type if it is a discriminated union)
-    % must be either a discriminated union, an array, an int, a
-    % character, a float or a string and must not be existentially
-    % quantified.
+    % must be either a discriminated union, an array, an int, a character,
+    % a float or a string, and must not be existentially quantified.
     %
 :- func can_generate_dtd_for_types(element_pred::in(element_pred),
     list(pseudo_type_desc)::in,
@@ -1376,23 +1392,17 @@ can_generate_dtd_2(embed_dtd, ElementMapping, TypeDesc)
 can_generate_dtd_for_types(_, [], _, _) = ok.
 can_generate_dtd_for_types(MakeElement, [PseudoTypeDesc | PseudoTypeDescs],
         Done, ElementsSoFar) = Result :-
-    (
-        TypeDesc = ground_pseudo_type_desc_to_type_desc(
-            PseudoTypeDesc)
-    ->
-        (
-            (
-                is_discriminated_union(TypeDesc, _)
-            ;
-                is_array(TypeDesc, _)
-            ;
-                is_primitive_type(TypeDesc, _)
+    ( if TypeDesc = ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) then
+        ( if
+            ( is_discriminated_union(TypeDesc, _)
+            ; is_array(TypeDesc, _)
+            ; is_primitive_type(TypeDesc, _)
             )
-        ->
-            ( map.contains(Done, TypeDesc) ->
+        then
+            ( if map.contains(Done, TypeDesc) then
                 Result = can_generate_dtd_for_types(MakeElement,
                     PseudoTypeDescs, Done, ElementsSoFar)
-            ;
+            else
                 get_elements_and_args(MakeElement, TypeDesc, Elements, _, _,
                     ArgLists, _),
                 list.filter(map.contains(ElementsSoFar), Elements,
@@ -1414,10 +1424,10 @@ can_generate_dtd_for_types(MakeElement, [PseudoTypeDesc | PseudoTypeDescs],
                         NewPseudoTypeDescs, NewDone, NewElementsSoFar)
                 )
             )
-        ;
+        else
             Result = unsupported_dtd_type(TypeDesc)
         )
-    ;
+    else
         Result = type_not_ground(PseudoTypeDesc)
     ).
 
@@ -1433,9 +1443,9 @@ can_generate_dtd_for_types(MakeElement, [PseudoTypeDesc | PseudoTypeDescs],
 write_dtd_types(_, _, [], _, !State).
 write_dtd_types(Stream, MakeElement, [TypeDesc | TypeDescs], AlreadyDone,
         !State) :-
-    ( map.search(AlreadyDone, TypeDesc, _) ->
+    ( if map.search(AlreadyDone, TypeDesc, _) then
         write_dtd_types(Stream, MakeElement, TypeDescs, AlreadyDone, !State)
-    ;
+    else
         write_dtd_type_elements(Stream, MakeElement, TypeDesc, ChildArgTypes,
             !State),
         map.set(TypeDesc, unit, AlreadyDone, NewAlreadyDone),
@@ -1520,8 +1530,8 @@ write_dtd_attlists(Stream, Element, AttrFromSources, MaybeFunctor, MaybeArity,
     type_desc::in, list(type_desc)::out,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
-write_dtd_type_elements(Stream, MakeElement, TypeDesc, ChildArgTypes, !State)
-        :-
+write_dtd_type_elements(Stream, MakeElement, TypeDesc, ChildArgTypes,
+        !State) :-
     get_elements_and_args(MakeElement, TypeDesc, Elements,
         MaybeFunctors, MaybeArities, ArgPseudoTypeLists,
         AttributeLists),
@@ -1544,9 +1554,8 @@ write_dtd_type_elements(Stream, MakeElement, TypeDesc, ChildArgTypes, !State)
     %
 write_dtd_entries(_, _, _, [], _, _, _, _, !State).
 write_dtd_entries(Stream, MakeElement, TypeDesc, [Element | Elements],
-        MaybeFunctorList, MaybeArityList, ArgTypeListList,
-        AttributeListList, !State) :-
-
+        MaybeFunctorList, MaybeArityList, ArgTypeListList, AttributeListList,
+        !State) :-
     MaybeFunctor = list.det_head(MaybeFunctorList),
     MaybeFunctors = list.det_tail(MaybeFunctorList),
     MaybeArity = list.det_head(MaybeArityList),
@@ -1559,11 +1568,9 @@ write_dtd_entries(Stream, MakeElement, TypeDesc, [Element | Elements],
     put(Stream, "<!ELEMENT ", !State),
     put(Stream, Element, !State),
     put(Stream, " ", !State),
-    (
-        is_primitive_type(TypeDesc, _)
-    ->
+    ( if is_primitive_type(TypeDesc, _) then
         put(Stream, "(#PCDATA)>\n", !State)
-    ;
+    else
         (
             ArgTypeList = [],
             put(Stream, "EMPTY>\n", !State)
@@ -1574,43 +1581,39 @@ write_dtd_entries(Stream, MakeElement, TypeDesc, [Element | Elements],
                 Braces = yes
             ;
                 Tail = [],
-                ( num_functors(Head) > 1 ->
+                ( if num_functors(Head) > 1 then
                     Braces = no
-                ;
+                else
                     Braces = yes
                 )
             ),
 
             % Put extra braces for arrays for the * at the end.
-            ( is_array(TypeDesc, _) ->
+            ( if is_array(TypeDesc, _) then
                 put(Stream, "(", !State)
-            ;
+            else
                 true
             ),
-
             (
                 Braces = yes,
                 put(Stream, "(", !State)
             ;
                 Braces = no
             ),
-
             AllowedFunctorsRegexs = list.map(
                 dtd_allowed_functors_regex(MakeElement), ArgTypeList),
             AllowedFunctorsRegex =
                 string.join_list(",", AllowedFunctorsRegexs),
             put(Stream, AllowedFunctorsRegex, !State),
-
             (
                 Braces = yes,
                 put(Stream, ")", !State)
             ;
                 Braces = no
             ),
-
-            ( is_array(TypeDesc, _) ->
+            ( if is_array(TypeDesc, _) then
                 put(Stream, "*)", !State)
-            ;
+            else
                 true
             ),
 
@@ -1632,9 +1635,9 @@ write_dtd_entries(Stream, MakeElement, TypeDesc, [Element | Elements],
 dtd_allowed_functors_regex(MakeElement, TypeDesc) = Regex :-
     get_elements_and_args(MakeElement, TypeDesc, Elements, _, _, _, _),
     ElementsStr = string.join_list("|", Elements),
-    ( length(Elements) > 1 ->
+    ( if length(Elements) > 1 then
         Regex = "(" ++ ElementsStr ++ ")"
-    ;
+    else
         Regex = ElementsStr
     ).
 
