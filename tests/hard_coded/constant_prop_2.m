@@ -12,7 +12,6 @@
 
 :- import_module float.
 :- import_module int.
-:- import_module private_builtin.
 :- import_module std_util.
 :- import_module string.
 
