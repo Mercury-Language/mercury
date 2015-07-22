@@ -10,7 +10,7 @@
 % Main authors: petdr.
 %
 % Attempts to transform a single proc to a tail recursive form by
-% introducing accumulators.  The algorithm can do this if the code after
+% introducing accumulators. The algorithm can do this if the code after
 % the recursive call has either the order independent state update or
 % associative property.
 %
@@ -133,7 +133,7 @@
 %
 % Note that if the recursive clause contains multiple calls to p, the
 % transformation attempts to move each recursive call to the end
-% until one succeeds.  This makes the order of independent recursive
+% until one succeeds. This makes the order of independent recursive
 % calls in the body irrelevant.
 %
 % XXX Replace calls to can_reorder_goals with calls to the version that
@@ -212,8 +212,8 @@
     ;       ite_rec_base.
 
     % An accu_goal_id represents a goal. The first field says which conjunction
-    % the goal came from (base or recursive), and the second gives the location
-    % of the goal in the conjunction.
+    % the goal came from (the base case or the recursive case), and the second
+    % gives the location of the goal in that conjunction.
     %
 :- type accu_goal_id
     --->    accu_goal_id(accu_case, int).
@@ -232,10 +232,8 @@
 
 :- type accu_warning
     --->    accu_warn(prog_context, pred_id, prog_var, prog_var).
-            % Warn that two prog_vars in call to pred_id at prog_context
+            % Warn that two prog_vars in a call to pred_id at the given context
             % were swapped, which may cause an efficiency problem.
-
-:- type accu_warnings == list(accu_warning).
 
 %-----------------------------------------------------------------------------%
 
@@ -245,10 +243,10 @@ accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
     globals.lookup_bool_option(Globals,
         optimize_constructor_last_call_accumulator, DoLCO),
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
-    (
+    ( if
         should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
             !ProcInfo, FullyStrict, DoLCO, Warnings)
-    ->
+    then
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         (
             VeryVerbose = yes,
@@ -316,7 +314,7 @@ accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
             Specs = [Spec | Specs0],
             type_to_univ(Specs, !:Cookie)
         )
-    ;
+    else
         true
     ).
 
@@ -357,7 +355,7 @@ generate_warning(ModuleInfo, VarSet, Warning, Msg) :-
     %
 :- pred should_attempt_accu_transform(module_info::in, module_info::out,
     pred_id::in, proc_id::in, pred_info::in, proc_info::in, proc_info::out,
-    bool::in, bool::in, accu_warnings::out) is semidet.
+    bool::in, bool::in, list(accu_warning)::out) is semidet.
 
 should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
         !ProcInfo, FullyStrict, DoLCO, Warnings) :-
@@ -392,16 +390,15 @@ should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
     pred_id::in, pred_info::in, proc_info::in, proc_info::out,
     prog_vars::in, instmap::in, top_level::in, bool::in, bool::in,
     list(accu_goal_id)::in, accu_goal_store::in, int::in, list(hlds_goal)::in,
-    accu_warnings::out) is semidet.
+    list(accu_warning)::out) is semidet.
 
 should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
         HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCO,
         [Id | Ids], C, M, Rec, Warnings) :-
-    (
-        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-        identify_out_and_out_prime(!.ModuleInfo, VarTypes0, InitialInstMap,
-            Id, Rec, HeadVars, Out, OutPrime,
-            HeadToCallSubst, CallToHeadSubst),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    identify_out_and_out_prime(!.ModuleInfo, VarTypes0, InitialInstMap,
+        Id, Rec, HeadVars, Out, OutPrime, HeadToCallSubst, CallToHeadSubst),
+    ( if
         accu_stage1(!.ModuleInfo, VarTypes0, FullyStrict, DoLCO, Id, M, C,
             Sets),
         accu_stage2(!.ModuleInfo, !.ProcInfo, Id, C, Sets, OutPrime, Out,
@@ -410,9 +407,9 @@ should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
         accu_stage3(Id, Accs, VarSet, VarTypes, C, CS, Substs,
             HeadToCallSubst, CallToHeadSubst, BaseCase, BasePairs, Sets, Out,
             TopLevel, PredId, PredInfo, !ProcInfo, !ModuleInfo)
-    ->
+    then
         Warnings = WarningsPrime
-    ;
+    else
         should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo,
             !ProcInfo, HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCO,
             Ids, C, M, Rec, Warnings)
@@ -433,24 +430,25 @@ should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
 :- pred accu_standardize(hlds_goal::in, hlds_goal::out) is det.
 
 accu_standardize(Goal0, Goal) :-
-    (
+    ( if
         Goal0 = hlds_goal(GoalExpr0, _),
         (
             GoalExpr0 = conj(plain_conj, [Goal1])
         ;
             GoalExpr0 = disj([Goal1])
         )
-    ->
+    then
         accu_standardize(Goal1, Goal)
-    ;
+    else
         Goal = Goal0
     ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % This predicate takes the original goal and identifies the
-    % `shape' of the goal around the recursive and base cases.
+    % This predicate takes the original goal and identifies the `shape'
+    % of the goal around the recursive and base cases.
+    %
     % Note that the base case can contain a recursive call, as the
     % transformation doesn't depend on what is in the base case.
     %
@@ -463,51 +461,58 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap, Type,
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = switch(_Var, _CanFail, Cases),
-        Cases = [case(_IdA, [], GoalA), case(_IdB, [], GoalB)],
-        goal_to_conj_list(GoalA, GoalAList),
-        goal_to_conj_list(GoalB, GoalBList)
-    ->
-        ( is_recursive_case(GoalAList, proc(PredId, ProcId)) ->
-            Type = switch_rec_base,
-            Base = GoalBList,
-            Rec = GoalAList
-        ; is_recursive_case(GoalBList, proc(PredId, ProcId)) ->
-            Type = switch_base_rec,
-            Base = GoalAList,
-            Rec = GoalBList
-        ;
+        ( if
+            Cases = [case(_IdA, [], GoalA), case(_IdB, [], GoalB)],
+            goal_to_conj_list(GoalA, GoalAList),
+            goal_to_conj_list(GoalB, GoalBList)
+        then
+            ( if is_recursive_case(GoalAList, proc(PredId, ProcId)) then
+                Type = switch_rec_base,
+                Base = GoalBList,
+                Rec = GoalAList
+            else if is_recursive_case(GoalBList, proc(PredId, ProcId)) then
+                Type = switch_base_rec,
+                Base = GoalAList,
+                Rec = GoalBList
+            else
+                fail
+            ),
+            BaseInstMap = InitialInstMap,
+            RecInstMap = InitialInstMap
+        else
             fail
-        ),
-        BaseInstMap = InitialInstMap,
-        RecInstMap = InitialInstMap
+        )
     ;
         GoalExpr = disj(Goals),
-        Goals = [GoalA, GoalB],
-        goal_to_conj_list(GoalA, GoalAList),
-        goal_to_conj_list(GoalB, GoalBList)
-    ->
-        ( is_recursive_case(GoalAList, proc(PredId, ProcId)) ->
-            Type = disj_rec_base,
-            Base = GoalBList,
-            Rec = GoalAList
-        ; is_recursive_case(GoalBList, proc(PredId, ProcId)) ->
-            Type = disj_base_rec,
-            Base = GoalAList,
-            Rec = GoalBList
-        ;
+        ( if
+            Goals = [GoalA, GoalB],
+            goal_to_conj_list(GoalA, GoalAList),
+            goal_to_conj_list(GoalB, GoalBList)
+        then
+            ( if is_recursive_case(GoalAList, proc(PredId, ProcId)) then
+                Type = disj_rec_base,
+                Base = GoalBList,
+                Rec = GoalAList
+            else if is_recursive_case(GoalBList, proc(PredId, ProcId)) then
+                Type = disj_base_rec,
+                Base = GoalAList,
+                Rec = GoalBList
+            else
+                fail
+            ),
+            BaseInstMap = InitialInstMap,
+            RecInstMap = InitialInstMap
+        else
             fail
-        ),
-        BaseInstMap = InitialInstMap,
-        RecInstMap = InitialInstMap
+        )
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
         Cond = hlds_goal(_CondGoalExpr, CondGoalInfo),
         CondInstMapDelta = goal_info_get_instmap_delta(CondGoalInfo),
 
         goal_to_conj_list(Then, GoalAList),
-        goal_to_conj_list(Else, GoalBList)
-    ->
-        ( is_recursive_case(GoalAList, proc(PredId, ProcId)) ->
+        goal_to_conj_list(Else, GoalBList),
+        ( if is_recursive_case(GoalAList, proc(PredId, ProcId)) then
             Type = ite_rec_base,
             Base = GoalBList,
             Rec = GoalAList,
@@ -515,7 +520,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap, Type,
             BaseInstMap = InitialInstMap,
             instmap.apply_instmap_delta(InitialInstMap, CondInstMapDelta,
                 RecInstMap)
-        ; is_recursive_case(GoalBList, proc(PredId, ProcId)) ->
+        else if is_recursive_case(GoalBList, proc(PredId, ProcId)) then
             Type = ite_base_rec,
             Base = GoalAList,
             Rec = GoalBList,
@@ -523,11 +528,9 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap, Type,
             RecInstMap = InitialInstMap,
             instmap.apply_instmap_delta(InitialInstMap, CondInstMapDelta,
                 BaseInstMap)
-        ;
+        else
             fail
         )
-    ;
-        fail
     ).
 
     % is_recursive_case(Gs, Id) is true iff the list of goals, Gs,
@@ -618,11 +621,11 @@ identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
 identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
         Rec, HeadVars, Out, OutPrime, HeadToCallSubst, CallToHeadSubst) :-
     GoalId = accu_goal_id(_Case, K),
-    (
+    ( if
         list.take(K, Rec, InitialGoals),
         list.drop(K-1, Rec, FinalGoals),
         FinalGoals = [hlds_goal(plain_call(_, _, Args, _, _, _), _) | Rest]
-    ->
+    then
         goal_list_instmap_delta(InitialGoals, InitInstMapDelta),
         instmap.apply_instmap_delta(InitialInstMap,
             InitInstMapDelta, InstMapBeforeRest),
@@ -648,7 +651,7 @@ identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
 
         list.map((pred(X-Y::in, Y-X::out) is det), HeadArg, ArgHead),
         map.from_assoc_list(ArgHead, CallToHeadSubst)
-    ;
+    else
         unexpected($module, $pred, "test failed")
     ).
 
@@ -718,46 +721,46 @@ accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, GoalId, K, M, GoalStore,
         !Sets) :-
     GoalId = accu_goal_id(Case, I),
     NextGoalId = accu_goal_id(Case, I + 1),
-    ( I > M ->
+    ( if I > M then
         true
-    ;
-        (
+    else
+        ( if
             accu_before(ModuleInfo, VarTypes, FullyStrict, GoalId, K,
                 GoalStore, !.Sets)
-        ->
+        then
             !Sets ^ as_before := set.insert(!.Sets ^ as_before, GoalId),
             accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, NextGoalId, K, M,
                 GoalStore, !Sets)
-        ;
+        else if
             accu_assoc(ModuleInfo, VarTypes, FullyStrict, GoalId, K,
                 GoalStore, !.Sets)
-        ->
+        then
             !Sets ^ as_assoc := set.insert(!.Sets ^ as_assoc, GoalId),
             accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, NextGoalId, K, M,
                 GoalStore, !Sets)
-        ;
+        else if
             accu_construct(ModuleInfo, VarTypes, FullyStrict, GoalId, K,
                 GoalStore, !.Sets)
-        ->
+        then
             !Sets ^ as_construct := set.insert(!.Sets ^ as_construct, GoalId),
             accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, NextGoalId, K, M,
                 GoalStore, !Sets)
-        ;
+        else if
             accu_construct_assoc(ModuleInfo, VarTypes, FullyStrict, GoalId, K,
                 GoalStore, !.Sets)
-        ->
+        then
             !Sets ^ as_construct_assoc :=
                 set.insert(!.Sets ^ as_construct_assoc, GoalId),
             accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, NextGoalId, K, M,
                 GoalStore, !Sets)
-        ;
+        else if
             accu_update(ModuleInfo, VarTypes, FullyStrict, GoalId, K,
                 GoalStore, !.Sets)
-        ->
+        then
             !Sets ^ as_update := set.insert(!.Sets ^ as_update, GoalId),
             accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, NextGoalId, K, M,
                 GoalStore, !Sets)
-        ;
+        else
             !Sets ^ as_reject := set.insert(!.Sets ^ as_reject, GoalId)
         )
     ).
@@ -782,9 +785,9 @@ accu_sets_init(Sets) :-
 :- func set_upto(accu_case, int) = set(accu_goal_id).
 
 set_upto(Case, K) = Set :-
-    ( K =< 0 ->
+    ( if K =< 0 then
         set.init(Set)
-    ;
+    else
         Set0 = set_upto(Case, K - 1),
         set.insert(accu_goal_id(Case, K), Set0, Set)
     ).
@@ -977,12 +980,12 @@ accu_is_associative(ModuleInfo, PredId, Args, Result) :-
     pred_info_get_assertions(PredInfo, Assertions),
     associativity_assertion(ModuleInfo, set.to_sorted_list(Assertions),
         Args, AssociativeVars, OutputVar),
-    (
+    ( if
         commutativity_assertion(ModuleInfo, set.to_sorted_list(Assertions),
             Args, _CommutativeVars)
-    ->
+    then
         IsCommutative = yes
-    ;
+    else
         IsCommutative = no
     ),
     Result = accu_assoc(AssociativeVars, OutputVar, IsCommutative).
@@ -999,14 +1002,14 @@ accu_is_associative(ModuleInfo, PredId, Args, Result) :-
 
 associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0, VarAB,
         OutputVar) :-
-    (
+    ( if
         assertion.is_associativity_assertion(ModuleInfo, AssertId,
             Args0, VarA - VarB, OutputVar0)
-    ->
+    then
         \+ associativity_assertion(ModuleInfo, AssertIds, Args0, _, _),
         VarAB = set_of_var.list_to_set([VarA, VarB]),
         OutputVar = OutputVar0
-    ;
+    else
         associativity_assertion(ModuleInfo, AssertIds, Args0, VarAB, OutputVar)
     ).
 
@@ -1022,13 +1025,13 @@ associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0, VarAB,
 
 commutativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
         PossibleStaticVars) :-
-    (
+    ( if
         assertion.is_commutativity_assertion(ModuleInfo, AssertId,
             Args0, StaticVarA - StaticVarB)
-    ->
+    then
         \+ commutativity_assertion(ModuleInfo, AssertIds, Args0, _),
         PossibleStaticVars = set_of_var.list_to_set([StaticVarA, StaticVarB])
-    ;
+    else
         commutativity_assertion(ModuleInfo, AssertIds, Args0,
             PossibleStaticVars)
     ).
@@ -1109,7 +1112,8 @@ is_associative_construction(ModuleInfo, PredId, ConsId) :-
     accu_goal_id::in, accu_goal_store::in, accu_sets::in,
     prog_vars::in, prog_vars::in, prog_varset::out, vartypes::out,
     prog_vars::out, accu_base::out, list(pair(prog_var))::out,
-    accu_substs::out, accu_goal_store::out, accu_warnings::out) is semidet.
+    accu_substs::out, accu_goal_store::out, list(accu_warning)::out)
+    is semidet.
 
 accu_stage2(ModuleInfo, ProcInfo0, GoalId, GoalStore, Sets, OutPrime, Out,
         !:VarSet, !:VarTypes, Accs, BaseCase, BasePairs, !:Substs,
@@ -1182,9 +1186,8 @@ acc_var_subst_init([Var | Vars], !VarSet, !VarTypes, Subst) :-
     acc_var_subst_init(Vars, !VarSet, !VarTypes, Subst0),
     map.det_insert(Var, AccVar, Subst0, Subst).
 
-    % Create a fresh variable which is the same type as the old
-    % variable and has the same name except that it begins with the
-    % prefix.
+    % Create a fresh variable which is the same type as the old variable
+    % and has the same name except that it begins with the prefix.
     %
 :- pred create_new_var(prog_var::in, string::in, prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
@@ -1206,7 +1209,7 @@ create_new_var(OldVar, Prefix, NewVar, !VarSet, !VarTypes) :-
     list(accu_goal_id)::in, set_of_progvar::in,
     accu_substs::in, accu_substs::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    accu_goal_store::out, accu_warnings::out) is semidet.
+    accu_goal_store::out, list(accu_warning)::out) is semidet.
 
 accu_process_assoc_set(_ModuleInfo, _GS, [], _OutPrime, !Substs,
         !VarSet, !VarTypes, CS, []) :-
@@ -1251,15 +1254,15 @@ accu_process_assoc_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
         ModuleName = pred_info_module(PredInfo),
         PredName = pred_info_name(PredInfo),
         Arity = pred_info_orig_arity(PredInfo),
-        ( accu_has_heuristic(ModuleName, PredName, Arity) ->
+        ( if accu_has_heuristic(ModuleName, PredName, Arity) then
             % Only do the transformation if the accumulator variable is
             % *not* in a position where it will control the running time
             % of the predicate.
             accu_heuristic(ModuleName, PredName, Arity, Args,
                 PossibleDuringAssocVars),
-            set_of_var.member(PossibleDuringAssocVars, DuringAssocVar), 
+            set_of_var.member(PossibleDuringAssocVars, DuringAssocVar),
             CurWarnings = []
-        ;
+        else
             ProgContext = goal_info_get_context(GoalInfo),
             CurWarnings = [accu_warn(ProgContext, PredId, BeforeAssocVar,
                 DuringAssocVar)]
@@ -1314,10 +1317,10 @@ accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
     Goal = hlds_goal(plain_call(PredId, _, Args, _, _, _), _GoalInfo),
     accu_is_update(ModuleInfo, PredId, Args, StateVarA - StateVarB),
 
-    ( set_of_var.member(OutPrime, StateVarA) ->
+    ( if set_of_var.member(OutPrime, StateVarA) then
         StateInputVar = StateVarA,
         StateOutputVar = StateVarB
-    ;
+    else
         StateInputVar = StateVarB,
         StateOutputVar = StateVarA
     ),
@@ -1431,12 +1434,12 @@ accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
 
 lookup_call(GoalStore, Id, stored_goal(Call, InstMap)) :-
     goal_store_lookup(GoalStore, Id, stored_goal(Goal, InstMap)),
-    (
+    ( if
         Goal = hlds_goal(GoalExpr, GoalInfo),
         GoalExpr = plain_call(_, _, _, _, _, _)
-    ->
+    then
         Call = hlds_goal(GoalExpr, GoalInfo)
-    ;
+    else
         unexpected($module, $pred, "not a call")
     ).
 
@@ -1749,80 +1752,80 @@ accu_top_level(TopLevel, Goal, OrigBaseGoal, OrigRecGoal,
         NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
     (
         TopLevel = switch_base_rec,
-        (
+        ( if
             Goal = hlds_goal(switch(Var, CanFail, Cases0), GoalInfo),
             Cases0 = [case(IdA, [], _), case(IdB, [], _)]
-        ->
+        then
             OrigCases = [case(IdA, [], OrigBaseGoal),
                 case(IdB, [], OrigRecGoal)],
             OrigGoal = hlds_goal(switch(Var, CanFail, OrigCases), GoalInfo),
 
             NewCases = [case(IdA, [], NewBaseGoal), case(IdB, [], NewRecGoal)],
             NewGoal = hlds_goal(switch(Var, CanFail, NewCases), GoalInfo)
-        ;
+        else
             unexpected($module, $pred, "not the correct top level")
         )
     ;
         TopLevel = switch_rec_base,
-        (
+        ( if
             Goal = hlds_goal(switch(Var, CanFail, Cases0), GoalInfo),
             Cases0 = [case(IdA, [], _), case(IdB, [], _)]
-        ->
+        then
             OrigCases = [case(IdA, [], OrigRecGoal),
                 case(IdB, [], OrigBaseGoal)],
             OrigGoal = hlds_goal(switch(Var, CanFail, OrigCases), GoalInfo),
 
             NewCases = [case(IdA, [], NewRecGoal), case(IdB, [], NewBaseGoal)],
             NewGoal = hlds_goal(switch(Var, CanFail, NewCases), GoalInfo)
-        ;
+        else
             unexpected($module, $pred, "not the correct top level")
         )
     ;
         TopLevel = disj_base_rec,
-        (
+        ( if
             Goal = hlds_goal(disj(Goals), GoalInfo),
             Goals = [_, _]
-        ->
+        then
             OrigGoals = [OrigBaseGoal, OrigRecGoal],
             OrigGoal = hlds_goal(disj(OrigGoals), GoalInfo),
 
             NewGoals = [NewBaseGoal, NewRecGoal],
             NewGoal = hlds_goal(disj(NewGoals), GoalInfo)
-        ;
+        else
             unexpected($module, $pred, "not the correct top level")
         )
     ;
         TopLevel = disj_rec_base,
-        (
+        ( if
             Goal = hlds_goal(disj(Goals), GoalInfo),
             Goals = [_, _]
-        ->
+        then
             OrigGoals = [OrigRecGoal, OrigBaseGoal],
             OrigGoal = hlds_goal(disj(OrigGoals), GoalInfo),
 
             NewGoals = [NewRecGoal, NewBaseGoal],
             NewGoal = hlds_goal(disj(NewGoals), GoalInfo)
-        ;
+        else
             unexpected($module, $pred, "not the correct top level")
         )
     ;
         TopLevel = ite_base_rec,
-        ( Goal = hlds_goal(if_then_else(Vars, Cond, _, _), GoalInfo) ->
+        ( if Goal = hlds_goal(if_then_else(Vars, Cond, _, _), GoalInfo) then
             OrigGoal = hlds_goal(if_then_else(Vars, Cond,
                 OrigBaseGoal, OrigRecGoal), GoalInfo),
             NewGoal = hlds_goal(if_then_else(Vars, Cond,
                 NewBaseGoal, NewRecGoal), GoalInfo)
-        ;
+        else
             unexpected($module, $pred, "not the correct top level")
         )
     ;
         TopLevel = ite_rec_base,
-        ( Goal = hlds_goal(if_then_else(Vars, Cond, _, _), GoalInfo) ->
+        ( if Goal = hlds_goal(if_then_else(Vars, Cond, _, _), GoalInfo) then
             OrigGoal = hlds_goal(if_then_else(Vars, Cond,
                 OrigRecGoal, OrigBaseGoal), GoalInfo),
             NewGoal = hlds_goal(if_then_else(Vars, Cond,
                 NewRecGoal, NewBaseGoal), GoalInfo)
-        ;
+        else
             unexpected($module, $pred, "not the correct top level")
         )
     ).
@@ -1894,13 +1897,13 @@ accu_goal_list(Ids, GS) = Goals :-
 :- pred calculate_goal_info(hlds_goal_expr::in, hlds_goal::out) is det.
 
 calculate_goal_info(GoalExpr, hlds_goal(GoalExpr, GoalInfo)) :-
-    ( GoalExpr = conj(plain_conj, GoalList) ->
+    ( if GoalExpr = conj(plain_conj, GoalList) then
         goal_list_nonlocals(GoalList, NonLocals),
         goal_list_instmap_delta(GoalList, InstMapDelta),
         goal_list_determinism(GoalList, Detism),
 
         goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure, GoalInfo)
-    ;
+    else
         unexpected($module, $pred, "not a conj")
     ).
 
@@ -1928,9 +1931,9 @@ chain_subst_2([], _, _, AtoC) :-
 chain_subst_2([A|As], AtoB, BtoC, AtoC) :-
     chain_subst_2(As, AtoB, BtoC, AtoC0),
     map.lookup(AtoB, A, B),
-    ( map.search(BtoC, B, C) ->
+    ( if map.search(BtoC, B, C) then
         map.det_insert(A, C, AtoC0, AtoC)
-    ;
+    else
         AtoC = AtoC0
     ).
 
