@@ -280,6 +280,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.modules.    % undesirable dependency
 
 :- import_module bool.

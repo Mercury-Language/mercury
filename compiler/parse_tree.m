@@ -66,6 +66,7 @@
 
 % Transformations that act on the parse tree,
 % and stuff relating to the module system.
+:- include_module comp_unit_interface.
 :- include_module deps_map.
 :- include_module equiv_type.
 :- include_module file_names.
