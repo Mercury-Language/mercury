@@ -696,16 +696,22 @@ mercury_output_aug_item_block(Info, AugItemBlock, !IO) :-
         AugSectionKind = ams_impl_but_exported_to_submodules,
         io.write_string(":- ams_impl_but_exported_to_submodules.\n", !IO)
     ;
-        AugSectionKind = ams_abstract_imported,
-        io.write_string(":- ams_abstract_imported.\n", !IO)
+        AugSectionKind = ams_abstract_imported(ModuleName),
+        io.write_string(":- ams_abstract_imported(", !IO),
+        io.write_string(sym_name_to_string(ModuleName), !IO),
+        io.write_string(").\n", !IO)
     ;
-        AugSectionKind = ams_imported(ImportLocn),
+        AugSectionKind = ams_imported(ModuleName, ImportLocn),
         io.write_string(":- ams_imported(", !IO),
+        io.write_string(sym_name_to_string(ModuleName), !IO),
+        io.write_string(", ", !IO),
         io.write(ImportLocn, !IO),
         io.write_string(").\n", !IO)
     ;
-        AugSectionKind = ams_used(ImportLocn),
+        AugSectionKind = ams_used(ModuleName, ImportLocn),
         io.write_string(":- ams_used(", !IO),
+        io.write_string(sym_name_to_string(ModuleName), !IO),
+        io.write_string(", ", !IO),
         io.write(ImportLocn, !IO),
         io.write_string(").\n", !IO)
     ;

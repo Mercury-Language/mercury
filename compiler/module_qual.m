@@ -382,20 +382,20 @@ collect_mq_info_in_aug_item_blocks([AugItemBlock | AugItemBlocks], !Info) :-
             AugSection = ams_implementation,
             mq_info_set_import_status(mq_status_local, !Info)
         ;
-            AugSection = ams_imported(Locn),
+            AugSection = ams_imported(_ModuleName, Locn),
             mq_info_set_import_status(mq_status_imported(Locn), !Info),
             mq_info_set_need_qual_flag(may_be_unqualified, !Info)
         ;
-            AugSection = ams_used(Locn),
+            AugSection = ams_used(_ModuleName, Locn),
             mq_info_set_import_status(mq_status_imported(Locn), !Info),
             mq_info_set_need_qual_flag(must_be_qualified, !Info)
         ;
-            AugSection = ams_opt_imported(_),
+            AugSection = ams_opt_imported(_ModuleName),
             mq_info_set_import_status(
                 mq_status_imported(import_locn_implementation), !Info),
             mq_info_set_need_qual_flag(must_be_qualified, !Info)
         ;
-            AugSection = ams_abstract_imported,
+            AugSection = ams_abstract_imported(_ModuleName),
             mq_info_set_import_status(mq_status_abstract_imported, !Info),
             mq_info_set_need_qual_flag(must_be_qualified, !Info)
         ),
@@ -832,8 +832,8 @@ module_qualify_items_in_blocks([AugItemBlock0 | AugItemBlocks0],
         [AugItemBlock | AugItemBlocks], !Info, !Specs) :-
     AugItemBlock0 = item_block(AugSection, Context, Items0),
     (
-        ( AugSection = ams_imported(_)
-        ; AugSection = ams_used(_)
+        ( AugSection = ams_imported(_, _)
+        ; AugSection = ams_used(_, _)
         ; AugSection = ams_opt_imported(_)
         ; AugSection = ams_transitively_imported
         ),
@@ -851,7 +851,7 @@ module_qualify_items_in_blocks([AugItemBlock0 | AugItemBlocks0],
             AugSection = ams_impl_but_exported_to_submodules,
             mq_info_set_import_status(mq_status_local, !Info)
         ;
-            AugSection = ams_abstract_imported,
+            AugSection = ams_abstract_imported(_),
             mq_info_set_import_status(mq_status_abstract_imported, !Info)
         ),
         module_qualify_items_loop(Items0, Items, !Info, !Specs),

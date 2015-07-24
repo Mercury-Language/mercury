@@ -231,9 +231,9 @@ process_item_blocks_for_private_interface(ModuleName, [ItemBlock | ItemBlocks],
     ;
         % XXX ITEM_LIST Is this the right thing to do for ams_impl_but_...?
         ( AugSection = ams_impl_but_exported_to_submodules
-        ; AugSection = ams_abstract_imported
-        ; AugSection = ams_imported(_)
-        ; AugSection = ams_used(_)
+        ; AugSection = ams_abstract_imported(_)
+        ; AugSection = ams_imported(_, _)
+        ; AugSection = ams_used(_, _)
         )
         % Do nothing.
     ;
@@ -572,9 +572,9 @@ aug_item_blocks_to_int_imp_items_loop([AugItemBlock | AugItemBlocks],
             !:ImpItemsCord = !.ImpItemsCord ++ cord.from_list(StrippedItems)
         )
     ;
-        ( AugSection = ams_imported(_)
-        ; AugSection = ams_used(_)
-        ; AugSection = ams_abstract_imported
+        ( AugSection = ams_imported(_, _)
+        ; AugSection = ams_used(_, _)
+        ; AugSection = ams_abstract_imported(_)
         )
         % Do nothing.
     ;

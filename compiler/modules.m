@@ -1242,12 +1242,12 @@ record_includes_imports_uses_in_aug_item_blocks_acc(
         ( AugSection = ams_interface
         ; AugSection = ams_implementation
         ; AugSection = ams_impl_but_exported_to_submodules
-        ; AugSection = ams_imported(_)
-        ; AugSection = ams_used(_)
+        ; AugSection = ams_imported(_, _)
+        ; AugSection = ams_used(_, _)
         ),
         Visible = yes
     ;
-        ( AugSection = ams_abstract_imported
+        ( AugSection = ams_abstract_imported(_)
         ; AugSection = ams_opt_imported(_)
         ; AugSection = ams_transitively_imported
         ),

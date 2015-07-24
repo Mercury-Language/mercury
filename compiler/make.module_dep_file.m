@@ -312,9 +312,9 @@ strip_imported_items([HeadAugItemBlock | TailAugItemBlocks], RawItemBlocks) :-
         strip_imported_items(TailAugItemBlocks, TailRawItemBlocks),
         RawItemBlocks = [HeadRawItemBlock | TailRawItemBlocks]
     ;
-        ( HeadAugSection = ams_imported(_)
-        ; HeadAugSection = ams_used(_)
-        ; HeadAugSection = ams_abstract_imported
+        ( HeadAugSection = ams_imported(_, _)
+        ; HeadAugSection = ams_used(_, _)
+        ; HeadAugSection = ams_abstract_imported(_)
         ),
         % Delete this block and all later blocks.
         RawItemBlocks = []

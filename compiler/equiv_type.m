@@ -187,7 +187,7 @@ build_eqv_maps_in_blocks([], !TypeEqvMap, !InstEqvMap).
 build_eqv_maps_in_blocks([AugItemBlock | AugItemBlocks],
         !TypeEqvMap, !InstEqvMap) :-
     AugItemBlock = item_block(AugSection, _, Items),
-    ( if AugSection = ams_abstract_imported then
+    ( if AugSection = ams_abstract_imported(_) then
         true
     else
         build_eqv_maps_in_items(Items, !TypeEqvMap, !InstEqvMap)
@@ -255,9 +255,9 @@ replace_in_item_blocks(ModuleName, TypeEqvMap, InstEqvMap,
         ),
         Location = eqv_type_in_implementation
     ;
-        ( AugSection = ams_imported(_)
-        ; AugSection = ams_used(_)
-        ; AugSection = ams_abstract_imported
+        ( AugSection = ams_imported(_, _)
+        ; AugSection = ams_used(_, _)
+        ; AugSection = ams_abstract_imported(_)
         ; AugSection = ams_opt_imported(_)
         ; AugSection = ams_transitively_imported
         ),

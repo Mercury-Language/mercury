@@ -184,33 +184,29 @@
             % module that contains sub-modules; such items need to be exported
             % to the sub-modules.
 
-    ;       ams_imported(import_locn)
+    ;       ams_imported(module_name, import_locn)
             % This is used internally by the compiler, to identify declarations
             % which originally came from some other module imported with a
             % `:- import_module' declaration, and which section the module
             % was imported.
-            % XXX ITEM_LIST Include the name of the imported module.
 
-    ;       ams_used(import_locn)
+    ;       ams_used(module_name, import_locn)
             % This is used internally by the compiler, to identify declarations
             % which originally came from some other module and for which all
             % uses must be module qualified. This applies to items from modules
             % imported using `:- use_module', and items from `.opt' and `.int2'
             % files. It also records from which section the module was
             % imported.
-            % XXX ITEM_LIST Include the name of the imported module.
 
-    ;       ams_abstract_imported
+    ;       ams_abstract_imported(module_name)
             % This is used internally by the compiler, to identify items which
             % originally came from the implementation section of an interface
             % file; usually type declarations (especially equivalence types)
             % which should be used in code generation but not in type checking.
-            % XXX ITEM_LIST Include the name of the imported module.
 
     ;       ams_opt_imported(module_name)
             % This is used internally by the compiler, to identify items which
             % originally came from a .opt file.
-            % XXX ITEM_LIST Include the name of the imported module.
 
     ;       ams_transitively_imported.
             % This is used internally by the compiler, to identify items which
@@ -308,9 +304,10 @@ make_ams_interface(_ModuleName) = ams_interface.
 make_ams_implementation(_ModuleName) = ams_implementation.
 make_ams_impl_but_exported_to_submodules(_ModuleName) =
     ams_impl_but_exported_to_submodules.
-make_ams_imported(ImportLocn, _ModuleName) = ams_imported(ImportLocn).
-make_ams_used(ImportLocn, _ModuleName) = ams_used(ImportLocn).
-make_ams_abstract_imported(_ModuleName) = ams_abstract_imported.
+make_ams_imported(ImportLocn, ModuleName) =
+    ams_imported(ModuleName, ImportLocn).
+make_ams_used(ImportLocn, ModuleName) = ams_used(ModuleName, ImportLocn).
+make_ams_abstract_imported(ModuleName) = ams_abstract_imported(ModuleName).
 make_ams_opt_imported(ModuleName) = ams_opt_imported(ModuleName).
 make_ams_transitively_imported(_ModuleName) = ams_transitively_imported.
 
@@ -327,16 +324,16 @@ aug_module_section_status(AugSection, MaybeStatus) :-
             Status = item_status(status_exported_to_submodules,
                 may_be_unqualified)
         ;
-            AugSection = ams_imported(Section),
+            AugSection = ams_imported(_ModuleName, Section),
             Status = item_status(status_imported(Section), may_be_unqualified)
         ;
-            AugSection = ams_used(Section),
+            AugSection = ams_used(_ModuleName, Section),
             Status = item_status(status_imported(Section), must_be_qualified)
         ;
             AugSection = ams_opt_imported(_ModuleName),
             Status = item_status(status_opt_imported, must_be_qualified)
         ;
-            AugSection = ams_abstract_imported,
+            AugSection = ams_abstract_imported(_ModuleName),
             Status = item_status(status_abstract_imported, must_be_qualified)
         ),
         MaybeStatus = yes(Status)
