@@ -40,6 +40,7 @@
 
 :- import_module io.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module term.
@@ -66,7 +67,7 @@
 % here encourages thinking that they are, which may lead to bugs.
 %
 % XXX ITEM_LIST Document what prog_item.item, or what sequence of
-% prog_item.items,  each item_type may correspond to.
+% prog_item.items, each item_type may correspond to.
 
 :- type item_id
     --->    item_id(item_type, item_name).
@@ -143,30 +144,6 @@
             ).
 
 :- func init_recompilation_info(module_name) = recompilation_info.
-
-    % recompilation.add_used_item(ItemType, UnqualifiedId, QualifiedId,
-    %   !Info).
-    %
-    % Record a reference to UnqualifiedId, for which QualifiedId
-    % is the only match. If a new declaration is added so that
-    % QualifiedId is not the only match, we need to recompile.
-    %
-:- pred record_used_item(item_type::in, item_name::in, item_name::in,
-    recompilation_info::in, recompilation_info::out) is det.
-
-    % For each imported item we need to record which equivalence types
-    % are used because equiv_type.m removes all references to the
-    % equivalence types, and at that point we don't know which imported
-    % items are going to be used by the compilation.
-    %
-    % For predicates declared using `with_type` annotations,
-    % the version number in the interface file and the
-    % version_numbers map will refer to the arity before expansion
-    % of the `with_type` annotation, so that needs to be recorded
-    % here as well.
-    %
-:- pred record_expanded_items(item_id::in, set(item_id)::in,
-    recompilation_info::in, recompilation_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -268,6 +245,53 @@
 :- func module_qualify_name(module_qualifier, string) = sym_name.
 
 %-----------------------------------------------------------------------------%
+
+    % recompilation.add_used_item(ItemType, UnqualifiedId, QualifiedId,
+    %   !Info).
+    %
+    % Record a reference to UnqualifiedId, for which QualifiedId
+    % is the only match. If a new declaration is added so that
+    % QualifiedId is not the only match, we need to recompile.
+    %
+:- pred record_used_item(item_type::in, item_name::in, item_name::in,
+    recompilation_info::in, recompilation_info::out) is det.
+
+    % For each imported item we need to record which equivalence types
+    % are used because equiv_type.m removes all references to the
+    % equivalence types, and at that point we don't know which imported
+    % items are going to be used by the compilation.
+    %
+    % For predicates declared using `with_type` annotations,
+    % the version number in the interface file and the
+    % version_numbers map will refer to the arity before expansion
+    % of the `with_type` annotation, so that needs to be recorded
+    % here as well.
+    %
+:- pred record_expanded_items(item_id::in, set(item_id)::in,
+    recompilation_info::in, recompilation_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- type eqv_expanded_info == maybe(eqv_expanded_item_set).
+:- type eqv_expanded_item_set
+    --->    eqv_expanded_item_set(module_name, set(item_id)).
+
+    % For smart recompilation we need to record which items were expanded
+    % in each declaration. Any items which depend on that declaration also
+    % depend on the expanded items.
+    %
+:- pred maybe_start_recording_expanded_items(module_name::in, sym_name::in,
+    maybe(recompilation_info)::in, eqv_expanded_info::out) is det.
+
+:- pred record_expanded_item(item_id::in,
+    eqv_expanded_info::in, eqv_expanded_info::out) is det.
+
+    % Record all the expanded items in the recompilation_info.
+    %
+:- pred finish_recording_expanded_items(item_id::in, eqv_expanded_info::in,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -281,6 +305,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
+:- import_module require.
 :- import_module string.
 :- import_module time.
 
@@ -419,9 +444,9 @@ find_module_qualifier(unqualified(_)) = unqualified("").
 find_module_qualifier(qualified(ModuleName, _)) = ModuleName.
 
 module_qualify_name(Qualifier, Name) =
-    ( Qualifier = unqualified("") ->
+    ( if Qualifier = unqualified("") then
         unqualified(Name)
-    ;
+    else
         qualified(Qualifier, Name)
     ).
 
@@ -437,7 +462,7 @@ init_recompilation_info(ModuleName) =
 
 record_used_item(ItemType, Id, QualifiedId, !Info) :-
     QualifiedId = item_name(QualifiedName, Arity),
-    (
+    ( if
         % Don't record builtin items (QualifiedId may be unqualified
         % for predicates, functions and functors because they aren't
         % qualified until after typechecking).
@@ -445,9 +470,9 @@ record_used_item(ItemType, Id, QualifiedId, !Info) :-
         ItemType \= function_item,
         ItemType \= functor_item,
         QualifiedName = unqualified(_)
-    ->
+    then
         true
-    ;
+    else
         ItemSet0 = !.Info ^ recomp_used_items,
         IdSet0 = extract_ids(ItemSet0, ItemType),
         UnqualifiedName = unqualify_name(QualifiedName),
@@ -455,14 +480,14 @@ record_used_item(ItemType, Id, QualifiedId, !Info) :-
         UnqualifiedId = UnqualifiedName - Arity,
         Id = item_name(SymName, _),
         ModuleQualifier = find_module_qualifier(SymName),
-        ( map.search(IdSet0, UnqualifiedId, MatchingNames0) ->
+        ( if map.search(IdSet0, UnqualifiedId, MatchingNames0) then
             MatchingNames1 = MatchingNames0
-        ;
+        else
             map.init(MatchingNames1)
         ),
-        ( map.contains(MatchingNames1, ModuleQualifier) ->
+        ( if map.contains(MatchingNames1, ModuleQualifier) then
             true
-        ;
+        else
             map.det_insert(ModuleQualifier, ModuleName,
                 MatchingNames1, MatchingNames),
             map.set(UnqualifiedId, MatchingNames, IdSet0, IdSet),
@@ -472,19 +497,54 @@ record_used_item(ItemType, Id, QualifiedId, !Info) :-
     ).
 
 record_expanded_items(Item, ExpandedItems, !Info) :-
-    ( set.is_empty(ExpandedItems) ->
+    ( if set.is_empty(ExpandedItems) then
         true
-    ;
+    else
         DepsMap0 = !.Info ^ recomp_dependencies,
-        ( map.search(DepsMap0, Item, Deps0) ->
+        ( if map.search(DepsMap0, Item, Deps0) then
             Deps1 = Deps0
-        ;
+        else
             set.init(Deps1)
         ),
         set.union(Deps1, ExpandedItems, Deps),
         map.set(Item, Deps, DepsMap0, DepsMap),
         !Info ^ recomp_dependencies := DepsMap
     ).
+
+%-----------------------------------------------------------------------------%
+
+maybe_start_recording_expanded_items(_, _, no, no).
+maybe_start_recording_expanded_items(ModuleName, SymName, yes(_), MaybeInfo) :-
+    ( if SymName = qualified(ModuleName, _) then
+        MaybeInfo = no
+    else
+        MaybeInfo = yes(eqv_expanded_item_set(ModuleName, set.init))
+    ).
+
+record_expanded_item(Item, !EquivTypeInfo) :-
+    map_maybe(record_expanded_item_2(Item), !EquivTypeInfo).
+
+:- pred record_expanded_item_2(item_id::in,
+    eqv_expanded_item_set::in, eqv_expanded_item_set::out) is det.
+
+record_expanded_item_2(ItemId, ExpandedItemSet0, ExpandedItemSet) :-
+    ExpandedItemSet0 = eqv_expanded_item_set(ModuleName, Items0),
+    ItemId = item_id(_, ItemName),
+    ( if ItemName = item_name(qualified(ModuleName, _), _) then
+        % We don't need to record local types.
+        ExpandedItemSet = ExpandedItemSet0
+    else
+        set.insert(ItemId, Items0, Items),
+        ExpandedItemSet = eqv_expanded_item_set(ModuleName, Items)
+    ).
+
+finish_recording_expanded_items(_, no, no, no).
+finish_recording_expanded_items(_, no, yes(Info), yes(Info)).
+finish_recording_expanded_items(_, yes(_), no, _) :-
+    unexpected($module, $pred, "items but no info").
+finish_recording_expanded_items(Item,
+        yes(eqv_expanded_item_set(_, ExpandedItems)), yes(Info0), yes(Info)) :-
+    record_expanded_items(Item, ExpandedItems, Info0, Info).
 
 %-----------------------------------------------------------------------------%
 :- end_module recompilation.

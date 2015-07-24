@@ -191,8 +191,7 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
         TVarSet = TVarSet0
     ),
     ItemId = item_id(type_body_item, TypeCtorItem),
-    equiv_type.finish_recording_expanded_items(ItemId, EquivTypeInfo,
-        !MaybeRecompInfo),
+    finish_recording_expanded_items(ItemId, EquivTypeInfo, !MaybeRecompInfo),
     hlds_data.set_type_defn_body(Body, !Defn),
     hlds_data.set_type_defn_tvarset(TVarSet, !Defn).
 
@@ -540,8 +539,8 @@ replace_in_pred(TypeEqvMap, PredId, !ModuleInfo, !Cache) :-
             pred_info_is_pred_or_func(!.PredInfo)),
             item_name(qualified(pred_info_module(!.PredInfo), PredName),
                 pred_info_orig_arity(!.PredInfo))),
-        equiv_type.finish_recording_expanded_items(ItemId,
-            !.EquivTypeInfo, MaybeRecompInfo0, MaybeRecompInfo),
+        finish_recording_expanded_items(ItemId, !.EquivTypeInfo,
+            MaybeRecompInfo0, MaybeRecompInfo),
         module_info_set_maybe_recompilation_info(MaybeRecompInfo, !ModuleInfo),
 
         pred_info_get_proc_table(!.PredInfo, ProcMap0),
@@ -1641,7 +1640,7 @@ replace_in_uni_modes(TypeEqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
     %
 :- pred replace_in_foreign_arg(type_eqv_map::in,
     foreign_arg::in, foreign_arg::out, bool::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out) is det.
+    eqv_expanded_info::in, eqv_expanded_info::out) is det.
 
 replace_in_foreign_arg(TypeEqvMap, Arg0, Arg, Changed, !VarSet, !Info) :-
     Arg0 = foreign_arg(Var, NameMode, Type0, BoxPolicy),
@@ -1652,7 +1651,7 @@ replace_in_foreign_arg(TypeEqvMap, Arg0, Arg, Changed, !VarSet, !Info) :-
 
 :- pred replace_in_foreign_arg_list(type_eqv_map::in,
     list(foreign_arg)::in, list(foreign_arg)::out, bool::out,
-    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out)
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out)
     is det.
 
 replace_in_foreign_arg_list(_EqvMap, [], [], no, !VarSet, !Info).

@@ -65,20 +65,20 @@
     %
 :- pred replace_in_type(type_eqv_map::in, mer_type::in, mer_type::out,
     bool::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out) is det.
+    eqv_expanded_info::in, eqv_expanded_info::out) is det.
 
 :- pred replace_in_type_list(type_eqv_map::in,
     list(mer_type)::in, list(mer_type)::out, bool::out,
     tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out) is det.
+    eqv_expanded_info::in, eqv_expanded_info::out) is det.
 
 :- pred replace_in_prog_constraints(type_eqv_map::in,
     prog_constraints::in, prog_constraints::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out) is det.
+    eqv_expanded_info::in, eqv_expanded_info::out) is det.
 
 :- pred replace_in_ctors(type_eqv_map::in,
     list(constructor)::in, list(constructor)::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out) is det.
+    eqv_expanded_info::in, eqv_expanded_info::out) is det.
 
 :- type eqv_type_body
     --->    eqv_type_body(
@@ -88,25 +88,6 @@
             ).
 
 :- type type_eqv_map == map(type_ctor, eqv_type_body).
-
-% XXX ITEM_LIST The rest of the interface should be in the recompilation
-% package, not here.
-
-% XXX Should we make equiv_type_info abstract?
-:- type equiv_type_info == maybe(expanded_item_set).
-:- type expanded_item_set.
-
-    % For smart recompilation we need to record which items were expanded
-    % in each declaration. Any items which depend on that declaration also
-    % depend on the expanded items.
-    %
-:- pred maybe_start_recording_expanded_items(module_name::in, sym_name::in,
-    maybe(recompilation_info)::in, equiv_type_info::out) is det.
-
-    % Record all the expanded items in the recompilation_info.
-    %
-:- pred finish_recording_expanded_items(item_id::in, equiv_type_info::in,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -509,7 +490,7 @@ replace_in_instance_info(ModuleName, Location, TypeEqvMap, _InstEqvMap,
     ->
         UsedTypeCtors0 = no
     ;
-        UsedTypeCtors0 = yes(ModuleName - set.init)
+        UsedTypeCtors0 = yes(eqv_expanded_item_set(ModuleName, set.init))
     ),
     replace_in_prog_constraint_list(Location, TypeEqvMap,
         Constraints0, Constraints, VarSet0, VarSet1,
@@ -544,7 +525,7 @@ replace_in_pragma_info(ModuleName, Location, TypeEqvMap, _InstEqvMap,
         then
             ExpandedItems0 = no
         else
-            ExpandedItems0 = yes(ModuleName - ItemIds0)
+            ExpandedItems0 = yes(eqv_expanded_item_set(ModuleName, ItemIds0))
         ),
         replace_in_subst(Location, TypeEqvMap, Subst0, Subst, VarSet0, VarSet,
             ExpandedItems0, ExpandedItems, !UsedModules),
@@ -552,7 +533,7 @@ replace_in_pragma_info(ModuleName, Location, TypeEqvMap, _InstEqvMap,
             ExpandedItems = no,
             ItemIds = ItemIds0
         ;
-            ExpandedItems = yes(_ - ItemIds)
+            ExpandedItems = yes(eqv_expanded_item_set(_, ItemIds))
         ),
         TypeSpecInfo = pragma_info_type_spec(PredName, NewName, Arity,
             PorF, Modes, Subst, VarSet, ItemIds),
@@ -645,7 +626,7 @@ replace_in_mutable_info(ModuleName, Location, TypeEqvMap, InstEqvMap,
 :- pred replace_in_mutable_defn(eqv_type_location::in,
     type_eqv_map::in, inst_eqv_map::in,
     item_mutable_info::in, item_mutable_info::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_mutable_defn(Location, TypeEqvMap, InstEqvMap, Info0, Info,
@@ -729,7 +710,7 @@ replace_in_event_attr(Attr0, Attr, TypeEqvMap, _InstEqvMap,
 :- pred replace_in_type_defn(eqv_type_location::in,
     type_eqv_map::in, inst_eqv_map::in, type_ctor::in,
     type_defn::in, type_defn::out, bool::out,
-    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_defn(Location, TypeEqvMap, InstEqvMap, TypeCtor,
@@ -770,7 +751,7 @@ replace_in_type_defn(Location, TypeEqvMap, InstEqvMap, TypeCtor,
 :- pred replace_in_constraint_store(eqv_type_location::in,
     type_eqv_map::in, inst_eqv_map::in,
     list(item_mutable_info)::in, list(item_mutable_info)::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_constraint_store(_, _, _, [], [], !EquivTypeInfo, !UsedModules).
@@ -790,7 +771,7 @@ replace_in_prog_constraints(TypeEqvMap, Cs0, Cs, !VarSet, !EquivTypeInfo) :-
 
 :- pred replace_in_prog_constraints_location(eqv_type_location::in,
     type_eqv_map::in, prog_constraints::in, prog_constraints::out,
-    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_prog_constraints_location(Location, TypeEqvMap, Cs0, Cs, !VarSet,
@@ -804,7 +785,7 @@ replace_in_prog_constraints_location(Location, TypeEqvMap, Cs0, Cs, !VarSet,
 
 :- pred replace_in_prog_constraint_list(eqv_type_location::in,
     type_eqv_map::in, list(prog_constraint)::in, list(prog_constraint)::out,
-    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_prog_constraint_list(Location, TypeEqvMap, !Constraints, !VarSet,
@@ -814,7 +795,7 @@ replace_in_prog_constraint_list(Location, TypeEqvMap, !Constraints, !VarSet,
 
 :- pred replace_in_prog_constraint(type_eqv_map::in,
     prog_constraint::in, prog_constraint::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out) is det.
+    eqv_expanded_info::in, eqv_expanded_info::out) is det.
 
 replace_in_prog_constraint(TypeEqvMap, Constraint0, Constraint, !VarSet,
         !EquivTypeInfo) :-
@@ -824,7 +805,7 @@ replace_in_prog_constraint(TypeEqvMap, Constraint0, Constraint, !VarSet,
 
 :- pred replace_in_prog_constraint_location(eqv_type_location::in,
     type_eqv_map::in, prog_constraint::in, prog_constraint::out,
-    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_prog_constraint_location(Location, TypeEqvMap,
@@ -838,7 +819,7 @@ replace_in_prog_constraint_location(Location, TypeEqvMap,
 
 :- pred replace_in_class_interface(eqv_type_location::in, class_methods::in,
     type_eqv_map::in, inst_eqv_map::in, class_methods::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -849,7 +830,7 @@ replace_in_class_interface(Location, ClassInterface0, TypeEqvMap, InstEqvMap,
 
 :- pred replace_in_class_method(eqv_type_location::in,
     type_eqv_map::in, inst_eqv_map::in, class_method::in, class_method::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -891,7 +872,7 @@ replace_in_class_method(Location, TypeEqvMap, InstEqvMap, Method0, Method,
 
 :- pred replace_in_subst(eqv_type_location::in, type_eqv_map::in,
     assoc_list(tvar, mer_type)::in, assoc_list(tvar, mer_type)::out,
-    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_subst(_Location, _TypeEqvMap, [], [], !VarSet, !EquivTypeInfo,
@@ -911,7 +892,7 @@ replace_in_ctors(TypeEqvMap, !Ctors, !VarSet, !EquivTypeInfo) :-
 
 :- pred replace_in_ctors_location(eqv_type_location::in, type_eqv_map::in,
     list(constructor)::in, list(constructor)::out,
-    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_ctors_location(Location, TypeEqvMap, !Ctors, !VarSet,
@@ -921,7 +902,7 @@ replace_in_ctors_location(Location, TypeEqvMap, !Ctors, !VarSet,
 
 :- pred replace_in_ctor(eqv_type_location::in, type_eqv_map::in,
     constructor::in, constructor::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_ctor(Location, TypeEqvMap, Ctor0, Ctor,
@@ -942,7 +923,7 @@ replace_in_type_list(TypeEqvMap, !Typess, Changed, !VarSet, !EquivTypeInfo) :-
 :- pred replace_in_type_list_location(eqv_type_location::in, type_eqv_map::in,
     list(mer_type)::in, list(mer_type)::out, bool::out,
     tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_list_location(Location, TypeEqvMap, !Types,
@@ -953,7 +934,7 @@ replace_in_type_list_location(Location, TypeEqvMap, !Types,
 :- pred replace_in_type_list_location_circ(eqv_type_location::in,
     type_eqv_map::in, list(mer_type)::in, list(mer_type)::out,
     bool::out, bool::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_list_location_circ(Location, TypeEqvMap, !Ts,
@@ -965,7 +946,7 @@ replace_in_type_list_location_circ(Location, TypeEqvMap, !Ts,
     type_eqv_map::in, list(type_ctor)::in,
     list(mer_type)::in, list(mer_type)::out,
     bool::out, bool::in, bool::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_list_location_circ_2(_Location, _TypeEqvMap, _Seen, [], [], no,
@@ -994,7 +975,7 @@ replace_in_type_list_location_circ_2(Location, TypeEqvMap, Seen,
 
 :- pred replace_in_ctor_arg_list(eqv_type_location::in, type_eqv_map::in,
     list(constructor_arg)::in, list(constructor_arg)::out, bool::out,
-    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_ctor_arg_list(Location, TypeEqvMap, !Args,
@@ -1006,7 +987,7 @@ replace_in_ctor_arg_list(Location, TypeEqvMap, !Args,
     type_eqv_map::in, list(type_ctor)::in,
     list(constructor_arg)::in, list(constructor_arg)::out,
     bool::in, bool::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_ctor_arg_list_2(_Location, _TypeEqvMap, _Seen, [], [],
@@ -1041,7 +1022,7 @@ replace_in_type(TypeEqvMap, Type0, Type, Changed, !VarSet, !EquivTypeInfo) :-
 
 :- pred replace_in_type_location(eqv_type_location::in, type_eqv_map::in,
     mer_type::in, mer_type::out, bool::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_location(Location, TypeEqvMap, Type0, Type, Changed, !VarSet,
@@ -1054,7 +1035,7 @@ replace_in_type_location(Location, TypeEqvMap, Type0, Type, Changed, !VarSet,
     %
 :- pred replace_in_type_location_2(eqv_type_location::in, type_eqv_map::in,
     list(type_ctor)::in, mer_type::in, mer_type::out, bool::out, bool::out,
-    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_location_2(Location, TypeEqvMap, TypeCtorsAlreadyExpanded,
@@ -1146,7 +1127,7 @@ replace_in_type_location_2(Location, TypeEqvMap, TypeCtorsAlreadyExpanded,
 :- pred replace_type_ctor(eqv_type_location::in, type_eqv_map::in,
     list(type_ctor)::in, mer_type::in, type_ctor::in, list(mer_type)::in,
     kind::in, mer_type::out, bool::in, bool::out, bool::in, bool::out,
-    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_type_ctor(Location, TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
@@ -1220,7 +1201,7 @@ type_ctor_used_modules(EqvTypeLocn, TypeCtor, !UsedModules) :-
 
 :- pred replace_in_inst(eqv_type_location::in,
     mer_inst::in, inst_eqv_map::in, mer_inst::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_inst(Location, Inst0, InstEqvMap, Inst,
@@ -1230,7 +1211,7 @@ replace_in_inst(Location, Inst0, InstEqvMap, Inst,
 
 :- pred replace_in_inst_location(eqv_type_location::in, mer_inst::in,
     inst_eqv_map::in, set(inst_id)::in, mer_inst::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_inst_location(Location, Inst0, InstEqvMap, ExpandedInstIds, Inst,
@@ -1270,7 +1251,7 @@ replace_in_inst_location(Location, Inst0, InstEqvMap, ExpandedInstIds, Inst,
     maybe(mer_type)::in, maybe(mer_type)::out,
     maybe(mer_inst)::in, maybe(mer_inst)::out,
     maybe(determinism)::in, maybe(determinism)::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_pred_type(Location, PredName, PredOrFunc, Context,
@@ -1372,7 +1353,7 @@ replace_in_pred_type(Location, PredName, PredOrFunc, Context,
     maybe(pred_or_func)::in, maybe(pred_or_func)::out,
     maybe(mer_inst)::in, maybe(mer_inst)::out,
     maybe(determinism)::in, maybe(determinism)::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_pred_mode(Location, PredName, OrigArity, Context, DeclType,
@@ -1439,7 +1420,7 @@ replace_in_pred_mode(Location, PredName, OrigArity, Context, DeclType,
 
 :- pred replace_in_tms(eqv_type_location::in, type_eqv_map::in,
     list(type_and_mode)::in, list(type_and_mode)::out,
-    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_tms(Location, TypeEqvMap, !TMs, !VarSet, !EquivTypeInfo,
@@ -1449,7 +1430,7 @@ replace_in_tms(Location, TypeEqvMap, !TMs, !VarSet, !EquivTypeInfo,
 
 :- pred replace_in_tm(eqv_type_location::in, type_eqv_map::in,
     type_and_mode::in, type_and_mode::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_tm(Location, TypeEqvMap, type_only(Type0),
@@ -1467,7 +1448,7 @@ replace_in_tm(Location, TypeEqvMap, type_and_mode(Type0, Mode),
 :- pred replace_in_structure_sharing_domain(eqv_type_location::in,
     type_eqv_map::in, tvarset::in,
     structure_sharing_domain::in, structure_sharing_domain::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_structure_sharing_domain(Location, TypeEqvMap, TVarSet,
@@ -1488,7 +1469,7 @@ replace_in_structure_sharing_domain(Location, TypeEqvMap, TVarSet,
 :- pred replace_in_structure_sharing_pair(eqv_type_location::in,
     type_eqv_map::in, tvarset::in,
     structure_sharing_pair::in, structure_sharing_pair::out,
-    equiv_type_info::in, equiv_type_info::out,
+    eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_structure_sharing_pair(Location, TypeEqvMap, TVarSet, SSA0 - SSB0,
@@ -1500,7 +1481,7 @@ replace_in_structure_sharing_pair(Location, TypeEqvMap, TVarSet, SSA0 - SSB0,
 
 :- pred replace_in_datastruct(eqv_type_location::in,
     type_eqv_map::in, tvarset::in, datastruct::in,
-    datastruct::out, equiv_type_info::in, equiv_type_info::out,
+    datastruct::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_datastruct(Location, TypeEqvMap, TVarSet, DS0, DS, !EquivTypeInfo,
@@ -1512,7 +1493,7 @@ replace_in_datastruct(Location, TypeEqvMap, TVarSet, DS0, DS, !EquivTypeInfo,
 
 :- pred replace_in_unit_selector(eqv_type_location::in,
     type_eqv_map::in, tvarset::in, unit_selector::in,
-    unit_selector::out, equiv_type_info::in, equiv_type_info::out,
+    unit_selector::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_unit_selector(Location, TypeEqvMap, TVarSet, Sel0, Sel,
@@ -1526,47 +1507,6 @@ replace_in_unit_selector(Location, TypeEqvMap, TVarSet, Sel0, Sel,
             TVarSet, _, !EquivTypeInfo, !UsedModules),
         Sel = typesel(Type)
     ).
-
-%---------------------------------------------------------------------------%
-
-% XXX ITEM_LIST Use a bespoke type, not a pair.
-:- type expanded_item_set == pair(module_name, set(item_id)).
-
-maybe_start_recording_expanded_items(_, _, no, no).
-maybe_start_recording_expanded_items(ModuleName, SymName, yes(_), MaybeInfo) :-
-    ( if SymName = qualified(ModuleName, _) then
-        MaybeInfo = no
-    else
-        MaybeInfo = yes(ModuleName - set.init)
-    ).
-
-:- pred record_expanded_item(item_id::in,
-    equiv_type_info::in, equiv_type_info::out) is det.
-
-record_expanded_item(Item, !EquivTypeInfo) :-
-    map_maybe(record_expanded_item_2(Item), !EquivTypeInfo).
-
-:- pred record_expanded_item_2(item_id::in,
-    expanded_item_set::in, expanded_item_set::out) is det.
-
-record_expanded_item_2(ItemId, ExpandedItemSet0, ExpandedItemSet) :-
-    ExpandedItemSet0 = ModuleName - Items0,
-    ItemId = item_id(_, ItemName),
-    ( if ItemName = item_name(qualified(ModuleName, _), _) then
-        % We don't need to record local types.
-        ExpandedItemSet = ExpandedItemSet0
-    else
-        set.insert(ItemId, Items0, Items),
-        ExpandedItemSet = ModuleName - Items
-    ).
-
-finish_recording_expanded_items(_, no, no, no).
-finish_recording_expanded_items(_, no, yes(Info), yes(Info)).
-finish_recording_expanded_items(_, yes(_), no, _) :-
-    unexpected($module, $pred, "items but no info").
-finish_recording_expanded_items(Item, yes(_ - ExpandedItems),
-        yes(Info0), yes(Info)) :-
-    recompilation.record_expanded_items(Item, ExpandedItems, Info0, Info).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.equiv_type.
