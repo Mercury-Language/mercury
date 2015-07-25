@@ -245,20 +245,22 @@ report_pred_call_error(ClauseContext, Context, PredCallId) = Spec :-
     ).
 
 :- pred typecheck_find_arities(pred_table::in, list(pred_id)::in,
-    list(int)::out) is det.
+    set(int)::out) is det.
 
-typecheck_find_arities(_, [], []).
-typecheck_find_arities(Preds, [PredId | PredIds], [Arity | Arities]) :-
+typecheck_find_arities(_, [], set.init).
+typecheck_find_arities(Preds, [PredId | PredIds], Arities) :-
+    typecheck_find_arities(Preds, PredIds, Arities0),
     map.lookup(Preds, PredId, PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    typecheck_find_arities(Preds, PredIds, Arities).
+    set.insert(Arity, Arities0, Arities).
 
 :- func report_error_pred_num_args(type_error_clause_context, prog_context,
-    simple_call_id, list(int)) = error_spec.
+    simple_call_id, set(int)) = error_spec.
 
-report_error_pred_num_args(ClauseContext, Context, SimpleCallId, Arities)
+report_error_pred_num_args(ClauseContext, Context, SimpleCallId, AritiesSet)
         = Spec :-
     SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
+    set.to_sorted_list(AritiesSet, Arities),
     Pieces = in_clause_for_pieces(ClauseContext) ++
         [words("error:")] ++
         error_num_args_to_pieces(yes(PredOrFunc), Arity, Arities) ++ [nl] ++

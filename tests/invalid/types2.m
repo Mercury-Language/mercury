@@ -58,3 +58,21 @@ baz(X) :-
 
 baz2(X) :-
     bar2(X).
+
+:- import_module string.
+:- import_module int.
+
+:- pred repeated_arity(int::in, int::in, int::out) is det.
+
+repeated_arity(A, B, C) :-
+    % Should report "wrong number of arguments (2; should be 3)",
+    % not "wrong number of arguments (2; should be 3 or 3)"
+    % as it used to (since there are two matches on the predicate name
+    % "append" in scope, string.append and types2.append, both of arity 3).
+    append(A, B),
+    C = 42.
+
+:- pred append(int::in, int::in, int::out) is det.
+
+append(A, B, C) :-
+    C = A + B.
