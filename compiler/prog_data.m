@@ -1611,23 +1611,46 @@ valid_trace_grade_name(GradeName) :-
     --->    must_rename
     ;       need_not_rename.
 
-:- pred rename_vars_in_term(must_rename::in, map(var(V), var(V))::in,
-    term(V)::in, term(V)::out) is det.
+:- inst must_rename
+    --->    must_rename.
+:- inst need_not_rename
+    --->    need_not_rename.
 
-:- pred rename_vars_in_term_list(must_rename::in, map(var(V), var(V))::in,
-    list(term(V))::in, list(term(V))::out) is det.
+:- pred rename_vars_in_term(must_rename, map(var(V), var(V)),
+    term(V), term(V)).
+:- mode rename_vars_in_term(in(must_rename), in, in, out) is det.
+:- mode rename_vars_in_term(in(need_not_rename), in, in, out) is det.
+:- mode rename_vars_in_term(in, in, in, out) is det.
 
-:- pred rename_vars_in_var_set(must_rename::in, map(var(V), var(V))::in,
-    set(var(V))::in, set(var(V))::out) is det.
+:- pred rename_vars_in_term_list(must_rename, map(var(V), var(V)),
+    list(term(V)), list(term(V))) is det.
+:- mode rename_vars_in_term_list(in(must_rename), in, in, out) is det.
+:- mode rename_vars_in_term_list(in(need_not_rename), in, in, out) is det.
+:- mode rename_vars_in_term_list(in, in, in, out) is det.
 
-:- pred rename_vars_in_set_of_var(must_rename::in, map(var(V), var(V))::in,
-    set_of_var(V)::in, set_of_var(V)::out) is det.
+:- pred rename_vars_in_var_set(must_rename, map(var(V), var(V)),
+    set(var(V)), set(var(V))) is det.
+:- mode rename_vars_in_var_set(in(must_rename), in, in, out) is det.
+:- mode rename_vars_in_var_set(in(need_not_rename), in, in, out) is det.
+:- mode rename_vars_in_var_set(in, in, in, out) is det.
 
-:- pred rename_var_list(must_rename::in, map(var(V), var(V))::in,
-    list(var(V))::in, list(var(V))::out) is det.
+:- pred rename_vars_in_set_of_var(must_rename, map(var(V), var(V)),
+    set_of_var(V), set_of_var(V)) is det.
+:- mode rename_vars_in_set_of_var(in(must_rename), in, in, out) is det.
+:- mode rename_vars_in_set_of_var(in(need_not_rename), in, in, out) is det.
+:- mode rename_vars_in_set_of_var(in, in, in, out) is det.
 
-:- pred rename_var(must_rename::in, map(var(V), var(V))::in,
-    var(V)::in, var(V)::out) is det.
+:- pred rename_var_list(must_rename, map(var(V), var(V)),
+    list(var(V)), list(var(V))) is det.
+:- mode rename_var_list(in(must_rename), in, in, out) is det.
+:- mode rename_var_list(in(need_not_rename), in, in, out) is det.
+:- mode rename_var_list(in, in, in, out) is det.
+
+:- pred rename_var(must_rename, map(var(V), var(V)),
+    var(V), var(V)) is det.
+:- mode rename_var(in(must_rename), in, in, out) is det.
+:- mode rename_var(in(need_not_rename), in, in, out) is det.
+:- mode rename_var(in, in, in, out) is det.
 
 :- implementation.
 
@@ -1693,9 +1716,9 @@ rename_var_list(Must, Renaming, [Var0 | Vars0], [Var | Vars]) :-
     rename_var_list(Must, Renaming, Vars0, Vars).
 
 rename_var(Must, Renaming, Var0, Var) :-
-    ( map.search(Renaming, Var0, VarPrime) ->
+    ( if map.search(Renaming, Var0, VarPrime) then
         Var = VarPrime
-    ;
+    else
         (
             Must = need_not_rename,
             Var = Var0
@@ -1839,10 +1862,10 @@ rename_var(Must, Renaming, Var0, Var) :-
 cons_id_dummy_type_ctor = type_ctor(unqualified(""), -1).
 
 equivalent_cons_ids(ConsIdA, ConsIdB) :-
-    (
+    ( if
         ConsIdA = cons(SymNameA, ArityA, _),
         ConsIdB = cons(SymNameB, ArityB, _)
-    ->
+    then
         ArityA = ArityB,
         (
             SymNameA = unqualified(Name),
@@ -1857,19 +1880,19 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
             SymNameA = qualified(Qualifier, Name),
             SymNameB = qualified(Qualifier, Name)
         )
-    ;
+    else if
         ConsIdA = cons(SymNameA, ArityA, _),
         ConsIdB = tuple_cons(ArityB)
-    ->
+    then
         ArityA = ArityB,
         SymNameA = unqualified("{}")
-    ;
+    else if
         ConsIdA = tuple_cons(ArityA),
         ConsIdB = cons(SymNameB, ArityB, _)
-    ->
+    then
         ArityA = ArityB,
         SymNameB = unqualified("{}")
-    ;
+    else
         ConsIdA = ConsIdB
     ).
 
@@ -2374,9 +2397,9 @@ tvarset_merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming) :-
 :- implementation.
 
 get_tvar_kind(Map, TVar, Kind) :-
-    ( map.search(Map, TVar, Kind0) ->
+    ( if map.search(Map, TVar, Kind0) then
         Kind = Kind0
-    ;
+    else
         Kind = kind_star
     ).
 
