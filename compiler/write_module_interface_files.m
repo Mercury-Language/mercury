@@ -618,12 +618,12 @@ strip_assertions_in_items_acc([], !RevItems).
 strip_assertions_in_items_acc([Item | Items], !RevItems) :-
     % If this code ever changes to care about the order of the items,
     % you will need to modify strip_imported_items_and_assertions.
-    (
+    ( if
         Item = item_promise(ItemPromise),
         ItemPromise = item_promise_info(promise_type_true, _, _, _, _, _)
-    ->
+    then
         true
-    ;
+    else
         !:RevItems = [Item | !.RevItems]
     ),
     strip_assertions_in_items_acc(Items, !RevItems).
@@ -775,7 +775,7 @@ do_standardize_impl_items([], !RevRemainderItems,
         !ImportModuleMap, !UseModuleMap, !TypeDefns).
 do_standardize_impl_items([Item | Items], !RevRemainderItems,
         !ImportModuleMap, !UseModuleMap, !TypeDefns) :-
-    ( Item = item_module_defn(ItemModuleDefn) ->
+    ( if Item = item_module_defn(ItemModuleDefn) then
         ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _),
         (
             ModuleDefn = md_import(ImportedModuleName),
@@ -790,9 +790,9 @@ do_standardize_impl_items([Item | Items], !RevRemainderItems,
             ModuleDefn = md_include_module(_),
             !:RevRemainderItems = [Item | !.RevRemainderItems]
         )
-    ; Item = item_type_defn(ItemTypeDefn) ->
+    else if Item = item_type_defn(ItemTypeDefn) then
         insert_type_defn(ItemTypeDefn, !TypeDefns)
-    ;
+    else
         !:RevRemainderItems = [Item | !.RevRemainderItems]
     ),
     do_standardize_impl_items(Items, !RevRemainderItems,
@@ -806,7 +806,7 @@ insert_type_defn(New, [Head | Tail], Result) :-
     New = item_type_defn_info(NewSymName, NewParams, _, _, _, _),
     Head = item_type_defn_info(HeadSymName, HeadParams, _, _, _, _),
     compare(CompareSymName, NewSymName, HeadSymName),
-    (
+    ( if
         (
             CompareSymName = (<)
         ;
@@ -816,9 +816,9 @@ insert_type_defn(New, [Head | Tail], Result) :-
             compare(Compare, NewParamsLength, HeadParamsLength),
             Compare = (<)
         )
-    ->
+    then
         Result = [New, Head | Tail]
-    ;
+    else
         insert_type_defn(New, Tail, NewTail),
         Result = [Head | NewTail]
     ).
@@ -828,27 +828,27 @@ insert_type_defn(New, [Head | Tail], Result) :-
     assoc_list(type_defn, item_type_defn_info)::out) is det.
 
 make_impl_type_abstract(TypeDefnMap, !TypeDefnPairs) :-
-    (
+    ( if
         !.TypeDefnPairs = [TypeDefn0 - ItemTypeDefn0],
         TypeDefn0 = parse_tree_du_type(Ctors, MaybeEqCmp, MaybeDirectArgCtors)
-    ->
-        (
+    then
+        ( if
             constructor_list_represents_dummy_argument_type(TypeDefnMap, Ctors,
                 MaybeEqCmp, MaybeDirectArgCtors)
-        ->
+        then
             % Leave dummy types alone.
             true
-        ;
-            ( du_type_is_enum(Ctors, NumBits) ->
+        else
+            ( if du_type_is_enum(Ctors, NumBits) then
                 Details = abstract_enum_type(NumBits)
-            ;
+            else
                 Details = abstract_type_general
             ),
             Defn = parse_tree_abstract_type(Details),
             ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := Defn,
             !:TypeDefnPairs = [Defn - ItemTypeDefn]
         )
-    ;
+    else
         true
     ).
 
@@ -894,18 +894,18 @@ constructor_list_represents_dummy_argument_type_2(TypeDefnMap, [Ctor], no, no,
 ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
     (
         Type = defined_type(SymName, TypeArgs, _Kind),
-        ( list.member(Type, CoveredTypes0) ->
+        ( if list.member(Type, CoveredTypes0) then
             % The type is circular.
             IsDummyType = no
-        ;
+        else
             Arity = list.length(TypeArgs),
             TypeCtor = type_ctor(SymName, Arity),
-            (
+            ( if
                 check_builtin_dummy_type_ctor(TypeCtor)
                     = is_builtin_dummy_type_ctor
-            ->
+            then
                 IsDummyType = yes
-            ;
+            else if
                 % Can we find a definition of the type that tells us it is a
                 % dummy type?
                 multi_map.search(TypeDefnMap, TypeCtor, TypeDefns),
@@ -915,9 +915,9 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
                 CoveredTypes = [Type | CoveredTypes0],
                 constructor_list_represents_dummy_argument_type_2(TypeDefnMap,
                     TypeCtors, MaybeEqCmp, MaybeDirectArgCtors, CoveredTypes)
-            ->
+            then
                 IsDummyType = yes
-            ;
+            else
                 IsDummyType = no
             )
         )
@@ -950,18 +950,18 @@ strip_unnecessary_impl_imports(NecessaryImports, !Items) :-
     is semidet.
 
 is_not_unnecessary_impl_import(NecessaryImports, Item) :-
-    ( Item = item_module_defn(ItemModuleDefn) ->
+    ( if Item = item_module_defn(ItemModuleDefn) then
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-        (
+        ( if
             ( ModuleDefn = md_use(ModuleName)
             ; ModuleDefn = md_import(ModuleName)
             )
-        ->
+        then
             set.member(ModuleName, NecessaryImports)
-        ;
+        else
             true
         )
-    ;
+    else
         true
     ).
 
@@ -979,11 +979,11 @@ strip_unnecessary_impl_types(NecessaryTypeCtors, !Items) :-
 :- pred is_not_unnecessary_impl_type(set(type_ctor)::in, item::in) is semidet.
 
 is_not_unnecessary_impl_type(NecessaryTypeCtors, Item) :-
-    ( Item = item_type_defn(ItemTypeDefn) ->
+    ( if Item = item_type_defn(ItemTypeDefn) then
         ItemTypeDefn = item_type_defn_info(SymName, Params, _, _, _, _),
         TypeCtor = type_ctor(SymName, list.length(Params)),
         set.member(TypeCtor, NecessaryTypeCtors)
-    ;
+    else
         true
     ).
 
@@ -1043,33 +1043,33 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
     % A type may have multiple definitions because it may be defined both
     % as a foreign type and as a Mercury type. We grab any equivalence types
     % that are in there.
-    (
+    ( if
         TypeDefn = parse_tree_eqv_type(_RhsType),
         map.search(InterfaceTypeMap, TypeCtor, _)
-    ->
+    then
         set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
-    ;
+    else if
         TypeDefn = parse_tree_foreign_type(_, _, _),
         map.search(InterfaceTypeMap, TypeCtor, _)
-    ->
+    then
         set.insert(TypeCtor, !AbsEqvLhsTypeCtors)
-    ;
+    else if
         TypeDefn = parse_tree_du_type(Ctors, MaybeEqCmp, MaybeDirectArgCtors)
-    ->
-        (
+    then
+        ( if
             map.search(InterfaceTypeMap, TypeCtor, _),
             du_type_is_enum(Ctors, _NumBits)
-        ->
+        then
             set.insert(TypeCtor, !AbsImplExpEnumTypeCtors)
-        ;
+        else if
             constructor_list_represents_dummy_argument_type(BothTypesMap,
                 Ctors, MaybeEqCmp, MaybeDirectArgCtors)
-        ->
+        then
             set.insert(TypeCtor, !DummyTypeCtors)
-        ;
+        else
             true
         )
-    ;
+    else
         true
     ).
 
@@ -1080,10 +1080,10 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
 
 accumulate_abs_impl_exported_type_rhs(ImplTypeMap, TypeCtor,
         !AbsEqvRhsTypeCtors, !ForeignDuFieldTypeCtors, !Modules) :-
-    ( map.search(ImplTypeMap, TypeCtor, TypeDefns) ->
+    ( if map.search(ImplTypeMap, TypeCtor, TypeDefns) then
         list.foldl3(accumulate_abs_eqv_type_rhs_2(ImplTypeMap), TypeDefns,
             !AbsEqvRhsTypeCtors, !ForeignDuFieldTypeCtors, !Modules)
-    ;
+    else
         true
     ).
 
@@ -1095,21 +1095,26 @@ accumulate_abs_impl_exported_type_rhs(ImplTypeMap, TypeCtor,
 
 accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _,
         !AbsEqvRhsTypeCtors, !ForeignDuFieldTypeCtors, !Modules) :-
-    ( TypeDefn = parse_tree_eqv_type(RhsType) ->
+    (
+        TypeDefn = parse_tree_eqv_type(RhsType),
         type_to_type_ctor_set(RhsType, set.init, RhsTypeCtors),
         set.difference(RhsTypeCtors, !.AbsEqvRhsTypeCtors, NewRhsTypeCtors),
         set.fold(accumulate_modules, NewRhsTypeCtors, !Modules),
         set.union(NewRhsTypeCtors, !AbsEqvRhsTypeCtors),
         set.fold3(accumulate_abs_impl_exported_type_rhs(ImplTypeMap),
             NewRhsTypeCtors, !AbsEqvRhsTypeCtors, set.init, _, !Modules)
-    ; TypeDefn = parse_tree_du_type(Ctors, _, _) ->
+    ;
+        TypeDefn = parse_tree_du_type(Ctors, _, _),
         % There must exist a foreign type alternative to this type. As the du
         % type will be exported, we require the types of all the fields.
         ctors_to_type_ctor_set(Ctors, set.init, RhsTypeCtors),
         set.union(RhsTypeCtors, !ForeignDuFieldTypeCtors),
         set.fold(accumulate_modules, RhsTypeCtors, !Modules)
     ;
-        true
+        ( TypeDefn = parse_tree_abstract_type(_)
+        ; TypeDefn = parse_tree_solver_type(_, _)
+        ; TypeDefn = parse_tree_foreign_type(_, _, _)
+        )
     ).
 
 :- pred accumulate_modules(type_ctor::in,
@@ -1133,34 +1138,34 @@ accumulate_modules(TypeCtor, !Modules) :-
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
 type_to_type_ctor_set(Type, !TypeCtors) :-
-    ( type_to_ctor_and_args(Type, TypeCtor, Args) ->
+    ( if type_to_ctor_and_args(Type, TypeCtor, Args) then
         TypeCtor = type_ctor(SymName, _Arity),
-        (
+        ( if
             type_ctor_is_higher_order(TypeCtor, _, _, _)
-        ->
+        then
             % Higher-order types are builtin so just get the type_ctors
             % from the arguments.
             true
-        ;
+        else if
             type_ctor_is_tuple(TypeCtor)
-        ->
+        then
             % Tuples are builtin so just get the type_ctors from the
             % arguments.
             true
-        ;
+        else if
             ( SymName = unqualified("int")
             ; SymName = unqualified("float")
             ; SymName = unqualified("string")
             ; SymName = unqualified("character")
             )
-        ->
+        then
             % We don't need to import these modules as the types are builtin.
             true
-        ;
+        else
             set.insert(TypeCtor, !TypeCtors)
         ),
         list.foldl(type_to_type_ctor_set, Args, !TypeCtors)
-    ;
+    else
         true
     ).
 
@@ -1205,7 +1210,7 @@ gather_type_defns_in_section(Section, Items0, Items, !TypesMap) :-
 gather_type_defns_in_section_loop(_, [], !ItemsCord, !TypesMap).
 gather_type_defns_in_section_loop(Section, [Item | Items],
         !ItemsCord, !TypesMap) :-
-    ( Item = item_type_defn(ItemTypeDefn) ->
+    ( if Item = item_type_defn(ItemTypeDefn) then
         ItemTypeDefn = item_type_defn_info(Name, Args, Body, _, _, _),
         TypeCtor = type_ctor(Name, length(Args)),
         (
@@ -1217,7 +1222,7 @@ gather_type_defns_in_section_loop(Section, [Item | Items],
             % We don't add this to !ItemsCord yet -- we may be removing it.
             gather_type_defn(TypeCtor, Body, ItemTypeDefn, !TypesMap)
         )
-    ;
+    else
         !:ItemsCord = cord.snoc(!.ItemsCord, Item)
     ),
     gather_type_defns_in_section_loop(Section, Items, !ItemsCord, !TypesMap).
@@ -1333,18 +1338,18 @@ strip_local_foreign_enum_pragmas(IntTypeMap, !ImpItems) :-
 :- pred foreign_enum_is_local(type_defn_map::in, item::in) is semidet.
 
 foreign_enum_is_local(TypeDefnMap, Item) :-
-    (
+    ( if
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         Pragma = pragma_foreign_enum(FEInfo),
         FEInfo = pragma_info_foreign_enum(_Lang, TypeCtor, _Values)
-    ->
+    then
         % We only add a pragma foreign_enum pragma to the interface file
         % if it corresponds to a type _definition_ in the interface of the
         % module.
         map.search(TypeDefnMap, TypeCtor, Defns),
         Defns \= [parse_tree_abstract_type(_) - _]
-    ;
+    else
         true
     ).
 
@@ -1548,11 +1553,11 @@ get_short_interface_from_items_acc(Kind, [Item | Items], !ItemsCord) :-
     % Expand include_in_short_interface to take Kind, and return
     % one of three possibilities: include as is, include abstract, and
     % do not include.
-    ( make_abstract_defn(Item, Kind, AbstractItem) ->
+    ( if make_abstract_defn(Item, Kind, AbstractItem) then
         !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
-    ; make_abstract_unify_compare(Item, Kind, AbstractItem) ->
+    else if make_abstract_unify_compare(Item, Kind, AbstractItem) then
         !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
-    ;
+    else
         ShouldInclude = include_in_short_interface(Item),
         (
             ShouldInclude = yes,
@@ -1580,9 +1585,9 @@ include_in_short_interface(Item) = ShouldInclude :-
         % XXX This if-then-else should be a switch, or (even better)
         % we should take pragma_foreign_import_modules out of the pragma items
         % and given them their own item type.
-        ( Pragma = pragma_foreign_import_module(_) ->
+        ( if Pragma = pragma_foreign_import_module(_) then
             ShouldInclude = yes
-        ;
+        else
             ShouldInclude = no
         )
     ;
@@ -2006,12 +2011,12 @@ symname_orderable(Item) :-
 :- pred compare_by_symname(item::in, item::in, comparison_result::out) is det.
 
 compare_by_symname(ItemA, ItemB, Result) :-
-    (
+    ( if
         symname_ordered(ItemA, SymNameA),
         symname_ordered(ItemB, SymNameB)
-    ->
+    then
         compare(Result, SymNameA, SymNameB)
-    ;
+    else
         unexpected($module, $pred, "symname not found")
     ).
 

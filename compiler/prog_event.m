@@ -92,7 +92,7 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
 
     io.make_temp(TermFileName, !IO),
     read_specs_file(SpecsFileName, TermFileName, Problem, !IO),
-    ( Problem = "" ->
+    ( if Problem = "" then
         io.open_input(TermFileName, TermOpenRes, !IO),
         (
             TermOpenRes = ok(TermStream),
@@ -133,7 +133,7 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
                 [error_msg(no, do_not_treat_as_first, 0, [always(Pieces)])]),
             ErrorSpecs = [ErrorSpec]
         )
-    ;
+    else
         EventSetName = "",
         EventSpecMap = map.init,
         Pieces = [words(Problem), nl],
@@ -374,11 +374,11 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
         AttrTypeMap0, AttrTypeMap, DepRel0, DepRel, !ErrorSpecs),
     convert_terms_to_attrs(EventName, FileName, AttrNameMap,
         AttrTypeMap, 0, AttrTerms, [], RevAttrs, !ErrorSpecs),
-    ( digraph.tsort(DepRel, AllAttrNameOrder) ->
+    ( if digraph.tsort(DepRel, AllAttrNameOrder) then
         % There is an order for computing the synthesized attributes.
         keep_only_synth_attr_nums(AttrNameMap, AllAttrNameOrder,
             SynthAttrNumOrder)
-    ;
+    else
         % It would be nice to print a list of the attributes involved in the
         % (one or more) circular dependencies detected by digraph.tsort,
         % but at present digraph.m does not have any predicates that can
@@ -395,7 +395,7 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
     list.reverse(RevAttrs, Attrs),
     EventSpec = event_spec(EventNumber, EventName, EventLineNumber,
         Attrs, SynthAttrNumOrder),
-    ( map.search(!.EventSpecMap, EventName, OldEventSpec) ->
+    ( if map.search(!.EventSpecMap, EventName, OldEventSpec) then
         OldLineNumber = OldEventSpec ^ event_spec_linenum,
         Pieces1 = [words("Duplicate event specification for event"),
             quote(EventName), suffix("."), nl],
@@ -404,7 +404,7 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
             [simple_msg(context(FileName, EventLineNumber), [always(Pieces1)]),
             simple_msg(context(FileName, OldLineNumber), [always(Pieces2)])]),
         !:ErrorSpecs = [DuplErrorSpec | !.ErrorSpecs]
-    ;
+    else
         map.det_insert(EventName, EventSpec, !EventSpecMap)
     ).
 
@@ -472,9 +472,9 @@ build_plain_type_map(EventName, FileName, EventLineNumber,
     AttrInfo = attr_info(AttrNum, AttrName, AttrLineNumber, AttrTypeTerm),
     map.det_insert(AttrNum, AttrInfo, !AttrNumMap),
     digraph.add_vertex(AttrName, AttrKey, !DepRel),
-    ( bimap.insert(AttrName, AttrKey, !KeyMap) ->
+    ( if bimap.insert(AttrName, AttrKey, !KeyMap) then
         map.det_insert(AttrName, AttrInfo, !AttrNameMap)
-    ;
+    else
         Pieces = [words("Event"), quote(EventName),
             words("has more than one attribute named"),
             quote(AttrName), suffix("."), nl],
@@ -488,10 +488,10 @@ build_plain_type_map(EventName, FileName, EventLineNumber,
         ; AttrTypeTerm = event_attr_type_synthesized(TypeTerm, _SynthCall)
         ),
         Type = convert_term_to_type(TypeTerm),
-        ( map.search(!.AttrTypeMap, AttrName, _OldType) ->
+        ( if map.search(!.AttrTypeMap, AttrName, _OldType) then
             % The error message has already been generated above.
             true
-        ;
+        else
             map.det_insert(AttrName, Type, !AttrTypeMap)
         )
     ;
@@ -527,13 +527,13 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
             !:ErrorSpecs = AttrErrorSpecs ++ !.ErrorSpecs
         ;
             AttrErrorSpecs = [],
-            ( map.search(!.AttrTypeMap, AttrName, AttrType) ->
+            ( if map.search(!.AttrTypeMap, AttrName, AttrType) then
                 ArgTypes = list.map(map.lookup(!.AttrTypeMap), ArgAttrNames),
-                (
+                ( if
                     map.search(AttrNameMap, FuncAttrName, FuncAttrInfo),
                     FuncAttrInfo ^ attr_info_type =
                         event_attr_type_function(FuncAttrPurity)
-                ->
+                then
                     (
                         FuncAttrPurity = event_attr_pure_function,
                         FuncPurity = purity_pure
@@ -543,14 +543,14 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                     ),
                     FuncAttrType = higher_order_type(ArgTypes, yes(AttrType),
                         FuncPurity, lambda_normal),
-                    (
+                    ( if
                         map.search(!.AttrTypeMap, FuncAttrName,
                             OldFuncAttrType)
-                    ->
-                        ( FuncAttrType = OldFuncAttrType ->
+                    then
+                        ( if FuncAttrType = OldFuncAttrType then
                             % AttrTypeMap already contains the correct info.
                             true
-                        ;
+                        else
                             FuncAttrLineNumber =
                                 FuncAttrInfo ^ attr_info_linenumber,
                             % XXX Maybe we should give the types themselves.
@@ -564,11 +564,11 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                                     [always(Pieces)])]),
                             !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
                         )
-                    ;
+                    else
                         map.det_insert(FuncAttrName, FuncAttrType,
                             !AttrTypeMap)
                     )
-                ;
+                else
                     Pieces = [words("Attribute"), quote(AttrName),
                         words("cannot be synthesized"),
                         words("by non-function attribute"),
@@ -579,7 +579,7 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                             [always(Pieces)])]),
                     !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
                 )
-            ;
+            else
                 % The error message was already generated in the previous pass.
                 true
             )
@@ -601,9 +601,9 @@ record_arg_dependencies(_, _, _, _, _, _, [], !DepRel, !ErrorSpecs).
 record_arg_dependencies(EventName, FileName, AttrLineNumber, KeyMap,
         SynthAttrName, SynthAttrKey, [AttrName | AttrNames],
         !DepRel, !ErrorSpecs) :-
-    ( bimap.search(KeyMap, AttrName, AttrKey) ->
+    ( if bimap.search(KeyMap, AttrName, AttrKey) then
         digraph.add_edge(AttrKey, SynthAttrKey, !DepRel)
-    ;
+    else
         Pieces = [words("Attribute"), quote(SynthAttrName),
             words("of event"), quote(EventName),
             words("uses nonexistent attribute"), quote(AttrName),
@@ -637,11 +637,11 @@ convert_terms_to_attrs(EventName, FileName, AttrNameMap,
         AttrTypeTerm = event_attr_type_synthesized(_, SynthCallTerm),
         map.lookup(AttrTypeMap, AttrName, AttrType),
         SynthCallTerm = event_attr_synth_call_term(FuncAttrName, ArgAttrNames),
-        (
+        ( if
             FuncAttrInfo = map.search(AttrNameMap, FuncAttrName),
             FuncAttrNum = FuncAttrInfo ^ attr_info_number,
             list.map(map.search(AttrNameMap), ArgAttrNames, ArgAttrInfos)
-        ->
+        then
             ArgAttrNums = list.map(attr_info_number, ArgAttrInfos),
             ArgAttrNameNums = assoc_list.from_corresponding_lists(ArgAttrNames,
                 ArgAttrNums),
@@ -652,18 +652,18 @@ convert_terms_to_attrs(EventName, FileName, AttrNameMap,
             EventAttr = event_attribute(AttrNum, AttrName, AttrType, in_mode,
                 yes(SynthCall)),
             !:RevAttrs = [EventAttr | !.RevAttrs]
-        ;
+        else
             % The error that caused the map search failure has already had
             % an error message generated for it.
             true
         )
     ;
         AttrTypeTerm = event_attr_type_function(_),
-        ( map.search(AttrTypeMap, AttrName, AttrType) ->
+        ( if map.search(AttrTypeMap, AttrName, AttrType) then
             EventAttr = event_attribute(AttrNum, AttrName, AttrType, in_mode,
                 no),
             !:RevAttrs = [EventAttr | !.RevAttrs]
-        ;
+        else
             Pieces = [words("Event"), quote(EventName),
                 words("does not use the function attribute"),
                 quote(AttrName), suffix("."), nl],
@@ -680,12 +680,12 @@ convert_terms_to_attrs(EventName, FileName, AttrNameMap,
 
 convert_term_to_type(Term) = Type :-
     Term = event_attr_type_term(Name, Args),
-    (
+    ( if
         Args = [],
         builtin_type_to_string(BuiltinType, Name)
-    ->
+    then
         Type = builtin_type(BuiltinType)
-    ;
+    else
         SymName = string_to_sym_name(Name),
         ArgTypes = list.map(convert_term_to_type, Args),
         Type = defined_type(SymName, ArgTypes, kind_star)
@@ -698,12 +698,12 @@ convert_term_to_type(Term) = Type :-
 
 compute_prev_synth_attr_order(AttrNameMap, AttrName, Ancestors,
         !AlreadyComputed, PrevSynthOrder) :-
-    ( set.member(AttrName, Ancestors) ->
+    ( if set.member(AttrName, Ancestors) then
         % There is a circularity among the dependencies, which means that
         % PrevSynthOrder won't actually be used.
         PrevSynthOrder = []
-    ;
-        ( map.search(AttrNameMap, AttrName, AttrInfo) ->
+    else
+        ( if map.search(AttrNameMap, AttrName, AttrInfo) then
             AttrTerm = AttrInfo ^ attr_info_type,
             (
                 ( AttrTerm = event_attr_type_ordinary(_)
@@ -724,7 +724,7 @@ compute_prev_synth_attr_order(AttrNameMap, AttrName, Ancestors,
                 AttrNum = AttrInfo ^ attr_info_number,
                 PrevSynthOrder = SubPrevSynthOrder ++ [AttrNum]
             )
-        ;
+        else
             % An error has occurred somewhere, which means that
             % PrevSynthOrder won't actually be used.
             PrevSynthOrder = []

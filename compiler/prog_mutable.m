@@ -621,10 +621,10 @@ mutable_pre_init_pred_sym_name(ModuleName, Name) =
 mutable_c_var_name(ModuleName, Name) = MangledCVarName :-
     RawCVarName = "mutable_variable_" ++ Name,
     QualifiedCVarName0 = qualified(ModuleName, RawCVarName),
-    ( mercury_std_library_module_name(ModuleName) ->
+    ( if mercury_std_library_module_name(ModuleName) then
         QualifiedCVarName =
             add_outermost_qualifier("mercury", QualifiedCVarName0)
-    ;
+    else
         QualifiedCVarName = QualifiedCVarName0
     ),
     MangledCVarName = sym_name_mangle(QualifiedCVarName).
