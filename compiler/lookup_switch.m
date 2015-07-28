@@ -50,6 +50,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
@@ -82,7 +83,8 @@
 
     % Decide whether we can generate code for this switch using a lookup table.
     %
-:- pred is_lookup_switch(pred(cons_tag, Key)::in(pred(in, out) is det),
+:- pred is_lookup_switch(position_info::in,
+    pred(cons_tag, Key)::in(pred(in, out) is det),
     list(tagged_case)::in, hlds_goal_info::in, abs_store_map::in,
     branch_end::in, branch_end::out, lookup_switch_info(Key)::out,
     code_info::in, code_info::out) is semidet.
@@ -93,7 +95,7 @@
     label::in, abs_store_map::in, int::in, int::in,
     need_bit_vec_check::in, need_range_check::in,
     branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in) is det.
 
 :- type case_kind
     --->    kind_zero_solns
@@ -102,7 +104,7 @@
 
     % generate_code_for_all_kinds(Kinds, NumPrevColumns, OutVars, ResumeVars,
     %   EndLabel, StoreMap, Liveness, AddTrailOps,
-    %   BaseReg, LaterVectorAddrRval, Code, !CI):
+    %   BaseReg, LaterVectorAddrRval, Code, !CI, !.CLD):
     %
     % Generate code for the kinds of solution cardinalities listed in Kinds.
     %
@@ -148,7 +150,7 @@
     list(prog_var)::in, set_of_progvar::in, label::in, abs_store_map::in,
     set_of_progvar::in, add_trail_ops::in, lval::in, rval::in,
     branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in) is det.
 
 :- func default_value_for_type(llds_type) = rval.
 
@@ -180,22 +182,21 @@
 
 %-----------------------------------------------------------------------------%
 
-is_lookup_switch(GetTag, TaggedCases, GoalInfo, StoreMap, !MaybeEnd,
-        LookupSwitchInfo, !CI) :-
+is_lookup_switch(BranchStart, GetTag, TaggedCases, GoalInfo, StoreMap,
+        !MaybeEnd, LookupSwitchInfo, !CI) :-
     % Most of this predicate is taken from dense_switch.m.
 
     % We need the code_info structure to generate code for the cases to
     % get the constants (if they exist). We can't throw it away at the
     % end because we may have allocated some new static ground terms.
 
-    figure_out_output_vars(!.CI, GoalInfo, OutVars),
+    reset_to_position(BranchStart, !.CI, StartCLD),
+    figure_out_output_vars(!.CI, StartCLD, GoalInfo, OutVars),
     set_of_var.list_to_set(OutVars, ArmNonLocals),
-    remember_position(!.CI, CurPos),
-    generate_constants_for_lookup_switch(GetTag, TaggedCases,
+    generate_constants_for_lookup_switch(BranchStart, GetTag, TaggedCases,
         OutVars, ArmNonLocals, StoreMap, Liveness, map.init, CaseSolnMap,
         !MaybeEnd, set_of_var.init, ResumeVars, no, GoalsMayModifyTrail, !CI),
-    reset_to_position(CurPos, !CI),
-    VarTypes = get_var_types(!.CI),
+    get_vartypes(!.CI, VarTypes),
     lookup_var_types(VarTypes, OutVars, OutTypes),
     ( project_all_to_one_solution(CaseSolnMap, CaseValuePairsMap) ->
         CaseConsts = all_one_soln(CaseValuePairsMap)
@@ -215,7 +216,7 @@ is_lookup_switch(GetTag, TaggedCases, GoalInfo, StoreMap, !MaybeEnd,
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_constants_for_lookup_switch(
+:- pred generate_constants_for_lookup_switch(position_info::in,
     pred(cons_tag, Key)::in(pred(in, out) is det),
     list(tagged_case)::in, list(prog_var)::in, set_of_progvar::in,
     abs_store_map::in, set_of_progvar::out,
@@ -223,12 +224,12 @@ is_lookup_switch(GetTag, TaggedCases, GoalInfo, StoreMap, !MaybeEnd,
     branch_end::in, branch_end::out, set_of_progvar::in, set_of_progvar::out,
     bool::in, bool::out, code_info::in, code_info::out) is semidet.
 
-generate_constants_for_lookup_switch(_GetTag, [],
-        _Vars, _ArmNonLocals, _StoreMap, set_of_var.init, !IndexMap,
-        !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
-generate_constants_for_lookup_switch(GetTag, [TaggedCase | TaggedCases],
-        Vars, ArmNonLocals, StoreMap, Liveness, !IndexMap,
-        !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI) :-
+generate_constants_for_lookup_switch(_BranchStart, _GetTag,
+        [], _Vars, _ArmNonLocals, _StoreMap, set_of_var.init,
+        !IndexMap, !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
+generate_constants_for_lookup_switch(BranchStart, GetTag,
+        [TaggedCase | TaggedCases], Vars, ArmNonLocals, StoreMap, Liveness,
+        !IndexMap, !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI) :-
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
 
@@ -259,18 +260,20 @@ generate_constants_for_lookup_switch(GetTag, [TaggedCase | TaggedCases],
                 ThisResumePoint = no_resume_point
             ),
 
-            % We execute the pre- and post-goal update for the disjunction.
             % The pre- and post-goal updates for the disjuncts themselves are
             % done as part of the call to generate_goal in
             % generate_constants_for_disjuncts in lookup_util.m.
-            pre_goal_update(GoalInfo, has_subgoals, !CI),
-            get_instmap(!.CI, InstMap),
-            generate_constants_for_disjunct(FirstDisjunct, Vars, StoreMap,
-                FirstSoln, !MaybeEnd, Liveness, !CI),
-            generate_constants_for_disjuncts(LaterDisjuncts, Vars, StoreMap,
-                LaterSolns, !MaybeEnd, !CI),
-            set_instmap(InstMap, !CI),
-            post_goal_update(GoalInfo, !CI),
+            some [!CLD] (
+                reset_to_position(BranchStart, !.CI, !:CLD),
+                pre_goal_update(GoalInfo, has_subgoals, !CLD),
+                remember_position(!.CLD, GoalBranchStart)
+            ),
+            generate_constants_for_disjunct(GoalBranchStart, FirstDisjunct,
+                Vars, StoreMap, FirstSoln, !MaybeEnd, Liveness, !CI),
+            generate_constants_for_disjuncts(GoalBranchStart, LaterDisjuncts,
+                Vars, StoreMap, LaterSolns, !MaybeEnd, !CI),
+            % Don't apply the post goal update, since nothing would see
+            % the result.
             SolnConsts = several_solns(FirstSoln, LaterSolns)
         )
     ;
@@ -278,7 +281,7 @@ generate_constants_for_lookup_switch(GetTag, [TaggedCase | TaggedCases],
         % The pre- and post-goal updates for the goals themselves
         % are done as part of the call to generate_goal in
         % generate_constants_for_disjuncts in lookup_util.m.
-        generate_constants_for_arm(Goal, Vars, StoreMap, Soln,
+        generate_constants_for_arm(BranchStart, Goal, Vars, StoreMap, Soln,
             !MaybeEnd, Liveness, !CI),
         SolnConsts = one_soln(Soln)
     ),
@@ -286,7 +289,7 @@ generate_constants_for_lookup_switch(GetTag, [TaggedCase | TaggedCases],
         TaggedMainConsId, !IndexMap),
     record_lookup_for_tagged_cons_ids(GetTag, SolnConsts,
         TaggedOtherConsIds, !IndexMap),
-    generate_constants_for_lookup_switch(GetTag,
+    generate_constants_for_lookup_switch(BranchStart, GetTag,
         TaggedCases, Vars, ArmNonLocals, StoreMap, _LivenessRest,
         !IndexMap, !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
 
@@ -317,8 +320,8 @@ record_lookup_for_tagged_cons_id(GetTag, SolnConsts, TaggedConsId,
 %---------------------------------------------------------------------------%
 
 generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
-        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, !MaybeEnd,
-        Code, !CI) :-
+        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, !MaybeEnd, Code,
+        !CI, !.CLD) :-
     LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutTypes,
         Liveness),
 
@@ -337,7 +340,7 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
         Difference = EndVal - StartVal,
         CmpRval = binop(unsigned_le, IndexRval,
             const(llconst_int(Difference))),
-        fail_if_rval_is_false(CmpRval, RangeCheckCode, !CI)
+        fail_if_rval_is_false(CmpRval, RangeCheckCode, !CI, !CLD)
     ;
         NeedRangeCheck = dont_need_range_check,
         RangeCheckCode = empty
@@ -351,7 +354,7 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
         map.to_assoc_list(CaseValuesMap, CaseValues),
         generate_simple_int_lookup_switch(IndexRval, StoreMap,
             StartVal, EndVal, CaseValues, OutVars, OutTypes,
-            NeedBitVecCheck, Liveness, RestCode, !CI)
+            NeedBitVecCheck, Liveness, RestCode, !CI, !.CLD)
     ;
         CaseConsts = some_several_solns(CaseSolnMap,
             case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
@@ -369,21 +372,24 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
         map.to_assoc_list(CaseSolnMap, CaseSolns),
         generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
             StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
-            OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, RestCode, !CI)
+            OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, RestCode,
+            !CI, !.CLD)
     ),
     Code = Comment ++ RangeCheckCode ++ RestCode.
 
 :- pred generate_simple_int_lookup_switch(rval::in, abs_store_map::in,
     int::in, int::in, assoc_list(int, list(rval))::in,
     list(prog_var)::in, list(llds_type)::in, need_bit_vec_check::in,
-    set_of_progvar::in, llds_code::out, code_info::in, code_info::out) is det.
+    set_of_progvar::in, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
-        CaseValues, OutVars, OutTypes, NeedBitVecCheck, Liveness, Code, !CI) :-
+        CaseValues, OutVars, OutTypes, NeedBitVecCheck, Liveness, Code,
+        !CI, !.CLD) :-
     (
         NeedBitVecCheck = need_bit_vec_check,
         generate_bitvec_test(IndexRval, CaseValues, StartVal, EndVal,
-            CheckBitVecCode, !CI)
+            CheckBitVecCode, !CI, !CLD)
     ;
         NeedBitVecCheck = dont_need_bit_vec_check,
         CheckBitVecCode = empty
@@ -397,15 +403,13 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
     % This can happen for semidet switches.
     (
         OutVars = [],
-        BaseRegInitCode = empty,
-        MaybeBaseReg = no
+        BaseRegInitCode = empty
     ;
         OutVars = [_ | _],
         % Since we release BaseReg only after the call to generate_branch_end,
         % we must make sure that generate_branch_end won't want to overwrite
         % BaseReg.
-        acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CI),
-        MaybeBaseReg = yes(BaseReg),
+        acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
 
         % Generate the static lookup table for this switch.
         list.length(OutVars, NumOutVars),
@@ -432,20 +436,14 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
                     mem_addr(heap_ref(VectorAddrRval, yes(0), BaseRval))),
                 "Compute base address for this case")
         ),
-        generate_offset_assigns(OutVars, 0, BaseReg, !CI)
+        generate_offset_assigns(OutVars, 0, BaseReg, !.CI, !CLD)
     ),
 
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail' slot
     % last would yield the wrong liveness.
     set_liveness_and_end_branch(StoreMap, Liveness, no, _MaybeEnd,
-        BranchEndCode, !CI),
-    (
-        MaybeBaseReg = no
-    ;
-        MaybeBaseReg = yes(FinalBaseReg),
-        release_reg(FinalBaseReg, !CI)
-    ),
+        BranchEndCode, !.CI, !.CLD),
     Code = CheckBitVecCode ++ BaseRegInitCode ++ BranchEndCode.
 
 %-----------------------------------------------------------------------------%
@@ -478,11 +476,12 @@ construct_simple_int_lookup_vector([Index - Rvals | Rest], CurIndex, OutTypes,
     add_trail_ops::in, list(prog_var)::in, list(llds_type)::in,
     need_bit_vec_check::in, set_of_progvar::in,
     branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
         StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps,
-        OutVars, OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, Code, !CI) :-
+        OutVars, OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, Code,
+        !CI, !.CLD) :-
     % If there are no output variables, then how can the individual solutions
     % differ from each other?
     expect(negate(unify(OutVars, [])), $module, $pred, "no OutVars"),
@@ -530,7 +529,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     % Since we release BaseReg only after the calls to generate_branch_end,
     % we must make sure that generate_branch_end won't want to overwrite
     % BaseReg.
-    acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CI),
+    acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
     % IndexRval has already had Start subtracted from it.
     BaseRegInitCode = singleton(
         llds_instr(
@@ -544,7 +543,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
 
     generate_code_for_all_kinds(DescendingSortedKinds, 0, OutVars, ResumeVars,
         EndLabel, StoreMap, Liveness, AddTrailOps,
-        BaseReg, LaterVectorAddrRval, !MaybeEnd, KindsCode, !CI),
+        BaseReg, LaterVectorAddrRval, !MaybeEnd, KindsCode, !CI, !.CLD),
     EndLabelCode = singleton(
         llds_instr(label(EndLabel),
             "end of int several soln lookup switch")
@@ -553,7 +552,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
 
 generate_code_for_all_kinds(Kinds, NumPrevColumns, OutVars, ResumeVars,
         EndLabel, StoreMap, Liveness, AddTrailOps,
-        BaseReg, LaterVectorAddrRval, !MaybeEnd, Code, !CI) :-
+        BaseReg, LaterVectorAddrRval, !MaybeEnd, Code, !CI, !.CLD) :-
     % We release BaseReg in each arm of generate_code_for_each_kind below.
     % We cannot release it at the bottom of this predicate, because in the
     % kind_several_solns arm of generate_code_for_each_kind the generation
@@ -562,15 +561,14 @@ generate_code_for_all_kinds(Kinds, NumPrevColumns, OutVars, ResumeVars,
     % We cannot release the stack slots anywhere, since they will be needed
     % after backtracking to later alternatives of any model_non switch arm.
     acquire_temp_slot(slot_lookup_switch_cur, non_persistent_temp_slot,
-        CurSlot, !CI),
+        CurSlot, !CI, !CLD),
     acquire_temp_slot(slot_lookup_switch_max, non_persistent_temp_slot,
-        MaxSlot, !CI),
+        MaxSlot, !CI, !CLD),
 
-    remember_position(!.CI, BranchStart),
+    remember_position(!.CLD, BranchStart),
     generate_code_for_each_kind(Kinds, NumPrevColumns,OutVars, ResumeVars,
         BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps, BaseReg,
-        CurSlot, MaxSlot, LaterVectorAddrRval, !MaybeEnd, Code, !CI),
-    set_resume_point_to_unknown(!CI).
+        CurSlot, MaxSlot, LaterVectorAddrRval, !MaybeEnd, Code, !CI).
 
 :- func case_kind_to_string(case_kind) = string.
 
@@ -595,17 +593,21 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
     (
         Kind = kind_zero_solns,
         TestOp = int_ge,
-        reset_to_position(BranchStart, !CI),
-        release_reg(BaseReg, !CI),
-        generate_failure(KindCode, !CI)
+        some [!CLD] (
+            reset_to_position(BranchStart, !.CI, !:CLD),
+            release_reg(BaseReg, !CLD),
+            generate_failure(KindCode, !CI, !.CLD)
+        )
     ;
         Kind = kind_one_soln,
         TestOp = ne,
-        reset_to_position(BranchStart, !CI),
-        generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg, !CI),
-        set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
-            BranchEndCode, !CI),
-        release_reg(BaseReg, !CI),
+        some [!CLD] (
+            reset_to_position(BranchStart, !.CI, !:CLD),
+            generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg,
+                !.CI, !CLD),
+            set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
+                BranchEndCode, !.CI, !.CLD)
+        ),
         GotoEndCode = singleton(
             llds_instr(goto(code_label(EndLabel)),
                 "goto end of switch from one_soln")
@@ -615,110 +617,121 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
         Kind = kind_several_solns,
         TestOp = int_le,
         get_globals(!.CI, Globals),
-        reset_to_position(BranchStart, !CI),
+        some [!CLD] (
+            reset_to_position(BranchStart, !.CI, !:CLD),
 
-        % The code below is modelled on the code in disj_gen, but is
-        % specialized for the situation here.
+            % The code below is modelled on the code in disj_gen, but is
+            % specialized for the situation here.
 
-        produce_vars(to_sorted_list(ResumeVars), ResumeMap, FlushCode, !CI),
-        MinOffsetColumnRval = const(llconst_int(NumPrevColumns)),
-        MaxOffsetColumnRval = const(llconst_int(NumPrevColumns + 1)),
-        SaveSlotsCode = from_list([
-            llds_instr(assign(CurSlot,
-                lval(field(yes(0), lval(BaseReg), MinOffsetColumnRval))),
-                "Setup current slot in the later solution array"),
-            llds_instr(assign(MaxSlot,
-                lval(field(yes(0), lval(BaseReg), MaxOffsetColumnRval))),
-                "Setup maximum slot in the later solution array")
-        ]),
-        maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot, !CI),
-        globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
-            ReclaimHeap),
-        maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
-        prepare_for_disj_hijack(model_non, HijackInfo, PrepareHijackCode, !CI),
+            produce_vars(to_sorted_list(ResumeVars), ResumeMap, FlushCode,
+                !.CI, !CLD),
+            MinOffsetColumnRval = const(llconst_int(NumPrevColumns)),
+            MaxOffsetColumnRval = const(llconst_int(NumPrevColumns + 1)),
+            SaveSlotsCode = from_list([
+                llds_instr(assign(CurSlot,
+                    lval(field(yes(0), lval(BaseReg), MinOffsetColumnRval))),
+                    "Setup current slot in the later solution array"),
+                llds_instr(assign(MaxSlot,
+                    lval(field(yes(0), lval(BaseReg), MaxOffsetColumnRval))),
+                    "Setup maximum slot in the later solution array")
+            ]),
+            maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
+                !CI, !CLD),
+            globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
+                ReclaimHeap),
+            maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI, !CLD),
+            prepare_for_disj_hijack(model_non, HijackInfo, PrepareHijackCode,
+                !CI, !CLD),
 
-        remember_position(!.CI, DisjEntry),
+            remember_position(!.CLD, DisjEntry),
 
-        % Generate code for the non-last disjunct.
+            % Generate code for the non-last disjunct.
 
-        make_resume_point(set_of_var.to_sorted_list(ResumeVars),
-            resume_locs_stack_only, ResumeMap, ResumePoint, !CI),
-        effect_resume_point(ResumePoint, model_non, UpdateRedoipCode, !CI),
-        generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg, !CI),
-        flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CI),
+            make_resume_point(set_of_var.to_sorted_list(ResumeVars),
+                resume_locs_stack_only, ResumeMap, ResumePoint, !CI),
+            effect_resume_point(ResumePoint, model_non, UpdateRedoipCode, !CLD),
+            generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg,
+                !.CI, !CLD),
+            flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !.CI, !CLD),
 
-        % Forget the variables that are needed only at the resumption point at
-        % the start of the next disjunct, so that we don't generate exceptions
-        % when their storage is clobbered by the movement of the live variables
-        % to the places indicated in the store map.
-        pop_resume_point(!CI),
-        pickup_zombies(FirstZombies, !CI),
-        make_vars_forward_dead(FirstZombies, !CI),
+            % Forget the variables that are needed only at the resumption point
+            % at the start of the next disjunct, so that we don't generate
+            % exceptions when their storage is clobbered by the movement
+            % of the live variables to the places indicated in the store map.
+            pop_resume_point(!CLD),
+            pickup_zombies(FirstZombies, !CLD),
+            make_vars_forward_dead(FirstZombies, !CLD),
 
-        set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
-            FirstBranchEndCode, !CI),
-        release_reg(BaseReg, !CI),
+            set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
+                FirstBranchEndCode, !.CI, !.CLD)
+        ),
 
         GotoEndCode = singleton(
             llds_instr(goto(code_label(EndLabel)),
                 "goto end of switch from several_soln")
         ),
 
-        reset_to_position(DisjEntry, !CI),
-        generate_resume_point(ResumePoint, ResumePointCode, !CI),
+        some [!CLD] (
+            reset_to_position(DisjEntry, !.CI, !:CLD),
+            generate_resume_point(ResumePoint, ResumePointCode, !CI, !CLD),
 
-        maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo,
-            RestoreTicketCode),
-        maybe_restore_hp(MaybeHpSlot, RestoreHpCode),
+            maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo,
+                RestoreTicketCode),
+            maybe_restore_hp(MaybeHpSlot, RestoreHpCode),
 
-        acquire_reg_not_in_storemap(StoreMap, reg_r, LaterBaseReg, !CI),
-        get_next_label(UndoLabel, !CI),
-        get_next_label(AfterUndoLabel, !CI),
-        list.length(OutVars, NumOutVars),
-        TestMoreSolnsCode = from_list([
-            llds_instr(assign(LaterBaseReg, lval(CurSlot)),
-                "Init later base register"),
-            llds_instr(if_val(binop(int_ge, lval(LaterBaseReg), lval(MaxSlot)),
-                code_label(UndoLabel)),
-                "Jump to undo hijack code if there are no more solutions"),
-            llds_instr(assign(CurSlot,
-                binop(int_add, lval(CurSlot), const(llconst_int(NumOutVars)))),
-                "Update current slot in the later solution array"),
-            llds_instr(goto(code_label(AfterUndoLabel)),
-                "Jump around undo hijack code"),
-            llds_instr(label(UndoLabel),
-                "Undo hijack code")
-        ]),
-        undo_disj_hijack(HijackInfo, UndoHijackCode, !CI),
-        AfterUndoLabelCode = from_list([
-            llds_instr(label(AfterUndoLabel),
-                "Return later answer code"),
-            llds_instr(assign(LaterBaseReg,
-                mem_addr(heap_ref(LaterVectorAddrRval, yes(0),
-                    lval(LaterBaseReg)))),
-                "Compute base address in later array for this solution")
-        ]),
+            acquire_reg_not_in_storemap(StoreMap, reg_r, LaterBaseReg, !CLD),
+            get_next_label(UndoLabel, !CI),
+            get_next_label(AfterUndoLabel, !CI),
+            list.length(OutVars, NumOutVars),
+            TestMoreSolnsCode = from_list([
+                llds_instr(assign(LaterBaseReg, lval(CurSlot)),
+                    "Init later base register"),
+                llds_instr(
+                    if_val(binop(int_ge,
+                        lval(LaterBaseReg), lval(MaxSlot)),
+                    code_label(UndoLabel)),
+                    "Jump to undo hijack code if there are no more solutions"),
+                llds_instr(assign(CurSlot,
+                    binop(int_add,
+                        lval(CurSlot),
+                        const(llconst_int(NumOutVars)))),
+                    "Update current slot in the later solution array"),
+                llds_instr(goto(code_label(AfterUndoLabel)),
+                    "Jump around undo hijack code"),
+                llds_instr(label(UndoLabel),
+                    "Undo hijack code")
+            ]),
+            undo_disj_hijack(HijackInfo, UndoHijackCode, !CLD),
+            AfterUndoLabelCode = from_list([
+                llds_instr(label(AfterUndoLabel),
+                    "Return later answer code"),
+                llds_instr(assign(LaterBaseReg,
+                    mem_addr(heap_ref(LaterVectorAddrRval, yes(0),
+                        lval(LaterBaseReg)))),
+                    "Compute base address in later array for this solution")
+            ]),
 
-        % We need to call effect_resume_point in order to push ResumePoint
-        % onto the failure continuation stack, so pop_resume_point can pop
-        % it off. However, since the redoip already points there, we don't need
-        % to execute _LaterUpdateRedoipCode.
-        effect_resume_point(ResumePoint, model_non,
-            _LaterUpdateRedoipCode, !CI),
+            % We need to call effect_resume_point in order to push ResumePoint
+            % onto the failure continuation stack, so pop_resume_point can pop
+            % it off. However, since the redoip already points there, we don't
+            % need to execute _LaterUpdateRedoipCode.
+            effect_resume_point(ResumePoint, model_non,
+                _LaterUpdateRedoipCode, !CLD),
 
-        generate_offset_assigns(OutVars, 0, LaterBaseReg, !CI),
-        flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !CI),
+            generate_offset_assigns(OutVars, 0, LaterBaseReg, !.CI, !CLD),
+            flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !.CI, !CLD),
 
-        % Forget the variables that are needed only at the resumption point at
-        % the start of the next disjunct, so that we don't generate exceptions
-        % when their storage is clobbered by the movement of the live variables
-        % to the places indicated in the store map.
-        pop_resume_point(!CI),
-        pickup_zombies(LaterZombies, !CI),
-        make_vars_forward_dead(LaterZombies, !CI),
+            % Forget the variables that are needed only at the resumption point
+            % at the start of the next disjunct, so that we don't generate
+            % exceptions when their storage is clobbered by the movement
+            % of the live variables to the places indicated in the store map.
+            pop_resume_point(!CLD),
+            pickup_zombies(LaterZombies, !CLD),
+            make_vars_forward_dead(LaterZombies, !CLD),
 
-        set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
-            LaterBranchEndCode, !CI),
+            set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
+                LaterBranchEndCode, !.CI, !.CLD)
+        ),
 
         KindCode = FlushCode ++ SaveSlotsCode ++
             SaveTicketCode ++ SaveHpCode ++ PrepareHijackCode ++
@@ -838,9 +851,11 @@ construct_fail_row(OutTypes, MainRow, !FailCaseCount) :-
     % tag value.
     %
 :- pred generate_bitvec_test(rval::in, assoc_list(int, T)::in,
-    int::in, int::in, llds_code::out, code_info::in, code_info::out) is det.
+    int::in, int::in, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode, !CI) :-
+generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode,
+        !CI, !CLD) :-
     get_globals(!.CI, Globals),
     get_word_bits(Globals, WordBits, Log2WordBits),
     generate_bit_vec(CaseVals, Start, WordBits, BitVecArgs, BitVecRval, !CI),
@@ -869,7 +884,7 @@ generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode, !CI) :-
     ),
     HasBit = binop(bitwise_and,
         binop(unchecked_left_shift, const(llconst_int(1)), BitNum), Word),
-    fail_if_rval_is_false(HasBit, CheckCode, !CI).
+    fail_if_rval_is_false(HasBit, CheckCode, !CI, !CLD).
 
     % We generate the bitvector by iterating through the cases marking the bit
     % for each case. We represent the bitvector here as a map from the word

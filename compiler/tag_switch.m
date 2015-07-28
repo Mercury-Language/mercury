@@ -19,6 +19,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 
@@ -31,7 +32,7 @@
 :- pred generate_tag_switch(list(tagged_case)::in, rval::in, mer_type::in,
     string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
     branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -192,8 +193,7 @@
 %-----------------------------------------------------------------------------%
 
 generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
-        SwitchGoalInfo, EndLabel, !MaybeEnd, Code, !CI) :-
-
+        SwitchGoalInfo, EndLabel, !MaybeEnd, Code, !CI, CLD0) :-
     % We get registers for holding the primary and (if needed) the secondary
     % tag. The tags needed only by the switch, and no other code gets control
     % between producing the tag values and all their uses, so we can release
@@ -206,16 +206,19 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     % We need to get and release the registers before we generate the code
     % of the switch arms, since the set of free registers will in general be
     % different before and after that action.
-    acquire_reg(reg_r, PtagReg, !CI),
-    acquire_reg(reg_r, StagReg, !CI),
-    release_reg(PtagReg, !CI),
-    release_reg(StagReg, !CI),
+    some [!CLD] (
+        !:CLD = CLD0,
+        acquire_reg(reg_r, PtagReg, !CLD),
+        acquire_reg(reg_r, StagReg, !CLD),
+        release_reg(PtagReg, !CLD),
+        release_reg(StagReg, !CLD),
+        remember_position(!.CLD, BranchStart)
+    ),
 
     % Group the cases based on primary tag value and find out how many
     % constructors share each primary tag value.
     get_module_info(!.CI, ModuleInfo),
     get_ptag_counts(VarType, ModuleInfo, MaxPrimary, PtagCountMap),
-    remember_position(!.CI, BranchStart),
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
         EndLabel),
     group_cases_by_ptag(TaggedCases, represent_tagged_case_for_llds(Params),
@@ -278,8 +281,10 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         ),
         % We must generate the failure code in the context in which none of the
         % switch arms have been executed yet.
-        reset_to_position(BranchStart, !CI),
-        generate_failure(FailureCode, !CI),
+        some [!CLD] (
+            reset_to_position(BranchStart, !.CI, !:CLD),
+            generate_failure(FailureCode, !CI, !.CLD)
+        ),
         FailCode = FailLabelCode ++ FailureCode
     ),
 

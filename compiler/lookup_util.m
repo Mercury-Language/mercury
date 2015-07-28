@@ -22,6 +22,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
@@ -32,8 +33,8 @@
     % We do this by using the current instmap and the instmap delta in the
     % goal info to work out which variables are [further] bound by the goal.
     %
-:- pred figure_out_output_vars(code_info::in, hlds_goal_info::in,
-    list(prog_var)::out) is det.
+:- pred figure_out_output_vars(code_info::in, code_loc_dep::in,
+    hlds_goal_info::in, list(prog_var)::out) is det.
 
     % To figure out if the outputs are constants, we
     %
@@ -48,20 +49,23 @@
     % does step 1) on Goal before calling generate_constants_for_arm (which
     % does steps 2, 3 and 4).
     %
-:- pred generate_constants_for_arm(hlds_goal::in, list(prog_var)::in,
-    abs_store_map::in, list(rval)::out, branch_end::in, branch_end::out,
-    set_of_progvar::out, code_info::in, code_info::out) is semidet.
-
-:- pred generate_constants_for_disjunct(hlds_goal::in,
+:- pred generate_constants_for_arm(position_info::in, hlds_goal::in,
     list(prog_var)::in, abs_store_map::in, list(rval)::out,
     branch_end::in, branch_end::out, set_of_progvar::out,
     code_info::in, code_info::out) is semidet.
 
-:- pred generate_constants_for_disjuncts(list(hlds_goal)::in,
-    list(prog_var)::in, abs_store_map::in, list(list(rval))::out,
-    branch_end::in, branch_end::out, code_info::in, code_info::out) is semidet.
+:- pred generate_constants_for_disjunct(position_info::in,
+    hlds_goal::in, list(prog_var)::in, abs_store_map::in,
+    list(rval)::out, branch_end::in, branch_end::out, set_of_progvar::out,
+    code_info::in, code_info::out) is semidet.
 
-    % set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, Code, !CI):
+:- pred generate_constants_for_disjuncts(position_info::in,
+    list(hlds_goal)::in, list(prog_var)::in, abs_store_map::in,
+    list(list(rval))::out, branch_end::in, branch_end::out,
+    code_info::in, code_info::out) is semidet.
+
+    % set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, Code,
+    %   !CI, !.CLD):
     %
     % Set the liveness to Liveness, move all the variables listed in StoreMap
     % to their indicated locations, and end the current branch, updating
@@ -69,10 +73,10 @@
     %
 :- pred set_liveness_and_end_branch(abs_store_map::in, set_of_progvar::in,
     branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_loc_dep::in) is det.
 
 :- pred generate_offset_assigns(list(prog_var)::in, int::in, lval::in,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -92,12 +96,12 @@
 :- import_module require.
 :- import_module set.
 
-figure_out_output_vars(CI, GoalInfo, OutVars) :-
+figure_out_output_vars(CI, CLD, GoalInfo, OutVars) :-
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     ( instmap_delta_is_unreachable(InstMapDelta) ->
         OutVars = []
     ;
-        get_instmap(CI, CurrentInstMap),
+        get_instmap(CLD, CurrentInstMap),
         get_module_info(CI, ModuleInfo),
         instmap_delta_changed_vars(InstMapDelta, ChangedVars),
         instmap.apply_instmap_delta(CurrentInstMap, InstMapDelta,
@@ -116,40 +120,42 @@ is_output_var(ModuleInfo, CurrentInstMap, InstMapAfter, Var) :-
     instmap_lookup_var(InstMapAfter, Var, Final),
     mode_is_output(ModuleInfo, (Initial -> Final)).
 
-generate_constants_for_arm(Goal, Vars, StoreMap, !MaybeEnd, CaseRvals,
-        Liveness, !CI) :-
-    do_generate_constants_for_arm(Goal, Vars, StoreMap, no, !MaybeEnd,
-        CaseRvals, Liveness, !CI).
+generate_constants_for_arm(BranchStart, Goal, Vars, StoreMap, !MaybeEnd,
+        CaseRvals, Liveness, !CI) :-
+    do_generate_constants_for_arm(BranchStart, Goal, Vars, StoreMap,
+        no, !MaybeEnd, CaseRvals, Liveness, !CI).
 
-:- pred do_generate_constants_for_arm(hlds_goal::in, list(prog_var)::in,
-    abs_store_map::in, bool::in, list(rval)::out,
+:- pred do_generate_constants_for_arm(position_info::in, hlds_goal::in,
+    list(prog_var)::in, abs_store_map::in, bool::in, list(rval)::out,
     branch_end::in, branch_end::out, set_of_progvar::out,
     code_info::in, code_info::out) is semidet.
 
-do_generate_constants_for_arm(Goal, Vars, StoreMap, SetToUnknown, CaseRvals,
-        !MaybeEnd, Liveness, !CI) :-
-    remember_position(!.CI, BranchStart),
+do_generate_constants_for_arm(BranchStart, Goal, Vars, StoreMap, SetToUnknown,
+        CaseRvals, !MaybeEnd, Liveness, !CI) :-
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     CodeModel = goal_info_get_code_model(GoalInfo),
-    code_gen.generate_goal(CodeModel, Goal, Code, !CI),
-    cord.is_empty(Code),
-    get_forward_live_vars(!.CI, Liveness),
+    some [!CLD] (
+        reset_to_position(BranchStart, !.CI, !:CLD),
+        code_gen.generate_goal(CodeModel, Goal, Code, !CI, !CLD),
+        cord.is_empty(Code),
+        get_forward_live_vars(!.CLD, Liveness),
 
-    get_exprn_opts(!.CI, ExprnOpts),
-    get_arm_rvals(Vars, CaseRvals, !CI, ExprnOpts),
-    (
-        SetToUnknown = no
-    ;
-        SetToUnknown = yes,
-        set_resume_point_to_unknown(!CI)
-    ),
-    % EndCode code may contain instructions that place Vars in the locations
-    % dictated by StoreMap, and thus does not have to be empty. (The array
-    % lookup code will put those variables in those locations directly.)
-    generate_branch_end(StoreMap, !MaybeEnd, _EndCode, !CI),
-    reset_to_position(BranchStart, !CI).
+        get_exprn_opts(!.CI, ExprnOpts),
+        get_arm_rvals(Vars, CaseRvals, !.CI, !CLD, ExprnOpts),
+        (
+            SetToUnknown = no
+        ;
+            SetToUnknown = yes,
+            set_resume_point_to_unknown(!CLD)
+        ),
+        % EndCode code may contain instructions that place Vars in the
+        % locations dictated by StoreMap, and thus does not have to be empty.
+        % (The array lookup code will put those variables in those locations
+        % directly.)
+        generate_branch_end(StoreMap, !MaybeEnd, _EndCode, !.CI, !.CLD)
+    ).
 
-generate_constants_for_disjunct(Disjunct0, Vars, StoreMap, Soln,
+generate_constants_for_disjunct(BranchStart, Disjunct0, Vars, StoreMap, Soln,
         !MaybeEnd, Liveness, !CI) :-
     % The pre_goal_update sanity check insists on no_resume_point, to ensure
     % that all resume points have been handled by surrounding code.
@@ -157,28 +163,30 @@ generate_constants_for_disjunct(Disjunct0, Vars, StoreMap, Soln,
     goal_info_set_resume_point(no_resume_point,
         DisjunctGoalInfo0, DisjunctGoalInfo),
     Disjunct = hlds_goal(DisjunctGoalExpr, DisjunctGoalInfo),
-    do_generate_constants_for_arm(Disjunct, Vars, StoreMap, yes, Soln,
-        !MaybeEnd, Liveness, !CI).
+    do_generate_constants_for_arm(BranchStart, Disjunct, Vars, StoreMap,
+        yes, Soln, !MaybeEnd, Liveness, !CI).
 
-generate_constants_for_disjuncts([], _Vars, _StoreMap, [], !MaybeEnd, !CI).
-generate_constants_for_disjuncts([Disjunct0 | Disjuncts0], Vars, StoreMap,
-        [Soln | Solns], !MaybeEnd, !CI) :-
-    generate_constants_for_disjunct(Disjunct0, Vars, StoreMap, Soln,
-        !MaybeEnd, _Liveness, !CI),
-    generate_constants_for_disjuncts(Disjuncts0, Vars, StoreMap, Solns,
-        !MaybeEnd, !CI).
+generate_constants_for_disjuncts(_StartPos, [], _Vars,
+        _StoreMap, [], !MaybeEnd, !CI).
+generate_constants_for_disjuncts(StartPos, [Disjunct0 | Disjuncts0], Vars,
+        StoreMap, [Soln | Solns], !MaybeEnd, !CI) :-
+    generate_constants_for_disjunct(StartPos, Disjunct0, Vars,
+        StoreMap, Soln, !MaybeEnd, _Liveness, !CI),
+    generate_constants_for_disjuncts(StartPos, Disjuncts0, Vars,
+        StoreMap, Solns, !MaybeEnd, !CI).
 
 %---------------------------------------------------------------------------%
 
 :- pred get_arm_rvals(list(prog_var)::in, list(rval)::out,
-    code_info::in, code_info::out, exprn_opts::in) is semidet.
+    code_info::in, code_loc_dep::in, code_loc_dep::out, exprn_opts::in)
+    is semidet.
 
-get_arm_rvals([], [], !CI, _ExprnOpts).
-get_arm_rvals([Var | Vars], [Rval | Rvals], !CI, ExprnOpts) :-
-    produce_variable(Var, Code, Rval, !CI),
+get_arm_rvals([], [], _CI, !CLD, _ExprnOpts).
+get_arm_rvals([Var | Vars], [Rval | Rvals], CI, !CLD, ExprnOpts) :-
+    produce_variable(Var, Code, Rval, CI, !CLD),
     cord.is_empty(Code),
     rval_is_constant(Rval, ExprnOpts),
-    get_arm_rvals(Vars, Rvals, !CI, ExprnOpts).
+    get_arm_rvals(Vars, Rvals, CI, !CLD, ExprnOpts).
 
     % rval_is_constant(Rval, ExprnOpts) is true iff Rval is a constant.
     % This depends on the options governing nonlocal gotos, asm labels enabled
@@ -199,24 +207,24 @@ rval_is_constant(mkword(_, Exprn0), ExprnOpts) :-
 %---------------------------------------------------------------------------%
 
 set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
-        !CI) :-
+        CI, !.CLD) :-
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail' slot
     % last would yield the wrong liveness. Also, by killing the variables
     % that are not live anymore, we avoid generating code that moves their
     % values aside.
-    get_forward_live_vars(!.CI, OldLiveness),
-    set_forward_live_vars(Liveness, !CI),
+    get_forward_live_vars(!.CLD, OldLiveness),
+    set_forward_live_vars(Liveness, !CLD),
     set_of_var.difference(OldLiveness, Liveness, DeadVars),
-    maybe_make_vars_forward_dead(DeadVars, no, !CI),
-    generate_branch_end(StoreMap, !MaybeEnd, BranchEndCode, !CI).
+    maybe_make_vars_forward_dead(DeadVars, no, !CLD),
+    generate_branch_end(StoreMap, !MaybeEnd, BranchEndCode, CI, !.CLD).
 
-generate_offset_assigns([], _, _, !CI).
-generate_offset_assigns([Var | Vars], Offset, BaseReg, !CI) :-
+generate_offset_assigns([], _, _, _CI, !CLD).
+generate_offset_assigns([Var | Vars], Offset, BaseReg, CI, !CLD) :-
     LookupLval = field(yes(0), lval(BaseReg), const(llconst_int(Offset))),
-    assign_lval_to_var(Var, LookupLval, Code, !CI),
+    assign_lval_to_var(Var, LookupLval, Code, CI, !CLD),
     expect(cord.is_empty(Code), $module, $pred, "nonempty code"),
-    generate_offset_assigns(Vars, Offset + 1, BaseReg, !CI).
+    generate_offset_assigns(Vars, Offset + 1, BaseReg, CI, !CLD).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.lookup_util.

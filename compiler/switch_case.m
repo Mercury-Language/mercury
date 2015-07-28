@@ -21,6 +21,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
 
 :- import_module map.
@@ -88,29 +89,32 @@
 
 represent_tagged_case_for_llds(Params, TaggedCase, Label, !CaseLabelMap,
         !MaybeEnd, !CI) :-
-    Params = represent_params(SwitchVarName, SwitchGoalInfo, CodeModel,
-        BranchStart, EndLabel),
-    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, Goal),
-    project_cons_name_and_tag(MainTaggedConsId, MainConsName, _),
-    list.map2(project_cons_name_and_tag, OtherTaggedConsIds,
-        OtherConsNames, _),
-    Comment = case_comment(SwitchVarName, MainConsName, OtherConsNames),
-    reset_to_position(BranchStart, !CI),
-    get_next_label(Label, !CI),
-    LabelCode = singleton(
-        llds_instr(label(Label), Comment)
-    ),
-    maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode, !CI),
-    generate_goal(CodeModel, Goal, GoalCode, !CI),
-    goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-    generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-    GotoEndCode = singleton(
-        llds_instr(goto(code_label(EndLabel)),
-            "goto end of switch on " ++ SwitchVarName)
-    ),
-    Code = LabelCode ++ TraceCode ++ GoalCode ++ SaveCode ++ GotoEndCode,
-    CaseInfo = case_label_info(Comment, Code, case_code_not_yet_included),
-    map.det_insert(Label, CaseInfo, !CaseLabelMap).
+    some [!CLD] (
+        Params = represent_params(SwitchVarName, SwitchGoalInfo, CodeModel,
+            BranchStart, EndLabel),
+        TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, Goal),
+        project_cons_name_and_tag(MainTaggedConsId, MainConsName, _),
+        list.map2(project_cons_name_and_tag, OtherTaggedConsIds,
+            OtherConsNames, _),
+        Comment = case_comment(SwitchVarName, MainConsName, OtherConsNames),
+        reset_to_position(BranchStart, !.CI, !:CLD),
+        get_next_label(Label, !CI),
+        LabelCode = singleton(
+            llds_instr(label(Label), Comment)
+        ),
+        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+            !CI, !CLD),
+        generate_goal(CodeModel, Goal, GoalCode, !CI, !CLD),
+        goal_info_get_store_map(SwitchGoalInfo, StoreMap),
+        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !.CI, !.CLD),
+        GotoEndCode = singleton(
+            llds_instr(goto(code_label(EndLabel)),
+                "goto end of switch on " ++ SwitchVarName)
+        ),
+        Code = LabelCode ++ TraceCode ++ GoalCode ++ SaveCode ++ GotoEndCode,
+        CaseInfo = case_label_info(Comment, Code, case_code_not_yet_included),
+        map.det_insert(Label, CaseInfo, !CaseLabelMap)
+    ).
 
 generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap) :-
     map.lookup(!.CaseLabelMap, CaseLabel, CaseInfo0),

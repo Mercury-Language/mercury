@@ -27,6 +27,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
@@ -41,7 +42,7 @@
     list(foreign_arg)::in, list(foreign_arg)::in,
     maybe(trace_expr(trace_runtime))::in, pragma_foreign_proc_impl::in,
     hlds_goal_info::in, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 :- func foreign_proc_struct_name(module_name, string, int, proc_id) = string.
 
@@ -361,14 +362,14 @@
 
 generate_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl, GoalInfo, Code,
-        !CI) :-
+        !CI, !CLD) :-
     PragmaImpl = fp_impl_ordinary(C_Code, Context),
     (
         MaybeTraceRuntimeCond = no,
         CanOptAwayUnnamedArgs = yes,
         generate_ordinary_foreign_proc_code(CodeModel, Attributes,
             PredId, ProcId, Args, ExtraArgs, C_Code, Context, GoalInfo,
-            CanOptAwayUnnamedArgs, Code, !CI)
+            CanOptAwayUnnamedArgs, Code, !CI, !CLD)
     ;
         MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
         expect(unify(Args, []), $module, $pred,
@@ -378,19 +379,22 @@ generate_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         expect(unify(CodeModel, model_semi), $module, $pred,
             "non-semi runtime cond"),
         generate_trace_runtime_cond_foreign_proc_code(TraceRuntimeCond,
-            Code, !CI)
+            Code, !CI, !CLD)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_trace_runtime_cond_foreign_proc_code(
     trace_expr(trace_runtime)::in, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_trace_runtime_cond_foreign_proc_code(RuntimeExpr, Code, !CI) :-
+generate_trace_runtime_cond_foreign_proc_code(RuntimeExpr, Code, !CI, !CLD) :-
     generate_runtime_cond_code(RuntimeExpr, CondRval, !CI),
     get_next_label(SuccessLabel, !CI),
-    generate_failure(FailCode, !CI),
+    remember_position(!.CLD, BeforeFailure),
+    generate_failure(FailCode, !CI, !.CLD),
+    reset_to_position(BeforeFailure, !.CI, !:CLD),
+
     CondCode = singleton(
         llds_instr(if_val(CondRval, code_label(SuccessLabel)),
             "environment variable tests")
@@ -437,11 +441,11 @@ generate_runtime_cond_code(Expr, CondRval, !CI) :-
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     maybe(prog_context)::in, hlds_goal_info::in, bool::in, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         Args, ExtraArgs, C_Code, Context, GoalInfo, CanOptAwayUnnamedArgs,
-        Code, !CI) :-
+        Code, !CI, !CLD) :-
     % Extract the attributes.
     MayCallMercury = get_may_call_mercury(Attributes),
     ThreadSafe = get_thread_safe(Attributes),
@@ -483,20 +487,20 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         % (other than the output args) onto the stack.
         get_c_arg_list_vars(OutCArgs, OutVars),
         set_of_var.list_to_set(OutVars, OutVarsSet),
-        save_variables(OutVarsSet, _, SaveVarsCode, !CI)
+        save_variables(OutVarsSet, _, SaveVarsCode, !.CI, !CLD)
     ),
 
     % Generate the values of input variables.
     % (NB we need to be careful that the rvals generated here
     % remain valid below.)
     get_foreign_proc_input_vars(InCArgs, InputDescs, CanOptAwayUnnamedArgs,
-        InputVarsCode, !CI),
+        InputVarsCode, !.CI, !CLD),
 
     % We cannot kill the forward dead input arguments until we have
     % finished generating the code producing the input variables.
     % (The forward dead variables will be dead after the call_foreign_proc,
     % but are live during its input phase.)
-    make_vars_forward_dead(DeadVars, !CI),
+    make_vars_forward_dead(DeadVars, !CLD),
 
     % Generate <declaration of one local variable for each arg>.
     make_foreign_proc_decls(CArgs, ModuleInfo, CanOptAwayUnnamedArgs, Decls),
@@ -612,7 +616,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         ;
             OkToDelete = yes
         ),
-        clear_all_registers(OkToDelete, !CI)
+        clear_all_registers(OkToDelete, !CLD)
     ),
 
     % <assignment of the output values from local variables to registers>
@@ -625,9 +629,9 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         UseFloatRegs = do_not_use_float_registers,
         FloatRegType = reg_r
     ),
-    foreign_proc_acquire_regs(FloatRegType, OutCArgs, Regs, !CI),
+    foreign_proc_acquire_regs(FloatRegType, OutCArgs, Regs, !CLD),
     place_foreign_proc_output_args_in_regs(OutCArgs, Regs,
-        CanOptAwayUnnamedArgs, OutputDescs, !CI),
+        CanOptAwayUnnamedArgs, OutputDescs, !.CI, !CLD),
     OutputComp = foreign_proc_outputs(OutputDescs),
 
     % Join all the components of the foreign_proc_code together.
@@ -677,7 +681,10 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     (
         MaybeFailLabel = yes(TheFailLabel),
         get_next_label(SkipLabel, !CI),
-        generate_failure(FailCode, !CI),
+        remember_position(!.CLD, BeforeFailure),
+        generate_failure(FailCode, !CI, !.CLD),
+        reset_to_position(BeforeFailure, !.CI, !:CLD),
+
         GotoSkipLabelCode = singleton(
             llds_instr(goto(code_label(SkipLabel)), "Skip past failure code")
         ),
@@ -692,7 +699,9 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     ;
         MaybeFailLabel = no,
         ( Detism = detism_failure ->
-            generate_failure(FailureCode, !CI)
+            remember_position(!.CLD, BeforeFailure),
+            generate_failure(FailureCode, !CI, !.CLD),
+            reset_to_position(BeforeFailure, !.CI, !:CLD)
         ;
             FailureCode = empty
         )
@@ -982,39 +991,38 @@ find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
     %
 :- pred get_foreign_proc_input_vars(list(c_arg)::in,
     list(foreign_proc_input)::out, bool::in, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-get_foreign_proc_input_vars([], [], _, empty, !CI).
+get_foreign_proc_input_vars([], [], _, empty, _CI, !CLD).
 get_foreign_proc_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
-        !CI) :-
+        CI, !CLD) :-
     Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
     MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
     (
         MaybeName = yes(Name),
-        VarType = variable_type(!.CI, Var),
-        produce_variable(Var, FirstCode, Rval, !CI),
-        MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
-        get_module_info(!.CI, ModuleInfo),
+        VarType = variable_type(CI, Var),
+        produce_variable(Var, FirstCode, Rval, CI, !CLD),
+        get_module_info(CI, ModuleInfo),
+        MaybeForeign = get_maybe_foreign_type_info(ModuleInfo, OrigType),
         IsDummy = check_dummy_type(ModuleInfo, VarType),
         Input = foreign_proc_input(Name, VarType, IsDummy, OrigType, Rval,
             MaybeForeign, BoxPolicy),
         get_foreign_proc_input_vars(Args, Inputs1, CanOptAwayUnnamedArgs,
-            RestCode, !CI),
+            RestCode, CI, !CLD),
         Inputs = [Input | Inputs1],
         Code = FirstCode ++ RestCode
     ;
         MaybeName = no,
         % Just ignore the argument.
         get_foreign_proc_input_vars(Args, Inputs, CanOptAwayUnnamedArgs, Code,
-            !CI)
+            CI, !CLD)
     ).
 
-:- func get_maybe_foreign_type_info(code_info, mer_type) =
+:- func get_maybe_foreign_type_info(module_info, mer_type) =
     maybe(foreign_proc_type).
 
-get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
-    get_module_info(CI, Module),
-    module_info_get_type_table(Module, TypeTable),
+get_maybe_foreign_type_info(ModuleInfo, Type) = MaybeForeignTypeInfo :-
+    module_info_get_type_table(ModuleInfo, TypeTable),
     (
         type_to_ctor(Type, TypeCtor),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
@@ -1042,14 +1050,15 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
     % each of the given arguments.
     %
 :- pred foreign_proc_acquire_regs(reg_type::in,
-    list(c_arg)::in, list(lval)::out, code_info::in, code_info::out) is det.
+    list(c_arg)::in, list(lval)::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-foreign_proc_acquire_regs(_, [], [], !CI).
-foreign_proc_acquire_regs(FloatRegType, [Arg | Args], [Reg | Regs], !CI) :-
+foreign_proc_acquire_regs(_, [], [], !CLD).
+foreign_proc_acquire_regs(FloatRegType, [Arg | Args], [Reg | Regs], !CLD) :-
     Arg = c_arg(Var, _, VarType, BoxPolicy, _),
     foreign_proc_arg_reg_type(FloatRegType, VarType, BoxPolicy, RegType),
-    acquire_reg_for_var(Var, RegType, Reg, !CI),
-    foreign_proc_acquire_regs(FloatRegType, Args, Regs, !CI).
+    acquire_reg_for_var(Var, RegType, Reg, !CLD),
+    foreign_proc_acquire_regs(FloatRegType, Args, Regs, !CLD).
 
 :- pred foreign_proc_arg_reg_type(reg_type::in, mer_type::in, box_policy::in,
     reg_type::out) is det.
@@ -1074,25 +1083,25 @@ foreign_proc_arg_reg_type(FloatRegType, VarType, BoxPolicy, RegType) :-
     % and (C) variables which hold the output value.
     %
 :- pred place_foreign_proc_output_args_in_regs(list(c_arg)::in, list(lval)::in,
-    bool::in, list(foreign_proc_output)::out, code_info::in, code_info::out)
-    is det.
+    bool::in, list(foreign_proc_output)::out,
+    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-place_foreign_proc_output_args_in_regs([], [], _, [], !CI).
+place_foreign_proc_output_args_in_regs([], [], _, [], _CI, !CLD).
 place_foreign_proc_output_args_in_regs([Arg | Args], [Reg | Regs],
-        CanOptAwayUnnamedArgs, Outputs, !CI) :-
+        CanOptAwayUnnamedArgs, Outputs, CI, !CLD) :-
     place_foreign_proc_output_args_in_regs(Args, Regs, CanOptAwayUnnamedArgs,
-        OutputsTail, !CI),
+        OutputsTail, CI, !CLD),
     Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
-    release_reg(Reg, !CI),
-    ( variable_is_forward_live(!.CI, Var) ->
-        set_var_location(Var, Reg, !CI),
-        MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
+    release_reg(Reg, !CLD),
+    ( variable_is_forward_live(!.CLD, Var) ->
+        set_var_location(Var, Reg, !CLD),
+        get_module_info(CI, ModuleInfo),
+        MaybeForeign = get_maybe_foreign_type_info(ModuleInfo, OrigType),
         MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var,
             MaybeArgName),
         (
             MaybeName = yes(Name),
-            get_module_info(!.CI, ModuleInfo),
-            VarType = variable_type(!.CI, Var),
+            VarType = variable_type(CI, Var),
             IsDummy = check_dummy_type(ModuleInfo, VarType),
             PragmaCOutput = foreign_proc_output(Reg, VarType, IsDummy,
                 OrigType, Name, MaybeForeign, BoxPolicy),
@@ -1104,9 +1113,9 @@ place_foreign_proc_output_args_in_regs([Arg | Args], [Reg | Regs],
     ;
         Outputs = OutputsTail
     ).
-place_foreign_proc_output_args_in_regs([_ | _], [], _, _, !CI) :-
+place_foreign_proc_output_args_in_regs([_ | _], [], _, _, _CI, !CLD) :-
     unexpected($module, $pred, "length mismatch").
-place_foreign_proc_output_args_in_regs([], [_ | _], _, _, !CI) :-
+place_foreign_proc_output_args_in_regs([], [_ | _], _, _, _CI, !CLD) :-
     unexpected($module, $pred, "length mismatch").
 
 %---------------------------------------------------------------------------%
@@ -1127,8 +1136,8 @@ input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
         VarType = variable_type(CI, Var),
         ArgInfo = arg_info(Loc, _),
         arg_loc_to_register(Loc, Reg),
-        MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
         get_module_info(CI, ModuleInfo),
+        MaybeForeign = get_maybe_foreign_type_info(ModuleInfo, OrigType),
         IsDummy = check_dummy_type(ModuleInfo, VarType),
         Input = foreign_proc_input(Name, VarType, IsDummy, OrigType, lval(Reg),
             MaybeForeign, BoxPolicy),
@@ -1157,8 +1166,8 @@ output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
         VarType = variable_type(CI, Var),
         ArgInfo = arg_info(Loc, _),
         arg_loc_to_register(Loc, Reg),
-        MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
         get_module_info(CI, ModuleInfo),
+        MaybeForeign = get_maybe_foreign_type_info(ModuleInfo, OrigType),
         IsDummy = check_dummy_type(ModuleInfo, VarType),
         Output = foreign_proc_output(Reg, VarType, IsDummy, OrigType, Name,
             MaybeForeign, BoxPolicy),

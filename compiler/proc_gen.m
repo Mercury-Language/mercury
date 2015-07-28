@@ -90,6 +90,7 @@
 :- import_module libs.trace_params.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.layout.
@@ -114,7 +115,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 :- import_module string.
 :- import_module term.
 
@@ -383,9 +383,10 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         TSRevStringTable0, TSStringTableSize0),
 
     code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
-        SaveSuccip, FollowVars, StaticCellInfo0, ConstStructMap,
-        OutsideResumePoint, TraceSlotInfo, MaybeContainingGoalMap,
-        TSRevStringTable0, TSStringTableSize0, CodeInfo0),
+        SaveSuccip, StaticCellInfo0, ConstStructMap, MaybeContainingGoalMap,
+        TSRevStringTable0, TSStringTableSize0, TraceSlotInfo, CodeInfo0),
+    code_loc_dep_init(FollowVars, OutsideResumePoint,
+        CodeInfo0, CodeInfo1, CodeLocDep0),
 
     % Find out the approriate context for the predicate's interface events.
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
@@ -403,10 +404,10 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     % Generate code for the procedure.
     generate_category_code(CodeModel, ProcContext, Goal, OutsideResumePoint,
         TraceSlotInfo, CodeTree0, MaybeTraceCallLabel, FrameInfo,
-        CodeInfo0, CodeInfo),
+        CodeInfo1, CodeInfo, CodeLocDep0),
     get_out_of_line_code(CodeInfo, OutOfLineCode),
     CodeTree = CodeTree0 ++ OutOfLineCode,
-    get_max_reg_in_use_at_trace(CodeInfo, MaxTraceRegR, MaxTraceRegF),
+    get_max_regs_in_use_at_trace(CodeInfo, MaxTraceRegR, MaxTraceRegF),
     get_static_cell_info(CodeInfo, StaticCellInfo),
     global_data_set_static_cell_info(StaticCellInfo, !GlobalData),
 
@@ -680,191 +681,206 @@ maybe_generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = MaybeDeepProfInfo :-
     %
 :- pred generate_category_code(code_model::in, prog_context::in, hlds_goal::in,
     resume_point_info::in, trace_slot_info::in, llds_code::out,
-    maybe(label)::out, frame_info::out, code_info::in, code_info::out) is det.
+    maybe(label)::out, frame_info::out,
+    code_info::in, code_info::out, code_loc_dep::in) is det.
 
-generate_category_code(model_det, ProcContext, Goal, ResumePoint,
-        TraceSlotInfo, Code, MaybeTraceCallLabel, FrameInfo, !CI) :-
-    % Generate the code for the body of the procedure.
-    get_globals(!.CI, Globals),
-    globals.lookup_bool_option(Globals, middle_rec, MiddleRec),
+generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
+        TraceSlotInfo, Code, MaybeTraceCallLabel, FrameInfo, !CI, !.CLD) :-
     (
-        MiddleRec = yes,
-        middle_rec.match_and_generate(Goal, MiddleRecCode, !CI)
-    ->
-        Code = MiddleRecCode,
-        MaybeTraceCallLabel = no,
-        FrameInfo = frame(0, no, no)
+        CodeModel = model_det,
+        % Generate the code for the body of the procedure.
+        get_globals(!.CI, Globals),
+        globals.lookup_bool_option(Globals, middle_rec, MiddleRec),
+        (
+            MiddleRec = yes,
+            middle_rec.match_and_generate(Goal, MiddleRecCode, !CI, !CLD)
+        ->
+            Code = MiddleRecCode,
+            MaybeTraceCallLabel = no,
+            FrameInfo = frame(0, no, no)
+        ;
+            get_maybe_trace_info(!.CI, MaybeTraceInfo),
+            (
+                MaybeTraceInfo = yes(TraceInfo),
+                generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
+                    TraceCallCode, !CI, !CLD),
+                get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
+                (
+                    MaybeTailRecInfo = yes(_TailRecLval - TailRecLabel),
+                    TailRecLabelCode = singleton(
+                        llds_instr(label(TailRecLabel),
+                            "tail recursion label, nofulljump")
+                    )
+                ;
+                    MaybeTailRecInfo = no,
+                    TailRecLabelCode = empty
+                )
+            ;
+                MaybeTraceInfo = no,
+                MaybeTraceCallLabel = no,
+                TraceCallCode = empty,
+                TailRecLabelCode = empty
+            ),
+            generate_goal(model_det, Goal, BodyCode, !CI, !CLD),
+            generate_entry(!.CI, model_det, Goal, ResumePoint, FrameInfo,
+                EntryCode),
+            generate_exit(model_det, FrameInfo, TraceSlotInfo, ProcContext,
+                _, ExitCode, !CI, !.CLD),
+            Code = EntryCode ++ TraceCallCode ++ TailRecLabelCode ++
+                BodyCode ++ ExitCode
+        )
     ;
+        CodeModel = model_semi,
+        FailureLiveRegs = set.make_singleton_set(reg(reg_r, 1)),
+        FailCode = from_list([
+            llds_instr(assign(reg(reg_r, 1), const(llconst_false)), "Fail"),
+            llds_instr(livevals(FailureLiveRegs), ""),
+            llds_instr(goto(code_succip), "Return from procedure call")
+        ]),
         get_maybe_trace_info(!.CI, MaybeTraceInfo),
         (
             MaybeTraceInfo = yes(TraceInfo),
+            remember_position(!.CLD, BeforeBody),
             generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
-                TraceCallCode, !CI),
+                TraceCallCode, !CI, !CLD),
             get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
             (
                 MaybeTailRecInfo = yes(_TailRecLval - TailRecLabel),
                 TailRecLabelCode = singleton(
-                    llds_instr(label(TailRecLabel),
-                        "tail recursion label, nofulljump")
+                    llds_instr(label(TailRecLabel), "tail recursion label")
                 )
             ;
                 MaybeTailRecInfo = no,
                 TailRecLabelCode = empty
-            )
+            ),
+            generate_goal(model_semi, Goal, BodyCode, !CI, !CLD),
+            generate_entry(!.CI, model_semi, Goal, ResumePoint,
+                FrameInfo, EntryCode),
+            generate_exit(model_semi, FrameInfo, TraceSlotInfo,
+                ProcContext, RestoreDeallocCode, ExitCode, !CI, !.CLD),
+
+            reset_to_position(BeforeBody, !.CI, !:CLD),
+            generate_resume_point(ResumePoint, ResumeCode, !CI, !CLD),
+            resume_point_vars(ResumePoint, ResumeVarList),
+            ResumeVars = set_of_var.list_to_set(ResumeVarList),
+            set_forward_live_vars(ResumeVars, !CLD),
+            % XXX A context that gives the end of the procedure definition
+            % would be better than ProcContext.
+            generate_external_event_code(external_port_fail, TraceInfo,
+                ProcContext, MaybeFailExternalInfo,
+                !CI, !.CLD, _CLDAfterEvent),
+            (
+                MaybeFailExternalInfo = yes(FailExternalInfo),
+                FailExternalInfo = external_event_info(_, _, TraceFailCode)
+            ;
+                MaybeFailExternalInfo = no,
+                TraceFailCode = empty
+            ),
+            Code = EntryCode ++ TraceCallCode ++ TailRecLabelCode ++
+                BodyCode ++ ExitCode ++ ResumeCode ++ TraceFailCode ++
+                RestoreDeallocCode ++ FailCode
         ;
             MaybeTraceInfo = no,
             MaybeTraceCallLabel = no,
-            TraceCallCode = empty,
-            TailRecLabelCode = empty
-        ),
-        generate_goal(model_det, Goal, BodyCode, !CI),
-        generate_entry(!.CI, model_det, Goal, ResumePoint, FrameInfo,
-            EntryCode),
-        generate_exit(model_det, FrameInfo, TraceSlotInfo, ProcContext,
-            _, ExitCode, !CI),
-        Code = EntryCode ++ TraceCallCode ++ TailRecLabelCode ++
-            BodyCode ++ ExitCode
-    ).
-
-generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
-        TraceSlotInfo, Code, MaybeTraceCallLabel, FrameInfo, !CI) :-
-    FailureLiveRegs = set.make_singleton_set(reg(reg_r, 1)),
-    FailCode = from_list([
-        llds_instr(assign(reg(reg_r, 1), const(llconst_false)), "Fail"),
-        llds_instr(livevals(FailureLiveRegs), ""),
-        llds_instr(goto(code_succip), "Return from procedure call")
-    ]),
-    get_maybe_trace_info(!.CI, MaybeTraceInfo),
-    (
-        MaybeTraceInfo = yes(TraceInfo),
-        generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
-            TraceCallCode, !CI),
-        get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
-        (
-            MaybeTailRecInfo = yes(_TailRecLval - TailRecLabel),
-            TailRecLabelCode = singleton(
-                llds_instr(label(TailRecLabel), "tail recursion label")
-            )
-        ;
-            MaybeTailRecInfo = no,
-            TailRecLabelCode = empty
-        ),
-        generate_goal(model_semi, Goal, BodyCode, !CI),
-        generate_entry(!.CI, model_semi, Goal, ResumePoint,
-            FrameInfo, EntryCode),
-        generate_exit(model_semi, FrameInfo, TraceSlotInfo,
-            ProcContext, RestoreDeallocCode, ExitCode, !CI),
-
-        generate_resume_point(ResumePoint, ResumeCode, !CI),
-        resume_point_vars(ResumePoint, ResumeVarList),
-        ResumeVars = set_of_var.list_to_set(ResumeVarList),
-        set_forward_live_vars(ResumeVars, !CI),
-        % XXX A context that gives the end of the procedure definition
-        % would be better than ProcContext.
-        generate_external_event_code(external_port_fail, TraceInfo,
-            ProcContext, MaybeFailExternalInfo, !CI),
-        (
-            MaybeFailExternalInfo = yes(FailExternalInfo),
-            FailExternalInfo = external_event_info(_, _, TraceFailCode)
-        ;
-            MaybeFailExternalInfo = no,
-            TraceFailCode = empty
-        ),
-        Code = EntryCode ++ TraceCallCode ++ TailRecLabelCode ++
-            BodyCode ++ ExitCode ++ ResumeCode ++ TraceFailCode ++
-            RestoreDeallocCode ++ FailCode
+            remember_position(!.CLD, BeforeBody),
+            generate_goal(model_semi, Goal, BodyCode, !CI, !CLD),
+            generate_entry(!.CI, model_semi, Goal, ResumePoint,
+                FrameInfo, EntryCode),
+            generate_exit(model_semi, FrameInfo, TraceSlotInfo,
+                ProcContext, RestoreDeallocCode, ExitCode, !CI, !.CLD),
+            reset_to_position(BeforeBody, !.CI, !:CLD),
+            generate_resume_point(ResumePoint, ResumeCode,
+                !CI, !.CLD, _CLDAfterResume),
+            Code = EntryCode ++ BodyCode ++ ExitCode ++ ResumeCode ++
+                RestoreDeallocCode ++ FailCode
+        )
     ;
-        MaybeTraceInfo = no,
-        MaybeTraceCallLabel = no,
-        generate_goal(model_semi, Goal, BodyCode, !CI),
-        generate_entry(!.CI, model_semi, Goal, ResumePoint,
-            FrameInfo, EntryCode),
-        generate_exit(model_semi, FrameInfo, TraceSlotInfo,
-            ProcContext, RestoreDeallocCode, ExitCode, !CI),
-        generate_resume_point(ResumePoint, ResumeCode, !CI),
-        Code = EntryCode ++ BodyCode ++ ExitCode ++ ResumeCode ++
-            RestoreDeallocCode ++ FailCode
-    ).
-
-generate_category_code(model_non, ProcContext, Goal, ResumePoint,
-        TraceSlotInfo, Code, MaybeTraceCallLabel, FrameInfo, !CI) :-
-    get_maybe_trace_info(!.CI, MaybeTraceInfo),
-    (
-        MaybeTraceInfo = yes(TraceInfo),
-        generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
-            TraceCallCode, !CI),
-        get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
-        expect(unify(MaybeTailRecInfo, no), $module, $pred,
-            "tail recursive call in model_non code"),
-        generate_goal(model_non, Goal, BodyCode, !CI),
-        generate_entry(!.CI, model_non, Goal, ResumePoint,
-            FrameInfo, EntryCode),
-        generate_exit(model_non, FrameInfo, TraceSlotInfo,
-            ProcContext, _, ExitCode, !CI),
-
-        generate_resume_point(ResumePoint, ResumeCode, !CI),
-        resume_point_vars(ResumePoint, ResumeVarList),
-        ResumeVars = set_of_var.list_to_set(ResumeVarList),
-        set_forward_live_vars(ResumeVars, !CI),
-        % XXX A context that gives the end of the procedure definition
-        % would be better than ProcContext.
-        generate_external_event_code(external_port_fail, TraceInfo,
-            ProcContext, MaybeFailExternalInfo, !CI),
+        CodeModel = model_non,
+        get_maybe_trace_info(!.CI, MaybeTraceInfo),
         (
-            MaybeFailExternalInfo = yes(FailExternalInfo),
-            FailExternalInfo = external_event_info(_, _, TraceFailCode)
-        ;
-            MaybeFailExternalInfo = no,
-            TraceFailCode = empty
-        ),
-        ( TraceSlotInfo ^ slot_trail = yes(_) ->
-            MaybeFromFull = TraceSlotInfo ^ slot_from_full,
+            MaybeTraceInfo = yes(TraceInfo),
+            generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
+                TraceCallCode, !CI, !CLD),
+            get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
+            expect(unify(MaybeTailRecInfo, no), $module, $pred,
+                "tail recursive call in model_non code"),
+            remember_position(!.CLD, BeforeBody),
+            generate_goal(model_non, Goal, BodyCode, !CI, !CLD),
+            generate_entry(!.CI, model_non, Goal, ResumePoint,
+                FrameInfo, EntryCode),
+            generate_exit(model_non, FrameInfo, TraceSlotInfo,
+                ProcContext, _, ExitCode, !CI, !.CLD),
+
+            reset_to_position(BeforeBody, !.CI, !:CLD),
+            generate_resume_point(ResumePoint, ResumeCode, !CI, !CLD),
+            resume_point_vars(ResumePoint, ResumeVarList),
+            ResumeVars = set_of_var.list_to_set(ResumeVarList),
+            set_forward_live_vars(ResumeVars, !CLD),
+            % XXX A context that gives the end of the procedure definition
+            % would be better than ProcContext.
+            generate_external_event_code(external_port_fail, TraceInfo,
+                ProcContext, MaybeFailExternalInfo,
+                !CI, !.CLD, _CLDAfterEvent),
             (
-                MaybeFromFull = yes(FromFullSlot),
-                % Generate code which discards the ticket only if it was
-                % allocated, i.e. only if MR_trace_from_full was true on entry.
-                FromFullSlotLval =
-                    llds.stack_slot_num_to_lval(nondet_stack, FromFullSlot),
-                get_next_label(SkipLabel, !CI),
-                DiscardTraceTicketCode = from_list([
-                    llds_instr(
-                        if_val(unop(logical_not, lval(FromFullSlotLval)),
-                            code_label(SkipLabel)), ""),
-                    llds_instr(discard_ticket, "discard retry ticket"),
-                    llds_instr(label(SkipLabel), "")
-                ])
+                MaybeFailExternalInfo = yes(FailExternalInfo),
+                FailExternalInfo = external_event_info(_, _, TraceFailCode)
             ;
-                MaybeFromFull = no,
-                DiscardTraceTicketCode = singleton(
-                    llds_instr(discard_ticket, "discard retry ticket")
+                MaybeFailExternalInfo = no,
+                TraceFailCode = empty
+            ),
+            ( TraceSlotInfo ^ slot_trail = yes(_) ->
+                MaybeFromFull = TraceSlotInfo ^ slot_from_full,
+                (
+                    MaybeFromFull = yes(FromFullSlot),
+                    % Generate code which discards the ticket only if it was
+                    % allocated, i.e. only if MR_trace_from_full was true
+                    % on entry.
+                    FromFullSlotLval =
+                        llds.stack_slot_num_to_lval(nondet_stack,
+                            FromFullSlot),
+                    get_next_label(SkipLabel, !CI),
+                    DiscardTraceTicketCode = from_list([
+                        llds_instr(
+                            if_val(unop(logical_not, lval(FromFullSlotLval)),
+                                code_label(SkipLabel)), ""),
+                        llds_instr(discard_ticket, "discard retry ticket"),
+                        llds_instr(label(SkipLabel), "")
+                    ])
+                ;
+                    MaybeFromFull = no,
+                    DiscardTraceTicketCode = singleton(
+                        llds_instr(discard_ticket, "discard retry ticket")
+                    )
                 )
-            )
+            ;
+                DiscardTraceTicketCode = empty
+            ),
+            FailCode = singleton(
+                llds_instr(goto(do_fail), "fail after fail trace port")
+            ),
+            Code = EntryCode ++ TraceCallCode ++ BodyCode ++ ExitCode ++
+                ResumeCode ++ TraceFailCode ++ DiscardTraceTicketCode ++
+                FailCode
         ;
-            DiscardTraceTicketCode = empty
-        ),
-        FailCode = singleton(
-            llds_instr(goto(do_fail), "fail after fail trace port")
-        ),
-        Code = EntryCode ++ TraceCallCode ++ BodyCode ++ ExitCode ++
-            ResumeCode ++ TraceFailCode ++ DiscardTraceTicketCode ++ FailCode
-    ;
-        MaybeTraceInfo = no,
-        MaybeTraceCallLabel = no,
-        generate_goal(model_non, Goal, BodyCode, !CI),
-        generate_entry(!.CI, model_non, Goal, ResumePoint,
-            FrameInfo, EntryCode),
-        generate_exit(model_non, FrameInfo, TraceSlotInfo,
-            ProcContext, _, ExitCode, !CI),
-        Code = EntryCode ++ BodyCode ++ ExitCode
+            MaybeTraceInfo = no,
+            MaybeTraceCallLabel = no,
+            generate_goal(model_non, Goal, BodyCode, !CI, !CLD),
+            generate_entry(!.CI, model_non, Goal, ResumePoint,
+                FrameInfo, EntryCode),
+            generate_exit(model_non, FrameInfo, TraceSlotInfo,
+                ProcContext, _, ExitCode, !CI, !.CLD),
+            Code = EntryCode ++ BodyCode ++ ExitCode
+        )
     ).
 
 :- pred generate_call_event(trace_info::in, prog_context::in,
-    maybe(label)::out, llds_code::out, code_info::in, code_info::out) is det.
+    maybe(label)::out, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel, TraceCallCode,
-        !CI) :-
+        !CI, !CLD) :-
     generate_external_event_code(external_port_call, TraceInfo,
-        ProcContext, MaybeCallExternalInfo, !CI),
+        ProcContext, MaybeCallExternalInfo, !CI, !CLD),
     (
         MaybeCallExternalInfo = yes(CallExternalInfo),
         CallExternalInfo = external_event_info(TraceCallLabel, _,
@@ -1032,10 +1048,10 @@ maybe_round_frame_size(CI, CodeModel, NumSlots0) = NumSlots :-
 
 :- pred generate_exit(code_model::in, frame_info::in,
     trace_slot_info::in, prog_context::in, llds_code::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
-        RestoreDeallocCode, ExitCode, !CI) :-
+        RestoreDeallocCode, ExitCode, !CI, !.CLD) :-
     StartComment = singleton(
         llds_instr(comment("Start of procedure epilogue"), "")
     ),
@@ -1058,7 +1074,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         ExitCode = StartComment ++ UndefCode ++ EndComment
     ;
         NondetPragma = no,
-        get_instmap(!.CI, InstMap),
+        get_instmap(!.CLD, InstMap),
         ArgModes = get_arginfo(!.CI),
         HeadVars = get_headvars(!.CI),
         assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
@@ -1066,7 +1082,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             OutLvals = set.init,
             FlushCode = empty
         ;
-            setup_return(Args, OutLvals, FlushCode, !CI)
+            setup_return(Args, OutLvals, FlushCode, !.CI, !CLD)
         ),
         (
             MaybeSuccipSlot = yes(SuccipSlot),
@@ -1146,28 +1162,18 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             % XXX A context that gives the end of the procedure definition
             % would be better than CallContext.
             generate_external_event_code(external_port_exit, TraceInfo,
-                ProcContext, MaybeExitExternalInfo, !CI),
+                ProcContext, MaybeExitExternalInfo, !CI, !.CLD, _CLDAfterExit),
             (
                 MaybeExitExternalInfo = yes(ExitExternalInfo),
                 ExitExternalInfo = external_event_info(_, TypeInfoDatas,
-                    TraceExitCode)
+                    TraceExitCode),
+                map.foldl(add_type_info_lvals, TypeInfoDatas,
+                    OutLvals, LiveLvals)
             ;
                 MaybeExitExternalInfo = no,
-                TypeInfoDatas = map.init,
+                LiveLvals = OutLvals,
                 TraceExitCode = empty
-            ),
-            map.values(TypeInfoDatas, TypeInfoLocnSets),
-            FindBaseLvals = (pred(Lval::out) is nondet :-
-                list.member(LocnSet, TypeInfoLocnSets),
-                set.member(Locn, LocnSet),
-                (
-                    Locn = locn_direct(Lval)
-                ;
-                    Locn = locn_indirect(Lval, _)
-                )
-            ),
-            solutions.solutions(FindBaseLvals, TypeInfoLvals),
-            set.insert_list(TypeInfoLvals, OutLvals, LiveLvals)
+            )
         ;
             MaybeTraceInfo = no,
             TraceExitCode = empty,
@@ -1235,6 +1241,18 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         ),
         ExitCode = StartComment ++ FlushCode ++ AllSuccessCode ++ EndComment
     ).
+
+:- pred add_type_info_lvals(tvar::in, set(layout_locn)::in,
+    set(lval)::in, set(lval)::out) is det.
+
+add_type_info_lvals(_TVar, TypeInfoLocnSets, !LiveLvals) :-
+    TypeInfoLvals = set.map(project_layout_locn_lval, TypeInfoLocnSets),
+    set.union(TypeInfoLvals, !LiveLvals).
+
+:- func project_layout_locn_lval(layout_locn) = lval.
+
+project_layout_locn_lval(locn_direct(Lval)) = Lval.
+project_layout_locn_lval(locn_indirect(Lval, _)) = Lval.
 
 %---------------------------------------------------------------------------%
 

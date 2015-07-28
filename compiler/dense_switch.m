@@ -19,6 +19,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 
@@ -42,7 +43,7 @@
 :- pred generate_dense_switch(list(tagged_case)::in, rval::in, string::in,
     code_model::in, hlds_goal_info::in,  dense_switch_info::in,
     label::in, branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -120,7 +121,7 @@ tagged_case_list_is_dense_switch(CI, VarType, TaggedCases,
 %---------------------------------------------------------------------------%
 
 generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
-        DenseSwitchInfo, EndLabel, MaybeEnd0, MaybeEnd, Code, !CI) :-
+        DenseSwitchInfo, EndLabel, MaybeEnd0, MaybeEnd, Code, !CI, !.CLD) :-
     % Evaluate the variable which we are going to be switching on.
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
@@ -137,7 +138,7 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
         Difference = LastVal - FirstVal,
         fail_if_rval_is_false(
             binop(unsigned_le, IndexRval, const(llconst_int(Difference))),
-            RangeCheckCode, !CI)
+            RangeCheckCode, !CI, !CLD)
     ;
         CanFail = cannot_fail,
         RangeCheckCode = empty
@@ -148,9 +149,11 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
     % We have to do this because generating a `fail' slot last would yield
     % the wrong liveness and would not unset the failure continuation
     % for a nondet switch.
-    list.map_foldl3(generate_dense_case(VarName, CodeModel, SwitchGoalInfo,
-        EndLabel), TaggedCases, CasesCodes,
-        map.init, IndexMap, MaybeEnd0, MaybeEnd, !CI),
+    remember_position(!.CLD, BranchStart),
+    list.map_foldl3(
+        generate_dense_case(BranchStart, VarName, CodeModel, SwitchGoalInfo,
+            EndLabel),
+        TaggedCases, CasesCodes, map.init, IndexMap, MaybeEnd0, MaybeEnd, !CI),
     CasesCode = cord_list_to_cord(CasesCodes),
 
     % Generate the jump table.
@@ -173,7 +176,7 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
         FailLabelCode = singleton(
             llds_instr(label(FailLabel), FailComment)
         ),
-        generate_failure(FailureCode, !CI),
+        generate_failure(FailureCode, !CI, !.CLD),
         FailCode = FailLabelCode ++ FailureCode
     ),
 
@@ -186,13 +189,12 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_dense_case(string::in, code_model::in, hlds_goal_info::in,
-    label::in, tagged_case::in, llds_code::out,
+:- pred generate_dense_case(position_info::in, string::in, code_model::in,
+    hlds_goal_info::in, label::in, tagged_case::in, llds_code::out,
     map(int, label)::in, map(int, label)::out,
-    branch_end::in, branch_end::out,
-    code_info::in, code_info::out) is det.
+    branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
 
-generate_dense_case(VarName, CodeModel, SwitchGoalInfo, EndLabel,
+generate_dense_case(BranchStart, VarName, CodeModel, SwitchGoalInfo, EndLabel,
         TaggedCase, Code, !IndexMap, !MaybeEnd, !CI) :-
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
     project_cons_name_and_tag(TaggedMainConsId, MainConsName, MainConsTag),
@@ -208,17 +210,19 @@ generate_dense_case(VarName, CodeModel, SwitchGoalInfo, EndLabel,
     ),
     % We need to save the expression cache, etc.,
     % and restore them when we have finished.
-    remember_position(!.CI, BranchStart),
-    maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode, !CI),
-    code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
-    BranchToEndCode = singleton(
-        llds_instr(goto(code_label(EndLabel)),
-            "branch to end of dense switch")
+    some [!CLD] (
+        reset_to_position(BranchStart, !.CI, !:CLD),
+        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+            !CI, !CLD),
+        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI, !CLD),
+        BranchToEndCode = singleton(
+            llds_instr(goto(code_label(EndLabel)),
+                "branch to end of dense switch")
+        ),
+        goal_info_get_store_map(SwitchGoalInfo, StoreMap),
+        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !.CI, !.CLD)
     ),
-    goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-    generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
-    Code = LabelCode ++ TraceCode ++ GoalCode ++ SaveCode ++ BranchToEndCode,
-    reset_to_position(BranchStart, !CI).
+    Code = LabelCode ++ TraceCode ++ GoalCode ++ SaveCode ++ BranchToEndCode.
 
 :- pred record_dense_label_for_cons_tag(label::in, cons_tag::in,
     map(int, label)::in, map(int, label)::out) is det.

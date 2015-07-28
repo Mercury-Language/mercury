@@ -53,6 +53,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.goal_path.
@@ -178,23 +179,26 @@
     % for the given goal.
     %
 :- pred maybe_generate_internal_event_code(hlds_goal::in,
-    hlds_goal_info::in, llds_code::out, code_info::in, code_info::out) is det.
+    hlds_goal_info::in, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
     % If we are doing execution tracing, generate code for an trace event
     % that represents leaving a negated goal (via success or failure).
     %
 :- pred maybe_generate_negated_event_code(hlds_goal::in,
     hlds_goal_info::in, negation_end_port::in, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
     % Generate code for a user-defined trace event.
     %
 :- pred generate_user_event_code(user_event_info::in, hlds_goal_info::in,
-    llds_code::out, code_info::in, code_info::out) is det.
+    llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred generate_tailrec_event_code(trace_info::in,
     assoc_list(prog_var, arg_info)::in, goal_id::in, prog_context::in,
-    llds_code::out, label::out, code_info::in, code_info::out) is det.
+    llds_code::out, label::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 :- type external_event_info
     --->    external_event_info(
@@ -218,7 +222,7 @@
     %
 :- pred generate_external_event_code(external_trace_port::in,
     trace_info::in, prog_context::in, maybe(external_event_info)::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
     % If the trace level calls for redo events, generate code that pushes
     % a temporary nondet stack frame whose redoip slot contains the
@@ -759,13 +763,13 @@ trace_prepare_for_call(CI, TraceCode) :-
         TraceCode = empty
     ).
 
-maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
+maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI, !CLD) :-
     get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
         Goal = hlds_goal(_, GoalInfo),
         GoalId = goal_info_get_goal_id(GoalInfo),
-        get_containing_goal_map_det(!.CI, ContainingGoalMap),
+        get_containing_goal_map(!.CI, ContainingGoalMap),
         map.lookup(ContainingGoalMap, GoalId, ContainingGoal),
         (
             ContainingGoal = containing_goal(_, LastStep),
@@ -817,7 +821,7 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
             ),
             GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
             generate_event_code(Port, port_info_internal(GoalPath, PreDeaths),
-                yes(TraceInfo), Context, HideEvent, no, _, _, Code, !CI)
+                yes(TraceInfo), Context, HideEvent, no, _, _, Code, !CI, !CLD)
         ;
             Code = empty
         )
@@ -826,7 +830,8 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
         Code = empty
     ).
 
-maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
+maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code,
+        !CI, !CLD) :-
     get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
@@ -852,17 +857,17 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
         ;
             HideEvent = no
         ),
-        get_containing_goal_map_det(!.CI, ContainingGoalMap),
+        get_containing_goal_map(!.CI, ContainingGoalMap),
         GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
         generate_event_code(Port, port_info_negation_end(GoalPath),
-            yes(TraceInfo), Context, HideEvent, no, _, _, Code, !CI)
+            yes(TraceInfo), Context, HideEvent, no, _, _, Code, !CI, !CLD)
     ;
         Code = empty
     ).
 
-generate_user_event_code(UserInfo, GoalInfo, Code, !CI) :-
+generate_user_event_code(UserInfo, GoalInfo, Code, !CI, !CLD) :-
     GoalId = goal_info_get_goal_id(GoalInfo),
-    get_containing_goal_map_det(!.CI, ContainingGoalMap),
+    get_containing_goal_map(!.CI, ContainingGoalMap),
     GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
     Context = goal_info_get_context(GoalInfo),
     Port = port_user,
@@ -870,10 +875,10 @@ generate_user_event_code(UserInfo, GoalInfo, Code, !CI) :-
     MaybeTraceInfo = no,
     HideEvent = no,
     generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
-        yes(UserInfo), _Label, _TvarDataMap, Code, !CI).
+        yes(UserInfo), _Label, _TvarDataMap, Code, !CI, !CLD).
 
 generate_external_event_code(ExternalPort, TraceInfo, Context,
-        MaybeExternalInfo, !CI) :-
+        MaybeExternalInfo, !CI, !CLD) :-
     Port = convert_external_port_type(ExternalPort),
     get_module_info(!.CI, ModuleInfo),
     get_pred_info(!.CI, PredInfo),
@@ -883,7 +888,7 @@ generate_external_event_code(ExternalPort, TraceInfo, Context,
     (
         NeedPort = yes,
         generate_event_code(Port, port_info_external, yes(TraceInfo), Context,
-            no, no, Label, TvarDataMap, Code, !CI),
+            no, no, Label, TvarDataMap, Code, !CI, !CLD),
         MaybeExternalInfo = yes(external_event_info(Label, TvarDataMap, Code))
     ;
         NeedPort = no,
@@ -891,15 +896,15 @@ generate_external_event_code(ExternalPort, TraceInfo, Context,
     ).
 
 generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalId, Context, Code,
-        TailRecLabel, !CI) :-
+        TailRecLabel, !CI, !CLD) :-
     Port = port_tailrec_call,
-    get_containing_goal_map_det(!.CI, ContainingGoalMap),
+    get_containing_goal_map(!.CI, ContainingGoalMap),
     GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
     PortInfo = port_info_tailrec_call(GoalPath, ArgsInfos),
     HideEvent = no,
     MaybeUserInfo = no,
     generate_event_code(Port, PortInfo, yes(TraceInfo), Context, HideEvent,
-        MaybeUserInfo, _Label, _TvarDataMap, Code, !CI),
+        MaybeUserInfo, _Label, _TvarDataMap, Code, !CI, !CLD),
     MaybeTailRecInfo = TraceInfo ^ ti_tail_rec_info,
     (
         MaybeTailRecInfo = yes(_ - TailRecLabel)
@@ -1009,12 +1014,12 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
     maybe(trace_info)::in, prog_context::in, bool::in,
     maybe(user_event_info)::in, label::out,
     map(tvar, set(layout_locn))::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
-        MaybeUserInfo, Label, TvarDataMap, Code, !CI) :-
+        MaybeUserInfo, Label, TvarDataMap, Code, !CI, !CLD) :-
     get_next_label(Label, !CI),
-    get_known_variables(!.CI, LiveVars0),
+    get_known_variables(!.CLD, LiveVars0),
     (
         PortInfo = port_info_external,
         LiveVars = LiveVars0,
@@ -1036,7 +1041,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         )
     ;
         PortInfo = port_info_internal(Path, PreDeaths),
-        ResumeVars = current_resume_point_vars(!.CI),
+        ResumeVars = current_resume_point_vars(!.CLD),
         set_of_var.difference(PreDeaths, ResumeVars, RealPreDeaths),
         RealPreDeathList = set_of_var.to_sorted_list(RealPreDeaths),
         list.delete_elems(LiveVars0, RealPreDeathList, LiveVars),
@@ -1050,13 +1055,13 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         LiveVars = LiveVars0,
         TailRecResetCode = empty
     ),
-    VarTypes = get_var_types(!.CI),
     get_varset(!.CI, VarSet),
-    get_instmap(!.CI, InstMap),
+    get_vartypes(!.CI, VarTypes),
+    get_instmap(!.CLD, InstMap),
     trace_produce_vars(LiveVars, VarSet, VarTypes, InstMap, Port,
-        set.init, TvarSet, [], VarInfoList, ProduceCode, !CI),
-    max_reg_in_use(!.CI, MaxRegR, MaxRegF),
-    get_max_reg_in_use_at_trace(!.CI, MaxTraceRegR0, MaxTraceRegF0),
+        set.init, TvarSet, [], VarInfoList, ProduceCode, !.CI, !CLD),
+    max_reg_in_use(!.CLD, MaxRegR, MaxRegF),
+    get_max_regs_in_use_at_trace(!.CI, MaxTraceRegR0, MaxTraceRegF0),
     int.max(MaxRegR, MaxTraceRegR0, MaxTraceRegR),
     int.max(MaxRegF, MaxTraceRegF0, MaxTraceRegF),
     (
@@ -1065,9 +1070,9 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     ->
         true
     ;
-        set_max_reg_in_use_at_trace(MaxTraceRegR, MaxTraceRegF, !CI)
+        set_max_regs_in_use_at_trace(MaxTraceRegR, MaxTraceRegF, !CI)
     ),
-    variable_locations(!.CI, VarLocs),
+    variable_locations(!.CLD, VarLocs),
     get_proc_info(!.CI, ProcInfo),
     set.to_sorted_list(TvarSet, TvarList),
     continuation_info.find_typeinfos_for_tvars(TvarList, VarLocs, ProcInfo,
@@ -1193,32 +1198,33 @@ maybe_setup_redo_event(TraceInfo, Code) :-
 :- pred trace_produce_vars(list(prog_var)::in, prog_varset::in, vartypes::in,
     instmap::in, trace_port::in, set(tvar)::in, set(tvar)::out,
     list(layout_var_info)::in, list(layout_var_info)::out,
-    llds_code::out, code_info::in, code_info::out) is det.
+    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-trace_produce_vars([], _, _, _, _, !TVars, !VarInfos, empty, !CI).
+trace_produce_vars([], _, _, _, _, !TVars, !VarInfos, empty, _CI, !CLD).
 trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
-        !TVars, !VarInfos, VarCode ++ VarsCode, !CI) :-
+        !TVars, !VarInfos, VarCode ++ VarsCode, CI, !CLD) :-
     lookup_var_type(VarTypes, Var, Type),
-    get_module_info(!.CI, ModuleInfo),
+    get_module_info(CI, ModuleInfo),
     IsDummy = check_dummy_type(ModuleInfo, Type),
     (
         IsDummy = is_dummy_type,
         VarCode = empty
     ;
         IsDummy = is_not_dummy_type,
-        trace_produce_var(Var, VarSet, InstMap, !TVars, VarInfo, VarCode, !CI),
+        trace_produce_var(Var, VarSet, InstMap, !TVars, VarInfo, VarCode,
+            CI, !CLD),
         !:VarInfos = [VarInfo | !.VarInfos]
     ),
     trace_produce_vars(Vars, VarSet, VarTypes, InstMap, Port, !TVars,
-        !VarInfos, VarsCode, !CI).
+        !VarInfos, VarsCode, CI, !CLD).
 
 :- pred trace_produce_var(prog_var::in, prog_varset::in, instmap::in,
     set(tvar)::in, set(tvar)::out, layout_var_info::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-trace_produce_var(Var, VarSet, _InstMap, !Tvars, VarInfo, VarCode, !CI) :-
-    produce_variable_in_reg_or_stack(Var, VarCode, Lval, !CI),
-    Type = variable_type(!.CI, Var),
+trace_produce_var(Var, VarSet, _InstMap, !Tvars, VarInfo, VarCode, CI, !CLD) :-
+    produce_variable_in_reg_or_stack(Var, VarCode, Lval, CI, !CLD),
+    Type = variable_type(CI, Var),
     ( varset.search_name(VarSet, Var, SearchName) ->
         Name = SearchName
     ;

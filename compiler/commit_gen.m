@@ -19,6 +19,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.set_of_var.
 
@@ -26,7 +27,7 @@
 
 :- pred generate_scope(scope_reason::in, code_model::in, hlds_goal_info::in,
     set_of_progvar::in, hlds_goal::in, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -44,7 +45,7 @@
 %---------------------------------------------------------------------------%
 
 generate_scope(Reason, OuterCodeModel, OuterGoalInfo,
-        ForwardLiveVarsBeforeGoal, Goal, Code, !CI) :-
+        ForwardLiveVarsBeforeGoal, Goal, Code, !CI, !CLD) :-
     (
         Reason = trace_goal(_, MaybeTraceRuntimeCond, _, _, _),
         MaybeTraceRuntimeCond = yes(_)
@@ -54,14 +55,15 @@ generate_scope(Reason, OuterCodeModel, OuterGoalInfo,
         unexpected($module, $pred, "trace_goal")
     ;
         generate_commit(OuterCodeModel, OuterGoalInfo,
-            ForwardLiveVarsBeforeGoal, Goal, Code, !CI)
+            ForwardLiveVarsBeforeGoal, Goal, Code, !CI, !CLD)
     ).
 
 :- pred generate_commit(code_model::in, hlds_goal_info::in, set_of_progvar::in,
-    hlds_goal::in, llds_code::out, code_info::in, code_info::out) is det.
+    hlds_goal::in, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
-        Goal, Code, !CI) :-
+        Goal, Code, !CI, !CLD) :-
     AddTrailOps = should_add_trail_ops(!.CI, OuterGoalInfo),
     AddRegionOps = should_add_region_ops(!.CI, OuterGoalInfo),
 
@@ -71,7 +73,7 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
         OuterCodeModel = model_det,
         (
             InnerCodeModel = model_det,
-            code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI)
+            code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI, !CLD)
         ;
             InnerCodeModel = model_semi,
             unexpected($module, $pred, "semidet model in det context")
@@ -79,31 +81,31 @@ generate_commit(OuterCodeModel, OuterGoalInfo, ForwardLiveVarsBeforeGoal,
             InnerCodeModel = model_non,
             prepare_for_det_commit(AddTrailOps, AddRegionOps,
                 ForwardLiveVarsBeforeGoal, InnerGoalInfo, CommitInfo,
-                PreCommit, !CI),
-            code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI),
-            generate_det_commit(CommitInfo, Commit, !CI),
+                PreCommit, !CI, !CLD),
+            code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI, !CLD),
+            generate_det_commit(CommitInfo, Commit, !CI, !CLD),
             Code = PreCommit ++ GoalCode ++ Commit
         )
     ;
         OuterCodeModel = model_semi,
         (
             InnerCodeModel = model_det,
-            code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI)
+            code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI, !CLD)
         ;
             InnerCodeModel = model_semi,
-            code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI)
+            code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI, !CLD)
         ;
             InnerCodeModel = model_non,
             prepare_for_semi_commit(AddTrailOps, AddRegionOps,
                 ForwardLiveVarsBeforeGoal, InnerGoalInfo, CommitInfo,
-                PreCommit, !CI),
-            code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI),
-            generate_semi_commit(CommitInfo, Commit, !CI),
+                PreCommit, !CI, !CLD),
+            code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI, !CLD),
+            generate_semi_commit(CommitInfo, Commit, !CI, !CLD),
             Code = PreCommit ++ GoalCode ++ Commit
         )
     ;
         OuterCodeModel = model_non,
-        code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI)
+        code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI, !CLD)
     ).
 
 %---------------------------------------------------------------------------%

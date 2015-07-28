@@ -83,6 +83,14 @@
 :- pred var_locn_clobber_all_regs(bool::in,
     var_locn_info::in, var_locn_info::out) is det.
 
+    % var_locn_clobber_reg(Reg, !VarLocnInfo):
+    %
+    % Modifies VarLocnInfo to show that all variables stored in Reg
+    % (an lval which should be a register) are clobbered.
+    %
+:- pred var_locn_clobber_reg(lval::in,
+    var_locn_info::in, var_locn_info::out) is det.
+
     % var_locn_clobber_regs(Regs, !VarLocnInfo):
     %
     % Modifies VarLocnInfo to show that all variables stored in Regs
@@ -562,11 +570,10 @@ init_var_locn_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap,
         MaybeLiveness = yes(Liveness),
         \+ set_of_var.member(Liveness, Var)
     ->
-        % If a variable is not live, then we do not record its
-        % state. If we did, then the variable will never die
-        % (since it is already dead), and the next call to
-        % clobber_regs would throw an exception, since it would
-        % believe that it is throwing away the last location
+        % If a variable is not live, then we do not record its state.
+        % If we did, then the variable will never die (since it is already
+        % dead), and the next call to clobber_regs would throw an exception,
+        % since it would believe that it is throwing away the last location
         % storing the value of a "live" variable.
         true
     ;
@@ -610,6 +617,17 @@ var_locn_clobber_all_regs(OkToDeleteAny, !VLI) :-
     var_locn_set_loc_var_map(LocVarMap, !VLI),
     var_locn_set_var_state_map(VarStateMap, !VLI).
 
+var_locn_clobber_reg(Reg, !VLI) :-
+    var_locn_get_acquired(!.VLI, Acquired0),
+    Acquired = set.delete(Acquired0, Reg),
+    var_locn_set_acquired(Acquired, !VLI),
+    var_locn_get_loc_var_map(!.VLI, LocVarMap0),
+    var_locn_get_var_state_map(!.VLI, VarStateMap0),
+    clobber_reg_in_maps(Reg, no,
+        LocVarMap0, LocVarMap, VarStateMap0, VarStateMap),
+    var_locn_set_loc_var_map(LocVarMap, !VLI),
+    var_locn_set_var_state_map(VarStateMap, !VLI).
+
 var_locn_clobber_regs(Regs, !VLI) :-
     var_locn_get_acquired(!.VLI, Acquired0),
     Acquired = set.delete_list(Acquired0, Regs),
@@ -628,6 +646,14 @@ var_locn_clobber_regs(Regs, !VLI) :-
 clobber_regs_in_maps([], _, !LocVarMap, !VarStateMap).
 clobber_regs_in_maps([Lval | Lvals], OkToDeleteAny,
         !LocVarMap, !VarStateMap) :-
+    clobber_reg_in_maps(Lval, OkToDeleteAny, !LocVarMap, !VarStateMap),
+    clobber_regs_in_maps(Lvals, OkToDeleteAny, !LocVarMap, !VarStateMap).
+
+:- pred clobber_reg_in_maps(lval::in, bool::in,
+    loc_var_map::in, loc_var_map::out,
+    var_state_map::in, var_state_map::out) is det.
+
+clobber_reg_in_maps(Lval, OkToDeleteAny, !LocVarMap, !VarStateMap) :-
     (
         Lval = reg(_, _),
         map.search(!.LocVarMap, Lval, DependentVarsSet)
@@ -638,8 +664,7 @@ clobber_regs_in_maps([Lval | Lvals], OkToDeleteAny,
             DependentVarsSet, !VarStateMap)
     ;
         true
-    ),
-    clobber_regs_in_maps(Lvals, OkToDeleteAny, !LocVarMap, !VarStateMap).
+    ).
 
 :- pred clobber_lval_in_var_state_map(lval::in, list(prog_var)::in,
     bool::in, prog_var::in, var_state_map::in, var_state_map::out) is det.

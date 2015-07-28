@@ -79,6 +79,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 
@@ -88,7 +89,7 @@
 
 :- pred generate_switch(code_model::in, prog_var::in, can_fail::in,
     list(case)::in, hlds_goal_info::in, llds_code::out,
-    code_info::in, code_info::out) is det.
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -123,7 +124,8 @@
 
 %-----------------------------------------------------------------------------%
 
-generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code, !CI) :-
+generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
+        !CI, !CLD) :-
     % Choose which method to use to generate the switch.
     % CanFail says whether the switch covers all cases.
 
@@ -136,7 +138,7 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     list.sort_and_remove_dups(TaggedCases0, TaggedCases),
 
     SwitchVarName = variable_name(!.CI, SwitchVar),
-    produce_variable(SwitchVar, SwitchVarCode, SwitchVarRval, !CI),
+    produce_variable(SwitchVar, SwitchVarCode, SwitchVarRval, !.CI, !CLD),
 
     find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
         MayUseSmartIndexing),
@@ -144,7 +146,7 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code, !CI) :-
         MayUseSmartIndexing = may_not_use_smart_indexing,
         order_and_generate_cases(TaggedCases, SwitchVarRval, SwitchVarType,
             SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel, MaybeEnd,
-            SwitchCode, !CI)
+            SwitchCode, !CI, !.CLD)
     ;
         MayUseSmartIndexing = may_use_smart_indexing,
         module_info_get_globals(ModuleInfo, Globals),
@@ -180,15 +182,17 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code, !CI) :-
                     FilteredCanFail, LowerLimit, UpperLimit, NumValues,
                     ReqDensity, NeedBitVecCheck, NeedRangeCheck,
                     FirstVal, LastVal),
-                is_lookup_switch(get_int_tag, FilteredTaggedCases, GoalInfo,
-                    StoreMap, no, MaybeEnd1, LookupSwitchInfo, !CI)
+                remember_position(!.CLD, BranchStart),
+                is_lookup_switch(BranchStart, get_int_tag, FilteredTaggedCases,
+                    GoalInfo, StoreMap, no, MaybeEnd1, LookupSwitchInfo, !CI)
             ->
                 % We update MaybeEnd1 to MaybeEnd to account for the possible
                 % reservation of temp slots for nondet switches.
+                reset_to_position(BranchStart, !.CI, !:CLD),
                 generate_int_lookup_switch(SwitchVarRval, LookupSwitchInfo,
                     EndLabel, StoreMap, FirstVal, LastVal,
                     NeedBitVecCheck, NeedRangeCheck,
-                    MaybeEnd1, MaybeEnd, SwitchCode, !CI)
+                    MaybeEnd1, MaybeEnd, SwitchCode, !CI, !.CLD)
             ;
                 MaybeIntSwitchInfo =
                     int_switch(LowerLimit, UpperLimit, NumValues),
@@ -204,11 +208,11 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code, !CI) :-
             ->
                 generate_dense_switch(TaggedCases, SwitchVarRval,
                     SwitchVarName, CodeModel, GoalInfo, DenseSwitchInfo,
-                    EndLabel, no, MaybeEnd, SwitchCode, !CI)
+                    EndLabel, no, MaybeEnd, SwitchCode, !CI, !.CLD)
             ;
                 order_and_generate_cases(TaggedCases, SwitchVarRval,
                     SwitchVarType, SwitchVarName, CodeModel, CanFail,
-                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
+                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
             )
         ;
             SwitchCategory = string_switch,
@@ -223,47 +227,55 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code, !CI) :-
                     StringBinarySwitchSize),
                 ( NumConsIds >= StringHashSwitchSize ->
                     (
-                        is_lookup_switch(get_string_tag, FilteredTaggedCases,
-                            GoalInfo, StoreMap, no, MaybeEnd1,
-                            LookupSwitchInfo, !CI)
+                        remember_position(!.CLD, BranchStart),
+                        is_lookup_switch(BranchStart, get_string_tag,
+                            FilteredTaggedCases, GoalInfo, StoreMap,
+                            no, MaybeEnd1, LookupSwitchInfo, !CI)
                     ->
                         % We update MaybeEnd1 to MaybeEnd to account for the
                         % possible reservation of temp slots for nondet
                         % switches.
+                        reset_to_position(BranchStart, !.CI, !:CLD),
                         generate_string_hash_lookup_switch(SwitchVarRval,
                             LookupSwitchInfo, FilteredCanFail, EndLabel,
-                            StoreMap, MaybeEnd1, MaybeEnd, SwitchCode, !CI)
+                            StoreMap, MaybeEnd1, MaybeEnd, SwitchCode,
+                            !CI, !.CLD)
                     ;
                         generate_string_hash_switch(TaggedCases, SwitchVarRval,
-                            SwitchVarName, CodeModel, CanFail,
-                            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
+                            SwitchVarName, CodeModel, CanFail, GoalInfo,
+                            EndLabel, MaybeEnd, SwitchCode,
+                            !CI, !.CLD)
                     )
                 ; NumConsIds >= StringBinarySwitchSize ->
                     (
-                        is_lookup_switch(get_string_tag, FilteredTaggedCases,
-                            GoalInfo, StoreMap, no, MaybeEnd1,
-                            LookupSwitchInfo, !CI)
+                        remember_position(!.CLD, BranchStart),
+                        is_lookup_switch(BranchStart, get_string_tag,
+                            FilteredTaggedCases, GoalInfo, StoreMap,
+                            no, MaybeEnd1, LookupSwitchInfo, !CI)
                     ->
                         % We update MaybeEnd1 to MaybeEnd to account for the
                         % possible reservation of temp slots for nondet
                         % switches.
+                        reset_to_position(BranchStart, !.CI, !:CLD),
                         generate_string_binary_lookup_switch(SwitchVarRval,
                             LookupSwitchInfo, FilteredCanFail, EndLabel,
-                            StoreMap, MaybeEnd1, MaybeEnd, SwitchCode, !CI)
+                            StoreMap, MaybeEnd1, MaybeEnd, SwitchCode,
+                            !CI, !.CLD)
                     ;
                         generate_string_binary_switch(TaggedCases,
                             SwitchVarRval, SwitchVarName, CodeModel, CanFail,
-                            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
+                            GoalInfo, EndLabel, MaybeEnd, SwitchCode,
+                            !CI, !.CLD)
                     )
                 ;
                     order_and_generate_cases(TaggedCases, SwitchVarRval,
                         SwitchVarType, SwitchVarName, CodeModel, CanFail,
-                        GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
+                        GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
                 )
             ;
                 order_and_generate_cases(TaggedCases, SwitchVarRval,
                     SwitchVarType, SwitchVarName, CodeModel, CanFail,
-                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
+                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
             )
         ;
             SwitchCategory = tag_switch,
@@ -272,21 +284,21 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code, !CI) :-
             ( NumConsIds >= TagSize, NumArms > 1 ->
                 generate_tag_switch(TaggedCases, SwitchVarRval, SwitchVarType,
                     SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                    no, MaybeEnd, SwitchCode, !CI)
+                    no, MaybeEnd, SwitchCode, !CI, !.CLD)
             ;
                 order_and_generate_cases(TaggedCases, SwitchVarRval,
                     SwitchVarType, SwitchVarName, CodeModel, CanFail,
-                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
+                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
             )
         ;
             SwitchCategory = float_switch,
             order_and_generate_cases(TaggedCases, SwitchVarRval, SwitchVarType,
                 SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                MaybeEnd, SwitchCode, !CI)
+                MaybeEnd, SwitchCode, !CI, !.CLD)
         )
     ),
     Code = SwitchVarCode ++ SwitchCode,
-    after_all_branches(StoreMap, MaybeEnd, !CI).
+    after_all_branches(StoreMap, MaybeEnd, !.CI, !:CLD).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -317,10 +329,11 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     %
 :- pred order_and_generate_cases(list(tagged_case)::in, rval::in, mer_type::in,
     string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
-    branch_end::out, llds_code::out, code_info::in, code_info::out) is det.
+    branch_end::out, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in) is det.
 
 order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
-        CanFail, GoalInfo, EndLabel, MaybeEnd, Code, !CI) :-
+        CanFail, GoalInfo, EndLabel, MaybeEnd, Code, !CI, !.CLD) :-
     order_cases(TaggedCases, OrderedTaggedCases, VarType, CodeModel, CanFail,
         !.CI),
     type_to_ctor_det(VarType, TypeCtor),
@@ -332,9 +345,10 @@ order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
     ;
         CheaperTagTest = no_cheaper_tag_test
     ),
-    generate_if_then_else_chain_cases(OrderedTaggedCases, VarRval, VarType,
-        VarName, CheaperTagTest, CodeModel, CanFail, GoalInfo, EndLabel,
-        no, MaybeEnd, Code, !CI).
+    remember_position(!.CLD, BranchStart),
+    generate_if_then_else_chain_cases(BranchStart, OrderedTaggedCases,
+        VarRval, VarType, VarName, CheaperTagTest, CodeModel, CanFail,
+        GoalInfo, EndLabel, no, MaybeEnd, Code, !CI).
 
 :- pred order_cases(list(tagged_case)::in, list(tagged_case)::out,
     mer_type::in, code_model::in, can_fail::in, code_info::in) is det.
@@ -603,19 +617,18 @@ estimate_cost_of_case_test(TaggedCase) = Cost - TaggedCase :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_if_then_else_chain_cases(list(tagged_case)::in,
-    rval::in, mer_type::in, string::in, maybe_cheaper_tag_test::in,
-    code_model::in, can_fail::in, hlds_goal_info::in, label::in,
-    branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+:- pred generate_if_then_else_chain_cases(position_info::in,
+    list(tagged_case)::in, rval::in, mer_type::in, string::in,
+    maybe_cheaper_tag_test::in, code_model::in, can_fail::in,
+    hlds_goal_info::in, label::in, branch_end::in, branch_end::out,
+    llds_code::out, code_info::in, code_info::out) is det.
 
-generate_if_then_else_chain_cases(Cases, VarRval, VarType, VarName,
-        CheaperTagTest, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
+generate_if_then_else_chain_cases(BranchStart, Cases, VarRval, VarType,
+        VarName, CheaperTagTest, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
         !MaybeEnd, Code, !CI) :-
     (
         Cases = [HeadCase | TailCases],
         HeadCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, Goal),
-        remember_position(!.CI, BranchStart),
         goal_info_get_store_map(SwitchGoalInfo, StoreMap),
         (
             ( TailCases = [_ | _]
@@ -631,9 +644,9 @@ generate_if_then_else_chain_cases(Cases, VarRval, VarType, VarName,
                 llds_instr(label(NextLabel), "next case")
             ])
         ;
-            % When debugging code generator output, need a way to tell which
-            % case's code is next. We normally hang this comment on the test,
-            % but in this case there is no test.
+            % When debugging code generator output, we need a way to tell
+            % which case's code is next. We normally hang this comment
+            % on the test, but in this case there is no test.
             project_cons_name_and_tag(MainTaggedConsId, MainConsName, _),
             list.map2(project_cons_name_and_tag, OtherTaggedConsIds,
                 OtherConsNames, _),
@@ -644,16 +657,18 @@ generate_if_then_else_chain_cases(Cases, VarRval, VarType, VarName,
             ElseCode = empty
         ),
 
-        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
-            !CI),
-        generate_goal(CodeModel, Goal, GoalCode, !CI),
-        generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+        some [!CLD] (
+            reset_to_position(BranchStart, !.CI, !:CLD),
+            maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+                !CI, !CLD),
+            generate_goal(CodeModel, Goal, GoalCode, !CI, !CLD),
+            generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !.CI, !.CLD)
+        ),
         HeadCaseCode = TestCode ++ TraceCode ++ GoalCode ++ SaveCode ++
             ElseCode,
-        reset_to_position(BranchStart, !CI),
-        generate_if_then_else_chain_cases(TailCases, VarRval, VarType, VarName,
-            CheaperTagTest, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
-            !MaybeEnd, TailCasesCode, !CI),
+        generate_if_then_else_chain_cases(BranchStart, TailCases,
+            VarRval, VarType, VarName, CheaperTagTest, CodeModel, CanFail,
+            SwitchGoalInfo, EndLabel, !MaybeEnd, TailCasesCode, !CI),
         Code = HeadCaseCode ++ TailCasesCode
     ;
         Cases = [],
@@ -662,7 +677,10 @@ generate_if_then_else_chain_cases(Cases, VarRval, VarType, VarName,
             % At the end of a locally semidet switch, we fail because we came
             % across a tag which was not covered by one of the cases. It is
             % followed by the end of switch label to which the cases branch.
-            generate_failure(FailCode, !CI)
+            some [!CLD] (
+                reset_to_position(BranchStart, !.CI, !:CLD),
+                generate_failure(FailCode, !CI, !.CLD)
+            )
         ;
             CanFail = cannot_fail,
             FailCode = empty

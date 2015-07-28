@@ -18,12 +18,12 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
 
 :- pred match_and_generate(hlds_goal::in, llds_code::out,
-    code_info::in, code_info::out) is semidet.
-
-%---------------------------------------------------------------------------%
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out)
+    is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -53,7 +53,7 @@
 
 %---------------------------------------------------------------------------%
 
-match_and_generate(Goal, Instrs, !CI) :-
+match_and_generate(Goal, Instrs, !CI, !CLD) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     GoalExpr = switch(Var, cannot_fail, [Case1, Case2]),
     Case1 = case(ConsId1, [], Goal1),
@@ -63,13 +63,13 @@ match_and_generate(Goal, Instrs, !CI) :-
         contains_simple_recursive_call(Goal2, !.CI)
     ->
         middle_rec_generate_switch(Var, ConsId1, Goal1, Goal2,
-            GoalInfo, Instrs, !CI)
+            GoalInfo, Instrs, !CI, !CLD)
     ;
         contains_only_builtins(Goal2) = yes,
         contains_simple_recursive_call(Goal1, !.CI)
     ->
         middle_rec_generate_switch(Var, ConsId2, Goal2, Goal1,
-            GoalInfo, Instrs, !CI)
+            GoalInfo, Instrs, !CI, !CLD)
     ;
         fail
     ).
@@ -241,10 +241,11 @@ contains_only_builtins_list([Goal | Goals]) = OnlyBuiltins :-
 
 :- pred middle_rec_generate_switch(prog_var::in, cons_id::in,
     hlds_goal::in, hlds_goal::in, hlds_goal_info::in, llds_code::out,
-    code_info::in, code_info::out) is semidet.
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out)
+    is semidet.
 
 middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
-        Code, !CI) :-
+        Code, !CI, !CLD) :-
     get_stack_slots(!.CI, StackSlots),
     get_varset(!.CI, VarSet),
     SlotsComment = explain_stack_slots(StackSlots, VarSet),
@@ -253,28 +254,30 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
     get_proc_id(!.CI, ProcId),
     EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
 
-    pre_goal_update(SwitchGoalInfo, has_subgoals, !CI),
+    pre_goal_update(SwitchGoalInfo, has_subgoals, !CLD),
     VarType = variable_type(!.CI, Var),
     CheaperTagTest = lookup_cheaper_tag_test(!.CI, VarType),
     generate_tag_test(Var, BaseConsId, CheaperTagTest, branch_on_success,
-        BaseLabel, EntryTestCode, !CI),
+        BaseLabel, EntryTestCode, !CI, !CLD),
     EntryTestInstrs = cord.list(EntryTestCode),
 
     goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-    remember_position(!.CI, BranchStart),
-    generate_goal(model_det, Base, BaseGoalCode, !CI),
-    generate_branch_end(StoreMap, no, MaybeEnd1, BaseSaveCode, !CI),
-    reset_to_position(BranchStart, !CI),
-    generate_goal(model_det, Recursive, RecGoalCode, !CI),
-    generate_branch_end(StoreMap, MaybeEnd1, MaybeEnd, RecSaveCode, !CI),
+    remember_position(!.CLD, BranchStart),
+    generate_goal(model_det, Base, BaseGoalCode, !CI, !CLD),
+    generate_branch_end(StoreMap, no, MaybeEnd1, BaseSaveCode,
+        !.CI, !.CLD),
+    reset_to_position(BranchStart, !.CI, !:CLD),
+    generate_goal(model_det, Recursive, RecGoalCode, !CI, !CLD),
+    generate_branch_end(StoreMap, MaybeEnd1, MaybeEnd, RecSaveCode,
+        !.CI, !.CLD),
 
-    post_goal_update(SwitchGoalInfo, !CI),
-    after_all_branches(StoreMap, MaybeEnd, !CI),
+    after_all_branches(StoreMap, MaybeEnd, !.CI, !:CLD),
+    post_goal_update(SwitchGoalInfo, !.CI, !CLD),
 
     ArgModes = get_arginfo(!.CI),
     HeadVars = get_headvars(!.CI),
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
-    setup_return(Args, LiveArgs, EpilogCode, !CI),
+    setup_return(Args, LiveArgs, EpilogCode, !.CI, !CLD),
 
     BaseCode = BaseGoalCode ++ BaseSaveCode ++ EpilogCode,
     RecCode = RecGoalCode ++ RecSaveCode ++ EpilogCode,

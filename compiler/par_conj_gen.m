@@ -104,6 +104,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
+:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 
@@ -112,11 +113,12 @@
 %---------------------------------------------------------------------------%
 
 :- pred generate_par_conj(list(hlds_goal)::in, hlds_goal_info::in,
-    code_model::in, llds_code::out, code_info::in, code_info::out) is det.
+    code_model::in, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred generate_lc_spawn_off(hlds_goal::in, prog_var::in, prog_var::in,
-    lc_use_parent_stack::in, llds_code::out, code_info::in, code_info::out)
-    is det.
+    lc_use_parent_stack::in, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -158,7 +160,7 @@
 
 %---------------------------------------------------------------------------%
 
-generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
+generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI, !CLD) :-
     % Some sanity checks.
     (
         CodeModel = model_det
@@ -177,10 +179,10 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     % the procedure, we have to set the parent_sp register to the value
     % of the sp register, and restore it when the parallel conjunction
     % finishes.
-    get_par_conj_depth(!.CI, Depth),
+    get_par_conj_depth(!.CLD, Depth),
     ( Depth = 0 ->
         acquire_temp_slot(slot_lval(parent_sp),
-            non_persistent_temp_slot, ParentSpSlot, !CI),
+            non_persistent_temp_slot, ParentSpSlot, !CI, !CLD),
         MaybeSetParentSpCode = from_list([
             llds_instr(assign(ParentSpSlot, lval(parent_sp)),
                 "save the old parent stack pointer"),
@@ -198,12 +200,12 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         MaybeReleaseParentSpSlot = no
     ),
 
-    get_known_variables(!.CI, Vars),
-    save_variables_on_stack(Vars, SaveCode, !CI),
+    get_known_variables(!.CLD, Vars),
+    save_variables_on_stack(Vars, SaveCode, !.CI, !CLD),
 
     Nonlocals = goal_info_get_code_gen_nonlocals(GoalInfo),
     set_of_var.to_sorted_list(Nonlocals, Variables),
-    get_instmap(!.CI, Initial),
+    get_instmap(!.CLD, Initial),
     Delta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(Initial, Delta, Final),
     get_module_info(!.CI, ModuleInfo),
@@ -212,7 +214,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     % Reserve a contiguous block on the stack to hold the synchronisation term.
     Contents = list.duplicate(STSize, slot_sync_term),
     acquire_several_temp_slots(Contents, persistent_temp_slot, SyncTermSlots,
-        StackId, _N, _M, !CI),
+        StackId, _N, _M, !CI, !CLD),
     (
         % The highest numbered slot has the lowest address.
         list.last(SyncTermSlots, SyncTermBaseSlotPrime),
@@ -233,12 +235,17 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
             "initialize sync term")
     ),
 
-    set_par_conj_depth(Depth+1, !CI),
     get_next_label(EndLabel, !CI),
-    clear_all_registers(no, !CI),
-    generate_det_par_conj_2(Goals, ParentSyncTermBaseSlot, EndLabel, Initial,
-        no, GoalCode, !CI),
-    set_par_conj_depth(Depth, !CI),
+    remember_position(!.CLD, BeforeConjunctionPos),
+
+    some [!InConjunctionCLD] (
+        !:InConjunctionCLD = !.CLD,
+        set_par_conj_depth(Depth+1, !InConjunctionCLD),
+        clear_all_registers(no, !InConjunctionCLD),
+        remember_position(!.InConjunctionCLD, ConjunctStartPos)
+    ),
+    generate_det_par_conjuncts(ConjunctStartPos, Goals, ParentSyncTermBaseSlot,
+        EndLabel, Initial, no, GoalCode, !CI),
 
     EndLabelCode = from_list([
         llds_instr(label(EndLabel), "end of parallel conjunction"),
@@ -271,44 +278,49 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     %
     % XXX release sync slots of nested parallel conjunctions
 
+    reset_to_position(BeforeConjunctionPos, !.CI, !:CLD),
     ( Depth = 0 ->
-        release_several_temp_slots(SyncTermSlots, persistent_temp_slot, !CI)
+        release_several_temp_slots(SyncTermSlots, persistent_temp_slot,
+            !CI, !CLD)
     ;
         true
     ),
     (
         MaybeReleaseParentSpSlot = yes(ParentSpSlot1),
-        release_temp_slot(ParentSpSlot1, non_persistent_temp_slot, !CI)
+        release_temp_slot(ParentSpSlot1, non_persistent_temp_slot,
+            !CI, !CLD)
     ;
         MaybeReleaseParentSpSlot = no
     ),
-    clear_all_registers(no, !CI),
-    place_all_outputs(Outputs, !CI).
+    clear_all_registers(no, !CLD),
+    place_all_outputs(Outputs, !.CI, !CLD).
 
-:- pred generate_det_par_conj_2(list(hlds_goal)::in,
+:- pred generate_det_par_conjuncts(position_info::in, list(hlds_goal)::in,
     lval::in, label::in, instmap::in, branch_end::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
-generate_det_par_conj_2([], _ParentSyncTermBaseSlot, _EndLabel,
-        _Initial, _, empty, !CI).
-generate_det_par_conj_2([Goal | Goals], ParentSyncTermBaseSlot, EndLabel,
-        Initial, MaybeEnd0, Code, !CI) :-
-    remember_position(!.CI, StartPos),
-    code_gen.generate_goal(model_det, Goal, ThisGoalCode0, !CI),
-    replace_stack_vars_by_parent_sv(ThisGoalCode0, ThisGoalCode),
+generate_det_par_conjuncts(_ConjunctStartPos, [],
+        _ParentSyncTermBaseSlot, _EndLabel, _Initial, _, empty, !CI).
+generate_det_par_conjuncts(ConjunctStartPos, [Goal | Goals],
+        ParentSyncTermBaseSlot, EndLabel, Initial, MaybeEnd0, Code, !CI) :-
+    some [!CLD] (
+        reset_to_position(ConjunctStartPos, !.CI, !:CLD),
+        code_gen.generate_goal(model_det, Goal, ThisGoalCode0, !CI, !CLD),
+        replace_stack_vars_by_parent_sv(ThisGoalCode0, ThisGoalCode),
 
-    get_stack_slots(!.CI, AllSlots),
-    get_known_variables(!.CI, Variables),
-    set.list_to_set(Variables, LiveVars),
-    map.select(AllSlots, LiveVars, StoreMap0),
-    StoreMap = map.map_values_only(stack_slot_to_abs_locn, StoreMap0),
-    generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, SaveCode0, !CI),
-    replace_stack_vars_by_parent_sv(SaveCode0, SaveCode),
+        get_stack_slots(!.CI, AllSlots),
+        get_known_variables(!.CLD, Variables),
+        set.list_to_set(Variables, LiveVars),
+        map.select(AllSlots, LiveVars, StoreMap0),
+        StoreMap = map.map_values_only(stack_slot_to_abs_locn, StoreMap0),
+        generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, SaveCode0,
+            !.CI, !.CLD),
+        replace_stack_vars_by_parent_sv(SaveCode0, SaveCode)
+    ),
 
     (
         Goals = [_ | _],
         get_next_label(NextConjunct, !CI),
-        reset_to_position(StartPos, !CI),
         ForkCode = singleton(
             llds_instr(fork_new_child(ParentSyncTermBaseSlot, NextConjunct),
                 "fork off a child")
@@ -327,10 +339,10 @@ generate_det_par_conj_2([Goal | Goals], ParentSyncTermBaseSlot, EndLabel,
                 "finish")
         )
     ),
-    ThisCode = ForkCode ++ ThisGoalCode ++ SaveCode ++ JoinCode,
-    generate_det_par_conj_2(Goals, ParentSyncTermBaseSlot, EndLabel, Initial,
-        MaybeEnd, RestCode, !CI),
-    Code = ThisCode ++ RestCode.
+    GoalCode = ForkCode ++ ThisGoalCode ++ SaveCode ++ JoinCode,
+    generate_det_par_conjuncts(ConjunctStartPos, Goals,
+        ParentSyncTermBaseSlot, EndLabel, Initial, MaybeEnd, GoalsCode, !CI),
+    Code = GoalCode ++ GoalsCode.
 
 :- func ts_finish_par_conj_instr(int, lval) = instr.
 
@@ -348,28 +360,28 @@ MR_threadscope_post_end_par_conj(&MR_sv(%d));
 
 %-----------------------------------------------------------------------------%
 
-generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI) :-
+generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI, !CLD) :-
     % We don't need to save the parent stack pointer, we do not use it in the
     % main context and all the worker contexts will never have some data that
     % we shouldn't clobber there.
     % We also expect the runtime code to setup the parent stack pointer for us.
 
-    get_known_variables(!.CI, KnownVars),
+    get_known_variables(!.CLD, KnownVars),
     KnownVarsSet = set_of_var.list_to_set(KnownVars),
     NonLocalsSet = goal_info_get_nonlocals(Goal ^ hlds_goal_info),
     InputVarsSet = set_of_var.intersect(NonLocalsSet, KnownVarsSet),
     InputVars = set_of_var.to_sorted_list(InputVarsSet),
-    save_variables_on_stack(InputVars, SaveCode, !CI),
+    save_variables_on_stack(InputVars, SaveCode, !.CI, !CLD),
 
-    best_variable_location_det(!.CI, LCVar, LCVarLocn),
-    best_variable_location_det(!.CI, LCSVar, LCSVarLocn),
+    best_variable_location_det(!.CLD, LCVar, LCVarLocn),
+    best_variable_location_det(!.CLD, LCSVar, LCSVarLocn),
 
     get_next_label(SpawnOffLabel, !CI),
     SpawnUinstr = lc_spawn_off(lval(LCVarLocn), lval(LCSVarLocn),
         SpawnOffLabel),
     SpawnInstr = llds_instr(SpawnUinstr, ""),
     SpawnOffCode = singleton(SpawnInstr),
-    remember_position(!.CI, PositionAfterSpawnOff),
+    remember_position(!.CLD, PositionAfterSpawnOff),
 
     % Code to spawn off.
     LabelUinstr = label(SpawnOffLabel),
@@ -379,13 +391,13 @@ generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI) :-
     % We don't need to clear all the registers, all the variables except for
     % LC and LCS are considered to be on the stack.
     % Mark only the registers used by LC and LCS as clobbered.
-    clobber_regs([LCVarLocn, LCSVarLocn], !CI),
+    clobber_regs([LCVarLocn, LCSVarLocn], !CLD),
 
-    generate_goal(model_det, Goal, GoalCode, !CI),
+    generate_goal(model_det, Goal, GoalCode, !CI, !.CLD, _CLDAfterGoal),
     % We expect that the join_and_terminate call is already in Goal.
     SpawnedOffCode0 = LabelCode ++ GoalCode,
 
-    reset_to_position(PositionAfterSpawnOff, !CI),
+    reset_to_position(PositionAfterSpawnOff, !.CI, !:CLD),
 
     (
         UseParentStack = lc_use_parent_stack_frame,
@@ -401,7 +413,7 @@ generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI) :-
         % This module has a find_outputs predicate, but I can't see how set
         % difference wouldn't work.
         OutputVars = set_of_var.difference(NonLocalsSet, KnownVarsSet),
-        place_all_outputs(set_of_var.to_sorted_list(OutputVars), !CI)
+        place_all_outputs(set_of_var.to_sorted_list(OutputVars), !.CI, !CLD)
     ;
         UseParentStack = lc_create_frame_on_child_stack,
         list.map(get_variable_slot(!.CI), InputVars, InputStackSlots),
@@ -484,30 +496,24 @@ copy_one_slot_to_child_stack(LCVarName, LCSVarName, StackSlot, CopyStr) :-
 
 %----------------------------------------------------------------------------%
 
-:- pred best_variable_location_det(code_info::in, prog_var::in, lval::out)
+:- pred best_variable_location_det(code_loc_dep::in, prog_var::in, lval::out)
     is det.
 
-best_variable_location_det(CI, Var, Locn) :-
-    promise_equivalent_solutions [Locn] (
-        ( best_variable_location(CI, Var, LocnPrime) ->
-            Locn = LocnPrime
+best_variable_location_det(CLD, Var, Locn) :-
+    variable_locations(CLD, Map),
+    map.lookup(Map, Var, AllLocnsSet),
+    set.to_sorted_list(AllLocnsSet, AllLocns),
+    list.filter(lval_is_reg, AllLocns, RegLocns),
+    (
+        RegLocns = [Locn | _]
+    ;
+        RegLocns = [],
+        (
+            AllLocns = [Locn | _]
         ;
+            AllLocns = [],
             unexpected($module, $pred, "Could not find location for variable")
         )
-    ).
-
-:- pred best_variable_location(code_info::in, prog_var::in, lval::out)
-    is nondet.
-
-best_variable_location(CI, Var, Locn) :-
-    variable_locations(CI, Map),
-    map.search(Map, Var, AllLocns),
-    filter(lval_is_reg, AllLocns, RegLocns),
-    ( member(LocnPrime, RegLocns) ->
-        % Commit to register locations before trying any location.
-        LocnPrime = Locn
-    ;
-        member(Locn, AllLocns)
     ).
 
 :- pred lval_is_reg(lval::in) is semidet.
@@ -636,22 +642,22 @@ find_outputs([Var | Vars],  Initial, Final, ModuleInfo, !Outputs) :-
     ),
     find_outputs(Vars, Initial, Final, ModuleInfo, !Outputs).
 
-:- pred place_all_outputs(list(prog_var)::in, code_info::in, code_info::out)
-    is det.
+:- pred place_all_outputs(list(prog_var)::in,
+    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-place_all_outputs([], !CI).
-place_all_outputs([Var | Vars], !CI) :-
-    variable_locations(!.CI, VarLocations),
-    get_variable_slot(!.CI, Var, Slot),
+place_all_outputs([], _CI, !CLD).
+place_all_outputs([Var | Vars], CI, !CLD) :-
+    variable_locations(!.CLD, VarLocations),
+    get_variable_slot(CI, Var, Slot),
     (
         map.search(VarLocations, Var, Locations),
         set.member(Slot, Locations)
     ->
         true
     ;
-        set_var_location(Var, Slot, !CI)
+        set_var_location(Var, Slot, !CLD)
     ),
-    place_all_outputs(Vars, !CI).
+    place_all_outputs(Vars, CI, !CLD).
 
 %----------------------------------------------------------------------------%
 
@@ -664,7 +670,7 @@ create_static_conj_id(GoalInfo, SlotNum, !CI) :-
     get_module_info(!.CI, ModuleInfo),
     ProcString = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
 
-    get_containing_goal_map_det(!.CI, ContainingGoalMap),
+    get_containing_goal_map(!.CI, ContainingGoalMap),
     GoalId = goal_info_get_goal_id(GoalInfo),
     GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
     GoalPathString = goal_path_to_string(GoalPath),

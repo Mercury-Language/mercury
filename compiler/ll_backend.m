@@ -54,6 +54,7 @@
    :- include_module trace_gen.
 
    :- include_module code_info.
+   :- include_module code_loc_dep.
    :- include_module lookup_util.
    :- include_module exprn_aux.
    :- include_module continuation_info.
