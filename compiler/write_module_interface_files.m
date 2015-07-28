@@ -152,9 +152,10 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
             "`", FileName, "' not written.\n"], !IO)
     else
         % Module-qualify all items.
-        module_qualify_aug_item_blocks(Globals, ModuleName,
-            AugItemBlocks1, AugItemBlocks2, map.init, _EventSpecMap,
-            yes(ModuleNameContext), "", _, _, _, Specs0, Specs),
+        AugCompUnit1 = compilation_unit(ModuleName, ModuleNameContext,
+            AugItemBlocks1),
+        module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit2,
+            map.init, _EventSpecMap, "", _, _, _, Specs0, Specs),
         (
             Specs = [_ | _],
             module_name_to_file_name(Globals, ModuleName, ".m",
@@ -168,6 +169,9 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
 
             % Write out the `.int0' file.
 
+            AugCompUnit2 = compilation_unit(_ModuleName, _ModuleNameContext,
+                AugItemBlocks2),
+            % XXX ITEM_LIST Should pass AugCompUnit2
             process_item_blocks_for_private_interface(ModuleName,
                 AugItemBlocks2,
                 cord.init, IntItemsCord, cord.init, ImpItemsCord),
@@ -416,10 +420,12 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
     grab_unqual_imported_modules(Globals, SourceFileName,
         SourceFileModuleName, RawCompUnit1, ModuleAndImports2, !IO),
 
-    some [!AugItemBlocks, !IntItems, !ImpItems, !Specs] (
+    some [!IntItems, !ImpItems, !Specs] (
         % Check whether we succeeded.
-        module_and_imports_get_results(ModuleAndImports2, !:AugItemBlocks,
+        module_and_imports_get_results(ModuleAndImports2, AugItemBlocks2,
             !:Specs, Errors),
+        AugCompUnit2 = compilation_unit(ModuleName, ModuleNameContext,
+            AugItemBlocks2),
         ( if set.is_non_empty(Errors) then
             % XXX _NumErrors
             write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
@@ -433,8 +439,9 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
                 "`", Int2FileName, "' not written.\n"], !IO)
         else
             % Module-qualify all items.
-            module_qualify_aug_item_blocks(Globals, ModuleName, !AugItemBlocks,
-                map.init, _, yes(ModuleNameContext), "", _, _, _, !Specs),
+            module_qualify_aug_comp_unit(Globals, AugCompUnit2, AugCompUnit,
+                map.init, _, "", _, _, _, !Specs),
+
 
             % We want to finish writing the interface file (and keep
             % the exit status at zero) if we found some warnings.
@@ -453,7 +460,8 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
                 % Check for some warnings, and then write out the `.int'
                 % and `int2' files and touch the `.date' file.
 
-                aug_item_blocks_to_int_imp_items(!.AugItemBlocks,
+                AugCompUnit = compilation_unit(_, _, AugItemBlocks),
+                aug_item_blocks_to_int_imp_items(AugItemBlocks,
                     do_strip_assertions, !:IntItems, !:ImpItems),
                 strip_unnecessary_impl_defns(!IntItems, !ImpItems),
                 report_and_strip_clauses_in_items(!IntItems,
@@ -510,18 +518,15 @@ write_short_interface_file(Globals, SourceFileName, RawCompUnit, !IO) :-
             IFileRawItemBlocks, !Specs),
         get_short_interface_from_raw_item_blocks(sifk_int3, IFileRawItemBlocks,
             IntItems0, ImpItems0),
-        module_qualify_items(Globals, ModuleName, ams_interface,
-            IntItems0, IntItems, map.init, _, no, "", _, _, _, !Specs),
-        module_qualify_items(Globals, ModuleName, ams_implementation,
-            ImpItems0, ImpItems, map.init, _, no, "", _, _, _, !Specs),
-        % XXX _NumErrors
+        ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int3,
+            ModuleNameContext, IntItems0, ImpItems0),
+        module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt,
+            !Specs),
         write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
             !IO),
         % XXX why do we do this even if there are some errors?
-        ParseTreeInt3 = parse_tree_int(ModuleName, ifk_int3,
-            ModuleNameContext, IntItems, ImpItems),
         actually_write_interface_file(Globals, SourceFileName,
-            ParseTreeInt3, no, !IO),
+            ParseTreeInt, no, !IO),
         touch_interface_datestamp(Globals, ModuleName, ".date3", !IO)
     ).
 
@@ -722,7 +727,7 @@ add_type_defn_items_from_map(_TypeCtor, TypeDefnPairs, !ImpItems) :-
 
 add_type_defn_items([], !ImpItems).
 add_type_defn_items([TypeDefnPair | TypeDefnPairs], !ImpItems) :-
-    TypeDefnPair = _TypeDefn - ItemTypeDefn, 
+    TypeDefnPair = _TypeDefn - ItemTypeDefn,
     !:ImpItems = [item_type_defn(ItemTypeDefn) | !.ImpItems],
     add_type_defn_items(TypeDefnPairs, !ImpItems).
 

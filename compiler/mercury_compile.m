@@ -1778,6 +1778,9 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
     !:Specs = ItemSpecs ++ !.Specs,
     MaybeTimestampMap = ModuleAndImports1 ^ mai_maybe_timestamp_map,
 
+    AugCompUnit1 =
+        compilation_unit(ModuleName, ModuleNameContext, AugItemBlocks1),
+
     globals.lookup_string_option(Globals, event_set_file_name,
         EventSetFileName),
     ( EventSetFileName = "" ->
@@ -1800,20 +1803,17 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
         )
     ),
 
-    invoke_module_qualify_items(Globals, Verbose, Stats, ModuleName,
-        ModuleNameContext, AugItemBlocks1, AugItemBlocks2,
-        EventSpecMap1, EventSpecMap2, EventSetFileName,
-        MQInfo0, MQUndefTypes, MQUndefModes, !Specs, !IO),
+    invoke_module_qualify_aug_comp_unit(Globals, Verbose, Stats,
+        AugCompUnit1, AugCompUnit2, EventSpecMap1, EventSpecMap2,
+        EventSetFileName, MQInfo0, MQUndefTypes, MQUndefModes, !Specs, !IO),
 
     mq_info_get_recompilation_info(MQInfo0, RecompInfo0),
-    expand_equiv_types_and_insts(Globals, Verbose, Stats, ModuleName,
-        AugItemBlocks2, AugItemBlocks, EventSpecMap2, EventSpecMap, TypeEqvMap,
+    expand_equiv_types_and_insts(Globals, Verbose, Stats,
+        AugCompUnit2, AugCompUnit, EventSpecMap2, EventSpecMap, TypeEqvMap,
         UsedModules, RecompInfo0, RecompInfo, ExpandErrors, !Specs, !IO),
     mq_info_set_recompilation_info(RecompInfo, MQInfo0, MQInfo),
 
     EventSet = event_set(EventSetName, EventSpecMap),
-    AugCompUnit =
-        compilation_unit(ModuleName, ModuleNameContext, AugItemBlocks),
     make_hlds(Globals, AugCompUnit, EventSet, MQInfo, TypeEqvMap, UsedModules,
         Verbose, Stats, HLDS0, QualInfo,
         MakeHLDSFoundInvalidType, MakeHLDSFoundInvalidInstOrMode,
@@ -1870,24 +1870,21 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred invoke_module_qualify_items(globals::in, bool::in, bool::in,
-    module_name::in, prog_context::in,
-    list(aug_item_block)::in, list(aug_item_block)::out,
+:- pred invoke_module_qualify_aug_comp_unit(globals::in, bool::in, bool::in,
+    aug_compilation_unit::in, aug_compilation_unit::out,
     event_spec_map::in, event_spec_map::out, string::in, mq_info::out,
     bool::out, bool::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-invoke_module_qualify_items(Globals, Verbose, Stats, ModuleName,
-        ModuleNameContext, AugItemBlocks0, AugItemBlocks,
-        EventSpecMap0, EventSpecMap, EventSpecFileName,
-        MQInfo, UndefTypes, UndefModes, !Specs, !IO) :-
+invoke_module_qualify_aug_comp_unit(Globals, Verbose, Stats,
+        AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
+        EventSpecFileName, MQInfo, UndefTypes, UndefModes, !Specs, !IO) :-
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Module qualifying items...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    module_qualify_aug_item_blocks(Globals, ModuleName,
-        AugItemBlocks0, AugItemBlocks, EventSpecMap0, EventSpecMap,
-        yes(ModuleNameContext), EventSpecFileName,
-        MQInfo, UndefTypes, UndefModes, [], QualifySpecs),
+    module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
+        EventSpecMap0, EventSpecMap, EventSpecFileName, MQInfo,
+        UndefTypes, UndefModes, [], QualifySpecs),
     !:Specs = QualifySpecs ++ !.Specs,
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
@@ -2097,21 +2094,21 @@ maybe_grab_optfiles(Globals, Imports0, Verbose, MaybeTransOptDeps,
 %-----------------------------------------------------------------------------%
 
 :- pred expand_equiv_types_and_insts(globals::in, bool::in, bool::in,
-    module_name::in, list(aug_item_block)::in, list(aug_item_block)::out,
+    aug_compilation_unit::in, aug_compilation_unit::out,
     event_spec_map::in, event_spec_map::out,
     type_eqv_map::out, used_modules::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out, bool::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-expand_equiv_types_and_insts(Globals, Verbose, Stats, ModuleName,
-        ItemBlocks0, ItemBlocks, EventSpecMap0, EventSpecMap,
+expand_equiv_types_and_insts(Globals, Verbose, Stats,
+        AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
         TypeEqvMap, UsedModules, RecompInfo0, RecompInfo,
         FoundError, !Specs, !IO) :-
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose,
         "% Expanding equivalence types and insts...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    expand_eqv_types_insts(ModuleName, ItemBlocks0, ItemBlocks,
+    expand_eqv_types_insts(AugCompUnit0, AugCompUnit,
         EventSpecMap0, EventSpecMap, TypeEqvMap, UsedModules,
         RecompInfo0, RecompInfo, ExpandSpecs),
     FoundError = contains_errors(Globals, ExpandSpecs),

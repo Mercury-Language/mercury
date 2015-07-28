@@ -18,7 +18,6 @@
 :- module parse_tree.equiv_type.
 :- interface.
 
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -31,7 +30,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % expand_eqv_types_insts(ModuleName, !ItemBlocks, !EventSpecMap,
+    % expand_eqv_types_insts(!AugCompUnit, !EventSpecMap,
     %   CircularTypes, TypeEqvMap, !MaybeRecompInfo, Specs):
     %
     % This predicate finds all type and inst declarations that define a type
@@ -53,8 +52,8 @@
     % while processing each item are recorded in the recompilation_info,
     % for use by smart recompilation.
     %
-:- pred expand_eqv_types_insts(module_name::in,
-    list(aug_item_block)::in, list(aug_item_block)::out,
+:- pred expand_eqv_types_insts(
+    aug_compilation_unit::in, aug_compilation_unit::out,
     event_spec_map::in, event_spec_map::out,
     type_eqv_map::out, used_modules::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
@@ -95,6 +94,7 @@
 :- implementation.
 
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
@@ -121,9 +121,10 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-expand_eqv_types_insts(ModuleName, AugItemBlocks0, AugItemBlocks,
-        EventSpecMap0, EventSpecMap,
+expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
         TypeEqvMap, !:UsedModules, !RecompInfo, !:Specs) :-
+    AugCompUnit0 = compilation_unit(ModuleName, ModuleNameContext,
+        AugItemBlocks0),
     % First we build up a mapping which records the equivalence type
     % definitions, ...
     map.init(TypeEqvMap0),
@@ -138,6 +139,9 @@ expand_eqv_types_insts(ModuleName, AugItemBlocks0, AugItemBlocks,
     replace_in_item_blocks(ModuleName, TypeEqvMap, InstEqvMap, AugItemBlocks0,
         [], RevAugItemBlocks, !RecompInfo, !UsedModules, !Specs),
     list.reverse(RevAugItemBlocks, AugItemBlocks),
+    AugCompUnit = compilation_unit(ModuleName, ModuleNameContext,
+        AugItemBlocks),
+
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
     replace_in_event_specs(EventSpecList0, EventSpecList,
         TypeEqvMap, InstEqvMap, !RecompInfo, !UsedModules, !Specs),

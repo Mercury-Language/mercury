@@ -38,30 +38,29 @@
 
 %-----------------------------------------------------------------------------%
 
-    % module_qualify_aug_item_blocks(Globals, ModuleName,
-    %   AugItemBlocks0, AugItemBlocks, EventSpecMap0, EventSpecMap,
-    %   MaybeContext, EventSpecFileName, MQ_Info,
-    %   UndefTypes, UndefModes, !Specs):
+    % module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
+    %   EventSpecMap0, EventSpecMap, MaybeContext, EventSpecFileName,
+    %   MQ_Info, UndefTypes, UndefModes, !Specs):
     %
-    % AugItemBlocks is AugItemBlocks0 with all items module qualified
+    % AugCompUnit is AugCompUnit0 with all items module qualified
     % as much as possible; likewise for EventSpecMap0 and EventSpecMap.
-    %
-    % If MaybeContext is `yes(Context)', then report undefined types, insts
-    % and modes in AugItemBlocks0. MaybeContext should be `no' when module
-    % qualifying the short interface.
     %
     % Errors in EventSpecMap0 will be reported as being for EventSpecFileName.
     %
-:- pred module_qualify_aug_item_blocks(globals::in, module_name::in,
-    list(aug_item_block)::in, list(aug_item_block)::out,
-    event_spec_map::in, event_spec_map::out,
-    maybe(prog_context)::in, string::in, mq_info::out,
+:- pred module_qualify_aug_comp_unit(globals::in,
+    aug_compilation_unit::in, aug_compilation_unit::out,
+    event_spec_map::in, event_spec_map::out, string::in, mq_info::out,
     bool::out, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
-:- pred module_qualify_items(globals::in, module_name::in,
-    aug_module_section::in, list(item)::in, list(item)::out,
-    event_spec_map::in, event_spec_map::out,
-    maybe(prog_context)::in, string::in, mq_info::out,
-    bool::out, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+
+    % module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt,
+    %   !Specs):
+    %
+    % ParseTreeInt is ParseTreeInt0 with all items module qualified
+    % as much as possible.
+    %
+:- pred module_qualify_parse_tree_int(globals::in,
+    parse_tree_int::in, parse_tree_int::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % This is called from make_hlds to qualify the mode of a lambda expression.
     %
@@ -153,124 +152,98 @@
 
 %-----------------------------------------------------------------------------%
 
-module_qualify_aug_item_blocks(Globals, ModuleName,
-        AugItemBlocks0, AugItemBlocks, EventSpecMap0, EventSpecMap,
-        MaybeContext, EventSpecFileName,
+module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
+        EventSpecMap0, EventSpecMap, EventSpecFileName,
         !:Info, UndefTypes, UndefModes, !Specs) :-
-    module_qualify_items_or_item_blocks(Globals, ModuleName,
-        return_aug_block, module_qualify_items_in_blocks,
-        AugItemBlocks0, AugItemBlocks, EventSpecMap0, EventSpecMap,
-        MaybeContext, EventSpecFileName,
-        !:Info, UndefTypes, UndefModes, !Specs).
+    AugCompUnit0 = compilation_unit(ModuleName, ModuleNameContext,
+        AugItemBlocks0),
+    init_mq_info(Globals, ModuleName, AugItemBlocks0, yes, !:Info),
+    collect_mq_info_in_aug_item_blocks(AugItemBlocks0, !Info),
+    module_qualify_items_in_blocks(AugItemBlocks0, AugItemBlocks,
+        !Info, !Specs),
+    AugCompUnit = compilation_unit(ModuleName, ModuleNameContext,
+        AugItemBlocks),
 
-module_qualify_items(Globals, ModuleName, Section, Items0, Items,
-        EventSpecMap0, EventSpecMap, MaybeContext, EventSpecFileName,
-        !:Info, UndefTypes, UndefModes, !Specs) :-
-    module_qualify_items_or_item_blocks(Globals, ModuleName,
-        wrap_items_in_aug_block(Section), module_qualify_items_loop,
-        Items0, Items, EventSpecMap0, EventSpecMap,
-        MaybeContext, EventSpecFileName,
-        !:Info, UndefTypes, UndefModes, !Specs).
-
-%-----------------------------------------------------------------------------%
-
-:- type make_block_pred(I) == pred(list(I), list(aug_item_block)).
-:- inst make_block_pred == (pred(in, out) is det).
-
-:- type module_qual_pred(I) == pred(list(I), list(I),
-    mq_info, mq_info, list(error_spec), list(error_spec)).
-:- inst module_qual_pred ==
-    (pred(in, out, in, out, in, out) is det).
-
-:- pred return_aug_block(list(aug_item_block)::in, list(aug_item_block)::out)
-    is det.
-
-return_aug_block(AugItemBlocks, AugItemBlocks).
-
-:- pred wrap_items_in_aug_block(aug_module_section::in,
-    list(item)::in, list(aug_item_block)::out) is det.
-
-wrap_items_in_aug_block(AugSection, Items, AugItemBlocks) :-
-    AugItemBlocks = [item_block(AugSection, term.context_init, Items)].
-
-%-----------------------------------------------------------------------------%
-
-:- pred module_qualify_items_or_item_blocks(globals::in, module_name::in,
-    make_block_pred(I)::in(make_block_pred),
-    module_qual_pred(I)::in(module_qual_pred),
-    list(I)::in, list(I)::out, event_spec_map::in, event_spec_map::out,
-    maybe(prog_context)::in, string::in, mq_info::out,
-    bool::out, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
-
-module_qualify_items_or_item_blocks(Globals, ModuleName,
-        MakeBlock, ModuleQual, ItemsOrBlocks0, ItemsOrBlocks,
-        EventSpecMap0, EventSpecMap, MaybeContext, EventSpecFileName,
-        !:Info, UndefTypes, UndefModes, !Specs) :-
-    (
-        MaybeContext = yes(_),
-        ReportErrors = yes
-    ;
-        MaybeContext = no,
-        ReportErrors = no
-    ),
-    MakeBlock(ItemsOrBlocks0, AugInitItemBlocks0),
-    init_mq_info(Globals, ModuleName, AugInitItemBlocks0, ReportErrors,
-        !:Info),
-    collect_mq_info_in_aug_item_blocks(AugInitItemBlocks0, !Info),
-    ModuleQual(ItemsOrBlocks0, ItemsOrBlocks, !Info, !Specs),
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
     do_module_qualify_event_specs(EventSpecFileName,
         EventSpecList0, EventSpecList, !Info, !Specs),
     map.from_assoc_list(EventSpecList, EventSpecMap),
     mq_info_get_type_error_flag(!.Info, UndefTypes),
     mq_info_get_mode_error_flag(!.Info, UndefModes),
+
+    % Warn about any unused module imports in the interface.
+    % There is a special case involving type class instances that
+    % we need to handle here. Consider:
+    %
+    %   :- module foo.
+    %   :- interface.
+    %
+    %   :- import_module bar.
+    %   :- typeclass tc1(T) <= tc2(T).
+    %   :- instance tc1(unit).
+    %
+    % where module bar exports the instance tc2(unit). We must import
+    % the module bar in the interface of the module foo in order for
+    % the superclass constraint on the instance tc1(unit) to be satisfied.
+    % However, at this stage of compilation we do not know that the
+    % instance tc2(unit) needs to be visible. (Knowing this would require
+    % a more extensive analysis of type classes and instances to be done
+    % in this module.)
+    %
+    % In order to prevent the import of the module bar being erroneously
+    % reported as unused, we make the conservative assumption that any
+    % imported module that exports a type class instance is used in
+    % the interface of the importing module, except if the importing
+    % module itself exports _no_ type class instances.
+    %
+    mq_info_get_unused_interface_modules(!.Info, UnusedImports0),
+    mq_info_get_exported_instances_flag(!.Info, ModuleExportsInstances),
     (
-        % Warn about any unused module imports in the interface.
-        % There is a special case involving type class instances that
-        % we need to handle here. Consider:
-        %
-        %   :- module foo.
-        %   :- interface.
-        %
-        %   :- import_module bar.
-        %   :- typeclass tc1(T) <= tc2(T).
-        %   :- instance tc1(unit).
-        %
-        % where module bar exports the instance tc2(unit). We must import
-        % the module bar in the interface of the module foo in order for
-        % the superclass constraint on the instance tc1(unit) to be satisfied.
-        % However, at this stage of compilation we do not know that the
-        % instance tc2(unit) needs to be visible. (Knowing this would require
-        % a more extensive analysis of type classes and instances to be done
-        % in this module.)
-        %
-        % In order to prevent the import of the module bar being erroneously
-        % reported as unused, we make the conservative assumption that any
-        % imported module that exports a type class instance is used in
-        % the interface of the importing module, except if the importing
-        % module itself exports _no_ type class instances.
-        %
-        MaybeContext = yes(Context),
-        mq_info_get_unused_interface_modules(!.Info, UnusedImports0),
-        mq_info_get_exported_instances_flag(!.Info, ModuleExportsInstances),
-        (
-            ModuleExportsInstances = yes,
-            mq_info_get_imported_instance_modules(!.Info, InstanceImports),
-            set.difference(UnusedImports0, InstanceImports, UnusedImports1)
-        ;
-            ModuleExportsInstances = no,
-            UnusedImports1 = UnusedImports0
-        ),
-        set.to_sorted_list(UnusedImports1, UnusedImports),
-        % XXX ITEM_LIST Currently we report all modules whose imports
-        % are unnecessarily in the interface using Context, which is the
-        % context of the `:- module' declaration of the module. We should use
-        % the contexts of the actual imports themselves.
-        maybe_warn_unused_interface_imports(ModuleName, Context,
-            UnusedImports, !Specs)
+        ModuleExportsInstances = yes,
+        mq_info_get_imported_instance_modules(!.Info, InstanceImports),
+        set.difference(UnusedImports0, InstanceImports, UnusedImports1)
     ;
-        MaybeContext = no
-    ).
+        ModuleExportsInstances = no,
+        UnusedImports1 = UnusedImports0
+    ),
+    set.to_sorted_list(UnusedImports1, UnusedImports),
+    % XXX ITEM_LIST Currently we report all modules whose imports
+    % are unnecessarily in the interface using the context of the
+    % `:- module' declaration of the module. We should use the contexts
+    % of the actual imports themselves.
+    maybe_warn_unused_interface_imports(ModuleName, ModuleNameContext,
+        UnusedImports, !Specs).
+
+module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
+    ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        IntItems0, ImpItems0),
+    IntAugItemBlocks0 =
+        [item_block(ams_interface, term.context_init, IntItems0)],
+    ImpAugItemBlocks0 =
+        [item_block(ams_implementation, term.context_init, ImpItems0)],
+    % XXX ITEM_LIST The completely separate treatment of the interface
+    % and implementation part of an interface file preserves old behavior;
+    % write_short_interface_file in write_module_interface_files.m used
+    % to call module_qualify_items separately on the interface and
+    % implementation items. I (zs) this is likely to be a bug, in that
+    % the module qualification of the items in the implementation section
+    % doesn't see the declarations in the interface section.
+    % XXX ITEM_LIST Check whether we can get a nonempty list of implicit
+    % dependencies in either call to collect_mq_info_in_aug_item_blocks below.
+    some [!IntInfo] (
+        init_mq_info(Globals, ModuleName, IntAugItemBlocks0, no, !:IntInfo),
+        collect_mq_info_in_aug_item_blocks(IntAugItemBlocks0, !IntInfo),
+        module_qualify_items_loop(IntItems0, IntItems, !.IntInfo, _, !Specs)
+    ),
+    some [!ImpInfo] (
+        init_mq_info(Globals, ModuleName, ImpAugItemBlocks0, no, !:ImpInfo),
+        collect_mq_info_in_aug_item_blocks(ImpAugItemBlocks0, !ImpInfo),
+        module_qualify_items_loop(ImpItems0, ImpItems, !.ImpInfo, _, !Specs)
+    ),
+    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        IntItems, ImpItems).
+
+%-----------------------------------------------------------------------------%
 
 qualify_lambda_mode_list(Modes0, Modes, Context, !Info, !Specs) :-
     ErrorContext = mqec_lambda_expr(Context),
@@ -1041,7 +1014,7 @@ module_qualify_item(Item0, Item, !Info, !Specs) :-
         qualify_prog_constraint_list(Constraints0, Constraints,
             ConstraintErrorContext, !Info, !Specs),
         qualify_class_name(Id0, Id, ErrorContext, !Info, !Specs),
-        Id = mq_id(Name, _), 
+        Id = mq_id(Name, _),
         % XXX We don't want to keep the errors from the expansion of both
         % forms of the instance types, since printing two error messages about
         % one instance definition that make apparently contradictory
@@ -1997,7 +1970,6 @@ find_unique_match(Id0, Id, Ids, TypeOfId, ErrorContext, !Info, !Specs) :-
         mq_info_get_report_error_flag(!.Info, ReportErrors),
         (
             ReportErrors = yes,
-            % XXX Why not ApplicableMatchingModulesList?
             report_undefined(ErrorContext, set.to_sorted_list(MatchingModules),
                 !.Info, Id0, TypeOfId, !Specs),
             mq_info_set_error_flag(TypeOfId, !Info)
@@ -2311,7 +2283,7 @@ mq_constraint_error_context_to_pieces(ConstraintErrorContext,
         Start = "on",
         TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
         Pieces = [words("function symbol"), quote(FunctionSymbol),
-            words("for type constructor"), 
+            words("for type constructor"),
             sym_name_and_arity(TypeCtorSymName / TypeCtorArity)]
     ;
         ConstraintErrorContext = mqcec_pred_decl(Context,
@@ -2811,7 +2783,7 @@ id_set_init(IdSet) :-
     is det.
 
 id_set_insert(NeedQualifier, MQId,!IdSet) :-
-    MQId = mq_id(SymName, Arity), 
+    MQId = mq_id(SymName, Arity),
     (
         SymName = unqualified(_),
         unexpected($module, $pred, "unqualified id")
