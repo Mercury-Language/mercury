@@ -327,7 +327,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 :- import_module string.
 :- import_module term.
 
@@ -774,21 +773,17 @@ split_items_into_clauses_and_decls([Item | Items],
 
 warn_if_import_self_or_ancestor(ModuleName, Context, AncestorModules,
         ImportedModules, UsedModules, !Specs) :-
-    IsImportedAncestor = (pred(Import::out) is nondet :-
-        list.member(Import, AncestorModules),
-        ( list.member(Import, ImportedModules)
-        ; list.member(Import, UsedModules)
-        )
-    ),
-    solutions.aggregate(IsImportedAncestor,
-        warn_imported_ancestor(ModuleName, Context), !Specs),
-    ( if
-        ( list.member(ModuleName, ImportedModules)
-        ; list.member(ModuleName, UsedModules)
-        )
-    then
-        SelfPieces = [words("Warning: module"),
-            sym_name(ModuleName), words("imports itself!")],
+    set.list_to_set(AncestorModules, AncestorModulesSet),
+    set.list_to_set(ImportedModules, ImportedModulesSet),
+    set.list_to_set(UsedModules, UsedModulesSet),
+    set.union(ImportedModulesSet, UsedModulesSet, ImportedOrUsedModulesSet),
+    set.intersect(AncestorModulesSet, ImportedOrUsedModulesSet,
+        ImportedOrUsedAncestorModulesSet),
+    set.fold(warn_imported_ancestor(ModuleName, Context),
+        ImportedOrUsedAncestorModulesSet, !Specs),
+    ( if set.member(ModuleName, ImportedOrUsedModulesSet) then
+        SelfPieces = [words("Warning: module"), sym_name(ModuleName),
+            words("imports itself!"), nl],
         SelfMsg = simple_msg(Context,
             [option_is_set(warn_simple_code, yes, [always(SelfPieces)])]),
         Severity = severity_conditional(warn_simple_code, yes,
