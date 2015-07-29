@@ -137,7 +137,7 @@
 
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.module_imports.
+:- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.

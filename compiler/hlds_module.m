@@ -596,7 +596,7 @@
 
 :- import_module libs.options.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.module_imports.
+:- import_module parse_tree.get_dependencies.
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module assoc_list.

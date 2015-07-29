@@ -309,6 +309,7 @@
 :- import_module parse_tree.comp_unit_interface.    % undesirable dependency
 :- import_module parse_tree.deps_map.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_deps_graph.
