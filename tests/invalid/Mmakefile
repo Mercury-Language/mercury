@@ -278,6 +278,7 @@ SINGLEMODULE= \
 	where_direct_arg \
 	where_direct_arg2 \
 	with_type \
+	wrong_type_arity \
 	zinc2mer_lib
 
 # The following require that num_tag_bits >= 1

@@ -148,6 +148,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -1952,7 +1953,7 @@ find_unique_match(Id0, Id, Ids, TypeOfId, ErrorContext, !Info, !Specs) :-
     % Find all IDs which match the current id.
     Id0 = mq_id(SymName0, Arity),
     mq_info_get_modules(!.Info, Modules),
-    id_set_search_sym_arity(Ids, SymName0, Arity, Modules, MatchingModules),
+    id_set_search_sym_arity(Ids, Modules, SymName0, Arity, MatchingModules),
 
     ( if mq_info_get_import_status(!.Info, mq_status_exported) then
         % Items in the interface may only refer to modules
@@ -1973,8 +1974,9 @@ find_unique_match(Id0, Id, Ids, TypeOfId, ErrorContext, !Info, !Specs) :-
         mq_info_get_report_error_flag(!.Info, ReportErrors),
         (
             ReportErrors = yes,
-            report_undefined(ErrorContext, set.to_sorted_list(MatchingModules),
-                !.Info, Id0, TypeOfId, !Specs),
+            id_set_search_sym(Ids, Modules, SymName0, PossibleArities),
+            report_undefined_mq_id(!.Info, ErrorContext, Id0, TypeOfId,
+                MatchingModules, PossibleArities, !Specs),
             mq_info_set_error_flag(TypeOfId, !Info)
         ;
             ReportErrors = no
@@ -2188,11 +2190,12 @@ id_to_sym_name_and_arity(mq_id(SymName, Arity)) = SymName / Arity.
 
     % Report an undefined type, inst or mode.
     %
-:- pred report_undefined(mq_error_context::in, list(module_name)::in,
-    mq_info::in, mq_id::in, id_type::in,
+:- pred report_undefined_mq_id(mq_info::in, mq_error_context::in,
+    mq_id::in, id_type::in, set(module_name)::in, set(int)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_undefined(ErrorContext, MatchingModules, Info, Id, IdType, !Specs) :-
+report_undefined_mq_id(Info, ErrorContext, Id, IdType,
+        MatchingModulesSet, PossibleAritiesSet, !Specs) :-
     mq_error_context_to_pieces(ErrorContext, Context, ErrorContextPieces),
     id_type_to_string(IdType, IdStr),
     Pieces1 = [words("In")] ++ ErrorContextPieces ++
@@ -2211,6 +2214,7 @@ report_undefined(ErrorContext, MatchingModules, Info, Id, IdType, !Specs) :-
         Pieces2 = [words("(The module"), sym_name(ModuleName),
             words("has not been imported.)"), nl]
     else
+        set.to_sorted_list(MatchingModulesSet, MatchingModules),
         (
             MatchingModules = [],
             Pieces2 = []
@@ -2232,7 +2236,26 @@ report_undefined(ErrorContext, MatchingModules, Info, Id, IdType, !Specs) :-
                     words("not been imported in the interface.)"), nl]
         )
     ),
-    Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
+    set.to_sorted_list(PossibleAritiesSet, PossibleArities),
+    ( if
+        PossibleArities = [_ | _],
+        Pieces2 = []
+    then
+        Id = mq_id(SymName, _),
+        id_types_to_string(IdType, IdsStr),
+        IsAre = choose_number(PossibleArities, "is a", "are"),
+        KindKinds = choose_number(PossibleArities, IdStr, IdsStr),
+        ArityArities = choose_number(PossibleArities, "arity", "arities"),
+        list.map(string.int_to_string, PossibleArities, PossibleArityStrs),
+        PossibleAritiesPieces = list_to_pieces(PossibleArityStrs),
+        Pieces3 = [words("(There"), words(IsAre), words(KindKinds),
+            words("named"), quote(unqualify_name(SymName)),
+            words("with"), words(ArityArities)] ++
+            PossibleAritiesPieces ++ [suffix(".)"), nl]
+    else
+        Pieces3 = []
+    ),
+    Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2 ++ Pieces3)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
@@ -2493,6 +2516,13 @@ id_type_to_string(type_id, "type").
 id_type_to_string(mode_id, "mode").
 id_type_to_string(inst_id, "inst").
 id_type_to_string(class_id, "typeclass").
+
+:- pred id_types_to_string(id_type::in, string::out) is det.
+
+id_types_to_string(type_id, "types").
+id_types_to_string(mode_id, "modes").
+id_types_to_string(inst_id, "insts").
+id_types_to_string(class_id, "typeclasses").
 
     % Warn about modules imported in the interface when they do not need to be.
     %
@@ -2775,15 +2805,22 @@ mq_info_set_module_used(Module, !Info) :-
 
 %----------------------------------------------------------------------------%
 %
-% Define a type for representing sets of ids during module qualification
+% Define a type for representing sets of ids during module qualification,
 % to allow efficient retrieval of all the modules which define an id
 % with a certain name and arity.
+%
 
-    % The first set of module_names can be used without module qualifiers,
+:- type id_set == map(string, map(arity, symname_arity_modules)).
+
+    % The first set of module_names can be used without module qualifiers;
     % items from the second set can only be used with module qualifiers.
     % Items from modules imported with a :- use_module declaration
-    % and from `.opt' files should go into the second set.
-:- type id_set == map(pair(string, arity), pair(set(module_name))).
+    % and from `.opt' and `.trans_opt' files should go into the second set.
+:- type symname_arity_modules
+    --->    symname_arity_modules(
+                mm_may_be_unqualified   :: set(module_name),
+                mm_must_be_qualified    :: set(module_name)
+            ).
 
 :- type type_id_set == id_set.
 :- type mode_id_set == id_set.
@@ -2811,63 +2848,139 @@ id_set_insert(NeedQualifier, MQId,!IdSet) :-
         unexpected($module, $pred, "unqualified id")
     ;
         SymName = qualified(Module, Name),
-        ( if map.search(!.IdSet, Name - Arity, ImportUseModules0) then
-            ImportUseModules0 = ImportModules0 - UseModules0,
-            ImportModules1 = ImportModules0,
-            UseModules1 = UseModules0
+        ( if map.search(!.IdSet, Name, SubMap0) then
+            ( if map.search(SubMap0, Arity, SymNameArityModules0) then
+                insert_into_symname_arity_modules(NeedQualifier, Module,
+                    SymNameArityModules0, SymNameArityModules),
+                map.det_update(Arity, SymNameArityModules, SubMap0, SubMap),
+                map.det_update(Name, SubMap, !IdSet)
+            else
+                init_symname_arity_modules(NeedQualifier, Module,
+                    SymNameArityModules),
+                map.det_insert(Arity, SymNameArityModules, SubMap0, SubMap),
+                map.det_update(Name, SubMap, !IdSet)
+            )
         else
-            set.init(ImportModules1),
-            set.init(UseModules1)
-        ),
-        (
-            NeedQualifier = must_be_qualified,
-            set.insert(Module, UseModules1, UseModules),
-            ImportModules = ImportModules1
-        ;
-            NeedQualifier = may_be_unqualified,
-            set.insert(Module, ImportModules1, ImportModules),
-            UseModules = UseModules1
-        ),
-        map.set(Name - Arity, ImportModules - UseModules, !IdSet)
+            init_symname_arity_modules(NeedQualifier, Module,
+                SymNameArityModules),
+            SubMap = map.singleton(Arity, SymNameArityModules),
+            map.det_insert(Name, SubMap, !IdSet)
+        )
     ).
 
-:- pred id_set_search_sym_arity(id_set::in, sym_name::in, int::in,
-    module_id_set::in, set(module_name)::out) is det.
+:- pred init_symname_arity_modules(need_qualifier::in, module_name::in,
+    symname_arity_modules::out) is det.
 
-id_set_search_sym_arity(IdSet, Sym, Arity, ModuleIdSet, MatchingModules) :-
-    UnqualName = unqualify_name(Sym),
-    ( if map.search(IdSet, UnqualName - Arity, ImportModules - UseModules) then
-        (
-            Sym = unqualified(_),
-            MatchingModules = ImportModules
-        ;
-            Sym = qualified(Module, _),
+init_symname_arity_modules(NeedQualifier, Module, SymNameArityModules) :-
+    (
+        NeedQualifier = may_be_unqualified,
+        ImportModules = set.make_singleton_set(Module),
+        set.init(UseModules)
+    ;
+        NeedQualifier = must_be_qualified,
+        set.init(ImportModules),
+        UseModules = set.make_singleton_set(Module)
+    ),
+    SymNameArityModules = symname_arity_modules(ImportModules, UseModules).
 
-            % Compute the set of modules that this module specifier
-            % could possibly refer to.
-            %
-            % Do a recursive search to find nested modules that match
-            % the specified module name.
-            ModuleArity = 0,
-            id_set_search_sym_arity(ModuleIdSet, Module, ModuleArity,
-                ModuleIdSet, MatchingParentModules),
-            UnqualModule = unqualify_name(Module),
-            AppendModuleName = (pred(X::in, Y::out) is det :-
-                Y = qualified(X, UnqualModule)
-            ),
-            set.map(AppendModuleName,
-                MatchingParentModules, MatchingNestedModules),
+:- pred insert_into_symname_arity_modules(need_qualifier::in, module_name::in,
+    symname_arity_modules::in, symname_arity_modules::out) is det.
 
-            % Add the specified module name itself, in case it refers to
-            % a top-level (unnested) module name, since top-level modules
-            % don't get inserted into the module_id_set.
-            set.insert(Module, MatchingNestedModules, AllMatchingModules),
+insert_into_symname_arity_modules(NeedQualifier, Module,
+        SymNameArityModules0, SymNameArityModules) :-
+    SymNameArityModules0 = symname_arity_modules(ImportModules0, UseModules0),
+    (
+        NeedQualifier = may_be_unqualified,
+        set.insert(Module, ImportModules0, ImportModules),
+        UseModules = UseModules0
+    ;
+        NeedQualifier = must_be_qualified,
+        ImportModules = ImportModules0,
+        set.insert(Module, UseModules0, UseModules)
+    ),
+    SymNameArityModules = symname_arity_modules(ImportModules, UseModules).
 
-            set.union(ImportModules, UseModules, DefiningModules),
-            set.intersect(AllMatchingModules, DefiningModules, MatchingModules)
-        )
+:- pred id_set_search_sym_arity(id_set::in, module_id_set::in,
+    sym_name::in, int::in, set(module_name)::out) is det.
+
+id_set_search_sym_arity(IdSet, ModuleIdSet, SymName, Arity, MatchingModules) :-
+    UnqualName = unqualify_name(SymName),
+    ( if
+        map.search(IdSet, UnqualName, SubMap),
+        map.search(SubMap, Arity, SymNameArityModules)
+    then
+        find_matches_in_symname_arity_modules(SymName, ModuleIdSet,
+            SymNameArityModules, MatchingModules)
     else
         set.init(MatchingModules)
+    ).
+
+:- pred id_set_search_sym(id_set::in, module_id_set::in, sym_name::in,
+    set(int)::out) is det.
+
+id_set_search_sym(IdSet, ModuleIdSet, SymName, PossibleArities) :-
+    UnqualName = unqualify_name(SymName),
+    ( if
+        map.search(IdSet, UnqualName, SubMap)
+    then
+        map.to_assoc_list(SubMap, SubMapPairs),
+        find_matching_arities(SymName, ModuleIdSet, SubMapPairs,
+            set.init, PossibleArities)
+    else
+        set.init(PossibleArities)
+    ).
+
+:- pred find_matching_arities(sym_name::in, module_id_set::in,
+    assoc_list(int, symname_arity_modules)::in, set(int)::in, set(int)::out)
+    is det.
+
+find_matching_arities(_SymName, _ModuleIdSet, [], !PossibleArities).
+find_matching_arities(SymName, ModuleIdSet, [Pair | Pairs],
+        !PossibleArities) :-
+    Pair = Arity - SymNameArityModules,
+    find_matches_in_symname_arity_modules(SymName, ModuleIdSet,
+        SymNameArityModules, MatchingModules),
+    ( if set.is_empty(MatchingModules) then
+        true
+    else
+        set.insert(Arity, !PossibleArities)
+    ),
+    find_matching_arities(SymName, ModuleIdSet, Pairs, !PossibleArities).
+
+:- pred find_matches_in_symname_arity_modules(sym_name::in, module_id_set::in,
+    symname_arity_modules::in, set(module_name)::out) is det.
+
+find_matches_in_symname_arity_modules(SymName, ModuleIdSet,
+        SymNameArityModules, MatchingModules) :-
+    SymNameArityModules = symname_arity_modules(ImportModules, UseModules),
+    (
+        SymName = unqualified(_),
+        MatchingModules = ImportModules
+    ;
+        SymName = qualified(Module, _),
+
+        % Compute the set of modules that this module specifier
+        % could possibly refer to.
+        %
+        % Do a recursive search to find nested modules that match
+        % the specified module name.
+        ModuleArity = 0,
+        id_set_search_sym_arity(ModuleIdSet, ModuleIdSet, Module, ModuleArity,
+            MatchingParentModules),
+        UnqualModule = unqualify_name(Module),
+        AppendModuleName = (pred(X::in, Y::out) is det :-
+            Y = qualified(X, UnqualModule)
+        ),
+        set.map(AppendModuleName,
+            MatchingParentModules, MatchingNestedModules),
+
+        % Add the specified module name itself, in case it refers to
+        % a top-level (unnested) module name, since top-level modules
+        % don't get inserted into the module_id_set.
+        set.insert(Module, MatchingNestedModules, AllMatchingModules),
+
+        set.union(ImportModules, UseModules, DefiningModules),
+        set.intersect(AllMatchingModules, DefiningModules, MatchingModules)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2889,9 +3002,9 @@ get_partial_qualifiers(ModuleName, PartialQualInfo, PartialQualifiers) :-
 
 get_partial_qualifiers_2(ImplicitPart, ExplicitPart, ModuleIdSet,
         !Qualifiers) :-
-    % If the ImplicitPart module was imported, rather than just being
-    % used, then insert the ExplicitPart module into the list of
-    % valid partial qualifiers.
+    % If the ImplicitPart module was imported, rather than just being used,
+    % then insert the ExplicitPart module into the list of valid partial
+    % qualifiers.
 
     ( if
         parent_module_is_imported(ImplicitPart, ExplicitPart, ModuleIdSet)
@@ -2927,8 +3040,9 @@ parent_module_is_imported(ParentModule, ChildModule, ModuleIdSet) :-
     % and checking that the one in ParentModule came from an
     % imported module.
     Arity = 0,
-    map.search(ModuleIdSet, DirectSubModuleName - Arity,
-        ImportModules - _UseModules),
+    map.search(ModuleIdSet, DirectSubModuleName, SubMap),
+    map.search(SubMap, Arity, SymNameArityModules),
+    SymNameArityModules = symname_arity_modules(ImportModules, _UseModules),
     set.member(ParentModule, ImportModules).
 
     % Given a module name, possibly module-qualified, return the name
