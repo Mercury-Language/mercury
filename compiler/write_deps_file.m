@@ -136,7 +136,9 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
         IndirectDeps, _Children, InclDeps, NestedDeps, FactDeps0,
         ForeignImportsCord0, ForeignIncludeFilesCord,
         ContainsForeignCode, _ContainsForeignExport,
-        ItemBlocksCord, _Specs, _Error, _Timestamps, _HasMain, _Dir),
+        SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
+        OptItemBlocksCord, IntForOptItemBlocksCord,
+        _Specs, _Error, _Timestamps, _HasMain, _Dir),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     module_name_to_make_var_name(ModuleName, MakeVarName),
@@ -227,9 +229,9 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
             FactDeps = []
         ),
 
-        ( string.remove_suffix(SourceFileName, ".m", SourceFileBase) ->
+        ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then
             ErrFileName = SourceFileBase ++ ".err"
-        ;
+        else
             unexpected($module, $pred, "source file doesn't end in `.m'")
         ),
         module_name_to_file_name(Globals, ModuleName, ".optdate",
@@ -337,11 +339,11 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
         ;
             Intermod = no
         ),
-        (
+        ( if
             ( Intermod = yes
             ; UseOptFiles = yes
             )
-        ->
+        then
             io.write_strings(DepStream, [
                 "\n\n",
                 TransOptDateFileName, " ",
@@ -368,11 +370,11 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
             globals.lookup_bool_option(Globals, use_trans_opt_files,
                 UseTransOpt),
 
-            (
+            ( if
                 ( TransOpt = yes
                 ; UseTransOpt = yes
                 )
-            ->
+            then
                 bool.not(UseTransOpt, BuildOptFiles),
                 get_both_opt_deps(Globals, BuildOptFiles,
                     [ModuleName | LongDeps], IntermodDirs,
@@ -395,7 +397,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
                 ], !IO),
                 write_dependencies_list(Globals, TransOptDeps,
                     ".trans_opt", DepStream, !IO)
-            ;
+            else
                 bool.not(UseOptFiles, BuildOptFiles),
                 get_opt_deps(Globals, BuildOptFiles, [ModuleName | LongDeps],
                     IntermodDirs, ".opt", OptDeps, !IO),
@@ -406,16 +408,16 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
                 write_dependencies_list(Globals, OptInt0Deps,
                     ".int0", DepStream, !IO)
             )
-        ;
+        else
             true
         ),
 
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         globals.get_target(Globals, CompilationTarget),
-        (
+        ( if
             HighLevelCode = yes,
             CompilationTarget = target_c
-        ->
+        then
             % For --high-level-code with --target c, we need to make sure that
             % we generate the header files for imported modules before
             % compiling the C files, since the generated C files
@@ -427,7 +429,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
                 ObjFileName, " :"
             ], !IO),
             write_dependencies_list(Globals, AllDeps, ".mih", DepStream, !IO)
-        ;
+        else
             true
         ),
 
@@ -536,15 +538,15 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
         module_name_to_file_name(Globals, ModuleName, ".beam",
             do_not_create_dirs, BeamFileName, !IO),
         SubModules = submodules(ModuleName, AllDeps),
-        (
+        ( if
             Target = target_il,
             SubModules = [_ | _]
-        ->
+        then
             io.write_strings(DepStream, [DllFileName, " : "], !IO),
             write_dll_dependencies_list(Globals, SubModules, "", DepStream,
                 !IO),
             io.nl(DepStream, !IO)
-        ;
+        else
             true
         ),
 
@@ -554,14 +556,34 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
         ;
             ContainsForeignCode = contains_foreign_code_unknown,
             get_foreign_code_indicators_from_item_blocks(Globals,
-                cord.list(ItemBlocksCord), LangSet, ForeignImportsCord1, _, _),
+                SrcItemBlocks,
+                SrcLangSet, SrcForeignImportsCord, _, _),
+            % XXX ITEM_LIST DirectIntItemBlocksCord should not be needed
+            % XXX ITEM_LIST IndirectIntItemBlocksCord should not be needed
+            IntItemBlocksCord =
+                DirectIntItemBlocksCord ++ IndirectIntItemBlocksCord,
+            get_foreign_code_indicators_from_item_blocks(Globals,
+                cord.list(IntItemBlocksCord),
+                IntLangSet, IntForeignImportsCord, _, _),
+            get_foreign_code_indicators_from_item_blocks(Globals,
+                cord.list(OptItemBlocksCord),
+                OptLangSet, OptForeignImportsCord, _, _),
+            get_foreign_code_indicators_from_item_blocks(Globals,
+                cord.list(IntForOptItemBlocksCord),
+                IntForOptLangSet, IntForOptForeignImportsCord, _, _),
+            LangSet = set.union_list([SrcLangSet, IntLangSet, OptLangSet,
+                IntForOptLangSet]),
             % If we are generating the `.dep' file, ForeignImports0
             % will contain a conservative approximation to the set of
             % foreign imports needed which will include imports
             % required by imported modules.
-            ( cord.is_empty(ForeignImportsCord0) ->
-                ForeignImportsCord = ForeignImportsCord1
-            ;
+            % XXX ITEM_LIST What is the correctness argument that supports
+            % the above assertion?
+            ( if cord.is_empty(ForeignImportsCord0) then
+                ForeignImportsCord = SrcForeignImportsCord ++
+                    IntForeignImportsCord ++ OptForeignImportsCord ++
+                    IntForOptForeignImportsCord
+            else
                 ForeignImportsCord = ForeignImportsCord0
             )
         ;
@@ -626,14 +648,14 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
             list.foldl(WriteForeignImportTarget, ForeignImportTargets, !IO)
         ),
 
-        (
+        ( if
             Target = target_il,
             set.is_non_empty(LangSet)
-        ->
+        then
             Langs = set.to_sorted_list(LangSet),
             list.foldl(write_foreign_dependency_for_il(Globals, DepStream,
                 ModuleName, AllDeps, ForeignImports), Langs, !IO)
-        ;
+        else
             true
         ),
 
@@ -642,10 +664,10 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
         % requires the strong name file `mercury.sn'. Also add the variable
         % ILASM_KEYFLAG-<module> which is used to build the command line
         % for ilasm.
-        (
+        ( if
             Target = target_il,
             SignAssembly = yes
-        ->
+        then
             module_name_to_make_var_name(ModuleName, ModuleNameString),
             module_name_to_file_name(Globals, ModuleName, ".il",
                 do_not_create_dirs, IlFileName, !IO),
@@ -654,7 +676,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
                 "ILASM_KEYFLAG-", ModuleNameString,
                     " = /keyf=mercury.sn\n",
                 IlFileName, " : mercury.sn\n"], !IO)
-        ;
+        else
             true
         ),
 
@@ -715,7 +737,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
             UseSubdirs = no
         ),
 
-        ( SourceFileName \= default_source_file(ModuleName) ->
+        ( if SourceFileName \= default_source_file(ModuleName) then
             % The pattern rules in Mmake.rules won't work, since the source
             % file name doesn't match the expected source file name for this
             % module name. This can occur due to just the use of different
@@ -761,7 +783,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
                     "--java-only ", ModuleArg,
                     " $(ERR_REDIRECT)\n"
             ], !IO)
-        ;
+        else
             true
         ),
 
@@ -814,16 +836,16 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
 :- func submodules(module_name, list(module_name)) = list(module_name).
 
 submodules(Module, Modules0) = Modules :-
-    (
+    ( if
         Module = unqualified(Str),
         \+ mercury_std_library_module_name(Module)
-    ->
+    then
         P = (pred(M::in) is semidet :-
             Str = outermost_qualifier(M),
             M \= Module
         ),
         list.filter(P, Modules0, Modules)
-    ;
+    else
         Modules = []
     ).
 
@@ -967,11 +989,11 @@ write_file_dependencies_list([FileName | FileNames], Suffix, DepStream, !IO) :-
 
 write_foreign_dependency_for_il(Globals, DepStream, ModuleName, AllDeps,
         ForeignImports, ForeignLang, !IO) :-
-    (
+    ( if
         ForeignModuleName = foreign_language_module_name(ModuleName,
             ForeignLang),
         ForeignExt = foreign_language_file_extension(ForeignLang)
-    ->
+    then
         module_name_to_make_var_name(ForeignModuleName,
             ForeignModuleNameString),
         module_name_to_file_name(Globals, ForeignModuleName, ForeignExt,
@@ -1000,9 +1022,9 @@ write_foreign_dependency_for_il(Globals, DepStream, ModuleName, AllDeps,
             % foreign code module references.
             io.write_strings(DepStream,
                 ["CSHARP_ASSEMBLY_REFS-", ForeignModuleNameString, "="], !IO),
-            ( mercury_std_library_module_name(ModuleName) ->
+            ( if mercury_std_library_module_name(ModuleName) then
                 Prefix = "/addmodule:"
-            ;
+            else
                 Prefix = "/r:"
             ),
             ForeignDeps = list.map(
@@ -1020,7 +1042,7 @@ write_foreign_dependency_for_il(Globals, DepStream, ModuleName, AllDeps,
             ; ForeignLang = lang_erlang
             )
         )
-    ;
+    else
         % This foreign language doesn't generate an external file
         % so there are no dependencies to generate.
         true
@@ -1106,10 +1128,10 @@ generate_dependencies_write_d_files(Globals, [Dep | Deps],
             ModuleName \= OtherModule
         ),
         list.takewhile(FindModule, TransOptOrder, _, TransOptDeps0),
-        ( TransOptDeps0 = [_ | TransOptDeps1] ->
+        ( if TransOptDeps0 = [_ | TransOptDeps1] then
             % The module was found in the list.
             TransOptDeps = TransOptDeps1
-        ;
+        else
             TransOptDeps = []
         ),
 
@@ -1614,7 +1636,7 @@ select_ok_modules([], _, []).
 select_ok_modules([Module | Modules0], DepsMap, Modules) :-
     select_ok_modules(Modules0, DepsMap, ModulesTail),
     map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    module_and_imports_get_results(ModuleImports, _Items, _Specs, Errors),
+    module_and_imports_get_errors(ModuleImports, Errors),
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
         Modules = [Module | ModulesTail]
@@ -2049,16 +2071,16 @@ generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
         Intermod = no,
         OptStr = ""
     ),
-    (
+    ( if
         Intermod = yes,
         map.member(DepsMap, _, deps(_, Imports)),
         Imports ^ mai_children = [_ | _]
-    ->
+    then
         % The `.int0' files only need to be installed with
         % `--intermodule-optimization'.
         Int0Str = " int0",
         MaybeInt0sVar = "$(" ++ MakeVarName ++ ".int0s) "
-    ;
+    else
         Int0Str = "",
         MaybeInt0sVar = ""
     ),
@@ -2116,12 +2138,12 @@ generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
     io.write_strings(DepStream,
         [".PHONY : ", LibInstallOptsTargetName, "\n",
         LibInstallOptsTargetName, " : "], !IO),
-    (
+    ( if
         Intermod = no,
         TransOpt = no
-    ->
+    then
         io.write_string(DepStream, "\n\t@:\n\n", !IO)
-    ;
+    else
         io.write_strings(DepStream, [
             MaybeOptsVar, MaybeTransOptsVar, "install_grade_dirs\n",
             "\tfiles=""", MaybeOptsVar, MaybeTransOptsVar, """; \\\n",
@@ -2347,9 +2369,9 @@ get_source_file(DepsMap, ModuleName, FileName) :-
     map.lookup(DepsMap, ModuleName, Deps),
     Deps = deps(_, ModuleImports),
     module_and_imports_get_source_file_name(ModuleImports, SourceFileName),
-    ( string.remove_suffix(SourceFileName, ".m", SourceFileBase) ->
+    ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then
         FileName = SourceFileBase
-    ;
+    else
         unexpected($module, $pred, "source file name doesn't end in `.m'")
     ).
 
@@ -2399,16 +2421,16 @@ referenced_dlls(Module, DepModules0) = Modules :-
 
     % If we are not compiling a module in the mercury std library then
     % replace all the std library dlls with one reference to mercury.dll.
-    ( mercury_std_library_module_name(Module) ->
+    ( if mercury_std_library_module_name(Module) then
         % In the standard library we need to add the runtime dlls.
         Modules = list.remove_dups(
             [unqualified("mercury_dotnet"), unqualified("mercury_il")
                 | DepModules])
-    ;
+    else
         F = (func(M) =
-            ( mercury_std_library_module_name(M) ->
+            ( if mercury_std_library_module_name(M) then
                 unqualified("mercury")
-            ;
+            else
                 % A sub module is located in the top level assembly.
                 unqualified(outermost_qualifier(M))
             )

@@ -136,27 +136,66 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     module_info_init(AugCompUnit, DumpBaseFileName, Globals, PQInfo, no,
         !:ModuleInfo),
     module_info_set_used_modules(UsedModules, !ModuleInfo),
-    AugCompUnit = compilation_unit(Name, _, AugItemBlocks),
-    add_block_decls_pass_1(AugItemBlocks,
-        did_not_find_invalid_inst_or_mode, FoundInvalidInstOrMode1,
-        !ModuleInfo, [], Pass1Specs),
+    AugCompUnit = aug_compilation_unit(ModuleName, _,
+        SrcItemBlocks, DirectIntItemBlocks, IndirectIntItemBlocks,
+        OptItemBlocks, IntForOptItemBlocks),
+
+    some [!FoundInvalidInstOrMode, !Pass1Specs, !Pass2Specs] (
+        !:FoundInvalidInstOrMode = did_not_find_invalid_inst_or_mode,
+        !:Pass1Specs = [],
+        add_block_decls_pass_1(SrcItemBlocks,
+            src_module_section_status, !FoundInvalidInstOrMode,
+            !ModuleInfo, !Pass1Specs),
+        add_block_decls_pass_1(DirectIntItemBlocks,
+            int_module_section_status, !FoundInvalidInstOrMode,
+            !ModuleInfo, !Pass1Specs),
+        add_block_decls_pass_1(IndirectIntItemBlocks,
+            int_module_section_status, !FoundInvalidInstOrMode,
+            !ModuleInfo, !Pass1Specs),
+        add_block_decls_pass_1(IntForOptItemBlocks,
+            int_for_opt_module_section_status, !FoundInvalidInstOrMode,
+            !ModuleInfo, !Pass1Specs),
+        % XXX ITEM_LIST Can this pass do anything?
+        add_block_decls_pass_1(OptItemBlocks,
+            opt_module_section_status, !FoundInvalidInstOrMode,
+            !ModuleInfo, !Pass1Specs),
+        FoundInvalidInstOrMode1 = !.FoundInvalidInstOrMode,
+        Pass1Specs = !.Pass1Specs
+    ),
+
     globals.lookup_bool_option(Globals, statistics, Statistics),
     trace [io(!IO)] (
-        maybe_write_string(Statistics, "% Processed all items in pass 1\n",
-            !IO),
+        maybe_write_string(Statistics,
+            "% Processed all items in pass 1\n", !IO),
         maybe_report_stats(Statistics, !IO)
     ),
 
-    add_block_decls_pass_2(AugItemBlocks, !ModuleInfo, [], Pass2Specs),
+    some [!Pass2Specs] (
+        !:Pass2Specs = [],
+        add_block_decls_pass_2(SrcItemBlocks,
+            src_module_section_status, !ModuleInfo, !Pass2Specs),
+        add_block_decls_pass_2(DirectIntItemBlocks,
+            int_module_section_status, !ModuleInfo, !Pass2Specs),
+        add_block_decls_pass_2(IndirectIntItemBlocks,
+            int_module_section_status, !ModuleInfo, !Pass2Specs),
+        add_block_decls_pass_2(IntForOptItemBlocks,
+            int_for_opt_module_section_status, !ModuleInfo, !Pass2Specs),
+        add_block_decls_pass_2(OptItemBlocks,
+            opt_module_section_status, !ModuleInfo, !Pass2Specs),
+        Pass2Specs = !.Pass2Specs
+    ),
+
     !:Specs = Pass1Specs ++ Pass2Specs,
+
     % XXX Using Pass2Specs = [_ | _] as the test for found_invalid_type
     % is both too tight and too loose. Too tight because some pass 2 errors
-    % are not type errors, and too loose because invalid types are now found
-    % in pass 1. We avoid the second problem by recording the presence of
-    % an error in a type definition in the type definition itself, and then
-    % reporting that error in pass 2, but a more direct solution (allowing
-    % the processing of every relevant item during either pass 1 or pass 2
-    % to just set the found_invalid_type flag) would be better.
+    % are not type errors, and too loose because invalid types are now
+    % found in pass 1. We avoid the second problem by recording the
+    % presence of an error in a type definition in the type definition
+    % itself, and then reporting that error in pass 2, but a more direct
+    % solution (allowing the processing of every relevant item during
+    % either pass 1 or pass 2 to just set the found_invalid_type flag)
+    % would be better.
     (
         Pass2Specs = [],
         some [!TypeTable] (
@@ -167,10 +206,10 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
                 !.TypeTable, !TypeTable),
             module_info_set_type_table(!.TypeTable, !ModuleInfo),
 
-            % Add constructors and special preds to the HLDS. This must be done
-            % after adding all type and `:- pragma foreign_type' declarations.
-            % If there were errors in foreign type type declarations, doing
-            % this may cause a compiler abort.
+            % Add constructors and special preds to the HLDS. This must
+            % be done after adding all type and `:- pragma foreign_type'
+            % declarations. If there were errors in foreign type type
+            % declarations, doing this may cause a compiler abort.
             foldl3_over_type_ctor_defns(process_type_defn, !.TypeTable,
                 did_not_find_invalid_type, FoundInvalidType1,
                 !ModuleInfo, !Specs)
@@ -183,7 +222,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % Add the special preds for the builtin types which don't have a
     % type declaration, hence no hlds_type_defn is generated for them.
     (
-        Name = mercury_public_builtin_module,
+        ModuleName = mercury_public_builtin_module,
         compiler_generated_rtti_for_builtins(!.ModuleInfo)
     ->
         list.foldl(add_builtin_type_ctor_special_preds,
@@ -194,15 +233,28 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
 
     % Balance any data structures that need it.
     module_info_optimize(!ModuleInfo),
+
     trace [io(!IO)] (
         maybe_write_string(Statistics, "% Processed all items in pass 2\n",
             !IO),
         maybe_report_stats(Statistics, !IO)
     ),
 
-    init_qual_info(MQInfo0, TypeEqvMapMap, QualInfo0),
-    add_blocks_pass_3(AugItemBlocks,
-        !ModuleInfo, QualInfo0, QualInfo, !Specs),
+    some [!QualInfo] (
+        init_qual_info(MQInfo0, TypeEqvMapMap, !:QualInfo),
+        add_blocks_pass_3(SrcItemBlocks,
+            src_module_section_status, !ModuleInfo, !QualInfo, !Specs),
+        add_blocks_pass_3(DirectIntItemBlocks,
+            int_module_section_status, !ModuleInfo, !QualInfo, !Specs),
+        add_blocks_pass_3(IndirectIntItemBlocks,
+            int_module_section_status, !ModuleInfo, !QualInfo, !Specs),
+        add_blocks_pass_3(IntForOptItemBlocks,
+            int_for_opt_module_section_status, !ModuleInfo, !QualInfo, !Specs),
+        add_blocks_pass_3(OptItemBlocks,
+            opt_module_section_status, !ModuleInfo, !QualInfo, !Specs),
+        QualInfo = !.QualInfo
+    ),
+
     trace [io(!IO)] (
         maybe_write_string(Statistics, "% Processed all items in pass 3\n",
             !IO)
@@ -256,27 +308,21 @@ add_builtin_type_ctor_special_preds(TypeCtor, !ModuleInfo) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred add_block_decls_pass_1(list(aug_item_block)::in,
+:- pred add_block_decls_pass_1(list(item_block(MS))::in,
+    pred(MS, item_status)::in(pred(in, out) is det),
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_block_decls_pass_1([],
+add_block_decls_pass_1([], _MakeStatus,
         !FoundInvalidInstOrMode, !ModuleInfo, !Specs).
-add_block_decls_pass_1([AugItemBlock | AugItemBlocks],
+add_block_decls_pass_1([ItemBlock | ItemBlocks], MakeStatus,
         !FoundInvalidInstOrMode, !ModuleInfo, !Specs) :-
-    AugItemBlock = item_block(Section, _, Items),
-    aug_module_section_status(Section, MaybeStatus),
-    (
-        MaybeStatus = yes(Status),
-        add_item_decls_pass_1(Status, Items,
-            !FoundInvalidInstOrMode, !ModuleInfo, !Specs)
-    ;
-        MaybeStatus = no,
-        expect(unify(Items, []), $module, $pred,
-            "MaybeStatus = no but Items != []")
-    ),
-    add_block_decls_pass_1(AugItemBlocks,
+    ItemBlock = item_block(Section, _, Items),
+    MakeStatus(Section, Status),
+    add_item_decls_pass_1(Status, Items,
+        !FoundInvalidInstOrMode, !ModuleInfo, !Specs),
+    add_block_decls_pass_1(ItemBlocks, MakeStatus,
         !FoundInvalidInstOrMode, !ModuleInfo, !Specs).
 
 :- pred add_item_decls_pass_1(item_status::in, list(item)::in,
@@ -295,23 +341,18 @@ add_item_decls_pass_1(Status, [Item | Items],
 
 %---------------------%
 
-:- pred add_block_decls_pass_2(list(aug_item_block)::in,
+:- pred add_block_decls_pass_2(list(item_block(MS))::in,
+    pred(MS, item_status)::in(pred(in, out) is det),
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_block_decls_pass_2([], !ModuleInfo, !Specs).
-add_block_decls_pass_2([AugItemBlock | AugItemBlocks], !ModuleInfo, !Specs) :-
-    AugItemBlock = item_block(Section, _, Items),
-    aug_module_section_status(Section, MaybeStatus),
-    (
-        MaybeStatus = yes(Status),
-        add_item_decls_pass_2(Status, Items, !ModuleInfo, !Specs)
-    ;
-        MaybeStatus = no,
-        expect(unify(Items, []), $module, $pred,
-            "MaybeStatus = no but Items != []")
-    ),
-    add_block_decls_pass_2(AugItemBlocks, !ModuleInfo, !Specs).
+add_block_decls_pass_2([], _MakeStatus, !ModuleInfo, !Specs).
+add_block_decls_pass_2([ItemBlock | ItemBlocks], MakeStatus,
+        !ModuleInfo, !Specs) :-
+    ItemBlock = item_block(Section, _, Items),
+    MakeStatus(Section, Status),
+    add_item_decls_pass_2(Status, Items, !ModuleInfo, !Specs),
+    add_block_decls_pass_2(ItemBlocks, MakeStatus, !ModuleInfo, !Specs).
 
 :- pred add_item_decls_pass_2(item_status::in, list(item)::in,
     module_info::in, module_info::out,
@@ -324,28 +365,22 @@ add_item_decls_pass_2(Status, [Item | Items], !ModuleInfo, !Specs) :-
 
 %---------------------%
 
-:- pred add_blocks_pass_3(list(aug_item_block)::in,
+:- pred add_blocks_pass_3(list(item_block(MS))::in,
+    pred(MS, item_status)::in(pred(in, out) is det),
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_blocks_pass_3([], !ModuleInfo, !QualInfo, !Specs).
-add_blocks_pass_3([AugItemBlock | AugItemBlocks], !ModuleInfo,
-        !QualInfo, !Specs) :-
-    AugItemBlock = item_block(Section, _, Items),
-    aug_module_section_status(Section, MaybeStatus),
-    (
-        MaybeStatus = yes(Status),
-        Status = item_status(ImportStatus, NeedQualifier),
-        qual_info_get_mq_info(!.QualInfo, MQInfo0),
-        mq_info_set_need_qual_flag(NeedQualifier, MQInfo0, MQInfo),
-        qual_info_set_mq_info(MQInfo, !QualInfo),
-        add_items_pass_3(ImportStatus, Items, !ModuleInfo, !QualInfo, !Specs)
-    ;
-        MaybeStatus = no,
-        expect(unify(Items, []), $module, $pred,
-            "MaybeStatus = no but Items != []")
-    ),
-    add_blocks_pass_3(AugItemBlocks, !ModuleInfo, !QualInfo, !Specs).
+add_blocks_pass_3([], _MakeStatus, !ModuleInfo, !QualInfo, !Specs).
+add_blocks_pass_3([ItemBlock | ItemBlocks], MakeStatus,
+        !ModuleInfo, !QualInfo, !Specs) :-
+    ItemBlock = item_block(Section, _, Items),
+    MakeStatus(Section, Status),
+    Status = item_status(ImportStatus, NeedQualifier),
+    qual_info_get_mq_info(!.QualInfo, MQInfo0),
+    mq_info_set_need_qual_flag(NeedQualifier, MQInfo0, MQInfo),
+    qual_info_set_mq_info(MQInfo, !QualInfo),
+    add_items_pass_3(ImportStatus, Items, !ModuleInfo, !QualInfo, !Specs),
+    add_blocks_pass_3(ItemBlocks, MakeStatus, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred add_items_pass_3(import_status::in, list(item)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,

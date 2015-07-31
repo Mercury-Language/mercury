@@ -32,9 +32,9 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.file_kind.
 
 :- import_module bool.
-:- import_module maybe.
 
     % The type `import_status' describes whether an entity (a predicate,
     % type, inst, or mode) is local to the current module, exported from
@@ -174,64 +174,65 @@
     --->    ms_interface
     ;       ms_implementation.
 
-:- type aug_module_section
-    --->    ams_interface
-    ;       ams_implementation
-
-    ;       ams_impl_but_exported_to_submodules
+:- type src_module_section
+    --->    sms_interface
+    ;       sms_implementation
+    ;       sms_impl_but_exported_to_submodules.
             % This is used internally by the compiler, to identify items
-            % which originally came from an implementation section for a
-            % module that contains sub-modules; such items need to be exported
-            % to the sub-modules.
+            % which originally came from an implementation section of a module
+            % that contains submodules; such items need to be exported
+            % to the submodules.
 
-    ;       ams_imported(module_name, import_locn)
-            % This is used internally by the compiler, to identify declarations
-            % which originally came from some other module imported with a
-            % `:- import_module' declaration, and which section the module
-            % was imported.
+:- type int_module_section
+    --->    ims_imported(module_name, int_file_kind, import_locn)
+    ;       ims_used(module_name, int_file_kind, import_locn)
+            % These are used internally by the compiler, to identify
+            % declarations which originally came from some other module
+            % imported with a `:- import_module' or `:- use_module'
+            % declaration. They record the name of the imported module,
+            % and in which section the module was imported or used.
 
-    ;       ams_used(module_name, import_locn)
-            % This is used internally by the compiler, to identify declarations
-            % which originally came from some other module and for which all
-            % uses must be module qualified. This applies to items from modules
-            % imported using `:- use_module', and items from `.opt' and `.int2'
-            % files. It also records from which section the module was
-            % imported.
-
-    ;       ams_abstract_imported(module_name)
+    ;       ims_abstract_imported(module_name, int_file_kind).
             % This is used internally by the compiler, to identify items which
             % originally came from the implementation section of an interface
             % file; usually type declarations (especially equivalence types)
             % which should be used in code generation but not in type checking.
 
-    ;       ams_opt_imported(module_name)
+:- type opt_module_section
+    --->    oms_opt_imported(module_name, opt_file_kind).
             % This is used internally by the compiler, to identify items which
-            % originally came from a .opt file.
+            % originally came from an optimization file.
 
-    ;       ams_transitively_imported.
+:- type int_for_opt_module_section
+    --->    ioms_opt_imported(module_name, int_file_kind).
             % This is used internally by the compiler, to identify items which
-            % originally came from a `.opt' or `.int2' file. These should not
-            % be allowed to match items in the current module. Note that unlike
-            % `:- interface', `:- implementation' and the other
-            % pseudo-declarations `:- imported(interface)', etc., a
-            % `:- transitively_imported' declaration applies to all of the
-            % following aug_item_blocks in a list of aug_item_blocks, not just
-            % to the aug_item_block it appears in.
+            % originally came from an interface file needed by an
+            % optimization file.
 
-:- func make_ams_interface(module_name) = aug_module_section.
-:- func make_ams_implementation(module_name) = aug_module_section.
-:- func make_ams_impl_but_exported_to_submodules(module_name) =
-    aug_module_section.
-:- func make_ams_imported(import_locn, module_name) = aug_module_section.
-:- func make_ams_used(import_locn, module_name) = aug_module_section.
-:- func make_ams_abstract_imported(module_name) = aug_module_section.
-:- func make_ams_opt_imported(module_name) = aug_module_section.
-:- func make_ams_transitively_imported(module_name) = aug_module_section.
+%-----------------------------------------------------------------------------%
+
+:- func make_ims_imported(import_locn, module_name, int_file_kind) =
+    int_module_section.
+:- func make_ims_used(import_locn, module_name, int_file_kind) =
+    int_module_section.
+:- func make_ims_abstract_imported(module_name, int_file_kind) =
+    int_module_section.
+
+:- func make_oms_opt_imported(module_name, opt_file_kind) =
+    opt_module_section.
+:- func make_ioms_opt_imported(module_name, int_file_kind) =
+    int_for_opt_module_section.
 
     % Return the item_status appropriate for items in the given kind of block.
     %
-:- pred aug_module_section_status(aug_module_section::in,
-    maybe(item_status)::out) is det.
+:- pred src_module_section_status(src_module_section::in,
+    item_status::out) is det.
+:- pred int_module_section_status(int_module_section::in,
+    item_status::out) is det.
+:- pred opt_module_section_status(opt_module_section::in,
+    item_status::out) is det.
+:- pred int_for_opt_module_section_status(int_for_opt_module_section::in,
+    item_status::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -300,46 +301,55 @@ import_locn_defined_in_impl_section(
 
 %-----------------------------------------------------------------------------%
 
-make_ams_interface(_ModuleName) = ams_interface.
-make_ams_implementation(_ModuleName) = ams_implementation.
-make_ams_impl_but_exported_to_submodules(_ModuleName) =
-    ams_impl_but_exported_to_submodules.
-make_ams_imported(ImportLocn, ModuleName) =
-    ams_imported(ModuleName, ImportLocn).
-make_ams_used(ImportLocn, ModuleName) = ams_used(ModuleName, ImportLocn).
-make_ams_abstract_imported(ModuleName) = ams_abstract_imported(ModuleName).
-make_ams_opt_imported(ModuleName) = ams_opt_imported(ModuleName).
-make_ams_transitively_imported(_ModuleName) = ams_transitively_imported.
+make_ims_imported(ImportLocn, ModuleName, IntFileKind) =
+    ims_imported(ModuleName, IntFileKind, ImportLocn).
+make_ims_used(ImportLocn, ModuleName, IntFileKind) =
+    ims_used(ModuleName, IntFileKind, ImportLocn).
+make_ims_abstract_imported(ModuleName, IntFileKind) =
+    ims_abstract_imported(ModuleName, IntFileKind).
 
-aug_module_section_status(AugSection, MaybeStatus) :-
+make_oms_opt_imported(ModuleName, OptFileKind) =
+    oms_opt_imported(ModuleName, OptFileKind).
+make_ioms_opt_imported(ModuleName, OptFileKind) =
+    ioms_opt_imported(ModuleName, OptFileKind).
+
+%-----------------------------------------------------------------------------%
+
+src_module_section_status(SrcSection, Status) :-
     (
-        (
-            AugSection = ams_interface,
-            Status = item_status(status_exported, may_be_unqualified)
-        ;
-            AugSection = ams_implementation,
-            Status = item_status(status_local, may_be_unqualified)
-        ;
-            AugSection = ams_impl_but_exported_to_submodules,
-            Status = item_status(status_exported_to_submodules,
-                may_be_unqualified)
-        ;
-            AugSection = ams_imported(_ModuleName, Section),
-            Status = item_status(status_imported(Section), may_be_unqualified)
-        ;
-            AugSection = ams_used(_ModuleName, Section),
-            Status = item_status(status_imported(Section), must_be_qualified)
-        ;
-            AugSection = ams_opt_imported(_ModuleName),
-            Status = item_status(status_opt_imported, must_be_qualified)
-        ;
-            AugSection = ams_abstract_imported(_ModuleName),
-            Status = item_status(status_abstract_imported, must_be_qualified)
-        ),
-        MaybeStatus = yes(Status)
+        SrcSection = sms_interface,
+        Status = item_status(status_exported, may_be_unqualified)
     ;
-        AugSection = ams_transitively_imported,
-        MaybeStatus = no
+        SrcSection = sms_implementation,
+        Status = item_status(status_local, may_be_unqualified)
+    ;
+        SrcSection = sms_impl_but_exported_to_submodules,
+        Status = item_status(status_exported_to_submodules,
+            may_be_unqualified)
+    ).
+
+int_module_section_status(IntSection, Status) :-
+    (
+        IntSection = ims_imported(_ModuleName, _IntFileKind, Section),
+        Status = item_status(status_imported(Section), may_be_unqualified)
+    ;
+        IntSection = ims_used(_ModuleName, _IntFileKind, Section),
+        Status = item_status(status_imported(Section), must_be_qualified)
+    ;
+        IntSection = ims_abstract_imported(_ModuleName, _IntFileKind),
+        Status = item_status(status_abstract_imported, must_be_qualified)
+    ).
+
+opt_module_section_status(OptSection, Status) :-
+    (
+        OptSection = oms_opt_imported(_ModuleName, _OptFileKind),
+        Status = item_status(status_opt_imported, must_be_qualified)
+    ).
+
+int_for_opt_module_section_status(IntForOptSection, Status) :-
+    (
+        IntForOptSection = ioms_opt_imported(_ModuleName, _OptFileKind),
+        Status = item_status(status_opt_imported, must_be_qualified)
     ).
 
 %-----------------------------------------------------------------------------%

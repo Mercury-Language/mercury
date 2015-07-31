@@ -89,7 +89,7 @@
 
 get_interface(IncludeImplTypes, RawCompUnit, IFileItemBlocks) :-
     RawCompUnit =
-        compilation_unit(ModuleName, _ModuleNameContext, RawItemBlocks),
+        raw_compilation_unit(ModuleName, _ModuleNameContext, RawItemBlocks),
     % XXX ITEM_LIST Don't compute _NonIFileItemBlocksCord
     % just to throw it away. If we mode-specialize
     % get_ifile_and_noifile_in_raw_item_blocks_acc for
@@ -106,7 +106,7 @@ get_interface(IncludeImplTypes, RawCompUnit, IFileItemBlocks) :-
 get_int_and_impl(IncludeImplTypes, RawCompUnit,
         IFileItemBlocks, NoIFileItemBlocks) :-
     RawCompUnit =
-        compilation_unit(ModuleName, _ModuleNameContext, RawItemBlocks),
+        raw_compilation_unit(ModuleName, _ModuleNameContext, RawItemBlocks),
     get_ifile_and_noifile_in_raw_item_blocks_acc(IncludeImplTypes,
         gather_noifile_items, RawItemBlocks,
         cord.init, IFileItemBlocksCord, cord.init, NoIFileItemBlocksCord),

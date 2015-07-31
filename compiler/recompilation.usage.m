@@ -94,6 +94,7 @@
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.builtin_modules.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.

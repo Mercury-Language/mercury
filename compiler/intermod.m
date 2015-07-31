@@ -118,6 +118,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.item_util.
@@ -2419,7 +2420,7 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     % is coming.
     %
     % XXX Using this mechanism to let make_hlds know this is a bad design.
-    module_and_imports_add_item_blocks(OptItemBlocks, !ModuleAndImports),
+    module_and_imports_add_opt_item_blocks(OptItemBlocks, !ModuleAndImports),
     module_and_imports_add_specs(OptSpecs, !ModuleAndImports),
 
     % Get the :- pragma unused_args(...) declarations created when writing
@@ -2447,7 +2448,7 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
         LocalItemBlocks = cord.list(LocalItemBlocksCord),
         keep_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
             LocalItemBlocks, FilteredItemBlocks),
-        module_and_imports_add_item_blocks(FilteredItemBlocks,
+        module_and_imports_add_opt_item_blocks(FilteredItemBlocks,
             !ModuleAndImports),
         module_and_imports_add_specs(LocalSpecs, !ModuleAndImports)
     ;
@@ -2459,7 +2460,8 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
         list.condense(list.map(get_ancestors, OptFiles)), ModuleName),
     HaveReadModuleMaps = have_read_module_maps(map.init, map.init, map.init),
     process_module_private_interfaces(Globals, HaveReadModuleMaps, Int0Files,
-        make_ams_opt_imported, make_ams_opt_imported,
+        make_ioms_opt_imported, make_ioms_opt_imported,
+        module_and_imports_add_int_for_opt_item_blocks,
         [], AncestorImports1, [], AncestorImports2, !ModuleAndImports, !IO),
 
     % Figure out which .int files are needed by the .opt files
@@ -2475,18 +2477,19 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     % Read in the .int, and .int2 files needed by the .opt files.
     process_module_long_interfaces(Globals, HaveReadModuleMaps,
         must_be_qualified, NewDeps, ifk_int,
-        make_ams_opt_imported, make_ams_opt_imported,
+        make_ioms_opt_imported, make_ioms_opt_imported,
+        module_and_imports_add_int_for_opt_item_blocks,
         [], NewIndirectDeps, [], NewImplIndirectDeps, !ModuleAndImports, !IO),
     process_module_short_interfaces_and_impls_transitively(Globals,
         HaveReadModuleMaps, NewIndirectDeps ++ NewImplIndirectDeps, ifk_int2,
-        make_ams_opt_imported, make_ams_opt_imported,
+        make_ioms_opt_imported, make_ioms_opt_imported,
+        module_and_imports_add_int_for_opt_item_blocks,
         !ModuleAndImports, !IO),
 
     % Figure out whether anything went wrong.
     % XXX We should try to put all the relevant error indications into
     % !ModuleAndImports, and let our caller figure out what to do with them.
-    module_and_imports_get_results(!.ModuleAndImports, _Items, _Specs,
-        ModuleErrors),
+    module_and_imports_get_errors(!.ModuleAndImports, ModuleErrors),
     (
         ( set.is_non_empty(ModuleErrors)
         ; OptError = yes
@@ -2538,7 +2541,7 @@ keep_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse, [Item0 | Items0],
 
 :- pred read_optimization_interfaces(globals::in, bool::in,
     list(module_name)::in, set(module_name)::in,
-    cord(aug_item_block)::in, cord(aug_item_block)::out,
+    cord(opt_item_block)::in, cord(opt_item_block)::out,
     list(error_spec)::in, list(error_spec)::out,
     bool::in, bool::out, io::di, io::uo) is det.
 
@@ -2561,10 +2564,10 @@ read_optimization_interfaces(Globals, Transitive,
         !IO),
     actually_read_module_opt(ofk_opt, Globals, FileName, ModuleToRead,
         ParseTreeOpt, OptSpecs, OptError, !IO),
-    ParseTreeOpt = parse_tree_opt(OptModuleName, _OptFileKind,
+    ParseTreeOpt = parse_tree_opt(OptModuleName, OptFileKind,
         OptModuleContext, OptItems),
-    OptItemBlock = item_block(ams_opt_imported(OptModuleName),
-        OptModuleContext, OptItems),
+    OptSection = oms_opt_imported(OptModuleName, OptFileKind),
+    OptItemBlock = item_block(OptSection, OptModuleContext, OptItems),
     !:OptItemBlocksCord = cord.snoc(!.OptItemBlocksCord, OptItemBlock),
     update_error_status(Globals, opt_file, FileName,
         OptSpecs, !Specs, OptError, !Error),

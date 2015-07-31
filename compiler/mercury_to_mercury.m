@@ -120,10 +120,24 @@
     list(raw_item_block)::in, io::di, io::uo) is det.
 :- pred mercury_output_raw_item_block(merc_out_info::in,
     raw_item_block::in, io::di, io::uo) is det.
-:- pred mercury_output_aug_item_blocks(merc_out_info::in,
-    list(aug_item_block)::in, io::di, io::uo) is det.
-:- pred mercury_output_aug_item_block(merc_out_info::in,
-    aug_item_block::in, io::di, io::uo) is det.
+
+:- pred mercury_output_src_item_blocks(merc_out_info::in,
+    list(src_item_block)::in, io::di, io::uo) is det.
+:- pred mercury_output_src_item_block(merc_out_info::in,
+    src_item_block::in, io::di, io::uo) is det.
+:- pred mercury_output_int_item_blocks(merc_out_info::in,
+    list(int_item_block)::in, io::di, io::uo) is det.
+:- pred mercury_output_int_item_block(merc_out_info::in,
+    int_item_block::in, io::di, io::uo) is det.
+:- pred mercury_output_opt_item_blocks(merc_out_info::in,
+    list(opt_item_block)::in, io::di, io::uo) is det.
+:- pred mercury_output_opt_item_block(merc_out_info::in,
+    opt_item_block::in, io::di, io::uo) is det.
+:- pred mercury_output_int_for_opt_item_blocks(merc_out_info::in,
+    list(int_for_opt_item_block)::in, io::di, io::uo) is det.
+:- pred mercury_output_int_for_opt_item_block(merc_out_info::in,
+    int_for_opt_item_block::in, io::di, io::uo) is det.
+
 :- pred mercury_output_items(merc_out_info::in, list(item)::in,
     io::di, io::uo) is det.
 
@@ -485,6 +499,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.rat.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_out.
@@ -606,18 +621,29 @@ mercury_output_parse_tree_opt(Info, ParseTree, !IO) :-
     mercury_output_items(Info, Items, !IO).
 
 mercury_output_raw_compilation_unit(Info, CompUnit, !IO) :-
-    CompUnit = compilation_unit(ModuleName, _Context, ItemBlocks),
+    CompUnit = raw_compilation_unit(ModuleName, _Context, ItemBlocks),
     io.write_string(":- module ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO),
     mercury_output_raw_item_blocks(Info, ItemBlocks, !IO).
 
 mercury_output_aug_compilation_unit(Info, AugCompUnit, !IO) :-
-    AugCompUnit = compilation_unit(ModuleName, _Context, AugItemBlocks),
+    AugCompUnit = aug_compilation_unit(ModuleName, _Context, SrcItemBlocks,
+        DirectIntItemBlocks, IndirectIntItemBlocks,
+        OptItemBlocks, IntForOptItemBlocks),
     io.write_string(":- module ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO),
-    mercury_output_aug_item_blocks(Info, AugItemBlocks, !IO).
+    io.write_string("% The src item blocks.\n", !IO),
+    mercury_output_src_item_blocks(Info, SrcItemBlocks, !IO),
+    io.write_string("% The direct interface item blocks.\n", !IO),
+    mercury_output_int_item_blocks(Info, DirectIntItemBlocks, !IO),
+    io.write_string("% The indirect interface item blocks.\n", !IO),
+    mercury_output_int_item_blocks(Info, IndirectIntItemBlocks, !IO),
+    io.write_string("% The optimization item blocks.\n", !IO),
+    mercury_output_opt_item_blocks(Info, OptItemBlocks, !IO),
+    io.write_string("% The interface item blocks for optimization.\n", !IO),
+    mercury_output_int_for_opt_item_blocks(Info, IntForOptItemBlocks, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -679,63 +705,133 @@ mercury_output_raw_item_block(Info, RawItemBlock, !IO) :-
     mercury_output_section_marker(SectionKind, !IO),
     mercury_output_items(Info, Items, !IO).
 
-mercury_output_aug_item_blocks(_, [], !IO).
-mercury_output_aug_item_blocks(Info, [AugItemBlock | AugItemBlocks], !IO) :-
-    mercury_output_aug_item_block(Info, AugItemBlock, !IO),
-    mercury_output_aug_item_blocks(Info, AugItemBlocks, !IO).
+%-----------------------------------------------------------------------------%
 
-mercury_output_aug_item_block(Info, AugItemBlock, !IO) :-
-    AugItemBlock = item_block(AugSectionKind, _Context, Items),
-    (
-        AugSectionKind = ams_interface,
-        io.write_string(":- interface.\n", !IO)
-    ;
-        AugSectionKind = ams_implementation,
-        io.write_string(":- implementation.\n", !IO)
-    ;
-        AugSectionKind = ams_impl_but_exported_to_submodules,
-        io.write_string(":- ams_impl_but_exported_to_submodules.\n", !IO)
-    ;
-        AugSectionKind = ams_abstract_imported(ModuleName),
-        io.write_string(":- ams_abstract_imported(", !IO),
-        io.write_string(sym_name_to_string(ModuleName), !IO),
-        io.write_string(").\n", !IO)
-    ;
-        AugSectionKind = ams_imported(ModuleName, ImportLocn),
-        io.write_string(":- ams_imported(", !IO),
-        io.write_string(sym_name_to_string(ModuleName), !IO),
-        io.write_string(", ", !IO),
-        io.write(ImportLocn, !IO),
-        io.write_string(").\n", !IO)
-    ;
-        AugSectionKind = ams_used(ModuleName, ImportLocn),
-        io.write_string(":- ams_used(", !IO),
-        io.write_string(sym_name_to_string(ModuleName), !IO),
-        io.write_string(", ", !IO),
-        io.write(ImportLocn, !IO),
-        io.write_string(").\n", !IO)
-    ;
-        AugSectionKind = ams_opt_imported(ModuleName),
-        io.write_string(":- ams_opt_imported(", !IO),
-        io.write_string(sym_name_to_string(ModuleName), !IO),
-        io.write_string(").\n", !IO)
-    ;
-        AugSectionKind = ams_transitively_imported,
-        io.write_string(":- ams_transitively_imported.\n", !IO)
-    ),
-    list.foldl(mercury_output_item(Info), Items, !IO).
+mercury_output_src_item_blocks(_, [], !IO).
+mercury_output_src_item_blocks(Info, [SrcItemBlock | SrcItemBlocks], !IO) :-
+    mercury_output_src_item_block(Info, SrcItemBlock, !IO),
+    mercury_output_src_item_blocks(Info, SrcItemBlocks, !IO).
+
+mercury_output_src_item_block(Info, SrcItemBlock, !IO) :-
+    SrcItemBlock = item_block(SrcSectionKind, _Context, Items),
+    mercury_output_src_section_marker(SrcSectionKind, !IO),
+    mercury_output_items(Info, Items, !IO).
+
+mercury_output_int_item_blocks(_, [], !IO).
+mercury_output_int_item_blocks(Info, [IntItemBlock | IntItemBlocks], !IO) :-
+    mercury_output_int_item_block(Info, IntItemBlock, !IO),
+    mercury_output_int_item_blocks(Info, IntItemBlocks, !IO).
+
+mercury_output_int_item_block(Info, IntItemBlock, !IO) :-
+    IntItemBlock = item_block(IntSectionKind, _Context, Items),
+    mercury_output_int_section_marker(IntSectionKind, !IO),
+    mercury_output_items(Info, Items, !IO).
+
+mercury_output_opt_item_blocks(_, [], !IO).
+mercury_output_opt_item_blocks(Info, [OptItemBlock | OptItemBlocks], !IO) :-
+    mercury_output_opt_item_block(Info, OptItemBlock, !IO),
+    mercury_output_opt_item_blocks(Info, OptItemBlocks, !IO).
+
+mercury_output_opt_item_block(Info, OptItemBlock, !IO) :-
+    OptItemBlock = item_block(OptSectionKind, _Context, Items),
+    mercury_output_opt_section_marker(OptSectionKind, !IO),
+    mercury_output_items(Info, Items, !IO).
+
+mercury_output_int_for_opt_item_blocks(_, [], !IO).
+mercury_output_int_for_opt_item_blocks(Info,
+        [IntForOptItemBlock | IntForOptItemBlocks], !IO) :-
+    mercury_output_int_for_opt_item_block(Info, IntForOptItemBlock, !IO),
+    mercury_output_int_for_opt_item_blocks(Info, IntForOptItemBlocks, !IO).
+
+mercury_output_int_for_opt_item_block(Info, IntForOptItemBlock, !IO) :-
+    IntForOptItemBlock = item_block(IntForOptSectionKind, _Context, Items),
+    mercury_output_int_for_opt_section_marker(IntForOptSectionKind, !IO),
+    mercury_output_items(Info, Items, !IO).
+
+%-----------------------------------------------------------------------------%
 
 :- pred mercury_output_section_marker(module_section::in, io::di, io::uo)
     is det.
 
-mercury_output_section_marker(SectionKind, !IO) :-
+mercury_output_section_marker(Section, !IO) :-
     (
-        SectionKind = ms_interface,
+        Section = ms_interface,
         io.write_string(":- interface.\n", !IO)
     ;
-        SectionKind = ms_implementation,
+        Section = ms_implementation,
         io.write_string(":- implementation.\n", !IO)
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_output_src_section_marker(src_module_section::in,
+    io::di, io::uo) is det.
+
+mercury_output_src_section_marker(SrcSection, !IO) :-
+    (
+        SrcSection = sms_interface,
+        io.write_string(":- interface.\n", !IO)
+    ;
+        SrcSection = sms_implementation,
+        io.write_string(":- implementation.\n", !IO)
+    ;
+        SrcSection = sms_impl_but_exported_to_submodules,
+        io.write_string(":- ams_impl_but_exported_to_submodules.\n", !IO)
+    ).
+
+:- pred mercury_output_int_section_marker(int_module_section::in,
+    io::di, io::uo) is det.
+
+mercury_output_int_section_marker(IntSection, !IO) :-
+    (
+        IntSection = ims_imported(ModuleName, IntFileKind, ImportLocn),
+        io.write_string(":- ims_imported(", !IO),
+        io.write_string(sym_name_to_string(ModuleName), !IO),
+        io.write_string(int_file_kind_to_extension(IntFileKind), !IO),
+        io.write_string(", ", !IO),
+        io.write(ImportLocn, !IO),
+        io.write_string(").\n", !IO)
+    ;
+        IntSection = ims_used(ModuleName, IntFileKind, ImportLocn),
+        io.write_string(":- ims_used(", !IO),
+        io.write_string(sym_name_to_string(ModuleName), !IO),
+        io.write_string(int_file_kind_to_extension(IntFileKind), !IO),
+        io.write_string(", ", !IO),
+        io.write(ImportLocn, !IO),
+        io.write_string(").\n", !IO)
+    ;
+        IntSection = ims_abstract_imported(ModuleName, IntFileKind),
+        io.write_string(":- ims_abstract_imported(", !IO),
+        io.write_string(sym_name_to_string(ModuleName), !IO),
+        io.write_string(int_file_kind_to_extension(IntFileKind), !IO),
+        io.write_string(").\n", !IO)
+    ).
+
+:- pred mercury_output_opt_section_marker(opt_module_section::in,
+    io::di, io::uo) is det.
+
+mercury_output_opt_section_marker(OptSection, !IO) :-
+    (
+        OptSection = oms_opt_imported(ModuleName, OptFileKind),
+        io.write_string(":- oms_opt_imported(", !IO),
+        io.write_string(sym_name_to_string(ModuleName), !IO),
+        io.write_string(opt_file_kind_to_extension(OptFileKind), !IO),
+        io.write_string(").\n", !IO)
+    ).
+
+:- pred mercury_output_int_for_opt_section_marker(
+    int_for_opt_module_section::in, io::di, io::uo) is det.
+
+mercury_output_int_for_opt_section_marker(IntForOptSection, !IO) :-
+    (
+        IntForOptSection = ioms_opt_imported(ModuleName, IntFileKind),
+        io.write_string(":- ioms_opt_imported(", !IO),
+        io.write_string(sym_name_to_string(ModuleName), !IO),
+        io.write_string(int_file_kind_to_extension(IntFileKind), !IO),
+        io.write_string(").\n", !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
 
 mercury_output_items(_, [], !IO).
 mercury_output_items(Info, [Item | Items], !IO) :-

@@ -18,6 +18,7 @@
 :- import_module libs.timestamp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_item.

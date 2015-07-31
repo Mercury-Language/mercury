@@ -155,14 +155,22 @@
 module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         EventSpecMap0, EventSpecMap, EventSpecFileName,
         !:Info, UndefTypes, UndefModes, !Specs) :-
-    AugCompUnit0 = compilation_unit(ModuleName, ModuleNameContext,
-        AugItemBlocks0),
-    init_mq_info(Globals, ModuleName, AugItemBlocks0, yes, !:Info),
-    collect_mq_info_in_aug_item_blocks(AugItemBlocks0, !Info),
-    module_qualify_items_in_blocks(AugItemBlocks0, AugItemBlocks,
+    AugCompUnit0 = aug_compilation_unit(ModuleName, ModuleNameContext,
+        SrcItemBlocks0, DirectIntItemBlocks, IndirectIntItemBlocks,
+        OptItemBlocks, IntForOptItemBlocks),
+    init_mq_info(Globals, ModuleName, SrcItemBlocks0,
+        DirectIntItemBlocks ++ IndirectIntItemBlocks,
+        OptItemBlocks, IntForOptItemBlocks, yes, !:Info),
+    collect_mq_info_in_item_blocks(src_section_mq_info, SrcItemBlocks0,
+        !Info),
+    collect_mq_info_in_item_blocks(int_section_mq_info, DirectIntItemBlocks,
+        !Info),
+    % XXX ITEM_LIST asymmetry: collect from 2, qualify 1
+    module_qualify_items_in_src_item_blocks(SrcItemBlocks0, SrcItemBlocks,
         !Info, !Specs),
-    AugCompUnit = compilation_unit(ModuleName, ModuleNameContext,
-        AugItemBlocks),
+    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
+        SrcItemBlocks, DirectIntItemBlocks, IndirectIntItemBlocks,
+        OptItemBlocks, IntForOptItemBlocks),
 
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
     do_module_qualify_event_specs(EventSpecFileName,
@@ -217,10 +225,10 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
 module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
     ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         IntItems0, ImpItems0),
-    IntAugItemBlocks0 =
-        [item_block(ams_interface, term.context_init, IntItems0)],
-    ImpAugItemBlocks0 =
-        [item_block(ams_implementation, term.context_init, ImpItems0)],
+    IntSrcItemBlocks0 =
+        [item_block(sms_interface, term.context_init, IntItems0)],
+    ImpSrcItemBlocks0 =
+        [item_block(sms_implementation, term.context_init, ImpItems0)],
     % XXX ITEM_LIST The completely separate treatment of the interface
     % and implementation part of an interface file preserves old behavior;
     % write_short_interface_file in write_module_interface_files.m used
@@ -230,14 +238,19 @@ module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
     % doesn't see the declarations in the interface section.
     % XXX ITEM_LIST Check whether we can get a nonempty list of implicit
     % dependencies in either call to collect_mq_info_in_aug_item_blocks below.
+    DummyItemBlocks = []:list(src_item_block),
     some [!IntInfo] (
-        init_mq_info(Globals, ModuleName, IntAugItemBlocks0, no, !:IntInfo),
-        collect_mq_info_in_aug_item_blocks(IntAugItemBlocks0, !IntInfo),
+        init_mq_info(Globals, ModuleName, IntSrcItemBlocks0,
+            DummyItemBlocks, DummyItemBlocks, DummyItemBlocks, no, !:IntInfo),
+        collect_mq_info_in_item_blocks(src_section_mq_info, IntSrcItemBlocks0,
+            !IntInfo),
         module_qualify_items_loop(IntItems0, IntItems, !.IntInfo, _, !Specs)
     ),
     some [!ImpInfo] (
-        init_mq_info(Globals, ModuleName, ImpAugItemBlocks0, no, !:ImpInfo),
-        collect_mq_info_in_aug_item_blocks(ImpAugItemBlocks0, !ImpInfo),
+        init_mq_info(Globals, ModuleName, ImpSrcItemBlocks0,
+            DummyItemBlocks, DummyItemBlocks, DummyItemBlocks, no, !:ImpInfo),
+        collect_mq_info_in_item_blocks(src_section_mq_info, ImpSrcItemBlocks0,
+            !ImpInfo),
         module_qualify_items_loop(ImpItems0, ImpItems, !.ImpInfo, _, !Specs)
     ),
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
@@ -259,6 +272,8 @@ qualify_type_qualification(Type0, Type, Context, !Info, !Specs) :-
 
 :- type mq_info
     --->    mq_info(
+                % XXX ITEM_LIST Reorder to put related fields together.
+
                 % Modules which have been imported or used, i.e. the ones
                 % for which there was a `:- import_module' or `:- use_module'
                 % declaration in this module.
@@ -288,6 +303,7 @@ qualify_type_qualification(Type0, Type, Context, !Info, !Specs) :-
                 % Does this module export any type class instances?
                 mqi_exported_instances_flag      :: bool,
 
+                % XXX ITEM_LIST Should be passed separately from the mq_info.
                 % Import status of the current item.
                 mqi_import_status               :: mq_import_status,
 
@@ -306,6 +322,7 @@ qualify_type_qualification(Type0, Type, Context, !Info, !Specs) :-
                 % The name of the current module.
                 mqi_this_module                 :: module_name,
 
+                % XXX ITEM_LIST Should be passed separately from the mq_info.
                 % Must uses of the current item be explicitly module qualified.
                 mqi_need_qual_flag              :: need_qualifier,
 
@@ -328,53 +345,50 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
     ;       mq_status_imported(import_locn)
     ;       mq_status_abstract_imported.
 
+%-----------------------------------------------------------------------------%
+
+:- type section_mq_info(MS) == (pred(MS, mq_import_status, need_qualifier)).
+:- inst section_mq_info     == (pred(in, out, out) is det).
+
+:- pred src_section_mq_info(src_module_section::in,
+    mq_import_status::out, need_qualifier::out) is det.
+
+src_section_mq_info(sms_interface,
+    mq_status_exported, may_be_unqualified).
+src_section_mq_info(sms_implementation,
+    mq_status_local, may_be_unqualified).
+src_section_mq_info(sms_impl_but_exported_to_submodules,
+    mq_status_local, may_be_unqualified).
+
+:- pred int_section_mq_info(int_module_section::in,
+    mq_import_status::out, need_qualifier::out) is det.
+
+int_section_mq_info(ims_imported(_ModuleName, _IntFileKind, Locn),
+    mq_status_imported(Locn), may_be_unqualified).
+int_section_mq_info(ims_used(_ModuleName, _IntFileKind, Locn),
+    mq_status_imported(Locn), must_be_qualified).
+int_section_mq_info(ims_abstract_imported(_ModuleName, _IntFileKind),
+    mq_status_abstract_imported, must_be_qualified).
+
+%-----------------------------------------------------------------------------%
+
     % Pass over the item_block list collecting all defined module, type, mode
     % and inst ids, all module synonym definitions, and the names of all
     % modules imported in the interface.
     %
-:- pred collect_mq_info_in_aug_item_blocks(list(aug_item_block)::in,
+:- pred collect_mq_info_in_item_blocks(
+    section_mq_info(MS)::in(section_mq_info), list(item_block(MS))::in,
     mq_info::in, mq_info::out) is det.
 
-collect_mq_info_in_aug_item_blocks([], !Info).
-collect_mq_info_in_aug_item_blocks([AugItemBlock | AugItemBlocks], !Info) :-
-    AugItemBlock = item_block(AugSection, _Context, Items),
-    (
-        AugSection = ams_transitively_imported
-        % Don't process the transitively imported items (from `.int2' files).
-        % They can't be used in the current module.
-    ;
-        % XXX ITEM_LIST Check whether this code could be folded together
-        % with status.m's aug_module_section_status, and/or its callers.
-        (
-            AugSection = ams_interface,
-            mq_info_set_import_status(mq_status_exported, !Info)
-        ;
-            AugSection = ams_impl_but_exported_to_submodules,
-            mq_info_set_import_status(mq_status_local, !Info)
-        ;
-            AugSection = ams_implementation,
-            mq_info_set_import_status(mq_status_local, !Info)
-        ;
-            AugSection = ams_imported(_ModuleName, Locn),
-            mq_info_set_import_status(mq_status_imported(Locn), !Info),
-            mq_info_set_need_qual_flag(may_be_unqualified, !Info)
-        ;
-            AugSection = ams_used(_ModuleName, Locn),
-            mq_info_set_import_status(mq_status_imported(Locn), !Info),
-            mq_info_set_need_qual_flag(must_be_qualified, !Info)
-        ;
-            AugSection = ams_opt_imported(_ModuleName),
-            mq_info_set_import_status(
-                mq_status_imported(import_locn_implementation), !Info),
-            mq_info_set_need_qual_flag(must_be_qualified, !Info)
-        ;
-            AugSection = ams_abstract_imported(_ModuleName),
-            mq_info_set_import_status(mq_status_abstract_imported, !Info),
-            mq_info_set_need_qual_flag(must_be_qualified, !Info)
-        ),
-        collect_mq_info_in_items(Items, !Info),
-        collect_mq_info_in_aug_item_blocks(AugItemBlocks, !Info)
-    ).
+collect_mq_info_in_item_blocks(_, [], !Info).
+collect_mq_info_in_item_blocks(SectionInfo, [ItemBlock | ItemBlocks],
+        !Info) :-
+    ItemBlock = item_block(Section, _Context, Items),
+    SectionInfo(Section, MQStatus, NeedQualFlag),
+    mq_info_set_import_status(MQStatus, !Info),
+    mq_info_set_need_qual_flag(NeedQualFlag, !Info),
+    collect_mq_info_in_items(Items, !Info),
+    collect_mq_info_in_item_blocks(SectionInfo, ItemBlocks, !Info).
 
     % Pass over the item list collecting all defined module, type, mode and
     % inst ids, all module synonym definitions, and the names of all
@@ -408,10 +422,11 @@ collect_mq_info_in_item(Item, !Info) :-
     ;
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(SymName, Params, _, _, _, _),
-        ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+        mq_info_get_import_status(!.Info, ImportStatus),
+        ( if ImportStatus = mq_status_abstract_imported then
             % This item is not visible in the current module.
             true
-        ;
+        else
             list.length(Params, Arity),
             mq_info_get_types(!.Info, Types0),
             mq_info_get_impl_types(!.Info, ImplTypes0),
@@ -425,10 +440,11 @@ collect_mq_info_in_item(Item, !Info) :-
     ;
         Item = item_inst_defn(ItemInstDefn),
         ItemInstDefn = item_inst_defn_info(SymName, Params, _, _, _, _),
-        ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+        mq_info_get_import_status(!.Info, ImportStatus),
+        ( if ImportStatus = mq_status_abstract_imported then
             % This item is not visible in the current module.
             true
-        ;
+        else
             list.length(Params, Arity),
             mq_info_get_insts(!.Info, Insts0),
             mq_info_get_need_qual_flag(!.Info, NeedQualifier),
@@ -438,10 +454,11 @@ collect_mq_info_in_item(Item, !Info) :-
     ;
         Item = item_mode_defn(ItemModeDefn),
         ItemModeDefn = item_mode_defn_info(SymName, Params, _, _, _, _),
-        ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+        mq_info_get_import_status(!.Info, ImportStatus),
+        ( if ImportStatus = mq_status_abstract_imported then
             % This item is not visible in the current module.
             true
-        ;
+        else
             list.length(Params, Arity),
             mq_info_get_modes(!.Info, Modes0),
             mq_info_get_need_qual_flag(!.Info, NeedQualifier),
@@ -467,10 +484,11 @@ collect_mq_info_in_item(Item, !Info) :-
     ;
         Item = item_typeclass(ItemTypeClass),
         ItemTypeClass = item_typeclass_info(SymName, Params, _, _, _, _, _, _),
-        ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
+        mq_info_get_import_status(!.Info, ImportStatus),
+        ( if ImportStatus = mq_status_abstract_imported then
             % This item is not visible in the current module.
             true
-        ;
+        else
             list.length(Params, Arity),
             mq_info_get_classes(!.Info, Classes0),
             mq_info_get_need_qual_flag(!.Info, NeedQualifier),
@@ -479,18 +497,19 @@ collect_mq_info_in_item(Item, !Info) :-
             mq_info_set_classes(Classes, !Info)
         )
     ;
-          Item = item_instance(ItemInstance),
-          ( mq_info_get_import_status(!.Info, mq_status_imported(_)) ->
-              InstanceModule = ItemInstance ^ ci_module_containing_instance,
-              mq_info_get_imported_instance_modules(!.Info,
+        Item = item_instance(ItemInstance),
+        mq_info_get_import_status(!.Info, ImportStatus),
+        ( if ImportStatus = mq_status_imported(_) then
+            InstanceModule = ItemInstance ^ ci_module_containing_instance,
+            mq_info_get_imported_instance_modules(!.Info,
                 ImportedInstanceModules0),
-              set.insert(InstanceModule,
+            set.insert(InstanceModule,
                 ImportedInstanceModules0, ImportedInstanceModules),
-              mq_info_set_imported_instance_modules(ImportedInstanceModules,
+            mq_info_set_imported_instance_modules(ImportedInstanceModules,
                 !Info)
-          ;
-              true
-          )
+        else
+            true
+        )
     ;
         ( Item = item_clause(_)
         ; Item = item_pred_decl(_)
@@ -542,149 +561,150 @@ add_module_defn(ModuleName, !Info) :-
     % imported modules to the unused_interface_modules list.
     %
     % XXX ITEM_LIST Why do we base this decision on the status we get
-    % from the mq_info, instead of the current section's section kind?
+    % from the mq_info, instead of directly on the current section's
+    % section kind?
     %
 :- pred maybe_add_import(module_name::in, mq_info::in, mq_info::out)
     is det.
 
 maybe_add_import(ImportedModuleName, !Info) :-
     mq_info_get_import_status(!.Info, Status),
+    % XXX ITEM_LIST Consider rewriting this to use a switch on Status.
+
     % Modules imported from the the proper private interface of ancestors of
     % the current module are treated as if they were directly imported
     % by the current module.
-    (
+    ( if
         ( Status = mq_status_local
         ; Status = mq_status_exported
         ; Status = mq_status_imported(
             import_locn_ancestor_private_interface_proper)
         )
-    ->
+    then
         mq_info_get_imported_modules(!.Info, Modules0),
         set.insert(ImportedModuleName, Modules0, Modules),
         mq_info_set_imported_modules(Modules, !Info)
-    ;
+    else
         true
     ),
 
     % We check that all modules imported in the interface are
     % used in the interface.
-    ( Status = mq_status_exported ->
+    ( if Status = mq_status_exported then
         mq_info_get_unused_interface_modules(!.Info, UnusedIntModules0),
         set.insert(ImportedModuleName, UnusedIntModules0, UnusedIntModules),
         mq_info_set_unused_interface_modules(UnusedIntModules, !Info)
-    ;
+    else
         true
     ),
 
     % Only modules imported in the interface or in the private
     % interface of ancestor modules may be used in the interface.
-    (
+    ( if
         ( Status = mq_status_exported
         ; Status = mq_status_imported(
             import_locn_ancestor_private_interface_proper)
         )
-    ->
+    then
         mq_info_get_interface_visible_modules(!.Info, IntModules0),
         set.insert(ImportedModuleName, IntModules0, IntModules),
         mq_info_set_interface_visible_modules(IntModules, !Info)
-    ;
+    else
         true
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % process_assert(G, SNs, B)
-    %
-    % Scan the goal, G, building the list of qualified symbols, SNs.
-    % If there exists a single unqualified symbol in G, the bool, B,
-    % will be set to no.
+    % Scan Goal, building the list of qualified symbols, SymNames.
+    % If there exists a single unqualified symbol in Goal, set Success to no.
     %
 :- pred process_assert(goal::in, list(sym_name)::out, bool::out) is det.
 
-process_assert(Goal, Symbols, Success) :-
+process_assert(Goal, SymNames, Success) :-
     % AAA Some more stuff to do accumulator introduction on, it
     % would be better to rewrite using maybes and then to declare
     % the maybe_and predicate to be associative.
     % NB. accumulator introduction doesn't work on this case yet.
     %
     (
-        ( Goal = conj_expr(_, GA, GB)
-        ; Goal = par_conj_expr(_, GA, GB)
-        ; Goal = disj_expr(_, GA, GB)
-        ; Goal = implies_expr(_, GA, GB)
-        ; Goal = equivalent_expr(_, GA, GB)
+        ( Goal = conj_expr(_, SubGoalA, SubGoalB)
+        ; Goal = par_conj_expr(_, SubGoalA, SubGoalB)
+        ; Goal = disj_expr(_, SubGoalA, SubGoalB)
+        ; Goal = implies_expr(_, SubGoalA, SubGoalB)
+        ; Goal = equivalent_expr(_, SubGoalA, SubGoalB)
         ),
-        process_assert(GA, SymbolsA, SuccessA),
-        process_assert(GB, SymbolsB, SuccessB),
-        Symbols = SymbolsA ++ SymbolsB,
+        process_assert(SubGoalA, SymNamesA, SuccessA),
+        process_assert(SubGoalB, SymNamesB, SuccessB),
+        SymNames = SymNamesA ++ SymNamesB,
         bool.and(SuccessA, SuccessB, Success)
     ;
         ( Goal = true_expr(_)
         ; Goal = fail_expr(_)
         ),
-        Symbols = [],
+        SymNames = [],
         Success = yes
     ;
-        ( Goal = not_expr(_, G)
-        ; Goal = some_expr(_, _, G)
-        ; Goal = some_state_vars_expr(_, _, G)
-        ; Goal = all_expr(_, _, G)
-        ; Goal = all_state_vars_expr(_, _, G)
-        ; Goal = promise_purity_expr(_, _, G)
-        ; Goal = promise_equivalent_solutions_expr(_, _, _, _, _, G)
-        ; Goal = promise_equivalent_solution_sets_expr(_, _, _, _, _, G)
-        ; Goal = promise_equivalent_solution_arbitrary_expr(_, _, _, _, _, G)
-        ; Goal = require_detism_expr(_, _, G)
-        ; Goal = require_complete_switch_expr(_, _, G)
-        ; Goal = require_switch_arms_detism_expr(_, _, _, G)
-        ; Goal = trace_expr(_, _, _, _, _, G)
+        ( Goal = not_expr(_, SubGoal)
+        ; Goal = some_expr(_, _, SubGoal)
+        ; Goal = some_state_vars_expr(_, _, SubGoal)
+        ; Goal = all_expr(_, _, SubGoal)
+        ; Goal = all_state_vars_expr(_, _, SubGoal)
+        ; Goal = promise_purity_expr(_, _, SubGoal)
+        ; Goal = promise_equivalent_solutions_expr(_, _, _, _, _, SubGoal)
+        ; Goal = promise_equivalent_solution_sets_expr(_, _, _, _, _, SubGoal)
+        ; Goal = promise_equivalent_solution_arbitrary_expr(_, _, _, _, _,
+            SubGoal)
+        ; Goal = require_detism_expr(_, _, SubGoal)
+        ; Goal = require_complete_switch_expr(_, _, SubGoal)
+        ; Goal = require_switch_arms_detism_expr(_, _, _, SubGoal)
+        ; Goal = trace_expr(_, _, _, _, _, SubGoal)
         ),
-        process_assert(G, Symbols, Success)
+        process_assert(SubGoal, SymNames, Success)
     ;
         Goal = try_expr(_, _, SubGoal, Then, MaybeElse, Catches,
             MaybeCatchAny),
-        process_assert(SubGoal, SymbolsGoal, SuccessGoal),
-        process_assert(Then, SymbolsThen, SuccessThen),
-        maybe_process_assert(MaybeElse, SymbolsElse, SuccessElse),
+        process_assert(SubGoal, SymNamesGoal, SuccessGoal),
+        process_assert(Then, SymNamesThen, SuccessThen),
+        maybe_process_assert(MaybeElse, SymNamesElse, SuccessElse),
         list.map2(process_assert_catch, Catches,
-            SymbolsCatches, SuccessCatches),
+            SymNamesCatches, SuccessCatches),
         (
             MaybeCatchAny = yes(catch_any_expr(_, CatchAnyGoal)),
-            process_assert(CatchAnyGoal, SymbolsCatchAny, SuccessCatchAny)
+            process_assert(CatchAnyGoal, SymNamesCatchAny, SuccessCatchAny)
         ;
             MaybeCatchAny = no,
-            SymbolsCatchAny = [],
+            SymNamesCatchAny = [],
             SuccessCatchAny = no
         ),
-        SymbolsLists = [SymbolsGoal, SymbolsThen, SymbolsElse, SymbolsCatchAny
-            | SymbolsCatches],
-        list.condense(SymbolsLists, Symbols),
+        SymNamesLists = [SymNamesGoal, SymNamesThen, SymNamesElse,
+            SymNamesCatchAny | SymNamesCatches],
+        list.condense(SymNamesLists, SymNames),
         SuccessLists = [SuccessGoal, SuccessThen, SuccessElse, SuccessCatchAny
             | SuccessCatches],
         bool.and_list(SuccessLists, Success)
     ;
         Goal = atomic_expr(_, _, _, _, MainGoal, OrElseGoals),
-        process_assert(MainGoal, SymbolsMainGoal, SuccessMainGoal),
+        process_assert(MainGoal, SymNamesMainGoal, SuccessMainGoal),
         process_assert_list(OrElseGoals,
-            SymbolsOrElseGoals, SuccessOrElseGoals),
-        Symbols = SymbolsMainGoal ++ SymbolsOrElseGoals,
+            SymNamesOrElseGoals, SuccessOrElseGoals),
+        SymNames = SymNamesMainGoal ++ SymNamesOrElseGoals,
         bool.and(SuccessMainGoal, SuccessOrElseGoals, Success)
     ;
-        Goal = if_then_else_expr(_, _, _, GA, GB, GC),
-        process_assert(GA, SymbolsA, SuccessA),
-        process_assert(GB, SymbolsB, SuccessB),
-        process_assert(GC, SymbolsC, SuccessC),
-        Symbols = SymbolsA ++ SymbolsB ++ SymbolsC,
-        bool.and(SuccessA, SuccessB, Success0),
-        bool.and(Success0, SuccessC, Success)
+        Goal = if_then_else_expr(_, _, _, GoalCond, GoalThen, GoalElse),
+        process_assert(GoalCond, SymNamesCond, SuccessCond),
+        process_assert(GoalThen, SymNamesThen, SuccessThen),
+        process_assert(GoalElse, SymNamesElse, SuccessElse),
+        SymNames = SymNamesCond ++ SymNamesThen ++ SymNamesElse,
+        bool.and(SuccessCond, SuccessThen, Success0),
+        bool.and(Success0, SuccessElse, Success)
     ;
         Goal = event_expr(_, _Name, Args0),
         list.map(term.coerce, Args0, Args),
-        ( term_qualified_symbols_list(Args, SymbolsPrime) ->
-            Symbols = SymbolsPrime,
+        ( if term_qualified_symbols_list(Args, SymNamesPrime) then
+            SymNames = SymNamesPrime,
             Success = yes
-        ;
-            Symbols = [],
+        else
+            SymNames = [],
             Success = no
         )
     ;
@@ -692,30 +712,30 @@ process_assert(Goal, Symbols, Success) :-
         (
             SymName = qualified(_, _),
             list.map(term.coerce, Args0, Args),
-            ( term_qualified_symbols_list(Args, Symbols0) ->
-                Symbols = [SymName | Symbols0],
+            ( if term_qualified_symbols_list(Args, SymNames0) then
+                SymNames = [SymName | SymNames0],
                 Success = yes
-            ;
-                Symbols = [],
+            else
+                SymNames = [],
                 Success = no
             )
         ;
             SymName = unqualified(_),
-            Symbols = [],
+            SymNames = [],
             Success = no
         )
     ;
         Goal = unify_expr(_, LHS0, RHS0, _Purity),
         term.coerce(LHS0, LHS),
         term.coerce(RHS0, RHS),
-        (
-            term_qualified_symbols(LHS, SymbolsL),
-            term_qualified_symbols(RHS, SymbolsR)
-        ->
-            list.append(SymbolsL, SymbolsR, Symbols),
+        ( if
+            term_qualified_symbols(LHS, SymNamesL),
+            term_qualified_symbols(RHS, SymNamesR)
+        then
+            list.append(SymNamesL, SymNamesR, SymNames),
             Success = yes
-        ;
-            Symbols = [],
+        else
+            SymNames = [],
             Success = no
         )
     ).
@@ -730,52 +750,49 @@ maybe_process_assert(yes(Goal), Symbols, Success) :-
 :- pred process_assert_catch(catch_expr::in, list(sym_name)::out, bool::out)
     is det.
 
-process_assert_catch(catch_expr(Pattern0, Goal), Symbols, Success) :-
+process_assert_catch(catch_expr(Pattern0, Goal), SymNames, Success) :-
     term.coerce(Pattern0, Pattern),
-    (
-        term_qualified_symbols(Pattern, SymbolsPattern),
-        process_assert(Goal, SymbolsGoal, yes)
-    ->
-        list.append(SymbolsPattern, SymbolsGoal, Symbols),
+    ( if
+        term_qualified_symbols(Pattern, SymNamesPattern),
+        process_assert(Goal, SymNamesGoal, ProcessAssertSuccess),
+        ProcessAssertSuccess = yes
+    then
+        list.append(SymNamesPattern, SymNamesGoal, SymNames),
         Success = yes
-    ;
-        Symbols = [],
+    else
+        SymNames = [],
         Success = no
     ).
 
-    % process_assert(G, SNs, B)
-    %
     % Performs process_assert on a list of goals.
     %
 :- pred process_assert_list(list(goal)::in, list(sym_name)::out,
     bool::out) is det.
 
-process_assert_list(ExprList, Symbols, Success) :-
+process_assert_list(Goals, SymNames, Success) :-
     (
-        ExprList = [],
-        Symbols = [],
+        Goals = [],
+        SymNames = [],
         Success = yes
     ;
-        ExprList = [Expr | Rest],
-        process_assert(Expr, SymbolsE, SuccessE),
-        process_assert_list(Rest, SymbolsR, SuccessR),
-        list.append(SymbolsE, SymbolsR, Symbols),
-        bool.and(SuccessE, SuccessR, Success)
+        Goals = [HeadGoal | TailGoals],
+        process_assert(HeadGoal, SymNamesHead, SuccessHead),
+        process_assert_list(TailGoals, SymNamesTail, SuccessTail),
+        list.append(SymNamesHead, SymNamesTail, SymNames),
+        bool.and(SuccessHead, SuccessTail, Success)
     ).
 
-    % term_qualified_symbols(T, S)
-    %
     % Given a term, T, return the list of all the sym_names, S, in the term.
     % The predicate fails if any sub-term of T is unqualified.
     %
 :- pred term_qualified_symbols(term::in, list(sym_name)::out) is semidet.
 
 term_qualified_symbols(Term, Symbols) :-
-    ( try_parse_sym_name_and_args(Term, SymName, Args) ->
+    ( if try_parse_sym_name_and_args(Term, SymName, Args) then
         SymName = qualified(_, _),
         term_qualified_symbols_list(Args, Symbols0),
         Symbols = [SymName | Symbols0]
-    ;
+    else
         Symbols = []
     ).
 
@@ -795,43 +812,29 @@ term_qualified_symbols_list([Term | Terms], Symbols) :-
     % since imported declarations should already be module qualified.
     % (An imported block should never be followed by an unimported block.)
     %
-:- pred module_qualify_items_in_blocks(
-    list(aug_item_block)::in, list(aug_item_block)::out,
+:- pred module_qualify_items_in_src_item_blocks(
+    list(src_item_block)::in, list(src_item_block)::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_qualify_items_in_blocks([], [], !Info, !Specs).
-module_qualify_items_in_blocks([AugItemBlock0 | AugItemBlocks0],
-        [AugItemBlock | AugItemBlocks], !Info, !Specs) :-
-    AugItemBlock0 = item_block(AugSection, Context, Items0),
+module_qualify_items_in_src_item_blocks([], [], !Info, !Specs).
+module_qualify_items_in_src_item_blocks([SrcItemBlock0 | SrcItemBlocks0],
+        [SrcItemBlock | SrcItemBlocks], !Info, !Specs) :-
+    SrcItemBlock0 = item_block(SrcSection, Context, Items0),
     (
-        ( AugSection = ams_imported(_, _)
-        ; AugSection = ams_used(_, _)
-        ; AugSection = ams_opt_imported(_)
-        ; AugSection = ams_transitively_imported
-        ),
-        % Don't recurse; don't module qualify this block or following blocks.
-        AugItemBlock = AugItemBlock0,
-        AugItemBlocks = AugItemBlocks0
+        SrcSection = sms_interface,
+        mq_info_set_import_status(mq_status_exported, !Info)
     ;
-        (
-            AugSection = ams_interface,
-            mq_info_set_import_status(mq_status_exported, !Info)
-        ;
-            AugSection = ams_implementation,
-            mq_info_set_import_status(mq_status_local, !Info)
-        ;
-            AugSection = ams_impl_but_exported_to_submodules,
-            mq_info_set_import_status(mq_status_local, !Info)
-        ;
-            AugSection = ams_abstract_imported(_),
-            mq_info_set_import_status(mq_status_abstract_imported, !Info)
-        ),
-        module_qualify_items_loop(Items0, Items, !Info, !Specs),
-        AugItemBlock = item_block(AugSection, Context, Items),
-        module_qualify_items_in_blocks(AugItemBlocks0, AugItemBlocks,
-            !Info, !Specs)
-    ).
+        SrcSection = sms_implementation,
+        mq_info_set_import_status(mq_status_local, !Info)
+    ;
+        SrcSection = sms_impl_but_exported_to_submodules,
+        mq_info_set_import_status(mq_status_local, !Info)
+    ),
+    module_qualify_items_loop(Items0, Items, !Info, !Specs),
+    SrcItemBlock = item_block(SrcSection, Context, Items),
+    module_qualify_items_in_src_item_blocks(SrcItemBlocks0, SrcItemBlocks,
+        !Info, !Specs).
 
 :- pred module_qualify_items_loop(list(item)::in, list(item)::out,
     mq_info::in, mq_info::out,
@@ -1001,9 +1004,9 @@ module_qualify_item(Item0, Item, !Info, !Specs) :-
         Id0 = mq_id(Name0, Arity),
         ErrorContext = mqec_instance(Context, Id0),
 
-        ( mq_info_get_import_status(!.Info, mq_status_exported) ->
+        ( if mq_info_get_import_status(!.Info, mq_status_exported) then
             mq_info_set_exported_instances_flag(yes, !Info)
-        ;
+        else
             true
         ),
 
@@ -1386,14 +1389,14 @@ qualify_inst_name(InstName0, InstName, ErrorContext, !Info, !Specs) :-
     (
         InstName0 = user_inst(SymName0, Insts0),
         qualify_inst_list(Insts0, Insts, ErrorContext, !Info, !Specs),
-        (
+        ( if
             % Check for a variable inst constructor.
             SymName0 = unqualified("")
-        ->
+        then
             report_invalid_user_inst(SymName0, Insts, ErrorContext, !Specs),
             mq_info_set_error_flag(inst_id, !Info),
             SymName = SymName0
-        ;
+        else
             list.length(Insts0, Arity),
             mq_info_get_insts(!.Info, InstIds),
             find_unique_match_symname(mq_id(SymName0, Arity), SymName,
@@ -1549,9 +1552,9 @@ qualify_type(Type0, Type, ErrorContext, !Info, !Specs) :-
 
 qualify_type_ctor(TypeCtor0, TypeCtor, ErrorContext, !Info, !Specs) :-
     TypeCtor0 = type_ctor(SymName0, Arity),
-    ( is_builtin_atomic_type(TypeCtor0) ->
+    ( if is_builtin_atomic_type(TypeCtor0) then
         SymName = SymName0
-    ;
+    else
         TypeCtorId0 = mq_id(SymName0, Arity),
         mq_info_get_types(!.Info, Types),
         % XXX We could pass a more specific error context.
@@ -1918,9 +1921,9 @@ add_module_qualifier(DefaultModule, SymName0, SymName) :-
         SymName = qualified(DefaultModule, Name)
     ;
         SymName0 = qualified(SymModule, SubSymName),
-        ( partial_sym_name_matches_full(SymModule, DefaultModule) ->
+        ( if partial_sym_name_matches_full(SymModule, DefaultModule) then
             SymName = qualified(DefaultModule, SubSymName)
-        ;
+        else
             % This case is an error. The user must have written something like
             %   :- instance foo.bar(some_type) where [
             %       pred(baz.p/1) is q
@@ -1951,13 +1954,13 @@ find_unique_match(Id0, Id, Ids, TypeOfId, ErrorContext, !Info, !Specs) :-
     mq_info_get_modules(!.Info, Modules),
     id_set_search_sym_arity(Ids, SymName0, Arity, Modules, MatchingModules),
 
-    ( mq_info_get_import_status(!.Info, mq_status_exported) ->
+    ( if mq_info_get_import_status(!.Info, mq_status_exported) then
         % Items in the interface may only refer to modules
         % imported in the interface.
         mq_info_get_interface_visible_modules(!.Info, InterfaceImports),
         set.intersect(InterfaceImports, MatchingModules,
             ApplicableMatchingModules)
-    ;
+    else
         ApplicableMatchingModules = MatchingModules
     ),
 
@@ -2196,7 +2199,7 @@ report_undefined(ErrorContext, MatchingModules, Info, Id, IdType, !Specs) :-
         [suffix(":"), nl, words("error: undefined"), fixed(IdStr),
         sym_name_and_arity(id_to_sym_name_and_arity(Id)),
         suffix("."), nl],
-    (
+    ( if
         % If it is a qualified symbol, then check whether the specified module
         % has been imported.
 
@@ -2204,10 +2207,10 @@ report_undefined(ErrorContext, MatchingModules, Info, Id, IdType, !Specs) :-
         mq_info_get_imported_modules(Info, ImportedModules),
         \+ set.member(ModuleName, ImportedModules),
         \+ ModuleName = Info ^ mqi_this_module
-    ->
+    then
         Pieces2 = [words("(The module"), sym_name(ModuleName),
             words("has not been imported.)"), nl]
-    ;
+    else
         (
             MatchingModules = [],
             Pieces2 = []
@@ -2563,22 +2566,39 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
 % Access and initialisation predicates.
 %
 
-:- pred init_mq_info(globals::in, module_name::in, list(aug_item_block)::in,
+:- pred init_mq_info(globals::in, module_name::in,
+    list(item_block(MS1))::in,
+    list(item_block(MS2))::in,
+    list(item_block(MS3))::in,
+    list(item_block(MS4))::in,
     bool::in, mq_info::out) is det.
 
-init_mq_info(Globals, ModuleName, AugItemBlocks, ReportErrors, Info) :-
+init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
+        ItemBlocksD, ReportErrors, Info) :-
     set.init(InterfaceModules0),
     set.init(InstanceModules),
-    ExportedInstancesFlag = no,
-    get_implicit_dependencies_in_item_blocks(Globals, AugItemBlocks,
-        ImportDeps, UseDeps),
+    id_set_init(ModuleIdSet),
+    id_set_init(TypeIdSet),
+    id_set_init(ImplTypeIdSet),
+    id_set_init(InstIdSet),
+    id_set_init(ModeIdSet),
+    id_set_init(ClassIdSet),
+    get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksA,
+        ImportDepsA, UseDepsA),
+    get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksB,
+        ImportDepsB, UseDepsB),
+    get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksC,
+        ImportDepsC, UseDepsC),
+    get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksD,
+        ImportDepsD, UseDepsD),
+    ImportDeps = ImportDepsA ++ ImportDepsB ++ ImportDepsC ++ ImportDepsD,
+    UseDeps = UseDepsA ++ UseDepsB ++ UseDepsC ++ UseDepsD,
     set.list_to_set(ImportDeps ++ UseDeps, ImportedModules),
 
     % Ancestor modules are visible without being explicitly imported.
     set.insert_list([ModuleName | get_ancestors(ModuleName)],
         ImportedModules, InterfaceVisibleModules),
 
-    id_set_init(Empty),
     globals.lookup_bool_option(Globals, smart_recompilation,
         SmartRecompilation),
     (
@@ -2588,8 +2608,10 @@ init_mq_info(Globals, ModuleName, AugItemBlocks, ReportErrors, Info) :-
         SmartRecompilation = yes,
         MaybeRecompInfo = yes(init_recompilation_info(ModuleName))
     ),
+    ExportedInstancesFlag = no,
     Info = mq_info(ImportedModules, InterfaceVisibleModules,
-        Empty, Empty, Empty, Empty, Empty, Empty,
+        ModuleIdSet, TypeIdSet, ImplTypeIdSet,
+        InstIdSet, ModeIdSet, ClassIdSet,
         InterfaceModules0, InstanceModules, ExportedInstancesFlag,
         mq_status_local, 0, no, no, ReportErrors, ModuleName,
         may_be_unqualified, MaybeRecompInfo).
@@ -2737,7 +2759,7 @@ mq_info_set_error_flag_2(class_id, !Info) :-
     is det.
 
 mq_info_set_module_used(Module, !Info) :-
-    ( mq_info_get_import_status(!.Info, mq_status_exported) ->
+    ( if mq_info_get_import_status(!.Info, mq_status_exported) then
         mq_info_get_unused_interface_modules(!.Info, Modules0),
         set.delete(Module, Modules0, Modules),
         mq_info_set_unused_interface_modules(Modules, !Info),
@@ -2747,7 +2769,7 @@ mq_info_set_module_used(Module, !Info) :-
         ;
             Module = unqualified(_)
         )
-    ;
+    else
         true
     ).
 
@@ -2789,10 +2811,11 @@ id_set_insert(NeedQualifier, MQId,!IdSet) :-
         unexpected($module, $pred, "unqualified id")
     ;
         SymName = qualified(Module, Name),
-        ( map.search(!.IdSet, Name - Arity, ImportModules0 - UseModules0) ->
+        ( if map.search(!.IdSet, Name - Arity, ImportUseModules0) then
+            ImportUseModules0 = ImportModules0 - UseModules0,
             ImportModules1 = ImportModules0,
             UseModules1 = UseModules0
-        ;
+        else
             set.init(ImportModules1),
             set.init(UseModules1)
         ),
@@ -2813,10 +2836,9 @@ id_set_insert(NeedQualifier, MQId,!IdSet) :-
 
 id_set_search_sym_arity(IdSet, Sym, Arity, ModuleIdSet, MatchingModules) :-
     UnqualName = unqualify_name(Sym),
-    ( map.search(IdSet, UnqualName - Arity, ImportModules - UseModules) ->
+    ( if map.search(IdSet, UnqualName - Arity, ImportModules - UseModules) then
         (
             Sym = unqualified(_),
-            % XXX was set.to_sorted_list(ImportModules, MatchingModules)
             MatchingModules = ImportModules
         ;
             Sym = qualified(Module, _),
@@ -2844,7 +2866,7 @@ id_set_search_sym_arity(IdSet, Sym, Arity, ModuleIdSet, MatchingModules) :-
             set.union(ImportModules, UseModules, DefiningModules),
             set.intersect(AllMatchingModules, DefiningModules, MatchingModules)
         )
-    ;
+    else
         set.init(MatchingModules)
     ).
 
@@ -2871,9 +2893,11 @@ get_partial_qualifiers_2(ImplicitPart, ExplicitPart, ModuleIdSet,
     % used, then insert the ExplicitPart module into the list of
     % valid partial qualifiers.
 
-    ( parent_module_is_imported(ImplicitPart, ExplicitPart, ModuleIdSet) ->
+    ( if
+        parent_module_is_imported(ImplicitPart, ExplicitPart, ModuleIdSet)
+    then
         !:Qualifiers = [ExplicitPart | !.Qualifiers]
-    ;
+    else
         true
     ),
     % Recursively try to add the other possible partial qualifiers.

@@ -273,58 +273,41 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
 
 write_module_dep_file(Globals, ModuleAndImports0, !IO) :-
     % Make sure all the required fields are filled in.
-    module_and_imports_get_results(ModuleAndImports0, AugItemBlocks,
+    module_and_imports_get_aug_comp_unit(ModuleAndImports0, AugCompUnit,
         Specs, _Errors),
-    module_and_imports_get_module_name(ModuleAndImports0,
-        ModuleName),
-    module_and_imports_get_module_name_context(ModuleAndImports0,
-        ModuleNameContext),
-    % XXX ITEM_LIST Should be an operation of module_imports.m.
-    strip_imported_items(AugItemBlocks, RawItemBlocks),
-    RawCompUnit = compilation_unit(ModuleName, ModuleNameContext,
+    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
+        SrcItemBlocks, _DirectIntItemBlocksCord, _IndirectIntItemBlocksCord,
+        _OptItemBlocksCord, _IntForOptItemBlocksCord),
+    convert_back_to_raw_item_blocks(SrcItemBlocks, RawItemBlocks),
+    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         RawItemBlocks),
+    % XXX ITEM_LIST WHy build a NEW ModuleAndImports? Wouldn't modifying
+    % ModuleAndImports0 be easier and cleaner?
     init_module_and_imports(Globals, ModuleAndImports0 ^ mai_source_file_name,
         ModuleAndImports0 ^ mai_source_file_module_name,
         ModuleAndImports0 ^ mai_nested_children,
         Specs, set.init, RawCompUnit, ModuleAndImports),
     do_write_module_dep_file(Globals, ModuleAndImports, !IO).
 
-:- pred strip_imported_items(list(aug_item_block)::in,
+:- pred convert_back_to_raw_item_blocks(list(src_item_block)::in,
     list(raw_item_block)::out) is det.
 
-strip_imported_items([], []).
-strip_imported_items([HeadAugItemBlock | TailAugItemBlocks], RawItemBlocks) :-
-    HeadAugItemBlock =
-        item_block(HeadAugSection, HeadSectionContext, HeadItems),
+convert_back_to_raw_item_blocks([], []).
+convert_back_to_raw_item_blocks([SrcItemBlock | SrcItemBlocks],
+        [RawItemBlock | RawItemBlocks]) :-
+    SrcItemBlock = item_block(SrcSection, SectionContext, Items),
     (
-        (
-            HeadAugSection = ams_interface,
-            HeadSection = ms_interface
-        ;
-            HeadAugSection = ams_implementation,
-            HeadSection = ms_implementation
-        ;
-            HeadAugSection = ams_impl_but_exported_to_submodules,
-            HeadSection = ms_implementation
+        SrcSection = sms_interface,
+        Section = ms_interface
+    ;
+        ( SrcSection = sms_implementation
+        ; SrcSection = sms_impl_but_exported_to_submodules
         ),
-        HeadRawItemBlock =
-            item_block(HeadSection, HeadSectionContext, HeadItems),
-        strip_imported_items(TailAugItemBlocks, TailRawItemBlocks),
-        RawItemBlocks = [HeadRawItemBlock | TailRawItemBlocks]
-    ;
-        ( HeadAugSection = ams_imported(_, _)
-        ; HeadAugSection = ams_used(_, _)
-        ; HeadAugSection = ams_abstract_imported(_)
-        ),
-        % Delete this block and all later blocks.
-        RawItemBlocks = []
-    ;
-        HeadAugSection = ams_opt_imported(_),
-        unexpected($module, $pred, "ams_opt_imported")
-    ;
-        HeadAugSection = ams_transitively_imported,
-        unexpected($module, $pred, "ams_transitively_imported")
-    ).
+        Section = ms_implementation
+    ),
+    RawItemBlock =
+        item_block(Section, SectionContext, Items),
+    convert_back_to_raw_item_blocks(SrcItemBlocks, RawItemBlocks).
 
 :- pred do_write_module_dep_file(globals::in, module_and_imports::in,
     io::di, io::uo) is det.
@@ -593,7 +576,11 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         ContainsForeignCode = contains_foreign_code(ForeignLanguages),
         IndirectDeps = [],
         PublicChildren = [],
-        Items = cord.empty,
+        SrcItemBlocks = [],
+        DirectIntItemBlocksCord = cord.empty,
+        IndirectIntItemBlocksCord = cord.empty,
+        OptItemBlocksCord = cord.empty,
+        IntForOptItemBlocksCord = cord.empty,
         Specs = [],
         set.init(Errors),
         MaybeTimestamps = no,
@@ -603,7 +590,9 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             Children, PublicChildren, NestedChildren, FactDeps,
             cord.from_list(ForeignImports), cord.from_list(ForeignIncludes),
             ContainsForeignCode, ContainsForeignExport,
-            Items, Specs, Errors, MaybeTimestamps, HasMain, ModuleDir),
+            SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
+            OptItemBlocksCord, IntForOptItemBlocksCord,
+            Specs, Errors, MaybeTimestamps, HasMain, ModuleDir),
 
         % Discard the module dependencies if the module is a local module
         % but the source file no longer exists.
@@ -850,7 +839,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             io.set_output_stream(OldOutputStream, _, !IO),
 
             SubModuleNames =
-                list.map(compilation_unit_project_name, RawCompUnits),
+                list.map(raw_compilation_unit_project_name, RawCompUnits),
             list.map(
                 init_module_and_imports(Globals, SourceFileName,
                     ModuleName, SubModuleNames, [], Errors),

@@ -55,10 +55,11 @@
 :- import_module make.options_file.
 :- import_module make.util.
 :- import_module mdbcomp.builtin_modules.
-:- import_module mdbcomp.sym_name.
 :- import_module mdbcomp.shared_utilities.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_cmds.
@@ -74,8 +75,8 @@
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.source_file_map.
 :- import_module parse_tree.split_parse_tree_src.
-:- import_module parse_tree.write_module_interface_files.
 :- import_module parse_tree.write_deps_file.
+:- import_module parse_tree.write_module_interface_files.
 :- import_module recompilation.
 :- import_module recompilation.check.
 :- import_module recompilation.usage.
@@ -1211,7 +1212,8 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
         (
             MaybeModulesToRecompile = some_modules(ModulesToRecompile),
             ToRecompile = (pred(RawCompUnit::in) is semidet :-
-                RawCompUnit = compilation_unit(RawCompUnitModuleName, _, _),
+                RawCompUnit =
+                    raw_compilation_unit(RawCompUnitModuleName, _, _),
                 list.member(RawCompUnitModuleName, ModulesToRecompile)
             ),
             list.filter(ToRecompile, RawCompUnits0, RawCompUnitsToCompile)
@@ -1220,7 +1222,7 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
             RawCompUnitsToCompile = RawCompUnits0
         ),
         RawCompUnitNames =
-            list.map(compilation_unit_project_name, RawCompUnits0),
+            list.map(raw_compilation_unit_project_name, RawCompUnits0),
         list.delete_all(RawCompUnitNames, ModuleName, NestedCompUnitNames),
 
         find_timestamp_files(Globals, FindTimestampFiles),
@@ -1319,7 +1321,7 @@ halt_at_module_error(HaltSyntax, Errors) :-
 
 :- pred module_to_link(raw_compilation_unit::in, string::out) is det.
 
-module_to_link(compilation_unit(ModuleName, _, _), ModuleToLink) :-
+module_to_link(raw_compilation_unit(ModuleName, _, _), ModuleToLink) :-
     module_name_to_file_name_stem(ModuleName, ModuleToLink).
 
 :- type compile == pred(globals, bool, io, io).
@@ -1441,7 +1443,7 @@ compile(Globals, SourceFileName, SourceFileModuleName, MaybeTimestamp,
         NestedSubModules0, HaveReadModuleMaps, FindTimestampFiles,
         RawCompUnit, ExtraObjFiles, !Specs, !IO) :-
     check_for_no_exports(Globals, RawCompUnit, !Specs, !IO),
-    RawCompUnit = compilation_unit(ModuleName, _, _),
+    RawCompUnit = raw_compilation_unit(ModuleName, _, _),
     ( ModuleName = SourceFileModuleName ->
         NestedSubModules = NestedSubModules0
     ;
@@ -1450,7 +1452,8 @@ compile(Globals, SourceFileName, SourceFileModuleName, MaybeTimestamp,
     grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         MaybeTimestamp, NestedSubModules, RawCompUnit, HaveReadModuleMaps,
         ModuleAndImports, !IO),
-    module_and_imports_get_results(ModuleAndImports, _, ImportedSpecs, Errors),
+    module_and_imports_get_aug_comp_unit(ModuleAndImports, _AugCompUnit,
+        ImportedSpecs, Errors),
     !:Specs = ImportedSpecs ++ !.Specs,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
@@ -1771,15 +1774,10 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
         ModuleAndImports1, IntermodError, !IO),
 
     % We pay attention to IntermodError instead of _Error. XXX Is this right?
-    module_and_imports_get_module_name_context(ModuleAndImports1,
-        ModuleNameContext),
-    module_and_imports_get_results(ModuleAndImports1, AugItemBlocks1,
+    module_and_imports_get_aug_comp_unit(ModuleAndImports1, AugCompUnit1,
         ItemSpecs, _Error),
     !:Specs = ItemSpecs ++ !.Specs,
     MaybeTimestampMap = ModuleAndImports1 ^ mai_maybe_timestamp_map,
-
-    AugCompUnit1 =
-        compilation_unit(ModuleName, ModuleNameContext, AugItemBlocks1),
 
     globals.lookup_string_option(Globals, event_set_file_name,
         EventSetFileName),
@@ -2131,7 +2129,7 @@ make_hlds(Globals, AugCompUnit, EventSet, MQInfo, TypeEqvMap, UsedModules,
         FoundSemanticError, !Specs, !IO) :-
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
-    AugCompUnit = compilation_unit(ModuleName, _, _),
+    ModuleName = aug_compilation_unit_project_name(AugCompUnit),
     module_name_to_file_name(Globals, ModuleName, ".hlds_dump",
         do_create_dirs, DumpBaseFileName, !IO),
     parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo,

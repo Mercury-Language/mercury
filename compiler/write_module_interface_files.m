@@ -98,6 +98,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.mercury_to_mercury.
@@ -135,12 +136,12 @@
 
 write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
         RawCompUnit0, MaybeTimestamp, !IO) :-
-    RawCompUnit0 = compilation_unit(ModuleName, ModuleNameContext, _),
+    RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext, _),
     grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         RawCompUnit0, ModuleAndImports, !IO),
 
     % Check whether we succeeded.
-    module_and_imports_get_results(ModuleAndImports, AugItemBlocks1,
+    module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1,
         Specs0, Errors),
     ( if set.is_non_empty(Errors) then
         module_name_to_file_name(Globals, ModuleName, ".int0",
@@ -152,9 +153,7 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
             "`", FileName, "' not written.\n"], !IO)
     else
         % Module-qualify all items.
-        AugCompUnit1 = compilation_unit(ModuleName, ModuleNameContext,
-            AugItemBlocks1),
-        module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit2,
+        module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
             map.init, _EventSpecMap, "", _, _, _, Specs0, Specs),
         (
             Specs = [_ | _],
@@ -169,11 +168,12 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
 
             % Write out the `.int0' file.
 
-            AugCompUnit2 = compilation_unit(_ModuleName, _ModuleNameContext,
-                AugItemBlocks2),
+            AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
+                SrcItemBlocks, _DirectIntItemBlocks, _IndirectIntItemBlocks,
+                _OptItemBlocks, _IntForOptItemBlocks),
             % XXX ITEM_LIST Should pass AugCompUnit2
             process_item_blocks_for_private_interface(ModuleName,
-                AugItemBlocks2,
+                SrcItemBlocks,
                 cord.init, IntItemsCord, cord.init, ImpItemsCord),
             IntItems = cord.list(IntItemsCord),
             ImpItems = cord.list(ImpItemsCord),
@@ -203,8 +203,8 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
     %
     % - It removes items that do not belong in the private interface,
     %   in either sense. This includes clauses, pragmas that function as
-    %   clauses, and initialise and finalise declarations, since they are
-    %   effectively also represent code
+    %   clauses, and initialise and finalise declarations, since effectively
+    %   they also represent code.
     %
     % - It expands any mutable declarations into the pred and mode declarations
     %   for their access predicates, since only these components of a
@@ -218,34 +218,24 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
     %   respectively.
     %
 :- pred process_item_blocks_for_private_interface(module_name::in,
-    list(aug_item_block)::in,
+    list(src_item_block)::in,
     cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
 
 process_item_blocks_for_private_interface(_ModuleName, [],
         !IntItemsCord, !ImpItemsCord).
 process_item_blocks_for_private_interface(ModuleName, [ItemBlock | ItemBlocks],
         !IntItemsCord, !ImpItemsCord) :-
-    ItemBlock = item_block(AugSection, _, Items),
+    ItemBlock = item_block(SrcSection, _, Items),
     (
-        ( AugSection = ams_interface, Section = ms_interface
-        ; AugSection = ams_implementation, Section = ms_implementation
+        ( SrcSection = sms_interface, Section = ms_interface
+        ; SrcSection = sms_implementation, Section = ms_implementation
         ),
         process_items_for_private_interface(ModuleName, Section, Items,
             !IntItemsCord, !ImpItemsCord)
     ;
         % XXX ITEM_LIST Is this the right thing to do for ams_impl_but_...?
-        ( AugSection = ams_impl_but_exported_to_submodules
-        ; AugSection = ams_abstract_imported(_)
-        ; AugSection = ams_imported(_, _)
-        ; AugSection = ams_used(_, _)
-        )
+        SrcSection = sms_impl_but_exported_to_submodules
         % Do nothing.
-    ;
-        AugSection = ams_opt_imported(_),
-        unexpected($module, $pred, "ams_opt_imported")
-    ;
-        AugSection = ams_transitively_imported,
-        unexpected($module, $pred, "ams_transitively_imported")
     ),
     process_item_blocks_for_private_interface(ModuleName, ItemBlocks,
         !IntItemsCord, !ImpItemsCord).
@@ -410,10 +400,10 @@ add_item_to_section_items(Section, Item, !IntItemsCord, !ImpItemsCord) :-
 
 write_interface_file(Globals, SourceFileName, SourceFileModuleName,
         RawCompUnit0, MaybeTimestamp, !IO) :-
-    RawCompUnit0 = compilation_unit(ModuleName, ModuleNameContext,
+    RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext,
         _RawItemBlocks0),
     get_interface(include_impl_types, RawCompUnit0, IntRawItemBlocks),
-    RawCompUnit1 = compilation_unit(ModuleName, ModuleNameContext,
+    RawCompUnit1 = raw_compilation_unit(ModuleName, ModuleNameContext,
         IntRawItemBlocks),
 
     % Get the .int3 files for imported modules.
@@ -422,10 +412,8 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
 
     some [!IntItems, !ImpItems, !Specs] (
         % Check whether we succeeded.
-        module_and_imports_get_results(ModuleAndImports2, AugItemBlocks2,
+        module_and_imports_get_aug_comp_unit(ModuleAndImports2, AugCompUnit2,
             !:Specs, Errors),
-        AugCompUnit2 = compilation_unit(ModuleName, ModuleNameContext,
-            AugItemBlocks2),
         ( if set.is_non_empty(Errors) then
             % XXX _NumErrors
             write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
@@ -441,7 +429,6 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
             % Module-qualify all items.
             module_qualify_aug_comp_unit(Globals, AugCompUnit2, AugCompUnit,
                 map.init, _, "", _, _, _, !Specs),
-
 
             % We want to finish writing the interface file (and keep
             % the exit status at zero) if we found some warnings.
@@ -460,17 +447,23 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
                 % Check for some warnings, and then write out the `.int'
                 % and `int2' files and touch the `.date' file.
 
-                AugCompUnit = compilation_unit(_, _, AugItemBlocks),
-                aug_item_blocks_to_int_imp_items(AugItemBlocks,
+                % XXX ITEM_LIST Why do we augment the raw comp unit
+                % if we throw away the augmented part?
+                AugCompUnit = aug_compilation_unit(_, _, SrcItemBlocks,
+                    _DirectIntItemBlocks, _IndirectIntItemBlocks,
+                    _OptItemBlocks, _IntForOptItemBlocks),
+                src_item_blocks_to_int_imp_items(SrcItemBlocks,
                     do_strip_assertions, !:IntItems, !:ImpItems),
                 strip_unnecessary_impl_defns(!IntItems, !ImpItems),
                 report_and_strip_clauses_in_items(!IntItems,
                     [], InterfaceSpecs0),
                 report_and_strip_clauses_in_items(!ImpItems,
                     InterfaceSpecs0, InterfaceSpecs1),
+                % XXX ITEM_LIST Constructing ToCheckIntItemBlockseems
+                % a roundabout way to do the check.
                 ToCheckIntItemBlock = item_block(ms_interface,
                     ModuleNameContext, !.IntItems),
-                ToCheckIntCompUnit = compilation_unit(ModuleName,
+                ToCheckIntCompUnit = raw_compilation_unit(ModuleName,
                     ModuleNameContext, [ToCheckIntItemBlock]),
                 check_int_for_no_exports(Globals, ToCheckIntCompUnit,
                     InterfaceSpecs1, InterfaceSpecs, !IO),
@@ -505,7 +498,7 @@ write_short_interface_file(Globals, SourceFileName, RawCompUnit, !IO) :-
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
 
-    RawCompUnit = compilation_unit(ModuleName, ModuleNameContext, _),
+    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext, _),
     some [!Specs] (
         !:Specs = [],
         get_interface(dont_include_impl_types, RawCompUnit,
@@ -536,26 +529,26 @@ write_short_interface_file(Globals, SourceFileName, RawCompUnit, !IO) :-
     --->    dont_strip_assertions
     ;       do_strip_assertions.
 
-:- pred aug_item_blocks_to_int_imp_items(list(aug_item_block)::in,
+:- pred src_item_blocks_to_int_imp_items(list(src_item_block)::in,
     maybe_strip_assertions::in, list(item)::out, list(item)::out) is det.
 
-aug_item_blocks_to_int_imp_items(AugItemBlocks, MaybeStripAssertions,
+src_item_blocks_to_int_imp_items(SrcItemBlocks, MaybeStripAssertions,
         IntItems, ImpItems) :-
-    aug_item_blocks_to_int_imp_items_loop(AugItemBlocks, MaybeStripAssertions,
+    src_item_blocks_to_int_imp_items_loop(SrcItemBlocks, MaybeStripAssertions,
         cord.init, IntItemsCord, cord.init, ImpItemsCord),
     IntItems = cord.list(IntItemsCord),
     ImpItems = cord.list(ImpItemsCord).
 
-:- pred aug_item_blocks_to_int_imp_items_loop(list(aug_item_block)::in,
+:- pred src_item_blocks_to_int_imp_items_loop(list(src_item_block)::in,
     maybe_strip_assertions::in,
     cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
 
-aug_item_blocks_to_int_imp_items_loop([], _, !IntItemsCord, !ImpItemsCord).
-aug_item_blocks_to_int_imp_items_loop([AugItemBlock | AugItemBlocks],
+src_item_blocks_to_int_imp_items_loop([], _, !IntItemsCord, !ImpItemsCord).
+src_item_blocks_to_int_imp_items_loop([SrcItemBlock | SrcItemBlocks],
         MaybeStripAssertions, !IntItemsCord, !ImpItemsCord) :-
-    AugItemBlock = item_block(AugSection, _Context, Items),
+    SrcItemBlock = item_block(SrcSection, _Context, Items),
     (
-        AugSection = ams_interface,
+        SrcSection = sms_interface,
         (
             MaybeStripAssertions = dont_strip_assertions,
             !:IntItemsCord = !.IntItemsCord ++ cord.from_list(Items)
@@ -565,8 +558,8 @@ aug_item_blocks_to_int_imp_items_loop([AugItemBlock | AugItemBlocks],
             !:IntItemsCord = !.IntItemsCord ++ cord.from_list(StrippedItems)
         )
     ;
-        ( AugSection = ams_implementation
-        ; AugSection = ams_impl_but_exported_to_submodules
+        ( SrcSection = sms_implementation
+        ; SrcSection = sms_impl_but_exported_to_submodules
         ),
         (
             MaybeStripAssertions = dont_strip_assertions,
@@ -576,20 +569,8 @@ aug_item_blocks_to_int_imp_items_loop([AugItemBlock | AugItemBlocks],
             strip_assertions_in_items(Items, StrippedItems),
             !:ImpItemsCord = !.ImpItemsCord ++ cord.from_list(StrippedItems)
         )
-    ;
-        ( AugSection = ams_imported(_, _)
-        ; AugSection = ams_used(_, _)
-        ; AugSection = ams_abstract_imported(_)
-        )
-        % Do nothing.
-    ;
-        AugSection = ams_opt_imported(_),
-        unexpected($module, $pred, "ams_opt_imported")
-    ;
-        AugSection = ams_transitively_imported,
-        unexpected($module, $pred, "ams_transitively_imported")
     ),
-    aug_item_blocks_to_int_imp_items_loop(AugItemBlocks,
+    src_item_blocks_to_int_imp_items_loop(SrcItemBlocks,
         MaybeStripAssertions, !IntItemsCord, !ImpItemsCord).
 
 %-----------------------------------------------------------------------------%

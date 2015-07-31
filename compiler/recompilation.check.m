@@ -69,6 +69,7 @@
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.

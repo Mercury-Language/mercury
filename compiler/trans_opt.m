@@ -88,6 +88,7 @@
 :- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.mercury_to_mercury.
@@ -203,7 +204,7 @@ grab_trans_opt_files(Globals, TransOptDeps, !Module, FoundError, !IO) :-
         cord.empty, OptItemBlocksCord, [], OptSpecs, no, FoundError, !IO),
 
     OptItemBlocks = cord.list(OptItemBlocksCord),
-    module_and_imports_add_item_blocks(OptItemBlocks, !Module),
+    module_and_imports_add_opt_item_blocks(OptItemBlocks, !Module),
     module_and_imports_add_specs(OptSpecs, !Module),
     % XXX why ignore any existing errors?
     module_and_imports_set_errors(set.init, !Module),
@@ -211,7 +212,7 @@ grab_trans_opt_files(Globals, TransOptDeps, !Module, FoundError, !IO) :-
     maybe_write_string(Verbose, "% Done.\n", !IO).
 
 :- pred read_trans_opt_files(globals::in, list(module_name)::in,
-    cord(aug_item_block)::in, cord(aug_item_block)::out,
+    cord(opt_item_block)::in, cord(opt_item_block)::out,
     list(error_spec)::in, list(error_spec)::out,
     bool::in, bool::out, io::di, io::uo) is det.
 
@@ -240,8 +241,8 @@ read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
 
     ParseTreeOpt = parse_tree_opt(OptModuleName, _OptFileKind, OptContext,
         OptItems),
-    OptItemBlock = item_block(ams_opt_imported(OptModuleName),
-        OptContext, OptItems),
+    OptSection = oms_opt_imported(OptModuleName, ofk_trans_opt),
+    OptItemBlock = item_block(OptSection, OptContext, OptItems),
     !:OptItemBlocks = cord.snoc(!.OptItemBlocks, OptItemBlock),
     read_trans_opt_files(Globals, Imports, !OptItemBlocks,
         !Specs, !Error, !IO).

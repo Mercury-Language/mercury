@@ -820,7 +820,9 @@
 
 module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         MaybeRecompInfo, ModuleInfo) :-
-    AugCompUnit = compilation_unit(Name, _, AugItemBlocks),
+    AugCompUnit = aug_compilation_unit(ModuleName, _, SrcItemBlocks,
+        DirectIntItemBlocks, IndirectIntItemBlocks,
+        OptItemBlocks, IntForOptItemBlocks),
 
     map.init(SpecialPredMap),
     map.init(InstanceTable),
@@ -862,14 +864,28 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
 
     % XXX ITEM_LIST Should a tabled predicate declared in a .int* or .*opt
     % file generate an implicit dependency?
-    get_implicit_dependencies_in_item_blocks(Globals, AugItemBlocks,
-        ImportDeps, UseDeps),
+    get_implicit_dependencies_in_item_blocks(Globals, SrcItemBlocks,
+        SrcImportDeps, SrcUseDeps),
+    get_implicit_dependencies_in_item_blocks(Globals, DirectIntItemBlocks,
+        DirectIntImportDeps, DirectIntUseDeps),
+    get_implicit_dependencies_in_item_blocks(Globals, IndirectIntItemBlocks,
+        IndirectIntImportDeps, IndirectIntUseDeps),
+    get_implicit_dependencies_in_item_blocks(Globals, OptItemBlocks,
+        OptImportDeps, OptUseDeps),
+    get_implicit_dependencies_in_item_blocks(Globals, IntForOptItemBlocks,
+        IntForOptImportDeps, IntForOptUseDeps),
     % XXX ITEM_LIST We should record ImportDeps and UseDeps separately.
     % XXX ITEM_LIST Should we record implicitly and explicitly imported
     % separately, or at least record for each import (and use) whether
     % it was explicit or implicit, and one (or more) context where either
     % the explicit imported was requested, or the implicit import was required.
-    set.list_to_set(ImportDeps ++ UseDeps, ImportedModules),
+    AllImportsUses =
+        SrcImportDeps ++ SrcUseDeps ++
+        DirectIntImportDeps ++ DirectIntUseDeps ++
+        IndirectIntImportDeps ++ IndirectIntUseDeps ++
+        OptImportDeps ++ OptUseDeps ++
+        IntForOptImportDeps ++ IntForOptUseDeps,
+    set.list_to_set(AllImportsUses, ImportedModules),
     set.init(IndirectlyImportedModules),
     set.init(InterfaceModuleSpecs),
     UsedModules = used_modules_init,
@@ -878,7 +894,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
 
     globals.lookup_bool_option(Globals, make_analysis_registry,
         MakeAnalysisReg),
-    AnalysisInfo = init_analysis_info(mmc, Name, MakeAnalysisReg),
+    AnalysisInfo = init_analysis_info(mmc, ModuleName, MakeAnalysisReg),
 
     UserInitPredCNames = [],
     UserFinalPredCNames = [],
@@ -890,7 +906,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     TSStringTableSize = 0,
     TSRevStringTable = [],
 
-    ModuleRareInfo = module_rare_info(Name, DumpBaseFileName,
+    ModuleRareInfo = module_rare_info(ModuleName, DumpBaseFileName,
         QualifierInfo, MaybeRecompInfo,
         ProcRequests, AssertionTable, ExclusiveTable,
         HasParallelConj, HasUserEvent,

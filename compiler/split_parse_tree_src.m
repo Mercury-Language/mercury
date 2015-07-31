@@ -236,7 +236,8 @@ create_split_compilation_units_depth_first(ModuleName,
             RawItemBlocks = cord.list(RawItemBlockCord),
             check_interface_blocks_for_abstract_instances(RawItemBlocks,
                 !Specs),
-            RawCompUnit = compilation_unit(ModuleName, Context, RawItemBlocks),
+            RawCompUnit = raw_compilation_unit(ModuleName, Context,
+                RawItemBlocks),
             !:RawCompUnitsCord = cord.snoc(!.RawCompUnitsCord, RawCompUnit)
         ;
             NestedInfo = split_nested_only_imp(Context),

@@ -86,6 +86,7 @@
 :- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.split_parse_tree_src. % undesirable dependency
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_error.
@@ -227,14 +228,15 @@ read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
         int_impl_items_to_raw_item_blocks(ModuleContext, IntItems, ImplItems,
             RawItemBlocks),
         RawCompUnits =
-            [compilation_unit(ModuleName, ModuleContext, RawItemBlocks)]
+            [raw_compilation_unit(ModuleName, ModuleContext, RawItemBlocks)]
     ;
         FileName = FileName0,
         split_into_compilation_units_perform_checks(ParseTreeSrc0,
             RawCompUnits, [], Specs),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ),
-    NestedModuleNames = list.map(compilation_unit_project_name, RawCompUnits),
+    NestedModuleNames =
+        list.map(raw_compilation_unit_project_name, RawCompUnits),
     list.map(
         init_module_and_imports(Globals, FileName, ModuleName,
             NestedModuleNames, [], Errors),

@@ -29,6 +29,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module recompilation.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.status.
 
@@ -39,39 +40,6 @@
 :- import_module maybe.
 :- import_module set.
 :- import_module term.
-
-%-----------------------------------------------------------------------------%
-%
-% The different kinds of files the Mercury compiler deals with:
-%
-% - source files,
-% - automatically generated interface files, and
-% - automatically generated optimization files.
-%
-
-:- type file_kind
-    --->    fk_src
-    ;       fk_int(int_file_kind)
-    ;       fk_opt(opt_file_kind).
-
-:- type src_file_kind
-    --->    sfk_src.
-
-:- type int_file_kind
-    --->    ifk_int0
-    ;       ifk_int3
-    ;       ifk_int2
-    ;       ifk_int.
-
-:- type opt_file_kind
-    --->    ofk_opt
-    ;       ofk_trans_opt.
-
-:- func file_kind_to_extension(file_kind) = string.
-:- func int_file_kind_to_extension(int_file_kind) = string.
-:- func opt_file_kind_to_extension(opt_file_kind) = string.
-
-:- pred extension_to_file_kind(string::in, file_kind::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -140,26 +108,66 @@
 % with the contents of the interface files of the modules it imports
 % (directly or indirectly), and if requested, with the contents of the
 % optimization files of those modules as well. The augmented compilation unit
-% will consist of the item blocks of the original raw compilation unit,
-% followed by item blocks read from these other files. Each of those item
-% blocks will have a aug_section_kind that indicates where it came from.
+% will consist of
+%
+% - the src_item_blocks, i.e. the item blocks of the original raw compilation
+%   unit, some of which may be marked as implementation but being exported to
+%   submodules,
+% - the int_item_blocks, which were read from the interfaces of other,
+%   directly imported modules,
+% - the opt_item_blocks, which were read from the interfaces or optimization
+%   files of other, indirectly imported modules.
 %
 % As with the parse tree types above, the contexts in these types
 % may be term.context_init if the actual context isn't known, but if the
 % recorded context is not term.context_init, then it is valid.
 
-:- type raw_compilation_unit == compilation_unit(module_section).
-:- type aug_compilation_unit == compilation_unit(aug_module_section).
+:- type raw_compilation_unit
+    --->    raw_compilation_unit(
+                % The name of the module.
+                rci_module_name                 :: module_name,
+
+                % The context of the `:- module' declaration.
+                rci_module_name_context         :: prog_context,
+
+                % The items in the module.
+                rci_raw_item_blocks             :: list(raw_item_block)
+            ).
+
+:- type aug_compilation_unit
+    --->    aug_compilation_unit(
+                % The name of the module.
+                aci_module_name                 :: module_name,
+
+                % The context of the `:- module' declaration.
+                aci_module_name_context         :: prog_context,
+
+                % The items in the source code of the module.
+                aci_src_item_blocks             :: list(src_item_block),
+
+                % The items in the interface files of directly imported
+                % modules.
+                aci_direct_int_item_blocks      :: list(int_item_block),
+
+                % The items in the interface files of indirectly imported
+                % modules.
+                aci_indirect_int_item_blocks    :: list(int_item_block),
+
+                % The items in the optimization files of directly or indirectly
+                % imported modules.
+                aci_opt_item_blocks             :: list(opt_item_block),
+
+                % The items in the interface files needed to make sense
+                % of those optimization files.
+                aci_int_item_blocks_for_opt     :: list(int_for_opt_item_block)
+            ).
 
 :- type raw_item_block == item_block(module_section).
-:- type aug_item_block == item_block(aug_module_section).
 
-:- type compilation_unit(MS)
-    --->    compilation_unit(
-                module_name,
-                prog_context, % The context of the `:- module' declaration.
-                list(item_block(MS))
-            ).
+:- type src_item_block == item_block(src_module_section).
+:- type int_item_block == item_block(int_module_section).
+:- type opt_item_block == item_block(opt_module_section).
+:- type int_for_opt_item_block == item_block(int_for_opt_module_section).
 
 :- type item_block(MS)
     --->    item_block(
@@ -170,12 +178,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func compilation_unit_project_name(compilation_unit(MS)) = module_name.
+:- func raw_compilation_unit_project_name(raw_compilation_unit) = module_name.
+:- func aug_compilation_unit_project_name(aug_compilation_unit) = module_name.
 
 :- pred cast_module_components_to_raw_item_blocks(list(module_component)::in,
     list(raw_item_block)::out) is det.
-
-:- pred augment_block(raw_item_block::in, aug_item_block::out) is det.
 
 :- pred separate_int_impl_items(list(raw_item_block)::in,
     list(item)::in, list(item)::out, list(item)::in, list(item)::out) is det.
@@ -1097,47 +1104,11 @@
 
 %-----------------------------------------------------------------------------%
 
-file_kind_to_extension(fk_src) = ".m".
-file_kind_to_extension(fk_int(IntFileKind)) =
-    int_file_kind_to_extension(IntFileKind).
-file_kind_to_extension(fk_opt(OptFileKind)) =
-    opt_file_kind_to_extension(OptFileKind).
+raw_compilation_unit_project_name(RawCompUnit) =
+    RawCompUnit ^ rci_module_name.
 
-int_file_kind_to_extension(ifk_int0) = ".int0".
-int_file_kind_to_extension(ifk_int2) = ".int2".
-int_file_kind_to_extension(ifk_int3) = ".int3".
-int_file_kind_to_extension(ifk_int) = ".int".
-
-opt_file_kind_to_extension(ofk_opt) = ".opt".
-opt_file_kind_to_extension(ofk_trans_opt) = ".trans_opt".
-
-extension_to_file_kind(Extension, FileKind) :-
-    (
-        Extension = ".m",
-        FileKind = fk_src
-    ;
-        Extension = ".int0",
-        FileKind = fk_int(ifk_int0)
-    ;
-        Extension = ".int3",
-        FileKind = fk_int(ifk_int3)
-    ;
-        Extension = ".int2",
-        FileKind = fk_int(ifk_int2)
-    ;
-        Extension = ".int",
-        FileKind = fk_int(ifk_int)
-    ;
-        Extension = ".opt",
-        FileKind = fk_opt(ofk_opt)
-    ;
-        Extension = ".trans_opt",
-        FileKind = fk_opt(ofk_trans_opt)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-compilation_unit_project_name(compilation_unit(ModuleName, _, _)) = ModuleName.
+aug_compilation_unit_project_name(AugCompUnit) =
+    AugCompUnit ^ aci_module_name.
 
 cast_module_components_to_raw_item_blocks([], []).
 cast_module_components_to_raw_item_blocks([Component | Components],
@@ -1151,17 +1122,6 @@ cast_module_components_to_raw_item_blocks([Component | Components],
         unexpected($module, $pred, "unexpected nested submodule")
     ),
     cast_module_components_to_raw_item_blocks(Components, RawItemBlocks).
-
-augment_block(ItemBlock, AugItemBlock) :-
-    ItemBlock = item_block(Section, Context, Items),
-    (
-        Section = ms_interface,
-        AugSection = ams_interface
-    ;
-        Section = ms_implementation,
-        AugSection = ams_implementation
-    ),
-    AugItemBlock = item_block(AugSection, Context, Items).
 
 separate_int_impl_items([], !IntItems, !ImplItems).
 separate_int_impl_items([ItemBlock | ItemBlocks], !IntItems, !ImplItems) :-
@@ -1212,6 +1172,22 @@ int_impl_items_to_specified_item_blocks(Context, IntSection, IntItems,
         IntBlock = item_block(IntSection, Context, IntItems),
         ItemBlocks = [IntBlock | ItemBlocks0]
     ).
+
+:- pred item_blocks_to_src(list(item_block(module_section))::in,
+    list(item_block(src_module_section))::out) is det.
+
+item_blocks_to_src([], []).
+item_blocks_to_src([ItemBlock | ItemBlocks], [SrcItemBlock | SrcItemBlocks]) :-
+    ItemBlock = item_block(Section, SectionContext, Items),
+    (
+        Section = ms_interface,
+        SrcSection = sms_interface
+    ;
+        Section = ms_implementation,
+        SrcSection = sms_implementation
+    ),
+    SrcItemBlock = item_block(SrcSection, SectionContext, Items),
+    item_blocks_to_src(ItemBlocks, SrcItemBlocks).
 
 %-----------------------------------------------------------------------------%
 

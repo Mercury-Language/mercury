@@ -22,6 +22,7 @@
 :- import_module libs.timestamp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_error.
@@ -120,7 +121,11 @@
                 mai_contains_foreign_export     :: contains_foreign_export,
 
                 % The contents of the module and its imports.
-                mai_blocks_cord                 :: cord(aug_item_block),
+                mai_src_blocks                  :: list(src_item_block),
+                mai_direct_int_blocks_cord      :: cord(int_item_block),
+                mai_indirect_int_blocks_cord    :: cord(int_item_block),
+                mai_opt_blocks_cord             :: cord(opt_item_block),
+                mai_int_for_opt_blocks_cord     :: cord(int_for_opt_item_block),
 
                 % Whether an error has been encountered when reading in
                 % this module.
@@ -146,6 +151,8 @@
     prog_context::out) is det.
 :- pred module_and_imports_get_impl_deps(module_and_imports::in,
     list(module_name)::out) is det.
+:- pred module_and_imports_get_errors(module_and_imports::in,
+    read_module_errors::out) is det.
 
     % Set the interface dependencies.
     %
@@ -173,17 +180,21 @@
 
     % Add items to the end of the list.
     %
-:- pred module_and_imports_add_item_blocks(list(aug_item_block)::in,
+:- pred module_and_imports_add_direct_int_item_blocks(
+    list(int_item_block)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_add_indirect_int_item_blocks(
+    list(int_item_block)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_add_opt_item_blocks(
+    list(opt_item_block)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_add_int_for_opt_item_blocks(
+    list(int_for_opt_item_block)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-    % Do the job of
-    %   module_and_imports_add_item_blocks
-    %   module_and_imports_add_specs
-    %   module_and_imports_add_interface_error
-    % all at once.
-    %
-:- pred module_and_imports_add_item_blocks_specs_errors(
-    list(aug_item_block)::in, list(error_spec)::in, read_module_errors::in,
+:- pred module_and_imports_add_specs_errors(
+    list(error_spec)::in, read_module_errors::in,
     module_and_imports::in, module_and_imports::out) is det.
 
     % Return the results recorded in the module_and_imports structure.
@@ -192,8 +203,8 @@
     % allow callers to forget to retrieve and then print the error
     % specifications.
     %
-:- pred module_and_imports_get_results(module_and_imports::in,
-    list(aug_item_block)::out, list(error_spec)::out, read_module_errors::out)
+:- pred module_and_imports_get_aug_comp_unit(module_and_imports::in,
+    aug_compilation_unit::out, list(error_spec)::out, read_module_errors::out)
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -229,45 +240,70 @@ module_and_imports_get_module_name_context(Module, X) :-
     X = Module ^ mai_module_name_context.
 module_and_imports_get_impl_deps(Module, X) :-
     X = Module ^ mai_impl_deps.
+module_and_imports_get_errors(Module, X) :-
+    X = Module ^ mai_errors.
 
-module_and_imports_set_int_deps(IntDeps, !Module) :-
-    !Module ^ mai_int_deps := IntDeps.
-module_and_imports_set_impl_deps(ImplDeps, !Module) :-
-    !Module ^ mai_impl_deps := ImplDeps.
-module_and_imports_set_indirect_deps(IndirectDeps, !Module) :-
-    !Module ^ mai_indirect_deps := IndirectDeps.
-module_and_imports_set_errors(Errors, !Module) :-
-    !Module ^ mai_errors := Errors.
+module_and_imports_set_int_deps(IntDeps, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_int_deps := IntDeps.
+module_and_imports_set_impl_deps(ImplDeps, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_impl_deps := ImplDeps.
+module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_indirect_deps := IndirectDeps.
+module_and_imports_set_errors(Errors, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_errors := Errors.
 
-module_and_imports_add_specs(NewSpecs, !Module) :-
-    Specs0 = !.Module ^ mai_specs,
+module_and_imports_add_specs(NewSpecs, !ModuleAndImports) :-
+    Specs0 = !.ModuleAndImports ^ mai_specs,
     Specs = NewSpecs ++ Specs0,
-    !Module ^ mai_specs := Specs.
+    !ModuleAndImports ^ mai_specs := Specs.
 
-module_and_imports_add_interface_error(InterfaceErrors, !Module) :-
-    Errors0 = !.Module ^ mai_errors,
+module_and_imports_add_interface_error(InterfaceErrors, !ModuleAndImports) :-
+    Errors0 = !.ModuleAndImports ^ mai_errors,
     set.union(Errors0, InterfaceErrors, Errors),
-    !Module ^ mai_errors := Errors.
+    !ModuleAndImports ^ mai_errors := Errors.
 
-module_and_imports_add_item_blocks(NewItemBlocks, !Module) :-
-    ItemBlocks0 = !.Module ^ mai_blocks_cord,
-    ItemBlocks = ItemBlocks0 ++ cord.from_list(NewItemBlocks),
-    !Module ^ mai_blocks_cord := ItemBlocks.
+module_and_imports_add_direct_int_item_blocks(NewIntItemBlocks,
+        !ModuleAndImports) :-
+    IntItemBlocks0 = !.ModuleAndImports ^ mai_direct_int_blocks_cord,
+    IntItemBlocks = IntItemBlocks0 ++ cord.from_list(NewIntItemBlocks),
+    !ModuleAndImports ^ mai_direct_int_blocks_cord := IntItemBlocks.
 
-module_and_imports_add_item_blocks_specs_errors(NewItemBlocks,
-        NewSpecs, InterfaceErrors, !Module) :-
-    ItemBlocks0 = !.Module ^ mai_blocks_cord,
-    Specs0 = !.Module ^ mai_specs,
-    Errors0 = !.Module ^ mai_errors,
-    ItemBlocks = ItemBlocks0 ++ cord.from_list(NewItemBlocks),
+module_and_imports_add_indirect_int_item_blocks(NewIntItemBlocks,
+        !ModuleAndImports) :-
+    IntItemBlocks0 = !.ModuleAndImports ^ mai_indirect_int_blocks_cord,
+    IntItemBlocks = IntItemBlocks0 ++ cord.from_list(NewIntItemBlocks),
+    !ModuleAndImports ^ mai_indirect_int_blocks_cord := IntItemBlocks.
+
+module_and_imports_add_opt_item_blocks(NewOptItemBlocks, !ModuleAndImports) :-
+    OptItemBlocks0 = !.ModuleAndImports ^ mai_opt_blocks_cord,
+    OptItemBlocks = OptItemBlocks0 ++ cord.from_list(NewOptItemBlocks),
+    !ModuleAndImports ^ mai_opt_blocks_cord := OptItemBlocks.
+
+module_and_imports_add_int_for_opt_item_blocks(NewIntItemBlocks,
+        !ModuleAndImports) :-
+    IntItemBlocks0 = !.ModuleAndImports ^ mai_int_for_opt_blocks_cord,
+    IntItemBlocks = IntItemBlocks0 ++ cord.from_list(NewIntItemBlocks),
+    !ModuleAndImports ^ mai_int_for_opt_blocks_cord := IntItemBlocks.
+
+module_and_imports_add_specs_errors(NewSpecs, NewErrors, !ModuleAndImports) :-
+    Specs0 = !.ModuleAndImports ^ mai_specs,
+    Errors0 = !.ModuleAndImports ^ mai_errors,
     Specs = NewSpecs ++ Specs0,
-    set.union(Errors0, InterfaceErrors, Errors),
-    !Module ^ mai_blocks_cord := ItemBlocks,
-    !Module ^ mai_specs := Specs,
-    !Module ^ mai_errors := Errors.
+    set.union(Errors0, NewErrors, Errors),
+    !ModuleAndImports ^ mai_specs := Specs,
+    !ModuleAndImports ^ mai_errors := Errors.
 
-module_and_imports_get_results(Module, ItemBlocks, Specs, Errors) :-
-    ItemBlocks = cord.list(Module ^ mai_blocks_cord),
+module_and_imports_get_aug_comp_unit(Module, AugCompUnit, Specs, Errors) :-
+    ModuleName = Module ^ mai_module_name,
+    ModuleNameContext = Module ^ mai_module_name_context,
+    SrcItemBlocks = Module ^ mai_src_blocks,
+    DirectIntItemBlocks = cord.list(Module ^ mai_direct_int_blocks_cord),
+    IndirectIntItemBlocks = cord.list(Module ^ mai_indirect_int_blocks_cord),
+    OptItemBlocks = cord.list(Module ^ mai_opt_blocks_cord),
+    IntForOptItemBlocks = cord.list(Module ^ mai_int_for_opt_blocks_cord),
+    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
+        SrcItemBlocks, DirectIntItemBlocks, IndirectIntItemBlocks,
+        OptItemBlocks, IntForOptItemBlocks),
     Specs = Module ^ mai_specs,
     Errors = Module ^ mai_errors.
 
@@ -275,7 +311,7 @@ module_and_imports_get_results(Module, ItemBlocks, Specs, Errors) :-
 
 init_module_and_imports(Globals, FileName, SourceFileModuleName,
         NestedModuleNames, Specs, Errors, RawCompilationUnit, ModuleImports) :-
-    RawCompilationUnit = compilation_unit(ModuleName, ModuleNameContext,
+    RawCompilationUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         RawItemBlocks),
     ParentDeps = get_ancestors(ModuleName),
 
@@ -305,9 +341,9 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         InterfaceIncludeDeps),
 
     % XXX ITEM_LIST Document why we do this.
-    ( ModuleName = SourceFileModuleName ->
+    ( if ModuleName = SourceFileModuleName then
         list.delete_all(NestedModuleNames, ModuleName, NestedDeps)
-    ;
+    else
         NestedDeps = []
     ),
 
@@ -316,9 +352,9 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     % Figure out whether the items contain foreign code.
     get_foreign_code_indicators_from_item_blocks(Globals, RawItemBlocks,
         LangSet, ForeignImports0, ForeignIncludeFiles, ContainsForeignExport),
-    ( set.is_empty(LangSet) ->
+    ( if set.is_empty(LangSet) then
         ContainsForeignCode = contains_no_foreign_code
-    ;
+    else
         ContainsForeignCode = contains_foreign_code(LangSet)
     ),
 
@@ -334,15 +370,20 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 
     % Work out whether the items contain main/2.
     look_for_main_pred_in_item_blocks(RawItemBlocks, no_main, HasMain),
-    % XXX ITEM_LIST ItemBlocks is NOT stored here, per the documentation above.
-    % Maybe it should be.
+    % XXX ITEM_LIST SrcItemBlocks is NOT stored here, per the documentation
+    % above. Maybe it should be.
+    % The definition of the module_and_imports type is exported, so other
+    % modules can construct values of this type *without* calling this
+    % predicate. The code that does so in make_module_and_imports in modules.m
+    % *does* fill in the SrcItemBlocks field with meaningful data.
     ModuleImports = module_and_imports(FileName, SourceFileModuleName,
         ModuleName, ModuleNameContext, ParentDeps, InterfaceDeps,
         ImplementationDeps, IndirectDeps, IncludeDeps,
         InterfaceIncludeDeps, NestedDeps, FactTableDeps,
         ForeignImports, ForeignIncludeFiles,
         ContainsForeignCode, ContainsForeignExport,
-        cord.empty, Specs, Errors, no, HasMain, dir.this_directory).
+        [], cord.empty, cord.empty, cord.empty, cord.empty,
+        Specs, Errors, no, HasMain, dir.this_directory).
 
 :- pred look_for_main_pred_in_item_blocks(list(item_block(MS))::in,
     has_main::in, has_main::out) is det.
