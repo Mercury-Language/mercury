@@ -106,6 +106,7 @@
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.modules.            % undesirable dependency
+:- import_module parse_tree.check_raw_comp_unit.% undesirable dependency
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.prog_mutable.
