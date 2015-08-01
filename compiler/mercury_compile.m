@@ -61,6 +61,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.generate_dep_d_files.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.
@@ -823,10 +824,10 @@ process_arg_2(Globals, OptionArgs, FileOrModule, ModulesToLink, ExtraObjFiles,
         ExtraObjFiles = [],
         (
             FileOrModule = fm_file(FileName),
-            generate_file_dependencies(Globals, FileName, !IO)
+            generate_dep_file_for_file(Globals, FileName, !IO)
         ;
             FileOrModule = fm_module(ModuleName),
-            generate_module_dependencies(Globals, ModuleName, !IO)
+            generate_dep_file_for_module(Globals, ModuleName, !IO)
         )
     ;
         GenerateDeps = no,
@@ -838,10 +839,10 @@ process_arg_2(Globals, OptionArgs, FileOrModule, ModulesToLink, ExtraObjFiles,
             ExtraObjFiles = [],
             (
                 FileOrModule = fm_file(FileName),
-                generate_file_dependency_file(Globals, FileName, !IO)
+                generate_d_file_for_file(Globals, FileName, !IO)
             ;
                 FileOrModule = fm_module(ModuleName),
-                generate_module_dependency_file(Globals, ModuleName, !IO)
+                generate_d_file_for_module(Globals, ModuleName, !IO)
             )
         ;
             GenerateDepFile = no,

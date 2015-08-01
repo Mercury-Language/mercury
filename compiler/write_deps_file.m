@@ -119,11 +119,13 @@
 
 :- import_module assoc_list.
 :- import_module cord.
+:- import_module digraph.
 :- import_module dir.
 :- import_module library.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
+:- import_module sparse_bitset.
 :- import_module string.
 :- import_module term.
 
@@ -1151,6 +1153,17 @@ generate_dependencies_write_d_files(Globals, [Dep | Deps],
             IndirectDepsGraph, IndirectOptDepsGraph,
             TransOptOrder, DepsMap, !IO)
     ).
+
+:- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
+    list(module_name)::out) is det.
+
+get_dependencies_from_graph(DepsGraph0, ModuleName, Deps) :-
+    digraph.add_vertex(ModuleName, ModuleKey, DepsGraph0, DepsGraph),
+    digraph.lookup_key_set_from(DepsGraph, ModuleKey, DepsKeysSet),
+    sparse_bitset.foldl(
+        (pred(Key::in, Deps0::in, [Dep | Deps0]::out) is det :-
+            digraph.lookup_vertex(DepsGraph, Key, Dep)
+        ), DepsKeysSet, [], Deps).
 
 %-----------------------------------------------------------------------------%
 

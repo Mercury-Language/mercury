@@ -19,8 +19,6 @@
 %
 % - checking raw compilation units for errors of various kinds
 % - figuring out which interface files a module depends on, and reading them
-% - figuring out the information from which we create dependency files
-%   (.dep and .d files) for mmake
 % - figuring out what modules are included in a list of items
 %
 % Both the interface and the implementation of the module are divided
@@ -242,62 +240,6 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% These predicates do the top level part of their jobs here in this module,
-% and hand over the low level details of writing out their results
-% to write_deps_file.m.
-% XXX ITEM_LIST Consider moving this section of modules.m to
-% write_deps_file.m, perhaps renaming that file.
-
-    % generate_module_dependencies(Globals, ModuleName, !IO):
-    %
-    % Generate the per-program makefile dependencies (`.dep') file for a
-    % program whose top-level module is `ModuleName'. This involves first
-    % transitively reading in all imported or ancestor modules. While we're
-    % at it, we also save the per-module makefile dependency (`.d') files
-    % for all those modules.
-    %
-    % XXX ITEM_LIST Should we rename this to something like
-    % generate_module_dep_file or generate_dep_file_for_module?
-    %
-:- pred generate_module_dependencies(globals::in, module_name::in,
-    io::di, io::uo) is det.
-
-    % generate_file_dependencies(Globals, FileName, !IO):
-    %
-    % Same as generate_module_dependencies, but takes a file name instead of
-    % a module name.
-    %
-    % XXX ITEM_LIST Should we rename this to something like
-    % generate_file_dep_file or generate_dep_file_for_file?
-    %
-:- pred generate_file_dependencies(globals::in, file_name::in,
-    io::di, io::uo) is det.
-
-    % generate_module_dependency_file(Globals, ModuleName, !IO):
-    %
-    % Generate the per module makefile dependency ('.d') file for the
-    % given module.
-    %
-    % XXX ITEM_LIST Should we rename this to something like
-    % generate_module_d_file or generate_d_file_for_module?
-    %
-:- pred generate_module_dependency_file(globals::in, module_name::in,
-    io::di, io::uo) is det.
-
-    % generate_file_dependency_file(Globals, FileName, !IO):
-    %
-    % Same as generate_module_dependency_file, but takes a file name instead of
-    % a module name.
-    %
-    % XXX ITEM_LIST Should we rename this to something like
-    % generate_file_d_file or generate_d_file_for_file?
-    %
-:- pred generate_file_dependency_file(globals::in, file_name::in,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-%
 % These predicates are exported for use by module_imports.m.
 %
 % XXX ITEM_LIST They shouldn't be needed; the representation of the
@@ -321,29 +263,17 @@
 
 :- import_module libs.options.
 :- import_module parse_tree.comp_unit_interface.    % undesirable dependency
-:- import_module parse_tree.deps_map.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
-:- import_module parse_tree.item_util.
-:- import_module parse_tree.module_cmds.
-:- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_error.
-:- import_module parse_tree.prog_out.
-:- import_module parse_tree.split_parse_tree_src.   % undesirable dependency
-:- import_module parse_tree.write_deps_file.
-:- import_module recompilation.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
-:- import_module digraph.
 :- import_module dir.
 :- import_module map.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -1501,178 +1431,6 @@ report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
         [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-generate_module_dependencies(Globals, ModuleName, !IO) :-
-    map.init(DepsMap),
-    generate_dependencies(Globals, output_all_dependencies, do_not_search,
-        ModuleName, DepsMap, !IO).
-
-generate_file_dependencies(Globals, FileName, !IO) :-
-    build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO),
-    generate_dependencies(Globals, output_all_dependencies, do_not_search,
-        ModuleName, DepsMap, !IO).
-
-generate_module_dependency_file(Globals, ModuleName, !IO) :-
-    map.init(DepsMap),
-    generate_dependencies(Globals, output_d_file_only, do_search, ModuleName,
-        DepsMap, !IO).
-
-generate_file_dependency_file(Globals, FileName, !IO) :-
-    build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO),
-    generate_dependencies(Globals, output_d_file_only, do_search, ModuleName,
-        DepsMap, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred build_deps_map(globals::in, file_name::in,
-    module_name::out, deps_map::out, io::di, io::uo) is det.
-
-build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
-    % XXX ITEM_LIST Should this predicate, or this whole submodule,
-    % be in deps_map.m?
-    % Read in the top-level file (to figure out its module name).
-    read_module_src_from_file(Globals, FileName, "Reading file",
-        do_not_search, always_read_module(dont_return_timestamp), _,
-        ParseTreeSrc, Specs0, Error, !IO),
-    split_into_compilation_units_perform_checks(ParseTreeSrc, RawCompUnits,
-        Specs0, Specs),
-    ParseTreeSrc = parse_tree_src(ModuleName, _, _),
-    % XXX _NumErrors
-    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
-    NestedModuleNames =
-        list.map(raw_compilation_unit_project_name, RawCompUnits),
-    SourceFileName = FileName ++ ".m",
-    list.map(
-        init_module_and_imports(Globals, SourceFileName, ModuleName,
-            NestedModuleNames, [], Error),
-        RawCompUnits, ModuleAndImportsList),
-    map.init(DepsMap0),
-    list.foldl(insert_into_deps_map, ModuleAndImportsList, DepsMap0, DepsMap).
-
-:- type generate_dependencies_mode
-    --->    output_d_file_only
-    ;       output_all_dependencies.
-
-:- pred generate_dependencies(globals::in, generate_dependencies_mode::in,
-    maybe_search::in, module_name::in, deps_map::in, io::di, io::uo) is det.
-
-generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
-    % First, build up a map of the dependencies.
-    generate_deps_map(Globals, ModuleName, Search, DepsMap0, DepsMap, !IO),
-
-    % Check whether we could read the main `.m' file.
-    map.lookup(DepsMap, ModuleName, ModuleDep),
-    ModuleDep = deps(_, ModuleImports),
-    Errors = ModuleImports ^ mai_errors,
-    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
-    ( if set.is_non_empty(FatalErrors) then
-        ModuleString = sym_name_to_string(ModuleName),
-        ( if set.contains(FatalErrors, rme_could_not_open_file) then
-            string.append_list(["cannot read source file for module `",
-                ModuleString, "'."], Message)
-        else
-            string.append_list(["cannot parse source file for module `",
-                ModuleString, "'."], Message)
-        ),
-        report_error(Message, !IO)
-    else
-        (
-            Mode = output_d_file_only
-        ;
-            Mode = output_all_dependencies,
-            module_and_imports_get_source_file_name(ModuleImports,
-                SourceFileName),
-            generate_dependencies_write_dv_file(Globals, SourceFileName,
-                ModuleName, DepsMap, !IO),
-            generate_dependencies_write_dep_file(Globals, SourceFileName,
-                ModuleName, DepsMap, !IO)
-        ),
-
-        % Compute the interface deps graph and the implementation deps
-        % graph from the deps map.
-
-        digraph.init(IntDepsGraph0),
-        digraph.init(ImpDepsGraph0),
-        map.values(DepsMap, DepsList),
-        deps_list_to_deps_graph(DepsList, DepsMap, IntDepsGraph0, IntDepsGraph,
-            ImpDepsGraph0, ImpDepsGraph),
-        maybe_output_imports_graph(Globals, ModuleName,
-            IntDepsGraph, ImpDepsGraph, !IO),
-
-        % Compute the trans-opt deps ordering, by doing an approximate
-        % topological sort of the implementation deps, and then finding
-        % the subset of those for which of those we have (or can make)
-        % trans-opt files.
-
-        digraph.atsort(ImpDepsGraph, ImpDepsOrdering0),
-        maybe_output_module_order(Globals, ModuleName, ImpDepsOrdering0, !IO),
-        list.map(set.to_sorted_list, ImpDepsOrdering0, ImpDepsOrdering),
-        list.condense(ImpDepsOrdering, TransOptDepsOrdering0),
-        globals.lookup_accumulating_option(Globals, intermod_directories,
-            IntermodDirs),
-        get_opt_deps(Globals, yes, TransOptDepsOrdering0, IntermodDirs,
-            ".trans_opt", TransOptDepsOrdering, !IO),
-
-        trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
-            io(!TIO)]
-        (
-            digraph.to_assoc_list(ImpDepsGraph, ImpDepsAL),
-            io.print("ImpDepsAL:\n", !TIO),
-            io.write_list(ImpDepsAL, "\n", print, !TIO),
-            io.nl(!TIO)
-        ),
-
-        % Compute the indirect dependencies: they are equal to the composition
-        % of the implementation dependencies with the transitive closure of the
-        % implementation dependencies. (We used to take the transitive closure
-        % of the interface dependencies, but we now include implementation
-        % details in the interface files).
-
-        digraph.tc(ImpDepsGraph, TransImpDepsGraph),
-        digraph.compose(ImpDepsGraph, TransImpDepsGraph, IndirectDepsGraph),
-
-        % Compute the indirect optimization dependencies: indirect
-        % dependencies including those via `.opt' or `.trans_opt' files.
-        % Actually we cannot compute that, since we don't know
-        % which modules the `.opt' files will import!
-        % Instead, we need to make a conservative (over-)approximation,
-        % and assume that the each module's `.opt' file might import any
-        % of that module's implementation dependencies; in actual fact,
-        % it will be some subset of that.
-
-        digraph.tc(ImpDepsGraph, IndirectOptDepsGraph),
-
-        (
-            Mode = output_d_file_only,
-            DFilesToWrite = [ModuleDep]
-        ;
-            Mode = output_all_dependencies,
-            DFilesToWrite = DepsList
-        ),
-        generate_dependencies_write_d_files(Globals, DFilesToWrite,
-            IntDepsGraph, ImpDepsGraph,
-            IndirectDepsGraph, IndirectOptDepsGraph,
-            TransOptDepsOrdering, DepsMap, !IO)
-    ),
-
-    % For Java, the main target is actually a shell script which will
-    % set CLASSPATH appropriately and invoke java on the appropriate
-    % .class file. Rather than generating an Mmake rule to build this
-    % file when it is needed, we just generate this file "mmake depend"
-    % time, since that is simpler and probably more efficient anyway.
-
-    globals.get_target(Globals, Target),
-    ( if
-        Target = target_java,
-        Mode = output_all_dependencies
-    then
-        create_java_shell_script(Globals, ModuleName, _Succeeded, !IO)
-    else
-        true
-    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

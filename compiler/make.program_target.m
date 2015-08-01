@@ -1129,6 +1129,8 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
         Succeeded = Succeeded0 `and` Succeeded1
     ).
 
+%-----------------------------------------------------------------------------%
+
     % Return a list of modules in reverse order of their dependencies, i.e.
     % the list is the module dependency graph from bottom-up. Mutually
     % dependent modules (modules which form a clique in the dependency graph)
@@ -1146,6 +1148,26 @@ reverse_ordered_modules(ModuleDeps, Modules0, Modules) :-
     list.reverse(Order0, Order1),
     list.map(set.to_sorted_list, Order1, Order2),
     list.condense(Order2, Modules).
+
+    % add_module_relations(LookupModuleImports, ModuleName,
+    %   !IntDepsRel, !ImplDepsRel)
+    %
+    % Add a module's interface and implementation dependencies to IntDepsRel
+    % and ImplDepsRel respectively. Dependencies are found using the
+    % LookupModuleImports function.
+    %
+:- pred add_module_relations(
+    lookup_module_and_imports::lookup_module_and_imports,
+    module_name::in, digraph(module_name)::in, digraph(module_name)::out,
+    digraph(module_name)::in, digraph(module_name)::out) is det.
+
+add_module_relations(LookupModuleImports, ModuleName,
+        !IntDepsGraph, !ImplDepsGraph) :-
+    ModuleImports = LookupModuleImports(ModuleName),
+    add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
+        !IntDepsGraph, !ImplDepsGraph).
+
+%-----------------------------------------------------------------------------%
 
 :- func lookup_module_and_imports_in_maybe_map(
     map(module_name, maybe(module_and_imports)), module_name)

@@ -71,6 +71,7 @@
 :- include_module deps_map.
 :- include_module equiv_type.
 :- include_module file_names.
+:- include_module generate_dep_d_files.
 :- include_module get_dependencies.
 :- include_module module_cmds.
 :- include_module module_deps_graph.
