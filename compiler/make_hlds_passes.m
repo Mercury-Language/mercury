@@ -136,8 +136,9 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     module_info_init(AugCompUnit, DumpBaseFileName, Globals, PQInfo, no,
         !:ModuleInfo),
     module_info_set_used_modules(UsedModules, !ModuleInfo),
-    AugCompUnit = aug_compilation_unit(ModuleName, _,
-        SrcItemBlocks, DirectIntItemBlocks, IndirectIntItemBlocks,
+    AugCompUnit = aug_compilation_unit(ModuleName, _ModuleNameContext,
+        ModuleVersionNumbers, SrcItemBlocks,
+        DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
 
     some [!FoundInvalidInstOrMode, !Pass1Specs, !Pass2Specs] (
@@ -252,6 +253,8 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
             int_for_opt_module_section_status, !ModuleInfo, !QualInfo, !Specs),
         add_blocks_pass_3(OptItemBlocks,
             opt_module_section_status, !ModuleInfo, !QualInfo, !Specs),
+        map.foldl(add_version_numbers_pass_3, ModuleVersionNumbers,
+            !QualInfo),
         QualInfo = !.QualInfo
     ),
 
@@ -470,9 +473,7 @@ add_pass_1_module_defn(ItemModuleDefn, Status, !ModuleInfo, !Specs) :-
         Status = item_status(ImportStatus, _),
         add_imported_module_name(ModuleName, ImportStatus, !ModuleInfo)
     ;
-        ( ModuleDefn = md_include_module(_)
-        ; ModuleDefn = md_version_numbers(_, _)
-        )
+        ModuleDefn = md_include_module(_)
     ).
 
 :- pred add_imported_module_name(module_name::in, import_status::in,
@@ -840,9 +841,6 @@ add_pass_2_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
 
 add_item_pass_3(Status, Item, !ModuleInfo, !QualInfo, !Specs) :-
     (
-        Item = item_module_defn(ItemModuleDefn),
-        add_pass_3_module_defn(ItemModuleDefn, !QualInfo)
-    ;
         Item = item_clause(ItemClause),
         add_pass_3_clause(ItemClause, Status, !ModuleInfo, !QualInfo, !Specs)
     ;
@@ -870,7 +868,8 @@ add_item_pass_3(Status, Item, !ModuleInfo, !QualInfo, !Specs) :-
         Item = item_mutable(ItemMutable),
         add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs)
     ;
-        ( Item = item_inst_defn(_)
+        ( Item = item_module_defn(_)
+        ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_mode_decl(_)
         ; Item = item_typeclass(_)
@@ -879,33 +878,6 @@ add_item_pass_3(Status, Item, !ModuleInfo, !QualInfo, !Specs) :-
         )
         % Do nothing.
     ).
-
-%---------------------------------------------------------------------------%
-
-:- pred add_pass_3_module_defn(item_module_defn_info::in,
-    qual_info::in, qual_info::out) is det.
-
-add_pass_3_module_defn(ItemModuleDefn, !QualInfo) :-
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, _Context, _SeqNum),
-    ( ModuleDefn = md_version_numbers(ModuleName, ModuleVersionNumbers) ->
-        % Record the version numbers for each imported module
-        % if smart recompilation is enabled.
-        apply_to_recompilation_info(
-            update_module_version_numbers(ModuleName, ModuleVersionNumbers),
-            !QualInfo)
-    ;
-        true
-    ).
-
-:- pred update_module_version_numbers(module_name::in,
-    recompilation.version_numbers::in,
-    recompilation_info::in, recompilation_info::out) is det.
-
-update_module_version_numbers(ModuleName, ModuleVersionNumbers, !RecompInfo) :-
-    VersionNumbersMap0 = !.RecompInfo ^ recomp_version_numbers,
-    map.set(ModuleName, ModuleVersionNumbers,
-        VersionNumbersMap0, VersionNumbersMap),
-    !RecompInfo ^ recomp_version_numbers := VersionNumbersMap.
 
 %---------------------------------------------------------------------------%
 
@@ -1342,6 +1314,28 @@ add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
     ;
         DefinedThisModule = no
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred add_version_numbers_pass_3(module_name::in, version_numbers::in,
+    qual_info::in, qual_info::out) is det.
+
+add_version_numbers_pass_3(ModuleName, VersionNumbers, !QualInfo) :-
+    % Record the version numbers for each imported module
+    % if smart recompilation is enabled.
+    apply_to_recompilation_info(
+        update_module_version_numbers(ModuleName, VersionNumbers),
+        !QualInfo).
+
+:- pred update_module_version_numbers(module_name::in,
+    recompilation.version_numbers::in,
+    recompilation_info::in, recompilation_info::out) is det.
+
+update_module_version_numbers(ModuleName, ModuleVersionNumbers, !RecompInfo) :-
+    VersionNumbersMap0 = !.RecompInfo ^ recomp_version_numbers,
+    map.set(ModuleName, ModuleVersionNumbers,
+        VersionNumbersMap0, VersionNumbersMap),
+    !RecompInfo ^ recomp_version_numbers := VersionNumbersMap.
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.make_hlds_passes.

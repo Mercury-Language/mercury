@@ -116,7 +116,8 @@
 expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
         TypeEqvMap, !:UsedModules, !RecompInfo, !:Specs) :-
     AugCompUnit0 = aug_compilation_unit(ModuleName, ModuleNameContext,
-        SrcItemBlocks0, DirectIntItemBlocks0, IndirectIntItemBlocks0,
+        ModuleVersionNumbers, SrcItemBlocks0,
+        DirectIntItemBlocks0, IndirectIntItemBlocks0,
         OptItemBlocks0, IntForOptItemBlocks0),
     % First we build up a mapping which records the equivalence type
     % definitions, ...
@@ -167,7 +168,8 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
     list.reverse(RevOptItemBlocks, OptItemBlocks),
     list.reverse(RevIntForOptItemBlocks, IntForOptItemBlocks),
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        SrcItemBlocks, DirectIntItemBlocks, IndirectIntItemBlocks,
+        ModuleVersionNumbers, SrcItemBlocks,
+        DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
 
     map.to_assoc_list(EventSpecMap0, EventSpecList0),

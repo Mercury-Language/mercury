@@ -137,7 +137,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDepsSet,
         ForeignImportsCord0, ForeignIncludeFilesCord,
         ContainsForeignCode, _ContainsForeignExport,
         SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
-        OptItemBlocksCord, IntForOptItemBlocksCord,
+        OptItemBlocksCord, IntForOptItemBlocksCord, _ModuleVersionNumbersCord,
         _Specs, _Error, _Timestamps, _HasMain, _Dir),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),

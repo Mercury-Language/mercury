@@ -593,10 +593,16 @@ mercury_output_parse_tree_src(Info, ParseTree, !IO) :-
 
 mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
     ParseTree = parse_tree_int(ModuleName, _IntFileKind, ModuleContext,
-        IntItems, ImplItems),
+        MaybeVersionNumbers, IntItems, ImplItems),
     io.write_string(":- module ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO),
+    (
+        MaybeVersionNumbers = no
+    ;
+        MaybeVersionNumbers = yes(VersionNumbers),
+        mercury_output_module_version_numbers(ModuleName, VersionNumbers, !IO)
+    ),
     (
         IntItems = []
     ;
@@ -628,12 +634,16 @@ mercury_output_raw_compilation_unit(Info, CompUnit, !IO) :-
     mercury_output_raw_item_blocks(Info, ItemBlocks, !IO).
 
 mercury_output_aug_compilation_unit(Info, AugCompUnit, !IO) :-
-    AugCompUnit = aug_compilation_unit(ModuleName, _Context, SrcItemBlocks,
+    AugCompUnit = aug_compilation_unit(ModuleName, _Context,
+        ModuleVersionNumbers, SrcItemBlocks,
         DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
     io.write_string(":- module ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO),
+    io.write_string("% The module version numbers.\n", !IO),
+    map.foldl(mercury_output_module_version_numbers,
+        ModuleVersionNumbers, !IO),
     io.write_string("% The src item blocks.\n", !IO),
     mercury_output_src_item_blocks(Info, SrcItemBlocks, !IO),
     io.write_string("% The direct interface item blocks.\n", !IO),
@@ -644,6 +654,18 @@ mercury_output_aug_compilation_unit(Info, AugCompUnit, !IO) :-
     mercury_output_opt_item_blocks(Info, OptItemBlocks, !IO),
     io.write_string("% The interface item blocks for optimization.\n", !IO),
     mercury_output_int_for_opt_item_blocks(Info, IntForOptItemBlocks, !IO).
+
+:- pred mercury_output_module_version_numbers(module_name::in,
+    version_numbers::in, io::di, io::uo) is det.
+
+mercury_output_module_version_numbers(ModuleName, VersionNumbers, !IO) :-
+    io.write_string(":- version_numbers(", !IO),
+    io.write_int(version_numbers_version_number, !IO),
+    io.write_string(", ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, !IO),
+    io.write_string(",\n", !IO),
+    recompilation.version.write_version_numbers(VersionNumbers, !IO),
+    io.write_string(").\n", !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1430,15 +1452,6 @@ mercury_output_module_defn(ModuleDefn, _Context, !IO) :-
         io.write_string(":- include_module ", !IO),
         mercury_output_bracketed_sym_name(ModuleName, !IO),
         io.write_string(".\n", !IO)
-    ;
-        ModuleDefn = md_version_numbers(ModuleName, VersionNumbers),
-        io.write_string(":- version_numbers(", !IO),
-        io.write_int(version_numbers_version_number, !IO),
-        io.write_string(", ", !IO),
-        mercury_output_bracketed_sym_name(ModuleName, !IO),
-        io.write_string(",\n", !IO),
-        recompilation.version.write_version_numbers(VersionNumbers, !IO),
-        io.write_string(").\n", !IO)
     ).
 
 :- pred mercury_output_inst_defn(output_lang::in, inst_varset::in,

@@ -81,6 +81,10 @@
                 module_name,
                 int_file_kind,
                 prog_context,               % the context of the `:- module'
+
+                maybe(version_numbers),     % for .int0, .int and .int2;
+                                            % not for .int3
+
                 list(item),                 % items in the interface section
                 list(item)                  % items in the impl section
             ).
@@ -141,6 +145,10 @@
 
                 % The context of the `:- module' declaration.
                 aci_module_name_context         :: prog_context,
+
+                % The module_version_numbers records in all the imported
+                % interface files.
+                aci_module_version_numbers_map  :: module_version_numbers_map,
 
                 % The items in the source code of the module.
                 aci_src_item_blocks             :: list(src_item_block),
@@ -1054,14 +1062,6 @@
     --->    md_include_module(module_name)
             % The named module is a submodule of the current module.
             % XXX ITEM_LIST This should be a separate kind of item.
-
-    ;       md_version_numbers(module_name, recompilation.version_numbers)
-            % This is used to represent the version numbers of items in an
-            % interface file for use in smart recompilation.
-            % XXX ITEM_LIST This should not be an item at all. It should be
-            % parsed as a marker in prog_io.m, and recorded directly as a
-            % new field in the parse_tree_int (and NOT in parse_tree_opt
-            % or parse_tree_src).
 
     ;       md_import(module_name)
     ;       md_use(module_name).

@@ -20,6 +20,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.status.
+:- import_module recompilation.
 
 :- import_module list.
 :- import_module term.
@@ -35,6 +36,9 @@
             % `:- import_module', `:- use_module' and `:- include_module'
             % declarations, which we return as a separate item for each
             % imported, used or included module name.
+    ;       iom_marker_version_numbers(version_numbers)
+            % The term was a record of the version numbers of the items
+            % in an interface file.
     ;       iom_marker_src_file(string)
             % The term was a pragma specifying the new filename.
     ;       iom_marker_module_start(module_name, prog_context, int)
@@ -105,7 +109,6 @@
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_mode.
-:- import_module recompilation.
 :- import_module recompilation.version.
 
 :- import_module bool.
@@ -134,8 +137,12 @@ parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
             then
                 MaybeIOM = MaybeIOMPrime
             else if
-                DeclTerm = term.functor(term.atom(Functor), ArgTerms, _Context),
                 parse_source_file_marker(Functor, ArgTerms, MaybeIOMPrime)
+            then
+                MaybeIOM = MaybeIOMPrime
+            else if
+                parse_version_numbers_marker(ModuleName, VarSet,
+                    Functor, ArgTerms, Context, SeqNum, MaybeIOMPrime)
             then
                 MaybeIOM = MaybeIOMPrime
             else
@@ -579,18 +586,15 @@ parse_attributed_decl(ModuleName, VarSet, Functor, ArgTerms, Attributes,
         parse_mutable_decl(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             MaybeItem0),
         check_no_attributes(MaybeItem0, Attributes, MaybeItem)
-    ;
-        Functor = "version_numbers",
-        process_version_numbers(ModuleName, VarSet, ArgTerms,
-            Context, SeqNum, MaybeItem0),
-        check_no_attributes(MaybeItem0, Attributes, MaybeItem)
     ).
 
-:- pred process_version_numbers(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item)::out) is semidet.
+:- pred parse_version_numbers_marker(module_name::in, varset::in,
+    string::in, list(term)::in, prog_context::in, int::in,
+    maybe1(item_or_marker)::out) is semidet.
 
-process_version_numbers(ModuleName, _VarSet, ArgTerms, Context, SeqNum,
-        MaybeItem) :-
+parse_version_numbers_marker(ModuleName, _VarSet, Functor, ArgTerms,
+        Context, SeqNum, MaybeItemOrMarker) :-
+    Functor = "version_numbers",
     ArgTerms = [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm],
     (
         VersionNumberTerm = term.functor(term.integer(VersionNumber), [], _),
@@ -598,17 +602,14 @@ process_version_numbers(ModuleName, _VarSet, ArgTerms, Context, SeqNum,
     ->
         ( try_parse_symbol_name(ModuleNameTerm, ModuleName) ->
             recompilation.version.parse_version_numbers(VersionNumbersTerm,
-                MaybeItem0),
+                MaybeVersionNumbers),
             (
-                MaybeItem0 = ok1(VersionNumbers),
-                ModuleDefn = md_version_numbers(ModuleName, VersionNumbers),
-                ItemModuleDefn = item_module_defn_info(ModuleDefn, Context,
-                    SeqNum),
-                Item = item_module_defn(ItemModuleDefn),
-                MaybeItem = ok1(Item)
+                MaybeVersionNumbers = ok1(VersionNumbers),
+                ItemOrMarker = iom_marker_version_numbers(VersionNumbers),
+                MaybeItemOrMarker = ok1(ItemOrMarker)
             ;
-                MaybeItem0 = error1(Specs),
-                MaybeItem = error1(Specs)
+                MaybeVersionNumbers = error1(Specs),
+                MaybeItemOrMarker = error1(Specs)
             )
         ;
             Pieces = [words("Error: invalid module name in"),
@@ -616,7 +617,7 @@ process_version_numbers(ModuleName, _VarSet, ArgTerms, Context, SeqNum,
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(ModuleNameTerm),
                     [always(Pieces)])]),
-            MaybeItem = error1([Spec])
+            MaybeItemOrMarker = error1([Spec])
         )
     ;
         (
@@ -628,14 +629,15 @@ process_version_numbers(ModuleName, _VarSet, ArgTerms, Context, SeqNum,
                 Msg, DummyTerm),
             ItemNothing = item_nothing_info(yes(Warning), Context, SeqNum),
             Item = item_nothing(ItemNothing),
-            MaybeItem = ok1(Item)
+            ItemOrMarker = iom_item(Item),
+            MaybeItemOrMarker = ok1(ItemOrMarker)
         ;
             VersionNumberTerm = term.variable(_, VersionNumberContext),
             Pieces = [words("Error: invalid version number in"),
                 quote(":- version_numbers"), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(VersionNumberContext, [always(Pieces)])]),
-            MaybeItem = error1([Spec])
+            MaybeItemOrMarker = error1([Spec])
         )
     ).
 

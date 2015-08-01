@@ -27,6 +27,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.status.
+:- import_module recompilation.
 
 :- import_module cord.
 :- import_module list.
@@ -126,6 +127,7 @@
                 mai_indirect_int_blocks_cord    :: cord(int_item_block),
                 mai_opt_blocks_cord             :: cord(opt_item_block),
                 mai_int_for_opt_blocks_cord     :: cord(int_for_opt_item_block),
+                mai_module_version_numbers      :: module_version_numbers_map,
 
                 % Whether an error has been encountered when reading in
                 % this module.
@@ -191,6 +193,10 @@
     module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_add_int_for_opt_item_blocks(
     list(int_for_opt_item_block)::in,
+    module_and_imports::in, module_and_imports::out) is det.
+
+:- pred module_and_imports_maybe_add_module_version_numbers(
+    module_name::in, maybe(version_numbers)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
 :- pred module_and_imports_add_specs_errors(
@@ -285,6 +291,20 @@ module_and_imports_add_int_for_opt_item_blocks(NewIntItemBlocks,
     IntItemBlocks = IntItemBlocks0 ++ cord.from_list(NewIntItemBlocks),
     !ModuleAndImports ^ mai_int_for_opt_blocks_cord := IntItemBlocks.
 
+module_and_imports_maybe_add_module_version_numbers(ModuleName,
+        MaybeVersionNumbers, !ModuleAndImports) :-
+    (
+        MaybeVersionNumbers = no
+    ;
+        MaybeVersionNumbers = yes(VersionNumbers),
+        ModuleVersionNumbersMap0 =
+            !.ModuleAndImports ^ mai_module_version_numbers,
+        map.det_insert(ModuleName, VersionNumbers,
+            ModuleVersionNumbersMap0, ModuleVersionNumbersMap),
+        !ModuleAndImports ^ mai_module_version_numbers
+            := ModuleVersionNumbersMap
+    ).
+
 module_and_imports_add_specs_errors(NewSpecs, NewErrors, !ModuleAndImports) :-
     Specs0 = !.ModuleAndImports ^ mai_specs,
     Errors0 = !.ModuleAndImports ^ mai_errors,
@@ -301,8 +321,10 @@ module_and_imports_get_aug_comp_unit(Module, AugCompUnit, Specs, Errors) :-
     IndirectIntItemBlocks = cord.list(Module ^ mai_indirect_int_blocks_cord),
     OptItemBlocks = cord.list(Module ^ mai_opt_blocks_cord),
     IntForOptItemBlocks = cord.list(Module ^ mai_int_for_opt_blocks_cord),
+    ModuleVersionNumbers = Module ^ mai_module_version_numbers,
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        SrcItemBlocks, DirectIntItemBlocks, IndirectIntItemBlocks,
+        ModuleVersionNumbers, SrcItemBlocks,
+        DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
     Specs = Module ^ mai_specs,
     Errors = Module ^ mai_errors.
@@ -382,7 +404,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         InterfaceIncludeDeps, NestedDeps, FactTableDeps,
         ForeignImports, ForeignIncludeFiles,
         ContainsForeignCode, ContainsForeignExport,
-        [], cord.empty, cord.empty, cord.empty, cord.empty,
+        [], cord.init, cord.init, cord.init, cord.init, map.init,
         Specs, Errors, no, HasMain, dir.this_directory).
 
 :- pred look_for_main_pred_in_item_blocks(list(item_block(MS))::in,

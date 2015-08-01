@@ -332,6 +332,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.split_parse_tree_src.   % undesirable dependency
 :- import_module parse_tree.write_deps_file.
+:- import_module recompilation.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -978,8 +979,11 @@ process_module_private_interfaces(Globals, HaveReadModuleMaps,
         maybe_record_timestamp(Ancestor, ifk_int0, may_be_unqualified,
             MaybeTimestamp, !ModuleAndImports),
 
-        PrivateIntParseTree = parse_tree_int(_, PrivateIntKind,
-            PrivateIntContext, PrivateIntIntItems, PrivateIntImplItems),
+        PrivateIntParseTree = parse_tree_int(PrivateIntModuleName,
+            PrivateIntKind, PrivateIntContext, MaybeVersionNumbers,
+            PrivateIntIntItems, PrivateIntImplItems),
+        module_and_imports_maybe_add_module_version_numbers(
+            PrivateIntModuleName, MaybeVersionNumbers, !ModuleAndImports),
         int_impl_items_to_specified_item_blocks(PrivateIntContext,
             NewIntSection(Ancestor, PrivateIntKind),
             PrivateIntIntItems,
@@ -1039,8 +1043,11 @@ process_module_long_interfaces(Globals, HaveReadModuleMaps, NeedQualifier,
             ReturnTimestamp, MaybeTimestamp,
             LongIntParseTree, LongIntSpecs, LongIntErrors, !IO),
 
-        LongIntParseTree = parse_tree_int(_, LongIntKind, LongIntContext,
+        LongIntParseTree = parse_tree_int(LongIntModuleName, LongIntKind,
+            LongIntContext, MaybeVersionNumbers,
             LongIntIntItems, LongIntImplItems),
+        module_and_imports_maybe_add_module_version_numbers(
+            LongIntModuleName, MaybeVersionNumbers, !ModuleAndImports),
         get_dependencies_in_items(LongIntIntItems,
             IndirectImports1, IndirectUses1),
         get_dependencies_in_items(LongIntImplItems,
@@ -1139,8 +1146,11 @@ process_module_short_interfaces(Globals, HaveReadModuleMaps,
         maybe_record_timestamp(Import, IntFileKind, must_be_qualified,
             MaybeTimestamp, !ModuleAndImports),
 
-        ShortIntParseTree = parse_tree_int(_, ShortIntKind, ShortIntContext,
+        ShortIntParseTree = parse_tree_int(ShortIntModuleName, ShortIntKind,
+            ShortIntContext, MaybeVersionNumbers,
             ShortIntIntItems, ShortIntImplItems),
+        module_and_imports_maybe_add_module_version_numbers(
+            ShortIntModuleName, MaybeVersionNumbers, !ModuleAndImports),
         get_dependencies_in_items(ShortIntIntItems, IntImports1, IntUses1),
         get_dependencies_in_items(ShortIntImplItems, ImpImports1, ImpUses1),
         int_impl_items_to_specified_item_blocks(ShortIntContext,
@@ -1191,7 +1201,7 @@ make_module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, ModuleNameContext, [], [], [], [], [], PublicChildren,
         NestedChildren, FactDeps, cord.init, ForeignIncludeFiles,
         contains_foreign_code_unknown, contains_no_foreign_export,
-        SrcItemBlocks, cord.init, cord.init, cord.init, cord.init,
+        SrcItemBlocks, cord.init, cord.init, cord.init, cord.init, map.init,
         Specs, Errors, MaybeTimestampMap, no_main, dir.this_directory).
 
 %---------------------------------------------------------------------------%
@@ -1252,7 +1262,8 @@ maybe_record_timestamp(ModuleName, IntFileKind, NeedQualifier, MaybeTimestamp,
 check_imports_accessibility(AugCompUnit, ImportedModules,
         !Specs) :-
     AugCompUnit = aug_compilation_unit(ModuleName, _ModuleNameContext,
-        SrcItemBlocks, DirectIntItemBlocks, IndirectIntItemBlocks,
+        _ModuleVersionNumbers, SrcItemBlocks,
+        DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
     IntItemBlocks = DirectIntItemBlocks ++ IndirectIntItemBlocks,
     record_includes_imports_uses(SrcItemBlocks, IntItemBlocks, OptItemBlocks,
@@ -1388,8 +1399,6 @@ record_includes_imports_uses_in_items_acc(Visible, [Item | Items],
                 OneOrMore = one_or_more(IoUC, []),
                 map.det_insert(ModuleName, OneOrMore, !ImportUseMap)
             )
-        ;
-            ModuleDefn = md_version_numbers(_, _)
         )
     ;
         ( Item = item_clause(_)

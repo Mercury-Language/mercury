@@ -238,11 +238,10 @@ include_in_int_file_implementation(Item) = Include :-
         Item = item_module_defn(ItemModuleDefn),
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
-            % XXX Some of these should yield an exception.
+            % XXX Maybe some of these should yield an exception.
             ( ModuleDefn = md_import(_)
             ; ModuleDefn = md_use(_)
             ; ModuleDefn = md_include_module(_)
-            ; ModuleDefn = md_version_numbers(_, _)
             ),
             Include = yes
         )

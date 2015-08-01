@@ -226,6 +226,9 @@
                 instance_version_numbers
             ).
 
+    % Map modules' names to their version number info.
+:- type module_version_numbers_map == map(module_name, version_numbers).
+
     % The constructors set should always be empty -
     % constructors are never imported separately.
 :- type item_version_numbers == item_id_set(version_number_map).

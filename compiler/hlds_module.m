@@ -820,7 +820,8 @@
 
 module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         MaybeRecompInfo, ModuleInfo) :-
-    AugCompUnit = aug_compilation_unit(ModuleName, _, SrcItemBlocks,
+    AugCompUnit = aug_compilation_unit(ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, SrcItemBlocks,
         DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
 

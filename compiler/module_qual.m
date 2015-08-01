@@ -157,7 +157,8 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         EventSpecMap0, EventSpecMap, EventSpecFileName,
         !:Info, UndefTypes, UndefModes, !Specs) :-
     AugCompUnit0 = aug_compilation_unit(ModuleName, ModuleNameContext,
-        SrcItemBlocks0, DirectIntItemBlocks, IndirectIntItemBlocks,
+        ModuleVersionNumbers, SrcItemBlocks0,
+        DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
     init_mq_info(Globals, ModuleName, SrcItemBlocks0,
         DirectIntItemBlocks ++ IndirectIntItemBlocks,
@@ -170,7 +171,8 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
     module_qualify_items_in_src_item_blocks(SrcItemBlocks0, SrcItemBlocks,
         !Info, !Specs),
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        SrcItemBlocks, DirectIntItemBlocks, IndirectIntItemBlocks,
+        ModuleVersionNumbers, SrcItemBlocks,
+        DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
 
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
@@ -225,7 +227,7 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
 
 module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
     ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        IntItems0, ImpItems0),
+        MaybeVersionNumbers, IntItems0, ImpItems0),
     IntSrcItemBlocks0 =
         [item_block(sms_interface, term.context_init, IntItems0)],
     ImpSrcItemBlocks0 =
@@ -255,7 +257,7 @@ module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
         module_qualify_items_loop(ImpItems0, ImpItems, !.ImpInfo, _, !Specs)
     ),
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        IntItems, ImpItems).
+        MaybeVersionNumbers, IntItems, ImpItems).
 
 %-----------------------------------------------------------------------------%
 
@@ -417,8 +419,6 @@ collect_mq_info_in_item(Item, !Info) :-
             ; ModuleDefn = md_use(ImportedModuleName)
             ),
             maybe_add_import(ImportedModuleName, !Info)
-        ;
-            ModuleDefn = md_version_numbers(_, _)
         )
     ;
         Item = item_type_defn(ItemTypeDefn),
@@ -866,7 +866,6 @@ module_qualify_item(Item0, Item, !Info, !Specs) :-
         (
             ( ModuleDefn = md_import(_)
             ; ModuleDefn = md_use(_)
-            ; ModuleDefn = md_version_numbers(_, _)
             )
         ;
             ModuleDefn = md_include_module(_),

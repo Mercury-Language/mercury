@@ -168,17 +168,27 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
 
             % Write out the `.int0' file.
 
-            AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
-                SrcItemBlocks, _DirectIntItemBlocks, _IndirectIntItemBlocks,
+            AugCompUnit = aug_compilation_unit(AugModuleName,
+                _ModuleNameContext, ModuleVersionNumbers, SrcItemBlocks,
+                _DirectIntItemBlocks, _IndirectIntItemBlocks,
                 _OptItemBlocks, _IntForOptItemBlocks),
+            expect(unify(ModuleName, AugModuleName), $module, $pred,
+                "AugModuleName != ModuleName"),
             % XXX ITEM_LIST Should pass AugCompUnit2
             process_item_blocks_for_private_interface(ModuleName,
                 SrcItemBlocks,
                 cord.init, IntItemsCord, cord.init, ImpItemsCord),
+            ( if
+                map.search(ModuleVersionNumbers, ModuleName, VersionNumbers)
+            then
+                MaybeVersionNumbers = yes(VersionNumbers)
+            else
+                MaybeVersionNumbers = no
+            ),
             IntItems = cord.list(IntItemsCord),
             ImpItems = cord.list(ImpItemsCord),
             ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int0,
-                ModuleNameContext, IntItems, ImpItems),
+                ModuleNameContext, MaybeVersionNumbers, IntItems, ImpItems),
             actually_write_interface_file(Globals, SourceFileName,
                 ParseTreeInt0, MaybeTimestamp, !IO),
             touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
@@ -282,13 +292,7 @@ process_item_for_private_interface(ModuleName, Section, Item,
             add_item_to_section_items(Section, Item,
                 !IntItemsCord, !ImpItemsCord)
         ;
-            % XXX ITEM_LIST The action here follows what this predicate used
-            % to do before the item list change. I (zs) don't think that
-            % it does the right thing for md_version_numbers, but then again
-            % I don't think that such items actually reach here ...
-            ( ModuleDefn = md_include_module(_)
-            ; ModuleDefn = md_version_numbers(_, _)
-            ),
+            ModuleDefn = md_include_module(_),
             add_item_to_section_items(Section, Item,
                 !IntItemsCord, !ImpItemsCord)
         )
@@ -449,7 +453,8 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
 
                 % XXX ITEM_LIST Why do we augment the raw comp unit
                 % if we throw away the augmented part?
-                AugCompUnit = aug_compilation_unit(_, _, SrcItemBlocks,
+                AugCompUnit = aug_compilation_unit(_, _,
+                    _ModuleVersionNumbers, SrcItemBlocks,
                     _DirectIntItemBlocks, _IndirectIntItemBlocks,
                     _OptItemBlocks, _IntForOptItemBlocks),
                 src_item_blocks_to_int_imp_items(SrcItemBlocks,
@@ -459,8 +464,8 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
                     [], InterfaceSpecs0),
                 report_and_strip_clauses_in_items(!ImpItems,
                     InterfaceSpecs0, InterfaceSpecs1),
-                % XXX ITEM_LIST Constructing ToCheckIntItemBlockseems
-                % a roundabout way to do the check.
+                % XXX ITEM_LIST Constructing ToCheckIntCompUnit
+                % seems a roundabout way to do the check.
                 ToCheckIntItemBlock = item_block(ms_interface,
                     ModuleNameContext, !.IntItems),
                 ToCheckIntCompUnit = raw_compilation_unit(ModuleName,
@@ -470,8 +475,32 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
                 write_error_specs(InterfaceSpecs, Globals,
                     0, _NumWarnings2, 0, _NumErrors2, !IO),
                 % XXX _NumErrors
+                % The MaybeVersionNumbers we put into ParseTreeInt1 and
+                % ParseTreeInt2 are dummies. If we want to generate version
+                % numbers in interface files, the two calls below to
+                % actually_write_interface_file will do it.
+                % XXX BOTH of those calls will do it. This should not
+                % be necessary; since the .int2 file is a shorter version
+                % of the .int file, it should be faster to compute the 
+                % version number record in ParseTreeInt2 by taking the one
+                % in ParseTreeInt1 and deleting the irrelevant entries
+                % than to compute it from the items in ParseTreeInt2 itself.
+                % This would best be done by having the code that
+                % cuts !.IntItems and !.ImpItems down to ShortIntItems
+                % and ShortImpItems delete entries from ParseTreeInt1's
+                % version number record as it deletes the items they are for
+                % themselves.
+                %
+                % When creating an augmented compilation unit, we should
+                % never read in both the .int file and the .int2 file for
+                % the same module, so the fact that both files will have
+                % version number info for the same module shouldn't cause
+                % a collision in the augmented compilation unit's version
+                % number map.
+                DummyMaybeVersionNumbers = no,
                 ParseTreeInt1 = parse_tree_int(ModuleName, ifk_int,
-                    ModuleNameContext, !.IntItems, !.ImpItems),
+                    ModuleNameContext, DummyMaybeVersionNumbers,
+                    !.IntItems, !.ImpItems),
                 actually_write_interface_file(Globals, SourceFileName,
                     ParseTreeInt1, MaybeTimestamp, !IO),
                 % XXX ITEM_LIST Couldn't we get ShortIntItems and
@@ -480,8 +509,13 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
                     !.IntItems, !.ImpItems, BothRawItemBlocks),
                 get_short_interface_from_raw_item_blocks(sifk_int2,
                     BothRawItemBlocks, ShortIntItems, ShortImpItems),
+                % The MaybeVersionNumbers in ParseTreeInt is a dummy.
+                % If the want to generate version numbers in interface files,
+                % this will be by the call to actually_write_interface_file
+                % below.
                 ParseTreeInt2 = parse_tree_int(ModuleName, ifk_int2,
-                    ModuleNameContext, ShortIntItems, ShortImpItems),
+                    ModuleNameContext, DummyMaybeVersionNumbers,
+                    ShortIntItems, ShortImpItems),
                 actually_write_interface_file(Globals, SourceFileName,
                     ParseTreeInt2, MaybeTimestamp, !IO),
                 touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
@@ -511,8 +545,9 @@ write_short_interface_file(Globals, SourceFileName, RawCompUnit, !IO) :-
             IFileRawItemBlocks, !Specs),
         get_short_interface_from_raw_item_blocks(sifk_int3, IFileRawItemBlocks,
             IntItems0, ImpItems0),
+        MaybeVersionNumbers = no,
         ParseTreeInt0 = parse_tree_int(ModuleName, ifk_int3,
-            ModuleNameContext, IntItems0, ImpItems0),
+            ModuleNameContext, MaybeVersionNumbers, IntItems0, ImpItems0),
         module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt,
             !Specs),
         write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors,
@@ -764,9 +799,6 @@ do_standardize_impl_items([Item | Items], !RevRemainderItems,
         ;
             ModuleDefn = md_use(UsedModuleName),
             map.set(UsedModuleName, Context, !UseModuleMap)
-        ;
-            ModuleDefn = md_version_numbers(_, _),
-            unexpected($module, $pred, "unexpected item")
         ;
             ModuleDefn = md_include_module(_),
             !:RevRemainderItems = [Item | !.RevRemainderItems]
@@ -1417,11 +1449,11 @@ clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
 actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
         MaybeTimestamp, !IO) :-
     ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        IntItems0, ImpItems0),
-    order_items(IntItems0, IntItems1),
+        MaybeVersionNumbers1, IntItems0, ImpItems0),
+    order_items(IntItems0, IntItems),
     order_items(ImpItems0, ImpItems),
-    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        IntItems1, ImpItems),
+    ParseTreeInt1 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        MaybeVersionNumbers1, IntItems, ImpItems),
 
     % Create (e.g.) `foo.int.tmp'.
     Suffix = int_file_kind_to_extension(IntFileKind),
@@ -1464,19 +1496,15 @@ actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
             MaybeOldParseTreeInt = no
         ),
         recompilation.version.compute_version_numbers(Timestamp,
-            ParseTreeInt, MaybeOldParseTreeInt, VersionNumbers),
-        VersionNumberItemModuleDefn = item_module_defn_info(
-            md_version_numbers(ModuleName, VersionNumbers),
-            term.context_init, -1),
-        VersionNumberItem = item_module_defn(VersionNumberItemModuleDefn),
-        IntItems = [VersionNumberItem | IntItems1]
+            ParseTreeInt1, MaybeOldParseTreeInt, VersionNumbers),
+        MaybeVersionNumbers = yes(VersionNumbers)
     else
-        IntItems = IntItems1
+        MaybeVersionNumbers = no
     ),
-    ParseTree = parse_tree_int(ModuleName, IntFileKind, term.context_init,
-        IntItems, ImpItems),
+    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        MaybeVersionNumbers, IntItems, ImpItems),
     convert_to_mercury_int(NoLineNumGlobals, TmpOutputFileName,
-        ParseTree, !IO),
+        ParseTreeInt, !IO),
     % Start using the original globals again.
     update_interface(Globals, OutputFileName, !IO).
 
@@ -1647,14 +1675,14 @@ filter_items_for_import_needs([Item | Items], NeedImports, NeedForeignImports,
                 NeedImports = dont_need_imports
             )
         ;
-            ( ModuleDefn = md_include_module(_)
-            ; ModuleDefn = md_version_numbers(_, _)
-            ),
+            ModuleDefn = md_include_module(_),
             !:ItemsCord = cord.snoc(!.ItemsCord, Item)
         )
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
+        % XXX ITEM_LIST The foreign imports should be stored outside
+        % the item list.
         ( if Pragma = pragma_foreign_import_module(_) then
             (
                 NeedForeignImports = need_foreign_imports,
@@ -1815,9 +1843,8 @@ reorderable_module_defn(ModuleDefn) = Reorderable :-
         ),
         Reorderable = yes
     ;
-        ( ModuleDefn = md_include_module(_)
-        ; ModuleDefn = md_version_numbers(_, _)
-        ),
+        ModuleDefn = md_include_module(_),
+        % ZZZ
         Reorderable = no
     ).
 
@@ -1918,9 +1945,8 @@ chunkable_module_defn(ModuleDefn) = Reorderable :-
         ),
         Reorderable = yes
     ;
-        ( ModuleDefn = md_include_module(_)
-        ; ModuleDefn = md_version_numbers(_, _)
-        ),
+        ModuleDefn = md_include_module(_),
+        % ZZZ
         Reorderable = no
     ).
 

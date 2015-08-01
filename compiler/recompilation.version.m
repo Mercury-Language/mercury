@@ -70,16 +70,13 @@
 compute_version_numbers(SourceFileTime, CurParseTreeInt, MaybeOldParseTreeInt,
         NewVersionNumbers) :-
     CurParseTreeInt = parse_tree_int(_ModuleName, _IntFileKind,
-        _ModuleNameContext, CurIntItems, CurImpItems),
+        _ModuleNameContext, _CurMaybeVersionNumbers, CurIntItems, CurImpItems),
     gather_items(CurIntItems, CurImpItems, CurGatheredItems, CurInstanceItems),
     (
         MaybeOldParseTreeInt = yes(OldParseTreeInt),
-        OldParseTreeInt = parse_tree_int(_, _, _, OldIntItems, OldImpItems),
-        OldIntItems = [OldVersionNumberItem | _],
-        OldVersionNumberItem =
-            item_module_defn(OldVersionNumberItemModuleDefn),
-        OldVersionNumberItemModuleDefn = item_module_defn_info(
-            md_version_numbers(_, OldVersionNumbers), _, _)
+        OldParseTreeInt = parse_tree_int(_, _, _, OldMaybeVersionNumbers,
+            OldIntItems, OldImpItems),
+        OldMaybeVersionNumbers = yes(OldVersionNumbers)
     ->
         OldVersionNumbers = version_numbers(OldItemVersionNumbers,
             OldInstanceVersionNumbers),

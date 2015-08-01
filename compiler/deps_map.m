@@ -224,7 +224,7 @@ read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
             always_read_module(dont_return_timestamp), _,
             ParseTreeInt, _IntSpecs, _Errors, !IO),
         ParseTreeInt = parse_tree_int(_, _, ModuleContext,
-            IntItems, ImplItems),
+            _MaybeVersionNumbers, IntItems, ImplItems),
         int_impl_items_to_raw_item_blocks(ModuleContext, IntItems, ImplItems,
             RawItemBlocks),
         RawCompUnits =

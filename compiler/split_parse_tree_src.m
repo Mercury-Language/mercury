@@ -759,7 +759,6 @@ discover_included_submodules_in_items([Item | Items], SectionAncestors,
         ;
             ( ModuleDefn = md_import(_)
             ; ModuleDefn = md_use(_)
-            ; ModuleDefn = md_version_numbers(_, _)
             ),
             !:ItemCord = cord.snoc(!.ItemCord, Item)
         )

@@ -235,7 +235,7 @@
 
 read_module_src(Globals, Descr, IgnoreErrors, Search, ModuleName, FileName,
         ReadModuleAndTimestamps, MaybeTimestamp,
-        ParseTree, Specs, Errors, !IO) :-
+        ParseTreeSrc, Specs, Errors, !IO) :-
     read_module_begin(Globals, Descr, Search, ModuleName, fk_src,
         FileName0, VeryVerbose, InterfaceSearchDirs, SearchDirs, !IO),
     % For `.m' files we need to deal with the case where the module name
@@ -246,8 +246,8 @@ read_module_src(Globals, Descr, IgnoreErrors, Search, ModuleName, FileName,
         InterfaceSearchDirs, ModuleName),
     actually_read_module_src(Globals, ModuleName, OpenFile, MaybeFileName,
         ReadModuleAndTimestamps, MaybeTimestampRes,
-        ParseTree, ModuleSpecs, Errors, !IO),
-    ParseTree = parse_tree_src(ActualModuleName, _Context, ComponentsCord),
+        ParseTreeSrc, ModuleSpecs, Errors, !IO),
+    ParseTreeSrc = parse_tree_src(ActualModuleName, _Context, ComponentsCord),
     IsEmpty = (if cord.is_empty(ComponentsCord) then yes else no),
     read_module_end(Globals, IgnoreErrors, VeryVerbose,
         ModuleName, ActualModuleName, FileName0, MaybeFileName, FileName,
@@ -256,15 +256,15 @@ read_module_src(Globals, Descr, IgnoreErrors, Search, ModuleName, FileName,
 
 read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
         FileName, ReadModuleAndTimestamps, MaybeTimestamp,
-        ParseTree, Specs, Errors, !IO) :-
+        ParseTreeInt, Specs, Errors, !IO) :-
     read_module_begin(Globals, Descr, Search, ModuleName, fk_int(IntFileKind),
         FileName0, VeryVerbose, _InterfaceSearchDirs, SearchDirs, !IO),
     OpenFile = search_for_file(open_file, SearchDirs, FileName0),
     actually_read_module_int(IntFileKind, Globals, ModuleName, OpenFile,
         MaybeFileName, ReadModuleAndTimestamps, MaybeTimestampRes,
-        ParseTree, ModuleSpecs, Errors, !IO),
-    ParseTree = parse_tree_int(ActualModuleName, _IntFileKind, _Context,
-        IntItems, ImplItems),
+        ParseTreeInt, ModuleSpecs, Errors, !IO),
+    ParseTreeInt = parse_tree_int(ActualModuleName, _IntFileKind, _Context,
+        _MaybeVersionNumbers, IntItems, ImplItems),
     ( if IntItems = [], ImplItems = [] then IsEmpty = yes else IsEmpty = no),
     read_module_end(Globals, IgnoreErrors, VeryVerbose,
         ModuleName, ActualModuleName, FileName0, MaybeFileName, FileName,
@@ -273,7 +273,7 @@ read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
 
 read_module_src_from_file(Globals, FileName, Descr, Search,
         ReadModuleAndTimestamps, MaybeTimestamp,
-        ParseTree, Specs, Errors, !IO) :-
+        ParseTreeSrc, Specs, Errors, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     maybe_write_string(VeryVerbose, "% ", !IO),
     maybe_write_string(VeryVerbose, Descr, !IO),
@@ -299,7 +299,7 @@ read_module_src_from_file(Globals, FileName, Descr, Search,
     OpenFile = search_for_file(open_file, SearchDirs, FullFileName),
     actually_read_module_src(Globals, DefaultModuleName, OpenFile, _,
         ReadModuleAndTimestamps, MaybeTimestampRes,
-        ParseTree, Specs0, Errors, !IO),
+        ParseTreeSrc, Specs0, Errors, !IO),
     check_timestamp(Globals, FullFileName, MaybeTimestampRes, MaybeTimestamp,
         !IO),
     handle_any_read_module_errors(Globals, VeryVerbose, Errors,

@@ -740,14 +740,8 @@ check_imported_module(Globals, Term, !Info, !IO) :-
             ( if
                 MaybeUsedItemsTerm = yes(UsedItemsTerm),
                 ParseTreeInt = parse_tree_int(_, _, ModuleContext,
-                    IntItems0, ImplItems),
-                IntItems0 = [VersionNumberItem | IntItems],
-                VersionNumberItem =
-                    item_module_defn(VersionNumberItemModuleDefn),
-                VersionNumberItemModuleDefn =
-                    item_module_defn_info(
-                        md_version_numbers(_, VersionNumbers),
-                        _, _)
+                    MaybeVersionNumbers, IntItems, ImplItems),
+                MaybeVersionNumbers = yes(VersionNumbers)
             then
                 int_impl_items_to_raw_item_blocks(ModuleContext,
                     IntItems, ImplItems, RawItemBlocks),

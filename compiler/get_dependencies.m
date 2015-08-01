@@ -192,9 +192,7 @@ get_dependencies_in_items_acc([Item | Items], !ImportDeps, !UseDeps) :-
             ModuleDefn = md_use(UsedModuleName),
             set.insert(UsedModuleName, !UseDeps)
         ;
-            ( ModuleDefn = md_include_module(_)
-            ; ModuleDefn = md_version_numbers(_, _)
-            )
+            ModuleDefn = md_include_module(_)
         )
     ;
         ( Item = item_clause(_)
