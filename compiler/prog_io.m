@@ -633,8 +633,14 @@ read_parse_tree_int_section(Globals, CurModuleName,
                 cord.list(ItemsCord)),
             MaybeRawItemBlock = yes(RawItemBlock)
         ;
-            ( IOM = iom_marker_version_numbers(_)
-            ; IOM = iom_item(_Item)
+            IOM = iom_marker_version_numbers(MVN),
+            record_version_numbers(MVN, IOMTerm, !VNInfo, !Specs),
+            read_parse_tree_int_section(Globals, CurModuleName,
+                !.MissingStartSectionWarning, InitLookAhead, FinalLookAhead,
+                !VNInfo, MaybeRawItemBlock,
+                !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO)
+        ;
+            ( IOM = iom_item(_Item)
             ; IOM = iom_items(_Items)
             ),
             Context = get_term_context(IOMTerm),
@@ -1366,30 +1372,7 @@ read_item_sequence_inner(Globals, ModuleName, !NumItemsLeft,
                 FinalLookAhead = lookahead(IOMVarSet, IOMTerm)
             ;
                 IOM = iom_marker_version_numbers(MVN),
-                (
-                    !.VNInfo = allow_version_numbers_not_seen,
-                    !:VNInfo = allow_version_numbers_seen(MVN)
-                ;
-                    !.VNInfo = allow_version_numbers_seen(_),
-                    Pieces = [words("Error: duplicate version_numbers"),
-                        words("record. This indicates an internal error"),
-                        words("in the Mercury compiler that"),
-                        words("generated this file."), nl],
-                    Msg = simple_msg(get_term_context(IOMTerm),
-                        [always(Pieces)]),
-                    Spec = error_spec(severity_error, phase_read_files, [Msg]),
-                    !:Specs = [Spec | !.Specs]
-                ;
-                    !.VNInfo = dont_allow_version_numbers,
-                    Pieces = [words("Error: version number records"),
-                        words("should not appear anywhere"),
-                        words("except in automatically generated"),
-                        words("interface files."), nl],
-                    Msg = simple_msg(get_term_context(IOMTerm),
-                        [always(Pieces)]),
-                    Spec = error_spec(severity_error, phase_read_files, [Msg]),
-                    !:Specs = [Spec | !.Specs]
-                ),
+                record_version_numbers(MVN, IOMTerm, !VNInfo, !Specs),
                 read_item_sequence_inner(Globals, ModuleName, !NumItemsLeft,
                     no_lookahead, FinalLookAhead, !VNInfo, !ItemsCord,
                     !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO)
@@ -1417,6 +1400,36 @@ read_item_sequence_inner(Globals, ModuleName, !NumItemsLeft,
                     !SourceFileName, !SeqNumCounter, !Specs, !Errors, !IO)
             )
         )
+    ).
+
+:- pred record_version_numbers(version_numbers::in, term::in,
+    version_number_info::in, version_number_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+record_version_numbers(MVN, IOMTerm, !VNInfo, !Specs) :-
+    (
+        !.VNInfo = allow_version_numbers_not_seen,
+        !:VNInfo = allow_version_numbers_seen(MVN)
+    ;
+        !.VNInfo = allow_version_numbers_seen(_),
+        Pieces = [words("Error: duplicate version_numbers"),
+            words("record. This indicates an internal error"),
+            words("in the Mercury compiler that"),
+            words("generated this file."), nl],
+        Msg = simple_msg(get_term_context(IOMTerm),
+            [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_read_files, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ;
+        !.VNInfo = dont_allow_version_numbers,
+        Pieces = [words("Error: version number records"),
+            words("should not appear anywhere"),
+            words("except in automatically generated"),
+            words("interface files."), nl],
+        Msg = simple_msg(get_term_context(IOMTerm),
+            [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_read_files, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ).
 
     % process_item_nothing_warning(Globals, ItemNothingInfo, !ItemsCord,
