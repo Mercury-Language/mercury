@@ -122,13 +122,19 @@ get_int_and_impl(IncludeImplTypes, RawCompUnit,
     --->    dont_gather_noifile_items
     ;       gather_noifile_items.
 
+:- mode gather_noifile_items == in(bound(gather_noifile_items)).
+:- mode dont_gather_noifile_items == in(bound(dont_gather_noifile_items)).
+
     % XXX ITEM_LIST Mode specialize for each case: gather/dont_gather.
     %
-:- pred get_ifile_and_noifile_in_raw_item_blocks_acc(
-    maybe_include_impl_types::in, maybe_gather_noifile_items::in,
-    list(raw_item_block)::in,
-    cord(raw_item_block)::in, cord(raw_item_block)::out,
-    cord(raw_item_block)::in, cord(raw_item_block)::out) is det.
+:- pred get_ifile_and_noifile_in_raw_item_blocks_acc(maybe_include_impl_types,
+    maybe_gather_noifile_items, list(raw_item_block),
+    cord(raw_item_block), cord(raw_item_block),
+    cord(raw_item_block), cord(raw_item_block)) is det.
+:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(in,
+    dont_gather_noifile_items, in, in, out, in, out) is det.
+:- mode get_ifile_and_noifile_in_raw_item_blocks_acc(in,
+    gather_noifile_items, in, in, out, in, out) is det.
 
 get_ifile_and_noifile_in_raw_item_blocks_acc(_, _,
         [], !IFileItemBlocksCord, !NoIFileItemBlocksCord).
@@ -161,9 +167,13 @@ get_ifile_and_noifile_in_raw_item_blocks_acc(IncludeImplTypes,
         GatherNoIFileItems, RawItemBlocks,
         !IFileItemBlocksCord, !NoIFileItemBlocksCord).
 
-:- pred get_ifile_and_noifile_in_items_acc(maybe_include_impl_types::in,
-    maybe_gather_noifile_items::in, module_section::in, list(item)::in,
-    cord(item)::in, cord(item)::out, cord(item)::in, cord(item)::out) is det.
+:- pred get_ifile_and_noifile_in_items_acc(maybe_include_impl_types,
+    maybe_gather_noifile_items, module_section, list(item),
+    cord(item), cord(item), cord(item), cord(item)).
+:- mode get_ifile_and_noifile_in_items_acc(in,
+    dont_gather_noifile_items, in, in, in, out, in, out) is det.
+:- mode get_ifile_and_noifile_in_items_acc(in,
+    gather_noifile_items, in, in, in, out, in, out) is det.
 
 get_ifile_and_noifile_in_items_acc(_, _, _,
         [], !IFileItemsCord, !NoIFileItemsCord).
