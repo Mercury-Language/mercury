@@ -68,12 +68,7 @@ check_for_no_exports(Globals, RawCompUnit, !Specs, !IO) :-
         ExportWarning = no
     ;
         ExportWarning = yes,
-        RawCompUnit = raw_compilation_unit(ModuleName, Context,
-            _RawItemBlocks),
-        get_interface(dont_include_impl_types, RawCompUnit,
-            InterfaceRawItemBlocks),
-        IntRawCompUnit = raw_compilation_unit(ModuleName, Context,
-            InterfaceRawItemBlocks),
+        get_interface(dont_include_impl_types, RawCompUnit, IntRawCompUnit),
         check_int_for_no_exports(Globals, IntRawCompUnit, !Specs, !IO)
     ).
 

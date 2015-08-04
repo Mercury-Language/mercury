@@ -407,17 +407,15 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
         RawCompUnit0, MaybeTimestamp, !IO) :-
     RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext,
         _RawItemBlocks0),
-    get_interface(include_impl_types, RawCompUnit0, IntRawItemBlocks),
-    RawCompUnit1 = raw_compilation_unit(ModuleName, ModuleNameContext,
-        IntRawItemBlocks),
+    get_interface(include_impl_types, RawCompUnit0, IntRawCompUnit),
 
     % Get the .int3 files for imported modules.
     grab_unqual_imported_modules(Globals, SourceFileName,
-        SourceFileModuleName, RawCompUnit1, ModuleAndImports2, !IO),
+        SourceFileModuleName, IntRawCompUnit, ModuleAndImports, !IO),
 
     some [!IntItems, !ImpItems, !Specs] (
         % Check whether we succeeded.
-        module_and_imports_get_aug_comp_unit(ModuleAndImports2, AugCompUnit2,
+        module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit0,
             !:Specs, Errors),
         ( if set.is_non_empty(Errors) then
             % XXX _NumErrors
@@ -432,7 +430,7 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
                 "`", Int2FileName, "' not written.\n"], !IO)
         else
             % Module-qualify all items.
-            module_qualify_aug_comp_unit(Globals, AugCompUnit2, AugCompUnit,
+            module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
                 map.init, _, "", _, _, _, !Specs),
 
             % We want to finish writing the interface file (and keep
@@ -536,8 +534,8 @@ write_short_interface_file(Globals, SourceFileName, RawCompUnit, !IO) :-
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext, _),
     some [!Specs] (
         !:Specs = [],
-        get_interface(dont_include_impl_types, RawCompUnit,
-            IFileRawItemBlocks0),
+        get_interface(dont_include_impl_types, RawCompUnit, IntRawCompUnit),
+        IntRawCompUnit = raw_compilation_unit(_, _, IFileRawItemBlocks0),
         % Assertions are also stripped since they should only be written
         % to .opt files.
         strip_assertions_in_item_blocks(IFileRawItemBlocks0,

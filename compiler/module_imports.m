@@ -332,8 +332,8 @@ module_and_imports_get_aug_comp_unit(Module, AugCompUnit, Specs, Errors) :-
 %-----------------------------------------------------------------------------%
 
 init_module_and_imports(Globals, FileName, SourceFileModuleName,
-        NestedModuleNames, Specs, Errors, RawCompilationUnit, ModuleImports) :-
-    RawCompilationUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+        NestedModuleNames, Specs, Errors, RawCompUnit0, ModuleImports) :-
+    RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext,
         RawItemBlocks),
     ParentDeps = get_ancestors(ModuleName),
 
@@ -345,8 +345,8 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     ImplUseDeps = ImplicitImplUseDeps ++ ImplUseDeps0,
     ImplementationDeps = ImplImportDeps ++ ImplUseDeps,
 
-    get_interface(dont_include_impl_types, RawCompilationUnit,
-        InterfaceItemBlocks),
+    get_interface(dont_include_impl_types, RawCompUnit0, RawCompUnit),
+    RawCompUnit = raw_compilation_unit(_, _, InterfaceItemBlocks),
     get_dependencies_in_item_blocks(InterfaceItemBlocks,
         InterfaceImportDeps0, InterfaceUseDeps0),
     get_implicit_dependencies_in_item_blocks(Globals, InterfaceItemBlocks,

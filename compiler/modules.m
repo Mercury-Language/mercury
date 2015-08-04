@@ -293,9 +293,9 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
             ImpImportedModules0, ImpImportedModules,
             ImpUsedModules0, ImpUsedModules, !Specs),
 
-        get_int_and_impl(dont_include_impl_types, RawCompUnit0,
-            IFileItemBlocks, NoIFileItemBlocks),
-        get_included_modules_in_item_blocks(IFileItemBlocks, PublicChildren),
+        get_src_item_blocks_public_children(RawCompUnit0,
+            SrcItemBlocks1, PublicChildren),
+
         % XXX ITEM_LIST Store the info we now find by these traversals
         % in the raw_comp_unit.
         get_fact_table_dependencies_in_item_blocks(RawItemBlocks0, FactDeps),
@@ -315,22 +315,6 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         % exported_to_submodules. We do that by splitting out the
         % implementation declarations and putting them in a special
         % `ams_impl_but_exported_to_submodules' section.
-
-        % XXX ITEM_LIST Store the info we now find by these traversals
-        % in the raw_comp_unit.
-        get_included_modules_in_item_blocks(RawItemBlocks0, Children),
-        (
-            Children = [],
-            % XXX ITEM_LIST We could compute AugBlocks1 from
-            % IFileItems and NoIFileItems.
-            raw_item_blocks_to_src(RawItemBlocks0, SrcItemBlocks1)
-        ;
-            Children = [_ | _],
-            raw_item_blocks_to_src(IFileItemBlocks, IFileSrcItemBlocks),
-            raw_item_blocks_to_split_src(NoIFileItemBlocks,
-                NoIFileSrcItemBlocks),
-            SrcItemBlocks1 = IFileSrcItemBlocks ++ NoIFileSrcItemBlocks
-        ),
 
         make_module_and_imports(SourceFileName, SourceFileModuleName,
             ModuleName, ModuleNameContext, SrcItemBlocks1, !.Specs,
@@ -539,6 +523,27 @@ grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
     module_and_imports_add_specs(AccessSpecs, !ModuleAndImports).
 
 %---------------------------------------------------------------------------%
+
+:- pred get_src_item_blocks_public_children(raw_compilation_unit::in,
+    list(src_item_block)::out, list(module_name)::out) is det.
+
+get_src_item_blocks_public_children(RawCompUnit,
+        SrcItemBlocks, PublicChildren) :-
+    RawCompUnit = raw_compilation_unit(_, _, RawItemBlocks),
+    get_included_modules_in_item_blocks(RawItemBlocks, Children),
+    (
+        Children = [],
+        raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
+        PublicChildren = []
+    ;
+        Children = [_ | _],
+        get_int_and_impl(dont_include_impl_types, RawCompUnit,
+            IFileItemBlocks, NoIFileItemBlocks),
+        raw_item_blocks_to_src(IFileItemBlocks, IFileSrcItemBlocks),
+        raw_item_blocks_to_split_src(NoIFileItemBlocks, NoIFileSrcItemBlocks),
+        SrcItemBlocks = IFileSrcItemBlocks ++ NoIFileSrcItemBlocks,
+        get_included_modules_in_item_blocks(IFileItemBlocks, PublicChildren)
+    ).
 
 :- pred raw_item_blocks_to_src(list(item_block(module_section))::in,
     list(item_block(src_module_section))::out) is det.

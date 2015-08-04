@@ -30,8 +30,8 @@
     --->    dont_include_impl_types
     ;       include_impl_types.
 
-    % Given the raw compilation unit of a module, extract the part of
-    % that module that will go into the .int file of the module.
+    % Given the raw compilation unit of a module, extract and return
+    % the part of that module that will go into the .int file of the module.
     % This will typically mostly be the interface section of the module,
     % but it may also contain parts of the implementation section as well.
     % Both parts may be somewhat modified; for example, we may remove
@@ -40,7 +40,7 @@
     % implementation section.
     %
 :- pred get_interface(maybe_include_impl_types::in,
-    raw_compilation_unit::in, list(raw_item_block)::out) is det.
+    raw_compilation_unit::in, raw_compilation_unit::out) is det.
 
     % As above, but also return ...
     % XXX ITEM_LIST document EXACTLY what the second list of item blocks is.
@@ -87,9 +87,9 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-get_interface(IncludeImplTypes, RawCompUnit, IFileItemBlocks) :-
+get_interface(IncludeImplTypes, RawCompUnit, InterfaceRawCompUnit) :-
     RawCompUnit =
-        raw_compilation_unit(ModuleName, _ModuleNameContext, RawItemBlocks),
+        raw_compilation_unit(ModuleName, ModuleNameContext, RawItemBlocks),
     % XXX ITEM_LIST Don't compute _NonIFileItemBlocksCord
     % just to throw it away. If we mode-specialize
     % get_ifile_and_noifile_in_raw_item_blocks_acc for
@@ -101,7 +101,9 @@ get_interface(IncludeImplTypes, RawCompUnit, IFileItemBlocks) :-
     IFileItemBlocks0 = cord.list(IFileItemBlocksCord),
     % XXX ITEM_LIST The ms_interface is a guess.
     add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
-        ms_interface, IFileItemBlocks0, IFileItemBlocks).
+        ms_interface, IFileItemBlocks0, IFileItemBlocks),
+    InterfaceRawCompUnit =
+        raw_compilation_unit(ModuleName, ModuleNameContext, IFileItemBlocks).
 
 get_int_and_impl(IncludeImplTypes, RawCompUnit,
         IFileItemBlocks, NoIFileItemBlocks) :-
