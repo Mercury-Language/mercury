@@ -343,9 +343,17 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
         ( Status = status_opt_imported ->
             ModeList = ModeList0
         ;
+            Exported = status_is_exported_to_non_submodules(Status),
+            (
+                Exported = yes,
+                InInt = mq_used_in_interface
+            ;
+                Exported = no,
+                InInt = mq_not_used_in_interface
+            ),
             qual_info_get_mq_info(!.QualInfo, MQInfo0),
-            qualify_clause_mode_list(ModeList0, ModeList, Context,
-                MQInfo0, MQInfo, !Specs),
+            qualify_clause_mode_list(InInt, Context,
+                ModeList0, ModeList, MQInfo0, MQInfo, !Specs),
             qual_info_set_mq_info(MQInfo, !QualInfo)
         ),
 

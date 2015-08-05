@@ -136,8 +136,7 @@
                 qual_found_syntax_error :: bool
             ).
 
-init_qual_info(MQInfo0, TypeEqvMap, QualInfo) :-
-    mq_info_set_need_qual_flag(may_be_unqualified, MQInfo0, MQInfo),
+init_qual_info(MQInfo, TypeEqvMap, QualInfo) :-
     varset.init(TVarSet),
     map.init(Renaming),
     map.init(Index),
@@ -192,8 +191,9 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
         Type1 = Type0,
         MQInfo = MQInfo0
     ;
-        qualify_type_qualification(Type0, Type1, Context, MQInfo0, MQInfo,
-            !Specs)
+        % Type qualifications cannot appear in the interface of a module.
+        qualify_type_qualification(mq_not_used_in_interface, Context,
+            Type0, Type1, MQInfo0, MQInfo, !Specs)
     ),
 
     % Find any new type variables introduced by this type, and

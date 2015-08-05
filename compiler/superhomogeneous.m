@@ -1028,8 +1028,9 @@ qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes, Context,
     qual_info_get_import_status(!.QualInfo, ImportStatus),
     ( ImportStatus \= status_opt_imported ->
         qual_info_get_mq_info(!.QualInfo, MQInfo0),
-        qualify_lambda_mode_list(Modes0, Modes, Context, MQInfo0, MQInfo,
-            !Specs),
+        % Lambda expressions cannot appear in the interface of a module.
+        qualify_lambda_mode_list(mq_not_used_in_interface, Context,
+            Modes0, Modes, MQInfo0, MQInfo, !Specs),
         qual_info_set_mq_info(MQInfo, !QualInfo)
     ;
         Modes = Modes0

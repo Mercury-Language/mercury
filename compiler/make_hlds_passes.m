@@ -378,10 +378,7 @@ add_blocks_pass_3([ItemBlock | ItemBlocks], MakeStatus,
         !ModuleInfo, !QualInfo, !Specs) :-
     ItemBlock = item_block(Section, _, Items),
     MakeStatus(Section, Status),
-    Status = item_status(ImportStatus, NeedQualifier),
-    qual_info_get_mq_info(!.QualInfo, MQInfo0),
-    mq_info_set_need_qual_flag(NeedQualifier, MQInfo0, MQInfo),
-    qual_info_set_mq_info(MQInfo, !QualInfo),
+    Status = item_status(ImportStatus, _NeedQualifier),
     add_items_pass_3(ImportStatus, Items, !ModuleInfo, !QualInfo, !Specs),
     add_blocks_pass_3(ItemBlocks, MakeStatus, !ModuleInfo, !QualInfo, !Specs).
 
