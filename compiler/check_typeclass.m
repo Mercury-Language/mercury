@@ -250,23 +250,23 @@ is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn, Type,
         N, N+1, !Specs) :-
     (
         Type = defined_type(_TypeName, _, _),
-        ( type_to_type_defn(ModuleInfo, Type, TypeDefn) ->
+        ( if type_to_type_defn(ModuleInfo, Type, TypeDefn) then
             get_type_defn_body(TypeDefn, TypeBody),
             (
                 TypeBody = hlds_eqv_type(_),
                 get_type_defn_status(TypeDefn, TypeDefnStatus),
-                (
+                ( if
                     TypeDefnStatus = status_abstract_exported,
                     % If the instance definition is itself abstract exported,
                     % we want to generate only one error message, instead of
                     % two error messages, one for the abstract and one for the
                     % concrete instance definition.
                     InstanceDefn ^ instance_body = instance_body_concrete(_)
-                ->
+                then
                     Spec = abstract_eqv_instance_type_msg(ClassId,
                         InstanceDefn, N),
                     !:Specs = [Spec | !.Specs]
-                ;
+                else
                     true
                 )
             ;
@@ -276,7 +276,7 @@ is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn, Type,
                 ; TypeBody = hlds_abstract_type(_)
                 )
             )
-        ;
+        else
             % The type is either a builtin type or a type variable.
             true
         )
@@ -340,7 +340,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         (
             Result = no_error,
             set.insert_list(Args, !SeenTypes),
-            ( type_to_type_defn(ModuleInfo, Type, TypeDefn) ->
+            ( if type_to_type_defn(ModuleInfo, Type, TypeDefn) then
                 list.length(Args, TypeArity),
                 is_visible_instance_type(TypeName, TypeArity, TypeDefn,
                     ClassId, InstanceDefn, !Specs),
@@ -356,7 +356,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
                     ; TypeBody = hlds_abstract_type(_)
                     )
                 )
-            ;
+            else
                 % The type is either a builtin type or a type variable.
                 true
             )
@@ -388,10 +388,10 @@ is_visible_instance_type(TypeName, TypeArity, TypeDefn, ClassId,
         (
             InstanceIsExported = yes,
             get_type_defn_status(TypeDefn, TypeDefnImportStatus),
-            (
+            ( if
                 status_is_imported(TypeDefnImportStatus) = no,
                 status_is_exported_to_non_submodules(TypeDefnImportStatus) = no
-            ->
+            then
                 ClassId = class_id(ClassName, ClassArity),
                 Pieces = [
                     words("Error: abstract instance declaration for"),
@@ -406,7 +406,7 @@ is_visible_instance_type(TypeName, TypeArity, TypeDefn, ClassId,
                 Msg = simple_msg(Context, [always(Pieces)]),
                 Spec = error_spec(severity_error, phase_type_check, [Msg]),
                 !:Specs = [Spec | !.Specs]
-            ;
+            else
                 true
             )
         ;
@@ -546,10 +546,10 @@ check_one_class(ClassTable, ClassId - InstanceDefns0, ClassId - InstanceDefns,
     ClassDefn = hlds_class_defn(ImportStatus, SuperClasses, _FunDeps,
         _Ancestors, ClassVars, _Kinds, Interface, ClassInterface,
         ClassVarSet, TermContext),
-    (
+    ( if
         status_defined_in_this_module(ImportStatus) = yes,
         Interface = class_interface_abstract
-    ->
+    then
         ClassId = class_id(ClassName, ClassArity),
         Pieces = [words("Error: no definition for typeclass"),
             sym_name_and_arity(ClassName / ClassArity), suffix("."), nl],
@@ -557,7 +557,7 @@ check_one_class(ClassTable, ClassId - InstanceDefns0, ClassId - InstanceDefns,
         Spec = error_spec(severity_error, phase_type_check, [Msg]),
         !:Specs = [Spec | !.Specs],
         InstanceDefns = InstanceDefns0
-    ;
+    else
         GetClassProcPredId =
             (pred(ClassProc::in, ClassProcPredId::out) is det :-
                 ClassProc = hlds_class_proc(ClassProcPredId, _ClassProcProcId)
@@ -768,10 +768,10 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
     % the constraint for the class of which it is a member. Seeing that we are
     % checking an instance declaration, we don't check that constraint...
     % the instance declaration itself satisfies it!
-    ( ClassContext0 = constraints([_ | OtherUnivCs], ExistCs) ->
+    ( if ClassContext0 = constraints([_ | OtherUnivCs], ExistCs) then
         UnivCs = OtherUnivCs,
         ClassContext = constraints(UnivCs, ExistCs)
-    ;
+    else
         unexpected($module, $pred, "no constraint on class method")
     ),
     MethodName0 = pred_info_name(PredInfo),
@@ -894,7 +894,7 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
                 MethodArity, _Context)
         ),
         InstanceMethods, MatchingMethods),
-    (
+    ( if
         MatchingMethods = [First, _Second | _],
         FirstContext = First ^ instance_method_decl_context,
         \+ (
@@ -903,7 +903,7 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
             InstanceProcDef = DefnViaName ^ instance_method_proc_def,
             InstanceProcDef = instance_proc_def_name(_)
         )
-    ->
+    then
         % If all of the instance method definitions for this pred/func
         % are clauses, and there are more than one of them, then we must
         % combine them all into a single definition.
@@ -917,7 +917,7 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
             instance_proc_def_clauses(FlattenedClauses), MethodArity,
             FirstContext),
         ResultList = [CombinedMethod]
-    ;
+    else
         % If there are less than two matching method definitions,
         % or if any of the instance method definitions is a method name,
         % then we're done.
@@ -1265,19 +1265,19 @@ check_for_corresponding_instances(Concretes, ClassId, InstanceDefns, !Specs) :-
 check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
         !Specs) :-
     AbstractTypes = AbstractInstance ^ instance_types,
-    ( multi_map.search(Concretes, ClassId, ConcreteInstances) ->
-        (
+    ( if multi_map.search(Concretes, ClassId, ConcreteInstances) then
+        ( if
             list.member(ConcreteInstance, ConcreteInstances),
             ConcreteTypes = ConcreteInstance ^ instance_types,
             ConcreteTypes = AbstractTypes
-        ->
+        then
             MissingConcreteError = no
-        ;
+        else
             % There were concrete instances for ClassId in the implementation
             % but none of them matches the abstract instance we have.
             MissingConcreteError = yes
         )
-    ;
+    else
         % There were no concrete instances for ClassId in the implementation.
         MissingConcreteError = yes
     ),
@@ -1349,14 +1349,14 @@ find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
     ClassDefn0 = map.lookup(!.ClassTable, ClassId),
     Params = ClassDefn0 ^ class_vars,
     Kinds = ClassDefn0 ^ class_kinds,
-    ( set.member(ClassId, !.Visited) ->
-        ( find_cycle(ClassId, Path, [ClassId], Cycle) ->
+    ( if set.member(ClassId, !.Visited) then
+        ( if find_cycle(ClassId, Path, [ClassId], Cycle) then
             !:Cycles = [Cycle | !.Cycles]
-        ;
+        else
             true
         ),
         Ancestors = ClassDefn0 ^ class_fundep_ancestors
-    ;
+    else
         set.insert(ClassId, !Visited),
 
         % Make this class its own ancestor, but only if it has fundeps on it.
@@ -1410,9 +1410,9 @@ find_cycles_3(Path, Constraint, !ClassTable, !Visited, !Cycles, !Ancestors) :-
 
 find_cycle(ClassId, [Head | Tail], Path0, Cycle) :-
     Path = [Head | Path0],
-    ( ClassId = Head ->
+    ( if ClassId = Head then
         Cycle = Path
-    ;
+    else
         find_cycle(ClassId, Tail, Path, Cycle)
     ).
 
@@ -1575,12 +1575,12 @@ check_consistency_pair(ClassId, ClassDefn, FunDeps, InstanceA, InstanceB,
     % If both instances are imported from the same module then we don't need
     % to check the consistency, since this would have been checked when
     % compiling that module.
-    (
+    ( if
         InstanceA ^ instance_module = InstanceB ^ instance_module,
         status_is_imported(InstanceA ^ instance_status) = yes
-    ->
+    then
         true
-    ;
+    else
         list.foldl(
             check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB),
             FunDeps, !Specs)
@@ -1604,19 +1604,19 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     DomainA = restrict_list_elements(Domain, TypesA),
     DomainB = restrict_list_elements(Domain, TypesB),
 
-    ( type_unify_list(DomainA, DomainB, [], map.init, Subst) ->
+    ( if type_unify_list(DomainA, DomainB, [], map.init, Subst) then
         RangeA0 = restrict_list_elements(Range, TypesA),
         RangeB0 = restrict_list_elements(Range, TypesB),
         apply_rec_subst_to_type_list(Subst, RangeA0, RangeA),
         apply_rec_subst_to_type_list(Subst, RangeB0, RangeB),
-        ( RangeA = RangeB ->
+        ( if RangeA = RangeB then
             true
-        ;
+        else
             Spec = report_consistency_error(ClassId, ClassDefn,
                 InstanceA, InstanceB, FunDep),
             !:Specs = [Spec | !.Specs]
         )
-    ;
+    else
         true
     ).
 
@@ -2068,9 +2068,9 @@ fundeps_closure(FunDeps, TVars) = fundeps_closure_2(FunDeps, TVars, set.init).
 :- func fundeps_closure_2(induced_fundeps, set(tvar), set(tvar)) = set(tvar).
 
 fundeps_closure_2(FunDeps0, NewVars0, Result0) = Result :-
-    ( set.is_empty(NewVars0) ->
+    ( if set.is_empty(NewVars0) then
         Result = Result0
-    ;
+    else
         Result1 = set.union(Result0, NewVars0),
         FunDeps1 = list.map(remove_vars(NewVars0), FunDeps0),
         list.foldl2(collect_determined_vars, FunDeps1, [], FunDeps,
@@ -2088,9 +2088,9 @@ remove_vars(Vars, fundep(Domain0, Range0)) = fundep(Domain, Range) :-
     induced_fundeps::out, set(tvar)::in, set(tvar)::out) is det.
 
 collect_determined_vars(FunDep @ fundep(Domain, Range), !FunDeps, !Vars) :-
-    ( set.is_empty(Domain) ->
+    ( if set.is_empty(Domain) then
         !:Vars = set.union(Range, !.Vars)
-    ;
+    else
         !:FunDeps = [FunDep | !.FunDeps]
     ).
 
