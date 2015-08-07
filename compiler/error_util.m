@@ -552,9 +552,9 @@ actual_error_severity(Globals, Severity) = MaybeActual :-
         Severity = severity_conditional(Option, MatchValue,
             Match, MaybeNoMatch),
         globals.lookup_bool_option(Globals, Option, Value),
-        ( Value = MatchValue ->
+        ( if Value = MatchValue then
             MaybeActual = actual_error_severity(Globals, Match)
-        ;
+        else
             (
                 MaybeNoMatch = no,
                 MaybeActual = no
@@ -738,9 +738,9 @@ compare_error_specs(SpecA, SpecB, Result) :-
     ContextsA = project_msgs_contexts(MsgsA),
     ContextsB = project_msgs_contexts(MsgsB),
     compare(ContextResult, ContextsA, ContextsB),
-    ( ContextResult = (=) ->
+    ( if ContextResult = (=) then
         compare(Result, SpecA, SpecB)
-    ;
+    else
         Result = ContextResult
     ).
 
@@ -841,9 +841,9 @@ do_write_error_spec(Globals, Spec, !NumWarnings, !NumErrors,
     io::di, io::uo) is det.
 
 do_write_error_msgs([], _Globals, _First, !PrintedSome,
-    !AlreadyPrintedVerbose, !IO).
+        !AlreadyPrintedVerbose, !IO).
 do_write_error_msgs([Msg | Msgs], Globals, !.First, !PrintedSome,
-    !AlreadyPrintedVerbose, !IO) :-
+        !AlreadyPrintedVerbose, !IO) :-
     (
         Msg = simple_msg(SimpleContext, Components),
         MaybeContext = yes(SimpleContext),
@@ -863,7 +863,7 @@ do_write_error_msgs([Msg | Msgs], Globals, !.First, !PrintedSome,
     Indent = ExtraIndentLevel * indent_increment,
     write_msg_components(Components, MaybeContext, Indent, Globals,
         !First, !PrintedSome, !AlreadyPrintedVerbose, !IO),
-    do_write_error_msgs(Msgs, Globals, !.First, !PrintedSome, 
+    do_write_error_msgs(Msgs, Globals, !.First, !PrintedSome,
         !AlreadyPrintedVerbose, !IO).
 
 :- pred write_msg_components(list(error_msg_component)::in,
@@ -886,10 +886,10 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
     ;
         Component = option_is_set(Option, RequiredValue, EmbeddedComponents),
         globals.lookup_bool_option(Globals, Option, OptionValue),
-        ( OptionValue = RequiredValue ->
+        ( if OptionValue = RequiredValue then
             write_msg_components(EmbeddedComponents, MaybeContext, Indent,
                 Globals, !First, !PrintedSome, !AlreadyPrintedVerbose, !IO)
-        ;
+        else
             true
         )
     ;
@@ -905,9 +905,11 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
                 !:PrintedSome = printed_something
             ;
                 AlwaysOrOnce = verbose_once,
-                ( set.contains(!.AlreadyPrintedVerbose, ComponentPieces) ->
+                ( if
+                    set.contains(!.AlreadyPrintedVerbose, ComponentPieces)
+                then
                     true
-                ;
+                else
                     do_write_error_pieces(!.First, MaybeContext, Indent,
                         Globals, ComponentPieces, !IO),
                     !:First = do_not_treat_as_first,
@@ -1083,9 +1085,9 @@ do_write_error_pieces_params(TreatAsFirst, MaybeContext, FixedIndent,
             string.count_codepoints(FileName, FileNameLength),
             string.int_to_string(LineNumber, LineNumberStr),
             string.count_codepoints(LineNumberStr, LineNumberStrLength0),
-            ( LineNumberStrLength0 < 3 ->
+            ( if LineNumberStrLength0 < 3 then
                 LineNumberStrLength = 3
-            ;
+            else
                 LineNumberStrLength = LineNumberStrLength0
             ),
             MaybeContextLength =
@@ -1101,7 +1103,7 @@ do_write_error_pieces_params(TreatAsFirst, MaybeContext, FixedIndent,
     ;
         MaybeContextLength = yes(ContextLength),
         convert_components_to_paragraphs(Components, Paragraphs),
-        FirstIndent = (TreatAsFirst = treat_as_first -> 0 ; 1),
+        FirstIndent = (if TreatAsFirst = treat_as_first then 0 else 1),
         (
             MaybeMaxWidth = yes(MaxWidth),
             Remain = MaxWidth - (ContextLength + FixedIndent),
@@ -1251,14 +1253,11 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = top_ctor_of_type(Type),
-        ( type_to_ctor(Type, TypeCtor) ->
-            TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
-            SymName = TypeCtorName / TypeCtorArity,
-            Word = sym_name_and_arity_to_word(SymName),
-            Str = join_string_and_tail(Word, Components, TailStr)
-        ;
-            unexpected($file, $pred, "type is variable")
-        )
+        type_to_ctor_det(Type, TypeCtor),
+        TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
+        SymName = TypeCtorName / TypeCtorArity,
+        Word = sym_name_and_arity_to_word(SymName),
+        Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = nl,
         Str = "\n" ++ TailStr
@@ -1279,24 +1278,24 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
 :- func nth_fixed_str(int) = string.
 
 nth_fixed_str(N) =
-    ( N = 1 ->
+    ( if N = 1 then
         "first"
-    ; N = 2 ->
+    else if N = 2 then
         "second"
-    ; N = 3 ->
+    else if N = 3 then
         "third"
-    ;
+    else
         int_to_string(N) ++ "th"
     ).
 
 :- func join_string_and_tail(string, list(format_component), string) = string.
 
 join_string_and_tail(Word, Components, TailStr) = Str :-
-    ( TailStr = "" ->
+    ( if TailStr = "" then
         Str = Word
-    ; Components = [suffix(_) | _] ->
+    else if Components = [suffix(_) | _] then
         Str = Word ++ TailStr
-    ;
+    else
         Str = Word ++ " " ++ TailStr
     ).
 
@@ -1382,14 +1381,11 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
         Component = top_ctor_of_type(Type),
-        ( type_to_ctor(Type, TypeCtor) ->
-            TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
-            SymName = TypeCtorName / TypeCtorArity,
-            NewWord = plain_word(sym_name_and_arity_to_word(SymName)),
-            RevWords1 = [NewWord | RevWords0]
-        ;
-            unexpected($file, $pred, "type is variable")
-        )
+        type_to_ctor_det(Type, TypeCtor),
+        TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
+        SymName = TypeCtorName / TypeCtorArity,
+        NewWord = plain_word(sym_name_and_arity_to_word(SymName)),
+        RevWords1 = [NewWord | RevWords0]
     ;
         Component = p_or_f(PredOrFunc),
         Word = pred_or_func_to_string(PredOrFunc),
@@ -1517,13 +1513,13 @@ join_prefixes([Head | Tail]) = Strings :-
 :- func lower_initial(string) = string.
 
 lower_initial(Str0) = Str :-
-    (
+    ( if
         string.first_char(Str0, First, Rest),
         char.is_upper(First)
-    ->
+    then
         char.to_lower(First, LoweredFirst),
         string.first_char(Str, LoweredFirst, Rest)
-    ;
+    else
         Str = Str0
     ).
 
@@ -1546,12 +1542,12 @@ break_into_words(String, Words0, Words) :-
     list(word)::out) is det.
 
 break_into_words_from(String, Cur, Words0, Words) :-
-    ( find_word_start(String, Cur, Start) ->
+    ( if find_word_start(String, Cur, Start) then
         find_word_end(String, Start, End),
         string.between(String, Start, End, WordStr),
         break_into_words_from(String, End, [plain_word(WordStr) | Words0],
             Words)
-    ;
+    else
         Words = Words0
     ).
 
@@ -1559,22 +1555,22 @@ break_into_words_from(String, Cur, Words0, Words) :-
 
 find_word_start(String, Cur, WordStart) :-
     string.unsafe_index_next(String, Cur, Next, Char),
-    ( char.is_whitespace(Char) ->
+    ( if char.is_whitespace(Char) then
         find_word_start(String, Next, WordStart)
-    ;
+    else
         WordStart = Cur
     ).
 
 :- pred find_word_end(string::in, int::in, int::out) is det.
 
 find_word_end(String, Cur, WordEnd) :-
-    ( string.unsafe_index_next(String, Cur, Next, Char) ->
-        ( char.is_whitespace(Char) ->
+    ( if string.unsafe_index_next(String, Cur, Next, Char) then
+        ( if char.is_whitespace(Char) then
             WordEnd = Cur
-        ;
+        else
             find_word_end(String, Next, WordEnd)
         )
-    ;
+    else
         WordEnd = Cur
     ).
 
@@ -1677,10 +1673,10 @@ get_later_words([], _, _, Line, Line, []).
 get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
     string.count_codepoints(Word, WordLen),
     NewLen = OldLen + 1 + WordLen,
-    ( NewLen =< Avail ->
+    ( if NewLen =< Avail then
         list.append(Line0, [Word], Line1),
         get_later_words(Words, NewLen, Avail, Line1, Line, RestWords)
-    ;
+    else
         Line = Line0,
         RestWords = [Word | Words]
     ).
@@ -1701,14 +1697,14 @@ add_quotes(Str) = "`" ++ Str ++ "'".
 
 capitalize(Str0) = Str :-
     Chars0 = string.to_char_list(Str0),
-    (
+    ( if
         Chars0 = [Char0 | TailChars],
         char.is_lower(Char0),
         Char = char.to_upper(Char0)
-    ->
+    then
         Chars = [Char | TailChars],
         Str = string.from_char_list(Chars)
-    ;
+    else
         Str = Str0
     ).
 
