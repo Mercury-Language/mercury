@@ -1002,7 +1002,6 @@ unrelated modules, as in the second example.
 * Using non-installed libraries with mmc --make::
 @end menu
 
-
 @node Building and installing libraries with mmc --make
 @subsection Building and installing libraries with mmc --make
 
@@ -1043,7 +1042,6 @@ wish to install.
 
 If no @samp{--install-prefix <dir>} is specified, the library will be installed
 in the standard location, next to the Mercury standard library.
-
 
 @node Using installed libraries with mmc --make
 @subsection Using installed libraries with mmc --make
@@ -1117,7 +1115,6 @@ mmc @dots{} --use-grade-subdirs \
     @dots{}
 @end example
 
-
 @node Building with Mmake
 @section Building with Mmake
 
@@ -1126,7 +1123,6 @@ mmc @dots{} --use-grade-subdirs \
 * Installing libraries with Mmake::
 * Using libraries with Mmake::
 @end menu
-
 
 @node Building libraries with Mmake
 @subsection Building libraries with Mmake
@@ -6772,6 +6768,19 @@ so you get information at the boundaries between phases of the compiler.
 Append information about the size of each procedure in the module
 in terms of goals and variables to the end of the named file.
 
+@sp 1
+@item --limit-error-contexts @var{filename:minline1-maxline1,minline2-maxline2}
+@findex --limit-error-contexts
+Print errors and warnings for the named file only when their
+line number is in one of the specified ranges.
+The minimum or maximum line number in each range may be omitted,
+in which case the range has no lower or upper bound respectively.
+Multiple @samp{--limit-error-context} options accumulate.
+If more than one @samp{--limit-error-context} option is given for
+the same file, only the last one will have an effect.
+If the file name and colon are missing, the limit will apply
+to all files.
+
 @c @sp 1
 @c @item -T
 @c @itemx --debug-types
@@ -8184,7 +8193,6 @@ is that the former method can give slightly more accurate timing results.
 because with the latter method the code inserted to record call counts
 has a small effect on the execution speed.
 
-
 @sp 1
 @item @code{--record-term-sizes-as-words} (grades: any grade containing @samp{.tsw})
 @findex --record-term-sizes-as-words
@@ -9327,7 +9335,6 @@ extension.
 
 @end table
 
-
 @node Target code compilation options
 @section Target code compilation options
 @cindex Target code compilation options
@@ -9446,7 +9453,6 @@ Set the classpath for the Java compiler.
 @cindex File extensions
 Specify an extension for Java object (bytecode) files.  By default this
 is @samp{.class}.
-
 
 @sp 1
 @item --csharp-compiler @var{compiler-name}
