@@ -72,6 +72,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
+:- import_module hlds.vartypes.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.continuation_info.

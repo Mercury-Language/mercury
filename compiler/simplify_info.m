@@ -24,6 +24,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
@@ -323,7 +324,7 @@ simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar, TSubst,
         !Info) :-
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    transform_var_types(apply_rec_subst_to_type(TSubst), VarTypes0, VarTypes),
+    apply_rec_subst_to_vartypes(TSubst, VarTypes0, VarTypes),
     Renaming = map.singleton(ToVar, FromVar),
     apply_substitutions_to_rtti_varmaps(map.init, TSubst, Renaming,
         RttiVarMaps0, RttiVarMaps1),

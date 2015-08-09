@@ -92,6 +92,7 @@
 :- import_module check_hlds.modes.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.

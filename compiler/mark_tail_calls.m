@@ -47,6 +47,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.vartypes.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.

@@ -57,6 +57,7 @@
 
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
+:- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module libs.lp_rational.
 :- import_module libs.options.

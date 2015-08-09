@@ -5782,13 +5782,6 @@ write_vars_and_types(HeadVars, VarSet, HeadVarTypes, TypeVarSet, !IO) :-
         io.write_string(")", !IO)
     ).
 
-:- pred write_type_of_var(vartypes::in, tvarset::in, prog_var::in,
-    io::di, io::uo) is det.
-
-write_type_of_var(VarTypes, TypeVarSet, Var, !IO):-
-    lookup_var_type(VarTypes, Var, VarType),
-    mercury_output_type(TypeVarSet, no, VarType, !IO).
-
 %---------------------------------------------------------------------------%
 
 describe_error_term(VarSet, Term) =

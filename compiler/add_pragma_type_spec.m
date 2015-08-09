@@ -29,6 +29,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.pred_table.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module mdbcomp.

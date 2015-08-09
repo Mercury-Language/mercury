@@ -32,22 +32,23 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
-:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_ctgc.
+:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 

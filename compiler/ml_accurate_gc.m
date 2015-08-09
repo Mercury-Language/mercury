@@ -84,6 +84,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.

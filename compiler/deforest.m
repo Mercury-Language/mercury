@@ -63,11 +63,13 @@
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.dependency_graph.

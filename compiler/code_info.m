@@ -32,14 +32,15 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.trace_gen.
-:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.goal_path.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 

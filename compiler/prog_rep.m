@@ -23,6 +23,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
+:- import_module hlds.vartypes.
 :- import_module ll_backend.prog_rep_tables.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.

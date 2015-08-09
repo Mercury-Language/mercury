@@ -73,12 +73,6 @@
 :- func stm_dummy_output_type_ctor = type_ctor.
 
 %-----------------------------------------------------------------------------%
-
-    % Succeed iff the given variable is of region_type.
-    %
-:- pred is_region_var(vartypes::in, prog_var::in) is semidet.
-
-%-----------------------------------------------------------------------------%
 %
 % Functors.
 %
@@ -240,12 +234,6 @@ stm_rollback_exception_type_ctor = type_ctor(Name, 0) :-
     Name = qualified(mercury_stm_builtin_module, "rollback_exception").
 stm_dummy_output_type_ctor = type_ctor(Name, 0) :-
     Name = qualified(mercury_stm_builtin_module, "stm_dummy_output").
-
-%-----------------------------------------------------------------------------%
-
-is_region_var(VarTypes, Var)  :-
-    lookup_var_type(VarTypes, Var, Type),
-    Type = region_type.
 
 %-----------------------------------------------------------------------------%
 

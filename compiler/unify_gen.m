@@ -77,6 +77,7 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.

@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: set_of_var.m.
 %
 % A module to define the abstract data structure we use to represent
 % sets of variables.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.set_of_var.
 :- interface.
@@ -35,7 +35,7 @@
 
 :- func count(set_of_var(T)) = int.
 
-%---------------
+%---------------------%
 % Tests.
 
 :- pred is_empty(set_of_var(T)::in) is semidet.
@@ -52,7 +52,7 @@
 
 :- pred equal(set_of_var(T)::in, set_of_var(T)::in) is semidet.
 
-%---------------
+%---------------------%
 % Conversions.
 
 :- func list_to_set(list(var(T))) = set_of_var(T).
@@ -66,7 +66,7 @@
 :- func set_to_bitset(set(var(T))) = set_of_var(T).
 :- func bitset_to_set(set_of_var(T)) = set(var(T)).
 
-%---------------
+%---------------------%
 % Updates.
 
 :- pred insert(var(T)::in,
@@ -84,7 +84,7 @@
 :- pred remove_least(var(T)::out,
     set_of_var(T)::in, set_of_var(T)::out) is semidet.
 
-%---------------
+%---------------------%
 % Set operations.
 
 :- func union(set_of_var(T), set_of_var(T)) = set_of_var(T).
@@ -117,7 +117,7 @@
 :- pred cartesian_product_list(list(set_of_var(T))::in,
     list(set_of_var(T))::out) is det.
 
-%---------------
+%---------------------%
 % Traversals.
 
 :- pred fold(pred(var(T), Acc, Acc), set_of_var(T), Acc, Acc).
@@ -147,7 +147,7 @@
 :- pred all_true(pred(var(T))::in(pred(in) is semidet), set_of_var(T)::in)
     is semidet.
 
-%---------------
+%---------------------%
 % Graph colouring.
 
     % Find a 'good' colouring of a graph.
@@ -159,7 +159,7 @@
 :- pred graph_colour_group_elements(set(set_of_var(T))::in,
     set(set_of_var(T))::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -186,7 +186,7 @@
 
 :- type set_of_var(T) ==  sparse_bitset(var(T)).                      % MODULE
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init = sparse_bitset.init.                                            % MODULE
 init(Set) :-
@@ -199,7 +199,7 @@ make_singleton(Elem, Set) :-
 count(Set) = Count :-
     Count = sparse_bitset.count(Set).                                 % MODULE
 
-%---------------
+%---------------------%
 % Tests.
 
 is_empty(Set) :-
@@ -215,9 +215,9 @@ member(Set, Elem) :-
     sparse_bitset.member(Elem, Set).                                  % MODULE
 
 is_member(Set, Elem, IsMember) :-
-    ( set_of_var.contains(Set, Elem) ->
+    ( if set_of_var.contains(Set, Elem) then
         IsMember = yes
-    ;
+    else
         IsMember = no
     ).
 
@@ -227,7 +227,7 @@ contains(Set, Elem) :-
 equal(SetA, SetB) :-
     sparse_bitset.equal(SetA, SetB).                                  % MODULE
 
-%---------------
+%---------------------%
 % Conversions.
 
 list_to_set(List) = sparse_bitset.list_to_set(List).                  % MODULE
@@ -255,7 +255,7 @@ bitset_to_set(BitSet) = OrdSet :-
     sparse_bitset.to_sorted_list(BitSet, List),                       % MODULE
     set.sorted_list_to_set(List, OrdSet).
 
-%---------------
+%---------------------%
 % Updates.
 
 insert(Elem, !Set) :-
@@ -279,7 +279,7 @@ remove_list(Elems, !Set) :-
 remove_least(LeastElem, !Set) :-
     sparse_bitset.remove_least(LeastElem, !Set).                      % MODULE
 
-%---------------
+%---------------------%
 % Set operations.
 
 union(SetA, SetB) = sparse_bitset.union(SetA, SetB).                  % MODULE
@@ -332,7 +332,7 @@ cartesian_product_list([FirstSet | OtherSets], Product) :-
 cartesian_product_list2(A, B, SetsAcc, Product ++ SetsAcc) :-
     cartesian_product(A, B, Product).
 
-%---------------
+%---------------------%
 % Traversals.
 
 fold(P, Set, !Acc) :-
@@ -352,7 +352,7 @@ filter(P, Set, Trues, Falses) :-
 all_true(P, Set) :-
      sparse_bitset.all_true(P, Set).                                  % MODULE
 
-%---------------
+%---------------------%
 % Graph colouring.
 
 % The code of graph_colour_group_elements and its auxiliary predicates
@@ -410,12 +410,12 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
             % See if there are sets that can share a colour with the
             % selected var.
             NotContaining = [_ | _],
-            ( set_of_var.is_empty(RestVars) ->
+            ( if set_of_var.is_empty(RestVars) then
                 % There were no variables left that could share a colour,
                 % so create a singleton set containing this variable.
                 SameColour = set_of_var.make_singleton(Var),
                 ResidueSets = NotContaining
-            ;
+            else
                 % If there is at least one variable that can share a colour
                 % with the selected variable, then recursively use the
                 % remaining constraints to assign a colour to one of the
@@ -461,16 +461,16 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
 divide_constraints(_Var, [], [], [], !Vars).
 divide_constraints(Var, [S | Ss], C, NC, !Vars) :-
     divide_constraints(Var, Ss, C0, NC0, !Vars),
-    ( set_of_var.member(S, Var) ->
+    ( if set_of_var.member(S, Var) then
         set_of_var.delete(Var, S, T),
-        ( set_of_var.is_empty(T) ->
+        ( if set_of_var.is_empty(T) then
             C = C0
-        ;
+        else
             C = [T | C0]
         ),
         NC = NC0,
         set_of_var.difference(!.Vars, T, !:Vars)
-    ;
+    else
         C = C0,
         NC = [S | NC0]
     ).
@@ -481,13 +481,13 @@ divide_constraints(Var, [S | Ss], C, NC, !Vars) :-
 :- pred choose_var(set_of_var(T)::in, var(T)::out, set_of_var(T)::out) is det.
 
 choose_var(Vars0, Var, Vars) :-
-    ( set_of_var.remove_least(VarPrime, Vars0, VarsPrime) ->
+    ( if set_of_var.remove_least(VarPrime, Vars0, VarsPrime) then
         Var = VarPrime,
         Vars = VarsPrime
-    ;
+    else
         unexpected($module, $pred, "no vars!")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.set_of_var.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -130,14 +130,15 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.vartypes.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.dependency_graph.

@@ -104,6 +104,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
+:- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.goal_path.

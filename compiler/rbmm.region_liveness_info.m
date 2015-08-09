@@ -90,9 +90,12 @@
     %
 :- type proc_pp_region_set_table == map(pred_proc_id, pp_region_set_table).
 
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module hlds.arg_info.
+:- import_module hlds.vartypes.
 
 region_set_equal(RegionSet1, RegionSet2) :-
     set.equal(RegionSet1, RegionSet2).

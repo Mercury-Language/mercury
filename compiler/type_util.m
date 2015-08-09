@@ -21,14 +21,17 @@
 :- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
 :- import_module maybe.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -286,6 +289,10 @@
     %
 :- pred type_not_stored_in_region(mer_type::in, module_info::in) is semidet.
 
+    % Succeed iff the given variable is of region_type.
+    %
+:- pred is_region_var(vartypes::in, prog_var::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
     % If possible, get the argument types for the cons_id. We need to pass in
@@ -298,6 +305,23 @@
 
 :- pred maybe_get_higher_order_arg_types(maybe(mer_type)::in, arity::in,
     list(maybe(mer_type))::out) is det.
+
+    % Given a list of variables, return the permutation
+    % of that list which has all the type_info-related variables
+    % preceding the non-type_info-related variables (with the relative
+    % order of variables within each group being the same as in the
+    % original list).
+    %
+:- func put_typeinfo_vars_first(list(prog_var), vartypes) = list(prog_var).
+
+    % Given a list of variables, remove all the type_info-related
+    % variables.
+    %
+:- func remove_typeinfo_vars(vartypes, list(prog_var)) = list(prog_var).
+:- func remove_typeinfo_vars_from_set(vartypes, set(prog_var))
+    = set(prog_var).
+:- func remove_typeinfo_vars_from_set_of_var(vartypes, set_of_progvar)
+    = set_of_progvar.
 
 %-----------------------------------------------------------------------------%
 %
@@ -379,7 +403,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -1167,6 +1190,10 @@ type_not_stored_in_region(Type, ModuleInfo) :-
     ; type_is_var(Type)
     ).
 
+is_region_var(VarTypes, Var)  :-
+    lookup_var_type(VarTypes, Var, Type),
+    Type = region_type.
+
 %-----------------------------------------------------------------------------%
 
 maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId, Arity,
@@ -1202,6 +1229,43 @@ maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
     else
         list.duplicate(Arity, no, MaybeTypes)
     ).
+
+%-----------------------------------------------------------------------------%
+
+put_typeinfo_vars_first(VarsList, VarTypes) =
+        TypeInfoVarsList ++ NonTypeInfoVarsList :-
+    split_vars_typeinfo_no_typeinfo(VarsList, VarTypes,
+        TypeInfoVarsList, NonTypeInfoVarsList).
+
+remove_typeinfo_vars(VarTypes, VarsList) = NonTypeInfoVarsList :-
+    list.negated_filter(var_is_introduced_type_info_type(VarTypes),
+        VarsList, NonTypeInfoVarsList).
+
+remove_typeinfo_vars_from_set(VarTypes, VarsSet0) = VarsSet :-
+    VarsList0 = set.to_sorted_list(VarsSet0),
+    VarsList = remove_typeinfo_vars(VarTypes, VarsList0),
+    VarsSet = set.sorted_list_to_set(VarsList).
+
+remove_typeinfo_vars_from_set_of_var(VarTypes, VarsSet0) = VarsSet :-
+    % XXX could be done more efficiently, operating directly on the set_of_var
+    VarsList0 = set_of_var.to_sorted_list(VarsSet0),
+    VarsList = remove_typeinfo_vars(VarTypes, VarsList0),
+    VarsSet = set_of_var.sorted_list_to_set(VarsList).
+
+:- pred split_vars_typeinfo_no_typeinfo(list(prog_var)::in,
+    vartypes::in, list(prog_var)::out, list(prog_var)::out) is det.
+
+split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, TypeInfoVarsList,
+        NonTypeInfoVarsList) :-
+    list.filter(var_is_introduced_type_info_type(VarTypes),
+        VarsList, TypeInfoVarsList, NonTypeInfoVarsList).
+
+:- pred var_is_introduced_type_info_type(vartypes::in, prog_var::in)
+    is semidet.
+
+var_is_introduced_type_info_type(VarTypes, Var) :-
+    lookup_var_type(VarTypes, Var, Type),
+    is_introduced_type_info_type(Type).
 
 %-----------------------------------------------------------------------------%
 

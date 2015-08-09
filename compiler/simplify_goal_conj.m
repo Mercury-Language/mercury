@@ -55,6 +55,7 @@
 :- import_module libs.trace_params.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.

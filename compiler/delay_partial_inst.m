@@ -135,8 +135,10 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_rename.
 
 :- import_module assoc_list.
 :- import_module bool.

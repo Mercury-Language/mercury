@@ -26,6 +26,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
@@ -40,7 +41,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- type hlds_goals  == list(hlds_goal).
+:- type hlds_goals == list(hlds_goal).
 
 :- type hlds_goal
     --->    hlds_goal(
@@ -1045,12 +1046,13 @@
     --->    cell_is_unique
     ;       cell_is_shared.
 
-:- type unify_mode  ==  pair(mer_mode, mer_mode).
+:- type unify_mode == pair(mer_mode, mer_mode).
 
-:- type uni_mode    --->    pair(mer_inst) -> pair(mer_inst).
-                    % Each uni_mode maps a pair of insts to a pair of new insts
-                    % Each pair represents the insts of the LHS and the RHS
-                    % respectively.
+:- type uni_mode
+    --->    pair(mer_inst) -> pair(mer_inst).
+            % Each uni_mode maps a pair of insts to a pair of new insts
+            % Each pair represents the insts of the LHS and the RHS
+            % respectively.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1753,6 +1755,7 @@
 :- implementation.
 
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_mode.
 
 :- import_module io.

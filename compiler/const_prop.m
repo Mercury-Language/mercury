@@ -20,9 +20,10 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
-:- import_module parse_tree.prog_data.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 

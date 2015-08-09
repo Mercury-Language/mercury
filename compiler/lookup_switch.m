@@ -162,6 +162,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
+:- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.continuation_info.

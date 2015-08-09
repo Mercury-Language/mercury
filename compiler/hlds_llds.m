@@ -20,6 +20,7 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -47,7 +48,7 @@
 
     % Maps variables to their stack slots.
     %
-:- type stack_slots ==  map(prog_var, stack_slot).
+:- type stack_slots == map(prog_var, stack_slot).
 
 :- func explain_stack_slots(stack_slots, prog_varset) = string.
 

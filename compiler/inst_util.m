@@ -154,6 +154,7 @@
 :- import_module hlds.hlds_data.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 

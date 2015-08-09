@@ -36,6 +36,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.vartypes.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
@@ -113,6 +114,7 @@
 
 :- import_module hlds.goal_util.
 :- import_module hlds.instmap.
+:- import_module parse_tree.prog_rename.
 
 :- import_module assoc_list.
 :- import_module map.

@@ -37,6 +37,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.

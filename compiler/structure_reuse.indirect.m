@@ -70,15 +70,16 @@
 :- implementation.
 
 :- import_module analysis.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.status.
 :- import_module transform_hlds.ctgc.datastruct.

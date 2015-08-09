@@ -49,6 +49,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.vartypes.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.

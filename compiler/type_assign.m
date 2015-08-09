@@ -21,6 +21,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
@@ -341,8 +342,7 @@ type_assign_set_get_final_info(TypeAssignSet,
         NewConstraintProofMap = ConstraintProofMap,
         NewConstraintMap = ConstraintMap
     ;
-        transform_var_types(apply_variable_renaming_to_type(TSubst),
-            VarTypes1, NewVarTypes),
+        apply_variable_renaming_to_vartypes(TSubst, VarTypes1, NewVarTypes),
         map.apply_to_list(HeadTypeParams, TSubst, NewHeadTypeParams),
         apply_variable_renaming_to_prog_constraints(TSubst,
             TypeConstraints, NewTypeConstraints),

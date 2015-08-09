@@ -132,6 +132,7 @@
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.

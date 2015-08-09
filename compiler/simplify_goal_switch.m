@@ -39,8 +39,10 @@
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.type_util.
 :- import_module hlds.make_goal.
+:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.

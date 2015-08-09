@@ -40,9 +40,11 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
+:- import_module hlds.vartypes.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.status.

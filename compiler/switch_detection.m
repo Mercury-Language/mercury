@@ -75,6 +75,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

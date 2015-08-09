@@ -24,6 +24,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
+:- import_module hlds.vartypes.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.

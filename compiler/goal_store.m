@@ -21,7 +21,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
-:- import_module parse_tree.prog_data.
+:- import_module hlds.vartypes.
 
 :- import_module bool.
 :- import_module set.

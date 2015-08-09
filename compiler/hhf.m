@@ -45,6 +45,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
+:- import_module hlds.vartypes.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.

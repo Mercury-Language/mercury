@@ -22,6 +22,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.vartypes.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_errors.
 :- import_module transform_hlds.term_norm.

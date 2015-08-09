@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prog_data.m.
 % Main author: fjh.
@@ -18,7 +18,7 @@
 % compiler backends; parts of the parse tree that are not needed by the
 % backends are contained in prog_item.m.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_data.
 :- interface.
@@ -52,7 +52,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Miscellaneous stuff.
 %
@@ -80,7 +80,7 @@
     --->    type_only(mer_type)
     ;       type_and_mode(mer_type, mer_mode).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff about purity.
 %
@@ -140,7 +140,7 @@ best_purity(purity_impure, purity_pure) = purity_pure.
 best_purity(purity_impure, purity_semipure) = purity_semipure.
 best_purity(purity_impure, purity_impure) = purity_impure.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff about determinism.
 %
@@ -177,81 +177,6 @@ best_purity(purity_impure, purity_impure) = purity_impure.
 :- mode determinism_components(in, out, out) is det.
 :- mode determinism_components(out, in, in) is det.
 
-    % The following predicates implement the tables for computing the
-    % determinism of compound goals from the determinism of their components.
-
-:- pred det_conjunction_detism(determinism::in, determinism::in,
-    determinism::out) is det.
-
-:- pred det_par_conjunction_detism(determinism::in, determinism::in,
-    determinism::out) is det.
-
-:- pred det_switch_detism(determinism::in, determinism::in, determinism::out)
-    is det.
-
-:- pred det_negation_det(determinism::in, maybe(determinism)::out) is det.
-
-    % The following predicates do abstract interpretation to count
-    % the number of solutions and the possible number of failures.
-    %
-    % If the num_solns is at_most_many_cc, this means that the goal might have
-    % many logical solutions if there were no pruning, but that the goal occurs
-    % in a single-solution context, so only the first solution will be
-    % returned.
-    %
-    % The reason why we don't throw an exception in det_switch_maxsoln and
-    % det_disjunction_maxsoln is given in the documentation of the test case
-    % invalid/magicbox.m.
-
-:- pred det_conjunction_maxsoln(soln_count::in, soln_count::in,
-    soln_count::out) is det.
-
-:- pred det_conjunction_canfail(can_fail::in, can_fail::in, can_fail::out)
-    is det.
-
-:- pred det_disjunction_maxsoln(soln_count::in, soln_count::in,
-    soln_count::out) is det.
-
-:- pred det_disjunction_canfail(can_fail::in, can_fail::in, can_fail::out)
-    is det.
-
-:- pred det_switch_maxsoln(soln_count::in, soln_count::in, soln_count::out)
-    is det.
-
-:- pred det_switch_canfail(can_fail::in, can_fail::in, can_fail::out) is det.
-
-%-----------------------------------------------------------------------------%
-
-:- type det_comparison
-    --->    first_detism_tighter_than
-            % The first determinism promises strictly more than the second.
-
-    ;       first_detism_same_as
-            % The first determinism promises exactly as much as the second.
-
-    ;       first_detism_looser_than
-            % The first determinism promises strictly less than the second.
-
-    ;       first_detism_incomparable.
-            % The first determinism promises more than the second in one aspect
-            % (can_fail or soln_count), but promises less in the other aspect.
-
-:- pred compare_determinisms(determinism::in, determinism::in,
-    det_comparison::out) is det.
-
-:- type det_component_comparison
-    --->    first_tighter_than
-    ;       first_same_as
-    ;       first_looser_than.
-
-:- pred compare_canfails(can_fail::in, can_fail::in,
-    det_component_comparison::out) is det.
-
-:- pred compare_solncounts(soln_count::in, soln_count::in,
-    det_component_comparison::out) is det.
-
-%-----------------------------------------------------------------------------%
-
 :- implementation.
 
 determinism_components(detism_det,       cannot_fail, at_most_one).
@@ -263,214 +188,7 @@ determinism_components(detism_cc_non,    can_fail,    at_most_many_cc).
 determinism_components(detism_erroneous, cannot_fail, at_most_zero).
 determinism_components(detism_failure,   can_fail,    at_most_zero).
 
-%--------------------------%
-
-det_conjunction_detism(DetismA, DetismB, Detism) :-
-    % When figuring out the determinism of a conjunction, if the second goal
-    % is unreachable, then then the determinism of the conjunction is just
-    % the determinism of the first goal.
-
-    determinism_components(DetismA, CanFailA, MaxSolnA),
-    (
-        MaxSolnA = at_most_zero,
-        Detism = DetismA
-    ;
-        ( MaxSolnA = at_most_one
-        ; MaxSolnA = at_most_many
-        ; MaxSolnA = at_most_many_cc
-        ),
-        determinism_components(DetismB, CanFailB, MaxSolnB),
-        det_conjunction_canfail(CanFailA, CanFailB, CanFail),
-        det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
-        determinism_components(Detism, CanFail, MaxSoln)
-    ).
-
-det_par_conjunction_detism(DetismA, DetismB, Detism) :-
-    % Figuring out the determinism of a parallel conjunction is much easier
-    % than for a sequential conjunction, since you simply ignore the case
-    % where the second goal is unreachable. Just do a normal solution count.
-
-    determinism_components(DetismA, CanFailA, MaxSolnA),
-    determinism_components(DetismB, CanFailB, MaxSolnB),
-    det_conjunction_canfail(CanFailA, CanFailB, CanFail),
-    det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
-    determinism_components(Detism, CanFail, MaxSoln).
-
-det_switch_detism(DetismA, DetismB, Detism) :-
-    determinism_components(DetismA, CanFailA, MaxSolnA),
-    determinism_components(DetismB, CanFailB, MaxSolnB),
-    det_switch_canfail(CanFailA, CanFailB, CanFail),
-    det_switch_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
-    determinism_components(Detism, CanFail, MaxSoln).
-
-det_negation_det(detism_det,       yes(detism_failure)).
-det_negation_det(detism_semi,      yes(detism_semi)).
-det_negation_det(detism_multi,     no).
-det_negation_det(detism_non,       no).
-det_negation_det(detism_cc_multi,  no).
-det_negation_det(detism_cc_non,    no).
-det_negation_det(detism_erroneous, yes(detism_erroneous)).
-det_negation_det(detism_failure,   yes(detism_det)).
-
-%--------------------------%
-
-det_conjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_zero,    at_most_one,     at_most_zero).
-det_conjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_zero).
-det_conjunction_maxsoln(at_most_zero,    at_most_many,    at_most_zero).
-
-det_conjunction_maxsoln(at_most_one,     at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_one,     at_most_one,     at_most_one).
-det_conjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
-det_conjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
-
-det_conjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
-det_conjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_conjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
-    % If the first conjunct could be cc pruned, the second conj ought to have
-    % been cc pruned too.
-    unexpected($module, $pred, "many_cc, many").
-
-det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_conjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
-det_conjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
-
-det_conjunction_canfail(can_fail,    can_fail,    can_fail).
-det_conjunction_canfail(can_fail,    cannot_fail, can_fail).
-det_conjunction_canfail(cannot_fail, can_fail,    can_fail).
-det_conjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
-
-%--------------------------%
-
-det_disjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
-det_disjunction_maxsoln(at_most_zero,    at_most_one,     at_most_one).
-det_disjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_zero,    at_most_many,    at_most_many).
-
-det_disjunction_maxsoln(at_most_one,     at_most_zero,    at_most_one).
-det_disjunction_maxsoln(at_most_one,     at_most_one,     at_most_many).
-det_disjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
-
-det_disjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
-det_disjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
-det_disjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
-
-det_disjunction_maxsoln(at_most_many,    at_most_zero,    at_most_many).
-det_disjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_disjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
-
-det_disjunction_canfail(can_fail,    can_fail,    can_fail).
-det_disjunction_canfail(can_fail,    cannot_fail, cannot_fail).
-det_disjunction_canfail(cannot_fail, can_fail,    cannot_fail).
-det_disjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
-
-%--------------------------%
-
-det_switch_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
-det_switch_maxsoln(at_most_zero,    at_most_one,     at_most_one).
-det_switch_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_zero,    at_most_many,    at_most_many).
-
-det_switch_maxsoln(at_most_one,     at_most_zero,    at_most_one).
-det_switch_maxsoln(at_most_one,     at_most_one,     at_most_one).
-det_switch_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_one,     at_most_many,    at_most_many).
-
-det_switch_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
-det_switch_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
-det_switch_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
-
-det_switch_maxsoln(at_most_many,    at_most_zero,    at_most_many).
-det_switch_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_switch_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_many,    at_most_many,    at_most_many).
-
-det_switch_canfail(can_fail,    can_fail,    can_fail).
-det_switch_canfail(can_fail,    cannot_fail, can_fail).
-det_switch_canfail(cannot_fail, can_fail,    can_fail).
-det_switch_canfail(cannot_fail, cannot_fail, cannot_fail).
-
-%-----------------------------------------------------------------------------%
-
-compare_determinisms(DetismA, DetismB, CmpDetism) :-
-    determinism_components(DetismA, CanFailA, SolnsA),
-    determinism_components(DetismB, CanFailB, SolnsB),
-    compare_canfails(CanFailA, CanFailB, CmpCanFail),
-    compare_solncounts(SolnsA, SolnsB, CmpSolns),
-
-    % We can get e.g. tighter canfail and looser solncount
-    % e.g. for a predicate declared multidet and inferred semidet.
-    % Therefore the ordering of the following two tests is important:
-    % we want errors to take precedence over warnings.
-
-    (
-        CmpCanFail = first_tighter_than,
-        (
-            ( CmpSolns = first_tighter_than
-            ; CmpSolns = first_same_as
-            ),
-            CmpDetism = first_detism_tighter_than
-        ;
-            CmpSolns = first_looser_than,
-            CmpDetism = first_detism_incomparable
-        )
-    ;
-        CmpCanFail = first_same_as,
-        (
-            CmpSolns = first_tighter_than,
-            CmpDetism = first_detism_tighter_than
-        ;
-            CmpSolns = first_same_as,
-            CmpDetism = first_detism_same_as
-        ;
-            CmpSolns = first_looser_than,
-            CmpDetism = first_detism_looser_than
-        )
-    ;
-        CmpCanFail = first_looser_than,
-        (
-            CmpSolns = first_tighter_than,
-            CmpDetism = first_detism_incomparable
-        ;
-            ( CmpSolns = first_same_as
-            ; CmpSolns = first_looser_than
-            ),
-            CmpDetism = first_detism_looser_than
-        )
-    ).
-
-compare_canfails(cannot_fail, cannot_fail, first_same_as).
-compare_canfails(cannot_fail, can_fail,    first_tighter_than).
-compare_canfails(can_fail,    cannot_fail, first_looser_than).
-compare_canfails(can_fail,    can_fail,    first_same_as).
-
-compare_solncounts(at_most_zero,    at_most_zero,    first_same_as).
-compare_solncounts(at_most_zero,    at_most_one,     first_tighter_than).
-compare_solncounts(at_most_zero,    at_most_many_cc, first_tighter_than).
-compare_solncounts(at_most_zero,    at_most_many,    first_tighter_than).
-
-compare_solncounts(at_most_one,     at_most_zero,    first_looser_than).
-compare_solncounts(at_most_one,     at_most_one,     first_same_as).
-compare_solncounts(at_most_one,     at_most_many_cc, first_tighter_than).
-compare_solncounts(at_most_one,     at_most_many,    first_tighter_than).
-
-compare_solncounts(at_most_many_cc, at_most_zero,    first_looser_than).
-compare_solncounts(at_most_many_cc, at_most_one,     first_looser_than).
-compare_solncounts(at_most_many_cc, at_most_many_cc, first_same_as).
-compare_solncounts(at_most_many_cc, at_most_many,    first_tighter_than).
-
-compare_solncounts(at_most_many,    at_most_zero,    first_looser_than).
-compare_solncounts(at_most_many,    at_most_one,     first_looser_than).
-compare_solncounts(at_most_many,    at_most_many_cc, first_looser_than).
-compare_solncounts(at_most_many,    at_most_many,    first_same_as).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the foreign language interface pragmas.
 %
@@ -536,7 +254,7 @@ compare_solncounts(at_most_many,    at_most_many,    first_same_as).
     --->    reference
     ;       value.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for tabling pragmas.
 %
@@ -679,7 +397,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
         TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS"
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the `termination_info' pragma.
 % See term_util.m.
@@ -706,7 +424,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 :- type pragma_arg_size_info    == generic_arg_size_info(unit).
 :- type pragma_termination_info == generic_termination_info(unit, unit).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the `termination2_info' pragma.
 %
@@ -734,7 +452,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 
 :- type pragma_constr_arg_size_info == list(arg_size_constr).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the `structure_sharing_info' pragma.
 %
@@ -826,7 +544,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
                 typevarset  ::  tvarset
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the `structure_reuse_info' pragma.
 %
@@ -871,7 +589,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
                 local_sharing       :: structure_sharing_domain
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the `unused_args' pragma.
 %
@@ -886,7 +604,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     %
 :- type mode_num == int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the `exceptions' pragma.
 %
@@ -918,7 +636,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
             % (in the case of user-defined equality or comparison) or
             % propagating an exception from them.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the trailing analysis.
 %
@@ -930,7 +648,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     ;       trail_will_not_modify
     ;       trail_conditional.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for minimal model tabling analysis.
 %
@@ -942,7 +660,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     ;       mm_tabled_will_not_call
     ;       mm_tabled_conditional.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the `type_spec' pragma.
 %
@@ -955,7 +673,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     %
 :- type type_subst == assoc_list(tvar, mer_type).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for `foreign_proc' pragma.
 %
@@ -990,7 +708,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     ;       shared_code_share
     ;       shared_code_automatic.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for `foreign_import_module' pragma.
 %
@@ -1006,7 +724,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
                 prog_context
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the `foreign_decl' and `foreign_code' pragmas.
 %
@@ -1021,7 +739,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
                 fifi_filename   :: string
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the `foreign_export_enum' pragma.
 %
@@ -1045,7 +763,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 default_export_enum_attributes =
     export_enum_attributes(no, do_not_uppercase_export_enum).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff for the `require_feature_set' pragma.
 %
@@ -1062,7 +780,7 @@ default_export_enum_attributes =
     ;       reqf_strict_sequential
     ;       reqf_conservative_gc.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Type classes.
 %
@@ -1160,7 +878,7 @@ default_export_enum_attributes =
 prog_constraint_get_class(Constraint) = Constraint ^ constraint_class.
 prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Some more stuff for the foreign language interface.
 %
@@ -1494,7 +1212,7 @@ pragma_get_var_infos([PragmaVar | PragmaVars], [Info | Infos]) :-
     Info = yes(Name - Mode) - BoxPolicy,
     pragma_get_var_infos(PragmaVars, Infos).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Goals.
 %
@@ -1556,16 +1274,16 @@ pragma_get_var_infos([PragmaVar | PragmaVars], [Info | Infos]) :-
     %
 :- type prog_var_type
     --->    prog_var_type.
-:- type prog_var    ==  var(prog_var_type).
-:- type prog_varset ==  varset(prog_var_type).
-:- type prog_substitution ==    substitution(prog_var_type).
+:- type prog_var    == var(prog_var_type).
+:- type prog_varset == varset(prog_var_type).
+:- type prog_substitution == substitution(prog_var_type).
 :- type prog_var_renaming == map(prog_var, prog_var).
-:- type prog_term   ==  term(prog_var_type).
-:- type prog_vars   ==  list(prog_var).
+:- type prog_term   == term(prog_var_type).
+:- type prog_vars   == list(prog_var).
 
     % A prog_context is just a term.context.
     %
-:- type prog_context    ==  term.context.
+:- type prog_context == term.context.
 
 :- pred parse_trace_grade_name(string, trace_grade).
 :- mode parse_trace_grade_name(in, out) is semidet.
@@ -1596,142 +1314,7 @@ parse_trace_grade_name("erlang", trace_grade_erlang).
 valid_trace_grade_name(GradeName) :-
     parse_trace_grade_name(GradeName, _).
 
-%-----------------------------------------------------------------------------%
-%
-% Renaming.
-%
-% The predicates here are similar to the "apply_variable_renaming" family of
-% predicates in library/term.m, but they allow the caller to specify that all
-% variables in the data structure being updated must appear in the renaming.
-%
-
-:- interface.
-
-:- type must_rename
-    --->    must_rename
-    ;       need_not_rename.
-
-:- inst must_rename
-    --->    must_rename.
-:- inst need_not_rename
-    --->    need_not_rename.
-
-:- pred rename_vars_in_term(must_rename, map(var(V), var(V)),
-    term(V), term(V)).
-:- mode rename_vars_in_term(in(must_rename), in, in, out) is det.
-:- mode rename_vars_in_term(in(need_not_rename), in, in, out) is det.
-:- mode rename_vars_in_term(in, in, in, out) is det.
-
-:- pred rename_vars_in_term_list(must_rename, map(var(V), var(V)),
-    list(term(V)), list(term(V))) is det.
-:- mode rename_vars_in_term_list(in(must_rename), in, in, out) is det.
-:- mode rename_vars_in_term_list(in(need_not_rename), in, in, out) is det.
-:- mode rename_vars_in_term_list(in, in, in, out) is det.
-
-:- pred rename_vars_in_var_set(must_rename, map(var(V), var(V)),
-    set(var(V)), set(var(V))) is det.
-:- mode rename_vars_in_var_set(in(must_rename), in, in, out) is det.
-:- mode rename_vars_in_var_set(in(need_not_rename), in, in, out) is det.
-:- mode rename_vars_in_var_set(in, in, in, out) is det.
-
-:- pred rename_vars_in_set_of_var(must_rename, map(var(V), var(V)),
-    set_of_var(V), set_of_var(V)) is det.
-:- mode rename_vars_in_set_of_var(in(must_rename), in, in, out) is det.
-:- mode rename_vars_in_set_of_var(in(need_not_rename), in, in, out) is det.
-:- mode rename_vars_in_set_of_var(in, in, in, out) is det.
-
-:- pred rename_var_list(must_rename, map(var(V), var(V)),
-    list(var(V)), list(var(V))) is det.
-:- mode rename_var_list(in(must_rename), in, in, out) is det.
-:- mode rename_var_list(in(need_not_rename), in, in, out) is det.
-:- mode rename_var_list(in, in, in, out) is det.
-
-:- pred rename_var(must_rename, map(var(V), var(V)),
-    var(V), var(V)) is det.
-:- mode rename_var(in(must_rename), in, in, out) is det.
-:- mode rename_var(in(need_not_rename), in, in, out) is det.
-:- mode rename_var(in, in, in, out) is det.
-
-:- implementation.
-
-rename_vars_in_term(Must, Renaming, Term0, Term) :-
-    (
-        Term0 = variable(Var0, Context),
-        rename_var(Must, Renaming, Var0, Var),
-        Term = variable(Var, Context)
-    ;
-        Term0 = functor(ConsId, Args0, Context),
-        % The mutual non-tail recursion between rename_vars_in_term and
-        % rename_vars_in_term_list means that when given a large Term0,
-        % this predicate may need a LOT of stack frames, and may even run
-        % the program out of stack.
-        %
-        % To try to prevent this in as many cases as possible (though
-        % unfortunately not all), we handle the first three arguments
-        % directly. The most common kind of very large term is a very
-        % long list, and with this approach, we use only one stack frame
-        % per list element, not two.
-        (
-            Args0 = [],
-            Args = []
-        ;
-            Args0 = [Arg1Term0],
-            rename_vars_in_term(Must, Renaming, Arg1Term0, Arg1Term),
-            Args = [Arg1Term]
-        ;
-            Args0 = [Arg1Term0, Arg2Term0],
-            rename_vars_in_term(Must, Renaming, Arg1Term0, Arg1Term),
-            rename_vars_in_term(Must, Renaming, Arg2Term0, Arg2Term),
-            Args = [Arg1Term, Arg2Term]
-        ;
-            Args0 = [Arg1Term0, Arg2Term0, Arg3Term0 | OtherArgTerms0],
-            rename_vars_in_term(Must, Renaming, Arg1Term0, Arg1Term),
-            rename_vars_in_term(Must, Renaming, Arg2Term0, Arg2Term),
-            rename_vars_in_term(Must, Renaming, Arg3Term0, Arg3Term),
-            rename_vars_in_term_list(Must, Renaming,
-                OtherArgTerms0, OtherArgTerms),
-            Args = [Arg1Term, Arg2Term, Arg3Term | OtherArgTerms]
-        ),
-        Term = functor(ConsId, Args, Context)
-    ).
-
-rename_vars_in_term_list(_Must, _Renaming, [], []).
-rename_vars_in_term_list(Must, Renaming, [Term0 | Terms0], [Term | Terms]) :-
-    rename_vars_in_term(Must, Renaming, Term0, Term),
-    rename_vars_in_term_list(Must, Renaming, Terms0, Terms).
-
-rename_vars_in_var_set(Must, Renaming, Vars0, Vars) :-
-    set.to_sorted_list(Vars0, VarsList0),
-    rename_var_list(Must, Renaming, VarsList0, VarsList),
-    set.list_to_set(VarsList, Vars).
-
-rename_vars_in_set_of_var(Must, Renaming, Vars0, Vars) :-
-    set_of_var.to_sorted_list(Vars0, VarsList0),
-    rename_var_list(Must, Renaming, VarsList0, VarsList),
-    set_of_var.list_to_set(VarsList, Vars).
-
-rename_var_list(_Must, _Renaming, [], []).
-rename_var_list(Must, Renaming, [Var0 | Vars0], [Var | Vars]) :-
-    rename_var(Must, Renaming, Var0, Var),
-    rename_var_list(Must, Renaming, Vars0, Vars).
-
-rename_var(Must, Renaming, Var0, Var) :-
-    ( if map.search(Renaming, Var0, VarPrime) then
-        Var = VarPrime
-    else
-        (
-            Must = need_not_rename,
-            Var = Var0
-        ;
-            Must = must_rename,
-            term.var_to_int(Var0, Var0Int),
-            string.format("rename_var: no substitute for var %i", [i(Var0Int)],
-                Msg),
-            unexpected($module, $pred, Msg)
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Cons ids.
 %
@@ -1776,9 +1359,12 @@ rename_var(Must, Renaming, Var0, Var) :-
     % equivalents by the unshroud functions in hlds_pred.m, and for
     % printing for diagnostics.
     %
-:- type shrouded_pred_id        ---> shrouded_pred_id(int).
-:- type shrouded_proc_id        ---> shrouded_proc_id(int).
-:- type shrouded_pred_proc_id   ---> shrouded_pred_proc_id(int, int).
+:- type shrouded_pred_id
+    --->    shrouded_pred_id(int).
+:- type shrouded_proc_id
+    --->    shrouded_proc_id(int).
+:- type shrouded_pred_proc_id
+    --->    shrouded_pred_proc_id(int, int).
 
 :- type cons_id
     --->    cons(sym_name, arity, type_ctor)
@@ -1787,7 +1373,7 @@ rename_var(Must, Renaming, Var0, Var) :-
             % Before post-typecheck, tuples and characters have this cons_id.
             % For tuples, this will be of the form
             % `cons(unqualified("{}"), Arity, _)',
-            % while for charaters, this will be of the form
+            % while for characters, this will be of the form
             % `cons(unqualified(Str), 0, _)'
             % where Str = term_io.quoted_char(Char).
 
@@ -1924,7 +1510,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
         fail
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Types.
 %
@@ -2081,7 +1667,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     % to this predicate to convert free solver type variables to inst any
     % variables where necessary.)
     %
-:- type init_pred   ==  sym_name.
+:- type init_pred == sym_name.
 
     % What sort of initialisation, if any, is required by a solver type?
     %
@@ -2098,15 +1684,15 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     % used for equality on a type. See the chapter on them in the
     % Mercury Language Reference Manual.
     %
-:- type equality_pred   ==  sym_name.
+:- type equality_pred == sym_name.
 
     % The name of a user-defined comparison predicate.
     %
-:- type comparison_pred ==  sym_name.
+:- type comparison_pred == sym_name.
 
     % Parameters of type definitions.
     %
-:- type type_param  ==  tvar.
+:- type type_param == tvar.
 
     % Use prog_type.type_to_ctor_and_args to convert a type to a qualified
     % type_ctor and a list of arguments. Use prog_type.construct_type to
@@ -2149,99 +1735,35 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % A type expression with an explicit kind annotation.
             % (These are not yet used.)
 
-:- type vartypes.
-
-:- pred init_vartypes(vartypes::out) is det.
-
-:- pred vartypes_is_empty(vartypes::in) is semidet.
-
-:- pred vartypes_count(vartypes::in, int::out) is det.
-
-:- pred vartypes_select(set(prog_var)::in, vartypes::in, vartypes::out) is det.
-
-:- pred vartypes_optimize(vartypes::in, vartypes::out) is det.
-
-:- pred add_var_type(prog_var::in, mer_type::in,
-    vartypes::in, vartypes::out) is det.
-:- pred update_var_type(prog_var::in, mer_type::in,
-    vartypes::in, vartypes::out) is det.
-
-:- pred search_insert_var_type(prog_var::in, mer_type::in,
-    maybe(mer_type)::out, vartypes::in, vartypes::out) is det.
-
-:- pred is_in_vartypes(vartypes::in, prog_var::in) is semidet.
-
-:- pred search_var_type(vartypes::in, prog_var::in, mer_type::out) is semidet.
-
-:- pred lookup_var_type(vartypes::in, prog_var::in, mer_type::out) is det.
-:- pred lookup_var_types(vartypes::in, list(prog_var)::in,
-    list(mer_type)::out) is det.
-
-:- pred vartypes_vars(vartypes::in, list(prog_var)::out) is det.
-:- pred vartypes_types(vartypes::in, list(mer_type)::out) is det.
-
-:- pred vartypes_to_assoc_list(vartypes::in,
-    assoc_list(prog_var, mer_type)::out) is det.
-
-:- pred vartypes_from_corresponding_lists(list(prog_var)::in,
-    list(mer_type)::in, vartypes::out) is det.
-
-:- pred vartypes_from_sorted_assoc_list(assoc_list(prog_var, mer_type)::in,
-    vartypes::out) is det.
-
-:- pred vartypes_add_corresponding_lists(list(prog_var)::in,
-    list(mer_type)::in, vartypes::in, vartypes::out) is det.
-:- pred vartypes_overlay_corresponding_lists(list(prog_var)::in,
-    list(mer_type)::in, vartypes::in, vartypes::out) is det.
-
-:- pred delete_var_type(prog_var::in,
-    vartypes::in, vartypes::out) is det.
-:- pred delete_var_types(list(prog_var)::in,
-    vartypes::in, vartypes::out) is det.
-:- pred delete_sorted_var_types(list(prog_var)::in,
-    vartypes::in, vartypes::out) is det.
-
-:- pred transform_var_types(pred(mer_type, mer_type)::in(pred(in, out) is det),
-    vartypes::in, vartypes::out) is det.
-
-:- pred transform_foldl_var_types(
-    pred(mer_type, mer_type, T, T)::in(pred(in, out, in, out) is det),
-    vartypes::in, vartypes::out, T::in, T::out) is det.
-
-:- type prog_var_set_types
-    --->    prog_var_set_types(prog_varset, vartypes).
-
-:- type maybe_vartypes
-    --->    varset_vartypes(tvarset, vartypes)
-    ;       no_varset_vartypes.
-
 :- type builtin_type
     --->    builtin_type_int
     ;       builtin_type_float
     ;       builtin_type_string
     ;       builtin_type_char.
 
-:- type type_term   ==  term(tvar_type).
+:- type type_term == term(tvar_type).
 
 :- type tvar_type
     --->    type_var.
 
-:- type tvar        ==  var(tvar_type).
-                    % used for type variables
-:- type tvarset     ==  varset(tvar_type).
-                    % used for sets of type variables
-:- type tsubst      ==  map(tvar, mer_type). % used for type substitutions
-:- type tvar_renaming   ==  map(tvar, tvar). % type renaming
+    % "tvar" is short for "type variable".
+:- type tvar == var(tvar_type).
+    % A set of type variables.
+:- type tvarset == varset(tvar_type).
+
+    % A renaming or a substitution on type variables.
+:- type tvar_renaming == map(tvar, tvar).
+:- type tsubst == map(tvar, mer_type).
 
 :- type type_ctor
     --->    type_ctor(sym_name, arity).
 
-:- type tvar_name_map   ==  map(string, tvar).
+:- type tvar_name_map == map(string, tvar).
 
     % existq_tvars is used to record the set of type variables which are
     % existentially quantified
     %
-:- type existq_tvars    ==  list(tvar).
+:- type existq_tvars == list(tvar).
 
 :- type uses_reserved_tag
     --->    uses_reserved_tag
@@ -2264,96 +1786,13 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 :- implementation.
 
-:- type vartypes == map(prog_var, mer_type).
-
-init_vartypes(VarTypes) :-
-    map.init(VarTypes).
-
-vartypes_is_empty(VarTypes) :-
-    map.is_empty(VarTypes).
-
-vartypes_count(VarTypes, Count) :-
-    map.count(VarTypes, Count).
-
-vartypes_select(SelectedVars, !VarTypes) :-
-    map.select(!.VarTypes, SelectedVars, !:VarTypes).
-
-vartypes_optimize(!VarTypes) :-
-    map.optimize(!VarTypes).
-
-add_var_type(Var, Type, !VarTypes) :-
-    map.det_insert(Var, Type, !VarTypes).
-
-update_var_type(Var, Type, !VarTypes) :-
-    map.det_update(Var, Type, !VarTypes).
-
-search_insert_var_type(Var, NewType, MaybeOldType, !VarTypes) :-
-    map.search_insert(Var, NewType, MaybeOldType, !VarTypes).
-
-is_in_vartypes(VarTypes, Var) :-
-    map.contains(VarTypes, Var).
-
-search_var_type(VarTypes, Var, Type) :-
-    map.search(VarTypes, Var, Type).
-
-lookup_var_type(VarTypes, Var, Type) :-
-    map.lookup(VarTypes, Var, Type).
-
-lookup_var_types(_VarTypes, [], []).
-lookup_var_types(VarTypes, [Var | Vars], [Type | Types]) :-
-    lookup_var_type(VarTypes, Var, Type),
-    lookup_var_types(VarTypes, Vars, Types).
-
-vartypes_vars(VarTypes, Vars) :-
-    map.keys(VarTypes, Vars).
-
-vartypes_types(VarTypes, Types) :-
-    map.values(VarTypes, Types).
-
-vartypes_to_assoc_list(VarTypes, AssocList) :-
-    map.to_assoc_list(VarTypes, AssocList).
-
-vartypes_from_corresponding_lists(Vars, Types, VarTypes) :-
-    map.from_corresponding_lists(Vars, Types, VarTypes).
-
-vartypes_from_sorted_assoc_list(AssocList, VarTypes) :-
-    map.from_sorted_assoc_list(AssocList, VarTypes).
-
-vartypes_add_corresponding_lists(Vars, Types, !VarTypes) :-
-    map.det_insert_from_corresponding_lists(Vars, Types, !VarTypes).
-
-vartypes_overlay_corresponding_lists([], [], !VarTypes).
-vartypes_overlay_corresponding_lists([], [_ | _], !VarTypes) :-
-    unexpected($module, $pred, "mismatched list lengths").
-vartypes_overlay_corresponding_lists([_ | _], [], !VarTypes) :-
-    unexpected($module, $pred, "mismatched list lengths").
-vartypes_overlay_corresponding_lists([Var | Vars], [Type | Types],
-        !VarTypes) :-
-    map.set(Var, Type, !VarTypes),
-    vartypes_overlay_corresponding_lists(Vars, Types, !VarTypes).
-
-delete_var_type(Var, !VarTypes) :-
-    map.delete(Var, !VarTypes).
-
-delete_var_types(Vars, !VarTypes) :-
-    map.delete_list(Vars, !VarTypes).
-
-delete_sorted_var_types(SortedVars, !VarTypes) :-
-    map.delete_sorted_list(SortedVars, !VarTypes).
-
-transform_var_types(Transform, !VarTypes) :-
-    map.map_values_only(Transform, !VarTypes).
-
-transform_foldl_var_types(Transform, !VarTypes, !Acc) :-
-    map.map_values_foldl(Transform, !VarTypes, !Acc).
-
 tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
     varset.merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming).
 
 tvarset_merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming) :-
     varset.merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Kinds.
 %
@@ -2411,7 +1850,7 @@ get_type_kind(tuple_type(_, Kind)) = Kind.
 get_type_kind(apply_n_type(_, _, Kind)) = Kind.
 get_type_kind(kinded_type(_, Kind)) = Kind.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Insts and modes.
 %
@@ -2630,12 +2069,12 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 :- type inst_var_type
     --->    inst_var_type.
 
-:- type inst_var    ==  var(inst_var_type).
-:- type inst_term   ==  term(inst_var_type).
-:- type inst_varset ==  varset(inst_var_type).
+:- type inst_var    == var(inst_var_type).
+:- type inst_term   == term(inst_var_type).
+:- type inst_varset == varset(inst_var_type).
 
-:- type head_inst_vars  ==  map(inst_var, mer_inst).
-:- type inst_var_sub    ==  map(inst_var, mer_inst).
+:- type head_inst_vars == map(inst_var, mer_inst).
+:- type inst_var_sub   == map(inst_var, mer_inst).
 
 % inst_defn/5 is defined in prog_item.m.
 
@@ -2721,7 +2160,7 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     --->    (mer_inst -> mer_inst)
     ;       user_defined_mode(sym_name, list(mer_inst)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Module system.
 %
@@ -2839,7 +2278,7 @@ lookup_current_backend(Globals) = CurrentBackend :-
         CurrentBackend = low_level_backend
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Event specifications.
 %
@@ -2888,6 +2327,6 @@ lookup_current_backend(Globals) = CurrentBackend :-
                 event_set_data_max_num_attr :: int
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_data.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

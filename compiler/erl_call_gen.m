@@ -106,6 +106,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_module.
+:- import_module hlds.vartypes.
 
 :- import_module int.
 :- import_module map.

@@ -81,6 +81,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.quantification.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -929,8 +930,7 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     map.from_assoc_list(OldNew, OldNewMap),
     apply_substitutions_to_rtti_varmaps(Renaming, map.init, OldNewMap,
         RttiVarMaps0, RttiVarMaps),
-    transform_var_types(apply_variable_renaming_to_type(Renaming),
-        VarTypes0, VarTypes),
+    apply_variable_renaming_to_vartypes(Renaming, VarTypes0, VarTypes),
 
     !CseInfo ^ csei_rtti_varmaps := RttiVarMaps,
     !CseInfo ^ csei_vartypes := VarTypes.

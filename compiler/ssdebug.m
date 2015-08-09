@@ -210,6 +210,7 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.trace_params.
@@ -219,6 +220,8 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_detism.
+:- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.status.
 

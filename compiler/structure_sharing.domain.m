@@ -302,6 +302,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.vartypes.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.

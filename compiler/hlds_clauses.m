@@ -20,9 +20,10 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module parse_tree.prog_data.
-:- import_module parse_tree.error_util.
+:- import_module hlds.vartypes.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.

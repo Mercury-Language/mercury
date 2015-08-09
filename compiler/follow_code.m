@@ -52,6 +52,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_detism.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.

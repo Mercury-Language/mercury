@@ -35,6 +35,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.
@@ -195,6 +196,7 @@
 :- import_module hlds.instmap.
 :- import_module ll_backend.
 :- import_module ll_backend.call_gen.
+:- import_module parse_tree.prog_rename.
 
 :- import_module assoc_list.
 :- import_module pair.

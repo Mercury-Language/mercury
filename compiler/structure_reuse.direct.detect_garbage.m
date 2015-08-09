@@ -37,6 +37,7 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module hlds.vartypes.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.

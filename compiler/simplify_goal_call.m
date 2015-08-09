@@ -62,6 +62,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.int_emu.

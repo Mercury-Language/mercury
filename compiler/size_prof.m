@@ -119,6 +119,7 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
+:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.

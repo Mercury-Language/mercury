@@ -57,10 +57,12 @@
 :- include_module builtin_lib_types.
 :- include_module error_util.
 :- include_module item_util.
+:- include_module prog_detism.
 :- include_module prog_event.
 :- include_module prog_foreign.
 :- include_module prog_mode.
 :- include_module prog_mutable.
+:- include_module prog_rename.
 :- include_module prog_type.
 :- include_module prog_type_subst.
 :- include_module prog_util.

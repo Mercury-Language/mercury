@@ -69,17 +69,6 @@
 :- pred apply_rec_subst_to_type_list(tsubst::in,
     list(mer_type)::in, list(mer_type)::out) is det.
 
-%---------%
-
-:- pred apply_variable_renaming_to_vartypes(tvar_renaming::in,
-    vartypes::in, vartypes::out) is det.
-
-:- pred apply_subst_to_vartypes(tsubst::in, vartypes::in, vartypes::out)
-    is det.
-
-:- pred apply_rec_subst_to_vartypes(tsubst::in, vartypes::in, vartypes::out)
-    is det.
-
 %-----------------------------------------------------------------------------%
 %
 % Utility predicates dealing with typeclass constraints.
@@ -317,17 +306,6 @@ apply_subst_to_type_list(Subst, Types0, Types) :-
 
 apply_rec_subst_to_type_list(Subst, Types0, Types) :-
     list.map(apply_rec_subst_to_type(Subst), Types0, Types).
-
-%-----------------------------------------------------------------------------%
-
-apply_variable_renaming_to_vartypes(Renaming, !VarTypes) :-
-    transform_var_types(apply_variable_renaming_to_type(Renaming), !VarTypes).
-
-apply_subst_to_vartypes(Subst, !VarTypes) :-
-    transform_var_types(apply_subst_to_type(Subst), !VarTypes).
-
-apply_rec_subst_to_vartypes(Subst, !VarTypes) :-
-    transform_var_types(apply_rec_subst_to_type(Subst), !VarTypes).
 
 %-----------------------------------------------------------------------------%
 

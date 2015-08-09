@@ -22,13 +22,11 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -244,23 +242,6 @@
 :- pred is_introduced_type_info_type_ctor(type_ctor::in) is semidet.
 
 :- func is_introduced_type_info_type_category(type_ctor_category) = bool.
-
-    % Given a list of variables, return the permutation
-    % of that list which has all the type_info-related variables
-    % preceding the non-type_info-related variables (with the relative
-    % order of variables within each group being the same as in the
-    % original list).
-    %
-:- func put_typeinfo_vars_first(list(prog_var), vartypes) = list(prog_var).
-
-    % Given a list of variables, remove all the type_info-related
-    % variables.
-    %
-:- func remove_typeinfo_vars(vartypes, list(prog_var)) = list(prog_var).
-:- func remove_typeinfo_vars_from_set(vartypes, set(prog_var))
-    = set(prog_var).
-:- func remove_typeinfo_vars_from_set_of_var(vartypes, set_of_progvar)
-    = set_of_progvar.
 
     % Check for a "new " prefix at the start of the functor name,
     % and remove it if present; if there is no such prefix, fail.
@@ -865,41 +846,6 @@ is_introduced_type_info_type_category(TypeCtorCat) = IsIntroduced :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-put_typeinfo_vars_first(VarsList, VarTypes) =
-        TypeInfoVarsList ++ NonTypeInfoVarsList :-
-    split_vars_typeinfo_no_typeinfo(VarsList, VarTypes,
-        TypeInfoVarsList, NonTypeInfoVarsList).
-
-remove_typeinfo_vars(VarTypes, VarsList) = NonTypeInfoVarsList :-
-    list.negated_filter(var_is_introduced_type_info_type(VarTypes),
-        VarsList, NonTypeInfoVarsList).
-
-remove_typeinfo_vars_from_set(VarTypes, VarsSet0) = VarsSet :-
-    VarsList0 = set.to_sorted_list(VarsSet0),
-    VarsList = remove_typeinfo_vars(VarTypes, VarsList0),
-    VarsSet = set.sorted_list_to_set(VarsList).
-
-remove_typeinfo_vars_from_set_of_var(VarTypes, VarsSet0) = VarsSet :-
-    % XXX could be done more efficiently, operating directly on the set_of_var
-    VarsList0 = set_of_var.to_sorted_list(VarsSet0),
-    VarsList = remove_typeinfo_vars(VarTypes, VarsList0),
-    VarsSet = set_of_var.sorted_list_to_set(VarsList).
-
-:- pred split_vars_typeinfo_no_typeinfo(list(prog_var)::in,
-    vartypes::in, list(prog_var)::out, list(prog_var)::out) is det.
-
-split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, TypeInfoVarsList,
-        NonTypeInfoVarsList) :-
-    list.filter(var_is_introduced_type_info_type(VarTypes),
-        VarsList, TypeInfoVarsList, NonTypeInfoVarsList).
-
-:- pred var_is_introduced_type_info_type(vartypes::in, prog_var::in)
-    is semidet.
-
-var_is_introduced_type_info_type(VarTypes, Var) :-
-    lookup_var_type(VarTypes, Var, Type),
-    is_introduced_type_info_type(Type).
 
 remove_new_prefix(unqualified(Name0), unqualified(Name)) :-
     string.append("new ", Name, Name0).

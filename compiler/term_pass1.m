@@ -57,6 +57,7 @@
 
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.vartypes.
 :- import_module libs.lp.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_traversal.

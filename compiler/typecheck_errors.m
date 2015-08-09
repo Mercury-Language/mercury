@@ -186,6 +186,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.pred_table.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.

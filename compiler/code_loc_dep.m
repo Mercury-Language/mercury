@@ -65,6 +65,7 @@
 :- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.trace_params.

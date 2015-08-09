@@ -354,12 +354,16 @@ such as pretty-printing.
     for printing the parse tree.
     prog_util.m contains some utility predicates
     for manipulating the parse tree,
+    prog_detism.m contains utility predicates
+    for manipulating determinism and determinism components,
     prog_mode.m contains utility predicates
     for manipulating insts and modes,
     prog_type.m contains utility predicates
     for manipulating types,
     prog_type_subst.m contains predicates
-    for performing substitutions on types,
+    for performing type substitutions,
+    prog_rename.m contains predicates
+    for performing variable substitutions,
     prog_foreign.m contains utility predicates
     for manipulating foreign code,
     prog_mutable.m contains utility predicates
@@ -656,6 +660,8 @@ The HLDS data structure itself is spread over the following modules:
 <li>
     hlds_module.m defines the top-level parts of the HLDS,
     including the type module_info.
+<li>
+    vartypes.m defines the data structure that maps variables to their types.
 </ol>
 
 <p>

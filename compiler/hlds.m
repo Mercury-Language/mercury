@@ -33,6 +33,7 @@
 :- include_module instmap.
 :- include_module pred_table.
 :- include_module special_pred.
+:- include_module vartypes.
 
 % Modules for creating the HLDS.
 :- include_module hhf.

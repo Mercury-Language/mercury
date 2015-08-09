@@ -173,6 +173,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
+:- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.

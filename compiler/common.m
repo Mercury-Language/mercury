@@ -165,6 +165,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
