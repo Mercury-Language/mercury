@@ -1534,6 +1534,20 @@ then
     MERCURY_DEBUGGER_INIT=$root/scripts/test_mdbrc
     export MERCURY_DEBUGGER_INIT
 
+    # If the workspace has been copied or moved since $root/tests/mdbrc
+    # has been created by an invocation of $root/configure, the
+    # $root/tests/mdbrc file will refer to the mdb_doc file in the OLD
+    # location of the workspace, which may not exist anymore.
+    # Override the settings in tests/mdbrc that refer to the current
+    # directory; keep the xml settings, which do not do so.
+    sed \
+        -e "s:@TESTS_MDB_DOC@:$root/doc/mdb_doc:" \
+        -e "s:@TESTS_MDB_INIT_DIR@:$root/scripts:" \
+        -e "/^xml_/d" \
+        < "$root/tests/mdbrc.in" > "$root/tests/mdbrc.tmp"
+    grep '^xml_' < "$root/tests/mdbrc" >> "$root/tests/mdbrc.tmp"
+    mv "$root/tests/mdbrc.tmp" "$root/tests/mdbrc"
+
     MERCURY_SUPPRESS_STACK_TRACE=yes
     export MERCURY_SUPPRESS_STACK_TRACE
 
