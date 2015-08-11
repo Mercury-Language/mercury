@@ -593,7 +593,8 @@ mercury_output_parse_tree_src(Info, ParseTree, !IO) :-
 
 mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
     ParseTree = parse_tree_int(ModuleName, _IntFileKind, ModuleContext,
-        MaybeVersionNumbers, IntItems, ImplItems),
+        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntItems, ImpItems),
     io.write_string(":- module ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO),
@@ -603,27 +604,36 @@ mercury_output_parse_tree_int(Info, ParseTree, !IO) :-
         MaybeVersionNumbers = yes(VersionNumbers),
         mercury_output_module_version_numbers(ModuleName, VersionNumbers, !IO)
     ),
-    (
+    ( if
+        IntIncls = [],
+        IntAvails = [],
         IntItems = []
-    ;
-        IntItems = [_ | _],
-        IntItemBlock = item_block(ms_interface, ModuleContext, IntItems),
+    then
+        true
+    else
+        IntItemBlock = item_block(ms_interface, ModuleContext,
+            IntIncls, IntAvails, IntItems),
         mercury_output_raw_item_block(Info, IntItemBlock, !IO)
     ),
-    (
-        ImplItems = []
-    ;
-        ImplItems = [_ | _],
-        ImplItemBlock =
-            item_block(ms_implementation, ModuleContext, ImplItems),
-        mercury_output_raw_item_block(Info, ImplItemBlock, !IO)
+    ( if
+        ImpIncls = [],
+        ImpAvails = [],
+        ImpItems = []
+    then
+        true
+    else
+        ImpItemBlock = item_block(ms_implementation, ModuleContext,
+            ImpIncls, ImpAvails, ImpItems),
+        mercury_output_raw_item_block(Info, ImpItemBlock, !IO)
     ).
 
 mercury_output_parse_tree_opt(Info, ParseTree, !IO) :-
-    ParseTree = parse_tree_opt(ModuleName, _OptFileKind, _Context, Items),
+    ParseTree = parse_tree_opt(ModuleName, _OptFileKind, _Context,
+        Use, Items),
     io.write_string(":- module ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO),
+    list.foldl(mercury_output_item_use(Info), Use, !IO),
     mercury_output_items(Info, Items, !IO).
 
 mercury_output_raw_compilation_unit(Info, CompUnit, !IO) :-
@@ -677,10 +687,14 @@ mercury_output_module_components(_, _, [], !IO).
 mercury_output_module_components(Info, MaybePrevSectionKind,
         [Component | Components], !IO) :-
     (
-        Component = mc_section(SectionKind, _Context, ItemsCord),
+        Component = mc_section(SectionKind, _Context,
+            InclsCord, AvailsCord, ItemsCord),
         mercury_output_section_marker(SectionKind, !IO),
-        Items = cord.list(ItemsCord),
-        mercury_output_items(Info, Items, !IO),
+        list.foldl(mercury_output_item_include(Info),
+            cord.list(InclsCord), !IO),
+        list.foldl(mercury_output_item_avail(Info),
+            cord.list(AvailsCord), !IO),
+        mercury_output_items(Info, cord.list(ItemsCord), !IO),
         MaybeCurSectionKind = yes(SectionKind)
     ;
         Component = mc_nested_submodule(SectionKind, _SectionContext,
@@ -688,19 +702,17 @@ mercury_output_module_components(Info, MaybePrevSectionKind,
         Lang = Info ^ moi_output_lang,
         (
             Lang = output_mercury,
-            (
-                MaybePrevSectionKind = no,
-                mercury_output_section_marker(SectionKind, !IO)
-            ;
+            ( if
                 MaybePrevSectionKind = yes(PrevSectionKind),
-                ( if PrevSectionKind = SectionKind then
-                    true
-                else
-                    mercury_output_section_marker(SectionKind, !IO)
-                )
+                PrevSectionKind = SectionKind
+            then
+                true
+            else
+                mercury_output_section_marker(SectionKind, !IO)
             )
         ;
             Lang = output_debug,
+            mercury_output_section_marker(SectionKind, !IO),
             (
                 SectionKind = ms_interface,
                 io.write_string("% nested submodule in interface\n", !IO)
@@ -723,8 +735,10 @@ mercury_output_raw_item_blocks(Info, [RawItemBlock | RawItemBlocks], !IO) :-
     mercury_output_raw_item_blocks(Info, RawItemBlocks, !IO).
 
 mercury_output_raw_item_block(Info, RawItemBlock, !IO) :-
-    RawItemBlock = item_block(SectionKind, _Context, Items),
+    RawItemBlock = item_block(SectionKind, _Context, Incls, Avails, Items),
     mercury_output_section_marker(SectionKind, !IO),
+    list.foldl(mercury_output_item_include(Info), Incls, !IO),
+    list.foldl(mercury_output_item_avail(Info), Avails, !IO),
     mercury_output_items(Info, Items, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -735,8 +749,10 @@ mercury_output_src_item_blocks(Info, [SrcItemBlock | SrcItemBlocks], !IO) :-
     mercury_output_src_item_blocks(Info, SrcItemBlocks, !IO).
 
 mercury_output_src_item_block(Info, SrcItemBlock, !IO) :-
-    SrcItemBlock = item_block(SrcSectionKind, _Context, Items),
+    SrcItemBlock = item_block(SrcSectionKind, _Context, Incls, Avails, Items),
     mercury_output_src_section_marker(SrcSectionKind, !IO),
+    list.foldl(mercury_output_item_include(Info), Incls, !IO),
+    list.foldl(mercury_output_item_avail(Info), Avails, !IO),
     mercury_output_items(Info, Items, !IO).
 
 mercury_output_int_item_blocks(_, [], !IO).
@@ -745,7 +761,9 @@ mercury_output_int_item_blocks(Info, [IntItemBlock | IntItemBlocks], !IO) :-
     mercury_output_int_item_blocks(Info, IntItemBlocks, !IO).
 
 mercury_output_int_item_block(Info, IntItemBlock, !IO) :-
-    IntItemBlock = item_block(IntSectionKind, _Context, Items),
+    IntItemBlock = item_block(IntSectionKind, _Context, Incls, Avails, Items),
+    list.foldl(mercury_output_item_include(Info), Incls, !IO),
+    list.foldl(mercury_output_item_avail(Info), Avails, !IO),
     mercury_output_int_section_marker(IntSectionKind, !IO),
     mercury_output_items(Info, Items, !IO).
 
@@ -755,7 +773,9 @@ mercury_output_opt_item_blocks(Info, [OptItemBlock | OptItemBlocks], !IO) :-
     mercury_output_opt_item_blocks(Info, OptItemBlocks, !IO).
 
 mercury_output_opt_item_block(Info, OptItemBlock, !IO) :-
-    OptItemBlock = item_block(OptSectionKind, _Context, Items),
+    OptItemBlock = item_block(OptSectionKind, _Context, Incls, Avails, Items),
+    expect(unify(Incls, []), $module, $pred, "Incls != []"),
+    list.foldl(mercury_output_item_avail(Info), Avails, !IO),
     mercury_output_opt_section_marker(OptSectionKind, !IO),
     mercury_output_items(Info, Items, !IO).
 
@@ -766,7 +786,10 @@ mercury_output_int_for_opt_item_blocks(Info,
     mercury_output_int_for_opt_item_blocks(Info, IntForOptItemBlocks, !IO).
 
 mercury_output_int_for_opt_item_block(Info, IntForOptItemBlock, !IO) :-
-    IntForOptItemBlock = item_block(IntForOptSectionKind, _Context, Items),
+    IntForOptItemBlock = item_block(IntForOptSectionKind, _Context,
+        Incls, Avails, Items),
+    list.foldl(mercury_output_item_include(Info), Incls, !IO),
+    list.foldl(mercury_output_item_avail(Info), Avails, !IO),
     mercury_output_int_for_opt_section_marker(IntForOptSectionKind, !IO),
     mercury_output_items(Info, Items, !IO).
 
@@ -862,9 +885,6 @@ mercury_output_items(Info, [Item | Items], !IO) :-
 
 mercury_output_item(Info, Item, !IO) :-
     (
-        Item = item_module_defn(ItemModuleDefn),
-        mercury_output_item_module_defn(Info, ItemModuleDefn, !IO)
-    ;
         Item = item_clause(ItemClause),
         mercury_output_item_clause(Info, ItemClause, !IO)
     ;
@@ -997,14 +1017,6 @@ mercury_output_item_mode_decl(Info, ItemModeDecl, !IO) :-
         mercury_output_pred_mode_decl(Info ^ moi_output_lang, VarSet, PredName,
             Modes, WithInst, MaybeDet, Context, !IO)
     ).
-
-:- pred mercury_output_item_module_defn(merc_out_info::in,
-    item_module_defn_info::in, io::di, io::uo) is det.
-
-mercury_output_item_module_defn(Info, ItemModuleDefn, !IO) :-
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _SeqNum),
-    maybe_output_line_number(Info, Context, !IO),
-    mercury_output_module_defn(ModuleDefn, Context, !IO).
 
 :- pred mercury_output_item_clause(merc_out_info::in, item_clause_info::in,
     io::di, io::uo) is det.
@@ -1433,26 +1445,49 @@ output_instance_method_clause(Name1, ItemClause, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_module_defn(module_defn::in,
-    term.context::in, io::di, io::uo) is det.
+:- pred mercury_output_item_include(merc_out_info::in,
+    item_include::in, io::di, io::uo) is det.
 
-mercury_output_module_defn(ModuleDefn, _Context, !IO) :-
+mercury_output_item_include(Info, ItemInclude, !IO) :-
+    ItemInclude = item_include(ModuleName, Context, _SeqNum),
+    Decl = "include_module",
+    maybe_output_line_number(Info, Context, !IO),
+    mercury_output_module_decl(Decl, ModuleName, !IO).
+
+:- pred mercury_output_item_avail(merc_out_info::in,
+    item_avail::in, io::di, io::uo) is det.
+
+mercury_output_item_avail(Info, Avail, !IO) :-
     (
-        ModuleDefn = md_import(ModuleName),
-        io.write_string(":- import_module ", !IO),
-        mercury_output_bracketed_sym_name(ModuleName, !IO),
-        io.write_string(".\n", !IO)
+        Avail = avail_import(avail_import_info(ModuleName, Context, _SeqNum)),
+        Decl = "import_module"
     ;
-        ModuleDefn = md_use(ModuleName),
-        io.write_string(":- use_module ", !IO),
-        mercury_output_bracketed_sym_name(ModuleName, !IO),
-        io.write_string(".\n", !IO)
-    ;
-        ModuleDefn = md_include_module(ModuleName),
-        io.write_string(":- include_module ", !IO),
-        mercury_output_bracketed_sym_name(ModuleName, !IO),
-        io.write_string(".\n", !IO)
-    ).
+        Avail = avail_use(avail_use_info(ModuleName, Context, _SeqNum)),
+        Decl = "use_module"
+    ),
+    maybe_output_line_number(Info, Context, !IO),
+    mercury_output_module_decl(Decl, ModuleName, !IO).
+
+:- pred mercury_output_item_use(merc_out_info::in,
+    avail_use_info::in, io::di, io::uo) is det.
+
+mercury_output_item_use(Info, Use, !IO) :-
+    Use = avail_use_info(ModuleName, Context, _SeqNum),
+    Decl = "use_module",
+    maybe_output_line_number(Info, Context, !IO),
+    mercury_output_module_decl(Decl, ModuleName, !IO).
+
+:- pred mercury_output_module_decl(string::in, module_name::in,
+    io::di, io::uo) is det.
+
+mercury_output_module_decl(Decl, ModuleName, !IO) :-
+    io.write_string(":- ", !IO),
+    io.write_string(Decl, !IO),
+    io.write_string(" ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, !IO),
+    io.write_string(".\n", !IO).
+
+%-----------------------------------------------------------------------------%
 
 :- pred mercury_output_inst_defn(output_lang::in, inst_varset::in,
     sym_name::in, list(inst_var)::in, inst_defn::in, prog_context::in,

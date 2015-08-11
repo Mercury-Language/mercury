@@ -172,8 +172,8 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
                     !IO),
 
                 ( CompilationTask = process_module(_) - _ ->
-                    ModulesToCheck =
-                        [ModuleName | Imports ^ mai_nested_children]
+                    ModulesToCheck = [ModuleName |
+                        set.to_sorted_list(Imports ^ mai_nested_children)]
                 ;
                     ModulesToCheck = [ModuleName]
                 ),
@@ -534,27 +534,27 @@ build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, Imports,
         Succeeded, !IO) :-
     (
         Target = target_c,
-        compile_c_file(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO)
+        compile_c_file(Globals, ErrorStream, PIC, ModuleName, Succeeded, !IO)
     ;
         Target = target_java,
         module_name_to_file_name(Globals, ModuleName, ".java", do_create_dirs,
             JavaFile, !IO),
-        compile_java_files(ErrorStream, [JavaFile], Globals, Succeeded, !IO)
+        compile_java_files(Globals, ErrorStream, [JavaFile], Succeeded, !IO)
     ;
         Target = target_csharp,
         module_name_to_file_name(Globals, ModuleName, ".cs", do_create_dirs,
             CsharpFile, !IO),
-        compile_target_code.link(ErrorStream, csharp_library, ModuleName,
-            [CsharpFile], Globals, Succeeded, !IO)
+        compile_target_code.link(Globals, ErrorStream, csharp_library,
+            ModuleName, [CsharpFile], Succeeded, !IO)
     ;
         Target = target_il,
-        il_assemble(ErrorStream, ModuleName, Imports ^ mai_has_main,
-            Globals, Succeeded, !IO)
+        il_assemble(Globals, ErrorStream, ModuleName, Imports ^ mai_has_main,
+            Succeeded, !IO)
     ;
         Target = target_erlang,
         module_name_to_file_name(Globals, ModuleName, ".erl", do_create_dirs,
             ErlangFile, !IO),
-        compile_erlang_file(ErrorStream, ErlangFile, Globals, Succeeded, !IO)
+        compile_erlang_file(Globals, ErrorStream, ErlangFile, Succeeded, !IO)
     ).
 
 :- pred compile_foreign_code_file(globals::in, io.output_stream::in, pic::in,
@@ -565,22 +565,22 @@ compile_foreign_code_file(Globals, ErrorStream, PIC, Imports, ForeignCodeFile,
         Succeeded, !IO) :-
     (
         ForeignCodeFile = foreign_code_file(lang_c, CFile, ObjFile),
-        do_compile_c_file(ErrorStream, PIC, CFile, ObjFile, Globals, Succeeded,
+        do_compile_c_file(Globals, ErrorStream, PIC, CFile, ObjFile, Succeeded,
             !IO)
     ;
         ForeignCodeFile = foreign_code_file(lang_il, ILFile, DLLFile),
-        do_il_assemble(ErrorStream, ILFile, DLLFile, no_main,
-            Globals, Succeeded, !IO)
+        do_il_assemble(Globals, ErrorStream, ILFile, DLLFile, no_main,
+            Succeeded, !IO)
     ;
         ForeignCodeFile = foreign_code_file(lang_java, JavaFile, _ClassFile),
-        compile_java_files(ErrorStream, [JavaFile], Globals, Succeeded, !IO)
+        compile_java_files(Globals, ErrorStream, [JavaFile], Succeeded, !IO)
     ;
         ForeignCodeFile = foreign_code_file(lang_csharp, CSharpFile, DLLFile),
-        compile_csharp_file(ErrorStream, Imports, CSharpFile, DLLFile,
-            Globals, Succeeded, !IO)
+        compile_csharp_file(Globals, ErrorStream, Imports, CSharpFile, DLLFile,
+            Succeeded, !IO)
     ;
         ForeignCodeFile = foreign_code_file(lang_erlang, ErlFile, _BeamFile),
-        compile_erlang_file(ErrorStream, ErlFile, Globals, Succeeded, !IO)
+        compile_erlang_file(Globals, ErrorStream, ErlFile, Succeeded, !IO)
     ).
 
 :- func forkable_module_compilation_task_type(module_compilation_task_type)
@@ -924,7 +924,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
         unexpected($module, $pred, "no module dependencies")
     ),
 
-    NestedChildren = Imports ^ mai_nested_children,
+    NestedChildren = set.to_sorted_list(Imports ^ mai_nested_children),
     SourceFileModuleNames = [ModuleName | NestedChildren],
 
     list.map_foldl2(get_module_dependencies(Globals), NestedChildren,

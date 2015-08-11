@@ -143,25 +143,60 @@ get_ifile_and_noifile_in_raw_item_blocks_acc(_, _,
 get_ifile_and_noifile_in_raw_item_blocks_acc(IncludeImplTypes,
         GatherNoIFileItems, [RawItemBlock | RawItemBlocks],
         !IFileItemBlocksCord, !NoIFileItemBlocksCord) :-
-    RawItemBlock = item_block(Section, SectionContext, Items),
+    RawItemBlock = item_block(Section, SectionContext, Incls, Avails, Items),
+    (
+        Section = ms_interface,
+        IFileIncls = Incls,
+        IFileAvails = Avails,
+        NoIFileIncls = [],
+        NoIFileAvails = []
+    ;
+        Section = ms_implementation,
+        (
+            IncludeImplTypes = dont_include_impl_types,
+            IFileIncls = [],
+            IFileAvails = []
+        ;
+            IncludeImplTypes = include_impl_types,
+            IFileIncls = Incls,
+            IFileAvails = Avails
+        ),
+        (
+            GatherNoIFileItems = dont_gather_noifile_items,
+            NoIFileIncls = [],
+            NoIFileAvails = []
+        ;
+            GatherNoIFileItems = gather_noifile_items,
+            NoIFileIncls = Incls,
+            NoIFileAvails = Avails
+        )
+    ),
     get_ifile_and_noifile_in_items_acc(IncludeImplTypes, GatherNoIFileItems,
         Section, Items,
         cord.init, IFileItemsCord, cord.init, NoIFileItemsCord),
     IFileItems = cord.list(IFileItemsCord),
     NoIFileItems = cord.list(NoIFileItemsCord),
-    (
+    ( if
+        IFileIncls = [],
+        IFileAvails = [],
         IFileItems = []
-    ;
-        IFileItems = [_ | _],
-        IFileItemBlock = item_block(Section, SectionContext, IFileItems),
+    then
+        true
+    else
+        IFileItemBlock = item_block(Section, SectionContext,
+            IFileIncls, IFileAvails, IFileItems),
         !:IFileItemBlocksCord =
             cord.snoc(!.IFileItemBlocksCord, IFileItemBlock)
     ),
-    (
+    ( if
+        NoIFileIncls = [],
+        NoIFileAvails = [],
         NoIFileItems = []
-    ;
-        NoIFileItems = [_ | _],
-        NoIFileItemBlock = item_block(Section, SectionContext, NoIFileItems),
+    then
+        true
+    else
+        NoIFileItemBlock = item_block(Section, SectionContext,
+            NoIFileIncls, NoIFileAvails, NoIFileItems),
         !:NoIFileItemBlocksCord =
             cord.snoc(!.NoIFileItemBlocksCord, NoIFileItemBlock)
     ),
@@ -247,17 +282,6 @@ include_in_int_file_implementation(Item) = Include :-
         ),
         Include = yes
     ;
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-        (
-            % XXX Maybe some of these should yield an exception.
-            ( ModuleDefn = md_import(_)
-            ; ModuleDefn = md_use(_)
-            ; ModuleDefn = md_include_module(_)
-            ),
-            Include = yes
-        )
-    ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         (
@@ -331,7 +355,8 @@ add_needed_foreign_import_module_items_to_item_blocks(ModuleName, Section,
     ;
         Langs = [_ | _],
         ImportItems = list.map(make_foreign_import(ModuleName), Langs),
-        ImportItemBlock = item_block(Section, term.context_init, ImportItems),
+        ImportItemBlock = item_block(Section, term.context_init,
+            [], [], ImportItems),
         ItemBlocks = [ImportItemBlock | ItemBlocks0]
     ).
 
@@ -357,7 +382,7 @@ get_foreign_self_imports_from_item_blocks(ItemBlocks, Langs) :-
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
 accumulate_foreign_import_langs_in_item_block(ItemBlock, !LangSet) :-
-    ItemBlock = item_block(_, _, Items),
+    ItemBlock = item_block(_, _, _, _, Items),
     list.foldl(accumulate_foreign_import_langs_in_item, Items, !LangSet).
 
 :- pred accumulate_foreign_import_langs_in_item(item::in,

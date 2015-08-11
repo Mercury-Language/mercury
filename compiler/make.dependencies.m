@@ -784,21 +784,24 @@ non_intermod_direct_imports(Globals, ModuleIndex, Success, Modules,
 non_intermod_direct_imports_2(Globals, ModuleIndex, Success, Modules,
         !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        !Info, !IO),
     (
-        MaybeImports = yes(Imports),
+        MaybeModuleAndImports = yes(ModuleAndImports),
 
         % Find the direct imports of this module (modules for which we will
         % read the `.int' files).
         %
-        % Note that we need to do this both for the imports of
-        % this module and for the imports of its ancestors.
-        % This is because if this module is a submodule, then it
-        % may depend on things imported only by its ancestors.
+        % Note that we need to do this both for the imports of this module
+        % and for the imports of its ancestors. This is because if this module
+        % is a submodule, then it may depend on things imported only by its
+        % ancestors.
         %
-        module_names_to_index_set(Imports ^ mai_impl_deps, ImplDeps, !Info),
-        module_names_to_index_set(Imports ^ mai_int_deps, IntDeps, !Info),
-        Modules0 = union(ImplDeps, IntDeps),
+        set.to_sorted_list(ModuleAndImports ^ mai_int_deps, IntDeps),
+        set.to_sorted_list(ModuleAndImports ^ mai_imp_deps, ImpDeps),
+        module_names_to_index_set(IntDeps, DepsInt, !Info),
+        module_names_to_index_set(ImpDeps, DepsImp, !Info),
+        Modules0 = union(DepsInt, DepsImp),
         (
             ModuleName = qualified(ParentModule, _),
             module_name_to_index(ParentModule, ParentIndex, !Info),
@@ -811,7 +814,7 @@ non_intermod_direct_imports_2(Globals, ModuleIndex, Success, Modules,
             Modules = Modules0
         )
     ;
-        MaybeImports = no,
+        MaybeModuleAndImports = no,
         Success = no,
         Modules = init
     ).
@@ -1261,26 +1264,26 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                     ImportsToCheck = Imports ^ mai_int_deps
                 ;
                     DependenciesType = all_dependencies,
-                    ImportsToCheck = list.condense([
+                    ImportsToCheck = set.union_list([
                         Imports ^ mai_int_deps,
-                        Imports ^ mai_impl_deps,
+                        Imports ^ mai_imp_deps,
                         Imports ^ mai_parent_deps,
                         Imports ^ mai_children,
-                        get_foreign_imported_modules(
-                            cord.list(Imports ^ mai_foreign_import_modules))
+                        set.list_to_set(get_foreign_imported_modules(
+                            cord.list(Imports ^ mai_foreign_import_modules)))
                     ])
                 ;
                     DependenciesType = all_imports,
-                    ImportsToCheck = list.condense([
+                    ImportsToCheck = set.union_list([
                         Imports ^ mai_int_deps,
-                        Imports ^ mai_impl_deps,
+                        Imports ^ mai_imp_deps,
                         Imports ^ mai_parent_deps,
-                        get_foreign_imported_modules(
-                            cord.list(Imports ^ mai_foreign_import_modules))
+                        set.list_to_set(get_foreign_imported_modules(
+                            cord.list(Imports ^ mai_foreign_import_modules)))
                     ])
                 ),
-                module_names_to_index_set(ImportsToCheck, ImportsToCheckSet,
-                    !Info),
+                module_names_to_index_set(set.to_sorted_list(ImportsToCheck),
+                    ImportsToCheckSet, !Info),
                 ImportingModule = !.Info ^ importing_module,
                 !Info ^ importing_module := yes(ModuleName),
                 Modules1 = insert(Modules0, ModuleIndex),
@@ -1316,7 +1319,7 @@ collect_nested_modules(Globals, ModuleName, !NestedModules, !Info, !IO) :-
     get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
-        set.insert_list(Imports ^ mai_nested_children, !NestedModules)
+        set.union(Imports ^ mai_nested_children, !NestedModules)
     ;
         MaybeImports = no
     ).

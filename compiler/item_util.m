@@ -181,9 +181,7 @@ item_needs_imports(Item) = NeedsImports :-
         ),
         NeedsImports = yes
     ;
-        ( Item = item_module_defn(_)
-        ; Item = item_nothing(_)
-        ),
+        Item = item_nothing(_),
         NeedsImports = no
     ).
 
@@ -257,8 +255,7 @@ item_needs_foreign_imports(Item) = Langs :-
             Langs = []
         )
     ;
-        ( Item = item_module_defn(_)
-        ; Item = item_clause(_)
+        ( Item = item_clause(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_pred_decl(_)

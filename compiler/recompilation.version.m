@@ -70,11 +70,14 @@
 compute_version_numbers(SourceFileTime, CurParseTreeInt, MaybeOldParseTreeInt,
         NewVersionNumbers) :-
     CurParseTreeInt = parse_tree_int(_ModuleName, _IntFileKind,
-        _ModuleNameContext, _CurMaybeVersionNumbers, CurIntItems, CurImpItems),
+        _ModuleNameContext, _CurMaybeVersionNumbers,
+        _CurIntIncls, _CurImpIncls, _CurIntAvails, _CurImpAvails,
+        CurIntItems, CurImpItems),
     gather_items(CurIntItems, CurImpItems, CurGatheredItems, CurInstanceItems),
     (
         MaybeOldParseTreeInt = yes(OldParseTreeInt),
         OldParseTreeInt = parse_tree_int(_, _, _, OldMaybeVersionNumbers,
+            _OldIntIncls, _OldImpIncls, _OldIntAvails, _OldImpAvails,
             OldIntItems, OldImpItems),
         OldMaybeVersionNumbers = yes(OldVersionNumbers)
     ->
@@ -139,12 +142,12 @@ compute_item_version_numbers_3(SourceFileTime, OldGatheredItems,
         % implementation of the current parse tree, but doing the same for
         % the previous parse tree would be overkill. However, for some "item"
         % types, such as predicate_item, OldItems and CurItems may contain
-        % more than one prog_item.item. We don't want thie artificially-created
+        % more than one prog_item.item. We don't want this artificially-created
         % difference in the ORDER of those items to count as a difference
         % that requires a recompilation.
         list.sort(OldItems, SortedOldItems),
         list.sort(CurItems, SortedCurItems),
-        items_are_unchanged(SortedOldItems, SortedCurItems),
+        are_items_changed(SortedOldItems, SortedCurItems, unchanged),
         map.search(OldItemTypeVersionNumbers, NameArity, OldItemVersionNumber)
     ->
         TimeStamp = OldItemVersionNumber
@@ -163,7 +166,7 @@ compute_instance_version_numbers(SourceFileTime,
         ( func(ClassId, Items) = InstanceVersionNumber :-
             (
                 map.search(OldInstanceItemMap, ClassId, OldItems),
-                items_are_unchanged(OldItems, Items),
+                are_items_changed(OldItems, Items, unchanged),
                 map.search(OldInstanceVersionNumbers, ClassId,
                     OldInstanceVersionNumber)
             ->
@@ -317,8 +320,7 @@ gather_in_item(Section, Item, !Info) :-
             true
         )
     ;
-        ( Item = item_module_defn(_)
-        ; Item = item_clause(_)
+        ( Item = item_clause(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_pred_decl(_)
@@ -563,8 +565,7 @@ item_to_item_id(Item, ItemId) :-
 
 item_to_maybe_item_id(Item, MaybeItemId) :-
     (
-        ( Item = item_module_defn(_)
-        ; Item = item_clause(_)
+        ( Item = item_clause(_)
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
@@ -742,18 +743,86 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
         MaybePredOrFuncId = yes(yes(PredOrFunc) - Name / Arity)
     ).
 
-    % XXX This is a bit brittle (need to be careful with term.contexts).
-    % For example, it won't work for clauses.
-    % It will never succeed when it shouldn't, so it will never cause
-    % a necessary recompilation to be missed.
-    %
-:- pred items_are_unchanged(assoc_list(module_section, item)::in,
-    assoc_list(module_section, item)::in) is semidet.
+%-----------------------------------------------------------------------------%
+%
+% Check whether various things are unchanged.
+%
+% XXX This code is a bit brittle, because in some places the things being
+% compared include term.contexts, which can change even if nothing we care
+% about has been modified. For example, it won't work for clauses, which
+% have lots of contexts inside them.
+%
+% However, the important thing is that these predicates will never succeed
+% when they shouldn't, so they should never cause a necessary recompilation
+% to be missed.
+%
 
-items_are_unchanged([], []).
-items_are_unchanged([Section - Item1 | Items1], [Section - Item2 | Items2]) :-
-    yes = item_is_unchanged(Item1, Item2),
-    items_are_unchanged(Items1, Items2).
+:- type maybe_changed
+    --->    unchanged
+    ;       changed.
+
+    % XXX This predicate is unused, which is likely to be a bug.
+    %
+:- pred is_item_include_changed(item_include::in, item_include::in,
+    maybe_changed::out) is det.
+
+is_item_include_changed(ItemInclude1, ItemInclude2, Changed) :-
+    ItemInclude1 = item_include(ModuleName1, _, _),
+    ItemInclude2 = item_include(ModuleName2, _, _),
+    ( if ModuleName1 = ModuleName2 then
+        Changed = unchanged
+    else
+        Changed = changed
+    ).
+
+    % XXX This predicate is unused, which is likely to be a bug.
+    %
+:- pred is_item_avail_changed(item_avail::in, item_avail::in,
+    maybe_changed::out) is det.
+
+is_item_avail_changed(Avail1, Avail2, Changed) :-
+    (
+        Avail1 = avail_import(avail_import_info(ModuleName1, _, _)),
+        ( if
+            Avail2 = avail_import(avail_import_info(ModuleName2, _, _)),
+            ModuleName1 = ModuleName2
+        then
+            Changed = unchanged
+        else
+            Changed = changed
+        )
+    ;
+        Avail1 = avail_use(avail_use_info(ModuleName1, _, _)),
+        ( if
+            Avail2 = avail_use(avail_use_info(ModuleName2, _, _)),
+            ModuleName1 = ModuleName2
+        then
+            Changed = unchanged
+        else
+            Changed = changed
+        )
+    ).
+
+:- pred are_items_changed(assoc_list(module_section, item)::in,
+    assoc_list(module_section, item)::in, maybe_changed::out) is det.
+
+are_items_changed([], [], unchanged).
+are_items_changed([], [_ | _], changed).
+are_items_changed([_ | _], [], changed).
+are_items_changed([Section1 - Item1 | Items1], [Section2 - Item2 | Items2],
+        Changed) :-
+    ( if Section1 = Section2 then
+        is_item_changed(Item1, Item2, ItemChanged),
+        (
+            ItemChanged = changed,
+            Changed = changed
+        ;
+            ItemChanged = unchanged,
+            are_items_changed(Items1, Items2, Changed)
+        )
+    else
+        Changed = changed
+    ).
 
     % In most places here, we don't need to compare the varsets.
     % What matters is that the variable numbers in the arguments
@@ -782,21 +851,10 @@ items_are_unchanged([Section - Item1 | Items1], [Section - Item2 | Items2]) :-
     % the variable numbers in the head of the declaration match those from
     % an abstract declaration read from an interface file.
     %
-:- func item_is_unchanged(item, item) = bool.
+:- pred is_item_changed(item::in, item::in, maybe_changed::out) is det.
 
-item_is_unchanged(Item1, Item2) = Unchanged :-
+is_item_changed(Item1, Item2, Changed) :-
     (
-        Item1 = item_module_defn(ItemModuleDefn1),
-        ItemModuleDefn1 = item_module_defn_info(ModuleDefn, _, _),
-        (
-            Item2 = item_module_defn(ItemModuleDefn2),
-            ItemModuleDefn2 = item_module_defn_info(ModuleDefn, _, _)
-        ->
-            Unchanged = yes
-        ;
-            Unchanged = no
-        )
-    ;
         Item1 = item_clause(ItemClause1),
         ItemClause1 = item_clause_info(_, _, PorF, SymName, Args, Goal, _, _),
         % XXX Need to compare the goals properly in clauses and assertions.
@@ -807,9 +865,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
             ItemClause2 =
                 item_clause_info(_, _, PorF, SymName, Args, Goal, _, _)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_type_defn(ItemTypeDefn1),
@@ -818,9 +876,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
             Item2 = item_type_defn(ItemTypeDefn2),
             ItemTypeDefn2 = item_type_defn_info(_, Name, Args, Defn, _, _)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_inst_defn(ItemInstDefn1),
@@ -829,9 +887,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
             Item2 = item_inst_defn(ItemInstDefn2),
             ItemInstDefn2 = item_inst_defn_info(_, Name, Args, Defn, _, _)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_mode_defn(ItemModeDefn1),
@@ -840,9 +898,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
             Item2 = item_mode_defn(ItemModeDefn2),
             ItemModeDefn2 = item_mode_defn_info(_, Name, Args, Defn, _, _)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_pred_decl(ItemPredDecl1),
@@ -874,9 +932,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
                 TypesAndModes1, WithType1, Constraints1, TVarSet2,
                 ExistQVars2, TypesAndModes2, WithType2, Constraints2)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_mode_decl(ItemModeDecl1),
@@ -889,9 +947,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
             pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, WithInst1,
                 InstVarSet2, Modes2, WithInst2)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_pragma(ItemPragma1),
@@ -925,15 +983,15 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
                         TVarSet2, TVarTypes2 ++ Types2,
                         _, _, _)
                 ->
-                    Unchanged = yes
+                    Changed = unchanged
                 ;
-                    Unchanged = no
+                    Changed = changed
                 )
             ;
-                Unchanged = ( PragmaType1 = PragmaType2 -> yes ; no )
+                Changed = ( PragmaType1 = PragmaType2 -> unchanged ; changed )
             )
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_promise(ItemPromiseInfo1),
@@ -944,9 +1002,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
             ItemPromiseInfo2 = item_promise_info(PromiseType, Goal, _,
                 UnivVars, _, _)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_initialise(ItemInitialise1),
@@ -955,9 +1013,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
             Item2 = item_initialise(ItemInitialise2),
             ItemInitialise2 = item_initialise_info(A, B, C, _, _)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_finalise(ItemFinalise1),
@@ -966,9 +1024,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
             Item2 = item_finalise(ItemFinalise2),
             ItemFinalise2 = item_finalise_info(A, B, C, _, _)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_mutable(ItemMutable1),
@@ -977,9 +1035,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
             Item2 = item_mutable(ItemMutable2),
             ItemMutable2 = item_mutable_info(A, B, C, D, E, F, _, _)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_typeclass(ItemTypeClass1),
@@ -991,9 +1049,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
                 Vars, Interface2, _, _, _),
             class_interface_is_unchanged(Interface1, Interface2)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_instance(ItemInstance1),
@@ -1004,9 +1062,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
             ItemInstance2 = item_instance_info(Constraints, Name,
                 Types, OriginalTypes, Body, _, Module, _, _)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ;
         Item1 = item_nothing(ItemNothing1),
@@ -1015,9 +1073,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
             Item2 = item_nothing(ItemNothing2),
             ItemNothing2 = item_nothing_info(A, _, _)
         ->
-            Unchanged = yes
+            Changed = unchanged
         ;
-            Unchanged = no
+            Changed = changed
         )
     ).
 

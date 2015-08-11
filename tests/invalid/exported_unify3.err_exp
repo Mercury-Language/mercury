@@ -1,6 +1,6 @@
-exported_unify3.int0:003: In clause for unification predicate for type `foo':
-exported_unify3.int0:003:   error: undefined predicate
-exported_unify3.int0:003:   `exported_unify3.defined_in_wrong_module'/2.
+exported_unify3.int0:004: In clause for unification predicate for type `foo':
+exported_unify3.int0:004:   error: undefined predicate
+exported_unify3.int0:004:   `exported_unify3.defined_in_wrong_module'/2.
 exported_unify3.m:009: In clause for unification predicate for type `foo':
 exported_unify3.m:009:   error: undefined predicate
 exported_unify3.m:009:   `exported_unify3.defined_in_wrong_module'/2.

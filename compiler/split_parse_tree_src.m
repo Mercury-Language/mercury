@@ -265,7 +265,7 @@ create_split_compilation_units_depth_first(ModuleName,
 check_interface_blocks_for_abstract_instances([], !Specs).
 check_interface_blocks_for_abstract_instances([RawItemBlock | RawItemBlocks],
         !Specs) :-
-    RawItemBlock = item_block(Section, _Context, Items),
+    RawItemBlock = item_block(Section, _Context, _Incls, _Avails, Items),
     (
         Section = ms_interface,
         check_interface_items_for_abstract_instances(Items, !Specs)
@@ -606,7 +606,7 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
 get_raw_item_block_section_kinds([], !SeenInt, !SeenImp).
 get_raw_item_block_section_kinds([ItemBlock | ItemBlocks],
         !SeenInt, !SeenImp) :-
-    ItemBlock = item_block(SectionKind, _, _),
+    ItemBlock = item_block(SectionKind, _, _, _, _),
     (
         SectionKind = ms_interface,
         !:SeenInt = yes
@@ -645,12 +645,17 @@ split_components_discover_submodules([Component | Components],
 split_component_discover_submodules(Component, SectionAncestors,
         !SplitModuleMap, !SubModulesMap, !RawItemBlockCord, !Specs) :-
     (
-        Component = mc_section(SectionKind, SectionContext, ItemCord0),
-        Items0 = cord.list(ItemCord0),
-        discover_included_submodules_in_items(Items0, SectionAncestors,
-            !SplitModuleMap, !SubModulesMap, cord.init, ItemCord, !Specs),
-        Items = cord.list(ItemCord),
-        RawItemBlock = item_block(SectionKind, SectionContext, Items),
+        Component = mc_section(SectionKind, SectionContext,
+            IncludesCord, AvailsCord, ItemsCord),
+        Includes = cord.list(IncludesCord),
+        Avails = cord.list(AvailsCord),
+        Items = cord.list(ItemsCord),
+        discover_included_submodules(Includes, SectionAncestors,
+            cord.init, OKIncludesCord,
+            !SplitModuleMap, !SubModulesMap, !Specs),
+        OKIncludes = cord.list(OKIncludesCord),
+        RawItemBlock = item_block(SectionKind, SectionContext,
+            OKIncludes, Avails, Items),
         !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, RawItemBlock),
         (
             SectionKind = ms_interface
@@ -693,12 +698,10 @@ split_component_discover_submodules(Component, SectionAncestors,
         % Replace the nested submodule with an `include_module' declaration.
         NestedModuleParseTree = parse_tree_src(NestedModuleName,
             NestedModuleContext, _NestedModuleComponents),
-        IncludeNestedModuleDefn = md_include_module(NestedModuleName),
-        IncludeNestedItemModuleDefn = item_module_defn_info(
-            IncludeNestedModuleDefn, NestedModuleContext, -1),
-        IncludeNestedItem = item_module_defn(IncludeNestedItemModuleDefn),
+        NestedIncludeItem =
+            item_include(NestedModuleName, NestedModuleContext, -1),
         RawItemBlock = item_block(SectionKind, SectionContext,
-            [IncludeNestedItem]),
+            [NestedIncludeItem], [], []),
         !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, RawItemBlock),
 
         % Discover any submodules nested inside NestedModuleParseTree.
@@ -708,80 +711,51 @@ split_component_discover_submodules(Component, SectionAncestors,
             NestedModuleAncestors, !SplitModuleMap, !SubModulesMap, !Specs)
     ).
 
-:- pred discover_included_submodules_in_items(list(item)::in,
-    section_ancestors::in,
+:- pred discover_included_submodules(list(item_include)::in,
+    section_ancestors::in, cord(item_include)::in, cord(item_include)::out,
     split_module_map::in, split_module_map::out,
     module_to_submodules_map::in, module_to_submodules_map::out,
-    cord(item)::in, cord(item)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-discover_included_submodules_in_items([], _,
-        !SplitModuleMap, !SubModulesMap, !ItemCord, !Specs).
-discover_included_submodules_in_items([Item | Items], SectionAncestors,
-        !SplitModuleMap, !SubModulesMap, !ItemCord, !Specs) :-
-    (
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _SeqNum),
+discover_included_submodules([], _,
+        !OKIncludesCord, !SplitModuleMap, !SubModulesMap, !Specs).
+discover_included_submodules([Include | Includes], SectionAncestors, 
+        !OKIncludesCord, !SplitModuleMap, !SubModulesMap, !Specs) :-
+    Include = item_include(InclModuleName, Context, _SeqNum),
+    ( if map.search(!.SplitModuleMap, InclModuleName, OldEntry) then
+        SectionAncestors = sa_parent(ParentModuleName, _),
+        Pieces1 = [words("In module"), sym_name(ParentModuleName),
+            suffix(":"), nl,
+            words("error: submodule"), sym_name(InclModuleName),
+            suffix(","),
+            words("included here as separate submodule,")],
         (
-            ModuleDefn = md_include_module(InclModuleName),
-            ( if map.search(!.SplitModuleMap, InclModuleName, OldEntry) then
-                SectionAncestors = sa_parent(ParentModuleName, _),
-                Pieces1 = [words("In module"), sym_name(ParentModuleName),
-                    suffix(":"), nl,
-                    words("error: submodule"), sym_name(InclModuleName),
-                    suffix(","),
-                    words("included here as separate submodule,")],
-                (
-                    OldEntry = split_nested(OldSplitNested, _),
-                    OldContext = split_nested_info_get_context(OldSplitNested),
-                    Pieces2 = [words("was previously declared to be"),
-                        words("a nested submodule."), nl]
-                ;
-                    OldEntry = split_included(OldContext),
-                    Pieces2 = [words("has already been declared"),
-                        words("to be a separate submodule."), nl]
-                ),
-
-                OldPieces = [words("This is the location"),
-                    words("of that previous declaration."), nl],
-                Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
-                OldMsg = simple_msg(OldContext, [always(OldPieces)]),
-                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
-                    [Msg, OldMsg]),
-                !:Specs = [Spec | !.Specs]
-            else
-                Entry = split_included(Context),
-                map.det_insert(InclModuleName, Entry, !SplitModuleMap),
-                add_new_submodule_to_map(SectionAncestors, InclModuleName,
-                    !SubModulesMap),
-                !:ItemCord = cord.snoc(!.ItemCord, Item)
-            )
+            OldEntry = split_nested(OldSplitNested, _),
+            OldContext = split_nested_info_get_context(OldSplitNested),
+            Pieces2 = [words("was previously declared to be"),
+                words("a nested submodule."), nl]
         ;
-            ( ModuleDefn = md_import(_)
-            ; ModuleDefn = md_use(_)
-            ),
-            !:ItemCord = cord.snoc(!.ItemCord, Item)
-        )
-    ;
-        ( Item = item_clause(_)
-        ; Item = item_type_defn(_)
-        ; Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_pragma(_)
-        ; Item = item_promise(_)
-        ; Item = item_typeclass(_)
-        ; Item = item_instance(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_mutable(_)
-        ; Item = item_nothing(_)
+            OldEntry = split_included(OldContext),
+            Pieces2 = [words("has already been declared"),
+                words("to be a separate submodule."), nl]
         ),
-        !:ItemCord = cord.snoc(!.ItemCord, Item)
+
+        OldPieces = [words("This is the location"),
+            words("of that previous declaration."), nl],
+        Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
+        OldMsg = simple_msg(OldContext, [always(OldPieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [Msg, OldMsg]),
+        !:Specs = [Spec | !.Specs]
+    else
+        Entry = split_included(Context),
+        map.det_insert(InclModuleName, Entry, !SplitModuleMap),
+        add_new_submodule_to_map(SectionAncestors, InclModuleName,
+            !SubModulesMap),
+        !:OKIncludesCord = cord.snoc(!.OKIncludesCord, Include)
     ),
-    discover_included_submodules_in_items(Items, SectionAncestors,
-        !SplitModuleMap, !SubModulesMap, !ItemCord, !Specs).
+    discover_included_submodules(Includes, SectionAncestors,
+        !OKIncludesCord, !SplitModuleMap, !SubModulesMap, !Specs).
 
 %---------------------------------------------------------------------------%
 

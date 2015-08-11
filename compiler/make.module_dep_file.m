@@ -296,18 +296,19 @@ write_module_dep_file(Globals, ModuleAndImports0, !IO) :-
 convert_back_to_raw_item_blocks([], []).
 convert_back_to_raw_item_blocks([SrcItemBlock | SrcItemBlocks],
         [RawItemBlock | RawItemBlocks]) :-
-    SrcItemBlock = item_block(SrcSection, SectionContext, Items),
+    SrcItemBlock = item_block(SrcSection, SectionContext,
+        Incls, Avails, Items),
     (
         SrcSection = sms_interface,
-        Section = ms_interface
+        RawSection = ms_interface
     ;
         ( SrcSection = sms_implementation
         ; SrcSection = sms_impl_but_exported_to_submodules
         ),
-        Section = ms_implementation
+        RawSection = ms_implementation
     ),
-    RawItemBlock =
-        item_block(Section, SectionContext, Items),
+    RawItemBlock = item_block(RawSection, SectionContext,
+        Incls, Avails, Items),
     convert_back_to_raw_item_blocks(SrcItemBlocks, RawItemBlocks).
 
 :- pred do_write_module_dep_file(globals::in, module_and_imports::in,
@@ -357,19 +358,19 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
     mercury_output_bracketed_sym_name(
         ModuleAndImports ^ mai_source_file_module_name, !IO),
     io.write_string(",\n\t{", !IO),
-    io.write_list(ModuleAndImports ^ mai_parent_deps,
+    io.write_list(set.to_sorted_list(ModuleAndImports ^ mai_parent_deps),
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(ModuleAndImports ^ mai_int_deps,
+    io.write_list(set.to_sorted_list(ModuleAndImports ^ mai_int_deps),
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(ModuleAndImports ^ mai_impl_deps,
+    io.write_list(set.to_sorted_list(ModuleAndImports ^ mai_imp_deps),
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(ModuleAndImports ^ mai_children,
+    io.write_list(set.to_sorted_list(ModuleAndImports ^ mai_children),
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(ModuleAndImports ^ mai_nested_children,
+    io.write_list(set.to_sorted_list(ModuleAndImports ^ mai_nested_children),
         ", ", mercury_output_bracketed_sym_name, !IO),
     io.write_string("},\n\t{", !IO),
     io.write_list(ModuleAndImports ^ mai_fact_table_deps,
@@ -530,7 +531,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             SourceFileModuleNameTerm,
             ParentsTerm,
             IntDepsTerm,
-            ImplDepsTerm,
+            ImpDepsTerm,
             ChildrenTerm,
             NestedChildrenTerm,
             FactDepsTerm,
@@ -548,7 +549,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
 
         sym_names_term(ParentsTerm, Parents),
         sym_names_term(IntDepsTerm, IntDeps),
-        sym_names_term(ImplDepsTerm, ImplDeps),
+        sym_names_term(ImpDepsTerm, ImpDeps),
         sym_names_term(ChildrenTerm, Children),
         sym_names_term(NestedChildrenTerm, NestedChildren),
 
@@ -575,8 +576,8 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
     then
         ModuleNameContext = term.context_init,
         ContainsForeignCode = contains_foreign_code(ForeignLanguages),
-        IndirectDeps = [],
-        PublicChildren = [],
+        set.init(IndirectDeps),
+        set.init(PublicChildren),
         SrcItemBlocks = [],
         DirectIntItemBlocksCord = cord.empty,
         IndirectIntItemBlocksCord = cord.empty,
@@ -588,8 +589,14 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         MaybeTimestamps = no,
         ModuleAndImports = module_and_imports(SourceFileName,
             SourceFileModuleName, ModuleName, ModuleNameContext,
-            Parents, IntDeps, ImplDeps, IndirectDeps,
-            Children, PublicChildren, NestedChildren, FactDeps,
+            set.list_to_set(Parents),
+            set.list_to_set(IntDeps),
+            set.list_to_set(ImpDeps),
+            IndirectDeps,
+            set.list_to_set(Children),
+            PublicChildren,
+            set.list_to_set(NestedChildren),
+            FactDeps,
             cord.from_list(ForeignImports), cord.from_list(ForeignIncludes),
             ContainsForeignCode, ContainsForeignExport,
             SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
@@ -845,7 +852,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 list.map(raw_compilation_unit_project_name, RawCompUnits),
             list.map(
                 init_module_and_imports(Globals, SourceFileName,
-                    ModuleName, SubModuleNames, [], Errors),
+                    ModuleName, set.list_to_set(SubModuleNames), [], Errors),
                 RawCompUnits, ModuleAndImportList),
             list.foldl(
                 (pred(ModuleAndImports::in, Info0::in, Info::out) is det :-

@@ -321,8 +321,10 @@ add_block_decls_pass_1([], _MakeStatus,
         !FoundInvalidInstOrMode, !ModuleInfo, !Specs).
 add_block_decls_pass_1([ItemBlock | ItemBlocks], MakeStatus,
         !FoundInvalidInstOrMode, !ModuleInfo, !Specs) :-
-    ItemBlock = item_block(Section, _, Items),
+    ItemBlock = item_block(Section, _, _Incls, Avails, Items),
     MakeStatus(Section, Status),
+    Status = item_status(ImportStatus, _),
+    list.foldl(add_item_avail_pass_1(ImportStatus), Avails, !ModuleInfo),
     add_item_decls_pass_1(Status, Items,
         !FoundInvalidInstOrMode, !ModuleInfo, !Specs),
     add_block_decls_pass_1(ItemBlocks, MakeStatus,
@@ -352,7 +354,7 @@ add_item_decls_pass_1(Status, [Item | Items],
 add_block_decls_pass_2([], _MakeStatus, !ModuleInfo, !Specs).
 add_block_decls_pass_2([ItemBlock | ItemBlocks], MakeStatus,
         !ModuleInfo, !Specs) :-
-    ItemBlock = item_block(Section, _, Items),
+    ItemBlock = item_block(Section, _, _Incls, _Avails, Items),
     MakeStatus(Section, Status),
     add_item_decls_pass_2(Status, Items, !ModuleInfo, !Specs),
     add_block_decls_pass_2(ItemBlocks, MakeStatus, !ModuleInfo, !Specs).
@@ -376,7 +378,7 @@ add_item_decls_pass_2(Status, [Item | Items], !ModuleInfo, !Specs) :-
 add_blocks_pass_3([], _MakeStatus, !ModuleInfo, !QualInfo, !Specs).
 add_blocks_pass_3([ItemBlock | ItemBlocks], MakeStatus,
         !ModuleInfo, !QualInfo, !Specs) :-
-    ItemBlock = item_block(Section, _, Items),
+    ItemBlock = item_block(Section, _, _Incls, _Avails, Items),
     MakeStatus(Section, Status),
     Status = item_status(ImportStatus, _NeedQualifier),
     add_items_pass_3(ImportStatus, Items, !ModuleInfo, !QualInfo, !Specs),
@@ -404,9 +406,6 @@ add_items_pass_3(Status, [Item | Items], !ModuleInfo, !QualInfo, !Specs) :-
 add_item_decl_pass_1(Status, Item,
         !FoundInvalidInstOrMode, !ModuleInfo, !Specs) :-
     (
-        Item = item_module_defn(ItemModuleDefn),
-        add_pass_1_module_defn(ItemModuleDefn, Status, !ModuleInfo, !Specs)
-    ;
         Item = item_type_defn(ItemTypeDefnInfo),
         add_pass_1_type_defn(ItemTypeDefnInfo, Status, !ModuleInfo, !Specs)
     ;
@@ -457,37 +456,22 @@ add_item_decl_pass_1(Status, Item,
 
 %---------------------------------------------------------------------------%
 
-:- pred add_pass_1_module_defn(item_module_defn_info::in,
-    item_status::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_pass_1_module_defn(ItemModuleDefn, Status, !ModuleInfo, !Specs) :-
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, _Context, _SeqNum),
-    (
-        ( ModuleDefn = md_import(ModuleName)
-        ; ModuleDefn = md_use(ModuleName)
-        ),
-        Status = item_status(ImportStatus, _),
-        add_imported_module_name(ModuleName, ImportStatus, !ModuleInfo)
-    ;
-        ModuleDefn = md_include_module(_)
-    ).
-
-:- pred add_imported_module_name(module_name::in, import_status::in,
+:- pred add_item_avail_pass_1(import_status::in, item_avail::in,
     module_info::in, module_info::out) is det.
 
-add_imported_module_name(ModuleName, IStat, !ModuleInfo) :-
-    DefinedInThisModule = status_defined_in_this_module(IStat),
+add_item_avail_pass_1(Status, Avail, !ModuleInfo) :-
+    ModuleName = item_avail_module_name(Avail),
+    DefinedInThisModule = status_defined_in_this_module(Status),
     (
         DefinedInThisModule = yes,
-        module_add_imported_module_name(IStat, ModuleName, !ModuleInfo)
+        module_add_imported_module_name(Status, ModuleName, !ModuleInfo)
     ;
         DefinedInThisModule = no,
         ( if
-            IStat =
+            Status =
                 status_imported(import_locn_ancestor_private_interface_proper)
         then
-            module_add_imported_module_name(IStat, ModuleName, !ModuleInfo),
+            module_add_imported_module_name(Status, ModuleName, !ModuleInfo),
             % Any import_module which comes from a private interface
             % must by definition be a module used by the parent module.
             module_info_add_parent_to_used_modules(ModuleName, !ModuleInfo)
@@ -624,8 +608,6 @@ add_pass_1_mutable(ItemMutable, Status, !ModuleInfo, !Specs) :-
 
 add_item_decl_pass_2(Status, Item, !ModuleInfo, !Specs) :-
     (
-        Item = item_module_defn(_ItemModuleDefn)
-    ;
         Item = item_type_defn(ItemTypeDefn),
         add_pass_2_type_defn(ItemTypeDefn, Status, !ModuleInfo, !Specs)
     ;
@@ -865,8 +847,7 @@ add_item_pass_3(Status, Item, !ModuleInfo, !QualInfo, !Specs) :-
         Item = item_mutable(ItemMutable),
         add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs)
     ;
-        ( Item = item_module_defn(_)
-        ; Item = item_inst_defn(_)
+        ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_mode_decl(_)
         ; Item = item_typeclass(_)

@@ -82,7 +82,7 @@ add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
     ParentDeps = ModuleImports ^ mai_parent_deps,
     digraph.add_vertex(ModuleName, IntModuleKey, !IntDepsGraph),
     add_int_deps(IntModuleKey, ModuleImports, !IntDepsGraph),
-    add_parent_impl_deps_list(LookupModuleImports, IntModuleKey, ParentDeps,
+    add_parent_imp_deps_set(LookupModuleImports, IntModuleKey, ParentDeps,
         !IntDepsGraph),
 
     % Add implementation dependencies to the implementation deps graph.
@@ -94,8 +94,8 @@ add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
     % things imported only by its parents.
 
     digraph.add_vertex(ModuleName, ImpModuleKey, !ImpDepsGraph),
-    add_impl_deps(ImpModuleKey, ModuleImports, !ImpDepsGraph),
-    add_parent_impl_deps_list(LookupModuleImports, ImpModuleKey, ParentDeps,
+    add_imp_deps(ImpModuleKey, ModuleImports, !ImpDepsGraph),
+    add_parent_imp_deps_set(LookupModuleImports, ImpModuleKey, ParentDeps,
         !ImpDepsGraph).
 
     % Add interface dependencies to the interface deps graph.
@@ -105,43 +105,43 @@ add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
 
 add_int_deps(ModuleKey, ModuleImports, !DepsGraph) :-
     AddDep = add_dep(ModuleKey),
-    list.foldl(AddDep, ModuleImports ^ mai_parent_deps, !DepsGraph),
-    list.foldl(AddDep, ModuleImports ^ mai_int_deps, !DepsGraph).
+    set.fold(AddDep, ModuleImports ^ mai_parent_deps, !DepsGraph),
+    set.fold(AddDep, ModuleImports ^ mai_int_deps, !DepsGraph).
 
     % Add direct implementation dependencies for a module to the
     % implementation deps graph.
     %
-:- pred add_impl_deps(deps_graph_key::in, module_and_imports::in,
+:- pred add_imp_deps(deps_graph_key::in, module_and_imports::in,
     deps_graph::in, deps_graph::out) is det.
 
-add_impl_deps(ModuleKey, ModuleImports, !DepsGraph) :-
+add_imp_deps(ModuleKey, ModuleImports, !DepsGraph) :-
     % The implementation dependencies are a superset of the
     % interface dependencies, so first we add the interface deps.
     add_int_deps(ModuleKey, ModuleImports, !DepsGraph),
     % then we add the impl deps
-    module_and_imports_get_impl_deps(ModuleImports, ImpDeps),
-    list.foldl(add_dep(ModuleKey), ImpDeps, !DepsGraph).
+    module_and_imports_get_imp_deps(ModuleImports, ImpDeps),
+    set.fold(add_dep(ModuleKey), ImpDeps, !DepsGraph).
 
     % Add parent implementation dependencies for the given Parent module
     % to the implementation deps graph values for the given ModuleKey.
     %
-:- pred add_parent_impl_deps(
+:- pred add_parent_imp_deps(
     lookup_module_and_imports::lookup_module_and_imports,
     deps_graph_key::in, module_name::in, deps_graph::in, deps_graph::out)
     is det.
 
-add_parent_impl_deps(LookupModuleImports, ModuleKey, Parent, !DepsGraph) :-
+add_parent_imp_deps(LookupModuleImports, ModuleKey, Parent, !DepsGraph) :-
     ParentModuleImports = LookupModuleImports(Parent),
-    add_impl_deps(ModuleKey, ParentModuleImports, !DepsGraph).
+    add_imp_deps(ModuleKey, ParentModuleImports, !DepsGraph).
 
-:- pred add_parent_impl_deps_list(
+:- pred add_parent_imp_deps_set(
     lookup_module_and_imports::lookup_module_and_imports,
-    deps_graph_key::in, list(module_name)::in, deps_graph::in, deps_graph::out)
+    deps_graph_key::in, set(module_name)::in, deps_graph::in, deps_graph::out)
     is det.
 
-add_parent_impl_deps_list(LookupModuleImports, ModuleKey, Parents,
+add_parent_imp_deps_set(LookupModuleImports, ModuleKey, Parents,
         !DepsGraph) :-
-    list.foldl(add_parent_impl_deps(LookupModuleImports, ModuleKey), Parents,
+    set.fold(add_parent_imp_deps(LookupModuleImports, ModuleKey), Parents,
         !DepsGraph).
 
     % Add a single dependency to a graph.

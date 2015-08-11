@@ -533,9 +533,8 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             UseGradeSubdirs),
         (
             UseGradeSubdirs = yes,
-            post_link_make_symlink_or_copy(ErrorStream, FileType,
-                MainModuleName, NoLinkObjsGlobals, Succeeded,
-                MadeSymlinkOrCopy, !IO),
+            post_link_make_symlink_or_copy(NoLinkObjsGlobals, ErrorStream,
+                FileType, MainModuleName, Succeeded, MadeSymlinkOrCopy, !IO),
             (
                 MadeSymlinkOrCopy = yes,
                 maybe_symlink_or_copy_linked_target_message(NoLinkObjsGlobals,
@@ -617,8 +616,8 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             % Run the link in a separate process so it can be killed
             % if an interrupt is received.
             call_in_forked_process(
-                compile_target_code.link(ErrorStream, FileType, MainModuleName,
-                    AllObjects, NoLinkObjsGlobals),
+                compile_target_code.link(NoLinkObjsGlobals, ErrorStream,
+                    FileType, MainModuleName, AllObjects),
                 Succeeded, !IO)
         ;
             CompilationTarget = target_il,
@@ -757,7 +756,7 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
 
 build_java_files_2(JavaFiles, Globals, ErrorStream, Succeeded, !Info, !IO) :-
     call_in_forked_process(
-        compile_java_files(ErrorStream, JavaFiles, Globals),
+        compile_java_files(Globals, ErrorStream, JavaFiles),
         Succeeded, !IO).
 
 :- pred delete_java_class_timestamps(string::in, maybe_error(timestamp)::in,
@@ -931,10 +930,9 @@ collect_modules_with_children(Globals, ModuleName, !ParentModules,
     (
         MaybeImports = yes(Imports),
         Children = Imports ^ mai_children,
-        (
-            Children = []
-        ;
-            Children = [_ | _],
+        ( if set.is_empty(Children) then
+            true
+        else
             !:ParentModules = [ModuleName | !.ParentModules]
         )
     ;
@@ -1364,19 +1362,18 @@ install_library(Globals, MainModuleName, Succeeded, !Info, !IO) :-
 
 install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
         !Info, !IO) :-
-    get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
+    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        !Info, !IO),
     (
-        MaybeImports = yes(Imports),
+        MaybeModuleAndImports = yes(ModuleAndImports),
         globals.get_any_intermod(Globals, AnyIntermod),
         (
             AnyIntermod = yes,
             % `.int0' files are imported by `.opt' files.
-            (
-                Imports ^ mai_children = [_ | _],
-                Exts = ["int0", "opt"]
-            ;
-                Imports ^ mai_children = [],
+            ( if set.is_empty(ModuleAndImports ^ mai_children) then
                 Exts = ["opt"]
+            else
+                Exts = ["int0", "opt"]
             )
         ;
             AnyIntermod = no,
@@ -1401,7 +1398,8 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             % XXX If we ever phase out mmake we could revert this behaviour.
             Target = target_c,
             % XXX Should we test
-            % Imports ^ contains_foreign_export = contains_foreign_export?
+            % ModuleAndImports ^ contains_foreign_export
+            %   = contains_foreign_export?
             module_name_to_file_name(Globals, ModuleName, ".mh",
                 do_not_create_dirs, FileName, !IO),
             install_file(Globals, FileName, LibDir/"inc", HeaderSucceeded1,
@@ -1426,7 +1424,7 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
         ),
         Succeeded = bool.and_list([HeaderSucceeded | Results])
     ;
-        MaybeImports = no,
+        MaybeModuleAndImports = no,
         Succeeded = no
     ).
 

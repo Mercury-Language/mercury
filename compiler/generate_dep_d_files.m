@@ -124,8 +124,8 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
     ParseTreeSrc = parse_tree_src(ModuleName, _, _),
     % XXX _NumErrors
     write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
-    NestedModuleNames =
-        list.map(raw_compilation_unit_project_name, RawCompUnits),
+    NestedModuleNames = set.list_to_set(
+        list.map(raw_compilation_unit_project_name, RawCompUnits)),
     SourceFileName = FileName ++ ".m",
     list.map(
         init_module_and_imports(Globals, SourceFileName, ModuleName,
@@ -149,8 +149,8 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),
-    ModuleDep = deps(_, ModuleImports),
-    Errors = ModuleImports ^ mai_errors,
+    ModuleDep = deps(_, ModuleAndImports),
+    Errors = ModuleAndImports ^ mai_errors,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_non_empty(FatalErrors) then
         ModuleString = sym_name_to_string(ModuleName),
@@ -167,7 +167,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
             Mode = output_d_file_only
         ;
             Mode = output_all_dependencies,
-            module_and_imports_get_source_file_name(ModuleImports,
+            module_and_imports_get_source_file_name(ModuleAndImports,
                 SourceFileName),
             generate_dependencies_write_dv_file(Globals, SourceFileName,
                 ModuleName, DepsMap, !IO),
@@ -197,8 +197,8 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
         list.condense(ImpDepsOrdering, TransOptDepsOrdering0),
         globals.lookup_accumulating_option(Globals, intermod_directories,
             IntermodDirs),
-        get_opt_deps(Globals, yes, TransOptDepsOrdering0, IntermodDirs,
-            ".trans_opt", TransOptDepsOrdering, !IO),
+        get_opt_deps(Globals, yes, IntermodDirs, ".trans_opt",
+            TransOptDepsOrdering0, TransOptDepsOrdering, !IO),
 
         trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
             io(!TIO)]
@@ -267,11 +267,11 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
 deps_list_to_deps_graph([], _, !IntDepsGraph, !ImplDepsGraph).
 deps_list_to_deps_graph([Deps | DepsList], DepsMap,
         !IntDepsGraph, !ImplDepsGraph) :-
-    Deps = deps(_, ModuleImports),
-    ModuleErrors = ModuleImports ^ mai_errors,
+    Deps = deps(_, ModuleAndImports),
+    ModuleErrors = ModuleAndImports ^ mai_errors,
     set.intersect(ModuleErrors, fatal_read_module_errors, FatalModuleErrors),
     ( if set.is_empty(FatalModuleErrors) then
-        add_module_and_imports_to_deps_graph(ModuleImports,
+        add_module_and_imports_to_deps_graph(ModuleAndImports,
             lookup_module_and_imports_in_deps_map(DepsMap),
             !IntDepsGraph, !ImplDepsGraph)
     else
@@ -282,8 +282,9 @@ deps_list_to_deps_graph([Deps | DepsList], DepsMap,
 :- func lookup_module_and_imports_in_deps_map(deps_map, module_name)
     = module_and_imports.
 
-lookup_module_and_imports_in_deps_map(DepsMap, ModuleName) = ModuleImports :-
-    map.lookup(DepsMap, ModuleName, deps(_, ModuleImports)).
+lookup_module_and_imports_in_deps_map(DepsMap, ModuleName)
+        = ModuleAndImports :-
+    map.lookup(DepsMap, ModuleName, deps(_, ModuleAndImports)).
 
 %---------------------------------------------------------------------------%
 

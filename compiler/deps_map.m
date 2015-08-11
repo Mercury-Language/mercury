@@ -161,18 +161,16 @@ generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap, !IO) :-
                 (func(foreign_import_module_info(_, ImportedModule, _))
                     = ImportedModule),
                 cord.list(ModuleImports ^ mai_foreign_import_modules)),
-        list.condense(
+        ModulesToAdd = set.union_list(
             [ModuleImports ^ mai_parent_deps,
             ModuleImports ^ mai_int_deps,
-            ModuleImports ^ mai_impl_deps,
+            ModuleImports ^ mai_imp_deps,
             ModuleImports ^ mai_public_children, % a.k.a. incl_deps
-            ForeignImportedModules],
-            ModulesToAdd),
+            set.list_to_set(ForeignImportedModules)]),
         % We could keep a list of the modules we have already processed
         % and subtract it from ModulesToAddSet here, but doing that
         % actually leads to a small slowdown.
-        set.list_to_set(ModulesToAdd, ModulesToAddSet),
-        set.union(ModulesToAddSet, !Modules)
+        set.union(ModulesToAdd, !Modules)
     ;
         Done = already_processed
     ).
@@ -224,9 +222,11 @@ read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
             always_read_module(dont_return_timestamp), _,
             ParseTreeInt, _IntSpecs, _Errors, !IO),
         ParseTreeInt = parse_tree_int(_, _, ModuleContext,
-            _MaybeVersionNumbers, IntItems, ImplItems),
-        int_impl_items_to_raw_item_blocks(ModuleContext, IntItems, ImplItems,
-            RawItemBlocks),
+            _MaybeVersionNumbers, IntIncl, ImpIncls, IntAvails, ImpAvails,
+            IntItems, ImpItems),
+        int_imp_items_to_item_blocks(ModuleContext,
+            ms_interface, ms_implementation, IntIncl, ImpIncls,
+            IntAvails, ImpAvails, IntItems, ImpItems, RawItemBlocks),
         RawCompUnits =
             [raw_compilation_unit(ModuleName, ModuleContext, RawItemBlocks)]
     ;
@@ -235,8 +235,8 @@ read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
             RawCompUnits, [], Specs),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ),
-    NestedModuleNames =
-        list.map(raw_compilation_unit_project_name, RawCompUnits),
+    NestedModuleNames = set.list_to_set(
+        list.map(raw_compilation_unit_project_name, RawCompUnits)),
     list.map(
         init_module_and_imports(Globals, FileName, ModuleName,
             NestedModuleNames, [], Errors),

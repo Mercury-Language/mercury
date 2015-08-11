@@ -190,7 +190,7 @@ write_opt_file(!ModuleInfo, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates to gather items to output to .opt file
+% Predicates to gather items to output to .opt file.
 %
 
 :- pred gather_preds(list(pred_id)::in, bool::in, int::in, int::in, bool::in,
@@ -215,7 +215,7 @@ gather_preds_fixpoint(ExtraExportedPreds0, CollectTypes, InlineThreshold,
         HigherOrderSizeLimit, Deforestation, !Info) :-
     intermod_info_get_pred_decls(!.Info, ExtraExportedPreds),
     NewlyExportedPreds = set.to_sorted_list(
-        ExtraExportedPreds `set.difference` ExtraExportedPreds0),
+        set.difference(ExtraExportedPreds, ExtraExportedPreds0)),
     (
         NewlyExportedPreds = []
     ;
@@ -1291,16 +1291,13 @@ write_intermod_info_body(IntermodInfo, !IO) :-
     set.to_sorted_list(Preds0, Preds),
     set.to_sorted_list(PredDecls0, PredDecls),
 
-    module_info_get_imported_module_names(ModuleInfo, Modules0),
-    set.to_sorted_list(Modules0, Modules),
-    (
-        Modules = [_ | _],
-        % XXX Modules could and should be reduced to the set of modules
-        % that are actually needed by the items being written.
-        io.write_string(":- use_module ", !IO),
-        intermod_write_modules(Modules, !IO)
-    ;
-        Modules = []
+    module_info_get_imported_module_names(ModuleInfo, UsedModules),
+    % XXX UsedModules could and should be reduced to the set of modules
+    % that are actually needed by the items being written.
+    ( if set.is_empty(UsedModules) then
+        true
+    else
+        set.fold(intermod_write_use_module, UsedModules, !IO)
     ),
 
     module_info_get_globals(ModuleInfo, Globals),
@@ -1338,19 +1335,12 @@ write_intermod_info_body(IntermodInfo, !IO) :-
     intermod_write_pred_decls(ModuleInfo, PredDecls, !IO),
     intermod_write_preds(OutInfoForPreds, ModuleInfo, Preds, !IO).
 
-:- pred intermod_write_modules(list(module_name)::in, io::di, io::uo) is det.
+:- pred intermod_write_use_module(module_name::in, io::di, io::uo) is det.
 
-intermod_write_modules([], !IO).
-intermod_write_modules([Module | Rest], !IO) :-
-    mercury_output_bracketed_sym_name(Module, !IO),
-    (
-        Rest = [],
-        io.write_string(".\n", !IO)
-    ;
-        Rest = [_ | _],
-        io.write_string(", ", !IO),
-        intermod_write_modules(Rest, !IO)
-    ).
+intermod_write_use_module(ModuleName, !IO) :-
+    io.write_string(":- use_module ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, !IO),
+    io.write_string(".\n", !IO).
 
 :- pred intermod_write_types(hlds_out_info::in,
     assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
@@ -2403,17 +2393,15 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
     ModuleName = !.ModuleAndImports ^ mai_module_name,
     Ancestors0 = !.ModuleAndImports ^ mai_parent_deps,
-    InterfaceDeps0 = !.ModuleAndImports ^ mai_int_deps,
-    ImplementationDeps0 = !.ModuleAndImports ^ mai_impl_deps,
-    OptFiles = list.sort_and_remove_dups(list.condense(
-        [Ancestors0, InterfaceDeps0, ImplementationDeps0])),
+    IntDeps0 = !.ModuleAndImports ^ mai_int_deps,
+    ImpDeps0 = !.ModuleAndImports ^ mai_imp_deps,
+    OptFiles = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),
     globals.lookup_bool_option(Globals, read_opt_files_transitively,
         Transitive),
-    ModulesProcessed = set.insert(set.sorted_list_to_set(OptFiles),
-        ModuleName),
-    read_optimization_interfaces(Globals, Transitive, OptFiles,
-        ModulesProcessed, cord.empty, OptItemBlocksCord,
-        [], OptSpecs, no, OptError, !IO),
+    set.insert(ModuleName, OptFiles, ModulesProcessed),
+    read_optimization_interfaces(Globals, Transitive,
+        set.to_sorted_list(OptFiles), ModulesProcessed,
+        cord.empty, OptItemBlocksCord, [], OptSpecs, no, OptError, !IO),
     OptItemBlocks = cord.list(OptItemBlocksCord),
 
     % Append the items to the current item list, using a `opt_imported'
@@ -2447,8 +2435,8 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
             cord.empty, LocalItemBlocksCord, [], LocalSpecs, no, UA_SR_Error,
             !IO),
         LocalItemBlocks = cord.list(LocalItemBlocksCord),
-        keep_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
-            LocalItemBlocks, FilteredItemBlocks),
+        keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs,
+            StructureReuse, LocalItemBlocks, FilteredItemBlocks),
         module_and_imports_add_opt_item_blocks(FilteredItemBlocks,
             !ModuleAndImports),
         module_and_imports_add_specs(LocalSpecs, !ModuleAndImports)
@@ -2457,33 +2445,35 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     ),
 
     % Read .int0 files required by the `.opt' files.
-    Int0Files = list.delete_all(
-        list.condense(list.map(get_ancestors, OptFiles)), ModuleName),
     HaveReadModuleMaps = have_read_module_maps(map.init, map.init, map.init),
+    OptFileAncestors = set.power_union(set.map(get_ancestors_set, OptFiles)),
+    Int0Files = set.delete(OptFileAncestors, ModuleName),
     process_module_private_interfaces(Globals, HaveReadModuleMaps, Int0Files,
         make_ioms_opt_imported, make_ioms_opt_imported,
         module_and_imports_add_int_for_opt_item_blocks,
-        [], AncestorImports1, [], AncestorImports2, !ModuleAndImports, !IO),
+        set.init, AncestorImports1, set.init, AncestorImports2,
+        !ModuleAndImports, !IO),
 
     % Figure out which .int files are needed by the .opt files
     get_dependencies_in_item_blocks(OptItemBlocks,
         NewImportDeps0, NewUseDeps0),
     get_implicit_dependencies_in_item_blocks(Globals, OptItemBlocks,
         NewImplicitImportDeps0, NewImplicitUseDeps0),
-    NewDeps = list.sort_and_remove_dups(list.condense(
+    NewDeps = set.union_list(
         [NewImportDeps0, NewUseDeps0,
         NewImplicitImportDeps0, NewImplicitUseDeps0,
-        AncestorImports1, AncestorImports2])),
+        AncestorImports1, AncestorImports2]),
 
     % Read in the .int, and .int2 files needed by the .opt files.
     process_module_long_interfaces(Globals, HaveReadModuleMaps,
         must_be_qualified, NewDeps, ifk_int,
         make_ioms_opt_imported, make_ioms_opt_imported,
         module_and_imports_add_int_for_opt_item_blocks,
-        [], NewIndirectDeps, [], NewImplIndirectDeps, !ModuleAndImports, !IO),
+        set.init, NewIndirectDeps, set.init, NewImplIndirectDeps,
+        !ModuleAndImports, !IO),
     process_module_short_interfaces_and_impls_transitively(Globals,
-        HaveReadModuleMaps, NewIndirectDeps ++ NewImplIndirectDeps, ifk_int2,
-        make_ioms_opt_imported, make_ioms_opt_imported,
+        HaveReadModuleMaps, set.union(NewIndirectDeps, NewImplIndirectDeps),
+        ifk_int2, make_ioms_opt_imported, make_ioms_opt_imported,
         module_and_imports_add_int_for_opt_item_blocks,
         !ModuleAndImports, !IO),
 
@@ -2502,26 +2492,28 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
         FoundError = no
     ).
 
-:- pred keep_unused_and_reuse_pragmas_in_blocks(bool::in, bool::in,
+:- pred keep_only_unused_and_reuse_pragmas_in_blocks(bool::in, bool::in,
     list(item_block(MS))::in, list(item_block(MS))::out) is det.
 
-keep_unused_and_reuse_pragmas_in_blocks(_, _, [], []).
-keep_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
+keep_only_unused_and_reuse_pragmas_in_blocks(_, _, [], []).
+keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
         [ItemBlock0 | ItemBlocks0], [ItemBlock | ItemBlocks]) :-
-    ItemBlock0 = item_block(Section, Context, Items0),
-    keep_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse,
+    ItemBlock0 = item_block(Section, Context, _Incls0, _Imports0, Items0),
+    Incls = [],
+    Imports = [],
+    keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse,
         Items0, cord.init, ItemCord),
     Items = cord.list(ItemCord),
-    ItemBlock = item_block(Section, Context, Items),
-    keep_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
+    ItemBlock = item_block(Section, Context, Incls, Imports, Items),
+    keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
         ItemBlocks0, ItemBlocks).
 
-:- pred keep_unused_and_reuse_pragmas_acc(bool::in, bool::in, list(item)::in, 
-    cord(item)::in, cord(item)::out) is det.
+:- pred keep_only_unused_and_reuse_pragmas_acc(bool::in, bool::in,
+    list(item)::in, cord(item)::in, cord(item)::out) is det.
 
-keep_unused_and_reuse_pragmas_acc(_, _, [], !ItemCord).
-keep_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse, [Item0 | Items0],
-        !ItemCord) :-
+keep_only_unused_and_reuse_pragmas_acc(_, _, [], !ItemCord).
+keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse,
+        [Item0 | Items0], !ItemCord) :-
     ( if
         Item0 = item_pragma(ItemPragma0),
         ItemPragma0 = item_pragma_info(Pragma0, _, _, _),
@@ -2537,7 +2529,7 @@ keep_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse, [Item0 | Items0],
     else
         true
     ),
-    keep_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse, Items0,
+    keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse, Items0,
         !ItemCord).
 
 :- pred read_optimization_interfaces(globals::in, bool::in,
@@ -2566,9 +2558,11 @@ read_optimization_interfaces(Globals, Transitive,
     actually_read_module_opt(ofk_opt, Globals, FileName, ModuleToRead,
         ParseTreeOpt, OptSpecs, OptError, !IO),
     ParseTreeOpt = parse_tree_opt(OptModuleName, OptFileKind,
-        OptModuleContext, OptItems),
+        OptModuleContext, OptUses, OptItems),
     OptSection = oms_opt_imported(OptModuleName, OptFileKind),
-    OptItemBlock = item_block(OptSection, OptModuleContext, OptItems),
+    OptAvails = list.map(wrap_avail_use, OptUses),
+    OptItemBlock = item_block(OptSection, OptModuleContext,
+        [], OptAvails, OptItems),
     !:OptItemBlocksCord = cord.snoc(!.OptItemBlocksCord, OptItemBlock),
     update_error_status(Globals, opt_file, FileName,
         OptSpecs, !Specs, OptError, !Error),
@@ -2577,12 +2571,12 @@ read_optimization_interfaces(Globals, Transitive,
 
     (
         Transitive = yes,
-        get_dependencies_in_items(OptItems, NewImportDeps0, NewUseDeps0),
+        NewUseDeps0 = set.list_to_set(
+            list.map(avail_use_info_module_name, OptUses)),
         get_implicit_dependencies_in_items(Globals, OptItems,
             NewImplicitImportDeps0, NewImplicitUseDeps0),
-        NewDeps0 = list.condense([NewImportDeps0, NewUseDeps0,
+        NewDepsSet0 = set.union_list([NewUseDeps0,
             NewImplicitImportDeps0, NewImplicitUseDeps0]),
-        set.list_to_set(NewDeps0, NewDepsSet0),
         set.difference(NewDepsSet0, ModulesProcessed0, NewDepsSet),
         set.union(ModulesProcessed0, NewDepsSet, ModulesProcessed),
         set.to_sorted_list(NewDepsSet, NewDeps)

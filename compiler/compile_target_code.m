@@ -41,44 +41,45 @@
     ;       link_with_pic
     ;       non_pic.
 
-    % compile_c_file(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO)
+    % compile_c_file(Globals, ErrorStream, PIC, ModuleName, Succeeded, !IO)
     %
-:- pred compile_c_file(io.output_stream::in, pic::in, module_name::in,
-    globals::in, bool::out, io::di, io::uo) is det.
+:- pred compile_c_file(globals::in, io.output_stream::in, pic::in,
+    module_name::in, bool::out, io::di, io::uo) is det.
 
     % do_compile_c_file(Globals, ErrorStream, PIC, CFile, ObjFile, Succeeded,
     %   !IO)
     %
-:- pred do_compile_c_file(io.output_stream::in, pic::in,
-    string::in, string::in, globals::in, bool::out, io::di, io::uo) is det.
+:- pred do_compile_c_file(globals::in, io.output_stream::in, pic::in,
+    string::in, string::in, bool::out, io::di, io::uo) is det.
 
-    % compile_java_files(ErrorStream, JavaFiles, Succeeded, Globals, !IO)
+    % compile_java_files(Globals, ErrorStream, JavaFiles, Succeeded, !IO)
     %
-:- pred compile_java_files(io.output_stream::in, list(string)::in,
-    globals::in, bool::out, io::di, io::uo) is det.
+:- pred compile_java_files(globals::in, io.output_stream::in, list(string)::in,
+    bool::out, io::di, io::uo) is det.
 
-    % il_assemble(ErrorStream, ModuleName, HasMain, Globals, Succeeded, !IO)
+    % il_assemble(Globals, ErrorStream, ModuleName, HasMain, Succeeded, !IO)
     %
-:- pred il_assemble(io.output_stream::in, module_name::in, has_main::in,
-    globals::in, bool::out, io::di, io::uo) is det.
+:- pred il_assemble(globals::in, io.output_stream::in, module_name::in,
+    has_main::in, bool::out, io::di, io::uo) is det.
 
-    % do_il_assemble(ErrorStream, ILFile, DLLFile, HasMain, Globals, Succeeded,
+    % do_il_assemble(Globals, ErrorStream, ILFile, DLLFile, HasMain, Succeeded,
     %   !IO)
     %
-:- pred do_il_assemble(io.output_stream::in, file_name::in, file_name::in,
-    has_main::in, globals::in, bool::out, io::di, io::uo) is det.
+:- pred do_il_assemble(globals::in, io.output_stream::in,
+    file_name::in, file_name::in, has_main::in, bool::out,
+    io::di, io::uo) is det.
 
-    % compile_csharp_file(ErrorStream, C#File, DLLFile, Globals, Succeeded,
+    % compile_csharp_file(Globals, ErrorStream, C#File, DLLFile, Succeeded,
     %   !IO)
     %
-:- pred compile_csharp_file(io.output_stream::in, module_and_imports::in,
-    file_name::in, file_name::in, globals::in, bool::out, io::di, io::uo)
-    is det.
+:- pred compile_csharp_file(globals::in, io.output_stream::in,
+    module_and_imports::in, file_name::in, file_name::in, bool::out,
+    io::di, io::uo) is det.
 
-    % compile_erlang_file(ErrorStream, ErlangFile, Globals, Succeeded, !IO)
+    % compile_erlang_file(Globals, ErrorStream, ErlangFile, Succeeded, !IO)
     %
-:- pred compile_erlang_file(io.output_stream::in, file_name::in,
-    globals::in, bool::out, io::di, io::uo) is det.
+:- pred compile_erlang_file(globals::in, io.output_stream::in, file_name::in,
+    bool::out, io::di, io::uo) is det.
 
     % make_library_init_file(Globals, ErrorStream, MainModuleName, ModuleNames,
     %   Succeeded, !IO):
@@ -121,11 +122,11 @@
     ;       erlang_launcher
     ;       erlang_archive.
 
-    % link(TargetType, MainModuleName, ObjectFileNames, Globals, Succeeded,
+    % link(Globals, TargetType, MainModuleName, ObjectFileNames, Succeeded,
     %   !IO)
     %
-:- pred link(io.output_stream::in, linked_target_type::in, module_name::in,
-    list(string)::in, globals::in, bool::out, io::di, io::uo) is det.
+:- pred link(globals::in, io.output_stream::in, linked_target_type::in,
+    module_name::in, list(string)::in, bool::out, io::di, io::uo) is det.
 
     % post_link_make_symlink_or_copy(TargetType, MainModuleName,
     %   Globals, Succeeded, MadeSymlinkOrCopy, !IO)
@@ -134,16 +135,18 @@
     % library into the user's directory after having successfully built it,
     % if the target does not exist or is not up-to-date.
     %
-:- pred post_link_make_symlink_or_copy(io.output_stream::in,
-    linked_target_type::in, module_name::in, globals::in, bool::out, bool::out,
+:- pred post_link_make_symlink_or_copy(globals::in, io.output_stream::in,
+    linked_target_type::in, module_name::in, bool::out, bool::out,
     io::di, io::uo) is det.
 
-    % link_module_list(ModulesToLink, ExtraObjFiles, Globals, Succeeded,
-    %   !IO):
+    % link_module_list(ModulesToLink, ExtraObjFiles, Globals, Succeeded, !IO):
     %
     % The elements of ModulesToLink are the output of
     % `module_name_to_filename(ModuleName, "", no, ModuleToLink)'
     % for each module in the program.
+    %
+    % The Globals are supplied late to allow mercury_compile.m to partially
+    % apply the ModuleToLink and ExtraObjFiles arguments.
     %
 :- pred link_module_list(list(string)::in, list(string)::in,
     globals::in, bool::out, io::di, io::uo) is det.
@@ -257,11 +260,12 @@
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
-il_assemble(ErrorStream, ModuleName, HasMain, Globals, Succeeded, !IO) :-
+il_assemble(Globals, ErrorStream, ModuleName, HasMain, Succeeded, !IO) :-
     module_name_to_file_name(Globals, ModuleName, ".il",
         do_not_create_dirs, IL_File, !IO),
     module_name_to_file_name(Globals, ModuleName, ".dll",
@@ -271,21 +275,21 @@ il_assemble(ErrorStream, ModuleName, HasMain, Globals, Succeeded, !IO) :-
     % executable. Unfortunately C# code may refer to the dll
     % so we always need to build the dll.
 
-    do_il_assemble(ErrorStream, IL_File, DllFile, no_main,
-        Globals, DllSucceeded, !IO),
+    do_il_assemble(Globals, ErrorStream, IL_File, DllFile, no_main,
+        DllSucceeded, !IO),
     (
         HasMain = has_main,
         module_name_to_file_name(Globals, ModuleName, ".exe",
             do_create_dirs, ExeFile, !IO),
-        do_il_assemble(ErrorStream, IL_File, ExeFile, HasMain,
-            Globals, ExeSucceeded, !IO),
+        do_il_assemble(Globals, ErrorStream, IL_File, ExeFile, HasMain,
+            ExeSucceeded, !IO),
         Succeeded = DllSucceeded `and` ExeSucceeded
     ;
         HasMain = no_main,
         Succeeded = DllSucceeded
     ).
 
-do_il_assemble(ErrorStream, IL_File, TargetFile, HasMain, Globals, Succeeded,
+do_il_assemble(Globals, ErrorStream, IL_File, TargetFile, HasMain, Succeeded,
         !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, sign_assembly, SignAssembly),
@@ -329,8 +333,8 @@ do_il_assemble(ErrorStream, IL_File, TargetFile, HasMain, Globals, Succeeded,
     invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 
-compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
-        Globals, Succeeded, !IO) :-
+compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
+        CSharpFileName0, DLLFileName, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Compiling `", !IO),
     maybe_write_string(Verbose, CSharpFileName, !IO),
@@ -365,24 +369,26 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
         string.append_list(list.condense(list.map(
             (func(DLLDir) = ["-lib:", DLLDir, " "]), DLLDirs))),
 
-    ( mercury_std_library_module_name(Imports ^ mai_module_name) ->
+    ModuleName = ModuleAndImports ^ mai_module_name,
+    ( if mercury_std_library_module_name(ModuleName) then
         Prefix = "-addmodule:"
-    ;
+    else
         Prefix = "-r:"
     ),
     ForeignDeps = list.map(
-        (func(M) =
-            foreign_import_module_name_from_module(M,
-                Imports ^ mai_module_name)),
-        cord.list(Imports ^ mai_foreign_import_modules)),
-    ReferencedDlls = referenced_dlls(Imports ^ mai_module_name,
-        Imports ^ mai_int_deps ++ Imports ^ mai_impl_deps ++ ForeignDeps),
+        (func(M) = foreign_import_module_name_from_module(M, ModuleName)),
+        cord.list(ModuleAndImports ^ mai_foreign_import_modules)),
+    IntDeps = ModuleAndImports ^ mai_int_deps,
+    ImpDeps = ModuleAndImports ^ mai_imp_deps,
+    set.union(IntDeps, ImpDeps, IntImpDeps),
+    set.insert_list(ForeignDeps, IntImpDeps, IntImpForeignDeps),
+    ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),
     list.map_foldl(
         (pred(Mod::in, Result::out, IO0::di, IO::uo) is det :-
             module_name_to_file_name(Globals, Mod, ".dll",
                 do_not_create_dirs, FileName, IO0, IO),
             Result = [Prefix, FileName, " "]
-        ), ReferencedDlls, ReferencedDllsList, !IO),
+        ), set.to_sorted_list(ReferencedDlls), ReferencedDllsList, !IO),
     ReferencedDllsStr = string.append_list(
         list.condense(ReferencedDllsList)),
 
@@ -397,16 +403,16 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
 % WARNING: The code here duplicates the functionality of scripts/mgnuc.in.
 % Any changes there may also require changes here, and vice versa.
 
-compile_c_file(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO) :-
+compile_c_file(Globals, ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
     module_name_to_file_name(Globals, ModuleName, ".c",
         do_create_dirs, C_File, !IO),
     maybe_pic_object_file_extension(Globals, PIC, ObjExt),
     module_name_to_file_name(Globals, ModuleName, ObjExt,
         do_create_dirs, O_File, !IO),
-    do_compile_c_file(ErrorStream, PIC, C_File, O_File, Globals, Succeeded,
+    do_compile_c_file(Globals, ErrorStream, PIC, C_File, O_File, Succeeded,
         !IO).
 
-do_compile_c_file(ErrorStream, PIC, C_File, O_File, Globals, Succeeded, !IO) :-
+do_compile_c_file(Globals, ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_string_option(Globals, c_flag_to_name_object_file,
         NameObjectFile),
@@ -1033,7 +1039,7 @@ get_maybe_filtercc_command(Globals, MaybeFilterCmd) :-
 
 %-----------------------------------------------------------------------------%
 
-compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
+compile_java_files(Globals, ErrorStream, JavaFiles, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         JavaFiles = [JavaFile | MoreFiles],
@@ -1170,7 +1176,7 @@ is_minus_j_flag(FlagStr) :-
 
 %-----------------------------------------------------------------------------%
 
-compile_erlang_file(ErrorStream, ErlangFile, Globals, Succeeded, !IO) :-
+compile_erlang_file(Globals, ErrorStream, ErlangFile, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Compiling `", !IO),
     maybe_write_string(Verbose, ErlangFile, !IO),
@@ -1426,8 +1432,8 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
         ;
             AllObjects = [InitObjFileName | AllObjects0]
         ),
-        link(OutputStream, TargetType, MainModuleName, AllObjects,
-            Globals, Succeeded, !IO)
+        link(Globals, OutputStream, TargetType, MainModuleName, AllObjects,
+            Succeeded, !IO)
     ;
         InitObjResult = no,
         Succeeded = no
@@ -1487,8 +1493,8 @@ do_make_init_obj_file(Globals, ErrorStream, MustCompile, ModuleName,
         do_create_dirs, InitObjFileName, !IO),
     CompileCInitFile =
         (pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
-            do_compile_c_file(ErrorStream, PIC, InitTargetFileName,
-                InitObjFileName, Globals, Res, IO0, IO)
+            do_compile_c_file(Globals, ErrorStream, PIC, InitTargetFileName,
+                InitObjFileName, Res, IO0, IO)
         ),
     maybe_compile_init_obj_file(Globals, MaybeInitTargetFile, MustCompile,
         CompileCInitFile, InitObjFileName, Result, !IO).
@@ -1530,7 +1536,7 @@ make_erlang_program_init_file(Globals, ErrorStream, ModuleName, ModuleNames,
         do_create_dirs, InitObjFileName, !IO),
     CompileErlangInitFile =
         (pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
-            compile_erlang_file(ErrorStream, InitTargetFileName, Globals, Res,
+            compile_erlang_file(Globals, ErrorStream, InitTargetFileName, Res,
                 IO0, IO)
         ),
     maybe_compile_init_obj_file(Globals, MaybeInitTargetFile, MustCompile,
@@ -1747,7 +1753,7 @@ compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO) :-
 % WARNING: The code here duplicates the functionality of scripts/ml.in.
 % Any changes there may also require changes here, and vice versa.
 
-link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Globals, Succeeded,
+link(Globals, ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded,
         !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -1791,8 +1797,8 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Globals, Succeeded,
     maybe_report_stats(Stats, !IO),
     (
         LinkSucceeded = yes,
-        post_link_make_symlink_or_copy(ErrorStream, LinkTargetType,
-            ModuleName, Globals, Succeeded, _MadeSymlinkOrCopy, !IO)
+        post_link_make_symlink_or_copy(Globals, ErrorStream, LinkTargetType,
+            ModuleName, Succeeded, _MadeSymlinkOrCopy, !IO)
     ;
         LinkSucceeded = no,
         Succeeded = no
@@ -2580,8 +2586,8 @@ has_object_file_extension(ObjExt, PicObjExt, LinkWithPicObjExt, FileName) :-
         string.suffix(FileName, LinkWithPicObjExt)
     ).
 
-post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
-        Globals, Succeeded, MadeSymlinkOrCopy, !IO) :-
+post_link_make_symlink_or_copy(Globals, ErrorStream, LinkTargetType,
+        ModuleName, Succeeded, MadeSymlinkOrCopy, !IO) :-
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     (
         UseGradeSubdirs = yes,
@@ -3535,8 +3541,8 @@ make_standalone_int_body(Globals, Basename, !IO) :-
         get_object_code_type(Globals, executable, PIC),
         maybe_pic_object_file_extension(Globals, PIC, ObjExt),
         ObjFileName = Basename ++ ObjExt,
-        do_compile_c_file(ErrorStream, PIC, CFileName, ObjFileName,
-            Globals, CompileOk, !IO),
+        do_compile_c_file(Globals, ErrorStream, PIC, CFileName, ObjFileName,
+            CompileOk, !IO),
         (
             CompileOk = yes
         ;

@@ -77,10 +77,11 @@ search_for_module_source(Globals, Dirs, InterfaceDirs, ModuleName,
             io.input_stream(SourceStream, !IO),
             search_for_module_source_qualifier_loop(Globals, InterfaceDirs,
                 ModuleName, ModuleName, MaybeFileName2, !IO),
-            ( MaybeFileName2 = ok(_) ->
+            (
+                MaybeFileName2 = ok(_),
                 io.seen(!IO)
             ;
-                true
+                MaybeFileName2 = error(_)
             ),
             (
                 MaybeFileName2 = ok(SourceFileName2),

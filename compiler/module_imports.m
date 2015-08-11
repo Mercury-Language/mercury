@@ -33,6 +33,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -79,29 +80,29 @@
                 % The context of the module declaration of mai_module_name.
                 mai_module_name_context         :: prog_context,
 
-                % The list of ancestor modules it inherits.
-                mai_parent_deps                 :: list(module_name),
+                % The set of ancestor modules it inherits.
+                mai_parent_deps                 :: set(module_name),
 
-                % The list of modules it directly imports in the interface
+                % The set of modules it directly imports in the interface
                 % (imports via ancestors count as direct).
-                mai_int_deps                    :: list(module_name),
+                mai_int_deps                    :: set(module_name),
 
-                % The list of modules it directly imports in the
+                % The set of modules it directly imports in the
                 % implementation.
-                mai_impl_deps                   :: list(module_name),
+                mai_imp_deps                    :: set(module_name),
 
-                % The list of modules it indirectly imports.
-                mai_indirect_deps               :: list(module_name),
+                % The set of modules it indirectly imports.
+                mai_indirect_deps               :: set(module_name),
 
-                mai_children                    :: list(module_name),
+                mai_children                    :: set(module_name),
 
-                % The list of its public children, i.e. child modules that
+                % The set of its public children, i.e. child modules that
                 % it includes in the interface section.
-                mai_public_children             :: list(module_name),
+                mai_public_children             :: set(module_name),
 
                 % The modules included in the same source file. This field
                 % is only set for the top-level module in each file.
-                mai_nested_children             :: list(module_name),
+                mai_nested_children             :: set(module_name),
 
                 % The list of filenames for fact tables in this module.
                 mai_fact_table_deps             :: list(string),
@@ -151,24 +152,24 @@
     module_name::out) is det.
 :- pred module_and_imports_get_module_name_context(module_and_imports::in,
     prog_context::out) is det.
-:- pred module_and_imports_get_impl_deps(module_and_imports::in,
-    list(module_name)::out) is det.
+:- pred module_and_imports_get_imp_deps(module_and_imports::in,
+    set(module_name)::out) is det.
 :- pred module_and_imports_get_errors(module_and_imports::in,
     read_module_errors::out) is det.
 
     % Set the interface dependencies.
     %
-:- pred module_and_imports_set_int_deps(list(module_name)::in,
+:- pred module_and_imports_set_int_deps(set(module_name)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
     % Set the implementation dependencies.
     %
-:- pred module_and_imports_set_impl_deps(list(module_name)::in,
+:- pred module_and_imports_set_imp_deps(set(module_name)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
     % Set the indirect dependencies.
     %
-:- pred module_and_imports_set_indirect_deps(list(module_name)::in,
+:- pred module_and_imports_set_indirect_deps(set(module_name)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
 :- pred module_and_imports_set_errors(read_module_errors::in,
@@ -216,10 +217,10 @@
 %-----------------------------------------------------------------------------%
 
     % init_module_and_imports(Globals, FileName, SourceFileModuleName,
-    %   NestedModuleNames, Specs, Errors, CompilationUnit, ModuleImports).
+    %   NestedModuleNames, Specs, Errors, CompilationUnit, ModuleAndImports).
     %
 :- pred init_module_and_imports(globals::in, file_name::in, module_name::in,
-    list(module_name)::in, list(error_spec)::in, read_module_errors::in,
+    set(module_name)::in, list(error_spec)::in, read_module_errors::in,
     raw_compilation_unit::in, module_and_imports::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -233,7 +234,6 @@
 :- import_module parse_tree.modules.    % undesirable dependency
 
 :- import_module dir.
-:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -244,15 +244,15 @@ module_and_imports_get_module_name(Module, X) :-
     X = Module ^ mai_module_name.
 module_and_imports_get_module_name_context(Module, X) :-
     X = Module ^ mai_module_name_context.
-module_and_imports_get_impl_deps(Module, X) :-
-    X = Module ^ mai_impl_deps.
+module_and_imports_get_imp_deps(Module, X) :-
+    X = Module ^ mai_imp_deps.
 module_and_imports_get_errors(Module, X) :-
     X = Module ^ mai_errors.
 
 module_and_imports_set_int_deps(IntDeps, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_int_deps := IntDeps.
-module_and_imports_set_impl_deps(ImplDeps, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_impl_deps := ImplDeps.
+module_and_imports_set_imp_deps(ImpDeps, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_imp_deps := ImpDeps.
 module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_indirect_deps := IndirectDeps.
 module_and_imports_set_errors(Errors, !ModuleAndImports) :-
@@ -341,9 +341,9 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         ImplImportDeps0, ImplUseDeps0),
     get_implicit_dependencies_in_item_blocks(Globals, RawItemBlocks,
         ImplicitImplImportDeps, ImplicitImplUseDeps),
-    ImplImportDeps = ImplicitImplImportDeps ++ ImplImportDeps0,
-    ImplUseDeps = ImplicitImplUseDeps ++ ImplUseDeps0,
-    ImplementationDeps = ImplImportDeps ++ ImplUseDeps,
+    set.union(ImplicitImplImportDeps, ImplImportDeps0, ImplImportDeps),
+    set.union(ImplicitImplUseDeps, ImplUseDeps0, ImplUseDeps),
+    set.union(ImplImportDeps, ImplUseDeps, ImplementationDeps),
 
     get_interface(dont_include_impl_types, RawCompUnit0, RawCompUnit),
     RawCompUnit = raw_compilation_unit(_, _, InterfaceItemBlocks),
@@ -351,12 +351,13 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         InterfaceImportDeps0, InterfaceUseDeps0),
     get_implicit_dependencies_in_item_blocks(Globals, InterfaceItemBlocks,
         ImplicitInterfaceImportDeps, ImplicitInterfaceUseDeps),
-    InterfaceImportDeps = ImplicitInterfaceImportDeps ++ InterfaceImportDeps0,
-    InterfaceUseDeps = ImplicitInterfaceUseDeps ++ InterfaceUseDeps0,
-    InterfaceDeps = InterfaceImportDeps ++ InterfaceUseDeps,
+    set.union(ImplicitInterfaceImportDeps, InterfaceImportDeps0,
+        InterfaceImportDeps),
+    set.union(ImplicitInterfaceUseDeps, InterfaceUseDeps0, InterfaceUseDeps),
+    set.union(InterfaceImportDeps, InterfaceUseDeps, InterfaceDeps),
 
     % We don't fill in the indirect dependencies yet.
-    IndirectDeps = [],
+    set.init(IndirectDeps),
 
     get_included_modules_in_item_blocks(RawItemBlocks, IncludeDeps),
     get_included_modules_in_item_blocks(InterfaceItemBlocks,
@@ -364,9 +365,9 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 
     % XXX ITEM_LIST Document why we do this.
     ( if ModuleName = SourceFileModuleName then
-        list.delete_all(NestedModuleNames, ModuleName, NestedDeps)
+        set.delete(ModuleName, NestedModuleNames, NestedDeps)
     else
-        NestedDeps = []
+        set.init(NestedDeps)
     ),
 
     get_fact_table_dependencies_in_item_blocks(RawItemBlocks, FactTableDeps),
@@ -399,9 +400,9 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     % predicate. The code that does so in make_module_and_imports in modules.m
     % *does* fill in the SrcItemBlocks field with meaningful data.
     ModuleImports = module_and_imports(FileName, SourceFileModuleName,
-        ModuleName, ModuleNameContext, ParentDeps, InterfaceDeps,
-        ImplementationDeps, IndirectDeps, IncludeDeps,
-        InterfaceIncludeDeps, NestedDeps, FactTableDeps,
+        ModuleName, ModuleNameContext, set.list_to_set(ParentDeps),
+        InterfaceDeps, ImplementationDeps, IndirectDeps,
+        IncludeDeps, InterfaceIncludeDeps, NestedDeps, FactTableDeps,
         ForeignImports, ForeignIncludeFiles,
         ContainsForeignCode, ContainsForeignExport,
         [], cord.init, cord.init, cord.init, cord.init, map.init,
@@ -413,7 +414,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 look_for_main_pred_in_item_blocks([], !HasMain).
 look_for_main_pred_in_item_blocks([ItemBlock | ItemBlocks], !HasMain) :-
     % XXX ITEM_LIST Warn if Section isn't ms_interface or ams_interface.
-    ItemBlock = item_block(_Section, _Context, Items),
+    ItemBlock = item_block(_Section, _Context, _Incls, _Imports, Items),
     look_for_main_pred_in_items(Items, !HasMain),
     look_for_main_pred_in_item_blocks(ItemBlocks, !HasMain).
 

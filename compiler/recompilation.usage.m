@@ -25,7 +25,6 @@
 
 :- import_module assoc_list.
 :- import_module io.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -72,7 +71,7 @@
                 item_name   % cons_id
             ).
 
-:- pred write_usage_file(module_info::in, list(module_name)::in,
+:- pred write_usage_file(module_info::in, set(module_name)::in,
     maybe(module_timestamp_map)::in, io::di, io::uo) is det.
 
     % Changes which modify the format of the `.used' files will increment
@@ -108,6 +107,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module list.
 :- import_module queue.
 :- import_module require.
 :- import_module solutions.
@@ -133,7 +133,8 @@ write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-
             FileResult = ok(Stream0),
             io.set_output_stream(Stream0, OldStream, !IO),
             write_usage_file_2(ModuleInfo,
-                NestedSubModules, RecompInfo, TimestampMap, !IO),
+                set.to_sorted_list(NestedSubModules), RecompInfo, TimestampMap,
+                !IO),
             io.set_output_stream(OldStream, Stream, !IO),
             io.close_output(Stream, !IO)
         ;
@@ -222,8 +223,10 @@ write_usage_file_2(ModuleInfo, NestedSubModules, RecompInfo, TimestampMap,
         io.write_string(").\n", !IO)
     ),
 
-    map.foldl(write_module_name_and_used_items(RecompInfo, TimestampMap,
-        ModuleInstances), ImportedItems, !IO),
+    map.foldl(
+        write_module_name_and_used_items(RecompInfo, TimestampMap,
+            ModuleInstances),
+        ImportedItems, !IO),
     % recompilation_check.m checks for this item when reading in the `.used'
     % file to make sure the earlier compilation wasn't interrupted in the
     % middle of writing the file.

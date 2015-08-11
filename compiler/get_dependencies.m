@@ -26,12 +26,14 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
-    % get_dependencies_in_{items,item_blocks}(Items, ImportDeps, UseDeps):
+    % get_dependencies_in_avails(Avails, ImportDeps, UseDeps):
+    % get_dependencies_in_item_blocks(ItemBlocks, ImportDeps, UseDeps):
     %
-    % Get the list of modules that a list of items (explicitly) depends on.
+    % Get the list of modules that a list of things (explicitly) depends on.
     % ImportDeps is the list of modules imported using `:- import_module',
     % UseDeps is the list of modules imported using `:- use_module'.
     % N.B. Typically you also need to consider the module's implicit
@@ -40,19 +42,19 @@
     % (see get_children/2). You may also need to consider indirect
     % dependencies.
     %
-:- pred get_dependencies_in_items(list(item)::in,
-    list(module_name)::out, list(module_name)::out) is det.
+:- pred get_dependencies_in_avails(list(item_avail)::in,
+    set(module_name)::out, set(module_name)::out) is det.
 :- pred get_dependencies_in_item_blocks(list(item_block(MS))::in,
-    list(module_name)::out, list(module_name)::out) is det.
+    set(module_name)::out, set(module_name)::out) is det.
 
     % get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocs,
     %   IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps):
     %
     % Get the list of modules that a list of items (explicitly) depends on.
     %
-    % IntImportDeps is the list of modules imported using `:- import_module'
+    % IntImportDeps is the set of modules imported using `:- import_module'
     % in the interface, and ImpImportDeps those modules imported in the
-    % implementation. IntUseDeps is the list of modules imported using
+    % implementation. IntUseDeps is the set of modules imported using
     % `:- use_module' in the interface, and ImpUseDeps those modules imported
     % in the implementation.
     %
@@ -63,8 +65,8 @@
     % dependencies.
     %
 :- pred get_dependencies_int_imp_in_raw_item_blocks(list(raw_item_block)::in,
-    list(module_name)::out, list(module_name)::out,
-    list(module_name)::out, list(module_name)::out) is det.
+    set(module_name)::out, set(module_name)::out,
+    set(module_name)::out, set(module_name)::out) is det.
 
     % get_implicit_dependencies_in_*(Globals, Items/ItemBlocks,
     %   ImportDeps, UseDeps):
@@ -78,10 +80,10 @@
     %
 :- pred get_implicit_dependencies_in_item_blocks(globals::in,
     list(item_block(MS))::in,
-    list(module_name)::out, list(module_name)::out) is det.
+    set(module_name)::out, set(module_name)::out) is det.
 :- pred get_implicit_dependencies_in_items(globals::in,
     list(item)::in,
-    list(module_name)::out, list(module_name)::out) is det.
+    set(module_name)::out, set(module_name)::out) is det.
 
     % Get the fact table dependencies for the given list of items.
     %
@@ -107,7 +109,6 @@
 :- import_module cord.
 :- import_module maybe.
 :- import_module require.
-:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -116,9 +117,7 @@
 
 get_dependencies_in_item_blocks(ItemBlocks, ImportDeps, UseDeps) :-
     get_dependencies_in_item_blocks_acc(ItemBlocks,
-        set.init, ImportDepsSet, set.init, UseDepsSet),
-    ImportDeps = set.to_sorted_list(ImportDepsSet),
-    UseDeps = set.to_sorted_list(UseDepsSet).
+        set.init, ImportDeps, set.init, UseDeps).
 
 :- pred get_dependencies_in_item_blocks_acc(list(item_block(MS))::in,
     set(module_name)::in, set(module_name)::out,
@@ -127,23 +126,18 @@ get_dependencies_in_item_blocks(ItemBlocks, ImportDeps, UseDeps) :-
 get_dependencies_in_item_blocks_acc([], !ImportDeps, !UseDeps).
 get_dependencies_in_item_blocks_acc([ItemBlock | ItemBlocks],
         !ImportDeps, !UseDeps) :-
-    ItemBlock = item_block(_Section, _Context, Items),
-    get_dependencies_in_items_acc(Items, !ImportDeps, !UseDeps),
+    ItemBlock = item_block(_Section, _Context, _Incls, Imports, _Items),
+    get_dependencies_in_avails_acc(Imports, !ImportDeps, !UseDeps),
     get_dependencies_in_item_blocks_acc(ItemBlocks,
         !ImportDeps, !UseDeps).
 
 %-----------------------------------------------------------------------------%
 
 get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
-        IntImportDeps, IntUseDeps,
-        ImpImportDeps, ImpUseDeps) :-
+        IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps) :-
     get_dependencies_in_int_imp_in_raw_item_blocks_acc(RawItemBlocks,
-        set.init, IntImportDepsSet, set.init, IntUseDepsSet,
-        set.init, ImpImportDepsSet, set.init, ImpUseDepsSet),
-    IntImportDeps = set.to_sorted_list(IntImportDepsSet),
-    ImpImportDeps = set.to_sorted_list(ImpImportDepsSet),
-    IntUseDeps = set.to_sorted_list(IntUseDepsSet),
-    ImpUseDeps = set.to_sorted_list(ImpUseDepsSet).
+        set.init, IntImportDeps, set.init, IntUseDeps,
+        set.init, ImpImportDeps, set.init, ImpUseDeps).
 
 :- pred get_dependencies_in_int_imp_in_raw_item_blocks_acc(
     list(raw_item_block)::in,
@@ -157,61 +151,37 @@ get_dependencies_in_int_imp_in_raw_item_blocks_acc([],
 get_dependencies_in_int_imp_in_raw_item_blocks_acc(
         [RawItemBlock | RawItemBlocks],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
-    RawItemBlock = item_block(Section, _Context, Items),
+    RawItemBlock = item_block(Section, _Context, _Incls, Imports, _Items),
     (
         Section = ms_interface,
-        get_dependencies_in_items_acc(Items, !IntImportDeps, !IntUseDeps)
+        get_dependencies_in_avails_acc(Imports, !IntImportDeps, !IntUseDeps)
     ;
         Section = ms_implementation,
-        get_dependencies_in_items_acc(Items, !ImpImportDeps, !ImpUseDeps)
+        get_dependencies_in_avails_acc(Imports, !ImpImportDeps, !ImpUseDeps)
     ),
     get_dependencies_in_int_imp_in_raw_item_blocks_acc(RawItemBlocks,
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
 
 %-----------------------------------------------------------------------------%
 
-get_dependencies_in_items(Items, ImportDeps, UseDeps) :-
-    get_dependencies_in_items_acc(Items,
-        set.init, ImportDepsSet, set.init, UseDepSet),
-    ImportDeps = set.to_sorted_list(ImportDepsSet),
-    UseDeps = set.to_sorted_list(UseDepSet).
+get_dependencies_in_avails(Avails, ImportDeps, UseDeps) :-
+    get_dependencies_in_avails_acc(Avails,
+        set.init, ImportDeps, set.init, UseDeps).
 
-:- pred get_dependencies_in_items_acc(list(item)::in,
+:- pred get_dependencies_in_avails_acc(list(item_avail)::in,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-get_dependencies_in_items_acc([], !ImportDeps, !UseDeps).
-get_dependencies_in_items_acc([Item | Items], !ImportDeps, !UseDeps) :-
+get_dependencies_in_avails_acc([], !ImportDeps, !UseDeps).
+get_dependencies_in_avails_acc([Avail | Avails], !ImportDeps, !UseDeps) :-
     (
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-        (
-            ModuleDefn = md_import(ImportedModuleName),
-            set.insert(ImportedModuleName, !ImportDeps)
-        ;
-            ModuleDefn = md_use(UsedModuleName),
-            set.insert(UsedModuleName, !UseDeps)
-        ;
-            ModuleDefn = md_include_module(_)
-        )
+        Avail = avail_import(avail_import_info(ModuleName, _, _)),
+        set.insert(ModuleName, !ImportDeps)
     ;
-        ( Item = item_clause(_)
-        ; Item = item_type_defn(_)
-        ; Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_pragma(_)
-        ; Item = item_promise(_)
-        ; Item = item_typeclass(_)
-        ; Item = item_instance(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_mutable(_)
-        ; Item = item_nothing(_)
-        )
+        Avail = avail_use(avail_use_info(ModuleName, _, _)),
+        set.insert(ModuleName, !UseDeps)
     ),
-    get_dependencies_in_items_acc(Items, !ImportDeps, !UseDeps).
+    get_dependencies_in_avails_acc(Avails, !ImportDeps, !UseDeps).
 
 %-----------------------------------------------------------------------------%
 
@@ -231,12 +201,12 @@ get_implicit_dependencies_in_item_blocks(Globals, ItemBlocks,
         ImportDeps, UseDeps).
 
 :- pred compute_implicit_import_needs(globals::in, implicit_import_needs::in,
-    list(module_name)::out, list(module_name)::out) is det.
+    set(module_name)::out, set(module_name)::out) is det.
 
 compute_implicit_import_needs(Globals, ImplicitImportNeeds,
         !:ImportDeps, !:UseDeps) :-
-    !:ImportDeps = [mercury_public_builtin_module],
-    !:UseDeps = [mercury_private_builtin_module],
+    !:ImportDeps = set.make_singleton_set(mercury_public_builtin_module),
+    !:UseDeps = set.make_singleton_set(mercury_private_builtin_module),
     ImplicitImportNeeds = implicit_import_needs(
         ItemsNeedTabling, ItemsNeedTablingStatistics,
         ItemsNeedSTM, ItemsNeedException,
@@ -247,10 +217,10 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
     % to import mercury_table_statistics_module.
     (
         ItemsNeedTabling = do_need_tabling,
-        !:UseDeps = [mercury_table_builtin_module | !.UseDeps],
+        set.insert(mercury_table_builtin_module, !UseDeps),
         (
             ItemsNeedTablingStatistics = do_need_tabling_statistics,
-            !:UseDeps = [mercury_table_statistics_module | !.UseDeps]
+            set.insert(mercury_table_statistics_module, !UseDeps)
         ;
             ItemsNeedTablingStatistics = dont_need_tabling_statistics
         )
@@ -270,47 +240,47 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
                 globals.lookup_bool_option(Globals, trace_table_io, yes)
             )
         ->
-            !:UseDeps = [mercury_table_builtin_module | !.UseDeps]
+            set.insert(mercury_table_builtin_module, !UseDeps)
         ;
             true
         )
     ),
     (
         ItemsNeedSTM = do_need_stm,
-        !:UseDeps = [mercury_stm_builtin_module, mercury_exception_module,
-            mercury_univ_module | !.UseDeps]
+        set.insert_list([mercury_stm_builtin_module, mercury_exception_module,
+            mercury_univ_module], !UseDeps)
     ;
         ItemsNeedSTM = dont_need_stm
     ),
     (
         ItemsNeedException = do_need_exception,
-        !:UseDeps = [mercury_exception_module | !.UseDeps]
+        set.insert(mercury_exception_module, !UseDeps)
     ;
         ItemsNeedException = dont_need_exception
     ),
     (
         ItemsNeedStringFormat = do_need_string_format,
-        !:UseDeps = [mercury_string_format_module,
-            mercury_string_parse_util_module | !.UseDeps]
+        set.insert_list([mercury_string_format_module,
+            mercury_string_parse_util_module], !UseDeps)
     ;
         ItemsNeedStringFormat = dont_need_string_format
     ),
     (
         ItemsNeedStreamFormat = do_need_stream_format,
-        !:UseDeps = [mercury_stream_module | !.UseDeps]
+        set.insert(mercury_stream_module, !UseDeps)
     ;
         ItemsNeedStreamFormat = dont_need_stream_format
     ),
     (
         ItemsNeedIO = do_need_io,
-        !:UseDeps = [mercury_io_module | !.UseDeps]
+        set.insert(mercury_io_module, !UseDeps)
     ;
         ItemsNeedIO = dont_need_io
     ),
     globals.lookup_bool_option(Globals, profile_deep, Deep),
     (
         Deep = yes,
-        !:UseDeps = [mercury_profiling_builtin_module | !.UseDeps]
+        set.insert(mercury_profiling_builtin_module, !UseDeps)
     ;
         Deep = no
     ),
@@ -323,7 +293,7 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
                 record_term_sizes_as_cells, yes)
         )
     ->
-        !:UseDeps = [mercury_term_size_prof_builtin_module | !.UseDeps]
+        set.insert(mercury_term_size_prof_builtin_module, !UseDeps)
     ;
         true
     ),
@@ -335,14 +305,14 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
         HighLevelCode = no,
         Parallel = yes
     ->
-        !:UseDeps = [mercury_par_builtin_module | !.UseDeps]
+        set.insert(mercury_par_builtin_module, !UseDeps)
     ;
         true
     ),
     globals.lookup_bool_option(Globals, use_regions, UseRegions),
     (
         UseRegions = yes,
-        !:UseDeps = [mercury_region_builtin_module | !.UseDeps]
+        set.insert(mercury_region_builtin_module, !UseDeps)
     ;
         UseRegions = no
     ),
@@ -354,12 +324,10 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
         ),
         DisableSSDB = no
     ->
-        !:UseDeps = [mercury_ssdb_builtin_module | !.UseDeps]
+        set.insert(mercury_ssdb_builtin_module, !UseDeps)
     ;
         true
-    ),
-    list.sort_and_remove_dups(!ImportDeps),
-    list.sort_and_remove_dups(!UseDeps).
+    ).
 
 :- type maybe_need_tabling
     --->    dont_need_tabling
@@ -425,7 +393,7 @@ init_implicit_import_needs = ImplicitImportNeeds :-
 gather_implicit_import_needs_in_item_blocks([], !ImplicitImportNeeds).
 gather_implicit_import_needs_in_item_blocks([ItemBlock | ItemBlocks],
         !ImplicitImportNeeds) :-
-    ItemBlock = item_block(_Section, _Context, Items),
+    ItemBlock = item_block(_Section, _Context, _Incls, _Imports, Items),
     gather_implicit_import_needs_in_items(Items,
         !ImplicitImportNeeds),
     gather_implicit_import_needs_in_item_blocks(ItemBlocks,
@@ -539,8 +507,7 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
                 _MaybeUnifyComparePredNames, _ForeignAssertions)
         )
     ;
-        ( Item = item_module_defn(_)
-        ; Item = item_inst_defn(_)
+        ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
@@ -662,7 +629,7 @@ gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds) :-
         ( if
             CalleeSymName = qualified(ModuleName, "format")
         then
-            ( if 
+            ( if
                 ( ModuleName = unqualified("string")
                 ; ModuleName = unqualified("io")
                 )
@@ -828,7 +795,7 @@ get_fact_table_dependencies_in_item_blocks(ItemBlocks, FactTableFileNames) :-
 gather_fact_table_dependencies_in_blocks([], !RevFactTableFileNames).
 gather_fact_table_dependencies_in_blocks([ItemBlock | ItemBlocks],
         !RevFactTableFileNames) :-
-    ItemBlock = item_block(_, _, Items),
+    ItemBlock = item_block(_, _, _, _, Items),
     gather_fact_table_dependencies_in_items(Items, !RevFactTableFileNames),
     gather_fact_table_dependencies_in_blocks(ItemBlocks,
         !RevFactTableFileNames).
@@ -862,7 +829,7 @@ get_foreign_include_files_in_item_blocks(ItemBlocks, IncludeFiles) :-
     is det.
 
 gather_foreign_include_files_in_item_blocks_acc(ItemBlock, !IncludeFiles) :-
-    ItemBlock = item_block(_, _, Items),
+    ItemBlock = item_block(_, _, _, _, Items),
     gather_foreign_include_files_in_items_acc(Items, !IncludeFiles).
 
 :- pred gather_foreign_include_files_in_items_acc(list(item)::in,

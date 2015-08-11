@@ -70,10 +70,10 @@
     %
 :- pred write_trans_opt_file(module_info::in, io::di, io::uo) is det.
 
-    % grab_trans_optfiles(Globals, ModuleList, !ModuleImports, Error, !IO):
+    % grab_trans_optfiles(Globals, ModuleList, !ModuleAndImports, Error, !IO):
     %
     % Add the items from each of the modules in ModuleList.trans_opt to
-    % the items in ModuleImports.
+    % the items in ModuleAndImports.
     %
 :- pred grab_trans_opt_files(globals::in, list(module_name)::in,
     module_and_imports::in, module_and_imports::out, bool::out,
@@ -240,9 +240,11 @@ read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
     maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
 
     ParseTreeOpt = parse_tree_opt(OptModuleName, _OptFileKind, OptContext,
-        OptItems),
+        OptUses, OptItems),
     OptSection = oms_opt_imported(OptModuleName, ofk_trans_opt),
-    OptItemBlock = item_block(OptSection, OptContext, OptItems),
+    OptAvails = list.map(wrap_avail_use, OptUses),
+    OptItemBlock = item_block(OptSection, OptContext,
+        [], OptAvails, OptItems),
     !:OptItemBlocks = cord.snoc(!.OptItemBlocks, OptItemBlock),
     read_trans_opt_files(Globals, Imports, !OptItemBlocks,
         !Specs, !Error, !IO).

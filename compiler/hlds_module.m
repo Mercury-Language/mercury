@@ -880,13 +880,13 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     % separately, or at least record for each import (and use) whether
     % it was explicit or implicit, and one (or more) context where either
     % the explicit imported was requested, or the implicit import was required.
-    AllImportsUses =
-        SrcImportDeps ++ SrcUseDeps ++
-        DirectIntImportDeps ++ DirectIntUseDeps ++
-        IndirectIntImportDeps ++ IndirectIntUseDeps ++
-        OptImportDeps ++ OptUseDeps ++
-        IntForOptImportDeps ++ IntForOptUseDeps,
-    set.list_to_set(AllImportsUses, ImportedModules),
+    ImportedModules = set.union_list([
+        SrcImportDeps, SrcUseDeps,
+        DirectIntImportDeps, DirectIntUseDeps,
+        IndirectIntImportDeps, IndirectIntUseDeps,
+        OptImportDeps, OptUseDeps,
+        IntForOptImportDeps, IntForOptUseDeps]),
+
     set.init(IndirectlyImportedModules),
     set.init(InterfaceModuleSpecs),
     UsedModules = used_modules_init,

@@ -1223,9 +1223,9 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
             MaybeModulesToRecompile = all_modules,
             RawCompUnitsToCompile = RawCompUnits0
         ),
-        RawCompUnitNames =
-            list.map(raw_compilation_unit_project_name, RawCompUnits0),
-        list.delete_all(RawCompUnitNames, ModuleName, NestedCompUnitNames),
+        RawCompUnitNames = set.list_to_set(
+            list.map(raw_compilation_unit_project_name, RawCompUnits0)),
+        set.delete(ModuleName, RawCompUnitNames, NestedCompUnitNames),
 
         find_timestamp_files(Globals, FindTimestampFiles),
 
@@ -1269,7 +1269,7 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
     % i.e. compile nested modules to a single C file.
 
 :- pred compile_all_submodules(globals::in, string::in, module_name::in,
-    maybe(timestamp)::in, list(module_name)::in, have_read_module_maps::in,
+    maybe(timestamp)::in, set(module_name)::in, have_read_module_maps::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(raw_compilation_unit)::in, list(error_spec)::in,
     list(string)::out, list(string)::out, io::di, io::uo) is det.
@@ -1435,7 +1435,7 @@ find_timestamp_files_2(Globals, TimestampSuffix, ModuleName, TimestampFiles,
     % so that new stages can be slotted in without too much trouble.
 
 :- pred compile(globals::in, file_name::in, module_name::in,
-    maybe(timestamp)::in, list(module_name)::in, have_read_module_maps::in,
+    maybe(timestamp)::in, set(module_name)::in, have_read_module_maps::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     raw_compilation_unit::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
@@ -1446,10 +1446,10 @@ compile(Globals, SourceFileName, SourceFileModuleName, MaybeTimestamp,
         RawCompUnit, ExtraObjFiles, !Specs, !IO) :-
     check_for_no_exports(Globals, RawCompUnit, !Specs, !IO),
     RawCompUnit = raw_compilation_unit(ModuleName, _, _),
-    ( ModuleName = SourceFileModuleName ->
+    ( if ModuleName = SourceFileModuleName then
         NestedSubModules = NestedSubModules0
-    ;
-        NestedSubModules = []
+    else
+        set.init(NestedSubModules)
     ),
     grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         MaybeTimestamp, NestedSubModules, RawCompUnit, HaveReadModuleMaps,
@@ -1466,7 +1466,7 @@ compile(Globals, SourceFileName, SourceFileModuleName, MaybeTimestamp,
     ).
 
 :- pred mercury_compile(globals::in, module_and_imports::in,
-    list(module_name)::in,
+    set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(string)::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
@@ -1589,7 +1589,7 @@ prepare_for_intermodule_analysis(Globals, Verbose, Stats, !HLDS, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile_after_front_end(list(module_name)::in,
+:- pred mercury_compile_after_front_end(set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     maybe(module_timestamp_map)::in, module_name::in, module_info::in,
     list(error_spec)::in, list(string)::out, dump_info::in, dump_info::out,
@@ -1646,8 +1646,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             ->
                 HasMain = mlds_has_main(MLDS),
                 io.output_stream(OutputStream, !IO),
-                il_assemble(OutputStream, ModuleName, HasMain,
-                    Globals, Succeeded, !IO),
+                il_assemble(Globals, OutputStream, ModuleName, HasMain,
+                    Succeeded, !IO),
                 maybe_set_exit_status(Succeeded, !IO)
             ;
                 Succeeded = TargetCodeSucceeded
@@ -1669,8 +1669,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 io.output_stream(OutputStream, !IO),
                 module_name_to_file_name(Globals, ModuleName, ".java",
                     do_not_create_dirs, JavaFile, !IO),
-                compile_java_files(OutputStream, [JavaFile],
-                    Globals, Succeeded, !IO),
+                compile_java_files(Globals, OutputStream, [JavaFile],
+                    Succeeded, !IO),
                 maybe_set_exit_status(Succeeded, !IO)
             ;
                 Succeeded = TargetCodeSucceeded
@@ -1694,8 +1694,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                     module_name_to_file_name(Globals, ModuleName, Obj,
                         do_create_dirs, O_File, !IO),
                     io.output_stream(OutputStream, !IO),
-                    do_compile_c_file(OutputStream, PIC,
-                        C_File, O_File, Globals, Succeeded, !IO),
+                    do_compile_c_file(Globals, OutputStream, PIC,
+                        C_File, O_File, Succeeded, !IO),
                     maybe_set_exit_status(Succeeded, !IO)
                 ;
                     Succeeded = TargetCodeSucceeded
@@ -2076,12 +2076,10 @@ maybe_grab_optfiles(Globals, Imports0, Verbose, MaybeTransOptDeps,
             % the .opt or .trans opt file, then import the trans_opt files
             % for all the modules that are imported (or used), and for all
             % ancestor modules.
-            TransOptFilesList =
-                [Imports0 ^ mai_parent_deps,
-                Imports0 ^ mai_int_deps,
-                Imports0 ^ mai_impl_deps],
-            list.condense(TransOptFilesList, TransOptFiles),
-            grab_trans_opt_files(Globals, TransOptFiles, Imports1, Imports,
+            TransOptFiles = set.union_list([Imports0 ^ mai_parent_deps,
+                Imports0 ^ mai_int_deps, Imports0 ^ mai_imp_deps]),
+            set.to_sorted_list(TransOptFiles, TransOptFilesList),
+            grab_trans_opt_files(Globals, TransOptFilesList, Imports1, Imports,
                 Error2, !IO)
         ;
             TransOpt = no,

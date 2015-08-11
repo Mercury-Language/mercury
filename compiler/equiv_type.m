@@ -201,7 +201,7 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
 build_eqv_maps_in_item_blocks([], !TypeEqvMap, !InstEqvMap).
 build_eqv_maps_in_item_blocks([ItemBlock | ItemBlocks],
         !TypeEqvMap, !InstEqvMap) :-
-    ItemBlock = item_block(_Section, _, Items),
+    ItemBlock = item_block(_Section, _, _, _, Items),
     build_eqv_maps_in_items(Items, !TypeEqvMap, !InstEqvMap),
     build_eqv_maps_in_item_blocks(ItemBlocks, !TypeEqvMap, !InstEqvMap).
 
@@ -288,12 +288,13 @@ replace_in_item_blocks(_, _, _, _, [],
 replace_in_item_blocks(ModuleName, TypeEqvMap, InstEqvMap, SectionVisibility,
         [ItemBlock0 | ItemBlocks0],
         !RevReplItemBlocks, !RecompInfo, !UsedModules, !Specs) :-
-    ItemBlock0 = item_block(Section, SectionContext, Items0),
+    ItemBlock0 = item_block(Section, SectionContext, Incls, Avails, Items0),
     MaybeRecord = SectionVisibility(Section),
     replace_in_items(ModuleName, TypeEqvMap, InstEqvMap, MaybeRecord,
         Items0, [], RevReplItems, !RecompInfo, !UsedModules, !Specs),
     list.reverse(RevReplItems, ReplItems),
-    ReplItemBlock = item_block(Section, SectionContext, ReplItems),
+    ReplItemBlock = item_block(Section, SectionContext, Incls, Avails,
+        ReplItems),
     !:RevReplItemBlocks = [ReplItemBlock | !.RevReplItemBlocks],
     replace_in_item_blocks(ModuleName, TypeEqvMap, InstEqvMap,
         SectionVisibility, ItemBlocks0,
@@ -379,8 +380,7 @@ replace_in_item(ModuleName, TypeEqvMap, InstEqvMap, MaybeRecord,
         Item = Item0,
         Specs = []
     ;
-        ( Item0 = item_module_defn(_)
-        ; Item0 = item_clause(_)
+        ( Item0 = item_clause(_)
         ; Item0 = item_inst_defn(_)
         ; Item0 = item_promise(_)
         ; Item0 = item_initialise(_)

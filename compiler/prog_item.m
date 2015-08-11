@@ -58,43 +58,76 @@
 
 :- type parse_tree_src
     --->    parse_tree_src(
-                module_name,
-                prog_context,               % the context of the `:- module'
-                cord(module_component)
+                pts_module_name             :: module_name,
+
+                % The context of the `:- module' declaration.
+                pts_module_name_context     :: prog_context,
+
+                % The contents of the module.
+                pts_components              :: cord(module_component)
             ).
 
 :- type module_component
     --->    mc_section(
-                module_section,
-                prog_context,               % the context of the `:- interface'
-                                            % or `:- implementation'
-                cord(item)
+                mcs_section_kind            :: module_section,
+
+                % The context of the `:- interface' or `:- implementation'
+                % declaration.
+                mcs_section_context         :: prog_context,
+
+                mcs_includes                :: cord(item_include),
+                mcs_avails                  :: cord(item_avail),
+                mcs_items                   :: cord(item)
             )
     ;       mc_nested_submodule(
-                module_section,             % what section is the submodule in
-                prog_context,               % the section's context
-                parse_tree_src
+                % What kind of section is the submodule in?
+                mcns_in_section_kind        :: module_section,
+
+                % The context of the section that the submodule is in.
+                mcns_in_section_context     :: prog_context,
+
+                % The submodule itself.
+                mcns_submodule              :: parse_tree_src
             ).
 
 :- type parse_tree_int
     --->    parse_tree_int(
-                module_name,
-                int_file_kind,
-                prog_context,               % the context of the `:- module'
+                pti_module_name             :: module_name,
+                pti_int_file_kind           :: int_file_kind,
 
-                maybe(version_numbers),     % for .int0, .int and .int2;
-                                            % not for .int3
+                % The context of the `:- module' declaration.
+                pti_module_name_context     :: prog_context,
 
-                list(item),                 % items in the interface section
-                list(item)                  % items in the impl section
+                % For .int0, .int and .int2; not for .int3.
+                pti_maybe_version_numbers   :: maybe(version_numbers),
+
+                % `:- include_module' declarations in the interface and
+                % in the implementation.
+                pti_int_includes            :: list(item_include),
+                pti_imp_includes            :: list(item_include),
+
+                % `:- import_module' and `:- use_module' declarations
+                % in the interface and in the implementation.
+                pti_int_avails              :: list(item_avail),
+                pti_imp_avails              :: list(item_avail),
+
+                % Items in the interface and in the implementation.
+                pti_int_items               :: list(item),
+                pti_imp_items               :: list(item)
             ).
 
 :- type parse_tree_opt
     --->    parse_tree_opt(
-                module_name,
-                opt_file_kind,
-                prog_context,               % the context of the `:- module'
-                list(item)
+                pto_module_name             :: module_name,
+                pto_opt_file_kind           :: opt_file_kind,
+
+                % The context of the `:- module' declaration.
+                pto_module_name_context     :: prog_context,
+
+                % `:- use_module' (not `:- import_module') declarations.
+                pto_uses                    :: list(avail_use_info),
+
+                pto_items                   :: list(item)
             ).
 
 %-----------------------------------------------------------------------------%
@@ -181,6 +214,8 @@
     --->    item_block(
                 MS,
                 prog_context,   % The context of the section marker.
+                list(item_include),
+                list(item_avail),
                 list(item)
             ).
 
@@ -189,18 +224,10 @@
 :- func raw_compilation_unit_project_name(raw_compilation_unit) = module_name.
 :- func aug_compilation_unit_project_name(aug_compilation_unit) = module_name.
 
-:- pred cast_module_components_to_raw_item_blocks(list(module_component)::in,
-    list(raw_item_block)::out) is det.
-
-:- pred separate_int_impl_items(list(raw_item_block)::in,
-    list(item)::in, list(item)::out, list(item)::in, list(item)::out) is det.
-
-:- pred int_impl_items_to_raw_item_blocks(prog_context::in,
-    list(item)::in, list(item)::in, list(raw_item_block)::out) is det.
-
-:- pred int_impl_items_to_specified_item_blocks(prog_context::in,
-    MS::in, list(item)::in, MS::in, list(item)::in, list(item_block(MS))::out)
-    is det.
+:- pred int_imp_items_to_item_blocks(prog_context::in, MS::in, MS::in,
+    list(item_include)::in, list(item_include)::in,
+    list(item_avail)::in, list(item_avail)::in, list(item)::in, list(item)::in,
+    list(item_block(MS))::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -256,8 +283,7 @@
     ;       is_mutable.
 
 :- type item
-    --->    item_module_defn(item_module_defn_info)
-    ;       item_clause(item_clause_info)
+    --->    item_clause(item_clause_info)
     ;       item_type_defn(item_type_defn_info)
     ;       item_inst_defn(item_inst_defn_info)
     ;       item_mode_defn(item_mode_defn_info)
@@ -271,13 +297,6 @@
     ;       item_finalise(item_finalise_info)
     ;       item_mutable(item_mutable_info)
     ;       item_nothing(item_nothing_info).
-
-:- type item_module_defn_info
-    --->    item_module_defn_info(
-                module_defn_module_defn         :: module_defn,
-                module_defn_context             :: prog_context,
-                module_defn_seq_num             :: int
-            ).
 
 :- type item_clause_info
     --->    item_clause_info(
@@ -469,6 +488,73 @@
                 string,         % The warning.
                 term            % The term to which it relates.
             ).
+
+%-----------------------------------------------------------------------------%
+%
+% Declarations of relationships between modules.
+%
+
+:- type item_include
+    --->    item_include(
+                % The representation of an `:- include_module' declaration
+                % is a list of one or more item_includes, each of which
+                % declares the named module to be a submodule of the
+                % current module,
+
+                incl_module                     :: module_name,
+
+                % The context and item sequence number of the declaration.
+                incl_context                    :: prog_context,
+                incl_seq_num                    :: int
+            ).
+
+    % get_included_modules_in_item_blocks(ItemBlocks, IncludeDeps):
+    %
+    % IncludeDeps is the list of submodules named in `:- include_module'
+    % declarations in ItemBlocks.
+    %
+:- pred get_included_modules_in_item_blocks(list(item_block(MS))::in,
+    set(module_name)::out) is det.
+
+:- type import_or_use
+    --->    import_decl
+    ;       use_decl.
+
+    % The representation of an `:- import_module' or an `:- % use_module'
+    % declaration is a list of one or more item_import_uses, each of which
+    % makes available to the current module the entities in the interface
+    % of the module named in the declaration.
+    %
+    % With avail_use, references to these entities must be module qualified;
+    % with avail_import, they don't have to be.
+
+:- type item_avail
+    --->    avail_import(avail_import_info)
+    ;       avail_use(avail_use_info).
+
+    % The structures of avail_import_info and avail_use_info are the same,
+    % with the first argument being the name of the module that is the subject
+    % of the import_module or use_module declaration, and the second and third
+    % being the context and item sequence number of the declaration.
+    %
+    % The two types are separate to allow parse_tree_opts to contain only
+    % values of a type that makes it clear that they contain information
+    % ONLY about use_module declarations, not import_module declarations.
+:- type avail_import_info
+    --->    avail_import_info(module_name, prog_context, int).
+:- type avail_use_info
+    --->    avail_use_info(module_name, prog_context, int).
+
+:- pred avail_is_import(item_avail::in) is semidet.
+
+:- func wrap_avail_use(avail_use_info) = item_avail.
+
+:- pred avail_imports_uses(list(item_avail)::in,
+    list(avail_import_info)::out, list(avail_use_info)::out) is det.
+
+:- func item_avail_module_name(item_avail) = module_name.
+:- func avail_import_info_module_name(avail_import_info) = module_name.
+:- func avail_use_info_module_name(avail_use_info) = module_name.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1050,32 +1136,6 @@
 :- func goal_get_context(goal) = prog_context.
 
 %-----------------------------------------------------------------------------%
-%
-% Module system.
-%
-
-    % This type used to record most module-system declarations, such as
-    % section markers and imports. It is now a grab-bag of leftovers,
-    % but that should be fixed soon. XXX ITEM_LIST
-    %
-:- type module_defn
-    --->    md_include_module(module_name)
-            % The named module is a submodule of the current module.
-            % XXX ITEM_LIST This should be a separate kind of item.
-
-    ;       md_import(module_name)
-    ;       md_use(module_name).
-            % Import the entities listed in the interface of the named module
-            % into the current module. With md_use, references to these
-            % entities must be module qualified; with md_import, they don't
-            % have to be.
-            % XXX ITEM_LIST Make this a single function symbol, with two
-            % arguments: a module name and an import_or_use flag.
-            % XXX ITEM_LIST Once the other function symbols of this type have
-            % been removed, the type could be renamed, together with the item
-            % kind that contains it.
-
-%-----------------------------------------------------------------------------%
 
 :- type contains_foreign_code
     --->    contains_foreign_code(set(foreign_language))
@@ -1110,66 +1170,29 @@ raw_compilation_unit_project_name(RawCompUnit) =
 aug_compilation_unit_project_name(AugCompUnit) =
     AugCompUnit ^ aci_module_name.
 
-cast_module_components_to_raw_item_blocks([], []).
-cast_module_components_to_raw_item_blocks([Component | Components],
-        [RawItemBlock | RawItemBlocks]) :-
-    (
-        Component = mc_section(Section, Context, ItemCord),
-        Items = cord.list(ItemCord),
-        RawItemBlock = item_block(Section, Context, Items)
-    ;
-        Component = mc_nested_submodule(_, _, _),
-        unexpected($module, $pred, "unexpected nested submodule")
-    ),
-    cast_module_components_to_raw_item_blocks(Components, RawItemBlocks).
-
-separate_int_impl_items([], !IntItems, !ImplItems).
-separate_int_impl_items([ItemBlock | ItemBlocks], !IntItems, !ImplItems) :-
-    separate_int_impl_items(ItemBlocks, !IntItems, !ImplItems),
-    ItemBlock = item_block(Section, _Context, Items),
-    (
-        Section = ms_interface,
-        !:IntItems = Items ++ !.IntItems
-    ;
-        Section = ms_implementation,
-        !:ImplItems = Items ++ !.ImplItems
-    ).
-
-int_impl_items_to_raw_item_blocks(Context, IntItems, ImplItems,
-        RawItemBlocks) :-
-    (
-        ImplItems = [],
-        RawItemBlocks0 = []
-    ;
-        ImplItems = [_ | _],
-        RawImplBlock = item_block(ms_implementation, Context, ImplItems),
-        RawItemBlocks0 = [RawImplBlock]
-    ),
-    (
-        IntItems = [],
-        RawItemBlocks = RawItemBlocks0
-    ;
-        IntItems = [_ | _],
-        RawIntBlock = item_block(ms_interface, Context, IntItems),
-        RawItemBlocks = [RawIntBlock | RawItemBlocks0]
-    ).
-
-int_impl_items_to_specified_item_blocks(Context, IntSection, IntItems,
-        ImplSection, ImplItems, ItemBlocks) :-
-    (
-        ImplItems = [],
+int_imp_items_to_item_blocks(Context, IntSection, ImpSection,
+        IntIncls, ImpIncls, IntAvails, ImpAvails, IntItems, ImpItems,
+        ItemBlocks) :-
+    ( if
+        ImpIncls = [],
+        ImpAvails = [],
+        ImpItems = []
+    then
         ItemBlocks0 = []
-    ;
-        ImplItems = [_ | _],
-        ImplBlock = item_block(ImplSection, Context, ImplItems),
-        ItemBlocks0 = [ImplBlock]
+    else
+        ImpBlock = item_block(ImpSection, Context,
+            ImpIncls, ImpAvails, ImpItems),
+        ItemBlocks0 = [ImpBlock]
     ),
-    (
-        IntItems = [],
+    ( if
+        IntIncls = [],
+        IntAvails = [],
+        IntItems = []
+    then
         ItemBlocks = ItemBlocks0
-    ;
-        IntItems = [_ | _],
-        IntBlock = item_block(IntSection, Context, IntItems),
+    else
+        IntBlock = item_block(IntSection, Context,
+            IntIncls, IntAvails, IntItems),
         ItemBlocks = [IntBlock | ItemBlocks0]
     ).
 
@@ -1178,7 +1201,7 @@ int_impl_items_to_specified_item_blocks(Context, IntSection, IntItems,
 
 item_blocks_to_src([], []).
 item_blocks_to_src([ItemBlock | ItemBlocks], [SrcItemBlock | SrcItemBlocks]) :-
-    ItemBlock = item_block(Section, SectionContext, Items),
+    ItemBlock = item_block(Section, Context, Incls, Avails, Items),
     (
         Section = ms_interface,
         SrcSection = sms_interface
@@ -1186,16 +1209,13 @@ item_blocks_to_src([ItemBlock | ItemBlocks], [SrcItemBlock | SrcItemBlocks]) :-
         Section = ms_implementation,
         SrcSection = sms_implementation
     ),
-    SrcItemBlock = item_block(SrcSection, SectionContext, Items),
+    SrcItemBlock = item_block(SrcSection, Context, Incls, Avails, Items),
     item_blocks_to_src(ItemBlocks, SrcItemBlocks).
 
 %-----------------------------------------------------------------------------%
 
 get_item_context(Item) = Context :-
     (
-        Item = item_module_defn(ItemModuleDefn),
-        Context = ItemModuleDefn ^ module_defn_context
-    ;
         Item = item_clause(ItemClause),
         Context = ItemClause ^ cl_context
     ;
@@ -1238,6 +1258,58 @@ get_item_context(Item) = Context :-
         Item = item_nothing(ItemNothing),
         Context = ItemNothing ^ nothing_context
     ).
+
+%-----------------------------------------------------------------------------%
+
+get_included_modules_in_item_blocks(ItemBlocks, IncludedModuleNames) :-
+    get_included_modules_in_item_blocks_acc(ItemBlocks,
+        set.init, IncludedModuleNames).
+
+:- pred get_included_modules_in_item_blocks_acc(list(item_block(MS))::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+get_included_modules_in_item_blocks_acc([], !IncludedModuleNames).
+get_included_modules_in_item_blocks_acc([ItemBlock | ItemBlocks],
+        !IncludedModuleNames) :-
+    ItemBlock = item_block(_, _, Incls, _Avails, _Items),
+    ModuleNames = list.map(project_item_include_module_name, Incls),
+    set.insert_list(ModuleNames, !IncludedModuleNames),
+    get_included_modules_in_item_blocks_acc(ItemBlocks, !IncludedModuleNames).
+
+:- func project_item_include_module_name(item_include) = module_name.
+
+project_item_include_module_name(item_include(ModuleName, _, _)) = ModuleName.
+
+avail_is_import(Avail) :-
+    Avail = avail_import(_).
+
+wrap_avail_use(AvailUseInfo) = avail_use(AvailUseInfo).
+
+avail_imports_uses([], [], []).
+avail_imports_uses([Avail | Avails], !:Imports, !:Uses) :-
+    avail_imports_uses(Avails, !:Imports, !:Uses),
+    (
+        Avail = avail_import(AvailImportInfo),
+        !:Imports = [AvailImportInfo | !.Imports]
+    ;
+        Avail = avail_use(AvailUseInfo),
+        !:Uses = [AvailUseInfo | !.Uses]
+    ).
+
+item_avail_module_name(ItemAvail) = ModuleName :-
+    (
+        ItemAvail = avail_import(AvailImportInfo),
+        AvailImportInfo = avail_import_info(ModuleName, _, _)
+    ;
+        ItemAvail = avail_use(AvailUseInfo),
+        AvailUseInfo = avail_use_info(ModuleName, _, _)
+    ).
+
+avail_import_info_module_name(AvailImportInfo) = ModuleName :-
+    AvailImportInfo = avail_import_info(ModuleName, _, _).
+
+avail_use_info_module_name(AvailUseInfo) = ModuleName :-
+    AvailUseInfo = avail_use_info(ModuleName, _, _).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1545,7 +1617,7 @@ get_foreign_code_indicators_from_item_blocks(Globals, ItemBlocks,
     module_foreign_info::in, module_foreign_info::out) is det.
 
 get_foreign_code_indicators_from_item_block(Globals, ItemBlock, !Info) :-
-    ItemBlock = item_block(_, _, Items),
+    ItemBlock = item_block(_, _, _, _, Items),
     list.foldl(get_foreign_code_indicators_from_item(Globals), Items, !Info).
 
 :- pred get_foreign_code_indicators_from_item(globals::in, item::in,
@@ -1579,8 +1651,7 @@ get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
         !Info ^ used_foreign_languages := UsedForeignLanguages,
         !Info ^ module_has_foreign_export := contains_foreign_export
     ;
-        ( Item = item_module_defn(_)
-        ; Item = item_clause(_)
+        ( Item = item_clause(_)
         ; Item = item_type_defn(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)

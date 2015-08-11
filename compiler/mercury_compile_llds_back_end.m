@@ -873,8 +873,8 @@ llds_c_to_obj(Globals, ErrorStream, ModuleName, Succeeded, !IO) :-
         C_File, !IO),
     module_name_to_file_name(Globals, ModuleName, Obj, do_create_dirs,
         O_File, !IO),
-    compile_target_code.do_compile_c_file(ErrorStream, PIC, C_File, O_File,
-        Globals, Succeeded, !IO).
+    compile_target_code.do_compile_c_file(Globals, ErrorStream, PIC,
+        C_File, O_File, Succeeded, !IO).
 
 :- pred compile_fact_table_file(globals::in, io.output_stream::in, string::in,
     string::out, bool::out, io::di, io::uo) is det.
@@ -886,8 +886,8 @@ compile_fact_table_file(Globals, ErrorStream, BaseName, O_File, Succeeded,
     maybe_pic_object_file_extension(Globals, PIC, Obj),
     C_File = BaseName ++ ".c",
     O_File = BaseName ++ Obj,
-    compile_target_code.do_compile_c_file(ErrorStream, PIC, C_File, O_File,
-        Globals, Succeeded, !IO).
+    compile_target_code.do_compile_c_file(Globals, ErrorStream, PIC,
+        C_File, O_File, Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module top_level.mercury_compile_llds_back_end.

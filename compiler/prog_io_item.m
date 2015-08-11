@@ -29,13 +29,12 @@
     % This type represents the result of parsing one term.
 :- type item_or_marker
     --->    iom_item(item)
-            % The term contains an item. Almost all items are returned like
-            % this.
-    ;       iom_items(one_or_more(item))
-            % The term contains one or more items. This is returned for
-            % `:- import_module', `:- use_module' and `:- include_module'
-            % declarations, which we return as a separate item for each
-            % imported, used or included module name.
+            % The term contains an item.
+    ;       iom_marker_include(one_or_more(item_include))
+            % The term contains an `:- import_module' declaration.
+    ;       iom_marker_avail(one_or_more(item_avail))
+            % The term contains an `:- import_module' or `:- use_module'
+            % declaration.
     ;       iom_marker_version_numbers(version_numbers)
             % The term was a record of the version numbers of the items
             % in an interface file.
@@ -232,53 +231,66 @@ parse_module_marker(Functor, ArgTerms, Context, SeqNum, Marker) :-
 parse_items_shorthand(ModuleName, VarSet, Functor, ArgTerms, Context, SeqNum,
         MaybeIOM) :-
     (
-        Functor = "import_module",
-        Parser = parse_module_name(VarSet),
-        Maker = make_import_item(Context, SeqNum)
-    ;
-        Functor = "use_module",
-        Parser = parse_module_name(VarSet),
-        Maker = make_use_item(Context, SeqNum)
-    ;
         Functor = "include_module",
-        Parser = parse_implicitly_qualified_module_name(ModuleName, VarSet),
-        Maker = make_include_item(Context, SeqNum)
+        Parser = parse_implicitly_qualified_module_name(ModuleName, VarSet)
+    ;
+        ( Functor = "import_module"
+        ; Functor = "use_module"
+        ),
+        Parser = parse_module_name(VarSet)
     ),
     ArgTerms = [ModuleNamesTerm],
     parse_one_or_more(Parser, ModuleNamesTerm, MaybeModuleNames),
     (
-        MaybeModuleNames = ok1(one_or_more(HeadModuleName, TailModuleNames)),
-        Maker(HeadModuleName, HeadItem),
-        list.map(Maker, TailModuleNames, TailItems),
-        MaybeIOM = ok1(iom_items(one_or_more(HeadItem, TailItems)))
+        MaybeModuleNames = ok1(ModuleNames),
+        ModuleNames = one_or_more(HeadModuleName, TailModuleNames),
+        (
+            Functor = "include_module",
+            make_item_include(Context, SeqNum,
+                HeadModuleName, HeadIncl),
+            list.map(make_item_include(Context, SeqNum),
+                TailModuleNames, TailIncls),
+            IOM = iom_marker_include(one_or_more(HeadIncl, TailIncls))
+        ;
+            Functor = "import_module",
+            make_item_avail_import(Context, SeqNum,
+                HeadModuleName, HeadImport),
+            list.map(make_item_avail_import(Context, SeqNum),
+                TailModuleNames, TailImports),
+            IOM = iom_marker_avail(one_or_more(HeadImport, TailImports))
+        ;
+            Functor = "use_module",
+            make_item_avail_use(Context, SeqNum,
+                HeadModuleName, HeadUse),
+            list.map(make_item_avail_use(Context, SeqNum),
+                TailModuleNames, TailUses),
+            IOM = iom_marker_avail(one_or_more(HeadUse, TailUses))
+        ),
+        MaybeIOM = ok1(IOM)
     ;
         MaybeModuleNames = error1(Specs),
         MaybeIOM = error1(Specs)
     ).
 
-:- pred make_import_item(term.context::in, int::in, module_name::in,
-    item::out) is det.
+:- pred make_item_include(prog_context::in, int::in, module_name::in,
+    item_include::out) is det.
 
-make_import_item(Context, SeqNum, ModuleName, Item) :-
-    ModuleDefn = md_import(ModuleName),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
-    Item = item_module_defn(ItemModuleDefn).
+make_item_include(Context, SeqNum, ModuleName, Incl) :-
+    Incl = item_include(ModuleName, Context, SeqNum).
 
-:- pred make_use_item(term.context::in, int::in, module_name::in,
-    item::out) is det.
+:- pred make_item_avail_import(prog_context::in, int::in,
+    module_name::in, item_avail::out) is det.
 
-make_use_item(Context, SeqNum, ModuleName, Item) :-
-    ModuleDefn = md_use(ModuleName),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
-    Item = item_module_defn(ItemModuleDefn).
+make_item_avail_import(Context, SeqNum, ModuleName, Avail) :-
+    AvailImportInfo = avail_import_info(ModuleName, Context, SeqNum),
+    Avail = avail_import(AvailImportInfo).
 
-:- pred make_include_item(term.context::in, int::in, module_name::in,
-    item::out) is det.
+:- pred make_item_avail_use(prog_context::in, int::in,
+    module_name::in, item_avail::out) is det.
 
-make_include_item(Context, SeqNum, ModuleName, Item) :-
-    ModuleDefn = md_include_module(ModuleName),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
-    Item = item_module_defn(ItemModuleDefn).
+make_item_avail_use(Context, SeqNum, ModuleName, Avail) :-
+    AvailUseInfo = avail_use_info(ModuleName, Context, SeqNum),
+    Avail = avail_use(AvailUseInfo).
 
 %-----------------------------------------------------------------------------%
 

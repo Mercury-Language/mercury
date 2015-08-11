@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module list.
+:- import_module set.
 :- import_module term.
 
     % The order that the sym_name function symbols appear in can be significant
@@ -37,6 +38,7 @@
     % [`foo', `foo.bar'].
     %
 :- func get_ancestors(module_name) = list(module_name).
+:- func get_ancestors_set(module_name) = set(module_name).
 
     % string_to_sym_name_sep(String, Separator) = SymName:
     %
@@ -206,6 +208,8 @@ get_ancestors(ModuleName) = get_ancestors_2(ModuleName, []).
 get_ancestors_2(unqualified(_), Ancestors) = Ancestors.
 get_ancestors_2(qualified(Parent, _), Ancestors0) =
     get_ancestors_2(Parent, [Parent | Ancestors0]).
+
+get_ancestors_set(ModuleName) = set.list_to_set(get_ancestors(ModuleName)).
 
 %-----------------------------------------------------------------------------%
 

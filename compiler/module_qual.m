@@ -237,11 +237,12 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
 
 module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
     ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        MaybeVersionNumbers, IntItems0, ImpItems0),
-    IntSrcItemBlocks0 =
-        [item_block(sms_interface, term.context_init, IntItems0)],
-    ImpSrcItemBlocks0 =
-        [item_block(sms_implementation, term.context_init, ImpItems0)],
+        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntItems0, ImpItems0),
+    IntSrcItemBlocks0 = [item_block(sms_interface, term.context_init,
+        IntIncls, IntAvails, IntItems0)],
+    ImpSrcItemBlocks0 = [item_block(sms_implementation, term.context_init,
+        ImpIncls, ImpAvails, ImpItems0)],
     % XXX ITEM_LIST The completely separate treatment of the interface
     % and implementation part of an interface file preserves old behavior;
     % write_short_interface_file in write_module_interface_files.m used
@@ -269,7 +270,8 @@ module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
             ImpItems0, ImpItems, !.ImpInfo, _, !Specs)
     ),
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        MaybeVersionNumbers, IntItems, ImpItems).
+        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntItems, ImpItems).
 
 %-----------------------------------------------------------------------------%
 
@@ -336,10 +338,26 @@ int_section_mq_info(ims_abstract_imported(_ModuleName, _IntFileKind),
 collect_mq_info_in_item_blocks(_, [], !Info).
 collect_mq_info_in_item_blocks(SectionInfo, [ItemBlock | ItemBlocks],
         !Info) :-
-    ItemBlock = item_block(Section, _Context, Items),
+    ItemBlock = item_block(Section, _Context, Incls, Avails, Items),
     SectionInfo(Section, MQSection, NeedQual),
+    list.foldl(collect_mq_info_in_item_include(NeedQual), Incls, !Info),
+    list.foldl(collect_mq_info_in_item_avail(MQSection), Avails, !Info),
     collect_mq_info_in_items(MQSection, NeedQual, Items, !Info),
     collect_mq_info_in_item_blocks(SectionInfo, ItemBlocks, !Info).
+
+:- pred collect_mq_info_in_item_include(need_qualifier::in,
+    item_include::in, mq_info::in, mq_info::out) is det.
+
+collect_mq_info_in_item_include(NeedQual, Incl, !Info) :-
+    Incl = item_include(IncludedModuleName, _Context, _SeqNum),
+    add_included_module(NeedQual, IncludedModuleName, !Info).
+
+:- pred collect_mq_info_in_item_avail(mq_section::in,
+    item_avail::in, mq_info::in, mq_info::out) is det.
+
+collect_mq_info_in_item_avail(MQSection, Avail, !Info) :-
+    ModuleName = item_avail_module_name(Avail),
+    maybe_add_import(MQSection, ModuleName, !Info).
 
     % Pass over the item list collecting all defined module, type, mode and
     % inst ids, all module synonym definitions, and the names of all
@@ -358,18 +376,6 @@ collect_mq_info_in_items(MQSection, NeedQual, [Item | Items], !Info) :-
 
 collect_mq_info_in_item(MQSection, NeedQual, Item, !Info) :-
     (
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-        (
-            ModuleDefn = md_include_module(IncludedModuleName),
-            add_included_module(NeedQual, IncludedModuleName, !Info)
-        ;
-            ( ModuleDefn = md_import(ImportedModuleName)
-            ; ModuleDefn = md_use(ImportedModuleName)
-            ),
-            maybe_add_import(MQSection, ImportedModuleName, !Info)
-        )
-    ;
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(SymName, Params, _, _, _, _),
         ( if MQSection = mq_section_abstract_imported then
@@ -517,7 +523,7 @@ add_included_module(NeedQual, ModuleName, !Info) :-
 :- pred maybe_add_import(mq_section::in, module_name::in,
     mq_info::in, mq_info::out) is det.
 
-maybe_add_import(MQSection, ImportedModuleName, !Info) :-
+maybe_add_import(MQSection, ModuleName, !Info) :-
     % Modules imported from the the proper private interface of ancestors of
     % the current module are treated as if they were directly imported
     % by the current module.
@@ -533,17 +539,17 @@ maybe_add_import(MQSection, ImportedModuleName, !Info) :-
 
     (
         MQSection = mq_section_local,
-        add_module_to_imported_modules(ImportedModuleName, !Info)
+        add_module_to_imported_modules(ModuleName, !Info)
     ;
         MQSection = mq_section_exported,
-        add_module_to_imported_modules(ImportedModuleName, !Info),
-        add_module_to_unused_interface_modules(ImportedModuleName, !Info),
-        add_module_to_interface_visible_modules(ImportedModuleName, !Info)
+        add_module_to_imported_modules(ModuleName, !Info),
+        add_module_to_unused_interface_modules(ModuleName, !Info),
+        add_module_to_interface_visible_modules(ModuleName, !Info)
     ;
         MQSection = mq_section_imported(
             import_locn_ancestor_private_interface_proper),
-        add_module_to_imported_modules(ImportedModuleName, !Info),
-        add_module_to_interface_visible_modules(ImportedModuleName, !Info)
+        add_module_to_imported_modules(ModuleName, !Info),
+        add_module_to_interface_visible_modules(ModuleName, !Info)
     ;
         ( MQSection = mq_section_imported(import_locn_interface)
         ; MQSection = mq_section_imported(import_locn_implementation)
@@ -556,27 +562,27 @@ maybe_add_import(MQSection, ImportedModuleName, !Info) :-
     mq_info::in, mq_info::out) is det.
 :- pragma inline(add_module_to_imported_modules/3).
 
-add_module_to_imported_modules(ImportedModuleName, !Info) :-
+add_module_to_imported_modules(ModuleName, !Info) :-
     mq_info_get_imported_modules(!.Info, Modules0),
-    set.insert(ImportedModuleName, Modules0, Modules),
+    set.insert(ModuleName, Modules0, Modules),
     mq_info_set_imported_modules(Modules, !Info).
 
 :- pred add_module_to_unused_interface_modules(module_name::in,
     mq_info::in, mq_info::out) is det.
 :- pragma inline(add_module_to_unused_interface_modules/3).
 
-add_module_to_unused_interface_modules(ImportedModuleName, !Info) :-
+add_module_to_unused_interface_modules(ModuleName, !Info) :-
     mq_info_get_unused_interface_modules(!.Info, UnusedIntModules0),
-    set.insert(ImportedModuleName, UnusedIntModules0, UnusedIntModules),
+    set.insert(ModuleName, UnusedIntModules0, UnusedIntModules),
     mq_info_set_unused_interface_modules(UnusedIntModules, !Info).
 
 :- pred add_module_to_interface_visible_modules(module_name::in,
     mq_info::in, mq_info::out) is det.
 :- pragma inline(add_module_to_interface_visible_modules/3).
 
-add_module_to_interface_visible_modules(ImportedModuleName, !Info) :-
+add_module_to_interface_visible_modules(ModuleName, !Info) :-
     mq_info_get_interface_visible_modules(!.Info, IntModules0),
-    set.insert(ImportedModuleName, IntModules0, IntModules),
+    set.insert(ModuleName, IntModules0, IntModules),
     mq_info_set_interface_visible_modules(IntModules, !Info).
 
 %-----------------------------------------------------------------------------%
@@ -786,7 +792,7 @@ term_qualified_symbols_list([Term | Terms], Symbols) :-
 module_qualify_items_in_src_item_blocks([], [], !Info, !Specs).
 module_qualify_items_in_src_item_blocks([SrcItemBlock0 | SrcItemBlocks0],
         [SrcItemBlock | SrcItemBlocks], !Info, !Specs) :-
-    SrcItemBlock0 = item_block(SrcSection, Context, Items0),
+    SrcItemBlock0 = item_block(SrcSection, Context, Incls, Avails, Items0),
     (
         SrcSection = sms_interface,
         InInt = mq_used_in_interface
@@ -796,8 +802,22 @@ module_qualify_items_in_src_item_blocks([SrcItemBlock0 | SrcItemBlocks0],
         ),
         InInt = mq_not_used_in_interface
     ),
+    (
+        Incls = []
+    ;
+        Incls = [_ | _],
+        % The submodule might make use of *any* of the imported modules.
+        % There is no way for us to tell which ones. So we conservatively
+        % assume that it uses *all* of them.
+        % XXX ITEM_LIST Fix this too-conservative behavior.
+        % If a submodule needs a module that the parent doesn't,
+        % it should import it for itself. Anything else may lead to
+        % unnecessary recompilations.
+        set.init(UnusedInterfaceModules),
+        mq_info_set_unused_interface_modules(UnusedInterfaceModules, !Info)
+    ),
     module_qualify_items_loop(InInt, Items0, Items, !Info, !Specs),
-    SrcItemBlock = item_block(SrcSection, Context, Items),
+    SrcItemBlock = item_block(SrcSection, Context, Incls, Avails, Items),
     module_qualify_items_in_src_item_blocks(SrcItemBlocks0, SrcItemBlocks,
         !Info, !Specs).
 
@@ -824,26 +844,6 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
         ; Item0 = item_finalise(_)
         ; Item0 = item_promise(_)
         ; Item0 = item_nothing(_)
-        ),
-        Item = Item0
-    ;
-        Item0 = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-        (
-            ( ModuleDefn = md_import(_)
-            ; ModuleDefn = md_use(_)
-            )
-        ;
-            ModuleDefn = md_include_module(_),
-            % The submodule might make use of *any* of the imported modules.
-            % There is no way for us to tell which ones.
-            % So we conservatively assume that it uses all of them.
-            % XXX ITEM_LIST Fix this too-conservative behavior.
-            % If a submodule needs a module that the parent doesn't,
-            % it should import it for itself. Anything else may lead to
-            % unnecessary recompilations.
-            set.init(UnusedInterfaceModules),
-            mq_info_set_unused_interface_modules(UnusedInterfaceModules, !Info)
         ),
         Item = Item0
     ;
@@ -2705,9 +2705,9 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         ImportDepsC, UseDepsC),
     get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksD,
         ImportDepsD, UseDepsD),
-    ImportDeps = ImportDepsA ++ ImportDepsB ++ ImportDepsC ++ ImportDepsD,
-    UseDeps = UseDepsA ++ UseDepsB ++ UseDepsC ++ UseDepsD,
-    set.list_to_set(ImportDeps ++ UseDeps, ImportedModules),
+    ImportedModules = set.union_list(
+        [ImportDepsA, ImportDepsB, ImportDepsC, ImportDepsD,
+        UseDepsA, UseDepsB, UseDepsC, UseDepsD]),
 
     % Ancestor modules are visible without being explicitly imported.
     set.insert_list([ModuleName | get_ancestors(ModuleName)],

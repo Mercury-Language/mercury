@@ -90,10 +90,14 @@ check_int_for_no_exports(Globals, IntRawCompUnit, !Specs, !IO) :-
 do_ms_interface_item_blocks_export_anything([], no).
 do_ms_interface_item_blocks_export_anything([RawItemBlock | RawItemBlocks],
         ExportAnything) :-
-    RawItemBlock = item_block(Section, _, Items),
+    RawItemBlock = item_block(Section, _, Incls, _Avails, Items),
     ( if
         Section = ms_interface,
-        do_ms_interface_items_export_anything(Items, yes)
+        % XXX ITEM_LIST Should we return "yes" for an item_block
+        % that contains only ONE include_module declaration?
+        ( Incls = [_ | _]
+        ; do_ms_interface_items_export_anything(Items, yes)
+        )
     then
         ExportAnything = yes
     else
@@ -106,15 +110,7 @@ do_ms_interface_item_blocks_export_anything([RawItemBlock | RawItemBlocks],
 
 do_ms_interface_items_export_anything([], no).
 do_ms_interface_items_export_anything([Item | Items], ExportAnything) :-
-    ( if
-        (
-            Item = item_nothing(_)
-        ;
-            Item = item_module_defn(ItemModuleDefn),
-            ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-            ModuleDefn \= md_include_module(_)
-        )
-    then
+    ( if Item = item_nothing(_) then
         % Item is not useful when exported; keep searching.
         do_ms_interface_items_export_anything(Items, ExportAnything)
     else

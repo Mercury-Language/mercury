@@ -264,8 +264,20 @@ read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
         MaybeFileName, ReadModuleAndTimestamps, MaybeTimestampRes,
         ParseTreeInt, ModuleSpecs, Errors, !IO),
     ParseTreeInt = parse_tree_int(ActualModuleName, _IntFileKind, _Context,
-        _MaybeVersionNumbers, IntItems, ImplItems),
-    ( if IntItems = [], ImplItems = [] then IsEmpty = yes else IsEmpty = no),
+        _MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntItems, ImplItems),
+    ( if
+        IntIncls = [],
+        ImpIncls = [],
+        IntAvails = [],
+        IntItems = [],
+        ImpAvails = [],
+        ImplItems = []
+    then
+        IsEmpty = yes
+    else
+        IsEmpty = no
+    ),
     read_module_end(Globals, IgnoreErrors, VeryVerbose,
         ModuleName, ActualModuleName, FileName0, MaybeFileName, FileName,
         MaybeTimestampRes, MaybeTimestamp, IsEmpty,

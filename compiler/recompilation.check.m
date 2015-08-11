@@ -740,10 +740,13 @@ check_imported_module(Globals, Term, !Info, !IO) :-
             ( if
                 MaybeUsedItemsTerm = yes(UsedItemsTerm),
                 ParseTreeInt = parse_tree_int(_, _, ModuleContext,
-                    MaybeVersionNumbers, IntItems, ImplItems),
+                    MaybeVersionNumbers, IntIncls, ImpIncls,
+                    IntAvails, ImpAvails, IntItems, ImplItems),
                 MaybeVersionNumbers = yes(VersionNumbers)
             then
-                int_impl_items_to_raw_item_blocks(ModuleContext,
+                int_imp_items_to_item_blocks(ModuleContext,
+                    ms_interface, ms_implementation,
+                    IntIncls, ImpIncls, IntAvails, ImpAvails,
                     IntItems, ImplItems, RawItemBlocks),
                 check_module_used_items(ImportedModuleName, NeedQualifier,
                     RecordedTimestamp, UsedItemsTerm, VersionNumbers,
@@ -910,7 +913,7 @@ check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
 
 check_raw_item_block_for_ambiguities(NeedQualifier, OldTimestamp,
         VersionNumbers, RawItemBlock, !Info) :-
-    RawItemBlock = item_block(_, _, Items),
+    RawItemBlock = item_block(_, _, _Incls, _Avails, Items),
     list.foldl(
         check_item_for_ambiguities(NeedQualifier, OldTimestamp,
             VersionNumbers),
@@ -974,8 +977,7 @@ check_item_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
             VersionNumbers, PredOrFunc, Name, Args, WithType, !Info)
     ;
-        ( Item = item_module_defn(_)
-        ; Item = item_mode_decl(_)
+        ( Item = item_mode_decl(_)
         ; Item = item_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_instance(_)
