@@ -15,7 +15,7 @@
 %
 % - It module qualifies types, typeclasses, insts and modes within declaration
 %   items in the source code of the compilation unit. The heads of all
-%   declarations should be module qualified as they are read in in prog_io.m;
+%   declarations should be module qualified as they are read in by prog_io.m;
 %   this module qualifies the bodies of those declarations.
 %
 %   Note that we don't qualify the parts of the augmented compilation unit
@@ -256,23 +256,20 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
     % the interface of the importing module, except if the importing
     % module itself exports _no_ type class instances.
     %
-    mq_info_get_unused_interface_modules(!.Info, UnusedImports0),
+    mq_info_get_as_yet_unused_interface_modules(!.Info, UnusedImportsMap0),
     mq_info_get_exported_instances_flag(!.Info, ModuleExportsInstances),
     (
         ModuleExportsInstances = yes,
         mq_info_get_imported_instance_modules(!.Info, InstanceImports),
-        set.difference(UnusedImports0, InstanceImports, UnusedImports1)
+        map.delete_list(set.to_sorted_list(InstanceImports),
+            UnusedImportsMap0, UnusedImportsMap)
     ;
         ModuleExportsInstances = no,
-        UnusedImports1 = UnusedImports0
+        UnusedImportsMap = UnusedImportsMap0
     ),
-    set.to_sorted_list(UnusedImports1, UnusedImports),
-    % XXX ITEM_LIST Currently we report all modules whose imports
-    % are unnecessarily in the interface using the context of the
-    % `:- module' declaration of the module. We should use the contexts
-    % of the actual imports themselves.
-    maybe_warn_unused_interface_imports(ModuleName, ModuleNameContext,
-        UnusedImports, !Specs).
+    map.to_assoc_list(UnusedImportsMap, UnusedImports),
+    list.foldl(warn_unused_interface_import(ModuleName), UnusedImports,
+        !Specs).
 
 module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
     ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
@@ -395,8 +392,10 @@ collect_mq_info_in_item_include(NeedQual, Incl, !Info) :-
     item_avail::in, mq_info::in, mq_info::out) is det.
 
 collect_mq_info_in_item_avail(MQSection, Avail, !Info) :-
-    ModuleName = item_avail_module_name(Avail),
-    maybe_add_import(MQSection, ModuleName, !Info).
+    ( Avail = avail_import(avail_import_info(ModuleName, Context, _SeqNum))
+    ; Avail = avail_use(avail_use_info(ModuleName, Context, _SeqNum))
+    ),
+    maybe_add_import(MQSection, ModuleName, Context, !Info).
 
     % Pass over the item list collecting all defined module, type, mode and
     % inst ids, all module synonym definitions, and the names of all
@@ -468,8 +467,8 @@ collect_mq_info_in_item(MQSection, NeedQual, Item, !Info) :-
             % the imported modules. There is no way for us to tell which ones,
             % so we conservatively assume that it uses *all* of them.
             FoundUnqual = yes,
-            set.init(UnusedInterfaceModules),
-            mq_info_set_unused_interface_modules(UnusedInterfaceModules, !Info)
+            map.init(UnusedModules),
+            mq_info_set_as_yet_unused_interface_modules(UnusedModules, !Info)
         )
     ;
         Item = item_typeclass(ItemTypeClass),
@@ -540,16 +539,16 @@ add_included_module(NeedQual, ModuleName, !Info) :-
 
     % For import declarations (`:- import_module' or `:- use_module'),
     % if we are currently in the interface section, then add the
-    % imported modules to the unused_interface_modules list.
+    % imported modules to the as_yet_unused_interface_modules list.
     %
     % XXX ITEM_LIST Why do we base this decision on the status we get
     % from the mq_info, instead of directly on the current section's
     % section kind?
     %
-:- pred maybe_add_import(mq_section::in, module_name::in,
+:- pred maybe_add_import(mq_section::in, module_name::in, prog_context::in,
     mq_info::in, mq_info::out) is det.
 
-maybe_add_import(MQSection, ModuleName, !Info) :-
+maybe_add_import(MQSection, ModuleName, Context, !Info) :-
     % Modules imported from the the proper private interface of ancestors of
     % the current module are treated as if they were directly imported
     % by the current module.
@@ -557,7 +556,7 @@ maybe_add_import(MQSection, ModuleName, !Info) :-
 
     % We check that all modules imported in the interface are used
     % in the interface.
-    % (Handled by add_module_to_unused_interface_modules.)
+    % (Handled by add_module_to_as_yet_unused_interface_modules.)
 
     % Only modules imported in the interface or in the private
     % interface of ancestor modules may be used in the interface.
@@ -569,7 +568,8 @@ maybe_add_import(MQSection, ModuleName, !Info) :-
     ;
         MQSection = mq_section_exported,
         add_module_to_imported_modules(ModuleName, !Info),
-        add_module_to_unused_interface_modules(ModuleName, !Info),
+        add_module_to_as_yet_unused_interface_modules(ModuleName, Context,
+            !Info),
         add_module_to_interface_visible_modules(ModuleName, !Info)
     ;
         MQSection = mq_section_imported(
@@ -593,14 +593,23 @@ add_module_to_imported_modules(ModuleName, !Info) :-
     set.insert(ModuleName, Modules0, Modules),
     mq_info_set_imported_modules(Modules, !Info).
 
-:- pred add_module_to_unused_interface_modules(module_name::in,
-    mq_info::in, mq_info::out) is det.
-:- pragma inline(add_module_to_unused_interface_modules/3).
+:- pred add_module_to_as_yet_unused_interface_modules(module_name::in,
+    prog_context::in, mq_info::in, mq_info::out) is det.
+:- pragma inline(add_module_to_as_yet_unused_interface_modules/4).
 
-add_module_to_unused_interface_modules(ModuleName, !Info) :-
-    mq_info_get_unused_interface_modules(!.Info, UnusedIntModules0),
-    set.insert(ModuleName, UnusedIntModules0, UnusedIntModules),
-    mq_info_set_unused_interface_modules(UnusedIntModules, !Info).
+add_module_to_as_yet_unused_interface_modules(ModuleName, Context, !Info) :-
+    mq_info_get_as_yet_unused_interface_modules(!.Info, UnusedIntModules0),
+    ( if map.search(UnusedIntModules0, ModuleName, OldContexts) then
+        OldContexts = one_or_more(OldHeadContext, OldTailContexts),
+        NewContexts = one_or_more(Context, [OldHeadContext | OldTailContexts]),
+        map.det_update(ModuleName, NewContexts,
+            UnusedIntModules0, UnusedIntModules)
+    else
+        NewContexts = one_or_more(Context, []),
+        map.det_insert(ModuleName, NewContexts,
+            UnusedIntModules0, UnusedIntModules)
+    ),
+    mq_info_set_as_yet_unused_interface_modules(UnusedIntModules, !Info).
 
 :- pred add_module_to_interface_visible_modules(module_name::in,
     mq_info::in, mq_info::out) is det.
@@ -786,8 +795,8 @@ module_qualify_items_in_src_item_blocks([SrcItemBlock0 | SrcItemBlocks0],
         % If a submodule needs a module that the parent doesn't,
         % it should import it for itself. Anything else may lead to
         % unnecessary recompilations.
-        set.init(UnusedInterfaceModules),
-        mq_info_set_unused_interface_modules(UnusedInterfaceModules, !Info)
+        map.init(UnusedModules),
+        mq_info_set_as_yet_unused_interface_modules(UnusedModules, !Info)
     ),
     module_qualify_items_loop(InInt, Items0, Items, !Info, !Specs),
     SrcItemBlock = item_block(SrcSection, Context, Incls, Avails, Items),
@@ -966,13 +975,13 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
         % forms of the instance types, since printing two error messages about
         % one instance definition that make apparently contradictory
         % assumptions about whether the instance types are equiv-type-expanded
-        % or not wouldd be confusing. However, I (zs) cannot think of any
+        % or not would be confusing. However, I (zs) cannot think of any
         % compelling reason right now for preferring the error messages
         % from one version of the types over the other.
         qualify_type_list(InInt, ErrorContext, Types0, Types,
             !Info, !Specs),
-        qualify_type_list(InInt, ErrorContext,
-            OriginalTypes0, OriginalTypes, !Info, !.Specs, _),
+        qualify_type_list(InInt, ErrorContext, OriginalTypes0, OriginalTypes,
+            !Info, !.Specs, _),
         qualify_instance_body(Name, Body0, Body),
         ItemInstance = item_instance_info(Name, Types, OriginalTypes,
             Constraints, Body, VarSet, ModName, Context, SeqNum),
@@ -2518,46 +2527,40 @@ id_types_to_string(mode_id, "modes").
 id_types_to_string(inst_id, "insts").
 id_types_to_string(class_id, "typeclasses").
 
-    % Warn about modules imported in the interface when they do not need to be.
+    % Warn about a module imported in the interface that is not used
+    % in the interface.
     %
-:- pred maybe_warn_unused_interface_imports(module_name::in, prog_context::in,
-    list(module_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred warn_unused_interface_import(module_name::in,
+    pair(module_name, one_or_more(prog_context))::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_warn_unused_interface_imports(ModuleName, Context, UnusedImports,
-        !Specs) :-
-    (
-        UnusedImports = []
-    ;
-        UnusedImports = [_ | _],
-        UnusedSymNames = list.map(wrap_module_name, UnusedImports),
-        Pieces = [words("In module"), sym_name(ModuleName), suffix(":"), nl,
-            words("warning:"),
-            words(choose_number(UnusedImports, "module", "modules"))] ++
-            component_list_to_pieces(UnusedSymNames) ++
-            [words(choose_number(UnusedImports, "is", "are")),
-            words("imported in the interface,"),
-            words("but"), words(choose_number(UnusedImports, "is", "are")),
-            words("not used in the interface.")],
-        Msg = simple_msg(Context,
-            [option_is_set(warn_interface_imports, yes, [always(Pieces)])]),
-        Severity = severity_conditional(warn_interface_imports, yes,
-            severity_warning, no),
-        Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
-    ).
+warn_unused_interface_import(ParentModuleName,
+        ImportedModuleName - ImportContexts, !Specs) :-
+    ImportContexts = one_or_more(HeadContext, TailContexts),
+    HeadPieces =
+        [words("In module"), sym_name(ParentModuleName), suffix(":"), nl,
+        words("warning: module"), sym_name(ImportedModuleName),
+        words("is imported in the interface,"),
+        words("but it is not used in the interface."), nl],
+    HeadMsg = simple_msg(HeadContext,
+        [option_is_set(warn_interface_imports, yes, [always(HeadPieces)])]),
+    % TailContexts is almost always [], we add TailMsgs just in case it isn't.
+    list.map(warn_redundant_import_context(ImportedModuleName),
+        TailContexts, TailMsgs),
+    Severity = severity_conditional(warn_interface_imports, yes,
+        severity_warning, no),
+    Spec = error_spec(Severity, phase_parse_tree_to_hlds,
+        [HeadMsg | TailMsgs]),
+    !:Specs = [Spec | !.Specs].
 
-:- func wrap_module_name(module_name) = format_component.
+:- pred warn_redundant_import_context(module_name::in, prog_context::in,
+    error_msg::out) is det.
 
-wrap_module_name(SymName) = sym_name(SymName).
-
-:- func wrap_type_ctor(type_ctor) = format_component.
-
-wrap_type_ctor(type_ctor(SymName, Arity)) =
-    sym_name_and_arity(SymName / Arity).
-
-:- func wrap_id(mq_id) = format_component.
-
-wrap_id(mq_id(SymName, Arity)) = sym_name_and_arity(SymName / Arity).
+warn_redundant_import_context(ImportedModuleName, Context, Msg) :-
+    Pieces = [words("Module"), sym_name(ImportedModuleName),
+        words("is also redundantly imported here."), nl],
+    Msg = simple_msg(Context,
+        [option_is_set(warn_interface_imports, yes, [always(Pieces)])]).
 
     % Output an error message about an ill-formed user_inst.
     %
@@ -2571,6 +2574,21 @@ report_invalid_user_inst(_SymName, _Insts, ErrorContext, !Specs) :-
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
+
+%-----------------------------------------------------------------------------%
+
+:- func wrap_module_name(module_name) = format_component.
+
+wrap_module_name(SymName) = sym_name(SymName).
+
+:- func wrap_type_ctor(type_ctor) = format_component.
+
+wrap_type_ctor(type_ctor(SymName, Arity)) =
+    sym_name_and_arity(SymName / Arity).
+
+:- func wrap_id(mq_id) = format_component.
+
+wrap_id(mq_id(SymName, Arity)) = sym_name_and_arity(SymName / Arity).
 
 %-----------------------------------------------------------------------------%
 
@@ -2617,9 +2635,11 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
                 % Modules which have been imported or used in the interface.
                 mqi_interface_visible_modules   :: set(module_name),
 
-                % Modules imported in the interface that are not definitely
-                % needed in the interface.
-                mqi_unused_interface_modules    :: set(module_name),
+                % Map each modules known to be imported in the interface
+                % that is not yet known to be needed in the interface
+                % to the location (or sometimes, locations) of the import.
+                mqi_as_yet_unused_interface_modules :: map(module_name,
+                                                    one_or_more(prog_context)),
 
                 mqi_maybe_recompilation_info    :: maybe(recompilation_info),
 
@@ -2648,8 +2668,6 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
 
 init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         ItemBlocksD, ReportErrors, Info) :-
-    set.init(InterfaceModules0),
-    set.init(InstanceModules),
     id_set_init(ModuleIdSet),
     id_set_init(TypeIdSet),
     id_set_init(ImplTypeIdSet),
@@ -2668,9 +2686,13 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         [ImportDepsA, ImportDepsB, ImportDepsC, ImportDepsD,
         UseDepsA, UseDepsB, UseDepsC, UseDepsD]),
 
+    set.init(InstanceModules),
+
     % Ancestor modules are visible without being explicitly imported.
     set.insert_list([ModuleName | get_ancestors(ModuleName)],
         ImportedModules, InterfaceVisibleModules),
+
+    map.init(AsYetUnusedInterfaceModules),
 
     globals.lookup_bool_option(Globals, smart_recompilation,
         SmartRecompilation),
@@ -2686,7 +2708,7 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         ModuleIdSet, TypeIdSet, ImplTypeIdSet,
         InstIdSet, ModeIdSet, ClassIdSet,
         InstanceModules, ImportedModules,
-        InterfaceVisibleModules, InterfaceModules0,
+        InterfaceVisibleModules, AsYetUnusedInterfaceModules,
         MaybeRecompInfo,
         ExportedInstancesFlag, no, no, ReportErrors, 0).
 
@@ -2702,8 +2724,8 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
     is det.
 :- pred mq_info_get_interface_visible_modules(mq_info::in,
     set(module_name)::out) is det.
-:- pred mq_info_get_unused_interface_modules(mq_info::in,
-    set(module_name)::out) is det.
+:- pred mq_info_get_as_yet_unused_interface_modules(mq_info::in,
+    map(module_name, one_or_more(prog_context))::out) is det.
 :- pred mq_info_get_exported_instances_flag(mq_info::in, bool::out) is det.
 % :- pred mq_info_get_type_error_flag(mq_info::in, bool::out) is det.
 % :- pred mq_info_get_mode_error_flag(mq_info::in, bool::out) is det.
@@ -2727,8 +2749,8 @@ mq_info_get_imported_modules(Info, X) :-
     X = Info ^ mqi_imported_modules.
 mq_info_get_interface_visible_modules(Info, X) :-
     X = Info ^ mqi_interface_visible_modules.
-mq_info_get_unused_interface_modules(Info, X) :-
-    X = Info ^ mqi_unused_interface_modules.
+mq_info_get_as_yet_unused_interface_modules(Info, X) :-
+    X = Info ^ mqi_as_yet_unused_interface_modules.
 mq_info_get_exported_instances_flag(Info, X) :-
     X = Info ^ mqi_exported_instances_flag.
 mq_info_get_type_error_flag(Info, X) :-
@@ -2758,7 +2780,8 @@ mq_info_get_recompilation_info(Info, X) :-
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_interface_visible_modules(set(module_name)::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_unused_interface_modules(set(module_name)::in,
+:- pred mq_info_set_as_yet_unused_interface_modules(
+    map(module_name, one_or_more(prog_context))::in,
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_exported_instances_flag(bool::in,
     mq_info::in, mq_info::out) is det.
@@ -2783,8 +2806,8 @@ mq_info_set_imported_modules(X, !Info) :-
     !Info ^ mqi_imported_modules := X.
 mq_info_set_interface_visible_modules(X, !Info) :-
     !Info ^ mqi_interface_visible_modules := X.
-mq_info_set_unused_interface_modules(X, !Info) :-
-    !Info ^ mqi_unused_interface_modules := X.
+mq_info_set_as_yet_unused_interface_modules(X, !Info) :-
+    !Info ^ mqi_as_yet_unused_interface_modules := X.
 mq_info_set_exported_instances_flag(X, !Info) :-
     !Info ^ mqi_exported_instances_flag := X.
 mq_info_set_type_error_flag(!Info) :-
@@ -2823,9 +2846,9 @@ mq_info_set_error_flag_2(class_id, !Info) :-
 mq_info_set_module_used(InInt, Module, !Info) :-
     (
         InInt = mq_used_in_interface,
-        mq_info_get_unused_interface_modules(!.Info, Modules0),
-        set.delete(Module, Modules0, Modules),
-        mq_info_set_unused_interface_modules(Modules, !Info),
+        mq_info_get_as_yet_unused_interface_modules(!.Info, AsYetUnused0),
+        map.delete(Module, AsYetUnused0, AsYetUnused),
+        mq_info_set_as_yet_unused_interface_modules(AsYetUnused, !Info),
         (
             Module = qualified(ParentModule, _),
             mq_info_set_module_used(InInt, ParentModule, !Info)
