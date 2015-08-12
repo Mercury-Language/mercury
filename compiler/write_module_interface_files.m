@@ -1628,35 +1628,28 @@ get_short_interface_from_raw_item_blocks(Kind, [RawItemBlock | RawItemBlocks],
 
 get_short_interface_from_items_acc(_Kind, [], !ItemsCord).
 get_short_interface_from_items_acc(Kind, [Item | Items], !ItemsCord) :-
-    % XXX ITEM_LIST Try to do this with one switch on Item, not three.
-    % Expand include_in_short_interface to take Kind, and return
-    % one of three possibilities: include as is, include abstract, and
-    % do not include.
-    ( if make_abstract_defn(Item, Kind, AbstractItem) then
-        !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
-    else if make_abstract_unify_compare(Item, Kind, AbstractItem) then
-        !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
-    else
-        ShouldInclude = include_in_short_interface(Item),
-        (
-            ShouldInclude = yes,
-            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
-        ;
-            ShouldInclude = no
-        )
-    ),
-    get_short_interface_from_items_acc(Kind, Items, !ItemsCord).
-
-:- func include_in_short_interface(item) = bool.
-
-include_in_short_interface(Item) = ShouldInclude :-
     (
-        ( Item = item_type_defn(_)
-        ; Item = item_inst_defn(_)
+        Item = item_type_defn(ItemTypeDefnInfo),
+        maybe_make_abstract_type_defn(Kind,
+            ItemTypeDefnInfo, MaybeAbstractItemTypeDefnInfo),
+        MaybeAbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
+        !:ItemsCord = cord.snoc(!.ItemsCord, MaybeAbstractItem)
+    ;
+        Item = item_typeclass(ItemTypeClassInfo),
+        make_abstract_typeclass(ItemTypeClassInfo, AbstractItemTypeClassInfo),
+        AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
+        !:ItemsCord = cord.snoc(!.ItemsCord, AbstractItem)
+    ;
+        Item = item_instance(ItemInstanceInfo),
+        maybe_make_abstract_instance(Kind,
+            ItemInstanceInfo, MaybeAbstractItemInstanceInfo),
+        MaybeAbstractItem = item_instance(MaybeAbstractItemInstanceInfo),
+        !:ItemsCord = cord.snoc(!.ItemsCord, MaybeAbstractItem)
+    ;
+        ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
-        ; Item = item_instance(_)
         ),
-        ShouldInclude = yes
+        !:ItemsCord = cord.snoc(!.ItemsCord, Item)
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
@@ -1664,23 +1657,24 @@ include_in_short_interface(Item) = ShouldInclude :-
         % we should take pragma_foreign_import_modules out of the pragma items
         % and given them their own item type.
         ( if Pragma = pragma_foreign_import_module(_) then
-            ShouldInclude = yes
+            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
         else
-            ShouldInclude = no
+            true
+            % Do not include Item in !ItemsCord.
         )
     ;
         ( Item = item_clause(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
         ; Item = item_promise(_)
-        ; Item = item_typeclass(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
         ; Item = item_nothing(_)
-        ),
-        ShouldInclude = no
-    ).
+        )
+        % Do not include Item in !ItemsCord.
+    ),
+    get_short_interface_from_items_acc(Kind, Items, !ItemsCord).
 
 :- type maybe_need_imports
     --->    dont_need_imports

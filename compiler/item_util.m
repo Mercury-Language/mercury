@@ -33,11 +33,14 @@
     % and made det, returning the unchanged item if it does not need to be made
     % abstract (so we can use det switches instead semidet tests in the code).
     %
-:- pred make_abstract_defn(item::in, short_int_file_kind::in, item::out)
-    is semidet.
+:- pred maybe_make_abstract_type_defn(short_int_file_kind::in,
+    item_type_defn_info::in, item_type_defn_info::out) is det.
 
-:- pred make_abstract_unify_compare(item::in, short_int_file_kind::in,
-    item::out) is semidet.
+:- pred make_abstract_typeclass(item_typeclass_info::in,
+    item_typeclass_info::out) is det.
+
+:- pred maybe_make_abstract_instance(short_int_file_kind::in,
+    item_instance_info::in, item_instance_info::out) is det.
 
     % All instance declarations must be written to `.int' files as
     % abstract instance declarations, because the method names have not yet
@@ -70,99 +73,115 @@
 
 %-----------------------------------------------------------------------------%
 
-make_abstract_defn(Item, ShortIntFileKind, AbstractItem) :-
-    (
-        Item = item_type_defn(ItemTypeDefn),
-        TypeDefn = ItemTypeDefn ^ td_ctor_defn,
-        (
-            TypeDefn = parse_tree_du_type(Ctors, _, _),
-            ( du_type_is_enum(Ctors, NumBits) ->
-                AbstractDetails = abstract_enum_type(NumBits)
-            ;
-                AbstractDetails = abstract_type_general
-            ),
-            % For the `.int2' files, we need the full definitions of
-            % discriminated union types. Even if the functors for a type
-            % are not used within a module, we may need to know them for
-            % comparing insts, e.g. for comparing `ground' and `bound(...)'.
-            ShortIntFileKind = sifk_int3
-        ;
-            TypeDefn = parse_tree_abstract_type(AbstractDetails)
-        ;
-            TypeDefn = parse_tree_solver_type(_, _),
-            % rafe: XXX we need to also export the details of the
-            % forwarding type for the representation and the forwarding
-            % pred for initialization.
-            AbstractDetails = abstract_solver_type
-        ;
-            TypeDefn = parse_tree_eqv_type(_),
-            % XXX is this right for solver types?
-            AbstractDetails = abstract_type_general,
-            % For the `.int2' files, we need the full definitions of
-            % equivalence types. They are needed to ensure that
-            % non-abstract equivalence types always get fully expanded
-            % before code generation, even in modules that only indirectly
-            % import the definition of the equivalence type.
-            % But the full definitions are not needed for the `.int3'
-            % files. So we convert equivalence types into abstract types
-            % only for the `.int3' files.
-            ShortIntFileKind = sifk_int3
-        ;
-            TypeDefn = parse_tree_foreign_type(_, _, _),
-            % We always need the definitions of foreign types
-            % to handle inter-language interfacing correctly.
-            AbstractDetails = abstract_type_general,
-            semidet_fail
-        ),
-        AbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
-            := parse_tree_abstract_type(AbstractDetails),
-        AbstractItem = item_type_defn(AbstractItemTypeDefn)
-    ;
-        Item = item_instance(ItemInstance),
-        ShortIntFileKind = sifk_int2,
-        AbstractItemInstance = make_instance_abstract(ItemInstance),
-        AbstractItem = item_instance(AbstractItemInstance)
-    ;
-        Item = item_typeclass(ItemTypeClass),
-        AbstractItemTypeClass = ItemTypeClass ^ tc_class_methods
-            := class_interface_abstract,
-        AbstractItem = item_typeclass(AbstractItemTypeClass)
-    ).
-
-make_abstract_unify_compare(Item, sifk_int2, AbstractItem) :-
-    Item = item_type_defn(ItemTypeDefn),
+maybe_make_abstract_type_defn(ShortIntFileKind,
+        ItemTypeDefn, MaybeAbstractItemTypeDefn) :-
     TypeDefn = ItemTypeDefn ^ td_ctor_defn,
     (
-        TypeDefn = parse_tree_du_type(Constructors,
-            yes(_UserEqComp), MaybeDirectArgCtors),
-        AbstractTypeDefn = parse_tree_du_type(Constructors,
-            yes(abstract_noncanonical_type(non_solver_type)),
-            MaybeDirectArgCtors)
+        TypeDefn = parse_tree_du_type(Ctors, MaybeUserEqComp,
+            MaybeDirectArgCtors),
+        % For the `.int2' files, we need the full definitions of
+        % discriminated union types. Even if the functors for a type
+        % are not used within a module, we may need to know them for
+        % comparing insts, e.g. for comparing `ground' and `bound(...)'.
+        (
+            ShortIntFileKind = sifk_int2,
+            (
+                MaybeUserEqComp = no,
+                MaybeAbstractItemTypeDefn = ItemTypeDefn
+            ;
+                MaybeUserEqComp = yes(_UserEqComp),
+                AbstractTypeDefn = parse_tree_du_type(Ctors,
+                    yes(abstract_noncanonical_type(non_solver_type)),
+                    MaybeDirectArgCtors),
+                MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
+                    AbstractTypeDefn
+            )
+        ;
+            ShortIntFileKind = sifk_int3,
+            ( if du_type_is_enum(Ctors, NumBits) then
+                AbstractDetails = abstract_enum_type(NumBits)
+            else
+                AbstractDetails = abstract_type_general
+            ),
+            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
+                := parse_tree_abstract_type(AbstractDetails)
+        )
     ;
-        TypeDefn = parse_tree_foreign_type(ForeignType,
-            yes(_UserEqComp), Assertions),
-        AbstractTypeDefn = parse_tree_foreign_type(ForeignType,
-            yes(abstract_noncanonical_type(non_solver_type)), Assertions)
+        TypeDefn = parse_tree_abstract_type(AbstractDetails),
+        MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
+            := parse_tree_abstract_type(AbstractDetails)
     ;
-        TypeDefn = parse_tree_solver_type(SolverTypeDetails,
-            yes(_UserEqComp)),
-        AbstractTypeDefn = parse_tree_solver_type(SolverTypeDetails,
-            yes(abstract_noncanonical_type(solver_type)))
-    ),
-    AbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn := AbstractTypeDefn,
-    AbstractItem = item_type_defn(AbstractItemTypeDefn).
+        TypeDefn = parse_tree_solver_type(_, _),
+        % rafe: XXX we need to also export the details of the
+        % forwarding type for the representation and the forwarding
+        % pred for initialization.
+        AbstractDetails = abstract_solver_type,
+        MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
+            := parse_tree_abstract_type(AbstractDetails)
+    ;
+        TypeDefn = parse_tree_eqv_type(_),
+        % For the `.int2' files, we need the full definitions of
+        % equivalence types. They are needed to ensure that
+        % non-abstract equivalence types always get fully expanded
+        % before code generation, even in modules that only indirectly
+        % import the definition of the equivalence type.
+        % But the full definitions are not needed for the `.int3'
+        % files. So we convert equivalence types into abstract types
+        % only for the `.int3' files.
+        (
+            ShortIntFileKind = sifk_int2,
+            MaybeAbstractItemTypeDefn = ItemTypeDefn
+        ;
+            ShortIntFileKind = sifk_int3,
+            % XXX is this right for solver types?
+            AbstractDetails = abstract_type_general,
+            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn
+                := parse_tree_abstract_type(AbstractDetails)
+        )
+    ;
+        TypeDefn = parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
+            Assertions),
+        % We always need the definitions of foreign types
+        % to handle inter-language interfacing correctly.
+        % However, we want to abstract away any unify and compare predicates.
+        (
+            MaybeUserEqComp = no,
+            MaybeAbstractItemTypeDefn = ItemTypeDefn
+        ;
+            MaybeUserEqComp = yes(_UserEqComp),
+            AbstractTypeDefn = parse_tree_foreign_type(ForeignType,
+                yes(abstract_noncanonical_type(non_solver_type)), Assertions),
+            MaybeAbstractItemTypeDefn = ItemTypeDefn ^ td_ctor_defn :=
+                AbstractTypeDefn
+        )
+    ).
 
-make_instance_abstract(Info0) = Info :-
-    Info = Info0 ^ ci_method_instances := instance_body_abstract.
+make_abstract_typeclass(ItemTypeClass, AbstractItemTypeClass) :-
+    AbstractItemTypeClass = ItemTypeClass ^ tc_class_methods
+        := class_interface_abstract.
+
+maybe_make_abstract_instance(ShortIntFileKind,
+        ItemInstance, MaybeAbstractItemInstance) :-
+    (
+        ShortIntFileKind = sifk_int2,
+        MaybeAbstractItemInstance = make_instance_abstract(ItemInstance)
+    ;
+        ShortIntFileKind = sifk_int3,
+        MaybeAbstractItemInstance = ItemInstance
+    ).
+
+make_instance_abstract(ItemInstance0) = ItemInstance :-
+    ItemInstance = ItemInstance0 ^ ci_method_instances
+        := instance_body_abstract.
 
 %-----------------------------------------------------------------------------%
 
 item_needs_imports(Item) = NeedsImports :-
     (
         Item = item_type_defn(ItemTypeDefn),
-        ( ItemTypeDefn ^ td_ctor_defn = parse_tree_abstract_type(_) ->
+        ( if ItemTypeDefn ^ td_ctor_defn = parse_tree_abstract_type(_) then
             NeedsImports = no
-        ;
+        else
             NeedsImports = yes
         )
     ;
@@ -192,12 +211,12 @@ item_needs_foreign_imports(Item) = Langs :-
         Langs = all_foreign_languages
     ;
         Item = item_type_defn(ItemTypeDefn),
-        (
+        ( if
             ItemTypeDefn ^ td_ctor_defn =
                 parse_tree_foreign_type(ForeignType, _, _)
-        ->
+        then
             Langs = [foreign_type_language(ForeignType)]
-        ;
+        else
             Langs = []
         )
     ;

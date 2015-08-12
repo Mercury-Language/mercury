@@ -81,6 +81,7 @@
 
 :- import_module bool.
 :- import_module cord.
+:- import_module maybe.
 :- import_module set.
 :- import_module term.
 
@@ -243,25 +244,12 @@ get_ifile_and_noifile_in_items_acc(IncludeImplTypes, GatherNoIFileItems,
             GatherNoIFileItems = gather_noifile_items,
             !:NoIFileItemsCord = cord.snoc(!.NoIFileItemsCord, Item)
         ),
-        % XXX ITEM_LIST Make include_in_int_file_implementation return
-        % a maybe(item), which is the abstract item if needed.
         % XXX ITEM_LIST Unify include_in_int_file_implementation with
         % include_in_short_interface.
         ( if
             IncludeImplTypes = include_impl_types,
-            include_in_int_file_implementation(Item) = yes
+            include_in_int_file_implementation(Item) = yes(IFileItem)
         then
-            ( if
-                make_abstract_defn(Item, sifk_int2, AbstractItem)
-            then
-                IFileItem = AbstractItem
-            else if
-                make_abstract_unify_compare(Item, sifk_int2, AbstractItem)
-            then
-                IFileItem = AbstractItem
-            else
-                IFileItem = Item
-            ),
             !:IFileItemsCord = cord.snoc(!.IFileItemsCord, IFileItem)
         else
             true
@@ -270,17 +258,23 @@ get_ifile_and_noifile_in_items_acc(IncludeImplTypes, GatherNoIFileItems,
     get_ifile_and_noifile_in_items_acc(IncludeImplTypes, GatherNoIFileItems,
         Section, Items, !IFileItemsCord, !NoIFileItemsCord).
 
-:- func include_in_int_file_implementation(item) = bool.
+:- func include_in_int_file_implementation(item) = maybe(item).
 
-include_in_int_file_implementation(Item) = Include :-
+include_in_int_file_implementation(Item) = MaybeIFileItem :-
     (
         % `:- typeclass declarations' may be referred to by the constructors
         % in type declarations. Since these constructors are abstractly
         % exported, we won't need the local instance declarations.
-        ( Item = item_type_defn(_)
-        ; Item = item_typeclass(_)
-        ),
-        Include = yes
+        Item = item_type_defn(ItemTypeDefnInfo),
+        maybe_make_abstract_type_defn(sifk_int2,
+            ItemTypeDefnInfo, MaybeAbstractItemTypeDefnInfo),
+        AbstractItem = item_type_defn(MaybeAbstractItemTypeDefnInfo),
+        MaybeIFileItem = yes(AbstractItem)
+    ;
+        Item = item_typeclass(ItemTypeClassInfo),
+        make_abstract_typeclass(ItemTypeClassInfo, AbstractItemTypeClassInfo),
+        AbstractItem = item_typeclass(AbstractItemTypeClassInfo),
+        MaybeIFileItem = yes(AbstractItem)
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
@@ -288,9 +282,9 @@ include_in_int_file_implementation(Item) = Include :-
             ( Pragma = pragma_foreign_import_module(_)
             ; Pragma = pragma_foreign_enum(_)
             ),
-            Include = yes
+            MaybeIFileItem = yes(Item)
         ;
-            % XXX I am not sure about the proper value of Include
+            % XXX I am not sure about the proper value of MaybeIFileItem
             % for some of these. -zs
             ( Pragma = pragma_foreign_decl(_)
             ; Pragma = pragma_foreign_code(_)
@@ -324,7 +318,7 @@ include_in_int_file_implementation(Item) = Include :-
             ; Pragma = pragma_structure_reuse(_)
             ; Pragma = pragma_require_feature_set(_)
             ),
-            Include = no
+            MaybeIFileItem = no
         )
     ;
         ( Item = item_clause(_)
@@ -339,7 +333,7 @@ include_in_int_file_implementation(Item) = Include :-
         ; Item = item_mutable(_)
         ; Item = item_nothing(_)
         ),
-        Include = no
+        MaybeIFileItem = no
     ).
 
 %---------------------------------------------------------------------------%
