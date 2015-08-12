@@ -9,15 +9,54 @@
 % File: module_qual.m.
 % Main authors: stayl, fjh.
 %
-% Module qualifies types, insts and modes within declaration items.
-% The head of all declarations should be module qualified in prog_io.m.
-% This module qualifies the bodies of the declarations. Checks for
-% undefined types, insts and modes. Uses two passes over the item list,
-% one to collect all type, mode and inst ids and a second to do the
-% qualification and report errors. If the --warn-interface-imports
-% option is set, warns about modules imported in the interface that do
-% not need to be in the interface. The modes of lambda expressions are
-% qualified in modes.m.
+% The code in this module performs two tasks.
+%
+% - It checks for undefined types, typeclasses, insts and modes.
+%
+% - It module qualifies types, typeclasses, insts and modes within declaration
+%   items in the source code of the compilation unit. The heads of all
+%   declarations should be module qualified as they are read in in prog_io.m;
+%   this module qualifies the bodies of those declarations.
+%
+%   Note that we don't qualify the parts of the augmented compilation unit
+%   that derive from other modules' interface or optimization files, since
+%   those parts should be read in fully module qualified already.
+%
+% The algorithm we use does two passes over all the items in the compilation
+% unit. The first pass records the set of modules, types, typeclasses, insts
+% and modes that are visible in the compilation unit. The second uses this
+% information to actually do this module's job.
+%
+% If any type, typeclass, inst or mode used in the module is not uniquely
+% module qualifiable, i.e. if we either find zero matches for it, or we find
+% two or more matches for it, we can generate an error message for it.
+% We do so when we are module qualifying a compilation unit; we don't when
+% we are qualifying the contents of an interface file.
+%
+% If the --warn-interface-imports option is set, we generate warnings about
+% modules imported in the interface that are not used in the interface.
+%
+% Note that this module is NOT the only place in the compiler that does module
+% qualification. The modes of lambda expressions are qualified in modes.m,
+% and predicate and function names are qualified during typecheck, with
+% the results recorded during the post_typecheck phase of the purity pass.
+% This is because figuring out whether e.g. a call to predicate `p' calls
+% module m1's predicate p or module m2's predicate p may require knowing
+% the types of the arguments in the call.
+%
+% Since this module does not and cannot know about the module qualification
+% of predicate names, function names and function symbols, it cannot figure out
+% which modules are referred to in goals. The only goals that may appear
+% in the interface section of a module are in promise declarations.
+% If a promise goal contains any unqualified symbols, the second pass
+% leaves the symbol unchanged, but since the eventual actual qualification
+% of the symbol could refer to any of the modules imported in the interface,
+% we consider them *all* of them to be "used".
+%
+% For the same reason (we don't know what modules predicate names,
+% function names and function symbols in goals may refer to), this module
+% cannot implement any equivalent of --warn-interface-imports that would
+% report unnecessary imports in the *implementation* section of a module.
 %
 %-----------------------------------------------------------------------------%
 
@@ -419,17 +458,16 @@ collect_mq_info_in_item(MQSection, NeedQual, Item, !Info) :-
         Item = item_promise(ItemPromise),
         ItemPromise = item_promise_info(_PromiseType, Goal, _ProgVarSet,
             _UnivVars, _Context, _SeqNum),
-        process_assert(Goal, SymNames, Success),
+        process_promise_goal(Goal, set.init, UsedModuleNames, no, FoundUnqual),
         (
-            Success = yes,
+            FoundUnqual = no,
             InInt = mq_section_to_in_interface(MQSection),
-            list.foldl(collect_mq_info_qualified_symname(InInt),
-                SymNames, !Info)
+            set.fold(mq_info_set_module_used(InInt), UsedModuleNames, !Info)
         ;
             % Any unqualified symbol in the promise might come from *any* of
-            % the imported modules. There's no way for us to tell which ones.
-            % So we conservatively assume that it uses all of them.
-            Success = no,
+            % the imported modules. There is no way for us to tell which ones,
+            % so we conservatively assume that it uses *all* of them.
+            FoundUnqual = yes,
             set.init(UnusedInterfaceModules),
             mq_info_set_unused_interface_modules(UnusedInterfaceModules, !Info)
         )
@@ -479,18 +517,6 @@ mq_section_to_in_interface(mq_section_local) = mq_not_used_in_interface.
 mq_section_to_in_interface(mq_section_imported(_)) = mq_not_used_in_interface.
 mq_section_to_in_interface(mq_section_abstract_imported) =
     mq_not_used_in_interface.
-
-:- pred collect_mq_info_qualified_symname(mq_in_interface::in, sym_name::in,
-    mq_info::in, mq_info::out) is det.
-
-collect_mq_info_qualified_symname(InInt, SymName, !Info) :-
-    (
-        SymName = qualified(ModuleName, _),
-        mq_info_set_module_used(InInt, ModuleName, !Info)
-    ;
-        SymName = unqualified(_),
-        unexpected($module, $pred, "unqualified")
-    ).
 
     % For submodule definitions (whether nested or separate,
     % i.e. either `:- module foo.' or `:- include_module foo.'),
@@ -587,17 +613,14 @@ add_module_to_interface_visible_modules(ModuleName, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Scan Goal, building the list of qualified symbols, SymNames.
-    % If there exists a single unqualified symbol in Goal, set Success to no.
+    % Scan Goal. Add the set of module names found in the qualified symbols
+    % in Goal to !UsedModuleNames. If there exists a single unqualified symbol,
+    % in Goal, set !Success to no.
     %
-:- pred process_assert(goal::in, list(sym_name)::out, bool::out) is det.
+:- pred process_promise_goal(goal::in,
+    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
 
-process_assert(Goal, SymNames, Success) :-
-    % AAA Some more stuff to do accumulator introduction on, it
-    % would be better to rewrite using maybes and then to declare
-    % the maybe_and predicate to be associative.
-    % NB. accumulator introduction doesn't work on this case yet.
-    %
+process_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
     (
         ( Goal = conj_expr(_, SubGoalA, SubGoalB)
         ; Goal = par_conj_expr(_, SubGoalA, SubGoalB)
@@ -605,16 +628,12 @@ process_assert(Goal, SymNames, Success) :-
         ; Goal = implies_expr(_, SubGoalA, SubGoalB)
         ; Goal = equivalent_expr(_, SubGoalA, SubGoalB)
         ),
-        process_assert(SubGoalA, SymNamesA, SuccessA),
-        process_assert(SubGoalB, SymNamesB, SuccessB),
-        SymNames = SymNamesA ++ SymNamesB,
-        bool.and(SuccessA, SuccessB, Success)
+        process_promise_goal(SubGoalA, !UsedModuleNames, !FoundUnqual),
+        process_promise_goal(SubGoalB, !UsedModuleNames, !FoundUnqual)
     ;
         ( Goal = true_expr(_)
         ; Goal = fail_expr(_)
-        ),
-        SymNames = [],
-        Success = yes
+        )
     ;
         ( Goal = not_expr(_, SubGoal)
         ; Goal = some_expr(_, _, SubGoal)
@@ -631,151 +650,105 @@ process_assert(Goal, SymNames, Success) :-
         ; Goal = require_switch_arms_detism_expr(_, _, _, SubGoal)
         ; Goal = trace_expr(_, _, _, _, _, SubGoal)
         ),
-        process_assert(SubGoal, SymNames, Success)
+        process_promise_goal(SubGoal, !UsedModuleNames, !FoundUnqual)
     ;
-        Goal = try_expr(_, _, SubGoal, Then, MaybeElse, Catches,
+        Goal = try_expr(_, _, SubGoal, ThenGoal, MaybeElseGoal, Catches,
             MaybeCatchAny),
-        process_assert(SubGoal, SymNamesGoal, SuccessGoal),
-        process_assert(Then, SymNamesThen, SuccessThen),
-        maybe_process_assert(MaybeElse, SymNamesElse, SuccessElse),
-        list.map2(process_assert_catch, Catches,
-            SymNamesCatches, SuccessCatches),
+        process_promise_goal(SubGoal, !UsedModuleNames, !FoundUnqual),
+        process_promise_goal(ThenGoal, !UsedModuleNames, !FoundUnqual),
         (
-            MaybeCatchAny = yes(catch_any_expr(_, CatchAnyGoal)),
-            process_assert(CatchAnyGoal, SymNamesCatchAny, SuccessCatchAny)
+            MaybeElseGoal = no
         ;
-            MaybeCatchAny = no,
-            SymNamesCatchAny = [],
-            SuccessCatchAny = no
+            MaybeElseGoal = yes(ElseGoal),
+            process_promise_goal(ElseGoal, !UsedModuleNames, !FoundUnqual)
         ),
-        SymNamesLists = [SymNamesGoal, SymNamesThen, SymNamesElse,
-            SymNamesCatchAny | SymNamesCatches],
-        list.condense(SymNamesLists, SymNames),
-        SuccessLists = [SuccessGoal, SuccessThen, SuccessElse, SuccessCatchAny
-            | SuccessCatches],
-        bool.and_list(SuccessLists, Success)
+        list.foldl2(process_promise_catch, Catches,
+            !UsedModuleNames, !FoundUnqual),
+        (
+            MaybeCatchAny = no
+        ;
+            MaybeCatchAny = yes(catch_any_expr(_, CatchAnyGoal)),
+            process_promise_goal(CatchAnyGoal, !UsedModuleNames, !FoundUnqual)
+        )
     ;
         Goal = atomic_expr(_, _, _, _, MainGoal, OrElseGoals),
-        process_assert(MainGoal, SymNamesMainGoal, SuccessMainGoal),
-        process_assert_list(OrElseGoals,
-            SymNamesOrElseGoals, SuccessOrElseGoals),
-        SymNames = SymNamesMainGoal ++ SymNamesOrElseGoals,
-        bool.and(SuccessMainGoal, SuccessOrElseGoals, Success)
+        process_promise_goal(MainGoal, !UsedModuleNames, !FoundUnqual),
+        process_promise_goals(OrElseGoals, !UsedModuleNames, !FoundUnqual)
     ;
-        Goal = if_then_else_expr(_, _, _, GoalCond, GoalThen, GoalElse),
-        process_assert(GoalCond, SymNamesCond, SuccessCond),
-        process_assert(GoalThen, SymNamesThen, SuccessThen),
-        process_assert(GoalElse, SymNamesElse, SuccessElse),
-        SymNames = SymNamesCond ++ SymNamesThen ++ SymNamesElse,
-        bool.and(SuccessCond, SuccessThen, Success0),
-        bool.and(Success0, SuccessElse, Success)
+        Goal = if_then_else_expr(_, _, _, CondGoal, ThenGoal, ElseGoal),
+        process_promise_goal(CondGoal, !UsedModuleNames, !FoundUnqual),
+        process_promise_goal(ThenGoal, !UsedModuleNames, !FoundUnqual),
+        process_promise_goal(ElseGoal, !UsedModuleNames, !FoundUnqual)
     ;
-        Goal = event_expr(_, _Name, Args0),
-        list.map(term.coerce, Args0, Args),
-        ( if term_qualified_symbols_list(Args, SymNamesPrime) then
-            SymNames = SymNamesPrime,
-            Success = yes
-        else
-            SymNames = [],
-            Success = no
-        )
+        Goal = event_expr(_, _Name, ArgTerms0),
+        list.map(term.coerce, ArgTerms0, ArgTerms),
+        terms_qualified_symbols(ArgTerms, !UsedModuleNames, !FoundUnqual)
     ;
-        Goal = call_expr(_, SymName, Args0, _Purity),
+        Goal = call_expr(_, SymName, ArgTerms0, _Purity),
         (
-            SymName = qualified(_, _),
-            list.map(term.coerce, Args0, Args),
-            ( if term_qualified_symbols_list(Args, SymNames0) then
-                SymNames = [SymName | SymNames0],
-                Success = yes
-            else
-                SymNames = [],
-                Success = no
-            )
+            SymName = qualified(ModuleName, _),
+            set.insert(ModuleName, !UsedModuleNames)
         ;
             SymName = unqualified(_),
-            SymNames = [],
-            Success = no
-        )
+            !:FoundUnqual = yes
+        ),
+        list.map(term.coerce, ArgTerms0, ArgTerms),
+        terms_qualified_symbols(ArgTerms, !UsedModuleNames, !FoundUnqual)
     ;
         Goal = unify_expr(_, LHS0, RHS0, _Purity),
         term.coerce(LHS0, LHS),
         term.coerce(RHS0, RHS),
-        ( if
-            term_qualified_symbols(LHS, SymNamesL),
-            term_qualified_symbols(RHS, SymNamesR)
-        then
-            list.append(SymNamesL, SymNamesR, SymNames),
-            Success = yes
-        else
-            SymNames = [],
-            Success = no
-        )
+        term_qualified_symbols(LHS, !UsedModuleNames, !FoundUnqual),
+        term_qualified_symbols(RHS, !UsedModuleNames, !FoundUnqual)
     ).
 
-:- pred maybe_process_assert(maybe(goal)::in, list(sym_name)::out, bool::out)
-    is det.
+:- pred process_promise_catch(catch_expr::in,
+    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
 
-maybe_process_assert(no, [], yes).
-maybe_process_assert(yes(Goal), Symbols, Success) :-
-    process_assert(Goal, Symbols, Success).
-
-:- pred process_assert_catch(catch_expr::in, list(sym_name)::out, bool::out)
-    is det.
-
-process_assert_catch(catch_expr(Pattern0, Goal), SymNames, Success) :-
+process_promise_catch(CatchExpr, !UsedModuleNames, !FoundUnqual) :-
+    CatchExpr = catch_expr(Pattern0, Goal),
     term.coerce(Pattern0, Pattern),
-    ( if
-        term_qualified_symbols(Pattern, SymNamesPattern),
-        process_assert(Goal, SymNamesGoal, ProcessAssertSuccess),
-        ProcessAssertSuccess = yes
-    then
-        list.append(SymNamesPattern, SymNamesGoal, SymNames),
-        Success = yes
-    else
-        SymNames = [],
-        Success = no
-    ).
+    term_qualified_symbols(Pattern, !UsedModuleNames, !FoundUnqual),
+    process_promise_goal(Goal, !UsedModuleNames, !FoundUnqual).
 
-    % Performs process_assert on a list of goals.
+    % Performs process_promise_goal on a list of goals.
     %
-:- pred process_assert_list(list(goal)::in, list(sym_name)::out,
-    bool::out) is det.
+:- pred process_promise_goals(list(goal)::in,
+    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
 
-process_assert_list(Goals, SymNames, Success) :-
-    (
-        Goals = [],
-        SymNames = [],
-        Success = yes
-    ;
-        Goals = [HeadGoal | TailGoals],
-        process_assert(HeadGoal, SymNamesHead, SuccessHead),
-        process_assert_list(TailGoals, SymNamesTail, SuccessTail),
-        list.append(SymNamesHead, SymNamesTail, SymNames),
-        bool.and(SuccessHead, SuccessTail, Success)
-    ).
+process_promise_goals([], !UsedModuleNames, !FoundUnqual).
+process_promise_goals([Goal | Goals], !UsedModuleNames, !FoundUnqual) :-
+    process_promise_goal(Goal, !UsedModuleNames, !FoundUnqual),
+    process_promise_goals(Goals, !UsedModuleNames, !FoundUnqual).
 
-    % Given a term, T, return the list of all the sym_names, S, in the term.
-    % The predicate fails if any sub-term of T is unqualified.
+    % Add all the module names in qualified sym_names in Term to
+    % !UsedModuleNames, and set !FoundUnqual to true if any of the sym_names
+    % in Term is unqualified.
     %
-:- pred term_qualified_symbols(term::in, list(sym_name)::out) is semidet.
+:- pred term_qualified_symbols(term::in,
+    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
 
-term_qualified_symbols(Term, Symbols) :-
-    ( if try_parse_sym_name_and_args(Term, SymName, Args) then
-        SymName = qualified(_, _),
-        term_qualified_symbols_list(Args, Symbols0),
-        Symbols = [SymName | Symbols0]
+term_qualified_symbols(Term, !UsedModuleNames, !FoundUnqual) :-
+    ( if try_parse_sym_name_and_args(Term, SymName, ArgTerms) then
+        (
+            SymName = qualified(ModuleName, _),
+            set.insert(ModuleName, !UsedModuleNames)
+        ;
+            SymName = unqualified(_),
+            !:FoundUnqual = yes
+        ),
+        terms_qualified_symbols(ArgTerms, !UsedModuleNames, !FoundUnqual)
     else
-        Symbols = []
+        true
     ).
 
-:- pred term_qualified_symbols_list(list(term)::in, list(sym_name)::out)
-    is semidet.
+:- pred terms_qualified_symbols(list(term)::in,
+    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
 
-term_qualified_symbols_list([], []).
-term_qualified_symbols_list([Term | Terms], Symbols) :-
-    term_qualified_symbols(Term, TermSymbols),
-    term_qualified_symbols_list(Terms, Symbols0),
-    list.append(Symbols0, TermSymbols, Symbols).
+terms_qualified_symbols([], !UsedModuleNames, !FoundUnqual).
+terms_qualified_symbols([Term | Terms], !UsedModuleNames, !FoundUnqual) :-
+    term_qualified_symbols(Term, !UsedModuleNames, !FoundUnqual),
+    terms_qualified_symbols(Terms, !UsedModuleNames, !FoundUnqual).
 
 %-----------------------------------------------------------------------------%
 
@@ -988,8 +961,7 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
             OriginalTypes0),
         qualify_prog_constraint_list(InInt, ConstraintErrorContext,
             Constraints0, Constraints, !Info, !Specs),
-        qualify_class_name(InInt, ErrorContext, Id0, Id, !Info, !Specs),
-        Id = mq_id(Name, _),
+        qualify_class_name(InInt, ErrorContext, Id0, Name, !Info, !Specs),
         % XXX We don't want to keep the errors from the expansion of both
         % forms of the instance types, since printing two error messages about
         % one instance definition that make apparently contradictory
@@ -1281,8 +1253,8 @@ qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs) :-
             !Info, !Specs),
         list.length(Insts, Arity),
         mq_info_get_modes(!.Info, Modes),
-        find_unique_match_symname(InInt, ErrorContext,
-            mq_id(SymName0, Arity), SymName, Modes, mode_id, !Info, !Specs),
+        find_unique_match(InInt, ErrorContext, Modes, mode_id,
+            mq_id(SymName0, Arity), SymName, !Info, !Specs),
         Mode = user_defined_mode(SymName, Insts)
     ).
 
@@ -1394,10 +1366,9 @@ qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
             SymName = SymName0
         else
             list.length(Insts0, Arity),
-            mq_info_get_insts(!.Info, InstIds),
-            find_unique_match_symname(InInt, ErrorContext,
-                mq_id(SymName0, Arity), SymName, InstIds, inst_id,
-                !Info, !Specs)
+            mq_info_get_insts(!.Info, InstIdSet),
+            find_unique_match(InInt, ErrorContext, InstIdSet, inst_id,
+                mq_id(SymName0, Arity), SymName, !Info, !Specs)
         ),
         InstName = user_inst(SymName, Insts)
     ;
@@ -1497,8 +1468,8 @@ qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
         Arity = list.length(Args0),
         TypeCtorId0 = mq_id(SymName0, Arity),
         mq_info_get_types(!.Info, Types),
-        find_unique_match_symname(InInt, ErrorContext,
-            TypeCtorId0, SymName, Types, type_id, !Info, !Specs),
+        find_unique_match(InInt, ErrorContext, Types, type_id,
+            TypeCtorId0, SymName, !Info, !Specs),
         % XXX We could pass a more specific error context.
         qualify_type_list(InInt, ErrorContext, Args0, Args, !Info, !Specs),
         Type = defined_type(SymName, Args, Kind)
@@ -1562,8 +1533,8 @@ qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
         TypeCtorId0 = mq_id(SymName0, Arity),
         mq_info_get_types(!.Info, Types),
         % XXX We could pass a more specific error context.
-        find_unique_match_symname(InInt, ErrorContext,
-            TypeCtorId0, SymName, Types, type_id, !Info, !Specs)
+        find_unique_match(InInt, ErrorContext, Types, type_id,
+            TypeCtorId0, SymName, !Info, !Specs)
     ),
     TypeCtor = type_ctor(SymName, Arity).
 
@@ -1822,20 +1793,20 @@ qualify_prog_constraint(InInt, ContainingErrorContext,
     list.length(Types0, Arity),
     OutsideContext = mqec_typeclass_constraint_name(ContainingErrorContext),
     qualify_class_name(InInt, OutsideContext,
-        mq_id(ClassName0, Arity), mq_id(ClassName, _), !Info, !Specs),
+        mq_id(ClassName0, Arity), ClassName, !Info, !Specs),
     ErrorContext = mqec_typeclass_constraint(ClassName0, Arity,
         ContainingErrorContext),
     qualify_type_list(InInt, ErrorContext, Types0, Types, !Info, !Specs),
     Constraint = constraint(ClassName, Types).
 
 :- pred qualify_class_name(mq_in_interface::in, mq_error_context::in,
-    mq_id::in, mq_id::out, mq_info::in, mq_info::out,
+    mq_id::in, sym_name::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_class_name(InInt, ErrorContext, Class0, Class, !Info, !Specs) :-
+qualify_class_name(InInt, ErrorContext, Class0, Name, !Info, !Specs) :-
     mq_info_get_classes(!.Info, ClassIdSet),
-    find_unique_match(InInt, ErrorContext, Class0, Class,
-        ClassIdSet, class_id, !Info, !Specs).
+    find_unique_match(InInt, ErrorContext, ClassIdSet, class_id, Class0, Name,
+        !Info, !Specs).
 
 :- pred qualify_class_methods(mq_in_interface::in, mq_error_context::in,
     list(class_method)::in, list(class_method)::out,
@@ -1968,21 +1939,23 @@ add_module_qualifier(DefaultModule, SymName0, SymName) :-
     ).
 
     % Find the unique match in the current name space for a given mq_id
-    % from a list of ids. If none exists, either because no match
-    % was found or multiple matches were found, report an error.
+    % from a list of ids. If none exists, either because no match was found
+    % or multiple matches were found, report an error.
+    %
     % This predicate assumes that type_ids, inst_ids, mode_ids and
     % class_ids have the same representation.
     %
 :- pred find_unique_match(mq_in_interface::in, mq_error_context::in,
-    mq_id::in, mq_id::out, id_set::in, id_type::in, mq_info::in, mq_info::out,
+    id_set::in, id_type::in, mq_id::in, sym_name::out,
+    mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-find_unique_match(InInt, ErrorContext, Id0, Id, Ids, TypeOfId,
+find_unique_match(InInt, ErrorContext, IdSet, TypeOfId, Id0, SymName,
         !Info, !Specs) :-
     % Find all IDs which match the current id.
     Id0 = mq_id(SymName0, Arity),
     mq_info_get_modules(!.Info, Modules),
-    id_set_search_sym_arity(Ids, Modules, SymName0, Arity, MatchingModules),
+    id_set_search_sym_arity(IdSet, Modules, SymName0, Arity, MatchingModules),
 
     (
         InInt = mq_used_in_interface,
@@ -2000,12 +1973,13 @@ find_unique_match(InInt, ErrorContext, Id0, Id, Ids, TypeOfId,
         ApplicableMatchingModulesList),
     (
         ApplicableMatchingModulesList = [],
-        % No matches for this id.
-        Id = Id0,
+        % No matches for this id. Returning any SymName is fine,
+        % since it won't be used.
+        Id0 = mq_id(SymName, _),
         mq_info_get_report_error_flag(!.Info, ReportErrors),
         (
             ReportErrors = yes,
-            id_set_search_sym(Ids, Modules, SymName0, PossibleArities),
+            id_set_search_sym(IdSet, Modules, SymName0, PossibleArities),
             report_undefined_mq_id(!.Info, ErrorContext, Id0, TypeOfId,
                 MatchingModules, PossibleArities, !Specs),
             mq_info_set_error_flag(TypeOfId, !Info)
@@ -2016,18 +1990,19 @@ find_unique_match(InInt, ErrorContext, Id0, Id, Ids, TypeOfId,
         ApplicableMatchingModulesList = [Module],
         % A unique match for this ID.
         IdName = unqualify_name(SymName0),
-        Id = mq_id(qualified(Module, IdName), Arity),
+        SymName = qualified(Module, IdName),
         mq_info_set_module_used(InInt, Module, !Info),
         ItemType = convert_simple_item_type(TypeOfId),
         ItemName0 = item_name(SymName0, Arity),
-        ItemName = item_name(qualified(Module, IdName), Arity),
+        ItemName = item_name(SymName, Arity),
         update_recompilation_info(
             recompilation.record_used_item(ItemType, ItemName0, ItemName),
             !Info)
     ;
         ApplicableMatchingModulesList = [_, _ | _],
-        % There are multiple matches.
-        Id = Id0,
+        % There are multiple matches. Returnng any SymName is fine,
+        % since it won't be used.
+        Id0 = mq_id(SymName, _),
         mq_info_get_report_error_flag(!.Info, ReportErrors),
         (
             ReportErrors = yes,
@@ -2038,21 +2013,6 @@ find_unique_match(InInt, ErrorContext, Id0, Id, Ids, TypeOfId,
             ReportErrors = no
         )
     ).
-
-    % A version of find_unique_match for use in the common (universal?)
-    % situation where module qualification won't alter the arity of the
-    % original mq_id.
-    %
-:- pred find_unique_match_symname(mq_in_interface::in, mq_error_context::in,
-    mq_id::in, sym_name::out, id_set::in, id_type::in,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-find_unique_match_symname(InInt, ErrorContext, Id0, SymName, Ids, TypeOfId,
-        !Info, !Specs) :-
-    find_unique_match(InInt, ErrorContext, Id0, Id, Ids, TypeOfId,
-        !Info, !Specs),
-    Id = mq_id(SymName, _).
 
 :- pred update_recompilation_info(
     pred(recompilation_info, recompilation_info)::in(pred(in, out) is det),
@@ -2233,10 +2193,9 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType,
         MatchingModulesSet, PossibleAritiesSet, !Specs) :-
     mq_error_context_to_pieces(ErrorContext, Context, ErrorContextPieces),
     id_type_to_string(IdType, IdStr),
-    Pieces1 = [words("In")] ++ ErrorContextPieces ++
-        [suffix(":"), nl, words("error: undefined"), fixed(IdStr),
-        sym_name_and_arity(id_to_sym_name_and_arity(Id)),
-        suffix("."), nl],
+    Pieces1 = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
+        words("error: undefined"), fixed(IdStr),
+        sym_name_and_arity(id_to_sym_name_and_arity(Id)), suffix("."), nl],
     ( if
         % If it is a qualified symbol, then check whether the specified module
         % has been imported.
