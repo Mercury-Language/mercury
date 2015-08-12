@@ -1506,20 +1506,11 @@ clause_in_interface_warning(ClauseOrPragma, Context) = Spec :-
 
 actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
         MaybeTimestamp, !IO) :-
-    ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        MaybeVersionNumbers1, IntIncls0, ImpIncls0, IntAvails0, ImpAvails0,
-        IntItems0, ImpItems0),
-    list.sort(IntIncls0, IntIncls),
-    list.sort(ImpIncls0, ImpIncls),
-    list.sort(IntAvails0, IntAvails),
-    list.sort(ImpAvails0, ImpAvails),
-    order_items(IntItems0, IntItems),
-    order_items(ImpItems0, ImpItems),
-    ParseTreeInt1 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        MaybeVersionNumbers1, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntItems, ImpItems),
+    order_parse_tree_int_contents(ParseTreeInt0, ParseTreeInt1),
 
     % Create (e.g.) `foo.int.tmp'.
+    ModuleName = ParseTreeInt1 ^ pti_module_name,
+    IntFileKind = ParseTreeInt1 ^ pti_int_file_kind,
     Suffix = int_file_kind_to_extension(IntFileKind),
     TmpSuffix = Suffix ++ ".tmp",
     module_name_to_file_name(Globals, ModuleName, Suffix,
@@ -1565,9 +1556,8 @@ actually_write_interface_file(Globals, _SourceFileName, ParseTreeInt0,
     else
         MaybeVersionNumbers = no
     ),
-    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
-        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntItems, ImpItems),
+    ParseTreeInt = ParseTreeInt1 ^ pti_maybe_version_numbers
+        := MaybeVersionNumbers,
     convert_to_mercury_int(NoLineNumGlobals, TmpOutputFileName,
         ParseTreeInt, !IO),
     % Start using the original globals again.
@@ -1767,265 +1757,320 @@ filter_items_for_import_needs([Item | Items], NeedForeignImports,
     filter_items_for_import_needs(Items, NeedForeignImports, !ItemsCord).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-    % Put the given list of items into a sort of standard order. The idea is
-    % that just reordering the contents of e.g. an interface section without
-    % changing the set of exported entities should not cause a change in the
-    % interface files. The "sort of" is because we are not doing as good a job
-    % as we could. Unfortunately, doing significantly better was quite hard
-    % with the current representation of the module, which is just a list of
-    % items without further structure.
-    % XXX ITEM_LIST Since we have a more structured representation than a plain
-    % item list, it should be possible to do better.
+    % Put the contents of an interface file, as represented by its parse tree,
+    % into a sort of standard order. We want to ensure that if the set of
+    % exported entities of a module does not change, the contents of the
+    % module's automatically generated interface files shouldn't change either,
+    % even if the programmer reorders those exported entities. This is because
+    % any change in the interface file will require the recompilation of
+    % all the modules that import that interface file.
     %
-    % This predicate requires items in the original order. One reason is that
-    % if does not change the order of pred or mode declarations. If it were
-    % given a reversed list in which a mode declaration came before the pred
-    % declarations it refers to, the reader would create an implicit pred
-    % declaration when it saw the mode declaration, and it would be confused
-    % by the later appearance of the actual pred declaration.
-    % XXX ITEM_LIST We should order pred, func, mode, predmode and funcmode
-    % declarations with respect to each other on name/arity FIRST, and THEN
-    % on declaration type, putting the mode declarations last.
+    % We should be able to just sort the includes, avails and items
+    % in the parse tree. The includes and avails we *can* sort, but we cannot
+    % sort the items, because the code that adds items to the parse tree
+    % (in make_hlds_passes.m) requires that e.g. the predicate declaration
+    % for a predicate precede any mode declaration for that predicate.
+    % The order we generate puts items in this order:
     %
-    % This predicate works by finding a chunk of items which should in most
-    % cases (but unfortunately not all cases) be all the exported items,
-    % and put them in a standard order, with import_module and use_module items
-    % first in lexical order, then type, inst and mode definitions, again
-    % in lexical order, then pred and predmode declarations, in lexical order
-    % by sym_name, and finally all other items in the chunk. The chunk consists
-    % of the initial prefix of items for which this reordering is safe.
-    % The chunk will then be followed by the ordered versions of later chunks,
-    % if any.
+    % - All type definitions.
     %
+    % - All inst definitions (may refer to refer to types).
+    %
+    % - All mode definitions (may refer to types and insts).
+    %
+    % - All pred and mode declarations in sym_name_and_arity order,
+    %   and with all pred declarations for a given sym_name_and_arity preceding
+    %   all mode declarations for that sym_name_and_arity. If there is a pred
+    %   declaration for both a predicate and a function for the same
+    %   sym_name_and_arity (which can happen, and does happen reasonably often)
+    %   the resulting order is somewhat awkward, but since mode declarations
+    %   contains only a maybe(pred_or_func), not a definite pred_or_func,
+    %   we cannot easily do any better. We preserve the order of mode
+    %   declarations for a given sym_name_and_arity, since these matter.
+    %
+    %   The pred and mode declarations may of course refer to types,
+    %   insts and modes.
+    %
+    % - All promises, typeclass definitions, instance declarations,
+    %   and declaration-like pragmas. These may refer to types
+    %   (for e.g. type_spec pragmas), insts/modes (e.g. as part of procedure
+    %   specifiers), and predicates and functions. We sort these, as the
+    %   ordering between them does not matter, with one exception: we rely
+    %   on the fact that all typeclass items come before all instance items
+    %   in the standard ordering, since make_hlds_passes.m would want to
+    %   to know about the existence of a typeclass before seeing an instance
+    %   declaration for it.
+    %
+    % - All clauses, clause-like pragmas, initialise and finalise declarations,
+    %   and mutable declarations (which contain implicit initializations).
+    %   The order of these matters, so we preserve them. All these items
+    %   may refer to any of the items in the earlier categories.
+    %
+    % Note that while we *could* just sort the Avails, we do process them
+    % a bit more, for two reasons: to remove duplicates (which sorting could
+    % do as well), and to remove the use_module declaration for modules
+    % that have an import_module declaration as well (which sorting could
+    % *not* do).
+    %
+    % There is no need for any similar processing for Incls, because,
+    % unlike importing or using a module more than once, including a submodule
+    % more than once is an error,
+    %
+:- pred order_parse_tree_int_contents(parse_tree_int::in, parse_tree_int::out)
+    is det.
+
+order_parse_tree_int_contents(ParseTreeInt0, ParseTreeInt) :-
+    ParseTreeInt0 = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls0, ImpIncls0, IntAvails0, ImpAvails0,
+        IntItems0, ImpItems0),
+    list.sort(IntIncls0, IntIncls),
+    list.sort(ImpIncls0, ImpIncls),
+    order_avails(IntAvails0, IntAvails),
+    order_avails(ImpAvails0, ImpAvails),
+    order_items(IntItems0, IntItems),
+    order_items(ImpItems0, ImpItems),
+    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
+        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
+        IntItems, ImpItems).
+
+%-----------------------------------------------------------------------------%
+
+:- pred order_avails(list(item_avail)::in, list(item_avail)::out) is det.
+
+order_avails(Avails, SortedAvails) :-
+    build_avail_map(Avails, map.init, AvailMap),
+    map.foldl(append_avail_entry, AvailMap, cord.init, SortedAvailCord),
+    SortedAvails = cord.list(SortedAvailCord).
+
+:- type avail_map == map(module_name, import_or_use).
+    
+:- pred build_avail_map(list(item_avail)::in, avail_map::in, avail_map::out)
+    is det.
+
+build_avail_map([], !AvailMap).
+build_avail_map([Avail | Avails], !AvailMap) :-
+    (
+        Avail = avail_import(avail_import_info(ModuleName, _Context, _SeqNum)),
+        CurKind = import_decl
+    ;
+        Avail = avail_use(avail_use_info(ModuleName, _Context, _SeqNum)),
+        CurKind = use_decl
+    ),
+    ( if map.search(!.AvailMap, ModuleName, OldKind) then
+        ( if OldKind = use_decl, CurKind = import_decl then
+            map.det_update(ModuleName, CurKind, !AvailMap)
+        else
+            true
+        )
+    else
+        map.det_insert(ModuleName, CurKind, !AvailMap)
+    ),
+    build_avail_map(Avails, !AvailMap).
+
+:- pred append_avail_entry(module_name::in, import_or_use::in,
+    cord(item_avail)::in, cord(item_avail)::out) is det.
+
+append_avail_entry(ModuleName, ImportOrUse, !AvailsCord) :-
+    % The context and sequence number don't get written out, so their value
+    % doesn't matter.
+    Context = term.context_init,
+    SeqNum = -1,
+    (
+        ImportOrUse = import_decl,
+        Avail = avail_import(avail_import_info(ModuleName, Context, SeqNum))
+    ;
+        ImportOrUse = use_decl,
+        Avail = avail_use(avail_use_info(ModuleName, Context, SeqNum))
+    ),
+    !:AvailsCord = cord.snoc(!.AvailsCord, Avail).
+
+%-----------------------------------------------------------------------------%
+
 :- pred order_items(list(item)::in, list(item)::out) is det.
 
-order_items([], []).
-order_items([Item0 | Items0], OrderedItems) :-
-    Chunkable0 = chunkable_item(Item0),
-    (
-        Chunkable0 = yes,
-        list.takewhile(is_chunkable, Items0, FrontItems, RemainItems),
-        list.filter(is_reorderable, [Item0 | FrontItems],
-            ReorderableItems, NonReorderableItems),
-        list.filter(symname_orderable, NonReorderableItems,
-            SymNameItems, NonSymNameItems),
-        % We rely on the sort being stable to keep the items with the same
-        % sym_names in their original order.
-        list.sort(compare_by_symname, SymNameItems, OrderedSymNameItems),
-        order_items(RemainItems, OrderedRemainItems),
-        OrderedItems = list.sort(ReorderableItems) ++
-            OrderedSymNameItems ++ NonSymNameItems ++ OrderedRemainItems
-    ;
-        Chunkable0 = no,
-        order_items(Items0, OrderedItemsTail),
-        OrderedItems = [Item0 | OrderedItemsTail]
+order_items(Items, OrderedItems) :-
+    classify_items(Items,
+        map.init, TypeDefnMap,
+        map.init, InstDefnMap,
+        map.init, ModeDefnMap,
+        map.init, PredRelatedMap,
+        set.init, SortableItems,
+        cord.init, NonReorderableItemsCord),
+    some [!OrderedItemsCord] (
+        !:OrderedItemsCord = cord.init,
+        map.foldl(append_sym_name_map_items, TypeDefnMap, !OrderedItemsCord),
+        map.foldl(append_sym_name_map_items, InstDefnMap, !OrderedItemsCord),
+        map.foldl(append_sym_name_map_items, ModeDefnMap, !OrderedItemsCord),
+        map.foldl(append_pred_related_items, PredRelatedMap,
+            !OrderedItemsCord),
+        !:OrderedItemsCord = !.OrderedItemsCord ++
+            cord.from_list(set.to_sorted_list(SortableItems)),
+        !:OrderedItemsCord = !.OrderedItemsCord ++ NonReorderableItemsCord,
+        OrderedItems = cord.list(!.OrderedItemsCord)
     ).
 
-:- pred is_reorderable(item::in) is semidet.
+:- type sym_name_items_map == map(sym_name_and_arity, cord(item)).
+:- type pred_related_items_map == map(sym_name_and_arity, pred_related_items).
 
-is_reorderable(Item) :-
-    reorderable_item(Item) = yes.
+:- type pred_related_items
+    --->    pred_related_items(
+                prs_pred_decl_items     :: cord(item),
+                prs_mode_decl_items     :: cord(item)
+                % We could have a third field here for pragmas related
+                % to the predicate, for more "natural-looking" output.
+            ).
 
-    % The kinds of items for which reorderable_item returns yes can be
-    % arbitrarily reordered with respect to each other and with respect to
-    % other chunkable items in all kinds of interface files (.int, .int2,
-    % .int3, and .int0). This predicate is not relevant to .opt and
-    % .trans_opt files, since those are generated from the HLDS, not
-    % from item lists.
-    %
-    % We should make this predicate call "unexpected" for items that should
-    % never occur in interface files. However, I don't have a reliable list
-    % of exactly which items those are.
-    %
-:- func reorderable_item(item) = bool.
+:- pred classify_items(list(item)::in,
+    sym_name_items_map::in, sym_name_items_map::out,
+    sym_name_items_map::in, sym_name_items_map::out,
+    sym_name_items_map::in, sym_name_items_map::out,
+    pred_related_items_map::in, pred_related_items_map::out,
+    set(item)::in, set(item)::out,
+    cord(item)::in, cord(item)::out) is det.
 
-reorderable_item(Item) = Reorderable :-
+classify_items([], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
+        !PredRelatedMap, !SortableItems, !NonReorderableItemsCord).
+classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
+        !PredRelatedMap, !SortableItems, !NonReorderableItemsCord) :-
     (
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
-        Reorderable = reorderable_pragma_type(Pragma)
+        Item = item_type_defn(ItemTypeDefnInfo),
+        ItemTypeDefnInfo = item_type_defn_info(SymName, Params, _, _, _, _),
+        list.length(Params, Arity),
+        add_to_sym_name_items_map(SymName / Arity, Item, !TypeDefnMap)
     ;
-        ( Item = item_type_defn(_)
-        ; Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_promise(_)
+        Item = item_inst_defn(ItemInstDefnInfo),
+        ItemInstDefnInfo = item_inst_defn_info(SymName, Params, _, _, _, _),
+        list.length(Params, Arity),
+        add_to_sym_name_items_map(SymName / Arity, Item, !InstDefnMap)
+    ;
+        Item = item_mode_defn(ItemModeDefnInfo),
+        ItemModeDefnInfo = item_mode_defn_info(SymName, Params, _, _, _, _),
+        list.length(Params, Arity),
+        add_to_sym_name_items_map(SymName / Arity, Item, !ModeDefnMap)
+    ;
+        Item = item_pred_decl(ItemPredDeclInfo),
+        ItemPredDeclInfo = item_pred_decl_info(SymName, _PorF, Args,
+            _, _, _, _, _, _, _, _, _, _, _),
+        list.length(Args, Arity),
+        SymNameAndArity = SymName / Arity,
+        ( if map.search(!.PredRelatedMap, SymNameAndArity, OldPredRelated) then
+            OldPredRelated =
+                pred_related_items(OldPredDeclItems, ModeDeclItems),
+            NewPredDeclItems = cord.snoc(OldPredDeclItems, Item),
+            NewPredRelated = pred_related_items(NewPredDeclItems,
+                ModeDeclItems),
+            map.det_update(SymNameAndArity, NewPredRelated, !PredRelatedMap)
+        else
+            NewPredRelated =
+                pred_related_items(cord.singleton(Item), cord.init),
+            map.det_insert(SymNameAndArity, NewPredRelated, !PredRelatedMap)
+        )
+    ;
+        Item = item_mode_decl(ItemModeDeclInfo),
+        ItemModeDeclInfo = item_mode_decl_info(SymName, _PorF, Args,
+            _, _, _, _, _),
+        list.length(Args, Arity),
+        SymNameAndArity = SymName / Arity,
+        ( if map.search(!.PredRelatedMap, SymNameAndArity, OldPredRelated) then
+            OldPredRelated =
+                pred_related_items(PredDeclItems, OldModeDeclItems),
+            NewModeDeclItems = cord.snoc(OldModeDeclItems, Item),
+            NewPredRelated =
+                pred_related_items(PredDeclItems, NewModeDeclItems),
+            map.det_update(SymNameAndArity, NewPredRelated, !PredRelatedMap)
+        else
+            NewPredRelated = pred_related_items(cord.init,
+                cord.singleton(Item)),
+            map.det_insert(SymNameAndArity, NewPredRelated, !PredRelatedMap)
+        )
+    ;
+        Item = item_pragma(ItemPragmaInfo),
+        ItemPragmaInfo = item_pragma_info(Pragma, _, _, _),
+        (
+            ( Pragma = pragma_foreign_proc_export(_)
+            ; Pragma = pragma_foreign_export_enum(_)
+            ; Pragma = pragma_foreign_enum(_)
+            ; Pragma = pragma_external_proc(_)
+            ; Pragma = pragma_type_spec(_)
+            ; Pragma = pragma_inline(_)
+            ; Pragma = pragma_no_inline(_)
+            ; Pragma = pragma_unused_args(_)
+            ; Pragma = pragma_exceptions(_)
+            ; Pragma = pragma_trailing_info(_)
+            ; Pragma = pragma_mm_tabling_info(_)
+            ; Pragma = pragma_obsolete(_)
+            ; Pragma = pragma_no_detism_warning(_)
+            ; Pragma = pragma_tabled(_)
+            ; Pragma = pragma_fact_table(_)
+            ; Pragma = pragma_reserve_tag(_)
+            ; Pragma = pragma_oisu(_)
+            ; Pragma = pragma_promise_eqv_clauses(_)
+            ; Pragma = pragma_promise_pure(_)
+            ; Pragma = pragma_promise_semipure(_)
+            ; Pragma = pragma_termination_info(_)
+            ; Pragma = pragma_termination2_info(_)
+            ; Pragma = pragma_terminates(_)
+            ; Pragma = pragma_does_not_terminate(_)
+            ; Pragma = pragma_check_termination(_)
+            ; Pragma = pragma_mode_check_clauses(_)
+            ; Pragma = pragma_structure_sharing(_)
+            ; Pragma = pragma_structure_reuse(_)
+            ; Pragma = pragma_require_feature_set(_)
+            ; Pragma = pragma_foreign_import_module(_)
+            ),
+            set.insert(Item, !SortableItems)
+        ;
+            ( Pragma = pragma_foreign_decl(_)
+            ; Pragma = pragma_foreign_code(_)
+            ; Pragma = pragma_foreign_proc(_)
+            ),
+            !:NonReorderableItemsCord =
+                cord.snoc(!.NonReorderableItemsCord, Item)
+        )
+    ;
+        ( Item = item_promise(_)
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
         ),
-        Reorderable = yes
+        set.insert(Item, !SortableItems)
     ;
         ( Item = item_clause(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
         ; Item = item_nothing(_)
         ),
-        Reorderable = no
-    ).
+        !:NonReorderableItemsCord = cord.snoc(!.NonReorderableItemsCord, Item)
+    ),
+    classify_items(Items, !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
+        !PredRelatedMap, !SortableItems, !NonReorderableItemsCord).
 
-:- func reorderable_pragma_type(pragma_type) = bool.
+:- pred add_to_sym_name_items_map(sym_name_and_arity::in, item::in,
+    sym_name_items_map::in, sym_name_items_map::out) is det.
 
-reorderable_pragma_type(Pragma) = Reorderable :-
-    (
-        ( Pragma = pragma_check_termination( _)
-        ; Pragma = pragma_does_not_terminate( _)
-        ; Pragma = pragma_exceptions(_)
-        ; Pragma = pragma_external_proc(_)
-        ; Pragma = pragma_trailing_info(_)
-        ; Pragma = pragma_mm_tabling_info(_)
-        ; Pragma = pragma_foreign_proc_export(_)
-        ; Pragma = pragma_foreign_export_enum(_)
-        ; Pragma = pragma_foreign_enum(_)
-        ; Pragma = pragma_inline(_)
-        ; Pragma = pragma_mode_check_clauses(_)
-        ; Pragma = pragma_no_inline(_)
-        ; Pragma = pragma_obsolete(_)
-        ; Pragma = pragma_no_detism_warning(_)
-        ; Pragma = pragma_promise_pure(_)
-        ; Pragma = pragma_promise_semipure(_)
-        ; Pragma = pragma_promise_eqv_clauses(_)
-        ; Pragma = pragma_reserve_tag(_)
-        ; Pragma = pragma_oisu(_)
-        ; Pragma = pragma_tabled(_)
-        ; Pragma = pragma_terminates(_)
-        ; Pragma = pragma_termination_info(_)
-        ; Pragma = pragma_structure_sharing(_)
-        ; Pragma = pragma_structure_reuse(_)
-        ; Pragma = pragma_type_spec(_)
-        ; Pragma = pragma_unused_args(_)
-        ; Pragma = pragma_require_feature_set(_)
-        ),
-        Reorderable = yes
-    ;
-        ( Pragma = pragma_foreign_code(_)
-        ; Pragma = pragma_foreign_decl(_)
-        ; Pragma = pragma_foreign_import_module(_)
-        ; Pragma = pragma_foreign_proc(_)
-        ; Pragma = pragma_termination2_info(_)
-        ; Pragma = pragma_fact_table(_)
-        ),
-        Reorderable = no
-    ).
-
-:- pred is_chunkable(item::in) is semidet.
-
-is_chunkable(Item) :-
-    chunkable_item(Item) = yes.
-
-    % Given a list of items for which chunkable_item returns yes, we need
-    % to keep the relative order of the non-reorderable items, but we can
-    % move the reorderable items around arbitrarily.
-    %
-    % We should make this predicate call "unexpected" for items that should
-    % never occur in interface files. However, I don't have a reliable list
-    % of exactly which items those are.
-    %
-:- func chunkable_item(item) = bool.
-
-chunkable_item(Item) = Chunkable :-
-    (
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
-        Chunkable = chunkable_pragma_type(Pragma)
-    ;
-        ( Item = item_clause(_)
-        ; Item = item_type_defn(_)
-        ; Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_mode_decl(_)
-        ; Item = item_promise(_)
-        ; Item = item_typeclass(_)
-        ; Item = item_instance(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_nothing(_)
-        ),
-        Chunkable = yes
-    ;
-        Item = item_mutable(_),
-        Chunkable = no
-    ).
-
-:- func chunkable_pragma_type(pragma_type) = bool.
-
-chunkable_pragma_type(Pragma) = Chunkable :-
-    (
-        ( Pragma = pragma_check_termination(_)
-        ; Pragma = pragma_does_not_terminate(_)
-        ; Pragma = pragma_foreign_proc_export(_)
-        ; Pragma = pragma_foreign_export_enum(_)
-        ; Pragma = pragma_foreign_enum(_)
-        ; Pragma = pragma_external_proc(_)
-        ; Pragma = pragma_inline(_)
-        ; Pragma = pragma_mode_check_clauses(_)
-        ; Pragma = pragma_no_inline(_)
-        ; Pragma = pragma_obsolete(_)
-        ; Pragma = pragma_no_detism_warning(_)
-        ; Pragma = pragma_promise_pure(_)
-        ; Pragma = pragma_promise_semipure(_)
-        ; Pragma = pragma_promise_eqv_clauses(_)
-        ; Pragma = pragma_reserve_tag(_)
-        ; Pragma = pragma_oisu(_)
-        ; Pragma = pragma_tabled(_)
-        ; Pragma = pragma_terminates(_)
-        ; Pragma = pragma_termination_info(_)
-        ; Pragma = pragma_structure_sharing(_)
-        ; Pragma = pragma_structure_reuse(_)
-        ; Pragma = pragma_trailing_info(_)
-        ; Pragma = pragma_mm_tabling_info(_)
-        ; Pragma = pragma_type_spec(_)
-        ; Pragma = pragma_unused_args(_)
-        ; Pragma = pragma_require_feature_set(_)
-        ),
-        Chunkable = yes
-    ;
-        ( Pragma = pragma_exceptions(_)
-        ; Pragma = pragma_fact_table(_)
-        ; Pragma = pragma_foreign_code(_)
-        ; Pragma = pragma_foreign_decl(_)
-        ; Pragma = pragma_foreign_import_module(_)
-        ; Pragma = pragma_foreign_proc(_)
-        ; Pragma = pragma_termination2_info(_)
-        ),
-        Chunkable = no
-    ).
-
-    % Given a list of items for which symname_ordered succeeds, we need to keep
-    % the relative order of the items with the same sym_name as returned by
-    % symname_ordered, but the relative order of items with different sym_names
-    % doesn't matter.
-    %
-:- pred symname_ordered(item::in, sym_name::out) is semidet.
-
-symname_ordered(Item, Name) :-
-    (
-        Item = item_pred_decl(ItemPredDecl),
-        Name = ItemPredDecl ^ pf_name
-    ;
-        Item = item_mode_decl(ItemModeDecl),
-        Name = ItemModeDecl ^ pfm_name
-    ).
-
-:- pred symname_orderable(item::in) is semidet.
-
-symname_orderable(Item) :-
-    symname_ordered(Item, _).
-
-:- pred compare_by_symname(item::in, item::in, comparison_result::out) is det.
-
-compare_by_symname(ItemA, ItemB, Result) :-
-    ( if
-        symname_ordered(ItemA, SymNameA),
-        symname_ordered(ItemB, SymNameB)
-    then
-        compare(Result, SymNameA, SymNameB)
+add_to_sym_name_items_map(SymNameAndArity, Item, !SymNameItemsMap) :-
+    ( if map.search(!.SymNameItemsMap, SymNameAndArity, OldItems) then
+        NewItems = cord.snoc(OldItems, Item),
+        map.det_update(SymNameAndArity, NewItems, !SymNameItemsMap)
     else
-        unexpected($module, $pred, "symname not found")
+        NewItems = cord.singleton(Item),
+        map.det_insert(SymNameAndArity, NewItems, !SymNameItemsMap)
     ).
+
+:- pred append_sym_name_map_items(sym_name_and_arity::in, cord(item)::in,
+    cord(item)::in, cord(item)::out) is det.
+
+append_sym_name_map_items(_SymName, SymNameItemsCord, !ItemsCord) :-
+    !:ItemsCord = !.ItemsCord ++ SymNameItemsCord.
+
+:- pred append_pred_related_items(sym_name_and_arity::in,
+    pred_related_items::in, cord(item)::in, cord(item)::out) is det.
+
+append_pred_related_items(_SymName, PredRelated, !ItemsCord) :-
+    PredRelated = pred_related_items(PredDeclItemsCord, ModeDeclItemsCord),
+    !:ItemsCord = !.ItemsCord ++ PredDeclItemsCord ++ ModeDeclItemsCord.
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.write_module_interface_files.
