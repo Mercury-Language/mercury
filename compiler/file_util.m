@@ -42,8 +42,11 @@
     % search_for_file(MaybeOpen, Dirs, FileName, FoundFileName, !IO):
     %
     % Search Dirs for FileName, returning the path name of the file that was
-    % found.  If requested, the found file will be left
-    % open as the current input stream.
+    % found. If requested, the found file will be left open as the current
+    % input stream.
+    %
+    % XXX It would be better to ALWAYS leave the current input stream as is,
+    % and instead return the stream together with the file name if requested.
     %
     % NB. Consider using search_for_file_returning_dir, which does not
     % canonicalise the path so is more efficient.
@@ -55,8 +58,11 @@
     %   !IO):
     %
     % Search Dirs for FileName, returning the name of the directory in
-    % which the file was found.  If requested, the found file will be left
+    % which the file was found. If requested, the found file will be left
     % open as the current input stream.
+    %
+    % XXX It would be better to ALWAYS leave the current input stream as is,
+    % and instead return the stream together with the file name if requested.
     %
 :- pred search_for_file_returning_dir(maybe_open_file::in, list(dir_name)::in,
     file_name::in, maybe_error(dir_name)::out, io::di, io::uo) is det.
@@ -64,7 +70,7 @@
     % search_for_file_mod_time(Dirs, FileName, FoundModTime, !IO)
     %
     % Search Dirs for FileName, returning the last modification time of the
-    % file that was found.  Does NOT open the file for reading.
+    % file that was found. Does NOT open the file for reading.
     %
 :- pred search_for_file_mod_time(list(dir_name)::in, file_name::in,
     maybe_error(time_t)::out, io::di, io::uo) is det.
@@ -147,9 +153,9 @@ search_for_file(MaybeOpen, Dirs, FileName, Result, !IO) :-
     search_for_file_returning_dir(MaybeOpen, Dirs, FileName, Result0, !IO),
     (
         Result0 = ok(Dir),
-        ( dir.this_directory(Dir) ->
+        ( if dir.this_directory(Dir) then
             PathName = FileName
-        ;
+        else
             PathName = dir.make_path_name(Dir, FileName)
         ),
         Result = ok(PathName)
@@ -231,9 +237,9 @@ do_search_for_file(P, [Dir | Dirs], FileName, Result, !IO) :-
     is det.
 
 make_path_name_noncanon(Dir, FileName, PathName) :-
-    ( dir.this_directory(Dir) ->
+    ( if dir.this_directory(Dir) then
         PathName = FileName
-    ;
+    else
         % dir.make_path_name is slow so we avoid it when path names don't
         % need to be canonicalised.
         Sep = string.from_char(dir.directory_separator),
@@ -276,14 +282,14 @@ output_to_file_return_result(Globals, FileName, Action, Result, !IO) :-
             Result = yes(ActionResult)
         ;
             TryResult = exception(Univ),
-            ( univ_to_type(Univ, IncludeError) ->
+            ( if univ_to_type(Univ, IncludeError) then
                 IncludeError = include_file_error(IncludeFileName, Detail),
                 string.format("can't open `%s' for input: %s",
                     [s(IncludeFileName), s(Detail)], ErrorMessage),
                 maybe_write_string(Verbose, "\n", !IO),
                 report_error(ErrorMessage, !IO),
                 Result = no
-            ;
+            else
                 rethrow(TryResult)
             )
         )
@@ -303,10 +309,10 @@ write_include_file_contents(FileName, !IO) :-
     io.file_type(FollowSymLinks, FileName, MaybeType, !IO),
     (
         MaybeType = ok(Type),
-        ( possibly_regular_file(Type) ->
+        ( if possibly_regular_file(Type) then
             io.output_stream(OutputStream, !IO),
             write_include_file_contents_2(OutputStream, FileName, !IO)
-        ;
+        else
             throw(include_file_error(FileName, "Not a regular file"))
         )
     ;
@@ -370,11 +376,11 @@ get_install_name_option(Globals, OutputFileName, InstallNameOpt) :-
         InstallNameFlag),
     globals.lookup_string_option(Globals, shlib_linker_install_name_path,
         InstallNamePath0),
-    ( InstallNamePath0 = "" ->
+    ( if InstallNamePath0 = "" then
         globals.lookup_string_option(Globals, install_prefix, InstallPrefix),
         grade_directory_component(Globals, GradeDir),
         InstallNamePath = InstallPrefix / "lib" / "mercury" / "lib" / GradeDir
-    ;
+    else
         InstallNamePath = InstallNamePath0
     ),
     InstallNameOpt = InstallNameFlag ++
