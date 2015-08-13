@@ -1791,7 +1791,11 @@ filter_items_for_import_needs([Item | Items], NeedForeignImports,
     %   declarations for a given sym_name_and_arity, since these matter.
     %
     %   The pred and mode declarations may of course refer to types,
-    %   insts and modes.
+    %   typeclasses, insts and modes. The types, insts and modes were
+    %   defined earlier; the typeclasses don't have to be, because the
+    %   code that add predicate declarations to the HLDS only records
+    %   the typeclass constraints without checking whether the named
+    %   typeclasses have been added to the HLDS yet.
     %
     % - All promises, typeclass definitions, instance declarations,
     %   and declaration-like pragmas. These may refer to types
