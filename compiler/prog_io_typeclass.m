@@ -79,10 +79,10 @@ parse_typeclass(ModuleName, VarSet, TypeClassTerm, Context, SeqNum,
     % XXX We should return an error if we get more than one arg, instead of
     % failing.
     TypeClassTerm = [Arg],
-    ( Arg = term.functor(term.atom("where"), [Name, Methods], _) ->
+    ( if Arg = term.functor(term.atom("where"), [Name, Methods], _) then
         parse_non_empty_class(ModuleName, Name, Methods, VarSet, Context,
             SeqNum, MaybeItemTypeClass)
-    ;
+    else
         parse_class_head(ModuleName, Arg, VarSet, Context, SeqNum,
             MaybeItemTypeClass)
     ).
@@ -118,10 +118,10 @@ parse_non_empty_class(ModuleName, Name, Methods, VarSet, Context, SeqNum,
 
 parse_class_head(ModuleName, Arg, VarSet, Context, SeqNum,
         MaybeItemTypeClass) :-
-    ( Arg = term.functor(term.atom("<="), [Name, Constraints], _) ->
+    ( if Arg = term.functor(term.atom("<="), [Name, Constraints], _) then
         parse_constrained_class(ModuleName, Name, Constraints, VarSet, Context,
             SeqNum, MaybeItemTypeClass)
-    ;
+    else
         varset.coerce(VarSet, TVarSet),
         parse_unconstrained_class(ModuleName, Arg, TVarSet, Context,
             SeqNum, MaybeItemTypeClass)
@@ -160,10 +160,10 @@ parse_constrained_class(ModuleName, Decl, ConstraintsTerm, VarSet, Context,
                 _FunDepInParams, FunDepNotInParams),
             (
                 ConstraintNotInParams = [_ | _],
-                ( list.length(ConstraintList) = 1 ->
+                ( if list.length(ConstraintList) = 1 then
                     ConstraintErrorContext =
                         [words("in the superclass constraint")]
-                ;
+                else
                     ConstraintErrorContext =
                         [words("in superclass constraints")]
                 )
@@ -173,10 +173,10 @@ parse_constrained_class(ModuleName, Decl, ConstraintsTerm, VarSet, Context,
             ),
             (
                 FunDepNotInParams = [_ | _],
-                ( list.length(FunDeps) = 1 ->
+                ( if list.length(FunDeps) = 1 then
                     FunDepErrorContext =
                         [words("in the functional dependency")]
-                ;
+                else
                     FunDepErrorContext =
                         [words("in functional dependencies")]
                 )
@@ -204,10 +204,10 @@ parse_constrained_class(ModuleName, Decl, ConstraintsTerm, VarSet, Context,
                     list_to_pieces(ConstraintNotInParamsStrs),
                 FunDepNotInParamsPieces =
                     list_to_pieces(FunDepNotInParamsStrs),
-                ( list.length(NotInParams) = 1 ->
+                ( if list.length(NotInParams) = 1 then
                     Prefix = [words("Error: type variable")],
                     Suffix = [words("is not a parameter of this type class.")]
-                ;
+                else
                     Prefix = [words("Error: type variables")],
                     Suffix = [words("are not parameters of this type class.")]
                 ),
@@ -260,12 +260,12 @@ parse_superclass_constraints(_ModuleName, VarSet, ConstraintsTerm, Result) :-
     (
         Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
         ArbitraryConstraints = [HeadArbConstraint | TailArbConstraints],
-        (
+        ( if
             collect_simple_and_fundep_constraints(ArbitraryConstraints,
                 Constraints, FunDeps)
-        ->
+        then
             Result = ok2(Constraints, FunDeps)
-        ;
+        else
             Pieces = [words("Error: constraints on class declarations"),
                 words("may only constrain type variables and ground types."),
                 nl],
@@ -309,17 +309,19 @@ parse_unconstrained_class(ModuleName, NameTerm, TVarSet, Context, SeqNum,
     (
         MaybeClassName = ok2(ClassName, TermVars0),
         list.map(term.coerce, TermVars0, TermVars),
-        (
+        ( if
             term.term_list_to_var_list(TermVars, Vars),
             list.sort_and_remove_dups(TermVars, SortedTermVars),
-            list.length(SortedTermVars) = list.length(TermVars) : int
-        ->
+            list.length(SortedTermVars, NumSortedTermVars),
+            list.length(TermVars, NumTermVars),
+            NumSortedTermVars = NumTermVars
+        then
             % XXX Would this be a better context?
             % Context = get_term_context(NameTerm),
             TypeClassInfo = item_typeclass_info(ClassName, Vars, [], [],
                 class_interface_abstract, TVarSet, Context, SeqNum),
             MaybeTypeClassInfo = ok1(TypeClassInfo)
-        ;
+        else
             Pieces = [words("Error: expected distinct variables"),
                 words("as class parameters."), nl],
             % XXX Would Context be better than get_term_context(NameTerm)?
@@ -336,10 +338,10 @@ parse_unconstrained_class(ModuleName, NameTerm, TVarSet, Context, SeqNum,
     maybe1(class_methods)::out) is det.
 
 parse_class_methods(ModuleName, MethodsTerm, VarSet, Result) :-
-    (
+    ( if
         % Convert the list of terms into a list of maybe1(class_method)s.
         list_term_to_term_list(MethodsTerm, MethodList)
-    ->
+    then
         list.map(
             (pred(MethodTerm::in, Method::out) is det :-
                 % Turn the term into an item.
@@ -348,7 +350,7 @@ parse_class_methods(ModuleName, MethodsTerm, VarSet, Result) :-
                 item_to_class_method(Item, MethodTerm, Method)
             ), MethodList, Interface),
         find_errors(Interface, Result)
-    ;
+    else
         Pieces = [words("Error: expected list of class methods."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(MethodsTerm), [always(Pieces)])]),
@@ -360,7 +362,7 @@ parse_class_methods(ModuleName, MethodsTerm, VarSet, Result) :-
 
 item_to_class_method(error1(Specs), _, error1(Specs)).
 item_to_class_method(ok1(Item), Term, Result) :-
-    ( Item = item_pred_decl(ItemPredDecl) ->
+    ( if Item = item_pred_decl(ItemPredDecl) then
         ItemPredDecl = item_pred_decl_info(Name, PorF, ArgDecls,
             WithType, WithInst, MaybeDetism, _Origin, TypeVarSet, InstVarSet,
             ExistQVars, Purity, Constraints, Context, _SeqNum),
@@ -368,13 +370,13 @@ item_to_class_method(ok1(Item), Term, Result) :-
             WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
             ExistQVars, Purity, Constraints, Context),
         Result = ok1(ClassMethod)
-    ; Item = item_mode_decl(ItemModeDecl) ->
+    else if Item = item_mode_decl(ItemModeDecl) then
         ItemModeDecl = item_mode_decl_info(Name, MaybePorF, ArgModes,
             WithInst, MaybeDetism, InstVarSet, Context, _SeqNum),
         ClassMethod = method_pred_or_func_mode(Name, MaybePorF, ArgModes,
             WithInst, MaybeDetism, InstVarSet, Context),
         Result = ok1(ClassMethod)
-    ;
+    else
         Pieces = [words("Error: only pred, func and mode declarations"),
             words("are allowed in class interfaces."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -432,15 +434,15 @@ parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm, Pieces,
     parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result0),
     (
         Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
-        (
+        ( if
             % Fail if any of the constraints aren't simple.
             get_simple_constraint(HeadArbConstraint, HeadConstraint),
             list.map(get_simple_constraint, TailArbConstraints, TailConstraints)
-        ->
+        then
             % XXX ITEM_LIST Loosens representation; switching from one_or_more
             % to list allows an empty list.
             Result = ok1([HeadConstraint | TailConstraints])
-        ;
+        else
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(ConstraintsTerm),
                     [always(Pieces)])]),
@@ -462,12 +464,12 @@ parse_class_and_inst_constraints(_ModuleName, VarSet, ConstraintsTerm,
     (
         Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
         ArbitraryConstraints = [HeadArbConstraint | TailArbConstraints],
-        (
+        ( if
             collect_class_and_inst_constraints(ArbitraryConstraints,
                 ProgConstraints, InstVarSub)
-        ->
+        then
             Result = ok2(ProgConstraints, InstVarSub)
-        ;
+        else
             Pieces = [words("Error: functional dependencies are only allowed"),
                 words("in typeclass declarations."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -548,12 +550,12 @@ parse_arbitrary_constraint_list(VarSet, HeadTerm, TailTerms, Result) :-
         TailTerms = [HeadTailTerm | TailTailTerms],
         parse_arbitrary_constraint_list(VarSet, HeadTailTerm, TailTailTerms,
             TailResult),
-        (
+        ( if
             HeadResult = ok1(HeadConstraint),
             TailResult = ok1(TailConstraints)
-        ->
+        then
             Result = ok1(one_or_more_cons(HeadConstraint, TailConstraints))
-        ;
+        else
             Result = error1(get_any_errors1(HeadResult) ++
                 get_any_errors1(TailResult))
         )
@@ -563,17 +565,17 @@ parse_arbitrary_constraint_list(VarSet, HeadTerm, TailTerms, Result) :-
     maybe1(arbitrary_constraint)::out) is det.
 
 parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
-    (
+    ( if
         parse_inst_constraint(ConstraintTerm, InstVar, Inst)
-    ->
+    then
         Result = ok1(inst_constraint(InstVar, Inst))
-    ;
+    else if
         parse_fundep(ConstraintTerm, Result0)
-    ->
+    then
         Result = Result0
-    ;
+    else if
         try_parse_sym_name_and_args(ConstraintTerm, ClassName, Args0)
-    ->
+    then
         % XXX ITEM_LIST Should we use
         % ArgsResultContextPieces = [words("In typeclass constraint:")]
         ArgsResultContextPieces = [],
@@ -581,16 +583,16 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
         (
             ArgsResult = ok1(Args),
             Constraint = constraint(ClassName, Args),
-            ( constraint_is_not_simple(Constraint) ->
+            ( if constraint_is_not_simple(Constraint) then
                 Result = ok1(non_simple(Constraint))
-            ;
+            else
                 Result = ok1(simple(Constraint))
             )
         ;
             ArgsResult = error1(Specs),
             Result = error1(Specs)
         )
-    ;
+    else
         Pieces = [words("Error: expected atom"),
             words("as class name or inst constraint."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -611,12 +613,12 @@ parse_inst_constraint(Term, InstVar, Inst) :-
 
 parse_fundep(Term, Result) :-
     Term = term.functor(term.atom("->"), [DomainTerm, RangeTerm], _),
-    (
+    ( if
         parse_fundep_2(DomainTerm, Domain),
         parse_fundep_2(RangeTerm, Range)
-    ->
+    then
         Result = ok1(fundep(fundep(Domain, Range)))
-    ;
+    else
         Pieces = [words("Error: the domain and range"),
             words("of a functional dependency"),
             words("must be comma-separated lists of variables."), nl],
@@ -650,10 +652,10 @@ parse_instance(ModuleName, VarSet, TypeClassTerm, Context, SeqNum, Result) :-
     % instead of failing.
     TypeClassTerm = [Arg],
     varset.coerce(VarSet, TVarSet),
-    ( Arg = term.functor(term.atom("where"), [Name, Methods], _) ->
+    ( if Arg = term.functor(term.atom("where"), [Name, Methods], _) then
         parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet,
             Context, SeqNum, Result)
-    ;
+    else
         parse_instance_name(ModuleName, Arg, TVarSet, Context, SeqNum, Result)
     ).
 
@@ -662,10 +664,10 @@ parse_instance(ModuleName, VarSet, TypeClassTerm, Context, SeqNum, Result) :-
 
 parse_instance_name(ModuleName, Arg, TVarSet, Context, SeqNum,
         MaybeItemInstance) :-
-    ( Arg = term.functor(term.atom("<="), [Name, Constraints], _) ->
+    ( if Arg = term.functor(term.atom("<="), [Name, Constraints], _) then
         parse_derived_instance(ModuleName, Name, Constraints, TVarSet, Context,
             SeqNum, MaybeItemInstance)
-    ;
+    else
         parse_underived_instance(ModuleName, Arg, TVarSet, Context,
             SeqNum, MaybeItemInstance)
     ).
@@ -787,18 +789,18 @@ check_tvars_in_instance_constraint(ok1(ItemInstance), InstanceTerm, Result) :-
     % Check that all of the type variables in the constraints on the instance
     % declaration also occur in the type class argument types in the instance
     % declaration.
-    (
+    ( if
         prog_type.constraint_list_get_tvars(Constraints, TVars),
         type_vars_list(Types, TypesVars),
         list.filter(is_in_list(TypesVars), TVars, _BoundTVars, UnboundTVars),
         UnboundTVars = [_ | _]
-    ->
+    then
         UnboundTVarStrs =
             list.map(mercury_var_to_string(TVarSet, no), UnboundTVars),
         UnboundTVarPieces = list_to_pieces(UnboundTVarStrs),
-        ( list.length(UnboundTVars) = 1 ->
+        ( if list.length(UnboundTVars) = 1 then
             Prefix = [words("Error: unbound type variable")]
-        ;
+        else
             Prefix = [words("Error: unbound type variables")]
         ),
         Pieces = Prefix ++ UnboundTVarPieces ++
@@ -807,7 +809,7 @@ check_tvars_in_instance_constraint(ok1(ItemInstance), InstanceTerm, Result) :-
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(InstanceTerm), [always(Pieces)])]),
         Result = error1([Spec])
-    ;
+    else
         Result = ok1(ItemInstance)
     ).
 
@@ -815,12 +817,12 @@ check_tvars_in_instance_constraint(ok1(ItemInstance), InstanceTerm, Result) :-
     maybe1(instance_methods)::out) is det.
 
 parse_instance_methods(ModuleName, MethodsTerm, VarSet, Result) :-
-    ( list_term_to_term_list(MethodsTerm, MethodList) ->
+    ( if list_term_to_term_list(MethodsTerm, MethodList) then
         % Convert the list of terms into a list of maybe1(class_method)s.
         list.map(term_to_instance_method(ModuleName, VarSet), MethodList,
             Interface),
         find_errors(Interface, Result)
-    ;
+    else
         Pieces = [words("Error: expected list of instance methods."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(MethodsTerm), [always(Pieces)])]),
@@ -834,29 +836,29 @@ parse_instance_methods(ModuleName, MethodsTerm, VarSet, Result) :-
 
 term_to_instance_method(_ModuleName, VarSet, MethodTerm,
         MaybeInstanceMethod) :-
-    (
+    ( if
         MethodTerm = term.functor(term.atom("is"),
             [ClassMethodTerm, InstanceMethodTerm], TermContext)
-    ->
+    then
         % Note that the codes for 'pred(...)' and 'func(...)' are very similar.
         % Unfortunately, factoring out the common code would not really
         % simplify things.
-        (
+        ( if
             ClassMethodTerm = term.functor(term.atom("pred"), [SlashTerm], _),
             SlashTerm = term.functor(term.atom("/"),
                 [PredNameTerm, ArityTerm], _)
-        ->
-            (
+        then
+            ( if
                 try_parse_sym_name_and_no_args(PredNameTerm, PredName),
                 ArityTerm = term.functor(term.integer(ArityInt), [], _),
                 try_parse_sym_name_and_no_args(InstanceMethodTerm,
                     InstanceMethodName)
-            ->
+            then
                 InstanceMethod = instance_method(pf_predicate, PredName,
                     instance_proc_def_name(InstanceMethodName), ArityInt,
                     TermContext),
                 MaybeInstanceMethod = ok1(InstanceMethod)
-            ;
+            else
                 MethodTermStr = describe_error_term(VarSet, MethodTerm),
                 Pieces = [words("Error: expected"),
                     quote("pred(<Name> / <Arity>) is <InstanceMethod>"),
@@ -867,22 +869,22 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                         [always(Pieces)])]),
                 MaybeInstanceMethod = error1([Spec])
             )
-        ;
+        else if
             ClassMethodTerm = term.functor(term.atom("func"), [SlashTerm], _),
             SlashTerm = term.functor(term.atom("/"),
                 [FuncNameTerm, ArityTerm], _)
-        ->
-            (
+        then
+            ( if
                 try_parse_sym_name_and_no_args(FuncNameTerm, FuncName),
                 ArityTerm = term.functor(term.integer(ArityInt), [], _),
                 try_parse_sym_name_and_no_args(InstanceMethodTerm,
                     InstanceMethodName)
-            ->
+            then
                 InstanceMethod = instance_method(pf_function, FuncName,
                     instance_proc_def_name(InstanceMethodName), ArityInt,
                     TermContext),
                 MaybeInstanceMethod = ok1(InstanceMethod)
-            ;
+            else
                 MethodTermStr = describe_error_term(VarSet, MethodTerm),
                 Pieces = [words("Error: expected"),
                     quote("func(<Name> / <Arity>) is <InstanceMethod>"),
@@ -893,7 +895,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                         [always(Pieces)])]),
                 MaybeInstanceMethod = error1([Spec])
             )
-        ;
+        else
             MethodTermStr = describe_error_term(VarSet, MethodTerm),
             Pieces = [words("Error: expected"),
                 quote("pred(<Name> / <Arity>) is <InstanceName>"),
@@ -905,7 +907,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 [simple_msg(get_term_context(MethodTerm), [always(Pieces)])]),
             MaybeInstanceMethod = error1([Spec])
         )
-    ;
+    else
         % For the clauses in an instance declaration, the default module name
         % for the clause heads is the module name of the class that this is an
         % instance declaration for, but we don't necessarily know what module
@@ -923,10 +925,10 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
             MaybeInstanceMethod = error1(Specs)
         ;
             MaybeIOM = ok1(IOM),
-            (
+            ( if
                 IOM = iom_item(Item),
                 Item = item_clause(ItemClause)
-            ->
+            then
                 ItemClause = item_clause_info(ClassMethodName, PredOrFunc,
                     HeadArgs, _Origin, _VarSet, _ClauseBody, Context, _SeqNum),
                 adjust_func_arity(PredOrFunc, ArityInt, list.length(HeadArgs)),
@@ -934,7 +936,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     instance_proc_def_clauses([ItemClause]), ArityInt,
                     Context),
                 MaybeInstanceMethod = ok1(InstanceMethod)
-            ;
+            else
                 MethodTermStr = describe_error_term(VarSet, MethodTerm),
                 Pieces = [words("Error: expected clause or"),
                     quote("pred(<Name> / <Arity>) is <InstanceName>"),

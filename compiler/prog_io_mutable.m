@@ -68,12 +68,12 @@ parse_initialise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
             MaybeItem = error1([Spec])
         ;
             SymNameSpecifier = name_arity(SymName, Arity),
-            ( ( Arity = 0 ; Arity = 2 ) ->
+            ( if ( Arity = 0 ; Arity = 2 ) then
                 ItemInitialise = item_initialise_info(SymName, Arity,
                     item_origin_user, Context, SeqNum),
                 Item = item_initialise(ItemInitialise),
                 MaybeItem = ok1(Item)
-            ;
+            else
                 TermStr = describe_error_term(VarSet, Term),
                 Pieces = [words("Error:"), decl("initialise"),
                     words("declaration specifies a predicate"),
@@ -106,12 +106,12 @@ parse_finalise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
             MaybeItem = error1([Spec])
         ;
             SymNameSpecifier = name_arity(SymName, Arity),
-            ( ( Arity = 0 ; Arity = 2 ) ->
+            ( if ( Arity = 0 ; Arity = 2 ) then
                 ItemFinalise = item_finalise_info(SymName, Arity,
                     item_origin_user, Context, SeqNum),
                 Item = item_finalise(ItemFinalise),
                 MaybeItem = ok1(Item)
-            ;
+            else
                 TermStr = describe_error_term(VarSet, Term),
                 Pieces = [words("Error:"), decl("finalise"),
                     words("declaration specifies a predicate"),
@@ -152,12 +152,12 @@ parse_mutable_decl_info(_ModuleName, VarSet, Terms, Context, SeqNum,
         OptMutAttrsTerm = [MutAttrsTerm],
         parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs)
     ),
-    (
+    ( if
         MaybeName = ok1(Name),
         MaybeType = ok1(Type),
         MaybeInst = ok1(Inst),
         MaybeMutAttrs = ok1(MutAttrs)
-    ->
+    then
         % We *must* attach the varset to the mutable item because if the
         % initial value is non-ground, then the initial value will be a
         % variable and the mutable initialisation predicate will contain
@@ -167,7 +167,7 @@ parse_mutable_decl_info(_ModuleName, VarSet, Terms, Context, SeqNum,
         MutableInfo = item_mutable_info(Name, Type, Value, Inst, MutAttrs,
             ProgVarSet, Context, SeqNum),
         MaybeMutableInfo = ok1(MutableInfo)
-    ;
+    else
         Specs = get_any_errors1(MaybeName) ++ get_any_errors1(MaybeType) ++
             get_any_errors1(MaybeInst) ++ get_any_errors1(MaybeMutAttrs),
         MaybeMutableInfo = error1(Specs)
@@ -176,9 +176,9 @@ parse_mutable_decl_info(_ModuleName, VarSet, Terms, Context, SeqNum,
 :- pred parse_mutable_name(term::in, maybe1(string)::out) is det.
 
 parse_mutable_name(NameTerm, MaybeName) :-
-    ( NameTerm = term.functor(atom(Name), [], _) ->
+    ( if NameTerm = term.functor(atom(Name), [], _) then
         MaybeName = ok1(Name)
-    ;
+    else
         Pieces = [words("Error: invalid mutable name."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(NameTerm), [always(Pieces)])]),
@@ -188,7 +188,7 @@ parse_mutable_name(NameTerm, MaybeName) :-
 :- pred parse_mutable_type(varset::in, term::in, maybe1(mer_type)::out) is det.
 
 parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
-    ( term.contains_var(TypeTerm, _) ->
+    ( if term.contains_var(TypeTerm, _) then
         TypeTermStr = describe_error_term(VarSet, TypeTerm),
         Pieces = [words("Error: the type in a"), decl("mutable"),
             words("declaration cannot contain variables:"),
@@ -196,7 +196,7 @@ parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
         MaybeType = error1([Spec])
-    ;
+    else
         ContextPieces = [],
         parse_type(TypeTerm, VarSet, ContextPieces, MaybeType)
     ).
@@ -204,7 +204,7 @@ parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
 :- pred parse_mutable_inst(varset::in, term::in, maybe1(mer_inst)::out) is det.
 
 parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
-    ( term.contains_var(InstTerm, _) ->
+    ( if term.contains_var(InstTerm, _) then
         InstTermStr = describe_error_term(VarSet, InstTerm),
         Pieces = [words("Error: the inst in a"), decl("mutable"),
             words("declaration cannot contain variables:"),
@@ -212,9 +212,9 @@ parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(InstTerm), [always(Pieces)])]),
         MaybeInst = error1([Spec])
-    ; convert_inst(no_allow_constrained_inst_var, InstTerm, Inst) ->
+    else if convert_inst(no_allow_constrained_inst_var, InstTerm, Inst) then
         MaybeInst = ok1(Inst)
-    ;
+    else
         Pieces = [words("Error: invalid inst in"), decl("mutable"),
             words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -246,20 +246,20 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
         mutable_attr_constant(mutable_constant) -
             mutable_attr_thread_local(mutable_thread_local)
     ],
-    (
+    ( if
         list_term_to_term_list(MutAttrsTerm, MutAttrTerms),
         map_parser(parse_mutable_attr, MutAttrTerms, MaybeAttrList),
         MaybeAttrList = ok1(CollectedMutAttrs)
-    ->
+    then
         % We check for trailed/untrailed, constant/trailed,
         % trailed/thread_local, constant/attach_to_io_state,
         % constant/thread_local conflicts here and deal with conflicting
         % foreign_name attributes in make_hlds_passes.m.
-        (
+        ( if
             list.member(Conflict1 - Conflict2, ConflictingAttributes),
             list.member(Conflict1, CollectedMutAttrs),
             list.member(Conflict2, CollectedMutAttrs)
-        ->
+        then
             % XXX Should generate more specific error message.
             MutAttrsStr = mercury_term_to_string(VarSet, no, MutAttrsTerm),
             Pieces = [words("Error: conflicting attributes"),
@@ -269,12 +269,12 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
                 [simple_msg(get_term_context(MutAttrsTerm),
                     [always(Pieces)])]),
             MaybeMutAttrs = error1([Spec])
-        ;
+        else
             list.foldl(process_mutable_attribute, CollectedMutAttrs,
                 Attributes0, Attributes),
             MaybeMutAttrs = ok1(Attributes)
         )
-    ;
+    else
         MutAttrsStr = mercury_term_to_string(VarSet, no, MutAttrsTerm),
         Pieces = [words("Error: malformed attribute list"),
             words("in"), decl("mutable"), words("declaration:"),
@@ -312,7 +312,7 @@ process_mutable_attribute(mutable_attr_thread_local(ThrLocal), !Attributes) :-
     maybe1(collected_mutable_attribute)::out) is det.
 
 parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
-    (
+    ( if
         MutAttrTerm = term.functor(term.atom(String), [], _),
         (
             String  = "untrailed",
@@ -331,17 +331,17 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
             String = "thread_local",
             MutAttr = mutable_attr_thread_local(mutable_thread_local)
         )
-    ->
+    then
         MutAttrResult = ok1(MutAttr)
-    ;
+    else if
         MutAttrTerm = term.functor(term.atom("foreign_name"), Args, _),
         Args = [LangTerm, ForeignNameTerm],
         parse_foreign_language(LangTerm, Lang),
         ForeignNameTerm = term.functor(term.string(ForeignName), [], _)
-    ->
+    then
         MutAttr = mutable_attr_foreign_name(foreign_name(Lang, ForeignName)),
         MutAttrResult = ok1(MutAttr)
-    ;
+    else
         Pieces = [words("Error: unrecognised attribute"),
             words("in"), decl("mutable"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
