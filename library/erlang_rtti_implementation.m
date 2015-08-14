@@ -2108,7 +2108,8 @@ det_dynamic_cast(Term, Actual) :-
 :- type du_arg_info
     --->    du_arg_info(
                 du_arg_name         :: maybe(list(char)),
-                du_arg_type         :: maybe_pseudo_type_info
+                du_arg_type         :: maybe_pseudo_type_info,
+                du_arg_width        :: arg_width
             ).
 
 :- type exist_info
@@ -2157,6 +2158,12 @@ det_dynamic_cast(Term, Actual) :-
 :- type maybe_pseudo_type_info
     --->    pseudo(pseudo_type_info_thunk)
     ;       plain(type_info_thunk).
+
+:- type arg_width
+    --->    full_word
+    ;       double_word
+    ;       partial_word_first(int)         % mask
+    ;       partial_word_shifted(int, int). % shift, mask
 
 %---------------------------------------------------------------------------%
 
