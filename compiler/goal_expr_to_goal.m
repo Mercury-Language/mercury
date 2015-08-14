@@ -311,29 +311,29 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
             io.nl(!IO)
         )
     ;
-        Goal = trace_expr(Context, MaybeCompileTime, MaybeRunTime, MaybeIO,
-            Mutables, SubGoal0),
-        list.map4(extract_trace_mutable_var(Context, !.VarSet), Mutables,
-            MutableHLDSs, MutableStateVars, MutableGetGoals, MutableSetGoals),
+        Goal = trace_expr(Context, MaybeCompileTime, MaybeRunTime, MaybeIO0,
+            Mutables0, SubGoal0),
+        list.map4(extract_trace_mutable_var(Context, !.VarSet, Renaming),
+            Mutables0, MutableHLDSs, MutableStateVars,
+            MutableGetGoals, MutableSetGoals),
         (
-            MaybeIO = yes(IOStateVar),
-            varset.lookup_name(!.VarSet, IOStateVar, IOStateVarName),
+            MaybeIO0 = yes(IOStateVar0),
+            extract_trace_io_var(Context, !.VarSet, Renaming,
+                IOStateVar0, IOStateVar, IOStateVarName, IOGetGoal, IOSetGoal),
             MaybeIOHLDS = yes(IOStateVarName),
-            extract_trace_io_var(Context, IOStateVar, IOGetGoal, IOSetGoal),
-            StateVars0 = [IOStateVar | MutableStateVars],
+            StateVars = [IOStateVar | MutableStateVars],
             GetGoals = [IOGetGoal | MutableGetGoals],
             SetGoals = [IOSetGoal | MutableSetGoals]
         ;
-            MaybeIO = no,
+            MaybeIO0 = no,
             MaybeIOHLDS = no,
-            StateVars0 = MutableStateVars,
+            StateVars = MutableStateVars,
             GetGoals = MutableGetGoals,
             SetGoals = MutableSetGoals
         ),
         SubGoal1 =
             goal_list_to_conj(Context, GetGoals ++ [SubGoal0] ++ SetGoals),
         BeforeSVarState = !.SVarState,
-        rename_var_list(need_not_rename, Renaming, StateVars0, StateVars),
         svar_prepare_for_local_state_vars(Context, !.VarSet, StateVars,
             BeforeSVarState, BeforeInsideSVarState, !Specs),
         transform_parse_tree_goal_to_hlds(LocKind, SubGoal1, Renaming,
@@ -622,32 +622,45 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
     ).
 
 :- pred extract_trace_mutable_var(prog_context::in, prog_varset::in,
-    trace_mutable_var::in, trace_mutable_var_hlds::out,
+    prog_var_renaming::in, trace_mutable_var::in, trace_mutable_var_hlds::out,
     prog_var::out, goal::out, goal::out) is det.
 
-extract_trace_mutable_var(Context, VarSet, Mutable, MutableHLDS, StateVar,
-        GetGoal, SetGoal) :-
-    Mutable = trace_mutable_var(MutableName, StateVar),
+extract_trace_mutable_var(Context, VarSet, Renaming, Mutable, MutableHLDS,
+        StateVar, GetGoal, SetGoal) :-
+    Mutable = trace_mutable_var(MutableName, StateVar0),
+    rename_var(need_not_rename, Renaming, StateVar0, StateVar),
     varset.lookup_name(VarSet, StateVar, StateVarName),
     MutableHLDS = trace_mutable_var_hlds(MutableName, StateVarName),
     GetPredName = unqualified("get_" ++ MutableName),
     SetPredName = unqualified("set_" ++ MutableName),
-    SetVar = functor(atom("!:"), [variable(StateVar, Context)], Context),
-    UseVar = functor(atom("!."), [variable(StateVar, Context)], Context),
+    % We create the get and set goals with the original, unrenamed version
+    % of the state variable, because our caller will rename the whole goal
+    % in the scope of the trace expression, and the get and set goals
+    % we construct here will go into that scope.
+    SetVar = functor(atom("!:"), [variable(StateVar0, Context)], Context),
+    UseVar = functor(atom("!."), [variable(StateVar0, Context)], Context),
     GetPurity = purity_semipure,
     SetPurity = purity_impure,
     GetGoal = call_expr(Context, GetPredName, [SetVar], GetPurity),
     SetGoal = call_expr(Context, SetPredName, [UseVar], SetPurity).
 
-:- pred extract_trace_io_var(prog_context::in, prog_var::in,
+:- pred extract_trace_io_var(prog_context::in, prog_varset::in,
+    prog_var_renaming::in, prog_var::in, prog_var::out, string::out,
     goal::out, goal::out) is det.
 
-extract_trace_io_var(Context, StateVar, GetGoal, SetGoal) :-
+extract_trace_io_var(Context, VarSet, Renaming, StateVar0, StateVar,
+        StateVarName, GetGoal, SetGoal) :-
+    rename_var(need_not_rename, Renaming, StateVar0, StateVar),
+    varset.lookup_name(VarSet, StateVar, StateVarName),
     IO = mercury_io_module,
     GetPredName = qualified(IO, "unsafe_get_io_state"),
     SetPredName = qualified(IO, "unsafe_set_io_state"),
-    SetVar = functor(atom("!:"), [variable(StateVar, Context)], Context),
-    UseVar = functor(atom("!."), [variable(StateVar, Context)], Context),
+    % We create the get and set goals with the original, unrenamed version
+    % of the state variable, because our caller will rename the whole goal
+    % in the scope of the trace expression, and the get and set goals
+    % we construct here will go into that scope.
+    SetVar = functor(atom("!:"), [variable(StateVar0, Context)], Context),
+    UseVar = functor(atom("!."), [variable(StateVar0, Context)], Context),
     GetPurity = purity_semipure,
     SetPurity = purity_impure,
     GetGoal = call_expr(Context, GetPredName, [SetVar], GetPurity),

@@ -2011,42 +2011,54 @@ write_goal_scope(!.Info, GoalExpr, ModuleInfo, VarSet,
     ;
         Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO,
             MutableVars, QuantVars),
-        io.write_string("(\n", !IO),
-        write_indent(Indent + 1, !IO),
-        io.write_string("% trace\n", !IO),
-        (
-            MaybeCompileTime = yes(CompileTime),
-            write_indent(Indent + 1, !IO),
-            io.write_string("% compiletime(", !IO),
-            mercury_output_trace_expr(mercury_output_trace_compiletime,
-                CompileTime, !IO),
-            io.write_string(")\n", !IO)
-        ;
-            MaybeCompileTime = no
-        ),
-        (
-            MaybeRunTime = yes(RunTime),
-            write_indent(Indent + 1, !IO),
-            io.write_string("% runtime(", !IO),
-            mercury_output_trace_expr(mercury_output_trace_runtime,
-                RunTime, !IO),
-            io.write_string(")\n", !IO)
-        ;
-            MaybeRunTime = no
-        ),
-        (
-            MaybeIO = yes(IOStateVarName),
-            write_indent(Indent + 1, !IO),
-            io.write_string("% io(!" ++ IOStateVarName ++ ")\n", !IO)
-        ;
-            MaybeIO = no
-        ),
-        list.foldl(write_trace_mutable_var_hlds(Indent + 1), MutableVars,
-            !IO),
-        write_indent(Indent + 1, !IO),
-        io.write_string("% quantified vars ", !IO),
-        mercury_output_vars(VarSet, AppendVarNums, QuantVars, !IO),
-        io.nl(!IO)
+        io.write_string("trace [\n", !IO),
+        some [!AddCommaNewlineIndent] (
+            !:AddCommaNewlineIndent = no,
+            (
+                MaybeCompileTime = yes(CompileTime),
+                write_indent(Indent + 1, !IO),
+                io.write_string("compile_time(", !IO),
+                mercury_output_trace_expr(mercury_output_trace_compiletime,
+                    CompileTime, !IO),
+                io.write_string(")", !IO),
+                !:AddCommaNewlineIndent = yes
+            ;
+                MaybeCompileTime = no
+            ),
+            (
+                MaybeRunTime = yes(RunTime),
+                maybe_add_comma_newline_indent(!.AddCommaNewlineIndent,
+                    Indent + 1, !IO),
+                io.write_string("runtime(", !IO),
+                mercury_output_trace_expr(mercury_output_trace_runtime,
+                    RunTime, !IO),
+                io.write_string(")", !IO),
+                !:AddCommaNewlineIndent = yes
+            ;
+                MaybeRunTime = no
+            ),
+            (
+                MaybeIO = yes(IOStateVarName),
+                maybe_add_comma_newline_indent(!.AddCommaNewlineIndent,
+                    Indent + 1, !IO),
+                io.write_string("io(!" ++ IOStateVarName ++ ")", !IO),
+                !:AddCommaNewlineIndent = yes
+            ;
+                MaybeIO = no
+            ),
+
+            list.foldl2(write_trace_mutable_var_hlds(Indent + 1), MutableVars,
+                !AddCommaNewlineIndent, !IO),
+
+            maybe_add_newline_indent(!.AddCommaNewlineIndent,
+                Indent + 1, !IO),
+            io.write_string("% quantified vars [", !IO),
+            mercury_output_vars(VarSet, AppendVarNums, QuantVars, !IO),
+            io.write_string("]", !IO),
+
+            maybe_add_newline_indent(!.AddCommaNewlineIndent, Indent, !IO),
+            io.write_string("] (\n", !IO)
+        )
     ;
         Reason = loop_control(LCVar, LCSVar, UseParentStack),
         (
@@ -2065,6 +2077,29 @@ write_goal_scope(!.Info, GoalExpr, ModuleInfo, VarSet,
     write_indent(Indent, !IO),
     io.write_string(")", !IO),
     io.write_string(Follow, !IO).
+
+:- pred maybe_add_comma_newline_indent(bool::in, int::in, io::di, io::uo)
+    is det.
+
+maybe_add_comma_newline_indent(AddCommaNewlineIndent, Indent, !IO) :-
+    (
+        AddCommaNewlineIndent = no
+    ;
+        AddCommaNewlineIndent = yes,
+        io.write_string(",\n", !IO),
+        write_indent(Indent, !IO)
+    ).
+
+:- pred maybe_add_newline_indent(bool::in, int::in, io::di, io::uo) is det.
+
+maybe_add_newline_indent(AddCommaNewlineIndent, Indent, !IO) :-
+    (
+        AddCommaNewlineIndent = no
+    ;
+        AddCommaNewlineIndent = yes,
+        io.write_string("\n", !IO),
+        write_indent(Indent, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2142,13 +2177,15 @@ write_goal_shorthand(Info, GoalExpr, ModuleInfo, VarSet, AppendVarNums,
     ).
 
 :- pred write_trace_mutable_var_hlds(int::in, trace_mutable_var_hlds::in,
-    io::di, io::uo) is det.
+    bool::in, bool::out, io::di, io::uo) is det.
 
-write_trace_mutable_var_hlds(Indent, MutableVar, !IO) :-
+write_trace_mutable_var_hlds(Indent, MutableVar, !AddCommaNewlineIndent,
+        !IO) :-
     MutableVar = trace_mutable_var_hlds(MutableName, StateVarName),
-    write_indent(Indent, !IO),
-    io.write_string("% mutable " ++ MutableName ++ ": ", !IO),
-    io.write_string("!" ++ StateVarName ++ "\n", !IO).
+    maybe_add_comma_newline_indent(!.AddCommaNewlineIndent, Indent, !IO),
+    io.write_string("state(" ++ MutableName ++ ", ", !IO),
+    io.write_string("!" ++ StateVarName ++ ")", !IO),
+    !:AddCommaNewlineIndent = yes.
 
 :- pred write_atomic_interface_vars(string::in, atomic_interface_vars::in,
     prog_varset::in, bool::in, io::di, io::uo) is det.
