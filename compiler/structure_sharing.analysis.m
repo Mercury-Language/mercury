@@ -68,6 +68,7 @@
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.simplify.simplify_tasks.
+:- import_module hlds.arg_info.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -118,9 +119,8 @@
 %-----------------------------------------------------------------------------%
 
 structure_sharing_analysis(!ModuleInfo, !IO) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-
     % Process all the imported sharing information.
+    module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
     (
@@ -131,7 +131,9 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
         process_imported_sharing(!ModuleInfo)
     ),
 
-    % Annotate the HLDS with liveness information.
+    % Annotate the HLDS with liveness information. The liveness analysis
+    % requires argument passing information.
+    generate_arg_info(!ModuleInfo),
     annotate_liveness(!ModuleInfo, !IO),
 
     % Load all structure sharing information present in the HLDS.
