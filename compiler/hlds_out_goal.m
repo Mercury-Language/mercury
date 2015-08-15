@@ -2007,7 +2007,7 @@ write_goal_scope(!.Info, GoalExpr, ModuleInfo, VarSet,
         % This means printing them is meaningful, and sometimes
         % it is needed to diagnose problems.
         DumpOptionsBackup = !.Info ^ hoi_dump_hlds_options_backup,
-        !:Info = !.Info ^ hoi_dump_hlds_options := DumpOptionsBackup
+        !Info ^ hoi_dump_hlds_options := DumpOptionsBackup
     ;
         Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO,
             MutableVars, QuantVars),
@@ -2039,9 +2039,9 @@ write_goal_scope(!.Info, GoalExpr, ModuleInfo, VarSet,
             ),
             (
                 MaybeIO = yes(IOStateVarName),
-                maybe_add_comma_newline_indent(!.AddCommaNewlineIndent,
+                maybe_add_newline_indent(!.AddCommaNewlineIndent,
                     Indent + 1, !IO),
-                io.write_string("io(!" ++ IOStateVarName ++ ")", !IO),
+                io.write_string("% io(!" ++ IOStateVarName ++ ")", !IO),
                 !:AddCommaNewlineIndent = yes
             ;
                 MaybeIO = no
@@ -2077,6 +2077,17 @@ write_goal_scope(!.Info, GoalExpr, ModuleInfo, VarSet,
     write_indent(Indent, !IO),
     io.write_string(")", !IO),
     io.write_string(Follow, !IO).
+
+:- pred write_trace_mutable_var_hlds(int::in, trace_mutable_var_hlds::in,
+    bool::in, bool::out, io::di, io::uo) is det.
+
+write_trace_mutable_var_hlds(Indent, MutableVar, !AddCommaNewlineIndent,
+        !IO) :-
+    MutableVar = trace_mutable_var_hlds(MutableName, StateVarName),
+    maybe_add_newline_indent(!.AddCommaNewlineIndent, Indent, !IO),
+    io.write_string("% state(" ++ MutableName ++ ", ", !IO),
+    io.write_string("!" ++ StateVarName ++ ")", !IO),
+    !:AddCommaNewlineIndent = yes.
 
 :- pred maybe_add_comma_newline_indent(bool::in, int::in, io::di, io::uo)
     is det.
@@ -2175,17 +2186,6 @@ write_goal_shorthand(Info, GoalExpr, ModuleInfo, VarSet, AppendVarNums,
         io.write_string(")", !IO),
         io.write_string(Follow, !IO)
     ).
-
-:- pred write_trace_mutable_var_hlds(int::in, trace_mutable_var_hlds::in,
-    bool::in, bool::out, io::di, io::uo) is det.
-
-write_trace_mutable_var_hlds(Indent, MutableVar, !AddCommaNewlineIndent,
-        !IO) :-
-    MutableVar = trace_mutable_var_hlds(MutableName, StateVarName),
-    maybe_add_comma_newline_indent(!.AddCommaNewlineIndent, Indent, !IO),
-    io.write_string("state(" ++ MutableName ++ ", ", !IO),
-    io.write_string("!" ++ StateVarName ++ ")", !IO),
-    !:AddCommaNewlineIndent = yes.
 
 :- pred write_atomic_interface_vars(string::in, atomic_interface_vars::in,
     prog_varset::in, bool::in, io::di, io::uo) is det.
