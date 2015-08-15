@@ -3624,9 +3624,9 @@ mercury_output_trace_expr(PrintBase, TraceExpr, !IO) :-
     ).
 
 mercury_output_trace_compiletime(trace_flag(FlagName), !IO) :-
-    io.write_string("flag(\"", !IO),
-    io.write_string(FlagName, !IO),
-    io.write_string("\")", !IO).
+    io.write_string("flag(", !IO),
+    term_io.quote_string(FlagName, !IO),
+    io.write_string(")", !IO).
 mercury_output_trace_compiletime(trace_grade(Grade), !IO) :-
     parse_trace_grade_name(GradeName, Grade),
     io.write_string("grade(", !IO),
@@ -3644,9 +3644,9 @@ mercury_output_trace_compiletime(trace_trace_level(Level), !IO) :-
     io.write_string(")", !IO).
 
 mercury_output_trace_runtime(trace_envvar(EnvVarName), !IO) :-
-    io.write_string("env(\"", !IO),
-    io.write_string(EnvVarName, !IO),
-    io.write_string("\")", !IO).
+    io.write_string("env(", !IO),
+    term_io.quote_string(EnvVarName, !IO),
+    io.write_string(")", !IO).
 
 mercury_output_trace_mutable_var(MutableVar, VarSet, AppendVarnums, !IO) :-
     MutableVar = trace_mutable_var(MutableName, StateVar),
