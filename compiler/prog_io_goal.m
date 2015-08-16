@@ -121,20 +121,20 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
     % We just check if it matches the appropriate pattern for one of the
     % builtins. If it doesn't match any of the builtins, then it's just
     % a predicate call.
-    (
+    ( if
         % Check for builtins...
         Term = term.functor(term.atom(Name), Args, Context),
         parse_goal_2(Name, Args, Context, ContextPieces, MaybeGoalPrime,
             !VarSet)
-    ->
+    then
         MaybeGoal = MaybeGoalPrime
-    ;
+    else
         % It's not a builtin.
         term.coerce(Term, ArgsTerm),
         % Check for predicate calls.
-        ( try_parse_sym_name_and_args(ArgsTerm, SymName, Args) ->
+        ( if try_parse_sym_name_and_args(ArgsTerm, SymName, Args) then
             Goal = call_expr(Context, SymName, Args, purity_pure)
-        ;
+        else
             % A call to a free variable, or to a number or string.
             % Just translate it into a call to call/1 - the typechecker
             % will catch calls to numbers and strings.
@@ -176,12 +176,12 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         Args = [ATerm, BTerm],
         parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
         parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-        (
+        ( if
             MaybeAGoal = ok1(AGoal),
             MaybeBGoal = ok1(BGoal)
-        ->
+        then
             MaybeGoal = ok1(conj_expr(Context, AGoal, BGoal))
-        ;
+        else
             ASpecs = get_any_errors1(MaybeAGoal),
             BSpecs = get_any_errors1(MaybeBGoal),
             MaybeGoal = error1(ASpecs ++ BSpecs)
@@ -191,12 +191,12 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         Args = [ATerm, BTerm],
         parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
         parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-        (
+        ( if
             MaybeAGoal = ok1(AGoal),
             MaybeBGoal = ok1(BGoal)
-        ->
+        then
             MaybeGoal = ok1(par_conj_expr(Context, AGoal, BGoal))
-        ;
+        else
             ASpecs = get_any_errors1(MaybeAGoal),
             BSpecs = get_any_errors1(MaybeBGoal),
             MaybeGoal = error1(ASpecs ++ BSpecs)
@@ -204,33 +204,35 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ;
         Functor = ";",
         Args = [ATerm, BTerm],
-        ( ATerm = term.functor(term.atom("->"), [XTerm, YTerm], _Context) ->
+        ( if
+            ATerm = term.functor(term.atom("->"), [XTerm, YTerm], _Context)
+        then
             parse_some_vars_goal(XTerm, ContextPieces, MaybeXGoal, !VarSet),
             parse_goal(YTerm, ContextPieces, MaybeYGoal, !VarSet),
             parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-            (
+            ( if
                 MaybeXGoal = ok3(Vars, StateVars, XGoal),
                 MaybeYGoal = ok1(YGoal),
                 MaybeBGoal = ok1(BGoal)
-            ->
+            then
                 Goal = if_then_else_expr(Context, Vars, StateVars,
                     XGoal, YGoal, BGoal),
                 MaybeGoal = ok1(Goal)
-            ;
+            else
                 XSpecs = get_any_errors3(MaybeXGoal),
                 YSpecs = get_any_errors1(MaybeYGoal),
                 BSpecs = get_any_errors1(MaybeBGoal),
                 MaybeGoal = error1(XSpecs ++ YSpecs ++ BSpecs)
             )
-        ;
+        else
             parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
             parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-            (
+            ( if
                 MaybeAGoal = ok1(AGoal),
                 MaybeBGoal = ok1(BGoal)
-            ->
+            then
                 MaybeGoal = ok1(disj_expr(Context, AGoal, BGoal))
-            ;
+            else
                 ASpecs = get_any_errors1(MaybeAGoal),
                 BSpecs = get_any_errors1(MaybeBGoal),
                 MaybeGoal = error1(ASpecs ++ BSpecs)
@@ -239,28 +241,28 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ;
         Functor = "else",
         Args = [IfTerm, CTerm],
-        (
+        ( if
             IfTerm = term.functor(term.atom("if"),
                 [term.functor(term.atom("then"), [ATerm, BTerm], _)], _)
-        ->
+        then
             parse_some_vars_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
             parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
             parse_goal(CTerm, ContextPieces, MaybeCGoal, !VarSet),
-            (
+            ( if
                 MaybeAGoal = ok3(Vars, StateVars, AGoal),
                 MaybeBGoal = ok1(BGoal),
                 MaybeCGoal = ok1(CGoal)
-            ->
+            then
                 Goal = if_then_else_expr(Context, Vars, StateVars,
                     AGoal, BGoal, CGoal),
                 MaybeGoal = ok1(Goal)
-            ;
+            else
                 ASpecs = get_any_errors3(MaybeAGoal),
                 BSpecs = get_any_errors1(MaybeBGoal),
                 CSpecs = get_any_errors1(MaybeCGoal),
                 MaybeGoal = error1(ASpecs ++ BSpecs ++ CSpecs)
             )
-        ;
+        else
             % `else' can also be part of a `try' goal.
             parse_else_then_try_term(
                 term.functor(term.atom("else"), [IfTerm, CTerm], Context),
@@ -285,10 +287,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
             MaybeCatchAnyExpr, !VarSet),
         (
             MaybeCatchAnyExpr = ok1(CatchAnyExpr),
-            ( TermA = term.functor(atom("catch"), _, _) ->
+            ( if TermA = term.functor(atom("catch"), _, _) then
                 parse_catch_then_try_term(TermA, yes(CatchAnyExpr),
                     Context, ContextPieces, MaybeGoal, !VarSet)
-            ;
+            else
                 parse_else_then_try_term(TermA, [], yes(CatchAnyExpr),
                     Context, ContextPieces, MaybeGoal, !VarSet)
             )
@@ -318,10 +320,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
             MaybeStateVarsAndVars),
         % XXX We should update ContextPieces, instead of supplying [].
         parse_goal(SubTerm, [], MaybeSubGoal, !VarSet),
-        (
+        ( if
             MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
             MaybeSubGoal = ok1(SubGoal)
-        ->
+        then
             list.map(term.coerce_var, Vars0, Vars),
             list.map(term.coerce_var, StateVars0, StateVars),
             (
@@ -342,7 +344,7 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
                     all_state_vars_expr(Context, StateVars, SubGoal))
             ),
             MaybeGoal = ok1(Goal)
-        ;
+        else
             VarsSpecs = get_any_errors2(MaybeStateVarsAndVars),
             SubGoalSpecs = get_any_errors1(MaybeSubGoal),
             MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
@@ -352,12 +354,12 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         Args = [ATerm, BTerm],
         parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
         parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-        (
+        ( if
             MaybeAGoal = ok1(AGoal),
             MaybeBGoal = ok1(BGoal)
-        ->
+        then
             MaybeGoal = ok1(implies_expr(Context, BGoal, AGoal))
-        ;
+        else
             ASpecs = get_any_errors1(MaybeAGoal),
             BSpecs = get_any_errors1(MaybeBGoal),
             MaybeGoal = error1(ASpecs ++ BSpecs)
@@ -367,12 +369,12 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         Args = [ATerm, BTerm],
         parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
         parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-        (
+        ( if
             MaybeAGoal = ok1(AGoal),
             MaybeBGoal = ok1(BGoal)
-        ->
+        then
             MaybeGoal = ok1(implies_expr(Context, AGoal, BGoal))
-        ;
+        else
             ASpecs = get_any_errors1(MaybeAGoal),
             BSpecs = get_any_errors1(MaybeBGoal),
             MaybeGoal = error1(ASpecs ++ BSpecs)
@@ -382,12 +384,12 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         Args = [ATerm, BTerm],
         parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
         parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-        (
+        ( if
             MaybeAGoal = ok1(AGoal),
             MaybeBGoal = ok1(BGoal)
-        ->
+        then
             MaybeGoal = ok1(equivalent_expr(Context, AGoal, BGoal))
-        ;
+        else
             ASpecs = get_any_errors1(MaybeAGoal),
             BSpecs = get_any_errors1(MaybeBGoal),
             MaybeGoal = error1(ASpecs ++ BSpecs)
@@ -402,10 +404,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         parse_quantifier_vars(QVarsTerm, GenericVarSet, UpdatedContextPieces,
             MaybeStateVarsAndVars),
         parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-        (
+        ( if
             MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
             MaybeSubGoal = ok1(SubGoal)
-        ->
+        then
             list.map(term.coerce_var, Vars0, Vars),
             list.map(term.coerce_var, StateVars0, StateVars),
             (
@@ -429,7 +431,7 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
                     some_state_vars_expr(Context, StateVars, SubGoal))
             ),
             MaybeGoal = ok1(Goal)
-        ;
+        else
             VarsSpecs = get_any_errors2(MaybeStateVarsAndVars),
             SubGoalSpecs = get_any_errors1(MaybeSubGoal),
             MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
@@ -440,10 +442,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         varset.coerce(!.VarSet, GenericVarSet),
         parse_trace_params(GenericVarSet, Context, ParamsTerm, MaybeParams),
         parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-        (
+        ( if
             MaybeParams = ok1(Params),
             MaybeSubGoal = ok1(SubGoal)
-        ->
+        then
             convert_trace_params(Params, MaybeComponents),
             (
                 MaybeComponents = ok4(CompileTime, RunTime, MaybeIO, MutVars),
@@ -454,7 +456,7 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
                 MaybeComponents = error4(Specs),
                 MaybeGoal = error1(Specs)
             )
-        ;
+        else
             ParamsSpecs = get_any_errors1(MaybeParams),
             SubGoalSpecs = get_any_errors1(MaybeSubGoal),
             MaybeGoal = error1(ParamsSpecs ++ SubGoalSpecs)
@@ -465,10 +467,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         varset.coerce(!.VarSet, GenericVarSet),
         parse_atomic_params(Context, ParamsTerm, GenericVarSet, MaybeParams),
         parse_atomic_subexpr(SubTerm, MaybeSubGoals, !VarSet),
-        (
+        ( if
             MaybeParams = ok1(Params),
             MaybeSubGoals = ok2(MainGoal, OrElseGoals)
-        ->
+        then
             convert_atomic_params(ParamsTerm, Params, MaybeComponents),
             (
                 MaybeComponents = ok3(Outer, Inner, MaybeOutputVars),
@@ -479,7 +481,7 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
                 MaybeComponents = error3(Specs),
                 MaybeGoal = error1(Specs)
             )
-        ;
+        else
             ParamsSpecs = get_any_errors1(MaybeParams),
             SubGoalSpecs = get_any_errors2(MaybeSubGoals),
             MaybeGoal = error1(ParamsSpecs ++ SubGoalSpecs)
@@ -493,10 +495,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         parse_vars_and_state_vars(VarsTerm, GenericVarSet, ContextPieces,
             MaybeVars),
         parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-        (
+        ( if
             MaybeVars = ok4(Vars0, StateVars0, DotSVars0, ColonSVars0),
             MaybeSubGoal = ok1(SubGoal)
-        ->
+        then
             list.map(term.coerce_var, Vars0, Vars),
             list.map(term.coerce_var, StateVars0, StateVars),
             list.map(term.coerce_var, DotSVars0, DotSVars),
@@ -512,7 +514,7 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
                     StateVars, DotSVars, ColonSVars, SubGoal),
                 MaybeGoal = ok1(Goal)
             )
-        ;
+        else
             VarsSpecs = get_any_errors4(MaybeVars),
             SubGoalSpecs = get_any_errors1(MaybeSubGoal),
             MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
@@ -524,10 +526,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         parse_vars_and_state_vars(VarsTerm, GenericVarSet, ContextPieces,
             MaybeVars),
         parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-        (
+        ( if
             MaybeVars = ok4(Vars0, StateVars0, DotSVars0, ColonSVars0),
             MaybeSubGoal = ok1(SubGoal)
-        ->
+        then
             list.map(term.coerce_var, Vars0, Vars),
             list.map(term.coerce_var, StateVars0, StateVars),
             list.map(term.coerce_var, DotSVars0, DotSVars),
@@ -535,7 +537,7 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
             Goal = promise_equivalent_solution_arbitrary_expr(Context, Vars,
                 StateVars, DotSVars, ColonSVars, SubGoal),
             MaybeGoal = ok1(Goal)
-        ;
+        else
             VarsSpecs = get_any_errors4(MaybeVars),
             SubGoalSpecs = get_any_errors1(MaybeSubGoal),
             MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
@@ -603,10 +605,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         varset.coerce(!.VarSet, GenericVarSet),
         parse_vars(VarsTerm, GenericVarSet, ContextPieces, MaybeVars),
         parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-        (
+        ( if
             MaybeVars = ok1(Vars0),
             MaybeSubGoal = ok1(SubGoal)
-        ->
+        then
             parse_one_var_list(Vars0, SubGoal, ContextPieces, Functor,
                 MaybeVar),
             (
@@ -617,7 +619,7 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
                 MaybeVar = error1(RCSSpecs),
                 MaybeGoal = error1(RCSSpecs)
             )
-        ;
+        else
             VarsSpecs = get_any_errors1(MaybeVars),
             SubGoalSpecs = get_any_errors1(MaybeSubGoal),
             MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
@@ -652,10 +654,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         varset.coerce(!.VarSet, GenericVarSet),
         parse_vars(VarsTerm, GenericVarSet, ContextPieces, MaybeVars),
         parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-        (
+        ( if
             MaybeVars = ok1(Vars0),
             MaybeSubGoal = ok1(SubGoal)
-        ->
+        then
             parse_one_var_list(Vars0, SubGoal, ContextPieces, Functor,
                 MaybeVar),
             (
@@ -667,7 +669,7 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
                 MaybeVar = error1(RCSSpecs),
                 MaybeGoal = error1(RCSSpecs)
             )
-        ;
+        else
             VarsSpecs = get_any_errors1(MaybeVars),
             SubGoalSpecs = get_any_errors1(MaybeSubGoal),
             MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
@@ -684,13 +686,18 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
         (
             MaybeSubGoal = ok1(SubGoal),
-            ( SubGoal = call_expr(_, Pred, CallArgs, purity_pure) ->
+            % ZZZ
+            ( if
+                SubGoal = call_expr(_, Pred, CallArgs, purity_pure)
+            then
                 Goal = call_expr(Context, Pred, CallArgs, Purity),
                 MaybeGoal = ok1(Goal)
-            ; SubGoal = unify_expr(_, ProgTerm1, ProgTerm2, purity_pure) ->
+            else if
+                SubGoal = unify_expr(_, ProgTerm1, ProgTerm2, purity_pure)
+            then
                 Goal = unify_expr(Context, ProgTerm1, ProgTerm2, Purity),
                 MaybeGoal = ok1(Goal)
-            ;
+            else
                 % Inappropriate placement of an impurity marker, so we treat
                 % it like a predicate call. typecheck.m prints out something
                 % descriptive for these errors.
@@ -712,14 +719,16 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
         (
             MaybeSubGoal = ok1(SubGoal),
-            ( SubGoal = call_expr(SubContext, SymName, CallArgs, Purity) ->
-                (
+            ( if
+                SubGoal = call_expr(SubContext, SymName, CallArgs, Purity)
+            then
+                ( if
                     SymName = unqualified(EventName),
                     Purity = purity_pure
-                ->
+                then
                     Goal = event_expr(Context, EventName, CallArgs),
                     MaybeGoal = ok1(Goal)
-                ;
+                else
                     some [!Specs] (
                         !:Specs = [],
                         (
@@ -755,7 +764,7 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
                         MaybeGoal = error1(!.Specs)
                     )
                 )
-            ;
+            else
                 Pieces = ContextPieces ++ [lower_case_next_if_not_first,
                     words("Error: event prefix must not precede anything"),
                     words("other than a call."), nl],
@@ -811,26 +820,27 @@ parse_one_var_list(Vars0, Goal, ContextPieces, ConstructName, MaybeVar) :-
 %-----------------------------------------------------------------------------%
 
 parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
-    ( Term = term.functor(term.atom("some"), [QVarsTerm, SubTerm], _Context) ->
+    ( if Term = term.functor(term.atom("some"), [QVarsTerm, SubTerm], _Context)
+    then
         UpdatedContextPieces = ContextPieces ++ [lower_case_next_if_not_first,
             words("In first argument of"), quote("some"), suffix(":")],
         varset.coerce(!.VarSet, GenericVarSet),
         parse_quantifier_vars(QVarsTerm, GenericVarSet, UpdatedContextPieces,
             MaybeVars),
         GoalTerm = SubTerm
-    ;
+    else
         MaybeVars = ok2([], []),
         GoalTerm = Term
     ),
     parse_goal(GoalTerm, ContextPieces, MaybeGoal, !VarSet),
-    (
+    ( if
         MaybeVars = ok2(Vars0, StateVars0),
         MaybeGoal = ok1(Goal)
-    ->
+    then
         list.map(term.coerce_var, Vars0, Vars),
         list.map(term.coerce_var, StateVars0, StateVars),
         MaybeVarsAndGoal = ok3(Vars, StateVars, Goal)
-    ;
+    else
         VarsSpecs = get_any_errors2(MaybeVars),
         GoalSpecs = get_any_errors1(MaybeGoal),
         MaybeVarsAndGoal = error3(VarsSpecs ++ GoalSpecs)
@@ -848,25 +858,25 @@ parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
     maybe1(assoc_list(trace_component, term.context))::out) is det.
 
 parse_trace_params(VarSet, Context, Term, MaybeComponentsContexts) :-
-    ( Term = term.functor(term.atom("[]"), [], _) ->
+    ( if Term = term.functor(term.atom("[]"), [], _) then
         MaybeComponentsContexts = ok1([])
-    ; Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) ->
+    else if Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) then
         parse_trace_component(VarSet, Term, HeadTerm,
             MaybeHeadComponentContext),
         parse_trace_params(VarSet, Context, TailTerm,
             MaybeTailComponentsContexts),
-        (
+        ( if
             MaybeHeadComponentContext = ok1(HeadComponentContext),
             MaybeTailComponentsContexts = ok1(TailComponentsContexts)
-        ->
+        then
             MaybeComponentsContexts =
                 ok1([HeadComponentContext | TailComponentsContexts])
-        ;
+        else
             HeadSpecs = get_any_errors1(MaybeHeadComponentContext),
             TailSpecs = get_any_errors1(MaybeTailComponentsContexts),
             MaybeComponentsContexts = error1(HeadSpecs ++ TailSpecs)
         )
-    ;
+    else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: invalid trace goal parameter"),
             quote(TermStr), suffix("."), nl],
@@ -879,16 +889,16 @@ parse_trace_params(VarSet, Context, Term, MaybeComponentsContexts) :-
     maybe1(pair(trace_component, term.context))::out) is det.
 
 parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
-    (
+    ( if
         Term = term.functor(Functor, SubTerms, Context),
         Functor = term.atom(Atom)
-    ->
-        (
+    then
+        ( if
             ( Atom = "compiletime"
             ; Atom = "compile_time"
             )
-        ->
-            ( SubTerms = [SubTerm] ->
+        then
+            ( if SubTerms = [SubTerm] then
                 parse_trace_tree(parse_trace_compiletime(VarSet), SubTerm,
                     MaybeCompileTime),
                 (
@@ -899,7 +909,7 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     MaybeCompileTime = error1(Specs),
                     MaybeComponentContext = error1(Specs)
                 )
-            ;
+            else
                 Pieces = [words("Error:"), fixed(Atom),
                     words("takes exactly one argument,"),
                     words("which should be a boolean expression"),
@@ -908,12 +918,12 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     [simple_msg(Context, [always(Pieces)])]),
                 MaybeComponentContext = error1([Spec])
             )
-        ;
+        else if
             ( Atom = "runtime"
             ; Atom = "run_time"
             )
-        ->
-            ( SubTerms = [SubTerm] ->
+        then
+            ( if SubTerms = [SubTerm] then
                 parse_trace_tree(parse_trace_runtime(VarSet), SubTerm,
                     MaybeRunTime),
                 (
@@ -924,7 +934,7 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     MaybeRunTime = error1(Specs),
                     MaybeComponentContext = error1(Specs)
                 )
-            ;
+            else
                 Pieces = [words("Error:"), fixed(Atom),
                     words("takes exactly one argument,"),
                     words("which should be a boolean expression"),
@@ -933,18 +943,18 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     [simple_msg(Context, [always(Pieces)])]),
                 MaybeComponentContext = error1([Spec])
             )
-        ;
+        else if
             Atom = "io"
-        ->
-            ( SubTerms = [SubTerm] ->
-                (
+        then
+            ( if SubTerms = [SubTerm] then
+                ( if
                     SubTerm = term.functor(term.atom("!"),
                         [term.variable(Var, _)], _)
-                ->
+                then
                     term.coerce_var(Var, ProgVar),
                     Component = trace_component_maybe_io(ProgVar),
                     MaybeComponentContext = ok1(Component - Context)
-                ;
+                else
                     Pieces = [words("Error: the argument of"), fixed(Atom),
                         words("should be a state variable."), nl],
                     Spec = error_spec(severity_error,
@@ -953,7 +963,7 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                             [always(Pieces)])]),
                     MaybeComponentContext = error1([Spec])
                 )
-            ;
+            else
                 Pieces = [words("Error:"), fixed(Atom),
                     words("takes exactly one argument,"),
                     words("which should be a state variable name."), nl],
@@ -961,13 +971,15 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     [simple_msg(Context, [always(Pieces)])]),
                 MaybeComponentContext = error1([Spec])
             )
-        ;
+        else if
             Atom = "state"
-        ->
-            ( SubTerms = [SubTermA, SubTermB] ->
-                ( SubTermA = term.functor(term.atom(MutableName), [], _) ->
+        then
+            ( if SubTerms = [SubTermA, SubTermB] then
+                ( if
+                    SubTermA = term.functor(term.atom(MutableName), [], _)
+                then
                     MaybeMutable = ok1(MutableName)
-                ;
+                else
                     MutablePieces = [words("Error: the first argument of"),
                         fixed(Atom), words("should be"),
                         words("the name of a mutable variable."), nl],
@@ -977,12 +989,12 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                             [always(MutablePieces)])]),
                     MaybeMutable = error1([MutableSpec])
                 ),
-                (
+                ( if
                     SubTermB = term.functor(term.atom("!"),
                         [term.variable(Var, _)], _)
-                ->
+                then
                     MaybeVar = ok1(Var)
-                ;
+                else
                     VarPieces = [words("Error: the second argument of"),
                         fixed(Atom), words("should be"),
                         words("a state variable name."), nl],
@@ -992,21 +1004,21 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                             [always(VarPieces)])]),
                     MaybeVar = error1([VarSpec])
                 ),
-                (
+                ( if
                     MaybeMutable = ok1(FinalMutable),
                     MaybeVar = ok1(FinalVar)
-                ->
+                then
                     term.coerce_var(FinalVar, ProgVar),
                     MutableVar = trace_mutable_var(FinalMutable, ProgVar),
                     Component = trace_component_mutable_var(MutableVar),
                     MaybeComponentContext = ok1(Component - Context)
-                ;
+                else
                     VarSpecs = get_any_errors1(MaybeVar),
                     MutableSpecs = get_any_errors1(MaybeMutable),
                     MaybeComponentContext =
                         error1(VarSpecs ++ MutableSpecs)
                 )
-            ;
+            else
                 Pieces = [words("Error:"), fixed(Atom),
                     words("takes exactly two arguments,"),
                     words("which should be"),
@@ -1016,7 +1028,7 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     [simple_msg(Context, [always(Pieces)])]),
                 MaybeComponentContext = error1([Spec])
             )
-        ;
+        else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: invalid trace goal parameter"),
                 quote(TermStr), suffix("."), nl],
@@ -1024,7 +1036,7 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                 [simple_msg(Context, [always(Pieces)])]),
             MaybeComponentContext = error1([Spec])
         )
-    ;
+    else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: invalid trace goal parameter"),
             quote(TermStr), suffix("."), nl],
@@ -1037,7 +1049,7 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
     term::in, maybe1(trace_expr(T))::out) is det.
 
 parse_trace_tree(BaseParser, Term, MaybeTree) :-
-    (
+    ( if
         Term = term.functor(term.atom(Atom), [LTerm, RTerm], _),
         (
             Atom = "or",
@@ -1046,32 +1058,32 @@ parse_trace_tree(BaseParser, Term, MaybeTree) :-
             Atom = "and",
             Op = trace_and
         )
-    ->
+    then
         parse_trace_tree(BaseParser, LTerm, MaybeLExpr),
         parse_trace_tree(BaseParser, RTerm, MaybeRExpr),
-        (
+        ( if
             MaybeLExpr = ok1(LExpr),
             MaybeRExpr = ok1(RExpr)
-        ->
+        then
             MaybeTree = ok1(trace_op(Op, LExpr, RExpr))
-        ;
+        else
             LSpecs = get_any_errors1(MaybeLExpr),
             RSpecs = get_any_errors1(MaybeRExpr),
             MaybeTree = error1(LSpecs ++ RSpecs)
         )
-    ;
+    else if
         Term = term.functor(term.atom("not"), [SubTerm], _)
-    ->
+    then
         parse_trace_tree(BaseParser, SubTerm, MaybeSubExpr),
-        (
+        ( if
             MaybeSubExpr = ok1(SubExpr)
-        ->
+        then
             MaybeTree = ok1(trace_not(SubExpr))
-        ;
+        else
             SubSpecs = get_any_errors1(MaybeSubExpr),
             MaybeTree = error1(SubSpecs)
         )
-    ;
+    else
         BaseParser(Term, MaybeBase),
         (
             MaybeBase = ok1(Base),
@@ -1086,16 +1098,16 @@ parse_trace_tree(BaseParser, Term, MaybeTree) :-
     maybe1(trace_compiletime)::out) is det.
 
 parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
-    (
+    ( if
         Term = term.functor(Functor, SubTerms, TermContext),
         Functor = term.atom(Atom)
-    ->
-        ( Atom = "flag" ->
-            ( SubTerms = [SubTerm] ->
-                ( SubTerm = term.functor(term.string(FlagName), [], _) ->
+    then
+        ( if Atom = "flag" then
+            ( if SubTerms = [SubTerm] then
+                ( if SubTerm = term.functor(term.string(FlagName), [], _) then
                     Compiletime = trace_flag(FlagName),
                     MaybeCompiletime = ok1(Compiletime)
-                ;
+                else
                     Pieces = [words("Error: compile_time parameter"),
                         quote("flag"),
                         words("takes a string as argument."), nl],
@@ -1104,22 +1116,22 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                         [simple_msg(TermContext, [always(Pieces)])]),
                     MaybeCompiletime = error1([Spec])
                 )
-            ;
+            else
                 Pieces = [words("Error: compile_time parameter"),
                     quote("flag"), words("takes just one argument."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(TermContext, [always(Pieces)])]),
                 MaybeCompiletime = error1([Spec])
             )
-        ; Atom = "grade" ->
-            ( SubTerms = [SubTerm] ->
-                (
+        else if Atom = "grade" then
+            ( if SubTerms = [SubTerm] then
+                ( if
                     SubTerm = term.functor(term.atom(GradeName), [], _),
                     parse_trace_grade_name(GradeName, TraceGrade)
-                ->
+                then
                     Compiletime = trace_grade(TraceGrade),
                     MaybeCompiletime = ok1(Compiletime)
-                ;
+                else
                     solutions(valid_trace_grade_name, ValidGradeNames),
                     Pieces = [words("invalid grade test;"),
                         words("valid grade tests are")] ++
@@ -1130,16 +1142,16 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                         [simple_msg(TermContext, [always(Pieces)])]),
                     MaybeCompiletime = error1([Spec])
                 )
-            ;
+            else
                 Pieces = [words("Error: compile_time parameter"),
                     quote("grade"), words("takes just one argument."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(TermContext, [always(Pieces)])]),
                 MaybeCompiletime = error1([Spec])
             )
-        ; Atom = "tracelevel" ->
-            ( SubTerms = [SubTerm] ->
-                (
+        else if Atom = "tracelevel" then
+            ( if SubTerms = [SubTerm] then
+                ( if
                     SubTerm = term.functor(term.atom(LevelName), [], _),
                     (
                         LevelName = "shallow",
@@ -1148,10 +1160,10 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                         LevelName = "deep",
                         Level = trace_level_deep
                     )
-                ->
+                then
                     Compiletime = trace_trace_level(Level),
                     MaybeCompiletime = ok1(Compiletime)
-                ;
+                else
                     Pieces = [words("Error: compile_time parameter"),
                         quote("tracelevel"), words("takes just"),
                         quote("shallow"), words("or"), quote("deep"),
@@ -1161,7 +1173,7 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                         [simple_msg(TermContext, [always(Pieces)])]),
                     MaybeCompiletime = error1([Spec])
                 )
-            ;
+            else
                 Pieces = [words("Error: compile_time parameter"),
                     quote("tracelevel"),
                     words("takes just one argument."), nl],
@@ -1169,7 +1181,7 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                     [simple_msg(TermContext, [always(Pieces)])]),
                 MaybeCompiletime = error1([Spec])
             )
-        ;
+        else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: invalid compile_time parameter"),
                 quote(TermStr), suffix("."), nl],
@@ -1177,7 +1189,7 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                 [simple_msg(TermContext, [always(Pieces)])]),
             MaybeCompiletime = error1([Spec])
         )
-    ;
+    else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: invalid compile_time parameter"),
             quote(TermStr), suffix("."), nl],
@@ -1190,13 +1202,13 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
     maybe1(trace_runtime)::out) is det.
 
 parse_trace_runtime(VarSet, Term, MaybeRuntime) :-
-    (
+    ( if
         Term = term.functor(Functor, SubTerms, TermContext),
         Functor = term.atom(Atom)
-    ->
-        ( Atom = "env" ->
-            ( SubTerms = [SubTerm] ->
-                (
+    then
+        ( if Atom = "env" then
+            ( if SubTerms = [SubTerm] then
+                ( if
                     SubTerm = term.functor(SubFunctor, [], _),
                     ( SubFunctor = term.string(EnvVarName)
                     ; SubFunctor = term.atom(EnvVarName)
@@ -1204,10 +1216,10 @@ parse_trace_runtime(VarSet, Term, MaybeRuntime) :-
                     EnvVarChars = string.to_char_list(EnvVarName),
                     list.filter(env_var_is_acceptable_char,
                         EnvVarChars, _, [])
-                ->
+                then
                     Runtime = trace_envvar(EnvVarName),
                     MaybeRuntime = ok1(Runtime)
-                ;
+                else
                     Pieces = [words("Error: run_time parameter"), quote("env"),
                         words("takes an identifier as argument."), nl],
                     Spec = error_spec(severity_error,
@@ -1216,14 +1228,14 @@ parse_trace_runtime(VarSet, Term, MaybeRuntime) :-
                             [always(Pieces)])]),
                     MaybeRuntime = error1([Spec])
                 )
-            ;
+            else
                 Pieces = [words("Error: run_time parameter"), quote("env"),
                     words("takes just one argument."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(TermContext, [always(Pieces)])]),
                 MaybeRuntime = error1([Spec])
             )
-        ;
+        else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: invalid run_time parameter"),
                 quote(TermStr), suffix("."), nl],
@@ -1231,7 +1243,7 @@ parse_trace_runtime(VarSet, Term, MaybeRuntime) :-
                 [simple_msg(TermContext, [always(Pieces)])]),
             MaybeRuntime = error1([Spec])
         )
-    ;
+    else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: invalid run_time parameter"),
             quote(TermStr), suffix("."), nl],
@@ -1332,7 +1344,7 @@ convert_trace_params_2([Component - Context | ComponentsContexts],
 parse_catch_any_term(ArrowTerm, _Context, ContextPieces, MaybeCatchAny,
         !VarSet) :-
     ArrowTerm = term.functor(atom("->"), [VarTerm0, GoalTerm], TermContext),
-    ( VarTerm0 = term.variable(Var0, _) ->
+    ( if VarTerm0 = term.variable(Var0, _) then
         term.coerce_var(Var0, Var),
         parse_goal(GoalTerm, ContextPieces, MaybeGoal, !VarSet),
         (
@@ -1343,7 +1355,7 @@ parse_catch_any_term(ArrowTerm, _Context, ContextPieces, MaybeCatchAny,
             MaybeGoal = error1(Error),
             MaybeCatchAny = error1(Error)
         )
-    ;
+    else
         Pieces = [words("Error: the argument of catch_any"),
             words("should be a variable."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -1374,7 +1386,7 @@ parse_catch_then_try_term(CatchElseThenTryTerm, MaybeCatchAnyExpr,
     prog_varset::in, prog_varset::out) is semidet.
 
 parse_sub_catch_terms(Term, Context, ContextPieces, MaybeCatches, !VarSet) :-
-    ( Term = functor(atom("catch"), [CatchArrowTerm, SubTerm], _) ->
+    ( if Term = functor(atom("catch"), [CatchArrowTerm, SubTerm], _) then
         parse_catch_arrow_term(CatchArrowTerm, Context, ContextPieces,
             MaybeCatch, !VarSet),
         (
@@ -1392,7 +1404,7 @@ parse_sub_catch_terms(Term, Context, ContextPieces, MaybeCatches, !VarSet) :-
             MaybeCatch = error1(Error),
             MaybeCatches = error1(Error)
         )
-    ;
+    else
         parse_catch_arrow_term(Term, Context, ContextPieces, MaybeCatch,
             !VarSet),
         (
@@ -1429,7 +1441,7 @@ parse_catch_arrow_term(CatchArrowTerm, _Context, ContextPieces, MaybeCatch,
 parse_else_then_try_term(Term, CatchExprs, MaybeCatchAnyExpr,
         Context, ContextPieces, MaybeGoal, !VarSet) :-
     % `else' part may or may not exist in `try' goals.
-    ( Term = term.functor(term.atom("else"), [ThenTerm, ElseTerm], _) ->
+    ( if Term = term.functor(term.atom("else"), [ThenTerm, ElseTerm], _) then
         parse_goal(ElseTerm, ContextPieces, MaybeElseGoal0, !VarSet),
         (
             MaybeElseGoal0 = ok1(ElseGoal),
@@ -1439,7 +1451,7 @@ parse_else_then_try_term(Term, CatchExprs, MaybeCatchAnyExpr,
             MaybeElseGoal0 = error1(Specs),
             MaybeGoal = error1(Specs)
         )
-    ;
+    else
         parse_then_try_term(Term, no, CatchExprs, MaybeCatchAnyExpr,
             Context, ContextPieces, MaybeGoal, !VarSet)
     ).
@@ -1458,11 +1470,11 @@ parse_then_try_term(ThenTryTerm, MaybeElse, CatchExprs, MaybeCatchAnyExpr,
     parse_try_params(GenericVarSet, Context, ParamsTerm, MaybeParams),
     parse_goal(TryGoalTerm, ContextPieces, MaybeTryGoal, !VarSet),
     parse_goal(ThenTerm, ContextPieces, MaybeThenGoal, !VarSet),
-    (
+    ( if
         MaybeParams = ok1(Params),
         MaybeTryGoal = ok1(TryGoal),
         MaybeThenGoal = ok1(ThenGoal)
-    ->
+    then
         convert_try_params(Params, MaybeComponents),
         (
             MaybeComponents = ok1(MaybeIO),
@@ -1473,7 +1485,7 @@ parse_then_try_term(ThenTryTerm, MaybeElse, CatchExprs, MaybeCatchAnyExpr,
             MaybeComponents = error1(Specs),
             MaybeGoal = error1(Specs)
         )
-    ;
+    else
         ParamsSpecs = get_any_errors1(MaybeParams),
         TryGoalSpecs = get_any_errors1(MaybeTryGoal),
         ThenGoalSpecs = get_any_errors1(MaybeThenGoal),
@@ -1487,25 +1499,25 @@ parse_then_try_term(ThenTryTerm, MaybeElse, CatchExprs, MaybeCatchAnyExpr,
     maybe1(assoc_list(try_component, term.context))::out) is det.
 
 parse_try_params(VarSet, Context, Term, MaybeComponentsContexts) :-
-    ( Term = term.functor(term.atom("[]"), [], _) ->
+    ( if Term = term.functor(term.atom("[]"), [], _) then
         MaybeComponentsContexts = ok1([])
-    ; Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) ->
+    else if Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) then
         parse_try_component(VarSet, Term, HeadTerm,
             MaybeHeadComponentContext),
         parse_try_params(VarSet, Context, TailTerm,
             MaybeTailComponentsContexts),
-        (
+        ( if
             MaybeHeadComponentContext = ok1(HeadComponentContext),
             MaybeTailComponentsContexts = ok1(TailComponentsContexts)
-        ->
+        then
             MaybeComponentsContexts =
                 ok1([HeadComponentContext | TailComponentsContexts])
-        ;
+        else
             HeadSpecs = get_any_errors1(MaybeHeadComponentContext),
             TailSpecs = get_any_errors1(MaybeTailComponentsContexts),
             MaybeComponentsContexts = error1(HeadSpecs ++ TailSpecs)
         )
-    ;
+    else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: invalid try goal parameter"),
             quote(TermStr), suffix("."), nl],
@@ -1518,20 +1530,20 @@ parse_try_params(VarSet, Context, Term, MaybeComponentsContexts) :-
     maybe1(pair(try_component, term.context))::out) is det.
 
 parse_try_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
-    (
+    ( if
         Term = term.functor(Functor, SubTerms, Context),
         Functor = term.atom(Atom)
-    ->
-        ( Atom = "io" ->
-            ( SubTerms = [SubTerm] ->
-                (
+    then
+        ( if Atom = "io" then
+            ( if SubTerms = [SubTerm] then
+                ( if
                     SubTerm = term.functor(term.atom("!"),
                         [term.variable(Var, _)], _)
-                ->
+                then
                     term.coerce_var(Var, ProgVar),
                     Component = try_component_maybe_io(ProgVar),
                     MaybeComponentContext = ok1(Component - Context)
-                ;
+                else
                     Pieces = [words("Error: the argument of"), fixed(Atom),
                         words("should be a state variable."), nl],
                     Spec = error_spec(severity_error,
@@ -1540,7 +1552,7 @@ parse_try_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                             [always(Pieces)])]),
                     MaybeComponentContext = error1([Spec])
                 )
-            ;
+            else
                 Pieces = [words("Error:"), fixed(Atom),
                     words("takes exactly one argument,"),
                     words("which should be a state variable name."), nl],
@@ -1548,7 +1560,7 @@ parse_try_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     [simple_msg(Context, [always(Pieces)])]),
                 MaybeComponentContext = error1([Spec])
             )
-        ;
+        else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: invalid try goal parameter"),
                 quote(TermStr), suffix("."), nl],
@@ -1556,7 +1568,7 @@ parse_try_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                 [simple_msg(Context, [always(Pieces)])]),
             MaybeComponentContext = error1([Spec])
         )
-    ;
+    else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: invalid try goal parameter"),
             quote(TermStr), suffix("."), nl],
@@ -1609,24 +1621,24 @@ convert_try_params_2([Component - Context | ComponentsContexts],
     maybe1(assoc_list(atomic_component, term.context))::out) is det.
 
 parse_atomic_params(Context, Term, VarSet, MaybeComponentsContexts) :-
-    ( Term = term.functor(term.atom("[]"), [], _) ->
+    ( if Term = term.functor(term.atom("[]"), [], _) then
         MaybeComponentsContexts = ok1([])
-    ; Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) ->
+    else if Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) then
         parse_atomic_component(Term, HeadTerm, VarSet, MaybeHeadComponent),
         parse_atomic_params(Context, TailTerm, VarSet,
             MaybeTailComponentsContexts),
-        (
+        ( if
             MaybeHeadComponent = ok1(HeadComponent),
             MaybeTailComponentsContexts = ok1(TailComponentsContexts)
-        ->
+        then
             MaybeComponentsContexts =
                 ok1([HeadComponent | TailComponentsContexts])
-        ;
+        else
             HeadSpecs = get_any_errors1(MaybeHeadComponent),
             TailSpecs = get_any_errors1(MaybeTailComponentsContexts),
             MaybeComponentsContexts = error1(HeadSpecs ++ TailSpecs)
         )
-    ;
+    else
         (
             Term = term.functor(_, _, TermContext),
             Pieces = [words("Invalid atomic goal parameter."), nl],
@@ -1649,9 +1661,11 @@ parse_atomic_params(Context, Term, VarSet, MaybeComponentsContexts) :-
 parse_atomic_subterm(Name, ErrorTerm, Term, MaybeComponentState) :-
     (
         Term = term.functor(_, SubTerms, TermContext),
-        ( parse_atomic_component_state_or_pair(SubTerms, ComponentState) ->
+        ( if
+            parse_atomic_component_state_or_pair(SubTerms, ComponentState)
+        then
             MaybeComponentState = ok1(ComponentState)
-        ;
+        else
             Pieces = [words("Error:"), words(Name),
                 words("takes exactly one argument,"),
                 words("which should be a state variable"),
@@ -1675,9 +1689,9 @@ parse_atomic_subterm(Name, ErrorTerm, Term, MaybeComponentState) :-
 parse_atomic_component(ErrorTerm, Term, VarSet, MaybeComponentContext) :-
     (
         Term = term.functor(Functor, SubTerms, Context),
-        ( Functor = term.atom(Atom) ->
+        ( if Functor = term.atom(Atom) then
             % XXX Make parse_atomic_subterm do the postprocessing done here.
-            ( Atom = "outer" ->
+            ( if Atom = "outer" then
                 parse_atomic_subterm(Atom, ErrorTerm, Term,
                     MaybeComponentSubTerm),
                 (
@@ -1688,7 +1702,7 @@ parse_atomic_component(ErrorTerm, Term, VarSet, MaybeComponentContext) :-
                     MaybeComponentSubTerm = error1(Specs),
                     MaybeComponentContext = error1(Specs)
                 )
-            ; Atom = "inner" ->
+            else if Atom = "inner" then
                 parse_atomic_subterm(Atom, ErrorTerm, Term,
                     MaybeComponentSubTerm),
                 (
@@ -1699,8 +1713,8 @@ parse_atomic_component(ErrorTerm, Term, VarSet, MaybeComponentContext) :-
                     MaybeComponentSubTerm = error1(Specs),
                     MaybeComponentContext = error1(Specs)
                 )
-            ; Atom = "vars" ->
-                ( SubTerms = [SubTerm] ->
+            else if Atom = "vars" then
+                ( if SubTerms = [SubTerm] then
                     ContextPieces = [words("In"), quote("vars"),
                         words("specifier of atomic scope:")],
                     parse_vars(SubTerm, VarSet, ContextPieces, MaybeVars),
@@ -1713,7 +1727,7 @@ parse_atomic_component(ErrorTerm, Term, VarSet, MaybeComponentContext) :-
                         MaybeVars = error1(Specs),
                         MaybeComponentContext = error1(Specs)
                     )
-                ;
+                else
                     Pieces = [words(Atom), words("takes exact one argument,"),
                         words("which should be a list of variable names."),
                         nl],
@@ -1721,13 +1735,13 @@ parse_atomic_component(ErrorTerm, Term, VarSet, MaybeComponentContext) :-
                         [simple_msg(Context, [always(Pieces)])]),
                     MaybeComponentContext = error1([Spec])
                 )
-            ;
+            else
                 Pieces = [words("Invalid atomic goal parameter."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(Context, [always(Pieces)])]),
                 MaybeComponentContext = error1([Spec])
             )
-        ;
+        else
             Pieces = [words("Invalid atomic goal parameter."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(Context, [always(Pieces)])]),
@@ -1746,21 +1760,21 @@ parse_atomic_component(ErrorTerm, Term, VarSet, MaybeComponentContext) :-
     atomic_component_state::out) is semidet.
 
 parse_atomic_component_state_or_pair(SubTerms, State) :-
-    (
+    ( if
         SubTerms = [Term],
         Term = term.functor(term.atom("!"), [term.variable(Var, _)], _)
-    ->
+    then
         term.coerce_var(Var, ProgVar),
         State = atomic_state_var(ProgVar)
-    ;
+    else if
         SubTerms = [TermA, TermB],
         TermA = term.variable(VarA, _),
         TermB = term.variable(VarB, _)
-    ->
+    then
         term.coerce_var(VarA, ProgVarA),
         term.coerce_var(VarB, ProgVarB),
         State = atomic_var_pair(ProgVarA, ProgVarB)
-    ;
+    else
         fail
     ).
 
@@ -1894,22 +1908,22 @@ parse_atomic_subexpr(Term, MaybeSubExpr, !VarSet) :-
     prog_varset::in, prog_varset::out) is det.
 
 parse_atomic_subgoals_as_list(Term, MaybeGoals, !VarSet) :-
-    (
+    ( if
         Term = term.functor(term.atom("or_else"), [LeftGoal, RightGoal], _)
-    ->
+    then
         parse_atomic_subgoals_as_list(LeftGoal, MaybeLeftGoalList, !VarSet),
         parse_atomic_subgoals_as_list(RightGoal, MaybeRightGoalList, !VarSet),
-        (
+        ( if
             MaybeLeftGoalList = ok1(LeftGoalList),
             MaybeRightGoalList = ok1(RightGoalList)
-        ->
+        then
             MaybeGoals = ok1(LeftGoalList ++ RightGoalList)
-        ;
+        else
             LeftSpecs = get_any_errors1(MaybeLeftGoalList),
             RightSpecs = get_any_errors1(MaybeRightGoalList),
             MaybeGoals = error1(LeftSpecs ++ RightSpecs)
         )
-    ;
+    else
         % XXX Provide better ContextPieces.
         ContextPieces = [],
         parse_goal(Term, ContextPieces, MaybeSubGoal, !VarSet),
@@ -1983,12 +1997,12 @@ parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
         Groundness = ho_any
     ),
 
-    ( parse_pred_expr_args(FuncArgsList, Args0, Modes0) ->
+    ( if parse_pred_expr_args(FuncArgsList, Args0, Modes0) then
         parse_lambda_arg(RetTerm, RetArg, RetMode),
         list.append(Args0, [RetArg], Args),
         list.append(Modes0, [RetMode], Modes),
         inst_var_constraints_are_self_consistent_in_modes(Modes)
-    ;
+    else
         % The argument modes default to `in',
         % the return mode defaults to `out'.
         in_mode(InMode),
