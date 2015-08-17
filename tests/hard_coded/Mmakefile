@@ -27,6 +27,7 @@ ORDINARY_PROGS =	\
 	bug240 \
 	bug300 \
 	bug383 \
+	bug392 \
 	bug_pack_bits \
 	builtin_inst_rename \
 	c_write_string \
@@ -166,6 +167,7 @@ ORDINARY_PROGS =	\
 	impure_prune \
 	initialise_decl \
 	int_fold_up_down \
+	int_range_ops \
 	integer_test \
 	intermod_c_code \
 	intermod_foreign_type \
@@ -174,7 +176,6 @@ ORDINARY_PROGS =	\
 	intermod_pragma_clause \
 	intermod_type_qual \
 	intermod_unused_args \
-	int_range_ops \
 	java_rtti_bug \
 	join_list \
 	lco_double \

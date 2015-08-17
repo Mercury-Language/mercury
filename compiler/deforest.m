@@ -639,8 +639,7 @@ potential_deforestation(Info1, Info2, DeforestBranches) :-
             set.union(Branches0, Branches1, Branches)
     ),
     set.init(DeforestBranches0),
-    list.foldl(GetBranches, VarAssoc,
-        DeforestBranches0, DeforestBranches).
+    list.foldl(GetBranches, VarAssoc, DeforestBranches0, DeforestBranches).
 
 %-----------------------------------------------------------------------------%
 
@@ -849,6 +848,24 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo) :-
             pd_debug_message(DebugPD,
                 "later goals depend on opaque vars\n", [], !IO)
         ),
+        ShouldTry = no
+    ;
+        % A disjunction can be semidet only if it binds no variables.
+        % If we push a goal which binds a variable into a semidet disjunction,
+        % it won't be semidet anymore.
+        %
+        % We assume that LaterGoal can bind variables, because we don't know
+        % whether it can or not. Its instmap_delta doesn't tell us, because
+        % it tells us only the NEW inst of the variables whose insts it
+        % changes. Without knowing their old insts as well, we don't know
+        % whether the inst change reflects the variable being bound, or just
+        % the gathering of knowledge about what its initial value could have
+        % been.
+        EarlierGoal = hlds_goal(disj(_), EarlierGoalInfo),
+        EarlierGoalDetism = goal_info_get_determinism(EarlierGoalInfo),
+        determinism_components(EarlierGoalDetism, _, EarlierGoalMaxSolns),
+        EarlierGoalMaxSolns \= at_most_many
+    ->
         ShouldTry = no
     ;
         ShouldTry = yes
