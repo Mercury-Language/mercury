@@ -206,11 +206,11 @@ expansion_to_goal_wrap_if_fgti(GoalInfo, Expansion, Goal) :-
         Goal = hlds_goal(ExpansionGoalExpr, ExpansionGoalInfo)
     ;
         ExpansionGoals = [_, _ | _],
-        (
+        ( if
             MaybeFGTI = fgti_var_size(TermVar, Size),
             get_maybe_from_ground_term_threshold = yes(Threshold),
             Size >= Threshold
-        ->
+        then
             goal_info_set_nonlocals(set_of_var.make_singleton(TermVar),
                 GoalInfo, MarkedGoalInfo),
             mark_nonlocals_in_ground_term_initial(ExpansionGoals, MarkedGoals),
@@ -219,7 +219,7 @@ expansion_to_goal_wrap_if_fgti(GoalInfo, Expansion, Goal) :-
             Reason = from_ground_term(TermVar, from_ground_term_initial),
             GoalExpr = scope(Reason, ConjGoal),
             Goal = hlds_goal(GoalExpr, MarkedGoalInfo)
-        ;
+        else
             GoalExpr = conj(plain_conj, ExpansionGoals),
             Goal = hlds_goal(GoalExpr, GoalInfo)
         )
@@ -231,11 +231,11 @@ expansion_to_goal_wrap_if_fgti(GoalInfo, Expansion, Goal) :-
 expansion_to_goal_cord_wrap_if_fgti(GoalInfo, Expansion,
         MaybeWrappedGoalCord) :-
     Expansion = expansion(MaybeFGTI, GoalCord),
-    (
+    ( if
         MaybeFGTI = fgti_var_size(TermVar, Size),
         get_maybe_from_ground_term_threshold = yes(Threshold),
         Size >= Threshold
-    ->
+    then
         Goals = cord.list(GoalCord),
         goal_info_set_nonlocals(set_of_var.make_singleton(TermVar),
             GoalInfo, MarkedGoalInfo),
@@ -246,7 +246,7 @@ expansion_to_goal_cord_wrap_if_fgti(GoalInfo, Expansion,
         ScopeGoalExpr = scope(Reason, ConjGoal),
         ScopeGoal = hlds_goal(ScopeGoalExpr, MarkedGoalInfo),
         MaybeWrappedGoalCord = cord.singleton(ScopeGoal)
-    ;
+    else
         MaybeWrappedGoalCord = GoalCord
     ).
 
@@ -256,14 +256,14 @@ expansion_to_goal_cord_wrap_if_fgti(GoalInfo, Expansion,
 mark_nonlocals_in_ground_term_initial([], []).
 mark_nonlocals_in_ground_term_initial([Goal0 | Goals0], [Goal | Goals]) :-
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-    (
+    ( if
         GoalExpr = unify(LHSVar, RHS, _, _, _),
         RHS = rhs_functor(_, _, RHSVars)
-    ->
+    then
         set_of_var.list_to_set([LHSVar | RHSVars], NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
-    ;
+    else
         unexpected($module, $pred, "wrong shape goal")
     ),
     mark_nonlocals_in_ground_term_initial(Goals0, Goals).
@@ -403,17 +403,17 @@ do_arg_unifications_with_fresh_vars([YTerm | YTerms], Context, ArgContext,
 do_arg_unifications_with_contexts(XVars, YTerms, ArgContexts,
         Context, Order, Expansions, !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    (
+    ( if
         XVars = [],
         YTerms = [],
         ArgContexts = []
-    ->
+    then
         Expansions = []
-    ;
+    else if
         XVars = [HeadXVar | TailXVars],
         YTerms = [HeadYTerm | TailYTerms],
         ArgContexts = [HeadArgNumber - HeadArgContext | TailArgContexts]
-    ->
+    then
         do_arg_unification(HeadXVar, HeadYTerm, Context, HeadArgContext, Order,
             HeadArgNumber, HeadExpansion, !SVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs),
@@ -421,7 +421,7 @@ do_arg_unifications_with_contexts(XVars, YTerms, ArgContexts,
             TailArgContexts, Context, Order, TailExpansions,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         Expansions = [HeadExpansion | TailExpansions]
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -441,10 +441,10 @@ do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
     % state var mapping expansion.
     (
         YTerm = term.variable(YVar, YVarContext),
-        ( XVar = YVar ->
+        ( if XVar = YVar then
             % Skip unifications of the form `XVar = XVar'.
             GoalCord = cord.init
-        ;
+        else
             arg_context_to_unify_context(ArgContext, ArgNum,
                 MainContext, SubContext),
             make_atomic_unification(XVar, rhs_var(YVar), YVarContext,
@@ -608,36 +608,36 @@ unravel_var_functor_unification(XVar, YFunctor0, YArgTerms0, YFunctorContext,
     convert_big_integer_functor(YFunctor0, YFunctor, YFunctorContext, !Specs),
     substitute_state_var_mappings(YArgTerms0, YArgTerms, !VarSet,
         !SVarState, !Specs),
-    (
+    ( if
         YFunctor = term.atom(YAtom),
         maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             YFunctorContext, Context, MainContext, SubContext, Purity,
             Order, ExpansionPrime, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
-    ->
+    then
         Expansion = ExpansionPrime
-    ;
+    else if
         % Handle higher-order pred and func expressions.
         RHS = term.functor(YFunctor, YArgTerms, YFunctorContext),
         parse_rule_term(Context, RHS, HeadTerm0, GoalTerm1),
         term.coerce(HeadTerm0, HeadTerm1),
         parse_purity_annotation(HeadTerm1, LambdaPurity, HeadTerm),
-        (
+        ( if
             parse_pred_expression(HeadTerm, Groundness0, EvalMethod0, Vars0,
                 Modes0, Det0)
-        ->
+        then
             PredOrFunc = pf_predicate,
             EvalMethod = EvalMethod0,
             Groundness = Groundness0,
             Vars1 = Vars0,
             Modes1 = Modes0,
             Det1 = Det0
-        ;
+        else
             parse_func_expression(HeadTerm, Groundness, EvalMethod, Vars1,
                 Modes1, Det1),
             PredOrFunc = pf_function
         )
-    ->
+    then
         qualify_lambda_mode_list_if_not_opt_imported(Modes1, Modes, Context,
             !QualInfo, !Specs),
         Det = Det1,
@@ -658,17 +658,17 @@ unravel_var_functor_unification(XVar, YFunctor0, YArgTerms0, YFunctorContext,
             Expansion = expansion(not_fgti,
                 cord.singleton(true_goal_with_context(Context)))
         )
-    ;
+    else
         % Handle the usual case.
-        (
+        ( if
             % The condition of this if-then-else is based on the logic of
             % try_parse_sym_name_and_args, but specialized to this location,
             % so that we can do state var expansion only if we need to.
             YFunctor = term.atom(FName),
-            (
+            ( if
                 FName = ".",
                 YArgTerms = [ModuleTerm, NameArgsTerm]
-            ->
+            then
                 NameArgsTerm = term.functor(term.atom(Name), NameArgTerms, _),
                 try_parse_symbol_name(ModuleTerm, Module),
                 FunctorName = qualified(Module, Name),
@@ -676,15 +676,15 @@ unravel_var_functor_unification(XVar, YFunctor0, YArgTerms0, YFunctorContext,
                 % level of Args, but not at the level of NameArgTerms.
                 substitute_state_var_mappings(NameArgTerms,
                     MaybeQualifiedYArgTermsPrime, !VarSet, !SVarState, !Specs)
-            ;
+            else
                 FunctorName = string_to_sym_name_sep(FName, "__"),
                 MaybeQualifiedYArgTermsPrime = YArgTerms
             )
-        ->
+        then
             MaybeQualifiedYArgTerms = MaybeQualifiedYArgTermsPrime,
             list.length(MaybeQualifiedYArgTerms, Arity),
             ConsId = cons(FunctorName, Arity, cons_id_dummy_type_ctor)
-        ;
+        else
             % float, int or string constant
             %   - any errors will be caught by typechecking
             list.length(YArgTerms, Arity),
@@ -750,12 +750,13 @@ unravel_var_functor_unification(XVar, YFunctor0, YArgTerms0, YFunctorContext,
     term.context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 convert_big_integer_functor(Functor0, Functor, Context, !Specs) :-
-    ( Functor0 = big_integer(Base, Integer) ->
-        ( source_integer_to_int(Base, Integer, Int) ->
+    ( if Functor0 = big_integer(Base, Integer) then
+        ( if source_integer_to_int(Base, Integer, Int) then
             Functor = term.integer(Int)
-        ;
+        else
             BasePrefix = integer_base_prefix(Base),
-            IntString = integer.to_base_string(Integer, integer_base_int(Base)),
+            IntString =
+                integer.to_base_string(Integer, integer_base_int(Base)),
             Pieces = [words("Error: integer literal is too big"),
                 quote(BasePrefix ++ IntString), suffix(".")],
             Msg = simple_msg(Context, [always(Pieces)]),
@@ -763,7 +764,7 @@ convert_big_integer_functor(Functor0, Functor, Context, !Specs) :-
             !:Specs = [Spec | !.Specs],
             Functor = term.integer(0) % dummy
         )
-    ;
+    else
         Functor = Functor0
     ).
 
@@ -1026,13 +1027,13 @@ qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes, Context,
         !QualInfo, !Specs) :-
     % The modes in `.opt' files are already fully module qualified.
     qual_info_get_import_status(!.QualInfo, ImportStatus),
-    ( ImportStatus \= status_opt_imported ->
+    ( if ImportStatus \= status_opt_imported then
         qual_info_get_mq_info(!.QualInfo, MQInfo0),
         % Lambda expressions cannot appear in the interface of a module.
         qualify_lambda_mode_list(mq_not_used_in_interface, Context,
             Modes0, Modes, MQInfo0, MQInfo, !Specs),
         qual_info_set_mq_info(MQInfo, !QualInfo)
-    ;
+    else
         Modes = Modes0
     ).
 
@@ -1093,14 +1094,14 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
     % but variables in the function return value term (and not in the
     % arguments) should *not* be locally quantified.
 
-    ( illegal_state_var_func_result(PredOrFunc, Args0, StateVar) ->
+    ( if illegal_state_var_func_result(PredOrFunc, Args0, StateVar) then
         report_illegal_func_svar_result(Context, !.VarSet, StateVar, !Specs),
         Goal = true_goal_with_context(Context)
-    ; lambda_args_contain_bang_state_var(Args0, StateVar) ->
+    else if lambda_args_contain_bang_state_var(Args0, StateVar) then
         report_illegal_bang_svar_lambda_arg(Context, !.VarSet, StateVar,
             !Specs),
         Goal = true_goal_with_context(Context)
-    ;
+    else
         some [!SVarState] (
             svar_prepare_for_lambda_head(Context, Args0, Args, FinalSVarMap,
                 OutsideSVarState, !:SVarState, !VarSet, !Specs),
@@ -1119,16 +1120,16 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
             % Partition the arguments (and their corresponding lambda vars)
             % into two sets: those that are not output, i.e. input and unused,
             % and those that are output.
-            (
+            ( if
                 partition_args_and_lambda_vars(!.ModuleInfo, Args, LambdaVars,
                     Modes, NonOutputArgs0, OutputArgs0, NonOutputLambdaVars0,
                     OutputLambdaVars0)
-            ->
+            then
                 NonOutputArgs       = NonOutputArgs0,
                 OutputArgs          = OutputArgs0,
                 NonOutputLambdaVars = NonOutputLambdaVars0,
                 OutputLambdaVars    = OutputLambdaVars0
-            ;
+            else
                 unexpected($module, $pred, "mismatched lists")
             ),
 
@@ -1246,17 +1247,17 @@ partition_args_and_lambda_vars(ModuleInfo, [Arg | Args],
     % the arguments/lambda vars into because mode analysis will fail
     % anyway.
 
-    ( mode_is_undefined(ModuleInfo, Mode) ->
+    ( if mode_is_undefined(ModuleInfo, Mode) then
         InputArgs        = [Arg | InputArgs0],
         OutputArgs       = OutputArgs0,
         InputLambdaVars  = [LambdaVar | InputLambdaVars0],
         OutputLambdaVars = OutputLambdaVars0
-    ; mode_is_output(ModuleInfo, Mode) ->
+    else if mode_is_output(ModuleInfo, Mode) then
         InputArgs        = InputArgs0,
         OutputArgs       = [Arg | OutputArgs0],
         InputLambdaVars  = InputLambdaVars0,
         OutputLambdaVars = [LambdaVar | OutputLambdaVars0]
-    ;
+    else
         InputArgs        = [Arg | InputArgs0],
         OutputArgs       = OutputArgs0,
         InputLambdaVars  = [LambdaVar | InputLambdaVars0],
@@ -1271,10 +1272,10 @@ partition_args_and_lambda_vars(ModuleInfo, [Arg | Args],
 arg_context_to_unify_context(ArgContext, ArgNum, MainContext, SubContexts) :-
     (
         ArgContext = ac_head(PredOrFunc, Arity),
-        ( PredOrFunc = pf_function, ArgNum = Arity ->
+        ( if PredOrFunc = pf_function, ArgNum = Arity then
             % It is the function result term in the head.
             MainContext = umc_head_result
-        ;
+        else
             % It is a head argument.
             MainContext = umc_head(ArgNum)
         ),
@@ -1321,12 +1322,12 @@ make_fresh_arg_vars_subst_svars_loop([Arg | Args], !RevVars,
 make_fresh_arg_var_subst_svars(Arg0, Var, Vars0, !VarSet, !SVarState,
         !Specs) :-
     substitute_state_var_mapping(Arg0, Arg, !VarSet, !SVarState, !Specs),
-    (
+    ( if
         Arg = term.variable(ArgVar, _),
         \+ list.member(ArgVar, Vars0)
-    ->
+    then
         Var = ArgVar
-    ;
+    else
         varset.new_var(Var, !VarSet)
     ).
 
@@ -1360,12 +1361,12 @@ make_fresh_arg_vars_no_svar_loop([Arg | Args], !RevVars, !VarSet) :-
     list(prog_var)::in, prog_varset::in, prog_varset::out) is det.
 
 make_fresh_arg_var_no_svar(Arg, Var, Vars0, !VarSet) :-
-    (
+    ( if
         Arg = term.variable(ArgVar, _),
         \+ list.member(ArgVar, Vars0)
-    ->
+    then
         Var = ArgVar
-    ;
+    else
         varset.new_var(Var, !VarSet)
     ).
 

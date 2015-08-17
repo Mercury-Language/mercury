@@ -135,12 +135,12 @@
 :- import_module int.
 
 parse_sym_name_and_args(Term, VarSet, ContextPieces, MaybeSymNameAndArgs) :-
-    (
+    ( if
         Term = term.functor(Functor, FunctorArgs, TermContext),
         Functor = term.atom("."),
         FunctorArgs = [ModuleTerm, NameArgsTerm]
-    ->
-        ( NameArgsTerm = term.functor(term.atom(Name), Args, _) ->
+    then
+        ( if NameArgsTerm = term.functor(term.atom(Name), Args, _) then
             varset.coerce(VarSet, GenericVarSet),
             parse_symbol_name(GenericVarSet, ModuleTerm, MaybeModule),
             (
@@ -158,7 +158,7 @@ parse_sym_name_and_args(Term, VarSet, ContextPieces, MaybeSymNameAndArgs) :-
                     [simple_msg(TermContext, [always(Pieces)])]),
                 MaybeSymNameAndArgs = error2([Spec])
             )
-        ;
+        else
             varset.coerce(VarSet, GenericVarSet),
             TermStr = describe_error_term(GenericVarSet, Term),
             Pieces = ContextPieces ++ [lower_case_next_if_not_first,
@@ -169,12 +169,12 @@ parse_sym_name_and_args(Term, VarSet, ContextPieces, MaybeSymNameAndArgs) :-
                 [simple_msg(TermContext, [always(Pieces)])]),
             MaybeSymNameAndArgs = error2([Spec])
         )
-    ;
+    else
         varset.coerce(VarSet, GenericVarSet),
-        ( Term = term.functor(term.atom(Name), Args, _) ->
+        ( if Term = term.functor(term.atom(Name), Args, _) then
             SymName = string_to_sym_name_sep(Name, "__"),
             MaybeSymNameAndArgs = ok2(SymName, Args)
-        ;
+        else
             TermStr = describe_error_term(GenericVarSet, Term),
             Pieces = ContextPieces ++ [lower_case_next_if_not_first,
                 words("Error: atom expected at"),
@@ -194,14 +194,14 @@ try_parse_sym_name_and_args(Term, SymName, Args) :-
 
 try_parse_sym_name_and_args_from_f_args(Functor, FunctorArgs, SymName, Args) :-
     Functor = term.atom(FunctorName),
-    (
+    ( if
         FunctorName = ".",
         FunctorArgs = [ModuleTerm, NameArgsTerm]
-    ->
+    then
         NameArgsTerm = term.functor(term.atom(Name), Args, _),
         try_parse_symbol_name(ModuleTerm, Module),
         SymName = qualified(Module, Name)
-    ;
+    else
         SymName = string_to_sym_name_sep(FunctorName, "__"),
         Args = FunctorArgs
     ).
@@ -209,14 +209,14 @@ try_parse_sym_name_and_args_from_f_args(Functor, FunctorArgs, SymName, Args) :-
 try_parse_sym_name_and_no_args(Term, SymName) :-
     Term = term.functor(Functor, FunctorArgs, _TermContext),
     Functor = term.atom(FunctorName),
-    (
+    ( if
         FunctorName = ".",
         FunctorArgs = [ModuleTerm, NameArgsTerm]
-    ->
+    then
         NameArgsTerm = term.functor(term.atom(Name), [], _),
         try_parse_symbol_name(ModuleTerm, Module),
         SymName = qualified(Module, Name)
-    ;
+    else
         FunctorArgs = [],
         SymName = string_to_sym_name_sep(FunctorName, "__")
     ).
@@ -228,21 +228,21 @@ parse_implicitly_qualified_sym_name_and_args(DefaultModuleName, Term,
     parse_sym_name_and_args(Term, VarSet, ContextPieces, MaybeSymNameAndArgs0),
     (
         MaybeSymNameAndArgs0 = ok2(SymName, Args),
-        (
+        ( if
             DefaultModuleName = root_module_name
-        ->
+        then
             MaybeSymNameAndArgs = MaybeSymNameAndArgs0
-        ;
+        else if
             SymName = qualified(ModuleName, _),
             \+ partial_sym_name_matches_full(ModuleName, DefaultModuleName)
-        ->
+        then
             Pieces = [words("Error: module qualifier in definition"),
                 words("does not match preceding"), decl("module"),
                 words("declaration."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(Term), [always(Pieces)])]),
             MaybeSymNameAndArgs = error2([Spec])
-        ;
+        else
             UnqualName = unqualify_name(SymName),
             QualSymName = qualified(DefaultModuleName, UnqualName),
             MaybeSymNameAndArgs = ok2(QualSymName, Args)
@@ -255,16 +255,16 @@ parse_implicitly_qualified_sym_name_and_args(DefaultModuleName, Term,
 try_parse_implicitly_qualified_sym_name_and_args(DefaultModuleName, Term,
         SymName, Args) :-
     try_parse_sym_name_and_args(Term, SymName0, Args),
-    (
+    ( if
         DefaultModuleName = root_module_name
-    ->
+    then
         SymName = SymName0
-    ;
+    else if
         SymName0 = qualified(ModuleName, _),
         \+ partial_sym_name_matches_full(ModuleName, DefaultModuleName)
-    ->
+    then
         fail
-    ;
+    else
         UnqualName = unqualify_name(SymName0),
         SymName = qualified(DefaultModuleName, UnqualName)
     ).
@@ -272,16 +272,16 @@ try_parse_implicitly_qualified_sym_name_and_args(DefaultModuleName, Term,
 try_parse_implicitly_qualified_sym_name_and_no_args(DefaultModuleName, Term,
         SymName) :-
     try_parse_sym_name_and_no_args(Term, SymName0),
-    (
+    ( if
         DefaultModuleName = root_module_name
-    ->
+    then
         SymName = SymName0
-    ;
+    else if
         SymName0 = qualified(ModuleName, _),
         \+ partial_sym_name_matches_full(ModuleName, DefaultModuleName)
-    ->
+    then
         fail
-    ;
+    else
         UnqualName = unqualify_name(SymName0),
         SymName = qualified(DefaultModuleName, UnqualName)
     ).
@@ -289,14 +289,14 @@ try_parse_implicitly_qualified_sym_name_and_no_args(DefaultModuleName, Term,
 %-----------------------------------------------------------------------------e
 
 parse_symbol_name(VarSet, Term, MaybeSymName) :-
-    (
+    ( if
         Term = term.functor(term.atom(FunctorName), [ModuleTerm, NameTerm],
             TermContext),
         ( FunctorName = ":"
         ; FunctorName = "."
         )
-    ->
-        ( NameTerm = term.functor(term.atom(Name), [], _) ->
+    then
+        ( if NameTerm = term.functor(term.atom(Name), [], _) then
             parse_symbol_name(VarSet, ModuleTerm, MaybeModule),
             (
                 MaybeModule = ok1(Module),
@@ -312,18 +312,18 @@ parse_symbol_name(VarSet, Term, MaybeSymName) :-
                 % XXX Should we include _ModuleResultSpecs?
                 MaybeSymName = error1([Spec])
             )
-        ;
+        else
             Pieces = [words("Error: identifier expected after"),
                 quote(FunctorName), words("in qualified symbol name."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(TermContext, [always(Pieces)])]),
             MaybeSymName = error1([Spec])
         )
-    ;
-        ( Term = term.functor(term.atom(Name), [], _) ->
+    else
+        ( if Term = term.functor(term.atom(Name), [], _) then
             SymName = string_to_sym_name_sep(Name, "__"),
             MaybeSymName = ok1(SymName)
-        ;
+        else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: symbol name expected at"),
                 words(TermStr), suffix("."), nl],
@@ -334,17 +334,17 @@ parse_symbol_name(VarSet, Term, MaybeSymName) :-
     ).
 
 try_parse_symbol_name(Term, SymName) :-
-    (
+    ( if
         Term = term.functor(term.atom(FunctorName), [ModuleTerm, NameTerm],
             _TermContext),
         ( FunctorName = ":"
         ; FunctorName = "."
         )
-    ->
+    then
         NameTerm = term.functor(term.atom(Name), [], _),
         try_parse_symbol_name(ModuleTerm, Module),
         SymName = qualified(Module, Name)
-    ;
+    else
         Term = term.functor(term.atom(Name), [], _),
         SymName = string_to_sym_name_sep(Name, "__")
     ).
@@ -356,21 +356,21 @@ parse_implicitly_qualified_symbol_name(DefaultModuleName, VarSet, Term,
     parse_symbol_name(VarSet, Term, MaybeSymName0),
     (
         MaybeSymName0 = ok1(SymName),
-        (
+        ( if
             DefaultModuleName = root_module_name
-        ->
+        then
             MaybeSymName = MaybeSymName0
-        ;
+        else if
             SymName = qualified(ModuleName, _),
             \+ partial_sym_name_matches_full(ModuleName, DefaultModuleName)
-        ->
+        then
             Pieces = [words("Error: module qualifier in definition"),
                 words("does not match preceding"), decl("module"),
                 words("declaration."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(Term), [always(Pieces)])]),
             MaybeSymName = error1([Spec])
-        ;
+        else
             UnqualName = unqualify_name(SymName),
             MaybeSymName = ok1(qualified(DefaultModuleName, UnqualName))
         )
@@ -387,9 +387,9 @@ parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier) :-
 
 parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet, Term,
         MaybeSymNameSpecifier) :-
-    ( Term = term.functor(term.atom("/"), [NameTerm, ArityTerm], _) ->
-        ( ArityTerm = term.functor(term.integer(Arity), [], _) ->
-            ( Arity >= 0 ->
+    ( if Term = term.functor(term.atom("/"), [NameTerm, ArityTerm], _) then
+        ( if ArityTerm = term.functor(term.integer(Arity), [], _) then
+            ( if Arity >= 0 then
                 parse_implicitly_qualified_symbol_name(DefaultModule, VarSet,
                     NameTerm, MaybeName),
                 (
@@ -399,21 +399,21 @@ parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet, Term,
                     MaybeName = ok1(Name),
                     MaybeSymNameSpecifier = ok1(name_arity(Name, Arity))
                 )
-            ;
+            else
                 Pieces = [words("Error: arity in symbol name specifier"),
                     words("must be a non-negative integer."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(Term), [always(Pieces)])]),
                 MaybeSymNameSpecifier = error1([Spec])
             )
-        ;
+        else
             Pieces = [words("Error: arity in symbol name specifier"),
                 words("must be an integer."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(Term), [always(Pieces)])]),
             MaybeSymNameSpecifier = error1([Spec])
         )
-    ;
+    else
         parse_implicitly_qualified_symbol_name(DefaultModule, VarSet, Term,
             MaybeSymbolName),
         (

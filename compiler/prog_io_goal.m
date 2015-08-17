@@ -31,24 +31,28 @@
 :- pred parse_goal(term::in, list(format_component)::in, maybe1(goal)::out,
     prog_varset::in, prog_varset::out) is det.
 
-    % Convert a term, possibly starting with `some [Vars]', into
-    % a list of the quantified variables, a list of quantified
-    % state variables, and a goal. (If the term doesn't start
-    % with `some [Vars]', we return empty lists of variables.)
+    % Convert a term, possibly starting with `some [Vars]', into a list
+    % of the quantified variables, a list of quantified state variables,
+    % and a goal. (If the term doesn't start with `some [Vars]', we return
+    % empty lists of variables.)
+    %
+    % Exported to superhomogeneous.m for parsing if-then-else expressions.
     %
 :- pred parse_some_vars_goal(term::in, list(format_component)::in,
     maybe3(list(prog_var), list(prog_var), goal)::out,
     prog_varset::in, prog_varset::out) is det.
 
-    % parse_pred_expression/3 converts the first argument to a :-/2
+    % parse_pred_expression/3 converts the first argument of a :-/2
     % higher-order pred expression into a list of variables, a list
     % of their corresponding modes, and a determinism.
+    %
+    % Exported to superhomogeneous.m for parsing lambda expressions.
     %
 :- pred parse_pred_expression(term::in, ho_groundness::out,
     lambda_eval_method::out, list(prog_term)::out, list(mer_mode)::out,
     determinism::out) is semidet.
 
-    % parse_dcg_pred_expression/3 converts the first argument to a -->/2
+    % parse_dcg_pred_expression/3 converts the first argument of a -->/2
     % higher-order DCG pred expression into a list of arguments, a list
     % of their corresponding modes and the two DCG argument modes, and a
     % determinism.
@@ -58,13 +62,15 @@
     %
     % For `any' insts replace `pred' with `any_pred'.
     %
+    % Exported to superhomogeneous.m for parsing lambda expressions.
+    %
 :- pred parse_dcg_pred_expression(term::in, ho_groundness::out,
     lambda_eval_method::out, list(prog_term)::out, list(mer_mode)::out,
     determinism::out) is semidet.
 
-    % parse_func_expression/3 converts the first argument to a :-/2
+    % parse_func_expression/3 converts the first argument of a :-/2
     % higher-order func expression into a list of arguments, a list
-    % of their corresponding modes, and a determinism.  The syntax
+    % of their corresponding modes, and a determinism. The syntax
     % of a higher-order func expression is
     %   `(func(Var1::Mode1, ..., VarN::ModeN) = (VarN1::ModeN1) is Det
     %       :- Goal)'
@@ -81,9 +87,22 @@
     %
     % For `any' insts replace `func' with `any_func'.
     %
+    % Exported to superhomogeneous.m for parsing lambda expressions.
+    %
 :- pred parse_func_expression(term::in, ho_groundness::out,
     lambda_eval_method::out, list(prog_term)::out, list(mer_mode)::out,
     determinism::out) is semidet.
+
+    % apply_purity_marker_to_maybe_goal(GoalTerm, Purity,
+    %   MaybeGoal0, MaybeGoal):
+    %
+    % Given a GoalTerm which has a purity annotation for Purity in front of it,
+    % which has been parsed as MaybeGoal0, marking the Goal0 in MaybeGoal0
+    % as having the given purity, if it is a goal to which purity annotations
+    % are applicable.
+    %
+:- pred apply_purity_marker_to_maybe_goal(term::in, purity::in,
+    maybe1(goal)::in, maybe1(goal)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -113,10 +132,8 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
     % in either the type-checker or parser anyway.
 
     % First, get the goal context.
-    (
-        Term = term.functor(_, _, Context)
-    ;
-        Term = term.variable(_, Context)
+    ( Term = term.functor(_, _, Context)
+    ; Term = term.variable(_, Context)
     ),
     % We just check if it matches the appropriate pattern for one of the
     % builtins. If it doesn't match any of the builtins, then it's just
@@ -124,7 +141,7 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
     ( if
         % Check for builtins...
         Term = term.functor(term.atom(Name), Args, Context),
-        parse_goal_2(Name, Args, Context, ContextPieces, MaybeGoalPrime,
+        parse_non_call_goal(Name, Args, Context, ContextPieces, MaybeGoalPrime,
             !VarSet)
     then
         MaybeGoal = MaybeGoalPrime
@@ -146,16 +163,12 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred parse_goal_2(string::in, list(term)::in, term.context::in,
+:- pred parse_non_call_goal(string::in, list(term)::in, term.context::in,
     list(format_component)::in, maybe1(goal)::out,
     prog_varset::in, prog_varset::out) is semidet.
 
-parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
-    % Since (A -> B) has different semantics in standard Prolog
-    % (A -> B ; fail) than it does in NU-Prolog or Mercury (A -> B ; true),
-    % for the moment we'll just disallow it.
-    % For consistency we also disallow if-then without the else.
-
+parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
+        !VarSet) :-
     % XXX We should update ContextPieces as we recurse down.
     (
         Functor = "true",
@@ -313,13 +326,13 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         )
     ;
         Functor = "all",
-        Args = [QVarsTerm, SubTerm],
+        Args = [QVarsTerm, SubGoalTerm],
         % Extract any state variables in the quantifier.
         varset.coerce(!.VarSet, GenericVarSet),
         parse_quantifier_vars(QVarsTerm, GenericVarSet, ContextPieces,
             MaybeStateVarsAndVars),
         % XXX We should update ContextPieces, instead of supplying [].
-        parse_goal(SubTerm, [], MaybeSubGoal, !VarSet),
+        parse_goal(SubGoalTerm, [], MaybeSubGoal, !VarSet),
         ( if
             MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
             MaybeSubGoal = ok1(SubGoal)
@@ -396,14 +409,14 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         )
     ;
         Functor = "some",
-        Args = [QVarsTerm, SubTerm],
+        Args = [QVarsTerm, SubGoalTerm],
         % Extract any state variables in the quantifier.
         UpdatedContextPieces = ContextPieces ++ [lower_case_next_if_not_first,
             words("In first argument of"), quote("some"), suffix(":")],
         varset.coerce(!.VarSet, GenericVarSet),
         parse_quantifier_vars(QVarsTerm, GenericVarSet, UpdatedContextPieces,
             MaybeStateVarsAndVars),
-        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
         ( if
             MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
             MaybeSubGoal = ok1(SubGoal)
@@ -438,10 +451,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         )
     ;
         Functor = "trace",
-        Args = [ParamsTerm, SubTerm],
+        Args = [ParamsTerm, SubGoalTerm],
         varset.coerce(!.VarSet, GenericVarSet),
         parse_trace_params(GenericVarSet, Context, ParamsTerm, MaybeParams),
-        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
         ( if
             MaybeParams = ok1(Params),
             MaybeSubGoal = ok1(SubGoal)
@@ -463,10 +476,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         )
     ;
         Functor = "atomic",
-        Args = [ParamsTerm, SubTerm],
+        Args = [ParamsTerm, SubGoalsTerm],
         varset.coerce(!.VarSet, GenericVarSet),
         parse_atomic_params(Context, ParamsTerm, GenericVarSet, MaybeParams),
-        parse_atomic_subexpr(SubTerm, MaybeSubGoals, !VarSet),
+        parse_atomic_subexpr(SubGoalsTerm, MaybeSubGoals, !VarSet),
         ( if
             MaybeParams = ok1(Params),
             MaybeSubGoals = ok2(MainGoal, OrElseGoals)
@@ -490,11 +503,11 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         ( Functor = "promise_equivalent_solutions"
         ; Functor = "promise_equivalent_solution_sets"
         ),
-        Args = [VarsTerm, SubTerm],
+        Args = [VarsTerm, SubGoalTerm],
         varset.coerce(!.VarSet, GenericVarSet),
         parse_vars_and_state_vars(VarsTerm, GenericVarSet, ContextPieces,
             MaybeVars),
-        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
         ( if
             MaybeVars = ok4(Vars0, StateVars0, DotSVars0, ColonSVars0),
             MaybeSubGoal = ok1(SubGoal)
@@ -521,11 +534,11 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         )
     ;
         Functor = "arbitrary",
-        Args = [VarsTerm, SubTerm],
+        Args = [VarsTerm, SubGoalTerm],
         varset.coerce(!.VarSet, GenericVarSet),
         parse_vars_and_state_vars(VarsTerm, GenericVarSet, ContextPieces,
             MaybeVars),
-        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
         ( if
             MaybeVars = ok4(Vars0, StateVars0, DotSVars0, ColonSVars0),
             MaybeSubGoal = ok1(SubGoal)
@@ -553,8 +566,8 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
             Functor = "promise_impure",
             Purity = purity_impure
         ),
-        Args = [SubTerm],
-        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        Args = [SubGoalTerm],
+        parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
         (
             MaybeSubGoal = ok1(SubGoal),
             Goal = promise_purity_expr(Context, Purity, SubGoal),
@@ -589,8 +602,8 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
             Functor = "require_failure",
             Detism = detism_failure
         ),
-        Args = [SubTerm],
-        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        Args = [SubGoalTerm],
+        parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
         (
             MaybeSubGoal = ok1(SubGoal),
             Goal = require_detism_expr(Context, Detism, SubGoal),
@@ -601,10 +614,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         )
     ;
         Functor = "require_complete_switch",
-        Args = [VarsTerm, SubTerm],
+        Args = [VarsTerm, SubGoalTerm],
         varset.coerce(!.VarSet, GenericVarSet),
         parse_vars(VarsTerm, GenericVarSet, ContextPieces, MaybeVars),
-        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
         ( if
             MaybeVars = ok1(Vars0),
             MaybeSubGoal = ok1(SubGoal)
@@ -650,10 +663,10 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
             Functor = "require_switch_arms_failure",
             Detism = detism_failure
         ),
-        Args = [VarsTerm, SubTerm],
+        Args = [VarsTerm, SubGoalTerm],
         varset.coerce(!.VarSet, GenericVarSet),
         parse_vars(VarsTerm, GenericVarSet, ContextPieces, MaybeVars),
-        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
         ( if
             MaybeVars = ok1(Vars0),
             MaybeSubGoal = ok1(SubGoal)
@@ -682,41 +695,14 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
             Functor = "semipure",
             Purity = purity_semipure
         ),
-        Args = [SubTerm],
-        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-        (
-            MaybeSubGoal = ok1(SubGoal),
-            % ZZZ
-            ( if
-                SubGoal = call_expr(_, Pred, CallArgs, purity_pure)
-            then
-                Goal = call_expr(Context, Pred, CallArgs, Purity),
-                MaybeGoal = ok1(Goal)
-            else if
-                SubGoal = unify_expr(_, ProgTerm1, ProgTerm2, purity_pure)
-            then
-                Goal = unify_expr(Context, ProgTerm1, ProgTerm2, Purity),
-                MaybeGoal = ok1(Goal)
-            else
-                % Inappropriate placement of an impurity marker, so we treat
-                % it like a predicate call. typecheck.m prints out something
-                % descriptive for these errors.
-                %
-                % XXX we could return MaybeGoal = error1 here.
-                purity_name(Purity, PurityString),
-                term.coerce(SubTerm, CoercedSubTerm),
-                Goal = call_expr(Context, unqualified(PurityString),
-                    [CoercedSubTerm], purity_pure),
-                MaybeGoal = ok1(Goal)
-            )
-        ;
-            MaybeSubGoal = error1(_),
-            MaybeGoal = MaybeSubGoal
-        )
+        Args = [SubGoalTerm],
+        parse_goal(SubGoalTerm, ContextPieces, MaybeGoal0, !VarSet),
+        apply_purity_marker_to_maybe_goal(SubGoalTerm, Purity,
+            MaybeGoal0, MaybeGoal)
     ;
         Functor = "event",
-        Args = [SubTerm],
-        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        Args = [SubGoalTerm],
+        parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
         (
             MaybeSubGoal = ok1(SubGoal),
             ( if
@@ -769,7 +755,8 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
                     words("Error: event prefix must not precede anything"),
                     words("other than a call."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(SubTerm), [always(Pieces)])]),
+                    [simple_msg(get_term_context(SubGoalTerm),
+                        [always(Pieces)])]),
                 MaybeGoal = error1([Spec])
             )
         ;
@@ -786,6 +773,81 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
         term.coerce(BTerm0, BTerm),
         MaybeGoal = ok1(unify_expr(Context, ATerm, BTerm, purity_pure))
     ).
+
+apply_purity_marker_to_maybe_goal(GoalTerm, Purity, MaybeGoal0, MaybeGoal) :-
+    (
+        MaybeGoal0 = ok1(Goal0),
+        (
+            Goal0 = call_expr(Context, Pred, Args, Purity0),
+            (
+                Purity0 = purity_pure,
+                Goal = call_expr(Context, Pred, Args, Purity)
+            ;
+                ( Purity0 = purity_semipure
+                ; Purity0 = purity_impure
+                ),
+                Goal = bad_purity_goal(GoalTerm, Context, Purity)
+            )
+        ;
+            Goal0 = unify_expr(Context, ProgTerm1, ProgTerm2, Purity0),
+            (
+                Purity0 = purity_pure,
+                Goal = unify_expr(Context, ProgTerm1, ProgTerm2, Purity)
+            ;
+                ( Purity0 = purity_semipure
+                ; Purity0 = purity_impure
+                ),
+                Goal = bad_purity_goal(GoalTerm, Context, Purity)
+            )
+        ;
+            ( Goal0 = conj_expr(_, _, _)
+            ; Goal0 = par_conj_expr(_, _, _)
+            ; Goal0 = true_expr(_)
+            ; Goal0 = disj_expr(_, _, _)
+            ; Goal0 = fail_expr(_)
+            ; Goal0 = some_expr(_, _, _)
+            ; Goal0 = all_expr(_, _, _)
+            ; Goal0 = some_state_vars_expr(_, _, _)
+            ; Goal0 = all_state_vars_expr(_, _, _)
+            ; Goal0 = promise_purity_expr(_, _, _)
+            ; Goal0 = promise_equivalent_solutions_expr(_, _, _, _, _, _)
+            ; Goal0 = promise_equivalent_solution_sets_expr(_, _, _, _, _, _)
+            ; Goal0 = promise_equivalent_solution_arbitrary_expr(_, _, _,
+                _, _, _)
+            ; Goal0 = require_detism_expr(_, _, _)
+            ; Goal0 = require_complete_switch_expr(_, _, _)
+            ; Goal0 = require_switch_arms_detism_expr(_, _, _, _)
+            ; Goal0 = trace_expr(_, _, _, _, _, _)
+            ; Goal0 = atomic_expr(_, _, _, _, _, _)
+            ; Goal0 = try_expr(_, _, _, _, _, _, _)
+            ; Goal0 = implies_expr(_, _, _)
+            ; Goal0 = equivalent_expr(_, _, _)
+            ; Goal0 = not_expr(_, _)
+            ; Goal0 = if_then_else_expr(_, _, _, _, _, _)
+            ; Goal0 = event_expr(_, _, _)
+            ),
+            Goal = bad_purity_goal(GoalTerm, goal_get_context(Goal0), Purity)
+        ),
+        MaybeGoal = ok1(Goal)
+    ;
+        MaybeGoal0 = error1(Specs),
+        MaybeGoal = error1(Specs)
+    ).
+
+    % bad_purity_goal(BadGoal, Purity):
+    %
+    % Given G, a term representing a goal that a semipure and impure prefix
+    % is applied to even though such prefixes do not apply to it, return
+    % the least-bad goal as the goal in that term. We return a predicate call
+    % for which typechecking should print a descriptive error message.
+    %
+:- func bad_purity_goal(term, term.context, purity) = goal.
+
+bad_purity_goal(GoalTerm0, Context, Purity) = Goal :-
+    term.coerce(GoalTerm0, GoalTerm),
+    purity_name(Purity, PurityString),
+    Goal = call_expr(Context, unqualified(PurityString), [GoalTerm],
+        purity_pure).
 
 %-----------------------------------------------------------------------------%
 
@@ -820,14 +882,16 @@ parse_one_var_list(Vars0, Goal, ContextPieces, ConstructName, MaybeVar) :-
 %-----------------------------------------------------------------------------%
 
 parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
-    ( if Term = term.functor(term.atom("some"), [QVarsTerm, SubTerm], _Context)
+    ( if
+        Term = term.functor(term.atom("some"), [QVarsTerm, SubGoalTerm],
+            _Context)
     then
         UpdatedContextPieces = ContextPieces ++ [lower_case_next_if_not_first,
             words("In first argument of"), quote("some"), suffix(":")],
         varset.coerce(!.VarSet, GenericVarSet),
         parse_quantifier_vars(QVarsTerm, GenericVarSet, UpdatedContextPieces,
             MaybeVars),
-        GoalTerm = SubTerm
+        GoalTerm = SubGoalTerm
     else
         MaybeVars = ok2([], []),
         GoalTerm = Term
@@ -1257,10 +1321,8 @@ parse_trace_runtime(VarSet, Term, MaybeRuntime) :-
 env_var_is_acceptable_char(Char) :-
     % This definition must be consistent with the check applied in
     % util/mkinit.c.
-    (
-        char.is_alnum(Char)
-    ;
-        Char = '_'
+    ( char.is_alnum(Char)
+    ; Char = '_'
     ).
 
 :- pred convert_trace_params(assoc_list(trace_component, term.context)::in,
@@ -1948,7 +2010,7 @@ parse_lambda_arg(Term, ArgTerm, Mode) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for parsing pred/func expressions
+% Code for parsing pred/func expressions.
 %
 
 parse_pred_expression(PredTerm, Groundness, lambda_normal, Args, Modes, Det) :-
@@ -1999,8 +2061,8 @@ parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
 
     ( if parse_pred_expr_args(FuncArgsList, Args0, Modes0) then
         parse_lambda_arg(RetTerm, RetArg, RetMode),
-        list.append(Args0, [RetArg], Args),
-        list.append(Modes0, [RetMode], Modes),
+        Args = Args0 ++ [RetArg],
+        Modes = Modes0 ++ [RetMode],
         inst_var_constraints_are_self_consistent_in_modes(Modes)
     else
         % The argument modes default to `in',
@@ -2008,10 +2070,9 @@ parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
         in_mode(InMode),
         out_mode(OutMode),
         list.length(FuncArgsList, NumArgs),
-        list.duplicate(NumArgs, InMode, Modes0),
-        RetMode = OutMode,
-        list.append(Modes0, [RetMode], Modes),
-        list.append(FuncArgsList, [RetTerm], Args1),
+        list.duplicate(NumArgs, InMode, InModes),
+        Modes = InModes ++ [OutMode],
+        Args1 = FuncArgsList ++ [RetTerm],
         list.map(term.coerce, Args1, Args)
     ).
 
@@ -2032,12 +2093,11 @@ parse_func_expression(FuncTerm, Groundness, lambda_normal, Args, Modes, Det) :-
     in_mode(InMode),
     out_mode(OutMode),
     list.length(Args0, NumArgs),
-    list.duplicate(NumArgs, InMode, Modes0),
-    RetMode = OutMode,
+    list.duplicate(NumArgs, InMode, InModes),
     Det = detism_det,
-    list.append(Modes0, [RetMode], Modes),
+    Modes = InModes ++ [OutMode],
     inst_var_constraints_are_self_consistent_in_modes(Modes),
-    list.append(Args0, [RetTerm], Args1),
+    Args1 = Args0 ++ [RetTerm],
     list.map(term.coerce, Args1, Args).
 
 :- pred parse_pred_expr_args(list(term)::in, list(prog_term)::out,
