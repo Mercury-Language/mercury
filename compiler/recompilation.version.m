@@ -289,7 +289,20 @@ gather_in_item(Section, Item, !Info) :-
                 Section, GatheredItems1, GatheredItems),
             !Info ^ gii_gathered_items := GatheredItems
         else
-            maybe_add_gathered_item(Item, Section, !Info)
+            (
+                MaybePredOrFunc = yes(PredOrFunc),
+                adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
+                ItemType = pred_or_func_to_item_type(PredOrFunc),
+                ItemId = item_id(ItemType, item_name(SymName, Arity)),
+                GatheredItems0 = !.Info ^ gii_gathered_items,
+                add_gathered_item(Item, ItemId, Section,
+                    GatheredItems0, GatheredItems),
+                !Info ^ gii_gathered_items := GatheredItems
+            ;
+                MaybePredOrFunc = no
+                % We don't have an item_id, so we cannor gather the item.
+                % XXX Does this lead to missing some needed recompilations?
+            )
         )
     ;
         Item = item_instance(ItemInstance),
@@ -320,31 +333,64 @@ gather_in_item(Section, Item, !Info) :-
             true
         )
     ;
+        (
+            Item = item_inst_defn(ItemInstDefn),
+            ItemInstDefn = item_inst_defn_info(Name, Params, _, _, _, _),
+            list.length(Params, Arity),
+            ItemId = item_id(inst_item, item_name(Name, Arity))
+        ;
+            Item = item_mode_defn(ItemModeDefn),
+            ItemModeDefn = item_mode_defn_info(Name, Params, _, _, _, _),
+            list.length(Params, Arity),
+            ItemId = item_id(mode_item, item_name(Name, Arity))
+        ;
+            Item = item_pred_decl(ItemPredDecl),
+            ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc,
+                TypesAndModes, WithType, _, _, _, _, _, _, _, _, _, _),
+            % For predicates or functions defined using `with_type` annotations
+            % the arity here won't be correct, but equiv_type.m will record
+            % the dependency on the version number with the `incorrect' arity,
+            % so this will work.
+            (
+                WithType = no,
+                adjust_func_arity(PredOrFunc, Arity,
+                    list.length(TypesAndModes))
+            ;
+                WithType = yes(_),
+                Arity = list.length(TypesAndModes)
+            ),
+            ItemType = pred_or_func_to_item_type(PredOrFunc),
+            ItemId = item_id(ItemType, item_name(SymName, Arity))
+        ;
+            Item = item_typeclass(ItemTypeClass),
+            ItemTypeClass = item_typeclass_info(ClassName, ClassVars, _, _,
+                _, _, _, _),
+            list.length(ClassVars, ClassArity),
+            ItemId = item_id(typeclass_item, item_name(ClassName, ClassArity))
+        ),
+        GatheredItems0 = !.Info ^ gii_gathered_items,
+        add_gathered_item(Item, ItemId, Section,
+            GatheredItems0, GatheredItems),
+        !Info ^ gii_gathered_items := GatheredItems
+    ;
+        Item = item_promise(_)
+        % Do nothing; don't gather the item.
+        % XXX This is likely to be a bug. If the old version of an interface
+        % file makes a promise that the new version of that interface file
+        % doesn't, then any importing module whose compilation made use
+        % of that promise *needs* to be recompiled, but we don't detect
+        % that need. The only reason why we haven't come across this bug
+        % in real life is that (a) promises are very rare, and (b) when
+        % they *do* occur, they tend to be very stable.
+    ;
         ( Item = item_clause(_)
-        ; Item = item_inst_defn(_)
-        ; Item = item_mode_defn(_)
-        ; Item = item_pred_decl(_)
-        ; Item = item_promise(_)
-        ; Item = item_typeclass(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
         ; Item = item_nothing(_)
         ),
-        maybe_add_gathered_item(Item, Section, !Info)
-    ).
-
-:- pred maybe_add_gathered_item(item::in, module_section::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
-
-maybe_add_gathered_item(Item, Section, !Info) :-
-    ( if item_to_item_id(Item, ItemId) then
-        GatheredItems0 = !.Info ^ gii_gathered_items,
-        add_gathered_item(Item, ItemId, Section,
-            GatheredItems0, GatheredItems),
-        !Info ^ gii_gathered_items := GatheredItems
-    else
-        true
+        % Such items should not appear in interfaces.
+        unexpected($module, $pred, "unexpected item in interface")
     ).
 
 :- pred add_gathered_item(item::in, item_id::in, module_section::in,
@@ -354,30 +400,7 @@ add_gathered_item(Item, ItemId, Section, !GatheredItems) :-
     ItemId = item_id(ItemType, ItemName),
     ItemName = item_name(SymName, Arity),
     Name = unqualify_name(SymName),
-    IdMap0 = extract_ids(!.GatheredItems, ItemType),
     NameArity = Name - Arity,
-    ( map.search(IdMap0, NameArity, MatchingItems0) ->
-        MatchingItems = MatchingItems0
-    ;
-        MatchingItems = []
-    ),
-    add_gathered_item_2(Item, ItemType, NameArity, Section,
-        MatchingItems, !GatheredItems).
-
-    % This predicate is separate from add_gathered_item because in the past,
-    % this predicate was invoked by add_gathered_item only under some
-    % circumstances. However, then it turned out that the condition under
-    % which add_gathered_item invoked add_gathered_item_2 turned out to
-    % always hold, so today we could merge the two predicates.
-    % XXX ITEM_LIST And we should do so, after this diff is reviewed
-    % and committed.
-    %
-:- pred add_gathered_item_2(item::in, item_type::in, pair(string, arity)::in,
-    module_section::in, assoc_list(module_section, item)::in,
-    gathered_items::in, gathered_items::out) is det.
-
-add_gathered_item_2(Item, ItemType, NameArity, Section, MatchingItems0,
-        !GatheredItems) :-
     % mercury_to_mercury.m splits combined pred and mode declarations.
     % XXX ITEM_LIST Maybe that should be fixed, instead of this workaround.
     % That needs to be done here as well the item list read from the interface
@@ -414,8 +437,7 @@ add_gathered_item_2(Item, ItemType, NameArity, Section, MatchingItems0,
         ModeItemModeDecl = item_mode_decl_info(PredName, MaybePredOrFunc,
             Modes, WithInst, MaybeDetism, InstVarSet, Context, SeqNum),
         ModeItem = item_mode_decl(ModeItemModeDecl),
-        MatchingItems = [Section - PredItem, Section - ModeItem
-            | MatchingItems0]
+        AddedItems = [Section - PredItem, Section - ModeItem]
     ;
         Item = item_typeclass(ItemTypeClass),
         ItemTypeClass ^ tc_class_methods = class_interface_concrete(Methods0)
@@ -425,13 +447,16 @@ add_gathered_item_2(Item, ItemType, NameArity, Section, MatchingItems0,
         NewItemTypeClass = ItemTypeClass ^ tc_class_methods
             := class_interface_concrete(Methods),
         NewItem = item_typeclass(NewItemTypeClass),
-        MatchingItems = [Section - NewItem | MatchingItems0]
+        AddedItems = [Section - NewItem]
     ;
-        MatchingItems = [Section - Item | MatchingItems0]
+        AddedItems = [Section - Item]
     ),
-
     IdMap0 = extract_ids(!.GatheredItems, ItemType),
-    map.set(NameArity, MatchingItems, IdMap0, IdMap),
+    ( if map.search(IdMap0, NameArity, OldItems) then
+        map.det_update(NameArity, AddedItems ++ OldItems, IdMap0, IdMap)
+    else
+        map.det_insert(NameArity, AddedItems, IdMap0, IdMap)
+    ),
     update_ids(ItemType, IdMap, !GatheredItems).
 
 :- func split_class_method_types_and_modes(class_method) = class_methods.
@@ -555,96 +580,6 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- pred item_to_item_id(item::in, item_id::out) is semidet.
-
-item_to_item_id(Item, ItemId) :-
-    item_to_maybe_item_id(Item, yes(ItemId)).
-
-:- pred item_to_maybe_item_id(item::in, maybe(item_id)::out) is det.
-
-item_to_maybe_item_id(Item, MaybeItemId) :-
-    (
-        ( Item = item_clause(_)
-        ; Item = item_promise(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_mutable(_)
-        ; Item = item_nothing(_)
-        ),
-        MaybeItemId = no
-    ;
-        Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(Name, Params, _, _, _, _),
-        list.length(Params, Arity),
-        ItemId = item_id(type_abstract_item, item_name(Name, Arity)),
-        MaybeItemId = yes(ItemId)
-    ;
-        Item = item_inst_defn(ItemInstDefn),
-        ItemInstDefn = item_inst_defn_info(Name, Params, _, _, _, _),
-        list.length(Params, Arity),
-        ItemId = item_id(inst_item, item_name(Name, Arity)),
-        MaybeItemId = yes(ItemId)
-    ;
-        Item = item_mode_defn(ItemModeDefn),
-        ItemModeDefn = item_mode_defn_info(Name, Params, _, _, _, _),
-        list.length(Params, Arity),
-        ItemId = item_id(mode_item, item_name(Name, Arity)),
-        MaybeItemId = yes(ItemId)
-    ;
-        Item = item_pred_decl(ItemPredDecl),
-        ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc, TypesAndModes,
-            WithType, _, _, _, _, _, _, _, _, _, _),
-        % For predicates or functions defined using `with_type` annotations
-        % the arity here won't be correct, but equiv_type.m will record
-        % the dependency on the version number with the `incorrect' arity,
-        % so this will work.
-        (
-            WithType = no,
-            adjust_func_arity(PredOrFunc, Arity, list.length(TypesAndModes))
-        ;
-            WithType = yes(_),
-            Arity = list.length(TypesAndModes)
-        ),
-        ItemType = pred_or_func_to_item_type(PredOrFunc),
-        ItemId = item_id(ItemType, item_name(SymName, Arity)),
-        MaybeItemId = yes(ItemId)
-    ;
-        Item = item_mode_decl(ItemModeDecl),
-        ItemModeDecl = item_mode_decl_info(SymName, MaybePredOrFunc, Modes,
-            _, _, _, _, _),
-        (
-            MaybePredOrFunc = yes(PredOrFunc),
-            adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
-            ItemType = pred_or_func_to_item_type(PredOrFunc),
-            ItemId = item_id(ItemType, item_name(SymName, Arity)),
-            MaybeItemId = yes(ItemId)
-        ;
-            MaybePredOrFunc = no,
-            % We need to handle these separately because a `:- mode'
-            % declaration with a `with_inst` annotation could be for
-            % a predicate or a function.
-            MaybeItemId = no
-        )
-    ;
-        Item = item_pragma(_),
-        % We need to handle these separately because some pragmas
-        % may affect a predicate and a function.
-        MaybeItemId = no
-    ;
-        Item = item_typeclass(ItemTypeClass),
-        ItemTypeClass = item_typeclass_info(ClassName, ClassVars, _, _,
-            _, _, _, _),
-        list.length(ClassVars, ClassArity),
-        ItemId = item_id(typeclass_item, item_name(ClassName, ClassArity)),
-        MaybeItemId = yes(ItemId)
-    ;
-        Item = item_instance(_),
-        % Instances are handled separately (unlike other items, the module
-        % qualifier on an instance declaration is the module containing
-        % the class, not the module containing the instance).
-        MaybeItemId = no
-    ).
 
 :- type maybe_pred_or_func_id == pair(maybe(pred_or_func), sym_name_and_arity).
 
