@@ -991,37 +991,85 @@
 % Goals.
 %
 
-    % Here is how clauses and goals are represented.
-    % a => b --> implies(a, b)
-    % a <= b --> implies(b, a) [just flips the goals around!]
-    % a <=> b --> equivalent(a, b)
+    % Here is how goals are represented in the parse tree.
+    % The three most frequent kinds of goals are first, to give them
+    % their own primary tags on 32 bit machines, and
+    % the seven most frequent kinds of goals are first, to give them
+    % their own primary tags on 64 bit machines.
     %
+    % During a bootcheck in august 2015, the frequencies of occurrence
+    % of the various goal kinds were these:
+    %
+    % goal_unify                1360701
+    % goal_conj                 1316066
+    % goal_call                 1263403
+    %
+    % goal_true                  135352
+    % goal_if_then_else          128052
+    % goal_disj                  116547
+    % goal_not                     7080
+    %
+    % goal_fail                    5219
+    % goal_pro_purity              1492
+    % goal_trace                   1356
+    % goal_pro_eqv_solns            913
+    % goal_some_state_vars          620
+    % goal_some                     192
+    % goal_req_compl_switch         172
+    % goal_par_conj                 132
+    % goal_implies                  129
+    % goal_all                       78
+    % goal_req_detism                49
+    % goal_try                       35
+    % goal_equivalent                18
+    % goal_event                     17
+    % goal_req_arm_detism            14
+    % goal_pro_arbitrary             12
+    % goal_pro_eqv_soln_sets          8
+    % goal_atomic                     2
+    % goal_all_state_vars             0
+
 :- type goal
-    % conjunctions
-    --->    conj_expr(prog_context, goal, goal)
-                            % (non-empty) conjunction
-    ;       par_conj_expr(prog_context, goal, goal)
-                            % parallel conjunction
+    % The most frequent kinds of goals.
+    --->    unify_expr(prog_context, prog_term, prog_term, purity)
+    ;       call_expr(prog_context, sym_name, list(prog_term), purity)
+
+    ;       conj_expr(prog_context, goal, goal)
+            % nonempty plain conjunction
+
     ;       true_expr(prog_context)
-                            % empty conjunction
+            % empty conjunction
 
-    % disjunctions
+    ;       if_then_else_expr(
+                prog_context,
+                list(prog_var), % SomeVars
+                list(prog_var), % StateVars
+                goal,           % Cond
+                goal,           % Then
+                goal            % Else
+            )
     ;       disj_expr(prog_context, goal, goal)
-                            % (non-empty) disjunction
-    ;       fail_expr(prog_context)
-                            % empty disjunction
+            % nonempty disjunction
 
-    % quantifiers; the list of prog_vars should have no duplicates
+    ;       not_expr(prog_context, goal)
+
+    % The other kinds of goals.
+
+    ;       fail_expr(prog_context)
+            % empty disjunction
+
+    ;       par_conj_expr(prog_context, goal, goal)
+            % nonempty parallel conjunction
+
     ;       some_expr(prog_context, list(prog_var), goal)
-                            % existential quantification
     ;       all_expr(prog_context, list(prog_var), goal)
-                            % universal quantification
+            % existential and universal quantification respectively
+
     ;       some_state_vars_expr(prog_context, list(prog_var), goal)
     ;       all_state_vars_expr(prog_context, list(prog_var), goal)
-                            % state variables extracted from
-                            % some/2 and all/2 quantifiers.
+            % existential and universal quantification respectively
+            % with state variables
 
-    % other scopes
     ;       promise_purity_expr(prog_context, purity, goal)
     ;       promise_equivalent_solutions_expr(
                 prog_context,
@@ -1099,27 +1147,13 @@
                 tryexpr_maybe_catch_any :: maybe(catch_any_expr)
             )
 
-    % implications
     ;       implies_expr(prog_context, goal, goal)
-                            % A => B
+            % implies_expr(_, A, B) represents either A => B or B <= A.
+
     ;       equivalent_expr(prog_context, goal, goal)
-                            % A <=> B
+            % equivalent_expr(_, A, B) represents A <=> B.
 
-    % negation and if-then-else
-    ;       not_expr(prog_context, goal)
-    ;       if_then_else_expr(
-                prog_context,
-                list(prog_var), % SomeVars
-                list(prog_var), % StateVars
-                goal,           % Cond
-                goal,           % Then
-                goal            % Else
-            )
-
-    % atomic goals
-    ;       event_expr(prog_context, string, list(prog_term))
-    ;       call_expr(prog_context, sym_name, list(prog_term), purity)
-    ;       unify_expr(prog_context, prog_term, prog_term, purity).
+    ;       event_expr(prog_context, string, list(prog_term)).
 
 :- type catch_expr
     --->    catch_expr(
